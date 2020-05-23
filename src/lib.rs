@@ -2,15 +2,17 @@
 //!
 //! ethers-rs is a port of [ethers-js](github.com/ethers-io/ethers.js) in Rust.
 
-mod network;
-
 pub mod providers;
 
 pub mod wallet;
 
-pub mod primitives;
+/// Ethereum related datatypes
+pub mod types;
 
+/// Re-export solc for convenience
+pub use solc;
+
+/// JSON-RPC client
 mod jsonrpc;
 
-/// Re-export solc
-pub use solc;
+mod utils;

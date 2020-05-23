@@ -8,12 +8,22 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use thiserror::Error;
 use url::Url;
 
-#[derive(Debug)]
 /// JSON-RPC 2.0 Client
+#[derive(Debug)]
 pub struct HttpClient {
     id: AtomicU64,
     client: Client,
     url: Url,
+}
+
+impl Clone for HttpClient {
+    fn clone(&self) -> Self {
+        Self {
+            id: AtomicU64::new(0),
+            client: self.client.clone(),
+            url: self.url.clone(),
+        }
+    }
 }
 
 impl HttpClient {
