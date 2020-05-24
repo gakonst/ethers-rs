@@ -12,33 +12,33 @@ use std::str::FromStr;
 pub struct TransactionRequest {
     /// Sender address or ENS name
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub from: Option<Address>,
+    pub(crate) from: Option<Address>,
 
     /// Recipient address (None for contract creation)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub to: Option<Address>,
+    pub(crate) to: Option<Address>,
 
     /// Supplied gas (None for sensible default)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub gas: Option<U256>,
+    pub(crate) gas: Option<U256>,
 
     /// Gas price (None for sensible default)
     #[serde(rename = "gasPrice")]
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub gas_price: Option<U256>,
+    pub(crate) gas_price: Option<U256>,
 
     /// Transfered value (None for no transfer)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub value: Option<U256>,
+    pub(crate) value: Option<U256>,
 
     /// The compiled code of a contract OR the first 4 bytes of the hash of the
     /// invoked method signature and encoded parameters. For details see Ethereum Contract ABI
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub data: Option<Bytes>,
+    pub(crate) data: Option<Bytes>,
 
     /// Transaction nonce (None for next available nonce)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub nonce: Option<U256>,
+    pub(crate) nonce: Option<U256>,
 }
 
 impl TransactionRequest {
