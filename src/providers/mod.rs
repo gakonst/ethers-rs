@@ -7,7 +7,7 @@ mod http;
 
 use crate::{
     signers::{Client, Signer},
-    types::{Address, BlockNumber, Transaction, TransactionRequest, TxHash, U256},
+    types::{Address, Block, BlockId, BlockNumber, Transaction, TransactionRequest, TxHash, U256},
     utils,
 };
 
@@ -77,6 +77,38 @@ impl<P: JsonRpcClient> Provider<P> {
     /// Gets the latest block number via the `eth_BlockNumber` API
     pub async fn get_block_number(&self) -> Result<U256, P::Error> {
         self.0.request("eth_blockNumber", None::<()>).await
+    }
+
+    pub async fn get_block(&self, id: impl Into<BlockId>) -> Result<Block<TxHash>, P::Error> {
+        self.get_block_gen(id.into(), false).await
+    }
+
+    pub async fn get_block_with_txs(
+        &self,
+        id: impl Into<BlockId>,
+    ) -> Result<Block<Transaction>, P::Error> {
+        self.get_block_gen(id.into(), true).await
+    }
+
+    async fn get_block_gen<Tx: for<'a> Deserialize<'a>>(
+        &self,
+        id: BlockId,
+        include_txs: bool,
+    ) -> Result<Block<Tx>, P::Error> {
+        let include_txs = utils::serialize(&include_txs);
+
+        match id {
+            BlockId::Hash(hash) => {
+                let hash = utils::serialize(&hash);
+                let args = vec![hash, include_txs];
+                self.0.request("eth_getBlockByHash", Some(args)).await
+            }
+            BlockId::Number(num) => {
+                let num = utils::serialize(&num);
+                let args = vec![num, include_txs];
+                self.0.request("eth_getBlockByNumber", Some(args)).await
+            }
+        }
     }
 
     /// Gets the transaction which matches the provided hash via the `eth_getTransactionByHash` API
