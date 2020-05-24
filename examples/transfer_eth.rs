@@ -1,20 +1,18 @@
-use ethers::providers::{Provider, ProviderTrait};
-use ethers::types::{Address, BlockNumber, TransactionRequest};
+use ethers::{
+    types::{BlockNumber, TransactionRequest},
+    HttpProvider,
+};
 use std::convert::TryFrom;
-use std::str::FromStr;
 
 #[tokio::main]
 async fn main() -> Result<(), failure::Error> {
-    let provider = Provider::try_from("http://localhost:8545")?;
-
-    let from = Address::from_str("4916064D2E9C1b2ccC466EEc3d30B2b08F1C130D")?;
+    let provider = HttpProvider::try_from("http://localhost:8545")?;
+    let from = "4916064D2E9C1b2ccC466EEc3d30B2b08F1C130D".parse()?;
 
     let tx_hash = provider
         .send_transaction(TransactionRequest {
             from,
-            to: Some(Address::from_str(
-                "9A7e5d4bcA656182e66e33340d776D1542143006",
-            )?),
+            to: Some("9A7e5d4bcA656182e66e33340d776D1542143006".parse()?),
             value: Some(1000u64.into()),
             gas: None,
             gas_price: None,

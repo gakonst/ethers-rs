@@ -69,11 +69,11 @@ impl Provider {
     }
 }
 
-impl TryFrom<&str> for Provider {
+impl TryFrom<&str> for super::Provider<Provider> {
     type Error = ParseError;
 
     fn try_from(src: &str) -> Result<Self, Self::Error> {
-        Ok(Provider::new(Url::parse(src)?))
+        Ok(super::Provider(Provider::new(Url::parse(src)?)))
     }
 }
 

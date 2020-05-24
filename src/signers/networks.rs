@@ -30,6 +30,10 @@ pub mod instantiated {
     use super::*;
     use crate::signers::Wallet;
 
+    /// A Wallet instantiated with chain_id = 1 for Ethereum Mainnet.
     pub type MainnetWallet = Wallet<Mainnet>;
+
+    /// A wallet which does not use EIP-155 and does not take the chain id into account
+    /// when creating transactions
     pub type AnyWallet = Wallet<EIP155Disabled>;
 }
