@@ -8,7 +8,8 @@ use std::convert::TryFrom;
 async fn main() -> Result<(), failure::Error> {
     // connect to the network
     let provider = HttpProvider::try_from("http://localhost:8545")?;
-    let from = "784C1bA9846aB4CE78E9CFa27884E29dd31d593A".parse()?;
+    let accounts = provider.get_accounts().await?;
+    let from = accounts[0];
 
     // craft the tx
     let tx = TransactionRequest {
@@ -20,6 +21,8 @@ async fn main() -> Result<(), failure::Error> {
         data: None,
         nonce: None,
     };
+
+    let balance_before = provider.get_balance(from, None).await?;
 
     // broadcast it via the eth_sendTransaction API
     let tx_hash = provider.send_transaction(tx).await?;
@@ -37,6 +40,12 @@ async fn main() -> Result<(), failure::Error> {
         .await?;
 
     assert!(nonce2 < nonce1);
+
+    let balance_after = provider.get_balance(from, None).await?;
+    assert!(balance_after < balance_before);
+
+    println!("Balance before {}", balance_before);
+    println!("Balance after {}", balance_after);
 
     Ok(())
 }

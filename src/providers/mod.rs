@@ -46,6 +46,11 @@ impl<P: JsonRpcClient> Provider<P> {
         }
     }
 
+    /// Gets the accounts on the node
+    pub async fn get_accounts(&self) -> Result<Vec<Address>, P::Error> {
+        self.0.request("eth_accounts", None::<()>).await
+    }
+
     /// Gets the latest block number via the `eth_BlockNumber` API
     pub async fn get_block_number(&self) -> Result<U256, P::Error> {
         self.0.request("eth_blockNumber", None::<()>).await
@@ -71,6 +76,8 @@ impl<P: JsonRpcClient> Provider<P> {
         self.0.request("eth_sendRawTransaction", Some(rlp)).await
     }
 
+    // Account state
+
     pub async fn get_transaction_count(
         &self,
         from: Address,
@@ -81,5 +88,15 @@ impl<P: JsonRpcClient> Provider<P> {
         self.0
             .request("eth_getTransactionCount", Some(&[from, block]))
             .await
+    }
+
+    pub async fn get_balance(
+        &self,
+        from: Address,
+        block: Option<BlockNumber>,
+    ) -> Result<U256, P::Error> {
+        let from = utils::serialize(&from);
+        let block = utils::serialize(&block.unwrap_or(BlockNumber::Latest));
+        self.0.request("eth_getBalance", Some(&[from, block])).await
     }
 }
