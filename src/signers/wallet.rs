@@ -1,7 +1,7 @@
 use crate::{
     providers::{JsonRpcClient, Provider},
     signers::{Client, Network, Signer},
-    types::{Address, PrivateKey, PublicKey, Signature, Transaction, UnsignedTransaction},
+    types::{Address, PrivateKey, PublicKey, Signature, Transaction, TransactionRequest, TxError},
 };
 
 use rand::Rng;
@@ -17,11 +17,13 @@ pub struct Wallet<N> {
 }
 
 impl<'a, N: Network> Signer for Wallet<N> {
+    type Error = TxError;
+
     fn sign_message<S: AsRef<[u8]>>(&self, message: S) -> Signature {
         self.private_key.sign(message)
     }
 
-    fn sign_transaction(&self, tx: UnsignedTransaction) -> Transaction {
+    fn sign_transaction(&self, tx: TransactionRequest) -> Result<Transaction, Self::Error> {
         self.private_key.sign_transaction(tx, N::CHAIN_ID)
     }
 

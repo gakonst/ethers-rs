@@ -1,23 +1,17 @@
 //! Transaction types
-//!
-//! We define 3 transaction types, `TransactionRequest`, `UnsignedTransaction` and `Transaction`.
-//! `TransactionRequest` and `UnsignedTransaction` are both unsigned transaction objects.
-//!
-//! The former gets submitted to the node via an `eth_sendTransaction` call, which populates any missing fields,
-//! signs it and broadcasts it. The latter is signed locally by a private key, and the signed
-//! transaction is broadcast via `eth_sendRawTransaction`.
 use crate::{
     types::{Address, Bytes, Signature, H256, U256, U64},
     utils::keccak256,
 };
-
+use rlp::RlpStream;
 use serde::{Deserialize, Serialize};
 
-/// Parameters for sending a transaction to via the eth_sendTransaction API.
+/// Parameters for sending a transaction
 #[derive(Clone, Serialize, Deserialize, PartialEq, Eq, Debug)]
 pub struct TransactionRequest {
     /// Sender address or ENS name
-    pub from: Address,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub from: Option<Address>,
 
     /// Recipient address (None for contract creation)
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -46,40 +40,14 @@ pub struct TransactionRequest {
     pub nonce: Option<U256>,
 }
 
-/// A raw unsigned transaction where all the information is already specified
-#[derive(Clone, Serialize, Deserialize, PartialEq, Eq, Debug)]
-pub struct UnsignedTransaction {
-    /// Recipient address (None for contract creation)
-    pub to: Option<Address>,
-
-    /// Supplied gas
-    pub gas: U256,
-
-    /// Gas price
-    #[serde(rename = "gasPrice")]
-    pub gas_price: U256,
-
-    /// Transfered value
-    pub value: U256,
-
-    /// The compiled code of a contract OR the first 4 bytes of the hash of the
-    /// invoked method signature and encoded parameters. For details see Ethereum Contract ABI
-    pub input: Bytes,
-
-    /// Transaction nonce (None for next available nonce)
-    pub nonce: U256,
-}
-
-use rlp::RlpStream;
-
-impl UnsignedTransaction {
+impl TransactionRequest {
     fn rlp_base(&self, rlp: &mut RlpStream) {
-        rlp.append(&self.nonce);
-        rlp.append(&self.gas_price);
-        rlp.append(&self.gas);
-        rlp_opt(rlp, &self.to);
-        rlp.append(&self.value);
-        rlp.append(&self.input.0);
+        rlp_opt(rlp, self.nonce);
+        rlp_opt(rlp, self.gas_price);
+        rlp_opt(rlp, self.gas);
+        rlp_opt(rlp, self.to);
+        rlp_opt(rlp, self.value);
+        rlp_opt(rlp, self.data.as_ref().map(|d| &d.0[..]));
     }
 
     pub fn hash(&self, chain_id: Option<U64>) -> H256 {
@@ -104,6 +72,14 @@ impl UnsignedTransaction {
         rlp.append(&signature.s);
 
         rlp.out().into()
+    }
+}
+
+fn rlp_opt<T: rlp::Encodable>(rlp: &mut RlpStream, opt: Option<T>) {
+    if let Some(ref inner) = opt {
+        rlp.append(inner);
+    } else {
+        rlp.append(&"");
     }
 }
 
@@ -172,7 +148,7 @@ impl Transaction {
         rlp.append(&self.nonce);
         rlp.append(&self.gas_price);
         rlp.append(&self.gas);
-        rlp_opt(&mut rlp, &self.to);
+        rlp_opt(&mut rlp, self.to);
         rlp.append(&self.value);
         rlp.append(&self.input.0);
         rlp.append(&self.v);
@@ -183,21 +159,13 @@ impl Transaction {
     }
 }
 
-fn rlp_opt<T: rlp::Encodable>(rlp: &mut RlpStream, opt: &Option<T>) {
-    if let Some(inner) = opt {
-        rlp.append(inner);
-    } else {
-        rlp.append(&"");
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn decode_unsigned_transaction() {
-        let _res: UnsignedTransaction = serde_json::from_str(
+        let _res: TransactionRequest = serde_json::from_str(
             r#"{
     "gas":"0xc350",
     "gasPrice":"0x4a817c800",

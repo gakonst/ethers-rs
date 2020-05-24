@@ -5,12 +5,10 @@ pub use ethereum_types::H256 as TxHash;
 pub use ethereum_types::{Address, H256, U256, U64};
 
 mod transaction;
-// TODO: Figure out some more intuitive way instead of having 3 similarly named structs
-// with the same fields
-pub use transaction::{Transaction, TransactionRequest, UnsignedTransaction};
+pub use transaction::{Transaction, TransactionRequest};
 
 mod keys;
-pub use keys::{PrivateKey, PublicKey};
+pub use keys::{PrivateKey, PublicKey, TxError};
 
 mod signature;
 pub use signature::Signature;

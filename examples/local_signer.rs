@@ -1,4 +1,4 @@
-use ethers::{types::UnsignedTransaction, HttpProvider, MainnetWallet};
+use ethers::{types::TransactionRequest, HttpProvider, MainnetWallet};
 use std::convert::TryFrom;
 use std::str::FromStr;
 
@@ -9,21 +9,23 @@ async fn main() -> Result<(), failure::Error> {
 
     // create a wallet and connect it to the provider
     let client = MainnetWallet::from_str(
-        "d8ebe1e50cfea1f9961908d9df28e64bb163fee9ee48320361b2eb0a54974269",
+        "15c42bf2987d5a8a73804a8ea72fb4149f88adf73e98fc3f8a8ce9f24fcb7774",
     )?
     .connect(&provider);
 
     // get the account's nonce (we abuse the Deref to access the provider's functions)
     let nonce = client.get_transaction_count(client.address(), None).await?;
+    dbg!(nonce);
 
     // craft the transaction
-    let tx = UnsignedTransaction {
+    let tx = TransactionRequest {
+        from: None,
         to: Some("986eE0C8B91A58e490Ee59718Cca41056Cf55f24".parse().unwrap()),
-        gas: 21000.into(),
-        gas_price: 100_000.into(),
-        value: 10000.into(),
-        input: vec![].into(),
-        nonce,
+        gas: Some(21000.into()),
+        gas_price: Some(100_000.into()),
+        value: Some(10000.into()),
+        data: Some(vec![].into()),
+        nonce: Some(nonce),
     };
 
     // send it!

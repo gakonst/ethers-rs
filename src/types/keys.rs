@@ -4,10 +4,11 @@ use secp256k1::{
 };
 use std::ops::Deref;
 use std::str::FromStr;
+use thiserror::Error;
 use zeroize::DefaultIsZeroes;
 
 use crate::{
-    types::{Address, Signature, Transaction, UnsignedTransaction, H256, U256, U64},
+    types::{Address, Signature, Transaction, TransactionRequest, H256, U256, U64},
     utils::{hash_message, keccak256},
 };
 
@@ -22,6 +23,16 @@ impl FromStr for PrivateKey {
         let sk = SecretKey::from_str(src)?;
         Ok(PrivateKey(sk))
     }
+}
+
+#[derive(Clone, Debug, Error)]
+pub enum TxError {
+    #[error("no nonce was specified")]
+    NonceMissing,
+    #[error("no gas price was specified")]
+    GasPriceMissing,
+    #[error("no gas was specified")]
+    GasMissing,
 }
 
 impl PrivateKey {
@@ -50,7 +61,15 @@ impl PrivateKey {
 
     /// RLP encodes and then signs the stransaction. If no chain_id is provided, then EIP-155 is
     /// not used.
-    pub fn sign_transaction(&self, tx: UnsignedTransaction, chain_id: Option<U64>) -> Transaction {
+    pub fn sign_transaction(
+        &self,
+        tx: TransactionRequest,
+        chain_id: Option<U64>,
+    ) -> Result<Transaction, TxError> {
+        let nonce = tx.nonce.ok_or(TxError::NonceMissing)?;
+        let gas_price = tx.gas_price.ok_or(TxError::NonceMissing)?;
+        let gas = tx.gas.ok_or(TxError::NonceMissing)?;
+
         // Hash the transaction's RLP encoding
         let hash = tx.hash(chain_id);
         let message = Message::from_slice(hash.as_bytes()).expect("hash is non-zero 32-bytes; qed");
@@ -60,15 +79,15 @@ impl PrivateKey {
         let rlp = tx.rlp_signed(&signature);
         let hash = keccak256(&rlp.0);
 
-        Transaction {
+        Ok(Transaction {
             hash: hash.into(),
-            nonce: tx.nonce,
+            nonce,
             from: self.into(),
             to: tx.to,
-            value: tx.value,
-            gas_price: tx.gas_price,
-            gas: tx.gas,
-            input: tx.input,
+            value: tx.value.unwrap_or_default(),
+            gas_price,
+            gas,
+            input: tx.data.unwrap_or_default(),
             v: signature.v.into(),
             r: U256::from_big_endian(signature.r.as_bytes()),
             s: U256::from_big_endian(signature.s.as_bytes()),
@@ -77,7 +96,7 @@ impl PrivateKey {
             block_hash: None,
             block_number: None,
             transaction_index: None,
-        }
+        })
     }
 
     fn sign_with_eip155(&self, message: &Message, chain_id: Option<U64>) -> Signature {
@@ -193,13 +212,14 @@ mod tests {
     fn signs_tx() {
         // retrieved test vector from:
         // https://web3js.readthedocs.io/en/v1.2.0/web3-eth-accounts.html#eth-accounts-signtransaction
-        let tx = UnsignedTransaction {
+        let tx = TransactionRequest {
+            from: None,
             to: Some("F0109fC8DF283027b6285cc889F5aA624EaC1F55".parse().unwrap()),
-            value: 1_000_000_000.into(),
-            gas: 2_000_000.into(),
-            nonce: 0.into(),
-            gas_price: 21_000_000_000u128.into(),
-            input: Bytes::new(),
+            value: Some(1_000_000_000.into()),
+            gas: Some(2_000_000.into()),
+            nonce: Some(0.into()),
+            gas_price: Some(21_000_000_000u128.into()),
+            data: None,
         };
         let chain_id = 1;
 
@@ -207,7 +227,7 @@ mod tests {
             .parse()
             .unwrap();
 
-        let tx = key.sign_transaction(tx, Some(chain_id.into()));
+        let tx = key.sign_transaction(tx, Some(chain_id.into())).unwrap();
 
         assert_eq!(
             tx.hash,

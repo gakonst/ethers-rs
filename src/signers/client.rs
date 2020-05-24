@@ -1,7 +1,7 @@
 use crate::{
     providers::{JsonRpcClient, Provider},
     signers::Signer,
-    types::{Address, Transaction, UnsignedTransaction},
+    types::{Address, Transaction, TransactionRequest},
 };
 
 use std::ops::Deref;
@@ -17,10 +17,10 @@ impl<'a, S: Signer, P: JsonRpcClient> Client<'a, S, P> {
     /// API
     pub async fn sign_and_send_transaction(
         &self,
-        tx: UnsignedTransaction,
+        tx: TransactionRequest,
     ) -> Result<Transaction, P::Error> {
         // sign the transaction
-        let signed_tx = self.signer.sign_transaction(tx.clone());
+        let signed_tx = self.signer.sign_transaction(tx).unwrap(); // TODO
 
         // broadcast it
         self.provider.send_raw_transaction(&signed_tx).await?;
