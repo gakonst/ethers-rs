@@ -20,4 +20,4 @@ mod block;
 pub use block::{Block, BlockId, BlockNumber};
 
 mod log;
-pub use log::Log;
+pub use log::{Filter, Log};

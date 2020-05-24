@@ -31,6 +31,17 @@ pub fn keccak256(bytes: &[u8]) -> [u8; 32] {
     output
 }
 
+/// Gets the first 4 bytes
+pub fn id(name: &str) -> [u8; 4] {
+    let mut output = [0u8; 4];
+
+    let mut hasher = Keccak::v256();
+    hasher.update(name.as_bytes());
+    hasher.finalize(&mut output);
+
+    output
+}
+
 /// Serialize a type. Panics if the type is returns error during serialization.
 pub fn serialize<T: serde::Serialize>(t: &T) -> serde_json::Value {
     serde_json::to_value(t).expect("Types never fail to serialize.")

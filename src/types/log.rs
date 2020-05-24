@@ -1,4 +1,4 @@
-use crate::types::{Address, Bytes, H256, U256, U64};
+use crate::types::{Address, BlockNumber, Bytes, H256, U256, U64};
 use serde::{Deserialize, Serialize};
 
 /// A log produced by a transaction.
@@ -48,4 +48,66 @@ pub struct Log {
     /// True when the log was removed, due to a chain reorganization.
     /// false if its a valid log.
     pub removed: Option<bool>,
+}
+
+/// Filter
+#[derive(Default, Debug, PartialEq, Clone, Serialize)]
+pub struct Filter {
+    /// From Block
+    #[serde(rename = "fromBlock", skip_serializing_if = "Option::is_none")]
+    from_block: Option<BlockNumber>,
+    /// To Block
+    #[serde(rename = "toBlock", skip_serializing_if = "Option::is_none")]
+    to_block: Option<BlockNumber>,
+    /// Address
+    #[serde(skip_serializing_if = "Option::is_none")]
+    address: Option<ValueOrArray<Address>>,
+    /// Topics
+    #[serde(skip_serializing_if = "Option::is_none")]
+    topics: Option<Vec<Option<ValueOrArray<H256>>>>,
+    /// Limit
+    #[serde(skip_serializing_if = "Option::is_none")]
+    limit: Option<usize>,
+}
+
+impl Filter {
+    pub fn from_block<T: Into<BlockNumber>>(mut self, block: BlockNumber) -> Self {
+        self.from_block = Some(block.into());
+        self
+    }
+
+    pub fn to_block<T: Into<BlockNumber>>(mut self, block: BlockNumber) -> Self {
+        self.to_block = Some(block.into());
+        self
+    }
+
+    // pub fn address<T: Into<Address>>(mut self, block: BlockNumber) -> Self {
+    //     self.to_block = Some(block.into());
+    //     self
+    // }
+    pub fn limit(mut self, limit: usize) -> Self {
+        self.limit = Some(limit);
+        self
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum ValueOrArray<T> {
+    Value(T),
+    Array(Vec<T>),
+}
+
+impl<T> Serialize for ValueOrArray<T>
+where
+    T: Serialize,
+{
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match self {
+            ValueOrArray::Value(inner) => inner.serialize(serializer),
+            ValueOrArray::Array(inner) => inner.serialize(serializer),
+        }
+    }
 }

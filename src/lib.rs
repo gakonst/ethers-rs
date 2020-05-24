@@ -28,4 +28,5 @@ pub mod types;
 /// Re-export solc for convenience
 pub use solc;
 
-mod utils;
+/// Various utilities
+pub mod utils;
