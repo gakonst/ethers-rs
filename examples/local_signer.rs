@@ -1,6 +1,5 @@
 use ethers::{types::TransactionRequest, HttpProvider, MainnetWallet};
 use std::convert::TryFrom;
-use std::str::FromStr;
 
 #[tokio::main]
 async fn main() -> Result<(), failure::Error> {
@@ -8,28 +7,17 @@ async fn main() -> Result<(), failure::Error> {
     let provider = HttpProvider::try_from("http://localhost:8545")?;
 
     // create a wallet and connect it to the provider
-    let client = MainnetWallet::from_str(
-        "15c42bf2987d5a8a73804a8ea72fb4149f88adf73e98fc3f8a8ce9f24fcb7774",
-    )?
-    .connect(&provider);
-
-    // get the account's nonce (we abuse the Deref to access the provider's functions)
-    let nonce = client.get_transaction_count(client.address(), None).await?;
-    dbg!(nonce);
+    let client = "15c42bf2987d5a8a73804a8ea72fb4149f88adf73e98fc3f8a8ce9f24fcb7774"
+        .parse::<MainnetWallet>()?
+        .connect(&provider);
 
     // craft the transaction
-    let tx = TransactionRequest {
-        from: None,
-        to: Some("986eE0C8B91A58e490Ee59718Cca41056Cf55f24".parse().unwrap()),
-        gas: Some(21000.into()),
-        gas_price: Some(100_000.into()),
-        value: Some(10000.into()),
-        data: Some(vec![].into()),
-        nonce: Some(nonce),
-    };
+    let tx = TransactionRequest::new()
+        .send_to_str("986eE0C8B91A58e490Ee59718Cca41056Cf55f24")?
+        .value(10000);
 
     // send it!
-    let tx = client.sign_and_send_transaction(tx).await?;
+    let tx = client.sign_and_send_transaction(tx, None).await?;
 
     // get the mined tx
     let tx = client.get_transaction(tx.hash).await?;

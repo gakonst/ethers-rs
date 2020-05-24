@@ -59,13 +59,18 @@ impl PrivateKey {
         self.sign_with_eip155(&sig_message, None)
     }
 
-    /// RLP encodes and then signs the stransaction. If no chain_id is provided, then EIP-155 is
-    /// not used.
+    /// RLP encodes and then signs the stransaction.
+    ///
+    /// If no chain_id is provided, then EIP-155 is not used.
+    ///
+    /// This will return an error if called if any of the `nonce`, `gas_price` or `gas`
+    /// fields are not populated.
     pub fn sign_transaction(
         &self,
         tx: TransactionRequest,
         chain_id: Option<U64>,
     ) -> Result<Transaction, TxError> {
+        // Calling `
         let nonce = tx.nonce.ok_or(TxError::NonceMissing)?;
         let gas_price = tx.gas_price.ok_or(TxError::NonceMissing)?;
         let gas = tx.gas.ok_or(TxError::NonceMissing)?;

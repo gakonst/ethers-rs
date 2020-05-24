@@ -46,6 +46,29 @@ impl<P: JsonRpcClient> Provider<P> {
         }
     }
 
+    // Cost related
+
+    /// Gets the current gas price as estimated by the node
+    pub async fn get_gas_price(&self) -> Result<U256, P::Error> {
+        self.0.request("eth_gasPrice", None::<()>).await
+    }
+
+    /// Tries to estimate the gas for the transaction
+    pub async fn estimate_gas(
+        &self,
+        tx: &TransactionRequest,
+        block: Option<BlockNumber>,
+    ) -> Result<U256, P::Error> {
+        let tx = utils::serialize(tx);
+
+        let args = match block {
+            Some(block) => vec![tx, utils::serialize(&block)],
+            None => vec![tx],
+        };
+
+        self.0.request("eth_estimateGas", Some(args)).await
+    }
+
     /// Gets the accounts on the node
     pub async fn get_accounts(&self) -> Result<Vec<Address>, P::Error> {
         self.0.request("eth_accounts", None::<()>).await
@@ -64,6 +87,8 @@ impl<P: JsonRpcClient> Provider<P> {
         let hash = hash.into();
         self.0.request("eth_getTransactionByHash", Some(hash)).await
     }
+
+    // State mutations
 
     /// Broadcasts the transaction request via the `eth_sendTransaction` API
     pub async fn send_transaction(&self, tx: TransactionRequest) -> Result<TxHash, P::Error> {

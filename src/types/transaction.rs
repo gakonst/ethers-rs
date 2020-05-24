@@ -5,9 +5,10 @@ use crate::{
 };
 use rlp::RlpStream;
 use serde::{Deserialize, Serialize};
+use std::str::FromStr;
 
 /// Parameters for sending a transaction
-#[derive(Clone, Serialize, Deserialize, PartialEq, Eq, Debug)]
+#[derive(Clone, Default, Serialize, Deserialize, PartialEq, Eq, Debug)]
 pub struct TransactionRequest {
     /// Sender address or ENS name
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -41,27 +42,89 @@ pub struct TransactionRequest {
 }
 
 impl TransactionRequest {
-    fn rlp_base(&self, rlp: &mut RlpStream) {
-        rlp_opt(rlp, self.nonce);
-        rlp_opt(rlp, self.gas_price);
-        rlp_opt(rlp, self.gas);
-        rlp_opt(rlp, self.to);
-        rlp_opt(rlp, self.value);
-        rlp_opt(rlp, self.data.as_ref().map(|d| &d.0[..]));
+    /// Creates an empty transaction request with all fields left empty
+    pub fn new() -> Self {
+        Self::default()
     }
 
-    pub fn hash(&self, chain_id: Option<U64>) -> H256 {
+    /// Convenience function for sending a new payment transaction to the receiver. The
+    /// `gas`, `gas_price` and `nonce` fields are left empty, to be populated
+    pub fn pay<T: Into<Address>, V: Into<U256>>(to: T, value: V) -> Self {
+        TransactionRequest {
+            from: None,
+            to: Some(to.into()),
+            gas: None,
+            gas_price: None,
+            value: Some(value.into()),
+            data: None,
+            nonce: None,
+        }
+    }
+
+    // Builder pattern helpers
+
+    /// Sets the `from` field in the transaction to the provided value
+    pub fn from<T: Into<Address>>(mut self, from: T) -> Self {
+        self.from = Some(from.into());
+        self
+    }
+
+    /// Sets the `to` field in the transaction to the provided value
+    pub fn send_to_str(mut self, to: &str) -> Result<Self, rustc_hex::FromHexError> {
+        self.to = Some(Address::from_str(to)?);
+        Ok(self)
+    }
+
+    /// Sets the `to` field in the transaction to the provided value
+    pub fn to<T: Into<Address>>(mut self, to: T) -> Self {
+        self.to = Some(to.into());
+        self
+    }
+
+    /// Sets the `gas` field in the transaction to the provided value
+    pub fn gas<T: Into<U256>>(mut self, gas: T) -> Self {
+        self.gas = Some(gas.into());
+        self
+    }
+
+    /// Sets the `gas_price` field in the transaction to the provided value
+    pub fn gas_price<T: Into<U256>>(mut self, gas_price: T) -> Self {
+        self.gas_price = Some(gas_price.into());
+        self
+    }
+
+    /// Sets the `value` field in the transaction to the provided value
+    pub fn value<T: Into<U256>>(mut self, value: T) -> Self {
+        self.value = Some(value.into());
+        self
+    }
+
+    /// Sets the `data` field in the transaction to the provided value
+    pub fn data<T: Into<Bytes>>(mut self, data: T) -> Self {
+        self.data = Some(data.into());
+        self
+    }
+
+    /// Sets the `nonce` field in the transaction to the provided value
+    pub fn nonce<T: Into<U256>>(mut self, nonce: T) -> Self {
+        self.nonce = Some(nonce.into());
+        self
+    }
+
+    /// Hashes the transaction's data with the provided chain id
+    pub fn hash<T: Into<U64>>(&self, chain_id: Option<T>) -> H256 {
         let mut rlp = RlpStream::new();
         rlp.begin_list(9);
         self.rlp_base(&mut rlp);
 
-        rlp.append(&chain_id.unwrap_or_else(U64::zero));
+        rlp.append(&chain_id.map(|c| c.into()).unwrap_or_else(U64::zero));
         rlp.append(&0u8);
         rlp.append(&0u8);
 
         keccak256(rlp.out().as_ref()).into()
     }
 
+    /// Produces the RLP encoding of the transaction with the provided signature
     pub fn rlp_signed(&self, signature: &Signature) -> Bytes {
         let mut rlp = RlpStream::new();
         rlp.begin_list(9);
@@ -72,6 +135,15 @@ impl TransactionRequest {
         rlp.append(&signature.s);
 
         rlp.out().into()
+    }
+
+    fn rlp_base(&self, rlp: &mut RlpStream) {
+        rlp_opt(rlp, self.nonce);
+        rlp_opt(rlp, self.gas_price);
+        rlp_opt(rlp, self.gas);
+        rlp_opt(rlp, self.to);
+        rlp_opt(rlp, self.value);
+        rlp_opt(rlp, self.data.as_ref().map(|d| &d.0[..]));
     }
 }
 

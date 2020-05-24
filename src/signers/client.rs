@@ -1,7 +1,7 @@
 use crate::{
     providers::{JsonRpcClient, Provider},
     signers::Signer,
-    types::{Address, Transaction, TransactionRequest},
+    types::{Address, BlockNumber, Transaction, TransactionRequest},
 };
 
 use std::ops::Deref;
@@ -17,8 +17,30 @@ impl<'a, S: Signer, P: JsonRpcClient> Client<'a, S, P> {
     /// API
     pub async fn sign_and_send_transaction(
         &self,
-        tx: TransactionRequest,
+        mut tx: TransactionRequest,
+        block: Option<BlockNumber>,
     ) -> Result<Transaction, P::Error> {
+        // TODO: Convert to join'ed futures
+        // get the gas price
+        if tx.gas_price.is_none() {
+            tx.gas_price = Some(self.provider.get_gas_price().await?);
+        }
+
+        // estimate the gas
+        if tx.gas.is_none() {
+            tx.from = Some(self.address());
+            tx.gas = Some(self.provider.estimate_gas(&tx, block).await?);
+        }
+
+        // set our nonce
+        if tx.nonce.is_none() {
+            tx.nonce = Some(
+                self.provider
+                    .get_transaction_count(self.address(), block)
+                    .await?,
+            );
+        }
+
         // sign the transaction
         let signed_tx = self.signer.sign_transaction(tx).unwrap(); // TODO
 

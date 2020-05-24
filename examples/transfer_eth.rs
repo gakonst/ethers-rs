@@ -12,15 +12,10 @@ async fn main() -> Result<(), failure::Error> {
     let from = accounts[0];
 
     // craft the tx
-    let tx = TransactionRequest {
-        from: Some(from),
-        to: Some("9A7e5d4bcA656182e66e33340d776D1542143006".parse()?),
-        value: Some(1000u64.into()),
-        gas: None,
-        gas_price: None,
-        data: None,
-        nonce: None,
-    };
+    let tx = TransactionRequest::new()
+        .send_to_str("9A7e5d4bcA656182e66e33340d776D1542143006")?
+        .value(1000)
+        .from(from); // specify the `from` field so that the client knows which account to use
 
     let balance_before = provider.get_balance(from, None).await?;
 
