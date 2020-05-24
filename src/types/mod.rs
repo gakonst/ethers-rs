@@ -16,5 +16,5 @@ pub use signature::Signature;
 mod bytes;
 pub use bytes::Bytes;
 
-mod block;
-pub use block::BlockNumber;
+mod block_number;
+pub use block_number::BlockNumber;
