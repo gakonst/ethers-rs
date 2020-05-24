@@ -9,7 +9,7 @@ pub use wallet::Wallet;
 mod client;
 pub(crate) use client::Client;
 
-use crate::types::{Signature, Transaction, UnsignedTransaction};
+use crate::types::{Address, Signature, Transaction, UnsignedTransaction};
 
 /// Trait for signing transactions and messages
 ///
@@ -20,4 +20,7 @@ pub trait Signer {
 
     /// Signs the transaction
     fn sign_transaction(&self, message: UnsignedTransaction) -> Transaction;
+
+    /// Returns the signer's Ethereum Address
+    fn address(&self) -> Address;
 }

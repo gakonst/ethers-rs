@@ -13,10 +13,8 @@ async fn main() -> Result<(), failure::Error> {
     )?
     .connect(&provider);
 
-    // get the account's nonce
-    let nonce = provider
-        .get_transaction_count(client.signer.address, None)
-        .await?;
+    // get the account's nonce (we abuse the Deref to access the provider's functions)
+    let nonce = client.get_transaction_count(client.address(), None).await?;
 
     // craft the transaction
     let tx = UnsignedTransaction {
@@ -29,7 +27,7 @@ async fn main() -> Result<(), failure::Error> {
     };
 
     // send it!
-    let tx = client.send_transaction(tx).await?;
+    let tx = client.sign_and_send_transaction(tx).await?;
 
     // get the mined tx
     let tx = client.get_transaction(tx.hash).await?;

@@ -24,6 +24,10 @@ impl<'a, N: Network> Signer for Wallet<N> {
     fn sign_transaction(&self, tx: UnsignedTransaction) -> Transaction {
         self.private_key.sign_transaction(tx, N::CHAIN_ID)
     }
+
+    fn address(&self) -> Address {
+        self.address
+    }
 }
 
 impl<N: Network> Wallet<N> {

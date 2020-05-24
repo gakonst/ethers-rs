@@ -7,7 +7,7 @@ mod http;
 
 use crate::{
     signers::{Client, Signer},
-    types::{Address, BlockNumber, Bytes, Transaction, TransactionRequest, TxHash, U256},
+    types::{Address, BlockNumber, Transaction, TransactionRequest, TxHash, U256},
     utils,
 };
 
@@ -46,10 +46,12 @@ impl<P: JsonRpcClient> Provider<P> {
         }
     }
 
+    /// Gets the latest block number via the `eth_BlockNumber` API
     pub async fn get_block_number(&self) -> Result<U256, P::Error> {
         self.0.request("eth_blockNumber", None::<()>).await
     }
 
+    /// Gets the transaction which matches the provided hash via the `eth_getTransactionByHash` API
     pub async fn get_transaction<T: Send + Sync + Into<TxHash>>(
         &self,
         hash: T,
@@ -58,12 +60,14 @@ impl<P: JsonRpcClient> Provider<P> {
         self.0.request("eth_getTransactionByHash", Some(hash)).await
     }
 
+    /// Broadcasts the transaction request via the `eth_sendTransaction` API
     pub async fn send_transaction(&self, tx: TransactionRequest) -> Result<TxHash, P::Error> {
         self.0.request("eth_sendTransaction", Some(tx)).await
     }
 
-    pub async fn send_raw_transaction(&self, rlp: &Bytes) -> Result<TxHash, P::Error> {
-        let rlp = utils::serialize(&rlp);
+    /// Broadcasts a raw RLP encoded transaction via the `eth_sendRawTransaction` API
+    pub async fn send_raw_transaction(&self, tx: &Transaction) -> Result<TxHash, P::Error> {
+        let rlp = utils::serialize(&tx.rlp());
         self.0.request("eth_sendRawTransaction", Some(rlp)).await
     }
 
