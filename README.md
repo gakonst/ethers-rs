@@ -1,44 +1,43 @@
-Provider model
+# ethers.rs
 
-should be usable both for tests and for normal actions
+Complete Ethereum wallet implementation and utilities in Rust (with WASM and FFI support).
 
+## Features
 
-Features
-- [ ] Keep your private keys in your client, safe and sound
-- [ ] Import and export JSON wallets (Geth, Parity and crowdsale)
-- [ ] Import and export BIP 39 mnemonic phrases (12 word backup phrases) and HD Wallets (English, Italian, Japanese, Korean, Simplified Chinese, Traditional Chinese; more coming soon)
-- [ ] Meta-classes create JavaScript objects from any contract ABI, including ABIv2 and Human-Readable ABI
-- [ ] Connect to Ethereum nodes over JSON-RPC, INFURA, Etherscan, Alchemy, Cloudflare or MetaMask.
-- [ ] ENS names are first-class citizens; they can be used anywhere an Ethereum addresses can be used
-- [ ] Tiny (~88kb compressed; 284kb uncompressed)
-- [ ] Complete functionality for all your Ethereum needs
-- [ ] Extensive documentation
-- [ ] Large collection of test cases which are maintained and added to
-- [ ] Fully TypeScript ready, with definition files and full TypeScript source
-- [ ] MIT License (including ALL dependencies); completely open source to do with as you please
-- [ ] Compatible with ethers.js and Metamask web3 providers via WASM
-- Calls by default are made async -> provide a synchronous API
+- [x] User friendly transaction APIs
+- [x] Type-safe EIP-155 transactions
+- [ ] Event Monitoring
+- [ ] Deploy and interact with smart contracts
+- [ ] Type safe smart contract bindings
+- [ ] Hardware wallet support
+- [ ] ...
 
+## Examples
 
-- Provider
-- Signer
-- Contract
-- Choice of BigNumber library? Probably the ones in ethabi
-- Human readable ABI very important
-- https://docs-beta.ethers.io/getting-started/
-- Supports IN-EVM Testing -> SUPER fast tests which are ALSO typesafe
-- build.rs type safe methods
+### Sending a transaction with an offline key
 
-This library is inspired by the APIs of Riemann Ether and Ethers https://github.com/summa-tx/riemann-ether#development
+```rust
+use ethers::{types::TransactionRequest, HttpProvider, MainnetWallet};
+use std::convert::TryFrom;
 
-- Listening to events via HTTP polls, while WS push/pulls -> look at rust-web3
+// connect to the network
+let provider = HttpProvider::try_from("http://localhost:8545")?;
 
-- Async std futures 1.0 RPC calls for everything  `rpc_impl!` using reqwest and mockito
+// create a wallet and connect it to the provider
+let client = "15c42bf2987d5a8a73804a8ea72fb4149f88adf73e98fc3f8a8ce9f24fcb7774"
+    .parse::<MainnetWallet>()?
+    .connect(&provider);
 
-https://github.com/ethers-io/ethers.js/blob/ethers-v5-beta/packages/contracts/src.ts/index.ts#L721
+// craft the transaction using the builder pattern
+let tx = TransactionRequest::new()
+    .send_to_str("986eE0C8B91A58e490Ee59718Cca41056Cf55f24")?
+    .value(10000);
 
-- Wallet
+// send it!
+let tx = client.sign_and_send_transaction(tx, None).await?;
 
-ethers::wallet::new().connect(provider)
-::get_default_provider()
+// get the mined tx
+let tx = client.get_transaction(tx.hash).await?;
 
+println!("{}", serde_json::to_string(&tx)?);
+```
