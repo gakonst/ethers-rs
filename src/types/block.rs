@@ -1,4 +1,5 @@
 use super::U64;
+use serde::{Serialize, Serializer};
 
 /// Block Number
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -12,8 +13,6 @@ pub enum BlockNumber {
     /// Block by number from canon chain
     Number(U64),
 }
-
-use serde::{Serialize, Serializer};
 
 impl<T: Into<U64>> From<T> for BlockNumber {
     fn from(num: T) -> Self {

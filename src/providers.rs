@@ -58,7 +58,7 @@ impl ProviderTrait for Provider {
         block: Option<BlockNumber>,
     ) -> Result<U256, Self::Error> {
         let from = utils::serialize(&from);
-        let block = utils::serialize(&block);
+        let block = utils::serialize(&block.unwrap_or(BlockNumber::Latest));
         self.0
             .request("eth_getTransactionCount", Some(&[from, block]))
             .await
