@@ -1,7 +1,7 @@
 use crate::{
-    providers::Provider,
+    providers::{JsonRpcClient, Provider},
+    signers::{Client, Network, Signer},
     types::{Address, PrivateKey, PublicKey, Signature, Transaction, UnsignedTransaction},
-    wallet::{Client, Network, Signer},
 };
 
 use rand::Rng;
@@ -43,8 +43,8 @@ impl<N: Network> Wallet<N> {
         }
     }
 
-    /// Connects to a provider and returns a signer
-    pub fn connect(self, provider: &Provider) -> Client<Wallet<N>> {
+    /// Connects to a provider and returns a client
+    pub fn connect<P: JsonRpcClient>(self, provider: &Provider<P>) -> Client<Wallet<N>, P> {
         Client {
             signer: self,
             provider,

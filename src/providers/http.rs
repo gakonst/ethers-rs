@@ -1,43 +1,42 @@
-//! Minimal JSON-RPC 2.0 Client
+//! Minimal HTTP JSON-RPC 2.0 Client
 //! The request/response code is taken from [here](https://github.com/althea-net/guac_rs/blob/master/web3/src/jsonrpc)
+use crate::providers::JsonRpcClient;
+
+use async_trait::async_trait;
 use reqwest::{Client, Error as ReqwestError};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::fmt;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::{
+    convert::TryFrom,
+    fmt,
+    sync::atomic::{AtomicU64, Ordering},
+};
 use thiserror::Error;
-use url::Url;
+use url::{ParseError, Url};
 
-/// JSON-RPC 2.0 Client
+/// An HTTP Client
 #[derive(Debug)]
-pub struct HttpClient {
+pub struct Provider {
     id: AtomicU64,
     client: Client,
     url: Url,
 }
 
-impl Clone for HttpClient {
-    fn clone(&self) -> Self {
-        Self {
-            id: AtomicU64::new(0),
-            client: self.client.clone(),
-            url: self.url.clone(),
-        }
-    }
+#[derive(Error, Debug)]
+pub enum ClientError {
+    #[error(transparent)]
+    ReqwestError(#[from] ReqwestError),
+    #[error(transparent)]
+    JsonRpcError(#[from] JsonRpcError),
 }
 
-impl HttpClient {
-    /// Initializes a new HTTP Client
-    pub fn new(url: impl Into<Url>) -> Self {
-        Self {
-            id: AtomicU64::new(0),
-            client: Client::new(),
-            url: url.into(),
-        }
-    }
+#[async_trait]
+impl JsonRpcClient for Provider {
+    type Error = ClientError;
 
     /// Sends a POST request with the provided method and the params serialized as JSON
-    pub async fn request<T: Serialize, R: for<'a> Deserialize<'a>>(
+    /// over HTTP
+    async fn request<T: Serialize + Send + Sync, R: for<'a> Deserialize<'a>>(
         &self,
         method: &str,
         params: Option<T>,
@@ -59,12 +58,33 @@ impl HttpClient {
     }
 }
 
-#[derive(Error, Debug)]
-pub enum ClientError {
-    #[error(transparent)]
-    ReqwestError(#[from] ReqwestError),
-    #[error(transparent)]
-    JsonRpcError(#[from] JsonRpcError),
+impl Provider {
+    /// Initializes a new HTTP Client
+    pub fn new(url: impl Into<Url>) -> Self {
+        Self {
+            id: AtomicU64::new(0),
+            client: Client::new(),
+            url: url.into(),
+        }
+    }
+}
+
+impl TryFrom<&str> for Provider {
+    type Error = ParseError;
+
+    fn try_from(src: &str) -> Result<Self, Self::Error> {
+        Ok(Provider::new(Url::parse(src)?))
+    }
+}
+
+impl Clone for Provider {
+    fn clone(&self) -> Self {
+        Self {
+            id: AtomicU64::new(0),
+            client: self.client.clone(),
+            url: self.url.clone(),
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Error)]

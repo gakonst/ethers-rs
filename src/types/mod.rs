@@ -12,7 +12,7 @@ pub use transaction::{Transaction, TransactionRequest, UnsignedTransaction};
 mod keys;
 pub use keys::{PrivateKey, PublicKey};
 
-pub mod signature;
+mod signature;
 pub use signature::Signature;
 
 mod bytes;

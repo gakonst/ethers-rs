@@ -4,15 +4,12 @@
 
 pub mod providers;
 
-pub mod wallet;
+pub mod signers;
 
 /// Ethereum related datatypes
 pub mod types;
 
 /// Re-export solc for convenience
 pub use solc;
-
-/// JSON-RPC client
-mod jsonrpc;
 
 mod utils;

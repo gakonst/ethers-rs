@@ -28,7 +28,7 @@ impl Network for EIP155Disabled {
 
 pub mod instantiated {
     use super::*;
-    use crate::wallet::Wallet;
+    use crate::signers::Wallet;
 
     pub type MainnetWallet = Wallet<Mainnet>;
     pub type AnyWallet = Wallet<EIP155Disabled>;
