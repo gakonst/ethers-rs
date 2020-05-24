@@ -5,7 +5,7 @@ pub use ethereum_types::H256 as TxHash;
 pub use ethereum_types::{Address, Bloom, H256, U256, U64};
 
 mod transaction;
-pub use transaction::{Transaction, TransactionRequest};
+pub use transaction::{Transaction, TransactionReceipt, TransactionRequest};
 
 mod keys;
 pub use keys::{PrivateKey, PublicKey, TxError};
@@ -18,3 +18,6 @@ pub use bytes::Bytes;
 
 mod block;
 pub use block::{Block, BlockId, BlockNumber};
+
+mod log;
+pub use log::Log;

@@ -7,7 +7,10 @@ mod http;
 
 use crate::{
     signers::{Client, Signer},
-    types::{Address, Block, BlockId, BlockNumber, Transaction, TransactionRequest, TxHash, U256},
+    types::{
+        Address, Block, BlockId, BlockNumber, Transaction, TransactionReceipt, TransactionRequest,
+        TxHash, U256,
+    },
     utils,
 };
 
@@ -109,6 +112,17 @@ impl<P: JsonRpcClient> Provider<P> {
                 self.0.request("eth_getBlockByNumber", Some(args)).await
             }
         }
+    }
+
+    /// Gets the transaction receipt for tx hash
+    pub async fn get_transaction_receipt<T: Send + Sync + Into<TxHash>>(
+        &self,
+        hash: T,
+    ) -> Result<TransactionReceipt, P::Error> {
+        let hash = hash.into();
+        self.0
+            .request("eth_getTransactionReceipt", Some(hash))
+            .await
     }
 
     /// Gets the transaction which matches the provided hash via the `eth_getTransactionByHash` API

@@ -22,7 +22,10 @@ async fn main() -> Result<(), failure::Error> {
     // get the mined tx
     let tx = client.get_transaction(tx.hash).await?;
 
+    let receipt = client.get_transaction_receipt(tx.hash).await?;
+
     println!("{}", serde_json::to_string(&tx)?);
+    println!("{}", serde_json::to_string(&receipt)?);
 
     Ok(())
 }
