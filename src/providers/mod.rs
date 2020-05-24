@@ -6,6 +6,7 @@
 mod http;
 
 use crate::{
+    signers::{Client, Signer},
     types::{Address, BlockNumber, Bytes, Transaction, TransactionRequest, TxHash, U256},
     utils,
 };
@@ -37,6 +38,14 @@ pub struct Provider<P>(P);
 
 // JSON RPC bindings
 impl<P: JsonRpcClient> Provider<P> {
+    /// Connects to a signer and returns a client
+    pub fn connect<S: Signer>(&self, signer: S) -> Client<S, P> {
+        Client {
+            signer,
+            provider: self,
+        }
+    }
+
     pub async fn get_block_number(&self) -> Result<U256, P::Error> {
         self.0.request("eth_blockNumber", None::<()>).await
     }

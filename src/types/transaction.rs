@@ -87,7 +87,7 @@ impl UnsignedTransaction {
         rlp.begin_list(9);
         self.rlp_base(&mut rlp);
 
-        rlp.append(&chain_id.unwrap_or(U64::zero()));
+        rlp.append(&chain_id.unwrap_or_else(U64::zero));
         rlp.append(&0u8);
         rlp.append(&0u8);
 

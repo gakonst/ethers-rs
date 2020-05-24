@@ -4,12 +4,13 @@ use crate::{
     utils::hash_message,
 };
 
+use rustc_hex::ToHex;
 use secp256k1::{
     recovery::{RecoverableSignature, RecoveryId},
     Error as Secp256k1Error, Message, Secp256k1,
 };
 use serde::{Deserialize, Serialize};
-use std::convert::TryFrom;
+use std::{convert::TryFrom, fmt};
 use thiserror::Error;
 
 /// An error involving a signature.
@@ -45,6 +46,13 @@ pub struct Signature {
     pub s: H256,
     /// V value in 'Electrum' notation.
     pub v: u8,
+}
+
+impl fmt::Display for Signature {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let sig = <[u8; 65]>::from(self);
+        write!(f, "{}", sig.to_hex::<String>())
+    }
 }
 
 impl Signature {
@@ -106,9 +114,7 @@ impl<'a> TryFrom<&'a [u8]> for Signature {
     /// Parses a raw signature which is expected to be 65 bytes long where
     /// the first 32 bytes is the `r` value, the second 32 bytes the `s` value
     /// and the final byte is the `v` value in 'Electrum' notation.
-    fn try_from(raw_signature: &'a [u8]) -> Result<Self, Self::Error> {
-        let bytes = raw_signature.as_ref();
-
+    fn try_from(bytes: &'a [u8]) -> Result<Self, Self::Error> {
         if bytes.len() != 65 {
             return Err(SignatureError::InvalidLength(bytes.len()));
         }

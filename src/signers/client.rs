@@ -6,7 +6,7 @@ use crate::{
 
 #[derive(Clone, Debug)]
 pub struct Client<'a, S, P> {
-    pub(super) provider: &'a Provider<P>,
+    pub provider: &'a Provider<P>,
     pub signer: S,
 }
 

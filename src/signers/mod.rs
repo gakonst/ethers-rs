@@ -1,3 +1,4 @@
+//! Sign and broadcast transactions
 mod networks;
 pub use networks::instantiated::*;
 use networks::Network;
@@ -6,7 +7,7 @@ mod wallet;
 pub use wallet::Wallet;
 
 mod client;
-use client::Client;
+pub(crate) use client::Client;
 
 use crate::types::{Signature, Transaction, UnsignedTransaction};
 

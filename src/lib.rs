@@ -19,7 +19,7 @@ pub mod providers;
 pub use providers::HttpProvider;
 
 pub mod signers;
-pub use signers::{AnyWallet, MainnetWallet};
+pub use signers::{AnyWallet, MainnetWallet, Signer};
 
 /// Ethereum related datatypes
 pub mod types;
