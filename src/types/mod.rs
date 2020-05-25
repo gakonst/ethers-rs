@@ -1,5 +1,7 @@
 //! Various Ethereum Related Datatypes
 
+pub type Selector = [u8; 4];
+
 // Re-export common ethereum datatypes with more specific names
 pub use ethereum_types::H256 as TxHash;
 pub use ethereum_types::{Address, Bloom, H256, U256, U64};
@@ -21,3 +23,5 @@ pub use block::{Block, BlockId, BlockNumber};
 
 mod log;
 pub use log::{Filter, Log};
+
+

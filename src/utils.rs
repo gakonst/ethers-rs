@@ -1,5 +1,5 @@
 //! Various utilities for manipulating Ethereum related dat
-use crate::types::H256;
+use crate::types::{H256, Selector};
 use tiny_keccak::{Hasher, Keccak};
 
 const PREFIX: &str = "\x19Ethereum Signed Message:\n";
@@ -31,12 +31,14 @@ pub fn keccak256(bytes: &[u8]) -> [u8; 32] {
     output
 }
 
-/// Gets the first 4 bytes
-pub fn id(name: &str) -> [u8; 4] {
+/// Calculate the function selector as per the contract ABI specification. This
+/// is defined as the first 4 bytes of the Keccak256 hash of the function
+/// signature.
+pub fn id<S: AsRef<str>>(signature: S) -> Selector {
     let mut output = [0u8; 4];
 
     let mut hasher = Keccak::v256();
-    hasher.update(name.as_bytes());
+    hasher.update(signature.as_ref().as_bytes());
     hasher.finalize(&mut output);
 
     output
@@ -63,5 +65,17 @@ mod tests {
                 .parse()
                 .unwrap()
         );
+    }
+
+    #[test]
+    fn simple_function_signature() {
+        // test vector retrieved from
+        // https://web3js.readthedocs.io/en/v1.2.4/web3-eth-abi.html#encodefunctionsignature
+        assert_eq!(id("myMethod(uint256,string)"), [0x24, 0xee, 0x00, 0x97],);
+    }
+
+    #[test]
+    fn revert_function_signature() {
+        assert_eq!(id("Error(string)"), [0x08, 0xc3, 0x79, 0xa0]);
     }
 }
