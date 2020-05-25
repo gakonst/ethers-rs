@@ -8,8 +8,8 @@ mod http;
 use crate::{
     signers::{Client, Signer},
     types::{
-        Address, Block, BlockId, BlockNumber, Transaction, TransactionReceipt, TransactionRequest,
-        TxHash, U256,
+        Address, Block, BlockId, BlockNumber, Filter, Log, Transaction, TransactionReceipt,
+        TransactionRequest, TxHash, U256,
     },
     utils,
 };
@@ -70,6 +70,11 @@ impl<P: JsonRpcClient> Provider<P> {
         };
 
         self.0.request("eth_estimateGas", Some(args)).await
+    }
+
+    /// Gets the logs matching a given filter
+    pub async fn get_logs(&self, filter: &Filter) -> Result<Vec<Log>, P::Error> {
+        self.0.request("eth_getLogs", Some(filter)).await
     }
 
     /// Gets the accounts on the node

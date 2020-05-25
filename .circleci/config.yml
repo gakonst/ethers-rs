@@ -1,4 +1,34 @@
 version: 2
+etup
+# https://medium.com/@edouard.oger/rust-caching-on-circleci-using-sccache-c996344f0115
+commands:
+  setup-sccache:
+    steps:
+      - run:
+          name: Install sccache
+          command: |
+            cargo install sccache
+            # This configures Rust to use sccache.
+            echo 'export "RUSTC_WRAPPER"="sccache"' >> $BASH_ENV
+            # This is the maximum space sccache cache will use on disk.
+            echo 'export "SCCACHE_CACHE_SIZE"="1G"' >> $BASH_ENV
+            sccache --version
+  restore-sccache-cache:
+    steps:
+      - restore_cache:
+          name: Restore sccache cache
+          key: sccache-cache-stable-{{ arch }}-{{ .Environment.CIRCLE_JOB }}
+  save-sccache-cache:
+    steps:
+      - save_cache:
+          name: Save sccache cache
+          # We use {{ epoch }} to always upload a fresh cache:
+          # Of course, restore_cache will not find this exact key,
+          # but it will fall back to the closest key (aka the most recent).
+          # See https://discuss.circleci.com/t/add-mechanism-to-update-existing-cache-key/9014/13
+          key: sccache-cache-stable-{{ arch }}-{{ .Environment.CIRCLE_JOB }}-{{ epoch }}
+          paths:
+            - "~/.cache/sccache"
 
 jobs:
   build:
@@ -6,11 +36,8 @@ jobs:
       - image: circleci/rust:latest
     steps:
       - checkout
-      - run:
-          name: Install Dependencies
-          command: |
-              cargo install cargo-audit
-              rustup component add clippy
+      - setup-sccache
+      - restore-sccache-cache
       - run: cargo test --all
       - run:
           name: Check style
@@ -20,3 +47,4 @@ jobs:
       - run:
           name: Audit Dependencies
           command: cargo audit
+      - save-sccache-cache
