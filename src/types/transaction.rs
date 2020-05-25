@@ -7,6 +7,31 @@ use rlp::RlpStream;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
+/// Override params for interacting with a contract
+#[derive(Clone, Default, Serialize, Deserialize, PartialEq, Eq, Debug)]
+pub struct Overrides {
+    /// Sender address or ENS name
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) from: Option<Address>,
+
+    /// Supplied gas (None for sensible default)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) gas: Option<U256>,
+
+    /// Gas price (None for sensible default)
+    #[serde(rename = "gasPrice")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) gas_price: Option<U256>,
+
+    /// Transfered value (None for no transfer)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) value: Option<U256>,
+
+    /// Transaction nonce (None for next available nonce)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) nonce: Option<U256>,
+}
+
 /// Parameters for sending a transaction
 #[derive(Clone, Default, Serialize, Deserialize, PartialEq, Eq, Debug)]
 pub struct TransactionRequest {

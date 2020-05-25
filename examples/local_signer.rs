@@ -7,7 +7,7 @@ async fn main() -> Result<(), failure::Error> {
     let provider = HttpProvider::try_from("http://localhost:8545")?;
 
     // create a wallet and connect it to the provider
-    let client = "15c42bf2987d5a8a73804a8ea72fb4149f88adf73e98fc3f8a8ce9f24fcb7774"
+    let client = "dcf2cbdd171a21c480aa7f53d77f31bb102282b3ff099c78e3118b37348c72f7"
         .parse::<MainnetWallet>()?
         .connect(&provider);
 
@@ -17,10 +17,10 @@ async fn main() -> Result<(), failure::Error> {
         .value(10000);
 
     // send it!
-    let tx = client.sign_and_send_transaction(tx, None).await?;
+    let hash = client.send_transaction(tx, None).await?;
 
     // get the mined tx
-    let tx = client.get_transaction(tx.hash).await?;
+    let tx = client.get_transaction(hash).await?;
 
     let receipt = client.get_transaction_receipt(tx.hash).await?;
 

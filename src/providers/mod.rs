@@ -44,7 +44,7 @@ impl<P: JsonRpcClient> Provider<P> {
     /// Connects to a signer and returns a client
     pub fn connect<S: Signer>(&self, signer: S) -> Client<S, P> {
         Client {
-            signer,
+            signer: Some(signer),
             provider: self,
         }
     }
@@ -140,6 +140,14 @@ impl<P: JsonRpcClient> Provider<P> {
     }
 
     // State mutations
+
+    /// Broadcasts the transaction request via the `eth_sendTransaction` API
+    pub async fn call<T: for<'a> Deserialize<'a>>(
+        &self,
+        tx: TransactionRequest,
+    ) -> Result<T, P::Error> {
+        self.0.request("eth_call", Some(tx)).await
+    }
 
     /// Broadcasts the transaction request via the `eth_sendTransaction` API
     pub async fn send_transaction(&self, tx: TransactionRequest) -> Result<TxHash, P::Error> {

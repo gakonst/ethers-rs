@@ -1,8 +1,10 @@
 //! This module implements extensions to the `ethabi` API.
 //! Taken from: https://github.com/gnosis/ethcontract-rs/blob/master/common/src/abiext.rs
 
-use ethabi::{Event, Function, ParamType};
-use crate::{utils::id, types::Selector};
+pub use ethabi::Contract as Abi;
+pub use ethabi::*;
+
+use crate::{types::Selector, utils::id};
 
 /// Extension trait for `ethabi::Function`.
 pub trait FunctionExt {

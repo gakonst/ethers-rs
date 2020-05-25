@@ -52,7 +52,7 @@ impl<N: Network> Wallet<N> {
     /// Connects to a provider and returns a client
     pub fn connect<P: JsonRpcClient>(self, provider: &Provider<P>) -> Client<Wallet<N>, P> {
         Client {
-            signer: self,
+            signer: Some(self),
             provider,
         }
     }

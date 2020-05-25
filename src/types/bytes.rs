@@ -12,6 +12,12 @@ pub struct Bytes(
     pub Vec<u8>,
 );
 
+impl AsRef<[u8]> for Bytes {
+    fn as_ref(&self) -> &[u8] {
+        &self.0[..]
+    }
+}
+
 impl Bytes {
     /// Returns an empty bytes vector
     pub fn new() -> Self {

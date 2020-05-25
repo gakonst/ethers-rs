@@ -18,10 +18,10 @@
 pub mod providers;
 pub use providers::HttpProvider;
 
-mod contract;
+pub mod contract;
 pub use contract::Contract;
 
-mod signers;
+pub(crate) mod signers;
 pub use signers::{AnyWallet, MainnetWallet, Signer};
 
 /// Ethereum related datatypes
@@ -32,3 +32,6 @@ pub use solc;
 
 /// Various utilities
 pub mod utils;
+
+/// ABI utilities
+pub mod abi;
