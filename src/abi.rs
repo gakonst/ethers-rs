@@ -54,6 +54,8 @@ impl EventExt for Event {
     }
 }
 
+// Tokenization macros: Given ABI -> codegen: copy Gnosis' thing
+
 #[cfg(test)]
 mod tests {
     use super::*;

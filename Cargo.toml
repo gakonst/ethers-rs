@@ -22,6 +22,7 @@ solc = { git = "https://github.com/paritytech/rust_solc "}
 rlp = "0.4.5"
 ethabi = "12.0.0"
 bincode = "1.2.1"
+arrayvec = "0.5.1"
 
 [dev-dependencies]
 tokio = { version = "0.2.21", features = ["macros"] }

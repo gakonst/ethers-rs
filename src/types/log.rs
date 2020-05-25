@@ -67,11 +67,11 @@ pub struct Log {
 pub struct Filter {
     /// From Block
     #[serde(rename = "fromBlock", skip_serializing_if = "Option::is_none")]
-    from_block: Option<BlockNumber>,
+    pub(crate) from_block: Option<BlockNumber>,
 
     /// To Block
     #[serde(rename = "toBlock", skip_serializing_if = "Option::is_none")]
-    to_block: Option<BlockNumber>,
+    pub(crate) to_block: Option<BlockNumber>,
 
     /// Address
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -82,7 +82,7 @@ pub struct Filter {
     /// Topics
     #[serde(skip_serializing_if = "Vec::is_empty")]
     // TODO: Split in an event name + 3 topics
-    topics: Vec<ValueOrArray<H256>>,
+    pub(crate) topics: Vec<ValueOrArray<H256>>,
 
     /// Limit
     #[serde(skip_serializing_if = "Option::is_none")]

@@ -1,10 +1,37 @@
+use ethabi::Token;
 use ethers::{
-    abi::ParamType,
-    contract::Contract,
-    types::{Address, Filter},
+    contract::{Contract, Detokenize},
+    types::Address,
     HttpProvider, MainnetWallet,
 };
+use serde::Serialize;
 use std::convert::TryFrom;
+
+const ABI: &'static str = r#"[{"inputs":[{"internalType":"string","name":"value","type":"string"}],"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"author","type":"address"},{"indexed":false,"internalType":"string","name":"oldValue","type":"string"},{"indexed":false,"internalType":"string","name":"newValue","type":"string"}],"name":"ValueChanged","type":"event"},{"inputs":[],"name":"getValue","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"string","name":"value","type":"string"}],"name":"setValue","outputs":[],"stateMutability":"nonpayable","type":"function"}]"#;
+
+#[derive(Clone, Debug, Serialize)]
+// TODO: This should be `derive`-able on such types -> similar to how Zexe's Deserialize is done
+struct ValueChanged {
+    author: Address,
+    old_value: String,
+    new_value: String,
+}
+
+impl Detokenize for ValueChanged {
+    fn from_tokens(
+        tokens: Vec<Token>,
+    ) -> Result<ValueChanged, ethers::contract::InvalidOutputType> {
+        let author: Address = tokens[0].clone().to_address().unwrap();
+        let old_value = tokens[1].clone().to_string().unwrap();
+        let new_value = tokens[2].clone().to_string().unwrap();
+
+        Ok(Self {
+            author,
+            old_value,
+            new_value,
+        })
+    }
+}
 
 #[tokio::main]
 async fn main() -> Result<(), failure::Error> {
@@ -21,50 +48,18 @@ async fn main() -> Result<(), failure::Error> {
     // get the contract's address
     let addr = "683BEE23D79A1D8664dF70714edA966e1484Fd3d".parse::<Address>()?;
 
-    // get the contract's ABI
-    let abi = r#"[{"inputs":[{"internalType":"string","name":"value","type":"string"}],"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"author","type":"address"},{"indexed":false,"internalType":"string","name":"oldValue","type":"string"},{"indexed":false,"internalType":"string","name":"newValue","type":"string"}],"name":"ValueChanged","type":"event"},{"inputs":[],"name":"getValue","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"string","name":"value","type":"string"}],"name":"setValue","outputs":[],"stateMutability":"nonpayable","type":"function"}]"#;
-
     // instantiate it
-    let contract = Contract::new(&client, serde_json::from_str(abi)?, addr);
-
-    // get the args
-    let event = "ValueChanged(address,string,string)";
-
-    let args = &[ethabi::Token::String("hello!".to_owned())];
+    let contract = Contract::new(&client, serde_json::from_str(ABI)?, addr);
 
     // call the method
-    let tx_hash = contract.method("setValue", args)?.send().await?;
+    let _tx_hash = contract.method("setValue", "hi".to_owned())?.send().await?;
 
-    #[derive(Clone, Debug)]
-    struct ValueChanged {
-        author: Address,
-        old_value: String,
-        new_value: String,
-    }
+    let logs: Vec<ValueChanged> = contract
+        .event("ValueChanged")?
+        .from_block(0u64)
+        .query()
+        .await?;
 
-    let filter = Filter::new().from_block(0).address(addr).event(event);
-    let logs = provider
-        .get_logs(&filter)
-        .await?
-        .into_iter()
-        .map(|log| {
-            // decode the non-indexed data
-            let data = ethabi::decode(&[ParamType::String, ParamType::String], log.data.as_ref())?;
-
-            let author = log.topics[1].into();
-
-            // Unwrap?
-            let old_value = data[0].clone().to_string().unwrap();
-            let new_value = data[1].clone().to_string().unwrap();
-
-            Ok(ValueChanged {
-                old_value,
-                new_value,
-                author,
-            })
-        })
-        .collect::<Result<Vec<_>, ethabi::Error>>()?;
-
-    dbg!(logs);
+    println!("{}", serde_json::to_string(&logs)?);
     Ok(())
 }
