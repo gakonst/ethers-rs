@@ -1,48 +1,54 @@
 //! Module implements reading of contract artifacts from various sources.
+use super::util;
+use ethers_types::Address;
 
-use crate::util;
 use anyhow::{anyhow, Context, Error, Result};
-use ethcontract_common::Address;
-use std::borrow::Cow;
-use std::env;
-use std::fs;
-use std::path::{Path, PathBuf};
-use std::str::FromStr;
+use std::{
+    borrow::Cow,
+    env, fs,
+    path::{Path, PathBuf},
+    str::FromStr,
+};
 use url::Url;
 
 /// A source of a Truffle artifact JSON.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Source {
-    /// A Truffle artifact or ABI located on the local file system.
+    /// A raw ABI string
+    String(String),
+
+    /// An ABI located on the local file system.
     Local(PathBuf),
-    /// A truffle artifact or ABI to be retrieved over HTTP(S).
+
+    /// An ABI to be retrieved over HTTP(S).
     Http(Url),
+
     /// An address of a mainnet contract that has been verified on Etherscan.io.
     Etherscan(Address),
+
     /// The package identifier of an npm package with a path to a Truffle
     /// artifact or ABI to be retrieved from `unpkg.io`.
     Npm(String),
 }
 
 impl Source {
-    /// Parses an artifact source from a string.
+    /// Parses an ABI from a source
     ///
-    /// Contract artifacts can be retrieved from the local filesystem or online
-    /// from `etherscan.io`, this method parses artifact source URLs and accepts
+    /// Contract ABIs can be retrieved from the local filesystem or online
+    /// from `etherscan.io`, this method parses ABI source URLs and accepts
     /// the following:
-    /// - `relative/path/to/Contract.json`: a relative path to a truffle
-    ///   artifact JSON file. This relative path is rooted in the current
-    ///   working directory. To specify the root for relative paths, use
-    ///   `Source::with_root`.
+    /// - `relative/path/to/Contract.json`: a relative path to an ABI JSON file.
+    /// This relative path is rooted in the current working directory.
+    /// To specify the root for relative paths, use `Source::with_root`.
     /// - `/absolute/path/to/Contract.json` or
     ///   `file:///absolute/path/to/Contract.json`: an absolute path or file URL
-    ///   to a truffle artifact JSON file.
-    /// - `http(s)://...` an HTTP url to a contract ABI or Truffle artifact.
+    ///   to an ABI JSON file.
+    /// - `http(s)://...` an HTTP url to a contract ABI.
     /// - `etherscan:0xXX..XX` or `https://etherscan.io/address/0xXX..XX`: a
     ///   address or URL of a verified contract on Etherscan.
     /// - `npm:@org/package@1.0.0/path/to/contract.json` an npmjs package with
     ///   an optional version and path (defaulting to the latest version and
-    ///   `index.js`). The contract artifact or ABI will be retrieved through
+    ///   `index.js`). The contract ABI will be retrieved through
     ///   `unpkg.io`.
     pub fn parse<S>(source: S) -> Result<Self>
     where
@@ -118,12 +124,13 @@ impl Source {
     /// Retrieves the source JSON of the artifact this will either read the JSON
     /// from the file system or retrieve a contract ABI from the network
     /// dependending on the source type.
-    pub fn artifact_json(&self) -> Result<String> {
+    pub fn get(&self) -> Result<String> {
         match self {
             Source::Local(path) => get_local_contract(path),
             Source::Http(url) => get_http_contract(url),
             Source::Etherscan(address) => get_etherscan_contract(*address),
             Source::Npm(package) => get_npm_contract(package),
+            Source::String(abi) => Ok(abi.clone()),
         }
     }
 }

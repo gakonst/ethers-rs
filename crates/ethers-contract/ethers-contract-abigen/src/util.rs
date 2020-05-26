@@ -1,6 +1,7 @@
+use ethers_types::Address;
+
 use anyhow::{anyhow, Result};
 use curl::easy::Easy;
-use ethcontract_common::Address;
 use inflector::Inflector;
 use proc_macro2::{Ident, Literal, Span, TokenStream};
 use quote::quote;

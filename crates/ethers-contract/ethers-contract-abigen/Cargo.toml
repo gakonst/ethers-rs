@@ -1,16 +1,14 @@
 [package]
-name = "ethers-derive"
+name = "ethers-contract-abigen"
 version = "0.1.0"
 authors = ["Nicholas Rodrigues Lordello <nlordell@gmail.com>", "Georgios Konstantopoulos <me@gakonst.com>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/gnosis/ethcontract-rs"
-homepage = "https://github.com/gnosis/ethcontract-rs"
-documentation = "https://docs.rs/ethcontract"
 description = "Code generation for type-safe bindings to Ethereum smart contracts"
 
 [dependencies]
-ethers-abi = { path = "../ethers-abi" }
+ethers-abi = { path = "../../ethers-abi" }
+ethers-types = { path = "../../ethers-types" }
 
 anyhow = "1.0"
 curl = "0.4"
@@ -19,3 +17,5 @@ proc-macro2 = "1.0"
 quote = "1.0"
 syn = "1.0.12"
 url = "2.1"
+serde_json = "1.0.53"
+once_cell = "1.4.0"

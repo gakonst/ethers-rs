@@ -11,6 +11,7 @@ Complete Ethereum wallet implementation and utilities in Rust (with WASM and FFI
 - [ ] Deploy and interact with smart contracts
 - [ ] Type safe smart contract bindings
 - [ ] Hardware wallet support
+- [ ] CLI for creating transactions, interacting with contracts, generating bindings from ABIs (abigen equivalent), ...
 - [ ] ...
 
 ## Directory Structure

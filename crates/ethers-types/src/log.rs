@@ -89,7 +89,9 @@ pub struct Filter {
 
 impl Filter {
     pub fn new() -> Self {
-        Self::default()
+        let filter = Self::default();
+        // filter.topics = vec![H256::zero().into(); 4];
+        filter
     }
 
     pub fn from_block<T: Into<BlockNumber>>(mut self, block: T) -> Self {

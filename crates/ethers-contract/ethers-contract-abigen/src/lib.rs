@@ -1,8 +1,10 @@
+#![allow(dead_code)]
+#![allow(unused_imports)]
 #![deny(missing_docs, unsafe_code)]
 
-//! Crate for generating type-safe bindings to Ethereum smart contracts. This
-//! crate is intended to be used either indirectly with the `ethcontract`
-//! crate's `contract` procedural macro or directly from a build script.
+//! Module for generating type-safe bindings to Ethereum smart contracts. This
+//! module is intended to be used either indirectly with the `abigen` procedural
+//! macro or directly from a build script / CLI
 
 #[cfg(test)]
 #[allow(missing_docs)]
@@ -11,14 +13,17 @@
 mod test_macros;
 
 mod contract;
+use contract::Context;
+
 mod rustfmt;
 mod source;
 mod util;
 
-pub use crate::source::Source;
-pub use crate::util::parse_address;
+pub use ethers_types::Address;
+pub use source::Source;
+pub use util::parse_address;
+
 use anyhow::Result;
-pub use ethcontract_common::Address;
 use proc_macro2::TokenStream;
 use std::collections::HashMap;
 use std::fs::File;
@@ -28,22 +33,26 @@ use std::path::Path;
 /// Internal global arguments passed to the generators for each individual
 /// component that control expansion.
 pub(crate) struct Args {
-    /// The source of the truffle artifact JSON for the contract whose bindings
+    /// The source of the ABI JSON for the contract whose bindings
     /// are being generated.
-    artifact_source: Source,
+    abi_source: Source,
+
+    /// Override the contract name to use for the generated type.
+    contract_name: String,
+
     /// The runtime crate name to use.
     runtime_crate_name: String,
+
     /// The visibility modifier to use for the generated module and contract
     /// re-export.
     visibility_modifier: Option<String>,
+
     /// Override the contract module name that contains the generated code.
     contract_mod_override: Option<String>,
-    /// Override the contract name to use for the generated type.
-    contract_name_override: Option<String>,
-    /// Manually specified deployed contract addresses.
-    deployments: HashMap<u32, Address>,
+
     /// Manually specified contract method aliases.
     method_aliases: HashMap<String, String>,
+
     /// Derives added to event structs and enums.
     event_derives: Vec<String>,
 }
@@ -51,14 +60,14 @@ pub(crate) struct Args {
 impl Args {
     /// Creates a new builder given the path to a contract's truffle artifact
     /// JSON file.
-    pub fn new(source: Source) -> Self {
+    pub fn new(contract_name: &str, abi_source: Source) -> Self {
         Args {
-            artifact_source: source,
-            runtime_crate_name: "ethcontract".to_owned(),
+            abi_source,
+            contract_name: contract_name.to_owned(),
+
+            runtime_crate_name: "abigen".to_owned(),
             visibility_modifier: None,
             contract_mod_override: None,
-            contract_name_override: None,
-            deployments: HashMap::new(),
             method_aliases: HashMap::new(),
             event_derives: Vec::new(),
         }
@@ -88,35 +97,39 @@ pub struct Builder {
 }
 
 impl Builder {
-    /// Creates a new builder given the path to a contract's truffle artifact
-    /// JSON file.
-    pub fn new<P>(artifact_path: P) -> Self
+    /// Creates a new builder given the contract's ABI JSON string
+    pub fn from_str(name: &str, abi: &str) -> Self {
+        Builder::source(name, Source::String(abi.to_owned()))
+    }
+
+    /// Creates a new builder given the path to a contract's ABI file
+    pub fn new<P>(name: &str, path: P) -> Self
     where
         P: AsRef<Path>,
     {
-        Builder::with_source(Source::local(artifact_path))
+        Builder::source(name, Source::local(path))
     }
 
     /// Creates a new builder from a source URL.
-    pub fn from_source_url<S>(source_url: S) -> Result<Self>
+    pub fn from_url<S>(name: &str, url: S) -> Result<Self>
     where
         S: AsRef<str>,
     {
-        let source = Source::parse(source_url)?;
-        Ok(Builder::with_source(source))
+        let source = Source::parse(url)?;
+        Ok(Builder::source(name, source))
     }
 
-    /// Creates a new builder with the given artifact JSON source.
-    pub fn with_source(source: Source) -> Self {
+    /// Creates a new builder with the given ABI JSON source.
+    pub fn source(name: &str, source: Source) -> Self {
         Builder {
-            args: Args::new(source),
+            args: Args::new(name, source),
             options: SerializationOptions::default(),
         }
     }
 
     /// Sets the crate name for the runtime crate. This setting is usually only
     /// needed if the crate was renamed in the Cargo manifest.
-    pub fn with_runtime_crate_name<S>(mut self, name: S) -> Self
+    pub fn runtime_crate_name<S>(mut self, name: S) -> Self
     where
         S: Into<String>,
     {
@@ -126,7 +139,7 @@ impl Builder {
 
     /// Sets an optional visibility modifier for the generated module and
     /// contract re-export.
-    pub fn with_visibility_modifier<S>(mut self, vis: Option<S>) -> Self
+    pub fn visibility_modifier<S>(mut self, vis: Option<S>) -> Self
     where
         S: Into<String>,
     {
@@ -135,54 +148,12 @@ impl Builder {
     }
 
     /// Sets the optional contract module name override.
-    pub fn with_contract_mod_override<S>(mut self, name: Option<S>) -> Self
+    pub fn contract_mod_override<S>(mut self, name: Option<S>) -> Self
     where
         S: Into<String>,
     {
         self.args.contract_mod_override = name.map(S::into);
         self
-    }
-
-    /// Sets the optional contract name override. This setting is needed when
-    /// using a artifact JSON source that does not provide a contract name such
-    /// as Etherscan.
-    pub fn with_contract_name_override<S>(mut self, name: Option<S>) -> Self
-    where
-        S: Into<String>,
-    {
-        self.args.contract_name_override = name.map(S::into);
-        self
-    }
-
-    /// Manually adds specifies the deployed address of a contract for a given
-    /// network. Note that manually specified deployments take precedence over
-    /// deployments in the Truffle artifact (in the `networks` property of the
-    /// artifact).
-    ///
-    /// This is useful for integration test scenarios where the address of a
-    /// contract on the test node is deterministic (for example using
-    /// `ganache-cli -d`) but the contract address is not part of the Truffle
-    /// artifact; or to override a deployment included in a Truffle artifact.
-    pub fn add_deployment(mut self, network_id: u32, address: Address) -> Self {
-        self.args.deployments.insert(network_id, address);
-        self
-    }
-
-    /// Manually adds specifies the deployed address as a string of a contract
-    /// for a given network. See `Builder::add_deployment` for more information.
-    ///
-    /// # Panics
-    ///
-    /// This method panics if the specified address string is invalid. See
-    /// `parse_address` for more information on the address string format.
-    pub fn add_deployment_str<S>(self, network_id: u32, address: S) -> Self
-    where
-        S: AsRef<str>,
-    {
-        self.add_deployment(
-            network_id,
-            parse_address(address).expect("failed to parse address"),
-        )
     }
 
     /// Manually adds a solidity method alias to specify what the method name
@@ -204,7 +175,7 @@ impl Builder {
     ///
     /// Note that in case `rustfmt` does not exist or produces an error, the
     /// unformatted code will be used.
-    pub fn with_rustfmt(mut self, rustfmt: bool) -> Self {
+    pub fn rustfmt(mut self, rustfmt: bool) -> Self {
         self.options.rustfmt = rustfmt;
         self
     }
@@ -232,7 +203,7 @@ impl Builder {
 
     /// Generates the contract bindings.
     pub fn generate(self) -> Result<ContractBindings> {
-        let tokens = contract::expand(self.args)?;
+        let tokens = Context::expand(self.args)?;
         Ok(ContractBindings {
             tokens,
             options: self.options,

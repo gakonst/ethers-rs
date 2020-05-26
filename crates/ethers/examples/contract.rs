@@ -1,68 +1,15 @@
-use ethers::{
-    abi::{Detokenize, InvalidOutputType, Token},
-    contract::{Contract, Event, Sender},
-    providers::{HttpProvider, JsonRpcClient},
-    signers::{Client, MainnetWallet, Signer},
-    types::{Address, H256},
-};
-
 use anyhow::Result;
-use serde::Serialize;
+use ethers::{providers::HttpProvider, signers::MainnetWallet, types::Address};
 use std::convert::TryFrom;
 
-const ABI: &'static str = r#"[{"inputs":[{"internalType":"string","name":"value","type":"string"}],"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"author","type":"address"},{"indexed":false,"internalType":"string","name":"oldValue","type":"string"},{"indexed":false,"internalType":"string","name":"newValue","type":"string"}],"name":"ValueChanged","type":"event"},{"inputs":[],"name":"getValue","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"string","name":"value","type":"string"}],"name":"setValue","outputs":[],"stateMutability":"nonpayable","type":"function"}]"#;
+use ethers::contract::abigen;
 
-// abigen!(SimpleContract, ABI);
-
-#[derive(Clone, Debug, Serialize)]
-// TODO: This should be `derive`-able on such types -> similar to how Zexe's Deserialize is done
-struct ValueChanged {
-    author: Address,
-    old_value: String,
-    new_value: String,
-}
-
-impl Detokenize for ValueChanged {
-    fn from_tokens(tokens: Vec<Token>) -> Result<ValueChanged, InvalidOutputType> {
-        let author: Address = tokens[0].clone().to_address().unwrap();
-        let old_value = tokens[1].clone().to_string().unwrap();
-        let new_value = tokens[2].clone().to_string().unwrap();
-
-        Ok(Self {
-            author,
-            old_value,
-            new_value,
-        })
-    }
-}
-
-struct SimpleContract<'a, S, P>(Contract<'a, S, P>);
-
-impl<'a, S: Signer, P: JsonRpcClient> SimpleContract<'a, S, P> {
-    fn new<T: Into<Address>>(address: T, client: &'a Client<'a, S, P>) -> Self {
-        let contract = Contract::new(client, serde_json::from_str(&ABI).unwrap(), address.into());
-        Self(contract)
-    }
-
-    fn set_value<T: Into<String>>(&self, val: T) -> Sender<'a, S, P, H256> {
-        self.0
-            .method("setValue", Some(val.into()))
-            .expect("method not found (this should never happen)")
-    }
-
-    fn value_changed<'b>(&'a self) -> Event<'a, 'b, P, ValueChanged>
-    where
-        'a: 'b,
-    {
-        self.0.event("ValueChanged").expect("event does not exist")
-    }
-
-    fn get_value(&self) -> Sender<'a, S, P, String> {
-        self.0
-            .method("getValue", None::<()>)
-            .expect("method not found (this should never happen)")
-    }
-}
+// Generate the contract code
+abigen!(
+    SimpleContract,
+    r#"[{"inputs":[{"internalType":"string","name":"value","type":"string"}],"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"author","type":"address"},{"indexed":false,"internalType":"string","name":"oldValue","type":"string"},{"indexed":false,"internalType":"string","name":"newValue","type":"string"}],"name":"ValueChanged","type":"event"},{"inputs":[],"name":"getValue","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","constant": true, "type":"function"},{"inputs":[{"internalType":"string","name":"value","type":"string"}],"name":"setValue","outputs":[],"stateMutability":"nonpayable","type":"function"}]"#,
+    event_derives(serde::Deserialize, serde::Serialize)
+);
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -83,7 +30,7 @@ async fn main() -> Result<()> {
     let contract = SimpleContract::new(addr, &client);
 
     // call the method
-    let _tx_hash = contract.set_value("hi").send().await?;
+    let _tx_hash = contract.set_value("hi".to_owned()).send().await?;
 
     let logs = contract.value_changed().from_block(0u64).query().await?;
 

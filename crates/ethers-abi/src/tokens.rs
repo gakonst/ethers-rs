@@ -9,7 +9,7 @@ use thiserror::Error;
 
 #[derive(Clone, Debug, Error)]
 #[error("{0}")]
-pub struct InvalidOutputType(String);
+pub struct InvalidOutputType(pub String);
 
 /// Output type possible to deserialize from Contract ABI
 pub trait Detokenize {

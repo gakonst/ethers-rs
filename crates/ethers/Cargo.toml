@@ -24,13 +24,15 @@ utils = ["ethers-utils"]
 
 [dependencies]
 ethers-abi = { path = "../ethers-abi", optional = true }
-ethers-contract = { path = "../ethers-contract", optional = true }
+ethers-contract = { path = "../ethers-contract", features = ["abigen"], optional = true }
 ethers-providers = { path = "../ethers-providers", optional = true }
 ethers-signers = { path = "../ethers-signers", optional = true }
 ethers-types = { path = "../ethers-types", optional = true }
 ethers-utils = { path = "../ethers-utils", optional = true }
 
 [dev-dependencies]
+ethers-contract = { path = "../ethers-contract", features = ["abigen"] }
+
 anyhow = "1.0.31"
 tokio = { version = "0.2.21", features = ["macros"] }
 serde_json = "1.0.53"
