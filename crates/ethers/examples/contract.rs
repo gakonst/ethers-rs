@@ -1,9 +1,12 @@
-use ethabi::Token;
 use ethers::{
-    contract::{Contract, Detokenize},
+    abi::{Detokenize, InvalidOutputType, Token},
+    contract::Contract,
+    providers::HttpProvider,
+    signers::MainnetWallet,
     types::Address,
-    HttpProvider, MainnetWallet,
 };
+
+use anyhow::Result;
 use serde::Serialize;
 use std::convert::TryFrom;
 
@@ -18,9 +21,7 @@ struct ValueChanged {
 }
 
 impl Detokenize for ValueChanged {
-    fn from_tokens(
-        tokens: Vec<Token>,
-    ) -> Result<ValueChanged, ethers::contract::InvalidOutputType> {
+    fn from_tokens(tokens: Vec<Token>) -> Result<ValueChanged, InvalidOutputType> {
         let author: Address = tokens[0].clone().to_address().unwrap();
         let old_value = tokens[1].clone().to_string().unwrap();
         let new_value = tokens[2].clone().to_string().unwrap();
@@ -34,7 +35,7 @@ impl Detokenize for ValueChanged {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), failure::Error> {
+async fn main() -> Result<()> {
     // connect to the network
     let provider = HttpProvider::try_from("http://localhost:8545")?;
 

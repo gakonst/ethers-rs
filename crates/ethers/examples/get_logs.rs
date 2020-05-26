@@ -1,11 +1,12 @@
+use anyhow::Result;
 use ethers::{
+    providers::HttpProvider,
     types::{Address, Filter},
-    HttpProvider,
 };
 use std::convert::TryFrom;
 
 #[tokio::main]
-async fn main() -> Result<(), failure::Error> {
+async fn main() -> Result<()> {
     // connect to the network
     let provider = HttpProvider::try_from("http://localhost:8545")?;
 

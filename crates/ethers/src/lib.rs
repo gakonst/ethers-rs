@@ -15,23 +15,32 @@
 //! More examples can be found in the [`examples` directory of the
 //! repositry](https://github.com/gakonst/ethers-rs)
 
-pub mod providers;
-pub use providers::HttpProvider;
+#[cfg(feature = "abi")]
+pub mod abi {
+    pub use ethers_abi::*;
+}
 
-pub mod contract;
-pub use contract::Contract;
+#[cfg(feature = "contract")]
+pub mod contract {
+    pub use ethers_contract::*;
+}
 
-pub(crate) mod signers;
-pub use signers::{AnyWallet, MainnetWallet, Signer};
+#[cfg(feature = "providers")]
+pub mod providers {
+    pub use ethers_providers::*;
+}
 
-/// Ethereum related datatypes
-pub mod types;
+#[cfg(feature = "signers")]
+pub mod signers {
+    pub use ethers_signers::*;
+}
 
-/// Re-export solc for convenience
-pub use solc;
+#[cfg(feature = "types")]
+pub mod types {
+    pub use ethers_types::*;
+}
 
-/// Various utilities
-pub mod utils;
-
-/// ABI utilities
-pub mod abi;
+#[cfg(feature = "utils")]
+pub mod utils {
+    pub use ethers_utils::*;
+}

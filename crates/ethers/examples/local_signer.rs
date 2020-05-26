@@ -1,8 +1,9 @@
-use ethers::{types::TransactionRequest, HttpProvider, MainnetWallet};
+use anyhow::Result;
+use ethers::{providers::HttpProvider, signers::MainnetWallet, types::TransactionRequest};
 use std::convert::TryFrom;
 
 #[tokio::main]
-async fn main() -> Result<(), failure::Error> {
+async fn main() -> Result<()> {
     // connect to the network
     let provider = HttpProvider::try_from("http://localhost:8545")?;
 

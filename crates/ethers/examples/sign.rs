@@ -1,4 +1,4 @@
-use ethers::{MainnetWallet as Wallet, Signer};
+use ethers::signers::{MainnetWallet as Wallet, Signer};
 
 fn main() {
     let message = "Some data";

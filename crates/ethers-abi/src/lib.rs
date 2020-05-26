@@ -7,7 +7,7 @@ pub use ethabi::Contract as Abi;
 pub use ethabi::*;
 
 mod tokens;
-pub use tokens::{Detokenize, Tokenizable, TokenizableItem, Tokenize};
+pub use tokens::{Detokenize, InvalidOutputType, Tokenizable, TokenizableItem, Tokenize};
 
 /// Extension trait for `ethabi::Function`.
 pub trait FunctionExt {
