@@ -6,7 +6,7 @@ members = [
     # "./crates/ethers-contract",
     # "./crates/ethers-derive",
     "./crates/ethers-providers",
-    # "./crates/ethers-signers",
+    "./crates/ethers-signers",
     "./crates/ethers-types",
     "./crates/ethers-utils",
 ]

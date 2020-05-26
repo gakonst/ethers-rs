@@ -7,12 +7,11 @@ use reqwest::{Client, Error as ReqwestError};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::{
-    convert::TryFrom,
     fmt,
     sync::atomic::{AtomicU64, Ordering},
 };
 use thiserror::Error;
-use url::{ParseError, Url};
+use url::Url;
 
 /// An HTTP Client
 #[derive(Debug)]
@@ -66,14 +65,6 @@ impl Provider {
             client: Client::new(),
             url: url.into(),
         }
-    }
-}
-
-impl TryFrom<&str> for super::Provider<Provider> {
-    type Error = ParseError;
-
-    fn try_from(src: &str) -> Result<Self, Self::Error> {
-        Ok(super::Provider(Provider::new(Url::parse(src)?)))
     }
 }
 

@@ -1,9 +1,7 @@
-use crate::{
-    providers::{JsonRpcClient, Provider},
-    signers::Signer,
-    types::{Address, BlockNumber, Overrides, TransactionRequest, TxHash},
-    utils,
-};
+use crate::Signer;
+
+use ethers_providers::{JsonRpcClient, Provider};
+use ethers_types::{Address, BlockNumber, TransactionRequest, TxHash};
 
 use std::ops::Deref;
 
@@ -77,40 +75,6 @@ impl<'a, S: Signer, P: JsonRpcClient> Client<'a, S, P> {
         }
 
         Ok(())
-    }
-
-    /// client.call_contract(
-    ///     addr,
-    ///     "transfer(address,uint256)"
-    ///     vec![0x1234, 100]
-    ///     None,
-    ///     None,
-    /// )
-    pub async fn call_contract(
-        &self,
-        to: impl Into<Address>,
-        signature: &str,
-        args: &[ethabi::Token],
-        overrides: Option<Overrides>,
-        block: Option<BlockNumber>,
-    ) -> Result<TxHash, P::Error> {
-        // create the data field from the function signature and the arguments
-        let data = [&utils::id(signature)[..], &ethabi::encode(args)].concat();
-
-        let overrides = overrides.unwrap_or_default();
-        let tx = TransactionRequest {
-            to: Some(to.into()),
-            data: Some(data.into()),
-
-            // forward the overriden data
-            from: overrides.from, // let it figure it out itself
-            gas: overrides.gas,
-            gas_price: overrides.gas_price,
-            nonce: overrides.nonce,
-            value: overrides.value,
-        };
-
-        self.send_transaction(tx, block).await
     }
 
     pub fn address(&self) -> Address {

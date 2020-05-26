@@ -2,7 +2,7 @@
 //! a transaction that is designed to work with testnet does not accidentally work
 //! with mainnet because the URL was changed.
 
-use crate::types::U64;
+use ethers_types::U64;
 
 pub trait Network {
     const CHAIN_ID: Option<U64>;
@@ -28,7 +28,7 @@ impl Network for EIP155Disabled {
 
 pub mod instantiated {
     use super::*;
-    use crate::signers::Wallet;
+    use crate::Wallet;
 
     /// A Wallet instantiated with chain_id = 1 for Ethereum Mainnet.
     pub type MainnetWallet = Wallet<Mainnet>;

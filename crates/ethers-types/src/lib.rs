@@ -23,3 +23,10 @@ pub use block::{Block, BlockId, BlockNumber};
 
 mod log;
 pub use log::{Filter, Log, ValueOrArray};
+
+// re-export the non-standard rand version so that other crates don't use the
+// wrong one by accident
+pub use rand;
+
+// re-export libsecp
+pub use secp256k1;

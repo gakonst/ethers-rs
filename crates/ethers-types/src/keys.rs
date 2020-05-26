@@ -208,7 +208,7 @@ impl From<PrivateKey> for Address {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::Bytes;
+    use crate::Bytes;
     use rustc_hex::FromHex;
 
     #[test]

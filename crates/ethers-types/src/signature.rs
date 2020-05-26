@@ -192,7 +192,7 @@ impl From<H256> for RecoveryMessage {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::PrivateKey;
+    use crate::PrivateKey;
 
     #[test]
     fn recover_signature_from_message() {

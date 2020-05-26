@@ -1,10 +1,12 @@
-use crate::{
-    providers::{JsonRpcClient, Provider},
-    signers::{Client, Network, Signer},
-    types::{Address, PrivateKey, PublicKey, Signature, Transaction, TransactionRequest, TxError},
+use crate::{Client, Network, Signer};
+
+use ethers_providers::{JsonRpcClient, Provider};
+
+use ethers_types::{
+    rand::Rng, secp256k1, Address, PrivateKey, PublicKey, Signature, Transaction,
+    TransactionRequest, TxError,
 };
 
-use rand::Rng;
 use std::{marker::PhantomData, str::FromStr};
 
 /// A keypair

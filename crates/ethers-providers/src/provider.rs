@@ -4,9 +4,11 @@ use ethers_types::{
 };
 use ethers_utils as utils;
 
-use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
-use std::{error::Error, fmt::Debug};
+use crate::{http::Provider as HttpProvider, JsonRpcClient};
+use serde::Deserialize;
+use url::{ParseError, Url};
+
+use std::{convert::TryFrom, fmt::Debug};
 
 /// An abstract provider for interacting with the [Ethereum JSON RPC
 /// API](https://github.com/ethereum/wiki/wiki/JSON-RPC)
@@ -146,5 +148,13 @@ impl<P: JsonRpcClient> Provider<P> {
         let from = utils::serialize(&from);
         let block = utils::serialize(&block.unwrap_or(BlockNumber::Latest));
         self.0.request("eth_getBalance", Some(&[from, block])).await
+    }
+}
+
+impl TryFrom<&str> for Provider<HttpProvider> {
+    type Error = ParseError;
+
+    fn try_from(src: &str) -> Result<Self, Self::Error> {
+        Ok(Provider(HttpProvider::new(Url::parse(src)?)))
     }
 }

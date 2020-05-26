@@ -4,12 +4,14 @@
 //!
 //! TODO: WebSockets, multiple backends, popular APIs etc.
 
-mod provider;
 mod http;
+mod provider;
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::{error::Error, fmt::Debug};
+
+pub use provider::Provider;
 
 /// An HTTP provider for interacting with an Ethereum-compatible blockchain
 pub type HttpProvider = Provider<http::Provider>;
@@ -26,4 +28,3 @@ pub trait JsonRpcClient: Debug {
         params: Option<T>,
     ) -> Result<R, Self::Error>;
 }
-
