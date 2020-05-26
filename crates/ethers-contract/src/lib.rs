@@ -8,8 +8,8 @@ use ethers_types::{
 };
 
 use rustc_hex::ToHex;
-use serde::Deserialize;
 use std::{collections::HashMap, fmt::Debug, hash::Hash};
+use thiserror::Error as ThisError;
 
 /// Represents a contract instance at an address. Provides methods for
 /// contract interaction.
@@ -25,6 +25,8 @@ pub struct Contract<'a, S, P> {
     // Adapted from: https://github.com/gnosis/ethcontract-rs/blob/master/src/contract.rs
     methods: HashMap<Selector, (String, usize)>,
 }
+
+use std::marker::PhantomData;
 
 impl<'a, S: Signer, P: JsonRpcClient> Contract<'a, S, P> {
     /// Creates a new contract from the provided client, abi and address
@@ -42,7 +44,7 @@ impl<'a, S: Signer, P: JsonRpcClient> Contract<'a, S, P> {
     /// Returns a transaction builder for the provided function name. If there are
     /// multiple functions with the same name due to overloading, consider using
     /// the `method_hash` method instead, since this will use the first match.
-    pub fn event<'b>(&'a self, name: &str) -> Result<Event<'a, 'b, P>, Error>
+    pub fn event<'b, D: Detokenize>(&'a self, name: &str) -> Result<Event<'a, 'b, P, D>, Error>
     where
         'a: 'b,
     {
@@ -52,13 +54,18 @@ impl<'a, S: Signer, P: JsonRpcClient> Contract<'a, S, P> {
             provider: &self.client.provider(),
             filter: Filter::new().event(&event.abi_signature()),
             event: &event,
+            datatype: PhantomData,
         })
     }
 
     /// Returns a transaction builder for the provided function name. If there are
     /// multiple functions with the same name due to overloading, consider using
     /// the `method_hash` method instead, since this will use the first match.
-    pub fn method<T: Tokenize>(&self, name: &str, args: T) -> Result<Sender<'a, S, P>, Error> {
+    pub fn method<T: Tokenize, D: Detokenize>(
+        &self,
+        name: &str,
+        args: Option<T>,
+    ) -> Result<Sender<'a, S, P, D>, Error> {
         // get the function
         let function = self.abi.function(name)?;
         self.method_func(function, args)
@@ -66,11 +73,11 @@ impl<'a, S: Signer, P: JsonRpcClient> Contract<'a, S, P> {
 
     /// Returns a transaction builder for the selected function signature. This should be
     /// preferred if there are overloaded functions in your smart contract
-    pub fn method_hash<T: Tokenize>(
+    pub fn method_hash<T: Tokenize, D: Detokenize>(
         &self,
         signature: Selector,
-        args: T,
-    ) -> Result<Sender<'a, S, P>, Error> {
+        args: Option<T>,
+    ) -> Result<Sender<'a, S, P, D>, Error> {
         let function = self
             .methods
             .get(&signature)
@@ -79,13 +86,17 @@ impl<'a, S: Signer, P: JsonRpcClient> Contract<'a, S, P> {
         self.method_func(function, args)
     }
 
-    fn method_func<T: Tokenize>(
+    fn method_func<T: Tokenize, D: Detokenize>(
         &self,
         function: &Function,
-        args: T,
-    ) -> Result<Sender<'a, S, P>, Error> {
+        args: Option<T>,
+    ) -> Result<Sender<'a, S, P, D>, Error> {
         // create the calldata
-        let data = function.encode_input(&args.into_tokens())?;
+        let data = if let Some(args) = args {
+            function.encode_input(&args.into_tokens())?
+        } else {
+            function.selector().to_vec()
+        };
 
         // create the tx object
         let tx = TransactionRequest {
@@ -98,6 +109,8 @@ impl<'a, S: Signer, P: JsonRpcClient> Contract<'a, S, P> {
             tx,
             client: self.client,
             block: None,
+            function: function.to_owned(),
+            datatype: PhantomData,
         })
     }
 
@@ -110,13 +123,15 @@ impl<'a, S: Signer, P: JsonRpcClient> Contract<'a, S, P> {
     }
 }
 
-pub struct Sender<'a, S, P> {
+pub struct Sender<'a, S, P, D> {
     tx: TransactionRequest,
+    function: Function,
     client: &'a Client<'a, S, P>,
     block: Option<BlockNumber>,
+    datatype: PhantomData<D>,
 }
 
-impl<'a, S, P> Sender<'a, S, P> {
+impl<'a, S, P, D: Detokenize> Sender<'a, S, P, D> {
     /// Sets the `from` field in the transaction to the provided value
     pub fn from<T: Into<Address>>(mut self, from: T) -> Self {
         self.tx.from = Some(from.into());
@@ -142,9 +157,36 @@ impl<'a, S, P> Sender<'a, S, P> {
     }
 }
 
-impl<'a, S: Signer, P: JsonRpcClient> Sender<'a, S, P> {
-    pub async fn call<T: for<'b> Deserialize<'b>>(self) -> Result<T, P::Error> {
-        self.client.call(self.tx).await
+#[derive(ThisError, Debug)]
+// TODO: Can we get rid of this static?
+pub enum ContractError<P: JsonRpcClient>
+where
+    P::Error: 'static,
+{
+    #[error(transparent)]
+    DecodingError(#[from] ethers_abi::Error),
+    #[error(transparent)]
+    DetokenizationError(#[from] ethers_abi::InvalidOutputType),
+    #[error(transparent)]
+    CallError(P::Error),
+}
+
+impl<'a, S: Signer, P: JsonRpcClient, D: Detokenize> Sender<'a, S, P, D>
+where
+    P::Error: 'static,
+{
+    pub async fn call(self) -> Result<D, ContractError<P>> {
+        let bytes = self
+            .client
+            .call(self.tx, self.block)
+            .await
+            .map_err(ContractError::CallError)?;
+
+        let tokens = self.function.decode_output(&bytes.0)?;
+
+        let data = D::from_tokens(tokens)?;
+
+        Ok(data)
     }
 
     pub async fn send(self) -> Result<H256, P::Error> {
@@ -152,14 +194,14 @@ impl<'a, S: Signer, P: JsonRpcClient> Sender<'a, S, P> {
     }
 }
 
-pub struct Event<'a, 'b, P> {
+pub struct Event<'a, 'b, P, D> {
     filter: Filter,
     provider: &'a Provider<P>,
     event: &'b AbiEvent,
+    datatype: PhantomData<D>,
 }
 
-// copy of the builder pattern from Filter
-impl<'a, 'b, P> Event<'a, 'b, P> {
+impl<'a, 'b, P, D: Detokenize> Event<'a, 'b, P, D> {
     pub fn from_block<T: Into<BlockNumber>>(mut self, block: T) -> Self {
         self.filter.from_block = Some(block.into());
         self
@@ -181,10 +223,18 @@ impl<'a, 'b, P> Event<'a, 'b, P> {
     }
 }
 
-impl<'a, 'b, P: JsonRpcClient> Event<'a, 'b, P> {
-    pub async fn query<T: Detokenize>(self) -> Result<Vec<T>, P::Error> {
+// TODO: Can we get rid of the static?
+impl<'a, 'b, P: JsonRpcClient, D: Detokenize> Event<'a, 'b, P, D>
+where
+    P::Error: 'static,
+{
+    pub async fn query(self) -> Result<Vec<D>, ContractError<P>> {
         // get the logs
-        let logs = self.provider.get_logs(&self.filter).await?;
+        let logs = self
+            .provider
+            .get_logs(&self.filter)
+            .await
+            .map_err(ContractError::CallError)?;
 
         let events = logs
             .into_iter()
@@ -196,17 +246,16 @@ impl<'a, 'b, P: JsonRpcClient> Event<'a, 'b, P> {
                     .parse_log(RawLog {
                         topics: log.topics,
                         data: log.data.0,
-                    })
-                    .unwrap() // TODO: remove
+                    })?
                     .params
                     .into_iter()
                     .map(|param| param.value)
                     .collect::<Vec<_>>();
 
                 // convert the tokens to the requested datatype
-                T::from_tokens(tokens).unwrap()
+                Ok::<_, ContractError<P>>(D::from_tokens(tokens)?)
             })
-            .collect::<Vec<T>>();
+            .collect::<Result<Vec<_>, _>>()?;
 
         Ok(events)
     }

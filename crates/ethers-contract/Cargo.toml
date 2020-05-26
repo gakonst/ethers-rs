@@ -5,6 +5,8 @@ authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
 edition = "2018"
 
 [dependencies]
+ethers-contract-abigen = { path = "ethers-contract-abigen", optional = true }
+
 ethers-abi = { path = "../ethers-abi" }
 ethers-providers = { path = "../ethers-providers" }
 ethers-signers = { path = "../ethers-signers" }
@@ -12,3 +14,8 @@ ethers-types = { path = "../ethers-types" }
 
 serde = { version = "1.0.110", default-features = false }
 rustc-hex = { version = "2.1.0", default-features = false }
+thiserror = { version = "1.0.19", default-features = false }
+
+[features]
+default = []
+abigen = ["ethers-contract-abigen"]

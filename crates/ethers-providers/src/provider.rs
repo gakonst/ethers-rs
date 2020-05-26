@@ -1,5 +1,5 @@
 use ethers_types::{
-    Address, Block, BlockId, BlockNumber, Filter, Log, Transaction, TransactionReceipt,
+    Address, Block, BlockId, BlockNumber, Bytes, Filter, Log, Transaction, TransactionReceipt,
     TransactionRequest, TxHash, U256,
 };
 use ethers_utils as utils;
@@ -108,11 +108,14 @@ impl<P: JsonRpcClient> Provider<P> {
     // State mutations
 
     /// Broadcasts the transaction request via the `eth_sendTransaction` API
-    pub async fn call<T: for<'a> Deserialize<'a>>(
+    pub async fn call(
         &self,
         tx: TransactionRequest,
-    ) -> Result<T, P::Error> {
-        self.0.request("eth_call", Some(tx)).await
+        block: Option<BlockNumber>,
+    ) -> Result<Bytes, P::Error> {
+        let tx = utils::serialize(&tx);
+        let block = utils::serialize(&block.unwrap_or(BlockNumber::Latest));
+        self.0.request("eth_call", Some(vec![tx, block])).await
     }
 
     /// Broadcasts the transaction request via the `eth_sendTransaction` API
