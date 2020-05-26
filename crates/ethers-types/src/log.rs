@@ -1,7 +1,5 @@
-use crate::{
-    types::{Address, BlockNumber, Bytes, H256, U256, U64},
-    utils::keccak256,
-};
+use crate::{Address, BlockNumber, Bytes, H256, U256, U64};
+use ethers_utils::keccak256;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 

@@ -1,4 +1,4 @@
-use crate::types::{Address, Bloom, Bytes, H256, U256, U64};
+use crate::{Address, Bloom, Bytes, H256, U256, U64};
 use serde::{ser::SerializeStruct, Deserialize, Serialize, Serializer};
 
 /// The block type returned from RPC calls.

@@ -1,8 +1,7 @@
 //! Transaction types
-use crate::{
-    types::{Address, Bloom, Bytes, Log, Signature, H256, U256, U64},
-    utils::keccak256,
-};
+use crate::{Address, Bloom, Bytes, Log, Signature, H256, U256, U64};
+use ethers_utils::keccak256;
+
 use rlp::RlpStream;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;

@@ -1,6 +1,6 @@
 //! Minimal HTTP JSON-RPC 2.0 Client
 //! The request/response code is taken from [here](https://github.com/althea-net/guac_rs/blob/master/web3/src/jsonrpc)
-use crate::providers::JsonRpcClient;
+use crate::JsonRpcClient;
 
 use async_trait::async_trait;
 use reqwest::{Client, Error as ReqwestError};

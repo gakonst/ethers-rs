@@ -5,10 +5,10 @@ members = [
     # "./crates/ethers-abi",
     # "./crates/ethers-contract",
     # "./crates/ethers-derive",
-    # "./crates/ethers-providers",
+    "./crates/ethers-providers",
     # "./crates/ethers-signers",
     "./crates/ethers-types",
-    # "./crates/ethers-utils",
+    "./crates/ethers-utils",
 ]
 
 # [dependencies]

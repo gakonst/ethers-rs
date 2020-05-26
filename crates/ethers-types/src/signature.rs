@@ -1,8 +1,6 @@
 // Code adapted from: https://github.com/tomusdrw/rust-web3/blob/master/src/api/accounts.rs
-use crate::{
-    types::{Address, PublicKey, H256},
-    utils::hash_message,
-};
+use crate::{Address, PublicKey, H256};
+use ethers_utils::hash_message;
 
 use rustc_hex::ToHex;
 use secp256k1::{

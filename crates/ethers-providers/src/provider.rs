@@ -1,38 +1,12 @@
-//! Ethereum compatible providers
-//! Currently supported:
-//! - Raw HTTP POST requests
-//!
-//! TODO: WebSockets, multiple backends, popular APIs etc.
-mod http;
-
-use crate::{
-    signers::{Client, Signer},
-    types::{
-        Address, Block, BlockId, BlockNumber, Filter, Log, Transaction, TransactionReceipt,
-        TransactionRequest, TxHash, U256,
-    },
-    utils,
+use ethers_types::{
+    Address, Block, BlockId, BlockNumber, Filter, Log, Transaction, TransactionReceipt,
+    TransactionRequest, TxHash, U256,
 };
+use ethers_utils as utils;
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::{error::Error, fmt::Debug};
-
-/// An HTTP provider for interacting with an Ethereum-compatible blockchain
-pub type HttpProvider = Provider<http::Provider>;
-
-#[async_trait]
-/// Implement this trait in order to plug in different backends
-pub trait JsonRpcClient: Debug {
-    type Error: Error;
-
-    /// Sends a request with the provided method and the params serialized as JSON
-    async fn request<T: Serialize + Send + Sync, R: for<'a> Deserialize<'a>>(
-        &self,
-        method: &str,
-        params: Option<T>,
-    ) -> Result<R, Self::Error>;
-}
 
 /// An abstract provider for interacting with the [Ethereum JSON RPC
 /// API](https://github.com/ethereum/wiki/wiki/JSON-RPC)
@@ -41,16 +15,6 @@ pub struct Provider<P>(P);
 
 // JSON RPC bindings
 impl<P: JsonRpcClient> Provider<P> {
-    /// Connects to a signer and returns a client
-    pub fn connect<S: Signer>(&self, signer: S) -> Client<S, P> {
-        Client {
-            signer: Some(signer),
-            provider: self,
-        }
-    }
-
-    // Cost related
-
     /// Gets the current gas price as estimated by the node
     pub async fn get_gas_price(&self) -> Result<U256, P::Error> {
         self.0.request("eth_gasPrice", None::<()>).await

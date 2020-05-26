@@ -1,3 +1,6 @@
+use crate::{Address, Signature, Transaction, TransactionRequest, H256, U256, U64};
+use ethers_utils::{hash_message, keccak256};
+
 use rand::Rng;
 use secp256k1::{
     key::ONE_KEY, Error as SecpError, Message, PublicKey as PubKey, Secp256k1, SecretKey,
@@ -6,11 +9,6 @@ use std::ops::Deref;
 use std::str::FromStr;
 use thiserror::Error;
 use zeroize::DefaultIsZeroes;
-
-use crate::{
-    types::{Address, Signature, Transaction, TransactionRequest, H256, U256, U64},
-    utils::{hash_message, keccak256},
-};
 
 /// A private key on Secp256k1
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
