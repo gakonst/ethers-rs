@@ -178,6 +178,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "ethers-contract"
+version = "0.1.0"
+dependencies = [
+ "ethers-abi 0.1.0",
+ "ethers-providers 0.1.0",
+ "ethers-signers 0.1.0",
+ "ethers-types 0.1.0",
+ "rustc-hex 2.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde 1.0.110 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "ethers-providers"
 version = "0.1.0"
 dependencies = [

@@ -4,6 +4,11 @@ version = "0.1.0"
 authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
 edition = "2018"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
+ethers-abi = { path = "../ethers-abi" }
+ethers-providers = { path = "../ethers-providers" }
+ethers-signers = { path = "../ethers-signers" }
+ethers-types = { path = "../ethers-types" }
+
+serde = { version = "1.0.110", default-features = false }
+rustc-hex = { version = "2.1.0", default-features = false }

@@ -18,7 +18,7 @@ mod wallet;
 pub use wallet::Wallet;
 
 mod client;
-pub(crate) use client::Client;
+pub use client::Client;
 
 use ethers_types::{Address, Signature, Transaction, TransactionRequest};
 use std::error::Error;

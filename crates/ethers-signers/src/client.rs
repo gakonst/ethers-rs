@@ -83,6 +83,10 @@ impl<'a, S: Signer, P: JsonRpcClient> Client<'a, S, P> {
             .map(|s| s.address())
             .unwrap_or_default()
     }
+
+    pub fn provider(&self) -> &Provider<P> {
+        self.provider
+    }
 }
 
 // Abuse Deref to use the Provider's methods without re-writing everything.
