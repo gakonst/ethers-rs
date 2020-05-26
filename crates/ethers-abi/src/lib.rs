@@ -1,10 +1,13 @@
 //! This module implements extensions to the `ethabi` API.
 //! Taken from: https://github.com/gnosis/ethcontract-rs/blob/master/common/src/abiext.rs
+use ethers_types::Selector;
+use ethers_utils::id;
 
 pub use ethabi::Contract as Abi;
 pub use ethabi::*;
 
-use crate::{types::Selector, utils::id};
+mod tokens;
+pub use tokens::{Detokenize, Tokenizable, TokenizableItem, Tokenize};
 
 /// Extension trait for `ethabi::Function`.
 pub trait FunctionExt {
@@ -53,8 +56,6 @@ impl EventExt for Event {
         )
     }
 }
-
-// Tokenization macros: Given ABI -> codegen: copy Gnosis' thing
 
 #[cfg(test)]
 mod tests {
