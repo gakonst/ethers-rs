@@ -5,9 +5,9 @@ authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
 edition = "2018"
 
 [dependencies]
-ethers-types = { path = "../ethers-types" }
-ethers-utils = { path = "../ethers-utils" }
-ethers-abi = { path = "../ethers-abi" }
+ethers-types = { version = "0.1.0", path = "../ethers-types" }
+ethers-utils = { version = "0.1.0", path = "../ethers-utils" }
+ethers-abi = { version = "0.1.0", path = "../ethers-abi" }
 
 async-trait = { version = "0.1.31", default-features = false }
 reqwest = { version = "0.10.4", default-features = false, features = ["json", "rustls-tls"] }

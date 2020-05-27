@@ -5,13 +5,13 @@ authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
 edition = "2018"
 
 [dependencies]
-ethers-contract-abigen = { path = "ethers-contract-abigen", optional = true }
-ethers-contract-derive = { path = "ethers-contract-derive", optional = true }
+ethers-contract-abigen = { version = "0.1.0", path = "ethers-contract-abigen", optional = true }
+ethers-contract-derive = { version = "0.1.0", path = "ethers-contract-derive", optional = true }
 
-ethers-abi = { path = "../ethers-abi" }
-ethers-providers = { path = "../ethers-providers" }
-ethers-signers = { path = "../ethers-signers" }
-ethers-types = { path = "../ethers-types" }
+ethers-abi = { version = "0.1.0", path = "../ethers-abi" }
+ethers-providers = { version = "0.1.0", path = "../ethers-providers" }
+ethers-signers = { version = "0.1.0", path = "../ethers-signers" }
+ethers-types = { version = "0.1.0", path = "../ethers-types" }
 
 serde = { version = "1.0.110", default-features = false }
 rustc-hex = { version = "2.1.0", default-features = false }

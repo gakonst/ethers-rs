@@ -4,11 +4,9 @@ version = "0.1.0"
 authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
 edition = "2018"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
-ethers-types = { path = "../ethers-types" }
-ethers-utils = { path = "../ethers-utils" }
+ethers-types = { version = "0.1.0", path = "../ethers-types" }
+ethers-utils = { version = "0.1.0", path = "../ethers-utils" }
 
 ethabi = "12.0.0"
 arrayvec = "0.5.1"

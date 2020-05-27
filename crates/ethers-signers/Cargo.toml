@@ -5,6 +5,6 @@ authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
 edition = "2018"
 
 [dependencies]
-ethers-types = { path = "../ethers-types" }
-ethers-providers = { path = "../ethers-providers" }
-ethers-utils = { path = "../ethers-utils" }
+ethers-types = { version = "0.1.0", path = "../ethers-types" }
+ethers-providers = { version = "0.1.0", path = "../ethers-providers" }
+ethers-utils = { version = "0.1.0", path = "../ethers-utils" }

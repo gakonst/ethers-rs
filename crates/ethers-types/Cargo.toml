@@ -5,7 +5,7 @@ authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
 edition = "2018"
 
 [dependencies]
-ethers-utils = { path = "../ethers-utils" }
+ethers-utils = { version = "0.1.0", path = "../ethers-utils" }
 
 ethereum-types = { version = "0.9.2", default-features = false, features = ["serialize"] }
 serde = { version = "1.0.110", default-features = false, features = ["derive"] }
