@@ -1,7 +1,16 @@
 version: 2.1
 
-# https://medium.com/@edouard.oger/rust-caching-on-circleci-using-sccache-c996344f0115
 commands:
+  setup-lints:
+    steps:
+      - run:
+          name: Install cargo-audit
+          command: cargo install cargo-audit
+      - run:
+          name: Install clippy
+          command: rustup component add clippy
+
+  # https://medium.com/@edouard.oger/rust-caching-on-circleci-using-sccache-c996344f0115
   setup-sccache:
     steps:
       - run:
@@ -37,6 +46,7 @@ jobs:
       - image: circleci/rust:latest
     steps:
       - checkout
+      - setup-lints
       - setup-sccache
       - restore-sccache-cache
       - run: cargo test --all
