@@ -48,7 +48,7 @@ fn expand_filter(event: &Event) -> Result<TokenStream> {
     let ev_name = Literal::string(&event.name);
     let result = util::ident(&event.name.to_pascal_case());
 
-    let doc = util::expand_doc(&format!("Gets the {} event", event.name));
+    let doc = util::expand_doc(&format!("Gets the contract's `{}` event", event.name));
     Ok(quote! {
 
         #doc

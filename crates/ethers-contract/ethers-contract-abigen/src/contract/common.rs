@@ -6,12 +6,13 @@ use quote::quote;
 
 pub(crate) fn imports() -> TokenStream {
     quote! {
+        // TODO: Can we make this context aware so that it imports either ethers_contract
+        // or ethers::contract?
         use ethers_contract::{
-            Sender, Event,
             abi::{Abi, Token, Detokenize, InvalidOutputType, Tokenizable},
-            Contract, Lazy,
+            Contract, ContractCall, Event, Lazy,
+            signers::{Client, Signer},
             types::*, // import all the types so that we can codegen for everything
-            signers::{Signer, Client},
             providers::JsonRpcClient,
         };
     }

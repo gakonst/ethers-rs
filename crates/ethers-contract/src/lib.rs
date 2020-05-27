@@ -1,5 +1,11 @@
 mod contract;
-pub use contract::*;
+pub use contract::Contract;
+
+mod event;
+pub use event::Event;
+
+mod call;
+pub use call::{ContractCall, ContractError};
 
 #[cfg(feature = "abigen")]
 pub use ethers_contract_abigen::Builder;

@@ -7,6 +7,7 @@ use anyhow::{anyhow, Context as _, Result};
 use inflector::Inflector;
 use proc_macro2::{Literal, TokenStream};
 use quote::quote;
+use rustc_hex::ToHex;
 use syn::Ident;
 
 /// Expands a context into a method struct containing all the generated bindings
@@ -39,13 +40,17 @@ fn expand_function(function: &Function, alias: Option<Ident>) -> Result<TokenStr
     let outputs = expand_fn_outputs(&function.outputs)?;
 
     let result = if function.constant {
-        quote! { Sender<'a, S, P, #outputs> }
+        quote! { ContractCall<'a, S, P, #outputs> }
     } else {
-        quote! { Sender<'a, S, P, H256> }
+        quote! { ContractCall<'a, S, P, H256> }
     };
 
     let arg = expand_inputs_call_arg(&function.inputs);
-    let doc = util::expand_doc(&format!("Calls the contract's {} function", function.name));
+    let doc = util::expand_doc(&format!(
+        "Calls the contract's `{}` (0x{}) function",
+        function.name,
+        function.selector().to_hex::<String>()
+    ));
     Ok(quote! {
 
         #doc
