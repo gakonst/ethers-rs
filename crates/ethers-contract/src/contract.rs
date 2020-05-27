@@ -3,7 +3,7 @@ use crate::{ContractCall, Event};
 use ethers_abi::{Abi, Detokenize, Error, EventExt, Function, FunctionExt, Tokenize};
 use ethers_providers::{networks::Network, JsonRpcClient};
 use ethers_signers::{Client, Signer};
-use ethers_types::{Address, Filter, Selector, TransactionRequest};
+use ethers_types::{Address, Filter, NameOrAddress, Selector, TransactionRequest};
 
 use rustc_hex::ToHex;
 use std::{collections::HashMap, fmt::Debug, hash::Hash, marker::PhantomData};
@@ -93,7 +93,7 @@ impl<'a, P: JsonRpcClient, N: Network, S: Signer> Contract<'a, P, N, S> {
 
         // create the tx object
         let tx = TransactionRequest {
-            to: Some(self.address),
+            to: Some(NameOrAddress::Address(self.address)),
             data: Some(data.into()),
             ..Default::default()
         };

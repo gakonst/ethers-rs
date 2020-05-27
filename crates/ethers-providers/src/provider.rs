@@ -2,7 +2,7 @@ use crate::{ens, http::Provider as HttpProvider, networks::Network, JsonRpcClien
 
 use ethers_abi::{Detokenize, ParamType};
 use ethers_types::{
-    Address, Block, BlockId, BlockNumber, Bytes, Filter, Log, Selector, Transaction,
+    Address, Block, BlockId, BlockNumber, Bytes, Filter, Log, NameOrAddress, Selector, Transaction,
     TransactionReceipt, TransactionRequest, TxHash, U256,
 };
 use ethers_utils as utils;
@@ -155,7 +155,17 @@ impl<P: JsonRpcClient, N: Network> Provider<P, N> {
 
     /// Send the transaction to the entire Ethereum network and returns the transaction's hash
     /// This will consume gas from the account that signed the transaction.
-    pub async fn send_transaction(&self, tx: TransactionRequest) -> Result<TxHash, P::Error> {
+    pub async fn send_transaction(&self, mut tx: TransactionRequest) -> Result<TxHash, P::Error> {
+        if let Some(ref to) = tx.to {
+            if let NameOrAddress::Name(ens_name) = to {
+                let addr = self
+                    .resolve_name(&ens_name)
+                    .await?
+                    .expect("TODO: Handle ENS name not found");
+                tx.to = Some(addr.into())
+            }
+        }
+
         self.0.request("eth_sendTransaction", Some(tx)).await
     }
 

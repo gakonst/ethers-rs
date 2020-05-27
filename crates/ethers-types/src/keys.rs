@@ -1,4 +1,4 @@
-use crate::{Address, Signature, Transaction, TransactionRequest, H256, U256, U64};
+use crate::{Address, NameOrAddress, Signature, Transaction, TransactionRequest, H256, U256, U64};
 use ethers_utils::{hash_message, keccak256};
 
 use rand::Rng;
@@ -63,6 +63,11 @@ impl PrivateKey {
     ///
     /// This will return an error if called if any of the `nonce`, `gas_price` or `gas`
     /// fields are not populated.
+    ///
+    /// # Panics
+    ///
+    /// If `tx.to` is an ENS name. The caller MUST take care of naem resolution before
+    /// calling this function.
     pub fn sign_transaction(
         &self,
         tx: TransactionRequest,
@@ -82,11 +87,18 @@ impl PrivateKey {
         let rlp = tx.rlp_signed(&signature);
         let hash = keccak256(&rlp.0);
 
+        let to = tx.to.map(|to| match to {
+            NameOrAddress::Address(inner) => inner,
+            NameOrAddress::Name(_) => {
+                panic!("Expected `to` to be an Ethereum Address, not an ENS name")
+            }
+        });
+
         Ok(Transaction {
             hash: hash.into(),
             nonce,
             from: self.into(),
-            to: tx.to,
+            to,
             value: tx.value.unwrap_or_default(),
             gas_price,
             gas,
@@ -217,7 +229,12 @@ mod tests {
         // https://web3js.readthedocs.io/en/v1.2.0/web3-eth-accounts.html#eth-accounts-signtransaction
         let tx = TransactionRequest {
             from: None,
-            to: Some("F0109fC8DF283027b6285cc889F5aA624EaC1F55".parse().unwrap()),
+            to: Some(
+                "F0109fC8DF283027b6285cc889F5aA624EaC1F55"
+                    .parse::<Address>()
+                    .unwrap()
+                    .into(),
+            ),
             value: Some(1_000_000_000.into()),
             gas: Some(2_000_000.into()),
             nonce: Some(0.into()),

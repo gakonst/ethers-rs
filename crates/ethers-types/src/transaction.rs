@@ -1,5 +1,5 @@
 //! Transaction types
-use crate::{Address, Bloom, Bytes, Log, Signature, H256, U256, U64};
+use crate::{Address, Bloom, Bytes, Log, NameOrAddress, Signature, H256, U256, U64};
 use ethers_utils::keccak256;
 
 use rlp::RlpStream;
@@ -40,7 +40,7 @@ pub struct TransactionRequest {
 
     /// Recipient address (None for contract creation)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub to: Option<Address>,
+    pub to: Option<NameOrAddress>,
 
     /// Supplied gas (None for sensible default)
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -73,7 +73,7 @@ impl TransactionRequest {
 
     /// Convenience function for sending a new payment transaction to the receiver. The
     /// `gas`, `gas_price` and `nonce` fields are left empty, to be populated
-    pub fn pay<T: Into<Address>, V: Into<U256>>(to: T, value: V) -> Self {
+    pub fn pay<T: Into<NameOrAddress>, V: Into<U256>>(to: T, value: V) -> Self {
         TransactionRequest {
             from: None,
             to: Some(to.into()),
@@ -95,12 +95,12 @@ impl TransactionRequest {
 
     /// Sets the `to` field in the transaction to the provided value
     pub fn send_to_str(mut self, to: &str) -> Result<Self, rustc_hex::FromHexError> {
-        self.to = Some(Address::from_str(to)?);
+        self.to = Some(Address::from_str(to)?.into());
         Ok(self)
     }
 
     /// Sets the `to` field in the transaction to the provided value
-    pub fn to<T: Into<Address>>(mut self, to: T) -> Self {
+    pub fn to<T: Into<NameOrAddress>>(mut self, to: T) -> Self {
         self.to = Some(to.into());
         self
     }
@@ -165,7 +165,7 @@ impl TransactionRequest {
         rlp_opt(rlp, self.nonce);
         rlp_opt(rlp, self.gas_price);
         rlp_opt(rlp, self.gas);
-        rlp_opt(rlp, self.to);
+        rlp_opt(rlp, self.to.as_ref());
         rlp_opt(rlp, self.value);
         rlp_opt(rlp, self.data.as_ref().map(|d| &d.0[..]));
     }

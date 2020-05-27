@@ -1,5 +1,5 @@
 // Adapted from https://github.com/hhatto/rust-ens/blob/master/src/lib.rs
-use ethers_types::{Address, Selector, TransactionRequest, H256};
+use ethers_types::{Address, NameOrAddress, Selector, TransactionRequest, H256};
 use ethers_utils::keccak256;
 
 // Selectors
@@ -21,7 +21,7 @@ pub fn get_resolver<T: Into<Address>>(ens_address: T, name: &str) -> Transaction
     let data = [&RESOLVER[..], &namehash(name).0].concat();
     TransactionRequest {
         data: Some(data.into()),
-        to: Some(ens_address.into()),
+        to: Some(NameOrAddress::Address(ens_address.into())),
         ..Default::default()
     }
 }
@@ -34,7 +34,7 @@ pub fn resolve<T: Into<Address>>(
     let data = [&selector[..], &namehash(name).0].concat();
     TransactionRequest {
         data: Some(data.into()),
-        to: Some(resolver_address.into()),
+        to: Some(NameOrAddress::Address(resolver_address.into())),
         ..Default::default()
     }
 }

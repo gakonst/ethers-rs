@@ -24,6 +24,9 @@ pub use block::{Block, BlockId, BlockNumber};
 mod log;
 pub use log::{Filter, Log, ValueOrArray};
 
+mod ens;
+pub use ens::NameOrAddress;
+
 // re-export the non-standard rand version so that other crates don't use the
 // wrong one by accident
 pub use rand;

@@ -89,16 +89,16 @@ pub struct Filter {
 
 impl Filter {
     pub fn new() -> Self {
-        let filter = Self::default();
-        // filter.topics = vec![H256::zero().into(); 4];
-        filter
+        Self::default()
     }
 
+    #[allow(clippy::wrong_self_convention)]
     pub fn from_block<T: Into<BlockNumber>>(mut self, block: T) -> Self {
         self.from_block = Some(block.into());
         self
     }
 
+    #[allow(clippy::wrong_self_convention)]
     pub fn to_block<T: Into<BlockNumber>>(mut self, block: T) -> Self {
         self.to_block = Some(block.into());
         self

@@ -1,7 +1,7 @@
 use crate::Signer;
 
 use ethers_providers::{networks::Network, JsonRpcClient, Provider};
-use ethers_types::{Address, BlockNumber, TransactionRequest, TxHash};
+use ethers_types::{Address, BlockNumber, NameOrAddress, TransactionRequest, TxHash};
 
 use std::ops::Deref;
 
@@ -33,6 +33,16 @@ where
         mut tx: TransactionRequest,
         block: Option<BlockNumber>,
     ) -> Result<TxHash, P::Error> {
+        if let Some(ref to) = tx.to {
+            if let NameOrAddress::Name(ens_name) = to {
+                let addr = self
+                    .resolve_name(&ens_name)
+                    .await?
+                    .expect("TODO: Handle ENS name not found");
+                tx.to = Some(addr.into())
+            }
+        }
+
         // if there is no local signer, then the transaction should use the
         // node's signer which should already be unlocked
         let signer = if let Some(ref signer) = self.signer {
