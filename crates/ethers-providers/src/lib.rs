@@ -7,6 +7,9 @@
 mod http;
 mod provider;
 
+/// ENS support
+pub mod ens;
+
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::{error::Error, fmt::Debug};
