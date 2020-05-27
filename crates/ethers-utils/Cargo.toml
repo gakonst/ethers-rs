@@ -9,3 +9,6 @@ ethereum-types = { version = "0.9.2", default-features = false, features = ["ser
 tiny-keccak = { version = "2.0.2", default-features = false }
 serde = { version = "1.0.110", default-features = false }
 serde_json = { version = "1.0.53", default-features = false, features = ["alloc"] }
+
+[dev-dependencies]
+rustc-hex = "2.1.0"

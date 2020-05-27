@@ -52,6 +52,16 @@ pub fn serialize<T: serde::Serialize>(t: &T) -> serde_json::Value {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rustc_hex::ToHex;
+
+    #[test]
+    // from https://emn178.github.io/online-tools/keccak_256.html
+    fn test_keccak256() {
+        assert_eq!(
+            keccak256("hello".as_bytes()).to_hex::<String>(),
+            "1c8aff950685c2ed4bc3174f3472287b56d9517b9c948127319a09a7a36deac8"
+        );
+    }
 
     // test vector taken from:
     // https://web3js.readthedocs.io/en/v1.2.2/web3-eth-accounts.html#hashmessage
