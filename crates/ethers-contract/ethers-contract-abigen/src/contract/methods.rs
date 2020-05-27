@@ -130,15 +130,13 @@ mod tests {
                 ],
             )
             .unwrap(),
-            { , a: bool, b: self::ethcontract::Address },
+            { , a: bool, b: Address },
         );
     }
 
     #[test]
     fn expand_fn_outputs_empty() {
-        assert_quote!(expand_fn_outputs(&[],).unwrap(), {
-            self::ethcontract::Void
-        });
+        assert_quote!(expand_fn_outputs(&[],).unwrap(), { () });
     }
 
     #[test]
@@ -167,7 +165,7 @@ mod tests {
                 },
             ],)
             .unwrap(),
-            { (bool, self::ethcontract::Address) },
+            { (bool, Address) },
         );
     }
 }

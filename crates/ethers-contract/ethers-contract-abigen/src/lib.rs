@@ -184,15 +184,6 @@ impl Builder {
     ///
     /// This makes it possible to for example derive serde::Serialize and
     /// serde::Deserialize for events.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use ethcontract_generate::Builder;
-    /// let builder = Builder::new("path")
-    ///     .add_event_derive("serde::Serialize")
-    ///     .add_event_derive("serde::Deserialize");
-    /// ```
     pub fn add_event_derive<S>(mut self, derive: S) -> Self
     where
         S: Into<String>,
