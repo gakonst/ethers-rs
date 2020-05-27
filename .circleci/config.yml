@@ -1,5 +1,5 @@
-version: 2
-etup
+version: 2.1
+
 # https://medium.com/@edouard.oger/rust-caching-on-circleci-using-sccache-c996344f0115
 commands:
   setup-sccache:
@@ -13,6 +13,7 @@ commands:
             # This is the maximum space sccache cache will use on disk.
             echo 'export "SCCACHE_CACHE_SIZE"="1G"' >> $BASH_ENV
             sccache --version
+
   restore-sccache-cache:
     steps:
       - restore_cache:
