@@ -1,6 +1,6 @@
-use crate::{Client, Network, Signer};
+use crate::{Client, Signer};
 
-use ethers_providers::{JsonRpcClient, Provider};
+use ethers_providers::{networks::Network, JsonRpcClient, Provider};
 
 use ethers_types::{
     rand::Rng, secp256k1, Address, PrivateKey, PublicKey, Signature, Transaction,
@@ -52,7 +52,7 @@ impl<N: Network> Wallet<N> {
     }
 
     /// Connects to a provider and returns a client
-    pub fn connect<P: JsonRpcClient>(self, provider: &Provider<P>) -> Client<Wallet<N>, P> {
+    pub fn connect<P: JsonRpcClient>(self, provider: &Provider<P, N>) -> Client<P, N, Wallet<N>> {
         Client {
             signer: Some(self),
             provider,

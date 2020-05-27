@@ -7,6 +7,8 @@
 mod http;
 mod provider;
 
+pub mod networks;
+
 /// ENS support
 pub mod ens;
 
@@ -17,7 +19,7 @@ use std::{error::Error, fmt::Debug};
 pub use provider::Provider;
 
 /// An HTTP provider for interacting with an Ethereum-compatible blockchain
-pub type HttpProvider = Provider<http::Provider>;
+pub type HttpProvider<N> = Provider<http::Provider, N>;
 
 #[async_trait]
 /// Implement this trait in order to plug in different backends

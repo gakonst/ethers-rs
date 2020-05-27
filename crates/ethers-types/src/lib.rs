@@ -4,7 +4,7 @@ pub type Selector = [u8; 4];
 
 // Re-export common ethereum datatypes with more specific names
 pub use ethereum_types::H256 as TxHash;
-pub use ethereum_types::{Address, Bloom, H256, U128, U256, U64};
+pub use ethereum_types::{Address, Bloom, H160, H256, U128, U256, U64};
 
 mod transaction;
 pub use transaction::{Overrides, Transaction, TransactionReceipt, TransactionRequest};

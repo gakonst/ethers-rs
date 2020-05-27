@@ -74,7 +74,9 @@ mod tests {
 
     #[test]
     fn test_namehash() {
-        dbg!(ethers_utils::id("name(bytes32)"));
+        dbg!("00000000000C2E074eC69A0dFb2997BA6C7d2e1e"
+            .from_hex::<Vec<u8>>()
+            .unwrap());
         for (name, expected) in &[
             (
                 "",

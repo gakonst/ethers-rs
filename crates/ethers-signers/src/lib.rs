@@ -10,10 +10,6 @@
 //!
 //! TODO: We might need a `SignerAsync` trait for HSM use cases?
 
-mod networks;
-pub use networks::instantiated::*;
-use networks::Network;
-
 mod wallet;
 pub use wallet::Wallet;
 
@@ -37,3 +33,12 @@ pub trait Signer {
     /// Returns the signer's Ethereum Address
     fn address(&self) -> Address;
 }
+
+use ethers_providers::networks::{Any, Mainnet};
+
+/// A Wallet instantiated with chain_id = 1 for Ethereum Mainnet.
+pub type MainnetWallet = Wallet<Mainnet>;
+
+/// A wallet which does not use EIP-155 and does not take the chain id into account
+/// when creating transactions
+pub type AnyWallet = Wallet<Any>;

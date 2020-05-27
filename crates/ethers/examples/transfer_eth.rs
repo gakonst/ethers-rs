@@ -1,6 +1,6 @@
 use anyhow::Result;
 use ethers::{
-    providers::HttpProvider,
+    providers::{networks::Any, HttpProvider},
     types::{BlockNumber, TransactionRequest},
 };
 use std::convert::TryFrom;
@@ -8,7 +8,7 @@ use std::convert::TryFrom;
 #[tokio::main]
 async fn main() -> Result<()> {
     // connect to the network
-    let provider = HttpProvider::try_from("http://localhost:8545")?;
+    let provider = HttpProvider::<Any>::try_from("http://localhost:8545")?;
     let accounts = provider.get_accounts().await?;
     let from = accounts[0];
 

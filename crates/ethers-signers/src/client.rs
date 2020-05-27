@@ -1,18 +1,18 @@
 use crate::Signer;
 
-use ethers_providers::{JsonRpcClient, Provider};
+use ethers_providers::{networks::Network, JsonRpcClient, Provider};
 use ethers_types::{Address, BlockNumber, TransactionRequest, TxHash};
 
 use std::ops::Deref;
 
 #[derive(Clone, Debug)]
-pub struct Client<'a, S, P> {
-    pub(crate) provider: &'a Provider<P>,
+pub struct Client<'a, P, N, S> {
+    pub(crate) provider: &'a Provider<P, N>,
     pub(crate) signer: Option<S>,
 }
 
-impl<'a, S, P> From<&'a Provider<P>> for Client<'a, S, P> {
-    fn from(provider: &'a Provider<P>) -> Self {
+impl<'a, P, N, S> From<&'a Provider<P, N>> for Client<'a, P, N, S> {
+    fn from(provider: &'a Provider<P, N>) -> Self {
         Client {
             provider,
             signer: None,
@@ -20,7 +20,12 @@ impl<'a, S, P> From<&'a Provider<P>> for Client<'a, S, P> {
     }
 }
 
-impl<'a, S: Signer, P: JsonRpcClient> Client<'a, S, P> {
+impl<'a, P, N, S> Client<'a, P, N, S>
+where
+    S: Signer,
+    P: JsonRpcClient,
+    N: Network,
+{
     /// Signs the transaction and then broadcasts its RLP encoding via the `eth_sendRawTransaction`
     /// API
     pub async fn send_transaction(
@@ -84,7 +89,7 @@ impl<'a, S: Signer, P: JsonRpcClient> Client<'a, S, P> {
             .unwrap_or_default()
     }
 
-    pub fn provider(&self) -> &Provider<P> {
+    pub fn provider(&self) -> &Provider<P, N> {
         self.provider
     }
 }
@@ -92,8 +97,11 @@ impl<'a, S: Signer, P: JsonRpcClient> Client<'a, S, P> {
 // Abuse Deref to use the Provider's methods without re-writing everything.
 // This is an anti-pattern and should not be encouraged, but this improves the UX while
 // keeping the LoC low
-impl<'a, S, P> Deref for Client<'a, S, P> {
-    type Target = &'a Provider<P>;
+impl<'a, P, N, S> Deref for Client<'a, P, N, S>
+where
+    N: 'a,
+{
+    type Target = &'a Provider<P, N>;
 
     fn deref(&self) -> &Self::Target {
         &self.provider

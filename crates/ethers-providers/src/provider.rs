@@ -1,4 +1,4 @@
-use crate::{ens, http::Provider as HttpProvider, JsonRpcClient};
+use crate::{ens, http::Provider as HttpProvider, networks::Network, JsonRpcClient};
 
 use ethers_abi::{Detokenize, ParamType};
 use ethers_types::{
@@ -10,15 +10,15 @@ use ethers_utils as utils;
 use serde::Deserialize;
 use url::{ParseError, Url};
 
-use std::{convert::TryFrom, fmt::Debug};
+use std::{convert::TryFrom, fmt::Debug, marker::PhantomData};
 
 /// An abstract provider for interacting with the [Ethereum JSON RPC
 /// API](https://github.com/ethereum/wiki/wiki/JSON-RPC)
 #[derive(Clone, Debug)]
-pub struct Provider<P>(P, Option<Address>);
+pub struct Provider<P, N>(P, PhantomData<N>, Option<Address>);
 
 // JSON RPC bindings
-impl<P: JsonRpcClient> Provider<P> {
+impl<P: JsonRpcClient, N: Network> Provider<P, N> {
     ////// Blockchain Status
     //
     // Functions for querying the state of the blockchain
@@ -206,10 +206,13 @@ impl<P: JsonRpcClient> Provider<P> {
         ens_name: &str,
         selector: Selector,
     ) -> Result<Option<T>, P::Error> {
-        let ens_addr = if let Some(ens_addr) = self.1 {
-            ens_addr
-        } else {
-            return Ok(None);
+        // Get the ENS address, prioritize the local override variable
+        let ens_addr = match self.2 {
+            Some(ens_addr) => ens_addr,
+            None => match N::ENS_ADDRESS {
+                Some(ens_addr) => ens_addr,
+                None => return Ok(None),
+            },
         };
 
         // first get the resolver responsible for this name
@@ -231,8 +234,8 @@ impl<P: JsonRpcClient> Provider<P> {
         Ok(Some(decode_bytes(param, data)))
     }
 
-    pub fn ens<T: Into<Address>>(mut self, ens_addr: T) -> Self {
-        self.1 = Some(ens_addr.into());
+    pub fn ens<T: Into<Address>>(mut self, ens: T) -> Self {
+        self.2 = Some(ens.into());
         self
     }
 }
@@ -248,30 +251,30 @@ fn decode_bytes<T: Detokenize>(param: ParamType, bytes: Bytes) -> T {
     T::from_tokens(tokens).expect("could not parse tokens as address")
 }
 
-impl TryFrom<&str> for Provider<HttpProvider> {
+impl<N: Network> TryFrom<&str> for Provider<HttpProvider, N> {
     type Error = ParseError;
 
     fn try_from(src: &str) -> Result<Self, Self::Error> {
-        Ok(Provider(HttpProvider::new(Url::parse(src)?), None))
+        Ok(Provider(
+            HttpProvider::new(Url::parse(src)?),
+            PhantomData,
+            None,
+        ))
     }
 }
 
 #[cfg(test)]
 mod ens_tests {
     use super::*;
+    use crate::networks::Mainnet;
 
     #[tokio::test]
     // Test vector from: https://docs.ethers.io/ethers.js/v5-beta/api-providers.html#id2
     async fn mainnet_resolve_name() {
-        let mainnet_ens_addr = "00000000000C2E074eC69A0dFb2997BA6C7d2e1e"
-            .parse::<Address>()
-            .unwrap();
-
-        let provider = Provider::<HttpProvider>::try_from(
+        let provider = Provider::<HttpProvider, Mainnet>::try_from(
             "https://mainnet.infura.io/v3/9408f47dedf04716a03ef994182cf150",
         )
-        .unwrap()
-        .ens(mainnet_ens_addr);
+        .unwrap();
 
         let addr = provider
             .resolve_name("registrar.firefly.eth")
@@ -297,15 +300,10 @@ mod ens_tests {
     #[tokio::test]
     // Test vector from: https://docs.ethers.io/ethers.js/v5-beta/api-providers.html#id2
     async fn mainnet_lookup_address() {
-        let mainnet_ens_addr = "00000000000C2E074eC69A0dFb2997BA6C7d2e1e"
-            .parse::<Address>()
-            .unwrap();
-
-        let provider = Provider::<HttpProvider>::try_from(
+        let provider = Provider::<HttpProvider, Mainnet>::try_from(
             "https://mainnet.infura.io/v3/9408f47dedf04716a03ef994182cf150",
         )
-        .unwrap()
-        .ens(mainnet_ens_addr);
+        .unwrap();
 
         let name = provider
             .lookup_address("6fC21092DA55B392b045eD78F4732bff3C580e2c".parse().unwrap())

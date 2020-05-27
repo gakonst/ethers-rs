@@ -13,7 +13,7 @@ pub(crate) fn imports() -> TokenStream {
             Contract, ContractCall, Event, Lazy,
             signers::{Client, Signer},
             types::*, // import all the types so that we can codegen for everything
-            providers::JsonRpcClient,
+            providers::{JsonRpcClient, networks::Network},
         };
     }
 }
@@ -29,17 +29,17 @@ pub(crate) fn struct_declaration(cx: &Context) -> TokenStream {
 
         // Struct declaration
         #[derive(Clone)]
-        pub struct #name<'a, S, P>(Contract<'a, S, P>);
+        pub struct #name<'a, P, N, S>(Contract<'a, P, N, S>);
 
 
         // Deref to the inner contract in order to access more specific functions functions
-        impl<'a, S, P> std::ops::Deref for #name<'a, S, P> {
-            type Target = Contract<'a, S, P>;
+        impl<'a, P, N, S> std::ops::Deref for #name<'a, P, N, S> {
+            type Target = Contract<'a, P, N, S>;
 
             fn deref(&self) -> &Self::Target { &self.0 }
         }
 
-        impl<'a, S: Signer, P: JsonRpcClient> std::fmt::Debug for #name<'a, S, P> {
+        impl<'a, P: JsonRpcClient, N: Network, S: Signer> std::fmt::Debug for #name<'a, P, N, S> {
             fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
                 f.debug_tuple(stringify!(#name))
                     .field(&self.address())

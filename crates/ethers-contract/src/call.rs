@@ -1,5 +1,5 @@
 use ethers_abi::{Detokenize, Function};
-use ethers_providers::JsonRpcClient;
+use ethers_providers::{networks::Network, JsonRpcClient};
 use ethers_signers::{Client, Signer};
 use ethers_types::{Address, BlockNumber, TransactionRequest, H256, U256};
 
@@ -7,15 +7,15 @@ use std::{fmt::Debug, marker::PhantomData};
 
 use thiserror::Error as ThisError;
 
-pub struct ContractCall<'a, S, P, D> {
+pub struct ContractCall<'a, P, N, S, D> {
     pub(crate) tx: TransactionRequest,
     pub(crate) function: Function,
-    pub(crate) client: &'a Client<'a, S, P>,
+    pub(crate) client: &'a Client<'a, P, N, S>,
     pub(crate) block: Option<BlockNumber>,
     pub(crate) datatype: PhantomData<D>,
 }
 
-impl<'a, S, P, D: Detokenize> ContractCall<'a, S, P, D> {
+impl<'a, P, N, S, D: Detokenize> ContractCall<'a, S, P, N, D> {
     /// Sets the `from` field in the transaction to the provided value
     pub fn from<T: Into<Address>>(mut self, from: T) -> Self {
         self.tx.from = Some(from.into());
@@ -55,9 +55,13 @@ where
     CallError(P::Error),
 }
 
-impl<'a, S: Signer, P: JsonRpcClient, D: Detokenize> ContractCall<'a, S, P, D>
+impl<'a, P, N, S, D> ContractCall<'a, P, N, S, D>
 where
+    S: Signer,
+    P: JsonRpcClient,
     P::Error: 'static,
+    N: Network,
+    D: Detokenize,
 {
     /// Queries the blockchain via an `eth_call` for the provided transaction.
     ///

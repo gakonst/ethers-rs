@@ -1,21 +1,21 @@
 use crate::ContractError;
 
 use ethers_abi::{Detokenize, Event as AbiEvent, RawLog};
-use ethers_providers::{JsonRpcClient, Provider};
+use ethers_providers::{networks::Network, JsonRpcClient, Provider};
 
 use ethers_types::{BlockNumber, Filter, ValueOrArray, H256};
 
 use std::marker::PhantomData;
 
-pub struct Event<'a, 'b, P, D> {
+pub struct Event<'a, 'b, P, N, D> {
     pub filter: Filter,
-    pub(crate) provider: &'a Provider<P>,
+    pub(crate) provider: &'a Provider<P, N>,
     pub(crate) event: &'b AbiEvent,
     pub(crate) datatype: PhantomData<D>,
 }
 
 // TODO: Improve these functions
-impl<'a, 'b, P, D: Detokenize> Event<'a, 'b, P, D> {
+impl<'a, 'b, P, N, D: Detokenize> Event<'a, 'b, P, N, D> {
     #[allow(clippy::wrong_self_convention)]
     pub fn from_block<T: Into<BlockNumber>>(mut self, block: T) -> Self {
         self.filter.from_block = Some(block.into());
@@ -40,7 +40,7 @@ impl<'a, 'b, P, D: Detokenize> Event<'a, 'b, P, D> {
 }
 
 // TODO: Can we get rid of the static?
-impl<'a, 'b, P: JsonRpcClient, D: Detokenize> Event<'a, 'b, P, D>
+impl<'a, 'b, P: JsonRpcClient, N: Network, D: Detokenize> Event<'a, 'b, P, N, D>
 where
     P::Error: 'static,
 {

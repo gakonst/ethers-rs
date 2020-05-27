@@ -52,7 +52,7 @@ fn expand_filter(event: &Event) -> Result<TokenStream> {
     Ok(quote! {
 
         #doc
-        pub fn #name<'b>(&'a self) -> Event<'a, 'b, P, #result> where 'a: 'b, {
+        pub fn #name<'b>(&'a self) -> Event<'a, 'b, P, N, #result> where 'a: 'b, {
             self.0.event(#ev_name).expect("event not found (this should never happen)")
         }
     })
@@ -314,7 +314,7 @@ mod tests {
 
         assert_quote!(expand_filter(&event).unwrap(), {
             #[doc = "Gets the contract's `Transfer` event"]
-            pub fn transfer<'b>(&'a self) -> Event<'a, 'b, P, Transfer>
+            pub fn transfer<'b>(&'a self) -> Event<'a, 'b, P, N, Transfer>
             where
                 'a: 'b,
             {
