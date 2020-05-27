@@ -3,7 +3,8 @@ use ethers_utils::{hash_message, keccak256};
 
 use rand::Rng;
 use secp256k1::{
-    key::ONE_KEY, Error as SecpError, Message, PublicKey as PubKey, Secp256k1, SecretKey,
+    key::ONE_KEY, Error as SecpError, Message, PublicKey as PubKey, recovery::RecoveryId, Secp256k1,
+    SecretKey,
 };
 use std::ops::Deref;
 use std::str::FromStr;
@@ -119,19 +120,23 @@ impl PrivateKey {
             .sign_recoverable(message, &self.0)
             .serialize_compact();
 
-        let standard_v = recovery_id.to_i32() as u64;
-        let v = if let Some(chain_id) = chain_id {
-            // When signing with a chain ID, add chain replay protection.
-            standard_v + 35 + chain_id.as_u64() * 2
-        } else {
-            // Otherwise, convert to 'Electrum' notation.
-            standard_v + 27
-        };
+        let v = to_eip155_v(recovery_id, chain_id);
         let r = H256::from_slice(&signature[..32]);
         let s = H256::from_slice(&signature[32..]);
 
         // TODO: Check what happens when using the 1337 Geth chain id
         Signature { v: v as u8, r, s }
+    }
+}
+
+fn to_eip155_v(recovery_id: RecoveryId, chain_id: Option<U64>) -> u64 {
+    let standard_v = recovery_id.to_i32() as u64;
+    if let Some(chain_id) = chain_id {
+        // When signing with a chain ID, add chain replay protection.
+        standard_v + 35 + chain_id.as_u64() * 2
+    } else {
+        // Otherwise, convert to 'Electrum' notation.
+        standard_v + 27
     }
 }
 

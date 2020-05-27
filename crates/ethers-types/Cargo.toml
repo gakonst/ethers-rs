@@ -21,3 +21,4 @@ zeroize = { version = "1.1.0", default-features = false }
 [dev-dependencies]
 serde_json = { version = "1.0.53", default-features = false }
 rand = { version = "0.5.1" }
+bincode = "1.2.1"
