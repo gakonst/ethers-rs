@@ -1,10 +1,9 @@
 //! Contract Functions Output types.
 //! Adapted from: https://github.com/tomusdrw/rust-web3/blob/master/src/contract/tokens.rs
 #![allow(clippy::all)]
-use crate::Token;
+use crate::{abi::Token, Address, Bytes, H256, U128, U256};
 
 use arrayvec::ArrayVec;
-use ethers_types::{Address, Bytes, H256, U128, U256};
 use thiserror::Error;
 
 #[derive(Clone, Debug, Error)]
@@ -470,8 +469,8 @@ impl_fixed_types!(1024);
 #[cfg(test)]
 mod tests {
     use super::{Detokenize, Tokenizable};
+    use crate::{Address, U256};
     use ethabi::Token;
-    use ethers_types::{Address, U256};
 
     fn output<R: Detokenize>() -> R {
         unimplemented!()

@@ -7,7 +7,6 @@ license = "MIT OR Apache-2.0"
 description = "Code generation for type-safe bindings to Ethereum smart contracts"
 
 [dependencies]
-ethers-abi = { path = "../../ethers-abi" }
 ethers-types = { path = "../../ethers-types" }
 
 anyhow = "1.0"

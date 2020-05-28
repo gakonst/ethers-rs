@@ -1,7 +1,9 @@
-use ethers_abi::{Detokenize, Function};
 use ethers_providers::{networks::Network, JsonRpcClient};
 use ethers_signers::{Client, Signer};
-use ethers_types::{Address, BlockNumber, TransactionRequest, H256, U256};
+use ethers_types::{
+    abi::{Detokenize, Error as AbiError, Function, InvalidOutputType},
+    Address, BlockNumber, TransactionRequest, H256, U256,
+};
 
 use std::{fmt::Debug, marker::PhantomData};
 
@@ -48,9 +50,9 @@ where
     P::Error: 'static,
 {
     #[error(transparent)]
-    DecodingError(#[from] ethers_abi::Error),
+    DecodingError(#[from] AbiError),
     #[error(transparent)]
-    DetokenizationError(#[from] ethers_abi::InvalidOutputType),
+    DetokenizationError(#[from] InvalidOutputType),
     #[error(transparent)]
     CallError(P::Error),
 }

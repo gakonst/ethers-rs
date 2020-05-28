@@ -1,9 +1,11 @@
 use crate::{ContractCall, Event};
 
-use ethers_abi::{Abi, Detokenize, Error, EventExt, Function, FunctionExt, Tokenize};
 use ethers_providers::{networks::Network, JsonRpcClient};
 use ethers_signers::{Client, Signer};
-use ethers_types::{Address, Filter, NameOrAddress, Selector, TransactionRequest};
+use ethers_types::{
+    abi::{Abi, Detokenize, Error, EventExt, Function, FunctionExt, Tokenize},
+    Address, Filter, NameOrAddress, Selector, TransactionRequest,
+};
 
 use rustc_hex::ToHex;
 use std::{collections::HashMap, fmt::Debug, hash::Hash, marker::PhantomData};

@@ -1,6 +1,6 @@
 //! This module implements extensions to the `ethabi` API.
 //! Taken from: https://github.com/gnosis/ethcontract-rs/blob/master/common/src/abiext.rs
-use ethers_types::Selector;
+use crate::Selector;
 use ethers_utils::id;
 
 pub use ethabi::Contract as Abi;

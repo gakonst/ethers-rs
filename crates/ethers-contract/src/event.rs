@@ -1,9 +1,11 @@
 use crate::ContractError;
 
-use ethers_abi::{Detokenize, Event as AbiEvent, RawLog};
 use ethers_providers::{networks::Network, JsonRpcClient, Provider};
 
-use ethers_types::{BlockNumber, Filter, ValueOrArray, H256};
+use ethers_types::{
+    abi::{Detokenize, Event as AbiEvent, RawLog},
+    BlockNumber, Filter, ValueOrArray, H256,
+};
 
 use std::marker::PhantomData;
 

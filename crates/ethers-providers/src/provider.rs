@@ -1,7 +1,7 @@
 use crate::{ens, http::Provider as HttpProvider, networks::Network, JsonRpcClient};
 
-use ethers_abi::{Detokenize, ParamType};
 use ethers_types::{
+    abi::{self, Detokenize, ParamType},
     Address, Block, BlockId, BlockNumber, Bytes, Filter, Log, NameOrAddress, Selector, Transaction,
     TransactionReceipt, TransactionRequest, TxHash, U256,
 };
@@ -256,8 +256,8 @@ impl<P: JsonRpcClient, N: Network> Provider<P, N> {
 ///
 /// If the provided bytes were not an interpretation of an address
 fn decode_bytes<T: Detokenize>(param: ParamType, bytes: Bytes) -> T {
-    let tokens = ethers_abi::decode(&[param], &bytes.0)
-        .expect("could not abi-decode bytes to address tokens");
+    let tokens =
+        abi::decode(&[param], &bytes.0).expect("could not abi-decode bytes to address tokens");
     T::from_tokens(tokens).expect("could not parse tokens as address")
 }
 

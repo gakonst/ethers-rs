@@ -1,7 +1,8 @@
 use super::{types, util, Context};
-
-use ethers_abi::{Function, FunctionExt, Param};
-use ethers_types::Selector;
+use ethers_types::{
+    abi::{Function, FunctionExt, Param},
+    Selector,
+};
 
 use anyhow::{anyhow, Context as _, Result};
 use inflector::Inflector;
@@ -106,7 +107,7 @@ fn expand_selector(selector: Selector) -> TokenStream {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ethers_abi::ParamType;
+    use ethers_types::abi::ParamType;
 
     #[test]
     fn expand_inputs_empty() {

@@ -8,7 +8,6 @@ edition = "2018"
 ethers-contract-abigen = { version = "0.1.0", path = "ethers-contract-abigen", optional = true }
 ethers-contract-derive = { version = "0.1.0", path = "ethers-contract-derive", optional = true }
 
-ethers-abi = { version = "0.1.0", path = "../ethers-abi" }
 ethers-providers = { version = "0.1.0", path = "../ethers-providers" }
 ethers-signers = { version = "0.1.0", path = "../ethers-signers" }
 ethers-types = { version = "0.1.0", path = "../ethers-types" }

@@ -1,3 +1,4 @@
+// Taken from https://github.com/tomusdrw/rust-web3/blob/master/src/types/block.rs
 use crate::{Address, Bloom, Bytes, H256, U256, U64};
 use serde::{ser::SerializeStruct, Deserialize, Serialize, Serializer};
 
@@ -63,8 +64,13 @@ pub struct Block<TX> {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
+/// A Block Hash or Block Number
 pub enum BlockId {
+    // TODO: May want to expand this to include the requireCanonical field
+    // https://github.com/ethereum/EIPs/blob/master/EIPS/eip-1898.md
+    /// A block hash
     Hash(H256),
+    /// A block number
     Number(BlockNumber),
 }
 
@@ -102,7 +108,7 @@ impl Serialize for BlockId {
     }
 }
 
-/// Block Number
+/// A block Number (or tag - "latest", "earliest", "pending")
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum BlockNumber {
     /// Latest block

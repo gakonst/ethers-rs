@@ -74,20 +74,21 @@ impl PrivateKey {
         tx: TransactionRequest,
         chain_id: Option<U64>,
     ) -> Result<Transaction, TxError> {
-        // Calling `
+        // The nonce, gas and gasprice fields must already be populated
         let nonce = tx.nonce.ok_or(TxError::NonceMissing)?;
-        let gas_price = tx.gas_price.ok_or(TxError::NonceMissing)?;
-        let gas = tx.gas.ok_or(TxError::NonceMissing)?;
+        let gas_price = tx.gas_price.ok_or(TxError::GasPriceMissing)?;
+        let gas = tx.gas.ok_or(TxError::GasMissing)?;
 
         // Hash the transaction's RLP encoding
         let hash = tx.hash(chain_id);
         let message = Message::from_slice(hash.as_bytes()).expect("hash is non-zero 32-bytes; qed");
 
+        // Sign it (with replay protection if applicable)
         let signature = self.sign_with_eip155(&message, chain_id);
-
         let rlp = tx.rlp_signed(&signature);
         let hash = keccak256(&rlp.0);
 
+        // This function should not be called with ENS names
         let to = tx.to.map(|to| match to {
             NameOrAddress::Address(inner) => inner,
             NameOrAddress::Name(_) => {
@@ -129,6 +130,7 @@ impl PrivateKey {
     }
 }
 
+/// Applies [EIP155](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-155.md)
 fn to_eip155_v(recovery_id: RecoveryId, chain_id: Option<U64>) -> u64 {
     let standard_v = recovery_id.to_i32() as u64;
     if let Some(chain_id) = chain_id {
@@ -156,7 +158,7 @@ impl Deref for PrivateKey {
 
 impl DefaultIsZeroes for PrivateKey {}
 
-/// A public key
+/// A secp256k1 Public Key
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PublicKey(pub(super) PubKey);
 

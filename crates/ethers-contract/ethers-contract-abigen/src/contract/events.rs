@@ -1,5 +1,5 @@
 use super::{types, util, Context};
-use ethers_abi::{Event, EventExt, EventParam, Hash, ParamType};
+use ethers_types::abi::{Event, EventExt, EventParam, Hash, ParamType};
 
 use anyhow::Result;
 use inflector::Inflector;
@@ -286,7 +286,7 @@ fn expand_hash(hash: Hash) -> TokenStream {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ethers_abi::{EventParam, ParamType};
+    use ethers_types::abi::{EventParam, ParamType};
 
     #[test]
     fn expand_transfer_filter() {

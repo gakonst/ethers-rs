@@ -15,11 +15,6 @@
 //! More examples can be found in the [`examples` directory of the
 //! repositry](https://github.com/gakonst/ethers-rs)
 
-#[cfg(feature = "abi")]
-pub mod abi {
-    pub use ethers_abi::*;
-}
-
 #[cfg(feature = "contract")]
 pub mod contract {
     pub use ethers_contract::*;

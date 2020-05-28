@@ -7,18 +7,27 @@ edition = "2018"
 [dependencies]
 ethers-utils = { version = "0.1.0", path = "../ethers-utils" }
 
+# ethereum related
 ethereum-types = { version = "0.9.2", default-features = false, features = ["serialize"] }
-serde = { version = "1.0.110", default-features = false, features = ["derive"] }
 rlp = { version = "0.4.5", default-features = false }
-rustc-hex = { version = "2.1.0", default-features = false }
-thiserror = { version = "1.0.19", default-features = false }
+ethabi = { version = "12.0.0", default-features = false, optional = true }
 
 # crypto
 secp256k1 = { version = "0.17.2", default-features = false, features = ["std", "recovery", "rand"] }
 rand = { version = "0.5.1", default-features = false } # this should be the same rand crate version as the one in secp
 zeroize = { version = "1.1.0", default-features = false }
 
+# misc
+serde = { version = "1.0.110", default-features = false, features = ["derive"] }
+rustc-hex = { version = "2.1.0", default-features = false }
+thiserror = { version = "1.0.19", default-features = false }
+arrayvec = { version = "0.5.1", default-features = false, optional = true }
+
 [dev-dependencies]
 serde_json = { version = "1.0.53", default-features = false }
 rand = { version = "0.5.1" }
 bincode = "1.2.1"
+
+[features]
+default = ["abi"]
+abi = ["ethabi", "arrayvec"]
