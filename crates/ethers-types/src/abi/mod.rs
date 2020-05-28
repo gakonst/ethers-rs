@@ -1,5 +1,5 @@
 //! This module implements extensions to the `ethabi` API.
-//! Taken from: https://github.com/gnosis/ethcontract-rs/blob/master/common/src/abiext.rs
+// Adapted from [Gnosis' ethcontract](https://github.com/gnosis/ethcontract-rs/blob/master/common/src/abiext.rs)
 use crate::Selector;
 use ethers_utils::id;
 

@@ -24,12 +24,17 @@ impl FromStr for PrivateKey {
     }
 }
 
+/// An error which may be thrown when attempting to sign a transaction with
+/// missing fields
 #[derive(Clone, Debug, Error)]
 pub enum TxError {
+    /// Thrown if the `nonce` field is missing
     #[error("no nonce was specified")]
     NonceMissing,
+    /// Thrown if the `gas_price` field is missing
     #[error("no gas price was specified")]
     GasPriceMissing,
+    /// Thrown if the `gas` field is missing
     #[error("no gas was specified")]
     GasMissing,
 }

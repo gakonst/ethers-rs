@@ -1,5 +1,5 @@
 //! Contract Functions Output types.
-//! Adapted from: https://github.com/tomusdrw/rust-web3/blob/master/src/contract/tokens.rs
+// Adapted from: [rust-web3](https://github.com/tomusdrw/rust-web3/blob/master/src/contract/tokens.rs)
 #![allow(clippy::all)]
 use crate::{abi::Token, Address, Bytes, H256, U128, U256};
 

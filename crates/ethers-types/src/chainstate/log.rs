@@ -1,6 +1,7 @@
+// Adapted from https://github.com/tomusdrw/rust-web3/blob/master/src/types/log.rs
 use crate::{Address, BlockNumber, Bytes, H256, U256, U64};
 use ethers_utils::keccak256;
-use serde::{Deserialize, Serialize};
+use serde::{ser::SerializeSeq, Deserialize, Serialize, Serializer};
 use std::str::FromStr;
 
 /// A log produced by a transaction.
@@ -60,7 +61,7 @@ pub struct Log {
     pub removed: Option<bool>,
 }
 
-/// Filter
+/// Filter for
 #[derive(Default, Debug, PartialEq, Clone, Serialize)]
 pub struct Filter {
     /// From Block
@@ -78,9 +79,10 @@ pub struct Filter {
     address: Option<Address>,
 
     /// Topics
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    // TODO: Split in an event name + 3 topics
-    pub topics: Vec<ValueOrArray<H256>>,
+    // TODO: We could improve the low level API here by using ethabi's RawTopicFilter
+    // and/or TopicFilter
+    #[serde(serialize_with = "skip_nones")]
+    pub topics: [Option<ValueOrArray<H256>>; 4],
 
     /// Limit
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -117,16 +119,30 @@ impl Filter {
     /// given the event in string form, it hashes it and adds it to the topics to monitor
     pub fn event(self, event_name: &str) -> Self {
         let hash = H256::from(keccak256(event_name.as_bytes()));
-        self.topic(hash)
+        self.topic0(hash)
     }
 
-    pub fn topic<T: Into<ValueOrArray<H256>>>(mut self, topic: T) -> Self {
-        self.topics.push(topic.into());
+    /// Sets topic0 (the event name for non-anonymous events)
+    pub fn topic0<T: Into<ValueOrArray<H256>>>(mut self, topic: T) -> Self {
+        self.topics[0] = Some(topic.into());
         self
     }
 
-    pub fn topics(mut self, topics: &[ValueOrArray<H256>]) -> Self {
-        self.topics.extend_from_slice(topics);
+    /// Sets the 1st indexed topic
+    pub fn topic1<T: Into<ValueOrArray<H256>>>(mut self, topic: T) -> Self {
+        self.topics[1] = Some(topic.into());
+        self
+    }
+
+    /// Sets the 2nd indexed topic
+    pub fn topic2<T: Into<ValueOrArray<H256>>>(mut self, topic: T) -> Self {
+        self.topics[2] = Some(topic.into());
+        self
+    }
+
+    /// Sets the 3rd indexed topic
+    pub fn topic3<T: Into<ValueOrArray<H256>>>(mut self, topic: T) -> Self {
+        self.topics[3] = Some(topic.into());
         self
     }
 
@@ -136,11 +152,16 @@ impl Filter {
     }
 }
 
+/// Union type for representing a single value or a vector of values inside a filter
 #[derive(Debug, PartialEq, Clone)]
 pub enum ValueOrArray<T> {
+    /// A single value
     Value(T),
+    /// A vector of values
     Array(Vec<T>),
 }
+
+// TODO: Implement more common types - or adjust this to work with all Tokenizable items
 
 impl From<H256> for ValueOrArray<H256> {
     fn from(src: H256) -> Self {
@@ -156,17 +177,67 @@ impl From<Address> for ValueOrArray<H256> {
     }
 }
 
+impl From<U256> for ValueOrArray<H256> {
+    fn from(src: U256) -> Self {
+        let mut bytes = [0; 32];
+        src.to_big_endian(&mut bytes);
+        ValueOrArray::Value(H256::from(bytes))
+    }
+}
+
 impl<T> Serialize for ValueOrArray<T>
 where
     T: Serialize,
 {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer,
+        S: Serializer,
     {
         match self {
             ValueOrArray::Value(inner) => inner.serialize(serializer),
             ValueOrArray::Array(inner) => inner.serialize(serializer),
         }
+    }
+}
+
+// adapted from https://github.com/serde-rs/serde/issues/550#issuecomment-246746639
+fn skip_nones<T, S>(elements: &[Option<T>], serializer: S) -> Result<S::Ok, S::Error>
+where
+    T: Serialize,
+    S: Serializer,
+{
+    // get number of Some elements
+    let len = elements.iter().filter(|opt| opt.is_some()).count();
+
+    let mut seq = serializer.serialize_seq(Some(len))?;
+    for elem in elements {
+        if elem.is_some() {
+            seq.serialize_element(elem)?;
+        }
+    }
+    seq.end()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ethers_utils::serialize;
+
+    #[test]
+    fn filter_serialization_test() {
+        let t1 = "9729a6fbefefc8f6005933898b13dc45c3a2c8b7"
+            .parse::<Address>()
+            .unwrap();
+        let t3 = U256::from(123);
+        let filter = Filter::new()
+            .address_str("f817796F60D268A36a57b8D2dF1B97B14C0D0E1d")
+            .unwrap()
+            .event("ValueChanged(address,string,string)") // event name
+            .topic1(t1)
+            .topic2(t3);
+
+        dbg!(&filter);
+        let ser = serialize(&filter).to_string();
+        assert_eq!(ser, "{\"address\":\"0xf817796f60d268a36a57b8d2df1b97b14c0d0e1d\",\"topics\":[\"0xe826f71647b8486f2bae59832124c70792fba044036720a54ec8dacdd5df4fcb\",\"0x0000000000000000000000009729a6fbefefc8f6005933898b13dc45c3a2c8b7\",\"0x000000000000000000000000000000000000000000000000000000000000007b\"]}");
     }
 }
