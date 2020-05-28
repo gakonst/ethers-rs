@@ -17,4 +17,4 @@ url = { version = "2.1.1", default-features = false }
 
 [dev-dependencies]
 rustc-hex = "2.1.0"
-tokio = { version = "0.2.21", features = ["macros"] }
+tokio = { version = "0.2.21", default-features = false, features = ["rt-core", "macros"] }

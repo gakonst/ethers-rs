@@ -74,6 +74,12 @@ pub enum BlockId {
     Number(BlockNumber),
 }
 
+impl From<u64> for BlockId {
+    fn from(num: u64) -> Self {
+        BlockNumber::Number(num.into()).into()
+    }
+}
+
 impl From<U64> for BlockId {
     fn from(num: U64) -> Self {
         BlockNumber::Number(num).into()

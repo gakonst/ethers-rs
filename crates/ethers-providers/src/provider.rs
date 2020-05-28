@@ -13,7 +13,9 @@ use url::{ParseError, Url};
 use std::{convert::TryFrom, fmt::Debug, marker::PhantomData};
 
 /// An abstract provider for interacting with the [Ethereum JSON RPC
-/// API](https://github.com/ethereum/wiki/wiki/JSON-RPC)
+/// API](https://github.com/ethereum/wiki/wiki/JSON-RPC). Must be instantiated
+/// with a [`Network`](networks/trait.Network.html) and a data transport
+/// (e.g. HTTP, Websockets etc.)
 #[derive(Clone, Debug)]
 pub struct Provider<P, N>(P, PhantomData<N>, Option<Address>);
 
@@ -204,6 +206,10 @@ impl<P: JsonRpcClient, N: Network> Provider<P, N> {
     }
 
     /// Returns the ENS name the `address` resolves to (or None if not configured).
+    /// # Panics
+    ///
+    /// If the bytes returned from the ENS registrar/resolver cannot be interpreted as
+    /// a string. This should theoretically never happen.
     pub async fn lookup_address(&self, address: Address) -> Result<Option<String>, P::Error> {
         let ens_name = ens::reverse_address(address);
         self.query_resolver(ParamType::String, &ens_name, ens::NAME_SELECTOR)
@@ -244,6 +250,7 @@ impl<P: JsonRpcClient, N: Network> Provider<P, N> {
         Ok(Some(decode_bytes(param, data)))
     }
 
+    /// Overrides the default ENS address set by the provider's `Network` type.
     pub fn ens<T: Into<Address>>(mut self, ens: T) -> Self {
         self.2 = Some(ens.into());
         self

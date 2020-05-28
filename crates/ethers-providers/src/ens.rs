@@ -1,3 +1,4 @@
+/// [Ethereum Name Service](https://docs.ens.domains/) support
 // Adapted from https://github.com/hhatto/rust-ens/blob/master/src/lib.rs
 use ethers_types::{Address, NameOrAddress, Selector, TransactionRequest, H256};
 use ethers_utils::keccak256;
@@ -6,13 +7,13 @@ use ethers_utils::keccak256;
 
 const ENS_REVERSE_REGISTRAR_DOMAIN: &str = "addr.reverse";
 
-// resolver(bytes32)
+/// resolver(bytes32)
 const RESOLVER: Selector = [1, 120, 184, 191];
 
-// addr(bytes32)
+/// addr(bytes32)
 pub const ADDR_SELECTOR: Selector = [59, 59, 87, 222];
 
-// name(bytes32)
+/// name(bytes32)
 pub const NAME_SELECTOR: Selector = [105, 31, 52, 49];
 
 /// Returns a transaction request for calling the `resolver` method on the ENS server
@@ -26,6 +27,7 @@ pub fn get_resolver<T: Into<Address>>(ens_address: T, name: &str) -> Transaction
     }
 }
 
+/// Returns a transaction request for calling
 pub fn resolve<T: Into<Address>>(
     resolver_address: T,
     selector: Selector,
