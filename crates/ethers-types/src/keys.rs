@@ -3,8 +3,8 @@ use ethers_utils::{hash_message, keccak256};
 
 use rand::Rng;
 use secp256k1::{
-    key::ONE_KEY, Error as SecpError, Message, PublicKey as PubKey, recovery::RecoveryId, Secp256k1,
-    SecretKey,
+    key::ONE_KEY, recovery::RecoveryId, Error as SecpError, Message, PublicKey as PubKey,
+    Secp256k1, SecretKey,
 };
 use std::ops::Deref;
 use std::str::FromStr;

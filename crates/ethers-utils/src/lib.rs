@@ -58,7 +58,7 @@ mod tests {
     // from https://emn178.github.io/online-tools/keccak_256.html
     fn test_keccak256() {
         assert_eq!(
-            keccak256("hello".as_bytes()).to_hex::<String>(),
+            keccak256(b"hello").to_hex::<String>(),
             "1c8aff950685c2ed4bc3174f3472287b56d9517b9c948127319a09a7a36deac8"
         );
     }
