@@ -9,11 +9,14 @@ use ethers_types::{
 
 use std::{marker::PhantomData, str::FromStr};
 
-/// A keypair
+/// An Ethereum keypair
 #[derive(Clone, Debug)]
 pub struct Wallet<N> {
+    /// The Wallet's private Key
     pub private_key: PrivateKey,
+    /// The Wallet's public Key
     pub public_key: PublicKey,
+    /// The wallet's address
     pub address: Address,
     network: PhantomData<N>,
 }

@@ -1,14 +1,42 @@
-//! Ethereum compatible signers
+//! # ethers-signers
 //!
-//! Currently supported:
-//! - [x] Private Key
-//! - [ ] Encrypted Json
-//! - [ ] Ledger
-//! - [ ] Trezor
+//! Provides a unified interface for locally signing transactions and interacting
+//! with the Ethereum JSON-RPC. You can implement the `Signer` trait to extend
+//! functionality to other signers such as Hardware Security Modules, KMS etc.
 //!
-//! Implement the `Signer` trait to add support for new signers, e.g. with Ledger.
+//! ```ignore
+//! # use anyhow::Result;
+//! # use ethers::{providers::HttpProvider, signers::MainnetWallet, types::TransactionRequest};
+//! # use std::convert::TryFrom;
+//! # async fn main() -> Result<()> {
+//! // connect to the network
+//! let provider = HttpProvider::try_from("http://localhost:8545")?;
 //!
-//! TODO: We might need a `SignerAsync` trait for HSM use cases?
+//! // instantiate the wallet and connect it to the provider to get a client
+//! let client = "dcf2cbdd171a21c480aa7f53d77f31bb102282b3ff099c78e3118b37348c72f7"
+//!     .parse::<MainnetWallet>()?
+//!     .connect(&provider);
+//!
+//! // create a transaction
+//! let tx = TransactionRequest::new()
+//!     .to("vitalik.eth") // this will use ENS
+//!     .value(10000);
+//!
+//! // send it! (this will resolve the ENS name to an address under the hood)
+//! let hash = client.send_transaction(tx, None).await?;
+//!
+//! // get the mined tx
+//! let tx = client.get_transaction(hash).await?;
+//!
+//! // get the receipt
+//! let receipt = client.get_transaction_receipt(tx.hash).await?;
+//!
+//! println!("{}", serde_json::to_string(&tx)?);
+//! println!("{}", serde_json::to_string(&receipt)?);
+//!
+//! # Ok(())
+//! # }
+// TODO: We might need a `SignerAsync` trait for HSM use cases?
 
 mod wallet;
 pub use wallet::Wallet;

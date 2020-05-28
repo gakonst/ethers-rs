@@ -6,6 +6,9 @@ use ethers_types::{Address, BlockNumber, NameOrAddress, TransactionRequest, TxHa
 use std::ops::Deref;
 
 #[derive(Clone, Debug)]
+/// A client provides an interface for signing and broadcasting locally signed transactions
+/// It Derefs to `Provider`, which allows interacting with the Ethereum JSON-RPC provider
+/// via the same API.
 pub struct Client<'a, P, N, S> {
     pub(crate) provider: &'a Provider<P, N>,
     pub(crate) signer: Option<S>,
@@ -26,8 +29,7 @@ where
     P: JsonRpcClient,
     N: Network,
 {
-    /// Signs the transaction and then broadcasts its RLP encoding via the `eth_sendRawTransaction`
-    /// API
+    /// Signs and broadcasts the transaction
     pub async fn send_transaction(
         &self,
         mut tx: TransactionRequest,
@@ -92,6 +94,7 @@ where
         Ok(())
     }
 
+    /// Returns the client's address
     pub fn address(&self) -> Address {
         self.signer
             .as_ref()
@@ -99,6 +102,7 @@ where
             .unwrap_or_default()
     }
 
+    /// Returns a reference to the client's provider
     pub fn provider(&self) -> &Provider<P, N> {
         self.provider
     }
