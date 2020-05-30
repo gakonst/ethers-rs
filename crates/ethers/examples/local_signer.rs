@@ -1,16 +1,27 @@
 use anyhow::Result;
-use ethers::{providers::HttpProvider, signers::MainnetWallet, types::TransactionRequest};
+use ethers::{
+    providers::HttpProvider, signers::MainnetWallet, types::TransactionRequest,
+    utils::ganache::GanacheBuilder,
+};
 use std::convert::TryFrom;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    // connect to the network
-    let provider = HttpProvider::try_from("http://localhost:8545")?;
+    let port = 8545u64;
+    let url = format!("http://localhost:{}", port).to_string();
+    let _ganache = GanacheBuilder::new()
+        .port(port)
+        .mnemonic("abstract vacuum mammal awkward pudding scene penalty purchase dinner depart evoke puzzle")
+        .spawn();
+    // this private key belongs to the above mnemonic
+    let wallet: MainnetWallet =
+        "380eb0f3d505f087e438eca80bc4df9a7faa24f868e69fc0440261a0fc0567dc".parse()?;
 
-    // create a wallet and connect it to the provider
-    let client = "dcf2cbdd171a21c480aa7f53d77f31bb102282b3ff099c78e3118b37348c72f7"
-        .parse::<MainnetWallet>()?
-        .connect(&provider);
+    // connect to the network
+    let provider = HttpProvider::try_from(url.as_str())?;
+
+    // connect the wallet to the provider
+    let client = wallet.connect(&provider);
 
     // craft the transaction
     let tx = TransactionRequest::new()
@@ -25,8 +36,8 @@ async fn main() -> Result<()> {
 
     let receipt = client.get_transaction_receipt(tx.hash).await?;
 
-    println!("{}", serde_json::to_string(&tx)?);
-    println!("{}", serde_json::to_string(&receipt)?);
+    println!("Send tx: {}", serde_json::to_string(&tx)?);
+    println!("Tx receipt: {}", serde_json::to_string(&receipt)?);
 
     Ok(())
 }

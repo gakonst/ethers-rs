@@ -31,7 +31,7 @@ impl<'a, 'b, P, N, D: Detokenize> Event<'a, 'b, P, N, D> {
     }
 
     pub fn topic0<T: Into<ValueOrArray<H256>>>(mut self, topic: T) -> Self {
-        self.filter.topics[0] = topic.into();
+        self.filter.topics[0] = Some(topic.into());
         self
     }
 }

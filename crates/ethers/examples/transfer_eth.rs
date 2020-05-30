@@ -2,13 +2,18 @@ use anyhow::Result;
 use ethers::{
     providers::{networks::Any, HttpProvider},
     types::{BlockNumber, TransactionRequest},
+    utils::ganache::GanacheBuilder,
 };
 use std::convert::TryFrom;
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    let port = 8546u64;
+    let url = format!("http://localhost:{}", port).to_string();
+    let _ganache = GanacheBuilder::new().port(port).spawn();
+
     // connect to the network
-    let provider = HttpProvider::<Any>::try_from("http://localhost:8545")?;
+    let provider = HttpProvider::<Any>::try_from(url.as_str())?;
     let accounts = provider.get_accounts().await?;
     let from = accounts[0];
 
