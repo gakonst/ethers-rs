@@ -7,6 +7,9 @@ pub use event::Event;
 mod call;
 pub use call::{ContractCall, ContractError};
 
+mod factory;
+pub use factory::ContractFactory;
+
 #[cfg(feature = "abigen")]
 pub use ethers_contract_abigen::Builder;
 
