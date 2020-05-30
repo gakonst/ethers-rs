@@ -55,6 +55,10 @@ where
     DetokenizationError(#[from] InvalidOutputType),
     #[error(transparent)]
     CallError(P::Error),
+    #[error("constructor is not defined in the ABI")]
+    ConstructorError,
+    #[error("Contract was not deployed")]
+    ContractNotDeployed,
 }
 
 impl<'a, P, N, S, D> ContractCall<'a, P, N, S, D>

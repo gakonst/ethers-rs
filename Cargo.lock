@@ -253,6 +253,7 @@ dependencies = [
  "rustc-hex 2.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.110 (registry+https://github.com/rust-lang/crates.io-index)",
  "thiserror 1.0.19 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tokio 0.2.21 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
