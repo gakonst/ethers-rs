@@ -44,9 +44,13 @@ impl Context {
 
 /// Expands into a single method for contracting an event stream.
 fn expand_filter(event: &Event) -> Result<TokenStream> {
-    let name = util::safe_ident(&event.name.to_snake_case());
+    // append `filter` to disambiguate with potentially conflicting
+    // function names
+    let name = util::safe_ident(&format!("{}_filter", event.name.to_snake_case()));
+    // let result = util::ident(&event.name.to_pascal_case());
+    let result = expand_struct_name(event);
+
     let ev_name = Literal::string(&event.name);
-    let result = util::ident(&event.name.to_pascal_case());
 
     let doc = util::expand_doc(&format!("Gets the contract's `{}` event", event.name));
     Ok(quote! {
@@ -139,7 +143,8 @@ fn expand_event(event: &Event, event_derives: &[Path]) -> Result<TokenStream> {
 
 /// Expands an ABI event into an identifier for its event data type.
 fn expand_struct_name(event: &Event) -> TokenStream {
-    let event_name = util::ident(&event.name.to_pascal_case());
+    let name = format!("{}Filter", event.name.to_pascal_case());
+    let event_name = util::ident(&name);
     quote! { #event_name }
 }
 
@@ -314,7 +319,7 @@ mod tests {
 
         assert_quote!(expand_filter(&event).unwrap(), {
             #[doc = "Gets the contract's `Transfer` event"]
-            pub fn transfer<'b>(&'a self) -> Event<'a, 'b, P, N, Transfer>
+            pub fn transfer_filter<'b>(&'a self) -> Event<'a, 'b, P, N, TransferFilter>
             where
                 'a: 'b,
             {
@@ -389,12 +394,12 @@ mod tests {
         let (definition, construction) = expand_data_struct(&name, &params);
 
         assert_quote!(definition, {
-            struct Foo {
+            struct FooFilter {
                 pub a: bool,
                 pub p1: Address,
             }
         });
-        assert_quote!(construction, { Foo { a, p1 } });
+        assert_quote!(construction, { FooFilter { a, p1 } });
     }
 
     #[test]
@@ -421,9 +426,9 @@ mod tests {
         let (definition, construction) = expand_data_tuple(&name, &params);
 
         assert_quote!(definition, {
-            struct Foo(pub bool, pub Address);
+            struct FooFilter(pub bool, pub Address);
         });
-        assert_quote!(construction, { Foo(p0, p1) });
+        assert_quote!(construction, { FooFilter(p0, p1) });
     }
 
     // #[test]

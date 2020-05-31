@@ -8,11 +8,13 @@ pub(crate) fn imports() -> TokenStream {
     quote! {
         // TODO: Can we make this context aware so that it imports either ethers_contract
         // or ethers::contract?
-        use ethers_contract::{
-            abi::{Abi, Token, Detokenize, InvalidOutputType, Tokenizable},
-            Contract, ContractCall, Event, Lazy,
+        use ethers::{
+            core::{
+                abi::{Abi, Token, Detokenize, InvalidOutputType, Tokenizable},
+                types::*, // import all the types so that we can codegen for everything
+            },
+            contract::{Contract, ContractCall, Event, Lazy},
             signers::{Client, Signer},
-            types::*, // import all the types so that we can codegen for everything
             providers::{JsonRpcClient, networks::Network},
         };
     }

@@ -45,7 +45,7 @@ pub mod contract {
 /// network type and override the provider's ENS address with the `ens` method.
 ///
 /// ```rust
-/// use ethers_providers::{HttpProvider, networks::Any};
+/// use ethers::providers::{HttpProvider, networks::Any};
 /// use std::convert::TryFrom;
 /// use tokio::runtime::Runtime;
 ///
@@ -68,7 +68,7 @@ pub mod contract {
 /// follows:
 ///
 /// ```rust
-/// # use ethers_providers::{HttpProvider, networks::Mainnet};
+/// # use ethers::providers::{HttpProvider, networks::Mainnet};
 /// # use std::convert::TryFrom;
 /// # use tokio::runtime::Runtime;
 /// # let provider = HttpProvider::<Mainnet>::try_from(
@@ -147,7 +147,7 @@ pub mod signers {
 /// signing the hash of the result.
 ///
 /// ```rust
-/// use ethers_core::types::{PrivateKey, Address};
+/// use ethers::core::types::{PrivateKey, Address};
 ///
 /// let message = "Some data";
 /// let key = PrivateKey::new(&mut rand::thread_rng());
