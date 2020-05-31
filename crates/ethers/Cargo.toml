@@ -3,6 +3,13 @@ name = "ethers"
 version = "0.1.0"
 authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
 edition = "2018"
+readme = "README.md"
+documentation = "https://docs.rs/ethers"
+repository = "https://github.com/gakonst/ethers-rs"
+homepage = "https://docs.rs/ethers"
+description = """
+Complete Ethereum library and wallet implementation in Rust.
+"""
 
 [features]
 default = ["full"]
@@ -30,3 +37,10 @@ tokio = { version = "0.2.21", features = ["macros"] }
 serde_json = "1.0.53"
 rand = "0.5.1" # note: when passing RNGs, they must be with version 0.5.1
 serde = { version = "1.0.110", features = ["derive"] }
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[package.metadata.playground]
+features = ["full"]
