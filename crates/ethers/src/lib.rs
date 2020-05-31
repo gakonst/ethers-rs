@@ -34,8 +34,3 @@ pub mod signers {
 pub mod types {
     pub use ethers_types::*;
 }
-
-#[cfg(feature = "utils")]
-pub mod utils {
-    pub use ethers_utils::*;
-}

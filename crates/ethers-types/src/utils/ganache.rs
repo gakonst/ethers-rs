@@ -18,7 +18,8 @@ impl Drop for Ganache {
 /// # Example
 ///
 /// ```rust,ignore
-/// use ethers_utils::ganache::GanacheBuilder;
+/// use ethers_types::utils::ganache::GanacheBuilder;
+///
 /// let port = 8545u64;
 /// let url = format!("http://localhost:{}", port).to_string();
 ///

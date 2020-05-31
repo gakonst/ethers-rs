@@ -1,5 +1,7 @@
-use crate::{Address, NameOrAddress, Signature, Transaction, TransactionRequest, H256, U256, U64};
-use ethers_utils::{hash_message, keccak256};
+use crate::{
+    utils::{hash_message, keccak256},
+    Address, NameOrAddress, Signature, Transaction, TransactionRequest, H256, U256, U64,
+};
 
 use rand::Rng;
 use secp256k1::{

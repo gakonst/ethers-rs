@@ -116,7 +116,7 @@ impl Solc {
                     .into();
 
                 let name = name
-                    .rsplit(":")
+                    .rsplit(':')
                     .next()
                     .expect("could not strip fname")
                     .to_owned();
@@ -136,7 +136,7 @@ impl Solc {
         let command_output = Command::new(SOLC)
             .arg("--version")
             .output()
-            .expect(&format!("`{}` not in user's $PATH", SOLC));
+            .unwrap_or_else(|_| panic!("`{}` not in user's $PATH", SOLC));
 
         let version = command_output
             .stdout

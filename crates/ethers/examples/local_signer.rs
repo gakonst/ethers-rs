@@ -1,7 +1,8 @@
 use anyhow::Result;
 use ethers::{
-    providers::HttpProvider, signers::MainnetWallet, types::TransactionRequest,
-    utils::ganache::GanacheBuilder,
+    providers::HttpProvider,
+    signers::MainnetWallet,
+    types::{utils::GanacheBuilder, TransactionRequest},
 };
 use std::convert::TryFrom;
 

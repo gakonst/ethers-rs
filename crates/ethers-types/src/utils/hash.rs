@@ -2,9 +2,6 @@
 use ethereum_types::H256;
 use tiny_keccak::{Hasher, Keccak};
 
-/// Utilities for launching a ganache-cli testnet instance
-pub mod ganache;
-
 const PREFIX: &str = "\x19Ethereum Signed Message:\n";
 
 /// Hash a message according to EIP-191.

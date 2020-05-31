@@ -3,8 +3,7 @@ use ethers::{
     contract::{abigen, ContractFactory},
     providers::HttpProvider,
     signers::MainnetWallet,
-    types::Solc,
-    utils::ganache::GanacheBuilder,
+    types::utils::{GanacheBuilder, Solc},
 };
 use std::convert::TryFrom;
 
@@ -50,7 +49,7 @@ async fn main() -> Result<()> {
     let addr = contract.address();
 
     // 9. instantiate the contract
-    let contract = SimpleContract::new(addr.clone(), &client);
+    let contract = SimpleContract::new(*addr, &client);
 
     // 10. call the `setValue` method
     let _tx_hash = contract.set_value("hi".to_owned()).send().await?;

@@ -44,8 +44,4 @@ pub use chainstate::*;
 #[cfg(feature = "abi")]
 pub mod abi;
 
-// Convenience re-export
-pub use ethers_utils as utils;
-
-mod solc;
-pub use solc::Solc;
+pub mod utils;

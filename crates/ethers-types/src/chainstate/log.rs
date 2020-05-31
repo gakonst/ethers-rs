@@ -1,6 +1,5 @@
 // Adapted from https://github.com/tomusdrw/rust-web3/blob/master/src/types/log.rs
-use crate::{Address, BlockNumber, Bytes, H256, U256, U64};
-use ethers_utils::keccak256;
+use crate::{utils::keccak256, Address, BlockNumber, Bytes, H256, U256, U64};
 use serde::{ser::SerializeSeq, Deserialize, Serialize, Serializer};
 use std::str::FromStr;
 
@@ -221,7 +220,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ethers_utils::serialize;
+    use crate::utils::serialize;
 
     #[test]
     fn filter_serialization_test() {

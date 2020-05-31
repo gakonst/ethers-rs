@@ -5,8 +5,6 @@ authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
 edition = "2018"
 
 [dependencies]
-ethers-utils = { version = "0.1.0", path = "../ethers-utils" }
-
 # ethereum related
 ethereum-types = { version = "0.9.2", default-features = false, features = ["serialize"] }
 rlp = { version = "0.4.5", default-features = false }
@@ -16,6 +14,8 @@ ethabi = { version = "12.0.0", default-features = false, optional = true }
 secp256k1 = { version = "0.17.2", default-features = false, features = ["std", "recovery", "rand"] }
 rand = { version = "0.5.1", default-features = false } # this should be the same rand crate version as the one in secp
 zeroize = { version = "1.1.0", default-features = false }
+tiny-keccak = { version = "2.0.2", default-features = false }
+
 
 # misc
 serde = { version = "1.0.110", default-features = false, features = ["derive"] }
