@@ -1,11 +1,5 @@
 use anyhow::Result;
-use ethers::{
-    core::{
-        types::{BlockNumber, TransactionRequest},
-        utils::GanacheBuilder,
-    },
-    providers::{networks::Any, HttpProvider},
-};
+use ethers::{networks::Any, prelude::*, utils::GanacheBuilder};
 use std::convert::TryFrom;
 
 #[tokio::main]

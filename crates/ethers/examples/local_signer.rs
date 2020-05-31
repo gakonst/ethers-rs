@@ -1,9 +1,5 @@
 use anyhow::Result;
-use ethers::{
-    core::{types::TransactionRequest, utils::GanacheBuilder},
-    providers::HttpProvider,
-    signers::MainnetWallet,
-};
+use ethers::{prelude::*, utils::GanacheBuilder};
 use std::convert::TryFrom;
 
 #[tokio::main]
@@ -37,7 +33,7 @@ async fn main() -> Result<()> {
 
     let receipt = client.get_transaction_receipt(tx.hash).await?;
 
-    println!("Send tx: {}", serde_json::to_string(&tx)?);
+    println!("Sent tx: {}\n", serde_json::to_string(&tx)?);
     println!("Tx receipt: {}", serde_json::to_string(&receipt)?);
 
     Ok(())

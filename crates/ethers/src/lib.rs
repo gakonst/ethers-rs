@@ -34,3 +34,26 @@ pub mod signers {
 pub mod core {
     pub use ethers_core::*;
 }
+
+// Re-export ethers_core::utils
+#[cfg(feature = "core")]
+pub use ethers_core::utils;
+
+// Re-export ethers_providers::networks
+#[cfg(feature = "providers")]
+pub use ethers_providers::networks;
+
+/// Brings all types, contract, providers and signer imports into scope
+pub mod prelude {
+    #[cfg(feature = "contract")]
+    pub use ethers_contract::*;
+
+    #[cfg(feature = "providers")]
+    pub use ethers_providers::*;
+
+    #[cfg(feature = "signers")]
+    pub use ethers_signers::*;
+
+    #[cfg(feature = "core")]
+    pub use ethers_core::types::*;
+}

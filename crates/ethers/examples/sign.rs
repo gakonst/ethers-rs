@@ -1,8 +1,8 @@
-use ethers::signers::{MainnetWallet as Wallet, Signer};
+use ethers::prelude::*;
 
 fn main() {
     let message = "Some data";
-    let wallet = Wallet::new(&mut rand::thread_rng());
+    let wallet = MainnetWallet::new(&mut rand::thread_rng());
 
     // sign a message
     let signature = wallet.sign_message(message);

@@ -1,8 +1,5 @@
 use anyhow::Result;
-use ethers::{
-    core::types::{Address, Filter},
-    providers::{networks::Any, HttpProvider},
-};
+use ethers::{networks::Any, prelude::*};
 use std::convert::TryFrom;
 
 #[tokio::main]

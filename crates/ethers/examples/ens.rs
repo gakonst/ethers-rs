@@ -1,5 +1,5 @@
 use anyhow::Result;
-use ethers::{core::types::TransactionRequest, providers::HttpProvider, signers::MainnetWallet};
+use ethers::prelude::*;
 use std::convert::TryFrom;
 
 #[tokio::main]
