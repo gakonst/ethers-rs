@@ -151,7 +151,7 @@ pub mod signers {
 ///
 /// let message = "Some data";
 /// let key = PrivateKey::new(&mut rand::thread_rng());
-/// let address = Address::from(key);
+/// let address = Address::from(&key);
 ///
 /// // Sign the message
 /// let signature = key.sign(message);

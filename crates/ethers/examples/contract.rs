@@ -53,7 +53,11 @@ async fn main() -> Result<()> {
     let _tx_hash = contract.set_value("hi".to_owned()).send().await?;
 
     // 11. get all events
-    let logs = contract.value_changed_filter().from_block(0u64).query().await?;
+    let logs = contract
+        .value_changed_filter()
+        .from_block(0u64)
+        .query()
+        .await?;
 
     // 12. get the new value
     let value = contract.get_value().call().await?;

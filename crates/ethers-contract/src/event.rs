@@ -7,7 +7,7 @@ use ethers_core::{
     types::{BlockNumber, Filter, ValueOrArray, H256},
 };
 
-use std::marker::PhantomData;
+use std::{collections::HashMap, marker::PhantomData};
 
 pub struct Event<'a, 'b, P, N, D> {
     pub filter: Filter,
@@ -34,16 +34,27 @@ impl<'a, 'b, P, N, D: Detokenize> Event<'a, 'b, P, N, D> {
         self.filter.topics[0] = Some(topic.into());
         self
     }
+
+    pub fn topic1<T: Into<ValueOrArray<H256>>>(mut self, topic: T) -> Self {
+        self.filter.topics[1] = Some(topic.into());
+        self
+    }
 }
 
 // TODO: Can we get rid of the static?
-impl<'a, 'b, P: JsonRpcClient, N: Network, D: Detokenize> Event<'a, 'b, P, N, D>
+impl<'a, 'b, P: JsonRpcClient, N: Network, D: Detokenize + Clone> Event<'a, 'b, P, N, D>
 where
     P::Error: 'static,
 {
     /// Queries the blockchain for the selected filter and returns a vector of matching
     /// event logs
     pub async fn query(self) -> Result<Vec<D>, ContractError<P>> {
+        Ok(self.query_with_hashes().await?.values().cloned().collect())
+    }
+
+    /// Queries the blockchain for the selected filter and returns a vector of matching
+    /// event logs
+    pub async fn query_with_hashes(self) -> Result<HashMap<H256, D>, ContractError<P>> {
         // get the logs
         let logs = self
             .provider
@@ -68,9 +79,12 @@ where
                     .collect::<Vec<_>>();
 
                 // convert the tokens to the requested datatype
-                Ok::<_, ContractError<P>>(D::from_tokens(tokens)?)
+                Ok::<_, ContractError<P>>((
+                    log.transaction_hash.expect("should have tx hash"),
+                    D::from_tokens(tokens)?,
+                ))
             })
-            .collect::<Result<Vec<_>, _>>()?;
+            .collect::<Result<HashMap<H256, D>, _>>()?;
 
         Ok(events)
     }

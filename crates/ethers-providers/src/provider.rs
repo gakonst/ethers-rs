@@ -123,6 +123,12 @@ impl<P: JsonRpcClient, N: Network> Provider<P, N> {
         self.0.request("eth_getBalance", Some(&[from, block])).await
     }
 
+    /// Returns the currently configured chain id, a value used in replay-protected
+    /// transaction signing as introduced by EIP-155.
+    pub async fn get_chainid(&self) -> Result<U256, P::Error> {
+        self.0.request("eth_chainId", None::<()>).await
+    }
+
     ////// Contract Execution
     //
     // These are relatively low-level calls. The Contracts API should usually be used instead.

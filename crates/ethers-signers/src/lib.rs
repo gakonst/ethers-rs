@@ -1,4 +1,3 @@
-// TODO: We might need a `SignerAsync` trait for HSM use cases?
 mod wallet;
 pub use wallet::Wallet;
 
@@ -11,6 +10,7 @@ use std::error::Error;
 /// Trait for signing transactions and messages
 ///
 /// Implement this trait to support different signing modes, e.g. Ledger, hosted etc.
+// TODO: We might need a `SignerAsync` trait for HSM use cases?
 pub trait Signer {
     type Error: Error;
     /// Signs the hash of the provided message after prefixing it
@@ -31,3 +31,6 @@ pub type MainnetWallet = Wallet<Mainnet>;
 /// A wallet which does not use EIP-155 and does not take the chain id into account
 /// when creating transactions
 pub type AnyWallet = Wallet<Any>;
+
+/// An HTTP client configured to work with ANY blockchain without replay protection
+pub type HttpClient<'a> = Client<'a, ethers_providers::http::Provider, Any, Wallet<Any>>;

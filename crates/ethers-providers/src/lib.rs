@@ -1,4 +1,4 @@
-mod http;
+pub mod http;
 mod provider;
 
 pub mod networks;

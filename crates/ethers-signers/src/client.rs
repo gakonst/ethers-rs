@@ -106,6 +106,11 @@ where
     pub fn provider(&self) -> &Provider<P, N> {
         self.provider
     }
+
+    /// Returns a reference to the client's signer, will panic if no signer is set
+    pub fn signer_unchecked(&self) -> &S {
+        self.signer.as_ref().expect("no signer is configured")
+    }
 }
 
 // Abuse Deref to use the Provider's methods without re-writing everything.
