@@ -90,7 +90,7 @@ where
 
     /// Deploys an instance of the contract with the provider constructor arguments
     /// and returns the contract's instance
-    pub async fn deploy<T: Tokenize>(
+    pub fn deploy<T: Tokenize>(
         &self,
         constructor_args: T,
     ) -> Result<Deployer<'a, P, N, S>, ContractError<P>> {

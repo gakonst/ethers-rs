@@ -46,3 +46,6 @@ pub mod abi;
 
 // Convenience re-export
 pub use ethers_utils as utils;
+
+mod solc;
+pub use solc::Solc;
