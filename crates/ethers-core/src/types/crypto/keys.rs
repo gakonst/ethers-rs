@@ -4,24 +4,26 @@ use crate::{
 };
 
 use rand::Rng;
+use rustc_hex::FromHex;
 use secp256k1::{
-    key::ONE_KEY, recovery::RecoveryId, Error as SecpError, Message, PublicKey as PubKey,
-    Secp256k1, SecretKey,
+    self as Secp256k1, Error as SecpError, Message, PublicKey as PubKey, RecoveryId, SecretKey,
 };
 use std::ops::Deref;
 use std::str::FromStr;
 use thiserror::Error;
-use zeroize::DefaultIsZeroes;
 
 /// A private key on Secp256k1
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PrivateKey(pub(super) SecretKey);
 
 impl FromStr for PrivateKey {
     type Err = SecpError;
 
     fn from_str(src: &str) -> Result<PrivateKey, Self::Err> {
-        let sk = SecretKey::from_str(src)?;
+        let src = src
+            .from_hex::<Vec<u8>>()
+            .expect("invalid hex when reading PrivateKey");
+        let sk = SecretKey::parse_slice(&src)?;
         Ok(PrivateKey(sk))
     }
 }
@@ -43,7 +45,7 @@ pub enum TxError {
 
 impl PrivateKey {
     pub fn new<R: Rng>(rng: &mut R) -> Self {
-        PrivateKey(SecretKey::new(rng))
+        PrivateKey(SecretKey::random(rng))
     }
 
     /// Sign arbitrary string data.
@@ -61,7 +63,7 @@ impl PrivateKey {
         let message_hash = hash_message(message);
 
         let sig_message =
-            Message::from_slice(message_hash.as_bytes()).expect("hash is non-zero 32-bytes; qed");
+            Message::parse_slice(message_hash.as_bytes()).expect("hash is non-zero 32-bytes; qed");
         self.sign_with_eip155(&sig_message, None)
     }
 
@@ -88,7 +90,8 @@ impl PrivateKey {
 
         // Hash the transaction's RLP encoding
         let hash = tx.hash(chain_id);
-        let message = Message::from_slice(hash.as_bytes()).expect("hash is non-zero 32-bytes; qed");
+        let message =
+            Message::parse_slice(hash.as_bytes()).expect("hash is non-zero 32-bytes; qed");
 
         // Sign it (with replay protection if applicable)
         let signature = self.sign_with_eip155(&message, chain_id);
@@ -124,13 +127,11 @@ impl PrivateKey {
     }
 
     fn sign_with_eip155(&self, message: &Message, chain_id: Option<U64>) -> Signature {
-        let (recovery_id, signature) = Secp256k1::signing_only()
-            .sign_recoverable(message, &self.0)
-            .serialize_compact();
+        let (signature, recovery_id) = Secp256k1::sign(message, &self.0);
 
         let v = to_eip155_v(recovery_id, chain_id);
-        let r = H256::from_slice(&signature[..32]);
-        let s = H256::from_slice(&signature[32..]);
+        let r = H256::from_slice(&signature.r.b32());
+        let s = H256::from_slice(&signature.s.b32());
 
         // TODO: Check what happens when using the 1337 Geth chain id
         Signature { v: v as u8, r, s }
@@ -139,19 +140,13 @@ impl PrivateKey {
 
 /// Applies [EIP155](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-155.md)
 fn to_eip155_v(recovery_id: RecoveryId, chain_id: Option<U64>) -> u64 {
-    let standard_v = recovery_id.to_i32() as u64;
+    let standard_v = recovery_id.serialize() as u64;
     if let Some(chain_id) = chain_id {
         // When signing with a chain ID, add chain replay protection.
         standard_v + 35 + chain_id.as_u64() * 2
     } else {
         // Otherwise, convert to 'Electrum' notation.
         standard_v + 27
-    }
-}
-
-impl Default for PrivateKey {
-    fn default() -> Self {
-        PrivateKey(ONE_KEY)
     }
 }
 
@@ -163,20 +158,9 @@ impl Deref for PrivateKey {
     }
 }
 
-impl DefaultIsZeroes for PrivateKey {}
-
 /// A secp256k1 Public Key
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PublicKey(pub(super) PubKey);
-
-impl FromStr for PublicKey {
-    type Err = SecpError;
-
-    fn from_str(src: &str) -> Result<PublicKey, Self::Err> {
-        let sk = PubKey::from_str(src)?;
-        Ok(PublicKey(sk))
-    }
-}
 
 impl From<PubKey> for PublicKey {
     /// Gets the public address of a private key.
@@ -188,8 +172,7 @@ impl From<PubKey> for PublicKey {
 impl From<&PrivateKey> for PublicKey {
     /// Gets the public address of a private key.
     fn from(src: &PrivateKey) -> PublicKey {
-        let secp = Secp256k1::signing_only();
-        let public_key = PubKey::from_secret_key(&secp, src);
+        let public_key = PubKey::from_secret_key(src);
         PublicKey(public_key)
     }
 }
@@ -203,7 +186,7 @@ impl From<&PrivateKey> for PublicKey {
 /// computing the hash.
 impl From<&PublicKey> for Address {
     fn from(src: &PublicKey) -> Address {
-        let public_key = src.0.serialize_uncompressed();
+        let public_key = src.0.serialize();
 
         debug_assert_eq!(public_key[0], 0x04);
         let hash = keccak256(&public_key[1..]);

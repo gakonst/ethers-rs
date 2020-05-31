@@ -7,8 +7,7 @@ pub mod abi;
 /// Various utilities
 pub mod utils;
 
-// re-export the non-standard rand version so that other crates don't use the
-// wrong one by accident
+// re-export rand to avoid potential confusion when there's rand version mismatches
 pub use rand;
 
 // re-export libsecp

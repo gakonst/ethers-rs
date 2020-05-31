@@ -6,8 +6,8 @@ use crate::{
 
 use rustc_hex::ToHex;
 use secp256k1::{
-    recovery::{RecoverableSignature, RecoveryId},
-    Error as Secp256k1Error, Message, Secp256k1,
+    self as Secp256k1, Error as Secp256k1Error, Message, RecoveryId,
+    Signature as RecoverableSignature,
 };
 use serde::{Deserialize, Serialize};
 use std::{convert::TryFrom, fmt};
@@ -69,25 +69,25 @@ impl Signature {
             RecoveryMessage::Data(ref message) => hash_message(message),
             RecoveryMessage::Hash(hash) => hash,
         };
-        let signature = self.as_signature()?;
+        let message = Message::parse_slice(message_hash.as_bytes())?;
 
-        let message = Message::from_slice(message_hash.as_bytes())?;
-        let public_key = Secp256k1::verification_only().recover(&message, &signature)?;
+        let (signature, recovery_id) = self.as_signature()?;
+        let public_key = Secp256k1::recover(&message, &signature, &recovery_id)?;
 
         Ok(PublicKey::from(public_key).into())
     }
 
     /// Retrieves the recovery signature.
-    fn as_signature(&self) -> Result<RecoverableSignature, SignatureError> {
+    fn as_signature(&self) -> Result<(RecoverableSignature, RecoveryId), SignatureError> {
         let recovery_id = self.recovery_id()?;
         let signature = {
             let mut sig = [0u8; 64];
             sig[..32].copy_from_slice(self.r.as_bytes());
             sig[32..].copy_from_slice(self.s.as_bytes());
-            sig
+            RecoverableSignature::parse(&sig)
         };
 
-        Ok(RecoverableSignature::from_compact(&signature, recovery_id)?)
+        Ok((signature, recovery_id))
     }
 
     /// Retrieve the recovery ID.
@@ -99,7 +99,7 @@ impl Signature {
             _ => 4,
         };
 
-        Ok(RecoveryId::from_i32(standard_v)?)
+        Ok(RecoveryId::parse(standard_v)?)
     }
 
     /// Copies and serializes `self` into a new `Vec` with the recovery id included
@@ -201,7 +201,7 @@ mod tests {
         let message = "Some data";
         let hash = hash_message(message);
         let key = PrivateKey::new(&mut rand::thread_rng());
-        let address = Address::from(key);
+        let address = Address::from(&key);
 
         // sign a message
         let signature = key.sign(message);
