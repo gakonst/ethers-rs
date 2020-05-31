@@ -1,6 +1,7 @@
 //! Transaction types
 use crate::{
-    utils::keccak256, Address, Bloom, Bytes, Log, NameOrAddress, Signature, H256, U256, U64,
+    types::{Address, Bloom, Bytes, Log, NameOrAddress, Signature, H256, U256, U64},
+    utils::keccak256,
 };
 
 use rlp::RlpStream;

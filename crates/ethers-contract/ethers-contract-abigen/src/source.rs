@@ -1,6 +1,6 @@
 //! Module implements reading of contract artifacts from various sources.
 use super::util;
-use ethers_types::Address;
+use ethers_core::types::Address;
 
 use anyhow::{anyhow, Context, Error, Result};
 use std::{

@@ -1,5 +1,5 @@
 // Taken from https://github.com/tomusdrw/rust-web3/blob/master/src/types/block.rs
-use crate::{Address, Bloom, Bytes, H256, U256, U64};
+use crate::types::{Address, Bloom, Bytes, H256, U256, U64};
 use serde::{ser::SerializeStruct, Deserialize, Serialize, Serializer};
 
 /// The block type returned from RPC calls.
@@ -150,7 +150,7 @@ impl Serialize for BlockNumber {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Transaction, TxHash};
+    use crate::types::{Transaction, TxHash};
 
     #[test]
     fn deserialize_blk_no_txs() {

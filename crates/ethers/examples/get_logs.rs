@@ -1,7 +1,7 @@
 use anyhow::Result;
 use ethers::{
+    core::types::{Address, Filter},
     providers::{networks::Any, HttpProvider},
-    types::{Address, Filter},
 };
 use std::convert::TryFrom;
 

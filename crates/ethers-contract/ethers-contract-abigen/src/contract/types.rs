@@ -1,5 +1,5 @@
 use anyhow::{anyhow, Result};
-use ethers_types::abi::ParamType;
+use ethers_core::abi::ParamType;
 use proc_macro2::{Literal, TokenStream};
 use quote::quote;
 

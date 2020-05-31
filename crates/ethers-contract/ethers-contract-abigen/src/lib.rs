@@ -19,7 +19,7 @@ mod rustfmt;
 mod source;
 mod util;
 
-pub use ethers_types::Address;
+pub use ethers_core::types::Address;
 pub use source::Source;
 pub use util::parse_address;
 

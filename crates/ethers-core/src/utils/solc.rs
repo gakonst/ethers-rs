@@ -12,7 +12,7 @@
 //!     .build();
 //! let contract = contracts.get("SimpleStorage").unwrap();
 //! ```
-use crate::{abi::Abi, Bytes};
+use crate::{abi::Abi, types::Bytes};
 use glob::glob;
 use rustc_hex::FromHex;
 use serde::{Deserialize, Serialize};

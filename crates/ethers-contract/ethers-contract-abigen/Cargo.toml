@@ -7,7 +7,7 @@ license = "MIT OR Apache-2.0"
 description = "Code generation for type-safe bindings to Ethereum smart contracts"
 
 [dependencies]
-ethers-types = { path = "../../ethers-types" }
+ethers-core = { path = "../../ethers-core" }
 
 anyhow = "1.0"
 curl = "0.4"

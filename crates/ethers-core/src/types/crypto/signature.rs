@@ -1,5 +1,8 @@
 // Code adapted from: https://github.com/tomusdrw/rust-web3/blob/master/src/api/accounts.rs
-use crate::{utils::hash_message, Address, PublicKey, H256};
+use crate::{
+    types::{Address, PublicKey, H256},
+    utils::hash_message,
+};
 
 use rustc_hex::ToHex;
 use secp256k1::{
@@ -191,7 +194,7 @@ impl From<H256> for RecoveryMessage {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::PrivateKey;
+    use crate::types::PrivateKey;
 
     #[test]
     fn recover_signature_from_message() {

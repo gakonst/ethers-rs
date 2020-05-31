@@ -1,5 +1,8 @@
 // Adapted from https://github.com/tomusdrw/rust-web3/blob/master/src/types/log.rs
-use crate::{utils::keccak256, Address, BlockNumber, Bytes, H256, U256, U64};
+use crate::{
+    types::{Address, BlockNumber, Bytes, H256, U256, U64},
+    utils::keccak256,
+};
 use serde::{ser::SerializeSeq, Deserialize, Serialize, Serializer};
 use std::str::FromStr;
 

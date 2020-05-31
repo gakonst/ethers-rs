@@ -1,5 +1,5 @@
 [package]
-name = "ethers-types"
+name = "ethers-core"
 version = "0.1.0"
 authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
 edition = "2018"

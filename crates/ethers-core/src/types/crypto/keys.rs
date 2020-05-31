@@ -1,6 +1,6 @@
 use crate::{
+    types::{Address, NameOrAddress, Signature, Transaction, TransactionRequest, H256, U256, U64},
     utils::{hash_message, keccak256},
-    Address, NameOrAddress, Signature, Transaction, TransactionRequest, H256, U256, U64,
 };
 
 use rand::Rng;
@@ -234,7 +234,7 @@ impl From<PrivateKey> for Address {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Bytes;
+    use crate::types::Bytes;
     use rustc_hex::FromHex;
 
     #[test]

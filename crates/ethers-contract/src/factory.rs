@@ -1,11 +1,11 @@
 use crate::{Contract, ContractError};
 
+use ethers_core::{
+    abi::{Abi, Tokenize},
+    types::{Bytes, TransactionRequest},
+};
 use ethers_providers::{networks::Network, JsonRpcClient};
 use ethers_signers::{Client, Signer};
-use ethers_types::{
-    abi::{Abi, Tokenize},
-    Bytes, TransactionRequest,
-};
 
 use std::time::Duration;
 use tokio::time;

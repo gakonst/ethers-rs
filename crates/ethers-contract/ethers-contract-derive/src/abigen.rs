@@ -3,7 +3,7 @@
 use crate::spanned::{ParseInner, Spanned};
 
 use ethers_contract_abigen::Builder;
-use ethers_types::abi::{Function, FunctionExt, Param};
+use ethers_core::abi::{Function, FunctionExt, Param};
 
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::{quote, ToTokens as _};

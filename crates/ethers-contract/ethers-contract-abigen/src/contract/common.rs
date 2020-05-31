@@ -1,6 +1,6 @@
 use super::Context;
 
-use ethers_types::Address;
+use ethers_core::types::Address;
 use proc_macro2::{Literal, TokenStream};
 use quote::quote;
 

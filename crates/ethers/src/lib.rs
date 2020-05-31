@@ -30,7 +30,7 @@ pub mod signers {
     pub use ethers_signers::*;
 }
 
-#[cfg(feature = "types")]
-pub mod types {
-    pub use ethers_types::*;
+#[cfg(feature = "core")]
+pub mod core {
+    pub use ethers_core::*;
 }

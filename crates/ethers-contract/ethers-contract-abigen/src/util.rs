@@ -1,4 +1,4 @@
-use ethers_types::Address;
+use ethers_core::types::Address;
 
 use anyhow::{anyhow, Result};
 use curl::easy::Easy;

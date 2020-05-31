@@ -2,9 +2,10 @@ use crate::{Client, Signer};
 
 use ethers_providers::{networks::Network, JsonRpcClient, Provider};
 
-use ethers_types::{
-    rand::Rng, secp256k1, Address, PrivateKey, PublicKey, Signature, Transaction,
-    TransactionRequest, TxError,
+use ethers_core::{
+    rand::Rng,
+    secp256k1,
+    types::{Address, PrivateKey, PublicKey, Signature, Transaction, TransactionRequest, TxError},
 };
 
 use std::{marker::PhantomData, str::FromStr};

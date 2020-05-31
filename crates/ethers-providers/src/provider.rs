@@ -1,9 +1,12 @@
 use crate::{ens, http::Provider as HttpProvider, networks::Network, JsonRpcClient};
 
-use ethers_types::{
+use ethers_core::{
     abi::{self, Detokenize, ParamType},
-    utils, Address, Block, BlockId, BlockNumber, Bytes, Filter, Log, NameOrAddress, Selector,
-    Transaction, TransactionReceipt, TransactionRequest, TxHash, U256,
+    types::{
+        Address, Block, BlockId, BlockNumber, Bytes, Filter, Log, NameOrAddress, Selector,
+        Transaction, TransactionReceipt, TransactionRequest, TxHash, U256,
+    },
+    utils,
 };
 
 use serde::Deserialize;

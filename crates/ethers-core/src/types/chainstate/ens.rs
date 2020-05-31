@@ -1,4 +1,4 @@
-use crate::Address;
+use crate::types::Address;
 use rlp::{Encodable, RlpStream};
 use serde::{ser::Error as SerializationError, Deserialize, Deserializer, Serialize, Serializer};
 

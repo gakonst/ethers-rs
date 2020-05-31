@@ -10,7 +10,7 @@ ethers-contract-derive = { version = "0.1.0", path = "ethers-contract-derive", o
 
 ethers-providers = { version = "0.1.0", path = "../ethers-providers" }
 ethers-signers = { version = "0.1.0", path = "../ethers-signers" }
-ethers-types = { version = "0.1.0", path = "../ethers-types" }
+ethers-core = { version = "0.1.0", path = "../ethers-core" }
 
 serde = { version = "1.0.110", default-features = false }
 rustc-hex = { version = "2.1.0", default-features = false }

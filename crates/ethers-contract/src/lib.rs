@@ -17,8 +17,8 @@ pub use ethers_contract_abigen::Builder;
 pub use ethers_contract_derive::abigen;
 
 // re-export for convenience
+pub use ethers_core::abi;
+pub use ethers_core::types;
 pub use ethers_providers as providers;
 pub use ethers_signers as signers;
-pub use ethers_types as types;
-pub use ethers_types::abi;
 pub use once_cell::sync::Lazy;

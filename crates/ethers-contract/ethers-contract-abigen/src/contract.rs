@@ -12,7 +12,7 @@ mod types;
 use super::util;
 use super::Args;
 use anyhow::{anyhow, Context as _, Result};
-use ethers_types::{abi::Abi, Address};
+use ethers_core::{abi::Abi, types::Address};
 use inflector::Inflector;
 use proc_macro2::{Ident, Literal, TokenStream};
 use quote::quote;

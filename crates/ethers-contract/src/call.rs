@@ -1,9 +1,9 @@
+use ethers_core::{
+    abi::{Detokenize, Error as AbiError, Function, InvalidOutputType},
+    types::{Address, BlockNumber, TransactionRequest, H256, U256},
+};
 use ethers_providers::{networks::Network, JsonRpcClient};
 use ethers_signers::{Client, Signer};
-use ethers_types::{
-    abi::{Detokenize, Error as AbiError, Function, InvalidOutputType},
-    Address, BlockNumber, TransactionRequest, H256, U256,
-};
 
 use std::{fmt::Debug, marker::PhantomData};
 

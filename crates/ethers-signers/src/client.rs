@@ -1,7 +1,7 @@
 use crate::Signer;
 
+use ethers_core::types::{Address, BlockNumber, NameOrAddress, TransactionRequest, TxHash};
 use ethers_providers::{networks::Network, JsonRpcClient, Provider};
-use ethers_types::{Address, BlockNumber, NameOrAddress, TransactionRequest, TxHash};
 
 use std::ops::Deref;
 

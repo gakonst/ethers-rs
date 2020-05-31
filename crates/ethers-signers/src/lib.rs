@@ -44,7 +44,7 @@ pub use wallet::Wallet;
 mod client;
 pub use client::Client;
 
-use ethers_types::{Address, Signature, Transaction, TransactionRequest};
+use ethers_core::types::{Address, Signature, Transaction, TransactionRequest};
 use std::error::Error;
 
 /// Trait for signing transactions and messages

@@ -10,19 +10,19 @@ full = [
     "contract",
     "providers",
     "signers",
-    "types",
+    "core",
 ]
 
 contract = ["ethers-contract"]
 providers = ["ethers-providers"]
 signers = ["ethers-signers"]
-types = ["ethers-types"]
+core = ["ethers-core"]
 
 [dependencies]
 ethers-contract = { version = "0.1.0", path = "../ethers-contract", features = ["abigen"], optional = true }
 ethers-providers = { version = "0.1.0", path = "../ethers-providers", optional = true }
 ethers-signers = { version = "0.1.0", path = "../ethers-signers", optional = true }
-ethers-types = { version = "0.1.0", path = "../ethers-types", optional = true }
+ethers-core = { version = "0.1.0", path = "../ethers-core", optional = true }
 
 [dev-dependencies]
 anyhow = "1.0.31"

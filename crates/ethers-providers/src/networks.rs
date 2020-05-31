@@ -1,6 +1,6 @@
 //! Networks are used inside wallets and providers to ensure replay protection across networks,
 //! as well as to allow functions to be called with ENS names instead of Addresses.
-use ethers_types::{Address, H160, U64};
+use ethers_core::types::{Address, H160, U64};
 
 /// Trait for specifying network specific metadata, such as the Chain Id or the ENS
 /// address.

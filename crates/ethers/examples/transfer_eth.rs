@@ -1,7 +1,10 @@
 use anyhow::Result;
 use ethers::{
+    core::{
+        types::{BlockNumber, TransactionRequest},
+        utils::GanacheBuilder,
+    },
     providers::{networks::Any, HttpProvider},
-    types::{utils::GanacheBuilder, BlockNumber, TransactionRequest},
 };
 use std::convert::TryFrom;
 
