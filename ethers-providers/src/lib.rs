@@ -1,7 +1,6 @@
 pub mod http;
+pub use http::Provider as Http;
 mod provider;
-
-pub mod networks;
 
 // ENS support
 mod ens;
@@ -13,7 +12,7 @@ use std::{error::Error, fmt::Debug};
 pub use provider::{Provider, ProviderError};
 
 /// An HTTP provider for interacting with an Ethereum-compatible blockchain
-pub type HttpProvider = Provider<http::Provider>;
+pub type HttpProvider = Provider<Http>;
 
 #[async_trait]
 /// Trait which must be implemented by data transports to be used with the Ethereum

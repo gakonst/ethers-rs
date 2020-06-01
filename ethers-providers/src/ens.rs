@@ -1,9 +1,15 @@
 /// [Ethereum Name Service](https://docs.ens.domains/) support
 // Adapted from https://github.com/hhatto/rust-ens/blob/master/src/lib.rs
 use ethers_core::{
-    types::{Address, NameOrAddress, Selector, TransactionRequest, H256},
+    types::{Address, NameOrAddress, Selector, TransactionRequest, H160, H256},
     utils::keccak256,
 };
+
+// 0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e
+pub const ENS_ADDRESS: Address = H160([
+    // cannot set type aliases as constructors
+    0, 0, 0, 0, 0, 12, 46, 7, 78, 198, 154, 13, 251, 41, 151, 186, 108, 125, 46, 30,
+]);
 
 // Selectors
 const ENS_REVERSE_REGISTRAR_DOMAIN: &str = "addr.reverse";

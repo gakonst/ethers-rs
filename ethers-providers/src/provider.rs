@@ -1,9 +1,4 @@
-use crate::{
-    ens,
-    http::Provider as HttpProvider,
-    networks::{Mainnet, Network},
-    JsonRpcClient,
-};
+use crate::{ens, http::Provider as HttpProvider, JsonRpcClient};
 
 use ethers_core::{
     abi::{self, Detokenize, ParamType},
@@ -41,7 +36,7 @@ pub enum ProviderError {
 impl<P> Provider<P>
 where
     P: JsonRpcClient,
-    ProviderError: From<<P as JsonRpcClient>::Error> + 'static,
+    ProviderError: From<<P as JsonRpcClient>::Error>,
 {
     ////// Blockchain Status
     //
@@ -207,7 +202,7 @@ where
                 let addr = self
                     .resolve_name(&ens_name)
                     .await?
-                    .ok_or(ProviderError::EnsError(ens_name.to_owned()))?;
+                    .ok_or_else(|| ProviderError::EnsError(ens_name.to_owned()))?;
 
                 // set the value
                 tx.to = Some(addr.into())
@@ -269,13 +264,7 @@ where
         selector: Selector,
     ) -> Result<Option<T>, ProviderError> {
         // Get the ENS address, prioritize the local override variable
-        let ens_addr = match self.1 {
-            Some(ens_addr) => ens_addr,
-            None => match Mainnet::ENS_ADDRESS {
-                Some(ens_addr) => ens_addr,
-                None => return Ok(None),
-            },
-        };
+        let ens_addr = self.1.unwrap_or(ens::ENS_ADDRESS);
 
         // first get the resolver responsible for this name
         // the call will return a Bytes array which we convert to an address
