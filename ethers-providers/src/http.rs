@@ -1,6 +1,6 @@
 //! Minimal HTTP JSON-RPC 2.0 Client
 //! The request/response code is taken from [here](https://github.com/althea-net/guac_rs/blob/master/web3/src/jsonrpc)
-use crate::JsonRpcClient;
+use crate::{provider::ProviderError, JsonRpcClient};
 
 use async_trait::async_trait;
 use reqwest::{Client, Error as ReqwestError};
@@ -27,6 +27,12 @@ pub enum ClientError {
     ReqwestError(#[from] ReqwestError),
     #[error(transparent)]
     JsonRpcError(#[from] JsonRpcError),
+}
+
+impl From<ClientError> for ProviderError {
+    fn from(src: ClientError) -> Self {
+        ProviderError::JsonRpcClientError(Box::new(src))
+    }
 }
 
 #[async_trait]

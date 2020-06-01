@@ -1,4 +1,9 @@
-use crate::{ens, http::Provider as HttpProvider, networks::Network, JsonRpcClient};
+use crate::{
+    ens,
+    http::Provider as HttpProvider,
+    networks::{Mainnet, Network},
+    JsonRpcClient,
+};
 
 use ethers_core::{
     abi::{self, Detokenize, ParamType},
@@ -10,93 +15,116 @@ use ethers_core::{
 };
 
 use serde::Deserialize;
+use thiserror::Error;
 use url::{ParseError, Url};
 
-use std::{convert::TryFrom, fmt::Debug, marker::PhantomData};
+use std::{convert::TryFrom, fmt::Debug};
 
 /// An abstract provider for interacting with the [Ethereum JSON RPC
 /// API](https://github.com/ethereum/wiki/wiki/JSON-RPC). Must be instantiated
 /// with a [`Network`](networks/trait.Network.html) and a data transport
 /// (e.g. HTTP, Websockets etc.)
 #[derive(Clone, Debug)]
-pub struct Provider<P, N>(P, PhantomData<N>, Option<Address>);
+pub struct Provider<P>(P, Option<Address>);
+
+#[derive(Debug, Error)]
+/// An error thrown when making a call to the provider
+pub enum ProviderError {
+    #[error(transparent)]
+    // dyn dispatch the error to avoid generic return types
+    JsonRpcClientError(#[from] Box<dyn std::error::Error>),
+    #[error("ens name not found: {0}")]
+    EnsError(String),
+}
 
 // JSON RPC bindings
-impl<P: JsonRpcClient, N: Network> Provider<P, N> {
+impl<P> Provider<P>
+where
+    P: JsonRpcClient,
+    ProviderError: From<<P as JsonRpcClient>::Error> + 'static,
+{
     ////// Blockchain Status
     //
     // Functions for querying the state of the blockchain
 
     /// Gets the latest block number via the `eth_BlockNumber` API
-    pub async fn get_block_number(&self) -> Result<U256, P::Error> {
-        self.0.request("eth_blockNumber", None::<()>).await
+    pub async fn get_block_number(&self) -> Result<U256, ProviderError> {
+        Ok(self.0.request("eth_blockNumber", None::<()>).await?)
     }
 
     /// Gets the block at `block_hash_or_number` (transaction hashes only)
     pub async fn get_block(
         &self,
         block_hash_or_number: impl Into<BlockId>,
-    ) -> Result<Block<TxHash>, P::Error> {
-        self.get_block_gen(block_hash_or_number.into(), false).await
+    ) -> Result<Block<TxHash>, ProviderError> {
+        Ok(self
+            .get_block_gen(block_hash_or_number.into(), false)
+            .await?)
     }
 
     /// Gets the block at `block_hash_or_number` (full transactions included)
     pub async fn get_block_with_txs(
         &self,
         block_hash_or_number: impl Into<BlockId>,
-    ) -> Result<Block<Transaction>, P::Error> {
-        self.get_block_gen(block_hash_or_number.into(), true).await
+    ) -> Result<Block<Transaction>, ProviderError> {
+        Ok(self
+            .get_block_gen(block_hash_or_number.into(), true)
+            .await?)
     }
 
     async fn get_block_gen<Tx: for<'a> Deserialize<'a>>(
         &self,
         id: BlockId,
         include_txs: bool,
-    ) -> Result<Block<Tx>, P::Error> {
+    ) -> Result<Block<Tx>, ProviderError> {
         let include_txs = utils::serialize(&include_txs);
 
-        match id {
+        Ok(match id {
             BlockId::Hash(hash) => {
                 let hash = utils::serialize(&hash);
                 let args = vec![hash, include_txs];
-                self.0.request("eth_getBlockByHash", Some(args)).await
+                self.0.request("eth_getBlockByHash", Some(args)).await?
             }
             BlockId::Number(num) => {
                 let num = utils::serialize(&num);
                 let args = vec![num, include_txs];
-                self.0.request("eth_getBlockByNumber", Some(args)).await
+                self.0.request("eth_getBlockByNumber", Some(args)).await?
             }
-        }
+        })
     }
 
     /// Gets the transaction with `transaction_hash`
     pub async fn get_transaction<T: Send + Sync + Into<TxHash>>(
         &self,
         transaction_hash: T,
-    ) -> Result<Transaction, P::Error> {
+    ) -> Result<Transaction, ProviderError> {
         let hash = transaction_hash.into();
-        self.0.request("eth_getTransactionByHash", Some(hash)).await
+        Ok(self
+            .0
+            .request("eth_getTransactionByHash", Some(hash))
+            .await?)
     }
 
     /// Gets the transaction receipt with `transaction_hash`
     pub async fn get_transaction_receipt<T: Send + Sync + Into<TxHash>>(
         &self,
         transaction_hash: T,
-    ) -> Result<TransactionReceipt, P::Error> {
+    ) -> Result<TransactionReceipt, ProviderError> {
         let hash = transaction_hash.into();
-        self.0
+        Ok(self
+            .0
             .request("eth_getTransactionReceipt", Some(hash))
-            .await
+            .await?)
     }
 
     /// Gets the current gas price as estimated by the node
-    pub async fn get_gas_price(&self) -> Result<U256, P::Error> {
-        self.0.request("eth_gasPrice", None::<()>).await
+    pub async fn get_gas_price(&self) -> Result<U256, ProviderError> {
+        Ok(self.0.request("eth_gasPrice", None::<()>).await?)
     }
 
     /// Gets the accounts on the node
-    pub async fn get_accounts(&self) -> Result<Vec<Address>, P::Error> {
-        self.0.request("eth_accounts", None::<()>).await
+    pub async fn get_accounts(&self) -> Result<Vec<Address>, ProviderError> {
+        Ok(self.0.request("eth_accounts", None::<()>).await?)
     }
 
     /// Returns the nonce of the address
@@ -104,12 +132,13 @@ impl<P: JsonRpcClient, N: Network> Provider<P, N> {
         &self,
         from: Address,
         block: Option<BlockNumber>,
-    ) -> Result<U256, P::Error> {
+    ) -> Result<U256, ProviderError> {
         let from = utils::serialize(&from);
         let block = utils::serialize(&block.unwrap_or(BlockNumber::Latest));
-        self.0
+        Ok(self
+            .0
             .request("eth_getTransactionCount", Some(&[from, block]))
-            .await
+            .await?)
     }
 
     /// Returns the account's balance
@@ -117,16 +146,19 @@ impl<P: JsonRpcClient, N: Network> Provider<P, N> {
         &self,
         from: Address,
         block: Option<BlockNumber>,
-    ) -> Result<U256, P::Error> {
+    ) -> Result<U256, ProviderError> {
         let from = utils::serialize(&from);
         let block = utils::serialize(&block.unwrap_or(BlockNumber::Latest));
-        self.0.request("eth_getBalance", Some(&[from, block])).await
+        Ok(self
+            .0
+            .request("eth_getBalance", Some(&[from, block]))
+            .await?)
     }
 
     /// Returns the currently configured chain id, a value used in replay-protected
     /// transaction signing as introduced by EIP-155.
-    pub async fn get_chainid(&self) -> Result<U256, P::Error> {
-        self.0.request("eth_chainId", None::<()>).await
+    pub async fn get_chainid(&self) -> Result<U256, ProviderError> {
+        Ok(self.0.request("eth_chainId", None::<()>).await?)
     }
 
     ////// Contract Execution
@@ -139,10 +171,10 @@ impl<P: JsonRpcClient, N: Network> Provider<P, N> {
         &self,
         tx: TransactionRequest,
         block: Option<BlockNumber>,
-    ) -> Result<Bytes, P::Error> {
+    ) -> Result<Bytes, ProviderError> {
         let tx = utils::serialize(&tx);
         let block = utils::serialize(&block.unwrap_or(BlockNumber::Latest));
-        self.0.request("eth_call", Some(vec![tx, block])).await
+        Ok(self.0.request("eth_call", Some(vec![tx, block])).await?)
     }
 
     /// Send a transaction to a single Ethereum node and return the estimated amount of gas required (as a U256) to send it
@@ -152,7 +184,7 @@ impl<P: JsonRpcClient, N: Network> Provider<P, N> {
         &self,
         tx: &TransactionRequest,
         block: Option<BlockNumber>,
-    ) -> Result<U256, P::Error> {
+    ) -> Result<U256, ProviderError> {
         let tx = utils::serialize(tx);
 
         let args = match block {
@@ -160,37 +192,43 @@ impl<P: JsonRpcClient, N: Network> Provider<P, N> {
             None => vec![tx],
         };
 
-        self.0.request("eth_estimateGas", Some(args)).await
+        Ok(self.0.request("eth_estimateGas", Some(args)).await?)
     }
 
     /// Send the transaction to the entire Ethereum network and returns the transaction's hash
     /// This will consume gas from the account that signed the transaction.
-    pub async fn send_transaction(&self, mut tx: TransactionRequest) -> Result<TxHash, P::Error> {
+    pub async fn send_transaction(
+        &self,
+        mut tx: TransactionRequest,
+    ) -> Result<TxHash, ProviderError> {
         if let Some(ref to) = tx.to {
             if let NameOrAddress::Name(ens_name) = to {
+                // resolve to an address
                 let addr = self
                     .resolve_name(&ens_name)
                     .await?
-                    .expect("TODO: Handle ENS name not found");
+                    .ok_or(ProviderError::EnsError(ens_name.to_owned()))?;
+
+                // set the value
                 tx.to = Some(addr.into())
             }
         }
 
-        self.0.request("eth_sendTransaction", Some(tx)).await
+        Ok(self.0.request("eth_sendTransaction", Some(tx)).await?)
     }
 
     /// Send the raw RLP encoded transaction to the entire Ethereum network and returns the transaction's hash
     /// This will consume gas from the account that signed the transaction.
-    pub async fn send_raw_transaction(&self, tx: &Transaction) -> Result<TxHash, P::Error> {
+    pub async fn send_raw_transaction(&self, tx: &Transaction) -> Result<TxHash, ProviderError> {
         let rlp = utils::serialize(&tx.rlp());
-        self.0.request("eth_sendRawTransaction", Some(rlp)).await
+        Ok(self.0.request("eth_sendRawTransaction", Some(rlp)).await?)
     }
 
     ////// Contract state
 
     /// Returns an array (possibly empty) of logs that match the filter
-    pub async fn get_logs(&self, filter: &Filter) -> Result<Vec<Log>, P::Error> {
-        self.0.request("eth_getLogs", Some(filter)).await
+    pub async fn get_logs(&self, filter: &Filter) -> Result<Vec<Log>, ProviderError> {
+        Ok(self.0.request("eth_getLogs", Some(filter)).await?)
     }
 
     // TODO: get_code, get_storage_at
@@ -208,7 +246,7 @@ impl<P: JsonRpcClient, N: Network> Provider<P, N> {
     ///
     /// If the bytes returned from the ENS registrar/resolver cannot be interpreted as
     /// an address. This should theoretically never happen.
-    pub async fn resolve_name(&self, ens_name: &str) -> Result<Option<Address>, P::Error> {
+    pub async fn resolve_name(&self, ens_name: &str) -> Result<Option<Address>, ProviderError> {
         self.query_resolver(ParamType::Address, ens_name, ens::ADDR_SELECTOR)
             .await
     }
@@ -218,7 +256,7 @@ impl<P: JsonRpcClient, N: Network> Provider<P, N> {
     ///
     /// If the bytes returned from the ENS registrar/resolver cannot be interpreted as
     /// a string. This should theoretically never happen.
-    pub async fn lookup_address(&self, address: Address) -> Result<Option<String>, P::Error> {
+    pub async fn lookup_address(&self, address: Address) -> Result<Option<String>, ProviderError> {
         let ens_name = ens::reverse_address(address);
         self.query_resolver(ParamType::String, &ens_name, ens::NAME_SELECTOR)
             .await
@@ -229,11 +267,11 @@ impl<P: JsonRpcClient, N: Network> Provider<P, N> {
         param: ParamType,
         ens_name: &str,
         selector: Selector,
-    ) -> Result<Option<T>, P::Error> {
+    ) -> Result<Option<T>, ProviderError> {
         // Get the ENS address, prioritize the local override variable
-        let ens_addr = match self.2 {
+        let ens_addr = match self.1 {
             Some(ens_addr) => ens_addr,
-            None => match N::ENS_ADDRESS {
+            None => match Mainnet::ENS_ADDRESS {
                 Some(ens_addr) => ens_addr,
                 None => return Ok(None),
             },
@@ -260,7 +298,7 @@ impl<P: JsonRpcClient, N: Network> Provider<P, N> {
 
     /// Overrides the default ENS address set by the provider's `Network` type.
     pub fn ens<T: Into<Address>>(mut self, ens: T) -> Self {
-        self.2 = Some(ens.into());
+        self.1 = Some(ens.into());
         self
     }
 }
@@ -276,27 +314,22 @@ fn decode_bytes<T: Detokenize>(param: ParamType, bytes: Bytes) -> T {
     T::from_tokens(tokens).expect("could not parse tokens as address")
 }
 
-impl<N: Network> TryFrom<&str> for Provider<HttpProvider, N> {
+impl TryFrom<&str> for Provider<HttpProvider> {
     type Error = ParseError;
 
     fn try_from(src: &str) -> Result<Self, Self::Error> {
-        Ok(Provider(
-            HttpProvider::new(Url::parse(src)?),
-            PhantomData,
-            None,
-        ))
+        Ok(Provider(HttpProvider::new(Url::parse(src)?), None))
     }
 }
 
 #[cfg(test)]
 mod ens_tests {
     use super::*;
-    use crate::networks::Mainnet;
 
     #[tokio::test]
     // Test vector from: https://docs.ethers.io/ethers.js/v5-beta/api-providers.html#id2
     async fn mainnet_resolve_name() {
-        let provider = Provider::<HttpProvider, Mainnet>::try_from(
+        let provider = Provider::<HttpProvider>::try_from(
             "https://mainnet.infura.io/v3/9408f47dedf04716a03ef994182cf150",
         )
         .unwrap();
@@ -325,7 +358,7 @@ mod ens_tests {
     #[tokio::test]
     // Test vector from: https://docs.ethers.io/ethers.js/v5-beta/api-providers.html#id2
     async fn mainnet_lookup_address() {
-        let provider = Provider::<HttpProvider, Mainnet>::try_from(
+        let provider = Provider::<HttpProvider>::try_from(
             "https://mainnet.infura.io/v3/9408f47dedf04716a03ef994182cf150",
         )
         .unwrap();
