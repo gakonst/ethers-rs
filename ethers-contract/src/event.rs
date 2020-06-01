@@ -1,6 +1,6 @@
 use crate::ContractError;
 
-use ethers_providers::{networks::Network, JsonRpcClient, Provider};
+use ethers_providers::{JsonRpcClient, Provider};
 
 use ethers_core::{
     abi::{Detokenize, Event as AbiEvent, RawLog},
@@ -9,15 +9,15 @@ use ethers_core::{
 
 use std::{collections::HashMap, marker::PhantomData};
 
-pub struct Event<'a, 'b, P, N, D> {
+pub struct Event<'a, 'b, P, D> {
     pub filter: Filter,
-    pub(crate) provider: &'a Provider<P, N>,
+    pub(crate) provider: &'a Provider<P>,
     pub(crate) event: &'b AbiEvent,
     pub(crate) datatype: PhantomData<D>,
 }
 
 // TODO: Improve these functions
-impl<'a, 'b, P, N, D: Detokenize> Event<'a, 'b, P, N, D> {
+impl<'a, 'b, P, D: Detokenize> Event<'a, 'b, P, D> {
     #[allow(clippy::wrong_self_convention)]
     pub fn from_block<T: Into<BlockNumber>>(mut self, block: T) -> Self {
         self.filter.from_block = Some(block.into());
@@ -41,26 +41,22 @@ impl<'a, 'b, P, N, D: Detokenize> Event<'a, 'b, P, N, D> {
     }
 }
 
-// TODO: Can we get rid of the static?
-impl<'a, 'b, P: JsonRpcClient, N: Network, D: Detokenize + Clone> Event<'a, 'b, P, N, D>
+impl<'a, 'b, P, D> Event<'a, 'b, P, D>
 where
-    P::Error: 'static,
+    P: JsonRpcClient,
+    D: Detokenize + Clone,
 {
     /// Queries the blockchain for the selected filter and returns a vector of matching
     /// event logs
-    pub async fn query(self) -> Result<Vec<D>, ContractError<P>> {
+    pub async fn query(self) -> Result<Vec<D>, ContractError> {
         Ok(self.query_with_hashes().await?.values().cloned().collect())
     }
 
     /// Queries the blockchain for the selected filter and returns a vector of matching
     /// event logs
-    pub async fn query_with_hashes(self) -> Result<HashMap<H256, D>, ContractError<P>> {
+    pub async fn query_with_hashes(self) -> Result<HashMap<H256, D>, ContractError> {
         // get the logs
-        let logs = self
-            .provider
-            .get_logs(&self.filter)
-            .await
-            .map_err(ContractError::CallError)?;
+        let logs = self.provider.get_logs(&self.filter).await?;
 
         let events = logs
             .into_iter()
@@ -79,7 +75,7 @@ where
                     .collect::<Vec<_>>();
 
                 // convert the tokens to the requested datatype
-                Ok::<_, ContractError<P>>((
+                Ok::<_, ContractError>((
                     log.transaction_hash.expect("should have tx hash"),
                     D::from_tokens(tokens)?,
                 ))

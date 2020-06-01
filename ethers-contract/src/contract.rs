@@ -4,7 +4,7 @@ use ethers_core::{
     abi::{Abi, Detokenize, Error, EventExt, Function, FunctionExt, Tokenize},
     types::{Address, Filter, NameOrAddress, Selector, TransactionRequest},
 };
-use ethers_providers::{networks::Network, JsonRpcClient};
+use ethers_providers::JsonRpcClient;
 use ethers_signers::{Client, Signer};
 
 use rustc_hex::ToHex;
@@ -15,8 +15,8 @@ use std::{collections::HashMap, fmt::Debug, hash::Hash, marker::PhantomData};
 // TODO: Should we separate the lifetimes for the two references?
 // https://stackoverflow.com/a/29862184
 #[derive(Debug, Clone)]
-pub struct Contract<'a, P, N, S> {
-    client: &'a Client<'a, P, N, S>,
+pub struct Contract<'a, P, S> {
+    client: &'a Client<P, S>,
     abi: &'a Abi,
     address: Address,
 
@@ -27,9 +27,13 @@ pub struct Contract<'a, P, N, S> {
     methods: HashMap<Selector, (String, usize)>,
 }
 
-impl<'a, P: JsonRpcClient, N: Network, S: Signer> Contract<'a, P, N, S> {
+impl<'a, P, S> Contract<'a, P, S>
+where
+    S: Signer,
+    P: JsonRpcClient,
+{
     /// Creates a new contract from the provided client, abi and address
-    pub fn new(client: &'a Client<'a, P, N, S>, abi: &'a Abi, address: Address) -> Self {
+    pub fn new(address: Address, abi: &'a Abi, client: &'a Client<P, S>) -> Self {
         let methods = create_mapping(&abi.functions, |function| function.selector());
 
         Self {
@@ -43,7 +47,7 @@ impl<'a, P: JsonRpcClient, N: Network, S: Signer> Contract<'a, P, N, S> {
     /// Returns an `Event` builder for the provided event name. If there are
     /// multiple functions with the same name due to overloading, consider using
     /// the `method_hash` method instead, since this will use the first match.
-    pub fn event<'b, D: Detokenize>(&'a self, name: &str) -> Result<Event<'a, 'b, P, N, D>, Error>
+    pub fn event<'b, D: Detokenize>(&'a self, name: &str) -> Result<Event<'a, 'b, P, D>, Error>
     where
         'a: 'b,
     {
@@ -64,7 +68,7 @@ impl<'a, P: JsonRpcClient, N: Network, S: Signer> Contract<'a, P, N, S> {
         &self,
         name: &str,
         args: T,
-    ) -> Result<ContractCall<'a, P, N, S, D>, Error> {
+    ) -> Result<ContractCall<'a, P, S, D>, Error> {
         // get the function
         let function = self.abi.function(name)?;
         self.method_func(function, args)
@@ -76,7 +80,7 @@ impl<'a, P: JsonRpcClient, N: Network, S: Signer> Contract<'a, P, N, S> {
         &self,
         signature: Selector,
         args: T,
-    ) -> Result<ContractCall<'a, P, N, S, D>, Error> {
+    ) -> Result<ContractCall<'a, P, S, D>, Error> {
         let function = self
             .methods
             .get(&signature)
@@ -89,7 +93,7 @@ impl<'a, P: JsonRpcClient, N: Network, S: Signer> Contract<'a, P, N, S> {
         &self,
         function: &Function,
         args: T,
-    ) -> Result<ContractCall<'a, P, N, S, D>, Error> {
+    ) -> Result<ContractCall<'a, P, S, D>, Error> {
         // create the calldata
         let data = function.encode_input(&args.into_tokens())?;
 

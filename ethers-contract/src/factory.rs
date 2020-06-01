@@ -4,7 +4,7 @@ use ethers_core::{
     abi::{Abi, Tokenize},
     types::{Bytes, TransactionRequest},
 };
-use ethers_providers::{networks::Network, JsonRpcClient};
+use ethers_providers::JsonRpcClient;
 use ethers_signers::{Client, Signer};
 
 use std::time::Duration;
@@ -15,20 +15,18 @@ use tokio::time;
 const POLL_INTERVAL: u64 = 7000;
 
 #[derive(Debug, Clone)]
-pub struct Deployer<'a, P, N, S> {
-    client: &'a Client<'a, P, N, S>,
+pub struct Deployer<'a, P, S> {
+    client: &'a Client<P, S>,
     abi: &'a Abi,
     tx: TransactionRequest,
     confs: usize,
     poll_interval: Duration,
 }
 
-impl<'a, P, N, S> Deployer<'a, P, N, S>
+impl<'a, P, S> Deployer<'a, P, S>
 where
     S: Signer,
     P: JsonRpcClient,
-    P::Error: 'static,
-    N: Network,
 {
     pub fn poll_interval<T: Into<Duration>>(mut self, interval: T) -> Self {
         self.poll_interval = interval.into();
@@ -40,12 +38,8 @@ where
         self
     }
 
-    pub async fn send(self) -> Result<Contract<'a, P, N, S>, ContractError<P>> {
-        let tx_hash = self
-            .client
-            .send_transaction(self.tx, None)
-            .await
-            .map_err(ContractError::CallError)?;
+    pub async fn send(self) -> Result<Contract<'a, P, S>, ContractError> {
+        let tx_hash = self.client.send_transaction(self.tx, None).await?;
 
         // poll for the receipt
         let address;
@@ -60,27 +54,25 @@ where
             time::delay_for(Duration::from_millis(POLL_INTERVAL)).await;
         }
 
-        let contract = Contract::new(self.client, self.abi, address);
+        let contract = Contract::new(address, self.abi, self.client);
         Ok(contract)
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct ContractFactory<'a, P, N, S> {
-    client: &'a Client<'a, P, N, S>,
+pub struct ContractFactory<'a, P, S> {
+    client: &'a Client<P, S>,
     abi: &'a Abi,
     bytecode: &'a Bytes,
 }
 
-impl<'a, P, N, S> ContractFactory<'a, P, N, S>
+impl<'a, P, S> ContractFactory<'a, P, S>
 where
     S: Signer,
     P: JsonRpcClient,
-    P::Error: 'static,
-    N: Network,
 {
     /// Instantiate a new contract factory
-    pub fn new(client: &'a Client<'a, P, N, S>, abi: &'a Abi, bytecode: &'a Bytes) -> Self {
+    pub fn new(client: &'a Client<P, S>, abi: &'a Abi, bytecode: &'a Bytes) -> Self {
         Self {
             client,
             abi,
@@ -93,7 +85,7 @@ where
     pub fn deploy<T: Tokenize>(
         &self,
         constructor_args: T,
-    ) -> Result<Deployer<'a, P, N, S>, ContractError<P>> {
+    ) -> Result<Deployer<'a, P, S>, ContractError> {
         // Encode the constructor args & concatenate with the bytecode if necessary
         let params = constructor_args.into_tokens();
         let data: Bytes = match (self.abi.constructor(), params.is_empty()) {

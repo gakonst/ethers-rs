@@ -187,10 +187,6 @@ pub mod core {
 #[cfg(feature = "core")]
 pub use ethers_core::utils;
 
-// Re-export ethers_providers::networks
-#[cfg(feature = "providers")]
-pub use ethers_providers::networks;
-
 /// Easy import of frequently used type definitions and traits
 pub mod prelude {
     #[cfg(feature = "contract")]
