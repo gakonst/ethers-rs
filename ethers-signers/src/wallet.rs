@@ -1,28 +1,31 @@
-use crate::{Client, Signer};
+use crate::{Client, ClientError, Signer};
 
-use ethers_providers::{networks::Network, JsonRpcClient, Provider};
+use ethers_providers::{JsonRpcClient, Provider};
 
 use ethers_core::{
     rand::Rng,
     secp256k1,
-    types::{Address, PrivateKey, PublicKey, Signature, Transaction, TransactionRequest, TxError},
+    types::{
+        Address, PrivateKey, PublicKey, Signature, Transaction, TransactionRequest, TxError,
+    },
 };
 
-use std::{marker::PhantomData, str::FromStr};
+use std::str::FromStr;
 
 /// An Ethereum keypair
 #[derive(Clone, Debug)]
-pub struct Wallet<N> {
+pub struct Wallet {
     /// The Wallet's private Key
     pub private_key: PrivateKey,
     /// The Wallet's public Key
     pub public_key: PublicKey,
     /// The wallet's address
     pub address: Address,
-    network: PhantomData<N>,
+    /// The wallet's chain id (for EIP-155), signs w/o replay protection if left unset
+    pub chain_id: u64,
 }
 
-impl<'a, N: Network> Signer for Wallet<N> {
+impl Signer for Wallet {
     type Error = TxError;
 
     fn sign_message<S: AsRef<[u8]>>(&self, message: S) -> Signature {
@@ -30,7 +33,7 @@ impl<'a, N: Network> Signer for Wallet<N> {
     }
 
     fn sign_transaction(&self, tx: TransactionRequest) -> Result<Transaction, Self::Error> {
-        self.private_key.sign_transaction(tx, N::CHAIN_ID)
+        self.private_key.sign_transaction(tx, Some(self.chain_id))
     }
 
     fn address(&self) -> Address {
@@ -38,7 +41,13 @@ impl<'a, N: Network> Signer for Wallet<N> {
     }
 }
 
-impl<N: Network> Wallet<N> {
+impl From<TxError> for ClientError {
+    fn from(src: TxError) -> Self {
+        ClientError::SignerError(Box::new(src))
+    }
+}
+
+impl Wallet {
     // TODO: Add support for mnemonic and encrypted JSON
 
     /// Creates a new random keypair seeded with the provided RNG
@@ -51,20 +60,26 @@ impl<N: Network> Wallet<N> {
             private_key,
             public_key,
             address,
-            network: PhantomData,
+            chain_id: 1,
         }
     }
 
     /// Connects to a provider and returns a client
-    pub fn connect<P: JsonRpcClient>(self, provider: &Provider<P, N>) -> Client<P, N, Wallet<N>> {
+    pub fn connect<P: JsonRpcClient>(self, provider: Provider<P>) -> Client<P, Wallet> {
         Client {
             signer: Some(self),
             provider,
         }
     }
+
+    /// Sets the wallet's chain_id
+    pub fn chain_id<T: Into<u64>>(mut self, chain_id: T) -> Self {
+        self.chain_id = chain_id.into();
+        self
+    }
 }
 
-impl<N: Network> From<PrivateKey> for Wallet<N> {
+impl From<PrivateKey> for Wallet {
     fn from(private_key: PrivateKey) -> Self {
         let public_key = PublicKey::from(&private_key);
         let address = Address::from(&private_key);
@@ -73,12 +88,12 @@ impl<N: Network> From<PrivateKey> for Wallet<N> {
             private_key,
             public_key,
             address,
-            network: PhantomData,
+            chain_id: 1,
         }
     }
 }
 
-impl<N: Network> FromStr for Wallet<N> {
+impl FromStr for Wallet {
     type Err = secp256k1::Error;
 
     fn from_str(src: &str) -> Result<Self, Self::Err> {

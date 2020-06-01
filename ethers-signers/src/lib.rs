@@ -2,9 +2,10 @@ mod wallet;
 pub use wallet::Wallet;
 
 mod client;
-pub use client::Client;
+pub use client::{Client, ClientError};
 
 use ethers_core::types::{Address, Signature, Transaction, TransactionRequest};
+use ethers_providers::http::Provider;
 use std::error::Error;
 
 /// Trait for signing transactions and messages
@@ -23,14 +24,5 @@ pub trait Signer {
     fn address(&self) -> Address;
 }
 
-use ethers_providers::networks::{Any, Mainnet};
-
-/// A Wallet instantiated with chain_id = 1 for Ethereum Mainnet.
-pub type MainnetWallet = Wallet<Mainnet>;
-
-/// A wallet which does not use EIP-155 and does not take the chain id into account
-/// when creating transactions
-pub type AnyWallet = Wallet<Any>;
-
 /// An HTTP client configured to work with ANY blockchain without replay protection
-pub type HttpClient<'a> = Client<'a, ethers_providers::http::Provider, Any, Wallet<Any>>;
+pub type HttpClient = Client<Provider, Wallet>;

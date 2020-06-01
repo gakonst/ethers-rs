@@ -1,21 +1,22 @@
 use crate::Signer;
 
 use ethers_core::types::{Address, BlockNumber, NameOrAddress, TransactionRequest, TxHash};
-use ethers_providers::{networks::Network, JsonRpcClient, Provider};
+use ethers_providers::{JsonRpcClient, Provider, ProviderError};
 
 use std::ops::Deref;
+use thiserror::Error;
 
 #[derive(Clone, Debug)]
 /// A client provides an interface for signing and broadcasting locally signed transactions
 /// It Derefs to `Provider`, which allows interacting with the Ethereum JSON-RPC provider
 /// via the same API.
-pub struct Client<'a, P, N, S> {
-    pub(crate) provider: &'a Provider<P, N>,
+pub struct Client<P, S> {
+    pub(crate) provider: Provider<P>,
     pub(crate) signer: Option<S>,
 }
 
-impl<'a, P, N, S> From<&'a Provider<P, N>> for Client<'a, P, N, S> {
-    fn from(provider: &'a Provider<P, N>) -> Self {
+impl<P, S> From<Provider<P>> for Client<P, S> {
+    fn from(provider: Provider<P>) -> Self {
         Client {
             provider,
             signer: None,
@@ -23,24 +24,37 @@ impl<'a, P, N, S> From<&'a Provider<P, N>> for Client<'a, P, N, S> {
     }
 }
 
-impl<'a, P, N, S> Client<'a, P, N, S>
+#[derive(Debug, Error)]
+pub enum ClientError {
+    #[error(transparent)]
+    ProviderError(#[from] ProviderError),
+
+    #[error(transparent)]
+    SignerError(#[from] Box<dyn std::error::Error>),
+
+    #[error("ens name not found: {0}")]
+    EnsError(String),
+}
+
+impl<P, S> Client<P, S>
 where
     S: Signer,
     P: JsonRpcClient,
-    N: Network,
+    ProviderError: From<<P as JsonRpcClient>::Error>,
+    ClientError: From<<S as Signer>::Error>,
 {
     /// Signs and broadcasts the transaction
     pub async fn send_transaction(
         &self,
         mut tx: TransactionRequest,
         block: Option<BlockNumber>,
-    ) -> Result<TxHash, P::Error> {
+    ) -> Result<TxHash, ClientError> {
         if let Some(ref to) = tx.to {
             if let NameOrAddress::Name(ens_name) = to {
                 let addr = self
                     .resolve_name(&ens_name)
                     .await?
-                    .expect("TODO: Handle ENS name not found");
+                    .ok_or_else(|| ClientError::EnsError(ens_name.to_owned()))?;
                 tx.to = Some(addr.into())
             }
         }
@@ -50,14 +64,14 @@ where
         let signer = if let Some(ref signer) = self.signer {
             signer
         } else {
-            return self.provider.send_transaction(tx).await;
+            return Ok(self.provider.send_transaction(tx).await?);
         };
 
         // fill any missing fields
         self.fill_transaction(&mut tx, block).await?;
 
-        // sign the transaction
-        let signed_tx = signer.sign_transaction(tx).unwrap(); // TODO
+        // sign the transaction with the network
+        let signed_tx = signer.sign_transaction(tx)?;
 
         // broadcast it
         self.provider.send_raw_transaction(&signed_tx).await?;
@@ -70,7 +84,7 @@ where
         &self,
         tx: &mut TransactionRequest,
         block: Option<BlockNumber>,
-    ) -> Result<(), P::Error> {
+    ) -> Result<(), ClientError> {
         // get the gas price
         if tx.gas_price.is_none() {
             tx.gas_price = Some(self.provider.get_gas_price().await?);
@@ -103,8 +117,8 @@ where
     }
 
     /// Returns a reference to the client's provider
-    pub fn provider(&self) -> &Provider<P, N> {
-        self.provider
+    pub fn provider(&self) -> &Provider<P> {
+        &self.provider
     }
 
     /// Returns a reference to the client's signer, will panic if no signer is set
@@ -116,11 +130,8 @@ where
 // Abuse Deref to use the Provider's methods without re-writing everything.
 // This is an anti-pattern and should not be encouraged, but this improves the UX while
 // keeping the LoC low
-impl<'a, P, N, S> Deref for Client<'a, P, N, S>
-where
-    N: 'a,
-{
-    type Target = &'a Provider<P, N>;
+impl<P, S> Deref for Client<P, S> {
+    type Target = Provider<P>;
 
     fn deref(&self) -> &Self::Target {
         &self.provider

@@ -1,5 +1,5 @@
 use crate::{
-    types::{Address, NameOrAddress, Signature, Transaction, TransactionRequest, H256, U256, U64},
+    types::{Address, NameOrAddress, Signature, Transaction, TransactionRequest, H256, U256},
     utils::{hash_message, keccak256},
 };
 
@@ -76,12 +76,12 @@ impl PrivateKey {
     ///
     /// # Panics
     ///
-    /// If `tx.to` is an ENS name. The caller MUST take care of naem resolution before
+    /// If `tx.to` is an ENS name. The caller MUST take care of name resolution before
     /// calling this function.
     pub fn sign_transaction(
         &self,
         tx: TransactionRequest,
-        chain_id: Option<U64>,
+        chain_id: Option<u64>,
     ) -> Result<Transaction, TxError> {
         // The nonce, gas and gasprice fields must already be populated
         let nonce = tx.nonce.ok_or(TxError::NonceMissing)?;
@@ -126,7 +126,7 @@ impl PrivateKey {
         })
     }
 
-    fn sign_with_eip155(&self, message: &Message, chain_id: Option<U64>) -> Signature {
+    fn sign_with_eip155(&self, message: &Message, chain_id: Option<u64>) -> Signature {
         let (signature, recovery_id) = Secp256k1::sign(message, &self.0);
 
         let v = to_eip155_v(recovery_id, chain_id);
@@ -139,11 +139,11 @@ impl PrivateKey {
 }
 
 /// Applies [EIP155](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-155.md)
-fn to_eip155_v(recovery_id: RecoveryId, chain_id: Option<U64>) -> u64 {
+fn to_eip155_v(recovery_id: RecoveryId, chain_id: Option<u64>) -> u64 {
     let standard_v = recovery_id.serialize() as u64;
     if let Some(chain_id) = chain_id {
         // When signing with a chain ID, add chain replay protection.
-        standard_v + 35 + chain_id.as_u64() * 2
+        standard_v + 35 + chain_id * 2
     } else {
         // Otherwise, convert to 'Electrum' notation.
         standard_v + 27
@@ -244,7 +244,7 @@ mod tests {
             .parse()
             .unwrap();
 
-        let tx = key.sign_transaction(tx, Some(chain_id.into())).unwrap();
+        let tx = key.sign_transaction(tx, Some(chain_id)).unwrap();
 
         assert_eq!(
             tx.hash,

@@ -7,3 +7,7 @@ edition = "2018"
 [dependencies]
 ethers-core = { version = "0.1.0", path = "../ethers-core" }
 ethers-providers = { version = "0.1.0", path = "../ethers-providers" }
+thiserror = { version = "1.0.19", default-features = false }
+
+[dev-dependencies]
+tokio = { version = "0.2.21", features = ["macros"] }
