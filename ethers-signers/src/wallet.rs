@@ -5,9 +5,7 @@ use ethers_providers::{JsonRpcClient, Provider};
 use ethers_core::{
     rand::Rng,
     secp256k1,
-    types::{
-        Address, PrivateKey, PublicKey, Signature, Transaction, TransactionRequest, TxError,
-    },
+    types::{Address, PrivateKey, PublicKey, Signature, Transaction, TransactionRequest, TxError},
 };
 
 use std::str::FromStr;

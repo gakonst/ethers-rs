@@ -33,18 +33,18 @@ pub enum ProviderError {
 }
 
 // JSON RPC bindings
-impl<P> Provider<P>
-where
-    P: JsonRpcClient,
-    ProviderError: From<<P as JsonRpcClient>::Error>,
-{
+impl<P: JsonRpcClient> Provider<P> {
     ////// Blockchain Status
     //
     // Functions for querying the state of the blockchain
 
     /// Gets the latest block number via the `eth_BlockNumber` API
     pub async fn get_block_number(&self) -> Result<U256, ProviderError> {
-        Ok(self.0.request("eth_blockNumber", None::<()>).await?)
+        Ok(self
+            .0
+            .request("eth_blockNumber", None::<()>)
+            .await
+            .map_err(Into::into)?)
     }
 
     /// Gets the block at `block_hash_or_number` (transaction hashes only)
@@ -78,12 +78,18 @@ where
             BlockId::Hash(hash) => {
                 let hash = utils::serialize(&hash);
                 let args = vec![hash, include_txs];
-                self.0.request("eth_getBlockByHash", Some(args)).await?
+                self.0
+                    .request("eth_getBlockByHash", Some(args))
+                    .await
+                    .map_err(Into::into)?
             }
             BlockId::Number(num) => {
                 let num = utils::serialize(&num);
                 let args = vec![num, include_txs];
-                self.0.request("eth_getBlockByNumber", Some(args)).await?
+                self.0
+                    .request("eth_getBlockByNumber", Some(args))
+                    .await
+                    .map_err(Into::into)?
             }
         })
     }
@@ -97,7 +103,8 @@ where
         Ok(self
             .0
             .request("eth_getTransactionByHash", Some(hash))
-            .await?)
+            .await
+            .map_err(Into::into)?)
     }
 
     /// Gets the transaction receipt with `transaction_hash`
@@ -109,17 +116,26 @@ where
         Ok(self
             .0
             .request("eth_getTransactionReceipt", Some(hash))
-            .await?)
+            .await
+            .map_err(Into::into)?)
     }
 
     /// Gets the current gas price as estimated by the node
     pub async fn get_gas_price(&self) -> Result<U256, ProviderError> {
-        Ok(self.0.request("eth_gasPrice", None::<()>).await?)
+        Ok(self
+            .0
+            .request("eth_gasPrice", None::<()>)
+            .await
+            .map_err(Into::into)?)
     }
 
     /// Gets the accounts on the node
     pub async fn get_accounts(&self) -> Result<Vec<Address>, ProviderError> {
-        Ok(self.0.request("eth_accounts", None::<()>).await?)
+        Ok(self
+            .0
+            .request("eth_accounts", None::<()>)
+            .await
+            .map_err(Into::into)?)
     }
 
     /// Returns the nonce of the address
@@ -133,7 +149,8 @@ where
         Ok(self
             .0
             .request("eth_getTransactionCount", Some(&[from, block]))
-            .await?)
+            .await
+            .map_err(Into::into)?)
     }
 
     /// Returns the account's balance
@@ -147,13 +164,18 @@ where
         Ok(self
             .0
             .request("eth_getBalance", Some(&[from, block]))
-            .await?)
+            .await
+            .map_err(Into::into)?)
     }
 
     /// Returns the currently configured chain id, a value used in replay-protected
     /// transaction signing as introduced by EIP-155.
     pub async fn get_chainid(&self) -> Result<U256, ProviderError> {
-        Ok(self.0.request("eth_chainId", None::<()>).await?)
+        Ok(self
+            .0
+            .request("eth_chainId", None::<()>)
+            .await
+            .map_err(Into::into)?)
     }
 
     ////// Contract Execution
@@ -169,7 +191,11 @@ where
     ) -> Result<Bytes, ProviderError> {
         let tx = utils::serialize(&tx);
         let block = utils::serialize(&block.unwrap_or(BlockNumber::Latest));
-        Ok(self.0.request("eth_call", Some(vec![tx, block])).await?)
+        Ok(self
+            .0
+            .request("eth_call", Some(vec![tx, block]))
+            .await
+            .map_err(Into::into)?)
     }
 
     /// Send a transaction to a single Ethereum node and return the estimated amount of gas required (as a U256) to send it
@@ -187,7 +213,11 @@ where
             None => vec![tx],
         };
 
-        Ok(self.0.request("eth_estimateGas", Some(args)).await?)
+        Ok(self
+            .0
+            .request("eth_estimateGas", Some(args))
+            .await
+            .map_err(Into::into)?)
     }
 
     /// Send the transaction to the entire Ethereum network and returns the transaction's hash
@@ -209,21 +239,33 @@ where
             }
         }
 
-        Ok(self.0.request("eth_sendTransaction", Some(tx)).await?)
+        Ok(self
+            .0
+            .request("eth_sendTransaction", Some(tx))
+            .await
+            .map_err(Into::into)?)
     }
 
     /// Send the raw RLP encoded transaction to the entire Ethereum network and returns the transaction's hash
     /// This will consume gas from the account that signed the transaction.
     pub async fn send_raw_transaction(&self, tx: &Transaction) -> Result<TxHash, ProviderError> {
         let rlp = utils::serialize(&tx.rlp());
-        Ok(self.0.request("eth_sendRawTransaction", Some(rlp)).await?)
+        Ok(self
+            .0
+            .request("eth_sendRawTransaction", Some(rlp))
+            .await
+            .map_err(Into::into)?)
     }
 
     ////// Contract state
 
     /// Returns an array (possibly empty) of logs that match the filter
     pub async fn get_logs(&self, filter: &Filter) -> Result<Vec<Log>, ProviderError> {
-        Ok(self.0.request("eth_getLogs", Some(filter)).await?)
+        Ok(self
+            .0
+            .request("eth_getLogs", Some(filter))
+            .await
+            .map_err(Into::into)?)
     }
 
     // TODO: get_code, get_storage_at

@@ -14,7 +14,8 @@ async fn send_eth() {
 
     // this private key belongs to the above mnemonic
     let wallet: Wallet = "380eb0f3d505f087e438eca80bc4df9a7faa24f868e69fc0440261a0fc0567dc"
-        .parse().unwrap();
+        .parse()
+        .unwrap();
 
     // connect to the network
     let provider = Provider::<Http>::try_from(url.as_str()).unwrap();

@@ -19,7 +19,7 @@ pub type HttpProvider = Provider<Http>;
 /// JSON-RPC provider.
 pub trait JsonRpcClient: Debug {
     /// A JSON-RPC Error
-    type Error: Error;
+    type Error: Error + Into<ProviderError>;
 
     /// Sends a request with the provided JSON-RPC and parameters serialized as JSON
     async fn request<T: Serialize + Send + Sync, R: for<'a> Deserialize<'a>>(

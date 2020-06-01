@@ -40,8 +40,6 @@ impl<P, S> Client<P, S>
 where
     S: Signer,
     P: JsonRpcClient,
-    ProviderError: From<<P as JsonRpcClient>::Error>,
-    ClientError: From<<S as Signer>::Error>,
 {
     /// Signs and broadcasts the transaction
     pub async fn send_transaction(
@@ -71,7 +69,7 @@ where
         self.fill_transaction(&mut tx, block).await?;
 
         // sign the transaction with the network
-        let signed_tx = signer.sign_transaction(tx)?;
+        let signed_tx = signer.sign_transaction(tx).map_err(Into::into)?;
 
         // broadcast it
         self.provider.send_raw_transaction(&signed_tx).await?;
