@@ -1,9 +1,9 @@
 [workspace]
 
 members = [
-    "./crates/ethers",
-    "./crates/ethers-contract",
-    "./crates/ethers-providers",
-    "./crates/ethers-signers",
-    "./crates/ethers-core",
+    "./ethers",
+    "./ethers-contract",
+    "./ethers-providers",
+    "./ethers-signers",
+    "./ethers-core",
 ]
