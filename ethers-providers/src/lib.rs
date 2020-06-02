@@ -17,7 +17,7 @@ pub type HttpProvider = Provider<Http>;
 #[async_trait]
 /// Trait which must be implemented by data transports to be used with the Ethereum
 /// JSON-RPC provider.
-pub trait JsonRpcClient: Debug {
+pub trait JsonRpcClient: Debug + Clone {
     /// A JSON-RPC Error
     type Error: Error + Into<ProviderError>;
 

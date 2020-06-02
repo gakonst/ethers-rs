@@ -113,12 +113,30 @@ where
         })
     }
 
-    pub fn address(&self) -> &Address {
-        &self.address
+    pub fn address(&self) -> Address {
+        self.address
     }
 
     pub fn abi(&self) -> &Abi {
         &self.abi
+    }
+
+    /// Returns a new contract instance at `address`.
+    ///
+    /// Clones `self` internally
+    pub fn at<T: Into<Address>>(&self, address: T) -> Self {
+        let mut this = self.clone();
+        this.address = address.into();
+        this
+    }
+
+    /// Returns a new contract instance using the provided client
+    ///
+    /// Clones `self` internally
+    pub fn connect(&self, client: &'a Client<P, S>) -> Self {
+        let mut this = self.clone();
+        this.client = client;
+        this
     }
 }
 

@@ -30,6 +30,7 @@ pub enum ContractError {
     ContractNotDeployed,
 }
 
+#[derive(Debug, Clone)]
 pub struct ContractCall<'a, P, S, D> {
     pub(crate) tx: TransactionRequest,
     pub(crate) function: Function,
@@ -85,8 +86,8 @@ where
     /// and return the return type of the transaction without mutating the state
     ///
     /// Note: this function _does not_ send a transaction from your account
-    pub async fn call(self) -> Result<D, ContractError> {
-        let bytes = self.client.call(self.tx, self.block).await?;
+    pub async fn call(&self) -> Result<D, ContractError> {
+        let bytes = self.client.call(&self.tx, self.block).await?;
 
         let tokens = self.function.decode_output(&bytes.0)?;
 

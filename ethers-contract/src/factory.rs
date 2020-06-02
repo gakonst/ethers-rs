@@ -17,7 +17,7 @@ const POLL_INTERVAL: u64 = 7000;
 #[derive(Debug, Clone)]
 pub struct Deployer<'a, P, S> {
     client: &'a Client<P, S>,
-    abi: &'a Abi,
+    pub abi: &'a Abi,
     tx: TransactionRequest,
     confs: usize,
     poll_interval: Duration,
@@ -56,6 +56,14 @@ where
 
         let contract = Contract::new(address, self.abi, self.client);
         Ok(contract)
+    }
+
+    pub fn abi(&self) -> &Abi {
+        &self.abi
+    }
+
+    pub fn client(&self) -> &Client<P, S> {
+        &self.client
     }
 }
 

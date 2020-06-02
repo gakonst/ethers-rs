@@ -4,6 +4,7 @@ contract SimpleStorage {
 
     event ValueChanged(address indexed author, string oldValue, string newValue);
 
+    address public lastSender;
     string _value;
 
     constructor(string memory value) public {
@@ -18,5 +19,6 @@ contract SimpleStorage {
     function setValue(string memory value) public {
         emit ValueChanged(msg.sender, _value, value);
         _value = value;
+        lastSender = msg.sender;
     }
 }

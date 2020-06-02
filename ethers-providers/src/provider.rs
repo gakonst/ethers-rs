@@ -186,10 +186,10 @@ impl<P: JsonRpcClient> Provider<P> {
     /// This is free, since it does not change any state on the blockchain.
     pub async fn call(
         &self,
-        tx: TransactionRequest,
+        tx: &TransactionRequest,
         block: Option<BlockNumber>,
     ) -> Result<Bytes, ProviderError> {
-        let tx = utils::serialize(&tx);
+        let tx = utils::serialize(tx);
         let block = utils::serialize(&block.unwrap_or(BlockNumber::Latest));
         Ok(self
             .0
@@ -311,7 +311,7 @@ impl<P: JsonRpcClient> Provider<P> {
         // first get the resolver responsible for this name
         // the call will return a Bytes array which we convert to an address
         let data = self
-            .call(ens::get_resolver(ens_addr, ens_name), None)
+            .call(&ens::get_resolver(ens_addr, ens_name), None)
             .await?;
 
         let resolver_address: Address = decode_bytes(ParamType::Address, data);
@@ -321,7 +321,7 @@ impl<P: JsonRpcClient> Provider<P> {
 
         // resolve
         let data = self
-            .call(ens::resolve(resolver_address, selector, ens_name), None)
+            .call(&ens::resolve(resolver_address, selector, ens_name), None)
             .await?;
 
         Ok(Some(decode_bytes(param, data)))
