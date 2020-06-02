@@ -81,12 +81,12 @@ impl Context {
 
                 #struct_decl
 
-                impl<'a, P: JsonRpcClient, N: Network, S: Signer> #name<'a, P, N, S> {
+                impl<'a, P: JsonRpcClient, S: Signer> #name<'a, P, S> {
                     /// Creates a new contract instance with the specified `ethers`
                     /// client at the given `Address`. The contract derefs to a `ethers::Contract`
                     /// object
-                    pub fn new<T: Into<Address>>(address: T, client: &'a Client<'a, P, N, S>) -> Self {
-                        let contract = Contract::new(client, &ABI, address.into());
+                    pub fn new<T: Into<Address>>(address: T, client: &'a Client<P, S>) -> Self {
+                        let contract = Contract::new(address.into(), &ABI, client);
                         Self(contract)
                     }
 

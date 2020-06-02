@@ -41,9 +41,9 @@ fn expand_function(function: &Function, alias: Option<Ident>) -> Result<TokenStr
     let outputs = expand_fn_outputs(&function.outputs)?;
 
     let result = if function.constant {
-        quote! { ContractCall<'a, P, N, S, #outputs> }
+        quote! { ContractCall<'a, P, S, #outputs> }
     } else {
-        quote! { ContractCall<'a, P, N, S, H256> }
+        quote! { ContractCall<'a, P, S, H256> }
     };
 
     let arg = expand_inputs_call_arg(&function.inputs);
