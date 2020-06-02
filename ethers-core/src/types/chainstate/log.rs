@@ -3,7 +3,7 @@ use crate::{
     types::{Address, BlockNumber, Bytes, H256, U256, U64},
     utils::keccak256,
 };
-use serde::{ser::SerializeSeq, Deserialize, Serialize, Serializer};
+use serde::{Deserialize, Serialize, Serializer};
 use std::str::FromStr;
 
 /// A log produced by a transaction.
@@ -83,7 +83,6 @@ pub struct Filter {
     /// Topics
     // TODO: We could improve the low level API here by using ethabi's RawTopicFilter
     // and/or TopicFilter
-    #[serde(serialize_with = "skip_nones")]
     pub topics: [Option<ValueOrArray<H256>>; 4],
 
     /// Limit
@@ -200,24 +199,6 @@ where
             ValueOrArray::Array(inner) => inner.serialize(serializer),
         }
     }
-}
-
-// adapted from https://github.com/serde-rs/serde/issues/550#issuecomment-246746639
-fn skip_nones<T, S>(elements: &[Option<T>], serializer: S) -> Result<S::Ok, S::Error>
-where
-    T: Serialize,
-    S: Serializer,
-{
-    // get number of Some elements
-    let len = elements.iter().filter(|opt| opt.is_some()).count();
-
-    let mut seq = serializer.serialize_seq(Some(len))?;
-    for elem in elements {
-        if elem.is_some() {
-            seq.serialize_element(elem)?;
-        }
-    }
-    seq.end()
 }
 
 #[cfg(test)]

@@ -1,6 +1,8 @@
 use crate::Signer;
 
-use ethers_core::types::{Address, BlockNumber, NameOrAddress, TransactionRequest, TxHash};
+use ethers_core::types::{
+    Address, BlockNumber, Bytes, NameOrAddress, Signature, TransactionRequest, TxHash,
+};
 use ethers_providers::{JsonRpcClient, Provider, ProviderError};
 
 use std::ops::Deref;
@@ -13,6 +15,7 @@ use thiserror::Error;
 pub struct Client<P, S> {
     pub(crate) provider: Provider<P>,
     pub(crate) signer: Option<S>,
+    pub(crate) address: Address,
 }
 
 impl<P, S> From<Provider<P>> for Client<P, S> {
@@ -20,6 +23,7 @@ impl<P, S> From<Provider<P>> for Client<P, S> {
         Client {
             provider,
             signer: None,
+            address: Address::zero(),
         }
     }
 }
@@ -36,11 +40,23 @@ pub enum ClientError {
     EnsError(String),
 }
 
+// Helper functions for locally signing transactions
 impl<P, S> Client<P, S>
 where
     S: Signer,
     P: JsonRpcClient,
 {
+    /// Signs a message with the internal signer, or if none is present it will make a call to
+    /// the connected node's `eth_call` API.
+    pub async fn sign_message<T: Into<Bytes>>(&self, msg: T) -> Result<Signature, ClientError> {
+        let msg = msg.into();
+        Ok(if let Some(ref signer) = self.signer {
+            signer.sign_message(msg)
+        } else {
+            self.provider.sign(&msg, &self.address).await?
+        })
+    }
+
     /// Signs and broadcasts the transaction
     pub async fn send_transaction(
         &self,
@@ -124,8 +140,21 @@ where
         self.signer.as_ref().expect("no signer is configured")
     }
 
-    pub fn with_signer(mut self, signer: S) -> Self {
+    /// Sets the signer
+    pub fn with_signer(&mut self, signer: S) -> &mut Self {
         self.signer = Some(signer);
+        self
+    }
+
+    /// Sets the provider
+    pub fn with_provider(&mut self, provider: Provider<P>) -> &mut Self {
+        self.provider = provider;
+        self
+    }
+
+    /// Sets the account to be used with the `eth_sign` API calls
+    pub fn from(&mut self, address: Address) -> &mut Self {
+        self.address = address;
         self
     }
 }

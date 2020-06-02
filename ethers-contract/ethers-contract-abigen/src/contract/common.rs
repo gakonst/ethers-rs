@@ -20,13 +20,13 @@ pub(crate) fn imports() -> TokenStream {
     }
 }
 
-pub(crate) fn struct_declaration(cx: &Context) -> TokenStream {
+pub(crate) fn struct_declaration(cx: &Context, abi_name: &proc_macro2::Ident) -> TokenStream {
     let name = &cx.contract_name;
     let abi = &cx.abi_str;
 
     quote! {
         // Inline ABI declaration
-        static ABI: Lazy<Abi> = Lazy::new(|| serde_json::from_str(#abi)
+        pub static #abi_name: Lazy<Abi> = Lazy::new(|| serde_json::from_str(#abi)
                                           .expect("invalid abi"));
 
         // Struct declaration

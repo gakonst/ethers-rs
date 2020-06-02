@@ -4,7 +4,7 @@ use ethers_core::{
     abi::{self, Detokenize, ParamType},
     types::{
         Address, Block, BlockId, BlockNumber, Bytes, Filter, Log, NameOrAddress, Selector,
-        Transaction, TransactionReceipt, TransactionRequest, TxHash, U256,
+        Signature, Transaction, TransactionReceipt, TransactionRequest, TxHash, U256, U64,
     },
     utils,
 };
@@ -40,7 +40,7 @@ impl<P: JsonRpcClient> Provider<P> {
     // Functions for querying the state of the blockchain
 
     /// Gets the latest block number via the `eth_BlockNumber` API
-    pub async fn get_block_number(&self) -> Result<U256, ProviderError> {
+    pub async fn get_block_number(&self) -> Result<U64, ProviderError> {
         Ok(self
             .0
             .request("eth_blockNumber", None::<()>)
@@ -254,6 +254,17 @@ impl<P: JsonRpcClient> Provider<P> {
         Ok(self
             .0
             .request("eth_sendRawTransaction", Some(rlp))
+            .await
+            .map_err(Into::into)?)
+    }
+
+    /// Signs data using a specific account. This account needs to be unlocked.
+    pub async fn sign(&self, data: &Bytes, from: &Address) -> Result<Signature, ProviderError> {
+        let data = utils::serialize(data);
+        let from = utils::serialize(from);
+        Ok(self
+            .0
+            .request("eth_sign", Some(vec![from, data]))
             .await
             .map_err(Into::into)?)
     }

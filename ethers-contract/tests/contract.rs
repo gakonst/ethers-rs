@@ -102,12 +102,13 @@ async fn deploy_and_call_contract() {
         .event("ValueChanged")
         .unwrap()
         .from_block(0u64)
+        .topic1(client.address()) // Corresponds to the first indexed parameter
         .query()
         .await
         .unwrap();
     assert_eq!(logs[0].new_value, "initial value");
-    assert_eq!(logs[1].new_value, "hi");
-    assert_eq!(logs[2].new_value, "hi2");
+    assert_eq!(logs[1].new_value, "hi2");
+    assert_eq!(logs.len(), 2);
 
     let logs: Vec<ValueChanged> = contract2
         .event("ValueChanged")
@@ -123,19 +124,22 @@ async fn deploy_and_call_contract() {
 // Note: We also provide the `abigen` macro for generating these bindings automatically
 #[derive(Clone, Debug)]
 struct ValueChanged {
-    author: Address,
+    old_author: Address,
+    new_author: Address,
     old_value: String,
     new_value: String,
 }
 
 impl Detokenize for ValueChanged {
     fn from_tokens(tokens: Vec<Token>) -> Result<ValueChanged, InvalidOutputType> {
-        let author: Address = tokens[0].clone().to_address().unwrap();
-        let old_value = tokens[1].clone().to_string().unwrap();
-        let new_value = tokens[2].clone().to_string().unwrap();
+        let old_author: Address = tokens[1].clone().to_address().unwrap();
+        let new_author: Address = tokens[1].clone().to_address().unwrap();
+        let old_value = tokens[2].clone().to_string().unwrap();
+        let new_value = tokens[3].clone().to_string().unwrap();
 
         Ok(Self {
-            author,
+            old_author,
+            new_author,
             old_value,
             new_value,
         })

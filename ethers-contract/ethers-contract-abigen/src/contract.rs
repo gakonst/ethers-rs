@@ -57,11 +57,13 @@ impl Context {
             cx.contract_name.to_string().to_lowercase()
         ));
 
+        let abi_name = super::util::safe_ident(&format!("{}_ABI", name.to_string().to_uppercase()));
+
         // 0. Imports
         let imports = common::imports();
 
         // 1. Declare Contract struct
-        let struct_decl = common::struct_declaration(&cx);
+        let struct_decl = common::struct_declaration(&cx, &abi_name);
 
         // 2. Declare events structs & impl FromTokens for each event
         let events_decl = cx.events_declaration()?;
@@ -86,7 +88,7 @@ impl Context {
                     /// client at the given `Address`. The contract derefs to a `ethers::Contract`
                     /// object
                     pub fn new<T: Into<Address>>(address: T, client: &'a Client<P, S>) -> Self {
-                        let contract = Contract::new(address.into(), &ABI, client);
+                        let contract = Contract::new(address.into(), &#abi_name, client);
                         Self(contract)
                     }
 
