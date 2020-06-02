@@ -45,12 +45,12 @@ pub mod contract {
 /// network type and override the provider's ENS address with the `ens` method.
 ///
 /// ```rust
-/// use ethers::providers::{HttpProvider, networks::Any};
+/// use ethers::providers::{Provider, Http};
 /// use std::convert::TryFrom;
 /// use tokio::runtime::Runtime;
 ///
-/// let provider = HttpProvider::<Any>::try_from(
-///     "https://mainnet.infura.io/v3/9408f47dedf04716a03ef994182cf150"
+/// let provider = Provider::<Http>::try_from(
+///     "https://mainnet.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27"
 /// ).unwrap();
 ///
 /// // Since this is an async function, we need to run it from an async runtime,
@@ -68,11 +68,11 @@ pub mod contract {
 /// follows:
 ///
 /// ```rust
-/// # use ethers::providers::{HttpProvider, networks::Mainnet};
+/// # use ethers::providers::{Provider, Http};
 /// # use std::convert::TryFrom;
 /// # use tokio::runtime::Runtime;
-/// # let provider = HttpProvider::<Mainnet>::try_from(
-/// #     "https://mainnet.infura.io/v3/9408f47dedf04716a03ef994182cf150"
+/// # let provider = Provider::<Http>::try_from(
+/// #     "https://mainnet.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27"
 /// # ).unwrap();
 /// # let mut runtime = Runtime::new().expect("Failed to create Tokio runtime");
 /// // Resolve ENS name to Address
