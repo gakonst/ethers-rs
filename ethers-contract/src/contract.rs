@@ -44,18 +44,15 @@ where
         }
     }
 
-    /// Returns an `Event` builder for the provided event name. If there are
-    /// multiple functions with the same name due to overloading, consider using
-    /// the `method_hash` method instead, since this will use the first match.
-    pub fn event<'b, D: Detokenize>(&'a self, name: &str) -> Result<Event<'a, 'b, P, D>, Error>
-    where
-        'a: 'b,
-    {
+    /// Returns an `Event` builder for the provided event name.
+    pub fn event<D: Detokenize>(&self, name: &str) -> Result<Event<P, D>, Error> {
         // get the event's full name
         let event = self.abi.event(name)?;
         Ok(Event {
             provider: &self.client.provider(),
-            filter: Filter::new().event(&event.abi_signature()),
+            filter: Filter::new()
+                .event(&event.abi_signature())
+                .address(self.address),
             event: &event,
             datatype: PhantomData,
         })
@@ -113,14 +110,6 @@ where
         })
     }
 
-    pub fn address(&self) -> Address {
-        self.address
-    }
-
-    pub fn abi(&self) -> &Abi {
-        &self.abi
-    }
-
     /// Returns a new contract instance at `address`.
     ///
     /// Clones `self` internally
@@ -137,6 +126,21 @@ where
         let mut this = self.clone();
         this.client = client;
         this
+    }
+
+    /// Returns the contract's address
+    pub fn address(&self) -> Address {
+        self.address
+    }
+
+    /// Returns a reference to the contract's ABI
+    pub fn abi(&self) -> &Abi {
+        &self.abi
+    }
+
+    /// Returns a reference to the contract's client
+    pub fn client(&self) -> &Client<P, S> {
+        &self.client
     }
 }
 
