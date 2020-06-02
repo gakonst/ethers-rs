@@ -11,9 +11,6 @@ use std::{error::Error, fmt::Debug};
 
 pub use provider::{Provider, ProviderError};
 
-/// An HTTP provider for interacting with an Ethereum-compatible blockchain
-pub type HttpProvider = Provider<Http>;
-
 #[async_trait]
 /// Trait which must be implemented by data transports to be used with the Ethereum
 /// JSON-RPC provider.

@@ -1,11 +1,11 @@
 use anyhow::Result;
-use ethers::{networks::Any, prelude::*};
+use ethers::prelude::*;
 use std::convert::TryFrom;
 
 #[tokio::main]
 async fn main() -> Result<()> {
     // connect to the network
-    let provider = HttpProvider::<Any>::try_from("http://localhost:8545")?;
+    let provider = Provider::<Http>::try_from("http://localhost:8545")?;
 
     let filter = Filter::new()
         .address_str("f817796F60D268A36a57b8D2dF1B97B14C0D0E1d")?

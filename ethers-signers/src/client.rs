@@ -30,7 +30,7 @@ pub enum ClientError {
     ProviderError(#[from] ProviderError),
 
     #[error(transparent)]
-    SignerError(#[from] Box<dyn std::error::Error>),
+    SignerError(#[from] Box<dyn std::error::Error + Send + Sync>),
 
     #[error("ens name not found: {0}")]
     EnsError(String),
@@ -122,6 +122,11 @@ where
     /// Returns a reference to the client's signer, will panic if no signer is set
     pub fn signer_unchecked(&self) -> &S {
         self.signer.as_ref().expect("no signer is configured")
+    }
+
+    pub fn with_signer(mut self, signer: S) -> Self {
+        self.signer = Some(signer);
+        self
     }
 }
 

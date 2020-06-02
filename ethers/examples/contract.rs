@@ -5,7 +5,7 @@ use ethers::{
 };
 use std::convert::TryFrom;
 
-// Generate the contract bindings by providing the ABI
+// Generate the type-safe contract bindings by providing the ABI
 abigen!(
     SimpleContract,
     r#"[{"inputs":[{"internalType":"string","name":"value","type":"string"}],"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"author","type":"address"},{"indexed":false,"internalType":"string","name":"oldValue","type":"string"},{"indexed":false,"internalType":"string","name":"newValue","type":"string"}],"name":"ValueChanged","type":"event"},{"inputs":[],"name":"getValue","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","constant": true, "type":"function"},{"inputs":[{"internalType":"string","name":"value","type":"string"}],"name":"setValue","outputs":[],"stateMutability":"nonpayable","type":"function"}]"#,
@@ -28,14 +28,14 @@ async fn main() -> Result<()> {
         .spawn();
 
     // 3. instantiate our wallet
-    let wallet = "380eb0f3d505f087e438eca80bc4df9a7faa24f868e69fc0440261a0fc0567dc"
-        .parse::<MainnetWallet>()?;
+    let wallet =
+        "380eb0f3d505f087e438eca80bc4df9a7faa24f868e69fc0440261a0fc0567dc".parse::<Wallet>()?;
 
     // 4. connect to the network
-    let provider = HttpProvider::try_from(url.as_str())?;
+    let provider = Provider::<Http>::try_from(url.as_str())?;
 
     // 5. instantiate the client with the wallet
-    let client = wallet.connect(&provider);
+    let client = wallet.connect(provider);
 
     // 6. create a factory which will be used to deploy instances of the contract
     let factory = ContractFactory::new(&client, &contract.abi, &contract.bytecode);

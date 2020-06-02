@@ -10,15 +10,16 @@ async fn main() -> Result<()> {
         .port(port)
         .mnemonic("abstract vacuum mammal awkward pudding scene penalty purchase dinner depart evoke puzzle")
         .spawn();
+
     // this private key belongs to the above mnemonic
-    let wallet: MainnetWallet =
+    let wallet: Wallet =
         "380eb0f3d505f087e438eca80bc4df9a7faa24f868e69fc0440261a0fc0567dc".parse()?;
 
     // connect to the network
-    let provider = HttpProvider::try_from(url.as_str())?;
+    let provider = Provider::<Http>::try_from(url.as_str())?;
 
     // connect the wallet to the provider
-    let client = wallet.connect(&provider);
+    let client = wallet.connect(provider);
 
     // craft the transaction
     let tx = TransactionRequest::new()
