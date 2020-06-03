@@ -10,7 +10,7 @@ mod methods;
 mod types;
 
 use super::util;
-use super::Args;
+use super::Abigen;
 use anyhow::{anyhow, Context as _, Result};
 use ethers_core::{abi::Abi, types::Address};
 use inflector::Inflector;
@@ -21,22 +21,11 @@ use syn::{Path, Visibility};
 
 /// Internal shared context for generating smart contract bindings.
 pub(crate) struct Context {
-    /// The contract name
-    name: String,
-
     /// The ABI string pre-parsing.
     abi_str: Literal,
 
     /// The parsed ABI.
     abi: Abi,
-
-    /// The identifier for the runtime crate. Usually this is `ethcontract` but
-    /// it can be different if the crate was renamed in the Cargo manifest for
-    /// example.
-    runtime_crate: Ident,
-
-    /// The visibility for the generated module and re-exported contract type.
-    visibility: Visibility,
 
     /// The contract name as an identifier.
     contract_name: Ident,
@@ -49,8 +38,8 @@ pub(crate) struct Context {
 }
 
 impl Context {
-    pub fn expand(args: Args) -> Result<TokenStream> {
-        let cx = Self::from_args(args)?;
+    pub(crate) fn expand(args: Abigen) -> Result<TokenStream> {
+        let cx = Self::from_abigen(args)?;
         let name = &cx.contract_name;
         let name_mod = util::ident(&format!(
             "{}_mod",
@@ -105,7 +94,7 @@ impl Context {
     }
 
     /// Create a context from the code generation arguments.
-    fn from_args(args: Args) -> Result<Self> {
+    fn from_abigen(args: Abigen) -> Result<Self> {
         // get the actual ABI string
         let abi_str = args.abi_source.get().context("failed to get ABI JSON")?;
 
@@ -116,16 +105,7 @@ impl Context {
                 format!("failed to parse artifact from source {:?}", args.abi_source,)
             })?;
 
-        let raw_contract_name = args.contract_name;
-
-        let runtime_crate = util::ident(&args.runtime_crate_name);
-
-        let visibility = match args.visibility_modifier.as_ref() {
-            Some(vis) => syn::parse_str(vis)?,
-            None => Visibility::Inherited,
-        };
-
-        let contract_name = util::ident(&raw_contract_name);
+        let contract_name = util::ident(&args.contract_name);
 
         // NOTE: We only check for duplicate signatures here, since if there are
         //   duplicate aliases, the compiler will produce a warning because a
@@ -149,11 +129,8 @@ impl Context {
             .context("failed to parse event derives")?;
 
         Ok(Context {
-            name: raw_contract_name,
             abi,
             abi_str: Literal::string(&abi_str),
-            runtime_crate,
-            visibility,
             contract_name,
             method_aliases,
             event_derives,

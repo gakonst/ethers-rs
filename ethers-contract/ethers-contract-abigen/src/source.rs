@@ -35,17 +35,24 @@ impl Source {
     /// Parses an ABI from a source
     ///
     /// Contract ABIs can be retrieved from the local filesystem or online
-    /// from `etherscan.io`, this method parses ABI source URLs and accepts
-    /// the following:
+    /// from `etherscan.io`. They can also be provided in-line. This method parses
+    /// ABI source URLs and accepts the following:
+    ///
+    /// - raw ABI JSON
+    ///
     /// - `relative/path/to/Contract.json`: a relative path to an ABI JSON file.
     /// This relative path is rooted in the current working directory.
     /// To specify the root for relative paths, use `Source::with_root`.
+    ///
     /// - `/absolute/path/to/Contract.json` or
     ///   `file:///absolute/path/to/Contract.json`: an absolute path or file URL
     ///   to an ABI JSON file.
+    ///
     /// - `http(s)://...` an HTTP url to a contract ABI.
+    ///
     /// - `etherscan:0xXX..XX` or `https://etherscan.io/address/0xXX..XX`: a
     ///   address or URL of a verified contract on Etherscan.
+    ///
     /// - `npm:@org/package@1.0.0/path/to/contract.json` an npmjs package with
     ///   an optional version and path (defaulting to the latest version and
     ///   `index.js`). The contract ABI will be retrieved through
@@ -54,6 +61,10 @@ impl Source {
     where
         S: AsRef<str>,
     {
+        let source = source.as_ref();
+        if source.starts_with('[') {
+            return Ok(Source::String(source.to_owned()));
+        }
         let root = env::current_dir()?.canonicalize()?;
         Source::with_root(root, source)
     }
@@ -61,7 +72,7 @@ impl Source {
     /// Parses an artifact source from a string and a specified root directory
     /// for resolving relative paths. See `Source::with_root` for more details
     /// on supported source strings.
-    pub fn with_root<P, S>(root: P, source: S) -> Result<Self>
+    fn with_root<P, S>(root: P, source: S) -> Result<Self>
     where
         P: AsRef<Path>,
         S: AsRef<str>,
@@ -88,7 +99,7 @@ impl Source {
     }
 
     /// Creates a local filesystem source from a path string.
-    pub fn local<P>(path: P) -> Self
+    fn local<P>(path: P) -> Self
     where
         P: AsRef<Path>,
     {
@@ -96,7 +107,7 @@ impl Source {
     }
 
     /// Creates an HTTP source from a URL.
-    pub fn http<S>(url: S) -> Result<Self>
+    fn http<S>(url: S) -> Result<Self>
     where
         S: AsRef<str>,
     {
@@ -104,7 +115,7 @@ impl Source {
     }
 
     /// Creates an Etherscan source from an address string.
-    pub fn etherscan<S>(address: S) -> Result<Self>
+    fn etherscan<S>(address: S) -> Result<Self>
     where
         S: AsRef<str>,
     {
@@ -114,7 +125,7 @@ impl Source {
     }
 
     /// Creates an Etherscan source from an address string.
-    pub fn npm<S>(package_path: S) -> Self
+    fn npm<S>(package_path: S) -> Self
     where
         S: Into<String>,
     {
@@ -161,14 +172,14 @@ fn get_local_contract(path: &Path) -> Result<String> {
     };
 
     let json = fs::read_to_string(path).context("failed to read artifact JSON file")?;
-    Ok(abi_or_artifact(json))
+    Ok(json)
 }
 
 /// Retrieves a Truffle artifact or ABI from an HTTP URL.
 fn get_http_contract(url: &Url) -> Result<String> {
     let json = util::http_get(url.as_str())
         .with_context(|| format!("failed to retrieve JSON from {}", url))?;
-    Ok(abi_or_artifact(json))
+    Ok(json)
 }
 
 /// Retrieves a contract ABI from the Etherscan HTTP API and wraps it in an
@@ -188,16 +199,7 @@ fn get_etherscan_contract(address: Address) -> Result<String> {
         address, api_key,
     );
     let abi = util::http_get(&abi_url).context("failed to retrieve ABI from Etherscan.io")?;
-
-    // NOTE: Wrap the retrieved ABI in an empty contract, this is because
-    //   currently, the code generation infrastructure depends on having an
-    //   `Artifact` instance.
-    let json = format!(
-        r#"{{"abi":{},"networks":{{"1":{{"address":"{:?}"}}}}}}"#,
-        abi, address,
-    );
-
-    Ok(json)
+    Ok(abi)
 }
 
 /// Retrieves a Truffle artifact or ABI from an npm package through `unpkg.io`.
@@ -206,25 +208,7 @@ fn get_npm_contract(package: &str) -> Result<String> {
     let json = util::http_get(&unpkg_url)
         .with_context(|| format!("failed to retrieve JSON from for npm package {}", package))?;
 
-    Ok(abi_or_artifact(json))
-}
-
-/// A best-effort coersion of an ABI or Truffle artifact JSON document into a
-/// Truffle artifact JSON document.
-///
-/// This method uses the fact that ABIs are arrays and Truffle artifacts are
-/// objects to guess at what type of document this is. Note that no parsing or
-/// validation is done at this point as the document gets parsed and validated
-/// at generation time.
-///
-/// This needs to be done as currently the contract generation infrastructure
-/// depends on having a Truffle artifact.
-fn abi_or_artifact(json: String) -> String {
-    if json.trim().starts_with('[') {
-        format!(r#"{{"abi":{}}}"#, json.trim())
-    } else {
-        json
-    }
+    Ok(json)
 }
 
 #[cfg(test)]
@@ -263,5 +247,9 @@ mod tests {
             let source = Source::with_root(root, url).unwrap();
             assert_eq!(source, *expected);
         }
+
+        let src = r#"[{"constant":true,"inputs":[],"name":"name","outputs":[{"name":"name","type":"string"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"symbol","outputs":[{"name":"symbol","type":"string"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"decimals","outputs":[{"name":"decimals","type":"uint8"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"spender","type":"address"},{"name":"value","type":"uint256"}],"name":"approve","outputs":[{"name":"success","type":"bool"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"totalSupply","outputs":[{"name":"totalSupply","type":"uint256"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"from","type":"address"},{"name":"to","type":"address"},{"name":"value","type":"uint256"}],"name":"transferFrom","outputs":[{"name":"success","type":"bool"}],"payable":false,"type":"function"},{"constant":true,"inputs":[{"name":"who","type":"address"}],"name":"balanceOf","outputs":[{"name":"balance","type":"uint256"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"to","type":"address"},{"name":"value","type":"uint256"}],"name":"transfer","outputs":[{"name":"success","type":"bool"}],"payable":false,"type":"function"},{"constant":true,"inputs":[{"name":"owner","type":"address"},{"name":"spender","type":"address"}],"name":"allowance","outputs":[{"name":"remaining","type":"uint256"}],"payable":false,"type":"function"},{"anonymous":false,"inputs":[{"indexed":true,"name":"owner","type":"address"},{"indexed":true,"name":"spender","type":"address"},{"indexed":false,"name":"value","type":"uint256"}],"name":"Approval","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"from","type":"address"},{"indexed":true,"name":"to","type":"address"},{"indexed":false,"name":"value","type":"uint256"}],"name":"Transfer","type":"event"}]"#;
+        let parsed = Source::parse(src).unwrap();
+        assert_eq!(parsed, Source::String(src.to_owned()));
     }
 }

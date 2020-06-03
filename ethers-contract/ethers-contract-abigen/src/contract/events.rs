@@ -88,9 +88,9 @@ fn expand_event(event: &Event, event_derives: &[Path]) -> Result<TokenStream> {
     let params_len = Literal::usize_unsuffixed(params.len());
     let read_param_token = params
         .iter()
-        .map(|(name, ty)| {
+        .map(|(name, _)| {
             quote! {
-                let #name = #ty::from_token(tokens.next().expect("this should never happen"))?;
+                let #name = Detokenize::from_token(tokens.next().expect("this should never happen"))?;
             }
         })
         .collect::<Vec<_>>();
