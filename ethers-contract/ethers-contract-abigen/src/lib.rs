@@ -27,8 +27,7 @@ use anyhow::Result;
 use proc_macro2::TokenStream;
 use std::{collections::HashMap, fs::File, io::Write, path::Path};
 
-/// Internal global arguments passed to the generators for each individual
-/// component that control expansion.
+/// Builder struct for generating type-safe bindings from a contract's ABI
 pub struct Abigen {
     /// The source of the ABI JSON for the contract whose bindings
     /// are being generated.

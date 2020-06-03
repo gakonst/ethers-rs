@@ -68,7 +68,7 @@ impl_output!(1, A,);
 impl_output!(2, A, B,);
 impl_output!(3, A, B, C,);
 impl_output!(4, A, B, C, D,);
-// impl_output!(5, A, B, C, D, E,);
+impl_output!(5, A, B, C, D, E,);
 // impl_output!(6, A, B, C, D, E, F,);
 // impl_output!(7, A, B, C, D, E, F, G,);
 // impl_output!(8, A, B, C, D, E, F, G, H,);
@@ -125,11 +125,11 @@ impl_tokens!(A:0, );
 impl_tokens!(A:0, B:1, );
 impl_tokens!(A:0, B:1, C:2, );
 impl_tokens!(A:0, B:1, C:2, D:3, );
+impl_tokens!(A:0, B:1, C:2, D:3, E:4, );
+impl_tokens!(A:0, B:1, C:2, D:3, E:4, F:5, );
+impl_tokens!(A:0, B:1, C:2, D:3, E:4, F:5, G:6, );
 
 // Commented out macros to reduce codegen time. Re-enable if needed.
-// impl_tokens!(A:0, B:1, C:2, D:3, E:4, );
-// impl_tokens!(A:0, B:1, C:2, D:3, E:4, F:5, );
-// impl_tokens!(A:0, B:1, C:2, D:3, E:4, F:5, G:6, );
 // impl_tokens!(A:0, B:1, C:2, D:3, E:4, F:5, G:6, H:7, );
 // impl_tokens!(A:0, B:1, C:2, D:3, E:4, F:5, G:6, H:7, I:8, );
 // impl_tokens!(A:0, B:1, C:2, D:3, E:4, F:5, G:6, H:7, I:8, J:9, );

@@ -2,16 +2,16 @@
 //! ethereum smart contract.
 use crate::spanned::{ParseInner, Spanned};
 
-use ethers_contract_abigen::Builder;
+use ethers_contract_abigen::Abigen;
 use ethers_core::abi::{Function, FunctionExt, Param};
 
 use proc_macro2::{Span, TokenStream as TokenStream2};
-use quote::{quote, ToTokens as _};
+use quote::ToTokens;
 use std::collections::HashSet;
 use std::error::Error;
 use syn::ext::IdentExt;
 use syn::parse::{Error as ParseError, Parse, ParseStream, Result as ParseResult};
-use syn::{braced, parenthesized, Ident, LitStr, Path, Token, Visibility};
+use syn::{braced, parenthesized, Ident, LitStr, Path, Token};
 
 pub(crate) fn expand(args: ContractArgs) -> Result<TokenStream2, Box<dyn Error>> {
     Ok(args.into_builder()?.generate()?.into_tokens())
@@ -20,21 +20,17 @@ pub(crate) fn expand(args: ContractArgs) -> Result<TokenStream2, Box<dyn Error>>
 /// Contract procedural macro arguments.
 #[cfg_attr(test, derive(Debug, Eq, PartialEq))]
 pub(crate) struct ContractArgs {
-    visibility: Option<String>,
     name: String,
-    path: String,
+    abi: String,
     parameters: Vec<Parameter>,
 }
 
 impl ContractArgs {
-    fn into_builder(self) -> Result<Builder, Box<dyn Error>> {
-        let mut builder =
-            Builder::from_str(&self.name, &self.path).visibility_modifier(self.visibility);
+    fn into_builder(self) -> Result<Abigen, Box<dyn Error>> {
+        let mut builder = Abigen::new(&self.name, &self.abi)?;
 
         for parameter in self.parameters.into_iter() {
             builder = match parameter {
-                Parameter::Mod(name) => builder.contract_mod_override(Some(name)),
-                Parameter::Crate(name) => builder.runtime_crate_name(name),
                 Parameter::Methods(methods) => methods.into_iter().fold(builder, |builder, m| {
                     builder.add_method_alias(m.signature, m.alias)
                 }),
@@ -50,12 +46,6 @@ impl ContractArgs {
 
 impl ParseInner for ContractArgs {
     fn spanned_parse(input: ParseStream) -> ParseResult<(Span, Self)> {
-        // read the visibility parameter
-        let visibility = match input.parse::<Visibility>()? {
-            Visibility::Inherited => None,
-            token => Some(quote!(#token).to_string()),
-        };
-
         // read the contract name
         let name = input.parse::<Ident>()?.to_string();
 
@@ -67,7 +57,7 @@ impl ParseInner for ContractArgs {
         //   therefore, the path will always be rooted on the cargo manifest
         //   directory. Eventually we can use the `Span::source_file` API to
         //   have a better experience.
-        let (span, path) = {
+        let (span, abi) = {
             let literal = input.parse::<LitStr>()?;
             (literal.span(), literal.value())
         };
@@ -84,9 +74,8 @@ impl ParseInner for ContractArgs {
         Ok((
             span,
             ContractArgs {
-                visibility,
                 name,
-                path,
+                abi,
                 parameters,
             },
         ))
@@ -96,8 +85,6 @@ impl ParseInner for ContractArgs {
 /// A single procedural macro parameter.
 #[cfg_attr(test, derive(Debug, Eq, PartialEq))]
 enum Parameter {
-    Mod(String),
-    Crate(String),
     Methods(Vec<Method>),
     EventDerives(Vec<String>),
 }
@@ -106,16 +93,6 @@ impl Parse for Parameter {
     fn parse(input: ParseStream) -> ParseResult<Self> {
         let name = input.call(Ident::parse_any)?;
         let param = match name.to_string().as_str() {
-            "crate" => {
-                input.parse::<Token![=]>()?;
-                let name = input.call(Ident::parse_any)?.to_string();
-                Parameter::Crate(name)
-            }
-            "mod" => {
-                input.parse::<Token![=]>()?;
-                let name = input.parse::<Ident>()?.to_string();
-                Parameter::Mod(name)
-            }
             "methods" => {
                 let content;
                 braced!(content in input);

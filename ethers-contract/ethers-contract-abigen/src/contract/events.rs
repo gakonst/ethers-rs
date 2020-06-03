@@ -90,7 +90,7 @@ fn expand_event(event: &Event, event_derives: &[Path]) -> Result<TokenStream> {
         .iter()
         .map(|(name, _)| {
             quote! {
-                let #name = Detokenize::from_token(tokens.next().expect("this should never happen"))?;
+                let #name = Tokenizable::from_token(tokens.next().expect("this should never happen"))?;
             }
         })
         .collect::<Vec<_>>();

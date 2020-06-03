@@ -49,8 +49,10 @@ jobs:
       - setup-lints
       - setup-sccache
       - restore-sccache-cache
-        # skip these temporarily until we get ganache-cli and solc on CI
-      - run: cargo test --all -- --skip deploy_and_call_contract --skip send_eth
+      - run:
+            name: tests
+            # skip these temporarily until we get ganache-cli and solc on CI
+            command: cargo test --all -- --skip deploy_and_call_contract --skip send_eth
       - run:
           name: Check style
           command: |

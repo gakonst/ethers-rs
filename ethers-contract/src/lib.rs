@@ -11,7 +11,7 @@ mod factory;
 pub use factory::ContractFactory;
 
 #[cfg(feature = "abigen")]
-pub use ethers_contract_abigen::Builder;
+pub use ethers_contract_abigen::Abigen;
 
 #[cfg(feature = "abigen")]
 pub use ethers_contract_derive::abigen;
