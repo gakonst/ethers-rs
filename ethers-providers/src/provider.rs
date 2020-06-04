@@ -35,6 +35,11 @@ pub enum ProviderError {
 
 // JSON RPC bindings
 impl<P: JsonRpcClient> Provider<P> {
+    /// Instantiate a new provider with a backend.
+    pub fn new(provider: P) -> Self {
+        Self(provider, None)
+    }
+
     ////// Blockchain Status
     //
     // Functions for querying the state of the blockchain

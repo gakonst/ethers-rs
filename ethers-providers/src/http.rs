@@ -22,10 +22,13 @@ pub struct Provider {
 }
 
 #[derive(Error, Debug)]
+/// Error thrown when sending an HTTP request
 pub enum ClientError {
+    /// Thrown if the request failed
     #[error(transparent)]
     ReqwestError(#[from] ReqwestError),
     #[error(transparent)]
+    /// Thrown if the response could not be parsed
     JsonRpcError(#[from] JsonRpcError),
 }
 

@@ -17,6 +17,17 @@
 //!
 //! # Quickstart
 //!
+//! A prelude is provided which imports all the important things for you. You can connect
+//! to the chain by providing a URL to the Provider along with the provider type (Http/Websockets).
+//!
+//! ```no_run
+//! use ethers::prelude::*;
+//! let provider = Provider::<Http>::try_from("http://localhost:8545").unwrap();
+//! ```
+//!
+//! All functions
+//!
+//!
 //! ## Sending Ether
 //!
 //! ## Checking the state of the blockchain
@@ -171,14 +182,8 @@ pub mod signers {
 /// # ABI Encoding and Decoding
 ///
 /// This crate re-exports the [`ethabi`](http://docs.rs/ethabi) crate's functions
-/// under the `abi` module
-///
-/// # A note about `secp256k1` and `rand`
-///
-/// The version of `rand` used in the `secp256k1` crate is not compatible with the
-/// latest one in crates at the time of writing (rand version 0.5.1, secp256k1 version 0.17.1)
-/// As a result, the RNGs used for generating private keys must use a compatible rand crate
-/// version. For convenience, we re-export it so that consumers can use it as `ethers_core::rand`.
+/// under the `abi` module, as well as the [`secp256k1`](secp256k1) and [`rand`](rand)
+/// crates for convenience.
 pub mod core {
     pub use ethers_core::*;
 }

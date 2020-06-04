@@ -29,14 +29,18 @@ impl<P, S> From<Provider<P>> for Client<P, S> {
 }
 
 #[derive(Debug, Error)]
+/// Error thrown when the client interacts with the blockchain
 pub enum ClientError {
     #[error(transparent)]
+    /// Throw when the call to the provider fails
     ProviderError(#[from] ProviderError),
 
     #[error(transparent)]
+    /// Thrown when the internal call to the signer fails
     SignerError(#[from] Box<dyn std::error::Error + Send + Sync>),
 
     #[error("ens name not found: {0}")]
+    /// Thrown when an ENS name is not found
     EnsError(String),
 }
 
