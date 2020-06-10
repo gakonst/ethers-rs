@@ -107,13 +107,13 @@ impl Parse for Parameter {
                         if !signatures.insert(method.signature.clone()) {
                             return Err(ParseError::new(
                                 method.span(),
-                                "duplicate method signature in `ethcontract::contract!` macro invocation",
+                                "duplicate method signature in `abigen!` macro invocation",
                             ));
                         }
                         if !aliases.insert(method.alias.clone()) {
                             return Err(ParseError::new(
                                 method.span(),
-                                "duplicate method alias in `ethcontract::contract!` macro invocation",
+                                "duplicate method alias in `abigen!` macro invocation",
                             ));
                         }
                         methods.push(method.into_inner())
@@ -206,13 +206,13 @@ mod tests {
         }};
     }
 
-    // macro_rules! contract_args {
-    //     ($($arg:tt)*) => {
-    //         contract_args_result!($($arg)*)
-    //             .expect("failed to parse contract args")
-    //             .into_inner()
-    //     };
-    // }
+    macro_rules! contract_args {
+        ($($arg:tt)*) => {
+            contract_args_result!($($arg)*)
+                .expect("failed to parse contract args")
+                .into_inner()
+        };
+    }
 
     macro_rules! contract_args_err {
         ($($arg:tt)*) => {
@@ -229,77 +229,69 @@ mod tests {
         }
     }
 
-    // #[test]
-    // fn parse_contract_args() {
-    //     let args = contract_args!("path/to/artifact.json");
-    //     assert_eq!(args.artifact_path, "path/to/artifact.json");
-    // }
+    #[test]
+    fn parse_contract_args() {
+        let args = contract_args!(TestContract, "path/to/abi.json");
+        assert_eq!(args.name, "TestContract");
+        assert_eq!(args.abi, "path/to/abi.json");
+    }
 
-    // #[test]
-    // fn crate_parameter_accepts_keywords() {
-    //     let args = contract_args!("artifact.json", crate = crate);
-    //     assert_eq!(args.parameters, &[Parameter::Crate("crate".into())]);
-    // }
+    #[test]
+    fn parse_contract_args_with_defaults() {
+        let args = contract_args!(TestContract, "[{}]");
+        assert_eq!(
+            args,
+            ContractArgs {
+                name: "TestContract".to_string(),
+                abi: "[{}]".to_string(),
+                parameters: vec![],
+            },
+        );
+    }
 
-    // TODO: Re-enable these tests once we figure out which syntax we prefer for the macro
-    // #[test]
-    // fn parse_contract_args_with_defaults() {
-    //     let args = contract_args!("artifact.json");
-    //     assert_eq!(
-    //         args,
-    //         ContractArgs {
-    //             visibility: None,
-    //             parameters: vec![],
-    //         },
-    //     );
-    // }
-
-    // #[test]
-    // fn parse_contract_args_with_parameters() {
-    //     let args = contract_args!(
-    //         pub(crate) "artifact.json",
-    //         crate = foobar,
-    //         mod = contract,
-    //         contract = Contract,
-    //         methods {
-    //             myMethod(uint256, bool) as my_renamed_method;
-    //             myOtherMethod() as my_other_renamed_method;
-    //         },
-    //         event_derives (Asdf, a::B, a::b::c::D)
-    //     );
-    //     assert_eq!(
-    //         args,
-    //         ContractArgs {
-    //             visibility: Some(quote!(pub(crate)).to_string()),
-    //             parameters: vec![
-    //                 Parameter::Crate("foobar".into()),
-    //                 Parameter::Mod("contract".into()),
-    //                 // Parameter::Contract("Contract".into()),
-    //                 Parameter::Methods(vec![
-    //                     method("myMethod(uint256,bool)", "my_renamed_method"),
-    //                     method("myOtherMethod()", "my_other_renamed_method"),
-    //                 ]),
-    //                 Parameter::EventDerives(vec![
-    //                     "Asdf".into(),
-    //                     "a :: B".into(),
-    //                     "a :: b :: c :: D".into()
-    //                 ])
-    //             ],
-    //         },
-    //     );
-    // }
+    #[test]
+    fn parse_contract_args_with_parameters() {
+        let args = contract_args!(
+            TestContract,
+            "abi.json",
+            methods {
+                myMethod(uint256, bool) as my_renamed_method;
+                myOtherMethod() as my_other_renamed_method;
+            },
+            event_derives (Asdf, a::B, a::b::c::D)
+        );
+        assert_eq!(
+            args,
+            ContractArgs {
+                name: "TestContract".to_string(),
+                abi: "abi.json".to_string(),
+                parameters: vec![
+                    // Parameter::Contract("Contract".into()),
+                    Parameter::Methods(vec![
+                        method("myMethod(uint256,bool)", "my_renamed_method"),
+                        method("myOtherMethod()", "my_other_renamed_method"),
+                    ]),
+                    Parameter::EventDerives(vec![
+                        "Asdf".into(),
+                        "a :: B".into(),
+                        "a :: b :: c :: D".into()
+                    ])
+                ],
+            },
+        );
+    }
 
     #[test]
     fn duplicate_method_rename_error() {
         contract_args_err!(
-            "artifact.json",
+            "abi.json",
             methods {
                 myMethod(uint256) as my_method_1;
                 myMethod(uint256) as my_method_2;
             }
         );
         contract_args_err!(
-            "artifact.json",
+            "abi.json",
             methods {
                 myMethod1(uint256) as my_method;
                 myMethod2(uint256) as my_method;
@@ -310,7 +302,7 @@ mod tests {
     #[test]
     fn method_invalid_method_parameter_type() {
         contract_args_err!(
-            "artifact.json",
+            "abi.json",
             methods {
                 myMethod(invalid) as my_method;
             }

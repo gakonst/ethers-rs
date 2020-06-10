@@ -15,19 +15,19 @@ use syn::{parse::Error, parse_macro_input};
 /// an Ethereum contract ABI or a path. Note that this path is rooted in
 /// the crate's root `CARGO_MANIFEST_DIR`.
 ///
-/// ```ignore
+/// # Examples
+///
+/// ```no_run
+/// // ABI Path
 /// abigen!(MyContract, "MyContract.json");
-/// ```
 ///
-/// Alternatively, other sources may be used, for full details consult the
-/// `ethcontract-generate::source` documentation. Some basic examples:
-///
-/// ```ignore
 /// // HTTP(S) source
 /// abigen!(MyContract, "https://my.domain.local/path/to/contract.json")
+///
 /// // Etherscan.io
 /// abigen!(MyContract, "etherscan:0x0001020304050607080910111213141516171819");
 /// abigen!(MyContract, "https://etherscan.io/address/0x0001020304050607080910111213141516171819");
+///
 /// // npmjs
 /// abigen!(MyContract, "npm:@org/package@1.0.0/path/to/contract.json")
 /// ```
@@ -45,19 +45,16 @@ use syn::{parse::Error, parse_macro_input};
 /// - `event_derives`: A list of additional derives that should be added to
 ///   contract event structs and enums.
 ///
-/// ```ignore
+/// ```no_run
 /// abigen!(
-///     MyContractInstance,
-///     "build/contracts/MyContract.json",
+///     MyContract,
+///     "path/to/MyContract.json",
 ///     methods {
 ///         myMethod(uint256,bool) as my_renamed_method;
 ///     },
 ///     event_derives (serde::Deserialize, serde::Serialize),
 /// );
 /// ```
-///
-/// See [`ethers-contract-abigen`](ethers-contract-abigen) module level documentation for additional
-/// information.
 #[proc_macro]
 pub fn abigen(input: TokenStream) -> TokenStream {
     let args = parse_macro_input!(input as Spanned<ContractArgs>);
