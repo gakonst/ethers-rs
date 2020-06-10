@@ -1,5 +1,6 @@
-pub mod http;
+mod http;
 pub use http::Provider as Http;
+
 mod provider;
 
 // ENS support

@@ -17,18 +17,36 @@ use std::{convert::TryFrom, fmt::Debug};
 
 /// An abstract provider for interacting with the [Ethereum JSON RPC
 /// API](https://github.com/ethereum/wiki/wiki/JSON-RPC). Must be instantiated
-/// with a data transport
-/// (e.g. HTTP, Websockets etc.)
+/// with a data transport which implements the [`JsonRpcClient`](trait.JsonRpcClient.html) trait
+/// (e.g. [HTTP](struct.Http.html), Websockets etc.)
+///
+/// # Example
+///
+/// ```no_run
+/// use ethers_providers::{Provider, Http};
+/// use std::convert::TryFrom;
+///
+/// let provider = Provider::<Http>::try_from(
+///     "https://mainnet.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27"
+/// ).expect("could not instantiate HTTP Provider");
+///
+/// # async fn foo() -> Result<(), ProviderError> {
+/// let block = provider.get_block(100u64).await?;
+/// println!("Got block: {}", serde_json::to_string(&block)?;
+/// # Ok(())
+/// #}
+/// ```
 #[derive(Clone, Debug)]
 pub struct Provider<P>(P, Option<Address>);
 
 #[derive(Debug, Error)]
 /// An error thrown when making a call to the provider
 pub enum ProviderError {
-    // dyn dispatch the error to avoid generic return types
+    /// An internal error in the JSON RPC Client
     #[error(transparent)]
     JsonRpcClientError(#[from] Box<dyn std::error::Error + Send + Sync>),
 
+    /// An error during ENS name resolution
     #[error("ens name not found: {0}")]
     EnsError(String),
 }
@@ -188,7 +206,7 @@ impl<P: JsonRpcClient> Provider<P> {
     //
     // These are relatively low-level calls. The Contracts API should usually be used instead.
 
-    /// Send the read-only (constant) transaction to a single Ethereum node and return the result (as bytes) of executing it.
+    /// Sends the read-only (constant) transaction to a single Ethereum node and return the result (as bytes) of executing it.
     /// This is free, since it does not change any state on the blockchain.
     pub async fn call(
         &self,
@@ -204,7 +222,7 @@ impl<P: JsonRpcClient> Provider<P> {
             .map_err(Into::into)?)
     }
 
-    /// Send a transaction to a single Ethereum node and return the estimated amount of gas required (as a U256) to send it
+    /// Sends a transaction to a single Ethereum node and return the estimated amount of gas required (as a U256) to send it
     /// This is free, but only an estimate. Providing too little gas will result in a transaction being rejected
     /// (while still consuming all provided gas).
     pub async fn estimate_gas(
@@ -226,7 +244,7 @@ impl<P: JsonRpcClient> Provider<P> {
             .map_err(Into::into)?)
     }
 
-    /// Send the transaction to the entire Ethereum network and returns the transaction's hash
+    /// Sends the transaction to the entire Ethereum network and returns the transaction's hash
     /// This will consume gas from the account that signed the transaction.
     pub async fn send_transaction(
         &self,
@@ -344,7 +362,7 @@ impl<P: JsonRpcClient> Provider<P> {
         Ok(Some(decode_bytes(param, data)))
     }
 
-    /// Overrides the default ENS address set by the provider's `Network` type.
+    /// Sets the ENS Address (default: mainnet)
     pub fn ens<T: Into<Address>>(mut self, ens: T) -> Self {
         self.1 = Some(ens.into());
         self
