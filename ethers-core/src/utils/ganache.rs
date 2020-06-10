@@ -1,4 +1,9 @@
-use std::process::{Child, Command};
+use std::{
+    process::{Child, Command},
+    time::Duration,
+};
+
+const SLEEP_TIME: Duration = Duration::from_secs(3);
 
 /// A ganache CLI instance. Will close the instance when dropped.
 ///
@@ -74,9 +79,7 @@ impl Ganache {
         let ganache_pid = cmd.spawn().expect("couldnt start ganache-cli");
 
         // wait a couple of seconds for ganache to boot up
-        // TODO: Change this to poll for `port`
-        let sleep_time = std::time::Duration::from_secs(2);
-        std::thread::sleep(sleep_time);
+        std::thread::sleep(SLEEP_TIME);
         GanacheInstance(ganache_pid)
     }
 }

@@ -282,8 +282,12 @@ impl<P: JsonRpcClient> Provider<P> {
     }
 
     /// Signs data using a specific account. This account needs to be unlocked.
-    pub async fn sign(&self, data: &Bytes, from: &Address) -> Result<Signature, ProviderError> {
-        let data = utils::serialize(data);
+    pub async fn sign<T: Into<Bytes>>(
+        &self,
+        data: T,
+        from: &Address,
+    ) -> Result<Signature, ProviderError> {
+        let data = utils::serialize(&data.into());
         let from = utils::serialize(from);
         Ok(self
             .0

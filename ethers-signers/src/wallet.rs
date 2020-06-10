@@ -67,7 +67,7 @@ impl Wallet {
         let address = self.address();
         Client {
             address,
-            signer: Some(self),
+            signer: self,
             provider,
         }
     }
