@@ -10,7 +10,58 @@ use ethers_core::{
 
 use std::str::FromStr;
 
-/// An Ethereum keypair
+/// An Ethereum private-public key pair which can be used for signing messages. It can be connected to a provider
+/// via the [`connect`] method to produce a [`Client`].
+///
+/// # Examples
+///
+/// ## Signing and Verifying a message
+///
+/// The wallet can be used to produce ECDSA [`Signature`] objects, which can be
+/// then verified. Note that this uses [`hash_message`] under the hood which will
+/// prefix the message being hashed with the `Ethereum Signed Message` domain separator.
+///
+/// ```
+/// use ethers_core::rand::thread_rng;
+/// use ethers_signers::{Wallet, Signer};
+///
+/// let wallet = Wallet::new(&mut thread_rng());
+///
+/// // Optionally, the wallet's chain id can be set, in order to use EIP-155
+/// // replay protection with different chains
+/// let wallet = wallet.chain_id(1337u64);
+///
+/// // The wallet can be used to sign messages
+/// let message = b"hello";
+/// let signature = wallet.sign_message(message);
+/// assert_eq!(signature.recover(&message[..]).unwrap(), wallet.address())
+/// ```
+///
+/// ## Connecting to a Provider
+///
+/// The wallet can also be used to connect to a provider, which results in a [`Client`]
+/// object.
+///
+/// ```
+/// use ethers_core::rand::thread_rng;
+/// use ethers_signers::Wallet;
+/// use ethers_providers::{Provider, Http};
+/// use std::convert::TryFrom;
+///
+/// // create a provider
+/// let provider = Provider::<Http>::try_from("http://localhost:8545")
+///     .expect("could not instantiate HTTP Provider");
+///
+/// // generate a wallet and connect to the provider
+/// // (this is equivalent with calling `Client::new`)
+/// let client = Wallet::new(&mut thread_rng()).connect(provider);
+/// ```
+///
+///
+/// [`Client`]: ./struct.Client.html
+/// [`connect`]: ./struct.Wallet.html#method.connect
+/// [`Signature`]: ../ethers_core/types/struct.Signature.html
+/// [`hash_message`]: ../ethers_core/utils/fn.hash_message.html
 #[derive(Clone, Debug)]
 pub struct Wallet {
     /// The Wallet's private Key
