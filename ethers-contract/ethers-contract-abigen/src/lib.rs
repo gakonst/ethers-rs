@@ -28,6 +28,17 @@ use proc_macro2::TokenStream;
 use std::{collections::HashMap, fs::File, io::Write, path::Path};
 
 /// Builder struct for generating type-safe bindings from a contract's ABI
+///
+/// # Example
+///
+/// Running the command below will generate a file called `token.rs` containing the
+/// bindings inside, which exports an `ERC20Token` struct, along with all its events.
+///
+/// ```no_run
+/// # fn foo() -> Result<(), Box<dyn std::error::Error>> {
+/// Abigen::new("ERC20Token", "./abi.json")?.generate()?.write_to_file("token.rs")?;
+/// # Ok(())
+/// # }
 pub struct Abigen {
     /// The source of the ABI JSON for the contract whose bindings
     /// are being generated.
