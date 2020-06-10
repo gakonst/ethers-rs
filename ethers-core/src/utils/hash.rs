@@ -44,7 +44,11 @@ pub fn id<S: AsRef<str>>(signature: S) -> [u8; 4] {
     output
 }
 
-/// Serialize a type. Panics if the type is returns error during serialization.
+/// Serialize a type.
+///
+/// # Panics
+///
+/// If the type returns an error during serialization.
 pub fn serialize<T: serde::Serialize>(t: &T) -> serde_json::Value {
     serde_json::to_value(t).expect("Types never fail to serialize.")
 }

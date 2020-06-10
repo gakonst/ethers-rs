@@ -1,9 +1,11 @@
 use std::process::{Child, Command};
 
 /// A ganache CLI instance. Will close the instance when dropped.
-pub struct Ganache(Child);
+///
+/// Construct this using [`Ganache`](./struct.Ganache.html)
+pub struct GanacheInstance(Child);
 
-impl Drop for Ganache {
+impl Drop for GanacheInstance {
     fn drop(&mut self) {
         self.0.kill().expect("could not kill ganache");
     }
@@ -17,13 +19,13 @@ impl Drop for Ganache {
 ///
 /// # Example
 ///
-/// ```rust,ignore
-/// use ethers_types::utils::ganache::GanacheBuilder;
+/// ```no_run
+/// use ethers_core::utils::Ganache;
 ///
 /// let port = 8545u64;
 /// let url = format!("http://localhost:{}", port).to_string();
 ///
-/// let ganache = GanacheBuilder::new()
+/// let ganache = Ganache::new()
 ///     .port(port)
 ///     .mnemonic("abstract vacuum mammal awkward pudding scene penalty purchase dinner depart evoke puzzle")
 ///     .spawn();
@@ -31,12 +33,12 @@ impl Drop for Ganache {
 /// drop(ganache); // this will kill the instance
 /// ```
 #[derive(Clone, Default)]
-pub struct GanacheBuilder {
+pub struct Ganache {
     port: Option<u64>,
     mnemonic: Option<String>,
 }
 
-impl GanacheBuilder {
+impl Ganache {
     /// Creates an empty Ganache builder.
     /// The default port is 8545. The mnemonic is chosen randomly.
     pub fn new() -> Self {
@@ -58,7 +60,7 @@ impl GanacheBuilder {
     /// Consumes the builder and spawns `ganache-cli` with stdout redirected
     /// to /dev/null. This takes ~2 seconds to execute as it blocks while
     /// waiting for `ganache-cli` to launch.
-    pub fn spawn(self) -> Ganache {
+    pub fn spawn(self) -> GanacheInstance {
         let mut cmd = Command::new("ganache-cli");
         cmd.stdout(std::process::Stdio::null());
         if let Some(port) = self.port {
@@ -75,6 +77,6 @@ impl GanacheBuilder {
         // TODO: Change this to poll for `port`
         let sleep_time = std::time::Duration::from_secs(2);
         std::thread::sleep(sleep_time);
-        Ganache(ganache_pid)
+        GanacheInstance(ganache_pid)
     }
 }

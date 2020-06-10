@@ -1,17 +1,3 @@
-//! Solidity Compiler Bindings
-//!
-//! Assumes that `solc` is installed and available in the caller's $PATH. Any calls
-//! will fail otherwise.
-//!
-//! # Examples
-//!
-//! ```rust,ignore
-//! // Give it a glob
-//! let contracts = Solc::new("./contracts/*")
-//!     .optimizer(200)
-//!     .build();
-//! let contract = contracts.get("SimpleStorage").unwrap();
-//! ```
 use crate::{abi::Abi, types::Bytes};
 use glob::glob;
 use rustc_hex::FromHex;
@@ -43,7 +29,30 @@ pub struct CompiledContract {
     pub bytecode: Bytes,
 }
 
-/// Solc builder
+/// Solidity Compiler Bindings
+///
+/// Assumes that `solc` is installed and available in the caller's $PATH. Any calls
+/// will **panic** otherwise.
+///
+/// By default, it uses 200 optimizer runs and Istanbul as the EVM version
+///
+/// # Examples
+///
+/// ```no_run
+/// use ethers_core::utils::Solc;
+///
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// // Give it a glob
+/// let contracts = Solc::new("./contracts/*")
+///     .optimizer(200)
+///     .build()?;
+///
+/// // this will return None if the specified contract did not exist in the compiled
+/// // files
+/// let contract = contracts.get("SimpleStorage").expect("contract not found");
+/// # Ok(())
+/// # }
+/// ```
 pub struct Solc {
     /// The path where contracts will be read from
     pub paths: Vec<String>,
@@ -156,7 +165,7 @@ impl Solc {
     }
 
     /// Sets the optimizer runs (default = 200)
-    pub fn optimizer_runs(mut self, runs: usize) -> Self {
+    pub fn optimizer(mut self, runs: usize) -> Self {
         self.optimizer = runs;
         self
     }

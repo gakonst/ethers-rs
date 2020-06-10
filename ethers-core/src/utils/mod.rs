@@ -1,6 +1,6 @@
 /// Utilities for launching a ganache-cli testnet instance
 mod ganache;
-pub use ganache::{Ganache, GanacheBuilder};
+pub use ganache::Ganache;
 
 /// Solidity compiler bindings
 mod solc;
