@@ -10,32 +10,45 @@ use std::{fmt::Debug, marker::PhantomData};
 use thiserror::Error as ThisError;
 
 #[derive(ThisError, Debug)]
+/// An Error which is thrown when interacting with a smart contract
 pub enum ContractError {
+    /// Thrown when the ABI decoding fails
     #[error(transparent)]
     DecodingError(#[from] AbiError),
 
+    /// Thrown when detokenizing an argument
     #[error(transparent)]
     DetokenizationError(#[from] InvalidOutputType),
 
+    /// Thrown when a client call fails
     #[error(transparent)]
     ClientError(#[from] ClientError),
 
+    /// Thrown when a provider call fails
     #[error(transparent)]
     ProviderError(#[from] ProviderError),
 
+    /// Thrown during deployment if a constructor argument was passed in the `deploy`
+    /// call but a constructor was not present in the ABI
     #[error("constructor is not defined in the ABI")]
     ConstructorError,
 
+    /// Thrown if a contract address is not found in the deployment transaction's
+    /// receipt
     #[error("Contract was not deployed")]
     ContractNotDeployed,
 }
 
 #[derive(Debug, Clone)]
+/// Helper for managing a transaction before submitting it to a node
 pub struct ContractCall<'a, P, S, D> {
-    pub(crate) tx: TransactionRequest,
-    pub(crate) function: Function,
+    /// The raw transaction object
+    pub tx: TransactionRequest,
+    /// The ABI of the function being called
+    pub function: Function,
+    /// Optional block number to be used when calculating the transaction's gas and nonce
+    pub block: Option<BlockNumber>,
     pub(crate) client: &'a Client<P, S>,
-    pub(crate) block: Option<BlockNumber>,
     pub(crate) datatype: PhantomData<D>,
 }
 

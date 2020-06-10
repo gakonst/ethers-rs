@@ -2,7 +2,7 @@ use ethers_contract::ContractFactory;
 use ethers_core::{
     abi::{Detokenize, InvalidOutputType, Token},
     types::{Address, H256},
-    utils::{GanacheBuilder, Solc},
+    utils::{Ganache, Solc},
 };
 use ethers_providers::{Http, Provider};
 use ethers_signers::Wallet;
@@ -19,7 +19,7 @@ async fn deploy_and_call_contract() {
     // launch ganache
     let port = 8546u64;
     let url = format!("http://localhost:{}", port).to_string();
-    let _ganache = GanacheBuilder::new().port(port)
+    let _ganache = Ganache::new().port(port)
         .mnemonic("abstract vacuum mammal awkward pudding scene penalty purchase dinner depart evoke puzzle")
         .spawn();
 
@@ -42,7 +42,7 @@ async fn deploy_and_call_contract() {
     let client2 = wallet2.connect(provider);
 
     // create a factory which will be used to deploy instances of the contract
-    let factory = ContractFactory::new(&client, &contract.abi, &contract.bytecode);
+    let factory = ContractFactory::new(&contract.abi, &contract.bytecode, &client);
 
     // `send` consumes the deployer so it must be cloned for later re-use
     // (practically it's not expected that you'll need to deploy multiple instances of
