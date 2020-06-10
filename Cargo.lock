@@ -372,6 +372,7 @@ version = "0.1.0"
 dependencies = [
  "ethers-core",
  "ethers-providers",
+ "futures-util",
  "thiserror",
  "tokio",
 ]

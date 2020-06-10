@@ -1,4 +1,4 @@
-use ethers_core::{types::TransactionRequest, utils::GanacheBuilder};
+use ethers_core::{types::TransactionRequest, utils::Ganache};
 use ethers_providers::{Http, Provider};
 use ethers_signers::Wallet;
 use std::convert::TryFrom;
@@ -7,7 +7,7 @@ use std::convert::TryFrom;
 async fn send_eth() {
     let port = 8545u64;
     let url = format!("http://localhost:{}", port).to_string();
-    let _ganache = GanacheBuilder::new()
+    let _ganache = Ganache::new()
         .port(port)
         .mnemonic("abstract vacuum mammal awkward pudding scene penalty purchase dinner depart evoke puzzle")
         .spawn();

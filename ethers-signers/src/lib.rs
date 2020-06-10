@@ -5,7 +5,7 @@ mod client;
 pub use client::{Client, ClientError};
 
 use ethers_core::types::{Address, Signature, Transaction, TransactionRequest};
-use ethers_providers::http::Provider;
+use ethers_providers::Http;
 use std::error::Error;
 
 /// Trait for signing transactions and messages
@@ -25,4 +25,4 @@ pub trait Signer: Clone {
 }
 
 /// An HTTP client configured to work with ANY blockchain without replay protection
-pub type HttpClient = Client<Provider, Wallet>;
+pub type HttpClient = Client<Http, Wallet>;

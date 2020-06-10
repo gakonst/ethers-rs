@@ -5,13 +5,59 @@ use ethers_core::types::{
 };
 use ethers_providers::{JsonRpcClient, Provider, ProviderError};
 
-use std::ops::Deref;
+use futures_util::{future::ok, join};
+use std::{future::Future, ops::Deref};
 use thiserror::Error;
 
 #[derive(Clone, Debug)]
 /// A client provides an interface for signing and broadcasting locally signed transactions
-/// It Derefs to `Provider`, which allows interacting with the Ethereum JSON-RPC provider
-/// via the same API.
+/// It Derefs to [`Provider`], which allows interacting with the Ethereum JSON-RPC provider
+/// via the same API. Sending transactions also supports using ENS as a receiver. If you will
+/// not be using a local signer, it is recommended to use a [`Provider`] instead.
+///
+/// # Example
+///
+/// ```no_run
+/// use ethers_providers::{Provider, Http};
+/// use ethers_signers::{Client, ClientError, Wallet};
+/// use ethers_core::types::{Address, TransactionRequest};
+/// use std::convert::TryFrom;
+///
+/// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
+/// let mut client: Client<_, _> = Provider::<Http>::try_from("http://localhost:8545")
+///     .expect("could not instantiate HTTP Provider").into();
+///
+/// // since it derefs to `Provider`, we can just call any of the JSON-RPC API methods
+/// let block = client.get_block(100u64).await?;
+///
+/// // calling `sign_message` and `send_transaction` will use the unlocked accounts
+/// // on the node.
+/// let signed_msg = client.sign_message(b"hello".to_vec()).await?;
+///
+/// let tx = TransactionRequest::pay("vitalik.eth", 100);
+/// let tx_hash = client.send_transaction(tx, None).await?;
+///
+/// // if we set a signer, signing of messages and transactions will be done locally
+/// // (transactions will be broadcast via the eth_sendRawTransaction API)
+/// let wallet: Wallet = "380eb0f3d505f087e438eca80bc4df9a7faa24f868e69fc0440261a0fc0567dc"
+///     .parse()
+///     .unwrap();
+///
+/// let client = client.with_signer(wallet);
+///
+/// let signed_msg2 = client.sign_message(b"hello".to_vec()).await?;
+///
+/// let tx2 = TransactionRequest::new()
+///     .to("0xd8da6bf26964af9d7eed9e03e53415d37aa96045".parse::<Address>()?)
+///     .value(200);
+/// let tx_hash2 = client.send_transaction(tx2, None).await?;
+///
+/// # Ok(())
+/// # }
+///
+/// ```
+///
+/// [`Provider`](../ethers_providers/struct.Provider.html)
 pub struct Client<P, S> {
     pub(crate) provider: Provider<P>,
     pub(crate) signer: Option<S>,
@@ -97,36 +143,30 @@ where
         Ok(signed_tx.hash)
     }
 
-    // TODO: Convert to join'ed futures
     async fn fill_transaction(
         &self,
         tx: &mut TransactionRequest,
         block: Option<BlockNumber>,
     ) -> Result<(), ClientError> {
-        // get the gas price
-        if tx.gas_price.is_none() {
-            tx.gas_price = Some(self.provider.get_gas_price().await?);
-        }
+        tx.from = Some(self.address());
 
-        // estimate the gas
-        if tx.gas.is_none() {
-            tx.from = Some(self.address());
-            tx.gas = Some(self.provider.estimate_gas(&tx, block).await?);
-        }
-
-        // set our nonce
-        if tx.nonce.is_none() {
-            tx.nonce = Some(
-                self.provider
-                    .get_transaction_count(self.address(), block)
-                    .await?,
-            );
-        }
+        // will poll and await the futures concurrently
+        let (gas_price, gas, nonce) = join!(
+            maybe(tx.gas_price, self.provider.get_gas_price()),
+            maybe(tx.gas, self.provider.estimate_gas(&tx, block)),
+            maybe(
+                tx.nonce,
+                self.provider.get_transaction_count(self.address(), block)
+            ),
+        );
+        tx.gas_price = Some(gas_price?);
+        tx.gas = Some(gas?);
+        tx.nonce = Some(nonce?);
 
         Ok(())
     }
 
-    /// Returns the client's address
+    /// Returns the client's address (or `address(0)` if no signer is set)
     pub fn address(&self) -> Address {
         self.signer
             .as_ref()
@@ -139,7 +179,11 @@ where
         &self.provider
     }
 
-    /// Returns a reference to the client's signer, will panic if no signer is set
+    /// Returns a reference to the client's signer
+    ///
+    /// # Panics
+    ///
+    /// If `self.signer` is `None`
     pub fn signer_unchecked(&self) -> &S {
         self.signer.as_ref().expect("no signer is configured")
     }
@@ -156,10 +200,22 @@ where
         self
     }
 
-    /// Sets the account to be used with the `eth_sign` API calls
+    /// Sets the default account to be used with the `eth_sign` API calls
     pub fn from(&mut self, address: Address) -> &mut Self {
         self.address = address;
         self
+    }
+}
+
+/// Calls the future if `item` is None, otherwise returns a `futures::ok`
+async fn maybe<F, T, E>(item: Option<T>, f: F) -> Result<T, E>
+where
+    F: Future<Output = Result<T, E>>,
+{
+    if let Some(item) = item {
+        ok(item).await
+    } else {
+        f.await
     }
 }
 
