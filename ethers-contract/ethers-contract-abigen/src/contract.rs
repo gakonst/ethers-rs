@@ -1,9 +1,4 @@
 #![deny(missing_docs)]
-
-//! Crate for generating type-safe bindings to Ethereum smart contracts. This
-//! crate is intended to be used either indirectly with the `ethcontract`
-//! crate's `contract` procedural macro or directly from a build script.
-
 mod common;
 mod events;
 mod methods;
