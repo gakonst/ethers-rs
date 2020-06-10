@@ -17,7 +17,7 @@ use std::{convert::TryFrom, fmt::Debug};
 
 /// An abstract provider for interacting with the [Ethereum JSON RPC
 /// API](https://github.com/ethereum/wiki/wiki/JSON-RPC). Must be instantiated
-/// with a [`Network`](networks/trait.Network.html) and a data transport
+/// with a data transport
 /// (e.g. HTTP, Websockets etc.)
 #[derive(Clone, Debug)]
 pub struct Provider<P>(P, Option<Address>);

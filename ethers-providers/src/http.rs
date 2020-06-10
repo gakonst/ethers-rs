@@ -1,5 +1,29 @@
 //! Minimal HTTP JSON-RPC 2.0 Client
 //! The request/response code is taken from [here](https://github.com/althea-net/guac_rs/blob/master/web3/src/jsonrpc)
+//!
+//! If interacting with Ethereum, consider using the
+//! [`Provider`](../struct.Provider.html) struct instead.
+//!
+//! # Example
+//!
+//! ```no_run
+//! use ethers_providers::{JsonRpcClient, http::{Provider, ClientError}};
+//! use ethers_core::types::U64;
+//! use std::str::FromStr;
+//!
+//! async fn get_block(provider: &Provider) -> Result<U64, ClientError> {
+//!     let block_number: U64 = provider.request("eth_blockNumber", None::<()>).await?;
+//!     Ok(block_number)
+//! }
+//!
+//! # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
+//! let provider = Provider::from_str("http://localhost:8545")?;
+//! let block = get_block(&provider).await?;
+//! println!("{:?}", block);
+//! # Ok(())
+//! # }
+//!
+//! ```
 use crate::{provider::ProviderError, JsonRpcClient};
 
 use async_trait::async_trait;
@@ -8,12 +32,27 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::{
     fmt,
+    str::FromStr,
     sync::atomic::{AtomicU64, Ordering},
 };
 use thiserror::Error;
 use url::Url;
 
-/// An HTTP Client
+/// A low-level JSON-RPC Client over HTTP.
+///
+/// # Example
+///
+/// ```no_run
+/// use ethers_providers::{JsonRpcClient, http::Provider};
+/// use ethers_core::types::U64;
+/// use std::str::FromStr;
+///
+/// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
+/// let provider = Provider::from_str("http://localhost:8545")?;
+/// let block_number: U64 = provider.request("eth_blockNumber", None::<()>).await?;
+/// # Ok(())
+/// # }
+/// ```
 #[derive(Debug)]
 pub struct Provider {
     id: AtomicU64,
@@ -29,7 +68,7 @@ pub enum ClientError {
     ReqwestError(#[from] ReqwestError),
     #[error(transparent)]
     /// Thrown if the response could not be parsed
-    JsonRpcError(#[from] JsonRpcError),
+    JsonRpcError(#[from] errors::JsonRpcError),
 }
 
 impl From<ClientError> for ProviderError {
@@ -68,12 +107,31 @@ impl JsonRpcClient for Provider {
 
 impl Provider {
     /// Initializes a new HTTP Client
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use ethers_providers::http::Provider;
+    /// use url::Url;
+    ///
+    /// let url = Url::parse("http://localhost:8545").unwrap();
+    /// let provider = Provider::new(url);
+    /// ```
     pub fn new(url: impl Into<Url>) -> Self {
         Self {
             id: AtomicU64::new(0),
             client: Client::new(),
             url: url.into(),
         }
+    }
+}
+
+impl FromStr for Provider {
+    type Err = url::ParseError;
+
+    fn from_str(src: &str) -> Result<Self, Self::Err> {
+        let url = Url::parse(src)?;
+        Ok(Provider::new(url))
     }
 }
 
@@ -87,24 +145,29 @@ impl Clone for Provider {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Error)]
-/// A JSON-RPC 2.0 error
-pub struct JsonRpcError {
-    /// The error code
-    pub code: i64,
-    /// The error message
-    pub message: String,
-    /// Additional data
-    pub data: Option<Value>,
-}
+// leak private type w/o exposing it
+mod errors {
+    use super::*;
 
-impl fmt::Display for JsonRpcError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "(code: {}, message: {}, data: {:?})",
-            self.code, self.message, self.data
-        )
+    #[derive(Serialize, Deserialize, Debug, Clone, Error)]
+    /// A JSON-RPC 2.0 error
+    pub struct JsonRpcError {
+        /// The error code
+        pub code: i64,
+        /// The error message
+        pub message: String,
+        /// Additional data
+        pub data: Option<Value>,
+    }
+
+    impl fmt::Display for JsonRpcError {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            write!(
+                f,
+                "(code: {}, message: {}, data: {:?})",
+                self.code, self.message, self.data
+            )
+        }
     }
 }
 
@@ -140,13 +203,13 @@ struct Response<T> {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(untagged)]
 enum ResponseData<R> {
-    Error { error: JsonRpcError },
+    Error { error: errors::JsonRpcError },
     Success { result: R },
 }
 
 impl<R> ResponseData<R> {
     /// Consume response and return value
-    fn into_result(self) -> Result<R, JsonRpcError> {
+    fn into_result(self) -> Result<R, errors::JsonRpcError> {
         match self {
             ResponseData::Success { result } => Ok(result),
             ResponseData::Error { error } => Err(error),
