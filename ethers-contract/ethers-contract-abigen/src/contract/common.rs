@@ -13,7 +13,7 @@ pub(crate) fn imports() -> TokenStream {
                 abi::{Abi, Token, Detokenize, InvalidOutputType, Tokenizable},
                 types::*, // import all the types so that we can codegen for everything
             },
-            contract::{Contract, ContractCall, Event, Lazy},
+            contract::{Contract, builders::{ContractCall, Event}, Lazy},
             signers::{Client, Signer},
             providers::JsonRpcClient,
         };

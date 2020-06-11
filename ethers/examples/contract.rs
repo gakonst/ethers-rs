@@ -1,7 +1,7 @@
 use anyhow::Result;
 use ethers::{
     prelude::*,
-    utils::{GanacheBuilder, Solc},
+    utils::{Ganache, Solc},
 };
 use std::convert::TryFrom;
 
@@ -23,7 +23,7 @@ async fn main() -> Result<()> {
     // 2. launch ganache
     let port = 8546u64;
     let url = format!("http://localhost:{}", port).to_string();
-    let _ganache = GanacheBuilder::new().port(port)
+    let _ganache = Ganache::new().port(port)
         .mnemonic("abstract vacuum mammal awkward pudding scene penalty purchase dinner depart evoke puzzle")
         .spawn();
 
@@ -38,7 +38,7 @@ async fn main() -> Result<()> {
     let client = wallet.connect(provider);
 
     // 6. create a factory which will be used to deploy instances of the contract
-    let factory = ContractFactory::new(&client, &contract.abi, &contract.bytecode);
+    let factory = ContractFactory::new(&contract.abi, &contract.bytecode, &client);
 
     // 7. deploy it with the constructor arguments
     let contract = factory.deploy("initial value".to_string())?.send().await?;

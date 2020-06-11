@@ -1,12 +1,12 @@
 use anyhow::Result;
-use ethers::{prelude::*, utils::GanacheBuilder};
+use ethers::{prelude::*, utils::Ganache};
 use std::convert::TryFrom;
 
 #[tokio::main]
 async fn main() -> Result<()> {
     let port = 8545u64;
     let url = format!("http://localhost:{}", port).to_string();
-    let _ganache = GanacheBuilder::new()
+    let _ganache = Ganache::new()
         .port(port)
         .mnemonic("abstract vacuum mammal awkward pudding scene penalty purchase dinner depart evoke puzzle")
         .spawn();
