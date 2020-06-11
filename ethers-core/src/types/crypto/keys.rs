@@ -157,6 +157,14 @@ impl PrivateKey {
             block_hash: None,
             block_number: None,
             transaction_index: None,
+
+            // Celo support
+            #[cfg(feature = "celo")]
+            fee_currency: tx.fee_currency,
+            #[cfg(feature = "celo")]
+            gateway_fee: tx.gateway_fee,
+            #[cfg(feature = "celo")]
+            gateway_fee_recipient: tx.gateway_fee_recipient,
         })
     }
 
@@ -318,9 +326,9 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(feature = "celo"))]
     fn signs_tx() {
         use crate::types::{Address, Bytes};
-
         // retrieved test vector from:
         // https://web3js.readthedocs.io/en/v1.2.0/web3-eth-accounts.html#eth-accounts-signtransaction
         let tx = TransactionRequest {
