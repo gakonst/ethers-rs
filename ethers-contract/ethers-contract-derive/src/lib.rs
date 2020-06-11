@@ -17,19 +17,21 @@ use syn::{parse::Error, parse_macro_input};
 ///
 /// # Examples
 ///
-/// ```no_run
+/// ```ignore
+/// # use ethers_contract_derive::abigen;
+///
 /// // ABI Path
 /// abigen!(MyContract, "MyContract.json");
 ///
 /// // HTTP(S) source
-/// abigen!(MyContract, "https://my.domain.local/path/to/contract.json")
+/// abigen!(MyContract, "https://my.domain.local/path/to/contract.json");
 ///
 /// // Etherscan.io
 /// abigen!(MyContract, "etherscan:0x0001020304050607080910111213141516171819");
 /// abigen!(MyContract, "https://etherscan.io/address/0x0001020304050607080910111213141516171819");
 ///
 /// // npmjs
-/// abigen!(MyContract, "npm:@org/package@1.0.0/path/to/contract.json")
+/// abigen!(MyContract, "npm:@org/package@1.0.0/path/to/contract.json");
 /// ```
 ///
 /// Note that Etherscan rate-limits requests to their API, to avoid this an
@@ -45,7 +47,7 @@ use syn::{parse::Error, parse_macro_input};
 /// - `event_derives`: A list of additional derives that should be added to
 ///   contract event structs and enums.
 ///
-/// ```no_run
+/// ```ignore
 /// abigen!(
 ///     MyContract,
 ///     "path/to/MyContract.json",
