@@ -35,6 +35,7 @@ use std::{collections::HashMap, fs::File, io::Write, path::Path};
 /// bindings inside, which exports an `ERC20Token` struct, along with all its events.
 ///
 /// ```no_run
+/// # use ethers_contract_abigen::Abigen;
 /// # fn foo() -> Result<(), Box<dyn std::error::Error>> {
 /// Abigen::new("ERC20Token", "./abi.json")?.generate()?.write_to_file("token.rs")?;
 /// # Ok(())
