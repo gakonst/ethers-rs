@@ -23,6 +23,7 @@ use std::{convert::TryFrom, fmt::Debug};
 /// # Example
 ///
 /// ```no_run
+/// # use ethers_providers::JsonRpcClient;
 /// use ethers_providers::{Provider, Http};
 /// use std::convert::TryFrom;
 ///
@@ -30,11 +31,11 @@ use std::{convert::TryFrom, fmt::Debug};
 ///     "https://mainnet.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27"
 /// ).expect("could not instantiate HTTP Provider");
 ///
-/// # async fn foo() -> Result<(), ProviderError> {
+/// # async fn foo<P: JsonRpcClient>(provider: &Provider<P>) -> Result<(), Box<dyn std::error::Error>> {
 /// let block = provider.get_block(100u64).await?;
-/// println!("Got block: {}", serde_json::to_string(&block)?;
+/// println!("Got block: {}", serde_json::to_string(&block)?);
 /// # Ok(())
-/// #}
+/// # }
 /// ```
 #[derive(Clone, Debug)]
 pub struct Provider<P>(P, Option<Address>);
@@ -253,10 +254,7 @@ impl<P: JsonRpcClient> Provider<P> {
         if let Some(ref to) = tx.to {
             if let NameOrAddress::Name(ens_name) = to {
                 // resolve to an address
-                let addr = self
-                    .resolve_name(&ens_name)
-                    .await?
-                    .ok_or_else(|| ProviderError::EnsError(ens_name.to_owned()))?;
+                let addr = self.resolve_name(&ens_name).await?;
 
                 // set the value
                 tx.to = Some(addr.into())
@@ -322,7 +320,7 @@ impl<P: JsonRpcClient> Provider<P> {
     ///
     /// If the bytes returned from the ENS registrar/resolver cannot be interpreted as
     /// an address. This should theoretically never happen.
-    pub async fn resolve_name(&self, ens_name: &str) -> Result<Option<Address>, ProviderError> {
+    pub async fn resolve_name(&self, ens_name: &str) -> Result<Address, ProviderError> {
         self.query_resolver(ParamType::Address, ens_name, ens::ADDR_SELECTOR)
             .await
     }
@@ -332,7 +330,7 @@ impl<P: JsonRpcClient> Provider<P> {
     ///
     /// If the bytes returned from the ENS registrar/resolver cannot be interpreted as
     /// a string. This should theoretically never happen.
-    pub async fn lookup_address(&self, address: Address) -> Result<Option<String>, ProviderError> {
+    pub async fn lookup_address(&self, address: Address) -> Result<String, ProviderError> {
         let ens_name = ens::reverse_address(address);
         self.query_resolver(ParamType::String, &ens_name, ens::NAME_SELECTOR)
             .await
@@ -343,7 +341,7 @@ impl<P: JsonRpcClient> Provider<P> {
         param: ParamType,
         ens_name: &str,
         selector: Selector,
-    ) -> Result<Option<T>, ProviderError> {
+    ) -> Result<T, ProviderError> {
         // Get the ENS address, prioritize the local override variable
         let ens_addr = self.1.unwrap_or(ens::ENS_ADDRESS);
 
@@ -355,7 +353,7 @@ impl<P: JsonRpcClient> Provider<P> {
 
         let resolver_address: Address = decode_bytes(ParamType::Address, data);
         if resolver_address == Address::zero() {
-            return Ok(None);
+            return Err(ProviderError::EnsError(ens_name.to_owned()))
         }
 
         // resolve
@@ -363,7 +361,7 @@ impl<P: JsonRpcClient> Provider<P> {
             .call(&ens::resolve(resolver_address, selector, ens_name), None)
             .await?;
 
-        Ok(Some(decode_bytes(param, data)))
+        Ok(decode_bytes(param, data))
     }
 
     /// Sets the ENS Address (default: mainnet)
@@ -408,20 +406,18 @@ mod ens_tests {
             .await
             .unwrap();
         assert_eq!(
-            addr.unwrap(),
+            addr,
             "6fC21092DA55B392b045eD78F4732bff3C580e2c".parse().unwrap()
         );
 
         // registrar not found
-        let addr = provider.resolve_name("asdfasdffads").await.unwrap();
-        assert!(addr.is_none());
+        provider.resolve_name("asdfasdffads").await.unwrap_err();
 
         // name not found
-        let addr = provider
+        provider
             .resolve_name("asdfasdf.registrar.firefly.eth")
             .await
-            .unwrap();
-        assert!(addr.is_none());
+            .unwrap_err();
     }
 
     #[tokio::test]
@@ -434,13 +430,11 @@ mod ens_tests {
             .await
             .unwrap();
 
-        assert_eq!(name.unwrap(), "registrar.firefly.eth");
+        assert_eq!(name, "registrar.firefly.eth");
 
-        let name = provider
+        provider
             .lookup_address("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA".parse().unwrap())
             .await
-            .unwrap();
-
-        assert!(name.is_none());
+            .unwrap_err();
     }
 }

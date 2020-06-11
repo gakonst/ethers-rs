@@ -120,8 +120,7 @@ where
             if let NameOrAddress::Name(ens_name) = to {
                 let addr = self
                     .resolve_name(&ens_name)
-                    .await?
-                    .ok_or_else(|| ClientError::EnsError(ens_name.to_owned()))?;
+                    .await?;
                 tx.to = Some(addr.into())
             }
         }

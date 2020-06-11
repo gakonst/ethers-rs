@@ -1,29 +1,3 @@
-//! Minimal HTTP JSON-RPC 2.0 Client
-//! The request/response code is taken from [here](https://github.com/althea-net/guac_rs/blob/master/web3/src/jsonrpc)
-//!
-//! If interacting with Ethereum, consider using the
-//! [`Provider`](../struct.Provider.html) struct instead.
-//!
-//! # Example
-//!
-//! ```no_run
-//! use ethers_providers::{JsonRpcClient, http::{Provider, ClientError}};
-//! use ethers_core::types::U64;
-//! use std::str::FromStr;
-//!
-//! async fn get_block(provider: &Provider) -> Result<U64, ClientError> {
-//!     let block_number: U64 = provider.request("eth_blockNumber", None::<()>).await?;
-//!     Ok(block_number)
-//! }
-//!
-//! # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
-//! let provider = Provider::from_str("http://localhost:8545")?;
-//! let block = get_block(&provider).await?;
-//! println!("{:?}", block);
-//! # Ok(())
-//! # }
-//!
-//! ```
 use crate::{provider::ProviderError, JsonRpcClient};
 
 use async_trait::async_trait;
@@ -43,12 +17,12 @@ use url::Url;
 /// # Example
 ///
 /// ```no_run
-/// use ethers_providers::{JsonRpcClient, http::Provider};
+/// use ethers_providers::{JsonRpcClient, Http};
 /// use ethers_core::types::U64;
 /// use std::str::FromStr;
 ///
 /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
-/// let provider = Provider::from_str("http://localhost:8545")?;
+/// let provider = Http::from_str("http://localhost:8545")?;
 /// let block_number: U64 = provider.request("eth_blockNumber", None::<()>).await?;
 /// # Ok(())
 /// # }
@@ -111,11 +85,11 @@ impl Provider {
     /// # Example
     ///
     /// ```
-    /// use ethers_providers::http::Provider;
+    /// use ethers_providers::Http;
     /// use url::Url;
     ///
     /// let url = Url::parse("http://localhost:8545").unwrap();
-    /// let provider = Provider::new(url);
+    /// let provider = Http::new(url);
     /// ```
     pub fn new(url: impl Into<Url>) -> Self {
         Self {
