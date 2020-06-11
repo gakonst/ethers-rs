@@ -353,7 +353,7 @@ impl<P: JsonRpcClient> Provider<P> {
 
         let resolver_address: Address = decode_bytes(ParamType::Address, data);
         if resolver_address == Address::zero() {
-            return Err(ProviderError::EnsError(ens_name.to_owned()))
+            return Err(ProviderError::EnsError(ens_name.to_owned()));
         }
 
         // resolve

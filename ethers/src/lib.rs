@@ -15,33 +15,96 @@
 //!
 //! > ethers-rs is a port of [ethers-js](github.com/ethers-io/ethers.js) in Rust.
 //!
-//! # Quickstart
+//! _Note: All examples using `await` are assuming that they are called from inside an `async`
+//! function which is run in an async runtime. You are free to use any runtime and executor of
+//! your preference._
 //!
-//! A prelude is provided which imports all the important things for you. You can connect
-//! to the chain by providing a URL to the Provider along with the provider type (Http/Websockets).
+//! ## Quickstart: `prelude`
 //!
-//! ```no_run
+//! A prelude is provided which imports all the important data types and traits for you. Use this
+//! when you want to quickly bootstrap a new project.
+//!
+//! ```
+//! # #[allow(unused)]
 //! use ethers::prelude::*;
-//! let provider = Provider::<Http>::try_from("http://localhost:8545").unwrap();
 //! ```
 //!
-//! All functions
+//! Examples on how you can use the types imported by the prelude can be found in
+//! the [`examples` directory of the repository](https://github.com/gakonst/ethers-rs)
+//! and in the `tests/` directories of each crate.
 //!
+//! # Quick explanation of each module in ascending order of abstraction
 //!
-//! ## Sending Ether
+//! ## `core`
 //!
-//! ## Checking the state of the blockchain
+//! Contains all the [necessary data structures](core/types/index.html) for interacting
+//! with Ethereum, along with cryptographic utilities for signing and verifying
+//! ECDSA signatures on `secp256k1`. Bindings to the solidity compiler and `ganache-cli`
+//! are also provided as helpers. To simplify your imports, consider using the re-exported
+//! modules described in the next subsection.
 //!
-//! ## Deploying and interacting with a smart contract
+//! ## `utils`, `types`, `abi`
 //!
-//! ## Watching on-chain events
+//! These are re-exports of the [`utils`], [`types`] and [`abi`] modules from the `core` crate
 //!
-//! More examples can be found in the [`examples` directory of the
-//! repositry](https://github.com/gakonst/ethers-rs)
+//! ## `providers`
+//!
+//! Ethereum nodes expose RPC endpoints (by default at `localhost:8545`). You can connect
+//! to them by using the [`Provider`]. The provider instance
+//! allows you to issue requests to the node which involve querying the state of Ethereum or
+//! broadcasting transactions with unlocked accounts on the node.
+//!
+//! ## `signers`
+//!
+//! For security reasons, you typically do not want your private keys to be stored on the nodes.
+//! This module provides a [`Wallet`] type for loading a private key which can be connected with a
+//! [`Provider`] to produce a [`Client`]. The [`Client`] type is the object via which we recommend
+//! users with local private keys to use when interacting with Ethereum.
+//!
+//! ## `contract`
+//!
+//! Interacting with Ethereum is not restricted to sending or receiving funds. It also involves
+//! using smart contracts, which can be thought of as programs with persistent storage.
+//!
+//! Interacting with a smart contract requires broadcasting carefully crafted
+//! [transactions](core/types/struct.TransactionRequest.html) where the `data` field contains
+//! the [function's
+//! selector](https://ethereum.stackexchange.com/questions/72363/what-is-a-function-selector)
+//! along with the arguments of the called function. This module provides the
+//! [`Contract`] and [`ContractFactory`] abstractions so that you do not have to worry about that.
+//! It also provides typesafe bindings via the [`abigen`] macro and the [`Abigen` builder].
+//!
+//! [`Provider`]: providers/struct.Provider.html
+//!
+//! [`Wallet`]: signers/struct.Wallet.html
+//! [`Client`]: signers/struct.Client.html
+//!
+//! [`ContractFactory`]: contract/struct.ContractFactory.html
+//! [`Contract`]: contract/struct.Contract.html
+//! [`abigen`]: contract/macro.abigen.html
+//! [`Abigen` builder]: contract/struct.Abigen.html
+//!
+//! [`utils`]: core/utils/index.html
+//! [`abi`]: core/abi/index.html
+//! [`types`]: core/types/index.html
 
 #[cfg(feature = "contract")]
 #[cfg_attr(docsrs, doc(cfg(feature = "contract")))]
-/// TODO
+// This is copied over from the crate-level docs, is there a better way to do this?
+/// Type-safe abstractions for interacting with Ethereum smart contracts
+///
+/// Interacting with a smart contract requires broadcasting carefully crafted
+/// [transactions](core/types/struct.TransactionRequest.html) where the `data` field contains
+/// the [function's
+/// selector](https://ethereum.stackexchange.com/questions/72363/what-is-a-function-selector)
+/// along with the arguments of the called function. This module provides the
+/// [`Contract`] and [`ContractFactory`] abstractions so that you do not have to worry about that.
+/// It also provides typesafe bindings via the [`abigen`] macro and the [`Abigen` builder].
+///
+/// [`ContractFactory`]: struct.ContractFactory.html
+/// [`Contract`]: struct.Contract.html
+/// [`abigen`]: macro.abigen.html
+/// [`Abigen` builder]: struct.Abigen.html
 pub mod contract {
     pub use ethers_contract::*;
 }
@@ -51,50 +114,49 @@ pub mod contract {
 /// # Clients for interacting with Ethereum nodes
 ///
 /// This crate provides asynchronous [Ethereum JSON-RPC](https://github.com/ethereum/wiki/wiki/JSON-RPC)
-/// compliant clients. The client is network-specific in order to provide ENS support and EIP-155
-/// replay protection. If you are testing and do not want to use EIP-155, you may use the `Any`
-/// network type and override the provider's ENS address with the `ens` method.
+/// compliant clients.
 ///
-/// ```rust
+/// For more documentation on the available calls, refer to the [`Provider`](struct.Provider.html)
+/// struct.
+///
+/// # Examples
+///
+/// ```no_run
 /// use ethers::providers::{Provider, Http};
 /// use std::convert::TryFrom;
-/// use tokio::runtime::Runtime;
 ///
+/// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
 /// let provider = Provider::<Http>::try_from(
 ///     "https://mainnet.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27"
-/// ).unwrap();
+/// )?;
 ///
-/// // Since this is an async function, we need to run it from an async runtime,
-/// // such as `tokio`
-/// let mut runtime = Runtime::new().expect("Failed to create Tokio runtime");
-/// let block = runtime.block_on(provider.get_block(100u64)).unwrap();
-/// println!("Got block: {}", serde_json::to_string(&block).unwrap());
+/// let block = provider.get_block(100u64).await?;
+/// println!("Got block: {}", serde_json::to_string(&block)?);
+/// # Ok(())
+/// # }
 /// ```
 ///
 /// # Ethereum Name Service
 ///
 /// The provider may also be used to resolve [Ethereum Name Service](https://ens.domains) (ENS) names
-/// to addresses (and vice versa). The address of the deployed ENS contract per network is specified in
-/// the `networks` module. If you want to use mainnet ENS, you should instantiate your provider as
-/// follows:
+/// to addresses (and vice versa). The default ENS address is [mainnet](https://etherscan.io/address/0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e) and can be overriden by calling the [`ens`](struct.Provider.html#method.ens) method on the provider.
 ///
-/// ```rust
+/// ```no_run
 /// # use ethers::providers::{Provider, Http};
 /// # use std::convert::TryFrom;
-/// # use tokio::runtime::Runtime;
+/// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
 /// # let provider = Provider::<Http>::try_from(
 /// #     "https://mainnet.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27"
-/// # ).unwrap();
-/// # let mut runtime = Runtime::new().expect("Failed to create Tokio runtime");
+/// # )?;
 /// // Resolve ENS name to Address
 /// let name = "vitalik.eth";
-/// let address = runtime.block_on(provider.resolve_name(name)).unwrap();
-/// let address = address.unwrap();
+/// let address = provider.resolve_name(name).await?;
 ///
 /// // Lookup ENS name given Address
-/// let resolved_name = runtime.block_on(provider.lookup_address(address)).unwrap();
-/// let resolved_name = resolved_name.unwrap();
+/// let resolved_name = provider.lookup_address(address).await?;
 /// assert_eq!(name, resolved_name);
+/// # Ok(())
+/// # }
 /// ```
 pub mod providers {
     pub use ethers_providers::*;
@@ -102,24 +164,25 @@ pub mod providers {
 
 #[cfg(feature = "signers")]
 #[cfg_attr(docsrs, doc(cfg(feature = "signers")))]
-/// # ethers-signers
-///
 /// Provides a unified interface for locally signing transactions and interacting
 /// with the Ethereum JSON-RPC. You can implement the `Signer` trait to extend
 /// functionality to other signers such as Hardware Security Modules, KMS etc.
 ///
-/// ```ignore
-/// # use anyhow::Result;
-/// # use ethers::{providers::HttpProvider, signers::MainnetWallet, types::TransactionRequest};
+/// ```no_run
+/// # use ethers::{
+///     providers::{Http, Provider},
+///     signers::Wallet,
+///     core::types::TransactionRequest
+/// };
 /// # use std::convert::TryFrom;
-/// # async fn main() -> Result<()> {
+/// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
 /// // connect to the network
-/// let provider = HttpProvider::try_from("http://localhost:8545")?;
+/// let provider = Provider::<Http>::try_from("http://localhost:8545")?;
 ///
 /// // instantiate the wallet and connect it to the provider to get a client
 /// let client = "dcf2cbdd171a21c480aa7f53d77f31bb102282b3ff099c78e3118b37348c72f7"
-///     .parse::<MainnetWallet>()?
-///     .connect(&provider);
+///     .parse::<Wallet>()?
+///     .connect(provider);
 ///
 /// // create a transaction
 /// let tx = TransactionRequest::new()
@@ -146,7 +209,9 @@ pub mod signers {
 
 #[cfg(feature = "core")]
 #[cfg_attr(docsrs, doc(cfg(feature = "core")))]
-/// # Ethereum types, cryptography and utilities
+/// Ethereum types, cryptography and utilities.
+/// _It is recommended to use the `utils`, `types` and `abi` re-exports instead of
+/// the `core` module to simplify your imports._
 ///
 /// This library provides type definitions for Ethereum's main datatypes along
 /// with other utilities for interacting with the Ethereum ecosystem
@@ -188,11 +253,15 @@ pub mod core {
     pub use ethers_core::*;
 }
 
-// Re-export ethers_core::utils
+// Re-export ethers_core::utils/types/abi
+#[cfg(feature = "core")]
+pub use ethers_core::abi;
+#[cfg(feature = "core")]
+pub use ethers_core::types;
 #[cfg(feature = "core")]
 pub use ethers_core::utils;
 
-/// Easy import of frequently used type definitions and traits
+/// Easy imports of frequently used type definitions and traits
 pub mod prelude {
     #[cfg(feature = "contract")]
     pub use ethers_contract::*;

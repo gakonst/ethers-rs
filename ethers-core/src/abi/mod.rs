@@ -1,4 +1,4 @@
-//! This module implements extensions to the `ethabi` API.
+//! This module implements extensions to the [`ethabi`](https://docs.rs/ethabi) API.
 // Adapted from [Gnosis' ethcontract](https://github.com/gnosis/ethcontract-rs/blob/master/common/src/abiext.rs)
 use crate::{types::Selector, utils::id};
 

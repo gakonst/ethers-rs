@@ -30,8 +30,7 @@ use thiserror::Error;
 /// // By default, signing of messages and transactions is done locally
 /// // (transactions will be broadcast via the eth_sendRawTransaction API)
 /// let wallet: Wallet = "380eb0f3d505f087e438eca80bc4df9a7faa24f868e69fc0440261a0fc0567dc"
-///     .parse()
-///     .unwrap();
+///     .parse()?;
 ///
 /// let mut client = Client::new(provider, wallet);
 ///
@@ -47,8 +46,7 @@ use thiserror::Error;
 ///
 /// // You can connect with other wallets at runtime via the `with_signer` function
 /// let wallet2: Wallet = "cd8c407233c0560f6de24bb2dc60a8b02335c959a1a17f749ce6c1ccf63d74a7"
-///     .parse()
-///     .unwrap();
+///     .parse()?;
 ///
 /// let signed_msg2 = client.with_signer(wallet2).sign_message(b"hello".to_vec()).await?;
 ///
@@ -118,9 +116,7 @@ where
     ) -> Result<TxHash, ClientError> {
         if let Some(ref to) = tx.to {
             if let NameOrAddress::Name(ens_name) = to {
-                let addr = self
-                    .resolve_name(&ens_name)
-                    .await?;
+                let addr = self.resolve_name(&ens_name).await?;
                 tx.to = Some(addr.into())
             }
         }
