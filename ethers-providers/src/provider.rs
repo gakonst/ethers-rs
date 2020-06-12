@@ -351,7 +351,7 @@ impl<P: JsonRpcClient> Provider<P> {
 
     /// Creates a filter object, based on filter options, to notify when the state changes (logs).
     /// To check if the state has changed, call `get_filter_changes` with the filter id.
-    pub async fn new_filter<'a>(&self, filter: FilterKind<'a>) -> Result<U256, ProviderError> {
+    pub async fn new_filter(&self, filter: FilterKind<'_>) -> Result<U256, ProviderError> {
         let (method, args) = match filter {
             FilterKind::NewBlocks => ("eth_newBlockFilter", utils::serialize(&())),
             FilterKind::PendingTransactions => {
@@ -362,7 +362,7 @@ impl<P: JsonRpcClient> Provider<P> {
 
         Ok(self
             .0
-            .request(method, Some(args))
+            .request(method, Some(vec![args]))
             .await
             .map_err(Into::into)?)
     }

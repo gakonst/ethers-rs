@@ -1,6 +1,5 @@
 use ethers_contract::ContractFactory;
 use ethers_core::{
-    abi::{Detokenize, InvalidOutputType, Token},
     types::{Address, H256},
     utils::{Ganache, Solc},
 };
@@ -86,62 +85,4 @@ async fn deploy_and_call_contract() {
         .unwrap();
     assert_eq!(init_address, Address::zero());
     assert_eq!(init_value, "initial value");
-
-    // we can still interact with the old contract instance
-    let _tx_hash = contract
-        .method::<_, H256>("setValue", "hi2".to_owned())
-        .unwrap()
-        .send()
-        .await
-        .unwrap();
-    assert_eq!(last_sender.clone().call().await.unwrap(), client.address());
-    assert_eq!(get_value.clone().call().await.unwrap(), "hi2");
-
-    // and we can fetch the events
-    let logs: Vec<ValueChanged> = contract
-        .event("ValueChanged")
-        .unwrap()
-        .from_block(0u64)
-        .topic1(client.address()) // Corresponds to the first indexed parameter
-        .query()
-        .await
-        .unwrap();
-    assert_eq!(logs[0].new_value, "initial value");
-    assert_eq!(logs[1].new_value, "hi2");
-    assert_eq!(logs.len(), 2);
-
-    let logs: Vec<ValueChanged> = contract2
-        .event("ValueChanged")
-        .unwrap()
-        .from_block(0u64)
-        .query()
-        .await
-        .unwrap();
-    assert_eq!(logs[0].new_value, "initial value");
-    assert_eq!(logs.len(), 1);
-}
-
-// Note: We also provide the `abigen` macro for generating these bindings automatically
-#[derive(Clone, Debug)]
-struct ValueChanged {
-    old_author: Address,
-    new_author: Address,
-    old_value: String,
-    new_value: String,
-}
-
-impl Detokenize for ValueChanged {
-    fn from_tokens(tokens: Vec<Token>) -> Result<ValueChanged, InvalidOutputType> {
-        let old_author: Address = tokens[1].clone().to_address().unwrap();
-        let new_author: Address = tokens[1].clone().to_address().unwrap();
-        let old_value = tokens[2].clone().to_string().unwrap();
-        let new_value = tokens[3].clone().to_string().unwrap();
-
-        Ok(Self {
-            old_author,
-            new_author,
-            old_value,
-            new_value,
-        })
-    }
 }
