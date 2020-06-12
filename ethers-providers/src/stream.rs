@@ -46,8 +46,7 @@ enum FilterWatcherState<F, R> {
 #[must_use = "filters do nothing unless you stream them"]
 #[pin_project]
 pub(crate) struct FilterWatcher<F: FutureFactory, R> {
-    /// The filter's id, used for uninstalling it from the node
-    pub id: U256,
+    id: U256,
 
     #[pin]
     // Future factory for generating new calls on each loop
@@ -111,14 +110,25 @@ where
                     let mut interval = Box::pin(this.interval.tick());
                     let _ready = futures_util::ready!(interval.as_mut().poll(cx));
 
+                    // create a new instance of the future
                     FilterWatcherState::GetFilterChanges(this.factory.as_mut().new())
                 }
                 FilterWatcherState::GetFilterChanges(fut) => {
+                    // wait for the future to be ready
                     let mut fut = Box::pin(fut);
+
+                    // NOTE: If the provider returns an error, this will return an empty
+                    // vector. Should we make this return a Result instead? Ideally if we're
+                    // in a streamed loop we wouldn't want the loop to terminate if an error
+                    // is encountered (since it might be a temporary error).
                     let items: Vec<R> =
                         futures_util::ready!(fut.as_mut().poll(cx)).unwrap_or_default();
                     FilterWatcherState::NextItem(items.into_iter())
                 }
+                // Consume 1 element from the vector. If more elements are in the vector,
+                // the next call will immediately go to this branch instead of trying to get
+                // filter changes again. Once the whole vector is consumed, it will poll again
+                // for new logs
                 FilterWatcherState::NextItem(iter) => match iter.next() {
                     Some(item) => return Poll::Ready(Some(item)),
                     None => FilterWatcherState::WaitForInterval,
@@ -158,8 +168,30 @@ mod factory {
     {
         type FutureItem = F;
 
+        #[allow(clippy::new_ret_no_self)]
         fn new(self: Pin<&mut Self>) -> F {
             (*self.get_mut())()
         }
+    }
+}
+
+#[cfg(test)]
+mod watch {
+    use super::*;
+    use futures_util::StreamExt;
+
+    #[tokio::test]
+    async fn stream() {
+        let factory = || Box::pin(async { Ok::<Vec<u64>, ProviderError>(vec![1, 2, 3]) });
+        let filter = FilterWatcher::<_, u64>::new(1, factory);
+        let mut stream = filter.interval(1u64).stream();
+        assert_eq!(stream.next().await.unwrap(), 1);
+        assert_eq!(stream.next().await.unwrap(), 2);
+        assert_eq!(stream.next().await.unwrap(), 3);
+        // this will poll the factory function again since it consumed the entire
+        // vector, so it'll wrap around. Realistically, we'd then sleep for a few seconds
+        // until new blocks are mined, until the call to the factory returns a non-empty
+        // vector of logs
+        assert_eq!(stream.next().await.unwrap(), 1);
     }
 }

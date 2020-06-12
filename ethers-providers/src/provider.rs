@@ -1,10 +1,15 @@
-use crate::{ens, http::Provider as HttpProvider, JsonRpcClient};
+use crate::{
+    ens,
+    http::Provider as HttpProvider,
+    stream::{FilterStream, FilterWatcher},
+    JsonRpcClient,
+};
 
 use ethers_core::{
     abi::{self, Detokenize, ParamType},
     types::{
         Address, Block, BlockId, BlockNumber, Bytes, Filter, Log, NameOrAddress, Selector,
-        Signature, Transaction, TransactionReceipt, TransactionRequest, TxHash, U256, U64,
+        Signature, Transaction, TransactionReceipt, TransactionRequest, TxHash, H256, U256, U64,
     },
     utils,
 };
@@ -50,6 +55,19 @@ pub enum ProviderError {
     /// An error during ENS name resolution
     #[error("ens name not found: {0}")]
     EnsError(String),
+}
+
+/// Types of filters supported by the JSON-RPC.
+#[derive(Clone, Debug)]
+pub enum FilterKind {
+    /// `eth_newBlockFilter`
+    Logs(Filter),
+
+    /// `eth_newBlockFilter` filter
+    NewBlocks,
+
+    /// `eth_newPendingTransactionFilter` filter
+    PendingTransactions,
 }
 
 // JSON RPC bindings
@@ -263,7 +281,7 @@ impl<P: JsonRpcClient> Provider<P> {
 
         Ok(self
             .0
-            .request("eth_sendTransaction", Some(tx))
+            .request("eth_sendTransaction", Some(vec![tx]))
             .await
             .map_err(Into::into)?)
     }
@@ -301,6 +319,83 @@ impl<P: JsonRpcClient> Provider<P> {
         Ok(self
             .0
             .request("eth_getLogs", Some(filter))
+            .await
+            .map_err(Into::into)?)
+    }
+
+    /// Streams matching filter logs
+    pub async fn watch(
+        &self,
+        filter: Filter,
+    ) -> Result<impl FilterStream<Log> + '_, ProviderError> {
+        let id = self.new_filter(FilterKind::Logs(filter)).await?;
+        let fut = move || Box::pin(self.get_filter_changes(id));
+        Ok(FilterWatcher::new(id, fut))
+    }
+
+    /// Streams new block hashes
+    pub async fn watch_blocks(&self) -> Result<impl FilterStream<H256> + '_, ProviderError> {
+        let id = self.new_filter(FilterKind::NewBlocks).await?;
+        let fut = move || Box::pin(self.get_filter_changes(id));
+        Ok(FilterWatcher::new(id, fut))
+    }
+
+    /// Streams pending transactions
+    pub async fn watch_pending_transactions(
+        &self,
+    ) -> Result<impl FilterStream<H256> + '_, ProviderError> {
+        let id = self.new_filter(FilterKind::PendingTransactions).await?;
+        let fut = move || Box::pin(self.get_filter_changes(id));
+        Ok(FilterWatcher::new(id, fut))
+    }
+
+    /// Creates a filter object, based on filter options, to notify when the state changes (logs).
+    /// To check if the state has changed, call `get_filter_changes` with the filter id.
+    pub async fn new_filter(&self, filter: FilterKind) -> Result<U256, ProviderError> {
+        let (method, args) = match filter {
+            FilterKind::NewBlocks => ("eth_newBlockFilter", utils::serialize(&())),
+            FilterKind::PendingTransactions => {
+                ("eth_newPendingTransactionFilter", utils::serialize(&()))
+            }
+            FilterKind::Logs(filter) => ("eth_newFilter", utils::serialize(&filter)),
+        };
+
+        Ok(self
+            .0
+            .request(method, Some(args))
+            .await
+            .map_err(Into::into)?)
+    }
+
+    /// Uninstalls a filter
+    pub async fn uninstall_filter<T: Into<U256>>(&self, id: T) -> Result<bool, ProviderError> {
+        let id = utils::serialize(&id.into());
+        Ok(self
+            .0
+            .request("eth_uninstallFilter", Some(vec![id]))
+            .await
+            .map_err(Into::into)?)
+    }
+
+    /// Polling method for a filter, which returns an array of logs which occurred since last poll.
+    ///
+    /// This method must be called with one of the following return types, depending on the filter
+    /// type:
+    /// - `eth_newBlockFilter`: `H256`, returns block hashes
+    /// - `eth_newPendingTransactionFilter`: `H256`, returns transaction hashes
+    /// - `eth_newFilter`: `Log`, returns raw logs
+    ///
+    /// If one of these types is not used, decoding will fail and the method will
+    /// return an error.
+    pub async fn get_filter_changes<T, R>(&self, id: T) -> Result<Vec<R>, ProviderError>
+    where
+        T: Into<U256>,
+        R: for<'a> Deserialize<'a>,
+    {
+        let id = utils::serialize(&id.into());
+        Ok(self
+            .0
+            .request("eth_getFilterChanges", Some(vec![id]))
             .await
             .map_err(Into::into)?)
     }
