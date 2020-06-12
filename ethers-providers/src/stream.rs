@@ -3,6 +3,7 @@ use crate::ProviderError;
 use ethers_core::types::U256;
 
 use futures_core::{stream::Stream, TryFuture};
+use futures_util::StreamExt;
 use pin_project::pin_project;
 use serde::Deserialize;
 use std::{
@@ -17,7 +18,7 @@ use tokio::time::{interval, Interval};
 const DEFAULT_POLL_DURATION: Duration = Duration::from_millis(7000);
 
 /// Trait for streaming filters. You can get the id.
-pub trait FilterStream<R>: Stream<Item = R>
+pub trait FilterStream<R>: StreamExt + Stream<Item = R>
 where
     R: for<'de> Deserialize<'de>,
 {

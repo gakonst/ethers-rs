@@ -59,9 +59,9 @@ pub enum ProviderError {
 
 /// Types of filters supported by the JSON-RPC.
 #[derive(Clone, Debug)]
-pub enum FilterKind {
+pub enum FilterKind<'a> {
     /// `eth_newBlockFilter`
-    Logs(Filter),
+    Logs(&'a Filter),
 
     /// `eth_newBlockFilter` filter
     NewBlocks,
@@ -326,7 +326,7 @@ impl<P: JsonRpcClient> Provider<P> {
     /// Streams matching filter logs
     pub async fn watch(
         &self,
-        filter: Filter,
+        filter: &Filter,
     ) -> Result<impl FilterStream<Log> + '_, ProviderError> {
         let id = self.new_filter(FilterKind::Logs(filter)).await?;
         let fut = move || Box::pin(self.get_filter_changes(id));
@@ -351,7 +351,7 @@ impl<P: JsonRpcClient> Provider<P> {
 
     /// Creates a filter object, based on filter options, to notify when the state changes (logs).
     /// To check if the state has changed, call `get_filter_changes` with the filter id.
-    pub async fn new_filter(&self, filter: FilterKind) -> Result<U256, ProviderError> {
+    pub async fn new_filter<'a>(&self, filter: FilterKind<'a>) -> Result<U256, ProviderError> {
         let (method, args) = match filter {
             FilterKind::NewBlocks => ("eth_newBlockFilter", utils::serialize(&())),
             FilterKind::PendingTransactions => {
