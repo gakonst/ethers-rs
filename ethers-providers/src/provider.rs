@@ -459,6 +459,18 @@ impl<P: JsonRpcClient> Provider<P> {
         Ok(decode_bytes(param, data))
     }
 
+    #[cfg(test)]
+    /// ganache-only function for mining empty blocks
+    pub async fn mine(&self, num_blocks: usize) -> Result<(), ProviderError> {
+        for _ in 0..num_blocks {
+            self.0
+                .request::<_, U256>("evm_mine", None::<()>)
+                .await
+                .map_err(Into::into)?;
+        }
+        Ok(())
+    }
+
     /// Sets the ENS Address (default: mainnet)
     pub fn ens<T: Into<Address>>(mut self, ens: T) -> Self {
         self.1 = Some(ens.into());
@@ -531,5 +543,71 @@ mod ens_tests {
             .lookup_address("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA".parse().unwrap())
             .await
             .unwrap_err();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ethers_core::types::H256;
+    use futures_util::StreamExt;
+
+    #[tokio::test]
+    #[ignore]
+    // Ganache new block filters are super buggy! This test must be run with
+    // geth or parity running e.g. `geth --dev --rpc --dev.period 1`
+    async fn test_new_block_filter() {
+        let num_blocks = 3;
+
+        let provider = Provider::<HttpProvider>::try_from("http://localhost:8545").unwrap();
+        let start_block = provider.get_block_number().await.unwrap();
+
+        let stream = provider
+            .watch_blocks()
+            .await
+            .unwrap()
+            .interval(1000u64)
+            .stream();
+
+        let hashes: Vec<H256> = stream.take(num_blocks).collect::<Vec<H256>>().await;
+        for i in 0..num_blocks {
+            let block = provider
+                .get_block(start_block + i as u64 + 1)
+                .await
+                .unwrap();
+            assert_eq!(hashes[i], block.hash.unwrap());
+        }
+    }
+
+    // this must be run with geth or parity since ganache-core still does not support
+    // eth_pendingTransactions, https://github.com/trufflesuite/ganache-core/issues/405
+    // example command: `geth --dev --rpc --dev.period 1`
+    #[tokio::test]
+    #[ignore]
+    async fn test_new_pending_txs_filter() {
+        let num_txs = 5;
+
+        let provider = Provider::<HttpProvider>::try_from("http://localhost:8545").unwrap();
+        let accounts = provider.get_accounts().await.unwrap();
+
+        let stream = provider
+            .watch_pending_transactions()
+            .await
+            .unwrap()
+            .interval(1000u64)
+            .stream();
+
+        let mut tx_hashes = Vec::new();
+        let tx = TransactionRequest::new()
+            .from(accounts[0])
+            .to(accounts[0])
+            .value(1e18 as u64);
+
+        for _ in 0..num_txs {
+            tx_hashes.push(provider.send_transaction(tx.clone()).await.unwrap());
+        }
+
+        let hashes: Vec<H256> = stream.take(num_txs).collect::<Vec<H256>>().await;
+        assert_eq!(tx_hashes, hashes);
     }
 }
