@@ -287,13 +287,17 @@ impl<P: JsonRpcClient> Provider<P> {
 
     /// Send the raw RLP encoded transaction to the entire Ethereum network and returns the transaction's hash
     /// This will consume gas from the account that signed the transaction.
-    pub async fn send_raw_transaction(&self, tx: &Transaction) -> Result<TxHash, ProviderError> {
+    pub async fn send_raw_transaction(
+        &self,
+        tx: &Transaction,
+    ) -> Result<PendingTransaction<'_, P>, ProviderError> {
         let rlp = utils::serialize(&tx.rlp());
-        Ok(self
+        let tx_hash = self
             .0
             .request("eth_sendRawTransaction", [rlp])
             .await
-            .map_err(Into::into)?)
+            .map_err(Into::into)?;
+        Ok(PendingTransaction::new(tx_hash, self))
     }
 
     /// Signs data using a specific account. This account needs to be unlocked.

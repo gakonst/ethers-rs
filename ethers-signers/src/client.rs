@@ -1,9 +1,9 @@
 use crate::Signer;
 
 use ethers_core::types::{
-    Address, BlockNumber, Bytes, NameOrAddress, Signature, TransactionRequest, TxHash,
+    Address, BlockNumber, Bytes, NameOrAddress, Signature, TransactionRequest,
 };
-use ethers_providers::{JsonRpcClient, Provider, ProviderError};
+use ethers_providers::{JsonRpcClient, PendingTransaction, Provider, ProviderError};
 
 use futures_util::{future::ok, join};
 use std::{future::Future, ops::Deref};
@@ -113,7 +113,7 @@ where
         &self,
         mut tx: TransactionRequest,
         block: Option<BlockNumber>,
-    ) -> Result<TxHash, ClientError> {
+    ) -> Result<PendingTransaction<'_, P>, ClientError> {
         if let Some(ref to) = tx.to {
             if let NameOrAddress::Name(ens_name) = to {
                 let addr = self.resolve_name(&ens_name).await?;
@@ -128,9 +128,7 @@ where
         let signed_tx = self.signer.sign_transaction(tx).map_err(Into::into)?;
 
         // broadcast it
-        self.provider.send_raw_transaction(&signed_tx).await?;
-
-        Ok(signed_tx.hash)
+        Ok(self.provider.send_raw_transaction(&signed_tx).await?)
     }
 
     async fn fill_transaction(
