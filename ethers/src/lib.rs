@@ -247,8 +247,8 @@ pub mod signers {
 /// # ABI Encoding and Decoding
 ///
 /// This crate re-exports the [`ethabi`](http://docs.rs/ethabi) crate's functions
-/// under the `abi` module, as well as the [`secp256k1`](secp256k1) and [`rand`](rand)
-/// crates for convenience.
+/// under the `abi` module, as well as the [`secp256k1`](https://docs.rs/libsecp256k1)
+/// and [`rand`](https://docs.rs/rand) crates for convenience.
 pub mod core {
     pub use ethers_core::*;
 }
