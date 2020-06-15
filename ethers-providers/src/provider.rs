@@ -570,12 +570,12 @@ mod tests {
             .stream();
 
         let hashes: Vec<H256> = stream.take(num_blocks).collect::<Vec<H256>>().await;
-        for i in 0..num_blocks {
+        for (i, hash) in hashes.iter().enumerate() {
             let block = provider
                 .get_block(start_block + i as u64 + 1)
                 .await
                 .unwrap();
-            assert_eq!(hashes[i], block.hash.unwrap());
+            assert_eq!(*hash, block.hash.unwrap());
         }
     }
 
