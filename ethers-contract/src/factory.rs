@@ -17,7 +17,7 @@ const POLL_INTERVAL: u64 = 7000;
 #[derive(Debug, Clone)]
 /// Helper which manages the deployment transaction of a smart contract
 pub struct Deployer<'a, P, S> {
-    abi: &'a Abi,
+    abi: Abi,
     client: &'a Client<P, S>,
     tx: TransactionRequest,
     confs: usize,
@@ -61,7 +61,7 @@ where
             time::delay_for(Duration::from_millis(POLL_INTERVAL)).await;
         }
 
-        let contract = Contract::new(address, self.abi, self.client);
+        let contract = Contract::new(address, self.abi.clone(), self.client);
         Ok(contract)
     }
 
@@ -107,7 +107,7 @@ where
 ///     .parse::<Wallet>()?.connect(provider);
 ///
 /// // create a factory which will be used to deploy instances of the contract
-/// let factory = ContractFactory::new(&contract.abi, &contract.bytecode, &client);
+/// let factory = ContractFactory::new(contract.abi.clone(), contract.bytecode.clone(), &client);
 ///
 /// // The deployer created by the `deploy` call exposes a builder which gets consumed
 /// // by the async `send` call
@@ -121,8 +121,8 @@ where
 /// # }
 pub struct ContractFactory<'a, P, S> {
     client: &'a Client<P, S>,
-    abi: &'a Abi,
-    bytecode: &'a Bytes,
+    abi: Abi,
+    bytecode: Bytes,
 }
 
 impl<'a, P, S> ContractFactory<'a, P, S>
@@ -133,7 +133,7 @@ where
     /// Creates a factory for deployment of the Contract with bytecode, and the
     /// constructor defined in the abi. The client will be used to send any deployment
     /// transaction.
-    pub fn new(abi: &'a Abi, bytecode: &'a Bytes, client: &'a Client<P, S>) -> Self {
+    pub fn new(abi: Abi, bytecode: Bytes, client: &'a Client<P, S>) -> Self {
         Self {
             client,
             abi,
@@ -150,7 +150,7 @@ where
     /// 1. The default poll duration is 7 seconds.
     /// 1. The default number of confirmations is 1 block.
     pub fn deploy<T: Tokenize>(
-        &self,
+        self,
         constructor_args: T,
     ) -> Result<Deployer<'a, P, S>, ContractError> {
         // Encode the constructor args & concatenate with the bytecode if necessary

@@ -75,7 +75,7 @@ use std::{collections::HashMap, fmt::Debug, hash::Hash, marker::PhantomData};
 ///     .parse::<Wallet>()?.connect(provider);
 ///
 /// // create the contract object at the address
-/// let contract = Contract::new(address, &abi, &client);
+/// let contract = Contract::new(address, abi, &client);
 ///
 /// // Calling constant methods is done by calling `call()` on the method builder.
 /// // (if the function takes no arguments, then you must use `()` as the argument)
@@ -112,7 +112,7 @@ use std::{collections::HashMap, fmt::Debug, hash::Hash, marker::PhantomData};
 /// # let abi: Abi = serde_json::from_str(r#"[]"#)?;
 /// # let provider = Provider::<Http>::try_from("http://localhost:8545").unwrap();
 /// # let client = "380eb0f3d505f087e438eca80bc4df9a7faa24f868e69fc0440261a0fc0567dc".parse::<Wallet>()?.connect(provider);
-/// # let contract = Contract::new(address, &abi, &client);
+/// # let contract = Contract::new(address, abi, &client);
 ///
 /// #[derive(Clone, Debug)]
 /// struct ValueChanged {
@@ -160,7 +160,7 @@ use std::{collections::HashMap, fmt::Debug, hash::Hash, marker::PhantomData};
 #[derive(Debug, Clone)]
 pub struct Contract<'a, P, S> {
     client: &'a Client<P, S>,
-    abi: &'a Abi,
+    abi: Abi,
     address: Address,
 
     /// A mapping from method signature to a name-index pair for accessing
@@ -176,7 +176,7 @@ where
     P: JsonRpcClient,
 {
     /// Creates a new contract from the provided client, abi and address
-    pub fn new(address: Address, abi: &'a Abi, client: &'a Client<P, S>) -> Self {
+    pub fn new(address: Address, abi: Abi, client: &'a Client<P, S>) -> Self {
         let methods = create_mapping(&abi.functions, |function| function.selector());
 
         Self {
