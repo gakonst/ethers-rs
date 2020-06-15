@@ -2,7 +2,7 @@ use crate::{
     ens,
     http::Provider as HttpProvider,
     stream::{FilterStream, FilterWatcher},
-    JsonRpcClient,
+    JsonRpcClient, PendingTransaction,
 };
 
 use ethers_core::{
@@ -266,7 +266,7 @@ impl<P: JsonRpcClient> Provider<P> {
     pub async fn send_transaction(
         &self,
         mut tx: TransactionRequest,
-    ) -> Result<TxHash, ProviderError> {
+    ) -> Result<PendingTransaction<'_, P>, ProviderError> {
         if let Some(ref to) = tx.to {
             if let NameOrAddress::Name(ens_name) = to {
                 // resolve to an address
@@ -277,11 +277,12 @@ impl<P: JsonRpcClient> Provider<P> {
             }
         }
 
-        Ok(self
+        let tx_hash = self
             .0
             .request("eth_sendTransaction", [tx])
             .await
-            .map_err(Into::into)?)
+            .map_err(Into::into)?;
+        Ok(PendingTransaction::new(tx_hash, self))
     }
 
     /// Send the raw RLP encoded transaction to the entire Ethereum network and returns the transaction's hash

@@ -6,6 +6,9 @@ mod provider;
 // ENS support
 mod ens;
 
+mod pending_transaction;
+pub use pending_transaction::PendingTransaction;
+
 mod stream;
 pub use stream::FilterStream;
 // re-export `StreamExt` so that consumers can call `next()` on the `FilterStream`
@@ -28,6 +31,6 @@ pub trait JsonRpcClient: Debug + Clone {
     /// Sends a request with the provided JSON-RPC and parameters serialized as JSON
     async fn request<T, R>(&self, method: &str, params: T) -> Result<R, Self::Error>
     where
-        T: Serialize + Send + Sync,
+        T: Debug + Serialize + Send + Sync,
         R: for<'a> Deserialize<'a>;
 }
