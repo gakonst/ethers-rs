@@ -72,7 +72,7 @@ impl Context {
                     /// client at the given `Address`. The contract derefs to a `ethers::Contract`
                     /// object
                     pub fn new<T: Into<Address>>(address: T, client: &'a Client<P, S>) -> Self {
-                        let contract = Contract::new(address.into(), &#abi_name, client);
+                        let contract = Contract::new(address.into(), #abi_name.clone(), client);
                         Self(contract)
                     }
 

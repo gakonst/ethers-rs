@@ -1,44 +1,13 @@
-use ethers_contract::ContractFactory;
-use ethers_core::{
-    types::H256,
-    utils::{Ganache, Solc},
-};
-use ethers_providers::{Http, Provider};
-use ethers_signers::Wallet;
-use std::convert::TryFrom;
+use ethers_core::types::H256;
 
-mod test_helpers;
-use test_helpers::ValueChanged;
+mod common;
+use common::{compile, connect, deploy, ValueChanged};
 
 #[tokio::test]
 async fn get_past_events() {
-    // compile the contract
-    let compiled = Solc::new("./tests/contract.sol").build().unwrap();
-    let contract = compiled
-        .get("SimpleStorage")
-        .expect("could not find contract");
-
-    // launch ganache
-    let port = 8546u64;
-    let url = format!("http://localhost:{}", port).to_string();
-    let _ganache = Ganache::new().port(port)
-        .mnemonic("abstract vacuum mammal awkward pudding scene penalty purchase dinner depart evoke puzzle")
-        .spawn();
-
-    // connect to the network
-    let provider = Provider::<Http>::try_from(url.as_str()).unwrap();
-    let client = "380eb0f3d505f087e438eca80bc4df9a7faa24f868e69fc0440261a0fc0567dc"
-        .parse::<Wallet>()
-        .unwrap()
-        .connect(provider);
-
-    let factory = ContractFactory::new(&contract.abi, &contract.bytecode, &client);
-    let contract = factory
-        .deploy("initial value".to_string())
-        .unwrap()
-        .send()
-        .await
-        .unwrap();
+    let (abi, bytecode) = compile();
+    let client = connect("380eb0f3d505f087e438eca80bc4df9a7faa24f868e69fc0440261a0fc0567dc");
+    let (_ganache, contract) = deploy(&client, abi, bytecode).await;
 
     // make a call with `client2`
     let _tx_hash = contract
