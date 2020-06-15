@@ -190,13 +190,13 @@ pub mod providers {
 ///     .value(10000);
 ///
 /// // send it! (this will resolve the ENS name to an address under the hood)
-/// let hash = client.send_transaction(tx, None).await?;
-///
-/// // get the mined tx
-/// let tx = client.get_transaction(hash).await?;
+/// let pending_tx = client.send_transaction(tx, None).await?;
 ///
 /// // get the receipt
-/// let receipt = client.get_transaction_receipt(tx.hash).await?;
+/// let receipt = pending_tx.await?;
+///
+/// // get the mined tx
+/// let tx = client.get_transaction(receipt.transaction_hash).await?;
 ///
 /// println!("{}", serde_json::to_string(&tx)?);
 /// println!("{}", serde_json::to_string(&receipt)?);
