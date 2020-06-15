@@ -182,9 +182,14 @@ impl<P: JsonRpcClient> Provider<P> {
     /// Returns the nonce of the address
     pub async fn get_transaction_count(
         &self,
-        from: Address,
+        from: impl Into<NameOrAddress>,
         block: Option<BlockNumber>,
     ) -> Result<U256, ProviderError> {
+        let from = match from.into() {
+            NameOrAddress::Name(ens_name) => self.resolve_name(&ens_name).await?,
+            NameOrAddress::Address(addr) => addr,
+        };
+
         let from = utils::serialize(&from);
         let block = utils::serialize(&block.unwrap_or(BlockNumber::Latest));
         Ok(self
@@ -197,9 +202,14 @@ impl<P: JsonRpcClient> Provider<P> {
     /// Returns the account's balance
     pub async fn get_balance(
         &self,
-        from: Address,
+        from: impl Into<NameOrAddress>,
         block: Option<BlockNumber>,
     ) -> Result<U256, ProviderError> {
+        let from = match from.into() {
+            NameOrAddress::Name(ens_name) => self.resolve_name(&ens_name).await?,
+            NameOrAddress::Address(addr) => addr,
+        };
+
         let from = utils::serialize(&from);
         let block = utils::serialize(&block.unwrap_or(BlockNumber::Latest));
         Ok(self
