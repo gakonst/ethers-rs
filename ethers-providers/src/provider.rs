@@ -409,7 +409,27 @@ impl<P: JsonRpcClient> Provider<P> {
             .map_err(Into::into)?)
     }
 
-    // TODO: get_code, get_storage_at
+    // TODO: get_storage_at
+
+    /// Returns the deployed code at a given address
+    pub async fn get_code(
+        &self,
+        at: impl Into<NameOrAddress>,
+        block: Option<BlockNumber>,
+    ) -> Result<Bytes, ProviderError> {
+        let at = match at.into() {
+            NameOrAddress::Name(ens_name) => self.resolve_name(&ens_name).await?,
+            NameOrAddress::Address(addr) => addr,
+        };
+
+        let at = utils::serialize(&at);
+        let block = utils::serialize(&block.unwrap_or(BlockNumber::Latest));
+        Ok(self
+            .0
+            .request("eth_getCode", [at, block])
+            .await
+            .map_err(Into::into)?)
+    }
 
     ////// Ethereum Naming Service
     // The Ethereum Naming Service (ENS) allows easy to remember and use names to
