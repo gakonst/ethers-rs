@@ -6,6 +6,12 @@ mod provider;
 // ENS support
 mod ens;
 
+mod stream;
+pub use stream::FilterStream;
+// re-export `StreamExt` so that consumers can call `next()` on the `FilterStream`
+// without having to import futures themselves
+pub use futures_util::StreamExt;
+
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::{error::Error, fmt::Debug};

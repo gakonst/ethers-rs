@@ -1,12 +1,13 @@
 use crate::ContractError;
 
-use ethers_providers::{JsonRpcClient, Provider};
+use ethers_providers::{FilterStream, JsonRpcClient, Provider};
 
 use ethers_core::{
     abi::{Detokenize, Event as AbiEvent, RawLog},
     types::{BlockNumber, Filter, Log, ValueOrArray, H256},
 };
 
+use futures::stream::{Stream, StreamExt};
 use std::{collections::HashMap, marker::PhantomData};
 
 /// Helper for managing the event filter before querying or streaming its logs
@@ -60,6 +61,21 @@ impl<P, D: Detokenize> Event<'_, '_, P, D> {
     }
 }
 
+impl<'a, 'b, P, D> Event<'a, 'b, P, D>
+where
+    P: JsonRpcClient,
+    D: 'b + Detokenize + Clone,
+    'a: 'b,
+{
+    /// Returns a stream for the event
+    pub async fn stream(
+        self,
+    ) -> Result<impl Stream<Item = Result<D, ContractError>> + 'b, ContractError> {
+        let filter = self.provider.watch(&self.filter).await?;
+        Ok(filter.stream().map(move |log| self.parse_log(log)))
+    }
+}
+
 impl<P, D> Event<'_, '_, P, D>
 where
     P: JsonRpcClient,
@@ -107,6 +123,4 @@ where
         // convert the tokens to the requested datatype
         Ok(D::from_tokens(tokens)?)
     }
-
-    // TODO: Add filter watchers
 }

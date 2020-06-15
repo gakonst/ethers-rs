@@ -38,7 +38,7 @@ async fn main() -> Result<()> {
     let client = wallet.connect(provider);
 
     // 6. create a factory which will be used to deploy instances of the contract
-    let factory = ContractFactory::new(&contract.abi, &contract.bytecode, &client);
+    let factory = ContractFactory::new(contract.abi.clone(), contract.bytecode.clone(), &client);
 
     // 7. deploy it with the constructor arguments
     let contract = factory.deploy("initial value".to_string())?.send().await?;

@@ -4,41 +4,8 @@ commands:
   setup-lints:
     steps:
       - run:
-          name: Install cargo-audit
-          command: cargo install cargo-audit
-      - run:
           name: Install clippy
           command: rustup component add clippy
-
-  # https://medium.com/@edouard.oger/rust-caching-on-circleci-using-sccache-c996344f0115
-  setup-sccache:
-    steps:
-      - run:
-          name: Install sccache
-          command: |
-            cargo install sccache
-            # This configures Rust to use sccache.
-            echo 'export "RUSTC_WRAPPER"="sccache"' >> $BASH_ENV
-            # This is the maximum space sccache cache will use on disk.
-            echo 'export "SCCACHE_CACHE_SIZE"="1G"' >> $BASH_ENV
-            sccache --version
-
-  restore-sccache-cache:
-    steps:
-      - restore_cache:
-          name: Restore sccache cache
-          key: sccache-cache-stable-{{ arch }}-{{ .Environment.CIRCLE_JOB }}
-  save-sccache-cache:
-    steps:
-      - save_cache:
-          name: Save sccache cache
-          # We use {{ epoch }} to always upload a fresh cache:
-          # Of course, restore_cache will not find this exact key,
-          # but it will fall back to the closest key (aka the most recent).
-          # See https://discuss.circleci.com/t/add-mechanism-to-update-existing-cache-key/9014/13
-          key: sccache-cache-stable-{{ arch }}-{{ .Environment.CIRCLE_JOB }}-{{ epoch }}
-          paths:
-            - "~/.cache/sccache"
 
 jobs:
   build:
@@ -47,18 +14,18 @@ jobs:
     steps:
       - checkout
       - setup-lints
-      - setup-sccache
-      - restore-sccache-cache
+      - run:
+          name: Reduce codegen Units
+          # If we don't include this, the linker runs out of memory when building
+          # the project on CI. We don't include this normally though because
+          # it should be able to build with more units on other machines
+          command: printf "[profile.dev]\ncodegen-units = 1\n" >> Cargo.toml
       - run:
             name: tests
             # skip these temporarily until we get ganache-cli and solc on CI
-            command: cargo test --all -- --skip deploy_and_call_contract --skip send_eth
+            command: cargo test --all -- --skip deploy_and_call_contract --skip send_eth --skip watch_events --skip get_past_events
       - run:
           name: Check style
           command: |
               cargo fmt --all -- --check
               cargo clippy --all-targets --all-features -- -D warnings
-      - run:
-          name: Audit Dependencies
-          command: cargo audit
-      - save-sccache-cache
