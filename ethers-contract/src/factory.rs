@@ -7,13 +7,6 @@ use ethers_core::{
 use ethers_providers::JsonRpcClient;
 use ethers_signers::{Client, Signer};
 
-use std::time::Duration;
-use tokio::time;
-
-/// Poll for tx confirmation once every 7 seconds.
-// TODO: Can this be improved by replacing polling with an "on new block" subscription?
-const POLL_INTERVAL: u64 = 7000;
-
 #[derive(Debug, Clone)]
 /// Helper which manages the deployment transaction of a smart contract
 pub struct Deployer<'a, P, S> {
@@ -21,7 +14,6 @@ pub struct Deployer<'a, P, S> {
     client: &'a Client<P, S>,
     tx: TransactionRequest,
     confs: usize,
-    poll_interval: Duration,
 }
 
 impl<'a, P, S> Deployer<'a, P, S>
@@ -29,13 +21,6 @@ where
     S: Signer,
     P: JsonRpcClient,
 {
-    /// Sets the poll frequency for checking the number of confirmations for
-    /// the contract deployment transaction
-    pub fn poll_interval<T: Into<Duration>>(mut self, interval: T) -> Self {
-        self.poll_interval = interval.into();
-        self
-    }
-
     /// Sets the number of confirmations to wait for the contract deployment transaction
     pub fn confirmations<T: Into<usize>>(mut self, confirmations: T) -> Self {
         self.confs = confirmations.into();
@@ -46,20 +31,13 @@ where
     /// be sufficiently confirmed (default: 1), it returns a [`Contract`](./struct.Contract.html)
     /// struct at the deployed contract's address.
     pub async fn send(self) -> Result<Contract<'a, P, S>, ContractError> {
-        let tx_hash = self.client.send_transaction(self.tx, None).await?;
+        let pending_tx = self.client.send_transaction(self.tx, None).await?;
 
-        // poll for the receipt
-        let address;
-        loop {
-            if let Ok(receipt) = self.client.get_transaction_receipt(tx_hash).await {
-                address = receipt
-                    .contract_address
-                    .ok_or(ContractError::ContractNotDeployed)?;
-                break;
-            }
+        let receipt = pending_tx.confirmations(self.confs).await?;
 
-            time::delay_for(Duration::from_millis(POLL_INTERVAL)).await;
-        }
+        let address = receipt
+            .contract_address
+            .ok_or(ContractError::ContractNotDeployed)?;
 
         let contract = Contract::new(address, self.abi.clone(), self.client);
         Ok(contract)
@@ -177,7 +155,6 @@ where
             abi: self.abi,
             tx,
             confs: 1,
-            poll_interval: Duration::from_millis(POLL_INTERVAL),
         })
     }
 }

@@ -1,9 +1,9 @@
 use crate::Signer;
 
 use ethers_core::types::{
-    Address, BlockNumber, Bytes, NameOrAddress, Signature, TransactionRequest, TxHash,
+    Address, BlockNumber, Bytes, NameOrAddress, Signature, TransactionRequest,
 };
-use ethers_providers::{JsonRpcClient, Provider, ProviderError};
+use ethers_providers::{JsonRpcClient, PendingTransaction, Provider, ProviderError};
 
 use futures_util::{future::ok, join};
 use std::{future::Future, ops::Deref};
@@ -42,7 +42,14 @@ use thiserror::Error;
 /// let signed_msg = client.provider().sign(b"hello".to_vec(), &client.address()).await?;
 ///
 /// let tx = TransactionRequest::pay("vitalik.eth", 100);
-/// let tx_hash = client.send_transaction(tx, None).await?;
+/// let pending_tx = client.send_transaction(tx, None).await?;
+///
+/// // You can get the transaction hash by dereferencing it
+/// let tx_hash = *pending_tx;
+///
+/// // Or you can `await` on the pending transaction to get the receipt with a pre-specified
+/// // number of confirmations
+/// let receipt = pending_tx.confirmations(6).await?;
 ///
 /// // You can connect with other wallets at runtime via the `with_signer` function
 /// let wallet2: Wallet = "cd8c407233c0560f6de24bb2dc60a8b02335c959a1a17f749ce6c1ccf63d74a7"
@@ -113,7 +120,7 @@ where
         &self,
         mut tx: TransactionRequest,
         block: Option<BlockNumber>,
-    ) -> Result<TxHash, ClientError> {
+    ) -> Result<PendingTransaction<'_, P>, ClientError> {
         if let Some(ref to) = tx.to {
             if let NameOrAddress::Name(ens_name) = to {
                 let addr = self.resolve_name(&ens_name).await?;
@@ -128,9 +135,7 @@ where
         let signed_tx = self.signer.sign_transaction(tx).map_err(Into::into)?;
 
         // broadcast it
-        self.provider.send_raw_transaction(&signed_tx).await?;
-
-        Ok(signed_tx.hash)
+        Ok(self.provider.send_raw_transaction(&signed_tx).await?)
     }
 
     async fn fill_transaction(
@@ -176,16 +181,22 @@ where
 
     /// Sets the signer and returns a mutable reference to self so that it can be used in chained
     /// calls.
-    pub fn with_signer(&mut self, signer: S) -> &mut Self {
-        self.signer = signer;
-        self
+    ///
+    /// Clones internally.
+    pub fn with_signer(&self, signer: S) -> Self {
+        let mut this = self.clone();
+        this.signer = signer;
+        this
     }
 
     /// Sets the provider and returns a mutable reference to self so that it can be used in chained
     /// calls.
-    pub fn with_provider(&mut self, provider: Provider<P>) -> &mut Self {
-        self.provider = provider;
-        self
+    ///
+    /// Clones internally.
+    pub fn with_provider(&self, provider: Provider<P>) -> Self {
+        let mut this = self.clone();
+        this.provider = provider;
+        this
     }
 }
 

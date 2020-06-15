@@ -1,8 +1,8 @@
 use ethers_core::{
     abi::{Detokenize, Error as AbiError, Function, InvalidOutputType},
-    types::{Address, BlockNumber, TransactionRequest, H256, U256},
+    types::{Address, BlockNumber, TransactionRequest, U256},
 };
-use ethers_providers::{JsonRpcClient, ProviderError};
+use ethers_providers::{JsonRpcClient, PendingTransaction, ProviderError};
 use ethers_signers::{Client, ClientError, Signer};
 
 use std::{fmt::Debug, marker::PhantomData};
@@ -110,7 +110,7 @@ where
     }
 
     /// Signs and broadcasts the provided transaction
-    pub async fn send(self) -> Result<H256, ContractError> {
+    pub async fn send(self) -> Result<PendingTransaction<'a, P>, ContractError> {
         Ok(self.client.send_transaction(self.tx, self.block).await?)
     }
 }

@@ -16,7 +16,6 @@ serde = { version = "1.0.110", default-features = false }
 rustc-hex = { version = "2.1.0", default-features = false }
 thiserror = { version = "1.0.19", default-features = false }
 once_cell = { version = "1.4.0", default-features = false }
-tokio = { version = "0.2.21", default-features = false }
 futures = "0.3.5"
 
 [dev-dependencies]
