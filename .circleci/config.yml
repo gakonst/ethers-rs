@@ -23,7 +23,7 @@ jobs:
       - run:
             name: tests
             # skip these temporarily until we get ganache-cli and solc on CI
-            command: cargo test --all -- --skip deploy_and_call_contract --skip send_eth --skip watch_events --skip get_past_events
+            command: cargo test --all -- --skip deploy_and_call_contract --skip send_eth --skip watch_events --skip get_past_events --skip test_pending_tx
       - run:
           name: Check style
           command: |

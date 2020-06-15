@@ -128,16 +128,16 @@ impl<'a, P> Deref for PendingTransaction<'a, P> {
     }
 }
 
+// Helper type alias
+type PinBoxFut<'a, T> = Pin<Box<dyn Future<Output = Result<T, ProviderError>> + 'a>>;
+
 // We box the TransactionReceipts to keep the enum small.
 enum PendingTxState<'a> {
     /// Polling the blockchain for the receipt
-    GettingReceipt(Pin<Box<dyn Future<Output = Result<TransactionReceipt, ProviderError>> + 'a>>),
+    GettingReceipt(PinBoxFut<'a, TransactionReceipt>),
 
     /// Polling the blockchain for the current block number
-    GettingBlockNumber(
-        Pin<Box<dyn Future<Output = Result<U64, ProviderError>> + 'a>>,
-        Box<TransactionReceipt>,
-    ),
+    GettingBlockNumber(PinBoxFut<'a, U64>, Box<TransactionReceipt>),
 
     /// If the pending tx required only 1 conf, it will return early. Otherwise it will
     /// proceed to the next state which will poll the block number until there have been
