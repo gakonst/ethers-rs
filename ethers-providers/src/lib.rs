@@ -26,7 +26,7 @@ pub trait JsonRpcClient: Debug + Clone {
     type Error: Error + Into<ProviderError>;
 
     /// Sends a request with the provided JSON-RPC and parameters serialized as JSON
-    async fn request<T, R>(&self, method: &str, params: Option<T>) -> Result<R, Self::Error>
+    async fn request<T, R>(&self, method: &str, params: T) -> Result<R, Self::Error>
     where
         T: Serialize + Send + Sync,
         R: for<'a> Deserialize<'a>;
