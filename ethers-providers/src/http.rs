@@ -60,7 +60,7 @@ impl JsonRpcClient for Provider {
     async fn request<T: Serialize + Send + Sync, R: for<'a> Deserialize<'a>>(
         &self,
         method: &str,
-        params: Option<T>,
+        params: T,
     ) -> Result<R, ClientError> {
         let next_id = self.id.load(Ordering::SeqCst) + 1;
         self.id.store(next_id, Ordering::SeqCst);
@@ -151,12 +151,12 @@ struct Request<'a, T> {
     id: u64,
     jsonrpc: &'a str,
     method: &'a str,
-    params: Option<T>,
+    params: T,
 }
 
 impl<'a, T> Request<'a, T> {
     /// Creates a new JSON RPC request
-    fn new(id: u64, method: &'a str, params: Option<T>) -> Self {
+    fn new(id: u64, method: &'a str, params: T) -> Self {
         Self {
             id,
             jsonrpc: "2.0",

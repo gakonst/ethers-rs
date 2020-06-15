@@ -85,7 +85,7 @@ impl<P: JsonRpcClient> Provider<P> {
     pub async fn get_block_number(&self) -> Result<U64, ProviderError> {
         Ok(self
             .0
-            .request("eth_blockNumber", None::<()>)
+            .request("eth_blockNumber", ())
             .await
             .map_err(Into::into)?)
     }
@@ -120,17 +120,15 @@ impl<P: JsonRpcClient> Provider<P> {
         Ok(match id {
             BlockId::Hash(hash) => {
                 let hash = utils::serialize(&hash);
-                let args = vec![hash, include_txs];
                 self.0
-                    .request("eth_getBlockByHash", Some(args))
+                    .request("eth_getBlockByHash", [hash, include_txs])
                     .await
                     .map_err(Into::into)?
             }
             BlockId::Number(num) => {
                 let num = utils::serialize(&num);
-                let args = vec![num, include_txs];
                 self.0
-                    .request("eth_getBlockByNumber", Some(args))
+                    .request("eth_getBlockByNumber", [num, include_txs])
                     .await
                     .map_err(Into::into)?
             }
@@ -145,7 +143,7 @@ impl<P: JsonRpcClient> Provider<P> {
         let hash = transaction_hash.into();
         Ok(self
             .0
-            .request("eth_getTransactionByHash", Some(hash))
+            .request("eth_getTransactionByHash", [hash])
             .await
             .map_err(Into::into)?)
     }
@@ -158,7 +156,7 @@ impl<P: JsonRpcClient> Provider<P> {
         let hash = transaction_hash.into();
         Ok(self
             .0
-            .request("eth_getTransactionReceipt", Some(hash))
+            .request("eth_getTransactionReceipt", [hash])
             .await
             .map_err(Into::into)?)
     }
@@ -167,7 +165,7 @@ impl<P: JsonRpcClient> Provider<P> {
     pub async fn get_gas_price(&self) -> Result<U256, ProviderError> {
         Ok(self
             .0
-            .request("eth_gasPrice", None::<()>)
+            .request("eth_gasPrice", ())
             .await
             .map_err(Into::into)?)
     }
@@ -176,7 +174,7 @@ impl<P: JsonRpcClient> Provider<P> {
     pub async fn get_accounts(&self) -> Result<Vec<Address>, ProviderError> {
         Ok(self
             .0
-            .request("eth_accounts", None::<()>)
+            .request("eth_accounts", ())
             .await
             .map_err(Into::into)?)
     }
@@ -191,7 +189,7 @@ impl<P: JsonRpcClient> Provider<P> {
         let block = utils::serialize(&block.unwrap_or(BlockNumber::Latest));
         Ok(self
             .0
-            .request("eth_getTransactionCount", Some(&[from, block]))
+            .request("eth_getTransactionCount", [from, block])
             .await
             .map_err(Into::into)?)
     }
@@ -206,7 +204,7 @@ impl<P: JsonRpcClient> Provider<P> {
         let block = utils::serialize(&block.unwrap_or(BlockNumber::Latest));
         Ok(self
             .0
-            .request("eth_getBalance", Some(&[from, block]))
+            .request("eth_getBalance", [from, block])
             .await
             .map_err(Into::into)?)
     }
@@ -216,7 +214,7 @@ impl<P: JsonRpcClient> Provider<P> {
     pub async fn get_chainid(&self) -> Result<U256, ProviderError> {
         Ok(self
             .0
-            .request("eth_chainId", None::<()>)
+            .request("eth_chainId", ())
             .await
             .map_err(Into::into)?)
     }
@@ -236,7 +234,7 @@ impl<P: JsonRpcClient> Provider<P> {
         let block = utils::serialize(&block.unwrap_or(BlockNumber::Latest));
         Ok(self
             .0
-            .request("eth_call", Some(vec![tx, block]))
+            .request("eth_call", [tx, block])
             .await
             .map_err(Into::into)?)
     }
@@ -258,7 +256,7 @@ impl<P: JsonRpcClient> Provider<P> {
 
         Ok(self
             .0
-            .request("eth_estimateGas", Some(args))
+            .request("eth_estimateGas", args)
             .await
             .map_err(Into::into)?)
     }
@@ -281,7 +279,7 @@ impl<P: JsonRpcClient> Provider<P> {
 
         Ok(self
             .0
-            .request("eth_sendTransaction", Some(vec![tx]))
+            .request("eth_sendTransaction", [tx])
             .await
             .map_err(Into::into)?)
     }
@@ -292,7 +290,7 @@ impl<P: JsonRpcClient> Provider<P> {
         let rlp = utils::serialize(&tx.rlp());
         Ok(self
             .0
-            .request("eth_sendRawTransaction", Some(rlp))
+            .request("eth_sendRawTransaction", [rlp])
             .await
             .map_err(Into::into)?)
     }
@@ -307,7 +305,7 @@ impl<P: JsonRpcClient> Provider<P> {
         let from = utils::serialize(from);
         Ok(self
             .0
-            .request("eth_sign", Some(vec![from, data]))
+            .request("eth_sign", [from, data])
             .await
             .map_err(Into::into)?)
     }
@@ -318,7 +316,7 @@ impl<P: JsonRpcClient> Provider<P> {
     pub async fn get_logs(&self, filter: &Filter) -> Result<Vec<Log>, ProviderError> {
         Ok(self
             .0
-            .request("eth_getLogs", Some(filter))
+            .request("eth_getLogs", [filter])
             .await
             .map_err(Into::into)?)
     }
@@ -360,11 +358,7 @@ impl<P: JsonRpcClient> Provider<P> {
             FilterKind::Logs(filter) => ("eth_newFilter", utils::serialize(&filter)),
         };
 
-        Ok(self
-            .0
-            .request(method, Some(vec![args]))
-            .await
-            .map_err(Into::into)?)
+        Ok(self.0.request(method, [args]).await.map_err(Into::into)?)
     }
 
     /// Uninstalls a filter
@@ -372,7 +366,7 @@ impl<P: JsonRpcClient> Provider<P> {
         let id = utils::serialize(&id.into());
         Ok(self
             .0
-            .request("eth_uninstallFilter", Some(vec![id]))
+            .request("eth_uninstallFilter", [id])
             .await
             .map_err(Into::into)?)
     }
@@ -395,7 +389,7 @@ impl<P: JsonRpcClient> Provider<P> {
         let id = utils::serialize(&id.into());
         Ok(self
             .0
-            .request("eth_getFilterChanges", Some(vec![id]))
+            .request("eth_getFilterChanges", [id])
             .await
             .map_err(Into::into)?)
     }
