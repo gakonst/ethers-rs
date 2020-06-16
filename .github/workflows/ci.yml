@@ -14,6 +14,19 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v2
 
+      - name: Install ganache-cli
+        uses: actions/setup-node@v1
+        with:
+          node-version: 10
+      - name: Install ganache
+        run: npm install -g ganache-cli
+
+      - name: Install Solc
+        run: |
+            wget -q https://github.com/ethereum/solidity/releases/download/v0.6.6/solc-static-linux -O solc
+            chmod +x solc
+            export PATH=$PATH:$(pwd)
+
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1
         with:
