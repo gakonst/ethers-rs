@@ -63,17 +63,20 @@ mod tests {
     #[test]
     fn format_function_signature() {
         for (f, expected) in &[
-            (r#"{"name":"foo","inputs":[],"outputs":[]}"#, "foo()"),
             (
-                r#"{"name":"bar","inputs":[{"name":"a","type":"uint256"},{"name":"b","type":"bool"}],"outputs":[]}"#,
+                r#"{"name":"foo","inputs":[],"outputs":[], "stateMutability": "nonpayable"}"#,
+                "foo()",
+            ),
+            (
+                r#"{"name":"bar","inputs":[{"name":"a","type":"uint256"},{"name":"b","type":"bool"}],"outputs":[], "stateMutability": "nonpayable"}"#,
                 "bar(uint256,bool)",
             ),
             (
-                r#"{"name":"baz","inputs":[{"name":"a","type":"uint256"}],"outputs":[{"name":"b","type":"bool"}]}"#,
+                r#"{"name":"baz","inputs":[{"name":"a","type":"uint256"}],"outputs":[{"name":"b","type":"bool"}], "stateMutability": "nonpayable"}"#,
                 "baz(uint256)",
             ),
             (
-                r#"{"name":"bax","inputs":[],"outputs":[{"name":"a","type":"uint256"},{"name":"b","type":"bool"}]}"#,
+                r#"{"name":"bax","inputs":[],"outputs":[{"name":"a","type":"uint256"},{"name":"b","type":"bool"}], "stateMutability": "nonpayable"}"#,
                 "bax()",
             ),
         ] {

@@ -10,10 +10,12 @@ abigen!(
     Comptroller,
     "etherscan:0x3d9819210a31b4961b30ef54be2aed79b9c9cd3b"
 );
-abigen!(
-    Curve,
-    "etherscan:0xa2b47e3d5c44877cca798226b7b8118f9bfb7a56"
-);
+
+// https://github.com/vyperlang/vyper/issues/1931
+// abigen!(
+//     Curve,
+//     "etherscan:0xa2b47e3d5c44877cca798226b7b8118f9bfb7a56"
+// );
 abigen!(
     UmaAdmin,
     "etherscan:0x4E6CCB1dA3C7844887F9A5aF4e8450d9fd90317A"
@@ -28,7 +30,7 @@ abigen!(
     }
 );
 
-// Abi Encoder v2 not yet supported :(
+// // Abi Encoder v2 is still buggy
 // abigen!(
 //     DyDxLimitOrders,
 //     "etherscan:0xDEf136D9884528e1EB302f39457af0E4d3AD24EB"

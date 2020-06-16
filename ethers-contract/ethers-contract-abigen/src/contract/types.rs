@@ -43,7 +43,16 @@ pub(crate) fn expand(kind: &ParamType) -> Result<TokenStream> {
             let size = Literal::usize_unsuffixed(*n);
             Ok(quote! { [#inner; #size] })
         }
-        // TODO: Implement abiencoder v2
-        ParamType::Tuple(_) => Err(anyhow!("ABIEncoderV2 is currently not supported")),
+        ParamType::Tuple(members) => {
+            if members.is_empty() {
+                return Err(anyhow!("Tuple must have at least 1 member"));
+            }
+
+            let members = members
+                .iter()
+                .map(|member| expand(member))
+                .collect::<Result<Vec<_>, _>>()?;
+            Ok(quote! { (#(#members,)*) })
+        }
     }
 }

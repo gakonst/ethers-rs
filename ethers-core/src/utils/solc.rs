@@ -85,8 +85,8 @@ impl Solc {
         }
     }
 
-    /// Builds the contracts and returns a hashmap for each named contract
-    pub fn build(self) -> Result<HashMap<String, CompiledContract>> {
+    /// Gets the ABI for the contracts
+    pub fn build_raw(self) -> Result<HashMap<String, CompiledContractStr>> {
         let mut command = Command::new(SOLC);
 
         command
@@ -110,25 +110,46 @@ impl Solc {
         // Deserialize the output
         let output: SolcOutput = serde_json::from_slice(&command.stdout)?;
 
-        // Get the data in the correct format
+        // remove the semi-colon and the name
         let contracts = output
             .contracts
             .into_iter()
             .map(|(name, contract)| {
-                let abi = serde_json::from_str(&contract.abi)
-                    .expect("could not parse `solc` abi, this should never happen");
-
-                let bytecode = contract
-                    .bin
-                    .from_hex::<Vec<u8>>()
-                    .expect("solc did not produce valid bytecode")
-                    .into();
-
                 let name = name
                     .rsplit(':')
                     .next()
                     .expect("could not strip fname")
                     .to_owned();
+                (
+                    name,
+                    CompiledContractStr {
+                        abi: contract.abi,
+                        bin: contract.bin,
+                    },
+                )
+            })
+            .collect();
+
+        Ok(contracts)
+    }
+
+    /// Builds the contracts and returns a hashmap for each named contract
+    pub fn build(self) -> Result<HashMap<String, CompiledContract>> {
+        // Build, and then get the data in the correct format
+        let contracts = self
+            .build_raw()?
+            .into_iter()
+            .map(|(name, contract)| {
+                // parse the ABI
+                let abi = serde_json::from_str(&contract.abi)
+                    .expect("could not parse `solc` abi, this should never happen");
+
+                // parse the bytecode
+                let bytecode = contract
+                    .bin
+                    .from_hex::<Vec<u8>>()
+                    .expect("solc did not produce valid bytecode")
+                    .into();
                 (name, CompiledContract { abi, bytecode })
             })
             .collect::<HashMap<String, CompiledContract>>();
@@ -212,8 +233,10 @@ struct SolcOutput {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-// Helper struct for deserializing the solc string outputs
-struct CompiledContractStr {
-    abi: String,
-    bin: String,
+/// Helper struct for deserializing the solc string outputs
+pub struct CompiledContractStr {
+    /// The contract's raw ABI
+    pub abi: String,
+    /// The contract's bytecode in hex
+    pub bin: String,
 }

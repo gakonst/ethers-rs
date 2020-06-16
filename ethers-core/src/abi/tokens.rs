@@ -21,6 +21,15 @@ pub trait Detokenize {
         Self: Sized;
 }
 
+impl Detokenize for () {
+    fn from_tokens(_: Vec<Token>) -> std::result::Result<Self, InvalidOutputType>
+    where
+        Self: Sized,
+    {
+        Ok(())
+    }
+}
+
 impl<T: Tokenizable> Detokenize for T {
     fn from_tokens(mut tokens: Vec<Token>) -> Result<Self, InvalidOutputType> {
         if tokens.len() != 1 {
@@ -69,17 +78,17 @@ impl_output!(2, A, B,);
 impl_output!(3, A, B, C,);
 impl_output!(4, A, B, C, D,);
 impl_output!(5, A, B, C, D, E,);
-// impl_output!(6, A, B, C, D, E, F,);
-// impl_output!(7, A, B, C, D, E, F, G,);
-// impl_output!(8, A, B, C, D, E, F, G, H,);
-// impl_output!(9, A, B, C, D, E, F, G, H, I,);
-// impl_output!(10, A, B, C, D, E, F, G, H, I, J,);
-// impl_output!(11, A, B, C, D, E, F, G, H, I, J, K,);
-// impl_output!(12, A, B, C, D, E, F, G, H, I, J, K, L,);
-// impl_output!(13, A, B, C, D, E, F, G, H, I, J, K, L, M,);
-// impl_output!(14, A, B, C, D, E, F, G, H, I, J, K, L, M, N,);
-// impl_output!(15, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O,);
-// impl_output!(16, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P,);
+impl_output!(6, A, B, C, D, E, F,);
+impl_output!(7, A, B, C, D, E, F, G,);
+impl_output!(8, A, B, C, D, E, F, G, H,);
+impl_output!(9, A, B, C, D, E, F, G, H, I,);
+impl_output!(10, A, B, C, D, E, F, G, H, I, J,);
+impl_output!(11, A, B, C, D, E, F, G, H, I, J, K,);
+impl_output!(12, A, B, C, D, E, F, G, H, I, J, K, L,);
+impl_output!(13, A, B, C, D, E, F, G, H, I, J, K, L, M,);
+impl_output!(14, A, B, C, D, E, F, G, H, I, J, K, L, M, N,);
+impl_output!(15, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O,);
+impl_output!(16, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P,);
 
 /// Tokens conversion trait
 pub trait Tokenize {
@@ -128,17 +137,15 @@ impl_tokens!(A:0, B:1, C:2, D:3, );
 impl_tokens!(A:0, B:1, C:2, D:3, E:4, );
 impl_tokens!(A:0, B:1, C:2, D:3, E:4, F:5, );
 impl_tokens!(A:0, B:1, C:2, D:3, E:4, F:5, G:6, );
-
-// Commented out macros to reduce codegen time. Re-enable if needed.
-// impl_tokens!(A:0, B:1, C:2, D:3, E:4, F:5, G:6, H:7, );
-// impl_tokens!(A:0, B:1, C:2, D:3, E:4, F:5, G:6, H:7, I:8, );
-// impl_tokens!(A:0, B:1, C:2, D:3, E:4, F:5, G:6, H:7, I:8, J:9, );
-// impl_tokens!(A:0, B:1, C:2, D:3, E:4, F:5, G:6, H:7, I:8, J:9, K:10, );
-// impl_tokens!(A:0, B:1, C:2, D:3, E:4, F:5, G:6, H:7, I:8, J:9, K:10, L:11, );
-// impl_tokens!(A:0, B:1, C:2, D:3, E:4, F:5, G:6, H:7, I:8, J:9, K:10, L:11, M:12, );
-// impl_tokens!(A:0, B:1, C:2, D:3, E:4, F:5, G:6, H:7, I:8, J:9, K:10, L:11, M:12, N:13, );
-// impl_tokens!(A:0, B:1, C:2, D:3, E:4, F:5, G:6, H:7, I:8, J:9, K:10, L:11, M:12, N:13, O:14, );
-// impl_tokens!(A:0, B:1, C:2, D:3, E:4, F:5, G:6, H:7, I:8, J:9, K:10, L:11, M:12, N:13, O:14, P:15, );
+impl_tokens!(A:0, B:1, C:2, D:3, E:4, F:5, G:6, H:7, );
+impl_tokens!(A:0, B:1, C:2, D:3, E:4, F:5, G:6, H:7, I:8, );
+impl_tokens!(A:0, B:1, C:2, D:3, E:4, F:5, G:6, H:7, I:8, J:9, );
+impl_tokens!(A:0, B:1, C:2, D:3, E:4, F:5, G:6, H:7, I:8, J:9, K:10, );
+impl_tokens!(A:0, B:1, C:2, D:3, E:4, F:5, G:6, H:7, I:8, J:9, K:10, L:11, );
+impl_tokens!(A:0, B:1, C:2, D:3, E:4, F:5, G:6, H:7, I:8, J:9, K:10, L:11, M:12, );
+impl_tokens!(A:0, B:1, C:2, D:3, E:4, F:5, G:6, H:7, I:8, J:9, K:10, L:11, M:12, N:13, );
+impl_tokens!(A:0, B:1, C:2, D:3, E:4, F:5, G:6, H:7, I:8, J:9, K:10, L:11, M:12, N:13, O:14, );
+impl_tokens!(A:0, B:1, C:2, D:3, E:4, F:5, G:6, H:7, I:8, J:9, K:10, L:11, M:12, N:13, O:14, P:15, );
 
 /// Simplified output type for single value.
 pub trait Tokenizable {

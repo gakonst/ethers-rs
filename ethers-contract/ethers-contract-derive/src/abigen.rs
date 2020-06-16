@@ -3,7 +3,7 @@
 use crate::spanned::{ParseInner, Spanned};
 
 use ethers_contract_abigen::Abigen;
-use ethers_core::abi::{Function, FunctionExt, Param};
+use ethers_core::abi::{Function, FunctionExt, Param, StateMutability};
 
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::ToTokens;
@@ -180,7 +180,7 @@ impl Parse for Method {
                 // NOTE: The output types and const-ness of the function do not
                 //   affect its signature.
                 outputs: vec![],
-                constant: false,
+                state_mutability: StateMutability::Nonpayable,
             }
         };
         let signature = function.abi_signature();

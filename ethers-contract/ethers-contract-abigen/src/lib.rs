@@ -29,6 +29,10 @@ use std::{collections::HashMap, fs::File, io::Write, path::Path};
 
 /// Builder struct for generating type-safe bindings from a contract's ABI
 ///
+/// Note: Your contract's ABI must contain the `stateMutability` field. This is
+/// [still not supported by Vyper](https://github.com/vyperlang/vyper/issues/1931), so you must adjust your ABIs and replace
+/// `constant` functions with `view` or `pure`.
+///
 /// # Example
 ///
 /// Running the command below will generate a file called `token.rs` containing the
