@@ -19,6 +19,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 features = ["full"]
 
 [features]
+abigen = ["contract", "ethers-contract/abigen"]
 default = ["full"]
 full = [
     "contract",
@@ -33,7 +34,7 @@ signers = ["ethers-signers"]
 core = ["ethers-core"]
 
 [dependencies]
-ethers-contract = { version = "0.1.0", path = "../ethers-contract", features = ["abigen"], optional = true }
+ethers-contract = { version = "0.1.0", path = "../ethers-contract", optional = true }
 ethers-providers = { version = "0.1.0", path = "../ethers-providers", optional = true }
 ethers-signers = { version = "0.1.0", path = "../ethers-signers", optional = true }
 ethers-core = { version = "0.1.0", path = "../ethers-core", optional = true }

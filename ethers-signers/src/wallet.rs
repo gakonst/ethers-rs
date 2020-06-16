@@ -8,6 +8,7 @@ use ethers_core::{
     types::{Address, PrivateKey, PublicKey, Signature, Transaction, TransactionRequest, TxError},
 };
 
+use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
 /// An Ethereum private-public key pair which can be used for signing messages. It can be connected to a provider
@@ -62,16 +63,16 @@ use std::str::FromStr;
 /// [`connect`]: ./struct.Wallet.html#method.connect
 /// [`Signature`]: ../ethers_core/types/struct.Signature.html
 /// [`hash_message`]: ../ethers_core/utils/fn.hash_message.html
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Wallet {
     /// The Wallet's private Key
-    pub private_key: PrivateKey,
+    private_key: PrivateKey,
     /// The Wallet's public Key
-    pub public_key: PublicKey,
+    public_key: PublicKey,
     /// The wallet's address
-    pub address: Address,
+    address: Address,
     /// The wallet's chain id (for EIP-155), signs w/o replay protection if left unset
-    pub chain_id: u64,
+    chain_id: u64,
 }
 
 impl Signer for Wallet {
@@ -123,10 +124,25 @@ impl Wallet {
         }
     }
 
-    /// Sets the wallet's chain_id
-    pub fn chain_id<T: Into<u64>>(mut self, chain_id: T) -> Self {
+    /// Sets the wallet's chain_id, used in conjunction with EIP-155 signing
+    pub fn set_chain_id<T: Into<u64>>(mut self, chain_id: T) -> Self {
         self.chain_id = chain_id.into();
         self
+    }
+
+    /// Gets the wallet's public key
+    pub fn public_key(&self) -> &PublicKey {
+        &self.public_key
+    }
+
+    /// Gets the wallet's private key
+    pub fn private_key(&self) -> &PrivateKey {
+        &self.private_key
+    }
+
+    /// Gets the wallet's chain id
+    pub fn chain_id(&self) -> u64 {
+        self.chain_id
     }
 }
 

@@ -12,7 +12,7 @@ use std::error::Error;
 ///
 /// Implement this trait to support different signing modes, e.g. Ledger, hosted etc.
 // TODO: We might need a `SignerAsync` trait for HSM use cases?
-pub trait Signer: Clone {
+pub trait Signer: Clone + Send + Sync {
     type Error: Error + Into<ClientError>;
     /// Signs the hash of the provided message after prefixing it
     fn sign_message<S: AsRef<[u8]>>(&self, message: S) -> Signature;

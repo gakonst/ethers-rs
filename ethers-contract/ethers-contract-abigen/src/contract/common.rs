@@ -6,6 +6,8 @@ use quote::quote;
 
 pub(crate) fn imports() -> TokenStream {
     quote! {
+        #![allow(dead_code)]
+        #![allow(unused_imports)]
         // TODO: Can we make this context aware so that it imports either ethers_contract
         // or ethers::contract?
         use ethers::{
