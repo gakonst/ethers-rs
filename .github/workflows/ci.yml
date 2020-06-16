@@ -1,0 +1,49 @@
+on: push
+
+name: Tests
+
+# set for fetching ABIs for abigen from etherscan
+env:
+  ETHERSCAN_API_KEY: ${{ secrets.ETHERSCAN_API_KEY }}
+
+jobs:
+  tests:
+    name: Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v2
+
+      - name: Install ganache-cli
+        uses: actions/setup-node@v1
+        with:
+          node-version: 10
+      - name: Install ganache
+        run: npm install -g ganache-cli
+
+      - name: Install Solc
+        run: |
+            mkdir -p "$HOME/bin"
+            wget -q https://github.com/ethereum/solidity/releases/download/v0.6.6/solc-static-linux -O $HOME/bin/solc
+            chmod u+x "$HOME/bin/solc"
+            export PATH=$HOME/bin:$PATH
+            solc --version
+
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+          components: rustfmt, clippy
+
+      - name: cargo test
+        run: |
+            export PATH=$HOME/bin:$PATH
+            cargo test
+
+      - name: cargo fmt
+        run: cargo fmt --all -- --check
+
+      - name: cargo clippy
+        run: cargo clippy -- -D warnings
