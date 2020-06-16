@@ -1,4 +1,4 @@
-use ethers::{utils::Solc, contract::Abigen};
+use ethers::{contract::Abigen, utils::Solc};
 
 fn main() -> anyhow::Result<()> {
     let mut args = std::env::args();
