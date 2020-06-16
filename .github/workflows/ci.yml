@@ -37,21 +37,13 @@ jobs:
           override: true
           components: rustfmt, clippy
 
-      - name: Run cargo test
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-        env:
-            PATH: $HOME/bin:$PATH
+      - name: cargo test
+        run: |
+            export PATH=$HOME/bin:$PATH
+            cargo test
 
-      - name: Run cargo fmt
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --all -- --check
+      - name: cargo fmt
+        run: cargo fmt --all --check
 
-      - name: Run cargo clippy
-        uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: -- -D warnings
+      - name: cargo clippy
+        run: cargo clippy -- -D warnings
