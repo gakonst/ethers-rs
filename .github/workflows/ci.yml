@@ -2,6 +2,10 @@ on: [push, pull_request]
 
 name: Tests
 
+# set for fetching ABIs for abigen from etherscan
+env:
+  ETHERSCAN_API_KEY: ${{ secrets.ETHERSCAN_API_KEY }}
+
 jobs:
   tests:
     name: Check
