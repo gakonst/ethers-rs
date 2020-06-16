@@ -44,12 +44,12 @@ pub(crate) fn expand(kind: &ParamType) -> Result<TokenStream> {
             Ok(quote! { [#inner; #size] })
         }
         ParamType::Tuple(members) => {
-            if members.len() == 0 {
+            if members.is_empty() {
                 return Err(anyhow!("Tuple must have at least 1 member"));
             }
 
             let members = members
-                .into_iter()
+                .iter()
                 .map(|member| expand(member))
                 .collect::<Result<Vec<_>, _>>()?;
             Ok(quote! { (#(#members,)*) })

@@ -12,8 +12,7 @@ fn main() -> anyhow::Result<()> {
     // compile it if needed
     let abi = if contract.ends_with(".sol") {
         let contracts = Solc::new(&contract).build_raw()?;
-        let abi = contracts.get(&contract_name).unwrap().abi.clone();
-        abi
+        contracts.get(&contract_name).unwrap().abi.clone()
     } else {
         contract
     };
