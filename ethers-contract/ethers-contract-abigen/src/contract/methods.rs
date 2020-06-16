@@ -1,6 +1,6 @@
 use super::{types, util, Context};
 use ethers_core::{
-    abi::{Function, FunctionExt, Param},
+    abi::{Function, FunctionExt, Param, StateMutability},
     types::Selector,
 };
 
@@ -40,7 +40,11 @@ fn expand_function(function: &Function, alias: Option<Ident>) -> Result<TokenStr
 
     let outputs = expand_fn_outputs(&function.outputs)?;
 
-    let result = if function.constant {
+    let is_mutable = matches!(
+        function.state_mutability,
+        StateMutability::Nonpayable | StateMutability::Payable
+    );
+    let result = if !is_mutable {
         quote! { ContractCall<'a, P, S, #outputs> }
     } else {
         quote! { ContractCall<'a, P, S, H256> }
