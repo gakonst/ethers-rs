@@ -17,8 +17,7 @@ use url::Url;
 /// # Example
 ///
 /// ```no_run
-/// use ethers_providers::{JsonRpcClient, Http};
-/// use ethers_core::types::U64;
+/// use ethers::{types::U64, providers::{JsonRpcClient, Http}};
 /// use std::str::FromStr;
 ///
 /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
@@ -85,7 +84,7 @@ impl Provider {
     /// # Example
     ///
     /// ```
-    /// use ethers_providers::Http;
+    /// use ethers::providers::Http;
     /// use url::Url;
     ///
     /// let url = Url::parse("http://localhost:8545").unwrap();

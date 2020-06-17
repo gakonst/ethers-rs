@@ -72,7 +72,7 @@ pub struct Wallet {
     /// The wallet's address
     address: Address,
     /// The wallet's chain id (for EIP-155), signs w/o replay protection if left unset
-    chain_id: u64,
+    chain_id: Option<u64>,
 }
 
 impl Signer for Wallet {
@@ -83,7 +83,7 @@ impl Signer for Wallet {
     }
 
     fn sign_transaction(&self, tx: TransactionRequest) -> Result<Transaction, Self::Error> {
-        self.private_key.sign_transaction(tx, Some(self.chain_id))
+        self.private_key.sign_transaction(tx, self.chain_id)
     }
 
     fn address(&self) -> Address {
@@ -110,7 +110,7 @@ impl Wallet {
             private_key,
             public_key,
             address,
-            chain_id: 1,
+            chain_id: None,
         }
     }
 
@@ -126,7 +126,7 @@ impl Wallet {
 
     /// Sets the wallet's chain_id, used in conjunction with EIP-155 signing
     pub fn set_chain_id<T: Into<u64>>(mut self, chain_id: T) -> Self {
-        self.chain_id = chain_id.into();
+        self.chain_id = Some(chain_id.into());
         self
     }
 
@@ -141,7 +141,7 @@ impl Wallet {
     }
 
     /// Gets the wallet's chain id
-    pub fn chain_id(&self) -> u64 {
+    pub fn chain_id(&self) -> Option<u64> {
         self.chain_id
     }
 }
@@ -155,7 +155,7 @@ impl From<PrivateKey> for Wallet {
             private_key,
             public_key,
             address,
-            chain_id: 1,
+            chain_id: None,
         }
     }
 }

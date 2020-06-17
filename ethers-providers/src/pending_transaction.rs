@@ -50,8 +50,12 @@ impl<'a, P: JsonRpcClient> Future for PendingTransaction<'a, P> {
 
         match this.state {
             PendingTxState::GettingReceipt(fut) => {
-                let receipt = futures_util::ready!(fut.as_mut().poll(ctx))?;
-                *this.state = PendingTxState::CheckingReceipt(Box::new(receipt))
+                if let Ok(receipt) = futures_util::ready!(fut.as_mut().poll(ctx)) {
+                    *this.state = PendingTxState::CheckingReceipt(Box::new(receipt))
+                } else {
+                    let fut = Box::pin(this.provider.get_transaction_receipt(*this.tx_hash));
+                    *this.state = PendingTxState::GettingReceipt(fut)
+                }
             }
             PendingTxState::CheckingReceipt(receipt) => {
                 // If we requested more than 1 confirmation, we need to compare the receipt's
@@ -59,7 +63,10 @@ impl<'a, P: JsonRpcClient> Future for PendingTransaction<'a, P> {
                 if *this.confirmations > 1 {
                     let fut = Box::pin(this.provider.get_block_number());
                     *this.state =
-                        PendingTxState::GettingBlockNumber(fut, Box::new(*receipt.clone()))
+                        PendingTxState::GettingBlockNumber(fut, Box::new(*receipt.clone()));
+
+                    // Schedule the waker to poll again
+                    ctx.waker().wake_by_ref();
                 } else {
                     let receipt = *receipt.clone();
                     *this.state = PendingTxState::Completed;
@@ -160,32 +167,5 @@ impl<'a> fmt::Debug for PendingTxState<'a> {
         f.debug_struct("PendingTxState")
             .field("state", &state)
             .finish()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::Http;
-    use ethers_core::{types::TransactionRequest, utils::Ganache};
-    use std::convert::TryFrom;
-
-    #[tokio::test]
-    async fn test_pending_tx() {
-        let _ganache = Ganache::new().spawn();
-        let provider = Provider::<Http>::try_from("http://localhost:8545").unwrap();
-        let accounts = provider.get_accounts().await.unwrap();
-        let tx = TransactionRequest::pay(accounts[0], 1000).from(accounts[0]);
-
-        let pending_tx = provider.send_transaction(tx).await.unwrap();
-
-        let receipt = provider
-            .get_transaction_receipt(pending_tx.tx_hash)
-            .await
-            .unwrap();
-
-        // the pending tx resolves to the same receipt
-        let tx_receipt = pending_tx.confirmations(1).await.unwrap();
-        assert_eq!(receipt, tx_receipt);
     }
 }

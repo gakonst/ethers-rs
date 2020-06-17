@@ -13,16 +13,17 @@ pub use hash::{hash_message, id, keccak256, serialize};
 pub use rlp;
 
 use crate::types::{Address, Bytes, U256};
+use std::convert::TryInto;
 
 /// 1 Ether = 1e18 Wei
-pub const WEI: usize = 1000000000000000000;
+pub const WEI_IN_ETHER: usize = 1000000000000000000;
 
 /// Format the output for the user which prefer to see values
 /// in ether (instead of wei)
 ///
 /// Divides the input by 1e18
 pub fn format_ether<T: Into<U256>>(amount: T) -> U256 {
-    amount.into() / WEI
+    amount.into() / WEI_IN_ETHER
 }
 
 /// Divides with the number of decimals
@@ -30,16 +31,28 @@ pub fn format_units<T: Into<U256>>(amount: T, decimals: usize) -> U256 {
     amount.into() / decimals
 }
 
-/// Converts a string to a U256 and converts from Ether to Wei.
+/// Converts the input to a U256 and converts from Ether to Wei.
 ///
-/// Multiplies the input by 1e18
-pub fn parse_ether(eth: &str) -> Result<U256, rustc_hex::FromHexError> {
-    Ok(eth.parse::<U256>()? * WEI)
+/// ```
+/// use ethers::{types::U256, utils::{parse_ether, WEI_IN_ETHER}};
+///
+/// let eth = U256::from(WEI_IN_ETHER);
+/// assert_eq!(eth, parse_ether(1u8).unwrap());
+/// assert_eq!(eth, parse_ether(1usize).unwrap());
+/// assert_eq!(eth, parse_ether("1").unwrap());
+pub fn parse_ether<S>(eth: S) -> Result<U256, S::Error>
+where
+    S: TryInto<U256>,
+{
+    Ok(eth.try_into()? * WEI_IN_ETHER)
 }
 
 /// Multiplies with the number of decimals
-pub fn parse_units(eth: &str, decimals: usize) -> Result<U256, rustc_hex::FromHexError> {
-    Ok(eth.parse::<U256>()? * decimals)
+pub fn parse_units<S>(eth: S, decimals: usize) -> Result<U256, S::Error>
+where
+    S: TryInto<U256>,
+{
+    Ok(eth.try_into()? * decimals)
 }
 
 /// The address for an Ethereum contract is deterministically computed from the

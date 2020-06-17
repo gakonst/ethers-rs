@@ -25,6 +25,7 @@ arrayvec = { version = "0.5.1", default-features = false, optional = true }
 glob = "0.3.0"
 
 [dev-dependencies]
+ethers = { version = "0.1.0", path = "../ethers" }
 serde_json = { version = "1.0.53", default-features = false }
 bincode = "1.2.1"
 

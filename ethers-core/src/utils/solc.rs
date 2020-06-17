@@ -39,7 +39,7 @@ pub struct CompiledContract {
 /// # Examples
 ///
 /// ```no_run
-/// use ethers_core::utils::Solc;
+/// use ethers::utils::Solc;
 ///
 /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// // Give it a glob

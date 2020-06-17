@@ -341,6 +341,7 @@ dependencies = [
  "bincode",
  "ethabi",
  "ethereum-types",
+ "ethers",
  "glob",
  "libsecp256k1",
  "rand",
@@ -357,6 +358,7 @@ name = "ethers-providers"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "ethers",
  "ethers-core",
  "futures-core",
  "futures-util",
@@ -374,6 +376,7 @@ dependencies = [
 name = "ethers-signers"
 version = "0.1.0"
 dependencies = [
+ "ethers",
  "ethers-core",
  "ethers-providers",
  "futures-util",
