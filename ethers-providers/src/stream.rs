@@ -104,38 +104,37 @@ where
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let mut this = self.project();
 
-        loop {
-            *this.state = match this.state {
-                FilterWatcherState::WaitForInterval => {
-                    // Wait the polling period
-                    let mut interval = Box::pin(this.interval.tick());
-                    let _ready = futures_util::ready!(interval.as_mut().poll(cx));
+        *this.state = match this.state {
+            FilterWatcherState::WaitForInterval => {
+                // Wait the polling period
+                let mut interval = Box::pin(this.interval.tick());
+                let _ready = futures_util::ready!(interval.as_mut().poll(cx));
 
-                    // create a new instance of the future
-                    FilterWatcherState::GetFilterChanges(this.factory.as_mut().new())
-                }
-                FilterWatcherState::GetFilterChanges(fut) => {
-                    // wait for the future to be ready
-                    let mut fut = Box::pin(fut);
+                // create a new instance of the future
+                FilterWatcherState::GetFilterChanges(this.factory.as_mut().new())
+            }
+            FilterWatcherState::GetFilterChanges(fut) => {
+                // wait for the future to be ready
+                let mut fut = Box::pin(fut);
 
-                    // NOTE: If the provider returns an error, this will return an empty
-                    // vector. Should we make this return a Result instead? Ideally if we're
-                    // in a streamed loop we wouldn't want the loop to terminate if an error
-                    // is encountered (since it might be a temporary error).
-                    let items: Vec<R> =
-                        futures_util::ready!(fut.as_mut().poll(cx)).unwrap_or_default();
-                    FilterWatcherState::NextItem(items.into_iter())
-                }
-                // Consume 1 element from the vector. If more elements are in the vector,
-                // the next call will immediately go to this branch instead of trying to get
-                // filter changes again. Once the whole vector is consumed, it will poll again
-                // for new logs
-                FilterWatcherState::NextItem(iter) => match iter.next() {
-                    Some(item) => return Poll::Ready(Some(item)),
-                    None => FilterWatcherState::WaitForInterval,
-                },
-            };
-        }
+                // NOTE: If the provider returns an error, this will return an empty
+                // vector. Should we make this return a Result instead? Ideally if we're
+                // in a streamed loop we wouldn't want the loop to terminate if an error
+                // is encountered (since it might be a temporary error).
+                let items: Vec<R> = futures_util::ready!(fut.as_mut().poll(cx)).unwrap_or_default();
+                FilterWatcherState::NextItem(items.into_iter())
+            }
+            // Consume 1 element from the vector. If more elements are in the vector,
+            // the next call will immediately go to this branch instead of trying to get
+            // filter changes again. Once the whole vector is consumed, it will poll again
+            // for new logs
+            FilterWatcherState::NextItem(iter) => match iter.next() {
+                Some(item) => return Poll::Ready(Some(item)),
+                None => FilterWatcherState::WaitForInterval,
+            },
+        };
+
+        Poll::Pending
     }
 }
 
