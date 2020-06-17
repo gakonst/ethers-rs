@@ -17,4 +17,4 @@ ethers = { version = "0.1.0", path = "../ethers" }
 tokio = { version = "0.2.21", features = ["macros"] }
 
 [features]
-celo = ["ethers-core/celo", "ethers-providers/celo", "ethers/celo"]
+celo = ["ethers-core/celo", "ethers-providers/celo"]
