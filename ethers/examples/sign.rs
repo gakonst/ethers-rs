@@ -11,7 +11,7 @@ fn main() {
     // recover the address that signed it
     let recovered = signature.recover(message).unwrap();
 
-    assert_eq!(recovered, wallet.address);
+    assert_eq!(recovered, wallet.address());
 
-    println!("Verified signature produced by {:?}!", wallet.address);
+    println!("Verified signature produced by {:?}!", wallet.address());
 }

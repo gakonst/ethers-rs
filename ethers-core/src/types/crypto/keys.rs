@@ -6,15 +6,47 @@ use crate::{
 use rand::Rng;
 use rustc_hex::FromHex;
 use secp256k1::{
-    self as Secp256k1, Error as SecpError, Message, PublicKey as PubKey, RecoveryId, SecretKey,
+    self as Secp256k1,
+    util::{COMPRESSED_PUBLIC_KEY_SIZE, SECRET_KEY_SIZE},
+    Error as SecpError, Message, PublicKey as PubKey, RecoveryId, SecretKey,
 };
-use std::ops::Deref;
-use std::str::FromStr;
+use serde::{
+    de::Error as DeserializeError,
+    de::{SeqAccess, Visitor},
+    ser::SerializeTuple,
+    Deserialize, Deserializer, Serialize, Serializer,
+};
+use std::{fmt, ops::Deref, str::FromStr};
 use thiserror::Error;
 
 /// A private key on Secp256k1
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PrivateKey(pub(super) SecretKey);
+
+impl Serialize for PrivateKey {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut seq = serializer.serialize_tuple(SECRET_KEY_SIZE)?;
+        for e in &self.0.serialize() {
+            seq.serialize_element(e)?;
+        }
+        seq.end()
+    }
+}
+
+impl<'de> Deserialize<'de> for PrivateKey {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let bytes = <[u8; SECRET_KEY_SIZE]>::deserialize(deserializer)?;
+        Ok(PrivateKey(
+            SecretKey::parse(&bytes).map_err(DeserializeError::custom)?,
+        ))
+    }
+}
 
 impl FromStr for PrivateKey {
     type Err = SecpError;
@@ -133,7 +165,6 @@ impl PrivateKey {
         let r = H256::from_slice(&signature.r.b32());
         let s = H256::from_slice(&signature.s.b32());
 
-        // TODO: Check what happens when using the 1337 Geth chain id
         Signature { v: v as u8, r, s }
     }
 }
@@ -214,14 +245,80 @@ impl From<PrivateKey> for Address {
     }
 }
 
+impl Serialize for PublicKey {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut seq = serializer.serialize_tuple(COMPRESSED_PUBLIC_KEY_SIZE)?;
+        for e in self.0.serialize_compressed().iter() {
+            seq.serialize_element(e)?;
+        }
+        seq.end()
+    }
+}
+
+impl<'de> Deserialize<'de> for PublicKey {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct ArrayVisitor;
+
+        impl<'de> Visitor<'de> for ArrayVisitor {
+            type Value = PublicKey;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("a valid proof")
+            }
+
+            fn visit_seq<S>(self, mut seq: S) -> Result<PublicKey, S::Error>
+            where
+                S: SeqAccess<'de>,
+            {
+                let mut bytes = [0u8; COMPRESSED_PUBLIC_KEY_SIZE];
+                for b in &mut bytes[..] {
+                    *b = seq
+                        .next_element()?
+                        .ok_or_else(|| DeserializeError::custom("could not read bytes"))?;
+                }
+
+                Ok(PublicKey(
+                    PubKey::parse_compressed(&bytes).map_err(DeserializeError::custom)?,
+                ))
+            }
+        }
+
+        deserializer.deserialize_tuple(COMPRESSED_PUBLIC_KEY_SIZE, ArrayVisitor)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::Bytes;
     use rustc_hex::FromHex;
 
     #[test]
+    fn serde() {
+        for _ in 0..10 {
+            let key = PrivateKey::new(&mut rand::thread_rng());
+            let serialized = bincode::serialize(&key).unwrap();
+            assert_eq!(serialized, &key.0.serialize());
+            let de: PrivateKey = bincode::deserialize(&serialized).unwrap();
+            assert_eq!(key, de);
+
+            let public = PublicKey::from(&key);
+            let serialized = bincode::serialize(&public).unwrap();
+            assert_eq!(&serialized[..], public.0.serialize_compressed().as_ref());
+            let de: PublicKey = bincode::deserialize(&serialized).unwrap();
+            assert_eq!(public, de);
+        }
+    }
+
+    #[test]
     fn signs_tx() {
+        use crate::types::{Address, Bytes};
+
         // retrieved test vector from:
         // https://web3js.readthedocs.io/en/v1.2.0/web3-eth-accounts.html#eth-accounts-signtransaction
         let tx = TransactionRequest {

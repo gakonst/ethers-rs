@@ -11,6 +11,7 @@ use futures::stream::{Stream, StreamExt};
 use std::{collections::HashMap, marker::PhantomData};
 
 /// Helper for managing the event filter before querying or streaming its logs
+#[must_use = "event filters do nothing unless you `query` or `stream` them"]
 pub struct Event<'a: 'b, 'b, P, D> {
     /// The event filter's state
     pub filter: Filter,

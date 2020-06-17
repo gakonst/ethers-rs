@@ -40,6 +40,7 @@ pub enum ContractError {
 }
 
 #[derive(Debug, Clone)]
+#[must_use = "contract calls do nothing unless you `send` or `call` them"]
 /// Helper for managing a transaction before submitting it to a node
 pub struct ContractCall<'a, P, S, D> {
     /// The raw transaction object
