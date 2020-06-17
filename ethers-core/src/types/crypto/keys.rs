@@ -165,7 +165,7 @@ impl PrivateKey {
         let r = H256::from_slice(&signature.r.b32());
         let s = H256::from_slice(&signature.s.b32());
 
-        Signature { v: v as u8, r, s }
+        Signature { v, r, s }
     }
 }
 
