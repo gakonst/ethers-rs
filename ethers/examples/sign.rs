@@ -8,10 +8,8 @@ fn main() {
     let signature = wallet.sign_message(message);
     println!("Produced signature {}", signature);
 
-    // recover the address that signed it
-    let recovered = signature.recover(message).unwrap();
-
-    assert_eq!(recovered, wallet.address());
+    // verify the signature
+    signature.verify(message, wallet.address()).unwrap();
 
     println!("Verified signature produced by {:?}!", wallet.address());
 }
