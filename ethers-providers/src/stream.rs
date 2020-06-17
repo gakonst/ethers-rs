@@ -121,8 +121,7 @@ where
                 // vector. Should we make this return a Result instead? Ideally if we're
                 // in a streamed loop we wouldn't want the loop to terminate if an error
                 // is encountered (since it might be a temporary error).
-                let items: Vec<R> =
-                    futures_util::ready!(fut.as_mut().poll(cx)).unwrap_or_default();
+                let items: Vec<R> = futures_util::ready!(fut.as_mut().poll(cx)).unwrap_or_default();
                 FilterWatcherState::NextItem(items.into_iter())
             }
             // Consume 1 element from the vector. If more elements are in the vector,
