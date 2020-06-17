@@ -50,8 +50,12 @@ impl<'a, P: JsonRpcClient> Future for PendingTransaction<'a, P> {
 
         match this.state {
             PendingTxState::GettingReceipt(fut) => {
-                let receipt = futures_util::ready!(fut.as_mut().poll(ctx))?;
-                *this.state = PendingTxState::CheckingReceipt(Box::new(receipt))
+                if let Ok(receipt) = futures_util::ready!(fut.as_mut().poll(ctx)) {
+                    *this.state = PendingTxState::CheckingReceipt(Box::new(receipt))
+                } else {
+                    let fut = Box::pin(this.provider.get_transaction_receipt(*this.tx_hash));
+                    *this.state = PendingTxState::GettingReceipt(fut)
+                }
             }
             PendingTxState::CheckingReceipt(receipt) => {
                 // If we requested more than 1 confirmation, we need to compare the receipt's
@@ -59,7 +63,10 @@ impl<'a, P: JsonRpcClient> Future for PendingTransaction<'a, P> {
                 if *this.confirmations > 1 {
                     let fut = Box::pin(this.provider.get_block_number());
                     *this.state =
-                        PendingTxState::GettingBlockNumber(fut, Box::new(*receipt.clone()))
+                        PendingTxState::GettingBlockNumber(fut, Box::new(*receipt.clone()));
+
+                    // Schedule the waker to poll again
+                    ctx.waker().wake_by_ref();
                 } else {
                     let receipt = *receipt.clone();
                     *this.state = PendingTxState::Completed;
