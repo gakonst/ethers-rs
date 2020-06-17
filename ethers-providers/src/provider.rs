@@ -254,18 +254,12 @@ impl<P: JsonRpcClient> Provider<P> {
     pub async fn estimate_gas(
         &self,
         tx: &TransactionRequest,
-        block: Option<BlockNumber>,
     ) -> Result<U256, ProviderError> {
         let tx = utils::serialize(tx);
 
-        let args = match block {
-            Some(block) => vec![tx, utils::serialize(&block)],
-            None => vec![tx],
-        };
-
         Ok(self
             .0
-            .request("eth_estimateGas", args)
+            .request("eth_estimateGas", [tx])
             .await
             .map_err(Into::into)?)
     }

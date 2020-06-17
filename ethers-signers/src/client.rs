@@ -151,7 +151,7 @@ where
         // will poll and await the futures concurrently
         let (gas_price, gas, nonce) = join!(
             maybe(tx.gas_price, self.provider.get_gas_price()),
-            maybe(tx.gas, self.provider.estimate_gas(&tx, block)),
+            maybe(tx.gas, self.provider.estimate_gas(&tx)),
             maybe(
                 tx.nonce,
                 self.provider.get_transaction_count(self.address(), block)
