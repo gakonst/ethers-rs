@@ -30,7 +30,7 @@ use std::str::FromStr;
 ///
 /// // Optionally, the wallet's chain id can be set, in order to use EIP-155
 /// // replay protection with different chains
-/// let wallet = wallet.chain_id(1337u64);
+/// let wallet = wallet.set_chain_id(1337u64);
 ///
 /// // The wallet can be used to sign messages
 /// let message = b"hello";
