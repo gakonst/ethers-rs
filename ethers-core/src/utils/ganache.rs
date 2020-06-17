@@ -25,7 +25,7 @@ impl Drop for GanacheInstance {
 /// # Example
 ///
 /// ```no_run
-/// use ethers_core::utils::Ganache;
+/// use ethers::utils::Ganache;
 ///
 /// let port = 8545u64;
 /// let url = format!("http://localhost:{}", port).to_string();
@@ -40,6 +40,7 @@ impl Drop for GanacheInstance {
 #[derive(Clone, Default)]
 pub struct Ganache {
     port: Option<u64>,
+    block_time: Option<u64>,
     mnemonic: Option<String>,
 }
 
@@ -62,6 +63,12 @@ impl Ganache {
         self
     }
 
+    /// Sets the block-time which will be used when the `ganache-cli` instance is launched.
+    pub fn block_time<T: Into<u64>>(mut self, block_time: T) -> Self {
+        self.block_time = Some(block_time.into());
+        self
+    }
+
     /// Consumes the builder and spawns `ganache-cli` with stdout redirected
     /// to /dev/null. This takes ~2 seconds to execute as it blocks while
     /// waiting for `ganache-cli` to launch.
@@ -74,6 +81,10 @@ impl Ganache {
 
         if let Some(mnemonic) = self.mnemonic {
             cmd.arg("-m").arg(mnemonic);
+        }
+
+        if let Some(block_time) = self.block_time {
+            cmd.arg("-b").arg(block_time.to_string());
         }
 
         let ganache_pid = cmd.spawn().expect("couldnt start ganache-cli");
