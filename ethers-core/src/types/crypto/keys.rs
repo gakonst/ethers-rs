@@ -120,13 +120,15 @@ impl PrivateKey {
         let gas_price = tx.gas_price.ok_or(TxError::GasPriceMissing)?;
         let gas = tx.gas.ok_or(TxError::GasMissing)?;
 
-        // Hash the transaction's RLP encoding
-        let hash = tx.hash(chain_id);
+        // Get the transaction's sighash
+        let sighash = tx.sighash(chain_id);
         let message =
-            Message::parse_slice(hash.as_bytes()).expect("hash is non-zero 32-bytes; qed");
+            Message::parse_slice(sighash.as_bytes()).expect("hash is non-zero 32-bytes; qed");
 
         // Sign it (with replay protection if applicable)
         let signature = self.sign_with_eip155(&message, chain_id);
+
+        // Get the actual transaction hash
         let rlp = tx.rlp_signed(&signature);
         let hash = keccak256(&rlp.0);
 

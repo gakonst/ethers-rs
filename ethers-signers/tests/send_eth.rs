@@ -1,7 +1,33 @@
-use ethers_core::{types::TransactionRequest, utils::Ganache};
-use ethers_providers::{Http, Provider};
-use ethers_signers::Wallet;
+use ethers::{
+    providers::{Http, Provider},
+    signers::Wallet,
+    types::TransactionRequest,
+    utils::{parse_ether, Ganache},
+};
 use std::convert::TryFrom;
+
+#[tokio::test]
+async fn pending_txs_with_confirmations_rinkeby_infura() {
+    let provider =
+        Provider::<Http>::try_from("https://rinkeby.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27")
+            .unwrap();
+
+    // pls do not drain this key :)
+    // note: this works even if there's no EIP-155 configured!
+    let client = "FF7F80C6E9941865266ED1F481263D780169F1D98269C51167D20C630A5FDC8A"
+        .parse::<Wallet>()
+        .unwrap()
+        .connect(provider);
+
+    let tx = TransactionRequest::pay(client.address(), parse_ether(1u64).unwrap());
+    let pending_tx = client.send_transaction(tx, None).await.unwrap();
+    let hash = *pending_tx;
+    dbg!(hash);
+    let receipt = pending_tx.confirmations(3).await.unwrap();
+
+    // got the correct receipt
+    assert_eq!(receipt.transaction_hash, hash);
+}
 
 #[tokio::test]
 async fn send_eth() {
