@@ -25,7 +25,8 @@ async fn pending_txs_with_confirmations_ganache() {
 #[cfg(feature = "celo")]
 mod celo_tests {
     use super::*;
-    use ethers::types::H256;
+    use ethers::{providers::FilterStream, types::H256};
+    use futures_util::stream::StreamExt;
 
     #[tokio::test]
     // https://alfajores-blockscout.celo-testnet.org/tx/0x544ea96cddb16aeeaedaf90885c1e02be4905f3eb43d6db3f28cac4dbe76a625/internal_transactions
@@ -41,5 +42,20 @@ mod celo_tests {
         assert_eq!(tx.gateway_fee.unwrap(), 0.into());
         assert_eq!(tx.hash, tx_hash);
         assert_eq!(tx.block_number.unwrap(), 1100845.into())
+    }
+
+    #[tokio::test]
+    async fn watch_blocks() {
+        let provider =
+            Provider::<Http>::try_from("https://alfajores-forno.celo-testnet.org").unwrap();
+
+        let stream = provider
+            .watch_blocks()
+            .await
+            .unwrap()
+            .interval(2000u64)
+            .stream();
+
+        let _blocks = stream.take(3usize).collect::<Vec<H256>>().await;
     }
 }

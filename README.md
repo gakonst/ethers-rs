@@ -2,11 +2,11 @@
 
 **Complete Ethereum and Celo wallet implementation and utilities in Rust**
 
-[![CircleCI](https://circleci.com/gh/circleci/circleci-docs.svg?style=svg)](https://circleci.com/gh/circleci/circleci-docs)
+![Github Actions](https://github.com/gakonst/ethers-rs/workflows/Tests/badge.svg)
 
 ## Documentation
 
-Extensive documentation and examples are available [here](docs.rs/ethers).
+Extensive documentation and examples are available [here](https://docs.rs/ethers).
 
 Alternatively, you may clone the repository and run `cd ethers/ && cargo doc --open`
 
@@ -55,7 +55,7 @@ in the transactions which are fetched over JSON-RPC.
 
 ## Getting Help
 
-First, see if the answer to your question can be found in the [API documentation](docs.rs/ethers). If the answer
+First, see if the answer to your question can be found in the [API documentation](https://docs.rs/ethers). If the answer
 is not there, try opening an [issue](https://github.com/gakonst/ethers-rs/issues/new) with the question.
 
 ## Contributing

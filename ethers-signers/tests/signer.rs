@@ -8,7 +8,7 @@ use std::convert::TryFrom;
 #[cfg(not(feature = "celo"))]
 mod eth_tests {
     use super::*;
-    use ethers::utils::{parse_ether, Ganache};
+    use ethers::{types::BlockNumber, utils::{parse_ether, Ganache}};
 
     #[tokio::test]
     async fn pending_txs_with_confirmations_rinkeby_infura() {
@@ -25,9 +25,8 @@ mod eth_tests {
             .connect(provider);
 
         let tx = TransactionRequest::pay(client.address(), parse_ether(1u64).unwrap());
-        let pending_tx = client.send_transaction(tx, None).await.unwrap();
+        let pending_tx = client.send_transaction(tx, Some(BlockNumber::Pending)).await.unwrap();
         let hash = *pending_tx;
-        dbg!(hash);
         let receipt = pending_tx.confirmations(3).await.unwrap();
 
         // got the correct receipt
