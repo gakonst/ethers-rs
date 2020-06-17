@@ -42,6 +42,11 @@ jobs:
             export PATH=$HOME/bin:$PATH
             cargo test
 
+      - name: cargo test (Celo)
+        run: |
+            export PATH=$HOME/bin:$PATH
+            cargo test --all-features
+
       - name: cargo fmt
         run: cargo fmt --all -- --check
 
