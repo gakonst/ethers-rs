@@ -28,8 +28,7 @@ use std::{convert::TryFrom, fmt::Debug};
 /// # Example
 ///
 /// ```no_run
-/// # use ethers_providers::JsonRpcClient;
-/// use ethers_providers::{Provider, Http};
+/// use ethers::providers::{JsonRpcClient, Provider, Http};
 /// use std::convert::TryFrom;
 ///
 /// let provider = Provider::<Http>::try_from(

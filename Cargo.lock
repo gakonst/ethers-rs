@@ -376,6 +376,7 @@ dependencies = [
 name = "ethers-signers"
 version = "0.1.0"
 dependencies = [
+ "ethers",
  "ethers-core",
  "ethers-providers",
  "futures-util",

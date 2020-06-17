@@ -169,30 +169,3 @@ impl<'a> fmt::Debug for PendingTxState<'a> {
             .finish()
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::Http;
-    use ethers_core::{types::TransactionRequest, utils::Ganache};
-    use std::convert::TryFrom;
-
-    #[tokio::test]
-    async fn test_pending_tx() {
-        let _ganache = Ganache::new().spawn();
-        let provider = Provider::<Http>::try_from("http://localhost:8545").unwrap();
-        let accounts = provider.get_accounts().await.unwrap();
-        let tx = TransactionRequest::pay(accounts[0], 1000).from(accounts[0]);
-
-        let pending_tx = provider.send_transaction(tx).await.unwrap();
-
-        let receipt = provider
-            .get_transaction_receipt(pending_tx.tx_hash)
-            .await
-            .unwrap();
-
-        // the pending tx resolves to the same receipt
-        let tx_receipt = pending_tx.confirmations(1).await.unwrap();
-        assert_eq!(receipt, tx_receipt);
-    }
-}
