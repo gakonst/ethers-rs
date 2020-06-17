@@ -67,6 +67,7 @@ help you get involved in the ethers-rs project.
 ## Related Projects
 
 This library would not have been possibly without the great work done in:
+- [`ethers.js`](https://github.com/ethers-io/ethers.js/)
 - [`rust-web3`](https://github.com/tomusdrw/rust-web3/)
 - [`ethcontract-rs`](https://github.com/gnosis/ethcontract-rs/)
 
