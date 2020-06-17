@@ -28,6 +28,13 @@ full = [
     "core",
 ]
 
+celo = [
+    "ethers-core/celo",
+    "ethers-providers/celo",
+    "ethers-signers/celo",
+    "ethers-contract/celo",
+]
+
 core = ["ethers-core"]
 contract = ["ethers-contract"]
 providers = ["ethers-providers"]

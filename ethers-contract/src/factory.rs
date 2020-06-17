@@ -10,9 +10,10 @@ use ethers_signers::{Client, Signer};
 #[derive(Debug, Clone)]
 /// Helper which manages the deployment transaction of a smart contract
 pub struct Deployer<'a, P, S> {
+    /// The deployer's transaction, exposed for overriding the defaults
+    pub tx: TransactionRequest,
     abi: Abi,
     client: &'a Client<P, S>,
-    tx: TransactionRequest,
     confs: usize,
 }
 

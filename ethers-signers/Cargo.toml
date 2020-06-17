@@ -15,3 +15,6 @@ serde = "1.0.112"
 ethers = { version = "0.1.0", path = "../ethers" }
 
 tokio = { version = "0.2.21", features = ["macros"] }
+
+[features]
+celo = ["ethers-core/celo", "ethers-providers/celo"]

@@ -9,7 +9,11 @@ use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
 // Number of tx fields before signing
+#[cfg(not(feature = "celo"))]
 const UNSIGNED_TX_FIELDS: usize = 6;
+// Celo has 3 additional fields
+#[cfg(feature = "celo")]
+const UNSIGNED_TX_FIELDS: usize = 9;
 
 // Unsigned fields + signature [r s v]
 const SIGNED_TX_FIELDS: usize = UNSIGNED_TX_FIELDS + 3;
@@ -46,6 +50,22 @@ pub struct TransactionRequest {
     /// Transaction nonce (None for next available nonce)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub nonce: Option<U256>,
+
+    /////////////////  Celo-specific transaction fields /////////////////
+    /// The currency fees are paid in (None for native currency)
+    #[cfg(feature = "celo")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fee_currency: Option<Address>,
+
+    /// Gateway fee recipient (None for no gateway fee paid)
+    #[cfg(feature = "celo")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub gateway_fee_recipient: Option<Address>,
+
+    /// Gateway fee amount (None for no gateway fee paid)
+    #[cfg(feature = "celo")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub gateway_fee: Option<U256>,
 }
 
 impl TransactionRequest {
@@ -54,17 +74,12 @@ impl TransactionRequest {
         Self::default()
     }
 
-    /// Convenience function for sending a new payment transaction to the receiver. The
-    /// `gas`, `gas_price` and `nonce` fields are left empty, to be populated
+    /// Convenience function for sending a new payment transaction to the receiver.
     pub fn pay<T: Into<NameOrAddress>, V: Into<U256>>(to: T, value: V) -> Self {
         TransactionRequest {
-            from: None,
             to: Some(to.into()),
-            gas: None,
-            gas_price: None,
             value: Some(value.into()),
-            data: None,
-            nonce: None,
+            ..Default::default()
         }
     }
 
@@ -150,9 +165,12 @@ impl TransactionRequest {
     /// Produces the RLP encoding of the transaction with the provided signature
     pub fn rlp_signed(&self, signature: &Signature) -> Bytes {
         let mut rlp = RlpStream::new();
+
+        // construct the RLP body
         rlp.begin_list(SIGNED_TX_FIELDS);
         self.rlp_base(&mut rlp);
 
+        // append the signature
         rlp.append(&signature.v);
         rlp.append(&signature.r);
         rlp.append(&signature.s);
@@ -164,9 +182,42 @@ impl TransactionRequest {
         rlp_opt(rlp, self.nonce);
         rlp_opt(rlp, self.gas_price);
         rlp_opt(rlp, self.gas);
+
+        #[cfg(feature = "celo")]
+        self.inject_celo_metadata(rlp);
+
         rlp_opt(rlp, self.to.as_ref());
         rlp_opt(rlp, self.value);
         rlp_opt(rlp, self.data.as_ref().map(|d| &d.0[..]));
+    }
+}
+
+// Separate impl block for the celo-specific fields
+#[cfg(feature = "celo")]
+impl TransactionRequest {
+    // modifies the RLP stream with the Celo-specific information
+    fn inject_celo_metadata(&self, rlp: &mut RlpStream) {
+        rlp_opt(rlp, self.fee_currency);
+        rlp_opt(rlp, self.gateway_fee_recipient);
+        rlp_opt(rlp, self.gateway_fee);
+    }
+
+    /// Sets the `fee_currency` field in the transaction to the provided value
+    pub fn fee_currency<T: Into<Address>>(mut self, fee_currency: T) -> Self {
+        self.fee_currency = Some(fee_currency.into());
+        self
+    }
+
+    /// Sets the `gateway_fee` field in the transaction to the provided value
+    pub fn gateway_fee<T: Into<U256>>(mut self, gateway_fee: T) -> Self {
+        self.gateway_fee = Some(gateway_fee.into());
+        self
+    }
+
+    /// Sets the `gateway_fee_recipient` field in the transaction to the provided value
+    pub fn gateway_fee_recipient<T: Into<Address>>(mut self, gateway_fee_recipient: T) -> Self {
+        self.gateway_fee_recipient = Some(gateway_fee_recipient.into());
+        self
     }
 }
 
@@ -230,9 +281,38 @@ pub struct Transaction {
 
     /// ECDSA signature s
     pub s: U256,
+
+    /////////////////  Celo-specific transaction fields /////////////////
+    /// The currency fees are paid in (None for native currency)
+    #[cfg(feature = "celo")]
+    #[serde(skip_serializing_if = "Option::is_none", rename = "feeCurrency")]
+    pub fee_currency: Option<Address>,
+
+    /// Gateway fee recipient (None for no gateway fee paid)
+    #[cfg(feature = "celo")]
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        rename = "gatewayFeeRecipient"
+    )]
+    pub gateway_fee_recipient: Option<Address>,
+
+    /// Gateway fee amount (None for no gateway fee paid)
+    #[cfg(feature = "celo")]
+    #[serde(skip_serializing_if = "Option::is_none", rename = "gatewayFee")]
+    pub gateway_fee: Option<U256>,
 }
 
 impl Transaction {
+    // modifies the RLP stream with the Celo-specific information
+    // This is duplicated from TransactionRequest. Is there a good way to get rid
+    // of this code duplication?
+    #[cfg(feature = "celo")]
+    fn inject_celo_metadata(&self, rlp: &mut RlpStream) {
+        rlp_opt(rlp, self.fee_currency);
+        rlp_opt(rlp, self.gateway_fee_recipient);
+        rlp_opt(rlp, self.gateway_fee);
+    }
+
     pub fn hash(&self) -> H256 {
         keccak256(&self.rlp().0).into()
     }
@@ -243,6 +323,10 @@ impl Transaction {
         rlp.append(&self.nonce);
         rlp.append(&self.gas_price);
         rlp.append(&self.gas);
+
+        #[cfg(feature = "celo")]
+        self.inject_celo_metadata(&mut rlp);
+
         rlp_opt(&mut rlp, self.to);
         rlp.append(&self.value);
         rlp.append(&self.input.0);
@@ -292,6 +376,7 @@ pub struct TransactionReceipt {
 }
 
 #[cfg(test)]
+#[cfg(not(feature = "celo"))]
 mod tests {
     use super::*;
 

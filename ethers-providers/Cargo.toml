@@ -25,3 +25,6 @@ ethers = { version = "0.1.0", path = "../ethers" }
 
 rustc-hex = "2.1.0"
 tokio = { version = "0.2.21", default-features = false, features = ["rt-core", "macros"] }
+
+[features]
+celo = ["ethers-core/celo"]

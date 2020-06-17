@@ -31,4 +31,5 @@ bincode = "1.2.1"
 
 [features]
 default = ["abi"]
+celo = [] # celo support extends the transaction format with extra fields
 abi = ["ethabi", "arrayvec"]
