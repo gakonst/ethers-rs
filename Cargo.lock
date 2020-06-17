@@ -290,6 +290,7 @@ dependencies = [
 name = "ethers-contract"
 version = "0.1.0"
 dependencies = [
+ "ethers",
  "ethers-contract-abigen",
  "ethers-contract-derive",
  "ethers-core",

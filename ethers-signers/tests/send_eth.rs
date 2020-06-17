@@ -7,6 +7,7 @@ use ethers::{
 use std::convert::TryFrom;
 
 #[tokio::test]
+#[cfg(not(feature = "celo"))]
 async fn pending_txs_with_confirmations_rinkeby_infura() {
     let provider =
         Provider::<Http>::try_from("https://rinkeby.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27")
@@ -30,6 +31,7 @@ async fn pending_txs_with_confirmations_rinkeby_infura() {
 }
 
 #[tokio::test]
+#[cfg(not(feature = "celo"))]
 async fn send_eth() {
     let port = 8545u64;
     let url = format!("http://localhost:{}", port).to_string();
