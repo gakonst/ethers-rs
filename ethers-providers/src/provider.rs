@@ -251,10 +251,7 @@ impl<P: JsonRpcClient> Provider<P> {
     /// Sends a transaction to a single Ethereum node and return the estimated amount of gas required (as a U256) to send it
     /// This is free, but only an estimate. Providing too little gas will result in a transaction being rejected
     /// (while still consuming all provided gas).
-    pub async fn estimate_gas(
-        &self,
-        tx: &TransactionRequest,
-    ) -> Result<U256, ProviderError> {
+    pub async fn estimate_gas(&self, tx: &TransactionRequest) -> Result<U256, ProviderError> {
         let tx = utils::serialize(tx);
 
         Ok(self
@@ -359,14 +356,12 @@ impl<P: JsonRpcClient> Provider<P> {
     /// To check if the state has changed, call `get_filter_changes` with the filter id.
     pub async fn new_filter(&self, filter: FilterKind<'_>) -> Result<U256, ProviderError> {
         let (method, args) = match filter {
-            FilterKind::NewBlocks => ("eth_newBlockFilter", utils::serialize(&())),
-            FilterKind::PendingTransactions => {
-                ("eth_newPendingTransactionFilter", utils::serialize(&()))
-            }
-            FilterKind::Logs(filter) => ("eth_newFilter", utils::serialize(&filter)),
+            FilterKind::NewBlocks => ("eth_newBlockFilter", vec![]),
+            FilterKind::PendingTransactions => ("eth_newPendingTransactionFilter", vec![]),
+            FilterKind::Logs(filter) => ("eth_newFilter", vec![utils::serialize(&filter)]),
         };
 
-        Ok(self.0.request(method, [args]).await.map_err(Into::into)?)
+        Ok(self.0.request(method, args).await.map_err(Into::into)?)
     }
 
     /// Uninstalls a filter
