@@ -1,5 +1,6 @@
 [package]
 name = "ethers-signers"
+license = "MIT OR Apache-2.0"
 version = "0.1.0"
 authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
 edition = "2018"
