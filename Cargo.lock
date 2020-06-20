@@ -393,6 +393,7 @@ dependencies = [
  "ethers-providers",
  "futures-util",
  "serde",
+ "serde_json",
  "thiserror",
  "tokio",
 ]
