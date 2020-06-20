@@ -1,3 +1,4 @@
+// Code adapted from: https://github.com/althea-net/guac_rs/tree/master/web3/src/jsonrpc
 use crate::{provider::ProviderError, JsonRpcClient};
 
 use async_trait::async_trait;

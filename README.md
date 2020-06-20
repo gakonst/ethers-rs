@@ -70,6 +70,7 @@ This library would not have been possibly without the great work done in:
 - [`ethers.js`](https://github.com/ethers-io/ethers.js/)
 - [`rust-web3`](https://github.com/tomusdrw/rust-web3/)
 - [`ethcontract-rs`](https://github.com/gnosis/ethcontract-rs/)
+- [`guac_rs`](https://github.com/althea-net/guac_rs/tree/master/web3/src/jsonrpc)
 
 A lot of the code was inspired and adapted from them, to a unified and opinionated interface,
 built with async/await and std futures from the ground up.
