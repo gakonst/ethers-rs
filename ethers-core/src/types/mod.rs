@@ -1,3 +1,4 @@
+//! Ethereum related datatypes
 mod crypto;
 pub use crypto::*;
 

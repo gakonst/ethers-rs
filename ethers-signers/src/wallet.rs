@@ -59,10 +59,10 @@ use std::str::FromStr;
 /// ```
 ///
 ///
-/// [`Client`]: ./struct.Client.html
-/// [`connect`]: ./struct.Wallet.html#method.connect
-/// [`Signature`]: ../ethers_core/types/struct.Signature.html
-/// [`hash_message`]: ../ethers_core/utils/fn.hash_message.html
+/// [`Client`]: crate::Client
+/// [`connect`]: method@crate::Wallet::connect
+/// [`Signature`]: ethers_core::types::Signature
+/// [`hash_message`]: fn@ethers_core::utils::hash_message
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Wallet {
     /// The Wallet's private Key

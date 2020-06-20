@@ -14,7 +14,7 @@ pub struct Log {
 
     /// topics: Array of 0 to 4 32 Bytes of indexed log arguments.
     /// (In solidity: The first topic is the hash of the signature of the event
-    /// (e.g. Deposit(address,bytes32,uint256)), except you declared the event
+    /// (e.g. `Deposit(address,bytes32,uint256)`), except you declared the event
     /// with the anonymous specifier.)
     pub topics: Vec<H256>,
 

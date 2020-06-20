@@ -56,10 +56,14 @@ use std::{collections::HashMap, fmt::Debug, hash::Hash, marker::PhantomData};
 /// interact with its methods and retrieve raw logs it has emitted.
 ///
 /// ```no_run
-/// use ethers_core::{abi::Abi, utils::Solc, types::{Address, H256}};
-/// use ethers_contract::Contract;
-/// use ethers_providers::{Provider, Http};
-/// use ethers_signers::Wallet;
+/// use ethers::{
+///     abi::Abi,
+///     utils::Solc,
+///     types::{Address, H256},
+///     contract::Contract,
+///     providers::{Provider, Http},
+///     signers::Wallet,
+/// };
 /// use std::convert::TryFrom;
 ///
 /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
@@ -154,9 +158,9 @@ use std::{collections::HashMap, fmt::Debug, hash::Hash, marker::PhantomData};
 /// _Disclaimer: these above docs have been adapted from the corresponding [ethers.js page](https://docs.ethers.io/ethers.js/html/api-contract.html)_
 ///
 /// [`abigen`]: macro.abigen.html
-/// [`Abigen` builder]: struct.Abigen.html
-/// [`event`]: struct.Contract.html#method.event
-/// [`method`]: struct.Contract.html#method.method
+/// [`Abigen` builder]: crate::Abigen
+/// [`event`]: method@crate::Contract::event
+/// [`method`]: method@crate::Contract::method
 #[derive(Debug, Clone)]
 pub struct Contract<'a, P, S> {
     client: &'a Client<P, S>,
@@ -187,7 +191,7 @@ where
         }
     }
 
-    /// Returns an `Event` builder for the provided event name.
+    /// Returns an [`Event`](crate::builders::Event) builder for the provided event name.
     pub fn event<D: Detokenize>(&self, name: &str) -> Result<Event<P, D>, Error> {
         // get the event's full name
         let event = self.abi.event(name)?;

@@ -1,12 +1,16 @@
 [package]
 name = "ethers-providers"
 license = "MIT OR Apache-2.0"
-version = "0.1.0"
+version = "0.1.3"
 authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
 edition = "2018"
+description = "Provider implementations for the ethers-rs crate"
+homepage = "https://docs.rs/ethers"
+repository = "https://github.com/gakonst/ethers-rs"
+keywords = ["ethereum", "web3", "celo", "ethers"]
 
 [dependencies]
-ethers-core = { version = "0.1.0", path = "../ethers-core" }
+ethers-core = { version = "0.1.3", path = "../ethers-core" }
 
 async-trait = { version = "0.1.31", default-features = false }
 reqwest = { version = "0.10.4", default-features = false, features = ["json", "rustls-tls"] }
@@ -22,10 +26,14 @@ pin-project = { version = "0.4.20", default-features = false }
 tokio = { version = "0.2.21", default-features = false, features = ["time"] }
 
 [dev-dependencies]
-ethers = { version = "0.1.0", path = "../ethers" }
+ethers = { version = "0.1.3", path = "../ethers" }
 
 rustc-hex = "2.1.0"
 tokio = { version = "0.2.21", default-features = false, features = ["rt-core", "macros"] }
 
 [features]
 celo = ["ethers-core/celo"]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

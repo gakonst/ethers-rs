@@ -68,7 +68,7 @@ use thiserror::Error;
 ///
 /// ```
 ///
-/// [`Provider`]: ../ethers_providers/struct.Provider.html
+/// [`Provider`]: ethers_providers::Provider
 pub struct Client<P, S> {
     pub(crate) provider: Provider<P>,
     pub(crate) signer: S,

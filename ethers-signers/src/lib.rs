@@ -1,3 +1,42 @@
+//! Provides a unified interface for locally signing transactions and interacting
+//! with the Ethereum JSON-RPC. You can implement the `Signer` trait to extend
+//! functionality to other signers such as Hardware Security Modules, KMS etc.
+//!
+//! ```no_run
+//! # use ethers::{
+//!     providers::{Http, Provider},
+//!     signers::Wallet,
+//!     core::types::TransactionRequest
+//! };
+//! # use std::convert::TryFrom;
+//! # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
+//! // connect to the network
+//! let provider = Provider::<Http>::try_from("http://localhost:8545")?;
+//!
+//! // instantiate the wallet and connect it to the provider to get a client
+//! let client = "dcf2cbdd171a21c480aa7f53d77f31bb102282b3ff099c78e3118b37348c72f7"
+//!     .parse::<Wallet>()?
+//!     .connect(provider);
+//!
+//! // create a transaction
+//! let tx = TransactionRequest::new()
+//!     .to("vitalik.eth") // this will use ENS
+//!     .value(10000);
+//!
+//! // send it! (this will resolve the ENS name to an address under the hood)
+//! let pending_tx = client.send_transaction(tx, None).await?;
+//!
+//! // get the receipt
+//! let receipt = pending_tx.await?;
+//!
+//! // get the mined tx
+//! let tx = client.get_transaction(receipt.transaction_hash).await?;
+//!
+//! println!("{}", serde_json::to_string(&tx)?);
+//! println!("{}", serde_json::to_string(&receipt)?);
+//!
+//! # Ok(())
+//! # }
 mod wallet;
 pub use wallet::Wallet;
 

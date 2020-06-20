@@ -19,7 +19,6 @@ use syn::{parse::Error, parse_macro_input};
 ///
 /// ```ignore
 /// # use ethers_contract_derive::abigen;
-///
 /// // ABI Path
 /// abigen!(MyContract, "MyContract.json");
 ///

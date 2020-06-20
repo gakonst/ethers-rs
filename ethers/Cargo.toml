@@ -1,10 +1,10 @@
 [package]
 name = "ethers"
-version = "0.1.0"
+version = "0.1.3"
 authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
 license = "MIT OR Apache-2.0"
 edition = "2018"
-readme = "README.md"
+readme = "../README.md"
 documentation = "https://docs.rs/ethers"
 repository = "https://github.com/gakonst/ethers-rs"
 homepage = "https://docs.rs/ethers"
@@ -42,13 +42,13 @@ providers = ["ethers-providers"]
 signers = ["ethers-signers"]
 
 [dependencies]
-ethers-contract = { version = "0.1.0", path = "../ethers-contract", optional = true }
-ethers-core = { version = "0.1.0", path = "../ethers-core", optional = true }
-ethers-providers = { version = "0.1.0", path = "../ethers-providers", optional = true }
-ethers-signers = { version = "0.1.0", path = "../ethers-signers", optional = true }
+ethers-contract = { version = "0.1.3", path = "../ethers-contract", optional = true }
+ethers-core = { version = "0.1.3", path = "../ethers-core", optional = true }
+ethers-providers = { version = "0.1.3", path = "../ethers-providers", optional = true }
+ethers-signers = { version = "0.1.3", path = "../ethers-signers", optional = true }
 
 [dev-dependencies]
-ethers-contract = { version = "0.1.0", path = "../ethers-contract", features = ["abigen"] }
+ethers-contract = { version = "0.1.3", path = "../ethers-contract", features = ["abigen"] }
 
 anyhow = "1.0.31"
 rand = "0.7"
