@@ -31,6 +31,8 @@ ethers = { version = "0.1.3", path = "../ethers" }
 
 rustc-hex = "2.1.0"
 tokio = { version = "0.2.21", default-features = false, features = ["rt-core", "macros"] }
+async-tungstenite = { version = "0.6.0", features = ["tokio-runtime"] }
+serial_test = "0.4.0"
 
 [features]
 celo = ["ethers-core/celo"]
