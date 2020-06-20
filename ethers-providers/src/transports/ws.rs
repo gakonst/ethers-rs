@@ -1,6 +1,7 @@
 use crate::{provider::ProviderError, JsonRpcClient};
 
 use async_trait::async_trait;
+use async_tungstenite::tungstenite::{self, protocol::Message};
 use futures_util::{
     lock::Mutex,
     sink::{Sink, SinkExt},
@@ -10,24 +11,44 @@ use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use std::sync::atomic::{AtomicU64, Ordering};
 use thiserror::Error;
-use tungstenite::protocol::Message;
 
 use super::common::{JsonRpcError, Request, ResponseData};
+
+// Convenience methods for connecting with async-std/tokio:
 
 #[cfg(any(feature = "tokio-runtime", feature = "async-std-runtime"))]
 use async_tungstenite::WebSocketStream;
 
+// connect_async
+#[cfg(all(feature = "async-std-runtime", not(feature = "tokio-runtime")))]
+use async_tungstenite::async_std::connect_async;
 #[cfg(feature = "tokio-runtime")]
 use async_tungstenite::tokio::{connect_async, TokioAdapter};
 
 #[cfg(feature = "tokio-runtime")]
-type Inner = TokioAdapter<tokio::net::TcpStream>;
-
+type TcpStream = TokioAdapter<tokio::net::TcpStream>;
 #[cfg(all(feature = "async-std-runtime", not(feature = "tokio-runtime")))]
-type Inner = async_std::net::TcpStream;
+type TcpStream = async_std::net::TcpStream;
 
-#[cfg(all(feature = "async-std-runtime", not(feature = "tokio-runtime")))]
-use async_tungstenite::async_std::connect_async;
+// If there is no TLS, just use the TCP Stream
+#[cfg(all(feature = "tokio-runtime", not(feature = "tokio-tls")))]
+pub type MaybeTlsStream = TcpStream;
+#[cfg(all(feature = "async-std-runtime", not(feature = "async-std-tls")))]
+pub type MaybeTlsStream = TcpStream;
+
+// Use either
+#[cfg(feature = "tokio-tls")]
+type TlsStream<S> = real_tokio_native_tls::TlsStream<S>;
+#[cfg(all(feature = "async-std-tls", not(feature = "tokio-tls")))]
+type TlsStream<S> = async_tls::client::TlsStream<S>;
+
+#[cfg(any(feature = "tokio-tls", feature = "async-std-tls"))]
+pub use async_tungstenite::stream::Stream as StreamSwitcher;
+#[cfg(feature = "tokio-tls")]
+pub type MaybeTlsStream =
+    StreamSwitcher<TcpStream, TokioAdapter<TlsStream<TokioAdapter<TcpStream>>>>;
+#[cfg(all(feature = "async-std-tls", not(feature = "tokio-tls")))]
+pub type MaybeTlsStream = StreamSwitcher<TcpStream, TlsStream<TcpStream>>;
 
 /// A JSON-RPC Client over Websockets.
 pub struct Provider<S> {
@@ -36,7 +57,7 @@ pub struct Provider<S> {
 }
 
 #[cfg(any(feature = "tokio-runtime", feature = "async-std-runtime"))]
-impl Provider<WebSocketStream<Inner>> {
+impl Provider<WebSocketStream<MaybeTlsStream>> {
     /// Initializes a new WebSocket Client. The websocket connection must be initiated
     /// separately.
     pub async fn connect(

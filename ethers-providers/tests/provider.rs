@@ -5,28 +5,48 @@ use std::convert::TryFrom;
 #[cfg(not(feature = "celo"))]
 mod eth_tests {
     use super::*;
-    use async_tungstenite::tokio::connect_async;
     use ethers::{
-        providers::{FilterStream, StreamExt, Ws},
-        types::{TransactionRequest, H256},
+        types::TransactionRequest,
         utils::{parse_ether, Ganache},
     };
     use serial_test::serial;
 
-    #[tokio::test]
-    async fn ssl_websocket() {
-        let (ws, _) = connect_async(
-            "wss://rinkeby.infura.io/ws/v3/c60b0bb42f8a4c6481ecd229eddaca27",
-        ).await.unwrap();
-        let provider = Provider::new(Ws::new(ws));
-        let _number = provider.get_block_number().await.unwrap();
+    // Without TLS this would error with "TLS Support not compiled in"
+    #[test]
+    #[cfg(any(feature = "async-std-tls", feature = "tokio-tls"))]
+    fn ssl_websocket() {
+        // this is extremely ugly but I couldn't figure out a better way of having
+        // a shared async test for both runtimes
+        #[cfg(feature = "async-std-tls")]
+        let block_on = async_std::task::block_on;
+        #[cfg(feature = "tokio-tls")]
+        let mut runtime = tokio::runtime::Runtime::new().unwrap();
+        #[cfg(feature = "tokio-tls")]
+        let mut block_on = |x| runtime.block_on(x);
+
+        use ethers::providers::Ws;
+        block_on(async move {
+            let ws = Ws::connect("wss://rinkeby.infura.io/ws/v3/c60b0bb42f8a4c6481ecd229eddaca27")
+                .await
+                .unwrap();
+            let provider = Provider::new(ws);
+            let _number = provider.get_block_number().await.unwrap();
+        });
     }
 
     #[tokio::test]
     #[serial]
+    #[cfg(feature = "tokio-runtime")]
     async fn watch_blocks_websocket() {
+        use ethers::{
+            providers::{FilterStream, StreamExt, Ws},
+            types::H256,
+        };
+
         let _ganache = Ganache::new().block_time(2u64).spawn();
-        let (ws, _) = connect_async("ws://localhost:8545").await.unwrap();
+        let (ws, _) = async_tungstenite::tokio::connect_async("ws://localhost:8545")
+            .await
+            .unwrap();
         let provider = Provider::new(Ws::new(ws));
 
         let stream = provider
@@ -37,7 +57,6 @@ mod eth_tests {
             .stream();
 
         let _blocks = stream.take(3usize).collect::<Vec<H256>>().await;
-
         let _number = provider.get_block_number().await.unwrap();
     }
 

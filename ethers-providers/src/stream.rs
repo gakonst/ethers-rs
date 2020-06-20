@@ -184,7 +184,7 @@ mod watch {
     async fn stream() {
         let factory = || Box::pin(async { Ok::<Vec<u64>, ProviderError>(vec![1, 2, 3]) });
         let filter = FilterWatcher::<_, u64>::new(1, factory);
-        let mut stream = filter.interval(1u64).stream();
+        let mut stream = filter.interval(100u64).stream();
         assert_eq!(stream.next().await.unwrap(), 1);
         assert_eq!(stream.next().await.unwrap(), 2);
         assert_eq!(stream.next().await.unwrap(), 3);
