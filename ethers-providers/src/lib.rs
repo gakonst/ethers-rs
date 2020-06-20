@@ -50,8 +50,8 @@
 //! # Ok(())
 //! # }
 //! ```
-mod http;
-pub use http::Provider as Http;
+mod transports;
+pub use transports::Http;
 
 mod provider;
 

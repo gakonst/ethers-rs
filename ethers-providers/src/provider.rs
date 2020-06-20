@@ -1,8 +1,7 @@
 use crate::{
     ens,
-    http::Provider as HttpProvider,
     stream::{FilterStream, FilterWatcher},
-    JsonRpcClient, PendingTransaction,
+    Http as HttpProvider, JsonRpcClient, PendingTransaction,
 };
 
 use ethers_core::{
