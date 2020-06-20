@@ -51,7 +51,7 @@
 //! # }
 //! ```
 mod transports;
-pub use transports::Http;
+pub use transports::{Http, Ws};
 
 mod provider;
 
