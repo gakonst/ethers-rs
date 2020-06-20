@@ -29,7 +29,7 @@ where
     }
 
     /// Broadcasts the contract deployment transaction and after waiting for it to
-    /// be sufficiently confirmed (default: 1), it returns a [`Contract`](./struct.Contract.html)
+    /// be sufficiently confirmed (default: 1), it returns a [`Contract`](crate::Contract)
     /// struct at the deployed contract's address.
     pub async fn send(self) -> Result<Contract<'a, P, S>, ContractError> {
         let pending_tx = self.client.send_transaction(self.tx, None).await?;
@@ -61,15 +61,17 @@ where
 /// (ABI), usually generated from the Solidity compiler.
 ///
 /// Once the factory's deployment transaction is mined with sufficient confirmations,
-/// the [`Contract`](./struct.Contract.html) object is returned.
+/// the [`Contract`](crate::Contract) object is returned.
 ///
 /// # Example
 ///
 /// ```no_run
-/// use ethers_core::utils::Solc;
-/// use ethers_contract::ContractFactory;
-/// use ethers_providers::{Provider, Http};
-/// use ethers_signers::Wallet;
+/// use ethers::{
+///     utils::Solc,
+///     contract::ContractFactory,
+///     providers::{Provider, Http},
+///     signers::Wallet
+/// };
 /// use std::convert::TryFrom;
 ///
 /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {

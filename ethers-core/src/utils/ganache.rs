@@ -7,7 +7,7 @@ const SLEEP_TIME: Duration = Duration::from_secs(3);
 
 /// A ganache CLI instance. Will close the instance when dropped.
 ///
-/// Construct this using [`Ganache`](./struct.Ganache.html)
+/// Construct this using [`Ganache`](crate::utils::Ganache)
 pub struct GanacheInstance(Child);
 
 impl Drop for GanacheInstance {

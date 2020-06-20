@@ -22,8 +22,8 @@ use std::{convert::TryFrom, fmt::Debug};
 
 /// An abstract provider for interacting with the [Ethereum JSON RPC
 /// API](https://github.com/ethereum/wiki/wiki/JSON-RPC). Must be instantiated
-/// with a data transport which implements the [`JsonRpcClient`](trait.JsonRpcClient.html) trait
-/// (e.g. [HTTP](struct.Http.html), Websockets etc.)
+/// with a data transport which implements the [`JsonRpcClient`](trait@crate::JsonRpcClient) trait
+/// (e.g. [HTTP](crate::Http), Websockets etc.)
 ///
 /// # Example
 ///
@@ -378,12 +378,15 @@ impl<P: JsonRpcClient> Provider<P> {
     ///
     /// This method must be called with one of the following return types, depending on the filter
     /// type:
-    /// - `eth_newBlockFilter`: `H256`, returns block hashes
-    /// - `eth_newPendingTransactionFilter`: `H256`, returns transaction hashes
-    /// - `eth_newFilter`: `Log`, returns raw logs
+    /// - `eth_newBlockFilter`: [`H256`], returns block hashes
+    /// - `eth_newPendingTransactionFilter`: [`H256`], returns transaction hashes
+    /// - `eth_newFilter`: [`Log`], returns raw logs
     ///
     /// If one of these types is not used, decoding will fail and the method will
     /// return an error.
+    ///
+    /// [`H256`]: ethers_core::types::H256
+    /// [`Log`]: ethers_core::types::Log
     pub async fn get_filter_changes<T, R>(&self, id: T) -> Result<Vec<R>, ProviderError>
     where
         T: Into<U256>,

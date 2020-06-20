@@ -241,9 +241,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "ethabi"
+name = "ethabi-next"
 version = "12.0.0"
-source = "git+https://github.com/gakonst/ethabi#bd8214a5897f323b4832cd56430eb74bc6e06cda"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1190707a051f20d9d966b187da7eaa4fa3f2a293911cdcb8541e76724980ac1b"
 dependencies = [
  "ethereum-types",
  "rustc-hex",
@@ -282,7 +283,7 @@ dependencies = [
 
 [[package]]
 name = "ethers"
-version = "0.1.0"
+version = "0.1.3"
 dependencies = [
  "anyhow",
  "ethers-contract",
@@ -297,7 +298,7 @@ dependencies = [
 
 [[package]]
 name = "ethers-contract"
-version = "0.1.0"
+version = "0.1.3"
 dependencies = [
  "ethers",
  "ethers-contract-abigen",
@@ -317,7 +318,7 @@ dependencies = [
 
 [[package]]
 name = "ethers-contract-abigen"
-version = "0.1.0"
+version = "0.1.3"
 dependencies = [
  "Inflector",
  "anyhow",
@@ -334,7 +335,7 @@ dependencies = [
 
 [[package]]
 name = "ethers-contract-derive"
-version = "0.1.0"
+version = "0.1.3"
 dependencies = [
  "ethers-contract-abigen",
  "ethers-core",
@@ -346,11 +347,11 @@ dependencies = [
 
 [[package]]
 name = "ethers-core"
-version = "0.1.0"
+version = "0.1.3"
 dependencies = [
  "arrayvec",
  "bincode",
- "ethabi",
+ "ethabi-next",
  "ethereum-types",
  "ethers",
  "glob",
@@ -366,7 +367,7 @@ dependencies = [
 
 [[package]]
 name = "ethers-providers"
-version = "0.1.0"
+version = "0.1.3"
 dependencies = [
  "async-trait",
  "ethers",
@@ -385,7 +386,7 @@ dependencies = [
 
 [[package]]
 name = "ethers-signers"
-version = "0.1.0"
+version = "0.1.3"
 dependencies = [
  "ethers",
  "ethers-core",

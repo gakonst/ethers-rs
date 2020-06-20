@@ -54,16 +54,19 @@ pub struct TransactionRequest {
     /////////////////  Celo-specific transaction fields /////////////////
     /// The currency fees are paid in (None for native currency)
     #[cfg(feature = "celo")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "celo")))]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub fee_currency: Option<Address>,
 
     /// Gateway fee recipient (None for no gateway fee paid)
     #[cfg(feature = "celo")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "celo")))]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub gateway_fee_recipient: Option<Address>,
 
     /// Gateway fee amount (None for no gateway fee paid)
     #[cfg(feature = "celo")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "celo")))]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub gateway_fee: Option<U256>,
 }
@@ -203,18 +206,21 @@ impl TransactionRequest {
     }
 
     /// Sets the `fee_currency` field in the transaction to the provided value
+    #[cfg_attr(docsrs, doc(cfg(feature = "celo")))]
     pub fn fee_currency<T: Into<Address>>(mut self, fee_currency: T) -> Self {
         self.fee_currency = Some(fee_currency.into());
         self
     }
 
     /// Sets the `gateway_fee` field in the transaction to the provided value
+    #[cfg_attr(docsrs, doc(cfg(feature = "celo")))]
     pub fn gateway_fee<T: Into<U256>>(mut self, gateway_fee: T) -> Self {
         self.gateway_fee = Some(gateway_fee.into());
         self
     }
 
     /// Sets the `gateway_fee_recipient` field in the transaction to the provided value
+    #[cfg_attr(docsrs, doc(cfg(feature = "celo")))]
     pub fn gateway_fee_recipient<T: Into<Address>>(mut self, gateway_fee_recipient: T) -> Self {
         self.gateway_fee_recipient = Some(gateway_fee_recipient.into());
         self
@@ -285,11 +291,13 @@ pub struct Transaction {
     /////////////////  Celo-specific transaction fields /////////////////
     /// The currency fees are paid in (None for native currency)
     #[cfg(feature = "celo")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "celo")))]
     #[serde(skip_serializing_if = "Option::is_none", rename = "feeCurrency")]
     pub fee_currency: Option<Address>,
 
     /// Gateway fee recipient (None for no gateway fee paid)
     #[cfg(feature = "celo")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "celo")))]
     #[serde(
         skip_serializing_if = "Option::is_none",
         rename = "gatewayFeeRecipient"
@@ -298,6 +306,7 @@ pub struct Transaction {
 
     /// Gateway fee amount (None for no gateway fee paid)
     #[cfg(feature = "celo")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "celo")))]
     #[serde(skip_serializing_if = "Option::is_none", rename = "gatewayFee")]
     pub gateway_fee: Option<U256>,
 }
