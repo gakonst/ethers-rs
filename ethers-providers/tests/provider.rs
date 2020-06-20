@@ -1,3 +1,4 @@
+#![allow(unused_braces)]
 use ethers::providers::{Http, Provider};
 use std::convert::TryFrom;
 
@@ -11,6 +12,15 @@ mod eth_tests {
         utils::{parse_ether, Ganache},
     };
     use serial_test::serial;
+
+    #[tokio::test]
+    async fn ssl_websocket() {
+        let (ws, _) = connect_async(
+            "wss://rinkeby.infura.io/ws/v3/c60b0bb42f8a4c6481ecd229eddaca27",
+        ).await.unwrap();
+        let provider = Provider::new(Ws::new(ws));
+        let _number = provider.get_block_number().await.unwrap();
+    }
 
     #[tokio::test]
     #[serial]
