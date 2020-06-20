@@ -24,7 +24,10 @@ futures-core = { version = "0.3.5", default-features = false }
 futures-util = { version = "0.3.5", default-features = false }
 pin-project = { version = "0.4.20", default-features = false }
 tokio = { version = "0.2.21", default-features = false, features = ["time"] }
+
 tungstenite = { version = "0.11.0", default-features = false }
+async-tungstenite = { version = "0.6.0", default-features = false, optional = true }
+async-std = { version = "1.6.2", default-features = false, optional = true }
 
 [dev-dependencies]
 ethers = { version = "0.1.3", path = "../ethers" }
@@ -36,6 +39,8 @@ serial_test = "0.4.0"
 
 [features]
 celo = ["ethers-core/celo"]
+tokio-runtime = ["async-tungstenite/tokio-runtime"]
+async-std-runtime = ["async-tungstenite/async-std-runtime", "async-std"]
 
 [package.metadata.docs.rs]
 all-features = true

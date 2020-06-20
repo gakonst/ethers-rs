@@ -14,10 +14,55 @@ use tungstenite::protocol::Message;
 
 use super::common::{JsonRpcError, Request, ResponseData};
 
+#[cfg(any(feature = "tokio-runtime", feature = "async-std-runtime"))]
+use async_tungstenite::WebSocketStream;
+
+#[cfg(feature = "tokio-runtime")]
+use async_tungstenite::tokio::{connect_async, TokioAdapter};
+
+#[cfg(feature = "tokio-runtime")]
+type Inner = TokioAdapter<tokio::net::TcpStream>;
+
+#[cfg(all(feature = "async-std-runtime", not(feature = "tokio-runtime")))]
+type Inner = async_std::net::TcpStream;
+
+#[cfg(all(feature = "async-std-runtime", not(feature = "tokio-runtime")))]
+use async_tungstenite::async_std::connect_async;
+
 /// A JSON-RPC Client over Websockets.
 pub struct Provider<S> {
     id: AtomicU64,
     ws: Mutex<S>,
+}
+
+#[cfg(any(feature = "tokio-runtime", feature = "async-std-runtime"))]
+impl Provider<WebSocketStream<Inner>> {
+    /// Initializes a new WebSocket Client. The websocket connection must be initiated
+    /// separately.
+    pub async fn connect(
+        url: impl tungstenite::client::IntoClientRequest + Unpin,
+    ) -> Result<Self, tungstenite::Error> {
+        let (ws, _) = connect_async(url).await?;
+        Ok(Self::new(ws))
+    }
+}
+
+impl<S> Provider<S>
+where
+    S: Send
+        + Sync
+        + Stream<Item = Result<Message, tungstenite::Error>>
+        + Sink<Message, Error = tungstenite::Error>
+        + Unpin,
+{
+    /// Initializes a new WebSocket Client. The websocket connection must be initiated
+    /// separately.
+    pub fn new(ws: S) -> Self {
+        Self {
+            id: AtomicU64::new(0),
+            ws: Mutex::new(ws),
+        }
+    }
 }
 
 #[derive(Error, Debug)]
@@ -85,23 +130,5 @@ where
         };
 
         Ok(data.into_result()?)
-    }
-}
-
-impl<S> Provider<S>
-where
-    S: Send
-        + Sync
-        + Stream<Item = Result<Message, tungstenite::Error>>
-        + Sink<Message, Error = tungstenite::Error>
-        + Unpin,
-{
-    /// Initializes a new WebSocket Client. The websocket connection must be initiated
-    /// separately.
-    pub fn new(ws: S) -> Self {
-        Self {
-            id: AtomicU64::new(0),
-            ws: Mutex::new(ws),
-        }
     }
 }

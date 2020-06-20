@@ -1,4 +1,4 @@
-use ethers::providers::{Http, Provider, StreamExt, Ws};
+use ethers::providers::{Http, Provider};
 use std::convert::TryFrom;
 
 #[cfg(not(feature = "celo"))]
@@ -6,7 +6,7 @@ mod eth_tests {
     use super::*;
     use async_tungstenite::tokio::connect_async;
     use ethers::{
-        providers::FilterStream,
+        providers::{FilterStream, StreamExt, Ws},
         types::{TransactionRequest, H256},
         utils::{parse_ether, Ganache},
     };
