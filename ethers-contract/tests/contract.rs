@@ -140,8 +140,8 @@ mod celo_tests {
     use super::*;
     use ethers::{
         providers::{Http, Provider},
-        types::BlockNumber,
         signers::Wallet,
+        types::BlockNumber,
     };
     use std::convert::TryFrom;
 
