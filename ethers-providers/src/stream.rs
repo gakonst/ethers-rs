@@ -16,11 +16,11 @@ use std::{
 };
 
 // https://github.com/tomusdrw/rust-web3/blob/befcb2fb8f3ca0a43e3081f68886fa327e64c8e6/src/api/eth_filter.rs#L20
-fn interval(duration: Duration) -> impl Stream<Item = ()> + Send + Unpin {
+pub fn interval(duration: Duration) -> impl Stream<Item = ()> + Send + Unpin {
     stream::unfold((), move |_| Delay::new(duration).map(|_| Some(((), ())))).map(drop)
 }
 
-const DEFAULT_POLL_DURATION: Duration = Duration::from_millis(7000);
+pub const DEFAULT_POLL_DURATION: Duration = Duration::from_millis(7000);
 
 /// Trait for streaming filters.
 pub trait FilterStream<R>: StreamExt + Stream<Item = R>
