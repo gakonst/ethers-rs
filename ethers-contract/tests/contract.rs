@@ -6,8 +6,14 @@ pub use common::*;
 #[cfg(not(feature = "celo"))]
 mod eth_tests {
     use super::*;
-    use ethers::{providers::StreamExt, types::Address, utils::Ganache};
+    use ethers::{
+        providers::{Http, Provider, StreamExt},
+        signers::Client,
+        types::Address,
+        utils::Ganache,
+    };
     use serial_test::serial;
+    use std::convert::TryFrom;
 
     #[tokio::test]
     #[serial]
@@ -132,6 +138,35 @@ mod eth_tests {
             let log = stream.next().await.unwrap().unwrap();
             assert_eq!(log.new_value, i.to_string());
         }
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn signer_on_node() {
+        let (abi, bytecode) = compile();
+        let provider = Provider::<Http>::try_from("http://localhost:8545").unwrap();
+        let deployer = "3cDB3d9e1B74692Bb1E3bb5fc81938151cA64b02"
+            .parse::<Address>()
+            .unwrap();
+        let client = Client::from(provider).with_sender(deployer);
+        let (_ganache, contract) = deploy(&client, abi, bytecode).await;
+
+        // make a call without the signer
+        let _tx = contract
+            .method::<_, H256>("setValue", "hi".to_owned())
+            .unwrap()
+            .send()
+            .await
+            .unwrap()
+            .await
+            .unwrap();
+        let value: String = contract
+            .method::<_, String>("getValue", ())
+            .unwrap()
+            .call()
+            .await
+            .unwrap();
+        assert_eq!(value, "hi");
     }
 }
 

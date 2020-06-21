@@ -71,7 +71,7 @@ use thiserror::Error;
 /// [`Provider`]: ethers_providers::Provider
 pub struct Client<P, S> {
     pub(crate) provider: Provider<P>,
-    pub(crate) signer: S,
+    pub(crate) signer: Option<S>,
     pub(crate) address: Address,
 }
 
@@ -102,7 +102,7 @@ where
         let address = signer.address();
         Client {
             provider,
-            signer,
+            signer: Some(signer),
             address,
         }
     }
@@ -110,7 +110,11 @@ where
     /// Signs a message with the internal signer, or if none is present it will make a call to
     /// the connected node's `eth_call` API.
     pub async fn sign_message<T: Into<Bytes>>(&self, msg: T) -> Result<Signature, ClientError> {
-        Ok(self.signer.sign_message(msg.into()))
+        Ok(if let Some(ref signer) = self.signer {
+            signer.sign_message(msg.into())
+        } else {
+            self.provider.sign(msg, &self.address()).await?
+        })
     }
 
     /// Signs and broadcasts the transaction. The optional parameter `block` can be passed so that
@@ -131,11 +135,13 @@ where
         // fill any missing fields
         self.fill_transaction(&mut tx, block).await?;
 
-        // sign the transaction with the network
-        let signed_tx = self.signer.sign_transaction(tx).map_err(Into::into)?;
-
-        // broadcast it
-        Ok(self.provider.send_raw_transaction(&signed_tx).await?)
+        // sign the transaction and broadcast it
+        Ok(if let Some(ref signer) = self.signer {
+            let signed_tx = signer.sign_transaction(tx).map_err(Into::into)?;
+            self.provider.send_raw_transaction(&signed_tx).await?
+        } else {
+            self.provider.send_transaction(tx).await?
+        })
     }
 
     async fn fill_transaction(
@@ -166,7 +172,7 @@ where
 
     /// Returns the client's address
     pub fn address(&self) -> Address {
-        self.signer.address()
+        self.address
     }
 
     /// Returns a reference to the client's provider
@@ -175,8 +181,8 @@ where
     }
 
     /// Returns a reference to the client's signer
-    pub fn signer(&self) -> &S {
-        &self.signer
+    pub fn signer(&self) -> Option<&S> {
+        self.signer.as_ref()
     }
 
     /// Sets the signer and returns a mutable reference to self so that it can be used in chained
@@ -188,7 +194,8 @@ where
         P: Clone,
     {
         let mut this = self.clone();
-        this.signer = signer;
+        this.address = signer.address();
+        this.signer = Some(signer);
         this
     }
 
@@ -203,6 +210,14 @@ where
         let mut this = self.clone();
         this.provider = provider;
         this
+    }
+
+    /// Sets the address which will be used for interacting with the blockchain.
+    /// Useful if no signer is set and you want to specify a default sender for
+    /// your transactions
+    pub fn with_sender<T: Into<Address>>(mut self, address: T) -> Self {
+        self.address = address.into();
+        self
     }
 }
 
@@ -226,5 +241,15 @@ impl<P, S> Deref for Client<P, S> {
 
     fn deref(&self) -> &Self::Target {
         &self.provider
+    }
+}
+
+impl<P: JsonRpcClient, S> From<Provider<P>> for Client<P, S> {
+    fn from(provider: Provider<P>) -> Self {
+        Self {
+            provider,
+            signer: None,
+            address: Address::zero(),
+        }
     }
 }

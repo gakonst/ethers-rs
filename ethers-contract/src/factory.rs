@@ -148,6 +148,7 @@ where
 
         // create the tx object. Since we're deploying a contract, `to` is `None`
         let tx = TransactionRequest {
+            from: Some(self.client.address()),
             to: None,
             data: Some(data),
             ..Default::default()
