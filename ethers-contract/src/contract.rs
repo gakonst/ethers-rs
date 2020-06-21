@@ -260,7 +260,10 @@ where
     /// Returns a new contract instance at `address`.
     ///
     /// Clones `self` internally
-    pub fn at<T: Into<Address>>(&self, address: T) -> Self {
+    pub fn at<T: Into<Address>>(&self, address: T) -> Self
+    where
+        P: Clone,
+    {
         let mut this = self.clone();
         this.address = address.into();
         this
@@ -269,7 +272,10 @@ where
     /// Returns a new contract instance using the provided client
     ///
     /// Clones `self` internally
-    pub fn connect(&self, client: &'a Client<P, S>) -> Self {
+    pub fn connect(&self, client: &'a Client<P, S>) -> Self
+    where
+        P: Clone,
+    {
         let mut this = self.clone();
         this.client = client;
         this

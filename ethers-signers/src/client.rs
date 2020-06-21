@@ -183,7 +183,10 @@ where
     /// calls.
     ///
     /// Clones internally.
-    pub fn with_signer(&self, signer: S) -> Self {
+    pub fn with_signer(&self, signer: S) -> Self
+    where
+        P: Clone,
+    {
         let mut this = self.clone();
         this.signer = signer;
         this
@@ -193,7 +196,10 @@ where
     /// calls.
     ///
     /// Clones internally.
-    pub fn with_provider(&self, provider: Provider<P>) -> Self {
+    pub fn with_provider(&self, provider: Provider<P>) -> Self
+    where
+        P: Clone,
+    {
         let mut this = self.clone();
         this.provider = provider;
         this

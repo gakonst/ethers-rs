@@ -3,7 +3,8 @@ use crate::ProviderError;
 use ethers_core::types::U256;
 
 use futures_core::{stream::Stream, TryFuture};
-use futures_util::StreamExt;
+use futures_timer::Delay;
+use futures_util::{stream, FutureExt, StreamExt};
 use pin_project::pin_project;
 use serde::Deserialize;
 use std::{
@@ -13,7 +14,11 @@ use std::{
     time::Duration,
     vec::IntoIter,
 };
-use tokio::time::{interval, Interval};
+
+// https://github.com/tomusdrw/rust-web3/blob/befcb2fb8f3ca0a43e3081f68886fa327e64c8e6/src/api/eth_filter.rs#L20
+fn interval(duration: Duration) -> impl Stream<Item = ()> + Send + Unpin {
+    stream::unfold((), move |_| Delay::new(duration).map(|_| Some(((), ())))).map(drop)
+}
 
 const DEFAULT_POLL_DURATION: Duration = Duration::from_millis(7000);
 
@@ -54,7 +59,7 @@ pub(crate) struct FilterWatcher<F: FutureFactory, R> {
     factory: F,
 
     // The polling interval
-    interval: Interval,
+    interval: Box<dyn Stream<Item = ()> + Send + Unpin>,
 
     state: FilterWatcherState<F::FutureItem, R>,
 }
@@ -68,7 +73,7 @@ where
     pub fn new<T: Into<U256>>(id: T, factory: F) -> Self {
         Self {
             id: id.into(),
-            interval: interval(DEFAULT_POLL_DURATION),
+            interval: Box::new(interval(DEFAULT_POLL_DURATION)),
             state: FilterWatcherState::WaitForInterval,
             factory,
         }
@@ -86,7 +91,7 @@ where
     }
 
     fn interval<T: Into<u64>>(mut self, duration: T) -> Self {
-        self.interval = interval(Duration::from_millis(duration.into()));
+        self.interval = Box::new(interval(Duration::from_millis(duration.into())));
         self
     }
 }
@@ -107,21 +112,18 @@ where
         *this.state = match this.state {
             FilterWatcherState::WaitForInterval => {
                 // Wait the polling period
-                let mut interval = Box::pin(this.interval.tick());
-                let _ready = futures_util::ready!(interval.as_mut().poll(cx));
+                let _ready = futures_util::ready!(this.interval.poll_next_unpin(cx));
 
                 // create a new instance of the future
+                cx.waker().wake_by_ref();
                 FilterWatcherState::GetFilterChanges(this.factory.as_mut().new())
             }
             FilterWatcherState::GetFilterChanges(fut) => {
-                // wait for the future to be ready
-                let mut fut = Box::pin(fut);
-
                 // NOTE: If the provider returns an error, this will return an empty
                 // vector. Should we make this return a Result instead? Ideally if we're
                 // in a streamed loop we wouldn't want the loop to terminate if an error
                 // is encountered (since it might be a temporary error).
-                let items: Vec<R> = futures_util::ready!(fut.as_mut().poll(cx)).unwrap_or_default();
+                let items: Vec<R> = futures_util::ready!(fut.poll_unpin(cx)).unwrap_or_default();
                 FilterWatcherState::NextItem(items.into_iter())
             }
             // Consume 1 element from the vector. If more elements are in the vector,
@@ -130,7 +132,10 @@ where
             // for new logs
             FilterWatcherState::NextItem(iter) => match iter.next() {
                 Some(item) => return Poll::Ready(Some(item)),
-                None => FilterWatcherState::WaitForInterval,
+                None => {
+                    cx.waker().wake_by_ref();
+                    FilterWatcherState::WaitForInterval
+                }
             },
         };
 
@@ -184,14 +189,16 @@ mod watch {
     async fn stream() {
         let factory = || Box::pin(async { Ok::<Vec<u64>, ProviderError>(vec![1, 2, 3]) });
         let filter = FilterWatcher::<_, u64>::new(1, factory);
-        let mut stream = filter.interval(1u64).stream();
-        assert_eq!(stream.next().await.unwrap(), 1);
+        // stream combinator calls are still doable since FilterStream extends
+        // Stream and StreamExt
+        let mut stream = filter.interval(100u64).stream().map(|x| 2 * x);
         assert_eq!(stream.next().await.unwrap(), 2);
-        assert_eq!(stream.next().await.unwrap(), 3);
+        assert_eq!(stream.next().await.unwrap(), 4);
+        assert_eq!(stream.next().await.unwrap(), 6);
         // this will poll the factory function again since it consumed the entire
         // vector, so it'll wrap around. Realistically, we'd then sleep for a few seconds
         // until new blocks are mined, until the call to the factory returns a non-empty
         // vector of logs
-        assert_eq!(stream.next().await.unwrap(), 1);
+        assert_eq!(stream.next().await.unwrap(), 2);
     }
 }

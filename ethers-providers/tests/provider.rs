@@ -1,25 +1,80 @@
+#![allow(unused_braces)]
 use ethers::providers::{Http, Provider};
 use std::convert::TryFrom;
 
-#[tokio::test]
 #[cfg(not(feature = "celo"))]
-async fn pending_txs_with_confirmations_ganache() {
+mod eth_tests {
+    use super::*;
     use ethers::{
         types::TransactionRequest,
         utils::{parse_ether, Ganache},
     };
+    use serial_test::serial;
 
-    let _ganache = Ganache::new().block_time(2u64).spawn();
-    let provider = Provider::<Http>::try_from("http://localhost:8545").unwrap();
-    let accounts = provider.get_accounts().await.unwrap();
+    // Without TLS this would error with "TLS Support not compiled in"
+    #[test]
+    #[cfg(any(feature = "async-std-tls", feature = "tokio-tls"))]
+    fn ssl_websocket() {
+        // this is extremely ugly but I couldn't figure out a better way of having
+        // a shared async test for both runtimes
+        #[cfg(feature = "async-std-tls")]
+        let block_on = async_std::task::block_on;
+        #[cfg(feature = "tokio-tls")]
+        let mut runtime = tokio::runtime::Runtime::new().unwrap();
+        #[cfg(feature = "tokio-tls")]
+        let mut block_on = |x| runtime.block_on(x);
 
-    let tx = TransactionRequest::pay(accounts[1], parse_ether(1u64).unwrap()).from(accounts[0]);
-    let pending_tx = provider.send_transaction(tx).await.unwrap();
-    let hash = *pending_tx;
-    let receipt = pending_tx.confirmations(5).await.unwrap();
+        use ethers::providers::Ws;
+        block_on(async move {
+            let ws = Ws::connect("wss://rinkeby.infura.io/ws/v3/c60b0bb42f8a4c6481ecd229eddaca27")
+                .await
+                .unwrap();
+            let provider = Provider::new(ws);
+            let _number = provider.get_block_number().await.unwrap();
+        });
+    }
 
-    // got the correct receipt
-    assert_eq!(receipt.transaction_hash, hash);
+    #[tokio::test]
+    #[serial]
+    #[cfg(feature = "tokio-runtime")]
+    async fn watch_blocks_websocket() {
+        use ethers::{
+            providers::{FilterStream, StreamExt, Ws},
+            types::H256,
+        };
+
+        let _ganache = Ganache::new().block_time(2u64).spawn();
+        let (ws, _) = async_tungstenite::tokio::connect_async("ws://localhost:8545")
+            .await
+            .unwrap();
+        let provider = Provider::new(Ws::new(ws));
+
+        let stream = provider
+            .watch_blocks()
+            .await
+            .unwrap()
+            .interval(2000u64)
+            .stream();
+
+        let _blocks = stream.take(3usize).collect::<Vec<H256>>().await;
+        let _number = provider.get_block_number().await.unwrap();
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn pending_txs_with_confirmations_ganache() {
+        let _ganache = Ganache::new().block_time(2u64).spawn();
+        let provider = Provider::<Http>::try_from("http://localhost:8545").unwrap();
+        let accounts = provider.get_accounts().await.unwrap();
+
+        let tx = TransactionRequest::pay(accounts[1], parse_ether(1u64).unwrap()).from(accounts[0]);
+        let pending_tx = provider.send_transaction(tx).await.unwrap();
+        let hash = *pending_tx;
+        let receipt = pending_tx.confirmations(5).await.unwrap();
+
+        // got the correct receipt
+        assert_eq!(receipt.transaction_hash, hash);
+    }
 }
 
 #[cfg(feature = "celo")]
