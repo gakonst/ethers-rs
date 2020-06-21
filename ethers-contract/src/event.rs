@@ -4,13 +4,14 @@ use ethers_providers::{FilterStream, JsonRpcClient, Provider};
 
 use ethers_core::{
     abi::{Detokenize, Event as AbiEvent, RawLog},
-    types::{BlockNumber, Filter, Log, ValueOrArray, H256},
+    types::{BlockNumber, Filter, Log, TxHash, ValueOrArray, H256, U64},
 };
 
 use futures::stream::{Stream, StreamExt};
-use std::{collections::HashMap, marker::PhantomData};
+use std::marker::PhantomData;
 
 /// Helper for managing the event filter before querying or streaming its logs
+#[derive(Debug)]
 #[must_use = "event filters do nothing unless you `query` or `stream` them"]
 pub struct Event<'a: 'b, 'b, P, D> {
     /// The event filter's state
@@ -93,16 +94,16 @@ where
         Ok(events)
     }
 
-    /// Queries the blockchain for the selected filter and returns a hashmap of
-    /// txhash -> logs
-    pub async fn query_with_hashes(&self) -> Result<HashMap<H256, D>, ContractError> {
+    /// Queries the blockchain for the selected filter and returns a vector of logs
+    /// along with their metadata
+    pub async fn query_with_meta(&self) -> Result<Vec<(D, LogMeta)>, ContractError> {
         let logs = self.provider.get_logs(&self.filter).await?;
         let events = logs
             .into_iter()
             .map(|log| {
-                let tx_hash = log.transaction_hash.expect("should have tx hash");
+                let meta = LogMeta::from(&log);
                 let event = self.parse_log(log)?;
-                Ok((tx_hash, event))
+                Ok((event, meta))
             })
             .collect::<Result<_, ContractError>>()?;
         Ok(events)
@@ -123,5 +124,24 @@ where
             .collect::<Vec<_>>();
         // convert the tokens to the requested datatype
         Ok(D::from_tokens(tokens)?)
+    }
+}
+
+/// Metadata inside a log
+#[derive(Clone, Debug, PartialEq)]
+pub struct LogMeta {
+    /// The block in which the log was emitted
+    pub block_number: U64,
+
+    /// The transaction hash in which the log was emitted
+    pub transaction_hash: TxHash,
+}
+
+impl From<&Log> for LogMeta {
+    fn from(src: &Log) -> Self {
+        LogMeta {
+            block_number: src.block_number.expect("should have a block number"),
+            transaction_hash: src.transaction_hash.expect("should have a tx hash"),
+        }
     }
 }

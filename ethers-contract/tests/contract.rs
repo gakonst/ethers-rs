@@ -140,6 +140,7 @@ mod celo_tests {
     use super::*;
     use ethers::{
         providers::{Http, Provider},
+        types::BlockNumber,
         signers::Wallet,
     };
     use std::convert::TryFrom;
@@ -160,7 +161,7 @@ mod celo_tests {
 
         let factory = ContractFactory::new(abi, bytecode, &client);
         let deployer = factory.deploy("initial value".to_string()).unwrap();
-        let contract = deployer.send().await.unwrap();
+        let contract = deployer.block(BlockNumber::Pending).send().await.unwrap();
 
         let value: String = contract
             .method("getValue", ())
