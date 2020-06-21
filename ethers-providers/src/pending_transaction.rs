@@ -1,5 +1,10 @@
-use crate::{JsonRpcClient, Provider, ProviderError};
+use crate::{
+    stream::{interval, DEFAULT_POLL_DURATION},
+    JsonRpcClient, Provider, ProviderError,
+};
 use ethers_core::types::{TransactionReceipt, TxHash, U64};
+use futures_core::stream::Stream;
+use futures_util::stream::StreamExt;
 use pin_project::pin_project;
 use std::{
     fmt,
@@ -7,6 +12,7 @@ use std::{
     ops::Deref,
     pin::Pin,
     task::{Context, Poll},
+    time::Duration,
 };
 
 /// A pending transaction is a transaction which has been submitted but is not yet mined.
@@ -20,6 +26,7 @@ pub struct PendingTransaction<'a, P> {
     confirmations: usize,
     provider: &'a Provider<P>,
     state: PendingTxState<'a>,
+    interval: Box<dyn Stream<Item = ()> + Send + Unpin>,
 }
 
 impl<'a, P: JsonRpcClient> PendingTransaction<'a, P> {
@@ -31,6 +38,7 @@ impl<'a, P: JsonRpcClient> PendingTransaction<'a, P> {
             confirmations: 1,
             provider,
             state: PendingTxState::GettingReceipt(fut),
+            interval: Box::new(interval(DEFAULT_POLL_DURATION)),
         }
     }
 
@@ -38,6 +46,12 @@ impl<'a, P: JsonRpcClient> PendingTransaction<'a, P> {
     /// to a receipt
     pub fn confirmations(mut self, confs: usize) -> Self {
         self.confirmations = confs;
+        self
+    }
+
+    /// Sets the polling interval
+    pub fn interval<T: Into<u64>>(mut self, duration: T) -> Self {
+        self.interval = Box::new(interval(Duration::from_millis(duration.into())));
         self
     }
 }
@@ -50,6 +64,10 @@ impl<'a, P: JsonRpcClient> Future for PendingTransaction<'a, P> {
 
         match this.state {
             PendingTxState::GettingReceipt(fut) => {
+                // Wait the polling period so that we do not spam the chain when no
+                // new block has been mined
+                let _ready = futures_util::ready!(this.interval.poll_next_unpin(ctx));
+
                 if let Ok(receipt) = futures_util::ready!(fut.as_mut().poll(ctx)) {
                     *this.state = PendingTxState::CheckingReceipt(Box::new(receipt))
                 } else {
@@ -74,6 +92,11 @@ impl<'a, P: JsonRpcClient> Future for PendingTransaction<'a, P> {
                 }
             }
             PendingTxState::GettingBlockNumber(fut, receipt) => {
+                // Wait the polling period so that we do not spam the chain when no
+                // new block has been mined
+                let _ready = futures_util::ready!(this.interval.poll_next_unpin(ctx));
+
+                // Wait for the interval
                 let inclusion_block = receipt
                     .block_number
                     .expect("Receipt did not have a block number. This should never happen");

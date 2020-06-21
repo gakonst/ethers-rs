@@ -6,6 +6,7 @@ use std::convert::TryFrom;
 mod eth_tests {
     use super::*;
     use ethers::{
+        providers::JsonRpcClient,
         types::TransactionRequest,
         utils::{parse_ether, Ganache},
     };
@@ -65,12 +66,27 @@ mod eth_tests {
     async fn pending_txs_with_confirmations_ganache() {
         let _ganache = Ganache::new().block_time(2u64).spawn();
         let provider = Provider::<Http>::try_from("http://localhost:8545").unwrap();
+        generic_pending_txs_test(provider).await;
+    }
+
+    #[tokio::test]
+    #[serial]
+    #[cfg(any(feature = "tokio-runtime", feature = "tokio-tls"))]
+    async fn websocket_pending_txs_with_confirmations_ganache() {
+        use ethers::providers::Ws;
+        let _ganache = Ganache::new().block_time(2u64).port(8546u64).spawn();
+        let ws = Ws::connect("ws://localhost:8546").await.unwrap();
+        let provider = Provider::new(ws);
+        generic_pending_txs_test(provider).await;
+    }
+
+    async fn generic_pending_txs_test<P: JsonRpcClient>(provider: Provider<P>) {
         let accounts = provider.get_accounts().await.unwrap();
 
-        let tx = TransactionRequest::pay(accounts[1], parse_ether(1u64).unwrap()).from(accounts[0]);
+        let tx = TransactionRequest::pay(accounts[0], parse_ether(1u64).unwrap()).from(accounts[0]);
         let pending_tx = provider.send_transaction(tx).await.unwrap();
         let hash = *pending_tx;
-        let receipt = pending_tx.confirmations(5).await.unwrap();
+        let receipt = pending_tx.interval(500u64).confirmations(5).await.unwrap();
 
         // got the correct receipt
         assert_eq!(receipt.transaction_hash, hash);
