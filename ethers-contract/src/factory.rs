@@ -2,7 +2,7 @@ use crate::{Contract, ContractError};
 
 use ethers_core::{
     abi::{Abi, Tokenize},
-    types::{Bytes, TransactionRequest},
+    types::{BlockNumber, Bytes, TransactionRequest},
 };
 use ethers_providers::JsonRpcClient;
 use ethers_signers::{Client, Signer};
@@ -15,6 +15,7 @@ pub struct Deployer<'a, P, S> {
     abi: Abi,
     client: &'a Client<P, S>,
     confs: usize,
+    block: BlockNumber,
 }
 
 impl<'a, P, S> Deployer<'a, P, S>
@@ -28,11 +29,19 @@ where
         self
     }
 
+    pub fn block<T: Into<BlockNumber>>(mut self, block: T) -> Self {
+        self.block = block.into();
+        self
+    }
+
     /// Broadcasts the contract deployment transaction and after waiting for it to
     /// be sufficiently confirmed (default: 1), it returns a [`Contract`](crate::Contract)
     /// struct at the deployed contract's address.
     pub async fn send(self) -> Result<Contract<'a, P, S>, ContractError> {
-        let pending_tx = self.client.send_transaction(self.tx, None).await?;
+        let pending_tx = self
+            .client
+            .send_transaction(self.tx, Some(self.block))
+            .await?;
 
         let receipt = pending_tx.confirmations(self.confs).await?;
 
@@ -159,6 +168,7 @@ where
             abi: self.abi,
             tx,
             confs: 1,
+            block: BlockNumber::Latest,
         })
     }
 }
