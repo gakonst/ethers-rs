@@ -508,7 +508,6 @@ dependencies = [
  "rustc-hex",
  "serde",
  "serde_json",
- "serial_test",
  "thiserror",
  "tokio",
  "tokio-native-tls",
