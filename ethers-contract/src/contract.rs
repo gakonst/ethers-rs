@@ -8,7 +8,7 @@ use ethers_providers::JsonRpcClient;
 use ethers_signers::{Client, Signer};
 
 use rustc_hex::ToHex;
-use std::{collections::HashMap, fmt::Debug, hash::Hash, marker::PhantomData};
+use std::{collections::HashMap, fmt::Debug, hash::Hash, marker::PhantomData, sync::Arc};
 
 /// A Contract is an abstraction of an executable program on the Ethereum Blockchain.
 /// It has code (called byte code) as well as allocated long-term memory
@@ -79,7 +79,7 @@ use std::{collections::HashMap, fmt::Debug, hash::Hash, marker::PhantomData};
 ///     .parse::<Wallet>()?.connect(provider);
 ///
 /// // create the contract object at the address
-/// let contract = Contract::new(address, abi, &client);
+/// let contract = Contract::new(address, abi, client);
 ///
 /// // Calling constant methods is done by calling `call()` on the method builder.
 /// // (if the function takes no arguments, then you must use `()` as the argument)
@@ -89,10 +89,14 @@ use std::{collections::HashMap, fmt::Debug, hash::Hash, marker::PhantomData};
 ///     .await?;
 ///
 /// // Non-constant methods are executed via the `send()` call on the method builder.
-/// let tx_hash = contract
-///     .method::<_, H256>("setValue", "hi".to_owned())?
-///     .send()
-///     .await?;
+/// let method = contract
+///     .method::<_, H256>("setValue", "hi".to_owned())?;
+///
+/// // This returns a pending transaction object (derefs to the transaction hash)
+/// let pending_tx = method.send().await?;
+///
+/// // `await`ing on the pending transaction resolves to a transaction receipt
+/// let receipt = pending_tx.confirmations(6).await?;
 ///
 /// # Ok(())
 /// # }
@@ -116,7 +120,7 @@ use std::{collections::HashMap, fmt::Debug, hash::Hash, marker::PhantomData};
 /// # let abi: Abi = serde_json::from_str(r#"[]"#)?;
 /// # let provider = Provider::<Http>::try_from("http://localhost:8545").unwrap();
 /// # let client = "380eb0f3d505f087e438eca80bc4df9a7faa24f868e69fc0440261a0fc0567dc".parse::<Wallet>()?.connect(provider);
-/// # let contract = Contract::new(address, abi, &client);
+/// # let contract = Contract::new(address, abi, client);
 ///
 /// #[derive(Clone, Debug)]
 /// struct ValueChanged {
@@ -162,8 +166,8 @@ use std::{collections::HashMap, fmt::Debug, hash::Hash, marker::PhantomData};
 /// [`event`]: method@crate::Contract::event
 /// [`method`]: method@crate::Contract::method
 #[derive(Debug, Clone)]
-pub struct Contract<'a, P, S> {
-    client: &'a Client<P, S>,
+pub struct Contract<P, S> {
+    client: Arc<Client<P, S>>,
     abi: Abi,
     address: Address,
 
@@ -174,17 +178,17 @@ pub struct Contract<'a, P, S> {
     methods: HashMap<Selector, (String, usize)>,
 }
 
-impl<'a, P, S> Contract<'a, P, S>
+impl<P, S> Contract<P, S>
 where
     S: Signer,
     P: JsonRpcClient,
 {
     /// Creates a new contract from the provided client, abi and address
-    pub fn new(address: Address, abi: Abi, client: &'a Client<P, S>) -> Self {
+    pub fn new(address: Address, abi: Abi, client: impl Into<Arc<Client<P, S>>>) -> Self {
         let methods = create_mapping(&abi.functions, |function| function.selector());
 
         Self {
-            client,
+            client: client.into(),
             abi,
             address,
             methods,
@@ -212,7 +216,7 @@ where
         &self,
         name: &str,
         args: T,
-    ) -> Result<ContractCall<'a, P, S, D>, Error> {
+    ) -> Result<ContractCall<P, S, D>, Error> {
         // get the function
         let function = self.abi.function(name)?;
         self.method_func(function, args)
@@ -224,7 +228,7 @@ where
         &self,
         signature: Selector,
         args: T,
-    ) -> Result<ContractCall<'a, P, S, D>, Error> {
+    ) -> Result<ContractCall<P, S, D>, Error> {
         let function = self
             .methods
             .get(&signature)
@@ -237,7 +241,7 @@ where
         &self,
         function: &Function,
         args: T,
-    ) -> Result<ContractCall<'a, P, S, D>, Error> {
+    ) -> Result<ContractCall<P, S, D>, Error> {
         // create the calldata
         let data = function.encode_input(&args.into_tokens())?;
 
@@ -250,7 +254,7 @@ where
 
         Ok(ContractCall {
             tx,
-            client: self.client,
+            client: self.client.clone(), // cheap clone behind the Arc
             block: None,
             function: function.to_owned(),
             datatype: PhantomData,
@@ -272,7 +276,7 @@ where
     /// Returns a new contract instance using the provided client
     ///
     /// Clones `self` internally
-    pub fn connect(&self, client: &'a Client<P, S>) -> Self
+    pub fn connect(&self, client: Arc<Client<P, S>>) -> Self
     where
         P: Clone,
     {

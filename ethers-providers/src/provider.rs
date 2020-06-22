@@ -282,8 +282,7 @@ impl<P: JsonRpcClient> Provider<P> {
             .await
             .map_err(Into::into)?;
 
-        let pending_tx = PendingTransaction::new(tx_hash, self)
-            .interval(self.2.unwrap_or(DEFAULT_POLL_INTERVAL));
+        let pending_tx = PendingTransaction::new(tx_hash, self).interval(self.get_interval());
 
         Ok(pending_tx)
     }
@@ -301,8 +300,7 @@ impl<P: JsonRpcClient> Provider<P> {
             .await
             .map_err(Into::into)?;
 
-        let pending_tx = PendingTransaction::new(tx_hash, self)
-            .interval(self.2.unwrap_or(DEFAULT_POLL_INTERVAL));
+        let pending_tx = PendingTransaction::new(tx_hash, self).interval(self.get_interval());
 
         Ok(pending_tx)
     }
@@ -340,7 +338,7 @@ impl<P: JsonRpcClient> Provider<P> {
     ) -> Result<impl FilterStream<Log> + '_, ProviderError> {
         let id = self.new_filter(FilterKind::Logs(filter)).await?;
         let fut = move || Box::pin(self.get_filter_changes(id));
-        let filter = FilterWatcher::new(id, fut).interval(self.2.unwrap_or(DEFAULT_POLL_INTERVAL));
+        let filter = FilterWatcher::new(id, fut).interval(self.get_interval());
 
         Ok(filter)
     }
@@ -349,7 +347,7 @@ impl<P: JsonRpcClient> Provider<P> {
     pub async fn watch_blocks(&self) -> Result<impl FilterStream<H256> + '_, ProviderError> {
         let id = self.new_filter(FilterKind::NewBlocks).await?;
         let fut = move || Box::pin(self.get_filter_changes(id));
-        let filter = FilterWatcher::new(id, fut).interval(self.2.unwrap_or(DEFAULT_POLL_INTERVAL));
+        let filter = FilterWatcher::new(id, fut).interval(self.get_interval());
         Ok(filter)
     }
 
@@ -359,7 +357,7 @@ impl<P: JsonRpcClient> Provider<P> {
     ) -> Result<impl FilterStream<H256> + '_, ProviderError> {
         let id = self.new_filter(FilterKind::PendingTransactions).await?;
         let fut = move || Box::pin(self.get_filter_changes(id));
-        let filter = FilterWatcher::new(id, fut).interval(self.2.unwrap_or(DEFAULT_POLL_INTERVAL));
+        let filter = FilterWatcher::new(id, fut).interval(self.get_interval());
         Ok(filter)
     }
 
@@ -509,9 +507,16 @@ impl<P: JsonRpcClient> Provider<P> {
     }
 
     /// Sets the default polling interval for event filters and pending transactions
+    /// (default: 7 seconds)
     pub fn interval<T: Into<Duration>>(mut self, interval: T) -> Self {
         self.2 = Some(interval.into());
         self
+    }
+
+    /// Gets the polling interval which the provider currently uses for event filters
+    /// and pending transactions (default: 7 seconds)
+    pub fn get_interval(&self) -> Duration {
+        self.2.unwrap_or(DEFAULT_POLL_INTERVAL)
     }
 }
 

@@ -1,6 +1,6 @@
 #![allow(unused_braces)]
 use ethers::providers::{Http, Provider};
-use std::convert::TryFrom;
+use std::{time::Duration, convert::TryFrom};
 
 #[cfg(not(feature = "celo"))]
 mod eth_tests {
@@ -11,7 +11,6 @@ mod eth_tests {
         utils::{parse_ether, Ganache},
     };
     use serial_test::serial;
-    use std::time::Duration;
 
     // Without TLS this would error with "TLS Support not compiled in"
     #[test]
@@ -49,14 +48,9 @@ mod eth_tests {
         let (ws, _) = async_tungstenite::tokio::connect_async("ws://localhost:8545")
             .await
             .unwrap();
-        let provider = Provider::new(Ws::new(ws));
+        let provider = Provider::new(Ws::new(ws)).interval(Duration::from_millis(500u64));
 
-        let stream = provider
-            .watch_blocks()
-            .await
-            .unwrap()
-            .interval(2000u64)
-            .stream();
+        let stream = provider.watch_blocks().await.unwrap().stream();
 
         let _blocks = stream.take(3usize).collect::<Vec<H256>>().await;
         let _number = provider.get_block_number().await.unwrap();
@@ -121,13 +115,12 @@ mod celo_tests {
     #[tokio::test]
     async fn watch_blocks() {
         let provider =
-            Provider::<Http>::try_from("https://alfajores-forno.celo-testnet.org").unwrap();
+            Provider::<Http>::try_from("https://alfajores-forno.celo-testnet.org").unwrap().interval(Duration::from_millis(2000u64));
 
         let stream = provider
             .watch_blocks()
             .await
             .unwrap()
-            .interval(2000u64)
             .stream();
 
         let _blocks = stream.take(3usize).collect::<Vec<H256>>().await;

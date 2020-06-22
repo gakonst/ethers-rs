@@ -7,18 +7,21 @@ use ethers_core::{
 use ethers_providers::JsonRpcClient;
 use ethers_signers::{Client, Signer};
 
+use std::{sync::Arc, time::Duration};
+
 #[derive(Debug, Clone)]
 /// Helper which manages the deployment transaction of a smart contract
-pub struct Deployer<'a, P, S> {
+pub struct Deployer<P, S> {
     /// The deployer's transaction, exposed for overriding the defaults
     pub tx: TransactionRequest,
     abi: Abi,
-    client: &'a Client<P, S>,
+    client: Arc<Client<P, S>>,
     confs: usize,
     block: BlockNumber,
+    interval: Duration,
 }
 
-impl<'a, P, S> Deployer<'a, P, S>
+impl<P, S> Deployer<P, S>
 where
     S: Signer,
     P: JsonRpcClient,
@@ -26,6 +29,12 @@ where
     /// Sets the number of confirmations to wait for the contract deployment transaction
     pub fn confirmations<T: Into<usize>>(mut self, confirmations: T) -> Self {
         self.confs = confirmations.into();
+        self
+    }
+
+    /// Sets the poll interval for the pending deployment transaction's inclusion
+    pub fn interval<T: Into<Duration>>(mut self, interval: T) -> Self {
+        self.interval = interval.into();
         self
     }
 
@@ -37,13 +46,15 @@ where
     /// Broadcasts the contract deployment transaction and after waiting for it to
     /// be sufficiently confirmed (default: 1), it returns a [`Contract`](crate::Contract)
     /// struct at the deployed contract's address.
-    pub async fn send(self) -> Result<Contract<'a, P, S>, ContractError> {
+    pub async fn send(self) -> Result<Contract<P, S>, ContractError> {
         let pending_tx = self
             .client
             .send_transaction(self.tx, Some(self.block))
             .await?;
-
-        let receipt = pending_tx.confirmations(self.confs).await?;
+        let receipt = pending_tx
+            .interval(self.interval)
+            .confirmations(self.confs)
+            .await?;
 
         let address = receipt
             .contract_address
@@ -97,7 +108,7 @@ where
 ///     .parse::<Wallet>()?.connect(provider);
 ///
 /// // create a factory which will be used to deploy instances of the contract
-/// let factory = ContractFactory::new(contract.abi.clone(), contract.bytecode.clone(), &client);
+/// let factory = ContractFactory::new(contract.abi.clone(), contract.bytecode.clone(), client);
 ///
 /// // The deployer created by the `deploy` call exposes a builder which gets consumed
 /// // by the async `send` call
@@ -109,13 +120,13 @@ where
 /// println!("{}", contract.address());
 /// # Ok(())
 /// # }
-pub struct ContractFactory<'a, P, S> {
-    client: &'a Client<P, S>,
+pub struct ContractFactory<P, S> {
+    client: Arc<Client<P, S>>,
     abi: Abi,
     bytecode: Bytes,
 }
 
-impl<'a, P, S> ContractFactory<'a, P, S>
+impl<P, S> ContractFactory<P, S>
 where
     S: Signer,
     P: JsonRpcClient,
@@ -123,9 +134,9 @@ where
     /// Creates a factory for deployment of the Contract with bytecode, and the
     /// constructor defined in the abi. The client will be used to send any deployment
     /// transaction.
-    pub fn new(abi: Abi, bytecode: Bytes, client: &'a Client<P, S>) -> Self {
+    pub fn new(abi: Abi, bytecode: Bytes, client: impl Into<Arc<Client<P, S>>>) -> Self {
         Self {
-            client,
+            client: client.into(),
             abi,
             bytecode,
         }
@@ -139,10 +150,7 @@ where
     /// 1. If there are no constructor arguments, you should pass `()` as the argument.
     /// 1. The default poll duration is 7 seconds.
     /// 1. The default number of confirmations is 1 block.
-    pub fn deploy<T: Tokenize>(
-        self,
-        constructor_args: T,
-    ) -> Result<Deployer<'a, P, S>, ContractError> {
+    pub fn deploy<T: Tokenize>(self, constructor_args: T) -> Result<Deployer<P, S>, ContractError> {
         // Encode the constructor args & concatenate with the bytecode if necessary
         let params = constructor_args.into_tokens();
         let data: Bytes = match (self.abi.constructor(), params.is_empty()) {
@@ -164,11 +172,12 @@ where
         };
 
         Ok(Deployer {
-            client: self.client,
+            client: self.client.clone(), // cheap clone behind the arc
             abi: self.abi,
             tx,
             confs: 1,
             block: BlockNumber::Latest,
+            interval: self.client.get_interval(),
         })
     }
 }

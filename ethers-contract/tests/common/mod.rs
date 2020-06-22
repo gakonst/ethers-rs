@@ -7,7 +7,7 @@ use ethers_contract::{Contract, ContractFactory};
 use ethers_core::utils::{Ganache, GanacheInstance, Solc};
 use ethers_providers::{Http, Provider};
 use ethers_signers::{Client, Wallet};
-use std::convert::TryFrom;
+use std::{convert::TryFrom, sync::Arc, time::Duration};
 
 // Note: We also provide the `abigen` macro for generating these bindings automatically
 #[derive(Clone, Debug)]
@@ -44,17 +44,19 @@ pub fn compile() -> (Abi, Bytes) {
 }
 
 /// connects the private key to http://localhost:8545
-pub fn connect(private_key: &str) -> Client<Http, Wallet> {
-    let provider = Provider::<Http>::try_from("http://localhost:8545").unwrap();
-    private_key.parse::<Wallet>().unwrap().connect(provider)
+pub fn connect(private_key: &str) -> Arc<Client<Http, Wallet>> {
+    let provider = Provider::<Http>::try_from("http://localhost:8545")
+        .unwrap()
+        .interval(Duration::from_millis(10u64));
+    Arc::new(private_key.parse::<Wallet>().unwrap().connect(provider))
 }
 
 /// Launches a ganache instance and deploys the SimpleStorage contract
-pub async fn deploy<'a>(
-    client: &'a Client<Http, Wallet>,
+pub async fn deploy(
+    client: Arc<Client<Http, Wallet>>,
     abi: Abi,
     bytecode: Bytes,
-) -> (GanacheInstance, Contract<'a, Http, Wallet>) {
+) -> (GanacheInstance, Contract<Http, Wallet>) {
     let ganache = Ganache::new()
         .mnemonic("abstract vacuum mammal awkward pudding scene penalty purchase dinner depart evoke puzzle")
         .spawn();
