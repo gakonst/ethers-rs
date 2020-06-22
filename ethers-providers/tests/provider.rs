@@ -57,7 +57,8 @@ mod eth_tests {
     #[tokio::test]
     async fn pending_txs_with_confirmations_ganache() {
         let ganache = Ganache::new().block_time(2u64).spawn();
-        let provider = Provider::<Http>::try_from(ganache.endpoint()).unwrap()
+        let provider = Provider::<Http>::try_from(ganache.endpoint())
+            .unwrap()
             .interval(Duration::from_millis(500u64));
         generic_pending_txs_test(provider).await;
     }

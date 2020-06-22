@@ -52,7 +52,8 @@ mod eth_tests {
         let wallet2: Wallet = ganache.keys()[1].clone().into();
 
         // connect to the network
-        let provider = Provider::<Http>::try_from(ganache.endpoint()).unwrap()
+        let provider = Provider::<Http>::try_from(ganache.endpoint())
+            .unwrap()
             .interval(Duration::from_millis(10u64));
 
         // connect the wallet to the provider

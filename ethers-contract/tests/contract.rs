@@ -12,23 +12,19 @@ mod eth_tests {
         types::Address,
         utils::Ganache,
     };
-    use serial_test::serial;
-    use std::{convert::TryFrom, sync::Arc, time::Duration};
+    use std::{convert::TryFrom, sync::Arc};
 
     #[tokio::test]
-    #[serial]
     async fn deploy_and_call_contract() {
         let (abi, bytecode) = compile();
 
         // launch ganache
-        let _ganache = Ganache::new()
-            .mnemonic("abstract vacuum mammal awkward pudding scene penalty purchase dinner depart evoke puzzle")
-            .spawn();
+        let ganache = Ganache::new().spawn();
 
         // Instantiate the clients. We assume that clients consume the provider and the wallet
         // (which makes sense), so for multi-client tests, you must clone the provider.
-        let client = connect("380eb0f3d505f087e438eca80bc4df9a7faa24f868e69fc0440261a0fc0567dc");
-        let client2 = connect("cc96601bc52293b53c4736a12af9130abf347669b3813f9ec4cafdf6991b087e");
+        let client = connect(&ganache, 0);
+        let client2 = connect(&ganache, 1);
 
         // create a factory which will be used to deploy instances of the contract
         let factory = ContractFactory::new(abi, bytecode, client.clone());
@@ -80,11 +76,11 @@ mod eth_tests {
     }
 
     #[tokio::test]
-    #[serial]
     async fn get_past_events() {
         let (abi, bytecode) = compile();
-        let client = connect("380eb0f3d505f087e438eca80bc4df9a7faa24f868e69fc0440261a0fc0567dc");
-        let (_ganache, contract) = deploy(client.clone(), abi, bytecode).await;
+        let ganache = Ganache::new().spawn();
+        let client = connect(&ganache, 0);
+        let contract = deploy(client.clone(), abi, bytecode).await;
 
         // make a call with `client2`
         let _tx_hash = contract
@@ -109,11 +105,11 @@ mod eth_tests {
     }
 
     #[tokio::test]
-    #[serial]
     async fn watch_events() {
         let (abi, bytecode) = compile();
-        let client = connect("380eb0f3d505f087e438eca80bc4df9a7faa24f868e69fc0440261a0fc0567dc");
-        let (_ganache, contract) = deploy(client, abi, bytecode).await;
+        let ganache = Ganache::new().spawn();
+        let client = connect(&ganache, 0);
+        let contract = deploy(client, abi, bytecode).await;
 
         // We spawn the event listener:
         let mut stream = contract
@@ -144,17 +140,21 @@ mod eth_tests {
     }
 
     #[tokio::test]
-    #[serial]
     async fn signer_on_node() {
         let (abi, bytecode) = compile();
-        let provider = Provider::<Http>::try_from("http://localhost:8545")
+        // spawn ganache
+        let ganache = Ganache::new().spawn();
+
+        // connect
+        let provider = Provider::<Http>::try_from(ganache.endpoint())
             .unwrap()
-            .interval(Duration::from_millis(10u64));
-        let deployer = "3cDB3d9e1B74692Bb1E3bb5fc81938151cA64b02"
-            .parse::<Address>()
-            .unwrap();
+            .interval(std::time::Duration::from_millis(50u64));
+
+        // get the first account
+        let deployer = provider.get_accounts().await.unwrap()[0];
         let client = Arc::new(Client::from(provider).with_sender(deployer));
-        let (_ganache, contract) = deploy(client, abi, bytecode).await;
+
+        let contract = deploy(client, abi, bytecode).await;
 
         // make a call without the signer
         let tx_hash = contract
