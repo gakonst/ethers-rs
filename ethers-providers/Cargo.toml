@@ -45,9 +45,11 @@ rustc-hex = "2.1.0"
 tokio = { version = "0.2.21", default-features = false, features = ["rt-core", "macros"] }
 async-std = { version = "1.6.2", default-features = false, features = ["attributes"] }
 async-tungstenite = { version = "0.6.0", features = ["tokio-runtime"] }
-serial_test = "0.4.0"
 
 [features]
+# slightly opinionated, but for convenience we default to tokio-tls
+# to allow websockets w/ TLS support
+default = ["tokio-tls"]
 celo = ["ethers-core/celo"]
 
 tokio-runtime = [

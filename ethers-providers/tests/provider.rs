@@ -10,7 +10,6 @@ mod eth_tests {
         types::TransactionRequest,
         utils::{parse_ether, Ganache},
     };
-    use serial_test::serial;
 
     // Without TLS this would error with "TLS Support not compiled in"
     #[test]
@@ -36,7 +35,6 @@ mod eth_tests {
     }
 
     #[tokio::test]
-    #[serial]
     #[cfg(feature = "tokio-runtime")]
     async fn watch_blocks_websocket() {
         use ethers::{
@@ -44,8 +42,8 @@ mod eth_tests {
             types::H256,
         };
 
-        let _ganache = Ganache::new().block_time(2u64).spawn();
-        let (ws, _) = async_tungstenite::tokio::connect_async("ws://localhost:8545")
+        let ganache = Ganache::new().block_time(2u64).spawn();
+        let (ws, _) = async_tungstenite::tokio::connect_async(ganache.ws_endpoint())
             .await
             .unwrap();
         let provider = Provider::new(Ws::new(ws)).interval(Duration::from_millis(500u64));
@@ -57,22 +55,20 @@ mod eth_tests {
     }
 
     #[tokio::test]
-    #[serial]
     async fn pending_txs_with_confirmations_ganache() {
-        let _ganache = Ganache::new().block_time(2u64).spawn();
-        let provider = Provider::<Http>::try_from("http://localhost:8545")
+        let ganache = Ganache::new().block_time(2u64).spawn();
+        let provider = Provider::<Http>::try_from(ganache.endpoint())
             .unwrap()
             .interval(Duration::from_millis(500u64));
         generic_pending_txs_test(provider).await;
     }
 
     #[tokio::test]
-    #[serial]
     #[cfg(any(feature = "tokio-runtime", feature = "tokio-tls"))]
     async fn websocket_pending_txs_with_confirmations_ganache() {
         use ethers::providers::Ws;
-        let _ganache = Ganache::new().block_time(2u64).port(8546u64).spawn();
-        let ws = Ws::connect("ws://localhost:8546").await.unwrap();
+        let ganache = Ganache::new().block_time(2u64).spawn();
+        let ws = Ws::connect(ganache.ws_endpoint()).await.unwrap();
         let provider = Provider::new(ws);
         generic_pending_txs_test(provider).await;
     }

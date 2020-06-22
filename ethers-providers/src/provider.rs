@@ -534,6 +534,14 @@ impl TryFrom<&str> for Provider<HttpProvider> {
     }
 }
 
+impl TryFrom<String> for Provider<HttpProvider> {
+    type Error = ParseError;
+
+    fn try_from(src: String) -> Result<Self, Self::Error> {
+        Provider::try_from(src.as_str())
+    }
+}
+
 #[cfg(test)]
 mod ens_tests {
     use super::*;
