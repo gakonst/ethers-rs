@@ -21,18 +21,14 @@ async fn main() -> Result<()> {
         .expect("could not find contract");
 
     // 2. launch ganache
-    let port = 8546u64;
-    let url = format!("http://localhost:{}", port).to_string();
-    let _ganache = Ganache::new().port(port)
-        .mnemonic("abstract vacuum mammal awkward pudding scene penalty purchase dinner depart evoke puzzle")
-        .spawn();
+    let ganache = Ganache::new().spawn();
 
     // 3. instantiate our wallet
-    let wallet =
-        "380eb0f3d505f087e438eca80bc4df9a7faa24f868e69fc0440261a0fc0567dc".parse::<Wallet>()?;
+    let wallet: Wallet = ganache.keys()[0].clone().into();
 
     // 4. connect to the network
-    let provider = Provider::<Http>::try_from(url.as_str())?.interval(Duration::from_millis(10u64));
+    let provider =
+        Provider::<Http>::try_from(ganache.endpoint())?.interval(Duration::from_millis(10u64));
 
     // 5. instantiate the client with the wallet
     let client = wallet.connect(provider);

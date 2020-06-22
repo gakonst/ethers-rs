@@ -4,20 +4,16 @@ use std::convert::TryFrom;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let port = 8546u64;
-    let url = format!("http://localhost:{}", port).to_string();
-    let _ganache = Ganache::new().port(port).spawn();
+    let ganache = Ganache::new().spawn();
 
     // connect to the network
-    let provider = Provider::<Http>::try_from(url.as_str())?;
+    let provider = Provider::<Http>::try_from(ganache.endpoint())?;
     let accounts = provider.get_accounts().await?;
     let from = accounts[0];
+    let to = accounts[1];
 
     // craft the tx
-    let tx = TransactionRequest::new()
-        .send_to_str("9A7e5d4bcA656182e66e33340d776D1542143006")?
-        .value(1000)
-        .from(from); // specify the `from` field so that the client knows which account to use
+    let tx = TransactionRequest::new().to(to).value(1000).from(from); // specify the `from` field so that the client knows which account to use
 
     let balance_before = provider.get_balance(from, None).await?;
 
