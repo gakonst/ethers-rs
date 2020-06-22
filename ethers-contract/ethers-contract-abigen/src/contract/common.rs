@@ -1,15 +1,18 @@
-use super::Context;
+use super::{util, Context};
 
 use ethers_core::types::Address;
 use proc_macro2::{Literal, TokenStream};
 use quote::quote;
 
-pub(crate) fn imports() -> TokenStream {
+pub(crate) fn imports(name: &str) -> TokenStream {
+    let doc = util::expand_doc(&format!("{} was auto-generated with ethers-rs Abigen. More information at: https://github.com/gakonst/ethers-rs", name));
+
     quote! {
         #![allow(dead_code)]
         #![allow(unused_imports)]
-        // TODO: Can we make this context aware so that it imports either ethers_contract
-        // or ethers::contract?
+        #doc
+
+        use std::sync::Arc;
         use ethers::{
             core::{
                 abi::{Abi, Token, Detokenize, InvalidOutputType, Tokenizable},
@@ -33,17 +36,17 @@ pub(crate) fn struct_declaration(cx: &Context, abi_name: &proc_macro2::Ident) ->
 
         // Struct declaration
         #[derive(Clone)]
-        pub struct #name<'a, P, S>(Contract<'a, P, S>);
+        pub struct #name<P, S>(Contract<P, S>);
 
 
         // Deref to the inner contract in order to access more specific functions functions
-        impl<'a, P, S> std::ops::Deref for #name<'a, P, S> {
-            type Target = Contract<'a, P, S>;
+        impl<P, S> std::ops::Deref for #name<P, S> {
+            type Target = Contract<P, S>;
 
             fn deref(&self) -> &Self::Target { &self.0 }
         }
 
-        impl<'a, P: JsonRpcClient, S: Signer> std::fmt::Debug for #name<'a, P, S> {
+        impl<P: JsonRpcClient, S: Signer> std::fmt::Debug for #name<P, S> {
             fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
                 f.debug_tuple(stringify!(#name))
                     .field(&self.address())

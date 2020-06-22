@@ -45,9 +45,9 @@ fn expand_function(function: &Function, alias: Option<Ident>) -> Result<TokenStr
         StateMutability::Nonpayable | StateMutability::Payable
     );
     let result = if !is_mutable {
-        quote! { ContractCall<'a, P, S, #outputs> }
+        quote! { ContractCall<P, S, #outputs> }
     } else {
-        quote! { ContractCall<'a, P, S, H256> }
+        quote! { ContractCall<P, S, H256> }
     };
 
     let arg = expand_inputs_call_arg(&function.inputs);
