@@ -3,7 +3,7 @@ use ethers::{
     prelude::*,
     utils::{Ganache, Solc},
 };
-use std::convert::TryFrom;
+use std::{convert::TryFrom, sync::Arc, time::Duration};
 
 // Generate the type-safe contract bindings by providing the ABI
 abigen!(
@@ -32,13 +32,18 @@ async fn main() -> Result<()> {
         "380eb0f3d505f087e438eca80bc4df9a7faa24f868e69fc0440261a0fc0567dc".parse::<Wallet>()?;
 
     // 4. connect to the network
-    let provider = Provider::<Http>::try_from(url.as_str())?;
+    let provider = Provider::<Http>::try_from(url.as_str())?.interval(Duration::from_millis(10u64));
 
     // 5. instantiate the client with the wallet
     let client = wallet.connect(provider);
+    let client = Arc::new(client);
 
     // 6. create a factory which will be used to deploy instances of the contract
-    let factory = ContractFactory::new(contract.abi.clone(), contract.bytecode.clone(), &client);
+    let factory = ContractFactory::new(
+        contract.abi.clone(),
+        contract.bytecode.clone(),
+        client.clone(),
+    );
 
     // 7. deploy it with the constructor arguments
     let contract = factory.deploy("initial value".to_string())?.send().await?;
@@ -47,10 +52,11 @@ async fn main() -> Result<()> {
     let addr = contract.address();
 
     // 9. instantiate the contract
-    let contract = SimpleContract::new(addr, &client);
+    let contract = SimpleContract::new(addr, client.clone());
 
     // 10. call the `setValue` method
-    let _tx_hash = contract.set_value("hi".to_owned()).send().await?;
+    let tx_hash = contract.set_value("hi".to_owned()).send().await?;
+    let _receipt = client.pending_transaction(tx_hash).await?;
 
     // 11. get all events
     let logs = contract

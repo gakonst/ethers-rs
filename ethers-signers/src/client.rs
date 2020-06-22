@@ -1,12 +1,12 @@
 use crate::Signer;
 
 use ethers_core::types::{
-    Address, BlockNumber, Bytes, NameOrAddress, Signature, TransactionRequest,
+    Address, BlockNumber, Bytes, NameOrAddress, Signature, TransactionRequest, TxHash,
 };
-use ethers_providers::{JsonRpcClient, PendingTransaction, Provider, ProviderError};
+use ethers_providers::{JsonRpcClient, Provider, ProviderError};
 
 use futures_util::{future::ok, join};
-use std::{future::Future, ops::Deref};
+use std::{future::Future, ops::Deref, time::Duration};
 use thiserror::Error;
 
 #[derive(Clone, Debug)]
@@ -42,14 +42,11 @@ use thiserror::Error;
 /// let signed_msg = client.provider().sign(b"hello".to_vec(), &client.address()).await?;
 ///
 /// let tx = TransactionRequest::pay("vitalik.eth", 100);
-/// let pending_tx = client.send_transaction(tx, None).await?;
+/// let tx_hash = client.send_transaction(tx, None).await?;
 ///
-/// // You can get the transaction hash by dereferencing it
-/// let tx_hash = *pending_tx;
-///
-/// // Or you can `await` on the pending transaction to get the receipt with a pre-specified
+/// // You can `await` on the pending transaction to get the receipt with a pre-specified
 /// // number of confirmations
-/// let receipt = pending_tx.confirmations(6).await?;
+/// let receipt = client.pending_transaction(tx_hash).confirmations(6).await?;
 ///
 /// // You can connect with other wallets at runtime via the `with_signer` function
 /// let wallet2: Wallet = "cd8c407233c0560f6de24bb2dc60a8b02335c959a1a17f749ce6c1ccf63d74a7"
@@ -124,7 +121,7 @@ where
         &self,
         mut tx: TransactionRequest,
         block: Option<BlockNumber>,
-    ) -> Result<PendingTransaction<'_, P>, ClientError> {
+    ) -> Result<TxHash, ClientError> {
         if let Some(ref to) = tx.to {
             if let NameOrAddress::Name(ens_name) = to {
                 let addr = self.resolve_name(&ens_name).await?;
@@ -215,8 +212,28 @@ where
     /// Sets the address which will be used for interacting with the blockchain.
     /// Useful if no signer is set and you want to specify a default sender for
     /// your transactions
+    ///
+    /// # Panics
+    ///
+    /// If the signer is Some. It is forbidden to switch the sender if a private
+    /// key is already specified.
     pub fn with_sender<T: Into<Address>>(mut self, address: T) -> Self {
+        if self.signer.is_some() {
+            panic!(
+                "It is forbidden to switch the sender if a signer is specified.
+                   Consider using the `with_signer` method if you want to specify a
+                   different signer"
+            )
+        }
+
         self.address = address.into();
+        self
+    }
+
+    /// Sets the default polling interval for event filters and pending transactions
+    pub fn interval<T: Into<Duration>>(mut self, interval: T) -> Self {
+        let provider = self.provider.interval(interval.into());
+        self.provider = provider;
         self
     }
 }

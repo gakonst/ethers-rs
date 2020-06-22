@@ -22,9 +22,9 @@ async fn main() -> Result<()> {
     let balance_before = provider.get_balance(from, None).await?;
 
     // broadcast it via the eth_sendTransaction API
-    let pending_tx = provider.send_transaction(tx).await?;
+    let tx_hash = provider.send_transaction(tx).await?;
 
-    let tx = pending_tx.await?;
+    let tx = provider.pending_transaction(tx_hash).await?;
 
     println!("{}", serde_json::to_string(&tx)?);
 

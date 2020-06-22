@@ -44,7 +44,7 @@ impl Context {
         let abi_name = super::util::safe_ident(&format!("{}_ABI", name.to_string().to_uppercase()));
 
         // 0. Imports
-        let imports = common::imports();
+        let imports = common::imports(&name.to_string());
 
         // 1. Declare Contract struct
         let struct_decl = common::struct_declaration(&cx, &abi_name);
@@ -67,12 +67,12 @@ impl Context {
 
                 #struct_decl
 
-                impl<'a, P: JsonRpcClient, S: Signer> #name<'a, P, S> {
+                impl<'a, P: JsonRpcClient, S: Signer> #name<P, S> {
                     /// Creates a new contract instance with the specified `ethers`
                     /// client at the given `Address`. The contract derefs to a `ethers::Contract`
                     /// object
-                    pub fn new<T: Into<Address>>(address: T, client: &'a Client<P, S>) -> Self {
-                        let contract = Contract::new(address.into(), #abi_name.clone(), client);
+                    pub fn new<T: Into<Address>, C: Into<Arc<Client<P, S>>>>(address: T, client: C) -> Self {
+                        let contract = Contract::new(address.into(), #abi_name.clone(), client.into());
                         Self(contract)
                     }
 

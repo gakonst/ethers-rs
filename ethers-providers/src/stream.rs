@@ -20,7 +20,8 @@ pub fn interval(duration: Duration) -> impl Stream<Item = ()> + Send + Unpin {
     stream::unfold((), move |_| Delay::new(duration).map(|_| Some(((), ())))).map(drop)
 }
 
-pub const DEFAULT_POLL_DURATION: Duration = Duration::from_millis(7000);
+/// The default polling interval for filters and pending transactions
+pub const DEFAULT_POLL_INTERVAL: Duration = Duration::from_millis(7000);
 
 /// Trait for streaming filters.
 pub trait FilterStream<R>: StreamExt + Stream<Item = R>
@@ -31,7 +32,7 @@ where
     fn id(&self) -> U256;
 
     /// Sets the stream's polling interval
-    fn interval<T: Into<u64>>(self, duration: T) -> Self;
+    fn interval(self, duration: Duration) -> Self;
 
     /// Alias for Box::pin, must be called in order to pin the stream and be able
     /// to call `next` on it.
@@ -73,7 +74,7 @@ where
     pub fn new<T: Into<U256>>(id: T, factory: F) -> Self {
         Self {
             id: id.into(),
-            interval: Box::new(interval(DEFAULT_POLL_DURATION)),
+            interval: Box::new(interval(DEFAULT_POLL_INTERVAL)),
             state: FilterWatcherState::WaitForInterval,
             factory,
         }
@@ -90,8 +91,8 @@ where
         self.id
     }
 
-    fn interval<T: Into<u64>>(mut self, duration: T) -> Self {
-        self.interval = Box::new(interval(Duration::from_millis(duration.into())));
+    fn interval(mut self, duration: Duration) -> Self {
+        self.interval = Box::new(interval(duration));
         self
     }
 }
@@ -191,7 +192,10 @@ mod watch {
         let filter = FilterWatcher::<_, u64>::new(1, factory);
         // stream combinator calls are still doable since FilterStream extends
         // Stream and StreamExt
-        let mut stream = filter.interval(100u64).stream().map(|x| 2 * x);
+        let mut stream = filter
+            .interval(Duration::from_millis(100u64))
+            .stream()
+            .map(|x| 2 * x);
         assert_eq!(stream.next().await.unwrap(), 2);
         assert_eq!(stream.next().await.unwrap(), 4);
         assert_eq!(stream.next().await.unwrap(), 6);

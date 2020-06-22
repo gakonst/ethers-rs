@@ -1,6 +1,6 @@
 use crate::{
     ens,
-    stream::{FilterStream, FilterWatcher},
+    stream::{FilterStream, FilterWatcher, DEFAULT_POLL_INTERVAL},
     Http as HttpProvider, JsonRpcClient, PendingTransaction,
 };
 
@@ -17,7 +17,7 @@ use serde::Deserialize;
 use thiserror::Error;
 use url::{ParseError, Url};
 
-use std::{convert::TryFrom, fmt::Debug};
+use std::{convert::TryFrom, fmt::Debug, time::Duration};
 
 /// An abstract provider for interacting with the [Ethereum JSON RPC
 /// API](https://github.com/ethereum/wiki/wiki/JSON-RPC). Must be instantiated
@@ -41,7 +41,7 @@ use std::{convert::TryFrom, fmt::Debug};
 /// # }
 /// ```
 #[derive(Clone, Debug)]
-pub struct Provider<P>(P, Option<Address>);
+pub struct Provider<P>(P, Option<Address>, Option<Duration>);
 
 #[derive(Debug, Error)]
 /// An error thrown when making a call to the provider
@@ -72,7 +72,7 @@ pub enum FilterKind<'a> {
 impl<P: JsonRpcClient> Provider<P> {
     /// Instantiate a new provider with a backend.
     pub fn new(provider: P) -> Self {
-        Self(provider, None)
+        Self(provider, None, None)
     }
 
     ////// Blockchain Status
@@ -265,7 +265,7 @@ impl<P: JsonRpcClient> Provider<P> {
     pub async fn send_transaction(
         &self,
         mut tx: TransactionRequest,
-    ) -> Result<PendingTransaction<'_, P>, ProviderError> {
+    ) -> Result<TxHash, ProviderError> {
         if let Some(ref to) = tx.to {
             if let NameOrAddress::Name(ens_name) = to {
                 // resolve to an address
@@ -276,27 +276,22 @@ impl<P: JsonRpcClient> Provider<P> {
             }
         }
 
-        let tx_hash = self
+        Ok(self
             .0
             .request("eth_sendTransaction", [tx])
             .await
-            .map_err(Into::into)?;
-        Ok(PendingTransaction::new(tx_hash, self))
+            .map_err(Into::into)?)
     }
 
     /// Send the raw RLP encoded transaction to the entire Ethereum network and returns the transaction's hash
     /// This will consume gas from the account that signed the transaction.
-    pub async fn send_raw_transaction(
-        &self,
-        tx: &Transaction,
-    ) -> Result<PendingTransaction<'_, P>, ProviderError> {
+    pub async fn send_raw_transaction(&self, tx: &Transaction) -> Result<TxHash, ProviderError> {
         let rlp = utils::serialize(&tx.rlp());
-        let tx_hash = self
+        Ok(self
             .0
             .request("eth_sendRawTransaction", [rlp])
             .await
-            .map_err(Into::into)?;
-        Ok(PendingTransaction::new(tx_hash, self))
+            .map_err(Into::into)?)
     }
 
     /// Signs data using a specific account. This account needs to be unlocked.
@@ -332,14 +327,17 @@ impl<P: JsonRpcClient> Provider<P> {
     ) -> Result<impl FilterStream<Log> + '_, ProviderError> {
         let id = self.new_filter(FilterKind::Logs(filter)).await?;
         let fut = move || Box::pin(self.get_filter_changes(id));
-        Ok(FilterWatcher::new(id, fut))
+        let filter = FilterWatcher::new(id, fut).interval(self.get_interval());
+
+        Ok(filter)
     }
 
     /// Streams new block hashes
     pub async fn watch_blocks(&self) -> Result<impl FilterStream<H256> + '_, ProviderError> {
         let id = self.new_filter(FilterKind::NewBlocks).await?;
         let fut = move || Box::pin(self.get_filter_changes(id));
-        Ok(FilterWatcher::new(id, fut))
+        let filter = FilterWatcher::new(id, fut).interval(self.get_interval());
+        Ok(filter)
     }
 
     /// Streams pending transactions
@@ -348,7 +346,8 @@ impl<P: JsonRpcClient> Provider<P> {
     ) -> Result<impl FilterStream<H256> + '_, ProviderError> {
         let id = self.new_filter(FilterKind::PendingTransactions).await?;
         let fut = move || Box::pin(self.get_filter_changes(id));
-        Ok(FilterWatcher::new(id, fut))
+        let filter = FilterWatcher::new(id, fut).interval(self.get_interval());
+        Ok(filter)
     }
 
     /// Creates a filter object, based on filter options, to notify when the state changes (logs).
@@ -495,6 +494,25 @@ impl<P: JsonRpcClient> Provider<P> {
         self.1 = Some(ens.into());
         self
     }
+
+    /// Sets the default polling interval for event filters and pending transactions
+    /// (default: 7 seconds)
+    pub fn interval<T: Into<Duration>>(mut self, interval: T) -> Self {
+        self.2 = Some(interval.into());
+        self
+    }
+
+    /// Gets the polling interval which the provider currently uses for event filters
+    /// and pending transactions (default: 7 seconds)
+    pub fn get_interval(&self) -> Duration {
+        self.2.unwrap_or(DEFAULT_POLL_INTERVAL)
+    }
+
+    /// Helper which creates a pending transaction object from a transaction hash
+    /// using the provider's polling interval
+    pub fn pending_transaction(&self, tx_hash: TxHash) -> PendingTransaction<'_, P> {
+        PendingTransaction::new(tx_hash, self).interval(self.get_interval())
+    }
 }
 
 /// infallbile conversion of Bytes to Address/String
@@ -512,7 +530,7 @@ impl TryFrom<&str> for Provider<HttpProvider> {
     type Error = ParseError;
 
     fn try_from(src: &str) -> Result<Self, Self::Error> {
-        Ok(Provider(HttpProvider::new(Url::parse(src)?), None))
+        Ok(Provider(HttpProvider::new(Url::parse(src)?), None, None))
     }
 }
 
@@ -578,15 +596,12 @@ mod tests {
     async fn test_new_block_filter() {
         let num_blocks = 3;
 
-        let provider = Provider::<HttpProvider>::try_from("http://localhost:8545").unwrap();
+        let provider = Provider::<HttpProvider>::try_from("http://localhost:8545")
+            .unwrap()
+            .interval(Duration::from_millis(1000));
         let start_block = provider.get_block_number().await.unwrap();
 
-        let stream = provider
-            .watch_blocks()
-            .await
-            .unwrap()
-            .interval(1000u64)
-            .stream();
+        let stream = provider.watch_blocks().await.unwrap().stream();
 
         let hashes: Vec<H256> = stream.take(num_blocks).collect::<Vec<H256>>().await;
         for (i, hash) in hashes.iter().enumerate() {
@@ -606,14 +621,15 @@ mod tests {
     async fn test_new_pending_txs_filter() {
         let num_txs = 5;
 
-        let provider = Provider::<HttpProvider>::try_from("http://localhost:8545").unwrap();
+        let provider = Provider::<HttpProvider>::try_from("http://localhost:8545")
+            .unwrap()
+            .interval(Duration::from_millis(1000));
         let accounts = provider.get_accounts().await.unwrap();
 
         let stream = provider
             .watch_pending_transactions()
             .await
             .unwrap()
-            .interval(1000u64)
             .stream();
 
         let mut tx_hashes = Vec::new();

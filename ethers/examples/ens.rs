@@ -18,9 +18,9 @@ async fn main() -> Result<()> {
     let tx = TransactionRequest::new().to("vitalik.eth").value(100_000);
 
     // send it!
-    let pending_tx = client.send_transaction(tx, None).await?;
+    let tx_hash = client.send_transaction(tx, None).await?;
 
-    let receipt = pending_tx.await?;
+    let receipt = client.pending_transaction(tx_hash).await?;
     let tx = client.get_transaction(receipt.transaction_hash).await?;
 
     println!("{}", serde_json::to_string(&tx)?);

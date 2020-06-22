@@ -13,7 +13,7 @@ mod eth_tests {
         utils::Ganache,
     };
     use serial_test::serial;
-    use std::convert::TryFrom;
+    use std::{convert::TryFrom, sync::Arc, time::Duration};
 
     #[tokio::test]
     #[serial]
@@ -31,7 +31,7 @@ mod eth_tests {
         let client2 = connect("cc96601bc52293b53c4736a12af9130abf347669b3813f9ec4cafdf6991b087e");
 
         // create a factory which will be used to deploy instances of the contract
-        let factory = ContractFactory::new(abi, bytecode, &client);
+        let factory = ContractFactory::new(abi, bytecode, client.clone());
 
         // `send` consumes the deployer so it must be cloned for later re-use
         // (practically it's not expected that you'll need to deploy multiple instances of
@@ -46,9 +46,11 @@ mod eth_tests {
         let value = get_value.clone().call().await.unwrap();
         assert_eq!(value, "initial value");
 
-        // make a call with `client2`
+        // need to declare the method first, and only then send it
+        // this is because it internally clones an Arc which would otherwise
+        // get immediately dropped
         let _tx_hash = contract
-            .connect(&client2)
+            .connect(client2.clone())
             .method::<_, H256>("setValue", "hi".to_owned())
             .unwrap()
             .send()
@@ -59,7 +61,7 @@ mod eth_tests {
 
         // we can also call contract methods at other addresses with the `at` call
         // (useful when interacting with multiple ERC20s for example)
-        let contract2_addr = deployer.clone().send().await.unwrap().address();
+        let contract2_addr = deployer.send().await.unwrap().address();
         let contract2 = contract.at(contract2_addr);
         let init_value: String = contract2
             .method::<_, String>("getValue", ())
@@ -82,7 +84,7 @@ mod eth_tests {
     async fn get_past_events() {
         let (abi, bytecode) = compile();
         let client = connect("380eb0f3d505f087e438eca80bc4df9a7faa24f868e69fc0440261a0fc0567dc");
-        let (_ganache, contract) = deploy(&client, abi, bytecode).await;
+        let (_ganache, contract) = deploy(client.clone(), abi, bytecode).await;
 
         // make a call with `client2`
         let _tx_hash = contract
@@ -111,7 +113,7 @@ mod eth_tests {
     async fn watch_events() {
         let (abi, bytecode) = compile();
         let client = connect("380eb0f3d505f087e438eca80bc4df9a7faa24f868e69fc0440261a0fc0567dc");
-        let (_ganache, contract) = deploy(&client, abi, bytecode).await;
+        let (_ganache, contract) = deploy(client, abi, bytecode).await;
 
         // We spawn the event listener:
         let mut stream = contract
@@ -125,12 +127,13 @@ mod eth_tests {
 
         // and we make a few calls
         for i in 0..num_calls {
-            let _tx_hash = contract
+            let tx_hash = contract
                 .method::<_, H256>("setValue", i.to_string())
                 .unwrap()
                 .send()
                 .await
                 .unwrap();
+            let _receipt = contract.pending_transaction(tx_hash).await.unwrap();
         }
 
         for i in 0..num_calls {
@@ -144,22 +147,23 @@ mod eth_tests {
     #[serial]
     async fn signer_on_node() {
         let (abi, bytecode) = compile();
-        let provider = Provider::<Http>::try_from("http://localhost:8545").unwrap();
+        let provider = Provider::<Http>::try_from("http://localhost:8545")
+            .unwrap()
+            .interval(Duration::from_millis(10u64));
         let deployer = "3cDB3d9e1B74692Bb1E3bb5fc81938151cA64b02"
             .parse::<Address>()
             .unwrap();
-        let client = Client::from(provider).with_sender(deployer);
-        let (_ganache, contract) = deploy(&client, abi, bytecode).await;
+        let client = Arc::new(Client::from(provider).with_sender(deployer));
+        let (_ganache, contract) = deploy(client, abi, bytecode).await;
 
         // make a call without the signer
-        let _tx = contract
+        let tx_hash = contract
             .method::<_, H256>("setValue", "hi".to_owned())
             .unwrap()
             .send()
             .await
-            .unwrap()
-            .await
             .unwrap();
+        let _receipt = contract.pending_transaction(tx_hash).await.unwrap();
         let value: String = contract
             .method::<_, String>("getValue", ())
             .unwrap()
@@ -178,7 +182,7 @@ mod celo_tests {
         signers::Wallet,
         types::BlockNumber,
     };
-    use std::convert::TryFrom;
+    use std::{convert::TryFrom, sync::Arc, time::Duration};
 
     #[tokio::test]
     async fn deploy_and_call_contract() {
@@ -192,9 +196,11 @@ mod celo_tests {
         let client = "d652abb81e8c686edba621a895531b1f291289b63b5ef09a94f686a5ecdd5db1"
             .parse::<Wallet>()
             .unwrap()
-            .connect(provider);
+            .connect(provider)
+            .interval(Duration::from_millis(6000));
+        let client = Arc::new(client);
 
-        let factory = ContractFactory::new(abi, bytecode, &client);
+        let factory = ContractFactory::new(abi, bytecode, client);
         let deployer = factory.deploy("initial value".to_string()).unwrap();
         let contract = deployer.block(BlockNumber::Pending).send().await.unwrap();
 
@@ -207,13 +213,13 @@ mod celo_tests {
         assert_eq!(value, "initial value");
 
         // make a state mutating transaction
-        let pending_tx = contract
+        let tx_hash = contract
             .method::<_, H256>("setValue", "hi".to_owned())
             .unwrap()
             .send()
             .await
             .unwrap();
-        let _receipt = pending_tx.await.unwrap();
+        let _receipt = contract.pending_transaction(tx_hash).await.unwrap();
 
         let value: String = contract
             .method("getValue", ())

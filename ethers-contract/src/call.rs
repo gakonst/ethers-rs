@@ -1,11 +1,11 @@
 use ethers_core::{
     abi::{Detokenize, Error as AbiError, Function, InvalidOutputType},
-    types::{Address, BlockNumber, TransactionRequest, U256},
+    types::{Address, BlockNumber, TransactionRequest, TxHash, U256},
 };
-use ethers_providers::{JsonRpcClient, PendingTransaction, ProviderError};
+use ethers_providers::{JsonRpcClient, ProviderError};
 use ethers_signers::{Client, ClientError, Signer};
 
-use std::{fmt::Debug, marker::PhantomData};
+use std::{fmt::Debug, marker::PhantomData, sync::Arc};
 
 use thiserror::Error as ThisError;
 
@@ -42,18 +42,18 @@ pub enum ContractError {
 #[derive(Debug, Clone)]
 #[must_use = "contract calls do nothing unless you `send` or `call` them"]
 /// Helper for managing a transaction before submitting it to a node
-pub struct ContractCall<'a, P, S, D> {
+pub struct ContractCall<P, S, D> {
     /// The raw transaction object
     pub tx: TransactionRequest,
     /// The ABI of the function being called
     pub function: Function,
     /// Optional block number to be used when calculating the transaction's gas and nonce
     pub block: Option<BlockNumber>,
-    pub(crate) client: &'a Client<P, S>,
+    pub(crate) client: Arc<Client<P, S>>,
     pub(crate) datatype: PhantomData<D>,
 }
 
-impl<'a, P, S, D: Detokenize> ContractCall<'a, P, S, D> {
+impl<P, S, D: Detokenize> ContractCall<P, S, D> {
     /// Sets the `from` field in the transaction to the provided value
     pub fn from<T: Into<Address>>(mut self, from: T) -> Self {
         self.tx.from = Some(from.into());
@@ -85,7 +85,7 @@ impl<'a, P, S, D: Detokenize> ContractCall<'a, P, S, D> {
     }
 }
 
-impl<'a, P, S, D> ContractCall<'a, P, S, D>
+impl<P, S, D> ContractCall<P, S, D>
 where
     S: Signer,
     P: JsonRpcClient,
@@ -111,7 +111,7 @@ where
     }
 
     /// Signs and broadcasts the provided transaction
-    pub async fn send(self) -> Result<PendingTransaction<'a, P>, ContractError> {
+    pub async fn send(self) -> Result<TxHash, ContractError> {
         Ok(self.client.send_transaction(self.tx, self.block).await?)
     }
 }

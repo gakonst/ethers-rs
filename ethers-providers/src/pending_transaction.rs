@@ -1,5 +1,5 @@
 use crate::{
-    stream::{interval, DEFAULT_POLL_DURATION},
+    stream::{interval, DEFAULT_POLL_INTERVAL},
     JsonRpcClient, Provider, ProviderError,
 };
 use ethers_core::types::{TransactionReceipt, TxHash, U64};
@@ -38,7 +38,7 @@ impl<'a, P: JsonRpcClient> PendingTransaction<'a, P> {
             confirmations: 1,
             provider,
             state: PendingTxState::GettingReceipt(fut),
-            interval: Box::new(interval(DEFAULT_POLL_DURATION)),
+            interval: Box::new(interval(DEFAULT_POLL_INTERVAL)),
         }
     }
 
@@ -50,8 +50,8 @@ impl<'a, P: JsonRpcClient> PendingTransaction<'a, P> {
     }
 
     /// Sets the polling interval
-    pub fn interval<T: Into<u64>>(mut self, duration: T) -> Self {
-        self.interval = Box::new(interval(Duration::from_millis(duration.into())));
+    pub fn interval<T: Into<Duration>>(mut self, duration: T) -> Self {
+        self.interval = Box::new(interval(duration.into()));
         self
     }
 }
