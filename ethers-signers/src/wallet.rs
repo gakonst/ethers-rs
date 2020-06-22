@@ -144,6 +144,12 @@ impl Wallet {
     pub fn chain_id(&self) -> Option<u64> {
         self.chain_id
     }
+
+    /// Returns the wallet's address
+    // (we duplicate this method
+    pub fn address(&self) -> Address {
+        self.address
+    }
 }
 
 impl From<PrivateKey> for Wallet {
