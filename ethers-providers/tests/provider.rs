@@ -11,6 +11,7 @@ mod eth_tests {
         utils::{parse_ether, Ganache},
     };
     use serial_test::serial;
+    use std::time::Duration;
 
     // Without TLS this would error with "TLS Support not compiled in"
     #[test]
@@ -65,7 +66,9 @@ mod eth_tests {
     #[serial]
     async fn pending_txs_with_confirmations_ganache() {
         let _ganache = Ganache::new().block_time(2u64).spawn();
-        let provider = Provider::<Http>::try_from("http://localhost:8545").unwrap();
+        let provider = Provider::<Http>::try_from("http://localhost:8545")
+            .unwrap()
+            .interval(Duration::from_millis(500u64));
         generic_pending_txs_test(provider).await;
     }
 
@@ -86,7 +89,7 @@ mod eth_tests {
         let tx = TransactionRequest::pay(accounts[0], parse_ether(1u64).unwrap()).from(accounts[0]);
         let pending_tx = provider.send_transaction(tx).await.unwrap();
         let hash = *pending_tx;
-        let receipt = pending_tx.interval(500u64).confirmations(5).await.unwrap();
+        let receipt = pending_tx.confirmations(5).await.unwrap();
 
         // got the correct receipt
         assert_eq!(receipt.transaction_hash, hash);

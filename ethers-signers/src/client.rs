@@ -6,7 +6,7 @@ use ethers_core::types::{
 use ethers_providers::{JsonRpcClient, PendingTransaction, Provider, ProviderError};
 
 use futures_util::{future::ok, join};
-use std::{future::Future, ops::Deref};
+use std::{future::Future, ops::Deref, time::Duration};
 use thiserror::Error;
 
 #[derive(Clone, Debug)]
@@ -215,8 +215,28 @@ where
     /// Sets the address which will be used for interacting with the blockchain.
     /// Useful if no signer is set and you want to specify a default sender for
     /// your transactions
+    ///
+    /// # Panics
+    ///
+    /// If the signer is Some. It is forbidden to switch the sender if a private
+    /// key is already specified.
     pub fn with_sender<T: Into<Address>>(mut self, address: T) -> Self {
+        if self.signer.is_some() {
+            panic!(
+                "It is forbidden to switch the sender if a signer is specified.
+                   Consider using the `with_signer` method if you want to specify a
+                   different signer"
+            )
+        }
+
         self.address = address.into();
+        self
+    }
+
+    /// Sets the default polling interval for event filters and pending transactions
+    pub fn interval<T: Into<Duration>>(mut self, interval: T) -> Self {
+        let provider = self.provider.interval(interval.into());
+        self.provider = provider;
         self
     }
 }
