@@ -49,11 +49,13 @@ mod eth_tests {
         // need to declare the method first, and only then send it
         // this is because it internally clones an Arc which would otherwise
         // get immediately dropped
-        let method = contract
+        let _tx_hash = contract
             .connect(client2.clone())
             .method::<_, H256>("setValue", "hi".to_owned())
+            .unwrap()
+            .send()
+            .await
             .unwrap();
-        let _tx_hash = method.send().await.unwrap();
         assert_eq!(last_sender.clone().call().await.unwrap(), client2.address());
         assert_eq!(get_value.clone().call().await.unwrap(), "hi");
 
@@ -85,10 +87,12 @@ mod eth_tests {
         let (_ganache, contract) = deploy(client.clone(), abi, bytecode).await;
 
         // make a call with `client2`
-        let method = contract
+        let _tx_hash = contract
             .method::<_, H256>("setValue", "hi".to_owned())
+            .unwrap()
+            .send()
+            .await
             .unwrap();
-        let _tx_hash = method.send().await.unwrap();
 
         // and we can fetch the events
         let logs: Vec<ValueChanged> = contract
@@ -123,10 +127,13 @@ mod eth_tests {
 
         // and we make a few calls
         for i in 0..num_calls {
-            let method = contract
+            let tx_hash = contract
                 .method::<_, H256>("setValue", i.to_string())
+                .unwrap()
+                .send()
+                .await
                 .unwrap();
-            method.send().await.unwrap();
+            let _receipt = contract.pending_transaction(tx_hash).await.unwrap();
         }
 
         for i in 0..num_calls {
@@ -150,14 +157,13 @@ mod eth_tests {
         let (_ganache, contract) = deploy(client, abi, bytecode).await;
 
         // make a call without the signer
-        let _tx = contract
+        let tx_hash = contract
             .method::<_, H256>("setValue", "hi".to_owned())
             .unwrap()
             .send()
             .await
-            .unwrap()
-            .await
             .unwrap();
+        let _receipt = contract.pending_transaction(tx_hash).await.unwrap();
         let value: String = contract
             .method::<_, String>("getValue", ())
             .unwrap()
@@ -207,11 +213,13 @@ mod celo_tests {
         assert_eq!(value, "initial value");
 
         // make a state mutating transaction
-        let method = contract
+        let tx_hash = contract
             .method::<_, H256>("setValue", "hi".to_owned())
+            .unwrap()
+            .send()
+            .await
             .unwrap();
-        let pending_tx = method.send().await.unwrap();
-        let _receipt = pending_tx.await.unwrap();
+        let _receipt = contract.pending_transaction(tx_hash).await.unwrap();
 
         let value: String = contract
             .method("getValue", ())

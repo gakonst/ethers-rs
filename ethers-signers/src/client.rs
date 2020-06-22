@@ -1,9 +1,9 @@
 use crate::Signer;
 
 use ethers_core::types::{
-    Address, BlockNumber, Bytes, NameOrAddress, Signature, TransactionRequest,
+    Address, BlockNumber, Bytes, NameOrAddress, Signature, TransactionRequest, TxHash,
 };
-use ethers_providers::{JsonRpcClient, PendingTransaction, Provider, ProviderError};
+use ethers_providers::{JsonRpcClient, Provider, ProviderError};
 
 use futures_util::{future::ok, join};
 use std::{future::Future, ops::Deref, time::Duration};
@@ -42,14 +42,11 @@ use thiserror::Error;
 /// let signed_msg = client.provider().sign(b"hello".to_vec(), &client.address()).await?;
 ///
 /// let tx = TransactionRequest::pay("vitalik.eth", 100);
-/// let pending_tx = client.send_transaction(tx, None).await?;
+/// let tx_hash = client.send_transaction(tx, None).await?;
 ///
-/// // You can get the transaction hash by dereferencing it
-/// let tx_hash = *pending_tx;
-///
-/// // Or you can `await` on the pending transaction to get the receipt with a pre-specified
+/// // You can `await` on the pending transaction to get the receipt with a pre-specified
 /// // number of confirmations
-/// let receipt = pending_tx.confirmations(6).await?;
+/// let receipt = client.pending_transaction(tx_hash).confirmations(6).await?;
 ///
 /// // You can connect with other wallets at runtime via the `with_signer` function
 /// let wallet2: Wallet = "cd8c407233c0560f6de24bb2dc60a8b02335c959a1a17f749ce6c1ccf63d74a7"
@@ -124,7 +121,7 @@ where
         &self,
         mut tx: TransactionRequest,
         block: Option<BlockNumber>,
-    ) -> Result<PendingTransaction<'_, P>, ClientError> {
+    ) -> Result<TxHash, ClientError> {
         if let Some(ref to) = tx.to {
             if let NameOrAddress::Name(ens_name) = to {
                 let addr = self.resolve_name(&ens_name).await?;

@@ -1,6 +1,6 @@
 #![allow(unused_braces)]
 use ethers::providers::{Http, Provider};
-use std::{time::Duration, convert::TryFrom};
+use std::{convert::TryFrom, time::Duration};
 
 #[cfg(not(feature = "celo"))]
 mod eth_tests {
@@ -81,12 +81,12 @@ mod eth_tests {
         let accounts = provider.get_accounts().await.unwrap();
 
         let tx = TransactionRequest::pay(accounts[0], parse_ether(1u64).unwrap()).from(accounts[0]);
-        let pending_tx = provider.send_transaction(tx).await.unwrap();
-        let hash = *pending_tx;
+        let tx_hash = provider.send_transaction(tx).await.unwrap();
+        let pending_tx = provider.pending_transaction(tx_hash);
         let receipt = pending_tx.confirmations(5).await.unwrap();
 
         // got the correct receipt
-        assert_eq!(receipt.transaction_hash, hash);
+        assert_eq!(receipt.transaction_hash, tx_hash);
     }
 }
 
@@ -114,14 +114,11 @@ mod celo_tests {
 
     #[tokio::test]
     async fn watch_blocks() {
-        let provider =
-            Provider::<Http>::try_from("https://alfajores-forno.celo-testnet.org").unwrap().interval(Duration::from_millis(2000u64));
-
-        let stream = provider
-            .watch_blocks()
-            .await
+        let provider = Provider::<Http>::try_from("https://alfajores-forno.celo-testnet.org")
             .unwrap()
-            .stream();
+            .interval(Duration::from_millis(2000u64));
+
+        let stream = provider.watch_blocks().await.unwrap().stream();
 
         let _blocks = stream.take(3usize).collect::<Vec<H256>>().await;
     }

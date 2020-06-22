@@ -2,9 +2,9 @@ use super::{call::ContractCall, event::Event};
 
 use ethers_core::{
     abi::{Abi, Detokenize, Error, EventExt, Function, FunctionExt, Tokenize},
-    types::{Address, Filter, NameOrAddress, Selector, TransactionRequest},
+    types::{Address, Filter, NameOrAddress, Selector, TransactionRequest, TxHash},
 };
-use ethers_providers::JsonRpcClient;
+use ethers_providers::{JsonRpcClient, PendingTransaction};
 use ethers_signers::{Client, Signer};
 
 use rustc_hex::ToHex;
@@ -89,14 +89,11 @@ use std::{collections::HashMap, fmt::Debug, hash::Hash, marker::PhantomData, syn
 ///     .await?;
 ///
 /// // Non-constant methods are executed via the `send()` call on the method builder.
-/// let method = contract
-///     .method::<_, H256>("setValue", "hi".to_owned())?;
-///
-/// // This returns a pending transaction object (derefs to the transaction hash)
-/// let pending_tx = method.send().await?;
+/// let tx_hash = contract
+///     .method::<_, H256>("setValue", "hi".to_owned())?.send().await?;
 ///
 /// // `await`ing on the pending transaction resolves to a transaction receipt
-/// let receipt = pending_tx.confirmations(6).await?;
+/// let receipt = contract.pending_transaction(tx_hash).confirmations(6).await?;
 ///
 /// # Ok(())
 /// # }
@@ -254,7 +251,7 @@ where
 
         Ok(ContractCall {
             tx,
-            client: self.client.clone(), // cheap clone behind the Arc
+            client: Arc::clone(&self.client), // cheap clone behind the Arc
             block: None,
             function: function.to_owned(),
             datatype: PhantomData,
@@ -298,6 +295,12 @@ where
     /// Returns a reference to the contract's client
     pub fn client(&self) -> &Client<P, S> {
         &self.client
+    }
+
+    /// Helper which creates a pending transaction object from a transaction hash
+    /// using the provider's polling interval
+    pub fn pending_transaction(&self, tx_hash: TxHash) -> PendingTransaction<'_, P> {
+        self.client.provider().pending_transaction(tx_hash)
     }
 }
 

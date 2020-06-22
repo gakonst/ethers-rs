@@ -52,13 +52,11 @@ async fn main() -> Result<()> {
     let addr = contract.address();
 
     // 9. instantiate the contract
-    let contract = SimpleContract::new(addr, client);
+    let contract = SimpleContract::new(addr, client.clone());
 
     // 10. call the `setValue` method
-    let call = contract.set_value("hi".to_owned());
-    let pending_tx = call.send().await?;
-    // wait for the tx to get mined
-    let _receipt = pending_tx.await?;
+    let tx_hash = contract.set_value("hi".to_owned()).send().await?;
+    let _receipt = client.pending_transaction(tx_hash).await?;
 
     // 11. get all events
     let logs = contract

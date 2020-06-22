@@ -3,7 +3,7 @@ use ethers::{
     signers::Wallet,
     types::TransactionRequest,
 };
-use std::convert::TryFrom;
+use std::{convert::TryFrom, time::Duration};
 
 #[cfg(not(feature = "celo"))]
 mod eth_tests {
@@ -18,7 +18,8 @@ mod eth_tests {
         let provider = Provider::<Http>::try_from(
             "https://rinkeby.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27",
         )
-        .unwrap();
+        .unwrap()
+        .interval(Duration::from_millis(2000u64));
 
         // pls do not drain this key :)
         // note: this works even if there's no EIP-155 configured!
@@ -28,15 +29,18 @@ mod eth_tests {
             .connect(provider);
 
         let tx = TransactionRequest::pay(client.address(), parse_ether(1u64).unwrap());
-        let pending_tx = client
+        let tx_hash = client
             .send_transaction(tx, Some(BlockNumber::Pending))
             .await
             .unwrap();
-        let hash = *pending_tx;
-        let receipt = pending_tx.confirmations(3).await.unwrap();
+        let receipt = client
+            .pending_transaction(tx_hash)
+            .confirmations(3)
+            .await
+            .unwrap();
 
         // got the correct receipt
-        assert_eq!(receipt.transaction_hash, hash);
+        assert_eq!(receipt.transaction_hash, tx_hash);
     }
 
     #[tokio::test]
@@ -54,7 +58,9 @@ mod eth_tests {
             .unwrap();
 
         // connect to the network
-        let provider = Provider::<Http>::try_from(url.as_str()).unwrap();
+        let provider = Provider::<Http>::try_from(url.as_str())
+            .unwrap()
+            .interval(Duration::from_millis(10u64));
 
         // connect the wallet to the provider
         let client = wallet.connect(provider);
@@ -83,8 +89,9 @@ mod celo_tests {
     #[tokio::test]
     async fn test_send_transaction() {
         // Celo testnet
-        let provider =
-            Provider::<Http>::try_from("https://alfajores-forno.celo-testnet.org").unwrap();
+        let provider = Provider::<Http>::try_from("https://alfajores-forno.celo-testnet.org")
+            .unwrap()
+            .interval(Duration::from_millis(3000u64));
 
         // Funded with https://celo.org/developers/faucet
         // Please do not drain this account :)
@@ -95,8 +102,12 @@ mod celo_tests {
 
         let balance_before = client.get_balance(client.address(), None).await.unwrap();
         let tx = TransactionRequest::pay(client.address(), 100);
-        let pending_tx = client.send_transaction(tx, None).await.unwrap();
-        let _receipt = pending_tx.confirmations(3).await.unwrap();
+        let tx_hash = client.send_transaction(tx, None).await.unwrap();
+        let _receipt = client
+            .pending_transaction(tx_hash)
+            .confirmations(3)
+            .await
+            .unwrap();
         let balance_after = client.get_balance(client.address(), None).await.unwrap();
         assert!(balance_before > balance_after);
     }

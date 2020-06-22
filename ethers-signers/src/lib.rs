@@ -24,10 +24,10 @@
 //!     .value(10000);
 //!
 //! // send it! (this will resolve the ENS name to an address under the hood)
-//! let pending_tx = client.send_transaction(tx, None).await?;
+//! let tx_hash = client.send_transaction(tx, None).await?;
 //!
 //! // get the receipt
-//! let receipt = pending_tx.await?;
+//! let receipt = client.pending_transaction(tx_hash).await?;
 //!
 //! // get the mined tx
 //! let tx = client.get_transaction(receipt.transaction_hash).await?;

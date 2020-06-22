@@ -27,10 +27,10 @@ async fn main() -> Result<()> {
         .value(10000);
 
     // send it!
-    let pending_tx = client.send_transaction(tx, None).await?;
+    let tx_hash = client.send_transaction(tx, None).await?;
 
     // get the mined tx
-    let receipt = pending_tx.await?;
+    let receipt = client.pending_transaction(tx_hash).await?;
     let tx = client.get_transaction(receipt.transaction_hash).await?;
 
     println!("Sent tx: {}\n", serde_json::to_string(&tx)?);

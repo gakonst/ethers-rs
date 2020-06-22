@@ -47,11 +47,13 @@ where
     /// be sufficiently confirmed (default: 1), it returns a [`Contract`](crate::Contract)
     /// struct at the deployed contract's address.
     pub async fn send(self) -> Result<Contract<P, S>, ContractError> {
-        let pending_tx = self
+        let tx_hash = self
             .client
             .send_transaction(self.tx, Some(self.block))
             .await?;
-        let receipt = pending_tx
+        let receipt = self
+            .client
+            .pending_transaction(tx_hash)
             .interval(self.interval)
             .confirmations(self.confs)
             .await?;
@@ -172,7 +174,7 @@ where
         };
 
         Ok(Deployer {
-            client: self.client.clone(), // cheap clone behind the arc
+            client: Arc::clone(&self.client), // cheap clone behind the arc
             abi: self.abi,
             tx,
             confs: 1,
