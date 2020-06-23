@@ -159,7 +159,7 @@ impl<'a, P> Deref for PendingTransaction<'a, P> {
 }
 
 // Helper type alias
-type PinBoxFut<'a, T> = Pin<Box<dyn Future<Output = Result<T, ProviderError>> + 'a>>;
+type PinBoxFut<'a, T> = Pin<Box<dyn Future<Output = Result<T, ProviderError>> + 'a + Send>>;
 
 // We box the TransactionReceipts to keep the enum small.
 enum PendingTxState<'a> {
