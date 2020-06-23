@@ -1,9 +1,14 @@
 /// Utilities for launching a ganache-cli testnet instance
+#[cfg(not(target_arch = "wasm32"))]
 mod ganache;
+#[cfg(not(target_arch = "wasm32"))]
 pub use ganache::{Ganache, GanacheInstance};
 
 /// Solidity compiler bindings
+#[cfg(not(target_arch = "wasm32"))]
 mod solc;
+
+#[cfg(not(target_arch = "wasm32"))]
 pub use solc::{CompiledContract, Solc};
 
 mod hash;
@@ -15,8 +20,8 @@ pub use rlp;
 use crate::types::{Address, Bytes, U256};
 use std::convert::TryInto;
 
-/// 1 Ether = 1e18 Wei
-pub const WEI_IN_ETHER: usize = 1000000000000000000;
+/// 1 Ether = 1e18 Wei == 0x0de0b6b3a7640000 Wei
+pub const WEI_IN_ETHER: U256 = U256([0x0de0b6b3a7640000, 0x0, 0x0, 0x0]);
 
 /// Format the output for the user which prefer to see values
 /// in ether (instead of wei)
@@ -99,6 +104,11 @@ pub fn get_create2_address(
 mod tests {
     use super::*;
     use rustc_hex::FromHex;
+
+    #[test]
+    fn wei_in_ether() {
+        assert_eq!(WEI_IN_ETHER.as_u64(), 1e18 as u64);
+    }
 
     #[test]
     fn contract_address() {
