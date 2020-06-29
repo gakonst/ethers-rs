@@ -48,48 +48,6 @@ impl<T: Tokenizable> Detokenize for T {
     }
 }
 
-macro_rules! impl_output {
-  ($num: expr, $( $ty: ident , )+) => {
-    impl<$($ty, )+> Detokenize for ($($ty,)+) where
-      $(
-        $ty: Tokenizable,
-      )+
-    {
-      fn from_tokens(mut tokens: Vec<Token>) -> Result<Self, InvalidOutputType> {
-        if tokens.len() != $num {
-          return Err(InvalidOutputType(format!(
-            "Expected {} elements, got a list of {}: {:?}",
-            $num,
-            tokens.len(),
-            tokens
-          )));
-        }
-        let mut it = tokens.drain(..);
-        Ok(($(
-          $ty::from_token(it.next().expect("All elements are in vector; qed"))?,
-        )+))
-      }
-    }
-  }
-}
-
-impl_output!(1, A,);
-impl_output!(2, A, B,);
-impl_output!(3, A, B, C,);
-impl_output!(4, A, B, C, D,);
-impl_output!(5, A, B, C, D, E,);
-impl_output!(6, A, B, C, D, E, F,);
-impl_output!(7, A, B, C, D, E, F, G,);
-impl_output!(8, A, B, C, D, E, F, G, H,);
-impl_output!(9, A, B, C, D, E, F, G, H, I,);
-impl_output!(10, A, B, C, D, E, F, G, H, I, J,);
-impl_output!(11, A, B, C, D, E, F, G, H, I, J, K,);
-impl_output!(12, A, B, C, D, E, F, G, H, I, J, K, L,);
-impl_output!(13, A, B, C, D, E, F, G, H, I, J, K, L, M,);
-impl_output!(14, A, B, C, D, E, F, G, H, I, J, K, L, M, N,);
-impl_output!(15, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O,);
-impl_output!(16, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P,);
-
 /// Tokens conversion trait
 pub trait Tokenize {
     /// Convert to list of tokens
@@ -114,39 +72,6 @@ impl Tokenize for () {
     }
 }
 
-macro_rules! impl_tokens {
-  ($( $ty: ident : $no: tt, )+) => {
-    impl<$($ty, )+> Tokenize for ($($ty,)+) where
-      $(
-        $ty: Tokenizable,
-      )+
-    {
-      fn into_tokens(self) -> Vec<Token> {
-        vec![
-          $( self.$no.into_token(), )+
-        ]
-      }
-    }
-  }
-}
-
-impl_tokens!(A:0, );
-impl_tokens!(A:0, B:1, );
-impl_tokens!(A:0, B:1, C:2, );
-impl_tokens!(A:0, B:1, C:2, D:3, );
-impl_tokens!(A:0, B:1, C:2, D:3, E:4, );
-impl_tokens!(A:0, B:1, C:2, D:3, E:4, F:5, );
-impl_tokens!(A:0, B:1, C:2, D:3, E:4, F:5, G:6, );
-impl_tokens!(A:0, B:1, C:2, D:3, E:4, F:5, G:6, H:7, );
-impl_tokens!(A:0, B:1, C:2, D:3, E:4, F:5, G:6, H:7, I:8, );
-impl_tokens!(A:0, B:1, C:2, D:3, E:4, F:5, G:6, H:7, I:8, J:9, );
-impl_tokens!(A:0, B:1, C:2, D:3, E:4, F:5, G:6, H:7, I:8, J:9, K:10, );
-impl_tokens!(A:0, B:1, C:2, D:3, E:4, F:5, G:6, H:7, I:8, J:9, K:10, L:11, );
-impl_tokens!(A:0, B:1, C:2, D:3, E:4, F:5, G:6, H:7, I:8, J:9, K:10, L:11, M:12, );
-impl_tokens!(A:0, B:1, C:2, D:3, E:4, F:5, G:6, H:7, I:8, J:9, K:10, L:11, M:12, N:13, );
-impl_tokens!(A:0, B:1, C:2, D:3, E:4, F:5, G:6, H:7, I:8, J:9, K:10, L:11, M:12, N:13, O:14, );
-impl_tokens!(A:0, B:1, C:2, D:3, E:4, F:5, G:6, H:7, I:8, J:9, K:10, L:11, M:12, N:13, O:14, P:15, );
-
 /// Simplified output type for single value.
 pub trait Tokenizable {
     /// Converts a `Token` into expected type.
@@ -156,6 +81,54 @@ pub trait Tokenizable {
     /// Converts a specified type back into token.
     fn into_token(self) -> Token;
 }
+
+macro_rules! impl_tuples {
+    ($num: expr, $( $ty: ident : $no: tt, )+) => {
+        impl<$($ty, )+> Tokenizable for ($($ty,)+) where
+            $(
+                $ty: Tokenizable,
+            )+
+        {
+            fn from_token(token: Token) -> Result<Self, InvalidOutputType> {
+                match token {
+                    Token::Tuple(mut tokens) => {
+                        let mut it = tokens.drain(..);
+                        Ok(($(
+                          $ty::from_token(it.next().expect("All elements are in vector; qed"))?,
+                        )+))
+                    },
+                    other => Err(InvalidOutputType(format!(
+                        "Expected `Tuple`, got {:?}",
+                        other,
+                    ))),
+                }
+            }
+
+            fn into_token(self) -> Token {
+                Token::Tuple(vec![
+                    $( self.$no.into_token(), )+
+                ])
+            }
+        }
+    }
+}
+
+impl_tuples!(1, A:0, );
+impl_tuples!(2, A:0, B:1, );
+impl_tuples!(3, A:0, B:1, C:2, );
+impl_tuples!(4, A:0, B:1, C:2, D:3, );
+impl_tuples!(5, A:0, B:1, C:2, D:3, E:4, );
+impl_tuples!(6, A:0, B:1, C:2, D:3, E:4, F:5, );
+impl_tuples!(7, A:0, B:1, C:2, D:3, E:4, F:5, G:6, );
+impl_tuples!(8, A:0, B:1, C:2, D:3, E:4, F:5, G:6, H:7, );
+impl_tuples!(9, A:0, B:1, C:2, D:3, E:4, F:5, G:6, H:7, I:8, );
+impl_tuples!(10, A:0, B:1, C:2, D:3, E:4, F:5, G:6, H:7, I:8, J:9, );
+impl_tuples!(11, A:0, B:1, C:2, D:3, E:4, F:5, G:6, H:7, I:8, J:9, K:10, );
+impl_tuples!(12, A:0, B:1, C:2, D:3, E:4, F:5, G:6, H:7, I:8, J:9, K:10, L:11, );
+impl_tuples!(13, A:0, B:1, C:2, D:3, E:4, F:5, G:6, H:7, I:8, J:9, K:10, L:11, M:12, );
+impl_tuples!(14, A:0, B:1, C:2, D:3, E:4, F:5, G:6, H:7, I:8, J:9, K:10, L:11, M:12, N:13, );
+impl_tuples!(15, A:0, B:1, C:2, D:3, E:4, F:5, G:6, H:7, I:8, J:9, K:10, L:11, M:12, N:13, O:14, );
+impl_tuples!(16, A:0, B:1, C:2, D:3, E:4, F:5, G:6, H:7, I:8, J:9, K:10, L:11, M:12, N:13, O:14, P:15, );
 
 impl Tokenizable for Token {
     fn from_token(token: Token) -> Result<Self, InvalidOutputType> {
@@ -339,6 +312,33 @@ tokenizable_item! {
     i8, i16, i32, i64, i128, u16, u32, u64, u128,
 }
 
+macro_rules! impl_tokenizable_item_tuple {
+    ($( $ty: ident , )+) => {
+        impl<$($ty, )+> TokenizableItem for ($($ty,)+) where
+            $(
+                $ty: Tokenizable,
+            )+
+        {}
+    }
+}
+
+impl_tokenizable_item_tuple!(A,);
+impl_tokenizable_item_tuple!(A, B,);
+impl_tokenizable_item_tuple!(A, B, C,);
+impl_tokenizable_item_tuple!(A, B, C, D,);
+impl_tokenizable_item_tuple!(A, B, C, D, E,);
+impl_tokenizable_item_tuple!(A, B, C, D, E, F,);
+impl_tokenizable_item_tuple!(A, B, C, D, E, F, G,);
+impl_tokenizable_item_tuple!(A, B, C, D, E, F, G, H,);
+impl_tokenizable_item_tuple!(A, B, C, D, E, F, G, H, I,);
+impl_tokenizable_item_tuple!(A, B, C, D, E, F, G, H, I, J,);
+impl_tokenizable_item_tuple!(A, B, C, D, E, F, G, H, I, J, K,);
+impl_tokenizable_item_tuple!(A, B, C, D, E, F, G, H, I, J, K, L,);
+impl_tokenizable_item_tuple!(A, B, C, D, E, F, G, H, I, J, K, L, M,);
+impl_tokenizable_item_tuple!(A, B, C, D, E, F, G, H, I, J, K, L, M, N,);
+impl_tokenizable_item_tuple!(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O,);
+impl_tokenizable_item_tuple!(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P,);
+
 impl Tokenizable for Vec<u8> {
     fn from_token(token: Token) -> Result<Self, InvalidOutputType> {
         match token {
@@ -505,6 +505,10 @@ mod tests {
 
         let _ints: (i16, i32, i64, i128) = output();
         let _uints: (u16, u32, u64, u128) = output();
+
+        let _tuple: (Address, Vec<Vec<u8>>) = output();
+        let _vec_of_tuple: Vec<(Address, String)> = output();
+        let _vec_of_tuple_5: Vec<(Address, Vec<Vec<u8>>, String, U256, bool)> = output();
     }
 
     #[test]
