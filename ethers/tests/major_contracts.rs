@@ -30,8 +30,8 @@ abigen!(
     }
 );
 
-// // Abi Encoder v2 is still buggy
-// abigen!(
-//     DyDxLimitOrders,
-//     "etherscan:0xDEf136D9884528e1EB302f39457af0E4d3AD24EB"
-// );
+// The DyDxLimitOrders contract uses Abi Encoder v2 with nested tuples
+abigen!(
+    DyDxLimitOrders,
+    "etherscan:0xDEf136D9884528e1EB302f39457af0E4d3AD24EB"
+);
