@@ -40,15 +40,7 @@ fn expand_function(function: &Function, alias: Option<Ident>) -> Result<TokenStr
 
     let outputs = expand_fn_outputs(&function.outputs)?;
 
-    let is_mutable = matches!(
-        function.state_mutability,
-        StateMutability::Nonpayable | StateMutability::Payable
-    );
-    let result = if !is_mutable {
-        quote! { ContractCall<P, S, #outputs> }
-    } else {
-        quote! { ContractCall<P, S, H256> }
-    };
+    let result = quote! { ContractCall<P, S, #outputs> };
 
     let arg = expand_inputs_call_arg(&function.inputs);
     let doc = util::expand_doc(&format!(
@@ -85,8 +77,13 @@ pub(crate) fn expand_inputs_call_arg(inputs: &[Param]) -> TokenStream {
     let names = inputs
         .iter()
         .enumerate()
-        .map(|(i, param)| util::expand_input_name(i, &param.name));
-    quote! { ( #( #names ,)* ) }
+        .map(|(i, param)| util::expand_input_name(i, &param.name))
+        .collect::<Vec<TokenStream>>();
+    match names.len() {
+        0 => quote! { () },
+        1 => quote! { #( #names )* },
+        _ => quote! { ( #(#names, )* ) },
+    }
 }
 
 fn expand_fn_outputs(outputs: &[Param]) -> Result<TokenStream> {
@@ -112,6 +109,54 @@ fn expand_selector(selector: Selector) -> TokenStream {
 mod tests {
     use super::*;
     use ethers_core::abi::ParamType;
+
+    #[test]
+    fn test_expand_inputs_call_arg() {
+        // no inputs
+        let params = vec![];
+        let token_stream = expand_inputs_call_arg(&params);
+        assert_eq!(token_stream.to_string(), "( )");
+
+        // single input
+        let params = vec![Param {
+            name: "arg_a".to_string(),
+            kind: ParamType::Address,
+        }];
+        let token_stream = expand_inputs_call_arg(&params);
+        assert_eq!(token_stream.to_string(), "arg_a");
+
+        // two inputs
+        let params = vec![
+            Param {
+                name: "arg_a".to_string(),
+                kind: ParamType::Address,
+            },
+            Param {
+                name: "arg_b".to_string(),
+                kind: ParamType::Uint(256usize),
+            },
+        ];
+        let token_stream = expand_inputs_call_arg(&params);
+        assert_eq!(token_stream.to_string(), "( arg_a , arg_b , )");
+
+        // three inputs
+        let params = vec![
+            Param {
+                name: "arg_a".to_string(),
+                kind: ParamType::Address,
+            },
+            Param {
+                name: "arg_b".to_string(),
+                kind: ParamType::Uint(128usize),
+            },
+            Param {
+                name: "arg_c".to_string(),
+                kind: ParamType::Bool,
+            },
+        ];
+        let token_stream = expand_inputs_call_arg(&params);
+        assert_eq!(token_stream.to_string(), "( arg_a , arg_b , arg_c , )");
+    }
 
     #[test]
     fn expand_inputs_empty() {
@@ -157,7 +202,7 @@ mod tests {
     }
 
     #[test]
-    fn expand_fn_outputs_muliple() {
+    fn expand_fn_outputs_multiple() {
         assert_quote!(
             expand_fn_outputs(&[
                 Param {
