@@ -1,4 +1,7 @@
-use ethers::{contract::ContractFactory, types::H256};
+use ethers::{
+    contract::{ContractFactory, Multicall},
+    types::H256,
+};
 
 mod common;
 pub use common::*;
@@ -9,14 +12,14 @@ mod eth_tests {
     use ethers::{
         providers::{Http, Provider, StreamExt},
         signers::Client,
-        types::Address,
+        types::{Address, U256},
         utils::Ganache,
     };
     use std::{convert::TryFrom, sync::Arc};
 
     #[tokio::test]
     async fn deploy_and_call_contract() {
-        let (abi, bytecode) = compile();
+        let (abi, bytecode) = compile_contract("SimpleStorage", "SimpleStorage.sol");
 
         // launch ganache
         let ganache = Ganache::new().spawn();
@@ -85,7 +88,7 @@ mod eth_tests {
 
     #[tokio::test]
     async fn get_past_events() {
-        let (abi, bytecode) = compile();
+        let (abi, bytecode) = compile_contract("SimpleStorage", "SimpleStorage.sol");
         let ganache = Ganache::new().spawn();
         let client = connect(&ganache, 0);
         let contract = deploy(client.clone(), abi, bytecode).await;
@@ -114,7 +117,7 @@ mod eth_tests {
 
     #[tokio::test]
     async fn watch_events() {
-        let (abi, bytecode) = compile();
+        let (abi, bytecode) = compile_contract("SimpleStorage", "SimpleStorage.sol");
         let ganache = Ganache::new().spawn();
         let client = connect(&ganache, 0);
         let contract = deploy(client, abi, bytecode).await;
@@ -149,7 +152,7 @@ mod eth_tests {
 
     #[tokio::test]
     async fn signer_on_node() {
-        let (abi, bytecode) = compile();
+        let (abi, bytecode) = compile_contract("SimpleStorage", "SimpleStorage.sol");
         // spawn ganache
         let ganache = Ganache::new().spawn();
 
@@ -180,6 +183,100 @@ mod eth_tests {
             .unwrap();
         assert_eq!(value, "hi");
     }
+
+    #[tokio::test]
+    async fn multicall_aggregate() {
+        // get ABI and bytecode for the Multcall contract
+        let (multicall_abi, multicall_bytecode) = compile_contract("Multicall", "Multicall.sol");
+
+        // get ABI and bytecode for the NotSoSimpleStorage contract
+        let (not_so_simple_abi, not_so_simple_bytecode) =
+            compile_contract("NotSoSimpleStorage", "NotSoSimpleStorage.sol");
+
+        // get ABI and bytecode for the SimpleStorage contract
+        let (abi, bytecode) = compile_contract("SimpleStorage", "SimpleStorage.sol");
+
+        // launch ganache
+        let ganache = Ganache::new().spawn();
+
+        // Instantiate the clients. We assume that clients consume the provider and the wallet
+        // (which makes sense), so for multi-client tests, you must clone the provider.
+        // `client` is used to deploy the Multicall contract
+        // `client2` is used to deploy the first SimpleStorage contract
+        // `client3` is used to deploy the second SimpleStorage contract
+        // `client4` is used to make the aggregate call
+        let client = connect(&ganache, 0);
+        let client2 = connect(&ganache, 1);
+        let client3 = connect(&ganache, 2);
+        let client4 = connect(&ganache, 3);
+
+        // create a factory which will be used to deploy instances of the contract
+        let multicall_factory =
+            ContractFactory::new(multicall_abi, multicall_bytecode, client.clone());
+        let simple_factory = ContractFactory::new(abi.clone(), bytecode.clone(), client2.clone());
+        let not_so_simple_factory =
+            ContractFactory::new(not_so_simple_abi, not_so_simple_bytecode, client3.clone());
+
+        // `send` consumes the deployer so it must be cloned for later re-use
+        // (practically it's not expected that you'll need to deploy multiple instances of
+        // the _same_ deployer, so it's fine to clone here from a dev UX vs perf tradeoff)
+        let multicall_deployer = multicall_factory.deploy(()).unwrap();
+        let multicall_contract = multicall_deployer.clone().send().await.unwrap();
+        let simple_deployer = simple_factory.deploy("the first one".to_string()).unwrap();
+        let simple_contract = simple_deployer.clone().send().await.unwrap();
+        let not_so_simple_deployer = not_so_simple_factory
+            .deploy("the second one".to_string())
+            .unwrap();
+        let not_so_simple_contract = not_so_simple_deployer.clone().send().await.unwrap();
+
+        // need to declare the method first, and only then send it
+        // this is because it internally clones an Arc which would otherwise
+        // get immediately dropped
+        simple_contract
+            .connect(client2.clone())
+            .method::<_, H256>("setValue", "reset first".to_owned())
+            .unwrap()
+            .send()
+            .await
+            .unwrap();
+        not_so_simple_contract
+            .connect(client3.clone())
+            .method::<_, H256>("setValue", "reset second".to_owned())
+            .unwrap()
+            .send()
+            .await
+            .unwrap();
+
+        // get the calls for `value` and `last_sender` for both SimpleStorage contracts
+        let value = simple_contract.method::<_, String>("getValue", ()).unwrap();
+        let value2 = not_so_simple_contract
+            .method::<_, (String, Address)>("getValues", ())
+            .unwrap();
+        let last_sender = simple_contract
+            .method::<_, Address>("lastSender", ())
+            .unwrap();
+        let last_sender2 = not_so_simple_contract
+            .method::<_, Address>("lastSender", ())
+            .unwrap();
+
+        // initiate the Multicall instance
+        let multicall = Multicall::new(Some(multicall_contract.address()), None, client4.clone());
+
+        // add calls to multicall
+        let multicall = multicall.add_call(value);
+        let multicall = multicall.add_calls(vec![value2]);
+        let multicall = multicall.add_calls(vec![last_sender, last_sender2]);
+
+        let return_data: (U256, (String, (String, Address), Address, Address)) =
+            multicall.call().await.unwrap();
+
+        let return_data = return_data.1;
+        assert_eq!(return_data.0, "reset first");
+        assert_eq!((return_data.1).0, "reset second");
+        assert_eq!((return_data.1).1, client3.address());
+        assert_eq!(return_data.2, client2.address());
+        assert_eq!(return_data.3, client3.address());
+    }
 }
 
 #[cfg(feature = "celo")]
@@ -194,7 +291,7 @@ mod celo_tests {
 
     #[tokio::test]
     async fn deploy_and_call_contract() {
-        let (abi, bytecode) = compile();
+        let (abi, bytecode) = compile_contract("SimpleStorage", "SimpleStorage.sol");
 
         // Celo testnet
         let provider =

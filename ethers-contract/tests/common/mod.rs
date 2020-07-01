@@ -34,12 +34,12 @@ impl Detokenize for ValueChanged {
     }
 }
 
-/// compiles the test contract
-pub fn compile() -> (Abi, Bytes) {
-    let compiled = Solc::new("./tests/contract.sol").build().unwrap();
-    let contract = compiled
-        .get("SimpleStorage")
-        .expect("could not find contract");
+/// compiles the given contract and returns the ABI and Bytecode
+pub fn compile_contract(name: &str, filename: &str) -> (Abi, Bytes) {
+    let compiled = Solc::new(&format!("./tests/solidity-contracts/{}", filename))
+        .build()
+        .unwrap();
+    let contract = compiled.get(name).expect("could not find contract");
     (contract.abi.clone(), contract.bytecode.clone())
 }
 
