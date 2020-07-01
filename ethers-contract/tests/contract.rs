@@ -12,7 +12,7 @@ mod eth_tests {
     use ethers::{
         providers::{Http, Provider, StreamExt},
         signers::Client,
-        types::{Address, U256},
+        types::Address,
         utils::Ganache,
     };
     use std::{convert::TryFrom, sync::Arc};
@@ -259,18 +259,19 @@ mod eth_tests {
             .method::<_, Address>("lastSender", ())
             .unwrap();
 
-        // initiate the Multicall instance
-        let multicall = Multicall::new(Some(multicall_contract.address()), None, client4.clone());
+        // initiate the Multicall instance and add calls one by one in builder style
+        let addr = multicall_contract.address();
+        let multicall = Multicall::new(client4.clone(), Some(addr))
+            .await
+            .unwrap()
+            .add_call(value)
+            .add_call(value2)
+            .add_call(last_sender)
+            .add_call(last_sender2);
 
-        // add calls to multicall
-        let multicall = multicall.add_call(value);
-        let multicall = multicall.add_calls(vec![value2]);
-        let multicall = multicall.add_calls(vec![last_sender, last_sender2]);
-
-        let return_data: (U256, (String, (String, Address), Address, Address)) =
+        let return_data: (String, (String, Address), Address, Address) =
             multicall.call().await.unwrap();
 
-        let return_data = return_data.1;
         assert_eq!(return_data.0, "reset first");
         assert_eq!((return_data.1).0, "reset second");
         assert_eq!((return_data.1).1, client3.address());

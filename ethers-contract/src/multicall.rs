@@ -1,104 +1,177 @@
-extern crate hex;
-
 use ethers_core::{
     abi::{Detokenize, Function, Token},
-    types::{Address, BlockNumber, NameOrAddress, TransactionRequest, U256},
+    types::{Address, BlockNumber, NameOrAddress, U256},
 };
 use ethers_providers::JsonRpcClient;
 use ethers_signers::{Client, Signer};
-use hex::FromHex;
-use lazy_static::lazy_static;
 
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, str::FromStr, sync::Arc};
 
-use crate::call::{ContractCall, ContractError};
-use crate::multicall_contract::MulticallContract;
+use crate::{
+    call::{ContractCall, ContractError},
+    multicall_contract::MulticallContract,
+    Lazy,
+};
 
-lazy_static! {
-    static ref ADDRESS_BOOK: HashMap<U256, Address> = {
-        let mut m = HashMap::new();
+/// A lazily computed hash map with the Ethereum network IDs as keys and the corresponding
+/// Multicall smart contract addresses as values
+pub static ADDRESS_BOOK: Lazy<HashMap<U256, Address>> = Lazy::new(|| {
+    let mut m = HashMap::new();
 
-        // mainnet
-        let addr = <[u8; 20]>::from_hex("eefba1e63905ef1d7acba5a8513c70307c1ce441").expect("Decoding failed");
-        m.insert(U256::from(1u8), Address::from(addr));
+    // mainnet
+    let addr =
+        Address::from_str("eefba1e63905ef1d7acba5a8513c70307c1ce441").expect("Decoding failed");
+    m.insert(U256::from(1u8), addr);
 
-        // rinkeby
-        let addr = <[u8; 20]>::from_hex("42ad527de7d4e9d9d011ac45b31d8551f8fe9821").expect("Decoding failed");
-        m.insert(U256::from(4u8), Address::from(addr));
+    // rinkeby
+    let addr =
+        Address::from_str("42ad527de7d4e9d9d011ac45b31d8551f8fe9821").expect("Decoding failed");
+    m.insert(U256::from(4u8), addr);
 
-        // goerli
-        let addr = <[u8; 20]>::from_hex("77dca2c955b15e9de4dbbcf1246b4b85b651e50e").expect("Decoding failed");
-        m.insert(U256::from(5u8), Address::from(addr));
+    // goerli
+    let addr =
+        Address::from_str("77dca2c955b15e9de4dbbcf1246b4b85b651e50e").expect("Decoding failed");
+    m.insert(U256::from(5u8), addr);
 
-        // kovan
-        let addr = <[u8; 20]>::from_hex("2cc8688c5f75e365aaeeb4ea8d6a480405a48d2a").expect("Decoding failed");
-        m.insert(U256::from(42u8), Address::from(addr));
+    // kovan
+    let addr =
+        Address::from_str("2cc8688c5f75e365aaeeb4ea8d6a480405a48d2a").expect("Decoding failed");
+    m.insert(U256::from(42u8), addr);
 
-        m
-    };
-}
+    m
+});
 
 #[derive(Clone)]
-struct Call {
+/// Helper struct for managing calls to be made to the `function` in smart contract `target`
+/// with `data`
+pub struct Call {
     target: Address,
     data: Vec<u8>,
     function: Function,
 }
 
+/// A Multicall is an abstraction for sending batched transactions to the Ethereum blockchain.
+/// It stores an instance of the [`Multicall` smart contract](https://etherscan.io/address/0xeefba1e63905ef1d7acba5a8513c70307c1ce441#code)
+/// and the user provided list of transactions to be made.
+///
+/// `Multicall` can instantiate the Multicall contract instance from the chain ID of the client
+/// supplied to [`new`]. It supports the Ethereum mainnet, as well as testnets
+/// [Rinkeby](https://rinkeby.etherscan.io/address/0x42ad527de7d4e9d9d011ac45b31d8551f8fe9821#code),
+/// [Goerli](https://goerli.etherscan.io/address/0x77dca2c955b15e9de4dbbcf1246b4b85b651e50e) and
+/// [Kovan](https://kovan.etherscan.io/address/0x2cc8688c5f75e365aaeeb4ea8d6a480405a48d2a#code).
+///
+/// Additionally, the `block` number can be provided for the call by using the [`block`] method.
+/// Build on the `Multicall` instance by adding calls using the [`add_call`] method.
+///
+/// # Example
+///
+/// ```no_run
+/// use ethers::{
+///     abi::Abi,
+///     contract::{Contract, Multicall},
+///     providers::{Http, Provider},
+///     signers::{Client, Wallet},
+///     types::{Address, U256},
+/// };
+/// use std::{convert::TryFrom, sync::Arc};
+///
+/// # async fn bar() -> Result<(), Box<dyn std::error::Error>> {
+/// // this is a dummy address used for illustration purpose
+/// let address = "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee".parse::<Address>()?;
+///
+/// // (ugly way to write the ABI inline, you can otherwise read it from a file)
+/// let abi: Abi = serde_json::from_str(r#"[{"inputs":[{"internalType":"string","name":"value","type":"string"}],"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"author","type":"address"},{"indexed":true,"internalType":"address","name":"oldAuthor","type":"address"},{"indexed":false,"internalType":"string","name":"oldValue","type":"string"},{"indexed":false,"internalType":"string","name":"newValue","type":"string"}],"name":"ValueChanged","type":"event"},{"inputs":[],"name":"getValue","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"lastSender","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"string","name":"value","type":"string"}],"name":"setValue","outputs":[],"stateMutability":"nonpayable","type":"function"}]"#)?;
+///
+/// // connect to the network
+/// let provider = Provider::<Http>::try_from("https://kovan.infura.io")?;
+/// let client = "380eb0f3d505f087e438eca80bc4df9a7faa24f868e69fc0440261a0fc0567dc"
+///     .parse::<Wallet>()?.connect(provider);
+///
+/// // create the contract object. This will be used to construct the calls for multicall
+/// let contract = Contract::new(address, abi, client.clone());
+///
+/// // Note that these [`ContractCall`]s are futures, and need to be `.await`ed to resolve.
+/// // But we will let `Multicall` to take care of that for us
+/// let first_call = contract.method::<_, String>("getValue", ())?;
+/// let second_call = contract.method::<_, Address>("lastSender", ())?;
+///
+/// // Since this example connects to the Kovan testnet, we need not provide an address for
+/// // the Multicall contract and we set that to `None`. If you wish to provide the address
+/// // for the Multicall contract, you can pass the `Some(multicall_addr)` argument.
+/// // Construction of the `Multicall` instance follows the builder pattern
+/// let multicall = Multicall::new(client, None)
+///     .await?
+///     .add_call(first_call)
+///     .add_call(second_call);
+///
+/// // `await`ing on the `call` method lets us fetch the return values of both the above calls
+/// // in one single RPC call
+/// let _return_data: (String, Address) = multicall.call().await?;
+///
+/// # Ok(())
+/// # }
+/// ```
+///
+/// [`new`]: method@crate::Multicall::new
+/// [`block`]: method@crate::Multicall::block
+/// [`add_call`]: methond@crate::Multicall::add_call
 pub struct Multicall<P, S> {
-    address: Option<Address>,
     calls: Vec<Call>,
     block: Option<BlockNumber>,
-    client: Arc<Client<P, S>>,
+    contract: MulticallContract<P, S>,
 }
 
-impl<P, S> Multicall<P, S> {
-    pub fn new(
+impl<P, S> Multicall<P, S>
+where
+    P: JsonRpcClient,
+    S: Signer,
+{
+    /// Creates a new Multicall instance from the provided client. If provided with an `address`,
+    /// it instantiates the Multicall contract with that address. Otherwise it fetches the address
+    /// from the address book.
+    /// # Panics
+    /// If a `None` address is provided, and the provided client also does not belong to one of
+    /// the supported network IDs (mainnet, kovan, rinkeby and goerli)
+    pub async fn new<C: Into<Arc<Client<P, S>>>>(
+        client: C,
         address: Option<Address>,
-        block: Option<BlockNumber>,
-        client: impl Into<Arc<Client<P, S>>>,
-    ) -> Self {
-        Self {
-            address,
-            calls: vec![],
-            block,
-            client: client.into(),
-        }
-    }
+    ) -> Result<Self, ContractError> {
+        // Clone the client
+        let client = Arc::clone(&client.into());
 
-    pub fn add_one(mut self, tx: TransactionRequest, function: Function) -> Self {
-        match (tx.to, tx.data) {
-            (Some(NameOrAddress::Address(target)), Some(data)) => {
-                let call = Call {
-                    target,
-                    data: data.0,
-                    function,
-                };
-                self.calls.push(call);
-                self
+        // Fetch chain id and the corresponding address of Multicall contract
+        // preference is given to Multicall contract's address if provided
+        // otherwise check the address book for the client's chain ID
+        let address: Address = match address {
+            Some(addr) => addr,
+            None => {
+                let chain_id = client.get_chainid().await?;
+                match ADDRESS_BOOK.get(&chain_id) {
+                    Some(addr) => addr.clone(),
+                    None => panic!(
+                        "Must either be a valid Network ID or provide Multicall contract address"
+                    ),
+                }
             }
-            _ => self,
-        }
+        };
+
+        // Instantiate the multicall contract
+        let contract = MulticallContract::new(address, client);
+
+        Ok(Self {
+            calls: vec![],
+            block: None,
+            contract,
+        })
     }
 
-    pub fn add_many(mut self, txs: Vec<TransactionRequest>, functions: Vec<Function>) -> Self {
-        let calls: Vec<Call> = txs
-            .into_iter()
-            .zip(functions.into_iter())
-            .filter_map(|(tx, function)| match (tx.to, tx.data) {
-                (Some(NameOrAddress::Address(target)), Some(data)) => Some(Call {
-                    target,
-                    data: data.0,
-                    function,
-                }),
-                _ => None,
-            })
-            .collect();
-
-        self.calls.extend(calls);
+    /// Sets the `block` field for the multicall aggregate call
+    pub fn block<T: Into<BlockNumber>>(mut self, block: T) -> Self {
+        self.block = Some(block.into());
         self
     }
 
+    /// Appends a `call` to the list of calls for the Multicall instance
     pub fn add_call<D: Detokenize>(mut self, call: ContractCall<P, S, D>) -> Self {
         match (call.tx.to, call.tx.data) {
             (Some(NameOrAddress::Address(target)), Some(data)) => {
@@ -113,23 +186,6 @@ impl<P, S> Multicall<P, S> {
             _ => self,
         }
     }
-
-    pub fn add_calls<D: Detokenize>(mut self, calls: Vec<ContractCall<P, S, D>>) -> Self {
-        let calls: Vec<Call> = calls
-            .into_iter()
-            .filter_map(|call| match (call.tx.to, call.tx.data) {
-                (Some(NameOrAddress::Address(target)), Some(data)) => Some(Call {
-                    target,
-                    data: data.0,
-                    function: call.function,
-                }),
-                _ => None,
-            })
-            .collect();
-
-        self.calls.extend(calls);
-        self
-    }
 }
 
 impl<P, S> Multicall<P, S>
@@ -137,25 +193,23 @@ where
     P: JsonRpcClient,
     S: Signer,
 {
-    pub async fn call<D: Detokenize>(&self) -> Result<(U256, D), ContractError> {
-        // 1. Fetch chain id and the corresponding address of Multicall contract
-        // preference is given to Multicall contract's address if provided
-        // otherwise check the address book for the client's chain ID
-        let address = match self.address {
-            Some(address) => address,
-            None => {
-                let chain_id = self.client.get_chainid().await?;
-                match ADDRESS_BOOK.get(&chain_id) {
-                    Some(address) => address.clone(),
-                    None => return Err(ContractError::ConstructorError),
-                }
-            }
-        };
-
-        // 2. Instantiate the multicall contract
-        let multicall = MulticallContract::new(address, Arc::clone(&self.client));
-
-        // 3. Map the Multicall struct into appropriate types for `aggregate` function
+    /// Queries the Ethereum blockchain via an `eth_call`, but to the Multicall contract.
+    ///
+    /// It returns a [`ContractError`] if there is any error in the RPC call or while
+    /// detokenizing the tokens back to the expected return type. The return type must be
+    /// annonated while calling this method.
+    ///
+    /// ```ignore
+    /// // If the solidity function calls has the following return types:
+    /// // 1. returns (uint256)
+    /// // 2. returns (string, address)
+    /// // 3. returns (bool)
+    /// let result: (U256, (String, Address), bool) = multicall.call().await?;
+    /// ```
+    ///
+    /// Note: this method _does not_ send a transaction from your account
+    pub async fn call<D: Detokenize>(&self) -> Result<D, ContractError> {
+        // Map the Multicall struct into appropriate types for `aggregate` function
         let calls: Vec<(Address, Vec<u8>)> = self
             .calls
             .clone()
@@ -163,8 +217,8 @@ where
             .map(|call| (call.target, call.data))
             .collect();
 
-        // 4. Call the `aggregate` function and get return data
-        let contract_call = multicall.aggregate(calls);
+        // Call the `aggregate` function and get return data
+        let contract_call = self.contract.aggregate(calls);
         let contract_call = {
             if let Some(block) = self.block {
                 contract_call.block(block)
@@ -173,9 +227,10 @@ where
             }
         };
 
-        let (block_number, vec_bytes) = contract_call.call().await?;
+        // Fetch respons from the Multicall contract
+        let (_block_number, vec_bytes) = contract_call.call().await?;
 
-        // 5. Decode return data into ABI tokens
+        // Decode return data into ABI tokens
         let tokens: Vec<Token> = self
             .calls
             .clone()
@@ -193,12 +248,12 @@ where
             })
             .collect();
 
-        // 6. Form tokens that represent tuples
+        // Form tokens that represent tuples
         let tokens = vec![Token::Tuple(tokens)];
 
-        // 7. Detokenize from the tokens into the provided tuple D
+        // Detokenize from the tokens into the provided tuple D
         let data = D::from_tokens(tokens)?;
 
-        Ok((block_number, data))
+        Ok(data)
     }
 }
