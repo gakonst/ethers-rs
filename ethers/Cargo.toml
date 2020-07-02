@@ -49,7 +49,7 @@ ethers-signers = { version = "0.1.3", path = "../ethers-signers", optional = tru
 
 [dev-dependencies]
 ethers-contract = { version = "0.1.3", path = "../ethers-contract", features = ["abigen"] }
-ethers-providers = { version = "0.1.3", path = "../ethers-providers", features = ["tokio-runtime"] }
+ethers-providers = { version = "0.1.3", path = "../ethers-providers" }
 
 anyhow = "1.0.31"
 rand = "0.7"
