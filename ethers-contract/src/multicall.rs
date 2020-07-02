@@ -185,6 +185,9 @@ where
     }
 
     /// Appends a `call` to the list of calls for the Multicall instance
+    /// # Panics
+    /// If more than the maximum number of supported calls are added. The maximum
+    /// limits is constrained due to tokenization/detokenization support for tuples
     pub fn add_call<D: Detokenize>(mut self, call: ContractCall<P, S, D>) -> Self {
         if self.calls.len() >= 16 {
             panic!("Cannot support more than {} calls", 16);
