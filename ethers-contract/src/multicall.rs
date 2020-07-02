@@ -162,7 +162,7 @@ where
                 match ADDRESS_BOOK.get(&chain_id) {
                     Some(addr) => addr.clone(),
                     None => panic!(
-                        "Must either be a valid Network ID or provide Multicall contract address"
+                        "Must either be a supported Network ID or provide Multicall contract address"
                     ),
                 }
             }
@@ -186,6 +186,10 @@ where
 
     /// Appends a `call` to the list of calls for the Multicall instance
     pub fn add_call<D: Detokenize>(mut self, call: ContractCall<P, S, D>) -> Self {
+        if self.calls.len() >= 16 {
+            panic!("Cannot support more than {} calls", 16);
+        }
+
         match (call.tx.to, call.tx.data) {
             (Some(NameOrAddress::Address(target)), Some(data)) => {
                 let call = Call {
