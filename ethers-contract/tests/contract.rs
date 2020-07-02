@@ -1,7 +1,4 @@
-use ethers::{
-    contract::{ContractFactory, Multicall},
-    types::H256,
-};
+use ethers::{contract::ContractFactory, types::H256};
 
 mod common;
 pub use common::*;
@@ -10,6 +7,7 @@ pub use common::*;
 mod eth_tests {
     use super::*;
     use ethers::{
+        contract::Multicall,
         providers::{Http, Provider, StreamExt},
         signers::Client,
         types::Address,

@@ -1,5 +1,5 @@
 use ethers_core::{
-    abi::{Detokenize, Error as AbiError, Function, InvalidOutputType, Token},
+    abi::{Detokenize, Error as AbiError, Function, InvalidOutputType},
     types::{Address, BlockNumber, TransactionRequest, TxHash, U256},
 };
 use ethers_providers::{JsonRpcClient, ProviderError};

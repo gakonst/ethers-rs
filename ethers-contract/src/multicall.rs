@@ -273,7 +273,6 @@ where
             .map(|(call, bytes)| {
                 let tokens: Vec<Token> = call.function.decode_output(&bytes).unwrap();
 
-                // NOTE: post processing
                 match tokens.len() {
                     0 => Token::Tuple(vec![]),
                     1 => tokens[0].clone(),
