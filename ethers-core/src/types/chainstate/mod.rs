@@ -16,6 +16,9 @@ pub use bytes::Bytes;
 mod block;
 pub use block::{Block, BlockId, BlockNumber};
 
+#[cfg(feature = "celo")]
+pub use block::Randomness;
+
 mod log;
 pub use log::{Filter, Log, ValueOrArray};
 
