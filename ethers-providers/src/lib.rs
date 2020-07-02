@@ -100,7 +100,7 @@
 //! # }
 //! ```
 mod transports;
-pub use transports::{Http, Ws};
+pub use transports::*;
 
 mod provider;
 
