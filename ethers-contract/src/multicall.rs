@@ -1,6 +1,6 @@
 use ethers_core::{
     abi::{Detokenize, Function, Token},
-    types::{Address, BlockNumber, NameOrAddress, U256},
+    types::{Address, BlockNumber, NameOrAddress, TxHash, U256},
 };
 use ethers_providers::JsonRpcClient;
 use ethers_signers::{Client, Signer};
@@ -41,16 +41,7 @@ pub static ADDRESS_BOOK: Lazy<HashMap<U256, Address>> = Lazy::new(|| {
     m
 });
 
-#[derive(Clone)]
-/// Helper struct for managing calls to be made to the `function` in smart contract `target`
-/// with `data`
-pub struct Call {
-    target: Address,
-    data: Vec<u8>,
-    function: Function,
-}
-
-/// A Multicall is an abstraction for sending batched transactions to the Ethereum blockchain.
+/// A Multicall is an abstraction for sending batched calls/transactions to the Ethereum blockchain.
 /// It stores an instance of the [`Multicall` smart contract](https://etherscan.io/address/0xeefba1e63905ef1d7acba5a8513c70307c1ce441#code)
 /// and the user provided list of transactions to be made.
 ///
@@ -71,7 +62,7 @@ pub struct Call {
 ///     contract::{Contract, Multicall},
 ///     providers::{Http, Provider},
 ///     signers::{Client, Wallet},
-///     types::{Address, U256},
+///     types::{Address, H256, U256},
 /// };
 /// use std::{convert::TryFrom, sync::Arc};
 ///
@@ -90,16 +81,16 @@ pub struct Call {
 /// // create the contract object. This will be used to construct the calls for multicall
 /// let contract = Contract::new(address, abi, client.clone());
 ///
-/// // Note that these [`ContractCall`]s are futures, and need to be `.await`ed to resolve.
+/// // note that these [`ContractCall`]s are futures, and need to be `.await`ed to resolve.
 /// // But we will let `Multicall` to take care of that for us
 /// let first_call = contract.method::<_, String>("getValue", ())?;
 /// let second_call = contract.method::<_, Address>("lastSender", ())?;
 ///
-/// // Since this example connects to the Kovan testnet, we need not provide an address for
+/// // since this example connects to the Kovan testnet, we need not provide an address for
 /// // the Multicall contract and we set that to `None`. If you wish to provide the address
 /// // for the Multicall contract, you can pass the `Some(multicall_addr)` argument.
 /// // Construction of the `Multicall` instance follows the builder pattern
-/// let multicall = Multicall::new(client, None)
+/// let multicall = Multicall::new(client.clone(), None)
 ///     .await?
 ///     .add_call(first_call)
 ///     .add_call(second_call);
@@ -108,6 +99,19 @@ pub struct Call {
 /// // in one single RPC call
 /// let _return_data: (String, Address) = multicall.call().await?;
 ///
+/// // the same `Multicall` instance can be re-used to do a different batch of transactions.
+/// // Say we wish to broadcast (send) a couple of transactions via the Multicall contract.
+/// let first_broadcast = contract.method::<_, H256>("setValue", "some value".to_owned())?;
+/// let second_broadcast = contract.method::<_, H256>("setValue", "new value".to_owned())?;
+/// let multicall = multicall
+///     .clear_calls()
+///     .add_call(first_broadcast)
+///     .add_call(second_broadcast);
+///
+/// // `await`ing the `send` method waits for the transaction to be broadcast, which also
+/// // returns the transaction hash
+/// let tx_hash = multicall.send().await?;
+/// let _tx_receipt = client.provider().pending_transaction(tx_hash).await?;
 /// # Ok(())
 /// # }
 /// ```
@@ -119,6 +123,15 @@ pub struct Multicall<P, S> {
     calls: Vec<Call>,
     block: Option<BlockNumber>,
     contract: MulticallContract<P, S>,
+}
+
+#[derive(Clone)]
+/// Helper struct for managing calls to be made to the `function` in smart contract `target`
+/// with `data`
+pub struct Call {
+    target: Address,
+    data: Vec<u8>,
+    function: Function,
 }
 
 impl<P, S> Multicall<P, S>
@@ -185,6 +198,27 @@ where
             }
             _ => self,
         }
+    }
+
+    /// Clear the batch of calls from the Multicall instance. Re-use the already instantiated
+    /// Multicall, to send a different batch of transactions or do another aggregate query
+    ///
+    /// ```ignore
+    /// let multicall = Multicall::new(client, None)
+    ///     .await?
+    ///     .add_call(broadcast_1)
+    ///     .add_call(broadcast_2);
+    /// let _tx_hash = multicall.send().await?;
+    ///
+    /// let multicall = multicall
+    ///     .clear_calls()
+    ///     .add_call(call_1)
+    ///     .add_call(call_2);
+    /// let return_data: (String, Address) = multicall.call().await?;
+    /// ```
+    pub fn clear_calls(mut self) -> Self {
+        self.calls.clear();
+        self
     }
 }
 
@@ -255,5 +289,38 @@ where
         let data = D::from_tokens(tokens)?;
 
         Ok(data)
+    }
+
+    /// Signs and broadcasts a batch of transactions by using the Multicall contract as proxy.
+    ///
+    /// ```ignore
+    /// let tx_hash = multicall.send().await?;
+    /// ```
+    ///
+    /// Note: this method sends a transaction from your account, and will return an error
+    /// if you do not have sufficient funds to pay for gas
+    pub async fn send(&self) -> Result<TxHash, ContractError> {
+        // Map the Multicall struct into appropriate types for `aggregate` function
+        let calls: Vec<(Address, Vec<u8>)> = self
+            .calls
+            .clone()
+            .into_iter()
+            .map(|call| (call.target, call.data))
+            .collect();
+
+        // Construct the ContractCall for `aggregate` function to broadcast the transaction
+        let contract_call = self.contract.aggregate(calls);
+        let contract_call = {
+            if let Some(block) = self.block {
+                contract_call.block(block)
+            } else {
+                contract_call
+            }
+        };
+
+        // Broadcast transaction and return the transaction hash
+        let tx_hash = contract_call.send().await?;
+
+        Ok(tx_hash)
     }
 }

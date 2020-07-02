@@ -10,7 +10,7 @@ mod multicallcontract_mod {
         abi::{Abi, Detokenize, InvalidOutputType, Token, Tokenizable},
         types::*,
     };
-    use ethers_providers::JsonRpcClient;
+    use ethers_providers::{JsonRpcClient, PendingTransaction};
     use ethers_signers::{Client, Signer};
     #[doc = "MulticallContract was auto-generated with ethers-rs Abigen. More information at: https://github.com/gakonst/ethers-rs"]
     use std::sync::Arc;

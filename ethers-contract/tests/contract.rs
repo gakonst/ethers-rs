@@ -222,6 +222,8 @@ mod eth_tests {
         // the _same_ deployer, so it's fine to clone here from a dev UX vs perf tradeoff)
         let multicall_deployer = multicall_factory.deploy(()).unwrap();
         let multicall_contract = multicall_deployer.clone().send().await.unwrap();
+        let addr = multicall_contract.address();
+
         let simple_deployer = simple_factory.deploy("the first one".to_string()).unwrap();
         let simple_contract = simple_deployer.clone().send().await.unwrap();
         let not_so_simple_deployer = not_so_simple_factory
@@ -229,9 +231,7 @@ mod eth_tests {
             .unwrap();
         let not_so_simple_contract = not_so_simple_deployer.clone().send().await.unwrap();
 
-        // need to declare the method first, and only then send it
-        // this is because it internally clones an Arc which would otherwise
-        // get immediately dropped
+        // Client2 and Client3 broadcast txs to set the values for both contracts
         simple_contract
             .connect(client2.clone())
             .method::<_, H256>("setValue", "reset first".to_owned())
@@ -260,7 +260,6 @@ mod eth_tests {
             .unwrap();
 
         // initiate the Multicall instance and add calls one by one in builder style
-        let addr = multicall_contract.address();
         let multicall = Multicall::new(client4.clone(), Some(addr))
             .await
             .unwrap()
@@ -277,6 +276,66 @@ mod eth_tests {
         assert_eq!((return_data.1).1, client3.address());
         assert_eq!(return_data.2, client2.address());
         assert_eq!(return_data.3, client3.address());
+
+        // construct broadcast transactions that will be batched and broadcast via Multicall
+        let broadcast = simple_contract
+            .connect(client4.clone())
+            .method::<_, H256>("setValue", "first reset again".to_owned())
+            .unwrap();
+        let broadcast2 = not_so_simple_contract
+            .connect(client4.clone())
+            .method::<_, H256>("setValue", "second reset again".to_owned())
+            .unwrap();
+
+        // use the already initialised Multicall instance, clearing the previous calls and adding
+        // new calls. Previously we used the `.call()` functionality to do a batch of calls in one
+        // go. Now we will use the `.send()` functionality to broadcast a batch of transactions
+        // in one go
+        let multicall = multicall
+            .clear_calls()
+            .add_call(broadcast)
+            .add_call(broadcast2);
+
+        // broadcast the transaction and wait for it to be mined
+        let tx_hash = multicall.send().await.unwrap();
+        let _tx_receipt = client4
+            .provider()
+            .pending_transaction(tx_hash)
+            .await
+            .unwrap();
+
+        // verify that the latest state of both contracts is correct
+        // The `getValue` call should return the last value we set in the batched broadcast
+        // The `lastSender` call should return the address of the Multicall contract, as it is
+        // the one acting as proxy and calling our SimpleStorage contracts (msg.sender)
+        let value: String = simple_contract
+            .method::<_, String>("getValue", ())
+            .unwrap()
+            .call()
+            .await
+            .unwrap();
+        let last_sender: Address = simple_contract
+            .method::<_, Address>("lastSender", ())
+            .unwrap()
+            .call()
+            .await
+            .unwrap();
+        let value2: String = not_so_simple_contract
+            .method::<_, String>("getValue", ())
+            .unwrap()
+            .call()
+            .await
+            .unwrap();
+        let last_sender2: Address = not_so_simple_contract
+            .method::<_, Address>("lastSender", ())
+            .unwrap()
+            .call()
+            .await
+            .unwrap();
+        assert_eq!(value, "first reset again");
+        assert_eq!(value2, "second reset again");
+        assert_eq!(last_sender, multicall_contract.address());
+        assert_eq!(last_sender2, multicall_contract.address());
     }
 }
 
