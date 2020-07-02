@@ -89,8 +89,12 @@ mod eth_tests {
 #[cfg(feature = "celo")]
 mod celo_tests {
     use super::*;
-    use ethers::{providers::FilterStream, types::H256};
+    use ethers::{
+        providers::FilterStream,
+        types::{Randomness, H256},
+    };
     use futures_util::stream::StreamExt;
+    use rustc_hex::FromHex;
 
     #[tokio::test]
     // https://alfajores-blockscout.celo-testnet.org/tx/0x544ea96cddb16aeeaedaf90885c1e02be4905f3eb43d6db3f28cac4dbe76a625/internal_transactions
@@ -106,6 +110,27 @@ mod celo_tests {
         assert_eq!(tx.gateway_fee.unwrap(), 0.into());
         assert_eq!(tx.hash, tx_hash);
         assert_eq!(tx.block_number.unwrap(), 1100845.into())
+    }
+
+    #[tokio::test]
+    async fn get_block() {
+        let provider =
+            Provider::<Http>::try_from("https://alfajores-forno.celo-testnet.org").unwrap();
+
+        let block = provider.get_block(1342561).await.unwrap();
+        assert_eq!(
+            block.randomness,
+            Randomness {
+                committed: "a3a64b7a29bb4ddd49b7d9e3cf3dd14ecbb7f0321061706c634d14b15425dd30"
+                    .from_hex::<Vec<u8>>()
+                    .unwrap()
+                    .into(),
+                revealed: "3c5f2f71941783cbe7f2dbd387c35503ca0470b300e1613866b988a1db8902a3"
+                    .from_hex::<Vec<u8>>()
+                    .unwrap()
+                    .into(),
+            }
+        );
     }
 
     #[tokio::test]

@@ -2,6 +2,16 @@
 use crate::types::{Address, Bloom, Bytes, H256, U256, U64};
 use serde::{ser::SerializeStruct, Deserialize, Serialize, Serializer};
 
+#[derive(Debug, Default, Clone, PartialEq, Deserialize, Serialize)]
+#[cfg(feature = "celo")]
+///
+pub struct Randomness {
+    /// The committed randomness for that block
+    pub committed: Bytes,
+    /// The revealed randomness for that block
+    pub revealed: Bytes,
+}
+
 /// The block type returned from RPC calls.
 /// This is generic over a `TX` type which will be either the hash or the
 #[derive(Debug, Default, Clone, PartialEq, Deserialize, Serialize)]
@@ -12,6 +22,7 @@ pub struct Block<TX> {
     #[serde(rename = "parentHash")]
     pub parent_hash: H256,
     /// Hash of the uncles
+    #[cfg(not(feature = "celo"))]
     #[serde(rename = "sha3Uncles")]
     pub uncles_hash: H256,
     /// Miner/author's address.
@@ -32,6 +43,7 @@ pub struct Block<TX> {
     #[serde(rename = "gasUsed")]
     pub gas_used: U256,
     /// Gas Limit
+    #[cfg(not(feature = "celo"))]
     #[serde(rename = "gasLimit")]
     pub gas_limit: U256,
     /// Extra data
@@ -43,6 +55,7 @@ pub struct Block<TX> {
     /// Timestamp
     pub timestamp: U256,
     /// Difficulty
+    #[cfg(not(feature = "celo"))]
     pub difficulty: U256,
     /// Total difficulty
     #[serde(rename = "totalDifficulty")]
@@ -51,6 +64,7 @@ pub struct Block<TX> {
     #[serde(default, rename = "sealFields")]
     pub seal_fields: Vec<Bytes>,
     /// Uncles' hashes
+    #[cfg(not(feature = "celo"))]
     pub uncles: Vec<H256>,
     /// Transactions
     pub transactions: Vec<TX>,
@@ -58,9 +72,16 @@ pub struct Block<TX> {
     pub size: Option<U256>,
     /// Mix Hash
     #[serde(rename = "mixHash")]
+    #[cfg(not(feature = "celo"))]
     pub mix_hash: Option<H256>,
     /// Nonce
+    #[cfg(not(feature = "celo"))]
     pub nonce: Option<U64>,
+
+    #[cfg(feature = "celo")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "celo")))]
+    /// The block's randomness
+    pub randomness: Randomness,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
