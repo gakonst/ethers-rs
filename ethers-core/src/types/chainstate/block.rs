@@ -82,6 +82,12 @@ pub struct Block<TX> {
     #[cfg_attr(docsrs, doc(cfg(feature = "celo")))]
     /// The block's randomness
     pub randomness: Randomness,
+
+    /// BLS signatures with a SNARK-friendly hash function
+    #[cfg(feature = "celo")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "celo")))]
+    #[serde(rename = "epochSnarkData", default)]
+    pub epoch_snark_data: Bytes,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
