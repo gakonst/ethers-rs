@@ -112,6 +112,15 @@ pub static ADDRESS_BOOK: Lazy<HashMap<U256, Address>> = Lazy::new(|| {
 /// // returns the transaction hash
 /// let tx_hash = multicall.send().await?;
 /// let _tx_receipt = client.provider().pending_transaction(tx_hash).await?;
+///
+/// // you can also query ETH balances of multiple addresses
+/// let address_1 = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".parse::<Address>()?;
+/// let address_2 = "ffffffffffffffffffffffffffffffffffffffff".parse::<Address>()?;
+/// let multicall = multicall
+///     .clear_calls()
+///     .eth_balance_of(address_1)
+///     .eth_balance_of(address_2);
+/// let _balances: (U256, U256) = multicall.call().await?;
 /// # Ok(())
 /// # }
 /// ```
@@ -205,6 +214,17 @@ where
             }
             _ => self,
         }
+    }
+
+    /// Appends a `call` to the list of calls for the Multicall instance for querying
+    /// the ETH balance of an address
+    /// # Panics
+    /// If more than the maximum number of supported calls are added. The maximum
+    /// limits is constrained due to tokenization/detokenization support for tuples
+    pub fn eth_balance_of(self, addr: Address) -> Self {
+        let call = self.contract.get_eth_balance(addr);
+
+        self.add_call(call)
     }
 
     /// Clear the batch of calls from the Multicall instance. Re-use the already instantiated

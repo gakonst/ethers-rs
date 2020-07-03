@@ -10,7 +10,7 @@ mod eth_tests {
         contract::Multicall,
         providers::{Http, Provider, StreamExt},
         signers::Client,
-        types::Address,
+        types::{Address, U256},
         utils::Ganache,
     };
     use std::{convert::TryFrom, sync::Arc};
@@ -334,6 +334,19 @@ mod eth_tests {
         assert_eq!(value2, "second reset again");
         assert_eq!(last_sender, multicall_contract.address());
         assert_eq!(last_sender2, multicall_contract.address());
+
+        // query ETH balances of multiple addresses
+        // these keys haven't been used to do any tx
+        // so should have 100 ETH
+        let multicall = multicall
+            .clear_calls()
+            .eth_balance_of(Address::from(&ganache.keys()[4]))
+            .eth_balance_of(Address::from(&ganache.keys()[5]))
+            .eth_balance_of(Address::from(&ganache.keys()[6]));
+        let balances: (U256, U256, U256) = multicall.call().await.unwrap();
+        assert_eq!(balances.0, U256::from(100000000000000000000u128));
+        assert_eq!(balances.1, U256::from(100000000000000000000u128));
+        assert_eq!(balances.2, U256::from(100000000000000000000u128));
     }
 }
 
