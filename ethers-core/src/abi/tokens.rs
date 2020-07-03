@@ -478,7 +478,7 @@ impl_fixed_types!(1024);
 
 #[cfg(test)]
 mod tests {
-    use super::{Detokenize, Tokenizable};
+    use super::{Detokenize, Tokenizable, Tokenize};
     use crate::types::{Address, U256};
     use ethabi::Token;
 
@@ -509,6 +509,23 @@ mod tests {
         let _tuple: (Address, Vec<Vec<u8>>) = output();
         let _vec_of_tuple: Vec<(Address, String)> = output();
         let _vec_of_tuple_5: Vec<(Address, Vec<Vec<u8>>, String, U256, bool)> = output();
+    }
+
+    #[test]
+    fn nested_tokenization() {
+        let x = (1u64, (2u64, 3u64));
+        let tokens = x.into_tokens();
+        assert_eq!(
+            tokens,
+            vec![
+                Token::Uint(1.into()),
+                Token::Tuple(vec![Token::Uint(2.into()), Token::Uint(3.into())])
+            ]
+        );
+
+        let x = (1u64, 2u64);
+        let tokens = x.into_tokens();
+        assert_eq!(tokens, vec![Token::Uint(1.into()), Token::Uint(2.into()),]);
     }
 
     #[test]
