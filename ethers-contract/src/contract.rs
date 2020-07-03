@@ -1,7 +1,7 @@
 use super::{call::ContractCall, event::Event};
 
 use ethers_core::{
-    abi::{flatten_tokens, Abi, Detokenize, Error, EventExt, Function, FunctionExt, Tokenize},
+    abi::{Abi, Detokenize, Error, EventExt, Function, FunctionExt, Tokenize},
     types::{Address, Filter, NameOrAddress, Selector, TransactionRequest, TxHash},
 };
 use ethers_providers::{JsonRpcClient, PendingTransaction};
@@ -240,7 +240,6 @@ where
         args: T,
     ) -> Result<ContractCall<P, S, D>, Error> {
         let tokens = args.into_tokens();
-        let tokens = flatten_tokens(tokens);
 
         // create the calldata
         let data = function.encode_input(&tokens)?;

@@ -1,7 +1,7 @@
 use crate::{Contract, ContractError};
 
 use ethers_core::{
-    abi::{flatten_tokens, Abi, Tokenize},
+    abi::{Abi, Tokenize},
     types::{BlockNumber, Bytes, TransactionRequest},
 };
 use ethers_providers::JsonRpcClient;
@@ -155,7 +155,6 @@ where
     pub fn deploy<T: Tokenize>(self, constructor_args: T) -> Result<Deployer<P, S>, ContractError> {
         // Encode the constructor args & concatenate with the bytecode if necessary
         let params = constructor_args.into_tokens();
-        let params = flatten_tokens(params);
         let data: Bytes = match (self.abi.constructor(), params.is_empty()) {
             (None, false) => {
                 return Err(ContractError::ConstructorError);

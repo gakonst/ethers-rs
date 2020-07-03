@@ -56,13 +56,13 @@ pub trait Tokenize {
 
 impl<'a> Tokenize for &'a [Token] {
     fn into_tokens(self) -> Vec<Token> {
-        self.to_vec()
+        flatten_tokens(self.to_vec())
     }
 }
 
 impl<T: Tokenizable> Tokenize for T {
     fn into_tokens(self) -> Vec<Token> {
-        vec![self.into_token()]
+        flatten_tokens(vec![self.into_token()])
     }
 }
 
@@ -479,7 +479,7 @@ impl_fixed_types!(1024);
 /// Helper for flattening non-nested tokens into their inner
 /// types, e.g. (A, B, C ) would get tokenized to Tuple([A, B, C])
 /// when in fact we need [A, B, C].
-pub fn flatten_tokens(tokens: Vec<Token>) -> Vec<Token> {
+fn flatten_tokens(tokens: Vec<Token>) -> Vec<Token> {
     if tokens.len() == 1 {
         // flatten the tokens if required
         // and there is no nesting
@@ -532,7 +532,7 @@ mod tests {
         let x = (1u64, (2u64, 3u64));
         let tokens = x.into_tokens();
         assert_eq!(
-            flatten_tokens(tokens),
+            tokens,
             vec![
                 Token::Uint(1.into()),
                 Token::Tuple(vec![Token::Uint(2.into()), Token::Uint(3.into())])
@@ -540,7 +540,7 @@ mod tests {
         );
 
         let x = (1u64, 2u64);
-        let tokens = flatten_tokens(x.into_tokens());
+        let tokens = x.into_tokens();
         assert_eq!(tokens, vec![Token::Uint(1.into()), Token::Uint(2.into()),]);
     }
 
