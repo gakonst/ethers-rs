@@ -15,7 +15,7 @@ Alternatively, you may clone the repository and run `cd ethers/ && cargo doc --o
 ```toml
 [dependencies]
 
-ethers = { git = "github.com/gakonst/ethers-rs" }
+ethers = { git = "https://github.com/gakonst/ethers-rs" }
 ```
 
 </details>
@@ -27,7 +27,7 @@ ethers = { git = "github.com/gakonst/ethers-rs" }
 ```toml
 [dependencies]
 
-ethers = { git = "github.com/gakonst/ethers-rs", features = ["celo"] }
+ethers = { git = "https://github.com/gakonst/ethers-rs", features = ["celo"] }
 ```
 
 Celo's transactions differ from Ethereum transactions by including 3 new fields:
