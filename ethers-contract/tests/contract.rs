@@ -215,19 +215,21 @@ mod eth_tests {
         let not_so_simple_factory =
             ContractFactory::new(not_so_simple_abi, not_so_simple_bytecode, client3.clone());
 
-        // `send` consumes the deployer so it must be cloned for later re-use
-        // (practically it's not expected that you'll need to deploy multiple instances of
-        // the _same_ deployer, so it's fine to clone here from a dev UX vs perf tradeoff)
-        let multicall_deployer = multicall_factory.deploy(()).unwrap();
-        let multicall_contract = multicall_deployer.clone().send().await.unwrap();
+        let multicall_contract = multicall_factory.deploy(()).unwrap().send().await.unwrap();
         let addr = multicall_contract.address();
 
-        let simple_deployer = simple_factory.deploy("the first one".to_string()).unwrap();
-        let simple_contract = simple_deployer.clone().send().await.unwrap();
-        let not_so_simple_deployer = not_so_simple_factory
-            .deploy("the second one".to_string())
+        let simple_contract = simple_factory
+            .deploy("the first one".to_string())
+            .unwrap()
+            .send()
+            .await
             .unwrap();
-        let not_so_simple_contract = not_so_simple_deployer.clone().send().await.unwrap();
+        let not_so_simple_contract = not_so_simple_factory
+            .deploy("the second one".to_string())
+            .unwrap()
+            .send()
+            .await
+            .unwrap();
 
         // Client2 and Client3 broadcast txs to set the values for both contracts
         simple_contract
@@ -289,51 +291,28 @@ mod eth_tests {
         // new calls. Previously we used the `.call()` functionality to do a batch of calls in one
         // go. Now we will use the `.send()` functionality to broadcast a batch of transactions
         // in one go
-        let multicall = multicall
+        let multicall_send = multicall
+            .clone()
             .clear_calls()
             .add_call(broadcast)
             .add_call(broadcast2);
 
         // broadcast the transaction and wait for it to be mined
-        let tx_hash = multicall.send().await.unwrap();
-        let _tx_receipt = client4
-            .provider()
-            .pending_transaction(tx_hash)
-            .await
-            .unwrap();
+        let tx_hash = multicall_send.send().await.unwrap();
+        let _tx_receipt = client4.pending_transaction(tx_hash).await.unwrap();
 
-        // verify that the latest state of both contracts is correct
-        // The `getValue` call should return the last value we set in the batched broadcast
-        // The `lastSender` call should return the address of the Multicall contract, as it is
+        // Do another multicall to check the updated return values
+        // The `getValue` calls should return the last value we set in the batched broadcast
+        // The `lastSender` calls should return the address of the Multicall contract, as it is
         // the one acting as proxy and calling our SimpleStorage contracts (msg.sender)
-        let value: String = simple_contract
-            .method::<_, String>("getValue", ())
-            .unwrap()
-            .call()
-            .await
-            .unwrap();
-        let last_sender: Address = simple_contract
-            .method::<_, Address>("lastSender", ())
-            .unwrap()
-            .call()
-            .await
-            .unwrap();
-        let value2: String = not_so_simple_contract
-            .method::<_, String>("getValue", ())
-            .unwrap()
-            .call()
-            .await
-            .unwrap();
-        let last_sender2: Address = not_so_simple_contract
-            .method::<_, Address>("lastSender", ())
-            .unwrap()
-            .call()
-            .await
-            .unwrap();
-        assert_eq!(value, "first reset again");
-        assert_eq!(value2, "second reset again");
-        assert_eq!(last_sender, multicall_contract.address());
-        assert_eq!(last_sender2, multicall_contract.address());
+        let return_data: (String, (String, Address), Address, Address) =
+            multicall.call().await.unwrap();
+
+        assert_eq!(return_data.0, "first reset again");
+        assert_eq!((return_data.1).0, "second reset again");
+        assert_eq!((return_data.1).1, multicall_contract.address());
+        assert_eq!(return_data.2, multicall_contract.address());
+        assert_eq!(return_data.3, multicall_contract.address());
 
         // query ETH balances of multiple addresses
         // these keys haven't been used to do any tx
