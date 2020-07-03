@@ -130,6 +130,7 @@ pub static ADDRESS_BOOK: Lazy<HashMap<U256, Address>> = Lazy::new(|| {
 /// [`new`]: method@crate::Multicall::new
 /// [`block`]: method@crate::Multicall::block
 /// [`add_call`]: methond@crate::Multicall::add_call
+#[derive(Clone)]
 pub struct Multicall<P, S> {
     calls: Vec<Call>,
     block: Option<BlockNumber>,
@@ -153,6 +154,7 @@ where
     /// Creates a new Multicall instance from the provided client. If provided with an `address`,
     /// it instantiates the Multicall contract with that address. Otherwise it fetches the address
     /// from the address book.
+    ///
     /// # Panics
     /// If a `None` address is provided, and the provided client also does not belong to one of
     /// the supported network IDs (mainnet, kovan, rinkeby and goerli)
@@ -160,8 +162,7 @@ where
         client: C,
         address: Option<Address>,
     ) -> Result<Self, ContractError> {
-        // Clone the client
-        let client = Arc::clone(&client.into());
+        let client = client.into();
 
         // Fetch chain id and the corresponding address of Multicall contract
         // preference is given to Multicall contract's address if provided
@@ -171,7 +172,7 @@ where
             None => {
                 let chain_id = client.get_chainid().await?;
                 match ADDRESS_BOOK.get(&chain_id) {
-                    Some(addr) => addr.clone(),
+                    Some(addr) => *addr,
                     None => panic!(
                         "Must either be a supported Network ID or provide Multicall contract address"
                     ),
@@ -196,7 +197,9 @@ where
     }
 
     /// Appends a `call` to the list of calls for the Multicall instance
+    ///
     /// # Panics
+    ///
     /// If more than the maximum number of supported calls are added. The maximum
     /// limits is constrained due to tokenization/detokenization support for tuples
     pub fn add_call<D: Detokenize>(mut self, call: ContractCall<P, S, D>) -> Self {
@@ -220,95 +223,107 @@ where
 
     /// Appends a `call` to the list of calls for the Multicall instance for querying
     /// the ETH balance of an address
+    ///
     /// # Panics
+    ///
     /// If more than the maximum number of supported calls are added. The maximum
     /// limits is constrained due to tokenization/detokenization support for tuples
     pub fn eth_balance_of(self, addr: Address) -> Self {
         let call = self.contract.get_eth_balance(addr);
-
         self.add_call(call)
     }
 
     /// Clear the batch of calls from the Multicall instance. Re-use the already instantiated
     /// Multicall, to send a different batch of transactions or do another aggregate query
     ///
-    /// ```ignore
+    /// ```no_run
+    /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
+    /// # use ethers::prelude::*;
+    /// # use std::{sync::Arc, convert::TryFrom};
+    /// #
+    /// # let provider = Provider::<Http>::try_from("http://localhost:8545")?;
+    /// # let client = "380eb0f3d505f087e438eca80bc4df9a7faa24f868e69fc0440261a0fc0567dc"
+    /// #     .parse::<Wallet>()?.connect(provider);
+    /// # let client = Arc::new(client);
+    /// #
+    /// # let abi = serde_json::from_str("")?;
+    /// # let address = "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee".parse::<Address>()?;
+    /// # let contract = Contract::new(address, abi, client.clone());
+    /// #
+    /// # let broadcast_1 = contract.method::<_, H256>("setValue", "some value".to_owned())?;
+    /// # let broadcast_2 = contract.method::<_, H256>("setValue", "new value".to_owned())?;
+    /// #
     /// let multicall = Multicall::new(client, None)
     ///     .await?
     ///     .add_call(broadcast_1)
     ///     .add_call(broadcast_2);
+    ///
     /// let _tx_hash = multicall.send().await?;
     ///
+    /// # let call_1 = contract.method::<_, String>("getValue", ())?;
+    /// # let call_2 = contract.method::<_, Address>("lastSender", ())?;
     /// let multicall = multicall
     ///     .clear_calls()
     ///     .add_call(call_1)
     ///     .add_call(call_2);
     /// let return_data: (String, Address) = multicall.call().await?;
+    /// # Ok(())
+    /// # }
     /// ```
     pub fn clear_calls(mut self) -> Self {
         self.calls.clear();
         self
     }
-}
 
-impl<P, S> Multicall<P, S>
-where
-    P: JsonRpcClient,
-    S: Signer,
-{
-    /// Queries the Ethereum blockchain via an `eth_call`, but to the Multicall contract.
+    /// Queries the Ethereum blockchain via an `eth_call`, but via the Multicall contract.
     ///
     /// It returns a [`ContractError`] if there is any error in the RPC call or while
     /// detokenizing the tokens back to the expected return type. The return type must be
     /// annonated while calling this method.
     ///
-    /// ```ignore
-    /// // If the solidity function calls has the following return types:
-    /// // 1. returns (uint256)
-    /// // 2. returns (string, address)
-    /// // 3. returns (bool)
+    /// ```no_run
+    /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
+    /// # use ethers::prelude::*;
+    /// # use std::convert::TryFrom;
+    /// #
+    /// # let provider = Provider::<Http>::try_from("http://localhost:8545")?;
+    /// # let client = "380eb0f3d505f087e438eca80bc4df9a7faa24f868e69fc0440261a0fc0567dc"
+    /// #     .parse::<Wallet>()?.connect(provider);
+    /// #
+    /// # let multicall = Multicall::new(client, None).await?;
+    /// // If the Solidity function calls has the following return types:
+    /// // 1. `returns (uint256)`
+    /// // 2. `returns (string, address)`
+    /// // 3. `returns (bool)`
     /// let result: (U256, (String, Address), bool) = multicall.call().await?;
+    /// # Ok(())
+    /// # }
     /// ```
     ///
     /// Note: this method _does not_ send a transaction from your account
+    ///
+    /// [`ContractError`]: crate::ContractError
     pub async fn call<D: Detokenize>(&self) -> Result<D, ContractError> {
-        // Map the Multicall struct into appropriate types for `aggregate` function
-        let calls: Vec<(Address, Vec<u8>)> = self
-            .calls
-            .clone()
-            .into_iter()
-            .map(|call| (call.target, call.data))
-            .collect();
+        let contract_call = self.as_contract_call();
 
-        // Call the `aggregate` function and get return data
-        let contract_call = self.contract.aggregate(calls);
-        let contract_call = {
-            if let Some(block) = self.block {
-                contract_call.block(block)
-            } else {
-                contract_call
-            }
-        };
-
-        // Fetch respons from the Multicall contract
-        let (_block_number, vec_bytes) = contract_call.call().await?;
+        // Fetch response from the Multicall contract
+        let (_block_number, return_data) = contract_call.call().await?;
 
         // Decode return data into ABI tokens
-        let tokens: Vec<Token> = self
+        let tokens = self
             .calls
-            .clone()
-            .into_iter()
-            .zip(vec_bytes.into_iter())
+            .iter()
+            .zip(&return_data)
             .map(|(call, bytes)| {
-                let tokens: Vec<Token> = call.function.decode_output(&bytes).unwrap();
+                let tokens: Vec<Token> = call.function.decode_output(&bytes)?;
 
-                match tokens.len() {
+                Ok(match tokens.len() {
                     0 => Token::Tuple(vec![]),
                     1 => tokens[0].clone(),
                     _ => Token::Tuple(tokens),
-                }
+                })
             })
-            .collect();
+            .collect::<Result<Vec<Token>, ContractError>>()?;
 
         // Form tokens that represent tuples
         let tokens = vec![Token::Tuple(tokens)];
@@ -321,34 +336,44 @@ where
 
     /// Signs and broadcasts a batch of transactions by using the Multicall contract as proxy.
     ///
-    /// ```ignore
+    /// ```no_run
+    /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
+    /// # use ethers::prelude::*;
+    /// # use std::convert::TryFrom;
+    /// # let provider = Provider::<Http>::try_from("http://localhost:8545")?;
+    /// # let client = "380eb0f3d505f087e438eca80bc4df9a7faa24f868e69fc0440261a0fc0567dc"
+    /// #     .parse::<Wallet>()?.connect(provider);
+    /// # let multicall = Multicall::new(client, None).await?;
     /// let tx_hash = multicall.send().await?;
+    /// # Ok(())
+    /// # }
     /// ```
     ///
     /// Note: this method sends a transaction from your account, and will return an error
     /// if you do not have sufficient funds to pay for gas
     pub async fn send(&self) -> Result<TxHash, ContractError> {
-        // Map the Multicall struct into appropriate types for `aggregate` function
-        let calls: Vec<(Address, Vec<u8>)> = self
-            .calls
-            .clone()
-            .into_iter()
-            .map(|call| (call.target, call.data))
-            .collect();
-
-        // Construct the ContractCall for `aggregate` function to broadcast the transaction
-        let contract_call = self.contract.aggregate(calls);
-        let contract_call = {
-            if let Some(block) = self.block {
-                contract_call.block(block)
-            } else {
-                contract_call
-            }
-        };
+        let contract_call = self.as_contract_call();
 
         // Broadcast transaction and return the transaction hash
         let tx_hash = contract_call.send().await?;
 
         Ok(tx_hash)
+    }
+
+    fn as_contract_call(&self) -> ContractCall<P, S, (U256, Vec<Vec<u8>>)> {
+        // Map the Multicall struct into appropriate types for `aggregate` function
+        let calls: Vec<(Address, Vec<u8>)> = self
+            .calls
+            .iter()
+            .map(|call| (call.target, call.data.clone()))
+            .collect();
+
+        // Construct the ContractCall for `aggregate` function to broadcast the transaction
+        let contract_call = self.contract.aggregate(calls);
+        if let Some(block) = self.block {
+            contract_call.block(block)
+        } else {
+            contract_call
+        }
     }
 }
