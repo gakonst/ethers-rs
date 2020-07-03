@@ -239,8 +239,10 @@ where
         function: &Function,
         args: T,
     ) -> Result<ContractCall<P, S, D>, Error> {
+        let tokens = args.into_tokens();
+
         // create the calldata
-        let data = function.encode_input(&args.into_tokens())?;
+        let data = function.encode_input(&tokens)?;
 
         // create the tx object
         let tx = TransactionRequest {

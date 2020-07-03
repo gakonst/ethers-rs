@@ -73,6 +73,14 @@ mod eth_tests {
             .unwrap();
         assert_eq!(init_address, Address::zero());
         assert_eq!(init_value, "initial value");
+
+        // methods with multiple args also work
+        let _tx_hash = contract
+            .method::<_, H256>("setValues", ("hi".to_owned(), "bye".to_owned()))
+            .unwrap()
+            .send()
+            .await
+            .unwrap();
     }
 
     #[tokio::test]
