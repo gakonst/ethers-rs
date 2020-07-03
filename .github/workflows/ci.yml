@@ -1,10 +1,12 @@
-on: push
+on: pull_request
 
 name: Tests
 
-# set for fetching ABIs for abigen from etherscan
+# Yeah I know it's bad practice to have API keys, this is a read-only API key
+# so that we do not get rate limited by Etherscan (and it's free to generate as
+# many as you want)
 env:
-  ETHERSCAN_API_KEY: ${{ secrets.ETHERSCAN_API_KEY }}
+  ETHERSCAN_API_KEY: 76XKCZ4QKZYTJS8PBFUDZ292JBKEKS4974
 
 jobs:
   tests:

@@ -566,4 +566,41 @@ mod tests {
         assert_eq!((-4i64).into_token(), Token::Int(U256::MAX - 3));
         assert_eq!((-5i128).into_token(), Token::Int(U256::MAX - 4));
     }
+
+    #[test]
+    fn should_detokenize() {
+        // handle tuple of one element
+        let tokens = vec![Token::FixedBytes(vec![1, 2, 3, 4]), Token::Bool(true)];
+        let tokens = vec![Token::Tuple(tokens)];
+        let data: ([u8; 4], bool) = Detokenize::from_tokens(tokens).unwrap();
+        assert_eq!(data.0[0], 1);
+        assert_eq!(data.0[1], 2);
+        assert_eq!(data.0[2], 3);
+        assert_eq!(data.0[3], 4);
+        assert_eq!(data.1, true);
+
+        // handle vector of more than one elements
+        let tokens = vec![Token::Bool(false), Token::Uint(U256::from(13u8))];
+        let data: (bool, u8) = Detokenize::from_tokens(tokens).unwrap();
+        assert_eq!(data.0, false);
+        assert_eq!(data.1, 13u8);
+
+        // handle more than two tuples
+        let tokens1 = vec![Token::FixedBytes(vec![1, 2, 3, 4]), Token::Bool(true)];
+        let tokens2 = vec![Token::Bool(false), Token::Uint(U256::from(13u8))];
+        let tokens = vec![Token::Tuple(tokens1), Token::Tuple(tokens2)];
+        let data: (([u8; 4], bool), (bool, u8)) = Detokenize::from_tokens(tokens).unwrap();
+        assert_eq!((data.0).0[0], 1);
+        assert_eq!((data.0).0[1], 2);
+        assert_eq!((data.0).0[2], 3);
+        assert_eq!((data.0).0[3], 4);
+        assert_eq!((data.0).1, true);
+        assert_eq!((data.1).0, false);
+        assert_eq!((data.1).1, 13u8);
+
+        // error if no tokens in the vector
+        let tokens = vec![];
+        let data: Result<U256, InvalidOutputType> = Detokenize::from_tokens(tokens);
+        assert!(data.is_err());
+    }
 }
