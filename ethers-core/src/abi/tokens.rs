@@ -476,9 +476,25 @@ impl_fixed_types!(256);
 impl_fixed_types!(512);
 impl_fixed_types!(1024);
 
+/// Helper for flattening non-nested tokens into their inner
+/// types, e.g. (A, B, C ) would get tokenized to Tuple([A, B, C])
+/// when in fact we need [A, B, C].
+pub fn flatten_tokens(tokens: Vec<Token>) -> Vec<Token> {
+    if tokens.len() == 1 {
+        // flatten the tokens if required
+        // and there is no nesting
+        match tokens[0].clone() {
+            Token::Tuple(inner) => inner,
+            other => vec![other],
+        }
+    } else {
+        tokens
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{Detokenize, Tokenizable, Tokenize};
+    use super::*;
     use crate::types::{Address, U256};
     use ethabi::Token;
 
@@ -516,7 +532,7 @@ mod tests {
         let x = (1u64, (2u64, 3u64));
         let tokens = x.into_tokens();
         assert_eq!(
-            tokens,
+            flatten_tokens(tokens),
             vec![
                 Token::Uint(1.into()),
                 Token::Tuple(vec![Token::Uint(2.into()), Token::Uint(3.into())])
@@ -524,7 +540,7 @@ mod tests {
         );
 
         let x = (1u64, 2u64);
-        let tokens = x.into_tokens();
+        let tokens = flatten_tokens(x.into_tokens());
         assert_eq!(tokens, vec![Token::Uint(1.into()), Token::Uint(2.into()),]);
     }
 
