@@ -27,8 +27,6 @@ mod event;
 mod multicall;
 pub use multicall::Multicall;
 
-mod multicall_contract;
-
 /// This module exposes low lever builder structures which are only consumed by the
 /// type-safe ABI bindings generators.
 pub mod builders {

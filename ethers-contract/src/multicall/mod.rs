@@ -9,9 +9,11 @@ use std::{collections::HashMap, str::FromStr, sync::Arc};
 
 use crate::{
     call::{ContractCall, ContractError},
-    multicall_contract::MulticallContract,
     Lazy,
 };
+
+mod multicall_contract;
+use multicall_contract::MulticallContract;
 
 /// A lazily computed hash map with the Ethereum network IDs as keys and the corresponding
 /// Multicall smart contract addresses as values
