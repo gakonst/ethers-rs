@@ -104,7 +104,6 @@ where
         let bytes = self.client.call(&self.tx, self.block).await?;
 
         let tokens = self.function.decode_output(&bytes.0)?;
-
         let data = D::from_tokens(tokens)?;
 
         Ok(data)

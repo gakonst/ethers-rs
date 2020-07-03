@@ -31,20 +31,14 @@ impl Detokenize for () {
 }
 
 impl<T: Tokenizable> Detokenize for T {
-    fn from_tokens(mut tokens: Vec<Token>) -> Result<Self, InvalidOutputType> {
-        if tokens.len() != 1 {
-            Err(InvalidOutputType(format!(
-                "Expected single element, got a list: {:?}",
-                tokens
-            )))
-        } else {
-            Self::from_token(
-                tokens
-                    .drain(..)
-                    .next()
-                    .expect("At least one element in vector; qed"),
-            )
-        }
+    fn from_tokens(tokens: Vec<Token>) -> Result<Self, InvalidOutputType> {
+        let token = match tokens.len() {
+            0 => Token::Tuple(vec![]),
+            1 => tokens[0].clone(),
+            _ => Token::Tuple(tokens),
+        };
+
+        Self::from_token(token)
     }
 }
 
