@@ -63,16 +63,18 @@ impl<'a, P: JsonRpcClient> Future for PendingTransaction<'a, P> {
         let this = self.project();
 
         match this.state {
-            PendingTxState::GettingReceipt(fut) => {
+            PendingTxState::PausedGettingReceipt => {
                 // Wait the polling period so that we do not spam the chain when no
                 // new block has been mined
                 let _ready = futures_util::ready!(this.interval.poll_next_unpin(ctx));
-
+                let fut = Box::pin(this.provider.get_transaction_receipt(*this.tx_hash));
+                *this.state = PendingTxState::GettingReceipt(fut)
+            }
+            PendingTxState::GettingReceipt(fut) => {
                 if let Ok(receipt) = futures_util::ready!(fut.as_mut().poll(ctx)) {
                     *this.state = PendingTxState::CheckingReceipt(Box::new(receipt))
                 } else {
-                    let fut = Box::pin(this.provider.get_transaction_receipt(*this.tx_hash));
-                    *this.state = PendingTxState::GettingReceipt(fut)
+                    *this.state = PendingTxState::PausedGettingReceipt
                 }
             }
             PendingTxState::CheckingReceipt(receipt) => {
@@ -91,11 +93,18 @@ impl<'a, P: JsonRpcClient> Future for PendingTransaction<'a, P> {
                     return Poll::Ready(Ok(receipt));
                 }
             }
-            PendingTxState::GettingBlockNumber(fut, receipt) => {
+            PendingTxState::PausedGettingBlockNumber(receipt) => {
                 // Wait the polling period so that we do not spam the chain when no
                 // new block has been mined
                 let _ready = futures_util::ready!(this.interval.poll_next_unpin(ctx));
 
+                // we need to re-instantiate the get_block_number future so that
+                // we poll again
+                let fut = Box::pin(this.provider.get_block_number());
+                *this.state = PendingTxState::GettingBlockNumber(fut, receipt.clone());
+                return Poll::Pending;
+            }
+            PendingTxState::GettingBlockNumber(fut, receipt) => {
                 // Wait for the interval
                 let inclusion_block = receipt
                     .block_number
@@ -110,11 +119,7 @@ impl<'a, P: JsonRpcClient> Future for PendingTransaction<'a, P> {
                     *this.state = PendingTxState::Completed;
                     return Poll::Ready(Ok(receipt));
                 } else {
-                    // we need to re-instantiate the get_block_number future so that
-                    // we poll again
-                    let fut = Box::pin(this.provider.get_block_number());
-                    *this.state = PendingTxState::GettingBlockNumber(fut, receipt.clone());
-                    return Poll::Pending;
+                    *this.state = PendingTxState::PausedGettingBlockNumber(receipt.clone())
                 }
             }
             PendingTxState::Completed => {
@@ -163,8 +168,14 @@ type PinBoxFut<'a, T> = Pin<Box<dyn Future<Output = Result<T, ProviderError>> + 
 
 // We box the TransactionReceipts to keep the enum small.
 enum PendingTxState<'a> {
+    /// Waiting for interval to elapse before calling API again
+    PausedGettingReceipt,
+
     /// Polling the blockchain for the receipt
     GettingReceipt(PinBoxFut<'a, TransactionReceipt>),
+
+    /// Waiting for interval to elapse before calling API again
+    PausedGettingBlockNumber(Box<TransactionReceipt>),
 
     /// Polling the blockchain for the current block number
     GettingBlockNumber(PinBoxFut<'a, U64>, Box<TransactionReceipt>),
@@ -182,7 +193,9 @@ impl<'a> fmt::Debug for PendingTxState<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let state = match self {
             PendingTxState::GettingReceipt(_) => "GettingReceipt",
+            PendingTxState::PausedGettingReceipt => "PausedGettingReceipt",
             PendingTxState::GettingBlockNumber(_, _) => "GettingBlockNumber",
+            PendingTxState::PausedGettingBlockNumber(_) => "PausedGettingBlockNumber",
             PendingTxState::CheckingReceipt(_) => "CheckingReceipt",
             PendingTxState::Completed => "Completed",
         };
