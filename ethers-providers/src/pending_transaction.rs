@@ -68,7 +68,8 @@ impl<'a, P: JsonRpcClient> Future for PendingTransaction<'a, P> {
                 // new block has been mined
                 let _ready = futures_util::ready!(this.interval.poll_next_unpin(ctx));
                 let fut = Box::pin(this.provider.get_transaction_receipt(*this.tx_hash));
-                *this.state = PendingTxState::GettingReceipt(fut)
+                *this.state = PendingTxState::GettingReceipt(fut);
+                ctx.waker().wake_by_ref();
             }
             PendingTxState::GettingReceipt(fut) => {
                 if let Ok(receipt) = futures_util::ready!(fut.as_mut().poll(ctx)) {
@@ -102,7 +103,7 @@ impl<'a, P: JsonRpcClient> Future for PendingTransaction<'a, P> {
                 // we poll again
                 let fut = Box::pin(this.provider.get_block_number());
                 *this.state = PendingTxState::GettingBlockNumber(fut, receipt.clone());
-                return Poll::Pending;
+                ctx.waker().wake_by_ref();
             }
             PendingTxState::GettingBlockNumber(fut, receipt) => {
                 // Wait for the interval
