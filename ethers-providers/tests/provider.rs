@@ -102,14 +102,14 @@ mod celo_tests {
         let provider =
             Provider::<Http>::try_from("https://alfajores-forno.celo-testnet.org").unwrap();
 
-        let tx_hash = "544ea96cddb16aeeaedaf90885c1e02be4905f3eb43d6db3f28cac4dbe76a625"
+        let tx_hash = "c8496681d0ade783322980cce00c89419fce4b484635d9e09c79787a0f75d450"
             .parse::<H256>()
             .unwrap();
         let tx = provider.get_transaction(tx_hash).await.unwrap();
         assert!(tx.gateway_fee_recipient.is_none());
         assert_eq!(tx.gateway_fee.unwrap(), 0.into());
         assert_eq!(tx.hash, tx_hash);
-        assert_eq!(tx.block_number.unwrap(), 1100845.into())
+        assert_eq!(tx.block_number.unwrap(), 447181.into())
     }
 
     #[tokio::test]
@@ -117,15 +117,15 @@ mod celo_tests {
         let provider =
             Provider::<Http>::try_from("https://alfajores-forno.celo-testnet.org").unwrap();
 
-        let block = provider.get_block(1342561).await.unwrap();
+        let block = provider.get_block(447254).await.unwrap();
         assert_eq!(
             block.randomness,
             Randomness {
-                committed: "a3a64b7a29bb4ddd49b7d9e3cf3dd14ecbb7f0321061706c634d14b15425dd30"
+                committed: "003e12deb86292844274493e9ab6e57ed1e276202c16799d97af723eb0d3253f"
                     .from_hex::<Vec<u8>>()
                     .unwrap()
                     .into(),
-                revealed: "3c5f2f71941783cbe7f2dbd387c35503ca0470b300e1613866b988a1db8902a3"
+                revealed: "1333b3b45e0385da48a01b4459aeda7607867ef6a41167cfdeefa49b9fdce6d7"
                     .from_hex::<Vec<u8>>()
                     .unwrap()
                     .into(),
