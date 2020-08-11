@@ -1,6 +1,6 @@
 use ethers_core::{
     abi::{Detokenize, Error as AbiError, Function, InvalidOutputType},
-    types::{Address, BlockNumber, TransactionRequest, TxHash, U256},
+    types::{Address, BlockNumber, Bytes, TransactionRequest, TxHash, U256},
 };
 use ethers_providers::{JsonRpcClient, ProviderError};
 use ethers_signers::{Client, ClientError, Signer};
@@ -91,6 +91,16 @@ where
     P: JsonRpcClient,
     D: Detokenize,
 {
+    /// Returns the underlying transaction's ABI encoded data
+    pub fn calldata(&self) -> Option<Bytes> {
+        self.tx.data.clone()
+    }
+
+    /// Returns the estimated gas cost for the underlying transaction to be executed
+    pub async fn estimate_gas(&self) -> Result<U256, ContractError> {
+        Ok(self.client.estimate_gas(&self.tx).await?)
+    }
+
     /// Queries the blockchain via an `eth_call` for the provided transaction.
     ///
     /// If executed on a non-state mutating smart contract function (i.e. `view`, `pure`)
