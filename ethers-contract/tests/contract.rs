@@ -46,15 +46,19 @@ mod eth_tests {
         // need to declare the method first, and only then send it
         // this is because it internally clones an Arc which would otherwise
         // get immediately dropped
-        let _tx_hash = contract
+        let contract_call = contract
             .connect(client2.clone())
             .method::<_, H256>("setValue", "hi".to_owned())
-            .unwrap()
-            .send()
-            .await
             .unwrap();
+        let calldata = contract_call.calldata().unwrap();
+        let gas_estimate = contract_call.estimate_gas().await.unwrap();
+        let tx_hash = contract_call.send().await.unwrap();
+        let tx = client.get_transaction(tx_hash).await.unwrap();
+        let tx_receipt = client.get_transaction_receipt(tx_hash).await.unwrap();
         assert_eq!(last_sender.clone().call().await.unwrap(), client2.address());
         assert_eq!(get_value.clone().call().await.unwrap(), "hi");
+        assert_eq!(tx.input, calldata);
+        assert_eq!(tx_receipt.gas_used.unwrap(), gas_estimate);
 
         // we can also call contract methods at other addresses with the `at` call
         // (useful when interacting with multiple ERC20s for example)
