@@ -3,13 +3,8 @@ use crate::{
     utils::{hash_message, keccak256},
 };
 
-use rand::Rng;
+use rand::{CryptoRng, Rng};
 use rustc_hex::FromHex;
-use secp256k1::{
-    self as Secp256k1,
-    util::{COMPRESSED_PUBLIC_KEY_SIZE, SECRET_KEY_SIZE},
-    Error as SecpError, Message, PublicKey as PubKey, RecoveryId, SecretKey,
-};
 use serde::{
     de::Error as DeserializeError,
     de::{SeqAccess, Visitor},
@@ -19,9 +14,29 @@ use serde::{
 use std::{fmt, ops::Deref, str::FromStr};
 use thiserror::Error;
 
+use k256::{
+    ecdsa::{
+        recoverable::{Id as RecoveryId, Signature as RecoverableSignature},
+        signature::RandomizedSigner,
+        Signature as K256Signature, Signer,
+    },
+    elliptic_curve::{error::Error as EllipticCurveError, rand_core::OsRng, Generate},
+    PublicKey as K256PublicKey, SecretKey as K256SecretKey,
+};
+
+const SECRET_KEY_SIZE: usize = 32;
+const FULL_PUBLIC_KEY_SIZE: usize = 65;
+const COMPRESSED_PUBLIC_KEY_SIZE: usize = 33;
+
 /// A private key on Secp256k1
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct PrivateKey(pub(super) SecretKey);
+#[derive(Clone, Debug)]
+pub struct PrivateKey(pub(super) K256SecretKey);
+
+impl PartialEq for PrivateKey {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.as_bytes().eq(&other.0.as_bytes())
+    }
+}
 
 impl Serialize for PrivateKey {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -29,7 +44,7 @@ impl Serialize for PrivateKey {
         S: Serializer,
     {
         let mut seq = serializer.serialize_tuple(SECRET_KEY_SIZE)?;
-        for e in &self.0.serialize() {
+        for e in self.0.as_bytes() {
             seq.serialize_element(e)?;
         }
         seq.end()
@@ -43,19 +58,19 @@ impl<'de> Deserialize<'de> for PrivateKey {
     {
         let bytes = <[u8; SECRET_KEY_SIZE]>::deserialize(deserializer)?;
         Ok(PrivateKey(
-            SecretKey::parse(&bytes).map_err(DeserializeError::custom)?,
+            K256SecretKey::from_bytes(&bytes).map_err(DeserializeError::custom)?,
         ))
     }
 }
 
 impl FromStr for PrivateKey {
-    type Err = SecpError;
+    type Err = EllipticCurveError;
 
     fn from_str(src: &str) -> Result<PrivateKey, Self::Err> {
         let src = src
             .from_hex::<Vec<u8>>()
             .expect("invalid hex when reading PrivateKey");
-        let sk = SecretKey::parse_slice(&src)?;
+        let sk = K256SecretKey::from_bytes(&src)?;
         Ok(PrivateKey(sk))
     }
 }
@@ -76,8 +91,8 @@ pub enum TxError {
 }
 
 impl PrivateKey {
-    pub fn new<R: Rng>(rng: &mut R) -> Self {
-        PrivateKey(SecretKey::random(rng))
+    pub fn new<R: Rng + CryptoRng>(rng: &mut R) -> Self {
+        PrivateKey(K256SecretKey::generate(rng))
     }
 
     /// Sign arbitrary string data.
@@ -94,9 +109,7 @@ impl PrivateKey {
         let message = message.as_ref();
         let message_hash = hash_message(message);
 
-        let sig_message =
-            Message::parse_slice(message_hash.as_bytes()).expect("hash is non-zero 32-bytes; qed");
-        self.sign_with_eip155(&sig_message, None)
+        self.sign_with_eip155(message_hash.as_bytes(), None)
     }
 
     /// RLP encodes and then signs the stransaction.
@@ -122,11 +135,9 @@ impl PrivateKey {
 
         // Get the transaction's sighash
         let sighash = tx.sighash(chain_id);
-        let message =
-            Message::parse_slice(sighash.as_bytes()).expect("hash is non-zero 32-bytes; qed");
 
         // Sign it (with replay protection if applicable)
-        let signature = self.sign_with_eip155(&message, chain_id);
+        let signature = self.sign_with_eip155(sighash.as_bytes(), chain_id);
 
         // Get the actual transaction hash
         let rlp = tx.rlp_signed(&signature);
@@ -168,31 +179,35 @@ impl PrivateKey {
         })
     }
 
-    fn sign_with_eip155(&self, message: &Message, chain_id: Option<u64>) -> Signature {
-        let (signature, recovery_id) = Secp256k1::sign(message, &self.0);
+    fn sign_with_eip155(&self, message: &[u8], chain_id: Option<u64>) -> Signature {
+        let signer = Signer::new(&self.0).expect("invalid secret key");
 
-        let v = to_eip155_v(recovery_id, chain_id);
-        let r = H256::from_slice(&signature.r.b32());
-        let s = H256::from_slice(&signature.s.b32());
+        let recoverable_sig: RecoverableSignature = signer.sign_with_rng(&mut OsRng, message);
+        let signature: K256Signature = K256Signature::from(recoverable_sig);
 
-        Signature { v, r, s }
+        let v = to_eip155_v(recoverable_sig.recovery_id(), chain_id);
+
+        let r = H256::from_slice(&signature.r().as_slice());
+        let s = H256::from_slice(&signature.s().as_slice());
+
+        Signature { r: r, s: s, v: v }
     }
 }
 
 /// Applies [EIP155](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-155.md)
 fn to_eip155_v(recovery_id: RecoveryId, chain_id: Option<u64>) -> u64 {
-    let standard_v = recovery_id.serialize() as u64;
+    let standard_v: u8 = recovery_id.into();
     if let Some(chain_id) = chain_id {
         // When signing with a chain ID, add chain replay protection.
-        standard_v + 35 + chain_id * 2
+        (standard_v as u64) + 35 + chain_id * 2
     } else {
         // Otherwise, convert to 'Electrum' notation.
-        standard_v + 27
+        (standard_v as u64) + 27
     }
 }
 
 impl Deref for PrivateKey {
-    type Target = SecretKey;
+    type Target = K256SecretKey;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -201,11 +216,11 @@ impl Deref for PrivateKey {
 
 /// A secp256k1 Public Key
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct PublicKey(pub(super) PubKey);
+pub struct PublicKey(pub(super) K256PublicKey);
 
-impl From<PubKey> for PublicKey {
+impl From<K256PublicKey> for PublicKey {
     /// Gets the public address of a private key.
-    fn from(src: PubKey) -> PublicKey {
+    fn from(src: K256PublicKey) -> PublicKey {
         PublicKey(src)
     }
 }
@@ -213,7 +228,7 @@ impl From<PubKey> for PublicKey {
 impl From<&PrivateKey> for PublicKey {
     /// Gets the public address of a private key.
     fn from(src: &PrivateKey) -> PublicKey {
-        let public_key = PubKey::from_secret_key(src);
+        let public_key = K256PublicKey::from_secret_key(src, false).expect("invalid secret key");
         PublicKey(public_key)
     }
 }
@@ -227,7 +242,7 @@ impl From<&PrivateKey> for PublicKey {
 /// computing the hash.
 impl From<&PublicKey> for Address {
     fn from(src: &PublicKey) -> Address {
-        let public_key = src.0.serialize();
+        let public_key = src.0.as_bytes();
 
         debug_assert_eq!(public_key[0], 0x04);
         let hash = keccak256(&public_key[1..]);
@@ -260,8 +275,9 @@ impl Serialize for PublicKey {
     where
         S: Serializer,
     {
-        let mut seq = serializer.serialize_tuple(COMPRESSED_PUBLIC_KEY_SIZE)?;
-        for e in self.0.serialize_compressed().iter() {
+        let mut seq = serializer.serialize_tuple(FULL_PUBLIC_KEY_SIZE)?;
+
+        for e in self.0.as_bytes().iter() {
             seq.serialize_element(e)?;
         }
         seq.end()
@@ -286,20 +302,22 @@ impl<'de> Deserialize<'de> for PublicKey {
             where
                 S: SeqAccess<'de>,
             {
-                let mut bytes = [0u8; COMPRESSED_PUBLIC_KEY_SIZE];
+                let mut bytes = [0u8; FULL_PUBLIC_KEY_SIZE];
                 for b in &mut bytes[..] {
                     *b = seq
                         .next_element()?
                         .ok_or_else(|| DeserializeError::custom("could not read bytes"))?;
                 }
 
-                Ok(PublicKey(
-                    PubKey::parse_compressed(&bytes).map_err(DeserializeError::custom)?,
-                ))
+                let public_key = K256PublicKey::from_bytes(&bytes[..]).ok_or_else(|| {
+                    DeserializeError::custom("could not parse public key from bytes")
+                })?;
+
+                Ok(PublicKey(K256PublicKey::from(public_key)))
             }
         }
 
-        deserializer.deserialize_tuple(COMPRESSED_PUBLIC_KEY_SIZE, ArrayVisitor)
+        deserializer.deserialize_tuple(FULL_PUBLIC_KEY_SIZE, ArrayVisitor)
     }
 }
 
@@ -313,13 +331,16 @@ mod tests {
         for _ in 0..10 {
             let key = PrivateKey::new(&mut rand::thread_rng());
             let serialized = bincode::serialize(&key).unwrap();
-            assert_eq!(serialized, &key.0.serialize());
+            assert_eq!(serialized.as_slice(), key.0.as_bytes().as_slice());
             let de: PrivateKey = bincode::deserialize(&serialized).unwrap();
             assert_eq!(key, de);
 
             let public = PublicKey::from(&key);
+
+            println!("public = {:?}", public);
+
             let serialized = bincode::serialize(&public).unwrap();
-            assert_eq!(&serialized[..], public.0.serialize_compressed().as_ref());
+            assert_eq!(serialized.as_slice(), public.0.as_bytes());
             let de: PublicKey = bincode::deserialize(&serialized).unwrap();
             assert_eq!(public, de);
         }
@@ -377,8 +398,8 @@ mod tests {
         assert_eq!(
             sign.to_vec(),
             "b91467e570a6466aa9e9876cbcd013baba02900b8979d43fe208a4a4f339f5fd6007e74cd82e037b800186422fc2da167c747ef045e5d18a5f5d4300f8e1a0291c"
-            .from_hex::<Vec<u8>>()
-            .unwrap()
+                .from_hex::<Vec<u8>>()
+                .unwrap()
         );
     }
 }

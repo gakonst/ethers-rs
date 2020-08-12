@@ -3,8 +3,8 @@ use crate::{Client, ClientError, Signer};
 use ethers_providers::{JsonRpcClient, Provider};
 
 use ethers_core::{
-    rand::Rng,
-    secp256k1,
+    k256::elliptic_curve::error::Error as K256Error,
+    rand::{CryptoRng, Rng},
     types::{Address, PrivateKey, PublicKey, Signature, Transaction, TransactionRequest, TxError},
 };
 
@@ -101,7 +101,7 @@ impl Wallet {
     // TODO: Add support for mnemonic and encrypted JSON
 
     /// Creates a new random keypair seeded with the provided RNG
-    pub fn new<R: Rng>(rng: &mut R) -> Self {
+    pub fn new<R: Rng + CryptoRng>(rng: &mut R) -> Self {
         let private_key = PrivateKey::new(rng);
         let public_key = PublicKey::from(&private_key);
         let address = Address::from(&private_key);
@@ -167,7 +167,7 @@ impl From<PrivateKey> for Wallet {
 }
 
 impl FromStr for Wallet {
-    type Err = secp256k1::Error;
+    type Err = K256Error;
 
     fn from_str(src: &str) -> Result<Self, Self::Err> {
         Ok(PrivateKey::from_str(src)?.into())
