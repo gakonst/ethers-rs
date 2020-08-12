@@ -5,21 +5,20 @@ use crate::{
 };
 
 use rustc_hex::{FromHex, ToHex};
-use secp256k1::{
-    self as Secp256k1, Error as Secp256k1Error, Message, RecoveryId,
-    Signature as RecoverableSignature,
-};
 use serde::{Deserialize, Serialize};
 use std::{convert::TryFrom, fmt, str::FromStr};
 
 use thiserror::Error;
 
+use generic_array::GenericArray;
+use k256::ecdsa::{
+    recoverable::{Id as RecoveryId, Signature as RecoverableSignature},
+    Error as K256SignatureError, Signature as K256Signature,
+};
+
 /// An error involving a signature.
-#[derive(Clone, Debug, Error)]
+#[derive(Debug, Error)]
 pub enum SignatureError {
-    /// Internal error inside the recovery
-    #[error(transparent)]
-    Secp256k1Error(#[from] Secp256k1Error),
     /// Invalid length, secp256k1 signatures are 65 bytes
     #[error("invalid signature length, got {0}, expected 65")]
     InvalidLength(usize),
@@ -30,6 +29,9 @@ pub enum SignatureError {
     /// produced the signature did not match the expected address)
     #[error("Signature verification failed. Expected {0}, got {0}")]
     VerificationError(Address, Address),
+    /// Internal error during signature recovery
+    #[error(transparent)]
+    K256Error(#[from] K256SignatureError),
 }
 
 /// Recovery message data.
@@ -92,10 +94,9 @@ impl Signature {
             RecoveryMessage::Data(ref message) => hash_message(message),
             RecoveryMessage::Hash(hash) => hash,
         };
-        let message = Message::parse_slice(message_hash.as_bytes())?;
 
-        let (signature, recovery_id) = self.as_signature()?;
-        let public_key = Secp256k1::recover(&message, &signature, &recovery_id)?;
+        let (recoverable_sig, _recovery_id) = self.as_signature()?;
+        let public_key = recoverable_sig.recover_pubkey(message_hash.as_bytes())?;
 
         Ok(PublicKey::from(public_key).into())
     }
@@ -104,10 +105,10 @@ impl Signature {
     fn as_signature(&self) -> Result<(RecoverableSignature, RecoveryId), SignatureError> {
         let recovery_id = self.recovery_id()?;
         let signature = {
-            let mut sig = [0u8; 64];
-            sig[..32].copy_from_slice(self.r.as_bytes());
-            sig[32..].copy_from_slice(self.s.as_bytes());
-            RecoverableSignature::parse(&sig)
+            let gar = GenericArray::from_slice(self.r.as_bytes());
+            let gas = GenericArray::from_slice(self.s.as_bytes());
+            let sig = K256Signature::from_scalars(&gar, &gas);
+            RecoverableSignature::new(&sig, recovery_id)
         };
 
         Ok((signature, recovery_id))
@@ -116,7 +117,7 @@ impl Signature {
     /// Retrieve the recovery ID.
     fn recovery_id(&self) -> Result<RecoveryId, SignatureError> {
         let standard_v = normalize_recovery_id(self.v);
-        Ok(RecoveryId::parse(standard_v)?)
+        Ok(RecoveryId::new(standard_v)?)
     }
 
     /// Copies and serializes `self` into a new `Vec` with the recovery id included

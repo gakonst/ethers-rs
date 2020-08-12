@@ -49,5 +49,5 @@ pub mod utils;
 // re-export rand to avoid potential confusion when there's rand version mismatches
 pub use rand;
 
-// re-export libsecp
-pub use secp256k1;
+// re-export k256
+pub use k256;
