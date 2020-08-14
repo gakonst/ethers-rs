@@ -1,5 +1,8 @@
 #![allow(unused_braces)]
-use ethers::providers::{EthGasStation, Etherchain, Etherscan, GasOracle, Http, Provider};
+use ethers::providers::{
+    gas_oracle::{EthGasStation, Etherchain, Etherscan, GasOracle},
+    Http, Provider,
+};
 use std::{convert::TryFrom, time::Duration};
 
 #[cfg(not(feature = "celo"))]

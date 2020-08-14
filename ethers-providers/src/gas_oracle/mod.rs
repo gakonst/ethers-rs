@@ -15,7 +15,9 @@ use thiserror::Error;
 /// # Example
 ///
 /// ```no_run
-/// use ethers::providers::{EthGasStation, Etherscan, GasOracle};
+/// use ethers::providers::{
+///     gas_oracle::{EthGasStation, Etherscan, GasOracle},
+/// };
 ///
 /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
 /// let eth_gas_station_oracle = EthGasStation::new(Some("my-api-key"));
@@ -56,7 +58,9 @@ impl<G: GasOracleFetch> GasOracle<G> {
     /// # Example
     ///
     /// ```
-    /// use ethers::providers::{Etherchain, GasOracle};
+    /// use ethers::providers::{
+    ///     gas_oracle::{Etherchain, GasOracle},
+    /// };
     ///
     /// let etherchain_oracle = GasOracle::new(Etherchain::new());
     /// ```
@@ -69,7 +73,9 @@ impl<G: GasOracleFetch> GasOracle<G> {
     /// # Example
     ///
     /// ```
-    /// use ethers::providers::{Etherchain, GasOracle};
+    /// use ethers::providers::{
+    ///     gas_oracle::{Etherchain, GasOracle},
+    /// };
     ///
     /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
     /// let etherchain_oracle = GasOracle::new(Etherchain::new());

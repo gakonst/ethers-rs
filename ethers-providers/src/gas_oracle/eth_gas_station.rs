@@ -8,6 +8,8 @@ use crate::gas_oracle::{GasOracleError, GasOracleFetch, GasOracleResponse};
 
 const ETH_GAS_STATION_URL_PREFIX: &str = "https://ethgasstation.info/api/ethgasAPI.json";
 
+/// A client over HTTP for the [EthGasStation](https://ethgasstation.info/api/ethgasAPI.json) gas tracker API
+/// that implements the `GasOracleFetch` trait
 pub struct EthGasStation {
     client: Client,
     url: Url,

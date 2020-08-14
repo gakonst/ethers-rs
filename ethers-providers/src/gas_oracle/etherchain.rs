@@ -9,9 +9,17 @@ use crate::gas_oracle::{GasOracleError, GasOracleFetch, GasOracleResponse};
 
 const ETHERCHAIN_URL: &str = "https://www.etherchain.org/api/gasPriceOracle";
 
+/// A client over HTTP for the [Etherchain](https://www.etherchain.org/api/gasPriceOracle) gas tracker API
+/// that implements the `GasOracleFetch` trait
 pub struct Etherchain {
     client: Client,
     url: Url,
+}
+
+impl Default for Etherchain {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 #[derive(Deserialize)]

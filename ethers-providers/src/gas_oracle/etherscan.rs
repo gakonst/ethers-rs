@@ -10,6 +10,8 @@ use crate::gas_oracle::{GasOracleError, GasOracleFetch, GasOracleResponse};
 const ETHERSCAN_URL_PREFIX: &str =
     "https://api.etherscan.io/api?module=gastracker&action=gasoracle";
 
+/// A client over HTTP for the [Etherscan](https://api.etherscan.io/api?module=gastracker&action=gasoracle) gas tracker API
+/// that implements the `GasOracleFetch` trait
 pub struct Etherscan {
     client: Client,
     url: Url,
