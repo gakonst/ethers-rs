@@ -107,6 +107,9 @@ mod provider;
 // ENS support
 mod ens;
 
+mod gas_oracle;
+pub use gas_oracle::{EthGasStation, Etherchain, Etherscan, GasOracle, GasOracleResponse};
+
 mod pending_transaction;
 pub use pending_transaction::PendingTransaction;
 
