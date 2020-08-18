@@ -1,6 +1,6 @@
 use ethers::{
     providers::{
-        gas_oracle::{Etherchain, GasOracle},
+        gas_oracle::{Etherchain, GasCategory, GasOracle},
         Http, Provider,
     },
     signers::Wallet,
@@ -92,8 +92,8 @@ mod eth_tests {
         let client = wallet.connect(provider);
 
         // assign a gas oracle to use
-        let gas_oracle = Etherchain::new();
-        let _expected_gas_price = gas_oracle.fetch().await.unwrap();
+        let gas_oracle = Etherchain::new().category(GasCategory::Fastest);
+        let expected_gas_price = gas_oracle.fetch().await.unwrap();
 
         let client = client.gas_oracle(Box::new(gas_oracle));
 
@@ -101,8 +101,8 @@ mod eth_tests {
         let tx = TransactionRequest::new().to(wallet2.address()).value(10000);
         let tx_hash = client.send_transaction(tx, None).await.unwrap();
 
-        // TODO: compare to see if the expected gas matches the gas used
-        let _tx_receipt = client.get_transaction_receipt(tx_hash).await.unwrap();
+        let tx = client.get_transaction(tx_hash).await.unwrap();
+        assert_eq!(tx.gas_price, expected_gas_price);
     }
 }
 

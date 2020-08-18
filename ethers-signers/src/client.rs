@@ -3,7 +3,10 @@ use crate::Signer;
 use ethers_core::types::{
     Address, BlockNumber, Bytes, NameOrAddress, Signature, TransactionRequest, TxHash,
 };
-use ethers_providers::{gas_oracle::GasOracle, JsonRpcClient, Provider, ProviderError};
+use ethers_providers::{
+    gas_oracle::{GasOracle, GasOracleError},
+    JsonRpcClient, Provider, ProviderError,
+};
 
 use futures_util::{future::ok, join};
 use std::{future::Future, ops::Deref, time::Duration};
@@ -81,6 +84,10 @@ pub enum ClientError {
     ProviderError(#[from] ProviderError),
 
     #[error(transparent)]
+    /// Throw when a call to the gas oracle fails
+    GasOracleError(#[from] GasOracleError),
+
+    #[error(transparent)]
     /// Thrown when the internal call to the signer fails
     SignerError(#[from] Box<dyn std::error::Error + Send + Sync>),
 
@@ -151,6 +158,13 @@ where
         // set the `from` field
         if tx.from.is_none() {
             tx.from = Some(self.address());
+        }
+
+        // assign gas price if a gas oracle has been provided
+        if let Some(gas_oracle) = &self.gas_oracle {
+            if let Ok(gas_price) = gas_oracle.fetch().await {
+                tx.gas_price = Some(gas_price);
+            }
         }
 
         // will poll and await the futures concurrently
