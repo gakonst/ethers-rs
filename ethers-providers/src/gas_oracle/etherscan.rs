@@ -60,6 +60,12 @@ impl Etherscan {
 #[async_trait]
 impl GasOracle for Etherscan {
     async fn fetch(&self) -> Result<U256, GasOracleError> {
+        match self.gas_category {
+            GasCategory::Fast => return Err(GasOracleError::GasCategoryNotSupported),
+            GasCategory::Fastest => return Err(GasOracleError::GasCategoryNotSupported),
+            _ => {}
+        };
+
         let res = self
             .client
             .get(self.url.as_ref())
@@ -71,8 +77,7 @@ impl GasOracle for Etherscan {
         match self.gas_category {
             GasCategory::SafeLow => Ok(U256::from(res.result.safe_gas_price)),
             GasCategory::Standard => Ok(U256::from(res.result.propose_gas_price)),
-            GasCategory::Fast => Err(GasOracleError::GasCategoryNotSupported),
-            GasCategory::Fastest => Err(GasOracleError::GasCategoryNotSupported),
+            _ => Err(GasOracleError::GasCategoryNotSupported),
         }
     }
 }
