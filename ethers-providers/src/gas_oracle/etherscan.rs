@@ -1,10 +1,12 @@
+use ethers_core::types::U256;
+
 use async_trait::async_trait;
 use reqwest::Client;
 use serde::Deserialize;
 use serde_aux::prelude::*;
 use url::Url;
 
-use crate::gas_oracle::{GasOracle, GasOracleError, GasOracleResponse};
+use crate::gas_oracle::{GasCategory, GasOracle, GasOracleError};
 
 const ETHERSCAN_URL_PREFIX: &str =
     "https://api.etherscan.io/api?module=gastracker&action=gasoracle";
@@ -15,6 +17,7 @@ const ETHERSCAN_URL_PREFIX: &str =
 pub struct Etherscan {
     client: Client,
     url: Url,
+    gas_category: GasCategory,
 }
 
 #[derive(Deserialize)]
@@ -25,26 +28,11 @@ struct EtherscanResponse {
 #[derive(Deserialize)]
 struct EtherscanResponseInner {
     #[serde(deserialize_with = "deserialize_number_from_string")]
-    #[serde(rename = "LastBlock")]
-    last_block: u64,
-    #[serde(deserialize_with = "deserialize_number_from_string")]
     #[serde(rename = "SafeGasPrice")]
     safe_gas_price: u64,
     #[serde(deserialize_with = "deserialize_number_from_string")]
     #[serde(rename = "ProposeGasPrice")]
     propose_gas_price: u64,
-}
-
-impl From<EtherscanResponse> for GasOracleResponse {
-    fn from(src: EtherscanResponse) -> Self {
-        Self {
-            block: Some(src.result.last_block),
-            safe_low: Some(src.result.safe_gas_price),
-            standard: Some(src.result.propose_gas_price),
-            fast: None,
-            fastest: None,
-        }
-    }
 }
 
 impl Etherscan {
@@ -59,13 +47,19 @@ impl Etherscan {
         Etherscan {
             client: Client::new(),
             url,
+            gas_category: GasCategory::Standard,
         }
+    }
+
+    pub fn category(mut self, gas_category: GasCategory) -> Self {
+        self.gas_category = gas_category;
+        self
     }
 }
 
 #[async_trait]
 impl GasOracle for Etherscan {
-    async fn fetch(&self) -> Result<GasOracleResponse, GasOracleError> {
+    async fn fetch(&self) -> Result<U256, GasOracleError> {
         let res = self
             .client
             .get(self.url.as_ref())
@@ -74,6 +68,11 @@ impl GasOracle for Etherscan {
             .json::<EtherscanResponse>()
             .await?;
 
-        Ok(res.into())
+        match self.gas_category {
+            GasCategory::SafeLow => Ok(U256::from(res.result.safe_gas_price)),
+            GasCategory::Standard => Ok(U256::from(res.result.propose_gas_price)),
+            GasCategory::Fast => Err(GasOracleError::GasCategoryNotSupported),
+            GasCategory::Fastest => Err(GasOracleError::GasCategoryNotSupported),
+        }
     }
 }

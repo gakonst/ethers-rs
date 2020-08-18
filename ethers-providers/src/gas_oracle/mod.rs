@@ -7,18 +7,19 @@ pub use etherchain::Etherchain;
 mod etherscan;
 pub use etherscan::Etherscan;
 
+use ethers_core::types::U256;
+
 use async_trait::async_trait;
 use reqwest::Error as ReqwestError;
 use thiserror::Error;
 
-/// The response from a successful fetch from the `GasOracle`
-#[derive(Clone, Debug)]
-pub struct GasOracleResponse {
-    pub block: Option<u64>,
-    pub safe_low: Option<u64>,
-    pub standard: Option<u64>,
-    pub fast: Option<u64>,
-    pub fastest: Option<u64>,
+/// Various gas price categories. Choose one of the available
+#[derive(Debug)]
+pub enum GasCategory {
+    SafeLow,
+    Standard,
+    Fast,
+    Fastest,
 }
 
 #[derive(Error, Debug)]
@@ -27,8 +28,12 @@ pub enum GasOracleError {
     /// An internal error in the HTTP request made from the underlying
     /// gas oracle
     #[error(transparent)]
-    // HttpClientError(#[from] Box<dyn std::error::Error>),
     HttpClientError(#[from] ReqwestError),
+
+    /// An internal error thrown when the required gas category is not
+    /// supported by the gas oracle API
+    #[error("gas category not supported")]
+    GasCategoryNotSupported,
 }
 
 /// `GasOracle` is a trait that an underlying gas oracle needs to implement.
@@ -37,12 +42,12 @@ pub enum GasOracleError {
 ///
 /// ```no_run
 /// use ethers::providers::{
-///     gas_oracle::{EthGasStation, Etherscan, GasOracle},
+///     gas_oracle::{EthGasStation, Etherscan, GasCategory, GasOracle},
 /// };
 ///
 /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
 /// let eth_gas_station_oracle = EthGasStation::new(Some("my-api-key"));
-/// let etherscan_oracle = EthGasStation::new(None);
+/// let etherscan_oracle = EthGasStation::new(None).category(GasCategory::SafeLow);
 ///
 /// let data_1 = eth_gas_station_oracle.fetch().await?;
 /// let data_2 = etherscan_oracle.fetch().await?;
@@ -57,14 +62,14 @@ pub trait GasOracle: std::fmt::Debug {
     ///
     /// ```
     /// use ethers::providers::{
-    ///     gas_oracle::{Etherchain, GasOracle},
+    ///     gas_oracle::{Etherchain, GasCategory, GasOracle},
     /// };
     ///
     /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
-    /// let etherchain_oracle = Etherchain::new();
+    /// let etherchain_oracle = Etherchain::new().category(GasCategory::Fastest);
     /// let data = etherchain_oracle.fetch().await?;
     /// # Ok(())
     /// # }
     /// ```
-    async fn fetch(&self) -> Result<GasOracleResponse, GasOracleError>;
+    async fn fetch(&self) -> Result<U256, GasOracleError>;
 }
