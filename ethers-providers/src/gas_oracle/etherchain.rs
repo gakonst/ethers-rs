@@ -1,16 +1,16 @@
 use async_trait::async_trait;
-use reqwest::{Client, Error as ReqwestError};
+use reqwest::Client;
 use serde::Deserialize;
 use serde_aux::prelude::*;
-use thiserror::Error;
 use url::Url;
 
-use crate::gas_oracle::{GasOracleError, GasOracleFetch, GasOracleResponse};
+use crate::gas_oracle::{GasOracle, GasOracleError, GasOracleResponse};
 
 const ETHERCHAIN_URL: &str = "https://www.etherchain.org/api/gasPriceOracle";
 
 /// A client over HTTP for the [Etherchain](https://www.etherchain.org/api/gasPriceOracle) gas tracker API
-/// that implements the `GasOracleFetch` trait
+/// that implements the `GasOracle` trait
+#[derive(Debug)]
 pub struct Etherchain {
     client: Client,
     url: Url,
@@ -47,18 +47,6 @@ impl From<EtherchainResponse> for GasOracleResponse {
     }
 }
 
-#[derive(Error, Debug)]
-pub enum ClientError {
-    #[error(transparent)]
-    ReqwestError(#[from] ReqwestError),
-}
-
-impl From<ClientError> for GasOracleError {
-    fn from(src: ClientError) -> GasOracleError {
-        GasOracleError::HttpClientError(Box::new(src))
-    }
-}
-
 impl Etherchain {
     pub fn new() -> Self {
         let url = Url::parse(ETHERCHAIN_URL).expect("invalid url");
@@ -71,10 +59,8 @@ impl Etherchain {
 }
 
 #[async_trait]
-impl GasOracleFetch for Etherchain {
-    type Error = ClientError;
-
-    async fn fetch(&self) -> Result<GasOracleResponse, ClientError> {
+impl GasOracle for Etherchain {
+    async fn fetch(&self) -> Result<GasOracleResponse, GasOracleError> {
         let res = self
             .client
             .get(self.url.as_ref())

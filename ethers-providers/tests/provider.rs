@@ -80,8 +80,7 @@ mod eth_tests {
     async fn gas_oracle() {
         // initialize and fetch gas estimates from EthGasStation
         let eth_gas_station_oracle = EthGasStation::new(None);
-        let gas_oracle_1 = GasOracle::new(eth_gas_station_oracle);
-        let data_1 = gas_oracle_1.fetch().await.unwrap();
+        let data_1 = eth_gas_station_oracle.fetch().await.unwrap();
         assert!(data_1.block.is_some());
         assert!(data_1.safe_low.is_some());
         assert!(data_1.standard.is_some());
@@ -90,8 +89,7 @@ mod eth_tests {
 
         // initialize and fetch gas estimates from Etherscan
         let etherscan_oracle = Etherscan::new(None);
-        let gas_oracle_2 = GasOracle::new(etherscan_oracle);
-        let data_2 = gas_oracle_2.fetch().await.unwrap();
+        let data_2 = etherscan_oracle.fetch().await.unwrap();
         assert!(data_2.block.is_some());
         assert!(data_2.safe_low.is_some());
         assert!(data_2.standard.is_some());
@@ -100,8 +98,7 @@ mod eth_tests {
 
         // initialize and fetch gas estimates from Etherchain
         let etherchain_oracle = Etherchain::new();
-        let gas_oracle_3 = GasOracle::new(etherchain_oracle);
-        let data_3 = gas_oracle_3.fetch().await.unwrap();
+        let data_3 = etherchain_oracle.fetch().await.unwrap();
         assert!(data_3.block.is_none());
         assert!(data_3.safe_low.is_some());
         assert!(data_3.standard.is_some());

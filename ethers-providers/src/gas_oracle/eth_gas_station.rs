@@ -1,15 +1,15 @@
 use async_trait::async_trait;
-use reqwest::{Client, Error as ReqwestError};
+use reqwest::Client;
 use serde::Deserialize;
-use thiserror::Error;
 use url::Url;
 
-use crate::gas_oracle::{GasOracleError, GasOracleFetch, GasOracleResponse};
+use crate::gas_oracle::{GasOracle, GasOracleError, GasOracleResponse};
 
 const ETH_GAS_STATION_URL_PREFIX: &str = "https://ethgasstation.info/api/ethgasAPI.json";
 
 /// A client over HTTP for the [EthGasStation](https://ethgasstation.info/api/ethgasAPI.json) gas tracker API
-/// that implements the `GasOracleFetch` trait
+/// that implements the `GasOracle` trait
+#[derive(Debug)]
 pub struct EthGasStation {
     client: Client,
     url: Url,
@@ -38,18 +38,6 @@ impl From<EthGasStationResponse> for GasOracleResponse {
     }
 }
 
-#[derive(Error, Debug)]
-pub enum ClientError {
-    #[error(transparent)]
-    ReqwestError(#[from] ReqwestError),
-}
-
-impl From<ClientError> for GasOracleError {
-    fn from(src: ClientError) -> GasOracleError {
-        GasOracleError::HttpClientError(Box::new(src))
-    }
-}
-
 impl EthGasStation {
     pub fn new(api_key: Option<&'static str>) -> Self {
         let url = match api_key {
@@ -67,10 +55,8 @@ impl EthGasStation {
 }
 
 #[async_trait]
-impl GasOracleFetch for EthGasStation {
-    type Error = ClientError;
-
-    async fn fetch(&self) -> Result<GasOracleResponse, ClientError> {
+impl GasOracle for EthGasStation {
+    async fn fetch(&self) -> Result<GasOracleResponse, GasOracleError> {
         let res = self
             .client
             .get(self.url.as_ref())

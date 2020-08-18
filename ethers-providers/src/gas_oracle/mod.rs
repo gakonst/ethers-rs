@@ -8,33 +8,11 @@ mod etherscan;
 pub use etherscan::Etherscan;
 
 use async_trait::async_trait;
+use reqwest::Error as ReqwestError;
 use thiserror::Error;
 
-/// `GasOracle` encapsulates a generic type that implements the `GasOracleFetch` trait.
-///
-/// # Example
-///
-/// ```no_run
-/// use ethers::providers::{
-///     gas_oracle::{EthGasStation, Etherscan, GasOracle},
-/// };
-///
-/// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
-/// let eth_gas_station_oracle = EthGasStation::new(Some("my-api-key"));
-/// let gas_oracle_1 = GasOracle::new(eth_gas_station_oracle);
-///
-/// let etherscan_oracle = EthGasStation::new(None);
-/// let gas_oracle_2 = GasOracle::new(etherscan_oracle);
-///
-/// let data_1 = gas_oracle_1.fetch().await?;
-/// let data_2 = gas_oracle_2.fetch().await?;
-/// # Ok(())
-/// # }
-/// ```
-pub struct GasOracle<G: GasOracleFetch>(G);
-
 /// The response from a successful fetch from the `GasOracle`
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct GasOracleResponse {
     pub block: Option<u64>,
     pub safe_low: Option<u64>,
@@ -49,25 +27,30 @@ pub enum GasOracleError {
     /// An internal error in the HTTP request made from the underlying
     /// gas oracle
     #[error(transparent)]
-    HttpClientError(#[from] Box<dyn std::error::Error>),
+    // HttpClientError(#[from] Box<dyn std::error::Error>),
+    HttpClientError(#[from] ReqwestError),
 }
 
-impl<G: GasOracleFetch> GasOracle<G> {
-    /// Initializes a new `GasOracle`
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use ethers::providers::{
-    ///     gas_oracle::{Etherchain, GasOracle},
-    /// };
-    ///
-    /// let etherchain_oracle = GasOracle::new(Etherchain::new());
-    /// ```
-    pub fn new(oracle: G) -> Self {
-        Self(oracle)
-    }
-
+/// `GasOracle` is a trait that an underlying gas oracle needs to implement.
+///
+/// # Example
+///
+/// ```no_run
+/// use ethers::providers::{
+///     gas_oracle::{EthGasStation, Etherscan, GasOracle},
+/// };
+///
+/// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
+/// let eth_gas_station_oracle = EthGasStation::new(Some("my-api-key"));
+/// let etherscan_oracle = EthGasStation::new(None);
+///
+/// let data_1 = eth_gas_station_oracle.fetch().await?;
+/// let data_2 = etherscan_oracle.fetch().await?;
+/// # Ok(())
+/// # }
+/// ```
+#[async_trait]
+pub trait GasOracle: std::fmt::Debug {
     /// Makes an asynchronous HTTP query to the underlying `GasOracle`
     ///
     /// # Example
@@ -78,20 +61,10 @@ impl<G: GasOracleFetch> GasOracle<G> {
     /// };
     ///
     /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
-    /// let etherchain_oracle = GasOracle::new(Etherchain::new());
+    /// let etherchain_oracle = Etherchain::new();
     /// let data = etherchain_oracle.fetch().await?;
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn fetch(&self) -> Result<GasOracleResponse, GasOracleError> {
-        Ok(self.0.fetch().await.map_err(Into::into)?)
-    }
-}
-
-/// A common trait that an underlying gas oracle needs to implement.
-#[async_trait]
-pub trait GasOracleFetch {
-    type Error: std::error::Error + Into<GasOracleError>;
-
-    async fn fetch(&self) -> Result<GasOracleResponse, Self::Error>;
+    async fn fetch(&self) -> Result<GasOracleResponse, GasOracleError>;
 }
