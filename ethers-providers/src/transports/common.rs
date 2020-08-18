@@ -25,12 +25,17 @@ impl fmt::Display for JsonRpcError {
     }
 }
 
+fn is_zst<T>(_t: &T) -> bool {
+    std::mem::size_of::<T>() == 0
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 /// A JSON-RPC request
 pub struct Request<'a, T> {
     id: u64,
     jsonrpc: &'a str,
     method: &'a str,
+    #[serde(skip_serializing_if = "is_zst")]
     params: T,
 }
 
@@ -76,10 +81,25 @@ mod tests {
     use super::*;
 
     #[test]
-    fn response() {
+    fn deser_response() {
         let response: Response<u64> =
             serde_json::from_str(r#"{"jsonrpc": "2.0", "result": 19, "id": 1}"#).unwrap();
         assert_eq!(response.id, 1);
         assert_eq!(response.data.into_result().unwrap(), 19);
+    }
+
+    #[test]
+    fn ser_request() {
+        let request: Request<()> = Request::new(300, "method_name", ());
+        assert_eq!(
+            &serde_json::to_string(&request).unwrap(),
+            r#"{"id":300,"jsonrpc":"2.0","method":"method_name"}"#
+        );
+
+        let request: Request<u32> = Request::new(300, "method_name", 1);
+        assert_eq!(
+            &serde_json::to_string(&request).unwrap(),
+            r#"{"id":300,"jsonrpc":"2.0","method":"method_name","params":1}"#
+        );
     }
 }
