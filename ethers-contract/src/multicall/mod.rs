@@ -81,7 +81,8 @@ pub static ADDRESS_BOOK: Lazy<HashMap<U256, Address>> = Lazy::new(|| {
 ///     .parse::<Wallet>()?.connect(provider);
 ///
 /// // create the contract object. This will be used to construct the calls for multicall
-/// let contract = Contract::new(address, abi, client.clone());
+/// let client = Arc::new(client);
+/// let contract = Contract::new(address, abi, Arc::clone(&client));
 ///
 /// // note that these [`ContractCall`]s are futures, and need to be `.await`ed to resolve.
 /// // But we will let `Multicall` to take care of that for us
@@ -92,7 +93,7 @@ pub static ADDRESS_BOOK: Lazy<HashMap<U256, Address>> = Lazy::new(|| {
 /// // the Multicall contract and we set that to `None`. If you wish to provide the address
 /// // for the Multicall contract, you can pass the `Some(multicall_addr)` argument.
 /// // Construction of the `Multicall` instance follows the builder pattern
-/// let multicall = Multicall::new(client.clone(), None)
+/// let multicall = Multicall::new(Arc::clone(&client), None)
 ///     .await?
 ///     .add_call(first_call)
 ///     .add_call(second_call);
