@@ -1,5 +1,8 @@
 #![allow(unused_braces)]
-use ethers::providers::{Http, Provider};
+use ethers::providers::{
+    gas_oracle::{EthGasStation, Etherchain, Etherscan, GasCategory, GasNow, GasOracle},
+    Http, Provider,
+};
 use std::{convert::TryFrom, time::Duration};
 
 #[cfg(not(feature = "celo"))]
@@ -71,6 +74,36 @@ mod eth_tests {
         let ws = Ws::connect(ganache.ws_endpoint()).await.unwrap();
         let provider = Provider::new(ws);
         generic_pending_txs_test(provider).await;
+    }
+
+    #[tokio::test]
+    async fn gas_oracle() {
+        // initialize and fetch gas estimates from EthGasStation
+        let eth_gas_station_oracle = EthGasStation::new(None);
+        let data_1 = eth_gas_station_oracle.fetch().await;
+        assert!(data_1.is_ok());
+
+        // initialize and fetch gas estimates from Etherscan
+        // since etherscan does not support `fastest` category, we expect an error
+        let etherscan_oracle = Etherscan::new(None).category(GasCategory::Fastest);
+        let data_2 = etherscan_oracle.fetch().await;
+        assert!(data_2.is_err());
+
+        // but fetching the `standard` gas price should work fine
+        let etherscan_oracle_2 = Etherscan::new(None).category(GasCategory::SafeLow);
+
+        let data_3 = etherscan_oracle_2.fetch().await;
+        assert!(data_3.is_ok());
+
+        // initialize and fetch gas estimates from Etherchain
+        let etherchain_oracle = Etherchain::new().category(GasCategory::Fast);
+        let data_4 = etherchain_oracle.fetch().await;
+        assert!(data_4.is_ok());
+
+        // initialize and fetch gas estimates from Etherchain
+        let gas_now_oracle = GasNow::new().category(GasCategory::Fastest);
+        let data_5 = gas_now_oracle.fetch().await;
+        assert!(data_5.is_ok());
     }
 
     async fn generic_pending_txs_test<P: JsonRpcClient>(provider: Provider<P>) {

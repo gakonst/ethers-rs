@@ -3,13 +3,16 @@ use crate::Signer;
 use ethers_core::types::{
     Address, BlockNumber, Bytes, NameOrAddress, Signature, TransactionRequest, TxHash,
 };
-use ethers_providers::{JsonRpcClient, Provider, ProviderError};
+use ethers_providers::{
+    gas_oracle::{GasOracle, GasOracleError},
+    JsonRpcClient, Provider, ProviderError,
+};
 
 use futures_util::{future::ok, join};
 use std::{future::Future, ops::Deref, time::Duration};
 use thiserror::Error;
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 /// A client provides an interface for signing and broadcasting locally signed transactions
 /// It Derefs to [`Provider`], which allows interacting with the Ethereum JSON-RPC provider
 /// via the same API. Sending transactions also supports using [ENS](https://ens.domains/) as a receiver. If you will
@@ -70,6 +73,7 @@ pub struct Client<P, S> {
     pub(crate) provider: Provider<P>,
     pub(crate) signer: Option<S>,
     pub(crate) address: Address,
+    pub(crate) gas_oracle: Option<Box<dyn GasOracle>>,
 }
 
 #[derive(Debug, Error)]
@@ -78,6 +82,10 @@ pub enum ClientError {
     #[error(transparent)]
     /// Throw when the call to the provider fails
     ProviderError(#[from] ProviderError),
+
+    #[error(transparent)]
+    /// Throw when a call to the gas oracle fails
+    GasOracleError(#[from] GasOracleError),
 
     #[error(transparent)]
     /// Thrown when the internal call to the signer fails
@@ -91,8 +99,8 @@ pub enum ClientError {
 // Helper functions for locally signing transactions
 impl<P, S> Client<P, S>
 where
-    S: Signer,
     P: JsonRpcClient,
+    S: Signer,
 {
     /// Creates a new client from the provider and signer.
     pub fn new(provider: Provider<P>, signer: S) -> Self {
@@ -101,6 +109,7 @@ where
             provider,
             signer: Some(signer),
             address,
+            gas_oracle: None,
         }
     }
 
@@ -151,6 +160,13 @@ where
             tx.from = Some(self.address());
         }
 
+        // assign gas price if a gas oracle has been provided
+        if let Some(gas_oracle) = &self.gas_oracle {
+            if let Ok(gas_price) = gas_oracle.fetch().await {
+                tx.gas_price = Some(gas_price);
+            }
+        }
+
         // will poll and await the futures concurrently
         let (gas_price, gas, nonce) = join!(
             maybe(tx.gas_price, self.provider.get_gas_price()),
@@ -186,27 +202,19 @@ where
     /// calls.
     ///
     /// Clones internally.
-    pub fn with_signer(&self, signer: S) -> Self
-    where
-        P: Clone,
-    {
-        let mut this = self.clone();
-        this.address = signer.address();
-        this.signer = Some(signer);
-        this
+    pub fn with_signer(&mut self, signer: S) -> &Self {
+        self.address = signer.address();
+        self.signer = Some(signer);
+        self
     }
 
     /// Sets the provider and returns a mutable reference to self so that it can be used in chained
     /// calls.
     ///
     /// Clones internally.
-    pub fn with_provider(&self, provider: Provider<P>) -> Self
-    where
-        P: Clone,
-    {
-        let mut this = self.clone();
-        this.provider = provider;
-        this
+    pub fn with_provider(&mut self, provider: Provider<P>) -> &Self {
+        self.provider = provider;
+        self
     }
 
     /// Sets the address which will be used for interacting with the blockchain.
@@ -234,6 +242,12 @@ where
     pub fn interval<T: Into<Duration>>(mut self, interval: T) -> Self {
         let provider = self.provider.interval(interval.into());
         self.provider = provider;
+        self
+    }
+
+    /// Sets the gas oracle to query for gas estimates while broadcasting transactions
+    pub fn gas_oracle(mut self, gas_oracle: Box<dyn GasOracle>) -> Self {
+        self.gas_oracle = Some(gas_oracle);
         self
     }
 }
@@ -267,6 +281,7 @@ impl<P: JsonRpcClient, S> From<Provider<P>> for Client<P, S> {
             provider,
             signer: None,
             address: Address::zero(),
+            gas_oracle: None,
         }
     }
 }

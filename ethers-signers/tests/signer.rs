@@ -1,5 +1,8 @@
 use ethers::{
-    providers::{Http, Provider},
+    providers::{
+        gas_oracle::{Etherchain, GasCategory, GasOracle},
+        Http, Provider,
+    },
     signers::Wallet,
     types::TransactionRequest,
 };
@@ -70,6 +73,36 @@ mod eth_tests {
         let balance_after = client.get_balance(client.address(), None).await.unwrap();
 
         assert!(balance_before > balance_after);
+    }
+
+    #[tokio::test]
+    async fn using_gas_oracle() {
+        let ganache = Ganache::new().spawn();
+
+        // this private key belongs to the above mnemonic
+        let wallet: Wallet = ganache.keys()[0].clone().into();
+        let wallet2: Wallet = ganache.keys()[1].clone().into();
+
+        // connect to the network
+        let provider = Provider::<Http>::try_from(ganache.endpoint())
+            .unwrap()
+            .interval(Duration::from_millis(10u64));
+
+        // connect the wallet to the provider
+        let client = wallet.connect(provider);
+
+        // assign a gas oracle to use
+        let gas_oracle = Etherchain::new().category(GasCategory::Fastest);
+        let expected_gas_price = gas_oracle.fetch().await.unwrap();
+
+        let client = client.gas_oracle(Box::new(gas_oracle));
+
+        // broadcast a transaction
+        let tx = TransactionRequest::new().to(wallet2.address()).value(10000);
+        let tx_hash = client.send_transaction(tx, None).await.unwrap();
+
+        let tx = client.get_transaction(tx_hash).await.unwrap();
+        assert_eq!(tx.gas_price, expected_gas_price);
     }
 }
 
