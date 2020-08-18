@@ -6,7 +6,7 @@ use serde::Deserialize;
 use serde_aux::prelude::*;
 use url::Url;
 
-use crate::gas_oracle::{GasCategory, GasOracle, GasOracleError};
+use crate::gas_oracle::{GasCategory, GasOracle, GasOracleError, GWEI_TO_WEI};
 
 const ETHERCHAIN_URL: &str = "https://www.etherchain.org/api/gasPriceOracle";
 
@@ -67,10 +67,10 @@ impl GasOracle for Etherchain {
             .await?;
 
         let gas_price = match self.gas_category {
-            GasCategory::SafeLow => U256::from(res.safe_low as u64),
-            GasCategory::Standard => U256::from(res.standard as u64),
-            GasCategory::Fast => U256::from(res.fast as u64),
-            GasCategory::Fastest => U256::from(res.fastest as u64),
+            GasCategory::SafeLow => U256::from((res.safe_low as u64) * GWEI_TO_WEI),
+            GasCategory::Standard => U256::from((res.standard as u64) * GWEI_TO_WEI),
+            GasCategory::Fast => U256::from((res.fast as u64) * GWEI_TO_WEI),
+            GasCategory::Fastest => U256::from((res.fastest as u64) * GWEI_TO_WEI),
         };
 
         Ok(gas_price)

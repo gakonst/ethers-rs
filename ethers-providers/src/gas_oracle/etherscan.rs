@@ -6,7 +6,7 @@ use serde::Deserialize;
 use serde_aux::prelude::*;
 use url::Url;
 
-use crate::gas_oracle::{GasCategory, GasOracle, GasOracleError};
+use crate::gas_oracle::{GasCategory, GasOracle, GasOracleError, GWEI_TO_WEI};
 
 const ETHERSCAN_URL_PREFIX: &str =
     "https://api.etherscan.io/api?module=gastracker&action=gasoracle";
@@ -73,8 +73,8 @@ impl GasOracle for Etherscan {
             .await?;
 
         match self.gas_category {
-            GasCategory::SafeLow => Ok(U256::from(res.result.safe_gas_price)),
-            GasCategory::Standard => Ok(U256::from(res.result.propose_gas_price)),
+            GasCategory::SafeLow => Ok(U256::from(res.result.safe_gas_price * GWEI_TO_WEI)),
+            GasCategory::Standard => Ok(U256::from(res.result.propose_gas_price * GWEI_TO_WEI)),
             _ => Err(GasOracleError::GasCategoryNotSupported),
         }
     }

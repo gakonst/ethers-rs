@@ -7,11 +7,16 @@ pub use etherchain::Etherchain;
 mod etherscan;
 pub use etherscan::Etherscan;
 
+mod gas_now;
+pub use gas_now::GasNow;
+
 use ethers_core::types::U256;
 
 use async_trait::async_trait;
 use reqwest::Error as ReqwestError;
 use thiserror::Error;
+
+const GWEI_TO_WEI: u64 = 1000000000;
 
 /// Various gas price categories. Choose one of the available
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
@@ -55,7 +60,7 @@ pub enum GasOracleError {
 /// # }
 /// ```
 #[async_trait]
-pub trait GasOracle: Send + Sync + 'static + std::any::Any + std::fmt::Debug {
+pub trait GasOracle: Send + Sync + std::fmt::Debug {
     /// Makes an asynchronous HTTP query to the underlying `GasOracle`
     ///
     /// # Example

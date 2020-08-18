@@ -1,6 +1,6 @@
 #![allow(unused_braces)]
 use ethers::providers::{
-    gas_oracle::{EthGasStation, Etherchain, Etherscan, GasCategory, GasOracle},
+    gas_oracle::{EthGasStation, Etherchain, Etherscan, GasCategory, GasNow, GasOracle},
     Http, Provider,
 };
 use std::{convert::TryFrom, time::Duration};
@@ -99,6 +99,11 @@ mod eth_tests {
         let etherchain_oracle = Etherchain::new().category(GasCategory::Fast);
         let data_4 = etherchain_oracle.fetch().await;
         assert!(data_4.is_ok());
+
+        // initialize and fetch gas estimates from Etherchain
+        let gas_now_oracle = GasNow::new().category(GasCategory::Fastest);
+        let data_5 = gas_now_oracle.fetch().await;
+        assert!(data_5.is_ok());
     }
 
     async fn generic_pending_txs_test<P: JsonRpcClient>(provider: Provider<P>) {

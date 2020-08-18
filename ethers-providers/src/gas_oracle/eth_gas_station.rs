@@ -5,7 +5,7 @@ use reqwest::Client;
 use serde::Deserialize;
 use url::Url;
 
-use crate::gas_oracle::{GasCategory, GasOracle, GasOracleError};
+use crate::gas_oracle::{GasCategory, GasOracle, GasOracleError, GWEI_TO_WEI};
 
 const ETH_GAS_STATION_URL_PREFIX: &str = "https://ethgasstation.info/api/ethgasAPI.json";
 
@@ -61,10 +61,10 @@ impl GasOracle for EthGasStation {
             .await?;
 
         let gas_price = match self.gas_category {
-            GasCategory::SafeLow => U256::from(res.safe_low / 10),
-            GasCategory::Standard => U256::from(res.average / 10),
-            GasCategory::Fast => U256::from(res.fast / 10),
-            GasCategory::Fastest => U256::from(res.fastest / 10),
+            GasCategory::SafeLow => U256::from((res.safe_low * GWEI_TO_WEI) / 10),
+            GasCategory::Standard => U256::from((res.average * GWEI_TO_WEI) / 10),
+            GasCategory::Fast => U256::from((res.fast * GWEI_TO_WEI) / 10),
+            GasCategory::Fastest => U256::from((res.fastest * GWEI_TO_WEI) / 10),
         };
 
         Ok(gas_price)
