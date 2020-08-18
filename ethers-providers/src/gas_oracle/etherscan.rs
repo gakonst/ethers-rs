@@ -60,11 +60,9 @@ impl Etherscan {
 #[async_trait]
 impl GasOracle for Etherscan {
     async fn fetch(&self) -> Result<U256, GasOracleError> {
-        match self.gas_category {
-            GasCategory::Fast => return Err(GasOracleError::GasCategoryNotSupported),
-            GasCategory::Fastest => return Err(GasOracleError::GasCategoryNotSupported),
-            _ => {}
-        };
+        if matches!(self.gas_category, GasCategory::Fast | GasCategory::Fastest) {
+            return Err(GasOracleError::GasCategoryNotSupported);
+        }
 
         let res = self
             .client

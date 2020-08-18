@@ -14,7 +14,7 @@ use reqwest::Error as ReqwestError;
 use thiserror::Error;
 
 /// Various gas price categories. Choose one of the available
-#[derive(Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum GasCategory {
     SafeLow,
     Standard,
@@ -55,7 +55,7 @@ pub enum GasOracleError {
 /// # }
 /// ```
 #[async_trait]
-pub trait GasOracle: std::fmt::Debug {
+pub trait GasOracle: Send + Sync + 'static + std::any::Any + std::fmt::Debug {
     /// Makes an asynchronous HTTP query to the underlying `GasOracle`
     ///
     /// # Example
