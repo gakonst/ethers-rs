@@ -91,9 +91,15 @@ mod tests {
     #[test]
     fn ser_request() {
         let request: Request<()> = Request::new(300, "method_name", ());
-        assert_eq!(&serde_json::to_string(&request).unwrap(), r#"{"id":300,"jsonrpc":"2.0","method":"method_name"}"#);
+        assert_eq!(
+            &serde_json::to_string(&request).unwrap(),
+            r#"{"id":300,"jsonrpc":"2.0","method":"method_name"}"#
+        );
 
         let request: Request<u32> = Request::new(300, "method_name", 1);
-        assert_eq!(&serde_json::to_string(&request).unwrap(), r#"{"id":300,"jsonrpc":"2.0","method":"method_name","params":1}"#);
+        assert_eq!(
+            &serde_json::to_string(&request).unwrap(),
+            r#"{"id":300,"jsonrpc":"2.0","method":"method_name","params":1}"#
+        );
     }
 }
