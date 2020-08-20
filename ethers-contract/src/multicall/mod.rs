@@ -203,7 +203,7 @@ where
     ///
     /// If more than the maximum number of supported calls are added. The maximum
     /// limits is constrained due to tokenization/detokenization support for tuples
-    pub fn add_call<D: Detokenize>(mut self, call: ContractCall<P, S, D>) -> Self {
+    pub fn add_call<D: Detokenize>(&mut self, call: ContractCall<P, S, D>) -> &mut Self {
         if self.calls.len() >= 16 {
             panic!("Cannot support more than {} calls", 16);
         }
@@ -229,7 +229,7 @@ where
     ///
     /// If more than the maximum number of supported calls are added. The maximum
     /// limits is constrained due to tokenization/detokenization support for tuples
-    pub fn eth_balance_of(self, addr: Address) -> Self {
+    pub fn eth_balance_of(&mut self, addr: Address) -> &mut Self {
         let call = self.contract.get_eth_balance(addr);
         self.add_call(call)
     }
@@ -271,7 +271,7 @@ where
     /// # Ok(())
     /// # }
     /// ```
-    pub fn clear_calls(mut self) -> Self {
+    pub fn clear_calls(&mut self) -> &mut Self {
         self.calls.clear();
         self
     }
