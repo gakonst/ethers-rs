@@ -264,9 +264,7 @@ mod eth_tests {
             .unwrap();
 
         // initiate the Multicall instance and add calls one by one in builder style
-        let mut multicall = Multicall::new(client4.clone(), Some(addr))
-            .await
-            .unwrap();
+        let mut multicall = Multicall::new(client4.clone(), Some(addr)).await.unwrap();
 
         multicall
             .add_call(value)
@@ -323,7 +321,8 @@ mod eth_tests {
         // query ETH balances of multiple addresses
         // these keys haven't been used to do any tx
         // so should have 100 ETH
-        multicall.clear_calls()
+        multicall
+            .clear_calls()
             .eth_balance_of(Address::from(&ganache.keys()[4]))
             .eth_balance_of(Address::from(&ganache.keys()[5]))
             .eth_balance_of(Address::from(&ganache.keys()[6]));
