@@ -91,16 +91,14 @@ mod eth_tests {
         // connect the wallet to the provider
         let client = wallet.connect(provider);
 
-        let mut futs = Vec::new();
+        let mut tx_hashes = Vec::new();
         for _ in 0..10 {
-            futs.push(
-                client.send_transaction(TransactionRequest::pay(wallet2.address(), 100u64), None),
-            );
+            let tx = client.send_transaction(TransactionRequest::pay(wallet2.address(), 100u64), None).await.unwrap();
+            tx_hashes.push(tx);
         }
-        let result = futures_util::future::join_all(futs).await;
+
         let mut nonces = Vec::new();
-        for res in result {
-            let tx_hash = res.unwrap();
+        for tx_hash in tx_hashes {
             nonces.push(client.get_transaction(tx_hash).await.unwrap().nonce.as_u64());
         }
 
