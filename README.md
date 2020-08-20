@@ -20,6 +20,16 @@ ethers = { git = "https://github.com/gakonst/ethers-rs" }
 
 </details>
 
+## Running the tests
+
+Tests require the following installed:
+1. [`solc`](https://solidity.readthedocs.io/en/latest/installing-solidity.html)
+2. [`ganache-cli`](https://github.com/trufflesuite/ganache-cli#installation)
+
+In addition, it is recommended that you set the `ETHERSCAN_API_KEY` environment variable 
+for [the abigen via Etherscan](https://github.com/gakonst/ethers-rs/blob/master/ethers/tests/major_contracts.rs) tests. 
+You can get one [here](https://etherscan.io/apis).
+
 ### Celo Support
 
 [Celo](http://celo.org/) support is turned on via the feature-flag `celo`:
