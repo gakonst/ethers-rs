@@ -1,3 +1,4 @@
+use super::client::NonceManager;
 use crate::{Client, ClientError, Signer};
 
 use ethers_providers::{JsonRpcClient, Provider};
@@ -122,6 +123,7 @@ impl Wallet {
             signer: Some(self),
             provider,
             gas_oracle: None,
+            nonce_manager: tokio::sync::RwLock::new(NonceManager::new()),
         }
     }
 

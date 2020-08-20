@@ -19,6 +19,7 @@ ethers-providers = { version = "0.1.3", path = "../ethers-providers" }
 thiserror = { version = "1.0.15", default-features = false }
 futures-util = { version = "0.3.5", default-features = false }
 serde = "1.0.112"
+tokio = "0.2.21"
 
 [dev-dependencies]
 ethers = { version = "0.1.3", path = "../ethers" }

@@ -76,6 +76,38 @@ mod eth_tests {
     }
 
     #[tokio::test]
+    async fn nonce_manager() {
+        let ganache = Ganache::new().block_time(5u64).spawn();
+
+        // this private key belongs to the above mnemonic
+        let wallet: Wallet = ganache.keys()[0].clone().into();
+        let wallet2: Wallet = ganache.keys()[1].clone().into();
+
+        // connect to the network
+        let provider = Provider::<Http>::try_from(ganache.endpoint())
+            .unwrap()
+            .interval(Duration::from_millis(10u64));
+
+        // connect the wallet to the provider
+        let client = wallet.connect(provider);
+
+        let mut futs = Vec::new();
+        for _ in 0..10 {
+            futs.push(
+                client.send_transaction(TransactionRequest::pay(wallet2.address(), 100u64), None),
+            );
+        }
+        let result = futures_util::future::join_all(futs).await;
+        let mut nonces = Vec::new();
+        for res in result {
+            let tx_hash = res.unwrap();
+            nonces.push(client.get_transaction(tx_hash).await.unwrap().nonce.as_u64());
+        }
+
+        assert_eq!(nonces, (0..10).collect::<Vec<_>>())
+    }
+
+    #[tokio::test]
     async fn using_gas_oracle() {
         let ganache = Ganache::new().spawn();
 

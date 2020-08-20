@@ -1,7 +1,7 @@
 use crate::Signer;
 
 use ethers_core::types::{
-    Address, BlockNumber, Bytes, NameOrAddress, Signature, TransactionRequest, TxHash,
+    Address, BlockNumber, Bytes, NameOrAddress, Signature, TransactionRequest, TxHash, U256,
 };
 use ethers_providers::{
     gas_oracle::{GasOracle, GasOracleError},
@@ -74,7 +74,34 @@ pub struct Client<P, S> {
     pub(crate) signer: Option<S>,
     pub(crate) address: Address,
     pub(crate) gas_oracle: Option<Box<dyn GasOracle>>,
+    pub(crate) nonce_manager: RwLock<NonceManager>,
 }
+
+use tokio::sync::RwLock;
+
+#[derive(Clone, Debug)]
+pub(crate) struct NonceManager {
+    initialized: bool,
+    nonce: U256,
+}
+
+impl NonceManager {
+    pub fn new() -> Self {
+        NonceManager {
+            initialized: false,
+            nonce: 0.into(),
+        }
+    }
+
+    /// Returns the next nonce to be used
+    fn next(&mut self) -> U256 {
+        let nonce = self.nonce;
+        self.nonce += ONE;
+        nonce
+    }
+}
+
+const ONE: U256 = U256([1, 0, 0, 0]);
 
 #[derive(Debug, Error)]
 /// Error thrown when the client interacts with the blockchain
@@ -110,6 +137,7 @@ where
             signer: Some(signer),
             address,
             gas_oracle: None,
+            nonce_manager: RwLock::new(NonceManager::new()),
         }
     }
 
@@ -171,16 +199,38 @@ where
         let (gas_price, gas, nonce) = join!(
             maybe(tx.gas_price, self.provider.get_gas_price()),
             maybe(tx.gas, self.provider.estimate_gas(&tx)),
-            maybe(
-                tx.nonce,
-                self.provider.get_transaction_count(self.address(), block)
-            ),
+            maybe(tx.nonce, self.get_transaction_count(block)),
         );
         tx.gas_price = Some(gas_price?);
         tx.gas = Some(gas?);
         tx.nonce = Some(nonce?);
 
         Ok(())
+    }
+
+    pub async fn get_transaction_count(
+        &self,
+        block: Option<BlockNumber>,
+    ) -> Result<U256, ClientError> {
+        Ok(
+            if block.unwrap_or(BlockNumber::Pending) == BlockNumber::Pending {
+                let mut nonce_manager = self.nonce_manager.write().await;
+                // the first time we make this call we'll have to set the nonce to the correct value
+                if !nonce_manager.initialized {
+                    nonce_manager.nonce = self
+                        .provider
+                        .get_transaction_count(self.address(), block)
+                        .await?;
+                    nonce_manager.initialized = true;
+                }
+
+                nonce_manager.next()
+            } else {
+                self.provider
+                    .get_transaction_count(self.address(), block)
+                    .await?
+            },
+        )
     }
 
     /// Returns the client's address
@@ -282,6 +332,7 @@ impl<P: JsonRpcClient, S> From<Provider<P>> for Client<P, S> {
             signer: None,
             address: Address::zero(),
             gas_oracle: None,
+            nonce_manager: RwLock::new(NonceManager::new()),
         }
     }
 }
