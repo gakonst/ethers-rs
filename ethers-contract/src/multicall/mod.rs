@@ -93,8 +93,8 @@ pub static ADDRESS_BOOK: Lazy<HashMap<U256, Address>> = Lazy::new(|| {
 /// // the Multicall contract and we set that to `None`. If you wish to provide the address
 /// // for the Multicall contract, you can pass the `Some(multicall_addr)` argument.
 /// // Construction of the `Multicall` instance follows the builder pattern
-/// let multicall = Multicall::new(Arc::clone(&client), None)
-///     .await?
+/// let mut multicall = Multicall::new(Arc::clone(&client), None).await?;
+/// multicall
 ///     .add_call(first_call)
 ///     .add_call(second_call);
 ///
@@ -254,8 +254,8 @@ where
     /// # let broadcast_1 = contract.method::<_, H256>("setValue", "some value".to_owned())?;
     /// # let broadcast_2 = contract.method::<_, H256>("setValue", "new value".to_owned())?;
     /// #
-    /// let multicall = Multicall::new(client, None)
-    ///     .await?
+    /// let mut multicall = Multicall::new(client, None).await?;
+    /// multicall
     ///     .add_call(broadcast_1)
     ///     .add_call(broadcast_2);
     ///
@@ -263,7 +263,7 @@ where
     ///
     /// # let call_1 = contract.method::<_, String>("getValue", ())?;
     /// # let call_2 = contract.method::<_, Address>("lastSender", ())?;
-    /// let multicall = multicall
+    /// multicall
     ///     .clear_calls()
     ///     .add_call(call_1)
     ///     .add_call(call_2);
