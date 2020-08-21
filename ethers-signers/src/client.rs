@@ -170,6 +170,31 @@ where
         self.fill_transaction(&mut tx, block).await?;
 
         // sign the transaction and broadcast it
+        let mut tx_clone = tx.clone();
+        let result = self.submit_transaction(tx).await;
+
+        // if we got a nonce error, get the account's latest nonce and re-submit
+        let tx_hash = if result.is_err() {
+            let mut nonce_manager = self.nonce_manager.write().await;
+            let nonce = self
+                .provider
+                .get_transaction_count(self.address(), block)
+                .await?;
+            if nonce != nonce_manager.nonce {
+                nonce_manager.nonce = nonce;
+                tx_clone.nonce = Some(nonce);
+                self.submit_transaction(tx_clone).await?
+            } else {
+                result?
+            }
+        } else {
+            result?
+        };
+
+        Ok(tx_hash)
+    }
+
+    async fn submit_transaction(&self, tx: TransactionRequest) -> Result<TxHash, ClientError> {
         Ok(if let Some(ref signer) = self.signer {
             let signed_tx = signer.sign_transaction(tx).map_err(Into::into)?;
             self.provider.send_raw_transaction(&signed_tx).await?

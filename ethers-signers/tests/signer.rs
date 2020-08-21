@@ -93,13 +93,23 @@ mod eth_tests {
 
         let mut tx_hashes = Vec::new();
         for _ in 0..10 {
-            let tx = client.send_transaction(TransactionRequest::pay(wallet2.address(), 100u64), None).await.unwrap();
+            let tx = client
+                .send_transaction(TransactionRequest::pay(wallet2.address(), 100u64), None)
+                .await
+                .unwrap();
             tx_hashes.push(tx);
         }
 
         let mut nonces = Vec::new();
         for tx_hash in tx_hashes {
-            nonces.push(client.get_transaction(tx_hash).await.unwrap().nonce.as_u64());
+            nonces.push(
+                client
+                    .get_transaction(tx_hash)
+                    .await
+                    .unwrap()
+                    .nonce
+                    .as_u64(),
+            );
         }
 
         assert_eq!(nonces, (0..10).collect::<Vec<_>>())
