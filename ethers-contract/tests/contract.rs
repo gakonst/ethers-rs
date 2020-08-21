@@ -264,9 +264,9 @@ mod eth_tests {
             .unwrap();
 
         // initiate the Multicall instance and add calls one by one in builder style
-        let multicall = Multicall::new(client4.clone(), Some(addr))
-            .await
-            .unwrap()
+        let mut multicall = Multicall::new(client4.clone(), Some(addr)).await.unwrap();
+
+        multicall
             .add_call(value)
             .add_call(value2)
             .add_call(last_sender)
@@ -295,8 +295,8 @@ mod eth_tests {
         // new calls. Previously we used the `.call()` functionality to do a batch of calls in one
         // go. Now we will use the `.send()` functionality to broadcast a batch of transactions
         // in one go
-        let multicall_send = multicall
-            .clone()
+        let mut multicall_send = multicall.clone();
+        multicall_send
             .clear_calls()
             .add_call(broadcast)
             .add_call(broadcast2);
@@ -321,7 +321,7 @@ mod eth_tests {
         // query ETH balances of multiple addresses
         // these keys haven't been used to do any tx
         // so should have 100 ETH
-        let multicall = multicall
+        multicall
             .clear_calls()
             .eth_balance_of(Address::from(&ganache.keys()[4]))
             .eth_balance_of(Address::from(&ganache.keys()[5]))
