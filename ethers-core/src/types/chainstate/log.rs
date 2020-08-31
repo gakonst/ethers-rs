@@ -3,7 +3,7 @@ use crate::{
     types::{Address, BlockNumber, Bytes, H256, U256, U64},
     utils::keccak256,
 };
-use serde::{Deserialize, Serialize, Serializer};
+use serde::{ser::SerializeStruct, Deserialize, Serialize, Serializer};
 use std::str::FromStr;
 
 /// A log produced by a transaction.
@@ -64,18 +64,15 @@ pub struct Log {
 }
 
 /// Filter for
-#[derive(Default, Debug, PartialEq, Clone, Serialize)]
+#[derive(Default, Debug, PartialEq, Clone)]
 pub struct Filter {
     /// From Block
-    #[serde(rename = "fromBlock", skip_serializing_if = "Option::is_none")]
     pub from_block: Option<BlockNumber>,
 
     /// To Block
-    #[serde(rename = "toBlock", skip_serializing_if = "Option::is_none")]
     pub to_block: Option<BlockNumber>,
 
     /// Address
-    #[serde(skip_serializing_if = "Option::is_none")]
     // TODO: The spec says that this can also be an array, do we really want to
     // monitor for the same event for multiple contracts?
     address: Option<Address>,
@@ -86,8 +83,46 @@ pub struct Filter {
     pub topics: [Option<ValueOrArray<H256>>; 4],
 
     /// Limit
-    #[serde(skip_serializing_if = "Option::is_none")]
     limit: Option<usize>,
+}
+
+impl Serialize for Filter {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut s = serializer.serialize_struct("Filter", 5)?;
+        if let Some(ref from_block) = self.from_block {
+            s.serialize_field("fromBlock", from_block)?;
+        }
+
+        if let Some(ref to_block) = self.to_block {
+            s.serialize_field("toBlock", to_block)?;
+        }
+
+        if let Some(ref address) = self.address {
+            s.serialize_field("address", address)?;
+        }
+
+        let mut filtered_topics = Vec::new();
+        for i in 0..4 {
+            if self.topics[i].is_some() {
+                filtered_topics.push(&self.topics[i]);
+            } else {
+                // TODO: This can be optimized
+                if self.topics[i + 1..].iter().any(|x| x.is_some()) {
+                    filtered_topics.push(&None);
+                }
+            }
+        }
+        s.serialize_field("topics", &filtered_topics)?;
+
+        if let Some(ref limit) = self.limit {
+            s.serialize_field("limit", limit)?;
+        }
+
+        s.end()
+    }
 }
 
 impl Filter {
