@@ -240,21 +240,83 @@ where
 mod tests {
     use super::*;
     use crate::utils::serialize;
+    use serde_json::json;
 
     #[test]
     fn filter_serialization_test() {
         let t1 = "9729a6fbefefc8f6005933898b13dc45c3a2c8b7"
             .parse::<Address>()
             .unwrap();
+        let t2 = H256::from([0; 32]);
         let t3 = U256::from(123);
-        let filter = Filter::new()
-            .address_str("f817796F60D268A36a57b8D2dF1B97B14C0D0E1d")
-            .unwrap()
-            .event("ValueChanged(address,string,string)") // event name
-            .topic1(t1)
-            .topic2(t3);
 
-        let ser = serialize(&filter).to_string();
-        assert_eq!(ser, "{\"address\":\"0xf817796f60d268a36a57b8d2df1b97b14c0d0e1d\",\"topics\":[\"0xe826f71647b8486f2bae59832124c70792fba044036720a54ec8dacdd5df4fcb\",\"0x0000000000000000000000009729a6fbefefc8f6005933898b13dc45c3a2c8b7\",\"0x000000000000000000000000000000000000000000000000000000000000007b\",null]}");
+        let t1_padded = H256::from(t1);
+        let t3_padded = H256::from({
+            let mut x = [0; 32];
+            x[31] = 123;
+            x
+        });
+
+        let event = "ValueChanged(address,string,string)";
+        let t0 = H256::from(keccak256(event.as_bytes()));
+        let addr = Address::from_str("f817796F60D268A36a57b8D2dF1B97B14C0D0E1d").unwrap();
+        let filter = Filter::new();
+
+        let ser = serialize(&filter.clone());
+        assert_eq!(ser, json!({ "topics": [] }));
+
+        let filter = filter.address(addr);
+
+        let ser = serialize(&filter.clone());
+        assert_eq!(ser, json!({"address" : addr, "topics": []}));
+
+        let filter = filter.event(event);
+
+        // 0
+        let ser = serialize(&filter.clone());
+        assert_eq!(ser, json!({ "address" : addr, "topics": [t0]}));
+
+        // 1
+        let ser = serialize(&filter.clone().topic1(t1));
+        assert_eq!(ser, json!({ "address" : addr, "topics": [t0, t1_padded]}));
+
+        // 2
+        let ser = serialize(&filter.clone().topic2(t2));
+        assert_eq!(ser, json!({ "address" : addr, "topics": [t0, null, t2]}));
+
+        // 3
+        let ser = serialize(&filter.clone().topic3(t3));
+        assert_eq!(
+            ser,
+            json!({ "address" : addr, "topics": [t0, null, null, t3_padded]})
+        );
+
+        // 1 & 2
+        let ser = serialize(&filter.clone().topic1(t1).topic2(t2));
+        assert_eq!(
+            ser,
+            json!({ "address" : addr, "topics": [t0, t1_padded, t2]})
+        );
+
+        // 1 & 3
+        let ser = serialize(&filter.clone().topic1(t1).topic3(t3));
+        assert_eq!(
+            ser,
+            json!({ "address" : addr, "topics": [t0, t1_padded, null, t3_padded]})
+        );
+
+        // 2 & 3
+        let ser = serialize(&filter.clone().topic2(t2).topic3(t3));
+        assert_eq!(
+            ser,
+            json!({ "address" : addr, "topics": [t0, null, t2, t3_padded]})
+        );
+
+        // 1 & 2 & 3
+        let ser = serialize(&filter.clone().topic1(t1).topic2(t2).topic3(t3));
+        assert_eq!(
+            ser,
+            json!({ "address" : addr, "topics": [t0, t1_padded, t2, t3_padded]})
+        );
     }
 }
