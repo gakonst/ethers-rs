@@ -125,19 +125,20 @@ where
                 // in a streamed loop we wouldn't want the loop to terminate if an error
                 // is encountered (since it might be a temporary error).
                 let items: Vec<R> = futures_util::ready!(fut.poll_unpin(cx)).unwrap_or_default();
+                cx.waker().wake_by_ref();
                 FilterWatcherState::NextItem(items.into_iter())
             }
             // Consume 1 element from the vector. If more elements are in the vector,
             // the next call will immediately go to this branch instead of trying to get
             // filter changes again. Once the whole vector is consumed, it will poll again
             // for new logs
-            FilterWatcherState::NextItem(iter) => match iter.next() {
-                Some(item) => return Poll::Ready(Some(item)),
-                None => {
-                    cx.waker().wake_by_ref();
-                    FilterWatcherState::WaitForInterval
+            FilterWatcherState::NextItem(iter) => {
+                cx.waker().wake_by_ref();
+                match iter.next() {
+                    Some(item) => return Poll::Ready(Some(item)),
+                    None => FilterWatcherState::WaitForInterval,
                 }
-            },
+            }
         };
 
         Poll::Pending
