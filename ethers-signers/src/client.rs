@@ -1,4 +1,4 @@
-use crate::Signer;
+use crate::{NonceManager, Signer};
 
 use ethers_core::types::{
     Address, BlockNumber, Bytes, NameOrAddress, Signature, TransactionRequest, TxHash, U256,
@@ -9,10 +9,7 @@ use ethers_providers::{
 };
 
 use futures_util::{future::ok, join};
-use std::{
-    future::Future, ops::Deref, time::Duration,
-    sync::atomic::{AtomicBool, AtomicU64, Ordering},
-};
+use std::{future::Future, ops::Deref, sync::atomic::Ordering, time::Duration};
 
 use thiserror::Error;
 
@@ -80,29 +77,6 @@ pub struct Client<P, S> {
     pub(crate) gas_oracle: Option<Box<dyn GasOracle>>,
     pub(crate) nonce_manager: Option<NonceManager>,
 }
-
-#[derive(Debug)]
-pub(crate) struct NonceManager {
-    initialized: AtomicBool,
-    nonce: AtomicU64,
-}
-
-impl NonceManager {
-    pub fn new() -> Self {
-        NonceManager {
-            initialized: false.into(),
-            nonce: 0.into(),
-        }
-    }
-
-    /// Returns the next nonce to be used
-    fn next(&self) -> U256 {
-        let nonce = self.nonce.fetch_add(1, Ordering::SeqCst);
-        nonce.into()
-    }
-}
-
-const ONE: U256 = U256([1, 0, 0, 0]);
 
 #[derive(Debug, Error)]
 /// Error thrown when the client interacts with the blockchain

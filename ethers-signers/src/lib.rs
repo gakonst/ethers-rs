@@ -40,6 +40,9 @@
 mod wallet;
 pub use wallet::Wallet;
 
+mod nonce_manager;
+pub(crate) use nonce_manager::NonceManager;
+
 mod client;
 pub use client::{Client, ClientError};
 
