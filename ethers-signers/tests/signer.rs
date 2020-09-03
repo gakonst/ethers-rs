@@ -89,7 +89,7 @@ mod eth_tests {
             .interval(Duration::from_millis(10u64));
 
         // connect the wallet to the provider
-        let client = wallet.connect(provider);
+        let client = wallet.connect(provider).with_nonce_manager();
 
         let mut tx_hashes = Vec::new();
         for _ in 0..10 {

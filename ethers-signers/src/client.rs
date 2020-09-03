@@ -74,7 +74,7 @@ pub struct Client<P, S> {
     pub(crate) signer: Option<S>,
     pub(crate) address: Address,
     pub(crate) gas_oracle: Option<Box<dyn GasOracle>>,
-    pub(crate) nonce_manager: RwLock<NonceManager>,
+    pub(crate) nonce_manager: Option<RwLock<NonceManager>>,
 }
 
 use tokio::sync::RwLock;
@@ -137,7 +137,7 @@ where
             signer: Some(signer),
             address,
             gas_oracle: None,
-            nonce_manager: RwLock::new(NonceManager::new()),
+            nonce_manager: None,
         }
     }
 
@@ -169,26 +169,30 @@ where
         // fill any missing fields
         self.fill_transaction(&mut tx, block).await?;
 
-        // sign the transaction and broadcast it
-        let mut tx_clone = tx.clone();
-        let result = self.submit_transaction(tx).await;
-
-        // if we got a nonce error, get the account's latest nonce and re-submit
-        let tx_hash = if result.is_err() {
-            let mut nonce_manager = self.nonce_manager.write().await;
-            let nonce = self
-                .provider
-                .get_transaction_count(self.address(), block)
-                .await?;
-            if nonce != nonce_manager.nonce {
-                nonce_manager.nonce = nonce;
-                tx_clone.nonce = Some(nonce);
-                self.submit_transaction(tx_clone).await?
+        // if we have a nonce manager set, we should try handling the result in
+        // case there was a nonce mismatch
+        let tx_hash = if let Some(ref nonce_manager) = self.nonce_manager {
+            let mut tx_clone = tx.clone();
+            let result = self.submit_transaction(tx).await;
+            // if we got a nonce error, get the account's latest nonce and re-submit
+            if result.is_err() {
+                let mut nonce_manager = nonce_manager.write().await;
+                let nonce = self
+                    .provider
+                    .get_transaction_count(self.address(), block)
+                    .await?;
+                if nonce != nonce_manager.nonce {
+                    nonce_manager.nonce = nonce;
+                    tx_clone.nonce = Some(nonce);
+                    self.submit_transaction(tx_clone).await?
+                } else {
+                    result?
+                }
             } else {
                 result?
             }
         } else {
-            result?
+            self.submit_transaction(tx).await?
         };
 
         Ok(tx_hash)
@@ -237,25 +241,26 @@ where
         &self,
         block: Option<BlockNumber>,
     ) -> Result<U256, ClientError> {
-        Ok(
-            if block.unwrap_or(BlockNumber::Pending) == BlockNumber::Pending {
-                let mut nonce_manager = self.nonce_manager.write().await;
-                // the first time we make this call we'll have to set the nonce to the correct value
-                if !nonce_manager.initialized {
-                    nonce_manager.nonce = self
-                        .provider
-                        .get_transaction_count(self.address(), block)
-                        .await?;
-                    nonce_manager.initialized = true;
-                }
+        // If there's a nonce manager set, short circuit by just returning the next nonce
+        if let Some(ref nonce_manager) = self.nonce_manager {
+            let mut nonce_manager = nonce_manager.write().await;
 
-                nonce_manager.next()
-            } else {
-                self.provider
+            // initialize the nonce the first time the manager is called
+            if !nonce_manager.initialized {
+                nonce_manager.nonce = self
+                    .provider
                     .get_transaction_count(self.address(), block)
-                    .await?
-            },
-        )
+                    .await?;
+                nonce_manager.initialized = true;
+            }
+
+            return Ok(nonce_manager.next());
+        }
+
+        Ok(self
+            .provider
+            .get_transaction_count(self.address(), block)
+            .await?)
     }
 
     /// Returns the client's address
@@ -325,6 +330,11 @@ where
         self.gas_oracle = Some(gas_oracle);
         self
     }
+
+    pub fn with_nonce_manager(mut self) -> Self {
+        self.nonce_manager = Some(RwLock::new(NonceManager::new()));
+        self
+    }
 }
 
 /// Calls the future if `item` is None, otherwise returns a `futures::ok`
@@ -357,7 +367,7 @@ impl<P: JsonRpcClient, S> From<Provider<P>> for Client<P, S> {
             signer: None,
             address: Address::zero(),
             gas_oracle: None,
-            nonce_manager: RwLock::new(NonceManager::new()),
+            nonce_manager: None,
         }
     }
 }
