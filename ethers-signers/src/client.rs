@@ -9,7 +9,11 @@ use ethers_providers::{
 };
 
 use futures_util::{future::ok, join};
-use std::{future::Future, ops::Deref, time::Duration};
+use std::{
+    future::Future, ops::Deref, time::Duration,
+    sync::atomic::{AtomicBool, AtomicU64, Ordering},
+};
+
 use thiserror::Error;
 
 #[derive(Debug)]
@@ -74,30 +78,27 @@ pub struct Client<P, S> {
     pub(crate) signer: Option<S>,
     pub(crate) address: Address,
     pub(crate) gas_oracle: Option<Box<dyn GasOracle>>,
-    pub(crate) nonce_manager: Option<RwLock<NonceManager>>,
+    pub(crate) nonce_manager: Option<NonceManager>,
 }
 
-use tokio::sync::RwLock;
-
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub(crate) struct NonceManager {
-    initialized: bool,
-    nonce: U256,
+    initialized: AtomicBool,
+    nonce: AtomicU64,
 }
 
 impl NonceManager {
     pub fn new() -> Self {
         NonceManager {
-            initialized: false,
+            initialized: false.into(),
             nonce: 0.into(),
         }
     }
 
     /// Returns the next nonce to be used
-    fn next(&mut self) -> U256 {
-        let nonce = self.nonce;
-        self.nonce += ONE;
-        nonce
+    fn next(&self) -> U256 {
+        let nonce = self.nonce.fetch_add(1, Ordering::SeqCst);
+        nonce.into()
     }
 }
 
@@ -176,10 +177,9 @@ where
             let result = self.submit_transaction(tx).await;
             // if we got a nonce error, get the account's latest nonce and re-submit
             if result.is_err() {
-                let mut nonce_manager = nonce_manager.write().await;
                 let nonce = self.get_transaction_count(block).await?;
-                if nonce != nonce_manager.nonce {
-                    nonce_manager.nonce = nonce;
+                if nonce != nonce_manager.nonce.load(Ordering::SeqCst).into() {
+                    nonce_manager.nonce.store(nonce.as_u64(), Ordering::SeqCst);
                     tx_clone.nonce = Some(nonce);
                     self.submit_transaction(tx_clone).await?
                 } else {
@@ -240,15 +240,14 @@ where
     ) -> Result<U256, ClientError> {
         // If there's a nonce manager set, short circuit by just returning the next nonce
         if let Some(ref nonce_manager) = self.nonce_manager {
-            let mut nonce_manager = nonce_manager.write().await;
-
             // initialize the nonce the first time the manager is called
-            if !nonce_manager.initialized {
-                nonce_manager.nonce = self
+            if !nonce_manager.initialized.load(Ordering::SeqCst) {
+                let nonce = self
                     .provider
                     .get_transaction_count(self.address(), block)
                     .await?;
-                nonce_manager.initialized = true;
+                nonce_manager.nonce.store(nonce.as_u64(), Ordering::SeqCst);
+                nonce_manager.initialized.store(true, Ordering::SeqCst);
             }
 
             return Ok(nonce_manager.next());
@@ -336,7 +335,7 @@ where
     }
 
     pub fn with_nonce_manager(mut self) -> Self {
-        self.nonce_manager = Some(RwLock::new(NonceManager::new()));
+        self.nonce_manager = Some(NonceManager::new());
         self
     }
 }
