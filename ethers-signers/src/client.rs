@@ -148,19 +148,21 @@ where
         // case there was a nonce mismatch
         let tx_hash = if let Some(ref nonce_manager) = self.nonce_manager {
             let mut tx_clone = tx.clone();
-            let result = self.submit_transaction(tx).await;
-            // if we got a nonce error, get the account's latest nonce and re-submit
-            if result.is_err() {
-                let nonce = self.get_transaction_count(block).await?;
-                if nonce != nonce_manager.nonce.load(Ordering::SeqCst).into() {
-                    nonce_manager.nonce.store(nonce.as_u64(), Ordering::SeqCst);
-                    tx_clone.nonce = Some(nonce);
-                    self.submit_transaction(tx_clone).await?
-                } else {
-                    result?
+            match self.submit_transaction(tx).await {
+                Ok(tx_hash) => tx_hash,
+                Err(err) => {
+                    let nonce = self.get_transaction_count(block).await?;
+                    if nonce != nonce_manager.nonce.load(Ordering::SeqCst).into() {
+                        // try re-submitting the transaction with the correct nonce if there
+                        // was a nonce mismatch
+                        nonce_manager.nonce.store(nonce.as_u64(), Ordering::SeqCst);
+                        tx_clone.nonce = Some(nonce);
+                        self.submit_transaction(tx_clone).await?
+                    } else {
+                        // propagate the error otherwise
+                        return Err(err);
+                    }
                 }
-            } else {
-                result?
             }
         } else {
             self.submit_transaction(tx).await?
