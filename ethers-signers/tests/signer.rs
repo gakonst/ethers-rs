@@ -83,7 +83,7 @@ mod eth_tests {
         .unwrap()
         .interval(Duration::from_millis(2000u64));
 
-        let client = "FF7F80C6E9941865266ED1F481263D780169F1D98269C51167D20C630A5FDC8A"
+        let client = "59c37cb6b16fa2de30675f034c8008f890f4b2696c729d6267946d29736d73e4"
             .parse::<Wallet>()
             .unwrap()
             .connect(provider)
