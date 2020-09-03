@@ -77,24 +77,31 @@ mod eth_tests {
 
     #[tokio::test]
     async fn nonce_manager() {
-        let ganache = Ganache::new().block_time(5u64).spawn();
+        let provider = Provider::<Http>::try_from(
+            "https://rinkeby.infura.io/v3/fd8b88b56aa84f6da87b60f5441d6778",
+        )
+        .unwrap()
+        .interval(Duration::from_millis(2000u64));
 
-        // this private key belongs to the above mnemonic
-        let wallet: Wallet = ganache.keys()[0].clone().into();
-        let wallet2: Wallet = ganache.keys()[1].clone().into();
-
-        // connect to the network
-        let provider = Provider::<Http>::try_from(ganache.endpoint())
+        let client = "FF7F80C6E9941865266ED1F481263D780169F1D98269C51167D20C630A5FDC8A"
+            .parse::<Wallet>()
             .unwrap()
-            .interval(Duration::from_millis(10u64));
+            .connect(provider)
+            .with_nonce_manager();
 
-        // connect the wallet to the provider
-        let client = wallet.connect(provider).with_nonce_manager();
+        let nonce = client
+            .get_transaction_count(Some(BlockNumber::Pending))
+            .await
+            .unwrap()
+            .as_u64();
 
         let mut tx_hashes = Vec::new();
         for _ in 0..10 {
             let tx = client
-                .send_transaction(TransactionRequest::pay(wallet2.address(), 100u64), None)
+                .send_transaction(
+                    TransactionRequest::pay(client.address(), 100u64),
+                    Some(BlockNumber::Pending),
+                )
                 .await
                 .unwrap();
             tx_hashes.push(tx);
@@ -112,7 +119,7 @@ mod eth_tests {
             );
         }
 
-        assert_eq!(nonces, (0..10).collect::<Vec<_>>())
+        assert_eq!(nonces, (nonce..nonce + 10).collect::<Vec<_>>())
     }
 
     #[tokio::test]

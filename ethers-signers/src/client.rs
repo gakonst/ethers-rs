@@ -177,10 +177,7 @@ where
             // if we got a nonce error, get the account's latest nonce and re-submit
             if result.is_err() {
                 let mut nonce_manager = nonce_manager.write().await;
-                let nonce = self
-                    .provider
-                    .get_transaction_count(self.address(), block)
-                    .await?;
+                let nonce = self.get_transaction_count(block).await?;
                 if nonce != nonce_manager.nonce {
                     nonce_manager.nonce = nonce;
                     tx_clone.nonce = Some(nonce);
@@ -228,7 +225,7 @@ where
         let (gas_price, gas, nonce) = join!(
             maybe(tx.gas_price, self.provider.get_gas_price()),
             maybe(tx.gas, self.provider.estimate_gas(&tx)),
-            maybe(tx.nonce, self.get_transaction_count(block)),
+            maybe(tx.nonce, self.get_transaction_count_with_manager(block)),
         );
         tx.gas_price = Some(gas_price?);
         tx.gas = Some(gas?);
@@ -237,7 +234,7 @@ where
         Ok(())
     }
 
-    pub async fn get_transaction_count(
+    async fn get_transaction_count_with_manager(
         &self,
         block: Option<BlockNumber>,
     ) -> Result<U256, ClientError> {
@@ -257,6 +254,13 @@ where
             return Ok(nonce_manager.next());
         }
 
+        self.get_transaction_count(block).await
+    }
+
+    pub async fn get_transaction_count(
+        &self,
+        block: Option<BlockNumber>,
+    ) -> Result<U256, ClientError> {
         Ok(self
             .provider
             .get_transaction_count(self.address(), block)
