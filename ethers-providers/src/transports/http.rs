@@ -43,6 +43,13 @@ pub enum ClientError {
     #[error(transparent)]
     /// Thrown if the response could not be parsed
     JsonRpcError(#[from] JsonRpcError),
+
+    #[error("Deserialization Error: {err}. Response: {text}")]
+    /// Serde JSON Error
+    SerdeJson {
+        err: serde_json::Error,
+        text: String,
+    },
 }
 
 impl From<ClientError> for ProviderError {
@@ -73,7 +80,9 @@ impl JsonRpcClient for Provider {
             .json(&payload)
             .send()
             .await?;
-        let res = res.json::<Response<R>>().await?;
+        let text = res.text().await?;
+        let res: Response<R> =
+            serde_json::from_str(&text).map_err(|err| ClientError::SerdeJson { err, text })?;
 
         Ok(res.data.into_result()?)
     }
