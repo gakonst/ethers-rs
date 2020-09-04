@@ -9,6 +9,7 @@ use futures_util::{
 };
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
+use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use thiserror::Error;
 
@@ -17,7 +18,7 @@ use super::common::{JsonRpcError, Request, ResponseData};
 // Convenience methods for connecting with async-std/tokio:
 
 #[cfg(any(feature = "tokio-runtime", feature = "async-std-runtime"))]
-use async_tungstenite::WebSocketStream;
+pub(crate) use async_tungstenite::WebSocketStream;
 
 // connect_async
 #[cfg(all(feature = "async-std-runtime", not(feature = "tokio-runtime")))]
@@ -91,8 +92,16 @@ pub type MaybeTlsStream = StreamSwitcher<TcpStream, TlsStream<TcpStream>>;
 /// flag](https://github.com/sdroege/async-tungstenite/blob/master/Cargo.toml#L15-L22)
 /// for your runtime.
 pub struct Provider<S> {
-    id: AtomicU64,
-    ws: Mutex<S>,
+    id: Arc<AtomicU64>,
+    ws: Arc<Mutex<S>>,
+}
+
+impl<S> std::fmt::Debug for Provider<S> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Ws provider")
+         .field("id", &self.id)
+         .finish()
+    }
 }
 
 #[cfg(any(feature = "tokio-runtime", feature = "async-std-runtime"))]
@@ -119,8 +128,8 @@ where
     /// separately.
     pub fn new(ws: S) -> Self {
         Self {
-            id: AtomicU64::new(0),
-            ws: Mutex::new(ws),
+            id: Arc::new(AtomicU64::new(0)),
+            ws: Arc::new(Mutex::new(ws)),
         }
     }
 }
@@ -190,5 +199,14 @@ where
         };
 
         Ok(data.into_result()?)
+    }
+}
+
+impl<S> Clone for Provider<S> {
+    fn clone(&self) -> Self {
+        Self {
+            id: Arc::clone(&self.id),
+            ws: Arc::clone(&self.ws)
+        }
     }
 }

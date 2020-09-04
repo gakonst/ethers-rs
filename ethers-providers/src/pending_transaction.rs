@@ -1,6 +1,6 @@
 use crate::{
     stream::{interval, DEFAULT_POLL_INTERVAL},
-    JsonRpcClient, Provider, ProviderError,
+    Provider, ProviderError,
 };
 use ethers_core::types::{TransactionReceipt, TxHash, U64};
 use futures_core::stream::Stream;
@@ -21,17 +21,17 @@ use std::{
 /// is 1, but may be adjusted with the `confirmations` method. If the transaction does not
 /// have enough confirmations or is not mined, the future will stay in the pending state.
 #[pin_project]
-pub struct PendingTransaction<'a, P> {
+pub struct PendingTransaction<'a> {
     tx_hash: TxHash,
     confirmations: usize,
-    provider: &'a Provider<P>,
+    provider: &'a Provider,
     state: PendingTxState<'a>,
     interval: Box<dyn Stream<Item = ()> + Send + Unpin>,
 }
 
-impl<'a, P: JsonRpcClient> PendingTransaction<'a, P> {
+impl<'a> PendingTransaction<'a> {
     /// Creates a new pending transaction poller from a hash and a provider
-    pub fn new(tx_hash: TxHash, provider: &'a Provider<P>) -> Self {
+    pub fn new(tx_hash: TxHash, provider: &'a Provider) -> Self {
         let fut = Box::pin(provider.get_transaction_receipt(tx_hash));
         Self {
             tx_hash,
@@ -56,7 +56,7 @@ impl<'a, P: JsonRpcClient> PendingTransaction<'a, P> {
     }
 }
 
-impl<'a, P: JsonRpcClient> Future for PendingTransaction<'a, P> {
+impl<'a> Future for PendingTransaction<'a> {
     type Output = Result<TransactionReceipt, ProviderError>;
 
     fn poll(self: Pin<&mut Self>, ctx: &mut Context) -> Poll<Self::Output> {
@@ -132,7 +132,7 @@ impl<'a, P: JsonRpcClient> Future for PendingTransaction<'a, P> {
     }
 }
 
-impl<'a, P> fmt::Debug for PendingTransaction<'a, P> {
+impl<'a> fmt::Debug for PendingTransaction<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("PendingTransaction")
             .field("tx_hash", &self.tx_hash)
@@ -142,21 +142,21 @@ impl<'a, P> fmt::Debug for PendingTransaction<'a, P> {
     }
 }
 
-impl<'a, P> PartialEq for PendingTransaction<'a, P> {
+impl<'a> PartialEq for PendingTransaction<'a> {
     fn eq(&self, other: &Self) -> bool {
         self.tx_hash == other.tx_hash
     }
 }
 
-impl<'a, P> PartialEq<TxHash> for PendingTransaction<'a, P> {
+impl<'a> PartialEq<TxHash> for PendingTransaction<'a> {
     fn eq(&self, other: &TxHash) -> bool {
         &self.tx_hash == other
     }
 }
 
-impl<'a, P> Eq for PendingTransaction<'a, P> {}
+impl<'a> Eq for PendingTransaction<'a> {}
 
-impl<'a, P> Deref for PendingTransaction<'a, P> {
+impl<'a> Deref for PendingTransaction<'a> {
     type Target = TxHash;
 
     fn deref(&self) -> &Self::Target {

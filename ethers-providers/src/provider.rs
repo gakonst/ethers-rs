@@ -4,6 +4,12 @@ use crate::{
     Http as HttpProvider, JsonRpcClient, PendingTransaction,
 };
 
+#[cfg(feature = "ws")]
+use crate::{Ws as WsProvider};
+
+#[cfg(any(feature = "tokio-runtime", feature = "async-std-runtime"))]
+use crate::ws::{WebSocketStream, MaybeTlsStream};
+
 use ethers_core::{
     abi::{self, Detokenize, ParamType},
     types::{
@@ -13,12 +19,64 @@ use ethers_core::{
     utils,
 };
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use url::{ParseError, Url};
 
+use async_trait::async_trait;
+
 use std::{convert::TryFrom, fmt::Debug, time::Duration};
 
+#[non_exhaustive]
+#[derive(Debug)]
+pub enum ProviderType {
+    Http(HttpProvider),
+    #[cfg(all(feature = "ws", any(feature = "tokio-runtime", feature = "async-std-runtime")))]
+    Ws(WsProvider<WebSocketStream<MaybeTlsStream>>),
+}
+
+impl Clone for ProviderType {
+    fn clone(&self) -> Self {
+        match self {
+            ProviderType::Http(ref http_provider) => {
+                ProviderType::Http(http_provider.clone())
+            },
+            #[cfg(all(feature = "ws", any(feature = "tokio-runtime", feature = "async-std-runtime")))]
+            ProviderType::Ws(ref ws_provider) => {
+                ProviderType::Ws(ws_provider.clone())
+            },
+            _ => {
+                unimplemented!("unknown provider type in default implementation")
+            }
+        }
+    }
+}
+
+#[async_trait]
+impl JsonRpcClient for ProviderType {
+    type Error = ProviderError;
+
+    /// Sends a POST request with the provided method and the params serialized as JSON
+    /// over HTTP
+    async fn request<T: Debug + Serialize + Send + Sync, R: for<'a> Deserialize<'a>>(
+        &self,
+        method: &str,
+        params: T,
+    ) -> Result<R, ProviderError> {
+        match self {
+            ProviderType::Http(ref http_provider) => {
+                http_provider.request(method, params).await.map_err(Into::into)
+            },
+            #[cfg(all(feature = "ws", any(feature = "tokio-runtime", feature = "async-std-runtime")))]
+            ProviderType::Ws(ref ws_provider) => {
+                ws_provider.request(method, params).await.map_err(Into::into)
+            },
+            _ => {
+                unimplemented!("unknown provider type in default implementation")
+            }
+        }
+    }
+}
 /// An abstract provider for interacting with the [Ethereum JSON RPC
 /// API](https://github.com/ethereum/wiki/wiki/JSON-RPC). Must be instantiated
 /// with a data transport which implements the [`JsonRpcClient`](trait@crate::JsonRpcClient) trait
@@ -41,7 +99,7 @@ use std::{convert::TryFrom, fmt::Debug, time::Duration};
 /// # }
 /// ```
 #[derive(Clone, Debug)]
-pub struct Provider<P>(P, Option<Address>, Option<Duration>);
+pub struct Provider(ProviderType, Option<Address>, Option<Duration>);
 
 #[derive(Debug, Error)]
 /// An error thrown when making a call to the provider
@@ -69,9 +127,9 @@ pub enum FilterKind<'a> {
 }
 
 // JSON RPC bindings
-impl<P: JsonRpcClient> Provider<P> {
+impl Provider {
     /// Instantiate a new provider with a backend.
-    pub fn new(provider: P) -> Self {
+    pub fn new(provider: ProviderType) -> Self {
         Self(provider, None, None)
     }
 
@@ -84,8 +142,7 @@ impl<P: JsonRpcClient> Provider<P> {
         Ok(self
             .0
             .request("eth_blockNumber", ())
-            .await
-            .map_err(Into::into)?)
+            .await?)
     }
 
     /// Gets the block at `block_hash_or_number` (transaction hashes only)
@@ -120,15 +177,13 @@ impl<P: JsonRpcClient> Provider<P> {
                 let hash = utils::serialize(&hash);
                 self.0
                     .request("eth_getBlockByHash", [hash, include_txs])
-                    .await
-                    .map_err(Into::into)?
+                    .await?
             }
             BlockId::Number(num) => {
                 let num = utils::serialize(&num);
                 self.0
                     .request("eth_getBlockByNumber", [num, include_txs])
-                    .await
-                    .map_err(Into::into)?
+                    .await?
             }
         })
     }
@@ -142,8 +197,7 @@ impl<P: JsonRpcClient> Provider<P> {
         Ok(self
             .0
             .request("eth_getTransactionByHash", [hash])
-            .await
-            .map_err(Into::into)?)
+            .await?)
     }
 
     /// Gets the transaction receipt with `transaction_hash`
@@ -155,8 +209,7 @@ impl<P: JsonRpcClient> Provider<P> {
         Ok(self
             .0
             .request("eth_getTransactionReceipt", [hash])
-            .await
-            .map_err(Into::into)?)
+            .await?)
     }
 
     /// Gets the current gas price as estimated by the node
@@ -164,8 +217,7 @@ impl<P: JsonRpcClient> Provider<P> {
         Ok(self
             .0
             .request("eth_gasPrice", ())
-            .await
-            .map_err(Into::into)?)
+            .await?)
     }
 
     /// Gets the accounts on the node
@@ -173,8 +225,7 @@ impl<P: JsonRpcClient> Provider<P> {
         Ok(self
             .0
             .request("eth_accounts", ())
-            .await
-            .map_err(Into::into)?)
+            .await?)
     }
 
     /// Returns the nonce of the address
@@ -193,8 +244,7 @@ impl<P: JsonRpcClient> Provider<P> {
         Ok(self
             .0
             .request("eth_getTransactionCount", [from, block])
-            .await
-            .map_err(Into::into)?)
+            .await?)
     }
 
     /// Returns the account's balance
@@ -213,8 +263,7 @@ impl<P: JsonRpcClient> Provider<P> {
         Ok(self
             .0
             .request("eth_getBalance", [from, block])
-            .await
-            .map_err(Into::into)?)
+            .await?)
     }
 
     /// Returns the currently configured chain id, a value used in replay-protected
@@ -223,8 +272,7 @@ impl<P: JsonRpcClient> Provider<P> {
         Ok(self
             .0
             .request("eth_chainId", ())
-            .await
-            .map_err(Into::into)?)
+            .await?)
     }
 
     ////// Contract Execution
@@ -243,8 +291,7 @@ impl<P: JsonRpcClient> Provider<P> {
         Ok(self
             .0
             .request("eth_call", [tx, block])
-            .await
-            .map_err(Into::into)?)
+            .await?)
     }
 
     /// Sends a transaction to a single Ethereum node and return the estimated amount of gas required (as a U256) to send it
@@ -256,8 +303,7 @@ impl<P: JsonRpcClient> Provider<P> {
         Ok(self
             .0
             .request("eth_estimateGas", [tx])
-            .await
-            .map_err(Into::into)?)
+            .await?)
     }
 
     /// Sends the transaction to the entire Ethereum network and returns the transaction's hash
@@ -279,8 +325,7 @@ impl<P: JsonRpcClient> Provider<P> {
         Ok(self
             .0
             .request("eth_sendTransaction", [tx])
-            .await
-            .map_err(Into::into)?)
+            .await?)
     }
 
     /// Send the raw RLP encoded transaction to the entire Ethereum network and returns the transaction's hash
@@ -290,8 +335,7 @@ impl<P: JsonRpcClient> Provider<P> {
         Ok(self
             .0
             .request("eth_sendRawTransaction", [rlp])
-            .await
-            .map_err(Into::into)?)
+            .await?)
     }
 
     /// Signs data using a specific account. This account needs to be unlocked.
@@ -305,8 +349,7 @@ impl<P: JsonRpcClient> Provider<P> {
         Ok(self
             .0
             .request("eth_sign", [from, data])
-            .await
-            .map_err(Into::into)?)
+            .await?)
     }
 
     ////// Contract state
@@ -316,8 +359,7 @@ impl<P: JsonRpcClient> Provider<P> {
         Ok(self
             .0
             .request("eth_getLogs", [filter])
-            .await
-            .map_err(Into::into)?)
+            .await?)
     }
 
     /// Streams matching filter logs
@@ -359,7 +401,7 @@ impl<P: JsonRpcClient> Provider<P> {
             FilterKind::Logs(filter) => ("eth_newFilter", vec![utils::serialize(&filter)]),
         };
 
-        Ok(self.0.request(method, args).await.map_err(Into::into)?)
+        Ok(self.0.request(method, args).await?)
     }
 
     /// Uninstalls a filter
@@ -368,8 +410,7 @@ impl<P: JsonRpcClient> Provider<P> {
         Ok(self
             .0
             .request("eth_uninstallFilter", [id])
-            .await
-            .map_err(Into::into)?)
+            .await?)
     }
 
     /// Polling method for a filter, which returns an array of logs which occurred since last poll.
@@ -394,8 +435,7 @@ impl<P: JsonRpcClient> Provider<P> {
         Ok(self
             .0
             .request("eth_getFilterChanges", [id])
-            .await
-            .map_err(Into::into)?)
+            .await?)
     }
 
     /// Get the storage of an address for a particular slot location
@@ -416,8 +456,7 @@ impl<P: JsonRpcClient> Provider<P> {
         Ok(self
             .0
             .request("eth_getStorageAt", [from, location, block])
-            .await
-            .map_err(Into::into)?)
+            .await?)
     }
 
     /// Returns the deployed code at a given address
@@ -436,8 +475,7 @@ impl<P: JsonRpcClient> Provider<P> {
         Ok(self
             .0
             .request("eth_getCode", [at, block])
-            .await
-            .map_err(Into::into)?)
+            .await?)
     }
 
     ////// Ethereum Naming Service
@@ -530,7 +568,7 @@ impl<P: JsonRpcClient> Provider<P> {
 
     /// Helper which creates a pending transaction object from a transaction hash
     /// using the provider's polling interval
-    pub fn pending_transaction(&self, tx_hash: TxHash) -> PendingTransaction<'_, P> {
+    pub fn pending_transaction(&self, tx_hash: TxHash) -> PendingTransaction<'_> {
         PendingTransaction::new(tx_hash, self).interval(self.get_interval())
     }
 }
@@ -546,15 +584,17 @@ fn decode_bytes<T: Detokenize>(param: ParamType, bytes: Bytes) -> T {
     T::from_tokens(tokens).expect("could not parse tokens as address")
 }
 
-impl TryFrom<&str> for Provider<HttpProvider> {
+impl TryFrom<&str> for Provider {
     type Error = ParseError;
 
     fn try_from(src: &str) -> Result<Self, Self::Error> {
-        Ok(Provider(HttpProvider::new(Url::parse(src)?), None, None))
+        let http_provider = HttpProvider::new(Url::parse(src)?);
+        let provider = ProviderType::Http(http_provider);
+        Ok(Provider(provider, None, None))
     }
 }
 
-impl TryFrom<String> for Provider<HttpProvider> {
+impl TryFrom<String> for Provider {
     type Error = ParseError;
 
     fn try_from(src: String) -> Result<Self, Self::Error> {
