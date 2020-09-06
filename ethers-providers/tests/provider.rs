@@ -60,7 +60,7 @@ mod eth_tests {
     #[tokio::test]
     async fn pending_txs_with_confirmations_ganache() {
         let ganache = Ganache::new().block_time(2u64).spawn();
-        let provider = Provider::<Http>::try_from(ganache.endpoint())
+        let provider = Provider::try_from(ganache.endpoint())
             .unwrap()
             .interval(Duration::from_millis(500u64));
         generic_pending_txs_test(provider).await;
@@ -108,7 +108,7 @@ mod eth_tests {
         // assert!(data_5.is_ok());
     }
 
-    async fn generic_pending_txs_test<P: JsonRpcClient>(provider: Provider<P>) {
+    async fn generic_pending_txs_test(provider: Provider) {
         let accounts = provider.get_accounts().await.unwrap();
 
         let tx = TransactionRequest::pay(accounts[0], parse_ether(1u64).unwrap()).from(accounts[0]);

@@ -5,10 +5,10 @@ use crate::{
 };
 
 #[cfg(feature = "ws")]
-use crate::{Ws as WsProvider};
+use crate::Ws as WsProvider;
 
 #[cfg(any(feature = "tokio-runtime", feature = "async-std-runtime"))]
-use crate::ws::{WebSocketStream, MaybeTlsStream};
+use crate::ws::{MaybeTlsStream, WebSocketStream};
 
 use ethers_core::{
     abi::{self, Detokenize, ParamType},
@@ -27,27 +27,49 @@ use async_trait::async_trait;
 
 use std::{convert::TryFrom, fmt::Debug, time::Duration};
 
+#[cfg(all(
+    feature = "ws",
+    any(feature = "tokio-runtime", feature = "async-std-runtime")
+))]
+type Ws = WsProvider<WebSocketStream<MaybeTlsStream>>;
+
 #[non_exhaustive]
 #[derive(Debug)]
 pub enum ProviderType {
     Http(HttpProvider),
-    #[cfg(all(feature = "ws", any(feature = "tokio-runtime", feature = "async-std-runtime")))]
-    Ws(WsProvider<WebSocketStream<MaybeTlsStream>>),
+    #[cfg(all(
+        feature = "ws",
+        any(feature = "tokio-runtime", feature = "async-std-runtime")
+    ))]
+    Ws(Ws),
+}
+
+impl From<HttpProvider> for ProviderType {
+    fn from(src: HttpProvider) -> ProviderType {
+        ProviderType::Http(src)
+    }
+}
+
+#[cfg(all(
+    feature = "ws",
+    any(feature = "tokio-runtime", feature = "async-std-runtime")
+))]
+impl From<Ws> for ProviderType {
+    fn from(src: Ws) -> ProviderType {
+        ProviderType::Ws(src)
+    }
 }
 
 impl Clone for ProviderType {
     fn clone(&self) -> Self {
         match self {
-            ProviderType::Http(ref http_provider) => {
-                ProviderType::Http(http_provider.clone())
-            },
-            #[cfg(all(feature = "ws", any(feature = "tokio-runtime", feature = "async-std-runtime")))]
-            ProviderType::Ws(ref ws_provider) => {
-                ProviderType::Ws(ws_provider.clone())
-            },
-            _ => {
-                unimplemented!("unknown provider type in default implementation")
-            }
+            ProviderType::Http(ref http_provider) => ProviderType::Http(http_provider.clone()),
+            #[cfg(all(
+                feature = "ws",
+                any(feature = "tokio-runtime", feature = "async-std-runtime")
+            ))]
+            ProviderType::Ws(ref ws_provider) => ProviderType::Ws(ws_provider.clone()),
+            _ => unimplemented!("unknown provider type in default implementation"),
         }
     }
 }
@@ -64,16 +86,19 @@ impl JsonRpcClient for ProviderType {
         params: T,
     ) -> Result<R, ProviderError> {
         match self {
-            ProviderType::Http(ref http_provider) => {
-                http_provider.request(method, params).await.map_err(Into::into)
-            },
-            #[cfg(all(feature = "ws", any(feature = "tokio-runtime", feature = "async-std-runtime")))]
-            ProviderType::Ws(ref ws_provider) => {
-                ws_provider.request(method, params).await.map_err(Into::into)
-            },
-            _ => {
-                unimplemented!("unknown provider type in default implementation")
-            }
+            ProviderType::Http(ref http_provider) => http_provider
+                .request(method, params)
+                .await
+                .map_err(Into::into),
+            #[cfg(all(
+                feature = "ws",
+                any(feature = "tokio-runtime", feature = "async-std-runtime")
+            ))]
+            ProviderType::Ws(ref ws_provider) => ws_provider
+                .request(method, params)
+                .await
+                .map_err(Into::into),
+            _ => unimplemented!("unknown provider type in default implementation"),
         }
     }
 }
@@ -129,8 +154,8 @@ pub enum FilterKind<'a> {
 // JSON RPC bindings
 impl Provider {
     /// Instantiate a new provider with a backend.
-    pub fn new(provider: ProviderType) -> Self {
-        Self(provider, None, None)
+    pub fn new<T: Into<ProviderType>>(provider: T) -> Self {
+        Self(provider.into(), None, None)
     }
 
     ////// Blockchain Status
@@ -139,10 +164,7 @@ impl Provider {
 
     /// Gets the latest block number via the `eth_BlockNumber` API
     pub async fn get_block_number(&self) -> Result<U64, ProviderError> {
-        Ok(self
-            .0
-            .request("eth_blockNumber", ())
-            .await?)
+        Ok(self.0.request("eth_blockNumber", ()).await?)
     }
 
     /// Gets the block at `block_hash_or_number` (transaction hashes only)
@@ -194,10 +216,7 @@ impl Provider {
         transaction_hash: T,
     ) -> Result<Transaction, ProviderError> {
         let hash = transaction_hash.into();
-        Ok(self
-            .0
-            .request("eth_getTransactionByHash", [hash])
-            .await?)
+        Ok(self.0.request("eth_getTransactionByHash", [hash]).await?)
     }
 
     /// Gets the transaction receipt with `transaction_hash`
@@ -206,26 +225,17 @@ impl Provider {
         transaction_hash: T,
     ) -> Result<TransactionReceipt, ProviderError> {
         let hash = transaction_hash.into();
-        Ok(self
-            .0
-            .request("eth_getTransactionReceipt", [hash])
-            .await?)
+        Ok(self.0.request("eth_getTransactionReceipt", [hash]).await?)
     }
 
     /// Gets the current gas price as estimated by the node
     pub async fn get_gas_price(&self) -> Result<U256, ProviderError> {
-        Ok(self
-            .0
-            .request("eth_gasPrice", ())
-            .await?)
+        Ok(self.0.request("eth_gasPrice", ()).await?)
     }
 
     /// Gets the accounts on the node
     pub async fn get_accounts(&self) -> Result<Vec<Address>, ProviderError> {
-        Ok(self
-            .0
-            .request("eth_accounts", ())
-            .await?)
+        Ok(self.0.request("eth_accounts", ()).await?)
     }
 
     /// Returns the nonce of the address
@@ -260,19 +270,13 @@ impl Provider {
 
         let from = utils::serialize(&from);
         let block = utils::serialize(&block.unwrap_or(BlockNumber::Latest));
-        Ok(self
-            .0
-            .request("eth_getBalance", [from, block])
-            .await?)
+        Ok(self.0.request("eth_getBalance", [from, block]).await?)
     }
 
     /// Returns the currently configured chain id, a value used in replay-protected
     /// transaction signing as introduced by EIP-155.
     pub async fn get_chainid(&self) -> Result<U256, ProviderError> {
-        Ok(self
-            .0
-            .request("eth_chainId", ())
-            .await?)
+        Ok(self.0.request("eth_chainId", ()).await?)
     }
 
     ////// Contract Execution
@@ -288,10 +292,7 @@ impl Provider {
     ) -> Result<Bytes, ProviderError> {
         let tx = utils::serialize(tx);
         let block = utils::serialize(&block.unwrap_or(BlockNumber::Latest));
-        Ok(self
-            .0
-            .request("eth_call", [tx, block])
-            .await?)
+        Ok(self.0.request("eth_call", [tx, block]).await?)
     }
 
     /// Sends a transaction to a single Ethereum node and return the estimated amount of gas required (as a U256) to send it
@@ -300,10 +301,7 @@ impl Provider {
     pub async fn estimate_gas(&self, tx: &TransactionRequest) -> Result<U256, ProviderError> {
         let tx = utils::serialize(tx);
 
-        Ok(self
-            .0
-            .request("eth_estimateGas", [tx])
-            .await?)
+        Ok(self.0.request("eth_estimateGas", [tx]).await?)
     }
 
     /// Sends the transaction to the entire Ethereum network and returns the transaction's hash
@@ -322,20 +320,14 @@ impl Provider {
             }
         }
 
-        Ok(self
-            .0
-            .request("eth_sendTransaction", [tx])
-            .await?)
+        Ok(self.0.request("eth_sendTransaction", [tx]).await?)
     }
 
     /// Send the raw RLP encoded transaction to the entire Ethereum network and returns the transaction's hash
     /// This will consume gas from the account that signed the transaction.
     pub async fn send_raw_transaction(&self, tx: &Transaction) -> Result<TxHash, ProviderError> {
         let rlp = utils::serialize(&tx.rlp());
-        Ok(self
-            .0
-            .request("eth_sendRawTransaction", [rlp])
-            .await?)
+        Ok(self.0.request("eth_sendRawTransaction", [rlp]).await?)
     }
 
     /// Signs data using a specific account. This account needs to be unlocked.
@@ -346,20 +338,14 @@ impl Provider {
     ) -> Result<Signature, ProviderError> {
         let data = utils::serialize(&data.into());
         let from = utils::serialize(from);
-        Ok(self
-            .0
-            .request("eth_sign", [from, data])
-            .await?)
+        Ok(self.0.request("eth_sign", [from, data]).await?)
     }
 
     ////// Contract state
 
     /// Returns an array (possibly empty) of logs that match the filter
     pub async fn get_logs(&self, filter: &Filter) -> Result<Vec<Log>, ProviderError> {
-        Ok(self
-            .0
-            .request("eth_getLogs", [filter])
-            .await?)
+        Ok(self.0.request("eth_getLogs", [filter]).await?)
     }
 
     /// Streams matching filter logs
@@ -407,10 +393,7 @@ impl Provider {
     /// Uninstalls a filter
     pub async fn uninstall_filter<T: Into<U256>>(&self, id: T) -> Result<bool, ProviderError> {
         let id = utils::serialize(&id.into());
-        Ok(self
-            .0
-            .request("eth_uninstallFilter", [id])
-            .await?)
+        Ok(self.0.request("eth_uninstallFilter", [id]).await?)
     }
 
     /// Polling method for a filter, which returns an array of logs which occurred since last poll.
@@ -432,10 +415,7 @@ impl Provider {
         R: for<'a> Deserialize<'a>,
     {
         let id = utils::serialize(&id.into());
-        Ok(self
-            .0
-            .request("eth_getFilterChanges", [id])
-            .await?)
+        Ok(self.0.request("eth_getFilterChanges", [id]).await?)
     }
 
     /// Get the storage of an address for a particular slot location
@@ -472,10 +452,7 @@ impl Provider {
 
         let at = utils::serialize(&at);
         let block = utils::serialize(&block.unwrap_or(BlockNumber::Latest));
-        Ok(self
-            .0
-            .request("eth_getCode", [at, block])
-            .await?)
+        Ok(self.0.request("eth_getCode", [at, block]).await?)
     }
 
     ////// Ethereum Naming Service
@@ -539,10 +516,7 @@ impl Provider {
     /// ganache-only function for mining empty blocks
     pub async fn mine(&self, num_blocks: usize) -> Result<(), ProviderError> {
         for _ in 0..num_blocks {
-            self.0
-                .request::<_, U256>("evm_mine", None::<()>)
-                .await
-                .map_err(Into::into)?;
+            self.0.request::<_, U256>("evm_mine", None::<()>).await?;
         }
         Ok(())
     }
@@ -611,7 +585,7 @@ mod ens_tests {
     #[tokio::test]
     // Test vector from: https://docs.ethers.io/ethers.js/v5-beta/api-providers.html#id2
     async fn mainnet_resolve_name() {
-        let provider = Provider::<HttpProvider>::try_from(INFURA).unwrap();
+        let provider = Provider::try_from(INFURA).unwrap();
 
         let addr = provider
             .resolve_name("registrar.firefly.eth")
@@ -635,7 +609,7 @@ mod ens_tests {
     #[tokio::test]
     // Test vector from: https://docs.ethers.io/ethers.js/v5-beta/api-providers.html#id2
     async fn mainnet_lookup_address() {
-        let provider = Provider::<HttpProvider>::try_from(INFURA).unwrap();
+        let provider = Provider::try_from(INFURA).unwrap();
 
         let name = provider
             .lookup_address("6fC21092DA55B392b045eD78F4732bff3C580e2c".parse().unwrap())
@@ -664,7 +638,7 @@ mod tests {
     async fn test_new_block_filter() {
         let num_blocks = 3;
 
-        let provider = Provider::<HttpProvider>::try_from("http://localhost:8545")
+        let provider = Provider::try_from("http://localhost:8545")
             .unwrap()
             .interval(Duration::from_millis(1000));
         let start_block = provider.get_block_number().await.unwrap();
@@ -689,7 +663,7 @@ mod tests {
     async fn test_new_pending_txs_filter() {
         let num_txs = 5;
 
-        let provider = Provider::<HttpProvider>::try_from("http://localhost:8545")
+        let provider = Provider::try_from("http://localhost:8545")
             .unwrap()
             .interval(Duration::from_millis(1000));
         let accounts = provider.get_accounts().await.unwrap();

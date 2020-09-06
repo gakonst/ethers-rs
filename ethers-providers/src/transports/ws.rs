@@ -9,8 +9,8 @@ use futures_util::{
 };
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
 use thiserror::Error;
 
 use super::common::{JsonRpcError, Request, ResponseData};
@@ -98,9 +98,7 @@ pub struct Provider<S> {
 
 impl<S> std::fmt::Debug for Provider<S> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Ws provider")
-         .field("id", &self.id)
-         .finish()
+        f.debug_struct("Ws provider").field("id", &self.id).finish()
     }
 }
 
@@ -206,7 +204,7 @@ impl<S> Clone for Provider<S> {
     fn clone(&self) -> Self {
         Self {
             id: Arc::clone(&self.id),
-            ws: Arc::clone(&self.ws)
+            ws: Arc::clone(&self.ws),
         }
     }
 }
