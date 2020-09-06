@@ -4,7 +4,7 @@ use ethers_core::{
     abi::{Abi, Detokenize, Error, EventExt, Function, FunctionExt, Tokenize},
     types::{Address, Filter, NameOrAddress, Selector, TransactionRequest, TxHash},
 };
-use ethers_providers::{JsonRpcClient, PendingTransaction};
+use ethers_providers::PendingTransaction;
 use ethers_signers::{Client, Signer};
 
 use rustc_hex::ToHex;

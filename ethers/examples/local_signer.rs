@@ -10,7 +10,7 @@ async fn main() -> Result<()> {
     let wallet2: Wallet = ganache.keys()[1].clone().into();
 
     // connect to the network
-    let provider = Provider::<Http>::try_from(ganache.endpoint())?;
+    let provider = Provider::try_from(ganache.endpoint())?;
 
     // connect the wallet to the provider
     let client = wallet.connect(provider);

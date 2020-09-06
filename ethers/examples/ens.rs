@@ -5,9 +5,8 @@ use std::convert::TryFrom;
 #[tokio::main]
 async fn main() -> Result<()> {
     // connect to the network
-    let provider = Provider::<Http>::try_from(
-        "https://mainnet.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27",
-    )?;
+    let provider =
+        Provider::try_from("https://mainnet.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27")?;
 
     // create a wallet and connect it to the provider
     let client = "dcf2cbdd171a21c480aa7f53d77f31bb102282b3ff099c78e3118b37348c72f7"

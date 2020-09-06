@@ -56,7 +56,7 @@ fn expand_filter(event: &Event) -> Result<TokenStream> {
     Ok(quote! {
 
         #doc
-        pub fn #name(&self) -> Event<P, #result> {
+        pub fn #name(&self) -> Event<#result> {
             self.0.event(#ev_name).expect("event not found (this should never happen)")
         }
     })

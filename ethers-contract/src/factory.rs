@@ -4,7 +4,6 @@ use ethers_core::{
     abi::{Abi, Tokenize},
     types::{BlockNumber, Bytes, TransactionRequest},
 };
-use ethers_providers::JsonRpcClient;
 use ethers_signers::{Client, Signer};
 
 use std::{sync::Arc, time::Duration};

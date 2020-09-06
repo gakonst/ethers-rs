@@ -1,6 +1,6 @@
 use crate::{Client, ClientError, Signer};
 
-use ethers_providers::{JsonRpcClient, Provider};
+use ethers_providers::Provider;
 
 use ethers_core::{
     rand::Rng,

@@ -36,17 +36,17 @@ pub(crate) fn struct_declaration(cx: &Context, abi_name: &proc_macro2::Ident) ->
 
         // Struct declaration
         #[derive(Clone)]
-        pub struct #name<P, S>(Contract<P, S>);
+        pub struct #name<S>(Contract<S>);
 
 
         // Deref to the inner contract in order to access more specific functions functions
-        impl<P, S> std::ops::Deref for #name<P, S> {
-            type Target = Contract<P, S>;
+        impl<S> std::ops::Deref for #name<S> {
+            type Target = Contract<S>;
 
             fn deref(&self) -> &Self::Target { &self.0 }
         }
 
-        impl<P: JsonRpcClient, S: Signer> std::fmt::Debug for #name<P, S> {
+        impl<S: Signer> std::fmt::Debug for #name<S> {
             fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
                 f.debug_tuple(stringify!(#name))
                     .field(&self.address())
