@@ -163,8 +163,8 @@ use std::{collections::HashMap, fmt::Debug, hash::Hash, marker::PhantomData, syn
 /// [`event`]: method@crate::Contract::event
 /// [`method`]: method@crate::Contract::method
 #[derive(Debug, Clone)]
-pub struct Contract<P, S> {
-    client: Arc<Client<P, S>>,
+pub struct Contract<S> {
+    client: Arc<Client<S>>,
     abi: Abi,
     address: Address,
 
@@ -175,13 +175,12 @@ pub struct Contract<P, S> {
     methods: HashMap<Selector, (String, usize)>,
 }
 
-impl<P, S> Contract<P, S>
+impl<S> Contract<S>
 where
     S: Signer,
-    P: JsonRpcClient,
 {
     /// Creates a new contract from the provided client, abi and address
-    pub fn new(address: Address, abi: Abi, client: impl Into<Arc<Client<P, S>>>) -> Self {
+    pub fn new(address: Address, abi: Abi, client: impl Into<Arc<Client<S>>>) -> Self {
         let methods = create_mapping(&abi.functions, |function| function.selector());
 
         Self {
@@ -193,7 +192,7 @@ where
     }
 
     /// Returns an [`Event`](crate::builders::Event) builder for the provided event name.
-    pub fn event<D: Detokenize>(&self, name: &str) -> Result<Event<P, D>, Error> {
+    pub fn event<D: Detokenize>(&self, name: &str) -> Result<Event<D>, Error> {
         // get the event's full name
         let event = self.abi.event(name)?;
         Ok(Event {
@@ -213,7 +212,7 @@ where
         &self,
         name: &str,
         args: T,
-    ) -> Result<ContractCall<P, S, D>, Error> {
+    ) -> Result<ContractCall<S, D>, Error> {
         // get the function
         let function = self.abi.function(name)?;
         self.method_func(function, args)
@@ -225,7 +224,7 @@ where
         &self,
         signature: Selector,
         args: T,
-    ) -> Result<ContractCall<P, S, D>, Error> {
+    ) -> Result<ContractCall<S, D>, Error> {
         let function = self
             .methods
             .get(&signature)
@@ -238,7 +237,7 @@ where
         &self,
         function: &Function,
         args: T,
-    ) -> Result<ContractCall<P, S, D>, Error> {
+    ) -> Result<ContractCall<S, D>, Error> {
         let tokens = args.into_tokens();
 
         // create the calldata
@@ -263,10 +262,7 @@ where
     /// Returns a new contract instance at `address`.
     ///
     /// Clones `self` internally
-    pub fn at<T: Into<Address>>(&self, address: T) -> Self
-    where
-        P: Clone,
-    {
+    pub fn at<T: Into<Address>>(&self, address: T) -> Self {
         let mut this = self.clone();
         this.address = address.into();
         this
@@ -275,10 +271,7 @@ where
     /// Returns a new contract instance using the provided client
     ///
     /// Clones `self` internally
-    pub fn connect(&self, client: Arc<Client<P, S>>) -> Self
-    where
-        P: Clone,
-    {
+    pub fn connect(&self, client: Arc<Client<S>>) -> Self {
         let mut this = self.clone();
         this.client = client;
         this
@@ -295,13 +288,13 @@ where
     }
 
     /// Returns a reference to the contract's client
-    pub fn client(&self) -> &Client<P, S> {
+    pub fn client(&self) -> &Client<S> {
         &self.client
     }
 
     /// Helper which creates a pending transaction object from a transaction hash
     /// using the provider's polling interval
-    pub fn pending_transaction(&self, tx_hash: TxHash) -> PendingTransaction<'_, P> {
+    pub fn pending_transaction(&self, tx_hash: TxHash) -> PendingTransaction<'_> {
         self.client.provider().pending_transaction(tx_hash)
     }
 }

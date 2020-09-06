@@ -8,7 +8,7 @@ mod eth_tests {
     use super::*;
     use ethers::{
         contract::Multicall,
-        providers::{Http, Provider, StreamExt},
+        providers::{Provider, StreamExt},
         signers::Client,
         types::{Address, U256},
         utils::Ganache,
@@ -159,7 +159,7 @@ mod eth_tests {
         let ganache = Ganache::new().spawn();
 
         // connect
-        let provider = Provider::<Http>::try_from(ganache.endpoint())
+        let provider = Provider::try_from(ganache.endpoint())
             .unwrap()
             .interval(std::time::Duration::from_millis(50u64));
 
@@ -336,11 +336,7 @@ mod eth_tests {
 #[cfg(feature = "celo")]
 mod celo_tests {
     use super::*;
-    use ethers::{
-        providers::{Http, Provider},
-        signers::Wallet,
-        types::BlockNumber,
-    };
+    use ethers::{providers::Provider, signers::Wallet, types::BlockNumber};
     use std::{convert::TryFrom, sync::Arc, time::Duration};
 
     #[tokio::test]
@@ -348,8 +344,7 @@ mod celo_tests {
         let (abi, bytecode) = compile_contract("SimpleStorage", "SimpleStorage.sol");
 
         // Celo testnet
-        let provider =
-            Provider::<Http>::try_from("https://alfajores-forno.celo-testnet.org").unwrap();
+        let provider = Provider::try_from("https://alfajores-forno.celo-testnet.org").unwrap();
 
         // Funded with https://celo.org/developers/faucet
         let client = "d652abb81e8c686edba621a895531b1f291289b63b5ef09a94f686a5ecdd5db1"

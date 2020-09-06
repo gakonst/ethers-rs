@@ -5,7 +5,7 @@ use ethers_core::{
 
 use ethers_contract::{Contract, ContractFactory};
 use ethers_core::utils::{GanacheInstance, Solc};
-use ethers_providers::{Http, Provider};
+use ethers_providers::Provider;
 use ethers_signers::{Client, Wallet};
 use std::{convert::TryFrom, sync::Arc, time::Duration};
 
@@ -44,8 +44,8 @@ pub fn compile_contract(name: &str, filename: &str) -> (Abi, Bytes) {
 }
 
 /// connects the private key to http://localhost:8545
-pub fn connect(ganache: &GanacheInstance, idx: usize) -> Arc<Client<Http, Wallet>> {
-    let provider = Provider::<Http>::try_from(ganache.endpoint()).unwrap();
+pub fn connect(ganache: &GanacheInstance, idx: usize) -> Arc<Client<Wallet>> {
+    let provider = Provider::try_from(ganache.endpoint()).unwrap();
     let wallet: Wallet = ganache.keys()[idx].clone().into();
     Arc::new(
         wallet
@@ -55,11 +55,7 @@ pub fn connect(ganache: &GanacheInstance, idx: usize) -> Arc<Client<Http, Wallet
 }
 
 /// Launches a ganache instance and deploys the SimpleStorage contract
-pub async fn deploy(
-    client: Arc<Client<Http, Wallet>>,
-    abi: Abi,
-    bytecode: Bytes,
-) -> Contract<Http, Wallet> {
+pub async fn deploy(client: Arc<Client<Wallet>>, abi: Abi, bytecode: Bytes) -> Contract<Wallet> {
     let factory = ContractFactory::new(abi, bytecode, client);
     factory
         .deploy("initial value".to_string())

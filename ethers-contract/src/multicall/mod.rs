@@ -132,10 +132,10 @@ pub static ADDRESS_BOOK: Lazy<HashMap<U256, Address>> = Lazy::new(|| {
 /// [`block`]: method@crate::Multicall::block
 /// [`add_call`]: methond@crate::Multicall::add_call
 #[derive(Clone)]
-pub struct Multicall<P, S> {
+pub struct Multicall<S> {
     calls: Vec<Call>,
     block: Option<BlockNumber>,
-    contract: MulticallContract<P, S>,
+    contract: MulticallContract<S>,
 }
 
 #[derive(Clone)]
@@ -147,11 +147,7 @@ pub struct Call {
     function: Function,
 }
 
-impl<P, S> Multicall<P, S>
-where
-    P: JsonRpcClient,
-    S: Signer,
-{
+impl<S: Signer> Multicall<S> {
     /// Creates a new Multicall instance from the provided client. If provided with an `address`,
     /// it instantiates the Multicall contract with that address. Otherwise it fetches the address
     /// from the address book.
@@ -159,7 +155,7 @@ where
     /// # Panics
     /// If a `None` address is provided, and the provided client also does not belong to one of
     /// the supported network IDs (mainnet, kovan, rinkeby and goerli)
-    pub async fn new<C: Into<Arc<Client<P, S>>>>(
+    pub async fn new<C: Into<Arc<Client<S>>>>(
         client: C,
         address: Option<Address>,
     ) -> Result<Self, ContractError> {
@@ -203,7 +199,7 @@ where
     ///
     /// If more than the maximum number of supported calls are added. The maximum
     /// limits is constrained due to tokenization/detokenization support for tuples
-    pub fn add_call<D: Detokenize>(&mut self, call: ContractCall<P, S, D>) -> &mut Self {
+    pub fn add_call<D: Detokenize>(&mut self, call: ContractCall<S, D>) -> &mut Self {
         if self.calls.len() >= 16 {
             panic!("Cannot support more than {} calls", 16);
         }
@@ -361,7 +357,7 @@ where
         Ok(tx_hash)
     }
 
-    fn as_contract_call(&self) -> ContractCall<P, S, (U256, Vec<Vec<u8>>)> {
+    fn as_contract_call(&self) -> ContractCall<S, (U256, Vec<Vec<u8>>)> {
         // Map the Multicall struct into appropriate types for `aggregate` function
         let calls: Vec<(Address, Vec<u8>)> = self
             .calls

@@ -2,7 +2,7 @@ use ethers_core::{
     abi::{Detokenize, Error as AbiError, Function, InvalidOutputType},
     types::{Address, BlockNumber, Bytes, TransactionRequest, TxHash, U256},
 };
-use ethers_providers::{JsonRpcClient, ProviderError};
+use ethers_providers::ProviderError;
 use ethers_signers::{Client, ClientError, Signer};
 
 use std::{fmt::Debug, marker::PhantomData, sync::Arc};
@@ -42,18 +42,18 @@ pub enum ContractError {
 #[derive(Debug, Clone)]
 #[must_use = "contract calls do nothing unless you `send` or `call` them"]
 /// Helper for managing a transaction before submitting it to a node
-pub struct ContractCall<P, S, D> {
+pub struct ContractCall<S, D> {
     /// The raw transaction object
     pub tx: TransactionRequest,
     /// The ABI of the function being called
     pub function: Function,
     /// Optional block number to be used when calculating the transaction's gas and nonce
     pub block: Option<BlockNumber>,
-    pub(crate) client: Arc<Client<P, S>>,
+    pub(crate) client: Arc<Client<S>>,
     pub(crate) datatype: PhantomData<D>,
 }
 
-impl<P, S, D: Detokenize> ContractCall<P, S, D> {
+impl<S, D: Detokenize> ContractCall<S, D> {
     /// Sets the `from` field in the transaction to the provided value
     pub fn from<T: Into<Address>>(mut self, from: T) -> Self {
         self.tx.from = Some(from.into());
@@ -85,10 +85,9 @@ impl<P, S, D: Detokenize> ContractCall<P, S, D> {
     }
 }
 
-impl<P, S, D> ContractCall<P, S, D>
+impl<S, D> ContractCall<S, D>
 where
     S: Signer,
-    P: JsonRpcClient,
     D: Detokenize,
 {
     /// Returns the underlying transaction's ABI encoded data

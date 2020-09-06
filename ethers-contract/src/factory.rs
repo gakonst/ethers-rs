@@ -11,20 +11,19 @@ use std::{sync::Arc, time::Duration};
 
 #[derive(Debug, Clone)]
 /// Helper which manages the deployment transaction of a smart contract
-pub struct Deployer<P, S> {
+pub struct Deployer<S> {
     /// The deployer's transaction, exposed for overriding the defaults
     pub tx: TransactionRequest,
     abi: Abi,
-    client: Arc<Client<P, S>>,
+    client: Arc<Client<S>>,
     confs: usize,
     block: BlockNumber,
     interval: Duration,
 }
 
-impl<P, S> Deployer<P, S>
+impl<S> Deployer<S>
 where
     S: Signer,
-    P: JsonRpcClient,
 {
     /// Sets the number of confirmations to wait for the contract deployment transaction
     pub fn confirmations<T: Into<usize>>(mut self, confirmations: T) -> Self {
@@ -46,7 +45,7 @@ where
     /// Broadcasts the contract deployment transaction and after waiting for it to
     /// be sufficiently confirmed (default: 1), it returns a [`Contract`](crate::Contract)
     /// struct at the deployed contract's address.
-    pub async fn send(self) -> Result<Contract<P, S>, ContractError> {
+    pub async fn send(self) -> Result<Contract<S>, ContractError> {
         let tx_hash = self
             .client
             .send_transaction(self.tx, Some(self.block))
@@ -72,7 +71,7 @@ where
     }
 
     /// Returns a reference to the deployer's client
-    pub fn client(&self) -> &Client<P, S> {
+    pub fn client(&self) -> &Client<S> {
         &self.client
     }
 }
@@ -122,21 +121,20 @@ where
 /// println!("{}", contract.address());
 /// # Ok(())
 /// # }
-pub struct ContractFactory<P, S> {
-    client: Arc<Client<P, S>>,
+pub struct ContractFactory<S> {
+    client: Arc<Client<S>>,
     abi: Abi,
     bytecode: Bytes,
 }
 
-impl<P, S> ContractFactory<P, S>
+impl<S> ContractFactory<S>
 where
     S: Signer,
-    P: JsonRpcClient,
 {
     /// Creates a factory for deployment of the Contract with bytecode, and the
     /// constructor defined in the abi. The client will be used to send any deployment
     /// transaction.
-    pub fn new(abi: Abi, bytecode: Bytes, client: impl Into<Arc<Client<P, S>>>) -> Self {
+    pub fn new(abi: Abi, bytecode: Bytes, client: impl Into<Arc<Client<S>>>) -> Self {
         Self {
             client: client.into(),
             abi,
@@ -152,7 +150,7 @@ where
     /// 1. If there are no constructor arguments, you should pass `()` as the argument.
     /// 1. The default poll duration is 7 seconds.
     /// 1. The default number of confirmations is 1 block.
-    pub fn deploy<T: Tokenize>(self, constructor_args: T) -> Result<Deployer<P, S>, ContractError> {
+    pub fn deploy<T: Tokenize>(self, constructor_args: T) -> Result<Deployer<S>, ContractError> {
         // Encode the constructor args & concatenate with the bytecode if necessary
         let params = constructor_args.into_tokens();
         let data: Bytes = match (self.abi.constructor(), params.is_empty()) {

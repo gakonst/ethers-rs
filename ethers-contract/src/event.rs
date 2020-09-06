@@ -1,6 +1,6 @@
 use crate::ContractError;
 
-use ethers_providers::{FilterStream, JsonRpcClient, Provider};
+use ethers_providers::{FilterStream, Provider};
 
 use ethers_core::{
     abi::{Detokenize, Event as AbiEvent, RawLog},
@@ -13,17 +13,17 @@ use std::marker::PhantomData;
 /// Helper for managing the event filter before querying or streaming its logs
 #[derive(Debug)]
 #[must_use = "event filters do nothing unless you `query` or `stream` them"]
-pub struct Event<'a: 'b, 'b, P, D> {
+pub struct Event<'a: 'b, 'b, D> {
     /// The event filter's state
     pub filter: Filter,
     /// The ABI of the event which is being filtered
     pub event: &'b AbiEvent,
-    pub(crate) provider: &'a Provider<P>,
+    pub(crate) provider: &'a Provider,
     pub(crate) datatype: PhantomData<D>,
 }
 
 // TODO: Improve these functions
-impl<P, D: Detokenize> Event<'_, '_, P, D> {
+impl<D: Detokenize> Event<'_, '_, D> {
     /// Sets the filter's `from` block
     #[allow(clippy::wrong_self_convention)]
     pub fn from_block<T: Into<BlockNumber>>(mut self, block: T) -> Self {
@@ -63,9 +63,8 @@ impl<P, D: Detokenize> Event<'_, '_, P, D> {
     }
 }
 
-impl<'a, 'b, P, D> Event<'a, 'b, P, D>
+impl<'a, 'b, D> Event<'a, 'b, D>
 where
-    P: JsonRpcClient,
     D: 'b + Detokenize + Clone,
     'a: 'b,
 {
@@ -78,9 +77,8 @@ where
     }
 }
 
-impl<P, D> Event<'_, '_, P, D>
+impl<D> Event<'_, '_, D>
 where
-    P: JsonRpcClient,
     D: Detokenize + Clone,
 {
     /// Queries the blockchain for the selected filter and returns a vector of matching
