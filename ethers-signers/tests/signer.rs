@@ -18,11 +18,10 @@ mod eth_tests {
 
     #[tokio::test]
     async fn pending_txs_with_confirmations_rinkeby_infura() {
-        let provider = Provider::<Http>::try_from(
-            "https://rinkeby.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27",
-        )
-        .unwrap()
-        .interval(Duration::from_millis(2000u64));
+        let provider =
+            Provider::try_from("https://rinkeby.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27")
+                .unwrap()
+                .interval(Duration::from_millis(2000u64));
 
         // pls do not drain this key :)
         // note: this works even if there's no EIP-155 configured!
@@ -55,7 +54,7 @@ mod eth_tests {
         let wallet2: Wallet = ganache.keys()[1].clone().into();
 
         // connect to the network
-        let provider = Provider::<Http>::try_from(ganache.endpoint())
+        let provider = Provider::try_from(ganache.endpoint())
             .unwrap()
             .interval(Duration::from_millis(10u64));
 
@@ -84,7 +83,7 @@ mod eth_tests {
         let wallet2: Wallet = ganache.keys()[1].clone().into();
 
         // connect to the network
-        let provider = Provider::<Http>::try_from(ganache.endpoint())
+        let provider = Provider::try_from(ganache.endpoint())
             .unwrap()
             .interval(Duration::from_millis(10u64));
 

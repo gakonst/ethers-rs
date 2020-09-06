@@ -44,7 +44,6 @@ mod client;
 pub use client::{Client, ClientError};
 
 use ethers_core::types::{Address, Signature, Transaction, TransactionRequest};
-use ethers_providers::Http;
 use std::error::Error;
 
 /// Trait for signing transactions and messages
@@ -62,6 +61,3 @@ pub trait Signer: Clone + Send + Sync {
     /// Returns the signer's Ethereum Address
     fn address(&self) -> Address;
 }
-
-/// An HTTP client configured to work with ANY blockchain without replay protection
-pub type HttpClient = Client<Http, Wallet>;

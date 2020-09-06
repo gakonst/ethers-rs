@@ -115,7 +115,7 @@ impl Wallet {
     }
 
     /// Connects to a provider and returns a client
-    pub fn connect<P: JsonRpcClient>(self, provider: Provider<P>) -> Client<P, Wallet> {
+    pub fn connect(self, provider: Provider) -> Client<Wallet> {
         let address = self.address();
         Client {
             address,

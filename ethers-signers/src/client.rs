@@ -69,8 +69,8 @@ use thiserror::Error;
 /// ```
 ///
 /// [`Provider`]: ethers_providers::Provider
-pub struct Client<P, S> {
-    pub(crate) provider: Provider<P>,
+pub struct Client<S> {
+    pub(crate) provider: Provider,
     pub(crate) signer: Option<S>,
     pub(crate) address: Address,
     pub(crate) gas_oracle: Option<Box<dyn GasOracle>>,
@@ -97,13 +97,9 @@ pub enum ClientError {
 }
 
 // Helper functions for locally signing transactions
-impl<P, S> Client<P, S>
-where
-    P: JsonRpcClient,
-    S: Signer,
-{
+impl<S: Signer> Client<S> {
     /// Creates a new client from the provider and signer.
-    pub fn new(provider: Provider<P>, signer: S) -> Self {
+    pub fn new(provider: Provider, signer: S) -> Self {
         let address = signer.address();
         Client {
             provider,
@@ -189,7 +185,7 @@ where
     }
 
     /// Returns a reference to the client's provider
-    pub fn provider(&self) -> &Provider<P> {
+    pub fn provider(&self) -> &Provider {
         &self.provider
     }
 
@@ -212,7 +208,7 @@ where
     /// calls.
     ///
     /// Clones internally.
-    pub fn with_provider(&mut self, provider: Provider<P>) -> &Self {
+    pub fn with_provider(&mut self, provider: Provider) -> &Self {
         self.provider = provider;
         self
     }
@@ -267,16 +263,16 @@ where
 // Abuse Deref to use the Provider's methods without re-writing everything.
 // This is an anti-pattern and should not be encouraged, but this improves the UX while
 // keeping the LoC low
-impl<P, S> Deref for Client<P, S> {
-    type Target = Provider<P>;
+impl<S> Deref for Client<S> {
+    type Target = Provider;
 
     fn deref(&self) -> &Self::Target {
         &self.provider
     }
 }
 
-impl<P: JsonRpcClient, S> From<Provider<P>> for Client<P, S> {
-    fn from(provider: Provider<P>) -> Self {
+impl<S> From<Provider> for Client<S> {
+    fn from(provider: Provider) -> Self {
         Self {
             provider,
             signer: None,
