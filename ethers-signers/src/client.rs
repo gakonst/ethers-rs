@@ -1,7 +1,7 @@
-use crate::Signer;
+use crate::{NonceManager, Signer};
 
 use ethers_core::types::{
-    Address, BlockNumber, Bytes, NameOrAddress, Signature, TransactionRequest, TxHash,
+    Address, BlockNumber, Bytes, NameOrAddress, Signature, TransactionRequest, TxHash, U256,
 };
 use ethers_providers::{
     gas_oracle::{GasOracle, GasOracleError},
@@ -9,7 +9,8 @@ use ethers_providers::{
 };
 
 use futures_util::{future::ok, join};
-use std::{future::Future, ops::Deref, time::Duration};
+use std::{future::Future, ops::Deref, sync::atomic::Ordering, time::Duration};
+
 use thiserror::Error;
 
 #[derive(Debug)]
@@ -74,6 +75,7 @@ pub struct Client<P, S> {
     pub(crate) signer: Option<S>,
     pub(crate) address: Address,
     pub(crate) gas_oracle: Option<Box<dyn GasOracle>>,
+    pub(crate) nonce_manager: Option<NonceManager>,
 }
 
 #[derive(Debug, Error)]
@@ -110,6 +112,7 @@ where
             signer: Some(signer),
             address,
             gas_oracle: None,
+            nonce_manager: None,
         }
     }
 
@@ -141,7 +144,34 @@ where
         // fill any missing fields
         self.fill_transaction(&mut tx, block).await?;
 
-        // sign the transaction and broadcast it
+        // if we have a nonce manager set, we should try handling the result in
+        // case there was a nonce mismatch
+        let tx_hash = if let Some(ref nonce_manager) = self.nonce_manager {
+            let mut tx_clone = tx.clone();
+            match self.submit_transaction(tx).await {
+                Ok(tx_hash) => tx_hash,
+                Err(err) => {
+                    let nonce = self.get_transaction_count(block).await?;
+                    if nonce != nonce_manager.nonce.load(Ordering::SeqCst).into() {
+                        // try re-submitting the transaction with the correct nonce if there
+                        // was a nonce mismatch
+                        nonce_manager.nonce.store(nonce.as_u64(), Ordering::SeqCst);
+                        tx_clone.nonce = Some(nonce);
+                        self.submit_transaction(tx_clone).await?
+                    } else {
+                        // propagate the error otherwise
+                        return Err(err);
+                    }
+                }
+            }
+        } else {
+            self.submit_transaction(tx).await?
+        };
+
+        Ok(tx_hash)
+    }
+
+    async fn submit_transaction(&self, tx: TransactionRequest) -> Result<TxHash, ClientError> {
         Ok(if let Some(ref signer) = self.signer {
             let signed_tx = signer.sign_transaction(tx).map_err(Into::into)?;
             self.provider.send_raw_transaction(&signed_tx).await?
@@ -171,16 +201,45 @@ where
         let (gas_price, gas, nonce) = join!(
             maybe(tx.gas_price, self.provider.get_gas_price()),
             maybe(tx.gas, self.provider.estimate_gas(&tx)),
-            maybe(
-                tx.nonce,
-                self.provider.get_transaction_count(self.address(), block)
-            ),
+            maybe(tx.nonce, self.get_transaction_count_with_manager(block)),
         );
         tx.gas_price = Some(gas_price?);
         tx.gas = Some(gas?);
         tx.nonce = Some(nonce?);
 
         Ok(())
+    }
+
+    async fn get_transaction_count_with_manager(
+        &self,
+        block: Option<BlockNumber>,
+    ) -> Result<U256, ClientError> {
+        // If there's a nonce manager set, short circuit by just returning the next nonce
+        if let Some(ref nonce_manager) = self.nonce_manager {
+            // initialize the nonce the first time the manager is called
+            if !nonce_manager.initialized.load(Ordering::SeqCst) {
+                let nonce = self
+                    .provider
+                    .get_transaction_count(self.address(), block)
+                    .await?;
+                nonce_manager.nonce.store(nonce.as_u64(), Ordering::SeqCst);
+                nonce_manager.initialized.store(true, Ordering::SeqCst);
+            }
+
+            return Ok(nonce_manager.next());
+        }
+
+        self.get_transaction_count(block).await
+    }
+
+    pub async fn get_transaction_count(
+        &self,
+        block: Option<BlockNumber>,
+    ) -> Result<U256, ClientError> {
+        Ok(self
+            .provider
+            .get_transaction_count(self.address(), block)
+            .await?)
     }
 
     /// Returns the client's address
@@ -250,6 +309,11 @@ where
         self.gas_oracle = Some(gas_oracle);
         self
     }
+
+    pub fn with_nonce_manager(mut self) -> Self {
+        self.nonce_manager = Some(NonceManager::new());
+        self
+    }
 }
 
 /// Calls the future if `item` is None, otherwise returns a `futures::ok`
@@ -282,6 +346,7 @@ impl<P: JsonRpcClient, S> From<Provider<P>> for Client<P, S> {
             signer: None,
             address: Address::zero(),
             gas_oracle: None,
+            nonce_manager: None,
         }
     }
 }

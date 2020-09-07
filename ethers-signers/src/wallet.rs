@@ -122,6 +122,7 @@ impl Wallet {
             signer: Some(self),
             provider,
             gas_oracle: None,
+            nonce_manager: None,
         }
     }
 

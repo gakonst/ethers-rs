@@ -76,6 +76,53 @@ mod eth_tests {
     }
 
     #[tokio::test]
+    async fn nonce_manager() {
+        let provider = Provider::<Http>::try_from(
+            "https://rinkeby.infura.io/v3/fd8b88b56aa84f6da87b60f5441d6778",
+        )
+        .unwrap()
+        .interval(Duration::from_millis(2000u64));
+
+        let client = "59c37cb6b16fa2de30675f034c8008f890f4b2696c729d6267946d29736d73e4"
+            .parse::<Wallet>()
+            .unwrap()
+            .connect(provider)
+            .with_nonce_manager();
+
+        let nonce = client
+            .get_transaction_count(Some(BlockNumber::Pending))
+            .await
+            .unwrap()
+            .as_u64();
+
+        let mut tx_hashes = Vec::new();
+        for _ in 0..10 {
+            let tx = client
+                .send_transaction(
+                    TransactionRequest::pay(client.address(), 100u64),
+                    Some(BlockNumber::Pending),
+                )
+                .await
+                .unwrap();
+            tx_hashes.push(tx);
+        }
+
+        let mut nonces = Vec::new();
+        for tx_hash in tx_hashes {
+            nonces.push(
+                client
+                    .get_transaction(tx_hash)
+                    .await
+                    .unwrap()
+                    .nonce
+                    .as_u64(),
+            );
+        }
+
+        assert_eq!(nonces, (nonce..nonce + 10).collect::<Vec<_>>())
+    }
+
+    #[tokio::test]
     async fn using_gas_oracle() {
         let ganache = Ganache::new().spawn();
 
