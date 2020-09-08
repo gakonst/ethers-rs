@@ -11,7 +11,7 @@
 //! # use std::convert::TryFrom;
 //! # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
 //! // connect to the network
-//! let provider = Provider::<Http>::try_from("http://localhost:8545")?;
+//! let provider = Provider::try_from("http://localhost:8545")?;
 //!
 //! // instantiate the wallet and connect it to the provider to get a client
 //! let client = "dcf2cbdd171a21c480aa7f53d77f31bb102282b3ff099c78e3118b37348c72f7"

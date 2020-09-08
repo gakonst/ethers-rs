@@ -5,7 +5,7 @@ use ethers_core::types::{
 };
 use ethers_providers::{
     gas_oracle::{GasOracle, GasOracleError},
-    JsonRpcClient, Provider, ProviderError,
+    Provider, ProviderError,
 };
 
 use futures_util::{future::ok, join};
@@ -27,7 +27,7 @@ use thiserror::Error;
 /// use std::convert::TryFrom;
 ///
 /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
-/// let provider = Provider::<Http>::try_from("http://localhost:8545")
+/// let provider = Provider::try_from("http://localhost:8545")
 ///     .expect("could not instantiate HTTP Provider");
 ///
 /// // By default, signing of messages and transactions is done locally

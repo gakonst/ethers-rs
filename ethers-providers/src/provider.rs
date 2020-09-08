@@ -69,7 +69,6 @@ impl Clone for ProviderType {
                 any(feature = "tokio-runtime", feature = "async-std-runtime")
             ))]
             ProviderType::Ws(ref ws_provider) => ProviderType::Ws(ws_provider.clone()),
-            _ => unimplemented!("unknown provider type in default implementation"),
         }
     }
 }
@@ -98,7 +97,6 @@ impl JsonRpcClient for ProviderType {
                 .request(method, params)
                 .await
                 .map_err(Into::into),
-            _ => unimplemented!("unknown provider type in default implementation"),
         }
     }
 }
@@ -113,11 +111,11 @@ impl JsonRpcClient for ProviderType {
 /// use ethers::providers::{JsonRpcClient, Provider, Http};
 /// use std::convert::TryFrom;
 ///
-/// let provider = Provider::<Http>::try_from(
+/// let provider = Provider::try_from(
 ///     "https://mainnet.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27"
 /// ).expect("could not instantiate HTTP Provider");
 ///
-/// # async fn foo<P: JsonRpcClient>(provider: &Provider<P>) -> Result<(), Box<dyn std::error::Error>> {
+/// # async fn foo(provider: &Provider) -> Result<(), Box<dyn std::error::Error>> {
 /// let block = provider.get_block(100u64).await?;
 /// println!("Got block: {}", serde_json::to_string(&block)?);
 /// # Ok(())

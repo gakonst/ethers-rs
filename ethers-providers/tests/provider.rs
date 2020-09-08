@@ -1,7 +1,7 @@
 #![allow(unused_braces)]
 use ethers::providers::{
     gas_oracle::{EthGasStation, Etherchain, Etherscan, GasCategory, GasNow, GasOracle},
-    Http, Provider,
+    Provider,
 };
 use std::{convert::TryFrom, time::Duration};
 
@@ -9,7 +9,6 @@ use std::{convert::TryFrom, time::Duration};
 mod eth_tests {
     use super::*;
     use ethers::{
-        providers::JsonRpcClient,
         types::TransactionRequest,
         utils::{parse_ether, Ganache},
     };
@@ -100,12 +99,10 @@ mod eth_tests {
         let data_4 = etherchain_oracle.fetch().await;
         assert!(data_4.is_ok());
 
-        // TODO: Temporarily disabled SparkPool's GasOracle while the API is still
-        // evolving.
-        // // initialize and fetch gas estimates from SparkPool
-        // let gas_now_oracle = GasNow::new().category(GasCategory::Fastest);
-        // let data_5 = gas_now_oracle.fetch().await;
-        // assert!(data_5.is_ok());
+        // initialize and fetch gas estimates from SparkPool
+        let gas_now_oracle = GasNow::new().category(GasCategory::Fastest);
+        let data_5 = gas_now_oracle.fetch().await;
+        assert!(data_5.is_ok());
     }
 
     async fn generic_pending_txs_test(provider: Provider) {
@@ -135,7 +132,7 @@ mod celo_tests {
     // https://alfajores-blockscout.celo-testnet.org/tx/0x544ea96cddb16aeeaedaf90885c1e02be4905f3eb43d6db3f28cac4dbe76a625/internal_transactions
     async fn get_transaction() {
         let provider =
-            Provider::<Http>::try_from("https://alfajores-forno.celo-testnet.org").unwrap();
+            Provider::try_from("https://alfajores-forno.celo-testnet.org").unwrap();
 
         let tx_hash = "c8496681d0ade783322980cce00c89419fce4b484635d9e09c79787a0f75d450"
             .parse::<H256>()
@@ -150,7 +147,7 @@ mod celo_tests {
     #[tokio::test]
     async fn get_block() {
         let provider =
-            Provider::<Http>::try_from("https://alfajores-forno.celo-testnet.org").unwrap();
+            Provider::try_from("https://alfajores-forno.celo-testnet.org").unwrap();
 
         let block = provider.get_block(447254).await.unwrap();
         assert_eq!(
@@ -170,7 +167,7 @@ mod celo_tests {
 
     #[tokio::test]
     async fn watch_blocks() {
-        let provider = Provider::<Http>::try_from("https://alfajores-forno.celo-testnet.org")
+        let provider = Provider::try_from("https://alfajores-forno.celo-testnet.org")
             .unwrap()
             .interval(Duration::from_millis(2000u64));
 

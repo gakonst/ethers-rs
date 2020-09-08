@@ -1,7 +1,7 @@
 use ethers::{
     providers::{
         gas_oracle::{Etherchain, GasCategory, GasOracle},
-        Http, Provider,
+        Provider,
     },
     signers::Wallet,
     types::TransactionRequest,
@@ -112,7 +112,7 @@ mod celo_tests {
     #[tokio::test]
     async fn test_send_transaction() {
         // Celo testnet
-        let provider = Provider::<Http>::try_from("https://alfajores-forno.celo-testnet.org")
+        let provider = Provider::try_from("https://alfajores-forno.celo-testnet.org")
             .unwrap()
             .interval(Duration::from_millis(3000u64));
 

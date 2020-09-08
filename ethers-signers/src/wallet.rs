@@ -50,7 +50,7 @@ use std::str::FromStr;
 /// use std::convert::TryFrom;
 ///
 /// // create a provider
-/// let provider = Provider::<Http>::try_from("http://localhost:8545")
+/// let provider = Provider::try_from("http://localhost:8545")
 ///     .expect("could not instantiate HTTP Provider");
 ///
 /// // generate a wallet and connect to the provider

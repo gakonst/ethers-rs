@@ -75,7 +75,7 @@ pub static ADDRESS_BOOK: Lazy<HashMap<U256, Address>> = Lazy::new(|| {
 /// let abi: Abi = serde_json::from_str(r#"[{"inputs":[{"internalType":"string","name":"value","type":"string"}],"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"author","type":"address"},{"indexed":true,"internalType":"address","name":"oldAuthor","type":"address"},{"indexed":false,"internalType":"string","name":"oldValue","type":"string"},{"indexed":false,"internalType":"string","name":"newValue","type":"string"}],"name":"ValueChanged","type":"event"},{"inputs":[],"name":"getValue","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"lastSender","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"string","name":"value","type":"string"}],"name":"setValue","outputs":[],"stateMutability":"nonpayable","type":"function"}]"#)?;
 ///
 /// // connect to the network
-/// let provider = Provider::<Http>::try_from("https://kovan.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27")?;
+/// let provider = Provider::try_from("https://kovan.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27")?;
 /// let client = "380eb0f3d505f087e438eca80bc4df9a7faa24f868e69fc0440261a0fc0567dc"
 ///     .parse::<Wallet>()?.connect(provider);
 ///
@@ -237,7 +237,7 @@ impl<S: Signer> Multicall<S> {
     /// # use ethers::prelude::*;
     /// # use std::{sync::Arc, convert::TryFrom};
     /// #
-    /// # let provider = Provider::<Http>::try_from("http://localhost:8545")?;
+    /// # let provider = Provider::try_from("http://localhost:8545")?;
     /// # let client = "380eb0f3d505f087e438eca80bc4df9a7faa24f868e69fc0440261a0fc0567dc"
     /// #     .parse::<Wallet>()?.connect(provider);
     /// # let client = Arc::new(client);
@@ -282,7 +282,7 @@ impl<S: Signer> Multicall<S> {
     /// # use ethers::prelude::*;
     /// # use std::convert::TryFrom;
     /// #
-    /// # let provider = Provider::<Http>::try_from("http://localhost:8545")?;
+    /// # let provider = Provider::try_from("http://localhost:8545")?;
     /// # let client = "380eb0f3d505f087e438eca80bc4df9a7faa24f868e69fc0440261a0fc0567dc"
     /// #     .parse::<Wallet>()?.connect(provider);
     /// #
@@ -336,7 +336,7 @@ impl<S: Signer> Multicall<S> {
     /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
     /// # use ethers::prelude::*;
     /// # use std::convert::TryFrom;
-    /// # let provider = Provider::<Http>::try_from("http://localhost:8545")?;
+    /// # let provider = Provider::try_from("http://localhost:8545")?;
     /// # let client = "380eb0f3d505f087e438eca80bc4df9a7faa24f868e69fc0440261a0fc0567dc"
     /// #     .parse::<Wallet>()?.connect(provider);
     /// # let multicall = Multicall::new(client, None).await?;

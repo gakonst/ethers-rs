@@ -103,7 +103,7 @@ where
 ///     .expect("could not find contract");
 ///
 /// // connect to the network
-/// let provider = Provider::<Http>::try_from("http://localhost:8545").unwrap();
+/// let provider = Provider::try_from("http://localhost:8545").unwrap();
 /// let client = "380eb0f3d505f087e438eca80bc4df9a7faa24f868e69fc0440261a0fc0567dc"
 ///     .parse::<Wallet>()?.connect(provider);
 ///

@@ -319,7 +319,7 @@ mod tests {
 
         assert_quote!(expand_filter(&event).unwrap(), {
             #[doc = "Gets the contract's `Transfer` event"]
-            pub fn transfer_filter(&self) -> Event<P, TransferFilter> {
+            pub fn transfer_filter(&self) -> Event<TransferFilter> {
                 self.0
                     .event("Transfer")
                     .expect("event not found (this should never happen)")
