@@ -1,0 +1,281 @@
+#![allow(unused)]
+use coins_ledger::{
+    common::{APDUAnswer, APDUCommand, APDUData},
+    transports::{Ledger, LedgerAsync},
+};
+use futures_util::lock::Mutex;
+
+use ethers_core::{
+    types::{
+        Address, NameOrAddress, Signature, Transaction, TransactionRequest, TxError, TxHash, H256,
+        U256,
+    },
+    utils::keccak256,
+};
+use std::convert::TryFrom;
+use thiserror::Error;
+
+use super::types::*;
+
+/// A Ledger BTC App.
+///
+/// This is a simple wrapper around the transport and a Secp256k1 backend
+pub struct LedgerEthereum {
+    transport: Mutex<Ledger>,
+    derivation: DerivationType,
+}
+
+impl LedgerEthereum {
+    /// Instantiate the application by acquiring a lock on the ledger device.
+    ///
+    /// # Notes
+    ///
+    pub async fn new(derivation: DerivationType) -> Result<Self, LedgerError> {
+        Ok(Self {
+            transport: Mutex::new(Ledger::init().await?),
+            derivation,
+        })
+    }
+
+    /// Consume self and drop the ledger mutex
+    pub fn close(self) {}
+
+    /// Get the account which corresponds to our derivation path
+    pub async fn get_address(&self) -> Result<Address, LedgerError> {
+        self.get_address_with_path(&self.derivation).await
+    }
+
+    /// Gets the account which corresponds to the provided derivation path
+    pub async fn get_address_with_path(
+        &self,
+        derivation: &DerivationType,
+    ) -> Result<Address, LedgerError> {
+        let data = APDUData::new(&self.path_to_bytes(&derivation));
+        let transport = self.transport.lock().await;
+
+        let command = APDUCommand {
+            ins: INS::GET_PUBLIC_KEY as u8,
+            p1: P1::NON_CONFIRM as u8,
+            p2: P2::NO_CHAINCODE as u8,
+            data,
+            response_len: None,
+        };
+
+        let answer = transport.exchange(&command).await?;
+        let result = answer.data().ok_or(LedgerError::UnexpectedNullResponse)?;
+
+        let address = {
+            // extract the address from the response
+            let offset = 1 + result[0] as usize;
+            let address = &result[offset + 1..offset + 1 + result[offset] as usize];
+            std::str::from_utf8(address)?.parse::<Address>()?
+        };
+
+        Ok(address)
+    }
+
+    /// Returns the semver of the Ethereum ledger app
+    pub async fn version(&self) -> Result<String, LedgerError> {
+        let transport = self.transport.lock().await;
+
+        let command = APDUCommand {
+            ins: INS::GET_APP_CONFIGURATION as u8,
+            p1: P1::NON_CONFIRM as u8,
+            p2: P2::NO_CHAINCODE as u8,
+            data: APDUData::new(&[]),
+            response_len: None,
+        };
+
+        let answer = transport.exchange(&command).await?;
+        let result = answer.data().ok_or(LedgerError::UnexpectedNullResponse)?;
+
+        Ok(format!("{}.{}.{}", result[1], result[2], result[3]))
+    }
+
+    /// Signs an Ethereum transaction (requires confirmation on the ledger)
+    // TODO: Remove code duplication between this and the PrivateKey::sign_transaction
+    // method
+    pub async fn sign_transaction(
+        &self,
+        tx: TransactionRequest,
+    ) -> Result<Transaction, LedgerError> {
+        // The nonce, gas and gasprice fields must already be populated
+        let nonce = tx.nonce.ok_or(TxError::NonceMissing)?;
+        let gas_price = tx.gas_price.ok_or(TxError::GasPriceMissing)?;
+        let gas = tx.gas.ok_or(TxError::GasMissing)?;
+
+        let mut payload = self.path_to_bytes(&self.derivation);
+        payload.extend_from_slice(tx.rlp().as_ref());
+        let signature = self.sign_payload(INS::SIGN, payload).await?;
+
+        // Get the actual transaction hash
+        let rlp = tx.rlp_signed(&signature);
+        let hash = keccak256(&rlp.0);
+
+        // This function should not be called with ENS names
+        let to = tx.to.map(|to| match to {
+            NameOrAddress::Address(inner) => inner,
+            NameOrAddress::Name(_) => {
+                panic!("Expected `to` to be an Ethereum Address, not an ENS name")
+            }
+        });
+
+        Ok(Transaction {
+            hash: hash.into(),
+            nonce,
+            from: self.get_address().await?,
+            to,
+            value: tx.value.unwrap_or_default(),
+            gas_price,
+            gas,
+            input: tx.data.unwrap_or_default(),
+            v: signature.v.into(),
+            r: U256::from_big_endian(signature.r.as_bytes()),
+            s: U256::from_big_endian(signature.s.as_bytes()),
+
+            // Leave these empty as they're only used for included transactions
+            block_hash: None,
+            block_number: None,
+            transaction_index: None,
+        })
+    }
+
+    /// Signs an ethereum personal message
+    pub async fn sign_message<S: AsRef<[u8]>>(&self, message: S) -> Result<Signature, LedgerError> {
+        let message = message.as_ref();
+
+        let mut payload = self.path_to_bytes(&self.derivation);
+        payload.extend_from_slice(&(message.len() as u32).to_be_bytes());
+        payload.extend_from_slice(message);
+
+        self.sign_payload(INS::SIGN_PERSONAL_MESSAGE, payload).await
+    }
+
+    // Helper function for signing either transaction data or personal messages
+    async fn sign_payload(
+        &self,
+        command: INS,
+        mut payload: Vec<u8>,
+    ) -> Result<Signature, LedgerError> {
+        let transport = self.transport.lock().await;
+        let mut command = APDUCommand {
+            ins: command as u8,
+            p1: P1_FIRST,
+            p2: P2::NO_CHAINCODE as u8,
+            data: APDUData::new(&[]),
+            response_len: None,
+        };
+
+        let mut result = Vec::new();
+
+        // Iterate in 255 byte chunks
+        while payload.len() > 0 {
+            let chunk_size = std::cmp::min(payload.len(), 255);
+            let data = payload.drain(0..chunk_size).collect::<Vec<_>>();
+            command.data = APDUData::new(&data);
+
+            let answer = transport.exchange(&command).await?;
+            result = answer
+                .data()
+                .ok_or(LedgerError::UnexpectedNullResponse)?
+                .to_vec();
+
+            // We need more data
+            command.p1 = P1::MORE as u8;
+        }
+
+        let v = result[0] as u64;
+        let r = H256::from_slice(&result[1..33]);
+        let s = H256::from_slice(&result[33..]);
+        Ok(Signature { v, r, s })
+    }
+
+    // helper which converts a derivation path to bytes
+    fn path_to_bytes(&self, derivation: &DerivationType) -> Vec<u8> {
+        let derivation = derivation.to_string();
+        let elements = derivation.split('/').skip(1).collect::<Vec<_>>();
+        let depth = elements.len();
+
+        let mut bytes = vec![depth as u8];
+        for derivation_index in elements {
+            let hardened = derivation_index.contains("'");
+            let mut index = derivation_index.replace("'", "").parse::<u32>().unwrap();
+            if hardened {
+                index = 0x80000000 | index;
+            }
+
+            bytes.extend(&index.to_be_bytes());
+        }
+
+        bytes
+    }
+}
+
+#[cfg(all(test, feature = "ledger-tests"))]
+mod tests {
+    use super::*;
+    use rustc_hex::FromHex;
+    use std::str::FromStr;
+
+    #[tokio::test]
+    // Replace this with your ETH addresses.
+    async fn test_get_address() {
+        // Instantiate it with the default ledger derivation path
+        let ledger = LedgerEthereum::new(DerivationType::LedgerLive(0))
+            .await
+            .unwrap();
+        assert_eq!(
+            ledger.get_address().await.unwrap(),
+            "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee".parse().unwrap()
+        );
+        assert_eq!(
+            ledger
+                .get_address_with_path(&DerivationType::Legacy(0))
+                .await
+                .unwrap(),
+            "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee".parse().unwrap()
+        );
+    }
+
+    #[tokio::test]
+    async fn test_sign_tx() {
+        let ledger = LedgerEthereum::new(DerivationType::LedgerLive(0))
+            .await
+            .unwrap();
+
+        // approve uni v2 router 0xff
+        let data = "095ea7b30000000000000000000000007a250d5630b4cf539739df2c5dacb4c659f2488dffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff".from_hex::<Vec<u8>>().unwrap();
+
+        let tx_req = TransactionRequest::new()
+            .send_to_str("2ed7afa17473e17ac59908f088b4371d28585476")
+            .unwrap()
+            .gas(1000000)
+            .gas_price(400e9 as u64)
+            .nonce(5)
+            .data(data)
+            .value(ethers_core::utils::parse_ether(100).unwrap());
+        let tx = ledger.sign_transaction(tx_req).await.unwrap();
+        dbg!(serde_json::to_string(&tx));
+    }
+
+    #[tokio::test]
+    async fn test_version() {
+        let ledger = LedgerEthereum::new(DerivationType::LedgerLive(0))
+            .await
+            .unwrap();
+
+        let version = ledger.version().await.unwrap();
+        assert_eq!(version, "1.3.7");
+    }
+
+    #[tokio::test]
+    async fn test_sign_message() {
+        let ledger = LedgerEthereum::new(DerivationType::Legacy(0))
+            .await
+            .unwrap();
+        let message = "hello world";
+        let sig = ledger.sign_message(message).await.unwrap();
+        let addr = ledger.get_address().await.unwrap();
+        sig.verify(message, addr).unwrap();
+    }
+}

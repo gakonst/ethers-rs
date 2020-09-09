@@ -18,13 +18,18 @@ ethers-core = { version = "0.1.3", path = "../ethers-core" }
 ethers-providers = { version = "0.1.3", path = "../ethers-providers" }
 thiserror = { version = "1.0.15", default-features = false }
 futures-util = { version = "0.3.5", default-features = false }
-serde = "1.0.112"
+serde = { version = "1.0.112", default-features = false }
+
+coins-ledger = { git = "https://github.com/summa-tx/bitcoins-rs", optional = true }
 
 [dev-dependencies]
 ethers = { version = "0.1.3", path = "../ethers" }
+rustc-hex = "2.1.0"
 
 tokio = { version = "0.2.21", features = ["macros"] }
 serde_json = "1.0.55"
 
 [features]
 celo = ["ethers-core/celo", "ethers-providers/celo"]
+ledger = ["coins-ledger"]
+ledger-tests=  []

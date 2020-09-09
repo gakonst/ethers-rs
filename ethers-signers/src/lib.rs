@@ -40,6 +40,9 @@
 mod wallet;
 pub use wallet::Wallet;
 
+#[cfg(feature = "ledger")]
+pub mod ledger;
+
 mod nonce_manager;
 pub(crate) use nonce_manager::NonceManager;
 

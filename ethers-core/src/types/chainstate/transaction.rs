@@ -165,6 +165,13 @@ impl TransactionRequest {
         keccak256(rlp.out().as_ref()).into()
     }
 
+    pub fn rlp(&self) -> Bytes {
+        let mut rlp = RlpStream::new();
+        rlp.begin_list(UNSIGNED_TX_FIELDS);
+        self.rlp_base(&mut rlp);
+        rlp.out().into()
+    }
+
     /// Produces the RLP encoding of the transaction with the provided signature
     pub fn rlp_signed(&self, signature: &Signature) -> Bytes {
         let mut rlp = RlpStream::new();
