@@ -10,9 +10,38 @@ mod eth_tests {
     use super::*;
     use ethers::{
         providers::JsonRpcClient,
-        types::TransactionRequest,
+        types::{BlockId, TransactionRequest, H256},
         utils::{parse_ether, Ganache},
     };
+
+    #[tokio::test]
+    async fn non_existing_data_works() {
+        let provider = Provider::<Http>::try_from(
+            "https://rinkeby.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27",
+        )
+        .unwrap();
+
+        assert!(provider
+            .get_transaction(H256::zero())
+            .await
+            .unwrap()
+            .is_none());
+        assert!(provider
+            .get_transaction_receipt(H256::zero())
+            .await
+            .unwrap()
+            .is_none());
+        assert!(provider
+            .get_block(BlockId::Hash(H256::zero()))
+            .await
+            .unwrap()
+            .is_none());
+        assert!(provider
+            .get_block_with_txs(BlockId::Hash(H256::zero()))
+            .await
+            .unwrap()
+            .is_none());
+    }
 
     // Without TLS this would error with "TLS Support not compiled in"
     #[test]
@@ -83,14 +112,17 @@ mod eth_tests {
         let data_1 = eth_gas_station_oracle.fetch().await;
         assert!(data_1.is_ok());
 
+        let api_key = std::env::var("ETHERSCAN_API_KEY").unwrap();
+        let api_key = Some(api_key.as_str());
+
         // initialize and fetch gas estimates from Etherscan
         // since etherscan does not support `fastest` category, we expect an error
-        let etherscan_oracle = Etherscan::new(None).category(GasCategory::Fastest);
+        let etherscan_oracle = Etherscan::new(api_key).category(GasCategory::Fastest);
         let data_2 = etherscan_oracle.fetch().await;
         assert!(data_2.is_err());
 
         // but fetching the `standard` gas price should work fine
-        let etherscan_oracle_2 = Etherscan::new(None).category(GasCategory::SafeLow);
+        let etherscan_oracle_2 = Etherscan::new(api_key).category(GasCategory::SafeLow);
 
         let data_3 = etherscan_oracle_2.fetch().await;
         assert!(data_3.is_ok());
@@ -100,12 +132,10 @@ mod eth_tests {
         let data_4 = etherchain_oracle.fetch().await;
         assert!(data_4.is_ok());
 
-        // TODO: Temporarily disabled SparkPool's GasOracle while the API is still
-        // evolving.
-        // // initialize and fetch gas estimates from SparkPool
-        // let gas_now_oracle = GasNow::new().category(GasCategory::Fastest);
-        // let data_5 = gas_now_oracle.fetch().await;
-        // assert!(data_5.is_ok());
+        // initialize and fetch gas estimates from SparkPool
+        let gas_now_oracle = GasNow::new().category(GasCategory::Fastest);
+        let data_5 = gas_now_oracle.fetch().await;
+        assert!(data_5.is_ok());
     }
 
     async fn generic_pending_txs_test<P: JsonRpcClient>(provider: Provider<P>) {
@@ -140,7 +170,7 @@ mod celo_tests {
         let tx_hash = "c8496681d0ade783322980cce00c89419fce4b484635d9e09c79787a0f75d450"
             .parse::<H256>()
             .unwrap();
-        let tx = provider.get_transaction(tx_hash).await.unwrap();
+        let tx = provider.get_transaction(tx_hash).await.unwrap().unwrap();
         assert!(tx.gateway_fee_recipient.is_none());
         assert_eq!(tx.gateway_fee.unwrap(), 0.into());
         assert_eq!(tx.hash, tx_hash);
@@ -152,7 +182,7 @@ mod celo_tests {
         let provider =
             Provider::<Http>::try_from("https://alfajores-forno.celo-testnet.org").unwrap();
 
-        let block = provider.get_block(447254).await.unwrap();
+        let block = provider.get_block(447254).await.unwrap().unwrap();
         assert_eq!(
             block.randomness,
             Randomness {

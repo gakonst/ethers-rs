@@ -92,7 +92,7 @@ impl<P: JsonRpcClient> Provider<P> {
     pub async fn get_block(
         &self,
         block_hash_or_number: impl Into<BlockId>,
-    ) -> Result<Block<TxHash>, ProviderError> {
+    ) -> Result<Option<Block<TxHash>>, ProviderError> {
         Ok(self
             .get_block_gen(block_hash_or_number.into(), false)
             .await?)
@@ -102,7 +102,7 @@ impl<P: JsonRpcClient> Provider<P> {
     pub async fn get_block_with_txs(
         &self,
         block_hash_or_number: impl Into<BlockId>,
-    ) -> Result<Block<Transaction>, ProviderError> {
+    ) -> Result<Option<Block<Transaction>>, ProviderError> {
         Ok(self
             .get_block_gen(block_hash_or_number.into(), true)
             .await?)
@@ -112,7 +112,7 @@ impl<P: JsonRpcClient> Provider<P> {
         &self,
         id: BlockId,
         include_txs: bool,
-    ) -> Result<Block<Tx>, ProviderError> {
+    ) -> Result<Option<Block<Tx>>, ProviderError> {
         let include_txs = utils::serialize(&include_txs);
 
         Ok(match id {
@@ -137,7 +137,7 @@ impl<P: JsonRpcClient> Provider<P> {
     pub async fn get_transaction<T: Send + Sync + Into<TxHash>>(
         &self,
         transaction_hash: T,
-    ) -> Result<Transaction, ProviderError> {
+    ) -> Result<Option<Transaction>, ProviderError> {
         let hash = transaction_hash.into();
         Ok(self
             .0
@@ -150,7 +150,7 @@ impl<P: JsonRpcClient> Provider<P> {
     pub async fn get_transaction_receipt<T: Send + Sync + Into<TxHash>>(
         &self,
         transaction_hash: T,
-    ) -> Result<TransactionReceipt, ProviderError> {
+    ) -> Result<Option<TransactionReceipt>, ProviderError> {
         let hash = transaction_hash.into();
         Ok(self
             .0
@@ -614,6 +614,7 @@ mod ens_tests {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Http;
     use ethers_core::types::H256;
     use futures_util::StreamExt;
 
@@ -636,6 +637,7 @@ mod tests {
             let block = provider
                 .get_block(start_block + i as u64 + 1)
                 .await
+                .unwrap()
                 .unwrap();
             assert_eq!(*hash, block.hash.unwrap());
         }
@@ -672,5 +674,34 @@ mod tests {
 
         let hashes: Vec<H256> = stream.take(num_txs).collect::<Vec<H256>>().await;
         assert_eq!(tx_hashes, hashes);
+    }
+
+    #[tokio::test]
+    async fn receipt_on_unmined_tx() {
+        use ethers_core::{
+            types::TransactionRequest,
+            utils::{parse_ether, Ganache},
+        };
+        let ganache = Ganache::new().block_time(2u64).spawn();
+        let provider = Provider::<Http>::try_from(ganache.endpoint()).unwrap();
+
+        let accounts = provider.get_accounts().await.unwrap();
+        let tx = TransactionRequest::pay(accounts[0], parse_ether(1u64).unwrap()).from(accounts[0]);
+        let tx_hash = provider.send_transaction(tx).await.unwrap();
+
+        assert!(provider
+            .get_transaction_receipt(tx_hash)
+            .await
+            .unwrap()
+            .is_none());
+
+        // couple of seconds pass
+        std::thread::sleep(std::time::Duration::new(3, 0));
+
+        assert!(provider
+            .get_transaction_receipt(tx_hash)
+            .await
+            .unwrap()
+            .is_some());
     }
 }

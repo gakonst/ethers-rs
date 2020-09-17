@@ -73,7 +73,11 @@ impl<'a, P: JsonRpcClient> Future for PendingTransaction<'a, P> {
             }
             PendingTxState::GettingReceipt(fut) => {
                 if let Ok(receipt) = futures_util::ready!(fut.as_mut().poll(ctx)) {
-                    *this.state = PendingTxState::CheckingReceipt(Box::new(receipt))
+                    if let Some(receipt) = receipt {
+                        *this.state = PendingTxState::CheckingReceipt(Box::new(receipt))
+                    } else {
+                        *this.state = PendingTxState::PausedGettingReceipt
+                    }
                 } else {
                     *this.state = PendingTxState::PausedGettingReceipt
                 }
@@ -173,7 +177,7 @@ enum PendingTxState<'a> {
     PausedGettingReceipt,
 
     /// Polling the blockchain for the receipt
-    GettingReceipt(PinBoxFut<'a, TransactionReceipt>),
+    GettingReceipt(PinBoxFut<'a, Option<TransactionReceipt>>),
 
     /// Waiting for interval to elapse before calling API again
     PausedGettingBlockNumber(Box<TransactionReceipt>),
