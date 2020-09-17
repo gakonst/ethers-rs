@@ -614,10 +614,9 @@ mod ens_tests {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Http;
     use ethers_core::types::H256;
     use futures_util::StreamExt;
-    use crate::Http;
-
 
     #[tokio::test]
     #[ignore]

@@ -114,6 +114,7 @@ mod eth_tests {
                     .get_transaction(tx_hash)
                     .await
                     .unwrap()
+                    .unwrap()
                     .nonce
                     .as_u64(),
             );
@@ -148,7 +149,7 @@ mod eth_tests {
         let tx = TransactionRequest::new().to(wallet2.address()).value(10000);
         let tx_hash = client.send_transaction(tx, None).await.unwrap();
 
-        let tx = client.get_transaction(tx_hash).await.unwrap();
+        let tx = client.get_transaction(tx_hash).await.unwrap().unwrap();
         assert_eq!(tx.gas_price, expected_gas_price);
     }
 }
