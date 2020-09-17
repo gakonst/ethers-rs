@@ -33,10 +33,13 @@ struct EtherscanResponseInner {
     #[serde(deserialize_with = "deserialize_number_from_string")]
     #[serde(rename = "ProposeGasPrice")]
     propose_gas_price: u64,
+    #[serde(deserialize_with = "deserialize_number_from_string")]
+    #[serde(rename = "FastGasPrice")]
+    fast_gas_price: u64,
 }
 
 impl Etherscan {
-    pub fn new(api_key: Option<&'static str>) -> Self {
+    pub fn new(api_key: Option<&str>) -> Self {
         let url = match api_key {
             Some(key) => format!("{}&apikey={}", ETHERSCAN_URL_PREFIX, key),
             None => ETHERSCAN_URL_PREFIX.to_string(),
@@ -60,7 +63,7 @@ impl Etherscan {
 #[async_trait]
 impl GasOracle for Etherscan {
     async fn fetch(&self) -> Result<U256, GasOracleError> {
-        if matches!(self.gas_category, GasCategory::Fast | GasCategory::Fastest) {
+        if matches!(self.gas_category, GasCategory::Fastest) {
             return Err(GasOracleError::GasCategoryNotSupported);
         }
 
@@ -75,6 +78,7 @@ impl GasOracle for Etherscan {
         match self.gas_category {
             GasCategory::SafeLow => Ok(U256::from(res.result.safe_gas_price * GWEI_TO_WEI)),
             GasCategory::Standard => Ok(U256::from(res.result.propose_gas_price * GWEI_TO_WEI)),
+            GasCategory::Fast => Ok(U256::from(res.result.fast_gas_price * GWEI_TO_WEI)),
             _ => Err(GasOracleError::GasCategoryNotSupported),
         }
     }
