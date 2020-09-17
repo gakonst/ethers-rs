@@ -616,6 +616,8 @@ mod tests {
     use super::*;
     use ethers_core::types::H256;
     use futures_util::StreamExt;
+    use crate::Http;
+
 
     #[tokio::test]
     #[ignore]
@@ -678,7 +680,7 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn non_existing_data_works() {
-        let provider = Provider::<crate::Http>::try_from("http://localhost:8545").unwrap();
+        let provider = Provider::<Http>::try_from("http://localhost:8545").unwrap();
 
         assert!(provider
             .get_transaction(H256::zero())
@@ -700,5 +702,34 @@ mod tests {
             .await
             .unwrap()
             .is_none());
+    }
+
+    #[tokio::test]
+    async fn receipt_on_unmined_tx() {
+        use ethers_core::{
+            types::TransactionRequest,
+            utils::{parse_ether, Ganache},
+        };
+        let ganache = Ganache::new().block_time(2u64).spawn();
+        let provider = Provider::<Http>::try_from(ganache.endpoint()).unwrap();
+
+        let accounts = provider.get_accounts().await.unwrap();
+        let tx = TransactionRequest::pay(accounts[0], parse_ether(1u64).unwrap()).from(accounts[0]);
+        let tx_hash = provider.send_transaction(tx).await.unwrap();
+
+        assert!(provider
+            .get_transaction_receipt(tx_hash)
+            .await
+            .unwrap()
+            .is_none());
+
+        // couple of seconds pass
+        std::thread::sleep(std::time::Duration::new(3, 0));
+
+        assert!(provider
+            .get_transaction_receipt(tx_hash)
+            .await
+            .unwrap()
+            .is_some());
     }
 }
