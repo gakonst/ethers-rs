@@ -677,33 +677,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
-    async fn non_existing_data_works() {
-        let provider = Provider::<Http>::try_from("http://localhost:8545").unwrap();
-
-        assert!(provider
-            .get_transaction(H256::zero())
-            .await
-            .unwrap()
-            .is_none());
-        assert!(provider
-            .get_transaction_receipt(H256::zero())
-            .await
-            .unwrap()
-            .is_none());
-        assert!(provider
-            .get_block(BlockId::Hash(H256::zero()))
-            .await
-            .unwrap()
-            .is_none());
-        assert!(provider
-            .get_block_with_txs(BlockId::Hash(H256::zero()))
-            .await
-            .unwrap()
-            .is_none());
-    }
-
-    #[tokio::test]
     async fn receipt_on_unmined_tx() {
         use ethers_core::{
             types::TransactionRequest,
