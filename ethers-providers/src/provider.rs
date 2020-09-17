@@ -92,7 +92,7 @@ impl<P: JsonRpcClient> Provider<P> {
     pub async fn get_block(
         &self,
         block_hash_or_number: impl Into<BlockId>,
-    ) -> Result<Block<TxHash>, ProviderError> {
+    ) -> Result<Option<Block<TxHash>>, ProviderError> {
         Ok(self
             .get_block_gen(block_hash_or_number.into(), false)
             .await?)
@@ -102,7 +102,7 @@ impl<P: JsonRpcClient> Provider<P> {
     pub async fn get_block_with_txs(
         &self,
         block_hash_or_number: impl Into<BlockId>,
-    ) -> Result<Block<Transaction>, ProviderError> {
+    ) -> Result<Option<Block<Transaction>>, ProviderError> {
         Ok(self
             .get_block_gen(block_hash_or_number.into(), true)
             .await?)
@@ -112,7 +112,7 @@ impl<P: JsonRpcClient> Provider<P> {
         &self,
         id: BlockId,
         include_txs: bool,
-    ) -> Result<Block<Tx>, ProviderError> {
+    ) -> Result<Option<Block<Tx>>, ProviderError> {
         let include_txs = utils::serialize(&include_txs);
 
         Ok(match id {
@@ -137,7 +137,7 @@ impl<P: JsonRpcClient> Provider<P> {
     pub async fn get_transaction<T: Send + Sync + Into<TxHash>>(
         &self,
         transaction_hash: T,
-    ) -> Result<Transaction, ProviderError> {
+    ) -> Result<Option<Transaction>, ProviderError> {
         let hash = transaction_hash.into();
         Ok(self
             .0
@@ -150,7 +150,7 @@ impl<P: JsonRpcClient> Provider<P> {
     pub async fn get_transaction_receipt<T: Send + Sync + Into<TxHash>>(
         &self,
         transaction_hash: T,
-    ) -> Result<TransactionReceipt, ProviderError> {
+    ) -> Result<Option<TransactionReceipt>, ProviderError> {
         let hash = transaction_hash.into();
         Ok(self
             .0
@@ -636,6 +636,7 @@ mod tests {
             let block = provider
                 .get_block(start_block + i as u64 + 1)
                 .await
+                .unwrap()
                 .unwrap();
             assert_eq!(*hash, block.hash.unwrap());
         }
@@ -672,5 +673,32 @@ mod tests {
 
         let hashes: Vec<H256> = stream.take(num_txs).collect::<Vec<H256>>().await;
         assert_eq!(tx_hashes, hashes);
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn non_existing_data_works() {
+        let provider = Provider::<crate::Http>::try_from("http://localhost:8545").unwrap();
+
+        assert!(provider
+            .get_transaction(H256::zero())
+            .await
+            .unwrap()
+            .is_none());
+        assert!(provider
+            .get_transaction_receipt(H256::zero())
+            .await
+            .unwrap()
+            .is_none());
+        assert!(provider
+            .get_block(BlockId::Hash(H256::zero()))
+            .await
+            .unwrap()
+            .is_none());
+        assert!(provider
+            .get_block_with_txs(BlockId::Hash(H256::zero()))
+            .await
+            .unwrap()
+            .is_none());
     }
 }
