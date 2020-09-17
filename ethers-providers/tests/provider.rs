@@ -138,7 +138,7 @@ mod celo_tests {
         let tx_hash = "c8496681d0ade783322980cce00c89419fce4b484635d9e09c79787a0f75d450"
             .parse::<H256>()
             .unwrap();
-        let tx = provider.get_transaction(tx_hash).await.unwrap();
+        let tx = provider.get_transaction(tx_hash).await.unwrap().unwrap();
         assert!(tx.gateway_fee_recipient.is_none());
         assert_eq!(tx.gateway_fee.unwrap(), 0.into());
         assert_eq!(tx.hash, tx_hash);
@@ -150,7 +150,7 @@ mod celo_tests {
         let provider =
             Provider::<Http>::try_from("https://alfajores-forno.celo-testnet.org").unwrap();
 
-        let block = provider.get_block(447254).await.unwrap();
+        let block = provider.get_block(447254).await.unwrap().unwrap();
         assert_eq!(
             block.randomness,
             Randomness {
