@@ -17,9 +17,9 @@ use thiserror::Error;
 
 use super::types::*;
 
-/// A Ledger BTC App.
+/// A Ledger Ethereum App.
 ///
-/// This is a simple wrapper around the transport and a Secp256k1 backend
+/// This is a simple wrapper around the [Ledger transport](Ledger)
 pub struct LedgerEthereum {
     transport: Mutex<Ledger>,
     derivation: DerivationType,

@@ -165,6 +165,7 @@ impl TransactionRequest {
         keccak256(rlp.out().as_ref()).into()
     }
 
+    /// Gets the unsigned transaction's RLP encoding
     pub fn rlp(&self) -> Bytes {
         let mut rlp = RlpStream::new();
         rlp.begin_list(UNSIGNED_TX_FIELDS);
