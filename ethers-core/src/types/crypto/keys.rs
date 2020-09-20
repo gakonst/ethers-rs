@@ -17,11 +17,11 @@ use thiserror::Error;
 use k256::{
     ecdsa::{
         recoverable::{Id as RecoveryId, Signature as RecoverableSignature},
-        signature::RandomizedSigner,
-        Signature as K256Signature, Signer,
+        signature::Signer,
+        SigningKey,
     },
-    elliptic_curve::{error::Error as EllipticCurveError, rand_core::OsRng, Generate},
-    PublicKey as K256PublicKey, SecretKey as K256SecretKey,
+    elliptic_curve::{error::Error as EllipticCurveError, FieldBytes},
+    EncodedPoint as K256PublicKey, SecretKey as K256SecretKey, Secp256k1,
 };
 
 const SECRET_KEY_SIZE: usize = 32;
@@ -34,7 +34,7 @@ pub struct PrivateKey(pub(super) K256SecretKey);
 
 impl PartialEq for PrivateKey {
     fn eq(&self, other: &Self) -> bool {
-        self.0.as_bytes().eq(&other.0.as_bytes())
+        self.0.to_bytes().eq(&other.0.to_bytes())
     }
 }
 
@@ -44,8 +44,8 @@ impl Serialize for PrivateKey {
         S: Serializer,
     {
         let mut seq = serializer.serialize_tuple(SECRET_KEY_SIZE)?;
-        for e in self.0.as_bytes() {
-            seq.serialize_element(e)?;
+        for e in self.0.to_bytes() {
+            seq.serialize_element(&e)?;
         }
         seq.end()
     }
@@ -92,7 +92,7 @@ pub enum TxError {
 
 impl PrivateKey {
     pub fn new<R: Rng + CryptoRng>(rng: &mut R) -> Self {
-        PrivateKey(K256SecretKey::generate(rng))
+        PrivateKey(K256SecretKey::random(rng))
     }
 
     /// Sign arbitrary string data.
@@ -180,15 +180,16 @@ impl PrivateKey {
     }
 
     fn sign_with_eip155(&self, message: &[u8], chain_id: Option<u64>) -> Signature {
-        let signer = Signer::new(&self.0).expect("invalid secret key");
+        let signing_key = SigningKey::new(&self.0.to_bytes()).expect("invalid secret key");
 
-        let recoverable_sig: RecoverableSignature = signer.sign_with_rng(&mut OsRng, message);
-        let signature: K256Signature = K256Signature::from(recoverable_sig);
+        let recoverable_sig: RecoverableSignature = signing_key.sign(message);
 
         let v = to_eip155_v(recoverable_sig.recovery_id(), chain_id);
 
-        let r = H256::from_slice(&signature.r().as_slice());
-        let s = H256::from_slice(&signature.s().as_slice());
+        let r_bytes: FieldBytes<Secp256k1> = recoverable_sig.r().into();
+        let s_bytes: FieldBytes<Secp256k1> = recoverable_sig.s().into();
+        let r = H256::from_slice(&r_bytes.as_slice());
+        let s = H256::from_slice(&s_bytes.as_slice());
 
         Signature { r: r, s: s, v: v }
     }
@@ -228,7 +229,7 @@ impl From<K256PublicKey> for PublicKey {
 impl From<&PrivateKey> for PublicKey {
     /// Gets the public address of a private key.
     fn from(src: &PrivateKey) -> PublicKey {
-        let public_key = K256PublicKey::from_secret_key(src, false).expect("invalid secret key");
+        let public_key = K256PublicKey::from_secret_key(src, false);
         PublicKey(public_key)
     }
 }
@@ -275,7 +276,7 @@ impl Serialize for PublicKey {
     where
         S: Serializer,
     {
-        let mut seq = serializer.serialize_tuple(FULL_PUBLIC_KEY_SIZE)?;
+        let mut seq = serializer.serialize_tuple(COMPRESSED_PUBLIC_KEY_SIZE)?;
 
         for e in self.0.as_bytes().iter() {
             seq.serialize_element(e)?;
@@ -302,18 +303,17 @@ impl<'de> Deserialize<'de> for PublicKey {
             where
                 S: SeqAccess<'de>,
             {
-                let mut bytes = [0u8; FULL_PUBLIC_KEY_SIZE];
+                let mut bytes = [0u8; COMPRESSED_PUBLIC_KEY_SIZE];
                 for b in &mut bytes[..] {
                     *b = seq
                         .next_element()?
                         .ok_or_else(|| DeserializeError::custom("could not read bytes"))?;
                 }
 
-                let public_key = K256PublicKey::from_bytes(&bytes[..]).ok_or_else(|| {
-                    DeserializeError::custom("could not parse public key from bytes")
-                })?;
-
-                Ok(PublicKey(K256PublicKey::from(public_key)))
+                match K256PublicKey::from_bytes(&bytes[..]) {
+                    Ok(public_key) => Ok(PublicKey(public_key)),
+                    _ => Err(DeserializeError::custom("could not parse public key from bytes"))
+                }
             }
         }
 

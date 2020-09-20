@@ -15,6 +15,8 @@ use k256::ecdsa::{
     recoverable::{Id as RecoveryId, Signature as RecoverableSignature},
     Error as K256SignatureError, Signature as K256Signature,
 };
+use k256::EncodedPoint as K256PublicKey;
+use elliptic_curve::consts::U32;
 
 /// An error involving a signature.
 #[derive(Debug, Error)]
@@ -96,7 +98,8 @@ impl Signature {
         };
 
         let (recoverable_sig, _recovery_id) = self.as_signature()?;
-        let public_key = recoverable_sig.recover_pubkey(message_hash.as_bytes())?;
+        let verify_key = recoverable_sig.recover_verify_key(message_hash.as_bytes())?;
+        let public_key: K256PublicKey = K256PublicKey::from(&verify_key);
 
         Ok(PublicKey::from(public_key).into())
     }
@@ -105,10 +108,10 @@ impl Signature {
     fn as_signature(&self) -> Result<(RecoverableSignature, RecoveryId), SignatureError> {
         let recovery_id = self.recovery_id()?;
         let signature = {
-            let gar = GenericArray::from_slice(self.r.as_bytes());
-            let gas = GenericArray::from_slice(self.s.as_bytes());
-            let sig = K256Signature::from_scalars(&gar, &gas);
-            RecoverableSignature::new(&sig, recovery_id)
+            let gar: &GenericArray<u8, U32> = GenericArray::from_slice(self.r.as_bytes());
+            let gas: &GenericArray<u8, U32> = GenericArray::from_slice(self.s.as_bytes());
+            let sig = K256Signature::from_scalars(gar.into(), gas.into())?;
+            RecoverableSignature::new(&sig, recovery_id)?
         };
 
         Ok((signature, recovery_id))
