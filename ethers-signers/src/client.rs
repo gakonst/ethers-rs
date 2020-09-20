@@ -259,7 +259,7 @@ where
 
     /// Sets the signer and returns a mutable reference to self so that it can be used in chained
     /// calls.
-    pub async fn with_signer(&mut self, signer: S) -> &Self {
+    pub fn with_signer(&mut self, signer: S) -> &Self {
         self.signer = Some(signer);
         self
     }
@@ -273,21 +273,8 @@ where
 
     /// Sets the address which will be used for interacting with the blockchain.
     /// Useful if no signer is set and you want to specify a default sender for
-    /// your transactions
-    ///
-    /// # Panics
-    ///
-    /// If the signer is Some. It is forbidden to switch the sender if a private
-    /// key is already specified.
+    /// your transactions or if you have changed the signer manually.
     pub fn with_sender<T: Into<Address>>(mut self, address: T) -> Self {
-        if self.signer.is_some() {
-            panic!(
-                "It is forbidden to switch the sender if a signer is specified.
-                   Consider using the `with_signer` method if you want to specify a
-                   different signer"
-            )
-        }
-
         self.address = address.into();
         self
     }
