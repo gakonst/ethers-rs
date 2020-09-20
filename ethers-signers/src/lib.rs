@@ -40,12 +40,16 @@
 mod wallet;
 pub use wallet::Wallet;
 
+#[cfg(feature = "ledger")]
+pub mod ledger;
+
 mod nonce_manager;
 pub(crate) use nonce_manager::NonceManager;
 
 mod client;
 pub use client::{Client, ClientError};
 
+use async_trait::async_trait;
 use ethers_core::types::{Address, Signature, Transaction, TransactionRequest};
 use ethers_providers::Http;
 use std::error::Error;
@@ -53,17 +57,23 @@ use std::error::Error;
 /// Trait for signing transactions and messages
 ///
 /// Implement this trait to support different signing modes, e.g. Ledger, hosted etc.
-// TODO: We might need a `SignerAsync` trait for HSM use cases?
-pub trait Signer: Clone + Send + Sync {
+#[async_trait(?Send)]
+pub trait Signer {
     type Error: Error + Into<ClientError>;
     /// Signs the hash of the provided message after prefixing it
-    fn sign_message<S: AsRef<[u8]>>(&self, message: S) -> Signature;
+    async fn sign_message<S: Send + Sync + AsRef<[u8]>>(
+        &self,
+        message: S,
+    ) -> Result<Signature, Self::Error>;
 
     /// Signs the transaction
-    fn sign_transaction(&self, message: TransactionRequest) -> Result<Transaction, Self::Error>;
+    async fn sign_transaction(
+        &self,
+        message: TransactionRequest,
+    ) -> Result<Transaction, Self::Error>;
 
     /// Returns the signer's Ethereum Address
-    fn address(&self) -> Address;
+    async fn address(&self) -> Result<Address, Self::Error>;
 }
 
 /// An HTTP client configured to work with ANY blockchain without replay protection

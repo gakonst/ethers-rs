@@ -36,7 +36,7 @@ use thiserror::Error;
 /// let wallet: Wallet = "380eb0f3d505f087e438eca80bc4df9a7faa24f868e69fc0440261a0fc0567dc"
 ///     .parse()?;
 ///
-/// let mut client = Client::new(provider, wallet);
+/// let mut client = Client::new(provider, wallet).await?;
 ///
 /// // since it derefs to `Provider`, we can just call any of the JSON-RPC API methods
 /// let block = client.get_block(100u64).await?;
@@ -105,22 +105,22 @@ where
     S: Signer,
 {
     /// Creates a new client from the provider and signer.
-    pub fn new(provider: Provider<P>, signer: S) -> Self {
-        let address = signer.address();
-        Client {
+    pub async fn new(provider: Provider<P>, signer: S) -> Result<Self, ClientError> {
+        let address = signer.address().await.map_err(Into::into)?;
+        Ok(Client {
             provider,
             signer: Some(signer),
             address,
             gas_oracle: None,
             nonce_manager: None,
-        }
+        })
     }
 
     /// Signs a message with the internal signer, or if none is present it will make a call to
     /// the connected node's `eth_call` API.
     pub async fn sign_message<T: Into<Bytes>>(&self, msg: T) -> Result<Signature, ClientError> {
         Ok(if let Some(ref signer) = self.signer {
-            signer.sign_message(msg.into())
+            signer.sign_message(msg.into()).await.map_err(Into::into)?
         } else {
             self.provider.sign(msg, &self.address()).await?
         })
@@ -173,7 +173,7 @@ where
 
     async fn submit_transaction(&self, tx: TransactionRequest) -> Result<TxHash, ClientError> {
         Ok(if let Some(ref signer) = self.signer {
-            let signed_tx = signer.sign_transaction(tx).map_err(Into::into)?;
+            let signed_tx = signer.sign_transaction(tx).await.map_err(Into::into)?;
             self.provider.send_raw_transaction(&signed_tx).await?
         } else {
             self.provider.send_transaction(tx).await?
@@ -259,18 +259,13 @@ where
 
     /// Sets the signer and returns a mutable reference to self so that it can be used in chained
     /// calls.
-    ///
-    /// Clones internally.
     pub fn with_signer(&mut self, signer: S) -> &Self {
-        self.address = signer.address();
         self.signer = Some(signer);
         self
     }
 
     /// Sets the provider and returns a mutable reference to self so that it can be used in chained
     /// calls.
-    ///
-    /// Clones internally.
     pub fn with_provider(&mut self, provider: Provider<P>) -> &Self {
         self.provider = provider;
         self
@@ -278,21 +273,8 @@ where
 
     /// Sets the address which will be used for interacting with the blockchain.
     /// Useful if no signer is set and you want to specify a default sender for
-    /// your transactions
-    ///
-    /// # Panics
-    ///
-    /// If the signer is Some. It is forbidden to switch the sender if a private
-    /// key is already specified.
+    /// your transactions or if you have changed the signer manually.
     pub fn with_sender<T: Into<Address>>(mut self, address: T) -> Self {
-        if self.signer.is_some() {
-            panic!(
-                "It is forbidden to switch the sender if a signer is specified.
-                   Consider using the `with_signer` method if you want to specify a
-                   different signer"
-            )
-        }
-
         self.address = address.into();
         self
     }

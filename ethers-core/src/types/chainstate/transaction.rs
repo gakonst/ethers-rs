@@ -138,6 +138,11 @@ impl TransactionRequest {
 
     /// Hashes the transaction's data with the provided chain id
     pub fn sighash<T: Into<U64>>(&self, chain_id: Option<T>) -> H256 {
+        keccak256(self.rlp(chain_id).as_ref()).into()
+    }
+
+    /// Gets the unsigned transaction's RLP encoding
+    pub fn rlp<T: Into<U64>>(&self, chain_id: Option<T>) -> Bytes {
         let mut rlp = RlpStream::new();
         // "If [..] CHAIN_ID is available, then when  computing the hash of a
         // transaction for the purposes of signing, instead of hashing only
@@ -162,7 +167,7 @@ impl TransactionRequest {
             rlp.append(&0u8);
         }
 
-        keccak256(rlp.out().as_ref()).into()
+        rlp.out().into()
     }
 
     /// Produces the RLP encoding of the transaction with the provided signature

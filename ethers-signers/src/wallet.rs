@@ -8,6 +8,7 @@ use ethers_core::{
     types::{Address, PrivateKey, PublicKey, Signature, Transaction, TransactionRequest, TxError},
 };
 
+use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
@@ -26,6 +27,7 @@ use std::str::FromStr;
 /// use ethers_core::rand::thread_rng;
 /// use ethers_signers::{Wallet, Signer};
 ///
+/// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
 /// let wallet = Wallet::new(&mut thread_rng());
 ///
 /// // Optionally, the wallet's chain id can be set, in order to use EIP-155
@@ -34,8 +36,10 @@ use std::str::FromStr;
 ///
 /// // The wallet can be used to sign messages
 /// let message = b"hello";
-/// let signature = wallet.sign_message(message);
-/// assert_eq!(signature.recover(&message[..]).unwrap(), wallet.address())
+/// let signature = wallet.sign_message(message).await?;
+/// assert_eq!(signature.recover(&message[..]).unwrap(), wallet.address());
+/// # Ok(())
+/// # }
 /// ```
 ///
 /// ## Connecting to a Provider
@@ -75,19 +79,23 @@ pub struct Wallet {
     chain_id: Option<u64>,
 }
 
+#[async_trait(?Send)]
 impl Signer for Wallet {
     type Error = TxError;
 
-    fn sign_message<S: AsRef<[u8]>>(&self, message: S) -> Signature {
-        self.private_key.sign(message)
+    async fn sign_message<S: Send + Sync + AsRef<[u8]>>(
+        &self,
+        message: S,
+    ) -> Result<Signature, TxError> {
+        Ok(self.private_key.sign(message))
     }
 
-    fn sign_transaction(&self, tx: TransactionRequest) -> Result<Transaction, Self::Error> {
+    async fn sign_transaction(&self, tx: TransactionRequest) -> Result<Transaction, Self::Error> {
         self.private_key.sign_transaction(tx, self.chain_id)
     }
 
-    fn address(&self) -> Address {
-        self.address
+    async fn address(&self) -> Result<Address, Self::Error> {
+        Ok(self.address)
     }
 }
 

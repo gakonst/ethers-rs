@@ -6,7 +6,7 @@ name: Tests
 # so that we do not get rate limited by Etherscan (and it's free to generate as
 # many as you want)
 env:
-  ETHERSCAN_API_KEY: 76XKCZ4QKZYTJS8PBFUDZ292JBKEKS4974
+  ETHERSCAN_API_KEY: I5BXNZYP5GEDWFINGVEZKYIVU2695NPQZB
 
 jobs:
   tests:
@@ -47,7 +47,10 @@ jobs:
       - name: cargo test (Celo)
         run: |
             export PATH=$HOME/bin:$PATH
-            cargo test --all-features
+            cd ethers-core && cargo test --features="celo" && cd ../
+            cd ethers-providers && cargo test --features="celo" && cd ../
+            cd ethers-signers && cargo test --features="celo" && cd ../
+            cd ethers-contract && cargo test --features="celo" && cd ../
 
       - name: cargo fmt
         run: cargo fmt --all -- --check

@@ -266,6 +266,7 @@ where
     pub fn at<T: Into<Address>>(&self, address: T) -> Self
     where
         P: Clone,
+        S: Clone,
     {
         let mut this = self.clone();
         this.address = address.into();
@@ -278,6 +279,7 @@ where
     pub fn connect(&self, client: Arc<Client<P, S>>) -> Self
     where
         P: Clone,
+        S: Clone,
     {
         let mut this = self.clone();
         this.client = client;
