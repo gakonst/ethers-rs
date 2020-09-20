@@ -6,7 +6,7 @@ name: Tests
 # so that we do not get rate limited by Etherscan (and it's free to generate as
 # many as you want)
 env:
-  ETHERSCAN_API_KEY: 76XKCZ4QKZYTJS8PBFUDZ292JBKEKS4974
+  ETHERSCAN_API_KEY: I5BXNZYP5GEDWFINGVEZKYIVU2695NPQZB
 
 jobs:
   tests:
