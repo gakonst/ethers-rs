@@ -36,7 +36,7 @@ use thiserror::Error;
 /// let wallet: Wallet = "380eb0f3d505f087e438eca80bc4df9a7faa24f868e69fc0440261a0fc0567dc"
 ///     .parse()?;
 ///
-/// let mut client = Client::new(provider, wallet);
+/// let mut client = Client::new(provider, wallet).await?;
 ///
 /// // since it derefs to `Provider`, we can just call any of the JSON-RPC API methods
 /// let block = client.get_block(100u64).await?;
