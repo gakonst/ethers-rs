@@ -23,6 +23,7 @@ use super::types::*;
 pub struct LedgerEthereum {
     transport: Mutex<Ledger>,
     derivation: DerivationType,
+    pub chain_id: Option<u64>,
 }
 
 impl LedgerEthereum {
@@ -30,10 +31,14 @@ impl LedgerEthereum {
     ///
     /// # Notes
     ///
-    pub async fn new(derivation: DerivationType) -> Result<Self, LedgerError> {
+    pub async fn new(
+        derivation: DerivationType,
+        chain_id: Option<u64>,
+    ) -> Result<Self, LedgerError> {
         Ok(Self {
             transport: Mutex::new(Ledger::init().await?),
             derivation,
+            chain_id,
         })
     }
 
@@ -95,7 +100,7 @@ impl LedgerEthereum {
     /// Signs an Ethereum transaction (requires confirmation on the ledger)
     // TODO: Remove code duplication between this and the PrivateKey::sign_transaction
     // method
-    pub async fn sign_transaction(
+    pub async fn sign_tx(
         &self,
         tx: TransactionRequest,
         chain_id: Option<u64>,
@@ -215,6 +220,8 @@ impl LedgerEthereum {
 #[cfg(all(test, feature = "ledger-tests"))]
 mod tests {
     use super::*;
+    use crate::{Client, Signer};
+    use ethers::prelude::*;
     use rustc_hex::FromHex;
     use std::str::FromStr;
 
@@ -222,7 +229,7 @@ mod tests {
     // Replace this with your ETH addresses.
     async fn test_get_address() {
         // Instantiate it with the default ledger derivation path
-        let ledger = LedgerEthereum::new(DerivationType::LedgerLive(0))
+        let ledger = LedgerEthereum::new(DerivationType::LedgerLive(0), None)
             .await
             .unwrap();
         assert_eq!(
@@ -240,7 +247,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_sign_tx() {
-        let ledger = LedgerEthereum::new(DerivationType::LedgerLive(0))
+        let ledger = LedgerEthereum::new(DerivationType::LedgerLive(0), None)
             .await
             .unwrap();
 
@@ -255,13 +262,48 @@ mod tests {
             .nonce(5)
             .data(data)
             .value(ethers_core::utils::parse_ether(100).unwrap());
-        let tx = ledger.sign_transaction(tx_req).await.unwrap();
-        dbg!(serde_json::to_string(&tx));
+        let tx = ledger.sign_transaction(tx_req.clone()).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_send_transaction() {
+        let ledger = LedgerEthereum::new(DerivationType::Legacy(0), None)
+            .await
+            .unwrap();
+        let addr = ledger.get_address().await.unwrap();
+        let amt = ethers_core::utils::parse_ether(10).unwrap();
+        let amt_with_gas = amt + U256::from_str("420000000000000").unwrap();
+
+        // fund our account
+        let ganache = ethers_core::utils::Ganache::new().spawn();
+        let provider = Provider::<Http>::try_from(ganache.endpoint()).unwrap();
+        let accounts = provider.get_accounts().await.unwrap();
+        let req = TransactionRequest::new()
+            .from(accounts[0])
+            .to(addr)
+            .value(amt_with_gas);
+        let tx = provider.send_transaction(req).await.unwrap();
+        assert_eq!(
+            provider.get_balance(addr, None).await.unwrap(),
+            amt_with_gas
+        );
+
+        // send a tx and check that it works
+        let client = Client::new(provider, ledger).await.unwrap();
+        let receiver = Address::zero();
+        client
+            .send_transaction(
+                TransactionRequest::new().from(addr).to(receiver).value(amt),
+                None,
+            )
+            .await
+            .unwrap();
+        assert_eq!(client.get_balance(receiver, None).await.unwrap(), amt);
     }
 
     #[tokio::test]
     async fn test_version() {
-        let ledger = LedgerEthereum::new(DerivationType::LedgerLive(0))
+        let ledger = LedgerEthereum::new(DerivationType::LedgerLive(0), None)
             .await
             .unwrap();
 
@@ -271,7 +313,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_sign_message() {
-        let ledger = LedgerEthereum::new(DerivationType::Legacy(0))
+        let ledger = LedgerEthereum::new(DerivationType::Legacy(0), None)
             .await
             .unwrap();
         let message = "hello world";
