@@ -40,6 +40,7 @@ core = ["ethers-core"]
 contract = ["ethers-contract"]
 providers = ["ethers-providers"]
 signers = ["ethers-signers"]
+ledger = ["ethers-signers/ledger"]
 
 [dependencies]
 ethers-contract = { version = "0.1.3", path = "../ethers-contract", optional = true }

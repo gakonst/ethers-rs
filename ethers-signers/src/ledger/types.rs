@@ -56,7 +56,6 @@ pub enum INS {
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 #[allow(non_camel_case_types)]
 pub enum P1 {
-    CONFIRM = 0x01,
     NON_CONFIRM = 0x00,
     MORE = 0x80,
 }
@@ -65,6 +64,5 @@ pub enum P1 {
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 #[allow(non_camel_case_types)]
 pub enum P2 {
-    CHAINCODE = 0x01,
     NO_CHAINCODE = 0x00,
 }
