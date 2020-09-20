@@ -47,7 +47,10 @@ jobs:
       - name: cargo test (Celo)
         run: |
             export PATH=$HOME/bin:$PATH
-            cargo test --all-features
+            cd ethers-core && cargo test --features="celo" && cd ../
+            cd ethers-providers && cargo test --features="celo" && cd ../
+            cd ethers-signers && cargo test --features="celo" && cd ../
+            cd ethers-contract && cargo test --features="celo" && cd ../
 
       - name: cargo fmt
         run: cargo fmt --all -- --check
