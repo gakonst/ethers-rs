@@ -98,6 +98,7 @@ impl LedgerEthereum {
     pub async fn sign_transaction(
         &self,
         tx: TransactionRequest,
+        chain_id: Option<u64>,
     ) -> Result<Transaction, LedgerError> {
         // The nonce, gas and gasprice fields must already be populated
         let nonce = tx.nonce.ok_or(TxError::NonceMissing)?;
@@ -105,7 +106,7 @@ impl LedgerEthereum {
         let gas = tx.gas.ok_or(TxError::GasMissing)?;
 
         let mut payload = self.path_to_bytes(&self.derivation);
-        payload.extend_from_slice(tx.rlp().as_ref());
+        payload.extend_from_slice(tx.rlp(chain_id).as_ref());
         let signature = self.sign_payload(INS::SIGN, payload).await?;
 
         // Get the actual transaction hash
