@@ -91,7 +91,7 @@ pub enum ClientError {
 
     #[error(transparent)]
     /// Thrown when the internal call to the signer fails
-    SignerError(#[from] Box<dyn std::error::Error>),
+    SignerError(#[from] Box<dyn std::error::Error + Send + Sync>),
 
     #[error("ens name not found: {0}")]
     /// Thrown when an ENS name is not found
