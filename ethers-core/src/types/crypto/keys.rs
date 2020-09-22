@@ -21,11 +21,10 @@ use k256::{
         SigningKey,
     },
     elliptic_curve::{error::Error as EllipticCurveError, FieldBytes},
-    EncodedPoint as K256PublicKey, SecretKey as K256SecretKey, Secp256k1,
+    EncodedPoint as K256PublicKey, Secp256k1, SecretKey as K256SecretKey,
 };
 
 const SECRET_KEY_SIZE: usize = 32;
-const FULL_PUBLIC_KEY_SIZE: usize = 65;
 const COMPRESSED_PUBLIC_KEY_SIZE: usize = 33;
 
 /// A private key on Secp256k1
@@ -278,7 +277,7 @@ impl Serialize for PublicKey {
     {
         let mut seq = serializer.serialize_tuple(COMPRESSED_PUBLIC_KEY_SIZE)?;
 
-        for e in self.0.as_bytes().iter() {
+        for e in self.0.compress().as_bytes().iter() {
             seq.serialize_element(e)?;
         }
         seq.end()
@@ -310,14 +309,21 @@ impl<'de> Deserialize<'de> for PublicKey {
                         .ok_or_else(|| DeserializeError::custom("could not read bytes"))?;
                 }
 
-                match K256PublicKey::from_bytes(&bytes[..]) {
-                    Ok(public_key) => Ok(PublicKey(public_key)),
-                    _ => Err(DeserializeError::custom("could not parse public key from bytes"))
+                let pub_key = K256PublicKey::from_bytes(&bytes[..]).map_or_else(
+                    |_| Err(DeserializeError::custom("parse pub key")),
+                    |v| Ok(v),
+                )?;
+
+                let uncompressed_pub_key = pub_key.decompress();
+                if uncompressed_pub_key.is_some().into() {
+                    return Ok(PublicKey(uncompressed_pub_key.unwrap()));
+                } else {
+                    return Err(DeserializeError::custom("parse pub key"));
                 }
             }
         }
 
-        deserializer.deserialize_tuple(FULL_PUBLIC_KEY_SIZE, ArrayVisitor)
+        deserializer.deserialize_tuple(COMPRESSED_PUBLIC_KEY_SIZE, ArrayVisitor)
     }
 }
 
@@ -331,16 +337,14 @@ mod tests {
         for _ in 0..10 {
             let key = PrivateKey::new(&mut rand::thread_rng());
             let serialized = bincode::serialize(&key).unwrap();
-            assert_eq!(serialized.as_slice(), key.0.as_bytes().as_slice());
+            assert_eq!(serialized.as_slice(), key.0.to_bytes().as_slice());
             let de: PrivateKey = bincode::deserialize(&serialized).unwrap();
             assert_eq!(key, de);
 
             let public = PublicKey::from(&key);
-
             println!("public = {:?}", public);
 
             let serialized = bincode::serialize(&public).unwrap();
-            assert_eq!(serialized.as_slice(), public.0.as_bytes());
             let de: PublicKey = bincode::deserialize(&serialized).unwrap();
             assert_eq!(public, de);
         }
@@ -386,20 +390,35 @@ mod tests {
     }
 
     #[test]
-    fn signs_data() {
-        // test vector taken from:
-        // https://web3js.readthedocs.io/en/v1.2.2/web3-eth-accounts.html#sign
-
-        let key: PrivateKey = "4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318"
-            .parse()
-            .unwrap();
-        let sign = key.sign("Some data");
-
+    fn key_to_address() {
+        let priv_key: PrivateKey =
+            "0000000000000000000000000000000000000000000000000000000000000001"
+                .parse()
+                .unwrap();
+        let addr: Address = priv_key.into();
         assert_eq!(
-            sign.to_vec(),
-            "b91467e570a6466aa9e9876cbcd013baba02900b8979d43fe208a4a4f339f5fd6007e74cd82e037b800186422fc2da167c747ef045e5d18a5f5d4300f8e1a0291c"
-                .from_hex::<Vec<u8>>()
-                .unwrap()
+            addr,
+            Address::from_str("7E5F4552091A69125d5DfCb7b8C2659029395Bdf").expect("Decoding failed")
+        );
+
+        let priv_key: PrivateKey =
+            "0000000000000000000000000000000000000000000000000000000000000002"
+                .parse()
+                .unwrap();
+        let addr: Address = priv_key.into();
+        assert_eq!(
+            addr,
+            Address::from_str("2B5AD5c4795c026514f8317c7a215E218DcCD6cF").expect("Decoding failed")
+        );
+
+        let priv_key: PrivateKey =
+            "0000000000000000000000000000000000000000000000000000000000000003"
+                .parse()
+                .unwrap();
+        let addr: Address = priv_key.into();
+        assert_eq!(
+            addr,
+            Address::from_str("6813Eb9362372EEF6200f3b1dbC3f819671cBA69").expect("Decoding failed")
         );
     }
 }

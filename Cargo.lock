@@ -407,9 +407,9 @@ checksum = "bb1f6b1ce1c140482ea30ddd3335fc0024ac7ee112895426e0a629a6c20adfe3"
 
 [[package]]
 name = "elliptic-curve"
-version = "0.6.0"
+version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d9cc9ec2c11b93118b4f8dc0665a3741bc90121d44dc0410f899274c5745454c"
+checksum = "8677f2d5ab29b5a4815aabd2ddb83e1899e58903a67594406893a9757f48ccae"
 dependencies = [
  "bitvec 0.18.4",
  "const-oid",
@@ -1010,9 +1010,9 @@ dependencies = [
 
 [[package]]
 name = "k256"
-version = "0.5.0"
+version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "48ebada8a30635459953891076552d53f74bd4b68440c915dd9a929d8b2d9970"
+checksum = "6e163af5c3d73a042455736aab29d9e98c7592f59ea5d3faf4a715fc4b8d36c2"
 dependencies = [
  "cfg-if",
  "ecdsa",
@@ -2183,6 +2183,6 @@ checksum = "85e60b0d1b5f99db2556934e21937020776a5d31520bf169e851ac44e6420214"
 
 [[package]]
 name = "zeroize"
-version = "1.1.0"
+version = "1.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3cbac2ed2ba24cc90f5e06485ac8c7c1e5449fe8911aef4d8877218af021a5b8"
+checksum = "05f33972566adbd2d3588b0491eb94b98b43695c4ef897903470ede4f3f5a28a"

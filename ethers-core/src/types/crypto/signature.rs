@@ -10,13 +10,13 @@ use std::{convert::TryFrom, fmt, str::FromStr};
 
 use thiserror::Error;
 
+use elliptic_curve::consts::U32;
 use generic_array::GenericArray;
 use k256::ecdsa::{
     recoverable::{Id as RecoveryId, Signature as RecoverableSignature},
     Error as K256SignatureError, Signature as K256Signature,
 };
 use k256::EncodedPoint as K256PublicKey;
-use elliptic_curve::consts::U32;
 
 /// An error involving a signature.
 #[derive(Debug, Error)]
@@ -34,6 +34,9 @@ pub enum SignatureError {
     /// Internal error during signature recovery
     #[error(transparent)]
     K256Error(#[from] K256SignatureError),
+    /// Error in recovering public key from signature
+    #[error("Public key recovery error")]
+    RecoveryError,
 }
 
 /// Recovery message data.
@@ -99,9 +102,14 @@ impl Signature {
 
         let (recoverable_sig, _recovery_id) = self.as_signature()?;
         let verify_key = recoverable_sig.recover_verify_key(message_hash.as_bytes())?;
-        let public_key: K256PublicKey = K256PublicKey::from(&verify_key);
 
-        Ok(PublicKey::from(public_key).into())
+        let uncompressed_pub_key = K256PublicKey::from(&verify_key).decompress();
+        if uncompressed_pub_key.is_some().into() {
+            let pub_key: K256PublicKey = K256PublicKey::from(uncompressed_pub_key.unwrap());
+            Ok(PublicKey::from(pub_key).into())
+        } else {
+            Err(SignatureError::RecoveryError)
+        }
     }
 
     /// Retrieves the recovery signature.
@@ -110,7 +118,7 @@ impl Signature {
         let signature = {
             let gar: &GenericArray<u8, U32> = GenericArray::from_slice(self.r.as_bytes());
             let gas: &GenericArray<u8, U32> = GenericArray::from_slice(self.s.as_bytes());
-            let sig = K256Signature::from_scalars(gar.into(), gas.into())?;
+            let sig = K256Signature::from_scalars(*gar, *gas)?;
             RecoverableSignature::new(&sig, recovery_id)?
         };
 
@@ -260,6 +268,24 @@ mod tests {
 
         assert_eq!(recovered, address);
         assert_eq!(recovered2, address);
+    }
+
+    #[test]
+    fn recover_web3_signature() {
+        // test vector taken from:
+        // https://web3js.readthedocs.io/en/v1.2.2/web3-eth-accounts.html#sign
+        let key: PrivateKey = "4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318"
+            .parse()
+            .unwrap();
+        let address = Address::from(&key);
+        let signature = Signature::from_str(
+            "b91467e570a6466aa9e9876cbcd013baba02900b8979d43fe208a4a4f339f5fd6007e74cd82e037b800186422fc2da167c747ef045e5d18a5f5d4300f8e1a0291c"
+        ).expect("could not parse signature");
+
+        // recover the address from the above signature
+        let recovered = signature.recover("Some data").unwrap();
+
+        assert_eq!(recovered, address);
     }
 
     #[test]
