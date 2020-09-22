@@ -1,5 +1,5 @@
 use anyhow::Result;
-use ethers::{utils::parse_ether, prelude::*};
+use ethers::{prelude::*, utils::parse_ether};
 
 #[tokio::main]
 async fn main() -> Result<()> {

@@ -1,6 +1,6 @@
 use crate::ContractError;
 
-use ethers_providers::{FilterStream, JsonRpcClient, Provider};
+use ethers_providers::{JsonRpcClient, Provider};
 
 use ethers_core::{
     abi::{Detokenize, Event as AbiEvent, RawLog},

@@ -70,7 +70,7 @@ mod eth_tests {
     #[cfg(feature = "tokio-runtime")]
     async fn watch_blocks_websocket() {
         use ethers::{
-            providers::{FilterStream, StreamExt, Ws},
+            providers::{StreamExt, Ws},
             types::H256,
         };
 
@@ -154,10 +154,7 @@ mod eth_tests {
 #[cfg(feature = "celo")]
 mod celo_tests {
     use super::*;
-    use ethers::{
-        providers::FilterStream,
-        types::{Randomness, H256},
-    };
+    use ethers::types::{Randomness, H256};
     use futures_util::stream::StreamExt;
     use rustc_hex::FromHex;
 
