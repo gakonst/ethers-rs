@@ -1,4 +1,4 @@
-use crate::{JsonRpcClient, Provider, ProviderError};
+use crate::{JsonRpcClient, PinBoxFut, Provider};
 
 use ethers_core::types::U256;
 
@@ -8,7 +8,6 @@ use futures_util::{stream, FutureExt, StreamExt};
 use pin_project::pin_project;
 use serde::Deserialize;
 use std::{
-    future::Future,
     pin::Pin,
     task::{Context, Poll},
     time::Duration,
@@ -25,7 +24,7 @@ pub const DEFAULT_POLL_INTERVAL: Duration = Duration::from_millis(7000);
 
 enum FilterWatcherState<'a, R> {
     WaitForInterval,
-    GetFilterChanges(Pin<Box<dyn Future<Output = Result<Vec<R>, ProviderError>> + Send + 'a>>),
+    GetFilterChanges(PinBoxFut<'a, Vec<R>>),
     NextItem(IntoIter<R>),
 }
 
@@ -58,6 +57,7 @@ where
         }
     }
 
+    /// Sets the stream's polling interval
     pub fn interval(mut self, duration: Duration) -> Self {
         self.interval = Box::new(interval(duration));
         self

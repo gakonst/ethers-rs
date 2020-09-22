@@ -1,6 +1,6 @@
 use crate::{
     stream::{interval, DEFAULT_POLL_INTERVAL},
-    JsonRpcClient, Provider, ProviderError,
+    JsonRpcClient, PinBoxFut, Provider, ProviderError,
 };
 use ethers_core::types::{TransactionReceipt, TxHash, U64};
 use futures_core::stream::Stream;
@@ -167,9 +167,6 @@ impl<'a, P> Deref for PendingTransaction<'a, P> {
         &self.tx_hash
     }
 }
-
-// Helper type alias
-type PinBoxFut<'a, T> = Pin<Box<dyn Future<Output = Result<T, ProviderError>> + 'a + Send>>;
 
 // We box the TransactionReceipts to keep the enum small.
 enum PendingTxState<'a> {
