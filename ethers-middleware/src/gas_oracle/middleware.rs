@@ -22,7 +22,7 @@ pub enum MiddlewareError<P: JsonRpcClient, M: Middleware<P>> {
     MiddlewareError(M::Error),
 }
 
-#[async_trait]
+#[async_trait(?Send)]
 impl<M, P, G> Middleware<P> for GasOracleMiddleware<P, M, G>
 where
     M: Middleware<P>,

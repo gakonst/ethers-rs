@@ -1,6 +1,4 @@
-use crate::{Client, ClientError, Signer};
-
-use ethers_providers::{JsonRpcClient, Provider};
+use crate::Signer;
 
 use ethers_core::{
     rand::Rng,
@@ -99,12 +97,6 @@ impl Signer for Wallet {
     }
 }
 
-impl From<TxError> for ClientError {
-    fn from(src: TxError) -> Self {
-        ClientError::SignerError(Box::new(src))
-    }
-}
-
 impl Wallet {
     // TODO: Add support for mnemonic and encrypted JSON
 
@@ -119,18 +111,6 @@ impl Wallet {
             public_key,
             address,
             chain_id: None,
-        }
-    }
-
-    /// Connects to a provider and returns a client
-    pub fn connect<P: JsonRpcClient>(self, provider: Provider<P>) -> Client<P, Wallet> {
-        let address = self.address();
-        Client {
-            address,
-            signer: Some(self),
-            provider,
-            gas_oracle: None,
-            nonce_manager: None,
         }
     }
 

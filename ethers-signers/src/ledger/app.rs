@@ -20,6 +20,7 @@ use super::types::*;
 /// A Ledger Ethereum App.
 ///
 /// This is a simple wrapper around the [Ledger transport](Ledger)
+#[derive(Debug)]
 pub struct LedgerEthereum {
     transport: Mutex<Ledger>,
     derivation: DerivationType,

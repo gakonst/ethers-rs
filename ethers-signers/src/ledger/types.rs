@@ -2,6 +2,7 @@
 //! [Official Docs](https://github.com/LedgerHQ/app-ethereum/blob/master/doc/ethapp.asc)
 use thiserror::Error;
 
+#[derive(Clone, Debug)]
 pub enum DerivationType {
     LedgerLive(usize),
     Legacy(usize),

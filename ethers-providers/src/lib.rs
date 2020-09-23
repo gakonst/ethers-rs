@@ -126,8 +126,7 @@ use std::{
 pub use provider::{FilterKind, Provider, ProviderError};
 
 // Helper type alias
-pub(crate) type PinBoxFut<'a, T> =
-    Pin<Box<dyn Future<Output = Result<T, ProviderError>> + 'a + Send>>;
+pub(crate) type PinBoxFut<'a, T> = Pin<Box<dyn Future<Output = Result<T, ProviderError>> + 'a>>;
 
 #[async_trait]
 /// Trait which must be implemented by data transports to be used with the Ethereum
@@ -145,7 +144,7 @@ pub trait JsonRpcClient: Debug + Send + Sync {
 
 use ethers_core::types::*;
 
-#[async_trait]
+#[async_trait(?Send)]
 pub trait Middleware<P>: Sync + Send + Debug {
     type Error: Display + Debug;
 

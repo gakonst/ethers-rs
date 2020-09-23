@@ -48,23 +48,16 @@ pub use ledger::{
     types::{DerivationType as HDPath, LedgerError},
 };
 
-mod nonce_manager;
-pub(crate) use nonce_manager::NonceManager;
-
-mod client;
-pub use client::{Client, ClientError};
-
 use async_trait::async_trait;
 use ethers_core::types::{Address, Signature, Transaction, TransactionRequest};
-use ethers_providers::Http;
 use std::error::Error;
 
 /// Trait for signing transactions and messages
 ///
 /// Implement this trait to support different signing modes, e.g. Ledger, hosted etc.
 #[async_trait(?Send)]
-pub trait Signer {
-    type Error: Error + Into<ClientError>;
+pub trait Signer: Send + Sync + std::fmt::Debug {
+    type Error: Error + Send + Sync;
     /// Signs the hash of the provided message after prefixing it
     async fn sign_message<S: Send + Sync + AsRef<[u8]>>(
         &self,
@@ -80,6 +73,3 @@ pub trait Signer {
     /// Returns the signer's Ethereum Address
     async fn address(&self) -> Result<Address, Self::Error>;
 }
-
-/// An HTTP client configured to work with ANY blockchain without replay protection
-pub type HttpClient = Client<Http, Wallet>;

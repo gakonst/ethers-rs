@@ -542,6 +542,7 @@ dependencies = [
  "ethers",
  "ethers-core",
  "ethers-providers",
+ "ethers-signers",
  "futures-core",
  "futures-timer",
  "futures-util",
@@ -588,9 +589,7 @@ version = "0.1.3"
 dependencies = [
  "async-trait",
  "coins-ledger",
- "ethers",
  "ethers-core",
- "ethers-providers",
  "futures-util",
  "rustc-hex",
  "serde",

@@ -1,7 +1,7 @@
 pub mod app;
 pub mod types;
 
-use crate::{ClientError, Signer};
+use crate::Signer;
 use app::LedgerEthereum;
 use async_trait::async_trait;
 use ethers_core::types::{Address, Signature, Transaction, TransactionRequest};
@@ -30,11 +30,5 @@ impl Signer for LedgerEthereum {
     /// Returns the signer's Ethereum Address
     async fn address(&self) -> Result<Address, Self::Error> {
         self.get_address().await
-    }
-}
-
-impl From<LedgerError> for ClientError {
-    fn from(src: LedgerError) -> Self {
-        ClientError::SignerError(Box::new(src))
     }
 }
