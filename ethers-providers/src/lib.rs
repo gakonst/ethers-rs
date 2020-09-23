@@ -116,10 +116,14 @@ pub use stream::{FilterWatcher, DEFAULT_POLL_INTERVAL};
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use std::{error::Error, fmt::Debug, future::Future, pin::Pin};
+use std::{
+    error::Error,
+    fmt::{Debug, Display},
+    future::Future,
+    pin::Pin,
+};
 
-use provider::FilterKind;
-pub use provider::{Provider, ProviderError};
+pub use provider::{FilterKind, Provider, ProviderError};
 
 // Helper type alias
 pub(crate) type PinBoxFut<'a, T> =
@@ -143,7 +147,7 @@ use ethers_core::types::*;
 
 #[async_trait]
 pub trait Middleware<P>: Sync + Send + Debug {
-    type Error: Debug;
+    type Error: Display + Debug;
 
     async fn get_block_number(&self) -> Result<U64, Self::Error>;
 
