@@ -1,3 +1,4 @@
+use crate::Middleware;
 use crate::{
     stream::{interval, DEFAULT_POLL_INTERVAL},
     JsonRpcClient, PinBoxFut, Provider, ProviderError,

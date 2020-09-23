@@ -107,8 +107,6 @@ mod provider;
 // ENS support
 mod ens;
 
-pub mod gas_oracle;
-
 mod pending_transaction;
 pub use pending_transaction::PendingTransaction;
 
@@ -120,6 +118,7 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::{error::Error, fmt::Debug, future::Future, pin::Pin};
 
+use provider::FilterKind;
 pub use provider::{Provider, ProviderError};
 
 // Helper type alias
@@ -129,7 +128,7 @@ pub(crate) type PinBoxFut<'a, T> =
 #[async_trait]
 /// Trait which must be implemented by data transports to be used with the Ethereum
 /// JSON-RPC provider.
-pub trait JsonRpcClient: Send + Sync {
+pub trait JsonRpcClient: Debug + Send + Sync {
     /// A JSON-RPC Error
     type Error: Error + Into<ProviderError>;
 
@@ -138,4 +137,113 @@ pub trait JsonRpcClient: Send + Sync {
     where
         T: Debug + Serialize + Send + Sync,
         R: for<'a> Deserialize<'a>;
+}
+
+use ethers_core::types::*;
+
+#[async_trait]
+pub trait Middleware<P>: Sync + Send + Debug {
+    type Error: Debug;
+
+    async fn get_block_number(&self) -> Result<U64, Self::Error>;
+
+    async fn send_transaction(
+        &self,
+        tx: TransactionRequest,
+        block: Option<BlockNumber>,
+    ) -> Result<TxHash, Self::Error>;
+
+    async fn resolve_name(&self, ens_name: &str) -> Result<Address, Self::Error>;
+
+    async fn lookup_address(&self, address: Address) -> Result<String, Self::Error>;
+
+    async fn get_block<T: Into<BlockId> + Send + Sync>(
+        &self,
+        block_hash_or_number: T,
+    ) -> Result<Option<Block<TxHash>>, Self::Error>;
+
+    async fn get_block_with_txs<T: Into<BlockId> + Send + Sync>(
+        &self,
+        block_hash_or_number: T,
+    ) -> Result<Option<Block<Transaction>>, Self::Error>;
+
+    async fn get_transaction_count<T: Into<NameOrAddress> + Send + Sync>(
+        &self,
+        from: T,
+        block: Option<BlockNumber>,
+    ) -> Result<U256, Self::Error>;
+
+    async fn estimate_gas(&self, tx: &TransactionRequest) -> Result<U256, Self::Error>;
+
+    async fn call(
+        &self,
+        tx: &TransactionRequest,
+        block: Option<BlockNumber>,
+    ) -> Result<Bytes, Self::Error>;
+
+    async fn get_chainid(&self) -> Result<U256, Self::Error>;
+
+    async fn get_balance<T: Into<NameOrAddress> + Send + Sync>(
+        &self,
+        from: T,
+        block: Option<BlockNumber>,
+    ) -> Result<U256, Self::Error>;
+
+    async fn get_transaction<T: Send + Sync + Into<TxHash>>(
+        &self,
+        transaction_hash: T,
+    ) -> Result<Option<Transaction>, Self::Error>;
+
+    async fn get_transaction_receipt<T: Send + Sync + Into<TxHash>>(
+        &self,
+        transaction_hash: T,
+    ) -> Result<Option<TransactionReceipt>, Self::Error>;
+
+    async fn get_gas_price(&self) -> Result<U256, Self::Error>;
+
+    async fn get_accounts(&self) -> Result<Vec<Address>, Self::Error>;
+
+    async fn send_raw_transaction(&self, tx: &Transaction) -> Result<TxHash, Self::Error>;
+
+    async fn sign<T: Into<Bytes> + Send + Sync>(
+        &self,
+        data: T,
+        from: &Address,
+    ) -> Result<Signature, Self::Error>;
+
+    ////// Contract state
+
+    async fn get_logs(&self, filter: &Filter) -> Result<Vec<Log>, Self::Error>;
+
+    async fn new_filter(&self, filter: FilterKind<'_>) -> Result<U256, Self::Error>;
+
+    async fn uninstall_filter<T: Into<U256> + Send + Sync>(
+        &self,
+        id: T,
+    ) -> Result<bool, Self::Error>;
+
+    async fn watch<'a>(&'a self, filter: &Filter)
+        -> Result<FilterWatcher<'a, P, Log>, Self::Error>;
+
+    async fn watch_pending_transactions(&self) -> Result<FilterWatcher<'_, P, H256>, Self::Error>;
+
+    async fn get_filter_changes<T, R>(&self, id: T) -> Result<Vec<R>, Self::Error>
+    where
+        T: Into<U256> + Send + Sync,
+        R: for<'a> Deserialize<'a> + Send + Sync;
+
+    async fn watch_blocks(&self) -> Result<FilterWatcher<'_, P, H256>, Self::Error>;
+
+    async fn get_code<T: Into<NameOrAddress> + Send + Sync>(
+        &self,
+        at: T,
+        block: Option<BlockNumber>,
+    ) -> Result<Bytes, Self::Error>;
+
+    async fn get_storage_at<T: Into<NameOrAddress> + Send + Sync>(
+        &self,
+        from: T,
+        location: H256,
+        block: Option<BlockNumber>,
+    ) -> Result<H256, Self::Error>;
 }

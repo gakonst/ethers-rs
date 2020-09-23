@@ -1,4 +1,4 @@
-use crate::{JsonRpcClient, PinBoxFut, Provider};
+use crate::{JsonRpcClient, Middleware, PinBoxFut, Provider};
 
 use ethers_core::types::U256;
 
@@ -45,7 +45,7 @@ pub struct FilterWatcher<'a, P, R> {
 impl<'a, P, R> FilterWatcher<'a, P, R>
 where
     P: JsonRpcClient,
-    R: for<'de> Deserialize<'de>,
+    R: Send + Sync + for<'de> Deserialize<'de>,
 {
     /// Creates a new watcher with the provided factory and filter id.
     pub fn new<T: Into<U256>>(id: T, provider: &'a Provider<P>) -> Self {
@@ -75,7 +75,7 @@ where
 impl<'a, P, R> Stream for FilterWatcher<'a, P, R>
 where
     P: JsonRpcClient,
-    R: for<'de> Deserialize<'de> + 'a,
+    R: Send + Sync + for<'de> Deserialize<'de> + 'a,
 {
     type Item = R;
 

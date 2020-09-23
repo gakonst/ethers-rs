@@ -90,6 +90,7 @@ pub type MaybeTlsStream = StreamSwitcher<TcpStream, TlsStream<TcpStream>>;
 /// consider importing `async-tungstenite` with the [corresponding feature
 /// flag](https://github.com/sdroege/async-tungstenite/blob/master/Cargo.toml#L15-L22)
 /// for your runtime.
+#[derive(Debug)]
 pub struct Provider<S> {
     id: AtomicU64,
     ws: Mutex<S>,
@@ -154,7 +155,8 @@ impl From<ClientError> for ProviderError {
 #[async_trait]
 impl<S> JsonRpcClient for Provider<S>
 where
-    S: Send
+    S: Debug
+        + Send
         + Sync
         + Stream<Item = Result<Message, tungstenite::Error>>
         + Sink<Message, Error = tungstenite::Error>
