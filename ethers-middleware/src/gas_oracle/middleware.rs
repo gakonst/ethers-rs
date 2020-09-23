@@ -13,6 +13,19 @@ pub struct GasOracleMiddleware<P, M, G> {
     provider_type: std::marker::PhantomData<P>,
 }
 
+impl<M, P, G> GasOracleMiddleware<P, M, G>
+where
+    M: Middleware<P>,
+    P: JsonRpcClient,
+    G: GasOracle,
+{
+    pub fn new(inner: M, gas_oracle: G) -> Self {
+        Self {
+            inner, gas_oracle, provider_type: std::marker::PhantomData,
+        }
+    }
+}
+
 #[derive(Error, Debug)]
 pub enum MiddlewareError<P: JsonRpcClient, M: Middleware<P>> {
     #[error(transparent)]
@@ -34,6 +47,7 @@ where
     // OVERRIDEN METHODS
 
     async fn get_gas_price(&self) -> Result<U256, Self::Error> {
+        dbg!("geting gas price");
         Ok(self.gas_oracle.fetch().await?)
     }
 

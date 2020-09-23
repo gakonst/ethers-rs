@@ -539,7 +539,6 @@ dependencies = [
  "async-tls",
  "async-trait",
  "async-tungstenite",
- "ethers",
  "ethers-core",
  "ethers-providers",
  "ethers-signers",
