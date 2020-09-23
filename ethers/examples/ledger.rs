@@ -1,8 +1,9 @@
-use anyhow::Result;
-use ethers::{utils::parse_ether, prelude::*};
-
 #[tokio::main]
+#[cfg(feature = "ledger")]
 async fn main() -> Result<()> {
+    use anyhow::Result;
+    use ethers::{prelude::*, utils::parse_ether};
+
     // Connect over websockets
     let provider = Provider::new(Ws::connect("ws://localhost:8545").await?);
     // Instantiate the connection to ledger with Ledger Live derivation path and
@@ -20,6 +21,9 @@ async fn main() -> Result<()> {
     let tx_hash = client.send_transaction(tx, None).await?;
 
     // Get the receipt
-    let receipt = client.pending_transaction(tx_hash).confirmations(3).await?;
+    let _receipt = client.pending_transaction(tx_hash).confirmations(3).await?;
     Ok(())
 }
+
+#[cfg(not(feature = "ledger"))]
+fn main() {}

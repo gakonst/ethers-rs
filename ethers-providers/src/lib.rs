@@ -113,16 +113,18 @@ mod pending_transaction;
 pub use pending_transaction::PendingTransaction;
 
 mod stream;
-pub use stream::{FilterStream, DEFAULT_POLL_INTERVAL};
-// re-export `StreamExt` so that consumers can call `next()` on the `FilterStream`
-// without having to import futures themselves
 pub use futures_util::StreamExt;
+pub use stream::{FilterWatcher, DEFAULT_POLL_INTERVAL};
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use std::{error::Error, fmt::Debug};
+use std::{error::Error, fmt::Debug, future::Future, pin::Pin};
 
 pub use provider::{Provider, ProviderError};
+
+// Helper type alias
+pub(crate) type PinBoxFut<'a, T> =
+    Pin<Box<dyn Future<Output = Result<T, ProviderError>> + 'a + Send>>;
 
 #[async_trait]
 /// Trait which must be implemented by data transports to be used with the Ethereum

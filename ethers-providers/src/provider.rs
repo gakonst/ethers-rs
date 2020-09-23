@@ -1,6 +1,6 @@
 use crate::{
     ens,
-    stream::{FilterStream, FilterWatcher, DEFAULT_POLL_INTERVAL},
+    stream::{FilterWatcher, DEFAULT_POLL_INTERVAL},
     Http as HttpProvider, JsonRpcClient, PendingTransaction,
 };
 
@@ -321,32 +321,26 @@ impl<P: JsonRpcClient> Provider<P> {
     }
 
     /// Streams matching filter logs
-    pub async fn watch(
-        &self,
-        filter: &Filter,
-    ) -> Result<impl FilterStream<Log> + '_, ProviderError> {
+    pub async fn watch(&self, filter: &Filter) -> Result<FilterWatcher<'_, P, Log>, ProviderError> {
         let id = self.new_filter(FilterKind::Logs(filter)).await?;
-        let fut = move || Box::pin(self.get_filter_changes(id));
-        let filter = FilterWatcher::new(id, fut).interval(self.get_interval());
+        let filter = FilterWatcher::new(id, self).interval(self.get_interval());
 
         Ok(filter)
     }
 
     /// Streams new block hashes
-    pub async fn watch_blocks(&self) -> Result<impl FilterStream<H256> + '_, ProviderError> {
+    pub async fn watch_blocks(&self) -> Result<FilterWatcher<'_, P, H256>, ProviderError> {
         let id = self.new_filter(FilterKind::NewBlocks).await?;
-        let fut = move || Box::pin(self.get_filter_changes(id));
-        let filter = FilterWatcher::new(id, fut).interval(self.get_interval());
+        let filter = FilterWatcher::new(id, self).interval(self.get_interval());
         Ok(filter)
     }
 
     /// Streams pending transactions
     pub async fn watch_pending_transactions(
         &self,
-    ) -> Result<impl FilterStream<H256> + '_, ProviderError> {
+    ) -> Result<FilterWatcher<'_, P, H256>, ProviderError> {
         let id = self.new_filter(FilterKind::PendingTransactions).await?;
-        let fut = move || Box::pin(self.get_filter_changes(id));
-        let filter = FilterWatcher::new(id, fut).interval(self.get_interval());
+        let filter = FilterWatcher::new(id, self).interval(self.get_interval());
         Ok(filter)
     }
 

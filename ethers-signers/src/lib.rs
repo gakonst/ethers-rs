@@ -43,7 +43,10 @@ pub use wallet::Wallet;
 #[cfg(feature = "ledger")]
 mod ledger;
 #[cfg(feature = "ledger")]
-pub use ledger::{app::LedgerEthereum as Ledger, types::{LedgerError, DerivationType as HDPath}};
+pub use ledger::{
+    app::LedgerEthereum as Ledger,
+    types::{DerivationType as HDPath, LedgerError},
+};
 
 mod nonce_manager;
 pub(crate) use nonce_manager::NonceManager;
