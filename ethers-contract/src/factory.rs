@@ -124,7 +124,7 @@ impl<M: Middleware> ContractFactory<M> {
     /// transaction.
     pub fn new(abi: Abi, bytecode: Bytes, client: Arc<M>) -> Self {
         Self {
-            client: client.into(),
+            client,
             abi,
             bytecode,
         }

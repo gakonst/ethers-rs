@@ -6,7 +6,6 @@ use std::{convert::TryFrom, time::Duration};
 mod eth_tests {
     use super::*;
     use ethers::{
-        providers::JsonRpcClient,
         types::{BlockId, TransactionRequest, H256},
         utils::{parse_ether, Ganache},
     };

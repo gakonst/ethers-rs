@@ -574,7 +574,12 @@ impl TryFrom<&str> for Provider<HttpProvider> {
     type Error = ParseError;
 
     fn try_from(src: &str) -> Result<Self, Self::Error> {
-        Ok(Provider(HttpProvider::new(Url::parse(src)?), None, None, None))
+        Ok(Provider(
+            HttpProvider::new(Url::parse(src)?),
+            None,
+            None,
+            None,
+        ))
     }
 }
 

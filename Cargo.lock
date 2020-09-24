@@ -538,6 +538,7 @@ name = "ethers-middleware"
 version = "0.1.3"
 dependencies = [
  "async-trait",
+ "ethers",
  "ethers-core",
  "ethers-providers",
  "ethers-signers",
@@ -582,6 +583,7 @@ version = "0.1.3"
 dependencies = [
  "async-trait",
  "coins-ledger",
+ "ethers",
  "ethers-core",
  "futures-util",
  "rustc-hex",
