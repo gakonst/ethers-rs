@@ -226,10 +226,14 @@ pub trait Middleware: Sync + Send + Debug {
         id: T,
     ) -> Result<bool, Self::Error>;
 
-    async fn watch<'a>(&'a self, filter: &Filter)
-        -> Result<FilterWatcher<'a, Self::Provider, Log>, Self::Error>;
+    async fn watch<'a>(
+        &'a self,
+        filter: &Filter,
+    ) -> Result<FilterWatcher<'a, Self::Provider, Log>, Self::Error>;
 
-    async fn watch_pending_transactions(&self) -> Result<FilterWatcher<'_, Self::Provider, H256>, Self::Error>;
+    async fn watch_pending_transactions(
+        &self,
+    ) -> Result<FilterWatcher<'_, Self::Provider, H256>, Self::Error>;
 
     async fn get_filter_changes<T, R>(&self, id: T) -> Result<Vec<R>, Self::Error>
     where
@@ -250,4 +254,6 @@ pub trait Middleware: Sync + Send + Debug {
         location: H256,
         block: Option<BlockNumber>,
     ) -> Result<H256, Self::Error>;
+
+    fn pending_transaction(&self, tx_hash: TxHash) -> PendingTransaction<'_, Self::Provider>;
 }

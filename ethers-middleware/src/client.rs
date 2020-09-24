@@ -3,7 +3,7 @@ use ethers_signers::Signer;
 use ethers_core::types::{
     Address, BlockNumber, Bytes, NameOrAddress, Signature, TransactionRequest, TxHash, U256,
 };
-use ethers_providers::Middleware;
+use ethers_providers::{Middleware, PendingTransaction};
 
 use futures_util::{future::ok, join};
 use std::future::Future;
@@ -423,6 +423,10 @@ where
             .get_storage_at(from, location, block)
             .await
             .map_err(ClientError::MiddlewareError)
+    }
+
+    fn pending_transaction(&self, tx_hash: TxHash) -> PendingTransaction<'_, Self::Provider> {
+        self.inner.pending_transaction(tx_hash)
     }
 }
 

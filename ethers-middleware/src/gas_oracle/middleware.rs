@@ -1,6 +1,6 @@
 use super::{GasOracle, GasOracleError};
 use ethers_core::types::*;
-use ethers_providers::{FilterKind, FilterWatcher, Middleware};
+use ethers_providers::{FilterKind, FilterWatcher, Middleware, PendingTransaction};
 
 use async_trait::async_trait;
 use serde::Deserialize;
@@ -276,5 +276,9 @@ where
             .get_storage_at(from, location, block)
             .await
             .map_err(MiddlewareError::MiddlewareError)
+    }
+
+    fn pending_transaction(&self, tx_hash: TxHash) -> PendingTransaction<'_, Self::Provider> {
+        self.inner.pending_transaction(tx_hash)
     }
 }

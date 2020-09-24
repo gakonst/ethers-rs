@@ -476,6 +476,12 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.query_resolver(ParamType::String, &ens_name, ens::NAME_SELECTOR)
             .await
     }
+
+    /// Helper which creates a pending transaction object from a transaction hash
+    /// using the provider's polling interval
+    fn pending_transaction(&self, tx_hash: TxHash) -> PendingTransaction<'_, P> {
+        PendingTransaction::new(tx_hash, self).interval(self.get_interval())
+    }
 }
 
 impl<P: JsonRpcClient> Provider<P> {
@@ -536,12 +542,6 @@ impl<P: JsonRpcClient> Provider<P> {
     /// and pending transactions (default: 7 seconds)
     pub fn get_interval(&self) -> Duration {
         self.2.unwrap_or(DEFAULT_POLL_INTERVAL)
-    }
-
-    /// Helper which creates a pending transaction object from a transaction hash
-    /// using the provider's polling interval
-    pub fn pending_transaction(&self, tx_hash: TxHash) -> PendingTransaction<'_, P> {
-        PendingTransaction::new(tx_hash, self).interval(self.get_interval())
     }
 }
 

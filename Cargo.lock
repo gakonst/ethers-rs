@@ -472,7 +472,6 @@ dependencies = [
  "ethers-contract-derive",
  "ethers-core",
  "ethers-providers",
- "ethers-signers",
  "futures",
  "once_cell",
  "rustc-hex",

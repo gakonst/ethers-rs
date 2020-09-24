@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use ethers_core::types::*;
-use ethers_providers::{FilterKind, FilterWatcher, Middleware};
+use ethers_providers::{FilterKind, FilterWatcher, Middleware, PendingTransaction};
 use serde::Deserialize;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
@@ -240,5 +240,9 @@ where
         block: Option<BlockNumber>,
     ) -> Result<H256, Self::Error> {
         self.inner.get_storage_at(from, location, block).await
+    }
+
+    fn pending_transaction(&self, tx_hash: TxHash) -> PendingTransaction<'_, Self::Provider> {
+        self.inner.pending_transaction(tx_hash)
     }
 }

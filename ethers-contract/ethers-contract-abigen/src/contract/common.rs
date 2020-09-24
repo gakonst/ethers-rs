@@ -19,8 +19,7 @@ pub(crate) fn imports(name: &str) -> TokenStream {
                 types::*, // import all the types so that we can codegen for everything
             },
             contract::{Contract, builders::{ContractCall, Event}, Lazy},
-            signers::{Client, Signer},
-            providers::JsonRpcClient,
+            providers::Middleware,
         };
     }
 }
@@ -36,17 +35,17 @@ pub(crate) fn struct_declaration(cx: &Context, abi_name: &proc_macro2::Ident) ->
 
         // Struct declaration
         #[derive(Clone)]
-        pub struct #name<P, S>(Contract<P, S>);
+        pub struct #name<M>(Contract<M>);
 
 
         // Deref to the inner contract in order to access more specific functions functions
-        impl<P, S> std::ops::Deref for #name<P, S> {
-            type Target = Contract<P, S>;
+        impl<M> std::ops::Deref for #name<M> {
+            type Target = Contract<M>;
 
             fn deref(&self) -> &Self::Target { &self.0 }
         }
 
-        impl<P: JsonRpcClient, S: Signer> std::fmt::Debug for #name<P, S> {
+        impl<M: Middleware> std::fmt::Debug for #name<M> {
             fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
                 f.debug_tuple(stringify!(#name))
                     .field(&self.address())

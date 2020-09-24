@@ -2,8 +2,7 @@ use ethers_core::{
     abi::{Detokenize, Function, Token},
     types::{Address, BlockNumber, NameOrAddress, TxHash, U256},
 };
-use ethers_providers::JsonRpcClient;
-use ethers_signers::{Client, Signer};
+use ethers_providers::{JsonRpcClient, Middleware};
 
 use std::{collections::HashMap, str::FromStr, sync::Arc};
 
@@ -132,10 +131,10 @@ pub static ADDRESS_BOOK: Lazy<HashMap<U256, Address>> = Lazy::new(|| {
 /// [`block`]: method@crate::Multicall::block
 /// [`add_call`]: methond@crate::Multicall::add_call
 #[derive(Clone)]
-pub struct Multicall<P, S> {
+pub struct Multicall<M> {
     calls: Vec<Call>,
     block: Option<BlockNumber>,
-    contract: MulticallContract<P, S>,
+    contract: MulticallContract<M>,
 }
 
 #[derive(Clone)]
@@ -147,11 +146,7 @@ pub struct Call {
     function: Function,
 }
 
-impl<P, S> Multicall<P, S>
-where
-    P: JsonRpcClient,
-    S: Signer,
-{
+impl<M: Middleware> Multicall<M> {
     /// Creates a new Multicall instance from the provided client. If provided with an `address`,
     /// it instantiates the Multicall contract with that address. Otherwise it fetches the address
     /// from the address book.
@@ -159,10 +154,10 @@ where
     /// # Panics
     /// If a `None` address is provided, and the provided client also does not belong to one of
     /// the supported network IDs (mainnet, kovan, rinkeby and goerli)
-    pub async fn new<C: Into<Arc<Client<P, S>>>>(
+    pub async fn new<C: Into<Arc<M>>>(
         client: C,
         address: Option<Address>,
-    ) -> Result<Self, ContractError> {
+    ) -> Result<Self, ContractError<M>> {
         let client = client.into();
 
         // Fetch chain id and the corresponding address of Multicall contract
@@ -171,7 +166,10 @@ where
         let address: Address = match address {
             Some(addr) => addr,
             None => {
-                let chain_id = client.get_chainid().await?;
+                let chain_id = client
+                    .get_chainid()
+                    .await
+                    .map_err(ContractError::MiddlewareError)?;
                 match ADDRESS_BOOK.get(&chain_id) {
                     Some(addr) => *addr,
                     None => panic!(
@@ -203,7 +201,7 @@ where
     ///
     /// If more than the maximum number of supported calls are added. The maximum
     /// limits is constrained due to tokenization/detokenization support for tuples
-    pub fn add_call<D: Detokenize>(&mut self, call: ContractCall<P, S, D>) -> &mut Self {
+    pub fn add_call<D: Detokenize>(&mut self, call: ContractCall<M, D>) -> &mut Self {
         if self.calls.len() >= 16 {
             panic!("Cannot support more than {} calls", 16);
         }
@@ -278,7 +276,7 @@ where
 
     /// Queries the Ethereum blockchain via an `eth_call`, but via the Multicall contract.
     ///
-    /// It returns a [`ContractError`] if there is any error in the RPC call or while
+    /// It returns a [`ContractError<M>`] if there is any error in the RPC call or while
     /// detokenizing the tokens back to the expected return type. The return type must be
     /// annonated while calling this method.
     ///
@@ -303,8 +301,8 @@ where
     ///
     /// Note: this method _does not_ send a transaction from your account
     ///
-    /// [`ContractError`]: crate::ContractError
-    pub async fn call<D: Detokenize>(&self) -> Result<D, ContractError> {
+    /// [`ContractError<M>`]: crate::ContractError<M>
+    pub async fn call<D: Detokenize>(&self) -> Result<D, ContractError<M>> {
         let contract_call = self.as_contract_call();
 
         // Fetch response from the Multicall contract
@@ -324,7 +322,7 @@ where
                     _ => Token::Tuple(tokens),
                 })
             })
-            .collect::<Result<Vec<Token>, ContractError>>()?;
+            .collect::<Result<Vec<Token>, ContractError<M>>>()?;
 
         // Form tokens that represent tuples
         let tokens = vec![Token::Tuple(tokens)];
@@ -352,7 +350,7 @@ where
     ///
     /// Note: this method sends a transaction from your account, and will return an error
     /// if you do not have sufficient funds to pay for gas
-    pub async fn send(&self) -> Result<TxHash, ContractError> {
+    pub async fn send(&self) -> Result<TxHash, ContractError<M>> {
         let contract_call = self.as_contract_call();
 
         // Broadcast transaction and return the transaction hash
@@ -361,7 +359,7 @@ where
         Ok(tx_hash)
     }
 
-    fn as_contract_call(&self) -> ContractCall<P, S, (U256, Vec<Vec<u8>>)> {
+    fn as_contract_call(&self) -> ContractCall<M, (U256, Vec<Vec<u8>>)> {
         // Map the Multicall struct into appropriate types for `aggregate` function
         let calls: Vec<(Address, Vec<u8>)> = self
             .calls
