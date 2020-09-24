@@ -2,6 +2,7 @@
 
 members = [
     "./ethers",
+    "./ethers-cli",
     "./ethers-contract",
     "./ethers-providers",
     "./ethers-signers",
