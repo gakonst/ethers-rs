@@ -145,8 +145,9 @@ pub trait JsonRpcClient: Debug + Send + Sync {
 use ethers_core::types::*;
 
 #[async_trait(?Send)]
-pub trait Middleware<P>: Sync + Send + Debug {
+pub trait Middleware: Sync + Send + Debug {
     type Error: Display + Debug;
+    type Provider: JsonRpcClient;
 
     async fn get_block_number(&self) -> Result<U64, Self::Error>;
 
@@ -226,16 +227,16 @@ pub trait Middleware<P>: Sync + Send + Debug {
     ) -> Result<bool, Self::Error>;
 
     async fn watch<'a>(&'a self, filter: &Filter)
-        -> Result<FilterWatcher<'a, P, Log>, Self::Error>;
+        -> Result<FilterWatcher<'a, Self::Provider, Log>, Self::Error>;
 
-    async fn watch_pending_transactions(&self) -> Result<FilterWatcher<'_, P, H256>, Self::Error>;
+    async fn watch_pending_transactions(&self) -> Result<FilterWatcher<'_, Self::Provider, H256>, Self::Error>;
 
     async fn get_filter_changes<T, R>(&self, id: T) -> Result<Vec<R>, Self::Error>
     where
         T: Into<U256> + Send + Sync,
         R: for<'a> Deserialize<'a> + Send + Sync;
 
-    async fn watch_blocks(&self) -> Result<FilterWatcher<'_, P, H256>, Self::Error>;
+    async fn watch_blocks(&self) -> Result<FilterWatcher<'_, Self::Provider, H256>, Self::Error>;
 
     async fn get_code<T: Into<NameOrAddress> + Send + Sync>(
         &self,

@@ -1,22 +1,20 @@
 use async_trait::async_trait;
 use ethers_core::types::*;
-use ethers_providers::{FilterKind, FilterWatcher, JsonRpcClient, Middleware};
+use ethers_providers::{FilterKind, FilterWatcher, Middleware};
 use serde::Deserialize;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
 #[derive(Debug)]
-pub struct NonceManager<M, P> {
+pub struct NonceManager<M> {
     pub inner: M,
     pub initialized: AtomicBool,
     pub nonce: AtomicU64,
     pub address: Address,
-    provider_type: std::marker::PhantomData<P>,
 }
 
-impl<M, P> NonceManager<M, P>
+impl<M> NonceManager<M>
 where
-    M: Middleware<P>,
-    P: JsonRpcClient,
+    M: Middleware,
 {
     /// Instantiates the nonce manager with a 0 nonce.
     pub fn new(inner: M, address: Address) -> Self {
@@ -25,7 +23,6 @@ where
             nonce: 0.into(),
             inner,
             address,
-            provider_type: std::marker::PhantomData,
         }
     }
 
@@ -54,12 +51,12 @@ where
 }
 
 #[async_trait(?Send)]
-impl<M, P> Middleware<P> for NonceManager<M, P>
+impl<M> Middleware for NonceManager<M>
 where
-    M: Middleware<P>,
-    P: JsonRpcClient,
+    M: Middleware,
 {
     type Error = M::Error;
+    type Provider = M::Provider;
 
     /// Signs and broadcasts the transaction. The optional parameter `block` can be passed so that
     /// gas cost and nonce calculations take it into account. For simple transactions this can be
@@ -206,11 +203,13 @@ where
     async fn watch<'a>(
         &'a self,
         filter: &Filter,
-    ) -> Result<FilterWatcher<'a, P, Log>, Self::Error> {
+    ) -> Result<FilterWatcher<'a, Self::Provider, Log>, Self::Error> {
         self.inner.watch(filter).await
     }
 
-    async fn watch_pending_transactions(&self) -> Result<FilterWatcher<'_, P, H256>, Self::Error> {
+    async fn watch_pending_transactions(
+        &self,
+    ) -> Result<FilterWatcher<'_, Self::Provider, H256>, Self::Error> {
         self.inner.watch_pending_transactions().await
     }
 
@@ -222,7 +221,7 @@ where
         self.inner.get_filter_changes(id).await
     }
 
-    async fn watch_blocks(&self) -> Result<FilterWatcher<'_, P, H256>, Self::Error> {
+    async fn watch_blocks(&self) -> Result<FilterWatcher<'_, Self::Provider, H256>, Self::Error> {
         self.inner.watch_blocks().await
     }
 

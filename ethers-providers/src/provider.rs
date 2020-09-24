@@ -104,8 +104,9 @@ impl<P: JsonRpcClient> Provider<P> {
 }
 
 #[async_trait(?Send)]
-impl<P: JsonRpcClient> Middleware<P> for Provider<P> {
+impl<P: JsonRpcClient> Middleware for Provider<P> {
     type Error = ProviderError;
+    type Provider = P;
 
     ////// Blockchain Status
     //

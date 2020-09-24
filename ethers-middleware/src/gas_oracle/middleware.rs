@@ -1,33 +1,29 @@
 use super::{GasOracle, GasOracleError};
 use ethers_core::types::*;
-use ethers_providers::{FilterKind, FilterWatcher, JsonRpcClient, Middleware};
+use ethers_providers::{FilterKind, FilterWatcher, Middleware};
 
 use async_trait::async_trait;
 use serde::Deserialize;
 use thiserror::Error;
 
 #[derive(Debug)]
-pub struct GasOracleMiddleware<P, M, G> {
+pub struct GasOracleMiddleware<M, G> {
     inner: M,
     gas_oracle: G,
-    provider_type: std::marker::PhantomData<P>,
 }
 
-impl<M, P, G> GasOracleMiddleware<P, M, G>
+impl<M, G> GasOracleMiddleware<M, G>
 where
-    M: Middleware<P>,
-    P: JsonRpcClient,
+    M: Middleware,
     G: GasOracle,
 {
     pub fn new(inner: M, gas_oracle: G) -> Self {
-        Self {
-            inner, gas_oracle, provider_type: std::marker::PhantomData,
-        }
+        Self { inner, gas_oracle }
     }
 }
 
 #[derive(Error, Debug)]
-pub enum MiddlewareError<P: JsonRpcClient, M: Middleware<P>> {
+pub enum MiddlewareError<M: Middleware> {
     #[error(transparent)]
     GasOracleError(#[from] GasOracleError),
 
@@ -36,18 +32,17 @@ pub enum MiddlewareError<P: JsonRpcClient, M: Middleware<P>> {
 }
 
 #[async_trait(?Send)]
-impl<M, P, G> Middleware<P> for GasOracleMiddleware<P, M, G>
+impl<M, G> Middleware for GasOracleMiddleware<M, G>
 where
-    M: Middleware<P>,
-    P: JsonRpcClient,
+    M: Middleware,
     G: GasOracle,
 {
-    type Error = MiddlewareError<P, M>;
+    type Error = MiddlewareError<M>;
+    type Provider = M::Provider;
 
     // OVERRIDEN METHODS
 
     async fn get_gas_price(&self) -> Result<U256, Self::Error> {
-        dbg!("geting gas price");
         Ok(self.gas_oracle.fetch().await?)
     }
 
@@ -226,14 +221,16 @@ where
     async fn watch<'a>(
         &'a self,
         filter: &Filter,
-    ) -> Result<FilterWatcher<'a, P, Log>, Self::Error> {
+    ) -> Result<FilterWatcher<'a, Self::Provider, Log>, Self::Error> {
         self.inner
             .watch(filter)
             .await
             .map_err(MiddlewareError::MiddlewareError)
     }
 
-    async fn watch_pending_transactions(&self) -> Result<FilterWatcher<'_, P, H256>, Self::Error> {
+    async fn watch_pending_transactions(
+        &self,
+    ) -> Result<FilterWatcher<'_, Self::Provider, H256>, Self::Error> {
         self.inner
             .watch_pending_transactions()
             .await
@@ -251,7 +248,7 @@ where
             .map_err(MiddlewareError::MiddlewareError)
     }
 
-    async fn watch_blocks(&self) -> Result<FilterWatcher<'_, P, H256>, Self::Error> {
+    async fn watch_blocks(&self) -> Result<FilterWatcher<'_, Self::Provider, H256>, Self::Error> {
         self.inner
             .watch_blocks()
             .await

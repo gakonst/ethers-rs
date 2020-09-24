@@ -3,7 +3,7 @@ use ethers_signers::Signer;
 use ethers_core::types::{
     Address, BlockNumber, Bytes, NameOrAddress, Signature, TransactionRequest, TxHash, U256,
 };
-use ethers_providers::{JsonRpcClient, Middleware};
+use ethers_providers::Middleware;
 
 use futures_util::{future::ok, join};
 use std::future::Future;
@@ -67,16 +67,15 @@ use thiserror::Error;
 /// ```
 ///
 /// [`Provider`]: ethers_providers::Provider
-pub struct Client<M: Middleware<P>, P, S> {
+pub struct Client<M, S> {
     pub(crate) inner: M,
     pub(crate) signer: S,
     pub(crate) address: Address,
-    middleware_type: std::marker::PhantomData<P>,
 }
 
 #[derive(Error, Debug)]
 /// Error thrown when the client interacts with the blockchain
-pub enum ClientError<P: JsonRpcClient, M: Middleware<P>> {
+pub enum ClientError<M: Middleware> {
     #[error(transparent)]
     /// Thrown when the internal call to the signer fails
     SignerError(#[from] Box<dyn std::error::Error + Send + Sync>),
@@ -86,28 +85,23 @@ pub enum ClientError<P: JsonRpcClient, M: Middleware<P>> {
 }
 
 // Helper functions for locally signing transactions
-impl<M, P, S> Client<M, P, S>
+impl<M, S> Client<M, S>
 where
-    M: Middleware<P>,
-    P: JsonRpcClient,
+    M: Middleware,
     S: Signer,
 {
     /// Creates a new client from the provider and signer.
-    pub async fn new(inner: M, signer: S) -> Result<Self, ClientError<P, M>> {
+    pub async fn new(inner: M, signer: S) -> Result<Self, ClientError<M>> {
         // TODO: figure out error
         let address = signer.address().await.unwrap();
         Ok(Client {
             inner,
             signer,
             address,
-            middleware_type: std::marker::PhantomData,
         })
     }
 
-    async fn submit_transaction(
-        &self,
-        tx: TransactionRequest,
-    ) -> Result<TxHash, ClientError<P, M>> {
+    async fn submit_transaction(&self, tx: TransactionRequest) -> Result<TxHash, ClientError<M>> {
         // TODO: Figure out error handling
         let signed_tx = self.signer.sign_transaction(tx).await.unwrap();
         self.inner
@@ -120,7 +114,7 @@ where
         &self,
         tx: &mut TransactionRequest,
         block: Option<BlockNumber>,
-    ) -> Result<(), ClientError<P, M>> {
+    ) -> Result<(), ClientError<M>> {
         // set the `from` field
         if tx.from.is_none() {
             tx.from = Some(self.address());
@@ -167,13 +161,13 @@ use ethers_providers::{FilterKind, FilterWatcher};
 use serde::Deserialize;
 
 #[async_trait(?Send)]
-impl<M, P, S> Middleware<P> for Client<M, P, S>
+impl<M, S> Middleware for Client<M, S>
 where
-    M: Middleware<P>,
-    P: JsonRpcClient,
+    M: Middleware,
     S: Signer,
 {
-    type Error = ClientError<P, M>;
+    type Error = ClientError<M>;
+    type Provider = M::Provider;
 
     /// Signs and broadcasts the transaction. The optional parameter `block` can be passed so that
     /// gas cost and nonce calculations take it into account. For simple transactions this can be
@@ -182,7 +176,7 @@ where
         &self,
         mut tx: TransactionRequest,
         block: Option<BlockNumber>,
-    ) -> Result<TxHash, ClientError<P, M>> {
+    ) -> Result<TxHash, ClientError<M>> {
         if let Some(ref to) = tx.to {
             if let NameOrAddress::Name(ens_name) = to {
                 let addr = self
@@ -374,14 +368,16 @@ where
     async fn watch<'a>(
         &'a self,
         filter: &Filter,
-    ) -> Result<FilterWatcher<'a, P, Log>, Self::Error> {
+    ) -> Result<FilterWatcher<'a, Self::Provider, Log>, Self::Error> {
         self.inner
             .watch(filter)
             .await
             .map_err(ClientError::MiddlewareError)
     }
 
-    async fn watch_pending_transactions(&self) -> Result<FilterWatcher<'_, P, H256>, Self::Error> {
+    async fn watch_pending_transactions(
+        &self,
+    ) -> Result<FilterWatcher<'_, Self::Provider, H256>, Self::Error> {
         self.inner
             .watch_pending_transactions()
             .await
@@ -399,7 +395,7 @@ where
             .map_err(ClientError::MiddlewareError)
     }
 
-    async fn watch_blocks(&self) -> Result<FilterWatcher<'_, P, H256>, Self::Error> {
+    async fn watch_blocks(&self) -> Result<FilterWatcher<'_, Self::Provider, H256>, Self::Error> {
         self.inner
             .watch_blocks()
             .await

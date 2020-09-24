@@ -1,7 +1,10 @@
-use ethers_providers::{Provider, Http, Middleware};
-use ethers_signers::Wallet;
-use ethers_middleware::{NonceManager, Client, GasOracleMiddleware, gas_oracle::{GasNow, GasCategory}};
 use ethers_core::{types::TransactionRequest, utils::Ganache};
+use ethers_middleware::{
+    gas_oracle::{GasCategory, GasNow},
+    Client, GasOracleMiddleware, NonceManager,
+};
+use ethers_providers::{Http, Middleware, Provider};
+use ethers_signers::Wallet;
 use std::convert::TryFrom;
 
 #[tokio::test]
@@ -25,17 +28,23 @@ async fn can_stack_middlewares() {
     // the nonce and the signer does not make any eth_getTransaction count calls
     let provider = NonceManager::new(provider, address);
 
-
     let tx = TransactionRequest::new();
-    let mut tx_hash= None;
+    let mut tx_hash = None;
     for _ in 0..10 {
-        tx_hash = Some(provider.send_transaction(
-            tx.clone(),
-            None
-        ).await.unwrap());
-        dbg!(provider.get_transaction(tx_hash.unwrap()).await.unwrap().unwrap().gas_price);
+        tx_hash = Some(provider.send_transaction(tx.clone(), None).await.unwrap());
+        dbg!(
+            provider
+                .get_transaction(tx_hash.unwrap())
+                .await
+                .unwrap()
+                .unwrap()
+                .gas_price
+        );
     }
 
-    let receipt = provider_clone.pending_transaction(tx_hash.unwrap()).await.unwrap();
+    let receipt = provider_clone
+        .pending_transaction(tx_hash.unwrap())
+        .await
+        .unwrap();
     dbg!(receipt);
 }
