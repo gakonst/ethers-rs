@@ -1,6 +1,35 @@
+use ethers_core::{types::*, utils::Ganache};
 use ethers_middleware::gas_oracle::{
-    EthGasStation, Etherchain, Etherscan, GasCategory, GasNow, GasOracle,
+    EthGasStation, Etherchain, Etherscan, GasCategory, GasNow, GasOracle, GasOracleMiddleware,
 };
+use ethers_providers::{Http, Middleware, Provider};
+use std::convert::TryFrom;
+
+#[tokio::test]
+async fn using_gas_oracle() {
+    let ganache = Ganache::new().spawn();
+
+    let from = Address::from(ganache.keys()[0].clone());
+
+    // connect to the network
+    let provider = Provider::<Http>::try_from(ganache.endpoint()).unwrap();
+
+    // assign a gas oracle to use
+    let gas_oracle = Etherchain::new().category(GasCategory::Fastest);
+    let expected_gas_price = gas_oracle.fetch().await.unwrap();
+
+    let provider = GasOracleMiddleware::new(provider, gas_oracle);
+
+    // broadcast a transaction
+    let tx = TransactionRequest::new()
+        .from(from)
+        .to(Address::zero())
+        .value(10000);
+    let tx_hash = provider.send_transaction(tx, None).await.unwrap();
+
+    let tx = provider.get_transaction(tx_hash).await.unwrap().unwrap();
+    assert_eq!(tx.gas_price, expected_gas_price);
+}
 
 #[tokio::test]
 async fn eth_gas_station() {

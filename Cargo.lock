@@ -534,25 +534,17 @@ dependencies = [
 name = "ethers-middleware"
 version = "0.1.3"
 dependencies = [
- "async-std",
- "async-tls",
  "async-trait",
- "async-tungstenite",
  "ethers-core",
  "ethers-providers",
  "ethers-signers",
- "futures-core",
- "futures-timer",
  "futures-util",
- "pin-project",
  "reqwest",
  "rustc-hex",
  "serde",
  "serde-aux",
- "serde_json",
  "thiserror",
  "tokio",
- "tokio-native-tls",
  "url",
 ]
 

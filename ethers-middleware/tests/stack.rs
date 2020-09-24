@@ -24,7 +24,7 @@ async fn can_stack_middlewares() {
     // The signing middleware signs txs
     let provider = Client::new(provider, signer).await.unwrap();
 
-    // The nonce manager middleware MUST be above the signign middleware so that it overrides
+    // The nonce manager middleware MUST be above the signing middleware so that it overrides
     // the nonce and the signer does not make any eth_getTransaction count calls
     let provider = NonceManager::new(provider, address);
 
@@ -46,5 +46,6 @@ async fn can_stack_middlewares() {
         .pending_transaction(tx_hash.unwrap())
         .await
         .unwrap();
+
     dbg!(receipt);
 }

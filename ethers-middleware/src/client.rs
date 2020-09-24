@@ -1,13 +1,16 @@
 use ethers_signers::Signer;
 
+use ethers_core::types::*;
 use ethers_core::types::{
     Address, BlockNumber, Bytes, NameOrAddress, Signature, TransactionRequest, TxHash, U256,
 };
+use ethers_providers::{FilterKind, FilterWatcher};
 use ethers_providers::{Middleware, PendingTransaction};
 
+use async_trait::async_trait;
 use futures_util::{future::ok, join};
+use serde::Deserialize;
 use std::future::Future;
-
 use thiserror::Error;
 
 #[derive(Debug)]
@@ -75,10 +78,10 @@ pub struct Client<M, S> {
 
 #[derive(Error, Debug)]
 /// Error thrown when the client interacts with the blockchain
-pub enum ClientError<M: Middleware> {
-    #[error(transparent)]
+pub enum ClientError<M: Middleware, S: Signer> {
+    #[error("{0}")]
     /// Thrown when the internal call to the signer fails
-    SignerError(#[from] Box<dyn std::error::Error + Send + Sync>),
+    SignerError(S::Error),
 
     #[error("{0}")]
     MiddlewareError(M::Error),
@@ -91,9 +94,8 @@ where
     S: Signer,
 {
     /// Creates a new client from the provider and signer.
-    pub async fn new(inner: M, signer: S) -> Result<Self, ClientError<M>> {
-        // TODO: figure out error
-        let address = signer.address().await.unwrap();
+    pub async fn new(inner: M, signer: S) -> Result<Self, ClientError<M, S>> {
+        let address = signer.address().await.map_err(ClientError::SignerError)?;
         Ok(Client {
             inner,
             signer,
@@ -101,9 +103,15 @@ where
         })
     }
 
-    async fn submit_transaction(&self, tx: TransactionRequest) -> Result<TxHash, ClientError<M>> {
-        // TODO: Figure out error handling
-        let signed_tx = self.signer.sign_transaction(tx).await.unwrap();
+    async fn submit_transaction(
+        &self,
+        tx: TransactionRequest,
+    ) -> Result<TxHash, ClientError<M, S>> {
+        let signed_tx = self
+            .signer
+            .sign_transaction(tx)
+            .await
+            .map_err(ClientError::SignerError)?;
         self.inner
             .send_raw_transaction(&signed_tx)
             .await
@@ -114,7 +122,7 @@ where
         &self,
         tx: &mut TransactionRequest,
         block: Option<BlockNumber>,
-    ) -> Result<(), ClientError<M>> {
+    ) -> Result<(), ClientError<M, S>> {
         // set the `from` field
         if tx.from.is_none() {
             tx.from = Some(self.address());
@@ -145,20 +153,7 @@ where
     pub fn signer(&self) -> &S {
         &self.signer
     }
-
-    /// Sets the address which will be used for interacting with the blockchain.
-    /// Useful if no signer is set and you want to specify a default sender for
-    /// your transactions or if you have changed the signer manually.
-    pub fn with_sender<T: Into<Address>>(mut self, address: T) -> Self {
-        self.address = address.into();
-        self
-    }
 }
-
-use async_trait::async_trait;
-use ethers_core::types::*;
-use ethers_providers::{FilterKind, FilterWatcher};
-use serde::Deserialize;
 
 #[async_trait(?Send)]
 impl<M, S> Middleware for Client<M, S>
@@ -166,7 +161,7 @@ where
     M: Middleware,
     S: Signer,
 {
-    type Error = ClientError<M>;
+    type Error = ClientError<M, S>;
     type Provider = M::Provider;
 
     /// Signs and broadcasts the transaction. The optional parameter `block` can be passed so that
@@ -176,7 +171,7 @@ where
         &self,
         mut tx: TransactionRequest,
         block: Option<BlockNumber>,
-    ) -> Result<TxHash, ClientError<M>> {
+    ) -> Result<TxHash, Self::Error> {
         if let Some(ref to) = tx.to {
             if let NameOrAddress::Name(ens_name) = to {
                 let addr = self
@@ -216,8 +211,6 @@ where
             .await
             .map_err(ClientError::MiddlewareError)
     }
-
-    // DELEGATED METHODS
 
     async fn get_block_number(&self) -> Result<U64, Self::Error> {
         self.inner

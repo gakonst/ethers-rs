@@ -57,9 +57,12 @@ where
 
     async fn send_transaction(
         &self,
-        tx: TransactionRequest,
+        mut tx: TransactionRequest,
         block: Option<BlockNumber>,
     ) -> Result<TxHash, Self::Error> {
+        if tx.gas_price.is_none() {
+            tx.gas_price = Some(self.get_gas_price().await?);
+        }
         self.inner
             .send_transaction(tx, block)
             .await
