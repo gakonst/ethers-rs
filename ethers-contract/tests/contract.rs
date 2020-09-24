@@ -362,7 +362,7 @@ mod celo_tests {
             .parse::<Wallet>()
             .unwrap();
 
-        let client = Client::new(provider, wallet).await.unwrap();
+        let client = Client::new(provider, wallet);
         let client = Arc::new(client);
 
         let factory = ContractFactory::new(abi, bytecode, client);

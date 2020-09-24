@@ -1,6 +1,6 @@
 use ethers_providers::{Http, Middleware, Provider};
 
-use ethers_core::{types::TransactionRequest, utils::Ganache};
+use ethers_core::types::TransactionRequest;
 use ethers_middleware::Client;
 use ethers_signers::Wallet;
 use std::{convert::TryFrom, time::Duration};
@@ -8,6 +8,8 @@ use std::{convert::TryFrom, time::Duration};
 #[tokio::test]
 #[cfg(not(feature = "celo"))]
 async fn send_eth() {
+    use ethers_core::utils::Ganache;
+
     let ganache = Ganache::new().spawn();
 
     // this private key belongs to the above mnemonic
@@ -49,10 +51,10 @@ async fn test_send_transaction() {
 
     // Funded with https://celo.org/developers/faucet
     // Please do not drain this account :)
-    let client = "d652abb81e8c686edba621a895531b1f291289b63b5ef09a94f686a5ecdd5db1"
+    let wallet = "d652abb81e8c686edba621a895531b1f291289b63b5ef09a94f686a5ecdd5db1"
         .parse::<Wallet>()
-        .unwrap()
-        .connect(provider);
+        .unwrap();
+    let client = Client::new(provider, wallet);
 
     let balance_before = client.get_balance(client.address(), None).await.unwrap();
     let tx = TransactionRequest::pay(client.address(), 100);

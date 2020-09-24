@@ -204,12 +204,13 @@ impl LedgerEthereum {
 #[cfg(all(test, feature = "ledger-tests"))]
 mod tests {
     use super::*;
-    use crate::{Client, Signer};
+    use crate::Signer;
     use ethers::prelude::*;
     use rustc_hex::FromHex;
     use std::str::FromStr;
 
     #[tokio::test]
+    #[ignore]
     // Replace this with your ETH addresses.
     async fn test_get_address() {
         // Instantiate it with the default ledger derivation path
@@ -230,6 +231,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore]
     async fn test_sign_tx() {
         let ledger = LedgerEthereum::new(DerivationType::LedgerLive(0), None)
             .await
@@ -246,46 +248,11 @@ mod tests {
             .nonce(5)
             .data(data)
             .value(ethers_core::utils::parse_ether(100).unwrap());
-        let tx = ledger.sign_transaction(tx_req.clone()).await.unwrap();
+        let tx = ledger.sign_transaction(&tx_req).await.unwrap();
     }
 
     #[tokio::test]
-    async fn test_send_transaction() {
-        let ledger = LedgerEthereum::new(DerivationType::Legacy(0), None)
-            .await
-            .unwrap();
-        let addr = ledger.get_address().await.unwrap();
-        let amt = ethers_core::utils::parse_ether(10).unwrap();
-        let amt_with_gas = amt + U256::from_str("420000000000000").unwrap();
-
-        // fund our account
-        let ganache = ethers_core::utils::Ganache::new().spawn();
-        let provider = Provider::<Http>::try_from(ganache.endpoint()).unwrap();
-        let accounts = provider.get_accounts().await.unwrap();
-        let req = TransactionRequest::new()
-            .from(accounts[0])
-            .to(addr)
-            .value(amt_with_gas);
-        let tx = provider.send_transaction(req).await.unwrap();
-        assert_eq!(
-            provider.get_balance(addr, None).await.unwrap(),
-            amt_with_gas
-        );
-
-        // send a tx and check that it works
-        let client = Client::new(provider, ledger).await.unwrap();
-        let receiver = Address::zero();
-        client
-            .send_transaction(
-                TransactionRequest::new().from(addr).to(receiver).value(amt),
-                None,
-            )
-            .await
-            .unwrap();
-        assert_eq!(client.get_balance(receiver, None).await.unwrap(), amt);
-    }
-
-    #[tokio::test]
+    #[ignore]
     async fn test_version() {
         let ledger = LedgerEthereum::new(DerivationType::LedgerLive(0), None)
             .await
@@ -296,6 +263,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore]
     async fn test_sign_message() {
         let ledger = LedgerEthereum::new(DerivationType::Legacy(0), None)
             .await

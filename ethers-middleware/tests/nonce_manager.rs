@@ -1,12 +1,13 @@
-use ethers_core::types::*;
-use ethers_middleware::{Client, NonceManager};
-use ethers_providers::{Http, Middleware, Provider};
-use ethers_signers::Wallet;
-use std::convert::TryFrom;
-use std::time::Duration;
-
 #[tokio::test]
+#[cfg(not(feature = "celo"))]
 async fn nonce_manager() {
+    use ethers_core::types::*;
+    use ethers_middleware::{Client, NonceManager};
+    use ethers_providers::{Http, Middleware, Provider};
+    use ethers_signers::Wallet;
+    use std::convert::TryFrom;
+    use std::time::Duration;
+
     let provider =
         Provider::<Http>::try_from("https://rinkeby.infura.io/v3/fd8b88b56aa84f6da87b60f5441d6778")
             .unwrap()

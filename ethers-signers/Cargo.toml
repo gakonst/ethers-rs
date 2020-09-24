@@ -32,4 +32,3 @@ serde_json = "1.0.55"
 [features]
 celo = ["ethers-core/celo"]
 ledger = ["coins-ledger", "rustc-hex"]
-ledger-tests=  ["ledger"]

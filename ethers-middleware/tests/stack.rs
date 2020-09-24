@@ -1,14 +1,15 @@
-use ethers_core::{types::TransactionRequest, utils::Ganache};
-use ethers_middleware::{
-    gas_oracle::{GasCategory, GasNow},
-    Client, GasOracleMiddleware, NonceManager,
-};
-use ethers_providers::{Http, Middleware, Provider};
-use ethers_signers::Wallet;
-use std::convert::TryFrom;
-
 #[tokio::test]
+#[cfg(not(feature = "celo"))]
 async fn can_stack_middlewares() {
+    use ethers_core::{types::TransactionRequest, utils::Ganache};
+    use ethers_middleware::{
+        gas_oracle::{GasCategory, GasNow},
+        Client, GasOracleMiddleware, NonceManager,
+    };
+    use ethers_providers::{Http, Middleware, Provider};
+    use ethers_signers::Wallet;
+    use std::convert::TryFrom;
+
     let ganache = Ganache::new().block_time(5u64).spawn();
     let gas_oracle = GasNow::new().category(GasCategory::SafeLow);
     let signer: Wallet = ganache.keys()[0].clone().into();

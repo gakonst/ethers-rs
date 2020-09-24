@@ -35,6 +35,7 @@ celo = [
     "ethers-providers/celo",
     "ethers-signers/celo",
     "ethers-contract/celo",
+    "ethers-middleware/celo",
 ]
 
 core = ["ethers-core"]
