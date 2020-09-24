@@ -1,7 +1,7 @@
 use crate::{
     ens,
     stream::{FilterWatcher, DEFAULT_POLL_INTERVAL},
-    Http as HttpProvider, JsonRpcClient, PendingTransaction,
+    FromErr, Http as HttpProvider, JsonRpcClient, PendingTransaction,
 };
 
 use ethers_core::{
@@ -45,6 +45,12 @@ use std::{convert::TryFrom, fmt::Debug, time::Duration};
 #[derive(Clone, Debug)]
 // TODO: Convert to proper struct
 pub struct Provider<P>(P, Option<Address>, Option<Duration>, Option<Address>);
+
+impl FromErr<ProviderError> for ProviderError {
+    fn from(src: ProviderError) -> Self {
+        src
+    }
+}
 
 #[derive(Debug, Error)]
 /// An error thrown when making a call to the provider
@@ -113,6 +119,11 @@ impl<P: JsonRpcClient> Provider<P> {
 impl<P: JsonRpcClient> Middleware for Provider<P> {
     type Error = ProviderError;
     type Provider = P;
+    type Inner = Self;
+
+    fn inner(&self) -> &Self::Inner {
+        unreachable!("There is no inner provider here")
+    }
 
     ////// Blockchain Status
     //
