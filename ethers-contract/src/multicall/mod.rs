@@ -61,8 +61,7 @@ pub static ADDRESS_BOOK: Lazy<HashMap<U256, Address>> = Lazy::new(|| {
 /// use ethers::{
 ///     abi::Abi,
 ///     contract::{Contract, Multicall},
-///     providers::{Http, Provider},
-///     signers::{Client, Wallet},
+///     providers::{Middleware, Http, Provider},
 ///     types::{Address, H256, U256},
 /// };
 /// use std::{convert::TryFrom, sync::Arc};
@@ -75,13 +74,11 @@ pub static ADDRESS_BOOK: Lazy<HashMap<U256, Address>> = Lazy::new(|| {
 /// let abi: Abi = serde_json::from_str(r#"[{"inputs":[{"internalType":"string","name":"value","type":"string"}],"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"author","type":"address"},{"indexed":true,"internalType":"address","name":"oldAuthor","type":"address"},{"indexed":false,"internalType":"string","name":"oldValue","type":"string"},{"indexed":false,"internalType":"string","name":"newValue","type":"string"}],"name":"ValueChanged","type":"event"},{"inputs":[],"name":"getValue","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"lastSender","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"string","name":"value","type":"string"}],"name":"setValue","outputs":[],"stateMutability":"nonpayable","type":"function"}]"#)?;
 ///
 /// // connect to the network
-/// let provider = Provider::<Http>::try_from("https://kovan.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27")?;
-/// let client = "380eb0f3d505f087e438eca80bc4df9a7faa24f868e69fc0440261a0fc0567dc"
-///     .parse::<Wallet>()?.connect(provider);
+/// let client = Provider::<Http>::try_from("https://kovan.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27")?;
 ///
 /// // create the contract object. This will be used to construct the calls for multicall
 /// let client = Arc::new(client);
-/// let contract = Contract::new(address, abi, Arc::clone(&client));
+/// let contract = Contract::<Provider<Http>>::new(address, abi, Arc::clone(&client));
 ///
 /// // note that these [`ContractCall`]s are futures, and need to be `.await`ed to resolve.
 /// // But we will let `Multicall` to take care of that for us
@@ -113,7 +110,7 @@ pub static ADDRESS_BOOK: Lazy<HashMap<U256, Address>> = Lazy::new(|| {
 /// // `await`ing the `send` method waits for the transaction to be broadcast, which also
 /// // returns the transaction hash
 /// let tx_hash = multicall.send().await?;
-/// let _tx_receipt = client.provider().pending_transaction(tx_hash).await?;
+/// let _tx_receipt = client.pending_transaction(tx_hash).await?;
 ///
 /// // you can also query ETH balances of multiple addresses
 /// let address_1 = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".parse::<Address>()?;
@@ -240,14 +237,12 @@ impl<M: Middleware> Multicall<M> {
     /// # use ethers::prelude::*;
     /// # use std::{sync::Arc, convert::TryFrom};
     /// #
-    /// # let provider = Provider::<Http>::try_from("http://localhost:8545")?;
-    /// # let client = "380eb0f3d505f087e438eca80bc4df9a7faa24f868e69fc0440261a0fc0567dc"
-    /// #     .parse::<Wallet>()?.connect(provider);
+    /// # let client = Provider::<Http>::try_from("http://localhost:8545")?;
     /// # let client = Arc::new(client);
     /// #
     /// # let abi = serde_json::from_str("")?;
     /// # let address = "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee".parse::<Address>()?;
-    /// # let contract = Contract::new(address, abi, client.clone());
+    /// # let contract = Contract::<Provider<Http>>::new(address, abi, client.clone());
     /// #
     /// # let broadcast_1 = contract.method::<_, H256>("setValue", "some value".to_owned())?;
     /// # let broadcast_2 = contract.method::<_, H256>("setValue", "new value".to_owned())?;
@@ -285,9 +280,7 @@ impl<M: Middleware> Multicall<M> {
     /// # use ethers::prelude::*;
     /// # use std::convert::TryFrom;
     /// #
-    /// # let provider = Provider::<Http>::try_from("http://localhost:8545")?;
-    /// # let client = "380eb0f3d505f087e438eca80bc4df9a7faa24f868e69fc0440261a0fc0567dc"
-    /// #     .parse::<Wallet>()?.connect(provider);
+    /// # let client = Provider::<Http>::try_from("http://localhost:8545")?;
     /// #
     /// # let multicall = Multicall::new(client, None).await?;
     /// // If the Solidity function calls has the following return types:
@@ -339,9 +332,7 @@ impl<M: Middleware> Multicall<M> {
     /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
     /// # use ethers::prelude::*;
     /// # use std::convert::TryFrom;
-    /// # let provider = Provider::<Http>::try_from("http://localhost:8545")?;
-    /// # let client = "380eb0f3d505f087e438eca80bc4df9a7faa24f868e69fc0440261a0fc0567dc"
-    /// #     .parse::<Wallet>()?.connect(provider);
+    /// # let client = Provider::<Http>::try_from("http://localhost:8545")?;
     /// # let multicall = Multicall::new(client, None).await?;
     /// let tx_hash = multicall.send().await?;
     /// # Ok(())

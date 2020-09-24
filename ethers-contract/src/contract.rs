@@ -73,9 +73,7 @@ use std::{collections::HashMap, fmt::Debug, hash::Hash, marker::PhantomData, syn
 /// let abi: Abi = serde_json::from_str(r#"[{"inputs":[{"internalType":"string","name":"value","type":"string"}],"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"author","type":"address"},{"indexed":true,"internalType":"address","name":"oldAuthor","type":"address"},{"indexed":false,"internalType":"string","name":"oldValue","type":"string"},{"indexed":false,"internalType":"string","name":"newValue","type":"string"}],"name":"ValueChanged","type":"event"},{"inputs":[],"name":"getValue","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"lastSender","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"string","name":"value","type":"string"}],"name":"setValue","outputs":[],"stateMutability":"nonpayable","type":"function"}]"#)?;
 ///
 /// // connect to the network
-/// let provider = Provider::<Http>::try_from("http://localhost:8545").unwrap();
-/// let client = "380eb0f3d505f087e438eca80bc4df9a7faa24f868e69fc0440261a0fc0567dc"
-///     .parse::<Wallet>()?.connect(provider);
+/// let client = Provider::<Http>::try_from("http://localhost:8545").unwrap();
 ///
 /// // create the contract object at the address
 /// let contract = Contract::new(address, abi, client);
@@ -107,15 +105,14 @@ use std::{collections::HashMap, fmt::Debug, hash::Hash, marker::PhantomData, syn
 /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
 /// use ethers_core::{abi::Abi, types::Address};
 /// use ethers_contract::Contract;
-/// use ethers_providers::{Provider, Http};
+/// use ethers_providers::{Provider, Http, Middleware};
 /// use ethers_signers::Wallet;
 /// use std::convert::TryFrom;
 /// use ethers_core::abi::{Detokenize, Token, InvalidOutputType};
 /// # // this is a fake address used just for this example
 /// # let address = "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee".parse::<Address>()?;
 /// # let abi: Abi = serde_json::from_str(r#"[]"#)?;
-/// # let provider = Provider::<Http>::try_from("http://localhost:8545").unwrap();
-/// # let client = "380eb0f3d505f087e438eca80bc4df9a7faa24f868e69fc0440261a0fc0567dc".parse::<Wallet>()?.connect(provider);
+/// # let client = Provider::<Http>::try_from("http://localhost:8545").unwrap();
 /// # let contract = Contract::new(address, abi, client);
 ///
 /// #[derive(Clone, Debug)]

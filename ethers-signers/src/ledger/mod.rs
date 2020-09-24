@@ -28,7 +28,7 @@ impl Signer for LedgerEthereum {
     }
 
     /// Returns the signer's Ethereum Address
-    async fn address(&self) -> Result<Address, Self::Error> {
-        self.get_address().await
+    fn address(&self) -> Address {
+        self.address
     }
 }

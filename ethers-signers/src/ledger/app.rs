@@ -24,21 +24,35 @@ pub struct LedgerEthereum {
     transport: Mutex<Ledger>,
     derivation: DerivationType,
     pub chain_id: Option<u64>,
+
+    /// The ledger's address, instantiated at runtime
+    pub address: Address,
 }
 
 impl LedgerEthereum {
     /// Instantiate the application by acquiring a lock on the ledger device.
     ///
-    /// # Notes
     ///
+    /// ```
+    /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
+    /// use ethers::signers::{Ledger, HDPath};
+    ///
+    /// let ledger = Ledger::new(HDPath::LedgerLive(0), Some(1)).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn new(
         derivation: DerivationType,
         chain_id: Option<u64>,
     ) -> Result<Self, LedgerError> {
+        let transport = Ledger::init().await?;
+        let address = Self::get_address_with_path_transport(&transport, &derivation).await?;
+
         Ok(Self {
-            transport: Mutex::new(Ledger::init().await?),
+            transport: Mutex::new(transport),
             derivation,
             chain_id,
+            address,
         })
     }
 
@@ -55,8 +69,16 @@ impl LedgerEthereum {
         &self,
         derivation: &DerivationType,
     ) -> Result<Address, LedgerError> {
-        let data = APDUData::new(&self.path_to_bytes(&derivation));
+        let data = APDUData::new(&Self::path_to_bytes(&derivation));
         let transport = self.transport.lock().await;
+        Self::get_address_with_path_transport(&transport, derivation).await
+    }
+
+    async fn get_address_with_path_transport(
+        transport: &Ledger,
+        derivation: &DerivationType,
+    ) -> Result<Address, LedgerError> {
+        let data = APDUData::new(&Self::path_to_bytes(&derivation));
 
         let command = APDUCommand {
             ins: INS::GET_PUBLIC_KEY as u8,
@@ -103,7 +125,7 @@ impl LedgerEthereum {
         tx: &TransactionRequest,
         chain_id: Option<u64>,
     ) -> Result<Signature, LedgerError> {
-        let mut payload = self.path_to_bytes(&self.derivation);
+        let mut payload = Self::path_to_bytes(&self.derivation);
         payload.extend_from_slice(tx.rlp(chain_id).as_ref());
         self.sign_payload(INS::SIGN, payload).await
     }
@@ -112,7 +134,7 @@ impl LedgerEthereum {
     pub async fn sign_message<S: AsRef<[u8]>>(&self, message: S) -> Result<Signature, LedgerError> {
         let message = message.as_ref();
 
-        let mut payload = self.path_to_bytes(&self.derivation);
+        let mut payload = Self::path_to_bytes(&self.derivation);
         payload.extend_from_slice(&(message.len() as u32).to_be_bytes());
         payload.extend_from_slice(message);
 
@@ -159,7 +181,7 @@ impl LedgerEthereum {
     }
 
     // helper which converts a derivation path to bytes
-    fn path_to_bytes(&self, derivation: &DerivationType) -> Vec<u8> {
+    fn path_to_bytes(derivation: &DerivationType) -> Vec<u8> {
         let derivation = derivation.to_string();
         let elements = derivation.split('/').skip(1).collect::<Vec<_>>();
         let depth = elements.len();

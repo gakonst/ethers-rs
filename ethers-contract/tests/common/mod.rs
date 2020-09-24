@@ -47,13 +47,12 @@ pub fn compile_contract(name: &str, filename: &str) -> (Abi, Bytes) {
 type HttpWallet = Client<Provider<Http>, Wallet>;
 
 /// connects the private key to http://localhost:8545
-pub async fn connect(ganache: &GanacheInstance, idx: usize) -> Arc<HttpWallet> {
+pub fn connect(ganache: &GanacheInstance, idx: usize) -> Arc<HttpWallet> {
     let provider = Provider::<Http>::try_from(ganache.endpoint())
         .unwrap()
         .interval(Duration::from_millis(10u64));
     let wallet: Wallet = ganache.keys()[idx].clone().into();
-    let client = Client::new(provider, wallet).await.unwrap();
-    Arc::new(client)
+    Arc::new(Client::new(provider, wallet))
 }
 
 /// Launches a ganache instance and deploys the SimpleStorage contract

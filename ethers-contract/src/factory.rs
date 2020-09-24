@@ -95,9 +95,8 @@ impl<M: Middleware> Deployer<M> {
 ///     .expect("could not find contract");
 ///
 /// // connect to the network
-/// let provider = Provider::<Http>::try_from("http://localhost:8545").unwrap();
-/// let client = "380eb0f3d505f087e438eca80bc4df9a7faa24f868e69fc0440261a0fc0567dc"
-///     .parse::<Wallet>()?.connect(provider);
+/// let client = Provider::<Http>::try_from("http://localhost:8545").unwrap();
+/// let client = std::sync::Arc::new(client);
 ///
 /// // create a factory which will be used to deploy instances of the contract
 /// let factory = ContractFactory::new(contract.abi.clone(), contract.bytecode.clone(), client);

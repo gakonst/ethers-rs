@@ -17,7 +17,7 @@ async fn nonce_manager() {
         .unwrap();
     let address = wallet.address();
 
-    let provider = Client::new(provider, wallet).await.unwrap();
+    let provider = Client::new(provider, wallet);
 
     // the nonce manager must be over the Client so that it overrides the nonce
     // before the client gets it

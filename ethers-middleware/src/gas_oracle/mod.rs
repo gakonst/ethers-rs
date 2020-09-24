@@ -49,7 +49,7 @@ pub enum GasOracleError {
 /// # Example
 ///
 /// ```no_run
-/// use ethers::providers::{
+/// use ethers::middleware::{
 ///     gas_oracle::{EthGasStation, Etherscan, GasCategory, GasOracle},
 /// };
 ///
@@ -69,7 +69,7 @@ pub trait GasOracle: Send + Sync + std::fmt::Debug {
     /// # Example
     ///
     /// ```
-    /// use ethers::providers::{
+    /// use ethers::middleware::{
     ///     gas_oracle::{Etherchain, GasCategory, GasOracle},
     /// };
     ///

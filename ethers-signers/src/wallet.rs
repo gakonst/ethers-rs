@@ -10,8 +10,7 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
-/// An Ethereum private-public key pair which can be used for signing messages. It can be connected to a provider
-/// via the [`connect`] method to produce a [`Client`].
+/// An Ethereum private-public key pair which can be used for signing messages.
 ///
 /// # Examples
 ///
@@ -40,29 +39,6 @@ use std::str::FromStr;
 /// # }
 /// ```
 ///
-/// ## Connecting to a Provider
-///
-/// The wallet can also be used to connect to a provider, which results in a [`Client`]
-/// object.
-///
-/// ```
-/// use ethers_core::rand::thread_rng;
-/// use ethers_signers::Wallet;
-/// use ethers_providers::{Provider, Http};
-/// use std::convert::TryFrom;
-///
-/// // create a provider
-/// let provider = Provider::<Http>::try_from("http://localhost:8545")
-///     .expect("could not instantiate HTTP Provider");
-///
-/// // generate a wallet and connect to the provider
-/// // (this is equivalent with calling `Client::new`)
-/// let client = Wallet::new(&mut thread_rng()).connect(provider);
-/// ```
-///
-///
-/// [`Client`]: crate::Client
-/// [`connect`]: method@crate::Wallet::connect
 /// [`Signature`]: ethers_core::types::Signature
 /// [`hash_message`]: fn@ethers_core::utils::hash_message
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -92,8 +68,8 @@ impl Signer for Wallet {
         Ok(self.private_key.sign_transaction(tx, self.chain_id))
     }
 
-    async fn address(&self) -> Result<Address, Self::Error> {
-        Ok(self.address)
+    fn address(&self) -> Address {
+        self.address
     }
 }
 

@@ -22,7 +22,7 @@ async fn can_stack_middlewares() {
     let provider = GasOracleMiddleware::new(provider, gas_oracle);
 
     // The signing middleware signs txs
-    let provider = Client::new(provider, signer).await.unwrap();
+    let provider = Client::new(provider, signer);
 
     // The nonce manager middleware MUST be above the signing middleware so that it overrides
     // the nonce and the signer does not make any eth_getTransaction count calls

@@ -15,36 +15,37 @@ use std::future::Future;
 use thiserror::Error;
 
 #[derive(Clone, Debug)]
-/// A client provides an interface for signing and broadcasting locally signed transactions
-/// It Derefs to [`Provider`], which allows interacting with the Ethereum JSON-RPC provider
-/// via the same API. Sending transactions also supports using [ENS](https://ens.domains/) as a receiver. If you will
-/// not be using a local signer, it is recommended to use a [`Provider`] instead.
+/// Middleware used for locally signing transactions, compatible with any implementer
+/// of the [`Signer`] trait.
 ///
 /// # Example
 ///
 /// ```no_run
-/// use ethers_providers::{Provider, Http};
-/// use ethers_signers::{Client, ClientError, Wallet};
-/// use ethers_core::types::{Address, TransactionRequest};
+/// use ethers::{
+///     providers::{Middleware, Provider, Http},
+///     signers::Wallet,
+///     middleware::Client,
+///     types::{Address, TransactionRequest},
+/// };
 /// use std::convert::TryFrom;
 ///
 /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
 /// let provider = Provider::<Http>::try_from("http://localhost:8545")
 ///     .expect("could not instantiate HTTP Provider");
 ///
-/// // By default, signing of messages and transactions is done locally
-/// // (transactions will be broadcast via the eth_sendRawTransaction API)
+/// // Transactions will be signed with the private key below and will be broadcast
+/// // via the eth_sendRawTransaction API)
 /// let wallet: Wallet = "380eb0f3d505f087e438eca80bc4df9a7faa24f868e69fc0440261a0fc0567dc"
 ///     .parse()?;
 ///
-/// let mut client = Client::new(provider, wallet).await?;
+/// let mut client = Client::new(provider, wallet);
 ///
 /// // since it derefs to `Provider`, we can just call any of the JSON-RPC API methods
 /// let block = client.get_block(100u64).await?;
 ///
 /// // You can use the node's `eth_sign` and `eth_sendTransaction` calls by calling the
 /// // internal provider's method.
-/// let signed_msg = client.provider().sign(b"hello".to_vec(), &client.address()).await?;
+/// let signed_msg = client.sign(b"hello".to_vec(), &client.address()).await?;
 ///
 /// let tx = TransactionRequest::pay("vitalik.eth", 100);
 /// let tx_hash = client.send_transaction(tx, None).await?;
@@ -57,7 +58,7 @@ use thiserror::Error;
 /// let wallet2: Wallet = "cd8c407233c0560f6de24bb2dc60a8b02335c959a1a17f749ce6c1ccf63d74a7"
 ///     .parse()?;
 ///
-/// let signed_msg2 = client.with_signer(wallet2).sign_message(b"hello".to_vec()).await?;
+/// let signed_msg2 = client.with_signer(wallet2).sign(b"hello".to_vec(), &client.address()).await?;
 ///
 /// // This call will be made with `wallet2` since `with_signer` takes a mutable reference.
 /// let tx2 = TransactionRequest::new()
@@ -114,13 +115,13 @@ where
     S: Signer,
 {
     /// Creates a new client from the provider and signer.
-    pub async fn new(inner: M, signer: S) -> Result<Self, ClientError<M, S>> {
-        let address = signer.address().await.map_err(ClientError::SignerError)?;
-        Ok(Client {
+    pub fn new(inner: M, signer: S) -> Self {
+        let address = signer.address();
+        Client {
             inner,
             signer,
             address,
-        })
+        }
     }
 
     async fn sign_transaction(
@@ -212,6 +213,17 @@ where
     /// Returns a reference to the client's signer
     pub fn signer(&self) -> &S {
         &self.signer
+    }
+
+    pub fn with_signer(&self, signer: S) -> Self
+    where
+        S: Clone,
+        M: Clone,
+    {
+        let mut this = self.clone();
+        this.address = signer.address();
+        this.signer = signer;
+        this
     }
 }
 
@@ -317,7 +329,7 @@ mod tests {
             .parse::<Wallet>()
             .unwrap()
             .set_chain_id(chain_id);
-        let client = Client::new(provider, key).await.unwrap();
+        let client = Client::new(provider, key);
 
         let tx = client.sign_transaction(tx).await.unwrap();
 

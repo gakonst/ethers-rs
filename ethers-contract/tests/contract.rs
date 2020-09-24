@@ -23,8 +23,8 @@ mod eth_tests {
 
         // Instantiate the clients. We assume that clients consume the provider and the wallet
         // (which makes sense), so for multi-client tests, you must clone the provider.
-        let client = connect(&ganache, 0).await;
-        let client2 = connect(&ganache, 1).await;
+        let client = connect(&ganache, 0);
+        let client2 = connect(&ganache, 1);
 
         // create a factory which will be used to deploy instances of the contract
         let factory = ContractFactory::new(abi, bytecode, client.clone());
@@ -95,7 +95,7 @@ mod eth_tests {
     async fn get_past_events() {
         let (abi, bytecode) = compile_contract("SimpleStorage", "SimpleStorage.sol");
         let ganache = Ganache::new().spawn();
-        let client = connect(&ganache, 0).await;
+        let client = connect(&ganache, 0);
         let contract = deploy(client.clone(), abi, bytecode).await;
 
         // make a call with `client2`
@@ -124,7 +124,7 @@ mod eth_tests {
     async fn watch_events() {
         let (abi, bytecode) = compile_contract("SimpleStorage", "SimpleStorage.sol");
         let ganache = Ganache::new().spawn();
-        let client = connect(&ganache, 0).await;
+        let client = connect(&ganache, 0);
         let contract = deploy(client, abi, bytecode).await;
 
         // We spawn the event listener:
@@ -211,10 +211,10 @@ mod eth_tests {
         // `client2` is used to deploy the first SimpleStorage contract
         // `client3` is used to deploy the second SimpleStorage contract
         // `client4` is used to make the aggregate call
-        let client = connect(&ganache, 0).await;
-        let client2 = connect(&ganache, 1).await;
-        let client3 = connect(&ganache, 2).await;
-        let client4 = connect(&ganache, 3).await;
+        let client = connect(&ganache, 0);
+        let client2 = connect(&ganache, 1);
+        let client3 = connect(&ganache, 2);
+        let client4 = connect(&ganache, 3);
 
         // create a factory which will be used to deploy instances of the contract
         let multicall_factory =

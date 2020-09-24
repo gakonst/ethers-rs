@@ -18,7 +18,7 @@ async fn send_eth() {
     let provider = Provider::<Http>::try_from(ganache.endpoint())
         .unwrap()
         .interval(Duration::from_millis(10u64));
-    let provider = Client::new(provider, wallet).await.unwrap();
+    let provider = Client::new(provider, wallet);
 
     // craft the transaction
     let tx = TransactionRequest::new().to(wallet2.address()).value(10000);
