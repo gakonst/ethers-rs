@@ -35,7 +35,7 @@ impl<M: Middleware> FromErr<M::Error> for MiddlewareError<M> {
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl<M, G> Middleware for GasOracleMiddleware<M, G>
 where
     M: Middleware,

@@ -585,6 +585,7 @@ dependencies = [
  "coins-ledger",
  "ethers",
  "ethers-core",
+ "futures-executor",
  "futures-util",
  "rustc-hex",
  "serde",

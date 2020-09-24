@@ -77,7 +77,7 @@ pub struct Wallet {
     chain_id: Option<u64>,
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl Signer for Wallet {
     type Error = TxError;
 

@@ -47,5 +47,12 @@ async fn can_stack_middlewares() {
         .await
         .unwrap();
 
+    // can spawn futures
+    let provider_arc = std::sync::Arc::new(provider);
+    let provider_clone = provider_arc.clone();
+    tokio::spawn(async move {
+        let _ = provider_clone.get_transaction(tx_hash.unwrap()).await.unwrap();
+    });
+
     dbg!(receipt);
 }

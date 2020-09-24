@@ -17,6 +17,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 ethers-core = { version = "0.1.3", path = "../ethers-core" }
 thiserror = { version = "1.0.15", default-features = false }
 futures-util = { version = "0.3.5", default-features = false }
+futures-executor = { version = "0.3.5", default-features = false }
 serde = { version = "1.0.112", default-features = false }
 
 coins-ledger = { git = "https://github.com/summa-tx/bitcoins-rs", optional = true }

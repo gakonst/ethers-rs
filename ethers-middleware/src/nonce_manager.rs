@@ -63,7 +63,7 @@ impl<M: Middleware> FromErr<M::Error> for NonceManagerError<M> {
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl<M> Middleware for NonceManager<M>
 where
     M: Middleware,

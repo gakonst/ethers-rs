@@ -4,6 +4,7 @@ use coins_ledger::{
     transports::{Ledger, LedgerAsync},
 };
 use futures_util::lock::Mutex;
+use futures_executor::block_on;
 
 use ethers_core::{
     types::{
@@ -67,7 +68,7 @@ impl LedgerEthereum {
             response_len: None,
         };
 
-        let answer = transport.exchange(&command).await?;
+        let answer = block_on(transport.exchange(&command))?;
         let result = answer.data().ok_or(LedgerError::UnexpectedNullResponse)?;
 
         let address = {
@@ -92,7 +93,7 @@ impl LedgerEthereum {
             response_len: None,
         };
 
-        let answer = transport.exchange(&command).await?;
+        let answer = block_on(transport.exchange(&command))?;
         let result = answer.data().ok_or(LedgerError::UnexpectedNullResponse)?;
 
         Ok(format!("{}.{}.{}", result[1], result[2], result[3]))
@@ -154,7 +155,6 @@ impl LedgerEthereum {
         let mut payload = self.path_to_bytes(&self.derivation);
         payload.extend_from_slice(&(message.len() as u32).to_be_bytes());
         payload.extend_from_slice(message);
-
         self.sign_payload(INS::SIGN_PERSONAL_MESSAGE, payload).await
     }
 
@@ -174,14 +174,13 @@ impl LedgerEthereum {
         };
 
         let mut result = Vec::new();
-
         // Iterate in 255 byte chunks
         while payload.len() > 0 {
             let chunk_size = std::cmp::min(payload.len(), 255);
             let data = payload.drain(0..chunk_size).collect::<Vec<_>>();
             command.data = APDUData::new(&data);
 
-            let answer = transport.exchange(&command).await?;
+            let answer = block_on(transport.exchange(&command))?;
             result = answer
                 .data()
                 .ok_or(LedgerError::UnexpectedNullResponse)?
