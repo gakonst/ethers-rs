@@ -4,7 +4,7 @@ use ethers_core::{
     abi::{Abi, Detokenize, Error, EventExt, Function, FunctionExt, Tokenize},
     types::{Address, Filter, NameOrAddress, Selector, TransactionRequest, TxHash},
 };
-use ethers_providers::{JsonRpcClient, Middleware, PendingTransaction};
+use ethers_providers::{Middleware, PendingTransaction};
 
 use rustc_hex::ToHex;
 use std::{collections::HashMap, fmt::Debug, hash::Hash, marker::PhantomData, sync::Arc};
@@ -292,6 +292,10 @@ impl<M: Middleware> Contract<M> {
     /// Returns a reference to the contract's client
     pub fn client(&self) -> &M {
         &self.client
+    }
+
+    pub fn pending_transaction(&self, tx_hash: TxHash) -> PendingTransaction<'_, M::Provider> {
+        self.client.pending_transaction(tx_hash)
     }
 }
 

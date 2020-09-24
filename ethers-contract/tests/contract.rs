@@ -8,8 +8,7 @@ mod eth_tests {
     use super::*;
     use ethers::{
         contract::Multicall,
-        providers::{Http, Provider, StreamExt},
-        signers::Client,
+        providers::{Http, Middleware, Provider, StreamExt},
         types::{Address, U256},
         utils::Ganache,
     };
@@ -24,8 +23,8 @@ mod eth_tests {
 
         // Instantiate the clients. We assume that clients consume the provider and the wallet
         // (which makes sense), so for multi-client tests, you must clone the provider.
-        let client = connect(&ganache, 0);
-        let client2 = connect(&ganache, 1);
+        let client = connect(&ganache, 0).await;
+        let client2 = connect(&ganache, 1).await;
 
         // create a factory which will be used to deploy instances of the contract
         let factory = ContractFactory::new(abi, bytecode, client.clone());
@@ -96,7 +95,7 @@ mod eth_tests {
     async fn get_past_events() {
         let (abi, bytecode) = compile_contract("SimpleStorage", "SimpleStorage.sol");
         let ganache = Ganache::new().spawn();
-        let client = connect(&ganache, 0);
+        let client = connect(&ganache, 0).await;
         let contract = deploy(client.clone(), abi, bytecode).await;
 
         // make a call with `client2`
@@ -125,7 +124,7 @@ mod eth_tests {
     async fn watch_events() {
         let (abi, bytecode) = compile_contract("SimpleStorage", "SimpleStorage.sol");
         let ganache = Ganache::new().spawn();
-        let client = connect(&ganache, 0);
+        let client = connect(&ganache, 0).await;
         let contract = deploy(client, abi, bytecode).await;
 
         // We spawn the event listener:
@@ -169,7 +168,8 @@ mod eth_tests {
 
         // get the first account
         let deployer = provider.get_accounts().await.unwrap()[0];
-        let client = Arc::new(Client::from(provider).with_sender(deployer));
+        let client = Arc::new(provider.with_sender(deployer));
+        dbg!(deployer);
 
         let contract = deploy(client, abi, bytecode).await;
 
@@ -211,10 +211,10 @@ mod eth_tests {
         // `client2` is used to deploy the first SimpleStorage contract
         // `client3` is used to deploy the second SimpleStorage contract
         // `client4` is used to make the aggregate call
-        let client = connect(&ganache, 0);
-        let client2 = connect(&ganache, 1);
-        let client3 = connect(&ganache, 2);
-        let client4 = connect(&ganache, 3);
+        let client = connect(&ganache, 0).await;
+        let client2 = connect(&ganache, 1).await;
+        let client3 = connect(&ganache, 2).await;
+        let client4 = connect(&ganache, 3).await;
 
         // create a factory which will be used to deploy instances of the contract
         let multicall_factory =
@@ -341,6 +341,7 @@ mod eth_tests {
 mod celo_tests {
     use super::*;
     use ethers::{
+        middleware::Client,
         providers::{Http, Provider},
         signers::Wallet,
         types::BlockNumber,
@@ -352,15 +353,16 @@ mod celo_tests {
         let (abi, bytecode) = compile_contract("SimpleStorage", "SimpleStorage.sol");
 
         // Celo testnet
-        let provider =
-            Provider::<Http>::try_from("https://alfajores-forno.celo-testnet.org").unwrap();
+        let provider = Provider::<Http>::try_from("https://alfajores-forno.celo-testnet.org")
+            .unwrap()
+            .interval(Duration::from_millis(6000));
 
         // Funded with https://celo.org/developers/faucet
-        let client = "d652abb81e8c686edba621a895531b1f291289b63b5ef09a94f686a5ecdd5db1"
+        let wallet = "d652abb81e8c686edba621a895531b1f291289b63b5ef09a94f686a5ecdd5db1"
             .parse::<Wallet>()
-            .unwrap()
-            .connect(provider)
-            .interval(Duration::from_millis(6000));
+            .unwrap();
+
+        let client = Client::new(provider, wallet).await.unwrap();
         let client = Arc::new(client);
 
         let factory = ContractFactory::new(abi, bytecode, client);

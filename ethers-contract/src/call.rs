@@ -2,7 +2,7 @@ use ethers_core::{
     abi::{Detokenize, Error as AbiError, Function, InvalidOutputType},
     types::{Address, BlockNumber, Bytes, TransactionRequest, TxHash, U256},
 };
-use ethers_providers::{JsonRpcClient, Middleware, ProviderError};
+use ethers_providers::Middleware;
 
 use std::{fmt::Debug, marker::PhantomData, sync::Arc};
 

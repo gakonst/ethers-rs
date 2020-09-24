@@ -13,7 +13,7 @@ use serde::Deserialize;
 use std::future::Future;
 use thiserror::Error;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 /// A client provides an interface for signing and broadcasting locally signed transactions
 /// It Derefs to [`Provider`], which allows interacting with the Ethereum JSON-RPC provider
 /// via the same API. Sending transactions also supports using [ENS](https://ens.domains/) as a receiver. If you will

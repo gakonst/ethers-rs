@@ -2,7 +2,7 @@ use ethers_core::{
     abi::{Detokenize, Function, Token},
     types::{Address, BlockNumber, NameOrAddress, TxHash, U256},
 };
-use ethers_providers::{JsonRpcClient, Middleware};
+use ethers_providers::Middleware;
 
 use std::{collections::HashMap, str::FromStr, sync::Arc};
 

@@ -4,9 +4,9 @@ use ethers_core::{
     abi::{Abi, Tokenize},
     types::{BlockNumber, Bytes, TransactionRequest},
 };
-use ethers_providers::{JsonRpcClient, Middleware};
+use ethers_providers::Middleware;
 
-use std::{sync::Arc, time::Duration};
+use std::sync::Arc;
 
 #[derive(Debug, Clone)]
 /// Helper which manages the deployment transaction of a smart contract

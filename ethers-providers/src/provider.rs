@@ -43,7 +43,8 @@ use std::{convert::TryFrom, fmt::Debug, time::Duration};
 /// # }
 /// ```
 #[derive(Clone, Debug)]
-pub struct Provider<P>(P, Option<Address>, Option<Duration>);
+// TODO: Convert to proper struct
+pub struct Provider<P>(P, Option<Address>, Option<Duration>, Option<Address>);
 
 #[derive(Debug, Error)]
 /// An error thrown when making a call to the provider
@@ -74,7 +75,12 @@ pub enum FilterKind<'a> {
 impl<P: JsonRpcClient> Provider<P> {
     /// Instantiate a new provider with a backend.
     pub fn new(provider: P) -> Self {
-        Self(provider, None, None)
+        Self(provider, None, None, None)
+    }
+
+    pub fn with_sender(mut self, address: impl Into<Address>) -> Self {
+        self.3 = Some(address.into());
+        self
     }
 
     async fn get_block_gen<Tx: for<'a> Deserialize<'a>>(
@@ -275,6 +281,14 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         mut tx: TransactionRequest,
         _: Option<BlockNumber>,
     ) -> Result<TxHash, ProviderError> {
+        if tx.from.is_none() {
+            tx.from = self.3;
+        }
+
+        if tx.gas.is_none() {
+            tx.gas = Some(self.estimate_gas(&tx).await?);
+        }
+
         if let Some(ref to) = tx.to {
             if let NameOrAddress::Name(ens_name) = to {
                 // resolve to an address
@@ -560,7 +574,7 @@ impl TryFrom<&str> for Provider<HttpProvider> {
     type Error = ParseError;
 
     fn try_from(src: &str) -> Result<Self, Self::Error> {
-        Ok(Provider(HttpProvider::new(Url::parse(src)?), None, None))
+        Ok(Provider(HttpProvider::new(Url::parse(src)?), None, None, None))
     }
 }
 
