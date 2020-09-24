@@ -1,7 +1,11 @@
 use ethers_signers::Signer;
 
-use ethers_core::types::{
-    Address, BlockNumber, Bytes, NameOrAddress, Signature, TransactionRequest, TxHash,
+use ethers_core::{
+    types::{
+        Address, BlockNumber, Bytes, NameOrAddress, Signature, Transaction, TransactionRequest,
+        TxHash, U256,
+    },
+    utils::keccak256,
 };
 use ethers_providers::Middleware;
 
@@ -89,7 +93,18 @@ pub enum ClientError<M: Middleware, S: Signer> {
     SignerError(S::Error),
 
     #[error("{0}")]
+    /// Thrown when an internal middleware errors
     MiddlewareError(M::Error),
+
+    /// Thrown if the `nonce` field is missing
+    #[error("no nonce was specified")]
+    NonceMissing,
+    /// Thrown if the `gas_price` field is missing
+    #[error("no gas price was specified")]
+    GasPriceMissing,
+    /// Thrown if the `gas` field is missing
+    #[error("no gas was specified")]
+    GasMissing,
 }
 
 // Helper functions for locally signing transactions
@@ -108,19 +123,59 @@ where
         })
     }
 
-    async fn submit_transaction(
+    async fn sign_transaction(
         &self,
         tx: TransactionRequest,
-    ) -> Result<TxHash, ClientError<M, S>> {
-        let signed_tx = self
+    ) -> Result<Transaction, ClientError<M, S>> {
+        // The nonce, gas and gasprice fields must already be populated
+        let nonce = tx.nonce.ok_or(ClientError::NonceMissing)?;
+        let gas_price = tx.gas_price.ok_or(ClientError::GasPriceMissing)?;
+        let gas = tx.gas.ok_or(ClientError::GasMissing)?;
+
+        let signature = self
             .signer
-            .sign_transaction(tx)
+            .sign_transaction(&tx)
             .await
             .map_err(ClientError::SignerError)?;
-        self.inner
-            .send_raw_transaction(&signed_tx)
-            .await
-            .map_err(ClientError::MiddlewareError)
+
+        // Get the actual transaction hash
+        let rlp = tx.rlp_signed(&signature);
+        let hash = keccak256(&rlp.0);
+
+        // This function should not be called with ENS names
+        let to = tx.to.map(|to| match to {
+            NameOrAddress::Address(inner) => inner,
+            NameOrAddress::Name(_) => {
+                panic!("Expected `to` to be an Ethereum Address, not an ENS name")
+            }
+        });
+
+        Ok(Transaction {
+            hash: hash.into(),
+            nonce,
+            from: self.address(),
+            to,
+            value: tx.value.unwrap_or_default(),
+            gas_price,
+            gas,
+            input: tx.data.unwrap_or_default(),
+            v: signature.v.into(),
+            r: U256::from_big_endian(signature.r.as_bytes()),
+            s: U256::from_big_endian(signature.s.as_bytes()),
+
+            // Leave these empty as they're only used for included transactions
+            block_hash: None,
+            block_number: None,
+            transaction_index: None,
+
+            // Celo support
+            #[cfg(feature = "celo")]
+            fee_currency: tx.fee_currency,
+            #[cfg(feature = "celo")]
+            gateway_fee: tx.gateway_fee,
+            #[cfg(feature = "celo")]
+            gateway_fee_recipient: tx.gateway_fee_recipient,
+        })
     }
 
     async fn fill_transaction(
@@ -198,9 +253,13 @@ where
 
         // if we have a nonce manager set, we should try handling the result in
         // case there was a nonce mismatch
-        let tx_hash = self.submit_transaction(tx).await?;
+        let signed_tx = self.sign_transaction(tx).await?;
 
-        Ok(tx_hash)
+        // Submit the raw transaction
+        self.inner
+            .send_raw_transaction(&signed_tx)
+            .await
+            .map_err(ClientError::MiddlewareError)
     }
 
     /// Signs a message with the internal signer, or if none is present it will make a call to
@@ -223,5 +282,53 @@ where
         ok(item).await
     } else {
         f.await
+    }
+}
+
+#[cfg(all(test, not(feature = "celo")))]
+mod tests {
+    use super::*;
+    use ethers::{providers::Provider, signers::Wallet};
+    use rustc_hex::FromHex;
+    use std::convert::TryFrom;
+
+    #[tokio::test]
+    async fn signs_tx() {
+        // retrieved test vector from:
+        // https://web3js.readthedocs.io/en/v1.2.0/web3-eth-accounts.html#eth-accounts-signtransaction
+        let tx = TransactionRequest {
+            from: None,
+            to: Some(
+                "F0109fC8DF283027b6285cc889F5aA624EaC1F55"
+                    .parse::<Address>()
+                    .unwrap()
+                    .into(),
+            ),
+            value: Some(1_000_000_000.into()),
+            gas: Some(2_000_000.into()),
+            nonce: Some(0.into()),
+            gas_price: Some(21_000_000_000u128.into()),
+            data: None,
+        };
+        let chain_id = 1u64;
+
+        let provider = Provider::try_from("http://localhost:8545").unwrap();
+        let key = "4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318"
+            .parse::<Wallet>()
+            .unwrap()
+            .set_chain_id(chain_id);
+        let client = Client::new(provider, key).await.unwrap();
+
+        let tx = client.sign_transaction(tx).await.unwrap();
+
+        assert_eq!(
+            tx.hash,
+            "de8db924885b0803d2edc335f745b2b8750c8848744905684c20b987443a9593"
+                .parse()
+                .unwrap()
+        );
+
+        let expected_rlp = Bytes("f869808504e3b29200831e848094f0109fc8df283027b6285cc889f5aa624eac1f55843b9aca008025a0c9cf86333bcb065d140032ecaab5d9281bde80f21b9687b3e94161de42d51895a0727a108a0b8d101465414033c3f705a9c7b826e596766046ee1183dbc8aeaa68".from_hex().unwrap());
+        assert_eq!(tx.rlp(), expected_rlp);
     }
 }

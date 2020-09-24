@@ -35,9 +35,6 @@ pub enum LedgerError {
     Utf8Error(#[from] std::str::Utf8Error),
 
     #[error(transparent)]
-    TxError(#[from] ethers_core::types::TxError),
-
-    #[error(transparent)]
     SignatureError(#[from] ethers_core::types::SignatureError),
 }
 

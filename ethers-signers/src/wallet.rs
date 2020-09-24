@@ -3,7 +3,7 @@ use crate::Signer;
 use ethers_core::{
     rand::Rng,
     secp256k1,
-    types::{Address, PrivateKey, PublicKey, Signature, Transaction, TransactionRequest, TxError},
+    types::{Address, PrivateKey, PublicKey, Signature, TransactionRequest},
 };
 
 use async_trait::async_trait;
@@ -79,17 +79,17 @@ pub struct Wallet {
 
 #[async_trait(?Send)]
 impl Signer for Wallet {
-    type Error = TxError;
+    type Error = std::convert::Infallible;
 
     async fn sign_message<S: Send + Sync + AsRef<[u8]>>(
         &self,
         message: S,
-    ) -> Result<Signature, TxError> {
+    ) -> Result<Signature, Self::Error> {
         Ok(self.private_key.sign(message))
     }
 
-    async fn sign_transaction(&self, tx: TransactionRequest) -> Result<Transaction, Self::Error> {
-        self.private_key.sign_transaction(tx, self.chain_id)
+    async fn sign_transaction(&self, tx: &TransactionRequest) -> Result<Signature, Self::Error> {
+        Ok(self.private_key.sign_transaction(tx, self.chain_id))
     }
 
     async fn address(&self) -> Result<Address, Self::Error> {

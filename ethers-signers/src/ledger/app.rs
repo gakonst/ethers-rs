@@ -7,8 +7,7 @@ use futures_util::lock::Mutex;
 
 use ethers_core::{
     types::{
-        Address, NameOrAddress, Signature, Transaction, TransactionRequest, TxError, TxHash, H256,
-        U256,
+        Address, NameOrAddress, Signature, Transaction, TransactionRequest, TxHash, H256, U256,
     },
     utils::keccak256,
 };
@@ -99,52 +98,14 @@ impl LedgerEthereum {
     }
 
     /// Signs an Ethereum transaction (requires confirmation on the ledger)
-    // TODO: Remove code duplication between this and the PrivateKey::sign_transaction
-    // method
     pub async fn sign_tx(
         &self,
-        tx: TransactionRequest,
+        tx: &TransactionRequest,
         chain_id: Option<u64>,
-    ) -> Result<Transaction, LedgerError> {
-        // The nonce, gas and gasprice fields must already be populated
-        let nonce = tx.nonce.ok_or(TxError::NonceMissing)?;
-        let gas_price = tx.gas_price.ok_or(TxError::GasPriceMissing)?;
-        let gas = tx.gas.ok_or(TxError::GasMissing)?;
-
+    ) -> Result<Signature, LedgerError> {
         let mut payload = self.path_to_bytes(&self.derivation);
         payload.extend_from_slice(tx.rlp(chain_id).as_ref());
-        let signature = self.sign_payload(INS::SIGN, payload).await?;
-
-        // Get the actual transaction hash
-        let rlp = tx.rlp_signed(&signature);
-        let hash = keccak256(&rlp.0);
-
-        // This function should not be called with ENS names
-        let to = tx.to.map(|to| match to {
-            NameOrAddress::Address(inner) => inner,
-            NameOrAddress::Name(_) => {
-                panic!("Expected `to` to be an Ethereum Address, not an ENS name")
-            }
-        });
-
-        Ok(Transaction {
-            hash: hash.into(),
-            nonce,
-            from: self.get_address().await?,
-            to,
-            value: tx.value.unwrap_or_default(),
-            gas_price,
-            gas,
-            input: tx.data.unwrap_or_default(),
-            v: signature.v.into(),
-            r: U256::from_big_endian(signature.r.as_bytes()),
-            s: U256::from_big_endian(signature.s.as_bytes()),
-
-            // Leave these empty as they're only used for included transactions
-            block_hash: None,
-            block_number: None,
-            transaction_index: None,
-        })
+        self.sign_payload(INS::SIGN, payload).await
     }
 
     /// Signs an ethereum personal message

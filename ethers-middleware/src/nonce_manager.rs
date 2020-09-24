@@ -47,7 +47,7 @@ where
             self.initialized.store(true, Ordering::SeqCst);
         }
 
-        return Ok(self.next());
+        Ok(self.next())
     }
 }
 
