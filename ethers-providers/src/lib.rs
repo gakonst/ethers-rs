@@ -11,7 +11,7 @@
 //! # Examples
 //!
 //! ```no_run
-//! use ethers::providers::{Provider, Http};
+//! use ethers::providers::{Provider, Http, Middleware};
 //! use std::convert::TryFrom;
 //!
 //! # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
@@ -83,7 +83,7 @@
 //! to addresses (and vice versa). The default ENS address is [mainnet](https://etherscan.io/address/0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e) and can be overriden by calling the [`ens`](method@crate::Provider::ens) method on the provider.
 //!
 //! ```no_run
-//! # use ethers::providers::{Provider, Http};
+//! # use ethers::providers::{Provider, Http, Middleware};
 //! # use std::convert::TryFrom;
 //! # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
 //! # let provider = Provider::<Http>::try_from(
@@ -116,12 +116,7 @@ pub use stream::{FilterWatcher, DEFAULT_POLL_INTERVAL};
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use std::{
-    error::Error,
-    fmt::{Debug, Display},
-    future::Future,
-    pin::Pin,
-};
+use std::{error::Error, fmt::Debug, future::Future, pin::Pin};
 
 pub use provider::{FilterKind, Provider, ProviderError};
 
@@ -146,7 +141,7 @@ use ethers_core::types::*;
 
 #[async_trait(?Send)]
 pub trait Middleware: Sync + Send + Debug {
-    type Error: Display + Debug;
+    type Error: Error;
     type Provider: JsonRpcClient;
 
     async fn get_block_number(&self) -> Result<U64, Self::Error>;

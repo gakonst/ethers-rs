@@ -29,14 +29,14 @@ use std::{convert::TryFrom, fmt::Debug, time::Duration};
 /// # Example
 ///
 /// ```no_run
-/// use ethers::providers::{JsonRpcClient, Provider, Http};
+/// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
+/// use ethers::providers::{Middleware, Provider, Http};
 /// use std::convert::TryFrom;
 ///
 /// let provider = Provider::<Http>::try_from(
 ///     "https://mainnet.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27"
 /// ).expect("could not instantiate HTTP Provider");
 ///
-/// # async fn foo<P: JsonRpcClient>(provider: &Provider<P>) -> Result<(), Box<dyn std::error::Error>> {
 /// let block = provider.get_block(100u64).await?;
 /// println!("Got block: {}", serde_json::to_string(&block)?);
 /// # Ok(())
@@ -515,7 +515,7 @@ impl<P: JsonRpcClient> Provider<P> {
 
     #[cfg(test)]
     /// ganache-only function for mining empty blocks
-    async fn mine(&self, num_blocks: usize) -> Result<(), ProviderError> {
+    pub async fn mine(&self, num_blocks: usize) -> Result<(), ProviderError> {
         for _ in 0..num_blocks {
             self.0
                 .request::<_, U256>("evm_mine", None::<()>)
@@ -679,7 +679,7 @@ mod tests {
             .value(1e18 as u64);
 
         for _ in 0..num_txs {
-            tx_hashes.push(provider.send_transaction(tx.clone()).await.unwrap());
+            tx_hashes.push(provider.send_transaction(tx.clone(), None).await.unwrap());
         }
 
         let hashes: Vec<H256> = stream.take(num_txs).collect::<Vec<H256>>().await;
@@ -697,7 +697,7 @@ mod tests {
 
         let accounts = provider.get_accounts().await.unwrap();
         let tx = TransactionRequest::pay(accounts[0], parse_ether(1u64).unwrap()).from(accounts[0]);
-        let tx_hash = provider.send_transaction(tx).await.unwrap();
+        let tx_hash = provider.send_transaction(tx, None).await.unwrap();
 
         assert!(provider
             .get_transaction_receipt(tx_hash)

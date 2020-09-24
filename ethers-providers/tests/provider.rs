@@ -1,5 +1,5 @@
 #![allow(unused_braces)]
-use ethers::providers::{Http, Provider};
+use ethers::providers::{Http, Middleware, Provider};
 use std::{convert::TryFrom, time::Duration};
 
 #[cfg(not(feature = "celo"))]
@@ -102,11 +102,11 @@ mod eth_tests {
         generic_pending_txs_test(provider).await;
     }
 
-    async fn generic_pending_txs_test<P: JsonRpcClient>(provider: Provider<P>) {
+    async fn generic_pending_txs_test<M: Middleware>(provider: M) {
         let accounts = provider.get_accounts().await.unwrap();
 
         let tx = TransactionRequest::pay(accounts[0], parse_ether(1u64).unwrap()).from(accounts[0]);
-        let tx_hash = provider.send_transaction(tx).await.unwrap();
+        let tx_hash = provider.send_transaction(tx, None).await.unwrap();
         let pending_tx = provider.pending_transaction(tx_hash);
         let receipt = pending_tx.confirmations(5).await.unwrap();
 

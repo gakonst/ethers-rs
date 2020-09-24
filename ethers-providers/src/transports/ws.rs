@@ -8,7 +8,7 @@ use futures_util::{
     stream::{Stream, StreamExt},
 };
 use serde::{Deserialize, Serialize};
-use std::fmt::Debug;
+use std::fmt::{self, Debug};
 use std::sync::atomic::{AtomicU64, Ordering};
 use thiserror::Error;
 
@@ -90,10 +90,18 @@ pub type MaybeTlsStream = StreamSwitcher<TcpStream, TlsStream<TcpStream>>;
 /// consider importing `async-tungstenite` with the [corresponding feature
 /// flag](https://github.com/sdroege/async-tungstenite/blob/master/Cargo.toml#L15-L22)
 /// for your runtime.
-#[derive(Debug)]
 pub struct Provider<S> {
     id: AtomicU64,
     ws: Mutex<S>,
+}
+
+impl<S> Debug for Provider<S> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("WebsocketProvider")
+            .field("id", &self.id)
+            .field("ws", &stringify!(ws))
+            .finish()
+    }
 }
 
 #[cfg(any(feature = "tokio-runtime", feature = "async-std-runtime"))]
@@ -155,8 +163,7 @@ impl From<ClientError> for ProviderError {
 #[async_trait]
 impl<S> JsonRpcClient for Provider<S>
 where
-    S: Debug
-        + Send
+    S: Send
         + Sync
         + Stream<Item = Result<Message, tungstenite::Error>>
         + Sink<Message, Error = tungstenite::Error>
