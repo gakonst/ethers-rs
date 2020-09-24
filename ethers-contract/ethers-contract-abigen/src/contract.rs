@@ -71,8 +71,8 @@ impl Context {
                     /// Creates a new contract instance with the specified `ethers`
                     /// client at the given `Address`. The contract derefs to a `ethers::Contract`
                     /// object
-                    pub fn new<T: Into<Address>, C: Into<Arc<M>>>(address: T, client: C) -> Self {
-                        let contract = Contract::new(address.into(), #abi_name.clone(), client.into());
+                    pub fn new<T: Into<Address>>(address: T, client: Arc<M>) -> Self {
+                        let contract = Contract::new(address.into(), #abi_name.clone(), client);
                         Self(contract)
                     }
 

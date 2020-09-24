@@ -122,7 +122,7 @@ impl<M: Middleware> ContractFactory<M> {
     /// Creates a factory for deployment of the Contract with bytecode, and the
     /// constructor defined in the abi. The client will be used to send any deployment
     /// transaction.
-    pub fn new(abi: Abi, bytecode: Bytes, client: impl Into<Arc<M>>) -> Self {
+    pub fn new(abi: Abi, bytecode: Bytes, client: Arc<M>) -> Self {
         Self {
             client: client.into(),
             abi,

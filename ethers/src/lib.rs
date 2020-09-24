@@ -99,6 +99,9 @@ pub use ethers_signers as signers;
 #[cfg(feature = "core")]
 pub use ethers_core as core;
 
+#[cfg(feature = "middleware")]
+pub use ethers_middleware as middleware;
+
 // Re-export ethers_core::utils/types/abi
 // We hide these docs so that the rustdoc links send the visitor
 // to the corresponding crate, instead of the re-export
@@ -123,6 +126,9 @@ pub mod prelude {
 
     #[cfg(feature = "signers")]
     pub use ethers_signers::*;
+
+    #[cfg(feature = "middleware")]
+    pub use ethers_middleware::*;
 
     #[cfg(feature = "core")]
     pub use ethers_core::types::*;

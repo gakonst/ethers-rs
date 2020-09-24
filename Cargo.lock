@@ -455,6 +455,7 @@ dependencies = [
  "anyhow",
  "ethers-contract",
  "ethers-core",
+ "ethers-middleware",
  "ethers-providers",
  "ethers-signers",
  "rand",
