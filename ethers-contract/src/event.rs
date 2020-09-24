@@ -1,6 +1,6 @@
 use crate::ContractError;
 
-use ethers_providers::{JsonRpcClient, Provider};
+use ethers_providers::Middleware;
 
 use ethers_core::{
     abi::{Detokenize, Event as AbiEvent, RawLog},
@@ -13,17 +13,17 @@ use std::marker::PhantomData;
 /// Helper for managing the event filter before querying or streaming its logs
 #[derive(Debug)]
 #[must_use = "event filters do nothing unless you `query` or `stream` them"]
-pub struct Event<'a: 'b, 'b, P, D> {
+pub struct Event<'a: 'b, 'b, M, D> {
     /// The event filter's state
     pub filter: Filter,
     /// The ABI of the event which is being filtered
     pub event: &'b AbiEvent,
-    pub(crate) provider: &'a Provider<P>,
+    pub(crate) provider: &'a M,
     pub(crate) datatype: PhantomData<D>,
 }
 
 // TODO: Improve these functions
-impl<P, D: Detokenize> Event<'_, '_, P, D> {
+impl<M, D: Detokenize> Event<'_, '_, M, D> {
     /// Sets the filter's `from` block
     #[allow(clippy::wrong_self_convention)]
     pub fn from_block<T: Into<BlockNumber>>(mut self, block: T) -> Self {
@@ -63,41 +63,53 @@ impl<P, D: Detokenize> Event<'_, '_, P, D> {
     }
 }
 
-impl<'a, 'b, P, D> Event<'a, 'b, P, D>
+impl<'a, 'b, M, D> Event<'a, 'b, M, D>
 where
-    P: JsonRpcClient,
+    M: Middleware,
     D: 'b + Detokenize + Clone,
     'a: 'b,
 {
     /// Returns a stream for the event
     pub async fn stream(
         self,
-    ) -> Result<impl Stream<Item = Result<D, ContractError>> + 'b, ContractError> {
-        let filter = self.provider.watch(&self.filter).await?;
+    ) -> Result<impl Stream<Item = Result<D, ContractError<M>>> + 'b, ContractError<M>> {
+        let filter = self
+            .provider
+            .watch(&self.filter)
+            .await
+            .map_err(ContractError::MiddlewareError)?;
         Ok(filter.stream().map(move |log| self.parse_log(log)))
     }
 }
 
-impl<P, D> Event<'_, '_, P, D>
+impl<M, D> Event<'_, '_, M, D>
 where
-    P: JsonRpcClient,
+    M: Middleware,
     D: Detokenize + Clone,
 {
     /// Queries the blockchain for the selected filter and returns a vector of matching
     /// event logs
-    pub async fn query(&self) -> Result<Vec<D>, ContractError> {
-        let logs = self.provider.get_logs(&self.filter).await?;
+    pub async fn query(&self) -> Result<Vec<D>, ContractError<M>> {
+        let logs = self
+            .provider
+            .get_logs(&self.filter)
+            .await
+            .map_err(ContractError::MiddlewareError)?;
         let events = logs
             .into_iter()
             .map(|log| self.parse_log(log))
-            .collect::<Result<Vec<_>, ContractError>>()?;
+            .collect::<Result<Vec<_>, ContractError<M>>>()?;
         Ok(events)
     }
 
     /// Queries the blockchain for the selected filter and returns a vector of logs
     /// along with their metadata
-    pub async fn query_with_meta(&self) -> Result<Vec<(D, LogMeta)>, ContractError> {
-        let logs = self.provider.get_logs(&self.filter).await?;
+    pub async fn query_with_meta(&self) -> Result<Vec<(D, LogMeta)>, ContractError<M>> {
+        let logs = self
+            .provider
+            .get_logs(&self.filter)
+            .await
+            .map_err(ContractError::MiddlewareError)?;
         let events = logs
             .into_iter()
             .map(|log| {
@@ -105,11 +117,11 @@ where
                 let event = self.parse_log(log)?;
                 Ok((event, meta))
             })
-            .collect::<Result<_, ContractError>>()?;
+            .collect::<Result<_, ContractError<M>>>()?;
         Ok(events)
     }
 
-    fn parse_log(&self, log: Log) -> Result<D, ContractError> {
+    fn parse_log(&self, log: Log) -> Result<D, ContractError<M>> {
         // ethabi parses the unindexed and indexed logs together to a
         // vector of tokens
         let tokens = self

@@ -1,19 +1,16 @@
-use crate::{Client, ClientError, Signer};
-
-use ethers_providers::{JsonRpcClient, Provider};
+use crate::Signer;
 
 use ethers_core::{
     rand::Rng,
     secp256k1,
-    types::{Address, PrivateKey, PublicKey, Signature, Transaction, TransactionRequest, TxError},
+    types::{Address, PrivateKey, PublicKey, Signature, TransactionRequest},
 };
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
-/// An Ethereum private-public key pair which can be used for signing messages. It can be connected to a provider
-/// via the [`connect`] method to produce a [`Client`].
+/// An Ethereum private-public key pair which can be used for signing messages.
 ///
 /// # Examples
 ///
@@ -42,29 +39,6 @@ use std::str::FromStr;
 /// # }
 /// ```
 ///
-/// ## Connecting to a Provider
-///
-/// The wallet can also be used to connect to a provider, which results in a [`Client`]
-/// object.
-///
-/// ```
-/// use ethers_core::rand::thread_rng;
-/// use ethers_signers::Wallet;
-/// use ethers_providers::{Provider, Http};
-/// use std::convert::TryFrom;
-///
-/// // create a provider
-/// let provider = Provider::<Http>::try_from("http://localhost:8545")
-///     .expect("could not instantiate HTTP Provider");
-///
-/// // generate a wallet and connect to the provider
-/// // (this is equivalent with calling `Client::new`)
-/// let client = Wallet::new(&mut thread_rng()).connect(provider);
-/// ```
-///
-///
-/// [`Client`]: crate::Client
-/// [`connect`]: method@crate::Wallet::connect
 /// [`Signature`]: ethers_core::types::Signature
 /// [`hash_message`]: fn@ethers_core::utils::hash_message
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -81,27 +55,21 @@ pub struct Wallet {
 
 #[async_trait(?Send)]
 impl Signer for Wallet {
-    type Error = TxError;
+    type Error = std::convert::Infallible;
 
     async fn sign_message<S: Send + Sync + AsRef<[u8]>>(
         &self,
         message: S,
-    ) -> Result<Signature, TxError> {
+    ) -> Result<Signature, Self::Error> {
         Ok(self.private_key.sign(message))
     }
 
-    async fn sign_transaction(&self, tx: TransactionRequest) -> Result<Transaction, Self::Error> {
-        self.private_key.sign_transaction(tx, self.chain_id)
+    async fn sign_transaction(&self, tx: &TransactionRequest) -> Result<Signature, Self::Error> {
+        Ok(self.private_key.sign_transaction(tx, self.chain_id))
     }
 
-    async fn address(&self) -> Result<Address, Self::Error> {
-        Ok(self.address)
-    }
-}
-
-impl From<TxError> for ClientError {
-    fn from(src: TxError) -> Self {
-        ClientError::SignerError(Box::new(src))
+    fn address(&self) -> Address {
+        self.address
     }
 }
 
@@ -119,18 +87,6 @@ impl Wallet {
             public_key,
             address,
             chain_id: None,
-        }
-    }
-
-    /// Connects to a provider and returns a client
-    pub fn connect<P: JsonRpcClient>(self, provider: Provider<P>) -> Client<P, Wallet> {
-        let address = self.address();
-        Client {
-            address,
-            signer: Some(self),
-            provider,
-            gas_oracle: None,
-            nonce_manager: None,
         }
     }
 

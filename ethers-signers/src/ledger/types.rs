@@ -2,6 +2,7 @@
 //! [Official Docs](https://github.com/LedgerHQ/app-ethereum/blob/master/doc/ethapp.asc)
 use thiserror::Error;
 
+#[derive(Clone, Debug)]
 pub enum DerivationType {
     LedgerLive(usize),
     Legacy(usize),
@@ -32,9 +33,6 @@ pub enum LedgerError {
 
     #[error("Error when decoding UTF8 Response: {0}")]
     Utf8Error(#[from] std::str::Utf8Error),
-
-    #[error(transparent)]
-    TxError(#[from] ethers_core::types::TxError),
 
     #[error(transparent)]
     SignatureError(#[from] ethers_core::types::SignatureError),

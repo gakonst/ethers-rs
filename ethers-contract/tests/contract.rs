@@ -8,8 +8,7 @@ mod eth_tests {
     use super::*;
     use ethers::{
         contract::Multicall,
-        providers::{Http, Provider, StreamExt},
-        signers::Client,
+        providers::{Http, Middleware, Provider, StreamExt},
         types::{Address, U256},
         utils::Ganache,
     };
@@ -169,7 +168,8 @@ mod eth_tests {
 
         // get the first account
         let deployer = provider.get_accounts().await.unwrap()[0];
-        let client = Arc::new(Client::from(provider).with_sender(deployer));
+        let client = Arc::new(provider.with_sender(deployer));
+        dbg!(deployer);
 
         let contract = deploy(client, abi, bytecode).await;
 
@@ -341,6 +341,7 @@ mod eth_tests {
 mod celo_tests {
     use super::*;
     use ethers::{
+        middleware::Client,
         providers::{Http, Provider},
         signers::Wallet,
         types::BlockNumber,
@@ -352,15 +353,16 @@ mod celo_tests {
         let (abi, bytecode) = compile_contract("SimpleStorage", "SimpleStorage.sol");
 
         // Celo testnet
-        let provider =
-            Provider::<Http>::try_from("https://alfajores-forno.celo-testnet.org").unwrap();
+        let provider = Provider::<Http>::try_from("https://alfajores-forno.celo-testnet.org")
+            .unwrap()
+            .interval(Duration::from_millis(6000));
 
         // Funded with https://celo.org/developers/faucet
-        let client = "d652abb81e8c686edba621a895531b1f291289b63b5ef09a94f686a5ecdd5db1"
+        let wallet = "d652abb81e8c686edba621a895531b1f291289b63b5ef09a94f686a5ecdd5db1"
             .parse::<Wallet>()
-            .unwrap()
-            .connect(provider)
-            .interval(Duration::from_millis(6000));
+            .unwrap();
+
+        let client = Client::new(provider, wallet);
         let client = Arc::new(client);
 
         let factory = ContractFactory::new(abi, bytecode, client);

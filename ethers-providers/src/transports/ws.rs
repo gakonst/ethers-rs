@@ -8,7 +8,7 @@ use futures_util::{
     stream::{Stream, StreamExt},
 };
 use serde::{Deserialize, Serialize};
-use std::fmt::Debug;
+use std::fmt::{self, Debug};
 use std::sync::atomic::{AtomicU64, Ordering};
 use thiserror::Error;
 
@@ -93,6 +93,15 @@ pub type MaybeTlsStream = StreamSwitcher<TcpStream, TlsStream<TcpStream>>;
 pub struct Provider<S> {
     id: AtomicU64,
     ws: Mutex<S>,
+}
+
+impl<S> Debug for Provider<S> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("WebsocketProvider")
+            .field("id", &self.id)
+            .field("ws", &stringify!(ws))
+            .finish()
+    }
 }
 
 #[cfg(any(feature = "tokio-runtime", feature = "async-std-runtime"))]

@@ -4,8 +4,7 @@ use ethers_core::{
     abi::{Abi, Detokenize, Error, EventExt, Function, FunctionExt, Tokenize},
     types::{Address, Filter, NameOrAddress, Selector, TransactionRequest, TxHash},
 };
-use ethers_providers::{JsonRpcClient, PendingTransaction};
-use ethers_signers::{Client, Signer};
+use ethers_providers::{Middleware, PendingTransaction};
 
 use rustc_hex::ToHex;
 use std::{collections::HashMap, fmt::Debug, hash::Hash, marker::PhantomData, sync::Arc};
@@ -74,9 +73,7 @@ use std::{collections::HashMap, fmt::Debug, hash::Hash, marker::PhantomData, syn
 /// let abi: Abi = serde_json::from_str(r#"[{"inputs":[{"internalType":"string","name":"value","type":"string"}],"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"author","type":"address"},{"indexed":true,"internalType":"address","name":"oldAuthor","type":"address"},{"indexed":false,"internalType":"string","name":"oldValue","type":"string"},{"indexed":false,"internalType":"string","name":"newValue","type":"string"}],"name":"ValueChanged","type":"event"},{"inputs":[],"name":"getValue","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"lastSender","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"string","name":"value","type":"string"}],"name":"setValue","outputs":[],"stateMutability":"nonpayable","type":"function"}]"#)?;
 ///
 /// // connect to the network
-/// let provider = Provider::<Http>::try_from("http://localhost:8545").unwrap();
-/// let client = "380eb0f3d505f087e438eca80bc4df9a7faa24f868e69fc0440261a0fc0567dc"
-///     .parse::<Wallet>()?.connect(provider);
+/// let client = Provider::<Http>::try_from("http://localhost:8545").unwrap();
 ///
 /// // create the contract object at the address
 /// let contract = Contract::new(address, abi, client);
@@ -108,15 +105,14 @@ use std::{collections::HashMap, fmt::Debug, hash::Hash, marker::PhantomData, syn
 /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
 /// use ethers_core::{abi::Abi, types::Address};
 /// use ethers_contract::Contract;
-/// use ethers_providers::{Provider, Http};
+/// use ethers_providers::{Provider, Http, Middleware};
 /// use ethers_signers::Wallet;
 /// use std::convert::TryFrom;
 /// use ethers_core::abi::{Detokenize, Token, InvalidOutputType};
 /// # // this is a fake address used just for this example
 /// # let address = "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee".parse::<Address>()?;
 /// # let abi: Abi = serde_json::from_str(r#"[]"#)?;
-/// # let provider = Provider::<Http>::try_from("http://localhost:8545").unwrap();
-/// # let client = "380eb0f3d505f087e438eca80bc4df9a7faa24f868e69fc0440261a0fc0567dc".parse::<Wallet>()?.connect(provider);
+/// # let client = Provider::<Http>::try_from("http://localhost:8545").unwrap();
 /// # let contract = Contract::new(address, abi, client);
 ///
 /// #[derive(Clone, Debug)]
@@ -163,8 +159,8 @@ use std::{collections::HashMap, fmt::Debug, hash::Hash, marker::PhantomData, syn
 /// [`event`]: method@crate::Contract::event
 /// [`method`]: method@crate::Contract::method
 #[derive(Debug, Clone)]
-pub struct Contract<P, S> {
-    client: Arc<Client<P, S>>,
+pub struct Contract<M> {
+    client: Arc<M>,
     abi: Abi,
     address: Address,
 
@@ -175,13 +171,9 @@ pub struct Contract<P, S> {
     methods: HashMap<Selector, (String, usize)>,
 }
 
-impl<P, S> Contract<P, S>
-where
-    S: Signer,
-    P: JsonRpcClient,
-{
+impl<M: Middleware> Contract<M> {
     /// Creates a new contract from the provided client, abi and address
-    pub fn new(address: Address, abi: Abi, client: impl Into<Arc<Client<P, S>>>) -> Self {
+    pub fn new(address: Address, abi: Abi, client: impl Into<Arc<M>>) -> Self {
         let methods = create_mapping(&abi.functions, |function| function.selector());
 
         Self {
@@ -193,11 +185,11 @@ where
     }
 
     /// Returns an [`Event`](crate::builders::Event) builder for the provided event name.
-    pub fn event<D: Detokenize>(&self, name: &str) -> Result<Event<P, D>, Error> {
+    pub fn event<D: Detokenize>(&self, name: &str) -> Result<Event<M, D>, Error> {
         // get the event's full name
         let event = self.abi.event(name)?;
         Ok(Event {
-            provider: &self.client.provider(),
+            provider: &self.client,
             filter: Filter::new()
                 .event(&event.abi_signature())
                 .address(self.address),
@@ -213,7 +205,7 @@ where
         &self,
         name: &str,
         args: T,
-    ) -> Result<ContractCall<P, S, D>, Error> {
+    ) -> Result<ContractCall<M, D>, Error> {
         // get the function
         let function = self.abi.function(name)?;
         self.method_func(function, args)
@@ -225,7 +217,7 @@ where
         &self,
         signature: Selector,
         args: T,
-    ) -> Result<ContractCall<P, S, D>, Error> {
+    ) -> Result<ContractCall<M, D>, Error> {
         let function = self
             .methods
             .get(&signature)
@@ -238,7 +230,7 @@ where
         &self,
         function: &Function,
         args: T,
-    ) -> Result<ContractCall<P, S, D>, Error> {
+    ) -> Result<ContractCall<M, D>, Error> {
         let tokens = args.into_tokens();
 
         // create the calldata
@@ -265,8 +257,7 @@ where
     /// Clones `self` internally
     pub fn at<T: Into<Address>>(&self, address: T) -> Self
     where
-        P: Clone,
-        S: Clone,
+        M: Clone,
     {
         let mut this = self.clone();
         this.address = address.into();
@@ -276,10 +267,9 @@ where
     /// Returns a new contract instance using the provided client
     ///
     /// Clones `self` internally
-    pub fn connect(&self, client: Arc<Client<P, S>>) -> Self
+    pub fn connect(&self, client: Arc<M>) -> Self
     where
-        P: Clone,
-        S: Clone,
+        M: Clone,
     {
         let mut this = self.clone();
         this.client = client;
@@ -297,14 +287,12 @@ where
     }
 
     /// Returns a reference to the contract's client
-    pub fn client(&self) -> &Client<P, S> {
+    pub fn client(&self) -> &M {
         &self.client
     }
 
-    /// Helper which creates a pending transaction object from a transaction hash
-    /// using the provider's polling interval
-    pub fn pending_transaction(&self, tx_hash: TxHash) -> PendingTransaction<'_, P> {
-        self.client.provider().pending_transaction(tx_hash)
+    pub fn pending_transaction(&self, tx_hash: TxHash) -> PendingTransaction<'_, M::Provider> {
+        self.client.pending_transaction(tx_hash)
     }
 }
 

@@ -27,6 +27,7 @@ full = [
     "providers",
     "signers",
     "core",
+    "middleware",
 ]
 
 celo = [
@@ -34,11 +35,13 @@ celo = [
     "ethers-providers/celo",
     "ethers-signers/celo",
     "ethers-contract/celo",
+    "ethers-middleware/celo",
 ]
 
 core = ["ethers-core"]
 contract = ["ethers-contract"]
 providers = ["ethers-providers"]
+middleware = ["ethers-middleware"]
 signers = ["ethers-signers"]
 ledger = ["ethers-signers/ledger"]
 
@@ -47,6 +50,7 @@ ethers-contract = { version = "0.1.3", path = "../ethers-contract", optional = t
 ethers-core = { version = "0.1.3", path = "../ethers-core", optional = true }
 ethers-providers = { version = "0.1.3", path = "../ethers-providers", optional = true }
 ethers-signers = { version = "0.1.3", path = "../ethers-signers", optional = true }
+ethers-middleware = { version = "0.1.3", path = "../ethers-middleware", optional = true }
 
 [dev-dependencies]
 ethers-contract = { version = "0.1.3", path = "../ethers-contract", features = ["abigen"] }

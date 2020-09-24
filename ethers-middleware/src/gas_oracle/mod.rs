@@ -10,6 +10,9 @@ pub use etherscan::Etherscan;
 mod gas_now;
 pub use gas_now::GasNow;
 
+mod middleware;
+pub use middleware::{GasOracleMiddleware, MiddlewareError};
+
 use ethers_core::types::U256;
 
 use async_trait::async_trait;
@@ -46,7 +49,7 @@ pub enum GasOracleError {
 /// # Example
 ///
 /// ```no_run
-/// use ethers::providers::{
+/// use ethers::middleware::{
 ///     gas_oracle::{EthGasStation, Etherscan, GasCategory, GasOracle},
 /// };
 ///
@@ -66,7 +69,7 @@ pub trait GasOracle: Send + Sync + std::fmt::Debug {
     /// # Example
     ///
     /// ```
-    /// use ethers::providers::{
+    /// use ethers::middleware::{
     ///     gas_oracle::{Etherchain, GasCategory, GasOracle},
     /// };
     ///

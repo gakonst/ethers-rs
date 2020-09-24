@@ -18,7 +18,7 @@ async fn main() -> Result<()> {
     let balance_before = provider.get_balance(from, None).await?;
 
     // broadcast it via the eth_sendTransaction API
-    let tx_hash = provider.send_transaction(tx).await?;
+    let tx_hash = provider.send_transaction(tx, None).await?;
 
     let tx = provider.pending_transaction(tx_hash).await?;
 

@@ -2,8 +2,7 @@ use ethers_core::{
     abi::{Detokenize, Error as AbiError, Function, InvalidOutputType},
     types::{Address, BlockNumber, Bytes, TransactionRequest, TxHash, U256},
 };
-use ethers_providers::{JsonRpcClient, ProviderError};
-use ethers_signers::{Client, ClientError, Signer};
+use ethers_providers::Middleware;
 
 use std::{fmt::Debug, marker::PhantomData, sync::Arc};
 
@@ -11,7 +10,7 @@ use thiserror::Error as ThisError;
 
 #[derive(ThisError, Debug)]
 /// An Error which is thrown when interacting with a smart contract
-pub enum ContractError {
+pub enum ContractError<M: Middleware> {
     /// Thrown when the ABI decoding fails
     #[error(transparent)]
     DecodingError(#[from] AbiError),
@@ -20,13 +19,9 @@ pub enum ContractError {
     #[error(transparent)]
     DetokenizationError(#[from] InvalidOutputType),
 
-    /// Thrown when a client call fails
-    #[error(transparent)]
-    ClientError(#[from] ClientError),
-
     /// Thrown when a provider call fails
-    #[error(transparent)]
-    ProviderError(#[from] ProviderError),
+    #[error("{0}")]
+    MiddlewareError(M::Error),
 
     /// Thrown during deployment if a constructor argument was passed in the `deploy`
     /// call but a constructor was not present in the ABI
@@ -42,18 +37,18 @@ pub enum ContractError {
 #[derive(Debug, Clone)]
 #[must_use = "contract calls do nothing unless you `send` or `call` them"]
 /// Helper for managing a transaction before submitting it to a node
-pub struct ContractCall<P, S, D> {
+pub struct ContractCall<M, D> {
     /// The raw transaction object
     pub tx: TransactionRequest,
     /// The ABI of the function being called
     pub function: Function,
     /// Optional block number to be used when calculating the transaction's gas and nonce
     pub block: Option<BlockNumber>,
-    pub(crate) client: Arc<Client<P, S>>,
+    pub(crate) client: Arc<M>,
     pub(crate) datatype: PhantomData<D>,
 }
 
-impl<P, S, D: Detokenize> ContractCall<P, S, D> {
+impl<M, D: Detokenize> ContractCall<M, D> {
     /// Sets the `from` field in the transaction to the provided value
     pub fn from<T: Into<Address>>(mut self, from: T) -> Self {
         self.tx.from = Some(from.into());
@@ -85,10 +80,9 @@ impl<P, S, D: Detokenize> ContractCall<P, S, D> {
     }
 }
 
-impl<P, S, D> ContractCall<P, S, D>
+impl<M, D> ContractCall<M, D>
 where
-    S: Signer,
-    P: JsonRpcClient,
+    M: Middleware,
     D: Detokenize,
 {
     /// Returns the underlying transaction's ABI encoded data
@@ -97,8 +91,11 @@ where
     }
 
     /// Returns the estimated gas cost for the underlying transaction to be executed
-    pub async fn estimate_gas(&self) -> Result<U256, ContractError> {
-        Ok(self.client.estimate_gas(&self.tx).await?)
+    pub async fn estimate_gas(&self) -> Result<U256, ContractError<M>> {
+        self.client
+            .estimate_gas(&self.tx)
+            .await
+            .map_err(ContractError::MiddlewareError)
     }
 
     /// Queries the blockchain via an `eth_call` for the provided transaction.
@@ -110,8 +107,12 @@ where
     /// and return the return type of the transaction without mutating the state
     ///
     /// Note: this function _does not_ send a transaction from your account
-    pub async fn call(&self) -> Result<D, ContractError> {
-        let bytes = self.client.call(&self.tx, self.block).await?;
+    pub async fn call(&self) -> Result<D, ContractError<M>> {
+        let bytes = self
+            .client
+            .call(&self.tx, self.block)
+            .await
+            .map_err(ContractError::MiddlewareError)?;
 
         let tokens = self.function.decode_output(&bytes.0)?;
         let data = D::from_tokens(tokens)?;
@@ -120,7 +121,10 @@ where
     }
 
     /// Signs and broadcasts the provided transaction
-    pub async fn send(self) -> Result<TxHash, ContractError> {
-        Ok(self.client.send_transaction(self.tx, self.block).await?)
+    pub async fn send(self) -> Result<TxHash, ContractError<M>> {
+        self.client
+            .send_transaction(self.tx, self.block)
+            .await
+            .map_err(ContractError::MiddlewareError)
     }
 }

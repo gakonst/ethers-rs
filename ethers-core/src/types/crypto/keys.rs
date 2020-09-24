@@ -1,5 +1,5 @@
 use crate::{
-    types::{Address, NameOrAddress, Signature, Transaction, TransactionRequest, H256, U256},
+    types::{Address, Signature, TransactionRequest, H256},
     utils::{hash_message, keccak256},
 };
 
@@ -17,7 +17,6 @@ use serde::{
     Deserialize, Deserializer, Serialize, Serializer,
 };
 use std::{fmt, ops::Deref, str::FromStr};
-use thiserror::Error;
 
 /// A private key on Secp256k1
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -60,21 +59,6 @@ impl FromStr for PrivateKey {
     }
 }
 
-/// An error which may be thrown when attempting to sign a transaction with
-/// missing fields
-#[derive(Clone, Debug, Error)]
-pub enum TxError {
-    /// Thrown if the `nonce` field is missing
-    #[error("no nonce was specified")]
-    NonceMissing,
-    /// Thrown if the `gas_price` field is missing
-    #[error("no gas price was specified")]
-    GasPriceMissing,
-    /// Thrown if the `gas` field is missing
-    #[error("no gas was specified")]
-    GasMissing,
-}
-
 impl PrivateKey {
     pub fn new<R: Rng>(rng: &mut R) -> Self {
         PrivateKey(SecretKey::random(rng))
@@ -110,62 +94,13 @@ impl PrivateKey {
     ///
     /// If `tx.to` is an ENS name. The caller MUST take care of name resolution before
     /// calling this function.
-    pub fn sign_transaction(
-        &self,
-        tx: TransactionRequest,
-        chain_id: Option<u64>,
-    ) -> Result<Transaction, TxError> {
-        // The nonce, gas and gasprice fields must already be populated
-        let nonce = tx.nonce.ok_or(TxError::NonceMissing)?;
-        let gas_price = tx.gas_price.ok_or(TxError::GasPriceMissing)?;
-        let gas = tx.gas.ok_or(TxError::GasMissing)?;
-
+    pub fn sign_transaction(&self, tx: &TransactionRequest, chain_id: Option<u64>) -> Signature {
         // Get the transaction's sighash
         let sighash = tx.sighash(chain_id);
         let message =
             Message::parse_slice(sighash.as_bytes()).expect("hash is non-zero 32-bytes; qed");
-
         // Sign it (with replay protection if applicable)
-        let signature = self.sign_with_eip155(&message, chain_id);
-
-        // Get the actual transaction hash
-        let rlp = tx.rlp_signed(&signature);
-        let hash = keccak256(&rlp.0);
-
-        // This function should not be called with ENS names
-        let to = tx.to.map(|to| match to {
-            NameOrAddress::Address(inner) => inner,
-            NameOrAddress::Name(_) => {
-                panic!("Expected `to` to be an Ethereum Address, not an ENS name")
-            }
-        });
-
-        Ok(Transaction {
-            hash: hash.into(),
-            nonce,
-            from: self.into(),
-            to,
-            value: tx.value.unwrap_or_default(),
-            gas_price,
-            gas,
-            input: tx.data.unwrap_or_default(),
-            v: signature.v.into(),
-            r: U256::from_big_endian(signature.r.as_bytes()),
-            s: U256::from_big_endian(signature.s.as_bytes()),
-
-            // Leave these empty as they're only used for included transactions
-            block_hash: None,
-            block_number: None,
-            transaction_index: None,
-
-            // Celo support
-            #[cfg(feature = "celo")]
-            fee_currency: tx.fee_currency,
-            #[cfg(feature = "celo")]
-            gateway_fee: tx.gateway_fee,
-            #[cfg(feature = "celo")]
-            gateway_fee_recipient: tx.gateway_fee_recipient,
-        })
+        self.sign_with_eip155(&message, chain_id)
     }
 
     fn sign_with_eip155(&self, message: &Message, chain_id: Option<u64>) -> Signature {
@@ -323,45 +258,6 @@ mod tests {
             let de: PublicKey = bincode::deserialize(&serialized).unwrap();
             assert_eq!(public, de);
         }
-    }
-
-    #[test]
-    #[cfg(not(feature = "celo"))]
-    fn signs_tx() {
-        use crate::types::{Address, Bytes};
-        // retrieved test vector from:
-        // https://web3js.readthedocs.io/en/v1.2.0/web3-eth-accounts.html#eth-accounts-signtransaction
-        let tx = TransactionRequest {
-            from: None,
-            to: Some(
-                "F0109fC8DF283027b6285cc889F5aA624EaC1F55"
-                    .parse::<Address>()
-                    .unwrap()
-                    .into(),
-            ),
-            value: Some(1_000_000_000.into()),
-            gas: Some(2_000_000.into()),
-            nonce: Some(0.into()),
-            gas_price: Some(21_000_000_000u128.into()),
-            data: None,
-        };
-        let chain_id = 1;
-
-        let key: PrivateKey = "4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318"
-            .parse()
-            .unwrap();
-
-        let tx = key.sign_transaction(tx, Some(chain_id)).unwrap();
-
-        assert_eq!(
-            tx.hash,
-            "de8db924885b0803d2edc335f745b2b8750c8848744905684c20b987443a9593"
-                .parse()
-                .unwrap()
-        );
-
-        let expected_rlp = Bytes("f869808504e3b29200831e848094f0109fc8df283027b6285cc889f5aa624eac1f55843b9aca008025a0c9cf86333bcb065d140032ecaab5d9281bde80f21b9687b3e94161de42d51895a0727a108a0b8d101465414033c3f705a9c7b826e596766046ee1183dbc8aeaa68".from_hex().unwrap());
-        assert_eq!(tx.rlp(), expected_rlp);
     }
 
     #[test]

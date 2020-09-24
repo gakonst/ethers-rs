@@ -10,9 +10,9 @@ async fn main() -> Result<()> {
     )?;
 
     // create a wallet and connect it to the provider
-    let client = "dcf2cbdd171a21c480aa7f53d77f31bb102282b3ff099c78e3118b37348c72f7"
-        .parse::<Wallet>()?
-        .connect(provider);
+    let wallet =
+        "dcf2cbdd171a21c480aa7f53d77f31bb102282b3ff099c78e3118b37348c72f7".parse::<Wallet>()?;
+    let client = Client::new(provider, wallet);
 
     // craft the transaction
     let tx = TransactionRequest::new().to("vitalik.eth").value(100_000);

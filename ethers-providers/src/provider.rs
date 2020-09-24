@@ -1,7 +1,7 @@
 use crate::{
     ens,
     stream::{FilterWatcher, DEFAULT_POLL_INTERVAL},
-    Http as HttpProvider, JsonRpcClient, PendingTransaction,
+    FromErr, Http as HttpProvider, JsonRpcClient, PendingTransaction,
 };
 
 use ethers_core::{
@@ -13,6 +13,8 @@ use ethers_core::{
     utils,
 };
 
+use crate::Middleware;
+use async_trait::async_trait;
 use serde::Deserialize;
 use thiserror::Error;
 use url::{ParseError, Url};
@@ -27,21 +29,28 @@ use std::{convert::TryFrom, fmt::Debug, time::Duration};
 /// # Example
 ///
 /// ```no_run
-/// use ethers::providers::{JsonRpcClient, Provider, Http};
+/// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
+/// use ethers::providers::{Middleware, Provider, Http};
 /// use std::convert::TryFrom;
 ///
 /// let provider = Provider::<Http>::try_from(
 ///     "https://mainnet.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27"
 /// ).expect("could not instantiate HTTP Provider");
 ///
-/// # async fn foo<P: JsonRpcClient>(provider: &Provider<P>) -> Result<(), Box<dyn std::error::Error>> {
 /// let block = provider.get_block(100u64).await?;
 /// println!("Got block: {}", serde_json::to_string(&block)?);
 /// # Ok(())
 /// # }
 /// ```
 #[derive(Clone, Debug)]
-pub struct Provider<P>(P, Option<Address>, Option<Duration>);
+// TODO: Convert to proper struct
+pub struct Provider<P>(P, Option<Address>, Option<Duration>, Option<Address>);
+
+impl FromErr<ProviderError> for ProviderError {
+    fn from(src: ProviderError) -> Self {
+        src
+    }
+}
 
 #[derive(Debug, Error)]
 /// An error thrown when making a call to the provider
@@ -72,40 +81,12 @@ pub enum FilterKind<'a> {
 impl<P: JsonRpcClient> Provider<P> {
     /// Instantiate a new provider with a backend.
     pub fn new(provider: P) -> Self {
-        Self(provider, None, None)
+        Self(provider, None, None, None)
     }
 
-    ////// Blockchain Status
-    //
-    // Functions for querying the state of the blockchain
-
-    /// Gets the latest block number via the `eth_BlockNumber` API
-    pub async fn get_block_number(&self) -> Result<U64, ProviderError> {
-        Ok(self
-            .0
-            .request("eth_blockNumber", ())
-            .await
-            .map_err(Into::into)?)
-    }
-
-    /// Gets the block at `block_hash_or_number` (transaction hashes only)
-    pub async fn get_block(
-        &self,
-        block_hash_or_number: impl Into<BlockId>,
-    ) -> Result<Option<Block<TxHash>>, ProviderError> {
-        Ok(self
-            .get_block_gen(block_hash_or_number.into(), false)
-            .await?)
-    }
-
-    /// Gets the block at `block_hash_or_number` (full transactions included)
-    pub async fn get_block_with_txs(
-        &self,
-        block_hash_or_number: impl Into<BlockId>,
-    ) -> Result<Option<Block<Transaction>>, ProviderError> {
-        Ok(self
-            .get_block_gen(block_hash_or_number.into(), true)
-            .await?)
+    pub fn with_sender(mut self, address: impl Into<Address>) -> Self {
+        self.3 = Some(address.into());
+        self
     }
 
     async fn get_block_gen<Tx: for<'a> Deserialize<'a>>(
@@ -132,9 +113,53 @@ impl<P: JsonRpcClient> Provider<P> {
             }
         })
     }
+}
+
+#[async_trait(?Send)]
+impl<P: JsonRpcClient> Middleware for Provider<P> {
+    type Error = ProviderError;
+    type Provider = P;
+    type Inner = Self;
+
+    fn inner(&self) -> &Self::Inner {
+        unreachable!("There is no inner provider here")
+    }
+
+    ////// Blockchain Status
+    //
+    // Functions for querying the state of the blockchain
+
+    /// Gets the latest block number via the `eth_BlockNumber` API
+    async fn get_block_number(&self) -> Result<U64, ProviderError> {
+        Ok(self
+            .0
+            .request("eth_blockNumber", ())
+            .await
+            .map_err(Into::into)?)
+    }
+
+    /// Gets the block at `block_hash_or_number` (transaction hashes only)
+    async fn get_block<T: Into<BlockId> + Send + Sync>(
+        &self,
+        block_hash_or_number: T,
+    ) -> Result<Option<Block<TxHash>>, Self::Error> {
+        Ok(self
+            .get_block_gen(block_hash_or_number.into(), false)
+            .await?)
+    }
+
+    /// Gets the block at `block_hash_or_number` (full transactions included)
+    async fn get_block_with_txs<T: Into<BlockId> + Send + Sync>(
+        &self,
+        block_hash_or_number: T,
+    ) -> Result<Option<Block<Transaction>>, ProviderError> {
+        Ok(self
+            .get_block_gen(block_hash_or_number.into(), true)
+            .await?)
+    }
 
     /// Gets the transaction with `transaction_hash`
-    pub async fn get_transaction<T: Send + Sync + Into<TxHash>>(
+    async fn get_transaction<T: Send + Sync + Into<TxHash>>(
         &self,
         transaction_hash: T,
     ) -> Result<Option<Transaction>, ProviderError> {
@@ -147,7 +172,7 @@ impl<P: JsonRpcClient> Provider<P> {
     }
 
     /// Gets the transaction receipt with `transaction_hash`
-    pub async fn get_transaction_receipt<T: Send + Sync + Into<TxHash>>(
+    async fn get_transaction_receipt<T: Send + Sync + Into<TxHash>>(
         &self,
         transaction_hash: T,
     ) -> Result<Option<TransactionReceipt>, ProviderError> {
@@ -160,7 +185,7 @@ impl<P: JsonRpcClient> Provider<P> {
     }
 
     /// Gets the current gas price as estimated by the node
-    pub async fn get_gas_price(&self) -> Result<U256, ProviderError> {
+    async fn get_gas_price(&self) -> Result<U256, ProviderError> {
         Ok(self
             .0
             .request("eth_gasPrice", ())
@@ -169,7 +194,7 @@ impl<P: JsonRpcClient> Provider<P> {
     }
 
     /// Gets the accounts on the node
-    pub async fn get_accounts(&self) -> Result<Vec<Address>, ProviderError> {
+    async fn get_accounts(&self) -> Result<Vec<Address>, ProviderError> {
         Ok(self
             .0
             .request("eth_accounts", ())
@@ -178,9 +203,9 @@ impl<P: JsonRpcClient> Provider<P> {
     }
 
     /// Returns the nonce of the address
-    pub async fn get_transaction_count(
+    async fn get_transaction_count<T: Into<NameOrAddress> + Send + Sync>(
         &self,
-        from: impl Into<NameOrAddress>,
+        from: T,
         block: Option<BlockNumber>,
     ) -> Result<U256, ProviderError> {
         let from = match from.into() {
@@ -198,9 +223,9 @@ impl<P: JsonRpcClient> Provider<P> {
     }
 
     /// Returns the account's balance
-    pub async fn get_balance(
+    async fn get_balance<T: Into<NameOrAddress> + Send + Sync>(
         &self,
-        from: impl Into<NameOrAddress>,
+        from: T,
         block: Option<BlockNumber>,
     ) -> Result<U256, ProviderError> {
         let from = match from.into() {
@@ -219,7 +244,7 @@ impl<P: JsonRpcClient> Provider<P> {
 
     /// Returns the currently configured chain id, a value used in replay-protected
     /// transaction signing as introduced by EIP-155.
-    pub async fn get_chainid(&self) -> Result<U256, ProviderError> {
+    async fn get_chainid(&self) -> Result<U256, ProviderError> {
         Ok(self
             .0
             .request("eth_chainId", ())
@@ -233,7 +258,7 @@ impl<P: JsonRpcClient> Provider<P> {
 
     /// Sends the read-only (constant) transaction to a single Ethereum node and return the result (as bytes) of executing it.
     /// This is free, since it does not change any state on the blockchain.
-    pub async fn call(
+    async fn call(
         &self,
         tx: &TransactionRequest,
         block: Option<BlockNumber>,
@@ -250,7 +275,7 @@ impl<P: JsonRpcClient> Provider<P> {
     /// Sends a transaction to a single Ethereum node and return the estimated amount of gas required (as a U256) to send it
     /// This is free, but only an estimate. Providing too little gas will result in a transaction being rejected
     /// (while still consuming all provided gas).
-    pub async fn estimate_gas(&self, tx: &TransactionRequest) -> Result<U256, ProviderError> {
+    async fn estimate_gas(&self, tx: &TransactionRequest) -> Result<U256, ProviderError> {
         let tx = utils::serialize(tx);
 
         Ok(self
@@ -262,10 +287,19 @@ impl<P: JsonRpcClient> Provider<P> {
 
     /// Sends the transaction to the entire Ethereum network and returns the transaction's hash
     /// This will consume gas from the account that signed the transaction.
-    pub async fn send_transaction(
+    async fn send_transaction(
         &self,
         mut tx: TransactionRequest,
+        _: Option<BlockNumber>,
     ) -> Result<TxHash, ProviderError> {
+        if tx.from.is_none() {
+            tx.from = self.3;
+        }
+
+        if tx.gas.is_none() {
+            tx.gas = Some(self.estimate_gas(&tx).await?);
+        }
+
         if let Some(ref to) = tx.to {
             if let NameOrAddress::Name(ens_name) = to {
                 // resolve to an address
@@ -285,7 +319,7 @@ impl<P: JsonRpcClient> Provider<P> {
 
     /// Send the raw RLP encoded transaction to the entire Ethereum network and returns the transaction's hash
     /// This will consume gas from the account that signed the transaction.
-    pub async fn send_raw_transaction(&self, tx: &Transaction) -> Result<TxHash, ProviderError> {
+    async fn send_raw_transaction(&self, tx: &Transaction) -> Result<TxHash, ProviderError> {
         let rlp = utils::serialize(&tx.rlp());
         Ok(self
             .0
@@ -295,7 +329,7 @@ impl<P: JsonRpcClient> Provider<P> {
     }
 
     /// Signs data using a specific account. This account needs to be unlocked.
-    pub async fn sign<T: Into<Bytes>>(
+    async fn sign<T: Into<Bytes> + Send + Sync>(
         &self,
         data: T,
         from: &Address,
@@ -312,7 +346,7 @@ impl<P: JsonRpcClient> Provider<P> {
     ////// Contract state
 
     /// Returns an array (possibly empty) of logs that match the filter
-    pub async fn get_logs(&self, filter: &Filter) -> Result<Vec<Log>, ProviderError> {
+    async fn get_logs(&self, filter: &Filter) -> Result<Vec<Log>, ProviderError> {
         Ok(self
             .0
             .request("eth_getLogs", [filter])
@@ -321,22 +355,24 @@ impl<P: JsonRpcClient> Provider<P> {
     }
 
     /// Streams matching filter logs
-    pub async fn watch(&self, filter: &Filter) -> Result<FilterWatcher<'_, P, Log>, ProviderError> {
+    async fn watch<'a>(
+        &'a self,
+        filter: &Filter,
+    ) -> Result<FilterWatcher<'a, P, Log>, ProviderError> {
         let id = self.new_filter(FilterKind::Logs(filter)).await?;
         let filter = FilterWatcher::new(id, self).interval(self.get_interval());
-
         Ok(filter)
     }
 
     /// Streams new block hashes
-    pub async fn watch_blocks(&self) -> Result<FilterWatcher<'_, P, H256>, ProviderError> {
+    async fn watch_blocks(&self) -> Result<FilterWatcher<'_, P, H256>, ProviderError> {
         let id = self.new_filter(FilterKind::NewBlocks).await?;
         let filter = FilterWatcher::new(id, self).interval(self.get_interval());
         Ok(filter)
     }
 
     /// Streams pending transactions
-    pub async fn watch_pending_transactions(
+    async fn watch_pending_transactions(
         &self,
     ) -> Result<FilterWatcher<'_, P, H256>, ProviderError> {
         let id = self.new_filter(FilterKind::PendingTransactions).await?;
@@ -346,7 +382,7 @@ impl<P: JsonRpcClient> Provider<P> {
 
     /// Creates a filter object, based on filter options, to notify when the state changes (logs).
     /// To check if the state has changed, call `get_filter_changes` with the filter id.
-    pub async fn new_filter(&self, filter: FilterKind<'_>) -> Result<U256, ProviderError> {
+    async fn new_filter(&self, filter: FilterKind<'_>) -> Result<U256, ProviderError> {
         let (method, args) = match filter {
             FilterKind::NewBlocks => ("eth_newBlockFilter", vec![]),
             FilterKind::PendingTransactions => ("eth_newPendingTransactionFilter", vec![]),
@@ -357,7 +393,10 @@ impl<P: JsonRpcClient> Provider<P> {
     }
 
     /// Uninstalls a filter
-    pub async fn uninstall_filter<T: Into<U256>>(&self, id: T) -> Result<bool, ProviderError> {
+    async fn uninstall_filter<T: Into<U256> + Send + Sync>(
+        &self,
+        id: T,
+    ) -> Result<bool, ProviderError> {
         let id = utils::serialize(&id.into());
         Ok(self
             .0
@@ -379,10 +418,10 @@ impl<P: JsonRpcClient> Provider<P> {
     ///
     /// [`H256`]: ethers_core::types::H256
     /// [`Log`]: ethers_core::types::Log
-    pub async fn get_filter_changes<T, R>(&self, id: T) -> Result<Vec<R>, ProviderError>
+    async fn get_filter_changes<T, R>(&self, id: T) -> Result<Vec<R>, ProviderError>
     where
-        T: Into<U256>,
-        R: for<'a> Deserialize<'a>,
+        T: Into<U256> + Send + Sync,
+        R: for<'a> Deserialize<'a> + Send + Sync,
     {
         let id = utils::serialize(&id.into());
         Ok(self
@@ -393,9 +432,9 @@ impl<P: JsonRpcClient> Provider<P> {
     }
 
     /// Get the storage of an address for a particular slot location
-    pub async fn get_storage_at(
+    async fn get_storage_at<T: Into<NameOrAddress> + Send + Sync>(
         &self,
-        from: impl Into<NameOrAddress>,
+        from: T,
         location: H256,
         block: Option<BlockNumber>,
     ) -> Result<H256, ProviderError> {
@@ -415,9 +454,9 @@ impl<P: JsonRpcClient> Provider<P> {
     }
 
     /// Returns the deployed code at a given address
-    pub async fn get_code(
+    async fn get_code<T: Into<NameOrAddress> + Send + Sync>(
         &self,
-        at: impl Into<NameOrAddress>,
+        at: T,
         block: Option<BlockNumber>,
     ) -> Result<Bytes, ProviderError> {
         let at = match at.into() {
@@ -447,7 +486,7 @@ impl<P: JsonRpcClient> Provider<P> {
     ///
     /// If the bytes returned from the ENS registrar/resolver cannot be interpreted as
     /// an address. This should theoretically never happen.
-    pub async fn resolve_name(&self, ens_name: &str) -> Result<Address, ProviderError> {
+    async fn resolve_name(&self, ens_name: &str) -> Result<Address, ProviderError> {
         self.query_resolver(ParamType::Address, ens_name, ens::ADDR_SELECTOR)
             .await
     }
@@ -457,12 +496,20 @@ impl<P: JsonRpcClient> Provider<P> {
     ///
     /// If the bytes returned from the ENS registrar/resolver cannot be interpreted as
     /// a string. This should theoretically never happen.
-    pub async fn lookup_address(&self, address: Address) -> Result<String, ProviderError> {
+    async fn lookup_address(&self, address: Address) -> Result<String, ProviderError> {
         let ens_name = ens::reverse_address(address);
         self.query_resolver(ParamType::String, &ens_name, ens::NAME_SELECTOR)
             .await
     }
 
+    /// Helper which creates a pending transaction object from a transaction hash
+    /// using the provider's polling interval
+    fn pending_transaction(&self, tx_hash: TxHash) -> PendingTransaction<'_, P> {
+        PendingTransaction::new(tx_hash, self).interval(self.get_interval())
+    }
+}
+
+impl<P: JsonRpcClient> Provider<P> {
     async fn query_resolver<T: Detokenize>(
         &self,
         param: ParamType,
@@ -521,12 +568,6 @@ impl<P: JsonRpcClient> Provider<P> {
     pub fn get_interval(&self) -> Duration {
         self.2.unwrap_or(DEFAULT_POLL_INTERVAL)
     }
-
-    /// Helper which creates a pending transaction object from a transaction hash
-    /// using the provider's polling interval
-    pub fn pending_transaction(&self, tx_hash: TxHash) -> PendingTransaction<'_, P> {
-        PendingTransaction::new(tx_hash, self).interval(self.get_interval())
-    }
 }
 
 /// infallbile conversion of Bytes to Address/String
@@ -544,7 +585,12 @@ impl TryFrom<&str> for Provider<HttpProvider> {
     type Error = ParseError;
 
     fn try_from(src: &str) -> Result<Self, Self::Error> {
-        Ok(Provider(HttpProvider::new(Url::parse(src)?), None, None))
+        Ok(Provider(
+            HttpProvider::new(Url::parse(src)?),
+            None,
+            None,
+            None,
+        ))
     }
 }
 
@@ -663,7 +709,7 @@ mod tests {
             .value(1e18 as u64);
 
         for _ in 0..num_txs {
-            tx_hashes.push(provider.send_transaction(tx.clone()).await.unwrap());
+            tx_hashes.push(provider.send_transaction(tx.clone(), None).await.unwrap());
         }
 
         let hashes: Vec<H256> = stream.take(num_txs).collect::<Vec<H256>>().await;
@@ -681,7 +727,7 @@ mod tests {
 
         let accounts = provider.get_accounts().await.unwrap();
         let tx = TransactionRequest::pay(accounts[0], parse_ether(1u64).unwrap()).from(accounts[0]);
-        let tx_hash = provider.send_transaction(tx).await.unwrap();
+        let tx_hash = provider.send_transaction(tx, None).await.unwrap();
 
         assert!(provider
             .get_transaction_receipt(tx_hash)

@@ -4,37 +4,25 @@ use ethers_core::{
     abi::{Abi, Tokenize},
     types::{BlockNumber, Bytes, TransactionRequest},
 };
-use ethers_providers::JsonRpcClient;
-use ethers_signers::{Client, Signer};
+use ethers_providers::Middleware;
 
-use std::{sync::Arc, time::Duration};
+use std::sync::Arc;
 
 #[derive(Debug, Clone)]
 /// Helper which manages the deployment transaction of a smart contract
-pub struct Deployer<P, S> {
+pub struct Deployer<M> {
     /// The deployer's transaction, exposed for overriding the defaults
     pub tx: TransactionRequest,
     abi: Abi,
-    client: Arc<Client<P, S>>,
+    client: Arc<M>,
     confs: usize,
     block: BlockNumber,
-    interval: Duration,
 }
 
-impl<P, S> Deployer<P, S>
-where
-    S: Signer,
-    P: JsonRpcClient,
-{
+impl<M: Middleware> Deployer<M> {
     /// Sets the number of confirmations to wait for the contract deployment transaction
     pub fn confirmations<T: Into<usize>>(mut self, confirmations: T) -> Self {
         self.confs = confirmations.into();
-        self
-    }
-
-    /// Sets the poll interval for the pending deployment transaction's inclusion
-    pub fn interval<T: Into<Duration>>(mut self, interval: T) -> Self {
-        self.interval = interval.into();
         self
     }
 
@@ -46,18 +34,20 @@ where
     /// Broadcasts the contract deployment transaction and after waiting for it to
     /// be sufficiently confirmed (default: 1), it returns a [`Contract`](crate::Contract)
     /// struct at the deployed contract's address.
-    pub async fn send(self) -> Result<Contract<P, S>, ContractError> {
+    pub async fn send(self) -> Result<Contract<M>, ContractError<M>> {
         let tx_hash = self
             .client
             .send_transaction(self.tx, Some(self.block))
-            .await?;
+            .await
+            .map_err(ContractError::MiddlewareError)?;
+
+        // TODO: Should this be calculated "optimistically" by address/nonce?
         let receipt = self
             .client
             .pending_transaction(tx_hash)
-            .interval(self.interval)
             .confirmations(self.confs)
-            .await?;
-
+            .await
+            .map_err(|_| ContractError::ContractNotDeployed)?;
         let address = receipt
             .contract_address
             .ok_or(ContractError::ContractNotDeployed)?;
@@ -72,7 +62,7 @@ where
     }
 
     /// Returns a reference to the deployer's client
-    pub fn client(&self) -> &Client<P, S> {
+    pub fn client(&self) -> &M {
         &self.client
     }
 }
@@ -105,9 +95,8 @@ where
 ///     .expect("could not find contract");
 ///
 /// // connect to the network
-/// let provider = Provider::<Http>::try_from("http://localhost:8545").unwrap();
-/// let client = "380eb0f3d505f087e438eca80bc4df9a7faa24f868e69fc0440261a0fc0567dc"
-///     .parse::<Wallet>()?.connect(provider);
+/// let client = Provider::<Http>::try_from("http://localhost:8545").unwrap();
+/// let client = std::sync::Arc::new(client);
 ///
 /// // create a factory which will be used to deploy instances of the contract
 /// let factory = ContractFactory::new(contract.abi.clone(), contract.bytecode.clone(), client);
@@ -122,23 +111,19 @@ where
 /// println!("{}", contract.address());
 /// # Ok(())
 /// # }
-pub struct ContractFactory<P, S> {
-    client: Arc<Client<P, S>>,
+pub struct ContractFactory<M> {
+    client: Arc<M>,
     abi: Abi,
     bytecode: Bytes,
 }
 
-impl<P, S> ContractFactory<P, S>
-where
-    S: Signer,
-    P: JsonRpcClient,
-{
+impl<M: Middleware> ContractFactory<M> {
     /// Creates a factory for deployment of the Contract with bytecode, and the
     /// constructor defined in the abi. The client will be used to send any deployment
     /// transaction.
-    pub fn new(abi: Abi, bytecode: Bytes, client: impl Into<Arc<Client<P, S>>>) -> Self {
+    pub fn new(abi: Abi, bytecode: Bytes, client: Arc<M>) -> Self {
         Self {
-            client: client.into(),
+            client,
             abi,
             bytecode,
         }
@@ -152,7 +137,7 @@ where
     /// 1. If there are no constructor arguments, you should pass `()` as the argument.
     /// 1. The default poll duration is 7 seconds.
     /// 1. The default number of confirmations is 1 block.
-    pub fn deploy<T: Tokenize>(self, constructor_args: T) -> Result<Deployer<P, S>, ContractError> {
+    pub fn deploy<T: Tokenize>(self, constructor_args: T) -> Result<Deployer<M>, ContractError<M>> {
         // Encode the constructor args & concatenate with the bytecode if necessary
         let params = constructor_args.into_tokens();
         let data: Bytes = match (self.abi.constructor(), params.is_empty()) {
@@ -167,7 +152,6 @@ where
 
         // create the tx object. Since we're deploying a contract, `to` is `None`
         let tx = TransactionRequest {
-            from: Some(self.client.address()),
             to: None,
             data: Some(data),
             ..Default::default()
@@ -179,7 +163,6 @@ where
             tx,
             confs: 1,
             block: BlockNumber::Latest,
-            interval: self.client.get_interval(),
         })
     }
 }

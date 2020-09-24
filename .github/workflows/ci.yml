@@ -22,6 +22,8 @@ jobs:
           node-version: 10
       - name: Install ganache
         run: npm install -g ganache-cli
+      - name: Install libusb (for Ledger)
+        run: sudo apt install pkg-config libudev-dev
 
       - name: Install Solc
         run: |
@@ -47,10 +49,7 @@ jobs:
       - name: cargo test (Celo)
         run: |
             export PATH=$HOME/bin:$PATH
-            cd ethers-core && cargo test --features="celo" && cd ../
-            cd ethers-providers && cargo test --features="celo" && cd ../
-            cd ethers-signers && cargo test --features="celo" && cd ../
-            cd ethers-contract && cargo test --features="celo" && cd ../
+            cargo test --all-features
 
       - name: cargo fmt
         run: cargo fmt --all -- --check
