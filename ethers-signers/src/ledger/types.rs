@@ -33,9 +33,6 @@ pub enum LedgerError {
 
     #[error("Error when decoding UTF8 Response: {0}")]
     Utf8Error(#[from] std::str::Utf8Error),
-
-    #[error(transparent)]
-    SignatureError(#[from] ethers_core::types::SignatureError),
 }
 
 pub const P1_FIRST: u8 = 0x00;
