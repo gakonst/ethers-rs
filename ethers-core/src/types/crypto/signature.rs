@@ -101,7 +101,7 @@ impl Signature {
         };
 
         let (recoverable_sig, _recovery_id) = self.as_signature()?;
-        let verify_key = recoverable_sig.recover_verify_key(message_hash.as_bytes())?;
+        let verify_key = recoverable_sig.recover_verify_key_from_digest_bytes(message_hash.as_ref().into())?;
 
         let uncompressed_pub_key = K256PublicKey::from(&verify_key).decompress();
         if uncompressed_pub_key.is_some().into() {
