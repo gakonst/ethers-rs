@@ -284,6 +284,7 @@ mod tests {
 
         // recover the address from the above signature
         let recovered = signature.recover("Some data").unwrap();
+        assert_eq!(format!("{:?}", recovered), "0x2c7536e3605d9c16a7a3d7b1898e529396a65c23");
 
         assert_eq!(recovered, address);
     }
