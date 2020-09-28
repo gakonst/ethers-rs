@@ -87,9 +87,9 @@ dependencies = [
 
 [[package]]
 name = "async-io"
-version = "1.1.3"
+version = "1.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a9951f92a2b4f7793f8fc06a80bdb89b62c618c993497d4606474fb8c34941b5"
+checksum = "33be191d05a54ec120e4667375e2ad49fe506b846463df384460ab801c7ae5dc"
 dependencies = [
  "concurrent-queue",
  "fastrand",
@@ -491,9 +491,9 @@ checksum = "134951f4028bdadb9b84baf4232681efbf277da25144b9b0ad65df75946c422b"
 
 [[package]]
 name = "ecdsa"
-version = "0.8.1"
+version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6b586654f7964785521b07db8e9a02ca2361ceb0ca82bef37226faa091049487"
+checksum = "4a7c278cc833033b4322122e05b99dbc5a2a2a9bb2c51534ff1f4899c7802d66"
 dependencies = [
  "elliptic-curve",
  "hmac",
@@ -657,6 +657,7 @@ dependencies = [
  "rustc-hex",
  "serde",
  "serde_json",
+ "sha2",
  "thiserror",
  "tiny-keccak 2.0.2",
 ]
@@ -1183,8 +1184,8 @@ dependencies = [
 
 [[package]]
 name = "k256"
-version = "0.5.3"
-source = "git+https://github.com/RustCrypto/elliptic-curves#e29883a6d2684bafb308404a412842fa58b3a604"
+version = "0.5.5"
+source = "git+https://github.com/RustCrypto/elliptic-curves#8845cc09dc55ba3fa41ffa2750d799cf6a23d405"
 dependencies = [
  "cfg-if",
  "ecdsa",
@@ -1847,6 +1848,19 @@ name = "sha-1"
 version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "170a36ea86c864a3f16dd2687712dd6646f7019f301e57537c7f4dc9f5916770"
+dependencies = [
+ "block-buffer",
+ "cfg-if",
+ "cpuid-bool",
+ "digest",
+ "opaque-debug",
+]
+
+[[package]]
+name = "sha2"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2933378ddfeda7ea26f48c555bdad8bb446bf8a3d17832dc83e380d444cfb8c1"
 dependencies = [
  "block-buffer",
  "cfg-if",

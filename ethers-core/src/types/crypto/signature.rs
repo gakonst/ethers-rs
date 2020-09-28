@@ -101,7 +101,8 @@ impl Signature {
         };
 
         let (recoverable_sig, _recovery_id) = self.as_signature()?;
-        let verify_key = recoverable_sig.recover_verify_key_from_digest_bytes(message_hash.as_ref().into())?;
+        let verify_key =
+            recoverable_sig.recover_verify_key_from_digest_bytes(message_hash.as_ref().into())?;
 
         let uncompressed_pub_key = K256PublicKey::from(&verify_key).decompress();
         if uncompressed_pub_key.is_some().into() {
@@ -284,6 +285,10 @@ mod tests {
 
         // recover the address from the above signature
         let recovered = signature.recover("Some data").unwrap();
+        assert_eq!(
+            format!("{:?}", recovered),
+            "0x2c7536e3605d9c16a7a3d7b1898e529396a65c23"
+        );
 
         assert_eq!(recovered, address);
     }

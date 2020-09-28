@@ -16,15 +16,106 @@ use std::{fmt, ops::Deref, str::FromStr};
 use k256::{
     ecdsa::{
         recoverable::{Id as RecoveryId, Signature as RecoverableSignature},
-        signature::Signer,
+        signature::digest::{
+            generic_array::GenericArray, BlockInput, Digest, FixedOutput, Output, Reset, Update,
+        },
+        signature::DigestSigner,
         SigningKey,
     },
+    elliptic_curve::consts::U32,
     elliptic_curve::{error::Error as EllipticCurveError, FieldBytes},
     EncodedPoint as K256PublicKey, Secp256k1, SecretKey as K256SecretKey,
 };
 
+use sha2::Sha256;
+
 const SECRET_KEY_SIZE: usize = 32;
 const COMPRESSED_PUBLIC_KEY_SIZE: usize = 33;
+
+pub enum ProxyDigest<D: Digest> {
+    Proxy(Output<D>),
+    Digest(D),
+}
+
+impl<D: Digest + Clone> Clone for ProxyDigest<D> {
+    fn clone(&self) -> Self {
+        match self {
+            ProxyDigest::Digest(d) => ProxyDigest::Digest(d.clone()),
+            ProxyDigest::Proxy(p) => ProxyDigest::Proxy(p.clone()),
+        }
+    }
+}
+
+impl<D: Digest> Default for ProxyDigest<D> {
+    fn default() -> Self {
+        ProxyDigest::Digest(D::new())
+    }
+}
+
+impl<D: Digest + Clone> ProxyDigest<D> {
+    pub fn proxy_the_output(output: Output<Self>) -> Self {
+        ProxyDigest::Proxy(output)
+    }
+}
+
+impl<D: Digest> Update for ProxyDigest<D> {
+    // we update only if we are digest
+    fn update(&mut self, data: impl AsRef<[u8]>) {
+        match self {
+            ProxyDigest::Digest(ref mut d) => {
+                d.update(data);
+            }
+            ProxyDigest::Proxy(..) => {
+                unreachable!("can not update if we are proxy");
+            }
+        }
+    }
+
+    // we chain only if we are digest
+    fn chain(self, data: impl AsRef<[u8]>) -> Self
+    where
+        Self: Sized,
+    {
+        match self {
+            ProxyDigest::Digest(d) => ProxyDigest::Digest(d.chain(data)),
+            ProxyDigest::Proxy(..) => {
+                unreachable!("can not update if we are proxy");
+            }
+        }
+    }
+}
+
+impl<D: Digest> Reset for ProxyDigest<D> {
+    // make new one
+    fn reset(&mut self) {
+        *self = Self::default();
+    }
+}
+
+impl<D: Digest> BlockInput for ProxyDigest<D> {
+    type BlockSize = D::OutputSize;
+}
+
+impl<D: Digest> FixedOutput for ProxyDigest<D> {
+    // we default to the output of the orignal digest
+    type OutputSize = D::OutputSize;
+
+    fn finalize_into(self, out: &mut GenericArray<u8, Self::OutputSize>) {
+        match self {
+            ProxyDigest::Digest(d) => {
+                *out = d.finalize();
+            }
+            ProxyDigest::Proxy(p) => {
+                *out = p;
+            }
+        }
+    }
+
+    fn finalize_into_reset(&mut self, out: &mut GenericArray<u8, Self::OutputSize>) {
+        let s = core::mem::replace(self, Self::default());
+        s.finalize_into(out);
+    }
+}
 
 /// A private key on Secp256k1
 #[derive(Clone, Debug)]
@@ -92,7 +183,7 @@ impl PrivateKey {
         let message = message.as_ref();
         let message_hash = hash_message(message);
 
-        self.sign_with_eip155(message_hash.as_bytes(), None)
+        self.sign_hash_with_eip155(message_hash, None)
     }
 
     /// RLP encodes and then signs the stransaction.
@@ -108,13 +199,19 @@ impl PrivateKey {
     /// calling this function.
     pub fn sign_transaction(&self, tx: &TransactionRequest, chain_id: Option<u64>) -> Signature {
         let sighash = tx.sighash(chain_id);
-        self.sign_with_eip155(sighash.as_bytes(), chain_id)
+        self.sign_hash_with_eip155(sighash, chain_id)
     }
 
-    fn sign_with_eip155(&self, message: &[u8], chain_id: Option<u64>) -> Signature {
+    fn sign_hash_with_eip155(&self, hash: H256, chain_id: Option<u64>) -> Signature {
         let signing_key = SigningKey::new(&self.0.to_bytes()).expect("invalid secret key");
 
-        let recoverable_sig: RecoverableSignature = signing_key.sign(message);
+        let hash_as_generic_array: GenericArray<u8, U32> =
+            *GenericArray::from_slice(hash.as_bytes());
+        // construct proxy so deterministic nonce will use Sha256, but hash being signed would still be
+        // from Keccak
+        let proxy: ProxyDigest<Sha256> = ProxyDigest::proxy_the_output(hash_as_generic_array);
+
+        let recoverable_sig: RecoverableSignature = signing_key.sign_digest(proxy);
 
         let v = to_eip155_v(recoverable_sig.recovery_id(), chain_id);
 
