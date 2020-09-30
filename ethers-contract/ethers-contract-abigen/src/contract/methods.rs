@@ -115,7 +115,7 @@ mod tests {
         // no inputs
         let params = vec![];
         let token_stream = expand_inputs_call_arg(&params);
-        assert_eq!(token_stream.to_string(), "( )");
+        assert_eq!(token_stream.to_string(), "()");
 
         // single input
         let params = vec![Param {
@@ -137,7 +137,7 @@ mod tests {
             },
         ];
         let token_stream = expand_inputs_call_arg(&params);
-        assert_eq!(token_stream.to_string(), "( arg_a , arg_b , )");
+        assert_eq!(token_stream.to_string(), "(arg_a , arg_b ,)");
 
         // three inputs
         let params = vec![
@@ -155,7 +155,7 @@ mod tests {
             },
         ];
         let token_stream = expand_inputs_call_arg(&params);
-        assert_eq!(token_stream.to_string(), "( arg_a , arg_b , arg_c , )");
+        assert_eq!(token_stream.to_string(), "(arg_a , arg_b , arg_c ,)");
     }
 
     #[test]
