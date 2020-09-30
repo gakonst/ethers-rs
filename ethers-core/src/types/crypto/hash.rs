@@ -7,6 +7,8 @@ use k256::ecdsa::signature::digest::{
 
 pub type Sha256Proxy = ProxyDigest<sha2::Sha256>;
 
+use elliptic_curve::consts::U64;
+
 #[derive(Clone)]
 pub enum ProxyDigest<D: Digest> {
     Proxy(Output<D>),
@@ -59,8 +61,8 @@ impl<D: Digest> Reset for ProxyDigest<D> {
     }
 }
 
-impl<D: Digest> BlockInput for ProxyDigest<D> {
-    type BlockSize = D::OutputSize;
+impl BlockInput for Sha256Proxy {
+    type BlockSize = U64;
 }
 
 impl<D: Digest> FixedOutput for ProxyDigest<D> {
