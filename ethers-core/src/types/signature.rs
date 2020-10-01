@@ -1,6 +1,6 @@
 // Code adapted from: https://github.com/tomusdrw/rust-web3/blob/master/src/api/accounts.rs
 use crate::{
-    types::{Address, PublicKey, H256},
+    types::{Address, H256},
     utils::hash_message,
 };
 
@@ -106,7 +106,10 @@ impl Signature {
 
         let uncompressed_pub_key = K256PublicKey::from(&verify_key).decompress();
         if uncompressed_pub_key.is_some().into() {
-            Ok(PublicKey::from(uncompressed_pub_key.unwrap()).into())
+            let public_key = uncompressed_pub_key.unwrap().to_bytes();
+            debug_assert_eq!(public_key[0], 0x04);
+            let hash = crate::utils::keccak256(&public_key[1..]);
+            Ok(Address::from_slice(&hash[12..]))
         } else {
             Err(SignatureError::RecoveryError)
         }
@@ -245,55 +248,17 @@ impl From<H256> for RecoveryMessage {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::PrivateKey;
-
-    #[test]
-    fn recover_signature_from_message() {
-        let message = "Some data";
-        let hash = hash_message(message);
-        let key = PrivateKey::new(&mut rand::thread_rng());
-        let address = Address::from(&key);
-
-        // sign a message
-        let signature = key.sign(message);
-
-        // ecrecover via the message will hash internally
-        let recovered = signature.recover(message).unwrap();
-
-        // if provided with a hash, it will skip hashing
-        let recovered2 = signature.recover(hash).unwrap();
-
-        // verifies the signature is produced by `address`
-        signature.verify(message, address).unwrap();
-
-        assert_eq!(recovered, address);
-        assert_eq!(recovered2, address);
-    }
 
     #[test]
     fn recover_web3_signature() {
         // test vector taken from:
         // https://web3js.readthedocs.io/en/v1.2.2/web3-eth-accounts.html#sign
-        let key: PrivateKey = "4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318"
-            .parse()
-            .unwrap();
-        let address = Address::from(&key);
-        let our_signature = key.sign("Some data");
         let signature = Signature::from_str(
             "b91467e570a6466aa9e9876cbcd013baba02900b8979d43fe208a4a4f339f5fd6007e74cd82e037b800186422fc2da167c747ef045e5d18a5f5d4300f8e1a0291c"
         ).expect("could not parse signature");
-        assert_eq!(our_signature.recover("Some data").unwrap(), address,);
-        assert_eq!(signature.recover("Some data").unwrap(), address);
-        assert_eq!(our_signature, signature);
-    }
-
-    #[test]
-    fn to_vec() {
-        let message = "Some data";
-        let key = PrivateKey::new(&mut rand::thread_rng());
-        let signature = key.sign(message);
-        let serialized = signature.to_vec();
-        let de = Signature::try_from(&serialized[..]).unwrap();
-        assert_eq!(signature, de);
+        assert_eq!(
+            signature.recover("Some data").unwrap(),
+            Address::from_str("2c7536E3605D9C16a7a3D7b1898e529396a65c23").unwrap()
+        );
     }
 }

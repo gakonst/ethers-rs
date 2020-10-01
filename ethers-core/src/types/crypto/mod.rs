@@ -5,3 +5,4 @@ mod signature;
 pub use signature::Signature;
 
 mod hash;
+pub use hash::Sha256Proxy;

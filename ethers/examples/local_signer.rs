@@ -6,8 +6,8 @@ use std::convert::TryFrom;
 async fn main() -> Result<()> {
     let ganache = Ganache::new().spawn();
 
-    let wallet: Wallet = ganache.keys()[0].clone().into();
-    let wallet2: Wallet = ganache.keys()[1].clone().into();
+    let wallet: LocalWallet = ganache.keys()[0].clone().into();
+    let wallet2: LocalWallet = ganache.keys()[1].clone().into();
 
     // connect to the network
     let provider = Provider::<Http>::try_from(ganache.endpoint())?;

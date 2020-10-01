@@ -23,7 +23,6 @@ generic-array = "0.14.4"
 k256 = { git = "https://github.com/RustCrypto/elliptic-curves", version = "0.5.2", features = ["keccak256", "ecdsa"] }
 rand = "0.7.2"
 tiny-keccak = { version = "2.0.2", default-features = false }
-sha2 = { version = "0.9.1" }
 
 # misc
 serde = { version = "1.0.110", default-features = false, features = ["derive"] }

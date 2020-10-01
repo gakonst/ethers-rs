@@ -13,12 +13,12 @@
 //! ```no_run
 //! # use ethers::{
 //!     signers::{Wallet, Signer},
-//!     core::types::TransactionRequest
+//!     core::{k256::ecdsa::SigningKey, types::TransactionRequest},
 //! };
 //! # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
 //! // instantiate the wallet
 //! let wallet = "dcf2cbdd171a21c480aa7f53d77f31bb102282b3ff099c78e3118b37348c72f7"
-//!     .parse::<Wallet>()?;
+//!     .parse::<Wallet<SigningKey>>()?;
 //!
 //! // create a transaction
 //! let tx = TransactionRequest::new()
@@ -33,8 +33,11 @@
 //! signature.verify("hello world", wallet.address()).unwrap();
 //! # Ok(())
 //! # }
+// mod wallet;
+// pub use wallet::Wallet;
 mod wallet;
 pub use wallet::Wallet;
+pub type LocalWallet = Wallet<ethers_core::k256::ecdsa::SigningKey>;
 
 #[cfg(feature = "ledger")]
 mod ledger;
@@ -52,7 +55,7 @@ use std::error::Error;
 ///
 /// Implement this trait to support different signing modes, e.g. Ledger, hosted etc.
 #[async_trait(?Send)]
-pub trait Signer: Send + Sync + std::fmt::Debug {
+pub trait Signer: std::fmt::Debug + Send + Sync {
     type Error: Error + Send + Sync;
     /// Signs the hash of the provided message after prefixing it
     async fn sign_message<S: Send + Sync + AsRef<[u8]>>(

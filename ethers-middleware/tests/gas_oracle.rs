@@ -9,7 +9,7 @@ use std::convert::TryFrom;
 async fn using_gas_oracle() {
     let ganache = Ganache::new().spawn();
 
-    let from = Address::from(ganache.keys()[0].clone());
+    let from = ganache.addresses()[0];
 
     // connect to the network
     let provider = Provider::<Http>::try_from(ganache.endpoint()).unwrap();

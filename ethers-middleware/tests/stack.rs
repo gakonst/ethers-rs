@@ -7,12 +7,12 @@ async fn can_stack_middlewares() {
         Client, GasOracleMiddleware, NonceManager,
     };
     use ethers_providers::{Http, Middleware, Provider};
-    use ethers_signers::Wallet;
+    use ethers_signers::LocalWallet;
     use std::convert::TryFrom;
 
     let ganache = Ganache::new().block_time(5u64).spawn();
     let gas_oracle = GasNow::new().category(GasCategory::SafeLow);
-    let signer: Wallet = ganache.keys()[0].clone().into();
+    let signer: LocalWallet = ganache.keys()[0].clone().into();
     let address = signer.address();
 
     // the base provider

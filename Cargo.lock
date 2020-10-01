@@ -491,9 +491,9 @@ checksum = "134951f4028bdadb9b84baf4232681efbf277da25144b9b0ad65df75946c422b"
 
 [[package]]
 name = "ecdsa"
-version = "0.8.2"
+version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4a7c278cc833033b4322122e05b99dbc5a2a2a9bb2c51534ff1f4899c7802d66"
+checksum = "765a6f9c0938fef990bb7af306fe1e534721bc52a1eb918cc938c5212d6e07eb"
 dependencies = [
  "elliptic-curve",
  "hmac",
@@ -657,7 +657,6 @@ dependencies = [
  "rustc-hex",
  "serde",
  "serde_json",
- "sha2",
  "thiserror",
  "tiny-keccak 2.0.2",
 ]
@@ -712,12 +711,15 @@ version = "0.1.3"
 dependencies = [
  "async-trait",
  "coins-ledger",
+ "elliptic-curve",
  "ethers",
  "ethers-core",
  "futures-util",
+ "rand",
  "rustc-hex",
  "serde",
  "serde_json",
+ "sha2",
  "thiserror",
  "tokio",
 ]

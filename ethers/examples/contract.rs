@@ -24,7 +24,7 @@ async fn main() -> Result<()> {
     let ganache = Ganache::new().spawn();
 
     // 3. instantiate our wallet
-    let wallet: Wallet = ganache.keys()[0].clone().into();
+    let wallet: LocalWallet = ganache.keys()[0].clone().into();
 
     // 4. connect to the network
     let provider =

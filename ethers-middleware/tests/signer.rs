@@ -2,7 +2,7 @@ use ethers_providers::{Http, Middleware, Provider};
 
 use ethers_core::types::TransactionRequest;
 use ethers_middleware::Client;
-use ethers_signers::Wallet;
+use ethers_signers::LocalWallet;
 use std::{convert::TryFrom, time::Duration};
 
 #[tokio::test]
@@ -13,8 +13,8 @@ async fn send_eth() {
     let ganache = Ganache::new().spawn();
 
     // this private key belongs to the above mnemonic
-    let wallet: Wallet = ganache.keys()[0].clone().into();
-    let wallet2: Wallet = ganache.keys()[1].clone().into();
+    let wallet: LocalWallet = ganache.keys()[0].clone().into();
+    let wallet2: LocalWallet = ganache.keys()[1].clone().into();
 
     // connect to the network
     let provider = Provider::<Http>::try_from(ganache.endpoint())

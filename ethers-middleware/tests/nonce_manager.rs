@@ -4,7 +4,7 @@ async fn nonce_manager() {
     use ethers_core::types::*;
     use ethers_middleware::{Client, NonceManager};
     use ethers_providers::{Http, Middleware, Provider};
-    use ethers_signers::Wallet;
+    use ethers_signers::LocalWallet;
     use std::convert::TryFrom;
     use std::time::Duration;
 
@@ -14,7 +14,7 @@ async fn nonce_manager() {
             .interval(Duration::from_millis(2000u64));
 
     let wallet = "59c37cb6b16fa2de30675f034c8008f890f4b2696c729d6267946d29736d73e4"
-        .parse::<Wallet>()
+        .parse::<LocalWallet>()
         .unwrap();
     let address = wallet.address();
 

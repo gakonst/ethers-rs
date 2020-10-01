@@ -7,7 +7,7 @@ use ethers_contract::{Contract, ContractFactory};
 use ethers_core::utils::{GanacheInstance, Solc};
 use ethers_middleware::Client;
 use ethers_providers::{Http, Middleware, Provider};
-use ethers_signers::Wallet;
+use ethers_signers::LocalWallet;
 use std::{convert::TryFrom, sync::Arc, time::Duration};
 
 // Note: We also provide the `abigen` macro for generating these bindings automatically
@@ -44,14 +44,14 @@ pub fn compile_contract(name: &str, filename: &str) -> (Abi, Bytes) {
     (contract.abi.clone(), contract.bytecode.clone())
 }
 
-type HttpWallet = Client<Provider<Http>, Wallet>;
+type HttpWallet = Client<Provider<Http>, LocalWallet>;
 
 /// connects the private key to http://localhost:8545
 pub fn connect(ganache: &GanacheInstance, idx: usize) -> Arc<HttpWallet> {
     let provider = Provider::<Http>::try_from(ganache.endpoint())
         .unwrap()
         .interval(Duration::from_millis(10u64));
-    let wallet: Wallet = ganache.keys()[idx].clone().into();
+    let wallet: LocalWallet = ganache.keys()[idx].clone().into();
     Arc::new(Client::new(provider, wallet))
 }
 
