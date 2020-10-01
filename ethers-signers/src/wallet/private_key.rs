@@ -104,7 +104,7 @@ mod tests {
     async fn signs_msg() {
         let message = "Some data";
         let hash = ethers_core::utils::hash_message(message);
-        let key = Wallet::new(&mut rand::thread_rng());
+        let key = Wallet::<SigningKey>::new(&mut rand::thread_rng());
         let address = key.address;
 
         // sign a message

@@ -1,6 +1,9 @@
 mod hash;
 mod private_key;
 
+#[cfg(feature = "yubihsm")]
+mod yubi;
+
 use crate::Signer;
 use ethers_core::{
     k256::{
