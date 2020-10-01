@@ -244,16 +244,14 @@ impl<'de> Deserialize<'de> for PublicKey {
                         .ok_or_else(|| DeserializeError::custom("could not read bytes"))?;
                 }
 
-                let pub_key = K256PublicKey::from_bytes(&bytes[..]).map_or_else(
-                    |_| Err(DeserializeError::custom("parse pub key")),
-                    |v| Ok(v),
-                )?;
+                let pub_key = K256PublicKey::from_bytes(&bytes[..])
+                    .map_err(|_| DeserializeError::custom("parse pub key"))?;
 
                 let uncompressed_pub_key = pub_key.decompress();
                 if uncompressed_pub_key.is_some().into() {
-                    return Ok(PublicKey(uncompressed_pub_key.unwrap()));
+                    Ok(PublicKey(uncompressed_pub_key.unwrap()))
                 } else {
-                    return Err(DeserializeError::custom("parse pub key"));
+                    Err(DeserializeError::custom("parse pub key"))
                 }
             }
         }

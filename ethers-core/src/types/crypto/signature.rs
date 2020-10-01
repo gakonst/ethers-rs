@@ -106,8 +106,7 @@ impl Signature {
 
         let uncompressed_pub_key = K256PublicKey::from(&verify_key).decompress();
         if uncompressed_pub_key.is_some().into() {
-            let pub_key: K256PublicKey = K256PublicKey::from(uncompressed_pub_key.unwrap());
-            Ok(PublicKey::from(pub_key).into())
+            Ok(PublicKey::from(uncompressed_pub_key.unwrap()).into())
         } else {
             Err(SignatureError::RecoveryError)
         }
