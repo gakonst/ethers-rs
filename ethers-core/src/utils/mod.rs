@@ -18,8 +18,8 @@ pub use hash::{hash_message, id, keccak256, serialize};
 pub use rlp;
 
 use crate::types::{Address, Bytes, U256};
+use k256::{ecdsa::SigningKey, EncodedPoint as K256PublicKey};
 use std::convert::TryInto;
-use k256::{EncodedPoint as K256PublicKey, ecdsa::SigningKey};
 
 /// 1 Ether = 1e18 Wei == 0x0de0b6b3a7640000 Wei
 pub const WEI_IN_ETHER: U256 = U256([0x0de0b6b3a7640000, 0x0, 0x0, 0x0]);

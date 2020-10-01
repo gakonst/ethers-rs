@@ -1,3 +1,4 @@
+use crate::{types::Address, utils::secret_key_to_address};
 use k256::{ecdsa::SigningKey, SecretKey as K256SecretKey};
 use rustc_hex::FromHex;
 use std::{
@@ -6,7 +7,6 @@ use std::{
     process::{Child, Command},
     time::{Duration, Instant},
 };
-use crate::{types::Address,utils::secret_key_to_address};
 
 /// How long we will wait for ganache to indicate that it is ready.
 const GANACHE_STARTUP_TIMEOUT_MILLIS: u64 = 10_000;

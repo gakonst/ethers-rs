@@ -344,7 +344,7 @@ mod celo_tests {
     use ethers::{
         middleware::Client,
         providers::{Http, Provider},
-        signers::Wallet,
+        signers::LocalWallet,
         types::BlockNumber,
     };
     use std::{convert::TryFrom, sync::Arc, time::Duration};
@@ -360,7 +360,7 @@ mod celo_tests {
 
         // Funded with https://celo.org/developers/faucet
         let wallet = "d652abb81e8c686edba621a895531b1f291289b63b5ef09a94f686a5ecdd5db1"
-            .parse::<Wallet>()
+            .parse::<LocalWallet>()
             .unwrap();
 
         let client = Client::new(provider, wallet);

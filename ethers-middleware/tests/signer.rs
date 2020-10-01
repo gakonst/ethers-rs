@@ -52,7 +52,7 @@ async fn test_send_transaction() {
     // Funded with https://celo.org/developers/faucet
     // Please do not drain this account :)
     let wallet = "d652abb81e8c686edba621a895531b1f291289b63b5ef09a94f686a5ecdd5db1"
-        .parse::<Wallet>()
+        .parse::<LocalWallet>()
         .unwrap();
     let client = Client::new(provider, wallet);
 

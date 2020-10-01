@@ -71,7 +71,8 @@ use ethers_core::k256::SecretKey as K256SecretKey;
 
 impl From<K256SecretKey> for Wallet<SigningKey> {
     fn from(key: K256SecretKey) -> Self {
-        let signer = SigningKey::new(&*key.to_bytes()).expect("private key should always be convertible to signing key");
+        let signer = SigningKey::new(&*key.to_bytes())
+            .expect("private key should always be convertible to signing key");
         let address = key_to_address(&signer);
 
         Self {
@@ -98,7 +99,6 @@ impl FromStr for Wallet<SigningKey> {
 mod tests {
     use super::*;
     use crate::Signer;
-    use ethers_core::types::TransactionRequest;
 
     #[tokio::test]
     async fn signs_msg() {
@@ -126,6 +126,7 @@ mod tests {
     #[tokio::test]
     #[cfg(not(feature = "celo"))]
     async fn signs_tx() {
+        use ethers_core::types::TransactionRequest;
         // retrieved test vector from:
         // https://web3js.readthedocs.io/en/v1.2.0/web3-eth-accounts.html#eth-accounts-signtransaction
         let tx = TransactionRequest {
