@@ -4,7 +4,7 @@ use ethers::prelude::*;
 #[tokio::main]
 async fn main() -> Result<()> {
     let message = "Some data";
-    let wallet = Wallet::new(&mut rand::thread_rng());
+    let wallet = LocalWallet::new(&mut rand::thread_rng());
 
     // sign a message
     let signature = wallet.sign_message(message).await?;
