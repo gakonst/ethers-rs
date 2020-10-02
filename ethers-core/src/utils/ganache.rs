@@ -1,4 +1,6 @@
-use crate::types::PrivateKey;
+use crate::{types::Address, utils::secret_key_to_address};
+use k256::{ecdsa::SigningKey, SecretKey as K256SecretKey};
+use rustc_hex::FromHex;
 use std::{
     io::{BufRead, BufReader},
     net::TcpListener,
@@ -14,14 +16,20 @@ const GANACHE_STARTUP_TIMEOUT_MILLIS: u64 = 10_000;
 /// Construct this using [`Ganache`](crate::utils::Ganache)
 pub struct GanacheInstance {
     pid: Child,
-    private_keys: Vec<PrivateKey>,
+    private_keys: Vec<K256SecretKey>,
+    addresses: Vec<Address>,
     port: u16,
 }
 
 impl GanacheInstance {
     /// Returns the private keys used to instantiate this instance
-    pub fn keys(&self) -> &[PrivateKey] {
+    pub fn keys(&self) -> &[K256SecretKey] {
         &self.private_keys
+    }
+
+    /// Returns the addresses used to instantiate this instance
+    pub fn addresses(&self) -> &[Address] {
+        &self.addresses
     }
 
     /// Returns the port of this instance
@@ -130,6 +138,7 @@ impl Ganache {
         let mut reader = BufReader::new(stdout);
 
         let mut private_keys = Vec::new();
+        let mut addresses = Vec::new();
         let mut is_private_key = false;
         loop {
             if start + Duration::from_millis(GANACHE_STARTUP_TIMEOUT_MILLIS) <= Instant::now() {
@@ -150,7 +159,11 @@ impl Ganache {
 
             if is_private_key && line.starts_with('(') {
                 let key_str = &line[6..line.len() - 1];
-                let key: PrivateKey = key_str.parse().expect("did not get private key");
+                let key_hex = key_str
+                    .from_hex::<Vec<u8>>()
+                    .expect("could not parse as hex");
+                let key = K256SecretKey::from_bytes(&key_hex).expect("did not get private key");
+                addresses.push(secret_key_to_address(&SigningKey::from(&key)));
                 private_keys.push(key);
             }
         }
@@ -160,6 +173,7 @@ impl Ganache {
         GanacheInstance {
             pid: child,
             private_keys,
+            addresses,
             port,
         }
     }

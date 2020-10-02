@@ -13,19 +13,21 @@
 //! signing the hash of the result.
 //!
 //! ```rust
-//! use ethers::core::types::{PrivateKey, Address};
+//! # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
+//! use ethers::signers::{Signer, LocalWallet};
 //!
 //! let message = "Some data";
-//! let key = PrivateKey::new(&mut rand::thread_rng());
-//! let address = Address::from(&key);
+//! let wallet = LocalWallet::new(&mut rand::thread_rng());
 //!
 //! // Sign the message
-//! let signature = key.sign(message);
+//! let signature = wallet.sign_message(message).await?;
 //!
 //! // Recover the signer from the message
-//! let recovered = signature.recover(message).unwrap();
+//! let recovered = signature.recover(message)?;
 //!
-//! assert_eq!(recovered, address);
+//! assert_eq!(recovered, wallet.address());
+//! # Ok(())
+//! # }
 //! ```
 //!
 //! ## Utilities

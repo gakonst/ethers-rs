@@ -18,6 +18,7 @@ pub use hash::{hash_message, id, keccak256, serialize};
 pub use rlp;
 
 use crate::types::{Address, Bytes, U256};
+use k256::{ecdsa::SigningKey, EncodedPoint as K256PublicKey};
 use std::convert::TryInto;
 
 /// 1 Ether = 1e18 Wei == 0x0de0b6b3a7640000 Wei
@@ -98,6 +99,16 @@ pub fn get_create2_address(
     let mut bytes = [0u8; 20];
     bytes.copy_from_slice(&hash[12..]);
     Address::from(bytes)
+}
+
+/// Converts a K256 SigningKey to an Ethereum Address
+pub fn secret_key_to_address(secret_key: &SigningKey) -> Address {
+    // TODO: Can we do this in a better way?
+    let uncompressed_pub_key = K256PublicKey::from(&secret_key.verify_key()).decompress();
+    let public_key = uncompressed_pub_key.unwrap().to_bytes();
+    debug_assert_eq!(public_key[0], 0x04);
+    let hash = keccak256(&public_key[1..]);
+    Address::from_slice(&hash[12..])
 }
 
 #[cfg(test)]

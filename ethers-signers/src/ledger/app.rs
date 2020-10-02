@@ -159,7 +159,7 @@ impl LedgerEthereum {
         let mut result = Vec::new();
 
         // Iterate in 255 byte chunks
-        while payload.len() > 0 {
+        while !payload.is_empty() {
             let chunk_size = std::cmp::min(payload.len(), 255);
             let data = payload.drain(0..chunk_size).collect::<Vec<_>>();
             command.data = APDUData::new(&data);
@@ -188,10 +188,10 @@ impl LedgerEthereum {
 
         let mut bytes = vec![depth as u8];
         for derivation_index in elements {
-            let hardened = derivation_index.contains("'");
+            let hardened = derivation_index.contains('\'');
             let mut index = derivation_index.replace("'", "").parse::<u32>().unwrap();
             if hardened {
-                index = 0x80000000 | index;
+                index |= 0x80000000;
             }
 
             bytes.extend(&index.to_be_bytes());

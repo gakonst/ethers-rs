@@ -2,7 +2,7 @@ use ethers_providers::{Http, Middleware, Provider};
 
 use ethers_core::types::TransactionRequest;
 use ethers_middleware::Client;
-use ethers_signers::Wallet;
+use ethers_signers::LocalWallet;
 use std::{convert::TryFrom, time::Duration};
 
 #[tokio::test]
@@ -13,8 +13,8 @@ async fn send_eth() {
     let ganache = Ganache::new().spawn();
 
     // this private key belongs to the above mnemonic
-    let wallet: Wallet = ganache.keys()[0].clone().into();
-    let wallet2: Wallet = ganache.keys()[1].clone().into();
+    let wallet: LocalWallet = ganache.keys()[0].clone().into();
+    let wallet2: LocalWallet = ganache.keys()[1].clone().into();
 
     // connect to the network
     let provider = Provider::<Http>::try_from(ganache.endpoint())
@@ -52,7 +52,7 @@ async fn test_send_transaction() {
     // Funded with https://celo.org/developers/faucet
     // Please do not drain this account :)
     let wallet = "d652abb81e8c686edba621a895531b1f291289b63b5ef09a94f686a5ecdd5db1"
-        .parse::<Wallet>()
+        .parse::<LocalWallet>()
         .unwrap();
     let client = Client::new(provider, wallet);
 

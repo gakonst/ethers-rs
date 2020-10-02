@@ -20,10 +20,9 @@ arrayvec = { version = "0.5.1", default-features = false }
 ecdsa = { version = "0.8.0", features = ["std"] }
 elliptic-curve = { version = "0.6.1", features = ["arithmetic"] }
 generic-array = "0.14.4"
-k256 = { git = "https://github.com/RustCrypto/elliptic-curves", version = "0.5.2", features = ["keccak256", "ecdsa"] }
+k256 = { version = "0.5.2", features = ["keccak256", "ecdsa"] }
 rand = "0.7.2"
 tiny-keccak = { version = "2.0.2", default-features = false }
-sha2 = { version = "0.9.1" }
 
 # misc
 serde = { version = "1.0.110", default-features = false, features = ["derive"] }

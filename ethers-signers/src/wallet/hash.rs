@@ -1,9 +1,11 @@
 //! This is a helper module used to pass the pre-hashed message for signing to the
 //! `sign_digest` methods of K256.
-use crate::types::H256;
 use elliptic_curve::consts::U64;
-use k256::ecdsa::signature::digest::{
-    generic_array::GenericArray, BlockInput, Digest, FixedOutput, Output, Reset, Update,
+use ethers_core::{
+    k256::ecdsa::signature::digest::{
+        generic_array::GenericArray, BlockInput, Digest, FixedOutput, Output, Reset, Update,
+    },
+    types::H256,
 };
 
 pub type Sha256Proxy = ProxyDigest<sha2::Sha256>;

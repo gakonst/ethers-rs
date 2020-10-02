@@ -322,14 +322,15 @@ mod eth_tests {
         assert_eq!(return_data.2, multicall_contract.address());
         assert_eq!(return_data.3, multicall_contract.address());
 
+        let addrs = ganache.addresses();
         // query ETH balances of multiple addresses
         // these keys haven't been used to do any tx
         // so should have 100 ETH
         multicall
             .clear_calls()
-            .eth_balance_of(Address::from(&ganache.keys()[4]))
-            .eth_balance_of(Address::from(&ganache.keys()[5]))
-            .eth_balance_of(Address::from(&ganache.keys()[6]));
+            .eth_balance_of(addrs[4])
+            .eth_balance_of(addrs[5])
+            .eth_balance_of(addrs[6]);
         let balances: (U256, U256, U256) = multicall.call().await.unwrap();
         assert_eq!(balances.0, U256::from(100000000000000000000u128));
         assert_eq!(balances.1, U256::from(100000000000000000000u128));
@@ -343,7 +344,7 @@ mod celo_tests {
     use ethers::{
         middleware::Client,
         providers::{Http, Provider},
-        signers::Wallet,
+        signers::LocalWallet,
         types::BlockNumber,
     };
     use std::{convert::TryFrom, sync::Arc, time::Duration};
@@ -359,7 +360,7 @@ mod celo_tests {
 
         // Funded with https://celo.org/developers/faucet
         let wallet = "d652abb81e8c686edba621a895531b1f291289b63b5ef09a94f686a5ecdd5db1"
-            .parse::<Wallet>()
+            .parse::<LocalWallet>()
             .unwrap();
 
         let client = Client::new(provider, wallet);

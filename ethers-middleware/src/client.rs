@@ -1,5 +1,3 @@
-use ethers_signers::Signer;
-
 use ethers_core::{
     types::{
         Address, BlockNumber, Bytes, NameOrAddress, Signature, Transaction, TransactionRequest,
@@ -7,7 +5,8 @@ use ethers_core::{
     },
     utils::keccak256,
 };
-use ethers_providers::Middleware;
+use ethers_providers::{FromErr, Middleware};
+use ethers_signers::Signer;
 
 use async_trait::async_trait;
 use futures_util::{future::ok, join};
@@ -23,7 +22,7 @@ use thiserror::Error;
 /// ```no_run
 /// use ethers::{
 ///     providers::{Middleware, Provider, Http},
-///     signers::Wallet,
+///     signers::LocalWallet,
 ///     middleware::Client,
 ///     types::{Address, TransactionRequest},
 /// };
@@ -35,7 +34,7 @@ use thiserror::Error;
 ///
 /// // Transactions will be signed with the private key below and will be broadcast
 /// // via the eth_sendRawTransaction API)
-/// let wallet: Wallet = "380eb0f3d505f087e438eca80bc4df9a7faa24f868e69fc0440261a0fc0567dc"
+/// let wallet: LocalWallet = "380eb0f3d505f087e438eca80bc4df9a7faa24f868e69fc0440261a0fc0567dc"
 ///     .parse()?;
 ///
 /// let mut client = Client::new(provider, wallet);
@@ -55,7 +54,7 @@ use thiserror::Error;
 /// let receipt = client.pending_transaction(tx_hash).confirmations(6).await?;
 ///
 /// // You can connect with other wallets at runtime via the `with_signer` function
-/// let wallet2: Wallet = "cd8c407233c0560f6de24bb2dc60a8b02335c959a1a17f749ce6c1ccf63d74a7"
+/// let wallet2: LocalWallet = "cd8c407233c0560f6de24bb2dc60a8b02335c959a1a17f749ce6c1ccf63d74a7"
 ///     .parse()?;
 ///
 /// let signed_msg2 = client.with_signer(wallet2).sign(b"hello".to_vec(), &client.address()).await?;
@@ -77,8 +76,6 @@ pub struct Client<M, S> {
     pub(crate) signer: S,
     pub(crate) address: Address,
 }
-
-use ethers_providers::FromErr;
 
 impl<M: Middleware, S: Signer> FromErr<M::Error> for ClientError<M, S> {
     fn from(src: M::Error) -> ClientError<M, S> {
@@ -300,7 +297,7 @@ where
 #[cfg(all(test, not(feature = "celo")))]
 mod tests {
     use super::*;
-    use ethers::{providers::Provider, signers::Wallet};
+    use ethers::{providers::Provider, signers::LocalWallet};
     use rustc_hex::FromHex;
     use std::convert::TryFrom;
 
@@ -326,7 +323,7 @@ mod tests {
 
         let provider = Provider::try_from("http://localhost:8545").unwrap();
         let key = "4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318"
-            .parse::<Wallet>()
+            .parse::<LocalWallet>()
             .unwrap()
             .set_chain_id(chain_id);
         let client = Client::new(provider, key);
