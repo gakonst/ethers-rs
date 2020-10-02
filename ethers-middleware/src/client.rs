@@ -1,5 +1,3 @@
-use ethers_signers::Signer;
-
 use ethers_core::{
     types::{
         Address, BlockNumber, Bytes, NameOrAddress, Signature, Transaction, TransactionRequest,
@@ -7,7 +5,8 @@ use ethers_core::{
     },
     utils::keccak256,
 };
-use ethers_providers::Middleware;
+use ethers_providers::{FromErr, Middleware};
+use ethers_signers::Signer;
 
 use async_trait::async_trait;
 use futures_util::{future::ok, join};
@@ -77,8 +76,6 @@ pub struct Client<M, S> {
     pub(crate) signer: S,
     pub(crate) address: Address,
 }
-
-use ethers_providers::FromErr;
 
 impl<M: Middleware, S: Signer> FromErr<M::Error> for ClientError<M, S> {
     fn from(src: M::Error) -> ClientError<M, S> {

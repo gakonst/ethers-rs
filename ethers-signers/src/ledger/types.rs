@@ -1,5 +1,6 @@
 //! Helpers for interacting with the Ethereum Ledger App
 //! [Official Docs](https://github.com/LedgerHQ/app-ethereum/blob/master/doc/ethapp.asc)
+use std::fmt;
 use thiserror::Error;
 
 #[derive(Clone, Debug)]
@@ -9,13 +10,17 @@ pub enum DerivationType {
     Other(String),
 }
 
-impl DerivationType {
-    pub fn to_string(&self) -> String {
-        match self {
-            DerivationType::Legacy(index) => format!("m/44'/60'/0'/{}", index),
-            DerivationType::LedgerLive(index) => format!("m/44'/60'/{}'/0/0", index),
-            DerivationType::Other(inner) => inner.to_owned(),
-        }
+impl fmt::Display for DerivationType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+        write!(
+            f,
+            "{}",
+            match self {
+                DerivationType::Legacy(index) => format!("m/44'/60'/0'/{}", index),
+                DerivationType::LedgerLive(index) => format!("m/44'/60'/{}'/0/0", index),
+                DerivationType::Other(inner) => inner.to_owned(),
+            }
+        )
     }
 }
 
