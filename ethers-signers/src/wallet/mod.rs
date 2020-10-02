@@ -34,10 +34,10 @@ use std::fmt;
 ///
 /// ```
 /// use ethers_core::rand::thread_rng;
-/// use ethers_signers::{Wallet, Signer};
+/// use ethers_signers::{LocalWallet, Signer};
 ///
 /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
-/// let wallet = Wallet::new(&mut thread_rng());
+/// let wallet = LocalWallet::new(&mut thread_rng());
 ///
 /// // Optionally, the wallet's chain id can be set, in order to use EIP-155
 /// // replay protection with different chains

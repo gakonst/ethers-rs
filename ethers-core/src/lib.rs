@@ -14,10 +14,10 @@
 //!
 //! ```rust
 //! # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
-//! use ethers::signers::{Signer, Wallet};
+//! use ethers::signers::{Signer, LocalWallet};
 //!
 //! let message = "Some data";
-//! let wallet = Wallet::new(&mut rand::thread_rng());
+//! let wallet = LocalWallet::new(&mut rand::thread_rng());
 //!
 //! // Sign the message
 //! let signature = wallet.sign_message(message).await?;
