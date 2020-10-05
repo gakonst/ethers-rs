@@ -224,7 +224,7 @@ where
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl<M, S> Middleware for Client<M, S>
 where
     M: Middleware,

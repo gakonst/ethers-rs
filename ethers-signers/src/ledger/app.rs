@@ -3,6 +3,7 @@ use coins_ledger::{
     common::{APDUAnswer, APDUCommand, APDUData},
     transports::{Ledger, LedgerAsync},
 };
+use futures_executor::block_on;
 use futures_util::lock::Mutex;
 
 use ethers_core::{
@@ -88,7 +89,7 @@ impl LedgerEthereum {
             response_len: None,
         };
 
-        let answer = transport.exchange(&command).await?;
+        let answer = block_on(transport.exchange(&command))?;
         let result = answer.data().ok_or(LedgerError::UnexpectedNullResponse)?;
 
         let address = {
@@ -113,7 +114,7 @@ impl LedgerEthereum {
             response_len: None,
         };
 
-        let answer = transport.exchange(&command).await?;
+        let answer = block_on(transport.exchange(&command))?;
         let result = answer.data().ok_or(LedgerError::UnexpectedNullResponse)?;
 
         Ok(format!("{}.{}.{}", result[1], result[2], result[3]))
@@ -164,7 +165,7 @@ impl LedgerEthereum {
             let data = payload.drain(0..chunk_size).collect::<Vec<_>>();
             command.data = APDUData::new(&data);
 
-            let answer = transport.exchange(&command).await?;
+            let answer = block_on(transport.exchange(&command))?;
             result = answer
                 .data()
                 .ok_or(LedgerError::UnexpectedNullResponse)?
@@ -201,7 +202,7 @@ impl LedgerEthereum {
     }
 }
 
-#[cfg(all(test, feature = "ledger-tests"))]
+#[cfg(all(test, feature = "ledger"))]
 mod tests {
     use super::*;
     use crate::Signer;

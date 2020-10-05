@@ -63,7 +63,7 @@ use std::error::Error;
 /// Trait for signing transactions and messages
 ///
 /// Implement this trait to support different signing modes, e.g. Ledger, hosted etc.
-#[async_trait(?Send)]
+#[async_trait]
 pub trait Signer: std::fmt::Debug + Send + Sync {
     type Error: Error + Send + Sync;
     /// Signs the hash of the provided message after prefixing it

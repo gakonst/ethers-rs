@@ -888,6 +888,7 @@ dependencies = [
  "elliptic-curve",
  "ethers",
  "ethers-core",
+ "futures-executor",
  "futures-util",
  "rand",
  "rustc-hex",

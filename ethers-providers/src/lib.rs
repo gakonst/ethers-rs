@@ -121,7 +121,7 @@ use std::{error::Error, fmt::Debug, future::Future, pin::Pin};
 pub use provider::{FilterKind, Provider, ProviderError};
 
 // Helper type alias
-pub(crate) type PinBoxFut<'a, T> = Pin<Box<dyn Future<Output = Result<T, ProviderError>> + 'a>>;
+pub(crate) type PinBoxFut<'a, T> = Pin<Box<dyn Future<Output = Result<T, ProviderError>> + Send + 'a>>;
 
 #[async_trait]
 /// Trait which must be implemented by data transports to be used with the Ethereum
@@ -143,9 +143,9 @@ pub trait FromErr<T> {
     fn from(src: T) -> Self;
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 pub trait Middleware: Sync + Send + Debug {
-    type Error: Error + FromErr<<Self::Inner as Middleware>::Error>;
+    type Error: Send + Error + FromErr<<Self::Inner as Middleware>::Error>;
     type Provider: JsonRpcClient;
     type Inner: Middleware<Provider = Self::Provider>;
 
