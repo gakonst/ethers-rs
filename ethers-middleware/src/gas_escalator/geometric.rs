@@ -14,6 +14,12 @@ pub struct GeometricGasPrice {
     pub max_price: Option<U256>,
 }
 
+impl Default for GeometricGasPrice {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl GeometricGasPrice {
     pub fn new() -> Self {
         GeometricGasPrice {

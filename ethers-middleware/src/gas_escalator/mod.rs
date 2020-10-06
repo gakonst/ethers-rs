@@ -9,6 +9,16 @@ use std::sync::Arc;
 use std::{pin::Pin, time::Instant};
 use thiserror::Error;
 
+#[cfg(all(not(feature = "tokio"), feature = "async-std"))]
+use async_std::task::spawn;
+#[cfg(all(feature = "tokio", not(feature = "async-std")))]
+use tokio::spawn;
+#[cfg(all(feature = "tokio", all(feature = "async-std")))]
+// this should never happen, used to silence clippy warnings
+fn spawn<T>(_: T) {
+    unimplemented!("do not use both tokio and async-std!")
+}
+
 pub trait GasEscalator: Send + Sync + std::fmt::Debug {
     fn get_gas_price(&self, initial_price: U256, time_elapsed: u64) -> U256;
 }
@@ -26,8 +36,9 @@ pub enum Frequency {
 /// A Gas escalator allows bumping transactions' gas price to avoid getting them
 /// stuck in the memory pool.
 ///
-/// Users must wrap this struct in an `Arc` and then spawn the `escalate` call
-/// before wrapping it in other middleware.
+/// If the crate is compiled with the `tokio` or `async-std` features, it will
+/// automatically start bumping transactions in the background. Otherwise, you need
+/// to spawn the `escalate` call yourself with an executor of choice.
 ///
 /// ```no_run
 /// use ethers::{
@@ -44,18 +55,13 @@ pub enum Frequency {
 /// let provider = Provider::try_from("http://localhost:8545")
 ///     .unwrap()
 ///     .interval(Duration::from_millis(2000u64));
-/// let provider = Arc::new({
+///
+/// let provider = {
 ///     let mut escalator = GeometricGasPrice::new();
 ///     escalator.every_secs = 10;
 ///     escalator.coefficient = 5.0;
 ///     GasEscalatorMiddleware::new(provider, escalator, Frequency::PerBlock)
-/// });
-///
-/// // clone the arc
-/// let provider_clone = provider.clone();
-/// tokio::spawn(async move {
-///     provider_clone.escalate().await;
-/// });
+/// };
 ///
 /// // ... proceed to wrap it in other middleware
 /// let gas_oracle = GasNow::new().category(GasCategory::SafeLow);
@@ -65,6 +71,7 @@ pub struct GasEscalatorMiddleware<M, E> {
     pub(crate) inner: Arc<M>,
     pub(crate) escalator: E,
     /// The transactions which are currently being monitored for escalation
+    #[allow(clippy::type_complexity)]
     pub txs: Arc<Mutex<Vec<(TxHash, TransactionRequest, Instant, Option<BlockNumber>)>>>,
     frequency: Frequency,
 }
@@ -109,26 +116,27 @@ where
 {
     /// Initializes the middleware with the provided gas escalator and the chosen
     /// escalation frequency (per block or per second)
-    pub fn new(inner: M, escalator: E, frequency: Frequency) -> Self {
-        Self {
-            inner: Arc::new(inner),
-            escalator,
-            frequency,
-            txs: Arc::new(Mutex::new(Vec::new())),
-        }
-    }
-
-    pub fn spawn<S: futures_util::task::SpawnExt>(&self, executor: S)
+    pub fn new(inner: M, escalator: E, frequency: Frequency) -> Self
     where
         E: Clone + 'static,
         M: Clone + 'static,
     {
-        let this = self.clone();
-        executor
-            .spawn(async move {
-                this.escalate().await.unwrap();
-            })
-            .expect("could not spawn async executor");
+        let this = Self {
+            inner: Arc::new(inner),
+            escalator,
+            frequency,
+            txs: Arc::new(Mutex::new(Vec::new())),
+        };
+
+        #[cfg(any(feature = "async-std", feature = "tokio"))]
+        {
+            let this2 = this.clone();
+            spawn(async move {
+                this2.escalate().await.unwrap();
+            });
+        }
+
+        this
     }
 
     pub async fn escalate(&self) -> Result<(), GasEscalatorError<M>> {

@@ -27,8 +27,6 @@ async fn gas_escalator_live() {
     escalator.max_price = Some(2000_000_000_000u64.into());
 
     let provider = GasEscalatorMiddleware::new(provider, escalator, Frequency::Duration(3000));
-    let executor = futures_executor::ThreadPool::new().unwrap();
-    provider.spawn(executor);
 
     let nonce = provider.get_transaction_count(address, None).await.unwrap();
     let tx = TransactionRequest::pay(Address::zero(), 1u64).gas_price(10_000_000);
