@@ -844,6 +844,7 @@ dependencies = [
  "ethers-core",
  "ethers-providers",
  "ethers-signers",
+ "futures-executor",
  "futures-util",
  "reqwest",
  "rustc-hex",
@@ -1030,6 +1031,7 @@ dependencies = [
  "futures-core",
  "futures-task",
  "futures-util",
+ "num_cpus",
 ]
 
 [[package]]

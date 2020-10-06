@@ -19,3 +19,6 @@ pub use client::Client;
 
 mod nonce_manager;
 pub use nonce_manager::NonceManager;
+
+pub mod gas_escalator;
+pub use gas_escalator::GasEscalatorMiddleware;
