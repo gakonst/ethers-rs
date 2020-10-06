@@ -116,6 +116,7 @@ where
 {
     /// Initializes the middleware with the provided gas escalator and the chosen
     /// escalation frequency (per block or per second)
+    #[allow(clippy::let_and_return)]
     pub fn new(inner: M, escalator: E, frequency: Frequency) -> Self
     where
         E: Clone + 'static,
