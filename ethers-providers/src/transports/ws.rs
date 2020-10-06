@@ -10,6 +10,7 @@ use futures_util::{
 use serde::{Deserialize, Serialize};
 use std::fmt::{self, Debug};
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
 use thiserror::Error;
 
 use super::common::{JsonRpcError, Request, ResponseData};
@@ -92,7 +93,16 @@ pub type MaybeTlsStream = StreamSwitcher<TcpStream, TlsStream<TcpStream>>;
 /// for your runtime.
 pub struct Provider<S> {
     id: AtomicU64,
-    ws: Mutex<S>,
+    ws: Arc<Mutex<S>>,
+}
+
+impl<S> Clone for Provider<S> {
+    fn clone(&self) -> Self {
+        Self {
+            id: AtomicU64::new(self.id.load(Ordering::SeqCst)),
+            ws: self.ws.clone(),
+        }
+    }
 }
 
 impl<S> Debug for Provider<S> {
@@ -129,7 +139,7 @@ where
     pub fn new(ws: S) -> Self {
         Self {
             id: AtomicU64::new(0),
-            ws: Mutex::new(ws),
+            ws: Arc::new(Mutex::new(ws)),
         }
     }
 }

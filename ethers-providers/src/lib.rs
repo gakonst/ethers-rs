@@ -112,7 +112,7 @@ pub use pending_transaction::PendingTransaction;
 
 mod stream;
 pub use futures_util::StreamExt;
-pub use stream::{FilterWatcher, DEFAULT_POLL_INTERVAL};
+pub use stream::{interval, FilterWatcher, DEFAULT_POLL_INTERVAL};
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -121,7 +121,8 @@ use std::{error::Error, fmt::Debug, future::Future, pin::Pin};
 pub use provider::{FilterKind, Provider, ProviderError};
 
 // Helper type alias
-pub(crate) type PinBoxFut<'a, T> = Pin<Box<dyn Future<Output = Result<T, ProviderError>> + Send + 'a>>;
+pub(crate) type PinBoxFut<'a, T> =
+    Pin<Box<dyn Future<Output = Result<T, ProviderError>> + Send + 'a>>;
 
 #[async_trait]
 /// Trait which must be implemented by data transports to be used with the Ethereum
@@ -138,7 +139,6 @@ pub trait JsonRpcClient: Debug + Send + Sync {
 }
 
 use ethers_core::types::*;
-
 pub trait FromErr<T> {
     fn from(src: T) -> Self;
 }
