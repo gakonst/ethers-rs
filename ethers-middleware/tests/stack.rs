@@ -3,8 +3,9 @@
 async fn can_stack_middlewares() {
     use ethers_core::{types::TransactionRequest, utils::Ganache};
     use ethers_middleware::{
+        gas_escalator::{Frequency, GeometricGasPrice},
         gas_oracle::{GasCategory, GasNow},
-        Client, GasOracleMiddleware, NonceManager,
+        Client, GasEscalatorMiddleware, GasOracleMiddleware, NonceManager,
     };
     use ethers_providers::{Http, Middleware, Provider};
     use ethers_signers::LocalWallet;
@@ -18,6 +19,15 @@ async fn can_stack_middlewares() {
     // the base provider
     let provider = Provider::<Http>::try_from(ganache.endpoint()).unwrap();
     let provider_clone = provider.clone();
+
+    // the Gas Price escalator middleware is the first middleware above the provider,
+    // so that it receives the transaction last, after all the other middleware
+    // have modified it accordingly
+    let escalator = GeometricGasPrice::new();
+    let provider = GasEscalatorMiddleware::new(provider, escalator, Frequency::PerBlock);
+    let executor = futures_executor::ThreadPool::new().unwrap();
+    // TODO: thread '<unnamed>' panicked at 'not currently running on the Tokio runtime.'
+    provider.spawn(executor);
 
     // The gas price middleware MUST be below the signing middleware for things to work
     let provider = GasOracleMiddleware::new(provider, gas_oracle);
