@@ -5,20 +5,22 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use thiserror::Error;
 
 #[derive(Debug)]
-pub struct NonceManager<M> {
+/// Middleware used for calculating nonces locally, useful for signing multiple
+/// consecutive transactions without waiting for them to hit the mempool
+pub struct NonceManagerMiddleware<M> {
     pub inner: M,
     pub initialized: AtomicBool,
     pub nonce: AtomicU64,
     pub address: Address,
 }
 
-impl<M> NonceManager<M>
+impl<M> NonceManagerMiddleware<M>
 where
     M: Middleware,
 {
     /// Instantiates the nonce manager with a 0 nonce.
     pub fn new(inner: M, address: Address) -> Self {
-        NonceManager {
+        Self {
             initialized: false.into(),
             nonce: 0.into(),
             inner,
@@ -52,7 +54,9 @@ where
 }
 
 #[derive(Error, Debug)]
+/// Thrown when an error happens at the Nonce Manager
 pub enum NonceManagerError<M: Middleware> {
+    /// Thrown when the internal middleware errors
     #[error("{0}")]
     MiddlewareError(M::Error),
 }
@@ -64,7 +68,7 @@ impl<M: Middleware> FromErr<M::Error> for NonceManagerError<M> {
 }
 
 #[async_trait]
-impl<M> Middleware for NonceManager<M>
+impl<M> Middleware for NonceManagerMiddleware<M>
 where
     M: Middleware,
 {

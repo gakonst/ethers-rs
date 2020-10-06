@@ -14,7 +14,7 @@ async fn main() -> anyhow::Result<()> {
     // `from_key` method to upload a key you already have, or the `new` method
     // to generate a new keypair.
     let wallet = YubiWallet::connect(connector, Credentials::default(), 0);
-    let client = Client::new(provider, wallet);
+    let client = SignerMiddleware::new(provider, wallet);
 
     // Create and broadcast a transaction (ENS enabled!)
     let tx = TransactionRequest::new()

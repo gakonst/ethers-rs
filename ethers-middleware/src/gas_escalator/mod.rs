@@ -19,7 +19,11 @@ fn spawn<T>(_: T) {
     unimplemented!("do not use both tokio and async-std!")
 }
 
+/// Trait for fetching updated gas prices after a transaction has been first
+/// broadcast
 pub trait GasEscalator: Send + Sync + std::fmt::Debug {
+    /// Given the initial gas price and the time elapsed since the transaction's
+    /// first broadcast, it returns the new gas price
     fn get_gas_price(&self, initial_price: U256, time_elapsed: u64) -> U256;
 }
 
@@ -140,6 +144,7 @@ where
         this
     }
 
+    /// Re-broadcasts pending transactions with a gas price escalator
     pub async fn escalate(&self) -> Result<(), GasEscalatorError<M>> {
         // the escalation frequency is either on a per-block basis, or on a duratoin basis
         let mut watcher: Pin<Box<dyn futures_util::stream::Stream<Item = ()> + Send>> =

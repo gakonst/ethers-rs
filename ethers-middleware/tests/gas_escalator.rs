@@ -1,7 +1,7 @@
 use ethers_core::types::*;
 use ethers_middleware::{
-    gas_escalator::{Frequency, GeometricGasPrice},
-    Client, GasEscalatorMiddleware,
+    gas_escalator::{Frequency, GasEscalatorMiddleware, GeometricGasPrice},
+    signer::SignerMiddleware,
 };
 use ethers_providers::{Middleware, Provider, Ws};
 use ethers_signers::LocalWallet;
@@ -19,7 +19,7 @@ async fn gas_escalator_live() {
         .parse::<LocalWallet>()
         .unwrap();
     let address = wallet.address();
-    let provider = Client::new(provider, wallet);
+    let provider = SignerMiddleware::new(provider, wallet);
 
     let mut escalator = GeometricGasPrice::new();
     escalator.every_secs = 10;

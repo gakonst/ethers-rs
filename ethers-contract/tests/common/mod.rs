@@ -5,7 +5,7 @@ use ethers_core::{
 
 use ethers_contract::{Contract, ContractFactory};
 use ethers_core::utils::{GanacheInstance, Solc};
-use ethers_middleware::Client;
+use ethers_middleware::signer::SignerMiddleware;
 use ethers_providers::{Http, Middleware, Provider};
 use ethers_signers::LocalWallet;
 use std::{convert::TryFrom, sync::Arc, time::Duration};
@@ -44,7 +44,7 @@ pub fn compile_contract(name: &str, filename: &str) -> (Abi, Bytes) {
     (contract.abi.clone(), contract.bytecode.clone())
 }
 
-type HttpWallet = Client<Provider<Http>, LocalWallet>;
+type HttpWallet = SignerMiddleware<Provider<Http>, LocalWallet>;
 
 /// connects the private key to http://localhost:8545
 pub fn connect(ganache: &GanacheInstance, idx: usize) -> Arc<HttpWallet> {
@@ -52,7 +52,7 @@ pub fn connect(ganache: &GanacheInstance, idx: usize) -> Arc<HttpWallet> {
         .unwrap()
         .interval(Duration::from_millis(10u64));
     let wallet: LocalWallet = ganache.keys()[idx].clone().into();
-    Arc::new(Client::new(provider, wallet))
+    Arc::new(SignerMiddleware::new(provider, wallet))
 }
 
 /// Launches a ganache instance and deploys the SimpleStorage contract

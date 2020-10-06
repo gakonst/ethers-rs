@@ -21,6 +21,7 @@ impl Default for GeometricGasPrice {
 }
 
 impl GeometricGasPrice {
+    /// Constructor
     pub fn new() -> Self {
         GeometricGasPrice {
             every_secs: 30,

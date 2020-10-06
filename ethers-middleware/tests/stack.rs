@@ -3,9 +3,10 @@
 async fn can_stack_middlewares() {
     use ethers_core::{types::TransactionRequest, utils::Ganache};
     use ethers_middleware::{
-        gas_escalator::{Frequency, GeometricGasPrice},
-        gas_oracle::{GasCategory, GasNow},
-        Client, GasEscalatorMiddleware, GasOracleMiddleware, NonceManager,
+        gas_escalator::{Frequency, GasEscalatorMiddleware, GeometricGasPrice},
+        gas_oracle::{GasCategory, GasNow, GasOracleMiddleware},
+        nonce_manager::NonceManagerMiddleware,
+        signer::SignerMiddleware,
     };
     use ethers_providers::{Http, Middleware, Provider};
     use ethers_signers::LocalWallet;
@@ -30,11 +31,11 @@ async fn can_stack_middlewares() {
     let provider = GasOracleMiddleware::new(provider, gas_oracle);
 
     // The signing middleware signs txs
-    let provider = Client::new(provider, signer);
+    let provider = SignerMiddleware::new(provider, signer);
 
     // The nonce manager middleware MUST be above the signing middleware so that it overrides
     // the nonce and the signer does not make any eth_getTransaction count calls
-    let provider = NonceManager::new(provider, address);
+    let provider = NonceManagerMiddleware::new(provider, address);
 
     let tx = TransactionRequest::new();
     let mut tx_hash = None;
