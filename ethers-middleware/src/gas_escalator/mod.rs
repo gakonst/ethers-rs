@@ -48,10 +48,8 @@ pub enum Frequency {
 /// use ethers::{
 ///     providers::{Provider, Http},
 ///     middleware::{
-///         GasEscalatorMiddleware,
-///         GasOracleMiddleware,
-///         gas_escalator::{GeometricGasPrice, Frequency},
-///         gas_oracle::{GasNow, GasCategory},
+///         gas_escalator::{GeometricGasPrice, Frequency, GasEscalatorMiddleware},
+///         gas_oracle::{GasNow, GasCategory, GasOracleMiddleware},
 ///     },
 /// };
 /// use std::{convert::TryFrom, time::Duration, sync::Arc};
