@@ -6,27 +6,29 @@ use ethers_core::types::U256;
 /// Start with `initial_price`, then increase it every 'every_secs' seconds by a fixed coefficient.
 /// Coefficient defaults to 1.125 (12.5%), the minimum increase for Parity to replace a transaction.
 /// Coefficient can be adjusted, and there is an optional upper limit.
+///
 /// https://github.com/makerdao/pymaker/blob/master/pymaker/gas.py#L168
 #[derive(Clone, Debug)]
 pub struct GeometricGasPrice {
-    pub every_secs: u64,
-    pub coefficient: f64,
-    pub max_price: Option<U256>,
-}
-
-impl Default for GeometricGasPrice {
-    fn default() -> Self {
-        Self::new()
-    }
+    every_secs: u64,
+    coefficient: f64,
+    max_price: Option<U256>,
 }
 
 impl GeometricGasPrice {
     /// Constructor
-    pub fn new() -> Self {
+    ///
+    /// Note: Providing `None` to `max_price` requires giving it a type-hint, so you'll need
+    /// to call this like `GeometricGasPrice::new(1.125, 60u64, None::<u64>)`.
+    pub fn new<T: Into<U256>, K: Into<u64>>(
+        coefficient: f64,
+        every_secs: K,
+        max_price: Option<T>,
+    ) -> Self {
         GeometricGasPrice {
-            every_secs: 30,
-            coefficient: 1.125,
-            max_price: None,
+            every_secs: every_secs.into(),
+            coefficient,
+            max_price: max_price.map(Into::into),
         }
     }
 }
@@ -57,8 +59,7 @@ mod tests {
 
     #[test]
     fn gas_price_increases_with_time() {
-        let mut oracle = GeometricGasPrice::new();
-        oracle.every_secs = 10;
+        let oracle = GeometricGasPrice::new(1.125, 10u64, None::<u64>);
         let initial_price = U256::from(100);
 
         assert_eq!(oracle.get_gas_price(initial_price, 0), 100.into());
@@ -73,9 +74,7 @@ mod tests {
 
     #[test]
     fn gas_price_should_obey_max_value() {
-        let mut oracle = GeometricGasPrice::new();
-        oracle.every_secs = 60;
-        oracle.max_price = Some(2500.into());
+        let oracle = GeometricGasPrice::new(1.125, 60u64, Some(2500));
         let initial_price = U256::from(1000);
 
         assert_eq!(oracle.get_gas_price(initial_price, 0), 1000.into());
@@ -91,9 +90,7 @@ mod tests {
 
     #[test]
     fn behaves_with_realistic_values() {
-        let mut oracle = GeometricGasPrice::new();
-        oracle.every_secs = 10;
-        oracle.coefficient = 1.25;
+        let oracle = GeometricGasPrice::new(1.25, 10u64, None::<u64>);
         const GWEI: f64 = 1000000000.0;
         let initial_price = U256::from(100 * GWEI as u64);
 

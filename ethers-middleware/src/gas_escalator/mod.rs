@@ -62,9 +62,7 @@ pub enum Frequency {
 ///     .interval(Duration::from_millis(2000u64));
 ///
 /// let provider = {
-///     let mut escalator = GeometricGasPrice::new();
-///     escalator.every_secs = 10;
-///     escalator.coefficient = 5.0;
+///     let escalator = GeometricGasPrice::new(5.0, 10u64, None::<u64>);
 ///     GasEscalatorMiddleware::new(provider, escalator, Frequency::PerBlock)
 /// };
 ///

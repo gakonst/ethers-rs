@@ -6,27 +6,26 @@ use ethers_core::types::U256;
 ///
 /// Start with `initial_price`, then increase it by fixed amount `increase_by` every `every_secs` seconds
 /// until the transaction gets confirmed. There is an optional upper limit.
+///
 /// https://github.com/makerdao/pymaker/blob/master/pymaker/gas.py#L129
 #[derive(Clone, Debug)]
 pub struct LinearGasPrice {
-    pub every_secs: u64,
-    pub increase_by: U256,
-    pub max_price: Option<U256>,
-}
-
-impl Default for LinearGasPrice {
-    fn default() -> Self {
-        Self::new()
-    }
+    every_secs: u64,
+    increase_by: U256,
+    max_price: Option<U256>,
 }
 
 impl LinearGasPrice {
     /// Constructor
-    pub fn new() -> Self {
+    pub fn new<T: Into<U256>>(
+        increase_by: T,
+        every_secs: impl Into<u64>,
+        max_price: Option<T>,
+    ) -> Self {
         LinearGasPrice {
-            every_secs: 30,
-            increase_by: U256::from(0),
-            max_price: None,
+            every_secs: every_secs.into(),
+            increase_by: increase_by.into(),
+            max_price: max_price.map(Into::into),
         }
     }
 }
@@ -34,6 +33,7 @@ impl LinearGasPrice {
 impl GasEscalator for LinearGasPrice {
     fn get_gas_price(&self, initial_price: U256, time_elapsed: u64) -> U256 {
         let mut result = initial_price + self.increase_by * (time_elapsed / self.every_secs) as u64;
+        dbg!(time_elapsed, self.every_secs);
         if let Some(max_price) = self.max_price {
             result = std::cmp::min(result, max_price);
         }
@@ -48,9 +48,7 @@ mod tests {
 
     #[test]
     fn gas_price_increases_with_time() {
-        let mut oracle = LinearGasPrice::new();
-        oracle.increase_by = U256::from(100);
-        oracle.every_secs = 60;
+        let oracle = LinearGasPrice::new(100, 60u64, None);
         let initial_price = U256::from(1000);
 
         assert_eq!(oracle.get_gas_price(initial_price, 0), 1000.into());
@@ -64,10 +62,7 @@ mod tests {
 
     #[test]
     fn gas_price_should_obey_max_value() {
-        let mut oracle = LinearGasPrice::new();
-        oracle.increase_by = U256::from(100);
-        oracle.every_secs = 60;
-        oracle.max_price = Some(2500.into());
+        let oracle = LinearGasPrice::new(100, 60u64, Some(2500));
         let initial_price = U256::from(1000);
 
         assert_eq!(oracle.get_gas_price(initial_price, 0), 1000.into());

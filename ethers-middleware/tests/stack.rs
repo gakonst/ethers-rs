@@ -24,8 +24,8 @@ async fn can_stack_middlewares() {
     // the Gas Price escalator middleware is the first middleware above the provider,
     // so that it receives the transaction last, after all the other middleware
     // have modified it accordingly
-    let provider =
-        GasEscalatorMiddleware::new(provider, GeometricGasPrice::new(), Frequency::PerBlock);
+    let escalator = GeometricGasPrice::new(1.125, 60u64, None::<u64>);
+    let provider = GasEscalatorMiddleware::new(provider, escalator, Frequency::PerBlock);
 
     // The gas price middleware MUST be below the signing middleware for things to work
     let provider = GasOracleMiddleware::new(provider, gas_oracle);

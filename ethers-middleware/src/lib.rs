@@ -30,8 +30,9 @@
 //! let provider = Provider::<Http>::try_from("http://localhost:8545").unwrap();
 //!
 //! // Escalate gas prices
+//! let escalator = GeometricGasPrice::new(1.125, 60u64, None::<u64>);
 //! let provider =
-//!     GasEscalatorMiddleware::new(provider, GeometricGasPrice::new(), Frequency::PerBlock);
+//!     GasEscalatorMiddleware::new(provider, escalator, Frequency::PerBlock);
 //!
 //! // Sign transactions with a private key
 //! let signer = LocalWallet::new(&mut rand::thread_rng());
