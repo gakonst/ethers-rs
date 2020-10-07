@@ -1,6 +1,9 @@
 mod geometric;
 pub use geometric::GeometricGasPrice;
 
+mod linear;
+pub use linear::LinearGasPrice;
+
 use async_trait::async_trait;
 use ethers_core::types::{BlockNumber, TransactionRequest, TxHash, U256};
 use ethers_providers::{interval, FromErr, Middleware, StreamExt};
