@@ -10,7 +10,7 @@ async fn main() -> anyhow::Result<()> {
     // index or supply the  full HD path string. You may also provide the chain_id
     // (here: mainnet) for EIP155 support.
     let ledger = Ledger::new(HDPath::LedgerLive(0), Some(1)).await?;
-    let client = Client::new(provider, ledger);
+    let client = SignerMiddleware::new(provider, ledger);
 
     // Create and broadcast a transaction (ENS enabled!)
     // (this will require confirming the tx on the device)

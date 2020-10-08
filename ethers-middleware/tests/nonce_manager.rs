@@ -2,7 +2,7 @@
 #[cfg(not(feature = "celo"))]
 async fn nonce_manager() {
     use ethers_core::types::*;
-    use ethers_middleware::{Client, NonceManager};
+    use ethers_middleware::{nonce_manager::NonceManagerMiddleware, signer::SignerMiddleware};
     use ethers_providers::{Http, Middleware, Provider};
     use ethers_signers::LocalWallet;
     use std::convert::TryFrom;
@@ -18,11 +18,11 @@ async fn nonce_manager() {
         .unwrap();
     let address = wallet.address();
 
-    let provider = Client::new(provider, wallet);
+    let provider = SignerMiddleware::new(provider, wallet);
 
     // the nonce manager must be over the Client so that it overrides the nonce
     // before the client gets it
-    let provider = NonceManager::new(provider, address);
+    let provider = NonceManagerMiddleware::new(provider, address);
 
     let nonce = provider
         .get_transaction_count(address, Some(BlockNumber::Pending))

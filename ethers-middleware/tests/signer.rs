@@ -1,7 +1,7 @@
 use ethers_providers::{Http, Middleware, Provider};
 
 use ethers_core::types::TransactionRequest;
-use ethers_middleware::Client;
+use ethers_middleware::signer::SignerMiddleware;
 use ethers_signers::LocalWallet;
 use std::{convert::TryFrom, time::Duration};
 
@@ -20,7 +20,7 @@ async fn send_eth() {
     let provider = Provider::<Http>::try_from(ganache.endpoint())
         .unwrap()
         .interval(Duration::from_millis(10u64));
-    let provider = Client::new(provider, wallet);
+    let provider = SignerMiddleware::new(provider, wallet);
 
     // craft the transaction
     let tx = TransactionRequest::new().to(wallet2.address()).value(10000);
@@ -54,7 +54,7 @@ async fn test_send_transaction() {
     let wallet = "d652abb81e8c686edba621a895531b1f291289b63b5ef09a94f686a5ecdd5db1"
         .parse::<LocalWallet>()
         .unwrap();
-    let client = Client::new(provider, wallet);
+    let client = SignerMiddleware::new(provider, wallet);
 
     let balance_before = client.get_balance(client.address(), None).await.unwrap();
     let tx = TransactionRequest::pay(client.address(), 100);

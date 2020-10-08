@@ -62,7 +62,7 @@ pub struct Wallet<D: DigestSigner<Sha256Proxy, RecoverableSignature>> {
     pub(crate) chain_id: Option<u64>,
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl<D: Sync + Send + DigestSigner<Sha256Proxy, RecoverableSignature>> Signer for Wallet<D> {
     type Error = std::convert::Infallible;
 

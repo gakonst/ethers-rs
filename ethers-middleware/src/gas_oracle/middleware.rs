@@ -5,6 +5,7 @@ use ethers_providers::{FromErr, Middleware};
 use thiserror::Error;
 
 #[derive(Debug)]
+/// Middleware used for fetching gas prices over an API instead of `eth_gasPrice`
 pub struct GasOracleMiddleware<M, G> {
     inner: M,
     gas_oracle: G,
@@ -35,7 +36,7 @@ impl<M: Middleware> FromErr<M::Error> for MiddlewareError<M> {
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl<M, G> Middleware for GasOracleMiddleware<M, G>
 where
     M: Middleware,

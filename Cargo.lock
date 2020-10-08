@@ -839,11 +839,13 @@ dependencies = [
 name = "ethers-middleware"
 version = "0.1.3"
 dependencies = [
+ "async-std",
  "async-trait",
  "ethers",
  "ethers-core",
  "ethers-providers",
  "ethers-signers",
+ "futures-executor",
  "futures-util",
  "reqwest",
  "rustc-hex",
@@ -888,6 +890,7 @@ dependencies = [
  "elliptic-curve",
  "ethers",
  "ethers-core",
+ "futures-executor",
  "futures-util",
  "rand",
  "rustc-hex",
@@ -1029,6 +1032,7 @@ dependencies = [
  "futures-core",
  "futures-task",
  "futures-util",
+ "num_cpus",
 ]
 
 [[package]]

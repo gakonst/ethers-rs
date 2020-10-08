@@ -7,7 +7,7 @@ use async_trait::async_trait;
 use ethers_core::types::{Address, Signature, TransactionRequest};
 use types::LedgerError;
 
-#[async_trait(?Send)]
+#[async_trait]
 impl Signer for LedgerEthereum {
     type Error = LedgerError;
 

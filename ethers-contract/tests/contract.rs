@@ -342,7 +342,7 @@ mod eth_tests {
 mod celo_tests {
     use super::*;
     use ethers::{
-        middleware::Client,
+        middleware::signer::SignerMiddleware,
         providers::{Http, Provider},
         signers::LocalWallet,
         types::BlockNumber,
@@ -363,7 +363,7 @@ mod celo_tests {
             .parse::<LocalWallet>()
             .unwrap();
 
-        let client = Client::new(provider, wallet);
+        let client = SignerMiddleware::new(provider, wallet);
         let client = Arc::new(client);
 
         let factory = ContractFactory::new(abi, bytecode, client);

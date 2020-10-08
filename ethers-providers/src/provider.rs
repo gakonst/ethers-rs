@@ -115,7 +115,7 @@ impl<P: JsonRpcClient> Provider<P> {
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl<P: JsonRpcClient> Middleware for Provider<P> {
     type Error = ProviderError;
     type Provider = P;

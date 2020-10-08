@@ -13,7 +13,7 @@ async fn main() -> Result<()> {
     let provider = Provider::<Http>::try_from(ganache.endpoint())?;
 
     // connect the wallet to the provider
-    let client = Client::new(provider, wallet);
+    let client = SignerMiddleware::new(provider, wallet);
 
     // craft the transaction
     let tx = TransactionRequest::new().to(wallet2.address()).value(10000);

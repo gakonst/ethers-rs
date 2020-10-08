@@ -23,7 +23,7 @@ use thiserror::Error;
 /// use ethers::{
 ///     providers::{Middleware, Provider, Http},
 ///     signers::LocalWallet,
-///     middleware::Client,
+///     middleware::SignerMiddleware,
 ///     types::{Address, TransactionRequest},
 /// };
 /// use std::convert::TryFrom;
@@ -37,15 +37,12 @@ use thiserror::Error;
 /// let wallet: LocalWallet = "380eb0f3d505f087e438eca80bc4df9a7faa24f868e69fc0440261a0fc0567dc"
 ///     .parse()?;
 ///
-/// let mut client = Client::new(provider, wallet);
+/// let mut client = SignerMiddleware::new(provider, wallet);
 ///
-/// // since it derefs to `Provider`, we can just call any of the JSON-RPC API methods
-/// let block = client.get_block(100u64).await?;
-///
-/// // You can use the node's `eth_sign` and `eth_sendTransaction` calls by calling the
-/// // internal provider's method.
+/// // You can sign messages with the key
 /// let signed_msg = client.sign(b"hello".to_vec(), &client.address()).await?;
 ///
+/// // ...and sign transactions
 /// let tx = TransactionRequest::pay("vitalik.eth", 100);
 /// let tx_hash = client.send_transaction(tx, None).await?;
 ///
@@ -71,21 +68,21 @@ use thiserror::Error;
 /// ```
 ///
 /// [`Provider`]: ethers_providers::Provider
-pub struct Client<M, S> {
+pub struct SignerMiddleware<M, S> {
     pub(crate) inner: M,
     pub(crate) signer: S,
     pub(crate) address: Address,
 }
 
-impl<M: Middleware, S: Signer> FromErr<M::Error> for ClientError<M, S> {
-    fn from(src: M::Error) -> ClientError<M, S> {
-        ClientError::MiddlewareError(src)
+impl<M: Middleware, S: Signer> FromErr<M::Error> for SignerMiddlewareError<M, S> {
+    fn from(src: M::Error) -> SignerMiddlewareError<M, S> {
+        SignerMiddlewareError::MiddlewareError(src)
     }
 }
 
 #[derive(Error, Debug)]
 /// Error thrown when the client interacts with the blockchain
-pub enum ClientError<M: Middleware, S: Signer> {
+pub enum SignerMiddlewareError<M: Middleware, S: Signer> {
     #[error("{0}")]
     /// Thrown when the internal call to the signer fails
     SignerError(S::Error),
@@ -106,7 +103,7 @@ pub enum ClientError<M: Middleware, S: Signer> {
 }
 
 // Helper functions for locally signing transactions
-impl<M, S> Client<M, S>
+impl<M, S> SignerMiddleware<M, S>
 where
     M: Middleware,
     S: Signer,
@@ -114,7 +111,7 @@ where
     /// Creates a new client from the provider and signer.
     pub fn new(inner: M, signer: S) -> Self {
         let address = signer.address();
-        Client {
+        SignerMiddleware {
             inner,
             signer,
             address,
@@ -124,17 +121,17 @@ where
     async fn sign_transaction(
         &self,
         tx: TransactionRequest,
-    ) -> Result<Transaction, ClientError<M, S>> {
+    ) -> Result<Transaction, SignerMiddlewareError<M, S>> {
         // The nonce, gas and gasprice fields must already be populated
-        let nonce = tx.nonce.ok_or(ClientError::NonceMissing)?;
-        let gas_price = tx.gas_price.ok_or(ClientError::GasPriceMissing)?;
-        let gas = tx.gas.ok_or(ClientError::GasMissing)?;
+        let nonce = tx.nonce.ok_or(SignerMiddlewareError::NonceMissing)?;
+        let gas_price = tx.gas_price.ok_or(SignerMiddlewareError::GasPriceMissing)?;
+        let gas = tx.gas.ok_or(SignerMiddlewareError::GasMissing)?;
 
         let signature = self
             .signer
             .sign_transaction(&tx)
             .await
-            .map_err(ClientError::SignerError)?;
+            .map_err(SignerMiddlewareError::SignerError)?;
 
         // Get the actual transaction hash
         let rlp = tx.rlp_signed(&signature);
@@ -180,7 +177,7 @@ where
         &self,
         tx: &mut TransactionRequest,
         block: Option<BlockNumber>,
-    ) -> Result<(), ClientError<M, S>> {
+    ) -> Result<(), SignerMiddlewareError<M, S>> {
         // set the `from` field
         if tx.from.is_none() {
             tx.from = Some(self.address());
@@ -195,9 +192,9 @@ where
                 self.inner.get_transaction_count(self.address(), block)
             ),
         );
-        tx.gas_price = Some(gas_price.map_err(ClientError::MiddlewareError)?);
-        tx.gas = Some(gas.map_err(ClientError::MiddlewareError)?);
-        tx.nonce = Some(nonce.map_err(ClientError::MiddlewareError)?);
+        tx.gas_price = Some(gas_price.map_err(SignerMiddlewareError::MiddlewareError)?);
+        tx.gas = Some(gas.map_err(SignerMiddlewareError::MiddlewareError)?);
+        tx.nonce = Some(nonce.map_err(SignerMiddlewareError::MiddlewareError)?);
 
         Ok(())
     }
@@ -224,13 +221,13 @@ where
     }
 }
 
-#[async_trait(?Send)]
-impl<M, S> Middleware for Client<M, S>
+#[async_trait]
+impl<M, S> Middleware for SignerMiddleware<M, S>
 where
     M: Middleware,
     S: Signer,
 {
-    type Error = ClientError<M, S>;
+    type Error = SignerMiddlewareError<M, S>;
     type Provider = M::Provider;
     type Inner = M;
 
@@ -252,7 +249,7 @@ where
                     .inner
                     .resolve_name(&ens_name)
                     .await
-                    .map_err(ClientError::MiddlewareError)?;
+                    .map_err(SignerMiddlewareError::MiddlewareError)?;
                 tx.to = Some(addr.into())
             }
         }
@@ -268,7 +265,7 @@ where
         self.inner
             .send_raw_transaction(&signed_tx)
             .await
-            .map_err(ClientError::MiddlewareError)
+            .map_err(SignerMiddlewareError::MiddlewareError)
     }
 
     /// Signs a message with the internal signer, or if none is present it will make a call to
@@ -278,7 +275,10 @@ where
         data: T,
         _: &Address,
     ) -> Result<Signature, Self::Error> {
-        Ok(self.signer.sign_message(data.into()).await.unwrap())
+        self.signer
+            .sign_message(data.into())
+            .await
+            .map_err(SignerMiddlewareError::SignerError)
     }
 }
 
@@ -326,7 +326,7 @@ mod tests {
             .parse::<LocalWallet>()
             .unwrap()
             .set_chain_id(chain_id);
-        let client = Client::new(provider, key);
+        let client = SignerMiddleware::new(provider, key);
 
         let tx = client.sign_transaction(tx).await.unwrap();
 
