@@ -109,8 +109,8 @@ pub static ADDRESS_BOOK: Lazy<HashMap<U256, Address>> = Lazy::new(|| {
 ///
 /// // `await`ing the `send` method waits for the transaction to be broadcast, which also
 /// // returns the transaction hash
-/// let tx_hash = multicall.send().await?;
-/// let _tx_receipt = client.pending_transaction(tx_hash).await?;
+/// let pending_tx = multicall.send().await?;
+/// let _tx_receipt = pending_tx.await?;
 ///
 /// // you can also query ETH balances of multiple addresses
 /// let address_1 = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".parse::<Address>()?;
@@ -345,7 +345,7 @@ impl<M: Middleware> Multicall<M> {
         let contract_call = self.as_contract_call();
 
         // Broadcast transaction and return the transaction hash
-        let tx_hash = contract_call.send().await?;
+        let tx_hash = *contract_call.send().await?;
 
         Ok(tx_hash)
     }

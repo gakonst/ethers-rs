@@ -1,8 +1,8 @@
 use ethers_core::{
     abi::{Detokenize, Error as AbiError, Function, InvalidOutputType},
-    types::{Address, BlockNumber, Bytes, TransactionRequest, TxHash, U256},
+    types::{Address, BlockNumber, Bytes, TransactionRequest, U256},
 };
-use ethers_providers::Middleware;
+use ethers_providers::{Middleware, PendingTransaction};
 
 use std::{fmt::Debug, marker::PhantomData, sync::Arc};
 
@@ -121,9 +121,9 @@ where
     }
 
     /// Signs and broadcasts the provided transaction
-    pub async fn send(self) -> Result<TxHash, ContractError<M>> {
+    pub async fn send(&self) -> Result<PendingTransaction<'_, M::Provider>, ContractError<M>> {
         self.client
-            .send_transaction(self.tx, self.block)
+            .send_transaction(self.tx.clone(), self.block)
             .await
             .map_err(ContractError::MiddlewareError)
     }

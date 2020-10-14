@@ -1,11 +1,11 @@
 use ethers_core::{
     types::{
         Address, BlockNumber, Bytes, NameOrAddress, Signature, Transaction, TransactionRequest,
-        TxHash, U256,
+        U256,
     },
     utils::keccak256,
 };
-use ethers_providers::{FromErr, Middleware};
+use ethers_providers::{FromErr, Middleware, PendingTransaction};
 use ethers_signers::Signer;
 
 use async_trait::async_trait;
@@ -44,11 +44,11 @@ use thiserror::Error;
 ///
 /// // ...and sign transactions
 /// let tx = TransactionRequest::pay("vitalik.eth", 100);
-/// let tx_hash = client.send_transaction(tx, None).await?;
+/// let pending_tx = client.send_transaction(tx, None).await?;
 ///
 /// // You can `await` on the pending transaction to get the receipt with a pre-specified
 /// // number of confirmations
-/// let receipt = client.pending_transaction(tx_hash).confirmations(6).await?;
+/// let receipt = pending_tx.confirmations(6).await?;
 ///
 /// // You can connect with other wallets at runtime via the `with_signer` function
 /// let wallet2: LocalWallet = "cd8c407233c0560f6de24bb2dc60a8b02335c959a1a17f749ce6c1ccf63d74a7"
@@ -242,7 +242,7 @@ where
         &self,
         mut tx: TransactionRequest,
         block: Option<BlockNumber>,
-    ) -> Result<TxHash, Self::Error> {
+    ) -> Result<PendingTransaction<'_, Self::Provider>, Self::Error> {
         if let Some(ref to) = tx.to {
             if let NameOrAddress::Name(ens_name) = to {
                 let addr = self

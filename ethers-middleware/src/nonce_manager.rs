@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use ethers_core::types::*;
-use ethers_providers::{FromErr, Middleware};
+use ethers_providers::{FromErr, Middleware, PendingTransaction};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use thiserror::Error;
 
@@ -87,7 +87,7 @@ where
         &self,
         mut tx: TransactionRequest,
         block: Option<BlockNumber>,
-    ) -> Result<TxHash, Self::Error> {
+    ) -> Result<PendingTransaction<'_, Self::Provider>, Self::Error> {
         if tx.nonce.is_none() {
             tx.nonce = Some(self.get_transaction_count_with_manager(block).await?);
         }

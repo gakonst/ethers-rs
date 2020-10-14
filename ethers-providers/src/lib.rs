@@ -159,7 +159,7 @@ pub trait Middleware: Sync + Send + Debug {
         &self,
         tx: TransactionRequest,
         block: Option<BlockNumber>,
-    ) -> Result<TxHash, Self::Error> {
+    ) -> Result<PendingTransaction<'_, Self::Provider>, Self::Error> {
         self.inner()
             .send_transaction(tx, block)
             .await
@@ -266,7 +266,10 @@ pub trait Middleware: Sync + Send + Debug {
         self.inner().get_accounts().await.map_err(FromErr::from)
     }
 
-    async fn send_raw_transaction(&self, tx: &Transaction) -> Result<TxHash, Self::Error> {
+    async fn send_raw_transaction<'a>(
+        &'a self,
+        tx: &Transaction,
+    ) -> Result<PendingTransaction<'a, Self::Provider>, Self::Error> {
         self.inner()
             .send_raw_transaction(tx)
             .await
@@ -355,10 +358,6 @@ pub trait Middleware: Sync + Send + Debug {
             .map_err(FromErr::from)
     }
 
-    fn pending_transaction(&self, tx_hash: TxHash) -> PendingTransaction<'_, Self::Provider> {
-        self.inner().pending_transaction(tx_hash)
-    }
-
     async fn txpool_content(&self) -> Result<TxpoolContent, Self::Error> {
         self.inner().txpool_content().await.map_err(FromErr::from)
     }
@@ -369,5 +368,9 @@ pub trait Middleware: Sync + Send + Debug {
 
     async fn txpool_status(&self) -> Result<TxpoolStatus, Self::Error> {
         self.inner().txpool_status().await.map_err(FromErr::from)
+    }
+
+    fn pending_transaction(&self, tx_hash: TxHash) -> PendingTransaction<'_, Self::Provider> {
+        self.inner().pending_transaction(tx_hash)
     }
 }

@@ -292,7 +292,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         &self,
         mut tx: TransactionRequest,
         _: Option<BlockNumber>,
-    ) -> Result<TxHash, ProviderError> {
+    ) -> Result<PendingTransaction<'_, P>, ProviderError> {
         if tx.from.is_none() {
             tx.from = self.3;
         }
@@ -311,22 +311,28 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
             }
         }
 
-        Ok(self
+        let tx_hash = self
             .0
             .request("eth_sendTransaction", [tx])
             .await
-            .map_err(Into::into)?)
+            .map_err(Into::into)?;
+
+        Ok(PendingTransaction::new(tx_hash, self).interval(self.get_interval()))
     }
 
     /// Send the raw RLP encoded transaction to the entire Ethereum network and returns the transaction's hash
     /// This will consume gas from the account that signed the transaction.
-    async fn send_raw_transaction(&self, tx: &Transaction) -> Result<TxHash, ProviderError> {
+    async fn send_raw_transaction<'a>(
+        &'a self,
+        tx: &Transaction,
+    ) -> Result<PendingTransaction<'a, P>, ProviderError> {
         let rlp = utils::serialize(&tx.rlp());
-        Ok(self
+        let tx_hash = self
             .0
             .request("eth_sendRawTransaction", [rlp])
             .await
-            .map_err(Into::into)?)
+            .map_err(Into::into)?;
+        Ok(PendingTransaction::new(tx_hash, self).interval(self.get_interval()))
     }
 
     /// Signs data using a specific account. This account needs to be unlocked.
@@ -503,12 +509,6 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
             .await
     }
 
-    /// Helper which creates a pending transaction object from a transaction hash
-    /// using the provider's polling interval
-    fn pending_transaction(&self, tx_hash: TxHash) -> PendingTransaction<'_, P> {
-        PendingTransaction::new(tx_hash, self).interval(self.get_interval())
-    }
-
     /// Returns the details of all transactions currently pending for inclusion in the next
     /// block(s), as well as the ones that are being scheduled for future execution only.
     /// Ref: [Here](https://geth.ethereum.org/docs/rpc/ns-txpool#txpool_content)
@@ -540,6 +540,12 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
             .request("txpool_status", ())
             .await
             .map_err(Into::into)?)
+    }
+
+    /// Helper which creates a pending transaction object from a transaction hash
+    /// using the provider's polling interval
+    fn pending_transaction(&self, tx_hash: TxHash) -> PendingTransaction<'_, P> {
+        PendingTransaction::new(tx_hash, self).interval(self.get_interval())
     }
 }
 
@@ -764,7 +770,7 @@ mod tests {
         let tx_hash = provider.send_transaction(tx, None).await.unwrap();
 
         assert!(provider
-            .get_transaction_receipt(tx_hash)
+            .get_transaction_receipt(*tx_hash)
             .await
             .unwrap()
             .is_none());
@@ -773,7 +779,7 @@ mod tests {
         std::thread::sleep(std::time::Duration::new(3, 0));
 
         assert!(provider
-            .get_transaction_receipt(tx_hash)
+            .get_transaction_receipt(*tx_hash)
             .await
             .unwrap()
             .is_some());

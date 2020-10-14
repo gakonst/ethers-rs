@@ -104,9 +104,10 @@ mod eth_tests {
         let accounts = provider.get_accounts().await.unwrap();
 
         let tx = TransactionRequest::pay(accounts[0], parse_ether(1u64).unwrap()).from(accounts[0]);
-        let tx_hash = provider.send_transaction(tx, None).await.unwrap();
-        let pending_tx = provider.pending_transaction(tx_hash);
-        let receipt = pending_tx.confirmations(5).await.unwrap();
+        let pending_tx = provider.send_transaction(tx, None).await.unwrap();
+        let pending_tx = pending_tx.confirmations(5);
+        let tx_hash = *pending_tx;
+        let receipt = pending_tx.await.unwrap();
 
         // got the correct receipt
         assert_eq!(receipt.transaction_hash, tx_hash);

@@ -19,10 +19,10 @@ async fn main() -> Result<()> {
     let tx = TransactionRequest::new().to(wallet2.address()).value(10000);
 
     // send it!
-    let tx_hash = client.send_transaction(tx, None).await?;
+    let pending_tx = client.send_transaction(tx, None).await?;
 
     // get the mined tx
-    let receipt = client.pending_transaction(tx_hash).await?;
+    let receipt = pending_tx.await?;
     let tx = client.get_transaction(receipt.transaction_hash).await?;
 
     println!("Sent tx: {}\n", serde_json::to_string(&tx)?);

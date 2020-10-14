@@ -58,9 +58,10 @@ async fn test_send_transaction() {
 
     let balance_before = client.get_balance(client.address(), None).await.unwrap();
     let tx = TransactionRequest::pay(client.address(), 100);
-    let tx_hash = client.send_transaction(tx, None).await.unwrap();
     let _receipt = client
-        .pending_transaction(tx_hash)
+        .send_transaction(tx, None)
+        .await
+        .unwrap()
         .confirmations(3)
         .await
         .unwrap();

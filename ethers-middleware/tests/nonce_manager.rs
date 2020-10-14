@@ -36,7 +36,7 @@ async fn nonce_manager() {
             .send_transaction(TransactionRequest::pay(address, 100u64), None)
             .await
             .unwrap();
-        tx_hashes.push(tx);
+        tx_hashes.push(*tx);
     }
 
     let mut nonces = Vec::new();
