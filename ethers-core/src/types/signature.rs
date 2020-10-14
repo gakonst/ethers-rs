@@ -29,7 +29,7 @@ pub enum SignatureError {
     DecodingError(#[from] rustc_hex::FromHexError),
     /// Thrown when signature verification failed (i.e. when the address that
     /// produced the signature did not match the expected address)
-    #[error("Signature verification failed. Expected {0}, got {0}")]
+    #[error("Signature verification failed. Expected {0}, got {1}")]
     VerificationError(Address, Address),
     /// Internal error during signature recovery
     #[error(transparent)]
