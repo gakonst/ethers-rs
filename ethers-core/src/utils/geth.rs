@@ -11,6 +11,9 @@ const GETH_STARTUP_TIMEOUT_MILLIS: u64 = 10_000;
 /// The exposed APIs
 const API: &str = "eth,net,web3,txpool";
 
+/// The geth command
+const GETH: &str = "geth";
+
 /// A geth instance. Will close the instance when dropped.
 ///
 /// Construct this using [`Geth`](crate::utils::Geth)
@@ -58,7 +61,7 @@ impl Drop for GethInstance {
 ///
 /// let geth = Geth::new()
 ///     .port(port)
-///     .block_time(5000)
+///     .block_time(5000u64)
 ///     .spawn();
 ///
 /// drop(geth); // this will kill the instance
@@ -91,7 +94,7 @@ impl Geth {
     /// Consumes the builder and spawns `geth` with stdout redirected
     /// to /dev/null.
     pub fn spawn(self) -> GethInstance {
-        let mut cmd = Command::new("geth");
+        let mut cmd = Command::new(GETH);
         // geth uses stderr for its logs
         cmd.stderr(std::process::Stdio::piped());
         let port = if let Some(port) = self.port {
@@ -120,7 +123,7 @@ impl Geth {
 
         let stdout = child
             .stderr
-            .expect("Unable to get stdout for geth child process");
+            .expect("Unable to get stderr for geth child process");
 
         let start = Instant::now();
         let mut reader = BufReader::new(stdout);
@@ -135,7 +138,8 @@ impl Geth {
                 .read_line(&mut line)
                 .expect("Failed to read line from geth process");
 
-            if line.contains("HTTP endpoint opened") {
+            // geth 1.9.23 uses "server started" while 1.9.18 uses "endpoint opened"
+            if line.contains("HTTP endpoint opened") || line.contains("HTTP server started") {
                 break;
             }
         }
