@@ -8,7 +8,8 @@ use ethers_core::{
     abi::{self, Detokenize, ParamType},
     types::{
         Address, Block, BlockId, BlockNumber, Bytes, Filter, Log, NameOrAddress, Selector,
-        Signature, Transaction, TransactionReceipt, TransactionRequest, TxHash, H256, U256, U64,
+        Signature, Transaction, TransactionReceipt, TransactionRequest, TxHash, TxpoolContent,
+        TxpoolInspect, TxpoolStatus, H256, U256, U64,
     },
     utils,
 };
@@ -506,6 +507,39 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
     /// using the provider's polling interval
     fn pending_transaction(&self, tx_hash: TxHash) -> PendingTransaction<'_, P> {
         PendingTransaction::new(tx_hash, self).interval(self.get_interval())
+    }
+
+    /// Returns the details of all transactions currently pending for inclusion in the next
+    /// block(s), as well as the ones that are being scheduled for future execution only.
+    /// Ref: [Here](https://geth.ethereum.org/docs/rpc/ns-txpool#txpool_content)
+    async fn txpool_content(&self) -> Result<TxpoolContent, ProviderError> {
+        Ok(self
+            .0
+            .request("txpool_content", ())
+            .await
+            .map_err(Into::into)?)
+    }
+
+    /// Returns a summary of all the transactions currently pending for inclusion in the next
+    /// block(s), as well as the ones that are being scheduled for future execution only.
+    /// Ref: [Here](https://geth.ethereum.org/docs/rpc/ns-txpool#txpool_inspect)
+    async fn txpool_inspect(&self) -> Result<TxpoolInspect, ProviderError> {
+        Ok(self
+            .0
+            .request("txpool_inspect", ())
+            .await
+            .map_err(Into::into)?)
+    }
+
+    /// Returns the number of transactions currently pending for inclusion in the next block(s), as
+    /// well as the ones that are being scheduled for future execution only.
+    /// Ref: [Here](https://geth.ethereum.org/docs/rpc/ns-txpool#txpool_status)
+    async fn txpool_status(&self) -> Result<TxpoolStatus, ProviderError> {
+        Ok(self
+            .0
+            .request("txpool_status", ())
+            .await
+            .map_err(Into::into)?)
     }
 }
 

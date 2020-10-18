@@ -358,4 +358,16 @@ pub trait Middleware: Sync + Send + Debug {
     fn pending_transaction(&self, tx_hash: TxHash) -> PendingTransaction<'_, Self::Provider> {
         self.inner().pending_transaction(tx_hash)
     }
+
+    async fn txpool_content(&self) -> Result<TxpoolContent, Self::Error> {
+        self.inner().txpool_content().await.map_err(FromErr::from)
+    }
+
+    async fn txpool_inspect(&self) -> Result<TxpoolInspect, Self::Error> {
+        self.inner().txpool_inspect().await.map_err(FromErr::from)
+    }
+
+    async fn txpool_status(&self) -> Result<TxpoolStatus, Self::Error> {
+        self.inner().txpool_status().await.map_err(FromErr::from)
+    }
 }
