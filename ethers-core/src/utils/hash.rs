@@ -23,10 +23,13 @@ where
 
 /// Compute the Keccak-256 hash of input bytes.
 // TODO: Add Solidity Keccak256 packing support
-pub fn keccak256(bytes: &[u8]) -> [u8; 32] {
+pub fn keccak256<S>(bytes: S) -> [u8; 32]
+where
+    S: AsRef<[u8]>,
+{
     let mut output = [0u8; 32];
     let mut hasher = Keccak::v256();
-    hasher.update(bytes);
+    hasher.update(bytes.as_ref());
     hasher.finalize(&mut output);
     output
 }

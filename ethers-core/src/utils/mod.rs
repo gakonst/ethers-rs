@@ -119,21 +119,23 @@ pub fn to_checksum(addr: &Address, chain_id: Option<u8>) -> String {
         Some(chain_id) => format!("{}0x{:x}", chain_id, addr),
         None => format!("{:x}", addr),
     };
-    let hash = keccak256(&prefixed_addr.as_bytes()).to_hex::<String>();
+    let hash = keccak256(&prefixed_addr).to_hex::<String>();
     let hash = hash.as_bytes();
 
-    let mut encoded: String = "0x".to_owned();
     let addr_hex = addr.as_bytes().to_hex::<String>();
     let addr_hex = addr_hex.as_bytes();
-    for i in 0..addr_hex.len() {
-        if hash[i] >= 56 {
-            encoded.push(addr_hex[i].to_ascii_uppercase() as char);
-        } else {
-            encoded.push(addr_hex[i].to_ascii_lowercase() as char);
-        }
-    }
 
-    encoded
+    addr_hex
+        .into_iter()
+        .zip(hash)
+        .fold("0x".to_owned(), |mut encoded, (addr, hash)| {
+            encoded.push(if *hash >= 56 {
+                addr.to_ascii_uppercase() as char
+            } else {
+                addr.to_ascii_lowercase() as char
+            });
+            encoded
+        })
 }
 
 #[cfg(test)]
