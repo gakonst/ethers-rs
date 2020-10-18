@@ -28,7 +28,7 @@ impl<'de> Visitor<'de> for TxpoolInspectSummaryVisitor {
     type Value = TxpoolInspectSummary;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("to: value wei + gas × gas_price gas")
+        formatter.write_str("to: value wei + gasLimit gas × gas_price wei")
     }
 
     fn visit_string<E>(self, value: String) -> Result<Self::Value, E>
@@ -51,22 +51,21 @@ impl<'de> Visitor<'de> for TxpoolInspectSummaryVisitor {
         let value_split: Vec<&str> = addr_split[1].split(" wei + ").collect();
         if value_split.len() != 2 {
             return Err(de::Error::custom(
-                "invalid format for TxpoolInspectSummary: value",
+                "invalid format for TxpoolInspectSummary: gasLimit",
             ));
         }
-        let gas_split: Vec<&str> = value_split[1].split(" × ").collect();
+        let gas_split: Vec<&str> = value_split[1].split(" gas × ").collect();
         if gas_split.len() != 2 {
             return Err(de::Error::custom(
                 "invalid format for TxpoolInspectSummary: gas",
             ));
         }
-        let gas_price_split: Vec<&str> = gas_split[1].split(" gas").collect();
+        let gas_price_split: Vec<&str> = gas_split[1].split(" wei").collect();
         if gas_price_split.len() != 2 {
             return Err(de::Error::custom(
                 "invalid format for TxpoolInspectSummary: gas_price",
             ));
         }
-
         let addr = match addr_split[0] {
             "" => None,
             "0x" => None,
@@ -80,9 +79,9 @@ impl<'de> Visitor<'de> for TxpoolInspectSummaryVisitor {
 
         Ok(TxpoolInspectSummary {
             to: addr,
-            value: value,
-            gas: gas,
-            gas_price: gas_price,
+            value,
+            gas,
+            gas_price,
         })
     }
 }
@@ -273,22 +272,22 @@ mod tests {
 {
   "pending": {
     "0x0512261a7486b1e29704ac49a5eb355b6fd86872": {
-      "124930": "0x000000000000000000000000000000000000007E: 0 wei + 100187 × 20000000000 gas"
+      "124930": "0x000000000000000000000000000000000000007E: 0 wei + 100187 gas × 20000000000 wei"
     },
     "0x201354729f8d0f8b64e9a0c353c672c6a66b3857": {
-      "252350": "0xd10e3Be2bc8f959Bc8C41CF65F60dE721cF89ADF: 0 wei + 65792 × 2000000000 gas",
-      "252351": "0xd10e3Be2bc8f959Bc8C41CF65F60dE721cF89ADF: 0 wei + 65792 × 2000000000 gas",
-      "252352": "0xd10e3Be2bc8f959Bc8C41CF65F60dE721cF89ADF: 0 wei + 65780 × 2000000000 gas",
-      "252353": "0xd10e3Be2bc8f959Bc8C41CF65F60dE721cF89ADF: 0 wei + 65780 × 2000000000 gas"
+      "252350": "0xd10e3Be2bc8f959Bc8C41CF65F60dE721cF89ADF: 0 wei + 65792 gas × 2000000000 wei",
+      "252351": "0xd10e3Be2bc8f959Bc8C41CF65F60dE721cF89ADF: 0 wei + 65792 gas × 2000000000 wei",
+      "252352": "0xd10e3Be2bc8f959Bc8C41CF65F60dE721cF89ADF: 0 wei + 65780 gas × 2000000000 wei",
+      "252353": "0xd10e3Be2bc8f959Bc8C41CF65F60dE721cF89ADF: 0 wei + 65780 gas × 2000000000 wei"
     }
   },
   "queued": {
     "0x0f87ffcd71859233eb259f42b236c8e9873444e3": {
-      "7": "0x3479BE69e07E838D9738a301Bb0c89e8EA2Bef4a: 1000000000000000 wei + 21000 × 10000000000 gas",
-      "8": "0x73Aaf691bc33fe38f86260338EF88f9897eCaa4F: 1000000000000000 wei + 21000 × 10000000000 gas"
+      "7": "0x3479BE69e07E838D9738a301Bb0c89e8EA2Bef4a: 1000000000000000 wei + 21000 gas × 10000000000 wei",
+      "8": "0x73Aaf691bc33fe38f86260338EF88f9897eCaa4F: 1000000000000000 wei + 21000 gas × 10000000000 wei"
     },
     "0x307e8f249bcccfa5b245449256c5d7e6e079943e": {
-      "3": "0x73Aaf691bc33fe38f86260338EF88f9897eCaa4F: 10000000000000000 wei + 21000 × 10000000000 gas"
+      "3": "0x73Aaf691bc33fe38f86260338EF88f9897eCaa4F: 10000000000000000 wei + 21000 gas × 10000000000 wei"
     }
   }
 }"#;

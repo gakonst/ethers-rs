@@ -132,7 +132,7 @@ pub fn to_checksum(addr: &Address, chain_id: Option<u8>) -> String {
     let addr_hex = addr_hex.as_bytes();
 
     addr_hex
-        .into_iter()
+        .iter()
         .zip(hash)
         .fold("0x".to_owned(), |mut encoded, (addr, hash)| {
             encoded.push(if *hash >= 56 {
