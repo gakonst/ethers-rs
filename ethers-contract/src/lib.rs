@@ -14,7 +14,7 @@
 //! [`abigen`]: ./macro.abigen.html
 //! [`Abigen` builder]: crate::Abigen
 mod contract;
-pub use contract::Contract;
+pub use contract::{BaseContract, Contract};
 
 mod call;
 pub use call::ContractError;

@@ -160,34 +160,27 @@ use std::{collections::HashMap, fmt::Debug, hash::Hash, marker::PhantomData, syn
 /// [`method`]: method@crate::Contract::method
 #[derive(Debug, Clone)]
 pub struct Contract<M> {
+    base_contract: BaseContract,
     client: Arc<M>,
-    abi: Abi,
     address: Address,
-
-    /// A mapping from method signature to a name-index pair for accessing
-    /// functions in the contract ABI. This is used to avoid allocation when
-    /// searching for matching functions by signature.
-    // Adapted from: https://github.com/gnosis/ethcontract-rs/blob/master/src/contract.rs
-    methods: HashMap<Selector, (String, usize)>,
 }
 
 impl<M: Middleware> Contract<M> {
     /// Creates a new contract from the provided client, abi and address
     pub fn new(address: Address, abi: Abi, client: impl Into<Arc<M>>) -> Self {
-        let methods = create_mapping(&abi.functions, |function| function.selector());
+        let base_contract = BaseContract::new(abi);
 
         Self {
+            base_contract,
             client: client.into(),
-            abi,
             address,
-            methods,
         }
     }
 
     /// Returns an [`Event`](crate::builders::Event) builder for the provided event name.
     pub fn event<D: Detokenize>(&self, name: &str) -> Result<Event<M, D>, Error> {
         // get the event's full name
-        let event = self.abi.event(name)?;
+        let event = self.base_contract.abi.event(name)?;
         Ok(Event {
             provider: &self.client,
             filter: Filter::new()
@@ -207,7 +200,7 @@ impl<M: Middleware> Contract<M> {
         args: T,
     ) -> Result<ContractCall<M, D>, Error> {
         // get the function
-        let function = self.abi.function(name)?;
+        let function = self.base_contract.abi.function(name)?;
         self.method_func(function, args)
     }
 
@@ -219,9 +212,10 @@ impl<M: Middleware> Contract<M> {
         args: T,
     ) -> Result<ContractCall<M, D>, Error> {
         let function = self
+            .base_contract
             .methods
             .get(&signature)
-            .map(|(name, index)| &self.abi.functions[name][*index])
+            .map(|(name, index)| &self.base_contract.abi.functions[name][*index])
             .ok_or_else(|| Error::InvalidName(signature.to_hex::<String>()))?;
         self.method_func(function, args)
     }
@@ -283,7 +277,7 @@ impl<M: Middleware> Contract<M> {
 
     /// Returns a reference to the contract's ABI
     pub fn abi(&self) -> &Abi {
-        &self.abi
+        &self.base_contract.abi
     }
 
     /// Returns a reference to the contract's client
@@ -293,6 +287,41 @@ impl<M: Middleware> Contract<M> {
 
     pub fn pending_transaction(&self, tx_hash: TxHash) -> PendingTransaction<'_, M::Provider> {
         self.client.pending_transaction(tx_hash)
+    }
+}
+
+/// A reduced form of `Contract` which just takes the `abi` and produces ABI encoded data for its functions.
+/// TODO(pawan): more docs
+#[derive(Debug, Clone)]
+pub struct BaseContract {
+    abi: Abi,
+
+    /// A mapping from method signature to a name-index pair for accessing
+    /// functions in the contract ABI. This is used to avoid allocation when
+    /// searching for matching functions by signature.
+    // Adapted from: https://github.com/gnosis/ethcontract-rs/blob/master/src/contract.rs
+    methods: HashMap<Selector, (String, usize)>,
+}
+
+impl BaseContract {
+    /// Creates a new `BaseContract` from the abi.
+    pub fn new(abi: Abi) -> Self {
+        let methods = create_mapping(&abi.functions, |function| function.selector());
+        Self { abi, methods }
+    }
+
+    /// Returns a reference to the contract's ABI
+    pub fn abi(&self) -> &Abi {
+        &self.abi
+    }
+
+    /// Upgrades a `BaseContract` into a full fledged contract with an address and middleware.
+    pub fn into_contract<M>(self, address: Address, client: impl Into<Arc<M>>) -> Contract<M> {
+        Contract {
+            base_contract: self,
+            address,
+            client: client.into(),
+        }
     }
 }
 
