@@ -1,9 +1,11 @@
-use crate::{types::Address, utils::secret_key_to_address};
+use crate::{
+    types::Address,
+    utils::{secret_key_to_address, unused_port},
+};
 use k256::{ecdsa::SigningKey, SecretKey as K256SecretKey};
 use rustc_hex::FromHex;
 use std::{
     io::{BufRead, BufReader},
-    net::TcpListener,
     process::{Child, Command},
     time::{Duration, Instant},
 };
@@ -177,18 +179,4 @@ impl Ganache {
             port,
         }
     }
-}
-
-/// A bit of hack to find an unused TCP port.
-///
-/// Does not guarantee that the given port is unused after the function exists, just that it was
-/// unused before the function started (i.e., it does not reserve a port).
-pub fn unused_port() -> u16 {
-    let listener = TcpListener::bind("127.0.0.1:0")
-        .expect("Failed to create TCP listener to find unused port");
-
-    let local_addr = listener
-        .local_addr()
-        .expect("Failed to read TCP listener local_addr to find unused port");
-    local_addr.port()
 }

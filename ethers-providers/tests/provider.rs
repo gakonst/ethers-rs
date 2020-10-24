@@ -1,4 +1,3 @@
-#![allow(unused_braces)]
 use ethers::providers::{Http, Middleware, Provider};
 use std::{convert::TryFrom, time::Duration};
 

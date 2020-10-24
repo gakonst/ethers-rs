@@ -4,6 +4,12 @@ mod ganache;
 #[cfg(not(target_arch = "wasm32"))]
 pub use ganache::{Ganache, GanacheInstance};
 
+/// Utilities for launching a go-ethereum dev-mode instance
+#[cfg(not(target_arch = "wasm32"))]
+mod geth;
+#[cfg(not(target_arch = "wasm32"))]
+pub use geth::{Geth, GethInstance};
+
 /// Solidity compiler bindings
 #[cfg(not(target_arch = "wasm32"))]
 mod solc;
@@ -126,7 +132,7 @@ pub fn to_checksum(addr: &Address, chain_id: Option<u8>) -> String {
     let addr_hex = addr_hex.as_bytes();
 
     addr_hex
-        .into_iter()
+        .iter()
         .zip(hash)
         .fold("0x".to_owned(), |mut encoded, (addr, hash)| {
             encoded.push(if *hash >= 56 {
@@ -136,6 +142,20 @@ pub fn to_checksum(addr: &Address, chain_id: Option<u8>) -> String {
             });
             encoded
         })
+}
+
+/// A bit of hack to find an unused TCP port.
+///
+/// Does not guarantee that the given port is unused after the function exists, just that it was
+/// unused before the function started (i.e., it does not reserve a port).
+pub(crate) fn unused_port() -> u16 {
+    let listener = std::net::TcpListener::bind("127.0.0.1:0")
+        .expect("Failed to create TCP listener to find unused port");
+
+    let local_addr = listener
+        .local_addr()
+        .expect("Failed to read TCP listener local_addr to find unused port");
+    local_addr.port()
 }
 
 #[cfg(test)]
