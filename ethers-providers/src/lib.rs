@@ -1,5 +1,4 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
-#![deny(intra_doc_link_resolution_failure)]
 //! # Clients for interacting with Ethereum nodes
 //!
 //! This crate provides asynchronous [Ethereum JSON-RPC](https://github.com/ethereum/wiki/wiki/JSON-RPC)

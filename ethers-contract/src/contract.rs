@@ -1,13 +1,13 @@
-use super::{call::ContractCall, event::Event};
+use super::{base::BaseContract, call::ContractCall, event::Event};
 
 use ethers_core::{
-    abi::{Abi, Detokenize, Error, EventExt, Function, FunctionExt, Tokenize},
+    abi::{Abi, Detokenize, Error, EventExt, Function, Tokenize},
     types::{Address, Filter, NameOrAddress, Selector, TransactionRequest, TxHash},
 };
 use ethers_providers::{Middleware, PendingTransaction};
 
 use rustc_hex::ToHex;
-use std::{collections::HashMap, fmt::Debug, hash::Hash, marker::PhantomData, sync::Arc};
+use std::{fmt::Debug, marker::PhantomData, sync::Arc};
 
 /// A Contract is an abstraction of an executable program on the Ethereum Blockchain.
 /// It has code (called byte code) as well as allocated long-term memory
@@ -167,11 +167,9 @@ pub struct Contract<M> {
 
 impl<M: Middleware> Contract<M> {
     /// Creates a new contract from the provided client, abi and address
-    pub fn new(address: Address, abi: Abi, client: impl Into<Arc<M>>) -> Self {
-        let base_contract = BaseContract::new(abi);
-
+    pub fn new(address: Address, abi: impl Into<BaseContract>, client: impl Into<Arc<M>>) -> Self {
         Self {
-            base_contract,
+            base_contract: abi.into(),
             client: client.into(),
             address,
         }
@@ -288,61 +286,4 @@ impl<M: Middleware> Contract<M> {
     pub fn pending_transaction(&self, tx_hash: TxHash) -> PendingTransaction<'_, M::Provider> {
         self.client.pending_transaction(tx_hash)
     }
-}
-
-/// A reduced form of `Contract` which just takes the `abi` and produces ABI encoded data for its functions.
-/// TODO(pawan): more docs
-#[derive(Debug, Clone)]
-pub struct BaseContract {
-    abi: Abi,
-
-    /// A mapping from method signature to a name-index pair for accessing
-    /// functions in the contract ABI. This is used to avoid allocation when
-    /// searching for matching functions by signature.
-    // Adapted from: https://github.com/gnosis/ethcontract-rs/blob/master/src/contract.rs
-    methods: HashMap<Selector, (String, usize)>,
-}
-
-impl BaseContract {
-    /// Creates a new `BaseContract` from the abi.
-    pub fn new(abi: Abi) -> Self {
-        let methods = create_mapping(&abi.functions, |function| function.selector());
-        Self { abi, methods }
-    }
-
-    /// Returns a reference to the contract's ABI
-    pub fn abi(&self) -> &Abi {
-        &self.abi
-    }
-
-    /// Upgrades a `BaseContract` into a full fledged contract with an address and middleware.
-    pub fn into_contract<M>(self, address: Address, client: impl Into<Arc<M>>) -> Contract<M> {
-        Contract {
-            base_contract: self,
-            address,
-            client: client.into(),
-        }
-    }
-}
-
-/// Utility function for creating a mapping between a unique signature and a
-/// name-index pair for accessing contract ABI items.
-fn create_mapping<T, S, F>(
-    elements: &HashMap<String, Vec<T>>,
-    signature: F,
-) -> HashMap<S, (String, usize)>
-where
-    S: Hash + Eq,
-    F: Fn(&T) -> S,
-{
-    let signature = &signature;
-    elements
-        .iter()
-        .flat_map(|(name, sub_elements)| {
-            sub_elements
-                .iter()
-                .enumerate()
-                .map(move |(index, element)| (signature(element), (name.to_owned(), index)))
-        })
-        .collect()
 }
