@@ -54,7 +54,7 @@ fn parse_event(event: &str) -> Result<Event, ParseError> {
     let args = rest.replace(")", "");
     let anonymous = rest.contains("anonymous");
 
-    let inputs = if args.contains(",") {
+    let inputs = if args.contains(',') {
         let args: Vec<&str> = args.split(", ").collect();
         args.iter()
             .map(|arg| parse_event_arg(arg))
@@ -72,7 +72,7 @@ fn parse_event(event: &str) -> Result<Event, ParseError> {
 
 // Parses an event's argument as indexed if neded
 fn parse_event_arg(param: &str) -> Result<EventParam, ParseError> {
-    let tokens: Vec<&str> = param.split(" ").collect();
+    let tokens: Vec<&str> = param.split(' ').collect();
     let kind: ParamType = Reader::read(tokens[0])?;
     let (name, indexed) = if tokens.len() == 2 {
         (tokens[1], false)
@@ -95,13 +95,13 @@ fn parse_function(fn_string: &str) -> Result<Function, ParseError> {
         " "
     };
     let split: Vec<&str> = fn_string.split(delim).collect();
-    let split: Vec<&str> = split[1].split("(").collect();
+    let split: Vec<&str> = split[1].split('(').collect();
 
     // function name is the first char
     let fn_name = split[0];
 
     // internal args
-    let args: Vec<&str> = split[1].split(")").collect();
+    let args: Vec<&str> = split[1].split(')').collect();
     let args: Vec<&str> = args[0].split(", ").collect();
     let inputs = args
         .into_iter()
@@ -136,8 +136,7 @@ fn parse_function(fn_string: &str) -> Result<Function, ParseError> {
 // address x
 fn parse_param(param: &str) -> Result<Param, ParseError> {
     let mut param = param
-        .split(" ")
-        .into_iter()
+        .split(' ')
         .filter(|x| !x.contains("memory") || !x.contains("calldata"));
 
     let kind = param.next().ok_or(ParseError::Kind)?;
