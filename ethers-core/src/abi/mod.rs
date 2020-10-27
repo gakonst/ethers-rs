@@ -8,6 +8,9 @@ pub use ethabi::*;
 mod tokens;
 pub use tokens::{Detokenize, InvalidOutputType, Tokenizable, TokenizableItem, Tokenize};
 
+mod human_readable;
+pub use human_readable::parse as parse_abi;
+
 /// Extension trait for `ethabi::Function`.
 pub trait FunctionExt {
     /// Compute the method signature in the standard ABI format. This does not
