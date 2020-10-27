@@ -7,7 +7,10 @@ mod types;
 use super::util;
 use super::Abigen;
 use anyhow::{anyhow, Context as _, Result};
-use ethers_core::{abi::Abi, types::Address};
+use ethers_core::{
+    abi::{parse_abi, Abi},
+    types::Address,
+};
 use inflector::Inflector;
 use proc_macro2::{Ident, Literal, TokenStream};
 use quote::quote;
@@ -21,6 +24,9 @@ pub(crate) struct Context {
 
     /// The parsed ABI.
     abi: Abi,
+
+    /// Was the ABI in human readable format?
+    human_readable: bool,
 
     /// The contract name as an identifier.
     contract_name: Ident,
@@ -92,13 +98,23 @@ impl Context {
     fn from_abigen(args: Abigen) -> Result<Self> {
         // get the actual ABI string
         let abi_str = args.abi_source.get().context("failed to get ABI JSON")?;
-
         // parse it
-        let abi: Abi = serde_json::from_str(&abi_str)
-            .with_context(|| format!("invalid artifact JSON '{}'", abi_str))
-            .with_context(|| {
-                format!("failed to parse artifact from source {:?}", args.abi_source,)
-            })?;
+        let (abi, human_readable): (Abi, _) = if let Ok(abi) = serde_json::from_str(&abi_str) {
+            // normal abi format
+            (abi, false)
+        } else {
+            // heuristic for parsing the human readable format
+
+            // replace bad chars
+            let abi_str = abi_str.replace('[', "").replace(']', "").replace(',', "");
+            // split lines and get only the non-empty things
+            let split: Vec<&str> = abi_str
+                .split('\n')
+                .map(|x| x.trim())
+                .filter(|x| !x.is_empty())
+                .collect();
+            (parse_abi(&split)?, true)
+        };
 
         let contract_name = util::ident(&args.contract_name);
 
@@ -125,6 +141,7 @@ impl Context {
 
         Ok(Context {
             abi,
+            human_readable,
             abi_str: Literal::string(&abi_str),
             contract_name,
             method_aliases,

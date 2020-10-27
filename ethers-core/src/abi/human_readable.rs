@@ -23,13 +23,13 @@ pub fn parse(input: &[&str]) -> Result<Abi, ParseError> {
     };
 
     for line in input {
-        if line.starts_with("function") {
+        if line.contains("function") {
             let function = parse_function(&line)?;
             abi.functions
                 .entry(function.name.clone())
                 .or_default()
                 .push(function);
-        } else if line.starts_with("event") {
+        } else if line.contains("event") {
             let event = parse_event(&line)?;
             abi.events
                 .entry(event.name.clone())
@@ -278,5 +278,14 @@ mod tests {
         .for_each(|x| {
             parse_function(x).unwrap();
         });
+    }
+
+    #[test]
+    fn can_read_backslashes() {
+        parse(&[
+            "\"function setValue(string)\"",
+            "\"function getValue() external view (string)\"",
+        ])
+        .unwrap();
     }
 }
