@@ -1,8 +1,10 @@
 use crate::Contract;
 
 use ethers_core::{
-    abi::{Abi, Detokenize, Error, Function, FunctionExt, InvalidOutputType, Tokenize},
-    types::{Address, Bytes, Selector},
+    abi::{
+        Abi, Detokenize, Error, Event, Function, FunctionExt, InvalidOutputType, RawLog, Tokenize,
+    },
+    types::{Address, Bytes, Selector, H256},
 };
 use ethers_providers::Middleware;
 
@@ -75,6 +77,18 @@ impl BaseContract {
         decode_fn(function, bytes)
     }
 
+    /// Decodes for a given event name, given the `log.topics` and
+    /// `log.data` fields from the transaction receipt
+    pub fn decode_event<D: Detokenize>(
+        &self,
+        name: &str,
+        topics: Vec<H256>,
+        data: Bytes,
+    ) -> Result<D, AbiError> {
+        let event = self.abi.event(name)?;
+        decode_event(event, topics, data)
+    }
+
     /// Decodes the provided ABI encoded bytes with the selected function selector
     pub fn decode_with_selector<D: Detokenize>(
         &self,
@@ -112,6 +126,23 @@ impl AsRef<Abi> for BaseContract {
     fn as_ref(&self) -> &Abi {
         self.abi()
     }
+}
+
+pub(crate) fn decode_event<D: Detokenize>(
+    event: &Event,
+    topics: Vec<H256>,
+    data: Bytes,
+) -> Result<D, AbiError> {
+    let tokens = event
+        .parse_log(RawLog {
+            topics,
+            data: data.0,
+        })?
+        .params
+        .into_iter()
+        .map(|param| param.value)
+        .collect::<Vec<_>>();
+    Ok(D::from_tokens(tokens)?)
 }
 
 // Helper for encoding arguments for a specific function

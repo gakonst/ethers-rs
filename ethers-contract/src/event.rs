@@ -1,9 +1,9 @@
-use crate::ContractError;
+use crate::{base::decode_event, ContractError};
 
 use ethers_providers::Middleware;
 
 use ethers_core::{
-    abi::{Detokenize, Event as AbiEvent, RawLog},
+    abi::{Detokenize, Event as AbiEvent},
     types::{BlockNumber, Filter, Log, TxHash, ValueOrArray, H256, U64},
 };
 
@@ -122,20 +122,7 @@ where
     }
 
     fn parse_log(&self, log: Log) -> Result<D, ContractError<M>> {
-        // ethabi parses the unindexed and indexed logs together to a
-        // vector of tokens
-        let tokens = self
-            .event
-            .parse_log(RawLog {
-                topics: log.topics,
-                data: log.data.0,
-            })?
-            .params
-            .into_iter()
-            .map(|param| param.value)
-            .collect::<Vec<_>>();
-        // convert the tokens to the requested datatype
-        Ok(D::from_tokens(tokens)?)
+        Ok(decode_event(self.event, log.topics, log.data)?)
     }
 }
 
