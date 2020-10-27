@@ -1,13 +1,13 @@
-use super::{call::ContractCall, event::Event};
+use super::{base::BaseContract, call::ContractCall, event::Event};
 
 use ethers_core::{
-    abi::{Abi, Detokenize, Error, EventExt, Function, FunctionExt, Tokenize},
+    abi::{Abi, Detokenize, Error, EventExt, Function, Tokenize},
     types::{Address, Filter, NameOrAddress, Selector, TransactionRequest, TxHash},
 };
 use ethers_providers::{Middleware, PendingTransaction};
 
 use rustc_hex::ToHex;
-use std::{collections::HashMap, fmt::Debug, hash::Hash, marker::PhantomData, sync::Arc};
+use std::{fmt::Debug, marker::PhantomData, sync::Arc};
 
 /// A Contract is an abstraction of an executable program on the Ethereum Blockchain.
 /// It has code (called byte code) as well as allocated long-term memory
@@ -160,34 +160,25 @@ use std::{collections::HashMap, fmt::Debug, hash::Hash, marker::PhantomData, syn
 /// [`method`]: method@crate::Contract::method
 #[derive(Debug, Clone)]
 pub struct Contract<M> {
+    base_contract: BaseContract,
     client: Arc<M>,
-    abi: Abi,
     address: Address,
-
-    /// A mapping from method signature to a name-index pair for accessing
-    /// functions in the contract ABI. This is used to avoid allocation when
-    /// searching for matching functions by signature.
-    // Adapted from: https://github.com/gnosis/ethcontract-rs/blob/master/src/contract.rs
-    methods: HashMap<Selector, (String, usize)>,
 }
 
 impl<M: Middleware> Contract<M> {
     /// Creates a new contract from the provided client, abi and address
-    pub fn new(address: Address, abi: Abi, client: impl Into<Arc<M>>) -> Self {
-        let methods = create_mapping(&abi.functions, |function| function.selector());
-
+    pub fn new(address: Address, abi: impl Into<BaseContract>, client: impl Into<Arc<M>>) -> Self {
         Self {
+            base_contract: abi.into(),
             client: client.into(),
-            abi,
             address,
-            methods,
         }
     }
 
     /// Returns an [`Event`](crate::builders::Event) builder for the provided event name.
     pub fn event<D: Detokenize>(&self, name: &str) -> Result<Event<M, D>, Error> {
         // get the event's full name
-        let event = self.abi.event(name)?;
+        let event = self.base_contract.abi.event(name)?;
         Ok(Event {
             provider: &self.client,
             filter: Filter::new()
@@ -207,7 +198,7 @@ impl<M: Middleware> Contract<M> {
         args: T,
     ) -> Result<ContractCall<M, D>, Error> {
         // get the function
-        let function = self.abi.function(name)?;
+        let function = self.base_contract.abi.function(name)?;
         self.method_func(function, args)
     }
 
@@ -219,9 +210,10 @@ impl<M: Middleware> Contract<M> {
         args: T,
     ) -> Result<ContractCall<M, D>, Error> {
         let function = self
+            .base_contract
             .methods
             .get(&signature)
-            .map(|(name, index)| &self.abi.functions[name][*index])
+            .map(|(name, index)| &self.base_contract.abi.functions[name][*index])
             .ok_or_else(|| Error::InvalidName(signature.to_hex::<String>()))?;
         self.method_func(function, args)
     }
@@ -283,7 +275,7 @@ impl<M: Middleware> Contract<M> {
 
     /// Returns a reference to the contract's ABI
     pub fn abi(&self) -> &Abi {
-        &self.abi
+        &self.base_contract.abi
     }
 
     /// Returns a reference to the contract's client
@@ -294,26 +286,4 @@ impl<M: Middleware> Contract<M> {
     pub fn pending_transaction(&self, tx_hash: TxHash) -> PendingTransaction<'_, M::Provider> {
         self.client.pending_transaction(tx_hash)
     }
-}
-
-/// Utility function for creating a mapping between a unique signature and a
-/// name-index pair for accessing contract ABI items.
-fn create_mapping<T, S, F>(
-    elements: &HashMap<String, Vec<T>>,
-    signature: F,
-) -> HashMap<S, (String, usize)>
-where
-    S: Hash + Eq,
-    F: Fn(&T) -> S,
-{
-    let signature = &signature;
-    elements
-        .iter()
-        .flat_map(|(name, sub_elements)| {
-            sub_elements
-                .iter()
-                .enumerate()
-                .map(move |(index, element)| (signature(element), (name.to_owned(), index)))
-        })
-        .collect()
 }

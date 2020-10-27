@@ -385,7 +385,8 @@ mod celo_tests {
             .send()
             .await
             .unwrap();
-        let _receipt = contract.pending_transaction(tx_hash).await.unwrap();
+        let receipt = contract.pending_transaction(tx_hash).await.unwrap();
+        assert_eq!(receipt.status.unwrap(), 1.into());
 
         let value: String = contract
             .method("getValue", ())

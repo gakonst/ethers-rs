@@ -16,6 +16,9 @@
 mod contract;
 pub use contract::Contract;
 
+mod base;
+pub use base::BaseContract;
+
 mod call;
 pub use call::ContractError;
 

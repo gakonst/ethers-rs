@@ -234,13 +234,13 @@ impl<M: Middleware> Multicall<M> {
     ///
     /// ```no_run
     /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
-    /// # use ethers::prelude::*;
+    /// # use ethers::{abi::Abi, prelude::*};
     /// # use std::{sync::Arc, convert::TryFrom};
     /// #
     /// # let client = Provider::<Http>::try_from("http://localhost:8545")?;
     /// # let client = Arc::new(client);
     /// #
-    /// # let abi = serde_json::from_str("")?;
+    /// # let abi: Abi = serde_json::from_str("")?;
     /// # let address = "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee".parse::<Address>()?;
     /// # let contract = Contract::<Provider<Http>>::new(address, abi, client.clone());
     /// #
