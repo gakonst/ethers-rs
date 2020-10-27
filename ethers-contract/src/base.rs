@@ -64,7 +64,7 @@ impl BaseContract {
         encode_fn(function, args)
     }
 
-    /// Decodes the provided ABI encoded bytes with the selected function name.
+    /// Decodes the provided ABI encoded function arguments with the selected function name.
     ///
     /// If the function exists multiple times and you want to use one of the overloaded
     /// versions, consider using `decode_with_selector`
@@ -74,7 +74,7 @@ impl BaseContract {
         bytes: impl AsRef<[u8]>,
     ) -> Result<D, AbiError> {
         let function = self.abi.function(name)?;
-        decode_fn(function, bytes)
+        decode_fn(function, bytes, true)
     }
 
     /// Decodes for a given event name, given the `log.topics` and
@@ -96,7 +96,7 @@ impl BaseContract {
         bytes: impl AsRef<[u8]>,
     ) -> Result<D, AbiError> {
         let function = self.get_from_signature(signature)?;
-        decode_fn(function, bytes)
+        decode_fn(function, bytes, true)
     }
 
     fn get_from_signature(&self, signature: Selector) -> Result<&Function, AbiError> {
@@ -155,8 +155,19 @@ pub(crate) fn encode_fn<T: Tokenize>(function: &Function, args: T) -> Result<Byt
 pub(crate) fn decode_fn<D: Detokenize>(
     function: &Function,
     bytes: impl AsRef<[u8]>,
+    is_input: bool,
 ) -> Result<D, AbiError> {
-    let tokens = function.decode_output(bytes.as_ref())?;
+    let mut bytes = bytes.as_ref();
+    if bytes.starts_with(&function.selector()) {
+        bytes = &bytes[4..];
+    }
+
+    let tokens = if is_input {
+        function.decode_input(bytes.as_ref())?
+    } else {
+        function.decode_output(bytes.as_ref())?
+    };
+
     Ok(D::from_tokens(tokens)?)
 }
 
@@ -180,4 +191,71 @@ where
                 .map(move |(index, element)| (signature(element), (name.to_owned(), index)))
         })
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ethers_core::{abi::parse_abi, types::U256};
+    use rustc_hex::FromHex;
+
+    #[test]
+    fn can_parse_function_inputs() {
+        let abi = BaseContract::from(parse_abi(&[
+            "function approve(address _spender, uint256 value) external view returns (bool, bool)"
+        ]).unwrap());
+
+        let spender = "7a250d5630b4cf539739df2c5dacb4c659f2488d"
+            .parse::<Address>()
+            .unwrap();
+        let amount = U256::MAX;
+
+        let encoded = abi.encode("approve", (spender, amount)).unwrap();
+
+        assert_eq!(encoded.0.to_hex::<String>(), "095ea7b30000000000000000000000007a250d5630b4cf539739df2c5dacb4c659f2488dffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+
+        let (spender2, amount2): (Address, U256) = abi.decode("approve", encoded).unwrap();
+        assert_eq!(spender, spender2);
+        assert_eq!(amount, amount2);
+    }
+
+    #[test]
+    fn can_parse_events() {
+        let abi = BaseContract::from(
+            parse_abi(&[
+                "event Approval(address indexed owner, address indexed spender, uint256 value)",
+            ])
+            .unwrap(),
+        );
+
+        let topics = vec![
+            "8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925",
+            "000000000000000000000000e4e60fdf9bf188fa57b7a5022230363d5bd56d08",
+            "0000000000000000000000007a250d5630b4cf539739df2c5dacb4c659f2488d",
+        ]
+        .into_iter()
+        .map(|hash| hash.parse::<H256>().unwrap())
+        .collect::<Vec<_>>();
+        let data = Bytes::from(
+            "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+                .from_hex::<Vec<u8>>()
+                .unwrap(),
+        );
+
+        let (owner, spender, value): (Address, Address, U256) =
+            abi.decode_event("Approval", topics, data).unwrap();
+        assert_eq!(value, U256::MAX);
+        assert_eq!(
+            owner,
+            "e4e60fdf9bf188fa57b7a5022230363d5bd56d08"
+                .parse::<Address>()
+                .unwrap()
+        );
+        assert_eq!(
+            spender,
+            "7a250d5630b4cf539739df2c5dacb4c659f2488d"
+                .parse::<Address>()
+                .unwrap()
+        );
+    }
 }

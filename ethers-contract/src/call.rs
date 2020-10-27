@@ -119,7 +119,8 @@ where
             .await
             .map_err(ContractError::MiddlewareError)?;
 
-        let data = decode_fn(&self.function, &bytes)?;
+        // decode output
+        let data = decode_fn(&self.function, &bytes, false)?;
 
         Ok(data)
     }

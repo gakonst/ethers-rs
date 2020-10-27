@@ -7,11 +7,11 @@ use thiserror::Error;
 /// Parses a "human readable abi" string vector
 ///
 /// ```
-/// use ethers::contract::abi;
+/// use ethers::abi::parse_abi;
 ///
-/// let abi = abi::parse([
+/// let abi = parse_abi(&[
 ///     "function x() external view returns (uint256)",
-/// ]).unwrap()
+/// ]).unwrap();
 /// ```
 pub fn parse(input: &[&str]) -> Result<Abi, ParseError> {
     let mut abi = Abi {
@@ -48,7 +48,7 @@ pub fn parse(input: &[&str]) -> Result<Abi, ParseError> {
 fn parse_event(event: &str) -> Result<Event, ParseError> {
     let split: Vec<&str> = event.split("event ").collect();
     let split: Vec<&str> = split[1].split('(').collect();
-    let name = split[0];
+    let name = split[0].trim_end();
     let rest = split[1];
 
     let args = rest.replace(")", "");
@@ -103,7 +103,6 @@ fn parse_function(fn_string: &str) -> Result<Function, ParseError> {
     // internal args
     let args: Vec<&str> = split[1].split(")").collect();
     let args: Vec<&str> = args[0].split(", ").collect();
-    dbg!(&args);
     let inputs = args
         .into_iter()
         .filter(|x| !x.is_empty())
@@ -116,7 +115,6 @@ fn parse_function(fn_string: &str) -> Result<Function, ParseError> {
         let ret = split[2].strip_suffix(")").expect("no right paren");
         let ret: Vec<&str> = ret.split(", ").collect();
 
-        dbg!(&ret);
         ret.into_iter()
             // remove modifiers etc
             .filter(|x| !x.is_empty())
@@ -137,7 +135,6 @@ fn parse_function(fn_string: &str) -> Result<Function, ParseError> {
 
 // address x
 fn parse_param(param: &str) -> Result<Param, ParseError> {
-    dbg!(&param);
     let mut param = param
         .split(" ")
         .into_iter()
@@ -211,7 +208,7 @@ mod tests {
     #[test]
     fn parses_event() {
         assert_eq!(
-            parse_event("event Foo(address indexed x, uint y, bytes32[] z)").unwrap(),
+            parse_event("event Foo (address indexed x, uint y, bytes32[] z)").unwrap(),
             Event {
                 anonymous: false,
                 name: "Foo".to_owned(),
