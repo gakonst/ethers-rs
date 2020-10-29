@@ -6,9 +6,14 @@ use ethers::{
 use std::{convert::TryFrom, sync::Arc, time::Duration};
 
 // Generate the type-safe contract bindings by providing the ABI
+// definition in human readable format
 abigen!(
     SimpleContract,
-    r#"[{"inputs":[{"internalType":"string","name":"value","type":"string"}],"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"author","type":"address"},{"indexed":false,"internalType":"string","name":"oldValue","type":"string"},{"indexed":false,"internalType":"string","name":"newValue","type":"string"}],"name":"ValueChanged","type":"event"},{"inputs":[],"name":"getValue","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"string","name":"value","type":"string"}],"name":"setValue","outputs":[],"stateMutability":"nonpayable","type":"function"}]"#,
+    r#"[
+        function setValue(string)
+        function getValue() external view (string)
+        event ValueChanged(address indexed author, address indexed oldAuthor, string oldValue, string newValue)
+    ]"#,
     event_derives(serde::Deserialize, serde::Serialize)
 );
 

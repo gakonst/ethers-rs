@@ -15,7 +15,7 @@ pub(crate) fn imports(name: &str) -> TokenStream {
         use std::sync::Arc;
         use ethers::{
             core::{
-                abi::{Abi, Token, Detokenize, InvalidOutputType, Tokenizable},
+                abi::{Abi, Token, Detokenize, InvalidOutputType, Tokenizable, parse_abi},
                 types::*, // import all the types so that we can codegen for everything
             },
             contract::{Contract, builders::{ContractCall, Event}, Lazy},
@@ -28,10 +28,29 @@ pub(crate) fn struct_declaration(cx: &Context, abi_name: &proc_macro2::Ident) ->
     let name = &cx.contract_name;
     let abi = &cx.abi_str;
 
+    let abi_parse = if !cx.human_readable {
+        quote! {
+            pub static #abi_name: Lazy<Abi> = Lazy::new(|| serde_json::from_str(#abi)
+                                              .expect("invalid abi"));
+        }
+    } else {
+        quote! {
+            pub static #abi_name: Lazy<Abi> = Lazy::new(|| {
+                let abi_str = #abi.replace('[', "").replace(']', "").replace(',', "");
+                // split lines and get only the non-empty things
+                let split: Vec<&str> = abi_str
+                    .split("\n")
+                    .map(|x| x.trim())
+                    .filter(|x| !x.is_empty())
+                    .collect();
+                parse_abi(&split).expect("invalid abi")
+            });
+        }
+    };
+
     quote! {
         // Inline ABI declaration
-        pub static #abi_name: Lazy<Abi> = Lazy::new(|| serde_json::from_str(#abi)
-                                          .expect("invalid abi"));
+        #abi_parse
 
         // Struct declaration
         #[derive(Clone)]

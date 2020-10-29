@@ -1,5 +1,6 @@
+use super::base::{decode_fn, AbiError};
 use ethers_core::{
-    abi::{Detokenize, Error as AbiError, Function, InvalidOutputType},
+    abi::{Detokenize, Function, InvalidOutputType},
     types::{Address, BlockNumber, Bytes, TransactionRequest, TxHash, U256},
 };
 use ethers_providers::Middleware;
@@ -13,7 +14,11 @@ use thiserror::Error as ThisError;
 pub enum ContractError<M: Middleware> {
     /// Thrown when the ABI decoding fails
     #[error(transparent)]
-    DecodingError(#[from] AbiError),
+    DecodingError(#[from] ethers_core::abi::Error),
+
+    /// Thrown when the internal BaseContract errors
+    #[error(transparent)]
+    AbiError(#[from] AbiError),
 
     /// Thrown when detokenizing an argument
     #[error(transparent)]
@@ -114,8 +119,8 @@ where
             .await
             .map_err(ContractError::MiddlewareError)?;
 
-        let tokens = self.function.decode_output(&bytes.0)?;
-        let data = D::from_tokens(tokens)?;
+        // decode output
+        let data = decode_fn(&self.function, &bytes, false)?;
 
         Ok(data)
     }

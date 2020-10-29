@@ -1,4 +1,8 @@
-use super::{base::BaseContract, call::ContractCall, event::Event};
+use super::{
+    base::{encode_fn, AbiError, BaseContract},
+    call::ContractCall,
+    event::Event,
+};
 
 use ethers_core::{
     abi::{Abi, Detokenize, Error, EventExt, Function, Tokenize},
@@ -196,7 +200,7 @@ impl<M: Middleware> Contract<M> {
         &self,
         name: &str,
         args: T,
-    ) -> Result<ContractCall<M, D>, Error> {
+    ) -> Result<ContractCall<M, D>, AbiError> {
         // get the function
         let function = self.base_contract.abi.function(name)?;
         self.method_func(function, args)
@@ -208,7 +212,7 @@ impl<M: Middleware> Contract<M> {
         &self,
         signature: Selector,
         args: T,
-    ) -> Result<ContractCall<M, D>, Error> {
+    ) -> Result<ContractCall<M, D>, AbiError> {
         let function = self
             .base_contract
             .methods
@@ -222,16 +226,13 @@ impl<M: Middleware> Contract<M> {
         &self,
         function: &Function,
         args: T,
-    ) -> Result<ContractCall<M, D>, Error> {
-        let tokens = args.into_tokens();
-
-        // create the calldata
-        let data = function.encode_input(&tokens)?;
+    ) -> Result<ContractCall<M, D>, AbiError> {
+        let data = encode_fn(function, args)?;
 
         // create the tx object
         let tx = TransactionRequest {
             to: Some(NameOrAddress::Address(self.address)),
-            data: Some(data.into()),
+            data: Some(data),
             ..Default::default()
         };
 
