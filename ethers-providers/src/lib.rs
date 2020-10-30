@@ -358,6 +358,8 @@ pub trait Middleware: Sync + Send + Debug {
         self.inner().pending_transaction(tx_hash)
     }
 
+    // Mempool inspection for Geth's API
+
     async fn txpool_content(&self) -> Result<TxpoolContent, Self::Error> {
         self.inner().txpool_content().await.map_err(FromErr::from)
     }
@@ -368,5 +370,89 @@ pub trait Middleware: Sync + Send + Debug {
 
     async fn txpool_status(&self) -> Result<TxpoolStatus, Self::Error> {
         self.inner().txpool_status().await.map_err(FromErr::from)
+    }
+
+    // Parity `trace` support
+
+    /// Executes the given call and returns a number of possible traces for it
+    async fn trace_call(
+        &self,
+        req: TransactionRequest,
+        trace_type: Vec<TraceType>,
+        block: Option<BlockNumber>,
+    ) -> Result<BlockTrace, ProviderError> {
+        self.inner()
+            .trace_call(req, trace_type, block)
+            .await
+            .map_err(FromErr::from)
+    }
+
+    /// Traces a call to `eth_sendRawTransaction` without making the call, returning the traces
+    async fn trace_raw_transaction(
+        &self,
+        data: Bytes,
+        trace_type: Vec<TraceType>,
+    ) -> Result<BlockTrace, ProviderError> {
+        self.inner()
+            .trace_raw_transaction(data, trace_type)
+            .await
+            .map_err(FromErr::from)
+    }
+
+    /// Replays a transaction, returning the traces
+    async fn trace_replay_transaction(
+        &self,
+        hash: H256,
+        trace_type: Vec<TraceType>,
+    ) -> Result<BlockTrace, ProviderError> {
+        self.inner()
+            .trace_replay_transaction(hash, trace_type)
+            .await
+            .map_err(FromErr::from)
+    }
+
+    /// Replays all transactions in a block returning the requested traces for each transaction
+    async fn trace_replay_block_transactions(
+        &self,
+        block: BlockNumber,
+        trace_type: Vec<TraceType>,
+    ) -> Result<Vec<BlockTrace>, ProviderError> {
+        self.inner()
+            .trace_replay_block_transactions(block, trace_type)
+            .await
+            .map_err(FromErr::from)
+    }
+
+    /// Returns traces created at given block
+    async fn trace_block(&self, block: BlockNumber) -> Result<Vec<Trace>, ProviderError> {
+        self.inner().trace_block(block).await.map_err(FromErr::from)
+    }
+
+    /// Return traces matching the given filter
+    async fn trace_filter(&self, filter: TraceFilter) -> Result<Vec<Trace>, ProviderError> {
+        self.inner()
+            .trace_filter(filter)
+            .await
+            .map_err(FromErr::from)
+    }
+
+    /// Returns trace at the given position
+    async fn trace_get<T: Into<U64> + Send + Sync>(
+        &self,
+        hash: H256,
+        index: Vec<T>,
+    ) -> Result<Trace, ProviderError> {
+        self.inner()
+            .trace_get(hash, index)
+            .await
+            .map_err(FromErr::from)
+    }
+
+    /// Returns all traces of a given transaction
+    async fn trace_transaction(&self, hash: H256) -> Result<Vec<Trace>, ProviderError> {
+        self.inner()
+            .trace_transaction(hash)
+            .await
+            .map_err(FromErr::from)
     }
 }
