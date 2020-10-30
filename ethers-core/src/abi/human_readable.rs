@@ -103,6 +103,7 @@ fn parse_function(fn_string: &str) -> Result<Function, ParseError> {
     // internal args
     let args: Vec<&str> = split[1].split(')').collect();
     let args: Vec<&str> = args[0].split(", ").collect();
+
     let inputs = args
         .into_iter()
         .filter(|x| !x.is_empty())
@@ -146,7 +147,7 @@ fn parse_param(param: &str) -> Result<Param, ParseError> {
     // e.g. uint256[] memory x
     let mut name = param.next().unwrap_or_default();
     if name == "memory" || name == "calldata" {
-        name = param.next().ok_or(ParseError::Kind)?;
+        name = param.next().unwrap_or_default();
     }
 
     Ok(Param {
@@ -271,12 +272,29 @@ mod tests {
             "function foo(uint256[] memory x) external view returns (address)",
             "function bar(uint256[] memory x) returns (address)",
             "function bar(uint256[] memory x, uint32 y) returns (address, uint256)",
+            "function foo(address[] memory, bytes memory) returns (bytes memory)",
             "function bar(uint256[] memory x)",
             "function bar()",
         ]
         .iter()
         .for_each(|x| {
             parse_function(x).unwrap();
+        });
+    }
+
+    #[test]
+    fn can_parse_params() {
+        [
+            "address x",
+            "address",
+            "bytes memory y",
+            "bytes memory",
+            "bytes32[] memory",
+            "bytes32[] memory z",
+        ]
+        .iter()
+        .for_each(|x| {
+            parse_param(x).unwrap();
         });
     }
 
