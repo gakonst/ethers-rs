@@ -144,7 +144,7 @@ pub trait FromErr<T> {
 
 #[async_trait]
 pub trait Middleware: Sync + Send + Debug {
-    type Error: Send + Error + FromErr<<Self::Inner as Middleware>::Error>;
+    type Error: Sync + Send + Error + FromErr<<Self::Inner as Middleware>::Error>;
     type Provider: JsonRpcClient;
     type Inner: Middleware<Provider = Self::Provider>;
 
