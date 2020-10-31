@@ -30,3 +30,6 @@ pub use signature::*;
 
 mod txpool;
 pub use txpool::*;
+
+mod trace;
+pub use trace::*;

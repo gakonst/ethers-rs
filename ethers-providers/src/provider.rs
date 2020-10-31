@@ -7,9 +7,9 @@ use crate::{
 use ethers_core::{
     abi::{self, Detokenize, ParamType},
     types::{
-        Address, Block, BlockId, BlockNumber, Bytes, Filter, Log, NameOrAddress, Selector,
-        Signature, Transaction, TransactionReceipt, TransactionRequest, TxHash, TxpoolContent,
-        TxpoolInspect, TxpoolStatus, H256, U256, U64,
+        Address, Block, BlockId, BlockNumber, BlockTrace, Bytes, Filter, Log, NameOrAddress,
+        Selector, Signature, Trace, TraceFilter, TraceType, Transaction, TransactionReceipt,
+        TransactionRequest, TxHash, TxpoolContent, TxpoolInspect, TxpoolStatus, H256, U256, U64,
     },
     utils,
 };
@@ -540,6 +540,107 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
             .request("txpool_status", ())
             .await
             .map_err(Into::into)?)
+    }
+
+    /// Executes the given call and returns a number of possible traces for it
+    async fn trace_call(
+        &self,
+        req: TransactionRequest,
+        trace_type: Vec<TraceType>,
+        block: Option<BlockNumber>,
+    ) -> Result<BlockTrace, ProviderError> {
+        let req = utils::serialize(&req);
+        let block = utils::serialize(&block.unwrap_or(BlockNumber::Latest));
+        let trace_type = utils::serialize(&trace_type);
+        self.0
+            .request("trace_call", [req, trace_type, block])
+            .await
+            .map_err(Into::into)
+    }
+
+    /// Traces a call to `eth_sendRawTransaction` without making the call, returning the traces
+    async fn trace_raw_transaction(
+        &self,
+        data: Bytes,
+        trace_type: Vec<TraceType>,
+    ) -> Result<BlockTrace, ProviderError> {
+        let data = utils::serialize(&data);
+        let trace_type = utils::serialize(&trace_type);
+        self.0
+            .request("trace_rawTransaction", [data, trace_type])
+            .await
+            .map_err(Into::into)
+    }
+
+    /// Replays a transaction, returning the traces
+    async fn trace_replay_transaction(
+        &self,
+        hash: H256,
+        trace_type: Vec<TraceType>,
+    ) -> Result<BlockTrace, ProviderError> {
+        let hash = utils::serialize(&hash);
+        let trace_type = utils::serialize(&trace_type);
+        Ok(self
+            .0
+            .request("trace_replayTransaction", [hash, trace_type])
+            .await
+            .map_err(Into::into)?)
+    }
+
+    /// Replays all transactions in a block returning the requested traces for each transaction
+    async fn trace_replay_block_transactions(
+        &self,
+        block: BlockNumber,
+        trace_type: Vec<TraceType>,
+    ) -> Result<Vec<BlockTrace>, ProviderError> {
+        let block = utils::serialize(&block);
+        let trace_type = utils::serialize(&trace_type);
+        self.0
+            .request("trace_replayBlockTransactions", [block, trace_type])
+            .await
+            .map_err(Into::into)
+    }
+
+    /// Returns traces created at given block
+    async fn trace_block(&self, block: BlockNumber) -> Result<Vec<Trace>, ProviderError> {
+        let block = utils::serialize(&block);
+        self.0
+            .request("trace_block", [block])
+            .await
+            .map_err(Into::into)
+    }
+
+    /// Return traces matching the given filter
+    async fn trace_filter(&self, filter: TraceFilter) -> Result<Vec<Trace>, ProviderError> {
+        let filter = utils::serialize(&filter);
+        self.0
+            .request("trace_filter", vec![filter])
+            .await
+            .map_err(Into::into)
+    }
+
+    /// Returns trace at the given position
+    async fn trace_get<T: Into<U64> + Send + Sync>(
+        &self,
+        hash: H256,
+        index: Vec<T>,
+    ) -> Result<Trace, ProviderError> {
+        let hash = utils::serialize(&hash);
+        let index: Vec<U64> = index.into_iter().map(|i| i.into()).collect();
+        let index = utils::serialize(&index);
+        self.0
+            .request("trace_get", vec![hash, index])
+            .await
+            .map_err(Into::into)
+    }
+
+    /// Returns all traces of a given transaction
+    async fn trace_transaction(&self, hash: H256) -> Result<Vec<Trace>, ProviderError> {
+        let hash = utils::serialize(&hash);
+        self.0
+            .request("trace_transaction", vec![hash])
+            .await
+            .map_err(Into::into)
     }
 }
 
