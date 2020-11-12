@@ -160,17 +160,14 @@ pub fn decode_fn<D: Detokenize, T: AsRef<[u8]>>(
     bytes: T,
     is_input: bool,
 ) -> Result<D, AbiError> {
-    let mut bytes = bytes.as_ref();
-
-    if bytes.len() < 4 || &bytes[..4] != &function.selector() {
-        return Err(AbiError::WrongSelector);
-    }
-
-    bytes = &bytes[4..];
+    let bytes = bytes.as_ref();
     let tokens = if is_input {
-        function.decode_input(bytes.as_ref())?
+        if bytes.len() < 4 || bytes[..4] != function.selector() {
+            return Err(AbiError::WrongSelector);
+        }
+        function.decode_input(&bytes[4..])?
     } else {
-        function.decode_output(bytes.as_ref())?
+        function.decode_output(bytes)?
     };
 
     Ok(D::from_tokens(tokens)?)
