@@ -21,6 +21,9 @@ pub enum AbiError {
     /// Thrown when detokenizing an argument
     #[error(transparent)]
     DetokenizationError(#[from] InvalidOutputType),
+
+    #[error("missing or wrong function selector")]
+    WrongSelector,
 }
 
 /// A reduced form of `Contract` which just takes the `abi` and produces
@@ -33,7 +36,7 @@ pub struct BaseContract {
     /// functions in the contract ABI. This is used to avoid allocation when
     /// searching for matching functions by signature.
     // Adapted from: https://github.com/gnosis/ethcontract-rs/blob/master/src/contract.rs
-    pub(crate) methods: HashMap<Selector, (String, usize)>,
+    pub methods: HashMap<Selector, (String, usize)>,
 }
 
 impl From<Abi> for BaseContract {
@@ -68,10 +71,10 @@ impl BaseContract {
     ///
     /// If the function exists multiple times and you want to use one of the overloaded
     /// versions, consider using `decode_with_selector`
-    pub fn decode<D: Detokenize>(
+    pub fn decode<D: Detokenize, T: AsRef<[u8]>>(
         &self,
         name: &str,
-        bytes: impl AsRef<[u8]>,
+        bytes: T,
     ) -> Result<D, AbiError> {
         let function = self.abi.function(name)?;
         decode_fn(function, bytes, true)
@@ -90,10 +93,10 @@ impl BaseContract {
     }
 
     /// Decodes the provided ABI encoded bytes with the selected function selector
-    pub fn decode_with_selector<D: Detokenize>(
+    pub fn decode_with_selector<D: Detokenize, T: AsRef<[u8]>>(
         &self,
         signature: Selector,
-        bytes: impl AsRef<[u8]>,
+        bytes: T,
     ) -> Result<D, AbiError> {
         let function = self.get_from_signature(signature)?;
         decode_fn(function, bytes, true)
@@ -152,20 +155,19 @@ pub(crate) fn encode_fn<T: Tokenize>(function: &Function, args: T) -> Result<Byt
 }
 
 // Helper for decoding bytes from a specific function
-pub(crate) fn decode_fn<D: Detokenize>(
+pub fn decode_fn<D: Detokenize, T: AsRef<[u8]>>(
     function: &Function,
-    bytes: impl AsRef<[u8]>,
+    bytes: T,
     is_input: bool,
 ) -> Result<D, AbiError> {
-    let mut bytes = bytes.as_ref();
-    if bytes.starts_with(&function.selector()) {
-        bytes = &bytes[4..];
-    }
-
+    let bytes = bytes.as_ref();
     let tokens = if is_input {
-        function.decode_input(bytes.as_ref())?
+        if bytes.len() < 4 || bytes[..4] != function.selector() {
+            return Err(AbiError::WrongSelector);
+        }
+        function.decode_input(&bytes[4..])?
     } else {
-        function.decode_output(bytes.as_ref())?
+        function.decode_output(bytes)?
     };
 
     Ok(D::from_tokens(tokens)?)

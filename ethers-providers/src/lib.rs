@@ -380,7 +380,7 @@ pub trait Middleware: Sync + Send + Debug {
         req: TransactionRequest,
         trace_type: Vec<TraceType>,
         block: Option<BlockNumber>,
-    ) -> Result<BlockTrace, ProviderError> {
+    ) -> Result<BlockTrace, Self::Error> {
         self.inner()
             .trace_call(req, trace_type, block)
             .await
@@ -392,7 +392,7 @@ pub trait Middleware: Sync + Send + Debug {
         &self,
         data: Bytes,
         trace_type: Vec<TraceType>,
-    ) -> Result<BlockTrace, ProviderError> {
+    ) -> Result<BlockTrace, Self::Error> {
         self.inner()
             .trace_raw_transaction(data, trace_type)
             .await
@@ -404,7 +404,7 @@ pub trait Middleware: Sync + Send + Debug {
         &self,
         hash: H256,
         trace_type: Vec<TraceType>,
-    ) -> Result<BlockTrace, ProviderError> {
+    ) -> Result<BlockTrace, Self::Error> {
         self.inner()
             .trace_replay_transaction(hash, trace_type)
             .await
@@ -416,7 +416,7 @@ pub trait Middleware: Sync + Send + Debug {
         &self,
         block: BlockNumber,
         trace_type: Vec<TraceType>,
-    ) -> Result<Vec<BlockTrace>, ProviderError> {
+    ) -> Result<Vec<BlockTrace>, Self::Error> {
         self.inner()
             .trace_replay_block_transactions(block, trace_type)
             .await
@@ -424,12 +424,12 @@ pub trait Middleware: Sync + Send + Debug {
     }
 
     /// Returns traces created at given block
-    async fn trace_block(&self, block: BlockNumber) -> Result<Vec<Trace>, ProviderError> {
+    async fn trace_block(&self, block: BlockNumber) -> Result<Vec<Trace>, Self::Error> {
         self.inner().trace_block(block).await.map_err(FromErr::from)
     }
 
     /// Return traces matching the given filter
-    async fn trace_filter(&self, filter: TraceFilter) -> Result<Vec<Trace>, ProviderError> {
+    async fn trace_filter(&self, filter: TraceFilter) -> Result<Vec<Trace>, Self::Error> {
         self.inner()
             .trace_filter(filter)
             .await
@@ -441,7 +441,7 @@ pub trait Middleware: Sync + Send + Debug {
         &self,
         hash: H256,
         index: Vec<T>,
-    ) -> Result<Trace, ProviderError> {
+    ) -> Result<Trace, Self::Error> {
         self.inner()
             .trace_get(hash, index)
             .await
@@ -449,7 +449,7 @@ pub trait Middleware: Sync + Send + Debug {
     }
 
     /// Returns all traces of a given transaction
-    async fn trace_transaction(&self, hash: H256) -> Result<Vec<Trace>, ProviderError> {
+    async fn trace_transaction(&self, hash: H256) -> Result<Vec<Trace>, Self::Error> {
         self.inner()
             .trace_transaction(hash)
             .await

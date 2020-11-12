@@ -3,7 +3,7 @@ use serde::de::{Error, Unexpected};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 /// Wrapper type around Vec<u8> to deserialize/serialize "0x" prefixed ethereum hex strings
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize, Ord, PartialOrd)]
 pub struct Bytes(
     #[serde(
         serialize_with = "serialize_bytes",
