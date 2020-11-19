@@ -455,4 +455,17 @@ pub trait Middleware: Sync + Send + Debug {
             .await
             .map_err(FromErr::from)
     }
+
+    // Parity namespace
+
+    /// Returns all receipts for that block. Must be done on a parity node.
+    async fn parity_block_receipts<T: Into<BlockNumber> + Send + Sync>(
+        &self,
+        block: T,
+    ) -> Result<Vec<TransactionReceipt>, Self::Error> {
+        self.inner()
+            .parity_block_receipts(block)
+            .await
+            .map_err(FromErr::from)
+    }
 }

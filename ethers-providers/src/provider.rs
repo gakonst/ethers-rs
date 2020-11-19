@@ -642,6 +642,17 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
             .await
             .map_err(Into::into)
     }
+
+    /// Returns all receipts for that block. Must be done on a parity node.
+    async fn parity_block_receipts<T: Into<BlockNumber> + Send + Sync>(
+        &self,
+        block: T,
+    ) -> Result<Vec<TransactionReceipt>, Self::Error> {
+        self.0
+            .request("parity_getBlockReceipts", vec![block.into()])
+            .await
+            .map_err(Into::into)
+    }
 }
 
 impl<P: JsonRpcClient> Provider<P> {
@@ -878,5 +889,16 @@ mod tests {
             .await
             .unwrap()
             .is_some());
+    }
+
+    #[tokio::test]
+    async fn parity_block_receipts() {
+        let url = match std::env::var("PARITY") {
+            Ok(inner) => inner,
+            _ => return,
+        };
+        let provider = Provider::<Http>::try_from(url.as_str()).unwrap();
+        let receipts = provider.parity_block_receipts(10657200).await.unwrap();
+        assert!(!receipts.is_empty());
     }
 }
