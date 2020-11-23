@@ -58,7 +58,9 @@ in the transactions which are fetched over JSON-RPC.
 - [x] ENS as a first class citizen
 - [x] Celo support
 - [ ] Websockets / `eth_subscribe`
-- [ ] Hardware Wallet Support
+- [x] Hardware Wallet Support
+- [x] Parity APIs (`tracing`, `parity_blockWithReceipts`)
+- [x] Geth TxPool API
 - [ ] WASM Bindings
 - [ ] FFI Bindings
 - [ ] CLI for common operations
