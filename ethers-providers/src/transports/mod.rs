@@ -7,3 +7,6 @@ pub use http::Provider as Http;
 mod ws;
 #[cfg(feature = "ws")]
 pub use ws::Provider as Ws;
+
+mod mock;
+pub use mock::{MockError, MockProvider};
