@@ -1,7 +1,7 @@
 use crate::{
     ens,
     stream::{FilterWatcher, DEFAULT_POLL_INTERVAL},
-    FromErr, Http as HttpProvider, JsonRpcClient, PendingTransaction,
+    FromErr, Http as HttpProvider, JsonRpcClient, MockProvider, PendingTransaction,
 };
 
 use ethers_core::{
@@ -46,6 +46,12 @@ use std::{convert::TryFrom, fmt::Debug, time::Duration};
 #[derive(Clone, Debug)]
 // TODO: Convert to proper struct
 pub struct Provider<P>(P, Option<Address>, Option<Duration>, Option<Address>);
+
+impl<P> AsRef<P> for Provider<P> {
+    fn as_ref(&self) -> &P {
+        &self.0
+    }
+}
 
 impl FromErr<ProviderError> for ProviderError {
     fn from(src: ProviderError) -> Self {
@@ -713,6 +719,34 @@ impl<P: JsonRpcClient> Provider<P> {
     /// and pending transactions (default: 7 seconds)
     pub fn get_interval(&self) -> Duration {
         self.2.unwrap_or(DEFAULT_POLL_INTERVAL)
+    }
+}
+
+impl Provider<MockProvider> {
+    /// Returns a `Provider` instantiated with an internal "mock" transport.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
+    /// use ethers::{types::U64, providers::{Middleware, Provider}};
+    /// // Instantiate the provider
+    /// let (provider, mock) = Provider::mocked();
+    /// // Push the mock response
+    /// mock.push(U64::from(12))?;
+    /// // Make the call
+    /// let blk = provider.get_block_number().await.unwrap();
+    /// // The response matches
+    /// assert_eq!(blk.as_u64(), 12);
+    /// // and the request as well!
+    /// mock.assert_request("eth_blockNumber", ()).unwrap();
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn mocked() -> (Self, MockProvider) {
+        let mock = MockProvider::new();
+        let mock_clone = mock.clone();
+        (Self::new(mock), mock_clone)
     }
 }
 

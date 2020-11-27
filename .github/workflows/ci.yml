@@ -23,7 +23,7 @@ jobs:
       - name: Install ganache
         run: npm install -g ganache-cli
       - name: Install libusb (for Ledger)
-        run: sudo apt install pkg-config libudev-dev
+        run: sudo apt update && sudo apt install pkg-config libudev-dev
 
       - name: Install Solc
         run: |
