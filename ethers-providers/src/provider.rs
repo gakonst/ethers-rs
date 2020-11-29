@@ -1,5 +1,6 @@
 use crate::{
     ens,
+    pubsub::{PubsubClient, SubscriptionStream},
     stream::{FilterWatcher, DEFAULT_POLL_INTERVAL},
     FromErr, Http as HttpProvider, JsonRpcClient, MockProvider, PendingTransaction,
 };
@@ -722,6 +723,68 @@ impl<P: JsonRpcClient> Provider<P> {
     }
 }
 
+#[cfg(any(feature = "tokio-runtime", feature = "async-std-runtime"))]
+impl Provider<crate::Ws> {
+    /// Direct connection to a websocket endpoint
+    pub async fn connect(
+        url: impl async_tungstenite::tungstenite::client::IntoClientRequest + Unpin,
+    ) -> Result<Self, ProviderError> {
+        let ws = crate::Ws::connect(url).await?;
+        Ok(Self::new(ws))
+    }
+}
+
+impl<P: PubsubClient> Provider<P> {
+    pub async fn subscribe<T, R>(
+        &self,
+        params: T,
+    ) -> Result<SubscriptionStream<'_, P, R>, ProviderError>
+    where
+        T: Debug + Serialize + Send + Sync,
+        R: DeserializeOwned + Send + Sync,
+    {
+        let id: U256 = self
+            .0
+            .request("eth_subscribe", params)
+            .await
+            .map_err(Into::into)?;
+        SubscriptionStream::new(id, self).map_err(Into::into)
+    }
+
+    pub async fn unsubscribe<T>(&self, id: T) -> Result<bool, ProviderError>
+    where
+        T: Into<U256>,
+    {
+        let ok: bool = self
+            .0
+            .request("eth_unsubscribe", [id.into()])
+            .await
+            .map_err(Into::into)?;
+        Ok(ok)
+    }
+
+    pub async fn subscribe_blocks(
+        &self,
+    ) -> Result<SubscriptionStream<'_, P, Block<TxHash>>, ProviderError> {
+        self.subscribe(["newHeads"]).await
+    }
+
+    pub async fn subscribe_pending_txs(
+        &self,
+    ) -> Result<SubscriptionStream<'_, P, TxHash>, ProviderError> {
+        self.subscribe(["newPendingTransactions"]).await
+    }
+
+    pub async fn subscribe_logs(
+        &self,
+        filter: &Filter,
+    ) -> Result<SubscriptionStream<'_, P, Log>, ProviderError> {
+        let logs = utils::serialize(&"logs"); // TODO: Make this a static
+        let filter = utils::serialize(filter);
+        self.subscribe([logs, filter]).await
+    }
+}
+
 impl Provider<MockProvider> {
     /// Returns a `Provider` instantiated with an internal "mock" transport.
     ///
@@ -934,5 +997,22 @@ mod tests {
         let provider = Provider::<Http>::try_from(url.as_str()).unwrap();
         let receipts = provider.parity_block_receipts(10657200).await.unwrap();
         assert!(!receipts.is_empty());
+    }
+
+    #[tokio::test]
+    async fn block_subscribe() {
+        use crate::Ws;
+        use ethers_core::utils::Ganache;
+        use futures_util::StreamExt;
+        let ganache = Ganache::new().block_time(2u64).spawn();
+        let provider = Provider::connect(ganache.ws_endpoint()).await.unwrap();
+
+        let stream = provider.subscribe_blocks().await.unwrap();
+        let blocks = stream
+            .take(3)
+            .map(|x| x.number.unwrap().as_u64())
+            .collect::<Vec<_>>()
+            .await;
+        assert_eq!(blocks, vec![1, 2, 3]);
     }
 }

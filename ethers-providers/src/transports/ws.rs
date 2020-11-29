@@ -69,6 +69,7 @@ use async_tungstenite::tokio::connect_async;
 /// consider importing `async-tungstenite` with the [corresponding feature
 /// flag](https://github.com/sdroege/async-tungstenite/blob/master/Cargo.toml#L15-L22)
 /// for your runtime.
+#[derive(Clone)]
 pub struct Ws {
     id: Arc<AtomicU64>,
     requests: mpsc::UnboundedSender<TransportMessage>,
