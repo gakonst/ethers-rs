@@ -9,43 +9,45 @@ pub struct Block<TX> {
     /// Hash of the block
     pub hash: Option<H256>,
     /// Hash of the parent
-    #[serde(rename = "parentHash")]
+    #[serde(default, rename = "parentHash")]
     pub parent_hash: H256,
     /// Hash of the uncles
     #[cfg(not(feature = "celo"))]
-    #[serde(rename = "sha3Uncles")]
+    #[serde(default, rename = "sha3Uncles")]
     pub uncles_hash: H256,
     /// Miner/author's address.
-    #[serde(rename = "miner")]
+    #[serde(default, rename = "miner")]
     pub author: Address,
     /// State root hash
-    #[serde(rename = "stateRoot")]
+    #[serde(default, rename = "stateRoot")]
     pub state_root: H256,
     /// Transactions root hash
-    #[serde(rename = "transactionsRoot")]
+    #[serde(default, rename = "transactionsRoot")]
     pub transactions_root: H256,
     /// Transactions receipts root hash
-    #[serde(rename = "receiptsRoot")]
+    #[serde(default, rename = "receiptsRoot")]
     pub receipts_root: H256,
     /// Block number. None if pending.
     pub number: Option<U64>,
     /// Gas Used
-    #[serde(rename = "gasUsed")]
+    #[serde(default, rename = "gasUsed")]
     pub gas_used: U256,
     /// Gas Limit
     #[cfg(not(feature = "celo"))]
-    #[serde(rename = "gasLimit")]
+    #[serde(default, rename = "gasLimit")]
     pub gas_limit: U256,
     /// Extra data
-    #[serde(rename = "extraData")]
+    #[serde(default, rename = "extraData")]
     pub extra_data: Bytes,
     /// Logs bloom
     #[serde(rename = "logsBloom")]
     pub logs_bloom: Option<Bloom>,
     /// Timestamp
+    #[serde(default)]
     pub timestamp: U256,
     /// Difficulty
     #[cfg(not(feature = "celo"))]
+    #[serde(default)]
     pub difficulty: U256,
     /// Total difficulty
     #[serde(rename = "totalDifficulty")]
@@ -55,8 +57,10 @@ pub struct Block<TX> {
     pub seal_fields: Vec<Bytes>,
     /// Uncles' hashes
     #[cfg(not(feature = "celo"))]
+    #[serde(default)]
     pub uncles: Vec<H256>,
     /// Transactions
+    #[serde(bound = "TX: Serialize + serde::de::DeserializeOwned", default)]
     pub transactions: Vec<TX>,
     /// Size in bytes
     pub size: Option<U256>,
