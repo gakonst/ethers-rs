@@ -6,7 +6,7 @@ use futures_core::stream::Stream;
 use futures_timer::Delay;
 use futures_util::{stream, FutureExt, StreamExt};
 use pin_project::pin_project;
-use serde::Deserialize;
+use serde::de::DeserializeOwned;
 use std::{
     pin::Pin,
     task::{Context, Poll},
@@ -45,7 +45,7 @@ pub struct FilterWatcher<'a, P, R> {
 impl<'a, P, R> FilterWatcher<'a, P, R>
 where
     P: JsonRpcClient,
-    R: Send + Sync + for<'de> Deserialize<'de>,
+    R: Send + Sync + DeserializeOwned,
 {
     /// Creates a new watcher with the provided factory and filter id.
     pub fn new<T: Into<U256>>(id: T, provider: &'a Provider<P>) -> Self {
@@ -75,7 +75,7 @@ where
 impl<'a, P, R> Stream for FilterWatcher<'a, P, R>
 where
     P: JsonRpcClient,
-    R: Send + Sync + for<'de> Deserialize<'de> + 'a,
+    R: Send + Sync + DeserializeOwned + 'a,
 {
     type Item = R;
 

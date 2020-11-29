@@ -16,7 +16,7 @@ use ethers_core::{
 
 use crate::Middleware;
 use async_trait::async_trait;
-use serde::Deserialize;
+use serde::{de::DeserializeOwned, Serialize};
 use thiserror::Error;
 use url::{ParseError, Url};
 
@@ -96,7 +96,7 @@ impl<P: JsonRpcClient> Provider<P> {
         self
     }
 
-    async fn get_block_gen<Tx: for<'a> Deserialize<'a>>(
+    async fn get_block_gen<Tx: Default + Serialize + DeserializeOwned>(
         &self,
         id: BlockId,
         include_txs: bool,
@@ -428,7 +428,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
     async fn get_filter_changes<T, R>(&self, id: T) -> Result<Vec<R>, ProviderError>
     where
         T: Into<U256> + Send + Sync,
-        R: for<'a> Deserialize<'a> + Send + Sync,
+        R: DeserializeOwned + Send + Sync,
     {
         let id = utils::serialize(&id.into());
         Ok(self

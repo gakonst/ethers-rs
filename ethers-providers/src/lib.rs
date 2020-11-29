@@ -113,8 +113,11 @@ mod stream;
 pub use futures_util::StreamExt;
 pub use stream::{interval, FilterWatcher, DEFAULT_POLL_INTERVAL};
 
+mod pubsub;
+pub use pubsub::PubsubClient;
+
 use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Serialize};
 use std::{error::Error, fmt::Debug, future::Future, pin::Pin};
 
 pub use provider::{FilterKind, Provider, ProviderError};
@@ -134,7 +137,7 @@ pub trait JsonRpcClient: Debug + Send + Sync {
     async fn request<T, R>(&self, method: &str, params: T) -> Result<R, Self::Error>
     where
         T: Debug + Serialize + Send + Sync,
-        R: for<'a> Deserialize<'a>;
+        R: DeserializeOwned;
 }
 
 use ethers_core::types::*;
@@ -319,7 +322,7 @@ pub trait Middleware: Sync + Send + Debug {
     async fn get_filter_changes<T, R>(&self, id: T) -> Result<Vec<R>, Self::Error>
     where
         T: Into<U256> + Send + Sync,
-        R: for<'a> Deserialize<'a> + Send + Sync,
+        R: DeserializeOwned + Send + Sync,
     {
         self.inner()
             .get_filter_changes(id)

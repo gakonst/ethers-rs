@@ -53,7 +53,7 @@ impl<'a, T> Request<'a, T> {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Response<T> {
-    id: u64,
+    pub(crate) id: u64,
     jsonrpc: String,
     #[serde(flatten)]
     pub data: ResponseData<T>,
