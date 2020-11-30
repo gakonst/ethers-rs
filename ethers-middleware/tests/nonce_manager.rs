@@ -39,6 +39,9 @@ async fn nonce_manager() {
         tx_hashes.push(tx);
     }
 
+    // sleep a bit to ensure there's no flakiness in the test
+    std::thread::sleep(std::time::Duration::new(3, 0));
+
     let mut nonces = Vec::new();
     for tx_hash in tx_hashes {
         nonces.push(
