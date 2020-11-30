@@ -660,6 +660,66 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
             .await
             .map_err(Into::into)
     }
+
+    async fn subscribe<T, R>(
+        &self,
+        params: T,
+    ) -> Result<SubscriptionStream<'_, P, R>, ProviderError>
+    where
+        T: Debug + Serialize + Send + Sync,
+        R: DeserializeOwned + Send + Sync,
+        P: PubsubClient,
+    {
+        let id: U256 = self
+            .0
+            .request("eth_subscribe", params)
+            .await
+            .map_err(Into::into)?;
+        SubscriptionStream::new(id, self).map_err(Into::into)
+    }
+
+    async fn unsubscribe<T>(&self, id: T) -> Result<bool, ProviderError>
+    where
+        T: Into<U256> + Send + Sync,
+        P: PubsubClient,
+    {
+        let ok: bool = self
+            .0
+            .request("eth_unsubscribe", [id.into()])
+            .await
+            .map_err(Into::into)?;
+        Ok(ok)
+    }
+
+    async fn subscribe_blocks(
+        &self,
+    ) -> Result<SubscriptionStream<'_, P, Block<TxHash>>, ProviderError>
+    where
+        P: PubsubClient,
+    {
+        self.subscribe(["newHeads"]).await
+    }
+
+    async fn subscribe_pending_txs(
+        &self,
+    ) -> Result<SubscriptionStream<'_, P, TxHash>, ProviderError>
+    where
+        P: PubsubClient,
+    {
+        self.subscribe(["newPendingTransactions"]).await
+    }
+
+    async fn subscribe_logs<'a>(
+        &'a self,
+        filter: &Filter,
+    ) -> Result<SubscriptionStream<'a, P, Log>, ProviderError>
+    where
+        P: PubsubClient,
+    {
+        let logs = utils::serialize(&"logs"); // TODO: Make this a static
+        let filter = utils::serialize(filter);
+        self.subscribe([logs, filter]).await
+    }
 }
 
 impl<P: JsonRpcClient> Provider<P> {
@@ -731,57 +791,6 @@ impl Provider<crate::Ws> {
     ) -> Result<Self, ProviderError> {
         let ws = crate::Ws::connect(url).await?;
         Ok(Self::new(ws))
-    }
-}
-
-impl<P: PubsubClient> Provider<P> {
-    pub async fn subscribe<T, R>(
-        &self,
-        params: T,
-    ) -> Result<SubscriptionStream<'_, P, R>, ProviderError>
-    where
-        T: Debug + Serialize + Send + Sync,
-        R: DeserializeOwned + Send + Sync,
-    {
-        let id: U256 = self
-            .0
-            .request("eth_subscribe", params)
-            .await
-            .map_err(Into::into)?;
-        SubscriptionStream::new(id, self).map_err(Into::into)
-    }
-
-    pub async fn unsubscribe<T>(&self, id: T) -> Result<bool, ProviderError>
-    where
-        T: Into<U256>,
-    {
-        let ok: bool = self
-            .0
-            .request("eth_unsubscribe", [id.into()])
-            .await
-            .map_err(Into::into)?;
-        Ok(ok)
-    }
-
-    pub async fn subscribe_blocks(
-        &self,
-    ) -> Result<SubscriptionStream<'_, P, Block<TxHash>>, ProviderError> {
-        self.subscribe(["newHeads"]).await
-    }
-
-    pub async fn subscribe_pending_txs(
-        &self,
-    ) -> Result<SubscriptionStream<'_, P, TxHash>, ProviderError> {
-        self.subscribe(["newPendingTransactions"]).await
-    }
-
-    pub async fn subscribe_logs(
-        &self,
-        filter: &Filter,
-    ) -> Result<SubscriptionStream<'_, P, Log>, ProviderError> {
-        let logs = utils::serialize(&"logs"); // TODO: Make this a static
-        let filter = utils::serialize(filter);
-        self.subscribe([logs, filter]).await
     }
 }
 

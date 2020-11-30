@@ -114,7 +114,7 @@ pub use futures_util::StreamExt;
 pub use stream::{interval, FilterWatcher, DEFAULT_POLL_INTERVAL};
 
 mod pubsub;
-pub use pubsub::PubsubClient;
+pub use pubsub::{PubsubClient, SubscriptionStream};
 
 use async_trait::async_trait;
 use serde::{de::DeserializeOwned, Serialize};
@@ -468,6 +468,60 @@ pub trait Middleware: Sync + Send + Debug {
     ) -> Result<Vec<TransactionReceipt>, Self::Error> {
         self.inner()
             .parity_block_receipts(block)
+            .await
+            .map_err(FromErr::from)
+    }
+
+    async fn subscribe<T, R>(
+        &self,
+        params: T,
+    ) -> Result<SubscriptionStream<'_, Self::Provider, R>, Self::Error>
+    where
+        T: Debug + Serialize + Send + Sync,
+        R: DeserializeOwned + Send + Sync,
+        <Self as Middleware>::Provider: PubsubClient,
+    {
+        self.inner().subscribe(params).await.map_err(FromErr::from)
+    }
+
+    async fn unsubscribe<T>(&self, id: T) -> Result<bool, Self::Error>
+    where
+        T: Into<U256> + Send + Sync,
+        <Self as Middleware>::Provider: PubsubClient,
+    {
+        self.inner().unsubscribe(id).await.map_err(FromErr::from)
+    }
+
+    async fn subscribe_blocks(
+        &self,
+    ) -> Result<SubscriptionStream<'_, Self::Provider, Block<TxHash>>, Self::Error>
+    where
+        <Self as Middleware>::Provider: PubsubClient,
+    {
+        self.inner().subscribe_blocks().await.map_err(FromErr::from)
+    }
+
+    async fn subscribe_pending_txs(
+        &self,
+    ) -> Result<SubscriptionStream<'_, Self::Provider, TxHash>, Self::Error>
+    where
+        <Self as Middleware>::Provider: PubsubClient,
+    {
+        self.inner()
+            .subscribe_pending_txs()
+            .await
+            .map_err(FromErr::from)
+    }
+
+    async fn subscribe_logs<'a>(
+        &'a self,
+        filter: &Filter,
+    ) -> Result<SubscriptionStream<'a, Self::Provider, Log>, Self::Error>
+    where
+        <Self as Middleware>::Provider: PubsubClient,
+    {
+        self.inner()
+            .subscribe_logs(filter)
             .await
             .map_err(FromErr::from)
     }
