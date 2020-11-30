@@ -1,4 +1,4 @@
-use crate::{JsonRpcClient, Provider};
+use crate::{JsonRpcClient, Middleware, Provider};
 
 use ethers_core::types::U256;
 
