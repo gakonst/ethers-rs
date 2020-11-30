@@ -355,9 +355,9 @@ impl From<ClientError> for ProviderError {
 }
 
 #[cfg(test)]
+#[cfg(not(feature = "celo"))]
 mod tests {
     use super::*;
-    use crate::transports::common::Notification;
     use ethers_core::types::{Block, TxHash, U256};
     use ethers_core::utils::Ganache;
 

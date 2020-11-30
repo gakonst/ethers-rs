@@ -1000,8 +1000,9 @@ mod tests {
     }
 
     #[tokio::test]
+    // Celo blocks can not get parsed when used with Ganache
+    #[cfg(not(feature = "celo"))]
     async fn block_subscribe() {
-        use crate::Ws;
         use ethers_core::utils::Ganache;
         use futures_util::StreamExt;
         let ganache = Ganache::new().block_time(2u64).spawn();
