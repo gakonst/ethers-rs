@@ -1,13 +1,10 @@
-use crate::{base::decode_event, ContractError};
-
-use ethers_providers::Middleware;
+use crate::{base::decode_event, ContractError, EventStream};
 
 use ethers_core::{
     abi::{Detokenize, Event as AbiEvent},
     types::{BlockNumber, Filter, Log, TxHash, ValueOrArray, H256, U64},
 };
-
-use futures::stream::{Stream, StreamExt};
+use ethers_providers::{FilterWatcher, Middleware, PubsubClient, SubscriptionStream};
 use std::marker::PhantomData;
 
 /// Helper for managing the event filter before querying or streaming its logs
@@ -67,18 +64,52 @@ impl<'a, 'b, M, D> Event<'a, 'b, M, D>
 where
     M: Middleware,
     D: 'b + Detokenize + Clone,
-    'a: 'b,
 {
     /// Returns a stream for the event
     pub async fn stream(
-        self,
-    ) -> Result<impl Stream<Item = Result<D, ContractError<M>>> + 'b, ContractError<M>> {
+        &'a self,
+    ) -> Result<
+        // Wraps the FilterWatcher with a mapping to the event
+        EventStream<'a, FilterWatcher<'a, M::Provider, Log>, D, ContractError<M>>,
+        ContractError<M>,
+    > {
         let filter = self
             .provider
             .watch(&self.filter)
             .await
             .map_err(ContractError::MiddlewareError)?;
-        Ok(filter.stream().map(move |log| self.parse_log(log)))
+        Ok(EventStream::new(
+            filter.id,
+            filter,
+            Box::new(move |log| self.parse_log(log)),
+        ))
+    }
+}
+
+impl<'a, 'b, M, D> Event<'a, 'b, M, D>
+where
+    M: Middleware,
+    <M as Middleware>::Provider: PubsubClient,
+    D: 'b + Detokenize + Clone,
+{
+    /// Returns a subscription for the event
+    pub async fn subscribe(
+        &'a self,
+    ) -> Result<
+        // Wraps the SubscriptionStream with a mapping to the event
+        EventStream<'a, SubscriptionStream<'a, M::Provider, Log>, D, ContractError<M>>,
+        ContractError<M>,
+    > {
+        let filter = self
+            .provider
+            .subscribe_logs(&self.filter)
+            .await
+            .map_err(ContractError::MiddlewareError)?;
+        Ok(EventStream::new(
+            filter.id,
+            filter,
+            Box::new(move |log| self.parse_log(log)),
+        ))
     }
 }
 

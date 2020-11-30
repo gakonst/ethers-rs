@@ -125,15 +125,19 @@ mod eth_tests {
         let (abi, bytecode) = compile_contract("SimpleStorage", "SimpleStorage.sol");
         let ganache = Ganache::new().spawn();
         let client = connect(&ganache, 0);
-        let contract = deploy(client, abi, bytecode).await;
+        let contract = deploy(client, abi.clone(), bytecode).await;
 
         // We spawn the event listener:
-        let mut stream = contract
-            .event::<ValueChanged>("ValueChanged")
-            .unwrap()
-            .stream()
-            .await
-            .unwrap();
+        let event = contract.event::<ValueChanged>("ValueChanged").unwrap();
+        let mut stream = event.stream().await.unwrap();
+        assert_eq!(stream.id, 1.into());
+
+        // Also set up a subscription for the same thing
+        let ws = Provider::connect(ganache.ws_endpoint()).await.unwrap();
+        let contract2 = ethers_contract::Contract::new(contract.address(), abi, ws);
+        let event2 = contract2.event::<ValueChanged>("ValueChanged").unwrap();
+        let mut subscription = event2.subscribe().await.unwrap();
+        assert_eq!(subscription.id, 2.into());
 
         let num_calls = 3u64;
 
@@ -151,6 +155,8 @@ mod eth_tests {
         for i in 0..num_calls {
             // unwrap the option of the stream, then unwrap the decoding result
             let log = stream.next().await.unwrap().unwrap();
+            let log2 = subscription.next().await.unwrap().unwrap();
+            assert_eq!(log.new_value, log2.new_value);
             assert_eq!(log.new_value, i.to_string());
         }
     }
