@@ -3,7 +3,7 @@ use crate::{provider::ProviderError, JsonRpcClient};
 
 use async_trait::async_trait;
 use reqwest::{Client, Error as ReqwestError};
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Serialize};
 use std::{
     str::FromStr,
     sync::atomic::{AtomicU64, Ordering},
@@ -64,7 +64,7 @@ impl JsonRpcClient for Provider {
 
     /// Sends a POST request with the provided method and the params serialized as JSON
     /// over HTTP
-    async fn request<T: Serialize + Send + Sync, R: for<'a> Deserialize<'a>>(
+    async fn request<T: Serialize + Send + Sync, R: DeserializeOwned>(
         &self,
         method: &str,
         params: T,

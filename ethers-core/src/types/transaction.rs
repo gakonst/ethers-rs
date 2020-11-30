@@ -241,7 +241,7 @@ fn rlp_opt<T: rlp::Encodable>(rlp: &mut RlpStream, opt: Option<T>) {
 }
 
 /// Details of a signed transaction
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct Transaction {
     /// The transaction's hash
     pub hash: H256,

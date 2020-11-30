@@ -1,7 +1,7 @@
 use crate::{JsonRpcClient, ProviderError};
 
 use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Serialize};
 use serde_json::Value;
 use std::{
     borrow::Borrow,
@@ -29,7 +29,7 @@ impl JsonRpcClient for MockProvider {
 
     /// Pushes the `(method, input)` to the back of the `requests` queue,
     /// pops the responses from the back of the `responses` queue
-    async fn request<T: Serialize + Send + Sync, R: for<'a> Deserialize<'a>>(
+    async fn request<T: Serialize + Send + Sync, R: DeserializeOwned>(
         &self,
         method: &str,
         input: T,

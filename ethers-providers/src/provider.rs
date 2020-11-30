@@ -1,5 +1,6 @@
 use crate::{
     ens,
+    pubsub::{PubsubClient, SubscriptionStream},
     stream::{FilterWatcher, DEFAULT_POLL_INTERVAL},
     FromErr, Http as HttpProvider, JsonRpcClient, MockProvider, PendingTransaction,
 };
@@ -16,7 +17,7 @@ use ethers_core::{
 
 use crate::Middleware;
 use async_trait::async_trait;
-use serde::Deserialize;
+use serde::{de::DeserializeOwned, Serialize};
 use thiserror::Error;
 use url::{ParseError, Url};
 
@@ -96,7 +97,7 @@ impl<P: JsonRpcClient> Provider<P> {
         self
     }
 
-    async fn get_block_gen<Tx: for<'a> Deserialize<'a>>(
+    async fn get_block_gen<Tx: Default + Serialize + DeserializeOwned>(
         &self,
         id: BlockId,
         include_txs: bool,
@@ -428,7 +429,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
     async fn get_filter_changes<T, R>(&self, id: T) -> Result<Vec<R>, ProviderError>
     where
         T: Into<U256> + Send + Sync,
-        R: for<'a> Deserialize<'a> + Send + Sync,
+        R: DeserializeOwned + Send + Sync,
     {
         let id = utils::serialize(&id.into());
         Ok(self
@@ -659,6 +660,66 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
             .await
             .map_err(Into::into)
     }
+
+    async fn subscribe<T, R>(
+        &self,
+        params: T,
+    ) -> Result<SubscriptionStream<'_, P, R>, ProviderError>
+    where
+        T: Debug + Serialize + Send + Sync,
+        R: DeserializeOwned + Send + Sync,
+        P: PubsubClient,
+    {
+        let id: U256 = self
+            .0
+            .request("eth_subscribe", params)
+            .await
+            .map_err(Into::into)?;
+        SubscriptionStream::new(id, self).map_err(Into::into)
+    }
+
+    async fn unsubscribe<T>(&self, id: T) -> Result<bool, ProviderError>
+    where
+        T: Into<U256> + Send + Sync,
+        P: PubsubClient,
+    {
+        let ok: bool = self
+            .0
+            .request("eth_unsubscribe", [id.into()])
+            .await
+            .map_err(Into::into)?;
+        Ok(ok)
+    }
+
+    async fn subscribe_blocks(
+        &self,
+    ) -> Result<SubscriptionStream<'_, P, Block<TxHash>>, ProviderError>
+    where
+        P: PubsubClient,
+    {
+        self.subscribe(["newHeads"]).await
+    }
+
+    async fn subscribe_pending_txs(
+        &self,
+    ) -> Result<SubscriptionStream<'_, P, TxHash>, ProviderError>
+    where
+        P: PubsubClient,
+    {
+        self.subscribe(["newPendingTransactions"]).await
+    }
+
+    async fn subscribe_logs<'a>(
+        &'a self,
+        filter: &Filter,
+    ) -> Result<SubscriptionStream<'a, P, Log>, ProviderError>
+    where
+        P: PubsubClient,
+    {
+        let logs = utils::serialize(&"logs"); // TODO: Make this a static
+        let filter = utils::serialize(filter);
+        self.subscribe([logs, filter]).await
+    }
 }
 
 impl<P: JsonRpcClient> Provider<P> {
@@ -719,6 +780,17 @@ impl<P: JsonRpcClient> Provider<P> {
     /// and pending transactions (default: 7 seconds)
     pub fn get_interval(&self) -> Duration {
         self.2.unwrap_or(DEFAULT_POLL_INTERVAL)
+    }
+}
+
+#[cfg(any(feature = "tokio-runtime", feature = "async-std-runtime"))]
+impl Provider<crate::Ws> {
+    /// Direct connection to a websocket endpoint
+    pub async fn connect(
+        url: impl async_tungstenite::tungstenite::client::IntoClientRequest + Unpin,
+    ) -> Result<Self, ProviderError> {
+        let ws = crate::Ws::connect(url).await?;
+        Ok(Self::new(ws))
     }
 }
 
@@ -934,5 +1006,23 @@ mod tests {
         let provider = Provider::<Http>::try_from(url.as_str()).unwrap();
         let receipts = provider.parity_block_receipts(10657200).await.unwrap();
         assert!(!receipts.is_empty());
+    }
+
+    #[tokio::test]
+    // Celo blocks can not get parsed when used with Ganache
+    #[cfg(not(feature = "celo"))]
+    async fn block_subscribe() {
+        use ethers_core::utils::Ganache;
+        use futures_util::StreamExt;
+        let ganache = Ganache::new().block_time(2u64).spawn();
+        let provider = Provider::connect(ganache.ws_endpoint()).await.unwrap();
+
+        let stream = provider.subscribe_blocks().await.unwrap();
+        let blocks = stream
+            .take(3)
+            .map(|x| x.number.unwrap().as_u64())
+            .collect::<Vec<_>>()
+            .await;
+        assert_eq!(blocks, vec![1, 2, 3]);
     }
 }

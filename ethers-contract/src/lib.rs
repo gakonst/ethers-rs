@@ -27,6 +27,9 @@ pub use factory::ContractFactory;
 
 mod event;
 
+mod stream;
+pub use stream::EventStream;
+
 mod multicall;
 pub use multicall::Multicall;
 
