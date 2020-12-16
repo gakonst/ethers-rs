@@ -16,7 +16,7 @@ impl Clone for Wallet<SigningKey> {
     fn clone(&self) -> Self {
         Self {
             // TODO: Can we have a better way to clone here?
-            signer: SigningKey::new(&*self.signer.to_bytes()).unwrap(),
+            signer: SigningKey::from_bytes(&*self.signer.to_bytes()).unwrap(),
             address: self.address,
             chain_id: self.chain_id,
         }
@@ -71,7 +71,7 @@ use ethers_core::k256::SecretKey as K256SecretKey;
 
 impl From<K256SecretKey> for Wallet<SigningKey> {
     fn from(key: K256SecretKey) -> Self {
-        let signer = SigningKey::new(&*key.to_bytes())
+        let signer = SigningKey::from_bytes(&*key.to_bytes())
             .expect("private key should always be convertible to signing key");
         let address = key_to_address(&signer);
 
@@ -90,7 +90,7 @@ impl FromStr for Wallet<SigningKey> {
         let src = src
             .from_hex::<Vec<u8>>()
             .expect("invalid hex when reading PrivateKey");
-        let sk = SigningKey::new(&src).unwrap(); // TODO
+        let sk = SigningKey::from_bytes(&src).unwrap(); // TODO
         Ok(sk.into())
     }
 }
