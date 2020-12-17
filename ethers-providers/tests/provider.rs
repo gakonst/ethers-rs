@@ -5,8 +5,10 @@ use std::{convert::TryFrom, time::Duration};
 mod eth_tests {
     use super::*;
     use ethers::{
+        middleware::SignerMiddleware,
+        signers::LocalWallet,
         types::{BlockId, TransactionRequest, H256},
-        utils::{parse_ether, Ganache},
+        utils::Ganache,
     };
 
     #[tokio::test]
@@ -87,7 +89,38 @@ mod eth_tests {
         let provider = Provider::<Http>::try_from(ganache.endpoint())
             .unwrap()
             .interval(Duration::from_millis(500u64));
-        generic_pending_txs_test(provider).await;
+        let accounts = provider.get_accounts().await.unwrap();
+        generic_pending_txs_test(provider, accounts[0]).await;
+    }
+
+    #[tokio::test]
+    async fn pending_txs_with_confirmations_testnet() {
+        let provider = Provider::<Http>::try_from(
+            "https://rinkeby.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27",
+        )
+        .unwrap();
+        let wallet = "59c37cb6b16fa2de30675f034c8008f890f4b2696c729d6267946d29736d73e4"
+            .parse::<LocalWallet>()
+            .unwrap();
+        let address = wallet.address();
+        let provider = SignerMiddleware::new(provider, wallet);
+        generic_pending_txs_test(provider, address).await;
+    }
+
+    #[tokio::test]
+    #[cfg(any(feature = "tokio-runtime", feature = "tokio-tls"))]
+    // different keys to avoid nonce errors
+    async fn websocket_pending_txs_with_confirmations_testnet() {
+        let provider =
+            Provider::connect("wss://rinkeby.infura.io/ws/v3/c60b0bb42f8a4c6481ecd229eddaca27")
+                .await
+                .unwrap();
+        let wallet = "ff7f80c6e9941865266ed1f481263d780169f1d98269c51167d20c630a5fdc8a"
+            .parse::<LocalWallet>()
+            .unwrap();
+        let address = wallet.address();
+        let provider = SignerMiddleware::new(provider, wallet);
+        generic_pending_txs_test(provider, address).await;
     }
 
     #[tokio::test]
@@ -97,17 +130,15 @@ mod eth_tests {
         let ganache = Ganache::new().block_time(2u64).spawn();
         let ws = Ws::connect(ganache.ws_endpoint()).await.unwrap();
         let provider = Provider::new(ws);
-        generic_pending_txs_test(provider).await;
+        let accounts = provider.get_accounts().await.unwrap();
+        generic_pending_txs_test(provider, accounts[0]).await;
     }
 
-    async fn generic_pending_txs_test<M: Middleware>(provider: M) {
-        let accounts = provider.get_accounts().await.unwrap();
-
-        let tx = TransactionRequest::pay(accounts[0], parse_ether(1u64).unwrap()).from(accounts[0]);
+    async fn generic_pending_txs_test<M: Middleware>(provider: M, who: ethers::types::Address) {
+        let tx = TransactionRequest::new().to(who).from(who);
         let tx_hash = provider.send_transaction(tx, None).await.unwrap();
         let pending_tx = provider.pending_transaction(tx_hash);
-        let receipt = pending_tx.confirmations(5).await.unwrap();
-
+        let receipt = pending_tx.confirmations(3).await.unwrap();
         // got the correct receipt
         assert_eq!(receipt.transaction_hash, tx_hash);
     }
