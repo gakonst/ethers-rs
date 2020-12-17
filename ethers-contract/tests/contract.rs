@@ -384,9 +384,10 @@ mod celo_tests {
         assert_eq!(value, "initial value");
 
         // make a state mutating transaction
-        let pending_tx = contract
+        let call = contract
             .method::<_, H256>("setValue", "hi".to_owned())
-            .unwrap()
+            .unwrap();
+        let pending_tx = call
             .send()
             .await
             .unwrap();
