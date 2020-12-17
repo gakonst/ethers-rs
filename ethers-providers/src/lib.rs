@@ -154,6 +154,10 @@ pub trait Middleware: Sync + Send + Debug {
 
     fn inner(&self) -> &Self::Inner;
 
+    fn provider(&self) -> &Provider<Self::Provider> {
+        self.inner().provider()
+    }
+
     async fn get_block_number(&self) -> Result<U64, Self::Error> {
         self.inner().get_block_number().await.map_err(FromErr::from)
     }

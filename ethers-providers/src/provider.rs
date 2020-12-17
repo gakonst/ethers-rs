@@ -133,6 +133,10 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         unreachable!("There is no inner provider here")
     }
 
+    fn provider(&self) -> &Provider<Self::Provider> {
+        self
+    }
+
     ////// Blockchain Status
     //
     // Functions for querying the state of the blockchain
