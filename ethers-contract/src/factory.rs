@@ -35,16 +35,14 @@ impl<M: Middleware> Deployer<M> {
     /// be sufficiently confirmed (default: 1), it returns a [`Contract`](crate::Contract)
     /// struct at the deployed contract's address.
     pub async fn send(self) -> Result<Contract<M>, ContractError<M>> {
-        let tx_hash = self
+        let pending_tx = self
             .client
             .send_transaction(self.tx, Some(self.block))
             .await
             .map_err(ContractError::MiddlewareError)?;
 
         // TODO: Should this be calculated "optimistically" by address/nonce?
-        let receipt = self
-            .client
-            .pending_transaction(tx_hash)
+        let receipt = pending_tx
             .confirmations(self.confs)
             .await
             .map_err(|_| ContractError::ContractNotDeployed)?;
