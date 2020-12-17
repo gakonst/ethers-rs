@@ -58,7 +58,6 @@ mod tests {
 
         // the base provider
         let provider = Provider::<Http>::try_from(ganache.endpoint()).unwrap();
-        let provider_clone = provider.clone();
 
         // the Gas Price escalator middleware is the first middleware above the provider,
         // so that it receives the transaction last, after all the other middleware
@@ -77,24 +76,21 @@ mod tests {
         let provider = NonceManagerMiddleware::new(provider, address);
 
         let tx = TransactionRequest::new();
-        let mut tx_hash = None;
+        let mut pending_txs = Vec::new();
         for _ in 0..10 {
-            tx_hash = Some(provider.send_transaction(tx.clone(), None).await.unwrap());
-            dbg!(
-                provider
-                    .get_transaction(tx_hash.unwrap())
-                    .await
-                    .unwrap()
-                    .unwrap()
-                    .gas_price
-            );
+            let pending = provider.send_transaction(tx.clone(), None).await.unwrap();
+            let hash = *pending;
+            let gas_price = provider
+                .get_transaction(hash)
+                .await
+                .unwrap()
+                .unwrap()
+                .gas_price;
+            dbg!(gas_price);
+            pending_txs.push(pending);
         }
 
-        let receipt = provider_clone
-            .pending_transaction(tx_hash.unwrap())
-            .await
-            .unwrap();
-
-        dbg!(receipt);
+        let receipts = futures_util::future::join_all(pending_txs);
+        dbg!(receipts.await);
     }
 }

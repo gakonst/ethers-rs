@@ -1,7 +1,7 @@
 use super::{GasOracle, GasOracleError};
 use async_trait::async_trait;
 use ethers_core::types::*;
-use ethers_providers::{FromErr, Middleware};
+use ethers_providers::{FromErr, Middleware, PendingTransaction};
 use thiserror::Error;
 
 #[derive(Debug)]
@@ -60,7 +60,7 @@ where
         &self,
         mut tx: TransactionRequest,
         block: Option<BlockNumber>,
-    ) -> Result<TxHash, Self::Error> {
+    ) -> Result<PendingTransaction<'_, Self::Provider>, Self::Error> {
         if tx.gas_price.is_none() {
             tx.gas_price = Some(self.get_gas_price().await?);
         }
