@@ -61,7 +61,7 @@ pub static ADDRESS_BOOK: Lazy<HashMap<U256, Address>> = Lazy::new(|| {
 /// use ethers::{
 ///     abi::Abi,
 ///     contract::{Contract, Multicall},
-///     providers::{Middleware, Http, Provider},
+///     providers::{Middleware, Http, Provider, PendingTransaction},
 ///     types::{Address, H256, U256},
 /// };
 /// use std::{convert::TryFrom, sync::Arc};
@@ -110,7 +110,7 @@ pub static ADDRESS_BOOK: Lazy<HashMap<U256, Address>> = Lazy::new(|| {
 /// // `await`ing the `send` method waits for the transaction to be broadcast, which also
 /// // returns the transaction hash
 /// let tx_hash = multicall.send().await?;
-/// let _tx_receipt = client.pending_transaction(tx_hash).await?;
+/// let _tx_receipt = PendingTransaction::new(tx_hash, &client).await?;
 ///
 /// // you can also query ETH balances of multiple addresses
 /// let address_1 = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".parse::<Address>()?;
@@ -345,7 +345,9 @@ impl<M: Middleware> Multicall<M> {
         let contract_call = self.as_contract_call();
 
         // Broadcast transaction and return the transaction hash
-        let tx_hash = contract_call.send().await?;
+        // TODO: Can we make this return a PendingTransaction directly instead?
+        // Seems hard due to `returns a value referencing data owned by the current function`
+        let tx_hash = *contract_call.send().await?;
 
         Ok(tx_hash)
     }

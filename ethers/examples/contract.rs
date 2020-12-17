@@ -56,8 +56,8 @@ async fn main() -> Result<()> {
     let contract = SimpleContract::new(addr, client.clone());
 
     // 10. call the `setValue` method
-    let tx_hash = contract.set_value("hi".to_owned()).send().await?;
-    let _receipt = client.pending_transaction(tx_hash).await?;
+    // (first `await` returns a PendingTransaction, second one waits for it to be mined)
+    let _receipt = contract.set_value("hi".to_owned()).send().await?.await?;
 
     // 11. get all events
     let logs = contract

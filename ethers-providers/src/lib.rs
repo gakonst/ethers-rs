@@ -1,4 +1,5 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
+#![deny(broken_intra_doc_links)]
 //! # Clients for interacting with Ethereum nodes
 //!
 //! This crate provides asynchronous [Ethereum JSON-RPC](https://github.com/ethereum/wiki/wiki/JSON-RPC)
@@ -153,6 +154,10 @@ pub trait Middleware: Sync + Send + Debug {
 
     fn inner(&self) -> &Self::Inner;
 
+    fn provider(&self) -> &Provider<Self::Provider> {
+        self.inner().provider()
+    }
+
     async fn get_block_number(&self) -> Result<U64, Self::Error> {
         self.inner().get_block_number().await.map_err(FromErr::from)
     }
@@ -161,7 +166,7 @@ pub trait Middleware: Sync + Send + Debug {
         &self,
         tx: TransactionRequest,
         block: Option<BlockNumber>,
-    ) -> Result<TxHash, Self::Error> {
+    ) -> Result<PendingTransaction<'_, Self::Provider>, Self::Error> {
         self.inner()
             .send_transaction(tx, block)
             .await
@@ -268,7 +273,10 @@ pub trait Middleware: Sync + Send + Debug {
         self.inner().get_accounts().await.map_err(FromErr::from)
     }
 
-    async fn send_raw_transaction(&self, tx: &Transaction) -> Result<TxHash, Self::Error> {
+    async fn send_raw_transaction<'a>(
+        &'a self,
+        tx: &Transaction,
+    ) -> Result<PendingTransaction<'a, Self::Provider>, Self::Error> {
         self.inner()
             .send_raw_transaction(tx)
             .await
@@ -355,10 +363,6 @@ pub trait Middleware: Sync + Send + Debug {
             .get_storage_at(from, location, block)
             .await
             .map_err(FromErr::from)
-    }
-
-    fn pending_transaction(&self, tx_hash: TxHash) -> PendingTransaction<'_, Self::Provider> {
-        self.inner().pending_transaction(tx_hash)
     }
 
     // Mempool inspection for Geth's API

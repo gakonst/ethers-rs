@@ -20,10 +20,10 @@ async fn main() -> anyhow::Result<()> {
     let tx = TransactionRequest::new()
         .to("vitalik.eth")
         .value(parse_ether(10)?);
-    let tx_hash = client.send_transaction(tx, None).await?;
+    let pending_tx = client.send_transaction(tx, None).await?;
 
     // Get the receipt
-    let _receipt = client.pending_transaction(tx_hash).confirmations(3).await?;
+    let _receipt = pending_tx.confirmations(3).await?;
     Ok(())
 }
 

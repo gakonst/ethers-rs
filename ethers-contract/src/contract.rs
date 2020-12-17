@@ -6,9 +6,9 @@ use super::{
 
 use ethers_core::{
     abi::{Abi, Detokenize, Error, EventExt, Function, Tokenize},
-    types::{Address, Filter, NameOrAddress, Selector, TransactionRequest, TxHash},
+    types::{Address, Filter, NameOrAddress, Selector, TransactionRequest},
 };
-use ethers_providers::{Middleware, PendingTransaction};
+use ethers_providers::Middleware;
 
 use rustc_hex::ToHex;
 use std::{fmt::Debug, marker::PhantomData, sync::Arc};
@@ -90,11 +90,12 @@ use std::{fmt::Debug, marker::PhantomData, sync::Arc};
 ///     .await?;
 ///
 /// // Non-constant methods are executed via the `send()` call on the method builder.
-/// let tx_hash = contract
-///     .method::<_, H256>("setValue", "hi".to_owned())?.send().await?;
+/// let call = contract
+///     .method::<_, H256>("setValue", "hi".to_owned())?;
+/// let pending_tx = call.send().await?;
 ///
 /// // `await`ing on the pending transaction resolves to a transaction receipt
-/// let receipt = contract.pending_transaction(tx_hash).confirmations(6).await?;
+/// let receipt = pending_tx.confirmations(6).await?;
 ///
 /// # Ok(())
 /// # }
@@ -282,9 +283,5 @@ impl<M: Middleware> Contract<M> {
     /// Returns a reference to the contract's client
     pub fn client(&self) -> &M {
         &self.client
-    }
-
-    pub fn pending_transaction(&self, tx_hash: TxHash) -> PendingTransaction<'_, M::Provider> {
-        self.client.pending_transaction(tx_hash)
     }
 }

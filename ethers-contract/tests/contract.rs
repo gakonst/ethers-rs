@@ -8,7 +8,7 @@ mod eth_tests {
     use super::*;
     use ethers::{
         contract::Multicall,
-        providers::{Http, Middleware, Provider, StreamExt},
+        providers::{Http, Middleware, PendingTransaction, Provider, StreamExt},
         types::{Address, U256},
         utils::Ganache,
     };
@@ -51,13 +51,9 @@ mod eth_tests {
             .unwrap();
         let calldata = contract_call.calldata().unwrap();
         let gas_estimate = contract_call.estimate_gas().await.unwrap();
-        let tx_hash = contract_call.send().await.unwrap();
-        let tx = client.get_transaction(tx_hash).await.unwrap().unwrap();
-        let tx_receipt = client
-            .get_transaction_receipt(tx_hash)
-            .await
-            .unwrap()
-            .unwrap();
+        let pending_tx = contract_call.send().await.unwrap();
+        let tx = client.get_transaction(*pending_tx).await.unwrap().unwrap();
+        let tx_receipt = pending_tx.await.unwrap();
         assert_eq!(last_sender.clone().call().await.unwrap(), client2.address());
         assert_eq!(get_value.clone().call().await.unwrap(), "hi");
         assert_eq!(tx.input, calldata);
@@ -88,6 +84,8 @@ mod eth_tests {
             .unwrap()
             .send()
             .await
+            .unwrap()
+            .await
             .unwrap();
     }
 
@@ -99,7 +97,7 @@ mod eth_tests {
         let contract = deploy(client.clone(), abi, bytecode).await;
 
         // make a call with `client2`
-        let _tx_hash = contract
+        let _tx_hash = *contract
             .method::<_, H256>("setValue", "hi".to_owned())
             .unwrap()
             .send()
@@ -143,13 +141,11 @@ mod eth_tests {
 
         // and we make a few calls
         for i in 0..num_calls {
-            let tx_hash = contract
+            let call = contract
                 .method::<_, H256>("setValue", i.to_string())
-                .unwrap()
-                .send()
-                .await
                 .unwrap();
-            let _receipt = contract.pending_transaction(tx_hash).await.unwrap();
+            let pending_tx = call.send().await.unwrap();
+            let _receipt = pending_tx.await.unwrap();
         }
 
         for i in 0..num_calls {
@@ -180,13 +176,14 @@ mod eth_tests {
         let contract = deploy(client, abi, bytecode).await;
 
         // make a call without the signer
-        let tx_hash = contract
+        let _receipt = contract
             .method::<_, H256>("setValue", "hi".to_owned())
             .unwrap()
             .send()
             .await
+            .unwrap()
+            .await
             .unwrap();
-        let _receipt = contract.pending_transaction(tx_hash).await.unwrap();
         let value: String = contract
             .method::<_, String>("getValue", ())
             .unwrap()
@@ -313,7 +310,9 @@ mod eth_tests {
 
         // broadcast the transaction and wait for it to be mined
         let tx_hash = multicall_send.send().await.unwrap();
-        let _tx_receipt = client4.pending_transaction(tx_hash).await.unwrap();
+        let _tx_receipt = PendingTransaction::new(tx_hash, client.provider())
+            .await
+            .unwrap();
 
         // Do another multicall to check the updated return values
         // The `getValue` calls should return the last value we set in the batched broadcast
@@ -385,14 +384,14 @@ mod celo_tests {
         assert_eq!(value, "initial value");
 
         // make a state mutating transaction
-        let tx_hash = contract
+        let call = contract
             .method::<_, H256>("setValue", "hi".to_owned())
-            .unwrap()
+            .unwrap();
+        let pending_tx = call
             .send()
             .await
             .unwrap();
-        let receipt = contract.pending_transaction(tx_hash).await.unwrap();
-        assert_eq!(receipt.status.unwrap(), 1.into());
+        let _receipt = pending_tx.await.unwrap();
 
         let value: String = contract
             .method("getValue", ())

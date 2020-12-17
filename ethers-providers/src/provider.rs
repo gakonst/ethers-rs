@@ -133,6 +133,10 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         unreachable!("There is no inner provider here")
     }
 
+    fn provider(&self) -> &Provider<Self::Provider> {
+        self
+    }
+
     ////// Blockchain Status
     //
     // Functions for querying the state of the blockchain
@@ -299,7 +303,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         &self,
         mut tx: TransactionRequest,
         _: Option<BlockNumber>,
-    ) -> Result<TxHash, ProviderError> {
+    ) -> Result<PendingTransaction<'_, P>, ProviderError> {
         if tx.from.is_none() {
             tx.from = self.3;
         }
@@ -318,22 +322,28 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
             }
         }
 
-        Ok(self
+        let tx_hash = self
             .0
             .request("eth_sendTransaction", [tx])
             .await
-            .map_err(Into::into)?)
+            .map_err(Into::into)?;
+
+        Ok(PendingTransaction::new(tx_hash, self).interval(self.get_interval()))
     }
 
     /// Send the raw RLP encoded transaction to the entire Ethereum network and returns the transaction's hash
     /// This will consume gas from the account that signed the transaction.
-    async fn send_raw_transaction(&self, tx: &Transaction) -> Result<TxHash, ProviderError> {
+    async fn send_raw_transaction<'a>(
+        &'a self,
+        tx: &Transaction,
+    ) -> Result<PendingTransaction<'a, P>, ProviderError> {
         let rlp = utils::serialize(&tx.rlp());
-        Ok(self
+        let tx_hash = self
             .0
             .request("eth_sendRawTransaction", [rlp])
             .await
-            .map_err(Into::into)?)
+            .map_err(Into::into)?;
+        Ok(PendingTransaction::new(tx_hash, self).interval(self.get_interval()))
     }
 
     /// Signs data using a specific account. This account needs to be unlocked.
@@ -508,12 +518,6 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         let ens_name = ens::reverse_address(address);
         self.query_resolver(ParamType::String, &ens_name, ens::NAME_SELECTOR)
             .await
-    }
-
-    /// Helper which creates a pending transaction object from a transaction hash
-    /// using the provider's polling interval
-    fn pending_transaction(&self, tx_hash: TxHash) -> PendingTransaction<'_, P> {
-        PendingTransaction::new(tx_hash, self).interval(self.get_interval())
     }
 
     /// Returns the details of all transactions currently pending for inclusion in the next
@@ -979,22 +983,17 @@ mod tests {
 
         let accounts = provider.get_accounts().await.unwrap();
         let tx = TransactionRequest::pay(accounts[0], parse_ether(1u64).unwrap()).from(accounts[0]);
-        let tx_hash = provider.send_transaction(tx, None).await.unwrap();
+        let pending_tx = provider.send_transaction(tx, None).await.unwrap();
 
         assert!(provider
-            .get_transaction_receipt(tx_hash)
+            .get_transaction_receipt(*pending_tx)
             .await
             .unwrap()
             .is_none());
 
-        // couple of seconds pass
-        std::thread::sleep(std::time::Duration::new(3, 0));
-
-        assert!(provider
-            .get_transaction_receipt(tx_hash)
-            .await
-            .unwrap()
-            .is_some());
+        let hash = *pending_tx;
+        let receipt = pending_tx.await.unwrap();
+        assert_eq!(receipt.transaction_hash, hash);
     }
 
     #[tokio::test]

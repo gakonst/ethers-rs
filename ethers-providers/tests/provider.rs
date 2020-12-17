@@ -136,8 +136,8 @@ mod eth_tests {
 
     async fn generic_pending_txs_test<M: Middleware>(provider: M, who: ethers::types::Address) {
         let tx = TransactionRequest::new().to(who).from(who);
-        let tx_hash = provider.send_transaction(tx, None).await.unwrap();
-        let pending_tx = provider.pending_transaction(tx_hash);
+        let pending_tx = provider.send_transaction(tx, None).await.unwrap();
+        let tx_hash = *pending_tx;
         let receipt = pending_tx.confirmations(3).await.unwrap();
         // got the correct receipt
         assert_eq!(receipt.transaction_hash, tx_hash);

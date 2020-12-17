@@ -6,7 +6,7 @@ pub use linear::LinearGasPrice;
 
 use async_trait::async_trait;
 use ethers_core::types::{BlockNumber, TransactionRequest, TxHash, U256};
-use ethers_providers::{interval, FromErr, Middleware, StreamExt};
+use ethers_providers::{interval, FromErr, Middleware, PendingTransaction, StreamExt};
 use futures_util::lock::Mutex;
 use std::sync::Arc;
 use std::{pin::Pin, time::Instant};
@@ -97,8 +97,8 @@ where
         &self,
         tx: TransactionRequest,
         block: Option<BlockNumber>,
-    ) -> Result<TxHash, Self::Error> {
-        let tx_hash = self
+    ) -> Result<PendingTransaction<'_, Self::Provider>, Self::Error> {
+        let pending_tx = self
             .inner()
             .send_transaction(tx.clone(), block)
             .await
@@ -106,9 +106,9 @@ where
 
         // insert the tx in the pending txs
         let mut lock = self.txs.lock().await;
-        lock.push((tx_hash, tx, Instant::now(), block));
+        lock.push((*pending_tx, tx, Instant::now(), block));
 
-        Ok(tx_hash)
+        Ok(pending_tx)
     }
 }
 
@@ -188,7 +188,7 @@ where
                             .send_transaction(replacement_tx.clone(), priority)
                             .await
                         {
-                            Ok(tx_hash) => tx_hash,
+                            Ok(tx_hash) => *tx_hash,
                             Err(err) => {
                                 if err.to_string().contains("nonce too low") {
                                     // ignore "nonce too low" errors because they
