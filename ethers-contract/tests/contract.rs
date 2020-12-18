@@ -387,10 +387,7 @@ mod celo_tests {
         let call = contract
             .method::<_, H256>("setValue", "hi".to_owned())
             .unwrap();
-        let pending_tx = call
-            .send()
-            .await
-            .unwrap();
+        let pending_tx = call.send().await.unwrap();
         let _receipt = pending_tx.await.unwrap();
 
         let value: String = contract
