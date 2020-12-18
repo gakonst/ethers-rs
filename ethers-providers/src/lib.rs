@@ -149,7 +149,7 @@ pub trait FromErr<T> {
 }
 
 #[async_trait]
-#[auto_impl(&,Box, Arc)]
+#[auto_impl(&, Box, Arc)]
 pub trait Middleware: Sync + Send + Debug {
     type Error: Sync + Send + Error + FromErr<<Self::Inner as Middleware>::Error>;
     type Provider: JsonRpcClient;
