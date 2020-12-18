@@ -57,7 +57,7 @@ mod tests {
         let address = signer.address();
 
         // the base provider
-        let provider = Provider::<Http>::try_from(ganache.endpoint()).unwrap();
+        let provider = Arc::new(Provider::<Http>::try_from(ganache.endpoint()).unwrap());
 
         // the Gas Price escalator middleware is the first middleware above the provider,
         // so that it receives the transaction last, after all the other middleware
@@ -69,7 +69,8 @@ mod tests {
         let provider = GasOracleMiddleware::new(provider, gas_oracle);
 
         // The signing middleware signs txs
-        let provider = SignerMiddleware::new(provider, signer);
+        use std::sync::Arc;
+        let provider = Arc::new(SignerMiddleware::new(provider, signer));
 
         // The nonce manager middleware MUST be above the signing middleware so that it overrides
         // the nonce and the signer does not make any eth_getTransaction count calls

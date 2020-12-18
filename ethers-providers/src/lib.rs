@@ -118,6 +118,7 @@ mod pubsub;
 pub use pubsub::{PubsubClient, SubscriptionStream};
 
 use async_trait::async_trait;
+use auto_impl::auto_impl;
 use serde::{de::DeserializeOwned, Serialize};
 use std::{error::Error, fmt::Debug, future::Future, pin::Pin};
 
@@ -128,6 +129,7 @@ pub(crate) type PinBoxFut<'a, T> =
     Pin<Box<dyn Future<Output = Result<T, ProviderError>> + Send + 'a>>;
 
 #[async_trait]
+#[auto_impl(&, Box, Arc)]
 /// Trait which must be implemented by data transports to be used with the Ethereum
 /// JSON-RPC provider.
 pub trait JsonRpcClient: Debug + Send + Sync {
@@ -147,6 +149,7 @@ pub trait FromErr<T> {
 }
 
 #[async_trait]
+#[auto_impl(&, Box, Arc)]
 pub trait Middleware: Sync + Send + Debug {
     type Error: Sync + Send + Error + FromErr<<Self::Inner as Middleware>::Error>;
     type Provider: JsonRpcClient;
