@@ -140,7 +140,7 @@ pub trait JsonRpcClient: Debug + Send + Sync {
     async fn request<T, R>(&self, method: &str, params: T) -> Result<R, Self::Error>
     where
         T: Debug + Serialize + Send + Sync,
-        R: DeserializeOwned;
+        R: Serialize + DeserializeOwned;
 }
 
 use ethers_core::types::*;
@@ -333,7 +333,7 @@ pub trait Middleware: Sync + Send + Debug {
     async fn get_filter_changes<T, R>(&self, id: T) -> Result<Vec<R>, Self::Error>
     where
         T: Into<U256> + Send + Sync,
-        R: DeserializeOwned + Send + Sync,
+        R: Serialize + DeserializeOwned + Send + Sync + Debug,
     {
         self.inner()
             .get_filter_changes(id)
