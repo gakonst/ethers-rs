@@ -60,6 +60,18 @@ use async_trait::async_trait;
 use ethers_core::types::{Address, Signature, TransactionRequest};
 use std::error::Error;
 
+/// Applies [EIP155](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-155.md)
+pub fn to_eip155_v<T: Into<u8>>(recovery_id: T, chain_id: Option<u64>) -> u64 {
+    let standard_v: u8 = recovery_id.into();
+    if let Some(chain_id) = chain_id {
+        // When signing with a chain ID, add chain replay protection.
+        (standard_v as u64) + 35 + chain_id * 2
+    } else {
+        // Otherwise, convert to 'Electrum' notation.
+        (standard_v as u64) + 27
+    }
+}
+
 /// Trait for signing transactions and messages
 ///
 /// Implement this trait to support different signing modes, e.g. Ledger, hosted etc.
