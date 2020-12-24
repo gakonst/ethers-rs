@@ -148,6 +148,7 @@ pub fn to_checksum(addr: &Address, chain_id: Option<u8>) -> String {
 ///
 /// Does not guarantee that the given port is unused after the function exists, just that it was
 /// unused before the function started (i.e., it does not reserve a port).
+#[cfg(not(target_arch = "wasm32"))]
 pub(crate) fn unused_port() -> u16 {
     let listener = std::net::TcpListener::bind("127.0.0.1:0")
         .expect("Failed to create TCP listener to find unused port");

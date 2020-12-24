@@ -143,7 +143,8 @@ impl<P: JsonRpcClient> Provider<P> {
     }
 }
 
-#[async_trait]
+#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl<P: JsonRpcClient> Middleware for Provider<P> {
     type Error = ProviderError;
     type Provider = P;

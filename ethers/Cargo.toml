@@ -45,6 +45,7 @@ middleware = ["ethers-middleware"]
 signers = ["ethers-signers"]
 ledger = ["ethers-signers/ledger"]
 yubi = ["ethers-signers/yubi"]
+tokio-tls = ["ethers-providers/tokio-tls"]
 
 [dependencies]
 ethers-contract = { version = "0.1.3", path = "../ethers-contract", optional = true }

@@ -82,7 +82,8 @@ pub struct GasEscalatorMiddleware<M, E> {
     frequency: Frequency,
 }
 
-#[async_trait]
+#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl<M, E> Middleware for GasEscalatorMiddleware<M, E>
 where
     M: Middleware,
@@ -153,7 +154,7 @@ where
     /// Re-broadcasts pending transactions with a gas price escalator
     pub async fn escalate(&self) -> Result<(), GasEscalatorError<M>> {
         // the escalation frequency is either on a per-block basis, or on a duratoin basis
-        let mut watcher: Pin<Box<dyn futures_util::stream::Stream<Item = ()> + Send>> =
+        let mut watcher: Pin<Box<dyn futures_util::stream::Stream<Item = ()>>> =
             match self.frequency {
                 Frequency::PerBlock => Box::pin(
                     self.inner
