@@ -6,8 +6,9 @@ use futures_core::stream::Stream;
 use futures_timer::Delay;
 use futures_util::{stream, FutureExt, StreamExt};
 use pin_project::pin_project;
-use serde::de::DeserializeOwned;
+use serde::{de::DeserializeOwned, Serialize};
 use std::{
+    fmt::Debug,
     pin::Pin,
     task::{Context, Poll},
     time::Duration,
@@ -75,7 +76,7 @@ where
 impl<'a, P, R> Stream for FilterWatcher<'a, P, R>
 where
     P: JsonRpcClient,
-    R: Send + Sync + DeserializeOwned + 'a,
+    R: Serialize + Send + Sync + DeserializeOwned + Debug + 'a,
 {
     type Item = R;
 

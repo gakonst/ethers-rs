@@ -121,11 +121,12 @@ impl<'a, P: JsonRpcClient> Future for PendingTransaction<'a, P> {
 
                 // if the transaction has at least K confirmations, return the receipt
                 // (subtract 1 since the tx already has 1 conf when it's mined)
-                if current_block >= inclusion_block + *this.confirmations - 1 {
+                if current_block > inclusion_block + *this.confirmations - 1 {
                     let receipt = *receipt.clone();
                     *this.state = PendingTxState::Completed;
                     return Poll::Ready(Ok(receipt));
                 } else {
+                    tracing::trace!(tx_hash = ?this.tx_hash, "confirmations {}/{}", current_block - inclusion_block + 1, this.confirmations);
                     *this.state = PendingTxState::PausedGettingBlockNumber(receipt.clone());
                     ctx.waker().wake_by_ref();
                 }
