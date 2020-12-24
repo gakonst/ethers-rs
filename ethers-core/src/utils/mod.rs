@@ -87,7 +87,7 @@ pub fn get_contract_address(sender: impl Into<Address>, nonce: impl Into<U256>) 
 /// Returns the CREATE2 of a smart contract as specified in
 /// [EIP1014](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-1014.md)
 ///
-/// keccak256( 0xff ++ senderAddress ++ salt ++ keccak256(init_code))[12:]
+/// keccak256( 0xff ++ senderAddress ++ salt ++ keccak256(init_code))[12..]
 pub fn get_create2_address(
     from: impl Into<Address>,
     salt: impl Into<Bytes>,

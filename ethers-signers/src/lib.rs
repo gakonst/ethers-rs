@@ -33,6 +33,10 @@
 //! signature.verify("hello world", wallet.address()).unwrap();
 //! # Ok(())
 //! # }
+//! ```
+//!
+//! [`Transaction`]: ethers_core::types::Transaction
+//! [`TransactionRequest`]: ethers_core::types::TransactionRequest
 // mod wallet;
 // pub use wallet::Wallet;
 mod wallet;

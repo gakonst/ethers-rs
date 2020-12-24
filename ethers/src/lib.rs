@@ -56,9 +56,7 @@
 //! ## `signers`
 //!
 //! For security reasons, you typically do not want your private keys to be stored on the nodes.
-//! This module provides a [`Wallet`] type for loading a private key which can be connected with a
-//! [`Provider`] to produce a [`Client`]. The [`Client`] type is the object via which we recommend
-//! users with local private keys to use when interacting with Ethereum.
+//! This module provides a [`Wallet`] type for connecting to a private key or a YubiHSM2
 //!
 //! ## `contract`
 //!
@@ -74,9 +72,7 @@
 //! It also provides typesafe bindings via the [`abigen`] macro and the [`Abigen` builder].
 //!
 //! [`Provider`]: providers::Provider
-//!
 //! [`Wallet`]: signers::Wallet
-//! [`Client`]: signers::Client
 //!
 //! [`ContractFactory`]: contract::ContractFactory
 //! [`Contract`]: contract::Contract
