@@ -4,13 +4,10 @@ mod private_key;
 #[cfg(feature = "yubihsm")]
 mod yubi;
 
-use crate::Signer;
+use crate::{to_eip155_v, Signer};
 use ethers_core::{
     k256::{
-        ecdsa::{
-            recoverable::{Id as RecoveryId, Signature as RecoverableSignature},
-            signature::DigestSigner,
-        },
+        ecdsa::{recoverable::Signature as RecoverableSignature, signature::DigestSigner},
         elliptic_curve::FieldBytes,
         Secp256k1,
     },
@@ -120,18 +117,6 @@ impl<D: DigestSigner<Sha256Proxy, RecoverableSignature>> Wallet<D> {
     /// Returns the wallet's address
     pub fn address(&self) -> Address {
         self.address
-    }
-}
-
-/// Applies [EIP155](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-155.md)
-fn to_eip155_v(recovery_id: RecoveryId, chain_id: Option<u64>) -> u64 {
-    let standard_v: u8 = recovery_id.into();
-    if let Some(chain_id) = chain_id {
-        // When signing with a chain ID, add chain replay protection.
-        (standard_v as u64) + 35 + chain_id * 2
-    } else {
-        // Otherwise, convert to 'Electrum' notation.
-        (standard_v as u64) + 27
     }
 }
 
