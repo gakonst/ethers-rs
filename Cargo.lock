@@ -875,6 +875,8 @@ dependencies = [
  "serde-aux",
  "thiserror",
  "tokio",
+ "tracing",
+ "tracing-futures",
  "url",
 ]
 

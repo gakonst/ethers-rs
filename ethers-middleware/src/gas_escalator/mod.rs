@@ -11,6 +11,7 @@ use futures_util::lock::Mutex;
 use std::sync::Arc;
 use std::{pin::Pin, time::Instant};
 use thiserror::Error;
+use tracing_futures::Instrument;
 
 #[cfg(all(not(feature = "tokio"), feature = "async-std"))]
 use async_std::task::spawn;
@@ -136,7 +137,11 @@ where
         {
             let this2 = this.clone();
             spawn(async move {
-                this2.escalate().await.unwrap();
+                this2
+                    .escalate()
+                    .instrument(tracing::trace_span!("gas-escalation"))
+                    .await
+                    .unwrap();
             });
         }
 
@@ -170,15 +175,16 @@ where
                     txs.pop().expect("should have element in vector");
 
                 let receipt = self.get_transaction_receipt(tx_hash).await?;
+                tracing::trace!(tx_hash = ?tx_hash, "checking if exists");
                 if receipt.is_none() {
+                    let old_gas_price = replacement_tx.gas_price.expect("gas price must be set");
                     // Get the new gas price based on how much time passed since the
                     // tx was last broadcast
-                    let new_gas_price = self.escalator.get_gas_price(
-                        replacement_tx.gas_price.expect("gas price must be set"),
-                        now.duration_since(time).as_secs(),
-                    );
+                    let new_gas_price = self
+                        .escalator
+                        .get_gas_price(old_gas_price, now.duration_since(time).as_secs());
 
-                    let new_txhash = if Some(new_gas_price) != replacement_tx.gas_price {
+                    let new_txhash = if new_gas_price != old_gas_price {
                         // bump the gas price
                         replacement_tx.gas_price = Some(new_gas_price);
 
@@ -188,7 +194,17 @@ where
                             .send_transaction(replacement_tx.clone(), priority)
                             .await
                         {
-                            Ok(tx_hash) => *tx_hash,
+                            Ok(new_tx_hash) => {
+                                let new_tx_hash = *new_tx_hash;
+                                tracing::trace!(
+                                    old_tx_hash = ?tx_hash,
+                                    new_tx_hash = ?new_tx_hash,
+                                    old_gas_price = ?old_gas_price,
+                                    new_gas_price = ?new_gas_price,
+                                    "escalated"
+                                );
+                                new_tx_hash
+                            }
                             Err(err) => {
                                 if err.to_string().contains("nonce too low") {
                                     // ignore "nonce too low" errors because they
