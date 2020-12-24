@@ -11,6 +11,8 @@ use futures_util::lock::Mutex;
 use std::sync::Arc;
 use std::{pin::Pin, time::Instant};
 use thiserror::Error;
+
+#[cfg(any(feature = "async-std", feature = "tokio"))]
 use tracing_futures::Instrument;
 
 #[cfg(all(not(feature = "tokio"), feature = "async-std"))]
