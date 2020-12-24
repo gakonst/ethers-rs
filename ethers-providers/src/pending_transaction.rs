@@ -126,7 +126,8 @@ impl<'a, P: JsonRpcClient> Future for PendingTransaction<'a, P> {
                     *this.state = PendingTxState::Completed;
                     return Poll::Ready(Ok(receipt));
                 } else {
-                    *this.state = PendingTxState::PausedGettingBlockNumber(receipt.clone())
+                    *this.state = PendingTxState::PausedGettingBlockNumber(receipt.clone());
+                    ctx.waker().wake_by_ref();
                 }
             }
             PendingTxState::Completed => {
