@@ -1,5 +1,5 @@
 use ethers_core::types::{Log, U256};
-use futures::stream::{Stream, StreamExt};
+use futures_util::stream::{Stream, StreamExt};
 use pin_project::pin_project;
 use std::pin::Pin;
 use std::task::{Context, Poll};
