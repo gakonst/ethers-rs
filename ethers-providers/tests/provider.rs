@@ -41,30 +41,17 @@ mod eth_tests {
     }
 
     // Without TLS this would error with "TLS Support not compiled in"
-    #[test]
-    #[cfg(any(feature = "async-std-tls", feature = "tokio-tls"))]
-    fn ssl_websocket() {
-        // this is extremely ugly but I couldn't figure out a better way of having
-        // a shared async test for both runtimes
-        #[cfg(feature = "async-std-tls")]
-        let block_on = async_std::task::block_on;
-        #[cfg(feature = "tokio-tls")]
-        let mut runtime = tokio::runtime::Runtime::new().unwrap();
-        #[cfg(feature = "tokio-tls")]
-        let mut block_on = |x| runtime.block_on(x);
-
+    #[tokio::test]
+    async fn ssl_websocket() {
         use ethers::providers::Ws;
-        block_on(async move {
-            let ws = Ws::connect("wss://rinkeby.infura.io/ws/v3/c60b0bb42f8a4c6481ecd229eddaca27")
-                .await
-                .unwrap();
-            let provider = Provider::new(ws);
-            let _number = provider.get_block_number().await.unwrap();
-        });
+        let ws = Ws::connect("wss://rinkeby.infura.io/ws/v3/c60b0bb42f8a4c6481ecd229eddaca27")
+            .await
+            .unwrap();
+        let provider = Provider::new(ws);
+        let _number = provider.get_block_number().await.unwrap();
     }
 
     #[tokio::test]
-    #[cfg(feature = "tokio-runtime")]
     async fn watch_blocks_websocket() {
         use ethers::{
             providers::{StreamExt, Ws},
@@ -72,7 +59,7 @@ mod eth_tests {
         };
 
         let ganache = Ganache::new().block_time(2u64).spawn();
-        let (ws, _) = async_tungstenite::tokio::connect_async(ganache.ws_endpoint())
+        let (ws, _) = tokio_tungstenite::connect_async(ganache.ws_endpoint())
             .await
             .unwrap();
         let provider = Provider::new(Ws::new(ws)).interval(Duration::from_millis(500u64));

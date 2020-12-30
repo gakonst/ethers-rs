@@ -685,11 +685,11 @@ impl<P: JsonRpcClient> Provider<P> {
     }
 }
 
-#[cfg(any(feature = "tokio-runtime", feature = "async-std-runtime"))]
+#[cfg(feature = "ws")]
 impl Provider<crate::Ws> {
     /// Direct connection to a websocket endpoint
     pub async fn connect(
-        url: impl async_tungstenite::tungstenite::client::IntoClientRequest + Unpin,
+        url: impl tokio_tungstenite::tungstenite::client::IntoClientRequest + Unpin,
     ) -> Result<Self, ProviderError> {
         let ws = crate::Ws::connect(url).await?;
         Ok(Self::new(ws))
