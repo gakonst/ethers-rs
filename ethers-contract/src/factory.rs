@@ -143,9 +143,9 @@ impl<M: Middleware> ContractFactory<M> {
                 return Err(ContractError::ConstructorError);
             }
             (None, true) => self.bytecode.clone(),
-            (Some(constructor), _) => {
-                Bytes(constructor.encode_input(self.bytecode.0.clone(), &params)?)
-            }
+            (Some(constructor), _) => constructor
+                .encode_input(self.bytecode.to_vec(), &params)?
+                .into(),
         };
 
         // create the tx object. Since we're deploying a contract, `to` is `None`

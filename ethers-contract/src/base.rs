@@ -139,7 +139,7 @@ pub(crate) fn decode_event<D: Detokenize>(
     let tokens = event
         .parse_log(RawLog {
             topics,
-            data: data.0,
+            data: data.to_vec(),
         })?
         .params
         .into_iter()
@@ -214,7 +214,7 @@ mod tests {
 
         let encoded = abi.encode("approve", (spender, amount)).unwrap();
 
-        assert_eq!(encoded.0.to_hex::<String>(), "095ea7b30000000000000000000000007a250d5630b4cf539739df2c5dacb4c659f2488dffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        assert_eq!(encoded.as_ref().to_hex::<String>(), "095ea7b30000000000000000000000007a250d5630b4cf539739df2c5dacb4c659f2488dffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
 
         let (spender2, amount2): (Address, U256) = abi.decode("approve", encoded).unwrap();
         assert_eq!(spender, spender2);
