@@ -280,6 +280,9 @@ name = "bytes"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ad1f8e949d755f9d79112b5bb46938e0ef9d3804a0b16dfab13aafcaa5f0fa72"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "cc"
@@ -675,6 +678,7 @@ version = "0.1.3"
 dependencies = [
  "arrayvec",
  "bincode",
+ "bytes 1.0.0",
  "ecdsa",
  "elliptic-curve",
  "ethabi-next",

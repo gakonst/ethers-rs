@@ -11,7 +11,7 @@ mod transaction;
 pub use transaction::{Transaction, TransactionReceipt, TransactionRequest};
 
 mod bytes;
-pub use bytes::Bytes;
+pub use self::bytes::Bytes;
 
 mod block;
 pub use block::{Block, BlockId, BlockNumber};
