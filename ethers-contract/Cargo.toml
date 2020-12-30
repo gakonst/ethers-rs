@@ -26,6 +26,7 @@ futures-util = { version = "0.3.8", default-features = false }
 
 [dev-dependencies]
 ethers = { version = "0.1.3", path = "../ethers" }
+ethers-providers = { version = "0.1.3", path = "../ethers-providers", default-features = false, features = ["ws"] }
 tokio = { version = "1.0", default-features = false, features = ["macros"] }
 
 ethers-signers = { version = "0.1.3", path = "../ethers-signers" }
