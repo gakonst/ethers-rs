@@ -43,7 +43,7 @@ async fn gas_escalator_live() {
         .unwrap();
 
     // Wait a bunch of seconds and refresh etherscan to see the transactions get bumped
-    tokio::time::delay_for(std::time::Duration::from_secs(100)).await;
+    tokio::time::sleep(std::time::Duration::from_secs(100)).await;
 
     // TODO: Figure out how to test this behavior properly in a local network. If the gas price was bumped
     // then the tx hash will be different
