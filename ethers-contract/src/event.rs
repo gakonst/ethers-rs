@@ -1,4 +1,4 @@
-use crate::{base::decode_event, ContractError, EventStream};
+use crate::{base::decode_event, stream::EventStream, ContractError};
 
 use ethers_core::{
     abi::{Detokenize, Event as AbiEvent},

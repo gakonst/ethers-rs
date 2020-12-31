@@ -39,6 +39,7 @@ struct EtherchainResponse {
 }
 
 impl Etherchain {
+    /// Creates a new [Etherchain](https://etherchain.org/tools/gasPriceOracle) gas price oracle.
     pub fn new() -> Self {
         let url = Url::parse(ETHERCHAIN_URL).expect("invalid url");
 
@@ -49,6 +50,7 @@ impl Etherchain {
         }
     }
 
+    /// Sets the gas price category to be used when fetching the gas price.
     pub fn category(mut self, gas_category: GasCategory) -> Self {
         self.gas_category = gas_category;
         self

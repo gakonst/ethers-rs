@@ -28,6 +28,7 @@ struct EthGasStationResponse {
 }
 
 impl EthGasStation {
+    /// Creates a new [EthGasStation](https://docs.ethgasstation.info/) gas oracle
     pub fn new(api_key: Option<&'static str>) -> Self {
         let url = match api_key {
             Some(key) => format!("{}?api-key={}", ETH_GAS_STATION_URL_PREFIX, key),
@@ -43,6 +44,7 @@ impl EthGasStation {
         }
     }
 
+    /// Sets the gas price category to be used when fetching the gas price.
     pub fn category(mut self, gas_category: GasCategory) -> Self {
         self.gas_category = gas_category;
         self

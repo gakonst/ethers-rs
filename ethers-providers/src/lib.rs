@@ -113,13 +113,70 @@ pub trait FromErr<T> {
 
 #[async_trait]
 #[auto_impl(&, Box, Arc)]
+/// A middleware allows customizing requests send and received from an ethereum node.
+///
+/// Writing a middleware is as simple as:
+/// 1. implementing the [`inner`](crate::Middleware::inner) method to point to the next layer in the "middleware onion",
+/// 2. implementing the [`FromErr`](crate::FromErr) trait on your middleware's error type
+/// 3. implementing any of the methods you want to override
+///
+/// ```rust
+/// use ethers::{providers::{Middleware, FromErr}, types::{U64, TransactionRequest, U256}};
+/// use thiserror::Error;
+/// use async_trait::async_trait;
+///
+/// #[derive(Debug)]
+/// struct MyMiddleware<M>(M);
+///
+/// #[derive(Error, Debug)]
+/// pub enum MyError<M: Middleware> {
+///     #[error("{0}")]
+///     MiddlewareError(M::Error),
+///
+///     // Add your middleware's specific errors here
+/// }
+///
+/// impl<M: Middleware> FromErr<M::Error> for MyError<M> {
+///     fn from(src: M::Error) -> MyError<M> {
+///         MyError::MiddlewareError(src)
+///     }
+/// }
+///
+/// #[async_trait]
+/// impl<M> Middleware for MyMiddleware<M>
+/// where
+///     M: Middleware,
+/// {
+///     type Error = MyError<M>;
+///     type Provider = M::Provider;
+///     type Inner = M;
+///
+///     fn inner(&self) -> &M {
+///         &self.0
+///     }
+///
+///     /// Overrides the default `get_block_number` method to always return 0
+///     async fn get_block_number(&self) -> Result<U64, Self::Error> {
+///         Ok(U64::zero())
+///     }
+///
+///     /// Overrides the default `estimate_gas` method to log that it was called,
+///     /// before forwarding the call to the next layer.
+///     async fn estimate_gas(&self, tx: &TransactionRequest) -> Result<U256, Self::Error> {
+///         println!("Estimating gas...");
+///         self.inner().estimate_gas(tx).await.map_err(FromErr::from)
+///     }
+/// }
+/// ```
 pub trait Middleware: Sync + Send + Debug {
     type Error: Sync + Send + Error + FromErr<<Self::Inner as Middleware>::Error>;
     type Provider: JsonRpcClient;
     type Inner: Middleware<Provider = Self::Provider>;
 
+    /// The next middleware in the stack
     fn inner(&self) -> &Self::Inner;
 
+    /// The HTTP or Websocket provider.
     fn provider(&self) -> &Provider<Self::Provider> {
         self.inner().provider()
     }

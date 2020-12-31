@@ -1,4 +1,4 @@
-use super::base::{decode_fn, AbiError};
+use super::base::{decode_function_data, AbiError};
 use ethers_core::{
     abi::{Detokenize, Function, InvalidOutputType},
     types::{Address, BlockNumber, Bytes, TransactionRequest, U256},
@@ -120,7 +120,7 @@ where
             .map_err(ContractError::MiddlewareError)?;
 
         // decode output
-        let data = decode_fn(&self.function, &bytes, false)?;
+        let data = decode_function_data(&self.function, &bytes, false)?;
 
         Ok(data)
     }

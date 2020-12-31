@@ -14,10 +14,6 @@
 //!
 //! > ethers-rs is a port of [ethers-js](github.com/ethers-io/ethers.js) in Rust.
 //!
-//! _Note: All examples using `await` are assuming that they are called from inside an `async`
-//! function which is run in an async runtime. You are free to use any runtime and executor of
-//! your preference._
-//!
 //! ## Quickstart: `prelude`
 //!
 //! A prelude is provided which imports all the important data types and traits for you. Use this
@@ -55,8 +51,9 @@
 //!
 //! ## `signers`
 //!
-//! For security reasons, you typically do not want your private keys to be stored on the nodes.
-//! This module provides a [`Wallet`] type for connecting to a private key or a YubiHSM2
+//! This module provides a [`Signer`] trait which can be used for signing messages
+//! or transactions. A [`Wallet`] type is implemented which can be used with a
+//! raw private key, or a YubiHSM2. We also provide Ledger support.
 //!
 //! ## `contract`
 //!
@@ -71,14 +68,23 @@
 //! [`Contract`] and [`ContractFactory`] abstractions so that you do not have to worry about that.
 //! It also provides typesafe bindings via the [`abigen`] macro and the [`Abigen` builder].
 //!
-//! [`Provider`]: providers::Provider
-//! [`Wallet`]: signers::Wallet
+//! ## `middleware`
 //!
+//! In order to keep the ethers architecture as modular as possible, providers define a [`Middleware`]
+//! trait which defines all the methods to interact with an Ethereum node. By implementing the
+//! middleware trait, you are able to override the default behavior of methods and do things such
+//! as using other gas oracles, escalating your transactions' gas prices, or signing your transactions
+//! with a [`Signer`]. The middleware architecture allows users to either use one of the existing
+//! middleware, or they are free to write on of their own.
+//!
+//! [`Provider`]: providers::Provider
+//! [`Middleware`]: providers::Middleware
+//! [`Wallet`]: signers::Wallet
+//! [`Signer`]: signers::Signer
 //! [`ContractFactory`]: contract::ContractFactory
 //! [`Contract`]: contract::Contract
 //! [`abigen`]: ./contract/macro.abigen.html
 //! [`Abigen` builder]: contract::Abigen
-//!
 //! [`utils`]: core::utils
 //! [`abi`]: core::abi
 //! [`types`]: core::types

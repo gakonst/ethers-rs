@@ -4,9 +4,13 @@ use std::fmt;
 use thiserror::Error;
 
 #[derive(Clone, Debug)]
+/// Ledger wallet type
 pub enum DerivationType {
+    /// Ledger Live-generated HD path
     LedgerLive(usize),
+    /// Legacy generated HD Path
     Legacy(usize),
+    /// Any other path
     Other(String),
 }
 
@@ -25,6 +29,7 @@ impl fmt::Display for DerivationType {
 }
 
 #[derive(Error, Debug)]
+/// Error when using the Ledger transport
 pub enum LedgerError {
     /// Underlying ledger transport error
     #[error(transparent)]
@@ -34,10 +39,8 @@ pub enum LedgerError {
     UnexpectedNullResponse,
 
     #[error(transparent)]
+    /// Error when converting from a hex string
     HexError(#[from] hex::FromHexError),
-
-    #[error("Error when decoding UTF8 Response: {0}")]
-    Utf8Error(#[from] std::str::Utf8Error),
 }
 
 pub const P1_FIRST: u8 = 0x00;

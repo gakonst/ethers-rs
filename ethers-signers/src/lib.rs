@@ -7,14 +7,15 @@
 //! and the [`TransactionRequest`] to a [`Transaction`], look at the signing middleware.
 //!
 //! Supported signers:
-//! - Private key
-//! - Ledger
+//! - [Private key](crate::LocalWallet)
+//! - [Ledger](crate::Ledger)
+//! - [YubiHSM2](crate::YubiWallet)
 //!
 //! ```no_run
 //! # use ethers::{
-//!     signers::{LocalWallet, Signer},
-//!     core::{k256::ecdsa::SigningKey, types::TransactionRequest},
-//! };
+//! #     signers::{LocalWallet, Signer},
+//! #     core::{k256::ecdsa::SigningKey, types::TransactionRequest},
+//! # };
 //! # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
 //! // instantiate the wallet
 //! let wallet = "dcf2cbdd171a21c480aa7f53d77f31bb102282b3ff099c78e3118b37348c72f7"
@@ -37,8 +38,6 @@
 //!
 //! [`Transaction`]: ethers_core::types::Transaction
 //! [`TransactionRequest`]: ethers_core::types::TransactionRequest
-// mod wallet;
-// pub use wallet::Wallet;
 mod wallet;
 pub use wallet::Wallet;
 

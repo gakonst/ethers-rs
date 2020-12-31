@@ -40,6 +40,7 @@ struct GasNowResponseInner {
 }
 
 impl GasNow {
+    /// Creates a new [GasNow](https://gasnow.org) gas price oracle.
     pub fn new() -> Self {
         let url = Url::parse(GAS_NOW_URL).expect("invalid url");
 
@@ -50,6 +51,7 @@ impl GasNow {
         }
     }
 
+    /// Sets the gas price category to be used when fetching the gas price.
     pub fn category(mut self, gas_category: GasCategory) -> Self {
         self.gas_category = gas_category;
         self
