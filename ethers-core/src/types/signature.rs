@@ -4,7 +4,6 @@ use crate::{
     utils::hash_message,
 };
 
-use rustc_hex::{FromHex, ToHex};
 use serde::{Deserialize, Serialize};
 use std::{convert::TryFrom, fmt, str::FromStr};
 
@@ -26,7 +25,7 @@ pub enum SignatureError {
     InvalidLength(usize),
     /// When parsing a signature from string to hex
     #[error(transparent)]
-    DecodingError(#[from] rustc_hex::FromHexError),
+    DecodingError(#[from] hex::FromHexError),
     /// Thrown when signature verification failed (i.e. when the address that
     /// produced the signature did not match the expected address)
     #[error("Signature verification failed. Expected {0}, got {1}")]
@@ -66,7 +65,7 @@ pub struct Signature {
 impl fmt::Display for Signature {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let sig = <[u8; 65]>::from(self);
-        write!(f, "{}", sig.to_hex::<String>())
+        write!(f, "{}", hex::encode(sig))
     }
 }
 
@@ -174,7 +173,7 @@ impl FromStr for Signature {
     type Err = SignatureError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let bytes = s.from_hex::<Vec<u8>>()?;
+        let bytes = hex::decode(s)?;
         Signature::try_from(&bytes[..])
     }
 }

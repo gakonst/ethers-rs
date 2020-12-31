@@ -4,7 +4,6 @@ use crate::{
     utils::keccak256,
 };
 use serde::{ser::SerializeStruct, Deserialize, Serialize, Serializer};
-use std::str::FromStr;
 
 /// A log produced by a transaction.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -147,11 +146,6 @@ impl Filter {
         self
     }
 
-    pub fn address_str(mut self, address: &str) -> Result<Self, rustc_hex::FromHexError> {
-        self.address = Some(Address::from_str(address)?);
-        Ok(self)
-    }
-
     /// given the event in string form, it hashes it and adds it to the topics to monitor
     pub fn event(self, event_name: &str) -> Self {
         let hash = H256::from(keccak256(event_name.as_bytes()));
@@ -259,7 +253,7 @@ mod tests {
 
         let event = "ValueChanged(address,string,string)";
         let t0 = H256::from(keccak256(event.as_bytes()));
-        let addr = Address::from_str("f817796F60D268A36a57b8D2dF1B97B14C0D0E1d").unwrap();
+        let addr: Address = "f817796F60D268A36a57b8D2dF1B97B14C0D0E1d".parse().unwrap();
         let filter = Filter::new();
 
         let ser = serialize(&filter.clone());

@@ -1,4 +1,3 @@
-use rustc_hex::{FromHex, ToHex};
 use serde::de::{Error, Unexpected};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
@@ -35,7 +34,7 @@ where
     S: Serializer,
     T: AsRef<[u8]>,
 {
-    s.serialize_str(&format!("0x{}", x.as_ref().to_hex::<String>()))
+    s.serialize_str(&format!("0x{}", hex::encode(x.as_ref())))
 }
 
 pub fn deserialize_bytes<'de, D>(d: D) -> Result<bytes::Bytes, D::Error>
@@ -44,8 +43,8 @@ where
 {
     let value = String::deserialize(d)?;
     if value.len() >= 2 && &value[0..2] == "0x" {
-        let bytes: Vec<u8> = FromHex::from_hex(&value[2..])
-            .map_err(|e| Error::custom(format!("Invalid hex: {}", e)))?;
+        let bytes: Vec<u8> =
+            hex::decode(&value[2..]).map_err(|e| Error::custom(format!("Invalid hex: {}", e)))?;
         Ok(bytes.into())
     } else {
         Err(Error::invalid_value(Unexpected::Str(&value), &"0x prefix"))

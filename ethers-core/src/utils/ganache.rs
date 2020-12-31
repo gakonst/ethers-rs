@@ -3,7 +3,6 @@ use crate::{
     utils::{secret_key_to_address, unused_port},
 };
 use k256::{ecdsa::SigningKey, SecretKey as K256SecretKey};
-use rustc_hex::FromHex;
 use std::{
     io::{BufRead, BufReader},
     process::{Child, Command},
@@ -161,9 +160,7 @@ impl Ganache {
 
             if is_private_key && line.starts_with('(') {
                 let key_str = &line[6..line.len() - 1];
-                let key_hex = key_str
-                    .from_hex::<Vec<u8>>()
-                    .expect("could not parse as hex");
+                let key_hex = hex::decode(key_str).expect("could not parse as hex");
                 let key = K256SecretKey::from_bytes(&key_hex).expect("did not get private key");
                 addresses.push(secret_key_to_address(&SigningKey::from(&key)));
                 private_keys.push(key);

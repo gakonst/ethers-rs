@@ -41,9 +41,8 @@ tokio-tungstenite = { version = "0.12.0", default-features = false, features = [
 
 [dev-dependencies]
 ethers = { version = "0.1.3", path = "../ethers" }
-
-rustc-hex = "2.1.0"
 tokio = { version = "1.0", default-features = false, features = ["rt", "macros"] }
+hex = { version = "0.4.2", default-features = false, features = ["std"] }
 
 [features]
 default = ["ws"]

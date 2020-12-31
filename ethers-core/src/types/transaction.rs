@@ -6,7 +6,6 @@ use crate::{
 
 use rlp::RlpStream;
 use serde::{Deserialize, Serialize};
-use std::str::FromStr;
 
 // Number of tx fields before signing
 #[cfg(not(feature = "celo"))]
@@ -92,12 +91,6 @@ impl TransactionRequest {
     pub fn from<T: Into<Address>>(mut self, from: T) -> Self {
         self.from = Some(from.into());
         self
-    }
-
-    /// Sets the `to` field in the transaction to the provided value
-    pub fn send_to_str(mut self, to: &str) -> Result<Self, rustc_hex::FromHexError> {
-        self.to = Some(Address::from_str(to)?.into());
-        Ok(self)
     }
 
     /// Sets the `to` field in the transaction to the provided value
