@@ -243,8 +243,9 @@ mod tests {
         let data = hex::decode("095ea7b30000000000000000000000007a250d5630b4cf539739df2c5dacb4c659f2488dffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap();
 
         let tx_req = TransactionRequest::new()
-            .send_to_str("2ed7afa17473e17ac59908f088b4371d28585476")
-            .unwrap()
+            .to("2ed7afa17473e17ac59908f088b4371d28585476"
+                .parse::<Address>()
+                .unwrap())
             .gas(1000000)
             .gas_price(400e9 as u64)
             .nonce(5)
