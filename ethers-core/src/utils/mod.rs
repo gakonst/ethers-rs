@@ -25,7 +25,6 @@ pub use rlp;
 
 use crate::types::{Address, Bytes, U256};
 use k256::{ecdsa::SigningKey, EncodedPoint as K256PublicKey};
-use rustc_hex::ToHex;
 use std::convert::TryInto;
 
 /// 1 Ether = 1e18 Wei == 0x0de0b6b3a7640000 Wei
@@ -125,10 +124,10 @@ pub fn to_checksum(addr: &Address, chain_id: Option<u8>) -> String {
         Some(chain_id) => format!("{}0x{:x}", chain_id, addr),
         None => format!("{:x}", addr),
     };
-    let hash = keccak256(&prefixed_addr).to_hex::<String>();
+    let hash = hex::encode(keccak256(&prefixed_addr));
     let hash = hash.as_bytes();
 
-    let addr_hex = addr.as_bytes().to_hex::<String>();
+    let addr_hex = hex::encode(addr.as_bytes());
     let addr_hex = addr_hex.as_bytes();
 
     addr_hex
@@ -161,7 +160,6 @@ pub(crate) fn unused_port() -> u16 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rustc_hex::FromHex;
 
     #[test]
     fn wei_in_ether() {
@@ -324,8 +322,8 @@ mod tests {
             ),
         ] {
             let from = from.parse::<Address>().unwrap();
-            let salt = salt.from_hex::<Vec<u8>>().unwrap();
-            let init_code = init_code.from_hex::<Vec<u8>>().unwrap();
+            let salt = hex::decode(salt).unwrap();
+            let init_code = hex::decode(init_code).unwrap();
             let expected = expected.parse::<Address>().unwrap();
             assert_eq!(expected, get_create2_address(from, salt, init_code))
         }
