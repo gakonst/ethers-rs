@@ -86,8 +86,7 @@ impl FromStr for Wallet<SigningKey> {
     type Err = K256Error;
 
     fn from_str(src: &str) -> Result<Self, Self::Err> {
-        let src = hex::decode(src)
-            .expect("invalid hex when reading PrivateKey");
+        let src = hex::decode(src).expect("invalid hex when reading PrivateKey");
         let sk = SigningKey::from_bytes(&src).unwrap(); // TODO
         Ok(sk.into())
     }
