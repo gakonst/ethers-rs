@@ -84,7 +84,7 @@ where
 }
 
 #[pinned_drop]
-impl<'a, P, R> PinnedDrop for SubscriptionStream<'a, P, R>
+impl<P, R> PinnedDrop for SubscriptionStream<'_, P, R>
 where
     P: PubsubClient,
     R: DeserializeOwned,

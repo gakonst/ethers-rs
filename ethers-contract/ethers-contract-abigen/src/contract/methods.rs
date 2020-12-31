@@ -8,7 +8,6 @@ use anyhow::{anyhow, Context as _, Result};
 use inflector::Inflector;
 use proc_macro2::{Literal, TokenStream};
 use quote::quote;
-use rustc_hex::ToHex;
 use syn::Ident;
 
 /// Expands a context into a method struct containing all the generated bindings
@@ -46,7 +45,7 @@ fn expand_function(function: &Function, alias: Option<Ident>) -> Result<TokenStr
     let doc = util::expand_doc(&format!(
         "Calls the contract's `{}` (0x{}) function",
         function.name,
-        function.selector().to_hex::<String>()
+        hex::encode(function.selector())
     ));
     Ok(quote! {
 

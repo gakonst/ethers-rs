@@ -35,47 +35,16 @@ pin-project = { version = "1.0.2", default-features = false }
 tracing = { version = "0.1.22", default-features = false }
 tracing-futures = { version = "0.2.4", default-features = false }
 
-# ws support async-std and tokio runtimes for the convenience methods
-async-tungstenite = { version = "0.6.0", default-features = false, optional = true }
-async-std = { version = "1.6.2", default-features = false, optional = true }
-tokio = { version = "0.2.21", default-features = false, optional = true }
-# needed for tls
-real-tokio-native-tls = { package = "tokio-native-tls", version = "0.1.0", default-features = false, optional = true }
-async-tls = { version = "0.7.0", optional = true }
+# tokio
+tokio = { version = "1.0", default-features = false, optional = true }
+tokio-tungstenite = { version = "0.12.0", default-features = false, features = ["connect", "tls"], optional = true }
 
 [dev-dependencies]
 ethers = { version = "0.1.3", path = "../ethers" }
-
-rustc-hex = "2.1.0"
-tokio = { version = "0.2.21", default-features = false, features = ["rt-core", "macros"] }
-async-std = { version = "1.6.2", default-features = false, features = ["attributes"] }
-async-tungstenite = { version = "0.6.0", default-features = false, features = ["tokio-runtime"] }
+tokio = { version = "1.0", default-features = false, features = ["rt", "macros"] }
+hex = { version = "0.4.2", default-features = false, features = ["std"] }
 
 [features]
-# slightly opinionated, but for convenience we default to tokio-tls
-# to allow websockets w/ TLS support
-default = ["tokio-tls"]
+default = ["ws"]
 celo = ["ethers-core/celo"]
-ws = ["async-tungstenite"]
-
-tokio-runtime = [
-    "ws",
-    "tokio",
-    "async-tungstenite/tokio-runtime"
-]
-tokio-tls = [
-    "tokio-runtime",
-    "async-tungstenite/tokio-native-tls",
-    "real-tokio-native-tls"
-]
-
-async-std-runtime = [
-    "ws",
-    "async-std",
-    "async-tungstenite/async-std-runtime"
-]
-async-std-tls = [
-    "async-std-runtime",
-    "async-tungstenite/async-tls",
-    "async-tls"
-]
+ws = ["tokio", "tokio-tungstenite"]

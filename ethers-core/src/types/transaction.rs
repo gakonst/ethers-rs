@@ -6,7 +6,6 @@ use crate::{
 
 use rlp::RlpStream;
 use serde::{Deserialize, Serialize};
-use std::str::FromStr;
 
 // Number of tx fields before signing
 #[cfg(not(feature = "celo"))]
@@ -92,12 +91,6 @@ impl TransactionRequest {
     pub fn from<T: Into<Address>>(mut self, from: T) -> Self {
         self.from = Some(from.into());
         self
-    }
-
-    /// Sets the `to` field in the transaction to the provided value
-    pub fn send_to_str(mut self, to: &str) -> Result<Self, rustc_hex::FromHexError> {
-        self.to = Some(Address::from_str(to)?.into());
-        Ok(self)
     }
 
     /// Sets the `to` field in the transaction to the provided value
@@ -196,7 +189,7 @@ impl TransactionRequest {
 
         rlp_opt(rlp, self.to.as_ref());
         rlp_opt(rlp, self.value);
-        rlp_opt(rlp, self.data.as_ref().map(|d| &d.0[..]));
+        rlp_opt(rlp, self.data.as_ref().map(|d| d.as_ref()));
     }
 }
 
@@ -328,7 +321,7 @@ impl Transaction {
     }
 
     pub fn hash(&self) -> H256 {
-        keccak256(&self.rlp().0).into()
+        keccak256(&self.rlp().as_ref()).into()
     }
 
     pub fn rlp(&self) -> Bytes {
@@ -343,7 +336,7 @@ impl Transaction {
 
         rlp_opt(&mut rlp, self.to);
         rlp.append(&self.value);
-        rlp.append(&self.input.0);
+        rlp.append(&self.input.as_ref());
         rlp.append(&self.v);
         rlp.append(&self.r);
         rlp.append(&self.s);

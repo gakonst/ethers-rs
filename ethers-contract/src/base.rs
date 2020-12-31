@@ -8,7 +8,6 @@ use ethers_core::{
 };
 use ethers_providers::Middleware;
 
-use rustc_hex::ToHex;
 use std::{collections::HashMap, fmt::Debug, hash::Hash, sync::Arc};
 use thiserror::Error;
 
@@ -107,7 +106,7 @@ impl BaseContract {
             .methods
             .get(&signature)
             .map(|(name, index)| &self.abi.functions[name][*index])
-            .ok_or_else(|| Error::InvalidName(signature.to_hex::<String>()))?)
+            .ok_or_else(|| Error::InvalidName(hex::encode(signature)))?)
     }
 
     /// Returns a reference to the contract's ABI
@@ -139,7 +138,7 @@ pub(crate) fn decode_event<D: Detokenize>(
     let tokens = event
         .parse_log(RawLog {
             topics,
-            data: data.0,
+            data: data.to_vec(),
         })?
         .params
         .into_iter()
@@ -199,7 +198,6 @@ where
 mod tests {
     use super::*;
     use ethers_core::{abi::parse_abi, types::U256};
-    use rustc_hex::FromHex;
 
     #[test]
     fn can_parse_function_inputs() {
@@ -214,7 +212,7 @@ mod tests {
 
         let encoded = abi.encode("approve", (spender, amount)).unwrap();
 
-        assert_eq!(encoded.0.to_hex::<String>(), "095ea7b30000000000000000000000007a250d5630b4cf539739df2c5dacb4c659f2488dffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        assert_eq!(hex::encode(&encoded), "095ea7b30000000000000000000000007a250d5630b4cf539739df2c5dacb4c659f2488dffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
 
         let (spender2, amount2): (Address, U256) = abi.decode("approve", encoded).unwrap();
         assert_eq!(spender, spender2);
@@ -239,8 +237,7 @@ mod tests {
         .map(|hash| hash.parse::<H256>().unwrap())
         .collect::<Vec<_>>();
         let data = Bytes::from(
-            "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
-                .from_hex::<Vec<u8>>()
+            hex::decode("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
                 .unwrap(),
         );
 

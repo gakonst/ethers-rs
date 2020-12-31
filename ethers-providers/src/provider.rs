@@ -685,11 +685,11 @@ impl<P: JsonRpcClient> Provider<P> {
     }
 }
 
-#[cfg(any(feature = "tokio-runtime", feature = "async-std-runtime"))]
+#[cfg(feature = "ws")]
 impl Provider<crate::Ws> {
     /// Direct connection to a websocket endpoint
     pub async fn connect(
-        url: impl async_tungstenite::tungstenite::client::IntoClientRequest + Unpin,
+        url: impl tokio_tungstenite::tungstenite::client::IntoClientRequest + Unpin,
     ) -> Result<Self, ProviderError> {
         let ws = crate::Ws::connect(url).await?;
         Ok(Self::new(ws))
@@ -730,8 +730,8 @@ impl Provider<MockProvider> {
 ///
 /// If the provided bytes were not an interpretation of an address
 fn decode_bytes<T: Detokenize>(param: ParamType, bytes: Bytes) -> T {
-    let tokens =
-        abi::decode(&[param], &bytes.0).expect("could not abi-decode bytes to address tokens");
+    let tokens = abi::decode(&[param], &bytes.as_ref())
+        .expect("could not abi-decode bytes to address tokens");
     T::from_tokens(tokens).expect("could not parse tokens as address")
 }
 

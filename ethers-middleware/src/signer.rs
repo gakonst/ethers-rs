@@ -135,7 +135,7 @@ where
 
         // Get the actual transaction hash
         let rlp = tx.rlp_signed(&signature);
-        let hash = keccak256(&rlp.0);
+        let hash = keccak256(&rlp.as_ref());
 
         // This function should not be called with ENS names
         let to = tx.to.map(|to| match to {
@@ -298,7 +298,6 @@ where
 mod tests {
     use super::*;
     use ethers::{providers::Provider, signers::LocalWallet};
-    use rustc_hex::FromHex;
     use std::convert::TryFrom;
 
     #[tokio::test]
@@ -337,7 +336,7 @@ mod tests {
                 .unwrap()
         );
 
-        let expected_rlp = Bytes("f869808504e3b29200831e848094f0109fc8df283027b6285cc889f5aa624eac1f55843b9aca008025a0c9cf86333bcb065d140032ecaab5d9281bde80f21b9687b3e94161de42d51895a0727a108a0b8d101465414033c3f705a9c7b826e596766046ee1183dbc8aeaa68".from_hex().unwrap());
+        let expected_rlp = Bytes::from(hex::decode("f869808504e3b29200831e848094f0109fc8df283027b6285cc889f5aa624eac1f55843b9aca008025a0c9cf86333bcb065d140032ecaab5d9281bde80f21b9687b3e94161de42d51895a0727a108a0b8d101465414033c3f705a9c7b826e596766046ee1183dbc8aeaa68").unwrap());
         assert_eq!(tx.rlp(), expected_rlp);
     }
 }

@@ -9,7 +9,6 @@ use ethers_core::{
     types::Address,
     utils::keccak256,
 };
-use rustc_hex::FromHex;
 use std::str::FromStr;
 
 impl Clone for Wallet<SigningKey> {
@@ -87,9 +86,7 @@ impl FromStr for Wallet<SigningKey> {
     type Err = K256Error;
 
     fn from_str(src: &str) -> Result<Self, Self::Err> {
-        let src = src
-            .from_hex::<Vec<u8>>()
-            .expect("invalid hex when reading PrivateKey");
+        let src = hex::decode(src).expect("invalid hex when reading PrivateKey");
         let sk = SigningKey::from_bytes(&src).unwrap(); // TODO
         Ok(sk.into())
     }

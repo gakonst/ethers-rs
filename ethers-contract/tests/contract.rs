@@ -384,9 +384,12 @@ mod celo_tests {
         assert_eq!(value, "initial value");
 
         // make a state mutating transaction
+        // gas estimation costs are sometimes under-reported on celo,
+        // so we manually set it to avoid failures
         let call = contract
             .method::<_, H256>("setValue", "hi".to_owned())
-            .unwrap();
+            .unwrap()
+            .gas(100000);
         let pending_tx = call.send().await.unwrap();
         let _receipt = pending_tx.await.unwrap();
 

@@ -6,7 +6,6 @@ use crate::{
 use ethers_core::types::U256;
 
 use async_trait::async_trait;
-use async_tungstenite::tungstenite::{self, protocol::Message};
 use futures_channel::{mpsc, oneshot};
 use futures_util::{
     sink::{Sink, SinkExt},
@@ -22,53 +21,21 @@ use std::{
     },
 };
 use thiserror::Error;
-
-// `connect_async` adapter
-#[cfg(all(feature = "async-std-runtime", not(feature = "tokio-runtime")))]
-use async_tungstenite::async_std::connect_async;
-#[cfg(feature = "tokio-runtime")]
-use async_tungstenite::tokio::connect_async;
+use tokio_tungstenite::{
+    connect_async,
+    tungstenite::{self, protocol::Message},
+};
 
 /// A JSON-RPC Client over Websockets.
 ///
-/// If the library is not compiled with any runtime support, then you will have
-/// to manually instantiate a websocket connection and call `Provider::new` on it.
-///
-/// ```ignore
-/// use ethers::providers::Ws;
-///
-/// let ws = Ws::new(...)
-/// ```
-///
-/// If you have compiled the library with any of the following features, you may
-/// instantiate the websocket instance with the `connect` call and your URL:
-/// - `tokio-runtime`: Uses `tokio` as the runtime
-/// - `tokio-tls`: Same as `tokio-runtime` but with TLS support
-/// - `async-std-runtime`: Uses `async-std-runtime`
-/// - `async-tls`: Same as `async-std-runtime` but with TLS support
-///
 /// ```no_run
-/// # #[cfg(any(
-/// #     feature = "tokio-runtime",
-/// #     feature = "tokio-tls",
-/// #     feature = "async-std-runtime",
-/// #     feature = "async-std-tls",
-/// # ))]
 /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
 /// use ethers::providers::Ws;
 ///
-/// let ws = Ws::connect("ws://localhost:8545").await?;
-///
-/// // If built with TLS support (otherwise will get a "TLS Support not compiled in" error)
 /// let ws = Ws::connect("wss://localhost:8545").await?;
 /// # Ok(())
 /// # }
 /// ```
-///
-/// This feature is built using [`async-tungstenite`](https://docs.rs/async-tungstenite). If you need other runtimes,
-/// consider importing `async-tungstenite` with the [corresponding feature
-/// flag](https://github.com/sdroege/async-tungstenite/blob/master/Cargo.toml#L15-L22)
-/// for your runtime.
 #[derive(Clone)]
 pub struct Ws {
     id: Arc<AtomicU64>,
@@ -123,8 +90,7 @@ impl Ws {
         }
     }
 
-    /// Initializes a new WebSocket Client, assuming usage of tokio or async-std
-    #[cfg(any(feature = "tokio-runtime", feature = "async-std-runtime"))]
+    /// Initializes a new WebSocket Client
     pub async fn connect(
         url: impl tungstenite::client::IntoClientRequest + Unpin,
     ) -> Result<Self, ClientError> {
@@ -214,7 +180,6 @@ where
     }
 
     /// Spawns the event loop
-    #[allow(unused)]
     fn spawn(mut self)
     where
         S: 'static,
@@ -225,12 +190,7 @@ where
             }
         };
 
-        #[cfg(all(not(feature = "async-std-runtime"), feature = "tokio-runtime"))]
         tokio::spawn(f);
-        // TODO: Ensure that this works with both async-std and tokio.
-        // Remove allow(unused) when fixed.
-        #[cfg(all(feature = "async-std-runtime", not(feature = "tokio-runtime")))]
-        async_std::task::spawn(f);
     }
 
     /// Processes 1 item selected from the incoming `requests` or `ws`

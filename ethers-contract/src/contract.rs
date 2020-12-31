@@ -10,7 +10,6 @@ use ethers_core::{
 };
 use ethers_providers::Middleware;
 
-use rustc_hex::ToHex;
 use std::{fmt::Debug, marker::PhantomData, sync::Arc};
 
 /// A Contract is an abstraction of an executable program on the Ethereum Blockchain.
@@ -219,7 +218,7 @@ impl<M: Middleware> Contract<M> {
             .methods
             .get(&signature)
             .map(|(name, index)| &self.base_contract.abi.functions[name][*index])
-            .ok_or_else(|| Error::InvalidName(signature.to_hex::<String>()))?;
+            .ok_or_else(|| Error::InvalidName(hex::encode(signature)))?;
         self.method_func(function, args)
     }
 

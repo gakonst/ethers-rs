@@ -1,6 +1,5 @@
 use crate::{abi::Abi, types::Bytes};
 use glob::glob;
-use rustc_hex::FromHex;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fmt, io::BufRead, path::PathBuf, process::Command};
 use thiserror::Error;
@@ -145,9 +144,7 @@ impl Solc {
                     .expect("could not parse `solc` abi, this should never happen");
 
                 // parse the bytecode
-                let bytecode = contract
-                    .bin
-                    .from_hex::<Vec<u8>>()
+                let bytecode = hex::decode(contract.bin)
                     .expect("solc did not produce valid bytecode")
                     .into();
                 (name, CompiledContract { abi, bytecode })

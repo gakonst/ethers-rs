@@ -161,7 +161,7 @@ impl Tokenizable for Bytes {
     }
 
     fn into_token(self) -> Token {
-        Token::Bytes(self.0)
+        Token::Bytes(self.to_vec())
     }
 }
 

@@ -41,30 +41,17 @@ mod eth_tests {
     }
 
     // Without TLS this would error with "TLS Support not compiled in"
-    #[test]
-    #[cfg(any(feature = "async-std-tls", feature = "tokio-tls"))]
-    fn ssl_websocket() {
-        // this is extremely ugly but I couldn't figure out a better way of having
-        // a shared async test for both runtimes
-        #[cfg(feature = "async-std-tls")]
-        let block_on = async_std::task::block_on;
-        #[cfg(feature = "tokio-tls")]
-        let mut runtime = tokio::runtime::Runtime::new().unwrap();
-        #[cfg(feature = "tokio-tls")]
-        let mut block_on = |x| runtime.block_on(x);
-
+    #[tokio::test]
+    async fn ssl_websocket() {
         use ethers::providers::Ws;
-        block_on(async move {
-            let ws = Ws::connect("wss://rinkeby.infura.io/ws/v3/c60b0bb42f8a4c6481ecd229eddaca27")
-                .await
-                .unwrap();
-            let provider = Provider::new(ws);
-            let _number = provider.get_block_number().await.unwrap();
-        });
+        let ws = Ws::connect("wss://rinkeby.infura.io/ws/v3/c60b0bb42f8a4c6481ecd229eddaca27")
+            .await
+            .unwrap();
+        let provider = Provider::new(ws);
+        let _number = provider.get_block_number().await.unwrap();
     }
 
     #[tokio::test]
-    #[cfg(feature = "tokio-runtime")]
     async fn watch_blocks_websocket() {
         use ethers::{
             providers::{StreamExt, Ws},
@@ -72,7 +59,7 @@ mod eth_tests {
         };
 
         let ganache = Ganache::new().block_time(2u64).spawn();
-        let (ws, _) = async_tungstenite::tokio::connect_async(ganache.ws_endpoint())
+        let (ws, _) = tokio_tungstenite::connect_async(ganache.ws_endpoint())
             .await
             .unwrap();
         let provider = Provider::new(Ws::new(ws)).interval(Duration::from_millis(500u64));
@@ -149,7 +136,6 @@ mod celo_tests {
     use super::*;
     use ethers::types::{Randomness, H256};
     use futures_util::stream::StreamExt;
-    use rustc_hex::FromHex;
 
     #[tokio::test]
     // https://alfajores-blockscout.celo-testnet.org/tx/0x544ea96cddb16aeeaedaf90885c1e02be4905f3eb43d6db3f28cac4dbe76a625/internal_transactions
@@ -176,14 +162,16 @@ mod celo_tests {
         assert_eq!(
             block.randomness,
             Randomness {
-                committed: "003e12deb86292844274493e9ab6e57ed1e276202c16799d97af723eb0d3253f"
-                    .from_hex::<Vec<u8>>()
-                    .unwrap()
-                    .into(),
-                revealed: "1333b3b45e0385da48a01b4459aeda7607867ef6a41167cfdeefa49b9fdce6d7"
-                    .from_hex::<Vec<u8>>()
-                    .unwrap()
-                    .into(),
+                committed: hex::decode(
+                    "003e12deb86292844274493e9ab6e57ed1e276202c16799d97af723eb0d3253f"
+                )
+                .unwrap()
+                .into(),
+                revealed: hex::decode(
+                    "1333b3b45e0385da48a01b4459aeda7607867ef6a41167cfdeefa49b9fdce6d7"
+                )
+                .unwrap()
+                .into(),
             }
         );
     }

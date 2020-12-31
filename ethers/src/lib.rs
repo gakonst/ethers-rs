@@ -82,50 +82,28 @@
 //! [`utils`]: core::utils
 //! [`abi`]: core::abi
 //! [`types`]: core::types
-
-#[cfg(feature = "contract")]
 pub use ethers_contract as contract;
-
-#[cfg(feature = "providers")]
-pub use ethers_providers as providers;
-
-#[cfg(feature = "signers")]
-pub use ethers_signers as signers;
-
-#[cfg(feature = "core")]
 pub use ethers_core as core;
-
-#[cfg(feature = "middleware")]
 pub use ethers_middleware as middleware;
+pub use ethers_providers as providers;
+pub use ethers_signers as signers;
 
 // Re-export ethers_core::utils/types/abi
 // We hide these docs so that the rustdoc links send the visitor
 // to the corresponding crate, instead of the re-export
 #[doc(hidden)]
-#[cfg(feature = "core")]
 pub use ethers_core::abi;
 #[doc(hidden)]
-#[cfg(feature = "core")]
 pub use ethers_core::types;
 #[doc(hidden)]
-#[cfg(feature = "core")]
 pub use ethers_core::utils;
 
 /// Easy imports of frequently used type definitions and traits
 #[doc(hidden)]
 pub mod prelude {
-    #[cfg(feature = "contract")]
     pub use ethers_contract::*;
-
-    #[cfg(feature = "providers")]
-    pub use ethers_providers::*;
-
-    #[cfg(feature = "signers")]
-    pub use ethers_signers::*;
-
-    #[cfg(feature = "middleware")]
-    pub use ethers_middleware::*;
-
-    #[cfg(feature = "core")]
     pub use ethers_core::types::*;
+    pub use ethers_middleware::*;
+    pub use ethers_providers::*;
+    pub use ethers_signers::*;
 }

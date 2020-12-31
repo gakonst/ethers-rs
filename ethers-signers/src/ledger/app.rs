@@ -95,8 +95,10 @@ impl LedgerEthereum {
         let address = {
             // extract the address from the response
             let offset = 1 + result[0] as usize;
-            let address = &result[offset + 1..offset + 1 + result[offset] as usize];
-            std::str::from_utf8(address)?.parse::<Address>()?
+            let address_str = &result[offset + 1..offset + 1 + result[offset] as usize];
+            let mut address = [0; 20];
+            address.copy_from_slice(&hex::decode(address_str)?);
+            Address::from(address)
         };
 
         Ok(address)
@@ -207,7 +209,6 @@ mod tests {
     use super::*;
     use crate::Signer;
     use ethers::prelude::*;
-    use rustc_hex::FromHex;
     use std::str::FromStr;
 
     #[tokio::test]
@@ -239,11 +240,12 @@ mod tests {
             .unwrap();
 
         // approve uni v2 router 0xff
-        let data = "095ea7b30000000000000000000000007a250d5630b4cf539739df2c5dacb4c659f2488dffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff".from_hex::<Vec<u8>>().unwrap();
+        let data = hex::decode("095ea7b30000000000000000000000007a250d5630b4cf539739df2c5dacb4c659f2488dffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap();
 
         let tx_req = TransactionRequest::new()
-            .send_to_str("2ed7afa17473e17ac59908f088b4371d28585476")
-            .unwrap()
+            .to("2ed7afa17473e17ac59908f088b4371d28585476"
+                .parse::<Address>()
+                .unwrap())
             .gas(1000000)
             .gas_price(400e9 as u64)
             .nonce(5)

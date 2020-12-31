@@ -30,49 +30,12 @@
 //!
 //! # Websockets
 //!
-//! The crate has support for WebSockets. If none of the provided async runtime
-//! features are enabled, you must manually instantiate the WS connection and wrap
-//! it with with a [`Ws::new`](method@crate::Ws::new) call.
+//! The crate has support for WebSockets via Tokio.
 //!
-//! ```ignore
-//! use ethers::providers::Ws;
-//!
-//! let ws = Ws::new(...);
 //! ```
-//!
-//! If you have compiled the library with any of the following features, you may
-//! instantiate the websocket instance with the `connect` call and your URL:
-//! - `tokio-runtime`: Uses `tokio` as the runtime
-//! - `async-std-runtime`: Uses `async-std-runtime`
-//!
-//! ```no_run
-//! # #[cfg(any(
-//! #     feature = "tokio-runtime",
-//! #     feature = "tokio-tls",
-//! #     feature = "async-std-runtime",
-//! #     feature = "async-std-tls",
-//! # ))]
 //! # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
 //! # use ethers::providers::Ws;
 //! let ws = Ws::connect("ws://localhost:8545").await?;
-//! # Ok(())
-//! # }
-//! ```
-//!
-//! TLS support is also provided via the following feature flags:
-//! - `tokio-tls`
-//! - `async-tls`
-//!
-//! ```no_run
-//! # #[cfg(any(
-//! #     feature = "tokio-runtime",
-//! #     feature = "tokio-tls",
-//! #     feature = "async-std-runtime",
-//! #     feature = "async-std-tls",
-//! # ))]
-//! # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
-//! # use ethers::providers::Ws;
-//! let ws = Ws::connect("wss://localhost:8545").await?;
 //! # Ok(())
 //! # }
 //! ```

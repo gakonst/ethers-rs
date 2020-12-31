@@ -12,18 +12,8 @@ use std::sync::Arc;
 use std::{pin::Pin, time::Instant};
 use thiserror::Error;
 
-#[cfg(any(feature = "async-std", feature = "tokio"))]
-use tracing_futures::Instrument;
-
-#[cfg(all(not(feature = "tokio"), feature = "async-std"))]
-use async_std::task::spawn;
-#[cfg(all(feature = "tokio", not(feature = "async-std")))]
 use tokio::spawn;
-#[cfg(all(feature = "tokio", all(feature = "async-std")))]
-// this should never happen, used to silence clippy warnings
-fn spawn<T>(_: T) {
-    unimplemented!("do not use both tokio and async-std!")
-}
+use tracing_futures::Instrument;
 
 /// Trait for fetching updated gas prices after a transaction has been first
 /// broadcast
@@ -45,10 +35,6 @@ pub enum Frequency {
 #[derive(Debug, Clone)]
 /// A Gas escalator allows bumping transactions' gas price to avoid getting them
 /// stuck in the memory pool.
-///
-/// If the crate is compiled with the `tokio` or `async-std` features, it will
-/// automatically start bumping transactions in the background. Otherwise, you need
-/// to spawn the `escalate` call yourself with an executor of choice.
 ///
 /// ```no_run
 /// use ethers::{
@@ -135,7 +121,6 @@ where
             txs: Arc::new(Mutex::new(Vec::new())),
         };
 
-        #[cfg(any(feature = "async-std", feature = "tokio"))]
         {
             let this2 = this.clone();
             spawn(async move {
