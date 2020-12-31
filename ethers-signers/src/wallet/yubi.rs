@@ -67,13 +67,11 @@ impl From<YubiSigner<Secp256k1>> for Wallet<YubiSigner<Secp256k1>> {
 mod tests {
     use super::*;
     use crate::Signer;
-    use rustc_hex::FromHex;
     use std::str::FromStr;
 
     #[tokio::test]
     async fn from_key() {
-        let key = "2d8c44dc2dd2f0bea410e342885379192381e82d855b1b112f9b55544f1e0900"
-            .from_hex::<Vec<u8>>()
+        let key = hex::decode("2d8c44dc2dd2f0bea410e342885379192381e82d855b1b112f9b55544f1e0900")
             .unwrap();
 
         let connector = yubihsm::Connector::mockhsm();

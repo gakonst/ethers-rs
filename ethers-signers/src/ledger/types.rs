@@ -34,7 +34,7 @@ pub enum LedgerError {
     UnexpectedNullResponse,
 
     #[error(transparent)]
-    HexError(#[from] rustc_hex::FromHexError),
+    HexError(#[from] hex::FromHexError),
 
     #[error("Error when decoding UTF8 Response: {0}")]
     Utf8Error(#[from] std::str::Utf8Error),

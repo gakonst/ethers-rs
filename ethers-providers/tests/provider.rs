@@ -162,11 +162,16 @@ mod celo_tests {
         assert_eq!(
             block.randomness,
             Randomness {
-                committed: hex::decode("003e12deb86292844274493e9ab6e57ed1e276202c16799d97af723eb0d3253f").unwrap()
-                    .into(),
-                revealed: hex::decode("1333b3b45e0385da48a01b4459aeda7607867ef6a41167cfdeefa49b9fdce6d7")
-                    .unwrap()
-                    .into(),
+                committed: hex::decode(
+                    "003e12deb86292844274493e9ab6e57ed1e276202c16799d97af723eb0d3253f"
+                )
+                .unwrap()
+                .into(),
+                revealed: hex::decode(
+                    "1333b3b45e0385da48a01b4459aeda7607867ef6a41167cfdeefa49b9fdce6d7"
+                )
+                .unwrap()
+                .into(),
             }
         );
     }
