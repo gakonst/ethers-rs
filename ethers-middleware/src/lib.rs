@@ -1,14 +1,18 @@
 //! # Ethers Middleware
 //!
-//! Ethers uses a middleware architecture. You start the middleware stack with
+//! Ethers uses a middleware-based architecture. You start the middleware stack with
 //! a [`Provider`](ethers_providers::Provider), and wrap it with additional
 //! middleware functionalities that you need.
 //!
 //! ## Available Middleware
-//! - Signer
-//! - Nonce Manager
-//! - Gas Escalator
-//! - Gas Oracle
+//! - [`Signer`](crate::SignerMiddleware): Signs transactions locally, with a private
+//! key or a hardware wallet
+//! - [`Nonce Manager`](crate::NonceManagerMiddleware): Manages nonces locally, allowing
+//! the rapid broadcast of transactions without having to wait for them to be submitted
+//! - [`Gas Escalator`](crate::gas_escalator::GasEscalatorMiddleware): Bumps transaction
+//! gas prices in the background
+//! - [`Gas Oracle`](crate::gas_oracle): Allows getting your gas price estimates from
+//! places other than `eth_gasPrice`.
 //!
 //! ## Example of a middleware stack
 //!
@@ -49,19 +53,22 @@
 //! // ... do something with the provider
 //! ```
 
-/// The gas escalator middleware is used to re-broadcast transactions with an
-/// increasing gas price to guarantee their timely inclusion
+/// The [Gas Escalator middleware](crate::gas_escalator::GasEscalatorMiddleware)
+/// is used to re-broadcast transactions with an increasing gas price to guarantee
+/// their timely inclusion.
 pub mod gas_escalator;
 
 /// The gas oracle middleware is used to get the gas price from a list of gas oracles
-/// instead of using eth_gasPrice
+/// instead of using eth_gasPrice. For usage examples, refer to the
+/// [`GasOracle`](crate::gas_oracle::GasOracle) trait.
 pub mod gas_oracle;
 
-/// The nonce manager middleware is used to locally calculate nonces instead of
+/// The [Nonce Manager](crate::NonceManagerMiddleware) is used to locally calculate nonces instead of
 /// using eth_getTransactionCount
 pub mod nonce_manager;
+pub use nonce_manager::NonceManagerMiddleware;
 
-/// The signer middleware is used to locally sign transactions and messages
+/// The [Signer](crate::SignerMiddleware) is used to locally sign transactions and messages
 /// instead of using eth_sendTransaction and eth_sign
 pub mod signer;
 pub use signer::SignerMiddleware;

@@ -31,6 +31,7 @@ enum FilterWatcherState<'a, R> {
 
 #[must_use = "filters do nothing unless you stream them"]
 #[pin_project]
+/// Streams data from an installed filter via `eth_getFilterCahnges`
 pub struct FilterWatcher<'a, P, R> {
     /// The filter's installed id on the ethereum node
     pub id: U256,

@@ -1,5 +1,5 @@
 use super::{
-    base::{encode_fn, AbiError, BaseContract},
+    base::{encode_function_data, AbiError, BaseContract},
     call::ContractCall,
     event::Event,
 };
@@ -227,7 +227,7 @@ impl<M: Middleware> Contract<M> {
         function: &Function,
         args: T,
     ) -> Result<ContractCall<M, D>, AbiError> {
-        let data = encode_fn(function, args)?;
+        let data = encode_function_data(function, args)?;
 
         // create the tx object
         let tx = TransactionRequest {

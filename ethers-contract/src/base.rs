@@ -53,7 +53,7 @@ impl BaseContract {
     /// versions, consider using `encode_with_selector`
     pub fn encode<T: Tokenize>(&self, name: &str, args: T) -> Result<Bytes, AbiError> {
         let function = self.abi.function(name)?;
-        encode_fn(function, args)
+        encode_function_data(function, args)
     }
 
     /// Returns the ABI encoded data for the provided function selector and arguments
@@ -63,7 +63,7 @@ impl BaseContract {
         args: T,
     ) -> Result<Bytes, AbiError> {
         let function = self.get_from_signature(signature)?;
-        encode_fn(function, args)
+        encode_function_data(function, args)
     }
 
     /// Decodes the provided ABI encoded function arguments with the selected function name.
@@ -76,7 +76,7 @@ impl BaseContract {
         bytes: T,
     ) -> Result<D, AbiError> {
         let function = self.abi.function(name)?;
-        decode_fn(function, bytes, true)
+        decode_function_data(function, bytes, true)
     }
 
     /// Decodes for a given event name, given the `log.topics` and
@@ -98,7 +98,7 @@ impl BaseContract {
         bytes: T,
     ) -> Result<D, AbiError> {
         let function = self.get_from_signature(signature)?;
-        decode_fn(function, bytes, true)
+        decode_function_data(function, bytes, true)
     }
 
     fn get_from_signature(&self, signature: Selector) -> Result<&Function, AbiError> {
@@ -147,14 +147,14 @@ pub(crate) fn decode_event<D: Detokenize>(
     Ok(D::from_tokens(tokens)?)
 }
 
-// Helper for encoding arguments for a specific function
-pub(crate) fn encode_fn<T: Tokenize>(function: &Function, args: T) -> Result<Bytes, AbiError> {
+/// Helper for ABI encoding arguments for a specific function
+pub fn encode_function_data<T: Tokenize>(function: &Function, args: T) -> Result<Bytes, AbiError> {
     let tokens = args.into_tokens();
     Ok(function.encode_input(&tokens).map(Into::into)?)
 }
 
-// Helper for decoding bytes from a specific function
-pub fn decode_fn<D: Detokenize, T: AsRef<[u8]>>(
+/// Helper for ABI decoding raw data based on a function's input or output.
+pub fn decode_function_data<D: Detokenize, T: AsRef<[u8]>>(
     function: &Function,
     bytes: T,
     is_input: bool,

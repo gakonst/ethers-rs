@@ -8,17 +8,18 @@ use thiserror::Error;
 /// Middleware used for calculating nonces locally, useful for signing multiple
 /// consecutive transactions without waiting for them to hit the mempool
 pub struct NonceManagerMiddleware<M> {
-    pub inner: M,
-    pub initialized: AtomicBool,
-    pub nonce: AtomicU64,
-    pub address: Address,
+    inner: M,
+    initialized: AtomicBool,
+    nonce: AtomicU64,
+    address: Address,
 }
 
 impl<M> NonceManagerMiddleware<M>
 where
     M: Middleware,
 {
-    /// Instantiates the nonce manager with a 0 nonce.
+    /// Instantiates the nonce manager with a 0 nonce. The `address` should be the
+    /// address which you'll be sending transactions from
     pub fn new(inner: M, address: Address) -> Self {
         Self {
             initialized: false.into(),

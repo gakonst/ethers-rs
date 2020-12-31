@@ -17,7 +17,7 @@ mod contract;
 pub use contract::Contract;
 
 mod base;
-pub use base::{decode_fn, BaseContract};
+pub use base::{decode_function_data, encode_function_data, BaseContract};
 
 mod call;
 pub use call::ContractError;
@@ -28,7 +28,6 @@ pub use factory::ContractFactory;
 mod event;
 
 mod stream;
-pub use stream::EventStream;
 
 mod multicall;
 pub use multicall::Multicall;

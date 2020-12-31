@@ -88,3 +88,12 @@ This library would not have been possibly without the great work done in:
 
 A lot of the code was inspired and adapted from them, to a unified and opinionated interface,
 built with async/await and std futures from the ground up.
+
+## Projects using ethers-rs
+
+- [Yield Liquidator](https://github.com/yieldprotocol/yield-liquidator/): Liquidator for Yield Protocol
+- [MEV Inspect](https://github.com/flashbots/mev-inspect-rs/): Miner Extractable Value inspector
+- [Ethers Fireblocks](https://github.com/gakonst/ethers-fireblocks): Ethers middleware and signer for [Fireblocks](https://fireblocks.io)' API
+- [Celo Threshold BLS DKG](https://github.com/celo-org/celo-threshold-bls-rs/): CLI for using Celo as a data availability network for the Joint-Feldman BLS DKG
+- [Celo Plumo Prover](https://github.com/celo-org/plumo-prover): Creates Celo's ultralight client proof from on-chain data
+- [Celo SNARK Setup Coordinator](https://github.com/celo-org/snark-setup-operator): Coordinator for executing a pipelined Groth16 SNARK setup

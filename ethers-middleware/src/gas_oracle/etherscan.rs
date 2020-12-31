@@ -39,6 +39,7 @@ struct EtherscanResponseInner {
 }
 
 impl Etherscan {
+    /// Creates a new [Etherscan](https://etherscan.io/gastracker) gas price oracle.
     pub fn new(api_key: Option<&str>) -> Self {
         let url = match api_key {
             Some(key) => format!("{}&apikey={}", ETHERSCAN_URL_PREFIX, key),
@@ -54,6 +55,7 @@ impl Etherscan {
         }
     }
 
+    /// Sets the gas price category to be used when fetching the gas price.
     pub fn category(mut self, gas_category: GasCategory) -> Self {
         self.gas_category = gas_category;
         self
