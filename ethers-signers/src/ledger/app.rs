@@ -95,8 +95,10 @@ impl LedgerEthereum {
         let address = {
             // extract the address from the response
             let offset = 1 + result[0] as usize;
-            let address = &result[offset + 1..offset + 1 + result[offset] as usize];
-            std::str::from_utf8(address)?.parse::<Address>()?
+            let address_str = &result[offset + 1..offset + 1 + result[offset] as usize];
+            let mut address = [0; 20];
+            address.copy_from_slice(&hex::decode(address_str)?);
+            Address::from(address)
         };
 
         Ok(address)
