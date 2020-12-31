@@ -730,8 +730,8 @@ impl Provider<MockProvider> {
 ///
 /// If the provided bytes were not an interpretation of an address
 fn decode_bytes<T: Detokenize>(param: ParamType, bytes: Bytes) -> T {
-    let tokens =
-        abi::decode(&[param], &bytes.0).expect("could not abi-decode bytes to address tokens");
+    let tokens = abi::decode(&[param], &bytes.as_ref())
+        .expect("could not abi-decode bytes to address tokens");
     T::from_tokens(tokens).expect("could not parse tokens as address")
 }
 

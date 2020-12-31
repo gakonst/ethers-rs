@@ -1,6 +1,6 @@
 use ethers_core::{
     abi::{Detokenize, Function, Token},
-    types::{Address, BlockNumber, NameOrAddress, TxHash, U256},
+    types::{Address, BlockNumber, Bytes, NameOrAddress, TxHash, U256},
 };
 use ethers_providers::Middleware;
 
@@ -139,7 +139,7 @@ pub struct Multicall<M> {
 /// with `data`
 pub struct Call {
     target: Address,
-    data: Vec<u8>,
+    data: Bytes,
     function: Function,
 }
 
@@ -207,7 +207,7 @@ impl<M: Middleware> Multicall<M> {
             (Some(NameOrAddress::Address(target)), Some(data)) => {
                 let call = Call {
                     target,
-                    data: data.0,
+                    data,
                     function: call.function,
                 };
                 self.calls.push(call);
@@ -357,7 +357,7 @@ impl<M: Middleware> Multicall<M> {
         let calls: Vec<(Address, Vec<u8>)> = self
             .calls
             .iter()
-            .map(|call| (call.target, call.data.clone()))
+            .map(|call| (call.target, call.data.to_vec()))
             .collect();
 
         // Construct the ContractCall for `aggregate` function to broadcast the transaction
