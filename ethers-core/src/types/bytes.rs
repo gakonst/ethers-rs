@@ -16,7 +16,6 @@ impl Bytes {
     pub fn to_vec(&self) -> Vec<u8> {
         self.as_ref().to_vec()
     }
-
 }
 
 impl AsRef<[u8]> for Bytes {
