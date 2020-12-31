@@ -69,7 +69,6 @@ pub fn namehash(name: &str) -> H256 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rustc_hex::FromHex;
 
     fn assert_hex(hash: H256, val: &str) {
         let v = if val.starts_with("0x") {
@@ -78,14 +77,11 @@ mod tests {
             val
         };
 
-        assert_eq!(hash.0.to_vec(), v.from_hex::<Vec<u8>>().unwrap());
+        assert_eq!(hash.0.to_vec(), hex::decode(v).unwrap());
     }
 
     #[test]
     fn test_namehash() {
-        dbg!("00000000000C2E074eC69A0dFb2997BA6C7d2e1e"
-            .from_hex::<Vec<u8>>()
-            .unwrap());
         for (name, expected) in &[
             (
                 "",

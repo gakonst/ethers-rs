@@ -136,7 +136,6 @@ mod celo_tests {
     use super::*;
     use ethers::types::{Randomness, H256};
     use futures_util::stream::StreamExt;
-    use rustc_hex::FromHex;
 
     #[tokio::test]
     // https://alfajores-blockscout.celo-testnet.org/tx/0x544ea96cddb16aeeaedaf90885c1e02be4905f3eb43d6db3f28cac4dbe76a625/internal_transactions
@@ -163,12 +162,9 @@ mod celo_tests {
         assert_eq!(
             block.randomness,
             Randomness {
-                committed: "003e12deb86292844274493e9ab6e57ed1e276202c16799d97af723eb0d3253f"
-                    .from_hex::<Vec<u8>>()
-                    .unwrap()
+                committed: hex::decode("003e12deb86292844274493e9ab6e57ed1e276202c16799d97af723eb0d3253f").unwrap()
                     .into(),
-                revealed: "1333b3b45e0385da48a01b4459aeda7607867ef6a41167cfdeefa49b9fdce6d7"
-                    .from_hex::<Vec<u8>>()
+                revealed: hex::decode("1333b3b45e0385da48a01b4459aeda7607867ef6a41167cfdeefa49b9fdce6d7")
                     .unwrap()
                     .into(),
             }
