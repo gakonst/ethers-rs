@@ -349,7 +349,7 @@ dependencies = [
 [[package]]
 name = "coins-ledger"
 version = "0.1.0"
-source = "git+https://github.com/summa-tx/bitcoins-rs?branch=master#f53291fe9c5cae8007ff6e3c5384a5db839c9963"
+source = "git+https://github.com/summa-tx/bitcoins-rs?branch=master#9a21574a33d19378e1b017166b9d02e8e3eb6e9e"
 dependencies = [
  "async-trait",
  "blake2b_simd",
