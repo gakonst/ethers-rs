@@ -349,7 +349,8 @@ dependencies = [
 [[package]]
 name = "coins-ledger"
 version = "0.1.0"
-source = "git+https://github.com/summa-tx/bitcoins-rs?branch=master#f53291fe9c5cae8007ff6e3c5384a5db839c9963"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a1d8652edc472a0727097656a9a48225927bfae586a225bb97bdcd930b847a50"
 dependencies = [
  "async-trait",
  "blake2b_simd",

@@ -68,6 +68,7 @@ impl Context {
             // export all the created data types
             pub use #name_mod::*;
 
+            #[allow(clippy::too_many_arguments)]
             mod #name_mod {
                 #imports
 
