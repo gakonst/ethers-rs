@@ -18,7 +18,7 @@ ethers-core = { version = "0.1.3", path = "../ethers-core" }
 thiserror = { version = "1.0.22", default-features = false }
 serde = { version = "1.0.118", default-features = false }
 
-coins-ledger = { git = "https://github.com/summa-tx/bitcoins-rs", default-features = false, optional = true, branch = "master" }
+coins-ledger = { version = "0.1.0", default-features = false, optional = true }
 hex = { version = "0.4.2", default-features = false, features = ["std"] }
 async-trait = { version = "0.1.40", default-features = false }
 elliptic-curve = { version = "0.8.4", default-features = false }
