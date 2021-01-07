@@ -8,7 +8,3 @@ members = [
     "./ethers-core",
     "./ethers-middleware",
 ]
-
-[patch.crates-io]
-reqwest = { git = "https://github.com/seanmonstar/reqwest", branch = "master" }
-tokio-tungstenite = { git = "https://github.com/dnaka91/tokio-tungstenite", branch = "tokio-1.0" }

@@ -17,7 +17,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 ethers-core = { version = "0.1.3", path = "../ethers-core", default-features = false }
 
 async-trait = { version = "0.1.42", default-features = false }
-reqwest = { version = "0.10.10", default-features = false, features = ["json", "rustls-tls"] }
+reqwest = { version = "0.11.0", default-features = false, features = ["json", "rustls-tls"] }
 serde = { version = "1.0.118", default-features = false, features = ["derive"] }
 serde_json = { version = "1.0.60", default-features = false }
 thiserror = { version = "1.0.22", default-features = false }
@@ -37,7 +37,7 @@ tracing-futures = { version = "0.2.4", default-features = false }
 
 # tokio
 tokio = { version = "1.0", default-features = false, optional = true }
-tokio-tungstenite = { version = "0.12.0", default-features = false, features = ["connect", "tls"], optional = true }
+tokio-tungstenite = { git = "https://github.com/dnaka91/tokio-tungstenite", branch = "tokio-1.0", default-features = false, features = ["connect", "tls"], optional = true }
 
 [dev-dependencies]
 ethers = { version = "0.1.3", path = "../ethers" }
