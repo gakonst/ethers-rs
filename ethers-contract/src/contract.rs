@@ -129,10 +129,10 @@ use std::{fmt::Debug, marker::PhantomData, sync::Arc};
 ///
 /// impl Detokenize for ValueChanged {
 ///     fn from_tokens(tokens: Vec<Token>) -> Result<ValueChanged, InvalidOutputType> {
-///         let old_author: Address = tokens[1].clone().to_address().unwrap();
-///         let new_author: Address = tokens[1].clone().to_address().unwrap();
-///         let old_value = tokens[2].clone().to_string().unwrap();
-///         let new_value = tokens[3].clone().to_string().unwrap();
+///         let old_author: Address = tokens[1].clone().into_address().unwrap();
+///         let new_author: Address = tokens[1].clone().into_address().unwrap();
+///         let old_value = tokens[2].clone().into_string().unwrap();
+///         let new_value = tokens[3].clone().into_string().unwrap();
 ///
 ///         Ok(Self {
 ///             old_author,
