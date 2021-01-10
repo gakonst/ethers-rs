@@ -125,12 +125,14 @@ fn parse_function(fn_string: &str) -> Result<Function, ParseError> {
         vec![]
     };
 
+    #[allow(deprecated)]
     Ok(Function {
         name: fn_name.to_owned(),
         inputs,
         outputs,
         // this doesn't really matter
-        state_mutability: StateMutability::Nonpayable,
+        state_mutability: StateMutability::NonPayable,
+        constant: false,
     })
 }
 
