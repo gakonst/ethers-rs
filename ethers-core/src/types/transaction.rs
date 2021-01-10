@@ -160,7 +160,7 @@ impl TransactionRequest {
             rlp.append(&0u8);
         }
 
-        rlp.out().into()
+        rlp.out().freeze().into()
     }
 
     /// Produces the RLP encoding of the transaction with the provided signature
@@ -176,7 +176,7 @@ impl TransactionRequest {
         rlp.append(&signature.r);
         rlp.append(&signature.s);
 
-        rlp.out().into()
+        rlp.out().freeze().into()
     }
 
     fn rlp_base(&self, rlp: &mut RlpStream) {
@@ -341,7 +341,7 @@ impl Transaction {
         rlp.append(&self.r);
         rlp.append(&self.s);
 
-        rlp.out().into()
+        rlp.out().freeze().into()
     }
 }
 

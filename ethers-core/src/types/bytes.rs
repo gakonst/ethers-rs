@@ -23,6 +23,12 @@ impl AsRef<[u8]> for Bytes {
     }
 }
 
+impl From<bytes::Bytes> for Bytes {
+    fn from(src: bytes::Bytes) -> Self {
+        Self(src)
+    }
+}
+
 impl From<Vec<u8>> for Bytes {
     fn from(src: Vec<u8>) -> Self {
         Self(src.into())

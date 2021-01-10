@@ -173,6 +173,7 @@ impl Parse for Method {
                 })
                 .collect::<ParseResult<Vec<_>>>()?;
 
+            #[allow(deprecated)]
             Function {
                 name,
                 inputs,
@@ -180,7 +181,8 @@ impl Parse for Method {
                 // NOTE: The output types and const-ness of the function do not
                 //   affect its signature.
                 outputs: vec![],
-                state_mutability: StateMutability::Nonpayable,
+                state_mutability: StateMutability::NonPayable,
+                constant: false,
             }
         };
         let signature = function.abi_signature();
