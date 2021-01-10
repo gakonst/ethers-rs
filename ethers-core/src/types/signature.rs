@@ -65,7 +65,7 @@ pub struct Signature {
 impl fmt::Display for Signature {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let sig = <[u8; 65]>::from(self);
-        write!(f, "{}", hex::encode(sig))
+        write!(f, "{}", hex::encode(&sig[..]))
     }
 }
 
