@@ -143,12 +143,12 @@ mod tests {
     use super::*;
     use crate::Signer;
     use std::fs;
+    use tempfile::tempdir;
 
     #[tokio::test]
     async fn encrypted_json_keystore() {
         // create and store a random encrypted JSON keystore in this directory
-        let dir = Path::new("./src/wallet/.test-keystores");
-        let file_to_ignore = dir.join(".gitkeep");
+        let dir = tempdir().unwrap();
         let mut rng = rand::thread_rng();
         let key = Wallet::<SigningKey>::new_keystore(&dir, &mut rng, "randpsswd").unwrap();
 
@@ -161,13 +161,10 @@ mod tests {
         let paths = fs::read_dir(dir).unwrap();
         for path in paths {
             let path = path.unwrap().path();
-            if path != file_to_ignore {
-                let key2 =
-                    Wallet::<SigningKey>::decrypt_keystore(&path.clone(), "randpsswd").unwrap();
-                let signature2 = key2.sign_message(message).await.unwrap();
-                assert_eq!(signature, signature2);
-                assert!(std::fs::remove_file(&path).is_ok());
-            }
+            let key2 = Wallet::<SigningKey>::decrypt_keystore(&path.clone(), "randpsswd").unwrap();
+            let signature2 = key2.sign_message(message).await.unwrap();
+            assert_eq!(signature, signature2);
+            assert!(std::fs::remove_file(&path).is_ok());
         }
     }
 
