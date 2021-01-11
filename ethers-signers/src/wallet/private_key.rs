@@ -1,6 +1,7 @@
 //! Specific helper functions for loading an offline K256 Private Key stored on disk
 use super::Wallet;
 
+use eth_keystore::KeystoreError;
 use ethers_core::{
     k256::{
         ecdsa::SigningKey, elliptic_curve::error::Error as K256Error, EncodedPoint as K256PublicKey,
@@ -9,7 +10,16 @@ use ethers_core::{
     types::Address,
     utils::keccak256,
 };
-use std::str::FromStr;
+use std::{path::Path, str::FromStr};
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+/// Error thrown by the Wallet module
+pub enum WalletError {
+    /// Underlying eth keystore error
+    #[error(transparent)]
+    EthKeystoreError(#[from] KeystoreError),
+}
 
 impl Clone for Wallet<SigningKey> {
     fn clone(&self) -> Self {
@@ -23,7 +33,43 @@ impl Clone for Wallet<SigningKey> {
 }
 
 impl Wallet<SigningKey> {
-    // TODO: Add support for mnemonic and encrypted JSON
+    // TODO: Add support for mnemonic
+
+    /// Creates a new random encrypted JSON with the provided password and stores it in the
+    /// provided directory
+    pub fn new_keystore<P, R, S>(dir: P, rng: &mut R, password: S) -> Result<Self, WalletError>
+    where
+        P: AsRef<Path>,
+        R: Rng + CryptoRng,
+        S: AsRef<[u8]>,
+    {
+        let (secret, _) = eth_keystore::new(dir, rng, password)?;
+        let signer = SigningKey::from_bytes(secret.as_slice())
+            .expect("private key should always be convertible to signing key");
+        let address = key_to_address(&signer);
+        Ok(Self {
+            signer,
+            address,
+            chain_id: None,
+        })
+    }
+
+    /// Decrypts an encrypted JSON from the provided path to construct a Wallet instance
+    pub fn decrypt_keystore<P, S>(keypath: P, password: S) -> Result<Self, WalletError>
+    where
+        P: AsRef<Path>,
+        S: AsRef<[u8]>,
+    {
+        let secret = eth_keystore::decrypt_key(keypath, password)?;
+        let signer = SigningKey::from_bytes(secret.as_slice())
+            .expect("private key should always be convertible to signing key");
+        let address = key_to_address(&signer);
+        Ok(Self {
+            signer,
+            address,
+            chain_id: None,
+        })
+    }
 
     /// Creates a new random keypair seeded with the provided RNG
     pub fn new<R: Rng + CryptoRng>(rng: &mut R) -> Self {
@@ -96,6 +142,31 @@ impl FromStr for Wallet<SigningKey> {
 mod tests {
     use super::*;
     use crate::Signer;
+    use std::fs;
+    use tempfile::tempdir;
+
+    #[tokio::test]
+    async fn encrypted_json_keystore() {
+        // create and store a random encrypted JSON keystore in this directory
+        let dir = tempdir().unwrap();
+        let mut rng = rand::thread_rng();
+        let key = Wallet::<SigningKey>::new_keystore(&dir, &mut rng, "randpsswd").unwrap();
+
+        // sign a message using the above key
+        let message = "Some data";
+        let signature = key.sign_message(message).await.unwrap();
+
+        // read from the encrypted JSON keystore and decrypt it, while validating that the
+        // signatures produced by both the keys should match
+        let paths = fs::read_dir(dir).unwrap();
+        for path in paths {
+            let path = path.unwrap().path();
+            let key2 = Wallet::<SigningKey>::decrypt_keystore(&path.clone(), "randpsswd").unwrap();
+            let signature2 = key2.sign_message(message).await.unwrap();
+            assert_eq!(signature, signature2);
+            assert!(std::fs::remove_file(&path).is_ok());
+        }
+    }
 
     #[tokio::test]
     async fn signs_msg() {

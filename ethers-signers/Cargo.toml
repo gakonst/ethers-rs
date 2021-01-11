@@ -19,6 +19,7 @@ thiserror = { version = "1.0.22", default-features = false }
 serde = { version = "1.0.118", default-features = false }
 
 coins-ledger = { version = "0.1.0", default-features = false, optional = true }
+eth-keystore = { git = "https://github.com/roynalnaruto/eth-keystore-rs" }
 hex = { version = "0.4.2", default-features = false, features = ["std"] }
 async-trait = { version = "0.1.40", default-features = false }
 elliptic-curve = { version = "0.8.4", default-features = false }
@@ -32,8 +33,9 @@ futures-executor = "0.3.8"
 ethers = { version = "0.1.3", path = "../ethers" }
 yubihsm = { version = "0.37.0", features = ["secp256k1", "usb", "mockhsm"] }
 
+tempfile = "3.1.0"
 tokio = { version = "1.0", default-features = false, features = ["macros"] }
-serde_json = { version = "1.0.55", default-features = false }  
+serde_json = { version = "1.0.55", default-features = false }
 
 [features]
 celo = ["ethers-core/celo"]
