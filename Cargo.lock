@@ -542,7 +542,8 @@ dependencies = [
 [[package]]
 name = "eth-keystore"
 version = "0.1.0"
-source = "git+https://github.com/roynalnaruto/eth-keystore-rs#32777a4bfbd6edc804c88b702b8ffa83546a46c9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "96bf63261e2e008bc78d1dc363d118d59741b10322d9dd6cf7db5fbf58fa81af"
 dependencies = [
  "hex",
  "rand 0.7.3",
