@@ -1,7 +1,7 @@
 [package]
 name = "ethers-core"
 license = "MIT OR Apache-2.0"
-version = "0.1.3"
+version = "0.2.0"
 authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
 edition = "2018"
 description = "Core structures for the ethers-rs crate"
@@ -33,7 +33,7 @@ bytes = { version = "1.0.1", features = ["serde"] }
 hex = { version = "0.4.2", default-features = false, features = ["std"] }
 
 [dev-dependencies]
-ethers = { version = "0.1.3", path = "../ethers" }
+ethers = { version = "0.2", path = "../ethers" }
 
 serde_json = { version = "1.0.53", default-features = false }
 bincode = { version = "1.2.1", default-features = false }

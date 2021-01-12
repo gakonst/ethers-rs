@@ -1,7 +1,7 @@
 [package]
 name = "ethers-contract"
 license = "MIT OR Apache-2.0"
-version = "0.1.3"
+version = "0.2.0"
 authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
 edition = "2018"
 description = "Smart contract bindings for the ethers-rs crate"
@@ -10,11 +10,11 @@ repository = "https://github.com/gakonst/ethers-rs"
 keywords = ["ethereum", "web3", "celo", "ethers"]
 
 [dependencies]
-ethers-providers = { version = "0.1.3", path = "../ethers-providers", default-features = false }
-ethers-core = { version = "0.1.3", path = "../ethers-core", default-features = false }
+ethers-providers = { version = "0.2", path = "../ethers-providers", default-features = false }
+ethers-core = { version = "0.2", path = "../ethers-core", default-features = false }
 
-ethers-contract-abigen = { version = "0.1.3", path = "ethers-contract-abigen", optional = true }
-ethers-contract-derive = { version = "0.1.3", path = "ethers-contract-derive", optional = true }
+ethers-contract-abigen = { version = "0.2", path = "ethers-contract-abigen", optional = true }
+ethers-contract-derive = { version = "0.2", path = "ethers-contract-derive", optional = true }
 
 serde = { version = "1.0.119", default-features = false }
 serde_json = { version = "1.0.61", default-features = false }
@@ -25,12 +25,12 @@ futures-util = { version = "0.3.8", default-features = false }
 hex = { version = "0.4.2", default-features = false, features = ["std"] }
 
 [dev-dependencies]
-ethers = { version = "0.1.3", path = "../ethers" }
-ethers-providers = { version = "0.1.3", path = "../ethers-providers", default-features = false, features = ["ws"] }
+ethers = { version = "0.2", path = "../ethers" }
+ethers-providers = { version = "0.2", path = "../ethers-providers", default-features = false, features = ["ws"] }
 tokio = { version = "1.0", default-features = false, features = ["macros"] }
 
-ethers-signers = { version = "0.1.3", path = "../ethers-signers" }
-ethers-middleware = { version = "0.1.3", path = "../ethers-middleware" }
+ethers-signers = { version = "0.2", path = "../ethers-signers" }
+ethers-middleware = { version = "0.2", path = "../ethers-middleware" }
 
 [features]
 abigen = ["ethers-contract-abigen", "ethers-contract-derive"]

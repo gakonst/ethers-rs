@@ -1,7 +1,7 @@
 [package]
 name = "ethers-providers"
 license = "MIT OR Apache-2.0"
-version = "0.1.3"
+version = "0.2.0"
 authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
 edition = "2018"
 description = "Provider implementations for the ethers-rs crate"
@@ -14,7 +14,7 @@ all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
-ethers-core = { version = "0.1.3", path = "../ethers-core", default-features = false }
+ethers-core = { version = "0.2", path = "../ethers-core", default-features = false }
 
 async-trait = { version = "0.1.42", default-features = false }
 reqwest = { version = "0.11.0", default-features = false, features = ["json", "rustls-tls"] }
@@ -40,7 +40,7 @@ tokio = { version = "1.0", default-features = false, optional = true }
 tokio-tungstenite = { version = "0.13.0", default-features = false, features = ["connect", "tls"], optional = true }
 
 [dev-dependencies]
-ethers = { version = "0.1.3", path = "../ethers" }
+ethers = { version = "0.2", path = "../ethers" }
 tokio = { version = "1.0", default-features = false, features = ["rt", "macros"] }
 hex = { version = "0.4.2", default-features = false, features = ["std"] }
 
