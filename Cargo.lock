@@ -542,7 +542,7 @@ dependencies = [
 [[package]]
 name = "eth-keystore"
 version = "0.1.0"
-source = "git+https://github.com/roynalnaruto/eth-keystore-rs#32777a4bfbd6edc804c88b702b8ffa83546a46c9"
+source = "git+https://github.com/roynalnaruto/eth-keystore-rs#d70405ce3b12fb977d3c9e60d63ed74a4d8b1641"
 dependencies = [
  "hex",
  "rand 0.7.3",
