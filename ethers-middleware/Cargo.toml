@@ -21,7 +21,7 @@ ethers-signers = { version = "0.2", path = "../ethers-signers", default-features
 async-trait = { version = "0.1.42", default-features = false }
 serde = { version = "1.0.119", default-features = false, features = ["derive"] }
 thiserror = { version = "1.0.22", default-features = false }
-futures-util = { version = "0.3.8", default-features = false }
+futures-util = { version = "0.3.11", default-features = false }
 tracing = { version = "0.1.22", default-features = false }
 tracing-futures = { version = "0.2.4", default-features = false }
 
