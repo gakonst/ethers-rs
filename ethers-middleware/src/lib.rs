@@ -68,6 +68,8 @@ pub mod gas_oracle;
 pub mod nonce_manager;
 pub use nonce_manager::NonceManagerMiddleware;
 
+pub mod proxy_wallet;
+
 /// The [Signer](crate::SignerMiddleware) is used to locally sign transactions and messages
 /// instead of using eth_sendTransaction and eth_sign
 pub mod signer;

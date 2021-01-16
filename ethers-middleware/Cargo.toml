@@ -14,6 +14,7 @@ all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
+ethers-contract = { version = "0.2", path = "../ethers-contract" }
 ethers-core = { version = "0.2", path = "../ethers-core", default-features = false }
 ethers-providers = { version = "0.2", path = "../ethers-providers", default-features = false }
 ethers-signers = { version = "0.2", path = "../ethers-signers", default-features = false }
@@ -36,6 +37,7 @@ tokio = { version = "1.0" }
 ethers = { version = "0.2", path = "../ethers" }
 futures-executor = { version = "0.3.5", features = ["thread-pool"] }
 hex = { version = "0.4.2", default-features = false, features = ["std"] }
+serde_json = { version = "1.0.61", default-features = false }
 tokio = { version = "1.0", default-features = false, features = ["rt", "macros", "time"] }
 
 [features]
