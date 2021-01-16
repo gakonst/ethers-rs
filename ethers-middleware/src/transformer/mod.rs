@@ -1,13 +1,18 @@
 mod ds_proxy;
+pub use ds_proxy::DsProxy;
+
 mod gnosis_safe;
+pub use gnosis_safe::GnosisSafe;
+
 mod middleware;
+pub use middleware::TransformerMiddleware;
 
 use ethers_contract::AbiError;
 use ethers_core::{abi::ParseError, types::*};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
-pub enum ProxyWalletError {
+pub enum TransformerError {
     #[error("dummy error")]
     Dummy,
 
@@ -18,6 +23,6 @@ pub enum ProxyWalletError {
     AbiError(#[from] AbiError),
 }
 
-pub trait ProxyWallet: Send + Sync + std::fmt::Debug {
-    fn get_proxy_tx(&self, tx: TransactionRequest) -> Result<TransactionRequest, ProxyWalletError>;
+pub trait Transformer: Send + Sync + std::fmt::Debug {
+    fn transform(&self, tx: TransactionRequest) -> Result<TransactionRequest, TransformerError>;
 }

@@ -68,7 +68,11 @@ pub mod gas_oracle;
 pub mod nonce_manager;
 pub use nonce_manager::NonceManagerMiddleware;
 
-pub mod proxy_wallet;
+/// The [Transformer](crate::TransformerMiddleware) is used to intercept transactions and transform
+/// them to be sent via various supported transformers, namely, [DsProxy](crate::transformer::DsProxy)
+/// and [GnosisSafe](crate::transformer::GnosisSafe)
+pub mod transformer;
+pub use transformer::TransformerMiddleware;
 
 /// The [Signer](crate::SignerMiddleware) is used to locally sign transactions and messages
 /// instead of using eth_sendTransaction and eth_sign

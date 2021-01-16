@@ -1,49 +1,49 @@
-use super::{ProxyWallet, ProxyWalletError};
+use super::{Transformer, TransformerError};
 use async_trait::async_trait;
 use ethers_core::types::*;
 use ethers_providers::{FromErr, Middleware, PendingTransaction};
 use thiserror::Error;
 
 #[derive(Debug)]
-pub struct ProxyWalletMiddleware<M, P> {
+pub struct TransformerMiddleware<M, T> {
     inner: M,
-    proxy: P,
+    transformer: T,
 }
 
-impl<M, P> ProxyWalletMiddleware<M, P>
+impl<M, T> TransformerMiddleware<M, T>
 where
     M: Middleware,
-    P: ProxyWallet,
+    T: Transformer,
 {
-    /// Creates a new ProxyWalletMiddleware that intercepts transactions, modifying them to be sent
-    /// through the ProxyWallet.
-    pub fn new(inner: M, proxy: P) -> Self {
-        Self { inner, proxy }
+    /// Creates a new TransformerMiddleware that intercepts transactions, modifying them to be sent
+    /// through the Transformer.
+    pub fn new(inner: M, transformer: T) -> Self {
+        Self { inner, transformer }
     }
 }
 
 #[derive(Error, Debug)]
-pub enum ProxyWalletMiddlewareError<M: Middleware> {
+pub enum TransformerMiddlewareError<M: Middleware> {
     #[error(transparent)]
-    ProxyWalletError(#[from] ProxyWalletError),
+    TransformerError(#[from] TransformerError),
 
     #[error("{0}")]
     MiddlewareError(M::Error),
 }
 
-impl<M: Middleware> FromErr<M::Error> for ProxyWalletMiddlewareError<M> {
-    fn from(src: M::Error) -> ProxyWalletMiddlewareError<M> {
-        ProxyWalletMiddlewareError::MiddlewareError(src)
+impl<M: Middleware> FromErr<M::Error> for TransformerMiddlewareError<M> {
+    fn from(src: M::Error) -> TransformerMiddlewareError<M> {
+        TransformerMiddlewareError::MiddlewareError(src)
     }
 }
 
 #[async_trait]
-impl<M, P> Middleware for ProxyWalletMiddleware<M, P>
+impl<M, T> Middleware for TransformerMiddleware<M, T>
 where
     M: Middleware,
-    P: ProxyWallet,
+    T: Transformer,
 {
-    type Error = ProxyWalletMiddlewareError<M>;
+    type Error = TransformerMiddlewareError<M>;
     type Provider = M::Provider;
     type Inner = M;
 
@@ -63,18 +63,18 @@ where
                     .inner
                     .resolve_name(&ens_name)
                     .await
-                    .map_err(ProxyWalletMiddlewareError::MiddlewareError)?;
+                    .map_err(TransformerMiddlewareError::MiddlewareError)?;
                 tx.to = Some(addr.into())
             }
         }
 
         // construct the appropriate proxy tx.
-        let proxy_tx = self.proxy.get_proxy_tx(tx)?;
+        let proxy_tx = self.transformer.transform(tx)?;
 
         // send the proxy tx.
         self.inner
             .send_transaction(proxy_tx, block)
             .await
-            .map_err(ProxyWalletMiddlewareError::MiddlewareError)
+            .map_err(TransformerMiddlewareError::MiddlewareError)
     }
 }
