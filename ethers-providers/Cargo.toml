@@ -25,7 +25,7 @@ url = { version = "2.2.0", default-features = false }
 auto_impl = { version = "0.4.1", default-features = false }
 
 # required for implementing stream on the filters
-futures-core = { version = "0.3.8", default-features = false }
+futures-core = { version = "0.3.12", default-features = false }
 futures-util = { version = "0.3.11", default-features = false }
 futures-timer = { version = "3.0.2", default-features = false }
 futures-channel = { version = "0.3.8", default-features = false }
