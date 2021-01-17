@@ -70,14 +70,14 @@ impl DsProxy {
             .send()
             .await?
             .await
-            .map_err(ContractError::MiddlewareError)?;
+            .map_err(ContractError::ProviderError)?;
 
         // decode the event log to get the address of the deployed contract.
         if tx_receipt.status == Some(U64::from(1u64)) {
             let log: CreatedFilter = ds_proxy_factory.decode_event(
                 "Created",
-                tx_receipt.logs[0].topics,
-                tx_receipt.logs[0].data,
+                tx_receipt.logs[0].topics.clone(),
+                tx_receipt.logs[0].data.clone(),
             )?;
 
             let contract = parse_abi(&[DS_PROXY_EXECUTE_TARGET, DS_PROXY_EXECUTE_CODE])
