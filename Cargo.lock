@@ -851,9 +851,9 @@ dependencies = [
 
 [[package]]
 name = "futures-channel"
-version = "0.3.11"
+version = "0.3.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "31ebc390c6913de330e418add60e1a7e5af4cb5ec600d19111b339cafcdcc027"
+checksum = "f2d31b7ec7efab6eefc7c57233bb10b847986139d88cc2f5a02a1ae6871a1846"
 dependencies = [
  "futures-core",
  "futures-sink",
@@ -897,9 +897,9 @@ dependencies = [
 
 [[package]]
 name = "futures-sink"
-version = "0.3.11"
+version = "0.3.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d4e0f6be0ec0357772fd58fb751958dd600bd0b3edfd429e77793e4282831360"
+checksum = "caf5c69029bda2e743fddd0582d1083951d65cc9539aebf8812f36c3491342d6"
 
 [[package]]
 name = "futures-task"
