@@ -21,7 +21,7 @@ serde_json = { version = "1.0.61", default-features = false }
 thiserror = { version = "1.0.23", default-features = false }
 once_cell = { version = "1.5.2", default-features = false }
 pin-project = {version = "1.0.3", default-features = false }
-futures-util = { version = "0.3.11", default-features = false }
+futures-util = { version = "0.3.12", default-features = false }
 hex = { version = "0.4.2", default-features = false, features = ["std"] }
 
 [dev-dependencies]
