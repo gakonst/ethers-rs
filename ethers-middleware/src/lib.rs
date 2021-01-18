@@ -72,7 +72,7 @@ pub use nonce_manager::NonceManagerMiddleware;
 /// them to be sent via various supported transformers, namely, [DsProxy](crate::transformer::DsProxy)
 /// and [GnosisSafe](crate::transformer::GnosisSafe)
 pub mod transformer;
-pub use transformer::TransformerMiddleware;
+pub use transformer::{Transformer, TransformerMiddleware};
 
 /// The [Signer](crate::SignerMiddleware) is used to locally sign transactions and messages
 /// instead of using eth_sendTransaction and eth_sign
