@@ -1,9 +1,6 @@
 mod ds_proxy;
 pub use ds_proxy::DsProxy;
 
-mod gnosis_safe;
-pub use gnosis_safe::GnosisSafe;
-
 mod middleware;
 pub use middleware::TransformerMiddleware;
 
@@ -13,8 +10,8 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum TransformerError {
-    #[error("dummy error")]
-    Dummy,
+    #[error("The field `{0}` is missing")]
+    MissingField(String),
 
     #[error(transparent)]
     AbiParseError(#[from] ParseError),
