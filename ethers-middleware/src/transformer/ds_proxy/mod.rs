@@ -152,7 +152,7 @@ impl Transformer for DsProxy {
         }?;
 
         // fetch the data field.
-        let data = tx.data.unwrap_or(vec![].into());
+        let data = tx.data.unwrap_or_else(|| vec![].into());
 
         // encode data as the ABI encoded data for DSProxy's execute method.
         let selector = id("execute(address,bytes)");
