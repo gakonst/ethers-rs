@@ -868,9 +868,9 @@ checksum = "79e5145dde8da7d1b3892dad07a9c98fc04bc39892b1ecc9692cf53e2b780a65"
 
 [[package]]
 name = "futures-executor"
-version = "0.3.11"
+version = "0.3.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d0cb59f15119671c94cd9cc543dc9a50b8d5edc468b4ff5f0bb8567f66c6b48a"
+checksum = "e9e59fdc009a4b3096bf94f740a0f2424c082521f20a9b08c5c07c48d90fd9b9"
 dependencies = [
  "futures-core",
  "futures-task",
