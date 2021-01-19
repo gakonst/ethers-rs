@@ -678,6 +678,7 @@ dependencies = [
  "glob",
  "hex",
  "k256",
+ "once_cell",
  "rand 0.7.3",
  "rlp",
  "serde",

@@ -3,7 +3,7 @@
 #![allow(clippy::all)]
 use crate::{
     abi::Token,
-    types::{Address, Bytes, H256, U128, U256},
+    types::{Address, Bytes, H256, I256, U128, U256},
 };
 
 use arrayvec::ArrayVec;
@@ -302,7 +302,7 @@ macro_rules! tokenizable_item {
 }
 
 tokenizable_item! {
-    Token, String, Address, H256, U256, U128, bool, Vec<u8>,
+    Token, String, Address, H256, U256, I256, U128, bool, Vec<u8>,
     i8, i16, i32, i64, i128, u16, u32, u64, u128,
 }
 
