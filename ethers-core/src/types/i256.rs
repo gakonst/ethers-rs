@@ -1,8 +1,8 @@
 //! This module contains an 256-bit signed integer implementation.
 //! This module was derived for ethers-core via https://github.com/gnosis/ethcontract-rs/
 
-use crate::abi::{Token, Tokenizable, InvalidOutputType};
-use crate::types::{U256};
+use crate::abi::{InvalidOutputType, Token, Tokenizable};
+use crate::types::U256;
 use ethereum_types::FromDecStrErr;
 use serde::{Deserialize, Serialize};
 use std::cmp;
@@ -1255,10 +1255,11 @@ impl Tokenizable for I256 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::abi::Tokenizable;
+    use once_cell::sync::Lazy;
     use serde_json::json;
-    use crate::abi::{Tokenizable};
 
-    const MIN_ABS: U256 = U256::from(1) << 255;
+    static MIN_ABS: Lazy<U256> = Lazy::new(|| U256::from(1) << 255);
 
     #[test]
     fn identities() {
@@ -1355,10 +1356,10 @@ mod tests {
         let err = I256::from_dec_str(&format!("-{}", U256::MAX)).unwrap_err();
         assert!(matches!(err, ParseI256Error::IntegerOverflow));
 
-        let value = I256::from_dec_str(&format!("-{}", &MIN_ABS)).unwrap();
-        assert_eq!(value.into_sign_and_abs(), (Sign::Negative, &MIN_ABS));
+        let value = I256::from_dec_str(&format!("-{}", *MIN_ABS)).unwrap();
+        assert_eq!(value.into_sign_and_abs(), (Sign::Negative, *MIN_ABS));
 
-        let err = I256::from_dec_str(&format!("{}", &MIN_ABS)).unwrap_err();
+        let err = I256::from_dec_str(&format!("{}", *MIN_ABS)).unwrap_err();
         assert!(matches!(err, ParseI256Error::IntegerOverflow));
     }
 
@@ -1384,10 +1385,10 @@ mod tests {
         let err = I256::from_hex_str(&format!("-{:x}", U256::MAX)).unwrap_err();
         assert!(matches!(err, ParseI256Error::IntegerOverflow));
 
-        let value = I256::from_hex_str(&format!("-{:x}", &MIN_ABS)).unwrap();
-        assert_eq!(value.into_sign_and_abs(), (Sign::Negative, &MIN_ABS));
+        let value = I256::from_hex_str(&format!("-{:x}", *MIN_ABS)).unwrap();
+        assert_eq!(value.into_sign_and_abs(), (Sign::Negative, *MIN_ABS));
 
-        let err = I256::from_hex_str(&format!("{:x}", &MIN_ABS)).unwrap_err();
+        let err = I256::from_hex_str(&format!("{:x}", *MIN_ABS)).unwrap_err();
         assert!(matches!(err, ParseI256Error::IntegerOverflow));
     }
 

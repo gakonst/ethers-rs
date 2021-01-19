@@ -3,7 +3,7 @@
 #![allow(clippy::all)]
 use crate::{
     abi::Token,
-    types::{Address, Bytes, H256, U128, U256, I256},
+    types::{Address, Bytes, H256, I256, U128, U256},
 };
 
 use arrayvec::ArrayVec;
