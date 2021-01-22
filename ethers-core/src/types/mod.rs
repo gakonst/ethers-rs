@@ -10,6 +10,9 @@ pub use ethereum_types::{Address, Bloom, H160, H256, U128, U256, U64};
 mod transaction;
 pub use transaction::{Transaction, TransactionReceipt, TransactionRequest};
 
+mod address_or_bytes;
+pub use address_or_bytes::AddressOrBytes;
+
 mod i256;
 pub use i256::I256;
 

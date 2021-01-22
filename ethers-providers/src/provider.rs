@@ -17,6 +17,7 @@ use ethers_core::{
 
 use crate::Middleware;
 use async_trait::async_trait;
+use hex::FromHex;
 use serde::{de::DeserializeOwned, Serialize};
 use thiserror::Error;
 use url::{ParseError, Url};
@@ -75,6 +76,9 @@ pub enum ProviderError {
 
     #[error(transparent)]
     SerdeJson(#[from] serde_json::Error),
+
+    #[error(transparent)]
+    HexError(#[from] hex::FromHexError),
 }
 
 /// Types of filters supported by the JSON-RPC.
@@ -414,8 +418,14 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         let from = utils::serialize(&from);
         let location = utils::serialize(&location);
         let block = utils::serialize(&block.unwrap_or(BlockNumber::Latest));
-        self.request("eth_getStorageAt", [from, location, block])
-            .await
+
+        // get the hex encoded value.
+        let value: String = self
+            .request("eth_getStorageAt", [from, location, block])
+            .await?;
+        // get rid of the 0x prefix and left pad it with zeroes.
+        let value = format!("{:0>64}", value.replace("0x", ""));
+        Ok(H256::from_slice(&Vec::from_hex(value)?))
     }
 
     /// Returns the deployed code at a given address

@@ -9,7 +9,7 @@ mod tokens;
 pub use tokens::{Detokenize, InvalidOutputType, Tokenizable, TokenizableItem, Tokenize};
 
 mod human_readable;
-pub use human_readable::parse as parse_abi;
+pub use human_readable::{parse as parse_abi, ParseError};
 
 /// Extension trait for `ethabi::Function`.
 pub trait FunctionExt {

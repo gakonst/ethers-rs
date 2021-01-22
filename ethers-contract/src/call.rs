@@ -3,7 +3,7 @@ use ethers_core::{
     abi::{Detokenize, Function, InvalidOutputType},
     types::{Address, BlockNumber, Bytes, TransactionRequest, U256},
 };
-use ethers_providers::{Middleware, PendingTransaction};
+use ethers_providers::{Middleware, PendingTransaction, ProviderError};
 
 use std::{fmt::Debug, marker::PhantomData, sync::Arc};
 
@@ -24,9 +24,13 @@ pub enum ContractError<M: Middleware> {
     #[error(transparent)]
     DetokenizationError(#[from] InvalidOutputType),
 
-    /// Thrown when a provider call fails
+    /// Thrown when a middleware call fails
     #[error("{0}")]
     MiddlewareError(M::Error),
+
+    /// Thrown when a provider call fails
+    #[error("{0}")]
+    ProviderError(ProviderError),
 
     /// Thrown during deployment if a constructor argument was passed in the `deploy`
     /// call but a constructor was not present in the ABI

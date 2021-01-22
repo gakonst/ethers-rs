@@ -17,7 +17,7 @@ mod contract;
 pub use contract::Contract;
 
 mod base;
-pub use base::{decode_function_data, encode_function_data, BaseContract};
+pub use base::{decode_function_data, encode_function_data, AbiError, BaseContract};
 
 mod call;
 pub use call::ContractError;

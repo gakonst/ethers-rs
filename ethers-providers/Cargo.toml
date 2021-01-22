@@ -17,6 +17,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 ethers-core = { version = "0.2", path = "../ethers-core", default-features = false }
 
 async-trait = { version = "0.1.42", default-features = false }
+hex = { version = "0.4.2", default-features = false, features = ["std"] }
 reqwest = { version = "0.11.0", default-features = false, features = ["json", "rustls-tls"] }
 serde = { version = "1.0.119", default-features = false, features = ["derive"] }
 serde_json = { version = "1.0.60", default-features = false }
@@ -42,7 +43,6 @@ tokio-tungstenite = { version = "0.13.0", default-features = false, features = [
 [dev-dependencies]
 ethers = { version = "0.2", path = "../ethers" }
 tokio = { version = "1.0", default-features = false, features = ["rt", "macros"] }
-hex = { version = "0.4.2", default-features = false, features = ["std"] }
 
 [features]
 default = ["ws"]

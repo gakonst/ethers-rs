@@ -284,3 +284,10 @@ impl<M: Middleware> Contract<M> {
         &self.client
     }
 }
+
+impl<M: Middleware> std::ops::Deref for Contract<M> {
+    type Target = BaseContract;
+    fn deref(&self) -> &Self::Target {
+        &self.base_contract
+    }
+}
