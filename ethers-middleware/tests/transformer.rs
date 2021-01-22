@@ -7,7 +7,7 @@ use ethers_middleware::{
     transformer::{DsProxy, TransformerMiddleware},
     SignerMiddleware,
 };
-use ethers_providers::{Http, Middleware, PendingTransaction, Provider};
+use ethers_providers::{Http, Middleware, Provider};
 use ethers_signers::LocalWallet;
 use rand::Rng;
 use std::{convert::TryFrom, sync::Arc, time::Duration};
@@ -153,19 +153,16 @@ async fn ds_proxy_code() {
         .expect("could not get ABI encoded data");
 
     // execute code via the deployed DsProxy contract.
-    let tx_hash = ds_proxy
-        .execute::<HttpWallet, Arc<HttpWallet>>(
+    ds_proxy
+        .execute::<HttpWallet, Arc<HttpWallet>, Bytes>(
             Arc::clone(&provider),
-            AddressOrBytes::Bytes(ss.bytecode.clone()),
+            ss.bytecode.clone(),
             calldata,
         )
+        .expect("could not construct DSProxy contract call")
+        .send()
         .await
-        .expect("could not execute code via DSProxy");
-
-    // wait for the tx to be confirmed.
-    PendingTransaction::new(tx_hash, provider.provider())
-        .await
-        .expect("could not confirm pending tx");
+        .unwrap();
 
     // verify that DsProxy's state was updated.
     let last_sender = provider

@@ -40,15 +40,15 @@ const DS_PROXY_EXECUTE_CODE: &str =
 /// let ds_proxy = DsProxy::new(ds_proxy_addr);
 ///
 /// // execute a transaction via the DsProxy instance.
-/// # let target_addr = Address::random();
-/// let target = AddressOrBytes::Address(target_addr);
+/// let target = Address::random();
 /// let calldata: Bytes = vec![0u8; 32].into();
-/// let tx_hash = ds_proxy.execute::<HttpWallet, Arc<HttpWallet>>(
+/// let contract_call = ds_proxy.execute::<HttpWallet, Arc<HttpWallet>, Address>(
 ///     Arc::new(client),
 ///     target,
 ///     calldata,
-/// )
-/// .await?;
+/// )?;
+/// let pending_tx = contract_call.send().await?;
+/// let _tx_receipt = pending_tx.await?;
 ///
 /// # Ok(())
 /// # }
@@ -146,36 +146,31 @@ impl DsProxy {
     /// appropriate `execute` method is called, that is, either
     /// [execute(address,bytes)](https://github.com/dapphub/ds-proxy/blob/master/src/proxy.sol#L53-L58)
     /// or [execute(bytes,bytes)](https://github.com/dapphub/ds-proxy/blob/master/src/proxy.sol#L39-L42).
-    pub async fn execute<M: Middleware, C: Into<Arc<M>>>(
+    pub fn execute<M: Middleware, C: Into<Arc<M>>, T: Into<AddressOrBytes>>(
         &self,
         client: C,
-        target: AddressOrBytes,
+        target: T,
         data: Bytes,
-    ) -> Result<TxHash, ContractError<M>> {
+    ) -> Result<ContractCall<M, Bytes>, ContractError<M>> {
         // construct the full contract using DsProxy's address and the injected client.
         let ds_proxy = self
             .contract
             .clone()
             .into_contract(self.address, client.into());
 
-        match target {
+        match target.into() {
             // handle the case when the target is an address to a deployed contract.
             AddressOrBytes::Address(addr) => {
                 let selector = id("execute(address,bytes)");
                 let args = (addr, data);
-                let call: ContractCall<M, Bytes> = ds_proxy.method_hash(selector, args)?;
-                let pending_tx = call.send().await?;
-                Ok(*pending_tx)
+                Ok(ds_proxy.method_hash(selector, args)?)
             }
             // handle the case when the target is actually bytecode of a contract to be deployed
             // and executed on.
             AddressOrBytes::Bytes(code) => {
                 let selector = id("execute(bytes,bytes)");
                 let args = (code, data);
-                let call: ContractCall<M, (Address, Bytes)> =
-                    ds_proxy.method_hash(selector, args)?;
-                let pending_tx = call.send().await?;
-                Ok(*pending_tx)
+                Ok(ds_proxy.method_hash(selector, args)?)
             }
         }
     }
