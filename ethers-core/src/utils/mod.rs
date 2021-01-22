@@ -20,6 +20,9 @@ pub use solc::{CompiledContract, Solc};
 mod hash;
 pub use hash::{hash_message, id, keccak256, serialize};
 
+mod units;
+pub use units::Units;
+
 /// Re-export RLP
 pub use rlp;
 
@@ -38,9 +41,11 @@ pub fn format_ether<T: Into<U256>>(amount: T) -> U256 {
     amount.into() / WEI_IN_ETHER
 }
 
-/// Divides with the number of decimals
-pub fn format_units<T: Into<U256>>(amount: T, decimals: usize) -> U256 {
-    amount.into() / decimals
+/// Divides the provided amount with 10^{units} provided.
+pub fn format_units<T: Into<U256>, K: Into<Units>>(amount: T, units: K) -> U256 {
+    let units = units.into();
+    let amount = amount.into();
+    amount / 10u64.pow(units.as_num())
 }
 
 /// Converts the input to a U256 and converts from Ether to Wei.
@@ -59,12 +64,13 @@ where
     Ok(eth.try_into()? * WEI_IN_ETHER)
 }
 
-/// Multiplies with the number of decimals
-pub fn parse_units<S>(eth: S, decimals: usize) -> Result<U256, S::Error>
+/// Multiplies the provided amount with 10^{units} provided.
+pub fn parse_units<S, K>(amount: S, units: K) -> Result<U256, S::Error>
 where
     S: TryInto<U256>,
+    K: Into<Units>,
 {
-    Ok(eth.try_into()? * decimals)
+    Ok(amount.try_into()? * 10u64.pow(units.into().as_num()))
 }
 
 /// The address for an Ethereum contract is deterministically computed from the
@@ -164,6 +170,24 @@ mod tests {
     #[test]
     fn wei_in_ether() {
         assert_eq!(WEI_IN_ETHER.as_u64(), 1e18 as u64);
+    }
+
+    #[test]
+    fn test_format_units() {
+        let gwei_in_ether = format_units(WEI_IN_ETHER, 9);
+        assert_eq!(gwei_in_ether.as_u64(), 1e9 as u64);
+
+        let eth = format_units(WEI_IN_ETHER, "ether");
+        assert_eq!(eth.as_u64(), 1);
+    }
+
+    #[test]
+    fn test_parse_units() {
+        let gwei = parse_units(1, 9).unwrap();
+        assert_eq!(gwei.as_u64(), 1e9 as u64);
+
+        let eth = parse_units(1, "ether").unwrap();
+        assert_eq!(eth, WEI_IN_ETHER);
     }
 
     #[test]

@@ -251,12 +251,20 @@ where
     }
 
     async fn handle_ws(&mut self, resp: Message) -> Result<(), ClientError> {
-        // Get the inner text received from the websocket
-        let inner = match resp {
-            Message::Text(inner) => inner,
-            _ => return Err(ClientError::NoResponse),
-        };
+        match resp {
+            Message::Text(inner) => self.handle_text(inner).await,
+            Message::Ping(inner) => self.handle_ping(inner).await,
+            Message::Pong(_) => Ok(()), // Server is allowed to send unsolicited pongs.
+            _ => Err(ClientError::NoResponse),
+        }
+    }
 
+    async fn handle_ping(&mut self, inner: Vec<u8>) -> Result<(), ClientError> {
+        self.ws.send(Message::Pong(inner)).await?;
+        Ok(())
+    }
+
+    async fn handle_text(&mut self, inner: String) -> Result<(), ClientError> {
         if let Ok(resp) = serde_json::from_str::<Response<serde_json::Value>>(&inner) {
             if let Some(request) = self.pending.remove(&resp.id) {
                 request
