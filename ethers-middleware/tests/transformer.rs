@@ -9,6 +9,7 @@ use ethers_middleware::{
 };
 use ethers_providers::{Http, Middleware, PendingTransaction, Provider};
 use ethers_signers::LocalWallet;
+use rand::Rng;
 use std::{convert::TryFrom, sync::Arc, time::Duration};
 
 type HttpWallet = SignerMiddleware<Provider<Http>, LocalWallet>;
@@ -16,6 +17,9 @@ type HttpWallet = SignerMiddleware<Provider<Http>, LocalWallet>;
 #[tokio::test]
 #[cfg(not(feature = "celo"))]
 async fn ds_proxy_transformer() {
+    // randomness
+    let mut rng = rand::thread_rng();
+
     // spawn ganache and instantiate a signer middleware.
     let ganache = Ganache::new().spawn();
     let wallet: LocalWallet = ganache.keys()[0].clone().into();
@@ -62,19 +66,15 @@ async fn ds_proxy_transformer() {
         contract.bytecode.clone(),
         Arc::clone(&provider),
     );
-    let simple_storage = factory
-        .deploy(U256::from(123))
-        .unwrap()
-        .send()
-        .await
-        .unwrap();
+    let simple_storage = factory.deploy(()).unwrap().send().await.unwrap();
 
     // instantiate a new transformer middleware.
     let provider = TransformerMiddleware::new(signer_middleware, ds_proxy.clone());
 
     // broadcast the setValue tx via transformer middleware (first wallet).
+    let expected_value: u64 = rng.gen();
     let calldata = simple_storage
-        .encode("setValue", U256::from(234))
+        .encode("setValue", U256::from(expected_value))
         .expect("could not get ABI encoded data");
     let tx = TransactionRequest::new()
         .to(simple_storage.address())
@@ -96,19 +96,24 @@ async fn ds_proxy_transformer() {
         .await
         .unwrap();
     assert_eq!(last_sender, wallet_addr.into());
-    assert_eq!(last_value, H256::from_low_u64_be(234));
+    assert_eq!(last_value, H256::from_low_u64_be(expected_value));
 }
 
 #[tokio::test]
 #[cfg(not(feature = "celo"))]
-async fn ds_proxy() {
+async fn ds_proxy_code() {
+    // randomness
+    let mut rng = rand::thread_rng();
+
     // spawn ganache and instantiate a signer middleware.
     let ganache = Ganache::new().spawn();
-    let wallet: LocalWallet = ganache.keys()[0].clone().into();
+    let wallet: LocalWallet = ganache.keys()[1].clone().into();
     let provider = Provider::<Http>::try_from(ganache.endpoint())
         .unwrap()
         .interval(Duration::from_millis(10u64));
-    let provider = Arc::new(SignerMiddleware::new(provider, wallet));
+    let signer_middleware = SignerMiddleware::new(provider.clone(), wallet);
+    let wallet_addr = signer_middleware.address();
+    let provider = Arc::new(signer_middleware.clone());
 
     // deploy DsProxyFactory which we'll use to deploy a new DsProxy contract.
     let compiled = Solc::new("./tests/solidity-contracts/DSProxy.sol")
@@ -132,6 +137,7 @@ async fn ds_proxy() {
     )
     .await
     .unwrap();
+    let ds_proxy_addr = ds_proxy.address();
 
     // compile the SimpleStorage contract which we will use to interact via DsProxy.
     let compiled = Solc::new("./tests/solidity-contracts/SimpleStorage.sol")
@@ -141,8 +147,9 @@ async fn ds_proxy() {
         .get("SimpleStorage")
         .expect("could not find SimpleStorage");
     let ss_base_contract: BaseContract = ss.abi.clone().into();
+    let expected_value: u64 = rng.gen();
     let calldata = ss_base_contract
-        .encode("setValue", String::from("randomValue"))
+        .encode("setValue", U256::from(expected_value))
         .expect("could not get ABI encoded data");
 
     // execute code via the deployed DsProxy contract.
@@ -160,6 +167,15 @@ async fn ds_proxy() {
         .await
         .expect("could not confirm pending tx");
 
-    // TODO: validate that DsProxy's storage was updated.
-    assert!(false);
+    // verify that DsProxy's state was updated.
+    let last_sender = provider
+        .get_storage_at(ds_proxy_addr, H256::zero(), None)
+        .await
+        .unwrap();
+    let last_value = provider
+        .get_storage_at(ds_proxy_addr, H256::from_low_u64_be(1u64), None)
+        .await
+        .unwrap();
+    assert_eq!(last_sender, wallet_addr.into());
+    assert_eq!(last_value, H256::from_low_u64_be(expected_value));
 }
