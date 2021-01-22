@@ -4,8 +4,8 @@ use ethers_core::{
     utils::{Ganache, Solc},
 };
 use ethers_middleware::{
-    transformer::DsProxy,
-    {SignerMiddleware, TransformerMiddleware},
+    transformer::{DsProxy, TransformerMiddleware},
+    SignerMiddleware,
 };
 use ethers_providers::{Http, Middleware, PendingTransaction, Provider};
 use ethers_signers::LocalWallet;

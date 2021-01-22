@@ -16,6 +16,43 @@ const DS_PROXY_EXECUTE_CODE: &str =
 
 #[derive(Debug, Clone)]
 /// Represents the DsProxy type that implements the [Transformer](super::Transformer) trait.
+///
+/// # Example
+///
+/// ```no_run
+/// use ethers::{
+///     middleware::transformer::DsProxy,
+///     prelude::*,
+/// };
+/// use std::{convert::TryFrom, sync::Arc};
+///
+/// type HttpWallet = SignerMiddleware<Provider<Http>, LocalWallet>;
+///
+/// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
+/// // instantiate client that can sign transactions.
+/// let wallet: LocalWallet = "380eb0f3d505f087e438eca80bc4df9a7faa24f868e69fc0440261a0fc0567dc"
+///     .parse()?;
+/// let provider = Provider::<Http>::try_from("http://localhost:8545")?;
+/// let client = SignerMiddleware::new(provider, wallet);
+///
+/// # let ds_proxy_addr = Address::random();
+/// // instantiate DsProxy by providing its address.
+/// let ds_proxy = DsProxy::new(ds_proxy_addr);
+///
+/// // execute a transaction via the DsProxy instance.
+/// # let target_addr = Address::random();
+/// let target = AddressOrBytes::Address(target_addr);
+/// let calldata: Bytes = vec![0u8; 32].into();
+/// let tx_hash = ds_proxy.execute::<HttpWallet, Arc<HttpWallet>>(
+///     Arc::new(client),
+///     target,
+///     calldata,
+/// )
+/// .await?;
+///
+/// # Ok(())
+/// # }
+/// ```
 pub struct DsProxy {
     address: Address,
     contract: BaseContract,
@@ -104,7 +141,11 @@ impl DsProxy {
 }
 
 impl DsProxy {
-    /// Execute a tx through the DsProxy instance.
+    /// Execute a tx through the DsProxy instance. The target can either be a deployed smart
+    /// contract's address, or bytecode of a compiled smart contract. Depending on the target, the
+    /// appropriate `execute` method is called, that is, either
+    /// [execute(address,bytes)](https://github.com/dapphub/ds-proxy/blob/master/src/proxy.sol#L53-L58)
+    /// or [execute(bytes,bytes)](https://github.com/dapphub/ds-proxy/blob/master/src/proxy.sol#L39-L42).
     pub async fn execute<M: Middleware, C: Into<Arc<M>>>(
         &self,
         client: C,

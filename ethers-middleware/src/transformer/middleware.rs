@@ -5,6 +5,8 @@ use ethers_providers::{FromErr, Middleware, PendingTransaction};
 use thiserror::Error;
 
 #[derive(Debug)]
+/// Middleware used for intercepting transaction requests and transforming them to be executed by
+/// the underneath `Transformer` instance.
 pub struct TransformerMiddleware<M, T> {
     inner: M,
     transformer: T,

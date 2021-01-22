@@ -1,8 +1,11 @@
 use crate::types::{Address, Bytes};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+/// A type that can either be an `Address` or `Bytes`.
 pub enum AddressOrBytes {
+    /// An address type
     Address(Address),
+    /// A bytes type
     Bytes(Bytes),
 }
 
