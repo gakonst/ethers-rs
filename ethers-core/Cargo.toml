@@ -25,7 +25,7 @@ rand = { version = "0.7.1", default-features = false }
 tiny-keccak = { version = "2.0.2", default-features = false }
 
 # misc
-serde = { version = "1.0.119", default-features = false, features = ["derive"] }
+serde = { version = "1.0.120", default-features = false, features = ["derive"] }
 serde_json = { version = "1.0.61", default-features = false }
 thiserror = { version = "1.0.23", default-features = false }
 glob = { version = "0.3.0", default-features = false }
