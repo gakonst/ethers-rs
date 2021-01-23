@@ -373,9 +373,9 @@ pub struct TransactionReceipt {
     pub contract_address: Option<Address>,
     /// Logs generated within this transaction.
     pub logs: Vec<Log>,
-    /// Status: either 1 (success) or 0 (failure).
+    /// Status: either 1 (success) or 0 (failure). Only present after activation of [EIP-658](https://eips.ethereum.org/EIPS/eip-658)
     pub status: Option<U64>,
-    /// State root.
+    /// State root. Only present before activation of [EIP-658](https://eips.ethereum.org/EIPS/eip-658)
     pub root: Option<H256>,
     /// Logs bloom
     #[serde(rename = "logsBloom")]
