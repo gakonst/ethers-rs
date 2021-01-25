@@ -27,7 +27,7 @@ hex = { version = "0.4.2", default-features = false, features = ["std"] }
 [dev-dependencies]
 ethers = { version = "0.2", path = "../ethers" }
 ethers-providers = { version = "0.2", path = "../ethers-providers", default-features = false, features = ["ws"] }
-tokio = { version = "1.0", default-features = false, features = ["macros"] }
+tokio = { version = "1.1", default-features = false, features = ["macros"] }
 
 ethers-signers = { version = "0.2", path = "../ethers-signers" }
 ethers-middleware = { version = "0.2", path = "../ethers-middleware" }
