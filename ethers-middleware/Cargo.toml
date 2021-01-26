@@ -20,7 +20,7 @@ ethers-providers = { version = "0.2", path = "../ethers-providers", default-feat
 ethers-signers = { version = "0.2", path = "../ethers-signers", default-features = false }
 
 async-trait = { version = "0.1.42", default-features = false }
-serde = { version = "1.0.120", default-features = false, features = ["derive"] }
+serde = { version = "1.0.123", default-features = false, features = ["derive"] }
 thiserror = { version = "1.0.22", default-features = false }
 futures-util = { version = "0.3.12", default-features = false }
 tracing = { version = "0.1.22", default-features = false }

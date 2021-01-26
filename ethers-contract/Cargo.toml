@@ -16,7 +16,7 @@ ethers-core = { version = "0.2", path = "../ethers-core", default-features = fal
 ethers-contract-abigen = { version = "0.2", path = "ethers-contract-abigen", optional = true }
 ethers-contract-derive = { version = "0.2", path = "ethers-contract-derive", optional = true }
 
-serde = { version = "1.0.120", default-features = false }
+serde = { version = "1.0.123", default-features = false }
 serde_json = { version = "1.0.61", default-features = false }
 thiserror = { version = "1.0.23", default-features = false }
 once_cell = { version = "1.5.2", default-features = false }
