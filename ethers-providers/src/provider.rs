@@ -333,7 +333,20 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
     ) -> Result<Signature, ProviderError> {
         let data = utils::serialize(&data.into());
         let from = utils::serialize(from);
-        self.request("eth_sign", [from, data]).await
+
+        // get the response from `eth_sign` call and trim the 0x-prefix if present.
+        let sig: String = self.request("eth_sign", [from, data]).await?;
+        let sig = sig.strip_prefix("0x").unwrap_or(&sig);
+
+        // deserialize the signature from its {r, s, v} components.
+        let v = sig[128..130].parse::<u64>().unwrap();
+        let sig_json = format!(
+            r#"{{"r": "0x{}", "s": "0x{}", "v": {}}}"#,
+            &sig[..64],
+            &sig[64..128],
+            v
+        );
+        Ok(serde_json::from_str(&sig_json).map_err(ProviderError::SerdeJson)?)
     }
 
     ////// Contract state
@@ -854,6 +867,30 @@ mod tests {
                 .unwrap();
             assert_eq!(*hash, block.hash.unwrap());
         }
+    }
+
+    #[tokio::test]
+    async fn test_is_signer() {
+        use ethers_core::utils::Ganache;
+        use std::str::FromStr;
+
+        let ganache = Ganache::new().spawn();
+        let provider = Provider::<Http>::try_from(ganache.endpoint())
+            .unwrap()
+            .with_sender(ganache.addresses()[0]);
+        assert_eq!(provider.is_signer().await, true);
+
+        let provider = Provider::<Http>::try_from(ganache.endpoint()).unwrap();
+        assert_eq!(provider.is_signer().await, false);
+
+        let sender = Address::from_str("635B4764D1939DfAcD3a8014726159abC277BecC")
+            .expect("should be able to parse hex address");
+        let provider = Provider::<Http>::try_from(
+            "https://ropsten.infura.io/v3/fd8b88b56aa84f6da87b60f5441d6778",
+        )
+        .unwrap()
+        .with_sender(sender);
+        assert_eq!(provider.is_signer().await, false);
     }
 
     // this must be run with geth or parity since ganache-core still does not support
