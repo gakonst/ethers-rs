@@ -306,6 +306,13 @@ pub trait Middleware: Sync + Send + Debug {
             .map_err(FromErr::from)
     }
 
+    /// This returns true if either the middleware stack contains a `SignerMiddleware`, or the
+    /// JSON-RPC provider has an unlocked key that can sign using the `eth_sign` call. If none of
+    /// the above conditions are met, then the middleware stack is not capable of signing data.
+    async fn is_signer(&self) -> bool {
+        self.inner().is_signer().await
+    }
+
     async fn sign<T: Into<Bytes> + Send + Sync>(
         &self,
         data: T,

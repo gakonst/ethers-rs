@@ -316,6 +316,15 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         Ok(PendingTransaction::new(tx_hash, self).interval(self.get_interval()))
     }
 
+    /// The JSON-RPC provider is at the bottom-most position in the middleware stack. Here we check
+    /// if it has the key for the sender address unlocked, as well as supports the `eth_sign` call.
+    async fn is_signer(&self) -> bool {
+        match self.3 {
+            Some(sender) => self.sign(vec![], &sender).await.is_ok(),
+            None => false,
+        }
+    }
+
     /// Signs data using a specific account. This account needs to be unlocked.
     async fn sign<T: Into<Bytes> + Send + Sync>(
         &self,
