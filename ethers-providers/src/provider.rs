@@ -79,6 +79,9 @@ pub enum ProviderError {
 
     #[error(transparent)]
     HexError(#[from] hex::FromHexError),
+
+    #[error("custom error: {0}")]
+    CustomError(String),
 }
 
 /// Types of filters supported by the JSON-RPC.
@@ -338,15 +341,10 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         let sig: String = self.request("eth_sign", [from, data]).await?;
         let sig = sig.strip_prefix("0x").unwrap_or(&sig);
 
-        // deserialize the signature from its {r, s, v} components.
-        let v = sig[128..130].parse::<u64>().unwrap();
-        let sig_json = format!(
-            r#"{{"r": "0x{}", "s": "0x{}", "v": {}}}"#,
-            &sig[..64],
-            &sig[64..128],
-            v
-        );
-        Ok(serde_json::from_str(&sig_json).map_err(ProviderError::SerdeJson)?)
+        // decode the signature.
+        let sig = hex::decode(sig)?;
+        Ok(Signature::try_from(sig.as_slice())
+            .map_err(|e| ProviderError::CustomError(e.to_string()))?)
     }
 
     ////// Contract state
