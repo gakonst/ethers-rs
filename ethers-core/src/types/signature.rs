@@ -173,6 +173,7 @@ impl FromStr for Signature {
     type Err = SignatureError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let s = s.strip_prefix("0x").unwrap_or(s);
         let bytes = hex::decode(s)?;
         Signature::try_from(&bytes[..])
     }
@@ -259,5 +260,18 @@ mod tests {
             signature.recover("Some data").unwrap(),
             Address::from_str("2c7536E3605D9C16a7a3D7b1898e529396a65c23").unwrap()
         );
+    }
+
+    #[test]
+    fn signature_from_str() {
+        let s1 = Signature::from_str(
+            "0xaa231fbe0ed2b5418e6ba7c19bee2522852955ec50996c02a2fe3e71d30ddaf1645baf4823fea7cb4fcc7150842493847cfb6a6d63ab93e8ee928ee3f61f503500"
+        ).expect("could not parse 0x-prefixed signature");
+
+        let s2 = Signature::from_str(
+            "aa231fbe0ed2b5418e6ba7c19bee2522852955ec50996c02a2fe3e71d30ddaf1645baf4823fea7cb4fcc7150842493847cfb6a6d63ab93e8ee928ee3f61f503500"
+        ).expect("could not parse non-prefixed signature");
+
+        assert_eq!(s1, s2);
     }
 }

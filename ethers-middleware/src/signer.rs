@@ -235,6 +235,11 @@ where
         &self.inner
     }
 
+    /// `SignerMiddleware` is instantiated with a signer.
+    async fn is_signer(&self) -> bool {
+        true
+    }
+
     /// Signs and broadcasts the transaction. The optional parameter `block` can be passed so that
     /// gas cost and nonce calculations take it into account. For simple transactions this can be
     /// left to `None`.
