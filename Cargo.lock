@@ -464,7 +464,7 @@ version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "41fbdb4ff710acb4db8ca29f93b897529ea6d6a45626d5183b47e012aa6ae7e4"
 dependencies = [
- "elliptic-curve",
+ "elliptic-curve 0.8.4",
  "hmac",
  "signature",
 ]
@@ -513,6 +513,17 @@ dependencies = [
  "rand_core 0.5.1",
  "subtle",
  "zeroize",
+]
+
+[[package]]
+name = "elliptic-curve"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c237c70e5a4013efd3e8f1e49e79b58d0bfd601c6783d82fb819d04a29b85297"
+dependencies = [
+ "generic-array",
+ "rand_core 0.6.1",
+ "subtle",
 ]
 
 [[package]]
@@ -655,7 +666,7 @@ dependencies = [
  "bincode",
  "bytes",
  "ecdsa",
- "elliptic-curve",
+ "elliptic-curve 0.9.0",
  "ethabi-next",
  "ethereum-types",
  "ethers",
@@ -728,7 +739,7 @@ version = "0.2.0"
 dependencies = [
  "async-trait",
  "coins-ledger",
- "elliptic-curve",
+ "elliptic-curve 0.9.0",
  "eth-keystore",
  "ethers",
  "ethers-core",
@@ -1200,7 +1211,7 @@ checksum = "cf02ecc966e1b7e8db1c81ac8f321ba24d1cfab5b634961fab10111f015858e1"
 dependencies = [
  "cfg-if 1.0.0",
  "ecdsa",
- "elliptic-curve",
+ "elliptic-curve 0.8.4",
  "sha2",
  "sha3",
 ]
@@ -1434,7 +1445,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39f37a291d378ba3291c1fa4e925edb6729c8593d4c6064be79e4a4c12fa2d97"
 dependencies = [
  "ecdsa",
- "elliptic-curve",
+ "elliptic-curve 0.8.4",
  "sha2",
 ]
 
@@ -1445,7 +1456,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ea33960aac2200d19a5c9ab06a11ebd48a37a23144496632c358182e6765d80b"
 dependencies = [
  "ecdsa",
- "elliptic-curve",
+ "elliptic-curve 0.8.4",
 ]
 
 [[package]]
