@@ -20,7 +20,7 @@ abigen!(
 #[tokio::main]
 async fn main() -> Result<()> {
     // 1. compile the contract (note this requires that you are inside the `ethers/examples` directory)
-    let compiled = Solc::new("./contract.sol").build()?;
+    let compiled = Solc::new("**/contract.sol").build()?;
     let contract = compiled
         .get("SimpleStorage")
         .expect("could not find contract");
