@@ -36,7 +36,7 @@ pub(crate) fn struct_declaration(cx: &Context, abi_name: &proc_macro2::Ident) ->
     } else {
         quote! {
             pub static #abi_name: Lazy<Abi> = Lazy::new(|| {
-                let abi_str = #abi.replace('[', "").replace(']', "").replace(',', "");
+                let abi_str = #abi.replace('[', "").replace(']', "");
                 // split lines and get only the non-empty things
                 let split: Vec<&str> = abi_str
                     .split("\n")

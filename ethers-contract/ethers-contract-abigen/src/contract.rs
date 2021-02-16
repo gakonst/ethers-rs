@@ -107,7 +107,7 @@ impl Context {
             // heuristic for parsing the human readable format
 
             // replace bad chars
-            let abi_str = abi_str.replace('[', "").replace(']', "").replace(',', "");
+            let abi_str = abi_str.replace('[', "").replace(']', "");
             // split lines and get only the non-empty things
             let split: Vec<&str> = abi_str
                 .split('\n')

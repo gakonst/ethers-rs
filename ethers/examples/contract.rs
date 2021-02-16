@@ -12,7 +12,7 @@ abigen!(
     r#"[
         function setValue(string)
         function getValue() external view (string)
-        event ValueChanged(address indexed author, address indexed oldAuthor, string oldValue, string newValue)
+        event ValueChanged(address indexed author, string oldValue, string newValue)
     ]"#,
     event_derives(serde::Deserialize, serde::Serialize)
 );
