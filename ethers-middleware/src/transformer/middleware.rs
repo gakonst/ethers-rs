@@ -59,15 +59,13 @@ where
         block: Option<BlockNumber>,
     ) -> Result<PendingTransaction<'_, Self::Provider>, Self::Error> {
         // resolve the to field if that's an ENS name.
-        if let Some(ref to) = tx.to {
-            if let NameOrAddress::Name(ens_name) = to {
-                let addr = self
-                    .inner
-                    .resolve_name(&ens_name)
-                    .await
-                    .map_err(TransformerMiddlewareError::MiddlewareError)?;
-                tx.to = Some(addr.into())
-            }
+        if let Some(NameOrAddress::Name(ens_name)) = tx.to {
+            let addr = self
+                .inner
+                .resolve_name(&ens_name)
+                .await
+                .map_err(TransformerMiddlewareError::MiddlewareError)?;
+            tx.to = Some(addr.into())
         }
 
         // construct the appropriate proxy tx.

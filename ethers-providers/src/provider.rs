@@ -293,14 +293,12 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
             tx.gas = Some(self.estimate_gas(&tx).await?);
         }
 
-        if let Some(ref to) = tx.to {
-            if let NameOrAddress::Name(ens_name) = to {
-                // resolve to an address
-                let addr = self.resolve_name(&ens_name).await?;
+        if let Some(NameOrAddress::Name(ref ens_name)) = tx.to {
+            // resolve to an address
+            let addr = self.resolve_name(&ens_name).await?;
 
-                // set the value
-                tx.to = Some(addr.into())
-            }
+            // set the value
+            tx.to = Some(addr.into())
         }
 
         let tx_hash = self.request("eth_sendTransaction", [tx]).await?;

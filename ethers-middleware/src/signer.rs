@@ -248,15 +248,13 @@ where
         mut tx: TransactionRequest,
         block: Option<BlockNumber>,
     ) -> Result<PendingTransaction<'_, Self::Provider>, Self::Error> {
-        if let Some(ref to) = tx.to {
-            if let NameOrAddress::Name(ens_name) = to {
-                let addr = self
-                    .inner
-                    .resolve_name(&ens_name)
-                    .await
-                    .map_err(SignerMiddlewareError::MiddlewareError)?;
-                tx.to = Some(addr.into())
-            }
+        if let Some(NameOrAddress::Name(ens_name)) = tx.to {
+            let addr = self
+                .inner
+                .resolve_name(&ens_name)
+                .await
+                .map_err(SignerMiddlewareError::MiddlewareError)?;
+            tx.to = Some(addr.into())
         }
 
         // fill any missing fields
