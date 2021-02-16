@@ -317,7 +317,7 @@ mod tests {
             anonymous: false,
         };
 
-        assert_quote!(expand_filter(&event).unwrap(), {
+        assert_quote!(expand_filter(&event), {
             #[doc = "Gets the contract's `Transfer` event"]
             pub fn transfer_filter(&self) -> Event<M, TransferFilter> {
                 self.0
