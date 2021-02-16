@@ -32,12 +32,17 @@ glob = { version = "0.3.0", default-features = false }
 bytes = { version = "1.0.1", features = ["serde"] }
 hex = { version = "0.4.2", default-features = false, features = ["std"] }
 
+# bitvec compilation issue
+# https://github.com/bitvecto-rs/bitvec/issues/105#issuecomment-778570981
+funty = "=1.1.0"
+
+
 [dev-dependencies]
 ethers = { version = "0.2", path = "../ethers" }
 
 serde_json = { version = "1.0.62", default-features = false }
 bincode = { version = "1.2.1", default-features = false }
-once_cell = { version = "1.5.2", default-features = false }
+once_cell = { version = "1.5.2" }
 
 
 [features]

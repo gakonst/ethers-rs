@@ -681,6 +681,7 @@ dependencies = [
  "ethabi-next",
  "ethereum-types",
  "ethers",
+ "funty",
  "generic-array",
  "glob",
  "hex",

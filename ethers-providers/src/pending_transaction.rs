@@ -73,12 +73,8 @@ impl<'a, P: JsonRpcClient> Future for PendingTransaction<'a, P> {
                 ctx.waker().wake_by_ref();
             }
             PendingTxState::GettingReceipt(fut) => {
-                if let Ok(receipt) = futures_util::ready!(fut.as_mut().poll(ctx)) {
-                    if let Some(receipt) = receipt {
-                        *this.state = PendingTxState::CheckingReceipt(Box::new(receipt))
-                    } else {
-                        *this.state = PendingTxState::PausedGettingReceipt
-                    }
+                if let Ok(Some(receipt)) = futures_util::ready!(fut.as_mut().poll(ctx)) {
+                    *this.state = PendingTxState::CheckingReceipt(Box::new(receipt))
                 } else {
                     *this.state = PendingTxState::PausedGettingReceipt
                 }

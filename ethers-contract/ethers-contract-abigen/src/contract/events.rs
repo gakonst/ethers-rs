@@ -30,7 +30,7 @@ impl Context {
             .abi
             .events()
             .map(|event| expand_filter(event))
-            .collect::<Result<Vec<_>>>()?;
+            .collect::<Vec<_>>();
 
         if data_types.is_empty() {
             return Ok(quote! {});
@@ -43,7 +43,7 @@ impl Context {
 }
 
 /// Expands into a single method for contracting an event stream.
-fn expand_filter(event: &Event) -> Result<TokenStream> {
+fn expand_filter(event: &Event) -> TokenStream {
     // append `filter` to disambiguate with potentially conflicting
     // function names
     let name = util::safe_ident(&format!("{}_filter", event.name.to_snake_case()));
@@ -53,13 +53,13 @@ fn expand_filter(event: &Event) -> Result<TokenStream> {
     let ev_name = Literal::string(&event.name);
 
     let doc = util::expand_doc(&format!("Gets the contract's `{}` event", event.name));
-    Ok(quote! {
+    quote! {
 
         #doc
         pub fn #name(&self) -> Event<M, #result> {
             self.0.event(#ev_name).expect("event not found (this should never happen)")
         }
-    })
+    }
 }
 
 /// Expands an ABI event into a single event data type. This can expand either
@@ -317,7 +317,7 @@ mod tests {
             anonymous: false,
         };
 
-        assert_quote!(expand_filter(&event).unwrap(), {
+        assert_quote!(expand_filter(&event), {
             #[doc = "Gets the contract's `Transfer` event"]
             pub fn transfer_filter(&self) -> Event<M, TransferFilter> {
                 self.0

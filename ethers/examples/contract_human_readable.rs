@@ -12,7 +12,7 @@ abigen!(
     r#"[
         function setValue(string)
         function getValue() external view (string)
-        event ValueChanged(address indexed author, address indexed oldAuthor, string oldValue, string newValue)
+        event ValueChanged(address indexed author, string oldValue, string newValue)
     ]"#,
     event_derives(serde::Deserialize, serde::Serialize)
 );
@@ -20,7 +20,7 @@ abigen!(
 #[tokio::main]
 async fn main() -> Result<()> {
     // 1. compile the contract (note this requires that you are inside the `ethers/examples` directory)
-    let compiled = Solc::new("./contract.sol").build()?;
+    let compiled = Solc::new("**/contract.sol").build()?;
     let contract = compiled
         .get("SimpleStorage")
         .expect("could not find contract");
