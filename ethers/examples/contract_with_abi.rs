@@ -3,7 +3,7 @@ use ethers::{
     prelude::*,
     utils::{Ganache, Solc},
 };
-use std::{convert::TryFrom, sync::Arc, time::Duration, path::Path};
+use std::{convert::TryFrom, sync::Arc, time::Duration};
 
 // Generate the type-safe contract bindings by providing the ABI
 // definition in human readable format
