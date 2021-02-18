@@ -18,7 +18,7 @@ arrayvec = { version = "0.5.1", default-features = false }
 
 # crypto
 ecdsa = { version = "0.10.2", default-features = false, features = ["std"] }
-elliptic-curve = { version = "0.9.2", default-features = false }
+elliptic-curve = { version = "0.9.3", default-features = false }
 generic-array = { version = "0.14.4", default-features = false }
 k256 = { version = "0.7.2", default-features = false, features = ["keccak256", "ecdsa"] }
 rand = { version = "0.7.1", default-features = false }
