@@ -1,18 +1,19 @@
 use super::{types, util, Context};
-use ethers_core::abi::{Event, EventExt, EventParam, Hash, ParamType};
-
 use anyhow::Result;
+use ethers_core::abi::{Event, EventExt, EventParam, Hash, ParamType};
 use inflector::Inflector;
 use proc_macro2::{Literal, TokenStream};
 use quote::quote;
+use std::collections::BTreeMap;
 use syn::Path;
 
 impl Context {
     /// Expands each event to a struct + its impl Detokenize block
     pub fn events_declaration(&self) -> Result<TokenStream> {
-        let data_types = self
-            .abi
-            .events()
+        let sorted_events: BTreeMap<_, _> = self.abi.events.clone().into_iter().collect();
+        let data_types = sorted_events
+            .values()
+            .flatten()
             .map(|event| expand_event(event, &self.event_derives))
             .collect::<Result<Vec<_>>>()?;
 
@@ -26,9 +27,10 @@ impl Context {
     }
 
     pub fn events(&self) -> Result<TokenStream> {
-        let data_types = self
-            .abi
-            .events()
+        let sorted_events: BTreeMap<_, _> = self.abi.events.clone().into_iter().collect();
+        let data_types = sorted_events
+            .values()
+            .flatten()
             .map(|event| expand_filter(event))
             .collect::<Vec<_>>();
 

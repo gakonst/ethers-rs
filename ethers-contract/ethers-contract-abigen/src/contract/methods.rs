@@ -1,13 +1,13 @@
 use super::{types, util, Context};
+use anyhow::{anyhow, Context as _, Result};
 use ethers_core::{
     abi::{Function, FunctionExt, Param, StateMutability},
     types::Selector,
 };
-
-use anyhow::{anyhow, Context as _, Result};
 use inflector::Inflector;
 use proc_macro2::{Literal, TokenStream};
 use quote::quote;
+use std::collections::BTreeMap;
 use syn::Ident;
 
 /// Expands a context into a method struct containing all the generated bindings
@@ -15,10 +15,10 @@ use syn::Ident;
 impl Context {
     pub(crate) fn methods(&self) -> Result<TokenStream> {
         let mut aliases = self.method_aliases.clone();
-
-        let functions = self
-            .abi
-            .functions()
+        let sorted_functions: BTreeMap<_, _> = self.abi.functions.clone().into_iter().collect();
+        let functions = sorted_functions
+            .values()
+            .flatten()
             .map(|function| {
                 let signature = function.abi_signature();
                 expand_function(function, aliases.remove(&signature))
