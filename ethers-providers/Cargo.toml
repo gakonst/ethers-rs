@@ -33,7 +33,7 @@ futures-channel = { version = "0.3.12", default-features = false }
 pin-project = { version = "1.0.5", default-features = false }
 
 # tracing
-tracing = { version = "0.1.23", default-features = false }
+tracing = { version = "0.1.24", default-features = false }
 tracing-futures = { version = "0.2.5", default-features = false }
 
 # tokio
