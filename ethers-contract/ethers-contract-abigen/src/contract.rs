@@ -14,7 +14,7 @@ use ethers_core::{
 use inflector::Inflector;
 use proc_macro2::{Ident, Literal, TokenStream};
 use quote::quote;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use syn::{Path, Visibility};
 
 /// Internal shared context for generating smart contract bindings.
@@ -32,7 +32,7 @@ pub(crate) struct Context {
     contract_name: Ident,
 
     /// Manually specified method aliases.
-    method_aliases: HashMap<String, Ident>,
+    method_aliases: BTreeMap<String, Ident>,
 
     /// Derives added to event structs and enums.
     event_derives: Vec<Path>,
@@ -122,7 +122,7 @@ impl Context {
         // NOTE: We only check for duplicate signatures here, since if there are
         //   duplicate aliases, the compiler will produce a warning because a
         //   method will be re-defined.
-        let mut method_aliases = HashMap::new();
+        let mut method_aliases = BTreeMap::new();
         for (signature, alias) in args.method_aliases.into_iter() {
             let alias = syn::parse_str(&alias)?;
             if method_aliases.insert(signature.clone(), alias).is_some() {
