@@ -171,7 +171,10 @@ fn get_local_contract(path: &Path) -> Result<String> {
         Cow::Borrowed(path)
     };
 
-    let json = fs::read_to_string(path).context("failed to read artifact JSON file")?;
+    let json = fs::read_to_string(&path).context(format!(
+        "failed to read artifact JSON file with path {}",
+        &path.display()
+    ))?;
     Ok(json)
 }
 
