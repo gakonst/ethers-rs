@@ -42,7 +42,7 @@ ethers = { version = "0.2", path = "../ethers" }
 
 serde_json = { version = "1.0.62", default-features = false }
 bincode = { version = "1.2.1", default-features = false }
-once_cell = { version = "1.6.0" }
+once_cell = { version = "1.7.0" }
 
 
 [features]
