@@ -112,8 +112,7 @@ impl JsonRpcClient for Ws {
         method: &str,
         params: T,
     ) -> Result<R, ClientError> {
-        let next_id = self.id.load(Ordering::SeqCst) + 1;
-        self.id.store(next_id, Ordering::SeqCst);
+        let next_id = self.id.fetch_add(1, Ordering::SeqCst);
 
         // send the message
         let (sender, receiver) = oneshot::channel();
