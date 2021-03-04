@@ -1,7 +1,7 @@
 [package]
 name = "ethers-contract"
 license = "MIT OR Apache-2.0"
-version = "0.2.0"
+version = "0.2.2"
 authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
 edition = "2018"
 description = "Smart contract bindings for the ethers-rs crate"
@@ -10,11 +10,11 @@ repository = "https://github.com/gakonst/ethers-rs"
 keywords = ["ethereum", "web3", "celo", "ethers"]
 
 [dependencies]
-ethers-providers = { version = "0.2", path = "../ethers-providers", default-features = false }
-ethers-core = { version = "0.2", path = "../ethers-core", default-features = false }
+ethers-providers = { version = "0.2.2", path = "../ethers-providers", default-features = false }
+ethers-core = { version = "0.2.2", path = "../ethers-core", default-features = false }
 
-ethers-contract-abigen = { version = "0.2", path = "ethers-contract-abigen", optional = true }
-ethers-contract-derive = { version = "0.2", path = "ethers-contract-derive", optional = true }
+ethers-contract-abigen = { version = "0.2.2", path = "ethers-contract-abigen", optional = true }
+ethers-contract-derive = { version = "0.2.2", path = "ethers-contract-derive", optional = true }
 
 serde = { version = "1.0.123", default-features = false }
 serde_json = { version = "1.0.64", default-features = false }

@@ -1,6 +1,6 @@
 [package]
 name = "ethers-contract-abigen"
-version = "0.2.0"
+version = "0.2.2"
 authors = ["Nicholas Rodrigues Lordello <nlordell@gmail.com>", "Georgios Konstantopoulos <me@gakonst.com>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
@@ -10,7 +10,7 @@ repository = "https://github.com/gakonst/ethers-rs"
 keywords = ["ethereum", "web3", "celo", "ethers"]
 
 [dependencies]
-ethers-core = { version = "0.2", path = "../../ethers-core" }
+ethers-core = { version = "0.2.2", path = "../../ethers-core" }
 
 anyhow = "1.0.37"
 curl = "0.4"

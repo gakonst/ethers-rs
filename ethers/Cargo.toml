@@ -1,6 +1,6 @@
 [package]
 name = "ethers"
-version = "0.2.0"
+version = "0.2.2"
 authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
 license = "MIT OR Apache-2.0"
 edition = "2018"
@@ -34,11 +34,11 @@ ws = ["ethers-providers/ws"]
 abigen = ["ethers-contract/abigen"]
 
 [dependencies]
-ethers-contract = { version = "0.2", path = "../ethers-contract" }
-ethers-core = { version = "0.2", path = "../ethers-core" }
-ethers-providers = { version = "0.2", path = "../ethers-providers" }
-ethers-signers = { version = "0.2", path = "../ethers-signers" }
-ethers-middleware = { version = "0.2", path = "../ethers-middleware" }
+ethers-contract = { version = "0.2.2", path = "../ethers-contract" }
+ethers-core = { version = "0.2.2", path = "../ethers-core" }
+ethers-providers = { version = "0.2.2", path = "../ethers-providers" }
+ethers-signers = { version = "0.2.2", path = "../ethers-signers" }
+ethers-middleware = { version = "0.2.2", path = "../ethers-middleware" }
 
 [dev-dependencies]
 ethers-contract = { version = "0.2", path = "../ethers-contract", features = ["abigen"] }
