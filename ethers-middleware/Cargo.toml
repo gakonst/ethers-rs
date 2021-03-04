@@ -37,7 +37,7 @@ tokio = { version = "1.2" }
 [dev-dependencies]
 ethers = { version = "0.2", path = "../ethers" }
 futures-executor = { version = "0.3.13", features = ["thread-pool"] }
-hex = { version = "0.4.2", default-features = false, features = ["std"] }
+hex = { version = "0.4.3", default-features = false, features = ["std"] }
 rand = { version = "0.7.3", default-features = false }
 tokio = { version = "1.2", default-features = false, features = ["rt", "macros", "time"] }
 
