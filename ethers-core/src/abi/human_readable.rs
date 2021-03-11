@@ -98,7 +98,19 @@ fn parse_event(mut event: &str) -> Result<Event, ParseError> {
                     anonymous = true;
                     event = event[..event.len() - 9].trim_end();
                 }
-                let inputs = parse_event_args(event)?;
+                event = event
+                    .trim()
+                    .strip_suffix(')')
+                    .ok_or(ParseError::ParseError(super::Error::InvalidData))?;
+
+                let inputs = if event.is_empty() {
+                    Vec::new()
+                } else {
+                    event
+                        .split(',')
+                        .map(parse_event_arg)
+                        .collect::<Result<Vec<_>, _>>()?
+                };
                 return Ok(Event {
                     name,
                     anonymous,
@@ -115,45 +127,31 @@ fn parse_event(mut event: &str) -> Result<Event, ParseError> {
     }
 }
 
-/// Returns the event parameters
-fn parse_event_args(mut input: &str) -> Result<Vec<EventParam>, ParseError> {
-    input = input
-        .trim()
-        .strip_suffix(')')
+/// Parse a single event param
+fn parse_event_arg(input: &str) -> Result<EventParam, ParseError> {
+    let mut iter = input.trim().rsplitn(3, is_whitespace);
+    let name = iter
+        .next()
         .ok_or(ParseError::ParseError(super::Error::InvalidData))?;
-
-    let mut params = Vec::new();
-
-    if input.is_empty() {
-        return Ok(params);
-    }
-
-    for arg in input.split(',') {
-        let mut iter = arg.trim().rsplitn(3, is_whitespace);
-        let name = iter
-            .next()
-            .ok_or(ParseError::ParseError(super::Error::InvalidData))?;
-        let mid = iter
-            .next()
-            .ok_or(ParseError::ParseError(super::Error::InvalidData))?;
-        let kind;
-        let mut indexed = false;
-        if mid == "indexed" {
-            indexed = true;
-            kind = iter.next().map(Reader::read);
-        } else {
-            kind = Some(Reader::read(mid));
-            if iter.next().is_some() {
-                return Err(ParseError::ParseError(super::Error::InvalidData));
-            }
+    let mid = iter
+        .next()
+        .ok_or(ParseError::ParseError(super::Error::InvalidData))?;
+    let kind;
+    let mut indexed = false;
+    if mid == "indexed" {
+        indexed = true;
+        kind = iter.next().map(Reader::read);
+    } else {
+        kind = Some(Reader::read(mid));
+        if iter.next().is_some() {
+            return Err(ParseError::ParseError(super::Error::InvalidData));
         }
-        params.push(EventParam {
-            name: name.to_owned(),
-            kind: kind.ok_or(ParseError::ParseError(super::Error::InvalidData))??,
-            indexed,
-        })
     }
-    Ok(params)
+    Ok(EventParam {
+        name: name.to_owned(),
+        kind: kind.ok_or(ParseError::ParseError(super::Error::InvalidData))??,
+        indexed,
+    })
 }
 
 fn parse_function(mut input: &str) -> Result<Function, ParseError> {
@@ -414,26 +412,26 @@ mod tests {
         );
     }
 
-    // #[test]
-    // fn parse_event_input() {
-    //     assert_eq!(
-    //         parse_event_arg("address indexed x").unwrap(),
-    //         EventParam {
-    //             name: "x".to_owned(),
-    //             kind: ParamType::Address,
-    //             indexed: true,
-    //         }
-    //     );
-    //
-    //     assert_eq!(
-    //         parse_event_arg("address x").unwrap(),
-    //         EventParam {
-    //             name: "x".to_owned(),
-    //             kind: ParamType::Address,
-    //             indexed: false,
-    //         }
-    //     );
-    // }
+    #[test]
+    fn parse_event_input() {
+        assert_eq!(
+            parse_event_arg("address indexed x").unwrap(),
+            EventParam {
+                name: "x".to_owned(),
+                kind: ParamType::Address,
+                indexed: true,
+            }
+        );
+
+        assert_eq!(
+            parse_event_arg("address x").unwrap(),
+            EventParam {
+                name: "x".to_owned(),
+                kind: ParamType::Address,
+                indexed: false,
+            }
+        );
+    }
 
     #[test]
     fn can_parse_functions() {
