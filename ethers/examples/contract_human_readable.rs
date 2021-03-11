@@ -11,7 +11,7 @@ abigen!(
     SimpleContract,
     r#"[
         function setValue(string)
-        function getValue() external view (string)
+        function getValue() external view returns (string)
         event ValueChanged(address indexed author, string oldValue, string newValue)
     ]"#,
     event_derives(serde::Deserialize, serde::Serialize)
