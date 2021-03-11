@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use thiserror::Error;
 
 use super::{
-    Abi, Event, EventParam, Function, Param, param_type::Reader, ParamType, StateMutability,
+    Abi, Event, EventParam, Function, Param, param_type::Reader, ParamType, StateMutability, Constructor
 };
 
 /// Parses a "human readable abi" string vector
@@ -74,7 +74,7 @@ fn parse_event2(mut event: &str) -> Result<Event, ParseError> {
     if !event.starts_with("event ") {
         return Err(ParseError::ParseError(super::Error::InvalidData));
     }
-    event = &event[6..];
+    event = &event[5..];
 
     let name = parse_identifier(&mut event)?;
     if name.is_empty() {
@@ -152,7 +152,7 @@ fn parse_function2(mut input: &str) -> Result<Function, ParseError> {
     if !input.starts_with("function ") {
         return Err(ParseError::ParseError(super::Error::InvalidData));
     }
-    input = &input[9..];
+    input = &input[8..];
     let name = parse_identifier(&mut input)?;
     if name.is_empty() {
         return Err(ParseError::ParseError(super::Error::InvalidName(input.to_owned())));
@@ -181,19 +181,7 @@ fn parse_function2(mut input: &str) -> Result<Function, ParseError> {
         Vec::new()
     };
 
-    let state_mutability = if let Some(modifiers) = modifiers {
-        if modifiers.contains("pure") {
-            StateMutability::Pure
-        } else if modifiers.contains("view") {
-            StateMutability::View
-        } else if modifiers.contains("payable") {
-            StateMutability::Payable
-        } else {
-            StateMutability::NonPayable
-        }
-    } else {
-        StateMutability::NonPayable
-    };
+    let state_mutability = modifiers.map(detect_state_mutability).unwrap_or_default();
 
     #[allow(deprecated)]
         Ok(Function {
@@ -202,6 +190,23 @@ fn parse_function2(mut input: &str) -> Result<Function, ParseError> {
         outputs,
         state_mutability,
         constant: false,
+    })
+}
+
+fn parse_constructor(mut input: &str) -> Result<Constructor, ParseError> {
+    input = input.trim();
+    if !input.starts_with("constructor") {
+        return Err(ParseError::ParseError(super::Error::InvalidData));
+    }
+    input = input[11..].trim_start().strip_prefix('(').ok_or(ParseError::ParseError(super::Error::InvalidData))?;
+
+    let  params = input.rsplitn(2, ')').last().ok_or(ParseError::ParseError(super::Error::InvalidData))?;
+
+    let inputs = params.split(',').filter(|s|!s.is_empty()).map(parse_param2).collect::<Result<Vec<_>,_>>()?;
+
+    #[allow(deprecated)]
+        Ok(Constructor {
+        inputs,
     })
 }
 
@@ -228,7 +233,11 @@ fn parse2(input: &[&str]) -> Result<Abi, ParseError> {
                 .entry(event.name.clone())
                 .or_default()
                 .push(event);
-        } else if line.starts_with("constructor") {} else {
+        } else if line.starts_with("constructor") {
+            abi.constructor = Some(parse_constructor(line)?);
+        } else {
+
+
             return Err(ParseError::ParseError(super::Error::InvalidData));
         }
     }
@@ -236,6 +245,17 @@ fn parse2(input: &[&str]) -> Result<Abi, ParseError> {
     Ok(abi)
 }
 
+fn detect_state_mutability(s: &str) -> StateMutability {
+    if s.contains("pure") {
+        StateMutability::Pure
+    } else if s.contains("view") {
+        StateMutability::View
+    } else if s.contains("payable") {
+        StateMutability::Payable
+    } else {
+        StateMutability::NonPayable
+    }
+}
 
 fn is_first_ident_char(c: char) -> bool {
     matches!(c, 'a'..='z' | 'A'..='Z' | '_')
