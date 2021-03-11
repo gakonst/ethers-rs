@@ -113,8 +113,8 @@ fn parse_event(mut event: &str) -> Result<Event, ParseError> {
                 };
                 return Ok(Event {
                     name,
-                    anonymous,
                     inputs,
+                    anonymous,
                 });
             }
             Some(' ') | Some('\t') => {
