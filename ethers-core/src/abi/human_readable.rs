@@ -1,8 +1,10 @@
-use super::{
-    param_type::Reader, Abi, Event, EventParam, Function, Param, ParamType, StateMutability,
-};
 use std::collections::HashMap;
+
 use thiserror::Error;
+
+use super::{
+    param_type::Reader, Abi, Constructor, Event, EventParam, Function, Param, StateMutability,
+};
 
 /// Parses a "human readable abi" string vector
 ///
@@ -22,140 +24,290 @@ pub fn parse(input: &[&str]) -> Result<Abi, ParseError> {
         fallback: false,
     };
 
-    for line in input {
-        if line.contains("function") {
+    for mut line in input.iter().map(|s| escape_quotes(s)) {
+        line = line.trim_start();
+        if line.starts_with("function") {
             let function = parse_function(&line)?;
             abi.functions
                 .entry(function.name.clone())
                 .or_default()
                 .push(function);
-        } else if line.contains("event") {
-            let event = parse_event(&line)?;
+        } else if line.starts_with("event") {
+            let event = parse_event(line)?;
             abi.events
                 .entry(event.name.clone())
                 .or_default()
                 .push(event);
-        } else if line.starts_with("struct") {
-            panic!("Got tuple");
+        } else if line.starts_with("constructor") {
+            abi.constructor = Some(parse_constructor(line)?);
         } else {
-            panic!("unknown sig")
+            return Err(ParseError::ParseError(super::Error::InvalidData));
         }
     }
 
     Ok(abi)
 }
 
-fn parse_event(event: &str) -> Result<Event, ParseError> {
-    let split: Vec<&str> = event.split("event ").collect();
-    let split: Vec<&str> = split[1].split('(').collect();
-    let name = split[0].trim_end();
-    let rest = split[1];
-
-    let args = rest.replace(")", "");
-    let anonymous = rest.contains("anonymous");
-
-    let inputs = if args.contains(',') {
-        let args: Vec<&str> = args.split(", ").collect();
-        args.iter()
-            .map(|arg| parse_event_arg(arg))
-            .collect::<Result<Vec<EventParam>, _>>()?
-    } else {
-        vec![]
-    };
-
-    Ok(Event {
-        name: name.to_owned(),
-        anonymous,
-        inputs,
-    })
+/// Parses an identifier like event or function name
+fn parse_identifier(input: &mut &str) -> Result<String, ParseError> {
+    let mut chars = input.trim_start().chars();
+    let mut name = String::new();
+    let c = chars
+        .next()
+        .ok_or(ParseError::ParseError(super::Error::InvalidData))?;
+    if is_first_ident_char(c) {
+        name.push(c);
+        loop {
+            match chars.clone().next() {
+                Some(c) if is_ident_char(c) => {
+                    chars.next();
+                    name.push(c);
+                }
+                _ => break,
+            }
+        }
+    }
+    *input = chars.as_str();
+    Ok(name)
 }
 
-// Parses an event's argument as indexed if neded
-fn parse_event_arg(param: &str) -> Result<EventParam, ParseError> {
-    let tokens: Vec<&str> = param.split(' ').collect();
-    let kind: ParamType = Reader::read(tokens[0])?;
-    let (name, indexed) = if tokens.len() == 2 {
-        (tokens[1], false)
-    } else {
-        (tokens[2], true)
-    };
+/// Parses a solidity event declaration from `event <name> (args*) anonymous?`
+fn parse_event(mut event: &str) -> Result<Event, ParseError> {
+    event = event.trim();
+    if !event.starts_with("event ") {
+        return Err(ParseError::ParseError(super::Error::InvalidData));
+    }
+    event = &event[5..];
 
-    Ok(EventParam {
-        name: name.to_owned(),
-        kind,
-        indexed,
-    })
+    let name = parse_identifier(&mut event)?;
+    if name.is_empty() {
+        return Err(ParseError::ParseError(super::Error::InvalidName(
+            event.to_owned(),
+        )));
+    }
+
+    let mut chars = event.chars();
+
+    loop {
+        match chars.next() {
+            None => return Err(ParseError::ParseError(super::Error::InvalidData)),
+            Some('(') => {
+                event = chars.as_str().trim();
+                let mut anonymous = false;
+                if event.ends_with("anonymous") {
+                    anonymous = true;
+                    event = event[..event.len() - 9].trim_end();
+                }
+                event = event
+                    .trim()
+                    .strip_suffix(')')
+                    .ok_or(ParseError::ParseError(super::Error::InvalidData))?;
+
+                let inputs = if event.is_empty() {
+                    Vec::new()
+                } else {
+                    event
+                        .split(',')
+                        .map(parse_event_arg)
+                        .collect::<Result<Vec<_>, _>>()?
+                };
+                return Ok(Event {
+                    name,
+                    inputs,
+                    anonymous,
+                });
+            }
+            Some(' ') | Some('\t') => {
+                continue;
+            }
+            _ => {
+                return Err(ParseError::ParseError(super::Error::InvalidData));
+            }
+        }
+    }
 }
 
-fn parse_function(fn_string: &str) -> Result<Function, ParseError> {
-    let fn_string = fn_string.to_owned();
-    let delim = if fn_string.starts_with("function ") {
-        "function "
+/// Parse a single event param
+fn parse_event_arg(input: &str) -> Result<EventParam, ParseError> {
+    let mut iter = input.trim().rsplitn(3, is_whitespace);
+    let mut indexed = false;
+    let mut name = iter
+        .next()
+        .ok_or(ParseError::ParseError(super::Error::InvalidData))?;
+
+    if let Some(mid) = iter.next() {
+        let kind;
+        if let Some(ty) = iter.next() {
+            if mid != "indexed" {
+                return Err(ParseError::ParseError(super::Error::InvalidData));
+            }
+            indexed = true;
+            kind = Reader::read(ty)?;
+        } else {
+            if name == "indexed" {
+                indexed = true;
+                name = "";
+            }
+            kind = Reader::read(mid)?;
+        }
+        Ok(EventParam {
+            name: name.to_owned(),
+            kind,
+            indexed,
+        })
     } else {
-        " "
-    };
-    let split: Vec<&str> = fn_string.split(delim).collect();
-    let split: Vec<&str> = split[1].split('(').collect();
+        Ok(EventParam {
+            name: "".to_owned(),
+            indexed,
+            kind: Reader::read(name)?,
+        })
+    }
+}
 
-    // function name is the first char
-    let fn_name = split[0];
+fn parse_function(mut input: &str) -> Result<Function, ParseError> {
+    input = input.trim();
+    if !input.starts_with("function ") {
+        return Err(ParseError::ParseError(super::Error::InvalidData));
+    }
+    input = &input[8..];
+    let name = parse_identifier(&mut input)?;
+    if name.is_empty() {
+        return Err(ParseError::ParseError(super::Error::InvalidName(
+            input.to_owned(),
+        )));
+    }
 
-    // internal args
-    let args: Vec<&str> = split[1].split(')').collect();
-    let args: Vec<&str> = args[0].split(", ").collect();
+    let mut iter = input.split(" returns");
 
-    let inputs = args
-        .into_iter()
-        .filter(|x| !x.is_empty())
-        .filter(|x| !x.contains("returns"))
-        .map(|x| parse_param(x))
-        .collect::<Result<Vec<Param>, _>>()?;
+    let parens = iter
+        .next()
+        .ok_or(ParseError::ParseError(super::Error::InvalidData))?
+        .trim_end();
 
-    // return value
-    let outputs: Vec<Param> = if split.len() > 2 {
-        let ret = split[2].strip_suffix(")").expect("no right paren");
-        let ret: Vec<&str> = ret.split(", ").collect();
+    let mut parens_iter = parens.rsplitn(2, ')');
+    let mut modifiers = parens_iter.next();
 
-        ret.into_iter()
-            // remove modifiers etc
-            .filter(|x| !x.is_empty())
-            .map(|x| parse_param(x))
-            .collect::<Result<Vec<Param>, _>>()?
+    let input_params = if let Some(args) = parens_iter.next() {
+        args
     } else {
-        vec![]
+        modifiers
+            .take()
+            .ok_or(ParseError::ParseError(super::Error::InvalidData))?
+    }
+    .trim_start()
+    .strip_prefix('(')
+    .ok_or(ParseError::ParseError(super::Error::InvalidData))?;
+
+    let inputs = input_params
+        .split(',')
+        .filter(|s| !s.is_empty())
+        .map(parse_param)
+        .collect::<Result<Vec<_>, _>>()?;
+
+    let outputs = if let Some(params) = iter.next() {
+        let params = params
+            .trim()
+            .strip_prefix('(')
+            .and_then(|s| s.strip_suffix(')'))
+            .ok_or(ParseError::ParseError(super::Error::InvalidData))?;
+        params
+            .split(',')
+            .filter(|s| !s.is_empty())
+            .map(parse_param)
+            .collect::<Result<Vec<_>, _>>()?
+    } else {
+        Vec::new()
     };
+
+    let state_mutability = modifiers.map(detect_state_mutability).unwrap_or_default();
 
     #[allow(deprecated)]
     Ok(Function {
-        name: fn_name.to_owned(),
+        name,
         inputs,
         outputs,
-        // this doesn't really matter
-        state_mutability: StateMutability::NonPayable,
+        state_mutability,
         constant: false,
     })
 }
 
-// address x
-fn parse_param(param: &str) -> Result<Param, ParseError> {
-    let mut param = param
-        .split(' ')
-        .filter(|x| !x.contains("memory") || !x.contains("calldata"));
-
-    let kind = param.next().ok_or(ParseError::Kind)?;
-    let kind: ParamType = Reader::read(kind).unwrap();
-
-    // strip memory/calldata from the name
-    // e.g. uint256[] memory x
-    let mut name = param.next().unwrap_or_default();
-    if name == "memory" || name == "calldata" {
-        name = param.next().unwrap_or_default();
+fn parse_constructor(mut input: &str) -> Result<Constructor, ParseError> {
+    input = input.trim();
+    if !input.starts_with("constructor") {
+        return Err(ParseError::ParseError(super::Error::InvalidData));
     }
+    input = input[11..]
+        .trim_start()
+        .strip_prefix('(')
+        .ok_or(ParseError::ParseError(super::Error::InvalidData))?;
 
-    Ok(Param {
-        name: name.to_owned(),
-        kind,
-    })
+    let params = input
+        .rsplitn(2, ')')
+        .last()
+        .ok_or(ParseError::ParseError(super::Error::InvalidData))?;
+
+    let inputs = params
+        .split(',')
+        .filter(|s| !s.is_empty())
+        .map(parse_param)
+        .collect::<Result<Vec<_>, _>>()?;
+
+    Ok(Constructor { inputs })
+}
+
+fn detect_state_mutability(s: &str) -> StateMutability {
+    if s.contains("pure") {
+        StateMutability::Pure
+    } else if s.contains("view") {
+        StateMutability::View
+    } else if s.contains("payable") {
+        StateMutability::Payable
+    } else {
+        StateMutability::NonPayable
+    }
+}
+
+fn parse_param(param: &str) -> Result<Param, ParseError> {
+    let mut iter = param.trim().rsplitn(3, is_whitespace);
+
+    let name = iter
+        .next()
+        .ok_or(ParseError::ParseError(super::Error::InvalidData))?;
+
+    if let Some(ty) = iter.last() {
+        if name == "memory" || name == "calldata" {
+            Ok(Param {
+                name: "".to_owned(),
+                kind: Reader::read(ty)?,
+            })
+        } else {
+            Ok(Param {
+                name: name.to_owned(),
+                kind: Reader::read(ty)?,
+            })
+        }
+    } else {
+        Ok(Param {
+            name: "".to_owned(),
+            kind: Reader::read(name)?,
+        })
+    }
+}
+
+fn is_first_ident_char(c: char) -> bool {
+    matches!(c, 'a'..='z' | 'A'..='Z' | '_')
+}
+
+fn is_ident_char(c: char) -> bool {
+    matches!(c, 'a'..='z' | 'A'..='Z' | '0'..='9' | '_')
+}
+
+fn is_whitespace(c: char) -> bool {
+    matches!(c, ' ' | '\t')
+}
+
+fn escape_quotes(input: &str) -> &str {
+    input.trim_matches(is_whitespace).trim_matches('\"')
 }
 
 #[derive(Error, Debug)]
@@ -170,6 +322,7 @@ pub enum ParseError {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::abi::ParamType;
 
     #[test]
     fn parses_approve() {
@@ -208,9 +361,30 @@ mod tests {
     }
 
     #[test]
+    fn parses_function_payable() {
+        let fn_str = "function foo() public payable";
+        let parsed = parse_function(fn_str).unwrap();
+        assert_eq!(parsed.state_mutability, StateMutability::Payable);
+    }
+
+    #[test]
+    fn parses_function_view() {
+        let fn_str = "function foo() external view";
+        let parsed = parse_function(fn_str).unwrap();
+        assert_eq!(parsed.state_mutability, StateMutability::View);
+    }
+
+    #[test]
+    fn parses_function_pure() {
+        let fn_str = "function foo()  pure";
+        let parsed = parse_function(fn_str).unwrap();
+        assert_eq!(parsed.state_mutability, StateMutability::Pure);
+    }
+
+    #[test]
     fn parses_event() {
         assert_eq!(
-            parse_event("event Foo (address indexed x, uint y, bytes32[] z)").unwrap(),
+            parse_event(&mut "event Foo (address indexed x, uint y, bytes32[] z)").unwrap(),
             Event {
                 anonymous: false,
                 name: "Foo".to_owned(),
@@ -218,7 +392,7 @@ mod tests {
                     EventParam {
                         name: "x".to_owned(),
                         kind: ParamType::Address,
-                        indexed: true
+                        indexed: true,
                     },
                     EventParam {
                         name: "y".to_owned(),
@@ -230,7 +404,7 @@ mod tests {
                         kind: ParamType::Array(Box::new(ParamType::FixedBytes(32))),
                         indexed: false,
                     },
-                ]
+                ],
             }
         );
     }
@@ -238,11 +412,43 @@ mod tests {
     #[test]
     fn parses_anonymous_event() {
         assert_eq!(
-            parse_event("event Foo() anonymous").unwrap(),
+            parse_event(&mut "event Foo() anonymous").unwrap(),
             Event {
                 anonymous: true,
                 name: "Foo".to_owned(),
                 inputs: vec![],
+            }
+        );
+    }
+
+    #[test]
+    fn parses_unnamed_event() {
+        assert_eq!(
+            parse_event(&mut "event Foo(address)").unwrap(),
+            Event {
+                anonymous: false,
+                name: "Foo".to_owned(),
+                inputs: vec![EventParam {
+                    name: "".to_owned(),
+                    kind: ParamType::Address,
+                    indexed: false,
+                }],
+            }
+        );
+    }
+
+    #[test]
+    fn parses_unnamed_indexed_event() {
+        assert_eq!(
+            parse_event(&mut "event Foo(address indexed)").unwrap(),
+            Event {
+                anonymous: false,
+                name: "Foo".to_owned(),
+                inputs: vec![EventParam {
+                    name: "".to_owned(),
+                    kind: ParamType::Address,
+                    indexed: true,
+                }],
             }
         );
     }
@@ -254,7 +460,7 @@ mod tests {
             EventParam {
                 name: "x".to_owned(),
                 kind: ParamType::Address,
-                indexed: true
+                indexed: true,
             }
         );
 
@@ -263,7 +469,7 @@ mod tests {
             EventParam {
                 name: "x".to_owned(),
                 kind: ParamType::Address,
-                indexed: false
+                indexed: false,
             }
         );
     }
@@ -304,7 +510,7 @@ mod tests {
     fn can_read_backslashes() {
         parse(&[
             "\"function setValue(string)\"",
-            "\"function getValue() external view (string)\"",
+            "\"function getValue() external view returns(string)\"",
         ])
         .unwrap();
     }
