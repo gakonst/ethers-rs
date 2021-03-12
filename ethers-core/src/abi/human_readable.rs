@@ -130,28 +130,38 @@ fn parse_event(mut event: &str) -> Result<Event, ParseError> {
 /// Parse a single event param
 fn parse_event_arg(input: &str) -> Result<EventParam, ParseError> {
     let mut iter = input.trim().rsplitn(3, is_whitespace);
-    let name = iter
-        .next()
-        .ok_or(ParseError::ParseError(super::Error::InvalidData))?;
-    let mid = iter
-        .next()
-        .ok_or(ParseError::ParseError(super::Error::InvalidData))?;
-    let kind;
     let mut indexed = false;
-    if mid == "indexed" {
-        indexed = true;
-        kind = iter.next().map(Reader::read);
-    } else {
-        kind = Some(Reader::read(mid));
-        if iter.next().is_some() {
-            return Err(ParseError::ParseError(super::Error::InvalidData));
+    let mut name = iter
+        .next()
+        .ok_or(ParseError::ParseError(super::Error::InvalidData))?;
+
+    if let Some(mid) = iter.next() {
+        let kind;
+        if let Some(ty) = iter.next() {
+            if mid != "indexed" {
+                return Err(ParseError::ParseError(super::Error::InvalidData));
+            }
+            indexed = true;
+            kind = Reader::read(ty)?;
+        } else {
+            if name == "indexed" {
+                indexed = true;
+                name = "";
+            }
+            kind = Reader::read(mid)?;
         }
+        Ok(EventParam {
+            name: name.to_owned(),
+            kind,
+            indexed,
+        })
+    } else {
+        Ok(EventParam {
+            name: "".to_owned(),
+            indexed,
+            kind: Reader::read(name)?,
+        })
     }
-    Ok(EventParam {
-        name: name.to_owned(),
-        kind: kind.ok_or(ParseError::ParseError(super::Error::InvalidData))??,
-        indexed,
-    })
 }
 
 fn parse_function(mut input: &str) -> Result<Function, ParseError> {
@@ -242,7 +252,6 @@ fn parse_constructor(mut input: &str) -> Result<Constructor, ParseError> {
         .map(parse_param)
         .collect::<Result<Vec<_>, _>>()?;
 
-    #[allow(deprecated)]
     Ok(Constructor { inputs })
 }
 
@@ -408,6 +417,38 @@ mod tests {
                 anonymous: true,
                 name: "Foo".to_owned(),
                 inputs: vec![],
+            }
+        );
+    }
+
+    #[test]
+    fn parses_unnamed_event() {
+        assert_eq!(
+            parse_event(&mut "event Foo(address)").unwrap(),
+            Event {
+                anonymous: false,
+                name: "Foo".to_owned(),
+                inputs: vec![EventParam {
+                    name: "".to_owned(),
+                    kind: ParamType::Address,
+                    indexed: false,
+                }],
+            }
+        );
+    }
+
+    #[test]
+    fn parses_unnamed_indexed_event() {
+        assert_eq!(
+            parse_event(&mut "event Foo(address indexed)").unwrap(),
+            Event {
+                anonymous: false,
+                name: "Foo".to_owned(),
+                inputs: vec![EventParam {
+                    name: "".to_owned(),
+                    kind: ParamType::Address,
+                    indexed: true,
+                }],
             }
         );
     }
