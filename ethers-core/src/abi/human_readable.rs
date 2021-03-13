@@ -451,7 +451,6 @@ fn escape_quotes(input: &str) -> &str {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::abi::ParamType;
 
     #[test]
     fn parses_approve() {
@@ -630,6 +629,20 @@ mod tests {
     }
 
     #[test]
+    fn can_parse_structs_and_functions() {
+        let abi = &[
+            "struct Demo {bytes  x; address payable d;}",
+            "struct Voter {  uint weight;  bool voted;  address delegate; uint vote; }",
+            "event FireEvent(Voter v, NestedVoter2 n)",
+            "function foo(uint256[] memory x) external view returns (address)",
+            "function call(Voter memory voter) returns (address, uint256)",
+            "struct NestedVoter {  Voter voter;  bool voted;  address delegate; uint vote; }",
+            "struct NestedVoter2 {  NestedVoter[] voter;  Voter[10] votes;  address delegate; uint vote; }",
+        ];
+        parse(abi).unwrap();
+    }
+
+    #[test]
     fn can_parse_params() {
         [
             "address x",
@@ -652,5 +665,96 @@ mod tests {
             "\"function getValue() external view returns(string)\"",
         ])
         .unwrap();
+    }
+
+    #[test]
+    fn can_substitute_structs() {
+        let abi = parse(&[
+            "struct MyStruct {int y; address _addr;}",
+            "event FireEvent(MyStruct m, address indexed newOwner)",
+        ])
+        .unwrap();
+        assert_eq!(
+            abi.events["FireEvent"][0].inputs.clone(),
+            vec![
+                EventParam {
+                    name: "m".to_string(),
+                    kind: ParamType::Tuple(vec![ParamType::Int(256), ParamType::Address]),
+                    indexed: false
+                },
+                EventParam {
+                    name: "newOwner".to_string(),
+                    kind: ParamType::Address,
+                    indexed: true
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn can_substitute_array_structs() {
+        let abi = parse(&[
+            "struct MyStruct {int y; address _addr;}",
+            "event FireEvent(MyStruct[] m, MyStruct[10] m2)",
+        ])
+        .unwrap();
+
+        assert_eq!(
+            abi.events["FireEvent"][0].inputs.clone(),
+            vec![
+                EventParam {
+                    name: "m".to_string(),
+                    kind: ParamType::Array(Box::new(ParamType::Tuple(vec![
+                        ParamType::Int(256),
+                        ParamType::Address
+                    ]))),
+                    indexed: false
+                },
+                EventParam {
+                    name: "m2".to_string(),
+                    kind: ParamType::FixedArray(
+                        Box::new(ParamType::Tuple(vec![
+                            ParamType::Int(256),
+                            ParamType::Address
+                        ])),
+                        10
+                    ),
+                    indexed: false
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn can_substitute_nested_array_structs() {
+        let abi = parse(&[
+            "struct MyStruct {int y; address _addr;}",
+            "event FireEvent(MyStruct[] m, MyStructWrapper w)",
+            "struct MyStructWrapper {MyStruct y; int y; address _addr;}",
+        ])
+        .unwrap();
+
+        assert_eq!(
+            abi.events["FireEvent"][0].inputs.clone(),
+            vec![
+                EventParam {
+                    name: "m".to_string(),
+                    kind: ParamType::Array(Box::new(ParamType::Tuple(vec![
+                        ParamType::Int(256),
+                        ParamType::Address
+                    ]))),
+                    indexed: false
+                },
+                EventParam {
+                    name: "w".to_string(),
+                    kind: ParamType::Tuple(vec![
+                        ParamType::Tuple(vec![ParamType::Int(256), ParamType::Address]),
+                        ParamType::Int(256),
+                        ParamType::Address
+                    ]),
+                    indexed: false
+                },
+            ]
+        );
     }
 }
