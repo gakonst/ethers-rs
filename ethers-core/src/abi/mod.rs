@@ -15,7 +15,7 @@ mod error;
 pub use error::ParseError;
 
 mod human_readable;
-pub use human_readable::parse as parse_abi;
+pub use human_readable::{parse as parse_abi, AbiParser};
 
 /// Extension trait for `ethabi::Function`.
 pub trait FunctionExt {

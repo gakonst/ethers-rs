@@ -1,7 +1,7 @@
 //! Solidity struct definition parsing support
 use crate::abi::error::{bail, format_err, Result};
 use crate::abi::human_readable::{is_whitespace, parse_identifier};
-use crate::abi::{param_type::Reader, Param, ParamType};
+use crate::abi::{param_type::Reader, ParamType};
 
 /// A field declaration inside a struct
 #[derive(Debug, Clone, PartialEq)]
@@ -13,6 +13,10 @@ pub struct FieldDeclaration {
 impl FieldDeclaration {
     pub fn name(&self) -> &str {
         &self.name
+    }
+
+    pub fn r#type(&self) -> &FieldType {
+        &self.ty
     }
 }
 
@@ -34,6 +38,15 @@ pub enum FieldType {
 impl FieldType {
     pub fn is_mapping(&self) -> bool {
         matches!(self, FieldType::Mapping(_))
+    }
+
+    pub(crate) fn as_struct(&self) -> Option<&StructFieldType> {
+        match self {
+            FieldType::Struct(s)
+            | FieldType::StructArray(s)
+            | FieldType::FixedStructArray(s, _) => Some(s),
+            _ => None,
+        }
     }
 }
 
@@ -68,145 +81,15 @@ pub struct StructFieldType {
     projections: Vec<String>,
 }
 
-/// Represents a solidity struct
-#[derive(Debug, Clone, PartialEq)]
-pub struct SolStruct {
-    name: String,
-    fields: Vec<FieldDeclaration>,
-}
-
-impl SolStruct {
-    /// Parse a solidity struct definition
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # use ethers::abi::SolStruct;
-    /// let s = SolStruct::parse("struct MyStruct { uint: x; uint: y;}").unwrap();
-    /// ```
-    pub fn parse(s: &str) -> Result<Self> {
-        let mut input = s.trim();
-        if !input.starts_with("struct ") {
-            bail!("Not a struct `{}`", input)
-        }
-        input = &input[6..];
-
-        let name = parse_identifier(&mut input)?;
-
-        let mut chars = input.chars();
-
-        loop {
-            match chars.next() {
-                None => bail!("Expected struct"),
-                Some('{') => {
-                    // strip opening and trailing curly bracket
-                    input = chars
-                        .as_str()
-                        .trim()
-                        .strip_suffix('}')
-                        .ok_or_else(|| format_err!("Expected closing `}}` in `{}`", s))?
-                        .trim_end();
-
-                    let fields = if input.is_empty() {
-                        Vec::new()
-                    } else {
-                        input
-                            .split(';')
-                            .filter(|s| !s.is_empty())
-                            .map(parse_struct_field)
-                            .collect::<Result<Vec<_>, _>>()?
-                    };
-                    return Ok(SolStruct { name, fields });
-                }
-                Some(' ') | Some('\t') => {
-                    continue;
-                }
-                Some(c) => {
-                    bail!("Illegal char `{}` at `{}`", c, s)
-                }
-            }
-        }
-    }
-
-    /// Name of this struct
+impl StructFieldType {
     pub fn name(&self) -> &str {
         &self.name
     }
 
-    /// All the fields of this struct
-    pub fn fields(&self) -> &Vec<FieldDeclaration> {
-        &self.fields
-    }
-
-    /// Turns this struct type into a tuple type (`Vec<ParamType>`)
+    /// Parse a struct field declaration
     ///
-    /// This returns `None` if the struct contains a mapping, since mappings can only be parameters of internal solidity functions.
-    pub fn as_param_tuple_signature(&self) -> Option<Vec<ParamType>> {
-        let mut tuple = Vec::with_capacity(self.fields.len());
-        for field in &self.fields {
-            match &field.ty {
-                FieldType::Elementary(param) => tuple.push(param.clone()),
-                FieldType::Struct(s) => {}
-                FieldType::StructArray(_) => {}
-                FieldType::FixedStructArray(_, _) => {}
-                FieldType::Mapping(_) => {
-                    // mappings are not allowed as params in public functions
-                    return None;
-                }
-            }
-        }
-
-        todo!()
-    }
-}
-
-/// Strips the identifier of field declaration from the input and returns it
-fn strip_field_identifier(input: &mut &str) -> Result<String> {
-    let mut iter = input.trim_end().rsplitn(2, is_whitespace);
-    let name = iter
-        .next()
-        .ok_or_else(|| format_err!("Expected field identifier"))
-        .map(|mut s| parse_identifier(&mut s))??;
-    *input = iter
-        .next()
-        .ok_or_else(|| format_err!("Expected field type in `{}`", input))?
-        .trim_end();
-    Ok(name)
-}
-
-/// Parses a field definition such as `<type> <storageLocation>? <name>`
-fn parse_struct_field(s: &str) -> Result<FieldDeclaration> {
-    let mut input = s.trim_start();
-
-    if !input.starts_with("mapping") {
-        // strip potential defaults
-        input = input
-            .split('=')
-            .next()
-            .ok_or_else(|| format_err!("Expected field definition `{}`", s))?
-            .trim_end();
-    }
-    let name = strip_field_identifier(&mut input)?;
-    Ok(FieldDeclaration {
-        name,
-        ty: parse_field_type(input)?,
-    })
-}
-
-fn parse_field_type(s: &str) -> Result<FieldType> {
-    let mut input = s.trim_start();
-    if input.starts_with("mapping") {
-        return Ok(FieldType::Mapping(Box::new(parse_mapping(input)?)));
-    }
-    if input.ends_with(" payable") {
-        // special case for `address payable`
-        input = input[..input.len() - 7].trim_end();
-    }
-    if let Ok(ty) = Reader::read(input) {
-        Ok(FieldType::Elementary(ty))
-    } else {
-        // parsing elementary datatype failed, try struct
-        input = input.trim_end();
+    /// The parsed field is either a `Struct`, `StructArray` or `FixedStructArray`
+    pub fn parse(mut input: &str) -> Result<FieldType> {
         let mut projections = Vec::new();
 
         loop {
@@ -268,6 +151,127 @@ fn parse_field_type(s: &str) -> Result<FieldType> {
                 }
             }
         }
+    }
+}
+
+/// Represents a solidity struct
+#[derive(Debug, Clone, PartialEq)]
+pub struct SolStruct {
+    name: String,
+    fields: Vec<FieldDeclaration>,
+}
+
+impl SolStruct {
+    /// Parse a solidity struct definition
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use ethers::abi::SolStruct;
+    /// let s = SolStruct::parse("struct MyStruct { uint x; uint y;}").unwrap();
+    /// ```
+    pub fn parse(s: &str) -> Result<Self> {
+        let mut input = s.trim();
+        if !input.starts_with("struct ") {
+            bail!("Not a struct `{}`", input)
+        }
+        input = &input[6..];
+
+        let name = parse_identifier(&mut input)?;
+
+        let mut chars = input.chars();
+
+        loop {
+            match chars.next() {
+                None => bail!("Expected struct"),
+                Some('{') => {
+                    // strip opening and trailing curly bracket
+                    input = chars
+                        .as_str()
+                        .trim()
+                        .strip_suffix('}')
+                        .ok_or_else(|| format_err!("Expected closing `}}` in `{}`", s))?
+                        .trim_end();
+
+                    let fields = if input.is_empty() {
+                        Vec::new()
+                    } else {
+                        input
+                            .split(';')
+                            .filter(|s| !s.is_empty())
+                            .map(parse_struct_field)
+                            .collect::<Result<Vec<_>, _>>()?
+                    };
+                    return Ok(SolStruct { name, fields });
+                }
+                Some(' ') | Some('\t') => {
+                    continue;
+                }
+                Some(c) => {
+                    bail!("Illegal char `{}` at `{}`", c, s)
+                }
+            }
+        }
+    }
+
+    /// Name of this struct
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    /// All the fields of this struct
+    pub fn fields(&self) -> &Vec<FieldDeclaration> {
+        &self.fields
+    }
+}
+
+/// Strips the identifier of field declaration from the input and returns it
+fn strip_field_identifier(input: &mut &str) -> Result<String> {
+    let mut iter = input.trim_end().rsplitn(2, is_whitespace);
+    let name = iter
+        .next()
+        .ok_or_else(|| format_err!("Expected field identifier"))
+        .map(|mut s| parse_identifier(&mut s))??;
+    *input = iter
+        .next()
+        .ok_or_else(|| format_err!("Expected field type in `{}`", input))?
+        .trim_end();
+    Ok(name)
+}
+
+/// Parses a field definition such as `<type> <storageLocation>? <name>`
+fn parse_struct_field(s: &str) -> Result<FieldDeclaration> {
+    let mut input = s.trim_start();
+
+    if !input.starts_with("mapping") {
+        // strip potential defaults
+        input = input
+            .split('=')
+            .next()
+            .ok_or_else(|| format_err!("Expected field definition `{}`", s))?
+            .trim_end();
+    }
+    let name = strip_field_identifier(&mut input)?;
+    Ok(FieldDeclaration {
+        name,
+        ty: parse_field_type(input)?,
+    })
+}
+
+fn parse_field_type(s: &str) -> Result<FieldType> {
+    let mut input = s.trim_start();
+    if input.starts_with("mapping") {
+        return Ok(FieldType::Mapping(Box::new(parse_mapping(input)?)));
+    }
+    if input.ends_with(" payable") {
+        // special case for `address payable`
+        input = input[..input.len() - 7].trim_end();
+    }
+    if let Ok(ty) = Reader::read(input) {
+        Ok(FieldType::Elementary(ty))
+    } else {
+        // parsing elementary datatype failed, try struct
+        StructFieldType::parse(input.trim_end())
     }
 }
 
