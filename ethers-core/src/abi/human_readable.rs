@@ -1,8 +1,7 @@
 use std::collections::HashMap;
 
-use thiserror::Error;
-
-use super::{
+use crate::abi::error::{bail, format_err, ParseError, Result};
+use crate::abi::{
     param_type::Reader, Abi, Constructor, Event, EventParam, Function, Param, StateMutability,
 };
 
@@ -15,7 +14,7 @@ use super::{
 ///     "function x() external view returns (uint256)",
 /// ]).unwrap();
 /// ```
-pub fn parse(input: &[&str]) -> Result<Abi, ParseError> {
+pub fn parse(input: &[&str]) -> Result<Abi> {
     let mut abi = Abi {
         constructor: None,
         functions: HashMap::new(),
@@ -41,7 +40,7 @@ pub fn parse(input: &[&str]) -> Result<Abi, ParseError> {
         } else if line.starts_with("constructor") {
             abi.constructor = Some(parse_constructor(line)?);
         } else {
-            return Err(ParseError::ParseError(super::Error::InvalidData));
+            bail!("Illegal abi `{}`", line)
         }
     }
 
@@ -49,12 +48,12 @@ pub fn parse(input: &[&str]) -> Result<Abi, ParseError> {
 }
 
 /// Parses an identifier like event or function name
-fn parse_identifier(input: &mut &str) -> Result<String, ParseError> {
+pub(crate) fn parse_identifier(input: &mut &str) -> Result<String> {
     let mut chars = input.trim_start().chars();
     let mut name = String::new();
     let c = chars
         .next()
-        .ok_or(ParseError::ParseError(super::Error::InvalidData))?;
+        .ok_or_else(|| format_err!("Empty identifier in `{}`", input))?;
     if is_first_ident_char(c) {
         name.push(c);
         loop {
@@ -67,30 +66,30 @@ fn parse_identifier(input: &mut &str) -> Result<String, ParseError> {
             }
         }
     }
+    if name.is_empty() {
+        return Err(ParseError::ParseError(super::Error::InvalidName(
+            input.to_owned(),
+        )));
+    }
     *input = chars.as_str();
     Ok(name)
 }
 
 /// Parses a solidity event declaration from `event <name> (args*) anonymous?`
-fn parse_event(mut event: &str) -> Result<Event, ParseError> {
-    event = event.trim();
+fn parse_event(s: &str) -> Result<Event> {
+    let mut event = s.trim();
     if !event.starts_with("event ") {
-        return Err(ParseError::ParseError(super::Error::InvalidData));
+        bail!("Not an event `{}`", s)
     }
     event = &event[5..];
 
     let name = parse_identifier(&mut event)?;
-    if name.is_empty() {
-        return Err(ParseError::ParseError(super::Error::InvalidName(
-            event.to_owned(),
-        )));
-    }
 
     let mut chars = event.chars();
 
     loop {
         match chars.next() {
-            None => return Err(ParseError::ParseError(super::Error::InvalidData)),
+            None => bail!("Expected event"),
             Some('(') => {
                 event = chars.as_str().trim();
                 let mut anonymous = false;
@@ -101,7 +100,7 @@ fn parse_event(mut event: &str) -> Result<Event, ParseError> {
                 event = event
                     .trim()
                     .strip_suffix(')')
-                    .ok_or(ParseError::ParseError(super::Error::InvalidData))?;
+                    .ok_or_else(|| format_err!("Expected closing `)` in `{}`", s))?;
 
                 let inputs = if event.is_empty() {
                     Vec::new()
@@ -120,26 +119,26 @@ fn parse_event(mut event: &str) -> Result<Event, ParseError> {
             Some(' ') | Some('\t') => {
                 continue;
             }
-            _ => {
-                return Err(ParseError::ParseError(super::Error::InvalidData));
+            Some(c) => {
+                bail!("Illegal char `{}` at `{}`", c, s)
             }
         }
     }
 }
 
 /// Parse a single event param
-fn parse_event_arg(input: &str) -> Result<EventParam, ParseError> {
+fn parse_event_arg(input: &str) -> Result<EventParam> {
     let mut iter = input.trim().rsplitn(3, is_whitespace);
     let mut indexed = false;
     let mut name = iter
         .next()
-        .ok_or(ParseError::ParseError(super::Error::InvalidData))?;
+        .ok_or_else(|| format_err!("Empty event param at `{}`", input))?;
 
     if let Some(mid) = iter.next() {
         let kind;
         if let Some(ty) = iter.next() {
             if mid != "indexed" {
-                return Err(ParseError::ParseError(super::Error::InvalidData));
+                bail!("Expected indexed keyword at `{}`", input)
             }
             indexed = true;
             kind = Reader::read(ty)?;
@@ -164,24 +163,19 @@ fn parse_event_arg(input: &str) -> Result<EventParam, ParseError> {
     }
 }
 
-fn parse_function(mut input: &str) -> Result<Function, ParseError> {
-    input = input.trim();
+fn parse_function(s: &str) -> Result<Function> {
+    let mut input = s.trim();
     if !input.starts_with("function ") {
-        return Err(ParseError::ParseError(super::Error::InvalidData));
+        bail!("Not a function `{}`", input)
     }
     input = &input[8..];
     let name = parse_identifier(&mut input)?;
-    if name.is_empty() {
-        return Err(ParseError::ParseError(super::Error::InvalidName(
-            input.to_owned(),
-        )));
-    }
 
     let mut iter = input.split(" returns");
 
     let parens = iter
         .next()
-        .ok_or(ParseError::ParseError(super::Error::InvalidData))?
+        .ok_or_else(|| format_err!("Invalid function declaration at `{}`", s))?
         .trim_end();
 
     let mut parens_iter = parens.rsplitn(2, ')');
@@ -209,7 +203,7 @@ fn parse_function(mut input: &str) -> Result<Function, ParseError> {
             .trim()
             .strip_prefix('(')
             .and_then(|s| s.strip_suffix(')'))
-            .ok_or(ParseError::ParseError(super::Error::InvalidData))?;
+            .ok_or_else(|| format_err!("Expected parentheses at `{}`", s))?;
         params
             .split(',')
             .filter(|s| !s.is_empty())
@@ -231,20 +225,20 @@ fn parse_function(mut input: &str) -> Result<Function, ParseError> {
     })
 }
 
-fn parse_constructor(mut input: &str) -> Result<Constructor, ParseError> {
-    input = input.trim();
+fn parse_constructor(s: &str) -> Result<Constructor> {
+    let mut input = s.trim();
     if !input.starts_with("constructor") {
-        return Err(ParseError::ParseError(super::Error::InvalidData));
+        bail!("Not a constructor `{}`", input)
     }
     input = input[11..]
         .trim_start()
         .strip_prefix('(')
-        .ok_or(ParseError::ParseError(super::Error::InvalidData))?;
+        .ok_or_else(|| format_err!("Expected leading `(` in `{}`", s))?;
 
     let params = input
         .rsplitn(2, ')')
         .last()
-        .ok_or(ParseError::ParseError(super::Error::InvalidData))?;
+        .ok_or_else(|| format_err!("Expected closing `)` in `{}`", s))?;
 
     let inputs = params
         .split(',')
@@ -267,7 +261,7 @@ fn detect_state_mutability(s: &str) -> StateMutability {
     }
 }
 
-fn parse_param(param: &str) -> Result<Param, ParseError> {
+fn parse_param(param: &str) -> Result<Param> {
     let mut iter = param.trim().rsplitn(3, is_whitespace);
 
     let name = iter
@@ -294,29 +288,20 @@ fn parse_param(param: &str) -> Result<Param, ParseError> {
     }
 }
 
-fn is_first_ident_char(c: char) -> bool {
+pub(crate) fn is_first_ident_char(c: char) -> bool {
     matches!(c, 'a'..='z' | 'A'..='Z' | '_')
 }
 
-fn is_ident_char(c: char) -> bool {
+pub(crate) fn is_ident_char(c: char) -> bool {
     matches!(c, 'a'..='z' | 'A'..='Z' | '0'..='9' | '_')
 }
 
-fn is_whitespace(c: char) -> bool {
+pub(crate) fn is_whitespace(c: char) -> bool {
     matches!(c, ' ' | '\t')
 }
 
 fn escape_quotes(input: &str) -> &str {
     input.trim_matches(is_whitespace).trim_matches('\"')
-}
-
-#[derive(Error, Debug)]
-pub enum ParseError {
-    #[error("expected data type")]
-    Kind,
-
-    #[error(transparent)]
-    ParseError(#[from] super::Error),
 }
 
 #[cfg(test)]
