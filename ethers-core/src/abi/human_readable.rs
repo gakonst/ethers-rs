@@ -152,7 +152,7 @@ impl AbiParser {
     }
 
     /// Parses a solidity event declaration from `event <name> (args*) anonymous?`
-    fn parse_event(&self, s: &str) -> Result<Event> {
+    pub fn parse_event(&self, s: &str) -> Result<Event> {
         let mut event = s.trim();
         if !event.starts_with("event ") {
             bail!("Not an event `{}`", s)
@@ -237,7 +237,7 @@ impl AbiParser {
         })
     }
 
-    fn parse_function(&mut self, s: &str) -> Result<Function> {
+    pub fn parse_function(&mut self, s: &str) -> Result<Function> {
         let mut input = s.trim();
         if !input.starts_with("function ") {
             bail!("Not a function `{}`", input)
@@ -328,7 +328,7 @@ impl AbiParser {
         }
     }
 
-    fn parse_constructor(&self, s: &str) -> Result<Constructor> {
+    pub fn parse_constructor(&self, s: &str) -> Result<Constructor> {
         let mut input = s.trim();
         if !input.starts_with("constructor") {
             bail!("Not a constructor `{}`", input)
