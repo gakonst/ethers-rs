@@ -82,7 +82,7 @@ pub fn derive_abi_event(input: TokenStream) -> TokenStream {
 #[proc_macro_derive(EthAbiType)]
 pub fn derive_abi_type(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
-
+    let name = &input.ident;
     let generic_params = input.generics.params.iter().map(|p| quote! { #p });
     let generic_params = quote! { #(#generic_params,)* };
 

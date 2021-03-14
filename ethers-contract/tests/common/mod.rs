@@ -1,3 +1,4 @@
+mod derive;
 use ethers_core::{
     abi::{Abi, Detokenize, InvalidOutputType, Token},
     types::{Address, Bytes},
