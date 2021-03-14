@@ -69,10 +69,15 @@ pub fn abigen(input: TokenStream) -> TokenStream {
         .into()
 }
 
+/// Derives the `EthEvent` trait for the labeled type.
 ///
+/// Additional arguments can be specified using the `#[ethevent(...)]` attribute:
+///
+/// - `rename`: Overrides the generated `EthEvent` name, default is the struct's name.
 #[proc_macro_derive(EthEvent, attributes(rename))]
 pub fn derive_abi_event(input: TokenStream) -> TokenStream {
-    "fn answer() -> u32 { 42 }".parse().unwrap()
+    let input = parse_macro_input!(input as DeriveInput);
+    todo!()
 }
 
 /// Derives the `Tokenizable` trait for the labeled type.
@@ -82,6 +87,10 @@ pub fn derive_abi_event(input: TokenStream) -> TokenStream {
 #[proc_macro_derive(EthAbiType)]
 pub fn derive_abi_type(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
+    derive_tokenizeable_impl(&input)
+}
+
+fn derive_tokenizeable_impl(input: &DeriveInput) -> TokenStream {
     let name = &input.ident;
     let generic_params = input.generics.params.iter().map(|p| quote! { #p });
     let generic_params = quote! { #(#generic_params,)* };
