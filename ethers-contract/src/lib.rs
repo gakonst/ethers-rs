@@ -46,7 +46,7 @@ pub use ethers_contract_abigen::Abigen;
 
 #[cfg(feature = "abigen")]
 #[cfg_attr(docsrs, doc(cfg(feature = "abigen")))]
-pub use ethers_contract_derive::abigen;
+pub use ethers_contract_derive::{abigen, EthAbiType, EthEvent};
 
 // Hide the Lazy re-export, it's just for convenience
 #[doc(hidden)]
