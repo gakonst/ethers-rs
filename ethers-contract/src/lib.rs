@@ -26,6 +26,7 @@ mod factory;
 pub use factory::ContractFactory;
 
 mod event;
+pub use event::EthEvent;
 
 mod stream;
 
