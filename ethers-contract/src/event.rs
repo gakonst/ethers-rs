@@ -5,8 +5,8 @@ use ethers_core::{
     types::{BlockNumber, Filter, Log, TxHash, ValueOrArray, H256, U64},
 };
 use ethers_providers::{FilterWatcher, Middleware, PubsubClient, SubscriptionStream};
-use std::marker::PhantomData;
 use std::borrow::Cow;
+use std::marker::PhantomData;
 
 /// A trait for implementing event bindings
 pub trait EthEvent: Detokenize {
