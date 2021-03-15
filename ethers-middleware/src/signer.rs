@@ -1,7 +1,6 @@
 use ethers_core::{
     types::{
-        Address, BlockNumber, Bytes, NameOrAddress, Signature, Transaction, TransactionRequest,
-        U256,
+        Address, BlockId, Bytes, NameOrAddress, Signature, Transaction, TransactionRequest, U256,
     },
     utils::keccak256,
 };
@@ -176,7 +175,7 @@ where
     async fn fill_transaction(
         &self,
         tx: &mut TransactionRequest,
-        block: Option<BlockNumber>,
+        block: Option<BlockId>,
     ) -> Result<(), SignerMiddlewareError<M, S>> {
         // set the `from` field
         if tx.from.is_none() {
@@ -246,7 +245,7 @@ where
     async fn send_transaction(
         &self,
         mut tx: TransactionRequest,
-        block: Option<BlockNumber>,
+        block: Option<BlockId>,
     ) -> Result<PendingTransaction<'_, Self::Provider>, Self::Error> {
         if let Some(NameOrAddress::Name(ens_name)) = tx.to {
             let addr = self

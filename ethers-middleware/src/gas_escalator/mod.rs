@@ -5,7 +5,7 @@ mod linear;
 pub use linear::LinearGasPrice;
 
 use async_trait::async_trait;
-use ethers_core::types::{BlockNumber, TransactionRequest, TxHash, U256};
+use ethers_core::types::{BlockId, TransactionRequest, TxHash, U256};
 use ethers_providers::{interval, FromErr, Middleware, PendingTransaction, StreamExt};
 use futures_util::lock::Mutex;
 use std::sync::Arc;
@@ -64,7 +64,7 @@ pub struct GasEscalatorMiddleware<M, E> {
     pub(crate) escalator: E,
     /// The transactions which are currently being monitored for escalation
     #[allow(clippy::type_complexity)]
-    pub txs: Arc<Mutex<Vec<(TxHash, TransactionRequest, Instant, Option<BlockNumber>)>>>,
+    pub txs: Arc<Mutex<Vec<(TxHash, TransactionRequest, Instant, Option<BlockId>)>>>,
     frequency: Frequency,
 }
 
@@ -85,7 +85,7 @@ where
     async fn send_transaction(
         &self,
         tx: TransactionRequest,
-        block: Option<BlockNumber>,
+        block: Option<BlockId>,
     ) -> Result<PendingTransaction<'_, Self::Provider>, Self::Error> {
         let pending_tx = self
             .inner()

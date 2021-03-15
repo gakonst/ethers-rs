@@ -1,7 +1,7 @@
 use super::base::{decode_function_data, AbiError};
 use ethers_core::{
     abi::{Detokenize, Function, InvalidOutputType},
-    types::{Address, BlockNumber, Bytes, TransactionRequest, U256},
+    types::{Address, BlockId, Bytes, TransactionRequest, U256},
 };
 use ethers_providers::{Middleware, PendingTransaction, ProviderError};
 
@@ -52,7 +52,7 @@ pub struct ContractCall<M, D> {
     /// The ABI of the function being called
     pub function: Function,
     /// Optional block number to be used when calculating the transaction's gas and nonce
-    pub block: Option<BlockNumber>,
+    pub block: Option<BlockId>,
     pub(crate) client: Arc<M>,
     pub(crate) datatype: PhantomData<D>,
 }
@@ -83,7 +83,7 @@ impl<M, D: Detokenize> ContractCall<M, D> {
     }
 
     /// Sets the `block` field for sending the tx to the chain
-    pub fn block<T: Into<BlockNumber>>(mut self, block: T) -> Self {
+    pub fn block<T: Into<BlockId>>(mut self, block: T) -> Self {
         self.block = Some(block.into());
         self
     }

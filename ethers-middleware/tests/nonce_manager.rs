@@ -25,7 +25,7 @@ async fn nonce_manager() {
     let provider = NonceManagerMiddleware::new(provider, address);
 
     let nonce = provider
-        .get_transaction_count(address, Some(BlockNumber::Pending))
+        .get_transaction_count(address, Some(BlockNumber::Pending.into()))
         .await
         .unwrap()
         .as_u64();

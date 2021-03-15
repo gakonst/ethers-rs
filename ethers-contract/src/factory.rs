@@ -37,7 +37,7 @@ impl<M: Middleware> Deployer<M> {
     pub async fn send(self) -> Result<Contract<M>, ContractError<M>> {
         let pending_tx = self
             .client
-            .send_transaction(self.tx, Some(self.block))
+            .send_transaction(self.tx, Some(self.block.into()))
             .await
             .map_err(ContractError::MiddlewareError)?;
 

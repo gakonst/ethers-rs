@@ -95,12 +95,11 @@ impl FilterBlockOption {
     }
 
     pub fn set_to_block(&self, block: BlockNumber) -> Self {
-        let from_block =
-            if let FilterBlockOption::Range { from_block, .. } = self {
-                *from_block
-            } else {
-                None
-            };
+        let from_block = if let FilterBlockOption::Range { from_block, .. } = self {
+            *from_block
+        } else {
+            None
+        };
 
         FilterBlockOption::Range {
             from_block: from_block,
@@ -155,9 +154,7 @@ impl Serialize for Filter {
                 }
             }
 
-            FilterBlockOption::AtBlockHash(ref h) => {
-                s.serialize_field("blockHash", h)?
-            }
+            FilterBlockOption::AtBlockHash(ref h) => s.serialize_field("blockHash", h)?,
         }
 
         if let Some(ref address) = self.address {
@@ -320,8 +317,7 @@ mod tests {
 
         let event = "ValueChanged(address,string,string)";
         let t0 = H256::from(keccak256(event.as_bytes()));
-        let addr: Address =
-            "f817796F60D268A36a57b8D2dF1B97B14C0D0E1d".parse().unwrap();
+        let addr: Address = "f817796F60D268A36a57b8D2dF1B97B14C0D0E1d".parse().unwrap();
         let filter = Filter::new();
 
         let ser = serialize(&filter.clone());

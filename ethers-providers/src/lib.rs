@@ -188,7 +188,7 @@ pub trait Middleware: Sync + Send + Debug {
     async fn send_transaction(
         &self,
         tx: TransactionRequest,
-        block: Option<BlockNumber>,
+        block: Option<BlockId>,
     ) -> Result<PendingTransaction<'_, Self::Provider>, Self::Error> {
         self.inner()
             .send_transaction(tx, block)
@@ -233,7 +233,7 @@ pub trait Middleware: Sync + Send + Debug {
     async fn get_transaction_count<T: Into<NameOrAddress> + Send + Sync>(
         &self,
         from: T,
-        block: Option<BlockNumber>,
+        block: Option<BlockId>,
     ) -> Result<U256, Self::Error> {
         self.inner()
             .get_transaction_count(from, block)
@@ -248,7 +248,7 @@ pub trait Middleware: Sync + Send + Debug {
     async fn call(
         &self,
         tx: &TransactionRequest,
-        block: Option<BlockNumber>,
+        block: Option<BlockId>,
     ) -> Result<Bytes, Self::Error> {
         self.inner().call(tx, block).await.map_err(FromErr::from)
     }
@@ -260,7 +260,7 @@ pub trait Middleware: Sync + Send + Debug {
     async fn get_balance<T: Into<NameOrAddress> + Send + Sync>(
         &self,
         from: T,
-        block: Option<BlockNumber>,
+        block: Option<BlockId>,
     ) -> Result<U256, Self::Error> {
         self.inner()
             .get_balance(from, block)
@@ -375,7 +375,7 @@ pub trait Middleware: Sync + Send + Debug {
     async fn get_code<T: Into<NameOrAddress> + Send + Sync>(
         &self,
         at: T,
-        block: Option<BlockNumber>,
+        block: Option<BlockId>,
     ) -> Result<Bytes, Self::Error> {
         self.inner()
             .get_code(at, block)
@@ -387,7 +387,7 @@ pub trait Middleware: Sync + Send + Debug {
         &self,
         from: T,
         location: H256,
-        block: Option<BlockNumber>,
+        block: Option<BlockId>,
     ) -> Result<H256, Self::Error> {
         self.inner()
             .get_storage_at(from, location, block)
