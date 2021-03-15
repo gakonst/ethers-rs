@@ -24,6 +24,7 @@ pub(crate) fn imports(name: &str) -> TokenStream {
     }
 }
 
+/// Generates the static `Abi` constants and the contract struct
 pub(crate) fn struct_declaration(cx: &Context, abi_name: &proc_macro2::Ident) -> TokenStream {
     let name = &cx.contract_name;
     let abi = &cx.abi_str;
@@ -36,10 +37,9 @@ pub(crate) fn struct_declaration(cx: &Context, abi_name: &proc_macro2::Ident) ->
     } else {
         quote! {
             pub static #abi_name: Lazy<Abi> = Lazy::new(|| {
-                let abi_str = #abi.replace('[', "").replace(']', "");
+                let abi_str = #abi.trim().trim_start_matches('[').trim_end_matches(']');
                 // split lines and get only the non-empty things
-                let split: Vec<&str> = abi_str
-                    .split("\n")
+                let split: Vec<_> = abi_str.lines()
                     .map(|x| x.trim())
                     .filter(|x| !x.is_empty())
                     .collect();
