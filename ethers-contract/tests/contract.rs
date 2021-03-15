@@ -8,7 +8,9 @@ mod eth_tests {
     use super::*;
     use ethers::{
         contract::Multicall,
-        providers::{Http, Middleware, PendingTransaction, Provider, StreamExt},
+        providers::{
+            Http, Middleware, PendingTransaction, Provider, StreamExt,
+        },
         types::{Address, U256},
         utils::Ganache,
     };
@@ -16,7 +18,8 @@ mod eth_tests {
 
     #[tokio::test]
     async fn deploy_and_call_contract() {
-        let (abi, bytecode) = compile_contract("SimpleStorage", "SimpleStorage.sol");
+        let (abi, bytecode) =
+            compile_contract("SimpleStorage", "SimpleStorage.sol");
 
         // launch ganache
         let ganache = Ganache::new().spawn();
@@ -36,7 +39,8 @@ mod eth_tests {
         let contract = deployer.clone().send().await.unwrap();
 
         let get_value = contract.method::<_, String>("getValue", ()).unwrap();
-        let last_sender = contract.method::<_, Address>("lastSender", ()).unwrap();
+        let last_sender =
+            contract.method::<_, Address>("lastSender", ()).unwrap();
 
         // the initial value must be the one set in the constructor
         let value = get_value.clone().call().await.unwrap();
@@ -54,7 +58,10 @@ mod eth_tests {
         let pending_tx = contract_call.send().await.unwrap();
         let tx = client.get_transaction(*pending_tx).await.unwrap().unwrap();
         let tx_receipt = pending_tx.await.unwrap();
-        assert_eq!(last_sender.clone().call().await.unwrap(), client2.address());
+        assert_eq!(
+            last_sender.clone().call().await.unwrap(),
+            client2.address()
+        );
         assert_eq!(get_value.clone().call().await.unwrap(), "hi");
         assert_eq!(tx.input, calldata);
         assert_eq!(tx_receipt.gas_used.unwrap(), gas_estimate);
@@ -91,7 +98,8 @@ mod eth_tests {
 
     #[tokio::test]
     async fn get_past_events() {
-        let (abi, bytecode) = compile_contract("SimpleStorage", "SimpleStorage.sol");
+        let (abi, bytecode) =
+            compile_contract("SimpleStorage", "SimpleStorage.sol");
         let ganache = Ganache::new().spawn();
         let client = connect(&ganache, 0);
         let contract = deploy(client.clone(), abi, bytecode).await;
@@ -116,11 +124,25 @@ mod eth_tests {
         assert_eq!(logs[0].new_value, "initial value");
         assert_eq!(logs[1].new_value, "hi");
         assert_eq!(logs.len(), 2);
+
+        // and we can fetch the events at a block hash
+        let hash = client.get_block(1).await.unwrap().unwrap().hash.unwrap();
+        let logs: Vec<ValueChanged> = contract
+            .event("ValueChanged")
+            .unwrap()
+            .at_block_hash(hash)
+            .topic1(client.address()) // Corresponds to the first indexed parameter
+            .query()
+            .await
+            .unwrap();
+        assert_eq!(logs[0].new_value, "initial value");
+        assert_eq!(logs.len(), 1);
     }
 
     #[tokio::test]
     async fn watch_events() {
-        let (abi, bytecode) = compile_contract("SimpleStorage", "SimpleStorage.sol");
+        let (abi, bytecode) =
+            compile_contract("SimpleStorage", "SimpleStorage.sol");
         let ganache = Ganache::new().spawn();
         let client = connect(&ganache, 0);
         let contract = deploy(client, abi.clone(), bytecode).await;
@@ -132,7 +154,8 @@ mod eth_tests {
 
         // Also set up a subscription for the same thing
         let ws = Provider::connect(ganache.ws_endpoint()).await.unwrap();
-        let contract2 = ethers_contract::Contract::new(contract.address(), abi, ws);
+        let contract2 =
+            ethers_contract::Contract::new(contract.address(), abi, ws);
         let event2 = contract2.event::<ValueChanged>("ValueChanged").unwrap();
         let mut subscription = event2.subscribe().await.unwrap();
         assert_eq!(subscription.id, 2.into());
@@ -159,7 +182,8 @@ mod eth_tests {
 
     #[tokio::test]
     async fn signer_on_node() {
-        let (abi, bytecode) = compile_contract("SimpleStorage", "SimpleStorage.sol");
+        let (abi, bytecode) =
+            compile_contract("SimpleStorage", "SimpleStorage.sol");
         // spawn ganache
         let ganache = Ganache::new().spawn();
 
@@ -196,14 +220,16 @@ mod eth_tests {
     #[tokio::test]
     async fn multicall_aggregate() {
         // get ABI and bytecode for the Multcall contract
-        let (multicall_abi, multicall_bytecode) = compile_contract("Multicall", "Multicall.sol");
+        let (multicall_abi, multicall_bytecode) =
+            compile_contract("Multicall", "Multicall.sol");
 
         // get ABI and bytecode for the NotSoSimpleStorage contract
         let (not_so_simple_abi, not_so_simple_bytecode) =
             compile_contract("NotSoSimpleStorage", "NotSoSimpleStorage.sol");
 
         // get ABI and bytecode for the SimpleStorage contract
-        let (abi, bytecode) = compile_contract("SimpleStorage", "SimpleStorage.sol");
+        let (abi, bytecode) =
+            compile_contract("SimpleStorage", "SimpleStorage.sol");
 
         // launch ganache
         let ganache = Ganache::new().spawn();
@@ -220,13 +246,24 @@ mod eth_tests {
         let client4 = connect(&ganache, 3);
 
         // create a factory which will be used to deploy instances of the contract
-        let multicall_factory =
-            ContractFactory::new(multicall_abi, multicall_bytecode, client.clone());
-        let simple_factory = ContractFactory::new(abi.clone(), bytecode.clone(), client2.clone());
-        let not_so_simple_factory =
-            ContractFactory::new(not_so_simple_abi, not_so_simple_bytecode, client3.clone());
+        let multicall_factory = ContractFactory::new(
+            multicall_abi,
+            multicall_bytecode,
+            client.clone(),
+        );
+        let simple_factory = ContractFactory::new(
+            abi.clone(),
+            bytecode.clone(),
+            client2.clone(),
+        );
+        let not_so_simple_factory = ContractFactory::new(
+            not_so_simple_abi,
+            not_so_simple_bytecode,
+            client3.clone(),
+        );
 
-        let multicall_contract = multicall_factory.deploy(()).unwrap().send().await.unwrap();
+        let multicall_contract =
+            multicall_factory.deploy(()).unwrap().send().await.unwrap();
         let addr = multicall_contract.address();
 
         let simple_contract = simple_factory
@@ -259,7 +296,8 @@ mod eth_tests {
             .unwrap();
 
         // get the calls for `value` and `last_sender` for both SimpleStorage contracts
-        let value = simple_contract.method::<_, String>("getValue", ()).unwrap();
+        let value =
+            simple_contract.method::<_, String>("getValue", ()).unwrap();
         let value2 = not_so_simple_contract
             .method::<_, (String, Address)>("getValues", ())
             .unwrap();
@@ -271,7 +309,8 @@ mod eth_tests {
             .unwrap();
 
         // initiate the Multicall instance and add calls one by one in builder style
-        let mut multicall = Multicall::new(client4.clone(), Some(addr)).await.unwrap();
+        let mut multicall =
+            Multicall::new(client4.clone(), Some(addr)).await.unwrap();
 
         multicall
             .add_call(value)
@@ -356,24 +395,29 @@ mod celo_tests {
 
     #[tokio::test]
     async fn deploy_and_call_contract() {
-        let (abi, bytecode) = compile_contract("SimpleStorage", "SimpleStorage.sol");
+        let (abi, bytecode) =
+            compile_contract("SimpleStorage", "SimpleStorage.sol");
 
         // Celo testnet
-        let provider = Provider::<Http>::try_from("https://alfajores-forno.celo-testnet.org")
-            .unwrap()
-            .interval(Duration::from_millis(6000));
+        let provider = Provider::<Http>::try_from(
+            "https://alfajores-forno.celo-testnet.org",
+        )
+        .unwrap()
+        .interval(Duration::from_millis(6000));
 
         // Funded with https://celo.org/developers/faucet
-        let wallet = "d652abb81e8c686edba621a895531b1f291289b63b5ef09a94f686a5ecdd5db1"
-            .parse::<LocalWallet>()
-            .unwrap();
+        let wallet =
+            "d652abb81e8c686edba621a895531b1f291289b63b5ef09a94f686a5ecdd5db1"
+                .parse::<LocalWallet>()
+                .unwrap();
 
         let client = SignerMiddleware::new(provider, wallet);
         let client = Arc::new(client);
 
         let factory = ContractFactory::new(abi, bytecode, client);
         let deployer = factory.deploy("initial value".to_string()).unwrap();
-        let contract = deployer.block(BlockNumber::Pending).send().await.unwrap();
+        let contract =
+            deployer.block(BlockNumber::Pending).send().await.unwrap();
 
         let value: String = contract
             .method("getValue", ())

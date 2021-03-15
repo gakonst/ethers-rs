@@ -4,7 +4,9 @@ use ethers_core::{
     abi::{Detokenize, Event as AbiEvent},
     types::{BlockNumber, Filter, Log, TxHash, ValueOrArray, H256, U64},
 };
-use ethers_providers::{FilterWatcher, Middleware, PubsubClient, SubscriptionStream};
+use ethers_providers::{
+    FilterWatcher, Middleware, PubsubClient, SubscriptionStream,
+};
 use std::borrow::Cow;
 use std::marker::PhantomData;
 
@@ -40,14 +42,22 @@ impl<M, D: Detokenize> Event<'_, '_, M, D> {
     /// Sets the filter's `from` block
     #[allow(clippy::wrong_self_convention)]
     pub fn from_block<T: Into<BlockNumber>>(mut self, block: T) -> Self {
-        self.filter.from_block = Some(block.into());
+        self.filter = self.filter.from_block(block);
         self
     }
 
     /// Sets the filter's `to` block
     #[allow(clippy::wrong_self_convention)]
     pub fn to_block<T: Into<BlockNumber>>(mut self, block: T) -> Self {
-        self.filter.to_block = Some(block.into());
+        self.filter = self.filter.to_block(block);
+        self
+    }
+
+    /// Sets the filter's `blockHash`. Setting this will override previously
+    /// set `from_block` and `to_block` fields.
+    #[allow(clippy::wrong_self_convention)]
+    pub fn at_block_hash<T: Into<H256>>(mut self, hash: T) -> Self {
+        self.filter = self.filter.at_block_hash(hash);
         self
     }
 
@@ -86,7 +96,12 @@ where
         &'a self,
     ) -> Result<
         // Wraps the FilterWatcher with a mapping to the event
-        EventStream<'a, FilterWatcher<'a, M::Provider, Log>, D, ContractError<M>>,
+        EventStream<
+            'a,
+            FilterWatcher<'a, M::Provider, Log>,
+            D,
+            ContractError<M>,
+        >,
         ContractError<M>,
     > {
         let filter = self
@@ -113,7 +128,12 @@ where
         &'a self,
     ) -> Result<
         // Wraps the SubscriptionStream with a mapping to the event
-        EventStream<'a, SubscriptionStream<'a, M::Provider, Log>, D, ContractError<M>>,
+        EventStream<
+            'a,
+            SubscriptionStream<'a, M::Provider, Log>,
+            D,
+            ContractError<M>,
+        >,
         ContractError<M>,
     > {
         let filter = self
@@ -151,7 +171,9 @@ where
 
     /// Queries the blockchain for the selected filter and returns a vector of logs
     /// along with their metadata
-    pub async fn query_with_meta(&self) -> Result<Vec<(D, LogMeta)>, ContractError<M>> {
+    pub async fn query_with_meta(
+        &self,
+    ) -> Result<Vec<(D, LogMeta)>, ContractError<M>> {
         let logs = self
             .provider
             .get_logs(&self.filter)
@@ -187,7 +209,9 @@ impl From<&Log> for LogMeta {
     fn from(src: &Log) -> Self {
         LogMeta {
             block_number: src.block_number.expect("should have a block number"),
-            transaction_hash: src.transaction_hash.expect("should have a tx hash"),
+            transaction_hash: src
+                .transaction_hash
+                .expect("should have a tx hash"),
         }
     }
 }
