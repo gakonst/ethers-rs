@@ -14,7 +14,7 @@ impl Context {
         let data_types = sorted_events
             .values()
             .flatten()
-            .map(|event| expand_event(event, &self.event_derives))
+            .map(|event| self.expand_event(event, &self.event_derives))
             .collect::<Result<Vec<_>>>()?;
 
         if data_types.is_empty() {
@@ -26,12 +26,13 @@ impl Context {
         })
     }
 
-    pub fn events(&self) -> Result<TokenStream> {
+    /// Generate the event filter methods for the contract
+    pub fn event_methods(&self) -> Result<TokenStream> {
         let sorted_events: BTreeMap<_, _> = self.abi.events.clone().into_iter().collect();
         let data_types = sorted_events
             .values()
             .flatten()
-            .map(|event| expand_filter(event))
+            .map(|event| self.expand_filter(event))
             .collect::<Vec<_>>();
 
         if data_types.is_empty() {
@@ -42,53 +43,86 @@ impl Context {
             #( #data_types )*
         })
     }
-}
 
-/// Expands into a single method for contracting an event stream.
-fn expand_filter(event: &Event) -> TokenStream {
-    // append `filter` to disambiguate with potentially conflicting
-    // function names
-    let name = util::safe_ident(&format!("{}_filter", event.name.to_snake_case()));
-    // let result = util::ident(&event.name.to_pascal_case());
-    let result = expand_struct_name(event);
+    /// Expands an event property type.
+    ///
+    /// Note that this is slightly different than an expanding a Solidity type as
+    /// complex types like arrays and strings get emited as hashes when they are
+    /// indexed.
+    fn expand_input_type(&self, input: &EventParam) -> Result<TokenStream> {
+        Ok(match (&input.kind, input.indexed) {
+            (ParamType::Array(..), true)
+            | (ParamType::Bytes, true)
+            | (ParamType::FixedArray(..), true)
+            | (ParamType::String, true)
+            | (ParamType::Tuple(..), true) => {
+                quote! { H256 }
+            }
+            (kind, _) => types::expand(kind)?,
+        })
+    }
 
-    let ev_name = Literal::string(&event.name);
+    /// Expands an ABI event into name-type pairs for each of its parameters.
+    fn expand_params(&self, event: &Event) -> Result<Vec<(TokenStream, TokenStream)>> {
+        event
+            .inputs
+            .iter()
+            .enumerate()
+            .map(|(i, input)| {
+                // NOTE: Events can contain nameless values.
+                let name = util::expand_input_name(i, &input.name);
+                let ty = self.expand_input_type(&input)?;
 
-    let doc = util::expand_doc(&format!("Gets the contract's `{}` event", event.name));
-    quote! {
+                Ok((name, ty))
+            })
+            .collect()
+    }
 
-        #doc
-        pub fn #name(&self) -> Event<M, #result> {
-            self.0.event(#ev_name).expect("event not found (this should never happen)")
+    /// Expands into a single method for contracting an event stream.
+    fn expand_filter(&self, event: &Event) -> TokenStream {
+        // append `filter` to disambiguate with potentially conflicting
+        // function names
+        let name = util::safe_ident(&format!("{}_filter", event.name.to_snake_case()));
+        // let result = util::ident(&event.name.to_pascal_case());
+        let result = expand_struct_name(event);
+
+        let ev_name = Literal::string(&event.name);
+
+        let doc = util::expand_doc(&format!("Gets the contract's `{}` event", event.name));
+        quote! {
+
+            #doc
+            pub fn #name(&self) -> Event<M, #result> {
+                self.0.event(#ev_name).expect("event not found (this should never happen)")
+            }
         }
     }
-}
 
-/// Expands an ABI event into a single event data type. This can expand either
-/// into a structure or a tuple in the case where all event parameters (topics
-/// and data) are anonymous.
-fn expand_event(event: &Event, event_derives: &[Path]) -> Result<TokenStream> {
-    let event_name = expand_struct_name(event);
+    /// Expands an ABI event into a single event data type. This can expand either
+    /// into a structure or a tuple in the case where all event parameters (topics
+    /// and data) are anonymous.
+    fn expand_event(&self, event: &Event, event_derives: &[Path]) -> Result<TokenStream> {
+        let event_name = expand_struct_name(event);
 
-    let signature = expand_hash(event.signature());
+        let signature = expand_hash(event.signature());
 
-    let abi_signature = event.abi_signature();
-    let abi_signature_lit = Literal::string(&abi_signature);
-    let abi_signature_doc = util::expand_doc(&format!("`{}`", abi_signature));
+        let abi_signature = event.abi_signature();
+        let abi_signature_lit = Literal::string(&abi_signature);
+        let abi_signature_doc = util::expand_doc(&format!("`{}`", abi_signature));
 
-    let params = expand_params(event)?;
+        let params = self.expand_params(event)?;
 
-    // expand as a tuple if all fields are anonymous
-    let all_anonymous_fields = event.inputs.iter().all(|input| input.name.is_empty());
-    let (data_type_definition, data_type_construction) = if all_anonymous_fields {
-        expand_data_tuple(&event_name, &params)
-    } else {
-        expand_data_struct(&event_name, &params)
-    };
+        // expand as a tuple if all fields are anonymous
+        let all_anonymous_fields = event.inputs.iter().all(|input| input.name.is_empty());
+        let (data_type_definition, data_type_construction) = if all_anonymous_fields {
+            expand_data_tuple(&event_name, &params)
+        } else {
+            expand_data_struct(&event_name, &params)
+        };
 
-    // read each token parameter as the required data type
-    let params_len = Literal::usize_unsuffixed(params.len());
-    let read_param_token = params
+        // read each token parameter as the required data type
+        let params_len = Literal::usize_unsuffixed(params.len());
+        let read_param_token = params
         .iter()
         .map(|(name, _)| {
             quote! {
@@ -97,50 +131,89 @@ fn expand_event(event: &Event, event_derives: &[Path]) -> Result<TokenStream> {
         })
         .collect::<Vec<_>>();
 
-    let derives = expand_derives(event_derives);
+        let derives = expand_derives(event_derives);
+        // use ethers::contract::EthEvent;
+        // derive `EthAbiType` and impl EthEvent
+        Ok(quote! {
+            #[derive(Clone, Debug, Default, Eq, PartialEq, #derives)]
+            pub #data_type_definition
 
-    Ok(quote! {
-        #[derive(Clone, Debug, Default, Eq, PartialEq, #derives)]
-        pub #data_type_definition
-
-        impl #event_name {
-            /// Retrieves the signature for the event this data corresponds to.
-            /// This signature is the Keccak-256 hash of the ABI signature of
-            /// this event.
-            pub const fn signature() -> H256 {
-                #signature
-            }
-
-            /// Retrieves the ABI signature for the event this data corresponds
-            /// to. For this event the value should always be:
-            ///
-            #abi_signature_doc
-            pub const fn abi_signature() -> &'static str {
-                #abi_signature_lit
-            }
-        }
-
-        impl Detokenize for #event_name {
-            fn from_tokens(
-                tokens: Vec<Token>,
-            ) -> Result<Self, InvalidOutputType> {
-                if tokens.len() != #params_len {
-                    return Err(InvalidOutputType(format!(
-                        "Expected {} tokens, got {}: {:?}",
-                        #params_len,
-                        tokens.len(),
-                        tokens
-                    )));
+            impl #event_name {
+                pub const fn signature() -> H256 {
+                    #signature
                 }
 
-                #[allow(unused_mut)]
-                let mut tokens = tokens.into_iter();
-                #( #read_param_token )*
-
-                Ok(#data_type_construction)
+                #abi_signature_doc
+                pub const fn abi_signature() -> &'static str {
+                    #abi_signature_lit
+                }
             }
-        }
-    })
+
+            impl Detokenize for #event_name {
+                fn from_tokens(
+                    tokens: Vec<Token>,
+                ) -> Result<Self, InvalidOutputType> {
+                    if tokens.len() != #params_len {
+                        return Err(InvalidOutputType(format!(
+                            "Expected {} tokens, got {}: {:?}",
+                            #params_len,
+                            tokens.len(),
+                            tokens
+                        )));
+                    }
+
+                    #[allow(unused_mut)]
+                    let mut tokens = tokens.into_iter();
+                    #( #read_param_token )*
+
+                    Ok(#data_type_construction)
+                }
+            }
+        })
+    }
+
+    /// Expands a event parameter into an event builder filter method for the
+    /// specified topic index.
+    fn expand_builder_topic_filter(
+        &self,
+        topic_index: usize,
+        param: &EventParam,
+    ) -> Result<TokenStream> {
+        let doc = util::expand_doc(&format!(
+            "Adds a filter for the `{}` event parameter.",
+            param.name,
+        ));
+        let topic = util::ident(&format!("topic{}", topic_index));
+        let name = if param.name.is_empty() {
+            topic.clone()
+        } else {
+            util::safe_ident(&param.name.to_snake_case())
+        };
+        let ty = self.expand_input_type(&param)?;
+
+        Ok(quote! {
+            #doc
+            pub fn #name(mut self, topic: Topic<#ty>) -> Self {
+                self.0 = (self.0).#topic(topic);
+                self
+            }
+        })
+    }
+
+    /// Expands an ABI event into filter methods for its indexed parameters.
+    fn expand_builder_topic_filters(&self, event: &Event) -> Result<TokenStream> {
+        let topic_filters = event
+            .inputs
+            .iter()
+            .filter(|input| input.indexed)
+            .enumerate()
+            .map(|(topic_index, input)| self.expand_builder_topic_filter(topic_index, input))
+            .collect::<Result<Vec<_>>>()?;
+
+        Ok(quote! {
+            #( #topic_filters )*
+        })
+    }
 }
 
 /// Expands an ABI event into an identifier for its event data type.
@@ -148,22 +221,6 @@ fn expand_struct_name(event: &Event) -> TokenStream {
     let name = format!("{}Filter", event.name.to_pascal_case());
     let event_name = util::ident(&name);
     quote! { #event_name }
-}
-
-/// Expands an ABI event into name-type pairs for each of its parameters.
-fn expand_params(event: &Event) -> Result<Vec<(TokenStream, TokenStream)>> {
-    event
-        .inputs
-        .iter()
-        .enumerate()
-        .map(|(i, input)| {
-            // NOTE: Events can contain nameless values.
-            let name = util::expand_input_name(i, &input.name);
-            let ty = expand_input_type(&input)?;
-
-            Ok((name, ty))
-        })
-        .collect()
 }
 
 /// Expands an event data structure from its name-type parameter pairs. Returns
@@ -213,45 +270,6 @@ fn expand_data_tuple(
     (definition, construction)
 }
 
-/// Expands an ABI event into filter methods for its indexed parameters.
-fn expand_builder_topic_filters(event: &Event) -> Result<TokenStream> {
-    let topic_filters = event
-        .inputs
-        .iter()
-        .filter(|input| input.indexed)
-        .enumerate()
-        .map(|(topic_index, input)| expand_builder_topic_filter(topic_index, input))
-        .collect::<Result<Vec<_>>>()?;
-
-    Ok(quote! {
-        #( #topic_filters )*
-    })
-}
-
-/// Expands a event parameter into an event builder filter method for the
-/// specified topic index.
-fn expand_builder_topic_filter(topic_index: usize, param: &EventParam) -> Result<TokenStream> {
-    let doc = util::expand_doc(&format!(
-        "Adds a filter for the `{}` event parameter.",
-        param.name,
-    ));
-    let topic = util::ident(&format!("topic{}", topic_index));
-    let name = if param.name.is_empty() {
-        topic.clone()
-    } else {
-        util::safe_ident(&param.name.to_snake_case())
-    };
-    let ty = expand_input_type(&param)?;
-
-    Ok(quote! {
-        #doc
-        pub fn #name(mut self, topic: Topic<#ty>) -> Self {
-            self.0 = (self.0).#topic(topic);
-            self
-        }
-    })
-}
-
 /// Expands an ABI event into an identifier for its event data type.
 fn expand_builder_name(event: &Event) -> TokenStream {
     let builder_name = util::ident(&format!("{}Builder", &event.name.to_pascal_case()));
@@ -260,24 +278,6 @@ fn expand_builder_name(event: &Event) -> TokenStream {
 
 fn expand_derives(derives: &[Path]) -> TokenStream {
     quote! {#(#derives),*}
-}
-
-/// Expands an event property type.
-///
-/// Note that this is slightly different than an expanding a Solidity type as
-/// complex types like arrays and strings get emited as hashes when they are
-/// indexed.
-fn expand_input_type(input: &EventParam) -> Result<TokenStream> {
-    Ok(match (&input.kind, input.indexed) {
-        (ParamType::Array(..), true)
-        | (ParamType::Bytes, true)
-        | (ParamType::FixedArray(..), true)
-        | (ParamType::String, true)
-        | (ParamType::Tuple(..), true) => {
-            quote! { H256 }
-        }
-        (kind, _) => types::expand(kind)?,
-    })
 }
 
 /// Expands a 256-bit `Hash` into a literal representation that can be used with
