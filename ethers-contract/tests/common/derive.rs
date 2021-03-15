@@ -84,7 +84,7 @@ fn can_detokenize_nested_tuple_struct() {
 #[test]
 fn can_derive_eth_event() {
     #[derive(Debug, Clone, PartialEq, EthEvent)]
-    pub struct ValueChangedEvent {
+    struct ValueChangedEvent {
         old_author: Address,
         new_author: Address,
         old_value: String,
@@ -112,7 +112,7 @@ fn can_derive_eth_event() {
 fn can_set_eth_event_name_attribute() {
     #[derive(Debug, PartialEq, EthEvent)]
     #[ethevent(name = "MyEvent")]
-    pub struct ValueChangedEvent {
+    struct ValueChangedEvent {
         old_author: Address,
         new_author: Address,
         old_value: String,
@@ -165,19 +165,40 @@ fn can_detect_various_event_abi_types() {
     );
 }
 
-// #[test]
-// fn can_set_eth_abi_attribute() {
-//     #[derive(Debug, Clone, PartialEq, EthAbiType)]
-//     struct SomeType {
-//         inner: Address,
-//         msg: String,
-//     }
-//
-//     #[derive(Debug, PartialEq, EthEvent)]
-//     #[ethevent(abi = "ValueChangedEvent(address,(address,string),string)")]
-//     pub struct ValueChangedEvent {
-//         old_author: Address,
-//         inner: SomeType,
-//         new_value: String,
-//     }
-// }
+#[test]
+fn can_set_eth_abi_attribute() {
+    #[derive(Debug, Clone, PartialEq, EthAbiType)]
+    struct SomeType {
+        inner: Address,
+        msg: String,
+    }
+
+    #[derive(Debug, PartialEq, EthEvent)]
+    #[ethevent(abi = "ValueChangedEvent(address,(address,string),string)")]
+    struct ValueChangedEvent {
+        old_author: Address,
+        inner: SomeType,
+        new_value: String,
+    }
+
+    assert_eq!(
+        "ValueChangedEvent(address,(address,string),string)",
+        ValueChangedEvent::abi_signature()
+    );
+
+    #[derive(Debug, PartialEq, EthEvent)]
+    #[ethevent(
+        name = "ValueChangedEvent",
+        abi = "ValueChangedEvent(address,(address,string),string)"
+    )]
+    struct ValueChangedEvent2 {
+        old_author: Address,
+        inner: SomeType,
+        new_value: String,
+    }
+
+    assert_eq!(
+        "ValueChangedEvent(address,(address,string),string)",
+        ValueChangedEvent2::abi_signature()
+    );
+}
