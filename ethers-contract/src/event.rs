@@ -5,7 +5,23 @@ use ethers_core::{
     types::{BlockNumber, Filter, Log, TxHash, ValueOrArray, H256, U64},
 };
 use ethers_providers::{FilterWatcher, Middleware, PubsubClient, SubscriptionStream};
+use std::borrow::Cow;
 use std::marker::PhantomData;
+
+/// A trait for implementing event bindings
+pub trait EthEvent: Detokenize {
+    /// The name of the event this type represents
+    fn name(&self) -> Cow<'static, str>;
+
+    /// Retrieves the signature for the event this data corresponds to.
+    /// This signature is the Keccak-256 hash of the ABI signature of
+    /// this event.
+    fn signature() -> H256;
+
+    /// Retrieves the ABI signature for the event this data corresponds
+    /// to.
+    fn abi_signature() -> Cow<'static, str>;
+}
 
 /// Helper for managing the event filter before querying or streaming its logs
 #[derive(Debug)]

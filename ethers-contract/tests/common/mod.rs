@@ -1,38 +1,24 @@
+mod derive;
 use ethers_core::{
-    abi::{Abi, Detokenize, InvalidOutputType, Token},
+    abi::Abi,
     types::{Address, Bytes},
 };
 
-use ethers_contract::{Contract, ContractFactory};
+use ethers_contract::{Contract, ContractFactory, EthAbiType};
 use ethers_core::utils::{GanacheInstance, Solc};
 use ethers_middleware::signer::SignerMiddleware;
 use ethers_providers::{Http, Middleware, Provider};
 use ethers_signers::LocalWallet;
 use std::{convert::TryFrom, sync::Arc, time::Duration};
 
-// Note: We also provide the `abigen` macro for generating these bindings automatically
-#[derive(Clone, Debug)]
+// Note: The `EthAbiType` derive macro implements the necessary conversion between `Tokens` and
+// the struct
+#[derive(Clone, Debug, EthAbiType)]
 pub struct ValueChanged {
     pub old_author: Address,
     pub new_author: Address,
     pub old_value: String,
     pub new_value: String,
-}
-
-impl Detokenize for ValueChanged {
-    fn from_tokens(tokens: Vec<Token>) -> Result<ValueChanged, InvalidOutputType> {
-        let old_author: Address = tokens[1].clone().into_address().unwrap();
-        let new_author: Address = tokens[1].clone().into_address().unwrap();
-        let old_value = tokens[2].clone().into_string().unwrap();
-        let new_value = tokens[3].clone().into_string().unwrap();
-
-        Ok(Self {
-            old_author,
-            new_author,
-            old_value,
-            new_value,
-        })
-    }
 }
 
 /// compiles the given contract and returns the ABI and Bytecode
