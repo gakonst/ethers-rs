@@ -8,8 +8,14 @@ pub use ethabi::*;
 mod tokens;
 pub use tokens::{Detokenize, InvalidOutputType, Tokenizable, TokenizableItem, Tokenize};
 
+pub mod struct_def;
+pub use struct_def::SolStruct;
+
+mod error;
+pub use error::ParseError;
+
 mod human_readable;
-pub use human_readable::{parse as parse_abi, ParseError};
+pub use human_readable::{parse as parse_abi, AbiParser};
 
 /// Extension trait for `ethabi::Function`.
 pub trait FunctionExt {
