@@ -11,7 +11,7 @@ use std::marker::PhantomData;
 /// A trait for implementing event bindings
 pub trait EthEvent: Detokenize {
     /// The name of the event this type represents
-    fn name(&self) -> Cow<'static, str>;
+    fn name() -> Cow<'static, str>;
 
     /// Retrieves the signature for the event this data corresponds to.
     /// This signature is the Keccak-256 hash of the ABI signature of
