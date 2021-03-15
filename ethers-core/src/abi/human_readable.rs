@@ -9,16 +9,15 @@ use crate::abi::{
 
 /// A parser that turns a "human readable abi" into a `Abi`
 pub struct AbiParser {
-    abi: Abi,
     /// solidity structs
-    structs: HashMap<String, SolStruct>,
+    pub structs: HashMap<String, SolStruct>,
     /// solidity structs as tuples
-    struct_tuples: HashMap<String, Vec<ParamType>>,
+    pub struct_tuples: HashMap<String, Vec<ParamType>>,
 }
 
 impl AbiParser {
     /// Parses a "human readable abi" string
-    pub fn parse_str(self, s: &str) -> Result<Abi> {
+    pub fn parse_str(&mut self, s: &str) -> Result<Abi> {
         self.parse(&s.lines().collect::<Vec<_>>())
     }
 
@@ -32,8 +31,16 @@ impl AbiParser {
     ///     "function x() external view returns (uint256)",
     /// ]).unwrap();
     /// ```
-    pub fn parse(mut self, input: &[&str]) -> Result<Abi> {
+    pub fn parse(&mut self, input: &[&str]) -> Result<Abi> {
         // parse struct first
+        let mut abi = Abi {
+            constructor: None,
+            functions: HashMap::new(),
+            events: HashMap::new(),
+            receive: false,
+            fallback: false,
+        };
+
         let (structs, types): (Vec<_>, Vec<_>) = input
             .iter()
             .map(|s| escape_quotes(s))
@@ -52,25 +59,23 @@ impl AbiParser {
             line = line.trim_start();
             if line.starts_with("function") {
                 let function = self.parse_function(&line)?;
-                self.abi
-                    .functions
+                abi.functions
                     .entry(function.name.clone())
                     .or_default()
                     .push(function);
             } else if line.starts_with("event") {
                 let event = self.parse_event(line)?;
-                self.abi
-                    .events
+                abi.events
                     .entry(event.name.clone())
                     .or_default()
                     .push(event);
             } else if line.starts_with("constructor") {
-                self.abi.constructor = Some(self.parse_constructor(line)?);
+                abi.constructor = Some(self.parse_constructor(line)?);
             } else {
                 bail!("Illegal abi `{}`", line)
             }
         }
-        Ok(self.abi)
+        Ok(abi)
     }
 
     /// Substitutes any other struct references within structs with tuples
@@ -136,13 +141,6 @@ impl AbiParser {
     /// Link additional structs for parsing
     pub fn with_structs(structs: Vec<SolStruct>) -> Self {
         Self {
-            abi: Abi {
-                constructor: None,
-                functions: HashMap::new(),
-                events: HashMap::new(),
-                receive: false,
-                fallback: false,
-            },
             structs: structs
                 .into_iter()
                 .map(|s| (s.name().to_string(), s))
