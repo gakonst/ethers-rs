@@ -79,9 +79,29 @@ pub fn abigen(input: TokenStream) -> TokenStream {
 ///
 /// Additional arguments can be specified using the `#[ethevent(...)]` attribute:
 ///
-/// - `name`, `name = "..."`: Overrides the generated `EthEvent` name, default is the struct's name.
-/// - `signature`, `signature = "..."`: The signature as hex string to override the event's signature.
+/// - `name`, `name = "..."`: Overrides the generated `EthEvent` name, default is the
+///  struct's name.
+/// - `signature`, `signature = "..."`: The signature as hex string to override the
+///  event's signature.
 /// - `abi`, `abi = "..."`: The ABI signature for the event this event's data corresponds to.
+///  The `abi` should be solidity event definition or a tuple of the event's types in case the
+///  event has non elementary (other `EthAbiType`) types as members
+///
+/// # Example
+/// ```ignore
+/// #[derive(Debug, EthAbiType)]
+/// struct Inner {
+///     inner: Address,
+///     msg: String,
+/// }
+///
+/// #[derive(Debug, EthEvent)]
+/// #[ethevent(abi = "ValueChangedEvent((address,string),string)")]
+/// struct ValueChangedEvent {
+///     inner: Inner,
+///     msg: String,
+/// }
+/// ```
 #[proc_macro_derive(EthEvent, attributes(ethevent))]
 pub fn derive_abi_event(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
