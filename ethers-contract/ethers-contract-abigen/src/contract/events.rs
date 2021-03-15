@@ -263,7 +263,12 @@ fn expand_hash(hash: Hash) -> TokenStream {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Abigen;
     use ethers_core::abi::{EventParam, ParamType};
+
+    fn test_context() -> Context {
+        Context::from_abigen(Abigen::new("TestToken", "[]").unwrap()).unwrap()
+    }
 
     #[test]
     fn expand_transfer_filter() {
@@ -288,15 +293,15 @@ mod tests {
             ],
             anonymous: false,
         };
-
-        // assert_quote!(expand_filter(&event), {
-        //     #[doc = "Gets the contract's `Transfer` event"]
-        //     pub fn transfer_filter(&self) -> Event<M, TransferFilter> {
-        //         self.0
-        //             .event("Transfer")
-        //             .expect("event not found (this should never happen)")
-        //     }
-        // });
+        let cx = test_context();
+        assert_quote!(cx.expand_filter(&event), {
+            #[doc = "Gets the contract's `Transfer` event"]
+            pub fn transfer_filter(&self) -> Event<M, TransferFilter> {
+                self.0
+                    .event("Transfer")
+                    .expect("event not found (this should never happen)")
+            }
+        });
     }
 
     #[test]
@@ -318,16 +323,17 @@ mod tests {
             anonymous: false,
         };
 
+        let cx = test_context();
+        let params = cx.expand_params(&event).unwrap();
         let name = expand_struct_name(&event);
-        // let params = expand_params(&event).unwrap();
-        // let definition = expand_data_struct(&name, &params);
-        //
-        // assert_quote!(definition, {
-        //     struct FooFilter {
-        //         pub a: bool,
-        //         pub p1: Address,
-        //     }
-        // });
+        let definition = expand_data_struct(&name, &params);
+
+        assert_quote!(definition, {
+            struct FooFilter {
+                pub a: bool,
+                pub p1: Address,
+            }
+        });
     }
 
     #[test]
@@ -349,13 +355,14 @@ mod tests {
             anonymous: false,
         };
 
+        let cx = test_context();
+        let params = cx.expand_params(&event).unwrap();
         let name = expand_struct_name(&event);
-        // let params = expand_params(&event).unwrap();
-        // let definition = expand_data_tuple(&name, &params);
-        //
-        // assert_quote!(definition, {
-        //     struct FooFilter(pub bool, pub Address);
-        // });
+        let definition = expand_data_tuple(&name, &params);
+
+        assert_quote!(definition, {
+            struct FooFilter(pub bool, pub Address);
+        });
     }
 
     #[test]
