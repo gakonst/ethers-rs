@@ -229,7 +229,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         };
 
         let from = utils::serialize(&from);
-        let block = utils::serialize(&block.unwrap_or(BlockNumber::Latest.into()));
+        let block = utils::serialize(&block.unwrap_or_else(|| BlockNumber::Latest.into()));
         self.request("eth_getTransactionCount", [from, block]).await
     }
 
@@ -245,7 +245,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         };
 
         let from = utils::serialize(&from);
-        let block = utils::serialize(&block.unwrap_or(BlockNumber::Latest.into()));
+        let block = utils::serialize(&block.unwrap_or_else(|| BlockNumber::Latest.into()));
         self.request("eth_getBalance", [from, block]).await
     }
 
@@ -267,7 +267,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         block: Option<BlockId>,
     ) -> Result<Bytes, ProviderError> {
         let tx = utils::serialize(tx);
-        let block = utils::serialize(&block.unwrap_or(BlockNumber::Latest.into()));
+        let block = utils::serialize(&block.unwrap_or_else(|| BlockNumber::Latest.into()));
         self.request("eth_call", [tx, block]).await
     }
 
@@ -435,7 +435,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
 
         let from = utils::serialize(&from);
         let location = utils::serialize(&location);
-        let block = utils::serialize(&block.unwrap_or(BlockNumber::Latest.into()));
+        let block = utils::serialize(&block.unwrap_or_else(|| BlockNumber::Latest.into()));
 
         // get the hex encoded value.
         let value: String = self
@@ -458,7 +458,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         };
 
         let at = utils::serialize(&at);
-        let block = utils::serialize(&block.unwrap_or(BlockNumber::Latest.into()));
+        let block = utils::serialize(&block.unwrap_or_else(|| BlockNumber::Latest.into()));
         self.request("eth_getCode", [at, block]).await
     }
 
