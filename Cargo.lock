@@ -187,9 +187,9 @@ dependencies = [
 
 [[package]]
 name = "bitvec"
-version = "0.20.1"
+version = "0.20.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f5011ffc90248764d7005b0e10c7294f5aa1bd87d9dd7248f4ad475b347c294d"
+checksum = "1f682656975d3a682daff957be4ddeb65d6ad656737cd821f2d00685ae466af1"
 dependencies = [
  "funty",
  "radium 0.6.2",
@@ -573,13 +573,12 @@ dependencies = [
 
 [[package]]
 name = "ethabi-next"
-version = "13.1.0"
+version = "13.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2121446a221088af92b3bd94d020e349eff0e1b0a4f8f923c243978fe942412a"
+checksum = "317f1828c48834fbe40ed37b9267742d37392f6c1f7bedb9dec7f0c62d17601c"
 dependencies = [
  "anyhow",
  "ethereum-types",
- "funty",
  "hex",
  "serde",
  "serde_json",
@@ -1469,12 +1468,12 @@ dependencies = [
 
 [[package]]
 name = "parity-scale-codec"
-version = "2.0.0"
+version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "75c823fdae1bb5ff5708ee61a62697e6296175dc671710876871c853f48592b3"
+checksum = "0cd3dab59b5cf4bc81069ade0fc470341a1ef3ad5fa73e5a8943bed2ec12b2e8"
 dependencies = [
  "arrayvec",
- "bitvec 0.20.1",
+ "bitvec 0.20.2",
  "byte-slice-cast",
  "serde",
 ]
