@@ -2,11 +2,13 @@
 mod common;
 mod events;
 mod methods;
+mod structs;
 mod types;
 
 use super::util;
 use super::Abigen;
 use anyhow::{anyhow, Context as _, Result};
+use ethers_core::abi::AbiParser;
 use ethers_core::{
     abi::{parse_abi, Abi},
     types::Address,
@@ -24,6 +26,9 @@ pub(crate) struct Context {
 
     /// The parsed ABI.
     abi: Abi,
+
+    /// The parser used for human readable format
+    abi_parser: AbiParser,
 
     /// Was the ABI in human readable format?
     human_readable: bool,
@@ -59,10 +64,13 @@ impl Context {
         let events_decl = cx.events_declaration()?;
 
         // 3. impl block for the event functions
-        let contract_events = cx.events()?;
+        let contract_events = cx.event_methods()?;
 
         // 4. impl block for the contract methods
         let contract_methods = cx.methods()?;
+
+        // 5. Declare the structs parsed from the human readable abi
+        let abi_structs_decl = cx.abi_structs()?;
 
         Ok(quote! {
             // export all the created data types
@@ -91,6 +99,8 @@ impl Context {
                 }
 
                 #events_decl
+
+                #abi_structs_decl
             }
         })
     }
@@ -99,22 +109,14 @@ impl Context {
     fn from_abigen(args: Abigen) -> Result<Self> {
         // get the actual ABI string
         let abi_str = args.abi_source.get().context("failed to get ABI JSON")?;
+        let mut abi_parser = AbiParser::default();
         // parse it
         let (abi, human_readable): (Abi, _) = if let Ok(abi) = serde_json::from_str(&abi_str) {
             // normal abi format
             (abi, false)
         } else {
             // heuristic for parsing the human readable format
-
-            // replace bad chars
-            let abi_str = abi_str.replace('[', "").replace(']', "");
-            // split lines and get only the non-empty things
-            let split: Vec<&str> = abi_str
-                .split('\n')
-                .map(|x| x.trim())
-                .filter(|x| !x.is_empty())
-                .collect();
-            (parse_abi(&split)?, true)
+            (abi_parser.parse_str(&abi_str)?, true)
         };
 
         let contract_name = util::ident(&args.contract_name);
@@ -144,6 +146,7 @@ impl Context {
             abi,
             human_readable,
             abi_str: Literal::string(&abi_str),
+            abi_parser,
             contract_name,
             method_aliases,
             event_derives,

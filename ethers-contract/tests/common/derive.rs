@@ -98,7 +98,7 @@ fn can_derive_eth_event() {
         new_value: "100".to_string(),
     };
 
-    assert_eq!("ValueChangedEvent", value.name());
+    assert_eq!("ValueChangedEvent", ValueChangedEvent::name());
     assert_eq!(
         "ValueChangedEvent(address,address,string,string)",
         ValueChangedEvent::abi_signature()
@@ -119,14 +119,7 @@ fn can_set_eth_event_name_attribute() {
         new_value: String,
     }
 
-    let value = ValueChangedEvent {
-        old_author: "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee".parse().unwrap(),
-        new_author: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".parse().unwrap(),
-        old_value: "50".to_string(),
-        new_value: "100".to_string(),
-    };
-
-    assert_eq!("MyEvent", value.name());
+    assert_eq!("MyEvent", ValueChangedEvent::name());
     assert_eq!(
         "MyEvent(address,address,string,string)",
         ValueChangedEvent::abi_signature()

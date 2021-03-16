@@ -190,7 +190,7 @@ pub fn derive_abi_event(input: TokenStream) -> TokenStream {
     let ethevent_impl = quote! {
         impl ethers_contract::EthEvent for #name {
 
-            fn name(&self) -> ::std::borrow::Cow<'static, str> {
+            fn name() -> ::std::borrow::Cow<'static, str> {
                 #event_name.into()
             }
 
