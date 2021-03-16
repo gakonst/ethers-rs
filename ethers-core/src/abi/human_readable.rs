@@ -17,8 +17,25 @@ pub struct AbiParser {
 
 impl AbiParser {
     /// Parses a "human readable abi" string
+    ///
+    /// # Example
+    ///
+    /// ```
+    ///  # use ethers::abi::AbiParser;
+    /// let abi = AbiParser::default().parse_str(r#"[
+    ///         function setValue(string)
+    ///         function getValue() external view returns (string)
+    ///         event ValueChanged(address indexed author, string oldValue, string newValue)
+    ///     ]"#).unwrap();
+    /// ```
     pub fn parse_str(&mut self, s: &str) -> Result<Abi> {
-        self.parse(&s.lines().collect::<Vec<_>>())
+        self.parse(
+            &s.trim()
+                .trim_start_matches('[')
+                .trim_end_matches(']')
+                .lines()
+                .collect::<Vec<_>>(),
+        )
     }
 
     /// Parses a "human readable abi" string vector
@@ -44,6 +61,8 @@ impl AbiParser {
         let (structs, types): (Vec<_>, Vec<_>) = input
             .iter()
             .map(|s| escape_quotes(s))
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
             .partition(|s| s.starts_with("struct"));
 
         for sol in structs {
@@ -388,6 +407,13 @@ impl Default for AbiParser {
 /// ```
 pub fn parse(input: &[&str]) -> Result<Abi> {
     AbiParser::default().parse(input)
+}
+
+/// Parses a "human readable abi" string
+///
+/// See also `AbiParser::parse_str`
+pub fn parse_str(input: &str) -> Result<Abi> {
+    AbiParser::default().parse_str(input)
 }
 
 /// Parses an identifier like event or function name

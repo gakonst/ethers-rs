@@ -116,15 +116,7 @@ impl Context {
             (abi, false)
         } else {
             // heuristic for parsing the human readable format
-            // replace enclosing brackets `[..abi..]`
-            let abi_str = abi_str.trim().trim_start_matches('[').trim_end_matches(']');
-            // split lines and get only the non-empty things
-            let split: Vec<_> = abi_str
-                .lines()
-                .map(|x| x.trim())
-                .filter(|x| !x.is_empty())
-                .collect();
-            (abi_parser.parse(&split)?, true)
+            (abi_parser.parse_str(&abi_str)?, true)
         };
 
         let contract_name = util::ident(&args.contract_name);

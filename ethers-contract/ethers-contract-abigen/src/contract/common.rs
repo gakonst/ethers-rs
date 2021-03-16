@@ -15,7 +15,7 @@ pub(crate) fn imports(name: &str) -> TokenStream {
         use std::sync::Arc;
         use ethers::{
             core::{
-                abi::{Abi, Token, Detokenize, InvalidOutputType, Tokenizable, parse_abi},
+                abi::{Abi, Token, Detokenize, InvalidOutputType, Tokenizable},
                 types::*, // import all the types so that we can codegen for everything
             },
             contract::{Contract, builders::{ContractCall, Event}, Lazy},
@@ -36,15 +36,8 @@ pub(crate) fn struct_declaration(cx: &Context, abi_name: &proc_macro2::Ident) ->
         }
     } else {
         quote! {
-            pub static #abi_name: Lazy<Abi> = Lazy::new(|| {
-                let abi_str = #abi.trim().trim_start_matches('[').trim_end_matches(']');
-                // split lines and get only the non-empty things
-                let split: Vec<_> = abi_str.lines()
-                    .map(|x| x.trim())
-                    .filter(|x| !x.is_empty())
-                    .collect();
-                parse_abi(&split).expect("invalid abi")
-            });
+            pub static #abi_name: Lazy<Abi> = Lazy::new(|| ethers::core::abi::parse_abi_str(#abi)
+                                                .expect("invalid abi"));
         }
     };
 
