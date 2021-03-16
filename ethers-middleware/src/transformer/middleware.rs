@@ -56,7 +56,7 @@ where
     async fn send_transaction(
         &self,
         mut tx: TransactionRequest,
-        block: Option<BlockNumber>,
+        block: Option<BlockId>,
     ) -> Result<PendingTransaction<'_, Self::Provider>, Self::Error> {
         // resolve the to field if that's an ENS name.
         if let Some(NameOrAddress::Name(ens_name)) = tx.to {

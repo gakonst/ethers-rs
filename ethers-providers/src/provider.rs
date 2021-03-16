@@ -221,7 +221,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
     async fn get_transaction_count<T: Into<NameOrAddress> + Send + Sync>(
         &self,
         from: T,
-        block: Option<BlockNumber>,
+        block: Option<BlockId>,
     ) -> Result<U256, ProviderError> {
         let from = match from.into() {
             NameOrAddress::Name(ens_name) => self.resolve_name(&ens_name).await?,
@@ -229,7 +229,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         };
 
         let from = utils::serialize(&from);
-        let block = utils::serialize(&block.unwrap_or(BlockNumber::Latest));
+        let block = utils::serialize(&block.unwrap_or_else(|| BlockNumber::Latest.into()));
         self.request("eth_getTransactionCount", [from, block]).await
     }
 
@@ -237,7 +237,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
     async fn get_balance<T: Into<NameOrAddress> + Send + Sync>(
         &self,
         from: T,
-        block: Option<BlockNumber>,
+        block: Option<BlockId>,
     ) -> Result<U256, ProviderError> {
         let from = match from.into() {
             NameOrAddress::Name(ens_name) => self.resolve_name(&ens_name).await?,
@@ -245,7 +245,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         };
 
         let from = utils::serialize(&from);
-        let block = utils::serialize(&block.unwrap_or(BlockNumber::Latest));
+        let block = utils::serialize(&block.unwrap_or_else(|| BlockNumber::Latest.into()));
         self.request("eth_getBalance", [from, block]).await
     }
 
@@ -264,10 +264,10 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
     async fn call(
         &self,
         tx: &TransactionRequest,
-        block: Option<BlockNumber>,
+        block: Option<BlockId>,
     ) -> Result<Bytes, ProviderError> {
         let tx = utils::serialize(tx);
-        let block = utils::serialize(&block.unwrap_or(BlockNumber::Latest));
+        let block = utils::serialize(&block.unwrap_or_else(|| BlockNumber::Latest.into()));
         self.request("eth_call", [tx, block]).await
     }
 
@@ -283,7 +283,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
     async fn send_transaction(
         &self,
         mut tx: TransactionRequest,
-        _: Option<BlockNumber>,
+        _: Option<BlockId>,
     ) -> Result<PendingTransaction<'_, P>, ProviderError> {
         if tx.from.is_none() {
             tx.from = self.3;
@@ -426,7 +426,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         &self,
         from: T,
         location: H256,
-        block: Option<BlockNumber>,
+        block: Option<BlockId>,
     ) -> Result<H256, ProviderError> {
         let from = match from.into() {
             NameOrAddress::Name(ens_name) => self.resolve_name(&ens_name).await?,
@@ -435,7 +435,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
 
         let from = utils::serialize(&from);
         let location = utils::serialize(&location);
-        let block = utils::serialize(&block.unwrap_or(BlockNumber::Latest));
+        let block = utils::serialize(&block.unwrap_or_else(|| BlockNumber::Latest.into()));
 
         // get the hex encoded value.
         let value: String = self
@@ -450,7 +450,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
     async fn get_code<T: Into<NameOrAddress> + Send + Sync>(
         &self,
         at: T,
-        block: Option<BlockNumber>,
+        block: Option<BlockId>,
     ) -> Result<Bytes, ProviderError> {
         let at = match at.into() {
             NameOrAddress::Name(ens_name) => self.resolve_name(&ens_name).await?,
@@ -458,7 +458,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         };
 
         let at = utils::serialize(&at);
-        let block = utils::serialize(&block.unwrap_or(BlockNumber::Latest));
+        let block = utils::serialize(&block.unwrap_or_else(|| BlockNumber::Latest.into()));
         self.request("eth_getCode", [at, block]).await
     }
 

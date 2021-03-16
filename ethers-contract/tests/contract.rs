@@ -1,4 +1,7 @@
-use ethers::{contract::ContractFactory, types::H256};
+use ethers::{
+    contract::ContractFactory,
+    types::{BlockId, H256},
+};
 
 mod common;
 pub use common::*;
@@ -96,7 +99,7 @@ mod eth_tests {
         let client = connect(&ganache, 0);
         let contract = deploy(client.clone(), abi, bytecode).await;
 
-        // make a call with `client2`
+        // make a call with `client`
         let _tx_hash = *contract
             .method::<_, H256>("setValue", "hi".to_owned())
             .unwrap()
@@ -116,6 +119,133 @@ mod eth_tests {
         assert_eq!(logs[0].new_value, "initial value");
         assert_eq!(logs[1].new_value, "hi");
         assert_eq!(logs.len(), 2);
+
+        // and we can fetch the events at a block hash
+        let hash = client.get_block(1).await.unwrap().unwrap().hash.unwrap();
+        let logs: Vec<ValueChanged> = contract
+            .event("ValueChanged")
+            .unwrap()
+            .at_block_hash(hash)
+            .topic1(client.address()) // Corresponds to the first indexed parameter
+            .query()
+            .await
+            .unwrap();
+        assert_eq!(logs[0].new_value, "initial value");
+        assert_eq!(logs.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn call_past_state() {
+        let (abi, bytecode) = compile_contract("SimpleStorage", "SimpleStorage.sol");
+        let ganache = Ganache::new().spawn();
+        let client = connect(&ganache, 0);
+        let contract = deploy(client.clone(), abi, bytecode).await;
+        let deployed_block = client.get_block_number().await.unwrap();
+
+        // assert initial state
+        let value = contract
+            .method::<_, String>("getValue", ())
+            .unwrap()
+            .call()
+            .await
+            .unwrap();
+        assert_eq!(value, "initial value");
+
+        // make a call with `client`
+        let _tx_hash = *contract
+            .method::<_, H256>("setValue", "hi".to_owned())
+            .unwrap()
+            .send()
+            .await
+            .unwrap();
+
+        // assert new value
+        let value = contract
+            .method::<_, String>("getValue", ())
+            .unwrap()
+            .call()
+            .await
+            .unwrap();
+        assert_eq!(value, "hi");
+
+        // assert previous value
+        let value = contract
+            .method::<_, String>("getValue", ())
+            .unwrap()
+            .block(BlockId::Number(deployed_block.into()))
+            .call()
+            .await
+            .unwrap();
+        assert_eq!(value, "initial value");
+
+        // Here would be the place to test EIP-1898, specifying the `BlockId` of `call` as the
+        // first block hash. However, Ganache does not implement this :/
+
+        // let hash = client.get_block(1).await.unwrap().unwrap().hash.unwrap();
+        // let value = contract
+        //     .method::<_, String>("getValue", ())
+        //     .unwrap()
+        //     .block(BlockId::Hash(hash))
+        //     .call()
+        //     .await
+        //     .unwrap();
+        // assert_eq!(value, "initial value");
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn call_past_hash_test() {
+        // geth --dev --http --http.api eth,web3
+        let (abi, bytecode) = compile_contract("SimpleStorage", "SimpleStorage.sol");
+        let provider = Provider::<Http>::try_from("http://localhost:8545").unwrap();
+        let deployer = provider.get_accounts().await.unwrap()[0];
+
+        let client = Arc::new(provider.with_sender(deployer));
+        let contract = deploy(client.clone(), abi, bytecode).await;
+        let deployed_block = client.get_block_number().await.unwrap();
+
+        // assert initial state
+        let value = contract
+            .method::<_, String>("getValue", ())
+            .unwrap()
+            .call()
+            .await
+            .unwrap();
+        assert_eq!(value, "initial value");
+
+        // make a call with `client`
+        let _tx_hash = *contract
+            .method::<_, H256>("setValue", "hi".to_owned())
+            .unwrap()
+            .send()
+            .await
+            .unwrap();
+
+        // assert new value
+        let value = contract
+            .method::<_, String>("getValue", ())
+            .unwrap()
+            .call()
+            .await
+            .unwrap();
+        assert_eq!(value, "hi");
+
+        // assert previous value using block hash
+        let hash = client
+            .get_block(deployed_block)
+            .await
+            .unwrap()
+            .unwrap()
+            .hash
+            .unwrap();
+        let value = contract
+            .method::<_, String>("getValue", ())
+            .unwrap()
+            .block(BlockId::Hash(hash))
+            .call()
+            .await
+            .unwrap();
+        assert_eq!(value, "initial value");
     }
 
     #[tokio::test]

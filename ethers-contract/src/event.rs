@@ -40,14 +40,22 @@ impl<M, D: Detokenize> Event<'_, '_, M, D> {
     /// Sets the filter's `from` block
     #[allow(clippy::wrong_self_convention)]
     pub fn from_block<T: Into<BlockNumber>>(mut self, block: T) -> Self {
-        self.filter.from_block = Some(block.into());
+        self.filter = self.filter.from_block(block);
         self
     }
 
     /// Sets the filter's `to` block
     #[allow(clippy::wrong_self_convention)]
     pub fn to_block<T: Into<BlockNumber>>(mut self, block: T) -> Self {
-        self.filter.to_block = Some(block.into());
+        self.filter = self.filter.to_block(block);
+        self
+    }
+
+    /// Sets the filter's `blockHash`. Setting this will override previously
+    /// set `from_block` and `to_block` fields.
+    #[allow(clippy::wrong_self_convention)]
+    pub fn at_block_hash<T: Into<H256>>(mut self, hash: T) -> Self {
+        self.filter = self.filter.at_block_hash(hash);
         self
     }
 

@@ -23,11 +23,11 @@ async fn main() -> Result<()> {
     println!("{}", serde_json::to_string(&tx)?);
 
     let nonce1 = provider
-        .get_transaction_count(from, Some(BlockNumber::Latest))
+        .get_transaction_count(from, Some(BlockNumber::Latest.into()))
         .await?;
 
     let nonce2 = provider
-        .get_transaction_count(from, Some(BlockNumber::Number(0.into())))
+        .get_transaction_count(from, Some(BlockNumber::Number(0.into()).into()))
         .await?;
 
     assert!(nonce2 < nonce1);

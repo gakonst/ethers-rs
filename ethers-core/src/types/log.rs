@@ -62,14 +62,63 @@ pub struct Log {
     pub removed: Option<bool>,
 }
 
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum FilterBlockOption {
+    Range {
+        from_block: Option<BlockNumber>,
+        to_block: Option<BlockNumber>,
+    },
+    AtBlockHash(H256),
+}
+
+impl Default for FilterBlockOption {
+    fn default() -> Self {
+        FilterBlockOption::Range {
+            from_block: None,
+            to_block: None,
+        }
+    }
+}
+
+impl FilterBlockOption {
+    pub fn set_from_block(&self, block: BlockNumber) -> Self {
+        let to_block = if let FilterBlockOption::Range { to_block, .. } = self {
+            *to_block
+        } else {
+            None
+        };
+
+        FilterBlockOption::Range {
+            from_block: Some(block),
+            to_block,
+        }
+    }
+
+    pub fn set_to_block(&self, block: BlockNumber) -> Self {
+        let from_block = if let FilterBlockOption::Range { from_block, .. } = self {
+            *from_block
+        } else {
+            None
+        };
+
+        FilterBlockOption::Range {
+            from_block,
+            to_block: Some(block),
+        }
+    }
+
+    pub fn set_hash(&self, hash: H256) -> Self {
+        FilterBlockOption::AtBlockHash(hash)
+    }
+}
+
 /// Filter for
 #[derive(Default, Debug, PartialEq, Clone)]
 pub struct Filter {
-    /// From Block
-    pub from_block: Option<BlockNumber>,
-
-    /// To Block
-    pub to_block: Option<BlockNumber>,
+    /// Filter block options, specifying on which blocks the filter should
+    /// match.
+    // https://eips.ethereum.org/EIPS/eip-234
+    pub block_option: FilterBlockOption,
 
     /// Address
     // TODO: The spec says that this can also be an array, do we really want to
@@ -91,12 +140,21 @@ impl Serialize for Filter {
         S: Serializer,
     {
         let mut s = serializer.serialize_struct("Filter", 5)?;
-        if let Some(ref from_block) = self.from_block {
-            s.serialize_field("fromBlock", from_block)?;
-        }
+        match self.block_option {
+            FilterBlockOption::Range {
+                from_block,
+                to_block,
+            } => {
+                if let Some(ref from_block) = from_block {
+                    s.serialize_field("fromBlock", from_block)?;
+                }
 
-        if let Some(ref to_block) = self.to_block {
-            s.serialize_field("toBlock", to_block)?;
+                if let Some(ref to_block) = to_block {
+                    s.serialize_field("toBlock", to_block)?;
+                }
+            }
+
+            FilterBlockOption::AtBlockHash(ref h) => s.serialize_field("blockHash", h)?,
         }
 
         if let Some(ref address) = self.address {
@@ -131,13 +189,19 @@ impl Filter {
 
     #[allow(clippy::wrong_self_convention)]
     pub fn from_block<T: Into<BlockNumber>>(mut self, block: T) -> Self {
-        self.from_block = Some(block.into());
+        self.block_option = self.block_option.set_from_block(block.into());
         self
     }
 
     #[allow(clippy::wrong_self_convention)]
     pub fn to_block<T: Into<BlockNumber>>(mut self, block: T) -> Self {
-        self.to_block = Some(block.into());
+        self.block_option = self.block_option.set_to_block(block.into());
+        self
+    }
+
+    #[allow(clippy::wrong_self_convention)]
+    pub fn at_block_hash<T: Into<H256>>(mut self, hash: T) -> Self {
+        self.block_option = self.block_option.set_hash(hash.into());
         self
     }
 

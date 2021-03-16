@@ -59,7 +59,7 @@ where
     async fn send_transaction(
         &self,
         mut tx: TransactionRequest,
-        block: Option<BlockNumber>,
+        block: Option<BlockId>,
     ) -> Result<PendingTransaction<'_, Self::Provider>, Self::Error> {
         if tx.gas_price.is_none() {
             tx.gas_price = Some(self.get_gas_price().await?);

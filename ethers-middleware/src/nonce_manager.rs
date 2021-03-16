@@ -37,7 +37,7 @@ where
 
     async fn get_transaction_count_with_manager(
         &self,
-        block: Option<BlockNumber>,
+        block: Option<BlockId>,
     ) -> Result<U256, NonceManagerError<M>> {
         // initialize the nonce the first time the manager is called
         if !self.initialized.load(Ordering::SeqCst) {
@@ -87,7 +87,7 @@ where
     async fn send_transaction(
         &self,
         mut tx: TransactionRequest,
-        block: Option<BlockNumber>,
+        block: Option<BlockId>,
     ) -> Result<PendingTransaction<'_, Self::Provider>, Self::Error> {
         if tx.nonce.is_none() {
             tx.nonce = Some(self.get_transaction_count_with_manager(block).await?);
