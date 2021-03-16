@@ -13,7 +13,7 @@ use syn::{
 };
 
 use abigen::{expand, ContractArgs};
-use ethers_core::abi::{AbiParser, Event, EventExt, EventParam, ParamType};
+use ethers_core::abi::{param_type::Reader, AbiParser, Event, EventExt, EventParam, ParamType};
 use hex::FromHex;
 use spanned::Spanned;
 
@@ -79,9 +79,29 @@ pub fn abigen(input: TokenStream) -> TokenStream {
 ///
 /// Additional arguments can be specified using the `#[ethevent(...)]` attribute:
 ///
-/// - `name`, `name = "..."`: Overrides the generated `EthEvent` name, default is the struct's name.
-/// - `signature`, `signature = "..."`: The signature as hex string to override the event's signature.
+/// - `name`, `name = "..."`: Overrides the generated `EthEvent` name, default is the
+///  struct's name.
+/// - `signature`, `signature = "..."`: The signature as hex string to override the
+///  event's signature.
 /// - `abi`, `abi = "..."`: The ABI signature for the event this event's data corresponds to.
+///  The `abi` should be solidity event definition or a tuple of the event's types in case the
+///  event has non elementary (other `EthAbiType`) types as members
+///
+/// # Example
+/// ```ignore
+/// #[derive(Debug, EthAbiType)]
+/// struct Inner {
+///     inner: Address,
+///     msg: String,
+/// }
+///
+/// #[derive(Debug, EthEvent)]
+/// #[ethevent(abi = "ValueChangedEvent((address,string),string)")]
+/// struct ValueChangedEvent {
+///     inner: Inner,
+///     msg: String,
+/// }
+/// ```
 #[proc_macro_derive(EthEvent, attributes(ethevent))]
 pub fn derive_abi_event(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -97,28 +117,57 @@ pub fn derive_abi_event(input: TokenStream) -> TokenStream {
         .unwrap_or_else(|| input.ident.to_string());
 
     let (abi, hash) = if let Some((src, span)) = attributes.abi {
+        // try to parse as solidity event
         if let Ok(mut event) = parse_event(&src) {
             event.name = event_name.clone();
             (event.abi_signature(), event.signature())
         } else {
-            match src.parse::<Source>().and_then(|s| s.get()) {
-                Ok(abi) => {
-                    // try to derive the signature from the abi from the parsed abi
-                    // TODO(mattsse): this will fail for events that contain other non elementary types in their abi
-                    //  because the parser doesn't know how to substitute the types
-                    //  this could be mitigated by getting the ABI of each non elementary type at runtime
-                    //  and computing the the signature as `static Lazy::...`
-                    match parse_event(&abi) {
-                        Ok(mut event) => {
-                            event.name = event_name.clone();
-                            (event.abi_signature(), event.signature())
-                        }
-                        Err(err) => {
-                            return TokenStream::from(Error::new(span, err).to_compile_error())
+            // try as tuple
+            if let Some(inputs) = Reader::read(
+                src.trim_start_matches("event ")
+                    .trim_start()
+                    .trim_start_matches(&event_name),
+            )
+            .ok()
+            .and_then(|param| match param {
+                ParamType::Tuple(params) => Some(
+                    params
+                        .into_iter()
+                        .map(|kind| EventParam {
+                            name: "".to_string(),
+                            indexed: false,
+                            kind,
+                        })
+                        .collect(),
+                ),
+                _ => None,
+            }) {
+                let event = Event {
+                    name: event_name.clone(),
+                    inputs,
+                    anonymous: false,
+                };
+                (event.abi_signature(), event.signature())
+            } else {
+                match src.parse::<Source>().and_then(|s| s.get()) {
+                    Ok(abi) => {
+                        // try to derive the signature from the abi from the parsed abi
+                        // TODO(mattsse): this will fail for events that contain other non elementary types in their abi
+                        //  because the parser doesn't know how to substitute the types
+                        //  this could be mitigated by getting the ABI of each non elementary type at runtime
+                        //  and computing the the signature as `static Lazy::...`
+                        match parse_event(&abi) {
+                            Ok(mut event) => {
+                                event.name = event_name.clone();
+                                (event.abi_signature(), event.signature())
+                            }
+                            Err(err) => {
+                                return TokenStream::from(Error::new(span, err).to_compile_error())
+                            }
                         }
                     }
+                    Err(err) => return TokenStream::from(Error::new(span, err).to_compile_error()),
                 }
-                Err(err) => return TokenStream::from(Error::new(span, err).to_compile_error()),
             }
         }
     } else {
