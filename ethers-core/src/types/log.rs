@@ -90,7 +90,7 @@ impl FilterBlockOption {
 
         FilterBlockOption::Range {
             from_block: Some(block.into()),
-            to_block: to_block,
+            to_block,
         }
     }
 
@@ -102,7 +102,7 @@ impl FilterBlockOption {
         };
 
         FilterBlockOption::Range {
-            from_block: from_block,
+            from_block,
             to_block: Some(block.into()),
         }
     }
