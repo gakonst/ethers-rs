@@ -79,6 +79,8 @@ pub fn abigen(input: TokenStream) -> TokenStream {
 ///
 /// Additional arguments can be specified using the `#[ethevent(...)]` attribute:
 ///
+/// For the struct:
+///
 /// - `name`, `name = "..."`: Overrides the generated `EthEvent` name, default is the
 ///  struct's name.
 /// - `signature`, `signature = "..."`: The signature as hex string to override the
@@ -86,9 +88,17 @@ pub fn abigen(input: TokenStream) -> TokenStream {
 /// - `abi`, `abi = "..."`: The ABI signature for the event this event's data corresponds to.
 ///  The `abi` should be solidity event definition or a tuple of the event's types in case the
 ///  event has non elementary (other `EthAbiType`) types as members
+/// - `anonymous`: A flag to mark this as an anonymous event
+///
+/// For fields:
+///
+/// - `indexed`: flag to mark a field as an indexed event input
+/// - `name`: override the name of an indexed event input, default is the rust field name
 ///
 /// # Example
-/// ```ignore
+/// ```no_run
+/// # use ethers_core::types::Address;
+///
 /// #[derive(Debug, EthAbiType)]
 /// struct Inner {
 ///     inner: Address,
@@ -98,8 +108,10 @@ pub fn abigen(input: TokenStream) -> TokenStream {
 /// #[derive(Debug, EthEvent)]
 /// #[ethevent(abi = "ValueChangedEvent((address,string),string)")]
 /// struct ValueChangedEvent {
-///     inner: Inner,
+///     #[ethevent(indexed, name = "_target")]
+///     target: Address,
 ///     msg: String,
+///     inner: Inner,
 /// }
 /// ```
 #[proc_macro_derive(EthEvent, attributes(ethevent))]
@@ -843,7 +855,7 @@ fn parse_attributes(input: &DeriveInput) -> Result<Attributes, proc_macro2::Toke
                             match meta {
                                 Meta::Path(path) => {
                                     if let Some(name) = path.get_ident() {
-                                        if *name.to_string() == "anonymous" {
+                                        if &*name.to_string() == "anonymous" {
                                             if result.anonymous.is_none() {
                                                 result.anonymous = Some((true, name.span()));
                                                 continue;
