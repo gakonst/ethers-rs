@@ -195,3 +195,21 @@ fn can_set_eth_abi_attribute() {
         ValueChangedEvent2::abi_signature()
     );
 }
+
+#[test]
+fn can_derive_indexed_and_anonymous_attribute() {
+    #[derive(Debug, PartialEq, EthEvent)]
+    #[ethevent(anonymous)]
+    struct ValueChangedEvent {
+        old_author: Address,
+        #[ethevent(indexed, name = "newAuthor")]
+        new_author: Address,
+        old_value: String,
+        new_value: String,
+    }
+
+    assert_eq!(
+        "ValueChangedEvent(address,address,string,string) anonymous",
+        ValueChangedEvent::abi_signature()
+    );
+}
