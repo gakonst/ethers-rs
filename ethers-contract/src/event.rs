@@ -1,7 +1,7 @@
 use crate::{base::decode_event, stream::EventStream, ContractError};
 
 use ethers_core::{
-    abi::{Detokenize, Event as AbiEvent},
+    abi::{Detokenize, Event as AbiEvent, RawLog},
     types::{BlockNumber, Filter, Log, TxHash, ValueOrArray, H256, U64},
 };
 use ethers_providers::{FilterWatcher, Middleware, PubsubClient, SubscriptionStream};
@@ -21,6 +21,11 @@ pub trait EthEvent: Detokenize {
     /// Retrieves the ABI signature for the event this data corresponds
     /// to.
     fn abi_signature() -> Cow<'static, str>;
+
+    /// Decodes an Ethereum `RawLog` into an instance of the type.
+    fn decode_log(log: RawLog) -> Result<Self, ethers_core::abi::Error>
+    where
+        Self: Sized;
 }
 
 /// Helper for managing the event filter before querying or streaming its logs
