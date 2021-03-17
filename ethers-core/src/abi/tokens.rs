@@ -31,10 +31,10 @@ impl Detokenize for () {
 }
 
 impl<T: Tokenizable> Detokenize for T {
-    fn from_tokens(tokens: Vec<Token>) -> Result<Self, InvalidOutputType> {
+    fn from_tokens(mut tokens: Vec<Token>) -> Result<Self, InvalidOutputType> {
         let token = match tokens.len() {
             0 => Token::Tuple(vec![]),
-            1 => tokens[0].clone(),
+            1 => tokens.remove(0),
             _ => Token::Tuple(tokens),
         };
 
@@ -473,11 +473,11 @@ impl_fixed_types!(1024);
 /// Helper for flattening non-nested tokens into their inner
 /// types, e.g. (A, B, C ) would get tokenized to Tuple([A, B, C])
 /// when in fact we need [A, B, C].
-fn flatten_tokens(tokens: Vec<Token>) -> Vec<Token> {
+fn flatten_tokens(mut tokens: Vec<Token>) -> Vec<Token> {
     if tokens.len() == 1 {
         // flatten the tokens if required
         // and there is no nesting
-        match tokens[0].clone() {
+        match tokens.remove(0) {
             Token::Tuple(inner) => inner,
             other => vec![other],
         }
