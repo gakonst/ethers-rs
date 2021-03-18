@@ -109,7 +109,7 @@ use std::{fmt::Debug, marker::PhantomData, sync::Arc};
 /// ```no_run
 /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
 /// use ethers_core::{abi::Abi, types::Address};
-/// use ethers_contract::Contract;
+/// use ethers_contract::{Contract, EthEvent};
 /// use ethers_providers::{Provider, Http, Middleware};
 /// use ethers_signers::Wallet;
 /// use std::convert::TryFrom;
@@ -120,7 +120,7 @@ use std::{fmt::Debug, marker::PhantomData, sync::Arc};
 /// # let client = Provider::<Http>::try_from("http://localhost:8545").unwrap();
 /// # let contract = Contract::new(address, abi, client);
 ///
-/// #[derive(Clone, Debug)]
+/// #[derive(Clone, Debug, EthEvent)]
 /// struct ValueChanged {
 ///     old_author: Address,
 ///     new_author: Address,
@@ -128,25 +128,8 @@ use std::{fmt::Debug, marker::PhantomData, sync::Arc};
 ///     new_value: String,
 /// }
 ///
-/// impl Detokenize for ValueChanged {
-///     fn from_tokens(tokens: Vec<Token>) -> Result<ValueChanged, InvalidOutputType> {
-///         let old_author: Address = tokens[1].clone().into_address().unwrap();
-///         let new_author: Address = tokens[1].clone().into_address().unwrap();
-///         let old_value = tokens[2].clone().into_string().unwrap();
-///         let new_value = tokens[3].clone().into_string().unwrap();
-///
-///         Ok(Self {
-///             old_author,
-///             new_author,
-///             old_value,
-///             new_value,
-///         })
-///     }
-/// }
-///
-///
 /// let logs: Vec<ValueChanged> = contract
-///     .event("ValueChanged")?
+///     .event()
 ///     .from_block(0u64)
 ///     .query()
 ///     .await?;

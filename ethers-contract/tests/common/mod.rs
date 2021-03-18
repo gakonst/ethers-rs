@@ -4,7 +4,7 @@ use ethers_core::{
     types::{Address, Bytes},
 };
 
-use ethers_contract::{Contract, ContractFactory, EthAbiType};
+use ethers_contract::{Contract, ContractFactory, EthEvent};
 use ethers_core::utils::{GanacheInstance, Solc};
 use ethers_middleware::signer::SignerMiddleware;
 use ethers_providers::{Http, Middleware, Provider};
@@ -13,7 +13,7 @@ use std::{convert::TryFrom, sync::Arc, time::Duration};
 
 // Note: The `EthAbiType` derive macro implements the necessary conversion between `Tokens` and
 // the struct
-#[derive(Clone, Debug, EthAbiType)]
+#[derive(Clone, Debug, EthEvent)]
 pub struct ValueChanged {
     pub old_author: Address,
     pub new_author: Address,
