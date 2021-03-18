@@ -1,4 +1,4 @@
-use crate::{base::decode_event, stream::EventStream, ContractError};
+use crate::{base::decode_event, stream::EventStream, ContractError, EthLogDecode};
 
 use ethers_core::{
     abi::{Detokenize, Event as AbiEvent, RawLog},
@@ -29,7 +29,16 @@ pub trait EthEvent: Detokenize {
 
     /// Returns true if this is an anonymous event
     fn is_anonymous() -> bool;
+}
 
+// Convenience implementation
+impl<T: EthEvent> EthLogDecode for T {
+    fn decode_log(log: &RawLog) -> Result<Self, ethers_core::abi::Error>
+    where
+        Self: Sized,
+    {
+        T::decode_log(log)
+    }
 }
 
 /// Helper for managing the event filter before querying or streaming its logs

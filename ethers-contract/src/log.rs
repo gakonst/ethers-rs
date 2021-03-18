@@ -5,7 +5,9 @@ use ethers_core::abi::RawLog;
 /// A trait for types (events) that can be decoded from a `RawLog`
 pub trait EthLogDecode {
     /// decode from a `RawLog`
-    fn decode_log(log: &RawLog) -> Result<Self, Error> where Self: Sized;
+    fn decode_log(log: &RawLog) -> Result<Self, Error>
+    where
+        Self: Sized;
 }
 
 /// Decodes a series of logs into a vector

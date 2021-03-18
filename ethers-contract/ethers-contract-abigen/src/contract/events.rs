@@ -63,7 +63,7 @@ impl Context {
                 #(#variants(#variants)),*
             }
 
-             impl ethers_core::abi::Tokenizable for #enum_name {
+             impl ethers::abi::Tokenizable for #enum_name {
 
                  fn from_token(token: ethers::abi::Token) -> Result<Self, ethers::abi::InvalidOutputType> where
                      Self: Sized {
@@ -83,13 +83,45 @@ impl Context {
                     }
                 }
              }
-             impl ethers_core::abi::TokenizableItem for #enum_name { }
+             impl ethers::abi::TokenizableItem for #enum_name { }
+
+             impl ethers::contract::EthLogDecode for #enum_name {
+                fn decode_log(log: &ethers::abi::RawLog) -> Result<Self, ethers::abi::Error>
+                where
+                    Self: Sized,
+                {
+                     #(
+                        if let Ok(decoded) = #variants::decode_log(log) {
+                            return Ok(#enum_name::#variants(decoded))
+                        }
+                    )*
+                    Err(ethers::abi::Error::InvalidData)
+                }
+            }
         }
     }
 
     /// The name ident of the events enum
     fn expand_event_enum_name(&self) -> Ident {
         util::ident(&format!("{}Events", self.contract_name.to_string()))
+    }
+
+    /// The type that the `events` function should return
+    ///
+    /// The generated enum type if more than 1 events are present
+    /// The event name if only 1 event is present
+    /// `None` otherwise
+    fn expand_events_type(&self) -> Option<Ident> {
+        let sorted_events: BTreeMap<_, _> = self.abi.events.clone().into_iter().collect();
+
+        let mut iter = sorted_events.values().flatten();
+        let event = iter.next()?;
+
+        if iter.next().is_some() {
+            Some(self.expand_event_enum_name())
+        } else {
+            Some(expand_struct_name(event))
+        }
     }
 
     /// Expands an event property type.
@@ -258,17 +290,16 @@ impl Context {
 }
 
 /// Expands an ABI event into an identifier for its event data type.
-fn expand_struct_name(event: &Event) -> TokenStream {
+fn expand_struct_name(event: &Event) -> Ident {
     // TODO: get rid of `Filter` suffix?
     let name = format!("{}Filter", event.name.to_pascal_case());
-    let event_name = util::ident(&name);
-    quote! { #event_name }
+    util::ident(&name)
 }
 
 /// Expands an event data structure from its name-type parameter pairs. Returns
 /// a tuple with the type definition (i.e. the struct declaration) and
 /// construction (i.e. code for creating an instance of the event data).
-fn expand_data_struct(name: &TokenStream, params: &[(TokenStream, TokenStream)]) -> TokenStream {
+fn expand_data_struct(name: &Ident, params: &[(TokenStream, TokenStream)]) -> TokenStream {
     let fields = params
         .iter()
         .map(|(name, ty)| quote! { pub #name: #ty })
@@ -279,7 +310,7 @@ fn expand_data_struct(name: &TokenStream, params: &[(TokenStream, TokenStream)])
 
 /// Expands an event data named tuple from its name-type parameter pairs.
 /// Returns a tuple with the type definition and construction.
-fn expand_data_tuple(name: &TokenStream, params: &[(TokenStream, TokenStream)]) -> TokenStream {
+fn expand_data_tuple(name: &Ident, params: &[(TokenStream, TokenStream)]) -> TokenStream {
     let fields = params
         .iter()
         .map(|(_, ty)| quote! { pub #ty })
@@ -406,7 +437,7 @@ mod tests {
         let cx = test_context();
         let params = cx.expand_params(&event).unwrap();
         let name = expand_struct_name(&event);
-        let definition = expand_data_tuple(&name, &params);
+        let definition = expand_data_tuple(name, &params);
 
         assert_quote!(definition, {
             struct FooFilter(pub bool, pub Address);
