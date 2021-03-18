@@ -307,11 +307,11 @@ impl<M: Middleware> Multicall<M> {
             .iter()
             .zip(&return_data)
             .map(|(call, bytes)| {
-                let tokens: Vec<Token> = call.function.decode_output(&bytes)?;
+                let mut tokens: Vec<Token> = call.function.decode_output(&bytes)?;
 
                 Ok(match tokens.len() {
                     0 => Token::Tuple(vec![]),
-                    1 => tokens[0].clone(),
+                    1 => tokens.remove(0),
                     _ => Token::Tuple(tokens),
                 })
             })
