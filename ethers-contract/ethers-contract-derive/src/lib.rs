@@ -385,14 +385,6 @@ fn derive_decode_from_log_impl(
             None
         };
 
-        if param.indexed {
-            if let Some(name) = topic_name.as_ref() {
-                if name.is_empty() {
-                    return Err(Error::new(field.span(), "EthEvent field requires a name"));
-                }
-            }
-        }
-
         event_fields.push(EventField {
             topic_name,
             index,
