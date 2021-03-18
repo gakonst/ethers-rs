@@ -203,6 +203,8 @@ pub fn derive_abi_event(input: TokenStream) -> TokenStream {
         signature(hash.as_bytes())
     };
 
+    let anon = attributes.anonymous.map(|(b,_)|b).unwrap_or_default();
+
     let ethevent_impl = quote! {
         impl ethers_contract::EthEvent for #name {
 
@@ -218,10 +220,13 @@ pub fn derive_abi_event(input: TokenStream) -> TokenStream {
                 #abi.into()
             }
 
-            fn decode_log(log: ethers::abi::RawLog) -> Result<Self, ethers::abi::Error> where Self: Sized {
+            fn decode_log(log: &ethers::abi::RawLog) -> Result<Self, ethers::abi::Error> where Self: Sized {
                 #decode_log_impl
             }
 
+            fn is_anonymous() -> bool {
+                #anon
+            }
         }
     };
 
@@ -415,10 +420,10 @@ fn derive_decode_from_log_impl(
         (
             quote! {},
             quote! {
-                  let flat_topics = topics.into_iter().flat_map(|t| t.as_ref().to_vec()).collect::<Vec<u8>>();
+                  let flat_topics = topics.iter().flat_map(|t| t.as_ref().to_vec()).collect::<Vec<u8>>();
             },
             quote! {
-                if topic_tokens.len() != topics_len {
+                if topic_tokens.len() != topics.len() {
                     return Err(ethers::abi::Error::InvalidData);
                 }
             },
@@ -432,10 +437,10 @@ fn derive_decode_from_log_impl(
                 }
             },
             quote! {
-                let flat_topics = topics.into_iter().skip(1).flat_map(|t| t.as_ref().to_vec()).collect::<Vec<u8>>();
+                let flat_topics = topics.iter().skip(1).flat_map(|t| t.as_ref().to_vec()).collect::<Vec<u8>>();
             },
             quote! {
-                if topic_tokens.is_empty() || topic_tokens.len() != topics_len - 1 {
+                if topic_tokens.is_empty() || topic_tokens.len() != topics.len() - 1 {
                     return Err(ethers::abi::Error::InvalidData);
                 }
             },
@@ -468,7 +473,7 @@ fn derive_decode_from_log_impl(
             let mut topic_tokens = ethers::abi::decode(&topic_types, &flat_topics)?;
             #topic_tokens_len_check
             let mut data_tokens = ethers::abi::decode(&data_types, &data)?;
-            let mut tokens = Vec::with_capacity(topics_len + data_tokens.len());
+            let mut tokens = Vec::with_capacity(topics.len() + data_tokens.len());
             #( tokens.push(#swap_tokens); )*
         }
     };
@@ -476,7 +481,6 @@ fn derive_decode_from_log_impl(
     Ok(quote! {
 
         let ethers::abi::RawLog {data, topics} = log;
-        let topics_len = topics.len();
 
         #signature_check
 

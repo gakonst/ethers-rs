@@ -23,9 +23,13 @@ pub trait EthEvent: Detokenize {
     fn abi_signature() -> Cow<'static, str>;
 
     /// Decodes an Ethereum `RawLog` into an instance of the type.
-    fn decode_log(log: RawLog) -> Result<Self, ethers_core::abi::Error>
+    fn decode_log(log: &RawLog) -> Result<Self, ethers_core::abi::Error>
     where
         Self: Sized;
+
+    /// Returns true if this is an anonymous event
+    fn is_anonymous() -> bool;
+
 }
 
 /// Helper for managing the event filter before querying or streaming its logs
