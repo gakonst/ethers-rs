@@ -180,6 +180,7 @@ impl<M: Middleware> Contract<M> {
     }
 
     /// Returns an [`Event`](crate::builders::Event) builder for the provided event name.
+    /// TODO(mattsse) keep this but remove event
     pub fn event<D: Detokenize>(&self, name: &str) -> Result<Event<M, D>, Error> {
         // get the event's full name
         let event = self.base_contract.abi.event(name)?;

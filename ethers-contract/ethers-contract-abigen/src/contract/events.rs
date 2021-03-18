@@ -63,19 +63,19 @@ impl Context {
                 #(#variants(#variants)),*
             }
 
-             impl ethers::abi::Tokenizable for #enum_name {
+             impl ethers_core::abi::Tokenizable for #enum_name {
 
-                 fn from_token(token: ethers::abi::Token) -> Result<Self, ethers::abi::InvalidOutputType> where
+                 fn from_token(token: ethers_core::abi::Token) -> Result<Self, ethers_core::abi::InvalidOutputType> where
                      Self: Sized {
                     #(
                         if let Ok(decoded) = #variants::from_token(token.clone()) {
                             return Ok(#enum_name::#variants(decoded))
                         }
                     )*
-                    Err(ethers::abi::InvalidOutputType("Failed to decode all event variants".to_string()))
+                    Err(ethers_core::abi::InvalidOutputType("Failed to decode all event variants".to_string()))
                 }
 
-                fn into_token(self) -> ethers::abi::Token {
+                fn into_token(self) -> ethers_core::abi::Token {
                     match self {
                         #(
                             #enum_name::#variants(element) => element.into_token()
@@ -83,10 +83,10 @@ impl Context {
                     }
                 }
              }
-             impl ethers::abi::TokenizableItem for #enum_name { }
+             impl ethers_core::abi::TokenizableItem for #enum_name { }
 
-             impl ethers::contract::EthLogDecode for #enum_name {
-                fn decode_log(log: &ethers::abi::RawLog) -> Result<Self, ethers::abi::Error>
+             impl ethers_contract::EthLogDecode for #enum_name {
+                fn decode_log(log: &ethers_core::abi::RawLog) -> Result<Self, ethers_core::abi::Error>
                 where
                     Self: Sized,
                 {
@@ -95,7 +95,7 @@ impl Context {
                             return Ok(#enum_name::#variants(decoded))
                         }
                     )*
-                    Err(ethers::abi::Error::InvalidData)
+                    Err(ethers_core::abi::Error::InvalidData)
                 }
             }
         }
@@ -146,7 +146,7 @@ impl Context {
                         return Ok(quote! {::std::vec::Vec<#ty>});
                     }
                 }
-                quote! { H256 }
+                quote! { ethers_core::types::H256 }
             }
             (ParamType::FixedArray(ty, size), true) => {
                 if let ParamType::Tuple(..) = **ty {
@@ -162,7 +162,7 @@ impl Context {
                         return Ok(quote! {[#ty; #size]});
                     }
                 }
-                quote! { H256 }
+                quote! { ethers_core::types::H256 }
             }
             (ParamType::Tuple(..), true) => {
                 // represents an struct
@@ -175,11 +175,11 @@ impl Context {
                 {
                     quote! {#ty}
                 } else {
-                    quote! { H256 }
+                    quote! { ethers_core::types::H256 }
                 }
             }
             (ParamType::Bytes, true) | (ParamType::String, true) => {
-                quote! { H256 }
+                quote! { ethers_core::types::H256 }
             }
             (kind, _) => types::expand(kind)?,
         })
@@ -213,7 +213,7 @@ impl Context {
         let doc = util::expand_doc(&format!("Gets the contract's `{}` event", event.name));
         quote! {
             #doc
-            pub fn #name(&self) -> Event<M, #result> {
+            pub fn #name(&self) -> ethers_contract::builders::Event<M, #result> {
                 self.0.event(#ev_name).expect("event not found (this should never happen)")
             }
         }
@@ -239,7 +239,7 @@ impl Context {
         let event_abi_name = &event.name;
 
         Ok(quote! {
-            #[derive(Clone, Debug, Default, Eq, PartialEq, ethers::contract::EthEvent, #derives)]
+            #[derive(Clone, Debug, Default, Eq, PartialEq, ethers_contract::EthEvent, #derives)]
             #[ethevent( name = #event_abi_name, abi = #abi_signature )]
             pub #data_type_definition
         })
@@ -335,7 +335,7 @@ fn expand_hash(hash: Hash) -> TokenStream {
     let bytes = hash.as_bytes().iter().copied().map(Literal::u8_unsuffixed);
 
     quote! {
-        H256([#( #bytes ),*])
+        ethers_core::types::H256([#( #bytes ),*])
     }
 }
 
@@ -452,7 +452,7 @@ mod tests {
                 "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f".parse().unwrap()
             ),
             {
-                H256([
+                ethers_core::types::H256([
                     0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
                     16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31
                 ])

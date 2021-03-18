@@ -5,7 +5,7 @@ use quote::quote;
 
 pub(crate) fn expand(kind: &ParamType) -> Result<TokenStream> {
     match kind {
-        ParamType::Address => Ok(quote! { Address }),
+        ParamType::Address => Ok(quote! { ethers_core::types::Address }),
         ParamType::Bytes => Ok(quote! { Vec<u8> }),
         ParamType::Int(n) => match n / 8 {
             1 => Ok(quote! { i8 }),
@@ -22,7 +22,7 @@ pub(crate) fn expand(kind: &ParamType) -> Result<TokenStream> {
             3..=4 => Ok(quote! { u32 }),
             5..=8 => Ok(quote! { u64 }),
             9..=16 => Ok(quote! { u128 }),
-            17..=32 => Ok(quote! { U256 }),
+            17..=32 => Ok(quote! { ethers_core::types::U256 }),
             _ => Err(anyhow!("unsupported solidity type uint{}", n)),
         },
         ParamType::Bool => Ok(quote! { bool }),

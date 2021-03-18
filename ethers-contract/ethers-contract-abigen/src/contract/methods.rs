@@ -39,7 +39,7 @@ fn expand_function(function: &Function, alias: Option<Ident>) -> Result<TokenStr
 
     let outputs = expand_fn_outputs(&function.outputs)?;
 
-    let result = quote! { ContractCall<M, #outputs> };
+    let result = quote! { ethers_contract::builders::ContractCall<M, #outputs> };
 
     let arg = expand_inputs_call_arg(&function.inputs);
     let doc = util::expand_doc(&format!(
