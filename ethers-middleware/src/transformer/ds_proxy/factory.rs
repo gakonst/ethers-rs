@@ -110,6 +110,7 @@ mod dsproxyfactory_mod {
         }
     }
     #[derive(Clone, Debug, Default, Eq, PartialEq, EthEvent)]
+    #[ethevent(name = "Created")]
     pub struct CreatedFilter {
         #[ethevent(indexed)]
         pub sender: Address,
