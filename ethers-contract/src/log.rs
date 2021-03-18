@@ -12,5 +12,5 @@ pub trait EthLogDecode {
 
 /// Decodes a series of logs into a vector
 pub fn decode_logs<T: EthLogDecode>(logs: &[RawLog]) -> Result<Vec<T>, Error> {
-    logs.into_iter().map(T::decode_log).collect()
+    logs.iter().map(T::decode_log).collect()
 }
