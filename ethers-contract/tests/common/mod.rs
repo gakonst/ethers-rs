@@ -11,11 +11,13 @@ use ethers_providers::{Http, Middleware, Provider};
 use ethers_signers::LocalWallet;
 use std::{convert::TryFrom, sync::Arc, time::Duration};
 
-// Note: The `EthAbiType` derive macro implements the necessary conversion between `Tokens` and
+// Note: The `EthEvent` derive macro implements the necessary conversion between `Tokens` and
 // the struct
 #[derive(Clone, Debug, EthEvent)]
 pub struct ValueChanged {
+    #[ethevent(indexed)]
     pub old_author: Address,
+    #[ethevent(indexed)]
     pub new_author: Address,
     pub old_value: String,
     pub new_value: String,

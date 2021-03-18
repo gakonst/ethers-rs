@@ -384,10 +384,8 @@ mod tests {
         let cx = test_context();
         assert_quote!(cx.expand_filter(&event), {
             #[doc = "Gets the contract's `Transfer` event"]
-            pub fn transfer_filter(&self) -> Event<M, TransferFilter> {
-                self.0
-                    .event("Transfer")
-                    .expect("event not found (this should never happen)")
+            pub fn transfer_filter(&self) -> ethers_contract::builders::Event<M, TransferFilter> {
+                self.0.event()
             }
         });
     }
@@ -419,7 +417,7 @@ mod tests {
         assert_quote!(definition, {
             struct FooFilter {
                 pub a: bool,
-                pub p1: Address,
+                pub p1: ethers_core::types::Address,
             }
         });
     }
@@ -446,10 +444,10 @@ mod tests {
         let cx = test_context();
         let params = cx.expand_params(&event).unwrap();
         let name = expand_struct_name(&event);
-        let definition = expand_data_tuple(name, &params);
+        let definition = expand_data_tuple(&name, &params);
 
         assert_quote!(definition, {
-            struct FooFilter(pub bool, pub Address);
+            struct FooFilter(pub bool, pub ethers_core::types::Address);
         });
     }
 

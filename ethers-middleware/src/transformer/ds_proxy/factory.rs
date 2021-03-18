@@ -17,7 +17,7 @@ pub static ADDRESS_BOOK: Lazy<HashMap<U256, Address>> = Lazy::new(|| {
 
 ///
 /// Generated with
-/// ```no_run
+/// ```ignore
 /// # use ethers_contract::abigen;
 /// abigen!(DsProxyFactory,
 ///         "ethers-middleware/contracts/DsProxyFactory.json",

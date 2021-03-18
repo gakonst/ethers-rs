@@ -96,7 +96,7 @@ pub fn abigen(input: TokenStream) -> TokenStream {
 /// - `name`: override the name of an indexed event input, default is the rust field name
 ///
 /// # Example
-/// ```no_run
+/// ```ignore
 /// # use ethers_core::types::Address;
 ///
 /// #[derive(Debug, EthAbiType)]

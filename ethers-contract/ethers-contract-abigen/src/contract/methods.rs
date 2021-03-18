@@ -179,7 +179,7 @@ mod tests {
                 ],
             )
             .unwrap(),
-            { , a: bool, b: Address },
+            { , a: bool, b: ethers_core::types::Address },
         );
     }
 
@@ -214,7 +214,7 @@ mod tests {
                 },
             ],)
             .unwrap(),
-            { (bool, Address) },
+            { (bool, ethers_core::types::Address) },
         );
     }
 }
