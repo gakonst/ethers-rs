@@ -178,7 +178,7 @@ impl<M: Middleware> Contract<M> {
     }
 
     /// Returns an [`Event`](crate::builders::Event) builder with the provided name.
-    pub fn event_by_name<D: EthLogDecode>(&self, name: &str) -> Result<Event<M, D>, Error> {
+    pub fn event_for_name<D: EthLogDecode>(&self, name: &str) -> Result<Event<M, D>, Error> {
         // get the event's full name
         let event = self.base_contract.abi.event(name)?;
         Ok(self.event_with_filter(Filter::new().event(&event.abi_signature())))
