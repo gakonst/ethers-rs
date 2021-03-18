@@ -203,16 +203,16 @@ pub fn derive_abi_event(input: TokenStream) -> TokenStream {
         signature(hash.as_bytes())
     };
 
-    let anon = attributes.anonymous.map(|(b,_)|b).unwrap_or_default();
+    let anon = attributes.anonymous.map(|(b, _)| b).unwrap_or_default();
 
     let ethevent_impl = quote! {
-        impl ethers_contract::EthEvent for #name {
+        impl ethers::contract::EthEvent for #name {
 
             fn name() -> ::std::borrow::Cow<'static, str> {
                 #event_name.into()
             }
 
-            fn signature() -> ethers_core::types::H256 {
+            fn signature() -> ethers::types::H256 {
                 #signature
             }
 
@@ -678,7 +678,7 @@ fn parse_int_param_type(s: &str) -> Option<ParamType> {
 
 fn signature(hash: &[u8]) -> proc_macro2::TokenStream {
     let bytes = hash.iter().copied().map(Literal::u8_unsuffixed);
-    quote! {ethers_core::types::H256([#( #bytes ),*])}
+    quote! {ethers::types::H256([#( #bytes ),*])}
 }
 
 fn parse_event(abi: &str) -> Result<Event, String> {
@@ -727,13 +727,13 @@ fn derive_tokenizeable_impl(input: &DeriveInput) -> proc_macro2::TokenStream {
             Fields::Named(ref fields) => {
                 let tokenize_predicates = fields.named.iter().map(|f| {
                     let ty = &f.ty;
-                    quote_spanned! { f.span() => #ty: ethers_core::abi::Tokenize }
+                    quote_spanned! { f.span() => #ty: ethers::abi::Tokenize }
                 });
                 let tokenize_predicates = quote! { #(#tokenize_predicates,)* };
 
                 let assignments = fields.named.iter().map(|f| {
                     let name = f.ident.as_ref().expect("Named fields have names");
-                    quote_spanned! { f.span() => #name: ethers_core::abi::Tokenizable::from_token(iter.next().expect("tokens size is sufficient qed").into_token())? }
+                    quote_spanned! { f.span() => #name: ethers::abi::Tokenizable::from_token(iter.next().expect("tokens size is sufficient qed").into_token())? }
                 });
                 let init_struct_impl = quote! { Self { #(#assignments,)* } };
 
@@ -753,12 +753,12 @@ fn derive_tokenizeable_impl(input: &DeriveInput) -> proc_macro2::TokenStream {
             Fields::Unnamed(ref fields) => {
                 let tokenize_predicates = fields.unnamed.iter().map(|f| {
                     let ty = &f.ty;
-                    quote_spanned! { f.span() => #ty: ethers_core::abi::Tokenize }
+                    quote_spanned! { f.span() => #ty: ethers::abi::Tokenize }
                 });
                 let tokenize_predicates = quote! { #(#tokenize_predicates,)* };
 
                 let assignments = fields.unnamed.iter().map(|f| {
-                    quote_spanned! { f.span() => ethers_core::abi::Tokenizable::from_token(iter.next().expect("tokens size is sufficient qed").into_token())? }
+                    quote_spanned! { f.span() => ethers::abi::Tokenizable::from_token(iter.next().expect("tokens size is sufficient qed").into_token())? }
                 });
                 let init_struct_impl = quote! { Self(#(#assignments,)* ) };
 
@@ -794,17 +794,17 @@ fn derive_tokenizeable_impl(input: &DeriveInput) -> proc_macro2::TokenStream {
     };
 
     quote! {
-         impl<#generic_params> ethers_core::abi::Tokenizable for #name<#generic_args>
+         impl<#generic_params> ethers::abi::Tokenizable for #name<#generic_args>
          where
              #generic_predicates
              #tokenize_predicates
          {
 
-             fn from_token(token: ethers_core::abi::Token) -> Result<Self, ethers_core::abi::InvalidOutputType> where
+             fn from_token(token: ethers::abi::Token) -> Result<Self, ethers::abi::InvalidOutputType> where
                  Self: Sized {
-                if let ethers_core::abi::Token::Tuple(tokens) = token {
+                if let ethers::abi::Token::Tuple(tokens) = token {
                     if tokens.len() != #params_len {
-                        return Err(ethers_core::abi::InvalidOutputType(format!(
+                        return Err(ethers::abi::InvalidOutputType(format!(
                             "Expected {} tokens, got {}: {:?}",
                             #params_len,
                             tokens.len(),
@@ -816,15 +816,15 @@ fn derive_tokenizeable_impl(input: &DeriveInput) -> proc_macro2::TokenStream {
 
                     Ok(#init_struct_impl)
                 } else {
-                    Err(ethers_core::abi::InvalidOutputType(format!(
+                    Err(ethers::abi::InvalidOutputType(format!(
                         "Expected Tuple, got {:?}",
                         token
                     )))
                 }
              }
 
-             fn into_token(self) -> ethers_core::abi::Token {
-                ethers_core::abi::Token::Tuple(
+             fn into_token(self) -> ethers::abi::Token {
+                ethers::abi::Token::Tuple(
                     vec![
                         #into_token_impl
                     ]
@@ -832,7 +832,7 @@ fn derive_tokenizeable_impl(input: &DeriveInput) -> proc_macro2::TokenStream {
              }
          }
 
-        impl<#generic_params> ethers_core::abi::TokenizableItem for #name<#generic_args>
+        impl<#generic_params> ethers::abi::TokenizableItem for #name<#generic_args>
          where
              #generic_predicates
              #tokenize_predicates
