@@ -28,6 +28,9 @@ pub use factory::ContractFactory;
 mod event;
 pub use event::EthEvent;
 
+mod log;
+pub use log::{decode_logs, EthLogDecode};
+
 mod stream;
 
 mod multicall;
