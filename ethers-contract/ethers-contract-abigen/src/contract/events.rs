@@ -2,7 +2,7 @@ use super::{types, util, Context};
 use anyhow::Result;
 use ethers_core::abi::{Event, EventExt, EventParam, Hash, ParamType, SolStruct};
 use inflector::Inflector;
-use proc_macro2::{Literal, TokenStream};
+use proc_macro2::{Ident, Literal, TokenStream};
 use quote::quote;
 use std::collections::BTreeMap;
 use syn::Path;
@@ -17,12 +17,17 @@ impl Context {
             .map(|event| self.expand_event(event))
             .collect::<Result<Vec<_>>>()?;
 
-        if data_types.is_empty() {
-            return Ok(quote! {});
-        }
+        // only expand enums when multiple events are present
+        let events_enum_decl = if sorted_events.values().flatten().count() > 1 {
+            self.expand_events_enum()
+        } else {
+            quote! {}
+        };
 
         Ok(quote! {
             #( #data_types )*
+
+            #events_enum_decl
         })
     }
 
@@ -35,13 +40,56 @@ impl Context {
             .map(|event| self.expand_filter(event))
             .collect::<Vec<_>>();
 
-        if data_types.is_empty() {
-            return Ok(quote! {});
-        }
-
         Ok(quote! {
             #( #data_types )*
         })
+    }
+
+    /// Generate an enum with a variant for each event
+    fn expand_events_enum(&self) -> TokenStream {
+        let sorted_events: BTreeMap<_, _> = self.abi.events.clone().into_iter().collect();
+
+        let variants = sorted_events
+            .values()
+            .flatten()
+            .map(expand_struct_name)
+            .collect::<Vec<_>>();
+
+        let enum_name = self.expand_event_enum_name();
+
+        quote! {
+            #[derive(Debug, Clone, PartialEq, Eq)]
+            pub enum #enum_name {
+                #(#variants(#variants)),*
+            }
+
+             impl ethers_core::abi::Tokenizable for #enum_name {
+
+                 fn from_token(token: ethers::abi::Token) -> Result<Self, ethers::abi::InvalidOutputType> where
+                     Self: Sized {
+                    #(
+                        if let Ok(decoded) = #variants::from_token(token.clone()) {
+                            return Ok(#enum_name::#variants(decoded))
+                        }
+                    )*
+                    Err(ethers::abi::InvalidOutputType("Failed to decode all event variants".to_string()))
+                }
+
+                fn into_token(self) -> ethers::abi::Token {
+                    match self {
+                        #(
+                            #enum_name::#variants(element) => element.into_token()
+                        ),*
+                    }
+                }
+             }
+             impl ethers_core::abi::TokenizableItem for #enum_name { }
+        }
+    }
+
+    /// The name ident of the events enum
+    fn expand_event_enum_name(&self) -> Ident {
+        util::ident(&format!("{}Events", self.contract_name.to_string()))
     }
 
     /// Expands an event property type.
