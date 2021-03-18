@@ -34,14 +34,18 @@ impl Context {
     /// Generate the event filter methods for the contract
     pub fn event_methods(&self) -> Result<TokenStream> {
         let sorted_events: BTreeMap<_, _> = self.abi.events.clone().into_iter().collect();
-        let data_types = sorted_events
+        let filter_methods = sorted_events
             .values()
             .flatten()
             .map(|event| self.expand_filter(event))
             .collect::<Vec<_>>();
 
+        let events_method = self.expand_events_method();
+
         Ok(quote! {
-            #( #data_types )*
+            #( #filter_methods )*
+
+            #events_method
         })
     }
 
@@ -106,21 +110,27 @@ impl Context {
         util::ident(&format!("{}Events", self.contract_name.to_string()))
     }
 
-    /// The type that the `events` function should return
-    ///
-    /// The generated enum type if more than 1 events are present
-    /// The event name if only 1 event is present
-    /// `None` otherwise
-    fn expand_events_type(&self) -> Option<Ident> {
+    /// Expands the `events` function that bundles all declared events of this contract
+    fn expand_events_method(&self) -> TokenStream {
         let sorted_events: BTreeMap<_, _> = self.abi.events.clone().into_iter().collect();
 
         let mut iter = sorted_events.values().flatten();
-        let event = iter.next()?;
 
-        if iter.next().is_some() {
-            Some(self.expand_event_enum_name())
+        if let Some(event) = iter.next() {
+            let ty = if iter.next().is_some() {
+                self.expand_event_enum_name()
+            } else {
+                expand_struct_name(event)
+            };
+
+            quote! {
+                /// Returns an [`Event`](ethers_contract::builders::Event) builder for all events of this contract
+                pub fn events(&self) -> ethers_contract::builders::Event<M, #ty> {
+                    self.0.event_with_filter(Default::default())
+                }
+            }
         } else {
-            Some(expand_struct_name(event))
+            quote! {}
         }
     }
 
@@ -208,13 +218,12 @@ impl Context {
         let name = util::safe_ident(&format!("{}_filter", event.name.to_snake_case()));
         // let result = util::ident(&event.name.to_pascal_case());
         let result = expand_struct_name(event);
-        let ev_name = Literal::string(&event.name);
 
         let doc = util::expand_doc(&format!("Gets the contract's `{}` event", event.name));
         quote! {
             #doc
             pub fn #name(&self) -> ethers_contract::builders::Event<M, #result> {
-                self.0.event(#ev_name).expect("event not found (this should never happen)")
+                self.0.event()
             }
         }
     }

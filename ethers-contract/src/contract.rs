@@ -1,7 +1,8 @@
-use super::{
+use crate::{
     base::{encode_function_data, AbiError, BaseContract},
     call::ContractCall,
-    event::Event,
+    event::{EthEvent, Event},
+    EthLogDecode,
 };
 
 use ethers_core::{
@@ -179,19 +180,25 @@ impl<M: Middleware> Contract<M> {
         }
     }
 
-    /// Returns an [`Event`](crate::builders::Event) builder for the provided event name.
-    /// TODO(mattsse) keep this but remove event
-    pub fn event<D: Detokenize>(&self, name: &str) -> Result<Event<M, D>, Error> {
+    /// Returns an [`Event`](crate::builders::Event) builder for the provided event.
+    pub fn event<D: EthEvent>(&self) -> Event<M, D> {
+        self.event_with_filter(Filter::new().event(&D::abi_signature()))
+    }
+
+    /// Returns an [`Event`](crate::builders::Event) builder with the provided filter.
+    pub fn event_with_filter<D: EthLogDecode>(&self, filter: Filter) -> Event<M, D> {
+        Event {
+            provider: &self.client,
+            filter: filter.address(self.address),
+            datatype: PhantomData,
+        }
+    }
+
+    /// Returns an [`Event`](crate::builders::Event) builder with the provided name.
+    pub fn event_by_name<D: EthLogDecode>(&self, name: &str) -> Result<Event<M, D>, Error> {
         // get the event's full name
         let event = self.base_contract.abi.event(name)?;
-        Ok(Event {
-            provider: &self.client,
-            filter: Filter::new()
-                .event(&event.abi_signature())
-                .address(self.address),
-            event: &event,
-            datatype: PhantomData,
-        })
+        Ok(self.event_with_filter(Filter::new().event(&event.abi_signature())))
     }
 
     /// Returns a transaction builder for the provided function name. If there are

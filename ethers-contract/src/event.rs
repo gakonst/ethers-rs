@@ -1,7 +1,7 @@
-use crate::{base::decode_event, stream::EventStream, ContractError, EthLogDecode};
+use crate::{stream::EventStream, ContractError, EthLogDecode};
 
 use ethers_core::{
-    abi::{Detokenize, Event as AbiEvent, RawLog},
+    abi::{Detokenize, RawLog},
     types::{BlockNumber, Filter, Log, TxHash, ValueOrArray, H256, U64},
 };
 use ethers_providers::{FilterWatcher, Middleware, PubsubClient, SubscriptionStream};
@@ -31,12 +31,12 @@ pub trait EthEvent: Detokenize {
     fn is_anonymous() -> bool;
 
     /// Returns an Event builder for the ethereum event represented by this types ABI signature.
-    fn new<M: Middleware>(filter: Filter, provider: &M) -> Event2<M, Self>
+    fn new<M: Middleware>(filter: Filter, provider: &M) -> Event<M, Self>
     where
         Self: Sized,
     {
         let filter = filter.event(&Self::abi_signature());
-        Event2 {
+        Event {
             filter,
             provider,
             datatype: PhantomData,
@@ -57,7 +57,7 @@ impl<T: EthEvent> EthLogDecode for T {
 /// Helper for managing the event filter before querying or streaming its logs
 #[derive(Debug)]
 #[must_use = "event filters do nothing unless you `query` or `stream` them"]
-pub struct Event2<'a, M, D> {
+pub struct Event<'a, M, D> {
     /// The event filter's state
     pub filter: Filter,
     pub(crate) provider: &'a M,
@@ -66,7 +66,7 @@ pub struct Event2<'a, M, D> {
 }
 
 // TODO: Improve these functions
-impl<M, D: EthLogDecode> Event2<'_, M, D> {
+impl<M, D: EthLogDecode> Event<'_, M, D> {
     /// Sets the filter's `from` block
     #[allow(clippy::wrong_self_convention)]
     pub fn from_block<T: Into<BlockNumber>>(mut self, block: T) -> Self {
@@ -114,7 +114,7 @@ impl<M, D: EthLogDecode> Event2<'_, M, D> {
     }
 }
 
-impl<'a, M, D> Event2<'a, M, D>
+impl<'a, M, D> Event<'a, M, D>
 where
     M: Middleware,
     D: EthLogDecode,
@@ -140,7 +140,7 @@ where
     }
 }
 
-impl<'a, M, D> Event2<'a, M, D>
+impl<'a, M, D> Event<'a, M, D>
 where
     M: Middleware,
     <M as Middleware>::Provider: PubsubClient,
@@ -167,7 +167,7 @@ where
     }
 }
 
-impl<M, D> Event2<'_, M, D>
+impl<M, D> Event<'_, M, D>
 where
     M: Middleware,
     D: EthLogDecode,
@@ -212,164 +212,6 @@ where
             data: log.data.to_vec(),
         })
         .map_err(From::from)
-    }
-}
-
-/// Helper for managing the event filter before querying or streaming its logs
-#[derive(Debug)]
-#[must_use = "event filters do nothing unless you `query` or `stream` them"]
-pub struct Event<'a: 'b, 'b, M, D> {
-    /// The event filter's state
-    pub filter: Filter,
-    /// The ABI of the event which is being filtered
-    pub event: &'b AbiEvent,
-    pub(crate) provider: &'a M,
-    pub(crate) datatype: PhantomData<D>,
-}
-
-// TODO: Improve these functions
-impl<M, D: Detokenize> Event<'_, '_, M, D> {
-    /// Sets the filter's `from` block
-    #[allow(clippy::wrong_self_convention)]
-    pub fn from_block<T: Into<BlockNumber>>(mut self, block: T) -> Self {
-        self.filter = self.filter.from_block(block);
-        self
-    }
-
-    /// Sets the filter's `to` block
-    #[allow(clippy::wrong_self_convention)]
-    pub fn to_block<T: Into<BlockNumber>>(mut self, block: T) -> Self {
-        self.filter = self.filter.to_block(block);
-        self
-    }
-
-    /// Sets the filter's `blockHash`. Setting this will override previously
-    /// set `from_block` and `to_block` fields.
-    #[allow(clippy::wrong_self_convention)]
-    pub fn at_block_hash<T: Into<H256>>(mut self, hash: T) -> Self {
-        self.filter = self.filter.at_block_hash(hash);
-        self
-    }
-
-    /// Sets the filter's 0th topic (typically the event name for non-anonymous events)
-    pub fn topic0<T: Into<ValueOrArray<H256>>>(mut self, topic: T) -> Self {
-        self.filter.topics[0] = Some(topic.into());
-        self
-    }
-
-    /// Sets the filter's 1st topic
-    pub fn topic1<T: Into<ValueOrArray<H256>>>(mut self, topic: T) -> Self {
-        self.filter.topics[1] = Some(topic.into());
-        self
-    }
-
-    /// Sets the filter's 2nd topic
-    pub fn topic2<T: Into<ValueOrArray<H256>>>(mut self, topic: T) -> Self {
-        self.filter.topics[2] = Some(topic.into());
-        self
-    }
-
-    /// Sets the filter's 3rd topic
-    pub fn topic3<T: Into<ValueOrArray<H256>>>(mut self, topic: T) -> Self {
-        self.filter.topics[3] = Some(topic.into());
-        self
-    }
-}
-
-impl<'a, 'b, M, D> Event<'a, 'b, M, D>
-where
-    M: Middleware,
-    D: 'b + Detokenize + Clone,
-{
-    /// Returns a stream for the event
-    pub async fn stream(
-        &'a self,
-    ) -> Result<
-        // Wraps the FilterWatcher with a mapping to the event
-        EventStream<'a, FilterWatcher<'a, M::Provider, Log>, D, ContractError<M>>,
-        ContractError<M>,
-    > {
-        let filter = self
-            .provider
-            .watch(&self.filter)
-            .await
-            .map_err(ContractError::MiddlewareError)?;
-        Ok(EventStream::new(
-            filter.id,
-            filter,
-            Box::new(move |log| self.parse_log(log)),
-        ))
-    }
-}
-
-impl<'a, 'b, M, D> Event<'a, 'b, M, D>
-where
-    M: Middleware,
-    <M as Middleware>::Provider: PubsubClient,
-    D: 'b + Detokenize + Clone,
-{
-    /// Returns a subscription for the event
-    pub async fn subscribe(
-        &'a self,
-    ) -> Result<
-        // Wraps the SubscriptionStream with a mapping to the event
-        EventStream<'a, SubscriptionStream<'a, M::Provider, Log>, D, ContractError<M>>,
-        ContractError<M>,
-    > {
-        let filter = self
-            .provider
-            .subscribe_logs(&self.filter)
-            .await
-            .map_err(ContractError::MiddlewareError)?;
-        Ok(EventStream::new(
-            filter.id,
-            filter,
-            Box::new(move |log| self.parse_log(log)),
-        ))
-    }
-}
-
-impl<M, D> Event<'_, '_, M, D>
-where
-    M: Middleware,
-    D: Detokenize + Clone,
-{
-    /// Queries the blockchain for the selected filter and returns a vector of matching
-    /// event logs
-    pub async fn query(&self) -> Result<Vec<D>, ContractError<M>> {
-        let logs = self
-            .provider
-            .get_logs(&self.filter)
-            .await
-            .map_err(ContractError::MiddlewareError)?;
-        let events = logs
-            .into_iter()
-            .map(|log| self.parse_log(log))
-            .collect::<Result<Vec<_>, ContractError<M>>>()?;
-        Ok(events)
-    }
-
-    /// Queries the blockchain for the selected filter and returns a vector of logs
-    /// along with their metadata
-    pub async fn query_with_meta(&self) -> Result<Vec<(D, LogMeta)>, ContractError<M>> {
-        let logs = self
-            .provider
-            .get_logs(&self.filter)
-            .await
-            .map_err(ContractError::MiddlewareError)?;
-        let events = logs
-            .into_iter()
-            .map(|log| {
-                let meta = LogMeta::from(&log);
-                let event = self.parse_log(log)?;
-                Ok((event, meta))
-            })
-            .collect::<Result<_, ContractError<M>>>()?;
-        Ok(events)
-    }
-
-    fn parse_log(&self, log: Log) -> Result<D, ContractError<M>> {
-        Ok(decode_event(self.event, log.topics, log.data)?)
     }
 }
 
