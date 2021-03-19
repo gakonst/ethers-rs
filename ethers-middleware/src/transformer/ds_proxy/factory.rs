@@ -15,6 +15,18 @@ pub static ADDRESS_BOOK: Lazy<HashMap<U256, Address>> = Lazy::new(|| {
     m
 });
 
+///
+/// Generated with
+/// ```ignore
+/// # use ethers_contract::abigen;
+/// abigen!(DsProxyFactory,
+///         "ethers-middleware/contracts/DsProxyFactory.json",
+///         methods {
+///             build() as build_with_sender;
+///         }
+///     );
+/// ```
+///
 // Auto-generated type-safe bindings
 pub use dsproxyfactory_mod::*;
 #[allow(clippy::too_many_arguments)]
@@ -23,7 +35,7 @@ mod dsproxyfactory_mod {
     #![allow(unused_imports)]
     use ethers_contract::{
         builders::{ContractCall, Event},
-        Contract, Lazy,
+        Contract, EthEvent, Lazy,
     };
     use ethers_core::{
         abi::{parse_abi, Abi, Detokenize, InvalidOutputType, Token, Tokenizable},
@@ -64,8 +76,19 @@ mod dsproxyfactory_mod {
                 .method_hash([41, 113, 3, 136], p0)
                 .expect("method not found (this should never happen)")
         }
-        #[doc = "Calls the contract's `build` (0xf3701da2) function"]
-        pub fn build(&self, owner: Address) -> ContractCall<M, Address> {
+        ///Calls the contract's `build` (0x8e1a55fc) function
+        pub fn build_with_sender(
+            &self,
+        ) -> ethers_contract::builders::ContractCall<M, ethers_core::types::Address> {
+            self.0
+                .method_hash([142, 26, 85, 252], ())
+                .expect("method not found (this should never happen)")
+        }
+        ///Calls the contract's `build` (0xf3701da2) function
+        pub fn build(
+            &self,
+            owner: ethers_core::types::Address,
+        ) -> ethers_contract::builders::ContractCall<M, ethers_core::types::Address> {
             self.0
                 .method_hash([243, 112, 29, 162], owner)
                 .expect("method not found (this should never happen)")
@@ -76,60 +99,24 @@ mod dsproxyfactory_mod {
                 .method_hash([96, 199, 210, 149], ())
                 .expect("method not found (this should never happen)")
         }
-        #[doc = "Gets the contract's `Created` event"]
-        pub fn created_filter(&self) -> Event<M, CreatedFilter> {
-            self.0
-                .event("Created")
-                .expect("event not found (this should never happen)")
+        ///Gets the contract's `Created` event
+        pub fn created_filter(&self) -> ethers_contract::builders::Event<M, CreatedFilter> {
+            self.0.event()
+        }
+
+        /// Returns an [`Event`](ethers_contract::builders::Event) builder for all events of this contract
+        pub fn events(&self) -> ethers_contract::builders::Event<M, CreatedFilter> {
+            self.0.event_with_filter(Default::default())
         }
     }
-    #[derive(Clone, Debug, Default, Eq, PartialEq)]
+    #[derive(Clone, Debug, Default, Eq, PartialEq, EthEvent)]
+    #[ethevent(name = "Created")]
     pub struct CreatedFilter {
+        #[ethevent(indexed)]
         pub sender: Address,
+        #[ethevent(indexed)]
         pub owner: Address,
         pub proxy: Address,
         pub cache: Address,
-    }
-    impl CreatedFilter {
-        #[doc = r" Retrieves the signature for the event this data corresponds to."]
-        #[doc = r" This signature is the Keccak-256 hash of the ABI signature of"]
-        #[doc = r" this event."]
-        pub const fn signature() -> H256 {
-            H256([
-                37, 155, 48, 202, 57, 136, 92, 109, 128, 26, 11, 93, 188, 152, 134, 64, 243, 194,
-                94, 47, 55, 83, 31, 225, 56, 197, 197, 175, 137, 85, 212, 27,
-            ])
-        }
-        #[doc = r" Retrieves the ABI signature for the event this data corresponds"]
-        #[doc = r" to. For this event the value should always be:"]
-        #[doc = r""]
-        #[doc = "`Created(address,address,address,address)`"]
-        pub const fn abi_signature() -> &'static str {
-            "Created(address,address,address,address)"
-        }
-    }
-    impl Detokenize for CreatedFilter {
-        fn from_tokens(tokens: Vec<Token>) -> Result<Self, InvalidOutputType> {
-            if tokens.len() != 4 {
-                return Err(InvalidOutputType(format!(
-                    "Expected {} tokens, got {}: {:?}",
-                    4,
-                    tokens.len(),
-                    tokens
-                )));
-            }
-            #[allow(unused_mut)]
-            let mut tokens = tokens.into_iter();
-            let sender = Tokenizable::from_token(tokens.next().expect("this should never happen"))?;
-            let owner = Tokenizable::from_token(tokens.next().expect("this should never happen"))?;
-            let proxy = Tokenizable::from_token(tokens.next().expect("this should never happen"))?;
-            let cache = Tokenizable::from_token(tokens.next().expect("this should never happen"))?;
-            Ok(CreatedFilter {
-                sender,
-                owner,
-                proxy,
-                cache,
-            })
-        }
     }
 }

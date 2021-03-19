@@ -2,7 +2,7 @@ use super::{types, util, Context};
 use anyhow::Result;
 use ethers_core::abi::{Event, EventExt, EventParam, Hash, ParamType, SolStruct};
 use inflector::Inflector;
-use proc_macro2::{Literal, TokenStream};
+use proc_macro2::{Ident, Literal, TokenStream};
 use quote::quote;
 use std::collections::BTreeMap;
 use syn::Path;
@@ -17,31 +17,121 @@ impl Context {
             .map(|event| self.expand_event(event))
             .collect::<Result<Vec<_>>>()?;
 
-        if data_types.is_empty() {
-            return Ok(quote! {});
-        }
+        // only expand enums when multiple events are present
+        let events_enum_decl = if sorted_events.values().flatten().count() > 1 {
+            self.expand_events_enum()
+        } else {
+            quote! {}
+        };
 
         Ok(quote! {
             #( #data_types )*
+
+            #events_enum_decl
         })
     }
 
     /// Generate the event filter methods for the contract
     pub fn event_methods(&self) -> Result<TokenStream> {
         let sorted_events: BTreeMap<_, _> = self.abi.events.clone().into_iter().collect();
-        let data_types = sorted_events
+        let filter_methods = sorted_events
             .values()
             .flatten()
             .map(|event| self.expand_filter(event))
             .collect::<Vec<_>>();
 
-        if data_types.is_empty() {
-            return Ok(quote! {});
-        }
+        let events_method = self.expand_events_method();
 
         Ok(quote! {
-            #( #data_types )*
+            #( #filter_methods )*
+
+            #events_method
         })
+    }
+
+    /// Generate an enum with a variant for each event
+    fn expand_events_enum(&self) -> TokenStream {
+        let sorted_events: BTreeMap<_, _> = self.abi.events.clone().into_iter().collect();
+
+        let variants = sorted_events
+            .values()
+            .flatten()
+            .map(expand_struct_name)
+            .collect::<Vec<_>>();
+
+        let enum_name = self.expand_event_enum_name();
+
+        quote! {
+            #[derive(Debug, Clone, PartialEq, Eq)]
+            pub enum #enum_name {
+                #(#variants(#variants)),*
+            }
+
+             impl ethers_core::abi::Tokenizable for #enum_name {
+
+                 fn from_token(token: ethers_core::abi::Token) -> Result<Self, ethers_core::abi::InvalidOutputType> where
+                     Self: Sized {
+                    #(
+                        if let Ok(decoded) = #variants::from_token(token.clone()) {
+                            return Ok(#enum_name::#variants(decoded))
+                        }
+                    )*
+                    Err(ethers_core::abi::InvalidOutputType("Failed to decode all event variants".to_string()))
+                }
+
+                fn into_token(self) -> ethers_core::abi::Token {
+                    match self {
+                        #(
+                            #enum_name::#variants(element) => element.into_token()
+                        ),*
+                    }
+                }
+             }
+             impl ethers_core::abi::TokenizableItem for #enum_name { }
+
+             impl ethers_contract::EthLogDecode for #enum_name {
+                fn decode_log(log: &ethers_core::abi::RawLog) -> Result<Self, ethers_core::abi::Error>
+                where
+                    Self: Sized,
+                {
+                     #(
+                        if let Ok(decoded) = #variants::decode_log(log) {
+                            return Ok(#enum_name::#variants(decoded))
+                        }
+                    )*
+                    Err(ethers_core::abi::Error::InvalidData)
+                }
+            }
+        }
+    }
+
+    /// The name ident of the events enum
+    fn expand_event_enum_name(&self) -> Ident {
+        util::ident(&format!("{}Events", self.contract_name.to_string()))
+    }
+
+    /// Expands the `events` function that bundles all declared events of this contract
+    fn expand_events_method(&self) -> TokenStream {
+        let sorted_events: BTreeMap<_, _> = self.abi.events.clone().into_iter().collect();
+
+        let mut iter = sorted_events.values().flatten();
+
+        if let Some(event) = iter.next() {
+            let ty = if iter.next().is_some() {
+                self.expand_event_enum_name()
+            } else {
+                expand_struct_name(event)
+            };
+
+            quote! {
+                /// Returns an [`Event`](ethers_contract::builders::Event) builder for all events of this contract
+                pub fn events(&self) -> ethers_contract::builders::Event<M, #ty> {
+                    self.0.event_with_filter(Default::default())
+                }
+            }
+        } else {
+            quote! {}
+        }
     }
 
     /// Expands an event property type.
@@ -66,7 +156,7 @@ impl Context {
                         return Ok(quote! {::std::vec::Vec<#ty>});
                     }
                 }
-                quote! { H256 }
+                quote! { ethers_core::types::H256 }
             }
             (ParamType::FixedArray(ty, size), true) => {
                 if let ParamType::Tuple(..) = **ty {
@@ -82,7 +172,7 @@ impl Context {
                         return Ok(quote! {[#ty; #size]});
                     }
                 }
-                quote! { H256 }
+                quote! { ethers_core::types::H256 }
             }
             (ParamType::Tuple(..), true) => {
                 // represents an struct
@@ -95,11 +185,11 @@ impl Context {
                 {
                     quote! {#ty}
                 } else {
-                    quote! { H256 }
+                    quote! { ethers_core::types::H256 }
                 }
             }
             (ParamType::Bytes, true) | (ParamType::String, true) => {
-                quote! { H256 }
+                quote! { ethers_core::types::H256 }
             }
             (kind, _) => types::expand(kind)?,
         })
@@ -128,13 +218,12 @@ impl Context {
         let name = util::safe_ident(&format!("{}_filter", event.name.to_snake_case()));
         // let result = util::ident(&event.name.to_pascal_case());
         let result = expand_struct_name(event);
-        let ev_name = Literal::string(&event.name);
 
         let doc = util::expand_doc(&format!("Gets the contract's `{}` event", event.name));
         quote! {
             #doc
-            pub fn #name(&self) -> Event<M, #result> {
-                self.0.event(#ev_name).expect("event not found (this should never happen)")
+            pub fn #name(&self) -> ethers_contract::builders::Event<M, #result> {
+                self.0.event()
             }
         }
     }
@@ -159,7 +248,7 @@ impl Context {
         let event_abi_name = &event.name;
 
         Ok(quote! {
-            #[derive(Clone, Debug, Default, Eq, PartialEq, ethers::contract::EthEvent, #derives)]
+            #[derive(Clone, Debug, Default, Eq, PartialEq, ethers_contract::EthEvent, #derives)]
             #[ethevent( name = #event_abi_name, abi = #abi_signature )]
             pub #data_type_definition
         })
@@ -210,17 +299,16 @@ impl Context {
 }
 
 /// Expands an ABI event into an identifier for its event data type.
-fn expand_struct_name(event: &Event) -> TokenStream {
+fn expand_struct_name(event: &Event) -> Ident {
     // TODO: get rid of `Filter` suffix?
     let name = format!("{}Filter", event.name.to_pascal_case());
-    let event_name = util::ident(&name);
-    quote! { #event_name }
+    util::ident(&name)
 }
 
 /// Expands an event data structure from its name-type parameter pairs. Returns
 /// a tuple with the type definition (i.e. the struct declaration) and
 /// construction (i.e. code for creating an instance of the event data).
-fn expand_data_struct(name: &TokenStream, params: &[(TokenStream, TokenStream)]) -> TokenStream {
+fn expand_data_struct(name: &Ident, params: &[(TokenStream, TokenStream)]) -> TokenStream {
     let fields = params
         .iter()
         .map(|(name, ty)| quote! { pub #name: #ty })
@@ -231,7 +319,7 @@ fn expand_data_struct(name: &TokenStream, params: &[(TokenStream, TokenStream)])
 
 /// Expands an event data named tuple from its name-type parameter pairs.
 /// Returns a tuple with the type definition and construction.
-fn expand_data_tuple(name: &TokenStream, params: &[(TokenStream, TokenStream)]) -> TokenStream {
+fn expand_data_tuple(name: &Ident, params: &[(TokenStream, TokenStream)]) -> TokenStream {
     let fields = params
         .iter()
         .map(|(_, ty)| quote! { pub #ty })
@@ -256,7 +344,7 @@ fn expand_hash(hash: Hash) -> TokenStream {
     let bytes = hash.as_bytes().iter().copied().map(Literal::u8_unsuffixed);
 
     quote! {
-        H256([#( #bytes ),*])
+        ethers_core::types::H256([#( #bytes ),*])
     }
 }
 
@@ -296,10 +384,8 @@ mod tests {
         let cx = test_context();
         assert_quote!(cx.expand_filter(&event), {
             #[doc = "Gets the contract's `Transfer` event"]
-            pub fn transfer_filter(&self) -> Event<M, TransferFilter> {
-                self.0
-                    .event("Transfer")
-                    .expect("event not found (this should never happen)")
+            pub fn transfer_filter(&self) -> ethers_contract::builders::Event<M, TransferFilter> {
+                self.0.event()
             }
         });
     }
@@ -331,7 +417,7 @@ mod tests {
         assert_quote!(definition, {
             struct FooFilter {
                 pub a: bool,
-                pub p1: Address,
+                pub p1: ethers_core::types::Address,
             }
         });
     }
@@ -361,7 +447,7 @@ mod tests {
         let definition = expand_data_tuple(&name, &params);
 
         assert_quote!(definition, {
-            struct FooFilter(pub bool, pub Address);
+            struct FooFilter(pub bool, pub ethers_core::types::Address);
         });
     }
 
@@ -373,7 +459,7 @@ mod tests {
                 "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f".parse().unwrap()
             ),
             {
-                H256([
+                ethers_core::types::H256([
                     0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
                     16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31
                 ])

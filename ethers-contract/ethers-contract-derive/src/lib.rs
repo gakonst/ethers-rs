@@ -8,8 +8,8 @@ use proc_macro2::{Literal, Span};
 use quote::{quote, quote_spanned};
 use syn::spanned::Spanned as _;
 use syn::{
-    parse::Error, parse_macro_input, AttrStyle, Data, DeriveInput, Expr, Fields, GenericArgument,
-    Lit, Meta, NestedMeta, PathArguments, Type,
+    parse::Error, parse_macro_input, AttrStyle, Data, DeriveInput, Expr, Field, Fields,
+    GenericArgument, Lit, Meta, NestedMeta, PathArguments, Type,
 };
 
 use abigen::{expand, ContractArgs};
@@ -79,6 +79,8 @@ pub fn abigen(input: TokenStream) -> TokenStream {
 ///
 /// Additional arguments can be specified using the `#[ethevent(...)]` attribute:
 ///
+/// For the struct:
+///
 /// - `name`, `name = "..."`: Overrides the generated `EthEvent` name, default is the
 ///  struct's name.
 /// - `signature`, `signature = "..."`: The signature as hex string to override the
@@ -86,9 +88,17 @@ pub fn abigen(input: TokenStream) -> TokenStream {
 /// - `abi`, `abi = "..."`: The ABI signature for the event this event's data corresponds to.
 ///  The `abi` should be solidity event definition or a tuple of the event's types in case the
 ///  event has non elementary (other `EthAbiType`) types as members
+/// - `anonymous`: A flag to mark this as an anonymous event
+///
+/// For fields:
+///
+/// - `indexed`: flag to mark a field as an indexed event input
+/// - `name`: override the name of an indexed event input, default is the rust field name
 ///
 /// # Example
 /// ```ignore
+/// # use ethers_core::types::Address;
+///
 /// #[derive(Debug, EthAbiType)]
 /// struct Inner {
 ///     inner: Address,
@@ -98,8 +108,10 @@ pub fn abigen(input: TokenStream) -> TokenStream {
 /// #[derive(Debug, EthEvent)]
 /// #[ethevent(abi = "ValueChangedEvent((address,string),string)")]
 /// struct ValueChangedEvent {
-///     inner: Inner,
+///     #[ethevent(indexed, name = "_target")]
+///     target: Address,
 ///     msg: String,
+///     inner: Inner,
 /// }
 /// ```
 #[proc_macro_derive(EthEvent, attributes(ethevent))]
@@ -113,14 +125,13 @@ pub fn derive_abi_event(input: TokenStream) -> TokenStream {
 
     let event_name = attributes
         .name
-        .map(|(n, _)| n)
+        .map(|(s, _)| s)
         .unwrap_or_else(|| input.ident.to_string());
 
-    let (abi, hash) = if let Some((src, span)) = attributes.abi {
+    let mut event = if let Some((src, span)) = attributes.abi {
         // try to parse as solidity event
-        if let Ok(mut event) = parse_event(&src) {
-            event.name = event_name.clone();
-            (event.abi_signature(), event.signature())
+        if let Ok(event) = parse_event(&src) {
+            event
         } else {
             // try as tuple
             if let Some(inputs) = Reader::read(
@@ -142,12 +153,11 @@ pub fn derive_abi_event(input: TokenStream) -> TokenStream {
                 ),
                 _ => None,
             }) {
-                let event = Event {
+                Event {
                     name: event_name.clone(),
                     inputs,
                     anonymous: false,
-                };
-                (event.abi_signature(), event.signature())
+                }
             } else {
                 match src.parse::<Source>().and_then(|s| s.get()) {
                     Ok(abi) => {
@@ -157,10 +167,7 @@ pub fn derive_abi_event(input: TokenStream) -> TokenStream {
                         //  this could be mitigated by getting the ABI of each non elementary type at runtime
                         //  and computing the the signature as `static Lazy::...`
                         match parse_event(&abi) {
-                            Ok(mut event) => {
-                                event.name = event_name.clone();
-                                (event.abi_signature(), event.signature())
-                            }
+                            Ok(event) => event,
                             Err(err) => {
                                 return TokenStream::from(Error::new(span, err).to_compile_error())
                             }
@@ -173,19 +180,30 @@ pub fn derive_abi_event(input: TokenStream) -> TokenStream {
     } else {
         // try to determine the abi from the fields
         match derive_abi_event_from_fields(&input) {
-            Ok(mut event) => {
-                event.name = event_name.clone();
-                (event.abi_signature(), event.signature())
-            }
+            Ok(event) => event,
             Err(err) => return TokenStream::from(err.to_compile_error()),
         }
     };
+
+    event.name = event_name.clone();
+    if let Some((anon, _)) = attributes.anonymous.as_ref() {
+        event.anonymous = *anon;
+    }
+
+    let decode_log_impl = match derive_decode_from_log_impl(&input, &event) {
+        Ok(log) => log,
+        Err(err) => return TokenStream::from(err.to_compile_error()),
+    };
+
+    let (abi, hash) = (event.abi_signature(), event.signature());
 
     let signature = if let Some((hash, _)) = attributes.signature_hash {
         signature(&hash)
     } else {
         signature(hash.as_bytes())
     };
+
+    let anon = attributes.anonymous.map(|(b, _)| b).unwrap_or_default();
 
     let ethevent_impl = quote! {
         impl ethers_contract::EthEvent for #name {
@@ -201,6 +219,14 @@ pub fn derive_abi_event(input: TokenStream) -> TokenStream {
             fn abi_signature() -> ::std::borrow::Cow<'static, str> {
                 #abi.into()
             }
+
+            fn decode_log(log: &ethers_core::abi::RawLog) -> Result<Self, ethers_core::abi::Error> where Self: Sized {
+                #decode_log_impl
+            }
+
+            fn is_anonymous() -> bool {
+                #anon
+            }
         }
     };
 
@@ -213,11 +239,259 @@ pub fn derive_abi_event(input: TokenStream) -> TokenStream {
     })
 }
 
-fn derive_abi_event_from_fields(input: &DeriveInput) -> Result<Event, Error> {
-    let types: Vec<_> = match input.data {
+struct EventField {
+    topic_name: Option<String>,
+    index: usize,
+    param: EventParam,
+}
+
+impl EventField {
+    fn is_indexed(&self) -> bool {
+        self.topic_name.is_some()
+    }
+}
+
+// Converts param types for indexed parameters to bytes32 where appropriate
+// This applies to strings, arrays, structs and bytes to follow the encoding of
+// these indexed param types according to
+// https://solidity.readthedocs.io/en/develop/abi-spec.html#encoding-of-indexed-event-parameters
+fn topic_param_type_quote(kind: &ParamType) -> proc_macro2::TokenStream {
+    match kind {
+        ParamType::String
+        | ParamType::Bytes
+        | ParamType::Array(_)
+        | ParamType::FixedArray(_, _)
+        | ParamType::Tuple(_) => quote! {ethers_core::abi::ParamType::FixedBytes(32)},
+        ty => param_type_quote(ty),
+    }
+}
+
+fn param_type_quote(kind: &ParamType) -> proc_macro2::TokenStream {
+    match kind {
+        ParamType::Address => {
+            quote! {ethers_core::abi::ParamType::Address}
+        }
+        ParamType::Bytes => {
+            quote! {ethers_core::abi::ParamType::Bytes}
+        }
+        ParamType::Int(size) => {
+            let size = Literal::usize_suffixed(*size);
+            quote! {ethers_core::abi::ParamType::Int(#size)}
+        }
+        ParamType::Uint(size) => {
+            let size = Literal::usize_suffixed(*size);
+            quote! {ethers_core::abi::ParamType::Uint(#size)}
+        }
+        ParamType::Bool => {
+            quote! {ethers_core::abi::ParamType::Bool}
+        }
+        ParamType::String => {
+            quote! {ethers_core::abi::ParamType::String}
+        }
+        ParamType::Array(ty) => {
+            let ty = param_type_quote(&*ty);
+            quote! {ethers_core::abi::ParamType::Array(Box::new(#ty))}
+        }
+        ParamType::FixedBytes(size) => {
+            let size = Literal::usize_suffixed(*size);
+            quote! {ethers_core::abi::ParamType::FixedBytes(#size)}
+        }
+        ParamType::FixedArray(ty, size) => {
+            let ty = param_type_quote(&*ty);
+            let size = Literal::usize_suffixed(*size);
+            quote! {ethers_core::abi::ParamType::FixedArray(Box::new(#ty),#size)}
+        }
+        ParamType::Tuple(tuple) => {
+            let elements = tuple.iter().map(param_type_quote);
+            quote! {
+                ethers_core::abi::ParamType::Tuple(
+                    vec![
+                        #( #elements ),*
+                    ]
+                )
+            }
+        }
+    }
+}
+
+fn derive_decode_from_log_impl(
+    input: &DeriveInput,
+    event: &Event,
+) -> Result<proc_macro2::TokenStream, Error> {
+    let fields: Vec<_> = match input.data {
         Data::Struct(ref data) => match data.fields {
-            Fields::Named(ref fields) => fields.named.iter().map(|f| &f.ty).collect(),
-            Fields::Unnamed(ref fields) => fields.unnamed.iter().map(|f| &f.ty).collect(),
+            Fields::Named(ref fields) => {
+                if fields.named.len() != event.inputs.len() {
+                    return Err(Error::new(
+                        fields.span(),
+                        format!(
+                            "EthEvent {}'s fields length don't match with signature inputs {}",
+                            event.name,
+                            event.abi_signature()
+                        ),
+                    ));
+                }
+                fields.named.iter().collect()
+            }
+            Fields::Unnamed(ref fields) => {
+                if fields.unnamed.len() != event.inputs.len() {
+                    return Err(Error::new(
+                        fields.span(),
+                        format!(
+                            "EthEvent {}'s fields length don't match with signature inputs {}",
+                            event.name,
+                            event.abi_signature()
+                        ),
+                    ));
+                }
+                fields.unnamed.iter().collect()
+            }
+            Fields::Unit => {
+                return Err(Error::new(
+                    input.span(),
+                    "EthEvent cannot be derived for empty structs and unit",
+                ));
+            }
+        },
+        Data::Enum(_) => {
+            return Err(Error::new(
+                input.span(),
+                "EthEvent cannot be derived for enums",
+            ));
+        }
+        Data::Union(_) => {
+            return Err(Error::new(
+                input.span(),
+                "EthEvent cannot be derived for unions",
+            ));
+        }
+    };
+
+    let mut event_fields = Vec::with_capacity(fields.len());
+    for (index, field) in fields.iter().enumerate() {
+        let mut param = event.inputs[index].clone();
+
+        let (topic_name, indexed) = parse_field_attributes(field)?;
+        if indexed {
+            param.indexed = true;
+        }
+        let topic_name = if param.indexed {
+            if topic_name.is_none() {
+                Some(param.name.clone())
+            } else {
+                topic_name
+            }
+        } else {
+            None
+        };
+
+        event_fields.push(EventField {
+            topic_name,
+            index,
+            param,
+        });
+    }
+
+    // convert fields to params list
+    let topic_types = event_fields
+        .iter()
+        .filter(|f| f.is_indexed())
+        .map(|f| topic_param_type_quote(&f.param.kind));
+
+    let topic_types_init = quote! {let topic_types = vec![#( #topic_types ),*];};
+
+    let data_types = event_fields
+        .iter()
+        .filter(|f| !f.is_indexed())
+        .map(|f| param_type_quote(&f.param.kind));
+
+    let data_types_init = quote! {let data_types = vec![#( #data_types ),*];};
+
+    // decode
+    let (signature_check, flat_topics_init, topic_tokens_len_check) = if event.anonymous {
+        (
+            quote! {},
+            quote! {
+                  let flat_topics = topics.iter().flat_map(|t| t.as_ref().to_vec()).collect::<Vec<u8>>();
+            },
+            quote! {
+                if topic_tokens.len() != topics.len() {
+                    return Err(ethers_core::abi::Error::InvalidData);
+                }
+            },
+        )
+    } else {
+        (
+            quote! {
+                let event_signature = topics.get(0).ok_or(ethers_core::abi::Error::InvalidData)?;
+                if event_signature != &Self::signature() {
+                    return Err(ethers_core::abi::Error::InvalidData);
+                }
+            },
+            quote! {
+                let flat_topics = topics.iter().skip(1).flat_map(|t| t.as_ref().to_vec()).collect::<Vec<u8>>();
+            },
+            quote! {
+                if topic_tokens.is_empty() || topic_tokens.len() != topics.len() - 1 {
+                    return Err(ethers_core::abi::Error::InvalidData);
+                }
+            },
+        )
+    };
+
+    // check if indexed are sorted
+    let tokens_init = if event_fields
+        .iter()
+        .filter(|f| f.is_indexed())
+        .enumerate()
+        .all(|(idx, f)| f.index == idx)
+    {
+        quote! {
+            let topic_tokens = ethers_core::abi::decode(&topic_types, &flat_topics)?;
+            #topic_tokens_len_check
+            let data_tokens = ethers_core::abi::decode(&data_types, &data)?;
+            let tokens:Vec<_> = topic_tokens.into_iter().chain(data_tokens.into_iter()).collect();
+        }
+    } else {
+        let swap_tokens = event_fields.iter().map(|field| {
+            if field.is_indexed() {
+                quote! { topic_tokens.remove(0) }
+            } else {
+                quote! { data_tokens.remove(0) }
+            }
+        });
+
+        quote! {
+            let mut topic_tokens = ethers_core::abi::decode(&topic_types, &flat_topics)?;
+            #topic_tokens_len_check
+            let mut data_tokens = ethers_core::abi::decode(&data_types, &data)?;
+            let mut tokens = Vec::with_capacity(topics.len() + data_tokens.len());
+            #( tokens.push(#swap_tokens); )*
+        }
+    };
+
+    Ok(quote! {
+
+        let ethers_core::abi::RawLog {data, topics} = log;
+
+        #signature_check
+
+        #topic_types_init
+        #data_types_init
+
+        #flat_topics_init
+
+        #tokens_init
+
+        ethers_core::abi::Detokenize::from_tokens(tokens).map_err(|_|ethers_core::abi::Error::InvalidData)
+    })
+}
+
+fn derive_abi_event_from_fields(input: &DeriveInput) -> Result<Event, Error> {
+    let fields: Vec<_> = match input.data {
+        Data::Struct(ref data) => match data.fields {
+            Fields::Named(ref fields) => fields.named.iter().collect(),
+            Fields::Unnamed(ref fields) => fields.unnamed.iter().collect(),
             Fields::Unit => {
                 return Err(Error::new(
                     input.span(),
@@ -239,17 +513,24 @@ fn derive_abi_event_from_fields(input: &DeriveInput) -> Result<Event, Error> {
         }
     };
 
-    let inputs = types
+    let inputs = fields
         .iter()
-        .map(|ty| find_parameter_type(ty))
+        .map(|f| {
+            let name = f
+                .ident
+                .as_ref()
+                .map(|name| name.to_string())
+                .unwrap_or_else(|| "".to_string());
+            find_parameter_type(&f.ty).map(|ty| (name, ty))
+        })
         .collect::<Result<Vec<_>, _>>()?;
 
     let event = Event {
         name: "".to_string(),
         inputs: inputs
             .into_iter()
-            .map(|kind| EventParam {
-                name: "".to_string(),
+            .map(|(name, kind)| EventParam {
+                name,
                 kind,
                 indexed: false,
             })
@@ -257,6 +538,55 @@ fn derive_abi_event_from_fields(input: &DeriveInput) -> Result<Event, Error> {
         anonymous: false,
     };
     Ok(event)
+}
+
+fn parse_field_attributes(field: &Field) -> Result<(Option<String>, bool), Error> {
+    let mut indexed = false;
+    let mut topic_name = None;
+    for a in field.attrs.iter() {
+        if let AttrStyle::Outer = a.style {
+            if let Ok(Meta::List(meta)) = a.parse_meta() {
+                if meta.path.is_ident("ethevent") {
+                    for n in meta.nested.iter() {
+                        if let NestedMeta::Meta(meta) = n {
+                            match meta {
+                                Meta::Path(path) => {
+                                    if path.is_ident("indexed") {
+                                        indexed = true;
+                                    } else {
+                                        return Err(Error::new(
+                                            path.span(),
+                                            "unrecognized ethevent parameter",
+                                        ));
+                                    }
+                                }
+                                Meta::List(meta) => {
+                                    return Err(Error::new(
+                                        meta.path.span(),
+                                        "unrecognized ethevent parameter",
+                                    ));
+                                }
+                                Meta::NameValue(meta) => {
+                                    if meta.path.is_ident("name") {
+                                        if let Lit::Str(ref lit_str) = meta.lit {
+                                            topic_name = Some(lit_str.value());
+                                        } else {
+                                            return Err(Error::new(
+                                                meta.span(),
+                                                "name attribute must be a string",
+                                            ));
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Ok((topic_name, indexed))
 }
 
 fn find_parameter_type(ty: &Type) -> Result<ParamType, Error> {
@@ -315,13 +645,10 @@ fn find_parameter_type(ty: &Type) -> Result<ParamType, Error> {
                 .collect::<Result<Vec<_>, _>>()?;
             Ok(ParamType::Tuple(params))
         }
-        _ => {
-            eprintln!("Found other types");
-            Err(Error::new(
-                ty.span(),
-                "Failed to derive proper ABI from fields",
-            ))
-        }
+        _ => Err(Error::new(
+            ty.span(),
+            "Failed to derive proper ABI from fields",
+        )),
     }
 }
 
@@ -496,23 +823,21 @@ fn derive_tokenizeable_impl(input: &DeriveInput) -> proc_macro2::TokenStream {
                 )
              }
          }
+
+        impl<#generic_params> ethers_core::abi::TokenizableItem for #name<#generic_args>
+         where
+             #generic_predicates
+             #tokenize_predicates
+         { }
     }
 }
 
+#[derive(Default)]
 struct Attributes {
     name: Option<(String, Span)>,
     abi: Option<(String, Span)>,
     signature_hash: Option<(Vec<u8>, Span)>,
-}
-
-impl Default for Attributes {
-    fn default() -> Self {
-        Self {
-            name: None,
-            abi: None,
-            signature_hash: None,
-        }
-    }
+    anonymous: Option<(bool, Span)>,
 }
 
 fn parse_attributes(input: &DeriveInput) -> Result<Attributes, proc_macro2::TokenStream> {
@@ -525,6 +850,20 @@ fn parse_attributes(input: &DeriveInput) -> Result<Attributes, proc_macro2::Toke
                         if let NestedMeta::Meta(meta) = n {
                             match meta {
                                 Meta::Path(path) => {
+                                    if let Some(name) = path.get_ident() {
+                                        if &*name.to_string() == "anonymous" {
+                                            if result.anonymous.is_none() {
+                                                result.anonymous = Some((true, name.span()));
+                                                continue;
+                                            } else {
+                                                return Err(Error::new(
+                                                    name.span(),
+                                                    "anonymous already specified",
+                                                )
+                                                .to_compile_error());
+                                            }
+                                        }
+                                    }
                                     return Err(Error::new(
                                         path.span(),
                                         "unrecognized ethevent parameter",
@@ -532,7 +871,6 @@ fn parse_attributes(input: &DeriveInput) -> Result<Attributes, proc_macro2::Toke
                                     .to_compile_error());
                                 }
                                 Meta::List(meta) => {
-                                    // TODO support raw list
                                     return Err(Error::new(
                                         meta.path.span(),
                                         "unrecognized ethevent parameter",
@@ -540,7 +878,26 @@ fn parse_attributes(input: &DeriveInput) -> Result<Attributes, proc_macro2::Toke
                                     .to_compile_error());
                                 }
                                 Meta::NameValue(meta) => {
-                                    if meta.path.is_ident("name") {
+                                    if meta.path.is_ident("anonymous") {
+                                        if let Lit::Bool(ref bool_lit) = meta.lit {
+                                            if result.anonymous.is_none() {
+                                                result.anonymous =
+                                                    Some((bool_lit.value, bool_lit.span()));
+                                            } else {
+                                                return Err(Error::new(
+                                                    meta.span(),
+                                                    "anonymous already specified",
+                                                )
+                                                .to_compile_error());
+                                            }
+                                        } else {
+                                            return Err(Error::new(
+                                                meta.span(),
+                                                "name must be a string",
+                                            )
+                                            .to_compile_error());
+                                        }
+                                    } else if meta.path.is_ident("name") {
                                         if let Lit::Str(ref lit_str) = meta.lit {
                                             if result.name.is_none() {
                                                 result.name =

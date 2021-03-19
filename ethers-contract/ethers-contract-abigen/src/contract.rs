@@ -79,15 +79,14 @@ impl Context {
             #[allow(clippy::too_many_arguments)]
             mod #name_mod {
                 #imports
-
                 #struct_decl
 
-                impl<'a, M: Middleware> #name<M> {
+                impl<'a, M: ethers_providers::Middleware> #name<M> {
                     /// Creates a new contract instance with the specified `ethers`
                     /// client at the given `Address`. The contract derefs to a `ethers::Contract`
                     /// object
-                    pub fn new<T: Into<Address>>(address: T, client: Arc<M>) -> Self {
-                        let contract = Contract::new(address.into(), #abi_name.clone(), client);
+                    pub fn new<T: Into<ethers_core::types::Address>>(address: T, client: ::std::sync::Arc<M>) -> Self {
+                        let contract = ethers_contract::Contract::new(address.into(), #abi_name.clone(), client);
                         Self(contract)
                     }
 

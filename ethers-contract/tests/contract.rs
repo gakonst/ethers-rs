@@ -109,8 +109,7 @@ mod eth_tests {
 
         // and we can fetch the events
         let logs: Vec<ValueChanged> = contract
-            .event("ValueChanged")
-            .unwrap()
+            .event()
             .from_block(0u64)
             .topic1(client.address()) // Corresponds to the first indexed parameter
             .query()
@@ -123,8 +122,7 @@ mod eth_tests {
         // and we can fetch the events at a block hash
         let hash = client.get_block(1).await.unwrap().unwrap().hash.unwrap();
         let logs: Vec<ValueChanged> = contract
-            .event("ValueChanged")
-            .unwrap()
+            .event()
             .at_block_hash(hash)
             .topic1(client.address()) // Corresponds to the first indexed parameter
             .query()
@@ -256,14 +254,14 @@ mod eth_tests {
         let contract = deploy(client, abi.clone(), bytecode).await;
 
         // We spawn the event listener:
-        let event = contract.event::<ValueChanged>("ValueChanged").unwrap();
+        let event = contract.event::<ValueChanged>();
         let mut stream = event.stream().await.unwrap();
         assert_eq!(stream.id, 1.into());
 
         // Also set up a subscription for the same thing
         let ws = Provider::connect(ganache.ws_endpoint()).await.unwrap();
         let contract2 = ethers_contract::Contract::new(contract.address(), abi, ws);
-        let event2 = contract2.event::<ValueChanged>("ValueChanged").unwrap();
+        let event2 = contract2.event::<ValueChanged>();
         let mut subscription = event2.subscribe().await.unwrap();
         assert_eq!(subscription.id, 2.into());
 

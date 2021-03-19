@@ -1,5 +1,5 @@
 use ethers::core::types::{H160, H256, I256, U128, U256};
-use ethers_contract::{EthAbiType, EthEvent};
+use ethers_contract::{abigen, EthAbiType, EthEvent};
 use ethers_core::abi::Tokenizable;
 use ethers_core::types::Address;
 
@@ -193,5 +193,46 @@ fn can_set_eth_abi_attribute() {
     assert_eq!(
         "ValueChangedEvent(address,(address,string),string)",
         ValueChangedEvent2::abi_signature()
+    );
+}
+
+#[test]
+fn can_derive_indexed_and_anonymous_attribute() {
+    #[derive(Debug, PartialEq, EthEvent)]
+    #[ethevent(anonymous)]
+    struct ValueChangedEvent {
+        old_author: Address,
+        #[ethevent(indexed, name = "newAuthor")]
+        new_author: Address,
+        old_value: String,
+        new_value: String,
+    }
+
+    assert_eq!(
+        "ValueChangedEvent(address,address,string,string) anonymous",
+        ValueChangedEvent::abi_signature()
+    );
+}
+
+#[test]
+fn can_generate_ethevent_from_json() {
+    abigen!(DsProxyFactory,
+        "ethers-middleware/contracts/DsProxyFactory.json",
+        methods {
+            build(address) as build_with_owner;
+        }
+    );
+
+    assert_eq!(
+        "Created(address,address,address,address)",
+        CreatedFilter::abi_signature()
+    );
+
+    assert_eq!(
+        H256([
+            37, 155, 48, 202, 57, 136, 92, 109, 128, 26, 11, 93, 188, 152, 134, 64, 243, 194, 94,
+            47, 55, 83, 31, 225, 56, 197, 197, 175, 137, 85, 212, 27,
+        ]),
+        CreatedFilter::signature()
     );
 }

@@ -1,7 +1,8 @@
-use super::{
+use crate::{
     base::{encode_function_data, AbiError, BaseContract},
     call::ContractCall,
-    event::Event,
+    event::{EthEvent, Event},
+    EthLogDecode,
 };
 
 use ethers_core::{
@@ -108,7 +109,7 @@ use std::{fmt::Debug, marker::PhantomData, sync::Arc};
 /// ```no_run
 /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
 /// use ethers_core::{abi::Abi, types::Address};
-/// use ethers_contract::Contract;
+/// use ethers_contract::{Contract, EthEvent};
 /// use ethers_providers::{Provider, Http, Middleware};
 /// use ethers_signers::Wallet;
 /// use std::convert::TryFrom;
@@ -119,7 +120,7 @@ use std::{fmt::Debug, marker::PhantomData, sync::Arc};
 /// # let client = Provider::<Http>::try_from("http://localhost:8545").unwrap();
 /// # let contract = Contract::new(address, abi, client);
 ///
-/// #[derive(Clone, Debug)]
+/// #[derive(Clone, Debug, EthEvent)]
 /// struct ValueChanged {
 ///     old_author: Address,
 ///     new_author: Address,
@@ -127,25 +128,8 @@ use std::{fmt::Debug, marker::PhantomData, sync::Arc};
 ///     new_value: String,
 /// }
 ///
-/// impl Detokenize for ValueChanged {
-///     fn from_tokens(tokens: Vec<Token>) -> Result<ValueChanged, InvalidOutputType> {
-///         let old_author: Address = tokens[1].clone().into_address().unwrap();
-///         let new_author: Address = tokens[1].clone().into_address().unwrap();
-///         let old_value = tokens[2].clone().into_string().unwrap();
-///         let new_value = tokens[3].clone().into_string().unwrap();
-///
-///         Ok(Self {
-///             old_author,
-///             new_author,
-///             old_value,
-///             new_value,
-///         })
-///     }
-/// }
-///
-///
 /// let logs: Vec<ValueChanged> = contract
-///     .event("ValueChanged")?
+///     .event()
 ///     .from_block(0u64)
 ///     .query()
 ///     .await?;
@@ -179,18 +163,25 @@ impl<M: Middleware> Contract<M> {
         }
     }
 
-    /// Returns an [`Event`](crate::builders::Event) builder for the provided event name.
-    pub fn event<D: Detokenize>(&self, name: &str) -> Result<Event<M, D>, Error> {
+    /// Returns an [`Event`](crate::builders::Event) builder for the provided event.
+    pub fn event<D: EthEvent>(&self) -> Event<M, D> {
+        self.event_with_filter(Filter::new().event(&D::abi_signature()))
+    }
+
+    /// Returns an [`Event`](crate::builders::Event) builder with the provided filter.
+    pub fn event_with_filter<D: EthLogDecode>(&self, filter: Filter) -> Event<M, D> {
+        Event {
+            provider: &self.client,
+            filter: filter.address(self.address),
+            datatype: PhantomData,
+        }
+    }
+
+    /// Returns an [`Event`](crate::builders::Event) builder with the provided name.
+    pub fn event_for_name<D: EthLogDecode>(&self, name: &str) -> Result<Event<M, D>, Error> {
         // get the event's full name
         let event = self.base_contract.abi.event(name)?;
-        Ok(Event {
-            provider: &self.client,
-            filter: Filter::new()
-                .event(&event.abi_signature())
-                .address(self.address),
-            event: &event,
-            datatype: PhantomData,
-        })
+        Ok(self.event_with_filter(Filter::new().event(&event.abi_signature())))
     }
 
     /// Returns a transaction builder for the provided function name. If there are
