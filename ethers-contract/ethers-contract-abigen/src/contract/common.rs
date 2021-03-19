@@ -15,11 +15,12 @@ pub(crate) fn imports(name: &str) -> TokenStream {
         use std::sync::Arc;
         use ethers::{
             core::{
+                self as ethers_core,
                 abi::{Abi, Token, Detokenize, InvalidOutputType, Tokenizable},
                 types::*, // import all the types so that we can codegen for everything
             },
-            contract::{Contract, builders::{ContractCall, Event}, Lazy},
-            providers::Middleware,
+            contract::{self as ethers_contract, Contract, builders::{ContractCall, Event}, Lazy},
+            providers::{self as ethers_providers,Middleware},
         };
     }
 }
