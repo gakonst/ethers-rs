@@ -36,6 +36,9 @@ hex = { version = "0.4.3", default-features = false, features = ["std"] }
 # https://github.com/bitvecto-rs/bitvec/issues/105#issuecomment-778570981
 funty = "=1.1.0"
 
+# async
+tokio = { version = "1.2", default-features = false, optional = true}
+futures-util = { version = "0.3.13", default-features = false, optional = true}
 
 [dev-dependencies]
 ethers = { version = "0.2", path = "../ethers" }
@@ -47,6 +50,7 @@ once_cell = { version = "1.7.2" }
 
 [features]
 celo = [] # celo support extends the transaction format with extra fields
+setup = ["tokio", "futures-util"] # async support for concurrent setup
 
 [package.metadata.docs.rs]
 all-features = true

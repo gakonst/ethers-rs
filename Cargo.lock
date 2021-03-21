@@ -693,6 +693,7 @@ dependencies = [
  "ethereum-types",
  "ethers",
  "funty",
+ "futures-util",
  "generic-array",
  "glob",
  "hex",
@@ -704,6 +705,7 @@ dependencies = [
  "serde_json",
  "thiserror",
  "tiny-keccak",
+ "tokio",
 ]
 
 [[package]]
