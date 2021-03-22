@@ -35,7 +35,7 @@ abigen = ["ethers-contract/abigen"]
 
 [dependencies]
 ethers-contract = { version = "0.2.2", path = "../ethers-contract" }
-ethers-core = { version = "0.2.2", path = "../ethers-core" }
+ethers-core = { version = "0.2.2", path = "../ethers-core", features = ["setup"] }
 ethers-providers = { version = "0.2.2", path = "../ethers-providers" }
 ethers-signers = { version = "0.2.2", path = "../ethers-signers" }
 ethers-middleware = { version = "0.2.2", path = "../ethers-middleware" }

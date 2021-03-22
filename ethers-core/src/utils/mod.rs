@@ -17,6 +17,13 @@ mod solc;
 #[cfg(not(target_arch = "wasm32"))]
 pub use solc::{CompiledContract, Solc};
 
+#[cfg(not(target_arch = "wasm32"))]
+#[cfg(feature = "setup")]
+mod setup;
+#[cfg(not(target_arch = "wasm32"))]
+#[cfg(feature = "setup")]
+pub use setup::*;
+
 mod hash;
 pub use hash::{hash_message, id, keccak256, serialize};
 
