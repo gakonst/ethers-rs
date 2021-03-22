@@ -37,12 +37,12 @@ tracing = { version = "0.1.25", default-features = false }
 tracing-futures = { version = "0.2.5", default-features = false, features = ["std-future"] }
 
 # tokio
-tokio = { version = "1.2", default-features = false, optional = true }
+tokio = { version = "1.4", default-features = false, optional = true }
 tokio-tungstenite = { version = "0.13.0", default-features = false, features = ["connect", "tls"], optional = true }
 
 [dev-dependencies]
 ethers = { version = "0.2", path = "../ethers" }
-tokio = { version = "1.2", default-features = false, features = ["rt", "macros"] }
+tokio = { version = "1.4", default-features = false, features = ["rt", "macros"] }
 
 [features]
 default = ["ws"]

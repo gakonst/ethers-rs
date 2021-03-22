@@ -32,14 +32,14 @@ reqwest = { version = "0.11.2", default-features = false, features = ["json", "r
 url = { version = "2.2.1", default-features = false }
 
 serde_json = { version = "1.0.64", default-features = false }
-tokio = { version = "1.2" }
+tokio = { version = "1.4" }
 
 [dev-dependencies]
 ethers = { version = "0.2", path = "../ethers" }
 futures-executor = { version = "0.3.13", features = ["thread-pool"] }
 hex = { version = "0.4.3", default-features = false, features = ["std"] }
 rand = { version = "0.7.3", default-features = false }
-tokio = { version = "1.2", default-features = false, features = ["rt", "macros", "time"] }
+tokio = { version = "1.4", default-features = false, features = ["rt", "macros", "time"] }
 
 [features]
 celo = ["ethers-core/celo", "ethers-providers/celo", "ethers-signers/celo"]
