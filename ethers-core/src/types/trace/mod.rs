@@ -106,6 +106,7 @@ pub struct TransactionTrace {
 
 // ---------------- VmTrace ------------------------------
 #[derive(Debug, Clone, PartialEq, Default, Deserialize, Serialize)]
+#[allow(clippy::upper_case_acronyms)]
 /// A record of a full VM trace for a CALL/CREATE.
 pub struct VMTrace {
     /// The code to be executed.
@@ -115,6 +116,7 @@ pub struct VMTrace {
 }
 
 #[derive(Debug, Clone, PartialEq, Default, Deserialize, Serialize)]
+#[allow(clippy::upper_case_acronyms)]
 /// A record of the execution of a single VM operation.
 pub struct VMOperation {
     /// The program counter.
@@ -129,6 +131,7 @@ pub struct VMOperation {
 }
 
 #[derive(Debug, Clone, PartialEq, Default, Deserialize, Serialize)]
+#[allow(clippy::upper_case_acronyms)]
 /// A record of an executed VM operation.
 pub struct VMExecutedOperation {
     /// The total gas used.
@@ -145,6 +148,7 @@ pub struct VMExecutedOperation {
 }
 
 #[derive(Debug, Clone, PartialEq, Default, Deserialize, Serialize)]
+#[allow(clippy::upper_case_acronyms)]
 /// A diff of some chunk of memory.
 pub struct MemoryDiff {
     /// Offset into memory the change begins.
@@ -154,6 +158,7 @@ pub struct MemoryDiff {
 }
 
 #[derive(Debug, Clone, PartialEq, Default, Deserialize, Serialize)]
+#[allow(clippy::upper_case_acronyms)]
 /// A diff of some storage value.
 pub struct StorageDiff {
     /// Which key in storage is changed.
