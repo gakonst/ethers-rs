@@ -752,7 +752,7 @@ impl Provider<MockProvider> {
     }
 }
 
-/// infallbile conversion of Bytes to Address/String
+/// infallible conversion of Bytes to Address/String
 ///
 /// # Panics
 ///
