@@ -1,5 +1,5 @@
 //! Various utilities for manipulating Ethereum related dat
-use ethereum_types::H256;
+use ethabi::ethereum_types::H256;
 use tiny_keccak::{Hasher, Keccak};
 
 const PREFIX: &str = "\x19Ethereum Signed Message:\n";

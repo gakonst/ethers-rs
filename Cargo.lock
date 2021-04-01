@@ -573,8 +573,9 @@ dependencies = [
 
 [[package]]
 name = "ethabi"
-version = "13.0.0"
-source = "git+https://github.com/rust-ethereum/ethabi#a9126613ecd18295f48fa3222eabdc4b65c07392"
+version = "14.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c52991643379afc90bfe2df3c64d53983e59c35a82ba6e75c997cfc2880d8524"
 dependencies = [
  "anyhow",
  "ethereum-types",
@@ -689,7 +690,6 @@ dependencies = [
  "ecdsa",
  "elliptic-curve 0.9.5",
  "ethabi",
- "ethereum-types",
  "ethers",
  "funty",
  "futures-util",
