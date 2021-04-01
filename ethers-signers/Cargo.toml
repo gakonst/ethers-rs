@@ -21,7 +21,7 @@ coins-ledger = { version = "0.1.0", default-features = false, optional = true }
 eth-keystore = { version = "0.2.0" }
 hex = { version = "0.4.3", default-features = false, features = ["std"] }
 async-trait = { version = "0.1.40", default-features = false }
-elliptic-curve = { version = "0.9.5", default-features = false }
+elliptic-curve = { version = "0.9.6", default-features = false }
 sha2 = { version = "0.9.3", default-features = false }
 rand = { version = "0.7.3", default-features = false }
 yubihsm = { version = "0.38.0", features = ["secp256k1", "http", "usb"], optional = true }
