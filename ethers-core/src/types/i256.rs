@@ -3,7 +3,7 @@
 
 use crate::abi::{InvalidOutputType, Token, Tokenizable};
 use crate::types::U256;
-use ethereum_types::FromDecStrErr;
+use ethabi::ethereum_types::FromDecStrErr;
 use serde::{Deserialize, Serialize};
 use std::cmp;
 use std::convert::{TryFrom, TryInto};
