@@ -331,7 +331,7 @@ fn expand_data_struct(name: &Ident, params: &[(TokenStream, TokenStream, bool)])
 fn expand_data_tuple(name: &Ident, params: &[(TokenStream, TokenStream, bool)]) -> TokenStream {
     let fields = params
         .iter()
-        .map(|(_, ty,_)| quote! { pub #ty })
+        .map(|(_, ty, _)| quote! { pub #ty })
         .collect::<Vec<_>>();
 
     quote! { struct #name( #( #fields ),* ); }
