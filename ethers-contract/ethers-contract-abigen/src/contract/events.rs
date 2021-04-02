@@ -196,7 +196,7 @@ impl Context {
     }
 
     /// Expands an ABI event into name-type pairs for each of its parameters.
-    fn expand_params(&self, event: &Event) -> Result<Vec<(TokenStream, TokenStream)>> {
+    fn expand_params(&self, event: &Event) -> Result<Vec<(TokenStream, TokenStream, bool)>> {
         event
             .inputs
             .iter()
@@ -206,7 +206,7 @@ impl Context {
                 let name = util::expand_input_name(i, &input.name);
                 let ty = self.expand_input_type(&input)?;
 
-                Ok((name, ty))
+                Ok((name, ty, input.indexed))
             })
             .collect()
     }
@@ -308,10 +308,19 @@ fn expand_struct_name(event: &Event) -> Ident {
 /// Expands an event data structure from its name-type parameter pairs. Returns
 /// a tuple with the type definition (i.e. the struct declaration) and
 /// construction (i.e. code for creating an instance of the event data).
-fn expand_data_struct(name: &Ident, params: &[(TokenStream, TokenStream)]) -> TokenStream {
+fn expand_data_struct(name: &Ident, params: &[(TokenStream, TokenStream, bool)]) -> TokenStream {
     let fields = params
         .iter()
-        .map(|(name, ty)| quote! { pub #name: #ty })
+        .map(|(name, ty, indexed)| {
+            if *indexed {
+                quote! {
+                    #[ethevent(indexed)]
+                    pub #name: #ty
+                }
+            } else {
+                quote! { pub #name: #ty }
+            }
+        })
         .collect::<Vec<_>>();
 
     quote! { struct #name { #( #fields, )* } }
@@ -319,10 +328,10 @@ fn expand_data_struct(name: &Ident, params: &[(TokenStream, TokenStream)]) -> To
 
 /// Expands an event data named tuple from its name-type parameter pairs.
 /// Returns a tuple with the type definition and construction.
-fn expand_data_tuple(name: &Ident, params: &[(TokenStream, TokenStream)]) -> TokenStream {
+fn expand_data_tuple(name: &Ident, params: &[(TokenStream, TokenStream, bool)]) -> TokenStream {
     let fields = params
         .iter()
-        .map(|(_, ty)| quote! { pub #ty })
+        .map(|(_, ty, _)| quote! { pub #ty })
         .collect::<Vec<_>>();
 
     quote! { struct #name( #( #fields ),* ); }
