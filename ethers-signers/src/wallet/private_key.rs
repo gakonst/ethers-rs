@@ -1,6 +1,8 @@
 //! Specific helper functions for loading an offline K256 Private Key stored on disk
 use super::Wallet;
 
+use bip39::{English, Mnemonic, MnemonicError};
+use coins_bip32::prelude::XPriv;
 use eth_keystore::KeystoreError;
 use ethers_core::{
     k256::{
@@ -19,6 +21,9 @@ pub enum WalletError {
     /// Underlying eth keystore error
     #[error(transparent)]
     EthKeystoreError(#[from] KeystoreError),
+    /// Error propagated from the BIP-39 crate
+    #[error(transparent)]
+    Bip39Error(#[from] MnemonicError),
 }
 
 impl Clone for Wallet<SigningKey> {
@@ -33,7 +38,48 @@ impl Clone for Wallet<SigningKey> {
 }
 
 impl Wallet<SigningKey> {
-    // TODO: Add support for mnemonic
+    /// Creates a new random keypair following BIP-39, with the given word count and password.
+    pub fn new_mnemonic<R: Rng>(
+        rng: &mut R,
+        count: usize,
+        password: Option<&str>,
+    ) -> Result<Self, WalletError> {
+        let mnemonic = Mnemonic::<English>::new_with_count(rng, count)?;
+        let master_key = mnemonic.master_key(password)?;
+        Ok(Self::wallet_from_xpriv(master_key)?)
+    }
+
+    /// Creates a new master private key following BIP-39, with the given mnemonic phrase and
+    /// password.
+    pub fn mnemonic_master_key(phrase: &str, password: Option<&str>) -> Result<Self, WalletError> {
+        let mnemonic = Mnemonic::<English>::new_from_phrase(phrase)?;
+        let master_key = mnemonic.master_key(password)?;
+        Ok(Self::wallet_from_xpriv(master_key)?)
+    }
+
+    /// Creates a new child private key following BIP-39, with the given mnemonic phrase, the child
+    /// index and the password.
+    pub fn mnemonic_child_key(
+        phrase: &str,
+        index: u32,
+        password: Option<&str>,
+    ) -> Result<Self, WalletError> {
+        let mnemonic = Mnemonic::<English>::new_from_phrase(phrase)?;
+        let child_key = mnemonic.child_key(password, index)?;
+        Ok(Self::wallet_from_xpriv(child_key)?)
+    }
+
+    fn wallet_from_xpriv(xpriv: XPriv) -> Result<Self, WalletError> {
+        let key: &SigningKey = xpriv.as_ref();
+        let signer = SigningKey::from_bytes(&key.to_bytes())
+            .expect("private key should always be convertible to signing key");
+        let address = key_to_address(&signer);
+        Ok(Self {
+            signer,
+            address,
+            chain_id: None,
+        })
+    }
 
     /// Creates a new random encrypted JSON with the provided password and stores it in the
     /// provided directory
