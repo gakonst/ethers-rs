@@ -6,7 +6,8 @@ use coins_bip32::prelude::XPriv;
 use eth_keystore::KeystoreError;
 use ethers_core::{
     k256::{
-        ecdsa::SigningKey, elliptic_curve::error::Error as K256Error, EncodedPoint as K256PublicKey,
+        ecdsa::{self, SigningKey},
+        EncodedPoint as K256PublicKey,
     },
     rand::{CryptoRng, Rng},
     types::Address,
@@ -18,12 +19,18 @@ use thiserror::Error;
 #[derive(Error, Debug)]
 /// Error thrown by the Wallet module
 pub enum WalletError {
-    /// Underlying eth keystore error
-    #[error(transparent)]
-    EthKeystoreError(#[from] KeystoreError),
     /// Error propagated from the BIP-39 crate
     #[error(transparent)]
     Bip39Error(#[from] MnemonicError),
+    /// Underlying eth keystore error
+    #[error(transparent)]
+    EthKeystoreError(#[from] KeystoreError),
+    /// Error propagated from k256's ECDSA module
+    #[error(transparent)]
+    EcdsaError(#[from] ecdsa::Error),
+    /// Error propagated from the hex crate.
+    #[error(transparent)]
+    HexError(#[from] hex::FromHexError),
 }
 
 impl Clone for Wallet<SigningKey> {
@@ -46,7 +53,7 @@ impl Wallet<SigningKey> {
     ) -> Result<Self, WalletError> {
         let mnemonic = Mnemonic::<English>::new_with_count(rng, count)?;
         let master_key = mnemonic.master_key(password)?;
-        Ok(Self::wallet_from_xpriv(master_key)?)
+        Self::wallet_from_xpriv(master_key)
     }
 
     /// Creates a new master private key following BIP-39, with the given mnemonic phrase and
@@ -54,7 +61,7 @@ impl Wallet<SigningKey> {
     pub fn mnemonic_master_key(phrase: &str, password: Option<&str>) -> Result<Self, WalletError> {
         let mnemonic = Mnemonic::<English>::new_from_phrase(phrase)?;
         let master_key = mnemonic.master_key(password)?;
-        Ok(Self::wallet_from_xpriv(master_key)?)
+        Self::wallet_from_xpriv(master_key)
     }
 
     /// Creates a new child private key following BIP-39, with the given mnemonic phrase, the child
@@ -66,13 +73,12 @@ impl Wallet<SigningKey> {
     ) -> Result<Self, WalletError> {
         let mnemonic = Mnemonic::<English>::new_from_phrase(phrase)?;
         let child_key = mnemonic.child_key(password, index)?;
-        Ok(Self::wallet_from_xpriv(child_key)?)
+        Self::wallet_from_xpriv(child_key)
     }
 
     fn wallet_from_xpriv(xpriv: XPriv) -> Result<Self, WalletError> {
         let key: &SigningKey = xpriv.as_ref();
-        let signer = SigningKey::from_bytes(&key.to_bytes())
-            .expect("private key should always be convertible to signing key");
+        let signer = SigningKey::from_bytes(&key.to_bytes())?;
         let address = key_to_address(&signer);
         Ok(Self {
             signer,
@@ -90,8 +96,7 @@ impl Wallet<SigningKey> {
         S: AsRef<[u8]>,
     {
         let (secret, _) = eth_keystore::new(dir, rng, password)?;
-        let signer = SigningKey::from_bytes(secret.as_slice())
-            .expect("private key should always be convertible to signing key");
+        let signer = SigningKey::from_bytes(secret.as_slice())?;
         let address = key_to_address(&signer);
         Ok(Self {
             signer,
@@ -107,8 +112,7 @@ impl Wallet<SigningKey> {
         S: AsRef<[u8]>,
     {
         let secret = eth_keystore::decrypt_key(keypath, password)?;
-        let signer = SigningKey::from_bytes(secret.as_slice())
-            .expect("private key should always be convertible to signing key");
+        let signer = SigningKey::from_bytes(secret.as_slice())?;
         let address = key_to_address(&signer);
         Ok(Self {
             signer,
@@ -175,11 +179,11 @@ impl From<K256SecretKey> for Wallet<SigningKey> {
 }
 
 impl FromStr for Wallet<SigningKey> {
-    type Err = K256Error;
+    type Err = WalletError;
 
     fn from_str(src: &str) -> Result<Self, Self::Err> {
-        let src = hex::decode(src).expect("invalid hex when reading PrivateKey");
-        let sk = SigningKey::from_bytes(&src).unwrap(); // TODO
+        let src = hex::decode(src)?;
+        let sk = SigningKey::from_bytes(&src)?;
         Ok(sk.into())
     }
 }
