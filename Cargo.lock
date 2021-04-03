@@ -197,21 +197,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bip39"
-version = "0.1.0"
-source = "git+https://github.com/roynalnaruto/bitcoins-rs?branch=feat/bip39#6a59c215ead811417dab3565ecd40519a3dc1fcc"
-dependencies = [
- "bitvec 0.17.4",
- "coins-bip32",
- "hex",
- "hmac 0.10.1",
- "pbkdf2",
- "rand 0.7.3",
- "sha2 0.9.3",
- "thiserror",
-]
-
-[[package]]
 name = "bitflags"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -423,7 +408,7 @@ dependencies = [
 [[package]]
 name = "coins-bip32"
 version = "0.1.0-beta.0"
-source = "git+https://github.com/roynalnaruto/bitcoins-rs?branch=feat/bip39#6a59c215ead811417dab3565ecd40519a3dc1fcc"
+source = "git+https://github.com/roynalnaruto/bitcoins-rs?branch=feat/bip39#e5648f974bae45f1e3323e802871dc7d89bc9698"
 dependencies = [
  "bs58",
  "coins-core",
@@ -436,9 +421,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "coins-bip39"
+version = "0.1.0"
+source = "git+https://github.com/roynalnaruto/bitcoins-rs?branch=feat/bip39#e5648f974bae45f1e3323e802871dc7d89bc9698"
+dependencies = [
+ "bitvec 0.17.4",
+ "coins-bip32",
+ "hex",
+ "hmac 0.10.1",
+ "pbkdf2",
+ "rand 0.7.3",
+ "sha2 0.9.3",
+ "thiserror",
+]
+
+[[package]]
 name = "coins-core"
 version = "0.1.0-rc.1"
-source = "git+https://github.com/roynalnaruto/bitcoins-rs?branch=feat/bip39#6a59c215ead811417dab3565ecd40519a3dc1fcc"
+source = "git+https://github.com/roynalnaruto/bitcoins-rs?branch=feat/bip39#e5648f974bae45f1e3323e802871dc7d89bc9698"
 dependencies = [
  "base58check",
  "base64 0.12.3",
@@ -929,8 +929,8 @@ name = "ethers-signers"
 version = "0.2.2"
 dependencies = [
  "async-trait",
- "bip39",
  "coins-bip32",
+ "coins-bip39",
  "coins-ledger",
  "elliptic-curve 0.9.5",
  "eth-keystore",

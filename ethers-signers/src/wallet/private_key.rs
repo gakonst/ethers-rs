@@ -1,8 +1,8 @@
 //! Specific helper functions for loading an offline K256 Private Key stored on disk
 use super::Wallet;
 
-use bip39::{English, Mnemonic, MnemonicError};
 use coins_bip32::{path::DerivationPath, Bip32Error};
+use coins_bip39::{English, Mnemonic, MnemonicError};
 use eth_keystore::KeystoreError;
 use ethers_core::{
     k256::{
