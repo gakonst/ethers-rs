@@ -2,7 +2,7 @@
 use super::Wallet;
 
 use bip39::{English, Mnemonic, MnemonicError};
-use coins_bip32::prelude::XPriv;
+use coins_bip32::{path::DerivationPath, Bip32Error};
 use eth_keystore::KeystoreError;
 use ethers_core::{
     k256::{
@@ -16,9 +16,14 @@ use ethers_core::{
 use std::{path::Path, str::FromStr};
 use thiserror::Error;
 
+const DEFAULT_DERIVATION_PATH: &str = "m/44'/60'/0'/0/";
+
 #[derive(Error, Debug)]
 /// Error thrown by the Wallet module
 pub enum WalletError {
+    /// Error propagated from the BIP-32 crate
+    #[error(transparent)]
+    Bip32Error(#[from] Bip32Error),
     /// Error propagated from the BIP-39 crate
     #[error(transparent)]
     Bip39Error(#[from] MnemonicError),
@@ -45,39 +50,19 @@ impl Clone for Wallet<SigningKey> {
 }
 
 impl Wallet<SigningKey> {
-    /// Creates a new random keypair following BIP-39, with the given word count and password.
-    pub fn new_mnemonic<R: Rng>(
-        rng: &mut R,
-        count: usize,
-        password: Option<&str>,
-    ) -> Result<Self, WalletError> {
-        let mnemonic = Mnemonic::<English>::new_with_count(rng, count)?;
-        let master_key = mnemonic.master_key(password)?;
-        Self::wallet_from_xpriv(master_key)
-    }
-
-    /// Creates a new master private key following BIP-39, with the given mnemonic phrase and
-    /// password.
-    pub fn mnemonic_master_key(phrase: &str, password: Option<&str>) -> Result<Self, WalletError> {
-        let mnemonic = Mnemonic::<English>::new_from_phrase(phrase)?;
-        let master_key = mnemonic.master_key(password)?;
-        Self::wallet_from_xpriv(master_key)
-    }
-
     /// Creates a new child private key following BIP-39, with the given mnemonic phrase, the child
     /// index and the password.
-    pub fn mnemonic_child_key(
+    pub fn from_mnemonic_phrase(
         phrase: &str,
         index: u32,
         password: Option<&str>,
     ) -> Result<Self, WalletError> {
         let mnemonic = Mnemonic::<English>::new_from_phrase(phrase)?;
-        let child_key = mnemonic.child_key(password, index)?;
-        Self::wallet_from_xpriv(child_key)
-    }
-
-    fn wallet_from_xpriv(xpriv: XPriv) -> Result<Self, WalletError> {
-        let key: &SigningKey = xpriv.as_ref();
+        let derived_priv_key = mnemonic.derive_key(
+            DerivationPath::from_str(&format!("{}{}", DEFAULT_DERIVATION_PATH, index))?,
+            password,
+        )?;
+        let key: &SigningKey = derived_priv_key.as_ref();
         let signer = SigningKey::from_bytes(&key.to_bytes())?;
         let address = key_to_address(&signer);
         Ok(Self {
@@ -192,6 +177,7 @@ impl FromStr for Wallet<SigningKey> {
 mod tests {
     use super::*;
     use crate::Signer;
+    use ethers_core::utils::to_checksum;
     use std::fs;
     use tempfile::tempdir;
 
@@ -216,6 +202,44 @@ mod tests {
             assert_eq!(signature, signature2);
             assert!(std::fs::remove_file(&path).is_ok());
         }
+    }
+
+    #[tokio::test]
+    async fn mnemonic() {
+        // Testcases have been taken from MyCryptoWallet
+        const TESTCASES: [(&str, u32, Option<&str>, &str); 4] = [
+            (
+                "work man father plunge mystery proud hollow address reunion sauce theory bonus",
+                0u32,
+                Some("TREZOR123"),
+                "0x431a00DA1D54c281AeF638A73121B3D153e0b0F6",
+            ),
+            (
+                "inject danger program federal spice bitter term garbage coyote breeze thought funny",
+                1u32,
+                Some("LEDGER321"),
+                "0x231a3D0a05d13FAf93078C779FeeD3752ea1350C",
+            ),
+            (
+                "fire evolve buddy tenant talent favorite ankle stem regret myth dream fresh",
+                2u32,
+                None,
+                "0x1D86AD5eBb2380dAdEAF52f61f4F428C485460E9",
+            ),
+            (
+                "thumb soda tape crunch maple fresh imitate cancel order blind denial giraffe",
+                3u32,
+                None,
+                "0xFB78b25f69A8e941036fEE2A5EeAf349D81D4ccc",
+            ),
+        ];
+        TESTCASES
+            .iter()
+            .for_each(|(phrase, index, password, expected_addr)| {
+                let wallet =
+                    Wallet::<SigningKey>::from_mnemonic_phrase(phrase, *index, *password).unwrap();
+                assert_eq!(&to_checksum(&wallet.address, None), expected_addr,);
+            })
     }
 
     #[tokio::test]

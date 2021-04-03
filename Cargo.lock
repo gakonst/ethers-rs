@@ -199,7 +199,7 @@ dependencies = [
 [[package]]
 name = "bip39"
 version = "0.1.0"
-source = "git+https://github.com/roynalnaruto/bitcoins-rs?branch=feat/bip39#cda2008431d17f5c8042ddebe1dacb8a90999ec5"
+source = "git+https://github.com/roynalnaruto/bitcoins-rs?branch=feat/bip39#6a59c215ead811417dab3565ecd40519a3dc1fcc"
 dependencies = [
  "bitvec 0.17.4",
  "coins-bip32",
@@ -423,7 +423,7 @@ dependencies = [
 [[package]]
 name = "coins-bip32"
 version = "0.1.0-beta.0"
-source = "git+https://github.com/roynalnaruto/bitcoins-rs?branch=feat/bip39#cda2008431d17f5c8042ddebe1dacb8a90999ec5"
+source = "git+https://github.com/roynalnaruto/bitcoins-rs?branch=feat/bip39#6a59c215ead811417dab3565ecd40519a3dc1fcc"
 dependencies = [
  "bs58",
  "coins-core",
@@ -438,7 +438,7 @@ dependencies = [
 [[package]]
 name = "coins-core"
 version = "0.1.0-rc.1"
-source = "git+https://github.com/roynalnaruto/bitcoins-rs?branch=feat/bip39#cda2008431d17f5c8042ddebe1dacb8a90999ec5"
+source = "git+https://github.com/roynalnaruto/bitcoins-rs?branch=feat/bip39#6a59c215ead811417dab3565ecd40519a3dc1fcc"
 dependencies = [
  "base58check",
  "base64 0.12.3",
