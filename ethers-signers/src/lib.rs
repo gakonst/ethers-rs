@@ -39,7 +39,7 @@
 //! [`Transaction`]: ethers_core::types::Transaction
 //! [`TransactionRequest`]: ethers_core::types::TransactionRequest
 mod wallet;
-pub use wallet::Wallet;
+pub use wallet::{MnemonicBuilder, Wallet, WalletError};
 
 /// A wallet instantiated with a locally stored private key
 pub type LocalWallet = Wallet<ethers_core::k256::ecdsa::SigningKey>;

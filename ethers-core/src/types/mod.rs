@@ -13,6 +13,9 @@ pub use transaction::{Transaction, TransactionReceipt, TransactionRequest};
 mod address_or_bytes;
 pub use address_or_bytes::AddressOrBytes;
 
+mod path_or_string;
+pub use path_or_string::PathOrString;
+
 mod i256;
 pub use i256::I256;
 

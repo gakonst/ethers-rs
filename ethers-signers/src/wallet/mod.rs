@@ -1,5 +1,12 @@
 mod hash;
+
+mod mnemonic;
+pub use mnemonic::{MnemonicBuilder, MnemonicBuilderError};
+
 mod private_key;
+pub use private_key::WalletError;
+
+mod util;
 
 #[cfg(feature = "yubihsm")]
 mod yubi;

@@ -1,22 +1,16 @@
 //! Specific helper functions for loading an offline K256 Private Key stored on disk
 use super::Wallet;
 
-use coins_bip32::{path::DerivationPath, Bip32Error};
-use coins_bip39::{English, Mnemonic, MnemonicError};
+use crate::wallet::{mnemonic::MnemonicBuilderError, util::key_to_address};
+use coins_bip32::Bip32Error;
+use coins_bip39::MnemonicError;
 use eth_keystore::KeystoreError;
 use ethers_core::{
-    k256::{
-        ecdsa::{self, SigningKey},
-        EncodedPoint as K256PublicKey,
-    },
+    k256::ecdsa::{self, SigningKey},
     rand::{CryptoRng, Rng},
-    types::Address,
-    utils::keccak256,
 };
 use std::{path::Path, str::FromStr};
 use thiserror::Error;
-
-const DEFAULT_DERIVATION_PATH: &str = "m/44'/60'/0'/0/";
 
 #[derive(Error, Debug)]
 /// Error thrown by the Wallet module
@@ -36,6 +30,12 @@ pub enum WalletError {
     /// Error propagated from the hex crate.
     #[error(transparent)]
     HexError(#[from] hex::FromHexError),
+    /// Error propagated by IO operations
+    #[error(transparent)]
+    IoError(#[from] std::io::Error),
+    /// Error propagated from the mnemonic builder module.
+    #[error(transparent)]
+    MnemonicBuilderError(#[from] MnemonicBuilderError),
 }
 
 impl Clone for Wallet<SigningKey> {
@@ -50,28 +50,6 @@ impl Clone for Wallet<SigningKey> {
 }
 
 impl Wallet<SigningKey> {
-    /// Creates a new child private key following BIP-39, with the given mnemonic phrase, the child
-    /// index and the password.
-    pub fn from_mnemonic_phrase(
-        phrase: &str,
-        index: u32,
-        password: Option<&str>,
-    ) -> Result<Self, WalletError> {
-        let mnemonic = Mnemonic::<English>::new_from_phrase(phrase)?;
-        let derived_priv_key = mnemonic.derive_key(
-            DerivationPath::from_str(&format!("{}{}", DEFAULT_DERIVATION_PATH, index))?,
-            password,
-        )?;
-        let key: &SigningKey = derived_priv_key.as_ref();
-        let signer = SigningKey::from_bytes(&key.to_bytes())?;
-        let address = key_to_address(&signer);
-        Ok(Self {
-            signer,
-            address,
-            chain_id: None,
-        })
-    }
-
     /// Creates a new random encrypted JSON with the provided password and stores it in the
     /// provided directory
     pub fn new_keystore<P, R, S>(dir: P, rng: &mut R, password: S) -> Result<Self, WalletError>
@@ -116,15 +94,6 @@ impl Wallet<SigningKey> {
             chain_id: None,
         }
     }
-}
-
-fn key_to_address(secret_key: &SigningKey) -> Address {
-    // TODO: Can we do this in a better way?
-    let uncompressed_pub_key = K256PublicKey::from(&secret_key.verify_key()).decompress();
-    let public_key = uncompressed_pub_key.unwrap().to_bytes();
-    debug_assert_eq!(public_key[0], 0x04);
-    let hash = keccak256(&public_key[1..]);
-    Address::from_slice(&hash[12..])
 }
 
 impl PartialEq for Wallet<SigningKey> {
@@ -177,7 +146,7 @@ impl FromStr for Wallet<SigningKey> {
 mod tests {
     use super::*;
     use crate::Signer;
-    use ethers_core::utils::to_checksum;
+    use ethers_core::types::Address;
     use std::fs;
     use tempfile::tempdir;
 
@@ -202,44 +171,6 @@ mod tests {
             assert_eq!(signature, signature2);
             assert!(std::fs::remove_file(&path).is_ok());
         }
-    }
-
-    #[tokio::test]
-    async fn mnemonic() {
-        // Testcases have been taken from MyCryptoWallet
-        const TESTCASES: [(&str, u32, Option<&str>, &str); 4] = [
-            (
-                "work man father plunge mystery proud hollow address reunion sauce theory bonus",
-                0u32,
-                Some("TREZOR123"),
-                "0x431a00DA1D54c281AeF638A73121B3D153e0b0F6",
-            ),
-            (
-                "inject danger program federal spice bitter term garbage coyote breeze thought funny",
-                1u32,
-                Some("LEDGER321"),
-                "0x231a3D0a05d13FAf93078C779FeeD3752ea1350C",
-            ),
-            (
-                "fire evolve buddy tenant talent favorite ankle stem regret myth dream fresh",
-                2u32,
-                None,
-                "0x1D86AD5eBb2380dAdEAF52f61f4F428C485460E9",
-            ),
-            (
-                "thumb soda tape crunch maple fresh imitate cancel order blind denial giraffe",
-                3u32,
-                None,
-                "0xFB78b25f69A8e941036fEE2A5EeAf349D81D4ccc",
-            ),
-        ];
-        TESTCASES
-            .iter()
-            .for_each(|(phrase, index, password, expected_addr)| {
-                let wallet =
-                    Wallet::<SigningKey>::from_mnemonic_phrase(phrase, *index, *password).unwrap();
-                assert_eq!(&to_checksum(&wallet.address, None), expected_addr,);
-            })
     }
 
     #[tokio::test]
