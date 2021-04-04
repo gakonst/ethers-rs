@@ -4,9 +4,9 @@ use crate::{wallet::util::key_to_address, Wallet, WalletError};
 
 use coins_bip32::path::DerivationPath;
 use coins_bip39::{Mnemonic, Wordlist};
-use ethers_core::{k256::ecdsa::SigningKey, types::PathOrString};
+use ethers_core::{k256::ecdsa::SigningKey, types::PathOrString, utils::to_checksum};
 use rand::Rng;
-use std::{marker::PhantomData, str::FromStr};
+use std::{fs::File, io::Write, marker::PhantomData, path::PathBuf, str::FromStr};
 use thiserror::Error;
 
 const DEFAULT_DERIVATION_PATH_PREFIX: &str = "m/44'/60'/0'/0/";
@@ -25,6 +25,10 @@ pub struct MnemonicBuilder<W: Wordlist> {
     derivation_path: DerivationPath,
     /// Optional password for the mnemonic phrase.
     password: Option<String>,
+    /// Optional field that if enabled, writes the mnemonic phrase to disk storage at the provided
+    /// path.
+    write_to: Option<PathBuf>,
+    /// PhantomData
     _wordlist: PhantomData<W>,
 }
 
@@ -50,6 +54,7 @@ impl<W: Wordlist> Default for MnemonicBuilder<W> {
             ))
             .expect("should parse the default derivation path"),
             password: None,
+            write_to: None,
             _wordlist: PhantomData,
         }
     }
@@ -123,6 +128,13 @@ impl<W: Wordlist> MnemonicBuilder<W> {
         self
     }
 
+    /// Sets the path to which the randomly generated phrase will be written to. This field is
+    /// ignored when building a wallet from the provided mnemonic phrase.
+    pub fn write_to<P: Into<PathBuf>>(mut self, path: P) -> Self {
+        self.write_to = Some(path.into());
+        self
+    }
+
     /// Builds a `LocalWallet` using the parameters set in mnemonic builder. This method expects
     /// the phrase field to be set.
     pub fn build(&self) -> Result<Wallet<SigningKey>, WalletError> {
@@ -143,7 +155,15 @@ impl<W: Wordlist> MnemonicBuilder<W> {
             None => Mnemonic::<W>::new_with_count(rng, self.word_count)?,
             _ => return Err(MnemonicBuilderError::UnexpectedPhraseFound.into()),
         };
-        self.mnemonic_to_wallet(&mnemonic)
+        let wallet = self.mnemonic_to_wallet(&mnemonic)?;
+
+        // Write the mnemonic phrase to storage if a directory has been provided.
+        if let Some(dir) = &self.write_to {
+            let mut file = File::create(dir.as_path().join(to_checksum(&wallet.address, None)))?;
+            file.write_all(mnemonic.to_phrase()?.as_bytes())?;
+        }
+
+        Ok(wallet)
     }
 
     fn mnemonic_to_wallet(
@@ -168,11 +188,13 @@ impl<W: Wordlist> MnemonicBuilder<W> {
 mod tests {
     use super::*;
 
-    use coins_bip39::English;
-    use ethers_core::utils::to_checksum;
+    use crate::coins_bip39::English;
+    use tempfile::tempdir;
+
+    const TEST_DERIVATION_PATH: &str = "m/44'/60'/0'/2/1";
 
     #[tokio::test]
-    async fn mnemonic() {
+    async fn mnemonic_deterministic() {
         // Testcases have been taken from MyCryptoWallet
         const TESTCASES: [(&str, u32, Option<&str>, &str); 4] = [
             (
@@ -220,5 +242,38 @@ mod tests {
                 };
                 assert_eq!(&to_checksum(&wallet.address, None), expected_addr);
             })
+    }
+
+    #[tokio::test]
+    async fn mnemonic_write_read() {
+        let dir = tempdir().unwrap();
+
+        // Construct a wallet from random mnemonic phrase and write it to the temp dir.
+        let mut rng = rand::thread_rng();
+        let wallet1 = MnemonicBuilder::<English>::default()
+            .word_count(24)
+            .derivation_path(TEST_DERIVATION_PATH)
+            .unwrap()
+            .write_to(dir.as_ref())
+            .build_random(&mut rng)
+            .unwrap();
+
+        // Ensure that only one file has been created.
+        let paths = std::fs::read_dir(dir.as_ref()).unwrap();
+        assert_eq!(paths.count(), 1);
+
+        // Use the newly created file's path to instantiate wallet.
+        let phrase_path = dir.as_ref().join(to_checksum(&wallet1.address, None));
+        let wallet2 = MnemonicBuilder::<English>::default()
+            .phrase(phrase_path.to_str().unwrap())
+            .derivation_path(TEST_DERIVATION_PATH)
+            .unwrap()
+            .build()
+            .unwrap();
+
+        // Ensure that both wallets belong to the same address.
+        assert_eq!(wallet1.address, wallet2.address);
+
+        dir.close().unwrap();
     }
 }
