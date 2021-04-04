@@ -41,6 +41,9 @@
 mod wallet;
 pub use wallet::{MnemonicBuilder, Wallet, WalletError};
 
+/// Re-export the BIP-32 crate so that wordlists can be accessed conveniently.
+pub use coins_bip39;
+
 /// A wallet instantiated with a locally stored private key
 pub type LocalWallet = Wallet<ethers_core::k256::ecdsa::SigningKey>;
 
