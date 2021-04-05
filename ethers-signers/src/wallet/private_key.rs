@@ -1,13 +1,14 @@
 //! Specific helper functions for loading an offline K256 Private Key stored on disk
 use super::Wallet;
 
-use crate::wallet::{mnemonic::MnemonicBuilderError, util::key_to_address};
+use crate::wallet::mnemonic::MnemonicBuilderError;
 use coins_bip32::Bip32Error;
 use coins_bip39::MnemonicError;
 use eth_keystore::KeystoreError;
 use ethers_core::{
     k256::ecdsa::{self, SigningKey},
     rand::{CryptoRng, Rng},
+    utils::secret_key_to_address,
 };
 use std::{path::Path, str::FromStr};
 use thiserror::Error;
@@ -60,7 +61,7 @@ impl Wallet<SigningKey> {
     {
         let (secret, _) = eth_keystore::new(dir, rng, password)?;
         let signer = SigningKey::from_bytes(secret.as_slice())?;
-        let address = key_to_address(&signer);
+        let address = secret_key_to_address(&signer);
         Ok(Self {
             signer,
             address,
@@ -76,7 +77,7 @@ impl Wallet<SigningKey> {
     {
         let secret = eth_keystore::decrypt_key(keypath, password)?;
         let signer = SigningKey::from_bytes(secret.as_slice())?;
-        let address = key_to_address(&signer);
+        let address = secret_key_to_address(&signer);
         Ok(Self {
             signer,
             address,
@@ -87,7 +88,7 @@ impl Wallet<SigningKey> {
     /// Creates a new random keypair seeded with the provided RNG
     pub fn new<R: Rng + CryptoRng>(rng: &mut R) -> Self {
         let signer = SigningKey::random(rng);
-        let address = key_to_address(&signer);
+        let address = secret_key_to_address(&signer);
         Self {
             signer,
             address,
@@ -106,7 +107,7 @@ impl PartialEq for Wallet<SigningKey> {
 
 impl From<SigningKey> for Wallet<SigningKey> {
     fn from(signer: SigningKey) -> Self {
-        let address = key_to_address(&signer);
+        let address = secret_key_to_address(&signer);
 
         Self {
             signer,
@@ -122,7 +123,7 @@ impl From<K256SecretKey> for Wallet<SigningKey> {
     fn from(key: K256SecretKey) -> Self {
         let signer = SigningKey::from_bytes(&*key.to_bytes())
             .expect("private key should always be convertible to signing key");
-        let address = key_to_address(&signer);
+        let address = secret_key_to_address(&signer);
 
         Self {
             signer,
