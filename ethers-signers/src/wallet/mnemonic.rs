@@ -1,10 +1,14 @@
 //! Specific helper functions for creating/loading a mnemonic private key following BIP-39
 //! specifications
-use crate::{wallet::util::key_to_address, Wallet, WalletError};
+use crate::{Wallet, WalletError};
 
 use coins_bip32::path::DerivationPath;
 use coins_bip39::{Mnemonic, Wordlist};
-use ethers_core::{k256::ecdsa::SigningKey, types::PathOrString, utils::to_checksum};
+use ethers_core::{
+    k256::ecdsa::SigningKey,
+    types::PathOrString,
+    utils::{secret_key_to_address, to_checksum},
+};
 use rand::Rng;
 use std::{fs::File, io::Write, marker::PhantomData, path::PathBuf, str::FromStr};
 use thiserror::Error;
@@ -174,7 +178,7 @@ impl<W: Wordlist> MnemonicBuilder<W> {
             mnemonic.derive_key(&self.derivation_path, self.password.as_deref())?;
         let key: &SigningKey = derived_priv_key.as_ref();
         let signer = SigningKey::from_bytes(&key.to_bytes())?;
-        let address = key_to_address(&signer);
+        let address = secret_key_to_address(&signer);
 
         Ok(Wallet::<SigningKey> {
             signer,
