@@ -24,6 +24,7 @@ serde_json = { version = "1.0.64", default-features = false }
 thiserror = { version = "1.0.24", default-features = false }
 url = { version = "2.2.1", default-features = false }
 auto_impl = { version = "0.4.1", default-features = false }
+futures = { version = "0.3.5", default-features = false, optional = true }
 
 # required for implementing stream on the filters
 futures-core = { version = "0.3.12", default-features = false }
@@ -39,12 +40,14 @@ tracing-futures = { version = "0.2.5", default-features = false, features = ["st
 # tokio
 tokio = { version = "1.4", default-features = false, optional = true }
 tokio-tungstenite = { version = "0.13.0", default-features = false, features = ["connect", "tls"], optional = true }
+tokio-util = { version = "0.6.5", default-features = false, features = ["io"], optional = true }
 
 [dev-dependencies]
 ethers = { version = "0.2", path = "../ethers" }
 tokio = { version = "1.4", default-features = false, features = ["rt", "macros"] }
 
 [features]
-default = ["ws"]
+default = ["ws", "ipc"]
 celo = ["ethers-core/celo"]
 ws = ["tokio", "tokio-tungstenite"]
+ipc = ["tokio", "tokio/io-util", "futures", "tokio-util"]
