@@ -135,17 +135,17 @@ async fn run_server(
     let mut read_buffer = vec![];
     let mut closed = false;
 
-    while !closed || pending_response_txs.len() > 0 {
+    while !closed || !pending_response_txs.is_empty() {
         tokio::select! {
             message = messages_rx.next() => match message {
                 None => closed = true,
                 Some(TransportMessage::Subscribe{ id, sink }) => {
-                    if let Some(_) = subscription_txs.insert(id.clone(), sink) {
+                    if subscription_txs.insert(id, sink).is_some() {
                         // log::warn!("Replacing a subscription with id {:?}", id);
                     }
                 },
                 Some(TransportMessage::Unsubscribe{id}) => {
-                    if let None = subscription_txs.remove(&id) {
+                    if  subscription_txs.remove(&id).is_none() {
                         // log::warn!("Unsubscribing not subscribed id {:?}", id);
                     }
                 },
@@ -156,7 +156,7 @@ async fn run_server(
 
                     let bytes = serde_json::to_string(&Request::new(id, &request, ()))
                         .expect("request serialization should never fail");
-                    if let Err(_) = socket_writer.write(&bytes.as_bytes()).await {
+                    if socket_writer.write(&bytes.as_bytes()).await.is_err() {
                         pending_response_txs.remove(&id);
                         // log::error!("IPC write error: {:?}", err);
                     }
@@ -201,10 +201,11 @@ async fn run_server(
 fn notify(
     subscription_txs: &mut BTreeMap<U256, mpsc::UnboundedSender<serde_json::Value>>,
     notification: Notification<serde_json::Value>,
-) -> std::result::Result<(), ()> {
+) -> std::result::Result<(), IpcError> {
     let id = notification.params.subscription;
     if let Some(tx) = subscription_txs.get(&id) {
-        let _ = tx.unbounded_send(notification.params.result);
+        tx.unbounded_send(notification.params.result)
+            .map_err(|_| IpcError::ChannelError(format!("Subscription receiver {} dropped", id)))?;
     }
 
     Ok(())
@@ -214,7 +215,7 @@ fn respond(
     pending_response_txs: &mut BTreeMap<u64, oneshot::Sender<serde_json::Value>>,
     output: Response<serde_json::Value>,
 ) -> std::result::Result<(), IpcError> {
-    let id = output.id.clone();
+    let id = output.id;
 
     // Assuming results are always okay,
     let value = output.data.into_result()?;
