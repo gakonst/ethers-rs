@@ -19,8 +19,6 @@ use thiserror::Error;
 use tokio::{io::AsyncWriteExt, net::UnixStream, sync::oneshot};
 use tokio_util::io::ReaderStream;
 
-type Result<T> = std::result::Result<T, IpcError>;
-
 /// Unix Domain Sockets (IPC) transport.
 #[derive(Debug, Clone)]
 pub struct Ipc {
@@ -33,7 +31,7 @@ impl Ipc {
     /// Creates a new IPC transport from a given path.
     ///
     /// IPC is only available on Unix.
-    pub async fn new<P: AsRef<Path>>(path: P) -> Result<Self> {
+    pub async fn new<P: AsRef<Path>>(path: P) -> Result<Self, IpcError> {
         let stream = UnixStream::connect(path).await?;
 
         Ok(Self::with_stream(stream))
@@ -48,7 +46,7 @@ impl Ipc {
         Ipc { id, messages_tx }
     }
 
-    fn send(&self, msg: TransportMessage) -> Result<()> {
+    fn send(&self, msg: TransportMessage) -> Result<(), IpcError> {
         self.messages_tx
             .unbounded_send(msg)
             .map_err(|_| IpcError::ChannelError("IPC server receiver dropped".to_string()))?;
@@ -65,7 +63,7 @@ impl JsonRpcClient for Ipc {
         &self,
         method: &str,
         params: T,
-    ) -> Result<R> {
+    ) -> Result<R, IpcError> {
         let next_id = self.id.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
 
         // Create the request and initialize the response channel
@@ -90,7 +88,7 @@ impl JsonRpcClient for Ipc {
 impl PubsubClient for Ipc {
     type NotificationStream = mpsc::UnboundedReceiver<serde_json::Value>;
 
-    fn subscribe<T: Into<U256>>(&self, id: T) -> Result<Self::NotificationStream> {
+    fn subscribe<T: Into<U256>>(&self, id: T) -> Result<Self::NotificationStream, IpcError> {
         let (sink, stream) = mpsc::unbounded();
         self.send(TransportMessage::Subscribe {
             id: id.into(),
@@ -99,7 +97,7 @@ impl PubsubClient for Ipc {
         Ok(stream)
     }
 
-    fn unsubscribe<T: Into<U256>>(&self, id: T) -> Result<()> {
+    fn unsubscribe<T: Into<U256>>(&self, id: T) -> Result<(), IpcError> {
         self.send(TransportMessage::Unsubscribe { id: id.into() })
     }
 }
@@ -124,7 +122,7 @@ enum TransportMessage {
 async fn run_server(
     unix_stream: UnixStream,
     messages_rx: mpsc::UnboundedReceiver<TransportMessage>,
-) -> Result<()> {
+) -> Result<(), IpcError> {
     let (socket_reader, mut socket_writer) = unix_stream.into_split();
     let mut pending_response_txs = AHashMap::default();
     let mut subscription_txs = AHashMap::default();
@@ -209,7 +207,7 @@ async fn run_server(
 fn notify(
     subscription_txs: &mut AHashMap<U256, mpsc::UnboundedSender<serde_json::Value>>,
     notification: Notification<serde_json::Value>,
-) -> std::result::Result<(), IpcError> {
+) -> Result<(), IpcError> {
     let id = notification.params.subscription;
     if let Some(tx) = subscription_txs.get(&id) {
         tx.unbounded_send(notification.params.result)
@@ -224,7 +222,7 @@ fn notify(
 fn respond(
     pending_response_txs: &mut AHashMap<u64, oneshot::Sender<serde_json::Value>>,
     output: Response<serde_json::Value>,
-) -> std::result::Result<(), IpcError> {
+) -> Result<(), IpcError> {
     let id = output.id;
 
     // Converts output into result, to send data if valid response.
