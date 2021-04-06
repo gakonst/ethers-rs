@@ -275,7 +275,7 @@ mod test {
     use ethers_core::types::{Block, TxHash, U256};
 
     const TMP_IPC_PATH: &'static str = "/tmp/tmpgeth.ipc";
-    
+
     #[tokio::test]
     async fn request() {
         let _geth = Geth::new().block_time(1u64).ipc_path(TMP_IPC_PATH).spawn();
@@ -289,11 +289,16 @@ mod test {
 
     #[tokio::test]
     async fn subscription() {
-        let _geth = Geth::new().block_time(2u64).ipc_path(TMP_IPC_PATH).spawn();
+        let _geth = Geth::new().block_time(1u64).ipc_path(TMP_IPC_PATH).spawn();
         let ipc = Ipc::new(TMP_IPC_PATH).await.unwrap();
 
         // Subscribing requires sending the sub request and then subscribing to
         // the returned sub_id
+        let block_num: u64 = ipc
+            .request::<_, U256>("eth_blockNumber", ())
+            .await
+            .unwrap()
+            .as_u64();
         let sub_id: U256 = ipc.request("eth_subscribe", ["newHeads"]).await.unwrap();
         let mut stream = ipc.subscribe(sub_id).unwrap();
 
@@ -304,9 +309,6 @@ mod test {
             blocks.push(block.number.unwrap_or_default().as_u64());
         }
 
-        // TODO this id is broken
-        // assert_eq!(sub_id, 1.into());
-        // TODO Block numbers are starting with 2 -- diff between ganache and geth?
-        // assert_eq!(blocks, vec![1, 2, 3])
+        assert_eq!(blocks, &[block_num + 1, block_num + 2, block_num + 3])
     }
 }
