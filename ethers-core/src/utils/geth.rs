@@ -1,6 +1,7 @@
 use super::unused_port;
 use std::{
     io::{BufRead, BufReader},
+    path::PathBuf,
     process::{Child, Command},
     time::{Duration, Instant},
 };
@@ -20,6 +21,7 @@ const GETH: &str = "geth";
 pub struct GethInstance {
     pid: Child,
     port: u16,
+    ipc: Option<PathBuf>,
 }
 
 impl GethInstance {
@@ -36,6 +38,10 @@ impl GethInstance {
     /// Returns the Websocket endpoint of this instance
     pub fn ws_endpoint(&self) -> String {
         format!("ws://localhost:{}", self.port)
+    }
+
+    pub fn ipc_path(&self) -> &Option<PathBuf> {
+        &self.ipc
     }
 }
 
@@ -70,6 +76,7 @@ impl Drop for GethInstance {
 pub struct Geth {
     port: Option<u16>,
     block_time: Option<u64>,
+    ipc_path: Option<PathBuf>,
 }
 
 impl Geth {
@@ -88,6 +95,12 @@ impl Geth {
     /// Sets the block-time which will be used when the `geth-cli` instance is launched.
     pub fn block_time<T: Into<u64>>(mut self, block_time: T) -> Self {
         self.block_time = Some(block_time.into());
+        self
+    }
+
+    /// Manually sets the IPC path for the socket manually.
+    pub fn ipc_path<T: Into<PathBuf>>(mut self, path: T) -> Self {
+        self.ipc_path = Some(path.into());
         self
     }
 
@@ -119,6 +132,10 @@ impl Geth {
             cmd.arg("--dev.period").arg(block_time.to_string());
         }
 
+        if let Some(ref ipc) = self.ipc_path {
+            cmd.arg("--ipcpath").arg(ipc);
+        }
+
         let mut child = cmd.spawn().expect("couldnt start geth");
 
         let stdout = child
@@ -146,6 +163,10 @@ impl Geth {
 
         child.stderr = Some(reader.into_inner());
 
-        GethInstance { pid: child, port }
+        GethInstance {
+            pid: child,
+            port,
+            ipc: self.ipc_path,
+        }
     }
 }
