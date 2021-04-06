@@ -66,6 +66,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "ahash"
+version = "0.7.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7f200cbb1e856866d9eade941cf3aa0c5d7dd36f74311c4273b494f4ef036957"
+dependencies = [
+ "getrandom 0.2.2",
+ "once_cell",
+ "version_check",
+]
+
+[[package]]
 name = "aho-corasick"
 version = "0.7.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -905,6 +916,7 @@ dependencies = [
 name = "ethers-providers"
 version = "0.2.2"
 dependencies = [
+ "ahash",
  "async-trait",
  "auto_impl",
  "ethers",
