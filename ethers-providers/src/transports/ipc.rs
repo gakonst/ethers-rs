@@ -144,19 +144,17 @@ async fn run_server(
                         // log::warn!("Replacing a subscription with id {:?}", id);
                     }
                 },
-                Some(TransportMessage::Unsubscribe{id}) => {
+                Some(TransportMessage::Unsubscribe{ id }) => {
                     if  subscription_txs.remove(&id).is_none() {
                         // log::warn!("Unsubscribing not subscribed id {:?}", id);
                     }
                 },
-                Some(TransportMessage::Request{id, request, sender}) => {
+                Some(TransportMessage::Request{ id, request, sender }) => {
                     if pending_response_txs.insert(id, sender).is_some() {
                         // log::warn!("Replacing a pending request with id {:?}", id);
                     }
 
-                    let bytes = serde_json::to_string(&Request::new(id, &request, ()))
-                        .expect("request serialization should never fail");
-                    if socket_writer.write(&bytes.as_bytes()).await.is_err() {
+                    if socket_writer.write(&request.as_bytes()).await.is_err() {
                         pending_response_txs.remove(&id);
                         // log::error!("IPC write error: {:?}", err);
                     }
