@@ -5,13 +5,13 @@ use crate::{
 };
 use ethers_core::types::U256;
 
-use ahash::AHashMap;
 use async_trait::async_trait;
 use futures_channel::mpsc;
 use futures_util::stream::StreamExt;
 use oneshot::error::RecvError;
 use serde::{de::DeserializeOwned, Serialize};
 use std::{
+    collections::HashMap,
     path::Path,
     sync::{atomic::AtomicU64, Arc},
 };
@@ -124,8 +124,8 @@ async fn run_server(
     messages_rx: mpsc::UnboundedReceiver<TransportMessage>,
 ) -> Result<(), IpcError> {
     let (socket_reader, mut socket_writer) = unix_stream.into_split();
-    let mut pending_response_txs = AHashMap::default();
-    let mut subscription_txs = AHashMap::default();
+    let mut pending_response_txs = HashMap::default();
+    let mut subscription_txs = HashMap::default();
 
     let mut socket_reader = ReaderStream::new(socket_reader);
     let mut messages_rx = messages_rx.fuse();
@@ -206,7 +206,7 @@ async fn run_server(
 /// Sends notification through the channel based on the ID of the subscription.
 /// This handles streaming responses.
 fn notify(
-    subscription_txs: &mut AHashMap<U256, mpsc::UnboundedSender<serde_json::Value>>,
+    subscription_txs: &mut HashMap<U256, mpsc::UnboundedSender<serde_json::Value>>,
     notification: Notification<serde_json::Value>,
 ) -> Result<(), IpcError> {
     let id = notification.params.subscription;
@@ -221,7 +221,7 @@ fn notify(
 /// Sends JSON response through the channel based on the ID in that response.
 /// This handles RPC calls with only one response, and the channel entry is dropped after sending.
 fn respond(
-    pending_response_txs: &mut AHashMap<u64, oneshot::Sender<serde_json::Value>>,
+    pending_response_txs: &mut HashMap<u64, oneshot::Sender<serde_json::Value>>,
     output: Response<serde_json::Value>,
 ) -> Result<(), IpcError> {
     let id = output.id;
