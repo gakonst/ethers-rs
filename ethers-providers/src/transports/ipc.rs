@@ -179,9 +179,9 @@ async fn run_server(
                                 if let Err(e) = respond(&mut pending_response_txs, response) {
                                     println!("Failed to send IPC response: {}", e)
                                 }
+                            } else {
+                                println!("JSON is not a response or notification");
                             }
-
-                            println!("JSON is not a response or notification");
                         }
 
                         // Get the offset of bytes to handle partial buffer reads
