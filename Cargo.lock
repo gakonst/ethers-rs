@@ -909,7 +909,6 @@ dependencies = [
  "auto_impl",
  "ethers",
  "ethers-core",
- "futures",
  "futures-channel",
  "futures-core",
  "futures-timer",

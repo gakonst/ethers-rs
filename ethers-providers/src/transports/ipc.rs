@@ -7,7 +7,7 @@ use crate::{
 use ethers_core::types::U256;
 
 use async_trait::async_trait;
-use futures::stream::StreamExt;
+use futures_util::stream::StreamExt;
 use futures_channel::mpsc;
 use oneshot::error::RecvError;
 use serde::{de::DeserializeOwned, Serialize};

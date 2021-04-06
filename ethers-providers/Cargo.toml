@@ -24,7 +24,6 @@ serde_json = { version = "1.0.64", default-features = false }
 thiserror = { version = "1.0.24", default-features = false }
 url = { version = "2.2.1", default-features = false }
 auto_impl = { version = "0.4.1", default-features = false }
-futures = { version = "0.3.5", default-features = false, optional = true }
 
 # required for implementing stream on the filters
 futures-core = { version = "0.3.12", default-features = false }
@@ -50,4 +49,4 @@ tokio = { version = "1.4", default-features = false, features = ["rt", "macros"]
 default = ["ws", "ipc"]
 celo = ["ethers-core/celo"]
 ws = ["tokio", "tokio-tungstenite"]
-ipc = ["tokio", "tokio/io-util", "futures", "tokio-util"]
+ipc = ["tokio", "tokio/io-util", "tokio-util"]
