@@ -10,6 +10,7 @@ use futures_channel::mpsc;
 use futures_util::stream::StreamExt;
 use oneshot::error::RecvError;
 use serde::{de::DeserializeOwned, Serialize};
+use std::sync::atomic::Ordering;
 use std::{
     collections::HashMap,
     path::Path,
@@ -64,7 +65,7 @@ impl JsonRpcClient for Ipc {
         method: &str,
         params: T,
     ) -> Result<R, IpcError> {
-        let next_id = self.id.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        let next_id = self.id.fetch_add(1, Ordering::SeqCst);
 
         // Create the request and initialize the response channel
         let (sender, receiver) = oneshot::channel();
