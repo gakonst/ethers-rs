@@ -274,13 +274,14 @@ mod test {
     use super::*;
     use ethers::utils::Geth;
     use ethers_core::types::{Block, TxHash, U256};
-
-    const TMP_IPC_PATH: &'static str = "/tmp/tmpgeth.ipc";
+    use tempfile::NamedTempFile;
 
     #[tokio::test]
     async fn request() {
-        let _geth = Geth::new().block_time(1u64).ipc_path(TMP_IPC_PATH).spawn();
-        let ipc = Ipc::new(TMP_IPC_PATH).await.unwrap();
+        let temp_file = NamedTempFile::new().unwrap();
+        let path = temp_file.into_temp_path().to_path_buf();
+        let _geth = Geth::new().block_time(1u64).ipc_path(&path).spawn();
+        let ipc = Ipc::new(path).await.unwrap();
 
         let block_num: U256 = ipc.request("eth_blockNumber", ()).await.unwrap();
         std::thread::sleep(std::time::Duration::new(3, 0));
@@ -290,8 +291,10 @@ mod test {
 
     #[tokio::test]
     async fn subscription() {
-        let _geth = Geth::new().block_time(1u64).ipc_path(TMP_IPC_PATH).spawn();
-        let ipc = Ipc::new(TMP_IPC_PATH).await.unwrap();
+        let temp_file = NamedTempFile::new().unwrap();
+        let path = temp_file.into_temp_path().to_path_buf();
+        let _geth = Geth::new().block_time(1u64).ipc_path(&path).spawn();
+        let ipc = Ipc::new(path).await.unwrap();
 
         // Subscribing requires sending the sub request and then subscribing to
         // the returned sub_id
