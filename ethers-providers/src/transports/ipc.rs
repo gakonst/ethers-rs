@@ -19,6 +19,7 @@ use std::{
 use thiserror::Error;
 use tokio::{io::AsyncWriteExt, net::UnixStream, sync::oneshot};
 use tokio_util::io::ReaderStream;
+use tracing::{error, warn};
 
 /// Unix Domain Sockets (IPC) transport.
 #[derive(Debug, Clone)]
@@ -138,22 +139,22 @@ async fn run_server(
             message = messages_rx.next() => match message {
                 Some(TransportMessage::Subscribe{ id, sink }) => {
                     if subscription_txs.insert(id, sink).is_some() {
-                        println!("Replacing a subscription with id {:?}", id);
+                        warn!("Replacing a subscription with id {:?}", id);
                     }
                 },
                 Some(TransportMessage::Unsubscribe{ id }) => {
                     if subscription_txs.remove(&id).is_none() {
-                        println!("Unsubscribing not subscribed id {:?}", id);
+                        warn!("Unsubscribing not subscribed id {:?}", id);
                     }
                 },
                 Some(TransportMessage::Request{ id, request, sender }) => {
                     if pending_response_txs.insert(id, sender).is_some() {
-                        println!("Replacing a pending request with id {:?}", id);
+                        warn!("Replacing a pending request with id {:?}", id);
                     }
 
                     if let Err(err) = socket_writer.write(&request.as_bytes()).await {
                         pending_response_txs.remove(&id);
-                        println!("IPC write error: {:?}", err);
+                        error!("IPC write error: {:?}", err);
                     }
                 },
                 None => closed = true,
@@ -173,14 +174,14 @@ async fn run_server(
                             if let Ok(notification) = serde_json::from_value::<Notification<serde_json::Value>>(value.clone()) {
                                 // Send notify response if okay.
                                 if let Err(e) = notify(&mut subscription_txs, notification) {
-                                    println!("Failed to send IPC notification: {}", e)
+                                    error!("Failed to send IPC notification: {}", e)
                                 }
                             } else if let Ok(response) = serde_json::from_value::<Response<serde_json::Value>>(value) {
                                 if let Err(e) = respond(&mut pending_response_txs, response) {
-                                    println!("Failed to send IPC response: {}", e)
+                                    error!("Failed to send IPC response: {}", e)
                                 }
                             } else {
-                                println!("JSON is not a response or notification");
+                                warn!("JSON from IPC stream is not a response or notification");
                             }
                         }
 
@@ -193,7 +194,7 @@ async fn run_server(
                     read_buffer.truncate(read_buffer.len() - read_len);
                 },
                 Some(Err(err)) => {
-                    println!("IPC read error: {:?}", err);
+                    error!("IPC read error: {:?}", err);
                     return Err(err.into());
                 },
                 None => break,
