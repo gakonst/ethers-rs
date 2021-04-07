@@ -25,7 +25,7 @@ use tokio_tungstenite::{
     connect_async,
     tungstenite::{self, protocol::Message},
 };
-use tracing::{warn, error};
+use tracing::{error, warn};
 
 /// A JSON-RPC Client over Websockets.
 ///
