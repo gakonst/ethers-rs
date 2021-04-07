@@ -4,9 +4,7 @@ use std::time::Duration;
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // TODO switch to some default IPC after
-    let ws =
-        Ipc::new("/home/austinabell/.ethereum/geth.ipc")
-            .await?;
+    let ws = Ipc::new("/home/austinabell/.ethereum/geth.ipc").await?;
     let provider = Provider::new(ws).interval(Duration::from_millis(2000));
     let block = provider.get_block_number().await?;
     println!("Current block: {}", block);

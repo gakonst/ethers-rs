@@ -271,6 +271,7 @@ impl From<IpcError> for ProviderError {
 }
 
 #[cfg(all(test, unix))]
+#[cfg(not(feature = "celo"))]
 mod test {
     use super::*;
     use ethers::utils::Geth;
