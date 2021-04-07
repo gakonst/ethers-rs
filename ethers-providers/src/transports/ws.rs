@@ -25,6 +25,7 @@ use tokio_tungstenite::{
     connect_async,
     tungstenite::{self, protocol::Message},
 };
+use tracing::{error, warn};
 
 /// A JSON-RPC Client over Websockets.
 ///
@@ -223,22 +224,22 @@ where
                 sender,
             } => {
                 if self.pending.insert(id, sender).is_some() {
-                    println!("Replacing a pending request with id {:?}", id);
+                    warn!("Replacing a pending request with id {:?}", id);
                 }
 
                 if let Err(e) = self.ws.send(Message::Text(request)).await {
-                    println!("WS connection error: {:?}", e);
+                    error!("WS connection error: {:?}", e);
                     self.pending.remove(&id);
                 }
             }
             TransportMessage::Subscribe { id, sink } => {
                 if self.subscriptions.insert(id, sink).is_some() {
-                    println!("Replacing already-registered subscription with id {:?}", id);
+                    warn!("Replacing already-registered subscription with id {:?}", id);
                 }
             }
             TransportMessage::Unsubscribe { id } => {
                 if self.subscriptions.remove(&id).is_none() {
-                    println!(
+                    warn!(
                         "Unsubscribing from non-existent subscription with id {:?}",
                         id
                     );
