@@ -907,6 +907,7 @@ version = "0.2.2"
 dependencies = [
  "async-trait",
  "auto_impl",
+ "bytes",
  "ethers",
  "ethers-core",
  "futures-channel",

@@ -728,7 +728,7 @@ impl Provider<crate::Ws> {
 impl Provider<crate::Ipc> {
     /// Direct connection to an IPC socket.
     pub async fn connect_ipc(path: impl AsRef<std::path::Path>) -> Result<Self, ProviderError> {
-        let ipc = crate::Ipc::new(path).await?;
+        let ipc = crate::Ipc::connect(path).await?;
         Ok(Self::new(ipc))
     }
 }
