@@ -724,6 +724,15 @@ impl Provider<crate::Ws> {
     }
 }
 
+#[cfg(feature = "ipc")]
+impl Provider<crate::Ipc> {
+    /// Direct connection to an IPC socket.
+    pub async fn connect_ipc(path: impl AsRef<std::path::Path>) -> Result<Self, ProviderError> {
+        let ipc = crate::Ipc::new(path).await?;
+        Ok(Self::new(ipc))
+    }
+}
+
 impl Provider<MockProvider> {
     /// Returns a `Provider` instantiated with an internal "mock" transport.
     ///
