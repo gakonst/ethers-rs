@@ -170,7 +170,7 @@ where
         tokio::spawn(f);
     }
 
-    /// Processes 1 item selected from the incoming `requests` or `ws`
+    /// Processes 1 item selected from the incoming `requests` or `socket`
     #[allow(clippy::single_match)]
     async fn process(&mut self, read_buffer: &mut Vec<u8>) -> Result<bool, IpcError> {
         futures_util::select! {
@@ -179,7 +179,7 @@ where
                 Some(msg) => self.handle_request(msg).await?,
                 None => return Ok(true),
             },
-            // Handle ws messages
+            // Handle socket messages
             msg = self.socket_reader.next() => match msg {
                 Some(Ok(msg)) => self.handle_socket(read_buffer, msg).await?,
                 Some(Err(err)) => {
