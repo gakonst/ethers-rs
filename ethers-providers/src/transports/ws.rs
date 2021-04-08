@@ -347,8 +347,6 @@ mod tests {
 
         // Subscribing requires sending the sub request and then subscribing to
         // the returned sub_id
-        let block_num: U256 = ws.request("eth_blockNumber", ()).await.unwrap();
-        println!("block num2 {}", block_num);
         let sub_id: U256 = ws.request("eth_subscribe", ["newHeads"]).await.unwrap();
         let mut stream = ws.subscribe(sub_id).unwrap();
 
