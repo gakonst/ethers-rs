@@ -27,7 +27,7 @@ sha2 = { version = "0.9.3", default-features = false }
 rand = { version = "0.7.3", default-features = false }
 yubihsm = { version = "0.38.0", features = ["secp256k1", "http", "usb"], optional = true }
 futures-util = "0.3.14"
-futures-executor = "0.3.13"
+futures-executor = "0.3.14"
 
 [dev-dependencies]
 ethers = { version = "0.2", path = "../ethers" }
