@@ -1,10 +1,10 @@
 use ethers_core::types::Address;
 
 use anyhow::{anyhow, Result};
-use curl::easy::Easy;
 use inflector::Inflector;
 use proc_macro2::{Ident, Literal, Span, TokenStream};
 use quote::quote;
+use reqwest::Client;
 use syn::Ident as SynIdent;
 
 /// Expands a identifier string into an token.
@@ -56,20 +56,7 @@ where
 
 /// Perform an HTTP GET request and return the contents of the response.
 pub fn http_get(url: &str) -> Result<String> {
-    let mut buffer = Vec::new();
-    let mut handle = Easy::new();
-    handle.url(url)?;
-    {
-        let mut transfer = handle.transfer();
-        transfer.write_function(|data| {
-            buffer.extend_from_slice(data);
-            Ok(data.len())
-        })?;
-        transfer.perform()?;
-    }
-
-    let buffer = String::from_utf8(buffer)?;
-    Ok(buffer)
+    Ok(reqwest::blocking::get(url)?.text()?)
 }
 
 #[cfg(test)]
