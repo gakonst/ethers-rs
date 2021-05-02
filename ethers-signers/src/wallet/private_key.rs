@@ -223,10 +223,10 @@ mod tests {
             "4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318"
                 .parse()
                 .unwrap();
-        let wallet = wallet.set_chain_id(chain_id);
+        let wallet = wallet.with_chain_id(chain_id);
 
         let sig = wallet.sign_transaction(&tx).await.unwrap();
-        let sighash = tx.sighash(Some(chain_id));
+        let sighash = tx.sighash(chain_id);
         assert!(sig.verify(sighash, wallet.address).is_ok());
     }
 

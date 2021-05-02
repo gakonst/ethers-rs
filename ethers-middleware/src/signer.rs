@@ -326,7 +326,7 @@ mod tests {
         let key = "4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318"
             .parse::<LocalWallet>()
             .unwrap()
-            .set_chain_id(chain_id);
+            .with_chain_id(chain_id);
         let client = SignerMiddleware::new(provider, key);
 
         let tx = client.sign_transaction(tx).await.unwrap();

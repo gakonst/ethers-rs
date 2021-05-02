@@ -4,7 +4,7 @@ use ethers_middleware::{
     signer::SignerMiddleware,
 };
 use ethers_providers::{Middleware, Provider, Ws};
-use ethers_signers::LocalWallet;
+use ethers_signers::{LocalWallet, Signer};
 use std::time::Duration;
 
 #[tokio::test]

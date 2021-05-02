@@ -100,12 +100,11 @@ mod eth_tests {
         let contract = deploy(client.clone(), abi, bytecode).await;
 
         // make a call with `client`
-        let _tx_hash = *contract
+        let func = contract
             .method::<_, H256>("setValue", "hi".to_owned())
-            .unwrap()
-            .send()
-            .await
             .unwrap();
+        let tx = func.send().await.unwrap();
+        let _receipt = tx.await.unwrap();
 
         // and we can fetch the events
         let logs: Vec<ValueChanged> = contract
@@ -476,8 +475,8 @@ mod celo_tests {
     use super::*;
     use ethers::{
         middleware::signer::SignerMiddleware,
-        providers::{Http, Provider},
-        signers::LocalWallet,
+        providers::{Http, Middleware, Provider},
+        signers::{LocalWallet, Signer},
         types::BlockNumber,
     };
     use std::{convert::TryFrom, sync::Arc, time::Duration};
@@ -490,11 +489,13 @@ mod celo_tests {
         let provider = Provider::<Http>::try_from("https://alfajores-forno.celo-testnet.org")
             .unwrap()
             .interval(Duration::from_millis(6000));
+        let chain_id = provider.get_chainid().await.unwrap().as_u64();
 
         // Funded with https://celo.org/developers/faucet
         let wallet = "d652abb81e8c686edba621a895531b1f291289b63b5ef09a94f686a5ecdd5db1"
             .parse::<LocalWallet>()
-            .unwrap();
+            .unwrap()
+            .with_chain_id(chain_id);
 
         let client = SignerMiddleware::new(provider, wallet);
         let client = Arc::new(client);

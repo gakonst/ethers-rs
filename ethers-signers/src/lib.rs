@@ -67,15 +67,8 @@ use ethers_core::types::{Address, Signature, TransactionRequest};
 use std::error::Error;
 
 /// Applies [EIP155](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-155.md)
-pub fn to_eip155_v<T: Into<u8>>(recovery_id: T, chain_id: Option<u64>) -> u64 {
-    let standard_v: u8 = recovery_id.into();
-    if let Some(chain_id) = chain_id {
-        // When signing with a chain ID, add chain replay protection.
-        (standard_v as u64) + 35 + chain_id * 2
-    } else {
-        // Otherwise, convert to 'Electrum' notation.
-        (standard_v as u64) + 27
-    }
+pub fn to_eip155_v<T: Into<u8>>(recovery_id: T, chain_id: u64) -> u64 {
+    (recovery_id.into() as u64) + 35 + chain_id * 2
 }
 
 /// Trait for signing transactions and messages
@@ -98,4 +91,10 @@ pub trait Signer: std::fmt::Debug + Send + Sync {
 
     /// Returns the signer's Ethereum Address
     fn address(&self) -> Address;
+
+    /// Returns the signer's chain id
+    fn chain_id(&self) -> u64;
+
+    /// Sets the signer's chain id
+    fn with_chain_id<T: Into<u64>>(self, chain_id: T) -> Self;
 }

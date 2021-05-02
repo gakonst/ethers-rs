@@ -2,7 +2,7 @@ use ethers_providers::{Http, Middleware, Provider};
 
 use ethers_core::types::TransactionRequest;
 use ethers_middleware::signer::SignerMiddleware;
-use ethers_signers::LocalWallet;
+use ethers_signers::{LocalWallet, Signer};
 use std::{convert::TryFrom, time::Duration};
 
 #[tokio::test]
@@ -20,6 +20,8 @@ async fn send_eth() {
     let provider = Provider::<Http>::try_from(ganache.endpoint())
         .unwrap()
         .interval(Duration::from_millis(10u64));
+    let chain_id = provider.get_chainid().await.unwrap().as_u64();
+    let wallet = wallet.with_chain_id(chain_id);
     let provider = SignerMiddleware::new(provider, wallet);
 
     // craft the transaction
@@ -48,12 +50,14 @@ async fn test_send_transaction() {
     let provider = Provider::<Http>::try_from("https://alfajores-forno.celo-testnet.org")
         .unwrap()
         .interval(Duration::from_millis(3000u64));
+    let chain_id = provider.get_chainid().await.unwrap().as_u64();
 
     // Funded with https://celo.org/developers/faucet
     // Please do not drain this account :)
     let wallet = "d652abb81e8c686edba621a895531b1f291289b63b5ef09a94f686a5ecdd5db1"
         .parse::<LocalWallet>()
-        .unwrap();
+        .unwrap()
+        .with_chain_id(chain_id);
     let client = SignerMiddleware::new(provider, wallet);
 
     let balance_before = client.get_balance(client.address(), None).await.unwrap();
