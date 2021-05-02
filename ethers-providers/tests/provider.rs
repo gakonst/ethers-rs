@@ -6,7 +6,7 @@ mod eth_tests {
     use super::*;
     use ethers::{
         middleware::SignerMiddleware,
-        signers::LocalWallet,
+        signers::{LocalWallet, Signer},
         types::{BlockId, TransactionRequest, H256},
         utils::Ganache,
     };

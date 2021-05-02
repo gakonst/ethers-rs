@@ -8,7 +8,7 @@ use ethers_contract::{Contract, ContractFactory, EthEvent};
 use ethers_core::utils::{GanacheInstance, Solc};
 use ethers_middleware::signer::SignerMiddleware;
 use ethers_providers::{Http, Middleware, Provider};
-use ethers_signers::LocalWallet;
+use ethers_signers::{LocalWallet, Signer};
 use std::{convert::TryFrom, sync::Arc, time::Duration};
 
 // Note: The `EthEvent` derive macro implements the necessary conversion between `Tokens` and
@@ -40,6 +40,7 @@ pub fn connect(ganache: &GanacheInstance, idx: usize) -> Arc<HttpWallet> {
         .unwrap()
         .interval(Duration::from_millis(10u64));
     let wallet: LocalWallet = ganache.keys()[idx].clone().into();
+    let wallet = wallet.with_chain_id(1u64);
     Arc::new(SignerMiddleware::new(provider, wallet))
 }
 

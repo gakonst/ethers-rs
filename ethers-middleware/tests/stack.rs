@@ -8,7 +8,7 @@ mod tests {
         signer::SignerMiddleware,
     };
     use ethers_providers::{Http, Middleware, Provider};
-    use ethers_signers::LocalWallet;
+    use ethers_signers::{LocalWallet, Signer};
     use std::convert::TryFrom;
 
     #[tokio::test]

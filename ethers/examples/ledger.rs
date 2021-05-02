@@ -9,7 +9,7 @@ async fn main() -> anyhow::Result<()> {
     // the wallet's index. Alternatively, you may use Legacy with the wallet's
     // index or supply the  full HD path string. You may also provide the chain_id
     // (here: mainnet) for EIP155 support.
-    let ledger = Ledger::new(HDPath::LedgerLive(0), Some(1)).await?;
+    let ledger = Ledger::new(HDPath::LedgerLive(0), 1).await?;
     let client = SignerMiddleware::new(provider, ledger);
 
     // Create and broadcast a transaction (ENS enabled!)

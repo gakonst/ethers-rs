@@ -21,7 +21,7 @@
 //! ```no_run
 //! use ethers::{
 //!     providers::{Provider, Http},
-//!     signers::LocalWallet,
+//!     signers::{LocalWallet, Signer},
 //!     middleware::{
 //!         gas_escalator::{GasEscalatorMiddleware, GeometricGasPrice, Frequency},
 //!         gas_oracle::{GasOracleMiddleware, GasNow, GasCategory},
