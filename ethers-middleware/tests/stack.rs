@@ -58,6 +58,8 @@ mod tests {
 
         // the base provider
         let provider = Arc::new(Provider::<Http>::try_from(ganache.endpoint()).unwrap());
+        let chain_id = provider.get_chainid().await.unwrap().as_u64();
+        let signer = signer.with_chain_id(chain_id);
 
         // the Gas Price escalator middleware is the first middleware above the provider,
         // so that it receives the transaction last, after all the other middleware
