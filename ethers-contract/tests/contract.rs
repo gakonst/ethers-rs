@@ -494,7 +494,8 @@ mod celo_tests {
         // Funded with https://celo.org/developers/faucet
         let wallet = "d652abb81e8c686edba621a895531b1f291289b63b5ef09a94f686a5ecdd5db1"
             .parse::<LocalWallet>()
-            .unwrap();
+            .unwrap()
+            .set_chain_id(44787u64);
 
         let client = SignerMiddleware::new(provider, wallet);
         let client = Arc::new(client);

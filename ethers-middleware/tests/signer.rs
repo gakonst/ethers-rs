@@ -53,7 +53,8 @@ async fn test_send_transaction() {
     // Please do not drain this account :)
     let wallet = "d652abb81e8c686edba621a895531b1f291289b63b5ef09a94f686a5ecdd5db1"
         .parse::<LocalWallet>()
-        .unwrap();
+        .unwrap()
+        .set_chain_id(44787u64);
     let client = SignerMiddleware::new(provider, wallet);
 
     let balance_before = client.get_balance(client.address(), None).await.unwrap();
