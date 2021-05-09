@@ -51,7 +51,7 @@ pub enum RecoveryMessage {
     Hash(H256),
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Copy)]
 /// An ECDSA signature
 pub struct Signature {
     /// R value
