@@ -2,7 +2,7 @@ use crate::{stream::EventStream, ContractError, EthLogDecode};
 
 use ethers_core::{
     abi::{Detokenize, RawLog},
-    types::{BlockNumber, Filter, Log, TxHash, ValueOrArray, H256, U64, U256, Address},
+    types::{Address, BlockNumber, Filter, Log, TxHash, ValueOrArray, H256, U256, U64},
 };
 use ethers_providers::{FilterWatcher, Middleware, PubsubClient, SubscriptionStream};
 use std::borrow::Cow;

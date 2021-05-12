@@ -10,7 +10,7 @@ pub use common::*;
 mod eth_tests {
     use super::*;
     use ethers::{
-        contract::{Multicall, LogMeta},
+        contract::{LogMeta, Multicall},
         providers::{Http, Middleware, PendingTransaction, Provider, StreamExt},
         types::{Address, U256},
         utils::Ganache,
@@ -138,7 +138,6 @@ mod eth_tests {
         let ganache = Ganache::new().spawn();
         let client = connect(&ganache, 0);
         let contract = deploy(client.clone(), abi, bytecode).await;
-
 
         // and we can fetch the events
         let logs: Vec<(ValueChanged, LogMeta)> = contract
