@@ -29,7 +29,7 @@ pub use block::{Block, BlockId, BlockNumber};
 pub use block::Randomness;
 
 mod log;
-pub use log::{Filter, Log, ValueOrArray};
+pub use log::{Filter, FilterBlockOption, Log, ValueOrArray};
 
 mod ens;
 pub use ens::NameOrAddress;
