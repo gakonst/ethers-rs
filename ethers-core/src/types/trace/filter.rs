@@ -156,7 +156,7 @@ pub struct CallResult {
     pub output: Bytes,
 }
 
-/// Craete Result
+/// Create Result
 #[derive(Debug, Clone, PartialEq, Default, Deserialize, Serialize)]
 pub struct CreateResult {
     /// Gas used
