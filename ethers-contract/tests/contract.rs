@@ -10,7 +10,7 @@ pub use common::*;
 mod eth_tests {
     use super::*;
     use ethers::{
-        contract::Multicall,
+        contract::{LogMeta, Multicall},
         providers::{Http, Middleware, PendingTransaction, Provider, StreamExt},
         types::{Address, U256},
         utils::Ganache,
@@ -130,6 +130,37 @@ mod eth_tests {
             .unwrap();
         assert_eq!(logs[0].new_value, "initial value");
         assert_eq!(logs.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn get_events_with_meta() {
+        let (abi, bytecode) = compile_contract("SimpleStorage", "SimpleStorage.sol");
+        let ganache = Ganache::new().spawn();
+        let client = connect(&ganache, 0);
+        let contract = deploy(client.clone(), abi, bytecode).await;
+
+        // and we can fetch the events
+        let logs: Vec<(ValueChanged, LogMeta)> = contract
+            .event()
+            .from_block(0u64)
+            .topic1(client.address()) // Corresponds to the first indexed parameter
+            .query_with_meta()
+            .await
+            .unwrap();
+
+        assert_eq!(logs.len(), 1);
+        let (log, meta) = &logs[0];
+        assert_eq!(log.new_value, "initial value");
+
+        assert_eq!(meta.address, contract.address());
+        assert_eq!(meta.log_index, 0.into());
+        assert_eq!(meta.block_number, 1.into());
+        let block = client.get_block(1).await.unwrap().unwrap();
+        assert_eq!(meta.block_hash, block.hash.unwrap());
+        assert_eq!(block.transactions.len(), 1);
+        let tx = block.transactions[0];
+        assert_eq!(meta.transaction_hash, tx);
+        assert_eq!(meta.transaction_index, 0.into());
     }
 
     #[tokio::test]
