@@ -1,6 +1,6 @@
 use ethers::core::types::{H160, H256, I256, U128, U256};
-use ethers_contract::{abigen, EthAbiType, EthEvent};
-use ethers_core::abi::Tokenizable;
+use ethers_contract::{abigen, EthAbiType, EthEvent, EthLogDecode};
+use ethers_core::abi::{RawLog, Tokenizable};
 use ethers_core::types::Address;
 
 #[derive(Debug, Clone, PartialEq, EthAbiType)]
@@ -235,4 +235,36 @@ fn can_generate_ethevent_from_json() {
         ]),
         CreatedFilter::signature()
     );
+}
+
+#[test]
+fn can_decode_event_with_no_topics() {
+    #[derive(Debug, PartialEq, EthEvent)]
+    pub struct LiquidateBorrow {
+        liquidator: Address,
+        borrower: Address,
+        repay_amount: U256,
+        c_token_collateral: Address,
+        seize_tokens: U256,
+    }
+    // https://etherscan.io/tx/0xb7ba825294f757f8b8b6303b2aef542bcaebc9cc0217ddfaf822200a00594ed9#eventlog index 141
+    let log = RawLog {
+        topics: vec![
+            "298637f684da70674f26509b10f07ec2fbc77a335ab1e7d6215a4b2484d8bb52"
+                .parse()
+                .unwrap(),
+        ],
+        data: vec![
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 188, 205, 0, 29, 173, 151, 238, 5, 127, 91, 31,
+            197, 154, 221, 40, 175, 143, 32, 26, 201, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 133, 129,
+            195, 136, 163, 5, 24, 136, 69, 34, 251, 23, 122, 146, 252, 33, 147, 81, 8, 20, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 18, 195, 162, 210,
+            38, 128, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 77, 220, 45, 25, 57, 72, 146, 109, 2,
+            249, 177, 254, 158, 29, 170, 7, 24, 39, 14, 213, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 80, 30, 88,
+        ],
+    };
+    let event = <LiquidateBorrow as EthLogDecode>::decode_log(&log).unwrap();
+    assert_eq!(event.seize_tokens, 5250648u64.into());
+    assert_eq!(event.repay_amount, 653800000000000000u64.into());
 }
