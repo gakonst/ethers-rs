@@ -432,7 +432,7 @@ fn derive_decode_from_log_impl(
                 let flat_topics = topics.iter().skip(1).flat_map(|t| t.as_ref().to_vec()).collect::<Vec<u8>>();
             },
             quote! {
-                if topic_tokens.is_empty() || topic_tokens.len() != topics.len() - 1 {
+                if topic_tokens.len() != topics.len() - 1 {
                     return Err(ethers_core::abi::Error::InvalidData);
                 }
             },
