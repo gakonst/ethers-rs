@@ -268,3 +268,44 @@ fn can_decode_event_with_no_topics() {
     assert_eq!(event.seize_tokens, 5250648u64.into());
     assert_eq!(event.repay_amount, 653800000000000000u64.into());
 }
+
+#[test]
+fn can_decode_event_single_param() {
+    #[derive(Debug, PartialEq, EthEvent)]
+    pub struct OneParam {
+        #[ethevent(indexed)]
+        param1: U256,
+    }
+
+    let log = RawLog {
+        topics: vec![
+            "bd9bb67345a2fcc8ef3b0857e7e2901f5a0dcfc7fe5e3c10dc984f02842fb7ba"
+                .parse()
+                .unwrap(),
+            "000000000000000000000000000000000000000000000000000000000000007b"
+                .parse()
+                .unwrap(),
+        ],
+        data: vec![],
+    };
+
+    let event = <OneParam as EthLogDecode>::decode_log(&log).unwrap();
+    assert_eq!(event.param1, 123u64.into());
+}
+
+#[test]
+fn can_decode_event_with_no_params() {
+    #[derive(Debug, PartialEq, EthEvent)]
+    pub struct NoParam {}
+
+    let log = RawLog {
+        topics: vec![
+            "59a6f900daaeb7581ff830f3a97097fa6372db29b0b50c6d1818ede9d1daaa0c"
+                .parse()
+                .unwrap(),
+        ],
+        data: vec![],
+    };
+
+    let _ = <NoParam as EthLogDecode>::decode_log(&log).unwrap();
+}
