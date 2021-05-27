@@ -785,15 +785,40 @@ fn derive_tokenizeable_impl(input: &DeriveInput) -> proc_macro2::TokenStream {
         }
     };
 
-    quote! {
-         impl<#generic_params> ethers_core::abi::Tokenizable for #name<#generic_args>
-         where
-             #generic_predicates
-             #tokenize_predicates
-         {
+    // there might be the case that the event has only 1 params, which is not a tuple
+    let (from_token_impl, into_token_impl) = match params_len {
+        0 => (
+            quote! {
+               Ok(#init_struct_impl)
+            },
+            // can't encode an empty struct
+            // TODO: panic instead?
+            quote! {
+                ethers_core::abi::Token::Tuple(vec![])
+            },
+        ),
+        1 => {
+            // This is a hacky solution in order to keep the same tokenstream as for tuples
+            let from_token = quote! {
+                let mut iter = Some(token).into_iter();
+                Ok(#init_struct_impl)
+            };
 
-             fn from_token(token: ethers_core::abi::Token) -> Result<Self, ethers_core::abi::InvalidOutputType> where
-                 Self: Sized {
+            // This is a hack to get rid of the trailing comma introduced in the macro that concatenates all the fields
+            if let Ok(into_token) = into_token_impl
+                .to_string()
+                .as_str()
+                .trim_end_matches(',')
+                .parse()
+            {
+                (from_token, into_token)
+            } else {
+                return Error::new(input.span(), "Failed to derive Tokenizeable implementation")
+                    .to_compile_error();
+            }
+        }
+        _ => {
+            let from_token = quote! {
                 if let ethers_core::abi::Token::Tuple(tokens) = token {
                     if tokens.len() != #params_len {
                         return Err(ethers_core::abi::InvalidOutputType(format!(
@@ -813,14 +838,33 @@ fn derive_tokenizeable_impl(input: &DeriveInput) -> proc_macro2::TokenStream {
                         token
                     )))
                 }
-             }
+            };
 
-             fn into_token(self) -> ethers_core::abi::Token {
+            let into_token = quote! {
                 ethers_core::abi::Token::Tuple(
                     vec![
                         #into_token_impl
                     ]
                 )
+            };
+            (from_token, into_token)
+        }
+    };
+
+    quote! {
+         impl<#generic_params> ethers_core::abi::Tokenizable for #name<#generic_args>
+         where
+             #generic_predicates
+             #tokenize_predicates
+         {
+
+             fn from_token(token: ethers_core::abi::Token) -> Result<Self, ethers_core::abi::InvalidOutputType> where
+                 Self: Sized {
+                #from_token_impl
+             }
+
+             fn into_token(self) -> ethers_core::abi::Token {
+                #into_token_impl
              }
          }
 
