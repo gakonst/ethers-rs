@@ -378,7 +378,14 @@ mod test {
             let block = serde_json::from_value::<Block<TxHash>>(item).unwrap();
             blocks.push(block.number.unwrap_or_default().as_u64());
         }
-
-        assert_eq!(blocks, &[block_num + 1, block_num + 2, block_num + 3])
+        let offset = blocks[0] - block_num;
+        assert_eq!(
+            blocks,
+            &[
+                block_num + offset,
+                block_num + offset + 1,
+                block_num + offset + 2
+            ]
+        )
     }
 }
