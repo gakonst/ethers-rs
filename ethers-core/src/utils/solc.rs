@@ -1,8 +1,10 @@
-use crate::{abi::Abi, types::Bytes};
+use std::{collections::HashMap, fmt, io::BufRead, path::PathBuf, process::Command};
+
 use glob::glob;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, fmt, io::BufRead, path::PathBuf, process::Command};
 use thiserror::Error;
+
+use crate::{abi::Abi, types::Bytes};
 
 /// The name of the `solc` binary on the system
 const SOLC: &str = "solc";
@@ -107,27 +109,39 @@ impl Solc {
         }
 
         // Deserialize the output
-        let output: SolcOutput = serde_json::from_slice(&command.stdout)?;
+        let mut output: serde_json::Value = serde_json::from_slice(&command.stdout)?;
+        let contract_values = output["contracts"].as_object_mut().ok_or_else(|| {
+            SolcError::SolcError("no contracts found in `solc` output".to_string())
+        })?;
 
-        // remove the semi-colon and the name
-        let contracts = output
-            .contracts
-            .into_iter()
-            .map(|(name, contract)| {
+        let mut contracts = HashMap::with_capacity(contract_values.len());
+
+        for (name, contract) in contract_values {
+            if let serde_json::Value::String(bin) = contract["bin"].take() {
                 let name = name
                     .rsplit(':')
                     .next()
                     .expect("could not strip fname")
                     .to_owned();
-                (
-                    name,
-                    CompiledContractStr {
-                        abi: contract.abi,
-                        bin: contract.bin,
-                    },
-                )
-            })
-            .collect();
+
+                // abi could be an escaped string (solc<=0.7) or an array (solc>=0.8)
+                let abi = match contract["abi"].take() {
+                    serde_json::Value::String(abi) => abi,
+                    val @ serde_json::Value::Array(_) => val.to_string(),
+                    val => {
+                        return Err(SolcError::SolcError(format!(
+                            "Expected abi in solc output, found {:?}",
+                            val
+                        )))
+                    }
+                };
+                contracts.insert(name, CompiledContractStr { abi, bin });
+            } else {
+                return Err(SolcError::SolcError(
+                    "could not find `bin` in solc output".to_string(),
+                ));
+            }
+        }
 
         Ok(contracts)
     }
