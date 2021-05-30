@@ -24,7 +24,7 @@ use url::{ParseError, Url};
 
 use futures_core::{Future, Stream};
 use futures_util::stream::FuturesUnordered;
-use futures_util::{FutureExt, StreamExt, TryFutureExt};
+use futures_util::{StreamExt, TryFutureExt};
 use std::collections::VecDeque;
 use std::pin::Pin;
 use std::task::{Context, Poll};
@@ -991,7 +991,9 @@ mod tests {
     }
 }
 
-type TransactionFut<'a> = Pin<Box<dyn Future<Output = Result<Transaction, ProviderError>> + 'a>>;
+type TransactionFut<'a> = Pin<Box<dyn Future<Output = TransactionResult> + 'a>>;
+
+type TransactionResult = Result<Transaction, ProviderError>;
 
 struct TxStream<'a, P> {
     pending: FuturesUnordered<TransactionFut<'a>>,
@@ -1002,7 +1004,7 @@ struct TxStream<'a, P> {
 }
 
 impl<'a, P: JsonRpcClient> Stream for TxStream<'a, P> {
-    type Item = Result<Transaction, ProviderError>;
+    type Item = TransactionResult;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let this = self.get_mut();
@@ -1019,25 +1021,40 @@ impl<'a, P: JsonRpcClient> Stream for TxStream<'a, P> {
             }
         }
 
-        while let Poll::Ready(Some(tx)) = Stream::poll_next(Pin::new(&mut this.watcher), cx) {
-            if this.pending.len() < this.max_concurrent {
-                this.pending
-                    .push(Box::pin(this.provider.get_transaction(tx).and_then(
-                        |res| {
-                            if let Some(tx) = res {
-                                futures_util::future::ok(tx)
-                            } else {
-                                futures_util::future::err(ProviderError::CustomError(
-                                    "Not found".to_string(),
-                                ))
-                            }
-                        },
-                    )));
-            } else {
-                this.buffered.push_back(tx);
+        let mut watcher_done = false;
+        loop {
+            match Stream::poll_next(Pin::new(&mut this.watcher), cx) {
+                Poll::Ready(Some(tx)) => {
+                    if this.pending.len() < this.max_concurrent {
+                        this.pending
+                            .push(Box::pin(this.provider.get_transaction(tx).and_then(
+                                |res| {
+                                    if let Some(tx) = res {
+                                        futures_util::future::ok(tx)
+                                    } else {
+                                        futures_util::future::err(ProviderError::CustomError(
+                                            "Not found".to_string(),
+                                        ))
+                                    }
+                                },
+                            )));
+                    } else {
+                        this.buffered.push_back(tx);
+                    }
+                }
+                Poll::Ready(None) => {
+                    watcher_done = true;
+                    break;
+                }
+                _ => break,
             }
         }
 
-        todo!()
+        if watcher_done && this.pending.is_empty() {
+            // all done
+            return Poll::Ready(None);
+        }
+
+        Poll::Pending
     }
 }
