@@ -1,17 +1,17 @@
-//use the anyhow crate for easy idiomatic error handling
+// use the anyhow crate for easy idiomatic error handling
 use anyhow::Result;
-//use the ethers_core rand crate to manage creation of random numbers
+// use the ethers_core rand for rng
 use ethers_core::rand::thread_rng;
-//use the ethers_signers crate to manage LocalWallet and Signer
+// use the ethers_signers crate to manage LocalWallet and Signer
 use ethers_signers::{LocalWallet, Signer};
 
-//Declare tokio because our main function uses future(async)
+// Use the `tokio::main` macro for using async on the main function
 #[tokio::main]
 async fn main() -> Result<()> {
-    //Create random numbers for your wallet.
+    // Generate a random wallet
     let wallet = LocalWallet::new(&mut thread_rng());
     
-    //Declare message you want to sign.
+    // Declare the message you want to sign.
     let message = "Some data";
 
     // sign message from your wallet and print out signature produced.
