@@ -168,7 +168,7 @@ impl I256 {
     /// Coerces an unsigned integer into a signed one. If the unsigned integer
     /// is greater than the greater than or equal to `1 << 255`, then the result
     /// will overflow into a negative value.
-    pub fn from_raw(raw: U256) -> Self {
+    pub const fn from_raw(raw: U256) -> Self {
         I256(raw)
     }
 
@@ -1263,6 +1263,9 @@ mod tests {
 
     #[test]
     fn identities() {
+        const ONE: I256 = I256::from_raw(U256([1, 0, 0, 0]));
+        assert_eq!(ONE, I256::one());
+
         assert_eq!(I256::zero().to_string(), "0");
         assert_eq!(I256::one().to_string(), "1");
         assert_eq!(I256::minus_one().to_string(), "-1");
