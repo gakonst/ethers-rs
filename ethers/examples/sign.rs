@@ -10,7 +10,7 @@ use ethers_signers::{LocalWallet, Signer};
 async fn main() -> Result<()> {
     // Generate a random wallet
     let wallet = LocalWallet::new(&mut thread_rng());
-    
+
     // Declare the message you want to sign.
     let message = "Some data";
 
