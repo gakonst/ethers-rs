@@ -148,9 +148,9 @@ pub enum GetTransactionError {
     NotFound(TxHash),
 }
 
-impl Into<ProviderError> for GetTransactionError {
-    fn into(self) -> ProviderError {
-        match self {
+impl From<GetTransactionError> for ProviderError {
+    fn from(err: GetTransactionError) -> Self {
+        match err {
             GetTransactionError::ProviderError(_, err) => err,
             err @ GetTransactionError::NotFound(_) => ProviderError::CustomError(err.to_string()),
         }
@@ -213,7 +213,7 @@ where
         let this = self.get_mut();
 
         // drain buffered transactions first
-        while this.max_concurrent < this.max_concurrent {
+        while this.pending.len() < this.max_concurrent {
             if let Some(tx) = this.buffered.pop_front() {
                 this.push_tx(tx);
             } else {
@@ -268,6 +268,12 @@ mod tests {
         let provider = Provider::<Http>::try_from(ganache.endpoint())
             .unwrap()
             .with_sender(ganache.addresses()[0]);
+
+        provider
+            .watch_pending_transactions()
+            .await
+            .unwrap()
+            .transactions_unordered(10);
 
         let accounts = provider.get_accounts().await.unwrap();
 
