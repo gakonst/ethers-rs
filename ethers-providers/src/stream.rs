@@ -144,7 +144,7 @@ pub enum GetTransactionError {
     #[error("Failed to get transaction `{0}`: {1}")]
     ProviderError(TxHash, ProviderError),
     /// `get_transaction` resulted in a `None`
-    #[error("Transaction `{0}` not found {0}")]
+    #[error("Transaction `{0}` not found")]
     NotFound(TxHash),
 }
 
