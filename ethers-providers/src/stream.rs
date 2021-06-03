@@ -124,6 +124,20 @@ where
     }
 }
 
+impl<'a, P> FilterWatcher<'a, P, TxHash>
+where
+    P: JsonRpcClient,
+{
+    /// Returns a stream that yields the `Transaction`s for the transaction hashes this stream yields.
+    ///
+    /// This internally calls `Provider::get_transaction` with every new transaction.
+    /// No more than n futures will be buffered at any point in time, and less than n may also be
+    /// buffered depending on the state of each future.
+    pub fn transactions_unordered(self, n: usize) -> TransactionStream<'a, P, Self> {
+        TransactionStream::new(self.provider, self, n)
+    }
+}
+
 /// Errors `TransactionStream` can throw
 #[derive(Debug, thiserror::Error)]
 pub enum GetTransactionError {
