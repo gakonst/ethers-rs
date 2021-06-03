@@ -1,10 +1,10 @@
-use crate::{JsonRpcClient, Middleware, PinBoxFut, Provider};
+use crate::{JsonRpcClient, Middleware, PinBoxFut, Provider, ProviderError};
 
-use ethers_core::types::U256;
+use ethers_core::types::{U256, Transaction, TxHash};
 
 use futures_core::stream::Stream;
 use futures_timer::Delay;
-use futures_util::{stream, FutureExt, StreamExt};
+use futures_util::{stream, FutureExt, StreamExt, TryFutureExt};
 use pin_project::pin_project;
 use serde::{de::DeserializeOwned, Serialize};
 use std::{
@@ -14,6 +14,9 @@ use std::{
     time::Duration,
     vec::IntoIter,
 };
+use futures_core::Future;
+use futures_util::stream::FuturesUnordered;
+use std::collections::VecDeque;
 
 // https://github.com/tomusdrw/rust-web3/blob/befcb2fb8f3ca0a43e3081f68886fa327e64c8e6/src/api/eth_filter.rs#L20
 pub fn interval(duration: Duration) -> impl Stream<Item = ()> + Send + Unpin {
@@ -116,6 +119,76 @@ where
                 }
             }
         };
+
+        Poll::Pending
+    }
+}
+
+
+
+type TransactionFut<'a> = Pin<Box<dyn Future<Output = TransactionResult> + 'a>>;
+
+type TransactionResult = Result<Transaction, ProviderError>;
+
+struct TxStream<'a, P> {
+    pending: FuturesUnordered<TransactionFut<'a>>,
+    buffered: VecDeque<TxHash>,
+    provider: &'a Provider<P>,
+    watcher: FilterWatcher<'a, P, TxHash>,
+    max_concurrent: usize,
+}
+
+impl<'a, P: JsonRpcClient> Stream for TxStream<'a, P> {
+    type Item = TransactionResult;
+
+    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        let this = self.get_mut();
+
+        if let tx @ Poll::Ready(Some(_)) = this.pending.poll_next_unpin(cx) {
+            return tx;
+        }
+
+        while this.max_concurrent < this.max_concurrent {
+            if let Some(_) = this.buffered.pop_front() {
+                // TODO add get_tx again
+            } else {
+                break;
+            }
+        }
+
+        let mut watcher_done = false;
+        loop {
+            match Stream::poll_next(Pin::new(&mut this.watcher), cx) {
+                Poll::Ready(Some(tx)) => {
+                    if this.pending.len() < this.max_concurrent {
+                        this.pending
+                            .push(Box::pin(this.provider.get_transaction(tx).and_then(
+                                |res| {
+                                    if let Some(tx) = res {
+                                        futures_util::future::ok(tx)
+                                    } else {
+                                        futures_util::future::err(ProviderError::CustomError(
+                                            "Not found".to_string(),
+                                        ))
+                                    }
+                                },
+                            )));
+                    } else {
+                        this.buffered.push_back(tx);
+                    }
+                }
+                Poll::Ready(None) => {
+                    watcher_done = true;
+                    break;
+                }
+                _ => break,
+            }
+        }
+
+        if watcher_done && this.pending.is_empty() {
+            // all done
+            return Poll::Ready(None);
+        }
 
         Poll::Pending
     }
