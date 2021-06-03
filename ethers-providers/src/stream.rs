@@ -238,3 +238,57 @@ where
         Poll::Pending
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::Http;
+    use ethers_core::types::TransactionRequest;
+    use ethers_core::utils::Ganache;
+    use std::collections::HashSet;
+    use std::convert::TryFrom;
+
+    #[tokio::test]
+    async fn can_stream_transactions() {
+        let ganache = Ganache::new().block_time(2u64).spawn();
+        let provider = Provider::<Http>::try_from(ganache.endpoint())
+            .unwrap()
+            .with_sender(ganache.addresses()[0]);
+
+        let accounts = provider.get_accounts().await.unwrap();
+
+        let tx = TransactionRequest::new()
+            .from(accounts[0])
+            .to(accounts[0])
+            .value(1e18 as u64);
+
+        let txs =
+            futures_util::future::join_all(std::iter::repeat(tx.clone()).take(3).map(|tx| async {
+                provider
+                    .send_transaction(tx, None)
+                    .await
+                    .unwrap()
+                    .await
+                    .unwrap()
+            }))
+            .await;
+
+        let stream = TransactionStream::new(
+            &provider,
+            stream::iter(txs.iter().map(|tx| tx.transaction_hash)),
+            10,
+        );
+        let res = stream
+            .collect::<Vec<_>>()
+            .await
+            .into_iter()
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap();
+
+        assert_eq!(res.len(), txs.len());
+        assert_eq!(
+            res.into_iter().map(|tx| tx.hash).collect::<HashSet<_>>(),
+            txs.into_iter().map(|tx| tx.transaction_hash).collect()
+        );
+    }
+}
