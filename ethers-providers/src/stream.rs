@@ -1,12 +1,15 @@
 use crate::{JsonRpcClient, Middleware, PinBoxFut, Provider, ProviderError};
 
-use ethers_core::types::{U256, Transaction, TxHash};
+use ethers_core::types::{Transaction, TxHash, U256};
 
 use futures_core::stream::Stream;
+use futures_core::Future;
 use futures_timer::Delay;
-use futures_util::{stream, FutureExt, StreamExt, TryFutureExt};
+use futures_util::stream::FuturesUnordered;
+use futures_util::{stream, FutureExt, StreamExt};
 use pin_project::pin_project;
 use serde::{de::DeserializeOwned, Serialize};
+use std::collections::VecDeque;
 use std::{
     fmt::Debug,
     pin::Pin,
@@ -14,9 +17,6 @@ use std::{
     time::Duration,
     vec::IntoIter,
 };
-use futures_core::Future;
-use futures_util::stream::FuturesUnordered;
-use std::collections::VecDeque;
 
 // https://github.com/tomusdrw/rust-web3/blob/befcb2fb8f3ca0a43e3081f68886fa327e64c8e6/src/api/eth_filter.rs#L20
 pub fn interval(duration: Duration) -> impl Stream<Item = ()> + Send + Unpin {
@@ -124,68 +124,113 @@ where
     }
 }
 
+/// Errors `TransactionStream` can throw
+#[derive(Debug, thiserror::Error)]
+pub enum GetTransactionError {
+    #[error("Failed to get transaction `{0}`: {1}")]
+    ProviderError(TxHash, ProviderError),
+    /// `get_transaction` resulted in a `None`
+    #[error("Transaction `{0}` not found {0}")]
+    NotFound(TxHash),
+}
 
+impl Into<ProviderError> for GetTransactionError {
+    fn into(self) -> ProviderError {
+        match self {
+            GetTransactionError::ProviderError(_, err) => err,
+            err @ GetTransactionError::NotFound(_) => ProviderError::CustomError(err.to_string()),
+        }
+    }
+}
 
 type TransactionFut<'a> = Pin<Box<dyn Future<Output = TransactionResult> + 'a>>;
 
-type TransactionResult = Result<Transaction, ProviderError>;
+type TransactionResult = Result<Transaction, GetTransactionError>;
 
-struct TxStream<'a, P> {
+/// Drains a stream of transaction hashes and yields entire `Transaction`.
+#[must_use = "streams do nothing unless polled"]
+pub struct TransactionStream<'a, P, St> {
+    /// Currently running futures pending completion.
     pending: FuturesUnordered<TransactionFut<'a>>,
+    /// Temporary buffered transaction that get started as soon as another future finishes.
     buffered: VecDeque<TxHash>,
+    /// The provider that gets the transaction
     provider: &'a Provider<P>,
-    watcher: FilterWatcher<'a, P, TxHash>,
+    /// A stream of transaction hashes.
+    stream: St,
+    /// max allowed futures to execute at once.
     max_concurrent: usize,
 }
 
-impl<'a, P: JsonRpcClient> Stream for TxStream<'a, P> {
+impl<'a, P: JsonRpcClient, St> TransactionStream<'a, P, St> {
+    /// Create a new `TransactionStream` instance
+    pub fn new(provider: &'a Provider<P>, stream: St, max_concurrent: usize) -> Self {
+        Self {
+            pending: Default::default(),
+            buffered: Default::default(),
+            provider,
+            stream,
+            max_concurrent,
+        }
+    }
+
+    /// Push a future into the set
+    fn push_tx(&mut self, tx: TxHash) {
+        let fut = self
+            .provider
+            .get_transaction(tx)
+            .then(move |res| match res {
+                Ok(Some(tx)) => futures_util::future::ok(tx),
+                Ok(None) => futures_util::future::err(GetTransactionError::NotFound(tx)),
+                Err(err) => futures_util::future::err(GetTransactionError::ProviderError(tx, err)),
+            });
+        self.pending.push(Box::pin(fut));
+    }
+}
+
+impl<'a, P, St> Stream for TransactionStream<'a, P, St>
+where
+    P: JsonRpcClient,
+    St: Stream<Item = TxHash> + Unpin + 'a,
+{
     type Item = TransactionResult;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let this = self.get_mut();
 
-        if let tx @ Poll::Ready(Some(_)) = this.pending.poll_next_unpin(cx) {
-            return tx;
-        }
-
+        // drain buffered transactions first
         while this.max_concurrent < this.max_concurrent {
-            if let Some(_) = this.buffered.pop_front() {
-                // TODO add get_tx again
+            if let Some(tx) = this.buffered.pop_front() {
+                this.push_tx(tx);
             } else {
                 break;
             }
         }
 
-        let mut watcher_done = false;
+        let mut stream_done = false;
         loop {
-            match Stream::poll_next(Pin::new(&mut this.watcher), cx) {
+            match Stream::poll_next(Pin::new(&mut this.stream), cx) {
                 Poll::Ready(Some(tx)) => {
                     if this.pending.len() < this.max_concurrent {
-                        this.pending
-                            .push(Box::pin(this.provider.get_transaction(tx).and_then(
-                                |res| {
-                                    if let Some(tx) = res {
-                                        futures_util::future::ok(tx)
-                                    } else {
-                                        futures_util::future::err(ProviderError::CustomError(
-                                            "Not found".to_string(),
-                                        ))
-                                    }
-                                },
-                            )));
+                        this.push_tx(tx);
                     } else {
                         this.buffered.push_back(tx);
                     }
                 }
                 Poll::Ready(None) => {
-                    watcher_done = true;
+                    stream_done = true;
                     break;
                 }
                 _ => break,
             }
         }
 
-        if watcher_done && this.pending.is_empty() {
+        // poll running futures
+        if let tx @ Poll::Ready(Some(_)) = this.pending.poll_next_unpin(cx) {
+            return tx;
+        }
+
+        if stream_done && this.pending.is_empty() {
             // all done
             return Poll::Ready(None);
         }

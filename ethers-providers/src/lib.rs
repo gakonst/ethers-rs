@@ -76,7 +76,7 @@ pub use pending_transaction::PendingTransaction;
 
 mod stream;
 pub use futures_util::StreamExt;
-pub use stream::{interval, FilterWatcher, DEFAULT_POLL_INTERVAL};
+pub use stream::{interval, FilterWatcher, TransactionStream, DEFAULT_POLL_INTERVAL};
 
 mod pubsub;
 pub use pubsub::{PubsubClient, SubscriptionStream};
