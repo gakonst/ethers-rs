@@ -269,12 +269,6 @@ mod tests {
             .unwrap()
             .with_sender(ganache.addresses()[0]);
 
-        provider
-            .watch_pending_transactions()
-            .await
-            .unwrap()
-            .transactions_unordered(10);
-
         let accounts = provider.get_accounts().await.unwrap();
 
         let tx = TransactionRequest::new()
