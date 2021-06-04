@@ -256,11 +256,83 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Http;
-    use ethers_core::types::TransactionRequest;
-    use ethers_core::utils::Ganache;
+    use crate::{Http, Ws};
+    use ethers_core::{
+        types::{TransactionReceipt, TransactionRequest},
+        utils::{Ganache, Geth},
+    };
+    use futures_util::{FutureExt, StreamExt};
     use std::collections::HashSet;
     use std::convert::TryFrom;
+
+    #[tokio::test]
+    async fn can_stream_pending_transactions() {
+        let num_txs = 5;
+        let geth = Geth::new().block_time(2u64).spawn();
+        let provider = Provider::<Http>::try_from(geth.endpoint())
+            .unwrap()
+            .interval(Duration::from_millis(1000));
+        let ws = Ws::connect(geth.ws_endpoint()).await.unwrap();
+        let ws_provider = Provider::new(ws);
+
+        let accounts = provider.get_accounts().await.unwrap();
+        let tx = TransactionRequest::new()
+            .from(accounts[0])
+            .to(accounts[0])
+            .value(1e18 as u64);
+
+        let mut sending = futures_util::future::join_all(
+            std::iter::repeat(tx.clone()).take(num_txs).map(|tx| async {
+                provider
+                    .send_transaction(tx, None)
+                    .await
+                    .unwrap()
+                    .await
+                    .unwrap()
+            }),
+        )
+        .fuse();
+
+        let mut watch_tx_stream = provider
+            .watch_pending_transactions()
+            .await
+            .unwrap()
+            .transactions_unordered(num_txs)
+            .fuse();
+
+        let mut sub_tx_stream = ws_provider
+            .subscribe_pending_txs()
+            .await
+            .unwrap()
+            .transactions_unordered(2)
+            .fuse();
+
+        let mut sent: Option<Vec<TransactionReceipt>> = None;
+        let mut watch_received: Vec<Transaction> = Vec::with_capacity(num_txs);
+        let mut sub_received: Vec<Transaction> = Vec::with_capacity(num_txs);
+
+        loop {
+            futures_util::select! {
+                txs = sending => {
+                    sent = Some(txs)
+                },
+                tx = watch_tx_stream.next() => watch_received.push(tx.unwrap().unwrap()),
+                tx = sub_tx_stream.next() => sub_received.push(tx.unwrap().unwrap()),
+            };
+            if watch_received.len() == num_txs && sub_received.len() == num_txs {
+                if let Some(ref sent) = sent {
+                    assert_eq!(sent.len(), watch_received.len());
+                    let sent_txs = sent
+                        .into_iter()
+                        .map(|tx| tx.transaction_hash)
+                        .collect::<HashSet<_>>();
+                    assert_eq!(sent_txs, watch_received.iter().map(|tx| tx.hash).collect());
+                    assert_eq!(sent_txs, sub_received.iter().map(|tx| tx.hash).collect());
+                    break;
+                }
+            }
+        }
+    }
 
     #[tokio::test]
     async fn can_stream_transactions() {
