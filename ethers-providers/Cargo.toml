@@ -49,6 +49,6 @@ tempfile = "3.2.0"
 
 [features]
 default = ["ws", "ipc"]
-celo = ["ethers-core/celo"]
+celo = ["ethers-core/celo", "ethers/celo"]
 ws = ["tokio", "tokio-tungstenite"]
 ipc = ["tokio", "tokio/io-util", "tokio-util", "bytes"]

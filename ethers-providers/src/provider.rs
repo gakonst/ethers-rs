@@ -847,18 +847,18 @@ mod tests {
     use super::*;
     use crate::Http;
     use ethers_core::types::H256;
+    use ethers_core::utils::Geth;
     use futures_util::StreamExt;
 
     #[tokio::test]
-    #[ignore]
-    // Ganache new block filters are super buggy! This test must be run with
-    // geth or parity running e.g. `geth --dev --rpc --dev.period 1`
+    #[cfg_attr(feature = "celo", ignore)]
     async fn test_new_block_filter() {
         let num_blocks = 3;
-
-        let provider = Provider::<HttpProvider>::try_from("http://localhost:8545")
+        let geth = Geth::new().block_time(2u64).spawn();
+        let provider = Provider::<Http>::try_from(geth.endpoint())
             .unwrap()
             .interval(Duration::from_millis(1000));
+
         let start_block = provider.get_block_number().await.unwrap();
 
         let stream = provider.watch_blocks().await.unwrap().stream();
@@ -898,15 +898,12 @@ mod tests {
         assert_eq!(provider.is_signer().await, false);
     }
 
-    // this must be run with geth or parity since ganache-core still does not support
-    // eth_pendingTransactions, https://github.com/trufflesuite/ganache-core/issues/405
-    // example command: `geth --dev --rpc --dev.period 1`
     #[tokio::test]
-    #[ignore]
     async fn test_new_pending_txs_filter() {
         let num_txs = 5;
 
-        let provider = Provider::<HttpProvider>::try_from("http://localhost:8545")
+        let geth = Geth::new().block_time(2u64).spawn();
+        let provider = Provider::<Http>::try_from(geth.endpoint())
             .unwrap()
             .interval(Duration::from_millis(1000));
         let accounts = provider.get_accounts().await.unwrap();
