@@ -851,6 +851,7 @@ mod tests {
     use futures_util::StreamExt;
 
     #[tokio::test]
+    #[cfg_attr(feature = "celo", ignore)]
     async fn test_new_block_filter() {
         let num_blocks = 3;
         let geth = Geth::new().block_time(2u64).spawn();
