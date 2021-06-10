@@ -561,3 +561,17 @@ pub trait Middleware: Sync + Send + Debug {
             .map_err(FromErr::from)
     }
 }
+
+#[cfg(feature = "celo")]
+#[async_trait]
+pub trait CeloMiddleware: Middleware {
+    async fn get_validators_bls_public_keys(
+        &self,
+        block_number: String,
+    ) -> Result<Vec<String>, ProviderError> {
+        self.provider()
+            .get_validators_bls_public_keys(block_number)
+            .await
+            .map_err(FromErr::from)
+    }
+}
