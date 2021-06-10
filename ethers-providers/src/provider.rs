@@ -875,6 +875,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[cfg_attr(feature = "celo", ignore)]
     async fn test_is_signer() {
         use ethers_core::utils::Ganache;
         use std::str::FromStr;
