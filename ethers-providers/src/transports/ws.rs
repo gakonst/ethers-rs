@@ -43,7 +43,7 @@ pub struct Ws {
     requests: mpsc::UnboundedSender<TransportMessage>,
 }
 
-type Pending = oneshot::Sender<serde_json::Value>;
+type Pending = oneshot::Sender<Result<serde_json::Value, JsonRpcError>>;
 type Subscription = mpsc::UnboundedSender<serde_json::Value>;
 
 enum TransportMessage {
@@ -128,6 +128,9 @@ impl JsonRpcClient for Ws {
 
         // wait for the response
         let res = receiver.await?;
+
+        // in case the request itself has any errors
+        let res = res?;
 
         // parse it
         Ok(serde_json::from_value(res)?)
@@ -268,7 +271,7 @@ where
         if let Ok(resp) = serde_json::from_str::<Response<serde_json::Value>>(&inner) {
             if let Some(request) = self.pending.remove(&resp.id) {
                 request
-                    .send(resp.data.into_result()?)
+                    .send(resp.data.into_result())
                     .map_err(to_client_error)?;
             }
         } else if let Ok(notification) =
@@ -286,8 +289,8 @@ where
 }
 
 // TrySendError is private :(
-fn to_client_error<T: ToString>(err: T) -> ClientError {
-    ClientError::ChannelError(err.to_string())
+fn to_client_error<T: Debug>(err: T) -> ClientError {
+    ClientError::ChannelError(format!("{:?}", err))
 }
 
 #[derive(Error, Debug)]
