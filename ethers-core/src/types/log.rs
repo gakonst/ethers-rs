@@ -300,7 +300,7 @@ impl Filter {
     /// # }
     /// ```
     ///
-    /// Match a all blocks in range `(BlockNumber::Earliest..1337)`
+    /// Match all blocks in range `(BlockNumber::Earliest..1337)`
     ///
     /// ```rust
     /// # use ethers::types::{Filter, H256};
