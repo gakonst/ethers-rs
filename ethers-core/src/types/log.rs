@@ -291,7 +291,7 @@ impl Filter {
     /// # }
     /// ```
     ///
-    /// Match a all blocks in range `(1337..BlockNumber::Latest)`
+    /// Match all blocks in range `(1337..BlockNumber::Latest)`
     ///
     /// ```rust
     /// # use ethers::types::{Filter, H256};
