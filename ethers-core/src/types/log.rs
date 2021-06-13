@@ -4,6 +4,7 @@ use crate::{
     utils::keccak256,
 };
 use serde::{ser::SerializeStruct, Deserialize, Serialize, Serializer};
+use std::ops::{Range, RangeFrom, RangeTo};
 
 /// A log produced by a transaction.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -69,6 +70,65 @@ pub enum FilterBlockOption {
         to_block: Option<BlockNumber>,
     },
     AtBlockHash(H256),
+}
+
+impl From<BlockNumber> for FilterBlockOption {
+    fn from(block: BlockNumber) -> Self {
+        let block = Some(block);
+        FilterBlockOption::Range {
+            from_block: block,
+            to_block: block,
+        }
+    }
+}
+
+impl From<U64> for FilterBlockOption {
+    fn from(block: U64) -> Self {
+        BlockNumber::from(block).into()
+    }
+}
+
+impl From<u64> for FilterBlockOption {
+    fn from(block: u64) -> Self {
+        BlockNumber::from(block).into()
+    }
+}
+
+impl<T: Into<BlockNumber>> From<Range<T>> for FilterBlockOption {
+    fn from(r: Range<T>) -> Self {
+        let from_block = Some(r.start.into());
+        let to_block = Some(r.end.into());
+        FilterBlockOption::Range {
+            from_block,
+            to_block,
+        }
+    }
+}
+
+impl<T: Into<BlockNumber>> From<RangeTo<T>> for FilterBlockOption {
+    fn from(r: RangeTo<T>) -> Self {
+        let to_block = Some(r.end.into());
+        FilterBlockOption::Range {
+            from_block: Some(BlockNumber::Earliest),
+            to_block,
+        }
+    }
+}
+
+impl<T: Into<BlockNumber>> From<RangeFrom<T>> for FilterBlockOption {
+    fn from(r: RangeFrom<T>) -> Self {
+        let from_block = Some(r.start.into());
+        FilterBlockOption::Range {
+            from_block,
+            to_block: Some(BlockNumber::Latest),
+        }
+    }
+}
+
+impl From<H256> for FilterBlockOption {
+    fn from(hash: H256) -> Self {
+        FilterBlockOption::AtBlockHash(hash)
+    }
 }
 
 impl Default for FilterBlockOption {
@@ -185,6 +245,72 @@ impl Serialize for Filter {
 impl Filter {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Sets the inner filter object
+    ///
+    /// *NOTE:* ranges are always inclusive
+    ///
+    /// # Examples
+    ///
+    /// Match only a specific block
+    ///
+    /// ```rust
+    /// # use ethers::types::Filter;
+    /// # fn main() {
+    /// let filter = Filter::new().select(69u64);
+    /// # }
+    /// ```
+    /// This is the same as `Filter::new().from_block(1337u64).to_block(1337u64)`
+    ///
+    /// Match the latest block only
+    ///
+    /// ```rust
+    /// # use ethers::types::{Filter, BlockNumber};
+    /// # fn main() {
+    /// let filter = Filter::new().select(BlockNumber::Latest);
+    /// # }
+    /// ```
+    ///
+    /// Match a block by its hash
+    ///
+    /// ```rust
+    /// # use ethers::types::{Filter, H256};
+    /// # fn main() {
+    /// let filter = Filter::new().select(H256::zero());
+    /// # }
+    /// ```
+    /// This is the same as `at_block_hash`
+    ///
+    /// Match a range of blocks
+    ///
+    /// ```rust
+    /// # use ethers::types::{Filter, H256};
+    /// # fn main() {
+    /// let filter = Filter::new().select(0u64..100u64);
+    /// # }
+    /// ```
+    ///
+    /// Match all blocks in range `(1337..BlockNumber::Latest)`
+    ///
+    /// ```rust
+    /// # use ethers::types::{Filter, H256};
+    /// # fn main() {
+    /// let filter = Filter::new().select(1337u64..);
+    /// # }
+    /// ```
+    ///
+    /// Match all blocks in range `(BlockNumber::Earliest..1337)`
+    ///
+    /// ```rust
+    /// # use ethers::types::{Filter, H256};
+    /// # fn main() {
+    /// let filter = Filter::new().select(..1337u64);
+    /// # }
+    /// ```
+    pub fn select(mut self, filter: impl Into<FilterBlockOption>) -> Self {
+        self.block_option = filter.into();
+        self
     }
 
     #[allow(clippy::wrong_self_convention)]
