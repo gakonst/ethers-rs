@@ -157,9 +157,10 @@ impl<P: JsonRpcClient> Provider<P> {
 impl<P: JsonRpcClient> CeloMiddleware for Provider<P> {
     async fn get_validators_bls_public_keys(
         &self,
-        block_number: String,
-    ) -> Result<Vec<String>, ProviderError> {
-        self.request("istanbul_getValidatorsBLSPublicKeys", [block_number])
+        block: Option<BlockId>,
+    ) -> Result<Vec<Vec<u8>>, ProviderError> {
+        let block = utils::serialize(&block.unwrap_or_else(|| BlockNumber::Latest.into()));
+        self.request("istanbul_getValidatorsBLSPublicKeys", [block])
             .await
     }
 }

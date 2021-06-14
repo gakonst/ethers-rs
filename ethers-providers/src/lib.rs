@@ -567,10 +567,10 @@ pub trait Middleware: Sync + Send + Debug {
 pub trait CeloMiddleware: Middleware {
     async fn get_validators_bls_public_keys(
         &self,
-        block_number: String,
-    ) -> Result<Vec<String>, ProviderError> {
+        block: Option<BlockId>,
+    ) -> Result<Vec<Vec<u8>>, ProviderError> {
         self.provider()
-            .get_validators_bls_public_keys(block_number)
+            .get_validators_bls_public_keys(block)
             .await
             .map_err(FromErr::from)
     }
