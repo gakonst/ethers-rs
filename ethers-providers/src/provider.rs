@@ -155,12 +155,12 @@ impl<P: JsonRpcClient> Provider<P> {
 #[cfg(feature = "celo")]
 #[async_trait]
 impl<P: JsonRpcClient> CeloMiddleware for Provider<P> {
-    async fn get_validators_bls_public_keys(
+    async fn get_validators_bls_public_keys<T: Into<BlockId> + Send + Sync>(
         &self,
-        block: Option<BlockId>,
-    ) -> Result<Vec<Vec<u8>>, ProviderError> {
-        let block = utils::serialize(&block.unwrap_or_else(|| BlockNumber::Latest.into()));
-        self.request("istanbul_getValidatorsBLSPublicKeys", [block])
+        block_id: T,
+    ) -> Result<Vec<String>, ProviderError> {
+        let block_id = utils::serialize(&block_id.into());
+        self.request("istanbul_getValidatorsBLSPublicKeys", [block_id])
             .await
     }
 }
