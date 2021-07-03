@@ -46,7 +46,7 @@ impl<M: Middleware> Deployer<M> {
             .confirmations(self.confs)
             .await
             .map_err(|_| ContractError::ContractNotDeployed)?
-            .ok_or_else(|| ContractError::ContractNotDeployed)?;
+            .ok_or(ContractError::ContractNotDeployed)?;
         let address = receipt
             .contract_address
             .ok_or(ContractError::ContractNotDeployed)?;
