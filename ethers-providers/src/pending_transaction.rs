@@ -168,7 +168,9 @@ impl<'a, P: JsonRpcClient> Future for PendingTransaction<'a, P> {
                 ctx.waker().wake_by_ref();
             }
             PendingTxState::GettingBlockNumber(fut, receipt) => {
-                // if the receipt is None here, we are in a bad state.
+                // This is safe so long as we only enter the `GettingBlock`
+                // loop from `CheckingReceipt`, which contains an explicit
+                // `is_none` check
                 let receipt = receipt.take().expect("GettingBlockNumber without receipt");
 
                 // Wait for the interval
