@@ -125,7 +125,7 @@ mod eth_tests {
         let tx = TransactionRequest::new().to(who).from(who);
         let pending_tx = provider.send_transaction(tx, None).await.unwrap();
         let tx_hash = *pending_tx;
-        let receipt = pending_tx.confirmations(3).await.unwrap();
+        let receipt = pending_tx.confirmations(3).await.unwrap().unwrap();
         // got the correct receipt
         assert_eq!(receipt.transaction_hash, tx_hash);
     }

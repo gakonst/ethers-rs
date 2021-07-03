@@ -53,7 +53,7 @@ mod eth_tests {
         let gas_estimate = contract_call.estimate_gas().await.unwrap();
         let pending_tx = contract_call.send().await.unwrap();
         let tx = client.get_transaction(*pending_tx).await.unwrap().unwrap();
-        let tx_receipt = pending_tx.await.unwrap();
+        let tx_receipt = pending_tx.await.unwrap().unwrap();
         assert_eq!(last_sender.clone().call().await.unwrap(), client2.address());
         assert_eq!(get_value.clone().call().await.unwrap(), "hi");
         assert_eq!(tx.input, calldata);
