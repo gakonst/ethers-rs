@@ -142,6 +142,7 @@ impl<'a, P: JsonRpcClient> Future for PendingTransaction<'a, P> {
                     this,
                     PendingTxState::PausedGettingReceipt
                 );
+
                 // If we requested more than 1 confirmation, we need to compare the receipt's
                 // block number and the current block
                 if *this.confirmations > 1 {
@@ -168,6 +169,8 @@ impl<'a, P: JsonRpcClient> Future for PendingTransaction<'a, P> {
                 ctx.waker().wake_by_ref();
             }
             PendingTxState::GettingBlockNumber(fut, receipt) => {
+                let current_block = futures_util::ready!(fut.as_mut().poll(ctx))?;
+
                 // This is safe so long as we only enter the `GettingBlock`
                 // loop from `CheckingReceipt`, which contains an explicit
                 // `is_none` check
@@ -177,9 +180,6 @@ impl<'a, P: JsonRpcClient> Future for PendingTransaction<'a, P> {
                 let inclusion_block = receipt
                     .block_number
                     .expect("Receipt did not have a block number. This should never happen");
-
-                let current_block = futures_util::ready!(fut.as_mut().poll(ctx))?;
-
                 // if the transaction has at least K confirmations, return the receipt
                 // (subtract 1 since the tx already has 1 conf when it's mined)
                 if current_block > inclusion_block + *this.confirmations - 1 {
