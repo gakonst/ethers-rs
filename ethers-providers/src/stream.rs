@@ -323,7 +323,7 @@ mod tests {
                 if let Some(ref sent) = sent {
                     assert_eq!(sent.len(), watch_received.len());
                     let sent_txs = sent
-                        .into_iter()
+                        .iter()
                         .map(|tx| tx.transaction_hash)
                         .collect::<HashSet<_>>();
                     assert_eq!(sent_txs, watch_received.iter().map(|tx| tx.hash).collect());

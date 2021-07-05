@@ -1,6 +1,6 @@
 //! This module contains an 256-bit signed integer implementation.
 //! This module was derived for ethers-core via https://github.com/gnosis/ethcontract-rs/
-
+#![allow(clippy::wrong_self_convention)]
 use crate::abi::{InvalidOutputType, Token, Tokenizable};
 use crate::types::U256;
 use ethabi::ethereum_types::FromDecStrErr;
@@ -1135,6 +1135,7 @@ macro_rules! impl_shift {
             }
         }
 
+        /// Implements the logical shift right operation
         impl ops::Shr<$t> for I256 {
             type Output = Self;
 

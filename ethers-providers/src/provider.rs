@@ -899,10 +899,10 @@ mod tests {
         let provider = Provider::<Http>::try_from(ganache.endpoint())
             .unwrap()
             .with_sender(ganache.addresses()[0]);
-        assert_eq!(provider.is_signer().await, true);
+        assert!(provider.is_signer().await);
 
         let provider = Provider::<Http>::try_from(ganache.endpoint()).unwrap();
-        assert_eq!(provider.is_signer().await, false);
+        assert!(!provider.is_signer().await);
 
         let sender = Address::from_str("635B4764D1939DfAcD3a8014726159abC277BecC")
             .expect("should be able to parse hex address");
@@ -911,7 +911,7 @@ mod tests {
         )
         .unwrap()
         .with_sender(sender);
-        assert_eq!(provider.is_signer().await, false);
+        assert!(!provider.is_signer().await);
     }
 
     #[tokio::test]

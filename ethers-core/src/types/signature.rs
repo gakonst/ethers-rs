@@ -134,6 +134,7 @@ impl Signature {
     }
 
     /// Copies and serializes `self` into a new `Vec` with the recovery id included
+    #[allow(clippy::wrong_self_convention)]
     pub fn to_vec(&self) -> Vec<u8> {
         self.into()
     }

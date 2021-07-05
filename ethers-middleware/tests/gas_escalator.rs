@@ -21,7 +21,7 @@ async fn gas_escalator_live() {
     let address = wallet.address();
     let provider = SignerMiddleware::new(provider, wallet);
 
-    let escalator = GeometricGasPrice::new(5.0, 10u64, Some(2000_000_000_000u64));
+    let escalator = GeometricGasPrice::new(5.0, 10u64, Some(2_000_000_000_000u64));
 
     let provider = GasEscalatorMiddleware::new(provider, escalator, Frequency::Duration(3000));
 

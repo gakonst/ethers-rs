@@ -10,7 +10,7 @@ async fn txpool() {
     let geth = Geth::new().block_time(20u64).spawn();
     let provider = Provider::<Http>::try_from(geth.endpoint()).unwrap();
 
-    let account = provider.get_accounts().await.unwrap()[0].clone();
+    let account = provider.get_accounts().await.unwrap()[0];
     let value: u64 = 42;
     let gas_price = ethers::types::U256::from_dec_str("221435145689").unwrap();
     let mut tx = TransactionRequest::new()

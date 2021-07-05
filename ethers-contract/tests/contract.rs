@@ -1,7 +1,4 @@
-use ethers::{
-    contract::ContractFactory,
-    types::{BlockId, H256},
-};
+use ethers::{contract::ContractFactory, types::H256};
 
 mod common;
 pub use common::*;
@@ -12,7 +9,7 @@ mod eth_tests {
     use ethers::{
         contract::{LogMeta, Multicall},
         providers::{Http, Middleware, PendingTransaction, Provider, StreamExt},
-        types::{Address, U256},
+        types::{Address, BlockId, U256},
         utils::Ganache,
     };
     use std::{convert::TryFrom, sync::Arc};

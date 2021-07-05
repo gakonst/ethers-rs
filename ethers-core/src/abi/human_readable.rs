@@ -537,7 +537,7 @@ mod tests {
     fn parses_event() {
         assert_eq!(
             AbiParser::default()
-                .parse_event(&mut "event Foo (address indexed x, uint y, bytes32[] z)")
+                .parse_event("event Foo (address indexed x, uint y, bytes32[] z)")
                 .unwrap(),
             Event {
                 anonymous: false,
@@ -567,7 +567,7 @@ mod tests {
     fn parses_anonymous_event() {
         assert_eq!(
             AbiParser::default()
-                .parse_event(&mut "event Foo() anonymous")
+                .parse_event("event Foo() anonymous")
                 .unwrap(),
             Event {
                 anonymous: true,
@@ -581,7 +581,7 @@ mod tests {
     fn parses_unnamed_event() {
         assert_eq!(
             AbiParser::default()
-                .parse_event(&mut "event Foo(address)")
+                .parse_event("event Foo(address)")
                 .unwrap(),
             Event {
                 anonymous: false,
@@ -599,7 +599,7 @@ mod tests {
     fn parses_unnamed_indexed_event() {
         assert_eq!(
             AbiParser::default()
-                .parse_event(&mut "event Foo(address indexed)")
+                .parse_event("event Foo(address indexed)")
                 .unwrap(),
             Event {
                 anonymous: false,

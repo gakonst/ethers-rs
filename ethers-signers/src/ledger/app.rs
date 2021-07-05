@@ -180,7 +180,7 @@ impl LedgerEthereum {
         let v = result[0] as u64;
         let r = H256::from_slice(&result[1..33]);
         let s = H256::from_slice(&result[33..]);
-        Ok(Signature { v, r, s })
+        Ok(Signature { r, s, v })
     }
 
     // helper which converts a derivation path to bytes

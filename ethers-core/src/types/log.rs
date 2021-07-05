@@ -446,18 +446,18 @@ mod tests {
         let addr: Address = "f817796F60D268A36a57b8D2dF1B97B14C0D0E1d".parse().unwrap();
         let filter = Filter::new();
 
-        let ser = serialize(&filter.clone());
+        let ser = serialize(&filter);
         assert_eq!(ser, json!({ "topics": [] }));
 
         let filter = filter.address(addr);
 
-        let ser = serialize(&filter.clone());
+        let ser = serialize(&filter);
         assert_eq!(ser, json!({"address" : addr, "topics": []}));
 
         let filter = filter.event(event);
 
         // 0
-        let ser = serialize(&filter.clone());
+        let ser = serialize(&filter);
         assert_eq!(ser, json!({ "address" : addr, "topics": [t0]}));
 
         // 1
@@ -497,7 +497,7 @@ mod tests {
         );
 
         // 1 & 2 & 3
-        let ser = serialize(&filter.clone().topic1(t1).topic2(t2).topic3(t3));
+        let ser = serialize(&filter.topic1(t1).topic2(t2).topic3(t3));
         assert_eq!(
             ser,
             json!({ "address" : addr, "topics": [t0, t1_padded, t2, t3_padded]})
