@@ -39,7 +39,7 @@ tracing-futures = { version = "0.2.5", default-features = false, features = ["st
 # tokio
 tokio = { version = "1.5", default-features = false, optional = true }
 tokio-tungstenite = { version = "0.13.0", default-features = false, features = ["connect", "tls"], optional = true }
-tokio-util = { version = "0.6.6", default-features = false, features = ["io"], optional = true }
+tokio-util = { version = "0.6.7", default-features = false, features = ["io"], optional = true }
 bytes = { version  = "1.0.1", default-features = false, optional = true }
 
 [dev-dependencies]
