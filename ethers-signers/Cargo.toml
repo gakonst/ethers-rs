@@ -15,7 +15,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
 ethers-core = { version = "0.2.2", path = "../ethers-core" }
-thiserror = { version = "1.0.24", default-features = false }
+thiserror = { version = "1.0.26", default-features = false }
 coins-bip32 = "0.2.2"
 coins-bip39 = "0.2.2"
 coins-ledger = { version = "0.1.0", default-features = false, optional = true }
