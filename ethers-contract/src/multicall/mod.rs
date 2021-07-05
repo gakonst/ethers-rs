@@ -38,7 +38,7 @@ pub static ADDRESS_BOOK: Lazy<HashMap<U256, Address>> = Lazy::new(|| {
     let addr =
         Address::from_str("2cc8688c5f75e365aaeeb4ea8d6a480405a48d2a").expect("Decoding failed");
     m.insert(U256::from(42u8), addr);
-    
+
     // xdai
     let addr =
         Address::from_str("b5b692a88bdfc81ca69dcb1d924f59f0413a602a").expect("Decoding failed");

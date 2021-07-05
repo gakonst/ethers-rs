@@ -71,8 +71,8 @@ mod tests {
     use super::*;
 
     fn assert_hex(hash: H256, val: &str) {
-        let v = if val.starts_with("0x") {
-            &val[2..]
+        let v = if let Some(stripped) = val.strip_prefix("0x") {
+            stripped
         } else {
             val
         };

@@ -362,7 +362,7 @@ mod tests {
         );
         pending_map.insert(
             Address::from_str("201354729f8d0f8b64e9a0c353c672c6a66b3857").unwrap(),
-            pending_map_inner.clone(),
+            pending_map_inner,
         );
         let mut queued_map = BTreeMap::new();
         let mut queued_map_inner = BTreeMap::new();
@@ -400,7 +400,7 @@ mod tests {
         );
         queued_map.insert(
             Address::from_str("307e8f249bcccfa5b245449256c5d7e6e079943e").unwrap(),
-            queued_map_inner.clone(),
+            queued_map_inner,
         );
 
         TxpoolInspect {

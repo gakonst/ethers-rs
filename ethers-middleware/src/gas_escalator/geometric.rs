@@ -89,6 +89,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::float_cmp)]
     fn behaves_with_realistic_values() {
         let oracle = GeometricGasPrice::new(1.25, 10u64, None::<u64>);
         const GWEI: f64 = 1000000000.0;
