@@ -430,7 +430,7 @@ dependencies = [
  "hmac 0.10.1",
  "pbkdf2",
  "rand 0.7.3",
- "sha2 0.9.3",
+ "sha2 0.9.5",
  "thiserror",
 ]
 
@@ -450,7 +450,7 @@ dependencies = [
  "ripemd160",
  "serde",
  "serde_derive",
- "sha2 0.9.3",
+ "sha2 0.9.5",
  "sha3",
  "thiserror",
 ]
@@ -506,6 +506,15 @@ name = "core-foundation-sys"
 version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ea221b5284a47e40033bf9b66f35f984ec0ea2931eb03505246cd27a963f981b"
+
+[[package]]
+name = "cpufeatures"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "66c99696f6c9dd7f35d486b9d04d7e6e202aa3e8c40d553f2fdf5e7e0c6a71ef"
+dependencies = [
+ "libc",
+]
 
 [[package]]
 name = "cpuid-bool"
@@ -648,7 +657,7 @@ dependencies = [
  "ed25519",
  "rand 0.7.3",
  "serde",
- "sha2 0.9.3",
+ "sha2 0.9.5",
  "zeroize",
 ]
 
@@ -713,7 +722,7 @@ dependencies = [
  "scrypt",
  "serde",
  "serde_json",
- "sha2 0.9.3",
+ "sha2 0.9.5",
  "sha3",
  "thiserror",
  "uuid",
@@ -925,7 +934,7 @@ dependencies = [
  "hex",
  "rand 0.7.3",
  "serde_json",
- "sha2 0.9.3",
+ "sha2 0.9.5",
  "tempfile",
  "thiserror",
  "tokio",
@@ -1411,7 +1420,7 @@ dependencies = [
  "cfg-if 1.0.0",
  "ecdsa",
  "elliptic-curve 0.8.5",
- "sha2 0.9.3",
+ "sha2 0.9.5",
  "sha3",
 ]
 
@@ -1429,9 +1438,9 @@ checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 
 [[package]]
 name = "libc"
-version = "0.2.92"
+version = "0.2.97"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "56d855069fafbb9b344c0f962150cd2c1187975cb1c22c1522c240d8c4986714"
+checksum = "12b8adadd720df158f4d70dfe7ccc6adb0472d7c55ca83445f6a5ab3e36f8fb6"
 
 [[package]]
 name = "libusb1-sys"
@@ -1638,7 +1647,7 @@ checksum = "7ca0196a204bb3f33305ba4a48b38f6e6e621cba8603a4e0650e6532e0949de4"
 dependencies = [
  "ecdsa",
  "elliptic-curve 0.8.5",
- "sha2 0.9.3",
+ "sha2 0.9.5",
 ]
 
 [[package]]
@@ -1683,7 +1692,7 @@ dependencies = [
  "crypto-mac 0.10.0",
  "hmac 0.10.1",
  "password-hash",
- "sha2 0.9.3",
+ "sha2 0.9.5",
 ]
 
 [[package]]
@@ -2086,7 +2095,7 @@ dependencies = [
  "password-hash",
  "pbkdf2",
  "salsa20",
- "sha2 0.9.3",
+ "sha2 0.9.5",
 ]
 
 [[package]]
@@ -2202,13 +2211,13 @@ dependencies = [
 
 [[package]]
 name = "sha2"
-version = "0.9.3"
+version = "0.9.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fa827a14b29ab7f44778d14a88d3cb76e949c45083f7dbfa507d0cb699dc12de"
+checksum = "b362ae5752fd2137731f9fa25fd4d9058af34666ca1966fb969119cc35719f12"
 dependencies = [
  "block-buffer 0.9.0",
  "cfg-if 1.0.0",
- "cpuid-bool",
+ "cpufeatures",
  "digest 0.9.0",
  "opaque-debug 0.3.0",
 ]
@@ -2802,7 +2811,7 @@ dependencies = [
  "rusb",
  "serde",
  "serde_json",
- "sha2 0.9.3",
+ "sha2 0.9.5",
  "signature",
  "subtle 2.4.0",
  "thiserror",
