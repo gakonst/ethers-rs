@@ -27,7 +27,7 @@ auto_impl = { version = "0.4.1", default-features = false }
 
 # required for implementing stream on the filters
 futures-core = { version = "0.3.12", default-features = false }
-futures-util = { version = "0.3.14", default-features = false }
+futures-util = { version = "0.3.15", default-features = false }
 futures-timer = { version = "3.0.2", default-features = false }
 futures-channel = { version = "0.3.13", default-features = false }
 pin-project = { version = "1.0.7", default-features = false }
