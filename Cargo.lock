@@ -521,9 +521,9 @@ checksum = "7a81dae078cea95a014a339291cec439d2f232ebe854a9d672b796c6afafa9b7"
 
 [[package]]
 name = "crypto-bigint"
-version = "0.2.0"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "281d926f72b42bf3ba840b88cd53e39f36be9f66e34c8df3fb336372b3753d41"
+checksum = "bdc9968be9247fb330af911b91a58a267cbbcfcb8dea88debaf977738950dce5"
 dependencies = [
  "generic-array 0.14.4",
  "subtle 2.4.0",
@@ -678,9 +678,9 @@ dependencies = [
 
 [[package]]
 name = "elliptic-curve"
-version = "0.10.0"
+version = "0.10.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ade912ac38a947c8bff6d07bcf0ef97327027837963b0452e6f2a9e78b734ebf"
+checksum = "dd035cb119cbc25e91bb6f1abbfe341388ddb47a1fe5e77ca6bcbe231e87580b"
 dependencies = [
  "crypto-bigint",
  "generic-array 0.14.4",
@@ -836,7 +836,7 @@ dependencies = [
  "bincode",
  "bytes",
  "ecdsa",
- "elliptic-curve 0.10.0",
+ "elliptic-curve 0.10.3",
  "ethabi",
  "ethers",
  "funty",
@@ -916,7 +916,7 @@ dependencies = [
  "coins-bip32",
  "coins-bip39",
  "coins-ledger",
- "elliptic-curve 0.10.0",
+ "elliptic-curve 0.10.3",
  "eth-keystore",
  "ethers",
  "ethers-core",
