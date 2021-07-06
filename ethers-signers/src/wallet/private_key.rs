@@ -4,6 +4,7 @@ use super::Wallet;
 use crate::wallet::mnemonic::MnemonicBuilderError;
 use coins_bip32::Bip32Error;
 use coins_bip39::MnemonicError;
+use elliptic_curve::rand_core;
 use eth_keystore::KeystoreError;
 use ethers_core::{
     k256::ecdsa::{self, SigningKey},
@@ -56,7 +57,7 @@ impl Wallet<SigningKey> {
     pub fn new_keystore<P, R, S>(dir: P, rng: &mut R, password: S) -> Result<Self, WalletError>
     where
         P: AsRef<Path>,
-        R: Rng + CryptoRng,
+        R: Rng + CryptoRng + rand_core::CryptoRng,
         S: AsRef<[u8]>,
     {
         let (secret, _) = eth_keystore::new(dir, rng, password)?;
