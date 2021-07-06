@@ -289,6 +289,7 @@ mod tests {
                     .unwrap()
                     .await
                     .unwrap()
+                    .unwrap()
             }),
         )
         .fuse();
@@ -361,7 +362,7 @@ mod tests {
 
         let stream = TransactionStream::new(
             &provider,
-            stream::iter(txs.iter().map(|tx| tx.transaction_hash)),
+            stream::iter(txs.iter().cloned().map(|tx| tx.unwrap().transaction_hash)),
             10,
         );
         let res = stream
@@ -374,7 +375,9 @@ mod tests {
         assert_eq!(res.len(), txs.len());
         assert_eq!(
             res.into_iter().map(|tx| tx.hash).collect::<HashSet<_>>(),
-            txs.into_iter().map(|tx| tx.transaction_hash).collect()
+            txs.into_iter()
+                .map(|tx| tx.unwrap().transaction_hash)
+                .collect()
         );
     }
 }

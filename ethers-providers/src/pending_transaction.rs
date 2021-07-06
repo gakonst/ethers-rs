@@ -3,7 +3,7 @@ use crate::{
     stream::{interval, DEFAULT_POLL_INTERVAL},
     JsonRpcClient, PinBoxFut, Provider, ProviderError,
 };
-use ethers_core::types::{TransactionReceipt, TxHash, U64};
+use ethers_core::types::{Transaction, TransactionReceipt, TxHash, U64};
 use futures_core::stream::Stream;
 use futures_util::stream::StreamExt;
 use pin_project::pin_project;
@@ -33,12 +33,12 @@ pub struct PendingTransaction<'a, P> {
 impl<'a, P: JsonRpcClient> PendingTransaction<'a, P> {
     /// Creates a new pending transaction poller from a hash and a provider
     pub fn new(tx_hash: TxHash, provider: &'a Provider<P>) -> Self {
-        let fut = Box::pin(provider.get_transaction_receipt(tx_hash));
+        let fut = Box::pin(provider.get_transaction(tx_hash));
         Self {
             tx_hash,
             confirmations: 1,
             provider,
-            state: PendingTxState::GettingReceipt(fut),
+            state: PendingTxState::GettingTx(fut),
             interval: Box::new(interval(DEFAULT_POLL_INTERVAL)),
         }
     }
@@ -57,13 +57,68 @@ impl<'a, P: JsonRpcClient> PendingTransaction<'a, P> {
     }
 }
 
+macro_rules! rewake_with_new_state {
+    ($ctx:ident, $this:ident, $new_state:expr) => {
+        *$this.state = $new_state;
+        $ctx.waker().wake_by_ref();
+        return Poll::Pending;
+    };
+}
+
+macro_rules! rewake_with_new_state_if {
+    ($condition:expr, $ctx:ident, $this:ident, $new_state:expr) => {
+        if $condition {
+            rewake_with_new_state!($ctx, $this, $new_state);
+        }
+    };
+}
+
 impl<'a, P: JsonRpcClient> Future for PendingTransaction<'a, P> {
-    type Output = Result<TransactionReceipt, ProviderError>;
+    type Output = Result<Option<TransactionReceipt>, ProviderError>;
 
     fn poll(self: Pin<&mut Self>, ctx: &mut Context) -> Poll<Self::Output> {
         let this = self.project();
 
         match this.state {
+            PendingTxState::PausedGettingTx => {
+                // Wait the polling period so that we do not spam the chain when no
+                // new block has been mined
+                let _ready = futures_util::ready!(this.interval.poll_next_unpin(ctx));
+                let fut = Box::pin(this.provider.get_transaction(*this.tx_hash));
+                *this.state = PendingTxState::GettingTx(fut);
+                ctx.waker().wake_by_ref();
+            }
+            PendingTxState::GettingTx(fut) => {
+                let tx_res = futures_util::ready!(fut.as_mut().poll(ctx));
+                // If the provider errors, just try again after the interval.
+                // nbd.
+                rewake_with_new_state_if!(
+                    tx_res.is_err(),
+                    ctx,
+                    this,
+                    PendingTxState::PausedGettingTx
+                );
+
+                let tx_opt = tx_res.unwrap();
+                // If the tx is no longer in the mempool, return Ok(None)
+                if tx_opt.is_none() {
+                    *this.state = PendingTxState::Completed;
+                    return Poll::Ready(Ok(None));
+                }
+
+                // If it hasn't confirmed yet, poll again later
+                let tx = tx_opt.unwrap();
+                rewake_with_new_state_if!(
+                    tx.block_number.is_none(),
+                    ctx,
+                    this,
+                    PendingTxState::PausedGettingTx
+                );
+
+                // Start polling for the receipt now
+                let fut = Box::pin(this.provider.get_transaction_receipt(*this.tx_hash));
+                *this.state = PendingTxState::GettingReceipt(fut);
+            }
             PendingTxState::PausedGettingReceipt => {
                 // Wait the polling period so that we do not spam the chain when no
                 // new block has been mined
@@ -73,25 +128,31 @@ impl<'a, P: JsonRpcClient> Future for PendingTransaction<'a, P> {
                 ctx.waker().wake_by_ref();
             }
             PendingTxState::GettingReceipt(fut) => {
-                if let Ok(Some(receipt)) = futures_util::ready!(fut.as_mut().poll(ctx)) {
-                    *this.state = PendingTxState::CheckingReceipt(Box::new(receipt))
+                if let Ok(receipt) = futures_util::ready!(fut.as_mut().poll(ctx)) {
+                    *this.state = PendingTxState::CheckingReceipt(receipt)
                 } else {
                     *this.state = PendingTxState::PausedGettingReceipt
                 }
                 ctx.waker().wake_by_ref();
             }
             PendingTxState::CheckingReceipt(receipt) => {
+                rewake_with_new_state_if!(
+                    receipt.is_none(),
+                    ctx,
+                    this,
+                    PendingTxState::PausedGettingReceipt
+                );
+
                 // If we requested more than 1 confirmation, we need to compare the receipt's
                 // block number and the current block
                 if *this.confirmations > 1 {
                     let fut = Box::pin(this.provider.get_block_number());
-                    *this.state =
-                        PendingTxState::GettingBlockNumber(fut, Box::new(*receipt.clone()));
+                    *this.state = PendingTxState::GettingBlockNumber(fut, receipt.take());
 
                     // Schedule the waker to poll again
                     ctx.waker().wake_by_ref();
                 } else {
-                    let receipt = *receipt.clone();
+                    let receipt = receipt.take();
                     *this.state = PendingTxState::Completed;
                     return Poll::Ready(Ok(receipt));
                 }
@@ -104,26 +165,30 @@ impl<'a, P: JsonRpcClient> Future for PendingTransaction<'a, P> {
                 // we need to re-instantiate the get_block_number future so that
                 // we poll again
                 let fut = Box::pin(this.provider.get_block_number());
-                *this.state = PendingTxState::GettingBlockNumber(fut, receipt.clone());
+                *this.state = PendingTxState::GettingBlockNumber(fut, receipt.take());
                 ctx.waker().wake_by_ref();
             }
             PendingTxState::GettingBlockNumber(fut, receipt) => {
+                let current_block = futures_util::ready!(fut.as_mut().poll(ctx))?;
+
+                // This is safe so long as we only enter the `GettingBlock`
+                // loop from `CheckingReceipt`, which contains an explicit
+                // `is_none` check
+                let receipt = receipt.take().expect("GettingBlockNumber without receipt");
+
                 // Wait for the interval
                 let inclusion_block = receipt
                     .block_number
                     .expect("Receipt did not have a block number. This should never happen");
-
-                let current_block = futures_util::ready!(fut.as_mut().poll(ctx))?;
-
                 // if the transaction has at least K confirmations, return the receipt
                 // (subtract 1 since the tx already has 1 conf when it's mined)
                 if current_block > inclusion_block + *this.confirmations - 1 {
-                    let receipt = *receipt.clone();
+                    let receipt = Some(receipt);
                     *this.state = PendingTxState::Completed;
                     return Poll::Ready(Ok(receipt));
                 } else {
                     tracing::trace!(tx_hash = ?this.tx_hash, "confirmations {}/{}", current_block - inclusion_block + 1, this.confirmations);
-                    *this.state = PendingTxState::PausedGettingBlockNumber(receipt.clone());
+                    *this.state = PendingTxState::PausedGettingBlockNumber(Some(receipt));
                     ctx.waker().wake_by_ref();
                 }
             }
@@ -171,21 +236,27 @@ impl<'a, P> Deref for PendingTransaction<'a, P> {
 // We box the TransactionReceipts to keep the enum small.
 enum PendingTxState<'a> {
     /// Waiting for interval to elapse before calling API again
+    PausedGettingTx,
+
+    /// Polling The blockchain to see if the Tx has confirmed or dropped
+    GettingTx(PinBoxFut<'a, Option<Transaction>>),
+
+    /// Waiting for interval to elapse before calling API again
     PausedGettingReceipt,
 
     /// Polling the blockchain for the receipt
     GettingReceipt(PinBoxFut<'a, Option<TransactionReceipt>>),
 
-    /// Waiting for interval to elapse before calling API again
-    PausedGettingBlockNumber(Box<TransactionReceipt>),
-
-    /// Polling the blockchain for the current block number
-    GettingBlockNumber(PinBoxFut<'a, U64>, Box<TransactionReceipt>),
-
     /// If the pending tx required only 1 conf, it will return early. Otherwise it will
     /// proceed to the next state which will poll the block number until there have been
     /// enough confirmations
-    CheckingReceipt(Box<TransactionReceipt>),
+    CheckingReceipt(Option<TransactionReceipt>),
+
+    /// Waiting for interval to elapse before calling API again
+    PausedGettingBlockNumber(Option<TransactionReceipt>),
+
+    /// Polling the blockchain for the current block number
+    GettingBlockNumber(PinBoxFut<'a, U64>, Option<TransactionReceipt>),
 
     /// Future has completed and should panic if polled again
     Completed,
@@ -194,8 +265,10 @@ enum PendingTxState<'a> {
 impl<'a> fmt::Debug for PendingTxState<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let state = match self {
-            PendingTxState::GettingReceipt(_) => "GettingReceipt",
+            PendingTxState::PausedGettingTx => "PausedGettingTx",
+            PendingTxState::GettingTx(_) => "GettingTx",
             PendingTxState::PausedGettingReceipt => "PausedGettingReceipt",
+            PendingTxState::GettingReceipt(_) => "GettingReceipt",
             PendingTxState::GettingBlockNumber(_, _) => "GettingBlockNumber",
             PendingTxState::PausedGettingBlockNumber(_) => "PausedGettingBlockNumber",
             PendingTxState::CheckingReceipt(_) => "CheckingReceipt",

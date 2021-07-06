@@ -45,7 +45,8 @@ impl<M: Middleware> Deployer<M> {
         let receipt = pending_tx
             .confirmations(self.confs)
             .await
-            .map_err(|_| ContractError::ContractNotDeployed)?;
+            .map_err(|_| ContractError::ContractNotDeployed)?
+            .ok_or(ContractError::ContractNotDeployed)?;
         let address = receipt
             .contract_address
             .ok_or(ContractError::ContractNotDeployed)?;

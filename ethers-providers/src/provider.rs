@@ -964,7 +964,7 @@ mod tests {
             .is_none());
 
         let hash = *pending_tx;
-        let receipt = pending_tx.await.unwrap();
+        let receipt = pending_tx.await.unwrap().unwrap();
         assert_eq!(receipt.transaction_hash, hash);
     }
 

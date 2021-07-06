@@ -110,7 +110,8 @@ impl DsProxy {
             .send()
             .await?
             .await
-            .map_err(ContractError::ProviderError)?;
+            .map_err(ContractError::ProviderError)?
+            .ok_or(ContractError::ContractNotDeployed)?;
 
         // decode the event log to get the address of the deployed contract.
         if tx_receipt.status == Some(U64::from(1u64)) {
