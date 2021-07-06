@@ -10,7 +10,7 @@ repository = "https://github.com/gakonst/ethers-rs"
 keywords = ["ethereum", "web3", "celo", "ethers"]
 
 [dependencies]
-ethers-core = { version = "0.3.0", path = "../../ethers-core" }
+ethers-core = { version = "0.4.0", path = "../../ethers-core" }
 
 anyhow = "1.0.37"
 Inflector = "0.11"
