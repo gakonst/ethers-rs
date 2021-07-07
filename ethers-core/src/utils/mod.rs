@@ -123,7 +123,7 @@ pub fn get_create2_address(
 /// Converts a K256 SigningKey to an Ethereum Address
 pub fn secret_key_to_address(secret_key: &SigningKey) -> Address {
     // TODO: Can we do this in a better way?
-    let uncompressed_pub_key = K256PublicKey::from(&secret_key.verify_key()).decompress();
+    let uncompressed_pub_key = K256PublicKey::from(&secret_key.verifying_key()).decompress();
     let public_key = uncompressed_pub_key.unwrap().to_bytes();
     debug_assert_eq!(public_key[0], 0x04);
     let hash = keccak256(&public_key[1..]);

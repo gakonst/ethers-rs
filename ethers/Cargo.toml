@@ -1,6 +1,6 @@
 [package]
 name = "ethers"
-version = "0.2.2"
+version = "0.4.0"
 authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
 license = "MIT OR Apache-2.0"
 edition = "2018"
@@ -34,17 +34,17 @@ ws = ["ethers-providers/ws"]
 abigen = ["ethers-contract/abigen"]
 
 [dependencies]
-ethers-contract = { version = "0.2.2", path = "../ethers-contract" }
-ethers-core = { version = "0.2.2", path = "../ethers-core", features = ["setup"] }
-ethers-providers = { version = "0.2.2", path = "../ethers-providers" }
-ethers-signers = { version = "0.2.2", path = "../ethers-signers" }
-ethers-middleware = { version = "0.2.2", path = "../ethers-middleware" }
+ethers-contract = { version = "0.4.0", path = "../ethers-contract" }
+ethers-core = { version = "0.4.0", path = "../ethers-core", features = ["setup"] }
+ethers-providers = { version = "0.4.0", path = "../ethers-providers" }
+ethers-signers = { version = "0.4.0", path = "../ethers-signers" }
+ethers-middleware = { version = "0.4.0", path = "../ethers-middleware" }
 
 [dev-dependencies]
-ethers-contract = { version = "0.2", path = "../ethers-contract", features = ["abigen"] }
+ethers-contract = { version = "0.4.0", path = "../ethers-contract", features = ["abigen"] }
 
 anyhow = "1.0.39"
-rand = "0.7"
+rand = "0.8.4"
 serde = { version = "1.0.124", features = ["derive"] }
 serde_json = "1.0.64"
 tokio = { version = "1.5", features = ["macros", "rt-multi-thread"] }
