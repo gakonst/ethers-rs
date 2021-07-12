@@ -82,10 +82,10 @@ impl<'a, P: JsonRpcClient> Future for PendingTransaction<'a, P> {
         match this.state {
             PendingTxState::InitialDelay(fut) => {
                 let _ready = futures_util::ready!(fut.as_mut().poll(ctx));
+                tracing::debug!("Starting to poll pending tx {:?}", *this.tx_hash);
                 let fut = Box::pin(this.provider.get_transaction(*this.tx_hash));
                 rewake_with_new_state!(ctx, this, PendingTxState::GettingTx(fut));
             }
-
             PendingTxState::PausedGettingTx => {
                 // Wait the polling period so that we do not spam the chain when no
                 // new block has been mined
@@ -108,6 +108,7 @@ impl<'a, P: JsonRpcClient> Future for PendingTransaction<'a, P> {
                 let tx_opt = tx_res.unwrap();
                 // If the tx is no longer in the mempool, return Ok(None)
                 if tx_opt.is_none() {
+                    tracing::debug!("Dropped from mempool, pending tx {:?}", *this.tx_hash);
                     *this.state = PendingTxState::Completed;
                     return Poll::Ready(Ok(None));
                 }
@@ -121,9 +122,11 @@ impl<'a, P: JsonRpcClient> Future for PendingTransaction<'a, P> {
                     PendingTxState::PausedGettingTx
                 );
 
+
                 // Start polling for the receipt now
+                tracing::debug!("Getting receipt for pending tx {:?}", *this.tx_hash);
                 let fut = Box::pin(this.provider.get_transaction_receipt(*this.tx_hash));
-                *this.state = PendingTxState::GettingReceipt(fut);
+                rewake_with_new_state!(ctx, this, PendingTxState::GettingReceipt(fut));
             }
             PendingTxState::PausedGettingReceipt => {
                 // Wait the polling period so that we do not spam the chain when no
@@ -135,6 +138,7 @@ impl<'a, P: JsonRpcClient> Future for PendingTransaction<'a, P> {
             }
             PendingTxState::GettingReceipt(fut) => {
                 if let Ok(receipt) = futures_util::ready!(fut.as_mut().poll(ctx)) {
+                    tracing::debug!("Checking receipt for pending tx {:?}", *this.tx_hash);
                     *this.state = PendingTxState::CheckingReceipt(receipt)
                 } else {
                     *this.state = PendingTxState::PausedGettingReceipt
@@ -152,6 +156,8 @@ impl<'a, P: JsonRpcClient> Future for PendingTransaction<'a, P> {
                 // If we requested more than 1 confirmation, we need to compare the receipt's
                 // block number and the current block
                 if *this.confirmations > 1 {
+                    tracing::debug!("Waiting on confirmations for pending tx {:?}", *this.tx_hash);
+
                     let fut = Box::pin(this.provider.get_block_number());
                     *this.state = PendingTxState::GettingBlockNumber(fut, receipt.take());
 
