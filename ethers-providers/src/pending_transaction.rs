@@ -5,6 +5,7 @@ use crate::{
 };
 use ethers_core::types::{Transaction, TransactionReceipt, TxHash, U64};
 use futures_core::stream::Stream;
+use futures_timer::Delay;
 use futures_util::stream::StreamExt;
 use pin_project::pin_project;
 use std::{
@@ -33,12 +34,11 @@ pub struct PendingTransaction<'a, P> {
 impl<'a, P: JsonRpcClient> PendingTransaction<'a, P> {
     /// Creates a new pending transaction poller from a hash and a provider
     pub fn new(tx_hash: TxHash, provider: &'a Provider<P>) -> Self {
-        let fut = Box::pin(provider.get_transaction(tx_hash));
         Self {
             tx_hash,
             confirmations: 1,
             provider,
-            state: PendingTxState::GettingTx(fut),
+            state: PendingTxState::InitialDelay(Box::pin(Delay::new(Duration::from_secs(5)))),
             interval: Box::new(interval(DEFAULT_POLL_INTERVAL)),
         }
     }
@@ -80,6 +80,12 @@ impl<'a, P: JsonRpcClient> Future for PendingTransaction<'a, P> {
         let this = self.project();
 
         match this.state {
+            PendingTxState::InitialDelay(fut) => {
+                let _ready = futures_util::ready!(fut.as_mut().poll(ctx));
+                let fut = Box::pin(this.provider.get_transaction(*this.tx_hash));
+                rewake_with_new_state!(ctx, this, PendingTxState::GettingTx(fut));
+            }
+
             PendingTxState::PausedGettingTx => {
                 // Wait the polling period so that we do not spam the chain when no
                 // new block has been mined
@@ -235,6 +241,9 @@ impl<'a, P> Deref for PendingTransaction<'a, P> {
 
 // We box the TransactionReceipts to keep the enum small.
 enum PendingTxState<'a> {
+    /// Initial delay to ensure the GettingTx loop doesn't immediately fail
+    InitialDelay(Pin<Box<futures_timer::Delay>>),
+
     /// Waiting for interval to elapse before calling API again
     PausedGettingTx,
 
@@ -265,6 +274,7 @@ enum PendingTxState<'a> {
 impl<'a> fmt::Debug for PendingTxState<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let state = match self {
+            PendingTxState::InitialDelay(_) => "InitialDelay",
             PendingTxState::PausedGettingTx => "PausedGettingTx",
             PendingTxState::GettingTx(_) => "GettingTx",
             PendingTxState::PausedGettingReceipt => "PausedGettingReceipt",
