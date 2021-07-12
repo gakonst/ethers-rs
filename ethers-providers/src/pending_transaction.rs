@@ -122,7 +122,6 @@ impl<'a, P: JsonRpcClient> Future for PendingTransaction<'a, P> {
                     PendingTxState::PausedGettingTx
                 );
 
-
                 // Start polling for the receipt now
                 tracing::debug!("Getting receipt for pending tx {:?}", *this.tx_hash);
                 let fut = Box::pin(this.provider.get_transaction_receipt(*this.tx_hash));
@@ -156,7 +155,10 @@ impl<'a, P: JsonRpcClient> Future for PendingTransaction<'a, P> {
                 // If we requested more than 1 confirmation, we need to compare the receipt's
                 // block number and the current block
                 if *this.confirmations > 1 {
-                    tracing::debug!("Waiting on confirmations for pending tx {:?}", *this.tx_hash);
+                    tracing::debug!(
+                        "Waiting on confirmations for pending tx {:?}",
+                        *this.tx_hash
+                    );
 
                     let fut = Box::pin(this.provider.get_block_number());
                     *this.state = PendingTxState::GettingBlockNumber(fut, receipt.take());
