@@ -34,11 +34,12 @@ pub struct PendingTransaction<'a, P> {
 impl<'a, P: JsonRpcClient> PendingTransaction<'a, P> {
     /// Creates a new pending transaction poller from a hash and a provider
     pub fn new(tx_hash: TxHash, provider: &'a Provider<P>) -> Self {
+        let delay = Box::pin(Delay::new(DEFAULT_POLL_INTERVAL));
         Self {
             tx_hash,
             confirmations: 1,
             provider,
-            state: PendingTxState::InitialDelay(Box::pin(Delay::new(Duration::from_secs(5)))),
+            state: PendingTxState::InitialDelay(delay),
             interval: Box::new(interval(DEFAULT_POLL_INTERVAL)),
         }
     }
@@ -52,7 +53,14 @@ impl<'a, P: JsonRpcClient> PendingTransaction<'a, P> {
 
     /// Sets the polling interval
     pub fn interval<T: Into<Duration>>(mut self, duration: T) -> Self {
-        self.interval = Box::new(interval(duration.into()));
+        let duration = duration.into();
+
+        self.interval = Box::new(interval(duration));
+
+        if matches!(self.state, PendingTxState::InitialDelay(_)) {
+            self.state = PendingTxState::InitialDelay(Box::pin(Delay::new(duration)))
+        }
+
         self
     }
 }
