@@ -4,7 +4,7 @@ use pin_project::pin_project;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
-type MapEvent<'a, R, E> = Box<dyn Fn(Log) -> Result<R, E> + 'a>;
+type MapEvent<'a, R, E> = Box<dyn Fn(Log) -> Result<R, E> + 'a + Send + Sync>;
 
 #[pin_project]
 /// Generic wrapper around Log streams, mapping their content to a specific

@@ -3,7 +3,7 @@ use ethers_core::abi::Error;
 use ethers_core::abi::RawLog;
 
 /// A trait for types (events) that can be decoded from a `RawLog`
-pub trait EthLogDecode {
+pub trait EthLogDecode: Send + Sync {
     /// decode from a `RawLog`
     fn decode_log(log: &RawLog) -> Result<Self, Error>
     where
