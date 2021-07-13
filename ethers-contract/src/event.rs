@@ -9,7 +9,7 @@ use std::borrow::Cow;
 use std::marker::PhantomData;
 
 /// A trait for implementing event bindings
-pub trait EthEvent: Detokenize {
+pub trait EthEvent: Detokenize + Send + Sync {
     /// The name of the event this type represents
     fn name() -> Cow<'static, str>;
 
