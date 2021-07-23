@@ -206,7 +206,7 @@ where
                     warn!("Replacing a pending request with id {:?}", id);
                 }
 
-                if let Err(err) = self.socket_writer.write(&request.as_bytes()).await {
+                if let Err(err) = self.socket_writer.write(request.as_bytes()).await {
                     error!("WS connection error: {:?}", err);
                     self.pending.remove(&id);
                 }
@@ -240,7 +240,7 @@ where
         let read_len = {
             // Deserialize as many full elements from the stream as exists
             let mut de: serde_json::StreamDeserializer<_, serde_json::Value> =
-                serde_json::Deserializer::from_slice(&read_buffer).into_iter();
+                serde_json::Deserializer::from_slice(read_buffer).into_iter();
 
             // Iterate through these elements, and handle responses/notifications
             while let Some(Ok(value)) = de.next() {

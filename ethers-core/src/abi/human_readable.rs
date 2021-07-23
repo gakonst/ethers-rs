@@ -77,7 +77,7 @@ impl AbiParser {
         for mut line in types {
             line = line.trim_start();
             if line.starts_with("function") {
-                let function = self.parse_function(&line)?;
+                let function = self.parse_function(line)?;
                 abi.functions
                     .entry(function.name.clone())
                     .or_default()

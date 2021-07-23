@@ -281,7 +281,7 @@ fn parse_mapping(s: &str) -> Result<MappingType> {
     if !input.starts_with("mapping") {
         bail!("Not a mapping `{}`", input)
     }
-    input = &input[7..].trim_start();
+    input = input[7..].trim_start();
     let mut iter = input
         .trim_start_matches('(')
         .trim_end_matches(')')

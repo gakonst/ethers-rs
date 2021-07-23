@@ -312,7 +312,7 @@ impl<M: Middleware> Multicall<M> {
             .iter()
             .zip(&return_data)
             .map(|(call, bytes)| {
-                let mut tokens: Vec<Token> = call.function.decode_output(&bytes)?;
+                let mut tokens: Vec<Token> = call.function.decode_output(bytes)?;
 
                 Ok(match tokens.len() {
                     0 => Token::Tuple(vec![]),

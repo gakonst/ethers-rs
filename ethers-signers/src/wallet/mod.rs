@@ -97,8 +97,8 @@ impl<D: DigestSigner<Sha256Proxy, RecoverableSignature>> Wallet<D> {
 
         let r_bytes: FieldBytes<Secp256k1> = recoverable_sig.r().into();
         let s_bytes: FieldBytes<Secp256k1> = recoverable_sig.s().into();
-        let r = H256::from_slice(&r_bytes.as_slice());
-        let s = H256::from_slice(&s_bytes.as_slice());
+        let r = H256::from_slice(r_bytes.as_slice());
+        let s = H256::from_slice(s_bytes.as_slice());
 
         Signature { r, s, v }
     }
