@@ -81,6 +81,7 @@ pub struct Ganache {
     port: Option<u16>,
     block_time: Option<u64>,
     mnemonic: Option<String>,
+    fork: Option<String>,
     args: Vec<String>,
 }
 
@@ -106,6 +107,15 @@ impl Ganache {
     /// Sets the block-time which will be used when the `ganache-cli` instance is launched.
     pub fn block_time<T: Into<u64>>(mut self, block_time: T) -> Self {
         self.block_time = Some(block_time.into());
+        self
+    }
+
+    /// Sets the `fork` argument to fork from another currently running Ethereum client
+    /// at a given block. Input should be the HTTP location and port of the other client,
+    /// e.g. `http://localhost:8545`. You can optionally specify the block to fork from
+    /// using an @ sign: `http://localhost:8545@1599200`
+    pub fn fork<T: Into<String>>(mut self, fork: T) -> Self {
+        self.fork = Some(fork.into());
         self
     }
 
@@ -146,6 +156,10 @@ impl Ganache {
 
         if let Some(block_time) = self.block_time {
             cmd.arg("-b").arg(block_time.to_string());
+        }
+
+        if let Some(fork) = self.fork {
+            cmd.arg("-f").arg(fork);
         }
 
         cmd.args(self.args);
