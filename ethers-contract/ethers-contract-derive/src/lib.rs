@@ -305,7 +305,7 @@ fn param_type_quote(kind: &ParamType) -> proc_macro2::TokenStream {
             let elements = tuple.iter().map(param_type_quote);
             quote! {
                 ethers_core::abi::ParamType::Tuple(
-                    vec![
+                    ::std::vec![
                         #( #elements ),*
                     ]
                 )
@@ -398,14 +398,14 @@ fn derive_decode_from_log_impl(
         .filter(|f| f.is_indexed())
         .map(|f| topic_param_type_quote(&f.param.kind));
 
-    let topic_types_init = quote! {let topic_types = vec![#( #topic_types ),*];};
+    let topic_types_init = quote! {let topic_types = ::std::vec![#( #topic_types ),*];};
 
     let data_types = event_fields
         .iter()
         .filter(|f| !f.is_indexed())
         .map(|f| param_type_quote(&f.param.kind));
 
-    let data_types_init = quote! {let data_types = vec![#( #data_types ),*];};
+    let data_types_init = quote! {let data_types = ::std::vec![#( #data_types ),*];};
 
     // decode
     let (signature_check, flat_topics_init, topic_tokens_len_check) = if event.anonymous {
@@ -449,7 +449,7 @@ fn derive_decode_from_log_impl(
         quote! {
             let topic_tokens = ethers_core::abi::decode(&topic_types, &flat_topics)?;
             #topic_tokens_len_check
-            let data_tokens = ethers_core::abi::decode(&data_types, &data)?;
+            let data_tokens = ethers_core::abi::decode(&data_types, data)?;
             let tokens:Vec<_> = topic_tokens.into_iter().chain(data_tokens.into_iter()).collect();
         }
     } else {
@@ -794,7 +794,7 @@ fn derive_tokenizeable_impl(input: &DeriveInput) -> proc_macro2::TokenStream {
             // can't encode an empty struct
             // TODO: panic instead?
             quote! {
-                ethers_core::abi::Token::Tuple(vec![])
+                ethers_core::abi::Token::Tuple(Vec::new())
             },
         ),
         1 => {
@@ -821,7 +821,7 @@ fn derive_tokenizeable_impl(input: &DeriveInput) -> proc_macro2::TokenStream {
             let from_token = quote! {
                 if let ethers_core::abi::Token::Tuple(tokens) = token {
                     if tokens.len() != #params_len {
-                        return Err(ethers_core::abi::InvalidOutputType(format!(
+                        return Err(ethers_core::abi::InvalidOutputType(::std::format!(
                             "Expected {} tokens, got {}: {:?}",
                             #params_len,
                             tokens.len(),
@@ -833,7 +833,7 @@ fn derive_tokenizeable_impl(input: &DeriveInput) -> proc_macro2::TokenStream {
 
                     Ok(#init_struct_impl)
                 } else {
-                    Err(ethers_core::abi::InvalidOutputType(format!(
+                    Err(ethers_core::abi::InvalidOutputType(::std::format!(
                         "Expected Tuple, got {:?}",
                         token
                     )))
@@ -842,7 +842,7 @@ fn derive_tokenizeable_impl(input: &DeriveInput) -> proc_macro2::TokenStream {
 
             let into_token = quote! {
                 ethers_core::abi::Token::Tuple(
-                    vec![
+                    ::std::vec![
                         #into_token_impl
                     ]
                 )

@@ -310,7 +310,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
 
         if let Some(NameOrAddress::Name(ref ens_name)) = tx.to {
             // resolve to an address
-            let addr = self.resolve_name(&ens_name).await?;
+            let addr = self.resolve_name(ens_name).await?;
 
             // set the value
             tx.to = Some(addr.into())
@@ -782,7 +782,7 @@ impl Provider<MockProvider> {
 ///
 /// If the provided bytes were not an interpretation of an address
 fn decode_bytes<T: Detokenize>(param: ParamType, bytes: Bytes) -> T {
-    let tokens = abi::decode(&[param], &bytes.as_ref())
+    let tokens = abi::decode(&[param], bytes.as_ref())
         .expect("could not abi-decode bytes to address tokens");
     T::from_tokens(tokens).expect("could not parse tokens as address")
 }

@@ -204,7 +204,7 @@ impl Context {
             .map(|(i, input)| {
                 // NOTE: Events can contain nameless values.
                 let name = util::expand_input_name(i, &input.name);
-                let ty = self.expand_input_type(&input)?;
+                let ty = self.expand_input_type(input)?;
 
                 Ok((name, ty, input.indexed))
             })
@@ -271,7 +271,7 @@ impl Context {
         } else {
             util::safe_ident(&param.name.to_snake_case())
         };
-        let ty = self.expand_input_type(&param)?;
+        let ty = self.expand_input_type(param)?;
 
         Ok(quote! {
             #doc
