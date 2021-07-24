@@ -81,6 +81,7 @@ pub struct Ganache {
     port: Option<u16>,
     block_time: Option<u64>,
     mnemonic: Option<String>,
+    args: Vec<String>,
 }
 
 impl Ganache {
@@ -108,6 +109,24 @@ impl Ganache {
         self
     }
 
+    /// Adds an argument to pass to the `ganache-cli`.
+    pub fn arg<T: Into<String>>(mut self, arg: T) -> Self {
+        self.args.push(arg.into());
+        self
+    }
+
+    /// Adds multiple arguments to pass to the `ganache-cli`.
+    pub fn args<I, S>(mut self, args: I) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        for arg in args {
+            self = self.arg(arg);
+        }
+        self
+    }
+
     /// Consumes the builder and spawns `ganache-cli` with stdout redirected
     /// to /dev/null. This takes ~2 seconds to execute as it blocks while
     /// waiting for `ganache-cli` to launch.
@@ -128,6 +147,8 @@ impl Ganache {
         if let Some(block_time) = self.block_time {
             cmd.arg("-b").arg(block_time.to_string());
         }
+
+        cmd.args(self.args);
 
         let mut child = cmd.spawn().expect("couldnt start ganache-cli");
 
