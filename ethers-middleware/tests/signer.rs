@@ -69,3 +69,73 @@ async fn test_send_transaction() {
     let balance_after = client.get_balance(client.address(), None).await.unwrap();
     assert!(balance_before > balance_after);
 }
+
+#[tokio::test]
+async fn send_transaction_handles_tx_from_field() {
+    use ethers_core::utils::Ganache;
+
+    // launch ganache
+    let ganache = Ganache::new().spawn();
+
+    // grab 2 wallets
+    let signer: LocalWallet = ganache.keys()[0].clone().into();
+    let other: LocalWallet = ganache.keys()[1].clone().into();
+
+    // connect to the network
+    let provider = Provider::try_from(ganache.endpoint()).unwrap();
+    let provider = SignerMiddleware::new(provider, signer.clone());
+
+    // sending a TransactionRequest with a from field of None should result
+    // in a transaction from the signer address
+    let request_from_none = TransactionRequest::new();
+    let receipt = provider
+        .send_transaction(request_from_none, None)
+        .await
+        .unwrap()
+        .await
+        .unwrap()
+        .unwrap();
+    let sent_tx = provider
+        .get_transaction(receipt.transaction_hash)
+        .await
+        .unwrap()
+        .unwrap();
+
+    assert_eq!(sent_tx.from, signer.address());
+
+    // sending a TransactionRequest with the signer as the from address should
+    // result in a transaction from the signer address
+    let request_from_signer = TransactionRequest::new().from(signer.address());
+    let receipt = provider
+        .send_transaction(request_from_signer, None)
+        .await
+        .unwrap()
+        .await
+        .unwrap()
+        .unwrap();
+    let sent_tx = provider
+        .get_transaction(receipt.transaction_hash)
+        .await
+        .unwrap()
+        .unwrap();
+
+    assert_eq!(sent_tx.from, signer.address());
+
+    // sending a TransactionRequest with a from address that is not the signer
+    // should result in a transaction from the specified address
+    let request_from_other = TransactionRequest::new().from(other.address());
+    let receipt = provider
+        .send_transaction(request_from_other, None)
+        .await
+        .unwrap()
+        .await
+        .unwrap()
+        .unwrap();
+    let sent_tx = provider
+        .get_transaction(receipt.transaction_hash)
+        .await
+        .unwrap()
+        .unwrap();
+
+    assert_eq!(sent_tx.from, other.address());
+}

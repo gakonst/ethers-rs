@@ -99,6 +99,9 @@ pub enum SignerMiddlewareError<M: Middleware, S: Signer> {
     /// Thrown if the `gas` field is missing
     #[error("no gas was specified")]
     GasMissing,
+    /// Thrown if a signature is requested from a different address
+    #[error("specified from address is not signer")]
+    WrongSigner,
 }
 
 // Helper functions for locally signing transactions
@@ -125,6 +128,11 @@ where
         let nonce = tx.nonce.ok_or(SignerMiddlewareError::NonceMissing)?;
         let gas_price = tx.gas_price.ok_or(SignerMiddlewareError::GasPriceMissing)?;
         let gas = tx.gas.ok_or(SignerMiddlewareError::GasMissing)?;
+
+        // Can't sign a transaction from a different address
+        if tx.from.is_some() && tx.from != Some(self.address()) {
+            return Err(SignerMiddlewareError::WrongSigner);
+        }
 
         let signature = self
             .signer
@@ -247,6 +255,15 @@ where
         mut tx: TransactionRequest,
         block: Option<BlockId>,
     ) -> Result<PendingTransaction<'_, Self::Provider>, Self::Error> {
+        // If the from address is set and is not our signer, delegate to inner
+        if tx.from.is_some() && tx.from != Some(self.address()) {
+            return self
+                .inner
+                .send_transaction(tx, block)
+                .await
+                .map_err(SignerMiddlewareError::MiddlewareError);
+        }
+
         if let Some(NameOrAddress::Name(ens_name)) = tx.to {
             let addr = self
                 .inner
@@ -340,5 +357,43 @@ mod tests {
 
         let expected_rlp = Bytes::from(hex::decode("f869808504e3b29200831e848094f0109fc8df283027b6285cc889f5aa624eac1f55843b9aca008025a0c9cf86333bcb065d140032ecaab5d9281bde80f21b9687b3e94161de42d51895a0727a108a0b8d101465414033c3f705a9c7b826e596766046ee1183dbc8aeaa68").unwrap());
         assert_eq!(tx.rlp(), expected_rlp);
+    }
+
+    #[tokio::test]
+    async fn handles_tx_from_field() {
+        use ethers_core::types::Address;
+
+        // new SignerMiddleware
+        let provider = Provider::try_from("http://localhost:8545").unwrap();
+        let key = LocalWallet::new(&mut rand::thread_rng());
+        let client = SignerMiddleware::new(provider, key);
+
+        // an address that is not the signer address
+        let other = "0x863DF6BFa4469f3ead0bE8f9F2AAE51c91A907b4"
+            .parse::<Address>()
+            .unwrap();
+
+        let request = TransactionRequest::new().nonce(0).gas_price(0).gas(0);
+
+        // signing a TransactionRequest with a from field of None should yield
+        // a signed transaction from the signer address
+        let request_from_none = request.clone();
+        let signing_result = client.sign_transaction(request_from_none).await;
+
+        assert_eq!(signing_result.unwrap().from, client.address());
+
+        // signing a TransactionRequest with the signer as the from address
+        // should yield a signed transaction from the signer
+        let request_from_signer = request.clone().from(client.address());
+        let signing_result = client.sign_transaction(request_from_signer.clone()).await;
+
+        assert_eq!(signing_result.unwrap().from, client.address());
+
+        // signing a TransactionRequest with a from address that is not the
+        // signer should result in a WrongSigner error
+        let request_from_other = request.from(other);
+        let signing_result = client.sign_transaction(request_from_other.clone()).await;
+
+        assert!(signing_result.is_err());
     }
 }
