@@ -830,7 +830,6 @@ dependencies = [
  "ethers-core",
  "ethers-providers",
  "ethers-signers",
- "futures-executor",
  "futures-util",
  "hex",
  "rand 0.8.4",
@@ -889,7 +888,6 @@ dependencies = [
  "futures-util",
  "hex",
  "rand 0.8.4",
- "serde_json",
  "sha2 0.9.5",
  "tempfile",
  "thiserror",
@@ -1002,7 +1000,6 @@ dependencies = [
  "futures-core",
  "futures-task",
  "futures-util",
- "num_cpus",
 ]
 
 [[package]]
