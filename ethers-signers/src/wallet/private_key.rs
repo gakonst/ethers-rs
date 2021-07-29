@@ -66,7 +66,7 @@ impl Wallet<SigningKey> {
         Ok(Self {
             signer,
             address,
-            chain_id: None,
+            chain_id: 1,
         })
     }
 
@@ -82,7 +82,7 @@ impl Wallet<SigningKey> {
         Ok(Self {
             signer,
             address,
-            chain_id: None,
+            chain_id: 1,
         })
     }
 
@@ -93,7 +93,7 @@ impl Wallet<SigningKey> {
         Self {
             signer,
             address,
-            chain_id: None,
+            chain_id: 1,
         }
     }
 }
@@ -113,7 +113,7 @@ impl From<SigningKey> for Wallet<SigningKey> {
         Self {
             signer,
             address,
-            chain_id: None,
+            chain_id: 1,
         }
     }
 }
@@ -129,7 +129,7 @@ impl From<K256SecretKey> for Wallet<SigningKey> {
         Self {
             signer,
             address,
-            chain_id: None,
+            chain_id: 1,
         }
     }
 }

@@ -61,7 +61,7 @@ pub struct Wallet<D: DigestSigner<Sha256Proxy, RecoverableSignature>> {
     /// The wallet's address
     pub(crate) address: Address,
     /// The wallet's chain id (for EIP-155)
-    pub(crate) chain_id: Option<u64>,
+    pub(crate) chain_id: u64,
 }
 
 #[async_trait]
@@ -75,22 +75,16 @@ impl<D: Sync + Send + DigestSigner<Sha256Proxy, RecoverableSignature>> Signer fo
         let message = message.as_ref();
         let message_hash = hash_message(message);
 
-        Ok(self.sign_hash_with_eip155(message_hash))
+        Ok(self.sign_hash(message_hash, false))
     }
 
     async fn sign_transaction(&self, tx: &TransactionRequest) -> Result<Signature, Self::Error> {
-        let sighash = tx.sighash(self.chain_id());
-        Ok(self.sign_hash_with_eip155(sighash))
+        let sighash = tx.sighash(self.chain_id);
+        Ok(self.sign_hash(sighash, true))
     }
 
     fn address(&self) -> Address {
         self.address
-    }
-
-    /// Sets the wallet's chain_id, used in conjunction with EIP-155 signing
-    fn with_chain_id<T: Into<u64>>(mut self, chain_id: T) -> Self {
-        self.chain_id = Some(chain_id.into());
-        self
     }
 
     /// Gets the wallet's chain id
@@ -100,17 +94,22 @@ impl<D: Sync + Send + DigestSigner<Sha256Proxy, RecoverableSignature>> Signer fo
     /// If the chain id has not already been set.
     fn chain_id(&self) -> u64 {
         self.chain_id
-            .expect("chain id must be set in order to submit a transaction")
+    }
+
+    /// Sets the wallet's chain_id, used in conjunction with EIP-155 signing
+    fn with_chain_id<T: Into<u64>>(mut self, chain_id: T) -> Self {
+        self.chain_id = chain_id.into();
+        self
     }
 }
 
 impl<D: DigestSigner<Sha256Proxy, RecoverableSignature>> Wallet<D> {
-    fn sign_hash_with_eip155(&self, hash: H256) -> Signature {
+    fn sign_hash(&self, hash: H256, eip155: bool) -> Signature {
         let recoverable_sig: RecoverableSignature =
             self.signer.sign_digest(Sha256Proxy::from(hash));
 
-        let v = if let Some(chain_id) = self.chain_id {
-            to_eip155_v(recoverable_sig.recovery_id(), chain_id)
+        let v = if eip155 {
+            to_eip155_v(recoverable_sig.recovery_id(), self.chain_id)
         } else {
             u8::from(recoverable_sig.recovery_id()) as u64 + 27
         };
