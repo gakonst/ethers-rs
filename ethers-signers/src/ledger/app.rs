@@ -36,7 +36,7 @@ impl LedgerEthereum {
     /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
     /// use ethers::signers::{Ledger, HDPath};
     ///
-    /// let ledger = Ledger::new(HDPath::LedgerLive(0), Some(1)).await?;
+    /// let ledger = Ledger::new(HDPath::LedgerLive(0), 1).await?;
     /// # Ok(())
     /// # }
     /// ```
