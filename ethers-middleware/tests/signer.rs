@@ -74,6 +74,7 @@ async fn test_send_transaction() {
 }
 
 #[tokio::test]
+#[cfg(not(feature = "celo"))]
 async fn send_transaction_handles_tx_from_field() {
     use ethers_core::utils::Ganache;
 
