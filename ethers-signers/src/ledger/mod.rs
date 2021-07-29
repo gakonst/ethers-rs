@@ -24,11 +24,20 @@ impl Signer for LedgerEthereum {
         &self,
         message: &TransactionRequest,
     ) -> Result<Signature, Self::Error> {
-        self.sign_tx(message, self.chain_id).await
+        self.sign_tx(message).await
     }
 
     /// Returns the signer's Ethereum Address
     fn address(&self) -> Address {
         self.address
+    }
+
+    fn with_chain_id<T: Into<u64>>(mut self, chain_id: T) -> Self {
+        self.chain_id = chain_id.into();
+        self
+    }
+
+    fn chain_id(&self) -> u64 {
+        self.chain_id
     }
 }

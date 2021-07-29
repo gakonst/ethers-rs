@@ -343,7 +343,7 @@ mod tests {
         let key = "4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318"
             .parse::<LocalWallet>()
             .unwrap()
-            .set_chain_id(chain_id);
+            .with_chain_id(chain_id);
         let client = SignerMiddleware::new(provider, key);
 
         let tx = client.sign_transaction(tx).await.unwrap();
@@ -365,7 +365,7 @@ mod tests {
 
         // new SignerMiddleware
         let provider = Provider::try_from("http://localhost:8545").unwrap();
-        let key = LocalWallet::new(&mut rand::thread_rng());
+        let key = LocalWallet::new(&mut rand::thread_rng()).with_chain_id(1u32);
         let client = SignerMiddleware::new(provider, key);
 
         // an address that is not the signer address

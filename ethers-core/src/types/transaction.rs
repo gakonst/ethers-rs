@@ -7,15 +7,14 @@ use crate::{
 use rlp::RlpStream;
 use serde::{Deserialize, Serialize};
 
+const BASE_NUM_TX_FIELDS: usize = 9;
+
 // Number of tx fields before signing
 #[cfg(not(feature = "celo"))]
-const UNSIGNED_TX_FIELDS: usize = 6;
+const NUM_TX_FIELDS: usize = BASE_NUM_TX_FIELDS;
 // Celo has 3 additional fields
 #[cfg(feature = "celo")]
-const UNSIGNED_TX_FIELDS: usize = 9;
-
-// Unsigned fields + signature [r s v]
-const SIGNED_TX_FIELDS: usize = UNSIGNED_TX_FIELDS + 3;
+const NUM_TX_FIELDS: usize = BASE_NUM_TX_FIELDS + 3;
 
 /// Parameters for sending a transaction
 #[derive(Clone, Default, Serialize, Deserialize, PartialEq, Eq, Debug)]
@@ -130,52 +129,34 @@ impl TransactionRequest {
     }
 
     /// Hashes the transaction's data with the provided chain id
-    pub fn sighash<T: Into<U64>>(&self, chain_id: Option<T>) -> H256 {
+    pub fn sighash<T: Into<U64>>(&self, chain_id: T) -> H256 {
         keccak256(self.rlp(chain_id).as_ref()).into()
     }
 
     /// Gets the unsigned transaction's RLP encoding
-    pub fn rlp<T: Into<U64>>(&self, chain_id: Option<T>) -> Bytes {
+    pub fn rlp<T: Into<U64>>(&self, chain_id: T) -> Bytes {
         let mut rlp = RlpStream::new();
-        // "If [..] CHAIN_ID is available, then when  computing the hash of a
-        // transaction for the purposes of signing, instead of hashing only
-        // six rlp encoded elements (nonce, gasprice, startgas, to, value, data),
-        // you SHOULD hash nine rlp encoded elements
-        // (nonce, gasprice, startgas, to, value, data, chainid, 0, 0)"
-        // https://github.com/ethereum/EIPs/blob/master/EIPS/eip-155.md#specification
-        let num_els = if chain_id.is_some() {
-            UNSIGNED_TX_FIELDS + 3
-        } else {
-            UNSIGNED_TX_FIELDS
-        };
-
-        rlp.begin_list(num_els);
+        rlp.begin_list(NUM_TX_FIELDS);
         self.rlp_base(&mut rlp);
 
         // Only hash the 3 extra fields when preparing the
         // data to sign if chain_id is present
-        if let Some(chain_id) = chain_id {
-            rlp.append(&chain_id.into());
-            rlp.append(&0u8);
-            rlp.append(&0u8);
-        }
-
+        rlp.append(&chain_id.into());
+        rlp.append(&0u8);
+        rlp.append(&0u8);
         rlp.out().freeze().into()
     }
 
     /// Produces the RLP encoding of the transaction with the provided signature
     pub fn rlp_signed(&self, signature: &Signature) -> Bytes {
         let mut rlp = RlpStream::new();
-
-        // construct the RLP body
-        rlp.begin_list(SIGNED_TX_FIELDS);
+        rlp.begin_list(NUM_TX_FIELDS);
         self.rlp_base(&mut rlp);
 
         // append the signature
         rlp.append(&signature.v);
         rlp.append(&signature.r);
         rlp.append(&signature.s);
-
         rlp.out().freeze().into()
     }
 
@@ -326,7 +307,7 @@ impl Transaction {
 
     pub fn rlp(&self) -> Bytes {
         let mut rlp = RlpStream::new();
-        rlp.begin_list(SIGNED_TX_FIELDS);
+        rlp.begin_list(NUM_TX_FIELDS);
         rlp.append(&self.nonce);
         rlp.append(&self.gas_price);
         rlp.append(&self.gas);

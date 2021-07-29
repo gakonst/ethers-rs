@@ -6,7 +6,7 @@ mod eth_tests {
     use super::*;
     use ethers::{
         middleware::SignerMiddleware,
-        signers::LocalWallet,
+        signers::{LocalWallet, Signer},
         types::{BlockId, TransactionRequest, H256},
         utils::Ganache,
     };
@@ -86,9 +86,11 @@ mod eth_tests {
             "https://rinkeby.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27",
         )
         .unwrap();
+        let chain_id = provider.get_chainid().await.unwrap();
         let wallet = "59c37cb6b16fa2de30675f034c8008f890f4b2696c729d6267946d29736d73e4"
             .parse::<LocalWallet>()
-            .unwrap();
+            .unwrap()
+            .with_chain_id(chain_id.as_u64());
         let address = wallet.address();
         let provider = SignerMiddleware::new(provider, wallet);
         generic_pending_txs_test(provider, address).await;
@@ -102,9 +104,11 @@ mod eth_tests {
             Provider::connect("wss://rinkeby.infura.io/ws/v3/c60b0bb42f8a4c6481ecd229eddaca27")
                 .await
                 .unwrap();
+        let chain_id = provider.get_chainid().await.unwrap();
         let wallet = "ff7f80c6e9941865266ed1f481263d780169f1d98269c51167d20c630a5fdc8a"
             .parse::<LocalWallet>()
-            .unwrap();
+            .unwrap()
+            .with_chain_id(chain_id.as_64());
         let address = wallet.address();
         let provider = SignerMiddleware::new(provider, wallet);
         generic_pending_txs_test(provider, address).await;

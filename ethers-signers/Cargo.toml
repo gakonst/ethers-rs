@@ -35,7 +35,6 @@ yubihsm = { version = "0.39.0", features = ["secp256k1", "usb", "mockhsm"] }
 
 tempfile = "3.2.0"
 tokio = { version = "1.5", default-features = false, features = ["macros"] }
-serde_json = { version = "1.0.64", default-features = false }
 
 [features]
 celo = ["ethers-core/celo"]

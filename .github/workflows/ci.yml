@@ -1,4 +1,8 @@
-on: pull_request
+on:
+  push:
+    branches: 
+      - master
+  pull_request:
 
 name: Tests
 
@@ -10,7 +14,7 @@ env:
 
 jobs:
   tests:
-    name: Check
+    name: ethereum tests
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
@@ -51,7 +55,7 @@ jobs:
             cargo test
 
   feature-tests:
-    name: Check
+    name: celo tests
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
@@ -95,7 +99,7 @@ jobs:
             cargo test --all-features
 
   lint:
-    name: Check
+    name: lints
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources

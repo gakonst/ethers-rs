@@ -58,7 +58,7 @@ impl From<YubiSigner<Secp256k1>> for Wallet<YubiSigner<Secp256k1>> {
         Self {
             signer,
             address,
-            chain_id: None,
+            chain_id: 1,
         }
     }
 }

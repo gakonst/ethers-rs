@@ -8,7 +8,7 @@ use ethers_middleware::{
     SignerMiddleware,
 };
 use ethers_providers::{Http, Middleware, Provider};
-use ethers_signers::LocalWallet;
+use ethers_signers::{LocalWallet, Signer};
 use rand::Rng;
 use std::{convert::TryFrom, sync::Arc, time::Duration};
 
@@ -26,6 +26,8 @@ async fn ds_proxy_transformer() {
     let provider = Provider::<Http>::try_from(ganache.endpoint())
         .unwrap()
         .interval(Duration::from_millis(10u64));
+    let chain_id = provider.get_chainid().await.unwrap().as_u64();
+    let wallet = wallet.with_chain_id(chain_id);
     let signer_middleware = SignerMiddleware::new(provider.clone(), wallet);
     let wallet_addr = signer_middleware.address();
     let provider = Arc::new(signer_middleware.clone());
@@ -111,6 +113,8 @@ async fn ds_proxy_code() {
     let provider = Provider::<Http>::try_from(ganache.endpoint())
         .unwrap()
         .interval(Duration::from_millis(10u64));
+    let chain_id = provider.get_chainid().await.unwrap().as_u64();
+    let wallet = wallet.with_chain_id(chain_id);
     let signer_middleware = SignerMiddleware::new(provider.clone(), wallet);
     let wallet_addr = signer_middleware.address();
     let provider = Arc::new(signer_middleware.clone());

@@ -183,7 +183,7 @@ impl<W: Wordlist> MnemonicBuilder<W> {
         Ok(Wallet::<SigningKey> {
             signer,
             address,
-            chain_id: None,
+            chain_id: 1,
         })
     }
 }
