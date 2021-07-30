@@ -1,8 +1,5 @@
-use super::request::TransactionRequest;
-use super::NUM_TX_FIELDS;
-use crate::types::{Address, Bytes, Signature, H256, U64};
+use crate::types::{Address, H256};
 
-use rlp::RlpStream;
 use rlp_derive::RlpEncodable;
 use serde::{Deserialize, Serialize};
 

@@ -1,9 +1,4 @@
-use ethers_core::{
-    types::{
-        Address, BlockId, Bytes, NameOrAddress, Signature, Transaction, TransactionRequest, U256,
-    },
-    utils::keccak256,
-};
+use ethers_core::types::{Address, BlockId, Bytes, NameOrAddress, Signature, TransactionRequest};
 use ethers_providers::{FromErr, Middleware, PendingTransaction};
 use ethers_signers::Signer;
 
@@ -272,7 +267,7 @@ where
 mod tests {
     use super::*;
     use ethers::{providers::Provider, signers::LocalWallet};
-    use ethers_core::utils::{self, Ganache};
+    use ethers_core::utils::{self, Ganache, keccak256};
     use std::convert::TryFrom;
 
     #[tokio::test]
@@ -316,8 +311,6 @@ mod tests {
 
     #[tokio::test]
     async fn handles_tx_from_field() {
-        use ethers_core::types::Address;
-
         let ganache = Ganache::new().spawn();
         let acc = ganache.addresses()[0];
         let provider = Provider::try_from(ganache.endpoint()).unwrap();

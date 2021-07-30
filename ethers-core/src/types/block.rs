@@ -244,7 +244,7 @@ mod tests {
           }
         );
 
-        let block: Block<()> = serde_json::from_value(json.clone()).unwrap();
+        let block: Block<()> = serde_json::from_value(json).unwrap();
         assert_eq!(block.base_fee_per_gas, Some(U256::from(7)));
     }
 }
