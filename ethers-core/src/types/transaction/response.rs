@@ -43,6 +43,10 @@ pub struct Transaction {
 
     /// Gas Price
     #[serde(rename = "gasPrice")]
+    // TODO: Should this be deprecated?
+    // https://twitter.com/TimBeiko/status/1413536062429794304
+    // If yes, how will we handle pre-calculating the transaction's hash keccak256(rlp(tx)),
+    // given that it contains the gas price?
     pub gas_price: U256,
 
     /// Gas amount
@@ -157,6 +161,11 @@ pub struct TransactionReceipt {
     /// Transaction type, Some(1) for AccessList transaction, None for Legacy
     #[serde(rename = "type", default, skip_serializing_if = "Option::is_none")]
     pub transaction_type: Option<U64>,
+    /// The price paid post-execution by the transaction (i.e. base fee + priority fee).
+    /// Both fields in 1559-style transactions are *maximums* (max fee + max priority fee), the amount
+    /// that's actually paid by users can only be determined post-execution
+    #[serde(rename = "effectiveGasPrice", default, skip_serializing_if = "Option::is_none")]
+    pub effective_gas_price: Option<U256>,
 }
 
 #[cfg(test)]
@@ -205,5 +214,12 @@ mod tests {
     }"#,
         )
         .unwrap();
+    }
+
+    #[test]
+    fn decode_london_receipt() {
+        let receipt: TransactionReceipt = serde_json::from_value(serde_json::json!({"blockHash":"0x55ae43d3511e327dc532855510d110676d340aa1bbba369b4b98896d86559586","blockNumber":"0xa3d322","contractAddress":null,"cumulativeGasUsed":"0x207a5b","effectiveGasPrice":"0x3b9aca07","from":"0x541d6a0e9ca9e7a083e41e2e178eef9f22d7492e","gasUsed":"0x6a40","logs":[],"logsBloom":"0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000","status":"0x1","to":"0x8210357f377e901f18e45294e86a2a32215cc3c9","transactionHash":"0x824384376c5972498c6fcafe71fd8cad1689f64e7d5e270d025a898638c0c34d","transactionIndex":"0xd","type":"0x2"})).unwrap();
+        assert_eq!(receipt.transaction_type.unwrap().as_u64(), 2);
+        assert_eq!(receipt.effective_gas_price.unwrap().as_u64(), 0x3b9aca07);
     }
 }
