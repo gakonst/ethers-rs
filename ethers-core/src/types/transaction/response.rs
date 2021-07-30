@@ -92,6 +92,11 @@ pub struct Transaction {
     pub transaction_type: Option<U64>,
 
     // EIP2930
+    #[serde(
+        rename = "accessList",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     pub access_list: Option<AccessList>,
 
     #[serde(

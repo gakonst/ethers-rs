@@ -267,7 +267,7 @@ where
 mod tests {
     use super::*;
     use ethers::{providers::Provider, signers::LocalWallet};
-    use ethers_core::utils::{self, Ganache, keccak256};
+    use ethers_core::utils::{self, keccak256, Ganache};
     use std::convert::TryFrom;
 
     #[tokio::test]
