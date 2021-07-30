@@ -82,3 +82,31 @@ impl Eip2930TransactionRequest {
         rlp.out().freeze().into()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::types::{U256 ,transaction::eip2718::TypedTransaction};
+
+    #[test]
+    fn serde_eip2930_tx() {
+        let access_list = vec![AccessListItem {
+            address: Address::zero(),
+            storage_keys: vec![H256::zero()],
+        }];
+        let tx = TransactionRequest::new()
+            .to(Address::zero())
+            .value(U256::from(100))
+            .with_access_list(access_list);
+        let tx = TypedTransaction::from(tx);
+        let serialized = serde_json::to_string(&tx).unwrap();
+        dbg!(&serialized);
+
+        // deserializes to either the envelope type or the inner type
+        let de: TypedTransaction = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(tx, de);
+
+        let de: Eip2930TransactionRequest = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(tx, TypedTransaction::Eip2930(de));
+    }
+}
