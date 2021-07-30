@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 
 /// Access list
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize, RlpEncodable)]
-pub struct AccessList(Vec<AccessListItem>);
+pub struct AccessList(pub Vec<AccessListItem>);
 
 impl From<Vec<AccessListItem>> for AccessList {
     fn from(src: Vec<AccessListItem>) -> AccessList {

@@ -270,6 +270,6 @@ mod tests {
         }]);
         assert_eq!(tx.access_list.unwrap(), lst);
         assert_eq!(tx.max_fee_per_gas.unwrap().as_u64(), 0x3b9aca0e);
-        assert_eq!(tx.max_priority_fee_per_gas, 0x3b9aca00);
+        assert_eq!(tx.max_priority_fee_per_gas.unwrap().as_u64(), 0x3b9aca00);
     }
 }
