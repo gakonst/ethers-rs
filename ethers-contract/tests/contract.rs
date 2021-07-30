@@ -278,7 +278,7 @@ mod eth_tests {
         let (abi, bytecode) = compile_contract("SimpleStorage", "SimpleStorage.sol");
         let ganache = Ganache::new().spawn();
         let client = connect(&ganache, 0);
-        let contract = deploy(client, abi.clone(), bytecode).await;
+        let contract = deploy(client.clone(), abi.clone(), bytecode).await;
 
         // We spawn the event listener:
         let event = contract.event::<ValueChanged>();
@@ -292,9 +292,13 @@ mod eth_tests {
         let mut subscription = event2.subscribe().await.unwrap();
         assert_eq!(subscription.id, 2.into());
 
+        let mut subscription_meta = event2.subscribe().await.unwrap().with_meta();
+        assert_eq!(subscription_meta.0.id, 3.into());
+
         let num_calls = 3u64;
 
         // and we make a few calls
+        let num = client.get_block_number().await.unwrap();
         for i in 0..num_calls {
             let call = contract
                 .method::<_, H256>("setValue", i.to_string())
@@ -307,8 +311,19 @@ mod eth_tests {
             // unwrap the option of the stream, then unwrap the decoding result
             let log = stream.next().await.unwrap().unwrap();
             let log2 = subscription.next().await.unwrap().unwrap();
+            let (log3, meta) = subscription_meta.next().await.unwrap().unwrap();
+            assert_eq!(log.new_value, log3.new_value);
             assert_eq!(log.new_value, log2.new_value);
             assert_eq!(log.new_value, i.to_string());
+            assert_eq!(meta.block_number, num + i + 1);
+            let hash = client
+                .get_block(num + i + 1)
+                .await
+                .unwrap()
+                .unwrap()
+                .hash
+                .unwrap();
+            assert_eq!(meta.block_hash, hash);
         }
     }
 
