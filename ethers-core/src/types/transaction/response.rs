@@ -1,5 +1,5 @@
 //! Transaction types
-use super::{rlp_opt, NUM_TX_FIELDS};
+use super::{eip2930::AccessList, rlp_opt, NUM_TX_FIELDS};
 use crate::{
     types::{Address, Bloom, Bytes, Log, H256, U256, U64},
     utils::keccak256,
@@ -85,6 +85,28 @@ pub struct Transaction {
     #[cfg_attr(docsrs, doc(cfg(feature = "celo")))]
     #[serde(skip_serializing_if = "Option::is_none", rename = "gatewayFee")]
     pub gateway_fee: Option<U256>,
+
+    // EIP2718
+    /// Transaction type, Some(1) for AccessList transaction, None for Legacy
+    #[serde(rename = "type", default, skip_serializing_if = "Option::is_none")]
+    pub transaction_type: Option<U64>,
+
+    // EIP2930
+    pub access_list: Option<AccessList>,
+
+    #[serde(
+        rename = "maxPriorityFeePerGas",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub max_priority_fee_per_gas: Option<U256>,
+
+    #[serde(
+        rename = "maxFeePerGas",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub max_fee_per_gas: Option<U256>,
 }
 
 impl Transaction {
@@ -164,13 +186,19 @@ pub struct TransactionReceipt {
     /// The price paid post-execution by the transaction (i.e. base fee + priority fee).
     /// Both fields in 1559-style transactions are *maximums* (max fee + max priority fee), the amount
     /// that's actually paid by users can only be determined post-execution
-    #[serde(rename = "effectiveGasPrice", default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "effectiveGasPrice",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     pub effective_gas_price: Option<U256>,
 }
 
 #[cfg(test)]
 #[cfg(not(feature = "celo"))]
 mod tests {
+    use crate::types::transaction::eip2930::AccessListItem;
+
     use super::*;
 
     #[test]
@@ -221,5 +249,27 @@ mod tests {
         let receipt: TransactionReceipt = serde_json::from_value(serde_json::json!({"blockHash":"0x55ae43d3511e327dc532855510d110676d340aa1bbba369b4b98896d86559586","blockNumber":"0xa3d322","contractAddress":null,"cumulativeGasUsed":"0x207a5b","effectiveGasPrice":"0x3b9aca07","from":"0x541d6a0e9ca9e7a083e41e2e178eef9f22d7492e","gasUsed":"0x6a40","logs":[],"logsBloom":"0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000","status":"0x1","to":"0x8210357f377e901f18e45294e86a2a32215cc3c9","transactionHash":"0x824384376c5972498c6fcafe71fd8cad1689f64e7d5e270d025a898638c0c34d","transactionIndex":"0xd","type":"0x2"})).unwrap();
         assert_eq!(receipt.transaction_type.unwrap().as_u64(), 2);
         assert_eq!(receipt.effective_gas_price.unwrap().as_u64(), 0x3b9aca07);
+    }
+
+    #[test]
+    fn decode_london_tx() {
+        let tx: Transaction = serde_json::from_value(serde_json::json!({"accessList":[{"address":"0x8ba1f109551bd432803012645ac136ddd64dba72","storageKeys":["0x0000000000000000000000000000000000000000000000000000000000000000","0x0000000000000000000000000000000000000000000000000000000000000042"]}],"blockHash":"0x55ae43d3511e327dc532855510d110676d340aa1bbba369b4b98896d86559586","blockNumber":"0xa3d322","chainId":"0x3","from":"0x541d6a0e9ca9e7a083e41e2e178eef9f22d7492e","gas":"0x6a40","gasPrice":"0x3b9aca07","hash":"0x824384376c5972498c6fcafe71fd8cad1689f64e7d5e270d025a898638c0c34d","input":"0x","maxFeePerGas":"0x3b9aca0e","maxPriorityFeePerGas":"0x3b9aca00","nonce":"0x2","r":"0xf13b5088108f783f4b6048d4be456971118aabfb88be96bb541d734b6c2b20dc","s":"0x13fb7eb25a7d5df42a176cd4c6a086e19163ed7cd8ffba015f939d24f66bc17a","to":"0x8210357f377e901f18e45294e86a2a32215cc3c9","transactionIndex":"0xd","type":"0x2","v":"0x1","value":"0x7b"})).unwrap();
+        assert_eq!(tx.transaction_type.unwrap().as_u64(), 2);
+        let lst = AccessList(vec![AccessListItem {
+            address: "0x8ba1f109551bd432803012645ac136ddd64dba72"
+                .parse()
+                .unwrap(),
+            storage_keys: vec![
+                "0x0000000000000000000000000000000000000000000000000000000000000000"
+                    .parse()
+                    .unwrap(),
+                "0x0000000000000000000000000000000000000000000000000000000000000042"
+                    .parse()
+                    .unwrap(),
+            ],
+        }]);
+        assert_eq!(tx.access_list.unwrap(), lst);
+        assert_eq!(tx.max_fee_per_gas.unwrap().as_u64(), 0x3b9aca0e);
+        assert_eq!(tx.max_priority_fee_per_gas, 0x3b9aca00);
     }
 }

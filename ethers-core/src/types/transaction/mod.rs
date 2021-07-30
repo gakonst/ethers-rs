@@ -1,6 +1,8 @@
 pub mod request;
 pub mod response;
 
+pub mod eip2930;
+
 pub(crate) const BASE_NUM_TX_FIELDS: usize = 9;
 
 // Number of tx fields before signing
