@@ -7,7 +7,7 @@ pub use ethabi::ethereum_types::H256 as TxHash;
 
 pub use ethabi::ethereum_types::{Address, Bloom, H160, H256, U128, U256, U64};
 
-mod transaction;
+pub mod transaction;
 pub use transaction::request::TransactionRequest;
 pub use transaction::response::{Transaction, TransactionReceipt};
 
