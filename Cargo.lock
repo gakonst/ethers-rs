@@ -803,7 +803,6 @@ dependencies = [
  "elliptic-curve",
  "ethabi",
  "ethers",
- "funty",
  "futures-util",
  "generic-array 0.14.4",
  "glob",

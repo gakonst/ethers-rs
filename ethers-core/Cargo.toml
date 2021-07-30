@@ -31,10 +31,6 @@ glob = { version = "0.3.0", default-features = false }
 bytes = { version = "1.0.1", features = ["serde"] }
 hex = { version = "0.4.3", default-features = false, features = ["std"] }
 
-# bitvec compilation issue
-# https://github.com/bitvecto-rs/bitvec/issues/105#issuecomment-778570981
-funty = "=1.1.0"
-
 # async
 tokio = { version = "1.5", default-features = false, optional = true}
 futures-util = { version = "0.3.16", default-features = false, optional = true}
