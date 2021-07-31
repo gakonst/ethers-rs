@@ -47,7 +47,7 @@ pub const P1_FIRST: u8 = 0x00;
 
 #[repr(u8)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
-#[allow(non_camel_case_types)]
+#[allow(non_camel_case_types, clippy::upper_case_acronyms)]
 pub enum INS {
     GET_PUBLIC_KEY = 0x02,
     SIGN = 0x04,
@@ -57,7 +57,7 @@ pub enum INS {
 
 #[repr(u8)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
-#[allow(non_camel_case_types)]
+#[allow(non_camel_case_types, clippy::upper_case_acronyms)]
 pub enum P1 {
     NON_CONFIRM = 0x00,
     MORE = 0x80,

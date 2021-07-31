@@ -65,7 +65,7 @@ impl LedgerEthereum {
         &self,
         derivation: &DerivationType,
     ) -> Result<Address, LedgerError> {
-        let data = APDUData::new(&Self::path_to_bytes(&derivation));
+        let data = APDUData::new(&Self::path_to_bytes(derivation));
         let transport = self.transport.lock().await;
         Self::get_address_with_path_transport(&transport, derivation).await
     }
@@ -74,7 +74,7 @@ impl LedgerEthereum {
         transport: &Ledger,
         derivation: &DerivationType,
     ) -> Result<Address, LedgerError> {
-        let data = APDUData::new(&Self::path_to_bytes(&derivation));
+        let data = APDUData::new(&Self::path_to_bytes(derivation));
 
         let command = APDUCommand {
             ins: INS::GET_PUBLIC_KEY as u8,
