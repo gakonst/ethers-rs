@@ -83,7 +83,7 @@ pub use pubsub::{PubsubClient, SubscriptionStream};
 
 use async_trait::async_trait;
 use auto_impl::auto_impl;
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{error::Error, fmt::Debug, future::Future, pin::Pin};
 
 pub use provider::{FilterKind, Provider, ProviderError};
@@ -574,6 +574,27 @@ pub trait Middleware: Sync + Send + Debug {
             .await
             .map_err(FromErr::from)
     }
+
+    async fn fee_history(
+        &self,
+        block_count: u64,
+        last_block: BlockNumber,
+        reward_percentiles: &[f64],
+    ) -> Result<FeeHistory, Self::Error> {
+        self.inner()
+            .fee_history(block_count, last_block, reward_percentiles)
+            .await
+            .map_err(FromErr::from)
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct FeeHistory {
+    pub base_fee_per_gas: Vec<U256>,
+    pub gas_used_ratio: Vec<f64>,
+    pub oldest_block: u64,
+    pub reward: Vec<Vec<U256>>,
 }
 
 #[cfg(feature = "celo")]

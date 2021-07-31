@@ -2,7 +2,7 @@ use crate::{
     ens,
     pubsub::{PubsubClient, SubscriptionStream},
     stream::{FilterWatcher, DEFAULT_POLL_INTERVAL},
-    FromErr, Http as HttpProvider, JsonRpcClient, MockProvider, PendingTransaction,
+    FeeHistory, FromErr, Http as HttpProvider, JsonRpcClient, MockProvider, PendingTransaction,
 };
 
 use ethers_core::{
@@ -694,6 +694,22 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         let filter = utils::serialize(filter);
         self.subscribe([logs, filter]).await
     }
+
+    async fn fee_history(
+        &self,
+        block_count: u64,
+        last_block: BlockNumber,
+        reward_percentiles: &[f64],
+    ) -> Result<FeeHistory, Self::Error> {
+        let block_count = utils::serialize(&block_count);
+        let last_block = utils::serialize(&last_block);
+        let reward_percentiles = utils::serialize(&reward_percentiles);
+        self.request(
+            "eth_feeHistory",
+            [block_count, last_block, reward_percentiles],
+        )
+        .await
+    }
 }
 
 impl<P: JsonRpcClient> Provider<P> {
@@ -1019,5 +1035,20 @@ mod tests {
             .collect::<Vec<_>>()
             .await;
         assert_eq!(blocks, vec![1, 2, 3]);
+    }
+
+    #[tokio::test]
+    #[cfg_attr(feature = "celo", ignore)]
+    async fn fee_history() {
+        let provider = Provider::<Http>::try_from(
+            "https://goerli.infura.io/v3/fd8b88b56aa84f6da87b60f5441d6778",
+        )
+        .unwrap();
+
+        let history = provider
+            .fee_history(10, BlockNumber::Latest, &[10.0, 40.0])
+            .await
+            .unwrap();
+        dbg!(&history);
     }
 }
