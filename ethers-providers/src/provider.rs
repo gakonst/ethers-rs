@@ -5,7 +5,17 @@ use crate::{
     FeeHistory, FromErr, Http as HttpProvider, JsonRpcClient, MockProvider, PendingTransaction,
 };
 
-use ethers_core::{abi::{self, Detokenize, ParamType}, types::{Address, Block, BlockId, BlockNumber, BlockTrace, Bytes, Filter, H256, Log, NameOrAddress, Selector, Signature, Trace, TraceFilter, TraceType, Transaction, TransactionReceipt, TransactionRequest, TxHash, TxpoolContent, TxpoolInspect, TxpoolStatus, U256, U64, transaction::eip2930::AccessList}, utils};
+use ethers_core::{
+    abi::{self, Detokenize, ParamType},
+    types::{
+        transaction::{eip2718::TypedTransaction, eip2930::AccessListWithGasUsed},
+        Address, Block, BlockId, BlockNumber, BlockTrace, Bytes, Eip2930TransactionRequest, Filter,
+        Log, NameOrAddress, Selector, Signature, Trace, TraceFilter, TraceType, Transaction,
+        TransactionReceipt, TransactionRequest, TxHash, TxpoolContent, TxpoolInspect, TxpoolStatus,
+        H256, U256, U64,
+    },
+    utils,
+};
 
 #[cfg(feature = "celo")]
 use crate::CeloMiddleware;
@@ -184,6 +194,10 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self
     }
 
+    fn default_sender(&self) -> Option<Address> {
+        self.3
+    }
+
     ////// Blockchain Status
     //
     // Functions for querying the state of the blockchain
@@ -310,12 +324,18 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
     /// Sends a transaction to a single Ethereum node and return the estimated amount of gas required (as a U256) to send it
     /// This is free, but only an estimate. Providing too little gas will result in a transaction being rejected
     /// (while still consuming all provided gas).
-    async fn estimate_gas(&self, tx: &TransactionRequest) -> Result<U256, ProviderError> {
+    async fn estimate_gas(&self, tx: &TypedTransaction) -> Result<U256, ProviderError> {
         self.request("eth_estimateGas", [tx]).await
     }
 
-    async fn create_access_list(&self, tx: &TransactionRequest) -> Result<AccessList, ProviderError> {
-        self.request("eth_createAccessList", [tx]).await
+    async fn create_access_list(
+        &self,
+        tx: &TypedTransaction,
+        block: Option<BlockId>,
+    ) -> Result<AccessListWithGasUsed, ProviderError> {
+        let tx = utils::serialize(tx);
+        let block = utils::serialize(&block.unwrap_or_else(|| BlockNumber::Latest.into()));
+        self.request("eth_createAccessList", [tx, block]).await
     }
 
     /// Sends the transaction to the entire Ethereum network and returns the transaction's hash
@@ -323,24 +343,10 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
     async fn send_transaction(
         &self,
         mut tx: TransactionRequest,
-        _: Option<BlockId>,
+        block: Option<BlockId>,
     ) -> Result<PendingTransaction<'_, P>, ProviderError> {
-        if tx.from.is_none() {
-            tx.from = self.from;
-        }
-
-        if tx.gas.is_none() {
-            tx.gas = Some(self.estimate_gas(&tx).await?);
-        }
-
-        if let Some(NameOrAddress::Name(ref ens_name)) = tx.to {
-            // resolve to an address
-            let addr = self.resolve_name(ens_name).await?;
-
-            // set the value
-            tx.to = Some(addr.into())
-        }
-
+        let mut tx = tx.into();
+        self.fill_transaction(&mut tx, block).await?;
         let tx_hash = self.request("eth_sendTransaction", [tx]).await?;
 
         Ok(PendingTransaction::new(tx_hash, self).interval(self.get_interval()))

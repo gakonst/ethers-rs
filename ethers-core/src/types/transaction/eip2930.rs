@@ -1,5 +1,6 @@
 use super::request::TransactionRequest;
-use crate::types::{Address, Bytes, Signature, H256, U64};
+use crate::types::{Address, Bytes, Signature, H256, U64, U256};
+use crate::types::{Address, Bytes, Signature, H256, U256, U64};
 
 use rlp::RlpStream;
 use rlp_derive::{RlpEncodable, RlpEncodableWrapper};
@@ -12,6 +13,13 @@ const NUM_EIP2930_FIELDS: usize = 8;
 // https://github.com/gakonst/ethers-rs/pull/353#discussion_r680683869
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize, RlpEncodableWrapper)]
 pub struct AccessList(pub Vec<AccessListItem>);
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct AccessListWithGasUsed {
+    pub access_list: AccessList,
+    pub gas_used: U256,
+}
 
 impl From<Vec<AccessListItem>> for AccessList {
     fn from(src: Vec<AccessListItem>) -> AccessList {

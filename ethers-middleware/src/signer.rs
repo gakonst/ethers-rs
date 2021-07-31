@@ -140,10 +140,11 @@ where
             tx.from = Some(self.address());
         }
 
+        let typed_tx = tx.clone().into();
         // will poll and await the futures concurrently
         let (gas_price, gas, nonce) = join!(
             maybe(tx.gas_price, self.inner.get_gas_price()),
-            maybe(tx.gas, self.inner.estimate_gas(tx)),
+            maybe(tx.gas, self.inner.estimate_gas(&typed_tx)),
             maybe(
                 tx.nonce,
                 self.inner.get_transaction_count(self.address(), block)

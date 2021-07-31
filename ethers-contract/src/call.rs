@@ -102,7 +102,7 @@ where
     /// Returns the estimated gas cost for the underlying transaction to be executed
     pub async fn estimate_gas(&self) -> Result<U256, ContractError<M>> {
         self.client
-            .estimate_gas(&self.tx)
+            .estimate_gas(&self.tx.clone().into())
             .await
             .map_err(ContractError::MiddlewareError)
     }
