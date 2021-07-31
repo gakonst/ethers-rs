@@ -207,7 +207,7 @@ impl Tokenizable for Address {
 }
 
 macro_rules! eth_uint_tokenizable {
-    ($uint: ident, $name: expr) => {
+    ($uint:ident, $name:expr) => {
         impl Tokenizable for $uint {
             fn from_token(token: Token) -> Result<Self, InvalidOutputType> {
                 match token {
@@ -233,7 +233,7 @@ eth_uint_tokenizable!(U256, "U256");
 eth_uint_tokenizable!(U128, "U128");
 
 macro_rules! int_tokenizable {
-    ($int: ident, $token: ident) => {
+    ($int:ident, $token:ident) => {
         impl Tokenizable for $int {
             fn from_token(token: Token) -> Result<Self, InvalidOutputType> {
                 match token {
@@ -370,7 +370,7 @@ impl<T: TokenizableItem> Tokenizable for Vec<T> {
 impl<T: TokenizableItem> TokenizableItem for Vec<T> {}
 
 macro_rules! impl_fixed_types {
-    ($num: expr) => {
+    ($num:expr) => {
         impl Tokenizable for [u8; $num] {
             fn from_token(token: Token) -> Result<Self, InvalidOutputType> {
                 match token {
