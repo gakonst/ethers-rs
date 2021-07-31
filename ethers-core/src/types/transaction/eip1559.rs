@@ -11,7 +11,7 @@ const NUM_TX_FIELDS: usize = 9;
 use serde::{Deserialize, Serialize};
 /// Parameters for sending a transaction
 #[derive(Clone, Default, Serialize, Deserialize, PartialEq, Eq, Debug)]
-pub struct EIP1559TransactionRequest {
+pub struct Eip1559TransactionRequest {
     /// Sender address or ENS name
     #[serde(skip_serializing_if = "Option::is_none")]
     pub from: Option<Address>,
@@ -69,7 +69,7 @@ pub struct EIP1559TransactionRequest {
     pub max_fee_per_gas: Option<U256>,
 }
 
-impl EIP1559TransactionRequest {
+impl Eip1559TransactionRequest {
     /// Creates an empty transaction request with all fields left empty
     pub fn new() -> Self {
         Self::default()

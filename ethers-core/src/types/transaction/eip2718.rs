@@ -1,4 +1,4 @@
-use super::eip2930::Eip2930TransactionRequest;
+use super::{eip1559::Eip1559TransactionRequest, eip2930::Eip2930TransactionRequest};
 use crate::{
     types::{TransactionRequest, H256, U64},
     utils::keccak256,
@@ -14,6 +14,9 @@ pub enum TypedTransaction {
     // 0x01
     #[serde(rename = "0x01")]
     Eip2930(Eip2930TransactionRequest),
+    // 0x02
+    #[serde(rename = "0x02")]
+    Eip1559(Eip1559TransactionRequest),
 }
 
 impl TypedTransaction {
@@ -27,6 +30,11 @@ impl TypedTransaction {
             }
             TypedTransaction::Eip2930(ref tx) => {
                 let mut encoded = vec![1];
+                encoded.extend_from_slice(tx.rlp(chain_id).as_ref());
+                encoded
+            }
+            TypedTransaction::Eip1559(ref tx) => {
+                let mut encoded = vec![2];
                 encoded.extend_from_slice(tx.rlp(chain_id).as_ref());
                 encoded
             }
@@ -44,6 +52,12 @@ impl From<TransactionRequest> for TypedTransaction {
 impl From<Eip2930TransactionRequest> for TypedTransaction {
     fn from(src: Eip2930TransactionRequest) -> TypedTransaction {
         TypedTransaction::Eip2930(src)
+    }
+}
+
+impl From<Eip1559TransactionRequest> for TypedTransaction {
+    fn from(src: Eip1559TransactionRequest) -> TypedTransaction {
+        TypedTransaction::Eip1559(src)
     }
 }
 

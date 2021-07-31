@@ -9,7 +9,7 @@ pub use ethabi::ethereum_types::{Address, Bloom, H160, H256, U128, U256, U64};
 
 pub mod transaction;
 pub use transaction::{
-    eip1559::EIP1559TransactionRequest,
+    eip1559::Eip1559TransactionRequest,
     eip2930::Eip2930TransactionRequest,
     request::TransactionRequest,
     response::{Transaction, TransactionReceipt},
