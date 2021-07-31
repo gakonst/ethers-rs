@@ -26,7 +26,6 @@ pub static ADDRESS_BOOK: Lazy<HashMap<U256, Address>> = Lazy::new(|| {
 ///         }
 ///     );
 /// ```
-///
 // Auto-generated type-safe bindings
 pub use dsproxyfactory_mod::*;
 #[allow(clippy::too_many_arguments)]

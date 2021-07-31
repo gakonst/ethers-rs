@@ -65,10 +65,7 @@ impl Drop for GethInstance {
 /// let port = 8545u16;
 /// let url = format!("http://localhost:{}", port).to_string();
 ///
-/// let geth = Geth::new()
-///     .port(port)
-///     .block_time(5000u64)
-///     .spawn();
+/// let geth = Geth::new().port(port).block_time(5000u64).spawn();
 ///
 /// drop(geth); // this will kill the instance
 /// ```

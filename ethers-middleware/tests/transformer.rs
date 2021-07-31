@@ -1,12 +1,6 @@
-
-
-use ethers_middleware::{
-    SignerMiddleware,
-};
+use ethers_middleware::SignerMiddleware;
 use ethers_providers::{Http, Provider};
-use ethers_signers::{LocalWallet};
-
-
+use ethers_signers::LocalWallet;
 
 type HttpWallet = SignerMiddleware<Provider<Http>, LocalWallet>;
 

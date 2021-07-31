@@ -253,18 +253,13 @@ impl<M: Middleware> Multicall<M> {
     /// # let broadcast_2 = contract.method::<_, H256>("setValue", "new value".to_owned())?;
     /// #
     /// let mut multicall = Multicall::new(client, None).await?;
-    /// multicall
-    ///     .add_call(broadcast_1)
-    ///     .add_call(broadcast_2);
+    /// multicall.add_call(broadcast_1).add_call(broadcast_2);
     ///
     /// let _tx_hash = multicall.send().await?;
     ///
     /// # let call_1 = contract.method::<_, String>("getValue", ())?;
     /// # let call_2 = contract.method::<_, Address>("lastSender", ())?;
-    /// multicall
-    ///     .clear_calls()
-    ///     .add_call(call_1)
-    ///     .add_call(call_2);
+    /// multicall.clear_calls().add_call(call_1).add_call(call_2);
     /// let return_data: (String, Address) = multicall.call().await?;
     /// # Ok(())
     /// # }

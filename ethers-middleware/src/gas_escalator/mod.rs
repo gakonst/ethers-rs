@@ -38,13 +38,13 @@ pub enum Frequency {
 ///
 /// ```no_run
 /// use ethers::{
-///     providers::{Provider, Http},
 ///     middleware::{
-///         gas_escalator::{GeometricGasPrice, Frequency, GasEscalatorMiddleware},
-///         gas_oracle::{GasNow, GasCategory, GasOracleMiddleware},
+///         gas_escalator::{Frequency, GasEscalatorMiddleware, GeometricGasPrice},
+///         gas_oracle::{GasCategory, GasNow, GasOracleMiddleware},
 ///     },
+///     providers::{Http, Provider},
 /// };
-/// use std::{convert::TryFrom, time::Duration, sync::Arc};
+/// use std::{convert::TryFrom, sync::Arc, time::Duration};
 ///
 /// let provider = Provider::try_from("http://localhost:8545")
 ///     .unwrap()

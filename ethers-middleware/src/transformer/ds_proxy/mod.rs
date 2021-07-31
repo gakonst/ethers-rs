@@ -20,18 +20,15 @@ const DS_PROXY_EXECUTE_CODE: &str =
 /// # Example
 ///
 /// ```no_run
-/// use ethers::{
-///     middleware::transformer::DsProxy,
-///     prelude::*,
-/// };
+/// use ethers::{middleware::transformer::DsProxy, prelude::*};
 /// use std::{convert::TryFrom, sync::Arc};
 ///
 /// type HttpWallet = SignerMiddleware<Provider<Http>, LocalWallet>;
 ///
 /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
 /// // instantiate client that can sign transactions.
-/// let wallet: LocalWallet = "380eb0f3d505f087e438eca80bc4df9a7faa24f868e69fc0440261a0fc0567dc"
-///     .parse()?;
+/// let wallet: LocalWallet =
+///     "380eb0f3d505f087e438eca80bc4df9a7faa24f868e69fc0440261a0fc0567dc".parse()?;
 /// let provider = Provider::<Http>::try_from("http://localhost:8545")?;
 /// let client = SignerMiddleware::new(provider, wallet);
 ///

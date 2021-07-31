@@ -12,18 +12,20 @@
 //! # Examples
 //!
 //! ```no_run
-//! use ethers::providers::{Provider, Http, Middleware};
+//! use ethers::providers::{Http, Middleware, Provider};
 //! use std::convert::TryFrom;
 //!
 //! # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
 //! let provider = Provider::<Http>::try_from(
-//!     "https://mainnet.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27"
+//!     "https://mainnet.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27",
 //! )?;
 //!
 //! let block = provider.get_block(100u64).await?;
 //! println!("Got block: {}", serde_json::to_string(&block)?);
 //!
-//! let code = provider.get_code("0x89d24a6b4ccb1b6faa2625fe562bdd9a23260359", None).await?;
+//! let code = provider
+//!     .get_code("0x89d24a6b4ccb1b6faa2625fe562bdd9a23260359", None)
+//!     .await?;
 //! println!("Got code: {}", serde_json::to_string(&code)?);
 //! # Ok(())
 //! # }
@@ -122,9 +124,12 @@ pub trait FromErr<T> {
 /// 3. implementing any of the methods you want to override
 ///
 /// ```rust
-/// use ethers::{providers::{Middleware, FromErr}, types::{U64, TransactionRequest, U256}};
-/// use thiserror::Error;
 /// use async_trait::async_trait;
+/// use ethers::{
+///     providers::{FromErr, Middleware},
+///     types::{TransactionRequest, U256, U64},
+/// };
+/// use thiserror::Error;
 ///
 /// #[derive(Debug)]
 /// struct MyMiddleware<M>(M);
@@ -133,7 +138,6 @@ pub trait FromErr<T> {
 /// pub enum MyError<M: Middleware> {
 ///     #[error("{0}")]
 ///     MiddlewareError(M::Error),
-///
 ///     // Add your middleware's specific errors here
 /// }
 ///

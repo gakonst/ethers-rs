@@ -14,7 +14,7 @@
 //!
 //! ```rust
 //! # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
-//! use ethers::signers::{Signer, LocalWallet};
+//! use ethers::signers::{LocalWallet, Signer};
 //!
 //! let message = "Some data";
 //! let wallet = LocalWallet::new(&mut rand::thread_rng());

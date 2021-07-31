@@ -20,9 +20,9 @@ use thiserror::Error;
 ///
 /// ```no_run
 /// use ethers::{
-///     providers::{Middleware, Provider, Http},
-///     signers::LocalWallet,
 ///     middleware::SignerMiddleware,
+///     providers::{Http, Middleware, Provider},
+///     signers::LocalWallet,
 ///     types::{Address, TransactionRequest},
 /// };
 /// use std::convert::TryFrom;
@@ -33,8 +33,8 @@ use thiserror::Error;
 ///
 /// // Transactions will be signed with the private key below and will be broadcast
 /// // via the eth_sendRawTransaction API)
-/// let wallet: LocalWallet = "380eb0f3d505f087e438eca80bc4df9a7faa24f868e69fc0440261a0fc0567dc"
-///     .parse()?;
+/// let wallet: LocalWallet =
+///     "380eb0f3d505f087e438eca80bc4df9a7faa24f868e69fc0440261a0fc0567dc".parse()?;
 ///
 /// let mut client = SignerMiddleware::new(provider, wallet);
 ///
@@ -50,10 +50,13 @@ use thiserror::Error;
 /// let receipt = pending_tx.confirmations(6).await?;
 ///
 /// // You can connect with other wallets at runtime via the `with_signer` function
-/// let wallet2: LocalWallet = "cd8c407233c0560f6de24bb2dc60a8b02335c959a1a17f749ce6c1ccf63d74a7"
-///     .parse()?;
+/// let wallet2: LocalWallet =
+///     "cd8c407233c0560f6de24bb2dc60a8b02335c959a1a17f749ce6c1ccf63d74a7".parse()?;
 ///
-/// let signed_msg2 = client.with_signer(wallet2).sign(b"hello".to_vec(), &client.address()).await?;
+/// let signed_msg2 = client
+///     .with_signer(wallet2)
+///     .sign(b"hello".to_vec(), &client.address())
+///     .await?;
 ///
 /// // This call will be made with `wallet2` since `with_signer` takes a mutable reference.
 /// let tx2 = TransactionRequest::new()
@@ -63,7 +66,6 @@ use thiserror::Error;
 ///
 /// # Ok(())
 /// # }
-///
 /// ```
 ///
 /// [`Provider`]: ethers_providers::Provider

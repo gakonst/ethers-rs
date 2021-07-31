@@ -103,7 +103,6 @@ impl<'de> Deserialize<'de> for TxpoolInspectSummary {
 /// as the ones that are being scheduled for future execution only.
 ///
 /// See [here](https://geth.ethereum.org/docs/rpc/ns-txpool#txpool_content) for more details
-///
 #[derive(Debug, Default, Clone, PartialEq, Deserialize, Serialize)]
 pub struct TxpoolContent {
     /// pending tx
@@ -121,7 +120,6 @@ pub struct TxpoolContent {
 /// transactions in the pool and find any potential issues.
 ///
 /// See [here](https://geth.ethereum.org/docs/rpc/ns-txpool#txpool_inspect) for more details
-///
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TxpoolInspect {
     /// pending tx
@@ -137,7 +135,6 @@ pub struct TxpoolInspect {
 /// are being scheduled for future execution only.
 ///
 /// See [here](https://geth.ethereum.org/docs/rpc/ns-txpool#txpool_status) for more details
-///
 #[derive(Debug, Default, Clone, PartialEq, Deserialize, Serialize)]
 pub struct TxpoolStatus {
     /// number of pending tx

@@ -49,9 +49,7 @@ pub enum GasOracleError {
 /// # Example
 ///
 /// ```no_run
-/// use ethers::middleware::{
-///     gas_oracle::{EthGasStation, Etherscan, GasCategory, GasOracle},
-/// };
+/// use ethers::middleware::gas_oracle::{EthGasStation, Etherscan, GasCategory, GasOracle};
 ///
 /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
 /// let eth_gas_station_oracle = EthGasStation::new(Some("my-api-key"));
@@ -69,9 +67,7 @@ pub trait GasOracle: Send + Sync + std::fmt::Debug {
     /// # Example
     ///
     /// ```
-    /// use ethers::middleware::{
-    ///     gas_oracle::{Etherchain, GasCategory, GasOracle},
-    /// };
+    /// use ethers::middleware::gas_oracle::{Etherchain, GasCategory, GasOracle};
     ///
     /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
     /// let etherchain_oracle = Etherchain::new().category(GasCategory::Fastest);

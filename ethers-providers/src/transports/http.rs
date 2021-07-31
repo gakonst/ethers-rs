@@ -18,7 +18,10 @@ use super::common::{JsonRpcError, Request, Response};
 /// # Example
 ///
 /// ```no_run
-/// use ethers::{types::U64, providers::{JsonRpcClient, Http}};
+/// use ethers::{
+///     providers::{Http, JsonRpcClient},
+///     types::U64,
+/// };
 /// use std::str::FromStr;
 ///
 /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {

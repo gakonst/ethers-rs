@@ -37,12 +37,12 @@ use tracing_futures::Instrument;
 ///
 /// ```no_run
 /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
-/// use ethers::providers::{Middleware, Provider, Http};
+/// use ethers::providers::{Http, Middleware, Provider};
 /// use std::convert::TryFrom;
 ///
-/// let provider = Provider::<Http>::try_from(
-///     "https://mainnet.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27"
-/// ).expect("could not instantiate HTTP Provider");
+/// let provider =
+///     Provider::<Http>::try_from("https://mainnet.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27")
+///         .expect("could not instantiate HTTP Provider");
 ///
 /// let block = provider.get_block(100u64).await?;
 /// println!("Got block: {}", serde_json::to_string(&block)?);
@@ -755,7 +755,10 @@ impl Provider<MockProvider> {
     ///
     /// ```
     /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
-    /// use ethers::{types::U64, providers::{Middleware, Provider}};
+    /// use ethers::{
+    ///     providers::{Middleware, Provider},
+    ///     types::U64,
+    /// };
     /// // Instantiate the provider
     /// let (provider, mock) = Provider::mocked();
     /// // Push the mock response

@@ -108,12 +108,12 @@ use std::{fmt::Debug, marker::PhantomData, sync::Arc};
 ///
 /// ```no_run
 /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
-/// use ethers_core::{abi::Abi, types::Address};
 /// use ethers_contract::{Contract, EthEvent};
-/// use ethers_providers::{Provider, Http, Middleware};
+/// use ethers_core::abi::{Detokenize, InvalidOutputType, Token};
+/// use ethers_core::{abi::Abi, types::Address};
+/// use ethers_providers::{Http, Middleware, Provider};
 /// use ethers_signers::Wallet;
 /// use std::convert::TryFrom;
-/// use ethers_core::abi::{Detokenize, Token, InvalidOutputType};
 /// # // this is a fake address used just for this example
 /// # let address = "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee".parse::<Address>()?;
 /// # let abi: Abi = serde_json::from_str(r#"[]"#)?;
@@ -128,16 +128,11 @@ use std::{fmt::Debug, marker::PhantomData, sync::Arc};
 ///     new_value: String,
 /// }
 ///
-/// let logs: Vec<ValueChanged> = contract
-///     .event()
-///     .from_block(0u64)
-///     .query()
-///     .await?;
+/// let logs: Vec<ValueChanged> = contract.event().from_block(0u64).query().await?;
 ///
 /// println!("{:?}", logs);
 /// # Ok(())
 /// # }
-///
 /// ```
 ///
 /// _Disclaimer: these above docs have been adapted from the corresponding [ethers.js page](https://docs.ethers.io/ethers.js/html/api-contract.html)_

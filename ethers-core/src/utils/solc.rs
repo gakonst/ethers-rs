@@ -44,9 +44,7 @@ pub struct CompiledContract {
 ///
 /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// // Give it a glob
-/// let contracts = Solc::new("./contracts/*")
-///     .optimizer(200)
-///     .build()?;
+/// let contracts = Solc::new("./contracts/*").optimizer(200).build()?;
 ///
 /// // this will return None if the specified contract did not exist in the compiled
 /// // files

@@ -22,11 +22,15 @@ impl AbiParser {
     ///
     /// ```
     ///  # use ethers::abi::AbiParser;
-    /// let abi = AbiParser::default().parse_str(r#"[
+    /// let abi = AbiParser::default()
+    ///     .parse_str(
+    ///         r#"[
     ///         function setValue(string)
     ///         function getValue() external view returns (string)
     ///         event ValueChanged(address indexed author, string oldValue, string newValue)
-    ///     ]"#).unwrap();
+    ///     ]"#,
+    ///     )
+    ///     .unwrap();
     /// ```
     pub fn parse_str(&mut self, s: &str) -> Result<Abi> {
         self.parse(
@@ -44,9 +48,9 @@ impl AbiParser {
     /// ```
     /// use ethers::abi::AbiParser;
     ///
-    /// let abi = AbiParser::default().parse(&[
-    ///     "function x() external view returns (uint256)",
-    /// ]).unwrap();
+    /// let abi = AbiParser::default()
+    ///     .parse(&["function x() external view returns (uint256)"])
+    ///     .unwrap();
     /// ```
     pub fn parse(&mut self, input: &[&str]) -> Result<Abi> {
         // parse struct first
@@ -401,9 +405,7 @@ impl Default for AbiParser {
 /// ```
 /// use ethers::abi::parse_abi;
 ///
-/// let abi = parse_abi(&[
-///     "function x() external view returns (uint256)",
-/// ]).unwrap();
+/// let abi = parse_abi(&["function x() external view returns (uint256)"]).unwrap();
 /// ```
 pub fn parse(input: &[&str]) -> Result<Abi> {
     AbiParser::default().parse(input)

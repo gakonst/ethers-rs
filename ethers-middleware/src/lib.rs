@@ -20,15 +20,15 @@
 //!
 //! ```no_run
 //! use ethers::{
-//!     providers::{Provider, Http},
-//!     signers::{LocalWallet, Signer},
-//!     middleware::{
-//!         gas_escalator::{GasEscalatorMiddleware, GeometricGasPrice, Frequency},
-//!         gas_oracle::{GasOracleMiddleware, GasNow, GasCategory},
-//!         signer::SignerMiddleware,
-//!         nonce_manager::NonceManagerMiddleware,
-//!     },
 //!     core::rand,
+//!     middleware::{
+//!         gas_escalator::{Frequency, GasEscalatorMiddleware, GeometricGasPrice},
+//!         gas_oracle::{GasCategory, GasNow, GasOracleMiddleware},
+//!         nonce_manager::NonceManagerMiddleware,
+//!         signer::SignerMiddleware,
+//!     },
+//!     providers::{Http, Provider},
+//!     signers::{LocalWallet, Signer},
 //! };
 //! use std::convert::TryFrom;
 //!
@@ -37,8 +37,7 @@
 //!
 //! // Escalate gas prices
 //! let escalator = GeometricGasPrice::new(1.125, 60u64, None::<u64>);
-//! let provider =
-//!     GasEscalatorMiddleware::new(provider, escalator, Frequency::PerBlock);
+//! let provider = GasEscalatorMiddleware::new(provider, escalator, Frequency::PerBlock);
 //!
 //! // Sign transactions with a private key
 //! let signer = LocalWallet::new(&mut rand::thread_rng());

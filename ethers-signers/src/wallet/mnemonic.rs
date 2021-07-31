@@ -93,7 +93,7 @@ impl<W: Wordlist> MnemonicBuilder<W> {
     /// # Example
     ///
     /// ```
-    /// use ethers_signers::{MnemonicBuilder, coins_bip39::English};
+    /// use ethers_signers::{coins_bip39::English, MnemonicBuilder};
     /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
     ///
     /// let mut rng = rand::thread_rng();
