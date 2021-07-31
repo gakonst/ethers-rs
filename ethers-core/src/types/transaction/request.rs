@@ -171,9 +171,9 @@ impl TransactionRequest {
 impl TransactionRequest {
     // modifies the RLP stream with the Celo-specific information
     fn inject_celo_metadata(&self, rlp: &mut RlpStream) {
-        rlp_opt(rlp, self.fee_currency);
-        rlp_opt(rlp, self.gateway_fee_recipient);
-        rlp_opt(rlp, self.gateway_fee);
+        rlp_opt(rlp, &self.fee_currency);
+        rlp_opt(rlp, &self.gateway_fee_recipient);
+        rlp_opt(rlp, &self.gateway_fee);
     }
 
     /// Sets the `fee_currency` field in the transaction to the provided value

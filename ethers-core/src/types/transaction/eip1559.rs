@@ -119,6 +119,12 @@ impl Eip1559TransactionRequest {
         self
     }
 
+    /// Sets the `access_list` field in the transaction to the provided value
+    pub fn access_list<T: Into<AccessList>>(mut self, access_list: T) -> Self {
+        self.access_list = Some(access_list.into());
+        self
+    }
+
     /// Sets the `nonce` field in the transaction to the provided value
     pub fn nonce<T: Into<U256>>(mut self, nonce: T) -> Self {
         self.nonce = Some(nonce.into());

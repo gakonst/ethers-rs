@@ -130,9 +130,9 @@ impl Transaction {
     // of this code duplication?
     #[cfg(feature = "celo")]
     fn inject_celo_metadata(&self, rlp: &mut RlpStream) {
-        rlp_opt(rlp, self.fee_currency);
-        rlp_opt(rlp, self.gateway_fee_recipient);
-        rlp_opt(rlp, self.gateway_fee);
+        rlp_opt(rlp, &self.fee_currency);
+        rlp_opt(rlp, &self.gateway_fee_recipient);
+        rlp_opt(rlp, &self.gateway_fee);
     }
 
     pub fn hash(&self) -> H256 {
