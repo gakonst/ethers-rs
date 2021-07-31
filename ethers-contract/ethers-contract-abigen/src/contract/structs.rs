@@ -10,11 +10,12 @@ use crate::contract::{types, Context};
 use crate::util;
 
 impl Context {
-    /// Generate corresponding types for structs parsed from a human readable ABI
+    /// Generate corresponding types for structs parsed from a human readable
+    /// ABI
     ///
-    /// NOTE: This assumes that all structs that are potentially used as type for variable are
-    /// in fact present in the `AbiParser`, this is sound because `AbiParser::parse` would have
-    /// failed already
+    /// NOTE: This assumes that all structs that are potentially used as type
+    /// for variable are in fact present in the `AbiParser`, this is sound
+    /// because `AbiParser::parse` would have failed already
     pub fn abi_structs(&self) -> Result<TokenStream> {
         let mut structs = Vec::with_capacity(self.abi_parser.structs.len());
         for (name, sol_struct) in &self.abi_parser.structs {

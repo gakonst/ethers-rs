@@ -172,7 +172,8 @@ impl AbiParser {
         }
     }
 
-    /// Parses a solidity event declaration from `event <name> (args*) anonymous?`
+    /// Parses a solidity event declaration from `event <name> (args*)
+    /// anonymous?`
     pub fn parse_event(&self, s: &str) -> Result<Event> {
         let mut event = s.trim();
         if !event.starts_with("event ") {

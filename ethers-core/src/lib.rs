@@ -1,7 +1,7 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 //! Ethereum types, cryptography and utilities.
-//! _It is recommended to use the `utils`, `types` and `abi` re-exports instead of
-//! the `core` module to simplify your imports._
+//! _It is recommended to use the `utils`, `types` and `abi` re-exports instead
+//! of the `core` module to simplify your imports._
 //!
 //! This library provides type definitions for Ethereum's main datatypes along
 //! with other utilities for interacting with the Ethereum ecosystem
@@ -32,9 +32,10 @@
 //!
 //! ## Utilities
 //!
-//! The crate provides utilities for launching local Ethereum testnets by using `ganache-cli`
-//! via the `GanacheBuilder` struct. In addition, you're able to compile contracts on the
-//! filesystem by providing a glob to their path, using the `Solc` struct.
+//! The crate provides utilities for launching local Ethereum testnets by using
+//! `ganache-cli` via the `GanacheBuilder` struct. In addition, you're able to
+//! compile contracts on the filesystem by providing a glob to their path, using
+//! the `Solc` struct.
 //!
 //! # ABI Encoding and Decoding
 //!
@@ -48,7 +49,8 @@ pub mod abi;
 /// Various utilities
 pub mod utils;
 
-// re-export rand to avoid potential confusion when there's rand version mismatches
+// re-export rand to avoid potential confusion when there's rand version
+// mismatches
 pub use rand;
 
 // re-export k256

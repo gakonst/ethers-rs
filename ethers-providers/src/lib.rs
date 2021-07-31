@@ -6,8 +6,8 @@
 //! This crate provides asynchronous [Ethereum JSON-RPC](https://github.com/ethereum/wiki/wiki/JSON-RPC)
 //! compliant clients.
 //!
-//! For more documentation on the available calls, refer to the [`Provider`](crate::Provider)
-//! struct.
+//! For more documentation on the available calls, refer to the
+//! [`Provider`](crate::Provider) struct.
 //!
 //! # Examples
 //!
@@ -96,13 +96,14 @@ pub(crate) type PinBoxFut<'a, T> =
 
 #[async_trait]
 #[auto_impl(&, Box, Arc)]
-/// Trait which must be implemented by data transports to be used with the Ethereum
-/// JSON-RPC provider.
+/// Trait which must be implemented by data transports to be used with the
+/// Ethereum JSON-RPC provider.
 pub trait JsonRpcClient: Debug + Send + Sync {
     /// A JSON-RPC Error
     type Error: Error + Into<ProviderError>;
 
-    /// Sends a request with the provided JSON-RPC and parameters serialized as JSON
+    /// Sends a request with the provided JSON-RPC and parameters serialized as
+    /// JSON
     async fn request<T, R>(&self, method: &str, params: T) -> Result<R, Self::Error>
     where
         T: Debug + Serialize + Send + Sync,
@@ -116,11 +117,13 @@ pub trait FromErr<T> {
 
 #[async_trait]
 #[auto_impl(&, Box, Arc)]
-/// A middleware allows customizing requests send and received from an ethereum node.
+/// A middleware allows customizing requests send and received from an ethereum
+/// node.
 ///
 /// Writing a middleware is as simple as:
-/// 1. implementing the [`inner`](crate::Middleware::inner) method to point to the next layer in the "middleware onion",
-/// 2. implementing the [`FromErr`](crate::FromErr) trait on your middleware's error type
+/// 1. implementing the [`inner`](crate::Middleware::inner) method to point to
+/// the next layer in the "middleware onion", 2. implementing the
+/// [`FromErr`](crate::FromErr) trait on your middleware's error type
 /// 3. implementing any of the methods you want to override
 ///
 /// ```rust
@@ -311,9 +314,11 @@ pub trait Middleware: Sync + Send + Debug {
             .map_err(FromErr::from)
     }
 
-    /// This returns true if either the middleware stack contains a `SignerMiddleware`, or the
-    /// JSON-RPC provider has an unlocked key that can sign using the `eth_sign` call. If none of
-    /// the above conditions are met, then the middleware stack is not capable of signing data.
+    /// This returns true if either the middleware stack contains a
+    /// `SignerMiddleware`, or the JSON-RPC provider has an unlocked key
+    /// that can sign using the `eth_sign` call. If none of
+    /// the above conditions are met, then the middleware stack is not capable
+    /// of signing data.
     async fn is_signer(&self) -> bool {
         self.inner().is_signer().await
     }
@@ -429,7 +434,8 @@ pub trait Middleware: Sync + Send + Debug {
             .map_err(FromErr::from)
     }
 
-    /// Traces a call to `eth_sendRawTransaction` without making the call, returning the traces
+    /// Traces a call to `eth_sendRawTransaction` without making the call,
+    /// returning the traces
     async fn trace_raw_transaction(
         &self,
         data: Bytes,
@@ -453,7 +459,8 @@ pub trait Middleware: Sync + Send + Debug {
             .map_err(FromErr::from)
     }
 
-    /// Replays all transactions in a block returning the requested traces for each transaction
+    /// Replays all transactions in a block returning the requested traces for
+    /// each transaction
     async fn trace_replay_block_transactions(
         &self,
         block: BlockNumber,

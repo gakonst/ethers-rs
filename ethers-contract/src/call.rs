@@ -32,13 +32,13 @@ pub enum ContractError<M: Middleware> {
     #[error("{0}")]
     ProviderError(ProviderError),
 
-    /// Thrown during deployment if a constructor argument was passed in the `deploy`
-    /// call but a constructor was not present in the ABI
+    /// Thrown during deployment if a constructor argument was passed in the
+    /// `deploy` call but a constructor was not present in the ABI
     #[error("constructor is not defined in the ABI")]
     ConstructorError,
 
-    /// Thrown if a contract address is not found in the deployment transaction's
-    /// receipt
+    /// Thrown if a contract address is not found in the deployment
+    /// transaction's receipt
     #[error("Contract was not deployed")]
     ContractNotDeployed,
 }
@@ -51,7 +51,8 @@ pub struct ContractCall<M, D> {
     pub tx: TransactionRequest,
     /// The ABI of the function being called
     pub function: Function,
-    /// Optional block number to be used when calculating the transaction's gas and nonce
+    /// Optional block number to be used when calculating the transaction's gas
+    /// and nonce
     pub block: Option<BlockId>,
     pub(crate) client: Arc<M>,
     pub(crate) datatype: PhantomData<D>,
@@ -99,7 +100,8 @@ where
         self.tx.data.clone()
     }
 
-    /// Returns the estimated gas cost for the underlying transaction to be executed
+    /// Returns the estimated gas cost for the underlying transaction to be
+    /// executed
     pub async fn estimate_gas(&self) -> Result<U256, ContractError<M>> {
         self.client
             .estimate_gas(&self.tx)
@@ -109,11 +111,12 @@ where
 
     /// Queries the blockchain via an `eth_call` for the provided transaction.
     ///
-    /// If executed on a non-state mutating smart contract function (i.e. `view`, `pure`)
-    /// then it will return the raw data from the chain.
+    /// If executed on a non-state mutating smart contract function (i.e.
+    /// `view`, `pure`) then it will return the raw data from the chain.
     ///
-    /// If executed on a mutating smart contract function, it will do a "dry run" of the call
-    /// and return the return type of the transaction without mutating the state
+    /// If executed on a mutating smart contract function, it will do a "dry
+    /// run" of the call and return the return type of the transaction
+    /// without mutating the state
     ///
     /// Note: this function _does not_ send a transaction from your account
     pub async fn call(&self) -> Result<D, ContractError<M>> {

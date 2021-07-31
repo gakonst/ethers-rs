@@ -59,7 +59,8 @@ impl Drop for GanacheInstance {
 ///
 /// # Panics
 ///
-/// If `spawn` is called without `ganache-cli` being available in the user's $PATH
+/// If `spawn` is called without `ganache-cli` being available in the user's
+/// $PATH
 ///
 /// # Example
 ///
@@ -92,27 +93,30 @@ impl Ganache {
         Self::default()
     }
 
-    /// Sets the port which will be used when the `ganache-cli` instance is launched.
+    /// Sets the port which will be used when the `ganache-cli` instance is
+    /// launched.
     pub fn port<T: Into<u16>>(mut self, port: T) -> Self {
         self.port = Some(port.into());
         self
     }
 
-    /// Sets the mnemonic which will be used when the `ganache-cli` instance is launched.
+    /// Sets the mnemonic which will be used when the `ganache-cli` instance is
+    /// launched.
     pub fn mnemonic<T: Into<String>>(mut self, mnemonic: T) -> Self {
         self.mnemonic = Some(mnemonic.into());
         self
     }
 
-    /// Sets the block-time which will be used when the `ganache-cli` instance is launched.
+    /// Sets the block-time which will be used when the `ganache-cli` instance
+    /// is launched.
     pub fn block_time<T: Into<u64>>(mut self, block_time: T) -> Self {
         self.block_time = Some(block_time.into());
         self
     }
 
-    /// Sets the `fork` argument to fork from another currently running Ethereum client
-    /// at a given block. Input should be the HTTP location and port of the other client,
-    /// e.g. `http://localhost:8545`. You can optionally specify the block to fork from
+    /// Sets the `fork` argument to fork from another currently running Ethereum
+    /// client at a given block. Input should be the HTTP location and port
+    /// of the other client, e.g. `http://localhost:8545`. You can optionally specify the block to fork from
     /// using an @ sign: `http://localhost:8545@1599200`
     pub fn fork<T: Into<String>>(mut self, fork: T) -> Self {
         self.fork = Some(fork.into());

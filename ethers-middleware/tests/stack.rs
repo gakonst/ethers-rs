@@ -61,21 +61,23 @@ mod tests {
         let chain_id = provider.get_chainid().await.unwrap().as_u64();
         let signer = signer.with_chain_id(chain_id);
 
-        // the Gas Price escalator middleware is the first middleware above the provider,
-        // so that it receives the transaction last, after all the other middleware
-        // have modified it accordingly
+        // the Gas Price escalator middleware is the first middleware above the
+        // provider, so that it receives the transaction last, after all the
+        // other middleware have modified it accordingly
         let escalator = GeometricGasPrice::new(1.125, 60u64, None::<u64>);
         let provider = GasEscalatorMiddleware::new(provider, escalator, Frequency::PerBlock);
 
-        // The gas price middleware MUST be below the signing middleware for things to work
+        // The gas price middleware MUST be below the signing middleware for things to
+        // work
         let provider = GasOracleMiddleware::new(provider, gas_oracle);
 
         // The signing middleware signs txs
         use std::sync::Arc;
         let provider = Arc::new(SignerMiddleware::new(provider, signer));
 
-        // The nonce manager middleware MUST be above the signing middleware so that it overrides
-        // the nonce and the signer does not make any eth_getTransaction count calls
+        // The nonce manager middleware MUST be above the signing middleware so that it
+        // overrides the nonce and the signer does not make any
+        // eth_getTransaction count calls
         let provider = NonceManagerMiddleware::new(provider, address);
 
         let tx = TransactionRequest::new();

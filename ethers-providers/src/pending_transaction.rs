@@ -17,11 +17,12 @@ use std::{
     time::Duration,
 };
 
-/// A pending transaction is a transaction which has been submitted but is not yet mined.
-/// `await`'ing on a pending transaction will resolve to a transaction receipt
-/// once the transaction has enough `confirmations`. The default number of confirmations
-/// is 1, but may be adjusted with the `confirmations` method. If the transaction does not
-/// have enough confirmations or is not mined, the future will stay in the pending state.
+/// A pending transaction is a transaction which has been submitted but is not
+/// yet mined. `await`'ing on a pending transaction will resolve to a
+/// transaction receipt once the transaction has enough `confirmations`. The
+/// default number of confirmations is 1, but may be adjusted with the
+/// `confirmations` method. If the transaction does not have enough
+/// confirmations or is not mined, the future will stay in the pending state.
 #[pin_project]
 pub struct PendingTransaction<'a, P> {
     tx_hash: TxHash,
@@ -272,9 +273,9 @@ enum PendingTxState<'a> {
     /// Polling the blockchain for the receipt
     GettingReceipt(PinBoxFut<'a, Option<TransactionReceipt>>),
 
-    /// If the pending tx required only 1 conf, it will return early. Otherwise it will
-    /// proceed to the next state which will poll the block number until there have been
-    /// enough confirmations
+    /// If the pending tx required only 1 conf, it will return early. Otherwise
+    /// it will proceed to the next state which will poll the block number
+    /// until there have been enough confirmations
     CheckingReceipt(Option<TransactionReceipt>),
 
     /// Waiting for interval to elapse before calling API again

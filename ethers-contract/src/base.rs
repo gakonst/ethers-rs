@@ -49,14 +49,15 @@ impl From<Abi> for BaseContract {
 impl BaseContract {
     /// Returns the ABI encoded data for the provided function and arguments
     ///
-    /// If the function exists multiple times and you want to use one of the overloaded
-    /// versions, consider using `encode_with_selector`
+    /// If the function exists multiple times and you want to use one of the
+    /// overloaded versions, consider using `encode_with_selector`
     pub fn encode<T: Tokenize>(&self, name: &str, args: T) -> Result<Bytes, AbiError> {
         let function = self.abi.function(name)?;
         encode_function_data(function, args)
     }
 
-    /// Returns the ABI encoded data for the provided function selector and arguments
+    /// Returns the ABI encoded data for the provided function selector and
+    /// arguments
     pub fn encode_with_selector<T: Tokenize>(
         &self,
         signature: Selector,
@@ -66,10 +67,11 @@ impl BaseContract {
         encode_function_data(function, args)
     }
 
-    /// Decodes the provided ABI encoded function arguments with the selected function name.
+    /// Decodes the provided ABI encoded function arguments with the selected
+    /// function name.
     ///
-    /// If the function exists multiple times and you want to use one of the overloaded
-    /// versions, consider using `decode_with_selector`
+    /// If the function exists multiple times and you want to use one of the
+    /// overloaded versions, consider using `decode_with_selector`
     pub fn decode<D: Detokenize, T: AsRef<[u8]>>(
         &self,
         name: &str,
@@ -91,7 +93,8 @@ impl BaseContract {
         decode_event(event, topics, data)
     }
 
-    /// Decodes the provided ABI encoded bytes with the selected function selector
+    /// Decodes the provided ABI encoded bytes with the selected function
+    /// selector
     pub fn decode_with_selector<D: Detokenize, T: AsRef<[u8]>>(
         &self,
         signature: Selector,
@@ -114,7 +117,8 @@ impl BaseContract {
         &self.abi
     }
 
-    /// Upgrades a `BaseContract` into a full fledged contract with an address and middleware.
+    /// Upgrades a `BaseContract` into a full fledged contract with an address
+    /// and middleware.
     pub fn into_contract<M: Middleware>(
         self,
         address: Address,

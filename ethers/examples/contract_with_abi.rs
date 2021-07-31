@@ -15,7 +15,8 @@ abigen!(
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    // 1. compile the contract (note this requires that you are inside the `ethers/examples` directory) and launch ganache
+    // 1. compile the contract (note this requires that you are inside the
+    // `ethers/examples` directory) and launch ganache
     let (compiled, ganache) =
         compile_and_launch_ganache(Solc::new("**/contract.sol"), Ganache::new()).await?;
 
@@ -52,7 +53,8 @@ async fn main() -> Result<()> {
     let contract = SimpleContract::new(addr, client.clone());
 
     // 9. call the `setValue` method
-    // (first `await` returns a PendingTransaction, second one waits for it to be mined)
+    // (first `await` returns a PendingTransaction, second one waits for it to be
+    // mined)
     let _receipt = contract.set_value("hi".to_owned()).send().await?.await?;
 
     // 10. get all events

@@ -77,23 +77,29 @@ pub fn abigen(input: TokenStream) -> TokenStream {
 
 /// Derives the `EthEvent` and `Tokenizeable` trait for the labeled type.
 ///
-/// Additional arguments can be specified using the `#[ethevent(...)]` attribute:
+/// Additional arguments can be specified using the `#[ethevent(...)]`
+/// attribute:
 ///
 /// For the struct:
 ///
-/// - `name`, `name = "..."`: Overrides the generated `EthEvent` name, default is the
+/// - `name`, `name = "..."`: Overrides the generated `EthEvent` name, default
+///   is the
 ///  struct's name.
-/// - `signature`, `signature = "..."`: The signature as hex string to override the
+/// - `signature`, `signature = "..."`: The signature as hex string to override
+///   the
 ///  event's signature.
-/// - `abi`, `abi = "..."`: The ABI signature for the event this event's data corresponds to.
-///  The `abi` should be solidity event definition or a tuple of the event's types in case the
-///  event has non elementary (other `EthAbiType`) types as members
+/// - `abi`, `abi = "..."`: The ABI signature for the event this event's data
+///   corresponds to.
+///  The `abi` should be solidity event definition or a tuple of the event's
+/// types in case the  event has non elementary (other `EthAbiType`) types as
+/// members
 /// - `anonymous`: A flag to mark this as an anonymous event
 ///
 /// For fields:
 ///
 /// - `indexed`: flag to mark a field as an indexed event input
-/// - `name`: override the name of an indexed event input, default is the rust field name
+/// - `name`: override the name of an indexed event input, default is the rust
+///   field name
 ///
 /// # Example
 /// ```ignore
@@ -162,10 +168,12 @@ pub fn derive_abi_event(input: TokenStream) -> TokenStream {
                 match src.parse::<Source>().and_then(|s| s.get()) {
                     Ok(abi) => {
                         // try to derive the signature from the abi from the parsed abi
-                        // TODO(mattsse): this will fail for events that contain other non elementary types in their abi
-                        //  because the parser doesn't know how to substitute the types
-                        //  this could be mitigated by getting the ABI of each non elementary type at runtime
-                        //  and computing the the signature as `static Lazy::...`
+                        // TODO(mattsse): this will fail for events that contain other non
+                        // elementary types in their abi  because the parser
+                        // doesn't know how to substitute the types
+                        //  this could be mitigated by getting the ABI of each non elementary type
+                        // at runtime  and computing the the signature as
+                        // `static Lazy::...`
                         match parse_event(&abi) {
                             Ok(event) => event,
                             Err(err) => {
@@ -686,8 +694,8 @@ fn parse_event(abi: &str) -> Result<Event, String> {
 
 /// Derives the `Tokenizable` trait for the labeled type.
 ///
-/// This derive macro automatically adds a type bound `field: Tokenizable` for each
-/// field type.
+/// This derive macro automatically adds a type bound `field: Tokenizable` for
+/// each field type.
 #[proc_macro_derive(EthAbiType)]
 pub fn derive_abi_type(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -785,7 +793,8 @@ fn derive_tokenizeable_impl(input: &DeriveInput) -> proc_macro2::TokenStream {
         }
     };
 
-    // there might be the case that the event has only 1 params, which is not a tuple
+    // there might be the case that the event has only 1 params, which is not a
+    // tuple
     let (from_token_impl, into_token_impl) = match params_len {
         0 => (
             quote! {
@@ -804,7 +813,8 @@ fn derive_tokenizeable_impl(input: &DeriveInput) -> proc_macro2::TokenStream {
                 Ok(#init_struct_impl)
             };
 
-            // This is a hack to get rid of the trailing comma introduced in the macro that concatenates all the fields
+            // This is a hack to get rid of the trailing comma introduced in the macro that
+            // concatenates all the fields
             if let Ok(into_token) = into_token_impl
                 .to_string()
                 .as_str()

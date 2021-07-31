@@ -273,8 +273,8 @@ where
         Ok(())
     }
 
-    /// Sends notification through the channel based on the ID of the subscription.
-    /// This handles streaming responses.
+    /// Sends notification through the channel based on the ID of the
+    /// subscription. This handles streaming responses.
     fn notify(&mut self, notification: Notification<serde_json::Value>) -> Result<(), IpcError> {
         let id = notification.params.subscription;
         if let Some(tx) = self.subscriptions.get(&id) {
@@ -286,8 +286,9 @@ where
         Ok(())
     }
 
-    /// Sends JSON response through the channel based on the ID in that response.
-    /// This handles RPC calls with only one response, and the channel entry is dropped after sending.
+    /// Sends JSON response through the channel based on the ID in that
+    /// response. This handles RPC calls with only one response, and the
+    /// channel entry is dropped after sending.
     fn respond(&mut self, output: Response<serde_json::Value>) -> Result<(), IpcError> {
         let id = output.id;
 

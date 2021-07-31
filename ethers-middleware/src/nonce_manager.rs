@@ -18,8 +18,8 @@ impl<M> NonceManagerMiddleware<M>
 where
     M: Middleware,
 {
-    /// Instantiates the nonce manager with a 0 nonce. The `address` should be the
-    /// address which you'll be sending transactions from
+    /// Instantiates the nonce manager with a 0 nonce. The `address` should be
+    /// the address which you'll be sending transactions from
     pub fn new(inner: M, address: Address) -> Self {
         Self {
             initialized: false.into(),
@@ -81,9 +81,9 @@ where
         &self.inner
     }
 
-    /// Signs and broadcasts the transaction. The optional parameter `block` can be passed so that
-    /// gas cost and nonce calculations take it into account. For simple transactions this can be
-    /// left to `None`.
+    /// Signs and broadcasts the transaction. The optional parameter `block` can
+    /// be passed so that gas cost and nonce calculations take it into
+    /// account. For simple transactions this can be left to `None`.
     async fn send_transaction(
         &self,
         mut tx: TransactionRequest,

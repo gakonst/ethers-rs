@@ -31,8 +31,9 @@ use std::fmt;
 /// ## Signing and Verifying a message
 ///
 /// The wallet can be used to produce ECDSA [`Signature`] objects, which can be
-/// then verified. Note that this uses [`hash_message`] under the hood which will
-/// prefix the message being hashed with the `Ethereum Signed Message` domain separator.
+/// then verified. Note that this uses [`hash_message`] under the hood which
+/// will prefix the message being hashed with the `Ethereum Signed Message`
+/// domain separator.
 ///
 /// ```
 /// use ethers_core::rand::thread_rng;

@@ -2,12 +2,13 @@
 //! Type-safe abstractions for interacting with Ethereum smart contracts
 //!
 //! Interacting with a smart contract requires broadcasting carefully crafted
-//! [transactions](ethers_core::types::TransactionRequest) where the `data` field contains
-//! the [function's
+//! [transactions](ethers_core::types::TransactionRequest) where the `data`
+//! field contains the [function's
 //! selector](https://ethereum.stackexchange.com/questions/72363/what-is-a-function-selector)
 //! along with the arguments of the called function. This module provides the
-//! [`Contract`] and [`ContractFactory`] abstractions so that you do not have to worry about that.
-//! It also provides typesafe bindings via the [`abigen`] macro and the [`Abigen` builder].
+//! [`Contract`] and [`ContractFactory`] abstractions so that you do not have to
+//! worry about that. It also provides typesafe bindings via the [`abigen`]
+//! macro and the [`Abigen` builder].
 //!
 //! [`ContractFactory`]: crate::ContractFactory
 //! [`Contract`]: crate::Contract
@@ -36,8 +37,8 @@ mod stream;
 mod multicall;
 pub use multicall::Multicall;
 
-/// This module exposes low lever builder structures which are only consumed by the
-/// type-safe ABI bindings generators.
+/// This module exposes low lever builder structures which are only consumed by
+/// the type-safe ABI bindings generators.
 pub mod builders {
     pub use super::call::ContractCall;
     pub use super::event::Event;

@@ -43,8 +43,8 @@ fn can_gen_structs_readable() {
     );
 }
 
-// NOTE(mattsse): There is currently a limitation with the `ethabi` crate's `Reader`
-//  that doesn't support arrays of tuples; https://github.com/gakonst/ethabi/pull/1 should fix this
+// NOTE(mattsse): There is currently a limitation with the `ethabi` crate's
+// `Reader`  that doesn't support arrays of tuples; https://github.com/gakonst/ethabi/pull/1 should fix this
 // See also https://github.com/rust-ethereum/ethabi/issues/178 and
 // https://github.com/rust-ethereum/ethabi/pull/186
 
@@ -60,7 +60,7 @@ fn can_gen_structs_readable() {
 //         event_derives(serde::Deserialize, serde::Serialize)
 //     );
 //     assert_eq!(
-//         "ValueChanged((address,string),(address,string),(address[],string)[])",
-//         ValueChangedFilter::abi_signature()
+//         "ValueChanged((address,string),(address,string),(address[],
+// string)[])",         ValueChangedFilter::abi_signature()
 //     );
 // }

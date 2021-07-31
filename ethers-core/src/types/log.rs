@@ -41,7 +41,8 @@ pub struct Log {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub transaction_index: Option<U64>,
 
-    /// Integer of the log index position in the block. Noe if it's a pending log.
+    /// Integer of the log index position in the block. Noe if it's a pending
+    /// log.
     #[serde(rename = "logIndex")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub log_index: Option<U256>,
@@ -261,7 +262,8 @@ impl Filter {
     /// let filter = Filter::new().select(69u64);
     /// # }
     /// ```
-    /// This is the same as `Filter::new().from_block(1337u64).to_block(1337u64)`
+    /// This is the same as
+    /// `Filter::new().from_block(1337u64).to_block(1337u64)`
     ///
     /// Match the latest block only
     ///
@@ -336,7 +338,8 @@ impl Filter {
         self
     }
 
-    /// given the event in string form, it hashes it and adds it to the topics to monitor
+    /// given the event in string form, it hashes it and adds it to the topics
+    /// to monitor
     pub fn event(self, event_name: &str) -> Self {
         let hash = H256::from(keccak256(event_name.as_bytes()));
         self.topic0(hash)
@@ -372,7 +375,8 @@ impl Filter {
     }
 }
 
-/// Union type for representing a single value or a vector of values inside a filter
+/// Union type for representing a single value or a vector of values inside a
+/// filter
 #[derive(Debug, PartialEq, Clone)]
 pub enum ValueOrArray<T> {
     /// A single value
@@ -381,7 +385,8 @@ pub enum ValueOrArray<T> {
     Array(Vec<T>),
 }
 
-// TODO: Implement more common types - or adjust this to work with all Tokenizable items
+// TODO: Implement more common types - or adjust this to work with all
+// Tokenizable items
 
 impl From<H256> for ValueOrArray<H256> {
     fn from(src: H256) -> Self {

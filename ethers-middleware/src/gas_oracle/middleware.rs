@@ -5,7 +5,8 @@ use ethers_providers::{FromErr, Middleware, PendingTransaction};
 use thiserror::Error;
 
 #[derive(Debug)]
-/// Middleware used for fetching gas prices over an API instead of `eth_gasPrice`
+/// Middleware used for fetching gas prices over an API instead of
+/// `eth_gasPrice`
 pub struct GasOracleMiddleware<M, G> {
     inner: M,
     gas_oracle: G,

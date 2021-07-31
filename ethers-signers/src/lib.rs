@@ -1,10 +1,11 @@
 //! Provides a unified interface for locally signing transactions.
 //!
-//! You can implement the `Signer` trait to extend functionality to other signers
-//! such as Hardware Security Modules, KMS etc.
+//! You can implement the `Signer` trait to extend functionality to other
+//! signers such as Hardware Security Modules, KMS etc.
 //!
-//! The exposed interfaces return a recoverable signature. In order to convert the signature
-//! and the [`TransactionRequest`] to a [`Transaction`], look at the signing middleware.
+//! The exposed interfaces return a recoverable signature. In order to convert
+//! the signature and the [`TransactionRequest`] to a [`Transaction`], look at
+//! the signing middleware.
 //!
 //! Supported signers:
 //! - [Private key](crate::LocalWallet)
@@ -73,7 +74,8 @@ pub fn to_eip155_v<T: Into<u8>>(recovery_id: T, chain_id: u64) -> u64 {
 
 /// Trait for signing transactions and messages
 ///
-/// Implement this trait to support different signing modes, e.g. Ledger, hosted etc.
+/// Implement this trait to support different signing modes, e.g. Ledger, hosted
+/// etc.
 #[async_trait]
 pub trait Signer: std::fmt::Debug + Send + Sync {
     type Error: Error + Send + Sync;

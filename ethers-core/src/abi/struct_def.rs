@@ -88,7 +88,8 @@ impl StructFieldType {
 
     /// Parse a struct field declaration
     ///
-    /// The parsed field is either a `Struct`, `StructArray` or `FixedStructArray`
+    /// The parsed field is either a `Struct`, `StructArray` or
+    /// `FixedStructArray`
     pub fn parse(mut input: &str) -> Result<FieldType> {
         let mut projections = Vec::new();
 

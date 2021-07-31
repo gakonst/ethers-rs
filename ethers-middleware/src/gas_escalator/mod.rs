@@ -106,8 +106,8 @@ where
     M: Middleware,
     E: GasEscalator,
 {
-    /// Initializes the middleware with the provided gas escalator and the chosen
-    /// escalation frequency (per block or per second)
+    /// Initializes the middleware with the provided gas escalator and the
+    /// chosen escalation frequency (per block or per second)
     #[allow(clippy::let_and_return)]
     pub fn new(inner: M, escalator: E, frequency: Frequency) -> Self
     where
@@ -137,7 +137,8 @@ where
 
     /// Re-broadcasts pending transactions with a gas price escalator
     pub async fn escalate(&self) -> Result<(), GasEscalatorError<M>> {
-        // the escalation frequency is either on a per-block basis, or on a duratoin basis
+        // the escalation frequency is either on a per-block basis, or on a duratoin
+        // basis
         let mut watcher: Pin<Box<dyn futures_util::stream::Stream<Item = ()> + Send>> =
             match self.frequency {
                 Frequency::PerBlock => Box::pin(

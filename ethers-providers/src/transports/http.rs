@@ -65,8 +65,8 @@ impl From<ClientError> for ProviderError {
 impl JsonRpcClient for Provider {
     type Error = ClientError;
 
-    /// Sends a POST request with the provided method and the params serialized as JSON
-    /// over HTTP
+    /// Sends a POST request with the provided method and the params serialized
+    /// as JSON over HTTP
     async fn request<T: Serialize + Send + Sync, R: DeserializeOwned>(
         &self,
         method: &str,

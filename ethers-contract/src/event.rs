@@ -30,7 +30,8 @@ pub trait EthEvent: Detokenize + Send + Sync {
     /// Returns true if this is an anonymous event
     fn is_anonymous() -> bool;
 
-    /// Returns an Event builder for the ethereum event represented by this types ABI signature.
+    /// Returns an Event builder for the ethereum event represented by this
+    /// types ABI signature.
     fn new<M: Middleware>(filter: Filter, provider: &M) -> Event<M, Self>
     where
         Self: Sized,
@@ -89,7 +90,8 @@ impl<M, D: EthLogDecode> Event<'_, M, D> {
         self
     }
 
-    /// Sets the filter's 0th topic (typically the event name for non-anonymous events)
+    /// Sets the filter's 0th topic (typically the event name for non-anonymous
+    /// events)
     pub fn topic0<T: Into<ValueOrArray<H256>>>(mut self, topic: T) -> Self {
         self.filter.topics[0] = Some(topic.into());
         self
@@ -172,8 +174,8 @@ where
     M: Middleware,
     D: EthLogDecode,
 {
-    /// Queries the blockchain for the selected filter and returns a vector of matching
-    /// event logs
+    /// Queries the blockchain for the selected filter and returns a vector of
+    /// matching event logs
     pub async fn query(&self) -> Result<Vec<D>, ContractError<M>> {
         let logs = self
             .provider
@@ -187,8 +189,8 @@ where
         Ok(events)
     }
 
-    /// Queries the blockchain for the selected filter and returns a vector of logs
-    /// along with their metadata
+    /// Queries the blockchain for the selected filter and returns a vector of
+    /// logs along with their metadata
     pub async fn query_with_meta(&self) -> Result<Vec<(D, LogMeta)>, ContractError<M>> {
         let logs = self
             .provider

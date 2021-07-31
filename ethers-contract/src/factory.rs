@@ -20,7 +20,8 @@ pub struct Deployer<M> {
 }
 
 impl<M: Middleware> Deployer<M> {
-    /// Sets the number of confirmations to wait for the contract deployment transaction
+    /// Sets the number of confirmations to wait for the contract deployment
+    /// transaction
     pub fn confirmations<T: Into<usize>>(mut self, confirmations: T) -> Self {
         self.confs = confirmations.into();
         self
@@ -31,9 +32,10 @@ impl<M: Middleware> Deployer<M> {
         self
     }
 
-    /// Broadcasts the contract deployment transaction and after waiting for it to
-    /// be sufficiently confirmed (default: 1), it returns a [`Contract`](crate::Contract)
-    /// struct at the deployed contract's address.
+    /// Broadcasts the contract deployment transaction and after waiting for it
+    /// to be sufficiently confirmed (default: 1), it returns a
+    /// [`Contract`](crate::Contract) struct at the deployed contract's
+    /// address.
     pub async fn send(self) -> Result<Contract<M>, ContractError<M>> {
         let pending_tx = self
             .client
@@ -71,8 +73,8 @@ impl<M: Middleware> Deployer<M> {
 /// created which manages the Contract bytecode and Application Binary Interface
 /// (ABI), usually generated from the Solidity compiler.
 ///
-/// Once the factory's deployment transaction is mined with sufficient confirmations,
-/// the [`Contract`](crate::Contract) object is returned.
+/// Once the factory's deployment transaction is mined with sufficient
+/// confirmations, the [`Contract`](crate::Contract) object is returned.
 ///
 /// # Example
 ///
@@ -118,8 +120,8 @@ pub struct ContractFactory<M> {
 
 impl<M: Middleware> ContractFactory<M> {
     /// Creates a factory for deployment of the Contract with bytecode, and the
-    /// constructor defined in the abi. The client will be used to send any deployment
-    /// transaction.
+    /// constructor defined in the abi. The client will be used to send any
+    /// deployment transaction.
     pub fn new(abi: Abi, bytecode: Bytes, client: Arc<M>) -> Self {
         Self {
             client,
@@ -129,12 +131,12 @@ impl<M: Middleware> ContractFactory<M> {
     }
 
     /// Constructs the deployment transaction based on the provided constructor
-    /// arguments and returns a `Deployer` instance. You must call `send()` in order
-    /// to actually deploy the contract.
+    /// arguments and returns a `Deployer` instance. You must call `send()` in
+    /// order to actually deploy the contract.
     ///
     /// Notes:
-    /// 1. If there are no constructor arguments, you should pass `()` as the argument.
-    /// 1. The default poll duration is 7 seconds.
+    /// 1. If there are no constructor arguments, you should pass `()` as the
+    /// argument. 1. The default poll duration is 7 seconds.
     /// 1. The default number of confirmations is 1 block.
     pub fn deploy<T: Tokenize>(self, constructor_args: T) -> Result<Deployer<M>, ContractError<M>> {
         // Encode the constructor args & concatenate with the bytecode if necessary

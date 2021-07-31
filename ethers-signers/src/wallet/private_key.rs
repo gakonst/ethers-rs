@@ -1,4 +1,5 @@
-//! Specific helper functions for loading an offline K256 Private Key stored on disk
+//! Specific helper functions for loading an offline K256 Private Key stored on
+//! disk
 use super::Wallet;
 
 use crate::wallet::mnemonic::MnemonicBuilderError;
@@ -52,8 +53,8 @@ impl Clone for Wallet<SigningKey> {
 }
 
 impl Wallet<SigningKey> {
-    /// Creates a new random encrypted JSON with the provided password and stores it in the
-    /// provided directory
+    /// Creates a new random encrypted JSON with the provided password and
+    /// stores it in the provided directory
     pub fn new_keystore<P, R, S>(dir: P, rng: &mut R, password: S) -> Result<Self, WalletError>
     where
         P: AsRef<Path>,
@@ -70,7 +71,8 @@ impl Wallet<SigningKey> {
         })
     }
 
-    /// Decrypts an encrypted JSON from the provided path to construct a Wallet instance
+    /// Decrypts an encrypted JSON from the provided path to construct a Wallet
+    /// instance
     pub fn decrypt_keystore<P, S>(keypath: P, password: S) -> Result<Self, WalletError>
     where
         P: AsRef<Path>,
@@ -163,8 +165,8 @@ mod tests {
         let message = "Some data";
         let signature = key.sign_message(message).await.unwrap();
 
-        // read from the encrypted JSON keystore and decrypt it, while validating that the
-        // signatures produced by both the keys should match
+        // read from the encrypted JSON keystore and decrypt it, while validating that
+        // the signatures produced by both the keys should match
         let paths = fs::read_dir(dir).unwrap();
         for path in paths {
             let path = path.unwrap().path();

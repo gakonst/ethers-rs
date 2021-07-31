@@ -70,8 +70,8 @@ impl Debug for Ws {
 }
 
 impl Ws {
-    /// Initializes a new WebSocket Client, given a Stream/Sink Websocket implementer.
-    /// The websocket connection must be initiated separately.
+    /// Initializes a new WebSocket Client, given a Stream/Sink Websocket
+    /// implementer. The websocket connection must be initiated separately.
     pub fn new<S: 'static>(ws: S) -> Self
     where
         S: Send

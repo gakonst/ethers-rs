@@ -1,5 +1,5 @@
-// // This test exists to ensure that the abigen macro works "reasonably" well with popular contracts
-// use ethers::contract::abigen;
+// // This test exists to ensure that the abigen macro works "reasonably" well
+// with popular contracts use ethers::contract::abigen;
 //
 // abigen!(
 //     KeepBonding,
@@ -21,8 +21,8 @@
 //     "etherscan:0x4E6CCB1dA3C7844887F9A5aF4e8450d9fd90317A"
 // );
 //
-// // e.g. aave's `initialize` methods exist multiple times, so we should rename it
-// abigen!(
+// // e.g. aave's `initialize` methods exist multiple times, so we should rename
+// it abigen!(
 //     AavePoolCore,
 //     "etherscan:0x3dfd23a6c5e8bbcfc9581d2e864a68feb6a076d3",
 //     methods {

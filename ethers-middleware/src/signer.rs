@@ -13,8 +13,8 @@ use std::future::Future;
 use thiserror::Error;
 
 #[derive(Clone, Debug)]
-/// Middleware used for locally signing transactions, compatible with any implementer
-/// of the [`Signer`] trait.
+/// Middleware used for locally signing transactions, compatible with any
+/// implementer of the [`Signer`] trait.
 ///
 /// # Example
 ///
@@ -249,9 +249,9 @@ where
         true
     }
 
-    /// Signs and broadcasts the transaction. The optional parameter `block` can be passed so that
-    /// gas cost and nonce calculations take it into account. For simple transactions this can be
-    /// left to `None`.
+    /// Signs and broadcasts the transaction. The optional parameter `block` can
+    /// be passed so that gas cost and nonce calculations take it into
+    /// account. For simple transactions this can be left to `None`.
     async fn send_transaction(
         &self,
         mut tx: TransactionRequest,
@@ -289,8 +289,8 @@ where
             .map_err(SignerMiddlewareError::MiddlewareError)
     }
 
-    /// Signs a message with the internal signer, or if none is present it will make a call to
-    /// the connected node's `eth_call` API.
+    /// Signs a message with the internal signer, or if none is present it will
+    /// make a call to the connected node's `eth_call` API.
     async fn sign<T: Into<Bytes> + Send + Sync>(
         &self,
         data: T,

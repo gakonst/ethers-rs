@@ -1,20 +1,27 @@
 //! # Ethers Middleware
 //!
-//! Ethers uses a middleware-based architecture. You start the middleware stack with
-//! a [`Provider`](ethers_providers::Provider), and wrap it with additional
+//! Ethers uses a middleware-based architecture. You start the middleware stack
+//! with a [`Provider`](ethers_providers::Provider), and wrap it with additional
 //! middleware functionalities that you need.
 //!
 //! ## Available Middleware
-//! - [`Signer`](crate::SignerMiddleware): Signs transactions locally, with a private
+//! - [`Signer`](crate::SignerMiddleware): Signs transactions locally, with a
+//!   private
 //! key or a hardware wallet
-//! - [`Nonce Manager`](crate::NonceManagerMiddleware): Manages nonces locally, allowing
-//! the rapid broadcast of transactions without having to wait for them to be submitted
-//! - [`Gas Escalator`](crate::gas_escalator::GasEscalatorMiddleware): Bumps transaction
+//! - [`Nonce Manager`](crate::NonceManagerMiddleware): Manages nonces locally,
+//!   allowing
+//! the rapid broadcast of transactions without having to wait for them to be
+//! submitted
+//! - [`Gas Escalator`](crate::gas_escalator::GasEscalatorMiddleware): Bumps
+//!   transaction
 //! gas prices in the background
-//! - [`Gas Oracle`](crate::gas_oracle): Allows getting your gas price estimates from
+//! - [`Gas Oracle`](crate::gas_oracle): Allows getting your gas price estimates
+//!   from
 //! places other than `eth_gasPrice`.
-//! - [`Transformer`](crate::transformer): Allows intercepting and transforming a transaction to
-//! be broadcasted via a proxy wallet, e.g. [`DSProxy`](crate::transformer::DsProxy).
+//! - [`Transformer`](crate::transformer): Allows intercepting and transforming
+//!   a transaction to
+//! be broadcasted via a proxy wallet, e.g.
+//! [`DSProxy`](crate::transformer::DsProxy).
 //!
 //! ## Example of a middleware stack
 //!
@@ -55,25 +62,26 @@
 //! ```
 
 /// The [Gas Escalator middleware](crate::gas_escalator::GasEscalatorMiddleware)
-/// is used to re-broadcast transactions with an increasing gas price to guarantee
-/// their timely inclusion.
+/// is used to re-broadcast transactions with an increasing gas price to
+/// guarantee their timely inclusion.
 pub mod gas_escalator;
 
-/// The gas oracle middleware is used to get the gas price from a list of gas oracles
-/// instead of using eth_gasPrice. For usage examples, refer to the
+/// The gas oracle middleware is used to get the gas price from a list of gas
+/// oracles instead of using eth_gasPrice. For usage examples, refer to the
 /// [`GasOracle`](crate::gas_oracle::GasOracle) trait.
 pub mod gas_oracle;
 
-/// The [Nonce Manager](crate::NonceManagerMiddleware) is used to locally calculate nonces instead of
-/// using eth_getTransactionCount
+/// The [Nonce Manager](crate::NonceManagerMiddleware) is used to locally
+/// calculate nonces instead of using eth_getTransactionCount
 pub mod nonce_manager;
 pub use nonce_manager::NonceManagerMiddleware;
 
-/// The [Transformer](crate::TransformerMiddleware) is used to intercept transactions and transform
-/// them to be sent via various supported transformers, e.g., [DSProxy](crate::transformer::DsProxy)
+/// The [Transformer](crate::TransformerMiddleware) is used to intercept
+/// transactions and transform them to be sent via various supported
+/// transformers, e.g., [DSProxy](crate::transformer::DsProxy)
 pub mod transformer;
 
-/// The [Signer](crate::SignerMiddleware) is used to locally sign transactions and messages
-/// instead of using eth_sendTransaction and eth_sign
+/// The [Signer](crate::SignerMiddleware) is used to locally sign transactions
+/// and messages instead of using eth_sendTransaction and eth_sign
 pub mod signer;
 pub use signer::SignerMiddleware;

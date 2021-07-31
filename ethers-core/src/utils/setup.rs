@@ -22,7 +22,8 @@ pub async fn launch_ganache(ganache: Ganache) -> GanacheInstance {
 
 /// Compiles the contracts and launches a [crate::utils::GanacheInstance]
 ///
-/// Same as [crate::utils::setup::compile] and [crate::utils::setup::launch_ganache]
+/// Same as [crate::utils::setup::compile] and
+/// [crate::utils::setup::launch_ganache]
 pub async fn compile_and_launch_ganache(
     solc: Solc,
     ganache: Ganache,
@@ -42,7 +43,8 @@ pub async fn launch_geth(geth: Geth) -> GethInstance {
 
 /// Compiles the contracts and launches a [crate::utils::GethInstance]
 ///
-/// Same as [crate::utils::setup::compile] and [crate::utils::setup::launch_geth]
+/// Same as [crate::utils::setup::compile] and
+/// [crate::utils::setup::launch_geth]
 pub async fn compile_and_launch_geth(
     solc: Solc,
     geth: Geth,

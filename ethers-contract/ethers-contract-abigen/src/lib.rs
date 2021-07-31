@@ -35,8 +35,9 @@ use std::{collections::HashMap, fs::File, io::Write, path::Path};
 ///
 /// # Example
 ///
-/// Running the command below will generate a file called `token.rs` containing the
-/// bindings inside, which exports an `ERC20Token` struct, along with all its events.
+/// Running the command below will generate a file called `token.rs` containing
+/// the bindings inside, which exports an `ERC20Token` struct, along with all
+/// its events.
 ///
 /// ```no_run
 /// # use ethers_contract_abigen::Abigen;

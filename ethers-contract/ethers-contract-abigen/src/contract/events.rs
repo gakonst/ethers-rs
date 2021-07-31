@@ -110,7 +110,8 @@ impl Context {
         util::ident(&format!("{}Events", self.contract_name.to_string()))
     }
 
-    /// Expands the `events` function that bundles all declared events of this contract
+    /// Expands the `events` function that bundles all declared events of this
+    /// contract
     fn expand_events_method(&self) -> TokenStream {
         let sorted_events: BTreeMap<_, _> = self.abi.events.clone().into_iter().collect();
 
@@ -136,11 +137,11 @@ impl Context {
 
     /// Expands an event property type.
     ///
-    /// Note that this is slightly different than an expanding a Solidity type as
-    /// complex types like arrays and strings get emited as hashes when they are
-    /// indexed.
-    /// If a complex types matches with a struct previously parsed by the AbiParser,
-    /// we can replace it
+    /// Note that this is slightly different than an expanding a Solidity type
+    /// as complex types like arrays and strings get emited as hashes when
+    /// they are indexed.
+    /// If a complex types matches with a struct previously parsed by the
+    /// AbiParser, we can replace it
     fn expand_input_type(&self, input: &EventParam) -> Result<TokenStream> {
         Ok(match (&input.kind, input.indexed) {
             (ParamType::Array(ty), true) => {
@@ -228,9 +229,9 @@ impl Context {
         }
     }
 
-    /// Expands an ABI event into a single event data type. This can expand either
-    /// into a structure or a tuple in the case where all event parameters (topics
-    /// and data) are anonymous.
+    /// Expands an ABI event into a single event data type. This can expand
+    /// either into a structure or a tuple in the case where all event
+    /// parameters (topics and data) are anonymous.
     fn expand_event(&self, event: &Event) -> Result<TokenStream> {
         let event_name = expand_struct_name(event);
 

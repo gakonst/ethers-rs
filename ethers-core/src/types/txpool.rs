@@ -98,9 +98,9 @@ impl<'de> Deserialize<'de> for TxpoolInspectSummary {
 
 /// Transaction Pool Content
 ///
-/// The content inspection property can be queried to list the exact details of all
-/// the transactions currently pending for inclusion in the next block(s), as well
-/// as the ones that are being scheduled for future execution only.
+/// The content inspection property can be queried to list the exact details of
+/// all the transactions currently pending for inclusion in the next block(s),
+/// as well as the ones that are being scheduled for future execution only.
 ///
 /// See [here](https://geth.ethereum.org/docs/rpc/ns-txpool#txpool_content) for more details
 #[derive(Debug, Default, Clone, PartialEq, Deserialize, Serialize)]
@@ -114,10 +114,10 @@ pub struct TxpoolContent {
 /// Transaction Pool Inspect
 ///
 /// The inspect inspection property can be queried to list a textual summary
-/// of all the transactions currently pending for inclusion in the next block(s),
-/// as well as the ones that are being scheduled for future execution only.
-/// This is a method specifically tailored to developers to quickly see the
-/// transactions in the pool and find any potential issues.
+/// of all the transactions currently pending for inclusion in the next
+/// block(s), as well as the ones that are being scheduled for future execution
+/// only. This is a method specifically tailored to developers to quickly see
+/// the transactions in the pool and find any potential issues.
 ///
 /// See [here](https://geth.ethereum.org/docs/rpc/ns-txpool#txpool_inspect) for more details
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
@@ -131,8 +131,8 @@ pub struct TxpoolInspect {
 /// Transaction Pool Status
 ///
 /// The status inspection property can be queried for the number of transactions
-/// currently pending for inclusion in the next block(s), as well as the ones that
-/// are being scheduled for future execution only.
+/// currently pending for inclusion in the next block(s), as well as the ones
+/// that are being scheduled for future execution only.
 ///
 /// See [here](https://geth.ethereum.org/docs/rpc/ns-txpool#txpool_status) for more details
 #[derive(Debug, Default, Clone, PartialEq, Deserialize, Serialize)]

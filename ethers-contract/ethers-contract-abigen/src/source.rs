@@ -35,8 +35,8 @@ impl Source {
     /// Parses an ABI from a source
     ///
     /// Contract ABIs can be retrieved from the local filesystem or online
-    /// from `etherscan.io`. They can also be provided in-line. This method parses
-    /// ABI source URLs and accepts the following:
+    /// from `etherscan.io`. They can also be provided in-line. This method
+    /// parses ABI source URLs and accepts the following:
     ///
     /// - raw ABI JSON
     ///
@@ -44,9 +44,8 @@ impl Source {
     /// This relative path is rooted in the current working directory.
     /// To specify the root for relative paths, use `Source::with_root`.
     ///
-    /// - `/absolute/path/to/Contract.json` or
-    ///   `file:///absolute/path/to/Contract.json`: an absolute path or file URL
-    ///   to an ABI JSON file.
+    /// - `/absolute/path/to/Contract.json` or `file:///absolute/path/to/Contract.json`:
+    ///   an absolute path or file URL to an ABI JSON file.
     ///
     /// - `http(s)://...` an HTTP url to a contract ABI.
     ///
@@ -55,8 +54,7 @@ impl Source {
     ///
     /// - `npm:@org/package@1.0.0/path/to/contract.json` an npmjs package with
     ///   an optional version and path (defaulting to the latest version and
-    ///   `index.js`). The contract ABI will be retrieved through
-    ///   `unpkg.io`.
+    ///   `index.js`). The contract ABI will be retrieved through `unpkg.io`.
     pub fn parse<S>(source: S) -> Result<Self>
     where
         S: AsRef<str>,

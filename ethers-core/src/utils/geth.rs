@@ -83,13 +83,15 @@ impl Geth {
         Self::default()
     }
 
-    /// Sets the port which will be used when the `geth-cli` instance is launched.
+    /// Sets the port which will be used when the `geth-cli` instance is
+    /// launched.
     pub fn port<T: Into<u16>>(mut self, port: T) -> Self {
         self.port = Some(port.into());
         self
     }
 
-    /// Sets the block-time which will be used when the `geth-cli` instance is launched.
+    /// Sets the block-time which will be used when the `geth-cli` instance is
+    /// launched.
     pub fn block_time<T: Into<u64>>(mut self, block_time: T) -> Self {
         self.block_time = Some(block_time.into());
         self

@@ -14,8 +14,8 @@ use crate::{
 mod multicall_contract;
 use multicall_contract::MulticallContract;
 
-/// A lazily computed hash map with the Ethereum network IDs as keys and the corresponding
-/// Multicall smart contract addresses as values
+/// A lazily computed hash map with the Ethereum network IDs as keys and the
+/// corresponding Multicall smart contract addresses as values
 pub static ADDRESS_BOOK: Lazy<HashMap<U256, Address>> = Lazy::new(|| {
     let mut m = HashMap::new();
 
@@ -47,18 +47,19 @@ pub static ADDRESS_BOOK: Lazy<HashMap<U256, Address>> = Lazy::new(|| {
     m
 });
 
-/// A Multicall is an abstraction for sending batched calls/transactions to the Ethereum blockchain.
-/// It stores an instance of the [`Multicall` smart contract](https://etherscan.io/address/0xeefba1e63905ef1d7acba5a8513c70307c1ce441#code)
+/// A Multicall is an abstraction for sending batched calls/transactions to the
+/// Ethereum blockchain. It stores an instance of the [`Multicall` smart contract](https://etherscan.io/address/0xeefba1e63905ef1d7acba5a8513c70307c1ce441#code)
 /// and the user provided list of transactions to be made.
 ///
-/// `Multicall` can instantiate the Multicall contract instance from the chain ID of the client
-/// supplied to [`new`]. It supports the Ethereum mainnet, as well as testnets
-/// [Rinkeby](https://rinkeby.etherscan.io/address/0x42ad527de7d4e9d9d011ac45b31d8551f8fe9821#code),
+/// `Multicall` can instantiate the Multicall contract instance from the chain
+/// ID of the client supplied to [`new`]. It supports the Ethereum mainnet, as
+/// well as testnets [Rinkeby](https://rinkeby.etherscan.io/address/0x42ad527de7d4e9d9d011ac45b31d8551f8fe9821#code),
 /// [Goerli](https://goerli.etherscan.io/address/0x77dca2c955b15e9de4dbbcf1246b4b85b651e50e) and
 /// [Kovan](https://kovan.etherscan.io/address/0x2cc8688c5f75e365aaeeb4ea8d6a480405a48d2a#code).
 ///
-/// Additionally, the `block` number can be provided for the call by using the [`block`] method.
-/// Build on the `Multicall` instance by adding calls using the [`add_call`] method.
+/// Additionally, the `block` number can be provided for the call by using the
+/// [`block`] method. Build on the `Multicall` instance by adding calls using
+/// the [`add_call`] method.
 ///
 /// # Example
 ///
@@ -140,8 +141,8 @@ pub struct Multicall<M> {
 }
 
 #[derive(Clone)]
-/// Helper struct for managing calls to be made to the `function` in smart contract `target`
-/// with `data`
+/// Helper struct for managing calls to be made to the `function` in smart
+/// contract `target` with `data`
 pub struct Call {
     target: Address,
     data: Bytes,
@@ -149,13 +150,14 @@ pub struct Call {
 }
 
 impl<M: Middleware> Multicall<M> {
-    /// Creates a new Multicall instance from the provided client. If provided with an `address`,
-    /// it instantiates the Multicall contract with that address. Otherwise it fetches the address
-    /// from the address book.
+    /// Creates a new Multicall instance from the provided client. If provided
+    /// with an `address`, it instantiates the Multicall contract with that
+    /// address. Otherwise it fetches the address from the address book.
     ///
     /// # Panics
-    /// If a `None` address is provided, and the provided client also does not belong to one of
-    /// the supported network IDs (mainnet, kovan, rinkeby and goerli)
+    /// If a `None` address is provided, and the provided client also does not
+    /// belong to one of the supported network IDs (mainnet, kovan, rinkeby
+    /// and goerli)
     pub async fn new<C: Into<Arc<M>>>(
         client: C,
         address: Option<Address>,
@@ -201,8 +203,9 @@ impl<M: Middleware> Multicall<M> {
     ///
     /// # Panics
     ///
-    /// If more than the maximum number of supported calls are added. The maximum
-    /// limits is constrained due to tokenization/detokenization support for tuples
+    /// If more than the maximum number of supported calls are added. The
+    /// maximum limits is constrained due to tokenization/detokenization
+    /// support for tuples
     pub fn add_call<D: Detokenize>(&mut self, call: ContractCall<M, D>) -> &mut Self {
         if self.calls.len() >= 16 {
             panic!("Cannot support more than {} calls", 16);
@@ -222,20 +225,22 @@ impl<M: Middleware> Multicall<M> {
         }
     }
 
-    /// Appends a `call` to the list of calls for the Multicall instance for querying
-    /// the ETH balance of an address
+    /// Appends a `call` to the list of calls for the Multicall instance for
+    /// querying the ETH balance of an address
     ///
     /// # Panics
     ///
-    /// If more than the maximum number of supported calls are added. The maximum
-    /// limits is constrained due to tokenization/detokenization support for tuples
+    /// If more than the maximum number of supported calls are added. The
+    /// maximum limits is constrained due to tokenization/detokenization
+    /// support for tuples
     pub fn eth_balance_of(&mut self, addr: Address) -> &mut Self {
         let call = self.contract.get_eth_balance(addr);
         self.add_call(call)
     }
 
-    /// Clear the batch of calls from the Multicall instance. Re-use the already instantiated
-    /// Multicall, to send a different batch of transactions or do another aggregate query
+    /// Clear the batch of calls from the Multicall instance. Re-use the already
+    /// instantiated Multicall, to send a different batch of transactions or
+    /// do another aggregate query
     ///
     /// ```no_run
     /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
@@ -269,11 +274,12 @@ impl<M: Middleware> Multicall<M> {
         self
     }
 
-    /// Queries the Ethereum blockchain via an `eth_call`, but via the Multicall contract.
+    /// Queries the Ethereum blockchain via an `eth_call`, but via the Multicall
+    /// contract.
     ///
-    /// It returns a [`ContractError<M>`] if there is any error in the RPC call or while
-    /// detokenizing the tokens back to the expected return type. The return type must be
-    /// annonated while calling this method.
+    /// It returns a [`ContractError<M>`] if there is any error in the RPC call
+    /// or while detokenizing the tokens back to the expected return type.
+    /// The return type must be annonated while calling this method.
     ///
     /// ```no_run
     /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
@@ -326,7 +332,8 @@ impl<M: Middleware> Multicall<M> {
         Ok(data)
     }
 
-    /// Signs and broadcasts a batch of transactions by using the Multicall contract as proxy.
+    /// Signs and broadcasts a batch of transactions by using the Multicall
+    /// contract as proxy.
     ///
     /// ```no_run
     /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
@@ -339,14 +346,15 @@ impl<M: Middleware> Multicall<M> {
     /// # }
     /// ```
     ///
-    /// Note: this method sends a transaction from your account, and will return an error
-    /// if you do not have sufficient funds to pay for gas
+    /// Note: this method sends a transaction from your account, and will return
+    /// an error if you do not have sufficient funds to pay for gas
     pub async fn send(&self) -> Result<TxHash, ContractError<M>> {
         let contract_call = self.as_contract_call();
 
         // Broadcast transaction and return the transaction hash
         // TODO: Can we make this return a PendingTransaction directly instead?
-        // Seems hard due to `returns a value referencing data owned by the current function`
+        // Seems hard due to `returns a value referencing data owned by the current
+        // function`
         let tx_hash = *contract_call.send().await?;
 
         Ok(tx_hash)
@@ -360,7 +368,8 @@ impl<M: Middleware> Multicall<M> {
             .map(|call| (call.target, call.data.to_vec()))
             .collect();
 
-        // Construct the ContractCall for `aggregate` function to broadcast the transaction
+        // Construct the ContractCall for `aggregate` function to broadcast the
+        // transaction
         let contract_call = self.contract.aggregate(calls);
         if let Some(block) = self.block {
             contract_call.block(block)

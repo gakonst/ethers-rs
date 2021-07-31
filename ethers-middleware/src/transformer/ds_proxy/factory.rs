@@ -2,8 +2,8 @@ use ethers_contract::Lazy;
 use ethers_core::types::*;
 use std::{collections::HashMap, str::FromStr};
 
-/// A lazily computed hash map with the Ethereum network IDs as keys and the corresponding
-/// DsProxyFactory contract addresses as values
+/// A lazily computed hash map with the Ethereum network IDs as keys and the
+/// corresponding DsProxyFactory contract addresses as values
 pub static ADDRESS_BOOK: Lazy<HashMap<U256, Address>> = Lazy::new(|| {
     let mut m = HashMap::new();
 
@@ -103,7 +103,8 @@ mod dsproxyfactory_mod {
             self.0.event()
         }
 
-        /// Returns an [`Event`](ethers_contract::builders::Event) builder for all events of this contract
+        /// Returns an [`Event`](ethers_contract::builders::Event) builder for
+        /// all events of this contract
         pub fn events(&self) -> ethers_contract::builders::Event<M, CreatedFilter> {
             self.0.event_with_filter(Default::default())
         }

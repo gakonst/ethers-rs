@@ -13,50 +13,53 @@ use ethers_providers::Middleware;
 
 use std::{fmt::Debug, marker::PhantomData, sync::Arc};
 
-/// A Contract is an abstraction of an executable program on the Ethereum Blockchain.
-/// It has code (called byte code) as well as allocated long-term memory
-/// (called storage). Every deployed Contract has an address, which is used to connect
-/// to it so that it may be sent messages to call its methods.
+/// A Contract is an abstraction of an executable program on the Ethereum
+/// Blockchain. It has code (called byte code) as well as allocated long-term
+/// memory (called storage). Every deployed Contract has an address, which is
+/// used to connect to it so that it may be sent messages to call its methods.
 ///
-/// A Contract can emit Events, which can be efficiently observed by applications
-/// to be notified when a contract has performed specific operation.
+/// A Contract can emit Events, which can be efficiently observed by
+/// applications to be notified when a contract has performed specific
+/// operation.
 ///
 /// There are two types of methods that can be called on a Contract:
 ///
 /// 1. A Constant method may not add, remove or change any data in the storage,
 /// nor log any events, and may only call Constant methods on other contracts.
 /// These methods are free (no Ether is required) to call. The result from them
-/// may also be returned to the caller. Constant methods are marked as `pure` and
-/// `view` in Solidity.
+/// may also be returned to the caller. Constant methods are marked as `pure`
+/// and `view` in Solidity.
 ///
-/// 2. A Non-Constant method requires a fee (in Ether) to be paid, but may perform
-/// any state-changing operation desired, log events, send ether and call Non-Constant
-/// methods on other Contracts. These methods cannot return their result to the caller.
-/// These methods must be triggered by a transaction, sent by an Externally Owned Account
-/// (EOA) either directly or indirectly (i.e. called from another contract), and are
-/// required to be mined before the effects are present. Therefore, the duration
-/// required for these operations can vary widely, and depend on the transaction
-/// gas price, network congestion and miner priority heuristics.
+/// 2. A Non-Constant method requires a fee (in Ether) to be paid, but may
+/// perform any state-changing operation desired, log events, send ether and
+/// call Non-Constant methods on other Contracts. These methods cannot return
+/// their result to the caller. These methods must be triggered by a
+/// transaction, sent by an Externally Owned Account (EOA) either directly or
+/// indirectly (i.e. called from another contract), and are required to be mined
+/// before the effects are present. Therefore, the duration required for these
+/// operations can vary widely, and depend on the transaction gas price, network
+/// congestion and miner priority heuristics.
 ///
-/// The Contract API provides simple way to connect to a Contract and call its methods,
-/// as functions on a Rust struct, handling all the binary protocol conversion,
-/// internal name mangling and topic construction. This allows a Contract object
-/// to be used like any standard Rust struct, without having to worry about the
-/// low-level details of the Ethereum Virtual Machine or Blockchain.
+/// The Contract API provides simple way to connect to a Contract and call its
+/// methods, as functions on a Rust struct, handling all the binary protocol
+/// conversion, internal name mangling and topic construction. This allows a
+/// Contract object to be used like any standard Rust struct, without having to
+/// worry about the low-level details of the Ethereum Virtual Machine or
+/// Blockchain.
 ///
-/// The Contract definition (called an Application Binary Interface, or ABI) must
-/// be provided to instantiate a contract and the available methods and events will
-/// be made available to call by providing their name as a `str` via the [`method`]
-/// and [`event`] methods. If non-existing names are given, the function/event call
-/// will fail.
+/// The Contract definition (called an Application Binary Interface, or ABI)
+/// must be provided to instantiate a contract and the available methods and
+/// events will be made available to call by providing their name as a `str` via
+/// the [`method`] and [`event`] methods. If non-existing names are given, the
+/// function/event call will fail.
 ///
-/// Alternatively, you can _and should_ use the [`abigen`] macro, or the [`Abigen` builder]
-/// to generate type-safe bindings to your contracts.
+/// Alternatively, you can _and should_ use the [`abigen`] macro, or the
+/// [`Abigen` builder] to generate type-safe bindings to your contracts.
 ///
 /// # Example
 ///
-/// Assuming we already have our contract deployed at `address`, we'll proceed to
-/// interact with its methods and retrieve raw logs it has emitted.
+/// Assuming we already have our contract deployed at `address`, we'll proceed
+/// to interact with its methods and retrieve raw logs it has emitted.
 ///
 /// ```no_run
 /// use ethers::{
@@ -102,9 +105,10 @@ use std::{fmt::Debug, marker::PhantomData, sync::Arc};
 /// ```
 ///
 /// # Event Logging
-/// Querying structured logs requires you to have defined a struct with the expected
-/// datatypes and to have implemented `Detokenize` for it. This boilerplate code
-/// is generated for you via the [`abigen`] and [`Abigen` builder] utilities.
+/// Querying structured logs requires you to have defined a struct with the
+/// expected datatypes and to have implemented `Detokenize` for it. This
+/// boilerplate code is generated for you via the [`abigen`] and [`Abigen`
+/// builder] utilities.
 ///
 /// ```no_run
 /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
@@ -158,12 +162,14 @@ impl<M: Middleware> Contract<M> {
         }
     }
 
-    /// Returns an [`Event`](crate::builders::Event) builder for the provided event.
+    /// Returns an [`Event`](crate::builders::Event) builder for the provided
+    /// event.
     pub fn event<D: EthEvent>(&self) -> Event<M, D> {
         self.event_with_filter(Filter::new().event(&D::abi_signature()))
     }
 
-    /// Returns an [`Event`](crate::builders::Event) builder with the provided filter.
+    /// Returns an [`Event`](crate::builders::Event) builder with the provided
+    /// filter.
     pub fn event_with_filter<D: EthLogDecode>(&self, filter: Filter) -> Event<M, D> {
         Event {
             provider: &self.client,
@@ -172,16 +178,18 @@ impl<M: Middleware> Contract<M> {
         }
     }
 
-    /// Returns an [`Event`](crate::builders::Event) builder with the provided name.
+    /// Returns an [`Event`](crate::builders::Event) builder with the provided
+    /// name.
     pub fn event_for_name<D: EthLogDecode>(&self, name: &str) -> Result<Event<M, D>, Error> {
         // get the event's full name
         let event = self.base_contract.abi.event(name)?;
         Ok(self.event_with_filter(Filter::new().event(&event.abi_signature())))
     }
 
-    /// Returns a transaction builder for the provided function name. If there are
-    /// multiple functions with the same name due to overloading, consider using
-    /// the `method_hash` method instead, since this will use the first match.
+    /// Returns a transaction builder for the provided function name. If there
+    /// are multiple functions with the same name due to overloading,
+    /// consider using the `method_hash` method instead, since this will use
+    /// the first match.
     pub fn method<T: Tokenize, D: Detokenize>(
         &self,
         name: &str,
@@ -192,8 +200,9 @@ impl<M: Middleware> Contract<M> {
         self.method_func(function, args)
     }
 
-    /// Returns a transaction builder for the selected function signature. This should be
-    /// preferred if there are overloaded functions in your smart contract
+    /// Returns a transaction builder for the selected function signature. This
+    /// should be preferred if there are overloaded functions in your smart
+    /// contract
     pub fn method_hash<T: Tokenize, D: Detokenize>(
         &self,
         signature: Selector,

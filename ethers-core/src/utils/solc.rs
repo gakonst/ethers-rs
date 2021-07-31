@@ -32,8 +32,8 @@ pub struct CompiledContract {
 
 /// Solidity Compiler Bindings
 ///
-/// Assumes that `solc` is installed and available in the caller's $PATH. Any calls
-/// will **panic** otherwise.
+/// Assumes that `solc` is installed and available in the caller's $PATH. Any
+/// calls will **panic** otherwise.
 ///
 /// By default, it uses 200 optimizer runs and Istanbul as the EVM version
 ///

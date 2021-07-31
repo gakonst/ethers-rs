@@ -89,7 +89,8 @@ where
 
 /// The address for an Ethereum contract is deterministically computed from the
 /// address of its creator (sender) and how many transactions the creator has
-/// sent (nonce). The sender and nonce are RLP encoded and then hashed with Keccak-256.
+/// sent (nonce). The sender and nonce are RLP encoded and then hashed with
+/// Keccak-256.
 pub fn get_contract_address(sender: impl Into<Address>, nonce: impl Into<U256>) -> Address {
     let mut stream = rlp::RlpStream::new();
     stream.begin_list(2);
@@ -163,8 +164,8 @@ pub fn to_checksum(addr: &Address, chain_id: Option<u8>) -> String {
         })
 }
 
-/// Returns a bytes32 string representation of text. If the length of text exceeds 32 bytes,
-/// an error is returned.
+/// Returns a bytes32 string representation of text. If the length of text
+/// exceeds 32 bytes, an error is returned.
 pub fn format_bytes32_string(text: &str) -> Result<[u8; 32], FormatBytes32StringError> {
     let str_bytes: &[u8] = text.as_bytes();
     if str_bytes.len() > 32 {
@@ -189,8 +190,9 @@ pub fn parse_bytes32_string(bytes: &[u8; 32]) -> Result<&str, std::str::Utf8Erro
 
 /// A bit of hack to find an unused TCP port.
 ///
-/// Does not guarantee that the given port is unused after the function exists, just that it was
-/// unused before the function started (i.e., it does not reserve a port).
+/// Does not guarantee that the given port is unused after the function exists,
+/// just that it was unused before the function started (i.e., it does not
+/// reserve a port).
 pub(crate) fn unused_port() -> u16 {
     let listener = std::net::TcpListener::bind("127.0.0.1:0")
         .expect("Failed to create TCP listener to find unused port");

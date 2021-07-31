@@ -5,8 +5,8 @@ use ethers_providers::{FromErr, Middleware, PendingTransaction};
 use thiserror::Error;
 
 #[derive(Debug)]
-/// Middleware used for intercepting transaction requests and transforming them to be executed by
-/// the underneath `Transformer` instance.
+/// Middleware used for intercepting transaction requests and transforming them
+/// to be executed by the underneath `Transformer` instance.
 pub struct TransformerMiddleware<M, T> {
     inner: M,
     transformer: T,
@@ -17,8 +17,8 @@ where
     M: Middleware,
     T: Transformer,
 {
-    /// Creates a new TransformerMiddleware that intercepts transactions, modifying them to be sent
-    /// through the Transformer.
+    /// Creates a new TransformerMiddleware that intercepts transactions,
+    /// modifying them to be sent through the Transformer.
     pub fn new(inner: M, transformer: T) -> Self {
         Self { inner, transformer }
     }

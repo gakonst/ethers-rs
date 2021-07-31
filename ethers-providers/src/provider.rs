@@ -30,8 +30,9 @@ use tracing_futures::Instrument;
 
 /// An abstract provider for interacting with the [Ethereum JSON RPC
 /// API](https://github.com/ethereum/wiki/wiki/JSON-RPC). Must be instantiated
-/// with a data transport which implements the [`JsonRpcClient`](trait@crate::JsonRpcClient) trait
-/// (e.g. [HTTP](crate::Http), Websockets etc.)
+/// with a data transport which implements the
+/// [`JsonRpcClient`](trait@crate::JsonRpcClient) trait (e.g. [HTTP](crate::
+/// Http), Websockets etc.)
 ///
 /// # Example
 ///
@@ -264,18 +265,20 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.request("eth_getBalance", [from, block]).await
     }
 
-    /// Returns the currently configured chain id, a value used in replay-protected
-    /// transaction signing as introduced by EIP-155.
+    /// Returns the currently configured chain id, a value used in
+    /// replay-protected transaction signing as introduced by EIP-155.
     async fn get_chainid(&self) -> Result<U256, ProviderError> {
         self.request("eth_chainId", ()).await
     }
 
     ////// Contract Execution
     //
-    // These are relatively low-level calls. The Contracts API should usually be used instead.
+    // These are relatively low-level calls. The Contracts API should usually be
+    // used instead.
 
-    /// Sends the read-only (constant) transaction to a single Ethereum node and return the result (as bytes) of executing it.
-    /// This is free, since it does not change any state on the blockchain.
+    /// Sends the read-only (constant) transaction to a single Ethereum node and
+    /// return the result (as bytes) of executing it. This is free, since it
+    /// does not change any state on the blockchain.
     async fn call(
         &self,
         tx: &TransactionRequest,
@@ -286,15 +289,17 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.request("eth_call", [tx, block]).await
     }
 
-    /// Sends a transaction to a single Ethereum node and return the estimated amount of gas required (as a U256) to send it
-    /// This is free, but only an estimate. Providing too little gas will result in a transaction being rejected
-    /// (while still consuming all provided gas).
+    /// Sends a transaction to a single Ethereum node and return the estimated
+    /// amount of gas required (as a U256) to send it This is free, but only
+    /// an estimate. Providing too little gas will result in a transaction being
+    /// rejected (while still consuming all provided gas).
     async fn estimate_gas(&self, tx: &TransactionRequest) -> Result<U256, ProviderError> {
         self.request("eth_estimateGas", [tx]).await
     }
 
-    /// Sends the transaction to the entire Ethereum network and returns the transaction's hash
-    /// This will consume gas from the account that signed the transaction.
+    /// Sends the transaction to the entire Ethereum network and returns the
+    /// transaction's hash This will consume gas from the account that
+    /// signed the transaction.
     async fn send_transaction(
         &self,
         mut tx: TransactionRequest,
@@ -321,8 +326,9 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         Ok(PendingTransaction::new(tx_hash, self).interval(self.get_interval()))
     }
 
-    /// Send the raw RLP encoded transaction to the entire Ethereum network and returns the transaction's hash
-    /// This will consume gas from the account that signed the transaction.
+    /// Send the raw RLP encoded transaction to the entire Ethereum network and
+    /// returns the transaction's hash This will consume gas from the
+    /// account that signed the transaction.
     async fn send_raw_transaction<'a>(
         &'a self,
         tx: &Transaction,
@@ -332,8 +338,9 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         Ok(PendingTransaction::new(tx_hash, self).interval(self.get_interval()))
     }
 
-    /// The JSON-RPC provider is at the bottom-most position in the middleware stack. Here we check
-    /// if it has the key for the sender address unlocked, as well as supports the `eth_sign` call.
+    /// The JSON-RPC provider is at the bottom-most position in the middleware
+    /// stack. Here we check if it has the key for the sender address
+    /// unlocked, as well as supports the `eth_sign` call.
     async fn is_signer(&self) -> bool {
         match self.3 {
             Some(sender) => self.sign(vec![], &sender).await.is_ok(),
@@ -393,8 +400,9 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         Ok(filter)
     }
 
-    /// Creates a filter object, based on filter options, to notify when the state changes (logs).
-    /// To check if the state has changed, call `get_filter_changes` with the filter id.
+    /// Creates a filter object, based on filter options, to notify when the
+    /// state changes (logs). To check if the state has changed, call
+    /// `get_filter_changes` with the filter id.
     async fn new_filter(&self, filter: FilterKind<'_>) -> Result<U256, ProviderError> {
         let (method, args) = match filter {
             FilterKind::NewBlocks => ("eth_newBlockFilter", vec![]),
@@ -414,16 +422,18 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.request("eth_uninstallFilter", [id]).await
     }
 
-    /// Polling method for a filter, which returns an array of logs which occurred since last poll.
+    /// Polling method for a filter, which returns an array of logs which
+    /// occurred since last poll.
     ///
-    /// This method must be called with one of the following return types, depending on the filter
-    /// type:
+    /// This method must be called with one of the following return types,
+    /// depending on the filter type:
     /// - `eth_newBlockFilter`: [`H256`], returns block hashes
-    /// - `eth_newPendingTransactionFilter`: [`H256`], returns transaction hashes
+    /// - `eth_newPendingTransactionFilter`: [`H256`], returns transaction
+    ///   hashes
     /// - `eth_newFilter`: [`Log`], returns raw logs
     ///
-    /// If one of these types is not used, decoding will fail and the method will
-    /// return an error.
+    /// If one of these types is not used, decoding will fail and the method
+    /// will return an error.
     ///
     /// [`H256`]: ethers_core::types::H256
     /// [`Log`]: ethers_core::types::Log
@@ -479,50 +489,52 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
 
     ////// Ethereum Naming Service
     // The Ethereum Naming Service (ENS) allows easy to remember and use names to
-    // be assigned to Ethereum addresses. Any provider operation which takes an address
-    // may also take an ENS name.
+    // be assigned to Ethereum addresses. Any provider operation which takes an
+    // address may also take an ENS name.
     //
-    // ENS also provides the ability for a reverse lookup, which determines the name for an address if it has been configured.
+    // ENS also provides the ability for a reverse lookup, which determines the name
+    // for an address if it has been configured.
 
-    /// Returns the address that the `ens_name` resolves to (or None if not configured).
+    /// Returns the address that the `ens_name` resolves to (or None if not
+    /// configured).
     ///
     /// # Panics
     ///
-    /// If the bytes returned from the ENS registrar/resolver cannot be interpreted as
-    /// an address. This should theoretically never happen.
+    /// If the bytes returned from the ENS registrar/resolver cannot be
+    /// interpreted as an address. This should theoretically never happen.
     async fn resolve_name(&self, ens_name: &str) -> Result<Address, ProviderError> {
         self.query_resolver(ParamType::Address, ens_name, ens::ADDR_SELECTOR)
             .await
     }
 
-    /// Returns the ENS name the `address` resolves to (or None if not configured).
-    /// # Panics
+    /// Returns the ENS name the `address` resolves to (or None if not
+    /// configured). # Panics
     ///
-    /// If the bytes returned from the ENS registrar/resolver cannot be interpreted as
-    /// a string. This should theoretically never happen.
+    /// If the bytes returned from the ENS registrar/resolver cannot be
+    /// interpreted as a string. This should theoretically never happen.
     async fn lookup_address(&self, address: Address) -> Result<String, ProviderError> {
         let ens_name = ens::reverse_address(address);
         self.query_resolver(ParamType::String, &ens_name, ens::NAME_SELECTOR)
             .await
     }
 
-    /// Returns the details of all transactions currently pending for inclusion in the next
-    /// block(s), as well as the ones that are being scheduled for future execution only.
-    /// Ref: [Here](https://geth.ethereum.org/docs/rpc/ns-txpool#txpool_content)
+    /// Returns the details of all transactions currently pending for inclusion
+    /// in the next block(s), as well as the ones that are being scheduled
+    /// for future execution only. Ref: [Here](https://geth.ethereum.org/docs/rpc/ns-txpool#txpool_content)
     async fn txpool_content(&self) -> Result<TxpoolContent, ProviderError> {
         self.request("txpool_content", ()).await
     }
 
-    /// Returns a summary of all the transactions currently pending for inclusion in the next
-    /// block(s), as well as the ones that are being scheduled for future execution only.
-    /// Ref: [Here](https://geth.ethereum.org/docs/rpc/ns-txpool#txpool_inspect)
+    /// Returns a summary of all the transactions currently pending for
+    /// inclusion in the next block(s), as well as the ones that are being
+    /// scheduled for future execution only. Ref: [Here](https://geth.ethereum.org/docs/rpc/ns-txpool#txpool_inspect)
     async fn txpool_inspect(&self) -> Result<TxpoolInspect, ProviderError> {
         self.request("txpool_inspect", ()).await
     }
 
-    /// Returns the number of transactions currently pending for inclusion in the next block(s), as
-    /// well as the ones that are being scheduled for future execution only.
-    /// Ref: [Here](https://geth.ethereum.org/docs/rpc/ns-txpool#txpool_status)
+    /// Returns the number of transactions currently pending for inclusion in
+    /// the next block(s), as well as the ones that are being scheduled for
+    /// future execution only. Ref: [Here](https://geth.ethereum.org/docs/rpc/ns-txpool#txpool_status)
     async fn txpool_status(&self) -> Result<TxpoolStatus, ProviderError> {
         self.request("txpool_status", ()).await
     }
@@ -540,7 +552,8 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.request("trace_call", [req, trace_type, block]).await
     }
 
-    /// Traces a call to `eth_sendRawTransaction` without making the call, returning the traces
+    /// Traces a call to `eth_sendRawTransaction` without making the call,
+    /// returning the traces
     async fn trace_raw_transaction(
         &self,
         data: Bytes,
@@ -564,7 +577,8 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
             .await
     }
 
-    /// Replays all transactions in a block returning the requested traces for each transaction
+    /// Replays all transactions in a block returning the requested traces for
+    /// each transaction
     async fn trace_replay_block_transactions(
         &self,
         block: BlockNumber,
@@ -714,15 +728,15 @@ impl<P: JsonRpcClient> Provider<P> {
         self
     }
 
-    /// Sets the default polling interval for event filters and pending transactions
-    /// (default: 7 seconds)
+    /// Sets the default polling interval for event filters and pending
+    /// transactions (default: 7 seconds)
     pub fn interval<T: Into<Duration>>(mut self, interval: T) -> Self {
         self.2 = Some(interval.into());
         self
     }
 
-    /// Gets the polling interval which the provider currently uses for event filters
-    /// and pending transactions (default: 7 seconds)
+    /// Gets the polling interval which the provider currently uses for event
+    /// filters and pending transactions (default: 7 seconds)
     pub fn get_interval(&self) -> Duration {
         self.2.unwrap_or(DEFAULT_POLL_INTERVAL)
     }

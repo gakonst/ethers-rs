@@ -23,7 +23,8 @@ pub const ADDR_SELECTOR: Selector = [59, 59, 87, 222];
 /// name(bytes32)
 pub const NAME_SELECTOR: Selector = [105, 31, 52, 49];
 
-/// Returns a transaction request for calling the `resolver` method on the ENS server
+/// Returns a transaction request for calling the `resolver` method on the ENS
+/// server
 pub fn get_resolver<T: Into<Address>>(ens_address: T, name: &str) -> TransactionRequest {
     // keccak256('resolver(bytes32)')
     let data = [&RESOLVER[..], &namehash(name).0].concat();

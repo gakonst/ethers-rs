@@ -11,8 +11,8 @@ pub enum NameOrAddress {
     Address(Address),
 }
 
-// Only RLP encode the Address variant since it doesn't make sense to ever RLP encode
-// an ENS name
+// Only RLP encode the Address variant since it doesn't make sense to ever RLP
+// encode an ENS name
 impl Encodable for &NameOrAddress {
     fn rlp_append(&self, s: &mut RlpStream) {
         if let NameOrAddress::Address(inner) = self {
@@ -41,8 +41,8 @@ impl From<Address> for NameOrAddress {
     }
 }
 
-// Only serialize the Address variant since it doesn't make sense to ever serialize
-// an ENS name
+// Only serialize the Address variant since it doesn't make sense to ever
+// serialize an ENS name
 impl Serialize for NameOrAddress {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where

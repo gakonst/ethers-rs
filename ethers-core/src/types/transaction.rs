@@ -41,7 +41,8 @@ pub struct TransactionRequest {
     pub value: Option<U256>,
 
     /// The compiled code of a contract OR the first 4 bytes of the hash of the
-    /// invoked method signature and encoded parameters. For details see Ethereum Contract ABI
+    /// invoked method signature and encoded parameters. For details see
+    /// Ethereum Contract ABI
     #[serde(skip_serializing_if = "Option::is_none")]
     pub data: Option<Bytes>,
 
@@ -75,7 +76,8 @@ impl TransactionRequest {
         Self::default()
     }
 
-    /// Convenience function for sending a new payment transaction to the receiver.
+    /// Convenience function for sending a new payment transaction to the
+    /// receiver.
     pub fn pay<T: Into<NameOrAddress>, V: Into<U256>>(to: T, value: V) -> Self {
         TransactionRequest {
             to: Some(to.into()),
@@ -198,7 +200,8 @@ impl TransactionRequest {
         self
     }
 
-    /// Sets the `gateway_fee_recipient` field in the transaction to the provided value
+    /// Sets the `gateway_fee_recipient` field in the transaction to the
+    /// provided value
     #[cfg_attr(docsrs, doc(cfg(feature = "celo")))]
     pub fn gateway_fee_recipient<T: Into<Address>>(mut self, gateway_fee_recipient: T) -> Self {
         self.gateway_fee_recipient = Some(gateway_fee_recipient.into());

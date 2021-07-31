@@ -3,9 +3,10 @@ use ethers_core::types::U256;
 
 /// Geometrically increasing gas price.
 ///
-/// Start with `initial_price`, then increase it every 'every_secs' seconds by a fixed coefficient.
-/// Coefficient defaults to 1.125 (12.5%), the minimum increase for Parity to replace a transaction.
-/// Coefficient can be adjusted, and there is an optional upper limit.
+/// Start with `initial_price`, then increase it every 'every_secs' seconds by a
+/// fixed coefficient. Coefficient defaults to 1.125 (12.5%), the minimum
+/// increase for Parity to replace a transaction. Coefficient can be adjusted,
+/// and there is an optional upper limit.
 ///
 /// https://github.com/makerdao/pymaker/blob/master/pymaker/gas.py#L168
 #[derive(Clone, Debug)]
@@ -18,8 +19,9 @@ pub struct GeometricGasPrice {
 impl GeometricGasPrice {
     /// Constructor
     ///
-    /// Note: Providing `None` to `max_price` requires giving it a type-hint, so you'll need
-    /// to call this like `GeometricGasPrice::new(1.125, 60u64, None::<u64>)`.
+    /// Note: Providing `None` to `max_price` requires giving it a type-hint, so
+    /// you'll need to call this like `GeometricGasPrice::new(1.125, 60u64,
+    /// None::<u64>)`.
     pub fn new<T: Into<U256>, K: Into<u64>>(
         coefficient: f64,
         every_secs: K,

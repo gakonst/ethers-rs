@@ -1,5 +1,5 @@
-//! This is a helper module used to pass the pre-hashed message for signing to the
-//! `sign_digest` methods of K256.
+//! This is a helper module used to pass the pre-hashed message for signing to
+//! the `sign_digest` methods of K256.
 use elliptic_curve::consts::U64;
 use ethers_core::{
     k256::ecdsa::signature::digest::{

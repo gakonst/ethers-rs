@@ -21,8 +21,9 @@ mod eth_tests {
         // launch ganache
         let ganache = Ganache::new().spawn();
 
-        // Instantiate the clients. We assume that clients consume the provider and the wallet
-        // (which makes sense), so for multi-client tests, you must clone the provider.
+        // Instantiate the clients. We assume that clients consume the provider and the
+        // wallet (which makes sense), so for multi-client tests, you must clone
+        // the provider.
         let client = connect(&ganache, 0);
         let client2 = connect(&ganache, 1);
 
@@ -30,8 +31,9 @@ mod eth_tests {
         let factory = ContractFactory::new(abi, bytecode, client.clone());
 
         // `send` consumes the deployer so it must be cloned for later re-use
-        // (practically it's not expected that you'll need to deploy multiple instances of
-        // the _same_ deployer, so it's fine to clone here from a dev UX vs perf tradeoff)
+        // (practically it's not expected that you'll need to deploy multiple instances
+        // of the _same_ deployer, so it's fine to clone here from a dev UX vs
+        // perf tradeoff)
         let deployer = factory.deploy("initial value".to_string()).unwrap();
         let contract = deployer.clone().send().await.unwrap();
 
@@ -203,8 +205,9 @@ mod eth_tests {
             .unwrap();
         assert_eq!(value, "initial value");
 
-        // Here would be the place to test EIP-1898, specifying the `BlockId` of `call` as the
-        // first block hash. However, Ganache does not implement this :/
+        // Here would be the place to test EIP-1898, specifying the `BlockId` of
+        // `call` as the first block hash. However, Ganache does not
+        // implement this :/
 
         // let hash = client.get_block(1).await.unwrap().unwrap().hash.unwrap();
         // let value = contract
@@ -378,9 +381,9 @@ mod eth_tests {
         // launch ganache
         let ganache = Ganache::new().spawn();
 
-        // Instantiate the clients. We assume that clients consume the provider and the wallet
-        // (which makes sense), so for multi-client tests, you must clone the provider.
-        // `client` is used to deploy the Multicall contract
+        // Instantiate the clients. We assume that clients consume the provider and the
+        // wallet (which makes sense), so for multi-client tests, you must clone
+        // the provider. `client` is used to deploy the Multicall contract
         // `client2` is used to deploy the first SimpleStorage contract
         // `client3` is used to deploy the second SimpleStorage contract
         // `client4` is used to make the aggregate call
@@ -458,7 +461,8 @@ mod eth_tests {
         assert_eq!(return_data.2, client2.address());
         assert_eq!(return_data.3, client3.address());
 
-        // construct broadcast transactions that will be batched and broadcast via Multicall
+        // construct broadcast transactions that will be batched and broadcast via
+        // Multicall
         let broadcast = simple_contract
             .connect(client4.clone())
             .method::<_, H256>("setValue", "first reset again".to_owned())
@@ -468,10 +472,10 @@ mod eth_tests {
             .method::<_, H256>("setValue", "second reset again".to_owned())
             .unwrap();
 
-        // use the already initialised Multicall instance, clearing the previous calls and adding
-        // new calls. Previously we used the `.call()` functionality to do a batch of calls in one
-        // go. Now we will use the `.send()` functionality to broadcast a batch of transactions
-        // in one go
+        // use the already initialised Multicall instance, clearing the previous calls
+        // and adding new calls. Previously we used the `.call()` functionality
+        // to do a batch of calls in one go. Now we will use the `.send()`
+        // functionality to broadcast a batch of transactions in one go
         let mut multicall_send = multicall.clone();
         multicall_send
             .clear_calls()
@@ -485,9 +489,10 @@ mod eth_tests {
             .unwrap();
 
         // Do another multicall to check the updated return values
-        // The `getValue` calls should return the last value we set in the batched broadcast
-        // The `lastSender` calls should return the address of the Multicall contract, as it is
-        // the one acting as proxy and calling our SimpleStorage contracts (msg.sender)
+        // The `getValue` calls should return the last value we set in the batched
+        // broadcast The `lastSender` calls should return the address of the
+        // Multicall contract, as it is the one acting as proxy and calling our
+        // SimpleStorage contracts (msg.sender)
         let return_data: (String, (String, Address), Address, Address) =
             multicall.call().await.unwrap();
 
