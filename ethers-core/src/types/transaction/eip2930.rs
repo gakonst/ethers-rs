@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 const NUM_EIP2930_FIELDS: usize = NUM_TX_FIELDS + 1;
 
 /// Access list
-#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize, RlpEncodable)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize, RlpEncodable)]
 pub struct AccessList(pub Vec<AccessListItem>);
 
 impl From<Vec<AccessListItem>> for AccessList {
@@ -29,7 +29,7 @@ impl TransactionRequest {
 }
 
 /// Access list item
-#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize, RlpEncodable)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize, RlpEncodable)]
 #[serde(rename_all = "camelCase")]
 pub struct AccessListItem {
     /// Accessed address
@@ -86,7 +86,7 @@ impl Eip2930TransactionRequest {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::{U256 ,transaction::eip2718::TypedTransaction};
+    use crate::types::{transaction::eip2718::TypedTransaction, U256};
 
     #[test]
     fn serde_eip2930_tx() {

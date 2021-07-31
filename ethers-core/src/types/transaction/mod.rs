@@ -13,8 +13,8 @@ pub(crate) const NUM_TX_FIELDS: usize = BASE_NUM_TX_FIELDS;
 #[cfg(feature = "celo")]
 pub(crate) const NUM_TX_FIELDS: usize = BASE_NUM_TX_FIELDS + 3;
 
-pub(super) fn rlp_opt<T: rlp::Encodable>(rlp: &mut rlp::RlpStream, opt: Option<T>) {
-    if let Some(ref inner) = opt {
+pub(super) fn rlp_opt<T: rlp::Encodable>(rlp: &mut rlp::RlpStream, opt: &Option<T>) {
+    if let Some(inner) = opt {
         rlp.append(inner);
     } else {
         rlp.append(&"");

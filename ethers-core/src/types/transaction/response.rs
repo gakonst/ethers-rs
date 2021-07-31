@@ -149,7 +149,7 @@ impl Transaction {
         #[cfg(feature = "celo")]
         self.inject_celo_metadata(&mut rlp);
 
-        rlp_opt(&mut rlp, self.to);
+        rlp_opt(&mut rlp, &self.to);
         rlp.append(&self.value);
         rlp.append(&self.input.as_ref());
         rlp.append(&self.v);
