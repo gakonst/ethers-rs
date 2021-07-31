@@ -5,15 +5,7 @@ use crate::{
     FeeHistory, FromErr, Http as HttpProvider, JsonRpcClient, MockProvider, PendingTransaction,
 };
 
-use ethers_core::{
-    abi::{self, Detokenize, ParamType},
-    types::{
-        Address, Block, BlockId, BlockNumber, BlockTrace, Bytes, Filter, Log, NameOrAddress,
-        Selector, Signature, Trace, TraceFilter, TraceType, Transaction, TransactionReceipt,
-        TransactionRequest, TxHash, TxpoolContent, TxpoolInspect, TxpoolStatus, H256, U256, U64,
-    },
-    utils,
-};
+use ethers_core::{abi::{self, Detokenize, ParamType}, types::{Address, Block, BlockId, BlockNumber, BlockTrace, Bytes, Filter, H256, Log, NameOrAddress, Selector, Signature, Trace, TraceFilter, TraceType, Transaction, TransactionReceipt, TransactionRequest, TxHash, TxpoolContent, TxpoolInspect, TxpoolStatus, U256, U64, transaction::eip2930::AccessList}, utils};
 
 #[cfg(feature = "celo")]
 use crate::CeloMiddleware;
@@ -320,6 +312,10 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
     /// (while still consuming all provided gas).
     async fn estimate_gas(&self, tx: &TransactionRequest) -> Result<U256, ProviderError> {
         self.request("eth_estimateGas", [tx]).await
+    }
+
+    async fn create_access_list(&self, tx: &TransactionRequest) -> Result<AccessList, ProviderError> {
+        self.request("eth_createAccessList", [tx]).await
     }
 
     /// Sends the transaction to the entire Ethereum network and returns the transaction's hash

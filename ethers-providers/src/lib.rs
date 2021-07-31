@@ -83,6 +83,7 @@ pub use pubsub::{PubsubClient, SubscriptionStream};
 
 use async_trait::async_trait;
 use auto_impl::auto_impl;
+use ethers_core::types::transaction::{eip2718::TypedTransaction, eip2930::AccessList};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{error::Error, fmt::Debug, future::Future, pin::Pin};
 
@@ -583,6 +584,13 @@ pub trait Middleware: Sync + Send + Debug {
     ) -> Result<FeeHistory, Self::Error> {
         self.inner()
             .fee_history(block_count, last_block, reward_percentiles)
+            .await
+            .map_err(FromErr::from)
+    }
+
+    async fn create_access_list(&self, tx: &TransactionRequest) -> Result<AccessList, ProviderError> {
+        self.inner()
+            .create_access_list(tx)
             .await
             .map_err(FromErr::from)
     }
