@@ -1,6 +1,7 @@
 pub mod request;
 pub mod response;
 
+pub mod eip1559;
 pub mod eip2718;
 pub mod eip2930;
 

@@ -8,8 +8,12 @@ pub use ethabi::ethereum_types::H256 as TxHash;
 pub use ethabi::ethereum_types::{Address, Bloom, H160, H256, U128, U256, U64};
 
 pub mod transaction;
-pub use transaction::request::TransactionRequest;
-pub use transaction::response::{Transaction, TransactionReceipt};
+pub use transaction::{
+    eip1559::EIP1559TransactionRequest,
+    eip2930::Eip2930TransactionRequest,
+    request::TransactionRequest,
+    response::{Transaction, TransactionReceipt},
+};
 
 mod address_or_bytes;
 pub use address_or_bytes::AddressOrBytes;
