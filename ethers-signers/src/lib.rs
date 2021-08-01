@@ -67,7 +67,7 @@ pub use yubihsm;
 mod aws;
 
 #[cfg(feature = "aws")]
-pub use aws::AwsSigner;
+pub use aws::{AwsSigner, AwsSignerError};
 
 use async_trait::async_trait;
 use ethers_core::types::{Address, Signature, TransactionRequest};
