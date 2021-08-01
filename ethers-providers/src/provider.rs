@@ -9,10 +9,9 @@ use ethers_core::{
     abi::{self, Detokenize, ParamType},
     types::{
         transaction::{eip2718::TypedTransaction, eip2930::AccessListWithGasUsed},
-        Address, Block, BlockId, BlockNumber, BlockTrace, Bytes, Eip2930TransactionRequest, Filter,
-        Log, NameOrAddress, Selector, Signature, Trace, TraceFilter, TraceType, Transaction,
-        TransactionReceipt, TransactionRequest, TxHash, TxpoolContent, TxpoolInspect, TxpoolStatus,
-        H256, U256, U64,
+        Address, Block, BlockId, BlockNumber, BlockTrace, Bytes, Filter, Log, NameOrAddress,
+        Selector, Signature, Trace, TraceFilter, TraceType, Transaction, TransactionReceipt,
+        TransactionRequest, TxHash, TxpoolContent, TxpoolInspect, TxpoolStatus, H256, U256, U64,
     },
     utils,
 };
@@ -342,10 +341,9 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
     /// This will consume gas from the account that signed the transaction.
     async fn send_transaction(
         &self,
-        mut tx: TransactionRequest,
+        mut tx: TypedTransaction,
         block: Option<BlockId>,
     ) -> Result<PendingTransaction<'_, P>, ProviderError> {
-        let mut tx = tx.into();
         self.fill_transaction(&mut tx, block).await?;
         let tx_hash = self.request("eth_sendTransaction", [tx]).await?;
 
