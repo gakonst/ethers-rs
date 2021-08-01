@@ -1,6 +1,5 @@
 use super::request::TransactionRequest;
 use crate::types::{Address, Bytes, Signature, H256, U64, U256};
-use crate::types::{Address, Bytes, Signature, H256, U256, U64};
 
 use rlp::RlpStream;
 use rlp_derive::{RlpEncodable, RlpEncodableWrapper};

@@ -149,9 +149,9 @@ impl TypedTransaction {
         use TypedTransaction::*;
         let mut encoded = vec![];
         match self {
-            Legacy(inner) => {
+            TypedTransaction::Legacy(ref tx) => {
                 encoded.extend_from_slice(&[0x0]);
-                encoded.extend_from_slice(inner.rlp_signed(signature).as_ref());
+                encoded.extend_from_slice(tx.rlp(chain_id).as_ref());
             }
             Eip2930(inner) => {
                 encoded.extend_from_slice(&[0x1]);
