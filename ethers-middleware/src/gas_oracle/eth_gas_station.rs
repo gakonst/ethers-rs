@@ -21,7 +21,7 @@ pub struct EthGasStation {
 #[derive(Deserialize)]
 struct EthGasStationResponse {
     #[serde(rename = "safeLow")]
-    safe_low: u64,
+    safe_low: f64,
     average: u64,
     fast: u64,
     fastest: u64,
@@ -63,7 +63,7 @@ impl GasOracle for EthGasStation {
             .await?;
 
         let gas_price = match self.gas_category {
-            GasCategory::SafeLow => U256::from((res.safe_low * GWEI_TO_WEI) / 10),
+            GasCategory::SafeLow => U256::from((res.safe_low.ceil() as u64 * GWEI_TO_WEI) / 10),
             GasCategory::Standard => U256::from((res.average * GWEI_TO_WEI) / 10),
             GasCategory::Fast => U256::from((res.fast * GWEI_TO_WEI) / 10),
             GasCategory::Fastest => U256::from((res.fastest * GWEI_TO_WEI) / 10),
