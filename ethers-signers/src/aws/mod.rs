@@ -103,7 +103,7 @@ async fn request_get_pubkey<T>(
     key_id: T,
 ) -> Result<rusoto_kms::GetPublicKeyResponse, RusotoError<GetPublicKeyError>>
 where
-    T: AsRef<str>
+    T: AsRef<str>,
 {
     debug!("Dispatching get_public_key");
 
