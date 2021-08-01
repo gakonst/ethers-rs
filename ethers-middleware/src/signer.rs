@@ -184,16 +184,14 @@ where
     ) -> Result<(), Self::Error> {
         // get the `from` field's nonce if it's set, else get the signer's nonce
         let from = if tx.from().is_some() && tx.from() != Some(&self.address()) {
-            tx.from().unwrap()
+            *tx.from().unwrap()
         } else {
-            &self.address
+            self.address
         };
+        let from = from.into();
+        tx.set_from(from);
 
-        let nonce = maybe(
-            tx.nonce().cloned(),
-            self.get_transaction_count(*from, block),
-        )
-        .await?;
+        let nonce = maybe(tx.nonce().cloned(), self.get_transaction_count(from, block)).await?;
         tx.set_nonce(nonce);
         self.inner()
             .fill_transaction(tx, block)

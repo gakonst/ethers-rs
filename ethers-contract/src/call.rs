@@ -119,7 +119,7 @@ where
     pub async fn call(&self) -> Result<D, ContractError<M>> {
         let bytes = self
             .client
-            .call(&self.tx, self.block)
+            .call(&self.tx.clone().into(), self.block)
             .await
             .map_err(ContractError::MiddlewareError)?;
 

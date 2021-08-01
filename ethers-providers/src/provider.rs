@@ -906,7 +906,7 @@ mod ens_tests {
 mod tests {
     use super::*;
     use crate::Http;
-    use ethers_core::types::H256;
+    use ethers_core::types::{TransactionRequest, H256};
     use ethers_core::utils::Geth;
     use futures_util::StreamExt;
 
