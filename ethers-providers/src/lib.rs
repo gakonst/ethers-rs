@@ -224,17 +224,20 @@ pub trait Middleware: Sync + Send + Debug {
                     inner.from = self.default_sender();
                 }
 
-                let (gas_price, gas, nonce) = join!(
+                if let Some(from) = inner.from {
+                    let nonce = maybe(
+                        inner.nonce,
+                        self.get_transaction_count(from, block)
+                    ).await?;
+                    inner.nonce = Some(nonce);
+                }
+
+                let (gas_price, gas) = join!(
                     maybe(inner.gas_price, self.get_gas_price()),
                     maybe(inner.gas, self.estimate_gas(&tx_clone)),
-                    maybe(
-                        inner.nonce,
-                        self.get_transaction_count(Address::zero() /* TODO */, block)
-                    ),
                 );
                 inner.gas = Some(gas?);
                 inner.gas_price = Some(gas_price?);
-                inner.nonce = Some(nonce?);
             }
             TypedTransaction::Eip2930(inner) => {
                 inner.access_list = self.create_access_list(&tx_clone, block).await?.access_list;
@@ -246,17 +249,20 @@ pub trait Middleware: Sync + Send + Debug {
 
                 use futures_util::join;
 
-                let (gas_price, gas, nonce) = join!(
+                if let Some(from) = inner.tx.from {
+                    let nonce = maybe(
+                        inner.tx.nonce,
+                        self.get_transaction_count(from, block)
+                    ).await?;
+                    inner.tx.nonce = Some(nonce);
+                }
+
+                let (gas_price, gas) = join!(
                     maybe(inner.tx.gas_price, self.get_gas_price()),
                     maybe(inner.tx.gas, self.estimate_gas(&tx_clone)),
-                    maybe(
-                        inner.tx.nonce,
-                        self.get_transaction_count(Address::zero() /* TODO */, block)
-                    ),
                 );
                 inner.tx.gas = Some(gas?);
                 inner.tx.gas_price = Some(gas_price?);
-                inner.tx.nonce = Some(nonce?);
             }
             TypedTransaction::Eip1559(inner) => {
                 inner.access_list =
@@ -269,20 +275,23 @@ pub trait Middleware: Sync + Send + Debug {
 
                 use futures_util::join;
 
-                let (max_priority_fee_per_gas, max_fee_per_gas, gas, nonce) = join!(
+                if let Some(from) = inner.from {
+                    let nonce = maybe(
+                        inner.nonce,
+                        self.get_transaction_count(from, block)
+                    ).await?;
+                    inner.nonce = Some(nonce);
+                }
+
+                let (max_priority_fee_per_gas, max_fee_per_gas, gas) = join!(
                     // TODO: Replace with algorithms using eth_feeHistory
                     maybe(inner.max_priority_fee_per_gas, self.get_gas_price()),
                     maybe(inner.max_fee_per_gas, self.get_gas_price()),
                     maybe(inner.gas, self.estimate_gas(&tx_clone)),
-                    maybe(
-                        inner.nonce,
-                        self.get_transaction_count(Address::zero() /* TODO */, block)
-                    ),
                 );
                 inner.gas = Some(gas?);
                 inner.max_fee_per_gas = Some(max_fee_per_gas?);
                 inner.max_priority_fee_per_gas = Some(max_priority_fee_per_gas?);
-                inner.nonce = Some(nonce?);
             }
         };
 
