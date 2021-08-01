@@ -182,9 +182,16 @@ where
         tx: &mut TypedTransaction,
         block: Option<BlockId>,
     ) -> Result<(), Self::Error> {
+        // get the `from` field's nonce if it's set, else get the signer's nonce
+        let from = if tx.from().is_some() && tx.from() != Some(&self.address()) {
+            tx.from().unwrap()
+        } else {
+            &self.address
+        };
+
         let nonce = maybe(
             tx.nonce().cloned(),
-            self.get_transaction_count(self.address, block),
+            self.get_transaction_count(*from, block),
         )
         .await?;
         tx.set_nonce(nonce);
