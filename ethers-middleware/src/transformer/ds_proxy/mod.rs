@@ -197,8 +197,8 @@ impl Transformer for DsProxy {
             .encode_with_selector(selector, (*target, data))?;
 
         // update appropriate fields of the proxy tx.
-        tx.data_mut().map(|data| *data = encoded_data);
-        tx.to_mut().map(|to| *to = self.address.into());
+        tx.set_data(encoded_data);
+        tx.set_to(self.address);
 
         Ok(())
     }
