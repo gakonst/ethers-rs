@@ -5,7 +5,7 @@ mod middleware;
 pub use middleware::TransformerMiddleware;
 
 use ethers_contract::AbiError;
-use ethers_core::{abi::ParseError, types::transaction::eip2718::TypedTransaction, types::*};
+use ethers_core::{abi::ParseError, types::transaction::eip2718::TypedTransaction};
 use thiserror::Error;
 
 #[derive(Error, Debug)]

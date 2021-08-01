@@ -242,7 +242,8 @@ mod tests {
             .gas_price(400e9 as u64)
             .nonce(5)
             .data(data)
-            .value(ethers_core::utils::parse_ether(100).unwrap());
+            .value(ethers_core::utils::parse_ether(100).unwrap())
+            .into();
         let tx = ledger.sign_transaction(&tx_req).await.unwrap();
     }
 

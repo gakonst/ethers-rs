@@ -5,7 +5,6 @@ use ethers_providers::{maybe, FromErr, Middleware, PendingTransaction};
 use ethers_signers::Signer;
 
 use async_trait::async_trait;
-use std::future::Future;
 use thiserror::Error;
 
 #[derive(Clone, Debug)]
