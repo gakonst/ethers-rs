@@ -60,6 +60,8 @@ async fn etherscan() {
 
 #[tokio::test]
 #[ignore]
+// TODO: Etherchain has Cloudflare DDOS protection which makes the request fail
+// https://twitter.com/gakonst/status/1421796226316578816
 async fn etherchain() {
     // initialize and fetch gas estimates from Etherchain
     let etherchain_oracle = Etherchain::new().category(GasCategory::Fast);

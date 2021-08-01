@@ -1,4 +1,5 @@
 mod geometric;
+use ethers_core::types::transaction::eip2718::TypedTransaction;
 pub use geometric::GeometricGasPrice;
 
 mod linear;
@@ -84,7 +85,7 @@ where
 
     async fn send_transaction(
         &self,
-        tx: TransactionRequest,
+        tx: TypedTransaction,
         block: Option<BlockId>,
     ) -> Result<PendingTransaction<'_, Self::Provider>, Self::Error> {
         let pending_tx = self
@@ -93,9 +94,15 @@ where
             .await
             .map_err(GasEscalatorError::MiddlewareError)?;
 
+        let tx = match tx {
+            TypedTransaction::Legacy(ref inner) => inner,
+            TypedTransaction::Eip2930(ref inner) => &inner.tx,
+            _ => return Err(GasEscalatorError::UnsupportedTxType),
+        };
+
         // insert the tx in the pending txs
         let mut lock = self.txs.lock().await;
-        lock.push((*pending_tx, tx, Instant::now(), block));
+        lock.push((*pending_tx, tx.clone(), Instant::now(), block));
 
         Ok(pending_tx)
     }
@@ -231,4 +238,7 @@ pub enum GasEscalatorError<M: Middleware> {
     #[error("{0}")]
     /// Thrown when an internal middleware errors
     MiddlewareError(M::Error),
+
+    #[error("Gas escalation is only supported for EIP2930 or Legacy transactions")]
+    UnsupportedTxType,
 }

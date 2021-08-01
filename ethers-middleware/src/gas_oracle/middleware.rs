@@ -1,6 +1,6 @@
 use super::{GasOracle, GasOracleError};
 use async_trait::async_trait;
-use ethers_core::types::*;
+use ethers_core::types::{transaction::eip2718::TypedTransaction, *};
 use ethers_providers::{FromErr, Middleware, PendingTransaction};
 use thiserror::Error;
 
@@ -28,6 +28,9 @@ pub enum MiddlewareError<M: Middleware> {
 
     #[error("{0}")]
     MiddlewareError(M::Error),
+
+    #[error("This gas price oracle only works with Legacy and EIP2930 transactions.")]
+    UnsupportedTxType,
 }
 
 impl<M: Middleware> FromErr<M::Error> for MiddlewareError<M> {
@@ -58,12 +61,24 @@ where
 
     async fn send_transaction(
         &self,
-        mut tx: TransactionRequest,
+        mut tx: TypedTransaction,
         block: Option<BlockId>,
     ) -> Result<PendingTransaction<'_, Self::Provider>, Self::Error> {
-        if tx.gas_price.is_none() {
-            tx.gas_price = Some(self.get_gas_price().await?);
-        }
+        match tx {
+            TypedTransaction::Legacy(ref mut tx) => {
+                if tx.gas_price.is_none() {
+                    tx.gas_price = Some(self.get_gas_price().await?);
+                }
+            }
+            TypedTransaction::Eip2930(ref mut inner) => {
+                if inner.tx.gas_price.is_none() {
+                    inner.tx.gas_price = Some(self.get_gas_price().await?);
+                }
+            }
+            TypedTransaction::Eip1559(_) => {
+                return Err(MiddlewareError::UnsupportedTxType);
+            }
+        };
         self.inner
             .send_transaction(tx, block)
             .await

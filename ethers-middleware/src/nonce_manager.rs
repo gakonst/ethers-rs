@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use ethers_core::types::transaction::eip2718::TypedTransaction;
 use ethers_core::types::*;
 use ethers_providers::{FromErr, Middleware, PendingTransaction};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -86,11 +87,11 @@ where
     /// left to `None`.
     async fn send_transaction(
         &self,
-        mut tx: TransactionRequest,
+        mut tx: TypedTransaction,
         block: Option<BlockId>,
     ) -> Result<PendingTransaction<'_, Self::Provider>, Self::Error> {
-        if tx.nonce.is_none() {
-            tx.nonce = Some(self.get_transaction_count_with_manager(block).await?);
+        if tx.nonce().is_none() {
+            tx.set_nonce(self.get_transaction_count_with_manager(block).await?);
         }
 
         let mut tx_clone = tx.clone();
@@ -102,7 +103,7 @@ where
                     // try re-submitting the transaction with the correct nonce if there
                     // was a nonce mismatch
                     self.nonce.store(nonce.as_u64(), Ordering::SeqCst);
-                    tx_clone.nonce = Some(nonce);
+                    tx_clone.set_nonce(nonce);
                     self.inner
                         .send_transaction(tx_clone, block)
                         .await

@@ -197,7 +197,6 @@ where
                 .map_err(SignerMiddlewareError::MiddlewareError);
         }
 
-
         // if we have a nonce manager set, we should try handling the result in
         // case there was a nonce mismatch
         let signed_tx = self.sign_transaction(tx).await?;
