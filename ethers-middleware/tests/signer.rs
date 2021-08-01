@@ -33,7 +33,7 @@ async fn send_eth() {
         .unwrap();
 
     // send it!
-    provider.send_transaction(tx.into(), None).await.unwrap();
+    provider.send_transaction(tx, None).await.unwrap();
 
     let balance_after = provider
         .get_balance(provider.address(), None)
@@ -93,7 +93,7 @@ async fn send_transaction_handles_tx_from_field() {
     // in a transaction from the signer address
     let request_from_none = TransactionRequest::new();
     let receipt = provider
-        .send_transaction(request_from_none.into(), None)
+        .send_transaction(request_from_none, None)
         .await
         .unwrap()
         .await
@@ -111,7 +111,7 @@ async fn send_transaction_handles_tx_from_field() {
     // result in a transaction from the signer address
     let request_from_signer = TransactionRequest::new().from(signer.address());
     let receipt = provider
-        .send_transaction(request_from_signer.into(), None)
+        .send_transaction(request_from_signer, None)
         .await
         .unwrap()
         .await
@@ -129,7 +129,7 @@ async fn send_transaction_handles_tx_from_field() {
     // should result in a transaction from the specified address
     let request_from_other = TransactionRequest::new().from(other.address());
     let receipt = provider
-        .send_transaction(request_from_other.into(), None)
+        .send_transaction(request_from_other, None)
         .await
         .unwrap()
         .await

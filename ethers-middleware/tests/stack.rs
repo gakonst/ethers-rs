@@ -81,10 +81,7 @@ mod tests {
         let tx = TransactionRequest::new();
         let mut pending_txs = Vec::new();
         for _ in 0..10 {
-            let pending = provider
-                .send_transaction(tx.clone().into(), None)
-                .await
-                .unwrap();
+            let pending = provider.send_transaction(tx.clone(), None).await.unwrap();
             let hash = *pending;
             let gas_price = provider
                 .get_transaction(hash)

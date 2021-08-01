@@ -185,7 +185,7 @@ where
                         // the tx hash will be different so we need to update it
                         match self
                             .inner()
-                            .send_transaction(replacement_tx.clone().into(), priority)
+                            .send_transaction(replacement_tx.clone(), priority)
                             .await
                         {
                             Ok(new_tx_hash) => {

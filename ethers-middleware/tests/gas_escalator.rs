@@ -30,15 +30,15 @@ async fn gas_escalator_live() {
 
     // broadcast 3 txs
     provider
-        .send_transaction(tx.clone().nonce(nonce).into(), None)
+        .send_transaction(tx.clone().nonce(nonce), None)
         .await
         .unwrap();
     provider
-        .send_transaction(tx.clone().nonce(nonce + 1).into(), None)
+        .send_transaction(tx.clone().nonce(nonce + 1), None)
         .await
         .unwrap();
     provider
-        .send_transaction(tx.clone().nonce(nonce + 2).into(), None)
+        .send_transaction(tx.clone().nonce(nonce + 2), None)
         .await
         .unwrap();
 

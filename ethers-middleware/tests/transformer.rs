@@ -82,7 +82,7 @@ async fn ds_proxy_transformer() {
         .to(simple_storage.address())
         .data(calldata);
     provider
-        .send_transaction(tx.into(), None)
+        .send_transaction(tx, None)
         .await
         .unwrap()
         .await

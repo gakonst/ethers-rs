@@ -25,7 +25,7 @@ async fn using_gas_oracle() {
         .from(from)
         .to(Address::zero())
         .value(10000);
-    let tx_hash = provider.send_transaction(tx.into(), None).await.unwrap();
+    let tx_hash = provider.send_transaction(tx, None).await.unwrap();
 
     let tx = provider.get_transaction(*tx_hash).await.unwrap().unwrap();
     assert_eq!(tx.gas_price, expected_gas_price);

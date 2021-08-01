@@ -38,7 +38,7 @@ use thiserror::Error;
 /// let signed_msg = client.sign(b"hello".to_vec(), &client.address()).await?;
 ///
 /// // ...and sign transactions
-/// let tx = TransactionRequest::pay("vitalik.eth", 100).into();
+/// let tx = TransactionRequest::pay("vitalik.eth", 100);
 /// let pending_tx = client.send_transaction(tx, None).await?;
 ///
 /// // You can `await` on the pending transaction to get the receipt with a pre-specified
@@ -54,7 +54,7 @@ use thiserror::Error;
 /// // This call will be made with `wallet2` since `with_signer` takes a mutable reference.
 /// let tx2 = TransactionRequest::new()
 ///     .to("0xd8da6bf26964af9d7eed9e03e53415d37aa96045".parse::<Address>()?)
-///     .value(200).into();
+///     .value(200);
 /// let tx_hash2 = client.send_transaction(tx2, None).await?;
 ///
 /// # Ok(())
