@@ -59,11 +59,13 @@ where
         Ok(self.gas_oracle.fetch().await?)
     }
 
-    async fn send_transaction(
+    async fn send_transaction<T: Into<TypedTransaction> + Send + Sync>(
         &self,
-        mut tx: TypedTransaction,
+        tx: T,
         block: Option<BlockId>,
     ) -> Result<PendingTransaction<'_, Self::Provider>, Self::Error> {
+        let mut tx = tx.into();
+
         match tx {
             TypedTransaction::Legacy(ref mut tx) => {
                 if tx.gas_price.is_none() {

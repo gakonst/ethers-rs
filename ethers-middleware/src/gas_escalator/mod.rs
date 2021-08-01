@@ -83,11 +83,13 @@ where
         &self.inner
     }
 
-    async fn send_transaction(
+    async fn send_transaction<T: Into<TypedTransaction> + Send + Sync>(
         &self,
-        tx: TypedTransaction,
+        tx: T,
         block: Option<BlockId>,
     ) -> Result<PendingTransaction<'_, Self::Provider>, Self::Error> {
+        let tx = tx.into();
+
         let pending_tx = self
             .inner()
             .send_transaction(tx.clone(), block)

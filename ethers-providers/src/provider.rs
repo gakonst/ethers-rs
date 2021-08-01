@@ -339,11 +339,12 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
 
     /// Sends the transaction to the entire Ethereum network and returns the transaction's hash
     /// This will consume gas from the account that signed the transaction.
-    async fn send_transaction(
+    async fn send_transaction<T: Into<TypedTransaction> + Send + Sync>(
         &self,
-        mut tx: TypedTransaction,
+        tx: T,
         block: Option<BlockId>,
     ) -> Result<PendingTransaction<'_, P>, ProviderError> {
+        let mut tx = tx.into();
         self.fill_transaction(&mut tx, block).await?;
         let tx_hash = self.request("eth_sendTransaction", [tx]).await?;
 

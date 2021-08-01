@@ -132,7 +132,7 @@ where
     /// Signs and broadcasts the provided transaction
     pub async fn send(&self) -> Result<PendingTransaction<'_, M::Provider>, ContractError<M>> {
         self.client
-            .send_transaction(self.tx.clone().into(), self.block)
+            .send_transaction(self.tx.clone(), self.block)
             .await
             .map_err(ContractError::MiddlewareError)
     }

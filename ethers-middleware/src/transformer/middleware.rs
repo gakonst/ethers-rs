@@ -53,12 +53,13 @@ where
         &self.inner
     }
 
-    async fn send_transaction(
+    async fn send_transaction<Tx: Into<TypedTransaction> + Send + Sync>(
         &self,
-        mut tx: TypedTransaction,
+        tx: Tx,
         block: Option<BlockId>,
     ) -> Result<PendingTransaction<'_, Self::Provider>, Self::Error> {
         self.fill_transaction(&mut tx, block).await?;
+        let mut tx = tx.into();
 
         // construct the appropriate proxy tx.
         self.transformer.transform(&mut tx)?;

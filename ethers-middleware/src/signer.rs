@@ -180,11 +180,13 @@ where
     /// Signs and broadcasts the transaction. The optional parameter `block` can be passed so that
     /// gas cost and nonce calculations take it into account. For simple transactions this can be
     /// left to `None`.
-    async fn send_transaction(
+    async fn send_transaction<T: Into<TypedTransaction> + Send + Sync>(
         &self,
-        mut tx: TypedTransaction,
+        tx: T,
         block: Option<BlockId>,
     ) -> Result<PendingTransaction<'_, Self::Provider>, Self::Error> {
+        let mut tx = tx.into();
+
         // fill any missing fields
         self.fill_transaction(&mut tx, block).await?;
 
@@ -280,9 +282,7 @@ mod tests {
         let key = LocalWallet::new(&mut rand::thread_rng()).with_chain_id(1u32);
         provider
             .send_transaction(
-                TransactionRequest::pay(key.address(), utils::parse_ether(1u64).unwrap())
-                    .from(acc)
-                    .into(),
+                TransactionRequest::pay(key.address(), utils::parse_ether(1u64).unwrap()).from(acc),
                 None,
             )
             .await
@@ -295,7 +295,7 @@ mod tests {
         // a signed transaction from the signer address
         let request_from_none = request.clone();
         let hash = *client
-            .send_transaction(request_from_none.into(), None)
+            .send_transaction(request_from_none, None)
             .await
             .unwrap();
         let tx = client.get_transaction(hash).await.unwrap().unwrap();
@@ -305,7 +305,7 @@ mod tests {
         // should yield a signed transaction from the signer
         let request_from_signer = request.clone().from(client.address());
         let hash = *client
-            .send_transaction(request_from_signer.into(), None)
+            .send_transaction(request_from_signer, None)
             .await
             .unwrap();
         let tx = client.get_transaction(hash).await.unwrap().unwrap();
@@ -315,7 +315,7 @@ mod tests {
         // signer should result in the default ganache account being used
         let request_from_other = request.from(acc);
         let hash = *client
-            .send_transaction(request_from_other.into(), None)
+            .send_transaction(request_from_other, None)
             .await
             .unwrap();
         let tx = client.get_transaction(hash).await.unwrap().unwrap();
