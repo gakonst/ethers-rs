@@ -16,7 +16,7 @@ use ethers_core::{
         elliptic_curve::FieldBytes,
         Secp256k1,
     },
-    types::{Address, Signature, TransactionRequest, H256},
+    types::{transaction::eip2718::TypedTransaction, Address, Signature, H256},
     utils::hash_message,
 };
 use hash::Sha256Proxy;
@@ -78,7 +78,7 @@ impl<D: Sync + Send + DigestSigner<Sha256Proxy, RecoverableSignature>> Signer fo
         Ok(self.sign_hash(message_hash, false))
     }
 
-    async fn sign_transaction(&self, tx: &TransactionRequest) -> Result<Signature, Self::Error> {
+    async fn sign_transaction(&self, tx: &TypedTransaction) -> Result<Signature, Self::Error> {
         let sighash = tx.sighash(self.chain_id);
         Ok(self.sign_hash(sighash, true))
     }

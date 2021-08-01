@@ -8,7 +8,8 @@ use futures_util::lock::Mutex;
 
 use ethers_core::{
     types::{
-        Address, NameOrAddress, Signature, Transaction, TransactionRequest, TxHash, H256, U256,
+        transaction::eip2718::TypedTransaction, Address, NameOrAddress, Signature, Transaction,
+        TransactionRequest, TxHash, H256, U256,
     },
     utils::keccak256,
 };
@@ -118,7 +119,7 @@ impl LedgerEthereum {
     }
 
     /// Signs an Ethereum transaction (requires confirmation on the ledger)
-    pub async fn sign_tx(&self, tx: &TransactionRequest) -> Result<Signature, LedgerError> {
+    pub async fn sign_tx(&self, tx: &TypedTransaction) -> Result<Signature, LedgerError> {
         let mut payload = Self::path_to_bytes(&self.derivation);
         payload.extend_from_slice(tx.rlp(self.chain_id).as_ref());
         self.sign_payload(INS::SIGN, payload).await
