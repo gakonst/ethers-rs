@@ -10,6 +10,7 @@
 //! - [Private key](crate::LocalWallet)
 //! - [Ledger](crate::Ledger)
 //! - [YubiHSM2](crate::YubiWallet)
+//! - [AWS KMS](crate::AwsSigner)
 //!
 //! ```no_run
 //! # use ethers::{
@@ -61,6 +62,12 @@ pub use ledger::{
 
 #[cfg(feature = "yubi")]
 pub use yubihsm;
+
+#[cfg(feature = "aws")]
+mod aws;
+
+#[cfg(feature = "aws")]
+pub use aws::AwsSigner;
 
 use async_trait::async_trait;
 use ethers_core::types::{Address, Signature, TransactionRequest};
