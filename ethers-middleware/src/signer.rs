@@ -1,7 +1,7 @@
 use ethers_core::types::{
     transaction::eip2718::TypedTransaction, Address, BlockId, Bytes, Signature,
 };
-use ethers_providers::{FromErr, Middleware, PendingTransaction};
+use ethers_providers::{maybe, FromErr, Middleware, PendingTransaction};
 use ethers_signers::Signer;
 
 use async_trait::async_trait;
@@ -175,6 +175,25 @@ where
     /// `SignerMiddleware` is instantiated with a signer.
     async fn is_signer(&self) -> bool {
         true
+    }
+
+    /// Helper for filling a transaction's nonce using the wallet
+    async fn fill_transaction(
+        &self,
+        tx: &mut TypedTransaction,
+        block: Option<BlockId>,
+    ) -> Result<(), Self::Error> {
+        let nonce = maybe(
+            tx.nonce().cloned(),
+            self.get_transaction_count(self.address, block),
+        )
+        .await?;
+        tx.set_nonce(nonce);
+        self.inner()
+            .fill_transaction(tx, block)
+            .await
+            .map_err(SignerMiddlewareError::MiddlewareError)?;
+        Ok(())
     }
 
     /// Signs and broadcasts the transaction. The optional parameter `block` can be passed so that

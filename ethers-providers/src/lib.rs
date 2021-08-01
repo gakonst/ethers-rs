@@ -114,7 +114,7 @@ pub trait FromErr<T> {
 }
 
 /// Calls the future if `item` is None, otherwise returns a `futures::ok`
-async fn maybe<F, T, E>(item: Option<T>, f: F) -> Result<T, E>
+pub async fn maybe<F, T, E>(item: Option<T>, f: F) -> Result<T, E>
 where
     F: Future<Output = Result<T, E>>,
 {
@@ -135,7 +135,7 @@ where
 /// 3. implementing any of the methods you want to override
 ///
 /// ```rust
-/// use ethers::{providers::{Middleware, FromErr}, types::{U64, TransactionRequest, U256}};
+/// use ethers::{providers::{Middleware, FromErr}, types::{U64, TransactionRequest, U256, transaction::eip2718::TypedTransaction}};
 /// use thiserror::Error;
 /// use async_trait::async_trait;
 ///
@@ -224,11 +224,6 @@ pub trait Middleware: Sync + Send + Debug {
                     inner.from = self.default_sender();
                 }
 
-                if let Some(from) = inner.from {
-                    let nonce = maybe(inner.nonce, self.get_transaction_count(from, block)).await?;
-                    inner.nonce = Some(nonce);
-                }
-
                 let (gas_price, gas) = join!(
                     maybe(inner.gas_price, self.get_gas_price()),
                     maybe(inner.gas, self.estimate_gas(&tx_clone)),
@@ -245,12 +240,6 @@ pub trait Middleware: Sync + Send + Debug {
                 };
 
                 use futures_util::join;
-
-                if let Some(from) = inner.tx.from {
-                    let nonce =
-                        maybe(inner.tx.nonce, self.get_transaction_count(from, block)).await?;
-                    inner.tx.nonce = Some(nonce);
-                }
 
                 let (gas_price, gas) = join!(
                     maybe(inner.tx.gas_price, self.get_gas_price()),
@@ -269,11 +258,6 @@ pub trait Middleware: Sync + Send + Debug {
                 };
 
                 use futures_util::join;
-
-                if let Some(from) = inner.from {
-                    let nonce = maybe(inner.nonce, self.get_transaction_count(from, block)).await?;
-                    inner.nonce = Some(nonce);
-                }
 
                 let (max_priority_fee_per_gas, max_fee_per_gas, gas) = join!(
                     // TODO: Replace with algorithms using eth_feeHistory
