@@ -240,6 +240,10 @@ pub trait Middleware: Sync + Send + Debug {
                     inner.tx.to = Some(addr.into());
                 };
 
+                if inner.tx.from.is_none() {
+                    inner.tx.from = self.default_sender();
+                }
+
                 let (gas_price, gas) = futures_util::try_join!(
                     maybe(inner.tx.gas_price, self.get_gas_price()),
                     maybe(inner.tx.gas, self.estimate_gas(&tx_clone)),
@@ -256,6 +260,10 @@ pub trait Middleware: Sync + Send + Debug {
                     let addr = self.resolve_name(ens_name).await?;
                     inner.to = Some(addr.into());
                 };
+
+                if inner.from.is_none() {
+                    inner.from = self.default_sender();
+                }
 
                 let (max_priority_fee_per_gas, max_fee_per_gas, gas) = futures_util::try_join!(
                     // TODO: Replace with algorithms using eth_feeHistory
