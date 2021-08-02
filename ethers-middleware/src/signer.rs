@@ -188,7 +188,6 @@ where
         } else {
             self.address
         };
-        let from = from.into();
         tx.set_from(from);
 
         let nonce = maybe(tx.nonce().cloned(), self.get_transaction_count(from, block)).await?;
