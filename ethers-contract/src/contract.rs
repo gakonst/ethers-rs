@@ -7,7 +7,7 @@ use crate::{
 
 use ethers_core::{
     abi::{Abi, Detokenize, Error, EventExt, Function, Tokenize},
-    types::{Address, Filter, NameOrAddress, Selector, TransactionRequest},
+    types::{Address, Eip1559TransactionRequest, Filter, NameOrAddress, Selector},
 };
 use ethers_providers::Middleware;
 
@@ -221,11 +221,12 @@ impl<M: Middleware> Contract<M> {
         let data = encode_function_data(function, args)?;
 
         // create the tx object
-        let tx = TransactionRequest {
+        let tx = Eip1559TransactionRequest {
             to: Some(NameOrAddress::Address(self.address)),
             data: Some(data),
             ..Default::default()
-        };
+        }
+        .into();
 
         Ok(ContractCall {
             tx,

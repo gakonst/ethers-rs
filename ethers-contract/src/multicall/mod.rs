@@ -208,11 +208,11 @@ impl<M: Middleware> Multicall<M> {
             panic!("Cannot support more than {} calls", 16);
         }
 
-        match (call.tx.to, call.tx.data) {
+        match (call.tx.to(), call.tx.data()) {
             (Some(NameOrAddress::Address(target)), Some(data)) => {
                 let call = Call {
-                    target,
-                    data,
+                    target: *target,
+                    data: data.clone(),
                     function: call.function,
                 };
                 self.calls.push(call);

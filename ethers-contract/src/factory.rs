@@ -2,7 +2,10 @@ use crate::{Contract, ContractError};
 
 use ethers_core::{
     abi::{Abi, Tokenize},
-    types::{BlockNumber, Bytes, TransactionRequest},
+    types::{
+        transaction::eip2718::TypedTransaction, BlockNumber, Bytes, Eip1559TransactionRequest,
+        TransactionRequest,
+    },
 };
 use ethers_providers::Middleware;
 
@@ -12,7 +15,7 @@ use std::sync::Arc;
 /// Helper which manages the deployment transaction of a smart contract
 pub struct Deployer<M> {
     /// The deployer's transaction, exposed for overriding the defaults
-    pub tx: TransactionRequest,
+    pub tx: TypedTransaction,
     abi: Abi,
     client: Arc<M>,
     confs: usize,
@@ -28,6 +31,15 @@ impl<M: Middleware> Deployer<M> {
 
     pub fn block<T: Into<BlockNumber>>(mut self, block: T) -> Self {
         self.block = block.into();
+        self
+    }
+
+    /// Uses a Legacy transaction instead of an EIP-1559 one to do the deployment
+    pub fn legacy(mut self) -> Self {
+        if let TypedTransaction::Eip1559(inner) = self.tx.clone() {
+            let tx: TransactionRequest = inner.into();
+            self.tx = TypedTransaction::Legacy(tx);
+        }
         self
     }
 
@@ -150,11 +162,14 @@ impl<M: Middleware> ContractFactory<M> {
         };
 
         // create the tx object. Since we're deploying a contract, `to` is `None`
-        let tx = TransactionRequest {
+        // We default to EIP-1559 transactions, but the sender can convert it back
+        // to a legacy one
+        let tx = Eip1559TransactionRequest {
             to: None,
             data: Some(data),
             ..Default::default()
-        };
+        }
+        .into();
 
         Ok(Deployer {
             client: Arc::clone(&self.client), // cheap clone behind the arc
