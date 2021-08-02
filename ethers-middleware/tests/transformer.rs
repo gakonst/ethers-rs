@@ -44,7 +44,8 @@ async fn ds_proxy_transformer() {
         contract.bytecode.clone(),
         Arc::clone(&provider),
     );
-    let ds_proxy_factory = factory.deploy(()).unwrap().send().await.unwrap();
+    let ds_proxy_factory = factory.deploy(()).unwrap().legacy();
+    let ds_proxy_factory = ds_proxy_factory.send().await.unwrap();
 
     // deploy a new DsProxy contract.
     let ds_proxy = DsProxy::build::<HttpWallet, Arc<HttpWallet>>(
@@ -68,7 +69,8 @@ async fn ds_proxy_transformer() {
         contract.bytecode.clone(),
         Arc::clone(&provider),
     );
-    let simple_storage = factory.deploy(()).unwrap().send().await.unwrap();
+    let deployer = factory.deploy(()).unwrap().legacy();
+    let simple_storage = deployer.send().await.unwrap();
 
     // instantiate a new transformer middleware.
     let provider = TransformerMiddleware::new(signer_middleware, ds_proxy.clone());
@@ -131,7 +133,8 @@ async fn ds_proxy_code() {
         contract.bytecode.clone(),
         Arc::clone(&provider),
     );
-    let ds_proxy_factory = factory.deploy(()).unwrap().send().await.unwrap();
+    let ds_proxy_factory = factory.deploy(()).unwrap().legacy();
+    let ds_proxy_factory = ds_proxy_factory.send().await.unwrap();
 
     // deploy a new DsProxy contract.
     let ds_proxy = DsProxy::build::<HttpWallet, Arc<HttpWallet>>(
@@ -164,6 +167,7 @@ async fn ds_proxy_code() {
             calldata,
         )
         .expect("could not construct DSProxy contract call")
+        .legacy()
         .send()
         .await
         .unwrap();
