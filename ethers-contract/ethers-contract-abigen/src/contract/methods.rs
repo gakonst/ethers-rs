@@ -1,5 +1,6 @@
 use super::{types, util, Context};
 use anyhow::{anyhow, Context as _, Result};
+use ethers_core::abi::ParamType;
 use ethers_core::{
     abi::{Function, FunctionExt, Param, StateMutability},
     types::Selector,
@@ -76,7 +77,16 @@ pub(crate) fn expand_inputs_call_arg(inputs: &[Param]) -> TokenStream {
     let names = inputs
         .iter()
         .enumerate()
-        .map(|(i, param)| util::expand_input_name(i, &param.name))
+        .map(|(i, param)| {
+            let name = util::expand_input_name(i, &param.name);
+            match param.kind {
+                ParamType::Tuple(_) => {
+                    // make sure the tuple gets converted to `Token::Tuple`
+                    quote! {(#name,)}
+                }
+                _ => name,
+            }
+        })
         .collect::<Vec<TokenStream>>();
     match names.len() {
         0 => quote! { () },
