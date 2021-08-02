@@ -564,7 +564,10 @@ mod celo_tests {
         let client = Arc::new(client);
 
         let factory = ContractFactory::new(abi, bytecode, client);
-        let deployer = factory.deploy("initial value".to_string()).unwrap();
+        let deployer = factory
+            .deploy("initial value".to_string())
+            .unwrap()
+            .legacy();
         let contract = deployer.block(BlockNumber::Pending).send().await.unwrap();
 
         let value: String = contract

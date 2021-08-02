@@ -2,12 +2,12 @@ use crate::{Contract, ContractError};
 
 use ethers_core::{
     abi::{Abi, Tokenize},
-    types::{
-        transaction::eip2718::TypedTransaction, BlockNumber, Bytes, Eip1559TransactionRequest,
-        TransactionRequest,
-    },
+    types::{transaction::eip2718::TypedTransaction, BlockNumber, Bytes, TransactionRequest},
 };
 use ethers_providers::Middleware;
+
+#[cfg(not(feature = "legacy"))]
+use ethers_core::types::Eip1559TransactionRequest;
 
 use std::sync::Arc;
 
@@ -164,12 +164,19 @@ impl<M: Middleware> ContractFactory<M> {
         // create the tx object. Since we're deploying a contract, `to` is `None`
         // We default to EIP-1559 transactions, but the sender can convert it back
         // to a legacy one
+        #[cfg(feature = "legacy")]
+        let tx = TransactionRequest {
+            to: None,
+            data: Some(data),
+            ..Default::default()
+        };
+        #[cfg(not(feature = "legacy"))]
         let tx = Eip1559TransactionRequest {
             to: None,
             data: Some(data),
             ..Default::default()
-        }
-        .into();
+        };
+        let tx = tx.into();
 
         Ok(Deployer {
             client: Arc::clone(&self.client), // cheap clone behind the arc
