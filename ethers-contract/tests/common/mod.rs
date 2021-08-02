@@ -50,6 +50,7 @@ pub async fn deploy<M: Middleware>(client: Arc<M>, abi: Abi, bytecode: Bytes) ->
     factory
         .deploy("initial value".to_string())
         .unwrap()
+        .legacy()
         .send()
         .await
         .unwrap()
