@@ -8,6 +8,7 @@ pub(crate) fn imports(name: &str) -> TokenStream {
     let doc = util::expand_doc(&format!("{} was auto-generated with ethers-rs Abigen. More information at: https://github.com/gakonst/ethers-rs", name));
 
     quote! {
+        #![allow(clippy::enum_variant_names)]
         #![allow(dead_code)]
         #![allow(unused_imports)]
         #doc
