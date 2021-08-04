@@ -222,6 +222,14 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.request("eth_getTransactionReceipt", [hash]).await
     }
 
+    /// Returns all receipts for a block.
+    async fn get_block_receipts<T: Into<BlockNumber> + Send + Sync>(
+        &self,
+        block: T,
+    ) -> Result<Vec<TransactionReceipt>, Self::Error> {
+        self.request("eth_getBlockReceipts", [block.into()]).await
+    }
+
     /// Gets the current gas price as estimated by the node
     async fn get_gas_price(&self) -> Result<U256, ProviderError> {
         self.request("eth_gasPrice", ()).await

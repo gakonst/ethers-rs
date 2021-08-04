@@ -289,6 +289,16 @@ pub trait Middleware: Sync + Send + Debug {
             .map_err(FromErr::from)
     }
 
+    async fn get_block_receipts<T: Into<BlockNumber> + Send + Sync>(
+        &self,
+        block: T,
+    ) -> Result<Vec<TransactionReceipt>, Self::Error> {
+        self.inner()
+            .get_block_receipts(block)
+            .await
+            .map_err(FromErr::from)
+    }
+
     async fn get_gas_price(&self) -> Result<U256, Self::Error> {
         self.inner().get_gas_price().await.map_err(FromErr::from)
     }
