@@ -5,21 +5,26 @@ use cargo_metadata::{CargoOpt, DependencyKind, Metadata, MetadataCommand};
 use inflector::Inflector;
 use once_cell::sync::Lazy;
 use proc_macro2::{Ident, Literal, Span, TokenStream};
-use quote::{format_ident, quote};
+use quote::quote;
 use reqwest::Client;
-use syn::Ident as SynIdent;
+use syn::{Ident as SynIdent, Path};
 
-/// See `determine_ethers_crate`
+/// See `determine_ethers_crates`
 ///
 /// This ensures that the `MetadataCommand` is only run once
-static ETHERS_CRATE: Lazy<&'static str> = Lazy::new(determine_ethers_crate);
+static ETHERS_CRATES: Lazy<(&'static str, &'static str)> = Lazy::new(determine_ethers_crates);
 
-/// Convenience function to turn `ETHERS_CRATE` into an `Ident`
-pub fn ethers_crate() -> Ident {
-    format_ident!("{}", *ETHERS_CRATE)
+/// Convenience function to turn the `ethers_core` name in `ETHERS_CRATE` into a `Path`
+pub fn ethers_core_crate() -> Path {
+    syn::parse_str(ETHERS_CRATES.0).expect("valid path; qed")
+}
+/// Convenience function to turn the `ethers_contract` name in `ETHERS_CRATE` into an `Path`
+pub fn ethers_contract_crate() -> Path {
+    syn::parse_str(ETHERS_CRATES.1).expect("valid path; qed")
 }
 
-/// The crate name to use when deriving macros
+/// The crates name to use when deriving macros: (`core`, `contract`)
+///
 /// We try to determine which crate ident to use based on the dependencies of
 /// the project in which the macro is used. This is useful because the macros,
 /// like `EthEvent` are provided by the `ethers-contract` crate which depends on
@@ -29,7 +34,7 @@ pub fn ethers_crate() -> Ident {
 /// | ethers_contract`, we need to use the fitting crate ident when expand the
 /// macros This will attempt to parse the current `Cargo.toml` and check the
 /// ethers related dependencies.
-pub fn determine_ethers_crate() -> &'static str {
+pub fn determine_ethers_crates() -> (&'static str, &'static str) {
     MetadataCommand::new()
         .manifest_path(&format!(
             "{}/Cargo.toml",
@@ -42,10 +47,12 @@ pub fn determine_ethers_crate() -> &'static str {
                 pkg.dependencies
                     .iter()
                     .filter(|dep| dep.kind == DependencyKind::Normal)
-                    .find_map(|pkg| (pkg.name == "ethers").then(|| "ethers"))
+                    .find_map(|dep| {
+                        (dep.name == "ethers").then(|| ("ethers::core", "ethers::contract"))
+                    })
             })
         })
-        .unwrap_or("ethers_core")
+        .unwrap_or(("ethers_core", "ethers_contract"))
 }
 
 /// Expands a identifier string into an token.

@@ -2,7 +2,7 @@
 //! ethereum smart contract.
 #![deny(missing_docs, unsafe_code)]
 
-use ethers_contract_abigen::Source;
+use ethers_contract_abigen::{ethers_contract_crate, ethers_core_crate, Source};
 use proc_macro::TokenStream;
 use proc_macro2::{Literal, Span};
 use quote::{quote, quote_spanned};
@@ -117,6 +117,11 @@ pub fn abigen(input: TokenStream) -> TokenStream {
 #[proc_macro_derive(EthEvent, attributes(ethevent))]
 pub fn derive_abi_event(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
+
+    // the ethers crates to use
+    let core_crate = ethers_core_crate();
+    let contract_crate = ethers_contract_crate();
+
     let name = &input.ident;
     let attributes = match parse_attributes(&input) {
         Ok(attributes) => attributes,
@@ -206,13 +211,13 @@ pub fn derive_abi_event(input: TokenStream) -> TokenStream {
     let anon = attributes.anonymous.map(|(b, _)| b).unwrap_or_default();
 
     let ethevent_impl = quote! {
-        impl ethers_contract::EthEvent for #name {
+        impl #contract_crate::EthEvent for #name {
 
             fn name() -> ::std::borrow::Cow<'static, str> {
                 #event_name.into()
             }
 
-            fn signature() -> ethers_core::types::H256 {
+            fn signature() -> #core_crate::types::H256 {
                 #signature
             }
 
@@ -220,7 +225,7 @@ pub fn derive_abi_event(input: TokenStream) -> TokenStream {
                 #abi.into()
             }
 
-            fn decode_log(log: &ethers_core::abi::RawLog) -> Result<Self, ethers_core::abi::Error> where Self: Sized {
+            fn decode_log(log: &#core_crate::abi::RawLog) -> Result<Self, #core_crate::abi::Error> where Self: Sized {
                 #decode_log_impl
             }
 
@@ -256,55 +261,57 @@ impl EventField {
 // these indexed param types according to
 // https://solidity.readthedocs.io/en/develop/abi-spec.html#encoding-of-indexed-event-parameters
 fn topic_param_type_quote(kind: &ParamType) -> proc_macro2::TokenStream {
+    let core_crate = ethers_core_crate();
     match kind {
         ParamType::String
         | ParamType::Bytes
         | ParamType::Array(_)
         | ParamType::FixedArray(_, _)
-        | ParamType::Tuple(_) => quote! {ethers_core::abi::ParamType::FixedBytes(32)},
+        | ParamType::Tuple(_) => quote! {#core_crate::abi::ParamType::FixedBytes(32)},
         ty => param_type_quote(ty),
     }
 }
 
 fn param_type_quote(kind: &ParamType) -> proc_macro2::TokenStream {
+    let core_crate = ethers_core_crate();
     match kind {
         ParamType::Address => {
-            quote! {ethers_core::abi::ParamType::Address}
+            quote! {#core_crate::abi::ParamType::Address}
         }
         ParamType::Bytes => {
-            quote! {ethers_core::abi::ParamType::Bytes}
+            quote! {#core_crate::abi::ParamType::Bytes}
         }
         ParamType::Int(size) => {
             let size = Literal::usize_suffixed(*size);
-            quote! {ethers_core::abi::ParamType::Int(#size)}
+            quote! {#core_crate::abi::ParamType::Int(#size)}
         }
         ParamType::Uint(size) => {
             let size = Literal::usize_suffixed(*size);
-            quote! {ethers_core::abi::ParamType::Uint(#size)}
+            quote! {#core_crate::abi::ParamType::Uint(#size)}
         }
         ParamType::Bool => {
-            quote! {ethers_core::abi::ParamType::Bool}
+            quote! {#core_crate::abi::ParamType::Bool}
         }
         ParamType::String => {
-            quote! {ethers_core::abi::ParamType::String}
+            quote! {#core_crate::abi::ParamType::String}
         }
         ParamType::Array(ty) => {
             let ty = param_type_quote(&*ty);
-            quote! {ethers_core::abi::ParamType::Array(Box::new(#ty))}
+            quote! {#core_crate::abi::ParamType::Array(Box::new(#ty))}
         }
         ParamType::FixedBytes(size) => {
             let size = Literal::usize_suffixed(*size);
-            quote! {ethers_core::abi::ParamType::FixedBytes(#size)}
+            quote! {#core_crate::abi::ParamType::FixedBytes(#size)}
         }
         ParamType::FixedArray(ty, size) => {
             let ty = param_type_quote(&*ty);
             let size = Literal::usize_suffixed(*size);
-            quote! {ethers_core::abi::ParamType::FixedArray(Box::new(#ty),#size)}
+            quote! {#core_crate::abi::ParamType::FixedArray(Box::new(#ty),#size)}
         }
         ParamType::Tuple(tuple) => {
             let elements = tuple.iter().map(param_type_quote);
             quote! {
-                ethers_core::abi::ParamType::Tuple(
+                #core_crate::abi::ParamType::Tuple(
                     ::std::vec![
                         #( #elements ),*
                     ]
@@ -318,6 +325,8 @@ fn derive_decode_from_log_impl(
     input: &DeriveInput,
     event: &Event,
 ) -> Result<proc_macro2::TokenStream, Error> {
+    let core_crate = ethers_core_crate();
+
     let fields: Vec<_> = match input.data {
         Data::Struct(ref data) => match data.fields {
             Fields::Named(ref fields) => {
@@ -416,16 +425,16 @@ fn derive_decode_from_log_impl(
             },
             quote! {
                 if topic_tokens.len() != topics.len() {
-                    return Err(ethers_core::abi::Error::InvalidData);
+                    return Err(#core_crate::abi::Error::InvalidData);
                 }
             },
         )
     } else {
         (
             quote! {
-                let event_signature = topics.get(0).ok_or(ethers_core::abi::Error::InvalidData)?;
+                let event_signature = topics.get(0).ok_or(#core_crate::abi::Error::InvalidData)?;
                 if event_signature != &Self::signature() {
-                    return Err(ethers_core::abi::Error::InvalidData);
+                    return Err(#core_crate::abi::Error::InvalidData);
                 }
             },
             quote! {
@@ -433,7 +442,7 @@ fn derive_decode_from_log_impl(
             },
             quote! {
                 if topic_tokens.len() != topics.len() - 1 {
-                    return Err(ethers_core::abi::Error::InvalidData);
+                    return Err(#core_crate::abi::Error::InvalidData);
                 }
             },
         )
@@ -447,9 +456,9 @@ fn derive_decode_from_log_impl(
         .all(|(idx, f)| f.index == idx)
     {
         quote! {
-            let topic_tokens = ethers_core::abi::decode(&topic_types, &flat_topics)?;
+            let topic_tokens = #core_crate::abi::decode(&topic_types, &flat_topics)?;
             #topic_tokens_len_check
-            let data_tokens = ethers_core::abi::decode(&data_types, data)?;
+            let data_tokens = #core_crate::abi::decode(&data_types, data)?;
             let tokens:Vec<_> = topic_tokens.into_iter().chain(data_tokens.into_iter()).collect();
         }
     } else {
@@ -462,9 +471,9 @@ fn derive_decode_from_log_impl(
         });
 
         quote! {
-            let mut topic_tokens = ethers_core::abi::decode(&topic_types, &flat_topics)?;
+            let mut topic_tokens = #core_crate::abi::decode(&topic_types, &flat_topics)?;
             #topic_tokens_len_check
-            let mut data_tokens = ethers_core::abi::decode(&data_types, &data)?;
+            let mut data_tokens = #core_crate::abi::decode(&data_types, &data)?;
             let mut tokens = Vec::with_capacity(topics.len() + data_tokens.len());
             #( tokens.push(#swap_tokens); )*
         }
@@ -472,7 +481,7 @@ fn derive_decode_from_log_impl(
 
     Ok(quote! {
 
-        let ethers_core::abi::RawLog {data, topics} = log;
+        let #core_crate::abi::RawLog {data, topics} = log;
 
         #signature_check
 
@@ -483,7 +492,7 @@ fn derive_decode_from_log_impl(
 
         #tokens_init
 
-        ethers_core::abi::Detokenize::from_tokens(tokens).map_err(|_|ethers_core::abi::Error::InvalidData)
+        #core_crate::abi::Detokenize::from_tokens(tokens).map_err(|_|#core_crate::abi::Error::InvalidData)
     })
 }
 
@@ -669,8 +678,9 @@ fn parse_int_param_type(s: &str) -> Option<ParamType> {
 }
 
 fn signature(hash: &[u8]) -> proc_macro2::TokenStream {
+    let core_crate = ethers_core_crate();
     let bytes = hash.iter().copied().map(Literal::u8_unsuffixed);
-    quote! {ethers_core::types::H256([#( #bytes ),*])}
+    quote! {#core_crate::types::H256([#( #bytes ),*])}
 }
 
 fn parse_event(abi: &str) -> Result<Event, String> {
@@ -695,6 +705,7 @@ pub fn derive_abi_type(input: TokenStream) -> TokenStream {
 }
 
 fn derive_tokenizeable_impl(input: &DeriveInput) -> proc_macro2::TokenStream {
+    let core_crate = ethers_core_crate();
     let name = &input.ident;
     let generic_params = input.generics.params.iter().map(|p| quote! { #p });
     let generic_params = quote! { #(#generic_params,)* };
@@ -719,13 +730,13 @@ fn derive_tokenizeable_impl(input: &DeriveInput) -> proc_macro2::TokenStream {
             Fields::Named(ref fields) => {
                 let tokenize_predicates = fields.named.iter().map(|f| {
                     let ty = &f.ty;
-                    quote_spanned! { f.span() => #ty: ethers_core::abi::Tokenize }
+                    quote_spanned! { f.span() => #ty: #core_crate::abi::Tokenize }
                 });
                 let tokenize_predicates = quote! { #(#tokenize_predicates,)* };
 
                 let assignments = fields.named.iter().map(|f| {
                     let name = f.ident.as_ref().expect("Named fields have names");
-                    quote_spanned! { f.span() => #name: ethers_core::abi::Tokenizable::from_token(iter.next().expect("tokens size is sufficient qed").into_token())? }
+                    quote_spanned! { f.span() => #name: #core_crate::abi::Tokenizable::from_token(iter.next().expect("tokens size is sufficient qed").into_token())? }
                 });
                 let init_struct_impl = quote! { Self { #(#assignments,)* } };
 
@@ -745,12 +756,12 @@ fn derive_tokenizeable_impl(input: &DeriveInput) -> proc_macro2::TokenStream {
             Fields::Unnamed(ref fields) => {
                 let tokenize_predicates = fields.unnamed.iter().map(|f| {
                     let ty = &f.ty;
-                    quote_spanned! { f.span() => #ty: ethers_core::abi::Tokenize }
+                    quote_spanned! { f.span() => #ty: #core_crate::abi::Tokenize }
                 });
                 let tokenize_predicates = quote! { #(#tokenize_predicates,)* };
 
                 let assignments = fields.unnamed.iter().map(|f| {
-                    quote_spanned! { f.span() => ethers_core::abi::Tokenizable::from_token(iter.next().expect("tokens size is sufficient qed").into_token())? }
+                    quote_spanned! { f.span() => #core_crate::abi::Tokenizable::from_token(iter.next().expect("tokens size is sufficient qed").into_token())? }
                 });
                 let init_struct_impl = quote! { Self(#(#assignments,)* ) };
 
@@ -794,7 +805,7 @@ fn derive_tokenizeable_impl(input: &DeriveInput) -> proc_macro2::TokenStream {
             // can't encode an empty struct
             // TODO: panic instead?
             quote! {
-                ethers_core::abi::Token::Tuple(Vec::new())
+                #core_crate::abi::Token::Tuple(Vec::new())
             },
         ),
         1 => {
@@ -819,9 +830,9 @@ fn derive_tokenizeable_impl(input: &DeriveInput) -> proc_macro2::TokenStream {
         }
         _ => {
             let from_token = quote! {
-                if let ethers_core::abi::Token::Tuple(tokens) = token {
+                if let #core_crate::abi::Token::Tuple(tokens) = token {
                     if tokens.len() != #params_len {
-                        return Err(ethers_core::abi::InvalidOutputType(::std::format!(
+                        return Err(#core_crate::abi::InvalidOutputType(::std::format!(
                             "Expected {} tokens, got {}: {:?}",
                             #params_len,
                             tokens.len(),
@@ -833,7 +844,7 @@ fn derive_tokenizeable_impl(input: &DeriveInput) -> proc_macro2::TokenStream {
 
                     Ok(#init_struct_impl)
                 } else {
-                    Err(ethers_core::abi::InvalidOutputType(::std::format!(
+                    Err(#core_crate::abi::InvalidOutputType(::std::format!(
                         "Expected Tuple, got {:?}",
                         token
                     )))
@@ -841,7 +852,7 @@ fn derive_tokenizeable_impl(input: &DeriveInput) -> proc_macro2::TokenStream {
             };
 
             let into_token = quote! {
-                ethers_core::abi::Token::Tuple(
+                #core_crate::abi::Token::Tuple(
                     ::std::vec![
                         #into_token_impl
                     ]
@@ -852,23 +863,23 @@ fn derive_tokenizeable_impl(input: &DeriveInput) -> proc_macro2::TokenStream {
     };
 
     quote! {
-         impl<#generic_params> ethers_core::abi::Tokenizable for #name<#generic_args>
+         impl<#generic_params> #core_crate::abi::Tokenizable for #name<#generic_args>
          where
              #generic_predicates
              #tokenize_predicates
          {
 
-             fn from_token(token: ethers_core::abi::Token) -> Result<Self, ethers_core::abi::InvalidOutputType> where
+             fn from_token(token: #core_crate::abi::Token) -> Result<Self, #core_crate::abi::InvalidOutputType> where
                  Self: Sized {
                 #from_token_impl
              }
 
-             fn into_token(self) -> ethers_core::abi::Token {
+             fn into_token(self) -> #core_crate::abi::Token {
                 #into_token_impl
              }
          }
 
-        impl<#generic_params> ethers_core::abi::TokenizableItem for #name<#generic_args>
+        impl<#generic_params> #core_crate::abi::TokenizableItem for #name<#generic_args>
          where
              #generic_predicates
              #tokenize_predicates
