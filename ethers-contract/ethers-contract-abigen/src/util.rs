@@ -1,11 +1,52 @@
 use ethers_core::types::Address;
 
 use anyhow::{anyhow, Result};
+use cargo_metadata::{CargoOpt, DependencyKind, Metadata, MetadataCommand};
 use inflector::Inflector;
+use once_cell::sync::Lazy;
 use proc_macro2::{Ident, Literal, Span, TokenStream};
-use quote::quote;
+use quote::{format_ident, quote};
 use reqwest::Client;
 use syn::Ident as SynIdent;
+
+/// See `determine_ethers_crate`
+///
+/// This ensures that the `MetadataCommand` is only run once
+static ETHERS_CRATE: Lazy<&'static str> = Lazy::new(determine_ethers_crate);
+
+/// Convenience function to turn `ETHERS_CRATE` into an `Ident`
+pub fn ethers_crate() -> Ident {
+    format_ident!("{}", *ETHERS_CRATE)
+}
+
+/// The crate name to use when deriving macros
+/// We try to determine which crate ident to use based on the dependencies of
+/// the project in which the macro is used. This is useful because the macros,
+/// like `EthEvent` are provided by the `ethers-contract` crate which depends on
+/// `ethers_core`. Most commonly `ethers` will be used as dependency which
+/// reexports all the different crates, essentially `ethers::core` is
+/// `ethers_core` So depending on the dependency used `ethers` ors `ethers_core
+/// | ethers_contract`, we need to use the fitting crate ident when expand the
+/// macros This will attempt to parse the current `Cargo.toml` and check the
+/// ethers related dependencies.
+pub fn determine_ethers_crate() -> &'static str {
+    MetadataCommand::new()
+        .manifest_path(&format!(
+            "{}/Cargo.toml",
+            std::env::var("CARGO_MANIFEST_DIR").expect("No Manifest found")
+        ))
+        .exec()
+        .ok()
+        .and_then(|metadata| {
+            metadata.root_package().and_then(|pkg| {
+                pkg.dependencies
+                    .iter()
+                    .filter(|dep| dep.kind == DependencyKind::Normal)
+                    .find_map(|pkg| (pkg.name == "ethers").then(|| "ethers"))
+            })
+        })
+        .unwrap_or("ethers_core")
+}
 
 /// Expands a identifier string into an token.
 pub fn ident(name: &str) -> Ident {
