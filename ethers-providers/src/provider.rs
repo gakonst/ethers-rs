@@ -223,6 +223,9 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
     }
 
     /// Returns all receipts for a block.
+    ///
+    /// Note that this uses the `eth_getBlockReceipts` RPC, which is
+    /// non-standard and currently supported by Erigon.
     async fn get_block_receipts<T: Into<BlockNumber> + Send + Sync>(
         &self,
         block: T,
