@@ -21,7 +21,7 @@ mod util;
 
 pub use ethers_core::types::Address;
 pub use source::Source;
-pub use util::parse_address;
+pub use util::{ethers_contract_crate, ethers_core_crate, parse_address};
 
 use anyhow::Result;
 use proc_macro2::TokenStream;
