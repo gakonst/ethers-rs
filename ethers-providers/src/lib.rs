@@ -182,6 +182,10 @@ pub trait Middleware: Sync + Send + Debug {
         self.inner().provider()
     }
 
+    async fn client_version(&self) -> Result<String, Self::Error> {
+        self.inner().client_version().await.map_err(FromErr::from)
+    }
+
     async fn get_block_number(&self) -> Result<U64, Self::Error> {
         self.inner().get_block_number().await.map_err(FromErr::from)
     }

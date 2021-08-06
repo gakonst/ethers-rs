@@ -183,6 +183,11 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
     //
     // Functions for querying the state of the blockchain
 
+    /// Returns the current client version using the `web3_clientVersion` RPC.
+    async fn client_version(&self) -> Result<String, Self::Error> {
+        self.request("web3_clientVersion", ()).await
+    }
+
     /// Gets the latest block number via the `eth_BlockNumber` API
     async fn get_block_number(&self) -> Result<U64, ProviderError> {
         self.request("eth_blockNumber", ()).await
