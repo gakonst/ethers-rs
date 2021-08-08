@@ -153,16 +153,16 @@ impl TransactionRequest {
     }
 
     pub(crate) fn rlp_base(&self, rlp: &mut RlpStream) {
-        rlp_opt(rlp, self.nonce);
-        rlp_opt(rlp, self.gas_price);
-        rlp_opt(rlp, self.gas);
+        rlp_opt(rlp, &self.nonce);
+        rlp_opt(rlp, &self.gas_price);
+        rlp_opt(rlp, &self.gas);
 
         #[cfg(feature = "celo")]
         self.inject_celo_metadata(rlp);
 
-        rlp_opt(rlp, self.to.as_ref());
-        rlp_opt(rlp, self.value);
-        rlp_opt(rlp, self.data.as_ref().map(|d| d.as_ref()));
+        rlp_opt(rlp, &self.to.as_ref());
+        rlp_opt(rlp, &self.value);
+        rlp_opt(rlp, &self.data.as_ref().map(|d| d.as_ref()));
     }
 }
 
@@ -171,9 +171,9 @@ impl TransactionRequest {
 impl TransactionRequest {
     // modifies the RLP stream with the Celo-specific information
     fn inject_celo_metadata(&self, rlp: &mut RlpStream) {
-        rlp_opt(rlp, self.fee_currency);
-        rlp_opt(rlp, self.gateway_fee_recipient);
-        rlp_opt(rlp, self.gateway_fee);
+        rlp_opt(rlp, &self.fee_currency);
+        rlp_opt(rlp, &self.gateway_fee_recipient);
+        rlp_opt(rlp, &self.gateway_fee);
     }
 
     /// Sets the `fee_currency` field in the transaction to the provided value

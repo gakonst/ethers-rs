@@ -87,7 +87,8 @@ pub struct Transaction {
     pub gateway_fee: Option<U256>,
 
     // EIP2718
-    /// Transaction type, Some(1) for AccessList transaction, None for Legacy
+    /// Transaction type, Some(2) for EIP-1559 transaction,
+    /// Some(1) for AccessList transaction, None for Legacy
     #[serde(rename = "type", default, skip_serializing_if = "Option::is_none")]
     pub transaction_type: Option<U64>,
 
@@ -130,9 +131,9 @@ impl Transaction {
     // of this code duplication?
     #[cfg(feature = "celo")]
     fn inject_celo_metadata(&self, rlp: &mut RlpStream) {
-        rlp_opt(rlp, self.fee_currency);
-        rlp_opt(rlp, self.gateway_fee_recipient);
-        rlp_opt(rlp, self.gateway_fee);
+        rlp_opt(rlp, &self.fee_currency);
+        rlp_opt(rlp, &self.gateway_fee_recipient);
+        rlp_opt(rlp, &self.gateway_fee);
     }
 
     pub fn hash(&self) -> H256 {
@@ -149,7 +150,7 @@ impl Transaction {
         #[cfg(feature = "celo")]
         self.inject_celo_metadata(&mut rlp);
 
-        rlp_opt(&mut rlp, self.to);
+        rlp_opt(&mut rlp, &self.to);
         rlp.append(&self.value);
         rlp.append(&self.input.as_ref());
         rlp.append(&self.v);
