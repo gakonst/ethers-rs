@@ -354,9 +354,9 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
     /// This will consume gas from the account that signed the transaction.
     async fn send_raw_transaction<'a>(
         &'a self,
-        tx: &Transaction,
+        tx: Bytes,
     ) -> Result<PendingTransaction<'a, P>, ProviderError> {
-        let rlp = utils::serialize(&tx.rlp());
+        let rlp = utils::serialize(&tx);
         let tx_hash = self.request("eth_sendRawTransaction", [rlp]).await?;
         Ok(PendingTransaction::new(tx_hash, self).interval(self.get_interval()))
     }

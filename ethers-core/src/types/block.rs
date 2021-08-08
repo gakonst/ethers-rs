@@ -71,6 +71,9 @@ pub struct Block<TX> {
     /// Nonce
     #[cfg(not(feature = "celo"))]
     pub nonce: Option<U64>,
+    /// Base fee per unit of gas (if past London)
+    #[serde(rename = "baseFeePerGas")]
+    pub base_fee_per_gas: Option<U256>,
 
     #[cfg(feature = "celo")]
     #[cfg_attr(docsrs, doc(cfg(feature = "celo")))]
@@ -205,6 +208,44 @@ mod tests {
     fn deserialize_blk_with_txs() {
         let block = r#"{"number":"0x3","hash":"0xda53da08ef6a3cbde84c33e51c04f68c3853b6a3731f10baa2324968eee63972","parentHash":"0x689c70c080ca22bc0e681694fa803c1aba16a69c8b6368fed5311d279eb9de90","mixHash":"0x0000000000000000000000000000000000000000000000000000000000000000","nonce":"0x0000000000000000","sha3Uncles":"0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347","logsBloom":"0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000","transactionsRoot":"0x7270c1c4440180f2bd5215809ee3d545df042b67329499e1ab97eb759d31610d","stateRoot":"0x29f32984517a7d25607da485b23cefabfd443751422ca7e603395e1de9bc8a4b","receiptsRoot":"0x056b23fbba480696b65fe5a59b8f2148a1299103c4f57df839233af2cf4ca2d2","miner":"0x0000000000000000000000000000000000000000","difficulty":"0x0","totalDifficulty":"0x0","extraData":"0x","size":"0x3e8","gasLimit":"0x6691b7","gasUsed":"0x5208","timestamp":"0x5ecedbb9","transactions":[{"hash":"0xc3c5f700243de37ae986082fd2af88d2a7c2752a0c0f7b9d6ac47c729d45e067","nonce":"0x2","blockHash":"0xda53da08ef6a3cbde84c33e51c04f68c3853b6a3731f10baa2324968eee63972","blockNumber":"0x3","transactionIndex":"0x0","from":"0xfdcedc3bfca10ecb0890337fbdd1977aba84807a","to":"0xdca8ce283150ab773bcbeb8d38289bdb5661de1e","value":"0x0","gas":"0x15f90","gasPrice":"0x4a817c800","input":"0x","v":"0x25","r":"0x19f2694eb9113656dbea0b925e2e7ceb43df83e601c4116aee9c0dd99130be88","s":"0x73e5764b324a4f7679d890a198ba658ba1c8cd36983ff9797e10b1b89dbb448e"}],"uncles":[]}"#;
         let _block: Block<Transaction> = serde_json::from_str(block).unwrap();
+    }
+
+    #[test]
+    // https://github.com/tomusdrw/rust-web3/commit/3a32ee962c0f2f8d50a5e25be9f2dfec7ae0750d
+    fn post_london_block() {
+        let json = serde_json::json!(
+        {
+            "baseFeePerGas": "0x7",
+            "miner": "0x0000000000000000000000000000000000000001",
+            "number": "0x1b4",
+            "hash": "0x0e670ec64341771606e55d6b4ca35a1a6b75ee3d5145a99d05921026d1527331",
+            "parentHash": "0x9646252be9520f6e71339a8df9c55e4d7619deeb018d2a3f2d21fc165dde5eb5",
+            "mixHash": "0x1010101010101010101010101010101010101010101010101010101010101010",
+            "nonce": "0x0000000000000000",
+            "sealFields": [
+              "0xe04d296d2460cfb8472af2c5fd05b5a214109c25688d3704aed5484f9a7792f2",
+              "0x0000000000000042"
+            ],
+            "sha3Uncles": "0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347",
+            "logsBloom":  "0x0e670ec64341771606e55d6b4ca35a1a6b75ee3d5145a99d05921026d15273310e670ec64341771606e55d6b4ca35a1a6b75ee3d5145a99d05921026d15273310e670ec64341771606e55d6b4ca35a1a6b75ee3d5145a99d05921026d15273310e670ec64341771606e55d6b4ca35a1a6b75ee3d5145a99d05921026d15273310e670ec64341771606e55d6b4ca35a1a6b75ee3d5145a99d05921026d15273310e670ec64341771606e55d6b4ca35a1a6b75ee3d5145a99d05921026d15273310e670ec64341771606e55d6b4ca35a1a6b75ee3d5145a99d05921026d15273310e670ec64341771606e55d6b4ca35a1a6b75ee3d5145a99d05921026d1527331",
+            "transactionsRoot": "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421",
+            "receiptsRoot": "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421",
+            "stateRoot": "0xd5855eb08b3387c0af375e9cdb6acfc05eb8f519e419b874b6ff2ffda7ed1dff",
+            "difficulty": "0x27f07",
+            "totalDifficulty": "0x27f07",
+            "extraData": "0x0000000000000000000000000000000000000000000000000000000000000000",
+            "size": "0x27f07",
+            "gasLimit": "0x9f759",
+            "minGasPrice": "0x9f759",
+            "gasUsed": "0x9f759",
+            "timestamp": "0x54e34e8e",
+            "transactions": [],
+            "uncles": []
+          }
+        );
+
+        let block: Block<()> = serde_json::from_value(json).unwrap();
+        assert_eq!(block.base_fee_per_gas, Some(U256::from(7)));
     }
 }
 

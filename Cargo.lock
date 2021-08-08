@@ -875,7 +875,6 @@ dependencies = [
  "elliptic-curve",
  "ethabi",
  "ethers",
- "funty",
  "futures-util",
  "generic-array 0.14.4",
  "glob",
@@ -885,6 +884,7 @@ dependencies = [
  "once_cell",
  "rand 0.8.4",
  "rlp",
+ "rlp-derive",
  "serde",
  "serde_json",
  "thiserror",
@@ -2122,6 +2122,17 @@ checksum = "e54369147e3e7796c9b885c7304db87ca3d09a0a98f72843d532868675bbfba8"
 dependencies = [
  "bytes",
  "rustc-hex",
+]
+
+[[package]]
+name = "rlp-derive"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e33d7b2abe0c340d8797fe2907d3f20d3b5ea5908683618bfe80df7f621f672a"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]

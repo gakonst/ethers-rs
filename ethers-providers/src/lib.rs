@@ -313,7 +313,7 @@ pub trait Middleware: Sync + Send + Debug {
 
     async fn send_raw_transaction<'a>(
         &'a self,
-        tx: &Transaction,
+        tx: Bytes,
     ) -> Result<PendingTransaction<'a, Self::Provider>, Self::Error> {
         self.inner()
             .send_raw_transaction(tx)

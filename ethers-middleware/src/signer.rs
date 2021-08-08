@@ -1,9 +1,4 @@
-use ethers_core::{
-    types::{
-        Address, BlockId, Bytes, NameOrAddress, Signature, Transaction, TransactionRequest, U256,
-    },
-    utils::keccak256,
-};
+use ethers_core::types::{Address, BlockId, Bytes, NameOrAddress, Signature, TransactionRequest};
 use ethers_providers::{FromErr, Middleware, PendingTransaction};
 use ethers_signers::Signer;
 
@@ -120,64 +115,19 @@ where
         }
     }
 
+    /// Signs and returns the RLP encoding of the signed transaction
     async fn sign_transaction(
         &self,
         tx: TransactionRequest,
-    ) -> Result<Transaction, SignerMiddlewareError<M, S>> {
-        // The nonce, gas and gasprice fields must already be populated
-        let nonce = tx.nonce.ok_or(SignerMiddlewareError::NonceMissing)?;
-        let gas_price = tx.gas_price.ok_or(SignerMiddlewareError::GasPriceMissing)?;
-        let gas = tx.gas.ok_or(SignerMiddlewareError::GasMissing)?;
-
-        // Can't sign a transaction from a different address
-        if tx.from.is_some() && tx.from != Some(self.address()) {
-            return Err(SignerMiddlewareError::WrongSigner);
-        }
-
+    ) -> Result<Bytes, SignerMiddlewareError<M, S>> {
         let signature = self
             .signer
             .sign_transaction(&tx)
             .await
             .map_err(SignerMiddlewareError::SignerError)?;
 
-        // Get the actual transaction hash
-        let rlp = tx.rlp_signed(&signature);
-        let hash = keccak256(&rlp.as_ref());
-
-        // This function should not be called with ENS names
-        let to = tx.to.map(|to| match to {
-            NameOrAddress::Address(inner) => inner,
-            NameOrAddress::Name(_) => {
-                panic!("Expected `to` to be an Ethereum Address, not an ENS name")
-            }
-        });
-
-        Ok(Transaction {
-            hash: hash.into(),
-            nonce,
-            from: self.address(),
-            to,
-            value: tx.value.unwrap_or_default(),
-            gas_price,
-            gas,
-            input: tx.data.unwrap_or_default(),
-            v: signature.v.into(),
-            r: U256::from_big_endian(signature.r.as_bytes()),
-            s: U256::from_big_endian(signature.s.as_bytes()),
-
-            // Leave these empty as they're only used for included transactions
-            block_hash: None,
-            block_number: None,
-            transaction_index: None,
-
-            // Celo support
-            #[cfg(feature = "celo")]
-            fee_currency: tx.fee_currency,
-            #[cfg(feature = "celo")]
-            gateway_fee: tx.gateway_fee,
-            #[cfg(feature = "celo")]
-            gateway_fee_recipient: tx.gateway_fee_recipient,
-        })
+        // Return the raw rlp-encoded signed transaction
+        Ok(tx.rlp_signed(&signature))
     }
 
     async fn fill_transaction(
@@ -282,7 +232,7 @@ where
 
         // Submit the raw transaction
         self.inner
-            .send_raw_transaction(&signed_tx)
+            .send_raw_transaction(signed_tx)
             .await
             .map_err(SignerMiddlewareError::MiddlewareError)
     }
@@ -317,6 +267,7 @@ where
 mod tests {
     use super::*;
     use ethers::{providers::Provider, signers::LocalWallet};
+    use ethers_core::utils::{self, keccak256, Ganache};
     use std::convert::TryFrom;
 
     #[tokio::test]
@@ -349,51 +300,60 @@ mod tests {
         let tx = client.sign_transaction(tx).await.unwrap();
 
         assert_eq!(
-            tx.hash,
-            "de8db924885b0803d2edc335f745b2b8750c8848744905684c20b987443a9593"
-                .parse()
+            keccak256(&tx)[..],
+            hex::decode("de8db924885b0803d2edc335f745b2b8750c8848744905684c20b987443a9593")
                 .unwrap()
         );
 
         let expected_rlp = Bytes::from(hex::decode("f869808504e3b29200831e848094f0109fc8df283027b6285cc889f5aa624eac1f55843b9aca008025a0c9cf86333bcb065d140032ecaab5d9281bde80f21b9687b3e94161de42d51895a0727a108a0b8d101465414033c3f705a9c7b826e596766046ee1183dbc8aeaa68").unwrap());
-        assert_eq!(tx.rlp(), expected_rlp);
+        assert_eq!(tx, expected_rlp);
     }
 
     #[tokio::test]
     async fn handles_tx_from_field() {
-        use ethers_core::types::Address;
-
-        // new SignerMiddleware
-        let provider = Provider::try_from("http://localhost:8545").unwrap();
+        let ganache = Ganache::new().spawn();
+        let acc = ganache.addresses()[0];
+        let provider = Provider::try_from(ganache.endpoint()).unwrap();
         let key = LocalWallet::new(&mut rand::thread_rng()).with_chain_id(1u32);
+        provider
+            .send_transaction(
+                TransactionRequest::pay(key.address(), utils::parse_ether(1u64).unwrap()).from(acc),
+                None,
+            )
+            .await
+            .unwrap();
         let client = SignerMiddleware::new(provider, key);
 
-        // an address that is not the signer address
-        let other = "0x863DF6BFa4469f3ead0bE8f9F2AAE51c91A907b4"
-            .parse::<Address>()
-            .unwrap();
-
-        let request = TransactionRequest::new().nonce(0).gas_price(0).gas(0);
+        let request = TransactionRequest::new();
 
         // signing a TransactionRequest with a from field of None should yield
         // a signed transaction from the signer address
         let request_from_none = request.clone();
-        let signing_result = client.sign_transaction(request_from_none).await;
-
-        assert_eq!(signing_result.unwrap().from, client.address());
+        let hash = *client
+            .send_transaction(request_from_none, None)
+            .await
+            .unwrap();
+        let tx = client.get_transaction(hash).await.unwrap().unwrap();
+        assert_eq!(tx.from, client.address());
 
         // signing a TransactionRequest with the signer as the from address
         // should yield a signed transaction from the signer
         let request_from_signer = request.clone().from(client.address());
-        let signing_result = client.sign_transaction(request_from_signer.clone()).await;
-
-        assert_eq!(signing_result.unwrap().from, client.address());
+        let hash = *client
+            .send_transaction(request_from_signer, None)
+            .await
+            .unwrap();
+        let tx = client.get_transaction(hash).await.unwrap().unwrap();
+        assert_eq!(tx.from, client.address());
 
         // signing a TransactionRequest with a from address that is not the
-        // signer should result in a WrongSigner error
-        let request_from_other = request.from(other);
-        let signing_result = client.sign_transaction(request_from_other.clone()).await;
-
-        assert!(signing_result.is_err());
+        // signer should result in the default ganache account being used
+        let request_from_other = request.from(acc);
+        let hash = *client
+            .send_transaction(request_from_other, None)
+            .await
+            .unwrap();
+        let tx = client.get_transaction(hash).await.unwrap().unwrap();
+        assert_eq!(tx.from, acc);
     }
 }
