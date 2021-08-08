@@ -232,7 +232,9 @@ pub trait Middleware: Sync + Send + Debug {
                 inner.gas_price = Some(gas_price?);
             }
             TypedTransaction::Eip2930(inner) => {
-                inner.access_list = self.create_access_list(&tx_clone, block).await?.access_list;
+                if let Ok(lst) = self.create_access_list(&tx_clone, block).await {
+                    inner.access_list = lst.access_list;
+                }
 
                 if let Some(NameOrAddress::Name(ref ens_name)) = inner.tx.to {
                     let addr = self.resolve_name(ens_name).await?;
@@ -249,8 +251,9 @@ pub trait Middleware: Sync + Send + Debug {
                 inner.tx.gas_price = Some(gas_price?);
             }
             TypedTransaction::Eip1559(inner) => {
-                inner.access_list =
-                    Some(self.create_access_list(&tx_clone, block).await?.access_list);
+                if let Ok(lst) = self.create_access_list(&tx_clone, block).await {
+                    inner.access_list = lst.access_list;
+                }
 
                 if let Some(NameOrAddress::Name(ref ens_name)) = inner.to {
                     let addr = self.resolve_name(ens_name).await?;
