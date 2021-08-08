@@ -140,30 +140,26 @@ impl Eip1559TransactionRequest {
     pub fn rlp<T: Into<U64>>(&self, chain_id: T) -> Bytes {
         let mut rlp = RlpStream::new();
         rlp.begin_list(NUM_TX_FIELDS);
-        self.rlp_base(&mut rlp);
-
-        // Only hash the 3 extra fields when preparing the
-        // data to sign if chain_id is present
-        rlp.append(&chain_id.into());
-        rlp.append(&0u8);
-        rlp.append(&0u8);
+        self.rlp_base(chain_id, &mut rlp);
         rlp.out().freeze().into()
     }
 
     /// Produces the RLP encoding of the transaction with the provided signature
-    pub fn rlp_signed(&self, signature: &Signature) -> Bytes {
+    pub fn rlp_signed<T: Into<U64>>(&self, chain_id: T, signature: &Signature) -> Bytes {
         let mut rlp = RlpStream::new();
-        rlp.begin_list(NUM_TX_FIELDS);
-        self.rlp_base(&mut rlp);
+        rlp.begin_unbounded_list();
+        self.rlp_base(chain_id, &mut rlp);
 
         // append the signature
         rlp.append(&signature.v);
         rlp.append(&signature.r);
         rlp.append(&signature.s);
+        rlp.finalize_unbounded_list();
         rlp.out().freeze().into()
     }
 
-    pub(crate) fn rlp_base(&self, rlp: &mut RlpStream) {
+    pub(crate) fn rlp_base<T: Into<U64>>(&self, chain_id: T, rlp: &mut RlpStream) {
+        rlp.append(&chain_id.into());
         rlp_opt(rlp, &self.nonce);
         rlp_opt(rlp, &self.max_priority_fee_per_gas);
         rlp_opt(rlp, &self.max_fee_per_gas);

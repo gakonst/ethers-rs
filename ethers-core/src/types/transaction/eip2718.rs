@@ -1,6 +1,6 @@
 use super::{eip1559::Eip1559TransactionRequest, eip2930::Eip2930TransactionRequest};
 use crate::{
-    types::{TransactionRequest, H256, U64},
+    types::{Address, Bytes, NameOrAddress, Signature, TransactionRequest, H256, U256, U64},
     utils::keccak256,
 };
 use serde::{Deserialize, Serialize};
@@ -20,25 +20,53 @@ pub enum TypedTransaction {
 }
 
 impl TypedTransaction {
-    /// Hashes the transaction's data with the provided chain id
-    pub fn sighash<T: Into<U64>>(&self, chain_id: T) -> H256 {
-        let encoded = match self {
-            TypedTransaction::Legacy(ref tx) => {
-                let mut encoded = vec![0];
-                encoded.extend_from_slice(tx.rlp(chain_id).as_ref());
-                encoded
+    pub fn rlp_signed<T: Into<U64>>(&self, chain_id: T, signature: &Signature) -> Bytes {
+        use TypedTransaction::*;
+        let mut encoded = vec![];
+        match self {
+            Legacy(inner) => {
+                encoded.extend_from_slice(&[0x0]);
+                encoded.extend_from_slice(&inner.rlp_signed(signature).as_ref());
             }
-            TypedTransaction::Eip2930(ref tx) => {
-                let mut encoded = vec![1];
-                encoded.extend_from_slice(tx.rlp(chain_id).as_ref());
-                encoded
+            Eip2930(inner) => {
+                encoded.extend_from_slice(&[0x1]);
+                encoded.extend_from_slice(&inner.rlp_signed(chain_id, signature).as_ref());
             }
-            TypedTransaction::Eip1559(ref tx) => {
-                let mut encoded = vec![2];
-                encoded.extend_from_slice(tx.rlp(chain_id).as_ref());
-                encoded
+            Eip1559(inner) => {
+                encoded.extend_from_slice(&[0x2]);
+                encoded.extend_from_slice(&inner.rlp_signed(chain_id, signature).as_ref());
             }
         };
+
+        rlp::encode(&encoded).freeze().into()
+    }
+
+    pub fn rlp<T: Into<U64>>(&self, chain_id: T) -> Bytes {
+        let chain_id = chain_id.into();
+        let mut encoded = vec![];
+        use TypedTransaction::*;
+        match self {
+            Legacy(inner) => {
+                encoded.extend_from_slice(&[0x0]);
+                encoded.extend_from_slice(&inner.rlp(chain_id).as_ref());
+            }
+            Eip2930(inner) => {
+                encoded.extend_from_slice(&[0x1]);
+                encoded.extend_from_slice(&inner.rlp(chain_id).as_ref());
+            }
+            Eip1559(inner) => {
+                encoded.extend_from_slice(&[0x2]);
+                encoded.extend_from_slice(&inner.rlp(chain_id).as_ref());
+            }
+        };
+
+        encoded.into()
+    }
+
+    /// Hashes the transaction's data with the provided chain id
+    /// Does not double-RLP encode
+    pub fn sighash<T: Into<U64>>(&self, chain_id: T) -> H256 {
+        let encoded = self.rlp(chain_id);
         keccak256(encoded).into()
     }
 }
@@ -71,7 +99,7 @@ mod tests {
         let tx = TransactionRequest::new()
             .to(Address::zero())
             .value(U256::from(100));
-        let tx = TypedTransaction::from(tx);
+        let tx: TypedTransaction = tx.into();
         let serialized = serde_json::to_string(&tx).unwrap();
 
         // deserializes to either the envelope type or the inner type
