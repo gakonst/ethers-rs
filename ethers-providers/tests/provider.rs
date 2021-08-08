@@ -148,6 +148,58 @@ mod eth_tests {
         // got the correct receipt
         assert_eq!(receipt.transaction_hash, tx_hash);
     }
+
+    #[tokio::test]
+    async fn typed_txs() {
+        use ethers_core::types::Eip1559TransactionRequest;
+        let provider = Provider::<Http>::try_from(
+            "https://rinkeby.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27",
+        )
+        .unwrap();
+
+        let chain_id = provider.get_chainid().await.unwrap();
+        let wallet = "59c37cb6b16fa2de30675f034c8008f890f4b2696c729d6267946d29736d73e4"
+            .parse::<LocalWallet>()
+            .unwrap()
+            .with_chain_id(chain_id.as_u64());
+        let address = wallet.address();
+        let provider = SignerMiddleware::new(provider, wallet);
+
+        let tx = TransactionRequest::new()
+            .from(address)
+            .to(address)
+            .with_access_list(vec![]);
+        let receipt = provider
+            .send_transaction(tx, None)
+            .await
+            .unwrap()
+            .await
+            .unwrap()
+            .unwrap();
+        let tx = provider
+            .get_transaction(receipt.transaction_hash)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(receipt.transaction_type, Some(1.into()));
+        assert_eq!(tx.transaction_type, Some(1.into()));
+
+        let tx = Eip1559TransactionRequest::new().from(address).to(address);
+        let receipt = provider
+            .send_transaction(tx, None)
+            .await
+            .unwrap()
+            .await
+            .unwrap()
+            .unwrap();
+        let tx = provider
+            .get_transaction(receipt.transaction_hash)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(receipt.transaction_type, Some(2.into()));
+        assert_eq!(tx.transaction_type, Some(2.into()));
+    }
 }
 
 #[cfg(feature = "celo")]
