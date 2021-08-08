@@ -21,3 +21,12 @@ pub(super) fn rlp_opt<T: rlp::Encodable>(rlp: &mut rlp::RlpStream, opt: &Option<
         rlp.append(&"");
     }
 }
+
+/// normalizes the signature back to 0/1
+pub(crate) fn normalize_v(v: u64, chain_id: crate::types::U64) -> u64 {
+    if v > 1 {
+        v - chain_id.as_u64() * 2 - 35
+    } else {
+        v
+    }
+}

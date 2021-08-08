@@ -162,8 +162,7 @@ impl TypedTransaction {
                 encoded.extend_from_slice(inner.rlp_signed(chain_id, signature).as_ref());
             }
         };
-
-        rlp::encode(&encoded).freeze().into()
+        encoded.into()
     }
 
     pub fn rlp<T: Into<U64>>(&self, chain_id: T) -> Bytes {

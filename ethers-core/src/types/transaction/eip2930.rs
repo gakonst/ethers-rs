@@ -1,4 +1,4 @@
-use super::request::TransactionRequest;
+use super::{normalize_v, request::TransactionRequest};
 use crate::types::{Address, Bytes, Signature, H256, U256, U64};
 
 use rlp::RlpStream;
@@ -76,13 +76,15 @@ impl Eip2930TransactionRequest {
         let mut rlp = RlpStream::new();
         rlp.begin_list(NUM_EIP2930_FIELDS + 3);
 
-        rlp.append(&chain_id.into());
+        let chain_id = chain_id.into();
+        rlp.append(&chain_id);
         self.tx.rlp_base(&mut rlp);
         // append the access list in addition to the base rlp encoding
         rlp.append(&self.access_list);
 
         // append the signature
-        rlp.append(&signature.v);
+        let v = normalize_v(signature.v, chain_id);
+        rlp.append(&v);
         rlp.append(&signature.r);
         rlp.append(&signature.s);
         rlp.out().freeze().into()
@@ -111,8 +113,6 @@ mod tests {
 
         let hash = tx.sighash(1);
         let sig: Signature = "c9519f4f2b30335884581971573fadf60c6204f59a911df35ee8a540456b266032f1e8e2c5dd761f9e4f88f41c8310aeaba26a8bfcdacfedfa12ec3862d3752101".parse().unwrap();
-        let enc = tx.rlp_signed(1, &sig);
-
         assert_eq!(
             hash,
             "49b486f0ec0a60dfbbca2d30cb07c9e8ffb2a2ff41f29a1ab6737475f6ff69f3"
@@ -120,6 +120,7 @@ mod tests {
                 .unwrap()
         );
 
+        let enc = rlp::encode(&tx.rlp_signed(1, &sig).as_ref());
         let expected = "b86601f8630103018261a894b94f5374fce5edbc8e2a8697c15331677e6ebf0b0a825544c001a0c9519f4f2b30335884581971573fadf60c6204f59a911df35ee8a540456b2660a032f1e8e2c5dd761f9e4f88f41c8310aeaba26a8bfcdacfedfa12ec3862d37521";
         assert_eq!(hex::encode(enc.to_vec()), expected);
     }
