@@ -182,6 +182,10 @@ pub trait Middleware: Sync + Send + Debug {
         self.inner().provider()
     }
 
+    async fn client_version(&self) -> Result<String, Self::Error> {
+        self.inner().client_version().await.map_err(FromErr::from)
+    }
+
     async fn get_block_number(&self) -> Result<U64, Self::Error> {
         self.inner().get_block_number().await.map_err(FromErr::from)
     }
@@ -285,6 +289,16 @@ pub trait Middleware: Sync + Send + Debug {
     ) -> Result<Option<TransactionReceipt>, Self::Error> {
         self.inner()
             .get_transaction_receipt(transaction_hash)
+            .await
+            .map_err(FromErr::from)
+    }
+
+    async fn get_block_receipts<T: Into<BlockNumber> + Send + Sync>(
+        &self,
+        block: T,
+    ) -> Result<Vec<TransactionReceipt>, Self::Error> {
+        self.inner()
+            .get_block_receipts(block)
             .await
             .map_err(FromErr::from)
     }

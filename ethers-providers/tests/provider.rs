@@ -40,6 +40,21 @@ mod eth_tests {
             .is_none());
     }
 
+    #[tokio::test]
+    async fn client_version() {
+        let provider = Provider::<Http>::try_from(
+            "https://rinkeby.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27",
+        )
+        .unwrap();
+
+        // e.g., Geth/v1.10.6-omnibus-1af33248/linux-amd64/go1.16.6
+        assert!(provider
+            .client_version()
+            .await
+            .expect("Could not make web3_clientVersion call to provider")
+            .starts_with("Geth/v"));
+    }
+
     // Without TLS this would error with "TLS Support not compiled in"
     #[tokio::test]
     async fn ssl_websocket() {

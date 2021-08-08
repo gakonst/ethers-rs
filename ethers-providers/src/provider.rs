@@ -50,12 +50,16 @@ use tracing_futures::Instrument;
 /// # }
 /// ```
 #[derive(Clone, Debug)]
-// TODO: Convert to proper struct
-pub struct Provider<P>(P, Option<Address>, Option<Duration>, Option<Address>);
+pub struct Provider<P> {
+    inner: P,
+    ens: Option<Address>,
+    interval: Option<Duration>,
+    from: Option<Address>,
+}
 
 impl<P> AsRef<P> for Provider<P> {
     fn as_ref(&self) -> &P {
-        &self.0
+        &self.inner
     }
 }
 
@@ -103,11 +107,16 @@ pub enum FilterKind<'a> {
 impl<P: JsonRpcClient> Provider<P> {
     /// Instantiate a new provider with a backend.
     pub fn new(provider: P) -> Self {
-        Self(provider, None, None, None)
+        Self {
+            inner: provider,
+            ens: None,
+            interval: None,
+            from: None,
+        }
     }
 
     pub fn with_sender(mut self, address: impl Into<Address>) -> Self {
-        self.3 = Some(address.into());
+        self.from = Some(address.into());
         self
     }
 
@@ -121,7 +130,11 @@ impl<P: JsonRpcClient> Provider<P> {
         // https://docs.rs/tracing/0.1.22/tracing/span/struct.Span.html#in-asynchronous-code
         let res = async move {
             trace!("tx");
-            let res: R = self.0.request(method, params).await.map_err(Into::into)?;
+            let res: R = self
+                .inner
+                .request(method, params)
+                .await
+                .map_err(Into::into)?;
             trace!(rx = ?serde_json::to_string(&res)?);
             Ok::<_, ProviderError>(res)
         }
@@ -183,6 +196,11 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
     //
     // Functions for querying the state of the blockchain
 
+    /// Returns the current client version using the `web3_clientVersion` RPC.
+    async fn client_version(&self) -> Result<String, Self::Error> {
+        self.request("web3_clientVersion", ()).await
+    }
+
     /// Gets the latest block number via the `eth_BlockNumber` API
     async fn get_block_number(&self) -> Result<U64, ProviderError> {
         self.request("eth_blockNumber", ()).await
@@ -220,6 +238,17 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
     ) -> Result<Option<TransactionReceipt>, ProviderError> {
         let hash = transaction_hash.into();
         self.request("eth_getTransactionReceipt", [hash]).await
+    }
+
+    /// Returns all receipts for a block.
+    ///
+    /// Note that this uses the `eth_getBlockReceipts` RPC, which is
+    /// non-standard and currently supported by Erigon.
+    async fn get_block_receipts<T: Into<BlockNumber> + Send + Sync>(
+        &self,
+        block: T,
+    ) -> Result<Vec<TransactionReceipt>, Self::Error> {
+        self.request("eth_getBlockReceipts", [block.into()]).await
     }
 
     /// Gets the current gas price as estimated by the node
@@ -301,7 +330,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         _: Option<BlockId>,
     ) -> Result<PendingTransaction<'_, P>, ProviderError> {
         if tx.from.is_none() {
-            tx.from = self.3;
+            tx.from = self.from;
         }
 
         if tx.gas.is_none() {
@@ -335,7 +364,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
     /// The JSON-RPC provider is at the bottom-most position in the middleware stack. Here we check
     /// if it has the key for the sender address unlocked, as well as supports the `eth_sign` call.
     async fn is_signer(&self) -> bool {
-        match self.3 {
+        match self.from {
             Some(sender) => self.sign(vec![], &sender).await.is_ok(),
             None => false,
         }
@@ -675,7 +704,7 @@ impl<P: JsonRpcClient> Provider<P> {
         selector: Selector,
     ) -> Result<T, ProviderError> {
         // Get the ENS address, prioritize the local override variable
-        let ens_addr = self.1.unwrap_or(ens::ENS_ADDRESS);
+        let ens_addr = self.ens.unwrap_or(ens::ENS_ADDRESS);
 
         // first get the resolver responsible for this name
         // the call will return a Bytes array which we convert to an address
@@ -700,7 +729,7 @@ impl<P: JsonRpcClient> Provider<P> {
     /// ganache-only function for mining empty blocks
     pub async fn mine(&self, num_blocks: usize) -> Result<(), ProviderError> {
         for _ in 0..num_blocks {
-            self.0
+            self.inner
                 .request::<_, U256>("evm_mine", None::<()>)
                 .await
                 .map_err(Into::into)?;
@@ -710,21 +739,21 @@ impl<P: JsonRpcClient> Provider<P> {
 
     /// Sets the ENS Address (default: mainnet)
     pub fn ens<T: Into<Address>>(mut self, ens: T) -> Self {
-        self.1 = Some(ens.into());
+        self.ens = Some(ens.into());
         self
     }
 
     /// Sets the default polling interval for event filters and pending transactions
     /// (default: 7 seconds)
     pub fn interval<T: Into<Duration>>(mut self, interval: T) -> Self {
-        self.2 = Some(interval.into());
+        self.interval = Some(interval.into());
         self
     }
 
     /// Gets the polling interval which the provider currently uses for event filters
     /// and pending transactions (default: 7 seconds)
     pub fn get_interval(&self) -> Duration {
-        self.2.unwrap_or(DEFAULT_POLL_INTERVAL)
+        self.interval.unwrap_or(DEFAULT_POLL_INTERVAL)
     }
 }
 
@@ -791,12 +820,7 @@ impl TryFrom<&str> for Provider<HttpProvider> {
     type Error = ParseError;
 
     fn try_from(src: &str) -> Result<Self, Self::Error> {
-        Ok(Provider(
-            HttpProvider::new(Url::parse(src)?),
-            None,
-            None,
-            None,
-        ))
+        Ok(Provider::new(HttpProvider::new(Url::parse(src)?)))
     }
 }
 
