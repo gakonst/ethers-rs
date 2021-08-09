@@ -6,6 +6,7 @@ mod eth_tests {
     use super::*;
     use ethers::{
         middleware::SignerMiddleware,
+        prelude::transaction::eip2718::TypedTransaction,
         signers::{LocalWallet, Signer},
         types::{BlockId, TransactionRequest, H256},
         utils::Ganache,
@@ -165,40 +166,38 @@ mod eth_tests {
         let address = wallet.address();
         let provider = SignerMiddleware::new(provider, wallet);
 
-        let tx = TransactionRequest::new()
+        async fn check_tx<M: Middleware>(provider: &M, tx: TypedTransaction, expected: u64) {
+            let receipt = provider
+                .send_transaction(tx, None)
+                .await
+                .unwrap()
+                .await
+                .unwrap()
+                .unwrap();
+            let tx = provider
+                .get_transaction(receipt.transaction_hash)
+                .await
+                .unwrap()
+                .unwrap();
+            assert_eq!(receipt.transaction_type, Some(expected.into()));
+            assert_eq!(tx.transaction_type, Some(expected.into()));
+        }
+
+        let tx: TypedTransaction = TransactionRequest::new().from(address).to(address).into();
+        check_tx(&provider, tx, 0).await;
+
+        let tx: TypedTransaction = TransactionRequest::new()
             .from(address)
             .to(address)
-            .with_access_list(vec![]);
-        let receipt = provider
-            .send_transaction(tx, None)
-            .await
-            .unwrap()
-            .await
-            .unwrap()
-            .unwrap();
-        let tx = provider
-            .get_transaction(receipt.transaction_hash)
-            .await
-            .unwrap()
-            .unwrap();
-        assert_eq!(receipt.transaction_type, Some(1.into()));
-        assert_eq!(tx.transaction_type, Some(1.into()));
+            .with_access_list(vec![])
+            .into();
+        check_tx(&provider, tx, 1).await;
 
-        let tx = Eip1559TransactionRequest::new().from(address).to(address);
-        let receipt = provider
-            .send_transaction(tx, None)
-            .await
-            .unwrap()
-            .await
-            .unwrap()
-            .unwrap();
-        let tx = provider
-            .get_transaction(receipt.transaction_hash)
-            .await
-            .unwrap()
-            .unwrap();
-        assert_eq!(receipt.transaction_type, Some(2.into()));
-        assert_eq!(tx.transaction_type, Some(2.into()));
+        let tx: TypedTransaction = Eip1559TransactionRequest::new()
+            .from(address)
+            .to(address)
+            .into();
+        check_tx(&provider, tx, 2).await;
     }
 }
 
