@@ -97,6 +97,7 @@ mod tests {
     use crate::types::{transaction::eip2718::TypedTransaction, U256};
 
     #[test]
+    #[cfg_attr(feature = "celo", ignore)]
     // https://github.com/ethereum/go-ethereum/blob/c503f98f6d5e80e079c1d8a3601d188af2a899da/core/types/transaction_test.go#L59-L67
     fn rlp() {
         let tx: TypedTransaction = TransactionRequest::new()
