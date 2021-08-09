@@ -2,7 +2,7 @@
 
 use ethers_core::{
     k256::ecdsa::{Error as K256Error, Signature as KSig, VerifyingKey},
-    types::{Address, Signature as EthSig, H256, transaction::eip2718::TypedTransaction},
+    types::{transaction::eip2718::TypedTransaction, Address, Signature as EthSig, H256},
     utils::hash_message,
 };
 use rusoto_core::RusotoError;

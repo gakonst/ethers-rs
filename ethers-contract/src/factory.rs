@@ -36,10 +36,13 @@ impl<M: Middleware> Deployer<M> {
 
     /// Uses a Legacy transaction instead of an EIP-1559 one to do the deployment
     pub fn legacy(mut self) -> Self {
-        if let TypedTransaction::Eip1559(inner) = self.tx.clone() {
-            let tx: TransactionRequest = inner.into();
-            self.tx = TypedTransaction::Legacy(tx);
-        }
+        self.tx = match self.tx {
+            TypedTransaction::Eip1559(inner) => {
+                let tx: TransactionRequest = inner.into();
+                TypedTransaction::Legacy(tx)
+            }
+            other => other,
+        };
         self
     }
 
