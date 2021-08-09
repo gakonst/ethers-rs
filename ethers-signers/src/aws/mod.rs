@@ -2,7 +2,7 @@
 
 use ethers_core::{
     k256::ecdsa::{Error as K256Error, Signature as KSig, VerifyingKey},
-    types::{Address, Signature as EthSig, TransactionRequest, H256},
+    types::{Address, Signature as EthSig, H256, transaction::eip2718::TypedTransaction},
     utils::hash_message,
 };
 use rusoto_core::RusotoError;
@@ -240,7 +240,7 @@ impl<'a> super::Signer for AwsSigner<'a> {
     }
 
     #[instrument(err)]
-    async fn sign_transaction(&self, tx: &TransactionRequest) -> Result<EthSig, Self::Error> {
+    async fn sign_transaction(&self, tx: &TypedTransaction) -> Result<EthSig, Self::Error> {
         let sighash = tx.sighash(self.chain_id);
         self.sign_digest_with_eip155(sighash).await
     }
