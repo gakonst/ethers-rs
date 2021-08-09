@@ -96,8 +96,7 @@ where
             tx.set_nonce(self.get_transaction_count_with_manager(block).await?);
         }
 
-        let mut tx_clone = tx.clone();
-        match self.inner.send_transaction(tx, block).await {
+        match self.inner.send_transaction(tx.clone(), block).await {
             Ok(tx_hash) => Ok(tx_hash),
             Err(err) => {
                 let nonce = self.get_transaction_count(self.address, block).await?;
@@ -105,9 +104,9 @@ where
                     // try re-submitting the transaction with the correct nonce if there
                     // was a nonce mismatch
                     self.nonce.store(nonce.as_u64(), Ordering::SeqCst);
-                    tx_clone.set_nonce(nonce);
+                    tx.set_nonce(nonce);
                     self.inner
-                        .send_transaction(tx_clone, block)
+                        .send_transaction(tx, block)
                         .await
                         .map_err(FromErr::from)
                 } else {

@@ -218,18 +218,17 @@ pub trait Middleware: Sync + Send + Debug {
                     let addr = self.resolve_name(ens_name).await?;
                     inner.to = Some(addr.into());
                 };
-                use futures_util::join;
 
                 if inner.from.is_none() {
                     inner.from = self.default_sender();
                 }
 
-                let (gas_price, gas) = join!(
+                let (gas_price, gas) = futures_util::try_join!(
                     maybe(inner.gas_price, self.get_gas_price()),
                     maybe(inner.gas, self.estimate_gas(&tx_clone)),
-                );
-                inner.gas = Some(gas?);
-                inner.gas_price = Some(gas_price?);
+                )?;
+                inner.gas = Some(gas);
+                inner.gas_price = Some(gas_price);
             }
             TypedTransaction::Eip2930(inner) => {
                 if let Ok(lst) = self.create_access_list(&tx_clone, block).await {
@@ -241,14 +240,12 @@ pub trait Middleware: Sync + Send + Debug {
                     inner.tx.to = Some(addr.into());
                 };
 
-                use futures_util::join;
-
-                let (gas_price, gas) = join!(
+                let (gas_price, gas) = futures_util::try_join!(
                     maybe(inner.tx.gas_price, self.get_gas_price()),
                     maybe(inner.tx.gas, self.estimate_gas(&tx_clone)),
-                );
-                inner.tx.gas = Some(gas?);
-                inner.tx.gas_price = Some(gas_price?);
+                )?;
+                inner.tx.gas = Some(gas);
+                inner.tx.gas_price = Some(gas_price);
             }
             TypedTransaction::Eip1559(inner) => {
                 if let Ok(lst) = self.create_access_list(&tx_clone, block).await {
@@ -260,17 +257,15 @@ pub trait Middleware: Sync + Send + Debug {
                     inner.to = Some(addr.into());
                 };
 
-                use futures_util::join;
-
-                let (max_priority_fee_per_gas, max_fee_per_gas, gas) = join!(
+                let (max_priority_fee_per_gas, max_fee_per_gas, gas) = futures_util::try_join!(
                     // TODO: Replace with algorithms using eth_feeHistory
                     maybe(inner.max_priority_fee_per_gas, self.get_gas_price()),
                     maybe(inner.max_fee_per_gas, self.get_gas_price()),
                     maybe(inner.gas, self.estimate_gas(&tx_clone)),
-                );
-                inner.gas = Some(gas?);
-                inner.max_fee_per_gas = Some(max_fee_per_gas?);
-                inner.max_priority_fee_per_gas = Some(max_priority_fee_per_gas?);
+                )?;
+                inner.gas = Some(gas);
+                inner.max_fee_per_gas = Some(max_fee_per_gas);
+                inner.max_priority_fee_per_gas = Some(max_priority_fee_per_gas);
             }
         };
 
