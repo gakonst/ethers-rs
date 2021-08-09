@@ -168,3 +168,23 @@ impl Eip1559TransactionRequest {
         rlp.append(&self.access_list);
     }
 }
+
+impl From<Eip1559TransactionRequest> for super::request::TransactionRequest {
+    fn from(tx: Eip1559TransactionRequest) -> Self {
+        Self {
+            from: tx.from,
+            to: tx.to,
+            gas: tx.gas,
+            gas_price: tx.max_fee_per_gas,
+            value: tx.value,
+            data: tx.data,
+            nonce: tx.nonce,
+            #[cfg(feature = "celo")]
+            fee_currency: None,
+            #[cfg(feature = "celo")]
+            gateway_fee_recipient: None,
+            #[cfg(feature = "celo")]
+            gateway_fee: None,
+        }
+    }
+}

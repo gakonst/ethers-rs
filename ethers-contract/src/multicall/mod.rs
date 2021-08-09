@@ -137,6 +137,7 @@ pub struct Multicall<M> {
     calls: Vec<Call>,
     block: Option<BlockNumber>,
     contract: MulticallContract<M>,
+    legacy: bool,
 }
 
 #[derive(Clone)]
@@ -188,7 +189,14 @@ impl<M: Middleware> Multicall<M> {
             calls: vec![],
             block: None,
             contract,
+            legacy: false,
         })
+    }
+
+    /// Makes a legacy transaction instead of an EIP-1559 one
+    pub fn legacy(mut self) -> Self {
+        self.legacy = true;
+        self
     }
 
     /// Sets the `block` field for the multicall aggregate call
@@ -208,11 +216,11 @@ impl<M: Middleware> Multicall<M> {
             panic!("Cannot support more than {} calls", 16);
         }
 
-        match (call.tx.to, call.tx.data) {
+        match (call.tx.to(), call.tx.data()) {
             (Some(NameOrAddress::Address(target)), Some(data)) => {
                 let call = Call {
-                    target,
-                    data,
+                    target: *target,
+                    data: data.clone(),
                     function: call.function,
                 };
                 self.calls.push(call);
@@ -366,11 +374,15 @@ impl<M: Middleware> Multicall<M> {
             .collect();
 
         // Construct the ContractCall for `aggregate` function to broadcast the transaction
-        let contract_call = self.contract.aggregate(calls);
+        let mut contract_call = self.contract.aggregate(calls);
         if let Some(block) = self.block {
-            contract_call.block(block)
-        } else {
-            contract_call
-        }
+            contract_call = contract_call.block(block)
+        };
+
+        if self.legacy {
+            contract_call = contract_call.legacy();
+        };
+
+        contract_call
     }
 }

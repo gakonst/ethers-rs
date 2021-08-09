@@ -109,6 +109,7 @@ impl DsProxy {
         let ds_proxy_factory = DsProxyFactory::new(factory, client);
         let tx_receipt = ds_proxy_factory
             .build(owner)
+            .legacy()
             .send()
             .await?
             .await

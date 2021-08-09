@@ -2,9 +2,12 @@ use crate::{Contract, ContractError};
 
 use ethers_core::{
     abi::{Abi, Tokenize},
-    types::{BlockNumber, Bytes, TransactionRequest},
+    types::{transaction::eip2718::TypedTransaction, BlockNumber, Bytes, TransactionRequest},
 };
 use ethers_providers::Middleware;
+
+#[cfg(not(feature = "legacy"))]
+use ethers_core::types::Eip1559TransactionRequest;
 
 use std::sync::Arc;
 
@@ -12,7 +15,7 @@ use std::sync::Arc;
 /// Helper which manages the deployment transaction of a smart contract
 pub struct Deployer<M> {
     /// The deployer's transaction, exposed for overriding the defaults
-    pub tx: TransactionRequest,
+    pub tx: TypedTransaction,
     abi: Abi,
     client: Arc<M>,
     confs: usize,
@@ -28,6 +31,18 @@ impl<M: Middleware> Deployer<M> {
 
     pub fn block<T: Into<BlockNumber>>(mut self, block: T) -> Self {
         self.block = block.into();
+        self
+    }
+
+    /// Uses a Legacy transaction instead of an EIP-1559 one to do the deployment
+    pub fn legacy(mut self) -> Self {
+        self.tx = match self.tx {
+            TypedTransaction::Eip1559(inner) => {
+                let tx: TransactionRequest = inner.into();
+                TypedTransaction::Legacy(tx)
+            }
+            other => other,
+        };
         self
     }
 
@@ -150,11 +165,21 @@ impl<M: Middleware> ContractFactory<M> {
         };
 
         // create the tx object. Since we're deploying a contract, `to` is `None`
+        // We default to EIP-1559 transactions, but the sender can convert it back
+        // to a legacy one
+        #[cfg(feature = "legacy")]
         let tx = TransactionRequest {
             to: None,
             data: Some(data),
             ..Default::default()
         };
+        #[cfg(not(feature = "legacy"))]
+        let tx = Eip1559TransactionRequest {
+            to: None,
+            data: Some(data),
+            ..Default::default()
+        };
+        let tx = tx.into();
 
         Ok(Deployer {
             client: Arc::clone(&self.client), // cheap clone behind the arc

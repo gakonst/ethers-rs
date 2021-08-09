@@ -1,7 +1,9 @@
 use super::base::{decode_function_data, AbiError};
 use ethers_core::{
     abi::{Detokenize, Function, InvalidOutputType},
-    types::{Address, BlockId, Bytes, TransactionRequest, U256},
+    types::{
+        transaction::eip2718::TypedTransaction, Address, BlockId, Bytes, TransactionRequest, U256,
+    },
 };
 use ethers_providers::{Middleware, PendingTransaction, ProviderError};
 
@@ -48,7 +50,7 @@ pub enum ContractError<M: Middleware> {
 /// Helper for managing a transaction before submitting it to a node
 pub struct ContractCall<M, D> {
     /// The raw transaction object
-    pub tx: TransactionRequest,
+    pub tx: TypedTransaction,
     /// The ABI of the function being called
     pub function: Function,
     /// Optional block number to be used when calculating the transaction's gas and nonce
@@ -60,25 +62,39 @@ pub struct ContractCall<M, D> {
 impl<M, D: Detokenize> ContractCall<M, D> {
     /// Sets the `from` field in the transaction to the provided value
     pub fn from<T: Into<Address>>(mut self, from: T) -> Self {
-        self.tx.from = Some(from.into());
+        self.tx.set_from(from.into());
+        self
+    }
+
+    /// Uses a Legacy transaction instead of an EIP-1559 one to execute the call
+    pub fn legacy(mut self) -> Self {
+        self.tx = match self.tx {
+            TypedTransaction::Eip1559(inner) => {
+                let tx: TransactionRequest = inner.into();
+                TypedTransaction::Legacy(tx)
+            }
+            other => other,
+        };
         self
     }
 
     /// Sets the `gas` field in the transaction to the provided value
     pub fn gas<T: Into<U256>>(mut self, gas: T) -> Self {
-        self.tx.gas = Some(gas.into());
+        self.tx.set_gas(gas);
         self
     }
 
     /// Sets the `gas_price` field in the transaction to the provided value
+    /// If the internal transaction is an EIP-1559 one, then it sets both
+    /// `max_fee_per_gas` and `max_priority_fee_per_gas` to the same value
     pub fn gas_price<T: Into<U256>>(mut self, gas_price: T) -> Self {
-        self.tx.gas_price = Some(gas_price.into());
+        self.tx.set_gas_price(gas_price);
         self
     }
 
     /// Sets the `value` field in the transaction to the provided value
     pub fn value<T: Into<U256>>(mut self, value: T) -> Self {
-        self.tx.value = Some(value.into());
+        self.tx.set_value(value);
         self
     }
 
@@ -96,13 +112,13 @@ where
 {
     /// Returns the underlying transaction's ABI encoded data
     pub fn calldata(&self) -> Option<Bytes> {
-        self.tx.data.clone()
+        self.tx.data().cloned()
     }
 
     /// Returns the estimated gas cost for the underlying transaction to be executed
     pub async fn estimate_gas(&self) -> Result<U256, ContractError<M>> {
         self.client
-            .estimate_gas(&self.tx.clone().into())
+            .estimate_gas(&self.tx)
             .await
             .map_err(ContractError::MiddlewareError)
     }
@@ -119,7 +135,7 @@ where
     pub async fn call(&self) -> Result<D, ContractError<M>> {
         let bytes = self
             .client
-            .call(&self.tx.clone().into(), self.block)
+            .call(&self.tx.clone(), self.block)
             .await
             .map_err(ContractError::MiddlewareError)?;
 

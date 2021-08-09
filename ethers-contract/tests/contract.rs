@@ -32,7 +32,10 @@ mod eth_tests {
         // `send` consumes the deployer so it must be cloned for later re-use
         // (practically it's not expected that you'll need to deploy multiple instances of
         // the _same_ deployer, so it's fine to clone here from a dev UX vs perf tradeoff)
-        let deployer = factory.deploy("initial value".to_string()).unwrap();
+        let deployer = factory
+            .deploy("initial value".to_string())
+            .unwrap()
+            .legacy();
         let contract = deployer.clone().send().await.unwrap();
 
         let get_value = contract.method::<_, String>("getValue", ()).unwrap();
@@ -51,6 +54,7 @@ mod eth_tests {
             .unwrap();
         let calldata = contract_call.calldata().unwrap();
         let gas_estimate = contract_call.estimate_gas().await.unwrap();
+        let contract_call = contract_call.legacy();
         let pending_tx = contract_call.send().await.unwrap();
         let tx = client.get_transaction(*pending_tx).await.unwrap().unwrap();
         let tx_receipt = pending_tx.await.unwrap().unwrap();
@@ -82,6 +86,7 @@ mod eth_tests {
         let _tx_hash = contract
             .method::<_, H256>("setValues", ("hi".to_owned(), "bye".to_owned()))
             .unwrap()
+            .legacy()
             .send()
             .await
             .unwrap()
@@ -99,7 +104,8 @@ mod eth_tests {
         // make a call with `client`
         let func = contract
             .method::<_, H256>("setValue", "hi".to_owned())
-            .unwrap();
+            .unwrap()
+            .legacy();
         let tx = func.send().await.unwrap();
         let _receipt = tx.await.unwrap();
 
@@ -171,6 +177,7 @@ mod eth_tests {
         let value = contract
             .method::<_, String>("getValue", ())
             .unwrap()
+            .legacy()
             .call()
             .await
             .unwrap();
@@ -180,6 +187,7 @@ mod eth_tests {
         let _tx_hash = *contract
             .method::<_, H256>("setValue", "hi".to_owned())
             .unwrap()
+            .legacy()
             .send()
             .await
             .unwrap();
@@ -188,6 +196,7 @@ mod eth_tests {
         let value = contract
             .method::<_, String>("getValue", ())
             .unwrap()
+            .legacy()
             .call()
             .await
             .unwrap();
@@ -197,6 +206,7 @@ mod eth_tests {
         let value = contract
             .method::<_, String>("getValue", ())
             .unwrap()
+            .legacy()
             .block(BlockId::Number(deployed_block.into()))
             .call()
             .await
@@ -302,7 +312,8 @@ mod eth_tests {
         for i in 0..num_calls {
             let call = contract
                 .method::<_, H256>("setValue", i.to_string())
-                .unwrap();
+                .unwrap()
+                .legacy();
             let pending_tx = call.send().await.unwrap();
             let _receipt = pending_tx.await.unwrap();
         }
@@ -341,7 +352,6 @@ mod eth_tests {
         // get the first account
         let deployer = provider.get_accounts().await.unwrap()[0];
         let client = Arc::new(provider.with_sender(deployer));
-        dbg!(deployer);
 
         let contract = deploy(client, abi, bytecode).await;
 
@@ -396,18 +406,26 @@ mod eth_tests {
         let not_so_simple_factory =
             ContractFactory::new(not_so_simple_abi, not_so_simple_bytecode, client3.clone());
 
-        let multicall_contract = multicall_factory.deploy(()).unwrap().send().await.unwrap();
+        let multicall_contract = multicall_factory
+            .deploy(())
+            .unwrap()
+            .legacy()
+            .send()
+            .await
+            .unwrap();
         let addr = multicall_contract.address();
 
         let simple_contract = simple_factory
             .deploy("the first one".to_string())
             .unwrap()
+            .legacy()
             .send()
             .await
             .unwrap();
         let not_so_simple_contract = not_so_simple_factory
             .deploy("the second one".to_string())
             .unwrap()
+            .legacy()
             .send()
             .await
             .unwrap();
@@ -417,6 +435,7 @@ mod eth_tests {
             .connect(client2.clone())
             .method::<_, H256>("setValue", "reset first".to_owned())
             .unwrap()
+            .legacy()
             .send()
             .await
             .unwrap();
@@ -424,6 +443,7 @@ mod eth_tests {
             .connect(client3.clone())
             .method::<_, H256>("setValue", "reset second".to_owned())
             .unwrap()
+            .legacy()
             .send()
             .await
             .unwrap();
@@ -479,7 +499,7 @@ mod eth_tests {
             .add_call(broadcast2);
 
         // broadcast the transaction and wait for it to be mined
-        let tx_hash = multicall_send.send().await.unwrap();
+        let tx_hash = multicall_send.legacy().send().await.unwrap();
         let _tx_receipt = PendingTransaction::new(tx_hash, client.provider())
             .await
             .unwrap();
@@ -544,7 +564,10 @@ mod celo_tests {
         let client = Arc::new(client);
 
         let factory = ContractFactory::new(abi, bytecode, client);
-        let deployer = factory.deploy("initial value".to_string()).unwrap();
+        let deployer = factory
+            .deploy("initial value".to_string())
+            .unwrap()
+            .legacy();
         let contract = deployer.block(BlockNumber::Pending).send().await.unwrap();
 
         let value: String = contract

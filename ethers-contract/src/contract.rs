@@ -7,8 +7,14 @@ use crate::{
 
 use ethers_core::{
     abi::{Abi, Detokenize, Error, EventExt, Function, Tokenize},
-    types::{Address, Filter, NameOrAddress, Selector, TransactionRequest},
+    types::{Address, Filter, NameOrAddress, Selector},
 };
+
+#[cfg(not(feature = "legacy"))]
+use ethers_core::types::Eip1559TransactionRequest;
+#[cfg(feature = "legacy")]
+use ethers_core::types::TransactionRequest;
+
 use ethers_providers::Middleware;
 
 use std::{fmt::Debug, marker::PhantomData, sync::Arc};
@@ -220,12 +226,20 @@ impl<M: Middleware> Contract<M> {
     ) -> Result<ContractCall<M, D>, AbiError> {
         let data = encode_function_data(function, args)?;
 
-        // create the tx object
+        #[cfg(feature = "legacy")]
         let tx = TransactionRequest {
             to: Some(NameOrAddress::Address(self.address)),
             data: Some(data),
             ..Default::default()
         };
+        #[cfg(not(feature = "legacy"))]
+        let tx = Eip1559TransactionRequest {
+            to: Some(NameOrAddress::Address(self.address)),
+            data: Some(data),
+            ..Default::default()
+        };
+
+        let tx = tx.into();
 
         Ok(ContractCall {
             tx,
