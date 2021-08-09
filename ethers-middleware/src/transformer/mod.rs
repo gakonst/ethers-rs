@@ -5,7 +5,7 @@ mod middleware;
 pub use middleware::TransformerMiddleware;
 
 use ethers_contract::AbiError;
-use ethers_core::{abi::ParseError, types::*};
+use ethers_core::{abi::ParseError, types::transaction::eip2718::TypedTransaction};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -31,5 +31,5 @@ pub trait Transformer: Send + Sync + std::fmt::Debug {
     /// proxy contract.
     ///
     /// [`transaction request`]: struct@ethers_core::types::TransactionRequest
-    fn transform(&self, tx: TransactionRequest) -> Result<TransactionRequest, TransformerError>;
+    fn transform(&self, tx: &mut TypedTransaction) -> Result<(), TransformerError>;
 }

@@ -83,7 +83,8 @@ pub use pubsub::{PubsubClient, SubscriptionStream};
 
 use async_trait::async_trait;
 use auto_impl::auto_impl;
-use serde::{de::DeserializeOwned, Serialize};
+use ethers_core::types::transaction::{eip2718::TypedTransaction, eip2930::AccessListWithGasUsed};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{error::Error, fmt::Debug, future::Future, pin::Pin};
 
 pub use provider::{FilterKind, Provider, ProviderError};
@@ -112,6 +113,18 @@ pub trait FromErr<T> {
     fn from(src: T) -> Self;
 }
 
+/// Calls the future if `item` is None, otherwise returns a `futures::ok`
+pub async fn maybe<F, T, E>(item: Option<T>, f: F) -> Result<T, E>
+where
+    F: Future<Output = Result<T, E>>,
+{
+    if let Some(item) = item {
+        futures_util::future::ok(item).await
+    } else {
+        f.await
+    }
+}
+
 #[async_trait]
 #[auto_impl(&, Box, Arc)]
 /// A middleware allows customizing requests send and received from an ethereum node.
@@ -122,7 +135,7 @@ pub trait FromErr<T> {
 /// 3. implementing any of the methods you want to override
 ///
 /// ```rust
-/// use ethers::{providers::{Middleware, FromErr}, types::{U64, TransactionRequest, U256}};
+/// use ethers::{providers::{Middleware, FromErr}, types::{U64, TransactionRequest, U256, transaction::eip2718::TypedTransaction}};
 /// use thiserror::Error;
 /// use async_trait::async_trait;
 ///
@@ -163,7 +176,7 @@ pub trait FromErr<T> {
 ///
 ///     /// Overrides the default `estimate_gas` method to log that it was called,
 ///     /// before forwarding the call to the next layer.
-///     async fn estimate_gas(&self, tx: &TransactionRequest) -> Result<U256, Self::Error> {
+///     async fn estimate_gas(&self, tx: &TypedTransaction) -> Result<U256, Self::Error> {
 ///         println!("Estimating gas...");
 ///         self.inner().estimate_gas(tx).await.map_err(FromErr::from)
 ///     }
@@ -182,17 +195,90 @@ pub trait Middleware: Sync + Send + Debug {
         self.inner().provider()
     }
 
+    fn default_sender(&self) -> Option<Address> {
+        self.inner().default_sender()
+    }
+
     async fn client_version(&self) -> Result<String, Self::Error> {
         self.inner().client_version().await.map_err(FromErr::from)
+    }
+
+    /// Helper for filling a transaction
+    async fn fill_transaction(
+        &self,
+        tx: &mut TypedTransaction,
+        block: Option<BlockId>,
+    ) -> Result<(), Self::Error> {
+        let tx_clone = tx.clone();
+
+        // TODO: Maybe deduplicate the code in a nice way
+        match tx {
+            TypedTransaction::Legacy(ref mut inner) => {
+                if let Some(NameOrAddress::Name(ref ens_name)) = inner.to {
+                    let addr = self.resolve_name(ens_name).await?;
+                    inner.to = Some(addr.into());
+                };
+
+                if inner.from.is_none() {
+                    inner.from = self.default_sender();
+                }
+
+                let (gas_price, gas) = futures_util::try_join!(
+                    maybe(inner.gas_price, self.get_gas_price()),
+                    maybe(inner.gas, self.estimate_gas(&tx_clone)),
+                )?;
+                inner.gas = Some(gas);
+                inner.gas_price = Some(gas_price);
+            }
+            TypedTransaction::Eip2930(inner) => {
+                if let Ok(lst) = self.create_access_list(&tx_clone, block).await {
+                    inner.access_list = lst.access_list;
+                }
+
+                if let Some(NameOrAddress::Name(ref ens_name)) = inner.tx.to {
+                    let addr = self.resolve_name(ens_name).await?;
+                    inner.tx.to = Some(addr.into());
+                };
+
+                let (gas_price, gas) = futures_util::try_join!(
+                    maybe(inner.tx.gas_price, self.get_gas_price()),
+                    maybe(inner.tx.gas, self.estimate_gas(&tx_clone)),
+                )?;
+                inner.tx.gas = Some(gas);
+                inner.tx.gas_price = Some(gas_price);
+            }
+            TypedTransaction::Eip1559(inner) => {
+                if let Ok(lst) = self.create_access_list(&tx_clone, block).await {
+                    inner.access_list = lst.access_list;
+                }
+
+                if let Some(NameOrAddress::Name(ref ens_name)) = inner.to {
+                    let addr = self.resolve_name(ens_name).await?;
+                    inner.to = Some(addr.into());
+                };
+
+                let (max_priority_fee_per_gas, max_fee_per_gas, gas) = futures_util::try_join!(
+                    // TODO: Replace with algorithms using eth_feeHistory
+                    maybe(inner.max_priority_fee_per_gas, self.get_gas_price()),
+                    maybe(inner.max_fee_per_gas, self.get_gas_price()),
+                    maybe(inner.gas, self.estimate_gas(&tx_clone)),
+                )?;
+                inner.gas = Some(gas);
+                inner.max_fee_per_gas = Some(max_fee_per_gas);
+                inner.max_priority_fee_per_gas = Some(max_priority_fee_per_gas);
+            }
+        };
+
+        Ok(())
     }
 
     async fn get_block_number(&self) -> Result<U64, Self::Error> {
         self.inner().get_block_number().await.map_err(FromErr::from)
     }
 
-    async fn send_transaction(
+    async fn send_transaction<T: Into<TypedTransaction> + Send + Sync>(
         &self,
-        tx: TransactionRequest,
+        tx: T,
         block: Option<BlockId>,
     ) -> Result<PendingTransaction<'_, Self::Provider>, Self::Error> {
         self.inner()
@@ -246,13 +332,13 @@ pub trait Middleware: Sync + Send + Debug {
             .map_err(FromErr::from)
     }
 
-    async fn estimate_gas(&self, tx: &TransactionRequest) -> Result<U256, Self::Error> {
+    async fn estimate_gas(&self, tx: &TypedTransaction) -> Result<U256, Self::Error> {
         self.inner().estimate_gas(tx).await.map_err(FromErr::from)
     }
 
     async fn call(
         &self,
-        tx: &TransactionRequest,
+        tx: &TypedTransaction,
         block: Option<BlockId>,
     ) -> Result<Bytes, Self::Error> {
         self.inner().call(tx, block).await.map_err(FromErr::from)
@@ -427,9 +513,9 @@ pub trait Middleware: Sync + Send + Debug {
     // Parity `trace` support
 
     /// Executes the given call and returns a number of possible traces for it
-    async fn trace_call(
+    async fn trace_call<T: Into<TypedTransaction> + Send + Sync>(
         &self,
-        req: TransactionRequest,
+        req: T,
         trace_type: Vec<TraceType>,
         block: Option<BlockNumber>,
     ) -> Result<BlockTrace, Self::Error> {
@@ -574,6 +660,38 @@ pub trait Middleware: Sync + Send + Debug {
             .await
             .map_err(FromErr::from)
     }
+
+    async fn fee_history(
+        &self,
+        block_count: u64,
+        last_block: BlockNumber,
+        reward_percentiles: &[f64],
+    ) -> Result<FeeHistory, Self::Error> {
+        self.inner()
+            .fee_history(block_count, last_block, reward_percentiles)
+            .await
+            .map_err(FromErr::from)
+    }
+
+    async fn create_access_list(
+        &self,
+        tx: &TypedTransaction,
+        block: Option<BlockId>,
+    ) -> Result<AccessListWithGasUsed, Self::Error> {
+        self.inner()
+            .create_access_list(tx, block)
+            .await
+            .map_err(FromErr::from)
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct FeeHistory {
+    pub base_fee_per_gas: Vec<U256>,
+    pub gas_used_ratio: Vec<f64>,
+    pub oldest_block: u64,
+    pub reward: Vec<Vec<U256>>,
 }
 
 #[cfg(feature = "celo")]

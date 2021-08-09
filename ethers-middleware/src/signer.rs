@@ -1,10 +1,10 @@
-use ethers_core::types::{Address, BlockId, Bytes, NameOrAddress, Signature, TransactionRequest};
-use ethers_providers::{FromErr, Middleware, PendingTransaction};
+use ethers_core::types::{
+    transaction::eip2718::TypedTransaction, Address, BlockId, Bytes, Signature,
+};
+use ethers_providers::{maybe, FromErr, Middleware, PendingTransaction};
 use ethers_signers::Signer;
 
 use async_trait::async_trait;
-use futures_util::{future::ok, join};
-use std::future::Future;
 use thiserror::Error;
 
 #[derive(Clone, Debug)]
@@ -118,7 +118,7 @@ where
     /// Signs and returns the RLP encoding of the signed transaction
     async fn sign_transaction(
         &self,
-        tx: TransactionRequest,
+        tx: TypedTransaction,
     ) -> Result<Bytes, SignerMiddlewareError<M, S>> {
         let signature = self
             .signer
@@ -127,33 +127,7 @@ where
             .map_err(SignerMiddlewareError::SignerError)?;
 
         // Return the raw rlp-encoded signed transaction
-        Ok(tx.rlp_signed(&signature))
-    }
-
-    async fn fill_transaction(
-        &self,
-        tx: &mut TransactionRequest,
-        block: Option<BlockId>,
-    ) -> Result<(), SignerMiddlewareError<M, S>> {
-        // set the `from` field
-        if tx.from.is_none() {
-            tx.from = Some(self.address());
-        }
-
-        // will poll and await the futures concurrently
-        let (gas_price, gas, nonce) = join!(
-            maybe(tx.gas_price, self.inner.get_gas_price()),
-            maybe(tx.gas, self.inner.estimate_gas(tx)),
-            maybe(
-                tx.nonce,
-                self.inner.get_transaction_count(self.address(), block)
-            ),
-        );
-        tx.gas_price = Some(gas_price.map_err(SignerMiddlewareError::MiddlewareError)?);
-        tx.gas = Some(gas.map_err(SignerMiddlewareError::MiddlewareError)?);
-        tx.nonce = Some(nonce.map_err(SignerMiddlewareError::MiddlewareError)?);
-
-        Ok(())
+        Ok(tx.rlp_signed(self.signer.chain_id(), &signature))
     }
 
     /// Returns the client's address
@@ -192,39 +166,60 @@ where
         &self.inner
     }
 
+    /// Returns the client's address
+    fn default_sender(&self) -> Option<Address> {
+        Some(self.address)
+    }
+
     /// `SignerMiddleware` is instantiated with a signer.
     async fn is_signer(&self) -> bool {
         true
     }
 
+    /// Helper for filling a transaction's nonce using the wallet
+    async fn fill_transaction(
+        &self,
+        tx: &mut TypedTransaction,
+        block: Option<BlockId>,
+    ) -> Result<(), Self::Error> {
+        // get the `from` field's nonce if it's set, else get the signer's nonce
+        let from = if tx.from().is_some() && tx.from() != Some(&self.address()) {
+            *tx.from().unwrap()
+        } else {
+            self.address
+        };
+        tx.set_from(from);
+
+        let nonce = maybe(tx.nonce().cloned(), self.get_transaction_count(from, block)).await?;
+        tx.set_nonce(nonce);
+        self.inner()
+            .fill_transaction(tx, block)
+            .await
+            .map_err(SignerMiddlewareError::MiddlewareError)?;
+        Ok(())
+    }
+
     /// Signs and broadcasts the transaction. The optional parameter `block` can be passed so that
     /// gas cost and nonce calculations take it into account. For simple transactions this can be
     /// left to `None`.
-    async fn send_transaction(
+    async fn send_transaction<T: Into<TypedTransaction> + Send + Sync>(
         &self,
-        mut tx: TransactionRequest,
+        tx: T,
         block: Option<BlockId>,
     ) -> Result<PendingTransaction<'_, Self::Provider>, Self::Error> {
+        let mut tx = tx.into();
+
+        // fill any missing fields
+        self.fill_transaction(&mut tx, block).await?;
+
         // If the from address is set and is not our signer, delegate to inner
-        if tx.from.is_some() && tx.from != Some(self.address()) {
+        if tx.from().is_some() && tx.from() != Some(&self.address()) {
             return self
                 .inner
                 .send_transaction(tx, block)
                 .await
                 .map_err(SignerMiddlewareError::MiddlewareError);
         }
-
-        if let Some(NameOrAddress::Name(ens_name)) = tx.to {
-            let addr = self
-                .inner
-                .resolve_name(&ens_name)
-                .await
-                .map_err(SignerMiddlewareError::MiddlewareError)?;
-            tx.to = Some(addr.into())
-        }
-
-        // fill any missing fields
-        self.fill_transaction(&mut tx, block).await?;
 
         // if we have a nonce manager set, we should try handling the result in
         // case there was a nonce mismatch
@@ -251,23 +246,14 @@ where
     }
 }
 
-/// Calls the future if `item` is None, otherwise returns a `futures::ok`
-async fn maybe<F, T, E>(item: Option<T>, f: F) -> Result<T, E>
-where
-    F: Future<Output = Result<T, E>>,
-{
-    if let Some(item) = item {
-        ok(item).await
-    } else {
-        f.await
-    }
-}
-
 #[cfg(all(test, not(feature = "celo")))]
 mod tests {
     use super::*;
     use ethers::{providers::Provider, signers::LocalWallet};
-    use ethers_core::utils::{self, keccak256, Ganache};
+    use ethers_core::{
+        types::TransactionRequest,
+        utils::{self, keccak256, Ganache},
+    };
     use std::convert::TryFrom;
 
     #[tokio::test]
@@ -287,7 +273,8 @@ mod tests {
             nonce: Some(0.into()),
             gas_price: Some(21_000_000_000u128.into()),
             data: None,
-        };
+        }
+        .into();
         let chain_id = 1u64;
 
         let provider = Provider::try_from("http://localhost:8545").unwrap();

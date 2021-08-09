@@ -217,7 +217,8 @@ mod tests {
             nonce: Some(0.into()),
             gas_price: Some(21_000_000_000u128.into()),
             data: None,
-        };
+        }
+        .into();
         let chain_id = 1u64;
 
         let wallet: Wallet<SigningKey> =

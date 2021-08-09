@@ -3,7 +3,9 @@ use factory::{CreatedFilter, DsProxyFactory, ADDRESS_BOOK};
 
 use super::{Transformer, TransformerError};
 use ethers_contract::{builders::ContractCall, BaseContract, ContractError};
-use ethers_core::{abi::parse_abi, types::*, utils::id};
+use ethers_core::{
+    abi::parse_abi, types::transaction::eip2718::TypedTransaction, types::*, utils::id,
+};
 use ethers_providers::Middleware;
 use std::sync::Arc;
 
@@ -178,29 +180,26 @@ impl DsProxy {
 }
 
 impl Transformer for DsProxy {
-    fn transform(&self, tx: TransactionRequest) -> Result<TransactionRequest, TransformerError> {
-        // clone the tx into a new proxy tx.
-        let mut proxy_tx = tx.clone();
-
+    fn transform(&self, tx: &mut TypedTransaction) -> Result<(), TransformerError> {
         // the target address cannot be None.
-        let target = match tx.to {
-            Some(NameOrAddress::Address(addr)) => Ok(addr),
-            _ => Err(TransformerError::MissingField("to".into())),
-        }?;
+        let target = match tx.to() {
+            Some(NameOrAddress::Address(addr)) => addr,
+            _ => return Err(TransformerError::MissingField("to".into())),
+        };
 
         // fetch the data field.
-        let data = tx.data.unwrap_or_else(|| vec![].into());
+        let data = tx.data().cloned().unwrap_or_else(|| vec![].into());
 
         // encode data as the ABI encoded data for DSProxy's execute method.
         let selector = id("execute(address,bytes)");
         let encoded_data = self
             .contract
-            .encode_with_selector(selector, (target, data))?;
+            .encode_with_selector(selector, (*target, data))?;
 
         // update appropriate fields of the proxy tx.
-        proxy_tx.data = Some(encoded_data);
-        proxy_tx.to = Some(NameOrAddress::Address(self.address));
+        tx.set_data(encoded_data);
+        tx.set_to(self.address);
 
-        Ok(proxy_tx)
+        Ok(())
     }
 }

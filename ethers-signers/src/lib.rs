@@ -25,7 +25,7 @@
 //! // create a transaction
 //! let tx = TransactionRequest::new()
 //!     .to("vitalik.eth") // this will use ENS
-//!     .value(10000);
+//!     .value(10000).into();
 //!
 //! // sign it
 //! let signature = wallet.sign_transaction(&tx).await?;
@@ -70,7 +70,7 @@ mod aws;
 pub use aws::{AwsSigner, AwsSignerError};
 
 use async_trait::async_trait;
-use ethers_core::types::{Address, Signature, TransactionRequest};
+use ethers_core::types::{transaction::eip2718::TypedTransaction, Address, Signature};
 use std::error::Error;
 
 /// Applies [EIP155](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-155.md)
@@ -91,10 +91,7 @@ pub trait Signer: std::fmt::Debug + Send + Sync {
     ) -> Result<Signature, Self::Error>;
 
     /// Signs the transaction
-    async fn sign_transaction(
-        &self,
-        message: &TransactionRequest,
-    ) -> Result<Signature, Self::Error>;
+    async fn sign_transaction(&self, message: &TypedTransaction) -> Result<Signature, Self::Error>;
 
     /// Returns the signer's Ethereum Address
     fn address(&self) -> Address;

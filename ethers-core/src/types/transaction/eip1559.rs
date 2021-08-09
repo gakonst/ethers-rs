@@ -1,4 +1,4 @@
-use super::{eip2930::AccessList, rlp_opt};
+use super::{eip2930::AccessList, normalize_v, rlp_opt};
 use crate::{
     types::{Address, Bytes, NameOrAddress, Signature, H256, U256, U64},
     utils::keccak256,
@@ -37,12 +37,8 @@ pub struct Eip1559TransactionRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub nonce: Option<U256>,
 
-    #[serde(
-        rename = "accessList",
-        default,
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub access_list: Option<AccessList>,
+    #[serde(rename = "accessList", default)]
+    pub access_list: AccessList,
 
     #[serde(
         rename = "maxPriorityFeePerGas",
@@ -121,7 +117,7 @@ impl Eip1559TransactionRequest {
 
     /// Sets the `access_list` field in the transaction to the provided value
     pub fn access_list<T: Into<AccessList>>(mut self, access_list: T) -> Self {
-        self.access_list = Some(access_list.into());
+        self.access_list = access_list.into();
         self
     }
 
@@ -148,10 +144,12 @@ impl Eip1559TransactionRequest {
     pub fn rlp_signed<T: Into<U64>>(&self, chain_id: T, signature: &Signature) -> Bytes {
         let mut rlp = RlpStream::new();
         rlp.begin_unbounded_list();
+        let chain_id = chain_id.into();
         self.rlp_base(chain_id, &mut rlp);
 
         // append the signature
-        rlp.append(&signature.v);
+        let v = normalize_v(signature.v, chain_id);
+        rlp.append(&v);
         rlp.append(&signature.r);
         rlp.append(&signature.s);
         rlp.finalize_unbounded_list();
@@ -167,6 +165,6 @@ impl Eip1559TransactionRequest {
         rlp_opt(rlp, &self.to.as_ref());
         rlp_opt(rlp, &self.value);
         rlp_opt(rlp, &self.data.as_ref().map(|d| d.as_ref()));
-        rlp_opt(rlp, &self.access_list);
+        rlp.append(&self.access_list);
     }
 }
