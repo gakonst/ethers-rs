@@ -50,7 +50,7 @@ pub const WEI_IN_ETHER: U256 = U256([0x0de0b6b3a7640000, 0x0, 0x0, 0x0]);
 
 pub const EIP1559_FEE_ESTIMATION_PAST_BLOCKS: u64 = 10;
 pub const EIP1559_FEE_ESTIMATION_REWARD_PERCENTILE: f64 = 5.0;
-pub const EIP1559_FEE_ESTIMATION_DEFAULT_PRIORITY_FEE: u64 = 100_000_000_000;
+pub const EIP1559_FEE_ESTIMATION_DEFAULT_PRIORITY_FEE: u64 = 100;
 
 /// Format the output for the user which prefer to see values
 /// in ether (instead of wei)
@@ -212,24 +212,34 @@ fn estimate_priority_fee(rewards: Vec<Vec<U256>>) -> U256 {
         .map(|r| r[0])
         .filter(|r| *r > U256::zero())
         .collect();
-    if rewards.len() == 0 {
+    if rewards.is_empty() {
         return U256::zero();
     }
     if rewards.len() == 1 {
         return rewards[0];
     }
     rewards.sort();
-    let percentage_change: Vec<i64> = rewards
+    dbg!(rewards.clone());
+
+    let mut rewards_copy = rewards.clone();
+    rewards_copy.rotate_left(1);
+
+    let mut percentage_change: Vec<i64> = rewards
         .iter()
-        .zip(rewards[1..].iter())
+        .zip(rewards_copy.iter())
         .map(|(a, b)| {
+            dbg!(a);
+            dbg!(b);
             if b > a {
-                ((b - a).low_u32() as i64 * 100) / (b.low_u32() as i64)
+                ((b - a).low_u32() as i64 * 100) / (a.low_u32() as i64)
             } else {
-                (((b - a).low_u32() as i64 * 100) / (b.low_u32() as i64)).neg()
+                (((a - b).low_u32() as i64 * 100) / (a.low_u32() as i64)).neg()
             }
         })
         .collect();
+    percentage_change.pop();
+
+    dbg!(percentage_change.clone());
     let max_change = percentage_change.iter().max().unwrap();
     let max_change_index = percentage_change
         .iter()

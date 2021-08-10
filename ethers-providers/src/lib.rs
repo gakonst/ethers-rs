@@ -269,7 +269,8 @@ pub trait Middleware: Sync + Send + Debug {
                 inner.gas = Some(gas);
 
                 if inner.max_fee_per_gas.is_none() || inner.max_priority_fee_per_gas.is_none() {
-                    let (max_fee_per_gas, max_priority_fee_per_gas) = self.estimate_eip1559_fees(None).await?;
+                    let (max_fee_per_gas, max_priority_fee_per_gas) =
+                        self.estimate_eip1559_fees(None).await?;
                     if inner.max_fee_per_gas.is_none() {
                         inner.max_fee_per_gas = Some(max_fee_per_gas);
                     }

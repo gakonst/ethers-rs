@@ -270,9 +270,9 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         let base_fee_per_gas = self
             .get_block(BlockNumber::Latest)
             .await?
-            .ok_or(ProviderError::CustomError("Latest block not found".into()))?
+            .ok_or_else(|| ProviderError::CustomError("Latest block not found".into()))?
             .base_fee_per_gas
-            .ok_or(ProviderError::CustomError("EIP-1559 not activated".into()))?;
+            .ok_or_else(|| ProviderError::CustomError("EIP-1559 not activated".into()))?;
         let fee_history = self
             .fee_history(
                 utils::EIP1559_FEE_ESTIMATION_PAST_BLOCKS,
@@ -281,8 +281,8 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
             )
             .await?;
 
-        let (max_fee_per_gas, max_priority_fee_per_gas) = if estimator.is_some() {
-            estimator.unwrap()(base_fee_per_gas, fee_history.reward)
+        let (max_fee_per_gas, max_priority_fee_per_gas) = if let Some(es) = estimator {
+            es(base_fee_per_gas, fee_history.reward)
         } else {
             utils::eip1559_default_estimator(base_fee_per_gas, fee_history.reward)
         };
