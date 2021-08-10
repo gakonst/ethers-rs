@@ -36,6 +36,7 @@ pub use rlp;
 use crate::types::{Address, Bytes, U256};
 use k256::{ecdsa::SigningKey, EncodedPoint as K256PublicKey};
 use std::convert::TryInto;
+use std::ops::Neg;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -46,6 +47,10 @@ pub enum FormatBytes32StringError {
 
 /// 1 Ether = 1e18 Wei == 0x0de0b6b3a7640000 Wei
 pub const WEI_IN_ETHER: U256 = U256([0x0de0b6b3a7640000, 0x0, 0x0, 0x0]);
+
+pub const EIP1559_FEE_ESTIMATION_PAST_BLOCKS: u64 = 10;
+pub const EIP1559_FEE_ESTIMATION_REWARD_PERCENTILE: f64 = 5.0;
+pub const EIP1559_FEE_ESTIMATION_DEFAULT_PRIORITY_FEE: u64 = 100_000_000_000;
 
 /// Format the output for the user which prefer to see values
 /// in ether (instead of wei)
@@ -185,6 +190,71 @@ pub fn parse_bytes32_string(bytes: &[u8; 32]) -> Result<&str, std::str::Utf8Erro
     }
 
     std::str::from_utf8(&bytes[..length])
+}
+
+pub fn eip1559_default_estimator(base_fee_per_gas: U256, rewards: Vec<Vec<U256>>) -> (U256, U256) {
+    let max_priority_fee_per_gas = std::cmp::max(
+        estimate_priority_fee(rewards),
+        U256::from(EIP1559_FEE_ESTIMATION_DEFAULT_PRIORITY_FEE),
+    );
+    let potential_max_fee = base_fee_surged(base_fee_per_gas);
+    let max_fee_per_gas = if max_priority_fee_per_gas > potential_max_fee {
+        max_priority_fee_per_gas + potential_max_fee
+    } else {
+        potential_max_fee
+    };
+    (max_fee_per_gas, max_priority_fee_per_gas)
+}
+
+fn estimate_priority_fee(rewards: Vec<Vec<U256>>) -> U256 {
+    let mut rewards: Vec<U256> = rewards
+        .iter()
+        .map(|r| r[0])
+        .filter(|r| *r > U256::zero())
+        .collect();
+    if rewards.len() == 0 {
+        return U256::zero();
+    }
+    if rewards.len() == 1 {
+        return rewards[0];
+    }
+    rewards.sort();
+    let percentage_change: Vec<i64> = rewards
+        .iter()
+        .zip(rewards[1..].iter())
+        .map(|(a, b)| {
+            if b > a {
+                ((b - a).low_u32() as i64 * 100) / (b.low_u32() as i64)
+            } else {
+                (((b - a).low_u32() as i64 * 100) / (b.low_u32() as i64)).neg()
+            }
+        })
+        .collect();
+    let max_change = percentage_change.iter().max().unwrap();
+    let max_change_index = percentage_change
+        .iter()
+        .position(|&c| c == *max_change)
+        .unwrap();
+
+    let values = if *max_change >= 200 && (max_change_index >= (rewards.len() / 2)) {
+        rewards[max_change_index..].to_vec()
+    } else {
+        rewards
+    };
+
+    values[values.len() / 2]
+}
+
+fn base_fee_surged(base_fee_per_gas: U256) -> U256 {
+    if base_fee_per_gas <= U256::from(40_000_000_000u64) {
+        base_fee_per_gas * 2
+    } else if base_fee_per_gas <= U256::from(100_000_000_000u64) {
+        base_fee_per_gas * 16 / 10
+    } else if base_fee_per_gas <= U256::from(200_000_000_000u64) {
+        base_fee_per_gas * 14 / 10
+    } else {
+        base_fee_per_gas * 12 / 10
+    }
 }
 
 /// A bit of hack to find an unused TCP port.

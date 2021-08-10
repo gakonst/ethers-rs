@@ -42,6 +42,9 @@ pub enum GasOracleError {
     /// supported by the gas oracle API
     #[error("gas category not supported")]
     GasCategoryNotSupported,
+
+    #[error("EIP-1559 gas estimation not supported")]
+    Eip1559EstimationNotSupported,
 }
 
 /// `GasOracle` is a trait that an underlying gas oracle needs to implement.
@@ -80,4 +83,6 @@ pub trait GasOracle: Send + Sync + std::fmt::Debug {
     /// # }
     /// ```
     async fn fetch(&self) -> Result<U256, GasOracleError>;
+
+    async fn estimate_eip1559_fees(&self) -> Result<(U256, U256), GasOracleError>;
 }
