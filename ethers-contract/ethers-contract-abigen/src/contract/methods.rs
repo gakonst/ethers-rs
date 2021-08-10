@@ -80,7 +80,11 @@ pub(crate) fn expand_inputs_call_arg(inputs: &[Param]) -> TokenStream {
         .map(|(i, param)| {
             let name = util::expand_input_name(i, &param.name);
             match param.kind {
-                ParamType::Tuple(_) => {
+                // this is awkward edge case where the function inputs are a single struct
+                // we need to force this argument into a tuple so it gets expanded to `((#name,))`
+                // this is currently necessary because internally `flatten_tokens` is called which removes the outermost `tuple` level
+                // and since `((#name))` is not a rust tuple it doesn't get wrapped into another tuple that will be peeled off by `flatten_tokens`
+                ParamType::Tuple(_) if inputs.len() == 1 => {
                     // make sure the tuple gets converted to `Token::Tuple`
                     quote! {(#name,)}
                 }
