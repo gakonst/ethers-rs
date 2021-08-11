@@ -273,6 +273,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
             .ok_or_else(|| ProviderError::CustomError("Latest block not found".into()))?
             .base_fee_per_gas
             .ok_or_else(|| ProviderError::CustomError("EIP-1559 not activated".into()))?;
+
         let fee_history = self
             .fee_history(
                 utils::EIP1559_FEE_ESTIMATION_PAST_BLOCKS,

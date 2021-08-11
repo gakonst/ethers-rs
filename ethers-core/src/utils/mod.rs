@@ -50,7 +50,8 @@ pub const WEI_IN_ETHER: U256 = U256([0x0de0b6b3a7640000, 0x0, 0x0, 0x0]);
 
 pub const EIP1559_FEE_ESTIMATION_PAST_BLOCKS: u64 = 10;
 pub const EIP1559_FEE_ESTIMATION_REWARD_PERCENTILE: f64 = 5.0;
-pub const EIP1559_FEE_ESTIMATION_DEFAULT_PRIORITY_FEE: u64 = 100;
+pub const EIP1559_FEE_ESTIMATION_DEFAULT_PRIORITY_FEE: u64 = 3_000_000_000;
+pub const EIP1559_FEE_ESTIMATION_PRIORITY_FEE_TRIGGER: u64 = 100_000_000_000;
 
 /// Format the output for the user which prefer to see values
 /// in ether (instead of wei)
@@ -193,10 +194,15 @@ pub fn parse_bytes32_string(bytes: &[u8; 32]) -> Result<&str, std::str::Utf8Erro
 }
 
 pub fn eip1559_default_estimator(base_fee_per_gas: U256, rewards: Vec<Vec<U256>>) -> (U256, U256) {
-    let max_priority_fee_per_gas = std::cmp::max(
-        estimate_priority_fee(rewards),
-        U256::from(EIP1559_FEE_ESTIMATION_DEFAULT_PRIORITY_FEE),
-    );
+    let max_priority_fee_per_gas =
+        if base_fee_per_gas < U256::from(EIP1559_FEE_ESTIMATION_PRIORITY_FEE_TRIGGER) {
+            U256::from(EIP1559_FEE_ESTIMATION_DEFAULT_PRIORITY_FEE)
+        } else {
+            std::cmp::max(
+                estimate_priority_fee(rewards),
+                U256::from(EIP1559_FEE_ESTIMATION_DEFAULT_PRIORITY_FEE),
+            )
+        };
     let potential_max_fee = base_fee_surged(base_fee_per_gas);
     let max_fee_per_gas = if max_priority_fee_per_gas > potential_max_fee {
         max_priority_fee_per_gas + potential_max_fee
