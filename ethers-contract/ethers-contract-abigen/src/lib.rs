@@ -15,6 +15,7 @@ mod test_macros;
 mod contract;
 use contract::Context;
 
+pub mod rawabi;
 mod rustfmt;
 mod source;
 mod util;

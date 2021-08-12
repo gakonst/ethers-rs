@@ -16,7 +16,7 @@ impl Context {
     /// in fact present in the `AbiParser`, this is sound because `AbiParser::parse` would have
     /// failed already
     pub fn abi_structs(&self) -> Result<TokenStream> {
-        let mut structs = Vec::with_capacity(self.abi_parser.structs.len());
+        let mut structs = TokenStream::new();
         for (name, sol_struct) in &self.abi_parser.structs {
             let mut fields = Vec::with_capacity(sol_struct.fields().len());
             let mut param_types = Vec::with_capacity(sol_struct.fields().len());
@@ -96,7 +96,7 @@ impl Context {
             let derives = &self.event_derives;
             let derives = quote! {#(#derives),*};
 
-            structs.push(quote! {
+            structs.extend(quote! {
                 #abi_signature_doc
                 #[derive(Clone, Debug, Default, Eq, PartialEq, ethers::contract::EthAbiType, #derives)]
                 pub struct #name {
@@ -104,6 +104,6 @@ impl Context {
                 }
             });
         }
-        Ok(quote! {#( #structs )*})
+        Ok(structs)
     }
 }
