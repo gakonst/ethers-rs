@@ -159,7 +159,7 @@ mod eth_tests {
         .unwrap();
 
         let chain_id = provider.get_chainid().await.unwrap();
-        let wallet = "59c37cb6b16fa2de30675f034c8008f890f4b2696c729d6267946d29736d73e4"
+        let wallet = "87203087aed9246e0b2417e248752a1a0df4fdaf65085c11a2b48087ba036b41"
             .parse::<LocalWallet>()
             .unwrap()
             .with_chain_id(chain_id.as_u64());
