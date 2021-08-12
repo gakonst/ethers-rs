@@ -7,7 +7,7 @@ use crate::{
 
 use ethers_core::{
     abi::{Abi, Detokenize, Error, EventExt, Function, Tokenize},
-    types::{Address, Filter, NameOrAddress, Selector},
+    types::{Address, Filter, NameOrAddress, Selector, ValueOrArray},
 };
 
 #[cfg(not(feature = "legacy"))]
@@ -178,7 +178,7 @@ impl<M: Middleware> Contract<M> {
     pub fn event_with_filter<D: EthLogDecode>(&self, filter: Filter) -> Event<M, D> {
         Event {
             provider: &self.client,
-            filter: filter.address(self.address),
+            filter: filter.address(ValueOrArray::Value(self.address)),
             datatype: PhantomData,
         }
     }

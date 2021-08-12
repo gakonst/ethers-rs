@@ -1,4 +1,7 @@
-use ethers::{contract::ContractFactory, types::H256};
+use ethers::{
+    contract::ContractFactory,
+    types::{Filter, ValueOrArray, H256},
+};
 
 mod common;
 pub use common::*;
@@ -336,6 +339,43 @@ mod eth_tests {
                 .unwrap();
             assert_eq!(meta.block_hash, hash);
         }
+    }
+
+    #[tokio::test]
+    async fn watch_subscription_events_multiple_addresses() {
+        let (abi, bytecode) = compile_contract("SimpleStorage", "SimpleStorage.sol");
+        let ganache = Ganache::new().spawn();
+        let client = connect(&ganache, 0);
+        let contract_1 = deploy(client.clone(), abi.clone(), bytecode.clone()).await;
+        let contract_2 = deploy(client.clone(), abi.clone(), bytecode).await;
+
+        let ws = Provider::connect(ganache.ws_endpoint()).await.unwrap();
+        let filter = Filter::new().address(ValueOrArray::Array(vec![
+            contract_1.address(),
+            contract_2.address(),
+        ]));
+        let mut stream = ws.subscribe_logs(&filter).await.unwrap();
+
+        // and we make a few calls
+        let call = contract_1
+            .method::<_, H256>("setValue", "1".to_string())
+            .unwrap()
+            .legacy();
+        let pending_tx = call.send().await.unwrap();
+        let _receipt = pending_tx.await.unwrap();
+
+        let call = contract_2
+            .method::<_, H256>("setValue", "2".to_string())
+            .unwrap()
+            .legacy();
+        let pending_tx = call.send().await.unwrap();
+        let _receipt = pending_tx.await.unwrap();
+
+        // unwrap the option of the stream, then unwrap the decoding result
+        let log_1 = stream.next().await.unwrap();
+        let log_2 = stream.next().await.unwrap();
+        assert_eq!(log_1.address, contract_1.address());
+        assert_eq!(log_2.address, contract_2.address());
     }
 
     #[tokio::test]
