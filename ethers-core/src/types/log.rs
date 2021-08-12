@@ -181,9 +181,7 @@ pub struct Filter {
     pub block_option: FilterBlockOption,
 
     /// Address
-    // TODO: The spec says that this can also be an array, do we really want to
-    // monitor for the same event for multiple contracts?
-    address: Option<Address>,
+    address: Option<ValueOrArray<Address>>,
 
     /// Topics
     // TODO: We could improve the low level API here by using ethabi's RawTopicFilter
@@ -331,7 +329,7 @@ impl Filter {
         self
     }
 
-    pub fn address<T: Into<Address>>(mut self, address: T) -> Self {
+    pub fn address<T: Into<ValueOrArray<Address>>>(mut self, address: T) -> Self {
         self.address = Some(address.into());
         self
     }
@@ -449,7 +447,7 @@ mod tests {
         let ser = serialize(&filter);
         assert_eq!(ser, json!({ "topics": [] }));
 
-        let filter = filter.address(addr);
+        let filter = filter.address(ValueOrArray::Value(addr));
 
         let ser = serialize(&filter);
         assert_eq!(ser, json!({"address" : addr, "topics": []}));
