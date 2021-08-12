@@ -41,13 +41,9 @@ pub struct Transaction {
     /// Transfered value
     pub value: U256,
 
-    /// Gas Price
+    /// Gas Price, null for Type 2 transactions
     #[serde(rename = "gasPrice")]
-    // TODO: Should this be deprecated?
-    // https://twitter.com/TimBeiko/status/1413536062429794304
-    // If yes, how will we handle pre-calculating the transaction's hash keccak256(rlp(tx)),
-    // given that it contains the gas price?
-    pub gas_price: U256,
+    pub gas_price: Option<U256>,
 
     /// Gas amount
     pub gas: U256,
@@ -123,6 +119,9 @@ pub struct Transaction {
     /// Represents the maximum amount that a user is willing to pay for their tx (inclusive of baseFeePerGas and maxPriorityFeePerGas).
     /// The difference between maxFeePerGas and baseFeePerGas + maxPriorityFeePerGas is “refunded” to the user.
     pub max_fee_per_gas: Option<U256>,
+
+    #[serde(rename = "chainId", default, skip_serializing_if = "Option::is_none")]
+    pub chain_id: Option<U256>,
 }
 
 impl Transaction {
