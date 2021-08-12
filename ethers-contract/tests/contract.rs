@@ -359,13 +359,15 @@ mod eth_tests {
         // and we make a few calls
         let call = contract_1
             .method::<_, H256>("setValue", "1".to_string())
-            .unwrap();
+            .unwrap()
+            .legacy();
         let pending_tx = call.send().await.unwrap();
         let _receipt = pending_tx.await.unwrap();
 
         let call = contract_2
             .method::<_, H256>("setValue", "2".to_string())
-            .unwrap();
+            .unwrap()
+            .legacy();
         let pending_tx = call.send().await.unwrap();
         let _receipt = pending_tx.await.unwrap();
 
