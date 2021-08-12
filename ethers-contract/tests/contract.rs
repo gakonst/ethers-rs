@@ -1,4 +1,7 @@
-use ethers::{contract::ContractFactory, types::{H256, ValueOrArray, Filter}};
+use ethers::{
+    contract::ContractFactory,
+    types::{Filter, ValueOrArray, H256},
+};
 
 mod common;
 pub use common::*;
@@ -347,9 +350,12 @@ mod eth_tests {
         let contract_2 = deploy(client.clone(), abi.clone(), bytecode).await;
 
         let ws = Provider::connect(ganache.ws_endpoint()).await.unwrap();
-        let filter = Filter::new().address(ValueOrArray::Array(vec!(contract_1.address(), contract_2.address())));
+        let filter = Filter::new().address(ValueOrArray::Array(vec![
+            contract_1.address(),
+            contract_2.address(),
+        ]));
         let mut stream = ws.subscribe_logs(&filter).await.unwrap();
-    
+
         // and we make a few calls
         let call = contract_1
             .method::<_, H256>("setValue", "1".to_string())

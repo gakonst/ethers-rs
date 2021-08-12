@@ -7,7 +7,7 @@ use crate::{
 
 use ethers_core::{
     abi::{Abi, Detokenize, Error, EventExt, Function, Tokenize},
-    types::{Address, Filter, ValueOrArray, NameOrAddress, Selector},
+    types::{Address, Filter, NameOrAddress, Selector, ValueOrArray},
 };
 
 #[cfg(not(feature = "legacy"))]
