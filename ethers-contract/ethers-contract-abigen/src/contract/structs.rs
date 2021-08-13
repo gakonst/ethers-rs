@@ -8,6 +8,7 @@ use ethers_core::abi::{struct_def::FieldType, ParamType};
 
 use crate::contract::{types, Context};
 use crate::util;
+use ethers_core::abi::struct_def::StructFieldType;
 
 impl Context {
     /// Generate corresponding types for structs parsed from a human readable ABI
@@ -29,44 +30,19 @@ impl Context {
                         fields.push(quote! { pub #field_name: #ty });
                     }
                     FieldType::Struct(struct_ty) => {
-                        let ty = util::ident(struct_ty.name());
+                        let ty = expand_struct_type(struct_ty);
                         fields.push(quote! { pub #field_name: #ty });
 
+                        let name = struct_ty.name();
                         let tuple = self
                             .abi_parser
                             .struct_tuples
-                            .get(struct_ty.name())
-                            .context(format!("No types found for {}", struct_ty.name()))?
+                            .get(name)
+                            .context(format!("No types found for {}", name))?
                             .clone();
-                        param_types.push(ParamType::Tuple(tuple));
-                    }
-                    FieldType::StructArray(struct_ty) => {
-                        let ty = util::ident(struct_ty.name());
-                        fields.push(quote! { pub #field_name: ::std::vec::Vec<#ty> });
+                        let tuple = ParamType::Tuple(tuple);
 
-                        let tuple = self
-                            .abi_parser
-                            .struct_tuples
-                            .get(struct_ty.name())
-                            .context(format!("No types found for {}", struct_ty.name()))?
-                            .clone();
-                        param_types.push(ParamType::Array(Box::new(ParamType::Tuple(tuple))));
-                    }
-                    FieldType::FixedStructArray(struct_ty, len) => {
-                        let ty = util::ident(struct_ty.name());
-                        let size = Literal::usize_unsuffixed(*len);
-                        fields.push(quote! { pub #field_name: [#ty; #size] });
-
-                        let tuple = self
-                            .abi_parser
-                            .struct_tuples
-                            .get(struct_ty.name())
-                            .context(format!("No types found for {}", struct_ty.name()))?
-                            .clone();
-                        param_types.push(ParamType::FixedArray(
-                            Box::new(ParamType::Tuple(tuple)),
-                            *len,
-                        ));
+                        param_types.push(struct_ty.as_param(tuple));
                     }
                     FieldType::Mapping(_) => {
                         return Err(anyhow::anyhow!(
@@ -105,5 +81,23 @@ impl Context {
             });
         }
         Ok(structs)
+    }
+}
+
+/// Expands to the rust struct type
+fn expand_struct_type(struct_ty: &StructFieldType) -> TokenStream {
+    match struct_ty {
+        StructFieldType::Type(ty) => {
+            let ty = util::ident(ty.name());
+            quote! {#ty}
+        }
+        StructFieldType::Array(ty) => {
+            let ty = expand_struct_type(&*ty);
+            quote! {::std::vec::Vec<#ty>}
+        }
+        StructFieldType::FixedArray(ty, size) => {
+            let ty = expand_struct_type(&*ty);
+            quote! { [#ty; #size]}
+        }
     }
 }

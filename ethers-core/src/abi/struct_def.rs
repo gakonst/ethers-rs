@@ -6,11 +6,17 @@ use crate::abi::{param_type::Reader, ParamType};
 /// A field declaration inside a struct
 #[derive(Debug, Clone, PartialEq)]
 pub struct FieldDeclaration {
-    name: String,
-    ty: FieldType,
+    pub name: String,
+    pub ty: FieldType,
 }
 
 impl FieldDeclaration {
+
+    pub fn new( name: String,
+                ty: FieldType) -> Self {
+        Self{name, ty}
+    }
+
     pub fn name(&self) -> &str {
         &self.name
     }
@@ -24,13 +30,11 @@ impl FieldDeclaration {
 #[derive(Debug, Clone, PartialEq)]
 pub enum FieldType {
     /// Represents elementary types, see [`ParamType`]
+    ///
+    /// Note: tuples will be treated as rust tuples
     Elementary(ParamType),
     /// A non elementary type field, treated as user defined struct
     Struct(StructFieldType),
-    // Array of user defined type
-    StructArray(StructFieldType),
-    // Array with fixed size of user defined type
-    FixedStructArray(StructFieldType, usize),
     /// Mapping
     Mapping(Box<MappingType>),
 }
@@ -43,8 +47,7 @@ impl FieldType {
     pub(crate) fn as_struct(&self) -> Option<&StructFieldType> {
         match self {
             FieldType::Struct(s)
-            | FieldType::StructArray(s)
-            | FieldType::FixedStructArray(s, _) => Some(s),
+             => Some(s),
             _ => None,
         }
     }
@@ -72,8 +75,8 @@ pub struct StructFieldDeclaration {
 
 /// How the type of a struct field is referenced
 #[derive(Debug, Clone, PartialEq)]
-pub struct StructFieldType {
-    /// The name of the struct
+pub struct StructType {
+    /// The name of the struct (or rather the name of the rust type)
     name: String,
     /// All previous projections up until the name
     ///
@@ -81,9 +84,53 @@ pub struct StructFieldType {
     projections: Vec<String>,
 }
 
-impl StructFieldType {
+impl StructType {
+    pub fn new(name: String, projections: Vec<String>) -> Self {
+        Self{
+            name, projections
+        }
+    }
+
     pub fn name(&self) -> &str {
         &self.name
+    }
+}
+
+
+/// Represents the type of a field in a struct
+#[derive(Debug, Clone, PartialEq)]
+pub enum StructFieldType {
+    /// A non elementary type field, represents a user defined struct
+    Type(StructType),
+    // Array of user defined type
+    Array(Box<StructFieldType>),
+    // Array with fixed size of user defined type
+    FixedArray(Box<StructFieldType>, usize)
+}
+
+impl StructFieldType {
+
+    pub fn name(&self) -> &str {
+       match self {
+           StructFieldType::Type(ty) => {&ty.name}
+           StructFieldType::Array(ty) => {ty.name()}
+           StructFieldType::FixedArray(ty, _) => {ty.name()}
+       }
+    }
+
+    pub fn as_param(&self, tuple: ParamType)  -> ParamType {
+        match self {
+            StructFieldType::Type(_) => {
+                tuple
+            }
+            StructFieldType::Array(ty) => {
+                ty.as_param(ParamType::Array(Box::new(tuple)))
+            }
+            StructFieldType::FixedArray(ty, size) => {
+                ty.as_param(ParamType::FixedArray(Box::new(tuple), *size))
+            }
+        }
+
     }
 
     /// Parse a struct field declaration
@@ -97,10 +144,10 @@ impl StructFieldType {
             let mut chars = input.chars();
             match chars.next() {
                 None => {
-                    return Ok(FieldType::Struct(StructFieldType {
+                    return Ok(FieldType::Struct(StructFieldType::Type( StructType{
                         name: ty,
                         projections,
-                    }))
+                    })))
                 }
                 Some(' ') | Some('\t') | Some('[') => {
                     // array
@@ -118,18 +165,21 @@ impl StructFieldType {
                                 }
                             }
                             Some(']') => {
-                                let ty = StructFieldType {
+                                let ty = StructType {
                                     name: ty,
                                     projections,
                                 };
 
                                 return if size.is_empty() {
-                                    Ok(FieldType::StructArray(ty))
+                                    Ok(FieldType::Struct(StructFieldType::Array(Box::new( StructFieldType::Type(ty)))))
                                 } else {
                                     let size = size.parse().map_err(|_| {
                                         format_err!("Illegal array size `{}` at `{}`", size, input)
                                     })?;
-                                    Ok(FieldType::FixedStructArray(ty, size))
+                                    Ok(FieldType::Struct(
+                                        StructFieldType::FixedArray(Box::new( StructFieldType::Type(ty)), size)
+                                        )
+                                    )
                                 };
                             }
                             Some(c) => {
@@ -157,8 +207,8 @@ impl StructFieldType {
 /// Represents a solidity struct
 #[derive(Debug, Clone, PartialEq)]
 pub struct SolStruct {
-    name: String,
-    fields: Vec<FieldDeclaration>,
+    pub name: String,
+    pub fields: Vec<FieldDeclaration>,
 }
 
 impl SolStruct {
