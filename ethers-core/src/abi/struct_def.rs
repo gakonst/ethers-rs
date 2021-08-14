@@ -11,10 +11,8 @@ pub struct FieldDeclaration {
 }
 
 impl FieldDeclaration {
-
-    pub fn new( name: String,
-                ty: FieldType) -> Self {
-        Self{name, ty}
+    pub fn new(name: String, ty: FieldType) -> Self {
+        Self { name, ty }
     }
 
     pub fn name(&self) -> &str {
@@ -46,8 +44,7 @@ impl FieldType {
 
     pub(crate) fn as_struct(&self) -> Option<&StructFieldType> {
         match self {
-            FieldType::Struct(s)
-             => Some(s),
+            FieldType::Struct(s) => Some(s),
             _ => None,
         }
     }
@@ -86,16 +83,13 @@ pub struct StructType {
 
 impl StructType {
     pub fn new(name: String, projections: Vec<String>) -> Self {
-        Self{
-            name, projections
-        }
+        Self { name, projections }
     }
 
     pub fn name(&self) -> &str {
         &self.name
     }
 }
-
 
 /// Represents the type of a field in a struct
 #[derive(Debug, Clone, PartialEq)]
@@ -105,25 +99,24 @@ pub enum StructFieldType {
     // Array of user defined type
     Array(Box<StructFieldType>),
     // Array with fixed size of user defined type
-    FixedArray(Box<StructFieldType>, usize)
+    FixedArray(Box<StructFieldType>, usize),
 }
 
 impl StructFieldType {
-
     pub fn name(&self) -> &str {
-       match self {
-           StructFieldType::Type(ty) => {&ty.name}
-           StructFieldType::Array(ty) => {ty.name()}
-           StructFieldType::FixedArray(ty, _) => {ty.name()}
-       }
+        match self {
+            StructFieldType::Type(ty) => &ty.name,
+            StructFieldType::Array(ty) => ty.name(),
+            StructFieldType::FixedArray(ty, _) => ty.name(),
+        }
     }
 
     pub fn projections(&self) -> &[String] {
-       match self {
-           StructFieldType::Type(ty) => {&ty.projections}
-           StructFieldType::Array(ty) => {ty.projections()}
-           StructFieldType::FixedArray(ty, _) => {ty.projections()}
-       }
+        match self {
+            StructFieldType::Type(ty) => &ty.projections,
+            StructFieldType::Array(ty) => ty.projections(),
+            StructFieldType::FixedArray(ty, _) => ty.projections(),
+        }
     }
 
     pub fn identifier(&self) -> String {
@@ -136,19 +129,14 @@ impl StructFieldType {
         }
     }
 
-    pub fn as_param(&self, tuple: ParamType)  -> ParamType {
+    pub fn as_param(&self, tuple: ParamType) -> ParamType {
         match self {
-            StructFieldType::Type(_) => {
-                tuple
-            }
-            StructFieldType::Array(ty) => {
-                ty.as_param(ParamType::Array(Box::new(tuple)))
-            }
+            StructFieldType::Type(_) => tuple,
+            StructFieldType::Array(ty) => ty.as_param(ParamType::Array(Box::new(tuple))),
             StructFieldType::FixedArray(ty, size) => {
                 ty.as_param(ParamType::FixedArray(Box::new(tuple), *size))
             }
         }
-
     }
 
     /// Parse a struct field declaration
@@ -162,7 +150,7 @@ impl StructFieldType {
             let mut chars = input.chars();
             match chars.next() {
                 None => {
-                    return Ok(FieldType::Struct(StructFieldType::Type( StructType{
+                    return Ok(FieldType::Struct(StructFieldType::Type(StructType {
                         name: ty,
                         projections,
                     })))
@@ -189,15 +177,17 @@ impl StructFieldType {
                                 };
 
                                 return if size.is_empty() {
-                                    Ok(FieldType::Struct(StructFieldType::Array(Box::new( StructFieldType::Type(ty)))))
+                                    Ok(FieldType::Struct(StructFieldType::Array(Box::new(
+                                        StructFieldType::Type(ty),
+                                    ))))
                                 } else {
                                     let size = size.parse().map_err(|_| {
                                         format_err!("Illegal array size `{}` at `{}`", size, input)
                                     })?;
-                                    Ok(FieldType::Struct(
-                                        StructFieldType::FixedArray(Box::new( StructFieldType::Type(ty)), size)
-                                        )
-                                    )
+                                    Ok(FieldType::Struct(StructFieldType::FixedArray(
+                                        Box::new(StructFieldType::Type(ty)),
+                                        size,
+                                    )))
                                 };
                             }
                             Some(c) => {
@@ -296,11 +286,11 @@ impl SolStruct {
     pub fn as_tuple(&self) -> Option<ParamType> {
         let mut params = Vec::with_capacity(self.fields.len());
         for field in self.fields() {
-           if let FieldType::Elementary(ref param) = field.ty {
-               params.push(param.clone())
-           } else {
-               return None
-           }
+            if let FieldType::Elementary(ref param) = field.ty {
+                params.push(param.clone())
+            } else {
+                return None;
+            }
         }
         Some(ParamType::Tuple(params))
     }
@@ -467,7 +457,7 @@ mod tests {
                     },
                     FieldDeclaration {
                         name: "_other".to_string(),
-                        ty: FieldType::Struct(StructFieldType::Type(StructType{
+                        ty: FieldType::Struct(StructFieldType::Type(StructType {
                             name: "Inner".to_string(),
                             projections: vec!["Some".to_string(), "Other".to_string()]
                         })),
