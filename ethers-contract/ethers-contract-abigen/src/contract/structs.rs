@@ -277,6 +277,16 @@ impl InternalStructs {
                 .collect(),
         }
     }
+
+    /// Returns the name of the rust type that will be generated if the given input is a struct
+    /// NOTE: this does not account for arrays or fixed arrays
+    pub fn get_function_input_struct_type(&self, function: &str, input: &str) -> Option<&str> {
+        let key = (function.to_string(), input.to_string());
+        self.function_params
+            .get(&key)
+            .and_then(|id| self.rust_type_names.get(id))
+            .map(String::as_str)
+    }
 }
 
 /// This will determine the name of the rust type and will make sure that possible collisions are resolved by adjusting the actual Rust name of the structure, e.g. `LibraryA.Point` and `LibraryB.Point` to `LibraryAPoint` and `LibraryBPoint`.
@@ -335,14 +345,13 @@ fn resolve_struct_tuples(all_structs: &HashMap<String, SolStruct>) -> HashMap<St
                         let ty_id = field_ty.identifier();
                         if let Some(nested) = params.get(&ty_id).cloned() {
                             match field_ty {
-                                StructFieldType::Type(_) => {
-                                    struct_params.push(nested)
-                                }
+                                StructFieldType::Type(_) => struct_params.push(nested),
                                 StructFieldType::Array(_) => {
                                     struct_params.push(ParamType::Array(Box::new(nested)));
                                 }
                                 StructFieldType::FixedArray(_, size) => {
-                                    struct_params.push(ParamType::FixedArray(Box::new(nested), *size));
+                                    struct_params
+                                        .push(ParamType::FixedArray(Box::new(nested), *size));
                                 }
                             }
                         } else {
