@@ -467,10 +467,10 @@ mod tests {
                     },
                     FieldDeclaration {
                         name: "_other".to_string(),
-                        ty: FieldType::Struct(StructFieldType {
+                        ty: FieldType::Struct(StructFieldType::Type(StructType{
                             name: "Inner".to_string(),
                             projections: vec!["Some".to_string(), "Other".to_string()]
-                        }),
+                        })),
                     },
                 ],
             }
