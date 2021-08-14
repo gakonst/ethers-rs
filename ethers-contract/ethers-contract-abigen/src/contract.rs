@@ -7,6 +7,8 @@ mod types;
 
 use super::util;
 use super::Abigen;
+use crate::contract::structs::InternalStructs;
+use crate::rawabi::RawAbi;
 use anyhow::{anyhow, Context as _, Result};
 use ethers_core::abi::AbiParser;
 use ethers_core::{
@@ -29,6 +31,9 @@ pub(crate) struct Context {
 
     /// The parser used for human readable format
     abi_parser: AbiParser,
+
+    /// Contains all the solidity structs extracted from the JSON ABI.
+    internal_structs: InternalStructs,
 
     /// Was the ABI in human readable format?
     human_readable: bool,
@@ -118,6 +123,14 @@ impl Context {
             (abi_parser.parse_str(&abi_str)?, true)
         };
 
+        // try to extract all the solidity structs from the normal JSON ABI
+        // we need to parse the json abi again because we need the internalType fields which are omitted by ethabi.
+        let internal_structs = (!human_readable)
+            .then(|| serde_json::from_str::<RawAbi>(&abi_str).ok())
+            .flatten()
+            .map(InternalStructs::new)
+            .unwrap_or_default();
+
         let contract_name = util::ident(&args.contract_name);
 
         // NOTE: We only check for duplicate signatures here, since if there are
@@ -146,6 +159,7 @@ impl Context {
             human_readable,
             abi_str: Literal::string(&abi_str),
             abi_parser,
+            internal_structs,
             contract_name,
             method_aliases,
             event_derives,

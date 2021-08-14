@@ -118,6 +118,24 @@ impl StructFieldType {
        }
     }
 
+    pub fn projections(&self) -> &[String] {
+       match self {
+           StructFieldType::Type(ty) => {&ty.projections}
+           StructFieldType::Array(ty) => {ty.projections()}
+           StructFieldType::FixedArray(ty, _) => {ty.projections()}
+       }
+    }
+
+    pub fn identifier(&self) -> String {
+        let name = self.name();
+        let path = self.projections().join(".");
+        if path.is_empty() {
+            name.to_string()
+        } else {
+            format!("{}.{}", path, name)
+        }
+    }
+
     pub fn as_param(&self, tuple: ParamType)  -> ParamType {
         match self {
             StructFieldType::Type(_) => {
@@ -272,6 +290,19 @@ impl SolStruct {
     /// All the fields of this struct
     pub fn fields(&self) -> &Vec<FieldDeclaration> {
         &self.fields
+    }
+
+    /// If the struct only consists of elementary fields, this will return `ParamType::Tuple` with all those fields
+    pub fn as_tuple(&self) -> Option<ParamType> {
+        let mut params = Vec::with_capacity(self.fields.len());
+        for field in self.fields() {
+           if let FieldType::Elementary(ref param) = field.ty {
+               params.push(param.clone())
+           } else {
+               return None
+           }
+        }
+        Some(ParamType::Tuple(params))
     }
 }
 
