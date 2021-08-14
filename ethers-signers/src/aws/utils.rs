@@ -13,7 +13,7 @@ use ethers_core::{
         elliptic_curve::sec1::ToEncodedPoint,
         FieldBytes,
     },
-    types::{Address, Signature as EthSig, H256},
+    types::{Address, Signature as EthSig, U256},
     utils::keccak256,
 };
 use rusoto_kms::{GetPublicKeyResponse, SignResponse};
@@ -26,8 +26,8 @@ pub(super) fn rsig_to_ethsig(sig: &RSig) -> EthSig {
     let v = (v + 27) as u64;
     let r_bytes: FieldBytes = sig.r().into();
     let s_bytes: FieldBytes = sig.s().into();
-    let r = H256::from_slice(&r_bytes.as_slice());
-    let s = H256::from_slice(&s_bytes.as_slice());
+    let r = U256::from_big_endian(&r_bytes.as_slice());
+    let s = U256::from_big_endian(&s_bytes.as_slice());
     EthSig { r, s, v }
 }
 
