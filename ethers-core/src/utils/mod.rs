@@ -4,6 +4,12 @@ mod ganache;
 #[cfg(not(target_arch = "wasm32"))]
 pub use ganache::{Ganache, GanacheInstance};
 
+/// Utilities for launching a hardhat testnet instance
+#[cfg(not(target_arch = "wasm32"))]
+mod hardhat;
+#[cfg(not(target_arch = "wasm32"))]
+pub use hardhat::{Hardhat, HardhatInstance};
+
 /// Utilities for launching a go-ethereum dev-mode instance
 #[cfg(not(target_arch = "wasm32"))]
 mod geth;
