@@ -1,6 +1,6 @@
 // Code adapted from: https://github.com/tomusdrw/rust-web3/blob/master/src/api/accounts.rs
 use crate::{
-    types::{Address, H256},
+    types::{Address, H256, U256},
     utils::hash_message,
 };
 
@@ -55,9 +55,9 @@ pub enum RecoveryMessage {
 /// An ECDSA signature
 pub struct Signature {
     /// R value
-    pub r: H256,
+    pub r: U256,
     /// S Value
-    pub s: H256,
+    pub s: U256,
     /// V value in 'Electrum' notation.
     pub v: u64,
 }
@@ -118,8 +118,12 @@ impl Signature {
     fn as_signature(&self) -> Result<(RecoverableSignature, RecoveryId), SignatureError> {
         let recovery_id = self.recovery_id()?;
         let signature = {
-            let gar: &GenericArray<u8, U32> = GenericArray::from_slice(self.r.as_bytes());
-            let gas: &GenericArray<u8, U32> = GenericArray::from_slice(self.s.as_bytes());
+            let mut r_bytes = [0u8; 32];
+            let mut s_bytes = [0u8; 32];
+            self.r.to_big_endian(&mut r_bytes);
+            self.s.to_big_endian(&mut s_bytes);
+            let gar: &GenericArray<u8, U32> = GenericArray::from_slice(&r_bytes);
+            let gas: &GenericArray<u8, U32> = GenericArray::from_slice(&s_bytes);
             let sig = K256Signature::from_scalars(*gar, *gas)?;
             RecoverableSignature::new(&sig, recovery_id)?
         };
@@ -163,8 +167,8 @@ impl<'a> TryFrom<&'a [u8]> for Signature {
         }
 
         let v = bytes[64];
-        let r = H256::from_slice(&bytes[0..32]);
-        let s = H256::from_slice(&bytes[32..64]);
+        let r = U256::from_big_endian(&bytes[0..32]);
+        let s = U256::from_big_endian(&bytes[32..64]);
 
         Ok(Signature { r, s, v: v.into() })
     }
@@ -183,8 +187,12 @@ impl FromStr for Signature {
 impl From<&Signature> for [u8; 65] {
     fn from(src: &Signature) -> [u8; 65] {
         let mut sig = [0u8; 65];
-        sig[..32].copy_from_slice(src.r.as_bytes());
-        sig[32..64].copy_from_slice(src.s.as_bytes());
+        let mut r_bytes = [0u8; 32];
+        let mut s_bytes = [0u8; 32];
+        src.r.to_big_endian(&mut r_bytes);
+        src.s.to_big_endian(&mut s_bytes);
+        sig[..32].copy_from_slice(&r_bytes);
+        sig[32..64].copy_from_slice(&s_bytes);
         // TODO: What if we try to serialize a signature where
         // the `v` is not normalized?
         sig[64] = src.v as u8;
