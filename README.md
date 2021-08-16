@@ -93,6 +93,7 @@ built with async/await and std futures from the ground up.
 
 - [Yield Liquidator](https://github.com/yieldprotocol/yield-liquidator/): Liquidator for Yield Protocol
 - [MEV Inspect](https://github.com/flashbots/mev-inspect-rs/): Miner Extractable Value inspector
+- [Ethers Flashbots](https://github.com/onbjerg/ethers-flashbots): Ethers middleware for [Flashbots](https://docs.flashbots.net)
 - [Ethers Fireblocks](https://github.com/gakonst/ethers-fireblocks): Ethers middleware and signer for [Fireblocks](https://fireblocks.io)' API
 - [Celo Threshold BLS DKG](https://github.com/celo-org/celo-threshold-bls-rs/): CLI for using Celo as a data availability network for the Joint-Feldman BLS DKG
 - [Celo Plumo Prover](https://github.com/celo-org/plumo-prover): Creates Celo's ultralight client proof from on-chain data
