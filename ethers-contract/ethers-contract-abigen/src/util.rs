@@ -40,6 +40,7 @@ pub fn determine_ethers_crates() -> (&'static str, &'static str) {
             "{}/Cargo.toml",
             std::env::var("CARGO_MANIFEST_DIR").expect("No Manifest found")
         ))
+        .no_deps()
         .exec()
         .ok()
         .and_then(|metadata| {

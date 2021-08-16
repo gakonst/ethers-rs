@@ -34,14 +34,14 @@ ws = ["ethers-providers/ws"]
 abigen = ["ethers-contract/abigen"]
 
 [dependencies]
-ethers-contract = { version = "0.4.0", path = "../ethers-contract" }
-ethers-core = { version = "0.4.0", path = "../ethers-core", features = ["setup"] }
-ethers-providers = { version = "0.4.0", path = "../ethers-providers" }
-ethers-signers = { version = "0.4.0", path = "../ethers-signers" }
-ethers-middleware = { version = "0.4.0", path = "../ethers-middleware" }
+ethers-contract = { version = "0.4.7", path = "../ethers-contract" }
+ethers-core = { version = "0.4.6", path = "../ethers-core", features = ["setup"] }
+ethers-providers = { version = "0.4.6", path = "../ethers-providers" }
+ethers-signers = { version = "0.4.6", path = "../ethers-signers" }
+ethers-middleware = { version = "0.4.8", path = "../ethers-middleware" }
 
 [dev-dependencies]
-ethers-contract = { version = "0.4.0", path = "../ethers-contract", features = ["abigen"] }
+ethers-contract = { version = "0.4.7", path = "../ethers-contract", features = ["abigen"] }
 
 anyhow = "1.0.39"
 rand = "0.8.4"

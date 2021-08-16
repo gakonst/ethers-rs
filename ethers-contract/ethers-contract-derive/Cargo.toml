@@ -1,6 +1,6 @@
 [package]
 name = "ethers-contract-derive"
-version = "0.4.0"
+version = "0.4.7"
 authors = ["Nicholas Rodrigues Lordello <nlordell@gmail.com>", "Georgios Konstantopoulos <me@gakonst.com>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
@@ -13,8 +13,8 @@ keywords = ["ethereum", "web3", "celo", "ethers"]
 proc-macro = true
 
 [dependencies]
-ethers-core = { version = "0.4.0", path = "../../ethers-core" }
-ethers-contract-abigen = { version = "0.4.0", path = "../ethers-contract-abigen" }
+ethers-core = { version = "0.4.6", path = "../../ethers-core" }
+ethers-contract-abigen = { version = "0.4.7", path = "../ethers-contract-abigen" }
 
 serde_json = "1.0.53"
 hex = { version = "0.4.3", default-features = false, features = ["std"] }
