@@ -22,40 +22,107 @@ impl Context {
             .flatten()
             .map(|function| {
                 let signature = function.abi_signature();
-                expand_function(function, aliases.remove(&signature))
+                self.expand_function(function, aliases.remove(&signature))
                     .with_context(|| format!("error expanding function '{}'", signature))
             })
             .collect::<Result<Vec<_>>>()?;
 
         Ok(quote! { #( #functions )* })
     }
-}
 
-#[allow(unused)]
-fn expand_function(function: &Function, alias: Option<Ident>) -> Result<TokenStream> {
-    let name = alias.unwrap_or_else(|| util::safe_ident(&function.name.to_snake_case()));
-    let selector = expand_selector(function.selector());
-
-    let input = expand_inputs(&function.inputs)?;
-
-    let outputs = expand_fn_outputs(&function.outputs)?;
-
-    let result = quote! { ethers_contract::builders::ContractCall<M, #outputs> };
-
-    let arg = expand_inputs_call_arg(&function.inputs);
-    let doc = util::expand_doc(&format!(
-        "Calls the contract's `{}` (0x{}) function",
-        function.name,
-        hex::encode(function.selector())
-    ));
-    Ok(quote! {
-
-        #doc
-        pub fn #name(&self #input) -> #result {
-            self.0.method_hash(#selector, #arg)
-                .expect("method not found (this should never happen)")
+    fn expand_inputs_call_arg_with_structs(
+        &self,
+        fun: &Function,
+    ) -> Result<(TokenStream, TokenStream)> {
+        let mut args = Vec::with_capacity(fun.inputs.len());
+        let mut call_args = Vec::with_capacity(fun.inputs.len());
+        for (i, param) in fun.inputs.iter().enumerate() {
+            let name = util::expand_input_name(i, &param.name);
+            let ty = self.expand_input_param(fun, &param.name, &param.kind)?;
+            args.push(quote! { #name: #ty });
+            let call_arg = match param.kind {
+                // this is awkward edge case where the function inputs are a single struct
+                // we need to force this argument into a tuple so it gets expanded to `((#name,))`
+                // this is currently necessary because internally `flatten_tokens` is called which removes the outermost `tuple` level
+                // and since `((#name))` is not a rust tuple it doesn't get wrapped into another tuple that will be peeled off by `flatten_tokens`
+                ParamType::Tuple(_) if fun.inputs.len() == 1 => {
+                    // make sure the tuple gets converted to `Token::Tuple`
+                    quote! {(#name,)}
+                }
+                _ => name,
+            };
+            call_args.push(call_arg);
         }
-    })
+        let args = quote! { #( , #args )* };
+        let call_args = match call_args.len() {
+            0 => quote! { () },
+            1 => quote! { #( #call_args )* },
+            _ => quote! { ( #(#call_args, )* ) },
+        };
+
+        Ok((args, call_args))
+    }
+
+    fn expand_input_param(
+        &self,
+        fun: &Function,
+        param: &str,
+        kind: &ParamType,
+    ) -> Result<TokenStream> {
+        match kind {
+            ParamType::Array(ty) => {
+                let ty = self.expand_input_param(fun, param, ty)?;
+                Ok(quote! {
+                    ::std::vec::Vec<#ty>
+                })
+            }
+            ParamType::FixedArray(ty, size) => {
+                let ty = self.expand_input_param(fun, param, ty)?;
+                let size = *size;
+                Ok(quote! {[#ty; #size]})
+            }
+            ParamType::Tuple(_) => {
+                let ty = if let Some(rust_struct_name) = self
+                    .internal_structs
+                    .get_function_input_struct_type(&fun.name, param)
+                {
+                    let ident = util::ident(rust_struct_name);
+                    quote! {#ident}
+                } else {
+                    types::expand(kind)?
+                };
+                Ok(ty)
+            }
+            _ => types::expand(kind),
+        }
+    }
+
+    #[allow(unused)]
+    fn expand_function(&self, function: &Function, alias: Option<Ident>) -> Result<TokenStream> {
+        let name = alias.unwrap_or_else(|| util::safe_ident(&function.name.to_snake_case()));
+        let selector = expand_selector(function.selector());
+
+        // TODO use structs
+        let outputs = expand_fn_outputs(&function.outputs)?;
+
+        let result = quote! { ethers_contract::builders::ContractCall<M, #outputs> };
+
+        let (input, arg) = self.expand_inputs_call_arg_with_structs(function)?;
+
+        let doc = util::expand_doc(&format!(
+            "Calls the contract's `{}` (0x{}) function",
+            function.name,
+            hex::encode(function.selector())
+        ));
+        Ok(quote! {
+
+            #doc
+            pub fn #name(&self #input) -> #result {
+                self.0.method_hash(#selector, #arg)
+                    .expect("method not found (this should never happen)")
+            }
+        })
+    }
 }
 
 // converts the function params to name/type pairs

@@ -110,26 +110,7 @@ impl AbiParser {
                     FieldType::Elementary(param) => tuple.push(param.clone()),
                     FieldType::Struct(ty) => {
                         if let Some(param) = self.struct_tuples.get(ty.name()).cloned() {
-                            tuple.push(ParamType::Tuple(param))
-                        } else {
-                            resolved = false;
-                            break;
-                        }
-                    }
-                    FieldType::StructArray(ty) => {
-                        if let Some(param) = self.struct_tuples.get(ty.name()).cloned() {
-                            tuple.push(ParamType::Array(Box::new(ParamType::Tuple(param))))
-                        } else {
-                            resolved = false;
-                            break;
-                        }
-                    }
-                    FieldType::FixedStructArray(ty, size) => {
-                        if let Some(param) = self.struct_tuples.get(ty.name()).cloned() {
-                            tuple.push(ParamType::FixedArray(
-                                Box::new(ParamType::Tuple(param)),
-                                *size,
-                            ))
+                            tuple.push(ty.as_param(ParamType::Tuple(param)))
                         } else {
                             resolved = false;
                             break;
@@ -331,13 +312,10 @@ impl AbiParser {
                     .map(ParamType::Tuple)
                     .ok_or_else(|| format_err!("Unknown struct `{}`", struct_ty.name()))?;
 
-                match field {
-                    FieldType::Struct(_) => Ok(tuple),
-                    FieldType::StructArray(_) => Ok(ParamType::Array(Box::new(tuple))),
-                    FieldType::FixedStructArray(_, size) => {
-                        Ok(ParamType::FixedArray(Box::new(tuple), size))
-                    }
-                    _ => bail!("Expected struct type"),
+                if let Some(field) = field.as_struct() {
+                    Ok(field.as_param(tuple))
+                } else {
+                    bail!("Expected struct type")
                 }
             } else {
                 bail!("Failed determine event type `{}`", type_str)
