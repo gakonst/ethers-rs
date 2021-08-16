@@ -1,6 +1,6 @@
 [package]
 name = "ethers"
-version = "0.4.0"
+version = "0.4.1"
 authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
 license = "MIT OR Apache-2.0"
 edition = "2018"
@@ -26,8 +26,10 @@ celo = [
     "ethers-signers/celo",
     "ethers-contract/celo",
     "ethers-middleware/celo",
+    "legacy"
 ]
 
+legacy = ["ethers-core/legacy", "ethers-contract/legacy"]
 ledger = ["ethers-signers/ledger"]
 yubi = ["ethers-signers/yubi"]
 ws = ["ethers-providers/ws"]
@@ -35,7 +37,7 @@ abigen = ["ethers-contract/abigen"]
 
 [dependencies]
 ethers-contract = { version = "0.4.7", path = "../ethers-contract" }
-ethers-core = { version = "0.4.6", path = "../ethers-core", features = ["setup"] }
+ethers-core = { version = "0.4.8", path = "../ethers-core", features = ["setup"] }
 ethers-providers = { version = "0.4.6", path = "../ethers-providers" }
 ethers-signers = { version = "0.4.6", path = "../ethers-signers" }
 ethers-middleware = { version = "0.4.8", path = "../ethers-middleware" }

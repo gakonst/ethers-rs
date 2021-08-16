@@ -1,7 +1,7 @@
 [package]
 name = "ethers-core"
 license = "MIT OR Apache-2.0"
-version = "0.4.7"
+version = "0.4.8"
 authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
 edition = "2018"
 description = "Core structures for the ethers-rs crate"
@@ -45,8 +45,9 @@ hex-literal = "0.3.3"
 futures-util = { version = "0.3.16" }
 
 [features]
-celo = [] # celo support extends the transaction format with extra fields
+celo = ["legacy"] # celo support extends the transaction format with extra fields
 setup = ["tokio", "futures-util"] # async support for concurrent setup
+legacy = []
 
 [package.metadata.docs.rs]
 all-features = true
