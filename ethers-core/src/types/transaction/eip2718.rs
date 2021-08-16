@@ -5,8 +5,21 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 
+/// The TypedTransaction enum represents all Ethereum transaction types.
+///
+/// Its variants correspond to specific allowed transactions:
+/// 1. Legacy (pre-EIP2718) [`TransactionRequest`]
+/// 2. EIP2930 (state access lists) [`Eip2930TransactionRequest`]
+/// 3. EIP1559 [`Eip1559TransactionRequest`]
+///
+/// To support Kovan and other non-London-compatbile networks, please enable
+/// the `legacy` crate feature. This will disable the `type` flag in the
+/// serialized transaction, and cause contract calls and other common actions
+/// to default to using the legacy transaction type.
+///
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
-#[serde(tag = "type")]
+#[cfg_attr(not(feature = "legacy"), serde(tag = "type"))]
+#[cfg_attr(feature = "legacy", serde(untagged))]
 pub enum TypedTransaction {
     // 0x00
     #[serde(rename = "0x00")]
