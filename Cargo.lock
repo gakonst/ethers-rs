@@ -814,7 +814,7 @@ dependencies = [
 
 [[package]]
 name = "ethers-contract"
-version = "0.4.0"
+version = "0.4.7"
 dependencies = [
  "ethers",
  "ethers-contract-abigen",
@@ -835,7 +835,7 @@ dependencies = [
 
 [[package]]
 name = "ethers-contract-abigen"
-version = "0.4.0"
+version = "0.4.7"
 dependencies = [
  "Inflector",
  "anyhow",
@@ -853,7 +853,7 @@ dependencies = [
 
 [[package]]
 name = "ethers-contract-derive"
-version = "0.4.0"
+version = "0.4.7"
 dependencies = [
  "ethers-contract-abigen",
  "ethers-core",
@@ -866,7 +866,7 @@ dependencies = [
 
 [[package]]
 name = "ethers-core"
-version = "0.4.0"
+version = "0.4.6"
 dependencies = [
  "arrayvec 0.7.1",
  "bincode",
@@ -894,7 +894,7 @@ dependencies = [
 
 [[package]]
 name = "ethers-middleware"
-version = "0.4.0"
+version = "0.4.8"
 dependencies = [
  "async-trait",
  "ethers",
@@ -918,7 +918,7 @@ dependencies = [
 
 [[package]]
 name = "ethers-providers"
-version = "0.4.0"
+version = "0.4.6"
 dependencies = [
  "async-trait",
  "auto_impl",
@@ -946,7 +946,7 @@ dependencies = [
 
 [[package]]
 name = "ethers-signers"
-version = "0.4.0"
+version = "0.4.6"
 dependencies = [
  "async-trait",
  "coins-bip32",
