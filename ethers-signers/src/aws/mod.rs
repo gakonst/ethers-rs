@@ -301,7 +301,10 @@ mod tests {
     #[tokio::test]
     async fn it_signs_messages() {
         let chain_id = 1;
-        let key_id = std::env::var("AWS_KEY_ID").expect("no key id");
+        let key_id = match std::env::var("AWS_KEY_ID") {
+            Ok(id) => id,
+            _ => return,
+        };
         setup_tracing();
         let client = env_client();
         let signer = AwsSigner::new(&client, key_id, chain_id).await.unwrap();
