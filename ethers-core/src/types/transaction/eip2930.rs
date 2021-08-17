@@ -127,6 +127,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(feature = "legacy", ignore)]
     fn serde_eip2930_tx() {
         let access_list = vec![AccessListItem {
             address: Address::zero(),
