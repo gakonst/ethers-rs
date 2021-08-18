@@ -191,6 +191,7 @@ pub fn parse_bytes32_string(bytes: &[u8; 32]) -> Result<&str, std::str::Utf8Erro
 ///
 /// Does not guarantee that the given port is unused after the function exists, just that it was
 /// unused before the function started (i.e., it does not reserve a port).
+#[cfg(not(target_arch = "wasm32"))]
 pub(crate) fn unused_port() -> u16 {
     let listener = std::net::TcpListener::bind("127.0.0.1:0")
         .expect("Failed to create TCP listener to find unused port");

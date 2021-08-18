@@ -3,6 +3,7 @@ use super::util;
 use ethers_core::types::Address;
 
 use anyhow::{anyhow, Context, Error, Result};
+use cfg_if::cfg_if;
 use std::{
     borrow::Cow,
     env, fs,
@@ -77,8 +78,21 @@ impl Source {
         P: AsRef<Path>,
         S: AsRef<str>,
     {
-        let base = Url::from_directory_path(root)
+        cfg_if! {
+             if #[cfg(target_arch = "wasm32")] {
+               let root = root.as_ref();
+                let root = if root.starts_with("/") {
+                   format!("file:://{}", root.display())
+                } else {
+                    format!("{}", root.display())
+                };
+                let base = Url::parse(&root)
+                    .map_err(|_| anyhow!("root path '{}' is not absolute"))?;
+             } else {
+                   let base = Url::from_directory_path(root)
             .map_err(|_| anyhow!("root path '{}' is not absolute"))?;
+            }
+        }
         let url = base.join(source.as_ref())?;
 
         match url.scheme() {
@@ -134,14 +148,26 @@ impl Source {
 
     /// Retrieves the source JSON of the artifact this will either read the JSON
     /// from the file system or retrieve a contract ABI from the network
-    /// dependending on the source type.
+    /// depending on the source type.
     pub fn get(&self) -> Result<String> {
-        match self {
-            Source::Local(path) => get_local_contract(path),
-            Source::Http(url) => get_http_contract(url),
-            Source::Etherscan(address) => get_etherscan_contract(*address),
-            Source::Npm(package) => get_npm_contract(package),
-            Source::String(abi) => Ok(abi.clone()),
+        cfg_if! {
+             if #[cfg(target_arch = "wasm32")] {
+                 match self {
+                    Source::Local(path) => get_local_contract(path),
+                    Source::Http(_) =>   panic!("Http abi location are not supported for wasm"),
+                    Source::Etherscan(_) => panic!("Etherscan abi location are not supported for wasm"),
+                    Source::Npm(_) => panic!("npm abi location are not supported for wasm"),
+                    Source::String(abi) => Ok(abi.clone()),
+                }
+             } else {
+                match self {
+                    Source::Local(path) => get_local_contract(path),
+                    Source::Http(url) => get_http_contract(url),
+                    Source::Etherscan(address) => get_etherscan_contract(*address),
+                    Source::Npm(package) => get_npm_contract(package),
+                    Source::String(abi) => Ok(abi.clone()),
+                }
+            }
         }
     }
 }
@@ -179,6 +205,7 @@ fn get_local_contract(path: &Path) -> Result<String> {
 }
 
 /// Retrieves a Truffle artifact or ABI from an HTTP URL.
+#[cfg(not(target_arch = "wasm32"))]
 fn get_http_contract(url: &Url) -> Result<String> {
     let json = util::http_get(url.as_str())
         .with_context(|| format!("failed to retrieve JSON from {}", url))?;
@@ -187,6 +214,7 @@ fn get_http_contract(url: &Url) -> Result<String> {
 
 /// Retrieves a contract ABI from the Etherscan HTTP API and wraps it in an
 /// artifact JSON for compatibility with the code generation facilities.
+#[cfg(not(target_arch = "wasm32"))]
 fn get_etherscan_contract(address: Address) -> Result<String> {
     // NOTE: We do not retrieve the bytecode since deploying contracts with the
     //   same bytecode is unreliable as the libraries have already linked and
@@ -206,6 +234,7 @@ fn get_etherscan_contract(address: Address) -> Result<String> {
 }
 
 /// Retrieves a Truffle artifact or ABI from an npm package through `unpkg.io`.
+#[cfg(not(target_arch = "wasm32"))]
 fn get_npm_contract(package: &str) -> Result<String> {
     let unpkg_url = format!("https://unpkg.io/{}", package);
     let json = util::http_get(&unpkg_url)
