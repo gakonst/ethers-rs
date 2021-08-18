@@ -79,8 +79,7 @@ impl<D: Sync + Send + DigestSigner<Sha256Proxy, RecoverableSignature>> Signer fo
     }
 
     async fn sign_transaction(&self, tx: &TypedTransaction) -> Result<Signature, Self::Error> {
-        let sighash = tx.sighash(self.chain_id);
-        Ok(self.sign_hash(sighash, true))
+        Ok(self.sign_transaction_sync(tx))
     }
 
     fn address(&self) -> Address {
@@ -104,6 +103,12 @@ impl<D: Sync + Send + DigestSigner<Sha256Proxy, RecoverableSignature>> Signer fo
 }
 
 impl<D: DigestSigner<Sha256Proxy, RecoverableSignature>> Wallet<D> {
+    pub fn sign_transaction_sync(&self, tx: &TypedTransaction) -> Signature {
+        let sighash = tx.sighash(self.chain_id);
+
+        self.sign_hash(sighash, true)
+    }
+
     fn sign_hash(&self, hash: H256, eip155: bool) -> Signature {
         let recoverable_sig: RecoverableSignature =
             self.signer.sign_digest(Sha256Proxy::from(hash));
