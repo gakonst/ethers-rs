@@ -551,4 +551,33 @@ mod tests {
             FormatBytes32StringError::TextTooLong
         ));
     }
+
+    #[test]
+    fn test_eip1559_default_estimator() {
+        // If the base fee is below the triggering base fee, we should get the default priority fee
+        // with the base fee surged.
+        let base_fee_per_gas = U256::from(EIP1559_FEE_ESTIMATION_PRIORITY_FEE_TRIGGER) - 1;
+        let rewards: Vec<Vec<U256>> = vec![vec![]];
+        let (base_fee, priority_fee) = eip1559_default_estimator(base_fee_per_gas, rewards);
+        assert_eq!(
+            priority_fee,
+            U256::from(EIP1559_FEE_ESTIMATION_DEFAULT_PRIORITY_FEE)
+        );
+        assert_eq!(base_fee, base_fee_surged(base_fee_per_gas));
+
+        // If the base fee is above the triggering base fee, we calculate the priority fee using
+        // the fee history (rewards).
+        let base_fee_per_gas = U256::from(EIP1559_FEE_ESTIMATION_PRIORITY_FEE_TRIGGER) + 1;
+        let rewards: Vec<Vec<U256>> = vec![
+            vec![100_000_000_000u64.into()],
+            vec![105_000_000_000u64.into()],
+            vec![102_000_000_000u64.into()],
+        ]; // say, last 3 blocks
+        let (base_fee, priority_fee) = eip1559_default_estimator(base_fee_per_gas, rewards.clone());
+        assert_eq!(base_fee, base_fee_surged(base_fee_per_gas));
+        assert_eq!(priority_fee, estimate_priority_fee(rewards.clone()));
+
+        // The median should be taken because none of the changes are big enough to ignore values.
+        assert_eq!(estimate_priority_fee(rewards), 102_000_000_000u64.into());
+    }
 }

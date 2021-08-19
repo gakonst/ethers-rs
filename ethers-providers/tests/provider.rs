@@ -207,10 +207,8 @@ mod eth_tests {
         )
         .unwrap();
 
-        let (max_fee_per_gas, max_priority_fee_per_gas) =
+        let (_max_fee_per_gas, _max_priority_fee_per_gas) =
             provider.estimate_eip1559_fees(None).await.unwrap();
-        dbg!(max_fee_per_gas);
-        dbg!(max_priority_fee_per_gas);
     }
 }
 
