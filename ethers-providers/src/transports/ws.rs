@@ -23,7 +23,10 @@ use std::{
 use thiserror::Error;
 use tokio_tungstenite::{
     connect_async,
-    tungstenite::{self, protocol::Message},
+    tungstenite::{
+        self,
+        protocol::{CloseFrame, Message},
+    },
 };
 use tracing::{error, warn};
 
@@ -195,8 +198,8 @@ where
         let f = async move {
             loop {
                 match self.process().await {
-                    Err(ClientError::WsClosed) => {
-                        tracing::error!("{}", ClientError::WsClosed);
+                    Err(ClientError::UnexpectedClose) => {
+                        tracing::error!("{}", ClientError::UnexpectedClose);
                         break;
                     }
                     Err(_) => {
@@ -224,7 +227,7 @@ where
                 // TODO: Log the error?
                 Some(Err(_)) => {},
                 None => {
-                    return Err(ClientError::WsClosed);
+                    return Err(ClientError::UnexpectedClose);
                 },
             }
         };
@@ -271,7 +274,9 @@ where
             Message::Text(inner) => self.handle_text(inner).await,
             Message::Ping(inner) => self.handle_ping(inner).await,
             Message::Pong(_) => Ok(()), // Server is allowed to send unsolicited pongs.
-            _ => Err(ClientError::NoResponse),
+            Message::Close(Some(frame)) => Err(ClientError::WsClosed(frame)),
+            Message::Close(None) => Err(ClientError::UnexpectedClose),
+            Message::Binary(buf) => Err(ClientError::UnexpectedBinary(buf)),
         }
     }
 
@@ -317,9 +322,9 @@ pub enum ClientError {
     /// Thrown if the response could not be parsed
     JsonRpcError(#[from] JsonRpcError),
 
-    /// Thrown if the websocket didn't respond to our message
-    #[error("Websocket connection did not respond with text data")]
-    NoResponse,
+    /// Thrown if the websocket responds with binary data
+    #[error("Websocket responded with unexpected binary data")]
+    UnexpectedBinary(Vec<u8>),
 
     /// Thrown if there's an error over the WS connection
     #[error(transparent)]
@@ -331,9 +336,13 @@ pub enum ClientError {
     #[error(transparent)]
     Canceled(#[from] oneshot::Canceled),
 
+    /// Remote server sent a Close message
+    #[error("Websocket closed with info: {0:?}")]
+    WsClosed(CloseFrame<'static>),
+
     /// Something caused the websocket to close
-    #[error("WebSocket connection closed")]
-    WsClosed,
+    #[error("WebSocket connection closed unexpectedly")]
+    UnexpectedClose,
 }
 
 impl From<ClientError> for ProviderError {
