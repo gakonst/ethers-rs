@@ -13,7 +13,7 @@ const ETHERSCAN_URL_PREFIX: &str =
 
 /// A client over HTTP for the [Etherscan](https://api.etherscan.io/api?module=gastracker&action=gasoracle) gas tracker API
 /// that implements the `GasOracle` trait
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Etherscan {
     client: Client,
     url: Url,
@@ -25,7 +25,7 @@ struct EtherscanResponseWrapper {
     result: EtherscanResponse,
 }
 
-#[derive(Deserialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, PartialOrd)]
 #[serde(rename_all = "PascalCase")]
 pub struct EtherscanResponse {
     #[serde(deserialize_with = "deserialize_number_from_string")]

@@ -13,14 +13,14 @@ const ETH_GAS_STATION_URL_PREFIX: &str = "https://ethgasstation.info/api/ethgasA
 
 /// A client over HTTP for the [EthGasStation](https://ethgasstation.info/api/ethgasAPI.json) gas tracker API
 /// that implements the `GasOracle` trait
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct EthGasStation {
     client: Client,
     url: Url,
     gas_category: GasCategory,
 }
 
-#[derive(Deserialize, Clone, Debug)]
+#[derive(Clone, Debug, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 /// Eth Gas Station's response for the current recommended fast, standard and
 /// safe low gas prices on the Ethereum network, along with the current block
