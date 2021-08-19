@@ -13,7 +13,7 @@ const ETHERSCAN_URL_PREFIX: &str =
 
 /// A client over HTTP for the [Etherscan](https://api.etherscan.io/api?module=gastracker&action=gasoracle) gas tracker API
 /// that implements the `GasOracle` trait
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Etherscan {
     client: Client,
     url: Url,
@@ -21,21 +21,40 @@ pub struct Etherscan {
 }
 
 #[derive(Deserialize)]
-struct EtherscanResponse {
-    result: EtherscanResponseInner,
+struct EtherscanResponseWrapper {
+    result: EtherscanResponse,
 }
 
-#[derive(Deserialize)]
-struct EtherscanResponseInner {
+#[derive(Clone, Debug, Deserialize, PartialEq, PartialOrd)]
+#[serde(rename_all = "PascalCase")]
+pub struct EtherscanResponse {
     #[serde(deserialize_with = "deserialize_number_from_string")]
-    #[serde(rename = "SafeGasPrice")]
-    safe_gas_price: u64,
+    pub safe_gas_price: u64,
     #[serde(deserialize_with = "deserialize_number_from_string")]
-    #[serde(rename = "ProposeGasPrice")]
-    propose_gas_price: u64,
+    pub propose_gas_price: u64,
     #[serde(deserialize_with = "deserialize_number_from_string")]
-    #[serde(rename = "FastGasPrice")]
-    fast_gas_price: u64,
+    pub fast_gas_price: u64,
+    #[serde(deserialize_with = "deserialize_number_from_string")]
+    pub last_block: u64,
+    #[serde(deserialize_with = "deserialize_number_from_string")]
+    #[serde(rename = "suggestBaseFee")]
+    pub suggested_base_fee: f64,
+    #[serde(deserialize_with = "deserialize_f64_vec")]
+    #[serde(rename = "gasUsedRatio")]
+    pub gas_used_ratio: Vec<f64>,
+}
+
+use serde::de;
+use std::str::FromStr;
+fn deserialize_f64_vec<'de, D>(deserializer: D) -> Result<Vec<f64>, D::Error>
+where
+    D: de::Deserializer<'de>,
+{
+    let str_sequence = String::deserialize(deserializer)?;
+    str_sequence
+        .split(',')
+        .map(|item| f64::from_str(item).map_err(|err| de::Error::custom(err.to_string())))
+        .collect()
 }
 
 impl Etherscan {
@@ -60,6 +79,17 @@ impl Etherscan {
         self.gas_category = gas_category;
         self
     }
+
+    pub async fn query(&self) -> Result<EtherscanResponse, GasOracleError> {
+        let res = self
+            .client
+            .get(self.url.as_ref())
+            .send()
+            .await?
+            .json::<EtherscanResponseWrapper>()
+            .await?;
+        Ok(res.result)
+    }
 }
 
 #[async_trait]
@@ -69,18 +99,12 @@ impl GasOracle for Etherscan {
             return Err(GasOracleError::GasCategoryNotSupported);
         }
 
-        let res = self
-            .client
-            .get(self.url.as_ref())
-            .send()
-            .await?
-            .json::<EtherscanResponse>()
-            .await?;
+        let res = self.query().await?;
 
         match self.gas_category {
-            GasCategory::SafeLow => Ok(U256::from(res.result.safe_gas_price * GWEI_TO_WEI)),
-            GasCategory::Standard => Ok(U256::from(res.result.propose_gas_price * GWEI_TO_WEI)),
-            GasCategory::Fast => Ok(U256::from(res.result.fast_gas_price * GWEI_TO_WEI)),
+            GasCategory::SafeLow => Ok(U256::from(res.safe_gas_price * GWEI_TO_WEI)),
+            GasCategory::Standard => Ok(U256::from(res.propose_gas_price * GWEI_TO_WEI)),
+            GasCategory::Fast => Ok(U256::from(res.fast_gas_price * GWEI_TO_WEI)),
             _ => Err(GasOracleError::GasCategoryNotSupported),
         }
     }

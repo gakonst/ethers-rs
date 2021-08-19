@@ -3,7 +3,6 @@ use ethers_core::types::U256;
 use async_trait::async_trait;
 use reqwest::Client;
 use serde::Deserialize;
-use serde_aux::prelude::*;
 use url::Url;
 
 use crate::gas_oracle::{GasCategory, GasOracle, GasOracleError, GWEI_TO_WEI};
@@ -12,7 +11,7 @@ const ETHERCHAIN_URL: &str = "https://www.etherchain.org/api/gasPriceOracle";
 
 /// A client over HTTP for the [Etherchain](https://www.etherchain.org/api/gasPriceOracle) gas tracker API
 /// that implements the `GasOracle` trait
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Etherchain {
     client: Client,
     url: Url,
@@ -25,17 +24,15 @@ impl Default for Etherchain {
     }
 }
 
-#[derive(Deserialize)]
-struct EtherchainResponse {
-    #[serde(deserialize_with = "deserialize_number_from_string")]
-    #[serde(rename = "safeLow")]
-    safe_low: f32,
-    #[serde(deserialize_with = "deserialize_number_from_string")]
-    standard: f32,
-    #[serde(deserialize_with = "deserialize_number_from_string")]
-    fast: f32,
-    #[serde(deserialize_with = "deserialize_number_from_string")]
-    fastest: f32,
+#[derive(Clone, Debug, Deserialize, PartialEq, PartialOrd)]
+#[serde(rename_all = "camelCase")]
+pub struct EtherchainResponse {
+    pub safe_low: f32,
+    pub standard: f32,
+    pub fast: f32,
+    pub fastest: f32,
+    pub current_base_fee: f32,
+    pub recommended_base_fee: f32,
 }
 
 impl Etherchain {
@@ -55,19 +52,22 @@ impl Etherchain {
         self.gas_category = gas_category;
         self
     }
-}
 
-#[async_trait]
-impl GasOracle for Etherchain {
-    async fn fetch(&self) -> Result<U256, GasOracleError> {
-        let res = self
+    pub async fn query(&self) -> Result<EtherchainResponse, GasOracleError> {
+        Ok(self
             .client
             .get(self.url.as_ref())
             .send()
             .await?
             .json::<EtherchainResponse>()
-            .await?;
+            .await?)
+    }
+}
 
+#[async_trait]
+impl GasOracle for Etherchain {
+    async fn fetch(&self) -> Result<U256, GasOracleError> {
+        let res = self.query().await?;
         let gas_price = match self.gas_category {
             GasCategory::SafeLow => U256::from((res.safe_low as u64) * GWEI_TO_WEI),
             GasCategory::Standard => U256::from((res.standard as u64) * GWEI_TO_WEI),
