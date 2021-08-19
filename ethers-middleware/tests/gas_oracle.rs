@@ -32,7 +32,6 @@ async fn using_gas_oracle() {
 }
 
 #[tokio::test]
-#[ignore]
 // TODO: Re-enable, EthGasStation changed its response api @ https://ethgasstation.info/api/ethgasAPI.json
 async fn eth_gas_station() {
     // initialize and fetch gas estimates from EthGasStation
