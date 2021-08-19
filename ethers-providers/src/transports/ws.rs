@@ -64,6 +64,13 @@ enum TransportMessage {
     },
 }
 
+#[derive(Debug, serde::Deserialize)]
+#[serde(untagged)]
+enum Incoming {
+    Notification(Notification<serde_json::Value>),
+    Response(Response<serde_json::Value>),
+}
+
 impl Debug for Ws {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("WebsocketProvider")
@@ -286,22 +293,29 @@ where
     }
 
     async fn handle_text(&mut self, inner: String) -> Result<(), ClientError> {
-        if let Ok(resp) = serde_json::from_str::<Response<serde_json::Value>>(&inner) {
-            if let Some(request) = self.pending.remove(&resp.id) {
-                request
-                    .send(resp.data.into_result())
-                    .map_err(to_client_error)?;
+        let message = serde_json::from_str::<Incoming>(&inner);
+        if message.is_err() {
+            return Ok(());
+        }
+
+        match message.unwrap() {
+            Incoming::Response(resp) => {
+                if let Some(request) = self.pending.remove(&resp.id) {
+                    request
+                        .send(resp.data.into_result())
+                        .map_err(to_client_error)?;
+                }
             }
-        } else if let Ok(notification) =
-            serde_json::from_str::<Notification<serde_json::Value>>(&inner)
-        {
-            let id = notification.params.subscription;
-            if let Some(stream) = self.subscriptions.get(&id) {
-                stream
-                    .unbounded_send(notification.params.result)
-                    .map_err(to_client_error)?;
+            Incoming::Notification(notification) => {
+                let id = notification.params.subscription;
+                if let Some(stream) = self.subscriptions.get(&id) {
+                    stream
+                        .unbounded_send(notification.params.result)
+                        .map_err(to_client_error)?;
+                }
             }
         }
+
         Ok(())
     }
 }
