@@ -91,6 +91,11 @@ impl Ws {
         }
     }
 
+    /// Returns true if the WS connection is active, false otherwise
+    pub fn ready(&self) -> bool {
+        !self.requests.is_closed()
+    }
+
     /// Initializes a new WebSocket Client
     pub async fn connect(
         url: impl tungstenite::client::IntoClientRequest + Unpin,
