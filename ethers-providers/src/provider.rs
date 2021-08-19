@@ -227,6 +227,47 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.get_block_gen(block_hash_or_number.into(), true).await
     }
 
+    /// Gets the block uncle count at `block_hash_or_number`
+    async fn get_uncle_count<T: Into<BlockId> + Send + Sync>(
+        &self,
+        block_hash_or_number: T,
+    ) -> Result<U256, Self::Error> {
+        let id = block_hash_or_number.into();
+        Ok(match id {
+            BlockId::Hash(hash) => {
+                let hash = utils::serialize(&hash);
+                self.request("eth_getUncleCountByBlockHash", [hash]).await?
+            }
+            BlockId::Number(num) => {
+                let num = utils::serialize(&num);
+                self.request("eth_getUncleCountByBlockNumber", [num])
+                    .await?
+            }
+        })
+    }
+
+    /// Gets the block uncle at `block_hash_or_number` and `idx`
+    async fn get_uncle<T: Into<BlockId> + Send + Sync>(
+        &self,
+        block_hash_or_number: T,
+        idx: U64,
+    ) -> Result<Option<Block<H256>>, ProviderError> {
+        let blk_id = block_hash_or_number.into();
+        let idx = utils::serialize(&idx);
+        Ok(match blk_id {
+            BlockId::Hash(hash) => {
+                let hash = utils::serialize(&hash);
+                self.request("eth_getUncleByBlockHashAndIndex", [hash, idx])
+                    .await?
+            }
+            BlockId::Number(num) => {
+                let num = utils::serialize(&num);
+                self.request("eth_getUncleByBlockNumberAndIndex", [num, idx])
+                    .await?
+            }
+        })
+    }
+
     /// Gets the transaction with `transaction_hash`
     async fn get_transaction<T: Send + Sync + Into<TxHash>>(
         &self,

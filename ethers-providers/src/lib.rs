@@ -333,6 +333,27 @@ pub trait Middleware: Sync + Send + Debug {
             .map_err(FromErr::from)
     }
 
+    async fn get_uncle_count<T: Into<BlockId> + Send + Sync>(
+        &self,
+        block_hash_or_number: T,
+    ) -> Result<U256, Self::Error> {
+        self.inner()
+            .get_uncle_count(block_hash_or_number)
+            .await
+            .map_err(FromErr::from)
+    }
+
+    async fn get_uncle<T: Into<BlockId> + Send + Sync>(
+        &self,
+        block_hash_or_number: T,
+        idx: U64,
+    ) -> Result<Option<Block<H256>>, Self::Error> {
+        self.inner()
+            .get_uncle(block_hash_or_number, idx)
+            .await
+            .map_err(FromErr::from)
+    }
+
     async fn get_transaction_count<T: Into<NameOrAddress> + Send + Sync>(
         &self,
         from: T,
