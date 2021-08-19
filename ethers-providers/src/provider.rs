@@ -282,6 +282,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
             )
             .await?;
 
+        // use the provided fee estimator function, or fallback to the default implementation.
         let (max_fee_per_gas, max_priority_fee_per_gas) = if let Some(es) = estimator {
             es(base_fee_per_gas, fee_history.reward)
         } else {
