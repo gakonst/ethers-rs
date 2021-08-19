@@ -81,19 +81,22 @@ impl EthGasStation {
         self.gas_category = gas_category;
         self
     }
-}
 
-#[async_trait]
-impl GasOracle for EthGasStation {
-    async fn fetch(&self) -> Result<U256, GasOracleError> {
-        let res = self
+    pub async fn query(&self) -> Result<EthGasStationResponse, GasOracleError> {
+        Ok(self
             .client
             .get(self.url.as_ref())
             .send()
             .await?
             .json::<EthGasStationResponse>()
-            .await?;
+            .await?)
+    }
+}
 
+#[async_trait]
+impl GasOracle for EthGasStation {
+    async fn fetch(&self) -> Result<U256, GasOracleError> {
+        let res = self.query().await?;
         let gas_price = match self.gas_category {
             GasCategory::SafeLow => U256::from((res.safe_low.ceil() as u64 * GWEI_TO_WEI) / 10),
             GasCategory::Standard => U256::from((res.average * GWEI_TO_WEI) / 10),
