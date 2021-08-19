@@ -317,7 +317,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
 
         let fee_history = self
             .fee_history(
-                U256::from(utils::EIP1559_FEE_ESTIMATION_PAST_BLOCKS),
+                utils::EIP1559_FEE_ESTIMATION_PAST_BLOCKS,
                 BlockNumber::Latest,
                 &[utils::EIP1559_FEE_ESTIMATION_REWARD_PERCENTILE],
             )
@@ -769,9 +769,9 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.subscribe([logs, filter]).await
     }
 
-    async fn fee_history(
+    async fn fee_history<T: Into<U256> + serde::Serialize + Send + Sync>(
         &self,
-        block_count: U256,
+        block_count: T,
         last_block: BlockNumber,
         reward_percentiles: &[f64],
     ) -> Result<FeeHistory, Self::Error> {
@@ -794,7 +794,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
             .request(
                 "eth_feeHistory",
                 [
-                    utils::serialize(&block_count.as_u64()),
+                    utils::serialize(&block_count.into().as_u64()),
                     last_block,
                     reward_percentiles,
                 ],
@@ -1140,7 +1140,7 @@ mod tests {
         .unwrap();
 
         let history = provider
-            .fee_history(10u64.into(), BlockNumber::Latest, &[10.0, 40.0])
+            .fee_history(10u64, BlockNumber::Latest, &[10.0, 40.0])
             .await
             .unwrap();
         dbg!(&history);

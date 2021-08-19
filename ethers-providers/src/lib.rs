@@ -704,9 +704,9 @@ pub trait Middleware: Sync + Send + Debug {
             .map_err(FromErr::from)
     }
 
-    async fn fee_history(
+    async fn fee_history<T: Into<U256> + serde::Serialize + Send + Sync>(
         &self,
-        block_count: U256,
+        block_count: T,
         last_block: BlockNumber,
         reward_percentiles: &[f64],
     ) -> Result<FeeHistory, Self::Error> {
