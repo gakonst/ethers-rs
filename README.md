@@ -30,6 +30,19 @@ In addition, it is recommended that you set the `ETHERSCAN_API_KEY` environment 
 for [the abigen via Etherscan](https://github.com/gakonst/ethers-rs/blob/master/ethers/tests/major_contracts.rs) tests. 
 You can get one [here](https://etherscan.io/apis).
 
+### EVM-compatible chains support
+
+There are many chains live which are Ethereum JSON-RPC & EVM compatible, but do not yet have
+support for [EIP-2718](https://eips.ethereum.org/EIPS/eip-2718) Typed Transactions. This means
+that transactions submitted to them by default in ethers-rs will have invalid serialization. To
+address that, you must use the `legacy` feature flag:
+
+```toml
+[dependencies]
+
+ethers = { git = "https://github.com/gakonst/ethers-rs", features = ["legacy"] }
+```
+
 ### Celo Support
 
 [Celo](http://celo.org/) support is turned on via the feature-flag `celo`:
