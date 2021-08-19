@@ -43,7 +43,7 @@ tokio-util = { version = "0.6.7", default-features = false, features = ["io"], o
 bytes = { version  = "1.0.1", default-features = false, optional = true }
 
 [dev-dependencies]
-ethers = { version = "0.4.0", path = "../ethers" }
+ethers = { version = "0.4.0", path = ".." }
 tokio = { version = "1.5", default-features = false, features = ["rt", "macros"] }
 tempfile = "3.2.0"
 
