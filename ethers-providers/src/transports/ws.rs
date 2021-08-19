@@ -319,7 +319,7 @@ where
         }
     }
 
-    /// Processes 1 item selected from the incoming `requests` or `ws`
+    /// Processes 1 instruction or 1 incoming websocket message
     #[allow(clippy::single_match)]
     async fn tick(&mut self) -> Result<(), ClientError> {
         futures_util::select! {
