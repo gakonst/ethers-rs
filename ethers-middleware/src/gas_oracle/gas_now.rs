@@ -7,11 +7,11 @@ use url::Url;
 
 use crate::gas_oracle::{GasCategory, GasOracle, GasOracleError};
 
-const GAS_NOW_URL: &str = "https://www.gasnow.org/api/v1/gas/price";
+const GAS_NOW_URL: &str = "https://www.gasnow.org/api/v3/gas/price";
 
 /// A client over HTTP for the [GasNow](https://www.gasnow.org/api/v1/gas/price) gas tracker API
 /// that implements the `GasOracle` trait
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct GasNow {
     client: Client,
     url: Url,
@@ -25,18 +25,16 @@ impl Default for GasNow {
 }
 
 #[derive(Deserialize)]
-struct GasNowResponse {
-    data: GasNowResponseInner,
+struct GasNowResponseWrapper {
+    data: GasNowResponse,
 }
 
-#[derive(Deserialize)]
-struct GasNowResponseInner {
-    #[serde(rename = "top50")]
-    top_50: u64,
-    #[serde(rename = "top200")]
-    top_200: u64,
-    #[serde(rename = "top400")]
-    top_400: u64,
+#[derive(Clone, Debug, Deserialize, PartialEq, PartialOrd)]
+pub struct GasNowResponse {
+    pub rapid: u64,
+    pub fast: u64,
+    pub standard: u64,
+    pub slow: u64,
 }
 
 impl GasNow {
@@ -56,23 +54,28 @@ impl GasNow {
         self.gas_category = gas_category;
         self
     }
-}
 
-#[async_trait]
-impl GasOracle for GasNow {
-    async fn fetch(&self) -> Result<U256, GasOracleError> {
+    pub async fn query(&self) -> Result<GasNowResponse, GasOracleError> {
         let res = self
             .client
             .get(self.url.as_ref())
             .send()
             .await?
-            .json::<GasNowResponse>()
+            .json::<GasNowResponseWrapper>()
             .await?;
+        Ok(res.data)
+    }
+}
 
+#[async_trait]
+impl GasOracle for GasNow {
+    async fn fetch(&self) -> Result<U256, GasOracleError> {
+        let res = self.query().await?;
         let gas_price = match self.gas_category {
-            GasCategory::SafeLow => U256::from(res.data.top_400),
-            GasCategory::Standard => U256::from(res.data.top_200),
-            _ => U256::from(res.data.top_50),
+            GasCategory::SafeLow => U256::from(res.slow),
+            GasCategory::Standard => U256::from(res.standard),
+            GasCategory::Fast => U256::from(res.fast),
+            GasCategory::Fastest => U256::from(res.rapid),
         };
 
         Ok(gas_price)
