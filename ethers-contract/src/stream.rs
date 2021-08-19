@@ -65,7 +65,7 @@ where
                 let res = res.map(|inner| (inner, meta));
                 Poll::Ready(Some(res))
             }
-            None => Poll::Pending,
+            None => Poll::Ready(None),
         }
     }
 }
