@@ -84,8 +84,8 @@ pub use pubsub::{PubsubClient, SubscriptionStream};
 use async_trait::async_trait;
 use auto_impl::auto_impl;
 use ethers_core::types::transaction::{eip2718::TypedTransaction, eip2930::AccessListWithGasUsed};
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
-use std::{error::Error, fmt::Debug, future::Future, pin::Pin};
+use serde::{de::DeserializeOwned, Deserialize, Deserializer, Serialize};
+use std::{error::Error, fmt::Debug, future::Future, pin::Pin, str::FromStr};
 
 pub use provider::{FilterKind, Provider, ProviderError};
 
@@ -704,9 +704,9 @@ pub trait Middleware: Sync + Send + Debug {
             .map_err(FromErr::from)
     }
 
-    async fn fee_history(
+    async fn fee_history<T: Into<U256> + serde::Serialize + Send + Sync>(
         &self,
-        block_count: u64,
+        block_count: T,
         last_block: BlockNumber,
         reward_percentiles: &[f64],
     ) -> Result<FeeHistory, Self::Error> {
@@ -733,8 +733,29 @@ pub trait Middleware: Sync + Send + Debug {
 pub struct FeeHistory {
     pub base_fee_per_gas: Vec<U256>,
     pub gas_used_ratio: Vec<f64>,
-    pub oldest_block: u64,
+    #[serde(deserialize_with = "from_int_or_hex")]
+    /// oldestBlock is returned as an unsigned integer up to geth v1.10.6. From
+    /// geth v1.10.7, this has been updated to return in the hex encoded form.
+    /// The custom deserializer allows backward compatibility for those clients
+    /// not running v1.10.7 yet.
+    pub oldest_block: U256,
     pub reward: Vec<Vec<U256>>,
+}
+
+fn from_int_or_hex<'de, D>(deserializer: D) -> Result<U256, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum IntOrHex {
+        Int(u64),
+        Hex(String),
+    }
+    match IntOrHex::deserialize(deserializer)? {
+        IntOrHex::Int(n) => Ok(U256::from(n)),
+        IntOrHex::Hex(s) => U256::from_str(s.as_str()).map_err(serde::de::Error::custom),
+    }
 }
 
 #[cfg(feature = "celo")]
