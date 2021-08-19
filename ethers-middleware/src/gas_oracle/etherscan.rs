@@ -108,4 +108,8 @@ impl GasOracle for Etherscan {
             _ => Err(GasOracleError::GasCategoryNotSupported),
         }
     }
+
+    async fn estimate_eip1559_fees(&self) -> Result<(U256, U256), GasOracleError> {
+        Err(GasOracleError::Eip1559EstimationNotSupported)
+    }
 }

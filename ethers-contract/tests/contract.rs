@@ -399,6 +399,7 @@ mod eth_tests {
         let _receipt = contract
             .method::<_, H256>("setValue", "hi".to_owned())
             .unwrap()
+            .legacy()
             .send()
             .await
             .unwrap()

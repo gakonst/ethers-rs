@@ -265,15 +265,19 @@ pub trait Middleware: Sync + Send + Debug {
                     inner.from = self.default_sender();
                 }
 
-                let (max_priority_fee_per_gas, max_fee_per_gas, gas) = futures_util::try_join!(
-                    // TODO: Replace with algorithms using eth_feeHistory
-                    maybe(inner.max_priority_fee_per_gas, self.get_gas_price()),
-                    maybe(inner.max_fee_per_gas, self.get_gas_price()),
-                    maybe(inner.gas, self.estimate_gas(&tx_clone)),
-                )?;
+                let gas = maybe(inner.gas, self.estimate_gas(&tx_clone)).await?;
                 inner.gas = Some(gas);
-                inner.max_fee_per_gas = Some(max_fee_per_gas);
-                inner.max_priority_fee_per_gas = Some(max_priority_fee_per_gas);
+
+                if inner.max_fee_per_gas.is_none() || inner.max_priority_fee_per_gas.is_none() {
+                    let (max_fee_per_gas, max_priority_fee_per_gas) =
+                        self.estimate_eip1559_fees(None).await?;
+                    if inner.max_fee_per_gas.is_none() {
+                        inner.max_fee_per_gas = Some(max_fee_per_gas);
+                    }
+                    if inner.max_priority_fee_per_gas.is_none() {
+                        inner.max_priority_fee_per_gas = Some(max_priority_fee_per_gas);
+                    }
+                }
             }
         };
 
@@ -399,6 +403,16 @@ pub trait Middleware: Sync + Send + Debug {
 
     async fn get_gas_price(&self) -> Result<U256, Self::Error> {
         self.inner().get_gas_price().await.map_err(FromErr::from)
+    }
+
+    async fn estimate_eip1559_fees(
+        &self,
+        estimator: Option<fn(U256, Vec<Vec<U256>>) -> (U256, U256)>,
+    ) -> Result<(U256, U256), Self::Error> {
+        self.inner()
+            .estimate_eip1559_fees(estimator)
+            .await
+            .map_err(FromErr::from)
     }
 
     async fn get_accounts(&self) -> Result<Vec<Address>, Self::Error> {

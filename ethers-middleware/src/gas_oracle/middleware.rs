@@ -59,6 +59,13 @@ where
         Ok(self.gas_oracle.fetch().await?)
     }
 
+    async fn estimate_eip1559_fees(
+        &self,
+        _: Option<fn(U256, Vec<Vec<U256>>) -> (U256, U256)>,
+    ) -> Result<(U256, U256), Self::Error> {
+        Ok(self.gas_oracle.estimate_eip1559_fees().await?)
+    }
+
     async fn send_transaction<T: Into<TypedTransaction> + Send + Sync>(
         &self,
         tx: T,
@@ -77,8 +84,17 @@ where
                     inner.tx.gas_price = Some(self.get_gas_price().await?);
                 }
             }
-            TypedTransaction::Eip1559(_) => {
-                return Err(MiddlewareError::UnsupportedTxType);
+            TypedTransaction::Eip1559(ref mut inner) => {
+                if inner.max_priority_fee_per_gas.is_none() || inner.max_fee_per_gas.is_none() {
+                    let (max_fee_per_gas, max_priority_fee_per_gas) =
+                        self.estimate_eip1559_fees(None).await?;
+                    if inner.max_priority_fee_per_gas.is_none() {
+                        inner.max_priority_fee_per_gas = Some(max_priority_fee_per_gas);
+                    }
+                    if inner.max_fee_per_gas.is_none() {
+                        inner.max_fee_per_gas = Some(max_fee_per_gas);
+                    }
+                }
             }
         };
         self.inner

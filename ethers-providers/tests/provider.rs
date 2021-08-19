@@ -199,6 +199,17 @@ mod eth_tests {
             .into();
         check_tx(&provider, tx, 2).await;
     }
+
+    #[tokio::test]
+    async fn eip1559_fee_estimation() {
+        let provider = Provider::<Http>::try_from(
+            "https://mainnet.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27",
+        )
+        .unwrap();
+
+        let (_max_fee_per_gas, _max_priority_fee_per_gas) =
+            provider.estimate_eip1559_fees(None).await.unwrap();
+    }
 }
 
 #[cfg(feature = "celo")]

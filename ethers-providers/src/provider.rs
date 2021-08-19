@@ -261,6 +261,37 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.request("eth_gasPrice", ()).await
     }
 
+    /// Gets a heuristic recommendation of max fee per gas and max priority fee per gas for
+    /// EIP-1559 compatible transactions.
+    async fn estimate_eip1559_fees(
+        &self,
+        estimator: Option<fn(U256, Vec<Vec<U256>>) -> (U256, U256)>,
+    ) -> Result<(U256, U256), Self::Error> {
+        let base_fee_per_gas = self
+            .get_block(BlockNumber::Latest)
+            .await?
+            .ok_or_else(|| ProviderError::CustomError("Latest block not found".into()))?
+            .base_fee_per_gas
+            .ok_or_else(|| ProviderError::CustomError("EIP-1559 not activated".into()))?;
+
+        let fee_history = self
+            .fee_history(
+                utils::EIP1559_FEE_ESTIMATION_PAST_BLOCKS,
+                BlockNumber::Latest,
+                &[utils::EIP1559_FEE_ESTIMATION_REWARD_PERCENTILE],
+            )
+            .await?;
+
+        // use the provided fee estimator function, or fallback to the default implementation.
+        let (max_fee_per_gas, max_priority_fee_per_gas) = if let Some(es) = estimator {
+            es(base_fee_per_gas, fee_history.reward)
+        } else {
+            utils::eip1559_default_estimator(base_fee_per_gas, fee_history.reward)
+        };
+
+        Ok((max_fee_per_gas, max_priority_fee_per_gas))
+    }
+
     /// Gets the accounts on the node
     async fn get_accounts(&self) -> Result<Vec<Address>, ProviderError> {
         self.request("eth_accounts", ()).await

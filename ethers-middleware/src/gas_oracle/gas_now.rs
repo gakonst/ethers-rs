@@ -80,4 +80,8 @@ impl GasOracle for GasNow {
 
         Ok(gas_price)
     }
+
+    async fn estimate_eip1559_fees(&self) -> Result<(U256, U256), GasOracleError> {
+        Err(GasOracleError::Eip1559EstimationNotSupported)
+    }
 }
