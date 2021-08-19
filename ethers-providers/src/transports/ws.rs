@@ -189,7 +189,16 @@ where
     {
         let f = async move {
             loop {
-                self.process().await.expect("WS Server panic");
+                match self.process().await {
+                    Err(ClientError::WsClosed) => {
+                        tracing::error!("{}", ClientError::WsClosed);
+                        break;
+                    }
+                    Err(_) => {
+                        panic!("WS Server panic");
+                    }
+                    _ => {}
+                }
             }
         };
 
@@ -201,19 +210,18 @@ where
     async fn process(&mut self) -> Result<(), ClientError> {
         futures_util::select! {
             // Handle requests
-            msg = self.requests.next() => match msg {
-                Some(msg) => self.handle_request(msg).await?,
-                None => {},
+            msg = self.requests.select_next_some() => {
+                self.handle_request(msg).await?;
             },
             // Handle ws messages
             msg = self.ws.next() => match msg {
                 Some(Ok(msg)) => self.handle_ws(msg).await?,
                 // TODO: Log the error?
                 Some(Err(_)) => {},
-                None => {},
-            },
-            // finished
-            complete => {},
+                None => {
+                    return Err(ClientError::WsClosed);
+                },
+            }
         };
 
         Ok(())
@@ -317,6 +325,10 @@ pub enum ClientError {
 
     #[error(transparent)]
     Canceled(#[from] oneshot::Canceled),
+
+    /// Something caused the websocket to close
+    #[error("WebSocket connection closed")]
+    WsClosed,
 }
 
 impl From<ClientError> for ProviderError {
