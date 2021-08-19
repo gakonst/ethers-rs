@@ -317,7 +317,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
 
         let fee_history = self
             .fee_history(
-                utils::EIP1559_FEE_ESTIMATION_PAST_BLOCKS,
+                U256::from(utils::EIP1559_FEE_ESTIMATION_PAST_BLOCKS),
                 BlockNumber::Latest,
                 &[utils::EIP1559_FEE_ESTIMATION_REWARD_PERCENTILE],
             )
@@ -771,18 +771,35 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
 
     async fn fee_history(
         &self,
-        block_count: u64,
+        block_count: U256,
         last_block: BlockNumber,
         reward_percentiles: &[f64],
     ) -> Result<FeeHistory, Self::Error> {
-        let block_count = utils::serialize(&block_count);
         let last_block = utils::serialize(&last_block);
         let reward_percentiles = utils::serialize(&reward_percentiles);
+
+        // The blockCount param is expected to be an unsigned integer up to geth v1.10.6.
+        // Geth v1.10.7 onwards, this has been updated to a hex encoded form. Failure to
+        // decode the param from client side would fallback to the old API spec.
         self.request(
             "eth_feeHistory",
-            [block_count, last_block, reward_percentiles],
+            [
+                utils::serialize(&block_count),
+                last_block.clone(),
+                reward_percentiles.clone(),
+            ],
         )
         .await
+        .or(self
+            .request(
+                "eth_feeHistory",
+                [
+                    utils::serialize(&block_count.as_u64()),
+                    last_block,
+                    reward_percentiles,
+                ],
+            )
+            .await)
     }
 }
 
@@ -1123,7 +1140,7 @@ mod tests {
         .unwrap();
 
         let history = provider
-            .fee_history(10, BlockNumber::Latest, &[10.0, 40.0])
+            .fee_history(10u64.into(), BlockNumber::Latest, &[10.0, 40.0])
             .await
             .unwrap();
         dbg!(&history);
