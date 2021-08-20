@@ -210,12 +210,11 @@ where
                         tracing::error!("{}", ClientError::UnexpectedClose);
                         break;
                     }
-                    Err(ClientError::ChannelError(msg)) => {
-                        tracing::info!("WS Server: {}", msg);
-                        break;
-                    }
                     Err(e) => {
                         panic!("WS Server panic: {}", e);
+                    }
+                    Ok(None) => {
+                        tracing::info!("work complete");
                     }
                     _ => {}
                 }
@@ -320,7 +319,7 @@ where
 
     /// Processes 1 instruction or 1 incoming websocket message
     #[allow(clippy::single_match)]
-    async fn tick(&mut self) -> Result<(), ClientError> {
+    async fn tick(&mut self) -> Result<Option<()>, ClientError> {
         futures_util::select! {
             // Handle requests
             instruction = self.instructions.next() => match instruction {
@@ -328,7 +327,7 @@ where
                 None => {
                     // can't receive any more instructions, close if work completed
                     if self.pending.is_empty() && self.subscriptions.is_empty() {
-                         return Err(to_client_error("work completed"));
+                         return Ok(None);
                     }
                 },
             },
@@ -343,7 +342,7 @@ where
             }
         };
 
-        Ok(())
+        Ok(Some(()))
     }
 }
 
