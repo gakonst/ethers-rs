@@ -68,6 +68,7 @@ ethers-middleware = { version = "0.4.8", default-features = false, path = "./eth
 
 [dev-dependencies]
 ethers-contract = { version = "0.4.7", default-features = false, path = "./ethers-contract", features = ["abigen"] }
+ethers-providers = { version = "0.4.6", default-features = false, path = "./ethers-providers", features = ["ws"] }
 
 anyhow = "1.0.39"
 rand = "0.8.4"
