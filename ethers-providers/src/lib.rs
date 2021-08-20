@@ -84,8 +84,8 @@ pub use pubsub::{PubsubClient, SubscriptionStream};
 use async_trait::async_trait;
 use auto_impl::auto_impl;
 use ethers_core::types::transaction::{eip2718::TypedTransaction, eip2930::AccessListWithGasUsed};
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
-use std::{error::Error, fmt::Debug, future::Future, pin::Pin};
+use serde::{de::DeserializeOwned, Deserialize, Deserializer, Serialize};
+use std::{error::Error, fmt::Debug, future::Future, pin::Pin, str::FromStr};
 
 pub use provider::{FilterKind, Provider, ProviderError};
 
@@ -265,15 +265,19 @@ pub trait Middleware: Sync + Send + Debug {
                     inner.from = self.default_sender();
                 }
 
-                let (max_priority_fee_per_gas, max_fee_per_gas, gas) = futures_util::try_join!(
-                    // TODO: Replace with algorithms using eth_feeHistory
-                    maybe(inner.max_priority_fee_per_gas, self.get_gas_price()),
-                    maybe(inner.max_fee_per_gas, self.get_gas_price()),
-                    maybe(inner.gas, self.estimate_gas(&tx_clone)),
-                )?;
+                let gas = maybe(inner.gas, self.estimate_gas(&tx_clone)).await?;
                 inner.gas = Some(gas);
-                inner.max_fee_per_gas = Some(max_fee_per_gas);
-                inner.max_priority_fee_per_gas = Some(max_priority_fee_per_gas);
+
+                if inner.max_fee_per_gas.is_none() || inner.max_priority_fee_per_gas.is_none() {
+                    let (max_fee_per_gas, max_priority_fee_per_gas) =
+                        self.estimate_eip1559_fees(None).await?;
+                    if inner.max_fee_per_gas.is_none() {
+                        inner.max_fee_per_gas = Some(max_fee_per_gas);
+                    }
+                    if inner.max_priority_fee_per_gas.is_none() {
+                        inner.max_priority_fee_per_gas = Some(max_priority_fee_per_gas);
+                    }
+                }
             }
         };
 
@@ -325,6 +329,27 @@ pub trait Middleware: Sync + Send + Debug {
     ) -> Result<Option<Block<Transaction>>, Self::Error> {
         self.inner()
             .get_block_with_txs(block_hash_or_number)
+            .await
+            .map_err(FromErr::from)
+    }
+
+    async fn get_uncle_count<T: Into<BlockId> + Send + Sync>(
+        &self,
+        block_hash_or_number: T,
+    ) -> Result<U256, Self::Error> {
+        self.inner()
+            .get_uncle_count(block_hash_or_number)
+            .await
+            .map_err(FromErr::from)
+    }
+
+    async fn get_uncle<T: Into<BlockId> + Send + Sync>(
+        &self,
+        block_hash_or_number: T,
+        idx: U64,
+    ) -> Result<Option<Block<H256>>, Self::Error> {
+        self.inner()
+            .get_uncle(block_hash_or_number, idx)
             .await
             .map_err(FromErr::from)
     }
@@ -399,6 +424,16 @@ pub trait Middleware: Sync + Send + Debug {
 
     async fn get_gas_price(&self) -> Result<U256, Self::Error> {
         self.inner().get_gas_price().await.map_err(FromErr::from)
+    }
+
+    async fn estimate_eip1559_fees(
+        &self,
+        estimator: Option<fn(U256, Vec<Vec<U256>>) -> (U256, U256)>,
+    ) -> Result<(U256, U256), Self::Error> {
+        self.inner()
+            .estimate_eip1559_fees(estimator)
+            .await
+            .map_err(FromErr::from)
     }
 
     async fn get_accounts(&self) -> Result<Vec<Address>, Self::Error> {
@@ -669,9 +704,9 @@ pub trait Middleware: Sync + Send + Debug {
             .map_err(FromErr::from)
     }
 
-    async fn fee_history(
+    async fn fee_history<T: Into<U256> + serde::Serialize + Send + Sync>(
         &self,
-        block_count: u64,
+        block_count: T,
         last_block: BlockNumber,
         reward_percentiles: &[f64],
     ) -> Result<FeeHistory, Self::Error> {
@@ -698,8 +733,29 @@ pub trait Middleware: Sync + Send + Debug {
 pub struct FeeHistory {
     pub base_fee_per_gas: Vec<U256>,
     pub gas_used_ratio: Vec<f64>,
-    pub oldest_block: u64,
+    #[serde(deserialize_with = "from_int_or_hex")]
+    /// oldestBlock is returned as an unsigned integer up to geth v1.10.6. From
+    /// geth v1.10.7, this has been updated to return in the hex encoded form.
+    /// The custom deserializer allows backward compatibility for those clients
+    /// not running v1.10.7 yet.
+    pub oldest_block: U256,
     pub reward: Vec<Vec<U256>>,
+}
+
+fn from_int_or_hex<'de, D>(deserializer: D) -> Result<U256, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum IntOrHex {
+        Int(u64),
+        Hex(String),
+    }
+    match IntOrHex::deserialize(deserializer)? {
+        IntOrHex::Int(n) => Ok(U256::from(n)),
+        IntOrHex::Hex(s) => U256::from_str(s.as_str()).map_err(serde::de::Error::custom),
+    }
 }
 
 #[cfg(feature = "celo")]

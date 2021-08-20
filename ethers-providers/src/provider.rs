@@ -227,6 +227,47 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.get_block_gen(block_hash_or_number.into(), true).await
     }
 
+    /// Gets the block uncle count at `block_hash_or_number`
+    async fn get_uncle_count<T: Into<BlockId> + Send + Sync>(
+        &self,
+        block_hash_or_number: T,
+    ) -> Result<U256, Self::Error> {
+        let id = block_hash_or_number.into();
+        Ok(match id {
+            BlockId::Hash(hash) => {
+                let hash = utils::serialize(&hash);
+                self.request("eth_getUncleCountByBlockHash", [hash]).await?
+            }
+            BlockId::Number(num) => {
+                let num = utils::serialize(&num);
+                self.request("eth_getUncleCountByBlockNumber", [num])
+                    .await?
+            }
+        })
+    }
+
+    /// Gets the block uncle at `block_hash_or_number` and `idx`
+    async fn get_uncle<T: Into<BlockId> + Send + Sync>(
+        &self,
+        block_hash_or_number: T,
+        idx: U64,
+    ) -> Result<Option<Block<H256>>, ProviderError> {
+        let blk_id = block_hash_or_number.into();
+        let idx = utils::serialize(&idx);
+        Ok(match blk_id {
+            BlockId::Hash(hash) => {
+                let hash = utils::serialize(&hash);
+                self.request("eth_getUncleByBlockHashAndIndex", [hash, idx])
+                    .await?
+            }
+            BlockId::Number(num) => {
+                let num = utils::serialize(&num);
+                self.request("eth_getUncleByBlockNumberAndIndex", [num, idx])
+                    .await?
+            }
+        })
+    }
+
     /// Gets the transaction with `transaction_hash`
     async fn get_transaction<T: Send + Sync + Into<TxHash>>(
         &self,
@@ -259,6 +300,37 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
     /// Gets the current gas price as estimated by the node
     async fn get_gas_price(&self) -> Result<U256, ProviderError> {
         self.request("eth_gasPrice", ()).await
+    }
+
+    /// Gets a heuristic recommendation of max fee per gas and max priority fee per gas for
+    /// EIP-1559 compatible transactions.
+    async fn estimate_eip1559_fees(
+        &self,
+        estimator: Option<fn(U256, Vec<Vec<U256>>) -> (U256, U256)>,
+    ) -> Result<(U256, U256), Self::Error> {
+        let base_fee_per_gas = self
+            .get_block(BlockNumber::Latest)
+            .await?
+            .ok_or_else(|| ProviderError::CustomError("Latest block not found".into()))?
+            .base_fee_per_gas
+            .ok_or_else(|| ProviderError::CustomError("EIP-1559 not activated".into()))?;
+
+        let fee_history = self
+            .fee_history(
+                utils::EIP1559_FEE_ESTIMATION_PAST_BLOCKS,
+                BlockNumber::Latest,
+                &[utils::EIP1559_FEE_ESTIMATION_REWARD_PERCENTILE],
+            )
+            .await?;
+
+        // use the provided fee estimator function, or fallback to the default implementation.
+        let (max_fee_per_gas, max_priority_fee_per_gas) = if let Some(es) = estimator {
+            es(base_fee_per_gas, fee_history.reward)
+        } else {
+            utils::eip1559_default_estimator(base_fee_per_gas, fee_history.reward)
+        };
+
+        Ok((max_fee_per_gas, max_priority_fee_per_gas))
     }
 
     /// Gets the accounts on the node
@@ -697,20 +769,37 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.subscribe([logs, filter]).await
     }
 
-    async fn fee_history(
+    async fn fee_history<T: Into<U256> + serde::Serialize + Send + Sync>(
         &self,
-        block_count: u64,
+        block_count: T,
         last_block: BlockNumber,
         reward_percentiles: &[f64],
     ) -> Result<FeeHistory, Self::Error> {
-        let block_count = utils::serialize(&block_count);
         let last_block = utils::serialize(&last_block);
         let reward_percentiles = utils::serialize(&reward_percentiles);
+
+        // The blockCount param is expected to be an unsigned integer up to geth v1.10.6.
+        // Geth v1.10.7 onwards, this has been updated to a hex encoded form. Failure to
+        // decode the param from client side would fallback to the old API spec.
         self.request(
             "eth_feeHistory",
-            [block_count, last_block, reward_percentiles],
+            [
+                utils::serialize(&block_count),
+                last_block.clone(),
+                reward_percentiles.clone(),
+            ],
         )
         .await
+        .or(self
+            .request(
+                "eth_feeHistory",
+                [
+                    utils::serialize(&block_count.into().as_u64()),
+                    last_block,
+                    reward_percentiles,
+                ],
+            )
+            .await)
     }
 }
 
@@ -1051,7 +1140,7 @@ mod tests {
         .unwrap();
 
         let history = provider
-            .fee_history(10, BlockNumber::Latest, &[10.0, 40.0])
+            .fee_history(10u64, BlockNumber::Latest, &[10.0, 40.0])
             .await
             .unwrap();
         dbg!(&history);
