@@ -13,6 +13,7 @@ use std::sync::Arc;
 use std::{pin::Pin, time::Instant};
 use thiserror::Error;
 
+#[cfg(not(target_arch = "wasm32"))]
 use tokio::spawn;
 use tracing_futures::Instrument;
 
@@ -69,7 +70,8 @@ pub struct GasEscalatorMiddleware<M, E> {
     frequency: Frequency,
 }
 
-#[async_trait]
+#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl<M, E> Middleware for GasEscalatorMiddleware<M, E>
 where
     M: Middleware,
@@ -118,6 +120,7 @@ where
     /// Initializes the middleware with the provided gas escalator and the chosen
     /// escalation frequency (per block or per second)
     #[allow(clippy::let_and_return)]
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn new(inner: M, escalator: E, frequency: Frequency) -> Self
     where
         E: Clone + 'static,
@@ -146,8 +149,9 @@ where
 
     /// Re-broadcasts pending transactions with a gas price escalator
     pub async fn escalate(&self) -> Result<(), GasEscalatorError<M>> {
-        // the escalation frequency is either on a per-block basis, or on a duratoin basis
-        let mut watcher: Pin<Box<dyn futures_util::stream::Stream<Item = ()> + Send>> =
+        // the escalation frequency is either on a per-block basis, or on a duration basis
+        // TODO wasm change
+        let mut watcher: Pin<Box<dyn futures_util::stream::Stream<Item = ()>>> =
             match self.frequency {
                 Frequency::PerBlock => Box::pin(
                     self.inner

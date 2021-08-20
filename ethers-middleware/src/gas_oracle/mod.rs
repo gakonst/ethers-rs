@@ -65,7 +65,8 @@ pub enum GasOracleError {
 /// # Ok(())
 /// # }
 /// ```
-#[async_trait]
+#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 pub trait GasOracle: Send + Sync + std::fmt::Debug {
     /// Makes an asynchronous HTTP query to the underlying `GasOracle`
     ///

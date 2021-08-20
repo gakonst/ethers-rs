@@ -69,7 +69,8 @@ impl<M: Middleware> FromErr<M::Error> for NonceManagerError<M> {
     }
 }
 
-#[async_trait]
+#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl<M> Middleware for NonceManagerMiddleware<M>
 where
     M: Middleware,
