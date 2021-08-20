@@ -222,7 +222,7 @@ where
     }
 
     // dispatch an RPC request
-    async fn dispatch_request(
+    async fn service_request(
         &mut self,
         id: u64,
         request: String,
@@ -240,11 +240,7 @@ where
     }
 
     /// Dispatch a subscription request
-    async fn dispatch_subscribe(
-        &mut self,
-        id: U256,
-        sink: Subscription,
-    ) -> Result<(), ClientError> {
+    async fn service_subscribe(&mut self, id: U256, sink: Subscription) -> Result<(), ClientError> {
         if self.subscriptions.insert(id, sink).is_some() {
             warn!("Replacing already-registered subscription with id {:?}", id);
         }
@@ -252,7 +248,7 @@ where
     }
 
     /// Dispatch a unsubscribe request
-    async fn dispatch_unsubscribe(&mut self, id: U256) -> Result<(), ClientError> {
+    async fn service_unsubscribe(&mut self, id: U256) -> Result<(), ClientError> {
         if self.subscriptions.remove(&id).is_none() {
             warn!(
                 "Unsubscribing from non-existent subscription with id {:?}",
@@ -263,15 +259,15 @@ where
     }
 
     /// Dispatch an outgoing message
-    async fn dispatch(&mut self, msg: Instruction) -> Result<(), ClientError> {
-        match msg {
+    async fn service(&mut self, instruction: Instruction) -> Result<(), ClientError> {
+        match instruction {
             Instruction::Request {
                 id,
                 request,
                 sender,
-            } => self.dispatch_request(id, request, sender).await,
-            Instruction::Subscribe { id, sink } => self.dispatch_subscribe(id, sink).await,
-            Instruction::Unsubscribe { id } => self.dispatch_unsubscribe(id).await,
+            } => self.service_request(id, request, sender).await,
+            Instruction::Subscribe { id, sink } => self.service_subscribe(id, sink).await,
+            Instruction::Unsubscribe { id } => self.service_unsubscribe(id).await,
         }
     }
 
@@ -324,12 +320,12 @@ where
     async fn tick(&mut self) -> Result<(), ClientError> {
         futures_util::select! {
             // Handle requests
-            msg = self.requests.select_next_some() => {
-                self.dispatch(msg).await?;
+            instruction = self.requests.select_next_some() => {
+                self.service(instruction).await?;
             },
             // Handle ws messages
-            msg = self.ws.next() => match msg {
-                Some(Ok(msg)) => self.handle(msg).await?,
+            resp = self.ws.next() => match resp {
+                Some(Ok(resp)) => self.handle(resp).await?,
                 // TODO: Log the error?
                 Some(Err(_)) => {},
                 None => {
