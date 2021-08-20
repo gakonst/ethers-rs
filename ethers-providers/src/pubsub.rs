@@ -44,7 +44,13 @@ where
     P: PubsubClient,
     R: DeserializeOwned,
 {
-    /// Creates a new subscription stream for the provided subscription id
+    /// Creates a new subscription stream for the provided subscription id.
+    ///
+    /// ### Note
+    /// Most providers treat `SubscriptionStream` IDs as global singletons.
+    /// Instanitating this directly with a known ID will likely cause any
+    /// existing streams with that ID to end. To avoid this, start a new stream
+    /// using [`Provider::subscribe`] instead of `SubscriptionStream::new`.
     pub fn new(id: U256, provider: &'a Provider<P>) -> Result<Self, P::Error> {
         // Call the underlying PubsubClient's subscribe
         let rx = provider.as_ref().subscribe(id)?;
@@ -56,7 +62,7 @@ where
         })
     }
 
-    /// Unsubscribes from the subscription
+    /// Unsubscribes from the subscription.
     pub async fn unsubscribe(&self) -> Result<bool, crate::ProviderError> {
         self.provider.unsubscribe(self.id).await
     }
@@ -79,7 +85,7 @@ where
                 Ok(res) => Poll::Ready(Some(res)),
                 _ => Poll::Pending,
             },
-            None => Poll::Pending,
+            None => Poll::Ready(None),
         }
     }
 }
