@@ -90,10 +90,12 @@ use std::{error::Error, fmt::Debug, future::Future, pin::Pin, str::FromStr};
 pub use provider::{FilterKind, Provider, ProviderError};
 
 // Helper type alias
+// TODO changed wasm
 pub(crate) type PinBoxFut<'a, T> =
-    Pin<Box<dyn Future<Output = Result<T, ProviderError>> + Send + 'a>>;
+    Pin<Box<dyn Future<Output = Result<T, ProviderError>> + 'a>>;
 
-#[async_trait]
+#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 #[auto_impl(&, Box, Arc)]
 /// Trait which must be implemented by data transports to be used with the Ethereum
 /// JSON-RPC provider.
@@ -125,8 +127,6 @@ where
     }
 }
 
-#[async_trait]
-#[auto_impl(&, Box, Arc)]
 /// A middleware allows customizing requests send and received from an ethereum node.
 ///
 /// Writing a middleware is as simple as:
@@ -182,6 +182,9 @@ where
 ///     }
 /// }
 /// ```
+#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+#[auto_impl(&, Box, Arc)]
 pub trait Middleware: Sync + Send + Debug {
     type Error: Sync + Send + Error + FromErr<<Self::Inner as Middleware>::Error>;
     type Provider: JsonRpcClient;
@@ -759,7 +762,8 @@ where
 }
 
 #[cfg(feature = "celo")]
-#[async_trait]
+#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 pub trait CeloMiddleware: Middleware {
     async fn get_validators_bls_public_keys<T: Into<BlockId> + Send + Sync>(
         &self,
