@@ -90,9 +90,12 @@ use std::{error::Error, fmt::Debug, future::Future, pin::Pin, str::FromStr};
 pub use provider::{FilterKind, Provider, ProviderError};
 
 // Helper type alias
-// TODO changed wasm
+#[cfg(target_arch = "wasm32")]
 pub(crate) type PinBoxFut<'a, T> =
     Pin<Box<dyn Future<Output = Result<T, ProviderError>> + 'a>>;
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) type PinBoxFut<'a, T> =
+    Pin<Box<dyn Future<Output = Result<T, ProviderError>> + Send + 'a>>;
 
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]

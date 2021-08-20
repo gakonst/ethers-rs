@@ -15,7 +15,11 @@ use thiserror::Error;
 
 #[cfg(not(target_arch = "wasm32"))]
 use tokio::spawn;
-use tracing_futures::Instrument;
+
+#[cfg(target_arch = "wasm32")]
+type WatcherFuture<'a> = Pin<Box<dyn futures_util::stream::Stream<Item = ()> + 'a>>;
+#[cfg(not(target_arch = "wasm32"))]
+type WatcherFuture<'a> = Pin<Box<dyn futures_util::stream::Stream<Item = ()> + Send + 'a>>;
 
 /// Trait for fetching updated gas prices after a transaction has been first
 /// broadcast
@@ -126,6 +130,8 @@ where
         E: Clone + 'static,
         M: Clone + 'static,
     {
+        use tracing_futures::Instrument;
+
         let this = Self {
             inner: Arc::new(inner),
             escalator,
@@ -150,18 +156,16 @@ where
     /// Re-broadcasts pending transactions with a gas price escalator
     pub async fn escalate(&self) -> Result<(), GasEscalatorError<M>> {
         // the escalation frequency is either on a per-block basis, or on a duration basis
-        // TODO wasm change
-        let mut watcher: Pin<Box<dyn futures_util::stream::Stream<Item = ()>>> =
-            match self.frequency {
-                Frequency::PerBlock => Box::pin(
-                    self.inner
-                        .watch_blocks()
-                        .await
-                        .map_err(GasEscalatorError::MiddlewareError)?
-                        .map(|_| ()),
-                ),
-                Frequency::Duration(ms) => Box::pin(interval(std::time::Duration::from_millis(ms))),
-            };
+        let mut watcher: WatcherFuture = match self.frequency {
+            Frequency::PerBlock => Box::pin(
+                self.inner
+                    .watch_blocks()
+                    .await
+                    .map_err(GasEscalatorError::MiddlewareError)?
+                    .map(|_| ()),
+            ),
+            Frequency::Duration(ms) => Box::pin(interval(std::time::Duration::from_millis(ms))),
+        };
 
         while watcher.next().await.is_some() {
             let now = Instant::now();
