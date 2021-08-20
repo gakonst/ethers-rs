@@ -2,8 +2,11 @@ use crate::{
     ens,
     pubsub::{PubsubClient, SubscriptionStream},
     stream::{FilterWatcher, DEFAULT_POLL_INTERVAL},
-    FeeHistory, FromErr, Http as HttpProvider, JsonRpcClient, MockProvider, PendingTransaction,
+    FeeHistory, FromErr, JsonRpcClient, MockProvider, PendingTransaction,
 };
+
+#[cfg(not(target_arch = "wasm32"))]
+use crate::Http as HttpProvider;
 
 use ethers_core::{
     abi::{self, Detokenize, ParamType},
@@ -867,6 +870,7 @@ impl<P: JsonRpcClient> Provider<P> {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 #[cfg(feature = "ws")]
 impl Provider<crate::Ws> {
     /// Direct connection to a websocket endpoint
@@ -878,6 +882,7 @@ impl Provider<crate::Ws> {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 #[cfg(feature = "ipc")]
 impl Provider<crate::Ipc> {
     /// Direct connection to an IPC socket.
@@ -926,6 +931,7 @@ fn decode_bytes<T: Detokenize>(param: ParamType, bytes: Bytes) -> T {
     T::from_tokens(tokens).expect("could not parse tokens as address")
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl TryFrom<&str> for Provider<HttpProvider> {
     type Error = ParseError;
 
@@ -934,6 +940,7 @@ impl TryFrom<&str> for Provider<HttpProvider> {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl TryFrom<String> for Provider<HttpProvider> {
     type Error = ParseError;
 
