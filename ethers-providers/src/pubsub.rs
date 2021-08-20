@@ -48,7 +48,7 @@ where
     ///
     /// ### Note
     /// Most providers treat `SubscriptionStream` IDs as global singletons.
-    /// Instanitating this directly with a known ID will likely cause any
+    /// Instantiating this directly with a known ID will likely cause any
     /// existing streams with that ID to end. To avoid this, start a new stream
     /// using [`Provider::subscribe`] instead of `SubscriptionStream::new`.
     pub fn new(id: U256, provider: &'a Provider<P>) -> Result<Self, P::Error> {
