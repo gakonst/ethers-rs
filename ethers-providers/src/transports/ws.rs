@@ -210,6 +210,10 @@ where
                         tracing::error!("{}", ClientError::UnexpectedClose);
                         break;
                     }
+                    Err(ClientError::ChannelError(msg)) => {
+                        tracing::info!("WS Server: {}", msg);
+                        break;
+                    }
                     Err(e) => {
                         panic!("WS Server panic: {}", e);
                     }
@@ -314,8 +318,14 @@ where
     async fn tick(&mut self) -> Result<(), ClientError> {
         futures_util::select! {
             // Handle requests
-            instruction = self.instructions.select_next_some() => {
-                self.service(instruction).await?;
+            instruction = self.instructions.next() => match instruction {
+                Some(instruction) => self.service(instruction).await?,
+                None => {
+                    // can't receive any more instructions, close if work completed
+                    if self.pending.is_empty() && self.subscriptions.is_empty() {
+                         return Err(to_client_error("work completed"));
+                    }
+                },
             },
             // Handle ws messages
             resp = self.ws.next() => match resp {
