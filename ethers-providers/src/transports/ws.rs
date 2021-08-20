@@ -277,21 +277,16 @@ where
     }
 
     async fn handle_text(&mut self, inner: String) -> Result<(), ClientError> {
-        let message = serde_json::from_str::<Incoming>(&inner);
-        if message.is_err() {
-            // Ignore malformatted server responses
-            return Ok(());
-        }
-
-        match message.unwrap() {
-            Incoming::Response(resp) => {
+        match serde_json::from_str::<Incoming>(&inner) {
+            Err(_) => {}
+            Ok(Incoming::Response(resp)) => {
                 if let Some(request) = self.pending.remove(&resp.id) {
                     request
                         .send(resp.data.into_result())
                         .map_err(to_client_error)?;
                 }
             }
-            Incoming::Notification(notification) => {
+            Ok(Incoming::Notification(notification)) => {
                 let id = notification.params.subscription;
                 if let Some(stream) = self.subscriptions.get(&id) {
                     stream
@@ -300,7 +295,6 @@ where
                 }
             }
         }
-
         Ok(())
     }
 
