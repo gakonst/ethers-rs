@@ -25,7 +25,7 @@
 //! ```
 //!
 //! Examples on how you can use the types imported by the prelude can be found in
-//! the [`examples` directory of the repository](https://github.com/gakonst/ethers-rs/tree/master/ethers/examples)
+//! the [`examples` directory of the repository](https://github.com/gakonst/ethers-rs/tree/master/examples)
 //! and in the `tests/` directories of each crate.
 //!
 //! # Quick explanation of each module in ascending order of abstraction

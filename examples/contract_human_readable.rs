@@ -19,7 +19,7 @@ abigen!(
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    // 1. compile the contract (note this requires that you are inside the `ethers/examples` directory) and launch ganache
+    // 1. compile the contract (note this requires that you are inside the `examples` directory) and launch ganache
     let (compiled, ganache) =
         compile_and_launch_ganache(Solc::new("**/contract.sol"), Ganache::new()).await?;
     let contract = compiled

@@ -9,13 +9,13 @@ use std::{convert::TryFrom, sync::Arc, time::Duration};
 // definition in human readable format
 abigen!(
     SimpleContract,
-    "./ethers/examples/contract_abi.json",
+    "./examples/contract_abi.json",
     event_derives(serde::Deserialize, serde::Serialize)
 );
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    // 1. compile the contract (note this requires that you are inside the `ethers/examples` directory) and launch ganache
+    // 1. compile the contract (note this requires that you are inside the `examples` directory) and launch ganache
     let (compiled, ganache) =
         compile_and_launch_ganache(Solc::new("**/contract.sol"), Ganache::new()).await?;
 
