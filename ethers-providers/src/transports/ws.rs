@@ -292,10 +292,15 @@ where
             }
             Ok(Incoming::Notification(notification)) => {
                 let id = notification.params.subscription;
-                if let Some(stream) = self.subscriptions.get(&id) {
-                    stream
-                        .unbounded_send(notification.params.result)
-                        .map_err(to_client_error)?;
+                if let Some(stream) = self.subscriptions.remove(&id) {
+                    if let Err(err) = stream.unbounded_send(notification.params.result) {
+                        if !err.is_disconnected() {
+                            // channel is still open
+                            self.subscriptions.insert(id, stream);
+                        }
+                        return Err(to_client_error(err));
+                    }
+                    self.subscriptions.insert(id, stream);
                 }
             }
         }
