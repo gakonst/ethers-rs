@@ -172,7 +172,7 @@ impl PubsubClient for Ws {
 
 struct WsServer<S> {
     ws: Fuse<S>,
-    requests: Fuse<mpsc::UnboundedReceiver<Instruction>>,
+    instructions: Fuse<mpsc::UnboundedReceiver<Instruction>>,
 
     pending: BTreeMap<u64, Pending>,
     subscriptions: BTreeMap<U256, Subscription>,
@@ -192,7 +192,7 @@ where
             // Fuse the 2 steams together, so that we can `select` them in the
             // Stream implementation
             ws: ws.fuse(),
-            requests: requests.fuse(),
+            instructions: requests.fuse(),
             pending: BTreeMap::default(),
             subscriptions: BTreeMap::default(),
         }
@@ -320,7 +320,7 @@ where
     async fn tick(&mut self) -> Result<(), ClientError> {
         futures_util::select! {
             // Handle requests
-            instruction = self.requests.select_next_some() => {
+            instruction = self.instructions.select_next_some() => {
                 self.service(instruction).await?;
             },
             // Handle ws messages
