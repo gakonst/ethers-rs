@@ -91,8 +91,7 @@ pub use provider::{FilterKind, Provider, ProviderError};
 
 // Helper type alias
 #[cfg(target_arch = "wasm32")]
-pub(crate) type PinBoxFut<'a, T> =
-    Pin<Box<dyn Future<Output = Result<T, ProviderError>> + 'a>>;
+pub(crate) type PinBoxFut<'a, T> = Pin<Box<dyn Future<Output = Result<T, ProviderError>> + 'a>>;
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) type PinBoxFut<'a, T> =
     Pin<Box<dyn Future<Output = Result<T, ProviderError>> + Send + 'a>>;
