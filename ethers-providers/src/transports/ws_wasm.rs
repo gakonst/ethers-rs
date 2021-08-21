@@ -1,8 +1,6 @@
 use wasm_bindgen::prelude::*;
 use   wasm_bindgen_futures::spawn_local;
 use   ws_stream_wasm::*;
-use futures_channel::oneshot::{Sender, Receiver, channel};
-use futures_channel::mpsc::unbounded;
 
 use crate::{
     provider::ProviderError,

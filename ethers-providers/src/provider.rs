@@ -886,7 +886,8 @@ impl Provider<crate::Ws> {
     /// Direct connection to a websocket endpoint
     #[cfg(target_arch = "wasm32")]
     pub async fn connect(url: &str) -> Result<Self, ProviderError> {
-        todo!()
+        let ws = crate::Ws::connect(url).await?;
+        Ok(Self::new(ws))
     }
 }
 

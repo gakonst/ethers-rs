@@ -50,6 +50,8 @@ ws_stream_wasm = "0.7"
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
 web-sys = { version  = "0.3", features = ["console"] }
+# this is currently necessary for `wasm-timer::Delay` to work
+parking_lot = { version = "0.11", features = ["wasm-bindgen"] }
 
 [dev-dependencies]
 ethers = { version = "0.4.0", path = "..", features = ["legacy"] }
@@ -57,11 +59,6 @@ ethers = { version = "0.4.0", path = "..", features = ["legacy"] }
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 tokio = { version = "1.5", default-features = false, features = ["rt", "macros"] }
 tempfile = "3.2.0"
-
-# wasm
-[target.'cfg(target_arch = "wasm32")'.dev-dependencies]
-wasm-bindgen-test = "0.3"
-hex = { version = "0.4.3", default-features = false, features = ["std"] }
 
 [features]
 default = ["ws", "ipc", "rustls"]
