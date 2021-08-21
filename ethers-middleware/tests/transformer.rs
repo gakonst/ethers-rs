@@ -1,3 +1,4 @@
+#![cfg(not(target_arch = "wasm32"))]
 use ethers_contract::{BaseContract, ContractFactory};
 use ethers_core::{
     types::*,

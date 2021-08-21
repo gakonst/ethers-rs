@@ -1,3 +1,4 @@
+#![cfg(not(target_arch = "wasm32"))]
 #[tokio::test]
 #[cfg(not(feature = "celo"))]
 async fn nonce_manager() {

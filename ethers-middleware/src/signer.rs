@@ -247,7 +247,7 @@ where
     }
 }
 
-#[cfg(all(test, not(feature = "celo")))]
+#[cfg(all(test, not(feature = "celo"), not(target_arch = "wasm32")))]
 mod tests {
     use super::*;
     use ethers::{providers::Provider, signers::LocalWallet};
