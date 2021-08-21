@@ -138,11 +138,12 @@ jobs:
           command: check
           args: --target wasm32-unknown-unknown
 
-      - name: Install wasm-pack
-        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
-
-      - name: Wasm-pack test firefox
-        run: wasm-pack test --headless --firefox
-
-      - name: Wasm-pack test chrome
-        run: wasm-pack test --headless --chrome
+      # NOTE: wasm-pack only works for packages
+#      - name: Install wasm-pack
+#        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+#
+#      - name: Wasm-pack test firefox
+#        run: wasm-pack test --headless --firefox
+#
+#      - name: Wasm-pack test chrome
+#        run: wasm-pack test --headless --chrome
