@@ -1,3 +1,4 @@
+#![cfg(not(target_arch = "wasm32"))]
 use ethers::{
     providers::{Http, Middleware, Provider},
     types::TransactionRequest,

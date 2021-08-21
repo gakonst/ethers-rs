@@ -872,15 +872,21 @@ impl<P: JsonRpcClient> Provider<P> {
     }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
 #[cfg(feature = "ws")]
 impl Provider<crate::Ws> {
     /// Direct connection to a websocket endpoint
+    #[cfg(not(target_arch = "wasm32"))]
     pub async fn connect(
         url: impl tokio_tungstenite::tungstenite::client::IntoClientRequest + Unpin,
     ) -> Result<Self, ProviderError> {
         let ws = crate::Ws::connect(url).await?;
         Ok(Self::new(ws))
+    }
+
+    /// Direct connection to a websocket endpoint
+    #[cfg(target_arch = "wasm32")]
+    pub async fn connect(url: &str) -> Result<Self, ProviderError> {
+        todo!()
     }
 }
 
@@ -952,8 +958,13 @@ impl TryFrom<String> for Provider<HttpProvider> {
 }
 
 #[cfg(test)]
-mod ens_tests {
+#[cfg(not(target_arch = "wasm32"))]
+mod tests {
     use super::*;
+    use crate::Http;
+    use ethers_core::types::{TransactionRequest, H256};
+    use ethers_core::utils::Geth;
+    use futures_util::StreamExt;
 
     const INFURA: &str = "https://mainnet.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27";
 
@@ -998,15 +1009,6 @@ mod ens_tests {
             .await
             .unwrap_err();
     }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::Http;
-    use ethers_core::types::{TransactionRequest, H256};
-    use ethers_core::utils::Geth;
-    use futures_util::StreamExt;
 
     #[tokio::test]
     #[cfg_attr(feature = "celo", ignore)]

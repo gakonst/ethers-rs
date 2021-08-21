@@ -1,23 +1,40 @@
 mod common;
 
-#[cfg(not(target_arch = "wasm32"))]
-mod http;
-#[cfg(not(target_arch = "wasm32"))]
-pub use http::Provider as Http;
+macro_rules! if_wasm {
+    ($($item:item)*) => {$(
+        #[cfg(target_arch = "wasm32")]
+        $item
+    )*}
+}
 
-#[cfg(not(target_arch = "wasm32"))]
-#[cfg(feature = "ws")]
-mod ws;
-#[cfg(not(target_arch = "wasm32"))]
-#[cfg(feature = "ws")]
-pub use ws::Ws;
+macro_rules! if_not_wasm {
+    ($($item:item)*) => {$(
+        #[cfg(not(target_arch = "wasm32"))]
+        $item
+    )*}
+}
 
-#[cfg(not(target_arch = "wasm32"))]
-#[cfg(feature = "ipc")]
-mod ipc;
-#[cfg(not(target_arch = "wasm32"))]
-#[cfg(feature = "ipc")]
-pub use ipc::Ipc;
+if_not_wasm! {
+    mod http;
+    pub use http::Provider as Http;
+
+    #[cfg(feature = "ws")]
+    mod ws;
+    #[cfg(feature = "ws")]
+    pub use ws::Ws;
+
+    #[cfg(feature = "ipc")]
+    mod ipc;
+    #[cfg(feature = "ipc")]
+    pub use ipc::Ipc;
+}
+
+if_wasm! {
+     #[cfg(feature = "ws")]
+    mod ws_wasm;
+     #[cfg(feature = "ws")]
+    pub use ws_wasm::Ws;
+}
 
 mod mock;
 pub use mock::{MockError, MockProvider};
