@@ -40,12 +40,12 @@ eth-keystore = { version = "0.3.0" }
 
 [dev-dependencies]
 ethers = { version = "0.4.0", path = "../ethers" }
-yubihsm = { version = "0.39.0", features = ["secp256k1", "usb", "mockhsm"] }
-
-tempfile = "3.2.0"
-tokio = { version = "1.5", default-features = false, features = ["macros"] }
-
 tracing-subscriber = "0.2.20"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+yubihsm = { version = "0.39.0", features = ["secp256k1", "usb", "mockhsm"] }
+tokio = { version = "1.5", default-features = false, features = ["macros"] }
+tempfile = "3.2.0"
 
 [features]
 celo = ["ethers-core/celo"]
