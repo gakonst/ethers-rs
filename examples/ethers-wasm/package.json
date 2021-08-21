@@ -1,0 +1,18 @@
+{
+  "name": "ethers-wasm",
+  "license": "MIT OR Apache-2.0",
+  "scripts": {
+    "build": "webpack",
+    "serve": "webpack-dev-server",
+    "ganache": "ganache-cli --blockTime 5 --seed ethers-wasm-seed"
+  },
+  "devDependencies": {
+    "@wasm-tool/wasm-pack-plugin": "1.0.1",
+    "html-webpack-plugin": "^3.2.0",
+    "text-encoding": "^0.7.0",
+    "webpack": "^4.29.4",
+    "webpack-cli": "^3.1.1",
+    "webpack-dev-server": "^3.1.0",
+    "ganache-cli": "^6.12.2"
+  }
+}
