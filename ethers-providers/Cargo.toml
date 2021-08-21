@@ -37,6 +37,7 @@ tracing = { version = "0.1.26", default-features = false }
 tracing-futures = { version = "0.2.5", default-features = false, features = ["std-future"] }
 
 bytes = { version  = "1.0.1", default-features = false, optional = true }
+wasm-timer = "0.2"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 # tokio
@@ -44,8 +45,14 @@ tokio-util = { version = "0.6.7", default-features = false, features = ["io"], o
 tokio = { version = "1.5", default-features = false, optional = true }
 tokio-tungstenite = { version = "0.15.0", default-features = false, features = ["connect"], optional = true }
 
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+ws_stream_wasm = "0.7"
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+web-sys = { version  = "0.3", features = ["console"] }
+
 [dev-dependencies]
-ethers = { version = "0.4.0", path = "../ethers" }
+ethers = { version = "0.4.0", path = "../ethers", features = ["legacy"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 tokio = { version = "1.5", default-features = false, features = ["rt", "macros"] }
@@ -54,6 +61,7 @@ tempfile = "3.2.0"
 # wasm
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
 wasm-bindgen-test = "0.3"
+hex = { version = "0.4.3", default-features = false, features = ["std"] }
 
 [features]
 default = ["ws", "ipc", "rustls"]
