@@ -39,8 +39,9 @@ spki = { version = "0.4.0", optional = true }
 eth-keystore = { version = "0.3.0" }
 
 [dev-dependencies]
-ethers = { version = "0.4.0", path = "../ethers" }
+ethers = { version = "0.4.0", path = ".." }
 tracing-subscriber = "0.2.20"
+yubihsm = { version = "0.39.0", features = ["secp256k1", "usb", "mockhsm"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 yubihsm = { version = "0.39.0", features = ["secp256k1", "usb", "mockhsm"] }

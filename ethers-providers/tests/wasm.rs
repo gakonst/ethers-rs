@@ -19,7 +19,7 @@ wasm_bindgen_test_configure!(run_in_browser);
 // definition in human readable format
 abigen!(
     SimpleContract,
-    "./ethers/examples/contract_abi.json",
+    "./examples/contract_abi.json",
     event_derives(serde::Deserialize, serde::Serialize)
 );
 
@@ -42,7 +42,10 @@ async fn connect_existing_endpoint() {
     //     bytecode.into(),
     //     client.clone(),
     // );
-    //
+    // let contract = factory.deploy("initial value".to_string())?.send().await?;
+    // let addr = contract.address();
+    // let contract = SimpleContract::new(addr, client.clone());
+
     let version = client.client_version().await;
     console_log!("version {:?}", version);
     let account = client.get_accounts().await.unwrap()[0];

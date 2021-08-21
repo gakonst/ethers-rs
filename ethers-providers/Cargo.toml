@@ -52,7 +52,7 @@ wasm-bindgen-futures = "0.4"
 web-sys = { version  = "0.3", features = ["console"] }
 
 [dev-dependencies]
-ethers = { version = "0.4.0", path = "../ethers", features = ["legacy"] }
+ethers = { version = "0.4.0", path = "..", features = ["legacy"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 tokio = { version = "1.5", default-features = false, features = ["rt", "macros"] }
