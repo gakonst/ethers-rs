@@ -324,8 +324,6 @@ impl<S> WsServer<S>
             // Handle ws messages
             resp = self.ws.next() => match resp {
                 Some(resp) => self.handle(resp).await?,
-                // TODO: Log the error?
-                Some(_) => {},
                 None => {
                     return Err(ClientError::UnexpectedClose);
                 },
