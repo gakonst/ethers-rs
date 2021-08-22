@@ -45,6 +45,3 @@ web-sys = "0.3.51"
 [dev-dependencies]
 wasm-bindgen-test = "0.3.24"
 
-[profile.release]
-# Tell `rustc` to optimize for small code size.
-opt-level = "s"
