@@ -18,10 +18,6 @@ if_not_wasm! {
     mod http;
     pub use http::Provider as Http;
 
-    #[cfg(feature = "ws")]
-    mod ws;
-    #[cfg(feature = "ws")]
-    pub use ws::Ws;
 
     #[cfg(feature = "ipc")]
     mod ipc;
@@ -29,12 +25,10 @@ if_not_wasm! {
     pub use ipc::Ipc;
 }
 
-if_wasm! {
-     #[cfg(feature = "ws")]
-    mod ws_wasm;
-     #[cfg(feature = "ws")]
-    pub use ws_wasm::Ws;
-}
+#[cfg(feature = "ws")]
+mod ws;
+#[cfg(feature = "ws")]
+pub use ws::Ws;
 
 mod mock;
 pub use mock::{MockError, MockProvider};
