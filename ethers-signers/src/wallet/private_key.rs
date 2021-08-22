@@ -4,6 +4,7 @@ use super::Wallet;
 use crate::wallet::mnemonic::MnemonicBuilderError;
 use coins_bip32::Bip32Error;
 use coins_bip39::MnemonicError;
+#[cfg(not(target_arch = "wasm32"))]
 use elliptic_curve::rand_core;
 #[cfg(not(target_arch = "wasm32"))]
 use eth_keystore::KeystoreError;
@@ -12,7 +13,9 @@ use ethers_core::{
     rand::{CryptoRng, Rng},
     utils::secret_key_to_address,
 };
-use std::{path::Path, str::FromStr};
+#[cfg(not(target_arch = "wasm32"))]
+use std::path::Path;
+use std::str::FromStr;
 use thiserror::Error;
 
 #[derive(Error, Debug)]

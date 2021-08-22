@@ -26,6 +26,7 @@ use async_trait::async_trait;
 use hex::FromHex;
 use serde::{de::DeserializeOwned, Serialize};
 use thiserror::Error;
+#[cfg(not(target_arch = "wasm32"))]
 use url::{ParseError, Url};
 
 use std::{convert::TryFrom, fmt::Debug, time::Duration};

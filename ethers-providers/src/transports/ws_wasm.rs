@@ -1,6 +1,6 @@
 use wasm_bindgen::prelude::*;
-use   wasm_bindgen_futures::spawn_local;
-use   ws_stream_wasm::*;
+use wasm_bindgen_futures::spawn_local;
+use ws_stream_wasm::*;
 
 use crate::{
     provider::ProviderError,
@@ -32,11 +32,6 @@ type Subscription = mpsc::UnboundedSender<serde_json::Value>;
 type Message = WsMessage;
 type WsError = ws_stream_wasm::WsErr;
 
-macro_rules! log {
-    ( $( $t:tt )* ) => {
-        web_sys::console::log_1(&format!( $( $t )* ).into());
-    }
-}
 macro_rules! error {
     ( $( $t:tt )* ) => {
         web_sys::console::error_1(&format!( $( $t )* ).into());
