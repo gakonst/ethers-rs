@@ -141,7 +141,7 @@ jobs:
           command: check
           args: --target wasm32-unknown-unknown
 
-      - name: Launche Ganache
+      - name: Launch Ganache
         run: |
           cd examples/ethers-wasm
           npm install
