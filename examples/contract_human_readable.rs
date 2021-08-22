@@ -9,20 +9,22 @@ use std::{convert::TryFrom, sync::Arc, time::Duration};
 // definition in human readable format
 abigen!(
     SimpleContract,
-    "./ethers/examples/contract_abi.json",
+    r#"[
+        function setValue(string)
+        function getValue() external view returns (string)
+        event ValueChanged(address indexed author, string oldValue, string newValue)
+    ]"#,
     event_derives(serde::Deserialize, serde::Serialize)
 );
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    // 1. compile the contract (note this requires that you are inside the `ethers/examples` directory) and launch ganache
+    // 1. compile the contract (note this requires that you are inside the `examples` directory) and launch ganache
     let (compiled, ganache) =
         compile_and_launch_ganache(Solc::new("**/contract.sol"), Ganache::new()).await?;
-
     let contract = compiled
         .get("SimpleStorage")
         .expect("could not find contract");
-    dbg!("OK");
 
     // 2. instantiate our wallet
     let wallet: LocalWallet = ganache.keys()[0].clone().into();
