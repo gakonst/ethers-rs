@@ -123,7 +123,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v1
-
+      - name: Install node
+        uses: actions/setup-node@v1
+        with:
+          node-version: 10
       - name: Install rust
         uses: actions-rs/toolchain@v1
         with:
@@ -138,12 +141,21 @@ jobs:
           command: check
           args: --target wasm32-unknown-unknown
 
-      # NOTE: wasm-pack only works for packages
-#      - name: Install wasm-pack
-#        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
-#
-#      - name: Wasm-pack test firefox
-#        run: wasm-pack test --headless --firefox
-#
-#      - name: Wasm-pack test chrome
-#        run: wasm-pack test --headless --chrome
+      - name: Launche Ganache
+        run: |
+          cd examples/ethers-wasm
+          npm install
+          npm run ganache &
+
+      - name: Install wasm-pack
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+
+      - name: Wasm-pack test firefox
+        run: |
+          cd examples/ethers-wasm
+          wasm-pack test --headless --firefox
+
+      - name: Wasm-pack test chrome
+        run: |
+          cd examples/ethers-wasm
+          wasm-pack test --headless --chrome
