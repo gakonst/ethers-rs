@@ -6,7 +6,8 @@ use std::fmt::Debug;
 use thiserror::Error;
 
 /// Basic trait to ensure that transactions about to be sent follow certain rules.
-#[async_trait]
+#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 pub trait Policy: Sync + Send + Debug {
     type Error: Sync + Send + Debug;
 
@@ -20,7 +21,8 @@ pub trait Policy: Sync + Send + Debug {
 #[derive(Debug, Clone, Copy)]
 pub struct AllowEverything;
 
-#[async_trait]
+#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl Policy for AllowEverything {
     type Error = ();
 
@@ -33,7 +35,8 @@ impl Policy for AllowEverything {
 #[derive(Debug, Clone, Copy)]
 pub struct RejectEverything;
 
-#[async_trait]
+#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl Policy for RejectEverything {
     type Error = ();
 
@@ -77,7 +80,8 @@ pub enum PolicyMiddlewareError<M: Middleware, P: Policy> {
     MiddlewareError(M::Error),
 }
 
-#[async_trait]
+#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl<M, P> Middleware for PolicyMiddleware<M, P>
 where
     M: Middleware,
