@@ -24,7 +24,6 @@ macro_rules! log {
         web_sys::console::log_1(&format!( $( $t )* ).into());
     }
 }
-
 abigen!(
     SimpleContract,
     "./../contract_abi.json",
@@ -40,14 +39,11 @@ pub const KEYS: [&str; 4] = [
 ];
 
 #[wasm_bindgen]
-pub fn setup() {
-    utils::set_panic_hook();
-}
-
-#[wasm_bindgen]
 pub async fn deploy() {
+    utils::set_panic_hook();
+
     console::log_2(
-        &"ABI: ".into(),
+        &"SimpleContract ABI: ".into(),
         &JsValue::from_serde(&*SIMPLECONTRACT_ABI).unwrap(),
     );
 
@@ -57,11 +53,12 @@ pub async fn deploy() {
     let endpoint = "ws://127.0.0.1:8545";
     let provider = Provider::new(Ws::connect(endpoint).await.unwrap());
     let client = Arc::new(SignerMiddleware::new(provider, wallet));
-    log!("provider connected to `{}`", endpoint);
+    log!("Provider connected to `{}`", endpoint);
 
     let bytecode = hex::decode(SIMPLECONTRACT_BIN).unwrap();
     let factory = ContractFactory::new(SIMPLECONTRACT_ABI.clone(), bytecode.into(), client.clone());
 
+    log!("Deploying contract...");
     let contract = factory
         .deploy("hello WASM!".to_string())
         .unwrap()
@@ -69,20 +66,25 @@ pub async fn deploy() {
         .await
         .unwrap();
     let addr = contract.address();
-    log!("deployed contract with address: {}", addr);
+    log!("Deployed contract with address: {:?}", addr);
 
     let contract = SimpleContract::new(addr, client.clone());
 
+    let value = "bye from WASM!";
+    log!("Setting value... `{}`", value);
     let receipt = contract
-        .set_value("bye WASM!".to_owned())
+        .set_value(value.to_owned())
         .send()
         .await
         .unwrap()
         .await
         .unwrap();
+    console::log_2(
+        &"Set value receipt: ".into(),
+        &JsValue::from_serde(&receipt).unwrap(),
+    );
 
-    log!("set value: {:?}", receipt);
-
+    log!("Fetching logs...");
     let logs = contract
         .value_changed_filter()
         .from_block(0u64)
@@ -92,9 +94,8 @@ pub async fn deploy() {
 
     let value = contract.get_value().call().await.unwrap();
 
-    log!(
-        "Value: {}. Logs: {:?}",
-        value,
-        JsValue::from_serde(&logs).unwrap()
+    console::log_2(
+        &format!("Value: `{}`. Logs: ", value).into(),
+        &JsValue::from_serde(&logs).unwrap(),
     );
 }
