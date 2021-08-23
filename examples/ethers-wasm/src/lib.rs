@@ -1,25 +1,23 @@
-pub mod utils;
+use std::sync::Arc;
 
-use crate::utils::SIMPLECONTRACT_BIN;
+use wasm_bindgen::prelude::*;
+use web_sys::console;
+
 use ethers::{
     contract::abigen,
     prelude::{ContractFactory, LocalWallet, Provider, SignerMiddleware},
-    providers::{Middleware, Ws},
+    providers::Ws,
 };
-use std::sync::Arc;
-use wasm_bindgen::prelude::*;
-use web_sys::console;
+
+use crate::utils::SIMPLECONTRACT_BIN;
+
+pub mod utils;
 
 // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
 // allocator.
 #[cfg(feature = "wee_alloc")]
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
-
-#[wasm_bindgen]
-extern "C" {
-    fn alert(s: &str);
-}
 
 macro_rules! log {
     ( $( $t:tt )* ) => {
@@ -33,8 +31,13 @@ abigen!(
     event_derives(serde::Deserialize, serde::Serialize)
 );
 
-/// key[0] of ganache with custom seed `ethers-wasm-seed`
-pub const KEY: &str = "817169e55f14ede54f4fd6a4f2ab4209db14aeeb1b9972b3b28f1560af0a061a";
+/// some keys of ganache with custom seed `ethers-wasm-seed`
+pub const KEYS: [&str; 4] = [
+    "817169e55f14ede54f4fd6a4f2ab4209db14aeeb1b9972b3b28f1560af0a061a",
+    "375715b8ced8bd9b7386ba5dc72efa518aa4379d6a4676d3e26d8f5ff5e7469c",
+    "de7c5d8e884fbe9f0915703ff2c123f4cda56f148eb22ca46d47392acf52bcec",
+    "0bd6bf22f84f96b39258a46ac2a7c482d0b8e1c5f8af0c07fa304a8d875158ec",
+];
 
 #[wasm_bindgen]
 pub fn setup() {
@@ -47,44 +50,39 @@ pub async fn deploy() {
         &"ABI: ".into(),
         &JsValue::from_serde(&*SIMPLECONTRACT_ABI).unwrap(),
     );
-    let wallet: LocalWallet = KEY.parse().unwrap();
+
+    let wallet: LocalWallet = KEYS[0].parse().unwrap();
     log!("Wallet: {:?}", wallet);
 
     let endpoint = "ws://127.0.0.1:8545";
     let provider = Provider::new(Ws::connect(endpoint).await.unwrap());
     let client = Arc::new(SignerMiddleware::new(provider, wallet));
     log!("provider connected to `{}`", endpoint);
-    let version = client.client_version().await;
-    log!("version {:?}", version);
-    let account = client.get_accounts().await.unwrap()[0];
-    log!("account {:?}", account);
 
     let bytecode = hex::decode(SIMPLECONTRACT_BIN).unwrap();
     let factory = ContractFactory::new(SIMPLECONTRACT_ABI.clone(), bytecode.into(), client.clone());
-    let init = "hello WASM!";
+
     let contract = factory
-        .deploy(init.to_string())
+        .deploy("hello WASM!".to_string())
         .unwrap()
         .send()
         .await
         .unwrap();
     let addr = contract.address();
-    log!("deployed contract with address {}", addr);
+    log!("deployed contract with address: {}", addr);
 
     let contract = SimpleContract::new(addr, client.clone());
 
-    let value = contract.get_value().call().await.unwrap();
-    assert_eq!(init, &value);
-
-    let _receipt = contract
+    let receipt = contract
         .set_value("bye WASM!".to_owned())
         .send()
         .await
         .unwrap()
         .await
         .unwrap();
-    log!("set value");
-    // 10. get all events
+
+    log!("set value: {:?}", receipt);
+
     let logs = contract
         .value_changed_filter()
         .from_block(0u64)

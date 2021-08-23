@@ -4,7 +4,7 @@
   "scripts": {
     "build": "webpack",
     "serve": "webpack-dev-server",
-    "ganache": "ganache-cli --blockTime 5 --seed ethers-wasm-seed"
+    "ganache": "ganache-cli --blockTime 2 --seed ethers-wasm-seed"
   },
   "devDependencies": {
     "@wasm-tool/wasm-pack-plugin": "1.0.1",
