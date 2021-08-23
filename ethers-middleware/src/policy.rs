@@ -5,10 +5,14 @@ use async_trait::async_trait;
 use std::fmt::Debug;
 use thiserror::Error;
 
+/// Basic trait to ensure that transactions about to be sent follow certain rules.
 #[async_trait]
 pub trait Policy: Sync + Send + Debug {
     type Error: Sync + Send + Debug;
 
+    /// Evaluates the transactions.
+    ///
+    /// Returns Ok with the `tx` or an Err otherwise.
     async fn ensure_can_send(&self, tx: TypedTransaction) -> Result<TypedTransaction, Self::Error>;
 }
 
@@ -27,10 +31,10 @@ impl Policy for AllowEverything {
 
 /// A policy that rejects all transactions.
 #[derive(Debug, Clone, Copy)]
-pub struct RejectAll;
+pub struct RejectEverything;
 
 #[async_trait]
-impl Policy for RejectAll {
+impl Policy for RejectEverything {
     type Error = ();
 
     async fn ensure_can_send(&self, _: TypedTransaction) -> Result<TypedTransaction, Self::Error> {
@@ -38,6 +42,7 @@ impl Policy for RejectAll {
     }
 }
 
+/// Middleware used to enforce certain policies for transactions.
 #[derive(Clone, Debug)]
 pub struct PolicyMiddleware<M, P> {
     pub(crate) inner: M,
@@ -50,8 +55,19 @@ impl<M: Middleware, P: Policy> FromErr<M::Error> for PolicyMiddlewareError<M, P>
     }
 }
 
+impl<M, P> PolicyMiddleware<M, P>
+where
+    M: Middleware,
+    P: Policy,
+{
+    /// Creates a new client from the provider and policy.
+    pub fn new(inner: M, policy: P) -> Self {
+        Self { inner, policy }
+    }
+}
+
 #[derive(Error, Debug)]
-/// Error thrown when the client interacts with the blockchain
+/// Error thrown when the client interacts with the policy middleware.
 pub enum PolicyMiddlewareError<M: Middleware, P: Policy> {
     /// Thrown when the internal policy errors
     #[error("{0:?}")]
@@ -75,6 +91,8 @@ where
         &self.inner
     }
 
+    /// This ensures the tx complies with the registered policy.
+    /// If so then this simply delegates the transaction to the inner middleware
     async fn send_transaction<T: Into<TypedTransaction> + Send + Sync>(
         &self,
         tx: T,
