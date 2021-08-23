@@ -78,3 +78,8 @@ pub mod transformer;
 /// instead of using eth_sendTransaction and eth_sign
 pub mod signer;
 pub use signer::SignerMiddleware;
+
+/// The [Policy](crate::PolicyMiddleware) is used to ensure transactions comply with the rules
+/// configured in the `PolicyMiddleware` before sending them.
+pub mod policy;
+pub use policy::PolicyMiddleware;
