@@ -115,3 +115,47 @@ jobs:
         run: cargo fmt --all -- --check
       - name: cargo clippy
         run: cargo clippy -- -D warnings
+
+  wasm:
+    name: WASM
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v1
+      - name: Install node
+        uses: actions/setup-node@v1
+        with:
+          node-version: 10
+      - name: Install rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: wasm32-unknown-unknown
+          profile: minimal
+          override: true
+
+      - name: Check
+        uses: actions-rs/cargo@v1
+        with:
+          command: check
+          args: --target wasm32-unknown-unknown
+
+      - name: Launch Ganache
+        run: |
+          cd examples/ethers-wasm
+          npm install
+          npm run ganache &
+
+      - name: Install wasm-pack
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+
+      - name: Wasm-pack test firefox
+        run: |
+          cd examples/ethers-wasm
+          wasm-pack test --headless --firefox
+
+      - name: Wasm-pack test chrome
+        run: |
+          cd examples/ethers-wasm
+          wasm-pack test --headless --chrome

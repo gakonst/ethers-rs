@@ -4,7 +4,6 @@ use ethers_core::types::{Transaction, TxHash, U256};
 
 use futures_core::stream::Stream;
 use futures_core::Future;
-use futures_timer::Delay;
 use futures_util::stream::FuturesUnordered;
 use futures_util::{stream, FutureExt, StreamExt};
 use pin_project::pin_project;
@@ -17,6 +16,11 @@ use std::{
     time::Duration,
     vec::IntoIter,
 };
+
+#[cfg(not(target_arch = "wasm32"))]
+use futures_timer::Delay;
+#[cfg(target_arch = "wasm32")]
+use wasm_timer::Delay;
 
 // https://github.com/tomusdrw/rust-web3/blob/befcb2fb8f3ca0a43e3081f68886fa327e64c8e6/src/api/eth_filter.rs#L20
 pub fn interval(duration: Duration) -> impl Stream<Item = ()> + Send + Unpin {
@@ -254,6 +258,7 @@ where
 }
 
 #[cfg(test)]
+#[cfg(not(target_arch = "wasm32"))]
 mod tests {
     use super::*;
     use crate::{Http, Ws};

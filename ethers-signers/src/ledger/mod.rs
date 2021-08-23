@@ -7,7 +7,8 @@ use async_trait::async_trait;
 use ethers_core::types::{transaction::eip2718::TypedTransaction, Address, Signature};
 use types::LedgerError;
 
-#[async_trait]
+#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl Signer for LedgerEthereum {
     type Error = LedgerError;
 

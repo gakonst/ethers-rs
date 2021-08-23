@@ -1,3 +1,4 @@
+#![cfg(not(target_arch = "wasm32"))]
 use ethers::{
     contract::ContractFactory,
     types::{Filter, ValueOrArray, H256},

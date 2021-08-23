@@ -92,7 +92,8 @@ impl Etherscan {
     }
 }
 
-#[async_trait]
+#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl GasOracle for Etherscan {
     async fn fetch(&self) -> Result<U256, GasOracleError> {
         if matches!(self.gas_category, GasCategory::Fastest) {

@@ -64,7 +64,8 @@ pub struct Wallet<D: DigestSigner<Sha256Proxy, RecoverableSignature>> {
     pub(crate) chain_id: u64,
 }
 
-#[async_trait]
+#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl<D: Sync + Send + DigestSigner<Sha256Proxy, RecoverableSignature>> Signer for Wallet<D> {
     type Error = std::convert::Infallible;
 

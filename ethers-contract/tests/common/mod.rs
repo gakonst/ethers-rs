@@ -1,3 +1,4 @@
+#![cfg(not(target_arch = "wasm32"))]
 mod derive;
 use ethers_core::{
     abi::Abi,

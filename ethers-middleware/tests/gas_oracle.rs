@@ -1,3 +1,4 @@
+#![cfg(not(target_arch = "wasm32"))]
 use ethers_core::{types::*, utils::Ganache};
 use ethers_middleware::gas_oracle::{
     EthGasStation, Etherchain, Etherscan, GasCategory, GasNow, GasOracle, GasOracleMiddleware,

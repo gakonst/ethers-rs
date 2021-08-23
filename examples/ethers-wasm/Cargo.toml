@@ -1,0 +1,52 @@
+[package]
+name = "ethers-wasm"
+version = "0.1.0"
+authors = ["Matthias Seitz <matthias.seitz@outlook.de>"]
+edition = "2018"
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+documentation = "https://docs.rs/ethers"
+repository = "https://github.com/gakonst/ethers-rs"
+homepage = "https://docs.rs/ethers"
+description = """
+How to use ethers in the browser with WASM.
+"""
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+default = ["console_error_panic_hook"]
+
+[dependencies]
+ethers = { path = "../..", features = ["abigen", "legacy", "ws"] }
+serde_derive = "1.0.126"
+wasm-bindgen-futures = "0.4.24"
+serde_json = "1.0.64"
+wasm-bindgen = { version = "0.2.74", features = ["serde-serialize"] }
+
+# The `console_error_panic_hook` crate provides better debugging of panics by
+# logging them with `console.error`. This is great for development, but requires
+# all the `std::fmt` and `std::panicking` infrastructure, so isn't great for
+# code size when deploying.
+console_error_panic_hook = { version = "0.1.6", optional = true }
+
+# `wee_alloc` is a tiny allocator for wasm that is only ~1K in code size
+# compared to the default allocator's ~10K. It is slower than the default
+# allocator, however.
+#
+# Unfortunately, `wee_alloc` requires nightly Rust when targeting wasm for now.
+wee_alloc = { version = "0.4.5", optional = true }
+
+serde = { version = "1.0.126", features = ["derive"] }
+hex = "0.4.3"
+web-sys = "0.3.51"
+
+[dev-dependencies]
+wasm-bindgen-test = "0.3.24"
+
+# profile for the wasm example
+[profile.release.package.ethers-wasm]
+# Tell `rustc` to optimize for small code size.
+opt-level = "s"
+

@@ -152,7 +152,8 @@ where
     }
 }
 
-#[async_trait]
+#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl<M, S> Middleware for SignerMiddleware<M, S>
 where
     M: Middleware,
@@ -246,7 +247,7 @@ where
     }
 }
 
-#[cfg(all(test, not(feature = "celo")))]
+#[cfg(all(test, not(feature = "celo"), not(target_arch = "wasm32")))]
 mod tests {
     use super::*;
     use ethers::{providers::Provider, signers::LocalWallet};

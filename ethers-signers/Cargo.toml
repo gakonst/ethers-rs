@@ -19,7 +19,6 @@ thiserror = { version = "1.0.24", default-features = false }
 coins-bip32 = "0.3.0"
 coins-bip39 = "0.3.0"
 coins-ledger = { version = "0.3.0", default-features = false, optional = true }
-eth-keystore = { version = "0.3.0" }
 hex = { version = "0.4.3", default-features = false, features = ["std"] }
 async-trait = { version = "0.1.50", default-features = false }
 elliptic-curve = { version = "0.10.5", default-features = false }
@@ -36,14 +35,18 @@ tracing = { version = "0.1.26", optional = true }
 tracing-futures = { version = "0.2.5", optional = true }
 spki = { version = "0.4.0", optional = true }
 
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+eth-keystore = { version = "0.3.0" }
+
 [dev-dependencies]
 ethers = { version = "0.4.0", path = ".." }
+tracing-subscriber = "0.2.20"
 yubihsm = { version = "0.39.0", features = ["secp256k1", "usb", "mockhsm"] }
 
-tempfile = "3.2.0"
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+yubihsm = { version = "0.39.0", features = ["secp256k1", "usb", "mockhsm"] }
 tokio = { version = "1.5", default-features = false, features = ["macros"] }
-
-tracing-subscriber = "0.2.20"
+tempfile = "3.2.0"
 
 [features]
 celo = ["ethers-core/celo"]

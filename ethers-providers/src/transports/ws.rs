@@ -22,14 +22,46 @@ use std::{
     },
 };
 use thiserror::Error;
-use tokio_tungstenite::{
-    connect_async,
-    tungstenite::{
-        self,
-        protocol::{CloseFrame, Message},
-    },
-};
-use tracing::{error, warn};
+
+if_wasm! {
+    use wasm_bindgen::prelude::*;
+    use wasm_bindgen_futures::spawn_local;
+    use ws_stream_wasm::*;
+
+    type Message = WsMessage;
+    type WsError = ws_stream_wasm::WsErr;
+    type WsStreamItem = Message;
+
+    macro_rules! error {
+        ( $( $t:tt )* ) => {
+            web_sys::console::error_1(&format!( $( $t )* ).into());
+        }
+    }
+    macro_rules! warn {
+        ( $( $t:tt )* ) => {
+            web_sys::console::warn_1(&format!( $( $t )* ).into());
+        }
+    }
+    macro_rules! debug {
+        ( $( $t:tt )* ) => {
+            web_sys::console::log_1(&format!( $( $t )* ).into());
+        }
+    }
+}
+
+if_not_wasm! {
+    use tokio_tungstenite::{
+        connect_async,
+        tungstenite::{
+            self,
+            protocol::CloseFrame,
+        },
+    };
+    type Message = tungstenite::protocol::Message;
+    type WsError = tungstenite::Error;
+    type WsStreamItem = Result<Message, WsError>;
+    use tracing::{debug, error, warn};
+}
 
 type Pending = oneshot::Sender<Result<serde_json::Value, JsonRpcError>>;
 type Subscription = mpsc::UnboundedSender<serde_json::Value>;
@@ -84,11 +116,7 @@ impl Ws {
     /// The websocket connection must be initiated separately.
     pub fn new<S: 'static>(ws: S) -> Self
     where
-        S: Send
-            + Sync
-            + Stream<Item = Result<Message, tungstenite::Error>>
-            + Sink<Message, Error = tungstenite::Error>
-            + Unpin,
+        S: Send + Sync + Stream<Item = WsStreamItem> + Sink<Message, Error = WsError> + Unpin,
     {
         let (sink, stream) = mpsc::unbounded();
 
@@ -107,6 +135,17 @@ impl Ws {
     }
 
     /// Initializes a new WebSocket Client
+    #[cfg(target_arch = "wasm32")]
+    pub async fn connect(url: &str) -> Result<Self, ClientError> {
+        let (_, wsio) = WsMeta::connect(url, None)
+            .await
+            .expect_throw("Could not create websocket");
+
+        Ok(Self::new(wsio))
+    }
+
+    /// Initializes a new WebSocket Client
+    #[cfg(not(target_arch = "wasm32"))]
     pub async fn connect(
         url: impl tungstenite::client::IntoClientRequest + Unpin,
     ) -> Result<Self, ClientError> {
@@ -121,7 +160,8 @@ impl Ws {
     }
 }
 
-#[async_trait]
+#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl JsonRpcClient for Ws {
     type Error = ClientError;
 
@@ -181,11 +221,7 @@ struct WsServer<S> {
 
 impl<S> WsServer<S>
 where
-    S: Send
-        + Sync
-        + Stream<Item = Result<Message, tungstenite::Error>>
-        + Sink<Message, Error = tungstenite::Error>
-        + Unpin,
+    S: Send + Sync + Stream<Item = WsStreamItem> + Sink<Message, Error = WsError> + Unpin,
 {
     /// Instantiates the Websocket Server
     fn new(ws: S, requests: mpsc::UnboundedReceiver<Instruction>) -> Self {
@@ -215,12 +251,12 @@ where
         let f = async move {
             loop {
                 if self.is_done() {
-                    tracing::info!("work complete");
+                    debug!("work complete");
                     break;
                 }
                 match self.tick().await {
                     Err(ClientError::UnexpectedClose) => {
-                        tracing::error!("{}", ClientError::UnexpectedClose);
+                        error!("{}", ClientError::UnexpectedClose);
                         break;
                     }
                     Err(e) => {
@@ -231,6 +267,10 @@ where
             }
         };
 
+        #[cfg(target_arch = "wasm32")]
+        spawn_local(f);
+
+        #[cfg(not(target_arch = "wasm32"))]
         tokio::spawn(f);
     }
 
@@ -284,6 +324,7 @@ where
         }
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     async fn handle_ping(&mut self, inner: Vec<u8>) -> Result<(), ClientError> {
         self.ws.send(Message::Pong(inner)).await?;
         Ok(())
@@ -315,6 +356,15 @@ where
         Ok(())
     }
 
+    #[cfg(target_arch = "wasm32")]
+    async fn handle(&mut self, resp: Message) -> Result<(), ClientError> {
+        match resp {
+            Message::Text(inner) => self.handle_text(inner).await,
+            Message::Binary(buf) => Err(ClientError::UnexpectedBinary(buf)),
+        }
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
     async fn handle(&mut self, resp: Message) -> Result<(), ClientError> {
         match resp {
             Message::Text(inner) => self.handle_text(inner).await,
@@ -328,6 +378,28 @@ where
 
     /// Processes 1 instruction or 1 incoming websocket message
     #[allow(clippy::single_match)]
+    #[cfg(target_arch = "wasm32")]
+    async fn tick(&mut self) -> Result<(), ClientError> {
+        futures_util::select! {
+            // Handle requests
+            instruction = self.instructions.select_next_some() => {
+                self.service(instruction).await?;
+            },
+            // Handle ws messages
+            resp = self.ws.next() => match resp {
+                Some(resp) => self.handle(resp).await?,
+                None => {
+                    return Err(ClientError::UnexpectedClose);
+                },
+            }
+        };
+
+        Ok(())
+    }
+
+    /// Processes 1 instruction or 1 incoming websocket message
+    #[allow(clippy::single_match)]
+    #[cfg(not(target_arch = "wasm32"))]
     async fn tick(&mut self) -> Result<(), ClientError> {
         futures_util::select! {
             // Handle requests
@@ -371,7 +443,7 @@ pub enum ClientError {
 
     /// Thrown if there's an error over the WS connection
     #[error(transparent)]
-    TungsteniteError(#[from] tungstenite::Error),
+    TungsteniteError(#[from] WsError),
 
     #[error("{0}")]
     ChannelError(String),
@@ -381,7 +453,13 @@ pub enum ClientError {
 
     /// Remote server sent a Close message
     #[error("Websocket closed with info: {0:?}")]
+    #[cfg(not(target_arch = "wasm32"))]
     WsClosed(CloseFrame<'static>),
+
+    /// Remote server sent a Close message
+    #[error("Websocket closed with info")]
+    #[cfg(target_arch = "wasm32")]
+    WsClosed,
 
     /// Something caused the websocket to close
     #[error("WebSocket connection closed unexpectedly")]
@@ -396,6 +474,7 @@ impl From<ClientError> for ProviderError {
 
 #[cfg(test)]
 #[cfg(not(feature = "celo"))]
+#[cfg(not(target_arch = "wasm32"))]
 mod tests {
     use super::*;
     use ethers_core::types::{Block, TxHash, U256};

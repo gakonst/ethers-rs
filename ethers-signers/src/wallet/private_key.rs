@@ -4,14 +4,18 @@ use super::Wallet;
 use crate::wallet::mnemonic::MnemonicBuilderError;
 use coins_bip32::Bip32Error;
 use coins_bip39::MnemonicError;
+#[cfg(not(target_arch = "wasm32"))]
 use elliptic_curve::rand_core;
+#[cfg(not(target_arch = "wasm32"))]
 use eth_keystore::KeystoreError;
 use ethers_core::{
     k256::ecdsa::{self, SigningKey},
     rand::{CryptoRng, Rng},
     utils::secret_key_to_address,
 };
-use std::{path::Path, str::FromStr};
+#[cfg(not(target_arch = "wasm32"))]
+use std::path::Path;
+use std::str::FromStr;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -24,6 +28,7 @@ pub enum WalletError {
     #[error(transparent)]
     Bip39Error(#[from] MnemonicError),
     /// Underlying eth keystore error
+    #[cfg(not(target_arch = "wasm32"))]
     #[error(transparent)]
     EthKeystoreError(#[from] KeystoreError),
     /// Error propagated from k256's ECDSA module
@@ -54,6 +59,7 @@ impl Clone for Wallet<SigningKey> {
 impl Wallet<SigningKey> {
     /// Creates a new random encrypted JSON with the provided password and stores it in the
     /// provided directory
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn new_keystore<P, R, S>(dir: P, rng: &mut R, password: S) -> Result<Self, WalletError>
     where
         P: AsRef<Path>,
@@ -71,6 +77,7 @@ impl Wallet<SigningKey> {
     }
 
     /// Decrypts an encrypted JSON from the provided path to construct a Wallet instance
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn decrypt_keystore<P, S>(keypath: P, password: S) -> Result<Self, WalletError>
     where
         P: AsRef<Path>,
@@ -145,6 +152,7 @@ impl FromStr for Wallet<SigningKey> {
 }
 
 #[cfg(test)]
+#[cfg(not(target_arch = "wasm32"))]
 mod tests {
     use super::*;
     use crate::Signer;

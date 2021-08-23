@@ -103,6 +103,7 @@ where
     Ok(address_str[2..].parse()?)
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 /// Perform an HTTP GET request and return the contents of the response.
 pub fn http_get(url: &str) -> Result<String> {
     Ok(reqwest::blocking::get(url)?.text()?)

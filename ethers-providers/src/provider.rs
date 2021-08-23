@@ -2,8 +2,11 @@ use crate::{
     ens,
     pubsub::{PubsubClient, SubscriptionStream},
     stream::{FilterWatcher, DEFAULT_POLL_INTERVAL},
-    FeeHistory, FromErr, Http as HttpProvider, JsonRpcClient, MockProvider, PendingTransaction,
+    FeeHistory, FromErr, JsonRpcClient, MockProvider, PendingTransaction,
 };
+
+#[cfg(not(target_arch = "wasm32"))]
+use crate::Http as HttpProvider;
 
 use ethers_core::{
     abi::{self, Detokenize, ParamType},
@@ -23,6 +26,7 @@ use async_trait::async_trait;
 use hex::FromHex;
 use serde::{de::DeserializeOwned, Serialize};
 use thiserror::Error;
+#[cfg(not(target_arch = "wasm32"))]
 use url::{ParseError, Url};
 
 use std::{convert::TryFrom, fmt::Debug, time::Duration};
@@ -167,7 +171,8 @@ impl<P: JsonRpcClient> Provider<P> {
 }
 
 #[cfg(feature = "celo")]
-#[async_trait]
+#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl<P: JsonRpcClient> CeloMiddleware for Provider<P> {
     async fn get_validators_bls_public_keys<T: Into<BlockId> + Send + Sync>(
         &self,
@@ -179,7 +184,8 @@ impl<P: JsonRpcClient> CeloMiddleware for Provider<P> {
     }
 }
 
-#[async_trait]
+#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl<P: JsonRpcClient> Middleware for Provider<P> {
     type Error = ProviderError;
     type Provider = P;
@@ -870,14 +876,23 @@ impl<P: JsonRpcClient> Provider<P> {
 #[cfg(feature = "ws")]
 impl Provider<crate::Ws> {
     /// Direct connection to a websocket endpoint
+    #[cfg(not(target_arch = "wasm32"))]
     pub async fn connect(
         url: impl tokio_tungstenite::tungstenite::client::IntoClientRequest + Unpin,
     ) -> Result<Self, ProviderError> {
         let ws = crate::Ws::connect(url).await?;
         Ok(Self::new(ws))
     }
+
+    /// Direct connection to a websocket endpoint
+    #[cfg(target_arch = "wasm32")]
+    pub async fn connect(url: &str) -> Result<Self, ProviderError> {
+        let ws = crate::Ws::connect(url).await?;
+        Ok(Self::new(ws))
+    }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 #[cfg(feature = "ipc")]
 impl Provider<crate::Ipc> {
     /// Direct connection to an IPC socket.
@@ -926,6 +941,7 @@ fn decode_bytes<T: Detokenize>(param: ParamType, bytes: Bytes) -> T {
     T::from_tokens(tokens).expect("could not parse tokens as address")
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl TryFrom<&str> for Provider<HttpProvider> {
     type Error = ParseError;
 
@@ -934,6 +950,7 @@ impl TryFrom<&str> for Provider<HttpProvider> {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl TryFrom<String> for Provider<HttpProvider> {
     type Error = ParseError;
 
@@ -943,8 +960,13 @@ impl TryFrom<String> for Provider<HttpProvider> {
 }
 
 #[cfg(test)]
-mod ens_tests {
+#[cfg(not(target_arch = "wasm32"))]
+mod tests {
     use super::*;
+    use crate::Http;
+    use ethers_core::types::{TransactionRequest, H256};
+    use ethers_core::utils::Geth;
+    use futures_util::StreamExt;
 
     const INFURA: &str = "https://mainnet.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27";
 
@@ -989,15 +1011,6 @@ mod ens_tests {
             .await
             .unwrap_err();
     }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::Http;
-    use ethers_core::types::{TransactionRequest, H256};
-    use ethers_core::utils::Geth;
-    use futures_util::StreamExt;
 
     #[tokio::test]
     #[cfg_attr(feature = "celo", ignore)]

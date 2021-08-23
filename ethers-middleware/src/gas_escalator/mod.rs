@@ -9,12 +9,18 @@ use async_trait::async_trait;
 use ethers_core::types::{BlockId, TransactionRequest, TxHash, U256};
 use ethers_providers::{interval, FromErr, Middleware, PendingTransaction, StreamExt};
 use futures_util::lock::Mutex;
+use instant::Instant;
+use std::pin::Pin;
 use std::sync::Arc;
-use std::{pin::Pin, time::Instant};
 use thiserror::Error;
 
+#[cfg(not(target_arch = "wasm32"))]
 use tokio::spawn;
-use tracing_futures::Instrument;
+
+#[cfg(target_arch = "wasm32")]
+type WatcherFuture<'a> = Pin<Box<dyn futures_util::stream::Stream<Item = ()> + 'a>>;
+#[cfg(not(target_arch = "wasm32"))]
+type WatcherFuture<'a> = Pin<Box<dyn futures_util::stream::Stream<Item = ()> + Send + 'a>>;
 
 /// Trait for fetching updated gas prices after a transaction has been first
 /// broadcast
@@ -69,7 +75,8 @@ pub struct GasEscalatorMiddleware<M, E> {
     frequency: Frequency,
 }
 
-#[async_trait]
+#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl<M, E> Middleware for GasEscalatorMiddleware<M, E>
 where
     M: Middleware,
@@ -118,11 +125,14 @@ where
     /// Initializes the middleware with the provided gas escalator and the chosen
     /// escalation frequency (per block or per second)
     #[allow(clippy::let_and_return)]
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn new(inner: M, escalator: E, frequency: Frequency) -> Self
     where
         E: Clone + 'static,
         M: Clone + 'static,
     {
+        use tracing_futures::Instrument;
+
         let this = Self {
             inner: Arc::new(inner),
             escalator,
@@ -146,18 +156,17 @@ where
 
     /// Re-broadcasts pending transactions with a gas price escalator
     pub async fn escalate(&self) -> Result<(), GasEscalatorError<M>> {
-        // the escalation frequency is either on a per-block basis, or on a duratoin basis
-        let mut watcher: Pin<Box<dyn futures_util::stream::Stream<Item = ()> + Send>> =
-            match self.frequency {
-                Frequency::PerBlock => Box::pin(
-                    self.inner
-                        .watch_blocks()
-                        .await
-                        .map_err(GasEscalatorError::MiddlewareError)?
-                        .map(|_| ()),
-                ),
-                Frequency::Duration(ms) => Box::pin(interval(std::time::Duration::from_millis(ms))),
-            };
+        // the escalation frequency is either on a per-block basis, or on a duration basis
+        let mut watcher: WatcherFuture = match self.frequency {
+            Frequency::PerBlock => Box::pin(
+                self.inner
+                    .watch_blocks()
+                    .await
+                    .map_err(GasEscalatorError::MiddlewareError)?
+                    .map(|_| ()),
+            ),
+            Frequency::Duration(ms) => Box::pin(interval(std::time::Duration::from_millis(ms))),
+        };
 
         while watcher.next().await.is_some() {
             let now = Instant::now();

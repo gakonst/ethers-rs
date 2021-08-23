@@ -28,8 +28,9 @@ ethers = { version = "0.4.0", path = ".." }
 ethers-providers = { version = "0.4.6", path = "../ethers-providers", default-features = false, features = ["ws"] }
 ethers-signers = { version = "0.4.6", path = "../ethers-signers" }
 ethers-middleware = { version = "0.4.8", path = "../ethers-middleware" }
-tokio = { version = "1.5", default-features = false, features = ["macros"] }
 
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+tokio = { version = "1.5", default-features = false, features = ["macros"] }
 
 [features]
 abigen = ["ethers-contract-abigen", "ethers-contract-derive"]

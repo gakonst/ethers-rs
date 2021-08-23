@@ -291,6 +291,7 @@ fn base_fee_surged(base_fee_per_gas: U256) -> U256 {
 ///
 /// Does not guarantee that the given port is unused after the function exists, just that it was
 /// unused before the function started (i.e., it does not reserve a port).
+#[cfg(not(target_arch = "wasm32"))]
 pub(crate) fn unused_port() -> u16 {
     let listener = std::net::TcpListener::bind("127.0.0.1:0")
         .expect("Failed to create TCP listener to find unused port");

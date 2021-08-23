@@ -1,3 +1,4 @@
+#![cfg(not(target_arch = "wasm32"))]
 #[cfg(not(feature = "celo"))]
 mod tests {
     use ethers_core::{rand::thread_rng, types::TransactionRequest, utils::Ganache};

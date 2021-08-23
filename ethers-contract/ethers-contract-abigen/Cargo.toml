@@ -24,6 +24,11 @@ hex = { version = "0.4.2", default-features = false, features = ["std"] }
 reqwest = { version = "0.11.3", features = ["blocking"] }
 once_cell = { version = "1.8.0", default-features = false }
 cargo_metadata = "0.14.0"
+cfg-if = "1.0.0"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+# NOTE: this enables wasm compatibility for getrandom indirectly
+getrandom = { version = "0.2", features = ["js"] }
 
 [package.metadata.docs.rs]
 all-features = true

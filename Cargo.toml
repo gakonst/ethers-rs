@@ -21,6 +21,9 @@ members = [
     "ethers-middleware",
 ]
 
+exclude = [
+    "examples/ethers-wasm",
+]
 
 [package.metadata.docs.rs]
 all-features = true
