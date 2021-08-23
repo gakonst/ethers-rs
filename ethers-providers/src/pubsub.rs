@@ -15,7 +15,7 @@ use std::{
 /// A transport implementation supporting pub sub subscriptions.
 pub trait PubsubClient: JsonRpcClient {
     /// The type of stream this transport returns
-    type NotificationStream: futures_core::Stream<Item = Value>;
+    type NotificationStream: futures_core::Stream<Item = Value> + Send + Unpin;
 
     /// Add a subscription to this transport
     fn subscribe<T: Into<U256>>(&self, id: T) -> Result<Self::NotificationStream, Self::Error>;
