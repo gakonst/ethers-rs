@@ -15,15 +15,14 @@ macro_rules! if_not_wasm {
 }
 
 if_not_wasm! {
-    mod http;
-    pub use http::Provider as Http;
-
-
     #[cfg(feature = "ipc")]
     mod ipc;
     #[cfg(feature = "ipc")]
     pub use ipc::Ipc;
 }
+
+mod http;
+pub use http::Provider as Http;
 
 #[cfg(feature = "ws")]
 mod ws;
