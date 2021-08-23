@@ -2,11 +2,8 @@ use crate::{
     ens,
     pubsub::{PubsubClient, SubscriptionStream},
     stream::{FilterWatcher, DEFAULT_POLL_INTERVAL},
-    FeeHistory, FromErr, JsonRpcClient, MockProvider, PendingTransaction,
+    FeeHistory, FromErr, Http as HttpProvider, JsonRpcClient, MockProvider, PendingTransaction,
 };
-
-#[cfg(not(target_arch = "wasm32"))]
-use crate::Http as HttpProvider;
 
 use ethers_core::{
     abi::{self, Detokenize, ParamType},
@@ -26,7 +23,6 @@ use async_trait::async_trait;
 use hex::FromHex;
 use serde::{de::DeserializeOwned, Serialize};
 use thiserror::Error;
-#[cfg(not(target_arch = "wasm32"))]
 use url::{ParseError, Url};
 
 use std::{convert::TryFrom, fmt::Debug, time::Duration};
@@ -941,7 +937,6 @@ fn decode_bytes<T: Detokenize>(param: ParamType, bytes: Bytes) -> T {
     T::from_tokens(tokens).expect("could not parse tokens as address")
 }
 
-#[cfg(not(target_arch = "wasm32"))]
 impl TryFrom<&str> for Provider<HttpProvider> {
     type Error = ParseError;
 
@@ -950,7 +945,6 @@ impl TryFrom<&str> for Provider<HttpProvider> {
     }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
 impl TryFrom<String> for Provider<HttpProvider> {
     type Error = ParseError;
 

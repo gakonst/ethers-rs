@@ -1,16 +1,12 @@
-//! Test suite for the Web and headless browsers.
-
 #![cfg(target_arch = "wasm32")]
 
-use wasm_bindgen::prelude::*;
 use wasm_bindgen_test::*;
 
-use ethers::{
-    contract::abigen,
-    prelude::{ContractFactory, LocalWallet, Provider, SignerMiddleware},
-    providers::Ws,
+use ethers::prelude::{
+    abigen, ContractFactory, Http, JsonRpcClient, LocalWallet, Provider, SignerMiddleware, Ws,
 };
 
+use std::convert::TryFrom;
 use std::sync::Arc;
 
 wasm_bindgen_test_configure!(run_in_browser);
@@ -24,19 +20,26 @@ abigen!(
 );
 
 #[wasm_bindgen_test]
-async fn connect_and_deploy() {
-    console_log!("starting");
+async fn http_connect_and_deploy() {
+    console_log!("connecting http...");
+    let provider = Provider::<Http>::try_from("http://localhost:8545").unwrap();
+    deploy(provider, ethers_wasm::utils::key(0)).await;
+}
 
-    // a private key of a launched ganache `yarn ganache`
-    let wallet: LocalWallet = ethers_wasm::KEY.parse().unwrap();
-
+#[wasm_bindgen_test]
+async fn ws_connect_and_deploy() {
+    console_log!("connecting ws...");
     let provider = Provider::new(Ws::connect("ws://localhost:8545").await.unwrap());
+    deploy(provider, ethers_wasm::utils::key(1)).await;
+}
+
+async fn deploy<T: JsonRpcClient>(provider: Provider<T>, wallet: LocalWallet) {
     let client = Arc::new(SignerMiddleware::new(provider, wallet));
 
     let bytecode = hex::decode(ethers_wasm::utils::SIMPLECONTRACT_BIN).unwrap();
     let factory = ContractFactory::new(SIMPLECONTRACT_ABI.clone(), bytecode.into(), client.clone());
     let contract = factory
-        .deploy("initial value".to_string())
+        .deploy("Hello from Contract!".to_string())
         .unwrap()
         .send()
         .await
@@ -45,27 +48,7 @@ async fn connect_and_deploy() {
     console_log!("deployed to {}", addr);
 
     let contract = SimpleContract::new(addr, client.clone());
-    let _receipt = contract
-        .set_value("hi".to_owned())
-        .send()
-        .await
-        .unwrap()
-        .await
-        .unwrap();
-
-    //  get all events
-    let logs = contract
-        .value_changed_filter()
-        .from_block(0u64)
-        .query()
-        .await
-        .unwrap();
-
     let value = contract.get_value().call().await.unwrap();
 
-    console_log!(
-        "Value: {}. Logs: {:?}",
-        value,
-        JsValue::from_serde(&logs).unwrap()
-    );
+    console_log!("value: {:?}", value);
 }
