@@ -19,13 +19,11 @@ members = [
     "ethers-signers",
     "ethers-core",
     "ethers-middleware",
-    "examples/ethers-wasm"
 ]
 
-# profile for the wasm example
-[profile.release.package.ethers-wasm]
-# Tell `rustc` to optimize for small code size.
-opt-level = "s"
+exclude = [
+    "examples/ethers-wasm",
+]
 
 [package.metadata.docs.rs]
 all-features = true
