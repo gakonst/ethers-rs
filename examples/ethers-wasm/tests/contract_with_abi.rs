@@ -23,18 +23,14 @@ abigen!(
 async fn http_connect_and_deploy() {
     console_log!("connecting http...");
     let provider = Provider::<Http>::try_from("http://localhost:8545").unwrap();
-    // a private key of a launched ganache `yarn ganache`
-    let wallet: LocalWallet = ethers_wasm::KEYS[0].parse().unwrap();
-    deploy(provider, wallet).await;
+    deploy(provider, ethers_wasm::utils::key(0)).await;
 }
 
 #[wasm_bindgen_test]
 async fn ws_connect_and_deploy() {
     console_log!("connecting ws...");
     let provider = Provider::new(Ws::connect("ws://localhost:8545").await.unwrap());
-    // a private key of a launched ganache `yarn ganache`
-    let wallet: LocalWallet = ethers_wasm::KEYS[1].parse().unwrap();
-    deploy(provider, wallet).await;
+    deploy(provider, ethers_wasm::utils::key(1)).await;
 }
 
 async fn deploy<T: JsonRpcClient>(provider: Provider<T>, wallet: LocalWallet) {

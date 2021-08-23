@@ -5,7 +5,7 @@ use web_sys::console;
 
 use ethers::{
     contract::abigen,
-    prelude::{ContractFactory, LocalWallet, Provider, SignerMiddleware},
+    prelude::{ContractFactory, Provider, SignerMiddleware},
     providers::Ws,
 };
 
@@ -30,14 +30,6 @@ abigen!(
     event_derives(serde::Deserialize, serde::Serialize)
 );
 
-/// some keys of ganache with custom seed `ethers-wasm-seed`
-pub const KEYS: [&str; 4] = [
-    "817169e55f14ede54f4fd6a4f2ab4209db14aeeb1b9972b3b28f1560af0a061a",
-    "375715b8ced8bd9b7386ba5dc72efa518aa4379d6a4676d3e26d8f5ff5e7469c",
-    "de7c5d8e884fbe9f0915703ff2c123f4cda56f148eb22ca46d47392acf52bcec",
-    "0bd6bf22f84f96b39258a46ac2a7c482d0b8e1c5f8af0c07fa304a8d875158ec",
-];
-
 #[wasm_bindgen]
 pub async fn deploy() {
     utils::set_panic_hook();
@@ -47,7 +39,7 @@ pub async fn deploy() {
         &JsValue::from_serde(&*SIMPLECONTRACT_ABI).unwrap(),
     );
 
-    let wallet: LocalWallet = KEYS[0].parse().unwrap();
+    let wallet = utils::key(0);
     log!("Wallet: {:?}", wallet);
 
     let endpoint = "ws://127.0.0.1:8545";
