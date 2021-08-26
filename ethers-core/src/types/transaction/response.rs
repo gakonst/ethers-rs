@@ -143,7 +143,7 @@ impl Transaction {
         let mut rlp = RlpStream::new();
         rlp.begin_list(NUM_TX_FIELDS);
         rlp.append(&self.nonce);
-        rlp.append(&self.gas_price);
+        rlp_opt(&mut rlp, &self.gas_price);
         rlp.append(&self.gas);
 
         #[cfg(feature = "celo")]
