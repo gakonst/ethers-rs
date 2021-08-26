@@ -28,7 +28,7 @@ serde = { version = "1.0.124", default-features = false, features = ["derive"] }
 serde_json = { version = "1.0.64", default-features = false }
 thiserror = { version = "1.0.26", default-features = false }
 glob = { version = "0.3.0", default-features = false }
-bytes = { version = "1.0.1", features = ["serde"] }
+bytes = { version = "1.1.0", features = ["serde"] }
 hex = { version = "0.4.3", default-features = false, features = ["std"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
