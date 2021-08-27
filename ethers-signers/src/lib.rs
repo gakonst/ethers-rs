@@ -13,10 +13,9 @@
 //! - [AWS KMS](crate::AwsSigner)
 //!
 //! ```no_run
-//! # use ethers::{
-//! #     signers::{LocalWallet, Signer},
-//! #     core::{k256::ecdsa::SigningKey, types::TransactionRequest},
-//! # };
+//! # use ethers_signers::{LocalWallet, Signer};
+//! # use ethers_core::{k256::ecdsa::SigningKey, types::TransactionRequest};
+//!
 //! # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
 //! // instantiate the wallet
 //! let wallet = "dcf2cbdd171a21c480aa7f53d77f31bb102282b3ff099c78e3118b37348c72f7"

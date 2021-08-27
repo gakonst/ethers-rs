@@ -35,7 +35,7 @@ impl LedgerEthereum {
     ///
     /// ```
     /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
-    /// use ethers::signers::{Ledger, HDPath};
+    /// use ethers_signers::{Ledger, HDPath};
     ///
     /// let ledger = Ledger::new(HDPath::LedgerLive(0), 1).await?;
     /// # Ok(())
@@ -200,7 +200,7 @@ impl LedgerEthereum {
 mod tests {
     use super::*;
     use crate::Signer;
-    use ethers::prelude::*;
+    use ethers_core::types::{Address, TransactionRequest};
     use std::str::FromStr;
 
     #[tokio::test]
