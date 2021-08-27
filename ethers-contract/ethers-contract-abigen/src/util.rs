@@ -12,7 +12,8 @@ use syn::{Ident as SynIdent, Path};
 /// See `determine_ethers_crates`
 ///
 /// This ensures that the `MetadataCommand` is only run once
-static ETHERS_CRATES: Lazy<(&'static str, &'static str, &'static str)> = Lazy::new(determine_ethers_crates);
+static ETHERS_CRATES: Lazy<(&'static str, &'static str, &'static str)> =
+    Lazy::new(determine_ethers_crates);
 
 /// Convenience function to turn the `ethers_core` name in `ETHERS_CRATE` into a `Path`
 pub fn ethers_core_crate() -> Path {
@@ -52,7 +53,8 @@ pub fn determine_ethers_crates() -> (&'static str, &'static str, &'static str) {
                     .iter()
                     .filter(|dep| dep.kind == DependencyKind::Normal)
                     .find_map(|dep| {
-                        (dep.name == "ethers").then(|| ("ethers::core", "ethers::contract", "ethers::providers"))
+                        (dep.name == "ethers")
+                            .then(|| ("ethers::core", "ethers::contract", "ethers::providers"))
                     })
             })
         })
