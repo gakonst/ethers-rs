@@ -192,6 +192,9 @@ impl Default for Quorum {
 
 // A future that returns the provider's response and it's index within the
 // `QuorumProvider` provider set
+#[cfg(target_arch = "wasm32")]
+type PendingRequest<'a> = Pin<Box<dyn Future<Output = (Result<Value, ProviderError>, usize)> + 'a>>;
+#[cfg(not(target_arch = "wasm32"))]
 type PendingRequest<'a> =
     Pin<Box<dyn Future<Output = (Result<Value, ProviderError>, usize)> + 'a + Send>>;
 
