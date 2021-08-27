@@ -254,7 +254,7 @@ impl Filter {
     /// Match only a specific block
     ///
     /// ```rust
-    /// # use ethers::types::Filter;
+    /// # use ethers_core::types::Filter;
     /// # fn main() {
     /// let filter = Filter::new().select(69u64);
     /// # }
@@ -264,7 +264,7 @@ impl Filter {
     /// Match the latest block only
     ///
     /// ```rust
-    /// # use ethers::types::{Filter, BlockNumber};
+    /// # use ethers_core::types::{Filter, BlockNumber};
     /// # fn main() {
     /// let filter = Filter::new().select(BlockNumber::Latest);
     /// # }
@@ -273,7 +273,7 @@ impl Filter {
     /// Match a block by its hash
     ///
     /// ```rust
-    /// # use ethers::types::{Filter, H256};
+    /// # use ethers_core::types::{Filter, H256};
     /// # fn main() {
     /// let filter = Filter::new().select(H256::zero());
     /// # }
@@ -283,7 +283,7 @@ impl Filter {
     /// Match a range of blocks
     ///
     /// ```rust
-    /// # use ethers::types::{Filter, H256};
+    /// # use ethers_core::types::{Filter, H256};
     /// # fn main() {
     /// let filter = Filter::new().select(0u64..100u64);
     /// # }
@@ -292,7 +292,7 @@ impl Filter {
     /// Match all blocks in range `(1337..BlockNumber::Latest)`
     ///
     /// ```rust
-    /// # use ethers::types::{Filter, H256};
+    /// # use ethers_core::types::{Filter, H256};
     /// # fn main() {
     /// let filter = Filter::new().select(1337u64..);
     /// # }
@@ -301,7 +301,7 @@ impl Filter {
     /// Match all blocks in range `(BlockNumber::Earliest..1337)`
     ///
     /// ```rust
-    /// # use ethers::types::{Filter, H256};
+    /// # use ethers_core::types::{Filter, H256};
     /// # fn main() {
     /// let filter = Filter::new().select(..1337u64);
     /// # }

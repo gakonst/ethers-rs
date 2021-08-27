@@ -60,7 +60,7 @@ impl Drop for GethInstance {
 /// # Example
 ///
 /// ```no_run
-/// use ethers::utils::Geth;
+/// use ethers_core::utils::Geth;
 ///
 /// let port = 8545u16;
 /// let url = format!("http://localhost:{}", port).to_string();
