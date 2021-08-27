@@ -1,8 +1,5 @@
-#![cfg(not(target_arch = "wasm32"))]
-use ethers::{
-    contract::ContractFactory,
-    types::{Filter, ValueOrArray, H256},
-};
+use ethers_contract::ContractFactory;
+use ethers_core::types::{Filter, ValueOrArray, H256};
 
 mod common;
 pub use common::*;
@@ -10,12 +7,12 @@ pub use common::*;
 #[cfg(not(feature = "celo"))]
 mod eth_tests {
     use super::*;
-    use ethers::{
-        contract::{LogMeta, Multicall},
-        providers::{Http, Middleware, PendingTransaction, Provider, StreamExt},
+    use ethers_contract::{LogMeta, Multicall};
+    use ethers_core::{
         types::{Address, BlockId, U256},
         utils::Ganache,
     };
+    use ethers_providers::{Http, Middleware, PendingTransaction, Provider, StreamExt};
     use std::{convert::TryFrom, sync::Arc};
 
     #[tokio::test]

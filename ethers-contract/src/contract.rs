@@ -65,14 +65,14 @@ use std::{fmt::Debug, marker::PhantomData, sync::Arc};
 /// interact with its methods and retrieve raw logs it has emitted.
 ///
 /// ```no_run
-/// use ethers::{
+/// use ethers_core::{
 ///     abi::Abi,
 ///     utils::Solc,
 ///     types::{Address, H256},
-///     contract::Contract,
-///     providers::{Provider, Http},
-///     signers::Wallet,
 /// };
+/// use ethers_contract::Contract;
+/// use ethers_providers::{Provider, Http};
+/// use ethers_signers::Wallet;
 /// use std::convert::TryFrom;
 ///
 /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
