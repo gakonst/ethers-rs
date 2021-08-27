@@ -1,4 +1,3 @@
-#![cfg(not(target_arch = "wasm32"))]
 use ethers_providers::{Http, Middleware, Provider};
 
 use ethers_core::types::TransactionRequest;
@@ -42,6 +41,99 @@ async fn send_eth() {
         .unwrap();
 
     assert!(balance_before > balance_after);
+}
+
+#[tokio::test]
+async fn pending_txs_with_confirmations_testnet() {
+    let provider =
+        Provider::<Http>::try_from("https://rinkeby.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27")
+            .unwrap();
+    let chain_id = provider.get_chainid().await.unwrap();
+    let wallet = "59c37cb6b16fa2de30675f034c8008f890f4b2696c729d6267946d29736d73e4"
+        .parse::<LocalWallet>()
+        .unwrap()
+        .with_chain_id(chain_id.as_u64());
+    let address = wallet.address();
+    let provider = SignerMiddleware::new(provider, wallet);
+    generic_pending_txs_test(provider, address).await;
+}
+
+use ethers_core::types::{
+    transaction::eip2718::TypedTransaction, Address, Eip1559TransactionRequest,
+};
+
+#[tokio::test]
+// different keys to avoid nonce errors
+async fn websocket_pending_txs_with_confirmations_testnet() {
+    let provider =
+        Provider::connect("wss://rinkeby.infura.io/ws/v3/c60b0bb42f8a4c6481ecd229eddaca27")
+            .await
+            .unwrap();
+    let chain_id = provider.get_chainid().await.unwrap();
+    let wallet = "ff7f80c6e9941865266ed1f481263d780169f1d98269c51167d20c630a5fdc8a"
+        .parse::<LocalWallet>()
+        .unwrap()
+        .with_chain_id(chain_id.as_u64());
+    let address = wallet.address();
+    let provider = SignerMiddleware::new(provider, wallet);
+    generic_pending_txs_test(provider, address).await;
+}
+
+async fn generic_pending_txs_test<M: Middleware>(provider: M, who: Address) {
+    let tx = TransactionRequest::new().to(who).from(who);
+    let pending_tx = provider.send_transaction(tx, None).await.unwrap();
+    let tx_hash = *pending_tx;
+    let receipt = pending_tx.confirmations(3).await.unwrap().unwrap();
+    // got the correct receipt
+    assert_eq!(receipt.transaction_hash, tx_hash);
+}
+
+#[tokio::test]
+async fn typed_txs() {
+    let provider =
+        Provider::<Http>::try_from("https://rinkeby.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27")
+            .unwrap();
+
+    let chain_id = provider.get_chainid().await.unwrap();
+    let wallet = "87203087aed9246e0b2417e248752a1a0df4fdaf65085c11a2b48087ba036b41"
+        .parse::<LocalWallet>()
+        .unwrap()
+        .with_chain_id(chain_id.as_u64());
+    let address = wallet.address();
+    let provider = SignerMiddleware::new(provider, wallet);
+
+    async fn check_tx<M: Middleware>(provider: &M, tx: TypedTransaction, expected: u64) {
+        let receipt = provider
+            .send_transaction(tx, None)
+            .await
+            .unwrap()
+            .await
+            .unwrap()
+            .unwrap();
+        let tx = provider
+            .get_transaction(receipt.transaction_hash)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(receipt.transaction_type, Some(expected.into()));
+        assert_eq!(tx.transaction_type, Some(expected.into()));
+    }
+
+    let tx: TypedTransaction = TransactionRequest::new().from(address).to(address).into();
+    check_tx(&provider, tx, 0).await;
+
+    let tx: TypedTransaction = TransactionRequest::new()
+        .from(address)
+        .to(address)
+        .with_access_list(vec![])
+        .into();
+    check_tx(&provider, tx, 1).await;
+
+    let tx: TypedTransaction = Eip1559TransactionRequest::new()
+        .from(address)
+        .to(address)
+        .into();
+    check_tx(&provider, tx, 2).await;
 }
 
 #[tokio::test]

@@ -14,12 +14,10 @@ use thiserror::Error;
 /// # Example
 ///
 /// ```no_run
-/// use ethers::{
-///     providers::{Middleware, Provider, Http},
-///     signers::LocalWallet,
-///     middleware::SignerMiddleware,
-///     types::{Address, TransactionRequest},
-/// };
+/// use ethers_providers::{Middleware, Provider, Http};
+/// use ethers_signers::LocalWallet;
+/// use ethers_middleware::SignerMiddleware;
+/// use ethers_core::types::{Address, TransactionRequest};
 /// use std::convert::TryFrom;
 ///
 /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
@@ -250,11 +248,12 @@ where
 #[cfg(all(test, not(feature = "celo"), not(target_arch = "wasm32")))]
 mod tests {
     use super::*;
-    use ethers::{providers::Provider, signers::LocalWallet};
     use ethers_core::{
         types::TransactionRequest,
         utils::{self, keccak256, Ganache},
     };
+    use ethers_providers::Provider;
+    use ethers_signers::LocalWallet;
     use std::convert::TryFrom;
 
     #[tokio::test]

@@ -22,10 +22,10 @@ const DS_PROXY_EXECUTE_CODE: &str =
 /// # Example
 ///
 /// ```no_run
-/// use ethers::{
-///     middleware::transformer::DsProxy,
-///     prelude::*,
-/// };
+/// use ethers_middleware::{SignerMiddleware, transformer::DsProxy};
+/// use ethers_signers::LocalWallet;
+/// use ethers_providers::{Provider, Http};
+/// use ethers_core::types::{Address, Bytes};
 /// use std::{convert::TryFrom, sync::Arc};
 ///
 /// type HttpWallet = SignerMiddleware<Provider<Http>, LocalWallet>;
