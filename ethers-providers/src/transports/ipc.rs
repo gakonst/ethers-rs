@@ -338,8 +338,7 @@ impl From<IpcError> for ProviderError {
 #[cfg(not(feature = "celo"))]
 mod test {
     use super::*;
-    use ethers::utils::Geth;
-    use ethers_core::types::{Block, TxHash, U256};
+    use ethers_core::{utils::Geth, types::{Block, TxHash, U256}};
     use tempfile::NamedTempFile;
 
     #[tokio::test]
