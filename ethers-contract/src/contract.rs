@@ -112,7 +112,7 @@ use std::{fmt::Debug, marker::PhantomData, sync::Arc};
 /// datatypes and to have implemented `Detokenize` for it. This boilerplate code
 /// is generated for you via the [`abigen`] and [`Abigen` builder] utilities.
 ///
-/// ```no_run
+/// ```ignore
 /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
 /// use ethers_core::{abi::Abi, types::Address};
 /// use ethers_contract::{Contract, EthEvent};

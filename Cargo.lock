@@ -859,7 +859,6 @@ dependencies = [
  "ethers-contract-abigen",
  "ethers-contract-derive",
  "ethers-core",
- "ethers-middleware",
  "ethers-providers",
  "ethers-signers",
  "futures-util",

@@ -126,7 +126,7 @@ mod eth_tests {
 #[cfg(feature = "celo")]
 mod celo_tests {
     use super::*;
-    use ethers_types::{Randomness, H256};
+    use ethers_core::types::{Randomness, H256};
     use futures_util::stream::StreamExt;
 
     #[tokio::test]

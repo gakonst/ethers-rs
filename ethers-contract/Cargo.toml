@@ -26,7 +26,8 @@ hex = { version = "0.4.3", default-features = false, features = ["std"] }
 [dev-dependencies]
 ethers-providers = { version = "0.4.6", path = "../ethers-providers", default-features = false, features = ["ws"] }
 ethers-signers = { version = "0.4.6", path = "../ethers-signers" }
-ethers-middleware = { version = "0.4.8", path = "../ethers-middleware" }
+ethers-contract-abigen = { version = "0.4.7", path = "ethers-contract-abigen" }
+ethers-contract-derive = { version = "0.4.7", path = "ethers-contract-derive" }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 tokio = { version = "1.5", default-features = false, features = ["macros"] }

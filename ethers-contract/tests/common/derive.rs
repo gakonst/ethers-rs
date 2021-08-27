@@ -1,4 +1,5 @@
-use ethers_contract::{abigen, EthAbiType, EthEvent, EthLogDecode};
+use ethers_contract::EthLogDecode;
+use ethers_contract::{abigen, EthAbiType, EthEvent};
 use ethers_core::abi::{RawLog, Tokenizable};
 use ethers_core::types::Address;
 use ethers_core::types::{H160, H256, I256, U128, U256};

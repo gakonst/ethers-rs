@@ -1,19 +1,23 @@
 #![cfg(not(target_arch = "wasm32"))]
-mod derive;
-use ethers_core::{
-    abi::Abi,
-    types::{Address, Bytes},
-};
 
-use ethers_contract::{Contract, ContractFactory, EthEvent};
+#[cfg(feature = "abigen")]
+use ethers_core::types::Address;
+
+#[cfg(feature = "abigen")]
+use ethers_contract::EthEvent;
+
+#[cfg(feature = "abigen")]
+mod derive;
+
+use ethers_contract::{Contract, ContractFactory};
 use ethers_core::utils::{GanacheInstance, Solc};
-use ethers_middleware::signer::SignerMiddleware;
+use ethers_core::{abi::Abi, types::Bytes};
 use ethers_providers::{Http, Middleware, Provider};
-use ethers_signers::{LocalWallet, Signer};
 use std::{convert::TryFrom, sync::Arc, time::Duration};
 
 // Note: The `EthEvent` derive macro implements the necessary conversion between `Tokens` and
 // the struct
+#[cfg(feature = "abigen")]
 #[derive(Clone, Debug, EthEvent)]
 pub struct ValueChanged {
     #[ethevent(indexed)]
@@ -33,16 +37,14 @@ pub fn compile_contract(name: &str, filename: &str) -> (Abi, Bytes) {
     (contract.abi.clone(), contract.bytecode.clone())
 }
 
-type HttpWallet = SignerMiddleware<Provider<Http>, LocalWallet>;
-
 /// connects the private key to http://localhost:8545
-pub fn connect(ganache: &GanacheInstance, idx: usize) -> Arc<HttpWallet> {
+pub fn connect(ganache: &GanacheInstance, idx: usize) -> Arc<Provider<Http>> {
+    let sender = ganache.addresses()[idx];
     let provider = Provider::<Http>::try_from(ganache.endpoint())
         .unwrap()
-        .interval(Duration::from_millis(10u64));
-    let wallet: LocalWallet = ganache.keys()[idx].clone().into();
-    let wallet = wallet.with_chain_id(1u64);
-    Arc::new(SignerMiddleware::new(provider, wallet))
+        .interval(Duration::from_millis(10u64))
+        .with_sender(sender);
+    Arc::new(provider)
 }
 
 /// Launches a ganache instance and deploys the SimpleStorage contract

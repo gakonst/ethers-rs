@@ -236,3 +236,73 @@ async fn send_transaction_handles_tx_from_field() {
 
     assert_eq!(sent_tx.from, other.address());
 }
+
+#[tokio::test]
+#[cfg(feature = "celo")]
+async fn deploy_and_call_contract() {
+    use ethers_contract::ContractFactory;
+    use ethers_core::{
+        abi::Abi,
+        types::{BlockNumber, Bytes, H256},
+        utils::Solc,
+    };
+    use std::sync::Arc;
+
+    fn compile_contract(name: &str, filename: &str) -> (Abi, Bytes) {
+        let compiled = Solc::new(&format!("./tests/solidity-contracts/{}", filename))
+            .build()
+            .unwrap();
+        let contract = compiled.get(name).expect("could not find contract");
+        (contract.abi.clone(), contract.bytecode.clone())
+    }
+
+    let (abi, bytecode) = compile_contract("SimpleStorage", "SimpleStorage.sol");
+
+    // Celo testnet
+    let provider = Provider::<Http>::try_from("https://alfajores-forno.celo-testnet.org")
+        .unwrap()
+        .interval(Duration::from_millis(6000));
+    let chain_id = provider.get_chainid().await.unwrap().as_u64();
+
+    // Funded with https://celo.org/developers/faucet
+    let wallet = "d652abb81e8c686edba621a895531b1f291289b63b5ef09a94f686a5ecdd5db1"
+        .parse::<LocalWallet>()
+        .unwrap()
+        .with_chain_id(chain_id);
+
+    let client = SignerMiddleware::new(provider, wallet);
+    let client = Arc::new(client);
+
+    let factory = ContractFactory::new(abi, bytecode, client);
+    let deployer = factory
+        .deploy("initial value".to_string())
+        .unwrap()
+        .legacy();
+    let contract = deployer.block(BlockNumber::Pending).send().await.unwrap();
+
+    let value: String = contract
+        .method("getValue", ())
+        .unwrap()
+        .call()
+        .await
+        .unwrap();
+    assert_eq!(value, "initial value");
+
+    // make a state mutating transaction
+    // gas estimation costs are sometimes under-reported on celo,
+    // so we manually set it to avoid failures
+    let call = contract
+        .method::<_, H256>("setValue", "hi".to_owned())
+        .unwrap()
+        .gas(100000);
+    let pending_tx = call.send().await.unwrap();
+    let _receipt = pending_tx.await.unwrap();
+
+    let value: String = contract
+        .method("getValue", ())
+        .unwrap()
+        .call()
+        .await
+        .unwrap();
+    assert_eq!(value, "hi");
+}

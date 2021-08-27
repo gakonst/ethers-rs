@@ -1,3 +1,4 @@
+#![cfg(feature = "abigen")]
 //! Test cases to validate the `abigen!` macro
 use ethers_contract::{abigen, EthEvent};
 use ethers_core::abi::Tokenizable;
