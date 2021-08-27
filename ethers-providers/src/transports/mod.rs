@@ -31,5 +31,9 @@ mod ws;
 #[cfg(feature = "ws")]
 pub use ws::Ws;
 
+mod quorum;
+pub(crate) use quorum::JsonRpcClientWrapper;
+pub use quorum::{Quorum, QuorumProvider, WeightedProvider};
+
 mod mock;
 pub use mock::{MockError, MockProvider};
