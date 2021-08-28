@@ -12,7 +12,7 @@
 //! # Examples
 //!
 //! ```no_run
-//! use ethers::providers::{Provider, Http, Middleware};
+//! use ethers_providers::{Provider, Http, Middleware};
 //! use std::convert::TryFrom;
 //!
 //! # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
@@ -35,7 +35,7 @@
 //!
 //! ```
 //! # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
-//! # use ethers::providers::Ws;
+//! # use ethers_providers::Ws;
 //! let ws = Ws::connect("ws://localhost:8545").await?;
 //! # Ok(())
 //! # }
@@ -47,7 +47,7 @@
 //! to addresses (and vice versa). The default ENS address is [mainnet](https://etherscan.io/address/0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e) and can be overriden by calling the [`ens`](method@crate::Provider::ens) method on the provider.
 //!
 //! ```no_run
-//! # use ethers::providers::{Provider, Http, Middleware};
+//! # use ethers_providers::{Provider, Http, Middleware};
 //! # use std::convert::TryFrom;
 //! # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
 //! # let provider = Provider::<Http>::try_from(
@@ -137,7 +137,8 @@ where
 /// 3. implementing any of the methods you want to override
 ///
 /// ```rust
-/// use ethers::{providers::{Middleware, FromErr}, types::{U64, TransactionRequest, U256, transaction::eip2718::TypedTransaction}};
+/// use ethers_providers::{Middleware, FromErr};
+/// use ethers_core::types::{U64, TransactionRequest, U256, transaction::eip2718::TypedTransaction};
 /// use thiserror::Error;
 /// use async_trait::async_trait;
 ///

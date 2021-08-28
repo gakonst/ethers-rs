@@ -38,7 +38,7 @@ use tracing_futures::Instrument;
 ///
 /// ```no_run
 /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
-/// use ethers::providers::{Middleware, Provider, Http};
+/// use ethers_providers::{Middleware, Provider, Http};
 /// use std::convert::TryFrom;
 ///
 /// let provider = Provider::<Http>::try_from(
@@ -905,7 +905,8 @@ impl Provider<MockProvider> {
     ///
     /// ```
     /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
-    /// use ethers::{types::U64, providers::{Middleware, Provider}};
+    /// use ethers_core::types::U64;
+    /// use ethers_providers::{Middleware, Provider};
     /// // Instantiate the provider
     /// let (provider, mock) = Provider::mocked();
     /// // Push the mock response

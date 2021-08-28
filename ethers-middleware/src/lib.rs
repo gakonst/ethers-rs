@@ -19,17 +19,15 @@
 //! ## Example of a middleware stack
 //!
 //! ```no_run
-//! use ethers::{
-//!     providers::{Provider, Http},
-//!     signers::{LocalWallet, Signer},
-//!     middleware::{
-//!         gas_escalator::{GasEscalatorMiddleware, GeometricGasPrice, Frequency},
-//!         gas_oracle::{GasOracleMiddleware, GasNow, GasCategory},
-//!         signer::SignerMiddleware,
-//!         nonce_manager::NonceManagerMiddleware,
-//!     },
-//!     core::rand,
+//! use ethers_providers::{Provider, Http};
+//! use ethers_signers::{LocalWallet, Signer};
+//! use ethers_middleware::{
+//!     gas_escalator::{GasEscalatorMiddleware, GeometricGasPrice, Frequency},
+//!     gas_oracle::{GasOracleMiddleware, GasNow, GasCategory},
+//!     signer::SignerMiddleware,
+//!     nonce_manager::NonceManagerMiddleware,
 //! };
+//! use ethers_core::rand;
 //! use std::convert::TryFrom;
 //!
 //! // Start the stack

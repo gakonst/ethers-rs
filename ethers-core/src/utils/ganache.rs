@@ -64,7 +64,7 @@ impl Drop for GanacheInstance {
 /// # Example
 ///
 /// ```no_run
-/// use ethers::utils::Ganache;
+/// use ethers_core::utils::Ganache;
 ///
 /// let port = 8545u16;
 /// let url = format!("http://localhost:{}", port).to_string();

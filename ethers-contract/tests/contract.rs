@@ -1,8 +1,5 @@
-#![cfg(not(target_arch = "wasm32"))]
-use ethers::{
-    contract::ContractFactory,
-    types::{Filter, ValueOrArray, H256},
-};
+use ethers_contract::ContractFactory;
+use ethers_core::types::{Filter, ValueOrArray, H256};
 
 mod common;
 pub use common::*;
@@ -10,12 +7,12 @@ pub use common::*;
 #[cfg(not(feature = "celo"))]
 mod eth_tests {
     use super::*;
-    use ethers::{
-        contract::{LogMeta, Multicall},
-        providers::{Http, Middleware, PendingTransaction, Provider, StreamExt},
+    use ethers_contract::{LogMeta, Multicall};
+    use ethers_core::{
         types::{Address, BlockId, U256},
         utils::Ganache,
     };
+    use ethers_providers::{Http, Middleware, PendingTransaction, Provider, StreamExt};
     use std::{convert::TryFrom, sync::Arc};
 
     #[tokio::test]
@@ -27,6 +24,8 @@ mod eth_tests {
 
         // Instantiate the clients. We assume that clients consume the provider and the wallet
         // (which makes sense), so for multi-client tests, you must clone the provider.
+        let addrs = ganache.addresses().to_vec();
+        let addr2 = addrs[1];
         let client = connect(&ganache, 0);
         let client2 = connect(&ganache, 1);
 
@@ -62,7 +61,7 @@ mod eth_tests {
         let pending_tx = contract_call.send().await.unwrap();
         let tx = client.get_transaction(*pending_tx).await.unwrap().unwrap();
         let tx_receipt = pending_tx.await.unwrap().unwrap();
-        assert_eq!(last_sender.clone().call().await.unwrap(), client2.address());
+        assert_eq!(last_sender.clone().call().await.unwrap(), addr2);
         assert_eq!(get_value.clone().call().await.unwrap(), "hi");
         assert_eq!(tx.input, calldata);
         assert_eq!(tx_receipt.gas_used.unwrap(), gas_estimate);
@@ -99,10 +98,12 @@ mod eth_tests {
     }
 
     #[tokio::test]
+    #[cfg(feature = "abigen")]
     async fn get_past_events() {
         let (abi, bytecode) = compile_contract("SimpleStorage", "SimpleStorage.sol");
         let ganache = Ganache::new().spawn();
         let client = connect(&ganache, 0);
+        let address = client.get_accounts().await.unwrap()[0];
         let contract = deploy(client.clone(), abi, bytecode).await;
 
         // make a call with `client`
@@ -117,7 +118,7 @@ mod eth_tests {
         let logs: Vec<ValueChanged> = contract
             .event()
             .from_block(0u64)
-            .topic1(client.address()) // Corresponds to the first indexed parameter
+            .topic1(address) // Corresponds to the first indexed parameter
             .query()
             .await
             .unwrap();
@@ -130,7 +131,7 @@ mod eth_tests {
         let logs: Vec<ValueChanged> = contract
             .event()
             .at_block_hash(hash)
-            .topic1(client.address()) // Corresponds to the first indexed parameter
+            .topic1(address) // Corresponds to the first indexed parameter
             .query()
             .await
             .unwrap();
@@ -139,17 +140,19 @@ mod eth_tests {
     }
 
     #[tokio::test]
+    #[cfg(feature = "abigen")]
     async fn get_events_with_meta() {
         let (abi, bytecode) = compile_contract("SimpleStorage", "SimpleStorage.sol");
         let ganache = Ganache::new().spawn();
         let client = connect(&ganache, 0);
+        let address = ganache.addresses()[0];
         let contract = deploy(client.clone(), abi, bytecode).await;
 
         // and we can fetch the events
         let logs: Vec<(ValueChanged, LogMeta)> = contract
             .event()
             .from_block(0u64)
-            .topic1(client.address()) // Corresponds to the first indexed parameter
+            .topic1(address) // Corresponds to the first indexed parameter
             .query_with_meta()
             .await
             .unwrap();
@@ -288,6 +291,7 @@ mod eth_tests {
     }
 
     #[tokio::test]
+    #[cfg(feature = "abigen")]
     async fn watch_events() {
         let (abi, bytecode) = compile_contract("SimpleStorage", "SimpleStorage.sol");
         let ganache = Ganache::new().spawn();
@@ -436,6 +440,9 @@ mod eth_tests {
         // `client2` is used to deploy the first SimpleStorage contract
         // `client3` is used to deploy the second SimpleStorage contract
         // `client4` is used to make the aggregate call
+        let addrs = ganache.addresses().to_vec();
+        let addr2 = addrs[1];
+        let addr3 = addrs[2];
         let client = connect(&ganache, 0);
         let client2 = connect(&ganache, 1);
         let client3 = connect(&ganache, 2);
@@ -516,9 +523,9 @@ mod eth_tests {
 
         assert_eq!(return_data.0, "reset first");
         assert_eq!((return_data.1).0, "reset second");
-        assert_eq!((return_data.1).1, client3.address());
-        assert_eq!(return_data.2, client2.address());
-        assert_eq!(return_data.3, client3.address());
+        assert_eq!((return_data.1).1, addr3);
+        assert_eq!(return_data.2, addr2);
+        assert_eq!(return_data.3, addr3);
 
         // construct broadcast transactions that will be batched and broadcast via Multicall
         let broadcast = simple_contract
@@ -572,70 +579,5 @@ mod eth_tests {
         assert_eq!(balances.0, U256::from(100000000000000000000u128));
         assert_eq!(balances.1, U256::from(100000000000000000000u128));
         assert_eq!(balances.2, U256::from(100000000000000000000u128));
-    }
-}
-
-#[cfg(feature = "celo")]
-mod celo_tests {
-    use super::*;
-    use ethers::{
-        middleware::signer::SignerMiddleware,
-        providers::{Http, Middleware, Provider},
-        signers::{LocalWallet, Signer},
-        types::BlockNumber,
-    };
-    use std::{convert::TryFrom, sync::Arc, time::Duration};
-
-    #[tokio::test]
-    async fn deploy_and_call_contract() {
-        let (abi, bytecode) = compile_contract("SimpleStorage", "SimpleStorage.sol");
-
-        // Celo testnet
-        let provider = Provider::<Http>::try_from("https://alfajores-forno.celo-testnet.org")
-            .unwrap()
-            .interval(Duration::from_millis(6000));
-        let chain_id = provider.get_chainid().await.unwrap().as_u64();
-
-        // Funded with https://celo.org/developers/faucet
-        let wallet = "d652abb81e8c686edba621a895531b1f291289b63b5ef09a94f686a5ecdd5db1"
-            .parse::<LocalWallet>()
-            .unwrap()
-            .with_chain_id(chain_id);
-
-        let client = SignerMiddleware::new(provider, wallet);
-        let client = Arc::new(client);
-
-        let factory = ContractFactory::new(abi, bytecode, client);
-        let deployer = factory
-            .deploy("initial value".to_string())
-            .unwrap()
-            .legacy();
-        let contract = deployer.block(BlockNumber::Pending).send().await.unwrap();
-
-        let value: String = contract
-            .method("getValue", ())
-            .unwrap()
-            .call()
-            .await
-            .unwrap();
-        assert_eq!(value, "initial value");
-
-        // make a state mutating transaction
-        // gas estimation costs are sometimes under-reported on celo,
-        // so we manually set it to avoid failures
-        let call = contract
-            .method::<_, H256>("setValue", "hi".to_owned())
-            .unwrap()
-            .gas(100000);
-        let pending_tx = call.send().await.unwrap();
-        let _receipt = pending_tx.await.unwrap();
-
-        let value: String = contract
-            .method("getValue", ())
-            .unwrap()
-            .call()
-            .await
-            .unwrap();
-        assert_eq!(value, "hi");
     }
 }

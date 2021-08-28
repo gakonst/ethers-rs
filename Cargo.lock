@@ -856,11 +856,9 @@ dependencies = [
 name = "ethers-contract"
 version = "0.4.7"
 dependencies = [
- "ethers",
  "ethers-contract-abigen",
  "ethers-contract-derive",
  "ethers-core",
- "ethers-middleware",
  "ethers-providers",
  "ethers-signers",
  "futures-util",
@@ -917,7 +915,6 @@ dependencies = [
  "ecdsa",
  "elliptic-curve",
  "ethabi",
- "ethers",
  "futures-util",
  "generic-array 0.14.4",
  "glob",
@@ -940,7 +937,6 @@ name = "ethers-middleware"
 version = "0.4.8"
 dependencies = [
  "async-trait",
- "ethers",
  "ethers-contract",
  "ethers-core",
  "ethers-providers",
@@ -967,7 +963,6 @@ dependencies = [
  "async-trait",
  "auto_impl",
  "bytes",
- "ethers",
  "ethers-core",
  "futures-channel",
  "futures-core",
@@ -1004,7 +999,6 @@ dependencies = [
  "coins-ledger",
  "elliptic-curve",
  "eth-keystore",
- "ethers",
  "ethers-core",
  "futures-executor",
  "futures-util",

@@ -65,14 +65,14 @@ use std::{fmt::Debug, marker::PhantomData, sync::Arc};
 /// interact with its methods and retrieve raw logs it has emitted.
 ///
 /// ```no_run
-/// use ethers::{
+/// use ethers_core::{
 ///     abi::Abi,
 ///     utils::Solc,
 ///     types::{Address, H256},
-///     contract::Contract,
-///     providers::{Provider, Http},
-///     signers::Wallet,
 /// };
+/// use ethers_contract::Contract;
+/// use ethers_providers::{Provider, Http};
+/// use ethers_signers::Wallet;
 /// use std::convert::TryFrom;
 ///
 /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
@@ -112,7 +112,7 @@ use std::{fmt::Debug, marker::PhantomData, sync::Arc};
 /// datatypes and to have implemented `Detokenize` for it. This boilerplate code
 /// is generated for you via the [`abigen`] and [`Abigen` builder] utilities.
 ///
-/// ```no_run
+/// ```ignore
 /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
 /// use ethers_core::{abi::Abi, types::Address};
 /// use ethers_contract::{Contract, EthEvent};

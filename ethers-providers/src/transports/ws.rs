@@ -91,7 +91,7 @@ enum Incoming {
 ///
 /// ```no_run
 /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
-/// use ethers::providers::Ws;
+/// use ethers_providers::Ws;
 ///
 /// let ws = Ws::connect("wss://localhost:8545").await?;
 /// # Ok(())
