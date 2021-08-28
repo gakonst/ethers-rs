@@ -104,9 +104,10 @@ impl Context {
         let derives = &self.event_derives;
         let derives = quote! {#(#derives),*};
 
+        let ethers_contract = util::ethers_contract_crate();
         Ok(quote! {
             #abi_signature_doc
-            #[derive(Clone, Debug, Default, Eq, PartialEq, ethers::contract::EthAbiType, #derives)]
+            #[derive(Clone, Debug, Default, Eq, PartialEq, #ethers_contract::EthAbiType, #derives)]
             pub struct #name {
                 #( #fields ),*
             }
@@ -173,9 +174,11 @@ impl Context {
             let derives = &self.event_derives;
             let derives = quote! {#(#derives),*};
 
+            let ethers_contract = util::ethers_contract_crate();
+
             structs.extend(quote! {
             #abi_signature_doc
-            #[derive(Clone, Debug, Default, Eq, PartialEq, ethers::contract::EthAbiType, #derives)]
+            #[derive(Clone, Debug, Default, Eq, PartialEq, #ethers_contract::EthAbiType, #derives)]
             pub struct #name {
                 #( #fields ),*
             }
