@@ -1,7 +1,7 @@
 [package]
 name = "ethers-signers"
 license = "MIT OR Apache-2.0"
-version = "0.4.6"
+version = "0.5.1"
 authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
 edition = "2018"
 description = "Signer implementations for the ethers-rs crate"
@@ -14,7 +14,7 @@ all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
-ethers-core = { version = "0.4.0", path = "../ethers-core" }
+ethers-core = { version = "^0.5.0", path = "../ethers-core" }
 thiserror = { version = "1.0.24", default-features = false }
 coins-bip32 = "0.3.0"
 coins-bip39 = "0.3.0"

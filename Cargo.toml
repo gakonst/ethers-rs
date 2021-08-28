@@ -1,10 +1,10 @@
 [package]
 name = "ethers"
-version = "0.4.1"
+version = "0.5.1"
 authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
 license = "MIT OR Apache-2.0"
 edition = "2018"
-readme = "../README.md"
+readme = "README.md"
 documentation = "https://docs.rs/ethers"
 repository = "https://github.com/gakonst/ethers-rs"
 homepage = "https://docs.rs/ethers"
@@ -71,15 +71,15 @@ abigen = ["ethers-contract/abigen"]
 
 
 [dependencies]
-ethers-contract = { version = "0.4.7", default-features = false, path = "./ethers-contract" }
-ethers-core = { version = "0.4.8", default-features = false, path = "./ethers-core", features = ["setup"] }
-ethers-providers = { version = "0.4.6", default-features = false, path = "./ethers-providers" }
-ethers-signers = { version = "0.4.6", default-features = false, path = "./ethers-signers" }
-ethers-middleware = { version = "0.4.8", default-features = false, path = "./ethers-middleware" }
+ethers-contract = { version = "^0.5.0", default-features = false, path = "./ethers-contract" }
+ethers-core = { version = "^0.5.0", default-features = false, path = "./ethers-core", features = ["setup"] }
+ethers-providers = { version = "^0.5.0", default-features = false, path = "./ethers-providers" }
+ethers-signers = { version = "^0.5.0", default-features = false, path = "./ethers-signers" }
+ethers-middleware = { version = "^0.5.0", default-features = false, path = "./ethers-middleware" }
 
 [dev-dependencies]
-ethers-contract = { version = "0.4.7", default-features = false, path = "./ethers-contract", features = ["abigen"] }
-ethers-providers = { version = "0.4.6", default-features = false, path = "./ethers-providers", features = ["ws", "ipc"] }
+ethers-contract = { version = "^0.5.0", default-features = false, path = "./ethers-contract", features = ["abigen"] }
+ethers-providers = { version = "^0.5.0", default-features = false, path = "./ethers-providers", features = ["ws", "ipc"] }
 
 anyhow = "1.0.39"
 rand = "0.8.4"
