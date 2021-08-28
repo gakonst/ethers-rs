@@ -47,7 +47,8 @@ async fn send_eth() {
 async fn pending_txs_with_confirmations_testnet() {
     let provider =
         Provider::<Http>::try_from("https://rinkeby.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27")
-            .unwrap().interval(Duration::from_millis(3000));
+            .unwrap()
+            .interval(Duration::from_millis(3000));
     let chain_id = provider.get_chainid().await.unwrap();
     let wallet = "59c37cb6b16fa2de30675f034c8008f890f4b2696c729d6267946d29736d73e4"
         .parse::<LocalWallet>()
@@ -68,7 +69,8 @@ async fn websocket_pending_txs_with_confirmations_testnet() {
     let provider =
         Provider::connect("wss://rinkeby.infura.io/ws/v3/c60b0bb42f8a4c6481ecd229eddaca27")
             .await
-            .unwrap().interval(Duration::from_millis(3000));
+            .unwrap()
+            .interval(Duration::from_millis(3000));
     let chain_id = provider.get_chainid().await.unwrap();
     let wallet = "ff7f80c6e9941865266ed1f481263d780169f1d98269c51167d20c630a5fdc8a"
         .parse::<LocalWallet>()
