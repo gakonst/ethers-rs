@@ -7,7 +7,7 @@ pub use common::*;
 #[cfg(not(feature = "celo"))]
 mod eth_tests {
     use super::*;
-    use ethers_contract::Multicall;
+    use ethers_contract::{LogMeta, Multicall};
     use ethers_core::{
         types::{Address, BlockId, U256},
         utils::Ganache,
