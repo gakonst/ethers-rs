@@ -969,6 +969,7 @@ dependencies = [
  "bytes",
  "ethers",
  "ethers-core",
+ "eyre",
  "futures-channel",
  "futures-core",
  "futures-timer",
@@ -1021,6 +1022,16 @@ dependencies = [
  "tracing-futures",
  "tracing-subscriber",
  "yubihsm",
+]
+
+[[package]]
+name = "eyre"
+version = "0.6.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "221239d1d5ea86bf5d6f91c9d6bc3646ffe471b08ff9b0f91c44f115ac969d2b"
+dependencies = [
+ "indenter",
+ "once_cell",
 ]
 
 [[package]]
@@ -1461,6 +1472,12 @@ dependencies = [
  "quote",
  "syn",
 ]
+
+[[package]]
+name = "indenter"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ce23b50ad8242c51a442f3ff322d56b02f08852c77e4c0b4d3fd684abc89c683"
 
 [[package]]
 name = "indexmap"
