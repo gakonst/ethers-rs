@@ -8,9 +8,9 @@ use std::{
 
 use crate::{provider::ProviderError, JsonRpcClient, PubsubClient};
 use async_trait::async_trait;
-use ethers_core::types::U256;
+use ethers_core::types::{U256, U64};
 use futures_core::Stream;
-use futures_util::{FutureExt, StreamExt};
+use futures_util::{future::join_all, FutureExt, StreamExt};
 use serde::{de::DeserializeOwned, Serialize};
 use serde_json::Value;
 use thiserror::Error;
@@ -136,6 +136,57 @@ impl<T> QuorumProviderBuilder<T> {
             quorum: self.quorum,
             quorum_weight,
             providers: self.providers,
+        }
+    }
+}
+
+impl<T: JsonRpcClientWrapper> QuorumProvider<T> {
+    /// Returns the block height that _all_ providers have surpassed.
+    ///
+    /// This is the minimum of all provider's block numbers
+    async fn get_minimum_block_number(&self) -> Result<U64, ProviderError> {
+        let mut numbers = join_all(self.providers.iter().map(|provider| async move {
+            let block = provider
+                .inner
+                .request("eth_blockNumber", serde_json::json!(()))
+                .await?;
+            serde_json::from_value::<U64>(block).map_err(ProviderError::from)
+        }))
+        .await
+        .into_iter()
+        .collect::<Result<Vec<_>, _>>()?;
+        numbers.sort();
+
+        numbers
+            .into_iter()
+            .next()
+            .ok_or_else(|| ProviderError::CustomError("No Providers".to_string()))
+    }
+
+    /// Normalizes the request payload depending on the call
+    async fn normalize_request(&self, method: &str, params: &mut Value) {
+        match method {
+            "eth_Call"
+            | "eth_createAccessList"
+            | "eth_getStorageAt"
+            | "eth_getCode"
+            | "trace_call"
+            | "trace_block" => {
+                // calls that include the block number in the params at the last index of json array
+                if let Some(block) = params.as_array_mut().and_then(|arr| arr.last_mut()) {
+                    if Some("latest") == block.as_str() {
+                        // replace `latest` with the minimum block height of all providers
+                        if let Ok(minimum) = self
+                            .get_minimum_block_number()
+                            .await
+                            .and_then(|num| Ok(serde_json::to_value(num)?))
+                        {
+                            *block = minimum
+                        }
+                    }
+                }
+            }
+            _ => {}
         }
     }
 }
@@ -386,7 +437,9 @@ where
         method: &str,
         params: T,
     ) -> Result<R, Self::Error> {
-        let params = serde_json::to_value(params)?;
+        let mut params = serde_json::to_value(params)?;
+        self.normalize_request(method, &mut params).await;
+
         let requests = self
             .providers
             .iter()
