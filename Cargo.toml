@@ -21,6 +21,14 @@ members = [
     "ethers-middleware",
 ]
 
+default-members = [
+    "ethers-contract",
+    "ethers-providers",
+    "ethers-signers",
+    "ethers-core",
+    "ethers-middleware",
+]
+
 exclude = [
     "examples/ethers-wasm",
 ]
