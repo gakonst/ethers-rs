@@ -44,6 +44,7 @@ async fn send_eth() {
 }
 
 #[tokio::test]
+#[cfg(not(feature = "celo"))]
 async fn pending_txs_with_confirmations_testnet() {
     let provider =
         Provider::<Http>::try_from("https://rinkeby.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27")
@@ -59,12 +60,14 @@ async fn pending_txs_with_confirmations_testnet() {
     generic_pending_txs_test(provider, address).await;
 }
 
+#[cfg(not(feature = "celo"))]
 use ethers_core::types::{
     transaction::eip2718::TypedTransaction, Address, Eip1559TransactionRequest,
 };
 
 // different keys to avoid nonce errors
 #[tokio::test]
+#[cfg(not(feature = "celo"))]
 async fn websocket_pending_txs_with_confirmations_testnet() {
     let provider =
         Provider::connect("wss://rinkeby.infura.io/ws/v3/c60b0bb42f8a4c6481ecd229eddaca27")
@@ -81,6 +84,7 @@ async fn websocket_pending_txs_with_confirmations_testnet() {
     generic_pending_txs_test(provider, address).await;
 }
 
+#[cfg(not(feature = "celo"))]
 async fn generic_pending_txs_test<M: Middleware>(provider: M, who: Address) {
     let tx = TransactionRequest::new().to(who).from(who);
     let pending_tx = provider.send_transaction(tx, None).await.unwrap();
@@ -91,6 +95,7 @@ async fn generic_pending_txs_test<M: Middleware>(provider: M, who: Address) {
 }
 
 #[tokio::test]
+#[cfg(not(feature = "celo"))]
 async fn typed_txs() {
     let provider =
         Provider::<Http>::try_from("https://rinkeby.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27")
