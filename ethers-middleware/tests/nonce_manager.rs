@@ -15,7 +15,7 @@ async fn nonce_manager() {
             .interval(Duration::from_millis(2000u64));
     let chain_id = provider.get_chainid().await.unwrap().as_u64();
 
-    let wallet = "59c37cb6b16fa2de30675f034c8008f890f4b2696c729d6267946d29736d73e4"
+    let wallet = "fa4a1a79e869a96fcb42727f75e3232d6865a82ea675bb95de967a7fe6a773b2"
         .parse::<LocalWallet>()
         .unwrap()
         .with_chain_id(chain_id);
