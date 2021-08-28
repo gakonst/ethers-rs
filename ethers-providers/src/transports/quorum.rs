@@ -166,7 +166,7 @@ impl<T: JsonRpcClientWrapper> QuorumProvider<T> {
     /// Normalizes the request payload depending on the call
     async fn normalize_request(&self, method: &str, params: &mut Value) {
         match method {
-            "eth_Call"
+            "eth_call"
             | "eth_createAccessList"
             | "eth_getStorageAt"
             | "eth_getCode"
