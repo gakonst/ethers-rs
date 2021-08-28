@@ -4,8 +4,14 @@ use ethers_core::types::Address;
 use proc_macro2::{Literal, TokenStream};
 use quote::quote;
 
+use super::util::{ethers_contract_crate, ethers_core_crate, ethers_providers_crate};
+
 pub(crate) fn imports(name: &str) -> TokenStream {
     let doc = util::expand_doc(&format!("{} was auto-generated with ethers-rs Abigen. More information at: https://github.com/gakonst/ethers-rs", name));
+
+    let ethers_core = ethers_core_crate();
+    let ethers_providers = ethers_providers_crate();
+    let ethers_contract = ethers_contract_crate();
 
     quote! {
         #![allow(clippy::enum_variant_names)]
@@ -14,15 +20,12 @@ pub(crate) fn imports(name: &str) -> TokenStream {
         #doc
 
         use std::sync::Arc;
-        use ethers::{
-            core::{
-                self as ethers_core,
-                abi::{Abi, Token, Detokenize, InvalidOutputType, Tokenizable},
-                types::*, // import all the types so that we can codegen for everything
-            },
-            contract::{self as ethers_contract, Contract, builders::{ContractCall, Event}, Lazy},
-            providers::{self as ethers_providers,Middleware},
+        use #ethers_core::{
+            abi::{Abi, Token, Detokenize, InvalidOutputType, Tokenizable},
+            types::*, // import all the types so that we can codegen for everything
         };
+        use #ethers_contract::{Contract, builders::{ContractCall, Event}, Lazy};
+        use #ethers_providers::Middleware;
     }
 }
 
@@ -31,14 +34,18 @@ pub(crate) fn struct_declaration(cx: &Context, abi_name: &proc_macro2::Ident) ->
     let name = &cx.contract_name;
     let abi = &cx.abi_str;
 
+    let ethers_core = ethers_core_crate();
+    let ethers_providers = ethers_providers_crate();
+    let ethers_contract = ethers_contract_crate();
+
     let abi_parse = if !cx.human_readable {
         quote! {
-            pub static #abi_name: ethers_contract::Lazy<ethers_core::abi::Abi> = ethers_contract::Lazy::new(|| serde_json::from_str(#abi)
+            pub static #abi_name: #ethers_contract::Lazy<#ethers_core::abi::Abi> = #ethers_contract::Lazy::new(|| serde_json::from_str(#abi)
                                               .expect("invalid abi"));
         }
     } else {
         quote! {
-            pub static #abi_name: ethers_contract::Lazy<ethers_core::abi::Abi> = ethers_contract::Lazy::new(|| ethers::core::abi::parse_abi_str(#abi)
+            pub static #abi_name: #ethers_contract::Lazy<#ethers_core::abi::Abi> = #ethers_contract::Lazy::new(|| #ethers_core::abi::parse_abi_str(#abi)
                                                 .expect("invalid abi"));
         }
     };
@@ -49,17 +56,17 @@ pub(crate) fn struct_declaration(cx: &Context, abi_name: &proc_macro2::Ident) ->
 
         // Struct declaration
         #[derive(Clone)]
-        pub struct #name<M>(ethers_contract::Contract<M>);
+        pub struct #name<M>(#ethers_contract::Contract<M>);
 
 
         // Deref to the inner contract in order to access more specific functions functions
         impl<M> std::ops::Deref for #name<M> {
-            type Target = ethers_contract::Contract<M>;
+            type Target = #ethers_contract::Contract<M>;
 
             fn deref(&self) -> &Self::Target { &self.0 }
         }
 
-        impl<M: ethers_providers::Middleware> std::fmt::Debug for #name<M> {
+        impl<M: #ethers_providers::Middleware> std::fmt::Debug for #name<M> {
             fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
                 f.debug_tuple(stringify!(#name))
                     .field(&self.address())
