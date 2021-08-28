@@ -77,6 +77,10 @@ impl Context {
         // 5. Declare the structs parsed from the human readable abi
         let abi_structs_decl = cx.abi_structs()?;
 
+        let ethers_core = util::ethers_core_crate();
+        let ethers_contract = util::ethers_contract_crate();
+        let ethers_providers = util::ethers_providers_crate();
+
         Ok(quote! {
             // export all the created data types
             pub use #name_mod::*;
@@ -86,12 +90,12 @@ impl Context {
                 #imports
                 #struct_decl
 
-                impl<'a, M: ethers_providers::Middleware> #name<M> {
+                impl<'a, M: #ethers_providers::Middleware> #name<M> {
                     /// Creates a new contract instance with the specified `ethers`
                     /// client at the given `Address`. The contract derefs to a `ethers::Contract`
                     /// object
-                    pub fn new<T: Into<ethers_core::types::Address>>(address: T, client: ::std::sync::Arc<M>) -> Self {
-                        let contract = ethers_contract::Contract::new(address.into(), #abi_name.clone(), client);
+                    pub fn new<T: Into<#ethers_core::types::Address>>(address: T, client: ::std::sync::Arc<M>) -> Self {
+                        let contract = #ethers_contract::Contract::new(address.into(), #abi_name.clone(), client);
                         Self(contract)
                     }
 

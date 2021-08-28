@@ -39,7 +39,7 @@ pub fn ethers_providers_crate() -> Path {
 /// macros This will attempt to parse the current `Cargo.toml` and check the
 /// ethers related dependencies.
 pub fn determine_ethers_crates() -> (&'static str, &'static str, &'static str) {
-    MetadataCommand::new()
+    let res = MetadataCommand::new()
         .manifest_path(&format!(
             "{}/Cargo.toml",
             std::env::var("CARGO_MANIFEST_DIR").expect("No Manifest found")
@@ -48,7 +48,9 @@ pub fn determine_ethers_crates() -> (&'static str, &'static str, &'static str) {
         .exec()
         .ok()
         .and_then(|metadata| {
+            dbg!("CHECKING METADATA", metadata.root_package());
             metadata.root_package().and_then(|pkg| {
+                dbg!(&pkg.dependencies);
                 pkg.dependencies
                     .iter()
                     .filter(|dep| dep.kind == DependencyKind::Normal)
@@ -58,7 +60,9 @@ pub fn determine_ethers_crates() -> (&'static str, &'static str, &'static str) {
                     })
             })
         })
-        .unwrap_or(("ethers_core", "ethers_contract", "ethers_providers"))
+        .unwrap_or(("ethers_core", "ethers_contract", "ethers_providers"));
+    dbg!(&res);
+    res
 }
 
 /// Expands a identifier string into an token.
