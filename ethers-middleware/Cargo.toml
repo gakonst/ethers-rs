@@ -46,4 +46,4 @@ ethers-providers = { version = "0.4.6", path = "../ethers-providers", default-fe
 tokio = { version = "1.5", default-features = false, features = ["rt", "macros", "time"] }
 
 [features]
-celo = ["ethers-core/celo", "ethers-providers/celo", "ethers-signers/celo"]
+celo = ["ethers-core/celo", "ethers-providers/celo", "ethers-signers/celo", "ethers-contract/celo"]
