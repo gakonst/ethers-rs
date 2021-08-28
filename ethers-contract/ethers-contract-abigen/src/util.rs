@@ -48,20 +48,16 @@ pub fn determine_ethers_crates() -> (&'static str, &'static str, &'static str) {
         .exec()
         .ok()
         .and_then(|metadata| {
-            dbg!("CHECKING METADATA", metadata.root_package());
-            metadata.root_package().and_then(|pkg| {
-                dbg!(&pkg.dependencies);
-                pkg.dependencies
-                    .iter()
-                    .filter(|dep| dep.kind == DependencyKind::Normal)
-                    .find_map(|dep| {
-                        (dep.name == "ethers")
-                            .then(|| ("ethers::core", "ethers::contract", "ethers::providers"))
-                    })
-            })
+            metadata.packages[0]
+                .dependencies
+                .iter()
+                .filter(|dep| dep.kind == DependencyKind::Normal)
+                .find_map(|dep| {
+                    (dep.name == "ethers")
+                        .then(|| ("ethers::core", "ethers::contract", "ethers::providers"))
+                })
         })
         .unwrap_or(("ethers_core", "ethers_contract", "ethers_providers"));
-    dbg!(&res);
     res
 }
 

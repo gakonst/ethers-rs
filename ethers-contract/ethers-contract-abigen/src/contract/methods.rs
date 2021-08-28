@@ -105,7 +105,11 @@ impl Context {
         // TODO use structs
         let outputs = expand_fn_outputs(&function.outputs)?;
 
-        let result = quote! { ethers_contract::builders::ContractCall<M, #outputs> };
+        let ethers_core = util::ethers_core_crate();
+        let ethers_providers = util::ethers_providers_crate();
+        let ethers_contract = util::ethers_contract_crate();
+
+        let result = quote! { #ethers_contract::builders::ContractCall<M, #outputs> };
 
         let (input, arg) = self.expand_inputs_call_arg_with_structs(function)?;
 

@@ -61,25 +61,28 @@ impl Context {
 
         let enum_name = self.expand_event_enum_name();
 
+        let ethers_core = util::ethers_core_crate();
+        let ethers_contract = util::ethers_contract_crate();
+
         quote! {
             #[derive(Debug, Clone, PartialEq, Eq)]
             pub enum #enum_name {
                 #(#variants(#variants)),*
             }
 
-             impl ethers_core::abi::Tokenizable for #enum_name {
+             impl #ethers_core::abi::Tokenizable for #enum_name {
 
-                 fn from_token(token: ethers_core::abi::Token) -> Result<Self, ethers_core::abi::InvalidOutputType> where
+                 fn from_token(token: #ethers_core::abi::Token) -> Result<Self, #ethers_core::abi::InvalidOutputType> where
                      Self: Sized {
                     #(
                         if let Ok(decoded) = #variants::from_token(token.clone()) {
                             return Ok(#enum_name::#variants(decoded))
                         }
                     )*
-                    Err(ethers_core::abi::InvalidOutputType("Failed to decode all event variants".to_string()))
+                    Err(#ethers_core::abi::InvalidOutputType("Failed to decode all event variants".to_string()))
                 }
 
-                fn into_token(self) -> ethers_core::abi::Token {
+                fn into_token(self) -> #ethers_core::abi::Token {
                     match self {
                         #(
                             #enum_name::#variants(element) => element.into_token()
@@ -87,10 +90,10 @@ impl Context {
                     }
                 }
              }
-             impl ethers_core::abi::TokenizableItem for #enum_name { }
+             impl #ethers_core::abi::TokenizableItem for #enum_name { }
 
-             impl ethers_contract::EthLogDecode for #enum_name {
-                fn decode_log(log: &ethers_core::abi::RawLog) -> Result<Self, ethers_core::abi::Error>
+             impl #ethers_contract::EthLogDecode for #enum_name {
+                fn decode_log(log: &#ethers_core::abi::RawLog) -> Result<Self, #ethers_core::abi::Error>
                 where
                     Self: Sized,
                 {
@@ -99,7 +102,7 @@ impl Context {
                             return Ok(#enum_name::#variants(decoded))
                         }
                     )*
-                    Err(ethers_core::abi::Error::InvalidData)
+                    Err(#ethers_core::abi::Error::InvalidData)
                 }
             }
         }
@@ -115,6 +118,7 @@ impl Context {
         let sorted_events: BTreeMap<_, _> = self.abi.events.clone().into_iter().collect();
 
         let mut iter = sorted_events.values().flatten();
+        let ethers_contract = util::ethers_contract_crate();
 
         if let Some(event) = iter.next() {
             let ty = if iter.next().is_some() {
@@ -124,8 +128,8 @@ impl Context {
             };
 
             quote! {
-                /// Returns an [`Event`](ethers_contract::builders::Event) builder for all events of this contract
-                pub fn events(&self) -> ethers_contract::builders::Event<M, #ty> {
+                /// Returns an [`Event`](#ethers_contract::builders::Event) builder for all events of this contract
+                pub fn events(&self) -> #ethers_contract::builders::Event<M, #ty> {
                     self.0.event_with_filter(Default::default())
                 }
             }
@@ -142,6 +146,8 @@ impl Context {
     /// If a complex types matches with a struct previously parsed by the AbiParser,
     /// we can replace it
     fn expand_input_type(&self, input: &EventParam) -> Result<TokenStream> {
+        let ethers_core = util::ethers_core_crate();
+
         Ok(match (&input.kind, input.indexed) {
             (ParamType::Array(ty), true) => {
                 if let ParamType::Tuple(..) = **ty {
@@ -156,7 +162,7 @@ impl Context {
                         return Ok(quote! {::std::vec::Vec<#ty>});
                     }
                 }
-                quote! { ethers_core::types::H256 }
+                quote! { #ethers_core::types::H256 }
             }
             (ParamType::FixedArray(ty, size), true) => {
                 if let ParamType::Tuple(..) = **ty {
@@ -172,7 +178,7 @@ impl Context {
                         return Ok(quote! {[#ty; #size]});
                     }
                 }
-                quote! { ethers_core::types::H256 }
+                quote! { #ethers_core::types::H256 }
             }
             (ParamType::Tuple(..), true) => {
                 // represents an struct
@@ -185,11 +191,11 @@ impl Context {
                 {
                     quote! {#ty}
                 } else {
-                    quote! { ethers_core::types::H256 }
+                    quote! { #ethers_core::types::H256 }
                 }
             }
             (ParamType::Bytes, true) | (ParamType::String, true) => {
-                quote! { ethers_core::types::H256 }
+                quote! { #ethers_core::types::H256 }
             }
             (kind, _) => types::expand(kind)?,
         })
@@ -213,6 +219,8 @@ impl Context {
 
     /// Expands into a single method for contracting an event stream.
     fn expand_filter(&self, event: &Event) -> TokenStream {
+        let ethers_contract = util::ethers_contract_crate();
+
         // append `filter` to disambiguate with potentially conflicting
         // function names
         let name = util::safe_ident(&format!("{}_filter", event.name.to_snake_case()));
@@ -222,7 +230,7 @@ impl Context {
         let doc = util::expand_doc(&format!("Gets the contract's `{}` event", event.name));
         quote! {
             #doc
-            pub fn #name(&self) -> ethers_contract::builders::Event<M, #result> {
+            pub fn #name(&self) -> #ethers_contract::builders::Event<M, #result> {
                 self.0.event()
             }
         }
@@ -247,8 +255,10 @@ impl Context {
         let abi_signature = event.abi_signature();
         let event_abi_name = &event.name;
 
+        let ethers_contract = util::ethers_contract_crate();
+
         Ok(quote! {
-            #[derive(Clone, Debug, Default, Eq, PartialEq, ethers_contract::EthEvent, #derives)]
+            #[derive(Clone, Debug, Default, Eq, PartialEq, #ethers_contract::EthEvent, #derives)]
             #[ethevent( name = #event_abi_name, abi = #abi_signature )]
             pub #data_type_definition
         })
@@ -351,9 +361,10 @@ fn expand_derives(derives: &[Path]) -> TokenStream {
 /// quasi-quoting for code generation. We do this to avoid allocating at runtime
 fn expand_hash(hash: Hash) -> TokenStream {
     let bytes = hash.as_bytes().iter().copied().map(Literal::u8_unsuffixed);
+    let ethers_core = util::ethers_core_crate();
 
     quote! {
-        ethers_core::types::H256([#( #bytes ),*])
+        #ethers_core::types::H256([#( #bytes ),*])
     }
 }
 
