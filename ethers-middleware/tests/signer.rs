@@ -63,8 +63,8 @@ use ethers_core::types::{
     transaction::eip2718::TypedTransaction, Address, Eip1559TransactionRequest,
 };
 
-#[tokio::test]
 // different keys to avoid nonce errors
+#[tokio::test]
 async fn websocket_pending_txs_with_confirmations_testnet() {
     let provider =
         Provider::connect("wss://rinkeby.infura.io/ws/v3/c60b0bb42f8a4c6481ecd229eddaca27")
@@ -245,7 +245,7 @@ async fn deploy_and_call_contract() {
     use ethers_contract::ContractFactory;
     use ethers_core::{
         abi::Abi,
-        types::{BlockNumber, Bytes, H256},
+        types::{BlockNumber, Bytes, H256, U256},
         utils::Solc,
     };
     use std::sync::Arc;
@@ -267,7 +267,7 @@ async fn deploy_and_call_contract() {
     let chain_id = provider.get_chainid().await.unwrap().as_u64();
 
     // Funded with https://celo.org/developers/faucet
-    let wallet = "d652abb81e8c686edba621a895531b1f291289b63b5ef09a94f686a5ecdd5db1"
+    let wallet = "58ea5643a78c36926ad5128a6b0d8dfcc7fc705788a993b1c724be3469bc9697"
         .parse::<LocalWallet>()
         .unwrap()
         .with_chain_id(chain_id);
@@ -276,35 +276,22 @@ async fn deploy_and_call_contract() {
     let client = Arc::new(client);
 
     let factory = ContractFactory::new(abi, bytecode, client);
-    let deployer = factory
-        .deploy("initial value".to_string())
-        .unwrap()
-        .legacy();
+    let deployer = factory.deploy(()).unwrap().legacy();
     let contract = deployer.block(BlockNumber::Pending).send().await.unwrap();
 
-    let value: String = contract
-        .method("getValue", ())
-        .unwrap()
-        .call()
-        .await
-        .unwrap();
-    assert_eq!(value, "initial value");
+    let value: U256 = contract.method("value", ()).unwrap().call().await.unwrap();
+    assert_eq!(value, 0.into());
 
     // make a state mutating transaction
     // gas estimation costs are sometimes under-reported on celo,
     // so we manually set it to avoid failures
     let call = contract
-        .method::<_, H256>("setValue", "hi".to_owned())
+        .method::<_, H256>("setValue", U256::from(1))
         .unwrap()
         .gas(100000);
     let pending_tx = call.send().await.unwrap();
     let _receipt = pending_tx.await.unwrap();
 
-    let value: String = contract
-        .method("getValue", ())
-        .unwrap()
-        .call()
-        .await
-        .unwrap();
-    assert_eq!(value, "hi");
+    let value: U256 = contract.method("value", ()).unwrap().call().await.unwrap();
+    assert_eq!(value, 1.into());
 }
