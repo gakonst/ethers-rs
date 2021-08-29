@@ -808,26 +808,6 @@ fn derive_tokenizeable_impl(input: &DeriveInput) -> proc_macro2::TokenStream {
                 #core_crate::abi::Token::Tuple(Vec::new())
             },
         ),
-        1 => {
-            // This is a hacky solution in order to keep the same tokenstream as for tuples
-            let from_token = quote! {
-                let mut iter = Some(token).into_iter();
-                Ok(#init_struct_impl)
-            };
-
-            // This is a hack to get rid of the trailing comma introduced in the macro that concatenates all the fields
-            if let Ok(into_token) = into_token_impl
-                .to_string()
-                .as_str()
-                .trim_end_matches(',')
-                .parse()
-            {
-                (from_token, into_token)
-            } else {
-                return Error::new(input.span(), "Failed to derive Tokenizeable implementation")
-                    .to_compile_error();
-            }
-        }
         _ => {
             let from_token = quote! {
                 if let #core_crate::abi::Token::Tuple(tokens) = token {
