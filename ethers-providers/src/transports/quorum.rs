@@ -373,10 +373,7 @@ pub trait PubsubClientWrapper: JsonRpcClientWrapper {
 
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
-impl<C: JsonRpcClient> JsonRpcClientWrapper for C
-where
-    <C as JsonRpcClient>::Error: Sync + Send,
-{
+impl<C: JsonRpcClient> JsonRpcClientWrapper for C {
     async fn request(&self, method: &str, params: Value) -> Result<Value, ProviderError> {
         Ok(JsonRpcClient::request(self, method, params)
             .await
@@ -401,7 +398,6 @@ impl JsonRpcClientWrapper for Box<dyn PubsubClientWrapper> {
 
 impl<C: PubsubClient> PubsubClientWrapper for C
 where
-    <C as JsonRpcClient>::Error: Sync + Send,
     <C as PubsubClient>::NotificationStream: 'static,
 {
     fn subscribe(&self, id: U256) -> Result<NotificationStream, ProviderError> {
