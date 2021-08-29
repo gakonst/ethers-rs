@@ -24,19 +24,20 @@ use thiserror::Error;
 /// the weighted providers return the same value.
 ///
 /// ```no_run
-/// use ethers::{types::U64, providers::{JsonRpcClient, QuorumProvider, Quorum, WeightedProvider, Http}};
+/// use ethers_core::types::U64;
+/// use ethers_providers::{JsonRpcClient, QuorumProvider, Quorum, WeightedProvider, Http};
 /// use std::str::FromStr;
 ///
 /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
 /// let provider1 = WeightedProvider::new(Http::from_str("http://localhost:8545")?);
 /// let provider2 = WeightedProvider::with_weight(Http::from_str("http://localhost:8545")?, 2);
 /// let provider3 = WeightedProvider::new(Http::from_str("http://localhost:8545")?);
-/// let quorum = QuorumProvider::builder()
+/// let provider = QuorumProvider::builder()
 ///     .add_providers([provider1, provider2, provider3])
 ///     .quorum(Quorum::Majority)
 ///     .build();
 /// // the weight at which a quorum is reached,
-/// assert_eq!(quorum.quorum_weight(), 4 / 2); // majority >=50%
+/// assert_eq!(provider.quorum_weight(), 4 / 2); // majority >=50%
 /// let block_number: U64 = provider.request("eth_blockNumber", ()).await?;
 ///
 /// # Ok(())
