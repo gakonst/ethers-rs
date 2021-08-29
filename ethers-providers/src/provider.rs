@@ -2,7 +2,8 @@ use crate::{
     ens,
     pubsub::{PubsubClient, SubscriptionStream},
     stream::{FilterWatcher, DEFAULT_POLL_INTERVAL},
-    FeeHistory, FromErr, Http as HttpProvider, JsonRpcClient, MockProvider, PendingTransaction,
+    FeeHistory, FromErr, Http as HttpProvider, JsonRpcClient, JsonRpcClientWrapper, MockProvider,
+    PendingTransaction, QuorumProvider,
 };
 
 use ethers_core::{
@@ -895,6 +896,13 @@ impl Provider<crate::Ipc> {
     pub async fn connect_ipc(path: impl AsRef<std::path::Path>) -> Result<Self, ProviderError> {
         let ipc = crate::Ipc::connect(path).await?;
         Ok(Self::new(ipc))
+    }
+}
+
+impl<T: JsonRpcClientWrapper> Provider<QuorumProvider<T>> {
+    /// Provider that uses a quorum
+    pub fn quorum(inner: QuorumProvider<T>) -> Self {
+        Self::new(inner)
     }
 }
 
