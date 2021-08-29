@@ -1,5 +1,5 @@
 //! Transaction types
-use super::{eip2930::AccessList, rlp_opt, NUM_TX_FIELDS};
+use super::{eip2930::AccessList, rlp_opt};
 use crate::{
     types::{Address, Bloom, Bytes, Log, H256, U256, U64},
     utils::keccak256,
@@ -141,22 +141,70 @@ impl Transaction {
 
     pub fn rlp(&self) -> Bytes {
         let mut rlp = RlpStream::new();
-        rlp.begin_list(NUM_TX_FIELDS);
-        rlp.append(&self.nonce);
-        rlp_opt(&mut rlp, &self.gas_price);
-        rlp.append(&self.gas);
+        rlp.begin_unbounded_list();
 
-        #[cfg(feature = "celo")]
-        self.inject_celo_metadata(&mut rlp);
+        match self.transaction_type {
+            // EIP-2930 (0x01)
+            Some(x) if x == U64::from(1) => {
+                rlp_opt(&mut rlp, &self.chain_id);
+                rlp.append(&self.nonce);
+                rlp_opt(&mut rlp, &self.gas_price);
+                rlp.append(&self.gas);
 
-        rlp_opt(&mut rlp, &self.to);
-        rlp.append(&self.value);
-        rlp.append(&self.input.as_ref());
+                #[cfg(feature = "celo")]
+                self.inject_celo_metadata(&mut rlp);
+
+                rlp_opt(&mut rlp, &self.to);
+                rlp.append(&self.value);
+                rlp.append(&self.input.as_ref());
+                rlp.append(&self.access_list);
+            }
+            // EIP-1559 (0x02)
+            Some(x) if x == U64::from(2) => {
+                rlp_opt(&mut rlp, &self.chain_id);
+                rlp.append(&self.nonce);
+                rlp_opt(&mut rlp, &self.max_priority_fee_per_gas);
+                rlp_opt(&mut rlp, &self.max_fee_per_gas);
+                rlp.append(&self.gas);
+                rlp_opt(&mut rlp, &self.to);
+                rlp.append(&self.value);
+                rlp.append(&self.input.as_ref());
+                rlp.append(&self.access_list);
+            }
+            // Legacy (0x00)
+            _ => {
+                rlp.append(&self.nonce);
+                rlp_opt(&mut rlp, &self.gas_price);
+                rlp.append(&self.gas);
+
+                #[cfg(feature = "celo")]
+                self.inject_celo_metadata(&mut rlp);
+
+                rlp_opt(&mut rlp, &self.to);
+                rlp.append(&self.value);
+                rlp.append(&self.input.as_ref());
+            }
+        }
+
         rlp.append(&self.v);
         rlp.append(&self.r);
         rlp.append(&self.s);
 
-        rlp.out().freeze().into()
+        let rlp_bytes: Bytes = rlp.out().freeze().into();
+        let mut encoded = vec![];
+        match self.transaction_type {
+            Some(x) if x == U64::from(1) => {
+                encoded.extend_from_slice(&[0x1]);
+                encoded.extend_from_slice(rlp_bytes.as_ref());
+                encoded.into()
+            }
+            Some(x) if x == U64::from(2) => {
+                encoded.extend_from_slice(&[0x2]);
+                encoded.extend_from_slice(rlp_bytes.as_ref());
+                encoded.into()
+            }
+            _ => rlp_bytes,
+        }
     }
 }
 
