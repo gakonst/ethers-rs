@@ -1,11 +1,12 @@
-use ethers::prelude::*;
+use ethers::{prelude::*, utils::Ganache};
 use std::time::Duration;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let ws = Ws::connect("ws://localhost:8546").await?;
+    let ganache = Ganache::new().block_time(1u64).spawn();
+    let ws = Ws::connect(ganache.ws_endpoint()).await?;
     let provider = Provider::new(ws).interval(Duration::from_millis(2000));
-    let mut stream = provider.watch_blocks().await?.stream();
+    let mut stream = provider.watch_blocks().await?.take(5);
     while let Some(block) = stream.next().await {
         dbg!(block);
     }
