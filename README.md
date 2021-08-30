@@ -10,6 +10,8 @@ Extensive documentation and examples are available [here](https://docs.rs/ethers
 
 Alternatively, you may clone the repository and run `cd ethers/ && cargo doc --open`
 
+You can also run any of the examples by executing: `cargo run -p ethers --example <name>`
+
 ## Add ethers-rs to your repository
 
 ```toml
