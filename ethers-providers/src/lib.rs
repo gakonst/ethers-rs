@@ -215,7 +215,7 @@ pub trait Middleware: Sync + Send + Debug {
         tx: &mut TypedTransaction,
         block: Option<BlockId>,
     ) -> Result<(), Self::Error> {
-        let tx_clone = tx.clone();
+        let mut tx_clone = tx.clone();
 
         // TODO: Maybe deduplicate the code in a nice way
         match tx {
@@ -223,6 +223,7 @@ pub trait Middleware: Sync + Send + Debug {
                 if let Some(NameOrAddress::Name(ref ens_name)) = inner.to {
                     let addr = self.resolve_name(ens_name).await?;
                     inner.to = Some(addr.into());
+                    tx_clone.set_to(addr);
                 };
 
                 if inner.from.is_none() {
@@ -244,6 +245,7 @@ pub trait Middleware: Sync + Send + Debug {
                 if let Some(NameOrAddress::Name(ref ens_name)) = inner.tx.to {
                     let addr = self.resolve_name(ens_name).await?;
                     inner.tx.to = Some(addr.into());
+                    tx_clone.set_to(addr);
                 };
 
                 if inner.tx.from.is_none() {
@@ -265,6 +267,7 @@ pub trait Middleware: Sync + Send + Debug {
                 if let Some(NameOrAddress::Name(ref ens_name)) = inner.to {
                     let addr = self.resolve_name(ens_name).await?;
                     inner.to = Some(addr.into());
+                    tx_clone.set_to(addr);
                 };
 
                 if inner.from.is_none() {
