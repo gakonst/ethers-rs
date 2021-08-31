@@ -10,11 +10,12 @@ use syn::Path;
 impl Context {
     /// Expands each event to a struct + its impl Detokenize block
     pub fn events_declaration(&self) -> Result<TokenStream> {
+        let mut event_aliases = self.event_aliases.clone();
         let sorted_events: BTreeMap<_, _> = self.abi.events.clone().into_iter().collect();
         let data_types = sorted_events
             .values()
             .flatten()
-            .map(|event| self.expand_event(event))
+            .map(|event| self.expand_event(event, event_aliases.remove(&event.abi_signature())))
             .collect::<Result<Vec<_>>>()?;
 
         // only expand enums when multiple events are present
@@ -52,11 +53,14 @@ impl Context {
     /// Generate an enum with a variant for each event
     fn expand_events_enum(&self) -> TokenStream {
         let sorted_events: BTreeMap<_, _> = self.abi.events.clone().into_iter().collect();
-
+        let mut aliases = self.event_aliases.clone();
         let variants = sorted_events
             .values()
             .flatten()
-            .map(expand_struct_name)
+            .map(|e| {
+                let alias = aliases.remove(&e.abi_signature());
+                expand_struct_name(e, alias)
+            })
             .collect::<Vec<_>>();
 
         let enum_name = self.expand_event_enum_name();
@@ -124,7 +128,8 @@ impl Context {
             let ty = if iter.next().is_some() {
                 self.expand_event_enum_name()
             } else {
-                expand_struct_name(event)
+                let alias = self.event_aliases.clone().remove(&event.abi_signature());
+                expand_struct_name(event, alias)
             };
 
             quote! {
@@ -220,12 +225,20 @@ impl Context {
     /// Expands into a single method for contracting an event stream.
     fn expand_filter(&self, event: &Event) -> TokenStream {
         let ethers_contract = util::ethers_contract_crate();
+        let alias = self.event_aliases.clone().remove(&event.abi_signature());
+        let mut name;
+        if let Some(id) = alias {
+            name = util::safe_ident(&format!("{}_filter", id.to_string().to_snake_case()));
+        } else {
+            name = util::safe_ident(&format!("{}_filter", event.name.to_snake_case()));
+        }
+
 
         // append `filter` to disambiguate with potentially conflicting
         // function names
-        let name = util::safe_ident(&format!("{}_filter", event.name.to_snake_case()));
-        // let result = util::ident(&event.name.to_pascal_case());
-        let result = expand_struct_name(event);
+
+         let result = util::ident(&name.to_string().to_pascal_case());
+        //let result = expand_struct_name(event);
 
         let doc = util::expand_doc(&format!("Gets the contract's `{}` event", event.name));
         quote! {
@@ -239,10 +252,21 @@ impl Context {
     /// Expands an ABI event into a single event data type. This can expand either
     /// into a structure or a tuple in the case where all event parameters (topics
     /// and data) are anonymous.
-    fn expand_event(&self, event: &Event) -> Result<TokenStream> {
-        let event_name = expand_struct_name(event);
+    fn expand_event(&self, event: &Event, sig: Option<Ident> ) -> Result<TokenStream> {
+        let mut event = event.clone();
+        let abi_signature = event.abi_signature();
+        let event_abi_name = event.name.clone();
+        let alias = sig.clone().unwrap_or_else(|| util::safe_ident(&event_abi_name.to_snake_case()));
+        event = Event {
+            name: alias.to_string(),
+            inputs: event.inputs.clone(),
+            anonymous: event.anonymous
+        };
 
-        let params = self.expand_params(event)?;
+
+        let event_name = expand_struct_name(&event, sig);
+
+        let params = self.expand_params(&event)?;
         // expand as a tuple if all fields are anonymous
         let all_anonymous_fields = event.inputs.iter().all(|input| input.name.is_empty());
         let data_type_definition = if all_anonymous_fields {
@@ -252,8 +276,8 @@ impl Context {
         };
 
         let derives = expand_derives(&self.event_derives);
-        let abi_signature = event.abi_signature();
-        let event_abi_name = &event.name;
+
+
 
         let ethers_contract = util::ethers_contract_crate();
 
@@ -309,9 +333,13 @@ impl Context {
 }
 
 /// Expands an ABI event into an identifier for its event data type.
-fn expand_struct_name(event: &Event) -> Ident {
+fn expand_struct_name(event: &Event, alias: Option<Ident>) -> Ident {
     // TODO: get rid of `Filter` suffix?
-    let name = format!("{}Filter", event.name.to_pascal_case());
+    let mut name = format!("{}Filter", event.name.to_pascal_case());
+
+    if let Some(id) = alias {
+        name = format!("{}Filter", id.to_string().to_pascal_case());
+    }
     util::ident(&name)
 }
 
@@ -431,7 +459,7 @@ mod tests {
 
         let cx = test_context();
         let params = cx.expand_params(&event).unwrap();
-        let name = expand_struct_name(&event);
+        let name = expand_struct_name(&event, None);
         let definition = expand_data_struct(&name, &params);
 
         assert_quote!(definition, {
@@ -463,7 +491,7 @@ mod tests {
 
         let cx = test_context();
         let params = cx.expand_params(&event).unwrap();
-        let name = expand_struct_name(&event);
+        let name = expand_struct_name(&event, None);
         let definition = expand_data_tuple(&name, &params);
 
         assert_quote!(definition, {

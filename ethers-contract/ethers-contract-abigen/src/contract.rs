@@ -46,6 +46,9 @@ pub(crate) struct Context {
 
     /// Derives added to event structs and enums.
     event_derives: Vec<Path>,
+
+    /// Manually specified event aliases.
+    event_aliases: BTreeMap<String, Ident>,
 }
 
 impl Context {
@@ -151,6 +154,17 @@ impl Context {
             }
         }
 
+        let mut event_aliases = BTreeMap::new();
+        for (signature, alias) in args.event_aliases.into_iter() {
+            let alias = syn::parse_str(&alias)?;
+            if event_aliases.insert(signature.clone(), alias).is_some() {
+                return Err(anyhow!(
+                    "duplicate method signature '{}' in method aliases",
+                    signature,
+                ));
+            }
+        }
+
         let event_derives = args
             .event_derives
             .iter()
@@ -167,6 +181,7 @@ impl Context {
             contract_name,
             method_aliases,
             event_derives,
+            event_aliases,
         })
     }
 }
