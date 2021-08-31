@@ -93,6 +93,8 @@ Thanks for your help improving the project! We are so happy to have you! We have
 [a contributing guide](https://github.com/gakonst/ethers-rs/blob/master/CONTRIBUTING.md) to
 help you get involved in the ethers-rs project.
 
+If you make a Pull Request, do not forget to add your changes in the [CHANGELOG](CHANGELOG.md).
+
 ## Related Projects
 
 This library would not have been possibly without the great work done in:
