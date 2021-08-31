@@ -226,18 +226,16 @@ impl Context {
     fn expand_filter(&self, event: &Event) -> TokenStream {
         let ethers_contract = util::ethers_contract_crate();
         let alias = self.event_aliases.clone().remove(&event.abi_signature());
-        let name;
-        if let Some(id) = alias {
+
+        let mut name = util::safe_ident(&format!("{}_filter", event.name.to_snake_case()));
+        if let Some(id) = alias.clone() {
             name = util::safe_ident(&format!("{}_filter", id.to_string().to_snake_case()));
-        } else {
-            name = util::safe_ident(&format!("{}_filter", event.name.to_snake_case()));
         }
 
         // append `filter` to disambiguate with potentially conflicting
         // function names
 
-        let result = util::ident(&name.to_string().to_pascal_case());
-        //let result = expand_struct_name(event);
+        let result = expand_struct_name(event, alias);
 
         let doc = util::expand_doc(&format!("Gets the contract's `{}` event", event.name));
         quote! {
@@ -252,17 +250,8 @@ impl Context {
     /// into a structure or a tuple in the case where all event parameters (topics
     /// and data) are anonymous.
     fn expand_event(&self, event: &Event, sig: Option<Ident>) -> Result<TokenStream> {
-        let mut event = event.clone();
         let abi_signature = event.abi_signature();
         let event_abi_name = event.name.clone();
-        let alias = sig
-            .clone()
-            .unwrap_or_else(|| util::safe_ident(&event_abi_name.to_snake_case()));
-        event = Event {
-            name: alias.to_string(),
-            inputs: event.inputs.clone(),
-            anonymous: event.anonymous,
-        };
 
         let event_name = expand_struct_name(&event, sig);
 
@@ -441,7 +430,7 @@ mod tests {
         assert_quote!(cx.expand_filter(&event), {
             #[doc = "Gets the contract's `Transfer` event"]
             pub fn transfer_event_filter(
-                &self,
+                &self
             ) -> ethers_contract::builders::Event<M, TransferEventFilter> {
                 self.0.event()
             }
