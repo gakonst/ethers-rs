@@ -35,7 +35,7 @@ pub struct CompiledContract {
 /// Assumes that `solc` is installed and available in the caller's $PATH. Any calls
 /// will **panic** otherwise.
 ///
-/// By default, it uses 200 optimizer runs and Istanbul as the EVM version
+/// By default, it uses Istanbul as the EVM version.
 ///
 /// # Examples
 ///
@@ -57,6 +57,9 @@ pub struct CompiledContract {
 pub struct Solc {
     /// The path where contracts will be read from
     pub paths: Vec<String>,
+
+    /// Whether to enable the optimizer
+    pub optimize: bool,
 
     /// Number of runs
     pub optimizer: usize,
@@ -80,7 +83,8 @@ impl Solc {
 
         Self {
             paths,
-            optimizer: 200, // default optimizer runs = 200
+            optimize: false, // default optimizer OFF
+            optimizer: 200,  // default optimizer runs = 200
             evm_version: EvmVersion::Istanbul,
             allowed_paths: Vec::new(),
         }
@@ -95,6 +99,13 @@ impl Solc {
             .arg(self.evm_version.to_string())
             .arg("--combined-json")
             .arg("abi,bin");
+
+        if self.optimize {
+            command
+                .arg("--optimize")
+                .arg("--optimize-runs")
+                .arg(self.optimizer.to_string());
+        }
 
         for path in self.paths {
             command.arg(path);
@@ -196,8 +207,9 @@ impl Solc {
         self
     }
 
-    /// Sets the optimizer runs (default = 200)
+    /// Sets the optimizer runs (default = 200) and the optimizer ON (default OFF)
     pub fn optimizer(mut self, runs: usize) -> Self {
+        self.optimize = true;
         self.optimizer = runs;
         self
     }
