@@ -24,3 +24,9 @@ thought of as being the motivation for your change.
 Summarize the solution and provide any necessary context needed to understand
 the code change.
 -->
+
+## PR Checklist
+
+- [ ] Added Tests
+- [ ] Added Documentation
+- [ ] Updated the changelog

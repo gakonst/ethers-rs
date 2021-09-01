@@ -44,11 +44,11 @@ pub mod builders {
     pub use super::factory::Deployer;
 }
 
-#[cfg(feature = "abigen")]
+#[cfg(any(test, feature = "abigen"))]
 #[cfg_attr(docsrs, doc(cfg(feature = "abigen")))]
 pub use ethers_contract_abigen::Abigen;
 
-#[cfg(feature = "abigen")]
+#[cfg(any(test, feature = "abigen"))]
 #[cfg_attr(docsrs, doc(cfg(feature = "abigen")))]
 pub use ethers_contract_derive::{abigen, EthAbiType, EthEvent};
 

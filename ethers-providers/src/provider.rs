@@ -2,7 +2,8 @@ use crate::{
     ens,
     pubsub::{PubsubClient, SubscriptionStream},
     stream::{FilterWatcher, DEFAULT_POLL_INTERVAL},
-    FeeHistory, FromErr, Http as HttpProvider, JsonRpcClient, MockProvider, PendingTransaction,
+    FeeHistory, FromErr, Http as HttpProvider, JsonRpcClient, JsonRpcClientWrapper, MockProvider,
+    PendingTransaction, QuorumProvider,
 };
 
 use ethers_core::{
@@ -38,7 +39,7 @@ use tracing_futures::Instrument;
 ///
 /// ```no_run
 /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
-/// use ethers::providers::{Middleware, Provider, Http};
+/// use ethers_providers::{Middleware, Provider, Http};
 /// use std::convert::TryFrom;
 ///
 /// let provider = Provider::<Http>::try_from(
@@ -898,6 +899,13 @@ impl Provider<crate::Ipc> {
     }
 }
 
+impl<T: JsonRpcClientWrapper> Provider<QuorumProvider<T>> {
+    /// Provider that uses a quorum
+    pub fn quorum(inner: QuorumProvider<T>) -> Self {
+        Self::new(inner)
+    }
+}
+
 impl Provider<MockProvider> {
     /// Returns a `Provider` instantiated with an internal "mock" transport.
     ///
@@ -905,7 +913,8 @@ impl Provider<MockProvider> {
     ///
     /// ```
     /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
-    /// use ethers::{types::U64, providers::{Middleware, Provider}};
+    /// use ethers_core::types::U64;
+    /// use ethers_providers::{Middleware, Provider};
     /// // Instantiate the provider
     /// let (provider, mock) = Provider::mocked();
     /// // Push the mock response

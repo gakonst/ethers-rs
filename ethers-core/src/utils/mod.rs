@@ -79,7 +79,7 @@ pub fn format_units<T: Into<U256>, K: Into<Units>>(amount: T, units: K) -> U256 
 /// Converts the input to a U256 and converts from Ether to Wei.
 ///
 /// ```
-/// use ethers::{types::U256, utils::{parse_ether, WEI_IN_ETHER}};
+/// use ethers_core::{types::U256, utils::{parse_ether, WEI_IN_ETHER}};
 ///
 /// let eth = U256::from(WEI_IN_ETHER);
 /// assert_eq!(eth, parse_ether(1u8).unwrap());

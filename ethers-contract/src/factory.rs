@@ -92,12 +92,10 @@ impl<M: Middleware> Deployer<M> {
 /// # Example
 ///
 /// ```no_run
-/// use ethers::{
-///     utils::Solc,
-///     contract::ContractFactory,
-///     providers::{Provider, Http},
-///     signers::Wallet
-/// };
+/// use ethers_core::utils::Solc;
+/// use ethers_contract::ContractFactory;
+/// use ethers_providers::{Provider, Http};
+/// use ethers_signers::Wallet;
 /// use std::convert::TryFrom;
 ///
 /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {

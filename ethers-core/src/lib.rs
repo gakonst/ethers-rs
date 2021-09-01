@@ -12,7 +12,7 @@
 //! `"\x19Ethereum Signed Message:\n" + message.length`, and then
 //! signing the hash of the result.
 //!
-//! ```rust
+//! ```rust,ignore
 //! # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
 //! use ethers::signers::{Signer, LocalWallet};
 //!

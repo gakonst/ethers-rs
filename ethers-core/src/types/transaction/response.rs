@@ -1,5 +1,5 @@
 //! Transaction types
-use super::{eip2930::AccessList, rlp_opt, NUM_TX_FIELDS};
+use super::{eip2930::AccessList, normalize_v, rlp_opt};
 use crate::{
     types::{Address, Bloom, Bytes, Log, H256, U256, U64},
     utils::keccak256,
@@ -141,22 +141,78 @@ impl Transaction {
 
     pub fn rlp(&self) -> Bytes {
         let mut rlp = RlpStream::new();
-        rlp.begin_list(NUM_TX_FIELDS);
-        rlp.append(&self.nonce);
-        rlp_opt(&mut rlp, &self.gas_price);
-        rlp.append(&self.gas);
+        rlp.begin_unbounded_list();
 
-        #[cfg(feature = "celo")]
-        self.inject_celo_metadata(&mut rlp);
+        match self.transaction_type {
+            // EIP-2930 (0x01)
+            Some(x) if x == U64::from(1) => {
+                rlp_opt(&mut rlp, &self.chain_id);
+                rlp.append(&self.nonce);
+                rlp_opt(&mut rlp, &self.gas_price);
+                rlp.append(&self.gas);
 
-        rlp_opt(&mut rlp, &self.to);
-        rlp.append(&self.value);
-        rlp.append(&self.input.as_ref());
-        rlp.append(&self.v);
+                #[cfg(feature = "celo")]
+                self.inject_celo_metadata(&mut rlp);
+
+                rlp_opt(&mut rlp, &self.to);
+                rlp.append(&self.value);
+                rlp.append(&self.input.as_ref());
+                rlp_opt(&mut rlp, &self.access_list);
+                if let Some(chain_id) = self.chain_id {
+                    rlp.append(&normalize_v(self.v.as_u64(), U64::from(chain_id.as_u64())));
+                }
+            }
+            // EIP-1559 (0x02)
+            Some(x) if x == U64::from(2) => {
+                rlp_opt(&mut rlp, &self.chain_id);
+                rlp.append(&self.nonce);
+                rlp_opt(&mut rlp, &self.max_priority_fee_per_gas);
+                rlp_opt(&mut rlp, &self.max_fee_per_gas);
+                rlp.append(&self.gas);
+                rlp_opt(&mut rlp, &self.to);
+                rlp.append(&self.value);
+                rlp.append(&self.input.as_ref());
+                rlp_opt(&mut rlp, &self.access_list);
+                if let Some(chain_id) = self.chain_id {
+                    rlp.append(&normalize_v(self.v.as_u64(), U64::from(chain_id.as_u64())));
+                }
+            }
+            // Legacy (0x00)
+            _ => {
+                rlp.append(&self.nonce);
+                rlp_opt(&mut rlp, &self.gas_price);
+                rlp.append(&self.gas);
+
+                #[cfg(feature = "celo")]
+                self.inject_celo_metadata(&mut rlp);
+
+                rlp_opt(&mut rlp, &self.to);
+                rlp.append(&self.value);
+                rlp.append(&self.input.as_ref());
+                rlp.append(&self.v);
+            }
+        }
+
         rlp.append(&self.r);
         rlp.append(&self.s);
 
-        rlp.out().freeze().into()
+        rlp.finalize_unbounded_list();
+
+        let rlp_bytes: Bytes = rlp.out().freeze().into();
+        let mut encoded = vec![];
+        match self.transaction_type {
+            Some(x) if x == U64::from(1) => {
+                encoded.extend_from_slice(&[0x1]);
+                encoded.extend_from_slice(rlp_bytes.as_ref());
+                encoded.into()
+            }
+            Some(x) if x == U64::from(2) => {
+                encoded.extend_from_slice(&[0x2]);
+                encoded.extend_from_slice(rlp_bytes.as_ref());
+                encoded.into()
+            }
+            _ => rlp_bytes,
+        }
     }
 }
 
@@ -215,6 +271,7 @@ mod tests {
     use crate::types::transaction::eip2930::AccessListItem;
 
     use super::*;
+    use std::str::FromStr;
 
     #[test]
     fn decode_transaction_response() {
@@ -286,5 +343,81 @@ mod tests {
         assert_eq!(tx.access_list.unwrap(), lst);
         assert_eq!(tx.max_fee_per_gas.unwrap().as_u64(), 0x3b9aca0e);
         assert_eq!(tx.max_priority_fee_per_gas.unwrap().as_u64(), 0x3b9aca00);
+    }
+
+    #[test]
+    fn rlp_london_tx() {
+        let tx = Transaction {
+            block_hash: None,
+            block_number: None,
+            from: Address::from_str("057f8d0f6fb2703197363f75c002f766f1c4287a").unwrap(),
+            gas: U256::from_str_radix("0x6d22", 16).unwrap(),
+            gas_price: Some(U256::from_str_radix("0x1344ead983", 16).unwrap()),
+            hash: H256::from_str(
+                "781d57642f4e3277fe01d370bd45ba1361b475bea6a35f26814e02a0a2b26549",
+            )
+            .unwrap(),
+            max_fee_per_gas: Some(U256::from_str_radix("0x1344ead983", 16).unwrap()),
+            max_priority_fee_per_gas: Some(U256::from_str_radix("0x1344ead983", 16).unwrap()),
+            input: Bytes::from(hex::decode("d0e30db0").unwrap()),
+            nonce: U256::from(479),
+            to: Some(Address::from_str("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap()),
+            transaction_index: None,
+            value: U256::from_str_radix("0x2b40d6d551c8970c", 16).unwrap(),
+            transaction_type: Some(U64::from(0x2)),
+            access_list: Some(AccessList::from(vec![])),
+            chain_id: Some(U256::from(1)),
+            v: U64::from(0x1),
+            r: U256::from_str_radix(
+                "0x5616cdaec839ca14d209b59eafb706e623169dc9d0fa58fbf13931cef5b5e3b0",
+                16,
+            )
+            .unwrap(),
+            s: U256::from_str_radix(
+                "0x3e708f8044bd158d29c2e250b6a98ea637c3bc460beeea63a8f00f7cebac432a",
+                16,
+            )
+            .unwrap(),
+        };
+        println!("0x{}", hex::encode(&tx.rlp()));
+        assert_eq!(
+            tx.rlp(),
+            Bytes::from(
+                hex::decode("02f87a018201df851344ead983851344ead983826d2294c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2882b40d6d551c8970c84d0e30db0c001a05616cdaec839ca14d209b59eafb706e623169dc9d0fa58fbf13931cef5b5e3b0a03e708f8044bd158d29c2e250b6a98ea637c3bc460beeea63a8f00f7cebac432a").unwrap()
+            )
+        );
+    }
+
+    #[test]
+    fn rlp_legacy_tx() {
+        let tx = Transaction {
+            block_hash: None,
+            block_number: None,
+            from: Address::from_str("c26ad91f4e7a0cad84c4b9315f420ca9217e315d").unwrap(),
+            gas: U256::from_str_radix("0x10e2b", 16).unwrap(),
+            gas_price: Some(U256::from_str_radix("0x12ec276caf", 16).unwrap()),
+            hash: H256::from_str("929ff27a5c7833953df23103c4eb55ebdfb698678139d751c51932163877fada").unwrap(),
+            input: Bytes::from(
+                hex::decode("a9059cbb000000000000000000000000fdae129ecc2c27d166a3131098bc05d143fa258e0000000000000000000000000000000000000000000000000000000002faf080").unwrap()
+            ),
+            nonce: U256::zero(),
+            to: Some(Address::from_str("dac17f958d2ee523a2206206994597c13d831ec7").unwrap()),
+            transaction_index: None,
+            value: U256::zero(),
+            transaction_type: Some(U64::zero()),
+            v: U64::from(0x25),
+            r: U256::from_str_radix("c81e70f9e49e0d3b854720143e86d172fecc9e76ef8a8666f2fdc017017c5141", 16).unwrap(),
+            s: U256::from_str_radix("1dd3410180f6a6ca3e25ad3058789cd0df3321ed76b5b4dbe0a2bb2dc28ae274", 16).unwrap(),
+            chain_id: Some(U256::from(1)),
+            access_list: None,
+            max_fee_per_gas: None,
+            max_priority_fee_per_gas: None
+        };
+        assert_eq!(
+            tx.rlp(),
+            Bytes::from(
+                hex::decode("f8aa808512ec276caf83010e2b94dac17f958d2ee523a2206206994597c13d831ec780b844a9059cbb000000000000000000000000fdae129ecc2c27d166a3131098bc05d143fa258e0000000000000000000000000000000000000000000000000000000002faf08025a0c81e70f9e49e0d3b854720143e86d172fecc9e76ef8a8666f2fdc017017c5141a01dd3410180f6a6ca3e25ad3058789cd0df3321ed76b5b4dbe0a2bb2dc28ae274").unwrap()
+            )
+        );
     }
 }

@@ -12,7 +12,8 @@ use syn::{Ident as SynIdent, Path};
 /// See `determine_ethers_crates`
 ///
 /// This ensures that the `MetadataCommand` is only run once
-static ETHERS_CRATES: Lazy<(&'static str, &'static str)> = Lazy::new(determine_ethers_crates);
+static ETHERS_CRATES: Lazy<(&'static str, &'static str, &'static str)> =
+    Lazy::new(determine_ethers_crates);
 
 /// Convenience function to turn the `ethers_core` name in `ETHERS_CRATE` into a `Path`
 pub fn ethers_core_crate() -> Path {
@@ -21,6 +22,9 @@ pub fn ethers_core_crate() -> Path {
 /// Convenience function to turn the `ethers_contract` name in `ETHERS_CRATE` into an `Path`
 pub fn ethers_contract_crate() -> Path {
     syn::parse_str(ETHERS_CRATES.1).expect("valid path; qed")
+}
+pub fn ethers_providers_crate() -> Path {
+    syn::parse_str(ETHERS_CRATES.2).expect("valid path; qed")
 }
 
 /// The crates name to use when deriving macros: (`core`, `contract`)
@@ -34,8 +38,8 @@ pub fn ethers_contract_crate() -> Path {
 /// | ethers_contract`, we need to use the fitting crate ident when expand the
 /// macros This will attempt to parse the current `Cargo.toml` and check the
 /// ethers related dependencies.
-pub fn determine_ethers_crates() -> (&'static str, &'static str) {
-    MetadataCommand::new()
+pub fn determine_ethers_crates() -> (&'static str, &'static str, &'static str) {
+    let res = MetadataCommand::new()
         .manifest_path(&format!(
             "{}/Cargo.toml",
             std::env::var("CARGO_MANIFEST_DIR").expect("No Manifest found")
@@ -44,16 +48,17 @@ pub fn determine_ethers_crates() -> (&'static str, &'static str) {
         .exec()
         .ok()
         .and_then(|metadata| {
-            metadata.root_package().and_then(|pkg| {
-                pkg.dependencies
-                    .iter()
-                    .filter(|dep| dep.kind == DependencyKind::Normal)
-                    .find_map(|dep| {
-                        (dep.name == "ethers").then(|| ("ethers::core", "ethers::contract"))
-                    })
-            })
+            metadata.packages[0]
+                .dependencies
+                .iter()
+                .filter(|dep| dep.kind == DependencyKind::Normal)
+                .find_map(|dep| {
+                    (dep.name == "ethers")
+                        .then(|| ("ethers::core", "ethers::contract", "ethers::providers"))
+                })
         })
-        .unwrap_or(("ethers_core", "ethers_contract"))
+        .unwrap_or(("ethers_core", "ethers_contract", "ethers_providers"));
+    res
 }
 
 /// Expands a identifier string into an token.

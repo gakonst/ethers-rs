@@ -2,6 +2,7 @@ use ethers::prelude::*;
 use std::time::Duration;
 
 #[tokio::main]
+#[cfg(feature = "ipc")]
 async fn main() -> anyhow::Result<()> {
     let provider = Provider::connect_ipc("~/.ethereum/geth.ipc")
         .await?
@@ -15,3 +16,6 @@ async fn main() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[cfg(not(feature = "ipc"))]
+fn main() {}

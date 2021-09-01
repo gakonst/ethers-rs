@@ -63,12 +63,12 @@ pub static ADDRESS_BOOK: Lazy<HashMap<U256, Address>> = Lazy::new(|| {
 /// # Example
 ///
 /// ```no_run
-/// use ethers::{
+/// use ethers_core::{
 ///     abi::Abi,
-///     contract::{Contract, Multicall},
-///     providers::{Middleware, Http, Provider, PendingTransaction},
 ///     types::{Address, H256, U256},
 /// };
+/// use ethers_contract::{Contract, Multicall};
+/// use ethers_providers::{Middleware, Http, Provider, PendingTransaction};
 /// use std::{convert::TryFrom, sync::Arc};
 ///
 /// # async fn bar() -> Result<(), Box<dyn std::error::Error>> {
@@ -247,7 +247,9 @@ impl<M: Middleware> Multicall<M> {
     ///
     /// ```no_run
     /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
-    /// # use ethers::{abi::Abi, prelude::*};
+    /// # use ethers_core::{abi::Abi, types::{Address, H256}};
+    /// # use ethers_providers::{Provider, Http};
+    /// # use ethers_contract::{Multicall, Contract};
     /// # use std::{sync::Arc, convert::TryFrom};
     /// #
     /// # let client = Provider::<Http>::try_from("http://localhost:8545")?;
@@ -290,7 +292,9 @@ impl<M: Middleware> Multicall<M> {
     ///
     /// ```no_run
     /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
-    /// # use ethers::prelude::*;
+    /// # use ethers_core::types::{U256, Address};
+    /// # use ethers_providers::{Provider, Http};
+    /// # use ethers_contract::Multicall;
     /// # use std::convert::TryFrom;
     /// #
     /// # let client = Provider::<Http>::try_from("http://localhost:8545")?;
@@ -343,7 +347,8 @@ impl<M: Middleware> Multicall<M> {
     ///
     /// ```no_run
     /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
-    /// # use ethers::prelude::*;
+    /// # use ethers_providers::{Provider, Http};
+    /// # use ethers_contract::Multicall;
     /// # use std::convert::TryFrom;
     /// # let client = Provider::<Http>::try_from("http://localhost:8545")?;
     /// # let multicall = Multicall::new(client, None).await?;

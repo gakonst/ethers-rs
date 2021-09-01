@@ -44,12 +44,10 @@ pub enum Frequency {
 /// stuck in the memory pool.
 ///
 /// ```no_run
-/// use ethers::{
-///     providers::{Provider, Http},
-///     middleware::{
-///         gas_escalator::{GeometricGasPrice, Frequency, GasEscalatorMiddleware},
-///         gas_oracle::{GasNow, GasCategory, GasOracleMiddleware},
-///     },
+/// use ethers_providers::{Provider, Http};
+/// use ethers_middleware::{
+///     gas_escalator::{GeometricGasPrice, Frequency, GasEscalatorMiddleware},
+///     gas_oracle::{GasNow, GasCategory, GasOracleMiddleware},
 /// };
 /// use std::{convert::TryFrom, time::Duration, sync::Arc};
 ///

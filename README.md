@@ -10,6 +10,8 @@ Extensive documentation and examples are available [here](https://docs.rs/ethers
 
 Alternatively, you may clone the repository and run `cd ethers/ && cargo doc --open`
 
+You can also run any of the examples by executing: `cargo run -p ethers --example <name>`
+
 ## Add ethers-rs to your repository
 
 ```toml
@@ -90,6 +92,8 @@ Join the [ethers-rs telegram](https://t.me/ethers_rs) to chat with the community
 Thanks for your help improving the project! We are so happy to have you! We have
 [a contributing guide](https://github.com/gakonst/ethers-rs/blob/master/CONTRIBUTING.md) to
 help you get involved in the ethers-rs project.
+
+If you make a Pull Request, do not forget to add your changes in the [CHANGELOG](CHANGELOG.md).
 
 ## Related Projects
 

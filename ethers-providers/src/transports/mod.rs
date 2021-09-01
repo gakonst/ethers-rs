@@ -1,5 +1,7 @@
 mod common;
 
+// only used with WS
+#[cfg(feature = "ws")]
 macro_rules! if_wasm {
     ($($item:item)*) => {$(
         #[cfg(target_arch = "wasm32")]
@@ -28,6 +30,10 @@ pub use http::Provider as Http;
 mod ws;
 #[cfg(feature = "ws")]
 pub use ws::Ws;
+
+mod quorum;
+pub(crate) use quorum::JsonRpcClientWrapper;
+pub use quorum::{Quorum, QuorumProvider, WeightedProvider};
 
 mod mock;
 pub use mock::{MockError, MockProvider};
