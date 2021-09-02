@@ -24,6 +24,11 @@ struct ValueChangedTuple(Address, Address, String, String);
 #[derive(Debug, Clone, PartialEq, EthAbiType)]
 struct ValueChangedTupleWrapper(ValueChangedTuple, String);
 
+#[derive(Debug, Clone, PartialEq, EthAbiType)]
+struct ValueChangedVecWrapper {
+    inner: Vec<ValueChanged>,
+}
+
 #[test]
 fn can_detokenize_struct() {
     let value = ValueChanged {
@@ -80,6 +85,26 @@ fn can_detokenize_nested_tuple_struct() {
 
     let token = value.clone().into_token();
     assert_eq!(value, ValueChangedTupleWrapper::from_token(token).unwrap());
+}
+
+#[test]
+fn can_detokenize_single_field() {
+    let value = ValueChangedVecWrapper { inner: vec![] };
+
+    let token = value.clone().into_token();
+    assert_eq!(value, ValueChangedVecWrapper::from_token(token).unwrap());
+
+    let value = ValueChangedVecWrapper {
+        inner: vec![ValueChanged {
+            old_author: "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee".parse().unwrap(),
+            new_author: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".parse().unwrap(),
+            old_value: "50".to_string(),
+            new_value: "100".to_string(),
+        }],
+    };
+
+    let token = value.clone().into_token();
+    assert_eq!(value, ValueChangedVecWrapper::from_token(token).unwrap());
 }
 
 #[test]
