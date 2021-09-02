@@ -35,7 +35,7 @@ pub struct CompiledContract {
 /// Assumes that `solc` is installed and available in the caller's $PATH. Any calls
 /// will **panic** otherwise.
 ///
-/// By default, it uses Istanbul as the EVM version.
+/// By default, it uses 200 optimizer runs and Istanbul as the EVM version
 ///
 /// # Examples
 ///
@@ -45,7 +45,7 @@ pub struct CompiledContract {
 /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// // Give it a glob
 /// let contracts = Solc::new("./contracts/*")
-///     .optimizer(200)
+///     .optimizer(Some(200))
 ///     .build()?;
 ///
 /// // this will return None if the specified contract did not exist in the compiled
@@ -58,17 +58,17 @@ pub struct Solc {
     /// The path where contracts will be read from
     pub paths: Vec<String>,
 
-    /// Whether to enable the optimizer
-    pub optimize: bool,
-
-    /// Number of runs
-    pub optimizer: usize,
+    /// Number of optimizer runs. None for no optimization
+    pub optimizer: Option<usize>,
 
     /// Evm Version
     pub evm_version: EvmVersion,
 
     /// Paths for importing other libraries
     pub allowed_paths: Vec<PathBuf>,
+
+    /// Additional arguments to pass to solc
+    pub args: Vec<String>,
 }
 
 impl Solc {
@@ -83,10 +83,10 @@ impl Solc {
 
         Self {
             paths,
-            optimize: false, // default optimizer OFF
-            optimizer: 200,  // default optimizer runs = 200
+            optimizer: Some(200), // default optimizer runs = 200
             evm_version: EvmVersion::Istanbul,
             allowed_paths: Vec::new(),
+            args: Vec::new(),
         }
     }
 
@@ -100,12 +100,14 @@ impl Solc {
             .arg("--combined-json")
             .arg("abi,bin");
 
-        if self.optimize {
+        if let Some(runs) = self.optimizer {
             command
                 .arg("--optimize")
                 .arg("--optimize-runs")
-                .arg(self.optimizer.to_string());
+                .arg(runs.to_string());
         }
+
+        command.args(self.args);
 
         for path in self.paths {
             command.arg(path);
@@ -207,9 +209,8 @@ impl Solc {
         self
     }
 
-    /// Sets the optimizer runs (default = 200) and the optimizer ON (default OFF)
-    pub fn optimizer(mut self, runs: usize) -> Self {
-        self.optimize = true;
+    /// Sets the optimizer runs (default = 200). None indicates no optimization
+    pub fn optimizer(mut self, runs: Option<usize>) -> Self {
         self.optimizer = runs;
         self
     }
@@ -218,6 +219,24 @@ impl Solc {
     // TODO: Test this
     pub fn allowed_paths(mut self, paths: Vec<PathBuf>) -> Self {
         self.allowed_paths = paths;
+        self
+    }
+
+    /// Adds an argument to pass to solc
+    pub fn arg<T: Into<String>>(mut self, arg: T) -> Self {
+        self.args.push(arg.into());
+        self
+    }
+
+    /// Adds multiple arguments to pass to solc
+    pub fn args<I, S>(mut self, args: I) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        for arg in args {
+            self = self.arg(arg);
+        }
         self
     }
 }
