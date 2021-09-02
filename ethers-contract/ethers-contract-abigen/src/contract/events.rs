@@ -253,9 +253,9 @@ impl Context {
         let abi_signature = event.abi_signature();
         let event_abi_name = event.name.clone();
 
-        let event_name = expand_struct_name(&event, sig);
+        let event_name = expand_struct_name(event, sig);
 
-        let params = self.expand_params(&event)?;
+        let params = self.expand_params(event)?;
         // expand as a tuple if all fields are anonymous
         let all_anonymous_fields = event.inputs.iter().all(|input| input.name.is_empty());
         let data_type_definition = if all_anonymous_fields {
