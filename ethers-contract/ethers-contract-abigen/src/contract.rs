@@ -157,7 +157,7 @@ impl Context {
         let mut event_aliases = BTreeMap::new();
         for (signature, alias) in args.event_aliases.into_iter() {
             let alias = syn::parse_str(&alias)?;
-            event_aliases.insert(signature.clone(), alias);
+            event_aliases.insert(signature, alias);
         }
 
         let event_derives = args
