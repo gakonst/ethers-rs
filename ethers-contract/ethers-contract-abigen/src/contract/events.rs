@@ -10,12 +10,11 @@ use syn::Path;
 impl Context {
     /// Expands each event to a struct + its impl Detokenize block
     pub fn events_declaration(&self) -> Result<TokenStream> {
-        let mut event_aliases = self.event_aliases.clone();
         let sorted_events: BTreeMap<_, _> = self.abi.events.clone().into_iter().collect();
         let data_types = sorted_events
             .values()
             .flatten()
-            .map(|event| self.expand_event(event, event_aliases.remove(&event.abi_signature())))
+            .map(|event| self.expand_event(event))
             .collect::<Result<Vec<_>>>()?;
 
         // only expand enums when multiple events are present
@@ -53,14 +52,11 @@ impl Context {
     /// Generate an enum with a variant for each event
     fn expand_events_enum(&self) -> TokenStream {
         let sorted_events: BTreeMap<_, _> = self.abi.events.clone().into_iter().collect();
-        let mut aliases = self.event_aliases.clone();
+
         let variants = sorted_events
             .values()
             .flatten()
-            .map(|e| {
-                let alias = aliases.remove(&e.abi_signature());
-                expand_struct_name(e, alias)
-            })
+            .map(|e| expand_struct_name(e, self.event_aliases.get(&e.abi_signature()).cloned()))
             .collect::<Vec<_>>();
 
         let enum_name = self.expand_event_enum_name();
@@ -128,8 +124,10 @@ impl Context {
             let ty = if iter.next().is_some() {
                 self.expand_event_enum_name()
             } else {
-                let alias = self.event_aliases.clone().remove(&event.abi_signature());
-                expand_struct_name(event, alias)
+                expand_struct_name(
+                    event,
+                    self.event_aliases.get(&event.abi_signature()).cloned(),
+                )
             };
 
             quote! {
@@ -225,12 +223,13 @@ impl Context {
     /// Expands into a single method for contracting an event stream.
     fn expand_filter(&self, event: &Event) -> TokenStream {
         let ethers_contract = util::ethers_contract_crate();
-        let alias = self.event_aliases.clone().remove(&event.abi_signature());
+        let alias = self.event_aliases.get(&event.abi_signature()).cloned();
 
-        let mut name = util::safe_ident(&format!("{}_filter", event.name.to_snake_case()));
-        if let Some(id) = alias.clone() {
-            name = util::safe_ident(&format!("{}_filter", id.to_string().to_snake_case()));
-        }
+        let name = if let Some(id) = alias.clone() {
+            util::safe_ident(&format!("{}_filter", id.to_string().to_snake_case()))
+        } else {
+            util::safe_ident(&format!("{}_filter", event.name.to_snake_case()))
+        };
 
         // append `filter` to disambiguate with potentially conflicting
         // function names
@@ -249,7 +248,8 @@ impl Context {
     /// Expands an ABI event into a single event data type. This can expand either
     /// into a structure or a tuple in the case where all event parameters (topics
     /// and data) are anonymous.
-    fn expand_event(&self, event: &Event, sig: Option<Ident>) -> Result<TokenStream> {
+    fn expand_event(&self, event: &Event) -> Result<TokenStream> {
+        let sig = self.event_aliases.get(&event.abi_signature()).cloned();
         let abi_signature = event.abi_signature();
         let event_abi_name = event.name.clone();
 
@@ -322,11 +322,12 @@ impl Context {
 /// Expands an ABI event into an identifier for its event data type.
 fn expand_struct_name(event: &Event, alias: Option<Ident>) -> Ident {
     // TODO: get rid of `Filter` suffix?
-    let mut name = format!("{}Filter", event.name.to_pascal_case());
 
-    if let Some(id) = alias {
-        name = format!("{}Filter", id.to_string().to_pascal_case());
-    }
+    let name = if let Some(id) = alias {
+        format!("{}Filter", id.to_string().to_pascal_case())
+    } else {
+        format!("{}Filter", event.name.to_pascal_case())
+    };
     util::ident(&name)
 }
 
@@ -403,6 +404,7 @@ mod tests {
     }
 
     #[test]
+    #[rustfmt::skip]
     fn expand_transfer_filter_with_alias() {
         let event = Event {
             name: "Transfer".into(),

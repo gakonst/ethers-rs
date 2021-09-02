@@ -157,12 +157,7 @@ impl Context {
         let mut event_aliases = BTreeMap::new();
         for (signature, alias) in args.event_aliases.into_iter() {
             let alias = syn::parse_str(&alias)?;
-            if event_aliases.insert(signature.clone(), alias).is_some() {
-                return Err(anyhow!(
-                    "duplicate method signature '{}' in method aliases",
-                    signature,
-                ));
-            }
+            event_aliases.insert(signature.clone(), alias);
         }
 
         let event_derives = args
