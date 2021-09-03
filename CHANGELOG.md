@@ -4,6 +4,8 @@
 
 ### Unreleased
 
+* Allow configuring the optimizer & passing arbitrary arguments to solc [#427](https://github.com/gakonst/ethers-rs/pull/427)
+
 ### 0.5.2
 * Correctly RLP Encode transactions as received from the mempool ([#415](https://github.com/gakonst/ethers-rs/pull/415))
 

@@ -210,6 +210,22 @@ impl Solc {
     }
 
     /// Sets the optimizer runs (default = 200). None indicates no optimization
+    ///
+    /// ```rust,no_run
+    /// use ethers_core::utils::Solc;
+    ///
+    /// // No optimization
+    /// let contracts = Solc::new("./contracts/*")
+    ///     .optimizer(None)
+    ///     .build().unwrap();
+    ///
+    /// // Some(200) is default, optimizer on with 200 runs
+    /// // .arg() allows passing arbitrary args to solc command
+    /// let optimized_contracts = Solc::new("./contracts/*")
+    ///     .optimizer(Some(200))
+    ///     .arg("--metadata-hash=none")
+    ///     .build().unwrap();
+    /// ```
     pub fn optimizer(mut self, runs: Option<usize>) -> Self {
         self.optimizer = runs;
         self
