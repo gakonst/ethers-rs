@@ -61,6 +61,9 @@ pub struct Abigen {
 
     /// Format the code using a locally installed copy of `rustfmt`.
     rustfmt: bool,
+
+    /// Manually specified event name aliases.
+    event_aliases: HashMap<String, String>,
 }
 
 impl Abigen {
@@ -72,8 +75,20 @@ impl Abigen {
             contract_name: contract_name.to_owned(),
             method_aliases: HashMap::new(),
             event_derives: Vec::new(),
+            event_aliases: HashMap::new(),
             rustfmt: true,
         })
+    }
+
+    /// Manually adds a solidity event alias to specify what the event struct
+    /// and function name will be in Rust.
+    pub fn add_event_alias<S1, S2>(mut self, signature: S1, alias: S2) -> Self
+    where
+        S1: Into<String>,
+        S2: Into<String>,
+    {
+        self.event_aliases.insert(signature.into(), alias.into());
+        self
     }
 
     /// Manually adds a solidity method alias to specify what the method name

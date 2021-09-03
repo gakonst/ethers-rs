@@ -56,7 +56,7 @@ impl Context {
         let variants = sorted_events
             .values()
             .flatten()
-            .map(expand_struct_name)
+            .map(|e| expand_struct_name(e, self.event_aliases.get(&e.abi_signature()).cloned()))
             .collect::<Vec<_>>();
 
         let enum_name = self.expand_event_enum_name();
@@ -124,7 +124,10 @@ impl Context {
             let ty = if iter.next().is_some() {
                 self.expand_event_enum_name()
             } else {
-                expand_struct_name(event)
+                expand_struct_name(
+                    event,
+                    self.event_aliases.get(&event.abi_signature()).cloned(),
+                )
             };
 
             quote! {
@@ -220,12 +223,18 @@ impl Context {
     /// Expands into a single method for contracting an event stream.
     fn expand_filter(&self, event: &Event) -> TokenStream {
         let ethers_contract = util::ethers_contract_crate();
+        let alias = self.event_aliases.get(&event.abi_signature()).cloned();
+
+        let name = if let Some(id) = alias.clone() {
+            util::safe_ident(&format!("{}_filter", id.to_string().to_snake_case()))
+        } else {
+            util::safe_ident(&format!("{}_filter", event.name.to_snake_case()))
+        };
 
         // append `filter` to disambiguate with potentially conflicting
         // function names
-        let name = util::safe_ident(&format!("{}_filter", event.name.to_snake_case()));
-        // let result = util::ident(&event.name.to_pascal_case());
-        let result = expand_struct_name(event);
+
+        let result = expand_struct_name(event, alias);
 
         let doc = util::expand_doc(&format!("Gets the contract's `{}` event", event.name));
         quote! {
@@ -240,7 +249,11 @@ impl Context {
     /// into a structure or a tuple in the case where all event parameters (topics
     /// and data) are anonymous.
     fn expand_event(&self, event: &Event) -> Result<TokenStream> {
-        let event_name = expand_struct_name(event);
+        let sig = self.event_aliases.get(&event.abi_signature()).cloned();
+        let abi_signature = event.abi_signature();
+        let event_abi_name = event.name.clone();
+
+        let event_name = expand_struct_name(event, sig);
 
         let params = self.expand_params(event)?;
         // expand as a tuple if all fields are anonymous
@@ -252,8 +265,6 @@ impl Context {
         };
 
         let derives = expand_derives(&self.event_derives);
-        let abi_signature = event.abi_signature();
-        let event_abi_name = &event.name;
 
         let ethers_contract = util::ethers_contract_crate();
 
@@ -309,9 +320,14 @@ impl Context {
 }
 
 /// Expands an ABI event into an identifier for its event data type.
-fn expand_struct_name(event: &Event) -> Ident {
+fn expand_struct_name(event: &Event, alias: Option<Ident>) -> Ident {
     // TODO: get rid of `Filter` suffix?
-    let name = format!("{}Filter", event.name.to_pascal_case());
+
+    let name = if let Some(id) = alias {
+        format!("{}Filter", id.to_string().to_pascal_case())
+    } else {
+        format!("{}Filter", event.name.to_pascal_case())
+    };
     util::ident(&name)
 }
 
@@ -378,6 +394,50 @@ mod tests {
         Context::from_abigen(Abigen::new("TestToken", "[]").unwrap()).unwrap()
     }
 
+    fn test_context_with_alias(sig: &str, alias: &str) -> Context {
+        Context::from_abigen(
+            Abigen::new("TestToken", "[]")
+                .unwrap()
+                .add_event_alias(sig, alias),
+        )
+        .unwrap()
+    }
+
+    #[test]
+    #[rustfmt::skip]
+    fn expand_transfer_filter_with_alias() {
+        let event = Event {
+            name: "Transfer".into(),
+            inputs: vec![
+                EventParam {
+                    name: "from".into(),
+                    kind: ParamType::Address,
+                    indexed: true,
+                },
+                EventParam {
+                    name: "to".into(),
+                    kind: ParamType::Address,
+                    indexed: true,
+                },
+                EventParam {
+                    name: "amount".into(),
+                    kind: ParamType::Uint(256),
+                    indexed: false,
+                },
+            ],
+            anonymous: false,
+        };
+        let sig = "Transfer(address,address,uint256)";
+        let cx = test_context_with_alias(sig, "TransferEvent");
+        assert_quote!(cx.expand_filter(&event), {
+            #[doc = "Gets the contract's `Transfer` event"]
+            pub fn transfer_event_filter(
+                &self
+            ) -> ethers_contract::builders::Event<M, TransferEventFilter> {
+                self.0.event()
+            }
+        });
+    }
     #[test]
     fn expand_transfer_filter() {
         let event = Event {
@@ -431,11 +491,44 @@ mod tests {
 
         let cx = test_context();
         let params = cx.expand_params(&event).unwrap();
-        let name = expand_struct_name(&event);
+        let name = expand_struct_name(&event, None);
         let definition = expand_data_struct(&name, &params);
 
         assert_quote!(definition, {
             struct FooFilter {
+                pub a: bool,
+                pub p1: ethers_core::types::Address,
+            }
+        });
+    }
+
+    #[test]
+    fn expand_data_struct_with_alias() {
+        let event = Event {
+            name: "Foo".into(),
+            inputs: vec![
+                EventParam {
+                    name: "a".into(),
+                    kind: ParamType::Bool,
+                    indexed: false,
+                },
+                EventParam {
+                    name: String::new(),
+                    kind: ParamType::Address,
+                    indexed: false,
+                },
+            ],
+            anonymous: false,
+        };
+
+        let cx = test_context_with_alias("Foo(bool,address)", "FooAliased");
+        let params = cx.expand_params(&event).unwrap();
+        let alias = Some(util::ident("FooAliased"));
+        let name = expand_struct_name(&event, alias);
+        let definition = expand_data_struct(&name, &params);
+
+        assert_quote!(definition, {
+            struct FooAliasedFilter {
                 pub a: bool,
                 pub p1: ethers_core::types::Address,
             }
@@ -463,11 +556,41 @@ mod tests {
 
         let cx = test_context();
         let params = cx.expand_params(&event).unwrap();
-        let name = expand_struct_name(&event);
+        let name = expand_struct_name(&event, None);
         let definition = expand_data_tuple(&name, &params);
 
         assert_quote!(definition, {
             struct FooFilter(pub bool, pub ethers_core::types::Address);
+        });
+    }
+
+    #[test]
+    fn expand_data_tuple_value_with_alias() {
+        let event = Event {
+            name: "Foo".into(),
+            inputs: vec![
+                EventParam {
+                    name: String::new(),
+                    kind: ParamType::Bool,
+                    indexed: false,
+                },
+                EventParam {
+                    name: String::new(),
+                    kind: ParamType::Address,
+                    indexed: false,
+                },
+            ],
+            anonymous: false,
+        };
+
+        let cx = test_context_with_alias("Foo(bool,address)", "FooAliased");
+        let params = cx.expand_params(&event).unwrap();
+        let alias = Some(util::ident("FooAliased"));
+        let name = expand_struct_name(&event, alias);
+        let definition = expand_data_tuple(&name, &params);
+
+        assert_quote!(definition, {
+            struct FooAliasedFilter(pub bool, pub ethers_core::types::Address);
         });
     }
 
