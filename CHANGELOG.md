@@ -21,6 +21,7 @@
 ## ethers-contract
 
 ### Unreleased
+* (De)Tokenize structs and events with only a single field as `Token:Tuple` ([#417](https://github.com/gakonst/ethers-rs/pull/417))
 
 ## ethers-middleware
 
