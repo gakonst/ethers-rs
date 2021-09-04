@@ -40,13 +40,13 @@ pub fn ethers_providers_crate() -> Path {
 /// ethers related dependencies.
 ///
 /// This process is a bit hacky, we run `cargo metadata` internally which
-/// resolves the current package but creating a `Cargo.lock` file in the
+/// resolves the current package but creates a new `Cargo.lock` file in the
 /// process. This is not a problem for regular workspaces but becomes an issue
 /// during publishing with `cargo publish` if the project does not ignore
 /// `Cargo.lock` in `.gitignore`, because then cargo can't proceed with
-/// publishing the crate because the created `Cargo.lock` results in a modified
+/// publishing the crate because the created `Cargo.lock` leads to a modified
 /// workspace, not the `CARGO_MANIFEST_DIR` but the workspace `cargo publish`
-/// crated in `./target/package/..`. Therefore we check prior to executing
+/// created in `./target/package/..`. Therefore we check prior to executing
 /// `cargo metadata` if a `Cargo.lock` file exists and delete it afterwards if
 /// it was created by `cargo metadata`.
 pub fn determine_ethers_crates() -> (&'static str, &'static str, &'static str) {
