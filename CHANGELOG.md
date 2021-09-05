@@ -4,6 +4,8 @@
 
 ### Unreleased
 
+### 0.5.3
+
 * Allow configuring the optimizer & passing arbitrary arguments to solc [#427](https://github.com/gakonst/ethers-rs/pull/427)
 
 ### 0.5.2
@@ -23,12 +25,12 @@
 ## ethers-contract
 
 ### Unreleased
+
+### 0.5.2
+* Cleanup lock file after executing cargo metadata ([#431](https://github.com/gakonst/ethers-rs/pull/431))
+* Allow aliasing events in abigen bindings ([#425](https://github.com/gakonst/ethers-rs/pull/425))
 * (De)Tokenize structs and events with only a single field as `Token:Tuple` ([#417](https://github.com/gakonst/ethers-rs/pull/417))
 
 ## ethers-middleware
-
-### Unreleased
-
-## ethers
 
 ### Unreleased
