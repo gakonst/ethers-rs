@@ -13,6 +13,8 @@
 
 ### Unreleased
 
+* Expose `ens` module
+
 ### 0.5.2
 * Set resolved ENS name during gas estimation ([1e5a9e](https://github.com/gakonst/ethers-rs/commit/1e5a9efb3c678eecd43d5c341b4932da35445831))
 

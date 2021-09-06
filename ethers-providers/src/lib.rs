@@ -69,7 +69,7 @@ pub use transports::*;
 mod provider;
 
 // ENS support
-mod ens;
+pub mod ens;
 
 mod pending_transaction;
 pub use pending_transaction::PendingTransaction;
