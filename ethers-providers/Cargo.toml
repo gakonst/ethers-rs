@@ -40,7 +40,7 @@ bytes = { version  = "1.1.0", default-features = false, optional = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 # tokio
-tokio-util = { version = "0.6.7", default-features = false, features = ["io"], optional = true }
+tokio-util = { version = "0.6.8", default-features = false, features = ["io"], optional = true }
 tokio = { version = "1.5", default-features = false, optional = true }
 tokio-tungstenite = { version = "0.15.0", default-features = false, features = ["connect"], optional = true }
 
