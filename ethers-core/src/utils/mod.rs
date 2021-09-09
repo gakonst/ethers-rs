@@ -121,6 +121,53 @@ pub fn get_contract_address(sender: impl Into<Address>, nonce: impl Into<U256>) 
 /// [EIP1014](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-1014.md)
 ///
 /// keccak256( 0xff ++ senderAddress ++ salt ++ keccak256(init_code))[12..]
+///
+/// # Example
+///
+/// Calculate the address of a UniswapV3 pool.
+///
+/// ```
+/// use ethers_core::{
+///     abi,
+///     abi::Token,
+///     types::{Address, Bytes, U256},
+///     utils::{get_create2_address, keccak256},
+/// };
+///
+/// // We substitute some arbitrary short init code for brevity. The real
+/// // pool init code can be found under "Contract Creation Code" on etherscan:
+/// // https://etherscan.io/address/0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640/advanced#code
+/// let UNISWAP_V3_POOL_INIT_CODE = Bytes::from(hex::decode("610160604052").unwrap());
+/// let factory: Address = "0x1F98431c8aD98523631AE4a59f267346ea31F984"
+///     .parse()
+///     .unwrap();
+/// let token0: Address = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+///     .parse()
+///     .unwrap();
+/// let token1: Address = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+///     .parse()
+///     .unwrap();
+/// let fee = 500;
+///
+/// let input = abi::encode(&vec![
+///     Token::Address(token0),
+///     Token::Address(token1),
+///     Token::Uint(U256::from(fee)),
+/// ]);
+///
+/// // keccak256(abi.encode(token0, token1, fee))
+/// let salt = keccak256(&input);
+/// let pool_address = get_create2_address(factory, salt.to_vec(), UNISWAP_V3_POOL_INIT_CODE);
+///
+/// // Actual USDC/ETH pool address (created with proper init code):
+/// // 0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640
+/// assert_eq!(
+///     pool_address,
+///     "0x43953f76983c3ee678bb7a23b4e9eb813d6508b4"
+///         .parse()
+///         .unwrap()
+/// );
+/// ```
 pub fn get_create2_address(
     from: impl Into<Address>,
     salt: impl Into<Bytes>,
