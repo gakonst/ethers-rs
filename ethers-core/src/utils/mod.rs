@@ -117,8 +117,21 @@ pub fn get_contract_address(sender: impl Into<Address>, nonce: impl Into<U256>) 
     Address::from(bytes)
 }
 
-/// Returns the CREATE2 of a smart contract as specified in
+/// Returns the CREATE2 address of a smart contract as specified in
 /// [EIP1014](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-1014.md)
+///
+/// keccak256( 0xff ++ senderAddress ++ salt ++ keccak256(init_code))[12..]
+pub fn get_create2_address(
+    from: impl Into<Address>,
+    salt: impl Into<Bytes>,
+    init_code: impl Into<Bytes>,
+) -> Address {
+    get_create2_address_from_hash(from, salt, keccak256(init_code.into().as_ref()).to_vec())
+}
+
+/// Returns the CREATE2 address of a smart contract as specified in
+/// [EIP1014](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-1014.md),
+/// taking the pre-computed hash of the init code as input.
 ///
 /// keccak256( 0xff ++ senderAddress ++ salt ++ keccak256(init_code))[12..]
 ///
@@ -131,13 +144,12 @@ pub fn get_contract_address(sender: impl Into<Address>, nonce: impl Into<U256>) 
 ///     abi,
 ///     abi::Token,
 ///     types::{Address, Bytes, U256},
-///     utils::{get_create2_address, keccak256},
+///     utils::{get_create2_address_from_hash, keccak256},
 /// };
 ///
-/// // We substitute some arbitrary short init code for brevity. The real
-/// // pool init code can be found under "Contract Creation Code" on etherscan:
-/// // https://etherscan.io/address/0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640/advanced#code
-/// let UNISWAP_V3_POOL_INIT_CODE = Bytes::from(hex::decode("610160604052").unwrap());
+/// let UNISWAP_V3_POOL_INIT_CODE_HASH = Bytes::from(
+///     hex::decode("e34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54").unwrap(),
+/// );
 /// let factory: Address = "0x1F98431c8aD98523631AE4a59f267346ea31F984"
 ///     .parse()
 ///     .unwrap();
@@ -149,6 +161,7 @@ pub fn get_contract_address(sender: impl Into<Address>, nonce: impl Into<U256>) 
 ///     .unwrap();
 /// let fee = 500;
 ///
+/// // abi.encode(token0 as address, token1 as address, fee as uint256)
 /// let input = abi::encode(&vec![
 ///     Token::Address(token0),
 ///     Token::Address(token1),
@@ -157,27 +170,26 @@ pub fn get_contract_address(sender: impl Into<Address>, nonce: impl Into<U256>) 
 ///
 /// // keccak256(abi.encode(token0, token1, fee))
 /// let salt = keccak256(&input);
-/// let pool_address = get_create2_address(factory, salt.to_vec(), UNISWAP_V3_POOL_INIT_CODE);
+/// let pool_address =
+///     get_create2_address_from_hash(factory, salt.to_vec(), UNISWAP_V3_POOL_INIT_CODE_HASH);
 ///
-/// // Actual USDC/ETH pool address (created with proper init code):
-/// // 0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640
 /// assert_eq!(
 ///     pool_address,
-///     "0x43953f76983c3ee678bb7a23b4e9eb813d6508b4"
+///     "0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640" // USDC/ETH pool address
 ///         .parse()
 ///         .unwrap()
 /// );
 /// ```
-pub fn get_create2_address(
+pub fn get_create2_address_from_hash(
     from: impl Into<Address>,
     salt: impl Into<Bytes>,
-    init_code: impl Into<Bytes>,
+    init_code_hash: impl Into<Bytes>,
 ) -> Address {
     let bytes = [
         &[0xff],
         from.into().as_bytes(),
         salt.into().as_ref(),
-        &keccak256(init_code.into().as_ref()),
+        init_code_hash.into().as_ref(),
     ]
     .concat();
 
@@ -532,11 +544,16 @@ mod tests {
                 "E33C0C7F7df4809055C3ebA6c09CFe4BaF1BD9e0",
             ),
         ] {
+            // get_create2_address()
             let from = from.parse::<Address>().unwrap();
             let salt = hex::decode(salt).unwrap();
             let init_code = hex::decode(init_code).unwrap();
             let expected = expected.parse::<Address>().unwrap();
-            assert_eq!(expected, get_create2_address(from, salt, init_code))
+            assert_eq!(expected, get_create2_address(from, salt.clone(), init_code.clone()));
+
+            // get_create2_address_from_hash()
+            let init_code_hash = keccak256(init_code).to_vec();
+            assert_eq!(expected, get_create2_address_from_hash(from, salt, init_code_hash))
         }
     }
 
