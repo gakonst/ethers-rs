@@ -28,6 +28,8 @@ pub struct CompiledContract {
     pub abi: Abi,
     /// The contract's bytecode
     pub bytecode: Bytes,
+    /// The contract's runtime bytecode
+    pub runtime_bytecode: Bytes,
 }
 
 /// Solidity Compiler Bindings
@@ -98,7 +100,7 @@ impl Solc {
             .arg("--evm-version")
             .arg(self.evm_version.to_string())
             .arg("--combined-json")
-            .arg("abi,bin");
+            .arg("abi,bin,bin-runtime");
 
         if let Some(runs) = self.optimizer {
             command
@@ -148,7 +150,21 @@ impl Solc {
                         )))
                     }
                 };
-                contracts.insert(name, CompiledContractStr { abi, bin });
+
+                let runtime_bin =
+                    if let serde_json::Value::String(bin) = contract["bin-runtime"].take() {
+                        bin
+                    } else {
+                        panic!("no runtime bytecode found")
+                    };
+                contracts.insert(
+                    name,
+                    CompiledContractStr {
+                        abi,
+                        bin,
+                        runtime_bin,
+                    },
+                );
             } else {
                 return Err(SolcError::SolcError(
                     "could not find `bin` in solc output".to_string(),
@@ -174,7 +190,19 @@ impl Solc {
                 let bytecode = hex::decode(contract.bin)
                     .expect("solc did not produce valid bytecode")
                     .into();
-                (name, CompiledContract { abi, bytecode })
+
+                // parse the runtime bytecode
+                let runtime_bytecode = hex::decode(contract.runtime_bin)
+                    .expect("solc did not produce valid runtime-bytecode")
+                    .into();
+                (
+                    name,
+                    CompiledContract {
+                        abi,
+                        bytecode,
+                        runtime_bytecode,
+                    },
+                )
             })
             .collect::<HashMap<String, CompiledContract>>();
 
@@ -297,4 +325,6 @@ pub struct CompiledContractStr {
     pub abi: String,
     /// The contract's bytecode in hex
     pub bin: String,
+    /// The contract's runtime bytecode in hex
+    pub runtime_bin: String,
 }
