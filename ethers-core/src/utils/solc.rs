@@ -21,7 +21,7 @@ pub enum SolcError {
     SerdeJson(#[from] serde_json::Error),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 /// The result of a solc compilation
 pub struct CompiledContract {
     /// The contract's ABI
