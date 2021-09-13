@@ -102,13 +102,19 @@ impl Solc {
 
     /// Gets the ABI for the contracts
     pub fn build_raw(self) -> Result<HashMap<String, CompiledContractStr>> {
-        let mut command = Command::new(self.solc_path.unwrap_or_else(|| PathBuf::from(SOLC)));
+        let path = self.solc_path.unwrap_or_else(|| PathBuf::from(SOLC));
+        let mut command = Command::new(&path);
+        let version = Solc::version(Some(path));
 
-        command
-            .arg("--evm-version")
-            .arg(self.evm_version.to_string())
-            .arg("--combined-json")
-            .arg("abi,bin,bin-runtime");
+        command.arg("--combined-json").arg("abi,bin,bin-runtime");
+
+        if (version.starts_with("0.5") && self.evm_version < EvmVersion::Istanbul)
+            || !version.starts_with("0.4")
+        {
+            command
+                .arg("--evm-version")
+                .arg(self.evm_version.to_string());
+        }
 
         if let Some(runs) = self.optimizer {
             command
@@ -222,8 +228,8 @@ impl Solc {
     /// # Panics
     ///
     /// If `solc` is not in the user's $PATH
-    pub fn version() -> String {
-        let command_output = Command::new(SOLC)
+    pub fn version(solc_path: Option<PathBuf>) -> String {
+        let command_output = Command::new(solc_path.unwrap_or_else(|| PathBuf::from(SOLC)))
             .arg("--version")
             .output()
             .unwrap_or_else(|_| panic!("`{}` not in user's $PATH", SOLC));
@@ -299,7 +305,7 @@ impl Solc {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum EvmVersion {
     Homestead,
     TangerineWhistle,
