@@ -454,7 +454,7 @@ dependencies = [
  "k256",
  "lazy_static",
  "serde",
- "sha2 0.9.6",
+ "sha2 0.9.8",
  "thiserror",
 ]
 
@@ -471,7 +471,7 @@ dependencies = [
  "hmac",
  "pbkdf2",
  "rand 0.8.4",
- "sha2 0.9.6",
+ "sha2 0.9.8",
  "thiserror",
 ]
 
@@ -491,7 +491,7 @@ dependencies = [
  "ripemd160",
  "serde",
  "serde_derive",
- "sha2 0.9.6",
+ "sha2 0.9.8",
  "sha3",
  "thiserror",
 ]
@@ -745,7 +745,7 @@ dependencies = [
  "ed25519",
  "rand 0.7.3",
  "serde",
- "sha2 0.9.6",
+ "sha2 0.9.8",
  "zeroize",
 ]
 
@@ -796,7 +796,7 @@ dependencies = [
  "scrypt",
  "serde",
  "serde_json",
- "sha2 0.9.6",
+ "sha2 0.9.8",
  "sha3",
  "thiserror",
  "uuid",
@@ -1014,7 +1014,7 @@ dependencies = [
  "rand 0.8.4",
  "rusoto_core",
  "rusoto_kms",
- "sha2 0.9.6",
+ "sha2 0.9.8",
  "spki",
  "tempfile",
  "thiserror",
@@ -1517,7 +1517,7 @@ dependencies = [
  "cfg-if 1.0.0",
  "ecdsa",
  "elliptic-curve",
- "sha2 0.9.6",
+ "sha2 0.9.8",
  "sha3",
 ]
 
@@ -1776,7 +1776,7 @@ checksum = "d053368e1bae4c8a672953397bd1bd7183dde1c72b0b7612a15719173148d186"
 dependencies = [
  "ecdsa",
  "elliptic-curve",
- "sha2 0.9.6",
+ "sha2 0.9.8",
 ]
 
 [[package]]
@@ -1861,7 +1861,7 @@ dependencies = [
  "crypto-mac 0.11.1",
  "hmac",
  "password-hash",
- "sha2 0.9.6",
+ "sha2 0.9.8",
 ]
 
 [[package]]
@@ -2342,7 +2342,7 @@ dependencies = [
  "rusoto_credential",
  "rustc_version 0.4.0",
  "serde",
- "sha2 0.9.6",
+ "sha2 0.9.8",
  "tokio",
 ]
 
@@ -2452,7 +2452,7 @@ dependencies = [
  "password-hash",
  "pbkdf2",
  "salsa20",
- "sha2 0.9.6",
+ "sha2 0.9.8",
 ]
 
 [[package]]
@@ -2622,9 +2622,9 @@ dependencies = [
 
 [[package]]
 name = "sha2"
-version = "0.9.6"
+version = "0.9.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9204c41a1597a8c5af23c82d1c921cb01ec0a4c59e07a9c7306062829a3903f3"
+checksum = "b69f9a4c9740d74c5baa3fd2e547f9525fa8088a8a958e0ca2409a514e33f5fa"
 dependencies = [
  "block-buffer 0.9.0",
  "cfg-if 1.0.0",
@@ -3476,7 +3476,7 @@ dependencies = [
  "rusb",
  "serde",
  "serde_json",
- "sha2 0.9.6",
+ "sha2 0.9.8",
  "signature",
  "subtle",
  "thiserror",
