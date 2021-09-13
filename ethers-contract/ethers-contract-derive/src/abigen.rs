@@ -169,6 +169,7 @@ impl Parse for Method {
                     Ok(Param {
                         name: "".into(),
                         kind,
+                        internal_type: None,
                     })
                 })
                 .collect::<ParseResult<Vec<_>>>()?;

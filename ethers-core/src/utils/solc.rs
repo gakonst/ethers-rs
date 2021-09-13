@@ -21,13 +21,15 @@ pub enum SolcError {
     SerdeJson(#[from] serde_json::Error),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 /// The result of a solc compilation
 pub struct CompiledContract {
     /// The contract's ABI
     pub abi: Abi,
     /// The contract's bytecode
     pub bytecode: Bytes,
+    /// The contract's runtime bytecode
+    pub runtime_bytecode: Bytes,
 }
 
 /// Solidity Compiler Bindings
@@ -55,6 +57,9 @@ pub struct CompiledContract {
 /// # }
 /// ```
 pub struct Solc {
+    /// The path to the Solc binary
+    pub solc_path: Option<PathBuf>,
+
     /// The path where contracts will be read from
     pub paths: Vec<String>,
 
@@ -72,7 +77,7 @@ pub struct Solc {
 }
 
 impl Solc {
-    /// Instantiates the Solc builder for the provided paths
+    /// Instantiates The Solc builder with the provided glob of Solidity files
     pub fn new(path: &str) -> Self {
         // Convert the glob to a vector of string paths
         // TODO: This might not be the most robust way to do this
@@ -80,9 +85,14 @@ impl Solc {
             .expect("could not get glob")
             .map(|path| path.expect("path not found").to_string_lossy().to_string())
             .collect::<Vec<String>>();
+        Self::new_with_paths(paths)
+    }
 
+    /// Instantiates the Solc builder for the provided paths
+    pub fn new_with_paths(paths: Vec<String>) -> Self {
         Self {
             paths,
+            solc_path: None,
             optimizer: Some(200), // default optimizer runs = 200
             evm_version: EvmVersion::Istanbul,
             allowed_paths: Vec::new(),
@@ -92,13 +102,19 @@ impl Solc {
 
     /// Gets the ABI for the contracts
     pub fn build_raw(self) -> Result<HashMap<String, CompiledContractStr>> {
-        let mut command = Command::new(SOLC);
+        let path = self.solc_path.unwrap_or_else(|| PathBuf::from(SOLC));
+        let mut command = Command::new(&path);
+        let version = Solc::version(Some(path));
 
-        command
-            .arg("--evm-version")
-            .arg(self.evm_version.to_string())
-            .arg("--combined-json")
-            .arg("abi,bin");
+        command.arg("--combined-json").arg("abi,bin,bin-runtime");
+
+        if (version.starts_with("0.5") && self.evm_version < EvmVersion::Istanbul)
+            || !version.starts_with("0.4")
+        {
+            command
+                .arg("--evm-version")
+                .arg(self.evm_version.to_string());
+        }
 
         if let Some(runs) = self.optimizer {
             command
@@ -148,7 +164,21 @@ impl Solc {
                         )))
                     }
                 };
-                contracts.insert(name, CompiledContractStr { abi, bin });
+
+                let runtime_bin =
+                    if let serde_json::Value::String(bin) = contract["bin-runtime"].take() {
+                        bin
+                    } else {
+                        panic!("no runtime bytecode found")
+                    };
+                contracts.insert(
+                    name,
+                    CompiledContractStr {
+                        abi,
+                        bin,
+                        runtime_bin,
+                    },
+                );
             } else {
                 return Err(SolcError::SolcError(
                     "could not find `bin` in solc output".to_string(),
@@ -174,7 +204,19 @@ impl Solc {
                 let bytecode = hex::decode(contract.bin)
                     .expect("solc did not produce valid bytecode")
                     .into();
-                (name, CompiledContract { abi, bytecode })
+
+                // parse the runtime bytecode
+                let runtime_bytecode = hex::decode(contract.runtime_bin)
+                    .expect("solc did not produce valid runtime-bytecode")
+                    .into();
+                (
+                    name,
+                    CompiledContract {
+                        abi,
+                        bytecode,
+                        runtime_bytecode,
+                    },
+                )
             })
             .collect::<HashMap<String, CompiledContract>>();
 
@@ -186,8 +228,8 @@ impl Solc {
     /// # Panics
     ///
     /// If `solc` is not in the user's $PATH
-    pub fn version() -> String {
-        let command_output = Command::new(SOLC)
+    pub fn version(solc_path: Option<PathBuf>) -> String {
+        let command_output = Command::new(solc_path.unwrap_or_else(|| PathBuf::from(SOLC)))
             .arg("--version")
             .output()
             .unwrap_or_else(|_| panic!("`{}` not in user's $PATH", SOLC));
@@ -206,6 +248,12 @@ impl Solc {
     /// Sets the EVM version for compilation
     pub fn evm_version(mut self, version: EvmVersion) -> Self {
         self.evm_version = version;
+        self
+    }
+
+    /// Sets the path to the solc binary
+    pub fn solc_path(mut self, path: PathBuf) -> Self {
+        self.solc_path = Some(std::fs::canonicalize(path).unwrap());
         self
     }
 
@@ -257,7 +305,7 @@ impl Solc {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum EvmVersion {
     Homestead,
     TangerineWhistle,
@@ -297,4 +345,6 @@ pub struct CompiledContractStr {
     pub abi: String,
     /// The contract's bytecode in hex
     pub bin: String,
+    /// The contract's runtime bytecode in hex
+    pub runtime_bin: String,
 }

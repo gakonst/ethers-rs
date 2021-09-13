@@ -364,6 +364,7 @@ impl AbiParser {
         Ok(Param {
             name: name.to_string(),
             kind: self.parse_type(type_str)?,
+            internal_type: None,
         })
     }
 }
