@@ -8,7 +8,12 @@ use ethers_core::{
 };
 use ethers_providers::Middleware;
 
-use std::{collections::HashMap, fmt::Debug, hash::Hash, sync::Arc};
+use std::{
+    collections::{BTreeMap, HashMap},
+    fmt::Debug,
+    hash::Hash,
+    sync::Arc,
+};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -175,7 +180,7 @@ pub fn decode_function_data<D: Detokenize, T: AsRef<[u8]>>(
 /// Utility function for creating a mapping between a unique signature and a
 /// name-index pair for accessing contract ABI items.
 fn create_mapping<T, S, F>(
-    elements: &HashMap<String, Vec<T>>,
+    elements: &BTreeMap<String, Vec<T>>,
     signature: F,
 ) -> HashMap<S, (String, usize)>
 where

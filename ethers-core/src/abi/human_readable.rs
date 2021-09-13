@@ -1,4 +1,4 @@
-use std::collections::{HashMap, VecDeque};
+use std::collections::{BTreeMap, HashMap, VecDeque};
 
 use crate::abi::error::{bail, format_err, ParseError, Result};
 use crate::abi::struct_def::{FieldType, StructFieldType};
@@ -52,8 +52,8 @@ impl AbiParser {
         // parse struct first
         let mut abi = Abi {
             constructor: None,
-            functions: HashMap::new(),
-            events: HashMap::new(),
+            functions: BTreeMap::new(),
+            events: BTreeMap::new(),
             receive: false,
             fallback: false,
         };
