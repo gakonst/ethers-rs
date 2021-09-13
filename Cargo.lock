@@ -805,7 +805,7 @@ dependencies = [
 [[package]]
 name = "ethabi"
 version = "14.1.0"
-source = "git+https://github.com/rust-ethereum/ethabi/?branch=master#506f6cc364cdb458ac09f2be4f300779da256b08"
+source = "git+https://github.com/rust-ethereum/ethabi/?branch=master#8bd90d13956edf18bb47c6e39dcf7ab99bf264c7"
 dependencies = [
  "anyhow",
  "ethereum-types",
@@ -923,6 +923,7 @@ dependencies = [
  "ecdsa",
  "elliptic-curve",
  "ethabi",
+ "ethereum-types",
  "futures-util",
  "generic-array 0.14.4",
  "glob",
