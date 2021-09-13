@@ -57,6 +57,9 @@ pub struct CompiledContract {
 /// # }
 /// ```
 pub struct Solc {
+    /// The path to the Solc binary
+    pub solc_path: Option<PathBuf>,
+
     /// The path where contracts will be read from
     pub paths: Vec<String>,
 
@@ -85,6 +88,7 @@ impl Solc {
 
         Self {
             paths,
+            solc_path: None,
             optimizer: Some(200), // default optimizer runs = 200
             evm_version: EvmVersion::Istanbul,
             allowed_paths: Vec::new(),
@@ -94,7 +98,7 @@ impl Solc {
 
     /// Gets the ABI for the contracts
     pub fn build_raw(self) -> Result<HashMap<String, CompiledContractStr>> {
-        let mut command = Command::new(SOLC);
+        let mut command = Command::new(self.solc_path.unwrap_or_else(|| PathBuf::from(SOLC)));
 
         command
             .arg("--evm-version")
@@ -234,6 +238,12 @@ impl Solc {
     /// Sets the EVM version for compilation
     pub fn evm_version(mut self, version: EvmVersion) -> Self {
         self.evm_version = version;
+        self
+    }
+
+    /// Sets the path to the solc binary
+    pub fn solc_path(mut self, path: PathBuf) -> Self {
+        self.solc_path = Some(std::fs::canonicalize(path).unwrap());
         self
     }
 
