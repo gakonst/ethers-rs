@@ -103,8 +103,6 @@ impl Solc {
     /// Gets the ABI for the contracts
     pub fn build_raw(self) -> Result<HashMap<String, CompiledContractStr>> {
         let path = self.solc_path.unwrap_or_else(|| PathBuf::from(SOLC));
-        let path = std::fs::canonicalize(&path)
-            .unwrap_or_else(|_| panic!("cannot canonicalize path {:?}", path));
 
         let mut command = Command::new(&path);
         let version = Solc::version(Some(path));
@@ -233,7 +231,6 @@ impl Solc {
     /// If `solc` is not found
     pub fn version(solc_path: Option<PathBuf>) -> String {
         let solc_path = solc_path.unwrap_or_else(|| PathBuf::from(SOLC));
-        let solc_path = std::fs::canonicalize(solc_path).unwrap();
         let command_output = Command::new(&solc_path)
             .arg("--version")
             .output()
