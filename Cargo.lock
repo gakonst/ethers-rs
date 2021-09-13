@@ -805,7 +805,7 @@ dependencies = [
 [[package]]
 name = "ethabi"
 version = "14.1.0"
-source = "git+https://github.com/gakonst/ethabi/?branch=patch-1#01763cdf2446a5bf3a2b0065c364e672a45d391b"
+source = "git+https://github.com/rust-ethereum/ethabi/?branch=master#506f6cc364cdb458ac09f2be4f300779da256b08"
 dependencies = [
  "anyhow",
  "ethereum-types",
