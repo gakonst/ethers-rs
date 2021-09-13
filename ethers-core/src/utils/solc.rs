@@ -77,7 +77,7 @@ pub struct Solc {
 }
 
 impl Solc {
-    /// Instantiates the Solc builder for the provided paths
+    /// Instantiates The Solc builder with the provided glob of Solidity files
     pub fn new(path: &str) -> Self {
         // Convert the glob to a vector of string paths
         // TODO: This might not be the most robust way to do this
@@ -85,7 +85,11 @@ impl Solc {
             .expect("could not get glob")
             .map(|path| path.expect("path not found").to_string_lossy().to_string())
             .collect::<Vec<String>>();
+        Self::new_with_paths(paths)
+    }
 
+    /// Instantiates the Solc builder for the provided paths
+    pub fn new_with_paths(paths: Vec<String>) -> Self {
         Self {
             paths,
             solc_path: None,
