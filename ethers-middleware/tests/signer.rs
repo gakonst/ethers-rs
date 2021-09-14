@@ -2,7 +2,7 @@ use ethers_providers::{Http, JsonRpcClient, Middleware, Provider};
 
 use ethers_core::{
     types::{BlockNumber, TransactionRequest},
-    utils::{parse_ether, parse_units},
+    utils::parse_units,
 };
 use ethers_middleware::signer::SignerMiddleware;
 use ethers_signers::{coins_bip39::English, LocalWallet, MnemonicBuilder, Signer};
@@ -71,9 +71,7 @@ async fn pending_txs_with_confirmations_testnet() {
 }
 
 #[cfg(not(feature = "celo"))]
-use ethers_core::types::{
-    transaction::eip2718::TypedTransaction, Address, Eip1559TransactionRequest,
-};
+use ethers_core::types::{Address, Eip1559TransactionRequest};
 
 // different keys to avoid nonce errors
 #[tokio::test]
@@ -96,7 +94,7 @@ async fn generic_pending_txs_test<M: Middleware>(provider: M, who: Address) {
     let tx = TransactionRequest::new().to(who).from(who);
     let pending_tx = provider.send_transaction(tx, None).await.unwrap();
     let tx_hash = *pending_tx;
-    let receipt = pending_tx.confirmations(3).await.unwrap().unwrap();
+    let receipt = pending_tx.confirmations(1).await.unwrap().unwrap();
     // got the correct receipt
     assert_eq!(receipt.transaction_hash, tx_hash);
 }
@@ -119,38 +117,57 @@ async fn typed_txs() {
     // happening rarely enough that it doesn't matter.
     // WALLETS.fund(provider.provider(), 10u32).await;
 
-    async fn check_tx<M: Middleware>(provider: &M, tx: TypedTransaction, expected: u64) {
-        let receipt = provider
-            .send_transaction(tx, None)
-            .await
-            .unwrap()
-            .await
-            .unwrap()
-            .unwrap();
-        let tx = provider
-            .get_transaction(receipt.transaction_hash)
-            .await
-            .unwrap()
-            .unwrap();
-        assert_eq!(receipt.transaction_type, Some(expected.into()));
-        assert_eq!(tx.transaction_type, Some(expected.into()));
+    async fn check_tx<M: Middleware>(
+        provider: &M,
+        tx_hash: ethers_core::types::TxHash,
+        expected: u64,
+    ) {
+        let (tx, receipt) = futures_util::try_join!(
+            provider.get_transaction(tx_hash),
+            provider.get_transaction_receipt(tx_hash)
+        )
+        .unwrap();
+        assert_eq!(receipt.unwrap().transaction_type, Some(expected.into()));
+        assert_eq!(tx.unwrap().transaction_type, Some(expected.into()));
     }
 
-    let tx: TypedTransaction = TransactionRequest::new().from(address).to(address).into();
-    check_tx(&provider, tx, 0).await;
-
-    let tx: TypedTransaction = TransactionRequest::new()
+    let mut nonce = provider.get_transaction_count(address, None).await.unwrap();
+    let tx = TransactionRequest::new()
         .from(address)
         .to(address)
-        .with_access_list(vec![])
-        .into();
-    check_tx(&provider, tx, 1).await;
+        .nonce(nonce);
+    nonce += 1.into();
+    let tx1 = provider
+        .send_transaction(tx.clone(), Some(BlockNumber::Pending.into()))
+        .await
+        .unwrap();
 
-    let tx: TypedTransaction = Eip1559TransactionRequest::new()
+    let tx = tx
+        .clone()
+        .nonce(nonce)
         .from(address)
         .to(address)
-        .into();
-    check_tx(&provider, tx, 2).await;
+        .with_access_list(vec![]);
+    nonce += 1.into();
+    let tx2 = provider
+        .send_transaction(tx, Some(BlockNumber::Pending.into()))
+        .await
+        .unwrap();
+
+    let tx = Eip1559TransactionRequest::new()
+        .from(address)
+        .to(address)
+        .nonce(nonce);
+    let tx3 = provider
+        .send_transaction(tx, Some(BlockNumber::Pending.into()))
+        .await
+        .unwrap();
+
+    futures_util::join!(
+        check_tx(&provider, *tx1, 0),
+        check_tx(&provider, *tx2, 1),
+        check_tx(&provider, *tx3, 2),
+    );
 }
 
 #[tokio::test]
@@ -355,6 +372,7 @@ impl TestWallets {
     pub fn next(&self) -> LocalWallet {
         let idx = self.next.load(std::sync::atomic::Ordering::SeqCst);
         let wallet = self.get(idx);
+        // println!("Got wallet {:?}", wallet.address());
         self.next
             .store(idx + 1, std::sync::atomic::Ordering::SeqCst);
         wallet
