@@ -31,7 +31,7 @@ futures-executor = "0.3.17"
 # aws
 rusoto_core = { version = "0.47.0", optional = true }
 rusoto_kms = { version = "0.47.0", optional = true }
-tracing = { version = "0.1.26", optional = true }
+tracing = { version = "0.1.27", optional = true }
 tracing-futures = { version = "0.2.5", optional = true }
 spki = { version = "0.4.0", optional = true }
 
