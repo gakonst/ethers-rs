@@ -117,18 +117,19 @@ async fn typed_txs() {
     // happening rarely enough that it doesn't matter.
     // WALLETS.fund(provider.provider(), 10u32).await;
 
-    async fn check_tx<M: Middleware>(
-        provider: &M,
-        tx_hash: ethers_core::types::TxHash,
+    async fn check_tx<P: JsonRpcClient + Clone>(
+        pending_tx: ethers_providers::PendingTransaction<'_, P>,
         expected: u64,
     ) {
-        let (tx, receipt) = futures_util::try_join!(
-            provider.get_transaction(tx_hash),
-            provider.get_transaction_receipt(tx_hash)
-        )
-        .unwrap();
-        assert_eq!(receipt.unwrap().transaction_type, Some(expected.into()));
-        assert_eq!(tx.unwrap().transaction_type, Some(expected.into()));
+        let provider = pending_tx.provider();
+        let receipt = pending_tx.await.unwrap().unwrap();
+        let tx = provider
+            .get_transaction(receipt.transaction_hash)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(receipt.transaction_type, Some(expected.into()));
+        assert_eq!(tx.transaction_type, Some(expected.into()));
     }
 
     let mut nonce = provider.get_transaction_count(address, None).await.unwrap();
@@ -163,11 +164,7 @@ async fn typed_txs() {
         .await
         .unwrap();
 
-    futures_util::join!(
-        check_tx(&provider, *tx1, 0),
-        check_tx(&provider, *tx2, 1),
-        check_tx(&provider, *tx3, 2),
-    );
+    futures_util::join!(check_tx(tx1, 0), check_tx(tx2, 1), check_tx(tx3, 2),);
 }
 
 #[tokio::test]
@@ -370,11 +367,9 @@ impl TestWallets {
     }
 
     pub fn next(&self) -> LocalWallet {
-        let idx = self.next.load(std::sync::atomic::Ordering::SeqCst);
+        let idx = self.next.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         let wallet = self.get(idx);
         // println!("Got wallet {:?}", wallet.address());
-        self.next
-            .store(idx + 1, std::sync::atomic::Ordering::SeqCst);
         wallet
     }
 

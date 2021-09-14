@@ -48,6 +48,14 @@ impl<'a, P: JsonRpcClient> PendingTransaction<'a, P> {
         }
     }
 
+    /// Returns the Provider associated with the pending transaction
+    pub fn provider(&self) -> Provider<P>
+    where
+        P: Clone,
+    {
+        self.provider.clone()
+    }
+
     /// Sets the number of confirmations for the pending transaction to resolve
     /// to a receipt
     pub fn confirmations(mut self, confs: usize) -> Self {
