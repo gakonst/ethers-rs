@@ -1,9 +1,22 @@
-use ethers_providers::{Http, Middleware, Provider};
+use ethers_providers::{Http, JsonRpcClient, Middleware, Provider};
 
-use ethers_core::types::TransactionRequest;
+use ethers_core::{
+    types::{BlockNumber, TransactionRequest},
+    utils::{parse_ether, parse_units},
+};
 use ethers_middleware::signer::SignerMiddleware;
-use ethers_signers::{LocalWallet, Signer};
-use std::{convert::TryFrom, time::Duration};
+use ethers_signers::{coins_bip39::English, LocalWallet, MnemonicBuilder, Signer};
+use once_cell::sync::Lazy;
+use std::{convert::TryFrom, sync::atomic::AtomicU8, time::Duration};
+
+static WALLETS: Lazy<TestWallets> = Lazy::new(|| {
+    TestWallets {
+        mnemonic: MnemonicBuilder::default()
+            // Please don't drain this :)
+            .phrase("impose air often almost medal sudden finish quote dwarf devote theme layer"),
+        next: Default::default(),
+    }
+});
 
 #[tokio::test]
 #[cfg(not(feature = "celo"))]
@@ -51,10 +64,7 @@ async fn pending_txs_with_confirmations_testnet() {
             .unwrap()
             .interval(Duration::from_millis(3000));
     let chain_id = provider.get_chainid().await.unwrap();
-    let wallet = "59c37cb6b16fa2de30675f034c8008f890f4b2696c729d6267946d29736d73e4"
-        .parse::<LocalWallet>()
-        .unwrap()
-        .with_chain_id(chain_id.as_u64());
+    let wallet = WALLETS.next().with_chain_id(chain_id.as_u64());
     let address = wallet.address();
     let provider = SignerMiddleware::new(provider, wallet);
     generic_pending_txs_test(provider, address).await;
@@ -75,10 +85,7 @@ async fn websocket_pending_txs_with_confirmations_testnet() {
             .unwrap()
             .interval(Duration::from_millis(3000));
     let chain_id = provider.get_chainid().await.unwrap();
-    let wallet = "ff7f80c6e9941865266ed1f481263d780169f1d98269c51167d20c630a5fdc8a"
-        .parse::<LocalWallet>()
-        .unwrap()
-        .with_chain_id(chain_id.as_u64());
+    let wallet = WALLETS.next().with_chain_id(chain_id.as_u64());
     let address = wallet.address();
     let provider = SignerMiddleware::new(provider, wallet);
     generic_pending_txs_test(provider, address).await;
@@ -102,12 +109,15 @@ async fn typed_txs() {
             .unwrap();
 
     let chain_id = provider.get_chainid().await.unwrap();
-    let wallet = "87203087aed9246e0b2417e248752a1a0df4fdaf65085c11a2b48087ba036b41"
-        .parse::<LocalWallet>()
-        .unwrap()
-        .with_chain_id(chain_id.as_u64());
+    let wallet = WALLETS.next().with_chain_id(chain_id.as_u64());
     let address = wallet.address();
+    // our wallet
     let provider = SignerMiddleware::new(provider, wallet);
+
+    // Uncomment the below and run this test to re-fund the wallets if they get drained.
+    // Would be ideal if we'd have a way to do this automatically, but this should be
+    // happening rarely enough that it doesn't matter.
+    // WALLETS.fund(provider.provider(), 10u32).await;
 
     async fn check_tx<M: Middleware>(provider: &M, tx: TypedTransaction, expected: u64) {
         let receipt = provider
@@ -276,7 +286,6 @@ async fn deploy_and_call_contract() {
         .parse::<LocalWallet>()
         .unwrap()
         .with_chain_id(chain_id);
-
     let client = SignerMiddleware::new(provider, wallet);
     let client = Arc::new(client);
 
@@ -299,4 +308,64 @@ async fn deploy_and_call_contract() {
 
     let value: U256 = contract.method("value", ()).unwrap().call().await.unwrap();
     assert_eq!(value, 1.into());
+}
+
+#[derive(Debug, Default)]
+struct TestWallets {
+    mnemonic: MnemonicBuilder<English>,
+    next: AtomicU8,
+}
+
+impl TestWallets {
+    /// Helper for funding the wallets with an instantiated provider
+    #[allow(unused)]
+    pub async fn fund<T: JsonRpcClient, U: Into<u32>>(&self, provider: &Provider<T>, n: U) {
+        let addrs = (0..n.into())
+            .map(|i| self.get(i).address())
+            .collect::<Vec<_>>();
+        // hardcoded funder address private key, rinkeby
+        let signer = "39aa18eeb5d12c071e5f19d8e9375a872e90cb1f2fa640384ffd8800a2f3e8f1"
+            .parse::<LocalWallet>()
+            .unwrap()
+            .with_chain_id(provider.get_chainid().await.unwrap().as_u64());
+        let provider = SignerMiddleware::new(provider, signer);
+        let addr = provider.address();
+
+        let mut nonce = provider.get_transaction_count(addr, None).await.unwrap();
+        let mut pending_txs = Vec::new();
+        for addr in addrs {
+            println!("Funding wallet {:?}", addr);
+            let tx = TransactionRequest::new()
+                .nonce(nonce)
+                .to(addr)
+                // 0.1 eth per wallet
+                .value(parse_units("1", 18).unwrap());
+            pending_txs.push(
+                provider
+                    .send_transaction(tx, Some(BlockNumber::Pending.into()))
+                    .await
+                    .unwrap(),
+            );
+            nonce += 1.into();
+        }
+
+        futures_util::future::join_all(pending_txs).await;
+    }
+
+    pub fn next(&self) -> LocalWallet {
+        let idx = self.next.load(std::sync::atomic::Ordering::SeqCst);
+        let wallet = self.get(idx);
+        self.next
+            .store(idx + 1, std::sync::atomic::Ordering::SeqCst);
+        wallet
+    }
+
+    pub fn get<T: Into<u32>>(&self, idx: T) -> LocalWallet {
+        self.mnemonic
+            .clone()
+            .index(idx)
+            .expect("index not found")
+            .build()
+            .expect("cannot build wallet")
+    }
 }
