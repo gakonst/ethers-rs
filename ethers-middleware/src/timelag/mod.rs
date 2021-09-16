@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use ethers_core::types::{
-    transaction::eip2718::TypedTransaction, BlockId, BlockNumber, FilterBlockOption,
-    TransactionReceipt,
+    transaction::eip2718::TypedTransaction, Block, BlockId, BlockNumber, Bytes, FilterBlockOption,
+    NameOrAddress, Transaction, TransactionReceipt, TxHash, U256,
 };
 use std::sync::Arc;
 use thiserror::Error;
@@ -10,7 +10,7 @@ use ethers_providers::{maybe, FromErr, Middleware};
 
 type TimeLagResult<T, M> = Result<T, TimeLagError<M>>;
 
-/// TimeLag Provider Errors
+/// TimeLage Provider Errors
 #[derive(Error, Debug)]
 pub enum TimeLagError<M>
 where
@@ -98,13 +98,11 @@ where
     }
 
     async fn get_block_number(&self) -> Result<ethers_core::types::U64, Self::Error> {
-        let block_number = self
-            .inner()
+        self.inner()
             .get_block_number()
             .await
             .map(|num| num - K)
-            .map_err(ethers_providers::FromErr::from)?;
-        Ok(block_number - K)
+            .map_err(ethers_providers::FromErr::from)
     }
 
     async fn send_transaction<T: Into<TypedTransaction> + Send + Sync>(
@@ -122,12 +120,11 @@ where
     async fn get_block<T: Into<BlockId> + Send + Sync>(
         &self,
         block_hash_or_number: T,
-    ) -> Result<Option<ethers_core::types::Block<ethers_core::types::TxHash>>, Self::Error> {
-        // unwrap here is safe, as passing in Some will always return Some
+    ) -> Result<Option<Block<TxHash>>, Self::Error> {
         let block_hash_or_number = self
             .normalize_block_id(Some(block_hash_or_number.into()))
             .await?
-            .unwrap();
+            .expect("Cannot return None if Some is passed in");
 
         self.inner()
             .get_block(block_hash_or_number)
@@ -138,13 +135,11 @@ where
     async fn get_block_with_txs<T: Into<BlockId> + Send + Sync>(
         &self,
         block_hash_or_number: T,
-    ) -> Result<Option<ethers_core::types::Block<ethers_core::types::Transaction>>, Self::Error>
-    {
-        // unwrap here is safe, as passing in Some will always return Some
+    ) -> Result<Option<Block<Transaction>>, Self::Error> {
         let block_hash_or_number = self
             .normalize_block_id(Some(block_hash_or_number.into()))
             .await?
-            .unwrap();
+            .expect("Cannot return None if Some is passed in");
 
         self.inner()
             .get_block_with_txs(block_hash_or_number)
@@ -155,12 +150,11 @@ where
     async fn get_uncle_count<T: Into<BlockId> + Send + Sync>(
         &self,
         block_hash_or_number: T,
-    ) -> Result<ethers_core::types::U256, Self::Error> {
-        // unwrap here is safe, as passing in Some will always return Some
+    ) -> Result<U256, Self::Error> {
         let block_hash_or_number = self
             .normalize_block_id(Some(block_hash_or_number.into()))
             .await?
-            .unwrap();
+            .expect("Cannot return None if Some is passed in");
 
         self.inner()
             .get_uncle_count(block_hash_or_number)
@@ -172,12 +166,11 @@ where
         &self,
         block_hash_or_number: T,
         idx: ethers_core::types::U64,
-    ) -> Result<Option<ethers_core::types::Block<ethers_core::types::TxHash>>, Self::Error> {
-        // unwrap here is safe, as passing in Some will always return Some
+    ) -> Result<Option<Block<TxHash>>, Self::Error> {
         let block_hash_or_number = self
             .normalize_block_id(Some(block_hash_or_number.into()))
             .await?
-            .unwrap();
+            .expect("Cannot return None if Some is passed in");
 
         self.inner()
             .get_uncle(block_hash_or_number, idx)
@@ -185,11 +178,11 @@ where
             .map_err(ethers_providers::FromErr::from)
     }
 
-    async fn get_transaction_count<T: Into<ethers_core::types::NameOrAddress> + Send + Sync>(
+    async fn get_transaction_count<T: Into<NameOrAddress> + Send + Sync>(
         &self,
         from: T,
         block: Option<BlockId>,
-    ) -> Result<ethers_core::types::U256, Self::Error> {
+    ) -> Result<U256, Self::Error> {
         let block = self.normalize_block_id(block).await?;
 
         self.inner()
@@ -202,7 +195,7 @@ where
         &self,
         tx: &TypedTransaction,
         block: Option<BlockId>,
-    ) -> Result<ethers_core::types::Bytes, Self::Error> {
+    ) -> Result<Bytes, Self::Error> {
         let block = self.normalize_block_id(block).await?;
 
         self.inner()
@@ -211,11 +204,11 @@ where
             .map_err(ethers_providers::FromErr::from)
     }
 
-    async fn get_balance<T: Into<ethers_core::types::NameOrAddress> + Send + Sync>(
+    async fn get_balance<T: Into<NameOrAddress> + Send + Sync>(
         &self,
         from: T,
         block: Option<BlockId>,
-    ) -> Result<ethers_core::types::U256, Self::Error> {
+    ) -> Result<U256, Self::Error> {
         let block = self.normalize_block_id(block).await?;
         self.inner()
             .get_balance(from, block)
@@ -223,7 +216,7 @@ where
             .map_err(ethers_providers::FromErr::from)
     }
 
-    async fn get_transaction_receipt<T: Send + Sync + Into<ethers_core::types::TxHash>>(
+    async fn get_transaction_receipt<T: Send + Sync + Into<TxHash>>(
         &self,
         transaction_hash: T,
     ) -> Result<Option<TransactionReceipt>, Self::Error> {
@@ -248,11 +241,11 @@ where
         }
     }
 
-    async fn get_code<T: Into<ethers_core::types::NameOrAddress> + Send + Sync>(
+    async fn get_code<T: Into<NameOrAddress> + Send + Sync>(
         &self,
         at: T,
         block: Option<BlockId>,
-    ) -> Result<ethers_core::types::Bytes, Self::Error> {
+    ) -> Result<Bytes, Self::Error> {
         let block = self.normalize_block_id(block).await?;
 
         self.inner()
@@ -261,12 +254,12 @@ where
             .map_err(ethers_providers::FromErr::from)
     }
 
-    async fn get_storage_at<T: Into<ethers_core::types::NameOrAddress> + Send + Sync>(
+    async fn get_storage_at<T: Into<NameOrAddress> + Send + Sync>(
         &self,
         from: T,
-        location: ethers_core::types::TxHash,
+        location: TxHash,
         block: Option<BlockId>,
-    ) -> Result<ethers_core::types::TxHash, Self::Error> {
+    ) -> Result<TxHash, Self::Error> {
         let block = self.normalize_block_id(block).await?;
         self.inner()
             .get_storage_at(from, location, block)
@@ -280,80 +273,7 @@ where
         block: Option<BlockId>,
     ) -> Result<(), Self::Error> {
         let block = self.normalize_block_id(block).await?;
-
-        let tx_clone = tx.clone();
-
-        // TODO: Maybe deduplicate the code in a nice way
-        match tx {
-            TypedTransaction::Legacy(ref mut inner) => {
-                if let Some(ethers_core::types::NameOrAddress::Name(ref ens_name)) = inner.to {
-                    let addr = self.resolve_name(ens_name).await?;
-                    inner.to = Some(addr.into());
-                };
-
-                if inner.from.is_none() {
-                    inner.from = self.default_sender();
-                }
-
-                let (gas_price, gas) = futures_util::try_join!(
-                    maybe(inner.gas_price, self.get_gas_price()),
-                    maybe(inner.gas, self.estimate_gas(&tx_clone)),
-                )?;
-                inner.gas = Some(gas);
-                inner.gas_price = Some(gas_price);
-            }
-            TypedTransaction::Eip2930(inner) => {
-                if let Ok(lst) = self.create_access_list(&tx_clone, block).await {
-                    inner.access_list = lst.access_list;
-                }
-
-                if let Some(ethers_core::types::NameOrAddress::Name(ref ens_name)) = inner.tx.to {
-                    let addr = self.resolve_name(ens_name).await?;
-                    inner.tx.to = Some(addr.into());
-                };
-
-                if inner.tx.from.is_none() {
-                    inner.tx.from = self.default_sender();
-                }
-
-                let (gas_price, gas) = futures_util::try_join!(
-                    maybe(inner.tx.gas_price, self.get_gas_price()),
-                    maybe(inner.tx.gas, self.estimate_gas(&tx_clone)),
-                )?;
-                inner.tx.gas = Some(gas);
-                inner.tx.gas_price = Some(gas_price);
-            }
-            TypedTransaction::Eip1559(inner) => {
-                if let Ok(lst) = self.create_access_list(&tx_clone, block).await {
-                    inner.access_list = lst.access_list;
-                }
-
-                if let Some(ethers_core::types::NameOrAddress::Name(ref ens_name)) = inner.to {
-                    let addr = self.resolve_name(ens_name).await?;
-                    inner.to = Some(addr.into());
-                };
-
-                if inner.from.is_none() {
-                    inner.from = self.default_sender();
-                }
-
-                let gas = ethers_providers::maybe(inner.gas, self.estimate_gas(&tx_clone)).await?;
-                inner.gas = Some(gas);
-
-                if inner.max_fee_per_gas.is_none() || inner.max_priority_fee_per_gas.is_none() {
-                    let (max_fee_per_gas, max_priority_fee_per_gas) =
-                        self.estimate_eip1559_fees(None).await?;
-                    if inner.max_fee_per_gas.is_none() {
-                        inner.max_fee_per_gas = Some(max_fee_per_gas);
-                    }
-                    if inner.max_priority_fee_per_gas.is_none() {
-                        inner.max_priority_fee_per_gas = Some(max_priority_fee_per_gas);
-                    }
-                }
-            }
-        };
-
-        Ok(())
+        Ok(self.inner().fill_transaction(tx, block).await?)
     }
 
     async fn get_block_receipts<T: Into<BlockNumber> + Send + Sync>(
@@ -361,8 +281,10 @@ where
         block: T,
     ) -> Result<Vec<TransactionReceipt>, Self::Error> {
         let block: BlockNumber = block.into();
-        // unwrap here is safe, as passing in Some will always return Some
-        let block = self.normalize_block_number(Some(block)).await?.unwrap();
+        let block = self
+            .normalize_block_number(Some(block))
+            .await?
+            .expect("Cannot return None if Some is passed in");
 
         self.inner()
             .get_block_receipts(block)
@@ -386,13 +308,13 @@ where
     async fn new_filter(
         &self,
         _filter: ethers_providers::FilterKind<'_>,
-    ) -> Result<ethers_core::types::U256, Self::Error> {
+    ) -> Result<U256, Self::Error> {
         Err(TimeLagError::Unsupported)
     }
 
     async fn get_filter_changes<T, R>(&self, _id: T) -> Result<Vec<R>, Self::Error>
     where
-        T: Into<ethers_core::types::U256> + Send + Sync,
+        T: Into<U256> + Send + Sync,
         R: serde::Serialize + serde::de::DeserializeOwned + Send + Sync + std::fmt::Debug,
     {
         Err(TimeLagError::Unsupported)
@@ -400,10 +322,7 @@ where
 
     async fn watch_blocks(
         &self,
-    ) -> Result<
-        ethers_providers::FilterWatcher<'_, Self::Provider, ethers_core::types::TxHash>,
-        Self::Error,
-    > {
+    ) -> Result<ethers_providers::FilterWatcher<'_, Self::Provider, TxHash>, Self::Error> {
         Err(TimeLagError::Unsupported)
     }
 
@@ -421,7 +340,7 @@ where
 
     async fn unsubscribe<T>(&self, _id: T) -> Result<bool, Self::Error>
     where
-        T: Into<ethers_core::types::U256> + Send + Sync,
+        T: Into<U256> + Send + Sync,
         Self::Provider: ethers_providers::PubsubClient,
     {
         Err(TimeLagError::Unsupported)
@@ -429,14 +348,7 @@ where
 
     async fn subscribe_blocks(
         &self,
-    ) -> Result<
-        ethers_providers::SubscriptionStream<
-            '_,
-            Self::Provider,
-            ethers_core::types::Block<ethers_core::types::TxHash>,
-        >,
-        Self::Error,
-    >
+    ) -> Result<ethers_providers::SubscriptionStream<'_, Self::Provider, Block<TxHash>>, Self::Error>
     where
         Self::Provider: ethers_providers::PubsubClient,
     {
@@ -445,10 +357,7 @@ where
 
     async fn subscribe_pending_txs(
         &self,
-    ) -> Result<
-        ethers_providers::SubscriptionStream<'_, Self::Provider, ethers_core::types::TxHash>,
-        Self::Error,
-    >
+    ) -> Result<ethers_providers::SubscriptionStream<'_, Self::Provider, TxHash>, Self::Error>
     where
         Self::Provider: ethers_providers::PubsubClient,
     {
