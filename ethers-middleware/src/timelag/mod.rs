@@ -10,6 +10,7 @@ use ethers_providers::{maybe, FromErr, Middleware};
 
 type TimeLagResult<T, M> = Result<T, TimeLagError<M>>;
 
+/// TimeLag Provider Errors
 #[derive(Error, Debug)]
 pub enum TimeLagError<M>
 where
@@ -30,6 +31,7 @@ impl<M: Middleware> FromErr<M::Error> for TimeLagError<M> {
     }
 }
 
+/// TimeLag Provider
 #[derive(Debug)]
 pub struct TimeLag<M, const K: u8> {
     inner: Arc<M>,
