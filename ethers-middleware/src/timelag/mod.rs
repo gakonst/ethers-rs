@@ -226,17 +226,20 @@ where
             .await
             .map_err(ethers_providers::FromErr::from)?;
 
-        if let Some(receipt) = receipt {
-            if let Some(number) = receipt.block_number {
-                if number > self.get_block_number().await? {
-                    Ok(None)
-                } else {
-                    Ok(Some(receipt))
-                }
-            } else {
-                Ok(Some(receipt))
-            }
+        if receipt.is_none() {
+            return Ok(None);
+        }
+
+        let receipt = receipt.expect("checked is_none");
+        if receipt.block_number.is_none() {
+            return Ok(Some(receipt));
+        }
+
+        let number = receipt.block_number.expect("checked is_none");
+        if number <= self.get_block_number().await? {
+            Ok(Some(receipt))
         } else {
+            // Pretend it hasn't confirmed yet.
             Ok(None)
         }
     }
