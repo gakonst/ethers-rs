@@ -6,7 +6,7 @@ use ethers_core::types::{
 use std::sync::Arc;
 use thiserror::Error;
 
-use ethers_providers::{maybe, FromErr, Middleware};
+use ethers_providers::{FromErr, Middleware};
 
 type TimeLagResult<T, M> = Result<T, TimeLagError<M>>;
 
@@ -273,7 +273,10 @@ where
         block: Option<BlockId>,
     ) -> Result<(), Self::Error> {
         let block = self.normalize_block_id(block).await?;
-        Ok(self.inner().fill_transaction(tx, block).await?)
+        self.inner()
+            .fill_transaction(tx, block)
+            .await
+            .map_err(ethers_providers::FromErr::from)
     }
 
     async fn get_block_receipts<T: Into<BlockNumber> + Send + Sync>(
