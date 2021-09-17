@@ -6,7 +6,16 @@ use crate::{
     PendingTransaction, QuorumProvider,
 };
 
-use ethers_core::{abi::{self, Detokenize, ParamType}, types::{Address, Block, BlockId, BlockNumber, BlockTrace, Bytes, EIP1186ProofResponse, Filter, H256, Log, NameOrAddress, Selector, Signature, TraceFilter, TraceType, Transaction, TransactionReceipt, TxHash, TxpoolContent, TxpoolInspect, TxpoolStatus, U256, U64, transaction::{eip2718::TypedTransaction, eip2930::AccessListWithGasUsed}}, utils};
+use ethers_core::{
+    abi::{self, Detokenize, ParamType},
+    types::{
+        transaction::{eip2718::TypedTransaction, eip2930::AccessListWithGasUsed},
+        Address, Block, BlockId, BlockNumber, BlockTrace, Bytes, EIP1186ProofResponse, Filter, Log,
+        NameOrAddress, Selector, Signature, TraceFilter, TraceType, Transaction,
+        TransactionReceipt, TxHash, TxpoolContent, TxpoolInspect, TxpoolStatus, H256, U256, U64,
+    },
+    utils,
+};
 
 #[cfg(feature = "celo")]
 use crate::CeloMiddleware;
@@ -583,13 +592,15 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
             NameOrAddress::Name(ens_name) => self.resolve_name(&ens_name).await?,
             NameOrAddress::Address(addr) => addr,
         };
-        
+
         let from = utils::serialize(&from);
-        let locations = locations.iter().map(|location| utils::serialize(&location)).collect();
+        let locations = locations
+            .iter()
+            .map(|location| utils::serialize(&location))
+            .collect();
         let block = utils::serialize(&block.unwrap_or_else(|| BlockNumber::Latest.into()));
 
-        self.request("eth_getProof", [from, locations, block])
-            .await
+        self.request("eth_getProof", [from, locations, block]).await
     }
 
     ////// Ethereum Naming Service
