@@ -47,3 +47,6 @@ pub use txpool::*;
 
 mod trace;
 pub use trace::*;
+
+mod proof;
+pub use proof::*;

@@ -171,6 +171,7 @@ impl<T: JsonRpcClientWrapper> QuorumProvider<T> {
             | "eth_createAccessList"
             | "eth_getStorageAt"
             | "eth_getCode"
+            | "eth_getProof"
             | "trace_call"
             | "trace_block" => {
                 // calls that include the block number in the params at the last index of json array

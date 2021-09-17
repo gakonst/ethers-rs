@@ -6,16 +6,7 @@ use crate::{
     PendingTransaction, QuorumProvider,
 };
 
-use ethers_core::{
-    abi::{self, Detokenize, ParamType},
-    types::{
-        transaction::{eip2718::TypedTransaction, eip2930::AccessListWithGasUsed},
-        Address, Block, BlockId, BlockNumber, BlockTrace, Bytes, Filter, Log, NameOrAddress,
-        Selector, Signature, Trace, TraceFilter, TraceType, Transaction, TransactionReceipt,
-        TxHash, TxpoolContent, TxpoolInspect, TxpoolStatus, H256, U256, U64,
-    },
-    utils,
-};
+use ethers_core::{abi::{self, Detokenize, ParamType}, types::{Address, Block, BlockId, BlockNumber, BlockTrace, Bytes, EIP1186ProofResponse, Filter, H256, Log, NameOrAddress, Selector, Signature, TraceFilter, TraceType, Transaction, TransactionReceipt, TxHash, TxpoolContent, TxpoolInspect, TxpoolStatus, U256, U64, transaction::{eip2718::TypedTransaction, eip2930::AccessListWithGasUsed}}, utils};
 
 #[cfg(feature = "celo")]
 use crate::CeloMiddleware;
@@ -582,6 +573,25 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.request("eth_getCode", [at, block]).await
     }
 
+    async fn get_proof<T: Into<NameOrAddress> + Send + Sync>(
+        &self,
+        from: T,
+        locations: Vec<H256>,
+        block: Option<BlockId>,
+    ) -> Result<EIP1186ProofResponse, ProviderError> {
+        let from = match from.into() {
+            NameOrAddress::Name(ens_name) => self.resolve_name(&ens_name).await?,
+            NameOrAddress::Address(addr) => addr,
+        };
+        
+        let from = utils::serialize(&from);
+        let locations = locations.iter().map(|location| utils::serialize(&location)).collect();
+        let block = utils::serialize(&block.unwrap_or_else(|| BlockNumber::Latest.into()));
+
+        self.request("eth_getProof", [from, locations, block])
+            .await
+    }
+
     ////// Ethereum Naming Service
     // The Ethereum Naming Service (ENS) allows easy to remember and use names to
     // be assigned to Ethereum addresses. Any provider operation which takes an address
@@ -803,6 +813,89 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
                 ],
             )
             .await)
+    }
+
+    async fn fill_transaction(
+        &self,
+        tx: &mut TypedTransaction,
+        block: Option<BlockId>,
+    ) -> Result<(), Self::Error> {
+        let mut tx_clone = tx.clone();
+
+        // TODO: Maybe deduplicate the code in a nice way
+        match tx {
+            TypedTransaction::Legacy(ref mut inner) => {
+                if let Some(NameOrAddress::Name(ref ens_name)) = inner.to {
+                    let addr = self.resolve_name(ens_name).await?;
+                    inner.to = Some(addr.into());
+                    tx_clone.set_to(addr);
+                };
+
+                if inner.from.is_none() {
+                    inner.from = self.default_sender();
+                }
+
+                let (gas_price, gas) = futures_util::try_join!(
+                    maybe(inner.gas_price, self.get_gas_price()),
+                    maybe(inner.gas, self.estimate_gas(&tx_clone)),
+                )?;
+                inner.gas = Some(gas);
+                inner.gas_price = Some(gas_price);
+            }
+            TypedTransaction::Eip2930(inner) => {
+                if let Ok(lst) = self.create_access_list(&tx_clone, block).await {
+                    inner.access_list = lst.access_list;
+                }
+
+                if let Some(NameOrAddress::Name(ref ens_name)) = inner.tx.to {
+                    let addr = self.resolve_name(ens_name).await?;
+                    inner.tx.to = Some(addr.into());
+                    tx_clone.set_to(addr);
+                };
+
+                if inner.tx.from.is_none() {
+                    inner.tx.from = self.default_sender();
+                }
+
+                let (gas_price, gas) = futures_util::try_join!(
+                    maybe(inner.tx.gas_price, self.get_gas_price()),
+                    maybe(inner.tx.gas, self.estimate_gas(&tx_clone)),
+                )?;
+                inner.tx.gas = Some(gas);
+                inner.tx.gas_price = Some(gas_price);
+            }
+            TypedTransaction::Eip1559(inner) => {
+                if let Ok(lst) = self.create_access_list(&tx_clone, block).await {
+                    inner.access_list = lst.access_list;
+                }
+
+                if let Some(NameOrAddress::Name(ref ens_name)) = inner.to {
+                    let addr = self.resolve_name(ens_name).await?;
+                    inner.to = Some(addr.into());
+                    tx_clone.set_to(addr);
+                };
+
+                if inner.from.is_none() {
+                    inner.from = self.default_sender();
+                }
+
+                let gas = crate::maybe(inner.gas, self.estimate_gas(&tx_clone)).await?;
+                inner.gas = Some(gas);
+
+                if inner.max_fee_per_gas.is_none() || inner.max_priority_fee_per_gas.is_none() {
+                    let (max_fee_per_gas, max_priority_fee_per_gas) =
+                        self.estimate_eip1559_fees(None).await?;
+                    if inner.max_fee_per_gas.is_none() {
+                        inner.max_fee_per_gas = Some(max_fee_per_gas);
+                    }
+                    if inner.max_priority_fee_per_gas.is_none() {
+                        inner.max_priority_fee_per_gas = Some(max_priority_fee_per_gas);
+                    }
+                }
+            }
+        };
+
+        Ok(())
     }
 }
 

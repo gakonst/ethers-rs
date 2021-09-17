@@ -84,6 +84,7 @@ pub use pubsub::{PubsubClient, SubscriptionStream};
 use async_trait::async_trait;
 use auto_impl::auto_impl;
 use ethers_core::types::transaction::{eip2718::TypedTransaction, eip2930::AccessListWithGasUsed};
+use ethers_core::types::StorageProof;
 use serde::{de::DeserializeOwned, Deserialize, Deserializer, Serialize};
 use std::{error::Error, fmt::Debug, future::Future, pin::Pin, str::FromStr};
 
@@ -544,6 +545,18 @@ pub trait Middleware: Sync + Send + Debug {
     ) -> Result<H256, Self::Error> {
         self.inner()
             .get_storage_at(from, location, block)
+            .await
+            .map_err(FromErr::from)
+    }
+
+    async fn get_proof<T: Into<NameOrAddress> + Send + Sync>(
+        &self,
+        from: T,
+        locations: Vec<H256>,
+        block: Option<BlockId>,
+    ) -> Result<EIP1186ProofResponse, Self::Error> {
+        self.inner()
+            .get_proof(from, locations, block)
             .await
             .map_err(FromErr::from)
     }
