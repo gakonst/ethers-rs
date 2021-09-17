@@ -11,12 +11,11 @@ use ethers_core::{
     types::{
         transaction::{eip2718::TypedTransaction, eip2930::AccessListWithGasUsed},
         Address, Block, BlockId, BlockNumber, BlockTrace, Bytes, EIP1186ProofResponse, Filter, Log,
-        NameOrAddress, Selector, Signature, TraceFilter, TraceType, Transaction,
+        NameOrAddress, Selector, Signature, Trace, TraceFilter, TraceType, Transaction,
         TransactionReceipt, TxHash, TxpoolContent, TxpoolInspect, TxpoolStatus, H256, U256, U64,
     },
     utils,
 };
-
 #[cfg(feature = "celo")]
 use crate::CeloMiddleware;
 use crate::Middleware;

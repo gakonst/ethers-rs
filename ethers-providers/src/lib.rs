@@ -84,7 +84,6 @@ pub use pubsub::{PubsubClient, SubscriptionStream};
 use async_trait::async_trait;
 use auto_impl::auto_impl;
 use ethers_core::types::transaction::{eip2718::TypedTransaction, eip2930::AccessListWithGasUsed};
-use ethers_core::types::StorageProof;
 use serde::{de::DeserializeOwned, Deserialize, Deserializer, Serialize};
 use std::{error::Error, fmt::Debug, future::Future, pin::Pin, str::FromStr};
 
