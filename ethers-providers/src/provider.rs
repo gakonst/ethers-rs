@@ -6,6 +6,10 @@ use crate::{
     PendingTransaction, QuorumProvider,
 };
 
+#[cfg(feature = "celo")]
+use crate::CeloMiddleware;
+use crate::Middleware;
+use async_trait::async_trait;
 use ethers_core::{
     abi::{self, Detokenize, ParamType},
     types::{
@@ -16,10 +20,6 @@ use ethers_core::{
     },
     utils,
 };
-#[cfg(feature = "celo")]
-use crate::CeloMiddleware;
-use crate::Middleware;
-use async_trait::async_trait;
 use hex::FromHex;
 use serde::{de::DeserializeOwned, Serialize};
 use thiserror::Error;
