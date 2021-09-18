@@ -10,13 +10,12 @@ use ethers_core::{
     abi::{self, Detokenize, ParamType},
     types::{
         transaction::{eip2718::TypedTransaction, eip2930::AccessListWithGasUsed},
-        Address, Block, BlockId, BlockNumber, BlockTrace, Bytes, Filter, Log, NameOrAddress,
-        Selector, Signature, Trace, TraceFilter, TraceType, Transaction, TransactionReceipt,
-        TxHash, TxpoolContent, TxpoolInspect, TxpoolStatus, H256, U256, U64,
+        Address, Block, BlockId, BlockNumber, BlockTrace, Bytes, EIP1186ProofResponse, Filter, Log,
+        NameOrAddress, Selector, Signature, Trace, TraceFilter, TraceType, Transaction,
+        TransactionReceipt, TxHash, TxpoolContent, TxpoolInspect, TxpoolStatus, H256, U256, U64,
     },
     utils,
 };
-
 #[cfg(feature = "celo")]
 use crate::CeloMiddleware;
 use crate::Middleware;
@@ -580,6 +579,29 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         let at = utils::serialize(&at);
         let block = utils::serialize(&block.unwrap_or_else(|| BlockNumber::Latest.into()));
         self.request("eth_getCode", [at, block]).await
+    }
+
+    /// Returns the EIP-1186 proof response
+    /// https://github.com/ethereum/EIPs/issues/1186
+    async fn get_proof<T: Into<NameOrAddress> + Send + Sync>(
+        &self,
+        from: T,
+        locations: Vec<H256>,
+        block: Option<BlockId>,
+    ) -> Result<EIP1186ProofResponse, ProviderError> {
+        let from = match from.into() {
+            NameOrAddress::Name(ens_name) => self.resolve_name(&ens_name).await?,
+            NameOrAddress::Address(addr) => addr,
+        };
+
+        let from = utils::serialize(&from);
+        let locations = locations
+            .iter()
+            .map(|location| utils::serialize(&location))
+            .collect();
+        let block = utils::serialize(&block.unwrap_or_else(|| BlockNumber::Latest.into()));
+
+        self.request("eth_getProof", [from, locations, block]).await
     }
 
     ////// Ethereum Naming Service

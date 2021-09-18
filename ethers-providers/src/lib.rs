@@ -548,6 +548,18 @@ pub trait Middleware: Sync + Send + Debug {
             .map_err(FromErr::from)
     }
 
+    async fn get_proof<T: Into<NameOrAddress> + Send + Sync>(
+        &self,
+        from: T,
+        locations: Vec<H256>,
+        block: Option<BlockId>,
+    ) -> Result<EIP1186ProofResponse, Self::Error> {
+        self.inner()
+            .get_proof(from, locations, block)
+            .await
+            .map_err(FromErr::from)
+    }
+
     // Mempool inspection for Geth's API
 
     async fn txpool_content(&self) -> Result<TxpoolContent, Self::Error> {
