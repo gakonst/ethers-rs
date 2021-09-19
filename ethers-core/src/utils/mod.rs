@@ -93,12 +93,13 @@ where
 }
 
 /// Multiplies the provided amount with 10^{units} provided.
-pub fn parse_units<S, K>(amount: S, units: K) -> Result<U256, S::Error>
+pub fn parse_units<K>(amount: &str, units: K) -> Result<U256, Box<dyn std::error::Error>>
 where
-    S: TryInto<U256>,
     K: Into<Units>,
 {
-    Ok(amount.try_into()? * 10u64.pow(units.into().as_num()))
+    let float_n: f64 = amount.parse::<f64>().unwrap() * 10u64.pow(units.into().as_num()) as f64;
+    let u256_n: U256 = U256::from_dec_str(&float_n.to_string()).unwrap();
+    Ok(u256_n)
 }
 
 /// The address for an Ethereum contract is deterministically computed from the
