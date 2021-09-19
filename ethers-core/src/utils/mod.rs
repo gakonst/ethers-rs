@@ -85,6 +85,7 @@ pub fn format_units<T: Into<U256>, K: Into<Units>>(amount: T, units: K) -> U256 
 /// assert_eq!(eth, parse_ether(1u8).unwrap());
 /// assert_eq!(eth, parse_ether(1usize).unwrap());
 /// assert_eq!(eth, parse_ether("1").unwrap());
+/// ```
 pub fn parse_ether<S>(eth: S) -> Result<U256, S::Error>
 where
     S: TryInto<U256>,
@@ -93,12 +94,31 @@ where
 }
 
 /// Multiplies the provided amount with 10^{units} provided.
-pub fn parse_units<K>(amount: &str, units: K) -> Result<U256, Box<dyn std::error::Error>>
+///
+/// ```
+/// use ethers_core::{types::U256, utils::parse_units};
+/// let amount_in_eth = U256::from_dec_str("15230001000000000000").unwrap();
+/// let amount_in_gwei = U256::from_dec_str("15230001000").unwrap();
+/// let amount_in_wei = U256::from_dec_str("15230001000").unwrap();
+/// assert_eq!(amount_in_eth, parse_units("15.230001000000000000", "ether").unwrap());
+/// assert_eq!(amount_in_gwei, parse_units("15.230001000000000000", "gwei").unwrap());
+/// assert_eq!(amount_in_wei, parse_units("15230001000", "wei").unwrap());
+/// ```
+/// Example of trying to parse decimal WEI, which should fail, as WEI is the smallest
+/// ETH denominator. 1 ETH = 10^18 WEI.
+/// ```should_panic
+/// use ethers_core::{types::U256, utils::parse_units};
+/// let amount_in_wei = U256::from_dec_str("15230001000").unwrap();
+/// assert_eq!(amount_in_wei, parse_units("15.230001000000000000", "wei").unwrap());
+/// ```
+
+pub fn parse_units<K, S>(amount: S, units: K) -> Result<U256, Box<dyn std::error::Error>>
 where
+    S: ToString,
     K: Into<Units>,
 {
-    let float_n: f64 = amount.parse::<f64>().unwrap() * 10u64.pow(units.into().as_num()) as f64;
-    let u256_n: U256 = U256::from_dec_str(&float_n.to_string()).unwrap();
+    let float_n: f64 = amount.to_string().parse::<f64>()? * 10u64.pow(units.into().as_num()) as f64;
+    let u256_n: U256 = U256::from_dec_str(&float_n.to_string())?;
     Ok(u256_n)
 }
 
