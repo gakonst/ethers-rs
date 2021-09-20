@@ -35,7 +35,6 @@ pub use rlp;
 
 use crate::types::{Address, Bytes, U256};
 use k256::{ecdsa::SigningKey, EncodedPoint as K256PublicKey};
-use std::convert::TryInto;
 use std::ops::Neg;
 use thiserror::Error;
 
@@ -85,22 +84,41 @@ pub fn format_units<T: Into<U256>, K: Into<Units>>(amount: T, units: K) -> U256 
 /// assert_eq!(eth, parse_ether(1u8).unwrap());
 /// assert_eq!(eth, parse_ether(1usize).unwrap());
 /// assert_eq!(eth, parse_ether("1").unwrap());
-pub fn parse_ether<S>(eth: S) -> Result<U256, S::Error>
+/// ```
+pub fn parse_ether<S>(eth: S) -> Result<U256, Box<dyn std::error::Error>>
 where
-    S: TryInto<U256>,
+    S: ToString,
 {
-    Ok(eth.try_into()? * WEI_IN_ETHER)
+    parse_units(eth, "ether")
 }
 
 /// Multiplies the provided amount with 10^{units} provided.
-pub fn parse_units<S, K>(amount: S, units: K) -> Result<U256, S::Error>
+///
+/// ```
+/// use ethers_core::{types::U256, utils::parse_units};
+/// let amount_in_eth = U256::from_dec_str("15230001000000000000").unwrap();
+/// let amount_in_gwei = U256::from_dec_str("15230001000").unwrap();
+/// let amount_in_wei = U256::from_dec_str("15230001000").unwrap();
+/// assert_eq!(amount_in_eth, parse_units("15.230001000000000000", "ether").unwrap());
+/// assert_eq!(amount_in_gwei, parse_units("15.230001000000000000", "gwei").unwrap());
+/// assert_eq!(amount_in_wei, parse_units("15230001000", "wei").unwrap());
+/// ```
+/// Example of trying to parse decimal WEI, which should fail, as WEI is the smallest
+/// ETH denominator. 1 ETH = 10^18 WEI.
+/// ```should_panic
+/// use ethers_core::{types::U256, utils::parse_units};
+/// let amount_in_wei = U256::from_dec_str("15230001000").unwrap();
+/// assert_eq!(amount_in_wei, parse_units("15.230001000000000000", "wei").unwrap());
+/// ```
+pub fn parse_units<K, S>(amount: S, units: K) -> Result<U256, Box<dyn std::error::Error>>
 where
-    S: TryInto<U256>,
+    S: ToString,
     K: Into<Units>,
 {
-    Ok(amount.try_into()? * 10u64.pow(units.into().as_num()))
+    let float_n: f64 = amount.to_string().parse::<f64>()? * 10u64.pow(units.into().as_num()) as f64;
+    let u256_n: U256 = U256::from_dec_str(&float_n.to_string())?;
+    Ok(u256_n)
 }
-
 /// The address for an Ethereum contract is deterministically computed from the
 /// address of its creator (sender) and how many transactions the creator has
 /// sent (nonce). The sender and nonce are RLP encoded and then hashed with Keccak-256.
@@ -382,8 +400,20 @@ mod tests {
 
     #[test]
     fn test_parse_units() {
-        let gwei = parse_units(1, 9).unwrap();
-        assert_eq!(gwei.as_u64(), 1e9 as u64);
+        let gwei = parse_units(1.5, 9).unwrap();
+        assert_eq!(gwei.as_u64(), 15e8 as u64);
+
+        let eth_dec_float = parse_units(1.39563324, "ether").unwrap();
+        assert_eq!(
+            eth_dec_float,
+            U256::from_dec_str("1395633240000000000").unwrap()
+        );
+
+        let eth_dec_string = parse_units("1.39563324", "ether").unwrap();
+        assert_eq!(
+            eth_dec_string,
+            U256::from_dec_str("1395633240000000000").unwrap()
+        );
 
         let eth = parse_units(1, "ether").unwrap();
         assert_eq!(eth, WEI_IN_ETHER);
