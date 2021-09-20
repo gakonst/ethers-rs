@@ -35,7 +35,6 @@ pub use rlp;
 
 use crate::types::{Address, Bytes, U256};
 use k256::{ecdsa::SigningKey, EncodedPoint as K256PublicKey};
-use std::convert::TryInto;
 use std::ops::Neg;
 use thiserror::Error;
 
@@ -86,11 +85,11 @@ pub fn format_units<T: Into<U256>, K: Into<Units>>(amount: T, units: K) -> U256 
 /// assert_eq!(eth, parse_ether(1usize).unwrap());
 /// assert_eq!(eth, parse_ether("1").unwrap());
 /// ```
-pub fn parse_ether<S>(eth: S) -> Result<U256, S::Error>
+pub fn parse_ether<S>(eth: S) -> Result<U256, Box<dyn std::error::Error>>
 where
-    S: TryInto<U256>,
+    S: ToString,
 {
-    Ok(eth.try_into()? * WEI_IN_ETHER)
+    parse_units(eth, "ether")
 }
 
 /// Multiplies the provided amount with 10^{units} provided.
@@ -111,7 +110,6 @@ where
 /// let amount_in_wei = U256::from_dec_str("15230001000").unwrap();
 /// assert_eq!(amount_in_wei, parse_units("15.230001000000000000", "wei").unwrap());
 /// ```
-
 pub fn parse_units<K, S>(amount: S, units: K) -> Result<U256, Box<dyn std::error::Error>>
 where
     S: ToString,
@@ -121,7 +119,6 @@ where
     let u256_n: U256 = U256::from_dec_str(&float_n.to_string())?;
     Ok(u256_n)
 }
-
 /// The address for an Ethereum contract is deterministically computed from the
 /// address of its creator (sender) and how many transactions the creator has
 /// sent (nonce). The sender and nonce are RLP encoded and then hashed with Keccak-256.
