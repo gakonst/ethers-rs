@@ -400,8 +400,20 @@ mod tests {
 
     #[test]
     fn test_parse_units() {
-        let gwei = parse_units(1, 9).unwrap();
-        assert_eq!(gwei.as_u64(), 1e9 as u64);
+        let gwei = parse_units(1.5, 9).unwrap();
+        assert_eq!(gwei.as_u64(), 15e8 as u64);
+
+        let eth_dec_float = parse_units(1.39563324, "ether").unwrap();
+        assert_eq!(
+            eth_dec_float,
+            U256::from_dec_str("1395633240000000000").unwrap()
+        );
+
+        let eth_dec_string = parse_units("1.39563324", "ether").unwrap();
+        assert_eq!(
+            eth_dec_string,
+            U256::from_dec_str("1395633240000000000").unwrap()
+        );
 
         let eth = parse_units(1, "ether").unwrap();
         assert_eq!(eth, WEI_IN_ETHER);
