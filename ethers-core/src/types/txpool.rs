@@ -1,4 +1,4 @@
-use crate::types::{Address, TransactionRequest as TxpoolTransaction, U256, U64};
+use crate::types::{Address, Transaction as TxpoolTransaction, U256, U64};
 
 use serde::{
     de::{self, Deserializer, Visitor},
