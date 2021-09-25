@@ -1,7 +1,7 @@
 [package]
 name = "ethers-contract"
 license = "MIT OR Apache-2.0"
-version = "0.5.1"
+version = "0.5.3"
 authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
 edition = "2018"
 description = "Smart contract bindings for the ethers-rs crate"
