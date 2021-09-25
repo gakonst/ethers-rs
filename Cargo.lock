@@ -882,7 +882,7 @@ dependencies = [
 
 [[package]]
 name = "ethers-contract-abigen"
-version = "0.5.2"
+version = "0.5.3"
 dependencies = [
  "Inflector",
  "anyhow",
