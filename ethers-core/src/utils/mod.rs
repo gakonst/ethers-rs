@@ -12,7 +12,7 @@ pub use geth::{Geth, GethInstance};
 
 /// Solidity compiler bindings
 #[cfg(not(target_arch = "wasm32"))]
-mod solc;
+pub mod solc;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub use solc::{CompiledContract, Solc};
