@@ -5,9 +5,32 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::{abi::Abi, types::Bytes};
+use once_cell::sync::Lazy;
+use semver::Version;
+use std::str::FromStr;
 
 /// The name of the `solc` binary on the system
 const SOLC: &str = "solc";
+
+/// Support for configuring the EVM version
+/// https://blog.soliditylang.org/2018/03/08/solidity-0.4.21-release-announcement/
+static CONSTANTINOPLE_SOLC: Lazy<Version> = Lazy::new(|| Version::from_str("0.4.21").unwrap());
+
+/// Petersburg support
+/// https://blog.soliditylang.org/2019/03/05/solidity-0.5.5-release-announcement/
+static PETERSBURG_SOLC: Lazy<Version> = Lazy::new(|| Version::from_str("0.5.5").unwrap());
+
+/// Istanbul support
+/// https://blog.soliditylang.org/2019/12/09/solidity-0.5.14-release-announcement/
+static ISTANBUL_SOLC: Lazy<Version> = Lazy::new(|| Version::from_str("0.5.14").unwrap());
+
+/// Berlin support
+/// https://blog.soliditylang.org/2021/06/10/solidity-0.8.5-release-announcement/
+static BERLIN_SOLC: Lazy<Version> = Lazy::new(|| Version::from_str("0.8.5").unwrap());
+
+/// London support
+/// https://blog.soliditylang.org/2021/08/11/solidity-0.8.7-release-announcement/
+static LONDON_SOLC: Lazy<Version> = Lazy::new(|| Version::from_str("0.8.7").unwrap());
 
 type Result<T> = std::result::Result<T, SolcError>;
 
@@ -16,6 +39,8 @@ pub enum SolcError {
     /// Internal solc error
     #[error("Solc Error: {0}")]
     SolcError(String),
+    #[error(transparent)]
+    SemverError(#[from] semver::Error),
     /// Deserialization error
     #[error(transparent)]
     SerdeJson(#[from] serde_json::Error),
@@ -109,12 +134,8 @@ impl Solc {
 
         command.arg("--combined-json").arg("abi,bin,bin-runtime");
 
-        if (version.starts_with("0.5") && self.evm_version < EvmVersion::Istanbul)
-            || !version.starts_with("0.4")
-        {
-            command
-                .arg("--evm-version")
-                .arg(self.evm_version.to_string());
+        if let Some(evm_version) = normalize_evm_version(&version, self.evm_version) {
+            command.arg("--evm-version").arg(evm_version.to_string());
         }
 
         if let Some(runs) = self.optimizer {
@@ -229,7 +250,7 @@ impl Solc {
     /// # Panics
     ///
     /// If `solc` is not found
-    pub fn version(solc_path: Option<PathBuf>) -> String {
+    pub fn version(solc_path: Option<PathBuf>) -> Version {
         let solc_path = solc_path.unwrap_or_else(|| PathBuf::from(SOLC));
         let command_output = Command::new(&solc_path)
             .arg("--version")
@@ -244,7 +265,8 @@ impl Solc {
             .expect("could not get solc version");
 
         // Return the version trimmed
-        version.replace("Version: ", "")
+        let version = version.replace("Version: ", "");
+        Version::from_str(&version[0..5]).expect("not a version")
     }
 
     /// Sets the EVM version for compilation
@@ -307,7 +329,7 @@ impl Solc {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum EvmVersion {
     Homestead,
     TangerineWhistle,
@@ -316,6 +338,7 @@ pub enum EvmVersion {
     Petersburg,
     Istanbul,
     Berlin,
+    London,
 }
 
 impl fmt::Display for EvmVersion {
@@ -328,6 +351,7 @@ impl fmt::Display for EvmVersion {
             EvmVersion::Petersburg => "petersburg",
             EvmVersion::Istanbul => "istanbul",
             EvmVersion::Berlin => "berlin",
+            EvmVersion::London => "london",
         };
         write!(f, "{}", string)
     }
@@ -349,4 +373,83 @@ pub struct CompiledContractStr {
     pub bin: String,
     /// The contract's runtime bytecode in hex
     pub runtime_bin: String,
+}
+
+fn normalize_evm_version(version: &Version, evm_version: EvmVersion) -> Option<EvmVersion> {
+    // the EVM version flag was only added at 0.4.21
+    // we work our way backwards
+    if version >= &CONSTANTINOPLE_SOLC {
+        // If the Solc is at least at london, it supports all EVM versions
+        Some(if version >= &LONDON_SOLC {
+            evm_version
+        // For all other cases, cap at the at-the-time highest possible fork
+        } else if version >= &BERLIN_SOLC && evm_version >= EvmVersion::Berlin {
+            EvmVersion::Berlin
+        } else if version >= &ISTANBUL_SOLC && evm_version >= EvmVersion::Istanbul {
+            EvmVersion::Istanbul
+        } else if version >= &PETERSBURG_SOLC && evm_version >= EvmVersion::Petersburg {
+            EvmVersion::Petersburg
+        } else if evm_version >= EvmVersion::Constantinople {
+            EvmVersion::Constantinople
+        } else {
+            evm_version
+        })
+    } else {
+        None
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_solc_version() {
+        Solc::version(None);
+    }
+
+    #[test]
+    fn test_evm_version_normalization() {
+        for (solc_version, evm_version, expected) in &[
+            // Ensure 0.4.21 it always returns None
+            ("0.4.20", EvmVersion::Homestead, None),
+            // Constantinople clipping
+            ("0.4.21", EvmVersion::Homestead, Some(EvmVersion::Homestead)),
+            (
+                "0.4.21",
+                EvmVersion::Constantinople,
+                Some(EvmVersion::Constantinople),
+            ),
+            (
+                "0.4.21",
+                EvmVersion::London,
+                Some(EvmVersion::Constantinople),
+            ),
+            // Petersburg
+            ("0.5.5", EvmVersion::Homestead, Some(EvmVersion::Homestead)),
+            (
+                "0.5.5",
+                EvmVersion::Petersburg,
+                Some(EvmVersion::Petersburg),
+            ),
+            ("0.5.5", EvmVersion::London, Some(EvmVersion::Petersburg)),
+            // Istanbul
+            ("0.5.14", EvmVersion::Homestead, Some(EvmVersion::Homestead)),
+            ("0.5.14", EvmVersion::Istanbul, Some(EvmVersion::Istanbul)),
+            ("0.5.14", EvmVersion::London, Some(EvmVersion::Istanbul)),
+            // Berlin
+            ("0.8.5", EvmVersion::Homestead, Some(EvmVersion::Homestead)),
+            ("0.8.5", EvmVersion::Berlin, Some(EvmVersion::Berlin)),
+            ("0.8.5", EvmVersion::London, Some(EvmVersion::Berlin)),
+            // London
+            ("0.8.7", EvmVersion::Homestead, Some(EvmVersion::Homestead)),
+            ("0.8.7", EvmVersion::London, Some(EvmVersion::London)),
+            ("0.8.7", EvmVersion::London, Some(EvmVersion::London)),
+        ] {
+            assert_eq!(
+                &normalize_evm_version(&Version::from_str(solc_version).unwrap(), *evm_version),
+                expected
+            )
+        }
+    }
 }
