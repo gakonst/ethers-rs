@@ -246,32 +246,39 @@ impl AbiParser {
             .strip_prefix('(')
             .ok_or_else(|| format_err!("Expected input args parentheses at `{}`", s))?;
 
-        let (first, second) = match input.rsplit_once('(') {
+        let (input_args_modifiers, output_args) = match input.rsplit_once('(') {
             Some((first, second)) => (first, Some(second)),
             None => (input, None),
         };
 
-        let parens = first
+        let mut input_args_modifiers_iter = input_args_modifiers
             .trim_end()
-            .strip_suffix("returns")
-            .unwrap_or(first)
-            .trim_end();
+            .strip_suffix(" returns")
+            .unwrap_or(input_args_modifiers)
+            .splitn(2, ')');
 
-        let (input_params_args, modifiers) = match parens.split_once(')') {
-            Some(("", "")) => Ok((None, None)),
-            Some(("", modifiers)) => Ok((None, Some(modifiers))),
-            Some((input_params_args, "")) => Ok((Some(input_params_args), None)),
-            Some((input_params_args, modifiers)) => Ok((Some(input_params_args), Some(modifiers))),
-            None => format_err!("Expected input args parentheses at `{}`", s),
-        }?;
+        let input_args = match input_args_modifiers_iter
+            .next()
+            .ok_or(format_err!("Expected input args parentheses at `{}`", s))?
+        {
+            "" => None,
+            input_params_args => Some(input_params_args),
+        };
+        let modifiers = match input_args_modifiers_iter
+            .next()
+            .ok_or(format_err!("Expected input args parentheses at `{}`", s))?
+        {
+            "" => None,
+            modifiers => Some(modifiers),
+        };
 
-        let inputs = if let Some(input_params) = input_params_args {
-            self.parse_params(input_params)?
+        let inputs = if let Some(params) = input_args {
+            self.parse_params(params)?
         } else {
             Vec::new()
         };
 
-        let outputs = if let Some(params) = second {
+        let outputs = if let Some(params) = output_args {
             let params = params
                 .trim()
                 .strip_suffix(')')
