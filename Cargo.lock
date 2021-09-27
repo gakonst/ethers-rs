@@ -934,6 +934,7 @@ dependencies = [
  "rand 0.8.4",
  "rlp",
  "rlp-derive",
+ "semver 1.0.4",
  "serde",
  "serde_json",
  "thiserror",
