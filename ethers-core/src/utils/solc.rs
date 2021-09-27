@@ -266,7 +266,7 @@ impl Solc {
 
         // Return the version trimmed
         let version = version.replace("Version: ", "");
-        Version::from_str(&version[0..6]).expect("not a version")
+        Version::from_str(&version[0..5]).expect("not a version")
     }
 
     /// Sets the EVM version for compilation
@@ -402,6 +402,11 @@ fn normalize_evm_version(version: &Version, evm_version: EvmVersion) -> Option<E
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_solc_version() {
+        Solc::version(None);
+    }
 
     #[test]
     fn test_evm_version_normalization() {
