@@ -240,24 +240,29 @@ impl AbiParser {
         if input.starts_with("function ") {
             input = &input[8..];
         }
+
         let name = parse_identifier(&mut input)?;
         input = input
             .strip_prefix('(')
-            .ok_or(ParseError::ParseError(super::Error::InvalidData))?;
+            .ok_or_else(|| format_err!("Expected input args parentheses at `{}`", s))?;
 
         let (first, second) = match input.rsplit_once('(') {
             Some((first, second)) => (first, Some(second)),
             None => (input, None),
         };
 
-        let parens = first.strip_suffix(" returns").unwrap_or(first);
+        let parens = first
+            .trim_end()
+            .strip_suffix("returns")
+            .unwrap_or(first)
+            .trim_end();
 
         let (input_params_args, modifiers) = match parens.split_once(')') {
             Some(("", "")) => Ok((None, None)),
             Some(("", modifiers)) => Ok((None, Some(modifiers))),
             Some((input_params_args, "")) => Ok((Some(input_params_args), None)),
             Some((input_params_args, modifiers)) => Ok((Some(input_params_args), Some(modifiers))),
-            None => Err(ParseError::ParseError(super::Error::InvalidData)),
+            None => format_err!("Expected input args parentheses at `{}`", s),
         }?;
 
         let inputs = if let Some(input_params) = input_params_args {
@@ -270,7 +275,7 @@ impl AbiParser {
             let params = params
                 .trim()
                 .strip_suffix(')')
-                .ok_or_else(|| format_err!("Expected parentheses at `{}`", s))?;
+                .ok_or_else(|| format_err!("Expected output args parentheses at `{}`", s))?;
             self.parse_params(params)?
         } else {
             Vec::new()
@@ -618,7 +623,7 @@ mod tests {
     fn can_parse_functions() {
         [
             "function foo(uint256[] memory x) external view returns (address)",
-            "function bar(uint256[] memory x) returns (address)",
+            "function bar(uint256[] memory x) returns(address)",
             "function bar(uint256[] memory x, uint32 y) returns (address, uint256)",
             "function foo(address[] memory, bytes memory) returns (bytes memory)",
             "function bar(uint256[] memory x)",
