@@ -131,11 +131,10 @@ impl Solc {
 
         let mut command = Command::new(&path);
         let version = Solc::version(Some(path));
-        let version = &Version::from_str(&version)?;
 
         command.arg("--combined-json").arg("abi,bin,bin-runtime");
 
-        if let Some(evm_version) = normalize_evm_version(version, self.evm_version) {
+        if let Some(evm_version) = normalize_evm_version(&version, self.evm_version) {
             command.arg("--evm-version").arg(evm_version.to_string());
         }
 
@@ -251,7 +250,7 @@ impl Solc {
     /// # Panics
     ///
     /// If `solc` is not found
-    pub fn version(solc_path: Option<PathBuf>) -> String {
+    pub fn version(solc_path: Option<PathBuf>) -> Version {
         let solc_path = solc_path.unwrap_or_else(|| PathBuf::from(SOLC));
         let command_output = Command::new(&solc_path)
             .arg("--version")
@@ -266,7 +265,8 @@ impl Solc {
             .expect("could not get solc version");
 
         // Return the version trimmed
-        version.replace("Version: ", "")
+        let version = version.replace("Version: ", "");
+        Version::from_str(&version[0..6]).expect("not a version")
     }
 
     /// Sets the EVM version for compilation
