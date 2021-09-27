@@ -237,40 +237,39 @@ impl AbiParser {
 
     pub fn parse_function(&mut self, s: &str) -> Result<Function> {
         let mut input = s.trim();
-        if !input.starts_with("function ") {
-            bail!("Not a function `{}`", input)
+        if input.starts_with("function ") {
+            input = &input[8..];
         }
-        input = &input[8..];
         let name = parse_identifier(&mut input)?;
+        input = input
+            .strip_prefix('(')
+            .ok_or(ParseError::ParseError(super::Error::InvalidData))?;
 
-        let mut iter = input.split(" returns");
+        let (first, second) = match input.rsplit_once('(') {
+            Some((first, second)) => (first, Some(second)),
+            None => (input, None),
+        };
 
-        let parens = iter
-            .next()
-            .ok_or_else(|| format_err!("Invalid function declaration at `{}`", s))?
-            .trim_end();
+        let parens = first.strip_suffix(" returns").unwrap_or(first);
 
-        let mut parens_iter = parens.rsplitn(2, ')');
-        let mut modifiers = parens_iter.next();
+        let (input_params_args, modifiers) = match parens.split_once(')') {
+            Some(("", "")) => Ok((None, None)),
+            Some(("", modifiers)) => Ok((None, Some(modifiers))),
+            Some((input_params_args, "")) => Ok((Some(input_params_args), None)),
+            Some((input_params_args, modifiers)) => Ok((Some(input_params_args), Some(modifiers))),
+            None => Err(ParseError::ParseError(super::Error::InvalidData)),
+        }?;
 
-        let input_params = if let Some(args) = parens_iter.next() {
-            args
+        let inputs = if let Some(input_params) = input_params_args {
+            self.parse_params(input_params)?
         } else {
-            modifiers
-                .take()
-                .ok_or(ParseError::ParseError(super::Error::InvalidData))?
-        }
-        .trim_start()
-        .strip_prefix('(')
-        .ok_or(ParseError::ParseError(super::Error::InvalidData))?;
+            Vec::new()
+        };
 
-        let inputs = self.parse_params(input_params)?;
-
-        let outputs = if let Some(params) = iter.next() {
+        let outputs = if let Some(params) = second {
             let params = params
                 .trim()
-                .strip_prefix('(')
-                .and_then(|s| s.strip_suffix(')'))
+                .strip_suffix(')')
                 .ok_or_else(|| format_err!("Expected parentheses at `{}`", s))?;
             self.parse_params(params)?
         } else {
@@ -624,6 +623,11 @@ mod tests {
             "function foo(address[] memory, bytes memory) returns (bytes memory)",
             "function bar(uint256[] memory x)",
             "function bar()",
+            "bar(uint256[] memory x)(address)",
+            "bar(uint256[] memory x, uint32 y)(address, uint256)",
+            "foo(address[] memory, bytes memory)(bytes memory)",
+            "bar(uint256[] memory x)",
+            "bar()",
         ]
         .iter()
         .for_each(|x| {
