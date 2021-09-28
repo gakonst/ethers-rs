@@ -24,7 +24,7 @@ async fn txpool() {
     // send a few transactions
     let mut txs = Vec::new();
     for _ in 0..10 {
-        let tx_hash = provider.send_transaction(&tx.clone(), None).await.unwrap();
+        let tx_hash = provider.send_transaction(tx.clone(), None).await.unwrap();
         txs.push(tx_hash);
     }
 
