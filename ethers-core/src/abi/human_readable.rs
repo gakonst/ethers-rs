@@ -76,13 +76,7 @@ impl AbiParser {
 
         for mut line in types {
             line = line.trim_start();
-            if line.starts_with("function") {
-                let function = self.parse_function(line)?;
-                abi.functions
-                    .entry(function.name.clone())
-                    .or_default()
-                    .push(function);
-            } else if line.starts_with("event") {
+            if line.starts_with("event") {
                 let event = self.parse_event(line)?;
                 abi.events
                     .entry(event.name.clone())
@@ -91,7 +85,15 @@ impl AbiParser {
             } else if line.starts_with("constructor") {
                 abi.constructor = Some(self.parse_constructor(line)?);
             } else {
-                bail!("Illegal abi `{}`", line)
+                // function may have shorthand declaration, so it won't start with "function"
+                let function = match self.parse_function(line) {
+                    Ok(function) => function,
+                    Err(_) => bail!("Illegal abi `{}`", line),
+                };
+                abi.functions
+                    .entry(function.name.clone())
+                    .or_default()
+                    .push(function);
             }
         }
         Ok(abi)
@@ -658,6 +660,8 @@ mod tests {
             "event FireEvent(Voter v, NestedVoter2 n)",
             "function foo(uint256[] memory x) external view returns (address)",
             "function call(Voter memory voter) returns (address, uint256)",
+            "foo(uint256[] memory x)()",
+            "call(Voter memory voter)(address, uint256)",
             "struct NestedVoter {  Voter voter;  bool voted;  address delegate; uint vote; }",
             "struct NestedVoter2 {  NestedVoter[] voter;  Voter[10] votes;  address delegate; uint vote; }",
         ];
