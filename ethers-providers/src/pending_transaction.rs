@@ -56,6 +56,11 @@ impl<'a, P: JsonRpcClient> PendingTransaction<'a, P> {
         self.provider.clone()
     }
 
+    /// Returns the TxHash of the pending transaction
+    pub fn hash(&self) -> TxHash {
+        self.tx_hash
+    }
+
     /// Sets the number of confirmations for the pending transaction to resolve
     /// to a receipt
     pub fn confirmations(mut self, confs: usize) -> Self {

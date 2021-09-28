@@ -1,4 +1,5 @@
 #![cfg(not(target_arch = "wasm32"))]
+use ethers_core::types::transaction::eip2718::TypedTransaction;
 use ethers_core::{
     types::{TransactionRequest, U256},
     utils::Geth,
@@ -23,7 +24,7 @@ async fn txpool() {
     // send a few transactions
     let mut txs = Vec::new();
     for _ in 0..10 {
-        let tx_hash = provider.send_transaction(tx.clone(), None).await.unwrap();
+        let tx_hash = provider.send_transaction(&tx.clone(), None).await.unwrap();
         txs.push(tx_hash);
     }
 
@@ -48,10 +49,9 @@ async fn txpool() {
     let content = content.pending.get(&account).unwrap();
 
     // the txs get their gas and nonce auto-set upon mempool entry
-    tx = tx.gas(21000);
     for i in 0..10 {
-        tx = tx.nonce(i);
         let req = content.get(&i.to_string()).unwrap();
-        assert_eq!(req, &tx);
+        let tx_hash = txs.get(i).unwrap();
+        assert_eq!(req.hash, tx_hash.hash());
     }
 }
