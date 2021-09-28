@@ -76,13 +76,7 @@ impl AbiParser {
 
         for mut line in types {
             line = line.trim_start();
-            if line.starts_with("function") {
-                let function = self.parse_function(line)?;
-                abi.functions
-                    .entry(function.name.clone())
-                    .or_default()
-                    .push(function);
-            } else if line.starts_with("event") {
+            if line.starts_with("event") {
                 let event = self.parse_event(line)?;
                 abi.events
                     .entry(event.name.clone())
@@ -91,7 +85,15 @@ impl AbiParser {
             } else if line.starts_with("constructor") {
                 abi.constructor = Some(self.parse_constructor(line)?);
             } else {
-                bail!("Illegal abi `{}`", line)
+                // function may have shorthand declaration, so it won't start with "function"
+                let function = match self.parse_function(line) {
+                    Ok(function) => function,
+                    Err(_) => bail!("Illegal abi `{}`", line),
+                };
+                abi.functions
+                    .entry(function.name.clone())
+                    .or_default()
+                    .push(function);
             }
         }
         Ok(abi)
@@ -237,41 +239,55 @@ impl AbiParser {
 
     pub fn parse_function(&mut self, s: &str) -> Result<Function> {
         let mut input = s.trim();
-        if !input.starts_with("function ") {
-            bail!("Not a function `{}`", input)
+        let shorthand = !input.starts_with("function ");
+
+        if !shorthand {
+            input = &input[8..];
         }
-        input = &input[8..];
+
         let name = parse_identifier(&mut input)?;
+        input = input
+            .strip_prefix('(')
+            .ok_or_else(|| format_err!("Expected input args parentheses at `{}`", s))?;
 
-        let mut iter = input.split(" returns");
+        let (input_args_modifiers, output_args) = match input.rsplit_once('(') {
+            Some((first, second)) => Ok((first, Some(second))),
+            None if shorthand => Err(format_err!("Expected output args parentheses at `{}`", s)),
+            None => Ok((input, None)),
+        }?;
 
-        let parens = iter
+        let mut input_args_modifiers_iter = input_args_modifiers
+            .trim_end()
+            .strip_suffix(" returns")
+            .unwrap_or(input_args_modifiers)
+            .splitn(2, ')');
+
+        let input_args = match input_args_modifiers_iter
             .next()
-            .ok_or_else(|| format_err!("Invalid function declaration at `{}`", s))?
-            .trim_end();
+            .ok_or_else(|| format_err!("Expected input args parentheses at `{}`", s))?
+        {
+            "" => None,
+            input_params_args => Some(input_params_args),
+        };
+        let modifiers = match input_args_modifiers_iter
+            .next()
+            .ok_or_else(|| format_err!("Expected input args parentheses at `{}`", s))?
+        {
+            "" => None,
+            modifiers => Some(modifiers),
+        };
 
-        let mut parens_iter = parens.rsplitn(2, ')');
-        let mut modifiers = parens_iter.next();
-
-        let input_params = if let Some(args) = parens_iter.next() {
-            args
+        let inputs = if let Some(params) = input_args {
+            self.parse_params(params)?
         } else {
-            modifiers
-                .take()
-                .ok_or(ParseError::ParseError(super::Error::InvalidData))?
-        }
-        .trim_start()
-        .strip_prefix('(')
-        .ok_or(ParseError::ParseError(super::Error::InvalidData))?;
+            Vec::new()
+        };
 
-        let inputs = self.parse_params(input_params)?;
-
-        let outputs = if let Some(params) = iter.next() {
+        let outputs = if let Some(params) = output_args {
             let params = params
                 .trim()
-                .strip_prefix('(')
-                .and_then(|s| s.strip_suffix(')'))
-                .ok_or_else(|| format_err!("Expected parentheses at `{}`", s))?;
+                .strip_suffix(')')
+                .ok_or_else(|| format_err!("Expected output args parentheses at `{}`", s))?;
             self.parse_params(params)?
         } else {
             Vec::new()
@@ -619,11 +635,16 @@ mod tests {
     fn can_parse_functions() {
         [
             "function foo(uint256[] memory x) external view returns (address)",
-            "function bar(uint256[] memory x) returns (address)",
+            "function bar(uint256[] memory x) returns(address)",
             "function bar(uint256[] memory x, uint32 y) returns (address, uint256)",
             "function foo(address[] memory, bytes memory) returns (bytes memory)",
             "function bar(uint256[] memory x)",
             "function bar()",
+            "bar(uint256[] memory x)(address)",
+            "bar(uint256[] memory x, uint32 y)(address, uint256)",
+            "foo(address[] memory, bytes memory)(bytes memory)",
+            "bar(uint256[] memory x)()",
+            "bar()()",
         ]
         .iter()
         .for_each(|x| {
@@ -639,6 +660,8 @@ mod tests {
             "event FireEvent(Voter v, NestedVoter2 n)",
             "function foo(uint256[] memory x) external view returns (address)",
             "function call(Voter memory voter) returns (address, uint256)",
+            "foo(uint256[] memory x)()",
+            "call(Voter memory voter)(address, uint256)",
             "struct NestedVoter {  Voter voter;  bool voted;  address delegate; uint vote; }",
             "struct NestedVoter2 {  NestedVoter[] voter;  Voter[10] votes;  address delegate; uint vote; }",
         ];
