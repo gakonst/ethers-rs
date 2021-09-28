@@ -264,14 +264,14 @@ impl AbiParser {
 
         let input_args = match input_args_modifiers_iter
             .next()
-            .ok_or(format_err!("Expected input args parentheses at `{}`", s))?
+            .ok_or_else(|| format_err!("Expected input args parentheses at `{}`", s))?
         {
             "" => None,
             input_params_args => Some(input_params_args),
         };
         let modifiers = match input_args_modifiers_iter
             .next()
-            .ok_or(format_err!("Expected input args parentheses at `{}`", s))?
+            .ok_or_else(|| format_err!("Expected input args parentheses at `{}`", s))?
         {
             "" => None,
             modifiers => Some(modifiers),
