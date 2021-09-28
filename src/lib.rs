@@ -12,7 +12,7 @@
 
 //! # Complete Ethereum & Celo library and wallet implementation.
 //!
-//! > ethers-rs is a port of [ethers-js](github.com/ethers-io/ethers.js) in Rust.
+//! > ethers-rs is a port of [ethers-js](https://github.com/ethers-io/ethers.js) in Rust.
 //!
 //! ## Quickstart: `prelude`
 //!
