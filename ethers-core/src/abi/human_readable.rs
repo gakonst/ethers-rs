@@ -251,10 +251,9 @@ impl AbiParser {
             .ok_or_else(|| format_err!("Expected input args parentheses at `{}`", s))?;
 
         let (input_args_modifiers, output_args) = match input.rsplit_once('(') {
-            Some((first, second)) => Ok((first, Some(second))),
-            None if shorthand => Err(format_err!("Expected output args parentheses at `{}`", s)),
-            None => Ok((input, None)),
-        }?;
+            Some((first, second)) => (first, Some(second)),
+            None => (input, None),
+        };
 
         let mut input_args_modifiers_iter = input_args_modifiers
             .trim_end()
@@ -645,6 +644,8 @@ mod tests {
             "foo(address[] memory, bytes memory)(bytes memory)",
             "bar(uint256[] memory x)()",
             "bar()()",
+            "bar(uint256)",
+            "bar()",
         ]
         .iter()
         .for_each(|x| {
