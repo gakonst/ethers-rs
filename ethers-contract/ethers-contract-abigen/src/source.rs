@@ -63,7 +63,7 @@ impl Source {
         S: AsRef<str>,
     {
         let source = source.as_ref();
-        if source.starts_with('[') {
+        if matches!(source.chars().next(), Some('[' | '{')) {
             return Ok(Source::String(source.to_owned()));
         }
         let root = env::current_dir()?.canonicalize()?;
@@ -283,5 +283,12 @@ mod tests {
         let src = r#"[{"constant":true,"inputs":[],"name":"name","outputs":[{"name":"name","type":"string"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"symbol","outputs":[{"name":"symbol","type":"string"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"decimals","outputs":[{"name":"decimals","type":"uint8"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"spender","type":"address"},{"name":"value","type":"uint256"}],"name":"approve","outputs":[{"name":"success","type":"bool"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"totalSupply","outputs":[{"name":"totalSupply","type":"uint256"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"from","type":"address"},{"name":"to","type":"address"},{"name":"value","type":"uint256"}],"name":"transferFrom","outputs":[{"name":"success","type":"bool"}],"payable":false,"type":"function"},{"constant":true,"inputs":[{"name":"who","type":"address"}],"name":"balanceOf","outputs":[{"name":"balance","type":"uint256"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"to","type":"address"},{"name":"value","type":"uint256"}],"name":"transfer","outputs":[{"name":"success","type":"bool"}],"payable":false,"type":"function"},{"constant":true,"inputs":[{"name":"owner","type":"address"},{"name":"spender","type":"address"}],"name":"allowance","outputs":[{"name":"remaining","type":"uint256"}],"payable":false,"type":"function"},{"anonymous":false,"inputs":[{"indexed":true,"name":"owner","type":"address"},{"indexed":true,"name":"spender","type":"address"},{"indexed":false,"name":"value","type":"uint256"}],"name":"Approval","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"from","type":"address"},{"indexed":true,"name":"to","type":"address"},{"indexed":false,"name":"value","type":"uint256"}],"name":"Transfer","type":"event"}]"#;
         let parsed = Source::parse(src).unwrap();
         assert_eq!(parsed, Source::String(src.to_owned()));
+
+        let hardhat_src = format!(
+            r#"{{"_format": "hh-sol-artifact-1", "contractName": "Verifier", "sourceName": "contracts/verifier.sol", "abi": {}, "bytecode": "0x", "deployedBytecode": "0x", "linkReferences": {{}}, "deployedLinkReferences": {{}}}}"#,
+            src,
+        );
+        let hardhat_parsed = Source::parse(&hardhat_src).unwrap();
+        assert_eq!(hardhat_parsed, Source::String(hardhat_src));
     }
 }
