@@ -97,6 +97,10 @@ pub struct Solc {
     /// Paths for importing other libraries
     pub allowed_paths: Vec<PathBuf>,
 
+    /// Output a single json document containing the specified information.
+    /// Default is `abi,bin,bin-runtime`
+    pub combined_json: Option<String>,
+
     /// Additional arguments to pass to solc
     pub args: Vec<String>,
 }
@@ -121,18 +125,21 @@ impl Solc {
             optimizer: Some(200), // default optimizer runs = 200
             evm_version: EvmVersion::Istanbul,
             allowed_paths: Vec::new(),
+            combined_json: Some("abi,bin,bin-runtime".to_string()),
             args: Vec::new(),
         }
     }
 
-    /// Gets the ABI for the contracts
-    pub fn build_raw(self) -> Result<HashMap<String, CompiledContractStr>> {
+    /// Gets the complete solc output as json object
+    pub fn exec(self) -> Result<serde_json::Value> {
         let path = self.solc_path.unwrap_or_else(|| PathBuf::from(SOLC));
 
         let mut command = Command::new(&path);
         let version = Solc::version(Some(path));
 
-        command.arg("--combined-json").arg("abi,bin,bin-runtime");
+        if let Some(combined_json) = self.combined_json {
+            command.arg("--combined-json").arg(combined_json);
+        }
 
         if let Some(evm_version) = normalize_evm_version(&version, self.evm_version) {
             command.arg("--evm-version").arg(evm_version.to_string());
@@ -160,7 +167,12 @@ impl Solc {
         }
 
         // Deserialize the output
-        let mut output: serde_json::Value = serde_json::from_slice(&command.stdout)?;
+        Ok(serde_json::from_slice(&command.stdout)?)
+    }
+
+    /// Gets the ABI for the contracts
+    pub fn build_raw(self) -> Result<HashMap<String, CompiledContractStr>> {
+        let mut output = self.exec()?;
         let contract_values = output["contracts"].as_object_mut().ok_or_else(|| {
             SolcError::SolcError("no contracts found in `solc` output".to_string())
         })?;
@@ -278,6 +290,13 @@ impl Solc {
     /// Sets the path to the solc binary
     pub fn solc_path(mut self, path: PathBuf) -> Self {
         self.solc_path = Some(std::fs::canonicalize(path).unwrap());
+        self
+    }
+
+    /// Sets the `combined-json` option, by default this is set to `abi,bin,bin-runtime`
+    /// NOTE: In order to get the `CompiledContract` from `Self::build`, this _must_ contain `abi,bin`.
+    pub fn combined_json(mut self, combined_json: impl Into<String>) -> Self {
+        self.combined_json = Some(combined_json.into());
         self
     }
 
