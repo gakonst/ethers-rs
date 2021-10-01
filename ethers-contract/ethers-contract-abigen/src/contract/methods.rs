@@ -208,6 +208,7 @@ mod tests {
         let params = vec![Param {
             name: "arg_a".to_string(),
             kind: ParamType::Address,
+            internal_type: None,
         }];
         let token_stream = expand_inputs_call_arg(&params);
         assert_eq!(token_stream.to_string(), "arg_a");
@@ -217,10 +218,12 @@ mod tests {
             Param {
                 name: "arg_a".to_string(),
                 kind: ParamType::Address,
+                internal_type: None,
             },
             Param {
                 name: "arg_b".to_string(),
                 kind: ParamType::Uint(256usize),
+                internal_type: None,
             },
         ];
         let token_stream = expand_inputs_call_arg(&params);
@@ -231,14 +234,17 @@ mod tests {
             Param {
                 name: "arg_a".to_string(),
                 kind: ParamType::Address,
+                internal_type: None,
             },
             Param {
                 name: "arg_b".to_string(),
                 kind: ParamType::Uint(128usize),
+                internal_type: None,
             },
             Param {
                 name: "arg_c".to_string(),
                 kind: ParamType::Bool,
+                internal_type: None,
             },
         ];
         let token_stream = expand_inputs_call_arg(&params);
@@ -259,10 +265,12 @@ mod tests {
                     Param {
                         name: "a".to_string(),
                         kind: ParamType::Bool,
+                        internal_type: None,
                     },
                     Param {
                         name: "b".to_string(),
                         kind: ParamType::Address,
+                        internal_type: None,
                     },
                 ],
             )
@@ -282,6 +290,7 @@ mod tests {
             expand_fn_outputs(&[Param {
                 name: "a".to_string(),
                 kind: ParamType::Bool,
+                internal_type: None,
             }])
             .unwrap(),
             { bool },
@@ -295,10 +304,12 @@ mod tests {
                 Param {
                     name: "a".to_string(),
                     kind: ParamType::Bool,
+                    internal_type: None,
                 },
                 Param {
                     name: "b".to_string(),
                     kind: ParamType::Address,
+                    internal_type: None,
                 },
             ],)
             .unwrap(),

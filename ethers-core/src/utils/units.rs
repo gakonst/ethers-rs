@@ -15,7 +15,7 @@ impl Units {
         match self {
             Units::Ether => 18,
             Units::Gwei => 9,
-            Units::Wei => 1,
+            Units::Wei => 0,
             Units::Other(inner) => *inner,
         }
     }

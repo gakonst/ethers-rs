@@ -69,7 +69,7 @@ pub use transports::*;
 mod provider;
 
 // ENS support
-mod ens;
+pub mod ens;
 
 mod pending_transaction;
 pub use pending_transaction::PendingTransaction;
@@ -544,6 +544,18 @@ pub trait Middleware: Sync + Send + Debug {
     ) -> Result<H256, Self::Error> {
         self.inner()
             .get_storage_at(from, location, block)
+            .await
+            .map_err(FromErr::from)
+    }
+
+    async fn get_proof<T: Into<NameOrAddress> + Send + Sync>(
+        &self,
+        from: T,
+        locations: Vec<H256>,
+        block: Option<BlockId>,
+    ) -> Result<EIP1186ProofResponse, Self::Error> {
+        self.inner()
+            .get_proof(from, locations, block)
             .await
             .map_err(FromErr::from)
     }

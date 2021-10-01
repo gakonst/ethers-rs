@@ -1,7 +1,7 @@
 [package]
 name = "ethers-middleware"
 license = "MIT OR Apache-2.0"
-version = "0.5.1"
+version = "0.5.3"
 authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
 edition = "2018"
 description = "Middleware implementations for the ethers-rs crate"
@@ -21,18 +21,18 @@ ethers-signers = { version = "^0.5.0", path = "../ethers-signers", default-featu
 
 async-trait = { version = "0.1.50", default-features = false }
 serde = { version = "1.0.124", default-features = false, features = ["derive"] }
-thiserror = { version = "1.0.28", default-features = false }
+thiserror = { version = "1.0.29", default-features = false }
 futures-util = { version = "0.3.17" }
-tracing = { version = "0.1.26", default-features = false }
+tracing = { version = "0.1.28", default-features = false }
 tracing-futures = { version = "0.2.5", default-features = false }
 
 # for gas oracles
-serde-aux = { version = "2.2.0", default-features = false }
+serde-aux = { version = "2.3.0", default-features = false }
 reqwest = { version = "0.11.4", default-features = false, features = ["json", "rustls-tls"] }
 url = { version = "2.2.2", default-features = false }
 
 serde_json = { version = "1.0.64", default-features = false }
-instant = {version = "0.1.10", features = ["now"] }
+instant = {version = "0.1.11", features = ["now"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tokio = { version = "1.5" }
@@ -41,6 +41,7 @@ tokio = { version = "1.5" }
 hex = { version = "0.4.3", default-features = false, features = ["std"] }
 rand = { version = "0.8.4", default-features = false }
 ethers-providers = { version = "^0.5.0", path = "../ethers-providers", default-features = false, features = ["ws", "rustls"] }
+once_cell = "1.8.0"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 tokio = { version = "1.5", default-features = false, features = ["rt", "macros", "time"] }

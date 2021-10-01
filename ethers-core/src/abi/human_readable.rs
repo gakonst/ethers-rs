@@ -434,6 +434,7 @@ impl AbiParser {
             Param {
                 name: name.to_string(),
                 kind,
+                internal_type: None,
             },
             user_struct,
         ))

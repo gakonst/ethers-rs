@@ -49,6 +49,9 @@ jobs:
           toolchain: stable
           override: true
           components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v1
+        with:
+          cache-on-failure: true
       - name: cargo test
         run: |
             export PATH=$HOME/bin:$PATH
@@ -93,6 +96,9 @@ jobs:
           toolchain: stable
           override: true
           components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v1
+        with:
+          cache-on-failure: true
       - name: cargo test (Celo)
         run: |
             export PATH=$HOME/bin:$PATH
@@ -111,6 +117,9 @@ jobs:
           toolchain: stable
           override: true
           components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v1
+        with:
+          cache-on-failure: true
       - name: cargo fmt
         run: cargo fmt --all -- --check
       - name: cargo clippy
@@ -134,6 +143,10 @@ jobs:
           target: wasm32-unknown-unknown
           profile: minimal
           override: true
+
+      - uses: Swatinem/rust-cache@v1
+        with:
+          cache-on-failure: true
 
       - name: Check
         uses: actions-rs/cargo@v1
@@ -196,6 +209,9 @@ jobs:
           toolchain: stable
           override: true
           components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v1
+        with:
+          cache-on-failure: true
       - name: cargo test
         run: |
             export PATH=$HOME/bin:$PATH
