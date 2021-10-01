@@ -194,22 +194,22 @@ impl Context {
 #[derive(Debug, Clone, Default)]
 pub struct InternalStructs {
     /// All unique internal types that are function inputs or outputs
-    top_level_internal_types: HashMap<String, Component>,
+    pub(crate) top_level_internal_types: HashMap<String, Component>,
 
     /// (function name, param name) -> struct which are the identifying properties we get the name from ethabi.
-    function_params: HashMap<(String, String), String>,
+    pub(crate) function_params: HashMap<(String, String), String>,
 
     /// (function name) -> Vec<structs> all structs the function returns
-    outputs: HashMap<String, Vec<String>>,
+    pub(crate) outputs: HashMap<String, Vec<String>>,
 
     /// All the structs extracted from the abi with their identifier as key
-    structs: HashMap<String, SolStruct>,
+    pub(crate) structs: HashMap<String, SolStruct>,
 
     /// solidity structs as tuples
-    struct_tuples: HashMap<String, ParamType>,
+    pub(crate) struct_tuples: HashMap<String, ParamType>,
 
     /// Contains the names for the rust types (id -> rust type name)
-    rust_type_names: HashMap<String, String>,
+    pub(crate) rust_type_names: HashMap<String, String>,
 }
 
 impl InternalStructs {

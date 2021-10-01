@@ -131,12 +131,26 @@ impl Context {
         };
 
         // try to extract all the solidity structs from the normal JSON ABI
-        // we need to parse the json abi again because we need the internalType fields which are omitted by ethabi.
-        let internal_structs = (!human_readable)
-            .then(|| serde_json::from_str::<RawAbi>(&abi_str).ok())
-            .flatten()
-            .map(InternalStructs::new)
-            .unwrap_or_default();
+        // we need to parse the json abi again because we need the internalType fields which are omitted by ethabi. If the ABI was defined as human readable we use the `internal_structs` from the Abi Parser
+        let internal_structs = if human_readable {
+            let mut internal_structs = InternalStructs::default();
+            // the types in the abi_parser are already valid rust types so simply clone them to make it consistent with the `RawAbi` variant
+            internal_structs.rust_type_names.extend(
+                abi_parser
+                    .function_params
+                    .values()
+                    .map(|ty| (ty.clone(), ty.clone())),
+            );
+            internal_structs.function_params = abi_parser.function_params.clone();
+            internal_structs.outputs = abi_parser.outputs.clone();
+
+            internal_structs
+        } else {
+            serde_json::from_str::<RawAbi>(&abi_str)
+                .ok()
+                .map(InternalStructs::new)
+                .unwrap_or_default()
+        };
 
         let contract_name = util::ident(&args.contract_name);
 
