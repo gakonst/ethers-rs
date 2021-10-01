@@ -298,7 +298,8 @@ impl AbiParser {
         };
 
         let inputs = if let Some(params) = input_args {
-            let inputs = self
+            
+            self
                 .parse_params(params)?
                 .into_iter()
                 .map(|(input, struct_name)| {
@@ -309,8 +310,7 @@ impl AbiParser {
                     }
                     input
                 })
-                .collect();
-            inputs
+                .collect()
         } else {
             Vec::new()
         };
