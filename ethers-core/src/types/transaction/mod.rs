@@ -4,6 +4,7 @@ pub mod response;
 pub mod eip1559;
 pub mod eip2718;
 pub mod eip2930;
+pub mod eip712;
 
 pub(crate) const BASE_NUM_TX_FIELDS: usize = 9;
 

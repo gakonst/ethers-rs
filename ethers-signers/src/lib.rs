@@ -69,7 +69,9 @@ mod aws;
 pub use aws::{AwsSigner, AwsSignerError};
 
 use async_trait::async_trait;
-use ethers_core::types::{transaction::eip2718::TypedTransaction, Address, Signature};
+use ethers_core::types::{
+    transaction::eip2718::TypedTransaction, transaction::eip712::Eip712, Address, Signature,
+};
 use std::error::Error;
 
 /// Applies [EIP155](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-155.md)
@@ -92,6 +94,21 @@ pub trait Signer: std::fmt::Debug + Send + Sync {
 
     /// Signs the transaction
     async fn sign_transaction(&self, message: &TypedTransaction) -> Result<Signature, Self::Error>;
+
+    /// Encodes and signs the typed data according EIP-712
+    /// payload must implement Eip712 trait.
+    ///
+    /// NOTE: Returning is Option<Signature> instead of Signature
+    /// due to use of std::convert::Infallible as an error type
+    /// in the Wallet implementation, which conflicts with
+    /// the error types used within the method, which cannot be mapped
+    /// to Infallible type. To avoid breaking changes and changing the error
+    /// type, this method returns `None` if there is an error that restricts
+    /// the payload from being encoded, and signed.
+    async fn sign_typed_data<T: Eip712 + Send + Sync>(
+        &self,
+        payload: &T,
+    ) -> Result<Option<Signature>, Self::Error>;
 
     /// Returns the signer's Ethereum Address
     fn address(&self) -> Address;

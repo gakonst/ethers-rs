@@ -25,6 +25,16 @@ impl Signer for LedgerEthereum {
         self.sign_tx(message).await
     }
 
+    async fn sign_typed_data<T: Eip712 + Send + Sync>(
+        &self,
+        payload: &T,
+    ) -> Result<Option<Signature>, Self::Error> {
+        let decoded = hex::decode(payload.encode_eip712())?;
+        let hash = <[u8; 32]>::try_from(&decoded[..])?;
+        
+        Ok(Some(self.sign_hash(hash.into(), false)))
+    }
+
     /// Returns the signer's Ethereum Address
     fn address(&self) -> Address {
         self.address

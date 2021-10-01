@@ -19,7 +19,8 @@ members = [
     "ethers-signers",
     "ethers-core",
     "ethers-middleware",
-    "ethers-etherscan"
+    "ethers-etherscan",
+    "derive-eip712"
 ]
 
 default-members = [
@@ -78,6 +79,7 @@ ethers-core = { version = "^0.5.0", default-features = false, path = "./ethers-c
 ethers-providers = { version = "^0.5.0", default-features = false, path = "./ethers-providers" }
 ethers-signers = { version = "^0.5.0", default-features = false, path = "./ethers-signers" }
 ethers-middleware = { version = "^0.5.0", default-features = false, path = "./ethers-middleware" }
+derive-eip712 = { version = "0.1", path = "./derive-eip712" }
 
 [dev-dependencies]
 ethers-contract = { version = "^0.5.0", default-features = false, path = "./ethers-contract", features = ["abigen"] }
