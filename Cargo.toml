@@ -20,7 +20,7 @@ members = [
     "ethers-core",
     "ethers-middleware",
     "ethers-etherscan",
-    "derive-eip712"
+    "ethers-core/ethers-derive-eip712",
 ]
 
 default-members = [
@@ -34,6 +34,7 @@ default-members = [
 
 exclude = [
     "examples/ethers-wasm",
+    "ethers-core/derive-eip712"
 ]
 
 [package.metadata.docs.rs]
@@ -72,14 +73,12 @@ yubi = ["ethers-signers/yubi"]
 ## contracts
 abigen = ["ethers-contract/abigen"]
 
-
 [dependencies]
 ethers-contract = { version = "^0.5.0", default-features = false, path = "./ethers-contract" }
 ethers-core = { version = "^0.5.0", default-features = false, path = "./ethers-core", features = ["setup"] }
 ethers-providers = { version = "^0.5.0", default-features = false, path = "./ethers-providers" }
 ethers-signers = { version = "^0.5.0", default-features = false, path = "./ethers-signers" }
 ethers-middleware = { version = "^0.5.0", default-features = false, path = "./ethers-middleware" }
-derive-eip712 = { version = "0.1", path = "./derive-eip712" }
 
 [dev-dependencies]
 ethers-contract = { version = "^0.5.0", default-features = false, path = "./ethers-contract", features = ["abigen"] }

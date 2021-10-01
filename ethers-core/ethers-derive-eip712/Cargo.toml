@@ -1,5 +1,5 @@
 [package]
-name = "derive-eip712"
+name = "ethers-derive-eip712"
 version = "0.1.0"
 edition = "2018"
 description = "Custom derive macro for EIP-712 typed data"
@@ -10,10 +10,7 @@ proc-macro = true
 [dependencies]
 quote = "1.0.9"
 syn = "1.0.77"
-ethers-core = { path = "../ethers-core" }
-convert_case = "0.4.0"
-proc-macro2 = "1.0.29"
+ethers-core = { version = "^0.5.0", path = "../"}
 hex = "0.4.3"
 serde = "1.0.130"
 serde_json = "1.0.68"
-thiserror = "1.0.29"

@@ -1,5 +1,5 @@
-use derive_eip712::*;
 use ethers_core::types::{transaction::eip712::Eip712, H160};
+use ethers_derive_eip712::*;
 use serde::Serialize;
 
 #[derive(Debug, Eip712, Serialize)]
