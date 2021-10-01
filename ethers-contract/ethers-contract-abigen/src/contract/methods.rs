@@ -82,8 +82,6 @@ impl Context {
                 Ok(quote! {[#ty; #size]})
             }
             ParamType::Tuple(_) => {
-                eprintln!("function {:?}", fun);
-
                 let ty = if let Some(rust_struct_name) = self
                     .internal_structs
                     .get_function_input_struct_type(&fun.name, param)
@@ -93,7 +91,6 @@ impl Context {
                 } else {
                     types::expand(kind)?
                 };
-                eprintln!("{:?}", ty);
                 Ok(ty)
             }
             _ => types::expand(kind),
