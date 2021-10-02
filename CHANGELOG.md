@@ -4,6 +4,8 @@
 
 ### Unreleased
 
+* Use rust types as contract function inputs for human readable abi [#482](https://github.com/gakonst/ethers-rs/pull/482)
+* 
 ### 0.5.3
 
 * Allow configuring the optimizer & passing arbitrary arguments to solc [#427](https://github.com/gakonst/ethers-rs/pull/427)

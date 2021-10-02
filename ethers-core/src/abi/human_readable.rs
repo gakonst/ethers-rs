@@ -13,6 +13,10 @@ pub struct AbiParser {
     pub structs: HashMap<String, SolStruct>,
     /// solidity structs as tuples
     pub struct_tuples: HashMap<String, Vec<ParamType>>,
+    /// (function name, param name) -> struct which are the identifying properties we get the name from ethabi.
+    pub function_params: HashMap<(String, String), String>,
+    /// (function name) -> Vec<structs> all structs the function returns
+    pub outputs: HashMap<String, Vec<String>>,
 }
 
 impl AbiParser {
@@ -83,7 +87,22 @@ impl AbiParser {
                     .or_default()
                     .push(event);
             } else if line.starts_with("constructor") {
-                abi.constructor = Some(self.parse_constructor(line)?);
+                let inputs = self
+                    .constructor_inputs(line)?
+                    .into_iter()
+                    .map(|(input, struct_name)| {
+                        if let Some(struct_name) = struct_name {
+                            // keep track of the user defined struct of that param
+                            self.function_params.insert(
+                                ("constructor".to_string(), input.name.clone()),
+                                struct_name,
+                            );
+                        }
+                        input
+                    })
+                    .collect();
+
+                abi.constructor = Some(Constructor { inputs });
             } else {
                 // function may have shorthand declaration, so it won't start with "function"
                 let function = match self.parse_function(line) {
@@ -148,6 +167,8 @@ impl AbiParser {
                 .map(|s| (s.name().to_string(), s))
                 .collect(),
             struct_tuples: HashMap::new(),
+            function_params: Default::default(),
+            outputs: Default::default(),
         }
     }
 
@@ -233,7 +254,7 @@ impl AbiParser {
         Ok(EventParam {
             name: name.to_string(),
             indexed,
-            kind: self.parse_type(type_str)?,
+            kind: self.parse_type(type_str)?.0,
         })
     }
 
@@ -278,6 +299,16 @@ impl AbiParser {
 
         let inputs = if let Some(params) = input_args {
             self.parse_params(params)?
+                .into_iter()
+                .map(|(input, struct_name)| {
+                    if let Some(struct_name) = struct_name {
+                        // keep track of the user defined struct of that param
+                        self.function_params
+                            .insert((name.clone(), input.name.clone()), struct_name);
+                    }
+                    input
+                })
+                .collect()
         } else {
             Vec::new()
         };
@@ -287,7 +318,19 @@ impl AbiParser {
                 .trim()
                 .strip_suffix(')')
                 .ok_or_else(|| format_err!("Expected output args parentheses at `{}`", s))?;
-            self.parse_params(params)?
+            let output_params = self.parse_params(params)?;
+            let mut outputs = Vec::with_capacity(output_params.len());
+            let mut output_types = Vec::new();
+
+            for (output, struct_name) in output_params {
+                if let Some(struct_name) = struct_name {
+                    // keep track of the user defined struct of that param
+                    output_types.push(struct_name);
+                }
+                outputs.push(output);
+            }
+            self.outputs.insert(name.clone(), output_types);
+            outputs
         } else {
             Vec::new()
         };
@@ -304,31 +347,33 @@ impl AbiParser {
         })
     }
 
-    fn parse_params(&self, s: &str) -> Result<Vec<Param>> {
+    fn parse_params(&self, s: &str) -> Result<Vec<(Param, Option<String>)>> {
         s.split(',')
             .filter(|s| !s.is_empty())
             .map(|s| self.parse_param(s))
             .collect::<Result<Vec<_>, _>>()
     }
 
-    fn parse_type(&self, type_str: &str) -> Result<ParamType> {
+    /// Returns the `ethabi` `ParamType` for the function parameter and the aliased struct type, if it is a user defined struct
+    fn parse_type(&self, type_str: &str) -> Result<(ParamType, Option<String>)> {
         if let Ok(kind) = Reader::read(type_str) {
-            Ok(kind)
+            Ok((kind, None))
         } else {
             // try struct instead
             if let Ok(field) = StructFieldType::parse(type_str) {
                 let struct_ty = field
                     .as_struct()
                     .ok_or_else(|| format_err!("Expected struct type `{}`", type_str))?;
+                let name = struct_ty.name();
                 let tuple = self
                     .struct_tuples
-                    .get(struct_ty.name())
+                    .get(name)
                     .cloned()
                     .map(ParamType::Tuple)
                     .ok_or_else(|| format_err!("Unknown struct `{}`", struct_ty.name()))?;
 
                 if let Some(field) = field.as_struct() {
-                    Ok(field.as_param(tuple))
+                    Ok((field.as_param(tuple), Some(name.to_string())))
                 } else {
                     bail!("Expected struct type")
                 }
@@ -339,6 +384,15 @@ impl AbiParser {
     }
 
     pub fn parse_constructor(&self, s: &str) -> Result<Constructor> {
+        let inputs = self
+            .constructor_inputs(s)?
+            .into_iter()
+            .map(|s| s.0)
+            .collect();
+        Ok(Constructor { inputs })
+    }
+
+    fn constructor_inputs(&self, s: &str) -> Result<Vec<(Param, Option<String>)>> {
         let mut input = s.trim();
         if !input.starts_with("constructor") {
             bail!("Not a constructor `{}`", input)
@@ -353,12 +407,10 @@ impl AbiParser {
             .last()
             .ok_or_else(|| format_err!("Expected closing `)` in `{}`", s))?;
 
-        let inputs = self.parse_params(params)?;
-
-        Ok(Constructor { inputs })
+        self.parse_params(params)
     }
 
-    fn parse_param(&self, param: &str) -> Result<Param> {
+    fn parse_param(&self, param: &str) -> Result<(Param, Option<String>)> {
         let mut iter = param.trim().rsplitn(3, is_whitespace);
 
         let mut name = iter
@@ -375,12 +427,15 @@ impl AbiParser {
             type_str = name;
             name = "";
         }
-
-        Ok(Param {
-            name: name.to_string(),
-            kind: self.parse_type(type_str)?,
-            internal_type: None,
-        })
+        let (kind, user_struct) = self.parse_type(type_str)?;
+        Ok((
+            Param {
+                name: name.to_string(),
+                kind,
+                internal_type: None,
+            },
+            user_struct,
+        ))
     }
 }
 

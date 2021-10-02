@@ -1,7 +1,9 @@
 #![cfg(feature = "abigen")]
 //! Test cases to validate the `abigen!` macro
 use ethers_contract::{abigen, EthEvent};
-use ethers_core::abi::Tokenizable;
+use ethers_core::abi::{Address, Tokenizable};
+use ethers_providers::Provider;
+use std::sync::Arc;
 
 #[test]
 fn can_gen_human_readable() {
@@ -73,4 +75,22 @@ fn can_generate_internal_structs() {
     assert_tokenizeable::<VerifyingKey>();
     assert_tokenizeable::<G1Point>();
     assert_tokenizeable::<G2Point>();
+}
+
+#[test]
+fn can_gen_human_readable_with_structs() {
+    abigen!(
+        SimpleContract,
+        r#"[
+        struct Foo { uint256 x; }
+        function foo(Foo memory x)
+    ]"#,
+        event_derives(serde::Deserialize, serde::Serialize)
+    );
+    assert_tokenizeable::<Foo>();
+
+    let (client, _mock) = Provider::mocked();
+    let contract = SimpleContract::new(Address::default(), Arc::new(client));
+    let foo = Foo { x: 100u64.into() };
+    let _ = contract.foo(foo);
 }
