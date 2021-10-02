@@ -119,23 +119,26 @@ impl Context {
     /// Create a context from the code generation arguments.
     fn from_abigen(args: Abigen) -> Result<Self> {
         // get the actual ABI string
-        let mut abi_str = args.abi_source.get().context("failed to get ABI JSON")?;
+        let abi_str = args.abi_source.get().context("failed to get ABI JSON")?;
         let mut abi_parser = AbiParser::default();
 
         let (abi, human_readable): (Abi, _) = if let Ok(abi) = abi_parser.parse_str(&abi_str) {
             (abi, true)
         } else {
             // a best-effort coercion of an ABI or an artifact JSON into an artifact JSON.
-            if abi_str.trim().starts_with('[') {
-                abi_str = format!(r#"{{"abi":{}}}"#, abi_str.trim());
-            }
+            let json_abi_str = if abi_str.trim().starts_with('[') {
+                format!(r#"{{"abi":{}}}"#, abi_str.trim())
+            } else {
+                abi_str.clone()
+            };
 
             #[derive(Deserialize)]
             struct Contract {
                 abi: Abi,
             }
 
-            let contract = serde_json::from_str::<Contract>(&abi_str)?;
+            let contract = serde_json::from_str::<Contract>(&json_abi_str)?;
+
             (contract.abi, false)
         };
 
