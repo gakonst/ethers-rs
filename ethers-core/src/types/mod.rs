@@ -22,7 +22,7 @@ mod path_or_string;
 pub use path_or_string::PathOrString;
 
 mod i256;
-pub use i256::I256;
+pub use i256::{Sign, I256};
 
 mod bytes;
 pub use self::bytes::Bytes;

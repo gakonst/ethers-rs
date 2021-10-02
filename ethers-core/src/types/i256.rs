@@ -70,7 +70,7 @@ fn handle_overflow<T>((result, overflow): (T, bool)) -> T {
 
 /// Enum to represent the sign of a 256-bit signed integer.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum Sign {
+pub enum Sign {
     /// Greater than or equal to zero.
     Positive,
     /// Less than zero.
@@ -127,7 +127,7 @@ impl I256 {
 
     /// Creates an I256 from a sign and an absolute value. Returns the value and
     /// a bool that is true if the conversion caused an overflow.
-    fn overflowing_from_sign_and_abs(sign: Sign, abs: U256) -> (Self, bool) {
+    pub fn overflowing_from_sign_and_abs(sign: Sign, abs: U256) -> (Self, bool) {
         let value = I256(match sign {
             Sign::Positive => abs,
             Sign::Negative => twos_complement(abs),
@@ -137,7 +137,7 @@ impl I256 {
 
     /// Creates an I256 from an absolute value and a negative flag. Returns
     /// `None` if it would overflow an `I256`.
-    fn checked_from_sign_and_abs(sign: Sign, abs: U256) -> Option<Self> {
+    pub fn checked_from_sign_and_abs(sign: Sign, abs: U256) -> Option<Self> {
         let (result, overflow) = I256::overflowing_from_sign_and_abs(sign, abs);
         if overflow {
             None
@@ -147,7 +147,7 @@ impl I256 {
     }
 
     /// Splits a I256 into its absolute value and negative flag.
-    fn into_sign_and_abs(self) -> (Sign, U256) {
+    pub fn into_sign_and_abs(self) -> (Sign, U256) {
         let sign = self.sign();
         let abs = match sign {
             Sign::Positive => self.0,
@@ -157,7 +157,7 @@ impl I256 {
     }
 
     /// Returns the sign of self.
-    fn sign(self) -> Sign {
+    pub fn sign(self) -> Sign {
         let most_significant_word = (self.0).0[3];
         match most_significant_word & (1 << 63) {
             0 => Sign::Positive,
