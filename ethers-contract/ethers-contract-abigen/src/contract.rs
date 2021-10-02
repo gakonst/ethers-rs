@@ -10,14 +10,14 @@ use super::Abigen;
 use crate::contract::structs::InternalStructs;
 use crate::rawabi::RawAbi;
 use anyhow::{anyhow, Context as _, Result};
-use ethers_core::abi::AbiParser;
 use ethers_core::{
-    abi::{parse_abi, Abi},
+    abi::{parse_abi, Abi, AbiParser},
     types::Address,
 };
 use inflector::Inflector;
 use proc_macro2::{Ident, Literal, TokenStream};
 use quote::quote;
+use serde::Deserialize;
 use std::collections::BTreeMap;
 use syn::{Path, Visibility};
 
@@ -121,13 +121,25 @@ impl Context {
         // get the actual ABI string
         let abi_str = args.abi_source.get().context("failed to get ABI JSON")?;
         let mut abi_parser = AbiParser::default();
-        // parse it
-        let (abi, human_readable): (Abi, _) = if let Ok(abi) = serde_json::from_str(&abi_str) {
-            // normal abi format
-            (abi, false)
+
+        let (abi, human_readable): (Abi, _) = if let Ok(abi) = abi_parser.parse_str(&abi_str) {
+            (abi, true)
         } else {
-            // heuristic for parsing the human readable format
-            (abi_parser.parse_str(&abi_str)?, true)
+            // a best-effort coercion of an ABI or an artifact JSON into an artifact JSON.
+            let json_abi_str = if abi_str.trim().starts_with('[') {
+                format!(r#"{{"abi":{}}}"#, abi_str.trim())
+            } else {
+                abi_str.clone()
+            };
+
+            #[derive(Deserialize)]
+            struct Contract {
+                abi: Abi,
+            }
+
+            let contract = serde_json::from_str::<Contract>(&json_abi_str)?;
+
+            (contract.abi, false)
         };
 
         // try to extract all the solidity structs from the normal JSON ABI
