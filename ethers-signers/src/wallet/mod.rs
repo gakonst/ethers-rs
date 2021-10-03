@@ -25,7 +25,6 @@ use ethers_core::{
 use hash::Sha256Proxy;
 
 use async_trait::async_trait;
-use std::convert::TryFrom;
 use std::fmt;
 
 /// An Ethereum private-public key pair which can be used for signing messages.
@@ -89,19 +88,17 @@ impl<D: Sync + Send + DigestSigner<Sha256Proxy, RecoverableSignature>> Signer fo
 
     async fn sign_typed_data<T: Eip712 + Send + Sync>(
         &self,
-        payload: &T,
-    ) -> Result<Option<Signature>, Self::Error> {
-        if let Ok(encoded) = payload.encode_eip712() {
-            if let Some(decoded) = hex::decode(encoded).ok() {
-                if let Some(hash) = <[u8; 32]>::try_from(&decoded[..]).ok() {
-                    return Ok(Some(self.sign_hash(hash.into(), false)));
-                }
+        payload: T,
+    ) -> Result<Signature, Self::Error> {
+        let encoded = match payload.encode_eip712() {
+            Ok(e) => e,
+            Err(_) => {
+                // NOTE: Still looking for a better solution for mapping to Infallible error type;
+                unreachable!()
             }
-        }
+        };
 
-        // Returning none here due to use of infallible error;
-        // The wallet signing should return an error rather than infallible or None.
-        Ok(None)
+        Ok(self.sign_hash(H256::from(encoded), false))
     }
 
     fn address(&self) -> Address {

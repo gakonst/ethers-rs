@@ -8,17 +8,17 @@
 //! This derive macro requires the `#[eip712]` attributes to be included
 //! for specifying the domain separator used in encoding the hash.
 //!
-//! All String values returned by the implemented methods are hex encoded and should be
-//! decoded into `[u8; 32]` for signing. See example for decoding.
+//! NOTE: In addition to deriving `Eip712` trait, the `EthAbiType` trait must also be derived.
+//! This allows the struct to be parsed into `ethers_core::abi::Token` for encoding.
 //!
 //! # Example Usage
 //!
 //! ```rust
+//! use ethers_contract::EthAbiType;
 //! use ethers_derive_eip712::*;
 //! use ethers_core::types::{transaction::eip712::Eip712, H160};
-//! use serde::Serialize;
 //!
-//! #[derive(Debug, Eip712, Serialize)]
+//! #[derive(Debug, Eip712, EthAbiType)]
 //! #[eip712(
 //!     name = "Radicle",
 //!     version = "1",
@@ -44,21 +44,27 @@
 //! };
 //!
 //! let hash = puzzle.encode_eip712()?;
-//!
-//! let decoded: Vec<u8> = hex::decode(hash).expect("failed to decode")
-//! let byte_array: [u8; 32] = <[u8; 32]>::try_from(&decoded[..])?;
 //! ```
 //!
 //! # Limitations
 //!
 //! At the moment, the derive macro does not recursively encode nested Eip712 structs.
 //!
+//! There is an Inner helper attribute `#[eip712]` for fields that will eventually be used to
+//! determine if there is a nested eip712 struct. However, this work is not yet complete.
+//!
+use std::convert::TryFrom;
 
+use ethers_core::types::transaction::eip712;
 use proc_macro::TokenStream;
 use quote::quote;
 
-// import eip712 utilities from ethers_core::types::transaction::eip712
-use ethers_core::types::transaction::eip712;
+#[proc_macro_derive(Eip712, attributes(eip712))]
+pub fn eip_712_derive(input: TokenStream) -> TokenStream {
+    let ast = syn::parse(input).expect("failed to parse token stream for Eip712 derived struct");
+
+    impl_eip_712_macro(&ast)
+}
 
 // Main implementation macro, used to compute static values and define
 // method for encoding the final eip712 payload;
@@ -67,110 +73,86 @@ fn impl_eip_712_macro(ast: &syn::DeriveInput) -> TokenStream {
     let primary_type = &ast.ident;
 
     // Computer domain separator
-    let domain_attributes: eip712::Eip712Domain = eip712::Eip712Domain::from(ast);
-    let domain_separator = domain_attributes.separator();
-    let domain_type_hash = hex::encode(eip712::eip712_domain_type_hash());
+    let domain = match eip712::EIP712Domain::try_from(ast) {
+        Ok(attributes) => attributes,
+        Err(e) => return TokenStream::from(e),
+    };
+
+    let domain_separator = hex::encode(domain.separator());
 
     // Must parse the AST at compile time.
-    let parsed_fields = eip712::parse_fields(ast);
-
-    // JSON Stringify the field names and types to pass into the
-    // derived encode_eip712() method as a static string;
-    // the AST of the struct is not available at runtime, so this is
-    // a work around for passing in the struct fields;
-    let fields: String = serde_json::to_string(&parsed_fields)
-        .expect("failed to serialize parsed fields into JSON string");
+    let parsed_fields = match eip712::parse_fields(ast) {
+        Ok(fields) => fields,
+        Err(e) => return TokenStream::from(e),
+    };
 
     // Compute the type hash for the derived struct using the parsed fields from above;
-    let type_hash = eip712::make_type_hash(primary_type.clone().to_string(), &parsed_fields);
+    let type_hash = hex::encode(eip712::make_type_hash(
+        primary_type.clone().to_string(),
+        &parsed_fields,
+    ));
 
     let implementation = quote! {
         impl Eip712 for #primary_type {
             type Error = ethers_core::types::transaction::eip712::Eip712Error;
 
-            fn type_hash() -> String {
-                #type_hash.to_string()
+            fn type_hash() -> Result<[u8; 32], Self::Error> {
+                use std::convert::TryFrom;
+                let decoded = hex::decode(#type_hash.to_string())?;
+                let byte_array: [u8; 32] = <[u8; 32]>::try_from(&decoded[..])?;
+                Ok(byte_array)
             }
 
-            fn domain_separator() -> String {
-                #domain_separator.to_string()
+            fn domain_separator() -> Result<[u8; 32], Self::Error> {
+                use std::convert::TryFrom;
+                let decoded = hex::decode(#domain_separator.to_string())?;
+                let byte_array: [u8; 32] = <[u8; 32]>::try_from(&decoded[..])?;
+                Ok(byte_array)
             }
 
-            fn encode_eip712(&self) -> Result<String, Self::Error> {
-                // Ok(make_struct_hash(self, #domain_separator, #type_hash, #fields)?.to_string())
-                let json: serde_json::Value = serde_json::from_str(#fields)?;
+            fn struct_hash(self) -> Result<[u8; 32], Self::Error> {
+                use ethers_core::abi::Tokenizable;
+                let mut items = vec![ethers_core::abi::Token::Uint(
+                    ethers_core::types::U256::from(&Self::type_hash()?[..]),
+                )];
 
-                if let serde_json::Value::Object(fields) = json {
-                    let mut keys = fields.keys().map(|f| f.to_string()).collect::<Vec<String>>();
-
-                    // sort the fields alphabetically;
-                    // NOTE: the solidity type hash should also use the same convention;
-                    keys.sort();
-
-                    let _values: serde_json::Value = serde_json::to_value(self)?;
-
-                    if let serde_json::Value::Object(obj) = _values {
-                        // Initialize the items with the type hash
-                        let mut items = vec![ethers_core::abi::Token::Uint(
-                            ethers_core::types::U256::from(&hex::decode(#type_hash)?[..]),
-                        )];
-
-                        for key in keys {
-                            if let Some(v) = obj.get(&key) {
-                                if let Some(ty) = fields.get(&key) {
-                                    if let serde_json::Value::String(value) = v{
-                                        if let serde_json::Value::String(field_type) = ty {
-                                            // convert encoded type;
-                                            let item = match field_type.as_ref() {
-                                                // TODO: This following enc types are not exhaustive;
-                                                // Check types against solidity abi.encodePacked()
-                                                "uint128" => ethers_core::abi::Token::Uint(ethers_core::types::U256::from(value.parse::<usize>().expect("failed to parse unsigned integer"))),
-                                                "uint256" => ethers_core::abi::Token::Uint(ethers_core::types::U256::from(value.parse::<usize>().expect("failed to parse unsigned integer"))),
-                                                "address" => ethers_core::abi::Token::Address(value.parse::<ethers_core::types::Address>().expect("failed to parse address")),
-                                                _ => { ethers_core::abi::Token::Uint(ethers_core::types::U256::from(ethers_core::utils::keccak256(value))) }
-                                            };
-
-                                            // Add the parsed field type to the items to be encoded;
-                                            items.push(item);
-                                        }
-                                    }
-                                }
+                if let ethers_core::abi::Token::Tuple(tokens) = self.clone().into_token() {
+                    for token in tokens {
+                        match &token {
+                            ethers_core::abi::Token::Tuple(t) => {
+                                // TODO: check for nested Eip712 Type;
+                                // Challenge is determining the type hash
+                            },
+                            _ => {
+                                items.push(ethers_core::types::transaction::eip712::encode_eip712_type(token));
                             }
                         }
-
-                        let struct_hash = ethers_core::utils::keccak256(ethers_core::abi::encode(
-                            &items,
-                        ));
-
-                        // encode the digest to be compatible with solidity abi.encodePacked()
-                        // See: https://github.com/gakonst/ethers-rs/blob/master/examples/permit_hash.rs#L72
-                        let digest_input = [
-                            &[0x19, 0x01],
-                            &hex::decode(#domain_separator)?[..],
-                            &struct_hash[..]
-                        ].concat();
-
-                        return Ok(hex::encode(ethers_core::utils::keccak256(digest_input)));
                     }
                 }
 
-                // Reached Error:
-                Err(ethers_core::types::transaction::eip712::Eip712Error::FailedToEncodeStruct)
+                let struct_hash = ethers_core::utils::keccak256(ethers_core::abi::encode(
+                    &items,
+                ));
 
+                Ok(struct_hash)
             }
 
-            fn eip712_domain_type_hash() -> String {
-                #domain_type_hash.to_string()
+            fn encode_eip712(self) -> Result<[u8; 32], Self::Error> {
+                let struct_hash = self.struct_hash()?;
+
+                // encode the digest to be compatible with solidity abi.encodePacked()
+                // See: https://github.com/gakonst/ethers-rs/blob/master/examples/permit_hash.rs#L72
+                let digest_input = [
+                    &[0x19, 0x01],
+                    &Self::domain_separator()?[..],
+                    &struct_hash[..]
+                ].concat();
+
+                return Ok(ethers_core::utils::keccak256(digest_input));
+
             }
         }
     };
 
     implementation.into()
-}
-
-#[proc_macro_derive(Eip712, attributes(eip712))]
-pub fn eip_712_derive(input: TokenStream) -> TokenStream {
-    let ast = syn::parse(input).expect("failed to parse token stream for Eip712 derived struct");
-
-    impl_eip_712_macro(&ast)
 }

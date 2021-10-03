@@ -929,6 +929,7 @@ dependencies = [
  "hex-literal",
  "k256",
  "once_cell",
+ "proc-macro2",
  "quote",
  "rand 0.8.4",
  "rlp",
@@ -946,8 +947,10 @@ dependencies = [
 name = "ethers-derive-eip712"
 version = "0.1.0"
 dependencies = [
+ "ethers-contract",
  "ethers-core",
  "hex",
+ "proc-macro2",
  "quote",
  "serde",
  "serde_json",

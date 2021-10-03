@@ -250,14 +250,12 @@ impl<'a> super::Signer for AwsSigner<'a> {
 
     async fn sign_typed_data<T: Eip712 + Send + Sync>(
         &self,
-        payload: &T,
-    ) -> Result<Option<EthSig>, Self::Error> {
-        let decoded = hex::decode(payload.encode_eip712())?;
-        let hash = <[u8; 32]>::try_from(&decoded[..])?;
-
+        payload: T,
+    ) -> Result<EthSig, Self::Error> {
+        let hash = payload.encode_eip712()?;
         let digest = self.sign_digest_with_eip155(hash.into());
 
-        Ok(Some(digest))
+        Ok(digest)
     }
 
     fn address(&self) -> Address {

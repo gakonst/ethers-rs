@@ -35,6 +35,7 @@ once_cell = "1.8.0"
 convert_case = "0.4.0"
 syn = "1.0.77"
 quote = "1.0.9"
+proc-macro2 = "1.0.29"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 # async
