@@ -222,7 +222,8 @@ pub struct VerifyContract {
         skip_serializing_if = "Option::is_none"
     )]
     pub constructor_arguments: Option<String>,
-    pub evmversion: Option<String>,
+    #[serde(rename = "evmversion")]
+    pub evm_version: Option<String>,
     #[serde(flatten)]
     pub other: HashMap<String, String>,
 }
@@ -238,7 +239,7 @@ impl VerifyContract {
             optimization_used: None,
             runs: None,
             constructor_arguments: None,
-            evmversion: None,
+            evm_version: None,
             other: Default::default(),
         }
     }
@@ -276,8 +277,8 @@ impl VerifyContract {
         self
     }
 
-    pub fn evmversion(mut self, evmversion: impl Into<String>) -> Self {
-        self.evmversion = Some(evmversion.into());
+    pub fn evm_version(mut self, evm_version: impl Into<String>) -> Self {
+        self.evm_version = Some(evm_version.into());
         self
     }
 
@@ -446,9 +447,6 @@ mod tests {
                 .optimization(true)
                 .runs(200);
 
-        let _resp = client
-            .submit_contract_verification(&contract)
-            .await
-            .unwrap();
+        let resp = client.submit_contract_verification(&contract).await;
     }
 }
