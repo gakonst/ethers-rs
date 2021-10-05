@@ -12,6 +12,7 @@ quote = "1.0.9"
 syn = "1.0.77"
 ethers-core = { version = "^0.5.0", path = "../"}
 ethers-contract = { version = "^0.5.0", path = "../../ethers-contract"}
+ethers-signers = { version = "^0.5.0", path = "../../ethers-signers" }
 hex = "0.4.3"
 serde = "1.0.130"
 serde_json = "1.0.68"

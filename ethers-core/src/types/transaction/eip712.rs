@@ -14,6 +14,28 @@ use crate::{
     utils::keccak256,
 };
 
+/// Pre-computed value of the following statement:
+///
+/// ```
+/// keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)")
+/// ```
+///
+pub const EIP712_DOMAIN_TYPE_HASH: [u8; 32] = [
+    139, 115, 195, 198, 155, 184, 254, 61, 81, 46, 204, 76, 247, 89, 204, 121, 35, 159, 123, 23,
+    155, 15, 250, 202, 169, 167, 93, 82, 43, 57, 64, 15,
+];
+
+/// Pre-computed value of the following statement:
+///
+/// ```
+/// keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract,bytes32 salt)")
+/// ```
+///
+pub const EIP712_DOMAIN_TYPE_HASH_WITH_SALT: [u8; 32] = [
+    216, 124, 214, 239, 121, 212, 226, 185, 94, 21, 206, 138, 191, 115, 45, 181, 30, 199, 113, 241,
+    202, 46, 220, 207, 34, 164, 108, 114, 154, 197, 100, 114,
+];
+
 /// Error typed used by Eip712 derive macro
 #[derive(Debug, thiserror::Error)]
 pub enum Eip712Error {
@@ -43,13 +65,6 @@ pub trait Eip712 {
     /// User defined error type;
     type Error: std::error::Error + Send + Sync + std::fmt::Debug;
 
-    /// The eip712 domain is the same for all Eip712 implementations,
-    /// This method does not need to be manually implemented, but may be overridden
-    /// if needed.
-    fn eip712_domain_type_hash() -> Result<[u8; 32], Self::Error> {
-        Ok(eip712_domain_type_hash())
-    }
-
     /// The domain separator depends on the contract and unique domain
     /// for which the user is targeting. In the derive macro, these attributes
     /// are passed in as arguments to the macro. When manually deriving, the user
@@ -71,32 +86,50 @@ pub trait Eip712 {
     fn encode_eip712(self) -> Result<[u8; 32], Self::Error>;
 }
 
-/// This method provides the hex encoded domain type hash for EIP712Domain type;
-/// This is used by all Eip712 structs.
-pub fn eip712_domain_type_hash() -> [u8; 32] {
-    keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)")
-}
-
 /// Eip712 Domain attributes used in determining the domain separator;
+/// Unused fields are left out of the struct type.
 #[derive(Debug, Default)]
 pub struct EIP712Domain {
+    ///  The user readable name of signing domain, i.e. the name of the DApp or the protocol.
     pub name: String,
+
+    /// The current major version of the signing domain. Signatures from different versions are not compatible.
     pub version: String,
+
+    /// The EIP-155 chain id. The user-agent should refuse signing if it does not match the currently active chain.
     pub chain_id: U256,
+
+    /// The address of the contract that will verify the signature.
     pub verifying_contract: Address,
+
+    /// A disambiguating salt for the protocol. This can be used as a domain separator of last resort.
+    pub salt: Option<[u8; 32]>,
 }
 
 impl EIP712Domain {
     // Compute the domain separator;
     // See: https://github.com/gakonst/ethers-rs/blob/master/examples/permit_hash.rs#L41
     pub fn separator(&self) -> [u8; 32] {
-        keccak256(abi::encode(&[
-            Token::Uint(U256::from(eip712_domain_type_hash())),
+        let domain_type_hash = if self.salt.is_some() {
+            EIP712_DOMAIN_TYPE_HASH_WITH_SALT
+        } else {
+            EIP712_DOMAIN_TYPE_HASH
+        };
+
+        let mut tokens = vec![
+            Token::Uint(U256::from(domain_type_hash)),
             Token::Uint(U256::from(keccak256(&self.name))),
             Token::Uint(U256::from(keccak256(&self.version))),
             Token::Uint(self.chain_id),
             Token::Address(self.verifying_contract),
-        ]))
+        ];
+
+        // Add the salt to the struct to be hashed if it exists;
+        if let Some(salt) = &self.salt {
+            tokens.push(Token::Uint(U256::from(salt)));
+        }
+
+        keccak256(abi::encode(&tokens))
     }
 }
 
@@ -105,11 +138,14 @@ impl TryFrom<&syn::DeriveInput> for EIP712Domain {
     type Error = TokenStream;
     fn try_from(input: &syn::DeriveInput) -> Result<EIP712Domain, Self::Error> {
         let mut domain = EIP712Domain::default();
+        let mut found_eip712_attribute = false;
 
         for attribute in input.attrs.iter() {
             if let AttrStyle::Outer = attribute.style {
                 if let Ok(syn::Meta::List(meta)) = attribute.parse_meta() {
                     if meta.path.is_ident("eip712") {
+                        found_eip712_attribute = true;
+
                         for n in meta.nested.iter() {
                             if let NestedMeta::Meta(meta) = n {
                                 match meta {
@@ -219,6 +255,29 @@ impl TryFrom<&syn::DeriveInput> for EIP712Domain {
                                                     .to_compile_error());
                                                 }
                                             },
+                                            "salt" => match meta.lit {
+                                                syn::Lit::Str(ref lit_str) => {
+                                                    if domain.salt != Option::None {
+                                                        return Err(Error::new(
+                                                            meta.path.span(),
+                                                            "domain salt already specified",
+                                                        )
+                                                        .to_compile_error());
+                                                    }
+
+                                                    // keccak256(<string>) to compute bytes32 encoded domain salt
+                                                    let salt = keccak256(lit_str.value());
+
+                                                    domain.salt = Some(salt);
+                                                }
+                                                _ => {
+                                                    return Err(Error::new(
+                                                        meta.path.span(),
+                                                        "domain salt must be a string",
+                                                    )
+                                                    .to_compile_error());
+                                                }
+                                            },
                                             _ => {
                                                 return Err(Error::new(
                                                     meta.path.span(),
@@ -245,9 +304,47 @@ impl TryFrom<&syn::DeriveInput> for EIP712Domain {
                                 }
                             }
                         }
+
+                        if domain.name == String::default() {
+                            return Err(Error::new(
+                                meta.path.span(),
+                                "missing required domain attribute: 'name'".to_string(),
+                            )
+                            .to_compile_error());
+                        }
+                        if domain.version == String::default() {
+                            return Err(Error::new(
+                                meta.path.span(),
+                                "missing required domain attribute: 'version'".to_string(),
+                            )
+                            .to_compile_error());
+                        }
+                        if domain.chain_id == U256::default() {
+                            return Err(Error::new(
+                                meta.path.span(),
+                                "missing required domain attribute: 'chain_id'".to_string(),
+                            )
+                            .to_compile_error());
+                        }
+                        if domain.verifying_contract == H160::default() {
+                            return Err(Error::new(
+                                meta.path.span(),
+                                "missing required domain attribute: 'verifying_contract'"
+                                    .to_string(),
+                            )
+                            .to_compile_error());
+                        }
                     }
                 }
             }
+        }
+
+        if !found_eip712_attribute {
+            return Err(Error::new_spanned(
+                input,
+                "missing required derive attribute: '#[eip712( ... )]'".to_string(),
+            )
+            .to_compile_error());
         }
 
         Ok(domain)
@@ -256,6 +353,7 @@ impl TryFrom<&syn::DeriveInput> for EIP712Domain {
 
 /// Parse the eth abi parameter type based on the syntax type;
 /// this method is copied from https://github.com/gakonst/ethers-rs/blob/master/ethers-contract/ethers-contract-derive/src/lib.rs#L600
+/// with additional modifications for finding byte arrays
 pub fn find_parameter_type(ty: &Type) -> Result<ParamType, TokenStream> {
     match ty {
         Type::Array(ty) => {
@@ -263,6 +361,10 @@ pub fn find_parameter_type(ty: &Type) -> Result<ParamType, TokenStream> {
             if let Expr::Lit(ref expr) = ty.len {
                 if let Lit::Int(ref len) = expr.lit {
                     if let Ok(size) = len.base10_parse::<usize>() {
+                        if let ParamType::Uint(_) = param {
+                            return Ok(ParamType::FixedBytes(size));
+                        }
+
                         return Ok(ParamType::FixedArray(Box::new(param), size));
                     }
                 }
@@ -278,13 +380,17 @@ pub fn find_parameter_type(ty: &Type) -> Result<ParamType, TokenStream> {
                     "address" => Ok(ParamType::Address),
                     "string" => Ok(ParamType::String),
                     "bool" => Ok(ParamType::Bool),
-                    "int" | "uint" => Ok(ParamType::Uint(256)),
+                    "int256" | "int" | "uint" | "uint256" => Ok(ParamType::Uint(256)),
                     "h160" => Ok(ParamType::FixedBytes(20)),
                     "h256" | "secret" | "hash" => Ok(ParamType::FixedBytes(32)),
                     "h512" | "public" => Ok(ParamType::FixedBytes(64)),
+                    "bytes" => Ok(ParamType::Bytes),
                     s => parse_int_param_type(s).ok_or_else(|| {
-                        Error::new(ty.span(), "Failed to derive proper ABI from field")
-                            .to_compile_error()
+                        Error::new(
+                            ty.span(),
+                            format!("Failed to derive proper ABI from field: {})", s),
+                        )
+                        .to_compile_error()
                     }),
                 };
             }
@@ -294,6 +400,14 @@ pub fn find_parameter_type(ty: &Type) -> Result<ParamType, TokenStream> {
                     if args.args.len() == 1 {
                         if let GenericArgument::Type(ref ty) = args.args.iter().next().unwrap() {
                             let kind = find_parameter_type(ty)?;
+
+                            // Check if byte array is found
+                            if let ParamType::Uint(size) = kind {
+                                if size == 8 {
+                                    return Ok(ParamType::Bytes);
+                                }
+                            }
+
                             return Ok(ParamType::Array(Box::new(kind)));
                         }
                     }
@@ -397,6 +511,8 @@ pub fn make_type_hash(primary_type: String, fields: &[(String, ParamType)]) -> [
         .join(",");
 
     let sig = format!("{}({})", primary_type, parameters);
+
+    println!("Type Hash: {:?}", sig);
 
     keccak256(sig)
 }

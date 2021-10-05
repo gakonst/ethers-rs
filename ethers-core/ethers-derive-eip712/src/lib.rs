@@ -11,6 +11,11 @@
 //! NOTE: In addition to deriving `Eip712` trait, the `EthAbiType` trait must also be derived.
 //! This allows the struct to be parsed into `ethers_core::abi::Token` for encoding.
 //!
+//! # Optional Eip712 Parameters
+//!
+//! The only optional parameter is `salt`, which accepts a string
+//! that is hashed using keccak256 and stored as bytes.
+//!
 //! # Example Usage
 //!
 //! ```rust
@@ -24,6 +29,8 @@
 //!     version = "1",
 //!     chain_id = 1,
 //!     verifying_contract = "0x0000000000000000000000000000000000000000"
+//!     // salt is an optional parameter
+//!     salt = "my-unique-spice"
 //! )]
 //! pub struct Puzzle {
 //!     pub organization: H160,
@@ -138,14 +145,12 @@ fn impl_eip_712_macro(ast: &syn::DeriveInput) -> TokenStream {
             }
 
             fn encode_eip712(self) -> Result<[u8; 32], Self::Error> {
-                let struct_hash = self.struct_hash()?;
-
                 // encode the digest to be compatible with solidity abi.encodePacked()
                 // See: https://github.com/gakonst/ethers-rs/blob/master/examples/permit_hash.rs#L72
                 let digest_input = [
                     &[0x19, 0x01],
                     &Self::domain_separator()?[..],
-                    &struct_hash[..]
+                    &self.struct_hash()?[..]
                 ].concat();
 
                 return Ok(ethers_core::utils::keccak256(digest_input));
