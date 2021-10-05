@@ -847,11 +847,14 @@ name = "ethers"
 version = "0.5.3"
 dependencies = [
  "anyhow",
+ "bytes",
  "ethers-contract",
  "ethers-core",
+ "ethers-derive-eip712",
  "ethers-middleware",
  "ethers-providers",
  "ethers-signers",
+ "hex",
  "rand 0.8.4",
  "serde",
  "serde_json",
@@ -949,6 +952,7 @@ version = "0.1.0"
 dependencies = [
  "ethers-contract",
  "ethers-core",
+ "ethers-signers",
  "hex",
  "proc-macro2",
  "quote",
