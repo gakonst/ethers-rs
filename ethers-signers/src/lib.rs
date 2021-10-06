@@ -95,8 +95,8 @@ pub trait Signer: std::fmt::Debug + Send + Sync {
     /// Signs the transaction
     async fn sign_transaction(&self, message: &TypedTransaction) -> Result<Signature, Self::Error>;
 
-    /// Encodes and signs the typed data according EIP-712
-    /// payload must implement Eip712 trait.
+    /// Encodes and signs the typed data according EIP-712.
+    /// Payload must implement Eip712 trait.
     async fn sign_typed_data<T: Eip712 + Send + Sync>(
         &self,
         payload: T,

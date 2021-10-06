@@ -53,6 +53,7 @@ futures-util = { version = "0.3.17" }
 celo = ["legacy"] # celo support extends the transaction format with extra fields
 setup = ["tokio", "futures-util"] # async support for concurrent setup
 legacy = []
+eip712 = []
 
 [package.metadata.docs.rs]
 all-features = true

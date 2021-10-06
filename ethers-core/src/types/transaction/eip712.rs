@@ -547,7 +547,7 @@ pub fn encode_eip712_type(token: Token) -> Token {
         )))),
         _ => {
             // Return the ABI encoded token;
-            token.clone()
+            token
         }
     }
 }
