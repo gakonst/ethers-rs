@@ -47,6 +47,8 @@ pub enum Eip712Error {
     FailedToEncodeStruct,
     #[error("Failed to convert slice into byte array")]
     TryFromSliceError(#[from] std::array::TryFromSliceError),
+    #[error("Nested Eip712 struct not implemented. Failed to parse.")]
+    NestedEip712StructNotImplemented,
 }
 
 /// The Eip712 trait provides helper methods for computing

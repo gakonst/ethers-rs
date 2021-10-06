@@ -65,10 +65,11 @@ use std::convert::TryFrom;
 use ethers_core::types::transaction::eip712;
 use proc_macro::TokenStream;
 use quote::quote;
+use syn::parse_macro_input;
 
 #[proc_macro_derive(Eip712, attributes(eip712))]
 pub fn eip_712_derive(input: TokenStream) -> TokenStream {
-    let ast = syn::parse(input).expect("failed to parse token stream for Eip712 derived struct");
+    let ast = parse_macro_input!(input);
 
     impl_eip_712_macro(&ast)
 }
@@ -105,14 +106,14 @@ fn impl_eip_712_macro(ast: &syn::DeriveInput) -> TokenStream {
 
             fn type_hash() -> Result<[u8; 32], Self::Error> {
                 use std::convert::TryFrom;
-                let decoded = hex::decode(#type_hash.to_string())?;
+                let decoded = hex::decode(#type_hash)?;
                 let byte_array: [u8; 32] = <[u8; 32]>::try_from(&decoded[..])?;
                 Ok(byte_array)
             }
 
             fn domain_separator() -> Result<[u8; 32], Self::Error> {
                 use std::convert::TryFrom;
-                let decoded = hex::decode(#domain_separator.to_string())?;
+                let decoded = hex::decode(#domain_separator)?;
                 let byte_array: [u8; 32] = <[u8; 32]>::try_from(&decoded[..])?;
                 Ok(byte_array)
             }
@@ -129,6 +130,7 @@ fn impl_eip_712_macro(ast: &syn::DeriveInput) -> TokenStream {
                             ethers_core::abi::Token::Tuple(t) => {
                                 // TODO: check for nested Eip712 Type;
                                 // Challenge is determining the type hash
+                                return Err(Self::Error::NestedEip712StructNotImplemented);
                             },
                             _ => {
                                 items.push(ethers_core::types::transaction::eip712::encode_eip712_type(token));
@@ -152,8 +154,6 @@ fn impl_eip_712_macro(ast: &syn::DeriveInput) -> TokenStream {
                     &Self::domain_separator()?[..],
                     &self.struct_hash()?[..]
                 ].concat();
-
-                // let digest_input = &[0x19, 0x01];
 
                 return Ok(ethers_core::utils::keccak256(digest_input));
 
