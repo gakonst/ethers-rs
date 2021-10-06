@@ -9,7 +9,7 @@ use ethers_core::types::{
     transaction::eip712::{EIP712Domain, EIP712},
     Address, Signature,
 };
-use types::LedgerError;
+use types::{LedgerError, INS};
 
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
@@ -34,9 +34,11 @@ impl Signer for LedgerEthereum {
         payload: T,
         domain: Option<EIP712Domain>,
     ) -> Result<Signature, Self::Error> {
-        let hash = payload.encode_eip712(domain)?;
+        let hash = payload
+            .encode_eip712(domain)
+            .map_err(|e| Self::Error::Eip712Error(e.to_string()))?;
 
-        Ok(self.sign_hash(hash.into(), false))
+        Ok(self.sign_payload(INS::SIGN, hash.into(), false))
     }
 
     /// Returns the signer's Ethereum Address

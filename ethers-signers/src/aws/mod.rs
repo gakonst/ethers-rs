@@ -90,6 +90,9 @@ pub enum AwsSignerError {
     #[error(transparent)]
     /// Error when converting from a hex string
     HexError(#[from] hex::FromHexError),
+    /// Error type from Eip712Error message
+    #[error("error encoding eip712 struct: {0:?}")]
+    Eip712Error(String),
 }
 
 impl From<String> for AwsSignerError {
@@ -257,7 +260,10 @@ impl<'a> super::Signer for AwsSigner<'a> {
         payload: T,
         domain: Option<EIP712Domain>,
     ) -> Result<EthSig, Self::Error> {
-        let hash = payload.encode_eip712(domain)?;
+        let hash = payload
+            .encode_eip712(domain)
+            .map_err(|e| Self::Error::Eip712Error(e.to_string()))?;
+
         let digest = self.sign_digest_with_eip155(hash.into());
 
         Ok(digest)
