@@ -6,7 +6,7 @@ use app::LedgerEthereum;
 use async_trait::async_trait;
 use ethers_core::types::{
     transaction::eip2718::TypedTransaction,
-    transaction::eip712::{EIP712Domain, EIP712},
+    transaction::eip712::{EIP712Domain, Eip712},
     Address, Signature,
 };
 use types::LedgerError;
