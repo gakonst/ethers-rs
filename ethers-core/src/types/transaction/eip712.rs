@@ -512,8 +512,6 @@ pub fn make_type_hash(primary_type: String, fields: &[(String, ParamType)]) -> [
 
     let sig = format!("{}({})", primary_type, parameters);
 
-    println!("Type Hash: {:?}", sig);
-
     keccak256(sig)
 }
 

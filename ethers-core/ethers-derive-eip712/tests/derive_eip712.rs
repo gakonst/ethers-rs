@@ -40,8 +40,6 @@ fn test_derive_eip712() {
 
     let hash = puzzle.encode_eip712().expect("failed to encode struct");
 
-    println!("Hash: {:?}", hash);
-
     assert_eq!(hash.len(), 32)
 }
 
