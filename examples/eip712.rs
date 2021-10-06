@@ -18,11 +18,11 @@ use ethers_derive_eip712::*;
 )]
 struct FooBar {
     foo: I256,
-    // bar: U256,
-    // fizz: Vec<u8>,
-    // buzz: [u8; 32],
-    // far: String,
-    // out: Address,
+    bar: U256,
+    fizz: Vec<u8>,
+    buzz: [u8; 32],
+    far: String,
+    out: Address,
 }
 
 abigen!(
@@ -61,30 +61,27 @@ async fn main() -> anyhow::Result<()> {
 
     let foo_bar = FooBar {
         foo: I256::from(10),
-        // bar: U256::from(20),
-        // fizz: b"fizz".to_vec(),
-        // buzz: keccak256("buzz"),
-        // far: String::from("space"),
-        // out: Address::from([0; 20]),
+        bar: U256::from(20),
+        fizz: b"fizz".to_vec(),
+        buzz: keccak256("buzz"),
+        far: String::from("space"),
+        out: Address::from([0; 20]),
     };
 
     let derived_foo_bar = deriveeip712test_mod::FooBar {
         foo: foo_bar.foo.clone(),
-        // bar: foo_bar.bar.clone(),
-        // fizz: foo_bar.fizz.clone(),
-        // buzz: foo_bar.buzz.clone(),
-        // far: foo_bar.far.clone(),
-        // out: foo_bar.out.clone(),
+        bar: foo_bar.bar.clone(),
+        fizz: foo_bar.fizz.clone(),
+        buzz: foo_bar.buzz.clone(),
+        far: foo_bar.far.clone(),
+        out: foo_bar.out.clone(),
     };
 
     let sig = wallet.sign_typed_data(foo_bar.clone()).await?;
 
-    let mut r = [0; 32];
-    let mut s = [0; 32];
+    let r = <[u8; 32]>::try_from(sig.r)?;
+    let s = <[u8; 32]>::try_from(sig.s)?;
     let v = u8::try_from(sig.v)?;
-
-    sig.r.to_big_endian(&mut r);
-    sig.r.to_big_endian(&mut s);
 
     let domain_separator = contract.domain_separator().call().await?;
     let type_hash = contract.type_hash().call().await?;

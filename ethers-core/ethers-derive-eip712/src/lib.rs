@@ -153,6 +153,8 @@ fn impl_eip_712_macro(ast: &syn::DeriveInput) -> TokenStream {
                     &self.struct_hash()?[..]
                 ].concat();
 
+                // let digest_input = &[0x19, 0x01];
+
                 return Ok(ethers_core::utils::keccak256(digest_input));
 
             }

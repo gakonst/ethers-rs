@@ -25,6 +25,31 @@
 						"internalType": "int256",
 						"name": "foo",
 						"type": "int256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "bar",
+						"type": "uint256"
+					},
+					{
+						"internalType": "bytes",
+						"name": "fizz",
+						"type": "bytes"
+					},
+					{
+						"internalType": "bytes32",
+						"name": "buzz",
+						"type": "bytes32"
+					},
+					{
+						"internalType": "string",
+						"name": "far",
+						"type": "string"
+					},
+					{
+						"internalType": "address",
+						"name": "out",
+						"type": "address"
 					}
 				],
 				"internalType": "struct DeriveEip712Test.FooBar",
@@ -51,6 +76,31 @@
 						"internalType": "int256",
 						"name": "foo",
 						"type": "int256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "bar",
+						"type": "uint256"
+					},
+					{
+						"internalType": "bytes",
+						"name": "fizz",
+						"type": "bytes"
+					},
+					{
+						"internalType": "bytes32",
+						"name": "buzz",
+						"type": "bytes32"
+					},
+					{
+						"internalType": "string",
+						"name": "far",
+						"type": "string"
+					},
+					{
+						"internalType": "address",
+						"name": "out",
+						"type": "address"
 					}
 				],
 				"internalType": "struct DeriveEip712Test.FooBar",
@@ -95,6 +145,31 @@
 						"internalType": "int256",
 						"name": "foo",
 						"type": "int256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "bar",
+						"type": "uint256"
+					},
+					{
+						"internalType": "bytes",
+						"name": "fizz",
+						"type": "bytes"
+					},
+					{
+						"internalType": "bytes32",
+						"name": "buzz",
+						"type": "bytes32"
+					},
+					{
+						"internalType": "string",
+						"name": "far",
+						"type": "string"
+					},
+					{
+						"internalType": "address",
+						"name": "out",
+						"type": "address"
 					}
 				],
 				"internalType": "struct DeriveEip712Test.FooBar",

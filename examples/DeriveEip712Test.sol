@@ -11,17 +11,16 @@ contract DeriveEip712Test {
 
     bytes32 constant FOOBAR_DOMAIN_TYPEHASH =
         keccak256(
-            // "FooBar(int256 foo,uint256 bar,bytes fizz,bytes32 buzz,string far,address out)"
-            "FooBar(int256 foo)"
+            "FooBar(int256 foo,uint256 bar,bytes fizz,bytes32 buzz,string far,address out)"
         );
 
     struct FooBar {
         int256 foo;
-        // uint256 bar;
-        // bytes fizz;
-        // bytes32 buzz;
-        // string far;
-        // address out;
+        uint256 bar;
+        bytes fizz;
+        bytes32 buzz;
+        string far;
+        address out;
     }
 
     constructor() {}
@@ -49,12 +48,12 @@ contract DeriveEip712Test {
             keccak256(
                 abi.encode(
                     typeHash(),
-                    uint256(fooBar.foo)
-                    // fooBar.bar,
-                    // keccak256(fooBar.fizz),
-                    // fooBar.buzz,
-                    // keccak256(abi.encodePacked(fooBar.far)),
-                    // fooBar.out
+                    uint256(fooBar.foo),
+                    fooBar.bar,
+                    keccak256(fooBar.fizz),
+                    fooBar.buzz,
+                    keccak256(bytes(fooBar.far)),
+                    fooBar.out
                 )
             );
     }
@@ -63,7 +62,7 @@ contract DeriveEip712Test {
         return
             keccak256(
                 abi.encodePacked(
-                    "\\x19\\x01",
+                    "\x19\x01",
                     domainSeparator(),
                     structHash(fooBar)
                 )
