@@ -660,7 +660,7 @@ mod eth_tests {
         };
 
         let sig = wallet
-            .sign_typed_data(foo_bar.clone())
+            .sign_typed_data(foo_bar.clone(), Default::default())
             .await
             .expect("failed to sign typed data");
 
@@ -721,7 +721,7 @@ mod eth_tests {
         assert_eq!(
             encoded,
             foo_bar
-                .encode_eip712()
+                .encode_eip712(Default::default())
                 .expect("failed to return domain_separator from Eip712 implemented struct"),
             "Encoded value does not match!"
         );

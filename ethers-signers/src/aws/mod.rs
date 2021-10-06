@@ -2,7 +2,11 @@
 
 use ethers_core::{
     k256::ecdsa::{Error as K256Error, Signature as KSig, VerifyingKey},
-    types::{transaction::eip2718::TypedTransaction, Address, Signature as EthSig, H256},
+    types::{
+        transaction::eip2718::TypedTransaction,
+        transaction::eip712::{EIP712Domain, Eip712},
+        Address, Signature as EthSig, H256,
+    },
     utils::hash_message,
 };
 use rusoto_core::RusotoError;
@@ -251,8 +255,9 @@ impl<'a> super::Signer for AwsSigner<'a> {
     async fn sign_typed_data<T: Eip712 + Send + Sync>(
         &self,
         payload: T,
+        domain: Option<EIP712Domain>,
     ) -> Result<EthSig, Self::Error> {
-        let hash = payload.encode_eip712()?;
+        let hash = payload.encode_eip712(domain)?;
         let digest = self.sign_digest_with_eip155(hash.into());
 
         Ok(digest)

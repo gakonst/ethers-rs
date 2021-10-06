@@ -4,7 +4,11 @@ pub mod types;
 use crate::Signer;
 use app::LedgerEthereum;
 use async_trait::async_trait;
-use ethers_core::types::{transaction::eip2718::TypedTransaction, Address, Signature};
+use ethers_core::types::{
+    transaction::eip2718::TypedTransaction,
+    transaction::eip712::{EIP712Domain, EIP712},
+    Address, Signature,
+};
 use types::LedgerError;
 
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
@@ -28,9 +32,10 @@ impl Signer for LedgerEthereum {
     async fn sign_typed_data<T: Eip712 + Send + Sync>(
         &self,
         payload: T,
+        domain: Option<EIP712Domain>,
     ) -> Result<Signature, Self::Error> {
-        let hash = payload.encode_eip712()?;
-        
+        let hash = payload.encode_eip712(domain)?;
+
         Ok(self.sign_hash(hash.into(), false))
     }
 

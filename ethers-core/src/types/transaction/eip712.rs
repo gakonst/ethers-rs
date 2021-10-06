@@ -85,7 +85,8 @@ pub trait Eip712 {
     /// When using the derive macro, this is the primary method used for computing the final
     /// EIP-712 encoded payload. This method relies on the aforementioned methods for computing
     /// the final encoded payload.
-    fn encode_eip712(self) -> Result<[u8; 32], Self::Error>;
+    /// * `domain` - Optional Eip712 domain struct to override eip712 macro attribute helpers;
+    fn encode_eip712(self, domain: Option<EIP712Domain>) -> Result<[u8; 32], Self::Error>;
 }
 
 /// Eip712 Domain attributes used in determining the domain separator;

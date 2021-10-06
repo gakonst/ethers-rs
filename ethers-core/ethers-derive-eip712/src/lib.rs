@@ -146,12 +146,20 @@ fn impl_eip_712_macro(ast: &syn::DeriveInput) -> TokenStream {
                 Ok(struct_hash)
             }
 
-            fn encode_eip712(self) -> Result<[u8; 32], Self::Error> {
+            fn encode_eip712(self, domain: Option<ethers_core::types::transaction::eip712::EIP712Domain>) -> Result<[u8; 32], Self::Error> {
                 // encode the digest to be compatible with solidity abi.encodePacked()
                 // See: https://github.com/gakonst/ethers-rs/blob/master/examples/permit_hash.rs#L72
+
+                let domain_separator = if let Some(d) = domain {
+                    d.separator()
+                } else {
+                    Self::domain_separator()?
+                };
+
+
                 let digest_input = [
                     &[0x19, 0x01],
-                    &Self::domain_separator()?[..],
+                    &domain_separator[..],
                     &self.struct_hash()?[..]
                 ].concat();
 
