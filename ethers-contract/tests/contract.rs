@@ -660,7 +660,7 @@ mod eth_tests {
         };
 
         let sig = wallet
-            .sign_typed_data(foo_bar.clone(), Default::default())
+            .sign_typed_data(foo_bar.clone())
             .await
             .expect("failed to sign typed data");
 
@@ -698,8 +698,10 @@ mod eth_tests {
 
         assert_eq!(
             domain_separator,
-            FooBar::domain_separator()
-                .expect("failed to return domain_separator from Eip712 implemented struct"),
+            foo_bar
+                .domain()
+                .expect("failed to return domain_separator from Eip712 implemented struct")
+                .separator(),
             "domain separator does not match contract domain separator!"
         );
 
@@ -721,7 +723,7 @@ mod eth_tests {
         assert_eq!(
             encoded,
             foo_bar
-                .encode_eip712(Default::default())
+                .encode_eip712()
                 .expect("failed to return domain_separator from Eip712 implemented struct"),
             "Encoded value does not match!"
         );

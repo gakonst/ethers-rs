@@ -86,7 +86,14 @@ fn impl_eip_712_macro(ast: &syn::DeriveInput) -> TokenStream {
         Err(e) => return TokenStream::from(e),
     };
 
-    let domain_separator = hex::encode(domain.separator());
+    let domain_str = match serde_json::to_string(&domain) {
+        Ok(s) => s,
+        Err(e) => {
+            return TokenStream::from(
+                syn::Error::new(ast.ident.span(), e.to_string()).to_compile_error(),
+            );
+        }
+    };
 
     // Must parse the AST at compile time.
     let parsed_fields = match eip712::parse_fields(ast) {
@@ -111,11 +118,10 @@ fn impl_eip_712_macro(ast: &syn::DeriveInput) -> TokenStream {
                 Ok(byte_array)
             }
 
-            fn domain_separator() -> Result<[u8; 32], Self::Error> {
-                use std::convert::TryFrom;
-                let decoded = hex::decode(#domain_separator)?;
-                let byte_array: [u8; 32] = <[u8; 32]>::try_from(&decoded[..])?;
-                Ok(byte_array)
+            fn domain(&self) -> Result<ethers_core::types::transaction::eip712::EIP712Domain, Self::Error> {
+                let domain: ethers_core::types::transaction::eip712::EIP712Domain = serde_json::from_str(#domain_str)?;
+
+                Ok(domain)
             }
 
             fn struct_hash(self) -> Result<[u8; 32], Self::Error> {
@@ -146,20 +152,15 @@ fn impl_eip_712_macro(ast: &syn::DeriveInput) -> TokenStream {
                 Ok(struct_hash)
             }
 
-            fn encode_eip712(self, domain: Option<ethers_core::types::transaction::eip712::EIP712Domain>) -> Result<[u8; 32], Self::Error> {
+            fn encode_eip712(self) -> Result<[u8; 32], Self::Error> {
                 // encode the digest to be compatible with solidity abi.encodePacked()
                 // See: https://github.com/gakonst/ethers-rs/blob/master/examples/permit_hash.rs#L72
 
-                let domain_separator = if let Some(d) = domain {
-                    d.separator()
-                } else {
-                    Self::domain_separator()?
-                };
-
+                let domain = self.domain()?;
 
                 let digest_input = [
                     &[0x19, 0x01],
-                    &domain_separator[..],
+                    &domain.separator()[..],
                     &self.struct_hash()?[..]
                 ].concat();
 

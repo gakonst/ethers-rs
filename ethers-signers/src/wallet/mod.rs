@@ -17,9 +17,8 @@ use ethers_core::{
         Secp256k1,
     },
     types::{
-        transaction::eip2718::TypedTransaction,
-        transaction::eip712::{EIP712Domain, Eip712},
-        Address, Signature, H256, U256,
+        transaction::eip2718::TypedTransaction, transaction::eip712::Eip712, Address, Signature,
+        H256, U256,
     },
     utils::hash_message,
 };
@@ -90,10 +89,9 @@ impl<D: Sync + Send + DigestSigner<Sha256Proxy, RecoverableSignature>> Signer fo
     async fn sign_typed_data<T: Eip712 + Send + Sync>(
         &self,
         payload: T,
-        domain: Option<EIP712Domain>,
     ) -> Result<Signature, Self::Error> {
         let encoded = payload
-            .encode_eip712(domain)
+            .encode_eip712()
             .map_err(|e| Self::Error::Eip712Error(e.to_string()))?;
 
         Ok(self.sign_hash(H256::from(encoded), false))

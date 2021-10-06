@@ -70,9 +70,7 @@ pub use aws::{AwsSigner, AwsSignerError};
 
 use async_trait::async_trait;
 use ethers_core::types::{
-    transaction::eip2718::TypedTransaction,
-    transaction::eip712::{EIP712Domain, Eip712},
-    Address, Signature,
+    transaction::eip2718::TypedTransaction, transaction::eip712::Eip712, Address, Signature,
 };
 use std::error::Error;
 
@@ -103,7 +101,6 @@ pub trait Signer: std::fmt::Debug + Send + Sync {
     async fn sign_typed_data<T: Eip712 + Send + Sync>(
         &self,
         payload: T,
-        domain: Option<EIP712Domain>,
     ) -> Result<Signature, Self::Error>;
 
     /// Returns the signer's Ethereum Address

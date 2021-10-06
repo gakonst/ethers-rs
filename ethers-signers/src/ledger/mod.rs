@@ -32,10 +32,9 @@ impl Signer for LedgerEthereum {
     async fn sign_typed_data<T: Eip712 + Send + Sync>(
         &self,
         payload: T,
-        domain: Option<EIP712Domain>,
     ) -> Result<Signature, Self::Error> {
         let hash = payload
-            .encode_eip712(domain)
+            .encode_eip712()
             .map_err(|e| Self::Error::Eip712Error(e.to_string()))?;
 
         Ok(self.sign_payload(INS::SIGN, hash.into(), false))

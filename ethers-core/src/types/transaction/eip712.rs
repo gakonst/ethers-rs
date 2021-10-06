@@ -49,6 +49,8 @@ pub enum Eip712Error {
     TryFromSliceError(#[from] std::array::TryFromSliceError),
     #[error("Nested Eip712 struct not implemented. Failed to parse.")]
     NestedEip712StructNotImplemented,
+    #[error("Error from Eip712 struct: {0:?}")]
+    Inner(String),
 }
 
 /// The Eip712 trait provides helper methods for computing
@@ -67,12 +69,12 @@ pub trait Eip712 {
     /// User defined error type;
     type Error: std::error::Error + Send + Sync + std::fmt::Debug;
 
-    /// The domain separator depends on the contract and unique domain
+    /// Returns the current domain. The domain depends on the contract and unique domain
     /// for which the user is targeting. In the derive macro, these attributes
     /// are passed in as arguments to the macro. When manually deriving, the user
     /// will need to know the name of the domain, version of the contract, chain ID of
     /// where the contract lives and the address of the verifying contract.
-    fn domain_separator() -> Result<[u8; 32], Self::Error>;
+    fn domain(&self) -> Result<EIP712Domain, Self::Error>;
 
     /// This method is used for calculating the hash of the type signature of the
     /// struct. The field types of the struct must map to primitive
@@ -86,12 +88,12 @@ pub trait Eip712 {
     /// EIP-712 encoded payload. This method relies on the aforementioned methods for computing
     /// the final encoded payload.
     /// * `domain` - Optional Eip712 domain struct to override eip712 macro attribute helpers;
-    fn encode_eip712(self, domain: Option<EIP712Domain>) -> Result<[u8; 32], Self::Error>;
+    fn encode_eip712(self) -> Result<[u8; 32], Self::Error>;
 }
 
 /// Eip712 Domain attributes used in determining the domain separator;
 /// Unused fields are left out of the struct type.
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone, serde::Serialize, serde::Deserialize)]
 pub struct EIP712Domain {
     ///  The user readable name of signing domain, i.e. the name of the DApp or the protocol.
     pub name: String,
@@ -133,6 +135,65 @@ impl EIP712Domain {
         }
 
         keccak256(abi::encode(&tokens))
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct EIP712WithDomain<T>
+where
+    T: Clone + Eip712,
+{
+    pub domain: EIP712Domain,
+    pub inner: T,
+}
+
+impl<T: Eip712 + Clone> EIP712WithDomain<T> {
+    pub fn new(inner: T) -> Result<Self, Eip712Error> {
+        let domain = inner
+            .domain()
+            .map_err(|e| Eip712Error::Inner(e.to_string()))?;
+
+        Ok(Self { domain, inner })
+    }
+
+    pub fn set_domain(self, domain: EIP712Domain) -> Self {
+        Self {
+            domain,
+            inner: self.inner,
+        }
+    }
+}
+
+impl<T: Eip712 + Clone> Eip712 for EIP712WithDomain<T> {
+    type Error = Eip712Error;
+
+    fn domain(&self) -> Result<EIP712Domain, Self::Error> {
+        Ok(self.domain.clone())
+    }
+
+    fn type_hash() -> Result<[u8; 32], Self::Error> {
+        let type_hash = T::type_hash().map_err(|e| Self::Error::Inner(e.to_string()))?;
+        Ok(type_hash)
+    }
+
+    fn struct_hash(self) -> Result<[u8; 32], Self::Error> {
+        let struct_hash = self
+            .inner
+            .clone()
+            .struct_hash()
+            .map_err(|e| Self::Error::Inner(e.to_string()))?;
+        Ok(struct_hash)
+    }
+
+    fn encode_eip712(self) -> Result<[u8; 32], Self::Error> {
+        let digest_input = [
+            &[0x19, 0x01],
+            &self.domain.separator()[..],
+            &self.struct_hash()?[..],
+        ]
+        .concat();
+
+        return Ok(keccak256(digest_input));
     }
 }
 
