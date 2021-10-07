@@ -37,7 +37,7 @@ impl Signer for LedgerEthereum {
             .encode_eip712()
             .map_err(|e| Self::Error::Eip712Error(e.to_string()))?;
 
-        let sig = self.sign_payload(INS::SIGN, hash.into()).await?;
+        let sig = self.sign_message(hash).await?;
 
         Ok(sig)
     }
