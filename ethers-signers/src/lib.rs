@@ -97,7 +97,6 @@ pub trait Signer: std::fmt::Debug + Send + Sync {
 
     /// Encodes and signs the typed data according EIP-712.
     /// Payload must implement Eip712 trait.
-    /// * `domain` - Optional Eip712 domain struct to override eip712 macro attribute helpers for Eip712 Type `T`;
     async fn sign_typed_data<T: Eip712 + Send + Sync>(
         &self,
         payload: T,
