@@ -55,3 +55,6 @@ pub use ethers_contract_derive::{abigen, EthAbiType, EthEvent};
 // Hide the Lazy re-export, it's just for convenience
 #[doc(hidden)]
 pub use once_cell::sync::Lazy;
+
+#[cfg(feature = "eip712")]
+pub use ethers_derive_eip712::*;
