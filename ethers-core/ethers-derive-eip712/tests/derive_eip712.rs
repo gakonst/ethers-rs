@@ -175,7 +175,7 @@ fn test_domain_hash_constants() {
         )
     );
     assert_eq!(
-        EIP712_DOMAIN_TYPE_HASH_WITH_SALT, 
+        EIP712_DOMAIN_TYPE_HASH_WITH_SALT,
         keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract,bytes32 salt)")
     );
 }
