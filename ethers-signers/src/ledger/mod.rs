@@ -37,7 +37,9 @@ impl Signer for LedgerEthereum {
             .encode_eip712()
             .map_err(|e| Self::Error::Eip712Error(e.to_string()))?;
 
-        Ok(self.sign_payload(INS::SIGN, hash.into(), false))
+        let sig = self.sign_payload(INS::SIGN, hash.into()).await?;
+
+        Ok(sig)
     }
 
     /// Returns the signer's Ethereum Address
