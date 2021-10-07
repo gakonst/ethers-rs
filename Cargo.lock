@@ -952,6 +952,7 @@ name = "ethers-derive-eip712"
 version = "0.1.0"
 dependencies = [
  "ethers-contract",
+ "ethers-contract-derive",
  "ethers-core",
  "ethers-signers",
  "hex",

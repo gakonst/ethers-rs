@@ -63,6 +63,7 @@
 use std::convert::TryFrom;
 
 use ethers_core::types::transaction::eip712;
+
 use proc_macro::TokenStream;
 use quote::quote;
 use syn::parse_macro_input;
@@ -80,12 +81,13 @@ fn impl_eip_712_macro(ast: &syn::DeriveInput) -> TokenStream {
     // Primary type should match the type in the ethereum verifying contract;
     let primary_type = &ast.ident;
 
-    // Computer domain separator
+    // Instantiate domain from parsed attributes
     let domain = match eip712::EIP712Domain::try_from(ast) {
         Ok(attributes) => attributes,
         Err(e) => return TokenStream::from(e),
     };
 
+    //
     let domain_str = match serde_json::to_string(&domain) {
         Ok(s) => s,
         Err(e) => {
@@ -124,7 +126,7 @@ fn impl_eip_712_macro(ast: &syn::DeriveInput) -> TokenStream {
                 Ok(domain)
             }
 
-            fn struct_hash(self) -> Result<[u8; 32], Self::Error> {
+            fn struct_hash(&self) -> Result<[u8; 32], Self::Error> {
                 use ethers_core::abi::Tokenizable;
                 let mut items = vec![ethers_core::abi::Token::Uint(
                     ethers_core::types::U256::from(&Self::type_hash()?[..]),
@@ -150,22 +152,6 @@ fn impl_eip_712_macro(ast: &syn::DeriveInput) -> TokenStream {
                 ));
 
                 Ok(struct_hash)
-            }
-
-            fn encode_eip712(self) -> Result<[u8; 32], Self::Error> {
-                // encode the digest to be compatible with solidity abi.encodePacked()
-                // See: https://github.com/gakonst/ethers-rs/blob/master/examples/permit_hash.rs#L72
-
-                let domain = self.domain()?;
-
-                let digest_input = [
-                    &[0x19, 0x01],
-                    &domain.separator()[..],
-                    &self.struct_hash()?[..]
-                ].concat();
-
-                return Ok(ethers_core::utils::keccak256(digest_input));
-
             }
         }
     };

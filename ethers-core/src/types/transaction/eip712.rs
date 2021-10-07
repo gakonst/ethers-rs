@@ -82,13 +82,22 @@ pub trait Eip712 {
     fn type_hash() -> Result<[u8; 32], Self::Error>;
 
     /// Hash of the struct, according to EIP-712 definition of `hashStruct`
-    fn struct_hash(self) -> Result<[u8; 32], Self::Error>;
+    fn struct_hash(&self) -> Result<[u8; 32], Self::Error>;
 
     /// When using the derive macro, this is the primary method used for computing the final
     /// EIP-712 encoded payload. This method relies on the aforementioned methods for computing
     /// the final encoded payload.
-    /// * `domain` - Optional Eip712 domain struct to override eip712 macro attribute helpers;
-    fn encode_eip712(self) -> Result<[u8; 32], Self::Error>;
+    fn encode_eip712(&self) -> Result<[u8; 32], Self::Error> {
+        // encode the digest to be compatible with solidity abi.encodePacked()
+        // See: https://github.com/gakonst/ethers-rs/blob/master/examples/permit_hash.rs#L72
+
+        let domain = self.domain()?;
+        let struct_hash = self.struct_hash()?;
+
+        let digest_input = [&[0x19, 0x01], &domain.separator()[..], &struct_hash[..]].concat();
+
+        return Ok(keccak256(digest_input));
+    }
 }
 
 /// Eip712 Domain attributes used in determining the domain separator;
@@ -176,24 +185,13 @@ impl<T: Eip712 + Clone> Eip712 for EIP712WithDomain<T> {
         Ok(type_hash)
     }
 
-    fn struct_hash(self) -> Result<[u8; 32], Self::Error> {
+    fn struct_hash(&self) -> Result<[u8; 32], Self::Error> {
         let struct_hash = self
             .inner
             .clone()
             .struct_hash()
             .map_err(|e| Self::Error::Inner(e.to_string()))?;
         Ok(struct_hash)
-    }
-
-    fn encode_eip712(self) -> Result<[u8; 32], Self::Error> {
-        let digest_input = [
-            &[0x19, 0x01],
-            &self.domain.separator()[..],
-            &self.struct_hash()?[..],
-        ]
-        .concat();
-
-        return Ok(keccak256(digest_input));
     }
 }
 
