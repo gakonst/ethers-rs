@@ -16,9 +16,7 @@ use crate::{
 
 /// Pre-computed value of the following statement:
 ///
-/// ```
-/// keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)")
-/// ```
+/// `ethers_core::utils::keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)")`
 ///
 pub const EIP712_DOMAIN_TYPE_HASH: [u8; 32] = [
     139, 115, 195, 198, 155, 184, 254, 61, 81, 46, 204, 76, 247, 89, 204, 121, 35, 159, 123, 23,
@@ -27,9 +25,7 @@ pub const EIP712_DOMAIN_TYPE_HASH: [u8; 32] = [
 
 /// Pre-computed value of the following statement:
 ///
-/// ```
-/// keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract,bytes32 salt)")
-/// ```
+/// `ethers_core::utils::keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract,bytes32 salt)")`
 ///
 pub const EIP712_DOMAIN_TYPE_HASH_WITH_SALT: [u8; 32] = [
     216, 124, 214, 239, 121, 212, 226, 185, 94, 21, 206, 138, 191, 115, 45, 181, 30, 199, 113, 241,
@@ -101,7 +97,7 @@ pub trait Eip712 {
 
         let digest_input = [&[0x19, 0x01], &domain_separator[..], &struct_hash[..]].concat();
 
-        return Ok(keccak256(digest_input));
+        Ok(keccak256(digest_input))
     }
 }
 
