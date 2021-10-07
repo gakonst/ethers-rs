@@ -69,6 +69,11 @@ pub trait Eip712 {
     /// User defined error type;
     type Error: std::error::Error + Send + Sync + std::fmt::Debug;
 
+    /// Default implementation of the domain separator;
+    fn domain_separator(&self) -> Result<[u8; 32], Self::Error> {
+        Ok(self.domain()?.separator())
+    }
+
     /// Returns the current domain. The domain depends on the contract and unique domain
     /// for which the user is targeting. In the derive macro, these attributes
     /// are passed in as arguments to the macro. When manually deriving, the user
@@ -91,10 +96,10 @@ pub trait Eip712 {
         // encode the digest to be compatible with solidity abi.encodePacked()
         // See: https://github.com/gakonst/ethers-rs/blob/master/examples/permit_hash.rs#L72
 
-        let domain = self.domain()?;
+        let domain_separator = self.domain_separator()?;
         let struct_hash = self.struct_hash()?;
 
-        let digest_input = [&[0x19, 0x01], &domain.separator()[..], &struct_hash[..]].concat();
+        let digest_input = [&[0x19, 0x01], &domain_separator[..], &struct_hash[..]].concat();
 
         return Ok(keccak256(digest_input));
     }

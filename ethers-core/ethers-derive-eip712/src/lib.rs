@@ -87,6 +87,8 @@ fn impl_eip_712_macro(ast: &syn::DeriveInput) -> TokenStream {
         Err(e) => return TokenStream::from(e),
     };
 
+    let domain_separator = hex::encode(domain.separator());
+
     //
     let domain_str = match serde_json::to_string(&domain) {
         Ok(s) => s,
@@ -116,6 +118,14 @@ fn impl_eip_712_macro(ast: &syn::DeriveInput) -> TokenStream {
             fn type_hash() -> Result<[u8; 32], Self::Error> {
                 use std::convert::TryFrom;
                 let decoded = hex::decode(#type_hash)?;
+                let byte_array: [u8; 32] = <[u8; 32]>::try_from(&decoded[..])?;
+                Ok(byte_array)
+            }
+
+            // Return the pre-computed domain separator from compile time;
+            fn domain_separator(&self) -> Result<[u8; 32], Self::Error> {
+                use std::convert::TryFrom;
+                let decoded = hex::decode(#domain_separator)?;
                 let byte_array: [u8; 32] = <[u8; 32]>::try_from(&decoded[..])?;
                 Ok(byte_array)
             }
