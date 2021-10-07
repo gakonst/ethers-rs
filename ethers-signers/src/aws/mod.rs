@@ -262,7 +262,7 @@ impl<'a> super::Signer for AwsSigner<'a> {
             .encode_eip712()
             .map_err(|e| Self::Error::Eip712Error(e.to_string()))?;
 
-        let digest = self.sign_digest_with_eip155(hash.into());
+        let digest = self.sign_digest_with_eip155(hash.into()).await?;
 
         Ok(digest)
     }
