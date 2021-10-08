@@ -36,6 +36,10 @@
 //! via the `GanacheBuilder` struct. In addition, you're able to compile contracts on the
 //! filesystem by providing a glob to their path, using the `Solc` struct.
 //!
+//! # Features
+//!
+//! * - ["eip712"] | Provides Eip712 trait for EIP-712 encoding of typed data for derived structs
+//!
 //! # ABI Encoding and Decoding
 //!
 //! This crate re-exports the [`ethabi`](ethabi) crate's functions

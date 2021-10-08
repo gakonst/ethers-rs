@@ -43,6 +43,9 @@ pub enum WalletError {
     /// Error propagated from the mnemonic builder module.
     #[error(transparent)]
     MnemonicBuilderError(#[from] MnemonicBuilderError),
+    /// Error type from Eip712Error message
+    #[error("error encoding eip712 struct: {0:?}")]
+    Eip712Error(String),
 }
 
 impl Clone for Wallet<SigningKey> {

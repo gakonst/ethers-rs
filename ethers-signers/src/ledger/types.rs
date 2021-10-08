@@ -41,6 +41,9 @@ pub enum LedgerError {
     #[error(transparent)]
     /// Error when converting from a hex string
     HexError(#[from] hex::FromHexError),
+    /// Error type from Eip712Error message
+    #[error("error encoding eip712 struct: {0:?}")]
+    Eip712Error(String),
 }
 
 pub const P1_FIRST: u8 = 0x00;

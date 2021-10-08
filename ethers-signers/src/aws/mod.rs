@@ -2,7 +2,10 @@
 
 use ethers_core::{
     k256::ecdsa::{Error as K256Error, Signature as KSig, VerifyingKey},
-    types::{transaction::eip2718::TypedTransaction, Address, Signature as EthSig, H256},
+    types::{
+        transaction::eip2718::TypedTransaction, transaction::eip712::Eip712, Address,
+        Signature as EthSig, H256,
+    },
     utils::hash_message,
 };
 use rusoto_core::RusotoError;
@@ -83,6 +86,12 @@ pub enum AwsSignerError {
     Spki(spki::der::Error),
     #[error("{0}")]
     Other(String),
+    #[error(transparent)]
+    /// Error when converting from a hex string
+    HexError(#[from] hex::FromHexError),
+    /// Error type from Eip712Error message
+    #[error("error encoding eip712 struct: {0:?}")]
+    Eip712Error(String),
 }
 
 impl From<String> for AwsSignerError {
@@ -243,6 +252,19 @@ impl<'a> super::Signer for AwsSigner<'a> {
     async fn sign_transaction(&self, tx: &TypedTransaction) -> Result<EthSig, Self::Error> {
         let sighash = tx.sighash(self.chain_id);
         self.sign_digest_with_eip155(sighash).await
+    }
+
+    async fn sign_typed_data<T: Eip712 + Send + Sync>(
+        &self,
+        payload: T,
+    ) -> Result<EthSig, Self::Error> {
+        let hash = payload
+            .encode_eip712()
+            .map_err(|e| Self::Error::Eip712Error(e.to_string()))?;
+
+        let digest = self.sign_digest_with_eip155(hash.into()).await?;
+
+        Ok(digest)
     }
 
     fn address(&self) -> Address {

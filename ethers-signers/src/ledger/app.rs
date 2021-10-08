@@ -137,7 +137,7 @@ impl LedgerEthereum {
     }
 
     // Helper function for signing either transaction data or personal messages
-    async fn sign_payload(
+    pub async fn sign_payload(
         &self,
         command: INS,
         mut payload: Vec<u8>,
