@@ -5,7 +5,6 @@ use ethers::{
     types::{Address, U256},
 };
 
-
 // Generate the EIP712 permit hash to sign for a Uniswap V2 pair.
 // https://eips.ethereum.org/EIPS/eip-712
 // https://eips.ethereum.org/EIPS/eip-2612
