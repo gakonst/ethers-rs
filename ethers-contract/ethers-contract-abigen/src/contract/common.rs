@@ -16,6 +16,8 @@ pub(crate) fn imports(name: &str) -> TokenStream {
     quote! {
         #![allow(clippy::enum_variant_names)]
         #![allow(dead_code)]
+        #![allow(clippy::redundant_clone)]
+        #![allow(clippy::type_complexity)]
         #![allow(unused_imports)]
         #doc
 
