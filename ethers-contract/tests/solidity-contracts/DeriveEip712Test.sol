@@ -24,7 +24,7 @@ contract DeriveEip712Test {
         address out;
     }
 
-    constructor() {}
+    constructor() public {}
 
     function domainSeparator() public pure returns (bytes32) {
         return
