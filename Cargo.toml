@@ -81,7 +81,7 @@ ethers-signers = { version = "^0.5.0", default-features = false, path = "./ether
 ethers-middleware = { version = "^0.5.0", default-features = false, path = "./ethers-middleware" }
 
 [dev-dependencies]
-ethers-contract = { version = "^0.5.0", default-features = false, path = "./ethers-contract", features = ["abigen"] }
+ethers-contract = { version = "^0.5.0", default-features = false, path = "./ethers-contract", features = ["abigen", "eip712"] }
 ethers-providers = { version = "^0.5.0", default-features = false, path = "./ethers-providers", features = ["ws", "ipc"] }
 
 anyhow = "1.0.39"
