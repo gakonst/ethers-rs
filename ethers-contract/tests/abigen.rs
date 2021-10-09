@@ -91,6 +91,6 @@ fn can_gen_human_readable_with_structs() {
 
     let (client, _mock) = Provider::mocked();
     let contract = SimpleContract::new(Address::default(), Arc::new(client));
-    let foo = Foo { x: 100u64.into() };
-    let _ = contract.foo(foo);
+    let f = Foo { x: 100u64.into() };
+    let _ = contract.foo(f);
 }

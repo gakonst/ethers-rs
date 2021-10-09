@@ -2,7 +2,7 @@
 
 #![allow(missing_docs)]
 use serde::{
-    de::{EnumAccess, Error, MapAccess, SeqAccess, Visitor},
+    de::{MapAccess, SeqAccess, Visitor},
     Deserialize, Deserializer, Serialize,
 };
 

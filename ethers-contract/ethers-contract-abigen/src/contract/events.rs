@@ -1,6 +1,6 @@
 use super::{types, util, Context};
 use anyhow::Result;
-use ethers_core::abi::{Event, EventExt, EventParam, Hash, ParamType, SolStruct};
+use ethers_core::abi::{Event, EventExt, EventParam, ParamType, SolStruct};
 use inflector::Inflector;
 use proc_macro2::{Ident, Literal, TokenStream};
 use quote::quote;
@@ -274,49 +274,6 @@ impl Context {
             pub #data_type_definition
         })
     }
-
-    /// Expands a event parameter into an event builder filter method for the
-    /// specified topic index.
-    fn expand_builder_topic_filter(
-        &self,
-        topic_index: usize,
-        param: &EventParam,
-    ) -> Result<TokenStream> {
-        let doc = util::expand_doc(&format!(
-            "Adds a filter for the `{}` event parameter.",
-            param.name,
-        ));
-        let topic = util::ident(&format!("topic{}", topic_index));
-        let name = if param.name.is_empty() {
-            topic.clone()
-        } else {
-            util::safe_ident(&param.name.to_snake_case())
-        };
-        let ty = self.expand_input_type(param)?;
-
-        Ok(quote! {
-            #doc
-            pub fn #name(mut self, topic: Topic<#ty>) -> Self {
-                self.0 = (self.0).#topic(topic);
-                self
-            }
-        })
-    }
-
-    /// Expands an ABI event into filter methods for its indexed parameters.
-    fn expand_builder_topic_filters(&self, event: &Event) -> Result<TokenStream> {
-        let topic_filters = event
-            .inputs
-            .iter()
-            .filter(|input| input.indexed)
-            .enumerate()
-            .map(|(topic_index, input)| self.expand_builder_topic_filter(topic_index, input))
-            .collect::<Result<Vec<_>>>()?;
-
-        Ok(quote! {
-            #( #topic_filters )*
-        })
-    }
 }
 
 /// Expands an ABI event into an identifier for its event data type.
@@ -363,32 +320,26 @@ fn expand_data_tuple(name: &Ident, params: &[(TokenStream, TokenStream, bool)]) 
     quote! { struct #name( #( #fields ),* ); }
 }
 
-/// Expands an ABI event into an identifier for its event data type.
-fn expand_builder_name(event: &Event) -> TokenStream {
-    let builder_name = util::ident(&format!("{}Builder", &event.name.to_pascal_case()));
-    quote! { #builder_name }
-}
-
 fn expand_derives(derives: &[Path]) -> TokenStream {
     quote! {#(#derives),*}
-}
-
-/// Expands a 256-bit `Hash` into a literal representation that can be used with
-/// quasi-quoting for code generation. We do this to avoid allocating at runtime
-fn expand_hash(hash: Hash) -> TokenStream {
-    let bytes = hash.as_bytes().iter().copied().map(Literal::u8_unsuffixed);
-    let ethers_core = util::ethers_core_crate();
-
-    quote! {
-        #ethers_core::types::H256([#( #bytes ),*])
-    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::Abigen;
-    use ethers_core::abi::{EventParam, ParamType};
+    use ethers_core::abi::{EventParam, Hash, ParamType};
+
+    /// Expands a 256-bit `Hash` into a literal representation that can be used with
+    /// quasi-quoting for code generation. We do this to avoid allocating at runtime
+    fn expand_hash(hash: Hash) -> TokenStream {
+        let bytes = hash.as_bytes().iter().copied().map(Literal::u8_unsuffixed);
+        let ethers_core = util::ethers_core_crate();
+
+        quote! {
+            #ethers_core::types::H256([#( #bytes ),*])
+        }
+    }
 
     fn test_context() -> Context {
         Context::from_abigen(Abigen::new("TestToken", "[]").unwrap()).unwrap()
