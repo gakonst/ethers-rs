@@ -1,3 +1,4 @@
+#![allow(clippy::upper_case_acronyms)]
 //! Helpers for interacting with the Ethereum Ledger App
 //! [Official Docs](https://github.com/LedgerHQ/app-ethereum/blob/master/doc/ethapp.asc)
 use std::fmt;
