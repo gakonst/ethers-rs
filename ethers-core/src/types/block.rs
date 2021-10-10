@@ -1,6 +1,7 @@
 // Taken from https://github.com/tomusdrw/rust-web3/blob/master/src/types/block.rs
 use crate::types::{Address, Bloom, Bytes, H256, U256, U64};
-use serde::{ser::SerializeStruct, Deserialize, Serialize, Serializer};
+use serde::{ser::SerializeStruct, Deserialize, Deserializer, Serialize, Serializer};
+use std::str::FromStr;
 
 /// The block type returned from RPC calls.
 /// This is generic over a `TX` type which will be either the hash or the
@@ -192,11 +193,45 @@ impl Serialize for BlockNumber {
     }
 }
 
+impl<'de> Deserialize<'de> for BlockNumber {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?.to_lowercase();
+        Ok(match s.as_str() {
+            "latest" => Self::Latest,
+            "earliest" => Self::Earliest,
+            "pending" => Self::Pending,
+            n => BlockNumber::Number(U64::from_str(n).map_err(serde::de::Error::custom)?),
+        })
+    }
+}
+
 #[cfg(test)]
 #[cfg(not(feature = "celo"))]
 mod tests {
     use super::*;
     use crate::types::{Transaction, TxHash};
+
+    #[test]
+    fn serde_block_number() {
+        for b in vec![
+            BlockNumber::Latest,
+            BlockNumber::Earliest,
+            BlockNumber::Pending,
+        ] {
+            let b_ser = serde_json::to_string(&b).unwrap();
+            let b_de: BlockNumber = serde_json::from_str(&b_ser).unwrap();
+            assert_eq!(b_de, b);
+        }
+
+        let b = BlockNumber::Number(1042u64.into());
+        let b_ser = serde_json::to_string(&b).unwrap();
+        let b_de: BlockNumber = serde_json::from_str(&b_ser).unwrap();
+        assert_eq!(b_ser, "\"0x412\"");
+        assert_eq!(b_de, b);
+    }
 
     #[test]
     fn deserialize_blk_no_txs() {
