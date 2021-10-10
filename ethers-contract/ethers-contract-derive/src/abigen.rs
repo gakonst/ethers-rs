@@ -22,6 +22,7 @@ pub(crate) struct Contracts {
 
 impl Contracts {
     pub(crate) fn expand(self) -> Result<TokenStream2, syn::Error> {
+        let mut tokens = TokenStream2::new();
         let mut expansions = Vec::with_capacity(self.inner.len());
 
         // expand all contracts
@@ -64,11 +65,17 @@ impl Contracts {
                 expanded.abi_structs = ctx.abi_structs().unwrap();
                 expanded
                     .imports
-                    .extend(quote!( pub use super::#shared_types_mdoule));
+                    .extend(quote!( pub use super::#shared_types_mdoule::*;));
             }
+            tokens.extend(
+                quote! {
+                    pub mod #shared_types_mdoule {
+                        #shared_types
+                    }
+                }
+            );
         }
 
-        let mut tokens = TokenStream2::new();
         tokens.extend(expansions.into_iter().map(|(exp, _)| exp.into_tokens()));
         Ok(tokens)
     }

@@ -136,16 +136,16 @@ impl Context {
                     // TODO: Implement deployment.
 
                     #contract_methods
-                }
 
-                #events_decl
+                    #contract_events
+                }
         };
 
         Ok(ExpandedContract {
             module: name_mod,
             imports,
             contract,
-            events: contract_events,
+            events: events_decl,
             abi_structs: abi_structs_decl,
         })
     }
