@@ -1,8 +1,8 @@
 use super::{types, util, Context};
-use anyhow::{anyhow, Context as _, Result};
+use anyhow::{Context as _, Result};
 use ethers_core::abi::ParamType;
 use ethers_core::{
-    abi::{Function, FunctionExt, Param, StateMutability},
+    abi::{Function, FunctionExt, Param},
     types::Selector,
 };
 use inflector::Inflector;
@@ -129,47 +129,6 @@ impl Context {
     }
 }
 
-// converts the function params to name/type pairs
-pub(crate) fn expand_inputs(inputs: &[Param]) -> Result<TokenStream> {
-    let params = inputs
-        .iter()
-        .enumerate()
-        .map(|(i, param)| {
-            let name = util::expand_input_name(i, &param.name);
-            let kind = types::expand(&param.kind)?;
-            Ok(quote! { #name: #kind })
-        })
-        .collect::<Result<Vec<_>>>()?;
-    Ok(quote! { #( , #params )* })
-}
-
-// packs the argument in a tuple to be used for the contract call
-pub(crate) fn expand_inputs_call_arg(inputs: &[Param]) -> TokenStream {
-    let names = inputs
-        .iter()
-        .enumerate()
-        .map(|(i, param)| {
-            let name = util::expand_input_name(i, &param.name);
-            match param.kind {
-                // this is awkward edge case where the function inputs are a single struct
-                // we need to force this argument into a tuple so it gets expanded to `((#name,))`
-                // this is currently necessary because internally `flatten_tokens` is called which removes the outermost `tuple` level
-                // and since `((#name))` is not a rust tuple it doesn't get wrapped into another tuple that will be peeled off by `flatten_tokens`
-                ParamType::Tuple(_) if inputs.len() == 1 => {
-                    // make sure the tuple gets converted to `Token::Tuple`
-                    quote! {(#name,)}
-                }
-                _ => name,
-            }
-        })
-        .collect::<Vec<TokenStream>>();
-    match names.len() {
-        0 => quote! { () },
-        1 => quote! { #( #names )* },
-        _ => quote! { ( #(#names, )* ) },
-    }
-}
-
 fn expand_fn_outputs(outputs: &[Param]) -> Result<TokenStream> {
     match outputs.len() {
         0 => Ok(quote! { () }),
@@ -193,6 +152,47 @@ fn expand_selector(selector: Selector) -> TokenStream {
 mod tests {
     use super::*;
     use ethers_core::abi::ParamType;
+
+    // packs the argument in a tuple to be used for the contract call
+    fn expand_inputs_call_arg(inputs: &[Param]) -> TokenStream {
+        let names = inputs
+            .iter()
+            .enumerate()
+            .map(|(i, param)| {
+                let name = util::expand_input_name(i, &param.name);
+                match param.kind {
+                    // this is awkward edge case where the function inputs are a single struct
+                    // we need to force this argument into a tuple so it gets expanded to `((#name,))`
+                    // this is currently necessary because internally `flatten_tokens` is called which removes the outermost `tuple` level
+                    // and since `((#name))` is not a rust tuple it doesn't get wrapped into another tuple that will be peeled off by `flatten_tokens`
+                    ParamType::Tuple(_) if inputs.len() == 1 => {
+                        // make sure the tuple gets converted to `Token::Tuple`
+                        quote! {(#name,)}
+                    }
+                    _ => name,
+                }
+            })
+            .collect::<Vec<TokenStream>>();
+        match names.len() {
+            0 => quote! { () },
+            1 => quote! { #( #names )* },
+            _ => quote! { ( #(#names, )* ) },
+        }
+    }
+
+    // converts the function params to name/type pairs
+    fn expand_inputs(inputs: &[Param]) -> Result<TokenStream> {
+        let params = inputs
+            .iter()
+            .enumerate()
+            .map(|(i, param)| {
+                let name = util::expand_input_name(i, &param.name);
+                let kind = types::expand(&param.kind)?;
+                Ok(quote! { #name: #kind })
+            })
+            .collect::<Result<Vec<_>>>()?;
+        Ok(quote! { #( , #params )* })
+    }
 
     #[test]
     fn test_expand_inputs_call_arg() {

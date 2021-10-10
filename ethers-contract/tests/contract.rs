@@ -1,8 +1,8 @@
-use ethers_contract::{abigen, ContractFactory, EthAbiType};
-use ethers_core::types::{Filter, ValueOrArray, H256};
-
+#![allow(unused)]
 mod common;
 pub use common::*;
+use ethers_contract::{abigen, ContractFactory, EthAbiType};
+use ethers_core::types::{Filter, ValueOrArray, H256};
 
 #[cfg(not(feature = "celo"))]
 mod eth_tests {

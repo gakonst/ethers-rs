@@ -10,16 +10,13 @@ use super::Abigen;
 use crate::contract::structs::InternalStructs;
 use crate::rawabi::RawAbi;
 use anyhow::{anyhow, Context as _, Result};
-use ethers_core::{
-    abi::{parse_abi, Abi, AbiParser},
-    types::Address,
-};
-use inflector::Inflector;
+use ethers_core::abi::{Abi, AbiParser};
+
 use proc_macro2::{Ident, Literal, TokenStream};
 use quote::quote;
 use serde::Deserialize;
 use std::collections::BTreeMap;
-use syn::{Path, Visibility};
+use syn::Path;
 
 /// Internal shared context for generating smart contract bindings.
 pub(crate) struct Context {

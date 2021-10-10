@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-#![allow(unused_imports)]
 #![deny(missing_docs, unsafe_code)]
 
 //! Module for generating type-safe bindings to Ethereum smart contracts. This

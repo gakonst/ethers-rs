@@ -447,6 +447,6 @@ mod tests {
                 .optimization(true)
                 .runs(200);
 
-        let resp = client.submit_contract_verification(&contract).await;
+        let _resp = client.submit_contract_verification(&contract).await;
     }
 }

@@ -26,8 +26,8 @@ pub(super) fn rsig_to_ethsig(sig: &RSig) -> EthSig {
     let v = (v + 27) as u64;
     let r_bytes: FieldBytes = sig.r().into();
     let s_bytes: FieldBytes = sig.s().into();
-    let r = U256::from_big_endian(&r_bytes.as_slice());
-    let s = U256::from_big_endian(&s_bytes.as_slice());
+    let r = U256::from_big_endian(r_bytes.as_slice());
+    let s = U256::from_big_endian(s_bytes.as_slice());
     EthSig { r, s, v }
 }
 
@@ -82,7 +82,7 @@ pub(super) fn decode_pubkey(resp: GetPublicKeyResponse) -> Result<VerifyingKey, 
         .ok_or_else(|| AwsSignerError::from("Pubkey not found in response".to_owned()))?;
 
     let spk = spki::SubjectPublicKeyInfo::try_from(raw.as_ref())?;
-    let key = VerifyingKey::from_sec1_bytes(&spk.subject_public_key)?;
+    let key = VerifyingKey::from_sec1_bytes(spk.subject_public_key)?;
 
     Ok(key)
 }

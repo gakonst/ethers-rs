@@ -113,7 +113,7 @@ impl Source {
     }
 
     /// Creates a local filesystem source from a path string.
-    fn local<P>(path: P) -> Self
+    pub fn local<P>(path: P) -> Self
     where
         P: AsRef<Path>,
     {
@@ -121,7 +121,7 @@ impl Source {
     }
 
     /// Creates an HTTP source from a URL.
-    fn http<S>(url: S) -> Result<Self>
+    pub fn http<S>(url: S) -> Result<Self>
     where
         S: AsRef<str>,
     {
@@ -129,7 +129,7 @@ impl Source {
     }
 
     /// Creates an Etherscan source from an address string.
-    fn etherscan<S>(address: S) -> Result<Self>
+    pub fn etherscan<S>(address: S) -> Result<Self>
     where
         S: AsRef<str>,
     {
@@ -139,7 +139,7 @@ impl Source {
     }
 
     /// Creates an Etherscan source from an address string.
-    fn npm<S>(package_path: S) -> Self
+    pub fn npm<S>(package_path: S) -> Self
     where
         S: Into<String>,
     {

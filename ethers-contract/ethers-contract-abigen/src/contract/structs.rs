@@ -3,7 +3,7 @@ use std::collections::{HashMap, VecDeque};
 
 use anyhow::{Context as _, Result};
 use inflector::Inflector;
-use proc_macro2::{Literal, TokenStream};
+use proc_macro2::TokenStream;
 use quote::quote;
 
 use ethers_core::abi::{
@@ -15,7 +15,6 @@ use ethers_core::abi::{
 use crate::contract::{types, Context};
 use crate::rawabi::{Component, RawAbi};
 use crate::util;
-use std::any::Any;
 
 impl Context {
     /// Generate corresponding types for structs parsed from a human readable ABI
@@ -193,9 +192,6 @@ impl Context {
 /// This is currently used to get access to all the unique solidity structs used as function in/output until `ethabi` supports it as well.
 #[derive(Debug, Clone, Default)]
 pub struct InternalStructs {
-    /// All unique internal types that are function inputs or outputs
-    pub(crate) top_level_internal_types: HashMap<String, Component>,
-
     /// (function name, param name) -> struct which are the identifying properties we get the name from ethabi.
     pub(crate) function_params: HashMap<(String, String), String>,
 
@@ -269,7 +265,6 @@ impl InternalStructs {
         }
 
         Self {
-            top_level_internal_types,
             function_params,
             outputs,
             structs,

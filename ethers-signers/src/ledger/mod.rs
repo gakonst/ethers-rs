@@ -5,11 +5,9 @@ use crate::Signer;
 use app::LedgerEthereum;
 use async_trait::async_trait;
 use ethers_core::types::{
-    transaction::eip2718::TypedTransaction,
-    transaction::eip712::{EIP712Domain, Eip712},
-    Address, Signature,
+    transaction::eip2718::TypedTransaction, transaction::eip712::Eip712, Address, Signature,
 };
-use types::{LedgerError, INS};
+use types::LedgerError;
 
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
