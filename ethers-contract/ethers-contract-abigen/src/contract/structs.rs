@@ -30,6 +30,45 @@ impl Context {
         }
     }
 
+    /// In the event of type conflicts this allows for removing a specific struct type.
+    pub fn remove_struct(&mut self, name: &str) {
+        if self.human_readable {
+            self.abi_parser.structs.remove(name);
+        } else {
+            self.internal_structs.structs.remove(name);
+        }
+    }
+
+    /// Returns the type definition for the struct with the given name
+    pub fn struct_definition(&mut self, name: &str) -> Result<TokenStream> {
+        if self.human_readable {
+            self.generate_human_readable_struct(name)
+        } else {
+            self.generate_internal_struct(name)
+        }
+    }
+
+    /// Generates the type definition for the name that matches the given identifier
+    fn generate_internal_struct(&self, id: &str) -> Result<TokenStream> {
+        let sol_struct = self
+            .internal_structs
+            .structs
+            .get(id)
+            .context("struct not found")?;
+        let struct_name = self
+            .internal_structs
+            .rust_type_names
+            .get(id)
+            .context(format!("No types found for {}", id))?;
+        let tuple = self
+            .internal_structs
+            .struct_tuples
+            .get(id)
+            .context(format!("No types found for {}", id))?
+            .clone();
+        self.expand_internal_struct(struct_name, sol_struct, tuple)
+    }
+
     /// Returns the `TokenStream` with all the internal structs extracted form the JSON ABI
     fn gen_internal_structs(&self) -> Result<TokenStream> {
         let mut structs = TokenStream::new();
@@ -37,19 +76,7 @@ impl Context {
         ids.sort();
 
         for id in ids {
-            let sol_struct = &self.internal_structs.structs[id];
-            let struct_name = self
-                .internal_structs
-                .rust_type_names
-                .get(id)
-                .context(format!("No types found for {}", id))?;
-            let tuple = self
-                .internal_structs
-                .struct_tuples
-                .get(id)
-                .context(format!("No types found for {}", id))?
-                .clone();
-            structs.extend(self.expand_internal_struct(struct_name, sol_struct, tuple)?);
+            structs.extend(self.generate_internal_struct(id)?);
         }
         Ok(structs)
     }
@@ -113,75 +140,83 @@ impl Context {
         })
     }
 
+    fn generate_human_readable_struct(&self, name: &str) -> Result<TokenStream> {
+        let sol_struct = self
+            .abi_parser
+            .structs
+            .get(name)
+            .context("struct not found")?;
+        let mut fields = Vec::with_capacity(sol_struct.fields().len());
+        let mut param_types = Vec::with_capacity(sol_struct.fields().len());
+        for field in sol_struct.fields() {
+            let field_name = util::ident(&field.name().to_snake_case());
+            match field.r#type() {
+                FieldType::Elementary(ty) => {
+                    param_types.push(ty.clone());
+                    let ty = types::expand(ty)?;
+                    fields.push(quote! { pub #field_name: #ty });
+                }
+                FieldType::Struct(struct_ty) => {
+                    let ty = expand_struct_type(struct_ty);
+                    fields.push(quote! { pub #field_name: #ty });
+
+                    let name = struct_ty.name();
+                    let tuple = self
+                        .abi_parser
+                        .struct_tuples
+                        .get(name)
+                        .context(format!("No types found for {}", name))?
+                        .clone();
+                    let tuple = ParamType::Tuple(tuple);
+
+                    param_types.push(struct_ty.as_param(tuple));
+                }
+                FieldType::Mapping(_) => {
+                    return Err(anyhow::anyhow!(
+                        "Mapping types in struct `{}` are not supported {:?}",
+                        name,
+                        field
+                    ));
+                }
+            }
+        }
+
+        let abi_signature = format!(
+            "{}({})",
+            name,
+            param_types
+                .iter()
+                .map(|kind| kind.to_string())
+                .collect::<Vec<_>>()
+                .join(","),
+        );
+
+        let abi_signature_doc = util::expand_doc(&format!("`{}`", abi_signature));
+
+        let name = util::ident(name);
+
+        // use the same derives as for events
+        let derives = &self.event_derives;
+        let derives = quote! {#(#derives),*};
+
+        let ethers_contract = util::ethers_contract_crate();
+
+        Ok(quote! {
+            #abi_signature_doc
+            #[derive(Clone, Debug, Default, Eq, PartialEq, #ethers_contract::EthAbiType, #derives)]
+            pub struct #name {
+                #( #fields ),*
+            }
+        })
+    }
+
     /// Expand all structs parsed from the human readable ABI
     fn gen_human_readable_structs(&self) -> Result<TokenStream> {
         let mut structs = TokenStream::new();
         let mut names: Vec<_> = self.abi_parser.structs.keys().collect();
         names.sort();
         for name in names {
-            let sol_struct = &self.abi_parser.structs[name];
-            let mut fields = Vec::with_capacity(sol_struct.fields().len());
-            let mut param_types = Vec::with_capacity(sol_struct.fields().len());
-            for field in sol_struct.fields() {
-                let field_name = util::ident(&field.name().to_snake_case());
-                match field.r#type() {
-                    FieldType::Elementary(ty) => {
-                        param_types.push(ty.clone());
-                        let ty = types::expand(ty)?;
-                        fields.push(quote! { pub #field_name: #ty });
-                    }
-                    FieldType::Struct(struct_ty) => {
-                        let ty = expand_struct_type(struct_ty);
-                        fields.push(quote! { pub #field_name: #ty });
-
-                        let name = struct_ty.name();
-                        let tuple = self
-                            .abi_parser
-                            .struct_tuples
-                            .get(name)
-                            .context(format!("No types found for {}", name))?
-                            .clone();
-                        let tuple = ParamType::Tuple(tuple);
-
-                        param_types.push(struct_ty.as_param(tuple));
-                    }
-                    FieldType::Mapping(_) => {
-                        return Err(anyhow::anyhow!(
-                            "Mapping types in struct `{}` are not supported {:?}",
-                            name,
-                            field
-                        ));
-                    }
-                }
-            }
-
-            let abi_signature = format!(
-                "{}({})",
-                name,
-                param_types
-                    .iter()
-                    .map(|kind| kind.to_string())
-                    .collect::<Vec<_>>()
-                    .join(","),
-            );
-
-            let abi_signature_doc = util::expand_doc(&format!("`{}`", abi_signature));
-
-            let name = util::ident(name);
-
-            // use the same derives as for events
-            let derives = &self.event_derives;
-            let derives = quote! {#(#derives),*};
-
-            let ethers_contract = util::ethers_contract_crate();
-
-            structs.extend(quote! {
-            #abi_signature_doc
-            #[derive(Clone, Debug, Default, Eq, PartialEq, #ethers_contract::EthAbiType, #derives)]
-            pub struct #name {
-                #( #fields ),*
-            }
-        });
+            structs.extend(self.generate_human_readable_struct(name)?);
         }
         Ok(structs)
     }
@@ -209,6 +244,7 @@ pub struct InternalStructs {
 }
 
 impl InternalStructs {
+    /// Creates a new instance with a filled type mapping table based on the abi
     pub fn new(abi: RawAbi) -> Self {
         let mut top_level_internal_types = HashMap::new();
         let mut function_params = HashMap::new();
@@ -284,6 +320,11 @@ impl InternalStructs {
             .get(&key)
             .and_then(|id| self.rust_type_names.get(id))
             .map(String::as_str)
+    }
+
+    /// Returns the mapping table of abi `internal type identifier -> rust type`
+    pub fn rust_type_names(&self) -> &HashMap<String, String> {
+        &self.rust_type_names
     }
 }
 

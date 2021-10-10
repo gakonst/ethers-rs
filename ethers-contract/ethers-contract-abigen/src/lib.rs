@@ -10,7 +10,8 @@
 #[path = "test/macros.rs"]
 mod test_macros;
 
-mod contract;
+/// Contains types to generate rust bindings for solidity contracts
+pub mod contract;
 use contract::Context;
 
 pub mod rawabi;
@@ -126,7 +127,7 @@ impl Abigen {
     /// Generates the contract bindings.
     pub fn generate(self) -> Result<ContractBindings> {
         let rustfmt = self.rustfmt;
-        let tokens = Context::expand(self)?;
+        let tokens = Context::from_abigen(self)?.expand()?.into_tokens();
         Ok(ContractBindings { tokens, rustfmt })
     }
 }
