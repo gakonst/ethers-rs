@@ -67,13 +67,11 @@ impl Contracts {
                     .imports
                     .extend(quote!( pub use super::#shared_types_mdoule::*;));
             }
-            tokens.extend(
-                quote! {
-                    pub mod #shared_types_mdoule {
-                        #shared_types
-                    }
+            tokens.extend(quote! {
+                pub mod #shared_types_mdoule {
+                    #shared_types
                 }
-            );
+            });
         }
 
         tokens.extend(expansions.into_iter().map(|(exp, _)| exp.into_tokens()));
@@ -144,14 +142,27 @@ impl ParseInner for ContractArgs {
             (literal.span(), literal.value())
         };
 
-        if !input.is_empty() {
+        let mut parameters = Vec::new();
+        let lookahead = input.lookahead1();
+        if lookahead.peek(Token![,]) {
             input.parse::<Token![,]>()?;
-        }
 
-        let parameters = input
-            .parse_terminated::<_, Token![,]>(Parameter::parse)?
-            .into_iter()
-            .collect();
+            loop {
+                if input.is_empty() {
+                    break;
+                }
+                let lookahead = input.lookahead1();
+                if lookahead.peek(Token![;]) {
+                    break;
+                }
+                let param = Parameter::parse(input)?;
+                parameters.push(param);
+                let lookahead = input.lookahead1();
+                if lookahead.peek(Token![,]) {
+                    input.parse::<Token![,]>()?;
+                }
+            }
+        }
 
         Ok((
             span,
@@ -314,12 +325,119 @@ mod tests {
         }
     }
 
+    fn parse_contracts(s: TokenStream2) -> Vec<ContractArgs> {
+        use syn::parse::Parser;
+        Contracts::parse
+            .parse2(s)
+            .unwrap()
+            .inner
+            .into_iter()
+            .map(|(_, c)| c)
+            .collect::<Vec<_>>()
+    }
+
+    #[test]
+    fn parse_multi_contract_args_events() {
+        let args = parse_contracts(quote::quote! {
+            TestContract,
+            "path/to/abi.json",
+            event_derives(serde::Deserialize, serde::Serialize);
+
+            TestContract2,
+            "other.json",
+            event_derives(serde::Deserialize, serde::Serialize);
+        });
+
+        assert_eq!(
+            args,
+            vec![
+                ContractArgs {
+                    name: "TestContract".to_string(),
+                    abi: "path/to/abi.json".to_string(),
+                    parameters: vec![Parameter::EventDerives(vec![
+                        "serde :: Deserialize".into(),
+                        "serde :: Serialize".into(),
+                    ])],
+                },
+                ContractArgs {
+                    name: "TestContract2".to_string(),
+                    abi: "other.json".to_string(),
+                    parameters: vec![Parameter::EventDerives(vec![
+                        "serde :: Deserialize".into(),
+                        "serde :: Serialize".into(),
+                    ])],
+                },
+            ]
+        );
+    }
+    #[test]
+    fn parse_multi_contract_args_methods() {
+        let args = parse_contracts(quote::quote! {
+            TestContract,
+            "path/to/abi.json",
+             methods {
+                myMethod(uint256, bool) as my_renamed_method;
+                myOtherMethod() as my_other_renamed_method;
+            }
+            ;
+
+            TestContract2,
+            "other.json",
+            event_derives(serde::Deserialize, serde::Serialize);
+        });
+
+        assert_eq!(
+            args,
+            vec![
+                ContractArgs {
+                    name: "TestContract".to_string(),
+                    abi: "path/to/abi.json".to_string(),
+                    parameters: vec![Parameter::Methods(vec![
+                        method("myMethod(uint256,bool)", "my_renamed_method"),
+                        method("myOtherMethod()", "my_other_renamed_method"),
+                    ])],
+                },
+                ContractArgs {
+                    name: "TestContract2".to_string(),
+                    abi: "other.json".to_string(),
+                    parameters: vec![Parameter::EventDerives(vec![
+                        "serde :: Deserialize".into(),
+                        "serde :: Serialize".into(),
+                    ])],
+                },
+            ]
+        );
+    }
+
     #[test]
     fn parse_multi_contract_args() {
-        use syn::parse::Parser;
+        let args = parse_contracts(quote::quote! {
+            TestContract,
+            "path/to/abi.json",;
 
-        let resp = <Spanned<Contracts> as Parse>::parse
-            .parse2(quote::quote! { TestContract, "path/to/abi.json", });
+            TestContract2,
+            "other.json",
+            event_derives(serde::Deserialize, serde::Serialize);
+        });
+
+        assert_eq!(
+            args,
+            vec![
+                ContractArgs {
+                    name: "TestContract".to_string(),
+                    abi: "path/to/abi.json".to_string(),
+                    parameters: vec![],
+                },
+                ContractArgs {
+                    name: "TestContract2".to_string(),
+                    abi: "other.json".to_string(),
+                    parameters: vec![Parameter::EventDerives(vec![
+                        "serde :: Deserialize".into(),
+                        "serde :: Serialize".into(),
+                    ])],
+                },
+            ]
+        );
     }
 
     #[test]
