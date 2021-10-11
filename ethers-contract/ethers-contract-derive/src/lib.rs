@@ -12,16 +12,15 @@ use syn::{
     GenericArgument, Lit, Meta, NestedMeta, PathArguments, Type,
 };
 
-use abigen::{expand, ContractArgs};
+use abigen::Contracts;
 use ethers_core::abi::{param_type::Reader, AbiParser, Event, EventExt, EventParam, ParamType};
 use hex::FromHex;
-use spanned::Spanned;
 
 mod abigen;
 mod spanned;
 
-/// Proc macro to generate type-safe bindings to a contract. This macro accepts
-/// an Ethereum contract ABI or a path. Note that this path is rooted in
+/// Proc macro to generate type-safe bindings to a contract(s). This macro accepts
+/// one or more Ethereum contract ABI or a path. Note that this path is rooted in
 /// the crate's root `CARGO_MANIFEST_DIR`.
 ///
 /// # Examples
@@ -55,6 +54,8 @@ mod spanned;
 /// - `event_derives`: A list of additional derives that should be added to
 ///   contract event structs and enums.
 ///
+/// # Example
+///
 /// ```ignore
 /// abigen!(
 ///     MyContract,
@@ -65,13 +66,32 @@ mod spanned;
 ///     event_derives (serde::Deserialize, serde::Serialize),
 /// );
 /// ```
+///
+/// `abigen!` supports multiple abigen definitions separated by a semicolon `;`
+/// This is useful if the contracts use ABIEncoderV2 structs. In which case `abigen!` bundles all type duplicates so that all rust contracts also use the same rust types.
+///
+/// # Example Multiple contracts
+/// ```ignore
+/// abigen!(
+///     MyContract,
+///     "path/to/MyContract.json",
+///     methods {
+///         myMethod(uint256,bool) as my_renamed_method;
+///     },
+///     event_derives (serde::Deserialize, serde::Serialize);
+///
+///     MyOtherContract,
+///     "path/to/MyOtherContract.json",
+///     event_derives (serde::Deserialize, serde::Serialize);
+/// );
+/// ```
 #[proc_macro]
 pub fn abigen(input: TokenStream) -> TokenStream {
-    let args = parse_macro_input!(input as Spanned<ContractArgs>);
+    let contracts = parse_macro_input!(input as Contracts);
 
-    let span = args.span();
-    expand(args.into_inner())
-        .unwrap_or_else(|e| Error::new(span, format!("{:?}", e)).to_compile_error())
+    contracts
+        .expand()
+        .unwrap_or_else(|err| err.to_compile_error())
         .into()
 }
 
