@@ -147,9 +147,7 @@ impl<M: Middleware> ContractFactory<M> {
         // Encode the constructor args & concatenate with the bytecode if necessary
         let params = constructor_args.into_tokens();
         let data: Bytes = match (self.abi.constructor(), params.is_empty()) {
-            (None, false) => {
-                return Err(ContractError::ConstructorError)
-            }
+            (None, false) => return Err(ContractError::ConstructorError),
             (None, true) => self.bytecode.clone(),
             (Some(constructor), _) => {
                 constructor.encode_input(self.bytecode.to_vec(), &params)?.into()

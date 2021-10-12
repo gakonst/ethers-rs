@@ -197,9 +197,7 @@ impl AbiParser {
                     };
                     return Ok(Event { name, inputs, anonymous })
                 }
-                Some(' ') | Some('\t') => {
-                    continue
-                }
+                Some(' ') | Some('\t') => continue,
                 Some(c) => {
                     bail!("Illegal char `{}` at `{}`", c, s)
                 }

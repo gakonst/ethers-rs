@@ -95,7 +95,7 @@ help you get involved in the ethers-rs project.
 
 If you make a Pull Request, do not forget to add your changes in the [CHANGELOG](CHANGELOG.md) and ensure your code if
 properly formatted with `cargo +nightly fmt` and clippy is happy `cargo clippy`, you can even try to let clippy fix simple
-issues itself: `cargo +nightly clippy --fix -Z unstable-options`.
+issues itself: `cargo +nightly clippy --fix -Z unstable-options`
 
 ## Related Projects
 

@@ -262,9 +262,7 @@ impl SolStruct {
                     };
                     return Ok(SolStruct { name, fields })
                 }
-                Some(' ') | Some('\t') => {
-                    continue
-                }
+                Some(' ') | Some('\t') => continue,
                 Some(c) => {
                     bail!("Illegal char `{}` at `{}`", c, s)
                 }
