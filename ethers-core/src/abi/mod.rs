@@ -2,8 +2,7 @@
 // Adapted from [Gnosis' ethcontract](https://github.com/gnosis/ethcontract-rs/blob/master/common/src/abiext.rs)
 use crate::{types::Selector, utils::id};
 
-pub use ethabi::Contract as Abi;
-pub use ethabi::*;
+pub use ethabi::{Contract as Abi, *};
 
 mod tokens;
 pub use tokens::{Detokenize, InvalidOutputType, Tokenizable, TokenizableItem, Tokenize};
@@ -55,11 +54,7 @@ impl EventExt for Event {
         format!(
             "{}({}){}",
             self.name,
-            self.inputs
-                .iter()
-                .map(|input| input.kind.to_string())
-                .collect::<Vec<_>>()
-                .join(","),
+            self.inputs.iter().map(|input| input.kind.to_string()).collect::<Vec<_>>().join(","),
             if self.anonymous { " anonymous" } else { "" },
         )
     }
@@ -107,10 +102,7 @@ mod tests {
                 r#"{"name":"baz","inputs":[{"name":"a","type":"uint256"}],"anonymous":true}"#,
                 "baz(uint256) anonymous",
             ),
-            (
-                r#"{"name":"bax","inputs":[],"anonymous":true}"#,
-                "bax() anonymous",
-            ),
+            (r#"{"name":"bax","inputs":[],"anonymous":true}"#, "bax() anonymous"),
         ] {
             let event: Event = serde_json::from_str(e).expect("invalid event JSON");
             let signature = event.abi_signature();

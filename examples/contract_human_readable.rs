@@ -19,12 +19,11 @@ abigen!(
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    // 1. compile the contract (note this requires that you are inside the `examples` directory) and launch ganache
+    // 1. compile the contract (note this requires that you are inside the `examples` directory) and
+    // launch ganache
     let (compiled, ganache) =
         compile_and_launch_ganache(Solc::new("**/contract.sol"), Ganache::new()).await?;
-    let contract = compiled
-        .get("SimpleStorage")
-        .expect("could not find contract");
+    let contract = compiled.get("SimpleStorage").expect("could not find contract");
 
     // 2. instantiate our wallet
     let wallet: LocalWallet = ganache.keys()[0].clone().into();
@@ -38,18 +37,11 @@ async fn main() -> Result<()> {
     let client = Arc::new(client);
 
     // 5. create a factory which will be used to deploy instances of the contract
-    let factory = ContractFactory::new(
-        contract.abi.clone(),
-        contract.bytecode.clone(),
-        client.clone(),
-    );
+    let factory =
+        ContractFactory::new(contract.abi.clone(), contract.bytecode.clone(), client.clone());
 
     // 6. deploy it with the constructor arguments
-    let contract = factory
-        .deploy("initial value".to_string())?
-        .legacy()
-        .send()
-        .await?;
+    let contract = factory.deploy("initial value".to_string())?.legacy().send().await?;
 
     // 7. get the contract's address
     let addr = contract.address();
@@ -59,19 +51,10 @@ async fn main() -> Result<()> {
 
     // 9. call the `setValue` method
     // (first `await` returns a PendingTransaction, second one waits for it to be mined)
-    let _receipt = contract
-        .set_value("hi".to_owned())
-        .legacy()
-        .send()
-        .await?
-        .await?;
+    let _receipt = contract.set_value("hi".to_owned()).legacy().send().await?.await?;
 
     // 10. get all events
-    let logs = contract
-        .value_changed_filter()
-        .from_block(0u64)
-        .query()
-        .await?;
+    let logs = contract.value_changed_filter().from_block(0u64).query().await?;
 
     // 11. get the new value
     let value = contract.get_value().call().await?;

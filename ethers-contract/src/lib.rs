@@ -39,9 +39,7 @@ pub use multicall::Multicall;
 /// This module exposes low lever builder structures which are only consumed by the
 /// type-safe ABI bindings generators.
 pub mod builders {
-    pub use super::call::ContractCall;
-    pub use super::event::Event;
-    pub use super::factory::Deployer;
+    pub use super::{call::ContractCall, event::Event, factory::Deployer};
 }
 
 #[cfg(any(test, feature = "abigen"))]

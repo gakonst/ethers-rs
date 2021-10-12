@@ -1,7 +1,6 @@
-use crate::Middleware;
 use crate::{
     stream::{interval, DEFAULT_POLL_INTERVAL},
-    JsonRpcClient, PinBoxFut, Provider, ProviderError,
+    JsonRpcClient, Middleware, PinBoxFut, Provider, ProviderError,
 };
 use ethers_core::types::{Transaction, TransactionReceipt, TxHash, U64};
 use futures_core::stream::Stream;
@@ -81,7 +80,7 @@ macro_rules! rewake_with_new_state {
     ($ctx:ident, $this:ident, $new_state:expr) => {
         *$this.state = $new_state;
         $ctx.waker().wake_by_ref();
-        return Poll::Pending;
+        return Poll::Pending
     };
 }
 
@@ -130,7 +129,7 @@ impl<'a, P: JsonRpcClient> Future for PendingTransaction<'a, P> {
                 if tx_opt.is_none() {
                     tracing::debug!("Dropped from mempool, pending tx {:?}", *this.tx_hash);
                     *this.state = PendingTxState::Completed;
-                    return Poll::Ready(Ok(None));
+                    return Poll::Ready(Ok(None))
                 }
 
                 // If it hasn't confirmed yet, poll again later
@@ -175,10 +174,7 @@ impl<'a, P: JsonRpcClient> Future for PendingTransaction<'a, P> {
                 // If we requested more than 1 confirmation, we need to compare the receipt's
                 // block number and the current block
                 if *this.confirmations > 1 {
-                    tracing::debug!(
-                        "Waiting on confirmations for pending tx {:?}",
-                        *this.tx_hash
-                    );
+                    tracing::debug!("Waiting on confirmations for pending tx {:?}", *this.tx_hash);
 
                     let fut = Box::pin(this.provider.get_block_number());
                     *this.state = PendingTxState::GettingBlockNumber(fut, receipt.take());
@@ -188,7 +184,7 @@ impl<'a, P: JsonRpcClient> Future for PendingTransaction<'a, P> {
                 } else {
                     let receipt = receipt.take();
                     *this.state = PendingTxState::Completed;
-                    return Poll::Ready(Ok(receipt));
+                    return Poll::Ready(Ok(receipt))
                 }
             }
             PendingTxState::PausedGettingBlockNumber(receipt) => {
@@ -219,7 +215,7 @@ impl<'a, P: JsonRpcClient> Future for PendingTransaction<'a, P> {
                 if current_block > inclusion_block + *this.confirmations - 1 {
                     let receipt = Some(receipt);
                     *this.state = PendingTxState::Completed;
-                    return Poll::Ready(Ok(receipt));
+                    return Poll::Ready(Ok(receipt))
                 } else {
                     tracing::trace!(tx_hash = ?this.tx_hash, "confirmations {}/{}", current_block - inclusion_block + 1, this.confirmations);
                     *this.state = PendingTxState::PausedGettingBlockNumber(Some(receipt));
@@ -313,8 +309,6 @@ impl<'a> fmt::Debug for PendingTxState<'a> {
             PendingTxState::Completed => "Completed",
         };
 
-        f.debug_struct("PendingTxState")
-            .field("state", &state)
-            .finish()
+        f.debug_struct("PendingTxState").field("state", &state).finish()
     }
 }

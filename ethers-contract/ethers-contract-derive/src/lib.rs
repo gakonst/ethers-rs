@@ -6,10 +6,9 @@ use ethers_contract_abigen::{ethers_contract_crate, ethers_core_crate, Source};
 use proc_macro::TokenStream;
 use proc_macro2::{Literal, Span};
 use quote::{quote, quote_spanned};
-use syn::spanned::Spanned as _;
 use syn::{
-    parse::Error, parse_macro_input, AttrStyle, Data, DeriveInput, Expr, Field, Fields,
-    GenericArgument, Lit, Meta, NestedMeta, PathArguments, Type,
+    parse::Error, parse_macro_input, spanned::Spanned as _, AttrStyle, Data, DeriveInput, Expr,
+    Field, Fields, GenericArgument, Lit, Meta, NestedMeta, PathArguments, Type,
 };
 
 use abigen::Contracts;
@@ -47,12 +46,11 @@ mod spanned;
 ///
 /// Currently the proc macro accepts additional parameters to configure some
 /// aspects of the code generation. Specifically it accepts:
-/// - `methods`: A list of mappings from method signatures to method names
-///   allowing methods names to be explicitely set for contract methods. This
-///   also provides a workaround for generating code for contracts with multiple
-///   methods with the same name.
-/// - `event_derives`: A list of additional derives that should be added to
-///   contract event structs and enums.
+/// - `methods`: A list of mappings from method signatures to method names allowing methods names to
+///   be explicitely set for contract methods. This also provides a workaround for generating code
+///   for contracts with multiple methods with the same name.
+/// - `event_derives`: A list of additional derives that should be added to contract event structs
+///   and enums.
 ///
 /// # Example
 ///
@@ -68,7 +66,8 @@ mod spanned;
 /// ```
 ///
 /// `abigen!` supports multiple abigen definitions separated by a semicolon `;`
-/// This is useful if the contracts use ABIEncoderV2 structs. In which case `abigen!` bundles all type duplicates so that all rust contracts also use the same rust types.
+/// This is useful if the contracts use ABIEncoderV2 structs. In which case `abigen!` bundles all
+/// type duplicates so that all rust contracts also use the same rust types.
 ///
 /// # Example Multiple contracts
 /// ```ignore
@@ -89,10 +88,7 @@ mod spanned;
 pub fn abigen(input: TokenStream) -> TokenStream {
     let contracts = parse_macro_input!(input as Contracts);
 
-    contracts
-        .expand()
-        .unwrap_or_else(|err| err.to_compile_error())
-        .into()
+    contracts.expand().unwrap_or_else(|err| err.to_compile_error()).into()
 }
 
 /// Derives the `EthEvent` and `Tokenizeable` trait for the labeled type.
@@ -148,10 +144,7 @@ pub fn derive_abi_event(input: TokenStream) -> TokenStream {
         Err(errors) => return TokenStream::from(errors),
     };
 
-    let event_name = attributes
-        .name
-        .map(|(s, _)| s)
-        .unwrap_or_else(|| input.ident.to_string());
+    let event_name = attributes.name.map(|(s, _)| s).unwrap_or_else(|| input.ident.to_string());
 
     let mut event = if let Some((src, span)) = attributes.abi {
         // try to parse as solidity event
@@ -160,37 +153,29 @@ pub fn derive_abi_event(input: TokenStream) -> TokenStream {
         } else {
             // try as tuple
             if let Some(inputs) = Reader::read(
-                src.trim_start_matches("event ")
-                    .trim_start()
-                    .trim_start_matches(&event_name),
+                src.trim_start_matches("event ").trim_start().trim_start_matches(&event_name),
             )
             .ok()
             .and_then(|param| match param {
                 ParamType::Tuple(params) => Some(
                     params
                         .into_iter()
-                        .map(|kind| EventParam {
-                            name: "".to_string(),
-                            indexed: false,
-                            kind,
-                        })
+                        .map(|kind| EventParam { name: "".to_string(), indexed: false, kind })
                         .collect(),
                 ),
                 _ => None,
             }) {
-                Event {
-                    name: event_name.clone(),
-                    inputs,
-                    anonymous: false,
-                }
+                Event { name: event_name.clone(), inputs, anonymous: false }
             } else {
                 match src.parse::<Source>().and_then(|s| s.get()) {
                     Ok(abi) => {
                         // try to derive the signature from the abi from the parsed abi
-                        // TODO(mattsse): this will fail for events that contain other non elementary types in their abi
-                        //  because the parser doesn't know how to substitute the types
-                        //  this could be mitigated by getting the ABI of each non elementary type at runtime
-                        //  and computing the the signature as `static Lazy::...`
+                        // TODO(mattsse): this will fail for events that contain other non
+                        // elementary types in their abi  because the parser
+                        // doesn't know how to substitute the types
+                        //  this could be mitigated by getting the ABI of each non elementary type
+                        // at runtime  and computing the the signature as
+                        // `static Lazy::...`
                         match parse_event(&abi) {
                             Ok(event) => event,
                             Err(err) => {
@@ -283,11 +268,11 @@ impl EventField {
 fn topic_param_type_quote(kind: &ParamType) -> proc_macro2::TokenStream {
     let core_crate = ethers_core_crate();
     match kind {
-        ParamType::String
-        | ParamType::Bytes
-        | ParamType::Array(_)
-        | ParamType::FixedArray(_, _)
-        | ParamType::Tuple(_) => quote! {#core_crate::abi::ParamType::FixedBytes(32)},
+        ParamType::String |
+        ParamType::Bytes |
+        ParamType::Array(_) |
+        ParamType::FixedArray(_, _) |
+        ParamType::Tuple(_) => quote! {#core_crate::abi::ParamType::FixedBytes(32)},
         ty => param_type_quote(ty),
     }
 }
@@ -358,7 +343,7 @@ fn derive_decode_from_log_impl(
                             event.name,
                             event.abi_signature()
                         ),
-                    ));
+                    ))
                 }
                 fields.named.iter().collect()
             }
@@ -371,7 +356,7 @@ fn derive_decode_from_log_impl(
                             event.name,
                             event.abi_signature()
                         ),
-                    ));
+                    ))
                 }
                 fields.unnamed.iter().collect()
             }
@@ -379,20 +364,14 @@ fn derive_decode_from_log_impl(
                 return Err(Error::new(
                     input.span(),
                     "EthEvent cannot be derived for empty structs and unit",
-                ));
+                ))
             }
         },
         Data::Enum(_) => {
-            return Err(Error::new(
-                input.span(),
-                "EthEvent cannot be derived for enums",
-            ));
+            return Err(Error::new(input.span(), "EthEvent cannot be derived for enums"))
         }
         Data::Union(_) => {
-            return Err(Error::new(
-                input.span(),
-                "EthEvent cannot be derived for unions",
-            ));
+            return Err(Error::new(input.span(), "EthEvent cannot be derived for unions"))
         }
     };
 
@@ -414,11 +393,7 @@ fn derive_decode_from_log_impl(
             None
         };
 
-        event_fields.push(EventField {
-            topic_name,
-            index,
-            param,
-        });
+        event_fields.push(EventField { topic_name, index, param });
     }
 
     // convert fields to params list
@@ -429,10 +404,8 @@ fn derive_decode_from_log_impl(
 
     let topic_types_init = quote! {let topic_types = ::std::vec![#( #topic_types ),*];};
 
-    let data_types = event_fields
-        .iter()
-        .filter(|f| !f.is_indexed())
-        .map(|f| param_type_quote(&f.param.kind));
+    let data_types =
+        event_fields.iter().filter(|f| !f.is_indexed()).map(|f| param_type_quote(&f.param.kind));
 
     let data_types_init = quote! {let data_types = [#( #data_types ),*];};
 
@@ -528,27 +501,18 @@ fn derive_abi_event_from_fields(input: &DeriveInput) -> Result<Event, Error> {
             }
         },
         Data::Enum(_) => {
-            return Err(Error::new(
-                input.span(),
-                "EthEvent cannot be derived for enums",
-            ));
+            return Err(Error::new(input.span(), "EthEvent cannot be derived for enums"))
         }
         Data::Union(_) => {
-            return Err(Error::new(
-                input.span(),
-                "EthEvent cannot be derived for unions",
-            ));
+            return Err(Error::new(input.span(), "EthEvent cannot be derived for unions"))
         }
     };
 
     let inputs = fields
         .iter()
         .map(|f| {
-            let name = f
-                .ident
-                .as_ref()
-                .map(|name| name.to_string())
-                .unwrap_or_else(|| "".to_string());
+            let name =
+                f.ident.as_ref().map(|name| name.to_string()).unwrap_or_else(|| "".to_string());
             find_parameter_type(&f.ty).map(|ty| (name, ty))
         })
         .collect::<Result<Vec<_>, _>>()?;
@@ -557,11 +521,7 @@ fn derive_abi_event_from_fields(input: &DeriveInput) -> Result<Event, Error> {
         name: "".to_string(),
         inputs: inputs
             .into_iter()
-            .map(|(name, kind)| EventParam {
-                name,
-                kind,
-                indexed: false,
-            })
+            .map(|(name, kind)| EventParam { name, kind, indexed: false })
             .collect(),
         anonymous: false,
     };
@@ -585,14 +545,14 @@ fn parse_field_attributes(field: &Field) -> Result<(Option<String>, bool), Error
                                         return Err(Error::new(
                                             path.span(),
                                             "unrecognized ethevent parameter",
-                                        ));
+                                        ))
                                     }
                                 }
                                 Meta::List(meta) => {
                                     return Err(Error::new(
                                         meta.path.span(),
                                         "unrecognized ethevent parameter",
-                                    ));
+                                    ))
                                 }
                                 Meta::NameValue(meta) => {
                                     if meta.path.is_ident("name") {
@@ -602,7 +562,7 @@ fn parse_field_attributes(field: &Field) -> Result<(Option<String>, bool), Error
                                             return Err(Error::new(
                                                 meta.span(),
                                                 "name attribute must be a string",
-                                            ));
+                                            ))
                                         }
                                     }
                                 }
@@ -624,14 +584,11 @@ fn find_parameter_type(ty: &Type) -> Result<ParamType, Error> {
             if let Expr::Lit(ref expr) = ty.len {
                 if let Lit::Int(ref len) = expr.lit {
                     if let Ok(size) = len.base10_parse::<usize>() {
-                        return Ok(ParamType::FixedArray(Box::new(param), size));
+                        return Ok(ParamType::FixedArray(Box::new(param), size))
                     }
                 }
             }
-            Err(Error::new(
-                ty.span(),
-                "Failed to derive proper ABI from array field",
-            ))
+            Err(Error::new(ty.span(), "Failed to derive proper ABI from array field"))
         }
         Type::Path(ty) => {
             if let Some(ident) = ty.path.get_ident() {
@@ -646,7 +603,7 @@ fn find_parameter_type(ty: &Type) -> Result<ParamType, Error> {
                     s => parse_int_param_type(s).ok_or_else(|| {
                         Error::new(ty.span(), "Failed to derive proper ABI from fields")
                     }),
-                };
+                }
             }
             // check for `Vec`
             if ty.path.segments.len() == 1 && ty.path.segments[0].ident == "Vec" {
@@ -654,39 +611,25 @@ fn find_parameter_type(ty: &Type) -> Result<ParamType, Error> {
                     if args.args.len() == 1 {
                         if let GenericArgument::Type(ref ty) = args.args.iter().next().unwrap() {
                             let kind = find_parameter_type(ty)?;
-                            return Ok(ParamType::Array(Box::new(kind)));
+                            return Ok(ParamType::Array(Box::new(kind)))
                         }
                     }
                 }
             }
 
-            Err(Error::new(
-                ty.span(),
-                "Failed to derive proper ABI from fields",
-            ))
+            Err(Error::new(ty.span(), "Failed to derive proper ABI from fields"))
         }
         Type::Tuple(ty) => {
-            let params = ty
-                .elems
-                .iter()
-                .map(|t| find_parameter_type(t))
-                .collect::<Result<Vec<_>, _>>()?;
+            let params =
+                ty.elems.iter().map(|t| find_parameter_type(t)).collect::<Result<Vec<_>, _>>()?;
             Ok(ParamType::Tuple(params))
         }
-        _ => Err(Error::new(
-            ty.span(),
-            "Failed to derive proper ABI from fields",
-        )),
+        _ => Err(Error::new(ty.span(), "Failed to derive proper ABI from fields")),
     }
 }
 
 fn parse_int_param_type(s: &str) -> Option<ParamType> {
-    let size = s
-        .chars()
-        .skip(1)
-        .collect::<String>()
-        .parse::<usize>()
-        .ok()?;
+    let size = s.chars().skip(1).collect::<String>().parse::<usize>().ok()?;
     if s.starts_with('u') {
         Some(ParamType::Uint(size))
     } else if s.starts_with('i') {
@@ -765,12 +708,7 @@ fn derive_tokenizeable_impl(input: &DeriveInput) -> proc_macro2::TokenStream {
                 });
                 let into_token_impl = quote! { #(#into_token,)* };
 
-                (
-                    tokenize_predicates,
-                    fields.named.len(),
-                    init_struct_impl,
-                    into_token_impl,
-                )
+                (tokenize_predicates, fields.named.len(), init_struct_impl, into_token_impl)
             }
             Fields::Unnamed(ref fields) => {
                 let tokenize_predicates = fields.unnamed.iter().map(|f| {
@@ -790,28 +728,23 @@ fn derive_tokenizeable_impl(input: &DeriveInput) -> proc_macro2::TokenStream {
                 });
                 let into_token_impl = quote! { #(#into_token,)* };
 
-                (
-                    tokenize_predicates,
-                    fields.unnamed.len(),
-                    init_struct_impl,
-                    into_token_impl,
-                )
+                (tokenize_predicates, fields.unnamed.len(), init_struct_impl, into_token_impl)
             }
             Fields::Unit => {
                 return Error::new(
                     input.span(),
                     "EthAbiType cannot be derived for empty structs and unit",
                 )
-                .to_compile_error();
+                .to_compile_error()
             }
         },
         Data::Enum(_) => {
             return Error::new(input.span(), "EthAbiType cannot be derived for enums")
-                .to_compile_error();
+                .to_compile_error()
         }
         Data::Union(_) => {
             return Error::new(input.span(), "EthAbiType cannot be derived for unions")
-                .to_compile_error();
+                .to_compile_error()
         }
     };
 
@@ -908,13 +841,13 @@ fn parse_attributes(input: &DeriveInput) -> Result<Attributes, proc_macro2::Toke
                                         if &*name.to_string() == "anonymous" {
                                             if result.anonymous.is_none() {
                                                 result.anonymous = Some((true, name.span()));
-                                                continue;
+                                                continue
                                             } else {
                                                 return Err(Error::new(
                                                     name.span(),
                                                     "anonymous already specified",
                                                 )
-                                                .to_compile_error());
+                                                .to_compile_error())
                                             }
                                         }
                                     }
@@ -922,14 +855,14 @@ fn parse_attributes(input: &DeriveInput) -> Result<Attributes, proc_macro2::Toke
                                         path.span(),
                                         "unrecognized ethevent parameter",
                                     )
-                                    .to_compile_error());
+                                    .to_compile_error())
                                 }
                                 Meta::List(meta) => {
                                     return Err(Error::new(
                                         meta.path.span(),
                                         "unrecognized ethevent parameter",
                                     )
-                                    .to_compile_error());
+                                    .to_compile_error())
                                 }
                                 Meta::NameValue(meta) => {
                                     if meta.path.is_ident("anonymous") {
@@ -942,14 +875,14 @@ fn parse_attributes(input: &DeriveInput) -> Result<Attributes, proc_macro2::Toke
                                                     meta.span(),
                                                     "anonymous already specified",
                                                 )
-                                                .to_compile_error());
+                                                .to_compile_error())
                                             }
                                         } else {
                                             return Err(Error::new(
                                                 meta.span(),
                                                 "name must be a string",
                                             )
-                                            .to_compile_error());
+                                            .to_compile_error())
                                         }
                                     } else if meta.path.is_ident("name") {
                                         if let Lit::Str(ref lit_str) = meta.lit {
@@ -961,14 +894,14 @@ fn parse_attributes(input: &DeriveInput) -> Result<Attributes, proc_macro2::Toke
                                                     meta.span(),
                                                     "name already specified",
                                                 )
-                                                .to_compile_error());
+                                                .to_compile_error())
                                             }
                                         } else {
                                             return Err(Error::new(
                                                 meta.span(),
                                                 "name must be a string",
                                             )
-                                            .to_compile_error());
+                                            .to_compile_error())
                                         }
                                     } else if meta.path.is_ident("abi") {
                                         if let Lit::Str(ref lit_str) = meta.lit {
@@ -980,14 +913,14 @@ fn parse_attributes(input: &DeriveInput) -> Result<Attributes, proc_macro2::Toke
                                                     meta.span(),
                                                     "abi already specified",
                                                 )
-                                                .to_compile_error());
+                                                .to_compile_error())
                                             }
                                         } else {
                                             return Err(Error::new(
                                                 meta.span(),
                                                 "abi must be a string",
                                             )
-                                            .to_compile_error());
+                                            .to_compile_error())
                                         }
                                     } else if meta.path.is_ident("signature") {
                                         if let Lit::Str(ref lit_str) = meta.lit {
@@ -1005,7 +938,7 @@ fn parse_attributes(input: &DeriveInput) -> Result<Attributes, proc_macro2::Toke
                                                                 err
                                                             ),
                                                         )
-                                                        .to_compile_error());
+                                                        .to_compile_error())
                                                     }
                                                 }
                                             } else {
@@ -1013,21 +946,21 @@ fn parse_attributes(input: &DeriveInput) -> Result<Attributes, proc_macro2::Toke
                                                     meta.span(),
                                                     "signature already specified",
                                                 )
-                                                .to_compile_error());
+                                                .to_compile_error())
                                             }
                                         } else {
                                             return Err(Error::new(
                                                 meta.span(),
                                                 "signature must be a hex string",
                                             )
-                                            .to_compile_error());
+                                            .to_compile_error())
                                         }
                                     } else {
                                         return Err(Error::new(
                                             meta.span(),
                                             "unrecognized ethevent parameter",
                                         )
-                                        .to_compile_error());
+                                        .to_compile_error())
                                     }
                                 }
                             }

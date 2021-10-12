@@ -1,9 +1,4 @@
-#![warn(
-    missing_debug_implementations,
-    missing_docs,
-    rust_2018_idioms,
-    unreachable_pub
-)]
+#![warn(missing_debug_implementations, missing_docs, rust_2018_idioms, unreachable_pub)]
 #![deny(broken_intra_doc_links)]
 #![doc(test(
     no_crate_inject,
@@ -70,12 +65,12 @@
 //!
 //! ## `middleware`
 //!
-//! In order to keep the ethers architecture as modular as possible, providers define a [`Middleware`]
-//! trait which defines all the methods to interact with an Ethereum node. By implementing the
-//! middleware trait, you are able to override the default behavior of methods and do things such
-//! as using other gas oracles, escalating your transactions' gas prices, or signing your transactions
-//! with a [`Signer`]. The middleware architecture allows users to either use one of the existing
-//! middleware, or they are free to write on of their own.
+//! In order to keep the ethers architecture as modular as possible, providers define a
+//! [`Middleware`] trait which defines all the methods to interact with an Ethereum node. By
+//! implementing the middleware trait, you are able to override the default behavior of methods and
+//! do things such as using other gas oracles, escalating your transactions' gas prices, or signing
+//! your transactions with a [`Signer`]. The middleware architecture allows users to either use one
+//! of the existing middleware, or they are free to write on of their own.
 //!
 //! [`Provider`]: providers::Provider
 //! [`Middleware`]: providers::Middleware

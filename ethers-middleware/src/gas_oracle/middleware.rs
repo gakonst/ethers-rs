@@ -98,9 +98,6 @@ where
                 }
             }
         };
-        self.inner
-            .send_transaction(tx, block)
-            .await
-            .map_err(MiddlewareError::MiddlewareError)
+        self.inner.send_transaction(tx, block).await.map_err(MiddlewareError::MiddlewareError)
     }
 }

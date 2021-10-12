@@ -70,10 +70,7 @@ pub struct Transaction {
     /// Gateway fee recipient (None for no gateway fee paid)
     #[cfg(feature = "celo")]
     #[cfg_attr(docsrs, doc(cfg(feature = "celo")))]
-    #[serde(
-        skip_serializing_if = "Option::is_none",
-        rename = "gatewayFeeRecipient"
-    )]
+    #[serde(skip_serializing_if = "Option::is_none", rename = "gatewayFeeRecipient")]
     pub gateway_fee_recipient: Option<Address>,
 
     /// Gateway fee amount (None for no gateway fee paid)
@@ -89,35 +86,25 @@ pub struct Transaction {
     pub transaction_type: Option<U64>,
 
     // EIP2930
-    #[serde(
-        rename = "accessList",
-        default,
-        skip_serializing_if = "Option::is_none"
-    )]
+    #[serde(rename = "accessList", default, skip_serializing_if = "Option::is_none")]
     pub access_list: Option<AccessList>,
 
-    #[serde(
-        rename = "maxPriorityFeePerGas",
-        default,
-        skip_serializing_if = "Option::is_none"
-    )]
+    #[serde(rename = "maxPriorityFeePerGas", default, skip_serializing_if = "Option::is_none")]
     /// Represents the maximum tx fee that will go to the miner as part of the user's
     /// fee payment. It serves 3 purposes:
-    /// 1. Compensates miners for the uncle/ommer risk + fixed costs of including transaction in a block;
-    /// 2. Allows users with high opportunity costs to pay a premium to miners;
+    /// 1. Compensates miners for the uncle/ommer risk + fixed costs of including transaction in a
+    /// block; 2. Allows users with high opportunity costs to pay a premium to miners;
     /// 3. In times where demand exceeds the available block space (i.e. 100% full, 30mm gas),
-    /// this component allows first price auctions (i.e. the pre-1559 fee model) to happen on the priority fee.
+    /// this component allows first price auctions (i.e. the pre-1559 fee model) to happen on the
+    /// priority fee.
     ///
     /// More context [here](https://hackmd.io/@q8X_WM2nTfu6nuvAzqXiTQ/1559-wallets)
     pub max_priority_fee_per_gas: Option<U256>,
 
-    #[serde(
-        rename = "maxFeePerGas",
-        default,
-        skip_serializing_if = "Option::is_none"
-    )]
-    /// Represents the maximum amount that a user is willing to pay for their tx (inclusive of baseFeePerGas and maxPriorityFeePerGas).
-    /// The difference between maxFeePerGas and baseFeePerGas + maxPriorityFeePerGas is “refunded” to the user.
+    #[serde(rename = "maxFeePerGas", default, skip_serializing_if = "Option::is_none")]
+    /// Represents the maximum amount that a user is willing to pay for their tx (inclusive of
+    /// baseFeePerGas and maxPriorityFeePerGas). The difference between maxFeePerGas and
+    /// baseFeePerGas + maxPriorityFeePerGas is “refunded” to the user.
     pub max_fee_per_gas: Option<U256>,
 
     #[serde(rename = "chainId", default, skip_serializing_if = "Option::is_none")]
@@ -255,13 +242,9 @@ pub struct TransactionReceipt {
     #[serde(rename = "type", default, skip_serializing_if = "Option::is_none")]
     pub transaction_type: Option<U64>,
     /// The price paid post-execution by the transaction (i.e. base fee + priority fee).
-    /// Both fields in 1559-style transactions are *maximums* (max fee + max priority fee), the amount
-    /// that's actually paid by users can only be determined post-execution
-    #[serde(
-        rename = "effectiveGasPrice",
-        default,
-        skip_serializing_if = "Option::is_none"
-    )]
+    /// Both fields in 1559-style transactions are *maximums* (max fee + max priority fee), the
+    /// amount that's actually paid by users can only be determined post-execution
+    #[serde(rename = "effectiveGasPrice", default, skip_serializing_if = "Option::is_none")]
     pub effective_gas_price: Option<U256>,
 }
 
@@ -328,9 +311,7 @@ mod tests {
         let tx: Transaction = serde_json::from_value(serde_json::json!({"accessList":[{"address":"0x8ba1f109551bd432803012645ac136ddd64dba72","storageKeys":["0x0000000000000000000000000000000000000000000000000000000000000000","0x0000000000000000000000000000000000000000000000000000000000000042"]}],"blockHash":"0x55ae43d3511e327dc532855510d110676d340aa1bbba369b4b98896d86559586","blockNumber":"0xa3d322","chainId":"0x3","from":"0x541d6a0e9ca9e7a083e41e2e178eef9f22d7492e","gas":"0x6a40","gasPrice":"0x3b9aca07","hash":"0x824384376c5972498c6fcafe71fd8cad1689f64e7d5e270d025a898638c0c34d","input":"0x","maxFeePerGas":"0x3b9aca0e","maxPriorityFeePerGas":"0x3b9aca00","nonce":"0x2","r":"0xf13b5088108f783f4b6048d4be456971118aabfb88be96bb541d734b6c2b20dc","s":"0x13fb7eb25a7d5df42a176cd4c6a086e19163ed7cd8ffba015f939d24f66bc17a","to":"0x8210357f377e901f18e45294e86a2a32215cc3c9","transactionIndex":"0xd","type":"0x2","v":"0x1","value":"0x7b"})).unwrap();
         assert_eq!(tx.transaction_type.unwrap().as_u64(), 2);
         let lst = AccessList(vec![AccessListItem {
-            address: "0x8ba1f109551bd432803012645ac136ddd64dba72"
-                .parse()
-                .unwrap(),
+            address: "0x8ba1f109551bd432803012645ac136ddd64dba72".parse().unwrap(),
             storage_keys: vec![
                 "0x0000000000000000000000000000000000000000000000000000000000000000"
                     .parse()

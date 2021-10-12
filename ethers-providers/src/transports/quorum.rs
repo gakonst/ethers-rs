@@ -74,10 +74,7 @@ impl<T> QuorumProvider<T> {
     }
 
     pub fn new(quorum: Quorum, providers: impl IntoIterator<Item = WeightedProvider<T>>) -> Self {
-        Self::builder()
-            .add_providers(providers)
-            .quorum(quorum)
-            .build()
+        Self::builder().add_providers(providers).quorum(quorum).build()
     }
 
     pub fn providers(&self) -> &[WeightedProvider<T>] {
@@ -103,10 +100,7 @@ pub struct QuorumProviderBuilder<T> {
 
 impl<T> Default for QuorumProviderBuilder<T> {
     fn default() -> Self {
-        Self {
-            quorum: Default::default(),
-            providers: Vec::new(),
-        }
+        Self { quorum: Default::default(), providers: Vec::new() }
     }
 }
 
@@ -133,11 +127,7 @@ impl<T> QuorumProviderBuilder<T> {
 
     pub fn build(self) -> QuorumProvider<T> {
         let quorum_weight = self.quorum.weight(&self.providers);
-        QuorumProvider {
-            quorum: self.quorum,
-            quorum_weight,
-            providers: self.providers,
-        }
+        QuorumProvider { quorum: self.quorum, quorum_weight, providers: self.providers }
     }
 }
 
@@ -147,10 +137,7 @@ impl<T: JsonRpcClientWrapper> QuorumProvider<T> {
     /// This is the minimum of all provider's block numbers
     async fn get_minimum_block_number(&self) -> Result<U64, ProviderError> {
         let mut numbers = join_all(self.providers.iter().map(|provider| async move {
-            let block = provider
-                .inner
-                .request("eth_blockNumber", serde_json::json!(()))
-                .await?;
+            let block = provider.inner.request("eth_blockNumber", serde_json::json!(())).await?;
             serde_json::from_value::<U64>(block).map_err(ProviderError::from)
         }))
         .await
@@ -167,13 +154,13 @@ impl<T: JsonRpcClientWrapper> QuorumProvider<T> {
     /// Normalizes the request payload depending on the call
     async fn normalize_request(&self, method: &str, params: &mut Value) {
         match method {
-            "eth_call"
-            | "eth_createAccessList"
-            | "eth_getStorageAt"
-            | "eth_getCode"
-            | "eth_getProof"
-            | "trace_call"
-            | "trace_block" => {
+            "eth_call" |
+            "eth_createAccessList" |
+            "eth_getStorageAt" |
+            "eth_getCode" |
+            "eth_getProof" |
+            "trace_call" |
+            "trace_block" => {
                 // calls that include the block number in the params at the last index of json array
                 if let Some(block) = params.as_array_mut().and_then(|arr| arr.last_mut()) {
                     if Some("latest") == block.as_str() {
@@ -265,12 +252,7 @@ struct QuorumRequest<'a, T> {
 
 impl<'a, T> QuorumRequest<'a, T> {
     fn new(inner: &'a QuorumProvider<T>, requests: Vec<PendingRequest<'a>>) -> Self {
-        Self {
-            responses: Vec::new(),
-            errors: Vec::new(),
-            inner,
-            requests,
-        }
+        Self { responses: Vec::new(), errors: Vec::new(), inner, requests }
     }
 }
 
@@ -289,13 +271,13 @@ impl<'a, T> Future for QuorumRequest<'a, T> {
                         *weight += response_weight;
                         if *weight >= this.inner.quorum_weight {
                             // reached quorum with multiple responses
-                            return Poll::Ready(Ok(val));
+                            return Poll::Ready(Ok(val))
                         } else {
                             this.responses.push((val, response_weight));
                         }
                     } else if response_weight >= this.inner.quorum_weight {
                         // reached quorum with single response
-                        return Poll::Ready(Ok(val));
+                        return Poll::Ready(Ok(val))
                     } else {
                         this.responses.push((val, response_weight));
                     }
@@ -310,10 +292,7 @@ impl<'a, T> Future for QuorumRequest<'a, T> {
         if this.requests.is_empty() {
             // No more requests and no quorum reached
             this.responses.sort_by(|a, b| b.1.cmp(&a.1));
-            let values = std::mem::take(&mut this.responses)
-                .into_iter()
-                .map(|r| r.0)
-                .collect();
+            let values = std::mem::take(&mut this.responses).into_iter().map(|r| r.0).collect();
             let errors = std::mem::take(&mut this.errors);
             Poll::Ready(Err(QuorumError::NoQuorumReached { values, errors }))
         } else {
@@ -345,10 +324,7 @@ impl<T> WeightedProvider<T> {
 /// Error thrown when sending an HTTP request
 pub enum QuorumError {
     #[error("No Quorum reached.")]
-    NoQuorumReached {
-        values: Vec<Value>,
-        errors: Vec<ProviderError>,
-    },
+    NoQuorumReached { values: Vec<Value>, errors: Vec<ProviderError> },
 }
 
 impl From<QuorumError> for ProviderError {
@@ -376,9 +352,7 @@ pub trait PubsubClientWrapper: JsonRpcClientWrapper {
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl<C: JsonRpcClient> JsonRpcClientWrapper for C {
     async fn request(&self, method: &str, params: Value) -> Result<Value, ProviderError> {
-        Ok(JsonRpcClient::request(self, method, params)
-            .await
-            .map_err(C::Error::into)?)
+        Ok(JsonRpcClient::request(self, method, params).await.map_err(C::Error::into)?)
     }
 }
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
@@ -402,9 +376,7 @@ where
     <C as PubsubClient>::NotificationStream: 'static,
 {
     fn subscribe(&self, id: U256) -> Result<NotificationStream, ProviderError> {
-        Ok(Box::new(
-            PubsubClient::subscribe(self, id).map_err(C::Error::into)?,
-        ))
+        Ok(Box::new(PubsubClient::subscribe(self, id).map_err(C::Error::into)?))
     }
 
     fn unsubscribe(&self, id: U256) -> Result<(), ProviderError> {
@@ -444,10 +416,7 @@ where
             .enumerate()
             .map(|(idx, provider)| {
                 let params = params.clone();
-                let fut = provider
-                    .inner
-                    .request(method, params)
-                    .map(move |res| (res, idx));
+                let fut = provider.inner.request(method, params).map(move |res| (res, idx));
                 Box::pin(fut) as PendingRequest
             })
             .collect::<Vec<_>>();
@@ -477,12 +446,7 @@ pub struct QuorumStream {
 
 impl QuorumStream {
     fn new(quorum_weight: u64, notifications: Vec<WeightedNotificationStream>) -> Self {
-        Self {
-            quorum_weight,
-            responses: Vec::new(),
-            active: notifications,
-            benched: Vec::new(),
-        }
+        Self { quorum_weight, responses: Vec::new(), active: notifications, benched: Vec::new() }
     }
 }
 
@@ -506,14 +470,14 @@ impl Stream for QuorumStream {
                         if *weight >= this.quorum_weight {
                             // reached quorum with multiple notification
                             this.benched.push(stream);
-                            return Poll::Ready(Some(val));
+                            return Poll::Ready(Some(val))
                         } else {
                             this.responses.push((val, response_weight));
                         }
                     } else if response_weight >= this.quorum_weight {
                         // reached quorum with single notification
                         this.benched.push(stream);
-                        return Poll::Ready(Some(val));
+                        return Poll::Ready(Some(val))
                     } else {
                         this.responses.push((val, response_weight));
                     }
@@ -528,7 +492,7 @@ impl Stream for QuorumStream {
         }
 
         if this.active.is_empty() && this.benched.is_empty() {
-            return Poll::Ready(None);
+            return Poll::Ready(None)
         }
         Poll::Pending
     }
@@ -578,10 +542,7 @@ mod tests {
             providers.push(WeightedProvider::new(mock.clone()));
             mocked.push(mock);
         }
-        let quorum = QuorumProvider::builder()
-            .add_providers(providers)
-            .quorum(q)
-            .build();
+        let quorum = QuorumProvider::builder().add_providers(providers).quorum(q).build();
         let quorum_weight = quorum.quorum_weight;
 
         let provider = Provider::quorum(quorum);
@@ -589,10 +550,8 @@ mod tests {
         assert_eq!(blk, value);
 
         // count the number of providers that returned a value
-        let requested = mocked
-            .iter()
-            .filter(|mock| mock.assert_request("eth_blockNumber", ()).is_ok())
-            .count();
+        let requested =
+            mocked.iter().filter(|mock| mock.assert_request("eth_blockNumber", ()).is_ok()).count();
 
         match q {
             Quorum::All => {

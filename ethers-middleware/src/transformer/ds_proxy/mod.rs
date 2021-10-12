@@ -4,7 +4,9 @@ use factory::{CreatedFilter, DsProxyFactory, ADDRESS_BOOK};
 use super::{Transformer, TransformerError};
 use ethers_contract::{builders::ContractCall, BaseContract, ContractError};
 use ethers_core::{
-    abi::parse_abi, types::transaction::eip2718::TypedTransaction, types::*, utils::id,
+    abi::parse_abi,
+    types::{transaction::eip2718::TypedTransaction, *},
+    utils::id,
 };
 use ethers_providers::Middleware;
 use std::sync::Arc;
@@ -92,10 +94,8 @@ impl DsProxy {
         let factory: Address = match factory {
             Some(addr) => addr,
             None => {
-                let chain_id = client
-                    .get_chainid()
-                    .await
-                    .map_err(ContractError::MiddlewareError)?;
+                let chain_id =
+                    client.get_chainid().await.map_err(ContractError::MiddlewareError)?;
                 match ADDRESS_BOOK.get(&chain_id) {
                     Some(addr) => *addr,
                     None => panic!(
@@ -134,10 +134,7 @@ impl DsProxy {
             let contract = parse_abi(&[DS_PROXY_EXECUTE_TARGET, DS_PROXY_EXECUTE_CODE])
                 .expect("could not parse ABI")
                 .into();
-            Ok(Self {
-                address: created_filter.proxy,
-                contract,
-            })
+            Ok(Self { address: created_filter.proxy, contract })
         } else {
             Err(ContractError::ContractNotDeployed)
         }
@@ -157,10 +154,7 @@ impl DsProxy {
         data: Bytes,
     ) -> Result<ContractCall<M, Bytes>, ContractError<M>> {
         // construct the full contract using DsProxy's address and the injected client.
-        let ds_proxy = self
-            .contract
-            .clone()
-            .into_contract(self.address, client.into());
+        let ds_proxy = self.contract.clone().into_contract(self.address, client.into());
 
         match target.into() {
             // handle the case when the target is an address to a deployed contract.
@@ -193,9 +187,7 @@ impl Transformer for DsProxy {
 
         // encode data as the ABI encoded data for DSProxy's execute method.
         let selector = id("execute(address,bytes)");
-        let encoded_data = self
-            .contract
-            .encode_with_selector(selector, (*target, data))?;
+        let encoded_data = self.contract.encode_with_selector(selector, (*target, data))?;
 
         // update appropriate fields of the proxy tx.
         tx.set_data(encoded_data);

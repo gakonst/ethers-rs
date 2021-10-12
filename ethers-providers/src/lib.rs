@@ -132,9 +132,9 @@ where
 /// A middleware allows customizing requests send and received from an ethereum node.
 ///
 /// Writing a middleware is as simple as:
-/// 1. implementing the [`inner`](crate::Middleware::inner) method to point to the next layer in the "middleware onion",
-/// 2. implementing the [`FromErr`](crate::FromErr) trait on your middleware's error type
-/// 3. implementing any of the methods you want to override
+/// 1. implementing the [`inner`](crate::Middleware::inner) method to point to the next layer in the
+/// "middleware onion", 2. implementing the [`FromErr`](crate::FromErr) trait on your middleware's
+/// error type 3. implementing any of the methods you want to override
 ///
 /// ```rust
 /// use ethers_providers::{Middleware, FromErr};
@@ -302,54 +302,36 @@ pub trait Middleware: Sync + Send + Debug {
         tx: T,
         block: Option<BlockId>,
     ) -> Result<PendingTransaction<'_, Self::Provider>, Self::Error> {
-        self.inner()
-            .send_transaction(tx, block)
-            .await
-            .map_err(FromErr::from)
+        self.inner().send_transaction(tx, block).await.map_err(FromErr::from)
     }
 
     async fn resolve_name(&self, ens_name: &str) -> Result<Address, Self::Error> {
-        self.inner()
-            .resolve_name(ens_name)
-            .await
-            .map_err(FromErr::from)
+        self.inner().resolve_name(ens_name).await.map_err(FromErr::from)
     }
 
     async fn lookup_address(&self, address: Address) -> Result<String, Self::Error> {
-        self.inner()
-            .lookup_address(address)
-            .await
-            .map_err(FromErr::from)
+        self.inner().lookup_address(address).await.map_err(FromErr::from)
     }
 
     async fn get_block<T: Into<BlockId> + Send + Sync>(
         &self,
         block_hash_or_number: T,
     ) -> Result<Option<Block<TxHash>>, Self::Error> {
-        self.inner()
-            .get_block(block_hash_or_number)
-            .await
-            .map_err(FromErr::from)
+        self.inner().get_block(block_hash_or_number).await.map_err(FromErr::from)
     }
 
     async fn get_block_with_txs<T: Into<BlockId> + Send + Sync>(
         &self,
         block_hash_or_number: T,
     ) -> Result<Option<Block<Transaction>>, Self::Error> {
-        self.inner()
-            .get_block_with_txs(block_hash_or_number)
-            .await
-            .map_err(FromErr::from)
+        self.inner().get_block_with_txs(block_hash_or_number).await.map_err(FromErr::from)
     }
 
     async fn get_uncle_count<T: Into<BlockId> + Send + Sync>(
         &self,
         block_hash_or_number: T,
     ) -> Result<U256, Self::Error> {
-        self.inner()
-            .get_uncle_count(block_hash_or_number)
-            .await
-            .map_err(FromErr::from)
+        self.inner().get_uncle_count(block_hash_or_number).await.map_err(FromErr::from)
     }
 
     async fn get_uncle<T: Into<BlockId> + Send + Sync>(
@@ -357,10 +339,7 @@ pub trait Middleware: Sync + Send + Debug {
         block_hash_or_number: T,
         idx: U64,
     ) -> Result<Option<Block<H256>>, Self::Error> {
-        self.inner()
-            .get_uncle(block_hash_or_number, idx)
-            .await
-            .map_err(FromErr::from)
+        self.inner().get_uncle(block_hash_or_number, idx).await.map_err(FromErr::from)
     }
 
     async fn get_transaction_count<T: Into<NameOrAddress> + Send + Sync>(
@@ -368,10 +347,7 @@ pub trait Middleware: Sync + Send + Debug {
         from: T,
         block: Option<BlockId>,
     ) -> Result<U256, Self::Error> {
-        self.inner()
-            .get_transaction_count(from, block)
-            .await
-            .map_err(FromErr::from)
+        self.inner().get_transaction_count(from, block).await.map_err(FromErr::from)
     }
 
     async fn estimate_gas(&self, tx: &TypedTransaction) -> Result<U256, Self::Error> {
@@ -395,40 +371,28 @@ pub trait Middleware: Sync + Send + Debug {
         from: T,
         block: Option<BlockId>,
     ) -> Result<U256, Self::Error> {
-        self.inner()
-            .get_balance(from, block)
-            .await
-            .map_err(FromErr::from)
+        self.inner().get_balance(from, block).await.map_err(FromErr::from)
     }
 
     async fn get_transaction<T: Send + Sync + Into<TxHash>>(
         &self,
         transaction_hash: T,
     ) -> Result<Option<Transaction>, Self::Error> {
-        self.inner()
-            .get_transaction(transaction_hash)
-            .await
-            .map_err(FromErr::from)
+        self.inner().get_transaction(transaction_hash).await.map_err(FromErr::from)
     }
 
     async fn get_transaction_receipt<T: Send + Sync + Into<TxHash>>(
         &self,
         transaction_hash: T,
     ) -> Result<Option<TransactionReceipt>, Self::Error> {
-        self.inner()
-            .get_transaction_receipt(transaction_hash)
-            .await
-            .map_err(FromErr::from)
+        self.inner().get_transaction_receipt(transaction_hash).await.map_err(FromErr::from)
     }
 
     async fn get_block_receipts<T: Into<BlockNumber> + Send + Sync>(
         &self,
         block: T,
     ) -> Result<Vec<TransactionReceipt>, Self::Error> {
-        self.inner()
-            .get_block_receipts(block)
-            .await
-            .map_err(FromErr::from)
+        self.inner().get_block_receipts(block).await.map_err(FromErr::from)
     }
 
     async fn get_gas_price(&self) -> Result<U256, Self::Error> {
@@ -439,10 +403,7 @@ pub trait Middleware: Sync + Send + Debug {
         &self,
         estimator: Option<fn(U256, Vec<Vec<U256>>) -> (U256, U256)>,
     ) -> Result<(U256, U256), Self::Error> {
-        self.inner()
-            .estimate_eip1559_fees(estimator)
-            .await
-            .map_err(FromErr::from)
+        self.inner().estimate_eip1559_fees(estimator).await.map_err(FromErr::from)
     }
 
     async fn get_accounts(&self) -> Result<Vec<Address>, Self::Error> {
@@ -453,10 +414,7 @@ pub trait Middleware: Sync + Send + Debug {
         &'a self,
         tx: Bytes,
     ) -> Result<PendingTransaction<'a, Self::Provider>, Self::Error> {
-        self.inner()
-            .send_raw_transaction(tx)
-            .await
-            .map_err(FromErr::from)
+        self.inner().send_raw_transaction(tx).await.map_err(FromErr::from)
     }
 
     /// This returns true if either the middleware stack contains a `SignerMiddleware`, or the
@@ -488,10 +446,7 @@ pub trait Middleware: Sync + Send + Debug {
         &self,
         id: T,
     ) -> Result<bool, Self::Error> {
-        self.inner()
-            .uninstall_filter(id)
-            .await
-            .map_err(FromErr::from)
+        self.inner().uninstall_filter(id).await.map_err(FromErr::from)
     }
 
     async fn watch<'a>(
@@ -504,10 +459,7 @@ pub trait Middleware: Sync + Send + Debug {
     async fn watch_pending_transactions(
         &self,
     ) -> Result<FilterWatcher<'_, Self::Provider, H256>, Self::Error> {
-        self.inner()
-            .watch_pending_transactions()
-            .await
-            .map_err(FromErr::from)
+        self.inner().watch_pending_transactions().await.map_err(FromErr::from)
     }
 
     async fn get_filter_changes<T, R>(&self, id: T) -> Result<Vec<R>, Self::Error>
@@ -515,10 +467,7 @@ pub trait Middleware: Sync + Send + Debug {
         T: Into<U256> + Send + Sync,
         R: Serialize + DeserializeOwned + Send + Sync + Debug,
     {
-        self.inner()
-            .get_filter_changes(id)
-            .await
-            .map_err(FromErr::from)
+        self.inner().get_filter_changes(id).await.map_err(FromErr::from)
     }
 
     async fn watch_blocks(&self) -> Result<FilterWatcher<'_, Self::Provider, H256>, Self::Error> {
@@ -530,10 +479,7 @@ pub trait Middleware: Sync + Send + Debug {
         at: T,
         block: Option<BlockId>,
     ) -> Result<Bytes, Self::Error> {
-        self.inner()
-            .get_code(at, block)
-            .await
-            .map_err(FromErr::from)
+        self.inner().get_code(at, block).await.map_err(FromErr::from)
     }
 
     async fn get_storage_at<T: Into<NameOrAddress> + Send + Sync>(
@@ -542,10 +488,7 @@ pub trait Middleware: Sync + Send + Debug {
         location: H256,
         block: Option<BlockId>,
     ) -> Result<H256, Self::Error> {
-        self.inner()
-            .get_storage_at(from, location, block)
-            .await
-            .map_err(FromErr::from)
+        self.inner().get_storage_at(from, location, block).await.map_err(FromErr::from)
     }
 
     async fn get_proof<T: Into<NameOrAddress> + Send + Sync>(
@@ -554,10 +497,7 @@ pub trait Middleware: Sync + Send + Debug {
         locations: Vec<H256>,
         block: Option<BlockId>,
     ) -> Result<EIP1186ProofResponse, Self::Error> {
-        self.inner()
-            .get_proof(from, locations, block)
-            .await
-            .map_err(FromErr::from)
+        self.inner().get_proof(from, locations, block).await.map_err(FromErr::from)
     }
 
     // Mempool inspection for Geth's API
@@ -583,10 +523,7 @@ pub trait Middleware: Sync + Send + Debug {
         trace_type: Vec<TraceType>,
         block: Option<BlockNumber>,
     ) -> Result<BlockTrace, Self::Error> {
-        self.inner()
-            .trace_call(req, trace_type, block)
-            .await
-            .map_err(FromErr::from)
+        self.inner().trace_call(req, trace_type, block).await.map_err(FromErr::from)
     }
 
     /// Traces a call to `eth_sendRawTransaction` without making the call, returning the traces
@@ -595,10 +532,7 @@ pub trait Middleware: Sync + Send + Debug {
         data: Bytes,
         trace_type: Vec<TraceType>,
     ) -> Result<BlockTrace, Self::Error> {
-        self.inner()
-            .trace_raw_transaction(data, trace_type)
-            .await
-            .map_err(FromErr::from)
+        self.inner().trace_raw_transaction(data, trace_type).await.map_err(FromErr::from)
     }
 
     /// Replays a transaction, returning the traces
@@ -607,10 +541,7 @@ pub trait Middleware: Sync + Send + Debug {
         hash: H256,
         trace_type: Vec<TraceType>,
     ) -> Result<BlockTrace, Self::Error> {
-        self.inner()
-            .trace_replay_transaction(hash, trace_type)
-            .await
-            .map_err(FromErr::from)
+        self.inner().trace_replay_transaction(hash, trace_type).await.map_err(FromErr::from)
     }
 
     /// Replays all transactions in a block returning the requested traces for each transaction
@@ -619,10 +550,7 @@ pub trait Middleware: Sync + Send + Debug {
         block: BlockNumber,
         trace_type: Vec<TraceType>,
     ) -> Result<Vec<BlockTrace>, Self::Error> {
-        self.inner()
-            .trace_replay_block_transactions(block, trace_type)
-            .await
-            .map_err(FromErr::from)
+        self.inner().trace_replay_block_transactions(block, trace_type).await.map_err(FromErr::from)
     }
 
     /// Returns traces created at given block
@@ -632,10 +560,7 @@ pub trait Middleware: Sync + Send + Debug {
 
     /// Return traces matching the given filter
     async fn trace_filter(&self, filter: TraceFilter) -> Result<Vec<Trace>, Self::Error> {
-        self.inner()
-            .trace_filter(filter)
-            .await
-            .map_err(FromErr::from)
+        self.inner().trace_filter(filter).await.map_err(FromErr::from)
     }
 
     /// Returns trace at the given position
@@ -644,18 +569,12 @@ pub trait Middleware: Sync + Send + Debug {
         hash: H256,
         index: Vec<T>,
     ) -> Result<Trace, Self::Error> {
-        self.inner()
-            .trace_get(hash, index)
-            .await
-            .map_err(FromErr::from)
+        self.inner().trace_get(hash, index).await.map_err(FromErr::from)
     }
 
     /// Returns all traces of a given transaction
     async fn trace_transaction(&self, hash: H256) -> Result<Vec<Trace>, Self::Error> {
-        self.inner()
-            .trace_transaction(hash)
-            .await
-            .map_err(FromErr::from)
+        self.inner().trace_transaction(hash).await.map_err(FromErr::from)
     }
 
     // Parity namespace
@@ -665,10 +584,7 @@ pub trait Middleware: Sync + Send + Debug {
         &self,
         block: T,
     ) -> Result<Vec<TransactionReceipt>, Self::Error> {
-        self.inner()
-            .parity_block_receipts(block)
-            .await
-            .map_err(FromErr::from)
+        self.inner().parity_block_receipts(block).await.map_err(FromErr::from)
     }
 
     async fn subscribe<T, R>(
@@ -706,10 +622,7 @@ pub trait Middleware: Sync + Send + Debug {
     where
         <Self as Middleware>::Provider: PubsubClient,
     {
-        self.inner()
-            .subscribe_pending_txs()
-            .await
-            .map_err(FromErr::from)
+        self.inner().subscribe_pending_txs().await.map_err(FromErr::from)
     }
 
     async fn subscribe_logs<'a>(
@@ -719,10 +632,7 @@ pub trait Middleware: Sync + Send + Debug {
     where
         <Self as Middleware>::Provider: PubsubClient,
     {
-        self.inner()
-            .subscribe_logs(filter)
-            .await
-            .map_err(FromErr::from)
+        self.inner().subscribe_logs(filter).await.map_err(FromErr::from)
     }
 
     async fn fee_history<T: Into<U256> + serde::Serialize + Send + Sync>(
@@ -742,10 +652,7 @@ pub trait Middleware: Sync + Send + Debug {
         tx: &TypedTransaction,
         block: Option<BlockId>,
     ) -> Result<AccessListWithGasUsed, Self::Error> {
-        self.inner()
-            .create_access_list(tx, block)
-            .await
-            .map_err(FromErr::from)
+        self.inner().create_access_list(tx, block).await.map_err(FromErr::from)
     }
 }
 
@@ -787,9 +694,6 @@ pub trait CeloMiddleware: Middleware {
         &self,
         block_id: T,
     ) -> Result<Vec<String>, ProviderError> {
-        self.provider()
-            .get_validators_bls_public_keys(block_id)
-            .await
-            .map_err(FromErr::from)
+        self.provider().get_validators_bls_public_keys(block_id).await.map_err(FromErr::from)
     }
 }

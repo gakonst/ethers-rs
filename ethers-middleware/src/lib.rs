@@ -63,8 +63,8 @@ pub mod gas_escalator;
 /// [`GasOracle`](crate::gas_oracle::GasOracle) trait.
 pub mod gas_oracle;
 
-/// The [Nonce Manager](crate::NonceManagerMiddleware) is used to locally calculate nonces instead of
-/// using eth_getTransactionCount
+/// The [Nonce Manager](crate::NonceManagerMiddleware) is used to locally calculate nonces instead
+/// of using eth_getTransactionCount
 pub mod nonce_manager;
 pub use nonce_manager::NonceManagerMiddleware;
 

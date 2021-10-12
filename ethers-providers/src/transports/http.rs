@@ -47,10 +47,7 @@ pub enum ClientError {
 
     #[error("Deserialization Error: {err}. Response: {text}")]
     /// Serde JSON Error
-    SerdeJson {
-        err: serde_json::Error,
-        text: String,
-    },
+    SerdeJson { err: serde_json::Error, text: String },
 }
 
 impl From<ClientError> for ProviderError {
@@ -76,12 +73,7 @@ impl JsonRpcClient for Provider {
 
         let payload = Request::new(next_id, method, params);
 
-        let res = self
-            .client
-            .post(self.url.as_ref())
-            .json(&payload)
-            .send()
-            .await?;
+        let res = self.client.post(self.url.as_ref()).json(&payload).send().await?;
         let text = res.text().await?;
         let res: Response<R> =
             serde_json::from_str(&text).map_err(|err| ClientError::SerdeJson { err, text })?;
@@ -103,11 +95,7 @@ impl Provider {
     /// let provider = Http::new(url);
     /// ```
     pub fn new(url: impl Into<Url>) -> Self {
-        Self {
-            id: AtomicU64::new(0),
-            client: Client::new(),
-            url: url.into(),
-        }
+        Self { id: AtomicU64::new(0), client: Client::new(), url: url.into() }
     }
 }
 
@@ -122,10 +110,6 @@ impl FromStr for Provider {
 
 impl Clone for Provider {
     fn clone(&self) -> Self {
-        Self {
-            id: AtomicU64::new(0),
-            client: self.client.clone(),
-            url: self.url.clone(),
-        }
+        Self { id: AtomicU64::new(0), client: self.client.clone(), url: self.url.clone() }
     }
 }

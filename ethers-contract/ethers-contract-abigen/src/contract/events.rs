@@ -124,10 +124,7 @@ impl Context {
             let ty = if iter.next().is_some() {
                 self.expand_event_enum_name()
             } else {
-                expand_struct_name(
-                    event,
-                    self.event_aliases.get(&event.abi_signature()).cloned(),
-                )
+                expand_struct_name(event, self.event_aliases.get(&event.abi_signature()).cloned())
             };
 
             quote! {
@@ -162,7 +159,7 @@ impl Context {
                         .map(SolStruct::name)
                         .map(util::ident)
                     {
-                        return Ok(quote! {::std::vec::Vec<#ty>});
+                        return Ok(quote! {::std::vec::Vec<#ty>})
                     }
                 }
                 quote! { #ethers_core::types::H256 }
@@ -178,19 +175,15 @@ impl Context {
                         .map(util::ident)
                     {
                         let size = Literal::usize_unsuffixed(*size);
-                        return Ok(quote! {[#ty; #size]});
+                        return Ok(quote! {[#ty; #size]})
                     }
                 }
                 quote! { #ethers_core::types::H256 }
             }
             (ParamType::Tuple(..), true) => {
                 // represents an struct
-                if let Some(ty) = self
-                    .abi_parser
-                    .structs
-                    .get(&input.name)
-                    .map(SolStruct::name)
-                    .map(util::ident)
+                if let Some(ty) =
+                    self.abi_parser.structs.get(&input.name).map(SolStruct::name).map(util::ident)
                 {
                     quote! {#ty}
                 } else {
@@ -312,10 +305,7 @@ fn expand_data_struct(name: &Ident, params: &[(TokenStream, TokenStream, bool)])
 /// Expands an event data named tuple from its name-type parameter pairs.
 /// Returns a tuple with the type definition and construction.
 fn expand_data_tuple(name: &Ident, params: &[(TokenStream, TokenStream, bool)]) -> TokenStream {
-    let fields = params
-        .iter()
-        .map(|(_, ty, _)| quote! { pub #ty })
-        .collect::<Vec<_>>();
+    let fields = params.iter().map(|(_, ty, _)| quote! { pub #ty }).collect::<Vec<_>>();
 
     quote! { struct #name( #( #fields ),* ); }
 }
@@ -346,12 +336,8 @@ mod tests {
     }
 
     fn test_context_with_alias(sig: &str, alias: &str) -> Context {
-        Context::from_abigen(
-            Abigen::new("TestToken", "[]")
-                .unwrap()
-                .add_event_alias(sig, alias),
-        )
-        .unwrap()
+        Context::from_abigen(Abigen::new("TestToken", "[]").unwrap().add_event_alias(sig, alias))
+            .unwrap()
     }
 
     #[test]
@@ -394,21 +380,9 @@ mod tests {
         let event = Event {
             name: "Transfer".into(),
             inputs: vec![
-                EventParam {
-                    name: "from".into(),
-                    kind: ParamType::Address,
-                    indexed: true,
-                },
-                EventParam {
-                    name: "to".into(),
-                    kind: ParamType::Address,
-                    indexed: true,
-                },
-                EventParam {
-                    name: "amount".into(),
-                    kind: ParamType::Uint(256),
-                    indexed: false,
-                },
+                EventParam { name: "from".into(), kind: ParamType::Address, indexed: true },
+                EventParam { name: "to".into(), kind: ParamType::Address, indexed: true },
+                EventParam { name: "amount".into(), kind: ParamType::Uint(256), indexed: false },
             ],
             anonymous: false,
         };
@@ -426,16 +400,8 @@ mod tests {
         let event = Event {
             name: "Foo".into(),
             inputs: vec![
-                EventParam {
-                    name: "a".into(),
-                    kind: ParamType::Bool,
-                    indexed: false,
-                },
-                EventParam {
-                    name: String::new(),
-                    kind: ParamType::Address,
-                    indexed: false,
-                },
+                EventParam { name: "a".into(), kind: ParamType::Bool, indexed: false },
+                EventParam { name: String::new(), kind: ParamType::Address, indexed: false },
             ],
             anonymous: false,
         };
@@ -458,16 +424,8 @@ mod tests {
         let event = Event {
             name: "Foo".into(),
             inputs: vec![
-                EventParam {
-                    name: "a".into(),
-                    kind: ParamType::Bool,
-                    indexed: false,
-                },
-                EventParam {
-                    name: String::new(),
-                    kind: ParamType::Address,
-                    indexed: false,
-                },
+                EventParam { name: "a".into(), kind: ParamType::Bool, indexed: false },
+                EventParam { name: String::new(), kind: ParamType::Address, indexed: false },
             ],
             anonymous: false,
         };
@@ -491,16 +449,8 @@ mod tests {
         let event = Event {
             name: "Foo".into(),
             inputs: vec![
-                EventParam {
-                    name: String::new(),
-                    kind: ParamType::Bool,
-                    indexed: false,
-                },
-                EventParam {
-                    name: String::new(),
-                    kind: ParamType::Address,
-                    indexed: false,
-                },
+                EventParam { name: String::new(), kind: ParamType::Bool, indexed: false },
+                EventParam { name: String::new(), kind: ParamType::Address, indexed: false },
             ],
             anonymous: false,
         };
@@ -520,16 +470,8 @@ mod tests {
         let event = Event {
             name: "Foo".into(),
             inputs: vec![
-                EventParam {
-                    name: String::new(),
-                    kind: ParamType::Bool,
-                    indexed: false,
-                },
-                EventParam {
-                    name: String::new(),
-                    kind: ParamType::Address,
-                    indexed: false,
-                },
+                EventParam { name: String::new(), kind: ParamType::Bool, indexed: false },
+                EventParam { name: String::new(), kind: ParamType::Address, indexed: false },
             ],
             anonymous: false,
         };

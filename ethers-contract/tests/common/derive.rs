@@ -1,8 +1,8 @@
-use ethers_contract::EthLogDecode;
-use ethers_contract::{abigen, EthAbiType, EthEvent};
-use ethers_core::abi::{RawLog, Tokenizable};
-use ethers_core::types::Address;
-use ethers_core::types::{H160, H256, I256, U128, U256};
+use ethers_contract::{abigen, EthAbiType, EthEvent, EthLogDecode};
+use ethers_core::{
+    abi::{RawLog, Tokenizable},
+    types::{Address, H160, H256, I256, U128, U256},
+};
 
 #[derive(Debug, Clone, PartialEq, EthAbiType)]
 struct ValueChanged {
@@ -146,10 +146,7 @@ fn can_set_eth_event_name_attribute() {
     }
 
     assert_eq!("MyEvent", ValueChangedEvent::name());
-    assert_eq!(
-        "MyEvent(address,address,string,string)",
-        ValueChangedEvent::abi_signature()
-    );
+    assert_eq!("MyEvent(address,address,string,string)", ValueChangedEvent::abi_signature());
 }
 
 #[test]
@@ -249,10 +246,7 @@ fn can_generate_ethevent_from_json() {
         }
     );
 
-    assert_eq!(
-        "Created(address,address,address,address)",
-        CreatedFilter::abi_signature()
-    );
+    assert_eq!("Created(address,address,address,address)", CreatedFilter::abi_signature());
 
     assert_eq!(
         H256([
@@ -275,11 +269,9 @@ fn can_decode_event_with_no_topics() {
     }
     // https://etherscan.io/tx/0xb7ba825294f757f8b8b6303b2aef542bcaebc9cc0217ddfaf822200a00594ed9#eventlog index 141
     let log = RawLog {
-        topics: vec![
-            "298637f684da70674f26509b10f07ec2fbc77a335ab1e7d6215a4b2484d8bb52"
-                .parse()
-                .unwrap(),
-        ],
+        topics: vec!["298637f684da70674f26509b10f07ec2fbc77a335ab1e7d6215a4b2484d8bb52"
+            .parse()
+            .unwrap()],
         data: vec![
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 188, 205, 0, 29, 173, 151, 238, 5, 127, 91, 31,
             197, 154, 221, 40, 175, 143, 32, 26, 201, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 133, 129,
@@ -305,12 +297,8 @@ fn can_decode_event_single_param() {
 
     let log = RawLog {
         topics: vec![
-            "bd9bb67345a2fcc8ef3b0857e7e2901f5a0dcfc7fe5e3c10dc984f02842fb7ba"
-                .parse()
-                .unwrap(),
-            "000000000000000000000000000000000000000000000000000000000000007b"
-                .parse()
-                .unwrap(),
+            "bd9bb67345a2fcc8ef3b0857e7e2901f5a0dcfc7fe5e3c10dc984f02842fb7ba".parse().unwrap(),
+            "000000000000000000000000000000000000000000000000000000000000007b".parse().unwrap(),
         ],
         data: vec![],
     };
@@ -325,11 +313,9 @@ fn can_decode_event_with_no_params() {
     pub struct NoParam {}
 
     let log = RawLog {
-        topics: vec![
-            "59a6f900daaeb7581ff830f3a97097fa6372db29b0b50c6d1818ede9d1daaa0c"
-                .parse()
-                .unwrap(),
-        ],
+        topics: vec!["59a6f900daaeb7581ff830f3a97097fa6372db29b0b50c6d1818ede9d1daaa0c"
+            .parse()
+            .unwrap()],
         data: vec![],
     };
 

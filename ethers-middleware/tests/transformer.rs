@@ -38,9 +38,7 @@ async fn ds_proxy_transformer() {
     let compiled = Solc::new("./tests/solidity-contracts/DSProxy.sol")
         .build()
         .expect("could not compile DSProxyFactory");
-    let contract = compiled
-        .get("DSProxyFactory")
-        .expect("could not find DSProxyFactory");
+    let contract = compiled.get("DSProxyFactory").expect("could not find DSProxyFactory");
     let factory = ContractFactory::new(
         contract.abi.clone(),
         contract.bytecode.clone(),
@@ -63,9 +61,7 @@ async fn ds_proxy_transformer() {
     let compiled = Solc::new("./tests/solidity-contracts/SimpleStorage.sol")
         .build()
         .expect("could not compile SimpleStorage");
-    let contract = compiled
-        .get("SimpleStorage")
-        .expect("could not find SimpleStorage");
+    let contract = compiled.get("SimpleStorage").expect("could not find SimpleStorage");
     let factory = ContractFactory::new(
         contract.abi.clone(),
         contract.bytecode.clone(),
@@ -82,25 +78,13 @@ async fn ds_proxy_transformer() {
     let calldata = simple_storage
         .encode("setValue", U256::from(expected_value))
         .expect("could not get ABI encoded data");
-    let tx = TransactionRequest::new()
-        .to(simple_storage.address())
-        .data(calldata);
-    provider
-        .send_transaction(tx, None)
-        .await
-        .unwrap()
-        .await
-        .unwrap();
+    let tx = TransactionRequest::new().to(simple_storage.address()).data(calldata);
+    provider.send_transaction(tx, None).await.unwrap().await.unwrap();
 
     // verify that DsProxy's state was updated.
-    let last_sender = provider
-        .get_storage_at(ds_proxy_addr, H256::zero(), None)
-        .await
-        .unwrap();
-    let last_value = provider
-        .get_storage_at(ds_proxy_addr, H256::from_low_u64_be(1u64), None)
-        .await
-        .unwrap();
+    let last_sender = provider.get_storage_at(ds_proxy_addr, H256::zero(), None).await.unwrap();
+    let last_value =
+        provider.get_storage_at(ds_proxy_addr, H256::from_low_u64_be(1u64), None).await.unwrap();
     assert_eq!(last_sender, wallet_addr.into());
     assert_eq!(last_value, H256::from_low_u64_be(expected_value));
 }
@@ -127,9 +111,7 @@ async fn ds_proxy_code() {
     let compiled = Solc::new("./tests/solidity-contracts/DSProxy.sol")
         .build()
         .expect("could not compile DSProxyFactory");
-    let contract = compiled
-        .get("DSProxyFactory")
-        .expect("could not find DSProxyFactory");
+    let contract = compiled.get("DSProxyFactory").expect("could not find DSProxyFactory");
     let factory = ContractFactory::new(
         contract.abi.clone(),
         contract.bytecode.clone(),
@@ -152,9 +134,7 @@ async fn ds_proxy_code() {
     let compiled = Solc::new("./tests/solidity-contracts/SimpleStorage.sol")
         .build()
         .expect("could not compile SimpleStorage");
-    let ss = compiled
-        .get("SimpleStorage")
-        .expect("could not find SimpleStorage");
+    let ss = compiled.get("SimpleStorage").expect("could not find SimpleStorage");
     let ss_base_contract: BaseContract = ss.abi.clone().into();
     let expected_value: u64 = rng.gen();
     let calldata = ss_base_contract
@@ -175,14 +155,9 @@ async fn ds_proxy_code() {
         .unwrap();
 
     // verify that DsProxy's state was updated.
-    let last_sender = provider
-        .get_storage_at(ds_proxy_addr, H256::zero(), None)
-        .await
-        .unwrap();
-    let last_value = provider
-        .get_storage_at(ds_proxy_addr, H256::from_low_u64_be(1u64), None)
-        .await
-        .unwrap();
+    let last_sender = provider.get_storage_at(ds_proxy_addr, H256::zero(), None).await.unwrap();
+    let last_value =
+        provider.get_storage_at(ds_proxy_addr, H256::from_low_u64_be(1u64), None).await.unwrap();
     assert_eq!(last_sender, wallet_addr.into());
     assert_eq!(last_value, H256::from_low_u64_be(expected_value));
 }

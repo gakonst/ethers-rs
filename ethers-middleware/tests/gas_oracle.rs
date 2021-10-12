@@ -22,10 +22,7 @@ async fn using_gas_oracle() {
     let provider = GasOracleMiddleware::new(provider, gas_oracle);
 
     // broadcast a transaction
-    let tx = TransactionRequest::new()
-        .from(from)
-        .to(Address::zero())
-        .value(10000);
+    let tx = TransactionRequest::new().from(from).to(Address::zero()).value(10000);
     let tx_hash = provider.send_transaction(tx, None).await.unwrap();
 
     let tx = provider.get_transaction(*tx_hash).await.unwrap().unwrap();

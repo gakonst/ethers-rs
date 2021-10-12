@@ -40,11 +40,7 @@ impl Etherchain {
     pub fn new() -> Self {
         let url = Url::parse(ETHERCHAIN_URL).expect("invalid url");
 
-        Etherchain {
-            client: Client::new(),
-            url,
-            gas_category: GasCategory::Standard,
-        }
+        Etherchain { client: Client::new(), url, gas_category: GasCategory::Standard }
     }
 
     /// Sets the gas price category to be used when fetching the gas price.
@@ -54,13 +50,7 @@ impl Etherchain {
     }
 
     pub async fn query(&self) -> Result<EtherchainResponse, GasOracleError> {
-        Ok(self
-            .client
-            .get(self.url.as_ref())
-            .send()
-            .await?
-            .json::<EtherchainResponse>()
-            .await?)
+        Ok(self.client.get(self.url.as_ref()).send().await?.json::<EtherchainResponse>().await?)
     }
 }
 

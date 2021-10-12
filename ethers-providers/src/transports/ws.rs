@@ -12,9 +12,8 @@ use futures_util::{
     stream::{Fuse, Stream, StreamExt},
 };
 use serde::{de::DeserializeOwned, Serialize};
-use std::collections::btree_map::Entry;
 use std::{
-    collections::BTreeMap,
+    collections::{btree_map::Entry, BTreeMap},
     fmt::{self, Debug},
     sync::{
         atomic::{AtomicU64, Ordering},
@@ -69,11 +68,7 @@ type Subscription = mpsc::UnboundedSender<serde_json::Value>;
 /// Instructions for the `WsServer`.
 enum Instruction {
     /// JSON-RPC request
-    Request {
-        id: u64,
-        request: String,
-        sender: Pending,
-    },
+    Request { id: u64, request: String, sender: Pending },
     /// Create a new subscription
     Subscribe { id: U256, sink: Subscription },
     /// Cancel an existing subscription
@@ -105,9 +100,7 @@ pub struct Ws {
 
 impl Debug for Ws {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("WebsocketProvider")
-            .field("id", &self.id)
-            .finish()
+        f.debug_struct("WebsocketProvider").field("id", &self.id).finish()
     }
 }
 
@@ -123,10 +116,7 @@ impl Ws {
         // Spawn the server
         WsServer::new(ws, stream).spawn();
 
-        Self {
-            id: Arc::new(AtomicU64::new(0)),
-            instructions: sink,
-        }
+        Self { id: Arc::new(AtomicU64::new(0)), instructions: sink }
     }
 
     /// Returns true if the WS connection is active, false otherwise
@@ -137,9 +127,7 @@ impl Ws {
     /// Initializes a new WebSocket Client
     #[cfg(target_arch = "wasm32")]
     pub async fn connect(url: &str) -> Result<Self, ClientError> {
-        let (_, wsio) = WsMeta::connect(url, None)
-            .await
-            .expect_throw("Could not create websocket");
+        let (_, wsio) = WsMeta::connect(url, None).await.expect_throw("Could not create websocket");
 
         Ok(Self::new(wsio))
     }
@@ -154,9 +142,7 @@ impl Ws {
     }
 
     fn send(&self, msg: Instruction) -> Result<(), ClientError> {
-        self.instructions
-            .unbounded_send(msg)
-            .map_err(to_client_error)
+        self.instructions.unbounded_send(msg).map_err(to_client_error)
     }
 }
 
@@ -199,10 +185,7 @@ impl PubsubClient for Ws {
 
     fn subscribe<T: Into<U256>>(&self, id: T) -> Result<Self::NotificationStream, ClientError> {
         let (sink, stream) = mpsc::unbounded();
-        self.send(Instruction::Subscribe {
-            id: id.into(),
-            sink,
-        })?;
+        self.send(Instruction::Subscribe { id: id.into(), sink })?;
         Ok(stream)
     }
 
@@ -252,12 +235,12 @@ where
             loop {
                 if self.is_done() {
                     debug!("work complete");
-                    break;
+                    break
                 }
                 match self.tick().await {
                     Err(ClientError::UnexpectedClose) => {
                         error!("{}", ClientError::UnexpectedClose);
-                        break;
+                        break
                     }
                     Err(e) => {
                         panic!("WS Server panic: {}", e);
@@ -303,10 +286,7 @@ where
     /// Dispatch a unsubscribe request
     async fn service_unsubscribe(&mut self, id: U256) -> Result<(), ClientError> {
         if self.subscriptions.remove(&id).is_none() {
-            warn!(
-                "Unsubscribing from non-existent subscription with id {:?}",
-                id
-            );
+            warn!("Unsubscribing from non-existent subscription with id {:?}", id);
         }
         Ok(())
     }
@@ -314,11 +294,9 @@ where
     /// Dispatch an outgoing message
     async fn service(&mut self, instruction: Instruction) -> Result<(), ClientError> {
         match instruction {
-            Instruction::Request {
-                id,
-                request,
-                sender,
-            } => self.service_request(id, request, sender).await,
+            Instruction::Request { id, request, sender } => {
+                self.service_request(id, request, sender).await
+            }
             Instruction::Subscribe { id, sink } => self.service_subscribe(id, sink).await,
             Instruction::Unsubscribe { id } => self.service_unsubscribe(id).await,
         }
@@ -335,9 +313,7 @@ where
             Err(_) => {}
             Ok(Incoming::Response(resp)) => {
                 if let Some(request) = self.pending.remove(&resp.id) {
-                    request
-                        .send(resp.data.into_result())
-                        .map_err(to_client_error)?;
+                    request.send(resp.data.into_result()).map_err(to_client_error)?;
                 }
             }
             Ok(Incoming::Notification(notification)) => {
@@ -348,7 +324,7 @@ where
                             // subscription channel was closed on the receiver end
                             stream.remove();
                         }
-                        return Err(to_client_error(err));
+                        return Err(to_client_error(err))
                     }
                 }
             }
@@ -477,8 +453,10 @@ impl From<ClientError> for ProviderError {
 #[cfg(not(target_arch = "wasm32"))]
 mod tests {
     use super::*;
-    use ethers_core::types::{Block, TxHash, U256};
-    use ethers_core::utils::Ganache;
+    use ethers_core::{
+        types::{Block, TxHash, U256},
+        utils::Ganache,
+    };
 
     #[tokio::test]
     async fn request() {

@@ -1,8 +1,7 @@
 use super::{types, util, Context};
 use anyhow::{Context as _, Result};
-use ethers_core::abi::ParamType;
 use ethers_core::{
-    abi::{Function, FunctionExt, Param},
+    abi::{Function, FunctionExt, Param, ParamType},
     types::Selector,
 };
 use inflector::Inflector;
@@ -43,8 +42,10 @@ impl Context {
             let call_arg = match param.kind {
                 // this is awkward edge case where the function inputs are a single struct
                 // we need to force this argument into a tuple so it gets expanded to `((#name,))`
-                // this is currently necessary because internally `flatten_tokens` is called which removes the outermost `tuple` level
-                // and since `((#name))` is not a rust tuple it doesn't get wrapped into another tuple that will be peeled off by `flatten_tokens`
+                // this is currently necessary because internally `flatten_tokens` is called which
+                // removes the outermost `tuple` level and since `((#name))` is not
+                // a rust tuple it doesn't get wrapped into another tuple that will be peeled off by
+                // `flatten_tokens`
                 ParamType::Tuple(_) if fun.inputs.len() == 1 => {
                     // make sure the tuple gets converted to `Token::Tuple`
                     quote! {(#name,)}
@@ -82,9 +83,8 @@ impl Context {
                 Ok(quote! {[#ty; #size]})
             }
             ParamType::Tuple(_) => {
-                let ty = if let Some(rust_struct_name) = self
-                    .internal_structs
-                    .get_function_input_struct_type(&fun.name, param)
+                let ty = if let Some(rust_struct_name) =
+                    self.internal_structs.get_function_input_struct_type(&fun.name, param)
                 {
                     let ident = util::ident(rust_struct_name);
                     quote! {#ident}
@@ -162,9 +162,12 @@ mod tests {
                 let name = util::expand_input_name(i, &param.name);
                 match param.kind {
                     // this is awkward edge case where the function inputs are a single struct
-                    // we need to force this argument into a tuple so it gets expanded to `((#name,))`
-                    // this is currently necessary because internally `flatten_tokens` is called which removes the outermost `tuple` level
-                    // and since `((#name))` is not a rust tuple it doesn't get wrapped into another tuple that will be peeled off by `flatten_tokens`
+                    // we need to force this argument into a tuple so it gets expanded to
+                    // `((#name,))` this is currently necessary because
+                    // internally `flatten_tokens` is called which removes the outermost `tuple`
+                    // level and since `((#name))` is not a rust tuple it
+                    // doesn't get wrapped into another tuple that will be peeled off by
+                    // `flatten_tokens`
                     ParamType::Tuple(_) if inputs.len() == 1 => {
                         // make sure the tuple gets converted to `Token::Tuple`
                         quote! {(#name,)}
@@ -212,11 +215,7 @@ mod tests {
 
         // two inputs
         let params = vec![
-            Param {
-                name: "arg_a".to_string(),
-                kind: ParamType::Address,
-                internal_type: None,
-            },
+            Param { name: "arg_a".to_string(), kind: ParamType::Address, internal_type: None },
             Param {
                 name: "arg_b".to_string(),
                 kind: ParamType::Uint(256usize),
@@ -228,21 +227,13 @@ mod tests {
 
         // three inputs
         let params = vec![
-            Param {
-                name: "arg_a".to_string(),
-                kind: ParamType::Address,
-                internal_type: None,
-            },
+            Param { name: "arg_a".to_string(), kind: ParamType::Address, internal_type: None },
             Param {
                 name: "arg_b".to_string(),
                 kind: ParamType::Uint(128usize),
                 internal_type: None,
             },
-            Param {
-                name: "arg_c".to_string(),
-                kind: ParamType::Bool,
-                internal_type: None,
-            },
+            Param { name: "arg_c".to_string(), kind: ParamType::Bool, internal_type: None },
         ];
         let token_stream = expand_inputs_call_arg(&params);
         assert_eq!(token_stream.to_string(), "(arg_a , arg_b , arg_c ,)");
@@ -298,16 +289,8 @@ mod tests {
     fn expand_fn_outputs_multiple() {
         assert_quote!(
             expand_fn_outputs(&[
-                Param {
-                    name: "a".to_string(),
-                    kind: ParamType::Bool,
-                    internal_type: None,
-                },
-                Param {
-                    name: "b".to_string(),
-                    kind: ParamType::Address,
-                    internal_type: None,
-                },
+                Param { name: "a".to_string(), kind: ParamType::Bool, internal_type: None },
+                Param { name: "b".to_string(), kind: ParamType::Address, internal_type: None },
             ],)
             .unwrap(),
             { (bool, ethers_core::types::Address) },

@@ -18,11 +18,7 @@ pub struct JsonRpcError {
 
 impl fmt::Display for JsonRpcError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "(code: {}, message: {}, data: {:?})",
-            self.code, self.message, self.data
-        )
+        write!(f, "(code: {}, message: {}, data: {:?})", self.code, self.message, self.data)
     }
 }
 
@@ -57,12 +53,7 @@ pub struct Subscription<R> {
 impl<'a, T> Request<'a, T> {
     /// Creates a new JSON RPC request
     pub fn new(id: u64, method: &'a str, params: T) -> Self {
-        Self {
-            id,
-            jsonrpc: "2.0",
-            method,
-            params,
-        }
+        Self { id, jsonrpc: "2.0", method, params }
     }
 }
 

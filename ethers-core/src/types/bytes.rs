@@ -1,14 +1,13 @@
-use serde::de::{Error, Unexpected};
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::{
+    de::{Error, Unexpected},
+    Deserialize, Deserializer, Serialize, Serializer,
+};
 
 /// Wrapper type around Bytes to deserialize/serialize "0x" prefixed ethereum hex strings
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize, Ord, PartialOrd)]
 pub struct Bytes(
-    #[serde(
-        serialize_with = "serialize_bytes",
-        deserialize_with = "deserialize_bytes"
-    )]
-    pub bytes::Bytes,
+    #[serde(serialize_with = "serialize_bytes", deserialize_with = "deserialize_bytes")]
+    pub  bytes::Bytes,
 );
 
 impl Bytes {

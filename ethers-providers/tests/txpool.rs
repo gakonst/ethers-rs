@@ -14,11 +14,8 @@ async fn txpool() {
     let account = provider.get_accounts().await.unwrap()[0];
     let value: u64 = 42;
     let gas_price = U256::from_dec_str("221435145689").unwrap();
-    let mut tx = TransactionRequest::new()
-        .to(account)
-        .from(account)
-        .value(value)
-        .gas_price(gas_price);
+    let mut tx =
+        TransactionRequest::new().to(account).from(account).value(value).gas_price(gas_price);
 
     // send a few transactions
     let mut txs = Vec::new();

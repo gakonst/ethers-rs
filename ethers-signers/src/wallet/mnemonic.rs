@@ -180,11 +180,7 @@ impl<W: Wordlist> MnemonicBuilder<W> {
         let signer = SigningKey::from_bytes(&key.to_bytes())?;
         let address = secret_key_to_address(&signer);
 
-        Ok(Wallet::<SigningKey> {
-            signer,
-            address,
-            chain_id: 1,
-        })
+        Ok(Wallet::<SigningKey> { signer, address, chain_id: 1 })
     }
 }
 
@@ -227,26 +223,24 @@ mod tests {
                 "0xFB78b25f69A8e941036fEE2A5EeAf349D81D4ccc",
             ),
         ];
-        TESTCASES
-            .iter()
-            .for_each(|(phrase, index, password, expected_addr)| {
-                let wallet = match password {
-                    Some(psswd) => MnemonicBuilder::<English>::default()
-                        .phrase(*phrase)
-                        .index(*index)
-                        .unwrap()
-                        .password(psswd)
-                        .build()
-                        .unwrap(),
-                    None => MnemonicBuilder::<English>::default()
-                        .phrase(*phrase)
-                        .index(*index)
-                        .unwrap()
-                        .build()
-                        .unwrap(),
-                };
-                assert_eq!(&to_checksum(&wallet.address, None), expected_addr);
-            })
+        TESTCASES.iter().for_each(|(phrase, index, password, expected_addr)| {
+            let wallet = match password {
+                Some(psswd) => MnemonicBuilder::<English>::default()
+                    .phrase(*phrase)
+                    .index(*index)
+                    .unwrap()
+                    .password(psswd)
+                    .build()
+                    .unwrap(),
+                None => MnemonicBuilder::<English>::default()
+                    .phrase(*phrase)
+                    .index(*index)
+                    .unwrap()
+                    .build()
+                    .unwrap(),
+            };
+            assert_eq!(&to_checksum(&wallet.address, None), expected_addr);
+        })
     }
 
     #[tokio::test]

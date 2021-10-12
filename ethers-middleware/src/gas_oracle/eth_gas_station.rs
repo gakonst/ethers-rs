@@ -69,11 +69,7 @@ impl EthGasStation {
 
         let url = Url::parse(&url).expect("invalid url");
 
-        EthGasStation {
-            client: Client::new(),
-            url,
-            gas_category: GasCategory::Standard,
-        }
+        EthGasStation { client: Client::new(), url, gas_category: GasCategory::Standard }
     }
 
     /// Sets the gas price category to be used when fetching the gas price.
@@ -83,13 +79,7 @@ impl EthGasStation {
     }
 
     pub async fn query(&self) -> Result<EthGasStationResponse, GasOracleError> {
-        Ok(self
-            .client
-            .get(self.url.as_ref())
-            .send()
-            .await?
-            .json::<EthGasStationResponse>()
-            .await?)
+        Ok(self.client.get(self.url.as_ref()).send().await?.json::<EthGasStationResponse>().await?)
     }
 }
 

@@ -10,8 +10,11 @@ use ethers_contract::EthEvent;
 mod derive;
 
 use ethers_contract::{Contract, ContractFactory};
-use ethers_core::utils::{GanacheInstance, Solc};
-use ethers_core::{abi::Abi, types::Bytes};
+use ethers_core::{
+    abi::Abi,
+    types::Bytes,
+    utils::{GanacheInstance, Solc},
+};
 use ethers_providers::{Http, Middleware, Provider};
 use std::{convert::TryFrom, sync::Arc, time::Duration};
 
@@ -30,9 +33,7 @@ pub struct ValueChanged {
 
 /// compiles the given contract and returns the ABI and Bytecode
 pub fn compile_contract(name: &str, filename: &str) -> (Abi, Bytes) {
-    let compiled = Solc::new(&format!("./tests/solidity-contracts/{}", filename))
-        .build()
-        .unwrap();
+    let compiled = Solc::new(&format!("./tests/solidity-contracts/{}", filename)).build().unwrap();
     let contract = compiled.get(name).expect("could not find contract");
     (contract.abi.clone(), contract.bytecode.clone())
 }
@@ -50,11 +51,5 @@ pub fn connect(ganache: &GanacheInstance, idx: usize) -> Arc<Provider<Http>> {
 /// Launches a ganache instance and deploys the SimpleStorage contract
 pub async fn deploy<M: Middleware>(client: Arc<M>, abi: Abi, bytecode: Bytes) -> Contract<M> {
     let factory = ContractFactory::new(abi, bytecode, client);
-    factory
-        .deploy("initial value".to_string())
-        .unwrap()
-        .legacy()
-        .send()
-        .await
-        .unwrap()
+    factory.deploy("initial value".to_string()).unwrap().legacy().send().await.unwrap()
 }

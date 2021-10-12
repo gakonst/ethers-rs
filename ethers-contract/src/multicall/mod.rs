@@ -169,10 +169,8 @@ impl<M: Middleware> Multicall<M> {
         let address: Address = match address {
             Some(addr) => addr,
             None => {
-                let chain_id = client
-                    .get_chainid()
-                    .await
-                    .map_err(ContractError::MiddlewareError)?;
+                let chain_id =
+                    client.get_chainid().await.map_err(ContractError::MiddlewareError)?;
                 match ADDRESS_BOOK.get(&chain_id) {
                     Some(addr) => *addr,
                     None => panic!(
@@ -185,12 +183,7 @@ impl<M: Middleware> Multicall<M> {
         // Instantiate the multicall contract
         let contract = MulticallContract::new(address, client);
 
-        Ok(Self {
-            calls: vec![],
-            block: None,
-            contract,
-            legacy: false,
-        })
+        Ok(Self { calls: vec![], block: None, contract, legacy: false })
     }
 
     /// Makes a legacy transaction instead of an EIP-1559 one
@@ -218,11 +211,7 @@ impl<M: Middleware> Multicall<M> {
 
         match (call.tx.to(), call.tx.data()) {
             (Some(NameOrAddress::Address(target)), Some(data)) => {
-                let call = Call {
-                    target: *target,
-                    data: data.clone(),
-                    function: call.function,
-                };
+                let call = Call { target: *target, data: data.clone(), function: call.function };
                 self.calls.push(call);
                 self
             }
@@ -372,11 +361,8 @@ impl<M: Middleware> Multicall<M> {
 
     fn as_contract_call(&self) -> ContractCall<M, (U256, Vec<Vec<u8>>)> {
         // Map the Multicall struct into appropriate types for `aggregate` function
-        let calls: Vec<(Address, Vec<u8>)> = self
-            .calls
-            .iter()
-            .map(|call| (call.target, call.data.to_vec()))
-            .collect();
+        let calls: Vec<(Address, Vec<u8>)> =
+            self.calls.iter().map(|call| (call.target, call.data.to_vec())).collect();
 
         // Construct the ContractCall for `aggregate` function to broadcast the transaction
         let mut contract_call = self.contract.aggregate(calls);

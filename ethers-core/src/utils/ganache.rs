@@ -143,11 +143,7 @@ impl Ganache {
     pub fn spawn(self) -> GanacheInstance {
         let mut cmd = Command::new("ganache-cli");
         cmd.stdout(std::process::Stdio::piped());
-        let port = if let Some(port) = self.port {
-            port
-        } else {
-            unused_port()
-        };
+        let port = if let Some(port) = self.port { port } else { unused_port() };
         cmd.arg("-p").arg(port.to_string());
 
         if let Some(mnemonic) = self.mnemonic {
@@ -166,9 +162,7 @@ impl Ganache {
 
         let mut child = cmd.spawn().expect("couldnt start ganache-cli");
 
-        let stdout = child
-            .stdout
-            .expect("Unable to get stdout for ganache child process");
+        let stdout = child.stdout.expect("Unable to get stdout for ganache child process");
 
         let start = Instant::now();
         let mut reader = BufReader::new(stdout);
@@ -182,11 +176,9 @@ impl Ganache {
             }
 
             let mut line = String::new();
-            reader
-                .read_line(&mut line)
-                .expect("Failed to read line from ganache process");
+            reader.read_line(&mut line).expect("Failed to read line from ganache process");
             if line.starts_with("Listening on") {
-                break;
+                break
             }
 
             if line.starts_with("Private Keys") {
@@ -204,11 +196,6 @@ impl Ganache {
 
         child.stdout = Some(reader.into_inner());
 
-        GanacheInstance {
-            pid: child,
-            private_keys,
-            addresses,
-            port,
-        }
+        GanacheInstance { pid: child, private_keys, addresses, port }
     }
 }

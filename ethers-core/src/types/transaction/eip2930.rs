@@ -104,9 +104,7 @@ mod tests {
             .nonce(3)
             .gas_price(1)
             .gas(25000)
-            .to("b94f5374fce5edbc8e2a8697c15331677e6ebf0b"
-                .parse::<Address>()
-                .unwrap())
+            .to("b94f5374fce5edbc8e2a8697c15331677e6ebf0b".parse::<Address>().unwrap())
             .value(10)
             .data(vec![0x55, 0x44])
             .with_access_list(vec![])
@@ -116,9 +114,7 @@ mod tests {
         let sig: Signature = "c9519f4f2b30335884581971573fadf60c6204f59a911df35ee8a540456b266032f1e8e2c5dd761f9e4f88f41c8310aeaba26a8bfcdacfedfa12ec3862d3752101".parse().unwrap();
         assert_eq!(
             hash,
-            "49b486f0ec0a60dfbbca2d30cb07c9e8ffb2a2ff41f29a1ab6737475f6ff69f3"
-                .parse()
-                .unwrap()
+            "49b486f0ec0a60dfbbca2d30cb07c9e8ffb2a2ff41f29a1ab6737475f6ff69f3".parse().unwrap()
         );
 
         let enc = rlp::encode(&tx.rlp_signed(1, &sig).as_ref());
@@ -129,10 +125,8 @@ mod tests {
     #[test]
     #[cfg_attr(feature = "legacy", ignore)]
     fn serde_eip2930_tx() {
-        let access_list = vec![AccessListItem {
-            address: Address::zero(),
-            storage_keys: vec![H256::zero()],
-        }];
+        let access_list =
+            vec![AccessListItem { address: Address::zero(), storage_keys: vec![H256::zero()] }];
         let tx = TransactionRequest::new()
             .to(Address::zero())
             .value(U256::from(100))

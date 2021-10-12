@@ -45,12 +45,7 @@ impl LedgerEthereum {
         let transport = Ledger::init().await?;
         let address = Self::get_address_with_path_transport(&transport, &derivation).await?;
 
-        Ok(Self {
-            transport: Mutex::new(transport),
-            derivation,
-            chain_id,
-            address,
-        })
+        Ok(Self { transport: Mutex::new(transport), derivation, chain_id, address })
     }
 
     /// Consume self and drop the ledger mutex
@@ -160,10 +155,7 @@ impl LedgerEthereum {
             command.data = APDUData::new(&data);
 
             let answer = block_on(transport.exchange(&command))?;
-            result = answer
-                .data()
-                .ok_or(LedgerError::UnexpectedNullResponse)?
-                .to_vec();
+            result = answer.data().ok_or(LedgerError::UnexpectedNullResponse)?.to_vec();
 
             // We need more data
             command.p1 = P1::MORE as u8;
@@ -208,18 +200,13 @@ mod tests {
     // Replace this with your ETH addresses.
     async fn test_get_address() {
         // Instantiate it with the default ledger derivation path
-        let ledger = LedgerEthereum::new(DerivationType::LedgerLive(0), 1)
-            .await
-            .unwrap();
+        let ledger = LedgerEthereum::new(DerivationType::LedgerLive(0), 1).await.unwrap();
         assert_eq!(
             ledger.get_address().await.unwrap(),
             "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee".parse().unwrap()
         );
         assert_eq!(
-            ledger
-                .get_address_with_path(&DerivationType::Legacy(0))
-                .await
-                .unwrap(),
+            ledger.get_address_with_path(&DerivationType::Legacy(0)).await.unwrap(),
             "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee".parse().unwrap()
         );
     }
@@ -227,17 +214,13 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn test_sign_tx() {
-        let ledger = LedgerEthereum::new(DerivationType::LedgerLive(0), 1)
-            .await
-            .unwrap();
+        let ledger = LedgerEthereum::new(DerivationType::LedgerLive(0), 1).await.unwrap();
 
         // approve uni v2 router 0xff
         let data = hex::decode("095ea7b30000000000000000000000007a250d5630b4cf539739df2c5dacb4c659f2488dffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap();
 
         let tx_req = TransactionRequest::new()
-            .to("2ed7afa17473e17ac59908f088b4371d28585476"
-                .parse::<Address>()
-                .unwrap())
+            .to("2ed7afa17473e17ac59908f088b4371d28585476".parse::<Address>().unwrap())
             .gas(1000000)
             .gas_price(400e9 as u64)
             .nonce(5)
@@ -250,9 +233,7 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn test_version() {
-        let ledger = LedgerEthereum::new(DerivationType::LedgerLive(0), 1)
-            .await
-            .unwrap();
+        let ledger = LedgerEthereum::new(DerivationType::LedgerLive(0), 1).await.unwrap();
 
         let version = ledger.version().await.unwrap();
         assert_eq!(version, "1.3.7");
@@ -261,9 +242,7 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn test_sign_message() {
-        let ledger = LedgerEthereum::new(DerivationType::Legacy(0), 1)
-            .await
-            .unwrap();
+        let ledger = LedgerEthereum::new(DerivationType::Legacy(0), 1).await.unwrap();
         let message = "hello world";
         let sig = ledger.sign_message(message).await.unwrap();
         let addr = ledger.get_address().await.unwrap();

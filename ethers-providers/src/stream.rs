@@ -2,14 +2,12 @@ use crate::{JsonRpcClient, Middleware, PinBoxFut, Provider, ProviderError};
 
 use ethers_core::types::{Transaction, TxHash, U256};
 
-use futures_core::stream::Stream;
-use futures_core::Future;
-use futures_util::stream::FuturesUnordered;
-use futures_util::{stream, FutureExt, StreamExt};
+use futures_core::{stream::Stream, Future};
+use futures_util::{stream, stream::FuturesUnordered, FutureExt, StreamExt};
 use pin_project::pin_project;
 use serde::{de::DeserializeOwned, Serialize};
-use std::collections::VecDeque;
 use std::{
+    collections::VecDeque,
     fmt::Debug,
     pin::Pin,
     task::{Context, Poll},
@@ -132,7 +130,8 @@ impl<'a, P> FilterWatcher<'a, P, TxHash>
 where
     P: JsonRpcClient,
 {
-    /// Returns a stream that yields the `Transaction`s for the transaction hashes this stream yields.
+    /// Returns a stream that yields the `Transaction`s for the transaction hashes this stream
+    /// yields.
     ///
     /// This internally calls `Provider::get_transaction` with every new transaction.
     /// No more than n futures will be buffered at any point in time, and less than n may also be
@@ -194,14 +193,11 @@ impl<'a, P: JsonRpcClient, St> TransactionStream<'a, P, St> {
 
     /// Push a future into the set
     fn push_tx(&mut self, tx: TxHash) {
-        let fut = self
-            .provider
-            .get_transaction(tx)
-            .then(move |res| match res {
-                Ok(Some(tx)) => futures_util::future::ok(tx),
-                Ok(None) => futures_util::future::err(GetTransactionError::NotFound(tx)),
-                Err(err) => futures_util::future::err(GetTransactionError::ProviderError(tx, err)),
-            });
+        let fut = self.provider.get_transaction(tx).then(move |res| match res {
+            Ok(Some(tx)) => futures_util::future::ok(tx),
+            Ok(None) => futures_util::future::err(GetTransactionError::NotFound(tx)),
+            Err(err) => futures_util::future::err(GetTransactionError::ProviderError(tx, err)),
+        });
         self.pending.push(Box::pin(fut));
     }
 }
@@ -221,7 +217,7 @@ where
             if let Some(tx) = this.buffered.pop_front() {
                 this.push_tx(tx);
             } else {
-                break;
+                break
             }
         }
 
@@ -237,7 +233,7 @@ where
                 }
                 Poll::Ready(None) => {
                     stream_done = true;
-                    break;
+                    break
                 }
                 _ => break,
             }
@@ -245,12 +241,12 @@ where
 
         // poll running futures
         if let tx @ Poll::Ready(Some(_)) = this.pending.poll_next_unpin(cx) {
-            return tx;
+            return tx
         }
 
         if stream_done && this.pending.is_empty() {
             // all done
-            return Poll::Ready(None);
+            return Poll::Ready(None)
         }
 
         Poll::Pending
@@ -267,8 +263,7 @@ mod tests {
         utils::{Ganache, Geth},
     };
     use futures_util::{FutureExt, StreamExt};
-    use std::collections::HashSet;
-    use std::convert::TryFrom;
+    use std::{collections::HashSet, convert::TryFrom};
 
     #[tokio::test]
     async fn can_stream_pending_transactions() {
@@ -281,20 +276,11 @@ mod tests {
         let ws_provider = Provider::new(ws);
 
         let accounts = provider.get_accounts().await.unwrap();
-        let tx = TransactionRequest::new()
-            .from(accounts[0])
-            .to(accounts[0])
-            .value(1e18 as u64);
+        let tx = TransactionRequest::new().from(accounts[0]).to(accounts[0]).value(1e18 as u64);
 
         let mut sending = futures_util::future::join_all(
             std::iter::repeat(tx.clone()).take(num_txs).map(|tx| async {
-                provider
-                    .send_transaction(tx, None)
-                    .await
-                    .unwrap()
-                    .await
-                    .unwrap()
-                    .unwrap()
+                provider.send_transaction(tx, None).await.unwrap().await.unwrap().unwrap()
             }),
         )
         .fuse();
@@ -306,12 +292,8 @@ mod tests {
             .transactions_unordered(num_txs)
             .fuse();
 
-        let mut sub_tx_stream = ws_provider
-            .subscribe_pending_txs()
-            .await
-            .unwrap()
-            .transactions_unordered(2)
-            .fuse();
+        let mut sub_tx_stream =
+            ws_provider.subscribe_pending_txs().await.unwrap().transactions_unordered(2).fuse();
 
         let mut sent: Option<Vec<TransactionReceipt>> = None;
         let mut watch_received: Vec<Transaction> = Vec::with_capacity(num_txs);
@@ -328,13 +310,11 @@ mod tests {
             if watch_received.len() == num_txs && sub_received.len() == num_txs {
                 if let Some(ref sent) = sent {
                     assert_eq!(sent.len(), watch_received.len());
-                    let sent_txs = sent
-                        .iter()
-                        .map(|tx| tx.transaction_hash)
-                        .collect::<HashSet<_>>();
+                    let sent_txs =
+                        sent.iter().map(|tx| tx.transaction_hash).collect::<HashSet<_>>();
                     assert_eq!(sent_txs, watch_received.iter().map(|tx| tx.hash).collect());
                     assert_eq!(sent_txs, sub_received.iter().map(|tx| tx.hash).collect());
-                    break;
+                    break
                 }
             }
         }
@@ -349,19 +329,11 @@ mod tests {
 
         let accounts = provider.get_accounts().await.unwrap();
 
-        let tx = TransactionRequest::new()
-            .from(accounts[0])
-            .to(accounts[0])
-            .value(1e18 as u64);
+        let tx = TransactionRequest::new().from(accounts[0]).to(accounts[0]).value(1e18 as u64);
 
         let txs =
             futures_util::future::join_all(std::iter::repeat(tx.clone()).take(3).map(|tx| async {
-                provider
-                    .send_transaction(tx, None)
-                    .await
-                    .unwrap()
-                    .await
-                    .unwrap()
+                provider.send_transaction(tx, None).await.unwrap().await.unwrap()
             }))
             .await;
 
@@ -370,19 +342,13 @@ mod tests {
             stream::iter(txs.iter().cloned().map(|tx| tx.unwrap().transaction_hash)),
             10,
         );
-        let res = stream
-            .collect::<Vec<_>>()
-            .await
-            .into_iter()
-            .collect::<Result<Vec<_>, _>>()
-            .unwrap();
+        let res =
+            stream.collect::<Vec<_>>().await.into_iter().collect::<Result<Vec<_>, _>>().unwrap();
 
         assert_eq!(res.len(), txs.len());
         assert_eq!(
             res.into_iter().map(|tx| tx.hash).collect::<HashSet<_>>(),
-            txs.into_iter()
-                .map(|tx| tx.unwrap().transaction_hash)
-                .collect()
+            txs.into_iter().map(|tx| tx.unwrap().transaction_hash).collect()
         );
     }
 }
