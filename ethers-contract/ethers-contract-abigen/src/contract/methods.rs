@@ -1,20 +1,25 @@
-use super::{types, util, Context};
+use std::collections::BTreeMap;
+
 use anyhow::{Context as _, Result};
+use inflector::Inflector;
+use proc_macro2::{Literal, TokenStream};
+use quote::quote;
+use syn::Ident;
+
+use ethers_core::abi::ParamType;
 use ethers_core::{
     abi::{Function, FunctionExt, Param, ParamType},
     types::Selector,
 };
-use inflector::Inflector;
-use proc_macro2::{Literal, TokenStream};
-use quote::quote;
-use std::collections::BTreeMap;
-use syn::Ident;
+
+use super::{types, util, Context};
 
 /// Expands a context into a method struct containing all the generated bindings
 /// to the Solidity contract methods.
 impl Context {
+    /// Expands all method implementations
     pub(crate) fn methods(&self) -> Result<TokenStream> {
-        let mut aliases = self.method_aliases.clone();
+        let mut aliases = self.get_method_aliases()?;
         let sorted_functions: BTreeMap<_, _> = self.abi.functions.clone().into_iter().collect();
         let functions = sorted_functions
             .values()
@@ -97,7 +102,7 @@ impl Context {
         }
     }
 
-    #[allow(unused)]
+    /// Expands a single function with the given alias
     fn expand_function(&self, function: &Function, alias: Option<Ident>) -> Result<TokenStream> {
         let name = alias.unwrap_or_else(|| util::safe_ident(&function.name.to_snake_case()));
         let selector = expand_selector(function.selector());
@@ -105,8 +110,8 @@ impl Context {
         // TODO use structs
         let outputs = expand_fn_outputs(&function.outputs)?;
 
-        let ethers_core = util::ethers_core_crate();
-        let ethers_providers = util::ethers_providers_crate();
+        let _ethers_core = util::ethers_core_crate();
+        let _ethers_providers = util::ethers_providers_crate();
         let ethers_contract = util::ethers_contract_crate();
 
         let result = quote! { #ethers_contract::builders::ContractCall<M, #outputs> };
@@ -126,6 +131,79 @@ impl Context {
                     .expect("method not found (this should never happen)")
             }
         })
+    }
+
+    /// Returns the method aliases, either configured by the user or determined
+    /// based on overloaded functions.
+    ///
+    /// In case of overloaded functions we would follow rust's general
+    /// convention of suffixing the function name with _with
+    // The first function or the function with the least amount of arguments should
+    // be named as in the ABI, the following functions suffixed with _with_ +
+    // additional_params[0].name + (_and_(additional_params[1+i].name))*
+    fn get_method_aliases(&self) -> Result<BTreeMap<String, Ident>> {
+        let mut aliases = self.method_aliases.clone();
+        // find all duplicates, where no aliases where provided
+        for functions in self.abi.functions.values() {
+            if functions
+                .iter()
+                .filter(|f| !aliases.contains_key(&f.abi_signature()))
+                .count()
+                <= 1
+            {
+                // no conflicts
+                continue;
+            }
+
+            // sort functions by number of inputs asc
+            let mut functions = functions.iter().collect::<Vec<_>>();
+            functions.sort_by(|f1, f2| f1.inputs.len().cmp(&f2.inputs.len()));
+            let prev = functions[0];
+            for duplicate in functions.into_iter().skip(1) {
+                // attempt to find diff in the input arguments
+                let diff = duplicate
+                    .inputs
+                    .iter()
+                    .filter(|i1| prev.inputs.iter().all(|i2| *i1 != i2))
+                    .collect::<Vec<_>>();
+
+                let alias = match diff.len() {
+                    0 => {
+                        // this should not happen since functions with same name and input are
+                        // illegal
+                        anyhow::bail!(
+                            "Function with same name and parameter types defined twice: {}",
+                            duplicate.name
+                        );
+                    }
+                    1 => {
+                        // single additional input params
+                        format!(
+                            "{}_with_{}",
+                            duplicate.name.to_snake_case(),
+                            diff[0].name.to_snake_case()
+                        )
+                    }
+                    _ => {
+                        // 1 + n additional input params
+                        let and = diff
+                            .iter()
+                            .skip(1)
+                            .map(|i| i.name.to_snake_case())
+                            .collect::<Vec<_>>()
+                            .join("_and_");
+                        format!(
+                            "{}_with_{}_and_{}",
+                            duplicate.name.to_snake_case(),
+                            diff[0].name.to_snake_case(),
+                            and
+                        )
+                    }
+                };
+                aliases.insert(duplicate.abi_signature(), util::safe_ident(&alias));
+            }
+        }
+        Ok(aliases)
     }
 }
 
@@ -150,8 +228,9 @@ fn expand_selector(selector: Selector) -> TokenStream {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use ethers_core::abi::ParamType;
+
+    use super::*;
 
     // packs the argument in a tuple to be used for the contract call
     fn expand_inputs_call_arg(inputs: &[Param]) -> TokenStream {
