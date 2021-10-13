@@ -173,3 +173,23 @@ fn can_gen_human_readable_with_structs() {
     let f = Foo { x: 100u64.into() };
     let _ = contract.foo(f);
 }
+
+#[test]
+fn can_handle_overloaded_functions() {
+    abigen!(
+        SimpleContract,
+        r#"[
+        getValue() (uint256)
+        getValue(uint256 otherValue) (uint256)
+        getValue(uint256 otherValue, address addr) (uint256)
+    ]"#
+    );
+
+    let (provider, _) = Provider::mocked();
+    let client = Arc::new(provider);
+    let contract = SimpleContract::new(Address::zero(), client);
+    // ensure both functions are callable
+    let _ = contract.get_value();
+    let _ = contract.get_value_with_other_value(1337u64.into());
+    let _ = contract.get_value_with_other_value_and_addr(1337u64.into(), Address::zero());
+}
