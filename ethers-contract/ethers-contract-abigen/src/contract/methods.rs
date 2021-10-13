@@ -6,7 +6,6 @@ use proc_macro2::{Literal, TokenStream};
 use quote::quote;
 use syn::Ident;
 
-use ethers_core::abi::ParamType;
 use ethers_core::{
     abi::{Function, FunctionExt, Param, ParamType},
     types::Selector,
@@ -145,14 +144,9 @@ impl Context {
         let mut aliases = self.method_aliases.clone();
         // find all duplicates, where no aliases where provided
         for functions in self.abi.functions.values() {
-            if functions
-                .iter()
-                .filter(|f| !aliases.contains_key(&f.abi_signature()))
-                .count()
-                <= 1
-            {
+            if functions.iter().filter(|f| !aliases.contains_key(&f.abi_signature())).count() <= 1 {
                 // no conflicts
-                continue;
+                continue
             }
 
             // sort functions by number of inputs asc
