@@ -28,4 +28,6 @@ contract SimpleStorage {
         _otherValue = value2;
         lastSender = msg.sender;
     }
+
+    function _hashPuzzle() public {}
 }

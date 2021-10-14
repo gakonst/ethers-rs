@@ -2,7 +2,7 @@
 //! Test cases to validate the `abigen!` macro
 use ethers_contract::{abigen, AbiDecode, AbiEncode, EthEvent};
 use ethers_core::abi::{Address, Tokenizable};
-use ethers_core::types::U256;
+use ethers_core::types::{H256, U256};
 use ethers_providers::Provider;
 use std::sync::Arc;
 
@@ -265,4 +265,27 @@ fn can_handle_overloaded_functions() {
     let decoded_enum = SimpleContractCalls::decode(encoded_call.as_ref()).unwrap();
     assert_eq!(contract_call, decoded_enum);
     assert_eq!(encoded_call, contract_call.encode().unwrap());
+}
+
+#[test]
+fn can_handle_underscore_functions() {
+    abigen!(
+        MyContract,
+        r#"[
+        _hashPuzzle() (uint256)
+    ]"#
+    );
+    abigen!(
+        SimpleStorage,
+        "ethers-contract/tests/solidity-contracts/simplestorage_abi.json",
+    );
+
+    let (provider, _) = Provider::mocked();
+    let client = Arc::new(provider);
+    let contract = MyContract::new(Address::zero(), client.clone());
+    // ensure both functions are callable
+    let _ = contract.hash_puzzle();
+    let _fun = contract.method::<_, H256>("_hashPuzzle", ()).unwrap();
+    let contract = SimpleStorage::new(Address::zero(), client);
+    let _fun = contract.method::<_, H256>("_hashPuzzle", ()).unwrap();
 }
