@@ -47,7 +47,7 @@ pub enum Frequency {
 /// use ethers_providers::{Provider, Http};
 /// use ethers_middleware::{
 ///     gas_escalator::{GeometricGasPrice, Frequency, GasEscalatorMiddleware},
-///     gas_oracle::{GasNow, GasCategory, GasOracleMiddleware},
+///     gas_oracle::{EthGasStation, GasCategory, GasOracleMiddleware},
 /// };
 /// use std::{convert::TryFrom, time::Duration, sync::Arc};
 ///
@@ -61,7 +61,7 @@ pub enum Frequency {
 /// };
 ///
 /// // ... proceed to wrap it in other middleware
-/// let gas_oracle = GasNow::new().category(GasCategory::SafeLow);
+/// let gas_oracle = EthGasStation::new(None).category(GasCategory::SafeLow);
 /// let provider = GasOracleMiddleware::new(provider, gas_oracle);
 /// ```
 pub struct GasEscalatorMiddleware<M, E> {

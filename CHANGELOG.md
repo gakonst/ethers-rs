@@ -50,6 +50,8 @@
 
 ### Unreleased
 
+- Removes GasNow as a gas price oracle [#508](https://github.com/gakonst/ethers-rs/pull/508)
+
 ### 0.5.3
 
 - Added Time Lagged middleware [#457](https://github.com/gakonst/ethers-rs/pull/457)

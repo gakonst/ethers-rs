@@ -1,7 +1,7 @@
 #![cfg(not(target_arch = "wasm32"))]
 use ethers_core::{types::*, utils::Ganache};
 use ethers_middleware::gas_oracle::{
-    EthGasStation, Etherchain, Etherscan, GasCategory, GasNow, GasOracle, GasOracleMiddleware,
+    EthGasStation, Etherchain, Etherscan, GasCategory, GasOracle, GasOracleMiddleware,
 };
 use ethers_providers::{Http, Middleware, Provider};
 use std::convert::TryFrom;
@@ -16,7 +16,7 @@ async fn using_gas_oracle() {
     let provider = Provider::<Http>::try_from(ganache.endpoint()).unwrap();
 
     // assign a gas oracle to use
-    let gas_oracle = GasNow::new().category(GasCategory::Fastest);
+    let gas_oracle = EthGasStation::new(None);
     let expected_gas_price = gas_oracle.fetch().await.unwrap();
 
     let provider = GasOracleMiddleware::new(provider, gas_oracle);
@@ -63,13 +63,5 @@ async fn etherchain() {
     // initialize and fetch gas estimates from Etherchain
     let etherchain_oracle = Etherchain::new().category(GasCategory::Fast);
     let data = etherchain_oracle.fetch().await;
-    assert!(data.is_ok());
-}
-
-#[tokio::test]
-async fn gas_now() {
-    // initialize and fetch gas estimates from SparkPool
-    let gas_now_oracle = GasNow::new().category(GasCategory::Fastest);
-    let data = gas_now_oracle.fetch().await;
     assert!(data.is_ok());
 }
