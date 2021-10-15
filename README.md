@@ -3,6 +3,7 @@
 **Complete Ethereum and Celo wallet implementation and utilities in Rust**
 
 ![Github Actions](https://github.com/gakonst/ethers-rs/workflows/Tests/badge.svg)
+[![Telegram Chat](https://img.shields.io/endpoint?color=neon&style=flat-square&url=https%3A%2F%2Ftg.sumanjay.workers.dev%2Fethers_rs)](https://tg.sumanjay.workers.dev/ethers_rs)
 
 ## Documentation
 
