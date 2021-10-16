@@ -33,9 +33,10 @@ impl Context {
 
     /// Generate the event filter methods for the contract
     pub fn event_methods(&self) -> Result<TokenStream> {
-        let sorted_events: BTreeMap<_, _> = self.abi.events.clone().into_iter().collect();
+        let sorted_events: BTreeMap<_, _> = self.abi.events.iter().collect();
         let filter_methods = sorted_events
             .values()
+            .map(std::ops::Deref::deref)
             .flatten()
             .map(|event| self.expand_filter(event))
             .collect::<Vec<_>>();

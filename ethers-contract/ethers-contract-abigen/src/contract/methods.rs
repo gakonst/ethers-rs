@@ -20,18 +20,30 @@ impl Context {
     /// Expands all method implementations
     pub(crate) fn methods(&self) -> Result<TokenStream> {
         let mut aliases = self.get_method_aliases()?;
-        let sorted_functions: BTreeMap<_, _> = self.abi.functions.clone().into_iter().collect();
+        let sorted_functions: BTreeMap<_, _> = self.abi.functions.iter().collect();
         let functions = sorted_functions
             .values()
+            .map(std::ops::Deref::deref)
             .flatten()
             .map(|function| {
                 let signature = function.abi_signature();
-                self.expand_function(function, aliases.remove(&signature))
+                self.expand_function(function, aliases.get(&signature).cloned())
                     .with_context(|| format!("error expanding function '{}'", signature))
             })
             .collect::<Result<Vec<_>>>()?;
 
         Ok(quote! { #( #functions )* })
+    }
+
+    fn expand_calls_enum(&self, aliases: BTreeMap<String, Ident>) {
+        for function in self.abi.functions.values().flatten() {}
+
+        let enum_name = self.expand_calls_enum_name();
+    }
+
+    /// The name ident of the calls enum
+    fn expand_calls_enum_name(&self) -> Ident {
+        util::ident(&format!("{}Calls", self.contract_name.to_string()))
     }
 
     fn expand_inputs_call_arg_with_structs(
