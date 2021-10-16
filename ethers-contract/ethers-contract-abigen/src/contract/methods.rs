@@ -35,30 +35,63 @@ impl Context {
         Ok(quote! { #( #functions )* })
     }
 
-    fn expand_calls_enum(&self, aliases: BTreeMap<String, Ident>) {
+    /// Expands to the corresponding struct type based on the inputs of the given function
+    fn expand_call_struct(
+        &self,
+        function: &Function,
+        alias: Option<&Ident>,
+    ) -> Result<TokenStream> {
+        let call_name = expand_call_struct_name(function, alias);
+        let fields = self.expand_input_pairs(function)?;
+        // expand as a tuple if all fields are anonymous
+        let all_anonymous_fields = function.inputs.iter().all(|input| input.name.is_empty());
+        let call_type_definition = if all_anonymous_fields {
+            // expand to a tuple struct
+            expand_data_tuple(&call_name, &fields)
+        } else {
+            // expand to a struct
+            expand_data_struct(&call_name, &fields)
+        };
+        let doc = format!(
+            "Container type for all input parameters for the `{}`function with signature `{}` and selector `{:?}`",
+            function.name,
+            function.abi_signature(),
+            function.selector()
+        );
+        let abi_signature_doc = util::expand_doc(&doc);
+        let ethers_contract = util::ethers_contract_crate();
+        // use the same derives as for events
+        let derives = util::expand_derives(&self.event_derives);
+
+        Ok(quote! {
+            #abi_signature_doc
+            #[derive(Clone, Debug, Default, Eq, PartialEq, #ethers_contract::EthAbiType, #derives)]
+            pub call_type_definition
+        })
+    }
+
+    fn expand_call_structs(&self, aliases: BTreeMap<String, Ident>) -> Result<TokenStream> {
+        let mut struct_defs = TokenStream::new();
+        let mut struct_names = Vec::new();
+        let mut variant_names = Vec::new();
+
         for function in self.abi.functions.values().flatten() {
             let signature = function.abi_signature();
-            let call_name = expand_call_struct_name(function, aliases.get(&signature).cloned());
-
-            // expand as a tuple if all fields are anonymous
-            let all_anonymous_fields = function.inputs.iter().all(|input| input.name.is_empty());
-
-            // let data_type_definition = if all_anonymous_fields {
-            //     expand_data_tuple(&event_name, &params)
-            // } else {
-            //     expand_data_struct(&event_name, &params)
-            // };
-
-            let selector = expand_selector(function.selector());
+            let alias = aliases.get(&signature);
+            struct_defs.extend(self.expand_call_struct(function, alias)?);
+            struct_names.push(expand_call_struct_name(function, alias));
+            variant_names.push(expand_call_struct_variant_name(function, alias));
         }
 
         let enum_name = self.expand_calls_enum_name();
-        quote! {
-              #[derive(Debug, Clone, PartialEq, Eq)]
+        Ok(quote! {
+            #struct_defs
+
+            #[derive(Debug, Clone, PartialEq, Eq)]
             pub enum #enum_name {
-                // #(#variants(#variants)),*
+                // #(#variant_names(#struct_names)),*
             }
-        };
+        })
     }
 
     // /// Expands all the inputs of the function into name and type
@@ -83,7 +116,7 @@ impl Context {
     }
 
     /// Expands to the `name : type` pairs of the function's inputs
-    fn expand_input_parameters(&self, fun: &Function) -> Result<Vec<(TokenStream, TokenStream)>> {
+    fn expand_input_pairs(&self, fun: &Function) -> Result<Vec<(TokenStream, TokenStream)>> {
         let mut args = Vec::with_capacity(fun.inputs.len());
         for (idx, param) in fun.inputs.iter().enumerate() {
             let name = util::expand_input_name(idx, &param.name);
@@ -172,7 +205,7 @@ impl Context {
 
         let contract_args = self.expand_contract_call_args(function)?;
         let function_params = self
-            .expand_input_parameters(function)?
+            .expand_input_pairs(function)?
             .into_iter()
             .map(|(name, ty)| quote! { #name: #ty });
         let function_params = quote! { #( , #function_params )* };
@@ -286,13 +319,48 @@ fn expand_selector(selector: Selector) -> TokenStream {
 }
 
 /// Expands to the name of the call struct
-fn expand_call_struct_name(function: &Function, alias: Option<Ident>) -> Ident {
+fn expand_call_struct_name(function: &Function, alias: Option<&Ident>) -> Ident {
     let name = if let Some(id) = alias {
         format!("{}Call", id.to_string().to_pascal_case())
     } else {
         format!("{}Call", function.name.to_pascal_case())
     };
     util::ident(&name)
+}
+
+/// Expands to the name of the call struct
+fn expand_call_struct_variant_name(function: &Function, alias: Option<&Ident>) -> Ident {
+    let name = if let Some(id) = alias {
+        id.to_string().to_pascal_case()
+    } else {
+        function.name.to_pascal_case()
+    };
+    util::ident(&name)
+}
+
+/// Expands to the tuple struct definition
+fn expand_data_tuple(name: &Ident, params: &[(TokenStream, TokenStream)]) -> TokenStream {
+    let fields = params
+        .iter()
+        .map(|(_, ty)| {
+            quote! {
+            pub #ty }
+        })
+        .collect::<Vec<_>>();
+
+    quote! { struct #name( #( #fields ),* ); }
+}
+
+/// Expands to the struct definition of a call struct
+fn expand_data_struct(name: &Ident, params: &[(TokenStream, TokenStream)]) -> TokenStream {
+    let fields = params
+        .iter()
+        .map(|(name, ty)| {
+            quote! { pub #name: #ty }
+        })
+        .collect::<Vec<_>>();
+
+    quote! { struct #name { #( #fields, )* } }
 }
 
 #[cfg(test)]

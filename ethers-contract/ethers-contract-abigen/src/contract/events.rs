@@ -5,7 +5,6 @@ use inflector::Inflector;
 use proc_macro2::{Ident, Literal, TokenStream};
 use quote::quote;
 use std::collections::BTreeMap;
-use syn::Path;
 
 impl Context {
     /// Expands each event to a struct + its impl Detokenize block
@@ -274,7 +273,7 @@ impl Context {
             expand_data_struct(&event_name, &params)
         };
 
-        let derives = expand_derives(&self.event_derives);
+        let derives = util::expand_derives(&self.event_derives);
 
         let ethers_contract = util::ethers_contract_crate();
 
@@ -336,10 +335,6 @@ fn expand_data_tuple(name: &Ident, params: &[(TokenStream, TokenStream, bool)]) 
         .collect::<Vec<_>>();
 
     quote! { struct #name( #( #fields ),* ); }
-}
-
-fn expand_derives(derives: &[Path]) -> TokenStream {
-    quote! {#(#derives),*}
 }
 
 #[cfg(test)]

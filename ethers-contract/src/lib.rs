@@ -20,7 +20,7 @@ mod base;
 pub use base::{decode_function_data, encode_function_data, AbiError, BaseContract};
 
 mod call;
-pub use call::ContractError;
+pub use call::{ContractError, EthCall};
 
 mod factory;
 pub use factory::ContractFactory;

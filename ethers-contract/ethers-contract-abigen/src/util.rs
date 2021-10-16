@@ -117,6 +117,10 @@ pub fn expand_doc(s: &str) -> TokenStream {
     }
 }
 
+pub fn expand_derives(derives: &[Path]) -> TokenStream {
+    quote! {#(#derives),*}
+}
+
 /// Parses the given address string
 pub fn parse_address<S>(address_str: S) -> Result<Address>
 where
