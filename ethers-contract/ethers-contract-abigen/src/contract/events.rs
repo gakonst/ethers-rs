@@ -105,6 +105,16 @@ impl Context {
                     Err(#ethers_core::abi::Error::InvalidData)
                 }
             }
+
+            impl ::std::fmt::Display for #enum_name {
+                fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+                    match self {
+                        #(
+                            #enum_name::#variants(element) => element.fmt(f)
+                        ),*
+                    }
+                }
+            }
         }
     }
 
@@ -150,7 +160,6 @@ impl Context {
     /// we can replace it
     fn expand_input_type(&self, input: &EventParam) -> Result<TokenStream> {
         let ethers_core = util::ethers_core_crate();
-
         Ok(match (&input.kind, input.indexed) {
             (ParamType::Array(ty), true) => {
                 if let ParamType::Tuple(..) = **ty {
@@ -184,7 +193,7 @@ impl Context {
                 quote! { #ethers_core::types::H256 }
             }
             (ParamType::Tuple(..), true) => {
-                // represents an struct
+                // represents a struct
                 if let Some(ty) = self
                     .abi_parser
                     .structs
@@ -269,7 +278,7 @@ impl Context {
         let ethers_contract = util::ethers_contract_crate();
 
         Ok(quote! {
-            #[derive(Clone, Debug, Default, Eq, PartialEq, #ethers_contract::EthEvent, #derives)]
+            #[derive(Clone, Debug, Default, Eq, PartialEq, #ethers_contract::EthEvent, #ethers_contract::EthDisplay, #derives)]
             #[ethevent( name = #event_abi_name, abi = #abi_signature )]
             pub #data_type_definition
         })
