@@ -102,15 +102,35 @@ pub fn derive_abi_type(input: TokenStream) -> TokenStream {
     TokenStream::from(abi_ty::derive_tokenizeable_impl(&input))
 }
 
-/// Derives the `fmt::Display` trait using convenient formatters for the underlying primitive types/tokens.
+/// Derives `fmt::Display` trait and generates a convenient format for all the
+/// underlying primitive types/tokens.
+///
+/// The fields of the structure are formatted comma separated, like `self.0,
+/// self.1, self.2,...`
+///
+/// # Example
+///
+/// ```ignore
+/// #[derive(Debug, Clone, EthAbiType, EthDisplay)]
+/// struct MyStruct {
+///     addr: Address,
+///     old_value: String,
+///     new_value: String,
+///     h: H256,
+///     arr_u8: [u8; 32],
+///     arr_u16: [u16; 32],
+///     v: Vec<u8>,
+/// }
+/// let val = MyStruct {..};
+/// format!("{}", val);
+/// ```
 #[proc_macro_derive(EthDisplay, attributes(ethdisplay))]
 pub fn derive_eth_display(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     match display::derive_eth_display_impl(input) {
-        Ok(tokens) =>  TokenStream::from(tokens),
-        Err(err) => err.to_compile_error().into()
+        Ok(tokens) => TokenStream::from(tokens),
+        Err(err) => err.to_compile_error().into(),
     }
-   
 }
 
 /// Derives the `EthEvent` and `Tokenizeable` trait for the labeled type.

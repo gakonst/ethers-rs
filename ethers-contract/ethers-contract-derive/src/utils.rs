@@ -94,7 +94,8 @@ pub fn param_type_quote(kind: &ParamType) -> proc_macro2::TokenStream {
     }
 }
 
-/// Tries to find the corresponding `ParamType` for the given type
+/// Tries to find the corresponding `ParamType` used for tokenization for the
+/// given type
 pub fn find_parameter_type(ty: &Type) -> Result<ParamType, Error> {
     match ty {
         Type::Array(ty) => {
