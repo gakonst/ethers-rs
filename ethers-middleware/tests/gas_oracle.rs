@@ -1,10 +1,32 @@
 #![cfg(not(target_arch = "wasm32"))]
+
+use std::convert::TryFrom;
+
+use async_trait::async_trait;
+
 use ethers_core::{types::*, utils::Ganache};
 use ethers_middleware::gas_oracle::{
-    EthGasStation, Etherchain, Etherscan, GasCategory, GasOracle, GasOracleMiddleware,
+    EthGasStation, Etherchain, Etherscan, GasCategory, GasOracle, GasOracleError,
+    GasOracleMiddleware,
 };
 use ethers_providers::{Http, Middleware, Provider};
-use std::convert::TryFrom;
+
+#[derive(Debug)]
+struct FakeGasOracle {
+    gas_price: U256,
+}
+
+#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+impl GasOracle for FakeGasOracle {
+    async fn fetch(&self) -> Result<U256, GasOracleError> {
+        Ok(self.gas_price)
+    }
+
+    async fn estimate_eip1559_fees(&self) -> Result<(U256, U256), GasOracleError> {
+        Err(GasOracleError::Eip1559EstimationNotSupported)
+    }
+}
 
 #[tokio::test]
 async fn using_gas_oracle() {
@@ -16,7 +38,9 @@ async fn using_gas_oracle() {
     let provider = Provider::<Http>::try_from(ganache.endpoint()).unwrap();
 
     // assign a gas oracle to use
-    let gas_oracle = EthGasStation::new(None);
+    let gas_oracle = FakeGasOracle {
+        gas_price: 1337.into(),
+    };
     let expected_gas_price = gas_oracle.fetch().await.unwrap();
 
     let provider = GasOracleMiddleware::new(provider, gas_oracle);
