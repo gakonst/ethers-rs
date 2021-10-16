@@ -371,3 +371,21 @@ fn eth_display_works() {
 
     assert_eq!(val, format!("{}", item));
 }
+
+#[test]
+fn eth_display_works_for_human_readable() {
+    ethers_contract::abigen!(
+        HevmConsole,
+        r#"[
+            event log(string)
+            event log2(string x)
+            ]"#,
+    );
+
+    let log = LogFilter("abc".to_string());
+    assert_eq!("abc".to_string(), format!("{}", log));
+    let log = Log2Filter {
+        x: "abc".to_string(),
+    };
+    assert_eq!("abc".to_string(), format!("{}", log));
+}
