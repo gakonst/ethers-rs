@@ -1,9 +1,10 @@
 //! Helper functions for deriving `EthAbiType`
 
 use ethers_contract_abigen::ethers_core_crate;
+use proc_macro2::{Ident, TokenStream};
 use quote::{quote, quote_spanned};
 use syn::spanned::Spanned as _;
-use syn::{parse::Error, Data, DeriveInput, Fields};
+use syn::{parse::Error, Data, DeriveInput, Fields, Variant};
 
 /// Generates the tokenize implementation
 pub fn derive_tokenizeable_impl(input: &DeriveInput) -> proc_macro2::TokenStream {
@@ -88,9 +89,11 @@ pub fn derive_tokenizeable_impl(input: &DeriveInput) -> proc_macro2::TokenStream
                 .to_compile_error();
             }
         },
-        Data::Enum(_) => {
-            return Error::new(input.span(), "EthAbiType cannot be derived for enums")
-                .to_compile_error();
+        Data::Enum(ref data) => {
+            return match tokenize_enum(name, data.variants.iter()) {
+                Ok(tokens) => tokens,
+                Err(err) => err.to_compile_error(),
+            }
         }
         Data::Union(_) => {
             return Error::new(input.span(), "EthAbiType cannot be derived for unions")
@@ -168,4 +171,58 @@ pub fn derive_tokenizeable_impl(input: &DeriveInput) -> proc_macro2::TokenStream
              #tokenize_predicates
          { }
     }
+}
+
+fn tokenize_enum<'a>(
+    enum_name: &Ident,
+    variants: impl Iterator<Item = &'a Variant> + 'a,
+) -> Result<TokenStream, Error> {
+    let ethers_core = ethers_core_crate();
+
+    let mut into_tokens = TokenStream::new();
+    let mut from_tokens = TokenStream::new();
+    for variant in variants {
+        if variant.fields.len() > 1 {
+            return Err(Error::new(
+                variant.span(),
+                "EthAbiType cannot be derived for enum variants with multiple fields",
+            ));
+        }
+        let var_ident = &variant.ident;
+        if let Some(field) = variant.fields.iter().next() {
+            let ty = &field.ty;
+            from_tokens.extend(quote! {
+                if let Ok(decoded) = #ty::from_token(token.clone()) {
+                    return Ok(#enum_name::#var_ident(decoded))
+                }
+            });
+            into_tokens.extend(quote! {
+                 #enum_name::#var_ident(element) => element.into_token()
+            });
+        } else {
+            into_tokens.extend(quote! {
+                 #enum_name::#var_ident(element) => # ethers_core::abi::Token::Tuple(::std::vec::Vec::new())
+            });
+        }
+    }
+
+    quote! {
+         impl #ethers_core::abi::Tokenizable for #enum_name {
+
+             fn from_token(token: #ethers_core::abi::Token) -> Result<Self, #ethers_core::abi::InvalidOutputType> where
+                 Self: Sized {
+                #from_tokens
+                Err(#ethers_core::abi::InvalidOutputType("Failed to decode all event variants".to_string()))
+            }
+
+            fn into_token(self) -> #ethers_core::abi::Token {
+                match self {
+                   #into_tokens
+                }
+            }
+         }
+         impl #ethers_core::abi::TokenizableItem for #enum_name { }
+    };
+
+    todo!()
 }
