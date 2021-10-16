@@ -105,6 +105,16 @@ impl Context {
                     Err(#ethers_core::abi::Error::InvalidData)
                 }
             }
+
+            impl ::std::fmt::Display for #enum_name {
+                fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+                    match self {
+                        #(
+                            #enum_name::#variants(element) => element.fmt(f)
+                        ),*
+                    }
+                }
+            }
         }
     }
 
@@ -183,7 +193,6 @@ impl Context {
                 quote! { #ethers_core::types::H256 }
             }
             (ParamType::Tuple(..), true) => {
-                eprintln!("TUPLE {:?}", input);
                 // represents a struct
                 if let Some(ty) = self
                     .abi_parser
