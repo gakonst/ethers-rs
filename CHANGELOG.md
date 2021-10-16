@@ -4,6 +4,7 @@
 
 ### Unreleased
 
+- `abigen!` now generates `Display` for all events using the new `EthDisplay` macro [#513](https://github.com/gakonst/ethers-rs/pull/513)
 - `abigen!` now supports overloaded functions natively [#501](https://github.com/gakonst/ethers-rs/pull/501)
 - `abigen!` now supports multiple contracts [#498](https://github.com/gakonst/ethers-rs/pull/498)
 - Use rust types as contract function inputs for human readable abi [#482](https://github.com/gakonst/ethers-rs/pull/482)
