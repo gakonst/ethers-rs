@@ -70,7 +70,7 @@ impl Context {
 
         Ok(quote! {
             #abi_signature_doc
-            #[derive(Clone, Debug, Default, Eq, PartialEq, #ethers_contract::EthCall, #derives)]
+            #[derive(Clone, Debug, Default, Eq, PartialEq, #ethers_contract::EthCall, #ethers_contract::EthDisplay, #derives)]
              #[ethcall( name = #function_name, abi = #abi_signature )]
             pub #call_type_definition
         })
@@ -121,6 +121,16 @@ impl Context {
                         }
                     )*
                     Err(#ethers_core::abi::Error::InvalidData)
+                }
+            }
+
+            impl ::std::fmt::Display for #enum_name {
+                fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+                    match self {
+                        #(
+                            #enum_name::#variant_names(element) => element.fmt(f)
+                        ),*
+                    }
                 }
             }
         })
