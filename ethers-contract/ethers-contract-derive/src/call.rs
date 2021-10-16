@@ -133,7 +133,7 @@ fn derive_abi_function_from_fields(input: &DeriveInput) -> Result<Function, Erro
     #[allow(deprecated)]
     let function = Function {
         name: "".to_string(),
-        inputs: utils::derive_abi_inputs_from_fields(input)?
+        inputs: utils::derive_abi_inputs_from_fields(input, "EthCall")?
             .into_iter()
             .map(|(name, kind)| Param {
                 name,

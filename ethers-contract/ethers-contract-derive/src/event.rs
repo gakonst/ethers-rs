@@ -325,7 +325,7 @@ fn derive_decode_from_log_impl(
 fn derive_abi_event_from_fields(input: &DeriveInput) -> Result<Event, Error> {
     let event = Event {
         name: "".to_string(),
-        inputs: utils::derive_abi_inputs_from_fields(input)?
+        inputs: utils::derive_abi_inputs_from_fields(input, "EthEvent")?
             .into_iter()
             .map(|(name, kind)| EventParam {
                 name,

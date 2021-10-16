@@ -170,6 +170,7 @@ pub fn find_parameter_type(ty: &Type) -> Result<ParamType, Error> {
 /// Attempts to determine the ABI Paramtypes from the type's AST
 pub fn derive_abi_inputs_from_fields(
     input: &DeriveInput,
+    trait_name: &str,
 ) -> Result<Vec<(String, ParamType)>, Error> {
     let fields: Vec<_> = match input.data {
         Data::Struct(ref data) => match data.fields {
@@ -178,20 +179,23 @@ pub fn derive_abi_inputs_from_fields(
             Fields::Unit => {
                 return Err(Error::new(
                     input.span(),
-                    "EthEvent cannot be derived for empty structs and unit",
+                    format!(
+                        "{} cannot be derived for empty structs and unit",
+                        trait_name
+                    ),
                 ))
             }
         },
         Data::Enum(_) => {
             return Err(Error::new(
                 input.span(),
-                "EthEvent cannot be derived for enums",
+                format!("{} cannot be derived for enums", trait_name),
             ));
         }
         Data::Union(_) => {
             return Err(Error::new(
                 input.span(),
-                "EthEvent cannot be derived for unions",
+                format!("{} cannot be derived for unions", trait_name),
             ));
         }
     };
