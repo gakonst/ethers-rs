@@ -1,5 +1,5 @@
 use ethers_contract::EthLogDecode;
-use ethers_contract::{abigen, EthAbiType, EthEvent};
+use ethers_contract::{abigen, EthAbiType, EthDisplay, EthEvent};
 use ethers_core::abi::{RawLog, Tokenizable};
 use ethers_core::types::Address;
 use ethers_core::types::{H160, H256, I256, U128, U256};
@@ -334,4 +334,40 @@ fn can_decode_event_with_no_params() {
     };
 
     let _ = <NoParam as EthLogDecode>::decode_log(&log).unwrap();
+}
+
+#[test]
+fn eth_display_works() {
+    #[derive(Debug, Clone, EthAbiType, EthDisplay)]
+    struct MyStruct {
+        addr: Address,
+        old_value: String,
+        new_value: String,
+        h: H256,
+        i: I256,
+        arr_u8: [u8; 32],
+        arr_u16: [u16; 32],
+        v: Vec<u8>,
+    }
+    let item = MyStruct {
+        addr: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".parse().unwrap(),
+        old_value: "50".to_string(),
+        new_value: "100".to_string(),
+        h: H256::random(),
+        i: I256::zero(),
+        arr_u8: [0; 32],
+        arr_u16: [1; 32],
+        v: vec![0; 32],
+    };
+
+    let val = format!(
+        "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa, 50, 100, 0x{}, {}, 0x{}, {:?}, 0x{}",
+        hex::encode(&item.h),
+        item.i,
+        hex::encode(&item.arr_u8),
+        item.arr_u16,
+        hex::encode(&item.v),
+    );
+
+    assert_eq!(val, format!("{}", item));
 }
