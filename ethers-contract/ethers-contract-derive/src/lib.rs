@@ -1,6 +1,6 @@
 //! Implementation of procedural macro for generating type-safe bindings to an
 //! ethereum smart contract.
-#![deny(missing_docs, unsafe_code, unused)]
+#![deny(missing_docs, unsafe_code)]
 
 use proc_macro::TokenStream;
 use syn::{parse_macro_input, DeriveInput};
@@ -9,6 +9,7 @@ use abigen::Contracts;
 
 pub(crate) mod abi_ty;
 mod abigen;
+mod display;
 mod event;
 mod spanned;
 pub(crate) mod utils;
@@ -99,6 +100,17 @@ pub fn abigen(input: TokenStream) -> TokenStream {
 pub fn derive_abi_type(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     TokenStream::from(abi_ty::derive_tokenizeable_impl(&input))
+}
+
+/// Derives the `fmt::Display` trait using convenient formatters for the underlying primitive types/tokens.
+#[proc_macro_derive(EthDisplay, attributes(ethdisplay))]
+pub fn derive_eth_display(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    match display::derive_eth_display_impl(input) {
+        Ok(tokens) =>  TokenStream::from(tokens),
+        Err(err) => err.to_compile_error().into()
+    }
+   
 }
 
 /// Derives the `EthEvent` and `Tokenizeable` trait for the labeled type.
