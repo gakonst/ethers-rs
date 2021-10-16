@@ -13,6 +13,7 @@ use std::{fmt::Debug, marker::PhantomData, sync::Arc};
 use ethers_core::abi::Tokenizable;
 use ethers_core::types::Selector;
 use thiserror::Error as ThisError;
+use ethers_core::utils::id;
 
 /// A helper trait for types that represent all call input parameters of a specific function
 pub trait EthCall: Tokenizable + Send + Sync {
@@ -23,10 +24,12 @@ pub trait EthCall: Tokenizable + Send + Sync {
     fn abi_signature() -> Cow<'static, str>;
 
     /// The selector of the function
-    fn selector() -> Selector;
+    fn selector() -> Selector {
+        id(Self::abi_signature())
+    }
 
-    /// Decode the input call data to an instance of this call
-    fn decode(calldata: &[u8]) -> Result<Self, ethers_core::abi::Error>
+    /// Decodes the provided ABI encoded function arguments with the selected function name.
+    fn decode(bytes: &[u8]) -> Result<Self, ethers_core::abi::Error>
     where
         Self: Sized;
 }

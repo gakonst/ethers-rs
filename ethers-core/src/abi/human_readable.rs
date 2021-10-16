@@ -337,8 +337,9 @@ impl AbiParser {
 
         let state_mutability = modifiers.map(detect_state_mutability).unwrap_or_default();
 
+        Ok(
         #[allow(deprecated)]
-        Ok(Function {
+        Function {
             name,
             inputs,
             outputs,

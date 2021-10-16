@@ -195,9 +195,6 @@ pub fn derive_abi_event(input: TokenStream) -> TokenStream {
 /// - `name`, `name = "..."`: Overrides the generated `EthCall` function name, default
 ///   is the
 ///  struct's name.
-/// - `selector`, `selector = "..."`: The selector as hex string to override
-///   the
-///  call's signature.
 /// - `abi`, `abi = "..."`: The ABI signature for the function this call's data
 ///   corresponds to.
 #[proc_macro_derive(EthCall, attributes(ethcall))]

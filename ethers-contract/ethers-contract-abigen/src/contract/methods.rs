@@ -66,6 +66,8 @@ impl Context {
         // use the same derives as for events
         let derives = util::expand_derives(&self.event_derives);
 
+        // TODO derive EthCall
+
         Ok(quote! {
             #abi_signature_doc
             #[derive(Clone, Debug, Default, Eq, PartialEq, #ethers_contract::EthAbiType, #derives)]
@@ -210,8 +212,6 @@ impl Context {
         // TODO use structs
         let outputs = expand_fn_outputs(&function.outputs)?;
 
-        let _ethers_core = util::ethers_core_crate();
-        let _ethers_providers = util::ethers_providers_crate();
         let ethers_contract = util::ethers_contract_crate();
 
         let result = quote! { #ethers_contract::builders::ContractCall<M, #outputs> };
