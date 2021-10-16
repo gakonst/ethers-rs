@@ -197,16 +197,16 @@ fn tokenize_enum<'a>(
                 }
             });
             into_tokens.extend(quote! {
-                 #enum_name::#var_ident(element) => element.into_token()
+                 #enum_name::#var_ident(element) => element.into_token(),
             });
         } else {
             into_tokens.extend(quote! {
-                 #enum_name::#var_ident(element) => # ethers_core::abi::Token::Tuple(::std::vec::Vec::new())
+                 #enum_name::#var_ident(element) => # ethers_core::abi::Token::Tuple(::std::vec::Vec::new()),
             });
         }
     }
 
-    quote! {
+    Ok(quote! {
          impl #ethers_core::abi::Tokenizable for #enum_name {
 
              fn from_token(token: #ethers_core::abi::Token) -> Result<Self, #ethers_core::abi::InvalidOutputType> where
@@ -222,7 +222,5 @@ fn tokenize_enum<'a>(
             }
          }
          impl #ethers_core::abi::TokenizableItem for #enum_name { }
-    };
-
-    todo!()
+    })
 }

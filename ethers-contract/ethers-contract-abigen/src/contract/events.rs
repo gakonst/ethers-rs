@@ -65,32 +65,10 @@ impl Context {
         let ethers_contract = util::ethers_contract_crate();
 
         quote! {
-            #[derive(Debug, Clone, PartialEq, Eq)]
+            #[derive(Debug, Clone, PartialEq, Eq, #ethers_contract::EthAbiType)]
             pub enum #enum_name {
                 #(#variants(#variants)),*
             }
-
-             impl #ethers_core::abi::Tokenizable for #enum_name {
-
-                 fn from_token(token: #ethers_core::abi::Token) -> Result<Self, #ethers_core::abi::InvalidOutputType> where
-                     Self: Sized {
-                    #(
-                        if let Ok(decoded) = #variants::from_token(token.clone()) {
-                            return Ok(#enum_name::#variants(decoded))
-                        }
-                    )*
-                    Err(#ethers_core::abi::InvalidOutputType("Failed to decode all event variants".to_string()))
-                }
-
-                fn into_token(self) -> #ethers_core::abi::Token {
-                    match self {
-                        #(
-                            #enum_name::#variants(element) => element.into_token()
-                        ),*
-                    }
-                }
-             }
-             impl #ethers_core::abi::TokenizableItem for #enum_name { }
 
              impl #ethers_contract::EthLogDecode for #enum_name {
                 fn decode_log(log: &#ethers_core::abi::RawLog) -> Result<Self, #ethers_core::abi::Error>
