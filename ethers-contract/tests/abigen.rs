@@ -1,6 +1,6 @@
 #![cfg(feature = "abigen")]
 //! Test cases to validate the `abigen!` macro
-use ethers_contract::{abigen, EthEvent};
+use ethers_contract::{abigen, EthCall, EthEvent};
 use ethers_core::abi::{Address, Tokenizable};
 use ethers_core::types::U256;
 use ethers_providers::Provider;
@@ -163,6 +163,8 @@ fn can_gen_human_readable_with_structs() {
         r#"[
         struct Foo { uint256 x; }
         function foo(Foo memory x)
+        function bar(uint256 x, uint256 y, address addr)
+        yeet(uint256,uint256,address)
     ]"#,
         event_derives(serde::Deserialize, serde::Serialize)
     );
@@ -172,6 +174,28 @@ fn can_gen_human_readable_with_structs() {
     let contract = SimpleContract::new(Address::default(), Arc::new(client));
     let f = Foo { x: 100u64.into() };
     let _ = contract.foo(f);
+
+    let call = BarCall {
+        x: 1u64.into(),
+        y: 0u64.into(),
+        addr: Address::random(),
+    };
+    let encoded_call = contract.encode("bar", (call.x, call.y, call.addr)).unwrap();
+    let decoded_call = BarCall::decode(encoded_call.as_ref()).unwrap();
+    assert_eq!(call, decoded_call);
+
+    let contract_call = SimpleContractCalls::Bar(call);
+    let decoded_enum = SimpleContractCalls::decode(encoded_call.as_ref()).unwrap();
+    assert_eq!(contract_call, decoded_enum);
+
+    let call = YeetCall(1u64.into(), 0u64.into(), Address::zero());
+    let encoded_call = contract.encode("yeet", (call.0, call.1, call.2)).unwrap();
+    let decoded_call = YeetCall::decode(encoded_call.as_ref()).unwrap();
+    assert_eq!(call, decoded_call);
+
+    let contract_call = SimpleContractCalls::Yeet(call);
+    let decoded_enum = SimpleContractCalls::decode(encoded_call.as_ref()).unwrap();
+    assert_eq!(contract_call, decoded_enum);
 }
 
 #[test]

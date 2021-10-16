@@ -114,7 +114,7 @@ impl Context {
             impl #enum_name {
 
                 /// Decodes the provided ABI encoded function arguments with the selected function name.
-                fn decode(data: &[u8]) -> Result<Self, ethers_core::abi::Error> {
+                pub fn decode(data: &[u8]) -> Result<Self, ethers_core::abi::Error> {
                      #(
                         if let Ok(decoded) = <#struct_names as #ethers_contract::EthCall>::decode(data) {
                             return Ok(#enum_name::#variant_names(decoded))
