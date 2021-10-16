@@ -88,7 +88,7 @@ pub(crate) fn derive_eth_display_impl(input: DeriveInput) -> Result<TokenStream,
         } else {
             // could not detect the parameter type and rely on delegating `fmt` instead
             quote! {
-                self.#ident.fmt(f)
+                self.#ident.fmt(f)?;
             }
         };
         fmts.extend(tokens);
