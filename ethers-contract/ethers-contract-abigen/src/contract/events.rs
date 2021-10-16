@@ -154,8 +154,8 @@ impl Context {
 
     /// Expands an event property type.
     ///
-    /// Note that this is slightly different than an expanding a Solidity type as
-    /// complex types like arrays and strings get emited as hashes when they are
+    /// Note that this is slightly different from expanding a Solidity type as
+    /// complex types like arrays and strings get emitted as hashes when they are
     /// indexed.
     /// If a complex types matches with a struct previously parsed by the AbiParser,
     /// we can replace it
@@ -214,8 +214,8 @@ impl Context {
         })
     }
 
-    /// Expands an ABI event into name-type pairs for each of its parameters.
-    fn expand_params(&self, event: &Event) -> Result<Vec<(TokenStream, TokenStream, bool)>> {
+    /// Expands the name-type pairs for the given inputs
+    fn expand_event_params(&self, event: &Event) -> Result<Vec<(TokenStream, TokenStream, bool)>> {
         event
             .inputs
             .iter()
@@ -265,7 +265,7 @@ impl Context {
 
         let event_name = expand_struct_name(event, sig);
 
-        let params = self.expand_params(event)?;
+        let params = self.expand_event_params(event)?;
         // expand as a tuple if all fields are anonymous
         let all_anonymous_fields = event.inputs.iter().all(|input| input.name.is_empty());
         let data_type_definition = if all_anonymous_fields {
@@ -324,7 +324,15 @@ fn expand_data_struct(name: &Ident, params: &[(TokenStream, TokenStream, bool)])
 fn expand_data_tuple(name: &Ident, params: &[(TokenStream, TokenStream, bool)]) -> TokenStream {
     let fields = params
         .iter()
-        .map(|(_, ty, _)| quote! { pub #ty })
+        .map(|(_, ty, indexed)| {
+            if *indexed {
+                quote! {
+                #[ethevent(indexed)] pub #ty }
+            } else {
+                quote! {
+                pub #ty }
+            }
+        })
         .collect::<Vec<_>>();
 
     quote! { struct #name( #( #fields ),* ); }
@@ -451,7 +459,7 @@ mod tests {
         };
 
         let cx = test_context();
-        let params = cx.expand_params(&event).unwrap();
+        let params = cx.expand_event_params(&event).unwrap();
         let name = expand_struct_name(&event, None);
         let definition = expand_data_struct(&name, &params);
 
@@ -483,7 +491,7 @@ mod tests {
         };
 
         let cx = test_context_with_alias("Foo(bool,address)", "FooAliased");
-        let params = cx.expand_params(&event).unwrap();
+        let params = cx.expand_event_params(&event).unwrap();
         let alias = Some(util::ident("FooAliased"));
         let name = expand_struct_name(&event, alias);
         let definition = expand_data_struct(&name, &params);
@@ -516,7 +524,7 @@ mod tests {
         };
 
         let cx = test_context();
-        let params = cx.expand_params(&event).unwrap();
+        let params = cx.expand_event_params(&event).unwrap();
         let name = expand_struct_name(&event, None);
         let definition = expand_data_tuple(&name, &params);
 
@@ -545,7 +553,7 @@ mod tests {
         };
 
         let cx = test_context_with_alias("Foo(bool,address)", "FooAliased");
-        let params = cx.expand_params(&event).unwrap();
+        let params = cx.expand_event_params(&event).unwrap();
         let alias = Some(util::ident("FooAliased"));
         let name = expand_struct_name(&event, alias);
         let definition = expand_data_tuple(&name, &params);
