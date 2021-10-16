@@ -53,12 +53,16 @@ pub(crate) fn derive_eth_display_impl(input: DeriveInput) -> Result<TokenStream,
                          write!(f, "0x{}", #hex_encode(self.#ident))?;
                     }
                 }
-                ParamType::Bool | ParamType::String | ParamType::Tuple(_) => {
+                ParamType::Bool | ParamType::String => {
                     quote! {
                          self.#ident.fmt(f)?;
                     }
                 }
-
+                ParamType::Tuple(_) => {
+                    quote! {
+                        write!(f, "{:?}", &self.#ident)?;
+                    }
+                }
                 ParamType::Array(ty) | ParamType::FixedArray(ty, _) => {
                     if *ty == ParamType::Uint(8) {
                         // `u8`
@@ -86,9 +90,9 @@ pub(crate) fn derive_eth_display_impl(input: DeriveInput) -> Result<TokenStream,
                 }
             }
         } else {
-            // could not detect the parameter type and rely on delegating `fmt` instead
+            // could not detect the parameter type and rely on using debug fmt
             quote! {
-                self.#ident.fmt(f)?;
+                 write!(f, "{:?}", &self.#ident)?;
             }
         };
         fmts.extend(tokens);
