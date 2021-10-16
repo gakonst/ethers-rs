@@ -1,7 +1,7 @@
 //! Helper functions for deriving `Display`
 
 use proc_macro2::TokenStream;
-use quote::{quote};
+use quote::quote;
 use syn::spanned::Spanned as _;
 use syn::{parse::Error, Data, DeriveInput, Fields, Index};
 
@@ -43,7 +43,7 @@ pub(crate) fn derive_eth_display_impl(input: DeriveInput) -> Result<TokenStream,
             .map(|id| quote! {#id})
             .unwrap_or_else(|| {
                 let idx = Index::from(idx);
-                quote!{#idx}
+                quote! {#idx}
             });
         let tokens = if let Ok(param) = utils::find_parameter_type(&field.ty) {
             match param {
