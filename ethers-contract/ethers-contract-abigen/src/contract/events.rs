@@ -51,9 +51,9 @@ impl Context {
 
     /// Generate an enum with a variant for each event
     fn expand_events_enum(&self) -> TokenStream {
-        let sorted_events: BTreeMap<_, _> = self.abi.events.clone().into_iter().collect();
-
-        let variants = sorted_events
+        let variants = self
+            .abi
+            .events
             .values()
             .flatten()
             .map(|e| expand_struct_name(e, self.event_aliases.get(&e.abi_signature()).cloned()))
