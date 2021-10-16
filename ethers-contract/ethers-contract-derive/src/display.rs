@@ -1,9 +1,9 @@
 //! Helper functions for deriving `Display`
 
 use proc_macro2::TokenStream;
-use quote::{format_ident, quote};
+use quote::quote;
 use syn::spanned::Spanned as _;
-use syn::{parse::Error, Data, DeriveInput, Fields};
+use syn::{parse::Error, Data, DeriveInput, Fields, Index};
 
 use ethers_contract_abigen::ethers_core_crate;
 use ethers_core::abi::ParamType;
@@ -40,7 +40,11 @@ pub(crate) fn derive_eth_display_impl(input: DeriveInput) -> Result<TokenStream,
         let ident = field
             .ident
             .clone()
-            .unwrap_or_else(|| format_ident!("{}", idx));
+            .map(|id| quote! {#id})
+            .unwrap_or_else(|| {
+                let idx = Index::from(idx);
+                quote! {#idx}
+            });
         let tokens = if let Ok(param) = utils::find_parameter_type(&field.ty) {
             match param {
                 ParamType::Address | ParamType::Uint(_) | ParamType::Int(_) => {
