@@ -39,7 +39,7 @@ async fn using_gas_oracle() {
 
     // assign a gas oracle to use
     let gas_oracle = FakeGasOracle {
-        gas_price: U256::from(1337),
+        gas_price: 1337.into(),
     };
     let expected_gas_price = gas_oracle.fetch().await.unwrap();
 
