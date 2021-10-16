@@ -29,6 +29,8 @@ pub struct ExpandedContract {
     pub contract: TokenStream,
     /// All event impls of the contract
     pub events: TokenStream,
+    /// All contract call struct related types
+    pub call_structs: TokenStream,
     /// The contract's internal structs
     pub abi_structs: TokenStream,
 }
@@ -41,6 +43,7 @@ impl ExpandedContract {
             imports,
             contract,
             events,
+            call_structs,
             abi_structs,
         } = self;
         quote! {
@@ -52,6 +55,7 @@ impl ExpandedContract {
                 #imports
                 #contract
                 #events
+                #call_structs
                 #abi_structs
             }
         }
@@ -111,8 +115,8 @@ impl Context {
         // 3. impl block for the event functions
         let contract_events = self.event_methods()?;
 
-        // 4. impl block for the contract methods
-        let contract_methods = self.methods()?;
+        // 4. impl block for the contract methods and their corresponding types
+        let (contract_methods, call_structs) = self.methods_and_call_structs()?;
 
         // 5. Declare the structs parsed from the human readable abi
         let abi_structs_decl = self.abi_structs()?;
@@ -146,6 +150,7 @@ impl Context {
             imports,
             contract,
             events: events_decl,
+            call_structs,
             abi_structs: abi_structs_decl,
         })
     }

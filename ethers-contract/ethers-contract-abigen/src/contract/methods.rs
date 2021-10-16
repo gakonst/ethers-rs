@@ -18,8 +18,8 @@ use super::{types, util, Context};
 /// to the Solidity contract methods.
 impl Context {
     /// Expands all method implementations
-    pub(crate) fn methods(&self) -> Result<TokenStream> {
-        let mut aliases = self.get_method_aliases()?;
+    pub(crate) fn methods_and_call_structs(&self) -> Result<(TokenStream, TokenStream)> {
+        let aliases = self.get_method_aliases()?;
         let sorted_functions: BTreeMap<_, _> = self.abi.functions.iter().collect();
         let functions = sorted_functions
             .values()
@@ -32,7 +32,10 @@ impl Context {
             })
             .collect::<Result<Vec<_>>>()?;
 
-        Ok(quote! { #( #functions )* })
+        let function_impls = quote! { #( #functions )* };
+        let call_structs = self.expand_call_structs(aliases)?;
+
+        Ok((function_impls, call_structs))
     }
 
     /// Expands to the corresponding struct type based on the inputs of the given function
@@ -66,26 +69,36 @@ impl Context {
         Ok(quote! {
             #abi_signature_doc
             #[derive(Clone, Debug, Default, Eq, PartialEq, #ethers_contract::EthAbiType, #derives)]
-            pub call_type_definition
+            pub #call_type_definition
         })
     }
 
+    /// Expands all structs
     fn expand_call_structs(&self, aliases: BTreeMap<String, Ident>) -> Result<TokenStream> {
-        let mut struct_defs = TokenStream::new();
+        let mut struct_defs = Vec::new();
         let mut struct_names = Vec::new();
         let mut variant_names = Vec::new();
 
         for function in self.abi.functions.values().flatten() {
             let signature = function.abi_signature();
             let alias = aliases.get(&signature);
-            struct_defs.extend(self.expand_call_struct(function, alias)?);
+            struct_defs.push(self.expand_call_struct(function, alias)?);
             struct_names.push(expand_call_struct_name(function, alias));
             variant_names.push(expand_call_struct_variant_name(function, alias));
         }
 
+        let struct_def_tokens = quote! {
+            #(#struct_defs)*
+        };
+
+        if struct_defs.len() <= 1 {
+            // no need for an enum
+            return Ok(struct_def_tokens);
+        }
+
         let enum_name = self.expand_calls_enum_name();
         Ok(quote! {
-            #struct_defs
+            #struct_def_tokens
 
             #[derive(Debug, Clone, PartialEq, Eq)]
             pub enum #enum_name {
