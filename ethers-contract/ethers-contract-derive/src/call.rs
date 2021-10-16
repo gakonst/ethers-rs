@@ -83,11 +83,11 @@ pub(crate) fn derive_eth_call_impl(input: DeriveInput) -> TokenStream {
     let ethcall_impl = quote! {
         impl #contract_crate::EthCall for #name {
 
-            fn name() -> ::std::borrow::Cow<'static, str> {
+            fn function_name() -> ::std::borrow::Cow<'static, str> {
                 #function_call_name.into()
             }
 
-            const fn selector() -> #core_crate::types::Selector {
+            fn selector() -> #core_crate::types::Selector {
                 #selector
             }
 
@@ -111,61 +111,6 @@ pub(crate) fn derive_eth_call_impl(input: DeriveInput) -> TokenStream {
 
 fn derive_decode_impl(function: &Function) -> TokenStream {
     let core_crate = ethers_core_crate();
-
-    // let fields: Vec<_> = match input.data {
-    //     Data::Struct(ref data) => match data.fields {
-    //         Fields::Named(ref fields) => {
-    //             if fields.named.len() != function.inputs.len() {
-    //                 return Err(Error::new(
-    //                     fields.span(),
-    //                     format!(
-    //                         "EthCall {}'s fields length don't match with signature inputs {}",
-    //                         function.name,
-    //                         function.abi_signature()
-    //                     ),
-    //                 ));
-    //             }
-    //             fields.named.iter().collect()
-    //         }
-    //         Fields::Unnamed(ref fields) => {
-    //             if fields.unnamed.len() != function.inputs.len() {
-    //                 return Err(Error::new(
-    //                     fields.span(),
-    //                     format!(
-    //                         "EthCall {}'s fields length don't match with signature inputs {}",
-    //                         function.name,
-    //                         function.abi_signature()
-    //                     ),
-    //                 ));
-    //             }
-    //             fields.unnamed.iter().collect()
-    //         }
-    //         Fields::Unit => {
-    //             return Err(Error::new(
-    //                 input.span(),
-    //                 "EthCall cannot be derived for empty structs and unit",
-    //             ));
-    //         }
-    //     },
-    //     Data::Enum(_) => {
-    //         return Err(Error::new(
-    //             input.span(),
-    //             "EthCall cannot be derived for enums",
-    //         ));
-    //     }
-    //     Data::Union(_) => {
-    //         return Err(Error::new(
-    //             input.span(),
-    //             "EthCall cannot be derived for unions",
-    //         ));
-    //     }
-    // };
-
-    // let mut function_fields = Vec::with_capacity(fields.len());
-    // for (index, field) in fields.iter().enumerate() {
-    //
-    // }
-
     let data_types = function
         .inputs
         .iter()
@@ -178,8 +123,8 @@ fn derive_decode_impl(function: &Function) -> TokenStream {
             return Err(#core_crate::abi::Error::InvalidData);
         }
         #data_types_init
-        let data_tokens = #core_crate::abi::decode(&data_types, &bytes[4..])?;
-        Self::from_tokens(data_tokens)
+        let data_tokens = #core_crate::abi::decode(&data_types, &bytes[4..]).map_err(|_|#core_crate::abi::Error::InvalidData)?;
+        Self::from_tokens(data_tokens).map_err(|_|#core_crate::abi::Error::InvalidData)
     }
 }
 

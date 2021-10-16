@@ -55,10 +55,12 @@ impl Context {
             // expand to a struct
             expand_data_struct(&call_name, &fields)
         };
+        let function_name = &function.name;
+        let abi_signature = function.abi_signature();
         let doc = format!(
             "Container type for all input parameters for the `{}`function with signature `{}` and selector `{:?}`",
             function.name,
-            function.abi_signature(),
+            abi_signature,
             function.selector()
         );
         let abi_signature_doc = util::expand_doc(&doc);
@@ -66,11 +68,10 @@ impl Context {
         // use the same derives as for events
         let derives = util::expand_derives(&self.event_derives);
 
-        // TODO derive EthCall
-
         Ok(quote! {
             #abi_signature_doc
-            #[derive(Clone, Debug, Default, Eq, PartialEq, #ethers_contract::EthAbiType, #derives)]
+            #[derive(Clone, Debug, Default, Eq, PartialEq, #ethers_contract::EthCall, #derives)]
+             #[ethcall( name = #function_name, abi = #abi_signature )]
             pub #call_type_definition
         })
     }
@@ -98,32 +99,32 @@ impl Context {
             return Ok(struct_def_tokens);
         }
 
+        let ethers_core = util::ethers_core_crate();
+        let ethers_contract = util::ethers_contract_crate();
+
         let enum_name = self.expand_calls_enum_name();
         Ok(quote! {
             #struct_def_tokens
 
-            #[derive(Debug, Clone, PartialEq, Eq)]
+           #[derive(Debug, Clone, PartialEq, Eq, #ethers_contract::EthAbiType)]
             pub enum #enum_name {
-                // #(#variant_names(#struct_names)),*
+                #(#variant_names(#struct_names)),*
+            }
+
+            impl #enum_name {
+
+                /// Decodes the provided ABI encoded function arguments with the selected function name.
+                fn decode(data: &[u8]) -> Result<Self, ethers_core::abi::Error> {
+                     #(
+                        if let Ok(decoded) = <#struct_names as #ethers_contract::EthCall>::decode(data) {
+                            return Ok(#enum_name::#variant_names(decoded))
+                        }
+                    )*
+                    Err(#ethers_core::abi::Error::InvalidData)
+                }
             }
         })
     }
-
-    // /// Expands all the inputs of the function into name and type
-    // fn expand_call_params(&self, event: &Function) -> Result<Vec<(TokenStream, TokenStream)>> {
-    //     event
-    //         .inputs
-    //         .iter()
-    //         .enumerate()
-    //         .map(|(idx, input)| {
-    //             // NOTE: methods can contain nameless values.
-    //             let name = util::expand_input_name(idx, &input.name);
-    //             let ty = self.expand_input_type(input)?;
-    //
-    //             Ok((name, ty))
-    //         })
-    //         .collect()
-    // }
 
     /// The name ident of the calls enum
     fn expand_calls_enum_name(&self) -> Ident {

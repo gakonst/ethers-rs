@@ -12,8 +12,8 @@ use std::{fmt::Debug, marker::PhantomData, sync::Arc};
 
 use ethers_core::abi::Tokenizable;
 use ethers_core::types::Selector;
-use thiserror::Error as ThisError;
 use ethers_core::utils::id;
+use thiserror::Error as ThisError;
 
 /// A helper trait for types that represent all call input parameters of a specific function
 pub trait EthCall: Tokenizable + Send + Sync {
