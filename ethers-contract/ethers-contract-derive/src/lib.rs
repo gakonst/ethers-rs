@@ -9,6 +9,7 @@ use abigen::Contracts;
 
 pub(crate) mod abi_ty;
 mod abigen;
+mod call;
 mod display;
 mod event;
 mod spanned;
@@ -182,4 +183,25 @@ pub fn derive_eth_display(input: TokenStream) -> TokenStream {
 pub fn derive_abi_event(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     TokenStream::from(event::derive_eth_event_impl(input))
+}
+
+/// Derives the `EthCall` and `Tokenizeable` trait for the labeled type.
+///
+/// Additional arguments can be specified using the `#[ethcall(...)]`
+/// attribute:
+///
+/// For the struct:
+///
+/// - `name`, `name = "..."`: Overrides the generated `EthCall` function name, default
+///   is the
+///  struct's name.
+/// - `selector`, `selector = "..."`: The selector as hex string to override
+///   the
+///  call's signature.
+/// - `abi`, `abi = "..."`: The ABI signature for the function this call's data
+///   corresponds to.
+#[proc_macro_derive(EthCall, attributes(ethcall))]
+pub fn derive_abi_call(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    TokenStream::from(call::derive_eth_call_impl(input))
 }
