@@ -1,12 +1,16 @@
 //! Bindings for [etherscan.io web api](https://docs.etherscan.io/)
 
 mod contract;
+mod errors;
 mod transaction;
 
+use errors::EtherscanError;
 use ethers_core::abi::Address;
 use reqwest::{header, Url};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{borrow::Cow, fmt};
+
+pub type Result<T> = std::result::Result<T, EtherscanError>;
 
 /// The Etherscan.io API client.
 #[derive(Clone)]
@@ -38,7 +42,7 @@ impl fmt::Display for Chain {
 
 impl Client {
     /// Create a new client with the correct endpoints based on the chain and provided API key
-    pub fn new(chain: Chain, api_key: impl Into<String>) -> anyhow::Result<Self> {
+    pub fn new(chain: Chain, api_key: impl Into<String>) -> Self {
         let (etherscan_api_url, etherscan_url) = match chain {
             Chain::Mainnet => (
                 Url::parse("https://api.etherscan.io/api"),
@@ -50,18 +54,18 @@ impl Client {
             ),
         };
 
-        Ok(Self {
+        Self {
             client: Default::default(),
             api_key: api_key.into(),
             etherscan_api_url: etherscan_api_url.expect("is valid http"),
             etherscan_url: etherscan_url.expect("is valid http"),
-        })
+        }
     }
 
     /// Create a new client with the correct endpoints based on the chain and API key
     /// from ETHERSCAN_API_KEY environment variable
-    pub fn new_from_env(chain: Chain) -> anyhow::Result<Self> {
-        Self::new(chain, std::env::var("ETHERSCAN_API_KEY")?)
+    pub fn new_from_env(chain: Chain) -> Result<Self> {
+        Ok(Self::new(chain, std::env::var("ETHERSCAN_API_KEY")?))
     }
 
     pub fn etherscan_api_url(&self) -> &Url {
@@ -96,7 +100,7 @@ impl Client {
     async fn post_form<T: DeserializeOwned, Form: Serialize>(
         &self,
         form: &Form,
-    ) -> anyhow::Result<Response<T>> {
+    ) -> Result<Response<T>> {
         Ok(self
             .client
             .post(self.etherscan_api_url.clone())
@@ -109,10 +113,7 @@ impl Client {
     }
 
     /// Execute an API GET request with parameters
-    async fn get_json<T: DeserializeOwned, Q: Serialize>(
-        &self,
-        query: &Q,
-    ) -> anyhow::Result<Response<T>> {
+    async fn get_json<T: DeserializeOwned, Q: Serialize>(&self, query: &Q) -> Result<Response<T>> {
         Ok(self
             .client
             .get(self.etherscan_api_url.clone())

@@ -1,4 +1,4 @@
-use crate::{Client, Response};
+use crate::{Client, Response, Result};
 use ethers_core::abi::{Abi, Address};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -141,7 +141,7 @@ impl IntoIterator for ContractMetadata {
 
 impl ContractMetadata {
     /// All ABI from all contracts in the source file
-    pub fn abis(&self) -> anyhow::Result<Vec<Abi>> {
+    pub fn abis(&self) -> Result<Vec<Abi>> {
         let mut abis = Vec::with_capacity(self.items.len());
         for item in &self.items {
             abis.push(serde_json::from_str(&item.abi)?);
@@ -195,7 +195,7 @@ impl Client {
     pub async fn submit_contract_verification(
         &self,
         contract: &VerifyContract,
-    ) -> anyhow::Result<Response<String>> {
+    ) -> Result<Response<String>> {
         let body = self.create_query("contract", "verifysourcecode", contract);
         Ok(self.post_form(&body).await?)
     }
@@ -205,7 +205,7 @@ impl Client {
     pub async fn check_contract_verification_status(
         &self,
         guid: impl AsRef<str>,
-    ) -> anyhow::Result<Response<String>> {
+    ) -> Result<Response<String>> {
         let mut map = HashMap::new();
         map.insert("guid", guid.as_ref());
         let body = self.create_query("contract", "checkverifystatus", map);
@@ -218,16 +218,14 @@ impl Client {
     /// # use ethers_etherscan::{Chain, Client};
     ///
     /// # #[tokio::main]
-    /// # async fn main() -> anyhow::Result<()> {
-    ///     let client = Client::new(Chain::Mainnet, "API_KEY").unwrap();
+    /// # async fn main() {
+    ///     let client = Client::new(Chain::Mainnet, "API_KEY");
     ///     let abi = client
     ///         .contract_abi("0xBB9bc244D798123fDe783fCc1C72d3Bb8C189413".parse().unwrap())
-    ///         .await?;
-    ///
-    /// #     Ok(())
+    ///         .await.unwrap();
     /// # }
     /// ```
-    pub async fn contract_abi(&self, address: Address) -> anyhow::Result<Abi> {
+    pub async fn contract_abi(&self, address: Address) -> Result<Abi> {
         let mut map = HashMap::new();
         map.insert("address", address);
         let query = self.create_query("contract", "getabi", map);
@@ -240,16 +238,15 @@ impl Client {
     /// # use ethers_etherscan::{Chain, Client};
     ///
     /// # #[tokio::main]
-    /// # async fn main() -> anyhow::Result<()> {
-    ///     let client = Client::new(Chain::Mainnet, "API_KEY").unwrap();
+    /// # async fn main() {
+    ///     let client = Client::new(Chain::Mainnet, "API_KEY");
     ///     let meta = client
     ///         .contract_source_code("0xBB9bc244D798123fDe783fCc1C72d3Bb8C189413".parse().unwrap())
-    ///         .await?;
+    ///         .await.unwrap();
     ///     let code = meta.source_code();
-    /// #     Ok(())
     /// # }
     /// ```
-    pub async fn contract_source_code(&self, address: Address) -> anyhow::Result<ContractMetadata> {
+    pub async fn contract_source_code(&self, address: Address) -> Result<ContractMetadata> {
         let mut map = HashMap::new();
         map.insert("address", address);
         let query = self.create_query("contract", "getsourcecode", map);

@@ -967,11 +967,11 @@ dependencies = [
 name = "ethers-etherscan"
 version = "0.1.1"
 dependencies = [
- "anyhow",
  "ethers-core",
  "reqwest",
  "serde",
  "serde_json",
+ "thiserror",
  "tokio",
 ]
 
