@@ -285,12 +285,4 @@ mod tests {
         let addr = ledger.get_address().await.unwrap();
         sig.verify(message, addr).unwrap();
     }
-
-    #[tokio::test]
-    #[ignore]
-    asyn fn test_sign_eip712_struct() {
-        let ledger = LedgerEthereum::new(DerivationType::Legacy(0), 1)
-            .await
-            .unwrap();
-    }
 }
