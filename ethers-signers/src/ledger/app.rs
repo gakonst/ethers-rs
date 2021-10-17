@@ -13,7 +13,7 @@ use ethers_core::{
     },
     utils::keccak256,
 };
-use std::{convert::TryFrom, vec::Vec};
+use std::convert::TryFrom;
 use thiserror::Error;
 
 use super::types::*;
