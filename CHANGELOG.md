@@ -4,6 +4,7 @@
 
 ### Unreleased
 
+- add `EthCall` trait and derive macro which generates matching structs for contract calls [#517](https://github.com/gakonst/ethers-rs/pull/517)
 - `abigen!` now generates `Display` for all events using the new `EthDisplay` macro [#513](https://github.com/gakonst/ethers-rs/pull/513)
 - `abigen!` now supports overloaded functions natively [#501](https://github.com/gakonst/ethers-rs/pull/501)
 - `abigen!` now supports multiple contracts [#498](https://github.com/gakonst/ethers-rs/pull/498)
