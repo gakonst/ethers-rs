@@ -62,7 +62,8 @@ pub(crate) fn derive_eth_call_impl(input: DeriveInput) -> TokenStream {
                     state_mutability: Default::default(),
                 }
             } else {
-                return Error::new(span, "Unable to determine ABI").to_compile_error();
+                return Error::new(span, format!("Unable to determine ABI: {}", src))
+                    .to_compile_error();
             }
         }
     } else {
@@ -124,7 +125,7 @@ fn derive_decode_impl(function: &Function) -> TokenStream {
         }
         #data_types_init
         let data_tokens = #core_crate::abi::decode(&data_types, &bytes[4..]).map_err(|_|#core_crate::abi::Error::InvalidData)?;
-        Self::from_tokens(data_tokens).map_err(|_|#core_crate::abi::Error::InvalidData)
+        <Self as #core_crate::abi::Detokenize>::from_tokens(data_tokens).map_err(|_|#core_crate::abi::Error::InvalidData)
     }
 }
 
@@ -242,6 +243,7 @@ fn parse_function(abi: &str) -> Result<Function, String> {
     } else {
         abi.to_string()
     };
+
     AbiParser::default()
         .parse_function(&abi)
         .map_err(|err| format!("Failed to parse the function ABI: {:?}", err))
