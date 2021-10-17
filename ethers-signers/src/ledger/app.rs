@@ -137,7 +137,11 @@ impl LedgerEthereum {
     }
 
     /// Signs an EIP712 encoded domain separator and message
-    pub async fn sign_typed_struct<S: AsRef<[u8]>>(&self, domain_separator: S, message_hash: S) -> Result<Signature, LedgerError> {
+    pub async fn sign_typed_struct<S: AsRef<[u8]>>(
+        &self,
+        domain_separator: S,
+        message_hash: S,
+    ) -> Result<Signature, LedgerError> {
         let domain_separator = domain_separator.as_ref();
         let message_hash = message_hash.as_ref();
 
@@ -280,5 +284,13 @@ mod tests {
         let sig = ledger.sign_message(message).await.unwrap();
         let addr = ledger.get_address().await.unwrap();
         sig.verify(message, addr).unwrap();
+    }
+
+    #[tokio::test]
+    #[ignore]
+    asyn fn test_sign_eip712_struct() {
+        let ledger = LedgerEthereum::new(DerivationType::Legacy(0), 1)
+            .await
+            .unwrap();
     }
 }

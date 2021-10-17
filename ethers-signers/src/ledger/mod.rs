@@ -34,19 +34,23 @@ impl Signer for LedgerEthereum {
         &self,
         payload: T,
     ) -> Result<Signature, Self::Error> {
-        // See comment for v1.6.0 requirement 
+        // See comment for v1.6.0 requirement
         // https://github.com/LedgerHQ/app-ethereum/issues/105#issuecomment-765316999
         let req = semver::VersionReq::parse(EIP712_MIN_VERSION)?;
         let version = semver::Version::parse(&self.version().await?)?;
 
         // Enforce app version is greater than EIP712_MIN_VERSION
         if !req.matches(&version) {
-            return Err(Self::Error::UnsupportedAppVersion(EIP712_MIN_VERSION.to_string()));
+            return Err(Self::Error::UnsupportedAppVersion(
+                EIP712_MIN_VERSION.to_string(),
+            ));
         }
 
-        let domain = payload.domain_separator()
+        let domain = payload
+            .domain_separator()
             .map_err(|e| Self::Error::Eip712Error(e.to_string()))?;
-        let struct_hash = payload.struct_hash()
+        let struct_hash = payload
+            .struct_hash()
             .map_err(|e| Self::Error::Eip712Error(e.to_string()))?;
 
         let sig = self.sign_typed_struct(domain, struct_hash).await?;
