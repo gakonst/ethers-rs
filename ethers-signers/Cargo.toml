@@ -27,6 +27,7 @@ rand = { version = "0.8.4", default-features = false }
 yubihsm = { version = "0.39.0", features = ["secp256k1", "http", "usb"], optional = true }
 futures-util = "0.3.17"
 futures-executor = "0.3.17"
+semver = "1.0.4"
 
 # aws
 rusoto_core = { version = "0.47.0", optional = true }

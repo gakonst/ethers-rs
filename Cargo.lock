@@ -1050,6 +1050,7 @@ dependencies = [
  "rand 0.8.4",
  "rusoto_core",
  "rusoto_kms",
+ "semver 1.0.4",
  "sha2 0.9.8",
  "spki",
  "tempfile",

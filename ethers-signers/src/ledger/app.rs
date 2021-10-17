@@ -13,7 +13,7 @@ use ethers_core::{
     },
     utils::keccak256,
 };
-use std::convert::TryFrom;
+use std::{convert::TryFrom, vec::Vec};
 use thiserror::Error;
 
 use super::types::*;
@@ -136,7 +136,19 @@ impl LedgerEthereum {
         self.sign_payload(INS::SIGN_PERSONAL_MESSAGE, payload).await
     }
 
-    // Helper function for signing either transaction data or personal messages
+    /// Signs an EIP712 encoded domain separator and message
+    pub async fn sign_typed_struct<S: AsRef<[u8]>>(&self, domain_separator: S, message_hash: S) -> Result<Signature, LedgerError> {
+        let domain_separator = domain_separator.as_ref();
+        let message_hash = message_hash.as_ref();
+
+        let mut payload = Self::path_to_bytes(&self.derivation);
+        payload.extend_from_slice(domain_separator);
+        payload.extend_from_slice(message_hash);
+
+        self.sign_payload(INS::SIGN_ETH_EIP_712, payload).await
+    }
+
+    // Helper function for signing either transaction data, personal messages or EIP712 derived structs
     pub async fn sign_payload(
         &self,
         command: INS,
