@@ -10,13 +10,14 @@ use ethers_providers::{Middleware, PendingTransaction, ProviderError};
 use std::borrow::Cow;
 use std::{fmt::Debug, marker::PhantomData, sync::Arc};
 
-use ethers_core::abi::Tokenizable;
+use crate::{AbiDecode, AbiEncode};
+use ethers_core::abi::{Tokenizable, Tokenize};
 use ethers_core::types::Selector;
 use ethers_core::utils::id;
 use thiserror::Error as ThisError;
 
 /// A helper trait for types that represent all call input parameters of a specific function
-pub trait EthCall: Tokenizable + Send + Sync {
+pub trait EthCall: Tokenizable + AbiDecode + Send + Sync {
     /// The name of the function
     fn function_name() -> Cow<'static, str>;
 
@@ -27,11 +28,20 @@ pub trait EthCall: Tokenizable + Send + Sync {
     fn selector() -> Selector {
         id(Self::abi_signature())
     }
+}
 
-    /// Decodes the provided ABI encoded function arguments with the selected function name.
-    fn decode(bytes: &[u8]) -> Result<Self, ethers_core::abi::Error>
-    where
-        Self: Sized;
+impl<T: EthCall> AbiEncode for T {
+    fn encode(self) -> Result<Bytes, AbiError> {
+        let tokens = self.into_tokens();
+        let selector = Self::selector();
+        let encoded = ethers_core::abi::encode(&tokens);
+        let encoded: Vec<_> = selector
+            .iter()
+            .copied()
+            .chain(encoded.into_iter())
+            .collect();
+        Ok(encoded.into())
+    }
 }
 
 #[derive(ThisError, Debug)]

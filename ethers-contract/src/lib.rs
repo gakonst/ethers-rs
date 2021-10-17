@@ -31,6 +31,9 @@ pub use event::EthEvent;
 mod log;
 pub use log::{decode_logs, EthLogDecode, LogMeta};
 
+mod codec;
+pub use codec::{AbiDecode, AbiEncode};
+
 mod stream;
 
 mod multicall;

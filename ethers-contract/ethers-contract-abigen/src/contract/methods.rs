@@ -111,16 +111,24 @@ impl Context {
                 #(#variant_names(#struct_names)),*
             }
 
-            impl #enum_name {
-
-                /// Decodes the provided ABI encoded function arguments with the selected function name.
-                pub fn decode(data: &[u8]) -> Result<Self, ethers_core::abi::Error> {
+        impl  #ethers_contract::AbiDecode for #enum_name {
+            fn decode(data: &[u8]) -> Result<Self, #ethers_contract::AbiError> {
                      #(
-                        if let Ok(decoded) = <#struct_names as #ethers_contract::EthCall>::decode(data) {
+                        if let Ok(decoded) = <#struct_names as #ethers_contract::AbiDecode>::decode(data) {
                             return Ok(#enum_name::#variant_names(decoded))
                         }
                     )*
-                    Err(#ethers_core::abi::Error::InvalidData)
+                    Err(#ethers_core::abi::Error::InvalidData.into())
+                }
+            }
+
+             impl  #ethers_contract::AbiEncode for #enum_name {
+                fn encode(self) -> Result<#ethers_core::types::Bytes, #ethers_contract::AbiError> {
+                    match self {
+                        #(
+                            #enum_name::#variant_names(element) => element.encode()
+                        ),*
+                    }
                 }
             }
 

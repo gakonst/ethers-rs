@@ -1,6 +1,6 @@
 #![cfg(feature = "abigen")]
 //! Test cases to validate the `abigen!` macro
-use ethers_contract::{abigen, EthCall, EthEvent};
+use ethers_contract::{abigen, AbiDecode, AbiEncode, EthEvent};
 use ethers_core::abi::{Address, Tokenizable};
 use ethers_core::types::U256;
 use ethers_providers::Provider;
@@ -181,15 +181,18 @@ fn can_gen_human_readable_with_structs() {
         addr: Address::random(),
     };
     let encoded_call = contract.encode("bar", (call.x, call.y, call.addr)).unwrap();
+    assert_eq!(encoded_call, call.clone().encode().unwrap());
     let decoded_call = BarCall::decode(encoded_call.as_ref()).unwrap();
     assert_eq!(call, decoded_call);
 
     let contract_call = SimpleContractCalls::Bar(call);
     let decoded_enum = SimpleContractCalls::decode(encoded_call.as_ref()).unwrap();
     assert_eq!(contract_call, decoded_enum);
+    assert_eq!(encoded_call, contract_call.encode().unwrap());
 
     let call = YeetCall(1u64.into(), 0u64.into(), Address::zero());
     let encoded_call = contract.encode("yeet", (call.0, call.1, call.2)).unwrap();
+    assert_eq!(encoded_call, call.clone().encode().unwrap());
     let decoded_call = YeetCall::decode(encoded_call.as_ref()).unwrap();
     assert_eq!(call, decoded_call);
 
@@ -197,6 +200,7 @@ fn can_gen_human_readable_with_structs() {
     let decoded_enum = SimpleContractCalls::decode(encoded_call.as_ref()).unwrap();
     assert_eq!(contract_call, decoded_enum);
     assert_eq!(contract_call, call.into());
+    assert_eq!(encoded_call, contract_call.encode().unwrap());
 }
 
 #[test]
@@ -221,12 +225,14 @@ fn can_handle_overloaded_functions() {
     let call = GetValueCall;
 
     let encoded_call = contract.encode("getValue", ()).unwrap();
+    assert_eq!(encoded_call, call.clone().encode().unwrap());
     let decoded_call = GetValueCall::decode(encoded_call.as_ref()).unwrap();
     assert_eq!(call, decoded_call);
 
     let contract_call = SimpleContractCalls::GetValue(call);
     let decoded_enum = SimpleContractCalls::decode(encoded_call.as_ref()).unwrap();
     assert_eq!(contract_call, decoded_enum);
+    assert_eq!(encoded_call, contract_call.encode().unwrap());
 
     let call = GetValueWithOtherValueCall {
         other_value: 420u64.into(),
@@ -235,12 +241,14 @@ fn can_handle_overloaded_functions() {
     let encoded_call = contract
         .encode_with_selector([15, 244, 201, 22], call.other_value)
         .unwrap();
+    assert_eq!(encoded_call, call.clone().encode().unwrap());
     let decoded_call = GetValueWithOtherValueCall::decode(encoded_call.as_ref()).unwrap();
     assert_eq!(call, decoded_call);
 
     let contract_call = SimpleContractCalls::GetValueWithOtherValue(call);
     let decoded_enum = SimpleContractCalls::decode(encoded_call.as_ref()).unwrap();
     assert_eq!(contract_call, decoded_enum);
+    assert_eq!(encoded_call, contract_call.encode().unwrap());
 
     let call = GetValueWithOtherValueAndAddrCall {
         other_value: 420u64.into(),
@@ -256,4 +264,5 @@ fn can_handle_overloaded_functions() {
     let contract_call = SimpleContractCalls::GetValueWithOtherValueAndAddr(call);
     let decoded_enum = SimpleContractCalls::decode(encoded_call.as_ref()).unwrap();
     assert_eq!(contract_call, decoded_enum);
+    assert_eq!(encoded_call, contract_call.encode().unwrap());
 }

@@ -96,12 +96,14 @@ pub(crate) fn derive_eth_call_impl(input: DeriveInput) -> TokenStream {
                 #abi.into()
             }
 
-            fn decode(bytes: &[u8]) -> Result<Self, #core_crate::abi::Error> where Self: Sized {
+        }
+
+        impl  #contract_crate::AbiDecode for #name {
+            fn decode(bytes: &[u8]) -> Result<Self, #contract_crate::AbiError> {
                 #decode_impl
             }
         }
     };
-
     let tokenize_impl = abi_ty::derive_tokenizeable_impl(&input);
 
     quote! {
@@ -112,6 +114,7 @@ pub(crate) fn derive_eth_call_impl(input: DeriveInput) -> TokenStream {
 
 fn derive_decode_impl(function: &Function) -> TokenStream {
     let core_crate = ethers_core_crate();
+    let contract_crate = ethers_contract_crate();
     let data_types = function
         .inputs
         .iter()
@@ -120,12 +123,12 @@ fn derive_decode_impl(function: &Function) -> TokenStream {
     let data_types_init = quote! {let data_types = [#( #data_types ),*];};
 
     quote! {
-        if bytes.len() < 4 || bytes[..4] != Self::selector() {
-            return Err(#core_crate::abi::Error::InvalidData);
+        if bytes.len() < 4 || bytes[..4] != <Self as #contract_crate::EthCall>::selector() {
+            return Err(#contract_crate::AbiError::WrongSelector);
         }
         #data_types_init
-        let data_tokens = #core_crate::abi::decode(&data_types, &bytes[4..]).map_err(|_|#core_crate::abi::Error::InvalidData)?;
-        <Self as #core_crate::abi::Tokenizable>::from_token( #core_crate::abi::Token::Tuple(data_tokens)).map_err(|_|#core_crate::abi::Error::InvalidData)
+        let data_tokens = #core_crate::abi::decode(&data_types, &bytes[4..])?;
+        Ok(<Self as #core_crate::abi::Tokenizable>::from_token( #core_crate::abi::Token::Tuple(data_tokens))?)
     }
 }
 
