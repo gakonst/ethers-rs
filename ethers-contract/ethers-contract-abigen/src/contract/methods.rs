@@ -133,6 +133,15 @@ impl Context {
                     }
                 }
             }
+
+            #(
+                impl ::std::convert::From<#struct_names> for #enum_name {
+                    fn from(var: #struct_names) -> Self {
+                        #enum_name::#variant_names(var)
+                    }
+                }
+            )*
+
         })
     }
 
