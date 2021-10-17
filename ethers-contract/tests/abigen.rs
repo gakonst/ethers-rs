@@ -193,9 +193,10 @@ fn can_gen_human_readable_with_structs() {
     let decoded_call = YeetCall::decode(encoded_call.as_ref()).unwrap();
     assert_eq!(call, decoded_call);
 
-    let contract_call = SimpleContractCalls::Yeet(call);
+    let contract_call = SimpleContractCalls::Yeet(call.clone());
     let decoded_enum = SimpleContractCalls::decode(encoded_call.as_ref()).unwrap();
     assert_eq!(contract_call, decoded_enum);
+    assert_eq!(contract_call, call.into());
 }
 
 #[test]
