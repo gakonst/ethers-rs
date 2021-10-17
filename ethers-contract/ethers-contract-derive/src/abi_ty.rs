@@ -81,13 +81,7 @@ pub fn derive_tokenizeable_impl(input: &DeriveInput) -> proc_macro2::TokenStream
                     into_token_impl,
                 )
             }
-            Fields::Unit => {
-                return Error::new(
-                    input.span(),
-                    "EthAbiType cannot be derived for empty structs and unit",
-                )
-                .to_compile_error();
-            }
+            Fields::Unit => return tokenize_unit_type(&input.ident),
         },
         Data::Enum(ref data) => {
             return match tokenize_enum(name, data.variants.iter()) {
@@ -173,6 +167,37 @@ pub fn derive_tokenizeable_impl(input: &DeriveInput) -> proc_macro2::TokenStream
     }
 }
 
+fn tokenize_unit_type(name: &Ident) -> TokenStream {
+    let ethers_core = ethers_core_crate();
+    quote! {
+         impl #ethers_core::abi::Tokenizable for #name {
+             fn from_token(token: #ethers_core::abi::Token) -> Result<Self, #ethers_core::abi::InvalidOutputType> where
+                 Self: Sized {
+                if let #ethers_core::abi::Token::Tuple(tokens) = token {
+                    if !tokens.is_empty() {
+                         Err(#ethers_core::abi::InvalidOutputType(::std::format!(
+                        "Expected empty tuple, got {:?}",
+                        tokens
+                    )))
+                    } else {
+                        Ok(#name{})
+                    }
+                } else {
+                    Err(#ethers_core::abi::InvalidOutputType(::std::format!(
+                        "Expected Tuple, got {:?}",
+                        token
+                    )))
+                }
+            }
+
+            fn into_token(self) -> #ethers_core::abi::Token {
+               #ethers_core::abi::Token::Tuple(::std::vec::Vec::new())
+            }
+         }
+         impl #ethers_core::abi::TokenizableItem for #name { }
+    }
+}
+
 fn tokenize_enum<'a>(
     enum_name: &Ident,
     variants: impl Iterator<Item = &'a Variant> + 'a,
@@ -212,7 +237,7 @@ fn tokenize_enum<'a>(
              fn from_token(token: #ethers_core::abi::Token) -> Result<Self, #ethers_core::abi::InvalidOutputType> where
                  Self: Sized {
                 #from_tokens
-                Err(#ethers_core::abi::InvalidOutputType("Failed to decode all event variants".to_string()))
+                Err(#ethers_core::abi::InvalidOutputType("Failed to decode all type variants".to_string()))
             }
 
             fn into_token(self) -> #ethers_core::abi::Token {

@@ -217,4 +217,43 @@ fn can_handle_overloaded_functions() {
     let _ = contract.get_value();
     let _ = contract.get_value_with_other_value(1337u64.into());
     let _ = contract.get_value_with_other_value_and_addr(1337u64.into(), Address::zero());
+
+    let call = GetValueCall;
+
+    let encoded_call = contract.encode("getValue", ()).unwrap();
+    let decoded_call = GetValueCall::decode(encoded_call.as_ref()).unwrap();
+    assert_eq!(call, decoded_call);
+
+    let contract_call = SimpleContractCalls::GetValue(call);
+    let decoded_enum = SimpleContractCalls::decode(encoded_call.as_ref()).unwrap();
+    assert_eq!(contract_call, decoded_enum);
+
+    let call = GetValueWithOtherValueCall {
+        other_value: 420u64.into(),
+    };
+
+    let encoded_call = contract
+        .encode_with_selector([15, 244, 201, 22], call.other_value)
+        .unwrap();
+    let decoded_call = GetValueWithOtherValueCall::decode(encoded_call.as_ref()).unwrap();
+    assert_eq!(call, decoded_call);
+
+    let contract_call = SimpleContractCalls::GetValueWithOtherValue(call);
+    let decoded_enum = SimpleContractCalls::decode(encoded_call.as_ref()).unwrap();
+    assert_eq!(contract_call, decoded_enum);
+
+    let call = GetValueWithOtherValueAndAddrCall {
+        other_value: 420u64.into(),
+        addr: Address::random(),
+    };
+
+    let encoded_call = contract
+        .encode_with_selector([14, 97, 29, 56], (call.other_value, call.addr))
+        .unwrap();
+    let decoded_call = GetValueWithOtherValueAndAddrCall::decode(encoded_call.as_ref()).unwrap();
+    assert_eq!(call, decoded_call);
+
+    let contract_call = SimpleContractCalls::GetValueWithOtherValueAndAddr(call);
+    let decoded_enum = SimpleContractCalls::decode(encoded_call.as_ref()).unwrap();
+    assert_eq!(contract_call, decoded_enum);
 }

@@ -46,6 +46,22 @@ fn can_detokenize_struct() {
 }
 
 #[test]
+fn can_derive_abi_type_empty_struct() {
+    #[derive(Debug, Clone, PartialEq, EthAbiType)]
+    struct Call();
+
+    #[derive(Debug, Clone, PartialEq, EthAbiType)]
+    struct Call2 {};
+
+    #[derive(Debug, Clone, PartialEq, EthAbiType)]
+    struct Call3;
+
+    assert_tokenizeable::<Call>();
+    assert_tokenizeable::<Call2>();
+    assert_tokenizeable::<Call3>();
+}
+
+#[test]
 fn can_detokenize_nested_structs() {
     let value = ValueChangedWrapper {
         inner: ValueChanged {

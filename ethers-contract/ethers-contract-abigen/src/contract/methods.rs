@@ -381,7 +381,11 @@ fn expand_data_tuple(name: &Ident, params: &[(TokenStream, TokenStream)]) -> Tok
         })
         .collect::<Vec<_>>();
 
-    quote! { struct #name( #( #fields ),* ); }
+    if fields.is_empty() {
+        quote! { struct #name; }
+    } else {
+        quote! { struct #name( #( #fields ),* ); }
+    }
 }
 
 /// Expands to the struct definition of a call struct

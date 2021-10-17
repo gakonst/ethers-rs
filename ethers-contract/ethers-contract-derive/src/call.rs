@@ -125,7 +125,7 @@ fn derive_decode_impl(function: &Function) -> TokenStream {
         }
         #data_types_init
         let data_tokens = #core_crate::abi::decode(&data_types, &bytes[4..]).map_err(|_|#core_crate::abi::Error::InvalidData)?;
-        <Self as #core_crate::abi::Detokenize>::from_tokens(data_tokens).map_err(|_|#core_crate::abi::Error::InvalidData)
+        <Self as #core_crate::abi::Tokenizable>::from_token( #core_crate::abi::Token::Tuple(data_tokens)).map_err(|_|#core_crate::abi::Error::InvalidData)
     }
 }
 
