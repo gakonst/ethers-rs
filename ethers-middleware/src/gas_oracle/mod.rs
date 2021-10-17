@@ -7,9 +7,6 @@ pub use etherchain::Etherchain;
 mod etherscan;
 pub use etherscan::Etherscan;
 
-mod gas_now;
-pub use gas_now::GasNow;
-
 mod middleware;
 pub use middleware::{GasOracleMiddleware, MiddlewareError};
 

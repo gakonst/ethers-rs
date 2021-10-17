@@ -33,6 +33,9 @@ pub use units::Units;
 /// Re-export RLP
 pub use rlp;
 
+/// Re-export hex
+pub use hex;
+
 use crate::types::{Address, Bytes, U256};
 use k256::{ecdsa::SigningKey, EncodedPoint as K256PublicKey};
 use std::ops::Neg;
