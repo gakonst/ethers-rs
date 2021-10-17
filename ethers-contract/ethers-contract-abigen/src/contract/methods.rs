@@ -112,9 +112,9 @@ impl Context {
             }
 
         impl  #ethers_contract::AbiDecode for #enum_name {
-            fn decode(data: &[u8]) -> Result<Self, #ethers_contract::AbiError> {
+            fn decode(data: impl AsRef<[u8]>) -> Result<Self, #ethers_contract::AbiError> {
                      #(
-                        if let Ok(decoded) = <#struct_names as #ethers_contract::AbiDecode>::decode(data) {
+                        if let Ok(decoded) = <#struct_names as #ethers_contract::AbiDecode>::decode(data.as_ref()) {
                             return Ok(#enum_name::#variant_names(decoded))
                         }
                     )*

@@ -10,5 +10,5 @@ pub trait AbiEncode {
 /// Trait for ABI decoding
 pub trait AbiDecode: Sized {
     /// Decodes the ABI encoded data
-    fn decode(bytes: &[u8]) -> Result<Self, AbiError>;
+    fn decode(bytes: impl AsRef<[u8]>) -> Result<Self, AbiError>;
 }

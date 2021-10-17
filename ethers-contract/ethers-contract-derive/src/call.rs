@@ -99,7 +99,7 @@ pub(crate) fn derive_eth_call_impl(input: DeriveInput) -> TokenStream {
         }
 
         impl  #contract_crate::AbiDecode for #name {
-            fn decode(bytes: &[u8]) -> Result<Self, #contract_crate::AbiError> {
+            fn decode(bytes: impl AsRef<[u8]>) -> Result<Self, #contract_crate::AbiError> {
                 #decode_impl
             }
         }
@@ -123,6 +123,7 @@ fn derive_decode_impl(function: &Function) -> TokenStream {
     let data_types_init = quote! {let data_types = [#( #data_types ),*];};
 
     quote! {
+        let bytes = bytes.as_ref();
         if bytes.len() < 4 || bytes[..4] != <Self as #contract_crate::EthCall>::selector() {
             return Err(#contract_crate::AbiError::WrongSelector);
         }
