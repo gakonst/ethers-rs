@@ -802,8 +802,10 @@ dependencies = [
 [[package]]
 name = "ethabi"
 version = "15.0.0"
-source = "git+https://github.com/mattsse/ethabi?branch=matt/make-signature-pub#15c3fcf5fd28511aa6107ef19dad814cd8df6fbb"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f76ef192b63e8a44b3d08832acebbb984c3fba154b5c26f70037c860202a0d4b"
 dependencies = [
+ "anyhow",
  "ethereum-types",
  "hex",
  "serde",
