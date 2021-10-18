@@ -1,22 +1,23 @@
 //! This module implements extensions to the [`ethabi`](https://docs.rs/ethabi) API.
+// Adapted from [Gnosis' ethcontract](https://github.com/gnosis/ethcontract-rs/blob/master/common/src/abiext.rs)
+use crate::{types::Selector, utils::id};
+
 pub use ethabi::Contract as Abi;
 pub use ethabi::*;
 
-pub use error::ParseError;
-pub use human_readable::{parse as parse_abi, parse_str as parse_abi_str, AbiParser};
-pub use struct_def::SolStruct;
+mod tokens;
 pub use tokens::{Detokenize, InvalidOutputType, Tokenizable, TokenizableItem, Tokenize};
 
-// Adapted from [Gnosis' ethcontract](https://github.com/gnosis/ethcontract-rs/blob/master/common/src/abiext.rs)
-use crate::{
-    types::{Address, Selector, *},
-    utils::id,
-};
+pub mod struct_def;
+pub use struct_def::SolStruct;
 
 mod error;
+pub use error::ParseError;
+
 mod human_readable;
-pub mod struct_def;
-mod tokens;
+pub use human_readable::{parse as parse_abi, parse_str as parse_abi_str, AbiParser};
+
+use crate::types::{Address, *};
 
 /// Extension trait for `ethabi::Function`.
 pub trait FunctionExt {
