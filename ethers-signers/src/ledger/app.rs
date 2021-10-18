@@ -217,7 +217,9 @@ mod tests {
     use super::*;
     use crate::Signer;
     use ethers_contract::EthAbiType;
-    use ethers_core::types::{transaction::eip712::Eip712, Address, I256, U256, TransactionRequest};
+    use ethers_core::types::{
+        transaction::eip712::Eip712, Address, TransactionRequest, I256, U256,
+    };
     use ethers_derive_eip712::*;
     use std::str::FromStr;
 
@@ -321,10 +323,12 @@ mod tests {
             out: Address::from([0; 20]),
         };
 
-        let domain_separator = foo_bar.domain_separator().expect("failed to obtain domain separator");
+        let domain_separator = foo_bar
+            .domain_separator()
+            .expect("failed to obtain domain separator");
         let struct_hash = foo_bar.struct_hash().expect("failed to obtain struct hash");
 
-        let sig = ledger 
+        let sig = ledger
             .sign_typed_struct(domain_separator, struct_hash)
             .await
             .expect("failed to sign typed data");
