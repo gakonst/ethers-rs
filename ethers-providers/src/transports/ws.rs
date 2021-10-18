@@ -313,7 +313,9 @@ where
             Err(_) => {}
             Ok(Incoming::Response(resp)) => {
                 if let Some(request) = self.pending.remove(&resp.id) {
-                    request.send(resp.data.into_result()).map_err(to_client_error)?;
+                    if !request.is_canceled() {
+                        request.send(resp.data.into_result()).map_err(to_client_error)?;
+                    }
                 }
             }
             Ok(Incoming::Notification(notification)) => {
