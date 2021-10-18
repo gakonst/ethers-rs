@@ -102,14 +102,12 @@ impl<const N: usize> AbiType for [u8; N] {
         ParamType::FixedBytes(N)
     }
 }
-
 impl<const N: usize> AbiArrayType for [u8; N] {}
 
 macro_rules! impl_abi_type {
     ($($name:ty => $var:ident $(($value:expr))? ),*) => {
         $(
             impl AbiType for $name {
-
                 fn param_type() -> ParamType {
                     ParamType::$var $( ($value) )?
                 }
