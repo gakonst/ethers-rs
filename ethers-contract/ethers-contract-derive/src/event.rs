@@ -133,7 +133,6 @@ pub(crate) fn derive_eth_event_impl(input: DeriveInput) -> TokenStream {
 
     let tokenize_impl = abi_ty::derive_tokenizeable_impl(&input);
 
-    // parse attributes abi into source
     quote! {
         #tokenize_impl
         #ethevent_impl
@@ -322,47 +321,11 @@ fn derive_decode_from_log_impl(
     })
 }
 
+/// Determine the event's ABI by parsing the AST
 fn derive_abi_event_from_fields(input: &DeriveInput) -> Result<Event, Error> {
-    let fields: Vec<_> = match input.data {
-        Data::Struct(ref data) => match data.fields {
-            Fields::Named(ref fields) => fields.named.iter().collect(),
-            Fields::Unnamed(ref fields) => fields.unnamed.iter().collect(),
-            Fields::Unit => {
-                return Err(Error::new(
-                    input.span(),
-                    "EthEvent cannot be derived for empty structs and unit",
-                ))
-            }
-        },
-        Data::Enum(_) => {
-            return Err(Error::new(
-                input.span(),
-                "EthEvent cannot be derived for enums",
-            ));
-        }
-        Data::Union(_) => {
-            return Err(Error::new(
-                input.span(),
-                "EthEvent cannot be derived for unions",
-            ));
-        }
-    };
-
-    let inputs = fields
-        .iter()
-        .map(|f| {
-            let name = f
-                .ident
-                .as_ref()
-                .map(|name| name.to_string())
-                .unwrap_or_else(|| "".to_string());
-            utils::find_parameter_type(&f.ty).map(|ty| (name, ty))
-        })
-        .collect::<Result<Vec<_>, _>>()?;
-
     let event = Event {
         name: "".to_string(),
-        inputs: inputs
+        inputs: utils::derive_abi_inputs_from_fields(input, "EthEvent")?
             .into_iter()
             .map(|(name, kind)| EventParam {
                 name,

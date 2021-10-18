@@ -483,7 +483,7 @@ pub fn find_parameter_type(ty: &Type) -> Result<ParamType, TokenStream> {
             let params = ty
                 .elems
                 .iter()
-                .map(|t| find_parameter_type(t))
+                .map(find_parameter_type)
                 .collect::<Result<Vec<_>, _>>()?;
             Ok(ParamType::Tuple(params))
         }

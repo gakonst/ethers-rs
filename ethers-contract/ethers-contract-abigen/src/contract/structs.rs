@@ -127,8 +127,7 @@ impl Context {
         let name = util::ident(name);
 
         // use the same derives as for events
-        let derives = &self.event_derives;
-        let derives = quote! {#(#derives),*};
+        let derives = util::expand_derives(&self.event_derives);
 
         let ethers_contract = util::ethers_contract_crate();
         Ok(quote! {

@@ -1,14 +1,22 @@
 use ethers_contract_abigen::ethers_core_crate;
 use ethers_core::abi::ParamType;
+use ethers_core::types::Selector;
 use proc_macro2::Literal;
 use quote::quote;
 use syn::spanned::Spanned as _;
-use syn::{parse::Error, Expr, GenericArgument, Lit, PathArguments, Type};
+use syn::{
+    parse::Error, Data, DeriveInput, Expr, Fields, GenericArgument, Lit, PathArguments, Type,
+};
 
 pub fn signature(hash: &[u8]) -> proc_macro2::TokenStream {
     let core_crate = ethers_core_crate();
     let bytes = hash.iter().copied().map(Literal::u8_unsuffixed);
     quote! {#core_crate::types::H256([#( #bytes ),*])}
+}
+
+pub fn selector(selector: Selector) -> proc_macro2::TokenStream {
+    let bytes = selector.iter().copied().map(Literal::u8_unsuffixed);
+    quote! {[#( #bytes ),*]}
 }
 
 /// Parses an int type from its string representation
@@ -157,4 +165,50 @@ pub fn find_parameter_type(ty: &Type) -> Result<ParamType, Error> {
             "Failed to derive proper ABI from fields",
         )),
     }
+}
+
+/// Attempts to determine the ABI Paramtypes from the type's AST
+pub fn derive_abi_inputs_from_fields(
+    input: &DeriveInput,
+    trait_name: &str,
+) -> Result<Vec<(String, ParamType)>, Error> {
+    let fields: Vec<_> = match input.data {
+        Data::Struct(ref data) => match data.fields {
+            Fields::Named(ref fields) => fields.named.iter().collect(),
+            Fields::Unnamed(ref fields) => fields.unnamed.iter().collect(),
+            Fields::Unit => {
+                return Err(Error::new(
+                    input.span(),
+                    format!(
+                        "{} cannot be derived for empty structs and unit",
+                        trait_name
+                    ),
+                ))
+            }
+        },
+        Data::Enum(_) => {
+            return Err(Error::new(
+                input.span(),
+                format!("{} cannot be derived for enums", trait_name),
+            ));
+        }
+        Data::Union(_) => {
+            return Err(Error::new(
+                input.span(),
+                format!("{} cannot be derived for unions", trait_name),
+            ));
+        }
+    };
+
+    fields
+        .iter()
+        .map(|f| {
+            let name = f
+                .ident
+                .as_ref()
+                .map(|name| name.to_string())
+                .unwrap_or_else(|| "".to_string());
+            find_parameter_type(&f.ty).map(|ty| (name, ty))
+        })
+        .collect()
 }

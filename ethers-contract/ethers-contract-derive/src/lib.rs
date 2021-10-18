@@ -9,6 +9,7 @@ use abigen::Contracts;
 
 pub(crate) mod abi_ty;
 mod abigen;
+mod call;
 mod display;
 mod event;
 mod spanned;
@@ -111,6 +112,9 @@ pub fn derive_abi_type(input: TokenStream) -> TokenStream {
 /// # Example
 ///
 /// ```ignore
+/// use ethers_contract::EthDisplay;
+/// use ethers_core::types::*;
+///
 /// #[derive(Debug, Clone, EthAbiType, EthDisplay)]
 /// struct MyStruct {
 ///     addr: Address,
@@ -161,7 +165,8 @@ pub fn derive_eth_display(input: TokenStream) -> TokenStream {
 ///
 /// # Example
 /// ```ignore
-/// # use ethers_core::types::Address;
+/// use ethers_contract::EthCall;
+/// use ethers_core::types::Address;
 ///
 /// #[derive(Debug, EthAbiType)]
 /// struct Inner {
@@ -182,4 +187,71 @@ pub fn derive_eth_display(input: TokenStream) -> TokenStream {
 pub fn derive_abi_event(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     TokenStream::from(event::derive_eth_event_impl(input))
+}
+
+/// Derives the `EthCall` and `Tokenizeable` trait for the labeled type.
+///
+/// Additional arguments can be specified using the `#[ethcall(...)]`
+/// attribute:
+///
+/// For the struct:
+///
+/// - `name`, `name = "..."`: Overrides the generated `EthCall` function name, default
+///   is the
+///  struct's name.
+/// - `abi`, `abi = "..."`: The ABI signature for the function this call's data
+///   corresponds to.
+///
+///  NOTE: in order to successfully parse the `abi` (`<name>(<args>,...)`) the `<name`>
+///   must match either the struct name or the name attribute: `#[ethcall(name ="<name>"]`
+///
+/// # Example
+///
+/// ```ignore
+/// use ethers_contract::EthCall;
+///
+/// #[derive(Debug, Clone, EthCall)]
+/// #[ethcall(name ="my_call")]
+/// struct MyCall {
+///     addr: Address,
+///     old_value: String,
+///     new_value: String,
+/// }
+/// assert_eq!(
+///     MyCall::abi_signature().as_ref(),
+///     "my_call(address,string,string)"
+/// );
+/// ```
+///
+/// # Example
+///
+/// Call with struct inputs
+///
+/// ```ignore
+/// use ethers_core::abi::Address;
+///
+/// #[derive(Debug, Clone, PartialEq, EthAbiType)]
+/// struct SomeType {
+///     inner: Address,
+///     msg: String,
+/// }
+///
+/// #[derive(Debug, PartialEq, EthCall)]
+/// #[ethcall(name = "foo", abi = "foo(address,(address,string),string)")]
+/// struct FooCall {
+///     old_author: Address,
+///     inner: SomeType,
+///     new_value: String,
+/// }
+///
+/// assert_eq!(
+///     FooCall::abi_signature().as_ref(),
+///     "foo(address,(address,string),string)"
+/// );
+/// ```
+///
+#[proc_macro_derive(EthCall, attributes(ethcall))]
+pub fn derive_abi_call(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    TokenStream::from(call::derive_eth_call_impl(input))
 }

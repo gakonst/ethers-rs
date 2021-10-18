@@ -20,7 +20,7 @@ mod base;
 pub use base::{decode_function_data, encode_function_data, AbiError, BaseContract};
 
 mod call;
-pub use call::ContractError;
+pub use call::{ContractError, EthCall};
 
 mod factory;
 pub use factory::ContractFactory;
@@ -30,6 +30,9 @@ pub use event::EthEvent;
 
 mod log;
 pub use log::{decode_logs, EthLogDecode, LogMeta};
+
+mod codec;
+pub use codec::{AbiDecode, AbiEncode};
 
 mod stream;
 
@@ -50,7 +53,7 @@ pub use ethers_contract_abigen::Abigen;
 
 #[cfg(any(test, feature = "abigen"))]
 #[cfg_attr(docsrs, doc(cfg(feature = "abigen")))]
-pub use ethers_contract_derive::{abigen, EthAbiType, EthDisplay, EthEvent};
+pub use ethers_contract_derive::{abigen, EthAbiType, EthCall, EthDisplay, EthEvent};
 
 // Hide the Lazy re-export, it's just for convenience
 #[doc(hidden)]

@@ -337,14 +337,16 @@ impl AbiParser {
 
         let state_mutability = modifiers.map(detect_state_mutability).unwrap_or_default();
 
-        #[allow(deprecated)]
-        Ok(Function {
-            name,
-            inputs,
-            outputs,
-            state_mutability,
-            constant: false,
-        })
+        Ok(
+            #[allow(deprecated)]
+            Function {
+                name,
+                inputs,
+                outputs,
+                state_mutability,
+                constant: false,
+            },
+        )
     }
 
     fn parse_params(&self, s: &str) -> Result<Vec<(Param, Option<String>)>> {
