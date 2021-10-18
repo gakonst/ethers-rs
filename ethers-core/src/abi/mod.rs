@@ -8,9 +8,10 @@ pub use struct_def::SolStruct;
 pub use tokens::{Detokenize, InvalidOutputType, Tokenizable, TokenizableItem, Tokenize};
 
 // Adapted from [Gnosis' ethcontract](https://github.com/gnosis/ethcontract-rs/blob/master/common/src/abiext.rs)
-use crate::types::Address;
-use crate::types::*;
-use crate::{types::Selector, utils::id};
+use crate::{
+    types::{Address, Selector, *},
+    utils::id,
+};
 
 mod error;
 mod human_readable;
