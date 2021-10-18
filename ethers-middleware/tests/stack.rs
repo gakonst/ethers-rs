@@ -4,7 +4,7 @@ mod tests {
     use ethers_core::{rand::thread_rng, types::TransactionRequest, utils::Ganache};
     use ethers_middleware::{
         gas_escalator::{Frequency, GasEscalatorMiddleware, GeometricGasPrice},
-        gas_oracle::{GasCategory, GasNow, GasOracleMiddleware},
+        gas_oracle::{EthGasStation, GasCategory, GasOracleMiddleware},
         nonce_manager::NonceManagerMiddleware,
         signer::SignerMiddleware,
     };
@@ -17,7 +17,7 @@ mod tests {
         let (provider, mock) = Provider::mocked();
 
         // add a bunch of middlewares
-        let gas_oracle = GasNow::new().category(GasCategory::SafeLow);
+        let gas_oracle = EthGasStation::new(None).category(GasCategory::SafeLow);
         let signer = LocalWallet::new(&mut thread_rng());
         let address = signer.address();
         let escalator = GeometricGasPrice::new(1.125, 60u64, None::<u64>);
@@ -53,7 +53,7 @@ mod tests {
     #[tokio::test]
     async fn can_stack_middlewares() {
         let ganache = Ganache::new().block_time(5u64).spawn();
-        let gas_oracle = GasNow::new().category(GasCategory::SafeLow);
+        let gas_oracle = EthGasStation::new(None).category(GasCategory::SafeLow);
         let signer: LocalWallet = ganache.keys()[0].clone().into();
         let address = signer.address();
 

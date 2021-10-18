@@ -1,11 +1,10 @@
 use super::{types, util, Context};
 use anyhow::Result;
-use ethers_core::abi::{Event, EventExt, EventParam, Hash, ParamType, SolStruct};
+use ethers_core::abi::{Event, EventExt, EventParam, ParamType, SolStruct};
 use inflector::Inflector;
 use proc_macro2::{Ident, Literal, TokenStream};
 use quote::quote;
 use std::collections::BTreeMap;
-use syn::Path;
 
 impl Context {
     /// Expands each event to a struct + its impl Detokenize block
@@ -33,9 +32,10 @@ impl Context {
 
     /// Generate the event filter methods for the contract
     pub fn event_methods(&self) -> Result<TokenStream> {
-        let sorted_events: BTreeMap<_, _> = self.abi.events.clone().into_iter().collect();
+        let sorted_events: BTreeMap<_, _> = self.abi.events.iter().collect();
         let filter_methods = sorted_events
             .values()
+            .map(std::ops::Deref::deref)
             .flatten()
             .map(|event| self.expand_filter(event))
             .collect::<Vec<_>>();
@@ -51,9 +51,9 @@ impl Context {
 
     /// Generate an enum with a variant for each event
     fn expand_events_enum(&self) -> TokenStream {
-        let sorted_events: BTreeMap<_, _> = self.abi.events.clone().into_iter().collect();
-
-        let variants = sorted_events
+        let variants = self
+            .abi
+            .events
             .values()
             .flatten()
             .map(|e| expand_struct_name(e, self.event_aliases.get(&e.abi_signature()).cloned()))
@@ -65,32 +65,10 @@ impl Context {
         let ethers_contract = util::ethers_contract_crate();
 
         quote! {
-            #[derive(Debug, Clone, PartialEq, Eq)]
+            #[derive(Debug, Clone, PartialEq, Eq, #ethers_contract::EthAbiType)]
             pub enum #enum_name {
                 #(#variants(#variants)),*
             }
-
-             impl #ethers_core::abi::Tokenizable for #enum_name {
-
-                 fn from_token(token: #ethers_core::abi::Token) -> Result<Self, #ethers_core::abi::InvalidOutputType> where
-                     Self: Sized {
-                    #(
-                        if let Ok(decoded) = #variants::from_token(token.clone()) {
-                            return Ok(#enum_name::#variants(decoded))
-                        }
-                    )*
-                    Err(#ethers_core::abi::InvalidOutputType("Failed to decode all event variants".to_string()))
-                }
-
-                fn into_token(self) -> #ethers_core::abi::Token {
-                    match self {
-                        #(
-                            #enum_name::#variants(element) => element.into_token()
-                        ),*
-                    }
-                }
-             }
-             impl #ethers_core::abi::TokenizableItem for #enum_name { }
 
              impl #ethers_contract::EthLogDecode for #enum_name {
                 fn decode_log(log: &#ethers_core::abi::RawLog) -> Result<Self, #ethers_core::abi::Error>
@@ -103,6 +81,16 @@ impl Context {
                         }
                     )*
                     Err(#ethers_core::abi::Error::InvalidData)
+                }
+            }
+
+            impl ::std::fmt::Display for #enum_name {
+                fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+                    match self {
+                        #(
+                            #enum_name::#variants(element) => element.fmt(f)
+                        ),*
+                    }
                 }
             }
         }
@@ -143,14 +131,13 @@ impl Context {
 
     /// Expands an event property type.
     ///
-    /// Note that this is slightly different than an expanding a Solidity type as
-    /// complex types like arrays and strings get emited as hashes when they are
+    /// Note that this is slightly different from expanding a Solidity type as
+    /// complex types like arrays and strings get emitted as hashes when they are
     /// indexed.
     /// If a complex types matches with a struct previously parsed by the AbiParser,
     /// we can replace it
     fn expand_input_type(&self, input: &EventParam) -> Result<TokenStream> {
         let ethers_core = util::ethers_core_crate();
-
         Ok(match (&input.kind, input.indexed) {
             (ParamType::Array(ty), true) => {
                 if let ParamType::Tuple(..) = **ty {
@@ -184,7 +171,7 @@ impl Context {
                 quote! { #ethers_core::types::H256 }
             }
             (ParamType::Tuple(..), true) => {
-                // represents an struct
+                // represents a struct
                 if let Some(ty) = self
                     .abi_parser
                     .structs
@@ -204,8 +191,8 @@ impl Context {
         })
     }
 
-    /// Expands an ABI event into name-type pairs for each of its parameters.
-    fn expand_params(&self, event: &Event) -> Result<Vec<(TokenStream, TokenStream, bool)>> {
+    /// Expands the name-type pairs for the given inputs
+    fn expand_event_params(&self, event: &Event) -> Result<Vec<(TokenStream, TokenStream, bool)>> {
         event
             .inputs
             .iter()
@@ -255,7 +242,7 @@ impl Context {
 
         let event_name = expand_struct_name(event, sig);
 
-        let params = self.expand_params(event)?;
+        let params = self.expand_event_params(event)?;
         // expand as a tuple if all fields are anonymous
         let all_anonymous_fields = event.inputs.iter().all(|input| input.name.is_empty());
         let data_type_definition = if all_anonymous_fields {
@@ -264,57 +251,14 @@ impl Context {
             expand_data_struct(&event_name, &params)
         };
 
-        let derives = expand_derives(&self.event_derives);
+        let derives = util::expand_derives(&self.event_derives);
 
         let ethers_contract = util::ethers_contract_crate();
 
         Ok(quote! {
-            #[derive(Clone, Debug, Default, Eq, PartialEq, #ethers_contract::EthEvent, #derives)]
+            #[derive(Clone, Debug, Default, Eq, PartialEq, #ethers_contract::EthEvent, #ethers_contract::EthDisplay, #derives)]
             #[ethevent( name = #event_abi_name, abi = #abi_signature )]
             pub #data_type_definition
-        })
-    }
-
-    /// Expands a event parameter into an event builder filter method for the
-    /// specified topic index.
-    fn expand_builder_topic_filter(
-        &self,
-        topic_index: usize,
-        param: &EventParam,
-    ) -> Result<TokenStream> {
-        let doc = util::expand_doc(&format!(
-            "Adds a filter for the `{}` event parameter.",
-            param.name,
-        ));
-        let topic = util::ident(&format!("topic{}", topic_index));
-        let name = if param.name.is_empty() {
-            topic.clone()
-        } else {
-            util::safe_ident(&param.name.to_snake_case())
-        };
-        let ty = self.expand_input_type(param)?;
-
-        Ok(quote! {
-            #doc
-            pub fn #name(mut self, topic: Topic<#ty>) -> Self {
-                self.0 = (self.0).#topic(topic);
-                self
-            }
-        })
-    }
-
-    /// Expands an ABI event into filter methods for its indexed parameters.
-    fn expand_builder_topic_filters(&self, event: &Event) -> Result<TokenStream> {
-        let topic_filters = event
-            .inputs
-            .iter()
-            .filter(|input| input.indexed)
-            .enumerate()
-            .map(|(topic_index, input)| self.expand_builder_topic_filter(topic_index, input))
-            .collect::<Result<Vec<_>>>()?;
-
-        Ok(quote! {
-            #( #topic_filters )*
         })
     }
 }
@@ -357,38 +301,36 @@ fn expand_data_struct(name: &Ident, params: &[(TokenStream, TokenStream, bool)])
 fn expand_data_tuple(name: &Ident, params: &[(TokenStream, TokenStream, bool)]) -> TokenStream {
     let fields = params
         .iter()
-        .map(|(_, ty, _)| quote! { pub #ty })
+        .map(|(_, ty, indexed)| {
+            if *indexed {
+                quote! {
+                #[ethevent(indexed)] pub #ty }
+            } else {
+                quote! {
+                pub #ty }
+            }
+        })
         .collect::<Vec<_>>();
 
     quote! { struct #name( #( #fields ),* ); }
-}
-
-/// Expands an ABI event into an identifier for its event data type.
-fn expand_builder_name(event: &Event) -> TokenStream {
-    let builder_name = util::ident(&format!("{}Builder", &event.name.to_pascal_case()));
-    quote! { #builder_name }
-}
-
-fn expand_derives(derives: &[Path]) -> TokenStream {
-    quote! {#(#derives),*}
-}
-
-/// Expands a 256-bit `Hash` into a literal representation that can be used with
-/// quasi-quoting for code generation. We do this to avoid allocating at runtime
-fn expand_hash(hash: Hash) -> TokenStream {
-    let bytes = hash.as_bytes().iter().copied().map(Literal::u8_unsuffixed);
-    let ethers_core = util::ethers_core_crate();
-
-    quote! {
-        #ethers_core::types::H256([#( #bytes ),*])
-    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::Abigen;
-    use ethers_core::abi::{EventParam, ParamType};
+    use ethers_core::abi::{EventParam, Hash, ParamType};
+
+    /// Expands a 256-bit `Hash` into a literal representation that can be used with
+    /// quasi-quoting for code generation. We do this to avoid allocating at runtime
+    fn expand_hash(hash: Hash) -> TokenStream {
+        let bytes = hash.as_bytes().iter().copied().map(Literal::u8_unsuffixed);
+        let ethers_core = util::ethers_core_crate();
+
+        quote! {
+            #ethers_core::types::H256([#( #bytes ),*])
+        }
+    }
 
     fn test_context() -> Context {
         Context::from_abigen(Abigen::new("TestToken", "[]").unwrap()).unwrap()
@@ -490,7 +432,7 @@ mod tests {
         };
 
         let cx = test_context();
-        let params = cx.expand_params(&event).unwrap();
+        let params = cx.expand_event_params(&event).unwrap();
         let name = expand_struct_name(&event, None);
         let definition = expand_data_struct(&name, &params);
 
@@ -522,7 +464,7 @@ mod tests {
         };
 
         let cx = test_context_with_alias("Foo(bool,address)", "FooAliased");
-        let params = cx.expand_params(&event).unwrap();
+        let params = cx.expand_event_params(&event).unwrap();
         let alias = Some(util::ident("FooAliased"));
         let name = expand_struct_name(&event, alias);
         let definition = expand_data_struct(&name, &params);
@@ -555,7 +497,7 @@ mod tests {
         };
 
         let cx = test_context();
-        let params = cx.expand_params(&event).unwrap();
+        let params = cx.expand_event_params(&event).unwrap();
         let name = expand_struct_name(&event, None);
         let definition = expand_data_tuple(&name, &params);
 
@@ -584,7 +526,7 @@ mod tests {
         };
 
         let cx = test_context_with_alias("Foo(bool,address)", "FooAliased");
-        let params = cx.expand_params(&event).unwrap();
+        let params = cx.expand_event_params(&event).unwrap();
         let alias = Some(util::ident("FooAliased"));
         let name = expand_struct_name(&event, alias);
         let definition = expand_data_tuple(&name, &params);

@@ -1,8 +1,11 @@
 use ethers_contract::EthLogDecode;
-use ethers_contract::{abigen, EthAbiType, EthEvent};
+use ethers_contract::{abigen, AbiDecode, EthAbiType, EthCall, EthDisplay, EthEvent};
 use ethers_core::abi::{RawLog, Tokenizable};
 use ethers_core::types::Address;
 use ethers_core::types::{H160, H256, I256, U128, U256};
+
+fn assert_tokenizeable<T: Tokenizable>() {}
+fn assert_ethcall<T: EthCall>() {}
 
 #[derive(Debug, Clone, PartialEq, EthAbiType)]
 struct ValueChanged {
@@ -40,6 +43,22 @@ fn can_detokenize_struct() {
 
     let token = value.clone().into_token();
     assert_eq!(value, ValueChanged::from_token(token).unwrap());
+}
+
+#[test]
+fn can_derive_abi_type_empty_struct() {
+    #[derive(Debug, Clone, PartialEq, EthAbiType)]
+    struct Call();
+
+    #[derive(Debug, Clone, PartialEq, EthAbiType)]
+    struct Call2 {};
+
+    #[derive(Debug, Clone, PartialEq, EthAbiType)]
+    struct Call3;
+
+    assert_tokenizeable::<Call>();
+    assert_tokenizeable::<Call2>();
+    assert_tokenizeable::<Call3>();
 }
 
 #[test]
@@ -320,6 +339,27 @@ fn can_decode_event_single_param() {
 }
 
 #[test]
+fn can_decode_event_tuple_single_param() {
+    #[derive(Debug, PartialEq, EthEvent)]
+    struct OneParam(#[ethevent(indexed)] U256);
+
+    let log = RawLog {
+        topics: vec![
+            "bd9bb67345a2fcc8ef3b0857e7e2901f5a0dcfc7fe5e3c10dc984f02842fb7ba"
+                .parse()
+                .unwrap(),
+            "000000000000000000000000000000000000000000000000000000000000007b"
+                .parse()
+                .unwrap(),
+        ],
+        data: vec![],
+    };
+
+    let event = <OneParam as EthLogDecode>::decode_log(&log).unwrap();
+    assert_eq!(event.0, 123u64.into());
+}
+
+#[test]
 fn can_decode_event_with_no_params() {
     #[derive(Debug, PartialEq, EthEvent)]
     pub struct NoParam {}
@@ -334,4 +374,116 @@ fn can_decode_event_with_no_params() {
     };
 
     let _ = <NoParam as EthLogDecode>::decode_log(&log).unwrap();
+}
+
+#[test]
+fn eth_display_works() {
+    #[derive(Debug, Clone, EthAbiType, EthDisplay)]
+    struct MyStruct {
+        addr: Address,
+        old_value: String,
+        new_value: String,
+        h: H256,
+        i: I256,
+        arr_u8: [u8; 32],
+        arr_u16: [u16; 32],
+        v: Vec<u8>,
+    }
+    let item = MyStruct {
+        addr: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".parse().unwrap(),
+        old_value: "50".to_string(),
+        new_value: "100".to_string(),
+        h: H256::random(),
+        i: I256::zero(),
+        arr_u8: [0; 32],
+        arr_u16: [1; 32],
+        v: vec![0; 32],
+    };
+
+    let val = format!(
+        "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa, 50, 100, 0x{}, {}, 0x{}, {:?}, 0x{}",
+        hex::encode(&item.h),
+        item.i,
+        hex::encode(&item.arr_u8),
+        item.arr_u16,
+        hex::encode(&item.v),
+    );
+
+    assert_eq!(val, format!("{}", item));
+}
+
+#[test]
+fn eth_display_works_for_human_readable() {
+    ethers_contract::abigen!(
+        HevmConsole,
+        r#"[
+            event log(string)
+            event log2(string x)
+            ]"#,
+    );
+
+    let log = LogFilter("abc".to_string());
+    assert_eq!("abc".to_string(), format!("{}", log));
+    let log = Log2Filter {
+        x: "abc".to_string(),
+    };
+    assert_eq!("abc".to_string(), format!("{}", log));
+}
+
+#[test]
+fn can_derive_ethcall() {
+    #[derive(Debug, Clone, EthCall, EthDisplay)]
+    struct MyStruct {
+        addr: Address,
+        old_value: String,
+        new_value: String,
+        h: H256,
+        i: I256,
+        arr_u8: [u8; 32],
+        arr_u16: [u16; 32],
+        v: Vec<u8>,
+    }
+
+    assert_tokenizeable::<MyStruct>();
+    assert_ethcall::<MyStruct>();
+
+    #[derive(Debug, Clone, EthCall, EthDisplay)]
+    #[ethcall(name = "my_call")]
+    struct MyCall {
+        addr: Address,
+        old_value: String,
+        new_value: String,
+    }
+    assert_eq!(
+        MyCall::abi_signature().as_ref(),
+        "my_call(address,string,string)"
+    );
+
+    assert_tokenizeable::<MyCall>();
+    assert_ethcall::<MyCall>();
+}
+
+#[test]
+fn can_derive_ethcall_with_nested_structs() {
+    #[derive(Debug, Clone, PartialEq, EthAbiType)]
+    struct SomeType {
+        inner: Address,
+        msg: String,
+    }
+
+    #[derive(Debug, PartialEq, EthCall)]
+    #[ethcall(name = "foo", abi = "foo(address,(address,string),string)")]
+    struct FooCall {
+        old_author: Address,
+        inner: SomeType,
+        new_value: String,
+    }
+
+    assert_eq!(
+        FooCall::abi_signature().as_ref(),
+        "foo(address,(address,string),string)"
+    );
+
+    assert_tokenizeable::<FooCall>();
+    assert_ethcall::<FooCall>();
 }

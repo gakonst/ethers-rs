@@ -1,12 +1,12 @@
 use ethers_core::types::Address;
 
 use anyhow::{anyhow, Result};
-use cargo_metadata::{CargoOpt, DependencyKind, Metadata, MetadataCommand};
+use cargo_metadata::{DependencyKind, MetadataCommand};
 use inflector::Inflector;
 use once_cell::sync::Lazy;
 use proc_macro2::{Ident, Literal, Span, TokenStream};
 use quote::quote;
-use reqwest::Client;
+
 use syn::{Ident as SynIdent, Path};
 
 /// See `determine_ethers_crates`
@@ -115,6 +115,10 @@ pub fn expand_doc(s: &str) -> TokenStream {
     quote! {
         #[doc = #doc]
     }
+}
+
+pub fn expand_derives(derives: &[Path]) -> TokenStream {
+    quote! {#(#derives),*}
 }
 
 /// Parses the given address string

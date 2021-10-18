@@ -7,9 +7,42 @@ use ethers_core::{
 };
 use ethers_providers::{Middleware, PendingTransaction, ProviderError};
 
+use std::borrow::Cow;
 use std::{fmt::Debug, marker::PhantomData, sync::Arc};
 
+use crate::{AbiDecode, AbiEncode};
+use ethers_core::abi::{Tokenizable, Tokenize};
+use ethers_core::types::Selector;
+use ethers_core::utils::id;
 use thiserror::Error as ThisError;
+
+/// A helper trait for types that represent all call input parameters of a specific function
+pub trait EthCall: Tokenizable + AbiDecode + Send + Sync {
+    /// The name of the function
+    fn function_name() -> Cow<'static, str>;
+
+    /// Retrieves the ABI signature for the call
+    fn abi_signature() -> Cow<'static, str>;
+
+    /// The selector of the function
+    fn selector() -> Selector {
+        id(Self::abi_signature())
+    }
+}
+
+impl<T: EthCall> AbiEncode for T {
+    fn encode(self) -> Result<Bytes, AbiError> {
+        let tokens = self.into_tokens();
+        let selector = Self::selector();
+        let encoded = ethers_core::abi::encode(&tokens);
+        let encoded: Vec<_> = selector
+            .iter()
+            .copied()
+            .chain(encoded.into_iter())
+            .collect();
+        Ok(encoded.into())
+    }
+}
 
 #[derive(ThisError, Debug)]
 /// An Error which is thrown when interacting with a smart contract

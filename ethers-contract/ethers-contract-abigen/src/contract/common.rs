@@ -1,7 +1,6 @@
 use super::{util, Context};
 
-use ethers_core::types::Address;
-use proc_macro2::{Literal, TokenStream};
+use proc_macro2::TokenStream;
 use quote::quote;
 
 use super::util::{ethers_contract_crate, ethers_core_crate, ethers_providers_crate};
@@ -16,6 +15,7 @@ pub(crate) fn imports(name: &str) -> TokenStream {
     quote! {
         #![allow(clippy::enum_variant_names)]
         #![allow(dead_code)]
+        #![allow(clippy::type_complexity)]
         #![allow(unused_imports)]
         #doc
 

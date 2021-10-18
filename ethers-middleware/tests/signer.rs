@@ -1,3 +1,4 @@
+#![allow(unused)]
 use ethers_providers::{Http, JsonRpcClient, Middleware, Provider};
 
 use ethers_core::{
@@ -368,9 +369,9 @@ impl TestWallets {
 
     pub fn next(&self) -> LocalWallet {
         let idx = self.next.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-        let wallet = self.get(idx);
+
         // println!("Got wallet {:?}", wallet.address());
-        wallet
+        self.get(idx)
     }
 
     pub fn get<T: Into<u32>>(&self, idx: T) -> LocalWallet {

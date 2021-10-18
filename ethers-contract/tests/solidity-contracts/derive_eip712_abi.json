@@ -1,0 +1,206 @@
+[
+	{
+		"inputs": [],
+		"stateMutability": "nonpayable",
+		"type": "constructor"
+	},
+	{
+		"inputs": [],
+		"name": "domainSeparator",
+		"outputs": [
+			{
+				"internalType": "bytes32",
+				"name": "",
+				"type": "bytes32"
+			}
+		],
+		"stateMutability": "pure",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"components": [
+					{
+						"internalType": "int256",
+						"name": "foo",
+						"type": "int256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "bar",
+						"type": "uint256"
+					},
+					{
+						"internalType": "bytes",
+						"name": "fizz",
+						"type": "bytes"
+					},
+					{
+						"internalType": "bytes32",
+						"name": "buzz",
+						"type": "bytes32"
+					},
+					{
+						"internalType": "string",
+						"name": "far",
+						"type": "string"
+					},
+					{
+						"internalType": "address",
+						"name": "out",
+						"type": "address"
+					}
+				],
+				"internalType": "struct DeriveEip712Test.FooBar",
+				"name": "fooBar",
+				"type": "tuple"
+			}
+		],
+		"name": "encodeEip712",
+		"outputs": [
+			{
+				"internalType": "bytes32",
+				"name": "",
+				"type": "bytes32"
+			}
+		],
+		"stateMutability": "pure",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"components": [
+					{
+						"internalType": "int256",
+						"name": "foo",
+						"type": "int256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "bar",
+						"type": "uint256"
+					},
+					{
+						"internalType": "bytes",
+						"name": "fizz",
+						"type": "bytes"
+					},
+					{
+						"internalType": "bytes32",
+						"name": "buzz",
+						"type": "bytes32"
+					},
+					{
+						"internalType": "string",
+						"name": "far",
+						"type": "string"
+					},
+					{
+						"internalType": "address",
+						"name": "out",
+						"type": "address"
+					}
+				],
+				"internalType": "struct DeriveEip712Test.FooBar",
+				"name": "fooBar",
+				"type": "tuple"
+			}
+		],
+		"name": "structHash",
+		"outputs": [
+			{
+				"internalType": "bytes32",
+				"name": "",
+				"type": "bytes32"
+			}
+		],
+		"stateMutability": "pure",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "typeHash",
+		"outputs": [
+			{
+				"internalType": "bytes32",
+				"name": "",
+				"type": "bytes32"
+			}
+		],
+		"stateMutability": "pure",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "signer",
+				"type": "address"
+			},
+			{
+				"components": [
+					{
+						"internalType": "int256",
+						"name": "foo",
+						"type": "int256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "bar",
+						"type": "uint256"
+					},
+					{
+						"internalType": "bytes",
+						"name": "fizz",
+						"type": "bytes"
+					},
+					{
+						"internalType": "bytes32",
+						"name": "buzz",
+						"type": "bytes32"
+					},
+					{
+						"internalType": "string",
+						"name": "far",
+						"type": "string"
+					},
+					{
+						"internalType": "address",
+						"name": "out",
+						"type": "address"
+					}
+				],
+				"internalType": "struct DeriveEip712Test.FooBar",
+				"name": "fooBar",
+				"type": "tuple"
+			},
+			{
+				"internalType": "bytes32",
+				"name": "r",
+				"type": "bytes32"
+			},
+			{
+				"internalType": "bytes32",
+				"name": "s",
+				"type": "bytes32"
+			},
+			{
+				"internalType": "uint8",
+				"name": "v",
+				"type": "uint8"
+			}
+		],
+		"name": "verifyFooBar",
+		"outputs": [
+			{
+				"internalType": "bool",
+				"name": "",
+				"type": "bool"
+			}
+		],
+		"stateMutability": "pure",
+		"type": "function"
+	}
+]

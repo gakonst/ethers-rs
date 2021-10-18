@@ -16,7 +16,10 @@ use ethers_core::{
         elliptic_curve::FieldBytes,
         Secp256k1,
     },
-    types::{transaction::eip2718::TypedTransaction, Address, Signature, H256, U256},
+    types::{
+        transaction::eip2718::TypedTransaction, transaction::eip712::Eip712, Address, Signature,
+        H256, U256,
+    },
     utils::hash_message,
 };
 use hash::Sha256Proxy;
@@ -67,7 +70,7 @@ pub struct Wallet<D: DigestSigner<Sha256Proxy, RecoverableSignature>> {
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl<D: Sync + Send + DigestSigner<Sha256Proxy, RecoverableSignature>> Signer for Wallet<D> {
-    type Error = std::convert::Infallible;
+    type Error = WalletError;
 
     async fn sign_message<S: Send + Sync + AsRef<[u8]>>(
         &self,
@@ -81,6 +84,17 @@ impl<D: Sync + Send + DigestSigner<Sha256Proxy, RecoverableSignature>> Signer fo
 
     async fn sign_transaction(&self, tx: &TypedTransaction) -> Result<Signature, Self::Error> {
         Ok(self.sign_transaction_sync(tx))
+    }
+
+    async fn sign_typed_data<T: Eip712 + Send + Sync>(
+        &self,
+        payload: T,
+    ) -> Result<Signature, Self::Error> {
+        let encoded = payload
+            .encode_eip712()
+            .map_err(|e| Self::Error::Eip712Error(e.to_string()))?;
+
+        Ok(self.sign_hash(H256::from(encoded), false))
     }
 
     fn address(&self) -> Address {

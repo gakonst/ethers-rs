@@ -13,6 +13,10 @@ pub struct AbiParser {
     pub structs: HashMap<String, SolStruct>,
     /// solidity structs as tuples
     pub struct_tuples: HashMap<String, Vec<ParamType>>,
+    /// (function name, param name) -> struct which are the identifying properties we get the name from ethabi.
+    pub function_params: HashMap<(String, String), String>,
+    /// (function name) -> Vec<structs> all structs the function returns
+    pub outputs: HashMap<String, Vec<String>>,
 }
 
 impl AbiParser {
@@ -76,22 +80,39 @@ impl AbiParser {
 
         for mut line in types {
             line = line.trim_start();
-            if line.starts_with("function") {
-                let function = self.parse_function(line)?;
-                abi.functions
-                    .entry(function.name.clone())
-                    .or_default()
-                    .push(function);
-            } else if line.starts_with("event") {
+            if line.starts_with("event") {
                 let event = self.parse_event(line)?;
                 abi.events
                     .entry(event.name.clone())
                     .or_default()
                     .push(event);
             } else if line.starts_with("constructor") {
-                abi.constructor = Some(self.parse_constructor(line)?);
+                let inputs = self
+                    .constructor_inputs(line)?
+                    .into_iter()
+                    .map(|(input, struct_name)| {
+                        if let Some(struct_name) = struct_name {
+                            // keep track of the user defined struct of that param
+                            self.function_params.insert(
+                                ("constructor".to_string(), input.name.clone()),
+                                struct_name,
+                            );
+                        }
+                        input
+                    })
+                    .collect();
+
+                abi.constructor = Some(Constructor { inputs });
             } else {
-                bail!("Illegal abi `{}`", line)
+                // function may have shorthand declaration, so it won't start with "function"
+                let function = match self.parse_function(line) {
+                    Ok(function) => function,
+                    Err(_) => bail!("Illegal abi `{}`", line),
+                };
+                abi.functions
+                    .entry(function.name.clone())
+                    .or_default()
+                    .push(function);
             }
         }
         Ok(abi)
@@ -146,6 +167,8 @@ impl AbiParser {
                 .map(|s| (s.name().to_string(), s))
                 .collect(),
             struct_tuples: HashMap::new(),
+            function_params: Default::default(),
+            outputs: Default::default(),
         }
     }
 
@@ -231,89 +254,128 @@ impl AbiParser {
         Ok(EventParam {
             name: name.to_string(),
             indexed,
-            kind: self.parse_type(type_str)?,
+            kind: self.parse_type(type_str)?.0,
         })
     }
 
     pub fn parse_function(&mut self, s: &str) -> Result<Function> {
         let mut input = s.trim();
-        if !input.starts_with("function ") {
-            bail!("Not a function `{}`", input)
+        let shorthand = !input.starts_with("function ");
+
+        if !shorthand {
+            input = &input[8..];
         }
-        input = &input[8..];
+
         let name = parse_identifier(&mut input)?;
+        input = input
+            .strip_prefix('(')
+            .ok_or_else(|| format_err!("Expected input args parentheses at `{}`", s))?;
 
-        let mut iter = input.split(" returns");
+        let (input_args_modifiers, output_args) = match input.rsplit_once('(') {
+            Some((first, second)) => (first, Some(second)),
+            None => (input, None),
+        };
 
-        let parens = iter
+        let mut input_args_modifiers_iter = input_args_modifiers
+            .trim_end()
+            .strip_suffix(" returns")
+            .unwrap_or(input_args_modifiers)
+            .splitn(2, ')');
+
+        let input_args = match input_args_modifiers_iter
             .next()
-            .ok_or_else(|| format_err!("Invalid function declaration at `{}`", s))?
-            .trim_end();
+            .ok_or_else(|| format_err!("Expected input args parentheses at `{}`", s))?
+        {
+            "" => None,
+            input_params_args => Some(input_params_args),
+        };
+        let modifiers = match input_args_modifiers_iter
+            .next()
+            .ok_or_else(|| format_err!("Expected input args parentheses at `{}`", s))?
+        {
+            "" => None,
+            modifiers => Some(modifiers),
+        };
 
-        let mut parens_iter = parens.rsplitn(2, ')');
-        let mut modifiers = parens_iter.next();
-
-        let input_params = if let Some(args) = parens_iter.next() {
-            args
+        let inputs = if let Some(params) = input_args {
+            self.parse_params(params)?
+                .into_iter()
+                .map(|(input, struct_name)| {
+                    if let Some(struct_name) = struct_name {
+                        // keep track of the user defined struct of that param
+                        self.function_params
+                            .insert((name.clone(), input.name.clone()), struct_name);
+                    }
+                    input
+                })
+                .collect()
         } else {
-            modifiers
-                .take()
-                .ok_or(ParseError::ParseError(super::Error::InvalidData))?
-        }
-        .trim_start()
-        .strip_prefix('(')
-        .ok_or(ParseError::ParseError(super::Error::InvalidData))?;
+            Vec::new()
+        };
 
-        let inputs = self.parse_params(input_params)?;
-
-        let outputs = if let Some(params) = iter.next() {
+        let outputs = if let Some(params) = output_args {
             let params = params
                 .trim()
-                .strip_prefix('(')
-                .and_then(|s| s.strip_suffix(')'))
-                .ok_or_else(|| format_err!("Expected parentheses at `{}`", s))?;
-            self.parse_params(params)?
+                .strip_suffix(')')
+                .ok_or_else(|| format_err!("Expected output args parentheses at `{}`", s))?;
+            let output_params = self.parse_params(params)?;
+            let mut outputs = Vec::with_capacity(output_params.len());
+            let mut output_types = Vec::new();
+
+            for (output, struct_name) in output_params {
+                if let Some(struct_name) = struct_name {
+                    // keep track of the user defined struct of that param
+                    output_types.push(struct_name);
+                }
+                outputs.push(output);
+            }
+            self.outputs.insert(name.clone(), output_types);
+            outputs
         } else {
             Vec::new()
         };
 
         let state_mutability = modifiers.map(detect_state_mutability).unwrap_or_default();
 
-        #[allow(deprecated)]
-        Ok(Function {
-            name,
-            inputs,
-            outputs,
-            state_mutability,
-            constant: false,
-        })
+        Ok(
+            #[allow(deprecated)]
+            Function {
+                name,
+                inputs,
+                outputs,
+                state_mutability,
+                constant: false,
+            },
+        )
     }
 
-    fn parse_params(&self, s: &str) -> Result<Vec<Param>> {
+    fn parse_params(&self, s: &str) -> Result<Vec<(Param, Option<String>)>> {
         s.split(',')
             .filter(|s| !s.is_empty())
             .map(|s| self.parse_param(s))
             .collect::<Result<Vec<_>, _>>()
     }
 
-    fn parse_type(&self, type_str: &str) -> Result<ParamType> {
+    /// Returns the `ethabi` `ParamType` for the function parameter and the aliased struct type, if it is a user defined struct
+    fn parse_type(&self, type_str: &str) -> Result<(ParamType, Option<String>)> {
         if let Ok(kind) = Reader::read(type_str) {
-            Ok(kind)
+            Ok((kind, None))
         } else {
             // try struct instead
             if let Ok(field) = StructFieldType::parse(type_str) {
                 let struct_ty = field
                     .as_struct()
                     .ok_or_else(|| format_err!("Expected struct type `{}`", type_str))?;
+                let name = struct_ty.name();
                 let tuple = self
                     .struct_tuples
-                    .get(struct_ty.name())
+                    .get(name)
                     .cloned()
                     .map(ParamType::Tuple)
                     .ok_or_else(|| format_err!("Unknown struct `{}`", struct_ty.name()))?;
 
                 if let Some(field) = field.as_struct() {
-                    Ok(field.as_param(tuple))
+                    Ok((field.as_param(tuple), Some(name.to_string())))
                 } else {
                     bail!("Expected struct type")
                 }
@@ -324,6 +386,15 @@ impl AbiParser {
     }
 
     pub fn parse_constructor(&self, s: &str) -> Result<Constructor> {
+        let inputs = self
+            .constructor_inputs(s)?
+            .into_iter()
+            .map(|s| s.0)
+            .collect();
+        Ok(Constructor { inputs })
+    }
+
+    fn constructor_inputs(&self, s: &str) -> Result<Vec<(Param, Option<String>)>> {
         let mut input = s.trim();
         if !input.starts_with("constructor") {
             bail!("Not a constructor `{}`", input)
@@ -338,12 +409,10 @@ impl AbiParser {
             .last()
             .ok_or_else(|| format_err!("Expected closing `)` in `{}`", s))?;
 
-        let inputs = self.parse_params(params)?;
-
-        Ok(Constructor { inputs })
+        self.parse_params(params)
     }
 
-    fn parse_param(&self, param: &str) -> Result<Param> {
+    fn parse_param(&self, param: &str) -> Result<(Param, Option<String>)> {
         let mut iter = param.trim().rsplitn(3, is_whitespace);
 
         let mut name = iter
@@ -360,12 +429,15 @@ impl AbiParser {
             type_str = name;
             name = "";
         }
-
-        Ok(Param {
-            name: name.to_string(),
-            kind: self.parse_type(type_str)?,
-            internal_type: None,
-        })
+        let (kind, user_struct) = self.parse_type(type_str)?;
+        Ok((
+            Param {
+                name: name.to_string(),
+                kind,
+                internal_type: None,
+            },
+            user_struct,
+        ))
     }
 }
 
@@ -619,11 +691,18 @@ mod tests {
     fn can_parse_functions() {
         [
             "function foo(uint256[] memory x) external view returns (address)",
-            "function bar(uint256[] memory x) returns (address)",
+            "function bar(uint256[] memory x) returns(address)",
             "function bar(uint256[] memory x, uint32 y) returns (address, uint256)",
             "function foo(address[] memory, bytes memory) returns (bytes memory)",
             "function bar(uint256[] memory x)",
             "function bar()",
+            "bar(uint256[] memory x)(address)",
+            "bar(uint256[] memory x, uint32 y)(address, uint256)",
+            "foo(address[] memory, bytes memory)(bytes memory)",
+            "bar(uint256[] memory x)()",
+            "bar()()",
+            "bar(uint256)",
+            "bar()",
         ]
         .iter()
         .for_each(|x| {
@@ -639,6 +718,8 @@ mod tests {
             "event FireEvent(Voter v, NestedVoter2 n)",
             "function foo(uint256[] memory x) external view returns (address)",
             "function call(Voter memory voter) returns (address, uint256)",
+            "foo(uint256[] memory x)()",
+            "call(Voter memory voter)(address, uint256)",
             "struct NestedVoter {  Voter voter;  bool voted;  address delegate; uint vote; }",
             "struct NestedVoter2 {  NestedVoter[] voter;  Voter[10] votes;  address delegate; uint vote; }",
         ];

@@ -1,7 +1,7 @@
 [package]
 name = "ethers-signers"
 license = "MIT OR Apache-2.0"
-version = "0.5.1"
+version = "0.5.3"
 authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
 edition = "2018"
 description = "Signer implementations for the ethers-rs crate"
@@ -14,11 +14,11 @@ all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
-ethers-core = { version = "^0.5.0", path = "../ethers-core" }
-thiserror = { version = "1.0.29", default-features = false }
+ethers-core = { version = "^0.5.0", path = "../ethers-core", features = ["eip712"]}
+thiserror = { version = "1.0.30", default-features = false }
 coins-bip32 = "0.3.0"
 coins-bip39 = "0.3.0"
-coins-ledger = { version = "0.4.0", default-features = false, optional = true }
+coins-ledger = { version = "0.4.2", default-features = false, optional = true }
 hex = { version = "0.4.3", default-features = false, features = ["std"] }
 async-trait = { version = "0.1.50", default-features = false }
 elliptic-curve = { version = "0.10.6", default-features = false }
@@ -31,7 +31,7 @@ futures-executor = "0.3.17"
 # aws
 rusoto_core = { version = "0.47.0", optional = true }
 rusoto_kms = { version = "0.47.0", optional = true }
-tracing = { version = "0.1.28", optional = true }
+tracing = { version = "0.1.29", optional = true }
 tracing-futures = { version = "0.2.5", optional = true }
 spki = { version = "0.4.1", optional = true }
 
@@ -39,7 +39,7 @@ spki = { version = "0.4.1", optional = true }
 eth-keystore = { version = "0.3.0" }
 
 [dev-dependencies]
-tracing-subscriber = "0.2.24"
+tracing-subscriber = "0.2.25"
 yubihsm = { version = "0.39.0", features = ["secp256k1", "usb", "mockhsm"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]

@@ -10,19 +10,60 @@ use super::Abigen;
 use crate::contract::structs::InternalStructs;
 use crate::rawabi::RawAbi;
 use anyhow::{anyhow, Context as _, Result};
-use ethers_core::abi::AbiParser;
-use ethers_core::{
-    abi::{parse_abi, Abi},
-    types::Address,
-};
-use inflector::Inflector;
+use ethers_core::abi::{Abi, AbiParser};
+
 use proc_macro2::{Ident, Literal, TokenStream};
 use quote::quote;
+use serde::Deserialize;
 use std::collections::BTreeMap;
-use syn::{Path, Visibility};
+use syn::Path;
+
+/// The result of `Context::expand`
+#[derive(Debug)]
+pub struct ExpandedContract {
+    /// The name of the contract module
+    pub module: Ident,
+    /// The contract module's imports
+    pub imports: TokenStream,
+    /// Contract, Middle related implementations
+    pub contract: TokenStream,
+    /// All event impls of the contract
+    pub events: TokenStream,
+    /// All contract call struct related types
+    pub call_structs: TokenStream,
+    /// The contract's internal structs
+    pub abi_structs: TokenStream,
+}
+
+impl ExpandedContract {
+    /// Merges everything into a single module
+    pub fn into_tokens(self) -> TokenStream {
+        let ExpandedContract {
+            module,
+            imports,
+            contract,
+            events,
+            call_structs,
+            abi_structs,
+        } = self;
+        quote! {
+           // export all the created data types
+            pub use #module::*;
+
+            #[allow(clippy::too_many_arguments)]
+            mod #module {
+                #imports
+                #contract
+                #events
+                #call_structs
+                #abi_structs
+            }
+        }
+    }
+}
 
 /// Internal shared context for generating smart contract bindings.
-pub(crate) struct Context {
+pub struct Context {
     /// The ABI string pre-parsing.
     abi_str: Literal,
 
@@ -52,12 +93,12 @@ pub(crate) struct Context {
 }
 
 impl Context {
-    pub(crate) fn expand(args: Abigen) -> Result<TokenStream> {
-        let cx = Self::from_abigen(args)?;
-        let name = &cx.contract_name;
+    /// Expands the whole rust contract
+    pub fn expand(&self) -> Result<ExpandedContract> {
+        let name = &self.contract_name;
         let name_mod = util::ident(&format!(
             "{}_mod",
-            cx.contract_name.to_string().to_lowercase()
+            self.contract_name.to_string().to_lowercase()
         ));
 
         let abi_name = super::util::safe_ident(&format!("{}_ABI", name.to_string().to_uppercase()));
@@ -66,31 +107,25 @@ impl Context {
         let imports = common::imports(&name.to_string());
 
         // 1. Declare Contract struct
-        let struct_decl = common::struct_declaration(&cx, &abi_name);
+        let struct_decl = common::struct_declaration(self, &abi_name);
 
         // 2. Declare events structs & impl FromTokens for each event
-        let events_decl = cx.events_declaration()?;
+        let events_decl = self.events_declaration()?;
 
         // 3. impl block for the event functions
-        let contract_events = cx.event_methods()?;
+        let contract_events = self.event_methods()?;
 
-        // 4. impl block for the contract methods
-        let contract_methods = cx.methods()?;
+        // 4. impl block for the contract methods and their corresponding types
+        let (contract_methods, call_structs) = self.methods_and_call_structs()?;
 
         // 5. Declare the structs parsed from the human readable abi
-        let abi_structs_decl = cx.abi_structs()?;
+        let abi_structs_decl = self.abi_structs()?;
 
         let ethers_core = util::ethers_core_crate();
         let ethers_contract = util::ethers_contract_crate();
         let ethers_providers = util::ethers_providers_crate();
 
-        Ok(quote! {
-            // export all the created data types
-            pub use #name_mod::*;
-
-            #[allow(clippy::too_many_arguments)]
-            mod #name_mod {
-                #imports
+        let contract = quote! {
                 #struct_decl
 
                 impl<'a, M: #ethers_providers::Middleware> #name<M> {
@@ -108,35 +143,65 @@ impl Context {
 
                     #contract_events
                 }
+        };
 
-                #events_decl
-
-                #abi_structs_decl
-            }
+        Ok(ExpandedContract {
+            module: name_mod,
+            imports,
+            contract,
+            events: events_decl,
+            call_structs,
+            abi_structs: abi_structs_decl,
         })
     }
 
     /// Create a context from the code generation arguments.
-    fn from_abigen(args: Abigen) -> Result<Self> {
+    pub fn from_abigen(args: Abigen) -> Result<Self> {
         // get the actual ABI string
         let abi_str = args.abi_source.get().context("failed to get ABI JSON")?;
         let mut abi_parser = AbiParser::default();
-        // parse it
-        let (abi, human_readable): (Abi, _) = if let Ok(abi) = serde_json::from_str(&abi_str) {
-            // normal abi format
-            (abi, false)
+
+        let (abi, human_readable): (Abi, _) = if let Ok(abi) = abi_parser.parse_str(&abi_str) {
+            (abi, true)
         } else {
-            // heuristic for parsing the human readable format
-            (abi_parser.parse_str(&abi_str)?, true)
+            // a best-effort coercion of an ABI or an artifact JSON into an artifact JSON.
+            let json_abi_str = if abi_str.trim().starts_with('[') {
+                format!(r#"{{"abi":{}}}"#, abi_str.trim())
+            } else {
+                abi_str.clone()
+            };
+
+            #[derive(Deserialize)]
+            struct Contract {
+                abi: Abi,
+            }
+
+            let contract = serde_json::from_str::<Contract>(&json_abi_str)?;
+
+            (contract.abi, false)
         };
 
         // try to extract all the solidity structs from the normal JSON ABI
-        // we need to parse the json abi again because we need the internalType fields which are omitted by ethabi.
-        let internal_structs = (!human_readable)
-            .then(|| serde_json::from_str::<RawAbi>(&abi_str).ok())
-            .flatten()
-            .map(InternalStructs::new)
-            .unwrap_or_default();
+        // we need to parse the json abi again because we need the internalType fields which are omitted by ethabi. If the ABI was defined as human readable we use the `internal_structs` from the Abi Parser
+        let internal_structs = if human_readable {
+            let mut internal_structs = InternalStructs::default();
+            // the types in the abi_parser are already valid rust types so simply clone them to make it consistent with the `RawAbi` variant
+            internal_structs.rust_type_names.extend(
+                abi_parser
+                    .function_params
+                    .values()
+                    .map(|ty| (ty.clone(), ty.clone())),
+            );
+            internal_structs.function_params = abi_parser.function_params.clone();
+            internal_structs.outputs = abi_parser.outputs.clone();
+
+            internal_structs
+        } else {
+            serde_json::from_str::<RawAbi>(&abi_str)
+                .ok()
+                .map(InternalStructs::new)
+                .unwrap_or_default()
+        };
 
         let contract_name = util::ident(&args.contract_name);
 
@@ -178,5 +243,15 @@ impl Context {
             event_derives,
             event_aliases,
         })
+    }
+
+    /// The internal abi struct mapping table
+    pub fn internal_structs(&self) -> &InternalStructs {
+        &self.internal_structs
+    }
+
+    /// The internal mutable abi struct mapping table
+    pub fn internal_structs_mut(&mut self) -> &mut InternalStructs {
+        &mut self.internal_structs
     }
 }
