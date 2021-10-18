@@ -113,42 +113,42 @@ impl Context {
 
         impl  #ethers_contract::AbiDecode for #enum_name {
             fn decode(data: impl AsRef<[u8]>) -> Result<Self, #ethers_contract::AbiError> {
-                     #(
-                        if let Ok(decoded) = <#struct_names as #ethers_contract::AbiDecode>::decode(data.as_ref()) {
-                            return Ok(#enum_name::#variant_names(decoded))
-                        }
-                    )*
-                    Err(#ethers_core::abi::Error::InvalidData.into())
+                 #(
+                    if let Ok(decoded) = <#struct_names as #ethers_contract::AbiDecode>::decode(data.as_ref()) {
+                        return Ok(#enum_name::#variant_names(decoded))
+                    }
+                )*
+                Err(#ethers_core::abi::Error::InvalidData.into())
+            }
+        }
+
+         impl  #ethers_contract::AbiEncode for #enum_name {
+            fn encode(self) -> Result<#ethers_core::types::Bytes, #ethers_contract::AbiError> {
+                match self {
+                    #(
+                        #enum_name::#variant_names(element) => element.encode()
+                    ),*
                 }
             }
+        }
 
-             impl  #ethers_contract::AbiEncode for #enum_name {
-                fn encode(self) -> Result<#ethers_core::types::Bytes, #ethers_contract::AbiError> {
-                    match self {
-                        #(
-                            #enum_name::#variant_names(element) => element.encode()
-                        ),*
-                    }
+        impl ::std::fmt::Display for #enum_name {
+            fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+                match self {
+                    #(
+                        #enum_name::#variant_names(element) => element.fmt(f)
+                    ),*
                 }
             }
+        }
 
-            impl ::std::fmt::Display for #enum_name {
-                fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-                    match self {
-                        #(
-                            #enum_name::#variant_names(element) => element.fmt(f)
-                        ),*
-                    }
+        #(
+            impl ::std::convert::From<#struct_names> for #enum_name {
+                fn from(var: #struct_names) -> Self {
+                    #enum_name::#variant_names(var)
                 }
             }
-
-            #(
-                impl ::std::convert::From<#struct_names> for #enum_name {
-                    fn from(var: #struct_names) -> Self {
-                        #enum_name::#variant_names(var)
-                    }
-                }
-            )*
+        )*
 
         })
     }
