@@ -17,7 +17,7 @@ pub use error::ParseError;
 mod human_readable;
 pub use human_readable::{parse as parse_abi, parse_str as parse_abi_str, AbiParser};
 
-use crate::types::{Address, *};
+use crate::types::{H256, H512, U128, U64};
 
 /// Extension trait for `ethabi::Function`.
 pub trait FunctionExt {
