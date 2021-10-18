@@ -339,6 +339,27 @@ fn can_decode_event_single_param() {
 }
 
 #[test]
+fn can_decode_event_tuple_single_param() {
+    #[derive(Debug, PartialEq, EthEvent)]
+    struct OneParam(#[ethevent(indexed)] U256);
+
+    let log = RawLog {
+        topics: vec![
+            "bd9bb67345a2fcc8ef3b0857e7e2901f5a0dcfc7fe5e3c10dc984f02842fb7ba"
+                .parse()
+                .unwrap(),
+            "000000000000000000000000000000000000000000000000000000000000007b"
+                .parse()
+                .unwrap(),
+        ],
+        data: vec![],
+    };
+
+    let event = <OneParam as EthLogDecode>::decode_log(&log).unwrap();
+    assert_eq!(event.0, 123u64.into());
+}
+
+#[test]
 fn can_decode_event_with_no_params() {
     #[derive(Debug, PartialEq, EthEvent)]
     pub struct NoParam {}
