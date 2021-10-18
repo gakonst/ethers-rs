@@ -97,6 +97,14 @@ impl<T: AbiArrayType, const N: usize> AbiType for [T; N] {
     }
 }
 
+impl<const N: usize> AbiType for [u8; N] {
+    fn param_type() -> ParamType {
+        ParamType::FixedBytes(N)
+    }
+}
+
+impl<const N: usize> AbiArrayType for [u8; N] {}
+
 macro_rules! impl_abi_type {
     ($($name:ty => $var:ident $(($value:expr))? ),*) => {
         $(
@@ -130,42 +138,6 @@ impl_abi_type!(
     i32 => Int(32),
     i64 => Int(64),
     i128 => Int(128)
-);
-
-// https://docs.soliditylang.org/en/v0.8.9/grammar.html#a4.SolidityLexer.FixedBytes
-impl_abi_type!(
-    [u8; 1] =>  FixedBytes(1),
-    [u8; 2] =>  FixedBytes(2),
-    [u8; 3] =>  FixedBytes(3),
-    [u8; 4] =>  FixedBytes(4),
-    [u8; 5] =>  FixedBytes(5),
-    [u8; 6] =>  FixedBytes(6),
-    [u8; 7] =>  FixedBytes(7),
-    [u8; 8] =>  FixedBytes(8),
-    [u8; 9] =>  FixedBytes(9),
-    [u8; 10] =>  FixedBytes(10),
-    [u8; 11] =>  FixedBytes(11),
-    [u8; 12] =>  FixedBytes(12),
-    [u8; 13] =>  FixedBytes(13),
-    [u8; 14] =>  FixedBytes(14),
-    [u8; 15] =>  FixedBytes(15),
-    [u8; 16] =>  FixedBytes(16),
-    [u8; 17] =>  FixedBytes(17),
-    [u8; 18] =>  FixedBytes(18),
-    [u8; 19] =>  FixedBytes(19),
-    [u8; 20] =>  FixedBytes(20),
-    [u8; 21] =>  FixedBytes(21),
-    [u8; 22] =>  FixedBytes(22),
-    [u8; 23] =>  FixedBytes(23),
-    [u8; 24] =>  FixedBytes(24),
-    [u8; 25] =>  FixedBytes(25),
-    [u8; 26] =>  FixedBytes(26),
-    [u8; 27] =>  FixedBytes(27),
-    [u8; 28] =>  FixedBytes(28),
-    [u8; 29] =>  FixedBytes(29),
-    [u8; 30] =>  FixedBytes(30),
-    [u8; 31] =>  FixedBytes(31),
-    [u8; 32] =>  FixedBytes(32)
 );
 
 macro_rules! impl_abi_type_tuple {
