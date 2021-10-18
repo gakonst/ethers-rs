@@ -17,6 +17,8 @@ pub use error::ParseError;
 mod human_readable;
 pub use human_readable::{parse as parse_abi, parse_str as parse_abi_str, AbiParser};
 
+use crate::types::{H256, H512, U128, U64};
+
 /// Extension trait for `ethabi::Function`.
 pub trait FunctionExt {
     /// Compute the method signature in the standard ABI format. This does not
@@ -64,6 +66,119 @@ impl EventExt for Event {
         )
     }
 }
+
+/// A trait for types that can be represented in the ethereum ABI.
+pub trait AbiType {
+    /// The native ABI type this type represents.
+    fn param_type() -> ParamType;
+}
+
+impl AbiType for u8 {
+    fn param_type() -> ParamType {
+        ParamType::Uint(8)
+    }
+}
+
+/// Additional trait for types that can appear in arrays
+///
+/// NOTE: this is necessary to handle the special case of `Vec<u8> => Bytes`
+pub trait AbiArrayType: AbiType {}
+
+impl<T: AbiArrayType> AbiType for Vec<T> {
+    fn param_type() -> ParamType {
+        ParamType::Array(Box::new(T::param_type()))
+    }
+}
+impl<T: AbiArrayType> AbiArrayType for Vec<T> {}
+
+impl<T: AbiArrayType, const N: usize> AbiType for [T; N] {
+    fn param_type() -> ParamType {
+        ParamType::FixedArray(Box::new(T::param_type()), N)
+    }
+}
+
+impl<const N: usize> AbiType for [u8; N] {
+    fn param_type() -> ParamType {
+        ParamType::FixedBytes(N)
+    }
+}
+impl<const N: usize> AbiArrayType for [u8; N] {}
+
+macro_rules! impl_abi_type {
+    ($($name:ty => $var:ident $(($value:expr))? ),*) => {
+        $(
+            impl AbiType for $name {
+                fn param_type() -> ParamType {
+                    ParamType::$var $( ($value) )?
+                }
+            }
+
+            impl AbiArrayType for $name {}
+        )*
+    };
+}
+
+impl_abi_type!(
+    Vec<u8> => Bytes,
+    Address => Address,
+    bool => Bool,
+    String => String,
+    H256 => FixedBytes(32),
+    H512 => FixedBytes(64),
+    U64 => Uint(64),
+    U128 => Uint(128),
+    u16 => Uint(16),
+    u32 => Uint(32),
+    u64 => Uint(64),
+    u128 => Uint(128),
+    i8 => Int(8),
+    i16 => Int(16),
+    i32 => Int(32),
+    i64 => Int(64),
+    i128 => Int(128)
+);
+
+macro_rules! impl_abi_type_tuple {
+    ($num: expr, $( $ty: ident),+) => {
+        impl<$($ty, )+> AbiType for ($($ty,)+) where
+            $(
+                $ty: AbiType,
+            )+
+        {
+            fn param_type() -> ParamType {
+                ParamType::Tuple(
+                    ::std::vec![
+                         $(
+                           $ty::param_type(),
+                        )+
+                    ]
+                )
+            }
+        }
+
+        impl<$($ty, )+> AbiArrayType for ($($ty,)+) where
+            $(
+                $ty: AbiArrayType,
+            )+ {}
+    }
+}
+
+impl_abi_type_tuple!(1, A);
+impl_abi_type_tuple!(2, A, B);
+impl_abi_type_tuple!(3, A, B, C);
+impl_abi_type_tuple!(4, A, B, C, D);
+impl_abi_type_tuple!(5, A, B, C, D, E);
+impl_abi_type_tuple!(6, A, B, C, D, E, F);
+impl_abi_type_tuple!(7, A, B, C, D, E, F, G);
+impl_abi_type_tuple!(8, A, B, C, D, E, F, G, H);
+impl_abi_type_tuple!(9, A, B, C, D, E, F, G, H, I);
+impl_abi_type_tuple!(10, A, B, C, D, E, F, G, H, I, J);
+impl_abi_type_tuple!(11, A, B, C, D, E, F, G, H, I, J, K);
+impl_abi_type_tuple!(12, A, B, C, D, E, F, G, H, I, J, K, L);
+impl_abi_type_tuple!(13, A, B, C, D, E, F, G, H, I, J, K, L, M);
+impl_abi_type_tuple!(14, A, B, C, D, E, F, G, H, I, J, K, L, M, N);
+impl_abi_type_tuple!(15, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O);
+impl_abi_type_tuple!(16, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P);
 
 #[cfg(test)]
 mod tests {
@@ -116,5 +231,39 @@ mod tests {
             let signature = event.abi_signature();
             assert_eq!(signature, *expected);
         }
+    }
+
+    #[test]
+    fn abi_type_works() {
+        assert_eq!(ParamType::Bytes, Vec::<u8>::param_type());
+        assert_eq!(
+            ParamType::Array(Box::new(ParamType::Bytes)),
+            Vec::<Vec<u8>>::param_type()
+        );
+        assert_eq!(
+            ParamType::Array(Box::new(ParamType::Array(Box::new(ParamType::Bytes)))),
+            Vec::<Vec<Vec<u8>>>::param_type()
+        );
+
+        assert_eq!(
+            ParamType::Array(Box::new(ParamType::Uint(16))),
+            Vec::<u16>::param_type()
+        );
+
+        assert_eq!(
+            ParamType::Tuple(vec![ParamType::Bytes, ParamType::Address]),
+            <(Vec<u8>, Address)>::param_type()
+        );
+
+        assert_eq!(ParamType::FixedBytes(32), <[u8; 32]>::param_type());
+        assert_eq!(
+            ParamType::Array(Box::new(ParamType::FixedBytes(32))),
+            Vec::<[u8; 32]>::param_type()
+        );
+
+        assert_eq!(
+            ParamType::FixedArray(Box::new(ParamType::Uint(16)), 32),
+            <[u16; 32]>::param_type()
+        );
     }
 }
