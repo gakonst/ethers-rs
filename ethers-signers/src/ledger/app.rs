@@ -8,7 +8,7 @@ use futures_util::lock::Mutex;
 
 use ethers_core::{
     types::{
-        transaction::eip2718::TypedTransaction, Address, NameOrAddress, Signature, Transaction,
+        transaction::{eip2718::TypedTransaction, eip712::Eip712}, Address, NameOrAddress, Signature, Transaction,
         TransactionRequest, TxHash, H256, U256,
     },
     utils::keccak256,
@@ -28,6 +28,8 @@ pub struct LedgerEthereum {
     pub(crate) chain_id: u64,
     pub(crate) address: Address,
 }
+
+const EIP712_MIN_VERSION: &str = ">=1.6.0";
 
 impl LedgerEthereum {
     /// Instantiate the application by acquiring a lock on the ledger device.
@@ -137,17 +139,29 @@ impl LedgerEthereum {
     }
 
     /// Signs an EIP712 encoded domain separator and message
-    pub async fn sign_typed_struct<S: AsRef<[u8]>>(
-        &self,
-        domain_separator: S,
-        message_hash: S,
-    ) -> Result<Signature, LedgerError> {
-        let domain_separator = domain_separator.as_ref();
-        let message_hash = message_hash.as_ref();
+    pub async fn sign_typed_struct<T>(&self, payload: T) -> Result<Signature, LedgerError> where T: Eip712 {
+        // See comment for v1.6.0 requirement
+        // https://github.com/LedgerHQ/app-ethereum/issues/105#issuecomment-765316999
+        let req = semver::VersionReq::parse(EIP712_MIN_VERSION)?;
+        let version = semver::Version::parse(&self.version().await?)?;
+
+        // Enforce app version is greater than EIP712_MIN_VERSION
+        if !req.matches(&version) {
+            return Err(LedgerError::UnsupportedAppVersion(
+                EIP712_MIN_VERSION.to_string(),
+            ));
+        }
+
+        let domain_separator = payload
+            .domain_separator()
+            .map_err(|e| LedgerError::Eip712Error(e.to_string()))?;
+        let struct_hash = payload
+            .struct_hash()
+            .map_err(|e| LedgerError::Eip712Error(e.to_string()))?;
 
         let mut payload = Self::path_to_bytes(&self.derivation);
-        payload.extend_from_slice(domain_separator);
-        payload.extend_from_slice(message_hash);
+        payload.extend_from_slice(&domain_separator);
+        payload.extend_from_slice(&struct_hash);
 
         self.sign_payload(INS::SIGN_ETH_EIP_712, payload).await
     }
@@ -323,13 +337,8 @@ mod tests {
             out: Address::from([0; 20]),
         };
 
-        let domain_separator = foo_bar
-            .domain_separator()
-            .expect("failed to obtain domain separator");
-        let struct_hash = foo_bar.struct_hash().expect("failed to obtain struct hash");
-
         let sig = ledger
-            .sign_typed_struct(domain_separator, struct_hash)
+            .sign_typed_struct(foo_bar)
             .await
             .expect("failed to sign typed data");
     }
