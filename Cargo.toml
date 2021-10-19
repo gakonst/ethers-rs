@@ -20,6 +20,7 @@ members = [
     "ethers-core",
     "ethers-middleware",
     "ethers-etherscan",
+    "ethers-solc"
 ]
 
 default-members = [
@@ -28,7 +29,8 @@ default-members = [
     "ethers-signers",
     "ethers-core",
     "ethers-middleware",
-    "ethers-etherscan"
+    "ethers-etherscan",
+    "ethers-solc"
 ]
 
 exclude = [

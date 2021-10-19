@@ -1,0 +1,27 @@
+[package]
+name = "ethers-solc"
+version = "0.1.0"
+authors = ["Matthias Seitz <matthias.seitz@outlook.de>", "Georgios Konstantopoulos <me@gakonst.com>"]
+license = "MIT OR Apache-2.0"
+edition = "2018"
+readme = "../README.md"
+documentation = "https://docs.rs/ethers"
+repository = "https://github.com/gakonst/ethers-rs"
+homepage = "https://docs.rs/ethers"
+description = """
+Utilites for working with solc
+"""
+keywords = ["ethereum", "web3", "etherscan", "ethers"]
+
+[dependencies]
+serde_json = "1.0.68"
+serde = { version = "1.0.130", features = ["derive"] }
+eyre = "0.6.5"
+semver = "1.0.4"
+tokio = { version = "1.12.0", default-features = false, features = ["process", "io-util"],  optional = true }
+
+[dev-dependencies]
+tokio = { version = "1.12.0", features = ["process", "rt", "macros"] }
+
+[features]
+async = ["tokio"]
