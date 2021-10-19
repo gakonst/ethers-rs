@@ -8,8 +8,8 @@ use futures_util::lock::Mutex;
 
 use ethers_core::{
     types::{
-        transaction::{eip2718::TypedTransaction, eip712::Eip712}, Address, NameOrAddress, Signature, Transaction,
-        TransactionRequest, TxHash, H256, U256,
+        transaction::{eip2718::TypedTransaction, eip712::Eip712},
+        Address, NameOrAddress, Signature, Transaction, TransactionRequest, TxHash, H256, U256,
     },
     utils::keccak256,
 };
@@ -344,5 +344,7 @@ mod tests {
             .sign_typed_struct(&foo_bar)
             .await
             .expect("failed to sign typed data");
+        let foo_bar_hash = foo_bar.encode_eip712().unwrap();
+        sig.verify(foo_bar_hash, ledger.address).unwrap();
     }
 }
