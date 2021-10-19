@@ -88,7 +88,7 @@ impl<D: Sync + Send + DigestSigner<Sha256Proxy, RecoverableSignature>> Signer fo
 
     async fn sign_typed_data<T: Eip712 + Send + Sync>(
         &self,
-        payload: T,
+        payload: &T,
     ) -> Result<Signature, Self::Error> {
         let encoded = payload
             .encode_eip712()

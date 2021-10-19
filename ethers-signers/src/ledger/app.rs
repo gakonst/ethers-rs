@@ -8,8 +8,8 @@ use futures_util::lock::Mutex;
 
 use ethers_core::{
     types::{
-        transaction::eip2718::TypedTransaction, Address, NameOrAddress, Signature, Transaction,
-        TransactionRequest, TxHash, H256, U256,
+        transaction::{eip2718::TypedTransaction, eip712::Eip712},
+        Address, NameOrAddress, Signature, Transaction, TransactionRequest, TxHash, H256, U256,
     },
     utils::keccak256,
 };
@@ -28,6 +28,8 @@ pub struct LedgerEthereum {
     pub(crate) chain_id: u64,
     pub(crate) address: Address,
 }
+
+const EIP712_MIN_VERSION: &str = ">=1.6.0";
 
 impl LedgerEthereum {
     /// Instantiate the application by acquiring a lock on the ledger device.
@@ -136,7 +138,38 @@ impl LedgerEthereum {
         self.sign_payload(INS::SIGN_PERSONAL_MESSAGE, payload).await
     }
 
-    // Helper function for signing either transaction data or personal messages
+    /// Signs an EIP712 encoded domain separator and message
+    pub async fn sign_typed_struct<T>(&self, payload: &T) -> Result<Signature, LedgerError>
+    where
+        T: Eip712,
+    {
+        // See comment for v1.6.0 requirement
+        // https://github.com/LedgerHQ/app-ethereum/issues/105#issuecomment-765316999
+        let req = semver::VersionReq::parse(EIP712_MIN_VERSION)?;
+        let version = semver::Version::parse(&self.version().await?)?;
+
+        // Enforce app version is greater than EIP712_MIN_VERSION
+        if !req.matches(&version) {
+            return Err(LedgerError::UnsupportedAppVersion(
+                EIP712_MIN_VERSION.to_string(),
+            ));
+        }
+
+        let domain_separator = payload
+            .domain_separator()
+            .map_err(|e| LedgerError::Eip712Error(e.to_string()))?;
+        let struct_hash = payload
+            .struct_hash()
+            .map_err(|e| LedgerError::Eip712Error(e.to_string()))?;
+
+        let mut payload = Self::path_to_bytes(&self.derivation);
+        payload.extend_from_slice(&domain_separator);
+        payload.extend_from_slice(&struct_hash);
+
+        self.sign_payload(INS::SIGN_ETH_EIP_712, payload).await
+    }
+
+    // Helper function for signing either transaction data, personal messages or EIP712 derived structs
     pub async fn sign_payload(
         &self,
         command: INS,
@@ -200,8 +233,29 @@ impl LedgerEthereum {
 mod tests {
     use super::*;
     use crate::Signer;
-    use ethers_core::types::{Address, TransactionRequest};
+    use ethers_contract::EthAbiType;
+    use ethers_core::types::{
+        transaction::eip712::Eip712, Address, TransactionRequest, I256, U256,
+    };
+    use ethers_derive_eip712::*;
     use std::str::FromStr;
+
+    #[derive(Debug, Clone, Eip712, EthAbiType)]
+    #[eip712(
+        name = "Eip712Test",
+        version = "1",
+        chain_id = 1,
+        verifying_contract = "0x0000000000000000000000000000000000000001",
+        salt = "eip712-test-75F0CCte"
+    )]
+    struct FooBar {
+        foo: I256,
+        bar: U256,
+        fizz: Vec<u8>,
+        buzz: [u8; 32],
+        far: String,
+        out: Address,
+    }
 
     #[tokio::test]
     #[ignore]
@@ -268,5 +322,29 @@ mod tests {
         let sig = ledger.sign_message(message).await.unwrap();
         let addr = ledger.get_address().await.unwrap();
         sig.verify(message, addr).unwrap();
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn test_sign_eip712_struct() {
+        let ledger = LedgerEthereum::new(DerivationType::LedgerLive(0), 1u64)
+            .await
+            .unwrap();
+
+        let foo_bar = FooBar {
+            foo: I256::from(10),
+            bar: U256::from(20),
+            fizz: b"fizz".to_vec(),
+            buzz: keccak256("buzz"),
+            far: String::from("space"),
+            out: Address::from([0; 20]),
+        };
+
+        let sig = ledger
+            .sign_typed_struct(&foo_bar)
+            .await
+            .expect("failed to sign typed data");
+        let foo_bar_hash = foo_bar.encode_eip712().unwrap();
+        sig.verify(foo_bar_hash, ledger.address).unwrap();
     }
 }

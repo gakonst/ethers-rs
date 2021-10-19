@@ -27,17 +27,12 @@ impl Signer for LedgerEthereum {
         self.sign_tx(message).await
     }
 
+    /// Signs a EIP712 derived struct
     async fn sign_typed_data<T: Eip712 + Send + Sync>(
         &self,
-        payload: T,
+        payload: &T,
     ) -> Result<Signature, Self::Error> {
-        let hash = payload
-            .encode_eip712()
-            .map_err(|e| Self::Error::Eip712Error(e.to_string()))?;
-
-        let sig = self.sign_message(hash).await?;
-
-        Ok(sig)
+        self.sign_typed_struct(payload).await
     }
 
     /// Returns the signer's Ethereum Address

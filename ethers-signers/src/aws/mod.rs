@@ -256,7 +256,7 @@ impl<'a> super::Signer for AwsSigner<'a> {
 
     async fn sign_typed_data<T: Eip712 + Send + Sync>(
         &self,
-        payload: T,
+        payload: &T,
     ) -> Result<EthSig, Self::Error> {
         let hash = payload
             .encode_eip712()

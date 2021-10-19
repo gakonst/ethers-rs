@@ -99,7 +99,7 @@ pub trait Signer: std::fmt::Debug + Send + Sync {
     /// Payload must implement Eip712 trait.
     async fn sign_typed_data<T: Eip712 + Send + Sync>(
         &self,
-        payload: T,
+        payload: &T,
     ) -> Result<Signature, Self::Error>;
 
     /// Returns the signer's Ethereum Address
