@@ -660,7 +660,7 @@ mod eth_tests {
         };
 
         let sig = wallet
-            .sign_typed_data(foo_bar.clone())
+            .sign_typed_data(&foo_bar)
             .await
             .expect("failed to sign typed data");
 
