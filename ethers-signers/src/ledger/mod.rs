@@ -30,7 +30,7 @@ impl Signer for LedgerEthereum {
     /// Signs a EIP712 derived struct
     async fn sign_typed_data<T: Eip712 + Send + Sync>(
         &self,
-        payload: T,
+        payload: &T,
     ) -> Result<Signature, Self::Error> {
         self.sign_typed_struct(payload).await
     }

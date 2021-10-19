@@ -139,7 +139,10 @@ impl LedgerEthereum {
     }
 
     /// Signs an EIP712 encoded domain separator and message
-    pub async fn sign_typed_struct<T>(&self, payload: T) -> Result<Signature, LedgerError> where T: Eip712 {
+    pub async fn sign_typed_struct<T>(&self, payload: &T) -> Result<Signature, LedgerError>
+    where
+        T: Eip712,
+    {
         // See comment for v1.6.0 requirement
         // https://github.com/LedgerHQ/app-ethereum/issues/105#issuecomment-765316999
         let req = semver::VersionReq::parse(EIP712_MIN_VERSION)?;
@@ -338,7 +341,7 @@ mod tests {
         };
 
         let sig = ledger
-            .sign_typed_struct(foo_bar)
+            .sign_typed_struct(&foo_bar)
             .await
             .expect("failed to sign typed data");
     }
