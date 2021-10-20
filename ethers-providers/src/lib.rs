@@ -230,17 +230,28 @@ pub trait Middleware: Sync + Send + Debug {
             tx.set_to(addr);
         }
 
+        // estimate the gas without the access list
+        let gas = maybe(tx.gas().cloned(), self.estimate_gas(tx)).await?;
+        let mut al_used = false;
+
         // set the access lists
         if let Some(access_list) = tx.access_list() {
             if access_list.0.is_empty() {
                 if let Ok(al_with_gas) = self.create_access_list(tx, block).await {
-                    tx.set_access_list(al_with_gas.access_list);
+                    // only set the access list if the used gas is less than the
+                    // normally estimated gas
+                    if al_with_gas.gas_used < gas {
+                        tx.set_access_list(al_with_gas.access_list);
+                        tx.set_gas(al_with_gas.gas_used);
+                        al_used = true;
+                    }
                 }
             }
         }
 
-        let gas = maybe(tx.gas().cloned(), self.estimate_gas(tx)).await?;
-        tx.set_gas(gas);
+        if !al_used {
+            tx.set_gas(gas);
+        }
 
         match tx {
             TypedTransaction::Eip2930(_) | TypedTransaction::Legacy(_) => {
