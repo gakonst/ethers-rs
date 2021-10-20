@@ -5,6 +5,7 @@ pub mod artifacts;
 pub use artifacts::{CompilerInput, CompilerOutput, EvmVersion};
 
 pub mod cache;
+mod graph;
 
 mod compile;
 pub use compile::Solc;

@@ -1,5 +1,8 @@
 //! Solc artifact types
 
+use std::fs;
+use std::io;
+use std::path::{Path, PathBuf};
 use std::{collections::BTreeMap, fmt, str::FromStr};
 
 use serde::{Deserialize, Serialize};
@@ -8,7 +11,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct CompilerInput {
     pub language: String,
-    pub sources: BTreeMap<String, Source>,
+    pub sources: BTreeMap<PathBuf, Source>,
     pub settings: Settings,
 }
 
@@ -99,6 +102,55 @@ pub struct Metadata {
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct Source {
     pub content: String,
+}
+
+impl Source {
+    /// Reads the file content
+    pub fn read(file: impl AsRef<Path>) -> io::Result<Self> {
+        Ok(Self {
+            content: fs::read_to_string(file.as_ref())?,
+        })
+    }
+
+    /// Reads all files
+    pub fn read_all<T, I>(files: I) -> io::Result<BTreeMap<PathBuf, Source>>
+    where
+        I: Iterator<Item = T>,
+        T: Into<PathBuf>,
+    {
+        files
+            .into_iter()
+            .map(Into::into)
+            .map(|file| Self::read(&file).map(|source| (file, source)))
+            .collect()
+    }
+}
+
+#[cfg(feature = "async")]
+impl Source {
+    /// async version of `Self::read`
+    pub async fn async_read(file: impl AsRef<Path>) -> io::Result<Self> {
+        Ok(Self {
+            content: tokio::fs::read_to_string(file.as_ref()).await?,
+        })
+    }
+
+    /// async version of `Self::read_all`
+    pub async fn async_read_all<T, I>(files: I) -> io::Result<BTreeMap<PathBuf, Source>>
+    where
+        I: Iterator<Item = T>,
+        T: Into<PathBuf>,
+    {
+        futures_util::future::join_all(
+            files
+                .into_iter()
+                .map(Into::into)
+                .map(|file| async { Self::async_read(&file).await.map(|source| (file, source)) }),
+        )
+        .await
+        .into_iter()
+        .collect()
+    }
 }
 
 /// Output type `solc` produces

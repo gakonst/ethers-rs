@@ -13,7 +13,8 @@ pub struct ProjectPathsConfig {
 }
 
 impl ProjectPathsConfig {
-    /// Creates a new config instance which points to the canonicalized root path
+    /// Creates a new config instance which points to the canonicalized root
+    /// path
     pub fn new(root: impl Into<PathBuf>) -> io::Result<Self> {
         let root = std::fs::canonicalize(root.into())?;
         Ok(Self {
