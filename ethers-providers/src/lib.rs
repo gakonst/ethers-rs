@@ -223,13 +223,13 @@ pub trait Middleware: Sync + Send + Debug {
                 if let Some(NameOrAddress::Name(ref ens_name)) = inner.to {
                     let addr = self.resolve_name(ens_name).await?;
                     inner.to = Some(addr.into());
-                    tx_clone.set_to(addr);
                 };
 
                 if inner.from.is_none() {
                     inner.from = self.default_sender();
                 }
 
+                let tx_clone = TypedTransaction::Legacy(inner.clone());
                 let (gas_price, gas) = futures_util::try_join!(
                     maybe(inner.gas_price, self.get_gas_price()),
                     maybe(inner.gas, self.estimate_gas(&tx_clone)),
@@ -245,13 +245,13 @@ pub trait Middleware: Sync + Send + Debug {
                 if let Some(NameOrAddress::Name(ref ens_name)) = inner.tx.to {
                     let addr = self.resolve_name(ens_name).await?;
                     inner.tx.to = Some(addr.into());
-                    tx_clone.set_to(addr);
                 };
 
                 if inner.tx.from.is_none() {
                     inner.tx.from = self.default_sender();
                 }
 
+                let tx_clone = TypedTransaction::Eip2930(inner.clone());
                 let (gas_price, gas) = futures_util::try_join!(
                     maybe(inner.tx.gas_price, self.get_gas_price()),
                     maybe(inner.tx.gas, self.estimate_gas(&tx_clone)),
@@ -267,13 +267,13 @@ pub trait Middleware: Sync + Send + Debug {
                 if let Some(NameOrAddress::Name(ref ens_name)) = inner.to {
                     let addr = self.resolve_name(ens_name).await?;
                     inner.to = Some(addr.into());
-                    tx_clone.set_to(addr);
                 };
 
                 if inner.from.is_none() {
                     inner.from = self.default_sender();
                 }
 
+                let tx_clone = TypedTransaction::Eip1559(inner.clone());
                 let gas = maybe(inner.gas, self.estimate_gas(&tx_clone)).await?;
                 inner.gas = Some(gas);
 
