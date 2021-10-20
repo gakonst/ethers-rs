@@ -1,4 +1,7 @@
-use super::{eip1559::Eip1559TransactionRequest, eip2930::{AccessList, Eip2930TransactionRequest}};
+use super::{
+    eip1559::Eip1559TransactionRequest,
+    eip2930::{AccessList, Eip2930TransactionRequest},
+};
 use crate::{
     types::{Address, Bytes, NameOrAddress, Signature, TransactionRequest, H256, U256, U64},
     utils::keccak256,
@@ -164,7 +167,7 @@ impl TypedTransaction {
 
     pub fn set_access_list(&mut self, access_list: AccessList) {
         match self {
-            Legacy(_) => {},
+            Legacy(_) => {}
             Eip2930(inner) => inner.access_list = access_list,
             Eip1559(inner) => inner.access_list = access_list,
         };
