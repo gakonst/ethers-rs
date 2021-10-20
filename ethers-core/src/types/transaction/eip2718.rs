@@ -119,6 +119,21 @@ impl TypedTransaction {
         };
     }
 
+    pub fn gas_price(&self) -> Option<U256> {
+        match self {
+            Legacy(inner) => inner.gas_price,
+            Eip2930(inner) => inner.tx.gas_price,
+            Eip1559(inner) => {
+                match (inner.max_fee_per_gas, inner.max_priority_fee_per_gas) {
+                    (Some(basefee), Some(prio_fee)) => Some(basefee + prio_fee),
+                    // this also covers the None, None case
+                    (None, prio_fee) => prio_fee,
+                    (basefee, None) => basefee,
+                }
+            }
+        }
+    }
+
     pub fn set_gas_price<T: Into<U256>>(&mut self, gas_price: T) {
         let gas_price = gas_price.into();
         match self {
