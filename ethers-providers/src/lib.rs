@@ -233,8 +233,9 @@ pub trait Middleware: Sync + Send + Debug {
         // set the access lists
         if let Some(access_list) = tx.access_list() {
             if access_list.0.is_empty() {
-                let al_with_gas = self.create_access_list(tx, block).await?;
-                tx.set_access_list(al_with_gas.access_list);
+                if let Ok(al_with_gas) = self.create_access_list(tx, block).await {
+                    tx.set_access_list(al_with_gas.access_list);
+                }
             }
         }
 
