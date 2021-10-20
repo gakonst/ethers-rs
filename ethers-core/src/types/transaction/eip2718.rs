@@ -1,4 +1,4 @@
-use super::{eip1559::Eip1559TransactionRequest, eip2930::Eip2930TransactionRequest};
+use super::{eip1559::Eip1559TransactionRequest, eip2930::{AccessList, Eip2930TransactionRequest}};
 use crate::{
     types::{Address, Bytes, NameOrAddress, Signature, TransactionRequest, H256, U256, U64},
     utils::keccak256,
@@ -152,6 +152,22 @@ impl TypedTransaction {
             Eip2930(inner) => inner.tx.data.as_ref(),
             Eip1559(inner) => inner.data.as_ref(),
         }
+    }
+
+    pub fn access_list(&self) -> Option<&AccessList> {
+        match self {
+            Legacy(_) => None,
+            Eip2930(inner) => Some(&inner.access_list),
+            Eip1559(inner) => Some(&inner.access_list),
+        }
+    }
+
+    pub fn set_access_list(&mut self, access_list: AccessList) {
+        match self {
+            Legacy(_) => {},
+            Eip2930(inner) => inner.access_list = access_list,
+            Eip1559(inner) => inner.access_list = access_list,
+        };
     }
 
     pub fn set_data(&mut self, data: Bytes) {
