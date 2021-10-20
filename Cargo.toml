@@ -60,7 +60,7 @@ legacy = [
 # individual features per sub-crate
 ## core
 setup = ["ethers-core/setup"]
-eip712 = ["ethers-core/eip712"]
+eip712 = ["ethers-contract/eip712", "ethers-core/eip712"]
 ## providers
 ws = ["ethers-providers/ws"]
 ipc = ["ethers-providers/ipc"]
