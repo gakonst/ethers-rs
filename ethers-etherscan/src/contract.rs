@@ -206,9 +206,11 @@ impl Client {
         &self,
         guid: impl AsRef<str>,
     ) -> Result<Response<String>> {
-        let mut map = HashMap::new();
-        map.insert("guid", guid.as_ref());
-        let body = self.create_query("contract", "checkverifystatus", map);
+        let body = self.create_query(
+            "contract",
+            "checkverifystatus",
+            HashMap::from([("guid", guid.as_ref())]),
+        );
         Ok(self.post_form(&body).await?)
     }
 
@@ -226,9 +228,7 @@ impl Client {
     /// # }
     /// ```
     pub async fn contract_abi(&self, address: Address) -> Result<Abi> {
-        let mut map = HashMap::new();
-        map.insert("address", address);
-        let query = self.create_query("contract", "getabi", map);
+        let query = self.create_query("contract", "getabi", HashMap::from([("address", address)]));
         let resp: Response<String> = self.get_json(&query).await?;
         Ok(serde_json::from_str(&resp.result)?)
     }
@@ -247,9 +247,11 @@ impl Client {
     /// # }
     /// ```
     pub async fn contract_source_code(&self, address: Address) -> Result<ContractMetadata> {
-        let mut map = HashMap::new();
-        map.insert("address", address);
-        let query = self.create_query("contract", "getsourcecode", map);
+        let query = self.create_query(
+            "contract",
+            "getsourcecode",
+            HashMap::from([("address", address)]),
+        );
         let response: Response<Vec<Metadata>> = self.get_json(&query).await?;
         Ok(ContractMetadata {
             items: response.result,
