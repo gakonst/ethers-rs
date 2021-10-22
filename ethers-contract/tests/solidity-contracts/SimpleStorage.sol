@@ -29,5 +29,7 @@ contract SimpleStorage {
         lastSender = msg.sender;
     }
 
-    function _hashPuzzle() public {}
+    function _hashPuzzle() public view returns (uint256) {
+        return 100;
+    }
 }
