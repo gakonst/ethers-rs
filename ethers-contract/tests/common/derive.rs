@@ -491,9 +491,17 @@ fn can_derive_ethcall_with_nested_structs() {
 #[test]
 fn can_derive_for_enum() {
     #[derive(Debug, Clone, PartialEq, EthAbiType)]
-    enum ActionChoices { GoLeft, GoRight, GoStraight, SitStill }
+    enum ActionChoices {
+        GoLeft,
+        GoRight,
+        GoStraight,
+        SitStill,
+    }
     assert_tokenizeable::<ActionChoices>();
 
     let token = ActionChoices::GoLeft.into_token();
-    assert_eq!(ActionChoices::GoLeft, ActionChoices::from_token(token).unwrap());
+    assert_eq!(
+        ActionChoices::GoLeft,
+        ActionChoices::from_token(token).unwrap()
+    );
 }
