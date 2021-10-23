@@ -67,8 +67,10 @@ pub fn source_files(root: impl AsRef<Path>) -> walkdir::Result<Vec<PathBuf>> {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashSet;
-    use std::fs::{create_dir_all, File};
+    use std::{
+        collections::HashSet,
+        fs::{create_dir_all, File},
+    };
 
     use tempdir::TempDir;
 

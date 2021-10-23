@@ -1,6 +1,5 @@
 use crate::cache::SOLIDITY_FILES_CACHE_FILENAME;
-use std::io;
-use std::path::PathBuf;
+use std::{io, path::PathBuf};
 
 /// Where to find all files or where to write them
 #[derive(Debug, Clone)]

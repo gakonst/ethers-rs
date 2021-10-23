@@ -1,6 +1,6 @@
 //! Dependency graph for a solidity project
 
-use std::path::{Path, PathBuf};
+use std::path::{PathBuf};
 
 /// Represents a set of files and their dependencies on each other
 #[derive(Debug, Clone)]
@@ -10,7 +10,7 @@ pub struct DependencyGraph {
 
 impl DependencyGraph {
     pub fn new(root: impl Into<PathBuf>) -> eyre::Result<Self> {
-        let root = root.into();
+        let _root = root.into();
 
         todo!()
     }

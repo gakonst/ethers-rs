@@ -18,7 +18,7 @@ pub const SOLIDITY_FILES_CACHE_FILENAME: &str = "solidity-files-cache.json";
 pub struct SolFilesCache {
     #[serde(rename = "_format")]
     pub format: String,
-    pub files: BTreeMap<PathBuf, CachEntry>,
+    pub files: BTreeMap<PathBuf, CacheEntry>,
 }
 
 impl SolFilesCache {
@@ -78,7 +78,7 @@ impl Default for SolFilesCache {
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CachEntry {
+pub struct CacheEntry {
     /// the last modification time of this file
     pub last_modification_date: u64,
     pub content_hash: String,
@@ -89,7 +89,7 @@ pub struct CachEntry {
     pub artifacts: Vec<String>,
 }
 
-impl CachEntry {
+impl CacheEntry {
     /// Returns the time
     pub fn last_modified(&self) -> Duration {
         Duration::from_millis(self.last_modification_date)
