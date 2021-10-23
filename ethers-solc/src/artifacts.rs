@@ -8,10 +8,8 @@ use std::{
     str::FromStr,
 };
 
-use crate::compile::*;
-use crate::utils;
-use serde::de::Visitor;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use crate::{compile::*, utils};
+use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 
 /// Input type `solc` expects
 #[derive(Clone, Debug, Serialize, Deserialize)]

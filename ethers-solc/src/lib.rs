@@ -10,9 +10,7 @@ mod compile;
 pub use compile::Solc;
 
 mod config;
-use crate::artifacts::Source;
-use crate::cache::SolFilesCache;
-use crate::config::ArtifactOutput;
+use crate::{artifacts::Source, cache::SolFilesCache, config::ArtifactOutput};
 pub use config::ProjectPathsConfig;
 
 pub mod utils;
@@ -51,8 +49,6 @@ impl Project {
         let _sources = Source::read_all_from(self.config.sources.as_path())?;
         if self.cached {
             let _cache = if self.config.cache.exists() {
-                
-
                 SolFilesCache::read(&self.config.cache)?
             } else {
                 SolFilesCache::default()

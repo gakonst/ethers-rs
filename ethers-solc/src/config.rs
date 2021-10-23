@@ -1,8 +1,5 @@
-use crate::artifacts::CompactContractRef;
-use crate::cache::SOLIDITY_FILES_CACHE_FILENAME;
-use crate::CompilerOutput;
-use std::fmt;
-use std::{fs, io, path::PathBuf};
+use crate::{artifacts::CompactContractRef, cache::SOLIDITY_FILES_CACHE_FILENAME, CompilerOutput};
+use std::{fmt, fs, io, path::PathBuf};
 
 /// Where to find all files or where to write them
 #[derive(Debug, Clone)]
