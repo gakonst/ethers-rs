@@ -1,4 +1,4 @@
-use crate::CompilerOutput;
+use crate::{CompilerInput, CompilerOutput};
 use semver::Version;
 use serde::{de::DeserializeOwned, Serialize};
 use std::{
@@ -49,8 +49,27 @@ impl Solc {
         Solc(path.into())
     }
 
+    /// Convenience function for compiling all sources under the given path
+    pub fn compile_source<T: Serialize>(
+        &self,
+        path: impl AsRef<Path>,
+    ) -> eyre::Result<CompilerOutput> {
+        self.compile(&CompilerInput::new(path)?)
+    }
+
     /// Run `solc --stand-json` and return the `solc`'s output as
     /// `CompilerOutput`
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # fn main() -> eyre::Result<()> {
+    ///  use ethers_solc::{CompilerInput, Solc};
+    /// let solc = Solc::default();
+    /// let input = CompilerInput::new("./contracts")?;
+    /// let output = solc.compile(&input)?;
+    /// # }
+    /// ```
     pub fn compile<T: Serialize>(&self, input: &T) -> eyre::Result<CompilerOutput> {
         self.compile_as(input)
     }
@@ -90,6 +109,18 @@ impl Solc {
 
 #[cfg(feature = "async")]
 impl Solc {
+    /// Convenience function for compiling all sources under the given path
+    pub async fn async_compile_source<T: Serialize>(
+        &self,
+        path: impl AsRef<Path>,
+    ) -> eyre::Result<CompilerOutput> {
+        use crate::artifacts::Source;
+        self.async_compile(&CompilerInput::with_sources(
+            Source::async_read_all_from(path).await?,
+        ))
+        .await
+    }
+
     /// Run `solc --stand-json` and return the `solc`'s output as
     /// `CompilerOutput`
     pub async fn async_compile<T: Serialize>(&self, input: &T) -> eyre::Result<CompilerOutput> {

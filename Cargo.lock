@@ -1053,6 +1053,7 @@ version = "0.1.0"
 dependencies = [
  "eyre",
  "futures-util",
+ "md-5",
  "once_cell",
  "regex",
  "semver 1.0.4",

@@ -70,6 +70,19 @@ impl SolFilesCache {
     }
 }
 
+#[cfg(feature = "async")]
+impl SolFilesCache {
+    pub async fn async_read(path: impl AsRef<Path>) -> eyre::Result<Self> {
+        let content = tokio::fs::read_to_string(path.as_ref()).await?;
+        Ok(serde_json::from_str(&content)?)
+    }
+
+    pub async fn async_write(&self, path: impl AsRef<Path>) -> eyre::Result<()> {
+        let content = serde_json::to_vec_pretty(self)?;
+        Ok(tokio::fs::write(path.as_ref(), content).await?)
+    }
+}
+
 impl Default for SolFilesCache {
     fn default() -> Self {
         Self::new(HH_FORMAT_VERSION)

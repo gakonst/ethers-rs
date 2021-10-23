@@ -9,6 +9,7 @@ use std::{
 };
 
 use crate::compile::*;
+use crate::utils;
 use serde::de::Visitor;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
@@ -21,6 +22,20 @@ pub struct CompilerInput {
 }
 
 impl CompilerInput {
+    /// Reads all contracts found under the path
+    pub fn new(path: impl AsRef<Path>) -> io::Result<Self> {
+        Source::read_all_from(path.as_ref()).map(Self::with_sources)
+    }
+
+    /// Creates a new Compiler input with default settings and the given sources
+    pub fn with_sources(sources: BTreeMap<PathBuf, Source>) -> Self {
+        Self {
+            language: "Solidity".to_string(),
+            sources,
+            settings: Default::default(),
+        }
+    }
+
     /// Sets the EVM version for compilation
     pub fn evm_version(mut self, version: EvmVersion) -> Self {
         self.settings.evm_version = Some(version);
@@ -36,11 +51,7 @@ impl CompilerInput {
 
 impl Default for CompilerInput {
     fn default() -> Self {
-        Self {
-            language: "Solidity".to_string(),
-            sources: Default::default(),
-            settings: Default::default(),
-        }
+        Self::with_sources(Default::default())
     }
 }
 
@@ -279,10 +290,15 @@ impl Source {
         })
     }
 
+    /// Finds all source files under the given dir path and reads them all
+    pub fn read_all_from(dir: impl AsRef<Path>) -> io::Result<BTreeMap<PathBuf, Source>> {
+        Self::read_all(utils::source_files(dir)?)
+    }
+
     /// Reads all files
     pub fn read_all<T, I>(files: I) -> io::Result<BTreeMap<PathBuf, Source>>
     where
-        I: Iterator<Item = T>,
+        I: IntoIterator<Item = T>,
         T: Into<PathBuf>,
     {
         files
@@ -302,10 +318,17 @@ impl Source {
         })
     }
 
+    /// Finds all source files under the given dir path and reads them all
+    pub async fn async_read_all_from(
+        dir: impl AsRef<Path>,
+    ) -> io::Result<BTreeMap<PathBuf, Source>> {
+        Self::async_read_all(utils::source_files(dir.as_ref())?).await
+    }
+
     /// async version of `Self::read_all`
     pub async fn async_read_all<T, I>(files: I) -> io::Result<BTreeMap<PathBuf, Source>>
     where
-        I: Iterator<Item = T>,
+        I: IntoIterator<Item = T>,
         T: Into<PathBuf>,
     {
         futures_util::future::join_all(
@@ -354,6 +377,77 @@ pub struct Contract {
     /// Ewasm related outputs
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ewasm: Option<Ewasm>,
+}
+
+/// Minimal representation of a contract's abi with bytecode
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+pub struct CompactContract {
+    /// The Ethereum Contract ABI. If empty, it is represented as an empty
+    /// array. See https://docs.soliditylang.org/en/develop/abi-spec.html
+    pub abi: Vec<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bin: Option<String>,
+    #[serde(
+        default,
+        rename = "bin-runtime",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub bin_runtime: Option<String>,
+}
+
+impl From<Contract> for CompactContract {
+    fn from(c: Contract) -> Self {
+        let (bin, bin_runtime) = if let Some(evm) = c.evm {
+            (
+                Some(evm.bytecode.object),
+                evm.deployed_bytecode.bytecode.map(|evm| evm.object),
+            )
+        } else {
+            (None, None)
+        };
+
+        Self {
+            abi: c.abi,
+            bin,
+            bin_runtime,
+        }
+    }
+}
+
+/// Helper type to serialize while borrowing from `Contract`
+#[derive(Clone, Debug, Serialize)]
+pub struct CompactContractRef<'a> {
+    pub abi: &'a [serde_json::Value],
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bin: Option<&'a str>,
+    #[serde(
+        default,
+        rename = "bin-runtime",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub bin_runtime: Option<&'a str>,
+}
+
+impl<'a> From<&'a Contract> for CompactContractRef<'a> {
+    fn from(c: &'a Contract) -> Self {
+        let (bin, bin_runtime) = if let Some(ref evm) = c.evm {
+            (
+                Some(evm.bytecode.object.as_str()),
+                evm.deployed_bytecode
+                    .bytecode
+                    .as_ref()
+                    .map(|evm| evm.object.as_str()),
+            )
+        } else {
+            (None, None)
+        };
+
+        Self {
+            abi: &c.abi,
+            bin,
+            bin_runtime,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
