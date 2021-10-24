@@ -441,6 +441,8 @@ fn can_derive_ethcall() {
         i: I256,
         arr_u8: [u8; 32],
         arr_u16: [u16; 32],
+        nested_arr: [[u8; 32]; 2],
+        double_nested: [[[u8; 32]; 2]; 3],
         v: Vec<u8>,
     }
 
