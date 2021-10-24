@@ -22,7 +22,11 @@ impl Client {
         let mut map = HashMap::new();
         map.insert("txhash", tx_hash.as_ref());
 
-        let query = self.create_query("transaction", "getstatus", map);
+        let query = self.create_query(
+            "transaction",
+            "getstatus",
+            HashMap::from([("txhash", tx_hash.as_ref())]),
+        );
         let response: Response<ContractExecutionStatus> = self.get_json(&query).await?;
 
         if response.result.is_error == "0" {
@@ -36,10 +40,11 @@ impl Client {
 
     /// Returns the status of a transaction execution: `false` for failed and `true` for successful
     pub async fn check_transaction_receipt_status(&self, tx_hash: impl AsRef<str>) -> Result<()> {
-        let mut map = HashMap::new();
-        map.insert("txhash", tx_hash.as_ref());
-
-        let query = self.create_query("transaction", "gettxreceiptstatus", map);
+        let query = self.create_query(
+            "transaction",
+            "gettxreceiptstatus",
+            HashMap::from([("txhash", tx_hash.as_ref())]),
+        );
         let response: Response<TransactionReceiptStatus> = self.get_json(&query).await?;
 
         match response.result.status.as_str() {

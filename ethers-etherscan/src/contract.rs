@@ -206,40 +206,42 @@ impl Client {
         &self,
         guid: impl AsRef<str>,
     ) -> Result<Response<String>> {
-        let mut map = HashMap::new();
-        map.insert("guid", guid.as_ref());
-        let body = self.create_query("contract", "checkverifystatus", map);
+        let body = self.create_query(
+            "contract",
+            "checkverifystatus",
+            HashMap::from([("guid", guid.as_ref())]),
+        );
         Ok(self.post_form(&body).await?)
     }
 
     /// Returns the contract ABI of a verified contract
     ///
     /// ```no_run
-    /// # use ethers_etherscan::{Chain, Client};
+    /// # use ethers_etherscan::Client;
+    /// # use ethers_core::types::Chain;
     ///
     /// # #[tokio::main]
     /// # async fn main() {
-    ///     let client = Client::new(Chain::Mainnet, "API_KEY");
+    ///     let client = Client::new(Chain::Mainnet, "API_KEY").unwrap();
     ///     let abi = client
     ///         .contract_abi("0xBB9bc244D798123fDe783fCc1C72d3Bb8C189413".parse().unwrap())
     ///         .await.unwrap();
     /// # }
     /// ```
     pub async fn contract_abi(&self, address: Address) -> Result<Abi> {
-        let mut map = HashMap::new();
-        map.insert("address", address);
-        let query = self.create_query("contract", "getabi", map);
+        let query = self.create_query("contract", "getabi", HashMap::from([("address", address)]));
         let resp: Response<String> = self.get_json(&query).await?;
         Ok(serde_json::from_str(&resp.result)?)
     }
 
     /// Get Contract Source Code for Verified Contract Source Codes
     /// ```no_run
-    /// # use ethers_etherscan::{Chain, Client};
+    /// # use ethers_etherscan::Client;
+    /// # use ethers_core::types::Chain;
     ///
     /// # #[tokio::main]
     /// # async fn main() {
-    ///     let client = Client::new(Chain::Mainnet, "API_KEY");
+    ///     let client = Client::new(Chain::Mainnet, "API_KEY").unwrap();
     ///     let meta = client
     ///         .contract_source_code("0xBB9bc244D798123fDe783fCc1C72d3Bb8C189413".parse().unwrap())
     ///         .await.unwrap();
@@ -247,9 +249,11 @@ impl Client {
     /// # }
     /// ```
     pub async fn contract_source_code(&self, address: Address) -> Result<ContractMetadata> {
-        let mut map = HashMap::new();
-        map.insert("address", address);
-        let query = self.create_query("contract", "getsourcecode", map);
+        let query = self.create_query(
+            "contract",
+            "getsourcecode",
+            HashMap::from([("address", address)]),
+        );
         let response: Response<Vec<Metadata>> = self.get_json(&query).await?;
         Ok(ContractMetadata {
             items: response.result,
@@ -259,8 +263,8 @@ impl Client {
 
 #[cfg(test)]
 mod tests {
-    use crate::contract::VerifyContract;
-    use crate::{Chain, Client};
+    use crate::{contract::VerifyContract, Client};
+    use ethers_core::types::Chain;
 
     #[tokio::test]
     #[ignore]

@@ -5,15 +5,15 @@ mod errors;
 mod transaction;
 
 use errors::EtherscanError;
-use ethers_core::abi::Address;
+use ethers_core::{abi::Address, types::Chain};
 use reqwest::{header, Url};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
-use std::{borrow::Cow, fmt};
+use std::borrow::Cow;
 
 pub type Result<T> = std::result::Result<T, EtherscanError>;
 
 /// The Etherscan.io API client.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Client {
     /// Client that executes HTTP requests
     client: reqwest::Client,
@@ -25,47 +25,37 @@ pub struct Client {
     etherscan_url: Url,
 }
 
-#[derive(Debug)]
-pub enum Chain {
-    Mainnet,
-    Ropsten,
-    Kovan,
-    Rinkeby,
-    Goerli,
-}
-
-impl fmt::Display for Chain {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        write!(formatter, "{}", format!("{:?}", self).to_lowercase())
-    }
-}
-
 impl Client {
     /// Create a new client with the correct endpoints based on the chain and provided API key
-    pub fn new(chain: Chain, api_key: impl Into<String>) -> Self {
+    pub fn new(chain: Chain, api_key: impl Into<String>) -> Result<Self> {
         let (etherscan_api_url, etherscan_url) = match chain {
             Chain::Mainnet => (
                 Url::parse("https://api.etherscan.io/api"),
                 Url::parse("https://etherscan.io"),
             ),
-            Chain::Ropsten | Chain::Kovan | Chain::Rinkeby | Chain::Goerli => (
-                Url::parse(&format!("https://api-{}.etherscan.io/api", chain)),
-                Url::parse(&format!("https://{}.etherscan.io", chain)),
-            ),
+            Chain::Ropsten | Chain::Kovan | Chain::Rinkeby | Chain::Goerli => {
+                let chain_name = chain.to_string().to_lowercase();
+
+                (
+                    Url::parse(&format!("https://api-{}.etherscan.io/api", chain_name)),
+                    Url::parse(&format!("https://{}.etherscan.io", chain_name)),
+                )
+            }
+            chain => return Err(EtherscanError::ChainNotSupported(chain)),
         };
 
-        Self {
+        Ok(Self {
             client: Default::default(),
             api_key: api_key.into(),
             etherscan_api_url: etherscan_api_url.expect("is valid http"),
             etherscan_url: etherscan_url.expect("is valid http"),
-        }
+        })
     }
 
     /// Create a new client with the correct endpoints based on the chain and API key
     /// from ETHERSCAN_API_KEY environment variable
     pub fn new_from_env(chain: Chain) -> Result<Self> {
-        Ok(Self::new(chain, std::env::var("ETHERSCAN_API_KEY")?))
+        Self::new(chain, std::env::var("ETHERSCAN_API_KEY")?)
     }
 
     pub fn etherscan_api_url(&self) -> &Url {
@@ -156,4 +146,18 @@ struct Query<'a, T: Serialize> {
     action: Cow<'a, str>,
     #[serde(flatten)]
     other: T,
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{Client, EtherscanError};
+    use ethers_core::types::Chain;
+
+    #[test]
+    fn chain_not_supported() {
+        let err = Client::new_from_env(Chain::XDai).unwrap_err();
+
+        assert!(matches!(err, EtherscanError::ChainNotSupported(_)));
+        assert_eq!(err.to_string(), "chain XDai not supported");
+    }
 }
