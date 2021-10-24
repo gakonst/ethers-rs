@@ -222,7 +222,7 @@ impl Client {
     ///
     /// # #[tokio::main]
     /// # async fn main() {
-    ///     let client = Client::new(Chain::Mainnet, "API_KEY")?;
+    ///     let client = Client::new(Chain::Mainnet, "API_KEY").unwrap();
     ///     let abi = client
     ///         .contract_abi("0xBB9bc244D798123fDe783fCc1C72d3Bb8C189413".parse().unwrap())
     ///         .await.unwrap();
@@ -241,7 +241,7 @@ impl Client {
     ///
     /// # #[tokio::main]
     /// # async fn main() {
-    ///     let client = Client::new(Chain::Mainnet, "API_KEY")?;
+    ///     let client = Client::new(Chain::Mainnet, "API_KEY").unwrap();
     ///     let meta = client
     ///         .contract_source_code("0xBB9bc244D798123fDe783fCc1C72d3Bb8C189413".parse().unwrap())
     ///         .await.unwrap();

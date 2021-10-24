@@ -3,8 +3,8 @@ use std::env::VarError;
 
 #[derive(Debug, thiserror::Error)]
 pub enum EtherscanError {
-    #[error("unknown chain {0}")]
-    UnknownChain(Chain),
+    #[error("chain {0} not supported")]
+    ChainNotSupported(Chain),
     #[error("contract execution call failed: {0}")]
     ExecutionFailed(String),
     #[error("tx receipt failed")]

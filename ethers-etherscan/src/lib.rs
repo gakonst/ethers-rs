@@ -42,7 +42,7 @@ impl Client {
                     Url::parse(&format!("https://{}.etherscan.io", chain_name)),
                 )
             }
-            chain => return Err(EtherscanError::UnknownChain(chain)),
+            chain => return Err(EtherscanError::ChainNotSupported(chain)),
         };
 
         Ok(Self {
@@ -155,10 +155,10 @@ mod tests {
     use ethers_core::types::Chain;
 
     #[test]
-    fn unknown_chain() {
+    fn chain_not_supported() {
         let err = Client::new_from_env(Chain::XDai).unwrap_err();
 
-        assert!(matches!(err, EtherscanError::UnknownChain(_)));
-        assert_eq!(err.to_string(), "unknown chain XDai");
+        assert!(matches!(err, EtherscanError::ChainNotSupported(_)));
+        assert_eq!(err.to_string(), "chain XDai not supported");
     }
 }
