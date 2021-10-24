@@ -4,6 +4,7 @@ use ethers_core::{
 };
 use ethers_providers::Middleware;
 
+use ethers_core::types::Chain;
 use std::{collections::HashMap, str::FromStr, sync::Arc};
 
 use crate::{
@@ -22,29 +23,24 @@ pub static ADDRESS_BOOK: Lazy<HashMap<U256, Address>> = Lazy::new(|| {
     }
 
     [
-        // mainnet
         (
-            1.into(),
+            Chain::Mainnet.into(),
             decode_address("eefba1e63905ef1d7acba5a8513c70307c1ce441"),
         ),
-        // rinkeby
         (
-            4.into(),
+            Chain::Rinkeby.into(),
             decode_address("42ad527de7d4e9d9d011ac45b31d8551f8fe9821"),
         ),
-        // goerli
         (
-            5.into(),
+            Chain::Goerli.into(),
             decode_address("77dca2c955b15e9de4dbbcf1246b4b85b651e50e"),
         ),
-        // kovan
         (
-            42.into(),
+            Chain::Kovan.into(),
             decode_address("2cc8688c5f75e365aaeeb4ea8d6a480405a48d2a"),
         ),
-        // xdai
         (
-            100.into(),
+            Chain::XDai.into(),
             decode_address("b5b692a88bdfc81ca69dcb1d924f59f0413a602a"),
         ),
     ]

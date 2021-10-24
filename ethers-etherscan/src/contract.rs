@@ -217,11 +217,12 @@ impl Client {
     /// Returns the contract ABI of a verified contract
     ///
     /// ```no_run
-    /// # use ethers_etherscan::{Chain, Client};
+    /// # use ethers_etherscan::Client;
+    /// # use ethers_core::types::Chain;
     ///
     /// # #[tokio::main]
     /// # async fn main() {
-    ///     let client = Client::new(Chain::Mainnet, "API_KEY");
+    ///     let client = Client::new(Chain::Mainnet, "API_KEY")?;
     ///     let abi = client
     ///         .contract_abi("0xBB9bc244D798123fDe783fCc1C72d3Bb8C189413".parse().unwrap())
     ///         .await.unwrap();
@@ -235,11 +236,12 @@ impl Client {
 
     /// Get Contract Source Code for Verified Contract Source Codes
     /// ```no_run
-    /// # use ethers_etherscan::{Chain, Client};
+    /// # use ethers_etherscan::Client;
+    /// # use ethers_core::types::Chain;
     ///
     /// # #[tokio::main]
     /// # async fn main() {
-    ///     let client = Client::new(Chain::Mainnet, "API_KEY");
+    ///     let client = Client::new(Chain::Mainnet, "API_KEY")?;
     ///     let meta = client
     ///         .contract_source_code("0xBB9bc244D798123fDe783fCc1C72d3Bb8C189413".parse().unwrap())
     ///         .await.unwrap();
@@ -261,8 +263,8 @@ impl Client {
 
 #[cfg(test)]
 mod tests {
-    use crate::contract::VerifyContract;
-    use crate::{Chain, Client};
+    use crate::{contract::VerifyContract, Client};
+    use ethers_core::types::Chain;
 
     #[tokio::test]
     #[ignore]
