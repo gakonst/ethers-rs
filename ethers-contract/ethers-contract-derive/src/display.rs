@@ -78,7 +78,7 @@ pub(crate) fn derive_eth_display_impl(input: DeriveInput) -> Result<TokenStream,
                         quote! {
                            write!(f, "[")?;
                            for (idx, val) in self.#ident.iter().enumerate() {
-                               write!(f, "{}", val)?;
+                               write!(f, "{:?}", val)?;
                                if idx < self.#ident.len() - 1 {
                                    write!(f, ", ")?;
                                }
