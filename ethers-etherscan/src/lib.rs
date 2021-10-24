@@ -5,8 +5,7 @@ mod errors;
 mod transaction;
 
 use errors::EtherscanError;
-use ethers_core::abi::Address;
-use ethers_core::types::Chain;
+use ethers_core::{abi::Address, types::Chain};
 use reqwest::{header, Url};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::borrow::Cow;

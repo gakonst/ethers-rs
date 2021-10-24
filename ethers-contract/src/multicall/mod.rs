@@ -1,10 +1,9 @@
 use ethers_core::{
     abi::{Detokenize, Function, Token},
-    types::{Address, BlockNumber, Bytes, NameOrAddress, TxHash, U256},
+    types::{Address, BlockNumber, Bytes, Chain, NameOrAddress, TxHash, U256},
 };
 use ethers_providers::Middleware;
 
-use ethers_core::types::Chain;
 use std::{collections::HashMap, str::FromStr, sync::Arc};
 
 use crate::{
