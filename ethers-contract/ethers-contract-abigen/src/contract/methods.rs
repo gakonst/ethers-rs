@@ -123,7 +123,7 @@ impl Context {
         }
 
          impl  #ethers_contract::AbiEncode for #enum_name {
-            fn encode(self) -> Result<#ethers_core::types::Bytes, #ethers_contract::AbiError> {
+            fn encode(self) -> Vec<u8> {
                 match self {
                     #(
                         #enum_name::#variant_names(element) => element.encode()

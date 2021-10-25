@@ -31,16 +31,15 @@ pub trait EthCall: Tokenizable + AbiDecode + Send + Sync {
 }
 
 impl<T: EthCall> AbiEncode for T {
-    fn encode(self) -> Result<Bytes, AbiError> {
+    fn encode(self) -> Vec<u8> {
         let tokens = self.into_tokens();
         let selector = Self::selector();
         let encoded = ethers_core::abi::encode(&tokens);
-        let encoded: Vec<_> = selector
+        selector
             .iter()
             .copied()
             .chain(encoded.into_iter())
-            .collect();
-        Ok(encoded.into())
+            .collect()
     }
 }
 
