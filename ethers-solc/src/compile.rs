@@ -63,11 +63,12 @@ impl Solc {
     /// # Example
     ///
     /// ```no_run
-    /// # fn main() -> eyre::Result<()> {
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     ///  use ethers_solc::{CompilerInput, Solc};
     /// let solc = Solc::default();
     /// let input = CompilerInput::new("./contracts")?;
     /// let output = solc.compile(&input)?;
+    /// # Ok(())
     /// # }
     /// ```
     pub fn compile<T: Serialize>(&self, input: &T) -> eyre::Result<CompilerOutput> {

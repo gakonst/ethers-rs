@@ -14,6 +14,7 @@ use crate::{artifacts::Source, cache::SolFilesCache, config::ArtifactOutput};
 pub use config::ProjectPathsConfig;
 
 pub mod utils;
+pub mod error;
 
 /// Handles contract compiling
 #[derive(Debug)]
