@@ -1,4 +1,5 @@
 //! Support for compiling contracts
+use crate::error::Result;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::BTreeMap,
@@ -30,13 +31,13 @@ impl SolFilesCache {
     }
 
     /// Reads the cache json file from the given path
-    pub fn read(path: impl AsRef<Path>) -> eyre::Result<Self> {
+    pub fn read(path: impl AsRef<Path>) -> Result<Self> {
         let file = fs::File::open(path.as_ref())?;
         Ok(serde_json::from_reader(file)?)
     }
 
     /// Write the cache to json file
-    pub fn write(&self, path: impl AsRef<Path>) -> eyre::Result<()> {
+    pub fn write(&self, path: impl AsRef<Path>) -> Result<()> {
         let file = fs::File::create(path.as_ref())?;
         Ok(serde_json::to_writer_pretty(file, self)?)
     }
@@ -72,12 +73,12 @@ impl SolFilesCache {
 
 #[cfg(feature = "async")]
 impl SolFilesCache {
-    pub async fn async_read(path: impl AsRef<Path>) -> eyre::Result<Self> {
+    pub async fn async_read(path: impl AsRef<Path>) -> Result<Self> {
         let content = tokio::fs::read_to_string(path.as_ref()).await?;
         Ok(serde_json::from_str(&content)?)
     }
 
-    pub async fn async_write(&self, path: impl AsRef<Path>) -> eyre::Result<()> {
+    pub async fn async_write(&self, path: impl AsRef<Path>) -> Result<()> {
         let content = serde_json::to_vec_pretty(self)?;
         Ok(tokio::fs::write(path.as_ref(), content).await?)
     }

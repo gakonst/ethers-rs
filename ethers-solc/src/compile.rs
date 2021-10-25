@@ -1,4 +1,7 @@
-use crate::{CompilerInput, CompilerOutput};
+use crate::{
+    error::{Result, SolcError},
+    CompilerInput, CompilerOutput,
+};
 use semver::Version;
 use serde::{de::DeserializeOwned, Serialize};
 use std::{
@@ -50,10 +53,7 @@ impl Solc {
     }
 
     /// Convenience function for compiling all sources under the given path
-    pub fn compile_source<T: Serialize>(
-        &self,
-        path: impl AsRef<Path>,
-    ) -> eyre::Result<CompilerOutput> {
+    pub fn compile_source<T: Serialize>(&self, path: impl AsRef<Path>) -> Result<CompilerOutput> {
         self.compile(&CompilerInput::new(path)?)
     }
 
@@ -71,18 +71,18 @@ impl Solc {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn compile<T: Serialize>(&self, input: &T) -> eyre::Result<CompilerOutput> {
+    pub fn compile<T: Serialize>(&self, input: &T) -> Result<CompilerOutput> {
         self.compile_as(input)
     }
 
     /// Run `solc --stand-json` and return the `solc`'s output as the given json
     /// output
-    pub fn compile_as<T: Serialize, D: DeserializeOwned>(&self, input: &T) -> eyre::Result<D> {
+    pub fn compile_as<T: Serialize, D: DeserializeOwned>(&self, input: &T) -> Result<D> {
         let output = self.compile_output(input)?;
         Ok(serde_json::from_slice(&output)?)
     }
 
-    pub fn compile_output<T: Serialize>(&self, input: &T) -> eyre::Result<Vec<u8>> {
+    pub fn compile_output<T: Serialize>(&self, input: &T) -> Result<Vec<u8>> {
         let mut child = Command::new(&self.0)
             .arg("--standard-json")
             .stdin(Stdio::piped())
@@ -96,7 +96,7 @@ impl Solc {
     }
 
     /// Returns the version from the configured `solc`
-    pub fn version(&self) -> eyre::Result<Version> {
+    pub fn version(&self) -> Result<Version> {
         version_from_output(
             Command::new(&self.0)
                 .arg("--version")
@@ -114,7 +114,7 @@ impl Solc {
     pub async fn async_compile_source<T: Serialize>(
         &self,
         path: impl AsRef<Path>,
-    ) -> eyre::Result<CompilerOutput> {
+    ) -> Result<CompilerOutput> {
         use crate::artifacts::Source;
         self.async_compile(&CompilerInput::with_sources(
             Source::async_read_all_from(path).await?,
@@ -124,7 +124,7 @@ impl Solc {
 
     /// Run `solc --stand-json` and return the `solc`'s output as
     /// `CompilerOutput`
-    pub async fn async_compile<T: Serialize>(&self, input: &T) -> eyre::Result<CompilerOutput> {
+    pub async fn async_compile<T: Serialize>(&self, input: &T) -> Result<CompilerOutput> {
         self.async_compile_as(input).await
     }
 
@@ -133,12 +133,12 @@ impl Solc {
     pub async fn async_compile_as<T: Serialize, D: DeserializeOwned>(
         &self,
         input: &T,
-    ) -> eyre::Result<D> {
+    ) -> Result<D> {
         let output = self.async_compile_output(input).await?;
         Ok(serde_json::from_slice(&output)?)
     }
 
-    pub async fn async_compile_output<T: Serialize>(&self, input: &T) -> eyre::Result<Vec<u8>> {
+    pub async fn async_compile_output<T: Serialize>(&self, input: &T) -> Result<Vec<u8>> {
         use tokio::io::AsyncWriteExt;
         let content = serde_json::to_vec(input)?;
         let mut child = tokio::process::Command::new(&self.0)
@@ -153,7 +153,7 @@ impl Solc {
         compile_output(child.wait_with_output().await?)
     }
 
-    pub async fn async_version(&self) -> eyre::Result<Version> {
+    pub async fn async_version(&self) -> Result<Version> {
         version_from_output(
             tokio::process::Command::new(&self.0)
                 .arg("--version")
@@ -167,27 +167,28 @@ impl Solc {
     }
 }
 
-fn compile_output(output: Output) -> eyre::Result<Vec<u8>> {
+fn compile_output(output: Output) -> Result<Vec<u8>> {
     if output.status.success() {
         Ok(output.stdout)
     } else {
-        let err = String::from_utf8_lossy(&output.stderr).to_string();
-        eyre::bail!(err)
+        Err(SolcError::solc(
+            String::from_utf8_lossy(&output.stderr).to_string(),
+        ))
     }
 }
 
-fn version_from_output(output: Output) -> eyre::Result<Version> {
+fn version_from_output(output: Output) -> Result<Version> {
     if output.status.success() {
         let version = output
             .stdout
             .lines()
             .last()
-            .ok_or_else(|| eyre::eyre!("version not found in solc output"))?
-            .map_err(|err| eyre::eyre!(err))?;
+            .ok_or_else(|| SolcError::solc("version not found in solc output"))??;
         Ok(Version::from_str(version.trim_start_matches("Version: "))?)
     } else {
-        let err = String::from_utf8_lossy(&output.stderr).to_string();
-        eyre::bail!(err)
+        Err(SolcError::solc(
+            String::from_utf8_lossy(&output.stderr).to_string(),
+        ))
     }
 }
 

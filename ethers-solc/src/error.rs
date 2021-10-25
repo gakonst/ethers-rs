@@ -17,3 +17,9 @@ pub enum SolcError {
     #[error(transparent)]
     Io(#[from] std::io::Error),
 }
+
+impl SolcError {
+    pub(crate) fn solc(msg: impl Into<String>) -> Self {
+        SolcError::SolcError(msg.into())
+    }
+}

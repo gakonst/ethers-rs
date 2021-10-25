@@ -13,8 +13,9 @@ mod config;
 use crate::{artifacts::Source, cache::SolFilesCache, config::ArtifactOutput};
 pub use config::ProjectPathsConfig;
 
-pub mod utils;
 pub mod error;
+pub mod utils;
+use error::Result;
 
 /// Handles contract compiling
 #[derive(Debug)]
@@ -46,7 +47,7 @@ impl Project {
         self
     }
 
-    pub fn compile(&self) -> eyre::Result<()> {
+    pub fn compile(&self) -> Result<()> {
         let _sources = Source::read_all_from(self.config.sources.as_path())?;
         if self.cached {
             let _cache = if self.config.cache.exists() {

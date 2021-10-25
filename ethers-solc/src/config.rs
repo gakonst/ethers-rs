@@ -1,4 +1,7 @@
-use crate::{artifacts::CompactContractRef, cache::SOLIDITY_FILES_CACHE_FILENAME, CompilerOutput};
+use crate::{
+    artifacts::CompactContractRef, cache::SOLIDITY_FILES_CACHE_FILENAME, error::Result,
+    CompilerOutput,
+};
 use std::{fmt, fs, io, path::PathBuf};
 
 /// Where to find all files or where to write them
@@ -45,16 +48,12 @@ pub enum ArtifactOutput {
     /// Hardhat style artifacts
     Hardhat,
     /// Custom output handler
-    Custom(Box<dyn Fn(&CompilerOutput, &ProjectPathsConfig) -> eyre::Result<()>>),
+    Custom(Box<dyn Fn(&CompilerOutput, &ProjectPathsConfig) -> Result<()>>),
 }
 
 impl ArtifactOutput {
     /// Is expected to handle the output and where to store it
-    pub fn on_output(
-        &self,
-        output: &CompilerOutput,
-        layout: &ProjectPathsConfig,
-    ) -> eyre::Result<()> {
+    pub fn on_output(&self, output: &CompilerOutput, layout: &ProjectPathsConfig) -> Result<()> {
         match self {
             ArtifactOutput::MinimalCombined => {
                 for contracts in output.contracts.values() {
