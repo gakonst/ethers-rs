@@ -17,7 +17,7 @@ pub use error::ParseError;
 mod human_readable;
 pub use human_readable::{parse as parse_abi, parse_str as parse_abi_str, AbiParser};
 
-use crate::types::{H256, H512, U128, U64};
+use crate::types::{H256, H512, U128, U256, U64};
 
 /// Extension trait for `ethabi::Function`.
 pub trait FunctionExt {
@@ -127,6 +127,7 @@ impl_abi_type!(
     H512 => FixedBytes(64),
     U64 => Uint(64),
     U128 => Uint(128),
+    U256 => Uint(256),
     u16 => Uint(16),
     u32 => Uint(32),
     u64 => Uint(64),
