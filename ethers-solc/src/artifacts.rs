@@ -346,7 +346,9 @@ impl Source {
 pub struct CompilerOutput {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub errors: Vec<Error>,
+    #[serde(default)]
     pub sources: BTreeMap<String, SourceFile>,
+    #[serde(default)]
     pub contracts: BTreeMap<String, BTreeMap<String, Contract>>,
 }
 
