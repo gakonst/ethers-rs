@@ -1,7 +1,7 @@
 //! Bindings for [etherscan.io web api](https://docs.etherscan.io/)
 
-mod contract;
-mod errors;
+pub mod contract;
+pub mod errors;
 mod transaction;
 
 use errors::EtherscanError;
