@@ -184,7 +184,12 @@ fn version_from_output(output: Output) -> Result<Version> {
             .lines()
             .last()
             .ok_or_else(|| SolcError::solc("version not found in solc output"))??;
-        Ok(Version::from_str(version.trim_start_matches("Version: "))?)
+        // NOTE: semver doesn't like `+` in g++ in build metadata which is invalid semver
+        Ok(Version::from_str(
+            &version
+                .trim_start_matches("Version: ")
+                .replace(".g++", ".gcc"),
+        )?)
     } else {
         Err(SolcError::solc(
             String::from_utf8_lossy(&output.stderr).to_string(),
@@ -212,6 +217,11 @@ mod tests {
     #[test]
     fn solc_version_works() {
         solc().version().unwrap();
+    }
+
+    #[test]
+    fn can_parse_version_metadata() {
+        let version = Version::from_str("0.6.6+commit.6c089d02.Linux.gcc").unwrap();
     }
 
     #[cfg(feature = "async")]
