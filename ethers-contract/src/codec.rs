@@ -35,6 +35,7 @@ macro_rules! impl_abi_codec {
     };
 }
 
+// TODO add Vec<u8>
 impl_abi_codec!(
     Address, bool, String, H256, U128, U256, u8, u16, u32, u64, u128, i8, i16, i32, i64, i128
 );
@@ -46,6 +47,15 @@ impl<T: TokenizableItem + Clone, const N: usize> AbiEncode for [T; N] {
     }
 }
 
+// TODO this must be moved to the same crate as AbiType
+// impl<const N: usize> AbiDecode for [u8; N]
+// {
+//     fn decode(bytes: impl AsRef<[u8]>) -> Result<Self, AbiError> {
+//         let tokens = ethers_core::abi::decode(&[Self::param_type()], bytes.as_ref())?;
+//         Ok(<Self as Detokenize>::from_tokens(tokens)?)
+//     }
+// }
+
 impl<T, const N: usize> AbiDecode for [T; N]
 where
     T: TokenizableItem + AbiArrayType + Clone,
@@ -56,10 +66,10 @@ where
     }
 }
 
-impl<T: TokenizableItem> AbiEncode for Vec<T> {
+impl<T: TokenizableItem + AbiArrayType> AbiEncode for Vec<T> {
     fn encode(self) -> Vec<u8> {
         let token = self.into_token();
-        ethers_core::abi::encode(&[token]).into()
+        ethers_core::abi::encode(&[token])
     }
 }
 

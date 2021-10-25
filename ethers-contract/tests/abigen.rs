@@ -283,7 +283,7 @@ async fn can_handle_underscore_functions() {
 
     // launcht the network & connect to it
     let ganache = ethers_core::utils::Ganache::new().spawn();
-    let from = ganache.addresses()[0].clone();
+    let from = ganache.addresses()[0];
     let provider = Provider::try_from(ganache.endpoint())
         .unwrap()
         .with_sender(from)
