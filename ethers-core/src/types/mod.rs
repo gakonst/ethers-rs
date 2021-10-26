@@ -48,5 +48,9 @@ pub use txpool::*;
 mod trace;
 pub use trace::*;
 
+mod chain;
+pub use chain::*;
+
 mod proof;
+
 pub use proof::*;

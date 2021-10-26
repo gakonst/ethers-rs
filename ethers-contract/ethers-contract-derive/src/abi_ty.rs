@@ -1,7 +1,7 @@
 //! Helper functions for deriving `EthAbiType`
 
 use ethers_contract_abigen::ethers_core_crate;
-use proc_macro2::{Ident, TokenStream};
+use proc_macro2::{Ident, Literal, TokenStream};
 use quote::{quote, quote_spanned};
 use syn::spanned::Spanned as _;
 use syn::{parse::Error, Data, DeriveInput, Fields, Variant};
@@ -198,6 +198,12 @@ fn tokenize_unit_type(name: &Ident) -> TokenStream {
     }
 }
 
+/// Derive for an enum
+///
+/// An enum can be a [solidity enum](https://docs.soliditylang.org/en/v0.5.3/types.html#enums) or a
+/// bundled set of different types.
+///
+/// Decoding works like untagged decoding
 fn tokenize_enum<'a>(
     enum_name: &Ident,
     variants: impl Iterator<Item = &'a Variant> + 'a,
@@ -206,15 +212,24 @@ fn tokenize_enum<'a>(
 
     let mut into_tokens = TokenStream::new();
     let mut from_tokens = TokenStream::new();
-    for variant in variants {
+    for (idx, variant) in variants.into_iter().enumerate() {
+        let var_ident = &variant.ident;
         if variant.fields.len() > 1 {
             return Err(Error::new(
                 variant.span(),
                 "EthAbiType cannot be derived for enum variants with multiple fields",
             ));
-        }
-        let var_ident = &variant.ident;
-        if let Some(field) = variant.fields.iter().next() {
+        } else if variant.fields.is_empty() {
+            let value = Literal::u8_unsuffixed(idx as u8);
+            from_tokens.extend(quote! {
+                 if let Ok(#value) = u8::from_token(token.clone()) {
+                    return Ok(#enum_name::#var_ident)
+                }
+            });
+            into_tokens.extend(quote! {
+                 #enum_name::#var_ident => #value.into_token(),
+            });
+        } else if let Some(field) = variant.fields.iter().next() {
             let ty = &field.ty;
             from_tokens.extend(quote! {
                 if let Ok(decoded) = #ty::from_token(token.clone()) {
@@ -226,8 +241,8 @@ fn tokenize_enum<'a>(
             });
         } else {
             into_tokens.extend(quote! {
-                 #enum_name::#var_ident(element) => # ethers_core::abi::Token::Tuple(::std::vec::Vec::new()),
-            });
+             #enum_name::#var_ident(element) => # ethers_core::abi::Token::Tuple(::std::vec::Vec::new()),
+        });
         }
     }
 

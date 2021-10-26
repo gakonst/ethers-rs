@@ -1,0 +1,1 @@
+{"language":"Solidity","sources":{"A.sol":{"content":"pragma sol"}},"settings":{"evmVersion":"byzantium","metadata":{"useLiteralContent":true},"optimizer":{"runs":200,"enabled":false},"outputSelection":{"*":{"*":["evm.bytecode.object","abi"],"":["ast"]}}}}
