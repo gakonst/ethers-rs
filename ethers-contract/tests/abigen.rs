@@ -1,7 +1,7 @@
 #![cfg(feature = "abigen")]
 //! Test cases to validate the `abigen!` macro
-use ethers_contract::{abigen, AbiDecode, AbiEncode, EthEvent};
-use ethers_core::abi::{Address, Tokenizable};
+use ethers_contract::{abigen, EthEvent};
+use ethers_core::abi::{AbiDecode, AbiEncode, Address, Tokenizable};
 use ethers_core::types::{transaction::eip2718::TypedTransaction, Eip1559TransactionRequest, U256};
 use ethers_core::utils::Solc;
 use ethers_providers::Provider;
@@ -183,18 +183,18 @@ fn can_gen_human_readable_with_structs() {
         addr: Address::random(),
     };
     let encoded_call = contract.encode("bar", (call.x, call.y, call.addr)).unwrap();
-    assert_eq!(encoded_call, call.clone().encode().unwrap());
+    assert_eq!(encoded_call, call.clone().encode().into());
     let decoded_call = BarCall::decode(encoded_call.as_ref()).unwrap();
     assert_eq!(call, decoded_call);
 
     let contract_call = SimpleContractCalls::Bar(call);
     let decoded_enum = SimpleContractCalls::decode(encoded_call.as_ref()).unwrap();
     assert_eq!(contract_call, decoded_enum);
-    assert_eq!(encoded_call, contract_call.encode().unwrap());
+    assert_eq!(encoded_call, contract_call.encode().into());
 
     let call = YeetCall(1u64.into(), 0u64.into(), Address::zero());
     let encoded_call = contract.encode("yeet", (call.0, call.1, call.2)).unwrap();
-    assert_eq!(encoded_call, call.clone().encode().unwrap());
+    assert_eq!(encoded_call, call.clone().encode().into());
     let decoded_call = YeetCall::decode(encoded_call.as_ref()).unwrap();
     assert_eq!(call, decoded_call);
 
@@ -202,7 +202,7 @@ fn can_gen_human_readable_with_structs() {
     let decoded_enum = SimpleContractCalls::decode(encoded_call.as_ref()).unwrap();
     assert_eq!(contract_call, decoded_enum);
     assert_eq!(contract_call, call.into());
-    assert_eq!(encoded_call, contract_call.encode().unwrap());
+    assert_eq!(encoded_call, contract_call.encode().into());
 }
 
 #[test]
@@ -227,14 +227,14 @@ fn can_handle_overloaded_functions() {
     let call = GetValueCall;
 
     let encoded_call = contract.encode("getValue", ()).unwrap();
-    assert_eq!(encoded_call, call.clone().encode().unwrap());
+    assert_eq!(encoded_call, call.clone().encode().into());
     let decoded_call = GetValueCall::decode(encoded_call.as_ref()).unwrap();
     assert_eq!(call, decoded_call);
 
     let contract_call = SimpleContractCalls::GetValue(call);
     let decoded_enum = SimpleContractCalls::decode(encoded_call.as_ref()).unwrap();
     assert_eq!(contract_call, decoded_enum);
-    assert_eq!(encoded_call, contract_call.encode().unwrap());
+    assert_eq!(encoded_call, contract_call.encode().into());
 
     let call = GetValueWithOtherValueCall {
         other_value: 420u64.into(),
@@ -243,14 +243,14 @@ fn can_handle_overloaded_functions() {
     let encoded_call = contract
         .encode_with_selector([15, 244, 201, 22], call.other_value)
         .unwrap();
-    assert_eq!(encoded_call, call.clone().encode().unwrap());
+    assert_eq!(encoded_call, call.clone().encode().into());
     let decoded_call = GetValueWithOtherValueCall::decode(encoded_call.as_ref()).unwrap();
     assert_eq!(call, decoded_call);
 
     let contract_call = SimpleContractCalls::GetValueWithOtherValue(call);
     let decoded_enum = SimpleContractCalls::decode(encoded_call.as_ref()).unwrap();
     assert_eq!(contract_call, decoded_enum);
-    assert_eq!(encoded_call, contract_call.encode().unwrap());
+    assert_eq!(encoded_call, contract_call.encode().into());
 
     let call = GetValueWithOtherValueAndAddrCall {
         other_value: 420u64.into(),
@@ -266,7 +266,7 @@ fn can_handle_overloaded_functions() {
     let contract_call = SimpleContractCalls::GetValueWithOtherValueAndAddr(call);
     let decoded_enum = SimpleContractCalls::decode(encoded_call.as_ref()).unwrap();
     assert_eq!(contract_call, decoded_enum);
-    assert_eq!(encoded_call, contract_call.encode().unwrap());
+    assert_eq!(encoded_call, contract_call.encode().into());
 }
 
 #[tokio::test]
@@ -283,7 +283,7 @@ async fn can_handle_underscore_functions() {
 
     // launcht the network & connect to it
     let ganache = ethers_core::utils::Ganache::new().spawn();
-    let from = ganache.addresses()[0].clone();
+    let from = ganache.addresses()[0];
     let provider = Provider::try_from(ganache.endpoint())
         .unwrap()
         .with_sender(from)
@@ -330,7 +330,7 @@ async fn can_handle_underscore_functions() {
     // Manual call construction
     use ethers_providers::Middleware;
     // TODO: How do we handle underscores for calls here?
-    let data = simplestorage_mod::HashPuzzleCall.encode().unwrap();
+    let data = simplestorage_mod::HashPuzzleCall.encode();
     let tx = Eip1559TransactionRequest::new().data(data).to(addr);
     let tx = TypedTransaction::Eip1559(tx);
     let res5 = client.call(&tx, None).await.unwrap();

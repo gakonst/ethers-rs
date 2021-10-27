@@ -111,10 +111,10 @@ impl Context {
                 #(#variant_names(#struct_names)),*
             }
 
-        impl  #ethers_contract::AbiDecode for #enum_name {
-            fn decode(data: impl AsRef<[u8]>) -> Result<Self, #ethers_contract::AbiError> {
+        impl  #ethers_core::abi::AbiDecode for #enum_name {
+            fn decode(data: impl AsRef<[u8]>) -> Result<Self, #ethers_core::abi::AbiError> {
                  #(
-                    if let Ok(decoded) = <#struct_names as #ethers_contract::AbiDecode>::decode(data.as_ref()) {
+                    if let Ok(decoded) = <#struct_names as #ethers_core::abi::AbiDecode>::decode(data.as_ref()) {
                         return Ok(#enum_name::#variant_names(decoded))
                     }
                 )*
@@ -122,8 +122,8 @@ impl Context {
             }
         }
 
-         impl  #ethers_contract::AbiEncode for #enum_name {
-            fn encode(self) -> Result<#ethers_core::types::Bytes, #ethers_contract::AbiError> {
+         impl  #ethers_core::abi::AbiEncode for #enum_name {
+            fn encode(self) -> Vec<u8> {
                 match self {
                     #(
                         #enum_name::#variant_names(element) => element.encode()

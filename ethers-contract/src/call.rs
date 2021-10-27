@@ -1,23 +1,20 @@
 use super::base::{decode_function_data, AbiError};
 use ethers_core::{
-    abi::{Detokenize, Function, InvalidOutputType},
+    abi::{AbiDecode, AbiEncode, Detokenize, Function, InvalidOutputType, Tokenizable},
     types::{
-        transaction::eip2718::TypedTransaction, Address, BlockId, Bytes, TransactionRequest, U256,
+        transaction::eip2718::TypedTransaction, Address, BlockId, Bytes, Selector,
+        TransactionRequest, U256,
     },
+    utils::id,
 };
 use ethers_providers::{Middleware, PendingTransaction, ProviderError};
 
-use std::borrow::Cow;
-use std::{fmt::Debug, marker::PhantomData, sync::Arc};
+use std::{borrow::Cow, fmt::Debug, marker::PhantomData, sync::Arc};
 
-use crate::{AbiDecode, AbiEncode};
-use ethers_core::abi::{Tokenizable, Tokenize};
-use ethers_core::types::Selector;
-use ethers_core::utils::id;
 use thiserror::Error as ThisError;
 
 /// A helper trait for types that represent all call input parameters of a specific function
-pub trait EthCall: Tokenizable + AbiDecode + Send + Sync {
+pub trait EthCall: Tokenizable + AbiDecode + AbiEncode + Send + Sync {
     /// The name of the function
     fn function_name() -> Cow<'static, str>;
 
@@ -27,20 +24,6 @@ pub trait EthCall: Tokenizable + AbiDecode + Send + Sync {
     /// The selector of the function
     fn selector() -> Selector {
         id(Self::abi_signature())
-    }
-}
-
-impl<T: EthCall> AbiEncode for T {
-    fn encode(self) -> Result<Bytes, AbiError> {
-        let tokens = self.into_tokens();
-        let selector = Self::selector();
-        let encoded = ethers_core::abi::encode(&tokens);
-        let encoded: Vec<_> = selector
-            .iter()
-            .copied()
-            .chain(encoded.into_iter())
-            .collect();
-        Ok(encoded.into())
     }
 }
 

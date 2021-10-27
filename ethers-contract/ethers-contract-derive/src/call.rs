@@ -95,14 +95,27 @@ pub(crate) fn derive_eth_call_impl(input: DeriveInput) -> TokenStream {
             fn abi_signature() -> ::std::borrow::Cow<'static, str> {
                 #abi.into()
             }
-
         }
 
-        impl  #contract_crate::AbiDecode for #name {
-            fn decode(bytes: impl AsRef<[u8]>) -> Result<Self, #contract_crate::AbiError> {
+        impl  #core_crate::abi::AbiDecode for #name {
+            fn decode(bytes: impl AsRef<[u8]>) -> Result<Self, #core_crate::abi::AbiError> {
                 #decode_impl
             }
         }
+
+        impl #core_crate::abi::AbiEncode for #name {
+            fn encode(self) -> ::std::vec::Vec<u8> {
+                let tokens =  #core_crate::abi::Tokenize::into_tokens(self);
+                let selector = <Self as #contract_crate::EthCall>::selector();
+                let encoded = #core_crate::abi::encode(&tokens);
+                selector
+                    .iter()
+                    .copied()
+                    .chain(encoded.into_iter())
+                    .collect()
+            }
+        }
+
     };
     let tokenize_impl = abi_ty::derive_tokenizeable_impl(&input);
 
