@@ -356,18 +356,17 @@ impl<const N: usize> Tokenizable for [u8; N] {
                         "Expected `FixedBytes({})`, got FixedBytes({})",
                         N,
                         bytes.len()
-                    )));
+                    )))
                 }
 
                 let mut arr = [0; N];
                 arr.copy_from_slice(&bytes);
                 Ok(arr)
             }
-            other => Err(InvalidOutputType(format!(
-                "Expected `FixedBytes({})`, got {:?}",
-                N, other
-            ))
-            .into()),
+            other => {
+                Err(InvalidOutputType(format!("Expected `FixedBytes({})`, got {:?}", N, other))
+                    .into())
+            }
         }
     }
 
@@ -387,7 +386,7 @@ impl<T: TokenizableItem + Clone, const N: usize> Tokenizable for [T; N] {
                         "Expected `FixedArray({})`, got FixedArray({})",
                         N,
                         tokens.len()
-                    )));
+                    )))
                 }
 
                 let mut arr = ArrayVec::<T, N>::new();
@@ -401,21 +400,15 @@ impl<T: TokenizableItem + Clone, const N: usize> Tokenizable for [T; N] {
                     Err(_) => panic!("All elements inserted so the array is full; qed"),
                 }
             }
-            other => Err(InvalidOutputType(format!(
-                "Expected `FixedArray({})`, got {:?}",
-                N, other
-            ))
-            .into()),
+            other => {
+                Err(InvalidOutputType(format!("Expected `FixedArray({})`, got {:?}", N, other))
+                    .into())
+            }
         }
     }
 
     fn into_token(self) -> Token {
-        Token::FixedArray(
-            ArrayVec::from(self)
-                .into_iter()
-                .map(T::into_token)
-                .collect(),
-        )
+        Token::FixedArray(ArrayVec::from(self).into_iter().map(T::into_token).collect())
     }
 }
 

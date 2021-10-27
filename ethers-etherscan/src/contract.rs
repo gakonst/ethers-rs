@@ -242,11 +242,8 @@ impl Client {
     /// # }
     /// ```
     pub async fn contract_source_code(&self, address: Address) -> Result<ContractMetadata> {
-        let query = self.create_query(
-            "contract",
-            "getsourcecode",
-            HashMap::from([("address", address)]),
-        );
+        let query =
+            self.create_query("contract", "getsourcecode", HashMap::from([("address", address)]));
         let response: Response<Vec<Metadata>> = self.get_json(&query).await?;
         Ok(ContractMetadata { items: response.result })
     }

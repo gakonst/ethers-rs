@@ -3,8 +3,7 @@
 use ethers_contract_abigen::ethers_core_crate;
 use proc_macro2::{Ident, Literal, TokenStream};
 use quote::{quote, quote_spanned};
-use syn::spanned::Spanned as _;
-use syn::{parse::Error, Data, DeriveInput, Fields, Variant};
+use syn::{parse::Error, spanned::Spanned as _, Data, DeriveInput, Fields, Variant};
 
 /// Generates the tokenize implementation
 pub fn derive_tokenizeable_impl(input: &DeriveInput) -> proc_macro2::TokenStream {
@@ -208,7 +207,7 @@ fn tokenize_enum<'a>(
             return Err(Error::new(
                 variant.span(),
                 "EthAbiType cannot be derived for enum variants with multiple fields",
-            ));
+            ))
         } else if variant.fields.is_empty() {
             let value = Literal::u8_unsuffixed(idx as u8);
             from_tokens.extend(quote! {

@@ -24,10 +24,7 @@ pub struct SolFilesCache {
 
 impl SolFilesCache {
     fn new(format: impl Into<String>) -> Self {
-        Self {
-            format: format.into(),
-            files: Default::default(),
-        }
+        Self { format: format.into(), files: Default::default() }
     }
 
     /// Reads the cache json file from the given path
@@ -56,12 +53,12 @@ impl SolFilesCache {
     ) -> bool {
         if let Some(entry) = self.files.get(file.as_ref()) {
             if entry.content_hash.as_bytes() != hash.as_ref() {
-                return true;
+                return true
             }
 
             if let Some(config) = config {
                 if config != entry.solc_config {
-                    return true;
+                    return true
                 }
             }
             false

@@ -95,7 +95,7 @@ impl Context {
 
         if struct_defs.len() <= 1 {
             // no need for an enum
-            return Ok(struct_def_tokens);
+            return Ok(struct_def_tokens)
         }
 
         let ethers_core = util::ethers_core_crate();
@@ -243,10 +243,8 @@ impl Context {
         let result = quote! { #ethers_contract::builders::ContractCall<M, #outputs> };
 
         let contract_args = self.expand_contract_call_args(function)?;
-        let function_params = self
-            .expand_input_pairs(function)?
-            .into_iter()
-            .map(|(name, ty)| quote! { #name: #ty });
+        let function_params =
+            self.expand_input_pairs(function)?.into_iter().map(|(name, ty)| quote! { #name: #ty });
         let function_params = quote! { #( , #function_params )* };
 
         let doc = util::expand_doc(&format!(

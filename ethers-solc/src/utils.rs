@@ -16,7 +16,6 @@ pub static RE_SOL_IMPORT: Lazy<Regex> = Lazy::new(|| {
 /// A regex that matches the version part of a solidity pragma
 /// as follows: `pragma solidity ^0.5.2;` => `^0.5.2`
 /// statement with the named groups "path", "id".
-///
 // Adapted from https://github.com/nomiclabs/hardhat/blob/cced766c65b25d3d0beb39ef847246ac9618bdd9/packages/hardhat-core/src/internal/solidity/parse.ts#L119
 pub static RE_SOL_PRAGMA_VERSION: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"pragma\s+solidity\s+(?P<version>.+?);").unwrap());
@@ -36,10 +35,7 @@ pub fn find_import_paths(contract: &str) -> Vec<&str> {
 /// Returns the solidity version pragma from the given input:
 /// `pragma solidity ^0.5.2;` => `^0.5.2`
 pub fn find_version_pragma(contract: &str) -> Option<&str> {
-    RE_SOL_PRAGMA_VERSION
-        .captures(contract)?
-        .name("version")
-        .map(|m| m.as_str())
+    RE_SOL_PRAGMA_VERSION.captures(contract)?.name("version").map(|m| m.as_str())
 }
 
 /// Returns a list of absolute paths to all the solidity files under the root
@@ -57,12 +53,7 @@ pub fn source_files(root: impl AsRef<Path>) -> walkdir::Result<Vec<PathBuf>> {
         .into_iter()
         .filter_map(Result::ok)
         .filter(|e| e.file_type().is_file())
-        .filter(|e| {
-            e.path()
-                .extension()
-                .map(|ext| ext == "sol")
-                .unwrap_or_default()
-        })
+        .filter(|e| e.path().extension().map(|ext| ext == "sol").unwrap_or_default())
         .map(|e| e.path().into())
         .collect();
     Ok(files)
@@ -107,10 +98,7 @@ pragma solidity ^0.8.0;
 import "hardhat/console.sol";
 import "../contract/Contract.sol";
 "##;
-        assert_eq!(
-            vec!["hardhat/console.sol", "../contract/Contract.sol"],
-            find_import_paths(s)
-        );
+        assert_eq!(vec!["hardhat/console.sol", "../contract/Contract.sol"], find_import_paths(s));
     }
     #[test]
     fn can_find_version() {

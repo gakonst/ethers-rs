@@ -33,12 +33,7 @@ pub struct Project {
 impl Project {
     /// New compile project without cache support.
     pub fn new(config: ProjectPathsConfig, solc: Solc, artifacts: ArtifactOutput) -> Self {
-        Self {
-            config,
-            solc,
-            cached: false,
-            artifacts,
-        }
+        Self { config, solc, cached: false, artifacts }
     }
 
     /// Enable cache.

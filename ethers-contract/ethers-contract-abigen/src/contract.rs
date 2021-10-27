@@ -36,14 +36,8 @@ pub struct ExpandedContract {
 impl ExpandedContract {
     /// Merges everything into a single module
     pub fn into_tokens(self) -> TokenStream {
-        let ExpandedContract {
-            module,
-            imports,
-            contract,
-            events,
-            call_structs,
-            abi_structs,
-        } = self;
+        let ExpandedContract { module, imports, contract, events, call_structs, abi_structs } =
+            self;
         quote! {
            // export all the created data types
             pub use #module::*;

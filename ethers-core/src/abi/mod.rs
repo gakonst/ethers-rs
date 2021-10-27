@@ -232,19 +232,13 @@ mod tests {
     #[test]
     fn abi_type_works() {
         assert_eq!(ParamType::Bytes, Vec::<u8>::param_type());
-        assert_eq!(
-            ParamType::Array(Box::new(ParamType::Bytes)),
-            Vec::<Vec<u8>>::param_type()
-        );
+        assert_eq!(ParamType::Array(Box::new(ParamType::Bytes)), Vec::<Vec<u8>>::param_type());
         assert_eq!(
             ParamType::Array(Box::new(ParamType::Array(Box::new(ParamType::Bytes)))),
             Vec::<Vec<Vec<u8>>>::param_type()
         );
 
-        assert_eq!(
-            ParamType::Array(Box::new(ParamType::Uint(16))),
-            Vec::<u16>::param_type()
-        );
+        assert_eq!(ParamType::Array(Box::new(ParamType::Uint(16))), Vec::<u16>::param_type());
 
         assert_eq!(
             ParamType::Tuple(vec![ParamType::Bytes, ParamType::Address]),

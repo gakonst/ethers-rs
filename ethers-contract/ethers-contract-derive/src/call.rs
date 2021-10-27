@@ -3,13 +3,11 @@
 use ethers_contract_abigen::{ethers_contract_crate, ethers_core_crate};
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
-use syn::spanned::Spanned as _;
-use syn::{parse::Error, AttrStyle, DeriveInput, Lit, Meta, NestedMeta};
+use syn::{parse::Error, spanned::Spanned as _, AttrStyle, DeriveInput, Lit, Meta, NestedMeta};
 
 use ethers_core::abi::{param_type::Reader, AbiParser, Function, FunctionExt, Param, ParamType};
 
-use crate::abi_ty;
-use crate::utils;
+use crate::{abi_ty, utils};
 
 /// Generates the `ethcall` trait support
 pub(crate) fn derive_eth_call_impl(input: DeriveInput) -> TokenStream {
@@ -23,10 +21,8 @@ pub(crate) fn derive_eth_call_impl(input: DeriveInput) -> TokenStream {
         Err(errors) => return errors,
     };
 
-    let function_call_name = attributes
-        .name
-        .map(|(s, _)| s)
-        .unwrap_or_else(|| input.ident.to_string());
+    let function_call_name =
+        attributes.name.map(|(s, _)| s).unwrap_or_else(|| input.ident.to_string());
 
     let mut function = if let Some((src, span)) = attributes.abi {
         // try to parse as solidity function
@@ -44,11 +40,7 @@ pub(crate) fn derive_eth_call_impl(input: DeriveInput) -> TokenStream {
                 ParamType::Tuple(params) => Some(
                     params
                         .into_iter()
-                        .map(|kind| Param {
-                            name: "".to_string(),
-                            kind,
-                            internal_type: None,
-                        })
+                        .map(|kind| Param { name: "".to_string(), kind, internal_type: None })
                         .collect(),
                 ),
                 _ => None,
@@ -63,7 +55,7 @@ pub(crate) fn derive_eth_call_impl(input: DeriveInput) -> TokenStream {
                 }
             } else {
                 return Error::new(span, format!("Unable to determine ABI: {}", src))
-                    .to_compile_error();
+                    .to_compile_error()
             }
         }
     } else {
@@ -128,10 +120,7 @@ pub(crate) fn derive_eth_call_impl(input: DeriveInput) -> TokenStream {
 fn derive_decode_impl(function: &Function) -> TokenStream {
     let core_crate = ethers_core_crate();
     let contract_crate = ethers_contract_crate();
-    let data_types = function
-        .inputs
-        .iter()
-        .map(|input| utils::param_type_quote(&input.kind));
+    let data_types = function.inputs.iter().map(|input| utils::param_type_quote(&input.kind));
 
     let data_types_init = quote! {let data_types = [#( #data_types ),*];};
 
@@ -153,11 +142,7 @@ fn derive_abi_function_from_fields(input: &DeriveInput) -> Result<Function, Erro
         name: "".to_string(),
         inputs: utils::derive_abi_inputs_from_fields(input, "EthCall")?
             .into_iter()
-            .map(|(name, kind)| Param {
-                name,
-                kind,
-                internal_type: None,
-            })
+            .map(|(name, kind)| Param { name, kind, internal_type: None })
             .collect(),
         outputs: vec![],
         constant: false,
@@ -188,14 +173,14 @@ fn parse_call_attributes(input: &DeriveInput) -> Result<EthCallAttributes, Token
                                         path.span(),
                                         "unrecognized ethcall parameter",
                                     )
-                                    .to_compile_error());
+                                    .to_compile_error())
                                 }
                                 Meta::List(meta) => {
                                     return Err(Error::new(
                                         meta.path.span(),
                                         "unrecognized ethcall parameter",
                                     )
-                                    .to_compile_error());
+                                    .to_compile_error())
                                 }
                                 Meta::NameValue(meta) => {
                                     if meta.path.is_ident("name") {
@@ -208,14 +193,14 @@ fn parse_call_attributes(input: &DeriveInput) -> Result<EthCallAttributes, Token
                                                     meta.span(),
                                                     "name already specified",
                                                 )
-                                                .to_compile_error());
+                                                .to_compile_error())
                                             }
                                         } else {
                                             return Err(Error::new(
                                                 meta.span(),
                                                 "name must be a string",
                                             )
-                                            .to_compile_error());
+                                            .to_compile_error())
                                         }
                                     } else if meta.path.is_ident("abi") {
                                         if let Lit::Str(ref lit_str) = meta.lit {
@@ -227,21 +212,21 @@ fn parse_call_attributes(input: &DeriveInput) -> Result<EthCallAttributes, Token
                                                     meta.span(),
                                                     "abi already specified",
                                                 )
-                                                .to_compile_error());
+                                                .to_compile_error())
                                             }
                                         } else {
                                             return Err(Error::new(
                                                 meta.span(),
                                                 "abi must be a string",
                                             )
-                                            .to_compile_error());
+                                            .to_compile_error())
                                         }
                                     } else {
                                         return Err(Error::new(
                                             meta.span(),
                                             "unrecognized ethcall parameter",
                                         )
-                                        .to_compile_error());
+                                        .to_compile_error())
                                     }
                                 }
                             }

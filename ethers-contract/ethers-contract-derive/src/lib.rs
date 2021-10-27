@@ -188,11 +188,9 @@ pub fn derive_abi_event(input: TokenStream) -> TokenStream {
 ///
 /// For the struct:
 ///
-/// - `name`, `name = "..."`: Overrides the generated `EthCall` function name, default
-///   is the
+/// - `name`, `name = "..."`: Overrides the generated `EthCall` function name, default is the
 ///  struct's name.
-/// - `abi`, `abi = "..."`: The ABI signature for the function this call's data
-///   corresponds to.
+/// - `abi`, `abi = "..."`: The ABI signature for the function this call's data corresponds to.
 ///
 ///  NOTE: in order to successfully parse the `abi` (`<name>(<args>,...)`) the `<name`>
 ///   must match either the struct name or the name attribute: `#[ethcall(name ="<name>"]`
@@ -241,7 +239,6 @@ pub fn derive_abi_event(input: TokenStream) -> TokenStream {
 ///     "foo(address,(address,string),string)"
 /// );
 /// ```
-///
 #[proc_macro_derive(EthCall, attributes(ethcall))]
 pub fn derive_abi_call(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);

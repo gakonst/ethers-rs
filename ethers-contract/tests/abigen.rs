@@ -1,12 +1,13 @@
 #![cfg(feature = "abigen")]
 //! Test cases to validate the `abigen!` macro
 use ethers_contract::{abigen, EthEvent};
-use ethers_core::abi::{AbiDecode, AbiEncode, Address, Tokenizable};
-use ethers_core::types::{transaction::eip2718::TypedTransaction, Eip1559TransactionRequest, U256};
-use ethers_core::utils::Solc;
+use ethers_core::{
+    abi::{AbiDecode, AbiEncode, Address, Tokenizable},
+    types::{transaction::eip2718::TypedTransaction, Eip1559TransactionRequest, U256},
+    utils::Solc,
+};
 use ethers_providers::Provider;
-use std::convert::TryFrom;
-use std::sync::Arc;
+use std::{convert::TryFrom, sync::Arc};
 
 #[test]
 fn can_gen_human_readable() {
@@ -158,11 +159,7 @@ fn can_gen_human_readable_with_structs() {
     let f = Foo { x: 100u64.into() };
     let _ = contract.foo(f);
 
-    let call = BarCall {
-        x: 1u64.into(),
-        y: 0u64.into(),
-        addr: Address::random(),
-    };
+    let call = BarCall { x: 1u64.into(), y: 0u64.into(), addr: Address::random() };
     let encoded_call = contract.encode("bar", (call.x, call.y, call.addr)).unwrap();
     assert_eq!(encoded_call, call.clone().encode().into());
     let decoded_call = BarCall::decode(encoded_call.as_ref()).unwrap();
@@ -217,13 +214,9 @@ fn can_handle_overloaded_functions() {
     assert_eq!(contract_call, decoded_enum);
     assert_eq!(encoded_call, contract_call.encode().into());
 
-    let call = GetValueWithOtherValueCall {
-        other_value: 420u64.into(),
-    };
+    let call = GetValueWithOtherValueCall { other_value: 420u64.into() };
 
-    let encoded_call = contract
-        .encode_with_selector([15, 244, 201, 22], call.other_value)
-        .unwrap();
+    let encoded_call = contract.encode_with_selector([15, 244, 201, 22], call.other_value).unwrap();
     assert_eq!(encoded_call, call.clone().encode().into());
     let decoded_call = GetValueWithOtherValueCall::decode(encoded_call.as_ref()).unwrap();
     assert_eq!(call, decoded_call);
@@ -233,14 +226,11 @@ fn can_handle_overloaded_functions() {
     assert_eq!(contract_call, decoded_enum);
     assert_eq!(encoded_call, contract_call.encode().into());
 
-    let call = GetValueWithOtherValueAndAddrCall {
-        other_value: 420u64.into(),
-        addr: Address::random(),
-    };
+    let call =
+        GetValueWithOtherValueAndAddrCall { other_value: 420u64.into(), addr: Address::random() };
 
-    let encoded_call = contract
-        .encode_with_selector([14, 97, 29, 56], (call.other_value, call.addr))
-        .unwrap();
+    let encoded_call =
+        contract.encode_with_selector([14, 97, 29, 56], (call.other_value, call.addr)).unwrap();
     let decoded_call = GetValueWithOtherValueAndAddrCall::decode(encoded_call.as_ref()).unwrap();
     assert_eq!(call, decoded_call);
 
@@ -271,23 +261,14 @@ async fn can_handle_underscore_functions() {
         .interval(std::time::Duration::from_millis(10));
     let client = Arc::new(provider);
 
-    let compiled = Solc::new("./tests/solidity-contracts/SimpleStorage.sol")
-        .build()
-        .unwrap();
+    let compiled = Solc::new("./tests/solidity-contracts/SimpleStorage.sol").build().unwrap();
     let compiled = compiled.get("SimpleStorage").unwrap();
     let factory = ethers_contract::ContractFactory::new(
         compiled.abi.clone(),
         compiled.bytecode.clone(),
         client.clone(),
     );
-    let addr = factory
-        .deploy("hi".to_string())
-        .unwrap()
-        .legacy()
-        .send()
-        .await
-        .unwrap()
-        .address();
+    let addr = factory.deploy("hi".to_string()).unwrap().legacy().send().await.unwrap().address();
 
     // connect to the contract
     let contract = SimpleStorage::new(addr, client.clone());
@@ -295,18 +276,8 @@ async fn can_handle_underscore_functions() {
 
     let res = contract.hash_puzzle().call().await.unwrap();
     let res2 = contract2.hash_puzzle().call().await.unwrap();
-    let res3 = contract
-        .method::<_, U256>("_hashPuzzle", ())
-        .unwrap()
-        .call()
-        .await
-        .unwrap();
-    let res4 = contract2
-        .method::<_, U256>("_hashPuzzle", ())
-        .unwrap()
-        .call()
-        .await
-        .unwrap();
+    let res3 = contract.method::<_, U256>("_hashPuzzle", ()).unwrap().call().await.unwrap();
+    let res4 = contract2.method::<_, U256>("_hashPuzzle", ()).unwrap().call().await.unwrap();
 
     // Manual call construction
     use ethers_providers::Middleware;

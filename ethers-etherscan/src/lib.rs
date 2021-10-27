@@ -29,10 +29,9 @@ impl Client {
     /// Create a new client with the correct endpoints based on the chain and provided API key
     pub fn new(chain: Chain, api_key: impl Into<String>) -> Result<Self> {
         let (etherscan_api_url, etherscan_url) = match chain {
-            Chain::Mainnet => (
-                Url::parse("https://api.etherscan.io/api"),
-                Url::parse("https://etherscan.io"),
-            ),
+            Chain::Mainnet => {
+                (Url::parse("https://api.etherscan.io/api"), Url::parse("https://etherscan.io"))
+            }
             Chain::Ropsten | Chain::Kovan | Chain::Rinkeby | Chain::Goerli => {
                 let chain_name = chain.to_string().to_lowercase();
 

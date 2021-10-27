@@ -1,11 +1,10 @@
 use ethers_contract_abigen::ethers_core_crate;
-use ethers_core::abi::ParamType;
-use ethers_core::types::Selector;
+use ethers_core::{abi::ParamType, types::Selector};
 use proc_macro2::Literal;
 use quote::quote;
-use syn::spanned::Spanned as _;
 use syn::{
-    parse::Error, Data, DeriveInput, Expr, Fields, GenericArgument, Lit, PathArguments, Type,
+    parse::Error, spanned::Spanned as _, Data, DeriveInput, Expr, Fields, GenericArgument, Lit,
+    PathArguments, Type,
 };
 
 pub fn signature(hash: &[u8]) -> proc_macro2::TokenStream {
@@ -161,10 +160,7 @@ pub fn derive_abi_inputs_from_fields(
             Fields::Unit => {
                 return Err(Error::new(
                     input.span(),
-                    format!(
-                        "{} cannot be derived for empty structs and unit",
-                        trait_name
-                    ),
+                    format!("{} cannot be derived for empty structs and unit", trait_name),
                 ))
             }
         },
@@ -172,24 +168,21 @@ pub fn derive_abi_inputs_from_fields(
             return Err(Error::new(
                 input.span(),
                 format!("{} cannot be derived for enums", trait_name),
-            ));
+            ))
         }
         Data::Union(_) => {
             return Err(Error::new(
                 input.span(),
                 format!("{} cannot be derived for unions", trait_name),
-            ));
+            ))
         }
     };
 
     fields
         .iter()
         .map(|f| {
-            let name = f
-                .ident
-                .as_ref()
-                .map(|name| name.to_string())
-                .unwrap_or_else(|| "".to_string());
+            let name =
+                f.ident.as_ref().map(|name| name.to_string()).unwrap_or_else(|| "".to_string());
             find_parameter_type(&f.ty).map(|ty| (name, ty))
         })
         .collect()

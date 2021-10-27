@@ -1,8 +1,8 @@
-use ethers_contract::EthLogDecode;
-use ethers_contract::{abigen, EthAbiType, EthCall, EthDisplay, EthEvent};
-use ethers_core::abi::{RawLog, Tokenizable};
-use ethers_core::types::Address;
-use ethers_core::types::{H160, H256, I256, U128, U256};
+use ethers_contract::{abigen, EthAbiType, EthCall, EthDisplay, EthEvent, EthLogDecode};
+use ethers_core::{
+    abi::{RawLog, Tokenizable},
+    types::{Address, H160, H256, I256, U128, U256},
+};
 
 fn assert_tokenizeable<T: Tokenizable>() {}
 fn assert_ethcall<T: EthCall>() {}
@@ -333,12 +333,8 @@ fn can_decode_event_tuple_single_param() {
 
     let log = RawLog {
         topics: vec![
-            "bd9bb67345a2fcc8ef3b0857e7e2901f5a0dcfc7fe5e3c10dc984f02842fb7ba"
-                .parse()
-                .unwrap(),
-            "000000000000000000000000000000000000000000000000000000000000007b"
-                .parse()
-                .unwrap(),
+            "bd9bb67345a2fcc8ef3b0857e7e2901f5a0dcfc7fe5e3c10dc984f02842fb7ba".parse().unwrap(),
+            "000000000000000000000000000000000000000000000000000000000000007b".parse().unwrap(),
         ],
         data: vec![],
     };
@@ -440,10 +436,7 @@ fn can_derive_ethcall() {
         old_value: String,
         new_value: String,
     }
-    assert_eq!(
-        MyCall::abi_signature().as_ref(),
-        "my_call(address,string,string)"
-    );
+    assert_eq!(MyCall::abi_signature().as_ref(), "my_call(address,string,string)");
 
     assert_tokenizeable::<MyCall>();
     assert_ethcall::<MyCall>();
@@ -465,10 +458,7 @@ fn can_derive_ethcall_with_nested_structs() {
         new_value: String,
     }
 
-    assert_eq!(
-        FooCall::abi_signature().as_ref(),
-        "foo(address,(address,string),string)"
-    );
+    assert_eq!(FooCall::abi_signature().as_ref(), "foo(address,(address,string),string)");
 
     assert_tokenizeable::<FooCall>();
     assert_ethcall::<FooCall>();
@@ -486,8 +476,5 @@ fn can_derive_for_enum() {
     assert_tokenizeable::<ActionChoices>();
 
     let token = ActionChoices::GoLeft.into_token();
-    assert_eq!(
-        ActionChoices::GoLeft,
-        ActionChoices::from_token(token).unwrap()
-    );
+    assert_eq!(ActionChoices::GoLeft, ActionChoices::from_token(token).unwrap());
 }

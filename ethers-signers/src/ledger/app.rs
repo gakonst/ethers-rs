@@ -145,17 +145,13 @@ impl LedgerEthereum {
 
         // Enforce app version is greater than EIP712_MIN_VERSION
         if !req.matches(&version) {
-            return Err(LedgerError::UnsupportedAppVersion(
-                EIP712_MIN_VERSION.to_string(),
-            ));
+            return Err(LedgerError::UnsupportedAppVersion(EIP712_MIN_VERSION.to_string()))
         }
 
-        let domain_separator = payload
-            .domain_separator()
-            .map_err(|e| LedgerError::Eip712Error(e.to_string()))?;
-        let struct_hash = payload
-            .struct_hash()
-            .map_err(|e| LedgerError::Eip712Error(e.to_string()))?;
+        let domain_separator =
+            payload.domain_separator().map_err(|e| LedgerError::Eip712Error(e.to_string()))?;
+        let struct_hash =
+            payload.struct_hash().map_err(|e| LedgerError::Eip712Error(e.to_string()))?;
 
         let mut payload = Self::path_to_bytes(&self.derivation);
         payload.extend_from_slice(&domain_separator);
@@ -164,7 +160,8 @@ impl LedgerEthereum {
         self.sign_payload(INS::SIGN_ETH_EIP_712, payload).await
     }
 
-    // Helper function for signing either transaction data, personal messages or EIP712 derived structs
+    // Helper function for signing either transaction data, personal messages or EIP712 derived
+    // structs
     pub async fn sign_payload(
         &self,
         command: INS,
@@ -306,9 +303,7 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn test_sign_eip712_struct() {
-        let ledger = LedgerEthereum::new(DerivationType::LedgerLive(0), 1u64)
-            .await
-            .unwrap();
+        let ledger = LedgerEthereum::new(DerivationType::LedgerLive(0), 1u64).await.unwrap();
 
         let foo_bar = FooBar {
             foo: I256::from(10),
@@ -319,10 +314,7 @@ mod tests {
             out: Address::from([0; 20]),
         };
 
-        let sig = ledger
-            .sign_typed_struct(&foo_bar)
-            .await
-            .expect("failed to sign typed data");
+        let sig = ledger.sign_typed_struct(&foo_bar).await.expect("failed to sign typed data");
         let foo_bar_hash = foo_bar.encode_eip712().unwrap();
         sig.verify(foo_bar_hash, ledger.address).unwrap();
     }
