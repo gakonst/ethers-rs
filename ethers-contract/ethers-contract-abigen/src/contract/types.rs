@@ -52,8 +52,7 @@ pub(crate) fn expand(kind: &ParamType) -> Result<TokenStream> {
                 return Err(anyhow!("Tuple must have at least 1 member"))
             }
 
-            let members =
-                members.iter().map(|member| expand(member)).collect::<Result<Vec<_>, _>>()?;
+            let members = members.iter().map(expand).collect::<Result<Vec<_>, _>>()?;
             Ok(quote! { (#(#members,)*) })
         }
     }

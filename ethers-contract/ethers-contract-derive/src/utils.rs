@@ -113,7 +113,8 @@ pub fn find_parameter_type(ty: &Type) -> Result<ParamType, Error> {
         }
         Type::Path(ty) => {
             if let Some(ident) = ty.path.get_ident() {
-                return match ident.to_string().to_lowercase().as_str() {
+                let ident = ident.to_string().to_lowercase();
+                return match ident.as_str() {
                     "address" => Ok(ParamType::Address),
                     "string" => Ok(ParamType::String),
                     "bool" => Ok(ParamType::Bool),

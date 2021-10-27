@@ -154,7 +154,7 @@ impl Context {
 
     /// The name ident of the calls enum
     fn expand_calls_enum_name(&self) -> Ident {
-        util::ident(&format!("{}Calls", self.contract_name.to_string()))
+        util::ident(&format!("{}Calls", self.contract_name))
     }
 
     /// Expands to the `name : type` pairs of the function's inputs
