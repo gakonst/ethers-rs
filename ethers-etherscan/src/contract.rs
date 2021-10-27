@@ -1,7 +1,9 @@
 use crate::{Client, Response, Result};
 use ethers_core::abi::{Abi, Address};
-use serde::{Deserialize, Serialize};
+use ethers_core::utils::solc::Libraries;
+use serde::{ser::SerializeMap, Deserialize, Serialize, Serializer};
 use std::collections::HashMap;
+use std::iter::FromIterator;
 
 /// Arguments for verifying contracts
 #[derive(Debug, Clone, Serialize)]
@@ -29,6 +31,12 @@ pub struct VerifyContract {
     pub constructor_arguments: Option<String>,
     #[serde(rename = "evmversion")]
     pub evm_version: Option<String>,
+    #[serde(
+        flatten,
+        serialize_with = "libs_serialize",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub libraries: Option<Libraries>,
     #[serde(flatten)]
     pub other: HashMap<String, String>,
 }
@@ -45,6 +53,7 @@ impl VerifyContract {
             runs: None,
             constructor_arguments: None,
             evm_version: None,
+            libraries: Default::default(),
             other: Default::default(),
         }
     }
@@ -97,6 +106,11 @@ impl VerifyContract {
                 .trim_start_matches("0x")
                 .to_string()
         });
+        self
+    }
+
+    pub fn libraries(mut self, libraries: Libraries) -> Self {
+        self.libraries = Some(libraries);
         self
     }
 }
@@ -157,6 +171,19 @@ impl ContractMetadata {
             .collect::<Vec<_>>()
             .join("\n")
     }
+}
+
+fn libs_serialize<S>(l: &Option<Libraries>, serializer: S) -> std::result::Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    let libraries = &l.as_ref().unwrap().libs;
+    let mut map = serializer.serialize_map(Some(libraries.len()))?;
+    for (i, (k, v)) in Vec::from_iter(libraries.iter()).iter().enumerate() {
+        map.serialize_entry(&format!("libraryname{}", i), &k.split(":").last())?;
+        map.serialize_entry(&format!("libraryaddress{}", i), v)?;
+    }
+    map.end()
 }
 
 /// Etherscan contract metadata
