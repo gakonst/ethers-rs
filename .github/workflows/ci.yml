@@ -117,6 +117,8 @@ jobs:
           profile: minimal
           components: rustfmt, clippy
           override: true
+      - name: Install Dependencies
+        run: sudo apt-get install libudev-dev
       - uses: Swatinem/rust-cache@v1
         with:
           cache-on-failure: true
