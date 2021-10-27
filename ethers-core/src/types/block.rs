@@ -219,7 +219,7 @@ mod tests {
         for b in &[BlockNumber::Latest, BlockNumber::Earliest, BlockNumber::Pending] {
             let b_ser = serde_json::to_string(&b).unwrap();
             let b_de: BlockNumber = serde_json::from_str(&b_ser).unwrap();
-            assert_eq!(b_de, b);
+            assert_eq!(b_de, *b);
         }
 
         let b = BlockNumber::Number(1042u64.into());

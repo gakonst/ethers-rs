@@ -209,7 +209,7 @@ mod tests {
 
     #[test]
     fn can_parse_version_metadata() {
-        let version = Version::from_str("0.6.6+commit.6c089d02.Linux.gcc").unwrap();
+        let _version = Version::from_str("0.6.6+commit.6c089d02.Linux.gcc").unwrap();
     }
 
     #[cfg(feature = "async")]
