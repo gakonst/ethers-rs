@@ -1,7 +1,7 @@
 #![cfg(feature = "abigen")]
 //! Test cases to validate the `abigen!` macro
-use ethers_contract::{abigen, AbiDecode, AbiEncode, EthEvent};
-use ethers_core::abi::{Address, Tokenizable};
+use ethers_contract::{abigen, EthEvent};
+use ethers_core::abi::{AbiDecode, AbiEncode, Address, Tokenizable};
 use ethers_core::types::{transaction::eip2718::TypedTransaction, Eip1559TransactionRequest, U256};
 use ethers_core::utils::Solc;
 use ethers_providers::Provider;

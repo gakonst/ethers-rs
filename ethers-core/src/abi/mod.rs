@@ -11,8 +11,11 @@ pub use tokens::{Detokenize, InvalidOutputType, Tokenizable, TokenizableItem, To
 pub mod struct_def;
 pub use struct_def::SolStruct;
 
+mod codec;
+pub use codec::{AbiDecode, AbiEncode};
+
 mod error;
-pub use error::ParseError;
+pub use error::{AbiError, ParseError};
 
 mod human_readable;
 pub use human_readable::{parse as parse_abi, parse_str as parse_abi_str, AbiParser};
