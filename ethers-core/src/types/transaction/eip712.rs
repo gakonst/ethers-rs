@@ -473,8 +473,11 @@ pub fn find_parameter_type(ty: &Type) -> Result<ParamType, TokenStream> {
             Err(Error::new(ty.span(), "Failed to derive proper ABI from fields").to_compile_error())
         }
         Type::Tuple(ty) => {
-            let params =
-                ty.elems.iter().map(|t| find_parameter_type(t)).collect::<Result<Vec<_>, _>>()?;
+            let params = ty
+                .elems
+                .iter()
+                .map(find_parameter_type)
+                .collect::<Result<Vec<_>, _>>()?;
             Ok(ParamType::Tuple(params))
         }
         _ => {

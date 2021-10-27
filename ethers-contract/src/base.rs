@@ -1,9 +1,8 @@
 use crate::Contract;
 
+pub use ethers_core::abi::AbiError;
 use ethers_core::{
-    abi::{
-        Abi, Detokenize, Error, Event, Function, FunctionExt, InvalidOutputType, RawLog, Tokenize,
-    },
+    abi::{Abi, Detokenize, Error, Event, Function, FunctionExt, RawLog, Tokenize},
     types::{Address, Bytes, Selector, H256},
 };
 use ethers_providers::Middleware;
@@ -14,21 +13,6 @@ use std::{
     hash::Hash,
     sync::Arc,
 };
-use thiserror::Error;
-
-#[derive(Error, Debug)]
-pub enum AbiError {
-    /// Thrown when the ABI decoding fails
-    #[error(transparent)]
-    DecodingError(#[from] ethers_core::abi::Error),
-
-    /// Thrown when detokenizing an argument
-    #[error(transparent)]
-    DetokenizationError(#[from] InvalidOutputType),
-
-    #[error("missing or wrong function selector")]
-    WrongSelector,
-}
 
 /// A reduced form of `Contract` which just takes the `abi` and produces
 /// ABI encoded data for its functions.

@@ -215,80 +215,58 @@ pub trait Middleware: Sync + Send + Debug {
         tx: &mut TypedTransaction,
         block: Option<BlockId>,
     ) -> Result<(), Self::Error> {
-        let mut tx_clone = tx.clone();
+        if let Some(default_sender) = self.default_sender() {
+            if tx.from().is_none() {
+                tx.set_from(default_sender);
+            }
+        }
 
-        // TODO: Maybe deduplicate the code in a nice way
+        // TODO: Can we poll the futures below at the same time?
+        // Access List + Name resolution and then Gas price + Gas
+
+        // set the ENS name
+        if let Some(NameOrAddress::Name(ref ens_name)) = tx.to() {
+            let addr = self.resolve_name(ens_name).await?;
+            tx.set_to(addr);
+        }
+
+        // estimate the gas without the access list
+        let gas = maybe(tx.gas().cloned(), self.estimate_gas(tx)).await?;
+        let mut al_used = false;
+
+        // set the access lists
+        if let Some(access_list) = tx.access_list() {
+            if access_list.0.is_empty() {
+                if let Ok(al_with_gas) = self.create_access_list(tx, block).await {
+                    // only set the access list if the used gas is less than the
+                    // normally estimated gas
+                    if al_with_gas.gas_used < gas {
+                        tx.set_access_list(al_with_gas.access_list);
+                        tx.set_gas(al_with_gas.gas_used);
+                        al_used = true;
+                    }
+                }
+            }
+        }
+
+        if !al_used {
+            tx.set_gas(gas);
+        }
+
         match tx {
-            TypedTransaction::Legacy(ref mut inner) => {
-                if let Some(NameOrAddress::Name(ref ens_name)) = inner.to {
-                    let addr = self.resolve_name(ens_name).await?;
-                    inner.to = Some(addr.into());
-                    tx_clone.set_to(addr);
-                };
-
-                if inner.from.is_none() {
-                    inner.from = self.default_sender();
-                }
-
-                let (gas_price, gas) = futures_util::try_join!(
-                    maybe(inner.gas_price, self.get_gas_price()),
-                    maybe(inner.gas, self.estimate_gas(&tx_clone)),
-                )?;
-                inner.gas = Some(gas);
-                inner.gas_price = Some(gas_price);
+            TypedTransaction::Eip2930(_) | TypedTransaction::Legacy(_) => {
+                let gas_price = maybe(tx.gas_price(), self.get_gas_price()).await?;
+                tx.set_gas_price(gas_price);
             }
-            TypedTransaction::Eip2930(inner) => {
-                if let Ok(lst) = self.create_access_list(&tx_clone, block).await {
-                    inner.access_list = lst.access_list;
-                }
-
-                if let Some(NameOrAddress::Name(ref ens_name)) = inner.tx.to {
-                    let addr = self.resolve_name(ens_name).await?;
-                    inner.tx.to = Some(addr.into());
-                    tx_clone.set_to(addr);
-                };
-
-                if inner.tx.from.is_none() {
-                    inner.tx.from = self.default_sender();
-                }
-
-                let (gas_price, gas) = futures_util::try_join!(
-                    maybe(inner.tx.gas_price, self.get_gas_price()),
-                    maybe(inner.tx.gas, self.estimate_gas(&tx_clone)),
-                )?;
-                inner.tx.gas = Some(gas);
-                inner.tx.gas_price = Some(gas_price);
-            }
-            TypedTransaction::Eip1559(inner) => {
-                if let Ok(lst) = self.create_access_list(&tx_clone, block).await {
-                    inner.access_list = lst.access_list;
-                }
-
-                if let Some(NameOrAddress::Name(ref ens_name)) = inner.to {
-                    let addr = self.resolve_name(ens_name).await?;
-                    inner.to = Some(addr.into());
-                    tx_clone.set_to(addr);
-                };
-
-                if inner.from.is_none() {
-                    inner.from = self.default_sender();
-                }
-
-                let gas = maybe(inner.gas, self.estimate_gas(&tx_clone)).await?;
-                inner.gas = Some(gas);
-
+            TypedTransaction::Eip1559(ref mut inner) => {
                 if inner.max_fee_per_gas.is_none() || inner.max_priority_fee_per_gas.is_none() {
                     let (max_fee_per_gas, max_priority_fee_per_gas) =
                         self.estimate_eip1559_fees(None).await?;
-                    if inner.max_fee_per_gas.is_none() {
-                        inner.max_fee_per_gas = Some(max_fee_per_gas);
-                    }
-                    if inner.max_priority_fee_per_gas.is_none() {
-                        inner.max_priority_fee_per_gas = Some(max_priority_fee_per_gas);
-                    }
-                }
+                    inner.max_fee_per_gas = Some(max_fee_per_gas);
+                    inner.max_priority_fee_per_gas = Some(max_priority_fee_per_gas);
+                };
             }
-        };
+        }
 
         Ok(())
     }

@@ -88,7 +88,7 @@ impl<D: Sync + Send + DigestSigner<Sha256Proxy, RecoverableSignature>> Signer fo
 
     async fn sign_typed_data<T: Eip712 + Send + Sync>(
         &self,
-        payload: T,
+        payload: &T,
     ) -> Result<Signature, Self::Error> {
         let encoded =
             payload.encode_eip712().map_err(|e| Self::Error::Eip712Error(e.to_string()))?;
@@ -117,13 +117,15 @@ impl<D: Sync + Send + DigestSigner<Sha256Proxy, RecoverableSignature>> Signer fo
 }
 
 impl<D: DigestSigner<Sha256Proxy, RecoverableSignature>> Wallet<D> {
+    /// Synchronously signs the provided transaction.
     pub fn sign_transaction_sync(&self, tx: &TypedTransaction) -> Signature {
         let sighash = tx.sighash(self.chain_id);
-
         self.sign_hash(sighash, true)
     }
 
-    fn sign_hash(&self, hash: H256, eip155: bool) -> Signature {
+    /// Signs the provided hash and proceeds to normalize the `v` value of the
+    /// signature with EIP-155 if the flag is set to true.
+    pub fn sign_hash(&self, hash: H256, eip155: bool) -> Signature {
         let recoverable_sig: RecoverableSignature =
             self.signer.sign_digest(Sha256Proxy::from(hash));
 

@@ -3,7 +3,7 @@ name = "ethers"
 version = "0.5.3"
 authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
 license = "MIT OR Apache-2.0"
-edition = "2018"
+edition = "2021"
 readme = "README.md"
 documentation = "https://docs.rs/ethers"
 repository = "https://github.com/gakonst/ethers-rs"
@@ -20,6 +20,7 @@ members = [
     "ethers-core",
     "ethers-middleware",
     "ethers-etherscan",
+    "ethers-solc"
 ]
 
 default-members = [
@@ -28,7 +29,8 @@ default-members = [
     "ethers-signers",
     "ethers-core",
     "ethers-middleware",
-    "ethers-etherscan"
+    "ethers-etherscan",
+    "ethers-solc"
 ]
 
 exclude = [
@@ -60,7 +62,7 @@ legacy = [
 # individual features per sub-crate
 ## core
 setup = ["ethers-core/setup"]
-eip712 = ["ethers-core/eip712"]
+eip712 = ["ethers-contract/eip712", "ethers-core/eip712"]
 ## providers
 ws = ["ethers-providers/ws"]
 ipc = ["ethers-providers/ipc"]

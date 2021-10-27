@@ -5,7 +5,7 @@ pub type Selector = [u8; 4];
 /// A transaction Hash
 pub use ethabi::ethereum_types::H256 as TxHash;
 
-pub use ethabi::ethereum_types::{Address, Bloom, H160, H256, U128, U256, U64};
+pub use ethabi::ethereum_types::{Address, Bloom, H160, H256, H512, U128, U256, U64};
 
 pub mod transaction;
 pub use transaction::{
@@ -48,5 +48,9 @@ pub use txpool::*;
 mod trace;
 pub use trace::*;
 
+mod chain;
+pub use chain::*;
+
 mod proof;
+
 pub use proof::*;

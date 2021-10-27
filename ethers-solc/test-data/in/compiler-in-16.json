@@ -1,0 +1,1 @@
+{"language":"Solidity","sources":{"contracts/a.sol":{"content":"contract A {}\n\n"}},"settings":{"optimizer":{"enabled":false,"runs":200},"outputSelection":{"*":{"*":["abi","evm.bytecode","evm.deployedBytecode","evm.methodIdentifiers"],"":["ast"]}}}}

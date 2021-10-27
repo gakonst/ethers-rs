@@ -42,9 +42,15 @@ pub enum LedgerError {
     #[error(transparent)]
     /// Error when converting from a hex string
     HexError(#[from] hex::FromHexError),
+    #[error(transparent)]
+    /// Error when converting a semver requirement
+    SemVerError(#[from] semver::Error),
     /// Error type from Eip712Error message
     #[error("error encoding eip712 struct: {0:?}")]
     Eip712Error(String),
+    /// Error when signing EIP712 struct with not compatible Ledger ETH app
+    #[error("Ledger ethereum app requires at least version: {0:?}")]
+    UnsupportedAppVersion(String),
 }
 
 pub const P1_FIRST: u8 = 0x00;
@@ -57,6 +63,7 @@ pub enum INS {
     SIGN = 0x04,
     GET_APP_CONFIGURATION = 0x06,
     SIGN_PERSONAL_MESSAGE = 0x08,
+    SIGN_ETH_EIP_712 = 0x0C,
 }
 
 #[repr(u8)]

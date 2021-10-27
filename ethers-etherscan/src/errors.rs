@@ -1,7 +1,10 @@
+use ethers_core::types::Chain;
 use std::env::VarError;
 
 #[derive(Debug, thiserror::Error)]
 pub enum EtherscanError {
+    #[error("chain {0} not supported")]
+    ChainNotSupported(Chain),
     #[error("contract execution call failed: {0}")]
     ExecutionFailed(String),
     #[error("tx receipt failed")]

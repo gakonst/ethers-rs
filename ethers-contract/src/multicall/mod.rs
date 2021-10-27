@@ -1,6 +1,6 @@
 use ethers_core::{
     abi::{Detokenize, Function, Token},
-    types::{Address, BlockNumber, Bytes, NameOrAddress, TxHash, U256},
+    types::{Address, BlockNumber, Bytes, Chain, NameOrAddress, TxHash, U256},
 };
 use ethers_providers::Middleware;
 
@@ -17,34 +17,33 @@ use multicall_contract::MulticallContract;
 /// A lazily computed hash map with the Ethereum network IDs as keys and the corresponding
 /// Multicall smart contract addresses as values
 pub static ADDRESS_BOOK: Lazy<HashMap<U256, Address>> = Lazy::new(|| {
-    let mut m = HashMap::new();
+    fn decode_address(input: &str) -> Address {
+        Address::from_str(input).expect("Decoding failed")
+    }
 
-    // mainnet
-    let addr =
-        Address::from_str("eefba1e63905ef1d7acba5a8513c70307c1ce441").expect("Decoding failed");
-    m.insert(U256::from(1u8), addr);
-
-    // rinkeby
-    let addr =
-        Address::from_str("42ad527de7d4e9d9d011ac45b31d8551f8fe9821").expect("Decoding failed");
-    m.insert(U256::from(4u8), addr);
-
-    // goerli
-    let addr =
-        Address::from_str("77dca2c955b15e9de4dbbcf1246b4b85b651e50e").expect("Decoding failed");
-    m.insert(U256::from(5u8), addr);
-
-    // kovan
-    let addr =
-        Address::from_str("2cc8688c5f75e365aaeeb4ea8d6a480405a48d2a").expect("Decoding failed");
-    m.insert(U256::from(42u8), addr);
-
-    // xdai
-    let addr =
-        Address::from_str("b5b692a88bdfc81ca69dcb1d924f59f0413a602a").expect("Decoding failed");
-    m.insert(U256::from(100u8), addr);
-
-    m
+    [
+        (
+            Chain::Mainnet.into(),
+            decode_address("eefba1e63905ef1d7acba5a8513c70307c1ce441"),
+        ),
+        (
+            Chain::Rinkeby.into(),
+            decode_address("42ad527de7d4e9d9d011ac45b31d8551f8fe9821"),
+        ),
+        (
+            Chain::Goerli.into(),
+            decode_address("77dca2c955b15e9de4dbbcf1246b4b85b651e50e"),
+        ),
+        (
+            Chain::Kovan.into(),
+            decode_address("2cc8688c5f75e365aaeeb4ea8d6a480405a48d2a"),
+        ),
+        (
+            Chain::XDai.into(),
+            decode_address("b5b692a88bdfc81ca69dcb1d924f59f0413a602a"),
+        ),
+    ]
+    .into()
 });
 
 /// A Multicall is an abstraction for sending batched calls/transactions to the Ethereum blockchain.

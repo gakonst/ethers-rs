@@ -575,7 +575,10 @@ mod eth_tests {
             out: foo_bar.out.clone(),
         };
 
-        let sig = wallet.sign_typed_data(foo_bar.clone()).await.expect("failed to sign typed data");
+        let sig = wallet
+            .sign_typed_data(&foo_bar)
+            .await
+            .expect("failed to sign typed data");
 
         let r = <[u8; 32]>::try_from(sig.r)
             .expect("failed to parse 'r' value from signature into [u8; 32]");
