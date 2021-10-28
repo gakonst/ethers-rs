@@ -68,6 +68,12 @@ pub fn source_files(root: impl AsRef<Path>) -> walkdir::Result<Vec<PathBuf>> {
     Ok(files)
 }
 
+/// Returns the source name for the given source path, the ancestors of the root path
+/// `/Users/project/sources/`
+pub fn source_name(source: &Path, root: impl AsRef<Path>) -> &Path {
+    source.strip_prefix(root.as_ref()).unwrap_or(source)
+}
+
 #[cfg(test)]
 mod tests {
     use std::{

@@ -1052,6 +1052,7 @@ name = "ethers-solc"
 version = "0.1.0"
 dependencies = [
  "futures-util",
+ "hex",
  "md-5",
  "once_cell",
  "regex",

@@ -1,5 +1,6 @@
 //! Solc artifact types
 
+use md5::Digest;
 use semver::Version;
 use std::{
     collections::BTreeMap,
@@ -11,11 +12,14 @@ use std::{
 use crate::{compile::*, utils};
 use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 
+/// An ordered list of files and their source
+pub type Sources = BTreeMap<PathBuf, Source>;
+
 /// Input type `solc` expects
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct CompilerInput {
     pub language: String,
-    pub sources: BTreeMap<PathBuf, Source>,
+    pub sources: Sources,
     pub settings: Settings,
 }
 
@@ -26,7 +30,7 @@ impl CompilerInput {
     }
 
     /// Creates a new Compiler input with default settings and the given sources
-    pub fn with_sources(sources: BTreeMap<PathBuf, Source>) -> Self {
+    pub fn with_sources(sources: Sources) -> Self {
         Self {
             language: "Solidity".to_string(),
             sources,
@@ -53,7 +57,7 @@ impl Default for CompilerInput {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Settings {
     pub optimizer: Optimizer,
@@ -106,6 +110,24 @@ pub struct Settings {
     /// Note that using a using `evm`, `evm.bytecode`, `ewasm`, etc. will select
     /// every target part of that output. Additionally, `*` can be used as a
     /// wildcard to request everything.
+    ///
+    /// The default output selection is
+    ///
+    /// ```json
+    ///   {
+    ///    "*": {
+    ///      "*": [
+    ///        "abi",
+    ///        "evm.bytecode",
+    ///        "evm.deployedBytecode",
+    ///        "evm.methodIdentifiers"
+    ///      ],
+    ///      "": [
+    ///        "ast"
+    ///      ]
+    ///    }
+    ///  }
+    /// ```
     #[serde(default)]
     pub output_selection: BTreeMap<String, BTreeMap<String, Vec<String>>>,
     #[serde(
@@ -140,7 +162,7 @@ impl Settings {
     }
 
     /// Adds `ast` to output
-    pub fn with_ast(&mut self) -> &mut Self {
+    pub fn with_ast(mut self) -> Self {
         let output = self
             .output_selection
             .entry("*".to_string())
@@ -159,10 +181,11 @@ impl Default for Settings {
             evm_version: Some(EvmVersion::Istanbul),
             libraries: Default::default(),
         }
+        .with_ast()
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Optimizer {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub enabled: Option<bool>,
@@ -270,7 +293,7 @@ impl FromStr for EvmVersion {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Metadata {
     #[serde(rename = "useLiteralContent")]
     pub use_literal_content: bool,
@@ -290,12 +313,12 @@ impl Source {
     }
 
     /// Finds all source files under the given dir path and reads them all
-    pub fn read_all_from(dir: impl AsRef<Path>) -> io::Result<BTreeMap<PathBuf, Source>> {
+    pub fn read_all_from(dir: impl AsRef<Path>) -> io::Result<Sources> {
         Self::read_all(utils::source_files(dir)?)
     }
 
     /// Reads all files
-    pub fn read_all<T, I>(files: I) -> io::Result<BTreeMap<PathBuf, Source>>
+    pub fn read_all<T, I>(files: I) -> io::Result<Sources>
     where
         I: IntoIterator<Item = T>,
         T: Into<PathBuf>,
@@ -305,6 +328,13 @@ impl Source {
             .map(Into::into)
             .map(|file| Self::read(&file).map(|source| (file, source)))
             .collect()
+    }
+
+    pub fn content_hash(&self) -> String {
+        let mut hasher = md5::Md5::new();
+        hasher.update(&self.content);
+        let result = hasher.finalize();
+        hex::encode(result)
     }
 }
 
@@ -318,14 +348,12 @@ impl Source {
     }
 
     /// Finds all source files under the given dir path and reads them all
-    pub async fn async_read_all_from(
-        dir: impl AsRef<Path>,
-    ) -> io::Result<BTreeMap<PathBuf, Source>> {
+    pub async fn async_read_all_from(dir: impl AsRef<Path>) -> io::Result<Sources> {
         Self::async_read_all(utils::source_files(dir.as_ref())?).await
     }
 
     /// async version of `Self::read_all`
-    pub async fn async_read_all<T, I>(files: I) -> io::Result<BTreeMap<PathBuf, Source>>
+    pub async fn async_read_all<T, I>(files: I) -> io::Result<Sources>
     where
         I: IntoIterator<Item = T>,
         T: Into<PathBuf>,
@@ -342,8 +370,14 @@ impl Source {
     }
 }
 
+impl AsRef<str> for Source {
+    fn as_ref(&self) -> &str {
+        &self.content
+    }
+}
+
 /// Output type `solc` produces
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Default)]
 pub struct CompilerOutput {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub errors: Vec<Error>,

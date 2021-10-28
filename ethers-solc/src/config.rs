@@ -1,7 +1,10 @@
 use crate::{
-    artifacts::CompactContractRef, cache::SOLIDITY_FILES_CACHE_FILENAME, error::Result,
-    CompilerOutput,
+    artifacts::{CompactContractRef, Settings},
+    cache::SOLIDITY_FILES_CACHE_FILENAME,
+    error::Result,
+    CompilerOutput, Solc,
 };
+use serde::{Deserialize, Serialize};
 use std::{fmt, fs, io, path::PathBuf};
 
 /// Where to find all files or where to write them
@@ -31,6 +34,64 @@ impl ProjectPathsConfig {
             tests: root.join("tests"),
             root,
         })
+    }
+
+    /// Creates a new config with the current directory as the root
+    pub fn current() -> io::Result<Self> {
+        Self::new(std::env::current_dir()?)
+    }
+}
+
+/// The config to use when compiling the contracts
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct SolcConfig {
+    /// Configured solc version
+    pub version: String,
+    /// How the file was compiled
+    pub settings: Settings,
+}
+
+impl SolcConfig {
+    /// # Example
+    ///
+    /// Autodetect solc version and default settings
+    ///
+    /// ```rust
+    /// use ethers_solc::SolcConfig;
+    /// let config = SolcConfig::builder().build().unwrap();
+    /// ```
+    pub fn builder() -> SolcConfigBuilder {
+        SolcConfigBuilder::default()
+    }
+}
+
+#[derive(Default)]
+pub struct SolcConfigBuilder {
+    version: Option<String>,
+    settings: Option<Settings>,
+}
+
+impl SolcConfigBuilder {
+    pub fn version(mut self, version: impl Into<String>) -> Self {
+        self.version = Some(version.into());
+        self
+    }
+
+    pub fn settings(mut self, settings: Settings) -> Self {
+        self.settings = Some(settings);
+        self
+    }
+
+    /// Creates the solc config
+    ///
+    /// If no solc version is configured then it will be determined by calling `solc --version`.
+    pub fn build(self) -> Result<SolcConfig> {
+        let Self { version, settings } = self;
+        let version = version
+            .map(Ok)
+            .unwrap_or_else(|| Solc::default().version().map(|s| s.to_string()))?;
+        let settings = settings.unwrap_or_default();
+        Ok(SolcConfig { version, settings })
     }
 }
 
@@ -70,6 +131,12 @@ impl ArtifactOutput {
             }
             ArtifactOutput::Custom(f) => f(output, layout),
         }
+    }
+}
+
+impl Default for ArtifactOutput {
+    fn default() -> Self {
+        ArtifactOutput::MinimalCombined
     }
 }
 
