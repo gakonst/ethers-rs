@@ -40,4 +40,6 @@ fn can_compile_project() {
         .unwrap();
 
     assert!(project.compile().unwrap().is_some());
+    // nothing to compile
+    assert!(project.compile().unwrap().is_none());
 }

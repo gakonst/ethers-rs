@@ -71,10 +71,7 @@ impl ProjectPathsConfigBuilder {
     }
 
     pub fn build(self) -> io::Result<ProjectPathsConfig> {
-        let root = self
-            .root
-            .map(Ok)
-            .unwrap_or_else(|| std::env::current_dir())?;
+        let root = self.root.map(Ok).unwrap_or_else(std::env::current_dir)?;
         let root = std::fs::canonicalize(root)?;
         Ok(ProjectPathsConfig {
             cache: self
