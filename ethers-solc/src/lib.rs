@@ -78,7 +78,7 @@ impl Project {
         // TODO handle special imports
         let input = CompilerInput::with_sources(sources);
         let output = self.solc.compile(&input)?;
-        self.artifacts.on_output(&output, &self.paths)?;
+        self.artifacts.on_output(&output, &self.paths).unwrap();
         Ok(Some(output))
     }
 }

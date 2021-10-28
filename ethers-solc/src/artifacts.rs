@@ -572,10 +572,10 @@ pub struct Bytecode {
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct FunctionDebugData {
-    pub entry_point: u32,
-    pub id: u32,
-    pub parameter_slots: u32,
-    pub return_slots: u32,
+    pub entry_point: Option<u32>,
+    pub id: Option<u32>,
+    pub parameter_slots: Option<u32>,
+    pub return_slots: Option<u32>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]

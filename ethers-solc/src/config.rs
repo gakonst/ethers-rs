@@ -23,22 +23,68 @@ pub struct ProjectPathsConfig {
 }
 
 impl ProjectPathsConfig {
+    pub fn builder() -> ProjectPathsConfigBuilder {
+        ProjectPathsConfigBuilder::default()
+    }
+
     /// Creates a new config instance which points to the canonicalized root
     /// path
     pub fn new(root: impl Into<PathBuf>) -> io::Result<Self> {
-        let root = std::fs::canonicalize(root.into())?;
-        Ok(Self {
-            cache: root.join("cache").join(SOLIDITY_FILES_CACHE_FILENAME),
-            artifacts: root.join("artifacts"),
-            sources: root.join("contracts"),
-            tests: root.join("tests"),
-            root,
-        })
+        Self::builder().root(root).build()
     }
 
     /// Creates a new config with the current directory as the root
     pub fn current() -> io::Result<Self> {
         Self::new(std::env::current_dir()?)
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct ProjectPathsConfigBuilder {
+    root: Option<PathBuf>,
+    cache: Option<PathBuf>,
+    artifacts: Option<PathBuf>,
+    sources: Option<PathBuf>,
+    tests: Option<PathBuf>,
+}
+
+impl ProjectPathsConfigBuilder {
+    pub fn root(mut self, root: impl Into<PathBuf>) -> Self {
+        self.root = Some(root.into());
+        self
+    }
+    pub fn cache(mut self, cache: impl Into<PathBuf>) -> Self {
+        self.cache = Some(cache.into());
+        self
+    }
+    pub fn artifacts(mut self, artifacts: impl Into<PathBuf>) -> Self {
+        self.artifacts = Some(artifacts.into());
+        self
+    }
+    pub fn sources(mut self, sources: impl Into<PathBuf>) -> Self {
+        self.sources = Some(sources.into());
+        self
+    }
+    pub fn tests(mut self, tests: impl Into<PathBuf>) -> Self {
+        self.tests = Some(tests.into());
+        self
+    }
+
+    pub fn build(self) -> io::Result<ProjectPathsConfig> {
+        let root = self
+            .root
+            .map(Ok)
+            .unwrap_or_else(|| std::env::current_dir())?;
+        let root = std::fs::canonicalize(root)?;
+        Ok(ProjectPathsConfig {
+            cache: self
+                .cache
+                .unwrap_or_else(|| root.join("cache").join(SOLIDITY_FILES_CACHE_FILENAME)),
+            artifacts: self.artifacts.unwrap_or_else(|| root.join("artifacts")),
+            sources: self.sources.unwrap_or_else(|| root.join("contracts")),
+            tests: self.tests.unwrap_or_else(|| root.join("tests")),
+            root,
+        })
     }
 }
 
@@ -119,7 +165,7 @@ impl ArtifactOutput {
             ArtifactOutput::MinimalCombined => {
                 for contracts in output.contracts.values() {
                     for (name, contract) in contracts {
-                        let file = layout.root.join(format!("{}.json", name));
+                        let file = layout.artifacts.join(format!("{}.json", name));
                         let min = CompactContractRef::from(contract);
                         fs::write(file, serde_json::to_vec_pretty(&min)?)?
                     }
