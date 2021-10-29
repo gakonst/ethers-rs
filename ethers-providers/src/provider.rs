@@ -26,7 +26,6 @@ use thiserror::Error;
 use url::{ParseError, Url};
 
 use futures_util::lock::Mutex;
-use std::convert::TryInto;
 use std::{convert::TryFrom, fmt::Debug, sync::Arc, time::Duration};
 use tracing::trace;
 use tracing_futures::Instrument;
@@ -50,7 +49,7 @@ impl TryFrom<String> for NodeClient {
             "OpenEthereum" => Ok(NodeClient::OpenEthereum),
             "Nethermind" => Ok(NodeClient::Nethermind),
             "besu" => Ok(NodeClient::Besu),
-            _ => Err(ProviderError::CustomError("Unsupported node client".into())),
+            _ => Err(ProviderError::UnsupportedNodeClient),
         }
     }
 }
@@ -82,7 +81,10 @@ pub struct Provider<P> {
     ens: Option<Address>,
     interval: Option<Duration>,
     from: Option<Address>,
-    _node_client: Arc<Mutex<Option<NodeClient>>>,
+    /// Node client hasn't been checked yet = `None`
+    /// Unsupported node client = `Some(None)`
+    /// Supported node client = `Some(Some(NodeClient))`
+    _node_client: Arc<Mutex<Option<Option<NodeClient>>>>,
 }
 
 impl<P> AsRef<P> for Provider<P> {
@@ -117,8 +119,11 @@ pub enum ProviderError {
     #[error("custom error: {0}")]
     CustomError(String),
 
-    #[error("Unsupported RPC")]
-    Unsupported,
+    #[error("unsupported RPC")]
+    UnsupportedRPC,
+
+    #[error("unsupported node client")]
+    UnsupportedNodeClient,
 }
 
 /// Types of filters supported by the JSON-RPC.
@@ -152,10 +157,11 @@ impl<P: JsonRpcClient> Provider<P> {
 
         if node_client.is_none() {
             let client_version = self.client_version().await?;
-            *node_client = Some(client_version.try_into()?);
+            *node_client = Some(NodeClient::try_from(client_version).ok());
         }
 
-        node_client.ok_or(ProviderError::CustomError("Unsupported node client".into()))
+        // unwrap() always succeeds since we've set the value before
+        node_client.unwrap().ok_or(ProviderError::UnsupportedNodeClient)
     }
 
     pub fn with_sender(mut self, address: impl Into<Address>) -> Self {
@@ -331,7 +337,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         let method = match self.node_client().await? {
             NodeClient::Erigon => "eth_getBlockReceipts",
             NodeClient::OpenEthereum | NodeClient::Nethermind => "parity_getBlockReceipts",
-            _ => return Err(ProviderError::Unsupported),
+            _ => return Err(ProviderError::UnsupportedRPC),
         };
 
         self.request(method, [block.into()]).await
