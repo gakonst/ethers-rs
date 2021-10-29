@@ -3,6 +3,7 @@
 pub mod artifacts;
 
 pub use artifacts::{CompilerInput, CompilerOutput, EvmVersion};
+use std::collections::btree_map::Entry;
 
 pub mod cache;
 
@@ -18,6 +19,11 @@ pub mod error;
 pub mod utils;
 use crate::artifacts::Sources;
 use error::Result;
+use std::{
+    collections::{BTreeMap, HashMap},
+    fs, io,
+    path::PathBuf,
+};
 
 /// Handles contract compiling
 #[derive(Debug)]
@@ -52,7 +58,33 @@ impl Project {
             .root(&self.paths.root)
             .solc_config(self.solc_config.clone())
             .insert_files(sources)?;
+        if let Some(cache_dir) = self.paths.cache.parent() {
+            fs::create_dir_all(cache_dir)?
+        }
         cache.write(&self.paths.cache)
+    }
+
+    /// Returns all sources found under the project's sources path
+    pub fn sources(&self) -> io::Result<Sources> {
+        Source::read_all_from(self.paths.sources.as_path())
+    }
+
+    /// Attempts to read all unique libraries that are used as imports like "hardhat/console.sol"
+    fn resolved_libraries(
+        &self,
+        sources: &Sources,
+    ) -> io::Result<BTreeMap<PathBuf, (Source, PathBuf)>> {
+        let mut libs = BTreeMap::default();
+        for source in sources.values() {
+            for import in source.parse_imports() {
+                if let Some(lib) = utils::resolve_library(&self.paths.libraries, import) {
+                    if let Entry::Vacant(entry) = libs.entry(import.into()) {
+                        entry.insert((Source::read(&lib)?, lib));
+                    }
+                }
+            }
+        }
+        Ok(libs)
     }
 
     /// Attempts to compile the contracts found at the configured location.
@@ -62,25 +94,58 @@ impl Project {
     ///
     /// Returns `None` if caching is enabled and there was nothing to compile.
     pub fn compile(&self) -> Result<Option<CompilerOutput>> {
-        let sources = Source::read_all_from(self.paths.sources.as_path())?;
-        if self.cached {
-            if self.paths.cache.exists() {
-                // check anything changed
-                let cache = SolFilesCache::read(&self.paths.cache)?;
-                if !cache.is_changed(&sources, Some(&self.solc_config)) {
-                    return Ok(None)
-                }
-            }
-            // create cache file
-            self.write_cache_file(sources.clone())?;
+        let mut sources = self.sources()?;
+        // add all libraries to the source set while keeping track of their actual disk path
+        let mut source_name_path = HashMap::new();
+        let mut path_source_name = HashMap::new();
+        for (import, (source, path)) in self.resolved_libraries(&sources)? {
+            // inserting with absolute path here and keep track of the source name <-> path mappings
+            sources.insert(path.clone(), source);
+            path_source_name.insert(path.clone(), import.clone());
+            source_name_path.insert(import, path);
         }
 
-        // TODO handle special imports
+        if self.cached && self.paths.cache.exists() {
+            // check anything changed
+            let cache = SolFilesCache::read(&self.paths.cache)?;
+            if !cache.is_changed(&sources, Some(&self.solc_config)) {
+                return Ok(None)
+            }
+        }
+
+        // replace absolute path with source name to make solc happy
+        let sources = apply_mappings(sources, path_source_name);
+
         let input = CompilerInput::with_sources(sources);
         let output = self.solc.compile(&input)?;
-        self.artifacts.on_output(&output, &self.paths).unwrap();
+        if output.has_error() {
+            // TODO handle error here
+            return Ok(Some(output))
+        }
+
+        if self.cached {
+            // reapply to disk paths
+            let sources = apply_mappings(input.sources, source_name_path);
+            // create cache file
+            self.write_cache_file(sources)?;
+        }
+
+        self.artifacts.on_output(&output, &self.paths)?;
         Ok(Some(output))
     }
+}
+
+fn apply_mappings(sources: Sources, mut mappings: HashMap<PathBuf, PathBuf>) -> Sources {
+    sources
+        .into_iter()
+        .map(|(import, source)| {
+            if let Some(path) = mappings.remove(&import) {
+                (path, source)
+            } else {
+                (import, source)
+            }
+        })
+        .collect()
 }
 
 pub struct ProjectBuilder {
@@ -133,7 +198,7 @@ impl ProjectBuilder {
         })?;
 
         Ok(Project {
-            paths: paths.map(Ok).unwrap_or_else(ProjectPathsConfig::current)?,
+            paths: paths.map(Ok).unwrap_or_else(ProjectPathsConfig::current_hardhat)?,
             solc,
             solc_config,
             cached,

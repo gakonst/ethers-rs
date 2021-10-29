@@ -311,11 +311,17 @@ impl Source {
             .collect()
     }
 
+    /// Generate a non-cryptographically secure checksum of the file's content
     pub fn content_hash(&self) -> String {
         let mut hasher = md5::Md5::new();
         hasher.update(&self.content);
         let result = hasher.finalize();
         hex::encode(result)
+    }
+
+    /// Returns all import statements of the file
+    pub fn parse_imports(&self) -> Vec<&str> {
+        utils::find_import_paths(self.as_ref())
     }
 }
 
@@ -364,6 +370,13 @@ pub struct CompilerOutput {
     pub sources: BTreeMap<String, SourceFile>,
     #[serde(default)]
     pub contracts: BTreeMap<String, BTreeMap<String, Contract>>,
+}
+
+impl CompilerOutput {
+    /// Whether the output contains an compiler error
+    pub fn has_error(&self) -> bool {
+        self.errors.iter().any(|err| err.severity.is_error())
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
@@ -618,6 +631,21 @@ pub enum Severity {
     Warning,
     Info,
 }
+
+impl Severity {
+    pub fn is_error(&self) -> bool {
+        matches!(self, Severity::Error)
+    }
+
+    pub fn is_warning(&self) -> bool {
+        matches!(self, Severity::Warning)
+    }
+
+    pub fn is_info(&self) -> bool {
+        matches!(self, Severity::Info)
+    }
+}
+
 impl FromStr for Severity {
     type Err = String;
 
