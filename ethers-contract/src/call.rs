@@ -133,10 +133,7 @@ where
 
     /// Returns the estimated gas cost for the underlying transaction to be executed
     pub async fn estimate_gas(&self) -> Result<U256, ContractError<M>> {
-        self.client
-            .estimate_gas(&self.tx)
-            .await
-            .map_err(ContractError::MiddlewareError)
+        self.client.estimate_gas(&self.tx).await.map_err(ContractError::MiddlewareError)
     }
 
     /// Queries the blockchain via an `eth_call` for the provided transaction.

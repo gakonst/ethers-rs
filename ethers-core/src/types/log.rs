@@ -65,20 +65,14 @@ pub struct Log {
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum FilterBlockOption {
-    Range {
-        from_block: Option<BlockNumber>,
-        to_block: Option<BlockNumber>,
-    },
+    Range { from_block: Option<BlockNumber>, to_block: Option<BlockNumber> },
     AtBlockHash(H256),
 }
 
 impl From<BlockNumber> for FilterBlockOption {
     fn from(block: BlockNumber) -> Self {
         let block = Some(block);
-        FilterBlockOption::Range {
-            from_block: block,
-            to_block: block,
-        }
+        FilterBlockOption::Range { from_block: block, to_block: block }
     }
 }
 
@@ -98,30 +92,21 @@ impl<T: Into<BlockNumber>> From<Range<T>> for FilterBlockOption {
     fn from(r: Range<T>) -> Self {
         let from_block = Some(r.start.into());
         let to_block = Some(r.end.into());
-        FilterBlockOption::Range {
-            from_block,
-            to_block,
-        }
+        FilterBlockOption::Range { from_block, to_block }
     }
 }
 
 impl<T: Into<BlockNumber>> From<RangeTo<T>> for FilterBlockOption {
     fn from(r: RangeTo<T>) -> Self {
         let to_block = Some(r.end.into());
-        FilterBlockOption::Range {
-            from_block: Some(BlockNumber::Earliest),
-            to_block,
-        }
+        FilterBlockOption::Range { from_block: Some(BlockNumber::Earliest), to_block }
     }
 }
 
 impl<T: Into<BlockNumber>> From<RangeFrom<T>> for FilterBlockOption {
     fn from(r: RangeFrom<T>) -> Self {
         let from_block = Some(r.start.into());
-        FilterBlockOption::Range {
-            from_block,
-            to_block: Some(BlockNumber::Latest),
-        }
+        FilterBlockOption::Range { from_block, to_block: Some(BlockNumber::Latest) }
     }
 }
 
@@ -133,38 +118,23 @@ impl From<H256> for FilterBlockOption {
 
 impl Default for FilterBlockOption {
     fn default() -> Self {
-        FilterBlockOption::Range {
-            from_block: None,
-            to_block: None,
-        }
+        FilterBlockOption::Range { from_block: None, to_block: None }
     }
 }
 
 impl FilterBlockOption {
     pub fn set_from_block(&self, block: BlockNumber) -> Self {
-        let to_block = if let FilterBlockOption::Range { to_block, .. } = self {
-            *to_block
-        } else {
-            None
-        };
+        let to_block =
+            if let FilterBlockOption::Range { to_block, .. } = self { *to_block } else { None };
 
-        FilterBlockOption::Range {
-            from_block: Some(block),
-            to_block,
-        }
+        FilterBlockOption::Range { from_block: Some(block), to_block }
     }
 
     pub fn set_to_block(&self, block: BlockNumber) -> Self {
-        let from_block = if let FilterBlockOption::Range { from_block, .. } = self {
-            *from_block
-        } else {
-            None
-        };
+        let from_block =
+            if let FilterBlockOption::Range { from_block, .. } = self { *from_block } else { None };
 
-        FilterBlockOption::Range {
-            from_block,
-            to_block: Some(block),
-        }
+        FilterBlockOption::Range { from_block, to_block: Some(block) }
     }
 
     pub fn set_hash(&self, hash: H256) -> Self {
@@ -199,10 +169,7 @@ impl Serialize for Filter {
     {
         let mut s = serializer.serialize_struct("Filter", 5)?;
         match self.block_option {
-            FilterBlockOption::Range {
-                from_block,
-                to_block,
-            } => {
+            FilterBlockOption::Range { from_block, to_block } => {
                 if let Some(ref from_block) = from_block {
                     s.serialize_field("fromBlock", from_block)?;
                 }
@@ -426,9 +393,7 @@ mod tests {
 
     #[test]
     fn filter_serialization_test() {
-        let t1 = "9729a6fbefefc8f6005933898b13dc45c3a2c8b7"
-            .parse::<Address>()
-            .unwrap();
+        let t1 = "9729a6fbefefc8f6005933898b13dc45c3a2c8b7".parse::<Address>().unwrap();
         let t2 = H256::from([0; 32]);
         let t3 = U256::from(123);
 
@@ -468,37 +433,22 @@ mod tests {
 
         // 3
         let ser = serialize(&filter.clone().topic3(t3));
-        assert_eq!(
-            ser,
-            json!({ "address" : addr, "topics": [t0, null, null, t3_padded]})
-        );
+        assert_eq!(ser, json!({ "address" : addr, "topics": [t0, null, null, t3_padded]}));
 
         // 1 & 2
         let ser = serialize(&filter.clone().topic1(t1).topic2(t2));
-        assert_eq!(
-            ser,
-            json!({ "address" : addr, "topics": [t0, t1_padded, t2]})
-        );
+        assert_eq!(ser, json!({ "address" : addr, "topics": [t0, t1_padded, t2]}));
 
         // 1 & 3
         let ser = serialize(&filter.clone().topic1(t1).topic3(t3));
-        assert_eq!(
-            ser,
-            json!({ "address" : addr, "topics": [t0, t1_padded, null, t3_padded]})
-        );
+        assert_eq!(ser, json!({ "address" : addr, "topics": [t0, t1_padded, null, t3_padded]}));
 
         // 2 & 3
         let ser = serialize(&filter.clone().topic2(t2).topic3(t3));
-        assert_eq!(
-            ser,
-            json!({ "address" : addr, "topics": [t0, null, t2, t3_padded]})
-        );
+        assert_eq!(ser, json!({ "address" : addr, "topics": [t0, null, t2, t3_padded]}));
 
         // 1 & 2 & 3
         let ser = serialize(&filter.topic1(t1).topic2(t2).topic3(t3));
-        assert_eq!(
-            ser,
-            json!({ "address" : addr, "topics": [t0, t1_padded, t2, t3_padded]})
-        );
+        assert_eq!(ser, json!({ "address" : addr, "topics": [t0, t1_padded, t2, t3_padded]}));
     }
 }

@@ -107,9 +107,6 @@ where
             .ensure_can_send(tx.into())
             .await
             .map_err(PolicyMiddlewareError::PolicyError)?;
-        self.inner
-            .send_transaction(tx, block)
-            .await
-            .map_err(PolicyMiddlewareError::MiddlewareError)
+        self.inner.send_transaction(tx, block).await.map_err(PolicyMiddlewareError::MiddlewareError)
     }
 }

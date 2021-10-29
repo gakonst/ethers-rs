@@ -6,9 +6,8 @@ use proc_macro2::{Literal, TokenStream};
 use quote::quote;
 use syn::Ident;
 
-use ethers_core::abi::ParamType;
 use ethers_core::{
-    abi::{Function, FunctionExt, Param},
+    abi::{Function, FunctionExt, Param, ParamType},
     types::Selector,
 };
 
@@ -96,7 +95,7 @@ impl Context {
 
         if struct_defs.len() <= 1 {
             // no need for an enum
-            return Ok(struct_def_tokens);
+            return Ok(struct_def_tokens)
         }
 
         let ethers_core = util::ethers_core_crate();
@@ -155,7 +154,7 @@ impl Context {
 
     /// The name ident of the calls enum
     fn expand_calls_enum_name(&self) -> Ident {
-        util::ident(&format!("{}Calls", self.contract_name.to_string()))
+        util::ident(&format!("{}Calls", self.contract_name))
     }
 
     /// Expands to the `name : type` pairs of the function's inputs
@@ -217,9 +216,8 @@ impl Context {
                 Ok(quote! {[#ty; #size]})
             }
             ParamType::Tuple(_) => {
-                let ty = if let Some(rust_struct_name) = self
-                    .internal_structs
-                    .get_function_input_struct_type(&fun.name, param)
+                let ty = if let Some(rust_struct_name) =
+                    self.internal_structs.get_function_input_struct_type(&fun.name, param)
                 {
                     let ident = util::ident(rust_struct_name);
                     quote! {#ident}
@@ -245,10 +243,8 @@ impl Context {
         let result = quote! { #ethers_contract::builders::ContractCall<M, #outputs> };
 
         let contract_args = self.expand_contract_call_args(function)?;
-        let function_params = self
-            .expand_input_pairs(function)?
-            .into_iter()
-            .map(|(name, ty)| quote! { #name: #ty });
+        let function_params =
+            self.expand_input_pairs(function)?.into_iter().map(|(name, ty)| quote! { #name: #ty });
         let function_params = quote! { #( , #function_params )* };
 
         let doc = util::expand_doc(&format!(
@@ -278,14 +274,9 @@ impl Context {
         let mut aliases = self.method_aliases.clone();
         // find all duplicates, where no aliases where provided
         for functions in self.abi.functions.values() {
-            if functions
-                .iter()
-                .filter(|f| !aliases.contains_key(&f.abi_signature()))
-                .count()
-                <= 1
-            {
+            if functions.iter().filter(|f| !aliases.contains_key(&f.abi_signature())).count() <= 1 {
                 // no conflicts
-                continue;
+                continue
             }
 
             // sort functions by number of inputs asc
@@ -476,11 +467,7 @@ mod tests {
 
         // two inputs
         let params = vec![
-            Param {
-                name: "arg_a".to_string(),
-                kind: ParamType::Address,
-                internal_type: None,
-            },
+            Param { name: "arg_a".to_string(), kind: ParamType::Address, internal_type: None },
             Param {
                 name: "arg_b".to_string(),
                 kind: ParamType::Uint(256usize),
@@ -492,21 +479,13 @@ mod tests {
 
         // three inputs
         let params = vec![
-            Param {
-                name: "arg_a".to_string(),
-                kind: ParamType::Address,
-                internal_type: None,
-            },
+            Param { name: "arg_a".to_string(), kind: ParamType::Address, internal_type: None },
             Param {
                 name: "arg_b".to_string(),
                 kind: ParamType::Uint(128usize),
                 internal_type: None,
             },
-            Param {
-                name: "arg_c".to_string(),
-                kind: ParamType::Bool,
-                internal_type: None,
-            },
+            Param { name: "arg_c".to_string(), kind: ParamType::Bool, internal_type: None },
         ];
         let token_stream = expand_inputs_call_arg(&params);
         assert_eq!(token_stream.to_string(), "(arg_a , arg_b , arg_c ,)");
@@ -562,16 +541,8 @@ mod tests {
     fn expand_fn_outputs_multiple() {
         assert_quote!(
             expand_fn_outputs(&[
-                Param {
-                    name: "a".to_string(),
-                    kind: ParamType::Bool,
-                    internal_type: None,
-                },
-                Param {
-                    name: "b".to_string(),
-                    kind: ParamType::Address,
-                    internal_type: None,
-                },
+                Param { name: "a".to_string(), kind: ParamType::Bool, internal_type: None },
+                Param { name: "b".to_string(), kind: ParamType::Address, internal_type: None },
             ],)
             .unwrap(),
             { (bool, ethers_core::types::Address) },

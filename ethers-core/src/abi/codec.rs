@@ -1,5 +1,7 @@
-use crate::abi::{AbiArrayType, AbiError, AbiType, Detokenize, Tokenizable, TokenizableItem};
-use crate::types::{Address, H256, U128, U256};
+use crate::{
+    abi::{AbiArrayType, AbiError, AbiType, Detokenize, Tokenizable, TokenizableItem},
+    types::{Address, H256, U128, U256},
+};
 
 /// Trait for ABI encoding
 pub trait AbiEncode {
@@ -208,11 +210,7 @@ mod tests {
     fn u8_codec() {
         assert_codec(random::<u8>());
         assert_codec((random::<u8>(), random::<u8>()));
-        assert_codec(
-            std::iter::repeat_with(|| random::<u8>())
-                .take(10)
-                .collect::<Vec<_>>(),
-        );
+        assert_codec(std::iter::repeat_with(random::<u8>).take(10).collect::<Vec<_>>());
         assert_codec([random::<u8>(); 10]);
     }
 

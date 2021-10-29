@@ -26,7 +26,6 @@ pub static ADDRESS_BOOK: Lazy<HashMap<U256, Address>> = Lazy::new(|| {
 ///         }
 ///     );
 /// ```
-///
 // Auto-generated type-safe bindings
 pub use dsproxyfactory_mod::*;
 #[allow(clippy::too_many_arguments)]
@@ -57,9 +56,7 @@ mod dsproxyfactory_mod {
     }
     impl<M: Middleware> std::fmt::Debug for DsProxyFactory<M> {
         fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-            f.debug_tuple(stringify!(DsProxyFactory))
-                .field(&self.address())
-                .finish()
+            f.debug_tuple(stringify!(DsProxyFactory)).field(&self.address()).finish()
         }
     }
     impl<'a, M: Middleware> DsProxyFactory<M> {
@@ -104,7 +101,8 @@ mod dsproxyfactory_mod {
             self.0.event()
         }
 
-        /// Returns an [`Event`](ethers_contract::builders::Event) builder for all events of this contract
+        /// Returns an [`Event`](ethers_contract::builders::Event) builder for all events of this
+        /// contract
         pub fn events(&self) -> ethers_contract::builders::Event<M, CreatedFilter> {
             self.0.event_with_filter(Default::default())
         }

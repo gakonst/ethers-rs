@@ -1,6 +1,5 @@
 use async_trait::async_trait;
-use ethers_core::types::transaction::eip2718::TypedTransaction;
-use ethers_core::types::*;
+use ethers_core::types::{transaction::eip2718::TypedTransaction, *};
 use ethers_providers::{FromErr, Middleware, PendingTransaction};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use thiserror::Error;
@@ -22,12 +21,7 @@ where
     /// Instantiates the nonce manager with a 0 nonce. The `address` should be the
     /// address which you'll be sending transactions from
     pub fn new(inner: M, address: Address) -> Self {
-        Self {
-            initialized: false.into(),
-            nonce: 0.into(),
-            inner,
-            address,
-        }
+        Self { initialized: false.into(), nonce: 0.into(), inner, address }
     }
 
     /// Returns the next nonce to be used
@@ -106,10 +100,7 @@ where
                     // was a nonce mismatch
                     self.nonce.store(nonce.as_u64(), Ordering::SeqCst);
                     tx.set_nonce(nonce);
-                    self.inner
-                        .send_transaction(tx, block)
-                        .await
-                        .map_err(FromErr::from)
+                    self.inner.send_transaction(tx, block).await.map_err(FromErr::from)
                 } else {
                     // propagate the error otherwise
                     Err(FromErr::from(err))

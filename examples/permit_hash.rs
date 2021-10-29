@@ -1,6 +1,5 @@
 use ethers::{
-    contract::Eip712,
-    contract::EthAbiType,
+    contract::{Eip712, EthAbiType},
     core::types::transaction::eip712::Eip712,
     types::{Address, U256},
 };

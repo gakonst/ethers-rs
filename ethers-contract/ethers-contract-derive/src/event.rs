@@ -3,14 +3,15 @@
 use ethers_contract_abigen::{ethers_contract_crate, ethers_core_crate, Source};
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
-use syn::spanned::Spanned as _;
-use syn::{parse::Error, AttrStyle, Data, DeriveInput, Field, Fields, Lit, Meta, NestedMeta};
+use syn::{
+    parse::Error, spanned::Spanned as _, AttrStyle, Data, DeriveInput, Field, Fields, Lit, Meta,
+    NestedMeta,
+};
 
 use ethers_core::abi::{param_type::Reader, AbiParser, Event, EventExt, EventParam, ParamType};
 use hex::FromHex;
 
-use crate::abi_ty;
-use crate::utils;
+use crate::{abi_ty, utils};
 
 /// Generates the `EthEvent` trait support
 pub(crate) fn derive_eth_event_impl(input: DeriveInput) -> TokenStream {
@@ -24,10 +25,7 @@ pub(crate) fn derive_eth_event_impl(input: DeriveInput) -> TokenStream {
         Err(errors) => return errors,
     };
 
-    let event_name = attributes
-        .name
-        .map(|(s, _)| s)
-        .unwrap_or_else(|| input.ident.to_string());
+    let event_name = attributes.name.map(|(s, _)| s).unwrap_or_else(|| input.ident.to_string());
 
     let mut event = if let Some((src, span)) = attributes.abi {
         // try to parse as solidity event
@@ -36,29 +34,19 @@ pub(crate) fn derive_eth_event_impl(input: DeriveInput) -> TokenStream {
         } else {
             // try as tuple
             if let Some(inputs) = Reader::read(
-                src.trim_start_matches("event ")
-                    .trim_start()
-                    .trim_start_matches(&event_name),
+                src.trim_start_matches("event ").trim_start().trim_start_matches(&event_name),
             )
             .ok()
             .and_then(|param| match param {
                 ParamType::Tuple(params) => Some(
                     params
                         .into_iter()
-                        .map(|kind| EventParam {
-                            name: "".to_string(),
-                            indexed: false,
-                            kind,
-                        })
+                        .map(|kind| EventParam { name: "".to_string(), indexed: false, kind })
                         .collect(),
                 ),
                 _ => None,
             }) {
-                Event {
-                    name: event_name.clone(),
-                    inputs,
-                    anonymous: false,
-                }
+                Event { name: event_name.clone(), inputs, anonymous: false }
             } else {
                 match src.parse::<Source>().and_then(|s| s.get()) {
                     Ok(abi) => {
@@ -169,7 +157,7 @@ fn derive_decode_from_log_impl(
                             event.name,
                             event.abi_signature()
                         ),
-                    ));
+                    ))
                 }
                 fields.named.iter().collect()
             }
@@ -182,7 +170,7 @@ fn derive_decode_from_log_impl(
                             event.name,
                             event.abi_signature()
                         ),
-                    ));
+                    ))
                 }
                 fields.unnamed.iter().collect()
             }
@@ -190,20 +178,14 @@ fn derive_decode_from_log_impl(
                 return Err(Error::new(
                     input.span(),
                     "EthEvent cannot be derived for empty structs and unit",
-                ));
+                ))
             }
         },
         Data::Enum(_) => {
-            return Err(Error::new(
-                input.span(),
-                "EthEvent cannot be derived for enums",
-            ));
+            return Err(Error::new(input.span(), "EthEvent cannot be derived for enums"))
         }
         Data::Union(_) => {
-            return Err(Error::new(
-                input.span(),
-                "EthEvent cannot be derived for unions",
-            ));
+            return Err(Error::new(input.span(), "EthEvent cannot be derived for unions"))
         }
     };
 
@@ -215,16 +197,10 @@ fn derive_decode_from_log_impl(
         if indexed {
             param.indexed = true;
         }
-        let topic_name = param
-            .indexed
-            .then(|| topic_name.or_else(|| Some(param.name.clone())))
-            .flatten();
+        let topic_name =
+            param.indexed.then(|| topic_name.or_else(|| Some(param.name.clone()))).flatten();
 
-        event_fields.push(EventField {
-            topic_name,
-            index,
-            param,
-        });
+        event_fields.push(EventField { topic_name, index, param });
     }
 
     // convert fields to params list
@@ -327,11 +303,7 @@ fn derive_abi_event_from_fields(input: &DeriveInput) -> Result<Event, Error> {
         name: "".to_string(),
         inputs: utils::derive_abi_inputs_from_fields(input, "EthEvent")?
             .into_iter()
-            .map(|(name, kind)| EventParam {
-                name,
-                kind,
-                indexed: false,
-            })
+            .map(|(name, kind)| EventParam { name, kind, indexed: false })
             .collect(),
         anonymous: false,
     };
@@ -355,14 +327,14 @@ fn parse_field_attributes(field: &Field) -> Result<(Option<String>, bool), Error
                                         return Err(Error::new(
                                             path.span(),
                                             "unrecognized ethevent parameter",
-                                        ));
+                                        ))
                                     }
                                 }
                                 Meta::List(meta) => {
                                     return Err(Error::new(
                                         meta.path.span(),
                                         "unrecognized ethevent parameter",
-                                    ));
+                                    ))
                                 }
                                 Meta::NameValue(meta) => {
                                     if meta.path.is_ident("name") {
@@ -372,7 +344,7 @@ fn parse_field_attributes(field: &Field) -> Result<(Option<String>, bool), Error
                                             return Err(Error::new(
                                                 meta.span(),
                                                 "name attribute must be a string",
-                                            ));
+                                            ))
                                         }
                                     }
                                 }
@@ -424,13 +396,13 @@ fn parse_event_attributes(
                                         if &*name.to_string() == "anonymous" {
                                             if result.anonymous.is_none() {
                                                 result.anonymous = Some((true, name.span()));
-                                                continue;
+                                                continue
                                             } else {
                                                 return Err(Error::new(
                                                     name.span(),
                                                     "anonymous already specified",
                                                 )
-                                                .to_compile_error());
+                                                .to_compile_error())
                                             }
                                         }
                                     }
@@ -438,14 +410,14 @@ fn parse_event_attributes(
                                         path.span(),
                                         "unrecognized ethevent parameter",
                                     )
-                                    .to_compile_error());
+                                    .to_compile_error())
                                 }
                                 Meta::List(meta) => {
                                     return Err(Error::new(
                                         meta.path.span(),
                                         "unrecognized ethevent parameter",
                                     )
-                                    .to_compile_error());
+                                    .to_compile_error())
                                 }
                                 Meta::NameValue(meta) => {
                                     if meta.path.is_ident("anonymous") {
@@ -458,14 +430,14 @@ fn parse_event_attributes(
                                                     meta.span(),
                                                     "anonymous already specified",
                                                 )
-                                                .to_compile_error());
+                                                .to_compile_error())
                                             }
                                         } else {
                                             return Err(Error::new(
                                                 meta.span(),
                                                 "name must be a string",
                                             )
-                                            .to_compile_error());
+                                            .to_compile_error())
                                         }
                                     } else if meta.path.is_ident("name") {
                                         if let Lit::Str(ref lit_str) = meta.lit {
@@ -477,14 +449,14 @@ fn parse_event_attributes(
                                                     meta.span(),
                                                     "name already specified",
                                                 )
-                                                .to_compile_error());
+                                                .to_compile_error())
                                             }
                                         } else {
                                             return Err(Error::new(
                                                 meta.span(),
                                                 "name must be a string",
                                             )
-                                            .to_compile_error());
+                                            .to_compile_error())
                                         }
                                     } else if meta.path.is_ident("abi") {
                                         if let Lit::Str(ref lit_str) = meta.lit {
@@ -496,14 +468,14 @@ fn parse_event_attributes(
                                                     meta.span(),
                                                     "abi already specified",
                                                 )
-                                                .to_compile_error());
+                                                .to_compile_error())
                                             }
                                         } else {
                                             return Err(Error::new(
                                                 meta.span(),
                                                 "abi must be a string",
                                             )
-                                            .to_compile_error());
+                                            .to_compile_error())
                                         }
                                     } else if meta.path.is_ident("signature") {
                                         if let Lit::Str(ref lit_str) = meta.lit {
@@ -521,7 +493,7 @@ fn parse_event_attributes(
                                                                 err
                                                             ),
                                                         )
-                                                        .to_compile_error());
+                                                        .to_compile_error())
                                                     }
                                                 }
                                             } else {
@@ -529,21 +501,21 @@ fn parse_event_attributes(
                                                     meta.span(),
                                                     "signature already specified",
                                                 )
-                                                .to_compile_error());
+                                                .to_compile_error())
                                             }
                                         } else {
                                             return Err(Error::new(
                                                 meta.span(),
                                                 "signature must be a hex string",
                                             )
-                                            .to_compile_error());
+                                            .to_compile_error())
                                         }
                                     } else {
                                         return Err(Error::new(
                                             meta.span(),
                                             "unrecognized ethevent parameter",
                                         )
-                                        .to_compile_error());
+                                        .to_compile_error())
                                     }
                                 }
                             }

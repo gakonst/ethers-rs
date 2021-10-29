@@ -114,9 +114,6 @@ mod tests {
         let addr = "f02c1c8e6114b1dbe8937a39260b5b0a374432bb".parse().unwrap();
         let union = NameOrAddress::Address(addr);
 
-        assert_eq!(
-            bincode::serialize(&addr).unwrap(),
-            bincode::serialize(&union).unwrap(),
-        );
+        assert_eq!(bincode::serialize(&addr).unwrap(), bincode::serialize(&union).unwrap(),);
     }
 }

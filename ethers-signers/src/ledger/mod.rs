@@ -5,7 +5,8 @@ use crate::Signer;
 use app::LedgerEthereum;
 use async_trait::async_trait;
 use ethers_core::types::{
-    transaction::eip2718::TypedTransaction, transaction::eip712::Eip712, Address, Signature,
+    transaction::{eip2718::TypedTransaction, eip712::Eip712},
+    Address, Signature,
 };
 use types::LedgerError;
 

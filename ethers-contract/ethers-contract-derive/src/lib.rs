@@ -43,12 +43,11 @@ pub(crate) mod utils;
 ///
 /// Currently the proc macro accepts additional parameters to configure some
 /// aspects of the code generation. Specifically it accepts:
-/// - `methods`: A list of mappings from method signatures to method names
-///   allowing methods names to be explicitely set for contract methods. This
-///   also provides a workaround for generating code for contracts with multiple
-///   methods with the same name.
-/// - `event_derives`: A list of additional derives that should be added to
-///   contract event structs and enums.
+/// - `methods`: A list of mappings from method signatures to method names allowing methods names to
+///   be explicitely set for contract methods. This also provides a workaround for generating code
+///   for contracts with multiple methods with the same name.
+/// - `event_derives`: A list of additional derives that should be added to contract event structs
+///   and enums.
 ///
 /// # Example
 ///
@@ -87,10 +86,7 @@ pub(crate) mod utils;
 pub fn abigen(input: TokenStream) -> TokenStream {
     let contracts = parse_macro_input!(input as Contracts);
 
-    contracts
-        .expand()
-        .unwrap_or_else(|err| err.to_compile_error())
-        .into()
+    contracts.expand().unwrap_or_else(|err| err.to_compile_error()).into()
 }
 
 /// Derives the `Tokenizable` trait for the labeled type.
@@ -144,14 +140,11 @@ pub fn derive_eth_display(input: TokenStream) -> TokenStream {
 ///
 /// For the struct:
 ///
-/// - `name`, `name = "..."`: Overrides the generated `EthEvent` name, default
-///   is the
+/// - `name`, `name = "..."`: Overrides the generated `EthEvent` name, default is the
 ///  struct's name.
-/// - `signature`, `signature = "..."`: The signature as hex string to override
-///   the
+/// - `signature`, `signature = "..."`: The signature as hex string to override the
 ///  event's signature.
-/// - `abi`, `abi = "..."`: The ABI signature for the event this event's data
-///   corresponds to.
+/// - `abi`, `abi = "..."`: The ABI signature for the event this event's data corresponds to.
 ///  The `abi` should be solidity event definition or a tuple of the event's
 /// types in case the  event has non elementary (other `EthAbiType`) types as
 /// members
@@ -160,8 +153,7 @@ pub fn derive_eth_display(input: TokenStream) -> TokenStream {
 /// For fields:
 ///
 /// - `indexed`: flag to mark a field as an indexed event input
-/// - `name`: override the name of an indexed event input, default is the rust
-///   field name
+/// - `name`: override the name of an indexed event input, default is the rust field name
 ///
 /// # Example
 /// ```ignore
@@ -196,11 +188,9 @@ pub fn derive_abi_event(input: TokenStream) -> TokenStream {
 ///
 /// For the struct:
 ///
-/// - `name`, `name = "..."`: Overrides the generated `EthCall` function name, default
-///   is the
+/// - `name`, `name = "..."`: Overrides the generated `EthCall` function name, default is the
 ///  struct's name.
-/// - `abi`, `abi = "..."`: The ABI signature for the function this call's data
-///   corresponds to.
+/// - `abi`, `abi = "..."`: The ABI signature for the function this call's data corresponds to.
 ///
 ///  NOTE: in order to successfully parse the `abi` (`<name>(<args>,...)`) the `<name`>
 ///   must match either the struct name or the name attribute: `#[ethcall(name ="<name>"]`
@@ -249,7 +239,6 @@ pub fn derive_abi_event(input: TokenStream) -> TokenStream {
 ///     "foo(address,(address,string),string)"
 /// );
 /// ```
-///
 #[proc_macro_derive(EthCall, attributes(ethcall))]
 pub fn derive_abi_call(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);

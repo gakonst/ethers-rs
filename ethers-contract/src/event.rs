@@ -5,8 +5,7 @@ use ethers_core::{
     types::{BlockNumber, Filter, Log, ValueOrArray, H256},
 };
 use ethers_providers::{FilterWatcher, Middleware, PubsubClient, SubscriptionStream};
-use std::borrow::Cow;
-use std::marker::PhantomData;
+use std::{borrow::Cow, marker::PhantomData};
 
 /// A trait for implementing event bindings
 pub trait EthEvent: Detokenize + Send + Sync {
@@ -36,11 +35,7 @@ pub trait EthEvent: Detokenize + Send + Sync {
         Self: Sized,
     {
         let filter = filter.event(&Self::abi_signature());
-        Event {
-            filter,
-            provider,
-            datatype: PhantomData,
-        }
+        Event { filter, provider, datatype: PhantomData }
     }
 }
 
@@ -127,16 +122,9 @@ where
         EventStream<'a, FilterWatcher<'a, M::Provider, Log>, D, ContractError<M>>,
         ContractError<M>,
     > {
-        let filter = self
-            .provider
-            .watch(&self.filter)
-            .await
-            .map_err(ContractError::MiddlewareError)?;
-        Ok(EventStream::new(
-            filter.id,
-            filter,
-            Box::new(move |log| self.parse_log(log)),
-        ))
+        let filter =
+            self.provider.watch(&self.filter).await.map_err(ContractError::MiddlewareError)?;
+        Ok(EventStream::new(filter.id, filter, Box::new(move |log| self.parse_log(log))))
     }
 }
 
@@ -159,11 +147,7 @@ where
             .subscribe_logs(&self.filter)
             .await
             .map_err(ContractError::MiddlewareError)?;
-        Ok(EventStream::new(
-            filter.id,
-            filter,
-            Box::new(move |log| self.parse_log(log)),
-        ))
+        Ok(EventStream::new(filter.id, filter, Box::new(move |log| self.parse_log(log))))
     }
 }
 
@@ -175,11 +159,8 @@ where
     /// Queries the blockchain for the selected filter and returns a vector of matching
     /// event logs
     pub async fn query(&self) -> Result<Vec<D>, ContractError<M>> {
-        let logs = self
-            .provider
-            .get_logs(&self.filter)
-            .await
-            .map_err(ContractError::MiddlewareError)?;
+        let logs =
+            self.provider.get_logs(&self.filter).await.map_err(ContractError::MiddlewareError)?;
         let events = logs
             .into_iter()
             .map(|log| self.parse_log(log))
@@ -190,11 +171,8 @@ where
     /// Queries the blockchain for the selected filter and returns a vector of logs
     /// along with their metadata
     pub async fn query_with_meta(&self) -> Result<Vec<(D, LogMeta)>, ContractError<M>> {
-        let logs = self
-            .provider
-            .get_logs(&self.filter)
-            .await
-            .map_err(ContractError::MiddlewareError)?;
+        let logs =
+            self.provider.get_logs(&self.filter).await.map_err(ContractError::MiddlewareError)?;
         let events = logs
             .into_iter()
             .map(|log| {
@@ -207,10 +185,6 @@ where
     }
 
     fn parse_log(&self, log: Log) -> Result<D, ContractError<M>> {
-        D::decode_log(&RawLog {
-            topics: log.topics,
-            data: log.data.to_vec(),
-        })
-        .map_err(From::from)
+        D::decode_log(&RawLog { topics: log.topics, data: log.data.to_vec() }).map_err(From::from)
     }
 }

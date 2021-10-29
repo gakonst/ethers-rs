@@ -14,9 +14,7 @@ async fn main() -> anyhow::Result<()> {
 
     // Create and broadcast a transaction (ENS enabled!)
     // (this will require confirming the tx on the device)
-    let tx = TransactionRequest::new()
-        .to("vitalik.eth")
-        .value(parse_ether(10)?);
+    let tx = TransactionRequest::new().to("vitalik.eth").value(parse_ether(10)?);
     let pending_tx = client.send_transaction(tx, None).await?;
 
     // Get the receipt

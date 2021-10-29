@@ -125,10 +125,7 @@ pub(crate) fn decode_event<D: Detokenize>(
     data: Bytes,
 ) -> Result<D, AbiError> {
     let tokens = event
-        .parse_log(RawLog {
-            topics,
-            data: data.to_vec(),
-        })?
+        .parse_log(RawLog { topics, data: data.to_vec() })?
         .params
         .into_iter()
         .map(|param| param.value)
@@ -151,7 +148,7 @@ pub fn decode_function_data<D: Detokenize, T: AsRef<[u8]>>(
     let bytes = bytes.as_ref();
     let tokens = if is_input {
         if bytes.len() < 4 || bytes[..4] != function.selector() {
-            return Err(AbiError::WrongSelector);
+            return Err(AbiError::WrongSelector)
         }
         function.decode_input(&bytes[4..])?
     } else {
@@ -194,9 +191,7 @@ mod tests {
             "function approve(address _spender, uint256 value) external view returns (bool, bool)"
         ]).unwrap());
 
-        let spender = "7a250d5630b4cf539739df2c5dacb4c659f2488d"
-            .parse::<Address>()
-            .unwrap();
+        let spender = "7a250d5630b4cf539739df2c5dacb4c659f2488d".parse::<Address>().unwrap();
         let amount = U256::MAX;
 
         let encoded = abi.encode("approve", (spender, amount)).unwrap();
@@ -233,17 +228,7 @@ mod tests {
         let (owner, spender, value): (Address, Address, U256) =
             abi.decode_event("Approval", topics, data).unwrap();
         assert_eq!(value, U256::MAX);
-        assert_eq!(
-            owner,
-            "e4e60fdf9bf188fa57b7a5022230363d5bd56d08"
-                .parse::<Address>()
-                .unwrap()
-        );
-        assert_eq!(
-            spender,
-            "7a250d5630b4cf539739df2c5dacb4c659f2488d"
-                .parse::<Address>()
-                .unwrap()
-        );
+        assert_eq!(owner, "e4e60fdf9bf188fa57b7a5022230363d5bd56d08".parse::<Address>().unwrap());
+        assert_eq!(spender, "7a250d5630b4cf539739df2c5dacb4c659f2488d".parse::<Address>().unwrap());
     }
 }

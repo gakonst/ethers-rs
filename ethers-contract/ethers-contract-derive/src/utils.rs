@@ -1,11 +1,10 @@
 use ethers_contract_abigen::ethers_core_crate;
-use ethers_core::abi::ParamType;
-use ethers_core::types::Selector;
+use ethers_core::{abi::ParamType, types::Selector};
 use proc_macro2::Literal;
 use quote::quote;
-use syn::spanned::Spanned as _;
 use syn::{
-    parse::Error, Data, DeriveInput, Expr, Fields, GenericArgument, Lit, PathArguments, Type,
+    parse::Error, spanned::Spanned as _, Data, DeriveInput, Expr, Fields, GenericArgument, Lit,
+    PathArguments, Type,
 };
 
 pub fn signature(hash: &[u8]) -> proc_macro2::TokenStream {
@@ -21,12 +20,7 @@ pub fn selector(selector: Selector) -> proc_macro2::TokenStream {
 
 /// Parses an int type from its string representation
 pub fn parse_int_param_type(s: &str) -> Option<ParamType> {
-    let size = s
-        .chars()
-        .skip(1)
-        .collect::<String>()
-        .parse::<usize>()
-        .ok()?;
+    let size = s.chars().skip(1).collect::<String>().parse::<usize>().ok()?;
     if s.starts_with('u') {
         Some(ParamType::Uint(size))
     } else if s.starts_with('i') {
@@ -43,11 +37,11 @@ pub fn parse_int_param_type(s: &str) -> Option<ParamType> {
 pub fn topic_param_type_quote(kind: &ParamType) -> proc_macro2::TokenStream {
     let core_crate = ethers_core_crate();
     match kind {
-        ParamType::String
-        | ParamType::Bytes
-        | ParamType::Array(_)
-        | ParamType::FixedArray(_, _)
-        | ParamType::Tuple(_) => quote! {#core_crate::abi::ParamType::FixedBytes(32)},
+        ParamType::String |
+        ParamType::Bytes |
+        ParamType::Array(_) |
+        ParamType::FixedArray(_, _) |
+        ParamType::Tuple(_) => quote! {#core_crate::abi::ParamType::FixedBytes(32)},
         ty => param_type_quote(ty),
     }
 }
@@ -111,18 +105,16 @@ pub fn find_parameter_type(ty: &Type) -> Result<ParamType, Error> {
             if let Expr::Lit(ref expr) = ty.len {
                 if let Lit::Int(ref len) = expr.lit {
                     if let Ok(size) = len.base10_parse::<usize>() {
-                        return Ok(ParamType::FixedArray(Box::new(param), size));
+                        return Ok(ParamType::FixedArray(Box::new(param), size))
                     }
                 }
             }
-            Err(Error::new(
-                ty.span(),
-                "Failed to derive proper ABI from array field",
-            ))
+            Err(Error::new(ty.span(), "Failed to derive proper ABI from array field"))
         }
         Type::Path(ty) => {
             if let Some(ident) = ty.path.get_ident() {
-                return match ident.to_string().to_lowercase().as_str() {
+                let ident = ident.to_string().to_lowercase();
+                return match ident.as_str() {
                     "address" => Ok(ParamType::Address),
                     "string" => Ok(ParamType::String),
                     "bool" => Ok(ParamType::Bool),
@@ -133,7 +125,7 @@ pub fn find_parameter_type(ty: &Type) -> Result<ParamType, Error> {
                     s => parse_int_param_type(s).ok_or_else(|| {
                         Error::new(ty.span(), "Failed to derive proper ABI from fields")
                     }),
-                };
+                }
             }
             // check for `Vec`
             if ty.path.segments.len() == 1 && ty.path.segments[0].ident == "Vec" {
@@ -141,29 +133,19 @@ pub fn find_parameter_type(ty: &Type) -> Result<ParamType, Error> {
                     if args.args.len() == 1 {
                         if let GenericArgument::Type(ref ty) = args.args.iter().next().unwrap() {
                             let kind = find_parameter_type(ty)?;
-                            return Ok(ParamType::Array(Box::new(kind)));
+                            return Ok(ParamType::Array(Box::new(kind)))
                         }
                     }
                 }
             }
 
-            Err(Error::new(
-                ty.span(),
-                "Failed to derive proper ABI from fields",
-            ))
+            Err(Error::new(ty.span(), "Failed to derive proper ABI from fields"))
         }
         Type::Tuple(ty) => {
-            let params = ty
-                .elems
-                .iter()
-                .map(find_parameter_type)
-                .collect::<Result<Vec<_>, _>>()?;
+            let params = ty.elems.iter().map(find_parameter_type).collect::<Result<Vec<_>, _>>()?;
             Ok(ParamType::Tuple(params))
         }
-        _ => Err(Error::new(
-            ty.span(),
-            "Failed to derive proper ABI from fields",
-        )),
+        _ => Err(Error::new(ty.span(), "Failed to derive proper ABI from fields")),
     }
 }
 
@@ -179,10 +161,7 @@ pub fn derive_abi_inputs_from_fields(
             Fields::Unit => {
                 return Err(Error::new(
                     input.span(),
-                    format!(
-                        "{} cannot be derived for empty structs and unit",
-                        trait_name
-                    ),
+                    format!("{} cannot be derived for empty structs and unit", trait_name),
                 ))
             }
         },
@@ -190,24 +169,21 @@ pub fn derive_abi_inputs_from_fields(
             return Err(Error::new(
                 input.span(),
                 format!("{} cannot be derived for enums", trait_name),
-            ));
+            ))
         }
         Data::Union(_) => {
             return Err(Error::new(
                 input.span(),
                 format!("{} cannot be derived for unions", trait_name),
-            ));
+            ))
         }
     };
 
     fields
         .iter()
         .map(|f| {
-            let name = f
-                .ident
-                .as_ref()
-                .map(|name| name.to_string())
-                .unwrap_or_else(|| "".to_string());
+            let name =
+                f.ident.as_ref().map(|name| name.to_string()).unwrap_or_else(|| "".to_string());
             find_parameter_type(&f.ty).map(|ty| (name, ty))
         })
         .collect()

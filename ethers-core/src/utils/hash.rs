@@ -77,9 +77,7 @@ mod tests {
 
         assert_eq!(
             hash,
-            "a1de988600a42c4b4ab089b619297c17d53cffae5d5120d82d8a92d0bb3b78f2"
-                .parse()
-                .unwrap()
+            "a1de988600a42c4b4ab089b619297c17d53cffae5d5120d82d8a92d0bb3b78f2".parse().unwrap()
         );
     }
 

@@ -22,9 +22,8 @@ async fn main() -> Result<()> {
     let pending_tx = client.send_transaction(tx, None).await?;
 
     // get the mined tx
-    let receipt = pending_tx
-        .await?
-        .ok_or_else(|| anyhow::format_err!("tx dropped from mempool"))?;
+    let receipt =
+        pending_tx.await?.ok_or_else(|| anyhow::format_err!("tx dropped from mempool"))?;
     let tx = client.get_transaction(receipt.transaction_hash).await?;
 
     println!("Sent tx: {}\n", serde_json::to_string(&tx)?);

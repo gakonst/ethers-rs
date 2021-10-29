@@ -75,7 +75,7 @@ impl SolFilesCache {
     ) -> bool {
         if let Some(entry) = self.files.get(file.as_ref()) {
             if entry.content_hash.as_bytes() != hash.as_ref() {
-                return true;
+                return true
             }
             if let Some(config) = config {
                 if config != &entry.solc_config {

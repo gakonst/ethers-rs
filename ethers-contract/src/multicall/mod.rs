@@ -22,26 +22,11 @@ pub static ADDRESS_BOOK: Lazy<HashMap<U256, Address>> = Lazy::new(|| {
     }
 
     [
-        (
-            Chain::Mainnet.into(),
-            decode_address("eefba1e63905ef1d7acba5a8513c70307c1ce441"),
-        ),
-        (
-            Chain::Rinkeby.into(),
-            decode_address("42ad527de7d4e9d9d011ac45b31d8551f8fe9821"),
-        ),
-        (
-            Chain::Goerli.into(),
-            decode_address("77dca2c955b15e9de4dbbcf1246b4b85b651e50e"),
-        ),
-        (
-            Chain::Kovan.into(),
-            decode_address("2cc8688c5f75e365aaeeb4ea8d6a480405a48d2a"),
-        ),
-        (
-            Chain::XDai.into(),
-            decode_address("b5b692a88bdfc81ca69dcb1d924f59f0413a602a"),
-        ),
+        (Chain::Mainnet.into(), decode_address("eefba1e63905ef1d7acba5a8513c70307c1ce441")),
+        (Chain::Rinkeby.into(), decode_address("42ad527de7d4e9d9d011ac45b31d8551f8fe9821")),
+        (Chain::Goerli.into(), decode_address("77dca2c955b15e9de4dbbcf1246b4b85b651e50e")),
+        (Chain::Kovan.into(), decode_address("2cc8688c5f75e365aaeeb4ea8d6a480405a48d2a")),
+        (Chain::XDai.into(), decode_address("b5b692a88bdfc81ca69dcb1d924f59f0413a602a")),
     ]
     .into()
 });
@@ -168,10 +153,8 @@ impl<M: Middleware> Multicall<M> {
         let address: Address = match address {
             Some(addr) => addr,
             None => {
-                let chain_id = client
-                    .get_chainid()
-                    .await
-                    .map_err(ContractError::MiddlewareError)?;
+                let chain_id =
+                    client.get_chainid().await.map_err(ContractError::MiddlewareError)?;
                 match ADDRESS_BOOK.get(&chain_id) {
                     Some(addr) => *addr,
                     None => panic!(
@@ -184,12 +167,7 @@ impl<M: Middleware> Multicall<M> {
         // Instantiate the multicall contract
         let contract = MulticallContract::new(address, client);
 
-        Ok(Self {
-            calls: vec![],
-            block: None,
-            contract,
-            legacy: false,
-        })
+        Ok(Self { calls: vec![], block: None, contract, legacy: false })
     }
 
     /// Makes a legacy transaction instead of an EIP-1559 one
@@ -211,19 +189,11 @@ impl<M: Middleware> Multicall<M> {
     /// If more than the maximum number of supported calls are added. The maximum
     /// limits is constrained due to tokenization/detokenization support for tuples
     pub fn add_call<D: Detokenize>(&mut self, call: ContractCall<M, D>) -> &mut Self {
-        assert!(
-            !(self.calls.len() >= 16),
-            "Cannot support more than {} calls",
-            16
-        );
+        assert!(!(self.calls.len() >= 16), "Cannot support more than {} calls", 16);
 
         match (call.tx.to(), call.tx.data()) {
             (Some(NameOrAddress::Address(target)), Some(data)) => {
-                let call = Call {
-                    target: *target,
-                    data: data.clone(),
-                    function: call.function,
-                };
+                let call = Call { target: *target, data: data.clone(), function: call.function };
                 self.calls.push(call);
                 self
             }
@@ -373,11 +343,8 @@ impl<M: Middleware> Multicall<M> {
 
     fn as_contract_call(&self) -> ContractCall<M, (U256, Vec<Vec<u8>>)> {
         // Map the Multicall struct into appropriate types for `aggregate` function
-        let calls: Vec<(Address, Vec<u8>)> = self
-            .calls
-            .iter()
-            .map(|call| (call.target, call.data.to_vec()))
-            .collect();
+        let calls: Vec<(Address, Vec<u8>)> =
+            self.calls.iter().map(|call| (call.target, call.data.to_vec())).collect();
 
         // Construct the ContractCall for `aggregate` function to broadcast the transaction
         let mut contract_call = self.contract.aggregate(calls);

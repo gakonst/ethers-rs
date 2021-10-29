@@ -62,13 +62,12 @@ pub fn determine_ethers_crates() -> (&'static str, &'static str, &'static str) {
         .ok()
         .and_then(|metadata| {
             metadata.root_package().and_then(|pkg| {
-                pkg.dependencies
-                    .iter()
-                    .filter(|dep| dep.kind == DependencyKind::Normal)
-                    .find_map(|dep| {
+                pkg.dependencies.iter().filter(|dep| dep.kind == DependencyKind::Normal).find_map(
+                    |dep| {
                         (dep.name == "ethers")
                             .then(|| ("ethers::core", "ethers::contract", "ethers::providers"))
-                    })
+                    },
+                )
             })
         })
         .unwrap_or(("ethers_core", "ethers_contract", "ethers_providers"));
@@ -128,7 +127,7 @@ where
 {
     let address_str = address_str.as_ref();
     if !address_str.starts_with("0x") {
-        return Err(anyhow!("address must start with '0x'"));
+        return Err(anyhow!("address must start with '0x'"))
     }
     Ok(address_str[2..].parse()?)
 }
@@ -174,12 +173,8 @@ mod tests {
 
     #[test]
     fn parse_address_ok() {
-        let expected = Address::from([
-            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
-        ]);
-        assert_eq!(
-            parse_address("0x000102030405060708090a0b0c0d0e0f10111213").unwrap(),
-            expected
-        );
+        let expected =
+            Address::from([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]);
+        assert_eq!(parse_address("0x000102030405060708090a0b0c0d0e0f10111213").unwrap(), expected);
     }
 }

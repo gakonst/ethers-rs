@@ -69,11 +69,7 @@ impl TransactionRequest {
 
     /// Convenience function for sending a new payment transaction to the receiver.
     pub fn pay<T: Into<NameOrAddress>, V: Into<U256>>(to: T, value: V) -> Self {
-        TransactionRequest {
-            to: Some(to.into()),
-            value: Some(value.into()),
-            ..Default::default()
-        }
+        TransactionRequest { to: Some(to.into()), value: Some(value.into()), ..Default::default() }
     }
 
     // Builder pattern helpers

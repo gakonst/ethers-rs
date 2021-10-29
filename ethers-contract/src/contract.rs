@@ -143,7 +143,6 @@ use std::{fmt::Debug, marker::PhantomData, sync::Arc};
 /// println!("{:?}", logs);
 /// # Ok(())
 /// # }
-///
 /// ```
 ///
 /// _Disclaimer: these above docs have been adapted from the corresponding [ethers.js page](https://docs.ethers.io/ethers.js/html/api-contract.html)_
@@ -162,11 +161,7 @@ pub struct Contract<M> {
 impl<M: Middleware> Contract<M> {
     /// Creates a new contract from the provided client, abi and address
     pub fn new(address: Address, abi: impl Into<BaseContract>, client: impl Into<Arc<M>>) -> Self {
-        Self {
-            base_contract: abi.into(),
-            client: client.into(),
-            address,
-        }
+        Self { base_contract: abi.into(), client: client.into(), address }
     }
 
     /// Returns an [`Event`](crate::builders::Event) builder for the provided event.

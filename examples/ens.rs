@@ -10,9 +10,7 @@ async fn main() -> Result<()> {
         .spawn();
     let from = ganache.addresses()[0].clone();
     // connect to the network
-    let provider = Provider::<Http>::try_from(ganache.endpoint())
-        .unwrap()
-        .with_sender(from);
+    let provider = Provider::<Http>::try_from(ganache.endpoint()).unwrap().with_sender(from);
 
     // craft the transaction
     let tx = TransactionRequest::new().to("vitalik.eth").value(100_000);

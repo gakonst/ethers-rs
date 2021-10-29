@@ -145,10 +145,7 @@ impl Solc {
         }
 
         if let Some(runs) = self.optimizer {
-            command
-                .arg("--optimize")
-                .arg("--optimize-runs")
-                .arg(runs.to_string());
+            command.arg("--optimize").arg("--optimize-runs").arg(runs.to_string());
         }
 
         command.args(self.args);
@@ -160,9 +157,7 @@ impl Solc {
         let command = command.output().expect("could not run `solc`");
 
         if !command.status.success() {
-            return Err(SolcError::SolcError(
-                String::from_utf8_lossy(&command.stderr).to_string(),
-            ));
+            return Err(SolcError::SolcError(String::from_utf8_lossy(&command.stderr).to_string()))
         }
 
         // Deserialize the output
@@ -180,11 +175,7 @@ impl Solc {
 
         for (name, contract) in contract_values {
             if let serde_json::Value::String(bin) = contract["bin"].take() {
-                let name = name
-                    .rsplit(':')
-                    .next()
-                    .expect("could not strip fname")
-                    .to_owned();
+                let name = name.rsplit(':').next().expect("could not strip fname").to_owned();
 
                 // abi could be an escaped string (solc<=0.7) or an array (solc>=0.8)
                 let abi = match contract["abi"].take() {
@@ -204,18 +195,9 @@ impl Solc {
                     } else {
                         panic!("no runtime bytecode found")
                     };
-                contracts.insert(
-                    name,
-                    CompiledContractStr {
-                        abi,
-                        bin,
-                        runtime_bin,
-                    },
-                );
+                contracts.insert(name, CompiledContractStr { abi, bin, runtime_bin });
             } else {
-                return Err(SolcError::SolcError(
-                    "could not find `bin` in solc output".to_string(),
-                ));
+                return Err(SolcError::SolcError("could not find `bin` in solc output".to_string()))
             }
         }
 
@@ -234,22 +216,14 @@ impl Solc {
                     .expect("could not parse `solc` abi, this should never happen");
 
                 // parse the bytecode
-                let bytecode = hex::decode(contract.bin)
-                    .expect("solc did not produce valid bytecode")
-                    .into();
+                let bytecode =
+                    hex::decode(contract.bin).expect("solc did not produce valid bytecode").into();
 
                 // parse the runtime bytecode
                 let runtime_bytecode = hex::decode(contract.runtime_bin)
                     .expect("solc did not produce valid runtime-bytecode")
                     .into();
-                (
-                    name,
-                    CompiledContract {
-                        abi,
-                        bytecode,
-                        runtime_bytecode,
-                    },
-                )
+                (name, CompiledContract { abi, bytecode, runtime_bytecode })
             })
             .collect::<HashMap<String, CompiledContract>>();
 
@@ -293,7 +267,8 @@ impl Solc {
     }
 
     /// Sets the `combined-json` option, by default this is set to `abi,bin,bin-runtime`
-    /// NOTE: In order to get the `CompiledContract` from `Self::build`, this _must_ contain `abi,bin`.
+    /// NOTE: In order to get the `CompiledContract` from `Self::build`, this _must_ contain
+    /// `abi,bin`.
     pub fn combined_json(mut self, combined_json: impl Into<String>) -> Self {
         self.combined_json = Some(combined_json.into());
         self
@@ -541,9 +516,7 @@ where
 {
     let value = String::deserialize(d)?;
 
-    Ok(hex::decode(&value)
-        .map_err(|e| serde::de::Error::custom(e.to_string()))?
-        .into())
+    Ok(hex::decode(&value).map_err(|e| serde::de::Error::custom(e.to_string()))?.into())
 }
 
 fn de_from_json_opt<'de, D, T>(deserializer: D) -> std::result::Result<Option<T>, D::Error>
@@ -583,23 +556,11 @@ mod tests {
             ("0.4.20", EvmVersion::Homestead, None),
             // Constantinople clipping
             ("0.4.21", EvmVersion::Homestead, Some(EvmVersion::Homestead)),
-            (
-                "0.4.21",
-                EvmVersion::Constantinople,
-                Some(EvmVersion::Constantinople),
-            ),
-            (
-                "0.4.21",
-                EvmVersion::London,
-                Some(EvmVersion::Constantinople),
-            ),
+            ("0.4.21", EvmVersion::Constantinople, Some(EvmVersion::Constantinople)),
+            ("0.4.21", EvmVersion::London, Some(EvmVersion::Constantinople)),
             // Petersburg
             ("0.5.5", EvmVersion::Homestead, Some(EvmVersion::Homestead)),
-            (
-                "0.5.5",
-                EvmVersion::Petersburg,
-                Some(EvmVersion::Petersburg),
-            ),
+            ("0.5.5", EvmVersion::Petersburg, Some(EvmVersion::Petersburg)),
             ("0.5.5", EvmVersion::London, Some(EvmVersion::Petersburg)),
             // Istanbul
             ("0.5.14", EvmVersion::Homestead, Some(EvmVersion::Homestead)),

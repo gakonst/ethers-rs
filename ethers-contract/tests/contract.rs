@@ -38,10 +38,7 @@ mod eth_tests {
         // `send` consumes the deployer so it must be cloned for later re-use
         // (practically it's not expected that you'll need to deploy multiple instances of
         // the _same_ deployer, so it's fine to clone here from a dev UX vs perf tradeoff)
-        let deployer = factory
-            .deploy("initial value".to_string())
-            .unwrap()
-            .legacy();
+        let deployer = factory.deploy("initial value".to_string()).unwrap().legacy();
         let contract = deployer.clone().send().await.unwrap();
 
         let get_value = contract.method::<_, String>("getValue", ()).unwrap();
@@ -73,18 +70,10 @@ mod eth_tests {
         // (useful when interacting with multiple ERC20s for example)
         let contract2_addr = deployer.send().await.unwrap().address();
         let contract2 = contract.at(contract2_addr);
-        let init_value: String = contract2
-            .method::<_, String>("getValue", ())
-            .unwrap()
-            .call()
-            .await
-            .unwrap();
-        let init_address = contract2
-            .method::<_, Address>("lastSender", ())
-            .unwrap()
-            .call()
-            .await
-            .unwrap();
+        let init_value: String =
+            contract2.method::<_, String>("getValue", ()).unwrap().call().await.unwrap();
+        let init_address =
+            contract2.method::<_, Address>("lastSender", ()).unwrap().call().await.unwrap();
         assert_eq!(init_address, Address::zero());
         assert_eq!(init_value, "initial value");
 
@@ -110,10 +99,7 @@ mod eth_tests {
         let contract = deploy(client.clone(), abi, bytecode).await;
 
         // make a call with `client`
-        let func = contract
-            .method::<_, H256>("setValue", "hi".to_owned())
-            .unwrap()
-            .legacy();
+        let func = contract.method::<_, H256>("setValue", "hi".to_owned()).unwrap().legacy();
         let tx = func.send().await.unwrap();
         let _receipt = tx.await.unwrap();
 
@@ -184,13 +170,8 @@ mod eth_tests {
         let deployed_block = client.get_block_number().await.unwrap();
 
         // assert initial state
-        let value = contract
-            .method::<_, String>("getValue", ())
-            .unwrap()
-            .legacy()
-            .call()
-            .await
-            .unwrap();
+        let value =
+            contract.method::<_, String>("getValue", ()).unwrap().legacy().call().await.unwrap();
         assert_eq!(value, "initial value");
 
         // make a call with `client`
@@ -203,13 +184,8 @@ mod eth_tests {
             .unwrap();
 
         // assert new value
-        let value = contract
-            .method::<_, String>("getValue", ())
-            .unwrap()
-            .legacy()
-            .call()
-            .await
-            .unwrap();
+        let value =
+            contract.method::<_, String>("getValue", ()).unwrap().legacy().call().await.unwrap();
         assert_eq!(value, "hi");
 
         // assert previous value
@@ -250,39 +226,19 @@ mod eth_tests {
         let deployed_block = client.get_block_number().await.unwrap();
 
         // assert initial state
-        let value = contract
-            .method::<_, String>("getValue", ())
-            .unwrap()
-            .call()
-            .await
-            .unwrap();
+        let value = contract.method::<_, String>("getValue", ()).unwrap().call().await.unwrap();
         assert_eq!(value, "initial value");
 
         // make a call with `client`
-        let _tx_hash = *contract
-            .method::<_, H256>("setValue", "hi".to_owned())
-            .unwrap()
-            .send()
-            .await
-            .unwrap();
+        let _tx_hash =
+            *contract.method::<_, H256>("setValue", "hi".to_owned()).unwrap().send().await.unwrap();
 
         // assert new value
-        let value = contract
-            .method::<_, String>("getValue", ())
-            .unwrap()
-            .call()
-            .await
-            .unwrap();
+        let value = contract.method::<_, String>("getValue", ()).unwrap().call().await.unwrap();
         assert_eq!(value, "hi");
 
         // assert previous value using block hash
-        let hash = client
-            .get_block(deployed_block)
-            .await
-            .unwrap()
-            .unwrap()
-            .hash
-            .unwrap();
+        let hash = client.get_block(deployed_block).await.unwrap().unwrap().hash.unwrap();
         let value = contract
             .method::<_, String>("getValue", ())
             .unwrap()
@@ -321,10 +277,7 @@ mod eth_tests {
         // and we make a few calls
         let num = client.get_block_number().await.unwrap();
         for i in 0..num_calls {
-            let call = contract
-                .method::<_, H256>("setValue", i.to_string())
-                .unwrap()
-                .legacy();
+            let call = contract.method::<_, H256>("setValue", i.to_string()).unwrap().legacy();
             let pending_tx = call.send().await.unwrap();
             let _receipt = pending_tx.await.unwrap();
         }
@@ -338,13 +291,7 @@ mod eth_tests {
             assert_eq!(log.new_value, log2.new_value);
             assert_eq!(log.new_value, i.to_string());
             assert_eq!(meta.block_number, num + i + 1);
-            let hash = client
-                .get_block(num + i + 1)
-                .await
-                .unwrap()
-                .unwrap()
-                .hash
-                .unwrap();
+            let hash = client.get_block(num + i + 1).await.unwrap().unwrap().hash.unwrap();
             assert_eq!(meta.block_hash, hash);
         }
     }
@@ -358,24 +305,16 @@ mod eth_tests {
         let contract_2 = deploy(client.clone(), abi.clone(), bytecode).await;
 
         let ws = Provider::connect(ganache.ws_endpoint()).await.unwrap();
-        let filter = Filter::new().address(ValueOrArray::Array(vec![
-            contract_1.address(),
-            contract_2.address(),
-        ]));
+        let filter = Filter::new()
+            .address(ValueOrArray::Array(vec![contract_1.address(), contract_2.address()]));
         let mut stream = ws.subscribe_logs(&filter).await.unwrap();
 
         // and we make a few calls
-        let call = contract_1
-            .method::<_, H256>("setValue", "1".to_string())
-            .unwrap()
-            .legacy();
+        let call = contract_1.method::<_, H256>("setValue", "1".to_string()).unwrap().legacy();
         let pending_tx = call.send().await.unwrap();
         let _receipt = pending_tx.await.unwrap();
 
-        let call = contract_2
-            .method::<_, H256>("setValue", "2".to_string())
-            .unwrap()
-            .legacy();
+        let call = contract_2.method::<_, H256>("setValue", "2".to_string()).unwrap().legacy();
         let pending_tx = call.send().await.unwrap();
         let _receipt = pending_tx.await.unwrap();
 
@@ -413,12 +352,8 @@ mod eth_tests {
             .unwrap()
             .await
             .unwrap();
-        let value: String = contract
-            .method::<_, String>("getValue", ())
-            .unwrap()
-            .call()
-            .await
-            .unwrap();
+        let value: String =
+            contract.method::<_, String>("getValue", ()).unwrap().call().await.unwrap();
         assert_eq!(value, "hi");
     }
 
@@ -458,13 +393,8 @@ mod eth_tests {
         let not_so_simple_factory =
             ContractFactory::new(not_so_simple_abi, not_so_simple_bytecode, client3.clone());
 
-        let multicall_contract = multicall_factory
-            .deploy(())
-            .unwrap()
-            .legacy()
-            .send()
-            .await
-            .unwrap();
+        let multicall_contract =
+            multicall_factory.deploy(()).unwrap().legacy().send().await.unwrap();
         let addr = multicall_contract.address();
 
         let simple_contract = simple_factory
@@ -502,24 +432,15 @@ mod eth_tests {
 
         // get the calls for `value` and `last_sender` for both SimpleStorage contracts
         let value = simple_contract.method::<_, String>("getValue", ()).unwrap();
-        let value2 = not_so_simple_contract
-            .method::<_, (String, Address)>("getValues", ())
-            .unwrap();
-        let last_sender = simple_contract
-            .method::<_, Address>("lastSender", ())
-            .unwrap();
-        let last_sender2 = not_so_simple_contract
-            .method::<_, Address>("lastSender", ())
-            .unwrap();
+        let value2 =
+            not_so_simple_contract.method::<_, (String, Address)>("getValues", ()).unwrap();
+        let last_sender = simple_contract.method::<_, Address>("lastSender", ()).unwrap();
+        let last_sender2 = not_so_simple_contract.method::<_, Address>("lastSender", ()).unwrap();
 
         // initiate the Multicall instance and add calls one by one in builder style
         let mut multicall = Multicall::new(client4.clone(), Some(addr)).await.unwrap();
 
-        multicall
-            .add_call(value)
-            .add_call(value2)
-            .add_call(last_sender)
-            .add_call(last_sender2);
+        multicall.add_call(value).add_call(value2).add_call(last_sender).add_call(last_sender2);
 
         let return_data: (String, (String, Address), Address, Address) =
             multicall.call().await.unwrap();
@@ -545,16 +466,11 @@ mod eth_tests {
         // go. Now we will use the `.send()` functionality to broadcast a batch of transactions
         // in one go
         let mut multicall_send = multicall.clone();
-        multicall_send
-            .clear_calls()
-            .add_call(broadcast)
-            .add_call(broadcast2);
+        multicall_send.clear_calls().add_call(broadcast).add_call(broadcast2);
 
         // broadcast the transaction and wait for it to be mined
         let tx_hash = multicall_send.legacy().send().await.unwrap();
-        let _tx_receipt = PendingTransaction::new(tx_hash, client.provider())
-            .await
-            .unwrap();
+        let _tx_receipt = PendingTransaction::new(tx_hash, client.provider()).await.unwrap();
 
         // Do another multicall to check the updated return values
         // The `getValue` calls should return the last value we set in the batched broadcast
@@ -659,10 +575,7 @@ mod eth_tests {
             out: foo_bar.out.clone(),
         };
 
-        let sig = wallet
-            .sign_typed_data(&foo_bar)
-            .await
-            .expect("failed to sign typed data");
+        let sig = wallet.sign_typed_data(&foo_bar).await.expect("failed to sign typed data");
 
         let r = <[u8; 32]>::try_from(sig.r)
             .expect("failed to parse 'r' value from signature into [u8; 32]");
@@ -675,11 +588,8 @@ mod eth_tests {
             .call()
             .await
             .expect("failed to retrieve domain_separator from contract");
-        let type_hash = contract
-            .type_hash()
-            .call()
-            .await
-            .expect("failed to retrieve type_hash from contract");
+        let type_hash =
+            contract.type_hash().call().await.expect("failed to retrieve type_hash from contract");
         let struct_hash = contract
             .struct_hash(derived_foo_bar.clone())
             .call()

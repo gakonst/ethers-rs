@@ -45,26 +45,24 @@ impl Source {
     /// This relative path is rooted in the current working directory.
     /// To specify the root for relative paths, use `Source::with_root`.
     ///
-    /// - `/absolute/path/to/Contract.json` or
-    ///   `file:///absolute/path/to/Contract.json`: an absolute path or file URL
-    ///   to an ABI JSON file.
+    /// - `/absolute/path/to/Contract.json` or `file:///absolute/path/to/Contract.json`: an absolute
+    ///   path or file URL to an ABI JSON file.
     ///
     /// - `http(s)://...` an HTTP url to a contract ABI.
     ///
-    /// - `etherscan:0xXX..XX` or `https://etherscan.io/address/0xXX..XX`: a
-    ///   address or URL of a verified contract on Etherscan.
+    /// - `etherscan:0xXX..XX` or `https://etherscan.io/address/0xXX..XX`: a address or URL of a
+    ///   verified contract on Etherscan.
     ///
-    /// - `npm:@org/package@1.0.0/path/to/contract.json` an npmjs package with
-    ///   an optional version and path (defaulting to the latest version and
-    ///   `index.js`). The contract ABI will be retrieved through
-    ///   `unpkg.io`.
+    /// - `npm:@org/package@1.0.0/path/to/contract.json` an npmjs package with an optional version
+    ///   and path (defaulting to the latest version and `index.js`). The contract ABI will be
+    ///   retrieved through `unpkg.io`.
     pub fn parse<S>(source: S) -> Result<Self>
     where
         S: AsRef<str>,
     {
         let source = source.as_ref();
         if matches!(source.chars().next(), Some('[' | '{')) {
-            return Ok(Source::String(source.to_owned()));
+            return Ok(Source::String(source.to_owned()))
         }
         let root = env::current_dir()?.canonicalize()?;
         Source::with_root(root, source)
@@ -197,10 +195,8 @@ fn get_local_contract(path: &Path) -> Result<String> {
         Cow::Borrowed(path)
     };
 
-    let json = fs::read_to_string(&path).context(format!(
-        "failed to read artifact JSON file with path {}",
-        &path.display()
-    ))?;
+    let json = fs::read_to_string(&path)
+        .context(format!("failed to read artifact JSON file with path {}", &path.display()))?;
     Ok(json)
 }
 
@@ -220,9 +216,8 @@ fn get_etherscan_contract(address: Address) -> Result<String> {
     //   same bytecode is unreliable as the libraries have already linked and
     //   probably don't reference anything when deploying on other networks.
 
-    let api_key = env::var("ETHERSCAN_API_KEY")
-        .map(|key| format!("&apikey={}", key))
-        .unwrap_or_default();
+    let api_key =
+        env::var("ETHERSCAN_API_KEY").map(|key| format!("&apikey={}", key)).unwrap_or_default();
 
     let abi_url = format!(
         "http://api.etherscan.io/api\
@@ -251,14 +246,8 @@ mod tests {
     fn parse_source() {
         let root = "/rooted";
         for (url, expected) in &[
-            (
-                "relative/Contract.json",
-                Source::local("/rooted/relative/Contract.json"),
-            ),
-            (
-                "/absolute/Contract.json",
-                Source::local("/absolute/Contract.json"),
-            ),
+            ("relative/Contract.json", Source::local("/rooted/relative/Contract.json")),
+            ("/absolute/Contract.json", Source::local("/absolute/Contract.json")),
             (
                 "https://my.domain.eth/path/to/Contract.json",
                 Source::http("https://my.domain.eth/path/to/Contract.json").unwrap(),

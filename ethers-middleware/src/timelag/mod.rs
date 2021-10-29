@@ -73,10 +73,9 @@ where
         block_option: FilterBlockOption,
     ) -> TimeLagResult<FilterBlockOption, M> {
         match block_option {
-            FilterBlockOption::Range {
-                from_block: _,
-                to_block: None,
-            } => Ok(block_option.set_to_block(self.get_block_number().await?.into())),
+            FilterBlockOption::Range { from_block: _, to_block: None } => {
+                Ok(block_option.set_to_block(self.get_block_number().await?.into()))
+            }
             _ => Ok(block_option),
         }
     }
@@ -112,10 +111,7 @@ where
         block: Option<BlockId>,
     ) -> Result<ethers_providers::PendingTransaction<'_, Self::Provider>, Self::Error> {
         let block = self.normalize_block_id(block).await?;
-        self.inner()
-            .send_transaction(tx, block)
-            .await
-            .map_err(ethers_providers::FromErr::from)
+        self.inner().send_transaction(tx, block).await.map_err(ethers_providers::FromErr::from)
     }
 
     async fn get_block<T: Into<BlockId> + Send + Sync>(
@@ -127,10 +123,7 @@ where
             .await?
             .expect("Cannot return None if Some is passed in");
 
-        self.inner()
-            .get_block(block_hash_or_number)
-            .await
-            .map_err(ethers_providers::FromErr::from)
+        self.inner().get_block(block_hash_or_number).await.map_err(ethers_providers::FromErr::from)
     }
 
     async fn get_block_with_txs<T: Into<BlockId> + Send + Sync>(
@@ -199,10 +192,7 @@ where
     ) -> Result<Bytes, Self::Error> {
         let block = self.normalize_block_id(block).await?;
 
-        self.inner()
-            .call(tx, block)
-            .await
-            .map_err(ethers_providers::FromErr::from)
+        self.inner().call(tx, block).await.map_err(ethers_providers::FromErr::from)
     }
 
     async fn get_balance<T: Into<NameOrAddress> + Send + Sync>(
@@ -211,10 +201,7 @@ where
         block: Option<BlockId>,
     ) -> Result<U256, Self::Error> {
         let block = self.normalize_block_id(block).await?;
-        self.inner()
-            .get_balance(from, block)
-            .await
-            .map_err(ethers_providers::FromErr::from)
+        self.inner().get_balance(from, block).await.map_err(ethers_providers::FromErr::from)
     }
 
     async fn get_transaction_receipt<T: Send + Sync + Into<TxHash>>(
@@ -228,12 +215,12 @@ where
             .map_err(ethers_providers::FromErr::from)?;
 
         if receipt.is_none() {
-            return Ok(None);
+            return Ok(None)
         }
 
         let receipt = receipt.expect("checked is_none");
         if receipt.block_number.is_none() {
-            return Ok(Some(receipt));
+            return Ok(Some(receipt))
         }
 
         let number = receipt.block_number.expect("checked is_none");
@@ -252,10 +239,7 @@ where
     ) -> Result<Bytes, Self::Error> {
         let block = self.normalize_block_id(block).await?;
 
-        self.inner()
-            .get_code(at, block)
-            .await
-            .map_err(ethers_providers::FromErr::from)
+        self.inner().get_code(at, block).await.map_err(ethers_providers::FromErr::from)
     }
 
     async fn get_storage_at<T: Into<NameOrAddress> + Send + Sync>(
@@ -277,10 +261,7 @@ where
         block: Option<BlockId>,
     ) -> Result<(), Self::Error> {
         let block = self.normalize_block_id(block).await?;
-        self.inner()
-            .fill_transaction(tx, block)
-            .await
-            .map_err(ethers_providers::FromErr::from)
+        self.inner().fill_transaction(tx, block).await.map_err(ethers_providers::FromErr::from)
     }
 
     async fn get_block_receipts<T: Into<BlockNumber> + Send + Sync>(
@@ -293,10 +274,7 @@ where
             .await?
             .expect("Cannot return None if Some is passed in");
 
-        self.inner()
-            .get_block_receipts(block)
-            .await
-            .map_err(ethers_providers::FromErr::from)
+        self.inner().get_block_receipts(block).await.map_err(ethers_providers::FromErr::from)
     }
 
     async fn get_logs(
@@ -306,10 +284,7 @@ where
         let mut filter = filter.clone();
         filter.block_option = self.normalize_filter_range(filter.block_option).await?;
 
-        self.inner()
-            .get_logs(&filter)
-            .await
-            .map_err(ethers_providers::FromErr::from)
+        self.inner().get_logs(&filter).await.map_err(ethers_providers::FromErr::from)
     }
 
     async fn new_filter(

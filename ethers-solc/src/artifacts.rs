@@ -130,16 +130,9 @@ pub struct Settings {
     /// ```
     #[serde(default)]
     pub output_selection: BTreeMap<String, BTreeMap<String, Vec<String>>>,
-    #[serde(
-        default,
-        with = "display_from_str_opt",
-        skip_serializing_if = "Option::is_none"
-    )]
+    #[serde(default, with = "display_from_str_opt", skip_serializing_if = "Option::is_none")]
     pub evm_version: Option<EvmVersion>,
-    #[serde(
-        default,
-        skip_serializing_if = "::std::collections::BTreeMap::is_empty"
-    )]
+    #[serde(default, skip_serializing_if = "::std::collections::BTreeMap::is_empty")]
     pub libraries: BTreeMap<String, BTreeMap<String, String>>,
 }
 
@@ -209,10 +202,7 @@ impl Optimizer {
 
 impl Default for Optimizer {
     fn default() -> Self {
-        Self {
-            enabled: Some(false),
-            runs: Some(200),
-        }
+        Self { enabled: Some(false), runs: Some(200) }
     }
 }
 
@@ -307,9 +297,7 @@ pub struct Source {
 impl Source {
     /// Reads the file content
     pub fn read(file: impl AsRef<Path>) -> io::Result<Self> {
-        Ok(Self {
-            content: fs::read_to_string(file.as_ref())?,
-        })
+        Ok(Self { content: fs::read_to_string(file.as_ref())? })
     }
 
     /// Finds all source files under the given dir path and reads them all
@@ -342,9 +330,7 @@ impl Source {
 impl Source {
     /// async version of `Self::read`
     pub async fn async_read(file: impl AsRef<Path>) -> io::Result<Self> {
-        Ok(Self {
-            content: tokio::fs::read_to_string(file.as_ref()).await?,
-        })
+        Ok(Self { content: tokio::fs::read_to_string(file.as_ref()).await? })
     }
 
     /// Finds all source files under the given dir path and reads them all
@@ -400,11 +386,7 @@ pub struct Contract {
     pub devdoc: DevDoc,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ir: Option<String>,
-    #[serde(
-        default,
-        rename = "storageLayout",
-        skip_serializing_if = "StorageLayout::is_empty"
-    )]
+    #[serde(default, rename = "storageLayout", skip_serializing_if = "StorageLayout::is_empty")]
     pub storage_layout: StorageLayout,
     /// EVM-related outputs
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -422,30 +404,19 @@ pub struct CompactContract {
     pub abi: Vec<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub bin: Option<String>,
-    #[serde(
-        default,
-        rename = "bin-runtime",
-        skip_serializing_if = "Option::is_none"
-    )]
+    #[serde(default, rename = "bin-runtime", skip_serializing_if = "Option::is_none")]
     pub bin_runtime: Option<String>,
 }
 
 impl From<Contract> for CompactContract {
     fn from(c: Contract) -> Self {
         let (bin, bin_runtime) = if let Some(evm) = c.evm {
-            (
-                Some(evm.bytecode.object),
-                evm.deployed_bytecode.bytecode.map(|evm| evm.object),
-            )
+            (Some(evm.bytecode.object), evm.deployed_bytecode.bytecode.map(|evm| evm.object))
         } else {
             (None, None)
         };
 
-        Self {
-            abi: c.abi,
-            bin,
-            bin_runtime,
-        }
+        Self { abi: c.abi, bin, bin_runtime }
     }
 }
 
@@ -455,11 +426,7 @@ pub struct CompactContractRef<'a> {
     pub abi: &'a [serde_json::Value],
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub bin: Option<&'a str>,
-    #[serde(
-        default,
-        rename = "bin-runtime",
-        skip_serializing_if = "Option::is_none"
-    )]
+    #[serde(default, rename = "bin-runtime", skip_serializing_if = "Option::is_none")]
     pub bin_runtime: Option<&'a str>,
 }
 
@@ -468,20 +435,13 @@ impl<'a> From<&'a Contract> for CompactContractRef<'a> {
         let (bin, bin_runtime) = if let Some(ref evm) = c.evm {
             (
                 Some(evm.bytecode.object.as_str()),
-                evm.deployed_bytecode
-                    .bytecode
-                    .as_ref()
-                    .map(|evm| evm.object.as_str()),
+                evm.deployed_bytecode.bytecode.as_ref().map(|evm| evm.object.as_str()),
             )
         } else {
             (None, None)
         };
 
-        Self {
-            abi: &c.abi,
-            bin,
-            bin_runtime,
-        }
+        Self { abi: &c.abi, bin, bin_runtime }
     }
 }
 
@@ -491,10 +451,7 @@ pub struct UserDoc {
     pub version: Option<u32>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub kind: Option<String>,
-    #[serde(
-        default,
-        skip_serializing_if = "::std::collections::BTreeMap::is_empty"
-    )]
+    #[serde(default, skip_serializing_if = "::std::collections::BTreeMap::is_empty")]
     pub methods: BTreeMap<String, String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub notice: Option<String>,
@@ -510,16 +467,9 @@ pub struct DevDoc {
     pub author: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub details: Option<String>,
-    #[serde(
-        default,
-        rename = "custom:experimental",
-        skip_serializing_if = "Option::is_none"
-    )]
+    #[serde(default, rename = "custom:experimental", skip_serializing_if = "Option::is_none")]
     pub custom_experimental: Option<String>,
-    #[serde(
-        default,
-        skip_serializing_if = "::std::collections::BTreeMap::is_empty"
-    )]
+    #[serde(default, skip_serializing_if = "::std::collections::BTreeMap::is_empty")]
     pub methods: BTreeMap<String, String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
@@ -535,10 +485,7 @@ pub struct Evm {
     pub bytecode: Bytecode,
     pub deployed_bytecode: DeployedBytecode,
     /// The list of function hashes
-    #[serde(
-        default,
-        skip_serializing_if = "::std::collections::BTreeMap::is_empty"
-    )]
+    #[serde(default, skip_serializing_if = "::std::collections::BTreeMap::is_empty")]
     pub method_identifiers: BTreeMap<String, String>,
     /// Function gas estimates
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -549,10 +496,7 @@ pub struct Evm {
 #[serde(rename_all = "camelCase")]
 pub struct Bytecode {
     /// Debugging information at function level
-    #[serde(
-        default,
-        skip_serializing_if = "::std::collections::BTreeMap::is_empty"
-    )]
+    #[serde(default, skip_serializing_if = "::std::collections::BTreeMap::is_empty")]
     pub function_debug_data: BTreeMap<String, FunctionDebugData>,
     /// The bytecode as a hex string.
     pub object: String,
@@ -791,11 +735,7 @@ mod tests {
             let path = path.unwrap().path();
             let compiler_output = fs::read_to_string(&path).unwrap();
             serde_json::from_str::<CompilerOutput>(&compiler_output).unwrap_or_else(|err| {
-                panic!(
-                    "Failed to read compiler output of {} {}",
-                    path.display(),
-                    err
-                )
+                panic!("Failed to read compiler output of {} {}", path.display(), err)
             });
         }
     }
@@ -809,11 +749,7 @@ mod tests {
             let path = path.unwrap().path();
             let compiler_output = fs::read_to_string(&path).unwrap();
             serde_json::from_str::<CompilerInput>(&compiler_output).unwrap_or_else(|err| {
-                panic!(
-                    "Failed to read compiler output of {} {}",
-                    path.display(),
-                    err
-                )
+                panic!("Failed to read compiler output of {} {}", path.display(), err)
             });
         }
     }

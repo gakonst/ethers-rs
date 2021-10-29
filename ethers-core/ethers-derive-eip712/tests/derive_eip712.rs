@@ -93,8 +93,8 @@ fn test_derive_eip712_nested() {
         foo: String,
         bar: U256,
         addr: Address,
-        // #[eip712] // Todo: Support nested Eip712 structs
-        // nested: MyNestedStruct,
+        /* #[eip712] // Todo: Support nested Eip712 structs
+         * nested: MyNestedStruct, */
     }
 
     #[derive(Debug, Clone, Eip712, EthAbiType)]
@@ -114,11 +114,11 @@ fn test_derive_eip712_nested() {
         foo: "foo".to_string(),
         bar: U256::from(1),
         addr: Address::from(&[0; 20]),
-        // nested: MyNestedStruct {
-        //     foo: "foo".to_string(),
-        //     bar: U256::from(1),
-        //     addr: Address::from(&[0; 20]),
-        // },
+        /* nested: MyNestedStruct {
+         *     foo: "foo".to_string(),
+         *     bar: U256::from(1),
+         *     addr: Address::from(&[0; 20]),
+         * }, */
     };
 
     let hash = my_struct.struct_hash().expect("failed to hash struct");
@@ -147,12 +147,8 @@ fn test_uniswap_v2_permit_hash() {
     }
 
     let permit = Permit {
-        owner: "0x617072Cb2a1897192A9d301AC53fC541d35c4d9D"
-            .parse()
-            .unwrap(),
-        spender: "0x2819c144D5946404C0516B6f817a960dB37D4929"
-            .parse()
-            .unwrap(),
+        owner: "0x617072Cb2a1897192A9d301AC53fC541d35c4d9D".parse().unwrap(),
+        spender: "0x2819c144D5946404C0516B6f817a960dB37D4929".parse().unwrap(),
         value: parse_ether(10).unwrap(),
         nonce: U256::from(1),
         deadline: U256::from(3133728498 as u32),

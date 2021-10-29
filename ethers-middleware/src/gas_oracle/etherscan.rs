@@ -67,11 +67,7 @@ impl Etherscan {
 
         let url = Url::parse(&url).expect("invalid url");
 
-        Etherscan {
-            client: Client::new(),
-            url,
-            gas_category: GasCategory::Standard,
-        }
+        Etherscan { client: Client::new(), url, gas_category: GasCategory::Standard }
     }
 
     /// Sets the gas price category to be used when fetching the gas price.
@@ -97,7 +93,7 @@ impl Etherscan {
 impl GasOracle for Etherscan {
     async fn fetch(&self) -> Result<U256, GasOracleError> {
         if matches!(self.gas_category, GasCategory::Fastest) {
-            return Err(GasOracleError::GasCategoryNotSupported);
+            return Err(GasOracleError::GasCategoryNotSupported)
         }
 
         let res = self.query().await?;

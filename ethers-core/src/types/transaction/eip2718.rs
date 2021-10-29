@@ -19,7 +19,6 @@ use serde::{Deserialize, Serialize};
 /// the `legacy` crate feature. This will disable the `type` flag in the
 /// serialized transaction, and cause contract calls and other common actions
 /// to default to using the legacy transaction type.
-///
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 #[cfg_attr(not(feature = "legacy"), serde(tag = "type"))]
 #[cfg_attr(feature = "legacy", serde(untagged))]
@@ -252,9 +251,7 @@ mod tests {
 
     #[test]
     fn serde_legacy_tx() {
-        let tx = TransactionRequest::new()
-            .to(Address::zero())
-            .value(U256::from(100));
+        let tx = TransactionRequest::new().to(Address::zero()).value(U256::from(100));
         let tx: TypedTransaction = tx.into();
         let serialized = serde_json::to_string(&tx).unwrap();
 
