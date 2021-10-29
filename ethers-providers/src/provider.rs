@@ -36,6 +36,7 @@ pub enum NodeClient {
     Erigon,
     OpenEthereum,
     Nethermind,
+    Besu,
 }
 
 /// An abstract provider for interacting with the [Ethereum JSON RPC
@@ -139,6 +140,7 @@ impl<P: JsonRpcClient> Provider<P> {
                 Some("Erigon") => Some(NodeClient::Erigon),
                 Some("OpenEthereum") => Some(NodeClient::OpenEthereum),
                 Some("Nethermind") => Some(NodeClient::Nethermind),
+                Some("besu") => Some(NodeClient::Besu),
                 _ => None,
             };
         }
