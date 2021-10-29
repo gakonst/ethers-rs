@@ -25,9 +25,18 @@ use serde::{de::DeserializeOwned, Serialize};
 use thiserror::Error;
 use url::{ParseError, Url};
 
-use std::{convert::TryFrom, fmt::Debug, time::Duration};
+use futures_util::lock::Mutex;
+use std::{convert::TryFrom, fmt::Debug, sync::Arc, time::Duration};
 use tracing::trace;
 use tracing_futures::Instrument;
+
+#[derive(Copy, Clone)]
+pub enum NodeClient {
+    Geth,
+    Erigon,
+    OpenEthereum,
+    Nethermind,
+}
 
 /// An abstract provider for interacting with the [Ethereum JSON RPC
 /// API](https://github.com/ethereum/wiki/wiki/JSON-RPC). Must be instantiated
@@ -56,6 +65,7 @@ pub struct Provider<P> {
     ens: Option<Address>,
     interval: Option<Duration>,
     from: Option<Address>,
+    _node_client: Arc<Mutex<Option<NodeClient>>>,
 }
 
 impl<P> AsRef<P> for Provider<P> {
@@ -89,6 +99,9 @@ pub enum ProviderError {
 
     #[error("custom error: {0}")]
     CustomError(String),
+
+    #[error("Unsupported RPC")]
+    Unsupported,
 }
 
 /// Types of filters supported by the JSON-RPC.
@@ -108,7 +121,29 @@ pub enum FilterKind<'a> {
 impl<P: JsonRpcClient> Provider<P> {
     /// Instantiate a new provider with a backend.
     pub fn new(provider: P) -> Self {
-        Self { inner: provider, ens: None, interval: None, from: None }
+        Self {
+            inner: provider,
+            ens: None,
+            interval: None,
+            from: None,
+            _node_client: Arc::new(Mutex::new(None)),
+        }
+    }
+
+    pub async fn node_client(&self) -> Result<NodeClient, ProviderError> {
+        let mut node_client = self._node_client.lock().await;
+
+        if node_client.is_none() {
+            *node_client = match self.client_version().await?.split('/').next() {
+                Some("Geth") => Some(NodeClient::Geth),
+                Some("Erigon") => Some(NodeClient::Erigon),
+                Some("OpenEthereum") => Some(NodeClient::OpenEthereum),
+                Some("Nethermind") => Some(NodeClient::Nethermind),
+                _ => None,
+            };
+        }
+
+        node_client.ok_or(ProviderError::CustomError("Unsupported node client".into()))
     }
 
     pub fn with_sender(mut self, address: impl Into<Address>) -> Self {
@@ -275,13 +310,19 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
 
     /// Returns all receipts for a block.
     ///
-    /// Note that this uses the `eth_getBlockReceipts` RPC, which is
-    /// non-standard and currently supported by Erigon.
+    /// Note that this uses the `eth_getBlockReceipts` or `parity_getBlockReceipts` RPC, which is
+    /// non-standard and currently supported by Erigon, OpenEthereum and Nethermind.
     async fn get_block_receipts<T: Into<BlockNumber> + Send + Sync>(
         &self,
         block: T,
     ) -> Result<Vec<TransactionReceipt>, Self::Error> {
-        self.request("eth_getBlockReceipts", [block.into()]).await
+        let method = match self.node_client().await? {
+            NodeClient::Erigon => "eth_getBlockReceipts",
+            NodeClient::OpenEthereum | NodeClient::Nethermind => "parity_getBlockReceipts",
+            _ => return Err(ProviderError::Unsupported),
+        };
+
+        self.request(method, [block.into()]).await
     }
 
     /// Gets the current gas price as estimated by the node
@@ -712,14 +753,6 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.request("trace_transaction", vec![hash]).await
     }
 
-    /// Returns all receipts for that block. Must be done on a parity node.
-    async fn parity_block_receipts<T: Into<BlockNumber> + Send + Sync>(
-        &self,
-        block: T,
-    ) -> Result<Vec<TransactionReceipt>, Self::Error> {
-        self.request("parity_getBlockReceipts", vec![block.into()]).await
-    }
-
     async fn subscribe<T, R>(
         &self,
         params: T,
@@ -813,7 +846,7 @@ impl<P: JsonRpcClient> Provider<P> {
 
         let resolver_address: Address = decode_bytes(ParamType::Address, data);
         if resolver_address == Address::zero() {
-            return Err(ProviderError::EnsError(ens_name.to_owned()))
+            return Err(ProviderError::EnsError(ens_name.to_owned()));
         }
 
         // resolve
@@ -1085,7 +1118,7 @@ mod tests {
             _ => return,
         };
         let provider = Provider::<Http>::try_from(url.as_str()).unwrap();
-        let receipts = provider.parity_block_receipts(10657200).await.unwrap();
+        let receipts = provider.get_block_receipts(10657200).await.unwrap();
         assert!(!receipts.is_empty());
     }
 
