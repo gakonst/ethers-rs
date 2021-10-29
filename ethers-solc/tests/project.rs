@@ -1,7 +1,7 @@
 //! project tests
 
 use ethers_solc::{cache::SOLIDITY_FILES_CACHE_FILENAME, Project, ProjectPathsConfig, Solc};
-use std::{path::PathBuf};
+use std::path::PathBuf;
 use tempdir::TempDir;
 
 fn solc() -> Solc {
