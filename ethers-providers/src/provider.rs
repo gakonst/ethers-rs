@@ -26,6 +26,7 @@ use thiserror::Error;
 use url::{ParseError, Url};
 
 use futures_util::lock::Mutex;
+use std::convert::TryInto;
 use std::{convert::TryFrom, fmt::Debug, sync::Arc, time::Duration};
 use tracing::trace;
 use tracing_futures::Instrument;
@@ -37,6 +38,21 @@ pub enum NodeClient {
     OpenEthereum,
     Nethermind,
     Besu,
+}
+
+impl TryFrom<String> for NodeClient {
+    type Error = ProviderError;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        match value.split('/').next().unwrap() {
+            "Geth" => Ok(NodeClient::Geth),
+            "Erigon" => Ok(NodeClient::Erigon),
+            "OpenEthereum" => Ok(NodeClient::OpenEthereum),
+            "Nethermind" => Ok(NodeClient::Nethermind),
+            "besu" => Ok(NodeClient::Besu),
+            _ => Err(ProviderError::CustomError("Unsupported node client".into())),
+        }
+    }
 }
 
 /// An abstract provider for interacting with the [Ethereum JSON RPC
@@ -135,14 +151,8 @@ impl<P: JsonRpcClient> Provider<P> {
         let mut node_client = self._node_client.lock().await;
 
         if node_client.is_none() {
-            *node_client = match self.client_version().await?.split('/').next() {
-                Some("Geth") => Some(NodeClient::Geth),
-                Some("Erigon") => Some(NodeClient::Erigon),
-                Some("OpenEthereum") => Some(NodeClient::OpenEthereum),
-                Some("Nethermind") => Some(NodeClient::Nethermind),
-                Some("besu") => Some(NodeClient::Besu),
-                _ => None,
-            };
+            let client_version = self.client_version().await?;
+            *node_client = Some(client_version.try_into()?);
         }
 
         node_client.ok_or(ProviderError::CustomError("Unsupported node client".into()))
