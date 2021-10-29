@@ -130,9 +130,8 @@ impl SolcConfigBuilder {
     /// If no solc version is configured then it will be determined by calling `solc --version`.
     pub fn build(self) -> Result<SolcConfig> {
         let Self { version, settings } = self;
-        let version = version
-            .map(Ok)
-            .unwrap_or_else(|| Solc::default().version().map(|s| s.to_string()))?;
+        let version =
+            version.map(Ok).unwrap_or_else(|| Solc::default().version().map(|s| s.to_string()))?;
         let settings = settings.unwrap_or_default();
         Ok(SolcConfig { version, settings })
     }

@@ -60,9 +60,7 @@ impl SolFilesCache {
 
     /// Returns if true if a source has changed and false if no source has changed
     pub fn is_changed(&self, sources: &Sources, config: Option<&SolcConfig>) -> bool {
-        sources
-            .iter()
-            .any(|(file, source)| self.has_changed(file, source.content_hash(), config))
+        sources.iter().any(|(file, source)| self.has_changed(file, source.content_hash(), config))
     }
 
     /// Returns true if the given content hash or config differs from the file's
@@ -79,7 +77,7 @@ impl SolFilesCache {
             }
             if let Some(config) = config {
                 if config != &entry.solc_config {
-                    return true;
+                    return true
                 }
             }
             false
@@ -127,10 +125,8 @@ impl SolFilesCacheBuilder {
 
     pub fn insert_files(self, sources: Sources) -> Result<SolFilesCache> {
         let format = self.format.unwrap_or_else(|| HH_FORMAT_VERSION.to_string());
-        let solc_config = self
-            .solc_config
-            .map(Ok)
-            .unwrap_or_else(|| SolcConfig::builder().build())?;
+        let solc_config =
+            self.solc_config.map(Ok).unwrap_or_else(|| SolcConfig::builder().build())?;
 
         let root = self.root.map(Ok).unwrap_or_else(std::env::current_dir)?;
 
@@ -141,10 +137,8 @@ impl SolFilesCacheBuilder {
                 .duration_since(UNIX_EPOCH)
                 .map_err(|err| SolcError::solc(err.to_string()))?
                 .as_millis() as u64;
-            let imports = utils::find_import_paths(source.as_ref())
-                .into_iter()
-                .map(str::to_string)
-                .collect();
+            let imports =
+                utils::find_import_paths(source.as_ref()).into_iter().map(str::to_string).collect();
 
             let version_pragmas = utils::find_version_pragma(source.as_ref())
                 .map(|v| vec![v.to_string()])

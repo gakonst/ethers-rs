@@ -31,11 +31,7 @@ impl CompilerInput {
 
     /// Creates a new Compiler input with default settings and the given sources
     pub fn with_sources(sources: Sources) -> Self {
-        Self {
-            language: "Solidity".to_string(),
-            sources,
-            settings: Default::default(),
-        }
+        Self { language: "Solidity".to_string(), sources, settings: Default::default() }
     }
 
     /// Sets the EVM version for compilation
@@ -156,10 +152,7 @@ impl Settings {
 
     /// Adds `ast` to output
     pub fn with_ast(mut self) -> Self {
-        let output = self
-            .output_selection
-            .entry("*".to_string())
-            .or_insert_with(BTreeMap::default);
+        let output = self.output_selection.entry("*".to_string()).or_insert_with(BTreeMap::default);
         output.insert("".to_string(), vec!["ast".to_string()]);
         self
     }

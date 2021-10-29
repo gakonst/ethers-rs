@@ -68,7 +68,7 @@ impl Project {
                 // check anything changed
                 let cache = SolFilesCache::read(&self.paths.cache)?;
                 if !cache.is_changed(&sources, Some(&self.solc_config)) {
-                    return Ok(None);
+                    return Ok(None)
                 }
             }
             // create cache file
@@ -124,13 +124,7 @@ impl ProjectBuilder {
     }
 
     pub fn build(self) -> Result<Project> {
-        let Self {
-            paths,
-            solc,
-            solc_config,
-            cached,
-            artifacts,
-        } = self;
+        let Self { paths, solc, solc_config, cached, artifacts } = self;
 
         let solc = solc.unwrap_or_default();
         let solc_config = solc_config.map(Ok).unwrap_or_else(|| {
@@ -150,12 +144,6 @@ impl ProjectBuilder {
 
 impl Default for ProjectBuilder {
     fn default() -> Self {
-        Self {
-            paths: None,
-            solc: None,
-            solc_config: None,
-            cached: true,
-            artifacts: None,
-        }
+        Self { paths: None, solc: None, solc_config: None, cached: true, artifacts: None }
     }
 }
