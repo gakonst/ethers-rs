@@ -26,9 +26,7 @@ mod multicallcontract_mod {
     }
     impl<M: Middleware> std::fmt::Debug for MulticallContract<M> {
         fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-            f.debug_tuple(stringify!(MulticallContract))
-                .field(&self.address())
-                .finish()
+            f.debug_tuple(stringify!(MulticallContract)).field(&self.address()).finish()
         }
     }
     impl<'a, M: Middleware> MulticallContract<M> {

@@ -2,8 +2,7 @@
 
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::spanned::Spanned as _;
-use syn::{parse::Error, Data, DeriveInput, Fields, Index};
+use syn::{parse::Error, spanned::Spanned as _, Data, DeriveInput, Fields, Index};
 
 use ethers_contract_abigen::ethers_core_crate;
 use ethers_core::abi::ParamType;
@@ -21,30 +20,20 @@ pub(crate) fn derive_eth_display_impl(input: DeriveInput) -> Result<TokenStream,
             }
         },
         Data::Enum(_) => {
-            return Err(Error::new(
-                input.span(),
-                "Enum types are not supported by EthDisplay",
-            ))
+            return Err(Error::new(input.span(), "Enum types are not supported by EthDisplay"))
         }
         Data::Union(_) => {
-            return Err(Error::new(
-                input.span(),
-                "Union types are not supported by EthDisplay",
-            ))
+            return Err(Error::new(input.span(), "Union types are not supported by EthDisplay"))
         }
     };
     let core_crate = ethers_core_crate();
     let hex_encode = quote! {#core_crate::utils::hex::encode};
     let mut fmts = TokenStream::new();
     for (idx, field) in fields.iter().enumerate() {
-        let ident = field
-            .ident
-            .clone()
-            .map(|id| quote! {#id})
-            .unwrap_or_else(|| {
-                let idx = Index::from(idx);
-                quote! {#idx}
-            });
+        let ident = field.ident.clone().map(|id| quote! {#id}).unwrap_or_else(|| {
+            let idx = Index::from(idx);
+            quote! {#idx}
+        });
         let tokens = if let Ok(param) = utils::find_parameter_type(&field.ty) {
             match param {
                 ParamType::Address | ParamType::Uint(_) | ParamType::Int(_) => {

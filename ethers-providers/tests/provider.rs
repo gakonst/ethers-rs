@@ -17,26 +17,10 @@ mod eth_tests {
         )
         .unwrap();
 
-        assert!(provider
-            .get_transaction(H256::zero())
-            .await
-            .unwrap()
-            .is_none());
-        assert!(provider
-            .get_transaction_receipt(H256::zero())
-            .await
-            .unwrap()
-            .is_none());
-        assert!(provider
-            .get_block(BlockId::Hash(H256::zero()))
-            .await
-            .unwrap()
-            .is_none());
-        assert!(provider
-            .get_block_with_txs(BlockId::Hash(H256::zero()))
-            .await
-            .unwrap()
-            .is_none());
+        assert!(provider.get_transaction(H256::zero()).await.unwrap().is_none());
+        assert!(provider.get_transaction_receipt(H256::zero()).await.unwrap().is_none());
+        assert!(provider.get_block(BlockId::Hash(H256::zero())).await.unwrap().is_none());
+        assert!(provider.get_block_with_txs(BlockId::Hash(H256::zero())).await.unwrap().is_none());
     }
 
     #[tokio::test]
@@ -71,9 +55,7 @@ mod eth_tests {
         use ethers_providers::{StreamExt, Ws};
 
         let ganache = Ganache::new().block_time(2u64).spawn();
-        let (ws, _) = tokio_tungstenite::connect_async(ganache.ws_endpoint())
-            .await
-            .unwrap();
+        let (ws, _) = tokio_tungstenite::connect_async(ganache.ws_endpoint()).await.unwrap();
         let provider = Provider::new(Ws::new(ws)).interval(Duration::from_millis(500u64));
 
         let stream = provider.watch_blocks().await.unwrap().stream();

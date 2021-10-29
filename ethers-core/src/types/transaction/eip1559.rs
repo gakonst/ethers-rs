@@ -40,28 +40,22 @@ pub struct Eip1559TransactionRequest {
     #[serde(rename = "accessList", default)]
     pub access_list: AccessList,
 
-    #[serde(
-        rename = "maxPriorityFeePerGas",
-        default,
-        skip_serializing_if = "Option::is_none"
-    )]
+    #[serde(rename = "maxPriorityFeePerGas", default, skip_serializing_if = "Option::is_none")]
     /// Represents the maximum tx fee that will go to the miner as part of the user's
     /// fee payment. It serves 3 purposes:
-    /// 1. Compensates miners for the uncle/ommer risk + fixed costs of including transaction in a block;
-    /// 2. Allows users with high opportunity costs to pay a premium to miners;
+    /// 1. Compensates miners for the uncle/ommer risk + fixed costs of including transaction in a
+    /// block; 2. Allows users with high opportunity costs to pay a premium to miners;
     /// 3. In times where demand exceeds the available block space (i.e. 100% full, 30mm gas),
-    /// this component allows first price auctions (i.e. the pre-1559 fee model) to happen on the priority fee.
+    /// this component allows first price auctions (i.e. the pre-1559 fee model) to happen on the
+    /// priority fee.
     ///
     /// More context [here](https://hackmd.io/@q8X_WM2nTfu6nuvAzqXiTQ/1559-wallets)
     pub max_priority_fee_per_gas: Option<U256>,
 
-    #[serde(
-        rename = "maxFeePerGas",
-        default,
-        skip_serializing_if = "Option::is_none"
-    )]
-    /// Represents the maximum amount that a user is willing to pay for their tx (inclusive of baseFeePerGas and maxPriorityFeePerGas).
-    /// The difference between maxFeePerGas and baseFeePerGas + maxPriorityFeePerGas is “refunded” to the user.
+    #[serde(rename = "maxFeePerGas", default, skip_serializing_if = "Option::is_none")]
+    /// Represents the maximum amount that a user is willing to pay for their tx (inclusive of
+    /// baseFeePerGas and maxPriorityFeePerGas). The difference between maxFeePerGas and
+    /// baseFeePerGas + maxPriorityFeePerGas is “refunded” to the user.
     pub max_fee_per_gas: Option<U256>,
 }
 

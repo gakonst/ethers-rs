@@ -12,9 +12,11 @@ use ethers_core::abi::{
     ParamType, SolStruct,
 };
 
-use crate::contract::{types, Context};
-use crate::rawabi::{Component, RawAbi};
-use crate::util;
+use crate::{
+    contract::{types, Context},
+    rawabi::{Component, RawAbi},
+    util,
+};
 
 impl Context {
     /// Generate corresponding types for structs parsed from a human readable ABI
@@ -50,11 +52,7 @@ impl Context {
 
     /// Generates the type definition for the name that matches the given identifier
     fn generate_internal_struct(&self, id: &str) -> Result<TokenStream> {
-        let sol_struct = self
-            .internal_structs
-            .structs
-            .get(id)
-            .context("struct not found")?;
+        let sol_struct = self.internal_structs.structs.get(id).context("struct not found")?;
         let struct_name = self
             .internal_structs
             .rust_type_names
@@ -105,17 +103,13 @@ impl Context {
                         "Mapping types in struct `{}` are not supported {:?}",
                         name,
                         field
-                    ));
+                    ))
                 }
             }
         }
 
         let sig = if let ParamType::Tuple(ref tokens) = tuple {
-            tokens
-                .iter()
-                .map(|kind| kind.to_string())
-                .collect::<Vec<_>>()
-                .join(",")
+            tokens.iter().map(|kind| kind.to_string()).collect::<Vec<_>>().join(",")
         } else {
             "".to_string()
         };
@@ -140,11 +134,7 @@ impl Context {
     }
 
     fn generate_human_readable_struct(&self, name: &str) -> Result<TokenStream> {
-        let sol_struct = self
-            .abi_parser
-            .structs
-            .get(name)
-            .context("struct not found")?;
+        let sol_struct = self.abi_parser.structs.get(name).context("struct not found")?;
         let mut fields = Vec::with_capacity(sol_struct.fields().len());
         let mut param_types = Vec::with_capacity(sol_struct.fields().len());
         for field in sol_struct.fields() {
@@ -175,7 +165,7 @@ impl Context {
                         "Mapping types in struct `{}` are not supported {:?}",
                         name,
                         field
-                    ));
+                    ))
                 }
             }
         }
@@ -183,11 +173,7 @@ impl Context {
         let abi_signature = format!(
             "{}({})",
             name,
-            param_types
-                .iter()
-                .map(|kind| kind.to_string())
-                .collect::<Vec<_>>()
-                .join(","),
+            param_types.iter().map(|kind| kind.to_string()).collect::<Vec<_>>().join(","),
         );
 
         let abi_signature_doc = util::expand_doc(&format!("`{}`", abi_signature));
@@ -223,10 +209,12 @@ impl Context {
 
 /// Helper to match `ethabi::Param`s with structs and nested structs
 ///
-/// This is currently used to get access to all the unique solidity structs used as function in/output until `ethabi` supports it as well.
+/// This is currently used to get access to all the unique solidity structs used as function
+/// in/output until `ethabi` supports it as well.
 #[derive(Debug, Clone, Default)]
 pub struct InternalStructs {
-    /// (function name, param name) -> struct which are the identifying properties we get the name from ethabi.
+    /// (function name, param name) -> struct which are the identifying properties we get the name
+    /// from ethabi.
     pub(crate) function_params: HashMap<(String, String), String>,
 
     /// (function name) -> Vec<structs> all structs the function returns
@@ -327,7 +315,9 @@ impl InternalStructs {
     }
 }
 
-/// This will determine the name of the rust type and will make sure that possible collisions are resolved by adjusting the actual Rust name of the structure, e.g. `LibraryA.Point` and `LibraryB.Point` to `LibraryAPoint` and `LibraryBPoint`.
+/// This will determine the name of the rust type and will make sure that possible collisions are
+/// resolved by adjusting the actual Rust name of the structure, e.g. `LibraryA.Point` and
+/// `LibraryB.Point` to `LibraryAPoint` and `LibraryBPoint`.
 fn insert_rust_type_name(
     type_names: &mut HashMap<String, (String, Vec<String>)>,
     mut name: String,
@@ -338,11 +328,7 @@ fn insert_rust_type_name(
         let mut other_name = name.clone();
         // name collision `A.name` `B.name`, rename to `AName`, `BName`
         if !other_projections.is_empty() {
-            other_name = format!(
-                "{}{}",
-                other_projections.remove(0).to_pascal_case(),
-                other_name
-            );
+            other_name = format!("{}{}", other_projections.remove(0).to_pascal_case(), other_name);
         }
         insert_rust_type_name(type_names, other_name, other_projections, other_id);
 
@@ -357,7 +343,10 @@ fn insert_rust_type_name(
 
 /// Tries to determine the `ParamType::Tuple` for every struct.
 ///
-/// If a structure has nested structures, these must be determined first, essentially starting with structures consisting of only elementary types before moving on to higher level structures, for example `Proof {point: Point}, Point {x:int, y:int}` start by converting Point into a tuple of `x` and `y` and then substituting `point` with this within `Proof`.
+/// If a structure has nested structures, these must be determined first, essentially starting with
+/// structures consisting of only elementary types before moving on to higher level structures, for
+/// example `Proof {point: Point}, Point {x:int, y:int}` start by converting Point into a tuple of
+/// `x` and `y` and then substituting `point` with this within `Proof`.
 fn resolve_struct_tuples(all_structs: &HashMap<String, SolStruct>) -> HashMap<String, ParamType> {
     let mut params = HashMap::new();
     let mut structs: VecDeque<_> = all_structs.iter().collect();
@@ -366,7 +355,7 @@ fn resolve_struct_tuples(all_structs: &HashMap<String, SolStruct>) -> HashMap<St
     let mut sequential_retries = 0;
     'outer: while let Some((id, ty)) = structs.pop_front() {
         if sequential_retries > structs.len() {
-            break;
+            break
         }
         if let Some(tuple) = ty.as_tuple() {
             params.insert(id.to_string(), tuple);
@@ -396,7 +385,7 @@ fn resolve_struct_tuples(all_structs: &HashMap<String, SolStruct>) -> HashMap<St
                             // struct field needs to be resolved first
                             structs.push_back((id, ty));
                             sequential_retries += 1;
-                            continue 'outer;
+                            continue 'outer
                         }
                     }
                     _ => {
@@ -413,27 +402,21 @@ fn resolve_struct_tuples(all_structs: &HashMap<String, SolStruct>) -> HashMap<St
     params
 }
 
-/// turns the tuple component into a struct if it's still missing in the map, including all inner structs
+/// turns the tuple component into a struct if it's still missing in the map, including all inner
+/// structs
 fn insert_structs(structs: &mut HashMap<String, SolStruct>, tuple: &Component) {
     if let Some(internal_ty) = tuple.internal_type.as_ref() {
         let ident = struct_type_identifier(internal_ty);
         if structs.contains_key(ident) {
-            return;
+            return
         }
         if let Some(fields) = tuple
             .components
             .iter()
-            .map(|f| {
-                Reader::read(&f.type_field)
-                    .ok()
-                    .and_then(|kind| field(structs, f, kind))
-            })
+            .map(|f| Reader::read(&f.type_field).ok().and_then(|kind| field(structs, f, kind)))
             .collect::<Option<Vec<_>>>()
         {
-            let s = SolStruct {
-                name: ident.to_string(),
-                fields,
-            };
+            let s = SolStruct { name: ident.to_string(), fields };
             structs.insert(ident.to_string(), s);
         }
     }
@@ -512,10 +495,7 @@ fn struct_type_name(name: &str) -> &str {
 
 /// `Pairing.G2Point` -> `Pairing.G2Point`
 fn struct_type_identifier(name: &str) -> &str {
-    name.trim_start_matches("struct ")
-        .split('[')
-        .next()
-        .unwrap()
+    name.trim_start_matches("struct ").split('[').next().unwrap()
 }
 
 /// `struct Pairing.Nested.G2Point[]` -> `[Pairing, Nested]`

@@ -1,5 +1,5 @@
-// // This test exists to ensure that the abigen macro works "reasonably" well with popular contracts
-// use ethers::contract::abigen;
+// // This test exists to ensure that the abigen macro works "reasonably" well with popular
+// contracts use ethers::contract::abigen;
 //
 // abigen!(
 //     KeepBonding,

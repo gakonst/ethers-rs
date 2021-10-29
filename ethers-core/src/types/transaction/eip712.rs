@@ -1,10 +1,9 @@
 use convert_case::{Case, Casing};
 use core::convert::TryFrom;
 use proc_macro2::TokenStream;
-use syn::spanned::Spanned as _;
 use syn::{
-    parse::Error, AttrStyle, Data, DeriveInput, Expr, Fields, GenericArgument, Lit, NestedMeta,
-    PathArguments, Type,
+    parse::Error, spanned::Spanned as _, AttrStyle, Data, DeriveInput, Expr, Fields,
+    GenericArgument, Lit, NestedMeta, PathArguments, Type,
 };
 
 use crate::{
@@ -16,8 +15,8 @@ use crate::{
 
 /// Pre-computed value of the following statement:
 ///
-/// `ethers_core::utils::keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)")`
-///
+/// `ethers_core::utils::keccak256("EIP712Domain(string name,string version,uint256 chainId,address
+/// verifyingContract)")`
 pub const EIP712_DOMAIN_TYPE_HASH: [u8; 32] = [
     139, 115, 195, 198, 155, 184, 254, 61, 81, 46, 204, 76, 247, 89, 204, 121, 35, 159, 123, 23,
     155, 15, 250, 202, 169, 167, 93, 82, 43, 57, 64, 15,
@@ -25,8 +24,8 @@ pub const EIP712_DOMAIN_TYPE_HASH: [u8; 32] = [
 
 /// Pre-computed value of the following statement:
 ///
-/// `ethers_core::utils::keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract,bytes32 salt)")`
-///
+/// `ethers_core::utils::keccak256("EIP712Domain(string name,string version,uint256 chainId,address
+/// verifyingContract,bytes32 salt)")`
 pub const EIP712_DOMAIN_TYPE_HASH_WITH_SALT: [u8; 32] = [
     216, 124, 214, 239, 121, 212, 226, 185, 94, 21, 206, 138, 191, 115, 45, 181, 30, 199, 113, 241,
     202, 46, 220, 207, 34, 164, 108, 114, 154, 197, 100, 114,
@@ -108,16 +107,19 @@ pub struct EIP712Domain {
     ///  The user readable name of signing domain, i.e. the name of the DApp or the protocol.
     pub name: String,
 
-    /// The current major version of the signing domain. Signatures from different versions are not compatible.
+    /// The current major version of the signing domain. Signatures from different versions are not
+    /// compatible.
     pub version: String,
 
-    /// The EIP-155 chain id. The user-agent should refuse signing if it does not match the currently active chain.
+    /// The EIP-155 chain id. The user-agent should refuse signing if it does not match the
+    /// currently active chain.
     pub chain_id: U256,
 
     /// The address of the contract that will verify the signature.
     pub verifying_contract: Address,
 
-    /// A disambiguating salt for the protocol. This can be used as a domain separator of last resort.
+    /// A disambiguating salt for the protocol. This can be used as a domain separator of last
+    /// resort.
     pub salt: Option<[u8; 32]>,
 }
 
@@ -159,18 +161,13 @@ where
 
 impl<T: Eip712 + Clone> EIP712WithDomain<T> {
     pub fn new(inner: T) -> Result<Self, Eip712Error> {
-        let domain = inner
-            .domain()
-            .map_err(|e| Eip712Error::Inner(e.to_string()))?;
+        let domain = inner.domain().map_err(|e| Eip712Error::Inner(e.to_string()))?;
 
         Ok(Self { domain, inner })
     }
 
     pub fn set_domain(self, domain: EIP712Domain) -> Self {
-        Self {
-            domain,
-            inner: self.inner,
-        }
+        Self { domain, inner: self.inner }
     }
 }
 
@@ -187,11 +184,8 @@ impl<T: Eip712 + Clone> Eip712 for EIP712WithDomain<T> {
     }
 
     fn struct_hash(&self) -> Result<[u8; 32], Self::Error> {
-        let struct_hash = self
-            .inner
-            .clone()
-            .struct_hash()
-            .map_err(|e| Self::Error::Inner(e.to_string()))?;
+        let struct_hash =
+            self.inner.clone().struct_hash().map_err(|e| Self::Error::Inner(e.to_string()))?;
         Ok(struct_hash)
     }
 }
@@ -229,7 +223,7 @@ impl TryFrom<&syn::DeriveInput> for EIP712Domain {
                                                             meta.path.span(),
                                                             "domain name already specified",
                                                         )
-                                                        .to_compile_error());
+                                                        .to_compile_error())
                                                     }
 
                                                     domain.name = lit_str.value();
@@ -239,7 +233,7 @@ impl TryFrom<&syn::DeriveInput> for EIP712Domain {
                                                         meta.path.span(),
                                                         "domain name must be a string",
                                                     )
-                                                    .to_compile_error());
+                                                    .to_compile_error())
                                                 }
                                             },
                                             "version" => match meta.lit {
@@ -249,7 +243,7 @@ impl TryFrom<&syn::DeriveInput> for EIP712Domain {
                                                             meta.path.span(),
                                                             "domain version already specified",
                                                         )
-                                                        .to_compile_error());
+                                                        .to_compile_error())
                                                     }
 
                                                     domain.version = lit_str.value();
@@ -259,7 +253,7 @@ impl TryFrom<&syn::DeriveInput> for EIP712Domain {
                                                         meta.path.span(),
                                                         "domain version must be a string",
                                                     )
-                                                    .to_compile_error());
+                                                    .to_compile_error())
                                                 }
                                             },
                                             "chain_id" => match meta.lit {
@@ -269,7 +263,7 @@ impl TryFrom<&syn::DeriveInput> for EIP712Domain {
                                                             meta.path.span(),
                                                             "domain chain_id already specified",
                                                         )
-                                                        .to_compile_error());
+                                                        .to_compile_error())
                                                     }
 
                                                     domain.chain_id = lit_int
@@ -325,10 +319,11 @@ impl TryFrom<&syn::DeriveInput> for EIP712Domain {
                                                             meta.path.span(),
                                                             "domain salt already specified",
                                                         )
-                                                        .to_compile_error());
+                                                        .to_compile_error())
                                                     }
 
-                                                    // keccak256(<string>) to compute bytes32 encoded domain salt
+                                                    // keccak256(<string>) to compute bytes32
+                                                    // encoded domain salt
                                                     let salt = keccak256(lit_str.value());
 
                                                     domain.salt = Some(salt);
@@ -338,7 +333,7 @@ impl TryFrom<&syn::DeriveInput> for EIP712Domain {
                                                         meta.path.span(),
                                                         "domain salt must be a string",
                                                     )
-                                                    .to_compile_error());
+                                                    .to_compile_error())
                                                 }
                                             },
                                             _ => {
@@ -355,14 +350,14 @@ impl TryFrom<&syn::DeriveInput> for EIP712Domain {
                                             path.span(),
                                             "unrecognized eip712 parameter",
                                         )
-                                        .to_compile_error());
+                                        .to_compile_error())
                                     }
                                     syn::Meta::List(meta) => {
                                         return Err(Error::new(
                                             meta.path.span(),
                                             "unrecognized eip712 parameter",
                                         )
-                                        .to_compile_error());
+                                        .to_compile_error())
                                     }
                                 }
                             }
@@ -373,21 +368,21 @@ impl TryFrom<&syn::DeriveInput> for EIP712Domain {
                                 meta.path.span(),
                                 "missing required domain attribute: 'name'".to_string(),
                             )
-                            .to_compile_error());
+                            .to_compile_error())
                         }
                         if domain.version == String::default() {
                             return Err(Error::new(
                                 meta.path.span(),
                                 "missing required domain attribute: 'version'".to_string(),
                             )
-                            .to_compile_error());
+                            .to_compile_error())
                         }
                         if domain.chain_id == U256::default() {
                             return Err(Error::new(
                                 meta.path.span(),
                                 "missing required domain attribute: 'chain_id'".to_string(),
                             )
-                            .to_compile_error());
+                            .to_compile_error())
                         }
                         if domain.verifying_contract == H160::default() {
                             return Err(Error::new(
@@ -395,7 +390,7 @@ impl TryFrom<&syn::DeriveInput> for EIP712Domain {
                                 "missing required domain attribute: 'verifying_contract'"
                                     .to_string(),
                             )
-                            .to_compile_error());
+                            .to_compile_error())
                         }
                     }
                 }
@@ -407,7 +402,7 @@ impl TryFrom<&syn::DeriveInput> for EIP712Domain {
                 input,
                 "missing required derive attribute: '#[eip712( ... )]'".to_string(),
             )
-            .to_compile_error());
+            .to_compile_error())
         }
 
         Ok(domain)
@@ -425,21 +420,20 @@ pub fn find_parameter_type(ty: &Type) -> Result<ParamType, TokenStream> {
                 if let Lit::Int(ref len) = expr.lit {
                     if let Ok(size) = len.base10_parse::<usize>() {
                         if let ParamType::Uint(_) = param {
-                            return Ok(ParamType::FixedBytes(size));
+                            return Ok(ParamType::FixedBytes(size))
                         }
 
-                        return Ok(ParamType::FixedArray(Box::new(param), size));
+                        return Ok(ParamType::FixedArray(Box::new(param), size))
                     }
                 }
             }
-            Err(
-                Error::new(ty.span(), "Failed to derive proper ABI from array field")
-                    .to_compile_error(),
-            )
+            Err(Error::new(ty.span(), "Failed to derive proper ABI from array field")
+                .to_compile_error())
         }
         Type::Path(ty) => {
             if let Some(ident) = ty.path.get_ident() {
-                return match ident.to_string().to_lowercase().as_str() {
+                let ident = ident.to_string().to_lowercase();
+                return match ident.as_str() {
                     "address" => Ok(ParamType::Address),
                     "string" => Ok(ParamType::String),
                     "bool" => Ok(ParamType::Bool),
@@ -455,7 +449,7 @@ pub fn find_parameter_type(ty: &Type) -> Result<ParamType, TokenStream> {
                         )
                         .to_compile_error()
                     }),
-                };
+                }
             }
             // check for `Vec`
             if ty.path.segments.len() == 1 && ty.path.segments[0].ident == "Vec" {
@@ -467,11 +461,11 @@ pub fn find_parameter_type(ty: &Type) -> Result<ParamType, TokenStream> {
                             // Check if byte array is found
                             if let ParamType::Uint(size) = kind {
                                 if size == 8 {
-                                    return Ok(ParamType::Bytes);
+                                    return Ok(ParamType::Bytes)
                                 }
                             }
 
-                            return Ok(ParamType::Array(Box::new(kind)));
+                            return Ok(ParamType::Array(Box::new(kind)))
                         }
                     }
                 }
@@ -480,11 +474,7 @@ pub fn find_parameter_type(ty: &Type) -> Result<ParamType, TokenStream> {
             Err(Error::new(ty.span(), "Failed to derive proper ABI from fields").to_compile_error())
         }
         Type::Tuple(ty) => {
-            let params = ty
-                .elems
-                .iter()
-                .map(find_parameter_type)
-                .collect::<Result<Vec<_>, _>>()?;
+            let params = ty.elems.iter().map(find_parameter_type).collect::<Result<Vec<_>, _>>()?;
             Ok(ParamType::Tuple(params))
         }
         _ => {
@@ -494,12 +484,7 @@ pub fn find_parameter_type(ty: &Type) -> Result<ParamType, TokenStream> {
 }
 
 fn parse_int_param_type(s: &str) -> Option<ParamType> {
-    let size = s
-        .chars()
-        .skip(1)
-        .collect::<String>()
-        .parse::<usize>()
-        .ok()?;
+    let size = s.chars().skip(1).collect::<String>().parse::<usize>().ok()?;
     if s.starts_with('u') {
         Some(ParamType::Uint(size))
     } else if s.starts_with('i') {
@@ -527,37 +512,27 @@ pub fn parse_fields(ast: &DeriveInput) -> Result<Vec<(String, ParamType)>, Token
     let named_fields = match &data.fields {
         Fields::Named(name) => name,
         _ => {
-            return Err(
-                Error::new(ast.span(), "unnamed fields are not supported").to_compile_error()
-            )
+            return Err(Error::new(ast.span(), "unnamed fields are not supported").to_compile_error())
         }
     };
 
     for f in named_fields.named.iter() {
-        let field_name = f
-            .ident
-            .clone()
-            .map(|i| i.to_string().to_case(Case::Camel))
-            .ok_or_else(|| {
+        let field_name =
+            f.ident.clone().map(|i| i.to_string().to_case(Case::Camel)).ok_or_else(|| {
                 Error::new(named_fields.span(), "fields must be named").to_compile_error()
             })?;
 
-        let field_type = match f
-            .attrs
-            .iter()
-            .find(|a| a.path.segments.iter().any(|s| s.ident == "eip712"))
-        {
-            // Found nested Eip712 Struct
-            // TODO: Implement custom
-            Some(a) => {
-                return Err(
-                    Error::new(a.span(), "nested Eip712 struct are not yet supported")
-                        .to_compile_error(),
-                )
-            }
-            // Not a nested eip712 struct, return the field param type;
-            None => find_parameter_type(&f.ty)?,
-        };
+        let field_type =
+            match f.attrs.iter().find(|a| a.path.segments.iter().any(|s| s.ident == "eip712")) {
+                // Found nested Eip712 Struct
+                // TODO: Implement custom
+                Some(a) => {
+                    return Err(Error::new(a.span(), "nested Eip712 struct are not yet supported")
+                        .to_compile_error())
+                }
+                // Not a nested eip712 struct, return the field param type;
+                None => find_parameter_type(&f.ty)?,
+            };
 
         fields.push((field_name, field_type));
     }
@@ -567,11 +542,8 @@ pub fn parse_fields(ast: &DeriveInput) -> Result<Vec<(String, ParamType)>, Token
 
 /// Convert hash map of field names and types into a type hash corresponding to enc types;
 pub fn make_type_hash(primary_type: String, fields: &[(String, ParamType)]) -> [u8; 32] {
-    let parameters = fields
-        .iter()
-        .map(|(k, v)| format!("{} {}", v, k))
-        .collect::<Vec<String>>()
-        .join(",");
+    let parameters =
+        fields.iter().map(|(k, v)| format!("{} {}", v, k)).collect::<Vec<String>>().join(",");
 
     let sig = format!("{}({})", primary_type, parameters);
 
@@ -595,16 +567,10 @@ pub fn encode_eip712_type(token: Token) -> Token {
             Token::Uint(t)
         }
         Token::Array(tokens) => Token::Uint(U256::from(keccak256(abi::encode(
-            &tokens
-                .into_iter()
-                .map(encode_eip712_type)
-                .collect::<Vec<Token>>(),
+            &tokens.into_iter().map(encode_eip712_type).collect::<Vec<Token>>(),
         )))),
         Token::FixedArray(tokens) => Token::Uint(U256::from(keccak256(abi::encode(
-            &tokens
-                .into_iter()
-                .map(encode_eip712_type)
-                .collect::<Vec<Token>>(),
+            &tokens.into_iter().map(encode_eip712_type).collect::<Vec<Token>>(),
         )))),
         _ => {
             // Return the ABI encoded token;

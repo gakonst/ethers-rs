@@ -1,7 +1,8 @@
 //! Mod of types for ethereum logs
-use ethers_core::abi::Error;
-use ethers_core::abi::RawLog;
-use ethers_core::types::{Address, Log, TxHash, H256, U256, U64};
+use ethers_core::{
+    abi::{Error, RawLog},
+    types::{Address, Log, TxHash, H256, U256, U64},
+};
 
 /// A trait for types (events) that can be decoded from a `RawLog`
 pub trait EthLogDecode: Send + Sync {

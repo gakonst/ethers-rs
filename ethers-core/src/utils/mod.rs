@@ -206,13 +206,9 @@ pub fn get_create2_address_from_hash(
     salt: impl Into<Bytes>,
     init_code_hash: impl Into<Bytes>,
 ) -> Address {
-    let bytes = [
-        &[0xff],
-        from.into().as_bytes(),
-        salt.into().as_ref(),
-        init_code_hash.into().as_ref(),
-    ]
-    .concat();
+    let bytes =
+        [&[0xff], from.into().as_bytes(), salt.into().as_ref(), init_code_hash.into().as_ref()]
+            .concat();
 
     let hash = keccak256(&bytes);
 
@@ -244,17 +240,14 @@ pub fn to_checksum(addr: &Address, chain_id: Option<u8>) -> String {
     let addr_hex = hex::encode(addr.as_bytes());
     let addr_hex = addr_hex.as_bytes();
 
-    addr_hex
-        .iter()
-        .zip(hash)
-        .fold("0x".to_owned(), |mut encoded, (addr, hash)| {
-            encoded.push(if *hash >= 56 {
-                addr.to_ascii_uppercase() as char
-            } else {
-                addr.to_ascii_lowercase() as char
-            });
-            encoded
-        })
+    addr_hex.iter().zip(hash).fold("0x".to_owned(), |mut encoded, (addr, hash)| {
+        encoded.push(if *hash >= 56 {
+            addr.to_ascii_uppercase() as char
+        } else {
+            addr.to_ascii_lowercase() as char
+        });
+        encoded
+    })
 }
 
 /// Returns a bytes32 string representation of text. If the length of text exceeds 32 bytes,
@@ -262,7 +255,7 @@ pub fn to_checksum(addr: &Address, chain_id: Option<u8>) -> String {
 pub fn format_bytes32_string(text: &str) -> Result<[u8; 32], FormatBytes32StringError> {
     let str_bytes: &[u8] = text.as_bytes();
     if str_bytes.len() > 32 {
-        return Err(FormatBytes32StringError::TextTooLong);
+        return Err(FormatBytes32StringError::TextTooLong)
     }
 
     let mut bytes32: [u8; 32] = [0u8; 32];
@@ -302,16 +295,13 @@ pub fn eip1559_default_estimator(base_fee_per_gas: U256, rewards: Vec<Vec<U256>>
 }
 
 fn estimate_priority_fee(rewards: Vec<Vec<U256>>) -> U256 {
-    let mut rewards: Vec<U256> = rewards
-        .iter()
-        .map(|r| r[0])
-        .filter(|r| *r > U256::zero())
-        .collect();
+    let mut rewards: Vec<U256> =
+        rewards.iter().map(|r| r[0]).filter(|r| *r > U256::zero()).collect();
     if rewards.is_empty() {
-        return U256::zero();
+        return U256::zero()
     }
     if rewards.len() == 1 {
-        return rewards[0];
+        return rewards[0]
     }
     // Sort the rewards as we will eventually take the median.
     rewards.sort();
@@ -336,15 +326,12 @@ fn estimate_priority_fee(rewards: Vec<Vec<U256>>) -> U256 {
 
     // Fetch the max of the percentage change, and that element's index.
     let max_change = percentage_change.iter().max().unwrap();
-    let max_change_index = percentage_change
-        .iter()
-        .position(|&c| c == *max_change)
-        .unwrap();
+    let max_change_index = percentage_change.iter().position(|&c| c == *max_change).unwrap();
 
     // If we encountered a big change in fees at a certain position, then consider only
     // the values >= it.
-    let values = if *max_change >= EIP1559_FEE_ESTIMATION_THRESHOLD_MAX_CHANGE
-        && (max_change_index >= (rewards.len() / 2))
+    let values = if *max_change >= EIP1559_FEE_ESTIMATION_THRESHOLD_MAX_CHANGE &&
+        (max_change_index >= (rewards.len() / 2))
     {
         rewards[max_change_index..].to_vec()
     } else {
@@ -376,9 +363,8 @@ pub(crate) fn unused_port() -> u16 {
     let listener = std::net::TcpListener::bind("127.0.0.1:0")
         .expect("Failed to create TCP listener to find unused port");
 
-    let local_addr = listener
-        .local_addr()
-        .expect("Failed to read TCP listener local_addr to find unused port");
+    let local_addr =
+        listener.local_addr().expect("Failed to read TCP listener local_addr to find unused port");
     local_addr.port()
 }
 
@@ -407,16 +393,10 @@ mod tests {
         assert_eq!(gwei.as_u64(), 15e8 as u64);
 
         let eth_dec_float = parse_units(1.39563324, "ether").unwrap();
-        assert_eq!(
-            eth_dec_float,
-            U256::from_dec_str("1395633240000000000").unwrap()
-        );
+        assert_eq!(eth_dec_float, U256::from_dec_str("1395633240000000000").unwrap());
 
         let eth_dec_string = parse_units("1.39563324", "ether").unwrap();
-        assert_eq!(
-            eth_dec_string,
-            U256::from_dec_str("1395633240000000000").unwrap()
-        );
+        assert_eq!(eth_dec_string, U256::from_dec_str("1395633240000000000").unwrap());
 
         let eth = parse_units(1, "ether").unwrap();
         assert_eq!(eth, WEI_IN_ETHER);
@@ -513,9 +493,7 @@ mod tests {
     #[test]
     fn contract_address() {
         // http://ethereum.stackexchange.com/questions/760/how-is-the-address-of-an-ethereum-contract-computed
-        let from = "6ac7ea33f8831ea9dcc53393aaa88b25a785dbf0"
-            .parse::<Address>()
-            .unwrap();
+        let from = "6ac7ea33f8831ea9dcc53393aaa88b25a785dbf0".parse::<Address>().unwrap();
         for (nonce, expected) in [
             "cd234a471b72ba2f1ccf0a70fcaba648a5eecd8d",
             "343c43a37d37dff08ae8c4a11544c718abb4fcf8",
@@ -593,14 +571,8 @@ mod tests {
     #[test]
     fn bytes32_string_parsing() {
         let text_bytes_list = vec![
-            (
-                "",
-                hex!("0000000000000000000000000000000000000000000000000000000000000000"),
-            ),
-            (
-                "A",
-                hex!("4100000000000000000000000000000000000000000000000000000000000000"),
-            ),
+            ("", hex!("0000000000000000000000000000000000000000000000000000000000000000")),
+            ("A", hex!("4100000000000000000000000000000000000000000000000000000000000000")),
             (
                 "ABCDEFGHIJKLMNOPQRSTUVWXYZ012345",
                 hex!("4142434445464748494a4b4c4d4e4f505152535455565758595a303132333435"),
@@ -619,14 +591,8 @@ mod tests {
     #[test]
     fn bytes32_string_formatting() {
         let text_bytes_list = vec![
-            (
-                "",
-                hex!("0000000000000000000000000000000000000000000000000000000000000000"),
-            ),
-            (
-                "A",
-                hex!("4100000000000000000000000000000000000000000000000000000000000000"),
-            ),
+            ("", hex!("0000000000000000000000000000000000000000000000000000000000000000")),
+            ("A", hex!("4100000000000000000000000000000000000000000000000000000000000000")),
             (
                 "ABCDEFGHIJKLMNOPQRSTUVWXYZ012345",
                 hex!("4142434445464748494a4b4c4d4e4f505152535455565758595a303132333435"),
@@ -657,10 +623,7 @@ mod tests {
         let base_fee_per_gas = U256::from(EIP1559_FEE_ESTIMATION_PRIORITY_FEE_TRIGGER) - 1;
         let rewards: Vec<Vec<U256>> = vec![vec![]];
         let (base_fee, priority_fee) = eip1559_default_estimator(base_fee_per_gas, rewards);
-        assert_eq!(
-            priority_fee,
-            U256::from(EIP1559_FEE_ESTIMATION_DEFAULT_PRIORITY_FEE)
-        );
+        assert_eq!(priority_fee, U256::from(EIP1559_FEE_ESTIMATION_DEFAULT_PRIORITY_FEE));
         assert_eq!(base_fee, base_fee_surged(base_fee_per_gas));
 
         // If the base fee is above the triggering base fee, we calculate the priority fee using

@@ -2,8 +2,10 @@ use crate::LogMeta;
 use ethers_core::types::{Log, U256};
 use futures_util::stream::{Stream, StreamExt};
 use pin_project::pin_project;
-use std::pin::Pin;
-use std::task::{Context, Poll};
+use std::{
+    pin::Pin,
+    task::{Context, Poll},
+};
 
 type MapEvent<'a, R, E> = Box<dyn Fn(Log) -> Result<R, E> + 'a + Send + Sync>;
 

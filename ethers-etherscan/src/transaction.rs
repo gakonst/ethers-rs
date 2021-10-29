@@ -32,9 +32,7 @@ impl Client {
         if response.result.is_error == "0" {
             Ok(())
         } else {
-            Err(EtherscanError::ExecutionFailed(
-                response.result.err_description,
-            ))
+            Err(EtherscanError::ExecutionFailed(response.result.err_description))
         }
     }
 
@@ -85,10 +83,7 @@ mod tests {
             .unwrap_err();
 
         assert!(matches!(err, EtherscanError::ExecutionFailed(_)));
-        assert_eq!(
-            err.to_string(),
-            "contract execution call failed: Bad jump destination"
-        );
+        assert_eq!(err.to_string(), "contract execution call failed: Bad jump destination");
     }
 
     #[tokio::test]

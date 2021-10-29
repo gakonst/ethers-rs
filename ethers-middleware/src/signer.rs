@@ -56,7 +56,6 @@ use thiserror::Error;
 ///
 /// # Ok(())
 /// # }
-///
 /// ```
 ///
 /// [`Provider`]: ethers_providers::Provider
@@ -106,11 +105,7 @@ where
     /// Creates a new client from the provider and signer.
     pub fn new(inner: M, signer: S) -> Self {
         let address = signer.address();
-        SignerMiddleware {
-            inner,
-            signer,
-            address,
-        }
+        SignerMiddleware { inner, signer, address }
     }
 
     /// Signs and returns the RLP encoding of the signed transaction
@@ -118,11 +113,8 @@ where
         &self,
         tx: TypedTransaction,
     ) -> Result<Bytes, SignerMiddlewareError<M, S>> {
-        let signature = self
-            .signer
-            .sign_transaction(&tx)
-            .await
-            .map_err(SignerMiddlewareError::SignerError)?;
+        let signature =
+            self.signer.sign_transaction(&tx).await.map_err(SignerMiddlewareError::SignerError)?;
 
         // Return the raw rlp-encoded signed transaction
         Ok(tx.rlp_signed(self.signer.chain_id(), &signature))
@@ -217,7 +209,7 @@ where
                 .inner
                 .send_transaction(tx, block)
                 .await
-                .map_err(SignerMiddlewareError::MiddlewareError);
+                .map_err(SignerMiddlewareError::MiddlewareError)
         }
 
         // if we have a nonce manager set, we should try handling the result in
@@ -238,10 +230,7 @@ where
         data: T,
         _: &Address,
     ) -> Result<Signature, Self::Error> {
-        self.signer
-            .sign_message(data.into())
-            .await
-            .map_err(SignerMiddlewareError::SignerError)
+        self.signer.sign_message(data.into()).await.map_err(SignerMiddlewareError::SignerError)
     }
 }
 
@@ -262,12 +251,7 @@ mod tests {
         // https://web3js.readthedocs.io/en/v1.2.0/web3-eth-accounts.html#eth-accounts-signtransaction
         let tx = TransactionRequest {
             from: None,
-            to: Some(
-                "F0109fC8DF283027b6285cc889F5aA624EaC1F55"
-                    .parse::<Address>()
-                    .unwrap()
-                    .into(),
-            ),
+            to: Some("F0109fC8DF283027b6285cc889F5aA624EaC1F55".parse::<Address>().unwrap().into()),
             value: Some(1_000_000_000.into()),
             gas: Some(2_000_000.into()),
             nonce: Some(0.into()),
@@ -316,30 +300,21 @@ mod tests {
         // signing a TransactionRequest with a from field of None should yield
         // a signed transaction from the signer address
         let request_from_none = request.clone();
-        let hash = *client
-            .send_transaction(request_from_none, None)
-            .await
-            .unwrap();
+        let hash = *client.send_transaction(request_from_none, None).await.unwrap();
         let tx = client.get_transaction(hash).await.unwrap().unwrap();
         assert_eq!(tx.from, client.address());
 
         // signing a TransactionRequest with the signer as the from address
         // should yield a signed transaction from the signer
         let request_from_signer = request.clone().from(client.address());
-        let hash = *client
-            .send_transaction(request_from_signer, None)
-            .await
-            .unwrap();
+        let hash = *client.send_transaction(request_from_signer, None).await.unwrap();
         let tx = client.get_transaction(hash).await.unwrap().unwrap();
         assert_eq!(tx.from, client.address());
 
         // signing a TransactionRequest with a from address that is not the
         // signer should result in the default ganache account being used
         let request_from_other = request.from(acc);
-        let hash = *client
-            .send_transaction(request_from_other, None)
-            .await
-            .unwrap();
+        let hash = *client.send_transaction(request_from_other, None).await.unwrap();
         let tx = client.get_transaction(hash).await.unwrap().unwrap();
         assert_eq!(tx.from, acc);
     }

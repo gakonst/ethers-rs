@@ -110,20 +110,22 @@ jobs:
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
-      - name: Install stable toolchain
+      - name: Install toolchain
         uses: actions-rs/toolchain@v1
         with:
+          toolchain: nightly
           profile: minimal
-          toolchain: stable
-          override: true
           components: rustfmt, clippy
+          override: true
+      - name: Install Dependencies
+        run: sudo apt-get install libudev-dev
       - uses: Swatinem/rust-cache@v1
         with:
           cache-on-failure: true
       - name: cargo fmt
-        run: cargo fmt --all -- --check
+        run: cargo +nightly fmt --all -- --check
       - name: cargo clippy
-        run: cargo clippy -- -D warnings
+        run: cargo +nightly clippy --all --all-features -- -D warnings
 
   wasm:
     name: WASM

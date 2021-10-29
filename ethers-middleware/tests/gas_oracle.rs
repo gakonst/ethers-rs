@@ -38,18 +38,13 @@ async fn using_gas_oracle() {
     let provider = Provider::<Http>::try_from(ganache.endpoint()).unwrap();
 
     // assign a gas oracle to use
-    let gas_oracle = FakeGasOracle {
-        gas_price: 1337.into(),
-    };
+    let gas_oracle = FakeGasOracle { gas_price: 1337.into() };
     let expected_gas_price = gas_oracle.fetch().await.unwrap();
 
     let provider = GasOracleMiddleware::new(provider, gas_oracle);
 
     // broadcast a transaction
-    let tx = TransactionRequest::new()
-        .from(from)
-        .to(Address::zero())
-        .value(10000);
+    let tx = TransactionRequest::new().from(from).to(Address::zero()).value(10000);
     let tx_hash = provider.send_transaction(tx, None).await.unwrap();
 
     let tx = provider.get_transaction(*tx_hash).await.unwrap().unwrap();

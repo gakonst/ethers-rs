@@ -3,8 +3,8 @@
 use ethers_core::{
     k256::ecdsa::{Error as K256Error, Signature as KSig, VerifyingKey},
     types::{
-        transaction::eip2718::TypedTransaction, transaction::eip712::Eip712, Address,
-        Signature as EthSig, H256,
+        transaction::{eip2718::TypedTransaction, eip712::Eip712},
+        Address, Signature as EthSig, H256,
     },
     utils::hash_message,
 };
@@ -116,10 +116,7 @@ where
 {
     debug!("Dispatching get_public_key");
 
-    let req = GetPublicKeyRequest {
-        grant_tokens: None,
-        key_id: key_id.as_ref().to_owned(),
-    };
+    let req = GetPublicKeyRequest { grant_tokens: None, key_id: key_id.as_ref().to_owned() };
     trace!("{:?}", &req);
     let resp = kms.get_public_key(req).await;
     trace!("{:?}", &resp);
@@ -163,9 +160,7 @@ impl<'a> AwsSigner<'a> {
     where
         T: AsRef<str>,
     {
-        let pubkey = request_get_pubkey(kms, &key_id)
-            .await
-            .map(utils::decode_pubkey)??;
+        let pubkey = request_get_pubkey(kms, &key_id).await.map(utils::decode_pubkey)??;
         let address = verifying_key_to_address(&pubkey);
 
         debug!(
@@ -174,13 +169,7 @@ impl<'a> AwsSigner<'a> {
             hex::encode(&address)
         );
 
-        Ok(Self {
-            kms,
-            chain_id,
-            key_id: key_id.as_ref().to_owned(),
-            pubkey,
-            address,
-        })
+        Ok(Self { kms, chain_id, key_id: key_id.as_ref().to_owned(), pubkey, address })
     }
 
     /// Fetch the pubkey associated with a key id
@@ -188,9 +177,7 @@ impl<'a> AwsSigner<'a> {
     where
         T: AsRef<str>,
     {
-        Ok(request_get_pubkey(self.kms, key_id)
-            .await
-            .map(utils::decode_pubkey)??)
+        Ok(request_get_pubkey(self.kms, key_id).await.map(utils::decode_pubkey)??)
     }
 
     /// Fetch the pubkey associated with this signer's key ID
@@ -207,9 +194,7 @@ impl<'a> AwsSigner<'a> {
     where
         T: AsRef<str>,
     {
-        Ok(request_sign_digest(self.kms, key_id, digest)
-            .await
-            .map(utils::decode_signature)??)
+        Ok(request_sign_digest(self.kms, key_id, digest).await.map(utils::decode_signature)??)
     }
 
     /// Sign a digest with this signer's key
@@ -258,9 +243,7 @@ impl<'a> super::Signer for AwsSigner<'a> {
         &self,
         payload: &T,
     ) -> Result<EthSig, Self::Error> {
-        let hash = payload
-            .encode_eip712()
-            .map_err(|e| Self::Error::Eip712Error(e.to_string()))?;
+        let hash = payload.encode_eip712().map_err(|e| Self::Error::Eip712Error(e.to_string()))?;
 
         let digest = self.sign_digest_with_eip155(hash.into()).await?;
 
@@ -296,10 +279,7 @@ mod tests {
 
     #[allow(dead_code)]
     fn setup_tracing() {
-        tracing_subscriber::fmt()
-            .with_max_level(LevelFilter::DEBUG)
-            .try_init()
-            .unwrap();
+        tracing_subscriber::fmt().with_max_level(LevelFilter::DEBUG).try_init().unwrap();
     }
 
     #[allow(dead_code)]

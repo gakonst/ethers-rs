@@ -72,11 +72,7 @@ impl Wallet<SigningKey> {
         let (secret, _) = eth_keystore::new(dir, rng, password)?;
         let signer = SigningKey::from_bytes(secret.as_slice())?;
         let address = secret_key_to_address(&signer);
-        Ok(Self {
-            signer,
-            address,
-            chain_id: 1,
-        })
+        Ok(Self { signer, address, chain_id: 1 })
     }
 
     /// Decrypts an encrypted JSON from the provided path to construct a Wallet instance
@@ -89,30 +85,22 @@ impl Wallet<SigningKey> {
         let secret = eth_keystore::decrypt_key(keypath, password)?;
         let signer = SigningKey::from_bytes(secret.as_slice())?;
         let address = secret_key_to_address(&signer);
-        Ok(Self {
-            signer,
-            address,
-            chain_id: 1,
-        })
+        Ok(Self { signer, address, chain_id: 1 })
     }
 
     /// Creates a new random keypair seeded with the provided RNG
     pub fn new<R: Rng + CryptoRng>(rng: &mut R) -> Self {
         let signer = SigningKey::random(rng);
         let address = secret_key_to_address(&signer);
-        Self {
-            signer,
-            address,
-            chain_id: 1,
-        }
+        Self { signer, address, chain_id: 1 }
     }
 }
 
 impl PartialEq for Wallet<SigningKey> {
     fn eq(&self, other: &Self) -> bool {
-        self.signer.to_bytes().eq(&other.signer.to_bytes())
-            && self.address == other.address
-            && self.chain_id == other.chain_id
+        self.signer.to_bytes().eq(&other.signer.to_bytes()) &&
+            self.address == other.address &&
+            self.chain_id == other.chain_id
     }
 }
 
@@ -120,11 +108,7 @@ impl From<SigningKey> for Wallet<SigningKey> {
     fn from(signer: SigningKey) -> Self {
         let address = secret_key_to_address(&signer);
 
-        Self {
-            signer,
-            address,
-            chain_id: 1,
-        }
+        Self { signer, address, chain_id: 1 }
     }
 }
 
@@ -136,11 +120,7 @@ impl From<K256SecretKey> for Wallet<SigningKey> {
             .expect("private key should always be convertible to signing key");
         let address = secret_key_to_address(&signer);
 
-        Self {
-            signer,
-            address,
-            chain_id: 1,
-        }
+        Self { signer, address, chain_id: 1 }
     }
 }
 
@@ -217,12 +197,7 @@ mod tests {
         // https://web3js.readthedocs.io/en/v1.2.0/web3-eth-accounts.html#eth-accounts-signtransaction
         let tx = TransactionRequest {
             from: None,
-            to: Some(
-                "F0109fC8DF283027b6285cc889F5aA624EaC1F55"
-                    .parse::<Address>()
-                    .unwrap()
-                    .into(),
-            ),
+            to: Some("F0109fC8DF283027b6285cc889F5aA624EaC1F55".parse::<Address>().unwrap().into()),
             value: Some(1_000_000_000.into()),
             gas: Some(2_000_000.into()),
             nonce: Some(0.into()),
@@ -233,9 +208,7 @@ mod tests {
         let chain_id = 1u64;
 
         let wallet: Wallet<SigningKey> =
-            "4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318"
-                .parse()
-                .unwrap();
+            "4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318".parse().unwrap();
         let wallet = wallet.with_chain_id(chain_id);
 
         let sig = wallet.sign_transaction(&tx).await.unwrap();
@@ -246,27 +219,21 @@ mod tests {
     #[test]
     fn key_to_address() {
         let wallet: Wallet<SigningKey> =
-            "0000000000000000000000000000000000000000000000000000000000000001"
-                .parse()
-                .unwrap();
+            "0000000000000000000000000000000000000000000000000000000000000001".parse().unwrap();
         assert_eq!(
             wallet.address,
             Address::from_str("7E5F4552091A69125d5DfCb7b8C2659029395Bdf").expect("Decoding failed")
         );
 
         let wallet: Wallet<SigningKey> =
-            "0000000000000000000000000000000000000000000000000000000000000002"
-                .parse()
-                .unwrap();
+            "0000000000000000000000000000000000000000000000000000000000000002".parse().unwrap();
         assert_eq!(
             wallet.address,
             Address::from_str("2B5AD5c4795c026514f8317c7a215E218DcCD6cF").expect("Decoding failed")
         );
 
         let wallet: Wallet<SigningKey> =
-            "0000000000000000000000000000000000000000000000000000000000000003"
-                .parse()
-                .unwrap();
+            "0000000000000000000000000000000000000000000000000000000000000003".parse().unwrap();
         assert_eq!(
             wallet.address,
             Address::from_str("6813Eb9362372EEF6200f3b1dbC3f819671cBA69").expect("Decoding failed")

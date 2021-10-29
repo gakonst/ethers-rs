@@ -1,10 +1,10 @@
 use std::collections::{BTreeMap, HashMap, VecDeque};
 
-use crate::abi::error::{bail, format_err, ParseError, Result};
-use crate::abi::struct_def::{FieldType, StructFieldType};
 use crate::abi::{
-    param_type::Reader, Abi, Constructor, Event, EventParam, Function, Param, ParamType, SolStruct,
-    StateMutability,
+    error::{bail, format_err, ParseError, Result},
+    param_type::Reader,
+    struct_def::{FieldType, StructFieldType},
+    Abi, Constructor, Event, EventParam, Function, Param, ParamType, SolStruct, StateMutability,
 };
 
 /// A parser that turns a "human readable abi" into a `Abi`
@@ -13,7 +13,8 @@ pub struct AbiParser {
     pub structs: HashMap<String, SolStruct>,
     /// solidity structs as tuples
     pub struct_tuples: HashMap<String, Vec<ParamType>>,
-    /// (function name, param name) -> struct which are the identifying properties we get the name from ethabi.
+    /// (function name, param name) -> struct which are the identifying properties we get the name
+    /// from ethabi.
     pub function_params: HashMap<(String, String), String>,
     /// (function name) -> Vec<structs> all structs the function returns
     pub outputs: HashMap<String, Vec<String>>,
@@ -34,11 +35,7 @@ impl AbiParser {
     /// ```
     pub fn parse_str(&mut self, s: &str) -> Result<Abi> {
         self.parse(
-            &s.trim()
-                .trim_start_matches('[')
-                .trim_end_matches(']')
-                .lines()
-                .collect::<Vec<_>>(),
+            &s.trim().trim_start_matches('[').trim_end_matches(']').lines().collect::<Vec<_>>(),
         )
     }
 
@@ -82,10 +79,7 @@ impl AbiParser {
             line = line.trim_start();
             if line.starts_with("event") {
                 let event = self.parse_event(line)?;
-                abi.events
-                    .entry(event.name.clone())
-                    .or_default()
-                    .push(event);
+                abi.events.entry(event.name.clone()).or_default().push(event);
             } else if line.starts_with("constructor") {
                 let inputs = self
                     .constructor_inputs(line)?
@@ -109,10 +103,7 @@ impl AbiParser {
                     Ok(function) => function,
                     Err(_) => bail!("Illegal abi `{}`", line),
                 };
-                abi.functions
-                    .entry(function.name.clone())
-                    .or_default()
-                    .push(function);
+                abi.functions.entry(function.name.clone()).or_default().push(function);
             }
         }
         Ok(abi)
@@ -134,7 +125,7 @@ impl AbiParser {
                             tuple.push(ty.as_param(ParamType::Tuple(param)))
                         } else {
                             resolved = false;
-                            break;
+                            break
                         }
                     }
                     FieldType::Mapping(_) => {
@@ -162,10 +153,7 @@ impl AbiParser {
     /// Link additional structs for parsing
     pub fn with_structs(structs: Vec<SolStruct>) -> Self {
         Self {
-            structs: structs
-                .into_iter()
-                .map(|s| (s.name().to_string(), s))
-                .collect(),
+            structs: structs.into_iter().map(|s| (s.name().to_string(), s)).collect(),
             struct_tuples: HashMap::new(),
             function_params: Default::default(),
             outputs: Default::default(),
@@ -207,15 +195,9 @@ impl AbiParser {
                             .map(|e| self.parse_event_arg(e))
                             .collect::<Result<Vec<_>, _>>()?
                     };
-                    return Ok(Event {
-                        name,
-                        inputs,
-                        anonymous,
-                    });
+                    return Ok(Event { name, inputs, anonymous })
                 }
-                Some(' ') | Some('\t') => {
-                    continue;
-                }
+                Some(' ') | Some('\t') => continue,
                 Some(c) => {
                     bail!("Illegal char `{}` at `{}`", c, s)
                 }
@@ -227,9 +209,8 @@ impl AbiParser {
     fn parse_event_arg(&self, input: &str) -> Result<EventParam> {
         let mut iter = input.trim().rsplitn(3, is_whitespace);
         let mut indexed = false;
-        let mut name = iter
-            .next()
-            .ok_or_else(|| format_err!("Empty event param at `{}`", input))?;
+        let mut name =
+            iter.next().ok_or_else(|| format_err!("Empty event param at `{}`", input))?;
 
         let type_str;
         if let Some(mid) = iter.next() {
@@ -251,11 +232,7 @@ impl AbiParser {
             name = "";
         }
 
-        Ok(EventParam {
-            name: name.to_string(),
-            indexed,
-            kind: self.parse_type(type_str)?.0,
-        })
+        Ok(EventParam { name: name.to_string(), indexed, kind: self.parse_type(type_str)?.0 })
     }
 
     pub fn parse_function(&mut self, s: &str) -> Result<Function> {
@@ -339,13 +316,7 @@ impl AbiParser {
 
         Ok(
             #[allow(deprecated)]
-            Function {
-                name,
-                inputs,
-                outputs,
-                state_mutability,
-                constant: false,
-            },
+            Function { name, inputs, outputs, state_mutability, constant: false },
         )
     }
 
@@ -356,7 +327,8 @@ impl AbiParser {
             .collect::<Result<Vec<_>, _>>()
     }
 
-    /// Returns the `ethabi` `ParamType` for the function parameter and the aliased struct type, if it is a user defined struct
+    /// Returns the `ethabi` `ParamType` for the function parameter and the aliased struct type, if
+    /// it is a user defined struct
     fn parse_type(&self, type_str: &str) -> Result<(ParamType, Option<String>)> {
         if let Ok(kind) = Reader::read(type_str) {
             Ok((kind, None))
@@ -386,11 +358,7 @@ impl AbiParser {
     }
 
     pub fn parse_constructor(&self, s: &str) -> Result<Constructor> {
-        let inputs = self
-            .constructor_inputs(s)?
-            .into_iter()
-            .map(|s| s.0)
-            .collect();
+        let inputs = self.constructor_inputs(s)?.into_iter().map(|s| s.0).collect();
         Ok(Constructor { inputs })
     }
 
@@ -415,9 +383,7 @@ impl AbiParser {
     fn parse_param(&self, param: &str) -> Result<(Param, Option<String>)> {
         let mut iter = param.trim().rsplitn(3, is_whitespace);
 
-        let mut name = iter
-            .next()
-            .ok_or(ParseError::ParseError(super::Error::InvalidData))?;
+        let mut name = iter.next().ok_or(ParseError::ParseError(super::Error::InvalidData))?;
 
         let type_str;
         if let Some(ty) = iter.last() {
@@ -430,14 +396,7 @@ impl AbiParser {
             name = "";
         }
         let (kind, user_struct) = self.parse_type(type_str)?;
-        Ok((
-            Param {
-                name: name.to_string(),
-                kind,
-                internal_type: None,
-            },
-            user_struct,
-        ))
+        Ok((Param { name: name.to_string(), kind, internal_type: None }, user_struct))
     }
 }
 
@@ -471,9 +430,7 @@ pub fn parse_str(input: &str) -> Result<Abi> {
 pub(crate) fn parse_identifier(input: &mut &str) -> Result<String> {
     let mut chars = input.trim_start().chars();
     let mut name = String::new();
-    let c = chars
-        .next()
-        .ok_or_else(|| format_err!("Empty identifier in `{}`", input))?;
+    let c = chars.next().ok_or_else(|| format_err!("Empty identifier in `{}`", input))?;
     if is_first_ident_char(c) {
         name.push(c);
         loop {
@@ -487,9 +444,7 @@ pub(crate) fn parse_identifier(input: &mut &str) -> Result<String> {
         }
     }
     if name.is_empty() {
-        return Err(ParseError::ParseError(super::Error::InvalidName(
-            input.to_string(),
-        )));
+        return Err(ParseError::ParseError(super::Error::InvalidName(input.to_string())))
     }
     *input = chars.as_str();
     Ok(name)
@@ -546,10 +501,7 @@ mod tests {
         let parsed = AbiParser::default().parse_function(fn_str).unwrap();
         assert_eq!(parsed.name, "foo");
         assert_eq!(parsed.inputs[0].name, "x");
-        assert_eq!(
-            parsed.inputs[0].kind,
-            ParamType::Array(Box::new(ParamType::Uint(32)))
-        );
+        assert_eq!(parsed.inputs[0].kind, ParamType::Array(Box::new(ParamType::Uint(32))));
         assert_eq!(parsed.outputs[0].name, "");
         assert_eq!(parsed.outputs[0].kind, ParamType::Address);
     }
@@ -594,11 +546,7 @@ mod tests {
                 anonymous: false,
                 name: "Foo".to_string(),
                 inputs: vec![
-                    EventParam {
-                        name: "x".to_string(),
-                        kind: ParamType::Address,
-                        indexed: true,
-                    },
+                    EventParam { name: "x".to_string(), kind: ParamType::Address, indexed: true },
                     EventParam {
                         name: "y".to_string(),
                         kind: ParamType::Uint(256),
@@ -617,23 +565,15 @@ mod tests {
     #[test]
     fn parses_anonymous_event() {
         assert_eq!(
-            AbiParser::default()
-                .parse_event("event Foo() anonymous")
-                .unwrap(),
-            Event {
-                anonymous: true,
-                name: "Foo".to_string(),
-                inputs: vec![],
-            }
+            AbiParser::default().parse_event("event Foo() anonymous").unwrap(),
+            Event { anonymous: true, name: "Foo".to_string(), inputs: vec![] }
         );
     }
 
     #[test]
     fn parses_unnamed_event() {
         assert_eq!(
-            AbiParser::default()
-                .parse_event("event Foo(address)")
-                .unwrap(),
+            AbiParser::default().parse_event("event Foo(address)").unwrap(),
             Event {
                 anonymous: false,
                 name: "Foo".to_string(),
@@ -649,9 +589,7 @@ mod tests {
     #[test]
     fn parses_unnamed_indexed_event() {
         assert_eq!(
-            AbiParser::default()
-                .parse_event("event Foo(address indexed)")
-                .unwrap(),
+            AbiParser::default().parse_event("event Foo(address indexed)").unwrap(),
             Event {
                 anonymous: false,
                 name: "Foo".to_string(),
@@ -667,23 +605,13 @@ mod tests {
     #[test]
     fn parse_event_input() {
         assert_eq!(
-            AbiParser::default()
-                .parse_event_arg("address indexed x")
-                .unwrap(),
-            EventParam {
-                name: "x".to_string(),
-                kind: ParamType::Address,
-                indexed: true,
-            }
+            AbiParser::default().parse_event_arg("address indexed x").unwrap(),
+            EventParam { name: "x".to_string(), kind: ParamType::Address, indexed: true }
         );
 
         assert_eq!(
             AbiParser::default().parse_event_arg("address x").unwrap(),
-            EventParam {
-                name: "x".to_string(),
-                kind: ParamType::Address,
-                indexed: false,
-            }
+            EventParam { name: "x".to_string(), kind: ParamType::Address, indexed: false }
         );
     }
 
@@ -797,10 +725,7 @@ mod tests {
                 EventParam {
                     name: "m2".to_string(),
                     kind: ParamType::FixedArray(
-                        Box::new(ParamType::Tuple(vec![
-                            ParamType::Int(256),
-                            ParamType::Address
-                        ])),
+                        Box::new(ParamType::Tuple(vec![ParamType::Int(256), ParamType::Address])),
                         10
                     ),
                     indexed: false

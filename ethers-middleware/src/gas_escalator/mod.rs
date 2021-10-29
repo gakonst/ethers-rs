@@ -10,8 +10,7 @@ use ethers_core::types::{BlockId, TransactionRequest, TxHash, U256};
 use ethers_providers::{interval, FromErr, Middleware, PendingTransaction, StreamExt};
 use futures_util::lock::Mutex;
 use instant::Instant;
-use std::pin::Pin;
-use std::sync::Arc;
+use std::{pin::Pin, sync::Arc};
 use thiserror::Error;
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -141,11 +140,7 @@ where
         {
             let this2 = this.clone();
             spawn(async move {
-                this2
-                    .escalate()
-                    .instrument(tracing::trace_span!("gas-escalation"))
-                    .await
-                    .unwrap();
+                this2.escalate().instrument(tracing::trace_span!("gas-escalation")).await.unwrap();
             });
         }
 
@@ -192,10 +187,7 @@ where
                         replacement_tx.gas_price = Some(new_gas_price);
 
                         // the tx hash will be different so we need to update it
-                        match self
-                            .inner()
-                            .send_transaction(replacement_tx.clone(), priority)
-                            .await
+                        match self.inner().send_transaction(replacement_tx.clone(), priority).await
                         {
                             Ok(new_tx_hash) => {
                                 let new_tx_hash = *new_tx_hash;
@@ -215,9 +207,9 @@ where
                                     // gas price tx when one of the previous ones
                                     // was already mined (meaning we also do not
                                     // push it back to the pending txs vector)
-                                    continue;
+                                    continue
                                 } else {
-                                    return Err(GasEscalatorError::MiddlewareError(err));
+                                    return Err(GasEscalatorError::MiddlewareError(err))
                                 }
                             }
                         }

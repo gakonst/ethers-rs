@@ -59,7 +59,6 @@
 //!
 //! There is an Inner helper attribute `#[eip712]` for fields that will eventually be used to
 //! determine if there is a nested eip712 struct. However, this work is not yet complete.
-//!
 use std::convert::TryFrom;
 
 use ethers_core::types::transaction::eip712;
@@ -95,7 +94,7 @@ fn impl_eip_712_macro(ast: &syn::DeriveInput) -> TokenStream {
         Err(e) => {
             return TokenStream::from(
                 syn::Error::new(ast.ident.span(), e.to_string()).to_compile_error(),
-            );
+            )
         }
     };
 
@@ -106,10 +105,8 @@ fn impl_eip_712_macro(ast: &syn::DeriveInput) -> TokenStream {
     };
 
     // Compute the type hash for the derived struct using the parsed fields from above;
-    let type_hash = hex::encode(eip712::make_type_hash(
-        primary_type.clone().to_string(),
-        &parsed_fields,
-    ));
+    let type_hash =
+        hex::encode(eip712::make_type_hash(primary_type.clone().to_string(), &parsed_fields));
 
     let implementation = quote! {
         impl Eip712 for #primary_type {

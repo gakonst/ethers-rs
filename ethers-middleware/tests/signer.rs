@@ -41,18 +41,12 @@ async fn send_eth() {
     // craft the transaction
     let tx = TransactionRequest::new().to(wallet2.address()).value(10000);
 
-    let balance_before = provider
-        .get_balance(provider.address(), None)
-        .await
-        .unwrap();
+    let balance_before = provider.get_balance(provider.address(), None).await.unwrap();
 
     // send it!
     provider.send_transaction(tx, None).await.unwrap();
 
-    let balance_after = provider
-        .get_balance(provider.address(), None)
-        .await
-        .unwrap();
+    let balance_after = provider.get_balance(provider.address(), None).await.unwrap();
 
     assert!(balance_before > balance_after);
 }
@@ -124,46 +118,23 @@ async fn typed_txs() {
     ) {
         let provider = pending_tx.provider();
         let receipt = pending_tx.await.unwrap().unwrap();
-        let tx = provider
-            .get_transaction(receipt.transaction_hash)
-            .await
-            .unwrap()
-            .unwrap();
+        let tx = provider.get_transaction(receipt.transaction_hash).await.unwrap().unwrap();
         assert_eq!(receipt.transaction_type, Some(expected.into()));
         assert_eq!(tx.transaction_type, Some(expected.into()));
     }
 
     let mut nonce = provider.get_transaction_count(address, None).await.unwrap();
-    let tx = TransactionRequest::new()
-        .from(address)
-        .to(address)
-        .nonce(nonce);
+    let tx = TransactionRequest::new().from(address).to(address).nonce(nonce);
     nonce += 1.into();
-    let tx1 = provider
-        .send_transaction(tx.clone(), Some(BlockNumber::Pending.into()))
-        .await
-        .unwrap();
+    let tx1 =
+        provider.send_transaction(tx.clone(), Some(BlockNumber::Pending.into())).await.unwrap();
 
-    let tx = tx
-        .clone()
-        .nonce(nonce)
-        .from(address)
-        .to(address)
-        .with_access_list(vec![]);
+    let tx = tx.clone().nonce(nonce).from(address).to(address).with_access_list(vec![]);
     nonce += 1.into();
-    let tx2 = provider
-        .send_transaction(tx, Some(BlockNumber::Pending.into()))
-        .await
-        .unwrap();
+    let tx2 = provider.send_transaction(tx, Some(BlockNumber::Pending.into())).await.unwrap();
 
-    let tx = Eip1559TransactionRequest::new()
-        .from(address)
-        .to(address)
-        .nonce(nonce);
-    let tx3 = provider
-        .send_transaction(tx, Some(BlockNumber::Pending.into()))
-        .await
-        .unwrap();
+    let tx = Eip1559TransactionRequest::new().from(address).to(address).nonce(nonce);
+    let tx3 = provider.send_transaction(tx, Some(BlockNumber::Pending.into())).await.unwrap();
 
     futures_util::join!(check_tx(tx1, 0), check_tx(tx2, 1), check_tx(tx3, 2),);
 }
@@ -187,13 +158,7 @@ async fn test_send_transaction() {
 
     let balance_before = client.get_balance(client.address(), None).await.unwrap();
     let tx = TransactionRequest::pay(client.address(), 100);
-    let _receipt = client
-        .send_transaction(tx, None)
-        .await
-        .unwrap()
-        .confirmations(3)
-        .await
-        .unwrap();
+    let _receipt = client.send_transaction(tx, None).await.unwrap().confirmations(3).await.unwrap();
     let balance_after = client.get_balance(client.address(), None).await.unwrap();
     assert!(balance_before > balance_after);
 }
@@ -217,54 +182,27 @@ async fn send_transaction_handles_tx_from_field() {
     // sending a TransactionRequest with a from field of None should result
     // in a transaction from the signer address
     let request_from_none = TransactionRequest::new();
-    let receipt = provider
-        .send_transaction(request_from_none, None)
-        .await
-        .unwrap()
-        .await
-        .unwrap()
-        .unwrap();
-    let sent_tx = provider
-        .get_transaction(receipt.transaction_hash)
-        .await
-        .unwrap()
-        .unwrap();
+    let receipt =
+        provider.send_transaction(request_from_none, None).await.unwrap().await.unwrap().unwrap();
+    let sent_tx = provider.get_transaction(receipt.transaction_hash).await.unwrap().unwrap();
 
     assert_eq!(sent_tx.from, signer.address());
 
     // sending a TransactionRequest with the signer as the from address should
     // result in a transaction from the signer address
     let request_from_signer = TransactionRequest::new().from(signer.address());
-    let receipt = provider
-        .send_transaction(request_from_signer, None)
-        .await
-        .unwrap()
-        .await
-        .unwrap()
-        .unwrap();
-    let sent_tx = provider
-        .get_transaction(receipt.transaction_hash)
-        .await
-        .unwrap()
-        .unwrap();
+    let receipt =
+        provider.send_transaction(request_from_signer, None).await.unwrap().await.unwrap().unwrap();
+    let sent_tx = provider.get_transaction(receipt.transaction_hash).await.unwrap().unwrap();
 
     assert_eq!(sent_tx.from, signer.address());
 
     // sending a TransactionRequest with a from address that is not the signer
     // should result in a transaction from the specified address
     let request_from_other = TransactionRequest::new().from(other.address());
-    let receipt = provider
-        .send_transaction(request_from_other, None)
-        .await
-        .unwrap()
-        .await
-        .unwrap()
-        .unwrap();
-    let sent_tx = provider
-        .get_transaction(receipt.transaction_hash)
-        .await
-        .unwrap()
-        .unwrap();
+    let receipt =
+        provider.send_transaction(request_from_other, None).await.unwrap().await.unwrap().unwrap();
+    let sent_tx = provider.get_transaction(receipt.transaction_hash).await.unwrap().unwrap();
 
     assert_eq!(sent_tx.from, other.address());
 }
@@ -281,9 +219,8 @@ async fn deploy_and_call_contract() {
     use std::sync::Arc;
 
     fn compile_contract(name: &str, filename: &str) -> (Abi, Bytes) {
-        let compiled = Solc::new(&format!("./tests/solidity-contracts/{}", filename))
-            .build()
-            .unwrap();
+        let compiled =
+            Solc::new(&format!("./tests/solidity-contracts/{}", filename)).build().unwrap();
         let contract = compiled.get(name).expect("could not find contract");
         (contract.abi.clone(), contract.bytecode.clone())
     }
@@ -314,10 +251,7 @@ async fn deploy_and_call_contract() {
     // make a state mutating transaction
     // gas estimation costs are sometimes under-reported on celo,
     // so we manually set it to avoid failures
-    let call = contract
-        .method::<_, H256>("setValue", U256::from(1))
-        .unwrap()
-        .gas(100000);
+    let call = contract.method::<_, H256>("setValue", U256::from(1)).unwrap().gas(100000);
     let pending_tx = call.send().await.unwrap();
     let _receipt = pending_tx.await.unwrap();
 
@@ -335,9 +269,7 @@ impl TestWallets {
     /// Helper for funding the wallets with an instantiated provider
     #[allow(unused)]
     pub async fn fund<T: JsonRpcClient, U: Into<u32>>(&self, provider: &Provider<T>, n: U) {
-        let addrs = (0..n.into())
-            .map(|i| self.get(i).address())
-            .collect::<Vec<_>>();
+        let addrs = (0..n.into()).map(|i| self.get(i).address()).collect::<Vec<_>>();
         // hardcoded funder address private key, rinkeby
         let signer = "39aa18eeb5d12c071e5f19d8e9375a872e90cb1f2fa640384ffd8800a2f3e8f1"
             .parse::<LocalWallet>()
@@ -356,10 +288,7 @@ impl TestWallets {
                 // 0.1 eth per wallet
                 .value(parse_units("1", 18).unwrap());
             pending_txs.push(
-                provider
-                    .send_transaction(tx, Some(BlockNumber::Pending.into()))
-                    .await
-                    .unwrap(),
+                provider.send_transaction(tx, Some(BlockNumber::Pending.into())).await.unwrap(),
             );
             nonce += 1.into();
         }

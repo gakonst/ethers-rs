@@ -5,10 +5,8 @@ mod methods;
 mod structs;
 mod types;
 
-use super::util;
-use super::Abigen;
-use crate::contract::structs::InternalStructs;
-use crate::rawabi::RawAbi;
+use super::{util, Abigen};
+use crate::{contract::structs::InternalStructs, rawabi::RawAbi};
 use anyhow::{anyhow, Context as _, Result};
 use ethers_core::abi::{Abi, AbiParser};
 
@@ -38,14 +36,8 @@ pub struct ExpandedContract {
 impl ExpandedContract {
     /// Merges everything into a single module
     pub fn into_tokens(self) -> TokenStream {
-        let ExpandedContract {
-            module,
-            imports,
-            contract,
-            events,
-            call_structs,
-            abi_structs,
-        } = self;
+        let ExpandedContract { module, imports, contract, events, call_structs, abi_structs } =
+            self;
         quote! {
            // export all the created data types
             pub use #module::*;
@@ -96,10 +88,8 @@ impl Context {
     /// Expands the whole rust contract
     pub fn expand(&self) -> Result<ExpandedContract> {
         let name = &self.contract_name;
-        let name_mod = util::ident(&format!(
-            "{}_mod",
-            self.contract_name.to_string().to_lowercase()
-        ));
+        let name_mod =
+            util::ident(&format!("{}_mod", self.contract_name.to_string().to_lowercase()));
 
         let abi_name = super::util::safe_ident(&format!("{}_ABI", name.to_string().to_uppercase()));
 
@@ -182,16 +172,16 @@ impl Context {
         };
 
         // try to extract all the solidity structs from the normal JSON ABI
-        // we need to parse the json abi again because we need the internalType fields which are omitted by ethabi. If the ABI was defined as human readable we use the `internal_structs` from the Abi Parser
+        // we need to parse the json abi again because we need the internalType fields which are
+        // omitted by ethabi. If the ABI was defined as human readable we use the `internal_structs`
+        // from the Abi Parser
         let internal_structs = if human_readable {
             let mut internal_structs = InternalStructs::default();
-            // the types in the abi_parser are already valid rust types so simply clone them to make it consistent with the `RawAbi` variant
-            internal_structs.rust_type_names.extend(
-                abi_parser
-                    .function_params
-                    .values()
-                    .map(|ty| (ty.clone(), ty.clone())),
-            );
+            // the types in the abi_parser are already valid rust types so simply clone them to make
+            // it consistent with the `RawAbi` variant
+            internal_structs
+                .rust_type_names
+                .extend(abi_parser.function_params.values().map(|ty| (ty.clone(), ty.clone())));
             internal_structs.function_params = abi_parser.function_params.clone();
             internal_structs.outputs = abi_parser.outputs.clone();
 
@@ -212,10 +202,7 @@ impl Context {
         for (signature, alias) in args.method_aliases.into_iter() {
             let alias = syn::parse_str(&alias)?;
             if method_aliases.insert(signature.clone(), alias).is_some() {
-                return Err(anyhow!(
-                    "duplicate method signature '{}' in method aliases",
-                    signature,
-                ));
+                return Err(anyhow!("duplicate method signature '{}' in method aliases", signature,))
             }
         }
 

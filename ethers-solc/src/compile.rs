@@ -116,10 +116,8 @@ impl Solc {
         path: impl AsRef<Path>,
     ) -> Result<CompilerOutput> {
         use crate::artifacts::Source;
-        self.async_compile(&CompilerInput::with_sources(
-            Source::async_read_all_from(path).await?,
-        ))
-        .await
+        self.async_compile(&CompilerInput::with_sources(Source::async_read_all_from(path).await?))
+            .await
     }
 
     /// Run `solc --stand-json` and return the `solc`'s output as
@@ -171,9 +169,7 @@ fn compile_output(output: Output) -> Result<Vec<u8>> {
     if output.status.success() {
         Ok(output.stdout)
     } else {
-        Err(SolcError::solc(
-            String::from_utf8_lossy(&output.stderr).to_string(),
-        ))
+        Err(SolcError::solc(String::from_utf8_lossy(&output.stderr).to_string()))
     }
 }
 
@@ -185,15 +181,9 @@ fn version_from_output(output: Output) -> Result<Version> {
             .last()
             .ok_or_else(|| SolcError::solc("version not found in solc output"))??;
         // NOTE: semver doesn't like `+` in g++ in build metadata which is invalid semver
-        Ok(Version::from_str(
-            &version
-                .trim_start_matches("Version: ")
-                .replace(".g++", ".gcc"),
-        )?)
+        Ok(Version::from_str(&version.trim_start_matches("Version: ").replace(".g++", ".gcc"))?)
     } else {
-        Err(SolcError::solc(
-            String::from_utf8_lossy(&output.stderr).to_string(),
-        ))
+        Err(SolcError::solc(String::from_utf8_lossy(&output.stderr).to_string()))
     }
 }
 
@@ -209,9 +199,7 @@ mod tests {
     use crate::CompilerInput;
 
     fn solc() -> Solc {
-        std::env::var("SOLC_PATH")
-            .map(Solc::new)
-            .unwrap_or_default()
+        std::env::var("SOLC_PATH").map(Solc::new).unwrap_or_default()
     }
 
     #[test]
@@ -221,7 +209,7 @@ mod tests {
 
     #[test]
     fn can_parse_version_metadata() {
-        let version = Version::from_str("0.6.6+commit.6c089d02.Linux.gcc").unwrap();
+        let _version = Version::from_str("0.6.6+commit.6c089d02.Linux.gcc").unwrap();
     }
 
     #[cfg(feature = "async")]
@@ -245,10 +233,7 @@ mod tests {
         let input = include_str!("../test-data/in/compiler-in-1.json");
         let input: CompilerInput = serde_json::from_str(input).unwrap();
         let out = solc().async_compile(&input).await.unwrap();
-        let other = solc()
-            .async_compile(&serde_json::json!(input))
-            .await
-            .unwrap();
+        let other = solc().async_compile(&serde_json::json!(input)).await.unwrap();
         assert_eq!(out, other);
     }
 }

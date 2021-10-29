@@ -62,9 +62,7 @@ impl<M: Middleware> Deployer<M> {
             .await
             .map_err(|_| ContractError::ContractNotDeployed)?
             .ok_or(ContractError::ContractNotDeployed)?;
-        let address = receipt
-            .contract_address
-            .ok_or(ContractError::ContractNotDeployed)?;
+        let address = receipt.contract_address.ok_or(ContractError::ContractNotDeployed)?;
 
         let contract = Contract::new(address, self.abi.clone(), self.client);
         Ok(contract)
@@ -134,11 +132,7 @@ impl<M: Middleware> ContractFactory<M> {
     /// constructor defined in the abi. The client will be used to send any deployment
     /// transaction.
     pub fn new(abi: Abi, bytecode: Bytes, client: Arc<M>) -> Self {
-        Self {
-            client,
-            abi,
-            bytecode,
-        }
+        Self { client, abi, bytecode }
     }
 
     /// Constructs the deployment transaction based on the provided constructor
@@ -153,30 +147,20 @@ impl<M: Middleware> ContractFactory<M> {
         // Encode the constructor args & concatenate with the bytecode if necessary
         let params = constructor_args.into_tokens();
         let data: Bytes = match (self.abi.constructor(), params.is_empty()) {
-            (None, false) => {
-                return Err(ContractError::ConstructorError);
-            }
+            (None, false) => return Err(ContractError::ConstructorError),
             (None, true) => self.bytecode.clone(),
-            (Some(constructor), _) => constructor
-                .encode_input(self.bytecode.to_vec(), &params)?
-                .into(),
+            (Some(constructor), _) => {
+                constructor.encode_input(self.bytecode.to_vec(), &params)?.into()
+            }
         };
 
         // create the tx object. Since we're deploying a contract, `to` is `None`
         // We default to EIP-1559 transactions, but the sender can convert it back
         // to a legacy one
         #[cfg(feature = "legacy")]
-        let tx = TransactionRequest {
-            to: None,
-            data: Some(data),
-            ..Default::default()
-        };
+        let tx = TransactionRequest { to: None, data: Some(data), ..Default::default() };
         #[cfg(not(feature = "legacy"))]
-        let tx = Eip1559TransactionRequest {
-            to: None,
-            data: Some(data),
-            ..Default::default()
-        };
+        let tx = Eip1559TransactionRequest { to: None, data: Some(data), ..Default::default() };
         let tx = tx.into();
 
         Ok(Deployer {

@@ -11,11 +11,13 @@ use thiserror::Error;
 
 use elliptic_curve::consts::U32;
 use generic_array::GenericArray;
-use k256::ecdsa::{
-    recoverable::{Id as RecoveryId, Signature as RecoverableSignature},
-    Error as K256SignatureError, Signature as K256Signature,
+use k256::{
+    ecdsa::{
+        recoverable::{Id as RecoveryId, Signature as RecoverableSignature},
+        Error as K256SignatureError, Signature as K256Signature,
+    },
+    EncodedPoint as K256PublicKey,
 };
-use k256::EncodedPoint as K256PublicKey;
 
 /// An error involving a signature.
 #[derive(Debug, Error)]
@@ -79,7 +81,7 @@ impl Signature {
         let address = address.into();
         let recovered = self.recover(message)?;
         if recovered != address {
-            return Err(SignatureError::VerificationError(address, recovered));
+            return Err(SignatureError::VerificationError(address, recovered))
         }
 
         Ok(())
@@ -163,7 +165,7 @@ impl<'a> TryFrom<&'a [u8]> for Signature {
     /// and the final byte is the `v` value in 'Electrum' notation.
     fn try_from(bytes: &'a [u8]) -> Result<Self, Self::Error> {
         if bytes.len() != 65 {
-            return Err(SignatureError::InvalidLength(bytes.len()));
+            return Err(SignatureError::InvalidLength(bytes.len()))
         }
 
         let v = bytes[64];

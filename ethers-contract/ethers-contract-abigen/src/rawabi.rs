@@ -1,4 +1,5 @@
-//! This is a basic representation of a contract ABI that does no post processing but contains the raw content of the ABI.
+//! This is a basic representation of a contract ABI that does no post processing but contains the
+//! raw content of the ABI.
 
 #![allow(missing_docs)]
 use serde::{
@@ -86,11 +87,7 @@ pub struct Item {
 /// Either
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Component {
-    #[serde(
-        rename = "internalType",
-        default,
-        skip_serializing_if = "Option::is_none"
-    )]
+    #[serde(rename = "internalType", default, skip_serializing_if = "Option::is_none")]
     pub internal_type: Option<String>,
     pub name: String,
     #[serde(rename = "type")]

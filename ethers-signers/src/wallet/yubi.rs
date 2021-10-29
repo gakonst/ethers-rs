@@ -55,11 +55,7 @@ impl From<YubiSigner<Secp256k1>> for Wallet<YubiSigner<Secp256k1>> {
         let hash = keccak256(&public_key[1..]);
         let address = Address::from_slice(&hash[12..]);
 
-        Self {
-            signer,
-            address,
-            chain_id: 1,
-        }
+        Self { signer, address, chain_id: 1 }
     }
 }
 

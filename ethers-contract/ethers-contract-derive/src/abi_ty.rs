@@ -3,8 +3,7 @@
 use ethers_contract_abigen::ethers_core_crate;
 use proc_macro2::{Ident, Literal, TokenStream};
 use quote::{quote, quote_spanned};
-use syn::spanned::Spanned as _;
-use syn::{parse::Error, Data, DeriveInput, Fields, Variant};
+use syn::{parse::Error, spanned::Spanned as _, Data, DeriveInput, Fields, Variant};
 
 /// Generates the tokenize implementation
 pub fn derive_tokenizeable_impl(input: &DeriveInput) -> proc_macro2::TokenStream {
@@ -49,12 +48,7 @@ pub fn derive_tokenizeable_impl(input: &DeriveInput) -> proc_macro2::TokenStream
                 });
                 let into_token_impl = quote! { #(#into_token,)* };
 
-                (
-                    tokenize_predicates,
-                    fields.named.len(),
-                    init_struct_impl,
-                    into_token_impl,
-                )
+                (tokenize_predicates, fields.named.len(), init_struct_impl, into_token_impl)
             }
             Fields::Unnamed(ref fields) => {
                 let tokenize_predicates = fields.unnamed.iter().map(|f| {
@@ -74,12 +68,7 @@ pub fn derive_tokenizeable_impl(input: &DeriveInput) -> proc_macro2::TokenStream
                 });
                 let into_token_impl = quote! { #(#into_token,)* };
 
-                (
-                    tokenize_predicates,
-                    fields.unnamed.len(),
-                    init_struct_impl,
-                    into_token_impl,
-                )
+                (tokenize_predicates, fields.unnamed.len(), init_struct_impl, into_token_impl)
             }
             Fields::Unit => return tokenize_unit_type(&input.ident),
         },
@@ -91,7 +80,7 @@ pub fn derive_tokenizeable_impl(input: &DeriveInput) -> proc_macro2::TokenStream
         }
         Data::Union(_) => {
             return Error::new(input.span(), "EthAbiType cannot be derived for unions")
-                .to_compile_error();
+                .to_compile_error()
         }
     };
 
@@ -218,7 +207,7 @@ fn tokenize_enum<'a>(
             return Err(Error::new(
                 variant.span(),
                 "EthAbiType cannot be derived for enum variants with multiple fields",
-            ));
+            ))
         } else if variant.fields.is_empty() {
             let value = Literal::u8_unsuffixed(idx as u8);
             from_tokens.extend(quote! {

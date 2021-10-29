@@ -22,10 +22,7 @@ pub struct VerifyContract {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub runs: Option<String>,
     /// NOTE: there is a typo in the etherscan API `constructorArguements`
-    #[serde(
-        rename = "constructorArguements",
-        skip_serializing_if = "Option::is_none"
-    )]
+    #[serde(rename = "constructorArguements", skip_serializing_if = "Option::is_none")]
     pub constructor_arguments: Option<String>,
     #[serde(rename = "evmversion")]
     pub evm_version: Option<String>,
@@ -151,11 +148,7 @@ impl ContractMetadata {
 
     /// Combined source code of all contracts
     pub fn source_code(&self) -> String {
-        self.items
-            .iter()
-            .map(|c| c.source_code.as_str())
-            .collect::<Vec<_>>()
-            .join("\n")
+        self.items.iter().map(|c| c.source_code.as_str()).collect::<Vec<_>>().join("\n")
     }
 }
 
@@ -249,15 +242,10 @@ impl Client {
     /// # }
     /// ```
     pub async fn contract_source_code(&self, address: Address) -> Result<ContractMetadata> {
-        let query = self.create_query(
-            "contract",
-            "getsourcecode",
-            HashMap::from([("address", address)]),
-        );
+        let query =
+            self.create_query("contract", "getsourcecode", HashMap::from([("address", address)]));
         let response: Response<Vec<Metadata>> = self.get_json(&query).await?;
-        Ok(ContractMetadata {
-            items: response.result,
-        })
+        Ok(ContractMetadata { items: response.result })
     }
 }
 
@@ -272,11 +260,7 @@ mod tests {
         let client = Client::new_from_env(Chain::Mainnet).unwrap();
 
         let _abi = client
-            .contract_abi(
-                "0xBB9bc244D798123fDe783fCc1C72d3Bb8C189413"
-                    .parse()
-                    .unwrap(),
-            )
+            .contract_abi("0xBB9bc244D798123fDe783fCc1C72d3Bb8C189413".parse().unwrap())
             .await
             .unwrap();
     }
@@ -287,11 +271,7 @@ mod tests {
         let client = Client::new_from_env(Chain::Mainnet).unwrap();
 
         let _meta = client
-            .contract_source_code(
-                "0xBB9bc244D798123fDe783fCc1C72d3Bb8C189413"
-                    .parse()
-                    .unwrap(),
-            )
+            .contract_source_code("0xBB9bc244D798123fDe783fCc1C72d3Bb8C189413".parse().unwrap())
             .await
             .unwrap();
     }
@@ -303,9 +283,7 @@ mod tests {
 
         // https://etherscan.io/address/0x9e744c9115b74834c0f33f4097f40c02a9ac5c33#code
         let contract = include_str!("../resources/UniswapExchange.sol");
-        let address = "0x9e744c9115b74834c0f33f4097f40c02a9ac5c33"
-            .parse()
-            .unwrap();
+        let address = "0x9e744c9115b74834c0f33f4097f40c02a9ac5c33".parse().unwrap();
         let compiler_version = "v0.5.17+commit.d19bba13";
         let constructor_args = "0x000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000a00000000000000000000000000000000000000000000000000000000005f5e1000000000000000000000000000000000000000000000000000000000000000007596179537761700000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000035941590000000000000000000000000000000000000000000000000000000000";
 

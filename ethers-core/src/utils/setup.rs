@@ -1,7 +1,9 @@
 //! Setup utilities to start necessary infrastructure
 
-use crate::utils::solc::{CompiledContract, SolcError};
-use crate::utils::{Ganache, GanacheInstance, Geth, GethInstance, Solc};
+use crate::utils::{
+    solc::{CompiledContract, SolcError},
+    Ganache, GanacheInstance, Geth, GethInstance, Solc,
+};
 use std::collections::HashMap;
 
 /// Builds the contracts and returns a hashmap for each named contract
@@ -15,9 +17,7 @@ pub async fn compile(solc: Solc) -> Result<HashMap<String, CompiledContract>, So
 ///
 /// Same as [crate::utils::Ganache::spawn] but async
 pub async fn launch_ganache(ganache: Ganache) -> GanacheInstance {
-    tokio::task::spawn_blocking(|| ganache.spawn())
-        .await
-        .unwrap()
+    tokio::task::spawn_blocking(|| ganache.spawn()).await.unwrap()
 }
 
 /// Compiles the contracts and launches a [crate::utils::GanacheInstance]

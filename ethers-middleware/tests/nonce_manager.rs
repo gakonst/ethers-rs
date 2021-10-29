@@ -6,8 +6,7 @@ async fn nonce_manager() {
     use ethers_middleware::{nonce_manager::NonceManagerMiddleware, signer::SignerMiddleware};
     use ethers_providers::{Http, Middleware, Provider};
     use ethers_signers::{LocalWallet, Signer};
-    use std::convert::TryFrom;
-    use std::time::Duration;
+    use std::{convert::TryFrom, time::Duration};
 
     let provider =
         Provider::<Http>::try_from("https://rinkeby.infura.io/v3/fd8b88b56aa84f6da87b60f5441d6778")
@@ -36,10 +35,7 @@ async fn nonce_manager() {
     let mut tx_hashes = Vec::new();
     for _ in 0..10 {
         let tx = provider
-            .send_transaction(
-                Eip1559TransactionRequest::new().to(address).value(100u64),
-                None,
-            )
+            .send_transaction(Eip1559TransactionRequest::new().to(address).value(100u64), None)
             .await
             .unwrap();
         tx_hashes.push(*tx);
@@ -50,15 +46,7 @@ async fn nonce_manager() {
 
     let mut nonces = Vec::new();
     for tx_hash in tx_hashes {
-        nonces.push(
-            provider
-                .get_transaction(tx_hash)
-                .await
-                .unwrap()
-                .unwrap()
-                .nonce
-                .as_u64(),
-        );
+        nonces.push(provider.get_transaction(tx_hash).await.unwrap().unwrap().nonce.as_u64());
     }
 
     assert_eq!(nonces, (nonce..nonce + 10).collect::<Vec<_>>())

@@ -35,10 +35,7 @@ impl JsonRpcClient for MockProvider {
         method: &str,
         input: T,
     ) -> Result<R, MockError> {
-        self.requests
-            .lock()
-            .unwrap()
-            .push_back((method.to_owned(), serde_json::to_value(input)?));
+        self.requests.lock().unwrap().push_back((method.to_owned(), serde_json::to_value(input)?));
         let mut data = self.responses.lock().unwrap();
         let element = data.pop_back().ok_or(MockError::EmptyResponses)?;
         let res: R = serde_json::from_value(element)?;
@@ -54,17 +51,9 @@ impl MockProvider {
         method: &str,
         data: T,
     ) -> Result<(), MockError> {
-        let (m, inp) = self
-            .requests
-            .lock()
-            .unwrap()
-            .pop_front()
-            .ok_or(MockError::EmptyRequests)?;
+        let (m, inp) = self.requests.lock().unwrap().pop_front().ok_or(MockError::EmptyRequests)?;
         assert_eq!(m, method);
-        assert_eq!(
-            serde_json::to_value(data).expect("could not serialize data"),
-            inp
-        );
+        assert_eq!(serde_json::to_value(data).expect("could not serialize data"), inp);
         Ok(())
     }
 
@@ -123,10 +112,7 @@ mod tests {
     async fn empty_responses() {
         let mock = MockProvider::new();
         // tries to get a response without pushing a response
-        let err = mock
-            .request::<_, ()>("eth_blockNumber", ())
-            .await
-            .unwrap_err();
+        let err = mock.request::<_, ()>("eth_blockNumber", ()).await.unwrap_err();
         match err {
             MockError::EmptyResponses => {}
             _ => panic!("expected empty responses"),
