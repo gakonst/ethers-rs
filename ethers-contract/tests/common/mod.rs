@@ -10,12 +10,9 @@ use ethers_contract::EthEvent;
 mod derive;
 
 use ethers_contract::{Contract, ContractFactory};
-use ethers_core::{
-    abi::Abi,
-    types::Bytes,
-    utils::{GanacheInstance, Solc},
-};
+use ethers_core::{abi::Abi, types::Bytes, utils::GanacheInstance};
 use ethers_providers::{Http, Middleware, Provider};
+use ethers_solc::Solc;
 use std::{convert::TryFrom, sync::Arc, time::Duration};
 
 // Note: The `EthEvent` derive macro implements the necessary conversion between `Tokens` and
@@ -33,9 +30,10 @@ pub struct ValueChanged {
 
 /// compiles the given contract and returns the ABI and Bytecode
 pub fn compile_contract(name: &str, filename: &str) -> (Abi, Bytes) {
-    let compiled = Solc::new(&format!("./tests/solidity-contracts/{}", filename)).build().unwrap();
-    let contract = compiled.get(name).expect("could not find contract");
-    (contract.abi.clone(), contract.bytecode.clone())
+    let path = format!("./tests/solidity-contracts/{}", filename);
+    let compiled = Solc::default().compile_source(&path).unwrap();
+    let contract = compiled.get(&path, name).expect("could not find contract");
+    (contract.abi.unwrap().clone(), contract.bin.unwrap().clone())
 }
 
 /// connects the private key to http://localhost:8545
