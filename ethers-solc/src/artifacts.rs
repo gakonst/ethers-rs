@@ -1,5 +1,5 @@
 //! Solc artifact types
-use ethers_core::types::Bytes;
+use ethers_core::{abi::Abi, types::Bytes};
 
 use colored::Colorize;
 use md5::Digest;
@@ -364,7 +364,7 @@ impl AsRef<str> for Source {
 }
 
 /// Output type `solc` produces
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Default)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Default)]
 pub struct CompilerOutput {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub errors: Vec<Error>,
@@ -426,11 +426,11 @@ impl<'a> fmt::Display for OutputDiagnostics<'a> {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Contract {
-    /// The Ethereum Contract ABI. If empty, it is represented as an empty
-    /// array. See https://docs.soliditylang.org/en/develop/abi-spec.html
-    pub abi: Vec<serde_json::Value>,
+    /// The Ethereum Contract ABI.
+    /// See https://docs.soliditylang.org/en/develop/abi-spec.html
+    pub abi: Option<Abi>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub metadata: Option<String>,
     #[serde(default)]
@@ -450,11 +450,11 @@ pub struct Contract {
 }
 
 /// Minimal representation of a contract's abi with bytecode
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct CompactContract {
     /// The Ethereum Contract ABI. If empty, it is represented as an empty
     /// array. See https://docs.soliditylang.org/en/develop/abi-spec.html
-    pub abi: Vec<serde_json::Value>,
+    pub abi: Option<Abi>,
     #[serde(
         default,
         deserialize_with = "deserialize_opt_bytes",
@@ -480,7 +480,7 @@ impl From<Contract> for CompactContract {
 /// Helper type to serialize while borrowing from `Contract`
 #[derive(Clone, Debug, Serialize)]
 pub struct CompactContractRef<'a> {
-    pub abi: &'a [serde_json::Value],
+    pub abi: Option<&'a Abi>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub bin: Option<&'a Bytes>,
     #[serde(default, rename = "bin-runtime", skip_serializing_if = "Option::is_none")]
@@ -498,7 +498,7 @@ impl<'a> From<&'a Contract> for CompactContractRef<'a> {
             (None, None)
         };
 
-        Self { abi: &c.abi, bin, bin_runtime }
+        Self { abi: c.abi.as_ref(), bin, bin_runtime }
     }
 }
 
