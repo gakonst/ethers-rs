@@ -383,6 +383,15 @@ impl CompilerOutput {
     pub fn diagnostics<'a>(&'a self, ignored_error_codes: &'a [u64]) -> OutputDiagnostics {
         OutputDiagnostics { errors: &self.errors, ignored_error_codes }
     }
+
+    /// Given the contract file's path and the contract's name, tries to return the contract's
+    /// bytecode, runtime bytecode, and abi
+    pub fn get(&self, path: &str, contract: &str) -> Option<CompactContractRef> {
+        self.contracts
+            .get(path)
+            .and_then(|contracts| contracts.get(contract))
+            .map(|contract| CompactContractRef::from(contract))
+    }
 }
 
 /// Helper type to implement display for solc errors
