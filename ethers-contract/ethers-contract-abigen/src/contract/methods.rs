@@ -283,12 +283,18 @@ impl Context {
             let mut functions = functions.iter().collect::<Vec<_>>();
             functions.sort_by(|f1, f2| f1.inputs.len().cmp(&f2.inputs.len()));
             let prev = functions[0];
+            dbg!(functions.clone());
             for duplicate in functions.into_iter().skip(1) {
                 // attempt to find diff in the input arguments
                 let diff = duplicate
                     .inputs
                     .iter()
-                    .filter(|i1| prev.inputs.iter().all(|i2| *i1 != i2))
+                    .filter(|i1| {
+                        prev.inputs.iter().all(|i2| *i1 != i2) ||
+                            (prev.inputs.iter().all(|i2| *i1 == i2) &&
+                                duplicate.inputs.len() != prev.inputs.len()
+                            )
+                    })
                     .collect::<Vec<_>>();
 
                 let alias = match diff.len() {

@@ -240,6 +240,17 @@ fn can_handle_overloaded_functions() {
     assert_eq!(encoded_call, contract_call.encode().into());
 }
 
+#[test]
+fn can_handle_even_more_overloaded_functions() {
+    abigen!(
+        ConsoleLog,
+        r#"[
+            log(string, string)
+            log(string)
+    ]"#
+    );
+}
+
 #[tokio::test]
 async fn can_handle_underscore_functions() {
     abigen!(
