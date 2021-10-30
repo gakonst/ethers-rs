@@ -390,7 +390,7 @@ impl CompilerOutput {
         self.contracts
             .get(path)
             .and_then(|contracts| contracts.get(contract))
-            .map(|contract| CompactContractRef::from(contract))
+            .map(CompactContractRef::from)
     }
 }
 
