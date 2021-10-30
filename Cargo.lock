@@ -857,6 +857,7 @@ dependencies = [
  "ethers-middleware",
  "ethers-providers",
  "ethers-signers",
+ "ethers-solc",
  "hex",
  "rand 0.8.4",
  "serde",
@@ -875,6 +876,7 @@ dependencies = [
  "ethers-middleware",
  "ethers-providers",
  "ethers-signers",
+ "ethers-solc",
  "futures-util",
  "hex",
  "once_cell",
@@ -932,7 +934,6 @@ dependencies = [
  "ethabi",
  "futures-util",
  "generic-array 0.14.4",
- "glob",
  "hex",
  "hex-literal",
  "k256",
@@ -942,7 +943,6 @@ dependencies = [
  "rand 0.8.4",
  "rlp",
  "rlp-derive",
- "semver 1.0.4",
  "serde",
  "serde_json",
  "syn",
@@ -988,6 +988,7 @@ dependencies = [
  "ethers-core",
  "ethers-providers",
  "ethers-signers",
+ "ethers-solc",
  "futures-util",
  "hex",
  "instant",
@@ -1074,6 +1075,7 @@ name = "ethers-solc"
 version = "0.1.0"
 dependencies = [
  "colored",
+ "ethers-core",
  "futures-util",
  "hex",
  "md-5",
@@ -1307,12 +1309,6 @@ name = "gimli"
 version = "0.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f0a01e0497841a3b2db4f8afa483cce65f7e96a3498bd6c541734792aeac8fe7"
-
-[[package]]
-name = "glob"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9b919933a397b79c37e33b77bb2aa3dc8eb6e165ad809e58ff75bc7db2e34574"
 
 [[package]]
 name = "group"
