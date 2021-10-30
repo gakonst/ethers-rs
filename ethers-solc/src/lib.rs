@@ -105,13 +105,17 @@ impl Project {
             source_name_path.insert(import, path);
         }
 
-        if self.cached && self.paths.cache.exists() {
-            // check anything changed
+        // If there's a cache set, filter to only re-compile the files which were changed
+        let sources = if self.cached && self.paths.cache.exists() {
             let cache = SolFilesCache::read(&self.paths.cache)?;
-            if !cache.is_changed(&sources, Some(&self.solc_config)) {
+            let changed_files = cache.get_changed_files(sources, Some(&self.solc_config));
+            if changed_files.is_empty() {
                 return Ok(ProjectCompileOutput::Unchanged)
             }
-        }
+            changed_files
+        } else {
+            sources
+        };
 
         // replace absolute path with source name to make solc happy
         let sources = apply_mappings(sources, path_source_name);
