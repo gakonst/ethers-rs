@@ -1,6 +1,6 @@
 on:
   push:
-    branches: 
+    branches:
       - master
   pull_request:
 
@@ -11,6 +11,7 @@ name: Tests
 # many as you want)
 env:
   ETHERSCAN_API_KEY: I5BXNZYP5GEDWFINGVEZKYIVU2695NPQZB
+  RINKEBY_PRIVATE_KEY: ${{ secrets.RINKEBY_PRIVATE_KEY }}
 
 jobs:
   tests:
