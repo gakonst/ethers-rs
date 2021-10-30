@@ -81,8 +81,18 @@ pub fn resolve_library(libs: &[impl AsRef<Path>], source: impl AsRef<Path>) -> O
             // folder
             for lib in libs {
                 let lib = lib.as_ref();
-                if lib.join(first_dir).exists() {
-                    return Some(lib.join(source))
+                let contract = lib.join(source);
+                if contract.exists() {
+                    // contract exists in <lib>/<source>
+                    return Some(contract)
+                }
+                // check for <lib>/<first_dir>/src/name.sol
+                let contract = lib
+                    .join(first_dir)
+                    .join("src")
+                    .join(source.strip_prefix(first_dir).expect("is first component"));
+                if contract.exists() {
+                    return Some(contract)
                 }
             }
             None
