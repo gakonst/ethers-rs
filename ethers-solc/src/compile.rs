@@ -42,7 +42,7 @@ pub struct Solc(pub PathBuf);
 
 impl Default for Solc {
     fn default() -> Self {
-        Self::new(SOLC)
+        std::env::var("SOLC_PATH").map(Solc::new).unwrap_or_else(|_| Solc::new(SOLC))
     }
 }
 
