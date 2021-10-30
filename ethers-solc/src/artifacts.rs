@@ -397,7 +397,7 @@ impl<'a> OutputDiagnostics<'a> {
 impl<'a> fmt::Display for OutputDiagnostics<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if !self.has_error() {
-            f.write_str("Compiler run successful")?;
+            f.write_str("Compiler run successful\n")?;
         }
         for err in self.0 {
             writeln!(f, "{}", err)?;
