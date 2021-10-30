@@ -38,6 +38,8 @@ pub struct Project {
     pub cached: bool,
     /// How to handle compiler output
     pub artifacts: ArtifactOutput,
+    /// Errors/Warnings which match these error codes are not going to be logged
+    pub ignored_error_codes: Vec<u64>,
 }
 
 impl Project {
@@ -117,7 +119,7 @@ impl Project {
         let input = CompilerInput::with_sources(sources);
         let output = self.solc.compile(&input)?;
         if output.has_error() {
-            return Ok(ProjectCompileOutput::Compiled(output))
+            return Ok(ProjectCompileOutput::Compiled((output, &self.ignored_error_codes)))
         }
 
         if self.cached {
@@ -128,7 +130,7 @@ impl Project {
         }
 
         self.artifacts.on_output(&output, &self.paths)?;
-        Ok(ProjectCompileOutput::Compiled(output))
+        Ok(ProjectCompileOutput::Compiled((output, &self.ignored_error_codes)))
     }
 }
 
@@ -156,6 +158,8 @@ pub struct ProjectBuilder {
     cached: bool,
     /// How to handle compiler output
     artifacts: Option<ArtifactOutput>,
+    /// Which error codes to ignore
+    pub ignored_error_codes: Vec<u64>,
 }
 
 impl ProjectBuilder {
@@ -179,6 +183,11 @@ impl ProjectBuilder {
         self
     }
 
+    pub fn ignore_error_code(mut self, code: u64) -> Self {
+        self.ignored_error_codes.push(code);
+        self
+    }
+
     /// Disables cached builds
     pub fn ephemeral(mut self) -> Self {
         self.cached = false;
@@ -186,7 +195,7 @@ impl ProjectBuilder {
     }
 
     pub fn build(self) -> Result<Project> {
-        let Self { paths, solc, solc_config, cached, artifacts } = self;
+        let Self { paths, solc, solc_config, cached, artifacts, ignored_error_codes } = self;
 
         let solc = solc.unwrap_or_default();
         let solc_config = solc_config.map(Ok).unwrap_or_else(|| {
@@ -200,28 +209,38 @@ impl ProjectBuilder {
             solc_config,
             cached,
             artifacts: artifacts.unwrap_or_default(),
+            ignored_error_codes,
         })
     }
 }
 
 impl Default for ProjectBuilder {
     fn default() -> Self {
-        Self { paths: None, solc: None, solc_config: None, cached: true, artifacts: None }
+        Self {
+            paths: None,
+            solc: None,
+            solc_config: None,
+            cached: true,
+            artifacts: None,
+            ignored_error_codes: Vec::new(),
+        }
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ProjectCompileOutput {
+pub enum ProjectCompileOutput<'a> {
     /// Nothing to compile because unchanged sources
     Unchanged,
-    Compiled(CompilerOutput),
+    Compiled((CompilerOutput, &'a [u64])),
 }
 
-impl fmt::Display for ProjectCompileOutput {
+impl<'a> fmt::Display for ProjectCompileOutput<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ProjectCompileOutput::Unchanged => f.write_str("Nothing to compile"),
-            ProjectCompileOutput::Compiled(output) => output.diagnostics().fmt(f),
+            ProjectCompileOutput::Compiled((output, ignored_error_codes)) => {
+                output.diagnostics(ignored_error_codes).fmt(f)
+            }
         }
     }
 }

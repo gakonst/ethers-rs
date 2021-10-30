@@ -11,7 +11,10 @@ use std::{
 };
 
 use crate::{compile::*, utils};
-use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
+use serde::{
+    de::{self, Visitor},
+    Deserialize, Deserializer, Serialize, Serializer,
+};
 
 /// An ordered list of files and their source
 pub type Sources = BTreeMap<PathBuf, Source>;
@@ -379,28 +382,38 @@ impl CompilerOutput {
         self.errors.iter().any(|err| err.severity.is_error())
     }
 
-    pub fn diagnostics(&self) -> OutputDiagnostics {
-        OutputDiagnostics(&self.errors)
+    pub fn diagnostics<'a>(&'a self, ignored_error_codes: &'a [u64]) -> OutputDiagnostics {
+        OutputDiagnostics { errors: &self.errors, ignored_error_codes }
     }
 }
 
 /// Helper type to implement display for solc errors
 #[derive(Clone, Debug)]
-pub struct OutputDiagnostics<'a>(&'a [Error]);
+pub struct OutputDiagnostics<'a> {
+    errors: &'a [Error],
+    ignored_error_codes: &'a [u64],
+}
 
 impl<'a> OutputDiagnostics<'a> {
     pub fn has_error(&self) -> bool {
-        self.0.iter().any(|err| err.severity.is_error())
+        self.errors.iter().any(|err| err.severity.is_error())
     }
 }
 
 impl<'a> fmt::Display for OutputDiagnostics<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if !self.has_error() {
-            f.write_str("Compiler run successful\n")?;
+            f.write_str("Compiler run successful")?;
         }
-        for err in self.0 {
-            writeln!(f, "{}", err)?;
+        for err in self.errors {
+            // Do not log any ignored error codes
+            if let Some(error_code) = err.error_code {
+                if !self.ignored_error_codes.contains(&error_code) {
+                    writeln!(f, "\n{}", err)?;
+                }
+            } else {
+                writeln!(f, "\n{}", err)?;
+            }
         }
         Ok(())
     }
@@ -647,9 +660,24 @@ pub struct Error {
     pub r#type: String,
     pub component: String,
     pub severity: Severity,
-    pub error_code: Option<String>,
+    #[serde(default, deserialize_with = "from_optional_str")]
+    pub error_code: Option<u64>,
     pub message: String,
     pub formatted_message: Option<String>,
+}
+
+fn from_optional_str<'de, T, D>(deserializer: D) -> Result<Option<T>, D::Error>
+where
+    T: FromStr,
+    T::Err: fmt::Display,
+    D: Deserializer<'de>,
+{
+    let s = Option::<String>::deserialize(deserializer)?;
+    if let Some(s) = s {
+        T::from_str(&s).map_err(de::Error::custom).map(Some)
+    } else {
+        Ok(None)
+    }
 }
 
 impl fmt::Display for Error {
