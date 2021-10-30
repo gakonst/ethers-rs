@@ -22,5 +22,4 @@ fn main() {
         .unwrap();
     project.compile().unwrap();
 }
-
 ```
