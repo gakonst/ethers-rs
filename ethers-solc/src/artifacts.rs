@@ -657,7 +657,14 @@ impl fmt::Display for Error {
         self.severity.fmt(f)?;
         writeln!(f, ": {}", self.message)?;
         if let Some(msg) = &self.formatted_message {
-            msg.as_str().yellow().fmt(f)?;
+            match self.severity {
+                Severity::Error => {
+                    msg.as_str().red().fmt(f)?;
+                }
+                Severity::Warning | Severity::Info => {
+                    msg.as_str().yellow().fmt(f)?;
+                }
+            }
         }
         Ok(())
     }
