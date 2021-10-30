@@ -89,10 +89,8 @@ impl Project {
 
     /// Attempts to compile the contracts found at the configured location.
     ///
-    /// Returns the `Some(CompilerOutput)` of solc.
-    /// NOTE: this does not check if the contracts were successfully compiled.
-    ///
-    /// Returns `None` if caching is enabled and there was nothing to compile.
+    /// NOTE: this does not check if the contracts were successfully compiled, see
+    /// `CompilerOutput::has_error` instead.
     pub fn compile(&self) -> Result<ProjectCompileOutput> {
         let mut sources = self.sources()?;
         // add all libraries to the source set while keeping track of their actual disk path
@@ -119,7 +117,6 @@ impl Project {
         let input = CompilerInput::with_sources(sources);
         let output = self.solc.compile(&input)?;
         if output.has_error() {
-            // TODO handle error here
             return Ok(ProjectCompileOutput::Compiled(output))
         }
 
