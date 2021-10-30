@@ -672,24 +672,10 @@ pub struct Error {
     pub r#type: String,
     pub component: String,
     pub severity: Severity,
-    #[serde(default, deserialize_with = "from_optional_str")]
+    #[serde(default, with = "display_from_str_opt")]
     pub error_code: Option<u64>,
     pub message: String,
     pub formatted_message: Option<String>,
-}
-
-fn from_optional_str<'de, T, D>(deserializer: D) -> Result<Option<T>, D::Error>
-where
-    T: FromStr,
-    T::Err: fmt::Display,
-    D: Deserializer<'de>,
-{
-    let s = Option::<String>::deserialize(deserializer)?;
-    if let Some(s) = s {
-        T::from_str(&s).map_err(de::Error::custom).map(Some)
-    } else {
-        Ok(None)
-    }
 }
 
 impl fmt::Display for Error {
