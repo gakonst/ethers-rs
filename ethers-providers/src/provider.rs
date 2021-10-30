@@ -26,8 +26,7 @@ use thiserror::Error;
 use url::{ParseError, Url};
 
 use futures_util::lock::Mutex;
-use std::str::FromStr;
-use std::{convert::TryFrom, fmt::Debug, sync::Arc, time::Duration};
+use std::{convert::TryFrom, fmt::Debug, str::FromStr, sync::Arc, time::Duration};
 use tracing::trace;
 use tracing_futures::Instrument;
 
@@ -85,7 +84,7 @@ pub struct Provider<P> {
     /// Node client hasn't been checked yet = `None`
     /// Unsupported node client = `Some(None)`
     /// Supported node client = `Some(Some(NodeClient))`
-    _node_client: Arc<Mutex<Option<Option<NodeClient>>>>,
+    _node_client: Arc<Mutex<Option<NodeClient>>>,
 }
 
 impl<P> AsRef<P> for Provider<P> {
@@ -153,16 +152,22 @@ impl<P: JsonRpcClient> Provider<P> {
         }
     }
 
+    /// Returns the type of node we're connected to, while also caching the value for use
+    /// in other node-specific API calls, such as the get_block_receipts call.
     pub async fn node_client(&self) -> Result<NodeClient, ProviderError> {
         let mut node_client = self._node_client.lock().await;
 
-        if node_client.is_none() {
+        if let Some(node_client) = *node_client {
+            Ok(node_client)
+        } else {
             let client_version = self.client_version().await?;
-            *node_client = Some(client_version.parse::<NodeClient>().ok());
+            let client_version = match client_version.parse::<NodeClient>() {
+                Ok(res) => res,
+                Err(_) => return Err(ProviderError::UnsupportedNodeClient),
+            };
+            *node_client = Some(client_version);
+            Ok(client_version)
         }
-
-        // unwrap() always succeeds since we've set the value before
-        node_client.unwrap().ok_or(ProviderError::UnsupportedNodeClient)
     }
 
     pub fn with_sender(mut self, address: impl Into<Address>) -> Self {
@@ -865,7 +870,7 @@ impl<P: JsonRpcClient> Provider<P> {
 
         let resolver_address: Address = decode_bytes(ParamType::Address, data);
         if resolver_address == Address::zero() {
-            return Err(ProviderError::EnsError(ens_name.to_owned()));
+            return Err(ProviderError::EnsError(ens_name.to_owned()))
         }
 
         // resolve
