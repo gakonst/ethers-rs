@@ -58,9 +58,17 @@ impl SolFilesCache {
         self.files.retain(|file, _| Path::new(file).exists())
     }
 
-    /// Returns if true if a source has changed and false if no source has changed
-    pub fn is_changed(&self, sources: &Sources, config: Option<&SolcConfig>) -> bool {
-        sources.iter().any(|(file, source)| self.has_changed(file, source.content_hash(), config))
+    /// Returns only the files that were changed from the provided sources, to save time
+    /// when compiling.
+    pub fn get_changed_files<'a>(
+        &'a self,
+        sources: Sources,
+        config: Option<&'a SolcConfig>,
+    ) -> Sources {
+        sources
+            .into_iter()
+            .filter(move |(file, source)| self.has_changed(file, source.content_hash(), config))
+            .collect()
     }
 
     /// Returns true if the given content hash or config differs from the file's
