@@ -663,12 +663,6 @@ impl fmt::Display for Error {
     }
 }
 
-// Error: No visibility specified. Did you intend to add "public"?
-// --> /Users/Matthias/git/rust/ethers-rs/hh/contracts/Greeter2.sol:15:5:
-// |
-// 15 |     function greet()  view returns (string memory) {
-// |     ^ (Relevant source part starts here and spans across multiple lines).
-
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Severity {
     Error,
