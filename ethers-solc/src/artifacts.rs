@@ -1,4 +1,5 @@
 //! Solc artifact types
+use ethers_core::types::Bytes;
 
 use colored::Colorize;
 use md5::Digest;
@@ -11,10 +12,7 @@ use std::{
 };
 
 use crate::{compile::*, utils};
-use serde::{
-    de::{self, Visitor},
-    Deserialize, Deserializer, Serialize, Serializer,
-};
+use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 
 /// An ordered list of files and their source
 pub type Sources = BTreeMap<PathBuf, Source>;
@@ -448,10 +446,14 @@ pub struct CompactContract {
     /// The Ethereum Contract ABI. If empty, it is represented as an empty
     /// array. See https://docs.soliditylang.org/en/develop/abi-spec.html
     pub abi: Vec<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub bin: Option<String>,
+    #[serde(
+        default,
+        deserialize_with = "deserialize_opt_bytes",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub bin: Option<Bytes>,
     #[serde(default, rename = "bin-runtime", skip_serializing_if = "Option::is_none")]
-    pub bin_runtime: Option<String>,
+    pub bin_runtime: Option<Bytes>,
 }
 
 impl From<Contract> for CompactContract {
@@ -471,17 +473,17 @@ impl From<Contract> for CompactContract {
 pub struct CompactContractRef<'a> {
     pub abi: &'a [serde_json::Value],
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub bin: Option<&'a str>,
+    pub bin: Option<&'a Bytes>,
     #[serde(default, rename = "bin-runtime", skip_serializing_if = "Option::is_none")]
-    pub bin_runtime: Option<&'a str>,
+    pub bin_runtime: Option<&'a Bytes>,
 }
 
 impl<'a> From<&'a Contract> for CompactContractRef<'a> {
     fn from(c: &'a Contract) -> Self {
         let (bin, bin_runtime) = if let Some(ref evm) = c.evm {
             (
-                Some(evm.bytecode.object.as_str()),
-                evm.deployed_bytecode.bytecode.as_ref().map(|evm| evm.object.as_str()),
+                Some(&evm.bytecode.object),
+                evm.deployed_bytecode.bytecode.as_ref().map(|evm| &evm.object),
             )
         } else {
             (None, None)
@@ -545,7 +547,8 @@ pub struct Bytecode {
     #[serde(default, skip_serializing_if = "::std::collections::BTreeMap::is_empty")]
     pub function_debug_data: BTreeMap<String, FunctionDebugData>,
     /// The bytecode as a hex string.
-    pub object: String,
+    #[serde(deserialize_with = "deserialize_bytes")]
+    pub object: Bytes,
     /// Opcodes list (string)
     pub opcodes: String,
     /// The source mapping as a string. See the source mapping definition.
@@ -818,6 +821,29 @@ mod display_from_str_opt {
         } else {
             Ok(None)
         }
+    }
+}
+
+pub fn deserialize_bytes<'de, D>(d: D) -> std::result::Result<Bytes, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let value = String::deserialize(d)?;
+    Ok(hex::decode(&value).map_err(|e| serde::de::Error::custom(e.to_string()))?.into())
+}
+
+pub fn deserialize_opt_bytes<'de, D>(d: D) -> std::result::Result<Option<Bytes>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let value = Option::<String>::deserialize(d)?;
+    if let Some(value) = value {
+        dbg!(&value);
+        // Ok(Some(hex::decode(&value).map_err(|e|
+        // serde::de::Error::custom(e.to_string()))?.into()))
+        Ok(None)
+    } else {
+        Ok(None)
     }
 }
 
