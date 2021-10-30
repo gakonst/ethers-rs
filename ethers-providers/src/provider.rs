@@ -26,6 +26,7 @@ use thiserror::Error;
 use url::{ParseError, Url};
 
 use futures_util::lock::Mutex;
+use std::str::FromStr;
 use std::{convert::TryFrom, fmt::Debug, sync::Arc, time::Duration};
 use tracing::trace;
 use tracing_futures::Instrument;
@@ -39,11 +40,11 @@ pub enum NodeClient {
     Besu,
 }
 
-impl TryFrom<String> for NodeClient {
-    type Error = ProviderError;
+impl FromStr for NodeClient {
+    type Err = ProviderError;
 
-    fn try_from(value: String) -> Result<Self, Self::Error> {
-        match value.split('/').next().unwrap() {
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.split('/').next().unwrap() {
             "Geth" => Ok(NodeClient::Geth),
             "Erigon" => Ok(NodeClient::Erigon),
             "OpenEthereum" => Ok(NodeClient::OpenEthereum),
@@ -157,7 +158,7 @@ impl<P: JsonRpcClient> Provider<P> {
 
         if node_client.is_none() {
             let client_version = self.client_version().await?;
-            *node_client = Some(NodeClient::try_from(client_version).ok());
+            *node_client = Some(client_version.parse::<NodeClient>().ok());
         }
 
         // unwrap() always succeeds since we've set the value before
@@ -864,7 +865,7 @@ impl<P: JsonRpcClient> Provider<P> {
 
         let resolver_address: Address = decode_bytes(ParamType::Address, data);
         if resolver_address == Address::zero() {
-            return Err(ProviderError::EnsError(ens_name.to_owned()))
+            return Err(ProviderError::EnsError(ens_name.to_owned()));
         }
 
         // resolve
