@@ -25,6 +25,7 @@ regex = "1.5.4"
 md-5 = "0.9.1"
 thiserror = "1.0.30"
 hex = "0.4.3"
+colored = "2.0.0"
 
 [dev-dependencies]
 tokio = { version = "1.12.0", features = ["full"] }

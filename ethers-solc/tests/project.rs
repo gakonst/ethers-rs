@@ -1,6 +1,8 @@
 //! project tests
 
-use ethers_solc::{cache::SOLIDITY_FILES_CACHE_FILENAME, Project, ProjectPathsConfig};
+use ethers_solc::{
+    cache::SOLIDITY_FILES_CACHE_FILENAME, Project, ProjectCompileOutput, ProjectPathsConfig,
+};
 use std::path::PathBuf;
 use tempdir::TempDir;
 
@@ -23,9 +25,9 @@ fn can_compile_hardhat_sample() {
     // let paths = ProjectPathsConfig::hardhat(root).unwrap();
 
     let project = Project::builder().paths(paths).build().unwrap();
-    assert!(project.compile().unwrap().is_some());
+    assert_ne!(project.compile().unwrap(), ProjectCompileOutput::Unchanged);
     // nothing to compile
-    assert!(project.compile().unwrap().is_none());
+    assert_eq!(project.compile().unwrap(), ProjectCompileOutput::Unchanged);
 }
 
 #[test]
@@ -47,7 +49,7 @@ fn can_compile_dapp_sample() {
     // let paths = ProjectPathsConfig::dapptools(root).unwrap();
 
     let project = Project::builder().paths(paths).build().unwrap();
-    assert!(project.compile().unwrap().is_some());
+    assert_ne!(project.compile().unwrap(), ProjectCompileOutput::Unchanged);
     // nothing to compile
-    assert!(project.compile().unwrap().is_none());
+    assert_eq!(project.compile().unwrap(), ProjectCompileOutput::Unchanged);
 }

@@ -1,5 +1,6 @@
 //! Solc artifact types
 
+use colored::Colorize;
 use md5::Digest;
 use semver::Version;
 use std::{
@@ -377,6 +378,32 @@ impl CompilerOutput {
     pub fn has_error(&self) -> bool {
         self.errors.iter().any(|err| err.severity.is_error())
     }
+
+    pub fn diagnostics(&self) -> OutputDiagnostics {
+        OutputDiagnostics(&self.errors)
+    }
+}
+
+/// Helper type to implement display for solc errors
+#[derive(Clone, Debug)]
+pub struct OutputDiagnostics<'a>(&'a [Error]);
+
+impl<'a> OutputDiagnostics<'a> {
+    pub fn has_error(&self) -> bool {
+        self.0.iter().any(|err| err.severity.is_error())
+    }
+}
+
+impl<'a> fmt::Display for OutputDiagnostics<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if !self.has_error() {
+            f.write_str("Compiler run successful")?;
+        }
+        for err in self.0 {
+            writeln!(f, "{}", err)?;
+        }
+        Ok(())
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
@@ -625,11 +652,38 @@ pub struct Error {
     pub formatted_message: Option<String>,
 }
 
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.severity.fmt(f)?;
+        writeln!(f, ": {}", self.message)?;
+        if let Some(msg) = &self.formatted_message {
+            msg.as_str().yellow().fmt(f)?;
+        }
+        Ok(())
+    }
+}
+
+// Error: No visibility specified. Did you intend to add "public"?
+// --> /Users/Matthias/git/rust/ethers-rs/hh/contracts/Greeter2.sol:15:5:
+// |
+// 15 |     function greet()  view returns (string memory) {
+// |     ^ (Relevant source part starts here and spans across multiple lines).
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Severity {
     Error,
     Warning,
     Info,
+}
+
+impl fmt::Display for Severity {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Severity::Error => f.write_str(&"Error".red()),
+            Severity::Warning => f.write_str(&"Warning".yellow()),
+            Severity::Info => f.write_str("Info"),
+        }
+    }
 }
 
 impl Severity {

@@ -21,7 +21,7 @@ use crate::artifacts::Sources;
 use error::Result;
 use std::{
     collections::{BTreeMap, HashMap},
-    fs, io,
+    fmt, fs, io,
     path::PathBuf,
 };
 
@@ -93,7 +93,7 @@ impl Project {
     /// NOTE: this does not check if the contracts were successfully compiled.
     ///
     /// Returns `None` if caching is enabled and there was nothing to compile.
-    pub fn compile(&self) -> Result<Option<CompilerOutput>> {
+    pub fn compile(&self) -> Result<ProjectCompileOutput> {
         let mut sources = self.sources()?;
         // add all libraries to the source set while keeping track of their actual disk path
         let mut source_name_path = HashMap::new();
@@ -109,7 +109,7 @@ impl Project {
             // check anything changed
             let cache = SolFilesCache::read(&self.paths.cache)?;
             if !cache.is_changed(&sources, Some(&self.solc_config)) {
-                return Ok(None)
+                return Ok(ProjectCompileOutput::Unchanged)
             }
         }
 
@@ -120,7 +120,7 @@ impl Project {
         let output = self.solc.compile(&input)?;
         if output.has_error() {
             // TODO handle error here
-            return Ok(Some(output))
+            return Ok(ProjectCompileOutput::Compiled(output))
         }
 
         if self.cached {
@@ -131,7 +131,7 @@ impl Project {
         }
 
         self.artifacts.on_output(&output, &self.paths)?;
-        Ok(Some(output))
+        Ok(ProjectCompileOutput::Compiled(output))
     }
 }
 
@@ -210,5 +210,21 @@ impl ProjectBuilder {
 impl Default for ProjectBuilder {
     fn default() -> Self {
         Self { paths: None, solc: None, solc_config: None, cached: true, artifacts: None }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ProjectCompileOutput {
+    /// Nothing to compile because unchanged sources
+    Unchanged,
+    Compiled(CompilerOutput),
+}
+
+impl fmt::Display for ProjectCompileOutput {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ProjectCompileOutput::Unchanged => f.write_str("Nothing to compile"),
+            ProjectCompileOutput::Compiled(output) => output.diagnostics().fmt(f),
+        }
     }
 }

@@ -20,6 +20,7 @@ fn main() {
         .paths(ProjectPathsConfig::hardhat(env!("CARGO_MANIFEST_DIR")).unwrap())
         .build()
         .unwrap();
-    project.compile().unwrap();
+    let output = project.compile().unwrap();
+    println!("{}", output);
 }
 ```
