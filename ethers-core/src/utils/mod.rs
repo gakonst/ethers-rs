@@ -10,13 +10,6 @@ mod geth;
 #[cfg(not(target_arch = "wasm32"))]
 pub use geth::{Geth, GethInstance};
 
-/// Solidity compiler bindings
-#[cfg(not(target_arch = "wasm32"))]
-pub mod solc;
-
-#[cfg(not(target_arch = "wasm32"))]
-pub use solc::{CompiledContract, Solc};
-
 #[cfg(not(target_arch = "wasm32"))]
 #[cfg(feature = "setup")]
 mod setup;
