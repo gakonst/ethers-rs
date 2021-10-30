@@ -25,9 +25,34 @@ use serde::{de::DeserializeOwned, Serialize};
 use thiserror::Error;
 use url::{ParseError, Url};
 
-use std::{convert::TryFrom, fmt::Debug, time::Duration};
+use futures_util::lock::Mutex;
+use std::{convert::TryFrom, fmt::Debug, str::FromStr, sync::Arc, time::Duration};
 use tracing::trace;
 use tracing_futures::Instrument;
+
+#[derive(Copy, Clone)]
+pub enum NodeClient {
+    Geth,
+    Erigon,
+    OpenEthereum,
+    Nethermind,
+    Besu,
+}
+
+impl FromStr for NodeClient {
+    type Err = ProviderError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.split('/').next().unwrap() {
+            "Geth" => Ok(NodeClient::Geth),
+            "Erigon" => Ok(NodeClient::Erigon),
+            "OpenEthereum" => Ok(NodeClient::OpenEthereum),
+            "Nethermind" => Ok(NodeClient::Nethermind),
+            "besu" => Ok(NodeClient::Besu),
+            _ => Err(ProviderError::UnsupportedNodeClient),
+        }
+    }
+}
 
 /// An abstract provider for interacting with the [Ethereum JSON RPC
 /// API](https://github.com/ethereum/wiki/wiki/JSON-RPC). Must be instantiated
@@ -56,6 +81,10 @@ pub struct Provider<P> {
     ens: Option<Address>,
     interval: Option<Duration>,
     from: Option<Address>,
+    /// Node client hasn't been checked yet = `None`
+    /// Unsupported node client = `Some(None)`
+    /// Supported node client = `Some(Some(NodeClient))`
+    _node_client: Arc<Mutex<Option<NodeClient>>>,
 }
 
 impl<P> AsRef<P> for Provider<P> {
@@ -89,6 +118,12 @@ pub enum ProviderError {
 
     #[error("custom error: {0}")]
     CustomError(String),
+
+    #[error("unsupported RPC")]
+    UnsupportedRPC,
+
+    #[error("unsupported node client")]
+    UnsupportedNodeClient,
 }
 
 /// Types of filters supported by the JSON-RPC.
@@ -108,7 +143,31 @@ pub enum FilterKind<'a> {
 impl<P: JsonRpcClient> Provider<P> {
     /// Instantiate a new provider with a backend.
     pub fn new(provider: P) -> Self {
-        Self { inner: provider, ens: None, interval: None, from: None }
+        Self {
+            inner: provider,
+            ens: None,
+            interval: None,
+            from: None,
+            _node_client: Arc::new(Mutex::new(None)),
+        }
+    }
+
+    /// Returns the type of node we're connected to, while also caching the value for use
+    /// in other node-specific API calls, such as the get_block_receipts call.
+    pub async fn node_client(&self) -> Result<NodeClient, ProviderError> {
+        let mut node_client = self._node_client.lock().await;
+
+        if let Some(node_client) = *node_client {
+            Ok(node_client)
+        } else {
+            let client_version = self.client_version().await?;
+            let client_version = match client_version.parse::<NodeClient>() {
+                Ok(res) => res,
+                Err(_) => return Err(ProviderError::UnsupportedNodeClient),
+            };
+            *node_client = Some(client_version);
+            Ok(client_version)
+        }
     }
 
     pub fn with_sender(mut self, address: impl Into<Address>) -> Self {
@@ -275,13 +334,19 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
 
     /// Returns all receipts for a block.
     ///
-    /// Note that this uses the `eth_getBlockReceipts` RPC, which is
-    /// non-standard and currently supported by Erigon.
+    /// Note that this uses the `eth_getBlockReceipts` or `parity_getBlockReceipts` RPC, which is
+    /// non-standard and currently supported by Erigon, OpenEthereum and Nethermind.
     async fn get_block_receipts<T: Into<BlockNumber> + Send + Sync>(
         &self,
         block: T,
     ) -> Result<Vec<TransactionReceipt>, Self::Error> {
-        self.request("eth_getBlockReceipts", [block.into()]).await
+        let method = match self.node_client().await? {
+            NodeClient::Erigon => "eth_getBlockReceipts",
+            NodeClient::OpenEthereum | NodeClient::Nethermind => "parity_getBlockReceipts",
+            _ => return Err(ProviderError::UnsupportedRPC),
+        };
+
+        self.request(method, [block.into()]).await
     }
 
     /// Gets the current gas price as estimated by the node
@@ -712,14 +777,6 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.request("trace_transaction", vec![hash]).await
     }
 
-    /// Returns all receipts for that block. Must be done on a parity node.
-    async fn parity_block_receipts<T: Into<BlockNumber> + Send + Sync>(
-        &self,
-        block: T,
-    ) -> Result<Vec<TransactionReceipt>, Self::Error> {
-        self.request("parity_getBlockReceipts", vec![block.into()]).await
-    }
-
     async fn subscribe<T, R>(
         &self,
         params: T,
@@ -1085,7 +1142,7 @@ mod tests {
             _ => return,
         };
         let provider = Provider::<Http>::try_from(url.as_str()).unwrap();
-        let receipts = provider.parity_block_receipts(10657200).await.unwrap();
+        let receipts = provider.get_block_receipts(10657200).await.unwrap();
         assert!(!receipts.is_empty());
     }
 
