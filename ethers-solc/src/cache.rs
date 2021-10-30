@@ -32,9 +32,9 @@ impl SolFilesCache {
     ///
     /// Autodetect solc version and default settings
     ///
-    /// ```rust
+    /// ```no_run
     /// use ethers_solc::artifacts::Source;
-    /// use ethers_solc::SolFilesCache;
+    /// use ethers_solc::cache::SolFilesCache;
     /// let files = Source::read_all_from("./sources").unwrap();
     /// let config = SolFilesCache::builder().insert_files(files).unwrap();
     /// ```
