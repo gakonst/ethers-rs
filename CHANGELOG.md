@@ -4,6 +4,7 @@
 
 ### Unreleased
 
+- use enumerated aliases for overloaded functions [#545](https://github.com/gakonst/ethers-rs/pull/545)
 - move `AbiEncode` `AbiDecode` trait to ethers-core and implement for core types [#531](https://github.com/gakonst/ethers-rs/pull/531)
 - add `EthCall` trait and derive macro which generates matching structs for contract calls [#517](https://github.com/gakonst/ethers-rs/pull/517)
 - `abigen!` now generates `Display` for all events using the new `EthDisplay` macro [#513](https://github.com/gakonst/ethers-rs/pull/513)
