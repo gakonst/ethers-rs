@@ -1,5 +1,7 @@
 //! Solc artifact types
 
+use colored::Colorize;
+use md5::Digest;
 use semver::Version;
 use std::{
     collections::BTreeMap,
@@ -9,13 +11,19 @@ use std::{
 };
 
 use crate::{compile::*, utils};
-use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
+use serde::{
+    de::{self, Visitor},
+    Deserialize, Deserializer, Serialize, Serializer,
+};
+
+/// An ordered list of files and their source
+pub type Sources = BTreeMap<PathBuf, Source>;
 
 /// Input type `solc` expects
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct CompilerInput {
     pub language: String,
-    pub sources: BTreeMap<PathBuf, Source>,
+    pub sources: Sources,
     pub settings: Settings,
 }
 
@@ -26,7 +34,7 @@ impl CompilerInput {
     }
 
     /// Creates a new Compiler input with default settings and the given sources
-    pub fn with_sources(sources: BTreeMap<PathBuf, Source>) -> Self {
+    pub fn with_sources(sources: Sources) -> Self {
         Self { language: "Solidity".to_string(), sources, settings: Default::default() }
     }
 
@@ -49,7 +57,7 @@ impl Default for CompilerInput {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Settings {
     pub optimizer: Optimizer,
@@ -102,6 +110,24 @@ pub struct Settings {
     /// Note that using a using `evm`, `evm.bytecode`, `ewasm`, etc. will select
     /// every target part of that output. Additionally, `*` can be used as a
     /// wildcard to request everything.
+    ///
+    /// The default output selection is
+    ///
+    /// ```json
+    ///   {
+    ///    "*": {
+    ///      "*": [
+    ///        "abi",
+    ///        "evm.bytecode",
+    ///        "evm.deployedBytecode",
+    ///        "evm.methodIdentifiers"
+    ///      ],
+    ///      "": [
+    ///        "ast"
+    ///      ]
+    ///    }
+    ///  }
+    /// ```
     #[serde(default)]
     pub output_selection: BTreeMap<String, BTreeMap<String, Vec<String>>>,
     #[serde(default, with = "display_from_str_opt", skip_serializing_if = "Option::is_none")]
@@ -129,7 +155,7 @@ impl Settings {
     }
 
     /// Adds `ast` to output
-    pub fn with_ast(&mut self) -> &mut Self {
+    pub fn with_ast(mut self) -> Self {
         let output = self.output_selection.entry("*".to_string()).or_insert_with(BTreeMap::default);
         output.insert("".to_string(), vec!["ast".to_string()]);
         self
@@ -145,10 +171,11 @@ impl Default for Settings {
             evm_version: Some(EvmVersion::Istanbul),
             libraries: Default::default(),
         }
+        .with_ast()
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Optimizer {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub enabled: Option<bool>,
@@ -253,7 +280,7 @@ impl FromStr for EvmVersion {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Metadata {
     #[serde(rename = "useLiteralContent")]
     pub use_literal_content: bool,
@@ -271,12 +298,12 @@ impl Source {
     }
 
     /// Finds all source files under the given dir path and reads them all
-    pub fn read_all_from(dir: impl AsRef<Path>) -> io::Result<BTreeMap<PathBuf, Source>> {
+    pub fn read_all_from(dir: impl AsRef<Path>) -> io::Result<Sources> {
         Self::read_all(utils::source_files(dir)?)
     }
 
     /// Reads all files
-    pub fn read_all<T, I>(files: I) -> io::Result<BTreeMap<PathBuf, Source>>
+    pub fn read_all<T, I>(files: I) -> io::Result<Sources>
     where
         I: IntoIterator<Item = T>,
         T: Into<PathBuf>,
@@ -286,6 +313,19 @@ impl Source {
             .map(Into::into)
             .map(|file| Self::read(&file).map(|source| (file, source)))
             .collect()
+    }
+
+    /// Generate a non-cryptographically secure checksum of the file's content
+    pub fn content_hash(&self) -> String {
+        let mut hasher = md5::Md5::new();
+        hasher.update(&self.content);
+        let result = hasher.finalize();
+        hex::encode(result)
+    }
+
+    /// Returns all import statements of the file
+    pub fn parse_imports(&self) -> Vec<&str> {
+        utils::find_import_paths(self.as_ref())
     }
 }
 
@@ -297,14 +337,12 @@ impl Source {
     }
 
     /// Finds all source files under the given dir path and reads them all
-    pub async fn async_read_all_from(
-        dir: impl AsRef<Path>,
-    ) -> io::Result<BTreeMap<PathBuf, Source>> {
+    pub async fn async_read_all_from(dir: impl AsRef<Path>) -> io::Result<Sources> {
         Self::async_read_all(utils::source_files(dir.as_ref())?).await
     }
 
     /// async version of `Self::read_all`
-    pub async fn async_read_all<T, I>(files: I) -> io::Result<BTreeMap<PathBuf, Source>>
+    pub async fn async_read_all<T, I>(files: I) -> io::Result<Sources>
     where
         I: IntoIterator<Item = T>,
         T: Into<PathBuf>,
@@ -321,8 +359,14 @@ impl Source {
     }
 }
 
+impl AsRef<str> for Source {
+    fn as_ref(&self) -> &str {
+        &self.content
+    }
+}
+
 /// Output type `solc` produces
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Default)]
 pub struct CompilerOutput {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub errors: Vec<Error>,
@@ -330,6 +374,49 @@ pub struct CompilerOutput {
     pub sources: BTreeMap<String, SourceFile>,
     #[serde(default)]
     pub contracts: BTreeMap<String, BTreeMap<String, Contract>>,
+}
+
+impl CompilerOutput {
+    /// Whether the output contains an compiler error
+    pub fn has_error(&self) -> bool {
+        self.errors.iter().any(|err| err.severity.is_error())
+    }
+
+    pub fn diagnostics<'a>(&'a self, ignored_error_codes: &'a [u64]) -> OutputDiagnostics {
+        OutputDiagnostics { errors: &self.errors, ignored_error_codes }
+    }
+}
+
+/// Helper type to implement display for solc errors
+#[derive(Clone, Debug)]
+pub struct OutputDiagnostics<'a> {
+    errors: &'a [Error],
+    ignored_error_codes: &'a [u64],
+}
+
+impl<'a> OutputDiagnostics<'a> {
+    pub fn has_error(&self) -> bool {
+        self.errors.iter().any(|err| err.severity.is_error())
+    }
+}
+
+impl<'a> fmt::Display for OutputDiagnostics<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if !self.has_error() {
+            f.write_str("Compiler run successful")?;
+        }
+        for err in self.errors {
+            // Do not log any ignored error codes
+            if let Some(error_code) = err.error_code {
+                if !self.ignored_error_codes.contains(&error_code) {
+                    writeln!(f, "\n{}", err)?;
+                }
+            } else {
+                writeln!(f, "\n{}", err)?;
+            }
+        }
+        Ok(())
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
@@ -475,10 +562,10 @@ pub struct Bytecode {
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct FunctionDebugData {
-    pub entry_point: u32,
-    pub id: u32,
-    pub parameter_slots: u32,
-    pub return_slots: u32,
+    pub entry_point: Option<u32>,
+    pub id: Option<u32>,
+    pub parameter_slots: Option<u32>,
+    pub return_slots: Option<u32>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
@@ -573,9 +660,38 @@ pub struct Error {
     pub r#type: String,
     pub component: String,
     pub severity: Severity,
-    pub error_code: Option<String>,
+    #[serde(default, deserialize_with = "from_optional_str")]
+    pub error_code: Option<u64>,
     pub message: String,
     pub formatted_message: Option<String>,
+}
+
+fn from_optional_str<'de, T, D>(deserializer: D) -> Result<Option<T>, D::Error>
+where
+    T: FromStr,
+    T::Err: fmt::Display,
+    D: Deserializer<'de>,
+{
+    let s = Option::<String>::deserialize(deserializer)?;
+    if let Some(s) = s {
+        T::from_str(&s).map_err(de::Error::custom).map(Some)
+    } else {
+        Ok(None)
+    }
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if let Some(msg) = &self.formatted_message {
+            match self.severity {
+                Severity::Error => msg.as_str().red().fmt(f),
+                Severity::Warning | Severity::Info => msg.as_str().yellow().fmt(f),
+            }
+        } else {
+            self.severity.fmt(f)?;
+            writeln!(f, ": {}", self.message)
+        }
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -584,6 +700,31 @@ pub enum Severity {
     Warning,
     Info,
 }
+
+impl fmt::Display for Severity {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Severity::Error => f.write_str(&"Error".red()),
+            Severity::Warning => f.write_str(&"Warning".yellow()),
+            Severity::Info => f.write_str("Info"),
+        }
+    }
+}
+
+impl Severity {
+    pub fn is_error(&self) -> bool {
+        matches!(self, Severity::Error)
+    }
+
+    pub fn is_warning(&self) -> bool {
+        matches!(self, Severity::Warning)
+    }
+
+    pub fn is_info(&self) -> bool {
+        matches!(self, Severity::Info)
+    }
+}
+
 impl FromStr for Severity {
     type Err = String;
 

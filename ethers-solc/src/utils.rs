@@ -1,6 +1,6 @@
 //! Utility functions
 
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
 use once_cell::sync::Lazy;
 use regex::Regex;
@@ -59,8 +59,52 @@ pub fn source_files(root: impl AsRef<Path>) -> walkdir::Result<Vec<PathBuf>> {
     Ok(files)
 }
 
+/// Returns the source name for the given source path, the ancestors of the root path
+/// `/Users/project/sources/contract.sol` -> `sources/contracts.sol`
+pub fn source_name(source: &Path, root: impl AsRef<Path>) -> &Path {
+    source.strip_prefix(root.as_ref()).unwrap_or(source)
+}
+
+/// Attempts to determine if the given source is a local, relative import
+pub fn is_local_source_name(libs: &[impl AsRef<Path>], source: impl AsRef<Path>) -> bool {
+    resolve_library(libs, source).is_none()
+}
+
+/// Returns the path to the library if the source path is in fact determined to be a library path,
+/// and it exists.
+pub fn resolve_library(libs: &[impl AsRef<Path>], source: impl AsRef<Path>) -> Option<PathBuf> {
+    let source = source.as_ref();
+    let comp = source.components().next()?;
+    match comp {
+        Component::Normal(first_dir) => {
+            // attempt to verify that the root component of this source exists under a library
+            // folder
+            for lib in libs {
+                let lib = lib.as_ref();
+                let contract = lib.join(source);
+                if contract.exists() {
+                    // contract exists in <lib>/<source>
+                    return Some(contract)
+                }
+                // check for <lib>/<first_dir>/src/name.sol
+                let contract = lib
+                    .join(first_dir)
+                    .join("src")
+                    .join(source.strip_prefix(first_dir).expect("is first component"));
+                if contract.exists() {
+                    return Some(contract)
+                }
+            }
+            None
+        }
+        Component::RootDir => Some(source.into()),
+        _ => None,
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use super::*;
     use std::{
         collections::HashSet,
         fs::{create_dir_all, File},
@@ -68,7 +112,19 @@ mod tests {
 
     use tempdir::TempDir;
 
-    use super::*;
+    #[test]
+    fn can_determine_local_paths() {
+        assert!(is_local_source_name(&[""], "./local/contract.sol"));
+        assert!(is_local_source_name(&[""], "../local/contract.sol"));
+        assert!(!is_local_source_name(&[""], "/ds-test/test.sol"));
+
+        let tmp_dir = TempDir::new("contracts").unwrap();
+        let dir = tmp_dir.path().join("ds-test");
+        create_dir_all(&dir).unwrap();
+        File::create(dir.join("test.sol")).unwrap();
+
+        assert!(!is_local_source_name(&[tmp_dir.path()], "ds-test/test.sol"));
+    }
 
     #[test]
     fn can_find_solidity_sources() {

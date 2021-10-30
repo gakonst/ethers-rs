@@ -42,7 +42,7 @@ pub struct Solc(pub PathBuf);
 
 impl Default for Solc {
     fn default() -> Self {
-        Self::new(SOLC)
+        std::env::var("SOLC_PATH").map(Solc::new).unwrap_or_else(|_| Solc::new(SOLC))
     }
 }
 
@@ -190,6 +190,12 @@ fn version_from_output(output: Output) -> Result<Version> {
 impl AsRef<Path> for Solc {
     fn as_ref(&self) -> &Path {
         &self.0
+    }
+}
+
+impl<T: Into<PathBuf>> From<T> for Solc {
+    fn from(solc: T) -> Self {
+        Solc(solc.into())
     }
 }
 
