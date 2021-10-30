@@ -85,7 +85,6 @@ ethers-solc = { version = "^0.1.0", default-features = false, path = "./ethers-s
 [dev-dependencies]
 ethers-contract = { version = "^0.5.0", default-features = false, path = "./ethers-contract", features = ["abigen", "eip712"] }
 ethers-providers = { version = "^0.5.0", default-features = false, path = "./ethers-providers", features = ["ws", "ipc"] }
-ethers-solc = { version = "^0.1.0", default-features = false, path = "./ethers-solc", features = ["setup"] }
 
 anyhow = "1.0.39"
 rand = "0.8.4"
