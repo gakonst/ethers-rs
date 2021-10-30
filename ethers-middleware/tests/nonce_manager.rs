@@ -14,7 +14,8 @@ async fn nonce_manager() {
             .interval(Duration::from_millis(2000u64));
     let chain_id = provider.get_chainid().await.unwrap().as_u64();
 
-    let wallet = "fa4a1a79e869a96fcb42727f75e3232d6865a82ea675bb95de967a7fe6a773b2"
+    let wallet = std::env::var("RINKEBY_PRIVATE_KEY")
+        .unwrap()
         .parse::<LocalWallet>()
         .unwrap()
         .with_chain_id(chain_id);
