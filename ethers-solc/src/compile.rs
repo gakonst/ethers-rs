@@ -10,6 +10,7 @@ use std::{
     process::{Command, Output, Stdio},
     str::FromStr,
 };
+use walkdir::WalkDir;
 
 /// The name of the `solc` binary on the system
 pub const SOLC: &str = "solc";
@@ -50,6 +51,38 @@ impl Solc {
     /// A new instance which points to `solc`
     pub fn new(path: impl Into<PathBuf>) -> Self {
         Solc(path.into())
+    }
+
+    /// Returns the directory in which [svm](https://github.com/roynalnaruto/svm-rs) stores all versions
+    ///
+    /// This will be `~/.svm` on unix
+    pub fn svm_home() -> Option<PathBuf> {
+        home::home_dir().map(|dir| dir.join(".svm"))
+    }
+
+    /// Returns the path for a [svm](https://github.com/roynalnaruto/svm-rs) installed version.
+    ///
+    /// # Example
+    /// ```no_run
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    ///  use ethers_solc::Solc;
+    /// let solc = Solc::find_svm_installed_version("0.8.9");
+    /// assert_eq!(solc, Solc::new("~/.svm/0.8.9/solc-0.8.9"));
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn find_svm_installed_version(version: &str) -> Result<Option<Self>> {
+        let solc = WalkDir::new(
+            Self::svm_home().ok_or_else(|| SolcError::solc("svm home dir not found"))?,
+        )
+        .max_depth(1)
+        .into_iter()
+        .filter_map(std::result::Result::ok)
+        .filter(|e| e.file_type().is_dir())
+        .find(|e| e.path().ends_with(version))
+        .map(|e| e.path().join(format!("solc-{}", version)))
+        .map(Solc::new);
+        Ok(solc)
     }
 
     /// Convenience function for compiling all sources under the given path
@@ -216,6 +249,12 @@ mod tests {
     #[test]
     fn can_parse_version_metadata() {
         let _version = Version::from_str("0.6.6+commit.6c089d02.Linux.gcc").unwrap();
+    }
+
+    #[test]
+    #[ignore]
+    fn can_find_solc() {
+        let _solc = Solc::find_svm_installed_version("0.8.9").unwrap();
     }
 
     #[cfg(feature = "async")]
