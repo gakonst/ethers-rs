@@ -27,6 +27,7 @@ thiserror = "1.0.30"
 hex = "0.4.3"
 colored = "2.0.0"
 home = "0.5.3"
+svm = { package = "svm-rs", git = "https://github.com/roynalnaruto/svm-rs", optional = true }
 
 [dev-dependencies]
 tokio = { version = "1.12.0", features = ["full"] }
@@ -34,3 +35,4 @@ tempdir = "0.3.7"
 
 [features]
 async = ["tokio", "futures-util"]
+svm-rs = ["svm"]

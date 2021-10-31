@@ -71,7 +71,8 @@ impl Solc {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn find_svm_installed_version(version: &str) -> Result<Option<Self>> {
+    pub fn find_svm_installed_version(version: impl AsRef<str>) -> Result<Option<Self>> {
+        let version = version.as_ref();
         let solc = WalkDir::new(
             Self::svm_home().ok_or_else(|| SolcError::solc("svm home dir not found"))?,
         )
@@ -83,6 +84,28 @@ impl Solc {
         .map(|e| e.path().join(format!("solc-{}", version)))
         .map(Solc::new);
         Ok(solc)
+    }
+
+    /// Installs the provided version of Solc in the machine under the svm dir
+    /// # Example
+    /// ```no_run
+    /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    ///  use ethers_solc::{Solc, ISTANBUL_SOLC};
+    ///  Solc::async_install(&ISTANBUL_SOLC).await;
+    ///  let solc = Solc::find_svm_installed_version(&ISTANBUL_SOLC.to_string());
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[cfg(feature = "svm-rs")]
+    pub async fn install(version: &Version) -> std::result::Result<(), svm::SolcVmError> {
+        svm::install(version).await
+    }
+
+    /// Blocking version of `Self::install`
+    #[cfg(all(feature = "svm-rs", feature = "async"))]
+    pub fn blocking_install(version: &Version) -> std::result::Result<(), svm::SolcVmError> {
+        tokio::runtime::Runtime::new().unwrap().block_on(svm::install(version))?;
+        Ok(())
     }
 
     /// Convenience function for compiling all sources under the given path
