@@ -66,8 +66,8 @@ impl Solc {
     /// ```no_run
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     ///  use ethers_solc::Solc;
-    /// let solc = Solc::find_svm_installed_version("0.8.9");
-    /// assert_eq!(solc, Solc::new("~/.svm/0.8.9/solc-0.8.9"));
+    /// let solc = Solc::find_svm_installed_version("0.8.9").unwrap();
+    /// assert_eq!(solc, Some(Solc::new("~/.svm/0.8.9/solc-0.8.9")));
     /// # Ok(())
     /// # }
     /// ```
@@ -90,9 +90,9 @@ impl Solc {
     /// Installs the provided version of Solc in the machine under the svm dir
     /// # Example
     /// ```no_run
-    /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// # async fn run() -> Result<(), Box<dyn std::error::Error>> {
     ///  use ethers_solc::{Solc, ISTANBUL_SOLC};
-    ///  Solc::install(&ISTANBUL_SOLC).await;
+    ///  Solc::install(&ISTANBUL_SOLC).await.unwrap();
     ///  let solc = Solc::find_svm_installed_version(&ISTANBUL_SOLC.to_string());
     /// # Ok(())
     /// # }
