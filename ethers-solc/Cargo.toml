@@ -11,9 +11,10 @@ homepage = "https://docs.rs/ethers"
 description = """
 Utilites for working with solc
 """
-keywords = ["ethereum", "web3", "etherscan", "ethers"]
+keywords = ["ethereum", "web3", "solc", "solidity", "ethers"]
 
 [dependencies]
+ethers-core = { version = "^0.5.0", path = "../ethers-core", default-features = false }
 serde_json = "1.0.68"
 serde = { version = "1.0.130", features = ["derive"] }
 semver = "1.0.4"

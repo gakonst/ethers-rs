@@ -1,4 +1,5 @@
 //! Solc artifact types
+use ethers_core::{abi::Abi, types::Bytes};
 
 use colored::Colorize;
 use md5::Digest;
@@ -11,10 +12,7 @@ use std::{
 };
 
 use crate::{compile::*, utils};
-use serde::{
-    de::{self, Visitor},
-    Deserialize, Deserializer, Serialize, Serializer,
-};
+use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 
 /// An ordered list of files and their source
 pub type Sources = BTreeMap<PathBuf, Source>;
@@ -366,7 +364,7 @@ impl AsRef<str> for Source {
 }
 
 /// Output type `solc` produces
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Default)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Default)]
 pub struct CompilerOutput {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub errors: Vec<Error>,
@@ -384,6 +382,15 @@ impl CompilerOutput {
 
     pub fn diagnostics<'a>(&'a self, ignored_error_codes: &'a [u64]) -> OutputDiagnostics {
         OutputDiagnostics { errors: &self.errors, ignored_error_codes }
+    }
+
+    /// Given the contract file's path and the contract's name, tries to return the contract's
+    /// bytecode, runtime bytecode, and abi
+    pub fn get(&self, path: &str, contract: &str) -> Option<CompactContractRef> {
+        self.contracts
+            .get(path)
+            .and_then(|contracts| contracts.get(contract))
+            .map(CompactContractRef::from)
     }
 }
 
@@ -419,11 +426,11 @@ impl<'a> fmt::Display for OutputDiagnostics<'a> {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Contract {
-    /// The Ethereum Contract ABI. If empty, it is represented as an empty
-    /// array. See https://docs.soliditylang.org/en/develop/abi-spec.html
-    pub abi: Vec<serde_json::Value>,
+    /// The Ethereum Contract ABI.
+    /// See https://docs.soliditylang.org/en/develop/abi-spec.html
+    pub abi: Option<Abi>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub metadata: Option<String>,
     #[serde(default)]
@@ -443,15 +450,19 @@ pub struct Contract {
 }
 
 /// Minimal representation of a contract's abi with bytecode
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct CompactContract {
     /// The Ethereum Contract ABI. If empty, it is represented as an empty
     /// array. See https://docs.soliditylang.org/en/develop/abi-spec.html
-    pub abi: Vec<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub bin: Option<String>,
+    pub abi: Option<Abi>,
+    #[serde(
+        default,
+        deserialize_with = "deserialize_opt_bytes",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub bin: Option<Bytes>,
     #[serde(default, rename = "bin-runtime", skip_serializing_if = "Option::is_none")]
-    pub bin_runtime: Option<String>,
+    pub bin_runtime: Option<Bytes>,
 }
 
 impl From<Contract> for CompactContract {
@@ -469,25 +480,25 @@ impl From<Contract> for CompactContract {
 /// Helper type to serialize while borrowing from `Contract`
 #[derive(Clone, Debug, Serialize)]
 pub struct CompactContractRef<'a> {
-    pub abi: &'a [serde_json::Value],
+    pub abi: Option<&'a Abi>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub bin: Option<&'a str>,
+    pub bin: Option<&'a Bytes>,
     #[serde(default, rename = "bin-runtime", skip_serializing_if = "Option::is_none")]
-    pub bin_runtime: Option<&'a str>,
+    pub bin_runtime: Option<&'a Bytes>,
 }
 
 impl<'a> From<&'a Contract> for CompactContractRef<'a> {
     fn from(c: &'a Contract) -> Self {
         let (bin, bin_runtime) = if let Some(ref evm) = c.evm {
             (
-                Some(evm.bytecode.object.as_str()),
-                evm.deployed_bytecode.bytecode.as_ref().map(|evm| evm.object.as_str()),
+                Some(&evm.bytecode.object),
+                evm.deployed_bytecode.bytecode.as_ref().map(|evm| &evm.object),
             )
         } else {
             (None, None)
         };
 
-        Self { abi: &c.abi, bin, bin_runtime }
+        Self { abi: c.abi.as_ref(), bin, bin_runtime }
     }
 }
 
@@ -545,7 +556,8 @@ pub struct Bytecode {
     #[serde(default, skip_serializing_if = "::std::collections::BTreeMap::is_empty")]
     pub function_debug_data: BTreeMap<String, FunctionDebugData>,
     /// The bytecode as a hex string.
-    pub object: String,
+    #[serde(deserialize_with = "deserialize_bytes")]
+    pub object: Bytes,
     /// Opcodes list (string)
     pub opcodes: String,
     /// The source mapping as a string. See the source mapping definition.
@@ -660,24 +672,10 @@ pub struct Error {
     pub r#type: String,
     pub component: String,
     pub severity: Severity,
-    #[serde(default, deserialize_with = "from_optional_str")]
+    #[serde(default, with = "display_from_str_opt")]
     pub error_code: Option<u64>,
     pub message: String,
     pub formatted_message: Option<String>,
-}
-
-fn from_optional_str<'de, T, D>(deserializer: D) -> Result<Option<T>, D::Error>
-where
-    T: FromStr,
-    T::Err: fmt::Display,
-    D: Deserializer<'de>,
-{
-    let s = Option::<String>::deserialize(deserializer)?;
-    if let Some(s) = s {
-        T::from_str(&s).map_err(de::Error::custom).map(Some)
-    } else {
-        Ok(None)
-    }
 }
 
 impl fmt::Display for Error {
@@ -818,6 +816,26 @@ mod display_from_str_opt {
         } else {
             Ok(None)
         }
+    }
+}
+
+pub fn deserialize_bytes<'de, D>(d: D) -> std::result::Result<Bytes, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let value = String::deserialize(d)?;
+    Ok(hex::decode(&value).map_err(|e| serde::de::Error::custom(e.to_string()))?.into())
+}
+
+pub fn deserialize_opt_bytes<'de, D>(d: D) -> std::result::Result<Option<Bytes>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let value = Option::<String>::deserialize(d)?;
+    if let Some(value) = value {
+        Ok(Some(hex::decode(&value).map_err(|e| serde::de::Error::custom(e.to_string()))?.into()))
+    } else {
+        Ok(None)
     }
 }
 

@@ -33,8 +33,7 @@
 //! ## Utilities
 //!
 //! The crate provides utilities for launching local Ethereum testnets by using `ganache-cli`
-//! via the `GanacheBuilder` struct. In addition, you're able to compile contracts on the
-//! filesystem by providing a glob to their path, using the `Solc` struct.
+//! via the `GanacheBuilder` struct.
 //!
 //! # Features
 //!

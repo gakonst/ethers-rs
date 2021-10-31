@@ -231,7 +231,7 @@ impl Default for ProjectBuilder {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ProjectCompileOutput<'a> {
     /// Nothing to compile because unchanged sources
     Unchanged,

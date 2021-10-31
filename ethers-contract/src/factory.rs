@@ -90,7 +90,7 @@ impl<M: Middleware> Deployer<M> {
 /// # Example
 ///
 /// ```no_run
-/// use ethers_core::utils::Solc;
+/// use ethers_solc::Solc;
 /// use ethers_contract::ContractFactory;
 /// use ethers_providers::{Provider, Http};
 /// use ethers_signers::Wallet;
@@ -99,9 +99,9 @@ impl<M: Middleware> Deployer<M> {
 /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
 /// // first we'll compile the contract (you can alternatively compile it yourself
 /// // and pass the ABI/Bytecode
-/// let compiled = Solc::new("./tests/contract.sol").build().unwrap();
+/// let compiled = Solc::default().compile_source("./tests/contract.sol").unwrap();
 /// let contract = compiled
-///     .get("SimpleStorage")
+///     .get("./tests/contract.sol", "SimpleStorage")
 ///     .expect("could not find contract");
 ///
 /// // connect to the network
@@ -109,7 +109,7 @@ impl<M: Middleware> Deployer<M> {
 /// let client = std::sync::Arc::new(client);
 ///
 /// // create a factory which will be used to deploy instances of the contract
-/// let factory = ContractFactory::new(contract.abi.clone(), contract.bytecode.clone(), client);
+/// let factory = ContractFactory::new(contract.abi.unwrap().clone(), contract.bin.unwrap().clone(), client);
 ///
 /// // The deployer created by the `deploy` call exposes a builder which gets consumed
 /// // by the async `send` call

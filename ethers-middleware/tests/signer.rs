@@ -214,18 +214,19 @@ async fn deploy_and_call_contract() {
     use ethers_core::{
         abi::Abi,
         types::{BlockNumber, Bytes, H256, U256},
-        utils::Solc,
     };
+    use ethers_solc::Solc;
     use std::sync::Arc;
 
-    fn compile_contract(name: &str, filename: &str) -> (Abi, Bytes) {
-        let compiled =
-            Solc::new(&format!("./tests/solidity-contracts/{}", filename)).build().unwrap();
-        let contract = compiled.get(name).expect("could not find contract");
-        (contract.abi.clone(), contract.bytecode.clone())
+    // compiles the given contract and returns the ABI and Bytecode
+    fn compile_contract(path: &str, name: &str) -> (Abi, Bytes) {
+        let path = format!("./tests/solidity-contracts/{}", path);
+        let compiled = Solc::default().compile_source(&path).unwrap();
+        let contract = compiled.get(&path, name).expect("could not find contract");
+        (contract.abi.unwrap().clone(), contract.bin.unwrap().clone())
     }
 
-    let (abi, bytecode) = compile_contract("SimpleStorage", "SimpleStorage.sol");
+    let (abi, bytecode) = compile_contract("SimpleStorage.sol", "SimpleStorage");
 
     // Celo testnet
     let provider = Provider::<Http>::try_from("https://alfajores-forno.celo-testnet.org")

@@ -1,20 +1,26 @@
 #![cfg(not(target_arch = "wasm32"))]
 #![allow(unused)]
 use ethers_contract::{BaseContract, ContractFactory};
-use ethers_core::{
-    types::*,
-    utils::{Ganache, Solc},
-};
+use ethers_core::{abi::Abi, types::*, utils::Ganache};
 use ethers_middleware::{
     transformer::{DsProxy, TransformerMiddleware},
     SignerMiddleware,
 };
 use ethers_providers::{Http, Middleware, Provider};
 use ethers_signers::{LocalWallet, Signer};
+use ethers_solc::Solc;
 use rand::Rng;
 use std::{convert::TryFrom, sync::Arc, time::Duration};
 
 type HttpWallet = SignerMiddleware<Provider<Http>, LocalWallet>;
+
+// compiles the given contract and returns the ABI and Bytecode
+fn compile_contract(path: &str, name: &str) -> (Abi, Bytes) {
+    let path = format!("./tests/solidity-contracts/{}", path);
+    let compiled = Solc::default().compile_source(&path).unwrap();
+    let contract = compiled.get(&path, name).expect("could not find contract");
+    (contract.abi.unwrap().clone(), contract.bin.unwrap().clone())
+}
 
 #[tokio::test]
 #[cfg(not(feature = "celo"))]
@@ -35,15 +41,8 @@ async fn ds_proxy_transformer() {
     let provider = Arc::new(signer_middleware.clone());
 
     // deploy DsProxyFactory which we'll use to deploy a new DsProxy contract.
-    let compiled = Solc::new("./tests/solidity-contracts/DSProxy.sol")
-        .build()
-        .expect("could not compile DSProxyFactory");
-    let contract = compiled.get("DSProxyFactory").expect("could not find DSProxyFactory");
-    let factory = ContractFactory::new(
-        contract.abi.clone(),
-        contract.bytecode.clone(),
-        Arc::clone(&provider),
-    );
+    let (abi, bytecode) = compile_contract("DSProxy.sol", "DSProxyFactory");
+    let factory = ContractFactory::new(abi, bytecode, Arc::clone(&provider));
     let ds_proxy_factory = factory.deploy(()).unwrap().legacy();
     let ds_proxy_factory = ds_proxy_factory.send().await.unwrap();
 
@@ -58,15 +57,8 @@ async fn ds_proxy_transformer() {
     let ds_proxy_addr = ds_proxy.address();
 
     // deploy SimpleStorage and try to update its value via transformer middleware.
-    let compiled = Solc::new("./tests/solidity-contracts/SimpleStorage.sol")
-        .build()
-        .expect("could not compile SimpleStorage");
-    let contract = compiled.get("SimpleStorage").expect("could not find SimpleStorage");
-    let factory = ContractFactory::new(
-        contract.abi.clone(),
-        contract.bytecode.clone(),
-        Arc::clone(&provider),
-    );
+    let (abi, bytecode) = compile_contract("SimpleStorage.sol", "SimpleStorage");
+    let factory = ContractFactory::new(abi, bytecode, Arc::clone(&provider));
     let deployer = factory.deploy(()).unwrap().legacy();
     let simple_storage = deployer.send().await.unwrap();
 
@@ -108,15 +100,8 @@ async fn ds_proxy_code() {
     let provider = Arc::new(signer_middleware.clone());
 
     // deploy DsProxyFactory which we'll use to deploy a new DsProxy contract.
-    let compiled = Solc::new("./tests/solidity-contracts/DSProxy.sol")
-        .build()
-        .expect("could not compile DSProxyFactory");
-    let contract = compiled.get("DSProxyFactory").expect("could not find DSProxyFactory");
-    let factory = ContractFactory::new(
-        contract.abi.clone(),
-        contract.bytecode.clone(),
-        Arc::clone(&provider),
-    );
+    let (abi, bytecode) = compile_contract("DSProxy.sol", "DSProxyFactory");
+    let factory = ContractFactory::new(abi, bytecode, Arc::clone(&provider));
     let ds_proxy_factory = factory.deploy(()).unwrap().legacy();
     let ds_proxy_factory = ds_proxy_factory.send().await.unwrap();
 
@@ -131,11 +116,8 @@ async fn ds_proxy_code() {
     let ds_proxy_addr = ds_proxy.address();
 
     // compile the SimpleStorage contract which we will use to interact via DsProxy.
-    let compiled = Solc::new("./tests/solidity-contracts/SimpleStorage.sol")
-        .build()
-        .expect("could not compile SimpleStorage");
-    let ss = compiled.get("SimpleStorage").expect("could not find SimpleStorage");
-    let ss_base_contract: BaseContract = ss.abi.clone().into();
+    let (abi, bytecode) = compile_contract("SimpleStorage.sol", "SimpleStorage");
+    let ss_base_contract: BaseContract = abi.into();
     let expected_value: u64 = rng.gen();
     let calldata = ss_base_contract
         .encode("setValue", U256::from(expected_value))
@@ -145,7 +127,7 @@ async fn ds_proxy_code() {
     ds_proxy
         .execute::<HttpWallet, Arc<HttpWallet>, Bytes>(
             Arc::clone(&provider),
-            ss.bytecode.clone(),
+            bytecode.clone(),
             calldata,
         )
         .expect("could not construct DSProxy contract call")

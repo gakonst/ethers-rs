@@ -53,7 +53,7 @@ impl Solc {
     }
 
     /// Convenience function for compiling all sources under the given path
-    pub fn compile_source<T: Serialize>(&self, path: impl AsRef<Path>) -> Result<CompilerOutput> {
+    pub fn compile_source(&self, path: impl AsRef<Path>) -> Result<CompilerOutput> {
         self.compile(&CompilerInput::new(path)?)
     }
 

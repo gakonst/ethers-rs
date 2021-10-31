@@ -206,6 +206,8 @@ impl SolcConfigBuilder {
 
 /// Determines how to handle compiler output
 pub enum ArtifactOutput {
+    /// No-op, does not write the artifacts to disk.
+    Nothing,
     /// Creates a single json artifact with
     /// ```json
     ///  {
@@ -225,6 +227,7 @@ impl ArtifactOutput {
     /// Is expected to handle the output and where to store it
     pub fn on_output(&self, output: &CompilerOutput, layout: &ProjectPathsConfig) -> Result<()> {
         match self {
+            ArtifactOutput::Nothing => Ok(()),
             ArtifactOutput::MinimalCombined => {
                 fs::create_dir_all(&layout.artifacts)?;
 
@@ -254,6 +257,9 @@ impl Default for ArtifactOutput {
 impl fmt::Debug for ArtifactOutput {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            ArtifactOutput::Nothing => {
+                write!(f, "Nothing")
+            }
             ArtifactOutput::MinimalCombined => {
                 write!(f, "MinimalCombined")
             }

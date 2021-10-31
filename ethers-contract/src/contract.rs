@@ -67,7 +67,6 @@ use std::{fmt::Debug, marker::PhantomData, sync::Arc};
 /// ```no_run
 /// use ethers_core::{
 ///     abi::Abi,
-///     utils::Solc,
 ///     types::{Address, H256},
 /// };
 /// use ethers_contract::Contract;
