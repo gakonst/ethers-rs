@@ -62,6 +62,9 @@ pub(crate) mod utils;
 /// );
 /// ```
 ///
+/// Aliases for overloaded functions with no aliases provided in the `method` section are derived
+/// automatically.
+///
 /// `abigen!` supports multiple abigen definitions separated by a semicolon `;`
 /// This is useful if the contracts use ABIEncoderV2 structs. In which case
 /// `abigen!` bundles all type duplicates so that all rust contracts also use

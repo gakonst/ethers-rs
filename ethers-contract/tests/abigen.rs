@@ -191,6 +191,8 @@ fn can_handle_overloaded_functions() {
         getValue() (uint256)
         getValue(uint256 otherValue) (uint256)
         getValue(uint256 otherValue, address addr) (uint256)
+        setValue(string, string)
+        setValue(string)
     ]"#
     );
 
@@ -238,6 +240,30 @@ fn can_handle_overloaded_functions() {
     let decoded_enum = SimpleContractCalls::decode(encoded_call.as_ref()).unwrap();
     assert_eq!(contract_call, decoded_enum);
     assert_eq!(encoded_call, contract_call.encode().into());
+
+    let call = SetValue0Call("message".to_string());
+    let _contract_call = SimpleContractCalls::SetValue0(call);
+    let call = SetValue1Call("message".to_string(), "message".to_string());
+    let _contract_call = SimpleContractCalls::SetValue1(call);
+}
+
+#[test]
+fn can_handle_even_more_overloaded_functions() {
+    abigen!(
+        ConsoleLog,
+        r#"[
+            log()
+            log(string, string)
+            log(string)
+    ]"#
+    );
+
+    let _call = Log0Call;
+    let _contract_call = ConsoleLogCalls::Log0;
+    let call = Log1Call("message".to_string());
+    let _contract_call = ConsoleLogCalls::Log1(call);
+    let call = Log2Call("message".to_string(), "message".to_string());
+    let _contract_call = ConsoleLogCalls::Log2(call);
 }
 
 #[tokio::test]

@@ -282,15 +282,27 @@ impl Context {
             // sort functions by number of inputs asc
             let mut functions = functions.iter().collect::<Vec<_>>();
             functions.sort_by(|f1, f2| f1.inputs.len().cmp(&f2.inputs.len()));
-            let prev = functions[0];
-            for duplicate in functions.into_iter().skip(1) {
+            let first = functions[0];
+            // assuming here that if there are overloaded functions with nameless params like `log;,
+            // log(string); log(string, string)` `log()` should also be aliased with its
+            // index to `log0`
+            let mut add_alias_for_first_with_idx = false;
+            for (idx, duplicate) in functions.into_iter().enumerate().skip(1) {
                 // attempt to find diff in the input arguments
-                let diff = duplicate
-                    .inputs
-                    .iter()
-                    .filter(|i1| prev.inputs.iter().all(|i2| *i1 != i2))
-                    .collect::<Vec<_>>();
-
+                let mut diff = Vec::new();
+                let mut same_params = true;
+                for (idx, i1) in duplicate.inputs.iter().enumerate() {
+                    if first.inputs.iter().all(|i2| i1 != i2) {
+                        diff.push(i1);
+                        same_params = false;
+                    } else {
+                        // check for cases like `log(string); log(string, string)` by keep track of
+                        // same order
+                        if same_params && idx + 1 > first.inputs.len() {
+                            diff.push(i1);
+                        }
+                    }
+                }
                 let alias = match diff.len() {
                     0 => {
                         // this should not happen since functions with same name and input are
@@ -302,29 +314,45 @@ impl Context {
                     }
                     1 => {
                         // single additional input params
-                        format!(
-                            "{}_with_{}",
-                            duplicate.name.to_snake_case(),
-                            diff[0].name.to_snake_case()
-                        )
+                        if diff[0].name.is_empty() {
+                            add_alias_for_first_with_idx = true;
+                            format!("{}1", duplicate.name.to_snake_case())
+                        } else {
+                            format!(
+                                "{}_with_{}",
+                                duplicate.name.to_snake_case(),
+                                diff[0].name.to_snake_case()
+                            )
+                        }
                     }
                     _ => {
-                        // 1 + n additional input params
-                        let and = diff
-                            .iter()
-                            .skip(1)
-                            .map(|i| i.name.to_snake_case())
-                            .collect::<Vec<_>>()
-                            .join("_and_");
-                        format!(
-                            "{}_with_{}_and_{}",
-                            duplicate.name.to_snake_case(),
-                            diff[0].name.to_snake_case(),
-                            and
-                        )
+                        if diff.iter().any(|d| d.name.is_empty()) {
+                            add_alias_for_first_with_idx = true;
+                            format!("{}{}", duplicate.name.to_snake_case(), idx)
+                        } else {
+                            // 1 + n additional input params
+                            let and = diff
+                                .iter()
+                                .skip(1)
+                                .map(|i| i.name.to_snake_case())
+                                .collect::<Vec<_>>()
+                                .join("_and_");
+                            format!(
+                                "{}_with_{}_and_{}",
+                                duplicate.name.to_snake_case(),
+                                diff[0].name.to_snake_case(),
+                                and
+                            )
+                        }
                     }
                 };
                 aliases.insert(duplicate.abi_signature(), util::safe_ident(&alias));
+            }
+
+            if add_alias_for_first_with_idx {
+                // insert an alias for the root duplicated call
+                let prev_alias = format!("{}0", first.name.to_snake_case());
+                aliases.insert(first.abi_signature(), util::safe_ident(&prev_alias));
             }
         }
         Ok(aliases)
