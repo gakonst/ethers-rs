@@ -4,9 +4,9 @@ use ethers_contract::{abigen, EthEvent};
 use ethers_core::{
     abi::{AbiDecode, AbiEncode, Address, Tokenizable},
     types::{transaction::eip2718::TypedTransaction, Eip1559TransactionRequest, U256},
-    utils::Solc,
 };
 use ethers_providers::Provider;
+use ethers_solc::Solc;
 use std::{convert::TryFrom, sync::Arc};
 
 #[test]
@@ -287,11 +287,13 @@ async fn can_handle_underscore_functions() {
         .interval(std::time::Duration::from_millis(10));
     let client = Arc::new(provider);
 
-    let compiled = Solc::new("./tests/solidity-contracts/SimpleStorage.sol").build().unwrap();
-    let compiled = compiled.get("SimpleStorage").unwrap();
+    let contract = "SimpleStorage";
+    let path = "./tests/solidity-contracts/SimpleStorage.sol";
+    let compiled = Solc::default().compile_source(path).unwrap();
+    let compiled = compiled.get(path, contract).unwrap();
     let factory = ethers_contract::ContractFactory::new(
-        compiled.abi.clone(),
-        compiled.bytecode.clone(),
+        compiled.abi.unwrap().clone(),
+        compiled.bin.unwrap().clone(),
         client.clone(),
     );
     let addr = factory.deploy("hi".to_string()).unwrap().legacy().send().await.unwrap().address();

@@ -1,9 +1,7 @@
 use anyhow::Result;
-use ethers::{
-    prelude::*,
-    utils::{compile_and_launch_ganache, Ganache, Solc},
-};
-use std::{convert::TryFrom, sync::Arc, time::Duration};
+use ethers::{prelude::*, utils::Ganache};
+use ethers_solc::{ArtifactOutput, Project, ProjectCompileOutput, ProjectPathsConfig};
+use std::{convert::TryFrom, path::PathBuf, sync::Arc, time::Duration};
 
 // Generate the type-safe contract bindings by providing the ABI
 // definition in human readable format
@@ -19,13 +17,30 @@ abigen!(
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    // 1. compile the contract (note this requires that you are inside the `examples` directory) and
-    // launch ganache
-    let (compiled, ganache) =
-        compile_and_launch_ganache(Solc::new("**/contract.sol"), Ganache::new()).await?;
-    let contract = compiled.get("SimpleStorage").expect("could not find contract");
+    // the directory we use is root-dir/examples
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("examples");
+    // we use `root` for both the project root and for where to search for contracts since
+    // everything is in the same directory
+    let paths = ProjectPathsConfig::builder().root(&root).sources(&root).build().unwrap();
+    // get the solc project instance using the paths above
+    let solc = Project::builder()
+        .paths(paths)
+        .ephemeral()
+        .artifacts(ArtifactOutput::Nothing)
+        .build()
+        .unwrap();
+    // compile the project and get the artifacts
+    let compiled = solc.compile().unwrap();
+    let compiled = match compiled {
+        ProjectCompileOutput::Compiled((output, _)) => output,
+        _ => panic!("expected compilation artifacts"),
+    };
+    let path = root.join("contract.sol");
+    let path = path.to_str();
+    let contract = compiled.get(path.unwrap(), "SimpleStorage").expect("could not find contract");
 
-    // 2. instantiate our wallet
+    // 2. instantiate our wallet & ganache
+    let ganache = Ganache::new().spawn();
     let wallet: LocalWallet = ganache.keys()[0].clone().into();
 
     // 3. connect to the network
@@ -37,8 +52,11 @@ async fn main() -> Result<()> {
     let client = Arc::new(client);
 
     // 5. create a factory which will be used to deploy instances of the contract
-    let factory =
-        ContractFactory::new(contract.abi.clone(), contract.bytecode.clone(), client.clone());
+    let factory = ContractFactory::new(
+        contract.abi.unwrap().clone(),
+        contract.bin.unwrap().clone(),
+        client.clone(),
+    );
 
     // 6. deploy it with the constructor arguments
     let contract = factory.deploy("initial value".to_string())?.legacy().send().await?;

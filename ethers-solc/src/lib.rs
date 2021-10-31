@@ -8,7 +8,7 @@ use std::collections::btree_map::Entry;
 pub mod cache;
 
 mod compile;
-pub use compile::Solc;
+pub use compile::*;
 
 mod config;
 pub use config::{ArtifactOutput, ProjectPathsConfig, SolcConfig};
@@ -231,7 +231,7 @@ impl Default for ProjectBuilder {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ProjectCompileOutput<'a> {
     /// Nothing to compile because unchanged sources
     Unchanged,
