@@ -10,7 +10,6 @@ use std::{
     process::{Command, Output, Stdio},
     str::FromStr,
 };
-use walkdir::WalkDir;
 
 /// The name of the `solc` binary on the system
 pub const SOLC: &str = "solc";
@@ -72,9 +71,10 @@ impl Solc {
     /// # Ok(())
     /// # }
     /// ```
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn find_svm_installed_version(version: impl AsRef<str>) -> Result<Option<Self>> {
         let version = version.as_ref();
-        let solc = WalkDir::new(
+        let solc = walkdir::WalkDir::new(
             Self::svm_home().ok_or_else(|| SolcError::solc("svm home dir not found"))?,
         )
         .max_depth(1)
