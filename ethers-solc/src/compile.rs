@@ -92,18 +92,18 @@ impl Solc {
     /// ```no_run
     /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
     ///  use ethers_solc::{Solc, ISTANBUL_SOLC};
-    ///  Solc::async_install(&ISTANBUL_SOLC).await;
+    ///  Solc::install(&ISTANBUL_SOLC).await;
     ///  let solc = Solc::find_svm_installed_version(&ISTANBUL_SOLC.to_string());
     /// # Ok(())
     /// # }
     /// ```
-    #[cfg(feature = "svm-rs")]
+    #[cfg(feature = "svm")]
     pub async fn install(version: &Version) -> std::result::Result<(), svm::SolcVmError> {
         svm::install(version).await
     }
 
     /// Blocking version of `Self::install`
-    #[cfg(all(feature = "svm-rs", feature = "async"))]
+    #[cfg(all(feature = "svm", feature = "async"))]
     pub fn blocking_install(version: &Version) -> std::result::Result<(), svm::SolcVmError> {
         tokio::runtime::Runtime::new().unwrap().block_on(svm::install(version))?;
         Ok(())
