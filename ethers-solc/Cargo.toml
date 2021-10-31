@@ -36,3 +36,4 @@ tempdir = "0.3.7"
 [features]
 async = ["tokio", "futures-util"]
 svm-rs = ["svm"]
+full = ["async", "svm-rs"]
