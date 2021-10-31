@@ -56,6 +56,7 @@ impl Solc {
     /// Returns the directory in which [svm](https://github.com/roynalnaruto/svm-rs) stores all versions
     ///
     /// This will be `~/.svm` on unix
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn svm_home() -> Option<PathBuf> {
         home::home_dir().map(|dir| dir.join(".svm"))
     }
