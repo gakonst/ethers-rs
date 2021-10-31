@@ -52,6 +52,63 @@ impl Solc {
         Solc(path.into())
     }
 
+    /// Returns the directory in which [svm](https://github.com/roynalnaruto/svm-rs) stores all versions
+    ///
+    /// This will be `~/.svm` on unix
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn svm_home() -> Option<PathBuf> {
+        home::home_dir().map(|dir| dir.join(".svm"))
+    }
+
+    /// Returns the path for a [svm](https://github.com/roynalnaruto/svm-rs) installed version.
+    ///
+    /// # Example
+    /// ```no_run
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    ///  use ethers_solc::Solc;
+    /// let solc = Solc::find_svm_installed_version("0.8.9").unwrap();
+    /// assert_eq!(solc, Some(Solc::new("~/.svm/0.8.9/solc-0.8.9")));
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn find_svm_installed_version(version: impl AsRef<str>) -> Result<Option<Self>> {
+        let version = version.as_ref();
+        let solc = walkdir::WalkDir::new(
+            Self::svm_home().ok_or_else(|| SolcError::solc("svm home dir not found"))?,
+        )
+        .max_depth(1)
+        .into_iter()
+        .filter_map(std::result::Result::ok)
+        .filter(|e| e.file_type().is_dir())
+        .find(|e| e.path().ends_with(version))
+        .map(|e| e.path().join(format!("solc-{}", version)))
+        .map(Solc::new);
+        Ok(solc)
+    }
+
+    /// Installs the provided version of Solc in the machine under the svm dir
+    /// # Example
+    /// ```no_run
+    /// # async fn run() -> Result<(), Box<dyn std::error::Error>> {
+    ///  use ethers_solc::{Solc, ISTANBUL_SOLC};
+    ///  Solc::install(&ISTANBUL_SOLC).await.unwrap();
+    ///  let solc = Solc::find_svm_installed_version(&ISTANBUL_SOLC.to_string());
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[cfg(feature = "svm")]
+    pub async fn install(version: &Version) -> std::result::Result<(), svm::SolcVmError> {
+        svm::install(version).await
+    }
+
+    /// Blocking version of `Self::install`
+    #[cfg(all(feature = "svm", feature = "async"))]
+    pub fn blocking_install(version: &Version) -> std::result::Result<(), svm::SolcVmError> {
+        tokio::runtime::Runtime::new().unwrap().block_on(svm::install(version))?;
+        Ok(())
+    }
+
     /// Convenience function for compiling all sources under the given path
     pub fn compile_source(&self, path: impl AsRef<Path>) -> Result<CompilerOutput> {
         self.compile(&CompilerInput::new(path)?)
@@ -216,6 +273,12 @@ mod tests {
     #[test]
     fn can_parse_version_metadata() {
         let _version = Version::from_str("0.6.6+commit.6c089d02.Linux.gcc").unwrap();
+    }
+
+    #[test]
+    #[ignore]
+    fn can_find_solc() {
+        let _solc = Solc::find_svm_installed_version("0.8.9").unwrap();
     }
 
     #[cfg(feature = "async")]
