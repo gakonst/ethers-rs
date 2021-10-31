@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{btree_map::Entry, BTreeMap};
 
 use anyhow::{Context as _, Result};
 use inflector::Inflector;
@@ -232,7 +232,7 @@ impl Context {
 
     /// Expands a single function with the given alias
     fn expand_function(&self, function: &Function, alias: Option<Ident>) -> Result<TokenStream> {
-        let name = alias.unwrap_or_else(|| util::safe_ident(&function.name.to_snake_case()));
+        let name = expand_function_name(function, alias.as_ref());
         let selector = expand_selector(function.selector());
 
         // TODO use structs
@@ -278,7 +278,6 @@ impl Context {
                 // no conflicts
                 continue
             }
-
             // sort functions by number of inputs asc
             let mut functions = functions.iter().collect::<Vec<_>>();
             functions.sort_by(|f1, f2| f1.inputs.len().cmp(&f2.inputs.len()));
@@ -305,7 +304,7 @@ impl Context {
                 }
                 let alias = match diff.len() {
                     0 => {
-                        // this should not happen since functions with same name and input are
+                        // this should not happen since functions with same name and inputs are
                         // illegal
                         anyhow::bail!(
                             "Function with same name and parameter types defined twice: {}",
@@ -355,6 +354,25 @@ impl Context {
                 aliases.insert(first.abi_signature(), util::safe_ident(&prev_alias));
             }
         }
+
+        // we have to handle the edge cases with underscore prefix and suffix that would get
+        // stripped by Inflector::to_snake_case/pascalCase if there is another function that
+        // would collide we manually add an alias for it eg. abi = ["_a(), a(), a_(),
+        // _a_()"] will generate identical rust functions
+        for (name, functions) in self.abi.functions.iter() {
+            if name.starts_with('_') || name.ends_with('_') {
+                let ident = name.trim_matches('_').trim_end_matches('_');
+                // check for possible collisions after Inflector would remove the underscores
+                if self.abi.functions.contains_key(ident) {
+                    for function in functions {
+                        if let Entry::Vacant(entry) = aliases.entry(function.abi_signature()) {
+                            // use the full name as alias
+                            entry.insert(util::ident(name.as_str()));
+                        }
+                    }
+                }
+            }
+        }
         Ok(aliases)
     }
 }
@@ -378,10 +396,27 @@ fn expand_selector(selector: Selector) -> TokenStream {
     quote! { [#( #bytes ),*] }
 }
 
+fn expand_function_name(function: &Function, alias: Option<&Ident>) -> Ident {
+    if let Some(alias) = alias {
+        // snake_case strips leading and trailing underscores so we simply add them back if the
+        // alias starts/ends with underscores
+        let alias = alias.to_string();
+        let ident = alias.to_snake_case();
+        util::ident(&util::preserve_underscore_delim(&ident, &alias))
+    } else {
+        util::safe_ident(&function.name.to_snake_case())
+    }
+}
+
 /// Expands to the name of the call struct
 fn expand_call_struct_name(function: &Function, alias: Option<&Ident>) -> Ident {
-    let name = if let Some(id) = alias {
-        format!("{}Call", id.to_string().to_pascal_case())
+    let name = if let Some(alias) = alias {
+        // pascal_case strips leading and trailing underscores so we simply add them back if the
+        // alias starts/ends with underscores
+        let alias = alias.to_string();
+        let ident = alias.to_pascal_case();
+        let alias = util::preserve_underscore_delim(&ident, &alias);
+        format!("{}Call", alias)
     } else {
         format!("{}Call", function.name.to_pascal_case())
     };
@@ -390,8 +425,10 @@ fn expand_call_struct_name(function: &Function, alias: Option<&Ident>) -> Ident 
 
 /// Expands to the name of the call struct
 fn expand_call_struct_variant_name(function: &Function, alias: Option<&Ident>) -> Ident {
-    let name = if let Some(id) = alias {
-        id.to_string().to_pascal_case()
+    let name = if let Some(alias) = alias {
+        let alias = alias.to_string();
+        let ident = alias.to_pascal_case();
+        util::preserve_underscore_delim(&ident, &alias)
     } else {
         function.name.to_pascal_case()
     };

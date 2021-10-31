@@ -94,6 +94,17 @@ pub fn safe_ident(name: &str) -> Ident {
     syn::parse_str::<SynIdent>(name).unwrap_or_else(|_| ident(&format!("{}_", name)))
 }
 
+/// Reapplies leading and trailing underscore chars to the ident
+/// Example `ident = "pascalCase"; alias = __pascalcase__` -> `__pascalCase__`
+pub fn preserve_underscore_delim(ident: &str, alias: &str) -> String {
+    alias
+        .chars()
+        .take_while(|c| *c == '_')
+        .chain(ident.chars())
+        .chain(alias.chars().rev().take_while(|c| *c == '_'))
+        .collect()
+}
+
 /// Expands a positional identifier string that may be empty.
 ///
 /// Note that this expands the parameter name with `safe_ident`, meaning that
@@ -159,16 +170,18 @@ mod tests {
 
     #[test]
     fn parse_address_missing_prefix() {
-        if parse_address("0000000000000000000000000000000000000000").is_ok() {
-            panic!("parsing address not starting with 0x should fail");
-        }
+        assert!(
+            !parse_address("0000000000000000000000000000000000000000").is_ok(),
+            "parsing address not starting with 0x should fail"
+        );
     }
 
     #[test]
     fn parse_address_address_too_short() {
-        if parse_address("0x00000000000000").is_ok() {
-            panic!("parsing address not starting with 0x should fail");
-        }
+        assert!(
+            !parse_address("0x00000000000000").is_ok(),
+            "parsing address not starting with 0x should fail"
+        );
     }
 
     #[test]
