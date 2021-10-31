@@ -319,3 +319,21 @@ async fn can_handle_underscore_functions() {
     assert_eq!(res, res4);
     assert_eq!(res, res5);
 }
+
+#[test]
+fn can_handle_unique_underscore_functions() {
+    abigen!(
+        ConsoleLog,
+        r#"[
+            log(string, string)
+            _log(string)
+    ]"#
+    );
+    //
+    // let _call = Log0Call;
+    // let _contract_call = ConsoleLogCalls::Log0;
+    // let call = Log1Call("message".to_string());
+    // let _contract_call = ConsoleLogCalls::Log1(call);
+    // let call = Log2Call("message".to_string(), "message".to_string());
+    // let _contract_call = ConsoleLogCalls::Log2(call);
+}

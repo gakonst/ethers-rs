@@ -232,7 +232,7 @@ impl Context {
 
     /// Expands a single function with the given alias
     fn expand_function(&self, function: &Function, alias: Option<Ident>) -> Result<TokenStream> {
-        let name = alias.unwrap_or_else(|| util::safe_ident(&function.name.to_snake_case()));
+        let name = alias.unwrap_or_else(|| expand_function_name(function));
         let selector = expand_selector(function.selector());
 
         // TODO use structs
@@ -274,11 +274,11 @@ impl Context {
         let mut aliases = self.method_aliases.clone();
         // find all duplicates, where no aliases where provided
         for functions in self.abi.functions.values() {
-            if functions.iter().filter(|f| !aliases.contains_key(&f.abi_signature())).count() <= 1 {
-                // no conflicts
+            if functions.iter().filter(|f| !aliases.contains_key(&f.abi_signature())).count()<= 1
+            {
+                // user alias
                 continue
             }
-
             // sort functions by number of inputs asc
             let mut functions = functions.iter().collect::<Vec<_>>();
             functions.sort_by(|f1, f2| f1.inputs.len().cmp(&f2.inputs.len()));
@@ -355,6 +355,14 @@ impl Context {
                 aliases.insert(first.abi_signature(), util::safe_ident(&prev_alias));
             }
         }
+
+        // we have to handle the edge cases with underscore prefix and suffix that would get stripped by Inflector::to_snake_case
+        // if there is another function that would collide we manually add an alias for it
+        // eg. abi = ["_a(), a(), a_(), _a_()"] will generate identical rust functions
+        // let ident = expand_function_name(function)
+
+        // TODO check functions that start/end with _ and verify that there's no collision, otherwise manually edit the inflector
+
         Ok(aliases)
     }
 }
@@ -376,6 +384,10 @@ fn expand_fn_outputs(outputs: &[Param]) -> Result<TokenStream> {
 fn expand_selector(selector: Selector) -> TokenStream {
     let bytes = selector.iter().copied().map(Literal::u8_unsuffixed);
     quote! { [#( #bytes ),*] }
+}
+
+fn expand_function_name(function: &Function) -> Ident {
+    util::safe_ident(&function.name.to_snake_case())
 }
 
 /// Expands to the name of the call struct
