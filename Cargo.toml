@@ -20,7 +20,8 @@ members = [
     "ethers-core",
     "ethers-middleware",
     "ethers-etherscan",
-    "ethers-solc"
+    "ethers-solc",
+    "ethers-cli"
 ]
 
 default-members = [
@@ -30,7 +31,8 @@ default-members = [
     "ethers-core",
     "ethers-middleware",
     "ethers-etherscan",
-    "ethers-solc"
+    "ethers-solc",
+    "ethers-cli"
 ]
 
 exclude = [
@@ -81,6 +83,7 @@ ethers-providers = { version = "^0.5.0", default-features = false, path = "./eth
 ethers-signers = { version = "^0.5.0", default-features = false, path = "./ethers-signers" }
 ethers-middleware = { version = "^0.5.0", default-features = false, path = "./ethers-middleware" }
 ethers-solc = { version = "^0.1.0", default-features = false, path = "./ethers-solc" }
+ethers-cli = { version = "^0.1.0", default-features = false, path = "./ethers-cli" }
 
 [dev-dependencies]
 ethers-contract = { version = "^0.5.0", default-features = false, path = "./ethers-contract", features = ["abigen", "eip712"] }
