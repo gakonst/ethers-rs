@@ -612,7 +612,9 @@ pub struct DeployedBytecode {
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct GasEstimates {
     pub creation: Creation,
+    #[serde(default)]
     pub external: BTreeMap<String, String>,
+    #[serde(default)]
     pub internal: BTreeMap<String, String>,
 }
 
