@@ -112,8 +112,9 @@ impl Solc {
         Ok(solc)
     }
 
-    #[cfg(all(feature = "svm", feature = "async"))]
-    fn find_matching_installation(
+    /// Assuming the `versions` array is sorted, it returns the first element which satisfies
+    /// the provided [`VersionReq`]
+    pub fn find_matching_installation(
         versions: &[Version],
         required_version: &VersionReq,
     ) -> Option<Version> {
@@ -366,12 +367,6 @@ mod tests {
         let _version = Version::from_str("0.6.6+commit.6c089d02.Linux.gcc").unwrap();
     }
 
-    #[test]
-    #[ignore]
-    fn can_find_solc() {
-        let _solc = Solc::find_svm_installed_version("0.8.9").unwrap();
-    }
-
     #[cfg(feature = "async")]
     #[tokio::test]
     async fn async_solc_version_works() {
@@ -441,6 +436,55 @@ mod tests {
             let res = Solc::detect_version(&source).unwrap();
             assert_eq!(res, Version::from_str(expected).unwrap());
         }
+    }
+
+    #[test]
+    #[cfg(feature = "full")]
+    fn test_find_installed_version_path() {
+        // this test does not take the lock by default, so we need to manually
+        // add it here.
+        let _lock = LOCK.lock();
+        let ver = "0.8.6";
+        let version = Version::from_str(ver).unwrap();
+        if !svm::installed_versions().unwrap().contains(&version) {
+            Solc::blocking_install(&version).unwrap();
+        }
+        let res = Solc::find_svm_installed_version(&version.to_string()).unwrap().unwrap();
+        let expected = svm::SVM_HOME.join(ver).join(format!("solc-{}", ver));
+        assert_eq!(res.0, expected);
+    }
+
+    #[test]
+    fn does_not_find_not_installed_version() {
+        let ver = "1.1.1";
+        let version = Version::from_str(ver).unwrap();
+        let res = Solc::find_svm_installed_version(&version.to_string()).unwrap();
+        assert!(res.is_none());
+    }
+
+    #[test]
+    fn test_find_latest_matching_installation() {
+        let versions = ["0.4.24", "0.5.1", "0.5.2"]
+            .iter()
+            .map(|version| Version::from_str(version).unwrap())
+            .collect::<Vec<_>>();
+
+        let required = VersionReq::from_str(">=0.4.24").unwrap();
+
+        let got = Solc::find_matching_installation(&versions, &required).unwrap();
+        assert_eq!(got, versions[2]);
+    }
+
+    #[test]
+    fn test_no_matching_installation() {
+        let versions = ["0.4.24", "0.5.1", "0.5.2"]
+            .iter()
+            .map(|version| Version::from_str(version).unwrap())
+            .collect::<Vec<_>>();
+
+        let required = VersionReq::from_str(">=0.6.0").unwrap();
+        let got = Solc::find_matching_installation(&versions, &required);
+        assert!(got.is_none());
     }
 
     ///// helpers
