@@ -1,8 +1,9 @@
 use crate::{
+    artifacts::Source,
     error::{Result, SolcError},
     CompilerInput, CompilerOutput,
 };
-use semver::Version;
+use semver::{Version, VersionReq};
 use serde::{de::DeserializeOwned, Serialize};
 use std::{
     io::BufRead,
@@ -85,6 +86,25 @@ impl Solc {
         .map(|e| e.path().join(format!("solc-{}", version)))
         .map(Solc::new);
         Ok(solc)
+    }
+
+    /// Parses the given source looking for the `pragma` definition and
+    /// returns the corresponding SemVer version requirement.
+    fn version_req(source: &Source) -> Result<VersionReq> {
+        let version = crate::utils::find_version_pragma(&source.content)
+            .ok_or(SolcError::PragmaNotFound)?
+            .replace(" ", ",");
+
+        // Somehow, Solidity semver without an operator is considered to be "exact",
+        // but lack of operator automatically marks the operator as Caret, so we need
+        // to manually patch it? :shrug:
+        let exact = !matches!(&version[0..1], "*" | "^" | "=" | ">" | "<" | "~");
+        let mut version = VersionReq::parse(&version)?;
+        if exact {
+            version.comparators[0].op = semver::Op::Exact;
+        }
+
+        Ok(version)
     }
 
     /// Installs the provided version of Solc in the machine under the svm dir
@@ -172,7 +192,6 @@ impl Solc {
         &self,
         path: impl AsRef<Path>,
     ) -> Result<CompilerOutput> {
-        use crate::artifacts::Source;
         self.async_compile(&CompilerInput::with_sources(Source::async_read_all_from(path).await?))
             .await
     }
@@ -304,5 +323,29 @@ mod tests {
         let out = solc().async_compile(&input).await.unwrap();
         let other = solc().async_compile(&serde_json::json!(input)).await.unwrap();
         assert_eq!(out, other);
+    }
+
+    #[test]
+    fn test_version_req() {
+        let versions = ["=0.1.2", "^0.5.6", ">=0.7.1", ">0.8.0"];
+        let sources = versions.iter().map(|version| source(version));
+
+        sources.zip(versions).for_each(|(source, version)| {
+            let version_req = Solc::version_req(&source).unwrap();
+            assert_eq!(version_req, VersionReq::from_str(version).unwrap());
+        });
+
+        // Solidity defines version ranges with a space, whereas the semver package
+        // requires them to be separated with a comma
+        let version_range = ">=0.8.0 <0.9.0";
+        let source = source(version_range);
+        let version_req = Solc::version_req(&source).unwrap();
+        assert_eq!(version_req, VersionReq::from_str(">=0.8.0,<0.9.0").unwrap());
+    }
+
+    ///// helpers
+
+    fn source(version: &str) -> Source {
+        Source { content: format!("pragma solidity {};\n", version) }
     }
 }
