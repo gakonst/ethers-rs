@@ -120,8 +120,8 @@ impl Project {
         // replace absolute path with source name to make solc happy
         let sources = apply_mappings(sources, path_source_name);
 
-        let input = CompilerInput::with_sources(sources);
-        let output = self.solc.compile(&input)?;
+        let input = CompilerInput::with_sources(sources).normalize_evm_version(&solc.version()?);
+        let output = solc.compile(&input)?;
         if output.has_error() {
             return Ok(ProjectCompileOutput::Compiled((output, &self.ignored_error_codes)))
         }

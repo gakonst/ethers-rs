@@ -56,7 +56,7 @@ pub static RELEASES: Lazy<Vec<Version>> = Lazy::new(|| {
 /// Abstraction over `solc` command line utility
 ///
 /// Supports sync and async functions.
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Ord)]
 pub struct Solc(pub PathBuf);
 
 impl Default for Solc {
