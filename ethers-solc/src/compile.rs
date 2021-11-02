@@ -35,6 +35,7 @@ pub const BERLIN_SOLC: Version = Version::new(0, 8, 5);
 /// https://blog.soliditylang.org/2021/08/11/solidity-0.8.7-release-announcement/
 pub const LONDON_SOLC: Version = Version::new(0, 8, 7);
 
+#[cfg(all(feature = "svm", feature = "async"))]
 use once_cell::sync::Lazy;
 
 #[cfg(all(feature = "svm", feature = "async"))]
@@ -106,6 +107,7 @@ impl Solc {
         Ok(solc)
     }
 
+    #[cfg(all(feature = "svm", feature = "async"))]
     fn find_matching_installation(
         versions: &[Version],
         required_version: &VersionReq,
@@ -150,7 +152,7 @@ impl Solc {
 
     /// Parses the given source looking for the `pragma` definition and
     /// returns the corresponding SemVer version requirement.
-    fn version_req(source: &Source) -> Result<VersionReq> {
+    pub fn version_req(source: &Source) -> Result<VersionReq> {
         let version = crate::utils::find_version_pragma(&source.content)
             .ok_or(SolcError::PragmaNotFound)?
             .replace(" ", ",");

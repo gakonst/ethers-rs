@@ -301,11 +301,12 @@ impl<'a> fmt::Display for ProjectCompileOutput<'a> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
 
     #[test]
     #[cfg(all(feature = "svm", feature = "async"))]
     fn test_build_all_versions() {
+        use super::*;
+
         let paths = ProjectPathsConfig::builder()
             .root("./test-data/test-contract-versions")
             .sources("./test-data/test-contract-versions")
