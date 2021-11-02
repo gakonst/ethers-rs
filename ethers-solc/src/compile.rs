@@ -35,6 +35,24 @@ pub const BERLIN_SOLC: Version = Version::new(0, 8, 5);
 /// https://blog.soliditylang.org/2021/08/11/solidity-0.8.7-release-announcement/
 pub const LONDON_SOLC: Version = Version::new(0, 8, 7);
 
+use once_cell::sync::Lazy;
+
+#[cfg(all(feature = "svm", feature = "async"))]
+/// A list of upstream Solc releases, used to check which version
+/// we should download.
+pub static RELEASES: Lazy<Vec<Version>> = Lazy::new(|| {
+    // Try to download the releases, if it fails default to empty
+    match tokio::runtime::Runtime::new()
+        .expect("could not create tokio rt to get remote releases")
+        // TODO: Can we make this future timeout at a small time amount so that
+        // we do not degrade startup performance if the consumer has a weak network?
+        .block_on(svm::all_versions())
+    {
+        Ok(inner) => inner,
+        Err(_) => Vec::new(),
+    }
+});
+
 /// Abstraction over `solc` command line utility
 ///
 /// Supports sync and async functions.
@@ -86,6 +104,48 @@ impl Solc {
         .map(|e| e.path().join(format!("solc-{}", version)))
         .map(Solc::new);
         Ok(solc)
+    }
+
+    fn find_matching_installation(
+        versions: &[Version],
+        required_version: &VersionReq,
+    ) -> Option<Version> {
+        // iterate in reverse to find the last match
+        versions.iter().rev().find(|version| required_version.matches(version)).cloned()
+    }
+
+    /// Given a Solidity source, it detects the latest compiler version which can be used
+    /// to build it, and returns it.
+    ///
+    /// If the required compiler version is not installed, it also proceeds to install it.
+    #[cfg(all(feature = "svm", feature = "async"))]
+    pub fn detect_version(source: &Source) -> Result<Version> {
+        // detects the required solc version
+        let sol_version = Self::version_req(source)?;
+
+        // load the local / remote versions
+        let versions = svm::installed_versions().unwrap_or_default();
+        let local_versions = Self::find_matching_installation(&versions, &sol_version);
+        let remote_versions = Self::find_matching_installation(&RELEASES, &sol_version);
+
+        // if there's a better upstream version than the one we have, install it
+        Ok(match (local_versions, remote_versions) {
+            (Some(local), None) => local,
+            (Some(local), Some(remote)) => {
+                if remote > local {
+                    Self::blocking_install(&remote)?;
+                    remote
+                } else {
+                    local
+                }
+            }
+            (None, Some(version)) => {
+                Self::blocking_install(&version)?;
+                version
+            }
+            // do nothing otherwise
+            _ => return Err(SolcError::VersionNotFound),
+        })
     }
 
     /// Parses the given source looking for the `pragma` definition and
@@ -341,6 +401,34 @@ mod tests {
         let source = source(version_range);
         let version_req = Solc::version_req(&source).unwrap();
         assert_eq!(version_req, VersionReq::from_str(">=0.8.0,<0.9.0").unwrap());
+    }
+
+    #[test]
+    // This test might be a bit hard to maintain
+    #[cfg(all(feature = "svm", feature = "async"))]
+    fn test_detect_version() {
+        for (pragma, expected) in [
+            // pinned
+            ("=0.4.14", "0.4.14"),
+            // pinned too
+            ("0.4.14", "0.4.14"),
+            // The latest patch is 0.4.26
+            ("^0.4.14", "0.4.26"),
+            // latest version above 0.5.0 -> we have to
+            // update this test whenever there's a new sol
+            // version. that's ok! good reminder to check the
+            // patch notes.
+            (">=0.5.0", "0.8.9"),
+            // range
+            (">=0.4.0 <0.5.0", "0.4.26"),
+        ]
+        .iter()
+        {
+            // println!("Checking {}", pragma);
+            let source = source(pragma);
+            let res = Solc::detect_version(&source).unwrap();
+            assert_eq!(res, Version::from_str(expected).unwrap());
+        }
     }
 
     ///// helpers
