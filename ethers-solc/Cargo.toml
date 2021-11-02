@@ -37,6 +37,5 @@ tokio = { version = "1.12.0", features = ["full"] }
 tempdir = "0.3.7"
 
 [features]
-default = ["full"]
 async = ["tokio", "futures-util"]
 full = ["async", "svm"]
