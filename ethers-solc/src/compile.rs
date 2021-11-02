@@ -35,8 +35,13 @@ pub const BERLIN_SOLC: Version = Version::new(0, 8, 5);
 /// https://blog.soliditylang.org/2021/08/11/solidity-0.8.7-release-announcement/
 pub const LONDON_SOLC: Version = Version::new(0, 8, 7);
 
-#[cfg(all(feature = "svm", feature = "async"))]
+#[cfg(any(test, all(feature = "svm", feature = "async")))]
 use once_cell::sync::Lazy;
+
+#[cfg(any(test, feature = "tests"))]
+use std::sync::Mutex;
+#[cfg(any(test, feature = "tests"))]
+static LOCK: Lazy<Mutex<()>> = Lazy::new(|| Mutex::new(()));
 
 #[cfg(all(feature = "svm", feature = "async"))]
 /// A list of upstream Solc releases, used to check which version
@@ -124,6 +129,11 @@ impl Solc {
     pub fn detect_version(source: &Source) -> Result<Version> {
         // detects the required solc version
         let sol_version = Self::version_req(source)?;
+
+        #[cfg(any(test, feature = "tests"))]
+        // take the lock in tests, we use this to enforce that
+        // a test does not run while a compiler version is being installed
+        let _lock = LOCK.lock();
 
         // load the local / remote versions
         let versions = svm::installed_versions().unwrap_or_default();
