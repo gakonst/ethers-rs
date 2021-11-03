@@ -8,6 +8,10 @@ pub enum SolcError {
     /// Internal solc error
     #[error("Solc Error: {0}")]
     SolcError(String),
+    #[error("missing pragma from solidity file")]
+    PragmaNotFound,
+    #[error("could not find solc version locally or upstream")]
+    VersionNotFound,
     #[error(transparent)]
     SemverError(#[from] semver::Error),
     /// Deserialization error
@@ -16,6 +20,9 @@ pub enum SolcError {
     /// Deserialization error
     #[error(transparent)]
     Io(#[from] std::io::Error),
+    #[cfg(feature = "svm")]
+    #[error(transparent)]
+    SvmError(#[from] svm::SolcVmError),
 }
 
 impl SolcError {

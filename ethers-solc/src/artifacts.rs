@@ -47,6 +47,15 @@ impl CompilerInput {
         self.settings.optimizer.runs(runs);
         self
     }
+
+    /// Normalizes the EVM version used in the settings to be up to the latest one
+    /// supported by the provided compiler version.
+    pub fn normalize_evm_version(mut self, version: &Version) -> Self {
+        if let Some(ref mut evm_version) = self.settings.evm_version {
+            self.settings.evm_version = evm_version.normalize_version(version);
+        }
+        self
+    }
 }
 
 impl Default for CompilerInput {
@@ -210,8 +219,8 @@ pub enum EvmVersion {
     Petersburg,
     Istanbul,
     Berlin,
-    London,
     Byzantium,
+    London,
 }
 
 impl EvmVersion {
@@ -612,7 +621,9 @@ pub struct DeployedBytecode {
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct GasEstimates {
     pub creation: Creation,
+    #[serde(default)]
     pub external: BTreeMap<String, String>,
+    #[serde(default)]
     pub internal: BTreeMap<String, String>,
 }
 
@@ -869,6 +880,39 @@ mod tests {
             serde_json::from_str::<CompilerInput>(&compiler_output).unwrap_or_else(|err| {
                 panic!("Failed to read compiler output of {} {}", path.display(), err)
             });
+        }
+    }
+
+    #[test]
+    fn test_evm_version_normalization() {
+        for (solc_version, evm_version, expected) in &[
+            // Ensure 0.4.21 it always returns None
+            ("0.4.20", EvmVersion::Homestead, None),
+            // Constantinople clipping
+            ("0.4.21", EvmVersion::Homestead, Some(EvmVersion::Homestead)),
+            ("0.4.21", EvmVersion::Constantinople, Some(EvmVersion::Constantinople)),
+            ("0.4.21", EvmVersion::London, Some(EvmVersion::Constantinople)),
+            // Petersburg
+            ("0.5.5", EvmVersion::Homestead, Some(EvmVersion::Homestead)),
+            ("0.5.5", EvmVersion::Petersburg, Some(EvmVersion::Petersburg)),
+            ("0.5.5", EvmVersion::London, Some(EvmVersion::Petersburg)),
+            // Istanbul
+            ("0.5.14", EvmVersion::Homestead, Some(EvmVersion::Homestead)),
+            ("0.5.14", EvmVersion::Istanbul, Some(EvmVersion::Istanbul)),
+            ("0.5.14", EvmVersion::London, Some(EvmVersion::Istanbul)),
+            // Berlin
+            ("0.8.5", EvmVersion::Homestead, Some(EvmVersion::Homestead)),
+            ("0.8.5", EvmVersion::Berlin, Some(EvmVersion::Berlin)),
+            ("0.8.5", EvmVersion::London, Some(EvmVersion::Berlin)),
+            // London
+            ("0.8.7", EvmVersion::Homestead, Some(EvmVersion::Homestead)),
+            ("0.8.7", EvmVersion::London, Some(EvmVersion::London)),
+            ("0.8.7", EvmVersion::London, Some(EvmVersion::London)),
+        ] {
+            assert_eq!(
+                &evm_version.normalize_version(&Version::from_str(solc_version).unwrap()),
+                expected
+            )
         }
     }
 }

@@ -72,6 +72,10 @@ ledger = ["ethers-signers/ledger"]
 yubi = ["ethers-signers/yubi"]
 ## contracts
 abigen = ["ethers-contract/abigen"]
+## solc
+solc-async = ["ethers-solc/async"]
+solc-full = ["ethers-solc/full"]
+
 
 
 [dependencies]

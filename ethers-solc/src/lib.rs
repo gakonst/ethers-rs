@@ -93,8 +93,58 @@ impl Project {
     ///
     /// NOTE: this does not check if the contracts were successfully compiled, see
     /// `CompilerOutput::has_error` instead.
+
+    /// NB: If the `svm` feature is enabled, this function will automatically detect
+    /// solc versions across files.
     pub fn compile(&self) -> Result<ProjectCompileOutput> {
-        let mut sources = self.sources()?;
+        let sources = self.sources()?;
+
+        #[cfg(not(all(feature = "svm", feature = "async")))]
+        {
+            self.compile_with_version(&self.solc, sources)
+        }
+        #[cfg(all(feature = "svm", feature = "async"))]
+        self.svm_compile(sources)
+    }
+
+    #[cfg(all(feature = "svm", feature = "async"))]
+    fn svm_compile(&self, sources: Sources) -> Result<ProjectCompileOutput> {
+        // split them by version
+        let mut sources_by_version = BTreeMap::new();
+        for (path, source) in sources.into_iter() {
+            // will detect and install the solc version
+            let version = Solc::detect_version(&source)?;
+            // gets the solc binary for that version, it is expected tha this will succeed
+            // AND find the solc since it was installed right above
+            let solc = Solc::find_svm_installed_version(version.to_string())?
+                .expect("solc should have been installed");
+            let entry = sources_by_version.entry(solc).or_insert_with(BTreeMap::new);
+            entry.insert(path, source);
+        }
+
+        // run the compilation step for each version
+        let mut res = CompilerOutput::default();
+        for (solc, sources) in sources_by_version {
+            let output = self.compile_with_version(&solc, sources)?;
+            if let ProjectCompileOutput::Compiled((compiled, _)) = output {
+                res.errors.extend(compiled.errors);
+                res.sources.extend(compiled.sources);
+                res.contracts.extend(compiled.contracts);
+            }
+        }
+
+        Ok(if res.contracts.is_empty() {
+            ProjectCompileOutput::Unchanged
+        } else {
+            ProjectCompileOutput::Compiled((res, &self.ignored_error_codes))
+        })
+    }
+
+    pub fn compile_with_version(
+        &self,
+        solc: &Solc,
+        mut sources: Sources,
+    ) -> Result<ProjectCompileOutput> {
         // add all libraries to the source set while keeping track of their actual disk path
         let mut source_name_path = HashMap::new();
         let mut path_source_name = HashMap::new();
@@ -120,8 +170,8 @@ impl Project {
         // replace absolute path with source name to make solc happy
         let sources = apply_mappings(sources, path_source_name);
 
-        let input = CompilerInput::with_sources(sources);
-        let output = self.solc.compile(&input)?;
+        let input = CompilerInput::with_sources(sources).normalize_evm_version(&solc.version()?);
+        let output = solc.compile(&input)?;
         if output.has_error() {
             return Ok(ProjectCompileOutput::Compiled((output, &self.ignored_error_codes)))
         }
@@ -246,5 +296,37 @@ impl<'a> fmt::Display for ProjectCompileOutput<'a> {
                 output.diagnostics(ignored_error_codes).fmt(f)
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    #[test]
+    #[cfg(all(feature = "svm", feature = "async"))]
+    fn test_build_all_versions() {
+        use super::*;
+
+        let paths = ProjectPathsConfig::builder()
+            .root("./test-data/test-contract-versions")
+            .sources("./test-data/test-contract-versions")
+            .build()
+            .unwrap();
+        let project = Project::builder()
+            .paths(paths)
+            .ephemeral()
+            .artifacts(ArtifactOutput::Nothing)
+            .build()
+            .unwrap();
+        let compiled = project.compile().unwrap();
+        let contracts = match compiled {
+            ProjectCompileOutput::Compiled((out, _)) => {
+                assert!(!out.has_error());
+                out.contracts
+            }
+            _ => panic!("must compile"),
+        };
+        // Contracts A to F
+        assert_eq!(contracts.keys().count(), 5);
     }
 }

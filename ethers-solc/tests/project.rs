@@ -25,7 +25,11 @@ fn can_compile_hardhat_sample() {
     // let paths = ProjectPathsConfig::hardhat(root).unwrap();
 
     let project = Project::builder().paths(paths).build().unwrap();
-    assert_ne!(project.compile().unwrap(), ProjectCompileOutput::Unchanged);
+    let compiled = project.compile().unwrap();
+    match compiled {
+        ProjectCompileOutput::Compiled((out, _)) => assert!(!out.has_error()),
+        _ => panic!("must compile"),
+    }
     // nothing to compile
     assert_eq!(project.compile().unwrap(), ProjectCompileOutput::Unchanged);
 }
@@ -46,10 +50,13 @@ fn can_compile_dapp_sample() {
         .root(root)
         .build()
         .unwrap();
-    // let paths = ProjectPathsConfig::dapptools(root).unwrap();
 
     let project = Project::builder().paths(paths).build().unwrap();
-    assert_ne!(project.compile().unwrap(), ProjectCompileOutput::Unchanged);
+    let compiled = project.compile().unwrap();
+    match compiled {
+        ProjectCompileOutput::Compiled((out, _)) => assert!(!out.has_error()),
+        _ => panic!("must compile"),
+    }
     // nothing to compile
     assert_eq!(project.compile().unwrap(), ProjectCompileOutput::Unchanged);
 }
