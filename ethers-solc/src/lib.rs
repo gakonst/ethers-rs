@@ -11,7 +11,7 @@ mod compile;
 pub use compile::*;
 
 mod config;
-pub use config::{ArtifactOutput, ProjectPathsConfig, SolcConfig};
+pub use config::{AllowedLibPaths, ArtifactOutput, ProjectPathsConfig, SolcConfig};
 
 use crate::{artifacts::Source, cache::SolFilesCache};
 
@@ -40,6 +40,8 @@ pub struct Project {
     pub artifacts: ArtifactOutput,
     /// Errors/Warnings which match these error codes are not going to be logged
     pub ignored_error_codes: Vec<u64>,
+    /// The paths which will be allowed for library inclusion
+    pub allowed_lib_paths: AllowedLibPaths,
 }
 
 impl Project {
@@ -116,8 +118,12 @@ impl Project {
             let version = Solc::detect_version(&source)?;
             // gets the solc binary for that version, it is expected tha this will succeed
             // AND find the solc since it was installed right above
-            let solc = Solc::find_svm_installed_version(version.to_string())?
+            let mut solc = Solc::find_svm_installed_version(version.to_string())?
                 .expect("solc should have been installed");
+            // configure solc
+            solc.args.push("--allow-paths".to_string());
+            solc.args.push(self.allowed_lib_paths.to_string());
+
             let entry = sources_by_version.entry(solc).or_insert_with(BTreeMap::new);
             entry.insert(path, source);
         }
