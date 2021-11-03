@@ -112,7 +112,7 @@ impl Solc {
         Ok(solc)
     }
 
-    /// Assuming the `versions` array is sorted, it returns the first element which satisfies
+    /// Assuming the `versions` array is sorted, it returns the latest element which satisfies
     /// the provided [`VersionReq`]
     pub fn find_matching_installation(
         versions: &[Version],
