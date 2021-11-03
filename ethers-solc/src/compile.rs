@@ -63,7 +63,10 @@ pub static RELEASES: Lazy<Vec<Version>> = Lazy::new(|| {
 ///
 /// Supports sync and async functions.
 #[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Ord)]
-pub struct Solc(pub PathBuf);
+pub struct Solc {
+    pub solc: PathBuf,
+    pub args: Vec<String>,
+}
 
 impl Default for Solc {
     fn default() -> Self {
@@ -74,7 +77,7 @@ impl Default for Solc {
 impl Solc {
     /// A new instance which points to `solc`
     pub fn new(path: impl Into<PathBuf>) -> Self {
-        Solc(path.into())
+        Solc { solc: path.into(), args: Vec::new() }
     }
 
     /// Returns the directory in which [svm](https://github.com/roynalnaruto/svm-rs) stores all versions
@@ -112,7 +115,7 @@ impl Solc {
         Ok(solc)
     }
 
-    /// Assuming the `versions` array is sorted, it returns the latest element which satisfies
+    /// Assuming the `versions` array is sorted, it returns the first element which satisfies
     /// the provided [`VersionReq`]
     pub fn find_matching_installation(
         versions: &[Version],
@@ -233,7 +236,10 @@ impl Solc {
     }
 
     pub fn compile_output<T: Serialize>(&self, input: &T) -> Result<Vec<u8>> {
-        let mut child = Command::new(&self.0)
+        let mut cmd = Command::new(&self.solc);
+
+        let mut child = cmd
+            .args(&self.args)
             .arg("--standard-json")
             .stdin(Stdio::piped())
             .stderr(Stdio::piped())
@@ -248,7 +254,7 @@ impl Solc {
     /// Returns the version from the configured `solc`
     pub fn version(&self) -> Result<Version> {
         version_from_output(
-            Command::new(&self.0)
+            Command::new(&self.solc)
                 .arg("--version")
                 .stdin(Stdio::piped())
                 .stderr(Stdio::piped())
@@ -288,7 +294,7 @@ impl Solc {
     pub async fn async_compile_output<T: Serialize>(&self, input: &T) -> Result<Vec<u8>> {
         use tokio::io::AsyncWriteExt;
         let content = serde_json::to_vec(input)?;
-        let mut child = tokio::process::Command::new(&self.0)
+        let mut child = tokio::process::Command::new(&self.solc)
             .arg("--standard-json")
             .stdin(Stdio::piped())
             .stderr(Stdio::piped())
@@ -302,7 +308,7 @@ impl Solc {
 
     pub async fn async_version(&self) -> Result<Version> {
         version_from_output(
-            tokio::process::Command::new(&self.0)
+            tokio::process::Command::new(&self.solc)
                 .arg("--version")
                 .stdin(Stdio::piped())
                 .stderr(Stdio::piped())
@@ -338,13 +344,13 @@ fn version_from_output(output: Output) -> Result<Version> {
 
 impl AsRef<Path> for Solc {
     fn as_ref(&self) -> &Path {
-        &self.0
+        &self.solc
     }
 }
 
 impl<T: Into<PathBuf>> From<T> for Solc {
     fn from(solc: T) -> Self {
-        Solc(solc.into())
+        Solc::new(solc.into())
     }
 }
 
