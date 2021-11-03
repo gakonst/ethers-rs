@@ -4,6 +4,7 @@
 
 ### Unreleased
 
+- Improve error message from failure in `ethers_contract_abigen::Source::parse` [#552](https://github.com/gakonst/ethers-rs/pull/552)
 - use enumerated aliases for overloaded functions [#545](https://github.com/gakonst/ethers-rs/pull/545)
 - move `AbiEncode` `AbiDecode` trait to ethers-core and implement for core types [#531](https://github.com/gakonst/ethers-rs/pull/531)
 - add `EthCall` trait and derive macro which generates matching structs for contract calls [#517](https://github.com/gakonst/ethers-rs/pull/517)
