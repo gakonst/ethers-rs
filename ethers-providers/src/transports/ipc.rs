@@ -181,7 +181,7 @@ where
             },
             // Handle socket messages
             msg = self.socket_reader.next() => match msg {
-                Some(Ok(msg)) => self.handle_socket(read_buffer, msg).await?,
+                Some(Ok(msg)) => self.handle_socket(read_buffer, msg)?,
                 Some(Err(err)) => {
                     error!("IPC read error: {:?}", err);
                     return Err(err.into());
@@ -207,7 +207,7 @@ where
                 }
 
                 if let Err(err) = self.socket_writer.write(request.as_bytes()).await {
-                    error!("WS connection error: {:?}", err);
+                    error!("IPC connection error: {:?}", err);
                     self.pending.remove(&id);
                 }
             }
@@ -229,7 +229,7 @@ where
         Ok(())
     }
 
-    async fn handle_socket(
+    fn handle_socket(
         &mut self,
         read_buffer: &mut Vec<u8>,
         bytes: bytes::Bytes,
@@ -292,7 +292,7 @@ where
         let id = output.id;
 
         // Converts output into result, to send data if valid response.
-        let value = output.data.into_result()?;
+        let value = output.data.into_value()?;
 
         let response_tx = self.pending.remove(&id).ok_or_else(|| {
             IpcError::ChannelError("No response channel exists for the response ID".to_string())
