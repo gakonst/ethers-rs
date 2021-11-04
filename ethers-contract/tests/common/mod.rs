@@ -49,5 +49,7 @@ pub fn connect(ganache: &GanacheInstance, idx: usize) -> Arc<Provider<Http>> {
 /// Launches a ganache instance and deploys the SimpleStorage contract
 pub async fn deploy<M: Middleware>(client: Arc<M>, abi: Abi, bytecode: Bytes) -> Contract<M> {
     let factory = ContractFactory::new(abi, bytecode, client);
-    factory.deploy("initial value".to_string()).unwrap().legacy().send().await.unwrap()
+    let deployer = factory.deploy("initial value".to_string()).unwrap();
+    assert!(deployer.call().await.is_ok());
+    deployer.legacy().send().await.unwrap()
 }
