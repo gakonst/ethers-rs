@@ -118,7 +118,7 @@ This section lists some commonly needed commands.
 
 ```
 cargo check --all-features
-cargo fmt --all
+cargo +nightly fmt --all
 cargo build --all-features
 cargo test --all-features
 ```

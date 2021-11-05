@@ -1,12 +1,10 @@
 use anyhow::{anyhow, Result};
-use ethers_core::abi::ParamType;
+use ethers_core::{abi::ParamType, macros::ethers_core_crate};
 use proc_macro2::{Literal, TokenStream};
 use quote::quote;
 
-use super::util;
-
 pub(crate) fn expand(kind: &ParamType) -> Result<TokenStream> {
-    let ethers_core = util::ethers_core_crate();
+    let ethers_core = ethers_core_crate();
 
     match kind {
         ParamType::Address => Ok(quote! { #ethers_core::types::Address }),

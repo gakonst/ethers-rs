@@ -4,8 +4,7 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{parse::Error, spanned::Spanned as _, Data, DeriveInput, Fields, Index};
 
-use ethers_contract_abigen::ethers_core_crate;
-use ethers_core::abi::ParamType;
+use ethers_core::{abi::ParamType, macros::ethers_core_crate};
 
 use crate::utils;
 
