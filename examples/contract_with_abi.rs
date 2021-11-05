@@ -1,9 +1,6 @@
 use anyhow::Result;
-use ethers::{
-    prelude::*,
-    utils::{compile_and_launch_ganache, Ganache, Solc},
-};
-use std::{convert::TryFrom, sync::Arc, time::Duration};
+use ethers::{prelude::*, utils::Ganache};
+use std::{convert::TryFrom, path::Path, sync::Arc, time::Duration};
 
 // Generate the type-safe contract bindings by providing the ABI
 // definition in human readable format
@@ -17,11 +14,14 @@ abigen!(
 async fn main() -> Result<()> {
     // 1. compile the contract (note this requires that you are inside the `examples` directory) and
     // launch ganache
-    let (compiled, ganache) =
-        compile_and_launch_ganache(Solc::new("**/contract.sol"), Ganache::new()).await?;
+    let ganache = Ganache::new().spawn();
 
-    let contract = compiled.get("SimpleStorage").expect("could not find contract");
-    dbg!("OK");
+    // set the path to the contract, `CARGO_MANIFEST_DIR` points to the directory containing the
+    // manifest of `ethers`. which will be `../` relative to this file
+    let source = Path::new(&env!("CARGO_MANIFEST_DIR")).join("examples/contract.sol");
+    let compiled = Solc::default().compile_source(source).expect("Could not compile contracts");
+    let (abi, bytecode, _runtime_bytecode) =
+        compiled.find("SimpleStorage").expect("could not find contract").into_parts_or_default();
 
     // 2. instantiate our wallet
     let wallet: LocalWallet = ganache.keys()[0].clone().into();
@@ -35,8 +35,7 @@ async fn main() -> Result<()> {
     let client = Arc::new(client);
 
     // 5. create a factory which will be used to deploy instances of the contract
-    let factory =
-        ContractFactory::new(contract.abi.clone(), contract.bytecode.clone(), client.clone());
+    let factory = ContractFactory::new(abi, bytecode, client.clone());
 
     // 6. deploy it with the constructor arguments
     let contract = factory.deploy("initial value".to_string())?.legacy().send().await?;
