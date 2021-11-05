@@ -14,6 +14,22 @@ env:
   RINKEBY_PRIVATE_KEY: ${{ secrets.RINKEBY_PRIVATE_KEY }}
 
 jobs:
+  check:
+    name: check all
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+      - uses: Swatinem/rust-cache@v1
+        with:
+          cache-on-failure: true
+      - name: cargo check
+        run: cargo check -p ethers --all-targets --all-features
+
   tests:
     name: ethereum tests
     runs-on: ubuntu-latest
