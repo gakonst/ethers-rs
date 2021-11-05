@@ -393,6 +393,15 @@ impl CompilerOutput {
         OutputDiagnostics { errors: &self.errors, ignored_error_codes }
     }
 
+    /// Finds the first contract with the given name
+    pub fn find(&self, contract: impl AsRef<str>) -> Option<CompactContractRef> {
+        let contract = contract.as_ref();
+        self.contracts
+            .values()
+            .find_map(|contracts| contracts.get(contract))
+            .map(CompactContractRef::from)
+    }
+
     /// Given the contract file's path and the contract's name, tries to return the contract's
     /// bytecode, runtime bytecode, and abi
     pub fn get(&self, path: &str, contract: &str) -> Option<CompactContractRef> {
@@ -474,6 +483,24 @@ pub struct CompactContract {
     pub bin_runtime: Option<Bytes>,
 }
 
+impl CompactContract {
+    /// Returns the contents of this type as a single
+    pub fn into_parts(self) -> (Option<Abi>, Option<Bytes>, Option<Bytes>) {
+        (self.abi, self.bin, self.bin_runtime)
+    }
+
+    /// Returns the individual parts of this contract.
+    ///
+    /// If the values are `None`, then `Default` is returned.
+    pub fn into_parts_or_default(self) -> (Abi, Bytes, Bytes) {
+        (
+            self.abi.unwrap_or_default(),
+            self.bin.unwrap_or_default(),
+            self.bin_runtime.unwrap_or_default(),
+        )
+    }
+}
+
 impl From<Contract> for CompactContract {
     fn from(c: Contract) -> Self {
         let (bin, bin_runtime) = if let Some(evm) = c.evm {
@@ -486,14 +513,34 @@ impl From<Contract> for CompactContract {
     }
 }
 
+impl<'a> From<CompactContractRef<'a>> for CompactContract {
+    fn from(c: CompactContractRef<'a>) -> Self {
+        Self { abi: c.abi.cloned(), bin: c.bin.cloned(), bin_runtime: c.bin_runtime.cloned() }
+    }
+}
+
 /// Helper type to serialize while borrowing from `Contract`
-#[derive(Clone, Debug, Serialize)]
+#[derive(Copy, Clone, Debug, Serialize)]
 pub struct CompactContractRef<'a> {
     pub abi: Option<&'a Abi>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub bin: Option<&'a Bytes>,
     #[serde(default, rename = "bin-runtime", skip_serializing_if = "Option::is_none")]
     pub bin_runtime: Option<&'a Bytes>,
+}
+
+impl<'a> CompactContractRef<'a> {
+    /// Clones the referenced values and returns as tuples
+    pub fn into_parts(self) -> (Option<Abi>, Option<Bytes>, Option<Bytes>) {
+        CompactContract::from(self).into_parts()
+    }
+
+    /// Returns the individual parts of this contract.
+    ///
+    /// If the values are `None`, then `Default` is returned.
+    pub fn into_parts_or_default(self) -> (Abi, Bytes, Bytes) {
+        CompactContract::from(self).into_parts_or_default()
+    }
 }
 
 impl<'a> From<&'a Contract> for CompactContractRef<'a> {

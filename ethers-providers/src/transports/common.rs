@@ -84,6 +84,7 @@ impl<R> ResponseData<R> {
 
 impl ResponseData<serde_json::Value> {
     /// Encode the error to json value if it is an error
+    #[allow(dead_code)]
     pub fn into_value(self) -> serde_json::Result<serde_json::Value> {
         match self {
             ResponseData::Success { result } => Ok(result),
