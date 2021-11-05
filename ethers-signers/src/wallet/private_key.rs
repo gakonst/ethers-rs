@@ -61,18 +61,23 @@ impl Clone for Wallet<SigningKey> {
 
 impl Wallet<SigningKey> {
     /// Creates a new random encrypted JSON with the provided password and stores it in the
-    /// provided directory
+    /// provided directory. Returns a tuple (Wallet, String) of the wallet instance for the
+    /// keystore with its random UUID.
     #[cfg(not(target_arch = "wasm32"))]
-    pub fn new_keystore<P, R, S>(dir: P, rng: &mut R, password: S) -> Result<Self, WalletError>
+    pub fn new_keystore<P, R, S>(
+        dir: P,
+        rng: &mut R,
+        password: S,
+    ) -> Result<(Self, String), WalletError>
     where
         P: AsRef<Path>,
         R: Rng + CryptoRng + rand_core::CryptoRng,
         S: AsRef<[u8]>,
     {
-        let (secret, _) = eth_keystore::new(dir, rng, password)?;
+        let (secret, uuid) = eth_keystore::new(dir, rng, password)?;
         let signer = SigningKey::from_bytes(secret.as_slice())?;
         let address = secret_key_to_address(&signer);
-        Ok(Self { signer, address, chain_id: 1 })
+        Ok((Self { signer, address, chain_id: 1 }, uuid))
     }
 
     /// Decrypts an encrypted JSON from the provided path to construct a Wallet instance
@@ -140,7 +145,6 @@ mod tests {
     use super::*;
     use crate::Signer;
     use ethers_core::types::Address;
-    use std::fs;
     use tempfile::tempdir;
 
     #[tokio::test]
@@ -148,7 +152,7 @@ mod tests {
         // create and store a random encrypted JSON keystore in this directory
         let dir = tempdir().unwrap();
         let mut rng = rand::thread_rng();
-        let key = Wallet::<SigningKey>::new_keystore(&dir, &mut rng, "randpsswd").unwrap();
+        let (key, uuid) = Wallet::<SigningKey>::new_keystore(&dir, &mut rng, "randpsswd").unwrap();
 
         // sign a message using the above key
         let message = "Some data";
@@ -156,14 +160,11 @@ mod tests {
 
         // read from the encrypted JSON keystore and decrypt it, while validating that the
         // signatures produced by both the keys should match
-        let paths = fs::read_dir(dir).unwrap();
-        for path in paths {
-            let path = path.unwrap().path();
-            let key2 = Wallet::<SigningKey>::decrypt_keystore(&path.clone(), "randpsswd").unwrap();
-            let signature2 = key2.sign_message(message).await.unwrap();
-            assert_eq!(signature, signature2);
-            assert!(std::fs::remove_file(&path).is_ok());
-        }
+        let path = Path::new(dir.path()).join(uuid);
+        let key2 = Wallet::<SigningKey>::decrypt_keystore(&path.clone(), "randpsswd").unwrap();
+        let signature2 = key2.sign_message(message).await.unwrap();
+        assert_eq!(signature, signature2);
+        assert!(std::fs::remove_file(&path).is_ok());
     }
 
     #[tokio::test]
