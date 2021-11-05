@@ -145,7 +145,7 @@ impl LedgerEthereum {
 
         // Enforce app version is greater than EIP712_MIN_VERSION
         if !req.matches(&version) {
-            return Err(LedgerError::UnsupportedAppVersion(EIP712_MIN_VERSION.to_string()))
+            return Err(LedgerError::UnsupportedAppVersion(EIP712_MIN_VERSION.to_string()));
         }
 
         let domain_separator =
