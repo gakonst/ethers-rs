@@ -103,9 +103,9 @@ impl Wallet<SigningKey> {
 
 impl PartialEq for Wallet<SigningKey> {
     fn eq(&self, other: &Self) -> bool {
-        self.signer.to_bytes().eq(&other.signer.to_bytes())
-            && self.address == other.address
-            && self.chain_id == other.chain_id
+        self.signer.to_bytes().eq(&other.signer.to_bytes()) &&
+            self.address == other.address &&
+            self.chain_id == other.chain_id
     }
 }
 
