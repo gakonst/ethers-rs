@@ -1,5 +1,4 @@
-use ethers_contract_abigen::ethers_core_crate;
-use ethers_core::{abi::ParamType, types::Selector};
+use ethers_core::{abi::ParamType, macros::ethers_core_crate, types::Selector};
 use proc_macro2::Literal;
 use quote::quote;
 use syn::{

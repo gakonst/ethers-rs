@@ -8,6 +8,7 @@ use syn::Ident;
 
 use ethers_core::{
     abi::{Function, FunctionExt, Param, ParamType},
+    macros::{ethers_contract_crate, ethers_core_crate},
     types::Selector,
 };
 
@@ -63,7 +64,7 @@ impl Context {
             function.selector()
         );
         let abi_signature_doc = util::expand_doc(&doc);
-        let ethers_contract = util::ethers_contract_crate();
+        let ethers_contract = ethers_contract_crate();
         // use the same derives as for events
         let derives = util::expand_derives(&self.event_derives);
 
@@ -98,8 +99,8 @@ impl Context {
             return Ok(struct_def_tokens)
         }
 
-        let ethers_core = util::ethers_core_crate();
-        let ethers_contract = util::ethers_contract_crate();
+        let ethers_core = ethers_core_crate();
+        let ethers_contract = ethers_contract_crate();
 
         let enum_name = self.expand_calls_enum_name();
         Ok(quote! {
@@ -238,7 +239,7 @@ impl Context {
         // TODO use structs
         let outputs = expand_fn_outputs(&function.outputs)?;
 
-        let ethers_contract = util::ethers_contract_crate();
+        let ethers_contract = ethers_contract_crate();
 
         let result = quote! { #ethers_contract::builders::ContractCall<M, #outputs> };
 

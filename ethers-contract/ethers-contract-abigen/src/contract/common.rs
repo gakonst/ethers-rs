@@ -3,7 +3,7 @@ use super::{util, Context};
 use proc_macro2::TokenStream;
 use quote::quote;
 
-use super::util::{ethers_contract_crate, ethers_core_crate, ethers_providers_crate};
+use ethers_core::macros::{ethers_contract_crate, ethers_core_crate, ethers_providers_crate};
 
 pub(crate) fn imports(name: &str) -> TokenStream {
     let doc = util::expand_doc(&format!("{} was auto-generated with ethers-rs Abigen. More information at: https://github.com/gakonst/ethers-rs", name));

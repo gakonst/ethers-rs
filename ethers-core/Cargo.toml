@@ -14,6 +14,7 @@ rlp = { version = "0.5.0", default-features = false }
 ethabi = { version = "15.0", default-features = false, features = ["full-serde", "rlp"] }
 arrayvec = { version = "0.7.2", default-features = false }
 rlp-derive = { version = "0.1.0", default-features = false }
+cargo_metadata = "0.14.0"
 
 # crypto
 ecdsa = { version = "0.12.3", default-features = false, features = ["std"] }
@@ -55,6 +56,7 @@ celo = ["legacy"] # celo support extends the transaction format with extra field
 setup = ["tokio", "futures-util"] # async support for concurrent setup
 legacy = []
 eip712 = ["convert_case", "syn", "quote", "proc-macro2"]
+macros = ["syn"]
 
 [package.metadata.docs.rs]
 all-features = true

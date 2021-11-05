@@ -1,6 +1,6 @@
 //! Helper functions for deriving `EthAbiType`
 
-use ethers_contract_abigen::ethers_core_crate;
+use ethers_core::macros::ethers_core_crate;
 use proc_macro2::{Ident, Literal, TokenStream};
 use quote::{quote, quote_spanned};
 use syn::{parse::Error, spanned::Spanned as _, Data, DeriveInput, Fields, Variant};

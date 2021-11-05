@@ -10,7 +10,7 @@ repository = "https://github.com/gakonst/ethers-rs"
 keywords = ["ethereum", "web3", "celo", "ethers"]
 
 [dependencies]
-ethers-core = { version = "^0.5.0", path = "../../ethers-core" }
+ethers-core = { version = "^0.5.0", path = "../../ethers-core", features = ["macros"] }
 
 anyhow = "1.0.37"
 Inflector = "0.11"
@@ -23,7 +23,6 @@ serde = { version = "1.0.124", features = ["derive"] }
 hex = { version = "0.4.2", default-features = false, features = ["std"] }
 reqwest = { version = "0.11.3", features = ["blocking"] }
 once_cell = "1.8.0"
-cargo_metadata = "0.14.0"
 cfg-if = "1.0.0"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]

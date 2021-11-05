@@ -1,11 +1,13 @@
 //! Helper functions for deriving `EthCall`
 
-use ethers_contract_abigen::{ethers_contract_crate, ethers_core_crate};
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use syn::{parse::Error, spanned::Spanned as _, AttrStyle, DeriveInput, Lit, Meta, NestedMeta};
 
-use ethers_core::abi::{param_type::Reader, AbiParser, Function, FunctionExt, Param, ParamType};
+use ethers_core::{
+    abi::{param_type::Reader, AbiParser, Function, FunctionExt, Param, ParamType},
+    macros::{ethers_contract_crate, ethers_core_crate},
+};
 
 use crate::{abi_ty, utils};
 

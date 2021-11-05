@@ -8,7 +8,10 @@ mod types;
 use super::{util, Abigen};
 use crate::{contract::structs::InternalStructs, rawabi::RawAbi};
 use anyhow::{anyhow, Context as _, Result};
-use ethers_core::abi::{Abi, AbiParser};
+use ethers_core::{
+    abi::{Abi, AbiParser},
+    macros::{ethers_contract_crate, ethers_core_crate, ethers_providers_crate},
+};
 
 use proc_macro2::{Ident, Literal, TokenStream};
 use quote::quote;
@@ -111,9 +114,9 @@ impl Context {
         // 5. Declare the structs parsed from the human readable abi
         let abi_structs_decl = self.abi_structs()?;
 
-        let ethers_core = util::ethers_core_crate();
-        let ethers_contract = util::ethers_contract_crate();
-        let ethers_providers = util::ethers_providers_crate();
+        let ethers_core = ethers_core_crate();
+        let ethers_contract = ethers_contract_crate();
+        let ethers_providers = ethers_providers_crate();
 
         let contract = quote! {
                 #struct_decl
