@@ -555,6 +555,13 @@ pub trait Middleware: Sync + Send + Debug {
         self.inner().trace_transaction(hash).await.map_err(FromErr::from)
     }
 
+    /// Returns all traces of a given transaction
+    ///
+    /// Note: this should be only be used for the Geth client
+    async fn geth_trace_transaction(&self, hash: H256) -> Result<GethTrace, Self::Error> {
+        self.inner().geth_trace_transaction(hash).await.map_err(FromErr::from)
+    }
+
     // Parity namespace
 
     async fn subscribe<T, R>(

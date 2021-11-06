@@ -15,7 +15,7 @@ use ethers_core::{
     types::{
         transaction::{eip2718::TypedTransaction, eip2930::AccessListWithGasUsed},
         Address, Block, BlockId, BlockNumber, BlockTrace, Bytes, EIP1186ProofResponse, Filter, Log,
-        NameOrAddress, Selector, Signature, Trace, TraceFilter, TraceType, Transaction,
+        NameOrAddress, Selector, Signature, Trace, TraceFilter, TraceType, Transaction, GethTrace,
         TransactionReceipt, TxHash, TxpoolContent, TxpoolInspect, TxpoolStatus, H256, U256, U64,
     },
     utils,
@@ -775,6 +775,14 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
     async fn trace_transaction(&self, hash: H256) -> Result<Vec<Trace>, ProviderError> {
         let hash = utils::serialize(&hash);
         self.request("trace_transaction", vec![hash]).await
+    }
+
+    /// Returns all basic traces of a given transaction
+    ///
+    /// Note: this should be only be used for the Geth client
+    async fn geth_trace_transaction(&self, hash: H256) -> Result<GethTrace, Self::Error> {
+        let hash = utils::serialize(&hash);
+        self.request("debug_traceTransaction", vec![hash]).await
     }
 
     async fn subscribe<T, R>(

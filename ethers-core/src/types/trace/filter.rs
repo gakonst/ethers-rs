@@ -1,5 +1,5 @@
 //! Types for the Parity Transaction-Trace Filtering API
-use crate::types::{Address, BlockNumber, Bytes, H160, H256, U256};
+use crate::types::{trace::BTreeMap, Address, BlockNumber, Bytes, H160, H256, U256};
 use serde::{Deserialize, Serialize};
 
 /// Trace filter
@@ -264,6 +264,32 @@ pub enum RewardType {
     /// External (attributed as part of an external protocol)
     #[serde(rename = "external")]
     External,
+}
+
+/// Basic trace type for the Geth client.
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+pub struct GethTrace {
+    failed: bool,
+    gas: i64,
+    #[serde(rename = "returnValue")]
+    return_value: Option<Bytes>,
+    #[serde(rename = "structLogs")]
+    struct_logs: Vec<OpCodeLog>,
+}
+
+/// OpCodeLog type for the Geth trace.
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+pub struct OpCodeLog {
+    depth: u64,
+    error: Option<String>,
+    gas: u64,
+    #[serde(rename = "gasCost")]
+    gas_cost: u64,
+    memory: Option<Bytes>,
+    op: String,
+    pc: usize,
+    stack: Option<Vec<U256>>,
+    storage: Option<BTreeMap<H256, H256>>,
 }
 
 #[cfg(test)]
