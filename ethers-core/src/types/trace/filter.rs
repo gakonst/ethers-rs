@@ -282,14 +282,48 @@ pub struct GethTrace {
 pub struct OpCodeLog {
     depth: u64,
     error: Option<String>,
-    gas: u64,
+    gas: U256,
     #[serde(rename = "gasCost")]
     gas_cost: u64,
     memory: Option<Bytes>,
     op: String,
     pc: usize,
-    stack: Option<Vec<U256>>,
-    storage: Option<BTreeMap<H256, H256>>,
+    stack: StackLog,
+    storage: StorageLog,
+}
+
+/// Stack trace of a Geth trace.
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+#[serde(untagged)]
+pub enum StackLog {
+    /// None
+    #[serde(rename = "none")]
+    None,
+    /// Stack
+    Stack(Vec<U256>),
+}
+
+impl Default for StackLog {
+    fn default() -> Self {
+        Self::None
+    }
+}
+
+/// Storage trace of a Geth trace.
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+#[serde(untagged)]
+pub enum StorageLog {
+    /// None
+    #[serde(rename = "none")]
+    None,
+    /// Storage
+    Storage(BTreeMap<H256, H256>),
+}
+
+impl Default for StorageLog {
+    fn default() -> Self {
+        Self::None
+    }
 }
 
 #[cfg(test)]
