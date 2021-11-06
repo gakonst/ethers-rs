@@ -236,7 +236,6 @@ where
     ) -> Result<(), IpcError> {
         // Extend buffer of previously unread with the new read bytes
         read_buffer.extend_from_slice(&bytes);
-        dbg!(read_buffer.len());
 
         let read_len = {
             // Deserialize as many full elements from the stream as exists
