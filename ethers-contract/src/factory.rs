@@ -46,6 +46,19 @@ impl<M: Middleware> Deployer<M> {
         self
     }
 
+    /// Dry runs the deployment of the contract
+    ///
+    /// Note: this function _does not_ send a transaction from your account
+    pub async fn call(&self) -> Result<(), ContractError<M>> {
+        self.client
+            .call(&self.tx, Some(self.block.into()))
+            .await
+            .map_err(ContractError::MiddlewareError)?;
+
+        // TODO: It would be nice to handle reverts in a structured way.
+        Ok(())
+    }
+
     /// Broadcasts the contract deployment transaction and after waiting for it to
     /// be sufficiently confirmed (default: 1), it returns a [`Contract`](crate::Contract)
     /// struct at the deployed contract's address.

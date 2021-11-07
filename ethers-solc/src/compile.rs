@@ -1,8 +1,9 @@
 use crate::{
+    artifacts::Source,
     error::{Result, SolcError},
     CompilerInput, CompilerOutput,
 };
-use semver::Version;
+use semver::{Version, VersionReq};
 use serde::{de::DeserializeOwned, Serialize};
 use std::{
     io::BufRead,
@@ -34,10 +35,34 @@ pub const BERLIN_SOLC: Version = Version::new(0, 8, 5);
 /// https://blog.soliditylang.org/2021/08/11/solidity-0.8.7-release-announcement/
 pub const LONDON_SOLC: Version = Version::new(0, 8, 7);
 
+#[cfg(any(test, all(feature = "svm", feature = "async")))]
+use once_cell::sync::Lazy;
+
+#[cfg(any(test, feature = "tests"))]
+use std::sync::Mutex;
+#[cfg(any(test, feature = "tests"))]
+static LOCK: Lazy<Mutex<()>> = Lazy::new(|| Mutex::new(()));
+
+#[cfg(all(feature = "svm", feature = "async"))]
+/// A list of upstream Solc releases, used to check which version
+/// we should download.
+pub static RELEASES: Lazy<Vec<Version>> = Lazy::new(|| {
+    // Try to download the releases, if it fails default to empty
+    match tokio::runtime::Runtime::new()
+        .expect("could not create tokio rt to get remote releases")
+        // TODO: Can we make this future timeout at a small time amount so that
+        // we do not degrade startup performance if the consumer has a weak network?
+        .block_on(svm::all_versions())
+    {
+        Ok(inner) => inner,
+        Err(_) => Vec::new(),
+    }
+});
+
 /// Abstraction over `solc` command line utility
 ///
 /// Supports sync and async functions.
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Ord)]
 pub struct Solc(pub PathBuf);
 
 impl Default for Solc {
@@ -85,6 +110,74 @@ impl Solc {
         .map(|e| e.path().join(format!("solc-{}", version)))
         .map(Solc::new);
         Ok(solc)
+    }
+
+    /// Assuming the `versions` array is sorted, it returns the latest element which satisfies
+    /// the provided [`VersionReq`]
+    pub fn find_matching_installation(
+        versions: &[Version],
+        required_version: &VersionReq,
+    ) -> Option<Version> {
+        // iterate in reverse to find the last match
+        versions.iter().rev().find(|version| required_version.matches(version)).cloned()
+    }
+
+    /// Given a Solidity source, it detects the latest compiler version which can be used
+    /// to build it, and returns it.
+    ///
+    /// If the required compiler version is not installed, it also proceeds to install it.
+    #[cfg(all(feature = "svm", feature = "async"))]
+    pub fn detect_version(source: &Source) -> Result<Version> {
+        // detects the required solc version
+        let sol_version = Self::version_req(source)?;
+
+        #[cfg(any(test, feature = "tests"))]
+        // take the lock in tests, we use this to enforce that
+        // a test does not run while a compiler version is being installed
+        let _lock = LOCK.lock();
+
+        // load the local / remote versions
+        let versions = svm::installed_versions().unwrap_or_default();
+        let local_versions = Self::find_matching_installation(&versions, &sol_version);
+        let remote_versions = Self::find_matching_installation(&RELEASES, &sol_version);
+
+        // if there's a better upstream version than the one we have, install it
+        Ok(match (local_versions, remote_versions) {
+            (Some(local), None) => local,
+            (Some(local), Some(remote)) => {
+                if remote > local {
+                    Self::blocking_install(&remote)?;
+                    remote
+                } else {
+                    local
+                }
+            }
+            (None, Some(version)) => {
+                Self::blocking_install(&version)?;
+                version
+            }
+            // do nothing otherwise
+            _ => return Err(SolcError::VersionNotFound),
+        })
+    }
+
+    /// Parses the given source looking for the `pragma` definition and
+    /// returns the corresponding SemVer version requirement.
+    pub fn version_req(source: &Source) -> Result<VersionReq> {
+        let version = crate::utils::find_version_pragma(&source.content)
+            .ok_or(SolcError::PragmaNotFound)?
+            .replace(" ", ",");
+
+        // Somehow, Solidity semver without an operator is considered to be "exact",
+        // but lack of operator automatically marks the operator as Caret, so we need
+        // to manually patch it? :shrug:
+        let exact = !matches!(&version[0..1], "*" | "^" | "=" | ">" | "<" | "~");
+        let mut version = VersionReq::parse(&version)?;
+        if exact {
+            version.comparators[0].op = semver::Op::Exact;
+        }
+
+        Ok(version)
     }
 
     /// Installs the provided version of Solc in the machine under the svm dir
@@ -172,7 +265,6 @@ impl Solc {
         &self,
         path: impl AsRef<Path>,
     ) -> Result<CompilerOutput> {
-        use crate::artifacts::Source;
         self.async_compile(&CompilerInput::with_sources(Source::async_read_all_from(path).await?))
             .await
     }
@@ -275,12 +367,6 @@ mod tests {
         let _version = Version::from_str("0.6.6+commit.6c089d02.Linux.gcc").unwrap();
     }
 
-    #[test]
-    #[ignore]
-    fn can_find_solc() {
-        let _solc = Solc::find_svm_installed_version("0.8.9").unwrap();
-    }
-
     #[cfg(feature = "async")]
     #[tokio::test]
     async fn async_solc_version_works() {
@@ -304,5 +390,106 @@ mod tests {
         let out = solc().async_compile(&input).await.unwrap();
         let other = solc().async_compile(&serde_json::json!(input)).await.unwrap();
         assert_eq!(out, other);
+    }
+
+    #[test]
+    fn test_version_req() {
+        let versions = ["=0.1.2", "^0.5.6", ">=0.7.1", ">0.8.0"];
+        let sources = versions.iter().map(|version| source(version));
+
+        sources.zip(versions).for_each(|(source, version)| {
+            let version_req = Solc::version_req(&source).unwrap();
+            assert_eq!(version_req, VersionReq::from_str(version).unwrap());
+        });
+
+        // Solidity defines version ranges with a space, whereas the semver package
+        // requires them to be separated with a comma
+        let version_range = ">=0.8.0 <0.9.0";
+        let source = source(version_range);
+        let version_req = Solc::version_req(&source).unwrap();
+        assert_eq!(version_req, VersionReq::from_str(">=0.8.0,<0.9.0").unwrap());
+    }
+
+    #[test]
+    // This test might be a bit hard to maintain
+    #[cfg(all(feature = "svm", feature = "async"))]
+    fn test_detect_version() {
+        for (pragma, expected) in [
+            // pinned
+            ("=0.4.14", "0.4.14"),
+            // pinned too
+            ("0.4.14", "0.4.14"),
+            // The latest patch is 0.4.26
+            ("^0.4.14", "0.4.26"),
+            // latest version above 0.5.0 -> we have to
+            // update this test whenever there's a new sol
+            // version. that's ok! good reminder to check the
+            // patch notes.
+            (">=0.5.0", "0.8.9"),
+            // range
+            (">=0.4.0 <0.5.0", "0.4.26"),
+        ]
+        .iter()
+        {
+            // println!("Checking {}", pragma);
+            let source = source(pragma);
+            let res = Solc::detect_version(&source).unwrap();
+            assert_eq!(res, Version::from_str(expected).unwrap());
+        }
+    }
+
+    #[test]
+    #[cfg(feature = "full")]
+    fn test_find_installed_version_path() {
+        // this test does not take the lock by default, so we need to manually
+        // add it here.
+        let _lock = LOCK.lock();
+        let ver = "0.8.6";
+        let version = Version::from_str(ver).unwrap();
+        if !svm::installed_versions().unwrap().contains(&version) {
+            Solc::blocking_install(&version).unwrap();
+        }
+        let res = Solc::find_svm_installed_version(&version.to_string()).unwrap().unwrap();
+        let expected = svm::SVM_HOME.join(ver).join(format!("solc-{}", ver));
+        assert_eq!(res.0, expected);
+    }
+
+    #[test]
+    fn does_not_find_not_installed_version() {
+        let ver = "1.1.1";
+        let version = Version::from_str(ver).unwrap();
+        let res = Solc::find_svm_installed_version(&version.to_string()).unwrap();
+        assert!(res.is_none());
+    }
+
+    #[test]
+    fn test_find_latest_matching_installation() {
+        let versions = ["0.4.24", "0.5.1", "0.5.2"]
+            .iter()
+            .map(|version| Version::from_str(version).unwrap())
+            .collect::<Vec<_>>();
+
+        let required = VersionReq::from_str(">=0.4.24").unwrap();
+
+        let got = Solc::find_matching_installation(&versions, &required).unwrap();
+        assert_eq!(got, versions[2]);
+    }
+
+    #[test]
+    fn test_no_matching_installation() {
+        let versions = ["0.4.24", "0.5.1", "0.5.2"]
+            .iter()
+            .map(|version| Version::from_str(version).unwrap())
+            .collect::<Vec<_>>();
+
+        let required = VersionReq::from_str(">=0.6.0").unwrap();
+        let got = Solc::find_matching_installation(&versions, &required);
+        assert!(got.is_none());
+    }
+
+    ///// helpers
+
+    fn source(version: &str) -> Source {
+        Source { content: format!("pragma solidity {};\n", version) }
     }
 }

@@ -1069,7 +1069,6 @@ version = "0.5.3"
 dependencies = [
  "Inflector",
  "anyhow",
- "cargo_metadata",
  "cfg-if 1.0.0",
  "ethers-core",
  "getrandom 0.2.3",
@@ -1104,6 +1103,7 @@ dependencies = [
  "arrayvec 0.7.2",
  "bincode",
  "bytes",
+ "cargo_metadata",
  "convert_case",
  "ecdsa",
  "elliptic-curve",

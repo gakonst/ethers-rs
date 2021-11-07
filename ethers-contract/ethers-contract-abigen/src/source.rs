@@ -76,19 +76,19 @@ impl Source {
         P: AsRef<Path>,
         S: AsRef<str>,
     {
+        let root = root.as_ref();
         cfg_if! {
-             if #[cfg(target_arch = "wasm32")] {
-               let root = root.as_ref();
+            if #[cfg(target_arch = "wasm32")] {
                 let root = if root.starts_with("/") {
-                   format!("file:://{}", root.display())
+                    format!("file:://{}", root.display())
                 } else {
                     format!("{}", root.display())
                 };
                 let base = Url::parse(&root)
-                    .map_err(|_| anyhow!("root path '{}' is not absolute"))?;
-             } else {
-                   let base = Url::from_directory_path(root)
-            .map_err(|_| anyhow!("root path '{}' is not absolute"))?;
+                    .map_err(|_| anyhow!("root path '{}' is not absolute", root))?;
+            } else {
+                let base = Url::from_directory_path(root)
+                    .map_err(|_| anyhow!("root path '{}' is not absolute", root.display()))?;
             }
         }
         let url = base.join(source.as_ref())?;

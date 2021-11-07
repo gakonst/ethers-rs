@@ -6,10 +6,13 @@ use inflector::Inflector;
 use proc_macro2::TokenStream;
 use quote::quote;
 
-use ethers_core::abi::{
-    param_type::Reader,
-    struct_def::{FieldDeclaration, FieldType, StructFieldType, StructType},
-    ParamType, SolStruct,
+use ethers_core::{
+    abi::{
+        param_type::Reader,
+        struct_def::{FieldDeclaration, FieldType, StructFieldType, StructType},
+        ParamType, SolStruct,
+    },
+    macros::ethers_contract_crate,
 };
 
 use crate::{
@@ -123,7 +126,7 @@ impl Context {
         // use the same derives as for events
         let derives = util::expand_derives(&self.event_derives);
 
-        let ethers_contract = util::ethers_contract_crate();
+        let ethers_contract = ethers_contract_crate();
         Ok(quote! {
             #abi_signature_doc
             #[derive(Clone, Debug, Default, Eq, PartialEq, #ethers_contract::EthAbiType, #derives)]
@@ -184,7 +187,7 @@ impl Context {
         let derives = &self.event_derives;
         let derives = quote! {#(#derives),*};
 
-        let ethers_contract = util::ethers_contract_crate();
+        let ethers_contract = ethers_contract_crate();
 
         Ok(quote! {
             #abi_signature_doc

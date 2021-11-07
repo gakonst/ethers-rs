@@ -1,6 +1,6 @@
 //! Helper functions for deriving `EthEvent`
 
-use ethers_contract_abigen::{ethers_contract_crate, ethers_core_crate, Source};
+use ethers_contract_abigen::Source;
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use syn::{
@@ -8,7 +8,10 @@ use syn::{
     NestedMeta,
 };
 
-use ethers_core::abi::{param_type::Reader, AbiParser, Event, EventExt, EventParam, ParamType};
+use ethers_core::{
+    abi::{param_type::Reader, AbiParser, Event, EventExt, EventParam, ParamType},
+    macros::{ethers_contract_crate, ethers_core_crate},
+};
 use hex::FromHex;
 
 use crate::{abi_ty, utils};

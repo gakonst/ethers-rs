@@ -47,6 +47,15 @@ impl CompilerInput {
         self.settings.optimizer.runs(runs);
         self
     }
+
+    /// Normalizes the EVM version used in the settings to be up to the latest one
+    /// supported by the provided compiler version.
+    pub fn normalize_evm_version(mut self, version: &Version) -> Self {
+        if let Some(ref mut evm_version) = self.settings.evm_version {
+            self.settings.evm_version = evm_version.normalize_version(version);
+        }
+        self
+    }
 }
 
 impl Default for CompilerInput {
@@ -210,8 +219,8 @@ pub enum EvmVersion {
     Petersburg,
     Istanbul,
     Berlin,
-    London,
     Byzantium,
+    London,
 }
 
 impl EvmVersion {
@@ -384,6 +393,15 @@ impl CompilerOutput {
         OutputDiagnostics { errors: &self.errors, ignored_error_codes }
     }
 
+    /// Finds the first contract with the given name
+    pub fn find(&self, contract: impl AsRef<str>) -> Option<CompactContractRef> {
+        let contract = contract.as_ref();
+        self.contracts
+            .values()
+            .find_map(|contracts| contracts.get(contract))
+            .map(CompactContractRef::from)
+    }
+
     /// Given the contract file's path and the contract's name, tries to return the contract's
     /// bytecode, runtime bytecode, and abi
     pub fn get(&self, path: &str, contract: &str) -> Option<CompactContractRef> {
@@ -465,6 +483,24 @@ pub struct CompactContract {
     pub bin_runtime: Option<Bytes>,
 }
 
+impl CompactContract {
+    /// Returns the contents of this type as a single
+    pub fn into_parts(self) -> (Option<Abi>, Option<Bytes>, Option<Bytes>) {
+        (self.abi, self.bin, self.bin_runtime)
+    }
+
+    /// Returns the individual parts of this contract.
+    ///
+    /// If the values are `None`, then `Default` is returned.
+    pub fn into_parts_or_default(self) -> (Abi, Bytes, Bytes) {
+        (
+            self.abi.unwrap_or_default(),
+            self.bin.unwrap_or_default(),
+            self.bin_runtime.unwrap_or_default(),
+        )
+    }
+}
+
 impl From<Contract> for CompactContract {
     fn from(c: Contract) -> Self {
         let (bin, bin_runtime) = if let Some(evm) = c.evm {
@@ -477,14 +513,34 @@ impl From<Contract> for CompactContract {
     }
 }
 
+impl<'a> From<CompactContractRef<'a>> for CompactContract {
+    fn from(c: CompactContractRef<'a>) -> Self {
+        Self { abi: c.abi.cloned(), bin: c.bin.cloned(), bin_runtime: c.bin_runtime.cloned() }
+    }
+}
+
 /// Helper type to serialize while borrowing from `Contract`
-#[derive(Clone, Debug, Serialize)]
+#[derive(Copy, Clone, Debug, Serialize)]
 pub struct CompactContractRef<'a> {
     pub abi: Option<&'a Abi>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub bin: Option<&'a Bytes>,
     #[serde(default, rename = "bin-runtime", skip_serializing_if = "Option::is_none")]
     pub bin_runtime: Option<&'a Bytes>,
+}
+
+impl<'a> CompactContractRef<'a> {
+    /// Clones the referenced values and returns as tuples
+    pub fn into_parts(self) -> (Option<Abi>, Option<Bytes>, Option<Bytes>) {
+        CompactContract::from(self).into_parts()
+    }
+
+    /// Returns the individual parts of this contract.
+    ///
+    /// If the values are `None`, then `Default` is returned.
+    pub fn into_parts_or_default(self) -> (Abi, Bytes, Bytes) {
+        CompactContract::from(self).into_parts_or_default()
+    }
 }
 
 impl<'a> From<&'a Contract> for CompactContractRef<'a> {
@@ -612,7 +668,9 @@ pub struct DeployedBytecode {
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct GasEstimates {
     pub creation: Creation,
+    #[serde(default)]
     pub external: BTreeMap<String, String>,
+    #[serde(default)]
     pub internal: BTreeMap<String, String>,
 }
 
@@ -869,6 +927,39 @@ mod tests {
             serde_json::from_str::<CompilerInput>(&compiler_output).unwrap_or_else(|err| {
                 panic!("Failed to read compiler output of {} {}", path.display(), err)
             });
+        }
+    }
+
+    #[test]
+    fn test_evm_version_normalization() {
+        for (solc_version, evm_version, expected) in &[
+            // Ensure 0.4.21 it always returns None
+            ("0.4.20", EvmVersion::Homestead, None),
+            // Constantinople clipping
+            ("0.4.21", EvmVersion::Homestead, Some(EvmVersion::Homestead)),
+            ("0.4.21", EvmVersion::Constantinople, Some(EvmVersion::Constantinople)),
+            ("0.4.21", EvmVersion::London, Some(EvmVersion::Constantinople)),
+            // Petersburg
+            ("0.5.5", EvmVersion::Homestead, Some(EvmVersion::Homestead)),
+            ("0.5.5", EvmVersion::Petersburg, Some(EvmVersion::Petersburg)),
+            ("0.5.5", EvmVersion::London, Some(EvmVersion::Petersburg)),
+            // Istanbul
+            ("0.5.14", EvmVersion::Homestead, Some(EvmVersion::Homestead)),
+            ("0.5.14", EvmVersion::Istanbul, Some(EvmVersion::Istanbul)),
+            ("0.5.14", EvmVersion::London, Some(EvmVersion::Istanbul)),
+            // Berlin
+            ("0.8.5", EvmVersion::Homestead, Some(EvmVersion::Homestead)),
+            ("0.8.5", EvmVersion::Berlin, Some(EvmVersion::Berlin)),
+            ("0.8.5", EvmVersion::London, Some(EvmVersion::Berlin)),
+            // London
+            ("0.8.7", EvmVersion::Homestead, Some(EvmVersion::Homestead)),
+            ("0.8.7", EvmVersion::London, Some(EvmVersion::London)),
+            ("0.8.7", EvmVersion::London, Some(EvmVersion::London)),
+        ] {
+            assert_eq!(
+                &evm_version.normalize_version(&Version::from_str(solc_version).unwrap()),
+                expected
+            )
         }
     }
 }

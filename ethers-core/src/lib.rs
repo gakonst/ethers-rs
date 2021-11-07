@@ -51,6 +51,8 @@ pub mod abi;
 /// Various utilities
 pub mod utils;
 
+pub mod macros;
+
 // re-export rand to avoid potential confusion when there's rand version mismatches
 pub use rand;
 

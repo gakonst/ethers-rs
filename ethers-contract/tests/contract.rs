@@ -39,6 +39,9 @@ mod eth_tests {
         // (practically it's not expected that you'll need to deploy multiple instances of
         // the _same_ deployer, so it's fine to clone here from a dev UX vs perf tradeoff)
         let deployer = factory.deploy("initial value".to_string()).unwrap().legacy();
+        // dry runs the deployment of the contract. takes the deployer by reference, no need to
+        // clone.
+        assert!(deployer.call().await.is_ok());
         let contract = deployer.clone().send().await.unwrap();
 
         let get_value = contract.method::<_, String>("getValue", ()).unwrap();

@@ -1,6 +1,9 @@
 use super::{types, util, Context};
 use anyhow::Result;
-use ethers_core::abi::{Event, EventExt, EventParam, ParamType, SolStruct};
+use ethers_core::{
+    abi::{Event, EventExt, EventParam, ParamType, SolStruct},
+    macros::{ethers_contract_crate, ethers_core_crate},
+};
 use inflector::Inflector;
 use proc_macro2::{Ident, Literal, TokenStream};
 use quote::quote;
@@ -61,8 +64,8 @@ impl Context {
 
         let enum_name = self.expand_event_enum_name();
 
-        let ethers_core = util::ethers_core_crate();
-        let ethers_contract = util::ethers_contract_crate();
+        let ethers_core = ethers_core_crate();
+        let ethers_contract = ethers_contract_crate();
 
         quote! {
             #[derive(Debug, Clone, PartialEq, Eq, #ethers_contract::EthAbiType)]
@@ -106,7 +109,7 @@ impl Context {
         let sorted_events: BTreeMap<_, _> = self.abi.events.clone().into_iter().collect();
 
         let mut iter = sorted_events.values().flatten();
-        let ethers_contract = util::ethers_contract_crate();
+        let ethers_contract = ethers_contract_crate();
 
         if let Some(event) = iter.next() {
             let ty = if iter.next().is_some() {
@@ -134,7 +137,7 @@ impl Context {
     /// If a complex types matches with a struct previously parsed by the AbiParser,
     /// we can replace it
     fn expand_input_type(&self, input: &EventParam) -> Result<TokenStream> {
-        let ethers_core = util::ethers_core_crate();
+        let ethers_core = ethers_core_crate();
         Ok(match (&input.kind, input.indexed) {
             (ParamType::Array(ty), true) => {
                 if let ParamType::Tuple(..) = **ty {
@@ -202,7 +205,7 @@ impl Context {
 
     /// Expands into a single method for contracting an event stream.
     fn expand_filter(&self, event: &Event) -> TokenStream {
-        let ethers_contract = util::ethers_contract_crate();
+        let ethers_contract = ethers_contract_crate();
         let alias = self.event_aliases.get(&event.abi_signature()).cloned();
 
         let name = if let Some(id) = alias.clone() {
@@ -246,7 +249,7 @@ impl Context {
 
         let derives = util::expand_derives(&self.event_derives);
 
-        let ethers_contract = util::ethers_contract_crate();
+        let ethers_contract = ethers_contract_crate();
 
         Ok(quote! {
             #[derive(Clone, Debug, Default, Eq, PartialEq, #ethers_contract::EthEvent, #ethers_contract::EthDisplay, #derives)]
@@ -318,7 +321,7 @@ mod tests {
     /// quasi-quoting for code generation. We do this to avoid allocating at runtime
     fn expand_hash(hash: Hash) -> TokenStream {
         let bytes = hash.as_bytes().iter().copied().map(Literal::u8_unsuffixed);
-        let ethers_core = util::ethers_core_crate();
+        let ethers_core = ethers_core_crate();
 
         quote! {
             #ethers_core::types::H256([#( #bytes ),*])
