@@ -138,8 +138,8 @@ where
             Sleeping(instant) => {
                 if instant.elapsed() > *this.polling_interval {
                     // if timer has elapsed (or this is the first tx)
-                    if this.last.is_none()
-                        || (*this.last).unwrap().elapsed() > *this.broadcast_interval
+                    if this.last.is_none() ||
+                        (*this.last).unwrap().elapsed() > *this.broadcast_interval
                     {
                         // then if we have a TX to broadcast, start
                         // broadcasting it
@@ -147,14 +147,14 @@ where
                             let fut = this.provider.send_raw_transaction(next_to_broadcast);
                             *this.state = BroadcastingNew(fut);
                             cx.waker().wake_by_ref();
-                            return Poll::Pending;
+                            return Poll::Pending
                         }
                     }
 
                     check_all_receipts!(cx, this);
                 }
 
-                return Poll::Pending;
+                return Poll::Pending
             }
             BroadcastingNew(fut) => {
                 broadcast_checks!(cx, this, fut);
@@ -181,7 +181,7 @@ where
                     Poll::Pending => {
                         // stick it pack in the list for polling again later
                         futs.push(pollee);
-                        return Poll::Pending;
+                        return Poll::Pending
                     }
                 }
             }
