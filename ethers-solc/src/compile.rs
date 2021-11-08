@@ -82,7 +82,7 @@ impl Solc {
         Solc { solc: path.into(), args: Vec::new() }
     }
 
-    /// Adds an argument to pass to the `ganache-cli`.
+    /// Adds an argument to pass to the `solc` command.
     pub fn arg<T: Into<String>>(mut self, arg: T) -> Self {
         self.args.push(arg.into());
         self
