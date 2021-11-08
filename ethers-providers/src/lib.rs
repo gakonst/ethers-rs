@@ -93,6 +93,7 @@ use std::{error::Error, fmt::Debug, future::Future, pin::Pin, str::FromStr};
 
 pub use provider::{FilterKind, Provider, ProviderError};
 
+/// A simple gas escalation policy
 pub type EscalationPolicy = Box<dyn Fn(U256, usize) -> U256 + Send + Sync>;
 
 // Helper type alias
@@ -292,9 +293,9 @@ pub trait Middleware: Sync + Send + Debug {
     /// Send a transaction with a simple escalation policy.
     ///
     /// `escalation` should be a boxed function that maps `original_gas_price`
-    /// and `number_of_previous_escalations` -> `new_gas_price`
+    /// and `number_of_previous_escalations` -> `new_gas_price`.
     ///
-    /// e.g. ```Box::new(|start, escalations| start * 1250.pow(escalations) / 1000.pow(escalations))```
+    /// e.g. `Box::new(|start, escalations| start * 1250.pow(escalations) / 1000.pow(escalations))`
     ///
     async fn send_escalating<'a>(
         &'a self,

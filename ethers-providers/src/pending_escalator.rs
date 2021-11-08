@@ -24,6 +24,7 @@ enum PendingStates<'a, P> {
 /// An EscalatingPending is a pending transaction that handles increasing its
 /// own gas price over time, by broadcasting successive versions with higher
 /// gas prices
+#[must_use]
 #[pin_project(project = PendingProj)]
 pub struct EscalatingPending<'a, P>
 where
