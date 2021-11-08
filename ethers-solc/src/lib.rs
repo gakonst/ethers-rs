@@ -119,10 +119,12 @@ impl Project {
             let version = Solc::detect_version(&source)?;
             // gets the solc binary for that version, it is expected tha this will succeed
             // AND find the solc since it was installed right above
-            let solc = Solc::find_svm_installed_version(version.to_string())?
-                .expect("solc should have been installed")
-                .arg("--allow-paths")
-                .arg(self.allowed_lib_paths.to_string());
+            let mut solc = Solc::find_svm_installed_version(version.to_string())?
+                .expect("solc should have been installed");
+
+            if !self.allowed_lib_paths.0.is_empty() {
+                solc = solc.arg("--allow-paths").arg(self.allowed_lib_paths.to_string());
+            }
             let entry = sources_by_version.entry(solc).or_insert_with(BTreeMap::new);
             entry.insert(path, source);
         }

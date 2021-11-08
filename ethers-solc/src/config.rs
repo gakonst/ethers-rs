@@ -285,7 +285,7 @@ use std::convert::TryFrom;
 /// can be allowed via the --allow-paths /sample/path,/another/sample/path switch.
 /// Everything inside the path specified via --base-path is always allowed.
 #[derive(Clone, Debug, Default)]
-pub struct AllowedLibPaths(Vec<PathBuf>);
+pub struct AllowedLibPaths(pub(crate) Vec<PathBuf>);
 
 impl fmt::Display for AllowedLibPaths {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
