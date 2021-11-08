@@ -11,7 +11,7 @@ mod compile;
 pub use compile::*;
 
 mod config;
-pub use config::{ArtifactOutput, ProjectPathsConfig, SolcConfig};
+pub use config::{AllowedLibPaths, ArtifactOutput, ProjectPathsConfig, SolcConfig};
 
 use crate::{artifacts::Source, cache::SolFilesCache};
 
@@ -21,6 +21,7 @@ use crate::artifacts::Sources;
 use error::Result;
 use std::{
     collections::{BTreeMap, HashMap},
+    convert::TryInto,
     fmt, fs, io,
     path::PathBuf,
 };
@@ -40,6 +41,8 @@ pub struct Project {
     pub artifacts: ArtifactOutput,
     /// Errors/Warnings which match these error codes are not going to be logged
     pub ignored_error_codes: Vec<u64>,
+    /// The paths which will be allowed for library inclusion
+    pub allowed_lib_paths: AllowedLibPaths,
 }
 
 impl Project {
@@ -116,8 +119,12 @@ impl Project {
             let version = Solc::detect_version(&source)?;
             // gets the solc binary for that version, it is expected tha this will succeed
             // AND find the solc since it was installed right above
-            let solc = Solc::find_svm_installed_version(version.to_string())?
+            let mut solc = Solc::find_svm_installed_version(version.to_string())?
                 .expect("solc should have been installed");
+
+            if !self.allowed_lib_paths.0.is_empty() {
+                solc = solc.arg("--allow-paths").arg(self.allowed_lib_paths.to_string());
+            }
             let entry = sources_by_version.entry(solc).or_insert_with(BTreeMap::new);
             entry.insert(path, source);
         }
@@ -132,7 +139,6 @@ impl Project {
                 res.contracts.extend(compiled.contracts);
             }
         }
-
         Ok(if res.contracts.is_empty() {
             ProjectCompileOutput::Unchanged
         } else {
@@ -214,6 +220,8 @@ pub struct ProjectBuilder {
     artifacts: Option<ArtifactOutput>,
     /// Which error codes to ignore
     pub ignored_error_codes: Vec<u64>,
+    /// All allowed paths
+    pub allowed_paths: Vec<PathBuf>,
 }
 
 impl ProjectBuilder {
@@ -248,8 +256,34 @@ impl ProjectBuilder {
         self
     }
 
+    /// Adds an allowed-path to the solc executable
+    pub fn allowed_path<T: Into<PathBuf>>(mut self, path: T) -> Self {
+        self.allowed_paths.push(path.into());
+        self
+    }
+
+    /// Adds multiple allowed-path to the solc executable
+    pub fn allowed_paths<I, S>(mut self, args: I) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<PathBuf>,
+    {
+        for arg in args {
+            self = self.allowed_path(arg);
+        }
+        self
+    }
+
     pub fn build(self) -> Result<Project> {
-        let Self { paths, solc, solc_config, cached, artifacts, ignored_error_codes } = self;
+        let Self {
+            paths,
+            solc,
+            solc_config,
+            cached,
+            artifacts,
+            ignored_error_codes,
+            mut allowed_paths,
+        } = self;
 
         let solc = solc.unwrap_or_default();
         let solc_config = solc_config.map(Ok).unwrap_or_else(|| {
@@ -257,13 +291,21 @@ impl ProjectBuilder {
             SolcConfig::builder().version(version.to_string()).build()
         })?;
 
+        let paths = paths.map(Ok).unwrap_or_else(ProjectPathsConfig::current_hardhat)?;
+
+        if allowed_paths.is_empty() {
+            // allow every contract under root by default
+            allowed_paths.push(paths.root.clone())
+        }
+
         Ok(Project {
-            paths: paths.map(Ok).unwrap_or_else(ProjectPathsConfig::current_hardhat)?,
+            paths,
             solc,
             solc_config,
             cached,
             artifacts: artifacts.unwrap_or_default(),
             ignored_error_codes,
+            allowed_lib_paths: allowed_paths.try_into()?,
         })
     }
 }
@@ -277,6 +319,7 @@ impl Default for ProjectBuilder {
             cached: true,
             artifacts: None,
             ignored_error_codes: Vec::new(),
+            allowed_paths: vec![],
         }
     }
 }
@@ -328,5 +371,36 @@ mod tests {
         };
         // Contracts A to F
         assert_eq!(contracts.keys().count(), 5);
+    }
+
+    #[test]
+    #[cfg(all(feature = "svm", feature = "async"))]
+    fn test_build_many_libs() {
+        use super::*;
+
+        let root = std::fs::canonicalize("./test-data/test-contract-libs").unwrap();
+
+        let paths = ProjectPathsConfig::builder()
+            .root(&root)
+            .sources(root.join("src"))
+            .lib(root.join("lib1"))
+            .lib(root.join("lib2"))
+            .build()
+            .unwrap();
+        let project = Project::builder()
+            .paths(paths)
+            .ephemeral()
+            .artifacts(ArtifactOutput::Nothing)
+            .build()
+            .unwrap();
+        let compiled = project.compile().unwrap();
+        let contracts = match compiled {
+            ProjectCompileOutput::Compiled((out, _)) => {
+                assert!(!out.has_error());
+                out.contracts
+            }
+            _ => panic!("must compile"),
+        };
+        assert_eq!(contracts.keys().count(), 3);
     }
 }

@@ -63,7 +63,12 @@ pub static RELEASES: Lazy<Vec<Version>> = Lazy::new(|| {
 ///
 /// Supports sync and async functions.
 #[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Ord)]
-pub struct Solc(pub PathBuf);
+pub struct Solc {
+    /// Path to the `solc` executable
+    pub solc: PathBuf,
+    /// Additional arguments passed to the `solc` exectuable
+    pub args: Vec<String>,
+}
 
 impl Default for Solc {
     fn default() -> Self {
@@ -74,7 +79,25 @@ impl Default for Solc {
 impl Solc {
     /// A new instance which points to `solc`
     pub fn new(path: impl Into<PathBuf>) -> Self {
-        Solc(path.into())
+        Solc { solc: path.into(), args: Vec::new() }
+    }
+
+    /// Adds an argument to pass to the `solc` command.
+    pub fn arg<T: Into<String>>(mut self, arg: T) -> Self {
+        self.args.push(arg.into());
+        self
+    }
+
+    /// Adds multiple arguments to pass to the `solc`.
+    pub fn args<I, S>(mut self, args: I) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        for arg in args {
+            self = self.arg(arg);
+        }
+        self
     }
 
     /// Returns the directory in which [svm](https://github.com/roynalnaruto/svm-rs) stores all versions
@@ -112,7 +135,7 @@ impl Solc {
         Ok(solc)
     }
 
-    /// Assuming the `versions` array is sorted, it returns the latest element which satisfies
+    /// Assuming the `versions` array is sorted, it returns the first element which satisfies
     /// the provided [`VersionReq`]
     pub fn find_matching_installation(
         versions: &[Version],
@@ -233,7 +256,10 @@ impl Solc {
     }
 
     pub fn compile_output<T: Serialize>(&self, input: &T) -> Result<Vec<u8>> {
-        let mut child = Command::new(&self.0)
+        let mut cmd = Command::new(&self.solc);
+
+        let mut child = cmd
+            .args(&self.args)
             .arg("--standard-json")
             .stdin(Stdio::piped())
             .stderr(Stdio::piped())
@@ -248,7 +274,7 @@ impl Solc {
     /// Returns the version from the configured `solc`
     pub fn version(&self) -> Result<Version> {
         version_from_output(
-            Command::new(&self.0)
+            Command::new(&self.solc)
                 .arg("--version")
                 .stdin(Stdio::piped())
                 .stderr(Stdio::piped())
@@ -288,7 +314,7 @@ impl Solc {
     pub async fn async_compile_output<T: Serialize>(&self, input: &T) -> Result<Vec<u8>> {
         use tokio::io::AsyncWriteExt;
         let content = serde_json::to_vec(input)?;
-        let mut child = tokio::process::Command::new(&self.0)
+        let mut child = tokio::process::Command::new(&self.solc)
             .arg("--standard-json")
             .stdin(Stdio::piped())
             .stderr(Stdio::piped())
@@ -302,7 +328,7 @@ impl Solc {
 
     pub async fn async_version(&self) -> Result<Version> {
         version_from_output(
-            tokio::process::Command::new(&self.0)
+            tokio::process::Command::new(&self.solc)
                 .arg("--version")
                 .stdin(Stdio::piped())
                 .stderr(Stdio::piped())
@@ -338,13 +364,13 @@ fn version_from_output(output: Output) -> Result<Version> {
 
 impl AsRef<Path> for Solc {
     fn as_ref(&self) -> &Path {
-        &self.0
+        &self.solc
     }
 }
 
 impl<T: Into<PathBuf>> From<T> for Solc {
     fn from(solc: T) -> Self {
-        Solc(solc.into())
+        Solc::new(solc.into())
     }
 }
 
@@ -451,7 +477,7 @@ mod tests {
         }
         let res = Solc::find_svm_installed_version(&version.to_string()).unwrap().unwrap();
         let expected = svm::SVM_HOME.join(ver).join(format!("solc-{}", ver));
-        assert_eq!(res.0, expected);
+        assert_eq!(res.solc, expected);
     }
 
     #[test]

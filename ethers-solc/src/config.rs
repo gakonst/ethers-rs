@@ -272,3 +272,46 @@ impl fmt::Debug for ArtifactOutput {
         }
     }
 }
+
+use std::convert::TryFrom;
+
+/// Helper struct for serializing `--allow-paths` arguments to Solc
+///
+/// From the [Solc docs](https://docs.soliditylang.org/en/v0.8.9/using-the-compiler.html#base-path-and-import-remapping):
+/// For security reasons the compiler has restrictions on what directories it can access.
+/// Directories of source files specified on the command line and target paths of
+/// remappings are automatically allowed to be accessed by the file reader,
+/// but everything else is rejected by default. Additional paths (and their subdirectories)
+/// can be allowed via the --allow-paths /sample/path,/another/sample/path switch.
+/// Everything inside the path specified via --base-path is always allowed.
+#[derive(Clone, Debug, Default)]
+pub struct AllowedLibPaths(pub(crate) Vec<PathBuf>);
+
+impl fmt::Display for AllowedLibPaths {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let lib_paths = self
+            .0
+            .iter()
+            .filter(|path| path.exists())
+            .map(|path| format!("{}", path.display()))
+            .collect::<Vec<_>>()
+            .join(",");
+        write!(f, "{}", lib_paths)
+    }
+}
+
+impl<T: Into<PathBuf>> TryFrom<Vec<T>> for AllowedLibPaths {
+    type Error = std::io::Error;
+
+    fn try_from(libs: Vec<T>) -> std::result::Result<Self, Self::Error> {
+        let libs = libs
+            .into_iter()
+            .map(|lib| {
+                let path: PathBuf = lib.into();
+                let lib = std::fs::canonicalize(path)?;
+                Ok(lib)
+            })
+            .collect::<std::result::Result<Vec<_>, std::io::Error>>()?;
+        Ok(AllowedLibPaths(libs))
+    }
+}
