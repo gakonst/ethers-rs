@@ -5,26 +5,25 @@
 use crate::prelude::*;
 
 use crate::config::EthersCliConfig;
-use abscissa_core::{config, Command, FrameworkError, Options, Runnable};
+use abscissa_core::{config, Clap, Command, FrameworkError, Runnable};
 
 /// `start` subcommand
 ///
-/// The `Options` proc macro generates an option parser based on the struct
+/// The `Clap` proc macro generates an option parser based on the struct
 /// definition, and is defined in the `gumdrop` crate. See their documentation
 /// for a more comprehensive example:
 ///
-/// <https://docs.rs/gumdrop/>
-#[derive(Command, Debug, Options)]
+/// <https://docs.rs/clap/>
+#[derive(Command, Debug, Clap)]
 pub struct StartCmd {
     /// To whom are we saying hello?
-    #[options(free)]
     recipient: Vec<String>,
 }
 
 impl Runnable for StartCmd {
     /// Start the application.
     fn run(&self) {
-        let config = app_config();
+        let config = APP.config();
         println!("Hello, {}!", &config.hello.recipient);
     }
 }

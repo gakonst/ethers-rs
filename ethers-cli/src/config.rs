@@ -20,9 +20,7 @@ pub struct EthersCliConfig {
 /// use `#[derive(Default)]` on EthersCliConfig instead.
 impl Default for EthersCliConfig {
     fn default() -> Self {
-        Self {
-            hello: ExampleSection::default(),
-        }
+        Self { hello: ExampleSection::default() }
     }
 }
 
@@ -38,8 +36,6 @@ pub struct ExampleSection {
 
 impl Default for ExampleSection {
     fn default() -> Self {
-        Self {
-            recipient: "world".to_owned(),
-        }
+        Self { recipient: "world".to_owned() }
     }
 }
