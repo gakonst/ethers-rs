@@ -275,7 +275,6 @@ impl fmt::Debug for ArtifactOutput {
 
 use std::convert::TryFrom;
 
-#[derive(Clone, Debug)]
 /// Helper struct for serializing `--allow-paths` arguments to Solc
 ///
 /// From the [Solc docs](https://docs.soliditylang.org/en/v0.8.9/using-the-compiler.html#base-path-and-import-remapping):
@@ -285,6 +284,7 @@ use std::convert::TryFrom;
 /// but everything else is rejected by default. Additional paths (and their subdirectories)
 /// can be allowed via the --allow-paths /sample/path,/another/sample/path switch.
 /// Everything inside the path specified via --base-path is always allowed.
+#[derive(Clone, Debug, Default)]
 pub struct AllowedLibPaths(Vec<PathBuf>);
 
 impl fmt::Display for AllowedLibPaths {
@@ -292,8 +292,8 @@ impl fmt::Display for AllowedLibPaths {
         let lib_paths = self
             .0
             .iter()
-            .filter(|path| PathBuf::from(path).exists())
-            .map(|path| path.into_os_string().into_string().unwrap())
+            .filter(|path| path.exists())
+            .map(|path| format!("{}", path.display()))
             .collect::<Vec<_>>()
             .join(",");
         write!(f, "{}", lib_paths)
