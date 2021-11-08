@@ -170,7 +170,8 @@ where
                 }
 
                 // otherwise drain one and check if we have a receipt
-                match futs.pop().expect("checked").as_mut().poll(cx) {
+                let mut pollee = futs.pop().expect("checked");
+                match pollee.as_mut().poll(cx) {
                     //
                     Poll::Ready(Ok(Some(receipt))) => {
                         completed!(this, Ok(receipt));
@@ -181,7 +182,11 @@ where
                     Poll::Ready(Err(e)) => {
                         completed!(this, Err(e));
                     }
-                    Poll::Pending => return Poll::Pending,
+                    Poll::Pending => {
+                        // stick it pack in the list for polling again later
+                        futs.push(pollee);
+                        return Poll::Pending;
+                    }
                 }
             }
             Completed => panic!("polled after completion"),
