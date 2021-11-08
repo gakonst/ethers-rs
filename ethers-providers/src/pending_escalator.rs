@@ -1,23 +1,19 @@
 use ethers_core::types::{Bytes, TransactionReceipt, H256};
 use pin_project::pin_project;
 use std::{
-    future::{self, Future},
-    pin::Pin,
+    future::Future,
     task::Poll,
     time::{Duration, Instant},
 };
-use tokio::time::Sleep;
 
-use crate::{JsonRpcClient, Middleware, PendingTransaction, Provider, ProviderError};
-
-type PinBoxFut<'a, T> = Pin<Box<dyn future::Future<Output = T> + 'a + Send>>;
+use crate::{JsonRpcClient, Middleware, PendingTransaction, PinBoxFut, Provider, ProviderError};
 
 /// States for the EscalatingPending future
 enum PendingStates<'a, P> {
-    Initial(PinBoxFut<'a, Result<PendingTransaction<'a, P>, ProviderError>>),
-    Sleeping(Pin<Box<Sleep>>),
-    BroadcastingNew(PinBoxFut<'a, Result<PendingTransaction<'a, P>, ProviderError>>),
-    CheckingReceipts(Vec<PinBoxFut<'a, Result<Option<TransactionReceipt>, ProviderError>>>),
+    Initial(PinBoxFut<'a, PendingTransaction<'a, P>>),
+    Sleeping(Instant),
+    BroadcastingNew(PinBoxFut<'a, PendingTransaction<'a, P>>),
+    CheckingReceipts(Vec<PinBoxFut<'a, Option<TransactionReceipt>>>),
     Completed,
 }
 
@@ -63,7 +59,7 @@ where
             txns,
             last: None,
             sent: vec![],
-            state: PendingStates::Initial(provider.send_raw_transaction(first)),
+            state: PendingStates::Initial(Box::pin(provider.send_raw_transaction(first))),
         }
     }
 
@@ -87,23 +83,22 @@ macro_rules! check_all_receipts {
             .collect();
         *$this.state = CheckingReceipts(futs);
         $cx.waker().wake_by_ref();
-        return Poll::Pending;
+        return Poll::Pending
     };
 }
 
 macro_rules! sleep {
     ($cx:ident, $this:ident) => {
-        *$this.state =
-            PendingStates::Sleeping(Box::pin(tokio::time::sleep(*$this.polling_interval)));
+        *$this.state = PendingStates::Sleeping(std::time::Instant::now());
         $cx.waker().wake_by_ref();
-        return Poll::Pending;
+        return Poll::Pending
     };
 }
 
 macro_rules! completed {
     ($this:ident, $output:expr) => {
         *$this.state = Completed;
-        return Poll::Ready($output);
+        return Poll::Ready($output)
     };
 }
 
@@ -140,11 +135,11 @@ where
             Initial(fut) => {
                 broadcast_checks!(cx, this, fut);
             }
-            Sleeping(fut) => {
-                if fut.as_mut().poll(cx).is_ready() {
+            Sleeping(instant) => {
+                if instant.elapsed() > *this.polling_interval {
                     // if timer has elapsed (or this is the first tx)
                     if this.last.is_none()
-                        || this.last.clone().unwrap().elapsed() > *this.broadcast_interval
+                        || (*this.last).unwrap().elapsed() > *this.broadcast_interval
                     {
                         // then if we have a TX to broadcast, start
                         // broadcasting it
@@ -179,7 +174,7 @@ where
                     }
                     // rewake until drained
                     Poll::Ready(Ok(None)) => cx.waker().wake_by_ref(),
-                    // bubble up errors
+                    // bubble up errorsc
                     Poll::Ready(Err(e)) => {
                         completed!(this, Err(e));
                     }

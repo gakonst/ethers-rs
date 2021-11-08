@@ -296,7 +296,6 @@ pub trait Middleware: Sync + Send + Debug {
     /// and `number_of_previous_escalations` -> `new_gas_price`.
     ///
     /// e.g. `Box::new(|start, escalations| start * 1250.pow(escalations) / 1000.pow(escalations))`
-    ///
     async fn send_escalating<'a>(
         &'a self,
         tx: &TypedTransaction,
@@ -307,18 +306,17 @@ pub trait Middleware: Sync + Send + Debug {
         self.fill_transaction(&mut original, None).await?;
         let gas_price = original.gas_price().expect("filled");
         let chain_id = self.get_chainid().await?.low_u64();
-        let reqs: Vec<_> = (0..5)
+        let sign_futs: Vec<_> = (0..5)
             .map(|i| {
                 let new_price = escalation(gas_price, i);
                 let mut r = original.clone();
                 r.set_gas_price(new_price);
                 r
             })
+            .map(|req| async move {
+                self.sign(req.rlp(chain_id), from).await.map(|sig| req.rlp_signed(chain_id, &sig))
+            })
             .collect();
-
-        let sign_futs = reqs.into_iter().map(|req| async move {
-            self.sign(req.rlp(chain_id), from).await.map(|sig| req.rlp_signed(chain_id, &sig))
-        });
 
         // we reverse for convenience. Ensuring that we can always just
         // `pop()` the next tx off the back later
