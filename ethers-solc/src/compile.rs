@@ -477,7 +477,7 @@ mod tests {
         }
         let res = Solc::find_svm_installed_version(&version.to_string()).unwrap().unwrap();
         let expected = svm::SVM_HOME.join(ver).join(format!("solc-{}", ver));
-        assert_eq!(res.0, expected);
+        assert_eq!(res.solc, expected);
     }
 
     #[test]
