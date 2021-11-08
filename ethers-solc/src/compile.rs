@@ -64,7 +64,9 @@ pub static RELEASES: Lazy<Vec<Version>> = Lazy::new(|| {
 /// Supports sync and async functions.
 #[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Ord)]
 pub struct Solc {
+    /// Path to the `solc` executable
     pub solc: PathBuf,
+    /// Additional arguments passed to the `solc` exectuable
     pub args: Vec<String>,
 }
 
@@ -78,6 +80,24 @@ impl Solc {
     /// A new instance which points to `solc`
     pub fn new(path: impl Into<PathBuf>) -> Self {
         Solc { solc: path.into(), args: Vec::new() }
+    }
+
+    /// Adds an argument to pass to the `solc` command.
+    pub fn arg<T: Into<String>>(mut self, arg: T) -> Self {
+        self.args.push(arg.into());
+        self
+    }
+
+    /// Adds multiple arguments to pass to the `solc`.
+    pub fn args<I, S>(mut self, args: I) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        for arg in args {
+            self = self.arg(arg);
+        }
+        self
     }
 
     /// Returns the directory in which [svm](https://github.com/roynalnaruto/svm-rs) stores all versions
