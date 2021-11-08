@@ -370,4 +370,35 @@ mod tests {
         // Contracts A to F
         assert_eq!(contracts.keys().count(), 5);
     }
+
+    #[test]
+    #[cfg(all(feature = "svm", feature = "async"))]
+    fn test_build_many_libs() {
+        use super::*;
+
+        let root = std::fs::canonicalize("./test-data/test-contract-libs").unwrap();
+
+        let paths = ProjectPathsConfig::builder()
+            .root(&root)
+            .sources(root.join("src"))
+            .lib(root.join("lib1"))
+            .lib(root.join("lib2"))
+            .build()
+            .unwrap();
+        let project = Project::builder()
+            .paths(paths)
+            .ephemeral()
+            .artifacts(ArtifactOutput::Nothing)
+            .build()
+            .unwrap();
+        let compiled = project.compile().unwrap();
+        let contracts = match compiled {
+            ProjectCompileOutput::Compiled((out, _)) => {
+                assert!(!out.has_error());
+                out.contracts
+            }
+            _ => panic!("must compile"),
+        };
+        assert_eq!(contracts.keys().count(), 3);
+    }
 }
