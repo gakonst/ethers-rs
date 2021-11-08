@@ -64,6 +64,7 @@
 //! # }
 //! ```
 mod transports;
+use futures_util::future::join_all;
 pub use transports::*;
 
 mod provider;
@@ -73,6 +74,9 @@ pub mod ens;
 
 mod pending_transaction;
 pub use pending_transaction::PendingTransaction;
+
+mod pending_escalator;
+pub use pending_escalator::EscalatingPending;
 
 mod stream;
 pub use futures_util::StreamExt;
@@ -88,6 +92,8 @@ use serde::{de::DeserializeOwned, Deserialize, Deserializer, Serialize};
 use std::{error::Error, fmt::Debug, future::Future, pin::Pin, str::FromStr};
 
 pub use provider::{FilterKind, Provider, ProviderError};
+
+pub type EscalationPolicy = Box<dyn Fn(U256, usize) -> U256 + Send + Sync>;
 
 // Helper type alias
 #[cfg(target_arch = "wasm32")]
@@ -281,6 +287,44 @@ pub trait Middleware: Sync + Send + Debug {
         block: Option<BlockId>,
     ) -> Result<PendingTransaction<'_, Self::Provider>, Self::Error> {
         self.inner().send_transaction(tx, block).await.map_err(FromErr::from)
+    }
+
+    /// Send a transaction with a simple escalation policy.
+    ///
+    /// `escalation` should be a boxed function that maps `original_gas_price`
+    /// and `number_of_previous_escalations` -> `new_gas_price`
+    ///
+    /// e.g. ```Box::new(|start, escalations| start * 1250.pow(escalations) / 1000.pow(escalations))```
+    ///
+    async fn send_escalating<'a>(
+        &'a self,
+        tx: &TypedTransaction,
+        from: &Address,
+        escalation: EscalationPolicy,
+    ) -> Result<EscalatingPending<'a, Self::Provider>, Self::Error> {
+        let mut original = tx.clone();
+        self.fill_transaction(&mut original, None).await?;
+        let gas_price = original.gas_price().expect("filled");
+        let chain_id = self.get_chainid().await?.low_u64();
+        let reqs: Vec<_> = (0..5)
+            .map(|i| {
+                let new_price = escalation(gas_price, i);
+                let mut r = original.clone();
+                r.set_gas_price(new_price);
+                r
+            })
+            .collect();
+
+        let sign_futs = reqs.into_iter().map(|req| async move {
+            self.sign(req.rlp(chain_id), from).await.map(|sig| req.rlp_signed(chain_id, &sig))
+        });
+
+        // we reverse for convenience. Ensuring that we can always just
+        // `pop()` the next tx off the back later
+        let mut signed = join_all(sign_futs).await.into_iter().collect::<Result<Vec<_>, _>>()?;
+        signed.reverse();
+
+        Ok(EscalatingPending::new(self.provider(), signed))
     }
 
     async fn resolve_name(&self, ens_name: &str) -> Result<Address, Self::Error> {

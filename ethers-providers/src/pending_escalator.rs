@@ -1,21 +1,31 @@
 use ethers_core::types::{Bytes, TransactionReceipt, H256};
 use pin_project::pin_project;
 use std::{
-    collections::HashMap,
     future::{self, Future},
     pin::Pin,
     task::Poll,
     time::{Duration, Instant},
 };
-use tokio::{sync::RwLock, time::Sleep};
+use tokio::time::Sleep;
 
 use crate::{JsonRpcClient, Middleware, PendingTransaction, Provider, ProviderError};
 
-type LockedMap<K, V> = RwLock<HashMap<K, RwLock<V>>>;
+type PinBoxFut<'a, T> = Pin<Box<dyn future::Future<Output = T> + 'a + Send>>;
 
-/// tmp
+/// States for the EscalatingPending future
+enum PendingStates<'a, P> {
+    Initial(PinBoxFut<'a, Result<PendingTransaction<'a, P>, ProviderError>>),
+    Sleeping(Pin<Box<Sleep>>),
+    BroadcastingNew(PinBoxFut<'a, Result<PendingTransaction<'a, P>, ProviderError>>),
+    CheckingReceipts(Vec<PinBoxFut<'a, Result<Option<TransactionReceipt>, ProviderError>>>),
+    Completed,
+}
+
+/// An EscalatingPending is a pending transaction that handles increasing its
+/// own gas price over time, by broadcasting successive versions with higher
+/// gas prices
 #[pin_project(project = PendingProj)]
-pub struct SuperPending<'a, P>
+pub struct EscalatingPending<'a, P>
 where
     P: JsonRpcClient,
 {
@@ -28,42 +38,43 @@ where
     state: PendingStates<'a, P>,
 }
 
-impl<'a, P> SuperPending<'a, P>
+impl<'a, P> EscalatingPending<'a, P>
 where
     P: JsonRpcClient,
 {
-    /// Instantiate a new SuperPending
-    pub(crate) fn new(
-        provider: &'a Provider<P>,
-        broadcast_interval: u64,
-        polling_interval: u64,
-        mut txns: Vec<Bytes>,
-    ) -> Self {
+    /// Instantiate a new EscalatingPending. This should only be called by the
+    /// Middleware trait. Callers MUST ensure that transactions are in _reverse_
+    /// broadcast order (this just makes writing the code easier, as we
+    /// can use `pop()` a lot)
+    ///
+    /// TODO: consider deserializing and checking invariants (gas order, etc.)
+    pub(crate) fn new(provider: &'a Provider<P>, mut txns: Vec<Bytes>) -> Self {
         if txns.is_empty() {
             panic!("bad args");
         }
 
         let first = txns.pop().expect("bad args");
+        // Sane-feeling default intervals
         Self {
             provider,
-            broadcast_interval: Duration::from_millis(broadcast_interval),
-            polling_interval: Duration::from_millis(polling_interval),
+            broadcast_interval: Duration::from_millis(150),
+            polling_interval: Duration::from_millis(10),
             txns,
             last: None,
             sent: vec![],
             state: PendingStates::Initial(provider.send_raw_transaction(first)),
         }
     }
-}
 
-type PinBoxFut<'a, T> = Pin<Box<dyn future::Future<Output = T> + 'a + Send>>;
+    pub fn broadcast_interval(mut self, duration: u64) -> Self {
+        self.broadcast_interval = Duration::from_secs(duration);
+        self
+    }
 
-enum PendingStates<'a, P> {
-    Initial(PinBoxFut<'a, Result<PendingTransaction<'a, P>, ProviderError>>),
-    Sleeping(Pin<Box<Sleep>>),
-    BroadcastingNew(PinBoxFut<'a, Result<PendingTransaction<'a, P>, ProviderError>>),
-    CheckingReceipts(Vec<PinBoxFut<'a, Result<Option<TransactionReceipt>, ProviderError>>>),
-    Completed,
+    pub fn polling_interval(mut self, duration: u64) -> Self {
+        self.polling_interval = Duration::from_secs(duration);
+        self
+    }
 }
 
 macro_rules! check_all_receipts {
@@ -110,7 +121,7 @@ macro_rules! broadcast_checks {
     };
 }
 
-impl<'a, P> Future for SuperPending<'a, P>
+impl<'a, P> Future for EscalatingPending<'a, P>
 where
     P: JsonRpcClient,
 {
