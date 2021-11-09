@@ -15,7 +15,7 @@ use wasm_timer::Delay;
 use crate::{JsonRpcClient, Middleware, PendingTransaction, PinBoxFut, Provider, ProviderError};
 
 /// States for the EscalatingPending future
-enum PendingStates<'a, P> {
+enum EscalatorStates<'a, P> {
     Initial(PinBoxFut<'a, PendingTransaction<'a, P>>),
     Sleeping(Pin<Box<Delay>>),
     BroadcastingNew(PinBoxFut<'a, PendingTransaction<'a, P>>),
@@ -28,6 +28,7 @@ enum PendingStates<'a, P> {
 /// gas prices
 #[must_use]
 #[pin_project(project = PendingProj)]
+#[derive(Debug)]
 pub struct EscalatingPending<'a, P>
 where
     P: JsonRpcClient,
@@ -38,7 +39,7 @@ where
     txns: Vec<Bytes>,
     last: Instant,
     sent: Vec<H256>,
-    state: PendingStates<'a, P>,
+    state: EscalatorStates<'a, P>,
 }
 
 impl<'a, P> EscalatingPending<'a, P>
@@ -67,7 +68,7 @@ where
             // future resolves
             last: Instant::now(),
             sent: vec![],
-            state: PendingStates::Initial(Box::pin(provider.send_raw_transaction(first))),
+            state: EscalatorStates::Initial(Box::pin(provider.send_raw_transaction(first))),
         }
     }
 
@@ -97,7 +98,7 @@ macro_rules! check_all_receipts {
 
 macro_rules! sleep {
     ($cx:ident, $this:ident) => {
-        *$this.state = PendingStates::Sleeping(Box::pin(Delay::new(*$this.polling_interval)));
+        *$this.state = EscalatorStates::Sleeping(Box::pin(Delay::new(*$this.polling_interval)));
         $cx.waker().wake_by_ref();
         return Poll::Pending
     };
@@ -145,7 +146,7 @@ where
         self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Self::Output> {
-        use PendingStates::*;
+        use EscalatorStates::*;
 
         let this = self.project();
 
@@ -162,7 +163,7 @@ where
                         let fut = this.provider.send_raw_transaction(next_to_broadcast);
                         *this.state = BroadcastingNew(fut);
                         cx.waker().wake_by_ref();
-                        return Poll::Pending;
+                        return Poll::Pending
                     }
                 }
                 check_all_receipts!(cx, this);
@@ -195,7 +196,7 @@ where
                     Poll::Pending => {
                         // stick it pack in the list for polling again later
                         futs.push(pollee);
-                        return Poll::Pending;
+                        return Poll::Pending
                     }
                 }
             }
@@ -203,5 +204,18 @@ where
         }
 
         Poll::Pending
+    }
+}
+
+impl<'a, P> std::fmt::Debug for EscalatorStates<'a, P> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let state = match self {
+            Self::Initial(_) => "Initial",
+            Self::Sleeping(_) => "Sleeping",
+            Self::BroadcastingNew(_) => "BroadcastingNew",
+            Self::CheckingReceipts(_) => "CheckingReceipts",
+            Self::Completed => "Completed",
+        };
+        f.debug_struct("EscalatorStates").field("state", &state).finish()
     }
 }
