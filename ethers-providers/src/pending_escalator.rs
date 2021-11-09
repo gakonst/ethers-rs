@@ -2,16 +2,22 @@ use ethers_core::types::{Bytes, TransactionReceipt, H256};
 use pin_project::pin_project;
 use std::{
     future::Future,
+    pin::Pin,
     task::Poll,
     time::{Duration, Instant},
 };
+
+#[cfg(not(target_arch = "wasm32"))]
+use futures_timer::Delay;
+#[cfg(target_arch = "wasm32")]
+use wasm_timer::Delay;
 
 use crate::{JsonRpcClient, Middleware, PendingTransaction, PinBoxFut, Provider, ProviderError};
 
 /// States for the EscalatingPending future
 enum PendingStates<'a, P> {
     Initial(PinBoxFut<'a, PendingTransaction<'a, P>>),
-    Sleeping(Instant),
+    Sleeping(Pin<Box<Delay>>),
     BroadcastingNew(PinBoxFut<'a, PendingTransaction<'a, P>>),
     CheckingReceipts(Vec<PinBoxFut<'a, Option<TransactionReceipt>>>),
     Completed,
@@ -89,7 +95,7 @@ macro_rules! check_all_receipts {
 
 macro_rules! sleep {
     ($cx:ident, $this:ident) => {
-        *$this.state = PendingStates::Sleeping(std::time::Instant::now());
+        *$this.state = PendingStates::Sleeping(Box::pin(Delay::new(*$this.polling_interval)));
         $cx.waker().wake_by_ref();
         return Poll::Pending
     };
@@ -135,26 +141,21 @@ where
             Initial(fut) => {
                 broadcast_checks!(cx, this, fut);
             }
-            Sleeping(instant) => {
-                if instant.elapsed() > *this.polling_interval {
-                    // if timer has elapsed (or this is the first tx)
-                    if this.last.is_none() ||
-                        (*this.last).unwrap().elapsed() > *this.broadcast_interval
-                    {
-                        // then if we have a TX to broadcast, start
-                        // broadcasting it
-                        if let Some(next_to_broadcast) = this.txns.pop() {
-                            let fut = this.provider.send_raw_transaction(next_to_broadcast);
-                            *this.state = BroadcastingNew(fut);
-                            cx.waker().wake_by_ref();
-                            return Poll::Pending
-                        }
+            Sleeping(delay) => {
+                let _ready = futures_util::ready!(delay.as_mut().poll(cx));
+                // if timer has elapsed (or this is the first tx)
+                if this.last.is_none() || (*this.last).unwrap().elapsed() > *this.broadcast_interval
+                {
+                    // then if we have a TX to broadcast, start
+                    // broadcasting it
+                    if let Some(next_to_broadcast) = this.txns.pop() {
+                        let fut = this.provider.send_raw_transaction(next_to_broadcast);
+                        *this.state = BroadcastingNew(fut);
+                        cx.waker().wake_by_ref();
+                        return Poll::Pending;
                     }
-
-                    check_all_receipts!(cx, this);
                 }
-
-                return Poll::Pending
+                check_all_receipts!(cx, this);
             }
             BroadcastingNew(fut) => {
                 broadcast_checks!(cx, this, fut);
@@ -181,7 +182,7 @@ where
                     Poll::Pending => {
                         // stick it pack in the list for polling again later
                         futs.push(pollee);
-                        return Poll::Pending
+                        return Poll::Pending;
                     }
                 }
             }

@@ -299,7 +299,6 @@ pub trait Middleware: Sync + Send + Debug {
     async fn send_escalating<'a>(
         &'a self,
         tx: &TypedTransaction,
-        from: &Address,
         escalation: EscalationPolicy,
     ) -> Result<EscalatingPending<'a, Self::Provider>, Self::Error> {
         let mut original = tx.clone();
@@ -314,7 +313,9 @@ pub trait Middleware: Sync + Send + Debug {
                 r
             })
             .map(|req| async move {
-                self.sign(req.rlp(chain_id), from).await.map(|sig| req.rlp_signed(chain_id, &sig))
+                self.sign(req.rlp(chain_id), &self.default_sender().unwrap_or_default())
+                    .await
+                    .map(|sig| req.rlp_signed(chain_id, &sig))
             })
             .collect();
 
