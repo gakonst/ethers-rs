@@ -36,7 +36,7 @@ where
     broadcast_interval: Duration,
     polling_interval: Duration,
     txns: Vec<Bytes>,
-    last: Option<Instant>,
+    last: Instant,
     sent: Vec<H256>,
     state: PendingStates<'a, P>,
 }
@@ -63,7 +63,7 @@ where
             broadcast_interval: Duration::from_millis(150),
             polling_interval: Duration::from_millis(10),
             txns,
-            last: None,
+            last: Instant::now(),
             sent: vec![],
             state: PendingStates::Initial(Box::pin(provider.send_raw_transaction(first))),
         }
@@ -108,14 +108,23 @@ macro_rules! completed {
     };
 }
 
-macro_rules! broadcast_checks {
+macro_rules! poll_broadcast_fut {
     ($cx:ident, $this:ident, $fut:ident) => {
         match $fut.as_mut().poll($cx) {
             Poll::Ready(Ok(pending)) => {
                 $this.sent.push(*pending);
+                tracing::info!(
+                    tx_hash = ?*pending,
+                    escalation = $this.sent.len(),
+                    "Escalation transaction broadcast complete"
+                );
                 check_all_receipts!($cx, $this);
             }
             Poll::Ready(Err(e)) => {
+                tracing::error!(
+                    error = ?e,
+                    "Error during transaction broadcast"
+                );
                 completed!($this, Err(e));
             }
             Poll::Pending => return Poll::Pending,
@@ -139,15 +148,13 @@ where
 
         match this.state {
             Initial(fut) => {
-                broadcast_checks!(cx, this, fut);
+                poll_broadcast_fut!(cx, this, fut);
             }
             Sleeping(delay) => {
                 let _ready = futures_util::ready!(delay.as_mut().poll(cx));
-                // if timer has elapsed (or this is the first tx)
-                if this.last.is_none() || (*this.last).unwrap().elapsed() > *this.broadcast_interval
-                {
-                    // then if we have a TX to broadcast, start
-                    // broadcasting it
+                // if broadcast timer has elapsed and if we have a TX to
+                // broadcast, broadcast it
+                if this.last.elapsed() > *this.broadcast_interval {
                     if let Some(next_to_broadcast) = this.txns.pop() {
                         let fut = this.provider.send_raw_transaction(next_to_broadcast);
                         *this.state = BroadcastingNew(fut);
@@ -158,7 +165,7 @@ where
                 check_all_receipts!(cx, this);
             }
             BroadcastingNew(fut) => {
-                broadcast_checks!(cx, this, fut);
+                poll_broadcast_fut!(cx, this, fut);
             }
             CheckingReceipts(futs) => {
                 // if drained, sleep
@@ -169,16 +176,19 @@ where
                 // otherwise drain one and check if we have a receipt
                 let mut pollee = futs.pop().expect("checked");
                 match pollee.as_mut().poll(cx) {
-                    //
+                    // we have found a receipt. This means that all other
+                    // broadcast txns are now invalid, so we can drop them
                     Poll::Ready(Ok(Some(receipt))) => {
                         completed!(this, Ok(receipt));
                     }
-                    // rewake until drained
+                    // we found no receipt, rewake and check the next future
+                    // until drained
                     Poll::Ready(Ok(None)) => cx.waker().wake_by_ref(),
-                    // bubble up errorsc
+                    // bubble up errors
                     Poll::Ready(Err(e)) => {
                         completed!(this, Err(e));
                     }
+                    // check again later
                     Poll::Pending => {
                         // stick it pack in the list for polling again later
                         futs.push(pollee);
