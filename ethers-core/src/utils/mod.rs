@@ -58,10 +58,25 @@ pub fn format_ether<T: Into<U256>>(amount: T) -> U256 {
 }
 
 /// Divides the provided amount with 10^{units} provided.
-pub fn format_units<T: Into<U256>, K: Into<Units>>(amount: T, units: K) -> U256 {
+///
+/// ```
+/// use ethers_core::{types::U256, utils::format_units};
+///
+/// let eth = format_units(1395633240123456000_u128, "ether");
+/// assert_eq!(eth.parse::<f64>().unwrap(), 1.395633240123456);
+///
+/// let eth = format_units(U256::from_dec_str("1395633240123456000").unwrap(), "ether");
+/// assert_eq!(eth.parse::<f64>().unwrap(), 1.395633240123456);
+///
+/// let eth = format_units(U256::from_dec_str("1395633240123456789").unwrap(), "ether");
+/// assert_eq!(eth, "1.395633240123456789");
+/// ```
+pub fn format_units<T: Into<U256>, K: Into<Units>>(amount: T, units: K) -> String {
     let units = units.into();
     let amount = amount.into();
-    amount / 10u64.pow(units.as_num())
+    let amount_decimals = amount % U256::from(10_u128.pow(units.as_num()));
+    let amount_integer = amount / U256::from(10_u128.pow(units.as_num()));
+    amount_integer.to_string() + "." + &amount_decimals.to_string()
 }
 
 /// Converts the input to a U256 and converts from Ether to Wei.
@@ -367,10 +382,19 @@ mod tests {
     #[test]
     fn test_format_units() {
         let gwei_in_ether = format_units(WEI_IN_ETHER, 9);
-        assert_eq!(gwei_in_ether.as_u64(), 1e9 as u64);
+        assert_eq!(gwei_in_ether.parse::<f64>().unwrap() as u64, 1e9 as u64);
 
         let eth = format_units(WEI_IN_ETHER, "ether");
-        assert_eq!(eth.as_u64(), 1);
+        assert_eq!(eth.parse::<f64>().unwrap() as u64, 1);
+
+        let eth = format_units(1395633240123456000_u128, "ether");
+        assert_eq!(eth.parse::<f64>().unwrap(), 1.395633240123456);
+
+        let eth = format_units(U256::from_dec_str("1395633240123456000").unwrap(), "ether");
+        assert_eq!(eth.parse::<f64>().unwrap(), 1.395633240123456);
+
+        let eth = format_units(U256::from_dec_str("1395633240123456789").unwrap(), "ether");
+        assert_eq!(eth, "1.395633240123456789");
     }
 
     #[test]

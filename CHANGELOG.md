@@ -11,6 +11,7 @@
 - Add EIP-712 `sign_typed_data` signer method; add ethers-core type `Eip712`
   trait and derive macro in ethers-derive-eip712
   [#481](https://github.com/gakonst/ethers-rs/pull/481)
+- Fix `format_units` to return a `String` of representing a decimal point float such that the decimal places don't get truncated. [597](https://github.com/gakonst/ethers-rs/pull/597)
 
 ### 0.5.3
 
