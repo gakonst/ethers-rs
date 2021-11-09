@@ -63,6 +63,8 @@ where
             broadcast_interval: Duration::from_millis(150),
             polling_interval: Duration::from_millis(10),
             txns,
+            // placeholder value. We set this again after the initial broadcast
+            // future resolves
             last: Instant::now(),
             sent: vec![],
             state: PendingStates::Initial(Box::pin(provider.send_raw_transaction(first))),
@@ -112,6 +114,7 @@ macro_rules! poll_broadcast_fut {
     ($cx:ident, $this:ident, $fut:ident) => {
         match $fut.as_mut().poll($cx) {
             Poll::Ready(Ok(pending)) => {
+                *$this.last = Instant::now();
                 $this.sent.push(*pending);
                 tracing::info!(
                     tx_hash = ?*pending,
