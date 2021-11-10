@@ -24,7 +24,7 @@ if_not_wasm! {
 }
 
 mod http;
-pub use http::Provider as Http;
+pub use http::{ClientError as HttpClientError, Provider as Http};
 
 #[cfg(feature = "ws")]
 mod ws;
