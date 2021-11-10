@@ -29,7 +29,7 @@ pub use http::{ClientError as HttpClientError, Provider as Http};
 #[cfg(feature = "ws")]
 mod ws;
 #[cfg(feature = "ws")]
-pub use ws::Ws;
+pub use ws::{ClientError as WsClientError, Ws};
 
 mod quorum;
 pub(crate) use quorum::JsonRpcClientWrapper;
