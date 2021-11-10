@@ -1,4 +1,5 @@
 use ethers_core::types::{Bytes, TransactionReceipt, H256};
+use futures_util::{stream::FuturesUnordered, StreamExt};
 use pin_project::pin_project;
 use std::{
     future::Future,
@@ -19,7 +20,7 @@ enum EscalatorStates<'a, P> {
     Initial(PinBoxFut<'a, PendingTransaction<'a, P>>),
     Sleeping(Pin<Box<Delay>>),
     BroadcastingNew(PinBoxFut<'a, PendingTransaction<'a, P>>),
-    CheckingReceipts(Vec<PinBoxFut<'a, Option<TransactionReceipt>>>),
+    CheckingReceipts(FuturesUnordered<PinBoxFut<'a, Option<TransactionReceipt>>>),
     Completed,
 }
 
@@ -93,7 +94,7 @@ where
 
 macro_rules! check_all_receipts {
     ($cx:ident, $this:ident) => {
-        let futs: Vec<_> = $this
+        let futs: futures_util::stream::FuturesUnordered<_> = $this
             .sent
             .iter()
             .map(|tx_hash| $this.provider.get_transaction_receipt(*tx_hash))
@@ -180,30 +181,26 @@ where
                 poll_broadcast_fut!(cx, this, fut);
             }
             CheckingReceipts(futs) => {
-                // if drained, sleep
-                if futs.is_empty() {
-                    sleep!(cx, this);
-                }
-
                 // otherwise drain one and check if we have a receipt
-                let mut pollee = futs.pop().expect("checked");
-                match pollee.as_mut().poll(cx) {
+                match futs.poll_next_unpin(cx) {
                     // we have found a receipt. This means that all other
                     // broadcast txns are now invalid, so we can drop them
-                    Poll::Ready(Ok(Some(receipt))) => {
+                    Poll::Ready(Some(Ok(Some(receipt)))) => {
                         completed!(this, Ok(receipt));
                     }
                     // we found no receipt, rewake and check the next future
                     // until drained
-                    Poll::Ready(Ok(None)) => cx.waker().wake_by_ref(),
+                    Poll::Ready(Some(Ok(None))) => cx.waker().wake_by_ref(),
                     // bubble up errors
-                    Poll::Ready(Err(e)) => {
+                    Poll::Ready(Some(Err(e))) => {
                         completed!(this, Err(e));
+                    }
+                    Poll::Ready(None) => {
+                        sleep!(cx, this);
                     }
                     // check again later
                     Poll::Pending => {
                         // stick it pack in the list for polling again later
-                        futs.push(pollee);
                         return Poll::Pending
                     }
                 }
