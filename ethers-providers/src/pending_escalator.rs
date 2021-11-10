@@ -72,14 +72,22 @@ where
         }
     }
 
-    pub fn broadcast_interval(mut self, duration: u64) -> Self {
-        self.broadcast_interval = Duration::from_secs(duration);
+    pub fn with_broadcast_interval(mut self, duration: impl Into<Duration>) -> Self {
+        self.broadcast_interval = duration.into();
         self
     }
 
-    pub fn polling_interval(mut self, duration: u64) -> Self {
-        self.polling_interval = Duration::from_secs(duration);
+    pub fn with_polling_interval(mut self, duration: impl Into<Duration>) -> Self {
+        self.polling_interval = duration.into();
         self
+    }
+
+    pub fn get_polling_interval(&self) -> Duration {
+        self.polling_interval
+    }
+
+    pub fn get_broadcast_interval(&self) -> Duration {
+        self.broadcast_interval
     }
 }
 

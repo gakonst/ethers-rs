@@ -299,15 +299,16 @@ pub trait Middleware: Sync + Send + Debug {
     async fn send_escalating<'a>(
         &'a self,
         tx: &TypedTransaction,
-        escalation: EscalationPolicy,
+        escalations: usize,
+        policy: EscalationPolicy,
     ) -> Result<EscalatingPending<'a, Self::Provider>, Self::Error> {
         let mut original = tx.clone();
         self.fill_transaction(&mut original, None).await?;
         let gas_price = original.gas_price().expect("filled");
         let chain_id = self.get_chainid().await?.low_u64();
-        let sign_futs: Vec<_> = (0..5)
+        let sign_futs: Vec<_> = (0..escalations)
             .map(|i| {
-                let new_price = escalation(gas_price, i);
+                let new_price = policy(gas_price, i);
                 let mut r = original.clone();
                 r.set_gas_price(new_price);
                 r
