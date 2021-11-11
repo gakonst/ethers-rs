@@ -295,7 +295,8 @@ pub trait Middleware: Sync + Send + Debug {
     /// `policy` should be a boxed function that maps `original_gas_price`
     /// and `number_of_previous_escalations` -> `new_gas_price`.
     ///
-    /// e.g. `Box::new(|start, escalation_index| start * 1250.pow(escalations) / 1000.pow(escalations))`
+    /// e.g. `Box::new(|start, escalation_index| start * 1250.pow(escalations) /
+    /// 1000.pow(escalations))`
     async fn send_escalating<'a>(
         &'a self,
         tx: &TypedTransaction,
