@@ -24,9 +24,8 @@ enum EscalatorStates<'a, P> {
     Completed,
 }
 
-/// An EscalatingPending is a pending transaction that handles increasing its
-/// own gas price over time, by broadcasting successive versions with higher
-/// gas prices
+/// An EscalatingPending is a pending transaction that increases its own gas
+/// price over time, by broadcasting successive versions with higher gas prices.
 #[must_use]
 #[pin_project(project = PendingProj)]
 #[derive(Debug)]
@@ -48,9 +47,10 @@ where
     P: JsonRpcClient,
 {
     /// Instantiate a new EscalatingPending. This should only be called by the
-    /// Middleware trait. Callers MUST ensure that transactions are in _reverse_
-    /// broadcast order (this just makes writing the code easier, as we
-    /// can use `pop()` a lot)
+    /// Middleware trait.
+    ///
+    /// Callers MUST ensure that transactions are in _reverse_ broadcast order
+    /// (this just makes writing the code easier, as we can use `pop()` a lot).
     ///
     /// TODO: consider deserializing and checking invariants (gas order, etc.)
     pub(crate) fn new(provider: &'a Provider<P>, mut txns: Vec<Bytes>) -> Self {
@@ -73,20 +73,26 @@ where
         }
     }
 
+    /// Set the broadcast interval. This controls how often the escalator
+    /// broadcasts a new transaction at a higher gas price
     pub fn with_broadcast_interval(mut self, duration: impl Into<Duration>) -> Self {
         self.broadcast_interval = duration.into();
         self
     }
 
+    /// Set the polling interval. This controls how often the escalator checks
+    /// transaction receipts for confirmation.
     pub fn with_polling_interval(mut self, duration: impl Into<Duration>) -> Self {
         self.polling_interval = duration.into();
         self
     }
 
+    /// Get the current polling interval.
     pub fn get_polling_interval(&self) -> Duration {
         self.polling_interval
     }
 
+    /// Get the current broadcast interval.
     pub fn get_broadcast_interval(&self) -> Duration {
         self.broadcast_interval
     }
@@ -160,6 +166,8 @@ where
         let this = self.project();
 
         match this.state {
+            // In the initial state we're simply waiting on the first
+            // transaction braodcast to complete.
             Initial(fut) => {
                 poll_broadcast_fut!(cx, this, fut);
             }
@@ -177,32 +185,38 @@ where
                 }
                 check_all_receipts!(cx, this);
             }
+            // This state is functionally equivalent to Initial, but we
+            // differentiate it for clarity
             BroadcastingNew(fut) => {
                 poll_broadcast_fut!(cx, this, fut);
             }
             CheckingReceipts(futs) => {
-                // otherwise drain one and check if we have a receipt
+                // Poll the set of `get_transaction_receipt` futures to check
+                // if any previously-broadcast transaction was confirmed.
+                // Continue doing this until all are resolved
                 match futs.poll_next_unpin(cx) {
-                    // we have found a receipt. This means that all other
-                    // broadcast txns are now invalid, so we can drop them
+                    // We have found a receipt. This means that all other
+                    // broadcast txns are now invalid, so we can drop the
+                    // futures and complete
                     Poll::Ready(Some(Ok(Some(receipt)))) => {
                         completed!(this, Ok(receipt));
                     }
-                    // we found no receipt, rewake and check the next future
-                    // until drained
+                    // A `get_transaction_receipt` request resolved, but but we
+                    // found no receipt, rewake and check if any other requests
+                    // are resolved
                     Poll::Ready(Some(Ok(None))) => cx.waker().wake_by_ref(),
-                    // bubble up errors
+                    // A request errored. We complete the future with the error.
                     Poll::Ready(Some(Err(e))) => {
                         completed!(this, Err(e));
                     }
+                    // We have run out of `get_transaction_receipt` requests.
+                    // Sleep and then check if we should broadcast again (or
+                    // check receipts again)
                     Poll::Ready(None) => {
                         sleep!(cx, this);
                     }
-                    // check again later
-                    Poll::Pending => {
-                        // stick it pack in the list for polling again later
-                        return Poll::Pending
-                    }
+                    // No request has resolved yet. Try again later
+                    Poll::Pending => return Poll::Pending,
                 }
             }
             Completed => panic!("polled after completion"),
