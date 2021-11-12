@@ -13,6 +13,8 @@ pub use compile::*;
 mod config;
 pub use config::{AllowedLibPaths, ArtifactOutput, ProjectPathsConfig, SolcConfig};
 
+pub mod remappings;
+
 use crate::{artifacts::Source, cache::SolFilesCache};
 
 pub mod error;
