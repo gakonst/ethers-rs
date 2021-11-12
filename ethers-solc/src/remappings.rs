@@ -5,12 +5,13 @@ use std::fmt;
 const DAPPTOOLS_CONTRACTS_DIR: &str = "src";
 const JS_CONTRACTS_DIR: &str = "contracts";
 
-/// A remapping connects
 /// The solidity compiler can only reference files that exist locally on your computer.
 /// So importing directly from GitHub (as an example) is not possible.
 ///
 /// Let's imagine you want to use OpenZeppelin's amazing library of smart contracts,
-/// @openzeppelin/contracts-ethereum-package: ```
+/// @openzeppelin/contracts-ethereum-package:
+///
+/// ```ignore
 /// pragma solidity 0.5.11;
 ///
 /// import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
@@ -20,7 +21,7 @@ const JS_CONTRACTS_DIR: &str = "contracts";
 ///     ...
 /// }
 /// ```
-/// 
+///
 /// When using solc, you have to specify the following:
 ///
 /// "prefix" = the path that's used in your smart contract, i.e.

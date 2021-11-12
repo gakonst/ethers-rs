@@ -407,4 +407,33 @@ mod tests {
         };
         assert_eq!(contracts.keys().count(), 3);
     }
+
+    #[test]
+    #[cfg(all(feature = "svm", feature = "async"))]
+    fn test_build_remappings() {
+        use super::*;
+
+        let root = std::fs::canonicalize("./test-data/test-contract-remappings").unwrap();
+        let paths = ProjectPathsConfig::builder()
+            .root(&root)
+            .sources(root.join("src"))
+            .lib(root.join("lib"))
+            .build()
+            .unwrap();
+        let project = Project::builder()
+            .paths(paths)
+            .ephemeral()
+            .artifacts(ArtifactOutput::Nothing)
+            .build()
+            .unwrap();
+        let compiled = project.compile().unwrap();
+        let contracts = match compiled {
+            ProjectCompileOutput::Compiled((out, _)) => {
+                assert!(!out.has_error());
+                out.contracts
+            }
+            _ => panic!("must compile"),
+        };
+        assert_eq!(contracts.keys().count(), 2);
+    }
 }
