@@ -57,7 +57,7 @@ impl<'de> Deserialize<'de> for Remapping {
         D: serde::de::Deserializer<'de>,
     {
         let remapping = String::deserialize(deserializer)?;
-        let mut split = remapping.split("=");
+        let mut split = remapping.split('=');
         let name = split
             .next()
             .ok_or_else(|| serde::de::Error::custom("no remapping prefix found"))?
@@ -80,8 +80,8 @@ impl fmt::Display for Remapping {
 impl Remapping {
     /// Detects a remapping prioritizing Dapptools-style remappings over `contracts/`-style ones.
     fn find(root: &str) -> Result<Self> {
-        Self::find_with_type(&root, DAPPTOOLS_CONTRACTS_DIR)
-            .or_else(|_| Self::find_with_type(&root, JS_CONTRACTS_DIR))
+        Self::find_with_type(root, DAPPTOOLS_CONTRACTS_DIR)
+            .or_else(|_| Self::find_with_type(root, JS_CONTRACTS_DIR))
     }
 
     /// Given a path and the style of contracts dir, it proceeds to find
