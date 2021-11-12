@@ -56,6 +56,11 @@ impl CompilerInput {
         }
         self
     }
+
+    pub fn with_remappings(mut self, remappings: Vec<Remapping>) -> Self {
+        self.settings.remappings = remappings;
+        self
+    }
 }
 
 impl Default for CompilerInput {
@@ -67,6 +72,7 @@ impl Default for CompilerInput {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Settings {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub remappings: Vec<Remapping>,
     pub optimizer: Optimizer,
     #[serde(default, skip_serializing_if = "Option::is_none")]
