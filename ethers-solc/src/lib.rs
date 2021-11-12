@@ -141,7 +141,7 @@ impl Project {
                 res.contracts.extend(compiled.contracts);
             }
         }
-        Ok(if res.contracts.is_empty() {
+        Ok(if res.contracts.is_empty() && res.errors.is_empty() {
             ProjectCompileOutput::Unchanged
         } else {
             ProjectCompileOutput::Compiled((res, &self.ignored_error_codes))
