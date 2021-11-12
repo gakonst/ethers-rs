@@ -10,6 +10,7 @@ use crate::{
 use crate::CeloMiddleware;
 use crate::Middleware;
 use async_trait::async_trait;
+
 use ethers_core::{
     abi::{self, Detokenize, ParamType},
     types::{
