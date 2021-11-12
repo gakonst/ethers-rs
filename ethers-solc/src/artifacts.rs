@@ -11,7 +11,7 @@ use std::{
     str::FromStr,
 };
 
-use crate::{compile::*, utils};
+use crate::{compile::*, remappings::Remapping, utils};
 use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 
 /// An ordered list of files and their source
@@ -67,6 +67,7 @@ impl Default for CompilerInput {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Settings {
+    pub remappings: Vec<Remapping>,
     pub optimizer: Optimizer,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub metadata: Option<Metadata>,
@@ -177,6 +178,7 @@ impl Default for Settings {
             output_selection: Self::default_output_selection(),
             evm_version: Some(EvmVersion::Istanbul),
             libraries: Default::default(),
+            remappings: Default::default(),
         }
         .with_ast()
     }

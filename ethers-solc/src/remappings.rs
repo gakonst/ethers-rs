@@ -1,4 +1,5 @@
 use crate::{error::SolcError, Result};
+use serde::{Deserialize, Serialize};
 use std::fmt;
 
 const DAPPTOOLS_CONTRACTS_DIR: &str = "src";
@@ -38,6 +39,34 @@ const JS_CONTRACTS_DIR: &str = "contracts";
 pub struct Remapping {
     pub name: String,
     pub path: String,
+}
+
+impl Serialize for Remapping {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: serde::ser::Serializer,
+    {
+        serializer.serialize_str(&self.to_string())
+    }
+}
+
+impl<'de> Deserialize<'de> for Remapping {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: serde::de::Deserializer<'de>,
+    {
+        let remapping = String::deserialize(deserializer)?;
+        let mut split = remapping.split("=");
+        let name = split
+            .next()
+            .ok_or_else(|| serde::de::Error::custom("no remapping prefix found"))?
+            .to_string();
+        let path = split
+            .next()
+            .ok_or_else(|| serde::de::Error::custom("no remapping path found"))?
+            .to_string();
+        Ok(Remapping { name, path })
+    }
 }
 
 // Remappings are printed as `prefix=target`
@@ -80,8 +109,7 @@ impl Remapping {
     }
 
     /// Gets all the remappings detected
-    pub fn find_many(path: &str) -> Result<Vec<Self>> {
-        let path = std::path::Path::new(path);
+    pub fn find_many(path: impl AsRef<std::path::Path>) -> Result<Vec<Self>> {
         let mut paths = std::fs::read_dir(path)?.into_iter().collect::<Vec<_>>();
 
         let mut remappings = Vec::new();
