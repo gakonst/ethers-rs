@@ -185,9 +185,7 @@ mod tests {
 
     // helper function for converting path bufs to remapping strings
     fn to_str(p: std::path::PathBuf) -> String {
-        let mut s = p.into_os_string().into_string().unwrap();
-        s.push('/');
-        s
+        format!("{}/", p.display())
     }
 
     #[test]
