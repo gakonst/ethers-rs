@@ -111,6 +111,11 @@ impl Remapping {
 
     /// Gets all the remappings detected
     pub fn find_many(path: impl AsRef<std::path::Path>) -> Result<Vec<Self>> {
+        let path = path.as_ref();
+        if !path.exists() {
+            // nothing to find
+            return Ok(Vec::new())
+        }
         let mut paths = std::fs::read_dir(path)?.into_iter().collect::<Vec<_>>();
 
         let mut remappings = Vec::new();
@@ -190,7 +195,7 @@ mod tests {
         let tmp_dir = tempdir::TempDir::new("lib").unwrap();
         let tmp_dir_path = tmp_dir.path();
         let paths = ["repo1/src/", "repo1/src/contract.sol"];
-        mkdir_or_touch(&tmp_dir_path, &paths[..]);
+        mkdir_or_touch(tmp_dir_path, &paths[..]);
 
         let path = tmp_dir_path.join("repo1").display().to_string();
         Remapping::find_with_type(&path, JS_CONTRACTS_DIR).unwrap_err();
@@ -215,7 +220,7 @@ mod tests {
             "repo1/lib/ds-math/lib/ds-test/src/",
             "repo1/lib/ds-math/lib/ds-test/src/test.sol",
         ];
-        mkdir_or_touch(&tmp_dir_path, &paths[..]);
+        mkdir_or_touch(tmp_dir_path, &paths[..]);
 
         let path = tmp_dir_path.display().to_string();
         let mut remappings = Remapping::find_many(&path).unwrap();

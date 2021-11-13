@@ -451,7 +451,7 @@ mod tests {
             // update this test whenever there's a new sol
             // version. that's ok! good reminder to check the
             // patch notes.
-            (">=0.5.0", "0.8.9"),
+            (">=0.5.0", "0.8.10"),
             // range
             (">=0.4.0 <0.5.0", "0.4.26"),
         ]
@@ -472,7 +472,10 @@ mod tests {
         let _lock = LOCK.lock();
         let ver = "0.8.6";
         let version = Version::from_str(ver).unwrap();
-        if !svm::installed_versions().unwrap().contains(&version) {
+        if svm::installed_versions()
+            .map(|versions| !versions.contains(&version))
+            .unwrap_or_default()
+        {
             Solc::blocking_install(&version).unwrap();
         }
         let res = Solc::find_svm_installed_version(&version.to_string()).unwrap().unwrap();
