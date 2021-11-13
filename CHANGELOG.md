@@ -4,6 +4,7 @@
 
 ### Unreleased
 
+- Provide a way to opt out of networking support in abigen proc macro with `abigen-offline` feature [#580](https://github.com/gakonst/ethers-rs/pull/580)
 - Add `.call()` method to `Deployer` for performing dry runs of contract deployments. [#554](https://github.com/gakonst/ethers-rs/pull/554)
 - Improve error message from failure in `ethers_contract_abigen::Source::parse` [#552](https://github.com/gakonst/ethers-rs/pull/552)
 - use enumerated aliases for overloaded functions [#545](https://github.com/gakonst/ethers-rs/pull/545)
