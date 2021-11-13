@@ -11,7 +11,10 @@ mod compile;
 pub use compile::*;
 
 mod config;
-pub use config::{AllowedLibPaths, ArtifactOutput, ProjectPathsConfig, SolcConfig};
+pub use config::{
+    AllowedLibPaths, ArtifactOutput, ArtifactsOutput, MinimalCombinedArtifacts, NoArtifacts,
+    ProjectPathsConfig, SolcConfig,
+};
 
 pub mod remappings;
 
@@ -25,12 +28,13 @@ use std::{
     collections::{BTreeMap, HashMap},
     convert::TryInto,
     fmt, fs, io,
+    marker::PhantomData,
     path::PathBuf,
 };
 
 /// Handles contract compiling
 #[derive(Debug)]
-pub struct Project {
+pub struct Project<Artifacts: ArtifactsOutput = MinimalCombinedArtifacts> {
     /// The layout of the
     pub paths: ProjectPathsConfig,
     /// Where to find solc
@@ -40,7 +44,7 @@ pub struct Project {
     /// Whether caching is enabled
     pub cached: bool,
     /// How to handle compiler output
-    pub artifacts: ArtifactOutput,
+    pub artifacts: PhantomData<Artifacts>,
     /// Errors/Warnings which match these error codes are not going to be logged
     pub ignored_error_codes: Vec<u64>,
     /// The paths which will be allowed for library inclusion
@@ -48,18 +52,36 @@ pub struct Project {
 }
 
 impl Project {
-    /// Configure the current project
+    /// Convenience  the current project
     ///
     /// # Example
+    ///
+    /// Configure with `MinimalCombinedArtifacts` artifacts output
     ///
     /// ```rust
     /// use ethers_solc::Project;
     /// let config = Project::builder().build().unwrap();
     /// ```
+    ///
+    /// To configure any a project with any `ArtifactOutput` use either
+    ///
+    /// ```rust
+    /// use ethers_solc::{NoArtifacts, Project};
+    /// let config = Project::builder().artifacts::<NoArtifacts>().build().unwrap();
+    /// ```
+    ///
+    /// or use the builder directly
+    ///
+    /// ```rust
+    /// use ethers_solc::{NoArtifacts, ProjectBuilder};
+    /// let config = ProjectBuilder::<NoArtifacts>::default().build().unwrap();
+    /// ```
     pub fn builder() -> ProjectBuilder {
         ProjectBuilder::default()
     }
+}
 
+impl<Artifacts: ArtifactsOutput> Project<Artifacts> {
     fn write_cache_file(&self, sources: Sources) -> Result<()> {
         let cache = SolFilesCache::builder()
             .root(&self.paths.root)
@@ -193,7 +215,7 @@ impl Project {
             self.write_cache_file(sources)?;
         }
 
-        self.artifacts.on_output(&output, &self.paths)?;
+        Artifacts::on_output(&output, &self.paths)?;
         Ok(ProjectCompileOutput::Compiled((output, &self.ignored_error_codes)))
     }
 }
@@ -211,7 +233,7 @@ fn apply_mappings(sources: Sources, mut mappings: HashMap<PathBuf, PathBuf>) -> 
         .collect()
 }
 
-pub struct ProjectBuilder {
+pub struct ProjectBuilder<Artifacts: ArtifactsOutput = MinimalCombinedArtifacts> {
     /// The layout of the
     paths: Option<ProjectPathsConfig>,
     /// Where to find solc
@@ -220,15 +242,14 @@ pub struct ProjectBuilder {
     solc_config: Option<SolcConfig>,
     /// Whether caching is enabled, default is true.
     cached: bool,
-    /// How to handle compiler output
-    artifacts: Option<ArtifactOutput>,
+    artifacts: PhantomData<Artifacts>,
     /// Which error codes to ignore
     pub ignored_error_codes: Vec<u64>,
     /// All allowed paths
     pub allowed_paths: Vec<PathBuf>,
 }
 
-impl ProjectBuilder {
+impl<Artifacts: ArtifactsOutput> ProjectBuilder<Artifacts> {
     pub fn paths(mut self, paths: ProjectPathsConfig) -> Self {
         self.paths = Some(paths);
         self
@@ -244,11 +265,6 @@ impl ProjectBuilder {
         self
     }
 
-    pub fn artifacts(mut self, artifacts: ArtifactOutput) -> Self {
-        self.artifacts = Some(artifacts);
-        self
-    }
-
     pub fn ignore_error_code(mut self, code: u64) -> Self {
         self.ignored_error_codes.push(code);
         self
@@ -258,6 +274,28 @@ impl ProjectBuilder {
     pub fn ephemeral(mut self) -> Self {
         self.cached = false;
         self
+    }
+
+    /// Set arbitrary `ArtifactOutputHandler`
+    pub fn artifacts<A: ArtifactsOutput>(self) -> ProjectBuilder<A> {
+        let ProjectBuilder {
+            paths,
+            solc,
+            solc_config,
+            cached,
+            ignored_error_codes,
+            allowed_paths,
+            ..
+        } = self;
+        ProjectBuilder {
+            paths,
+            solc,
+            solc_config,
+            cached,
+            artifacts: PhantomData::default(),
+            ignored_error_codes,
+            allowed_paths,
+        }
     }
 
     /// Adds an allowed-path to the solc executable
@@ -278,7 +316,7 @@ impl ProjectBuilder {
         self
     }
 
-    pub fn build(self) -> Result<Project> {
+    pub fn build(self) -> Result<Project<Artifacts>> {
         let Self {
             paths,
             solc,
@@ -307,21 +345,21 @@ impl ProjectBuilder {
             solc,
             solc_config,
             cached,
-            artifacts: artifacts.unwrap_or_default(),
+            artifacts,
             ignored_error_codes,
             allowed_lib_paths: allowed_paths.try_into()?,
         })
     }
 }
 
-impl Default for ProjectBuilder {
+impl<Artifacts: ArtifactsOutput> Default for ProjectBuilder<Artifacts> {
     fn default() -> Self {
         Self {
             paths: None,
             solc: None,
             solc_config: None,
             cached: true,
-            artifacts: None,
+            artifacts: PhantomData::default(),
             ignored_error_codes: Vec::new(),
             allowed_paths: vec![],
         }
@@ -359,12 +397,8 @@ mod tests {
             .sources("./test-data/test-contract-versions")
             .build()
             .unwrap();
-        let project = Project::builder()
-            .paths(paths)
-            .ephemeral()
-            .artifacts(ArtifactOutput::Nothing)
-            .build()
-            .unwrap();
+        let project =
+            Project::builder().artifacts::<NoArtifacts>().paths(paths).ephemeral().build().unwrap();
         let compiled = project.compile().unwrap();
         let contracts = match compiled {
             ProjectCompileOutput::Compiled((out, _)) => {
@@ -391,12 +425,8 @@ mod tests {
             .lib(root.join("lib2"))
             .build()
             .unwrap();
-        let project = Project::builder()
-            .paths(paths)
-            .ephemeral()
-            .artifacts(ArtifactOutput::Nothing)
-            .build()
-            .unwrap();
+        let project =
+            Project::builder().paths(paths).ephemeral().artifacts::<NoArtifacts>().build().unwrap();
         let compiled = project.compile().unwrap();
         let contracts = match compiled {
             ProjectCompileOutput::Compiled((out, _)) => {
@@ -420,12 +450,8 @@ mod tests {
             .lib(root.join("lib"))
             .build()
             .unwrap();
-        let project = Project::builder()
-            .paths(paths)
-            .ephemeral()
-            .artifacts(ArtifactOutput::Nothing)
-            .build()
-            .unwrap();
+        let project =
+            Project::builder().artifacts::<NoArtifacts>().paths(paths).ephemeral().build().unwrap();
         let compiled = project.compile().unwrap();
         let contracts = match compiled {
             ProjectCompileOutput::Compiled((out, _)) => {

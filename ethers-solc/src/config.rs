@@ -311,15 +311,15 @@ pub struct HardhatArtifacts;
 impl ArtifactsOutput for HardhatArtifacts {
     type Artifact = serde_json::Value;
 
-    fn on_output(output: &CompilerOutput, layout: &ProjectPathsConfig) -> Result<()> {
+    fn on_output(_output: &CompilerOutput, _layout: &ProjectPathsConfig) -> Result<()> {
         todo!("Hardhat style artifacts not yet implemented")
     }
 
-    fn read_cached_artifact(path: impl AsRef<Path>) -> Result<Self::Artifact> {
+    fn read_cached_artifact(_path: impl AsRef<Path>) -> Result<Self::Artifact> {
         todo!("Hardhat style artifacts not yet implemented")
     }
 
-    fn output_to_artifacts(output: CompilerOutput) -> Vec<Self::Artifact> {
+    fn output_to_artifacts(_output: CompilerOutput) -> Vec<Self::Artifact> {
         todo!("Hardhat style artifacts not yet implemented")
     }
 }
