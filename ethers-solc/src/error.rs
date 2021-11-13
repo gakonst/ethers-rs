@@ -23,6 +23,10 @@ pub enum SolcError {
     #[cfg(feature = "svm")]
     #[error(transparent)]
     SvmError(#[from] svm::SolcVmError),
+    #[error("no contracts found under {0}")]
+    NoContracts(String),
+    #[error(transparent)]
+    PatternError(#[from] glob::PatternError),
 }
 
 impl SolcError {

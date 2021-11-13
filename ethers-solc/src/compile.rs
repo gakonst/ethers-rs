@@ -472,7 +472,10 @@ mod tests {
         let _lock = LOCK.lock();
         let ver = "0.8.6";
         let version = Version::from_str(ver).unwrap();
-        if !svm::installed_versions().unwrap().contains(&version) {
+        if svm::installed_versions()
+            .map(|versions| !versions.contains(&version))
+            .unwrap_or_default()
+        {
             Solc::blocking_install(&version).unwrap();
         }
         let res = Solc::find_svm_installed_version(&version.to_string()).unwrap().unwrap();

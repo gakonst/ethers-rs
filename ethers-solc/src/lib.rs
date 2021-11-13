@@ -13,6 +13,8 @@ pub use compile::*;
 mod config;
 pub use config::{AllowedLibPaths, ArtifactOutput, ProjectPathsConfig, SolcConfig};
 
+pub mod remappings;
+
 use crate::{artifacts::Source, cache::SolFilesCache};
 
 pub mod error;
@@ -139,7 +141,7 @@ impl Project {
                 res.contracts.extend(compiled.contracts);
             }
         }
-        Ok(if res.contracts.is_empty() {
+        Ok(if res.contracts.is_empty() && res.errors.is_empty() {
             ProjectCompileOutput::Unchanged
         } else {
             ProjectCompileOutput::Compiled((res, &self.ignored_error_codes))
@@ -176,7 +178,9 @@ impl Project {
         // replace absolute path with source name to make solc happy
         let sources = apply_mappings(sources, path_source_name);
 
-        let input = CompilerInput::with_sources(sources).normalize_evm_version(&solc.version()?);
+        let input = CompilerInput::with_sources(sources)
+            .normalize_evm_version(&solc.version()?)
+            .with_remappings(self.paths.remappings.clone());
         let output = solc.compile(&input)?;
         if output.has_error() {
             return Ok(ProjectCompileOutput::Compiled((output, &self.ignored_error_codes)))
@@ -402,5 +406,34 @@ mod tests {
             _ => panic!("must compile"),
         };
         assert_eq!(contracts.keys().count(), 3);
+    }
+
+    #[test]
+    #[cfg(all(feature = "svm", feature = "async"))]
+    fn test_build_remappings() {
+        use super::*;
+
+        let root = std::fs::canonicalize("./test-data/test-contract-remappings").unwrap();
+        let paths = ProjectPathsConfig::builder()
+            .root(&root)
+            .sources(root.join("src"))
+            .lib(root.join("lib"))
+            .build()
+            .unwrap();
+        let project = Project::builder()
+            .paths(paths)
+            .ephemeral()
+            .artifacts(ArtifactOutput::Nothing)
+            .build()
+            .unwrap();
+        let compiled = project.compile().unwrap();
+        let contracts = match compiled {
+            ProjectCompileOutput::Compiled((out, _)) => {
+                assert!(!out.has_error());
+                out.contracts
+            }
+            _ => panic!("must compile"),
+        };
+        assert_eq!(contracts.keys().count(), 2);
     }
 }
