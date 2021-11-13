@@ -1,4 +1,5 @@
 use ethers::{prelude::*, utils::Ganache};
+use ethers_providers::{Middleware, Provider, Ws};
 use std::time::Duration;
 
 #[tokio::main]
