@@ -224,6 +224,106 @@ impl SolcConfigBuilder {
     }
 }
 
+pub trait ArtifactsOutput {
+    /// How Artifacts are stored
+    type Artifact;
+
+    /// Handle the compiler output.
+    fn on_output(output: &CompilerOutput, layout: &ProjectPathsConfig) -> Result<()>;
+
+    fn read_cached_artifact(path: impl AsRef<Path>) -> Result<Self::Artifact>;
+
+    /// Read the cached artifacts from disk
+    fn read_cached_artifacts<T, I>(files: I) -> Result<Vec<Self::Artifact>>
+    where
+        I: IntoIterator<Item = T>,
+        T: AsRef<Path>,
+    {
+        files.into_iter().map(Self::read_cached_artifact).collect()
+    }
+
+    /// Convert the compiler output into a set of artifacts
+    fn output_to_artifacts(output: CompilerOutput) -> Vec<Self::Artifact>;
+}
+
+/// An artifacts implementation that does not emit
+#[derive(Copy, Clone, Eq, PartialEq)]
+pub struct NoArtifacts;
+
+impl ArtifactsOutput for NoArtifacts {
+    type Artifact = ();
+
+    fn on_output(_: &CompilerOutput, _: &ProjectPathsConfig) -> Result<()> {
+        Ok(())
+    }
+
+    fn read_cached_artifact(_: impl AsRef<Path>) -> Result<Self::Artifact> {
+        Ok(())
+    }
+
+    fn output_to_artifacts(_: CompilerOutput) -> Vec<Self::Artifact> {
+        vec![]
+    }
+}
+
+/// An Artifacts implementation that uses a compact representation
+///
+/// Creates a single json artifact with
+/// ```json
+///  {
+///    "abi": [],
+///    "bin": "...",
+///    "runtime-bin": "..."
+///  }
+/// ```
+#[derive(Copy, Clone, Eq, PartialEq)]
+pub struct MinimalCombinedArtifacts;
+
+impl ArtifactsOutput for MinimalCombinedArtifacts {
+    type Artifact = CompactContract;
+
+    fn on_output(output: &CompilerOutput, layout: &ProjectPathsConfig) -> Result<()> {
+        fs::create_dir_all(&layout.artifacts)?;
+        for contracts in output.contracts.values() {
+            for (name, contract) in contracts {
+                let file = layout.artifacts.join(format!("{}.json", name));
+                let min = CompactContractRef::from(contract);
+                fs::write(file, serde_json::to_vec_pretty(&min)?)?
+            }
+        }
+        Ok(())
+    }
+
+    fn read_cached_artifact(path: impl AsRef<Path>) -> Result<Self::Artifact> {
+        let file = fs::File::open(path.as_ref())?;
+        Ok(serde_json::from_reader(file)?)
+    }
+
+    fn output_to_artifacts(output: CompilerOutput) -> Vec<Self::Artifact> {
+        output.contracts_into_iter().map(|(_, c)| c).map(CompactContract::from).collect()
+    }
+}
+
+/// Hardhat style artifacts
+#[derive(Copy, Clone, Eq, PartialEq)]
+pub struct HardhatArtifacts;
+
+impl ArtifactsOutput for HardhatArtifacts {
+    type Artifact = serde_json::Value;
+
+    fn on_output(output: &CompilerOutput, layout: &ProjectPathsConfig) -> Result<()> {
+        todo!("Hardhat style artifacts not yet implemented")
+    }
+
+    fn read_cached_artifact(path: impl AsRef<Path>) -> Result<Self::Artifact> {
+        todo!("Hardhat style artifacts not yet implemented")
+    }
+
+    fn output_to_artifacts(output: CompilerOutput) -> Vec<Self::Artifact> {
+        todo!("Hardhat style artifacts not yet implemented")
+    }
+}
+
 /// Determines how to handle compiler output
 pub enum ArtifactOutput {
     /// No-op, does not write the artifacts to disk.
@@ -293,6 +393,7 @@ impl fmt::Debug for ArtifactOutput {
     }
 }
 
+use crate::artifacts::CompactContract;
 use std::convert::TryFrom;
 
 /// Helper struct for serializing `--allow-paths` arguments to Solc

@@ -403,11 +403,20 @@ impl CompilerOutput {
 
     /// Finds the first contract with the given name
     pub fn find(&self, contract: impl AsRef<str>) -> Option<CompactContractRef> {
-        let contract = contract.as_ref();
-        self.contracts
-            .values()
-            .find_map(|contracts| contracts.get(contract))
-            .map(CompactContractRef::from)
+        let contract_name = contract.as_ref();
+        self.contracts_iter().find_map(|(name, contract)| {
+            (name == contract_name).then(|| CompactContractRef::from(contract))
+        })
+    }
+
+    /// Iterate over all contracts and their names
+    pub fn contracts_iter(&self) -> impl Iterator<Item = (&String, &Contract)> {
+        self.contracts.values().flatten()
+    }
+
+    /// Iterate over all contracts and their names
+    pub fn contracts_into_iter(self) -> impl Iterator<Item = (String, Contract)> {
+        self.contracts.into_values().flatten()
     }
 
     /// Given the contract file's path and the contract's name, tries to return the contract's
