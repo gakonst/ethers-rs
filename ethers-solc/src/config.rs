@@ -1,5 +1,5 @@
 use crate::{
-    artifacts::{CompactContractRef, Settings},
+    artifacts::{CompactContract, CompactContractRef, Settings},
     cache::SOLIDITY_FILES_CACHE_FILENAME,
     error::Result,
     remappings::Remapping,
@@ -7,6 +7,8 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 use std::{
+    collections::BTreeMap,
+    convert::TryFrom,
     fmt, fs, io,
     path::{Path, PathBuf},
 };
@@ -224,7 +226,9 @@ impl SolcConfigBuilder {
     }
 }
 
-pub trait ArtifactsOutput {
+pub type Artifacts<T> = BTreeMap<String, BTreeMap<String, T>>;
+
+pub trait ArtifactOutput {
     /// How Artifacts are stored
     type Artifact;
 
@@ -234,23 +238,29 @@ pub trait ArtifactsOutput {
     fn read_cached_artifact(path: impl AsRef<Path>) -> Result<Self::Artifact>;
 
     /// Read the cached artifacts from disk
-    fn read_cached_artifacts<T, I>(files: I) -> Result<Vec<Self::Artifact>>
+    fn read_cached_artifacts<T, I>(files: I) -> Result<BTreeMap<PathBuf, Self::Artifact>>
     where
         I: IntoIterator<Item = T>,
-        T: AsRef<Path>,
+        T: Into<PathBuf>,
     {
-        files.into_iter().map(Self::read_cached_artifact).collect()
+        let mut artifacts = BTreeMap::default();
+        for path in files.into_iter() {
+            let path = path.into();
+            let artifact = Self::read_cached_artifact(&path)?;
+            artifacts.insert(path, artifact);
+        }
+        Ok(artifacts)
     }
 
     /// Convert the compiler output into a set of artifacts
-    fn output_to_artifacts(output: CompilerOutput) -> Vec<Self::Artifact>;
+    fn output_to_artifacts(output: CompilerOutput) -> Artifacts<Self::Artifact>;
 }
 
 /// An artifacts implementation that does not emit
 #[derive(Copy, Clone, Eq, PartialEq)]
 pub struct NoArtifacts;
 
-impl ArtifactsOutput for NoArtifacts {
+impl ArtifactOutput for NoArtifacts {
     type Artifact = ();
 
     fn on_output(_: &CompilerOutput, _: &ProjectPathsConfig) -> Result<()> {
@@ -261,8 +271,12 @@ impl ArtifactsOutput for NoArtifacts {
         Ok(())
     }
 
-    fn output_to_artifacts(_: CompilerOutput) -> Vec<Self::Artifact> {
-        vec![]
+    fn output_to_artifacts(output: CompilerOutput) -> Artifacts<Self::Artifact> {
+        output
+            .contracts
+            .into_iter()
+            .map(|(s, contracts)| (s, contracts.into_iter().map(|(s, _)| (s, ())).collect()))
+            .collect()
     }
 }
 
@@ -279,7 +293,7 @@ impl ArtifactsOutput for NoArtifacts {
 #[derive(Copy, Clone, Eq, PartialEq)]
 pub struct MinimalCombinedArtifacts;
 
-impl ArtifactsOutput for MinimalCombinedArtifacts {
+impl ArtifactOutput for MinimalCombinedArtifacts {
     type Artifact = CompactContract;
 
     fn on_output(output: &CompilerOutput, layout: &ProjectPathsConfig) -> Result<()> {
@@ -299,8 +313,14 @@ impl ArtifactsOutput for MinimalCombinedArtifacts {
         Ok(serde_json::from_reader(file)?)
     }
 
-    fn output_to_artifacts(output: CompilerOutput) -> Vec<Self::Artifact> {
-        output.contracts_into_iter().map(|(_, c)| c).map(CompactContract::from).collect()
+    fn output_to_artifacts(output: CompilerOutput) -> Artifacts<Self::Artifact> {
+        output
+            .contracts
+            .into_iter()
+            .map(|(s, contracts)| {
+                (s, contracts.into_iter().map(|(s, c)| (s, CompactContract::from(c))).collect())
+            })
+            .collect()
     }
 }
 
@@ -308,7 +328,7 @@ impl ArtifactsOutput for MinimalCombinedArtifacts {
 #[derive(Copy, Clone, Eq, PartialEq)]
 pub struct HardhatArtifacts;
 
-impl ArtifactsOutput for HardhatArtifacts {
+impl ArtifactOutput for HardhatArtifacts {
     type Artifact = serde_json::Value;
 
     fn on_output(_output: &CompilerOutput, _layout: &ProjectPathsConfig) -> Result<()> {
@@ -319,82 +339,10 @@ impl ArtifactsOutput for HardhatArtifacts {
         todo!("Hardhat style artifacts not yet implemented")
     }
 
-    fn output_to_artifacts(_output: CompilerOutput) -> Vec<Self::Artifact> {
+    fn output_to_artifacts(_output: CompilerOutput) -> Artifacts<Self::Artifact> {
         todo!("Hardhat style artifacts not yet implemented")
     }
 }
-
-/// Determines how to handle compiler output
-pub enum ArtifactOutput {
-    /// No-op, does not write the artifacts to disk.
-    Nothing,
-    /// Creates a single json artifact with
-    /// ```json
-    ///  {
-    ///    "abi": [],
-    ///    "bin": "...",
-    ///    "runtime-bin": "..."
-    ///  }
-    /// ```
-    MinimalCombined,
-    /// Hardhat style artifacts
-    Hardhat,
-    /// Custom output handler
-    Custom(Box<dyn Fn(&CompilerOutput, &ProjectPathsConfig) -> Result<()>>),
-}
-
-impl ArtifactOutput {
-    /// Is expected to handle the output and where to store it
-    pub fn on_output(&self, output: &CompilerOutput, layout: &ProjectPathsConfig) -> Result<()> {
-        match self {
-            ArtifactOutput::Nothing => Ok(()),
-            ArtifactOutput::MinimalCombined => {
-                fs::create_dir_all(&layout.artifacts)?;
-
-                for contracts in output.contracts.values() {
-                    for (name, contract) in contracts {
-                        let file = layout.artifacts.join(format!("{}.json", name));
-                        let min = CompactContractRef::from(contract);
-                        fs::write(file, serde_json::to_vec_pretty(&min)?)?
-                    }
-                }
-                Ok(())
-            }
-            ArtifactOutput::Hardhat => {
-                todo!("Hardhat style artifacts not yet implemented")
-            }
-            ArtifactOutput::Custom(f) => f(output, layout),
-        }
-    }
-}
-
-impl Default for ArtifactOutput {
-    fn default() -> Self {
-        ArtifactOutput::MinimalCombined
-    }
-}
-
-impl fmt::Debug for ArtifactOutput {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            ArtifactOutput::Nothing => {
-                write!(f, "Nothing")
-            }
-            ArtifactOutput::MinimalCombined => {
-                write!(f, "MinimalCombined")
-            }
-            ArtifactOutput::Hardhat => {
-                write!(f, "Hardhat")
-            }
-            ArtifactOutput::Custom(_) => {
-                write!(f, "Custom")
-            }
-        }
-    }
-}
-
-use crate::artifacts::CompactContract;
-use std::convert::TryFrom;
 
 /// Helper struct for serializing `--allow-paths` arguments to Solc
 ///

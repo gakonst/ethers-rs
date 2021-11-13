@@ -12,8 +12,8 @@ pub use compile::*;
 
 mod config;
 pub use config::{
-    AllowedLibPaths, ArtifactOutput, ArtifactsOutput, MinimalCombinedArtifacts, NoArtifacts,
-    ProjectPathsConfig, SolcConfig,
+    AllowedLibPaths, ArtifactOutput, MinimalCombinedArtifacts, NoArtifacts, ProjectPathsConfig,
+    SolcConfig,
 };
 
 pub mod remappings;
@@ -34,7 +34,7 @@ use std::{
 
 /// Handles contract compiling
 #[derive(Debug)]
-pub struct Project<Artifacts: ArtifactsOutput = MinimalCombinedArtifacts> {
+pub struct Project<Artifacts: ArtifactOutput = MinimalCombinedArtifacts> {
     /// The layout of the
     pub paths: ProjectPathsConfig,
     /// Where to find solc
@@ -52,7 +52,7 @@ pub struct Project<Artifacts: ArtifactsOutput = MinimalCombinedArtifacts> {
 }
 
 impl Project {
-    /// Convenience  the current project
+    /// Convenience function to call `ProjectBuilder::default()`
     ///
     /// # Example
     ///
@@ -81,7 +81,7 @@ impl Project {
     }
 }
 
-impl<Artifacts: ArtifactsOutput> Project<Artifacts> {
+impl<Artifacts: ArtifactOutput> Project<Artifacts> {
     fn write_cache_file(&self, sources: Sources) -> Result<()> {
         let cache = SolFilesCache::builder()
             .root(&self.paths.root)
@@ -123,7 +123,7 @@ impl<Artifacts: ArtifactsOutput> Project<Artifacts> {
 
     /// NB: If the `svm` feature is enabled, this function will automatically detect
     /// solc versions across files.
-    pub fn compile(&self) -> Result<ProjectCompileOutput> {
+    pub fn compile(&self) -> Result<ProjectCompileOutput<Artifacts>> {
         let sources = self.sources()?;
 
         #[cfg(not(all(feature = "svm", feature = "async")))]
@@ -135,7 +135,7 @@ impl<Artifacts: ArtifactsOutput> Project<Artifacts> {
     }
 
     #[cfg(all(feature = "svm", feature = "async"))]
-    fn svm_compile(&self, sources: Sources) -> Result<ProjectCompileOutput> {
+    fn svm_compile(&self, sources: Sources) -> Result<ProjectCompileOutput<Artifacts>> {
         // split them by version
         let mut sources_by_version = BTreeMap::new();
         for (path, source) in sources.into_iter() {
@@ -164,7 +164,7 @@ impl<Artifacts: ArtifactsOutput> Project<Artifacts> {
             }
         }
         Ok(if res.contracts.is_empty() && res.errors.is_empty() {
-            ProjectCompileOutput::Unchanged
+            ProjectCompileOutput::Unchanged(Default::default())
         } else {
             ProjectCompileOutput::Compiled((res, &self.ignored_error_codes))
         })
@@ -174,7 +174,7 @@ impl<Artifacts: ArtifactsOutput> Project<Artifacts> {
         &self,
         solc: &Solc,
         mut sources: Sources,
-    ) -> Result<ProjectCompileOutput> {
+    ) -> Result<ProjectCompileOutput<Artifacts>> {
         // add all libraries to the source set while keeping track of their actual disk path
         let mut source_name_path = HashMap::new();
         let mut path_source_name = HashMap::new();
@@ -190,7 +190,8 @@ impl<Artifacts: ArtifactsOutput> Project<Artifacts> {
             let cache = SolFilesCache::read(&self.paths.cache)?;
             let changed_files = cache.get_changed_files(sources, Some(&self.solc_config));
             if changed_files.is_empty() {
-                return Ok(ProjectCompileOutput::Unchanged)
+                let artifacts = Artifacts::read_cached_artifacts(cache.files.keys())?;
+                return Ok(ProjectCompileOutput::Unchanged(artifacts))
             }
             changed_files
         } else {
@@ -233,7 +234,7 @@ fn apply_mappings(sources: Sources, mut mappings: HashMap<PathBuf, PathBuf>) -> 
         .collect()
 }
 
-pub struct ProjectBuilder<Artifacts: ArtifactsOutput = MinimalCombinedArtifacts> {
+pub struct ProjectBuilder<Artifacts: ArtifactOutput = MinimalCombinedArtifacts> {
     /// The layout of the
     paths: Option<ProjectPathsConfig>,
     /// Where to find solc
@@ -249,7 +250,7 @@ pub struct ProjectBuilder<Artifacts: ArtifactsOutput = MinimalCombinedArtifacts>
     pub allowed_paths: Vec<PathBuf>,
 }
 
-impl<Artifacts: ArtifactsOutput> ProjectBuilder<Artifacts> {
+impl<Artifacts: ArtifactOutput> ProjectBuilder<Artifacts> {
     pub fn paths(mut self, paths: ProjectPathsConfig) -> Self {
         self.paths = Some(paths);
         self
@@ -277,7 +278,7 @@ impl<Artifacts: ArtifactsOutput> ProjectBuilder<Artifacts> {
     }
 
     /// Set arbitrary `ArtifactOutputHandler`
-    pub fn artifacts<A: ArtifactsOutput>(self) -> ProjectBuilder<A> {
+    pub fn artifacts<A: ArtifactOutput>(self) -> ProjectBuilder<A> {
         let ProjectBuilder {
             paths,
             solc,
@@ -352,7 +353,7 @@ impl<Artifacts: ArtifactsOutput> ProjectBuilder<Artifacts> {
     }
 }
 
-impl<Artifacts: ArtifactsOutput> Default for ProjectBuilder<Artifacts> {
+impl<Artifacts: ArtifactOutput> Default for ProjectBuilder<Artifacts> {
     fn default() -> Self {
         Self {
             paths: None,
@@ -367,16 +368,36 @@ impl<Artifacts: ArtifactsOutput> Default for ProjectBuilder<Artifacts> {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum ProjectCompileOutput<'a> {
-    /// Nothing to compile because unchanged sources
-    Unchanged,
+pub enum ProjectCompileOutput<'a, T: ArtifactOutput> {
+    /// Nothing new was compiled
+    ///
+    /// Holds the unchanged artifact output
+    Unchanged(BTreeMap<PathBuf, T::Artifact>),
     Compiled((CompilerOutput, &'a [u64])),
 }
 
-impl<'a> fmt::Display for ProjectCompileOutput<'a> {
+impl<'a, T: ArtifactOutput> ProjectCompileOutput<'a, T> {
+    /// All artifacts
+    pub fn into_artifacts(self) -> Vec<T::Artifact> {
+        match self {
+            ProjectCompileOutput::Unchanged(artifacts) => artifacts.into_values().collect(),
+            ProjectCompileOutput::Compiled((c, _)) => {
+                T::output_to_artifacts(c).into_values().flatten().map(|(_, c)| c).collect()
+            }
+        }
+    }
+}
+
+impl<'a, T: ArtifactOutput> ProjectCompileOutput<'a, T> {
+    pub fn is_unchanged(&self) -> bool {
+        matches!(self, ProjectCompileOutput::Unchanged(_))
+    }
+}
+
+impl<'a, T: ArtifactOutput> fmt::Display for ProjectCompileOutput<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ProjectCompileOutput::Unchanged => f.write_str("Nothing to compile"),
+            ProjectCompileOutput::Unchanged(_) => f.write_str("Nothing to compile"),
             ProjectCompileOutput::Compiled((output, ignored_error_codes)) => {
                 output.diagnostics(ignored_error_codes).fmt(f)
             }

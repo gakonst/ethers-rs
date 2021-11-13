@@ -31,7 +31,7 @@ fn can_compile_hardhat_sample() {
         _ => panic!("must compile"),
     }
     // nothing to compile
-    assert_eq!(project.compile().unwrap(), ProjectCompileOutput::Unchanged);
+    assert!(project.compile().unwrap().is_unchanged());
 }
 
 #[test]
@@ -58,5 +58,5 @@ fn can_compile_dapp_sample() {
         _ => panic!("must compile"),
     }
     // nothing to compile
-    assert_eq!(project.compile().unwrap(), ProjectCompileOutput::Unchanged);
+    assert!(project.compile().unwrap().is_unchanged());
 }
