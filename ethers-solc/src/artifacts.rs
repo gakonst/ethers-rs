@@ -76,7 +76,7 @@ pub struct Settings {
     pub remappings: Vec<Remapping>,
     pub optimizer: Optimizer,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub metadata: Option<Metadata>,
+    pub metadata: Option<SettingsMetadata>,
     /// This field can be used to select desired outputs based
     /// on file and contract names.
     /// If this field is omitted, then the compiler loads and does type
@@ -294,11 +294,76 @@ impl FromStr for EvmVersion {
         }
     }
 }
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SettingsMetadata {
+    #[serde(rename = "useLiteralContent")]
+    pub use_literal_content: bool,
+    #[serde(default, rename = "bytecodeHash", skip_serializing_if = "Option::is_none")]
+    pub bytecode_hash: Option<String>,
+}
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Metadata {
-    #[serde(rename = "useLiteralContent")]
-    pub use_literal_content: bool,
+    pub compiler: Compiler,
+    pub language: String,
+    pub output: Output,
+    pub settings: Settings,
+    pub sources: MetadataSources,
+    pub version: i64,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MetadataSources {
+    #[serde(flatten)]
+    pub inner: BTreeMap<String, serde_json::Value>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Compiler {
+    pub version: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Output {
+    pub abi: Vec<SolcAbi>,
+    pub devdoc: Option<Doc>,
+    pub userdoc: Option<Doc>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SolcAbi {
+    pub inputs: Vec<Item>,
+    #[serde(rename = "stateMutability")]
+    pub state_mutability: Option<String>,
+    #[serde(rename = "type")]
+    pub abi_type: String,
+    pub name: Option<String>,
+    pub outputs: Option<Vec<Item>>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Item {
+    #[serde(rename = "internalType")]
+    pub internal_type: String,
+    pub name: String,
+    #[serde(rename = "type")]
+    pub put_type: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Doc {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub kind: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub methods: Option<Libraries>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub version: Option<u32>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct Libraries {
+    #[serde(flatten)]
+    pub libs: BTreeMap<String, serde_json::Value>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
@@ -469,11 +534,11 @@ impl<'a> fmt::Display for OutputDiagnostics<'a> {
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Contract {
-    /// The Ethereum Contract ABI.
-    /// See https://docs.soliditylang.org/en/develop/abi-spec.html
+    /// The Ethereum Contract Metadata.
+    /// See https://docs.soliditylang.org/en/develop/metadata.html
     pub abi: Option<Abi>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub metadata: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none", with = "json_string_opt")]
+    pub metadata: Option<Metadata>,
     #[serde(default)]
     pub userdoc: UserDoc,
     #[serde(default)]
@@ -894,6 +959,38 @@ mod display_from_str_opt {
     {
         if let Some(s) = Option::<String>::deserialize(deserializer)? {
             s.parse().map_err(de::Error::custom).map(Some)
+        } else {
+            Ok(None)
+        }
+    }
+}
+
+mod json_string_opt {
+    use serde::{
+        de::{self, DeserializeOwned},
+        ser, Deserialize, Deserializer, Serialize, Serializer,
+    };
+
+    pub fn serialize<T, S>(value: &Option<T>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+        T: Serialize,
+    {
+        if let Some(value) = value {
+            let value = serde_json::to_string(value).map_err(ser::Error::custom)?;
+            serializer.serialize_str(&value)
+        } else {
+            serializer.serialize_none()
+        }
+    }
+
+    pub fn deserialize<'de, T, D>(deserializer: D) -> Result<Option<T>, D::Error>
+    where
+        D: Deserializer<'de>,
+        T: DeserializeOwned,
+    {
+        if let Some(s) = Option::<String>::deserialize(deserializer)? {
+            serde_json::from_str(&s).map_err(de::Error::custom).map(Some)
         } else {
             Ok(None)
         }
