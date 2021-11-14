@@ -167,6 +167,14 @@ where
         true
     }
 
+    async fn sign_transaction(
+        &self,
+        tx: &TypedTransaction,
+        _: Address,
+    ) -> Result<Signature, Self::Error> {
+        Ok(self.signer.sign_transaction(tx).await.map_err(SignerMiddlewareError::SignerError)?)
+    }
+
     /// Helper for filling a transaction's nonce using the wallet
     async fn fill_transaction(
         &self,

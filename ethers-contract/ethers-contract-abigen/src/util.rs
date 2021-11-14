@@ -1,6 +1,7 @@
 use ethers_core::types::Address;
 
 use anyhow::{anyhow, Result};
+use cfg_if::cfg_if;
 use inflector::Inflector;
 use proc_macro2::{Ident, Literal, Span, TokenStream};
 use quote::quote;
@@ -69,10 +70,15 @@ where
     Ok(address_str[2..].parse()?)
 }
 
-#[cfg(not(target_arch = "wasm32"))]
 /// Perform an HTTP GET request and return the contents of the response.
-pub fn http_get(url: &str) -> Result<String> {
-    Ok(reqwest::blocking::get(url)?.text()?)
+pub fn http_get(_url: &str) -> Result<String> {
+    cfg_if! {
+        if #[cfg(any(not(target_arch = "wasm32"), not(features = "reqwest")))]{
+            Err(anyhow!("HTTP is unsupported"))
+        } else {
+            Ok(reqwest::blocking::get(_url)?.text()?)
+        }
+    }
 }
 
 #[cfg(test)]

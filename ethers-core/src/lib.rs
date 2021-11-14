@@ -51,6 +51,7 @@ pub mod abi;
 /// Various utilities
 pub mod utils;
 
+#[cfg(feature = "macros")]
 pub mod macros;
 
 // re-export rand to avoid potential confusion when there's rand version mismatches

@@ -10,6 +10,7 @@ use crate::{
 use crate::CeloMiddleware;
 use crate::Middleware;
 use async_trait::async_trait;
+
 use ethers_core::{
     abi::{self, Detokenize, ParamType},
     types::{
@@ -124,6 +125,9 @@ pub enum ProviderError {
 
     #[error("unsupported node client")]
     UnsupportedNodeClient,
+
+    #[error("Attempted to sign a transaction with no available signer. Hint: did you mean to use a SignerMiddleware?")]
+    SignerUnavailable,
 }
 
 /// Types of filters supported by the JSON-RPC.
@@ -514,6 +518,15 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         let sig = hex::decode(sig)?;
         Ok(Signature::try_from(sig.as_slice())
             .map_err(|e| ProviderError::CustomError(e.to_string()))?)
+    }
+
+    /// Sign a transaction via RPC call
+    async fn sign_transaction(
+        &self,
+        _tx: &TypedTransaction,
+        _from: Address,
+    ) -> Result<Signature, Self::Error> {
+        Err(ProviderError::SignerUnavailable).map_err(FromErr::from)
     }
 
     ////// Contract state

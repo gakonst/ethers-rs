@@ -41,6 +41,16 @@ impl<M, const K: u8> TimeLag<M, K>
 where
     M: Middleware,
 {
+    /// Instantiates TimeLag provider
+    pub fn new(inner: M) -> Self {
+        Self { inner: inner.into() }
+    }
+}
+
+impl<M, const K: u8> TimeLag<M, K>
+where
+    M: Middleware,
+{
     async fn normalize_block_id(&self, id: Option<BlockId>) -> TimeLagResult<Option<BlockId>, M> {
         match id {
             Some(BlockId::Number(n)) => {

@@ -2,6 +2,7 @@ use crate::{
     artifacts::{CompactContractRef, Settings},
     cache::SOLIDITY_FILES_CACHE_FILENAME,
     error::Result,
+    remappings::Remapping,
     CompilerOutput, Solc,
 };
 use serde::{Deserialize, Serialize};
@@ -25,6 +26,8 @@ pub struct ProjectPathsConfig {
     pub tests: PathBuf,
     /// Where to look for libraries
     pub libraries: Vec<PathBuf>,
+    /// The compiler remappings
+    pub remappings: Vec<Remapping>,
 }
 
 impl ProjectPathsConfig {
@@ -33,22 +36,22 @@ impl ProjectPathsConfig {
     }
 
     /// Creates a new hardhat style config instance which points to the canonicalized root path
-    pub fn hardhat(root: impl AsRef<Path>) -> io::Result<Self> {
+    pub fn hardhat(root: impl AsRef<Path>) -> Result<Self> {
         PathStyle::HardHat.paths(root)
     }
 
     /// Creates a new dapptools style config instance which points to the canonicalized root path
-    pub fn dapptools(root: impl AsRef<Path>) -> io::Result<Self> {
+    pub fn dapptools(root: impl AsRef<Path>) -> Result<Self> {
         PathStyle::Dapptools.paths(root)
     }
 
     /// Creates a new config with the current directory as the root
-    pub fn current_hardhat() -> io::Result<Self> {
+    pub fn current_hardhat() -> Result<Self> {
         Self::hardhat(std::env::current_dir()?)
     }
 
     /// Creates a new config with the current directory as the root
-    pub fn current_dapptools() -> io::Result<Self> {
+    pub fn current_dapptools() -> Result<Self> {
         Self::dapptools(std::env::current_dir()?)
     }
 }
@@ -60,23 +63,25 @@ pub enum PathStyle {
 }
 
 impl PathStyle {
-    pub fn paths(&self, root: impl AsRef<Path>) -> io::Result<ProjectPathsConfig> {
+    pub fn paths(&self, root: impl AsRef<Path>) -> Result<ProjectPathsConfig> {
         let root = std::fs::canonicalize(root)?;
 
-        match self {
+        Ok(match self {
             PathStyle::Dapptools => ProjectPathsConfig::builder()
                 .sources(root.join("src"))
                 .artifacts(root.join("out"))
                 .lib(root.join("lib"))
+                .remappings(Remapping::find_many(&root.join("lib"))?)
                 .root(root)
-                .build(),
+                .build()?,
             PathStyle::HardHat => ProjectPathsConfig::builder()
                 .sources(root.join("contracts"))
                 .artifacts(root.join("artifacts"))
                 .lib(root.join("node_modules"))
+                .remappings(Remapping::find_many(&root.join("node_modules"))?)
                 .root(root)
-                .build(),
-        }
+                .build()?,
+        })
     }
 }
 
@@ -88,6 +93,7 @@ pub struct ProjectPathsConfigBuilder {
     sources: Option<PathBuf>,
     tests: Option<PathBuf>,
     libraries: Option<Vec<PathBuf>>,
+    remappings: Option<Vec<Remapping>>,
 }
 
 impl ProjectPathsConfigBuilder {
@@ -135,6 +141,19 @@ impl ProjectPathsConfigBuilder {
         self
     }
 
+    pub fn remapping(mut self, remapping: Remapping) -> Self {
+        self.remappings.get_or_insert_with(Vec::new).push(remapping);
+        self
+    }
+
+    pub fn remappings(mut self, remappings: impl IntoIterator<Item = Remapping>) -> Self {
+        let our_remappings = self.remappings.get_or_insert_with(Vec::new);
+        for remapping in remappings.into_iter() {
+            our_remappings.push(remapping);
+        }
+        self
+    }
+
     pub fn build(self) -> io::Result<ProjectPathsConfig> {
         let root = self.root.map(Ok).unwrap_or_else(std::env::current_dir)?;
         let root = std::fs::canonicalize(root)?;
@@ -147,6 +166,7 @@ impl ProjectPathsConfigBuilder {
             sources: self.sources.unwrap_or_else(|| root.join("contracts")),
             tests: self.tests.unwrap_or_else(|| root.join("tests")),
             libraries: self.libraries.unwrap_or_default(),
+            remappings: self.remappings.unwrap_or_default(),
             root,
         })
     }
@@ -270,5 +290,48 @@ impl fmt::Debug for ArtifactOutput {
                 write!(f, "Custom")
             }
         }
+    }
+}
+
+use std::convert::TryFrom;
+
+/// Helper struct for serializing `--allow-paths` arguments to Solc
+///
+/// From the [Solc docs](https://docs.soliditylang.org/en/v0.8.9/using-the-compiler.html#base-path-and-import-remapping):
+/// For security reasons the compiler has restrictions on what directories it can access.
+/// Directories of source files specified on the command line and target paths of
+/// remappings are automatically allowed to be accessed by the file reader,
+/// but everything else is rejected by default. Additional paths (and their subdirectories)
+/// can be allowed via the --allow-paths /sample/path,/another/sample/path switch.
+/// Everything inside the path specified via --base-path is always allowed.
+#[derive(Clone, Debug, Default)]
+pub struct AllowedLibPaths(pub(crate) Vec<PathBuf>);
+
+impl fmt::Display for AllowedLibPaths {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let lib_paths = self
+            .0
+            .iter()
+            .filter(|path| path.exists())
+            .map(|path| format!("{}", path.display()))
+            .collect::<Vec<_>>()
+            .join(",");
+        write!(f, "{}", lib_paths)
+    }
+}
+
+impl<T: Into<PathBuf>> TryFrom<Vec<T>> for AllowedLibPaths {
+    type Error = std::io::Error;
+
+    fn try_from(libs: Vec<T>) -> std::result::Result<Self, Self::Error> {
+        let libs = libs
+            .into_iter()
+            .map(|lib| {
+                let path: PathBuf = lib.into();
+                let lib = std::fs::canonicalize(path)?;
+                Ok(lib)
+            })
+            .collect::<std::result::Result<Vec<_>, std::io::Error>>()?;
+        Ok(AllowedLibPaths(libs))
     }
 }
