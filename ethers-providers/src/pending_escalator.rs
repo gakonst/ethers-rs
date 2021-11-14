@@ -140,11 +140,18 @@ macro_rules! poll_broadcast_fut {
                 check_all_receipts!($cx, $this);
             }
             Poll::Ready(Err(e)) => {
-                tracing::error!(
-                    error = ?e,
-                    "Error during transaction broadcast"
-                );
-                completed!($this, Err(e));
+                // kludge. Prevents erroring on "nonce too low" which indicates
+                // a previous escalation confirmed during this broadcast attempt
+                if format!("{}", e).contains("nonce too low") {
+                    check_all_receipts!($cx, $this);
+                } else {
+                    tracing::error!(
+                        error = ?e,
+                        "Error during transaction broadcast"
+                    );
+
+                    completed!($this, Err(e));
+                }
             }
             Poll::Pending => return Poll::Pending,
         }
