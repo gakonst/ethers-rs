@@ -1,5 +1,5 @@
 use crate::{
-    artifacts::{CompactContract, CompactContractRef, Settings},
+    artifacts::{CompactContract, CompactContractRef, Contract, Settings},
     cache::SOLIDITY_FILES_CACHE_FILENAME,
     error::Result,
     remappings::Remapping,
@@ -235,6 +235,41 @@ pub trait ArtifactOutput {
     /// Handle the compiler output.
     fn on_output(output: &CompilerOutput, layout: &ProjectPathsConfig) -> Result<()>;
 
+    /// Returns the file name for the contract's artifact
+    fn output_file_name(name: impl AsRef<str>) -> PathBuf {
+        format!("{}.json", name.as_ref()).into()
+    }
+
+    /// Returns the path to the contract's artifact location based on the contract's file and name
+    ///
+    /// This returns `contract.sol/contract.json` by default
+    fn output_file(contract_file: impl AsRef<Path>, name: impl AsRef<str>) -> PathBuf {
+        let name = name.as_ref();
+        contract_file
+            .as_ref()
+            .file_name()
+            .map(Path::new)
+            .map(|p| p.join(Self::output_file_name(name)))
+            .unwrap_or_else(|| Self::output_file_name(name))
+    }
+
+    /// The inverse of `contract_file_name`
+    ///
+    /// Expected to return the solidity contract's name derived from the file path
+    /// `sources/Greeter.sol` -> `Greeter`
+    fn contract_name(file: impl AsRef<Path>) -> Option<String> {
+        file.as_ref().file_stem().and_then(|s| s.to_str().map(|s| s.to_string()))
+    }
+
+    /// Whether the corresponding artifact of the given contract file and name exists
+    fn output_exists(
+        contract_file: impl AsRef<Path>,
+        name: impl AsRef<str>,
+        root: impl AsRef<Path>,
+    ) -> bool {
+        root.as_ref().join(Self::output_file(contract_file, name)).exists()
+    }
+
     fn read_cached_artifact(path: impl AsRef<Path>) -> Result<Self::Artifact>;
 
     /// Read the cached artifacts from disk
@@ -252,12 +287,29 @@ pub trait ArtifactOutput {
         Ok(artifacts)
     }
 
+    /// Convert a contract to the artifact type
+    fn contract_to_artifact(contract: Contract) -> Self::Artifact;
+
     /// Convert the compiler output into a set of artifacts
-    fn output_to_artifacts(output: CompilerOutput) -> Artifacts<Self::Artifact>;
+    fn output_to_artifacts(output: CompilerOutput) -> Artifacts<Self::Artifact> {
+        output
+            .contracts
+            .into_iter()
+            .map(|(s, contracts)| {
+                (
+                    s,
+                    contracts
+                        .into_iter()
+                        .map(|(s, c)| (s, Self::contract_to_artifact(c)))
+                        .collect(),
+                )
+            })
+            .collect()
+    }
 }
 
 /// An artifacts implementation that does not emit
-#[derive(Copy, Clone, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct NoArtifacts;
 
 impl ArtifactOutput for NoArtifacts {
@@ -267,17 +319,15 @@ impl ArtifactOutput for NoArtifacts {
         Ok(())
     }
 
+    fn output_exists(_: impl AsRef<Path>, _: impl AsRef<str>, _: impl AsRef<Path>) -> bool {
+        true
+    }
+
     fn read_cached_artifact(_: impl AsRef<Path>) -> Result<Self::Artifact> {
         Ok(())
     }
 
-    fn output_to_artifacts(output: CompilerOutput) -> Artifacts<Self::Artifact> {
-        output
-            .contracts
-            .into_iter()
-            .map(|(s, contracts)| (s, contracts.into_iter().map(|(s, _)| (s, ())).collect()))
-            .collect()
-    }
+    fn contract_to_artifact(_: Contract) -> Self::Artifact {}
 }
 
 /// An Artifacts implementation that uses a compact representation
@@ -290,7 +340,7 @@ impl ArtifactOutput for NoArtifacts {
 ///    "runtime-bin": "..."
 ///  }
 /// ```
-#[derive(Copy, Clone, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct MinimalCombinedArtifacts;
 
 impl ArtifactOutput for MinimalCombinedArtifacts {
@@ -298,9 +348,13 @@ impl ArtifactOutput for MinimalCombinedArtifacts {
 
     fn on_output(output: &CompilerOutput, layout: &ProjectPathsConfig) -> Result<()> {
         fs::create_dir_all(&layout.artifacts)?;
-        for contracts in output.contracts.values() {
+        for (file, contracts) in output.contracts.iter() {
             for (name, contract) in contracts {
-                let file = layout.artifacts.join(format!("{}.json", name));
+                let artifact = Self::output_file(file, name);
+                let file = layout.artifacts.join(artifact);
+                if let Some(parent) = file.parent() {
+                    fs::create_dir_all(parent)?;
+                }
                 let min = CompactContractRef::from(contract);
                 fs::write(file, serde_json::to_vec_pretty(&min)?)?
             }
@@ -313,19 +367,13 @@ impl ArtifactOutput for MinimalCombinedArtifacts {
         Ok(serde_json::from_reader(file)?)
     }
 
-    fn output_to_artifacts(output: CompilerOutput) -> Artifacts<Self::Artifact> {
-        output
-            .contracts
-            .into_iter()
-            .map(|(s, contracts)| {
-                (s, contracts.into_iter().map(|(s, c)| (s, CompactContract::from(c))).collect())
-            })
-            .collect()
+    fn contract_to_artifact(contract: Contract) -> Self::Artifact {
+        CompactContract::from(contract)
     }
 }
 
 /// Hardhat style artifacts
-#[derive(Copy, Clone, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct HardhatArtifacts;
 
 impl ArtifactOutput for HardhatArtifacts {
@@ -339,7 +387,7 @@ impl ArtifactOutput for HardhatArtifacts {
         todo!("Hardhat style artifacts not yet implemented")
     }
 
-    fn output_to_artifacts(_output: CompilerOutput) -> Artifacts<Self::Artifact> {
+    fn contract_to_artifact(_contract: Contract) -> Self::Artifact {
         todo!("Hardhat style artifacts not yet implemented")
     }
 }

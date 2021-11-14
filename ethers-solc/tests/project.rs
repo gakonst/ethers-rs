@@ -26,12 +26,25 @@ fn can_compile_hardhat_sample() {
 
     let project = Project::builder().paths(paths).build().unwrap();
     let compiled = project.compile().unwrap();
+    assert!(compiled.find("Greeter").is_some());
+    assert!(compiled.find("console").is_some());
     match compiled {
         ProjectCompileOutput::Compiled((out, _)) => assert!(!out.has_error()),
         _ => panic!("must compile"),
     }
+
     // nothing to compile
-    assert!(project.compile().unwrap().is_unchanged());
+    let compiled = project.compile().unwrap();
+    assert!(compiled.find("Greeter").is_some());
+    assert!(compiled.find("console").is_some());
+    assert!(compiled.is_unchanged());
+
+    // delete artifacts
+    std::fs::remove_dir_all(&project.paths.artifacts).unwrap();
+    let compiled = project.compile().unwrap();
+    assert!(compiled.find("Greeter").is_some());
+    assert!(compiled.find("console").is_some());
+    assert!(!compiled.is_unchanged());
 }
 
 #[test]
@@ -53,10 +66,19 @@ fn can_compile_dapp_sample() {
 
     let project = Project::builder().paths(paths).build().unwrap();
     let compiled = project.compile().unwrap();
+    assert!(compiled.find("Dapp").is_some());
     match compiled {
         ProjectCompileOutput::Compiled((out, _)) => assert!(!out.has_error()),
         _ => panic!("must compile"),
     }
     // nothing to compile
-    assert!(project.compile().unwrap().is_unchanged());
+    let compiled = project.compile().unwrap();
+    assert!(compiled.find("Dapp").is_some());
+    assert!(compiled.is_unchanged());
+
+    // delete artifacts
+    std::fs::remove_dir_all(&project.paths.artifacts).unwrap();
+    let compiled = project.compile().unwrap();
+    assert!(compiled.find("Dapp").is_some());
+    assert!(!compiled.is_unchanged());
 }

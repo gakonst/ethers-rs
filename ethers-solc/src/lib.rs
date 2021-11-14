@@ -25,6 +25,7 @@ pub mod utils;
 use crate::artifacts::Sources;
 use error::Result;
 use std::{
+    borrow::Cow,
     collections::{BTreeMap, HashMap},
     convert::TryInto,
     fmt, fs, io,
@@ -82,11 +83,23 @@ impl Project {
 }
 
 impl<Artifacts: ArtifactOutput> Project<Artifacts> {
-    fn write_cache_file(&self, sources: Sources) -> Result<()> {
-        let cache = SolFilesCache::builder()
+    fn write_cache_file(
+        &self,
+        sources: Sources,
+        artifacts: Vec<(PathBuf, Vec<String>)>,
+    ) -> Result<()> {
+        let mut cache = SolFilesCache::builder()
             .root(&self.paths.root)
             .solc_config(self.solc_config.clone())
             .insert_files(sources)?;
+
+        // add the artifacts for each file to the cache entry
+        for (file, artifacts) in artifacts {
+            if let Some(entry) = cache.files.get_mut(&file) {
+                entry.artifacts = artifacts;
+            }
+        }
+
         if let Some(cache_dir) = self.paths.cache.parent() {
             fs::create_dir_all(cache_dir)?
         }
@@ -157,6 +170,8 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         let mut res = CompilerOutput::default();
         for (solc, sources) in sources_by_version {
             let output = self.compile_with_version(&solc, sources)?;
+            // TODO(mattsse): this is still a bit clunky, because if there are both compiled and
+            //  unchanged, the unchanged artifacts are not included in the res compileroutput
             if let ProjectCompileOutput::Compiled((compiled, _)) = output {
                 res.errors.extend(compiled.errors);
                 res.sources.extend(compiled.sources);
@@ -164,7 +179,13 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
             }
         }
         Ok(if res.contracts.is_empty() && res.errors.is_empty() {
-            ProjectCompileOutput::Unchanged(Default::default())
+            let artifacts = if self.cached && self.paths.cache.exists() {
+                let cache = SolFilesCache::read(&self.paths.cache)?;
+                cache.read_artifacts::<Artifacts>(&self.paths.artifacts)?
+            } else {
+                Default::default()
+            };
+            ProjectCompileOutput::Unchanged(artifacts)
         } else {
             ProjectCompileOutput::Compiled((res, &self.ignored_error_codes))
         })
@@ -176,21 +197,31 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         mut sources: Sources,
     ) -> Result<ProjectCompileOutput<Artifacts>> {
         // add all libraries to the source set while keeping track of their actual disk path
-        let mut source_name_path = HashMap::new();
-        let mut path_source_name = HashMap::new();
+        // (`contracts/contract.sol` -> `/Users/.../contracts.sol`)
+        let mut source_name_to_path = HashMap::new();
+        // inverse of `source_name_to_path` : (`/Users/.../contracts.sol` ->
+        // `contracts/contract.sol`)
+        let mut path_to_source_name = HashMap::new();
+
         for (import, (source, path)) in self.resolved_libraries(&sources)? {
             // inserting with absolute path here and keep track of the source name <-> path mappings
             sources.insert(path.clone(), source);
-            path_source_name.insert(path.clone(), import.clone());
-            source_name_path.insert(import, path);
+            path_to_source_name.insert(path.clone(), import.clone());
+            source_name_to_path.insert(import, path);
         }
 
         // If there's a cache set, filter to only re-compile the files which were changed
         let sources = if self.cached && self.paths.cache.exists() {
             let cache = SolFilesCache::read(&self.paths.cache)?;
-            let changed_files = cache.get_changed_files(sources, Some(&self.solc_config));
+            let changed_files = cache.get_changed_or_missing_artifacts_files::<Artifacts>(
+                sources,
+                Some(&self.solc_config),
+                &self.paths.artifacts,
+            );
+
+            // if nothing changed and all artifacts still exist
             if changed_files.is_empty() {
-                let artifacts = Artifacts::read_cached_artifacts(cache.files.keys())?;
+                let artifacts = cache.read_artifacts::<Artifacts>(&self.paths.artifacts)?;
                 return Ok(ProjectCompileOutput::Unchanged(artifacts))
             }
             changed_files
@@ -199,7 +230,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         };
 
         // replace absolute path with source name to make solc happy
-        let sources = apply_mappings(sources, path_source_name);
+        let sources = apply_mappings(sources, path_to_source_name);
 
         let input = CompilerInput::with_sources(sources)
             .normalize_evm_version(&solc.version()?)
@@ -210,10 +241,22 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         }
 
         if self.cached {
+            // get all contract names of the files and map them to the disk file
+            let artifacts = output
+                .contracts
+                .iter()
+                .map(|(path, contracts)| {
+                    let path = PathBuf::from(path);
+                    let file = source_name_to_path.get(&path).cloned().unwrap_or(path);
+                    (file, contracts.keys().cloned().collect::<Vec<_>>())
+                })
+                .collect::<Vec<_>>();
+
             // reapply to disk paths
-            let sources = apply_mappings(input.sources, source_name_path);
+            let sources = apply_mappings(input.sources, source_name_to_path);
+
             // create cache file
-            self.write_cache_file(sources)?;
+            self.write_cache_file(sources, artifacts)?;
         }
 
         Artifacts::on_output(&output, &self.paths)?;
@@ -376,15 +419,77 @@ pub enum ProjectCompileOutput<'a, T: ArtifactOutput> {
     Compiled((CompilerOutput, &'a [u64])),
 }
 
-impl<'a, T: ArtifactOutput> ProjectCompileOutput<'a, T> {
-    /// All artifacts
-    pub fn into_artifacts(self) -> Vec<T::Artifact> {
+impl<'a, T: ArtifactOutput> ProjectCompileOutput<'a, T>
+where
+    T::Artifact: Clone,
+{
+    /// Finds the first contract with the given name
+    pub fn find(&self, contract: impl AsRef<str>) -> Option<Cow<T::Artifact>> {
+        let contract = contract.as_ref();
         match self {
-            ProjectCompileOutput::Unchanged(artifacts) => artifacts.into_values().collect(),
-            ProjectCompileOutput::Compiled((c, _)) => {
-                T::output_to_artifacts(c).into_values().flatten().map(|(_, c)| c).collect()
+            ProjectCompileOutput::Unchanged(artifacts) => {
+                artifacts.iter().find_map(|(path, art)| {
+                    T::contract_name(path)
+                        .filter(|name| name == contract)
+                        .map(|_| Cow::Borrowed(art))
+                })
+            }
+            ProjectCompileOutput::Compiled((output, _)) => {
+                output.contracts.values().find_map(|c| {
+                    c.get(contract).map(|c| T::contract_to_artifact(c.clone())).map(Cow::Owned)
+                })
             }
         }
+    }
+}
+
+impl<'a, T: ArtifactOutput> ProjectCompileOutput<'a, T> {
+    /// Finds the first contract with the given name and removes it from the set
+    pub fn remove(&mut self, contract: impl AsRef<str>) -> Option<T::Artifact> {
+        let contract = contract.as_ref();
+        match self {
+            ProjectCompileOutput::Unchanged(artifacts) => {
+                let key = artifacts
+                    .iter()
+                    .find_map(|(path, _)| {
+                        T::contract_name(path).filter(|name| name == contract).map(|_| path)
+                    })?
+                    .clone();
+                artifacts.remove(&key)
+            }
+            ProjectCompileOutput::Compiled((output, _)) => output
+                .contracts
+                .values_mut()
+                .find_map(|c| c.remove(contract).map(|c| T::contract_to_artifact(c))),
+        }
+    }
+}
+
+impl<'a, T: ArtifactOutput + 'static> ProjectCompileOutput<'a, T> {
+    /// All artifacts together with their contract name
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use std::collections::BTreeMap;
+    /// use ethers_solc::artifacts::CompactContract;
+    /// use ethers_solc::Project;
+    ///
+    /// let project = Project::builder().build().unwrap();
+    /// let contracts: BTreeMap<String, CompactContract> = project.compile().unwrap().into_artifacts().collect();
+    /// ```
+    pub fn into_artifacts(self) -> Box<dyn Iterator<Item = (String, T::Artifact)>> {
+        let artifacts: Box<dyn Iterator<Item = (String, T::Artifact)>> = match self {
+            ProjectCompileOutput::Unchanged(artifacts) => Box::new(
+                artifacts
+                    .into_iter()
+                    .filter_map(|(path, art)| T::contract_name(path).map(|name| (name, art))),
+            ),
+            ProjectCompileOutput::Compiled((c, _)) => {
+                Box::new(T::output_to_artifacts(c).into_values().flatten())
+            }
+        };
+        artifacts
     }
 }
 

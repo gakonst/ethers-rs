@@ -409,6 +409,12 @@ impl CompilerOutput {
         })
     }
 
+    /// Finds the first contract with the given name and removes it from the set
+    pub fn remove(&mut self, contract: impl AsRef<str>) -> Option<Contract> {
+        let contract_name = contract.as_ref();
+        self.contracts.values_mut().find_map(|c| c.remove(contract_name))
+    }
+
     /// Iterate over all contracts and their names
     pub fn contracts_iter(&self) -> impl Iterator<Item = (&String, &Contract)> {
         self.contracts.values().flatten()
@@ -908,7 +914,15 @@ where
 {
     let value = Option::<String>::deserialize(d)?;
     if let Some(value) = value {
-        Ok(Some(hex::decode(&value).map_err(|e| serde::de::Error::custom(e.to_string()))?.into()))
+        Ok(Some(
+            if let Some(value) = value.strip_prefix("0x") {
+                hex::decode(value)
+            } else {
+                hex::decode(&value)
+            }
+            .map_err(|e| serde::de::Error::custom(e.to_string()))?
+            .into(),
+        ))
     } else {
         Ok(None)
     }

@@ -3,7 +3,7 @@ use crate::{
     artifacts::Sources,
     config::SolcConfig,
     error::{Result, SolcError},
-    utils,
+    utils, ArtifactOutput,
 };
 use serde::{Deserialize, Serialize};
 use std::{
@@ -92,6 +92,75 @@ impl SolFilesCache {
         } else {
             true
         }
+    }
+
+    /// Returns only the files that were changed or are missing artifacts compared to previous
+    /// compiler execution, to save time when compiling.
+    pub fn get_changed_or_missing_artifacts_files<'a, T: ArtifactOutput>(
+        &'a self,
+        sources: Sources,
+        config: Option<&'a SolcConfig>,
+        artifacts_root: &Path,
+    ) -> Sources {
+        sources
+            .into_iter()
+            .filter(move |(file, source)| {
+                self.has_changed_or_missing_artifact::<T>(
+                    file,
+                    source.content_hash().as_bytes(),
+                    config,
+                    artifacts_root,
+                )
+            })
+            .collect()
+    }
+
+    /// Returns true if the given content hash or config differs from the file's
+    /// or the file does not exist or the files' artifacts are missing
+    pub fn has_changed_or_missing_artifact<T: ArtifactOutput>(
+        &self,
+        file: &Path,
+        hash: &[u8],
+        config: Option<&SolcConfig>,
+        artifacts_root: &Path,
+    ) -> bool {
+        if let Some(entry) = self.files.get(file) {
+            if entry.content_hash.as_bytes() != hash {
+                return true
+            }
+            if let Some(config) = config {
+                if config != &entry.solc_config {
+                    return true
+                }
+            }
+
+            entry.artifacts.iter().any(|name| !T::output_exists(file, name, artifacts_root))
+        } else {
+            true
+        }
+    }
+
+    /// Checks if all artifact files exist
+    pub fn all_artifacts_exist<T: ArtifactOutput>(&self, artifacts_root: &Path) -> bool {
+        self.files.iter().all(|(file, entry)| {
+            entry.artifacts.iter().all(|name| T::output_exists(file, name, artifacts_root))
+        })
+    }
+
+    /// Reads all cached artifacts from disk
+    pub fn read_artifacts<T: ArtifactOutput>(
+        &self,
+        artifacts_root: &Path,
+    ) -> Result<BTreeMap<PathBuf, T::Artifact>> {
+        let mut artifacts = BTreeMap::default();
+        for (file, entry) in &self.files {
+            for artifact in &entry.artifacts {
+                let artifact_file = artifacts_root.join(T::output_file(file, artifact));
+                let artifact = T::read_cached_artifact(&artifact_file)?;
+                artifacts.insert(artifact_file, artifact);
+            }
+        }
+        Ok(artifacts)
     }
 }
 
