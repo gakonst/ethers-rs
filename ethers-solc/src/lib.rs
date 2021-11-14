@@ -407,9 +407,14 @@ impl<Artifacts: ArtifactOutput> Default for ProjectBuilder<Artifacts> {
     }
 }
 
+/// The outcome of `Project::compile`
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct ProjectCompileOutput<T: ArtifactOutput> {
+    /// If solc was invoked multiple times in `Project::compile` then this contains a merged
+    /// version of all `CompilerOutput`s. If solc was called only once then `compiler_output`
+    /// holds the `CompilerOutput` of that call.
     pub compiler_output: Option<CompilerOutput>,
+    /// All artifacts that were read from cache
     artifacts: BTreeMap<PathBuf, T::Artifact>,
     ignored_error_codes: Vec<u64>,
 }
@@ -438,6 +443,7 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
         }
     }
 
+    /// Combine two outputs
     pub fn extend(&mut self, compiled: ProjectCompileOutput<T>) {
         let ProjectCompileOutput { compiler_output, artifacts, .. } = compiled;
         self.artifacts.extend(artifacts);
@@ -452,6 +458,7 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
         }
     }
 
+    /// Whether this type does not contain compiled contracts
     pub fn is_unchanged(&self) -> bool {
         !self.has_compiled_contracts()
     }
