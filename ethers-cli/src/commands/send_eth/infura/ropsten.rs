@@ -9,8 +9,7 @@ use ethers_middleware::SignerMiddleware;
 use ethers_providers::{Http, Middleware, Provider};
 use ethers_signers::{LocalWallet, Signer, Wallet};
 use signatory::FsKeyStore;
-use std::convert::TryFrom;
-use std::path;
+use std::{convert::TryFrom, path};
 
 /// `infura` subcommand
 #[derive(Command, Debug, Default, Clap)]

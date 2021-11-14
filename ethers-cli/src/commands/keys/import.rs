@@ -29,7 +29,7 @@ impl Runnable for ImportKeyCmd {
         if let Ok(_info) = keystore.info(&name) {
             if !self.overwrite {
                 eprintln!("Key already exists, exiting.");
-                return;
+                return
             }
         }
 

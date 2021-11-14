@@ -28,7 +28,7 @@ impl Runnable for AddKeyCmd {
         if let Ok(_info) = keystore.info(&name) {
             if !self.overwrite {
                 eprintln!("Key already exists, exiting.");
-                return;
+                return
             }
         }
 
