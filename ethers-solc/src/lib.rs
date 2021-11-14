@@ -171,7 +171,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         for (solc, sources) in sources_by_version {
             let output = self.compile_with_version(&solc, sources)?;
             // TODO(mattsse): this is still a bit clunky, because if there are both compiled and
-            //  unchanged, the unchanged artifacts are not included in the res compileroutput
+            //  unchanged, the unchanged artifacts are not included in the res compiler output
             if let ProjectCompileOutput::Compiled((compiled, _)) = output {
                 res.errors.extend(compiled.errors);
                 res.sources.extend(compiled.sources);
