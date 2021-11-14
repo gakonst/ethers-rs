@@ -1,6 +1,6 @@
 use crate::{error::SolcError, Result};
 use serde::{Deserialize, Serialize};
-use std::fmt;
+use std::{fmt, str::FromStr};
 
 const DAPPTOOLS_CONTRACTS_DIR: &str = "src";
 const JS_CONTRACTS_DIR: &str = "contracts";
@@ -42,6 +42,31 @@ pub struct Remapping {
     pub path: String,
 }
 
+#[derive(thiserror::Error, Debug, PartialEq, PartialOrd)]
+pub enum RemappingError {
+    #[error("no prefix found")]
+    NoPrefix,
+    #[error("no target found")]
+    NoTarget,
+}
+
+impl FromStr for Remapping {
+    type Err = RemappingError;
+
+    fn from_str(remapping: &str) -> std::result::Result<Self, Self::Err> {
+        let mut split = remapping.split('=');
+        let name = split.next().ok_or(RemappingError::NoPrefix)?.to_string();
+        if name.is_empty() {
+            return Err(RemappingError::NoPrefix)
+        }
+        let path = split.next().ok_or(RemappingError::NoTarget)?.to_string();
+        if path.is_empty() {
+            return Err(RemappingError::NoTarget)
+        }
+        Ok(Remapping { name, path })
+    }
+}
+
 impl Serialize for Remapping {
     fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
     where
@@ -57,16 +82,7 @@ impl<'de> Deserialize<'de> for Remapping {
         D: serde::de::Deserializer<'de>,
     {
         let remapping = String::deserialize(deserializer)?;
-        let mut split = remapping.split('=');
-        let name = split
-            .next()
-            .ok_or_else(|| serde::de::Error::custom("no remapping prefix found"))?
-            .to_string();
-        let path = split
-            .next()
-            .ok_or_else(|| serde::de::Error::custom("no remapping path found"))?
-            .to_string();
-        Ok(Remapping { name, path })
+        Remapping::from_str(&remapping).map_err(serde::de::Error::custom)
     }
 }
 
@@ -162,6 +178,20 @@ impl Remapping {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn serde() {
+        let remapping = "oz=../b/c/d";
+        let remapping = Remapping::from_str(&remapping).unwrap();
+        assert_eq!(remapping.name, "oz".to_string());
+        assert_eq!(remapping.path, "../b/c/d".to_string());
+
+        let err = Remapping::from_str("").unwrap_err();
+        assert_eq!(err, RemappingError::NoPrefix);
+
+        let err = Remapping::from_str("oz=").unwrap_err();
+        assert_eq!(err, RemappingError::NoTarget);
+    }
 
     // https://doc.rust-lang.org/rust-by-example/std_misc/fs.html
     fn touch(path: &std::path::Path) -> std::io::Result<()> {
