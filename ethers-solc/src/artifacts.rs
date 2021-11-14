@@ -296,8 +296,8 @@ impl FromStr for EvmVersion {
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SettingsMetadata {
-    #[serde(rename = "useLiteralContent")]
-    pub use_literal_content: bool,
+    #[serde(default, rename = "useLiteralContent", skip_serializing_if = "Option::is_none")]
+    pub use_literal_content: Option<bool>,
     #[serde(default, rename = "bytecodeHash", skip_serializing_if = "Option::is_none")]
     pub bytecode_hash: Option<String>,
 }
