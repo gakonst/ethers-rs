@@ -12,7 +12,7 @@ keywords = ["ethereum", "web3", "celo", "ethers"]
 [dependencies]
 ethers-providers = { version = "^0.5.0", path = "../ethers-providers", default-features = false }
 ethers-core = { version = "^0.5.0", path = "../ethers-core", default-features = false }
-ethers-contract-abigen = { version = "^0.5.0", path = "ethers-contract-abigen", optional = true }
+ethers-contract-abigen = { version = "^0.5.0", path = "ethers-contract-abigen",  default-features = false, optional = true }
 ethers-contract-derive = { version = "^0.5.0", path = "ethers-contract-derive", optional = true }
 ethers-derive-eip712 = { version = "0.1.0", path = "../ethers-core/ethers-derive-eip712", optional = true }
 
@@ -39,7 +39,8 @@ tokio = { version = "1.5", default-features = false, features = ["macros"] }
 
 [features]
 eip712 = ["ethers-derive-eip712", "ethers-core/eip712"]
-abigen = ["ethers-contract-abigen", "ethers-contract-derive"]
+abigen = ["ethers-contract-abigen/reqwest", "ethers-contract-derive"]
+abigen-offline = ["ethers-contract-abigen", "ethers-contract-derive"]
 celo = ["legacy", "ethers-core/celo", "ethers-core/celo", "ethers-providers/celo"]
 legacy = []
 
