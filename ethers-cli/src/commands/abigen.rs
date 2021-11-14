@@ -2,11 +2,11 @@
 
 #![allow(clippy::never_loop)]
 
-use abscissa_core::{Command, Clap, Runnable};
+use abscissa_core::{Clap, Command, Runnable};
 use std::{io::stdout, path::Path};
 
 use ethers_contract::Abigen;
-use ethers_solc::{Solc};
+use ethers_solc::Solc;
 
 /// `abigen` subcommand
 #[derive(Command, Debug, Default, Clap)]
@@ -25,7 +25,11 @@ impl Runnable for AbigenCmd {
         let abi = if contract.ends_with("sol") {
             let contracts = Path::new(&contract);
             let contracts = Solc::default().compile_source(contracts).expect("file not found");
-            let abi = contracts.get(&contract, &name).unwrap().abi.expect("Failed to get contract and name");
+            let abi = contracts
+                .get(&contract, &name)
+                .unwrap()
+                .abi
+                .expect("Failed to get contract and name");
             serde_json::to_string(abi).unwrap()
         } else {
             contract.clone()

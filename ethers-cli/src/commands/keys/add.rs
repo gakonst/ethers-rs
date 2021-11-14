@@ -1,5 +1,5 @@
 use crate::application::APP;
-use abscissa_core::{Application, Command, Clap, Runnable};
+use abscissa_core::{Application, Clap, Command, Runnable};
 use bip32;
 use k256::pkcs8::ToPrivateKey;
 use rand_core::OsRng;
@@ -39,15 +39,11 @@ impl Runnable for AddKeyCmd {
         let seed = mnemonic.to_seed("");
 
         let path = "m/44'/118'/0'/0/0".trim();
-        let path = path
-            .parse::<bip32::DerivationPath>()
-            .expect("Could not parse derivation path");
+        let path = path.parse::<bip32::DerivationPath>().expect("Could not parse derivation path");
 
         let key = bip32::XPrv::derive_from_path(seed, &path).expect("Could not derive key");
         let key = k256::SecretKey::from(key.private_key());
-        let key = key
-            .to_pkcs8_der()
-            .expect("Could not PKCS8 encod private key");
+        let key = key.to_pkcs8_der().expect("Could not PKCS8 encod private key");
 
         keystore.store(&name, &key).expect("Could not store key");
     }

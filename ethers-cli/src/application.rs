@@ -26,10 +26,7 @@ pub struct EthersCliApp {
 /// initialized to a default, empty state (no components, threads, etc).
 impl Default for EthersCliApp {
     fn default() -> Self {
-        Self {
-            config: CfgCell::default(),
-            state: application::State::default(),
-        }
+        Self { config: CfgCell::default(), state: application::State::default() }
     }
 }
 

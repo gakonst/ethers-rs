@@ -1,11 +1,10 @@
 use super::show::ShowKeyCmd;
 use crate::application::APP;
-use abscissa_core::{Application, Command, Clap, Runnable};
+use abscissa_core::{Application, Clap, Command, Runnable};
+use ethers_core::types;
 use k256::pkcs8::ToPrivateKey;
 use signatory::FsKeyStore;
 use std::path;
-use ethers_core::
-    types;
 
 /// Import Key
 #[derive(Command, Debug, Default, Clap)]
@@ -45,14 +44,12 @@ impl Runnable for ImportKeyCmd {
                 let seed = mnemonic.to_seed("");
 
                 let path = "m/44'/118'/0'/0/0".trim();
-                let path = path
-                    .parse::<bip32::DerivationPath>()
-                    .expect("Could not parse derivation path");
+                let path =
+                    path.parse::<bip32::DerivationPath>().expect("Could not parse derivation path");
 
                 let key = bip32::XPrv::derive_from_path(seed, &path).expect("Could not derive key");
                 let key = k256::SecretKey::from(key.private_key());
-                key.to_pkcs8_der()
-                    .expect("Could not PKCS8 encod private key")
+                key.to_pkcs8_der().expect("Could not PKCS8 encod private key")
             }
             Err(_) => {
                 let key = rpassword::read_password_from_tty(Some("> Enter your private-key:\n"))
@@ -61,8 +58,7 @@ impl Runnable for ImportKeyCmd {
                 let key: types::H256 = key.parse().expect("Could not parse private-key");
 
                 let key = k256::SecretKey::from_bytes(key).expect("Could not make private key");
-                key.to_pkcs8_der()
-                    .expect("Could not PKCS8 encode private key")
+                key.to_pkcs8_der().expect("Could not PKCS8 encode private key")
             }
         };
 

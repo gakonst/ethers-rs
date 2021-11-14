@@ -1,6 +1,6 @@
 use crate::application::APP;
-use abscissa_core::{Application, Command, Clap, Runnable};
-use ethers_signers::{LocalWallet, Wallet, Signer};
+use abscissa_core::{Application, Clap, Command, Runnable};
+use ethers_signers::{LocalWallet, Signer, Wallet};
 use signatory::FsKeyStore;
 use std::path;
 

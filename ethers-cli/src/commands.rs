@@ -11,11 +11,11 @@
 //! application's configuration file.
 
 mod abigen;
+mod keys;
 mod send_eth;
 mod start;
-mod keys;
 
-use self::{abigen::AbigenCmd, send_eth::SendETHCmd, start::StartCmd, keys::KeysCmd};
+use self::{abigen::AbigenCmd, keys::KeysCmd, send_eth::SendETHCmd, start::StartCmd};
 use crate::config::EthersCliConfig;
 use abscissa_core::{config::Override, Clap, Command, Configurable, FrameworkError, Runnable};
 use std::path::PathBuf;
