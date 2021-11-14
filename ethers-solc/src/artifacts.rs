@@ -779,6 +779,7 @@ pub struct Ewasm {
 #[derive(Clone, Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
 pub struct StorageLayout {
     pub storage: Vec<Storage>,
+    #[serde(default)]
     pub types: BTreeMap<String, StorageType>,
 }
 
