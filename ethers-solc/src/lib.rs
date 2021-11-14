@@ -166,29 +166,23 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
             entry.insert(path, source);
         }
 
+        let mut compiled =
+            ProjectCompileOutput::with_ignored_errors(self.ignored_error_codes.clone());
+
         // run the compilation step for each version
-        let mut res = CompilerOutput::default();
         for (solc, sources) in sources_by_version {
-            let output = self.compile_with_version(&solc, sources)?;
-            // TODO(mattsse): this is still a bit clunky, because if there are both compiled and
-            //  unchanged, the unchanged artifacts are not included in the res compiler output
-            if let ProjectCompileOutput::Compiled((compiled, _)) = output {
-                res.errors.extend(compiled.errors);
-                res.sources.extend(compiled.sources);
-                res.contracts.extend(compiled.contracts);
-            }
+            compiled.extend(self.compile_with_version(&solc, sources)?);
         }
-        Ok(if res.contracts.is_empty() && res.errors.is_empty() {
-            let artifacts = if self.cached && self.paths.cache.exists() {
-                let cache = SolFilesCache::read(&self.paths.cache)?;
-                cache.read_artifacts::<Artifacts>(&self.paths.artifacts)?
-            } else {
-                Default::default()
-            };
-            ProjectCompileOutput::Unchanged(artifacts)
-        } else {
-            ProjectCompileOutput::Compiled((res, &self.ignored_error_codes))
-        })
+        if !compiled.has_compiled_contracts() &&
+            !compiled.has_compiler_errors() &&
+            self.cached &&
+            self.paths.cache.exists()
+        {
+            let cache = SolFilesCache::read(&self.paths.cache)?;
+            let artifacts = cache.read_artifacts::<Artifacts>(&self.paths.artifacts)?;
+            compiled.artifacts.extend(artifacts);
+        }
+        Ok(compiled)
     }
 
     pub fn compile_with_version(
@@ -222,7 +216,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
             // if nothing changed and all artifacts still exist
             if changed_files.is_empty() {
                 let artifacts = cache.read_artifacts::<Artifacts>(&self.paths.artifacts)?;
-                return Ok(ProjectCompileOutput::Unchanged(artifacts))
+                return Ok(ProjectCompileOutput::from_unchanged(artifacts))
             }
             changed_files
         } else {
@@ -237,7 +231,10 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
             .with_remappings(self.paths.remappings.clone());
         let output = solc.compile(&input)?;
         if output.has_error() {
-            return Ok(ProjectCompileOutput::Compiled((output, &self.ignored_error_codes)))
+            return Ok(ProjectCompileOutput::from_compiler_output(
+                output,
+                self.ignored_error_codes.clone(),
+            ))
         }
 
         if self.cached {
@@ -260,7 +257,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         }
 
         Artifacts::on_output(&output, &self.paths)?;
-        Ok(ProjectCompileOutput::Compiled((output, &self.ignored_error_codes)))
+        Ok(ProjectCompileOutput::from_compiler_output(output, self.ignored_error_codes.clone()))
     }
 }
 
@@ -410,62 +407,117 @@ impl<Artifacts: ArtifactOutput> Default for ProjectBuilder<Artifacts> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum ProjectCompileOutput<'a, T: ArtifactOutput> {
-    /// Nothing new was compiled
-    ///
-    /// Holds the unchanged artifact output
-    Unchanged(BTreeMap<PathBuf, T::Artifact>),
-    Compiled((CompilerOutput, &'a [u64])),
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct ProjectCompileOutput<T: ArtifactOutput> {
+    pub compiler_output: Option<CompilerOutput>,
+    artifacts: BTreeMap<PathBuf, T::Artifact>,
+    ignored_error_codes: Vec<u64>,
 }
 
-impl<'a, T: ArtifactOutput> ProjectCompileOutput<'a, T>
+impl<T: ArtifactOutput> ProjectCompileOutput<T> {
+    pub fn with_ignored_errors(ignored_errors: Vec<u64>) -> Self {
+        Self {
+            compiler_output: None,
+            artifacts: Default::default(),
+            ignored_error_codes: ignored_errors,
+        }
+    }
+
+    pub fn from_unchanged(artifacts: BTreeMap<PathBuf, T::Artifact>) -> Self {
+        Self { compiler_output: None, artifacts, ignored_error_codes: vec![] }
+    }
+
+    pub fn from_compiler_output(
+        compiler_output: CompilerOutput,
+        ignored_error_codes: Vec<u64>,
+    ) -> Self {
+        Self {
+            compiler_output: Some(compiler_output),
+            artifacts: Default::default(),
+            ignored_error_codes,
+        }
+    }
+
+    pub fn extend(&mut self, compiled: ProjectCompileOutput<T>) {
+        let ProjectCompileOutput { compiler_output, artifacts, .. } = compiled;
+        self.artifacts.extend(artifacts);
+        if let Some(compiled) = compiler_output {
+            if let Some(output) = self.compiler_output.as_mut() {
+                output.errors.extend(compiled.errors);
+                output.sources.extend(compiled.sources);
+                output.contracts.extend(compiled.contracts);
+            } else {
+                self.compiler_output = Some(compiled);
+            }
+        }
+    }
+
+    pub fn is_unchanged(&self) -> bool {
+        !self.has_compiled_contracts()
+    }
+
+    /// Whether this type has a compiler output
+    pub fn has_compiled_contracts(&self) -> bool {
+        if let Some(output) = self.compiler_output.as_ref() {
+            !output.contracts.is_empty()
+        } else {
+            false
+        }
+    }
+
+    /// Whether there were errors
+    pub fn has_compiler_errors(&self) -> bool {
+        if let Some(output) = self.compiler_output.as_ref() {
+            output.has_error()
+        } else {
+            false
+        }
+    }
+
+    /// Finds the first contract with the given name and removes it from the set
+    pub fn remove(&mut self, contract: impl AsRef<str>) -> Option<T::Artifact> {
+        let contract = contract.as_ref();
+        if let Some(output) = self.compiler_output.as_mut() {
+            if let contract @ Some(_) = output
+                .contracts
+                .values_mut()
+                .find_map(|c| c.remove(contract).map(|c| T::contract_to_artifact(c)))
+            {
+                return contract
+            }
+        }
+        let key = self
+            .artifacts
+            .iter()
+            .find_map(|(path, _)| {
+                T::contract_name(path).filter(|name| name == contract).map(|_| path)
+            })?
+            .clone();
+        self.artifacts.remove(&key)
+    }
+}
+
+impl<T: ArtifactOutput> ProjectCompileOutput<T>
 where
     T::Artifact: Clone,
 {
     /// Finds the first contract with the given name
     pub fn find(&self, contract: impl AsRef<str>) -> Option<Cow<T::Artifact>> {
         let contract = contract.as_ref();
-        match self {
-            ProjectCompileOutput::Unchanged(artifacts) => {
-                artifacts.iter().find_map(|(path, art)| {
-                    T::contract_name(path)
-                        .filter(|name| name == contract)
-                        .map(|_| Cow::Borrowed(art))
-                })
-            }
-            ProjectCompileOutput::Compiled((output, _)) => {
-                output.contracts.values().find_map(|c| {
-                    c.get(contract).map(|c| T::contract_to_artifact(c.clone())).map(Cow::Owned)
-                })
+        if let Some(output) = self.compiler_output.as_ref() {
+            if let contract @ Some(_) = output.contracts.values().find_map(|c| {
+                c.get(contract).map(|c| T::contract_to_artifact(c.clone())).map(Cow::Owned)
+            }) {
+                return contract
             }
         }
+        self.artifacts.iter().find_map(|(path, art)| {
+            T::contract_name(path).filter(|name| name == contract).map(|_| Cow::Borrowed(art))
+        })
     }
 }
 
-impl<'a, T: ArtifactOutput> ProjectCompileOutput<'a, T> {
-    /// Finds the first contract with the given name and removes it from the set
-    pub fn remove(&mut self, contract: impl AsRef<str>) -> Option<T::Artifact> {
-        let contract = contract.as_ref();
-        match self {
-            ProjectCompileOutput::Unchanged(artifacts) => {
-                let key = artifacts
-                    .iter()
-                    .find_map(|(path, _)| {
-                        T::contract_name(path).filter(|name| name == contract).map(|_| path)
-                    })?
-                    .clone();
-                artifacts.remove(&key)
-            }
-            ProjectCompileOutput::Compiled((output, _)) => output
-                .contracts
-                .values_mut()
-                .find_map(|c| c.remove(contract).map(|c| T::contract_to_artifact(c))),
-        }
-    }
-}
-
-impl<'a, T: ArtifactOutput + 'static> ProjectCompileOutput<'a, T> {
+impl<T: ArtifactOutput + 'static> ProjectCompileOutput<T> {
     /// All artifacts together with their contract name
     ///
     /// # Example
@@ -478,34 +530,28 @@ impl<'a, T: ArtifactOutput + 'static> ProjectCompileOutput<'a, T> {
     /// let project = Project::builder().build().unwrap();
     /// let contracts: BTreeMap<String, CompactContract> = project.compile().unwrap().into_artifacts().collect();
     /// ```
-    pub fn into_artifacts(self) -> Box<dyn Iterator<Item = (String, T::Artifact)>> {
-        let artifacts: Box<dyn Iterator<Item = (String, T::Artifact)>> = match self {
-            ProjectCompileOutput::Unchanged(artifacts) => Box::new(
-                artifacts
-                    .into_iter()
-                    .filter_map(|(path, art)| T::contract_name(path).map(|name| (name, art))),
-            ),
-            ProjectCompileOutput::Compiled((c, _)) => {
-                Box::new(T::output_to_artifacts(c).into_values().flatten())
-            }
-        };
+    pub fn into_artifacts(mut self) -> Box<dyn Iterator<Item = (String, T::Artifact)>> {
+        let artifacts = self
+            .artifacts
+            .into_iter()
+            .filter_map(|(path, art)| T::contract_name(path).map(|name| (name, art)));
+
+        let artifacts: Box<dyn Iterator<Item = (String, T::Artifact)>> =
+            if let Some(output) = self.compiler_output.take() {
+                Box::new(artifacts.chain(T::output_to_artifacts(output).into_values().flatten()))
+            } else {
+                Box::new(artifacts)
+            };
         artifacts
     }
 }
 
-impl<'a, T: ArtifactOutput> ProjectCompileOutput<'a, T> {
-    pub fn is_unchanged(&self) -> bool {
-        matches!(self, ProjectCompileOutput::Unchanged(_))
-    }
-}
-
-impl<'a, T: ArtifactOutput> fmt::Display for ProjectCompileOutput<'a, T> {
+impl<T: ArtifactOutput> fmt::Display for ProjectCompileOutput<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            ProjectCompileOutput::Unchanged(_) => f.write_str("Nothing to compile"),
-            ProjectCompileOutput::Compiled((output, ignored_error_codes)) => {
-                output.diagnostics(ignored_error_codes).fmt(f)
-            }
+        if let Some(output) = self.compiler_output.as_ref() {
+            output.diagnostics(&self.ignored_error_codes).fmt(f)
+        } else {
+            f.write_str("Nothing to compile")
         }
     }
 }
@@ -526,13 +572,8 @@ mod tests {
         let project =
             Project::builder().artifacts::<NoArtifacts>().paths(paths).ephemeral().build().unwrap();
         let compiled = project.compile().unwrap();
-        let contracts = match compiled {
-            ProjectCompileOutput::Compiled((out, _)) => {
-                assert!(!out.has_error());
-                out.contracts
-            }
-            _ => panic!("must compile"),
-        };
+        assert!(!compiled.has_compiler_errors());
+        let contracts = compiled.compiler_output.unwrap().contracts;
         // Contracts A to F
         assert_eq!(contracts.keys().count(), 5);
     }
@@ -554,13 +595,8 @@ mod tests {
         let project =
             Project::builder().paths(paths).ephemeral().artifacts::<NoArtifacts>().build().unwrap();
         let compiled = project.compile().unwrap();
-        let contracts = match compiled {
-            ProjectCompileOutput::Compiled((out, _)) => {
-                assert!(!out.has_error());
-                out.contracts
-            }
-            _ => panic!("must compile"),
-        };
+        assert!(!compiled.has_compiler_errors());
+        let contracts = compiled.compiler_output.unwrap().contracts;
         assert_eq!(contracts.keys().count(), 3);
     }
 
@@ -579,13 +615,8 @@ mod tests {
         let project =
             Project::builder().artifacts::<NoArtifacts>().paths(paths).ephemeral().build().unwrap();
         let compiled = project.compile().unwrap();
-        let contracts = match compiled {
-            ProjectCompileOutput::Compiled((out, _)) => {
-                assert!(!out.has_error());
-                out.contracts
-            }
-            _ => panic!("must compile"),
-        };
+        assert!(!compiled.has_compiler_errors());
+        let contracts = compiled.compiler_output.unwrap().contracts;
         assert_eq!(contracts.keys().count(), 2);
     }
 }

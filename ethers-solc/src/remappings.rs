@@ -182,7 +182,7 @@ mod tests {
     #[test]
     fn serde() {
         let remapping = "oz=../b/c/d";
-        let remapping = Remapping::from_str(&remapping).unwrap();
+        let remapping = Remapping::from_str(remapping).unwrap();
         assert_eq!(remapping.name, "oz".to_string());
         assert_eq!(remapping.path, "../b/c/d".to_string());
 
