@@ -905,7 +905,7 @@ dependencies = [
 
 [[package]]
 name = "ethers"
-version = "0.5.3"
+version = "0.5.4"
 dependencies = [
  "anyhow",
  "bytes",
@@ -979,7 +979,7 @@ dependencies = [
 
 [[package]]
 name = "ethers-core"
-version = "0.5.4"
+version = "0.5.5"
 dependencies = [
  "arrayvec 0.7.2",
  "bincode",

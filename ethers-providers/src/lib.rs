@@ -315,7 +315,7 @@ pub trait Middleware: Sync + Send + Debug {
                 r
             })
             .map(|req| async move {
-                self.sign(req.rlp(chain_id), &self.default_sender().unwrap_or_default())
+                self.sign_transaction(&req, self.default_sender().unwrap_or_default())
                     .await
                     .map(|sig| req.rlp_signed(chain_id, &sig))
             })
@@ -454,6 +454,15 @@ pub trait Middleware: Sync + Send + Debug {
         from: &Address,
     ) -> Result<Signature, Self::Error> {
         self.inner().sign(data, from).await.map_err(FromErr::from)
+    }
+
+    /// Sign a transaction via RPC call
+    async fn sign_transaction(
+        &self,
+        tx: &TypedTransaction,
+        from: Address,
+    ) -> Result<Signature, Self::Error> {
+        self.inner().sign_transaction(tx, from).await.map_err(FromErr::from)
     }
 
     ////// Contract state
