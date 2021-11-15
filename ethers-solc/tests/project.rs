@@ -1,8 +1,6 @@
 //! project tests
 
-use ethers_solc::{
-    cache::SOLIDITY_FILES_CACHE_FILENAME, Project, ProjectCompileOutput, ProjectPathsConfig,
-};
+use ethers_solc::{cache::SOLIDITY_FILES_CACHE_FILENAME, Project, ProjectPathsConfig};
 use std::path::PathBuf;
 use tempdir::TempDir;
 
@@ -26,12 +24,22 @@ fn can_compile_hardhat_sample() {
 
     let project = Project::builder().paths(paths).build().unwrap();
     let compiled = project.compile().unwrap();
-    match compiled {
-        ProjectCompileOutput::Compiled((out, _)) => assert!(!out.has_error()),
-        _ => panic!("must compile"),
-    }
+    assert!(compiled.find("Greeter").is_some());
+    assert!(compiled.find("console").is_some());
+    assert!(!compiled.has_compiler_errors());
+
     // nothing to compile
-    assert_eq!(project.compile().unwrap(), ProjectCompileOutput::Unchanged);
+    let compiled = project.compile().unwrap();
+    assert!(compiled.find("Greeter").is_some());
+    assert!(compiled.find("console").is_some());
+    assert!(compiled.is_unchanged());
+
+    // delete artifacts
+    std::fs::remove_dir_all(&project.paths.artifacts).unwrap();
+    let compiled = project.compile().unwrap();
+    assert!(compiled.find("Greeter").is_some());
+    assert!(compiled.find("console").is_some());
+    assert!(!compiled.is_unchanged());
 }
 
 #[test]
@@ -53,10 +61,17 @@ fn can_compile_dapp_sample() {
 
     let project = Project::builder().paths(paths).build().unwrap();
     let compiled = project.compile().unwrap();
-    match compiled {
-        ProjectCompileOutput::Compiled((out, _)) => assert!(!out.has_error()),
-        _ => panic!("must compile"),
-    }
+    assert!(compiled.find("Dapp").is_some());
+    assert!(!compiled.has_compiler_errors());
+
     // nothing to compile
-    assert_eq!(project.compile().unwrap(), ProjectCompileOutput::Unchanged);
+    let compiled = project.compile().unwrap();
+    assert!(compiled.find("Dapp").is_some());
+    assert!(compiled.is_unchanged());
+
+    // delete artifacts
+    std::fs::remove_dir_all(&project.paths.artifacts).unwrap();
+    let compiled = project.compile().unwrap();
+    assert!(compiled.find("Dapp").is_some());
+    assert!(!compiled.is_unchanged());
 }

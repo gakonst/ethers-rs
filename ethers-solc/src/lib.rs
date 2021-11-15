@@ -11,7 +11,10 @@ mod compile;
 pub use compile::*;
 
 mod config;
-pub use config::{AllowedLibPaths, ArtifactOutput, ProjectPathsConfig, SolcConfig};
+pub use config::{
+    AllowedLibPaths, Artifact, ArtifactOutput, MinimalCombinedArtifacts, ProjectPathsConfig,
+    SolcConfig,
+};
 
 pub mod remappings;
 
@@ -22,15 +25,17 @@ pub mod utils;
 use crate::artifacts::Sources;
 use error::Result;
 use std::{
+    borrow::Cow,
     collections::{BTreeMap, HashMap},
     convert::TryInto,
     fmt, fs, io,
+    marker::PhantomData,
     path::PathBuf,
 };
 
 /// Handles contract compiling
 #[derive(Debug)]
-pub struct Project {
+pub struct Project<Artifacts: ArtifactOutput = MinimalCombinedArtifacts> {
     /// The layout of the
     pub paths: ProjectPathsConfig,
     /// Where to find solc
@@ -39,8 +44,10 @@ pub struct Project {
     pub solc_config: SolcConfig,
     /// Whether caching is enabled
     pub cached: bool,
+    /// Whether writing artifacts to disk is enabled
+    pub no_artifacts: bool,
     /// How to handle compiler output
-    pub artifacts: ArtifactOutput,
+    pub artifacts: PhantomData<Artifacts>,
     /// Errors/Warnings which match these error codes are not going to be logged
     pub ignored_error_codes: Vec<u64>,
     /// The paths which will be allowed for library inclusion
@@ -48,23 +55,53 @@ pub struct Project {
 }
 
 impl Project {
-    /// Configure the current project
+    /// Convenience function to call `ProjectBuilder::default()`
     ///
     /// # Example
+    ///
+    /// Configure with `MinimalCombinedArtifacts` artifacts output
     ///
     /// ```rust
     /// use ethers_solc::Project;
     /// let config = Project::builder().build().unwrap();
     /// ```
+    ///
+    /// To configure any a project with any `ArtifactOutput` use either
+    ///
+    /// ```rust
+    /// use ethers_solc::Project;
+    /// let config = Project::builder().build().unwrap();
+    /// ```
+    ///
+    /// or use the builder directly
+    ///
+    /// ```rust
+    /// use ethers_solc::{MinimalCombinedArtifacts, ProjectBuilder};
+    /// let config = ProjectBuilder::<MinimalCombinedArtifacts>::default().build().unwrap();
+    /// ```
     pub fn builder() -> ProjectBuilder {
         ProjectBuilder::default()
     }
+}
 
-    fn write_cache_file(&self, sources: Sources) -> Result<()> {
-        let cache = SolFilesCache::builder()
+impl<Artifacts: ArtifactOutput> Project<Artifacts> {
+    fn write_cache_file(
+        &self,
+        sources: Sources,
+        artifacts: Vec<(PathBuf, Vec<String>)>,
+    ) -> Result<()> {
+        let mut cache = SolFilesCache::builder()
             .root(&self.paths.root)
             .solc_config(self.solc_config.clone())
             .insert_files(sources)?;
+
+        // add the artifacts for each file to the cache entry
+        for (file, artifacts) in artifacts {
+            if let Some(entry) = cache.files.get_mut(&file) {
+                entry.artifacts = artifacts;
+            }
+        }
+
         if let Some(cache_dir) = self.paths.cache.parent() {
             fs::create_dir_all(cache_dir)?
         }
@@ -101,7 +138,7 @@ impl Project {
 
     /// NB: If the `svm` feature is enabled, this function will automatically detect
     /// solc versions across files.
-    pub fn compile(&self) -> Result<ProjectCompileOutput> {
+    pub fn compile(&self) -> Result<ProjectCompileOutput<Artifacts>> {
         let sources = self.sources()?;
 
         #[cfg(not(all(feature = "svm", feature = "async")))]
@@ -113,7 +150,7 @@ impl Project {
     }
 
     #[cfg(all(feature = "svm", feature = "async"))]
-    fn svm_compile(&self, sources: Sources) -> Result<ProjectCompileOutput> {
+    fn svm_compile(&self, sources: Sources) -> Result<ProjectCompileOutput<Artifacts>> {
         // split them by version
         let mut sources_by_version = BTreeMap::new();
         for (path, source) in sources.into_iter() {
@@ -131,44 +168,57 @@ impl Project {
             entry.insert(path, source);
         }
 
+        let mut compiled =
+            ProjectCompileOutput::with_ignored_errors(self.ignored_error_codes.clone());
+
         // run the compilation step for each version
-        let mut res = CompilerOutput::default();
         for (solc, sources) in sources_by_version {
-            let output = self.compile_with_version(&solc, sources)?;
-            if let ProjectCompileOutput::Compiled((compiled, _)) = output {
-                res.errors.extend(compiled.errors);
-                res.sources.extend(compiled.sources);
-                res.contracts.extend(compiled.contracts);
-            }
+            compiled.extend(self.compile_with_version(&solc, sources)?);
         }
-        Ok(if res.contracts.is_empty() && res.errors.is_empty() {
-            ProjectCompileOutput::Unchanged
-        } else {
-            ProjectCompileOutput::Compiled((res, &self.ignored_error_codes))
-        })
+        if !compiled.has_compiled_contracts() &&
+            !compiled.has_compiler_errors() &&
+            self.cached &&
+            self.paths.cache.exists()
+        {
+            let cache = SolFilesCache::read(&self.paths.cache)?;
+            let artifacts = cache.read_artifacts::<Artifacts>(&self.paths.artifacts)?;
+            compiled.artifacts.extend(artifacts);
+        }
+        Ok(compiled)
     }
 
     pub fn compile_with_version(
         &self,
         solc: &Solc,
         mut sources: Sources,
-    ) -> Result<ProjectCompileOutput> {
+    ) -> Result<ProjectCompileOutput<Artifacts>> {
         // add all libraries to the source set while keeping track of their actual disk path
-        let mut source_name_path = HashMap::new();
-        let mut path_source_name = HashMap::new();
+        // (`contracts/contract.sol` -> `/Users/.../contracts.sol`)
+        let mut source_name_to_path = HashMap::new();
+        // inverse of `source_name_to_path` : (`/Users/.../contracts.sol` ->
+        // `contracts/contract.sol`)
+        let mut path_to_source_name = HashMap::new();
+
         for (import, (source, path)) in self.resolved_libraries(&sources)? {
             // inserting with absolute path here and keep track of the source name <-> path mappings
             sources.insert(path.clone(), source);
-            path_source_name.insert(path.clone(), import.clone());
-            source_name_path.insert(import, path);
+            path_to_source_name.insert(path.clone(), import.clone());
+            source_name_to_path.insert(import, path);
         }
 
         // If there's a cache set, filter to only re-compile the files which were changed
         let sources = if self.cached && self.paths.cache.exists() {
             let cache = SolFilesCache::read(&self.paths.cache)?;
-            let changed_files = cache.get_changed_files(sources, Some(&self.solc_config));
+            let changed_files = cache.get_changed_or_missing_artifacts_files::<Artifacts>(
+                sources,
+                Some(&self.solc_config),
+                &self.paths.artifacts,
+            );
+
+            // if nothing changed and all artifacts still exist
             if changed_files.is_empty() {
-                return Ok(ProjectCompileOutput::Unchanged)
+                let artifacts = cache.read_artifacts::<Artifacts>(&self.paths.artifacts)?;
+                return Ok(ProjectCompileOutput::from_unchanged(artifacts))
             }
             changed_files
         } else {
@@ -176,25 +226,43 @@ impl Project {
         };
 
         // replace absolute path with source name to make solc happy
-        let sources = apply_mappings(sources, path_source_name);
+        let sources = apply_mappings(sources, path_to_source_name);
 
         let input = CompilerInput::with_sources(sources)
             .normalize_evm_version(&solc.version()?)
             .with_remappings(self.paths.remappings.clone());
         let output = solc.compile(&input)?;
         if output.has_error() {
-            return Ok(ProjectCompileOutput::Compiled((output, &self.ignored_error_codes)))
+            return Ok(ProjectCompileOutput::from_compiler_output(
+                output,
+                self.ignored_error_codes.clone(),
+            ))
         }
 
         if self.cached {
+            // get all contract names of the files and map them to the disk file
+            let artifacts = output
+                .contracts
+                .iter()
+                .map(|(path, contracts)| {
+                    let path = PathBuf::from(path);
+                    let file = source_name_to_path.get(&path).cloned().unwrap_or(path);
+                    (file, contracts.keys().cloned().collect::<Vec<_>>())
+                })
+                .collect::<Vec<_>>();
+
             // reapply to disk paths
-            let sources = apply_mappings(input.sources, source_name_path);
+            let sources = apply_mappings(input.sources, source_name_to_path);
+
             // create cache file
-            self.write_cache_file(sources)?;
+            self.write_cache_file(sources, artifacts)?;
         }
 
-        self.artifacts.on_output(&output, &self.paths)?;
-        Ok(ProjectCompileOutput::Compiled((output, &self.ignored_error_codes)))
+        // TODO: There seems to be some type redundancy here, c.f. discussion with @mattsse
+        if !self.no_artifacts {
+            Artifacts::on_output(&output, &self.paths)?;
+        }
+        Ok(ProjectCompileOutput::from_compiler_output(output, self.ignored_error_codes.clone()))
     }
 }
 
@@ -211,7 +279,7 @@ fn apply_mappings(sources: Sources, mut mappings: HashMap<PathBuf, PathBuf>) -> 
         .collect()
 }
 
-pub struct ProjectBuilder {
+pub struct ProjectBuilder<Artifacts: ArtifactOutput = MinimalCombinedArtifacts> {
     /// The layout of the
     paths: Option<ProjectPathsConfig>,
     /// Where to find solc
@@ -220,15 +288,16 @@ pub struct ProjectBuilder {
     solc_config: Option<SolcConfig>,
     /// Whether caching is enabled, default is true.
     cached: bool,
-    /// How to handle compiler output
-    artifacts: Option<ArtifactOutput>,
+    /// Whether writing artifacts to disk is enabled, default is true.
+    no_artifacts: bool,
+    artifacts: PhantomData<Artifacts>,
     /// Which error codes to ignore
     pub ignored_error_codes: Vec<u64>,
     /// All allowed paths
     pub allowed_paths: Vec<PathBuf>,
 }
 
-impl ProjectBuilder {
+impl<Artifacts: ArtifactOutput> ProjectBuilder<Artifacts> {
     pub fn paths(mut self, paths: ProjectPathsConfig) -> Self {
         self.paths = Some(paths);
         self
@@ -244,11 +313,6 @@ impl ProjectBuilder {
         self
     }
 
-    pub fn artifacts(mut self, artifacts: ArtifactOutput) -> Self {
-        self.artifacts = Some(artifacts);
-        self
-    }
-
     pub fn ignore_error_code(mut self, code: u64) -> Self {
         self.ignored_error_codes.push(code);
         self
@@ -258,6 +322,36 @@ impl ProjectBuilder {
     pub fn ephemeral(mut self) -> Self {
         self.cached = false;
         self
+    }
+
+    /// Disables writing artifacts to disk
+    pub fn no_artifacts(mut self) -> Self {
+        self.no_artifacts = true;
+        self
+    }
+
+    /// Set arbitrary `ArtifactOutputHandler`
+    pub fn artifacts<A: ArtifactOutput>(self) -> ProjectBuilder<A> {
+        let ProjectBuilder {
+            paths,
+            solc,
+            solc_config,
+            cached,
+            no_artifacts,
+            ignored_error_codes,
+            allowed_paths,
+            ..
+        } = self;
+        ProjectBuilder {
+            paths,
+            solc,
+            solc_config,
+            cached,
+            no_artifacts,
+            artifacts: PhantomData::default(),
+            ignored_error_codes,
+            allowed_paths,
+        }
     }
 
     /// Adds an allowed-path to the solc executable
@@ -278,12 +372,13 @@ impl ProjectBuilder {
         self
     }
 
-    pub fn build(self) -> Result<Project> {
+    pub fn build(self) -> Result<Project<Artifacts>> {
         let Self {
             paths,
             solc,
             solc_config,
             cached,
+            no_artifacts,
             artifacts,
             ignored_error_codes,
             mut allowed_paths,
@@ -307,41 +402,195 @@ impl ProjectBuilder {
             solc,
             solc_config,
             cached,
-            artifacts: artifacts.unwrap_or_default(),
+            no_artifacts,
+            artifacts,
             ignored_error_codes,
             allowed_lib_paths: allowed_paths.try_into()?,
         })
     }
 }
 
-impl Default for ProjectBuilder {
+impl<Artifacts: ArtifactOutput> Default for ProjectBuilder<Artifacts> {
     fn default() -> Self {
         Self {
             paths: None,
             solc: None,
             solc_config: None,
             cached: true,
-            artifacts: None,
+            no_artifacts: false,
+            artifacts: PhantomData::default(),
             ignored_error_codes: Vec::new(),
             allowed_paths: vec![],
         }
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum ProjectCompileOutput<'a> {
-    /// Nothing to compile because unchanged sources
-    Unchanged,
-    Compiled((CompilerOutput, &'a [u64])),
+/// The outcome of `Project::compile`
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct ProjectCompileOutput<T: ArtifactOutput> {
+    /// If solc was invoked multiple times in `Project::compile` then this contains a merged
+    /// version of all `CompilerOutput`s. If solc was called only once then `compiler_output`
+    /// holds the `CompilerOutput` of that call.
+    compiler_output: Option<CompilerOutput>,
+    /// All artifacts that were read from cache
+    artifacts: BTreeMap<PathBuf, T::Artifact>,
+    ignored_error_codes: Vec<u64>,
 }
 
-impl<'a> fmt::Display for ProjectCompileOutput<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            ProjectCompileOutput::Unchanged => f.write_str("Nothing to compile"),
-            ProjectCompileOutput::Compiled((output, ignored_error_codes)) => {
-                output.diagnostics(ignored_error_codes).fmt(f)
+impl<T: ArtifactOutput> ProjectCompileOutput<T> {
+    pub fn with_ignored_errors(ignored_errors: Vec<u64>) -> Self {
+        Self {
+            compiler_output: None,
+            artifacts: Default::default(),
+            ignored_error_codes: ignored_errors,
+        }
+    }
+
+    pub fn from_unchanged(artifacts: BTreeMap<PathBuf, T::Artifact>) -> Self {
+        Self { compiler_output: None, artifacts, ignored_error_codes: vec![] }
+    }
+
+    pub fn from_compiler_output(
+        compiler_output: CompilerOutput,
+        ignored_error_codes: Vec<u64>,
+    ) -> Self {
+        Self {
+            compiler_output: Some(compiler_output),
+            artifacts: Default::default(),
+            ignored_error_codes,
+        }
+    }
+
+    /// Get the (merged) solc compiler output
+    /// ```no_run
+    /// use std::collections::BTreeMap;
+    /// use ethers_solc::artifacts::Contract;
+    /// use ethers_solc::Project;
+    ///
+    /// let project = Project::builder().build().unwrap();
+    /// let contracts: BTreeMap<String, Contract> =
+    ///     project.compile().unwrap().output().contracts_into_iter().collect();
+    /// ```
+    pub fn output(self) -> CompilerOutput {
+        self.compiler_output.unwrap_or_default()
+    }
+
+    /// Combine two outputs
+    pub fn extend(&mut self, compiled: ProjectCompileOutput<T>) {
+        let ProjectCompileOutput { compiler_output, artifacts, .. } = compiled;
+        self.artifacts.extend(artifacts);
+        if let Some(compiled) = compiler_output {
+            if let Some(output) = self.compiler_output.as_mut() {
+                output.errors.extend(compiled.errors);
+                output.sources.extend(compiled.sources);
+                output.contracts.extend(compiled.contracts);
+            } else {
+                self.compiler_output = Some(compiled);
             }
+        }
+    }
+
+    /// Whether this type does not contain compiled contracts
+    pub fn is_unchanged(&self) -> bool {
+        !self.has_compiled_contracts()
+    }
+
+    /// Whether this type has a compiler output
+    pub fn has_compiled_contracts(&self) -> bool {
+        if let Some(output) = self.compiler_output.as_ref() {
+            !output.contracts.is_empty()
+        } else {
+            false
+        }
+    }
+
+    /// Whether there were errors
+    pub fn has_compiler_errors(&self) -> bool {
+        if let Some(output) = self.compiler_output.as_ref() {
+            output.has_error()
+        } else {
+            false
+        }
+    }
+
+    /// Finds the first contract with the given name and removes it from the set
+    pub fn remove(&mut self, contract: impl AsRef<str>) -> Option<T::Artifact> {
+        let contract = contract.as_ref();
+        if let Some(output) = self.compiler_output.as_mut() {
+            if let contract @ Some(_) = output
+                .contracts
+                .values_mut()
+                .find_map(|c| c.remove(contract).map(T::contract_to_artifact))
+            {
+                return contract
+            }
+        }
+        let key = self
+            .artifacts
+            .iter()
+            .find_map(|(path, _)| {
+                T::contract_name(path).filter(|name| name == contract).map(|_| path)
+            })?
+            .clone();
+        self.artifacts.remove(&key)
+    }
+}
+
+impl<T: ArtifactOutput> ProjectCompileOutput<T>
+where
+    T::Artifact: Clone,
+{
+    /// Finds the first contract with the given name
+    pub fn find(&self, contract: impl AsRef<str>) -> Option<Cow<T::Artifact>> {
+        let contract = contract.as_ref();
+        if let Some(output) = self.compiler_output.as_ref() {
+            if let contract @ Some(_) = output.contracts.values().find_map(|c| {
+                c.get(contract).map(|c| T::contract_to_artifact(c.clone())).map(Cow::Owned)
+            }) {
+                return contract
+            }
+        }
+        self.artifacts.iter().find_map(|(path, art)| {
+            T::contract_name(path).filter(|name| name == contract).map(|_| Cow::Borrowed(art))
+        })
+    }
+}
+
+impl<T: ArtifactOutput + 'static> ProjectCompileOutput<T> {
+    /// All artifacts together with their contract name
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use std::collections::BTreeMap;
+    /// use ethers_solc::artifacts::CompactContract;
+    /// use ethers_solc::Project;
+    ///
+    /// let project = Project::builder().build().unwrap();
+    /// let contracts: BTreeMap<String, CompactContract> = project.compile().unwrap().into_artifacts().collect();
+    /// ```
+    pub fn into_artifacts(mut self) -> Box<dyn Iterator<Item = (String, T::Artifact)>> {
+        let artifacts = self.artifacts.into_iter().filter_map(|(path, art)| {
+            T::contract_name(&path)
+                .map(|name| (format!("{:?}:{}", path.file_name().unwrap(), name), art))
+        });
+
+        let artifacts: Box<dyn Iterator<Item = (String, T::Artifact)>> =
+            if let Some(output) = self.compiler_output.take() {
+                Box::new(artifacts.chain(T::output_to_artifacts(output).into_values().flatten()))
+            } else {
+                Box::new(artifacts)
+            };
+        artifacts
+    }
+}
+
+impl<T: ArtifactOutput> fmt::Display for ProjectCompileOutput<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if let Some(output) = self.compiler_output.as_ref() {
+            output.diagnostics(&self.ignored_error_codes).fmt(f)
+        } else {
+            f.write_str("Nothing to compile")
         }
     }
 }
@@ -359,20 +608,10 @@ mod tests {
             .sources("./test-data/test-contract-versions")
             .build()
             .unwrap();
-        let project = Project::builder()
-            .paths(paths)
-            .ephemeral()
-            .artifacts(ArtifactOutput::Nothing)
-            .build()
-            .unwrap();
+        let project = Project::builder().paths(paths).no_artifacts().ephemeral().build().unwrap();
         let compiled = project.compile().unwrap();
-        let contracts = match compiled {
-            ProjectCompileOutput::Compiled((out, _)) => {
-                assert!(!out.has_error());
-                out.contracts
-            }
-            _ => panic!("must compile"),
-        };
+        assert!(!compiled.has_compiler_errors());
+        let contracts = compiled.output().contracts;
         // Contracts A to F
         assert_eq!(contracts.keys().count(), 5);
     }
@@ -393,18 +632,14 @@ mod tests {
             .unwrap();
         let project = Project::builder()
             .paths(paths)
+            .no_artifacts()
             .ephemeral()
-            .artifacts(ArtifactOutput::Nothing)
+            .no_artifacts()
             .build()
             .unwrap();
         let compiled = project.compile().unwrap();
-        let contracts = match compiled {
-            ProjectCompileOutput::Compiled((out, _)) => {
-                assert!(!out.has_error());
-                out.contracts
-            }
-            _ => panic!("must compile"),
-        };
+        assert!(!compiled.has_compiler_errors());
+        let contracts = compiled.output().contracts;
         assert_eq!(contracts.keys().count(), 3);
     }
 
@@ -420,20 +655,10 @@ mod tests {
             .lib(root.join("lib"))
             .build()
             .unwrap();
-        let project = Project::builder()
-            .paths(paths)
-            .ephemeral()
-            .artifacts(ArtifactOutput::Nothing)
-            .build()
-            .unwrap();
+        let project = Project::builder().no_artifacts().paths(paths).ephemeral().build().unwrap();
         let compiled = project.compile().unwrap();
-        let contracts = match compiled {
-            ProjectCompileOutput::Compiled((out, _)) => {
-                assert!(!out.has_error());
-                out.contracts
-            }
-            _ => panic!("must compile"),
-        };
+        assert!(!compiled.has_compiler_errors());
+        let contracts = compiled.output().contracts;
         assert_eq!(contracts.keys().count(), 2);
     }
 }

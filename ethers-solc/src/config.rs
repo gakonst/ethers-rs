@@ -1,12 +1,15 @@
 use crate::{
-    artifacts::{CompactContractRef, Settings},
+    artifacts::{CompactContract, CompactContractRef, Contract, Settings},
     cache::SOLIDITY_FILES_CACHE_FILENAME,
     error::Result,
     remappings::Remapping,
     CompilerOutput, Solc,
 };
+use ethers_core::{abi::Abi, types::Bytes};
 use serde::{Deserialize, Serialize};
 use std::{
+    collections::BTreeMap,
+    convert::TryFrom,
     fmt, fs, io,
     path::{Path, PathBuf},
 };
@@ -224,76 +227,172 @@ impl SolcConfigBuilder {
     }
 }
 
-/// Determines how to handle compiler output
-pub enum ArtifactOutput {
-    /// No-op, does not write the artifacts to disk.
-    Nothing,
-    /// Creates a single json artifact with
-    /// ```json
-    ///  {
-    ///    "abi": [],
-    ///    "bin": "...",
-    ///    "runtime-bin": "..."
-    ///  }
-    /// ```
-    MinimalCombined,
-    /// Hardhat style artifacts
-    Hardhat,
-    /// Custom output handler
-    Custom(Box<dyn Fn(&CompilerOutput, &ProjectPathsConfig) -> Result<()>>),
+pub type Artifacts<T> = BTreeMap<String, BTreeMap<String, T>>;
+
+pub trait Artifact {
+    fn into_inner(self) -> (Option<Abi>, Option<Bytes>);
 }
 
-impl ArtifactOutput {
-    /// Is expected to handle the output and where to store it
-    pub fn on_output(&self, output: &CompilerOutput, layout: &ProjectPathsConfig) -> Result<()> {
-        match self {
-            ArtifactOutput::Nothing => Ok(()),
-            ArtifactOutput::MinimalCombined => {
-                fs::create_dir_all(&layout.artifacts)?;
+impl Artifact for CompactContract {
+    fn into_inner(self) -> (Option<Abi>, Option<Bytes>) {
+        (self.abi, self.bin)
+    }
+}
 
-                for contracts in output.contracts.values() {
-                    for (name, contract) in contracts {
-                        let file = layout.artifacts.join(format!("{}.json", name));
-                        let min = CompactContractRef::from(contract);
-                        fs::write(file, serde_json::to_vec_pretty(&min)?)?
-                    }
+impl Artifact for serde_json::Value {
+    fn into_inner(self) -> (Option<Abi>, Option<Bytes>) {
+        let abi = self.get("abi").map(|abi| {
+            serde_json::from_value::<Abi>(abi.clone()).expect("could not get artifact abi")
+        });
+        let bytecode = self.get("bin").map(|bin| {
+            serde_json::from_value::<Bytes>(bin.clone()).expect("could not get artifact bytecode")
+        });
+
+        (abi, bytecode)
+    }
+}
+
+pub trait ArtifactOutput {
+    /// How Artifacts are stored
+    type Artifact: Artifact;
+
+    /// Handle the compiler output.
+    fn on_output(output: &CompilerOutput, layout: &ProjectPathsConfig) -> Result<()>;
+
+    /// Returns the file name for the contract's artifact
+    fn output_file_name(name: impl AsRef<str>) -> PathBuf {
+        format!("{}.json", name.as_ref()).into()
+    }
+
+    /// Returns the path to the contract's artifact location based on the contract's file and name
+    ///
+    /// This returns `contract.sol/contract.json` by default
+    fn output_file(contract_file: impl AsRef<Path>, name: impl AsRef<str>) -> PathBuf {
+        let name = name.as_ref();
+        contract_file
+            .as_ref()
+            .file_name()
+            .map(Path::new)
+            .map(|p| p.join(Self::output_file_name(name)))
+            .unwrap_or_else(|| Self::output_file_name(name))
+    }
+
+    /// The inverse of `contract_file_name`
+    ///
+    /// Expected to return the solidity contract's name derived from the file path
+    /// `sources/Greeter.sol` -> `Greeter`
+    fn contract_name(file: impl AsRef<Path>) -> Option<String> {
+        file.as_ref().file_stem().and_then(|s| s.to_str().map(|s| s.to_string()))
+    }
+
+    /// Whether the corresponding artifact of the given contract file and name exists
+    fn output_exists(
+        contract_file: impl AsRef<Path>,
+        name: impl AsRef<str>,
+        root: impl AsRef<Path>,
+    ) -> bool {
+        root.as_ref().join(Self::output_file(contract_file, name)).exists()
+    }
+
+    fn read_cached_artifact(path: impl AsRef<Path>) -> Result<Self::Artifact>;
+
+    /// Read the cached artifacts from disk
+    fn read_cached_artifacts<T, I>(files: I) -> Result<BTreeMap<PathBuf, Self::Artifact>>
+    where
+        I: IntoIterator<Item = T>,
+        T: Into<PathBuf>,
+    {
+        let mut artifacts = BTreeMap::default();
+        for path in files.into_iter() {
+            let path = path.into();
+            let artifact = Self::read_cached_artifact(&path)?;
+            artifacts.insert(path, artifact);
+        }
+        Ok(artifacts)
+    }
+
+    /// Convert a contract to the artifact type
+    fn contract_to_artifact(contract: Contract) -> Self::Artifact;
+
+    /// Convert the compiler output into a set of artifacts
+    fn output_to_artifacts(output: CompilerOutput) -> Artifacts<Self::Artifact> {
+        output
+            .contracts
+            .into_iter()
+            .map(|(s, contracts)| {
+                (
+                    s,
+                    contracts
+                        .into_iter()
+                        .map(|(s, c)| (s, Self::contract_to_artifact(c)))
+                        .collect(),
+                )
+            })
+            .collect()
+    }
+}
+
+/// An Artifacts implementation that uses a compact representation
+///
+/// Creates a single json artifact with
+/// ```json
+///  {
+///    "abi": [],
+///    "bin": "...",
+///    "runtime-bin": "..."
+///  }
+/// ```
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub struct MinimalCombinedArtifacts;
+
+impl ArtifactOutput for MinimalCombinedArtifacts {
+    type Artifact = CompactContract;
+
+    fn on_output(output: &CompilerOutput, layout: &ProjectPathsConfig) -> Result<()> {
+        fs::create_dir_all(&layout.artifacts)?;
+        for (file, contracts) in output.contracts.iter() {
+            for (name, contract) in contracts {
+                let artifact = Self::output_file(file, name);
+                let file = layout.artifacts.join(artifact);
+                if let Some(parent) = file.parent() {
+                    fs::create_dir_all(parent)?;
                 }
-                Ok(())
-            }
-            ArtifactOutput::Hardhat => {
-                todo!("Hardhat style artifacts not yet implemented")
-            }
-            ArtifactOutput::Custom(f) => f(output, layout),
-        }
-    }
-}
-
-impl Default for ArtifactOutput {
-    fn default() -> Self {
-        ArtifactOutput::MinimalCombined
-    }
-}
-
-impl fmt::Debug for ArtifactOutput {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            ArtifactOutput::Nothing => {
-                write!(f, "Nothing")
-            }
-            ArtifactOutput::MinimalCombined => {
-                write!(f, "MinimalCombined")
-            }
-            ArtifactOutput::Hardhat => {
-                write!(f, "Hardhat")
-            }
-            ArtifactOutput::Custom(_) => {
-                write!(f, "Custom")
+                let min = CompactContractRef::from(contract);
+                fs::write(file, serde_json::to_vec_pretty(&min)?)?
             }
         }
+        Ok(())
+    }
+
+    fn read_cached_artifact(path: impl AsRef<Path>) -> Result<Self::Artifact> {
+        let file = fs::File::open(path.as_ref())?;
+        Ok(serde_json::from_reader(file)?)
+    }
+
+    fn contract_to_artifact(contract: Contract) -> Self::Artifact {
+        CompactContract::from(contract)
     }
 }
 
-use std::convert::TryFrom;
+/// Hardhat style artifacts
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub struct HardhatArtifacts;
+
+impl ArtifactOutput for HardhatArtifacts {
+    type Artifact = serde_json::Value;
+
+    fn on_output(_output: &CompilerOutput, _layout: &ProjectPathsConfig) -> Result<()> {
+        todo!("Hardhat style artifacts not yet implemented")
+    }
+
+    fn read_cached_artifact(_path: impl AsRef<Path>) -> Result<Self::Artifact> {
+        todo!("Hardhat style artifacts not yet implemented")
+    }
+
+    fn contract_to_artifact(_contract: Contract) -> Self::Artifact {
+        todo!("Hardhat style artifacts not yet implemented")
+    }
+}
 
 /// Helper struct for serializing `--allow-paths` arguments to Solc
 ///
