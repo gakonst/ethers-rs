@@ -332,28 +332,6 @@ pub trait ArtifactOutput {
     }
 }
 
-/// An artifacts implementation that does not emit
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub struct NoArtifacts;
-
-impl ArtifactOutput for NoArtifacts {
-    type Artifact = ();
-
-    fn on_output(_: &CompilerOutput, _: &ProjectPathsConfig) -> Result<()> {
-        Ok(())
-    }
-
-    fn output_exists(_: impl AsRef<Path>, _: impl AsRef<str>, _: impl AsRef<Path>) -> bool {
-        true
-    }
-
-    fn read_cached_artifact(_: impl AsRef<Path>) -> Result<Self::Artifact> {
-        Ok(())
-    }
-
-    fn contract_to_artifact(_: Contract) -> Self::Artifact {}
-}
-
 /// An Artifacts implementation that uses a compact representation
 ///
 /// Creates a single json artifact with

@@ -12,7 +12,7 @@ pub use compile::*;
 
 mod config;
 pub use config::{
-    AllowedLibPaths, ArtifactOutput, MinimalCombinedArtifacts, NoArtifacts, ProjectPathsConfig,
+    AllowedLibPaths, Artifact, ArtifactOutput, MinimalCombinedArtifacts, ProjectPathsConfig,
     SolcConfig,
 };
 
@@ -44,6 +44,8 @@ pub struct Project<Artifacts: ArtifactOutput = MinimalCombinedArtifacts> {
     pub solc_config: SolcConfig,
     /// Whether caching is enabled
     pub cached: bool,
+    /// Whether writing artifacts to disk is enabled
+    pub no_artifacts: bool,
     /// How to handle compiler output
     pub artifacts: PhantomData<Artifacts>,
     /// Errors/Warnings which match these error codes are not going to be logged
@@ -67,15 +69,15 @@ impl Project {
     /// To configure any a project with any `ArtifactOutput` use either
     ///
     /// ```rust
-    /// use ethers_solc::{NoArtifacts, Project};
-    /// let config = Project::builder().artifacts::<NoArtifacts>().build().unwrap();
+    /// use ethers_solc::Project;
+    /// let config = Project::builder().build().unwrap();
     /// ```
     ///
     /// or use the builder directly
     ///
     /// ```rust
-    /// use ethers_solc::{NoArtifacts, ProjectBuilder};
-    /// let config = ProjectBuilder::<NoArtifacts>::default().build().unwrap();
+    /// use ethers_solc::ProjectBuilder;
+    /// let config = ProjectBuilder::default().build().unwrap();
     /// ```
     pub fn builder() -> ProjectBuilder {
         ProjectBuilder::default()
@@ -256,7 +258,10 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
             self.write_cache_file(sources, artifacts)?;
         }
 
-        Artifacts::on_output(&output, &self.paths)?;
+        // TODO: There seems to be some type redundancy here, c.f. discussion with @mattsse
+        if !self.no_artifacts {
+            Artifacts::on_output(&output, &self.paths)?;
+        }
         Ok(ProjectCompileOutput::from_compiler_output(output, self.ignored_error_codes.clone()))
     }
 }
@@ -283,6 +288,8 @@ pub struct ProjectBuilder<Artifacts: ArtifactOutput = MinimalCombinedArtifacts> 
     solc_config: Option<SolcConfig>,
     /// Whether caching is enabled, default is true.
     cached: bool,
+    /// Whether writing artifacts to disk is enabled, default is true.
+    no_artifacts: bool,
     artifacts: PhantomData<Artifacts>,
     /// Which error codes to ignore
     pub ignored_error_codes: Vec<u64>,
@@ -317,6 +324,12 @@ impl<Artifacts: ArtifactOutput> ProjectBuilder<Artifacts> {
         self
     }
 
+    /// Disables writing artifacts to disk
+    pub fn no_artifacts(mut self) -> Self {
+        self.no_artifacts = true;
+        self
+    }
+
     /// Set arbitrary `ArtifactOutputHandler`
     pub fn artifacts<A: ArtifactOutput>(self) -> ProjectBuilder<A> {
         let ProjectBuilder {
@@ -324,6 +337,7 @@ impl<Artifacts: ArtifactOutput> ProjectBuilder<Artifacts> {
             solc,
             solc_config,
             cached,
+            no_artifacts,
             ignored_error_codes,
             allowed_paths,
             ..
@@ -333,6 +347,7 @@ impl<Artifacts: ArtifactOutput> ProjectBuilder<Artifacts> {
             solc,
             solc_config,
             cached,
+            no_artifacts,
             artifacts: PhantomData::default(),
             ignored_error_codes,
             allowed_paths,
@@ -363,6 +378,7 @@ impl<Artifacts: ArtifactOutput> ProjectBuilder<Artifacts> {
             solc,
             solc_config,
             cached,
+            no_artifacts,
             artifacts,
             ignored_error_codes,
             mut allowed_paths,
@@ -386,6 +402,7 @@ impl<Artifacts: ArtifactOutput> ProjectBuilder<Artifacts> {
             solc,
             solc_config,
             cached,
+            no_artifacts,
             artifacts,
             ignored_error_codes,
             allowed_lib_paths: allowed_paths.try_into()?,
@@ -400,6 +417,7 @@ impl<Artifacts: ArtifactOutput> Default for ProjectBuilder<Artifacts> {
             solc: None,
             solc_config: None,
             cached: true,
+            no_artifacts: false,
             artifacts: PhantomData::default(),
             ignored_error_codes: Vec::new(),
             allowed_paths: vec![],
@@ -502,7 +520,7 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
             if let contract @ Some(_) = output
                 .contracts
                 .values_mut()
-                .find_map(|c| c.remove(contract).map(|c| T::contract_to_artifact(c)))
+                .find_map(|c| c.remove(contract).map(T::contract_to_artifact))
             {
                 return contract
             }
@@ -552,10 +570,10 @@ impl<T: ArtifactOutput + 'static> ProjectCompileOutput<T> {
     /// let contracts: BTreeMap<String, CompactContract> = project.compile().unwrap().into_artifacts().collect();
     /// ```
     pub fn into_artifacts(mut self) -> Box<dyn Iterator<Item = (String, T::Artifact)>> {
-        let artifacts = self
-            .artifacts
-            .into_iter()
-            .filter_map(|(path, art)| T::contract_name(path).map(|name| (name, art)));
+        let artifacts = self.artifacts.into_iter().filter_map(|(path, art)| {
+            T::contract_name(&path)
+                .map(|name| (format!("{:?}:{}", path.file_name().unwrap(), name), art))
+        });
 
         let artifacts: Box<dyn Iterator<Item = (String, T::Artifact)>> =
             if let Some(output) = self.compiler_output.take() {
@@ -590,8 +608,7 @@ mod tests {
             .sources("./test-data/test-contract-versions")
             .build()
             .unwrap();
-        let project =
-            Project::builder().artifacts::<NoArtifacts>().paths(paths).ephemeral().build().unwrap();
+        let project = Project::builder().paths(paths).no_artifacts().ephemeral().build().unwrap();
         let compiled = project.compile().unwrap();
         assert!(!compiled.has_compiler_errors());
         let contracts = compiled.output().contracts;
@@ -613,8 +630,13 @@ mod tests {
             .lib(root.join("lib2"))
             .build()
             .unwrap();
-        let project =
-            Project::builder().paths(paths).ephemeral().artifacts::<NoArtifacts>().build().unwrap();
+        let project = Project::builder()
+            .paths(paths)
+            .no_artifacts()
+            .ephemeral()
+            .no_artifacts()
+            .build()
+            .unwrap();
         let compiled = project.compile().unwrap();
         assert!(!compiled.has_compiler_errors());
         let contracts = compiled.output().contracts;
@@ -633,8 +655,7 @@ mod tests {
             .lib(root.join("lib"))
             .build()
             .unwrap();
-        let project =
-            Project::builder().artifacts::<NoArtifacts>().paths(paths).ephemeral().build().unwrap();
+        let project = Project::builder().no_artifacts().paths(paths).ephemeral().build().unwrap();
         let compiled = project.compile().unwrap();
         assert!(!compiled.has_compiler_errors());
         let contracts = compiled.output().contracts;
