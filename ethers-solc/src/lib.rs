@@ -76,8 +76,8 @@ impl Project {
     /// or use the builder directly
     ///
     /// ```rust
-    /// use ethers_solc::ProjectBuilder;
-    /// let config = ProjectBuilder::default().build().unwrap();
+    /// use ethers_solc::{MinimalCombinedArtifacts, ProjectBuilder};
+    /// let config = ProjectBuilder::<MinimalCombinedArtifacts>::default().build().unwrap();
     /// ```
     pub fn builder() -> ProjectBuilder {
         ProjectBuilder::default()
