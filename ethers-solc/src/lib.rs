@@ -413,7 +413,7 @@ pub struct ProjectCompileOutput<T: ArtifactOutput> {
     /// If solc was invoked multiple times in `Project::compile` then this contains a merged
     /// version of all `CompilerOutput`s. If solc was called only once then `compiler_output`
     /// holds the `CompilerOutput` of that call.
-    pub compiler_output: Option<CompilerOutput>,
+    compiler_output: Option<CompilerOutput>,
     /// All artifacts that were read from cache
     artifacts: BTreeMap<PathBuf, T::Artifact>,
     ignored_error_codes: Vec<u64>,
@@ -441,6 +441,20 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
             artifacts: Default::default(),
             ignored_error_codes,
         }
+    }
+
+    /// Get the (merged) solc compiler output
+    /// ```no_run
+    /// use std::collections::BTreeMap;
+    /// use ethers_solc::artifacts::Contract;
+    /// use ethers_solc::Project;
+    ///
+    /// let project = Project::builder().build().unwrap();
+    /// let contracts: BTreeMap<String, Contract> =
+    ///     project.compile().unwrap().output().contracts_into_iter().collect();
+    /// ```
+    pub fn output(self) -> CompilerOutput {
+        self.compiler_output.unwrap_or_default()
     }
 
     /// Combine two outputs
@@ -580,7 +594,7 @@ mod tests {
             Project::builder().artifacts::<NoArtifacts>().paths(paths).ephemeral().build().unwrap();
         let compiled = project.compile().unwrap();
         assert!(!compiled.has_compiler_errors());
-        let contracts = compiled.compiler_output.unwrap().contracts;
+        let contracts = compiled.output().contracts;
         // Contracts A to F
         assert_eq!(contracts.keys().count(), 5);
     }
@@ -603,7 +617,7 @@ mod tests {
             Project::builder().paths(paths).ephemeral().artifacts::<NoArtifacts>().build().unwrap();
         let compiled = project.compile().unwrap();
         assert!(!compiled.has_compiler_errors());
-        let contracts = compiled.compiler_output.unwrap().contracts;
+        let contracts = compiled.output().contracts;
         assert_eq!(contracts.keys().count(), 3);
     }
 
@@ -623,7 +637,7 @@ mod tests {
             Project::builder().artifacts::<NoArtifacts>().paths(paths).ephemeral().build().unwrap();
         let compiled = project.compile().unwrap();
         assert!(!compiled.has_compiler_errors());
-        let contracts = compiled.compiler_output.unwrap().contracts;
+        let contracts = compiled.output().contracts;
         assert_eq!(contracts.keys().count(), 2);
     }
 }
