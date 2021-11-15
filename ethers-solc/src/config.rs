@@ -5,6 +5,7 @@ use crate::{
     remappings::Remapping,
     CompilerOutput, Solc,
 };
+use ethers_core::{abi::Abi, types::Bytes};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::BTreeMap,
@@ -228,9 +229,32 @@ impl SolcConfigBuilder {
 
 pub type Artifacts<T> = BTreeMap<String, BTreeMap<String, T>>;
 
+pub trait Artifact {
+    fn into_inner(self) -> (Option<Abi>, Option<Bytes>);
+}
+
+impl Artifact for CompactContract {
+    fn into_inner(self) -> (Option<Abi>, Option<Bytes>) {
+        (self.abi, self.bin)
+    }
+}
+
+impl Artifact for serde_json::Value {
+    fn into_inner(self) -> (Option<Abi>, Option<Bytes>) {
+        let abi = self.get("abi").map(|abi| {
+            serde_json::from_value::<Abi>(abi.clone()).expect("could not get artifact abi")
+        });
+        let bytecode = self.get("bin").map(|bin| {
+            serde_json::from_value::<Bytes>(bin.clone()).expect("could not get artifact bytecode")
+        });
+
+        (abi, bytecode)
+    }
+}
+
 pub trait ArtifactOutput {
     /// How Artifacts are stored
-    type Artifact;
+    type Artifact: Artifact;
 
     /// Handle the compiler output.
     fn on_output(output: &CompilerOutput, layout: &ProjectPathsConfig) -> Result<()>;
