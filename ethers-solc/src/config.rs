@@ -81,7 +81,6 @@ impl PathStyle {
                 .sources(root.join("contracts"))
                 .artifacts(root.join("artifacts"))
                 .lib(root.join("node_modules"))
-                .remappings(Remapping::find_many(&root.join("node_modules"))?)
                 .root(root)
                 .build()?,
         })
