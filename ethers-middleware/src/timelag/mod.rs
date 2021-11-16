@@ -33,21 +33,22 @@ impl<M: Middleware> FromErr<M::Error> for TimeLagError<M> {
 
 /// TimeLag Provider
 #[derive(Debug)]
-pub struct TimeLag<M, const K: u8> {
+pub struct TimeLag<M> {
     inner: Arc<M>,
+    lag: u8,
 }
 
-impl<M, const K: u8> TimeLag<M, K>
+impl<M> TimeLag<M>
 where
     M: Middleware,
 {
     /// Instantiates TimeLag provider
-    pub fn new(inner: M) -> Self {
-        Self { inner: inner.into() }
+    pub fn new(inner: M, lag: u8) -> Self {
+        Self { inner: inner.into(), lag }
     }
 }
 
-impl<M, const K: u8> TimeLag<M, K>
+impl<M> TimeLag<M>
 where
     M: Middleware,
 {
@@ -93,7 +94,7 @@ where
 
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
-impl<M, const K: u8> Middleware for TimeLag<M, K>
+impl<M> Middleware for TimeLag<M>
 where
     M: Middleware,
 {
@@ -111,7 +112,7 @@ where
         self.inner()
             .get_block_number()
             .await
-            .map(|num| num - K)
+            .map(|num| num - self.lag)
             .map_err(ethers_providers::FromErr::from)
     }
 
