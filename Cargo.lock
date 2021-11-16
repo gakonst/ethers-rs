@@ -582,6 +582,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fdab415d6744056100f40250a66bc430c1a46f7a02e20bc11c94c79a0f0464df"
 
 [[package]]
+name = "const-oid"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d355758f44afa81c21e66e1301d47cbffbbcde4b405cbe46b8b19f213abf9f60"
+
+[[package]]
 name = "constant_time_eq"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -712,7 +718,16 @@ version = "0.4.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "28e98c534e9c8a0483aa01d6f6913bc063de254311bd267c9cf535e9b70e15b2"
 dependencies = [
- "const-oid",
+ "const-oid 0.6.1",
+]
+
+[[package]]
+name = "der"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "960a3816eb8c7d1849406fe9c3c7fd3593377dece693231fcbb9d8b185f1a7c6"
+dependencies = [
+ "const-oid 0.7.0",
 ]
 
 [[package]]
@@ -772,7 +787,7 @@ version = "0.12.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "43ee23aa5b4f68c7a092b5c3beb25f50c406adc75e2363634f242f28ab255372"
 dependencies = [
- "der",
+ "der 0.4.4",
  "elliptic-curve",
  "hmac",
  "signature",
@@ -1117,7 +1132,7 @@ dependencies = [
  "semver 1.0.4",
  "serde_json",
  "sha2 0.9.8",
- "spki",
+ "spki 0.5.0",
  "tempfile",
  "thiserror",
  "tokio",
@@ -2093,8 +2108,8 @@ version = "0.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ee3ef9b64d26bad0536099c816c6734379e45bbd5f14798def6809e5cc350447"
 dependencies = [
- "der",
- "spki",
+ "der 0.4.4",
+ "spki 0.4.1",
 ]
 
 [[package]]
@@ -2899,7 +2914,16 @@ version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5c01a0c15da1b0b0e1494112e7af814a678fec9bd157881b49beac661e9b6f32"
 dependencies = [
- "der",
+ "der 0.4.4",
+]
+
+[[package]]
+name = "spki"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6c70287ee6f99819df40db806aeab7288d96b4aeae753927065243c387af3eac"
+dependencies = [
+ "der 0.5.0",
 ]
 
 [[package]]
