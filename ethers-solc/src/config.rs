@@ -3,7 +3,7 @@ use crate::{
     cache::SOLIDITY_FILES_CACHE_FILENAME,
     error::Result,
     remappings::Remapping,
-    CompilerOutput, Solc,
+    CompilerOutput,
 };
 use ethers_core::{abi::Abi, types::Bytes};
 use serde::{Deserialize, Serialize};
@@ -178,8 +178,6 @@ impl ProjectPathsConfigBuilder {
 /// The config to use when compiling the contracts
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct SolcConfig {
-    /// Configured solc version
-    pub version: String,
     /// How the file was compiled
     pub settings: Settings,
 }
@@ -200,16 +198,10 @@ impl SolcConfig {
 
 #[derive(Default)]
 pub struct SolcConfigBuilder {
-    version: Option<String>,
     settings: Option<Settings>,
 }
 
 impl SolcConfigBuilder {
-    pub fn version(mut self, version: impl Into<String>) -> Self {
-        self.version = Some(version.into());
-        self
-    }
-
     pub fn settings(mut self, settings: Settings) -> Self {
         self.settings = Some(settings);
         self
@@ -219,11 +211,8 @@ impl SolcConfigBuilder {
     ///
     /// If no solc version is configured then it will be determined by calling `solc --version`.
     pub fn build(self) -> Result<SolcConfig> {
-        let Self { version, settings } = self;
-        let version =
-            version.map(Ok).unwrap_or_else(|| Solc::default().version().map(|s| s.to_string()))?;
-        let settings = settings.unwrap_or_default();
-        Ok(SolcConfig { version, settings })
+        let Self { settings } = self;
+        Ok(SolcConfig { settings: settings.unwrap_or_default() })
     }
 }
 
