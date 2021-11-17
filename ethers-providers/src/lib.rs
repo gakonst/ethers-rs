@@ -116,7 +116,7 @@ pub trait JsonRpcClient: Debug + Send + Sync {
     async fn request<T, R>(&self, method: &str, params: T) -> Result<R, Self::Error>
     where
         T: Debug + Serialize + Send + Sync,
-        R: Serialize + DeserializeOwned;
+        R: DeserializeOwned;
 }
 
 use ethers_core::types::*;
