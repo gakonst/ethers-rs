@@ -68,8 +68,7 @@ impl JsonRpcClient for Provider {
         method: &str,
         params: T,
     ) -> Result<R, ClientError> {
-        let next_id = self.id.load(Ordering::SeqCst) + 1;
-        self.id.store(next_id, Ordering::SeqCst);
+        let next_id = self.id.fetch_add(1, Ordering::SeqCst);
 
         let payload = Request::new(next_id, method, params);
 
