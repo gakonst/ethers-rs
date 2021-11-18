@@ -46,6 +46,8 @@ pub struct Project<Artifacts: ArtifactOutput = MinimalCombinedArtifacts> {
     pub cached: bool,
     /// Whether writing artifacts to disk is enabled
     pub no_artifacts: bool,
+    /// Whether writing artifacts to disk is enabled
+    pub auto_detect: bool,
     /// How to handle compiler output
     pub artifacts: PhantomData<Artifacts>,
     /// Errors/Warnings which match these error codes are not going to be logged
@@ -141,12 +143,16 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
     pub fn compile(&self) -> Result<ProjectCompileOutput<Artifacts>> {
         let sources = self.sources()?;
 
-        #[cfg(not(all(feature = "svm", feature = "async")))]
-        {
-            self.compile_with_version(&self.solc, sources)
-        }
         #[cfg(all(feature = "svm", feature = "async"))]
-        self.svm_compile(sources)
+        if self.auto_detect {
+            return self.svm_compile(sources)
+        }
+
+        let mut solc = self.solc.clone();
+        if !self.allowed_lib_paths.0.is_empty() {
+            solc = solc.arg("--allow-paths").arg(self.allowed_lib_paths.to_string());
+        }
+        self.compile_with_version(&solc, sources)
     }
 
     #[cfg(all(feature = "svm", feature = "async"))]
@@ -290,6 +296,8 @@ pub struct ProjectBuilder<Artifacts: ArtifactOutput = MinimalCombinedArtifacts> 
     cached: bool,
     /// Whether writing artifacts to disk is enabled, default is true.
     no_artifacts: bool,
+    /// Whether automatic solc version detection is enabled
+    auto_detect: bool,
     artifacts: PhantomData<Artifacts>,
     /// Which error codes to ignore
     pub ignored_error_codes: Vec<u64>,
@@ -330,6 +338,12 @@ impl<Artifacts: ArtifactOutput> ProjectBuilder<Artifacts> {
         self
     }
 
+    /// Disables automatic solc version detection
+    pub fn no_auto_detect(mut self) -> Self {
+        self.auto_detect = false;
+        self
+    }
+
     /// Set arbitrary `ArtifactOutputHandler`
     pub fn artifacts<A: ArtifactOutput>(self) -> ProjectBuilder<A> {
         let ProjectBuilder {
@@ -338,6 +352,7 @@ impl<Artifacts: ArtifactOutput> ProjectBuilder<Artifacts> {
             solc_config,
             cached,
             no_artifacts,
+            auto_detect,
             ignored_error_codes,
             allowed_paths,
             ..
@@ -348,6 +363,7 @@ impl<Artifacts: ArtifactOutput> ProjectBuilder<Artifacts> {
             solc_config,
             cached,
             no_artifacts,
+            auto_detect,
             artifacts: PhantomData::default(),
             ignored_error_codes,
             allowed_paths,
@@ -379,6 +395,7 @@ impl<Artifacts: ArtifactOutput> ProjectBuilder<Artifacts> {
             solc_config,
             cached,
             no_artifacts,
+            auto_detect,
             artifacts,
             ignored_error_codes,
             mut allowed_paths,
@@ -400,6 +417,7 @@ impl<Artifacts: ArtifactOutput> ProjectBuilder<Artifacts> {
             solc_config,
             cached,
             no_artifacts,
+            auto_detect,
             artifacts,
             ignored_error_codes,
             allowed_lib_paths: allowed_paths.try_into()?,
@@ -415,6 +433,7 @@ impl<Artifacts: ArtifactOutput> Default for ProjectBuilder<Artifacts> {
             solc_config: None,
             cached: true,
             no_artifacts: false,
+            auto_detect: true,
             artifacts: PhantomData::default(),
             ignored_error_codes: Vec::new(),
             allowed_paths: vec![],
