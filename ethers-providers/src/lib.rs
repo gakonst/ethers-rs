@@ -390,6 +390,10 @@ pub trait Middleware: Sync + Send + Debug {
         self.inner().get_chainid().await.map_err(FromErr::from)
     }
 
+    async fn get_net_version(&self) -> Result<U64, Self::Error> {
+        self.inner().get_net_version().await.map_err(FromErr::from)
+    }
+
     async fn get_balance<T: Into<NameOrAddress> + Send + Sync>(
         &self,
         from: T,
