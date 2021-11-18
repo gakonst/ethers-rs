@@ -21,6 +21,7 @@
 - add a method on the `Middleware` to broadcast a tx with a series of escalating gas prices via [#566](https://github.com/gakonst/ethers-rs/pull/566)
 - Remove unnecessary `Serialize` constraint to `R` (the Response type) in the `request` method of `JsonRpcClient`.
 - Fix `http Provider` data race when generating new request `id`s.
+- Add support for `net_version` RPC method. [595](https://github.com/gakonst/ethers-rs/pull/595)
 
 ### 0.5.3
 

@@ -432,6 +432,11 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.request("eth_chainId", ()).await
     }
 
+    /// Returns the network version.
+    async fn get_net_version(&self) -> Result<U64, ProviderError> {
+        self.request("net_version", ()).await
+    }
+
     ////// Contract Execution
     //
     // These are relatively low-level calls. The Contracts API should usually be used instead.
