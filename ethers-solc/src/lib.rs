@@ -155,11 +155,17 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         let mut sources_by_version = BTreeMap::new();
         for (path, source) in sources.into_iter() {
             // will detect and install the solc version
-            let version = Solc::detect_version(&source)?;
+            let version = Solc::detect_version(&path, &source)?;
             // gets the solc binary for that version, it is expected tha this will succeed
             // AND find the solc since it was installed right above
             let mut solc = Solc::find_svm_installed_version(version.to_string())?
                 .expect("solc should have been installed");
+            if path.ends_with("title.sol") {
+                dbg!(&path);
+                dbg!(&source);
+                dbg!(&version);
+                dbg!(&solc);
+            }
 
             if !self.allowed_lib_paths.0.is_empty() {
                 solc = solc.arg("--allow-paths").arg(self.allowed_lib_paths.to_string());
@@ -171,9 +177,14 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         let mut compiled =
             ProjectCompileOutput::with_ignored_errors(self.ignored_error_codes.clone());
 
+
         // run the compilation step for each version
         for (solc, sources) in sources_by_version {
             compiled.extend(self.compile_with_version(&solc, sources)?);
+        }
+
+        if compiled.has_compiler_errors() {
+
         }
         if !compiled.has_compiled_contracts() &&
             !compiled.has_compiler_errors() &&
@@ -184,6 +195,8 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
             let artifacts = cache.read_artifacts::<Artifacts>(&self.paths.artifacts)?;
             compiled.artifacts.extend(artifacts);
         }
+
+        dbg!(&compiled.has_compiler_errors());
         Ok(compiled)
     }
 
@@ -200,6 +213,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         let mut path_to_source_name = HashMap::new();
 
         for (import, (source, path)) in self.resolved_libraries(&sources)? {
+            dbg!(&import, &source);
             // inserting with absolute path here and keep track of the source name <-> path mappings
             sources.insert(path.clone(), source);
             path_to_source_name.insert(path.clone(), import.clone());
@@ -208,6 +222,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
 
         // If there's a cache set, filter to only re-compile the files which were changed
         let sources = if self.cached && self.paths.cache.exists() {
+            dbg!("GO CCAHED");
             let cache = SolFilesCache::read(&self.paths.cache)?;
             let changed_files = cache.get_changed_or_missing_artifacts_files::<Artifacts>(
                 sources,
@@ -217,8 +232,12 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
 
             // if nothing changed and all artifacts still exist
             if changed_files.is_empty() {
+                dbg!("NO CHANGE");
                 let artifacts = cache.read_artifacts::<Artifacts>(&self.paths.artifacts)?;
                 return Ok(ProjectCompileOutput::from_unchanged(artifacts))
+            } else {
+                dbg!("SOME CHHANGE");
+
             }
             changed_files
         } else {
@@ -654,6 +673,26 @@ mod tests {
             .unwrap();
         let project = Project::builder().no_artifacts().paths(paths).ephemeral().build().unwrap();
         let compiled = project.compile().unwrap();
+        assert!(!compiled.has_compiler_errors());
+        let contracts = compiled.output().contracts;
+        assert_eq!(contracts.keys().count(), 2);
+    }
+
+    #[test]
+    #[cfg(all(feature = "svm", feature = "async"))]
+    fn test_build_imports() {
+        use super::*;
+
+        let root = std::fs::canonicalize("./test-data/test-contract-inheritance").unwrap();
+        let paths = ProjectPathsConfig::builder()
+            .root(&root)
+            .sources(&root)
+            .lib(&root)
+            .build()
+            .unwrap();
+        let project = Project::builder().no_artifacts().paths(paths).ephemeral().build().unwrap();
+        let compiled = project.compile().unwrap();
+        println!("{}", &compiled.to_string());
         assert!(!compiled.has_compiler_errors());
         let contracts = compiled.output().contracts;
         assert_eq!(contracts.keys().count(), 2);

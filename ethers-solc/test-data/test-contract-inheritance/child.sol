@@ -1,6 +1,6 @@
 pragma solidity >=0.7.2;
 
-import "./Parent.sol";
-import "./Mother.sol";
+import "./parent.sol";
+import "./mother.sol";
 
 contract Child is Parent, Mother {}
