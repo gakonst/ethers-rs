@@ -115,6 +115,30 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         Source::read_all_from(self.paths.sources.as_path())
     }
 
+    /// This emits the cargo [`rerun-if-changed`](https://doc.rust-lang.org/cargo/reference/build-scripts.html#cargorerun-if-changedpath) instruction.
+    /// Which tells Cargo to re-run the build script if a file inside the project's sources
+    /// directory has changed.
+    ///
+    /// Use this if you compile a project in a `build.rs` file.
+    ///
+    /// # Example `build.rs` file
+    ///
+    ///
+    /// ```no_run
+    /// use ethers_solc::{Project, ProjectPathsConfig};
+    /// // configure the project with all its paths, solc, cache etc.
+    /// let project = Project::builder()
+    ///     .paths(ProjectPathsConfig::hardhat(env!("CARGO_MANIFEST_DIR")).unwrap())
+    ///     .build()
+    ///     .unwrap();
+    /// let output = project.compile().unwrap();
+    /// // Tell Cargo that if a source file changes, to rerun this build script.
+    /// project.rerun_if_sources_changed();
+    /// ```
+    pub fn rerun_if_sources_changed(&self) {
+        println!("cargo:rerun-if-changed={}", self.paths.sources.display())
+    }
+
     /// Attempts to read all unique libraries that are used as imports like "hardhat/console.sol"
     fn resolved_libraries(
         &self,
