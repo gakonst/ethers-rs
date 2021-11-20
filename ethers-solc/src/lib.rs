@@ -126,7 +126,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
     ///
     /// ```no_run
     /// use ethers_solc::{Project, ProjectPathsConfig};
-    ///
+    /// # #[allow(clippy::needless-doctest-main)]
     /// fn main() {
     ///     // configure the project with all its paths, solc, cache etc.
     ///     let project = Project::builder()
