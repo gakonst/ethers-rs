@@ -126,17 +126,14 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
     ///
     /// ```no_run
     /// use ethers_solc::{Project, ProjectPathsConfig};
-    /// # #[allow(clippy::needless-doctest-main)]
-    /// fn main() {
-    ///     // configure the project with all its paths, solc, cache etc.
-    ///     let project = Project::builder()
-    ///         .paths(ProjectPathsConfig::hardhat(env!("CARGO_MANIFEST_DIR")).unwrap())
-    ///         .build()
-    ///         .unwrap();
-    ///     let output = project.compile().unwrap();
-    ///     // Tell Cargo that if a source file changes, to rerun this build script.
-    ///     project.rerun_if_sources_changed();
-    /// }
+    /// // configure the project with all its paths, solc, cache etc.
+    /// let project = Project::builder()
+    ///     .paths(ProjectPathsConfig::hardhat(env!("CARGO_MANIFEST_DIR")).unwrap())
+    ///     .build()
+    ///     .unwrap();
+    /// let output = project.compile().unwrap();
+    /// // Tell Cargo that if a source file changes, to rerun this build script.
+    /// project.rerun_if_sources_changed();
     /// ```
     pub fn rerun_if_sources_changed(&self) {
         println!("cargo:rerun-if-changed={}", self.paths.sources.display())
