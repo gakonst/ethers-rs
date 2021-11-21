@@ -44,11 +44,11 @@ impl FromStr for NodeClient {
     type Err = ProviderError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.split('/').next().unwrap() {
-            "Geth" => Ok(NodeClient::Geth),
-            "Erigon" => Ok(NodeClient::Erigon),
-            "OpenEthereum" => Ok(NodeClient::OpenEthereum),
-            "Nethermind" => Ok(NodeClient::Nethermind),
+        match s.split('/').next().unwrap().to_lowercase().as_str() {
+            "geth" => Ok(NodeClient::Geth),
+            "erigon" => Ok(NodeClient::Erigon),
+            "openethereum" => Ok(NodeClient::OpenEthereum),
+            "nethermind" => Ok(NodeClient::Nethermind),
             "besu" => Ok(NodeClient::Besu),
             _ => Err(ProviderError::UnsupportedNodeClient),
         }
