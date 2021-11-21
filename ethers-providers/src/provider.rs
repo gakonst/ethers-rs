@@ -338,19 +338,21 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
 
     /// Returns all receipts for a block.
     ///
-    /// Note that this uses the `eth_getBlockReceipts` or `parity_getBlockReceipts` RPC, which is
-    /// non-standard and currently supported by Erigon, OpenEthereum and Nethermind.
+    /// Note that this uses the `eth_getBlockReceipts` RPC, which is
+    /// non-standard and currently supported by Erigon.
     async fn get_block_receipts<T: Into<BlockNumber> + Send + Sync>(
         &self,
         block: T,
     ) -> Result<Vec<TransactionReceipt>, Self::Error> {
-        let method = match self.node_client().await? {
-            NodeClient::Erigon => "eth_getBlockReceipts",
-            NodeClient::OpenEthereum | NodeClient::Nethermind => "parity_getBlockReceipts",
-            _ => return Err(ProviderError::UnsupportedRPC),
-        };
+        self.request("eth_getBlockReceipts", [block.into()]).await
+    }
 
-        self.request(method, [block.into()]).await
+    /// Returns all receipts for that block. Must be done on a parity node.
+    async fn parity_block_receipts<T: Into<BlockNumber> + Send + Sync>(
+        &self,
+        block: T,
+    ) -> Result<Vec<TransactionReceipt>, Self::Error> {
+        self.request("parity_getBlockReceipts", vec![block.into()]).await
     }
 
     /// Gets the current gas price as estimated by the node
@@ -1160,7 +1162,7 @@ mod tests {
             _ => return,
         };
         let provider = Provider::<Http>::try_from(url.as_str()).unwrap();
-        let receipts = provider.get_block_receipts(10657200).await.unwrap();
+        let receipts = provider.parity_block_receipts(10657200).await.unwrap();
         assert!(!receipts.is_empty());
     }
 
