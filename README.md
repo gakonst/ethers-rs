@@ -89,9 +89,7 @@ in the transactions which are fetched over JSON-RPC.
 
 ## Note on WASM and FFI bindings
 
-We intend to support bindings
-
-You should be able to build a wasm app that uses ethers-rs. If ethers fails to
+You should be able to build a wasm app that uses ethers-rs (see the [example](./examples/ethers-wasm) for reference). If ethers fails to
 compile in WASM, please
 [open an issue](https://github.com/gakonst/ethers-rs/issues/new/choose).
 There is currently no plan to provide an official JS/TS-accessible library
