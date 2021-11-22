@@ -40,6 +40,21 @@ impl Client {
                     Url::parse(&format!("https://{}.etherscan.io", chain_name)),
                 )
             }
+            Chain::Polygon => (
+                Url::parse("https://api.polygonscan.com/api"),
+                Url::parse("https://polygonscan.com"),
+            ),
+            Chain::PolygonMumbai => (
+                Url::parse("https://api-testnet.polygonscan.com/api"),
+                Url::parse("https://mumbai.polygonscan.com"),
+            ),
+            Chain::Avalanche => {
+                (Url::parse("https://api.snowtrace.io/api"), Url::parse("https://snowtrace.io"))
+            }
+            Chain::AvalancheFuji => (
+                Url::parse("https://api-testnet.snowtrace.io/api"),
+                Url::parse("https://testnet.snowtrace.io"),
+            ),
             chain => return Err(EtherscanError::ChainNotSupported(chain)),
         };
 
@@ -54,7 +69,15 @@ impl Client {
     /// Create a new client with the correct endpoints based on the chain and API key
     /// from ETHERSCAN_API_KEY environment variable
     pub fn new_from_env(chain: Chain) -> Result<Self> {
-        Self::new(chain, std::env::var("ETHERSCAN_API_KEY")?)
+        let api_key = match chain {
+            Chain::Avalanche | Chain::AvalancheFuji => std::env::var("SNOWTRACE_API_KEY")?,
+            Chain::Polygon | Chain::PolygonMumbai => std::env::var("POLYGONSCAN_API_KEY")?,
+            Chain::Mainnet | Chain::Ropsten | Chain::Kovan | Chain::Rinkeby | Chain::Goerli => {
+                std::env::var("ETHERSCAN_API_KEY")?
+            }
+            Chain::XDai => String::default(),
+        };
+        Self::new(chain, api_key)
     }
 
     pub fn etherscan_api_url(&self) -> &Url {
