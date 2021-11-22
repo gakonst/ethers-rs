@@ -10,6 +10,10 @@ pub enum Chain {
     Goerli,
     Kovan,
     XDai,
+    Polygon,
+    PolygonMumbai,
+    Avalanche,
+    AvalancheFuji,
 }
 
 impl fmt::Display for Chain {
@@ -27,6 +31,10 @@ impl From<Chain> for u32 {
             Chain::Goerli => 5,
             Chain::Kovan => 42,
             Chain::XDai => 100,
+            Chain::Polygon => 137,
+            Chain::PolygonMumbai => 80001,
+            Chain::Avalanche => 43114,
+            Chain::AvalancheFuji => 43113,
         }
     }
 }
