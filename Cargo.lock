@@ -806,6 +806,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "ecdsa"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d2053aa87c218a6af2aa96e0bfa27d23278ebe613322265b7b841bc7c5cd9279"
+dependencies = [
+ "elliptic-curve 0.11.1",
+ "signature",
+]
+
+[[package]]
 name = "ed25519"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -844,7 +854,7 @@ dependencies = [
  "ff",
  "generic-array 0.14.4",
  "group",
- "pkcs8",
+ "pkcs8 0.7.6",
  "rand_core 0.6.3",
  "subtle",
  "zeroize",
@@ -860,6 +870,7 @@ dependencies = [
  "der 0.5.1",
  "generic-array 0.14.4",
  "rand_core 0.6.3",
+ "sec1",
  "subtle",
  "zeroize",
 ]
@@ -1027,7 +1038,7 @@ dependencies = [
  "bytes",
  "cargo_metadata",
  "convert_case",
- "ecdsa",
+ "ecdsa 0.13.0",
  "elliptic-curve 0.11.1",
  "ethabi",
  "futures-util",
@@ -1158,7 +1169,7 @@ dependencies = [
  "semver 1.0.4",
  "serde_json",
  "sha2 0.9.8",
- "spki",
+ "spki 0.4.1",
  "tempfile",
  "thiserror",
  "tokio",
@@ -1725,7 +1736,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "903ae2481bcdfdb7b68e0a9baa4b7c9aff600b9ae2e8e5bb5833b8c91ab851ea"
 dependencies = [
  "cfg-if 1.0.0",
- "ecdsa",
+ "ecdsa 0.12.4",
  "elliptic-curve 0.10.6",
  "sha2 0.9.8",
  "sha3",
@@ -1981,7 +1992,7 @@ version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d053368e1bae4c8a672953397bd1bd7183dde1c72b0b7612a15719173148d186"
 dependencies = [
- "ecdsa",
+ "ecdsa 0.12.4",
  "elliptic-curve 0.10.6",
  "sha2 0.9.8",
 ]
@@ -1992,7 +2003,7 @@ version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f23bc88c404ccc881c8a1ad62ba5cd7d336a64ecbf46de4874f2ad955f67b157"
 dependencies = [
- "ecdsa",
+ "ecdsa 0.12.4",
  "elliptic-curve 0.10.6",
 ]
 
@@ -2135,7 +2146,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ee3ef9b64d26bad0536099c816c6734379e45bbd5f14798def6809e5cc350447"
 dependencies = [
  "der 0.4.4",
- "spki",
+ "spki 0.4.1",
+]
+
+[[package]]
+name = "pkcs8"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7cabda3fb821068a9a4fab19a683eac3af12edf0f34b94a8be53c4972b8149d0"
+dependencies = [
+ "der 0.5.1",
+ "spki 0.5.2",
+ "zeroize",
 ]
 
 [[package]]
@@ -2701,6 +2723,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "sec1"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "08da66b8b0965a5555b6bd6639e68ccba85e1e2506f5fbb089e93f8a04e1a2d1"
+dependencies = [
+ "der 0.5.1",
+ "generic-array 0.14.4",
+ "pkcs8 0.8.0",
+ "subtle",
+ "zeroize",
+]
+
+[[package]]
 name = "security-framework"
 version = "2.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2941,6 +2976,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5c01a0c15da1b0b0e1494112e7af814a678fec9bd157881b49beac661e9b6f32"
 dependencies = [
  "der 0.4.4",
+]
+
+[[package]]
+name = "spki"
+version = "0.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c8a277a21925310de1d31bb6b021da3550b00e9127096ef84ee38f44609925c4"
+dependencies = [
+ "base64ct",
+ "der 0.5.1",
 ]
 
 [[package]]
@@ -3671,7 +3716,7 @@ dependencies = [
  "chrono",
  "cmac",
  "digest 0.9.0",
- "ecdsa",
+ "ecdsa 0.12.4",
  "ed25519",
  "ed25519-dalek",
  "harp",
