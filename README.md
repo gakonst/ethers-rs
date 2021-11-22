@@ -30,11 +30,12 @@ ethers = { git = "https://github.com/gakonst/ethers-rs" }
 ## Running the tests
 
 Tests require the following installed:
+
 1. [`solc`](https://solidity.readthedocs.io/en/latest/installing-solidity.html). We also recommend using [solc-select](https://github.com/crytic/solc-select) for more flexibility.
 2. [`ganache-cli`](https://github.com/trufflesuite/ganache-cli#installation)
 
-In addition, it is recommended that you set the `ETHERSCAN_API_KEY` environment variable 
-for [the abigen via Etherscan](https://github.com/gakonst/ethers-rs/blob/master/ethers/tests/major_contracts.rs) tests. 
+In addition, it is recommended that you set the `ETHERSCAN_API_KEY` environment variable
+for [the abigen via Etherscan](https://github.com/gakonst/ethers-rs/blob/master/ethers/tests/major_contracts.rs) tests.
 You can get one [here](https://etherscan.io/apis).
 
 ### EVM-compatible chains support
@@ -61,6 +62,7 @@ ethers = { git = "https://github.com/gakonst/ethers-rs", features = ["celo"] }
 ```
 
 Celo's transactions differ from Ethereum transactions by including 3 new fields:
+
 - `fee_currency`: The currency fees are paid in (None for CELO, otherwise it's an Address)
 - `gateway_fee_recipient`: The address of the fee recipient (None for no gateway fee paid)
 - `gateway_fee`: Gateway fee amount (None for no gateway fee paid)
@@ -81,9 +83,24 @@ in the transactions which are fetched over JSON-RPC.
 - [x] Hardware Wallet Support
 - [x] Parity APIs (`tracing`, `parity_blockWithReceipts`)
 - [x] Geth TxPool API
-- [ ] WASM Bindings
-- [ ] FFI Bindings
+- [ ] WASM Bindings (see note)
+- [ ] FFI Bindings (see note)
 - [ ] CLI for common operations
+
+## Note on WASM and FFI bindings
+
+You should be able to build a wasm app that uses ethers-rs (see the [example](./examples/ethers-wasm) for reference). If ethers fails to
+compile in WASM, please
+[open an issue](https://github.com/gakonst/ethers-rs/issues/new/choose).
+There is currently no plan to provide an official JS/TS-accessible library
+interface. we believe [ethers.js](https://docs.ethers.io/v5/) serves that need
+very well.
+
+Similarly, you should be able to build FFI bindings to ethers-rs. If ethers
+fails to compile in c lib formats, please
+[open an issue](https://github.com/gakonst/ethers-rs/issues/new/choose).
+There is currently no plan to provide official FFI bindings, and as ethers-rs is
+not yet stable 1.0.0, its interface may change significantly between versions.
 
 ## Getting Help
 
@@ -105,6 +122,7 @@ issues itself: `cargo +nightly clippy --fix -Z unstable-options`
 ## Related Projects
 
 This library would not have been possibly without the great work done in:
+
 - [`ethers.js`](https://github.com/ethers-io/ethers.js/)
 - [`rust-web3`](https://github.com/tomusdrw/rust-web3/)
 - [`ethcontract-rs`](https://github.com/gnosis/ethcontract-rs/)
