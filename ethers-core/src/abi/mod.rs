@@ -117,7 +117,7 @@ macro_rules! impl_abi_type {
 }
 
 impl_abi_type!(
-    Vec<u8> => Bytes,
+    Vec<u8> =>  Array(Box::new(ParamType::Uint(8))),
     Address => Address,
     bool => Bool,
     String => String,

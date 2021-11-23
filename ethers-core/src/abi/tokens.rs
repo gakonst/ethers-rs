@@ -321,12 +321,13 @@ impl Tokenizable for Vec<u8> {
     fn from_token(token: Token) -> Result<Self, InvalidOutputType> {
         match token {
             Token::Bytes(data) => Ok(data),
+            Token::Array(data) => data.into_iter().map(u8::from_token).collect(),
             Token::FixedBytes(data) => Ok(data),
             other => Err(InvalidOutputType(format!("Expected `bytes`, got {:?}", other))),
         }
     }
     fn into_token(self) -> Token {
-        Token::Bytes(self)
+        Token::Array(self.into_iter().map(Tokenizable::into_token).collect())
     }
 }
 
