@@ -83,30 +83,58 @@
 //! [`utils`]: core::utils
 //! [`abi`]: core::abi
 //! [`types`]: core::types
-pub use ethers_contract as contract;
-pub use ethers_core as core;
-pub use ethers_middleware as middleware;
-pub use ethers_providers as providers;
-pub use ethers_signers as signers;
-pub use ethers_solc as solc;
 
-// Re-export ethers_core::utils/types/abi
-// We hide these docs so that the rustdoc links send the visitor
-// to the corresponding crate, instead of the re-export
-#[doc(hidden)]
-pub use ethers_core::abi;
-#[doc(hidden)]
-pub use ethers_core::types;
-#[doc(hidden)]
-pub use ethers_core::utils;
+#[doc = include_str!("../assets/CONTRACT_README.md")]
+pub mod contract {
+    pub use ethers_contract::*;
+}
+
+#[doc = include_str!("../assets/CORE_README.md")]
+pub mod core {
+    pub use ethers_core::*;
+}
+
+#[doc = include_str!("../assets/PROVIDERS_README.md")]
+pub mod providers {
+    pub use ethers_providers::*;
+}
+
+#[doc = include_str!("../assets/MIDDLEWARE_README.md")]
+pub mod middleware {
+    pub use ethers_middleware::*;
+}
+
+#[doc = include_str!("../assets/SIGNERS_README.md")]
+pub mod signers {
+    pub use ethers_signers::*;
+}
+
+#[doc = include_str!("../assets/SOLC_README.md")]
+pub mod solc {
+    pub use ethers_solc::*;
+}
+
+/// Etherscan bindings
+pub mod etherscan {
+    pub use ethers_etherscan::*;
+}
+
+pub use crate::core::{abi, types, utils};
 
 /// Easy imports of frequently used type definitions and traits
 #[doc(hidden)]
 pub mod prelude {
-    pub use ethers_contract::*;
-    pub use ethers_core::types::*;
-    pub use ethers_middleware::*;
-    pub use ethers_providers::*;
-    pub use ethers_signers::*;
-    pub use ethers_solc::*;
+    pub use super::contract::*;
+
+    pub use super::core::{types::*, *};
+
+    pub use super::middleware::*;
+
+    pub use super::providers::*;
+
+    pub use super::signers::*;
+
+    pub use super::solc::*;
+
+    pub use super::etherscan::*;
 }

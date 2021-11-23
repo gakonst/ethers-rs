@@ -946,12 +946,13 @@ dependencies = [
 
 [[package]]
 name = "ethers"
-version = "0.5.4"
+version = "0.6.0"
 dependencies = [
  "anyhow",
  "bytes",
  "ethers-contract",
  "ethers-core",
+ "ethers-etherscan",
  "ethers-middleware",
  "ethers-providers",
  "ethers-signers",
@@ -965,7 +966,7 @@ dependencies = [
 
 [[package]]
 name = "ethers-contract"
-version = "0.5.3"
+version = "0.6.0"
 dependencies = [
  "ethers-contract-abigen",
  "ethers-contract-derive",
@@ -987,7 +988,7 @@ dependencies = [
 
 [[package]]
 name = "ethers-contract-abigen"
-version = "0.5.3"
+version = "0.6.0"
 dependencies = [
  "Inflector",
  "anyhow",
@@ -1007,7 +1008,7 @@ dependencies = [
 
 [[package]]
 name = "ethers-contract-derive"
-version = "0.5.3"
+version = "0.6.0"
 dependencies = [
  "ethers-contract-abigen",
  "ethers-core",
@@ -1020,7 +1021,7 @@ dependencies = [
 
 [[package]]
 name = "ethers-core"
-version = "0.5.5"
+version = "0.6.0"
 dependencies = [
  "arrayvec 0.7.2",
  "bincode",
@@ -1051,7 +1052,7 @@ dependencies = [
 
 [[package]]
 name = "ethers-derive-eip712"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "ethers-contract",
  "ethers-contract-derive",
@@ -1067,7 +1068,7 @@ dependencies = [
 
 [[package]]
 name = "ethers-etherscan"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "ethers-core",
  "reqwest",
@@ -1079,7 +1080,7 @@ dependencies = [
 
 [[package]]
 name = "ethers-middleware"
-version = "0.5.3"
+version = "0.6.0"
 dependencies = [
  "async-trait",
  "ethers-contract",
@@ -1105,7 +1106,7 @@ dependencies = [
 
 [[package]]
 name = "ethers-providers"
-version = "0.5.4"
+version = "0.6.0"
 dependencies = [
  "async-trait",
  "auto_impl",
@@ -1138,7 +1139,7 @@ dependencies = [
 
 [[package]]
 name = "ethers-signers"
-version = "0.5.3"
+version = "0.6.0"
 dependencies = [
  "async-trait",
  "coins-bip32",
@@ -2965,7 +2966,8 @@ checksum = "6bdef32e8150c2a081110b42772ffe7d7c9032b606bc226c8260fd97e0976601"
 [[package]]
 name = "svm-rs"
 version = "0.1.2"
-source = "git+https://github.com/roynalnaruto/svm-rs#5d353ec236a596dbfd2b37878ee5aee53ab6eadf"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "389ff0db3eea702209e1127ec16e007552f3ccbae84610db6d2f66c7bda0650f"
 dependencies = [
  "anyhow",
  "cfg-if 1.0.0",

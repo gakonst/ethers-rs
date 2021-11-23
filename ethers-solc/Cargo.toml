@@ -14,7 +14,7 @@ Utilites for working with solc
 keywords = ["ethereum", "web3", "solc", "solidity", "ethers"]
 
 [dependencies]
-ethers-core = { version = "^0.5.0", path = "../ethers-core", default-features = false }
+ethers-core = { version = "^0.6.0", path = "../ethers-core", default-features = false }
 serde_json = "1.0.68"
 serde = { version = "1.0.130", features = ["derive"] }
 semver = "1.0.4"
@@ -27,7 +27,7 @@ md-5 = "0.9.1"
 thiserror = "1.0.30"
 hex = "0.4.3"
 colored = "2.0.0"
-svm = { package = "svm-rs", git = "https://github.com/roynalnaruto/svm-rs", optional = true }
+svm = { package = "svm-rs", version = "0.1.2", optional = true }
 glob = "0.3.0"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
