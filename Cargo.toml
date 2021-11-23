@@ -1,6 +1,6 @@
 [package]
 name = "ethers"
-version = "0.5.4"
+version = "0.6.0"
 authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
 license = "MIT OR Apache-2.0"
 edition = "2021"
@@ -82,16 +82,17 @@ solc-tests = ["ethers-solc/tests"]
 
 
 [dependencies]
-ethers-contract = { version = "^0.5.0", default-features = false, path = "./ethers-contract" }
-ethers-core = { version = "^0.5.0", default-features = false, path = "./ethers-core" }
-ethers-providers = { version = "^0.5.0", default-features = false, path = "./ethers-providers" }
-ethers-signers = { version = "^0.5.0", default-features = false, path = "./ethers-signers" }
-ethers-middleware = { version = "^0.5.0", default-features = false, path = "./ethers-middleware" }
+ethers-contract = { version = "^0.6.0", default-features = false, path = "./ethers-contract" }
+ethers-core = { version = "^0.6.0", default-features = false, path = "./ethers-core" }
+ethers-providers = { version = "^0.6.0", default-features = false, path = "./ethers-providers" }
+ethers-signers = { version = "^0.6.0", default-features = false, path = "./ethers-signers" }
+ethers-middleware = { version = "^0.6.0", default-features = false, path = "./ethers-middleware" }
 ethers-solc = { version = "^0.1.0", default-features = false, path = "./ethers-solc" }
+ethers-etherscan = { version = "^0.2.0", default-features = false, path = "./ethers-etherscan" }
 
 [dev-dependencies]
-ethers-contract = { version = "^0.5.0", default-features = false, path = "./ethers-contract", features = ["abigen", "eip712"] }
-ethers-providers = { version = "^0.5.0", default-features = false, path = "./ethers-providers", features = ["ws", "ipc"] }
+ethers-contract = { version = "^0.6.0", default-features = false, path = "./ethers-contract", features = ["abigen", "eip712"] }
+ethers-providers = { version = "^0.6.0", default-features = false, path = "./ethers-providers", features = ["ws", "ipc"] }
 
 anyhow = "1.0.39"
 rand = "0.8.4"
