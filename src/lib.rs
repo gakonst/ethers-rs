@@ -84,32 +84,32 @@
 //! [`abi`]: core::abi
 //! [`types`]: core::types
 
-#[doc = include_str!("../ethers-contract/README.md")]
+#[doc = include_str!("../assets/CONTRACT_README.md")]
 pub mod contract {
     pub use ethers_contract::*;
 }
 
-#[doc = include_str!("../ethers-core/README.md")]
+#[doc = include_str!("../assets/CORE_README.md")]
 pub mod core {
     pub use ethers_core::*;
 }
 
-#[doc = include_str!("../ethers-providers/README.md")]
+#[doc = include_str!("../assets/PROVIDERS_README.md")]
 pub mod providers {
     pub use ethers_providers::*;
 }
 
-#[doc = include_str!("../ethers-middleware/README.md")]
+#[doc = include_str!("../assets/MIDDLEWARE_README.md")]
 pub mod middleware {
     pub use ethers_middleware::*;
 }
 
-#[doc = include_str!("../ethers-signers/README.md")]
+#[doc = include_str!("../assets/SIGNERS_README.md")]
 pub mod signers {
     pub use ethers_signers::*;
 }
 
-#[doc = include_str!("../ethers-solc/README.md")]
+#[doc = include_str!("../assets/SOLC_README.md")]
 pub mod solc {
     pub use ethers_solc::*;
 }
