@@ -7,10 +7,10 @@ signing middleware.
 
 Supported signers:
 
-- [Private key](crate::LocalWallet)
-- [Ledger](crate::Ledger)
-- [YubiHSM2](crate::YubiWallet)
-- [AWS KMS](crate::AwsSigner)
+- [Private key](./type.LocalWallet.html)
+- [Ledger](./struct.Ledger.html)
+- [YubiHSM2](./struct.Yubi.html)
+- [AWS KMS](./struct.AwsSigner.html)
 
 ```no_run
 # use ethers_signers::{LocalWallet, Signer};
