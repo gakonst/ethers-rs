@@ -225,6 +225,30 @@ impl Solc {
         Ok(())
     }
 
+    /// Verify that the checksum for this version of solc is correct. We check against the SHA256
+    /// checksum from the build information published by binaries.soliditylang
+    #[cfg(all(feature = "svm", feature = "async"))]
+    pub fn verify_checksum(&self) -> Result<()> {
+        let version = self.version_short()?;
+        let mut version_path = svm::version_path(version.to_string().as_str());
+        version_path.push(format!("solc-{}", version.to_string().as_str()));
+        let content = std::fs::read(version_path)?;
+
+        use sha2::Digest;
+        let mut hasher = sha2::Sha256::new();
+        hasher.update(&content);
+        let checksum_calc = &hasher.finalize()[..];
+
+        let all_releases = tokio::runtime::Runtime::new().unwrap().block_on(svm::all_releases(svm::platform()))?;
+        let checksum_found = all_releases.get_checksum(&version).expect("checksum not found");
+
+        if checksum_calc == checksum_found {
+            Ok(())
+        } else {
+            Err(SolcError::ChecksumMismatch)
+        }
+    }
+
     /// Convenience function for compiling all sources under the given path
     pub fn compile_source(&self, path: impl AsRef<Path>) -> Result<CompilerOutput> {
         self.compile(&CompilerInput::new(path)?)
@@ -269,6 +293,11 @@ impl Solc {
 
         serde_json::to_writer(stdin, input)?;
         compile_output(child.wait_with_output()?)
+    }
+
+    pub fn version_short(&self) -> Result<Version> {
+        let version = self.version()?;
+        Ok(Version::new(version.major, version.minor, version.patch))
     }
 
     /// Returns the version from the configured `solc`
