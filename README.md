@@ -51,6 +51,16 @@ address that, you must use the `legacy` feature flag:
 ethers = { git = "https://github.com/gakonst/ethers-rs", features = ["legacy"] }
 ```
 
+### Polygon support
+
+There is abigen support for Polygon and the Mumbai test network. It is recommended that you set the `POLYGONSCAN_API_KEY` environment variable.
+You can get one [here](https://polygonscan.io/apis).
+
+### Avalanche support
+
+There is abigen support for Avalanche and the Fuji test network. It is recommended that you set the `SNOWTRACE_API_KEY` environment variable.
+You can get one [here](https://snowtrace.io/apis).
+
 ### Celo Support
 
 [Celo](http://celo.org/) support is turned on via the feature-flag `celo`:
@@ -79,6 +89,8 @@ in the transactions which are fetched over JSON-RPC.
 - [x] Event monitoring as `Stream`s
 - [x] ENS as a first class citizen
 - [x] Celo support
+- [x] Polygon support 
+- [x] Avalanche support 
 - [x] Websockets / `eth_subscribe`
 - [x] Hardware Wallet Support
 - [x] Parity APIs (`tracing`, `parity_blockWithReceipts`)
