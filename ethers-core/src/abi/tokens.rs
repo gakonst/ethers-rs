@@ -287,7 +287,7 @@ macro_rules! tokenizable_item {
 
 tokenizable_item! {
     Token, String, Address, H256, U256, I256, U128, bool, Vec<u8>,
-    i8, i16, i32, i64, i128, u16, u32, u64, u128,
+    i8, i16, i32, i64, i128, u16, u32, u64, u128, Bytes,
 }
 
 macro_rules! impl_tokenizable_item_tuple {
@@ -321,12 +321,13 @@ impl Tokenizable for Vec<u8> {
     fn from_token(token: Token) -> Result<Self, InvalidOutputType> {
         match token {
             Token::Bytes(data) => Ok(data),
+            Token::Array(data) => data.into_iter().map(u8::from_token).collect(),
             Token::FixedBytes(data) => Ok(data),
             other => Err(InvalidOutputType(format!("Expected `bytes`, got {:?}", other))),
         }
     }
     fn into_token(self) -> Token {
-        Token::Bytes(self)
+        Token::Array(self.into_iter().map(Tokenizable::into_token).collect())
     }
 }
 

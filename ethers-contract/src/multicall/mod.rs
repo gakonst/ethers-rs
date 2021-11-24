@@ -297,7 +297,7 @@ impl<M: Middleware> Multicall<M> {
             .iter()
             .zip(&return_data)
             .map(|(call, bytes)| {
-                let mut tokens: Vec<Token> = call.function.decode_output(bytes)?;
+                let mut tokens: Vec<Token> = call.function.decode_output(bytes.as_ref())?;
 
                 Ok(match tokens.len() {
                     0 => Token::Tuple(vec![]),
@@ -343,10 +343,10 @@ impl<M: Middleware> Multicall<M> {
         Ok(tx_hash)
     }
 
-    fn as_contract_call(&self) -> ContractCall<M, (U256, Vec<Vec<u8>>)> {
+    fn as_contract_call(&self) -> ContractCall<M, (U256, Vec<Bytes>)> {
         // Map the Multicall struct into appropriate types for `aggregate` function
-        let calls: Vec<(Address, Vec<u8>)> =
-            self.calls.iter().map(|call| (call.target, call.data.to_vec())).collect();
+        let calls: Vec<(Address, Bytes)> =
+            self.calls.iter().map(|call| (call.target, call.data.clone())).collect();
 
         // Construct the ContractCall for `aggregate` function to broadcast the transaction
         let mut contract_call = self.contract.aggregate(calls);

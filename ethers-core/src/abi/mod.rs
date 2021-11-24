@@ -1,6 +1,9 @@
 //! This module implements extensions to the [`ethabi`](https://docs.rs/ethabi) API.
 // Adapted from [Gnosis' ethcontract](https://github.com/gnosis/ethcontract-rs/blob/master/common/src/abiext.rs)
-use crate::{types::Selector, utils::id};
+use crate::{
+    types::{Bytes, Selector},
+    utils::id,
+};
 
 pub use ethabi::{Contract as Abi, *};
 
@@ -117,7 +120,8 @@ macro_rules! impl_abi_type {
 }
 
 impl_abi_type!(
-    Vec<u8> => Bytes,
+    Bytes => Bytes,
+    Vec<u8> =>  Array(Box::new(ParamType::Uint(8))),
     Address => Address,
     bool => Bool,
     String => String,
@@ -231,10 +235,17 @@ mod tests {
 
     #[test]
     fn abi_type_works() {
-        assert_eq!(ParamType::Bytes, Vec::<u8>::param_type());
-        assert_eq!(ParamType::Array(Box::new(ParamType::Bytes)), Vec::<Vec<u8>>::param_type());
+        assert_eq!(ParamType::Bytes, Bytes::param_type());
+        assert_eq!(ParamType::Array(Box::new(ParamType::Uint(8))), Vec::<u8>::param_type());
+        assert_eq!(ParamType::Array(Box::new(ParamType::Bytes)), Vec::<Bytes>::param_type());
         assert_eq!(
-            ParamType::Array(Box::new(ParamType::Array(Box::new(ParamType::Bytes)))),
+            ParamType::Array(Box::new(ParamType::Array(Box::new(ParamType::Uint(8))))),
+            Vec::<Vec<u8>>::param_type()
+        );
+        assert_eq!(
+            ParamType::Array(Box::new(ParamType::Array(Box::new(ParamType::Array(Box::new(
+                ParamType::Uint(8)
+            )))))),
             Vec::<Vec<Vec<u8>>>::param_type()
         );
 
@@ -242,7 +253,7 @@ mod tests {
 
         assert_eq!(
             ParamType::Tuple(vec![ParamType::Bytes, ParamType::Address]),
-            <(Vec<u8>, Address)>::param_type()
+            <(Bytes, Address)>::param_type()
         );
 
         assert_eq!(ParamType::FixedBytes(32), <[u8; 32]>::param_type());

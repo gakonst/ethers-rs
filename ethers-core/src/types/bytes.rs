@@ -34,6 +34,18 @@ impl From<Vec<u8>> for Bytes {
     }
 }
 
+impl<const N: usize> From<[u8; N]> for Bytes {
+    fn from(src: [u8; N]) -> Self {
+        src.to_vec().into()
+    }
+}
+
+impl<'a, const N: usize> From<&'a [u8; N]> for Bytes {
+    fn from(src: &'a [u8; N]) -> Self {
+        src.to_vec().into()
+    }
+}
+
 pub fn serialize_bytes<S, T>(x: T, s: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,

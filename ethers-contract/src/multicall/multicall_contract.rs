@@ -41,8 +41,8 @@ mod multicallcontract_mod {
         #[doc = "Calls the contract's `aggregate` (0x252dba42) function"]
         pub fn aggregate(
             &self,
-            calls: Vec<(Address, Vec<u8>)>,
-        ) -> ContractCall<M, (U256, Vec<Vec<u8>>)> {
+            calls: Vec<(Address, Bytes)>,
+        ) -> ContractCall<M, (U256, Vec<Bytes>)> {
             self.0
                 .method_hash([37, 45, 186, 66], calls)
                 .expect("method not found (this should never happen)")
