@@ -207,9 +207,10 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
 
         // run the compilation step for each version
         for (solc, sources) in sources_by_version {
-            // verify that this solc version's checksum matches the checksum found remotely
+            // verify that this solc version's checksum matches the checksum found remotely. If
+            // not, re-install the same version.
             let version = solc_versions.get(&solc.solc).unwrap();
-            while let Err(_e) = solc.verify_checksum() {
+            if let Err(_e) = solc.verify_checksum() {
                 Solc::blocking_install(version)?;
             }
             // once matched, proceed to compile with it
