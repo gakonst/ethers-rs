@@ -20,7 +20,9 @@ pub use log::{decode_logs, EthLogDecode, LogMeta};
 
 mod stream;
 
+#[cfg(any(test, feature = "abigen"))]
 mod multicall;
+#[cfg(any(test, feature = "abigen"))]
 pub use multicall::Multicall;
 
 /// This module exposes low lever builder structures which are only consumed by the

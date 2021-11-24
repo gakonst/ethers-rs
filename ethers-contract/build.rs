@@ -8,7 +8,10 @@ fn main() {
         .unwrap();
     let tokens = bindings.into_tokens();
     // this is a hack to make the generated rust code compile in this crate (`ethers_contract`)
-    let code = tokens.to_string().replace("ethers_contract", "crate").replace("crate :: {", "crate :: {self as ethers_contract,");
+    let code = tokens
+        .to_string()
+        .replace("ethers_contract", "crate")
+        .replace("crate :: {", "crate :: {self as ethers_contract,");
 
     let out_dir = std::env::var("OUT_DIR").expect("cargo OUT_DIR var should be set");
 
