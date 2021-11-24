@@ -9,7 +9,7 @@ mod eth_tests {
     use super::*;
     use ethers_contract::{LogMeta, Multicall};
     use ethers_core::{
-        types::{transaction::eip712::Eip712, Address, BlockId, I256, U256},
+        types::{transaction::eip712::Eip712, Address, BlockId, Bytes, I256, U256},
         utils::{keccak256, Ganache},
     };
     use ethers_derive_eip712::*;
@@ -525,7 +525,7 @@ mod eth_tests {
         struct FooBar {
             foo: I256,
             bar: U256,
-            fizz: Vec<u8>,
+            fizz: Bytes,
             buzz: [u8; 32],
             far: String,
             out: Address,
@@ -563,7 +563,7 @@ mod eth_tests {
         let foo_bar = FooBar {
             foo: I256::from(10),
             bar: U256::from(20),
-            fizz: b"fizz".to_vec(),
+            fizz: b"fizz".into(),
             buzz: keccak256("buzz"),
             far: String::from("space"),
             out: Address::from([0; 20]),
