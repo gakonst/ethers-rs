@@ -9,6 +9,9 @@ homepage = "https://docs.rs/ethers"
 repository = "https://github.com/gakonst/ethers-rs"
 keywords = ["ethereum", "web3", "celo", "ethers"]
 
+[build-dependencies]
+ethers-contract-abigen = { version = "^0.6.0", path = "ethers-contract-abigen" }
+
 [dependencies]
 ethers-providers = { version = "^0.6.0", path = "../ethers-providers", default-features = false }
 ethers-core = { version = "^0.6.0", path = "../ethers-core", default-features = false }
