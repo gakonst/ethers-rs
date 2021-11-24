@@ -18,7 +18,7 @@
 //!
 //! # Example Usage
 //!
-//! ```rust
+//! ```ignore
 //! use ethers_contract::EthAbiType;
 //! use ethers_derive_eip712::*;
 //! use ethers_core::types::{transaction::eip712::Eip712, H160};
@@ -50,7 +50,7 @@
 //!     project: "radicle-reward".to_string(),
 //! };
 //!
-//! let hash = puzzle.encode_eip712()?;
+//! let hash = puzzle.encode_eip712().unwrap();
 //! ```
 //!
 //! # Limitations
