@@ -2,6 +2,8 @@
 
 ## ethers-core
 
+- Change types mapping for solidity `bytes` to rust `ethers::core::Bytes` and solidity `uint8[]` to rust `Vec<u8>`.
+  [613](https://github.com/gakonst/ethers-rs/pull/613)
 - Fix `format_units` to return a `String` of representing a decimal point float
   such that the decimal places don't get truncated.
   [597](https://github.com/gakonst/ethers-rs/pull/597)
