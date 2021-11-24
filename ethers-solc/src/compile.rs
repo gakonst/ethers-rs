@@ -58,7 +58,7 @@ pub static RELEASES: Lazy<(svm::Releases, Vec<Version>)> = Lazy::new(|| {
             let mut sorted_releases = releases.releases.keys().cloned().collect::<Vec<Version>>();
             sorted_releases.sort();
             (releases, sorted_releases)
-        },
+        }
         Err(_) => (svm::Releases::default(), Vec::new()),
     }
 });
