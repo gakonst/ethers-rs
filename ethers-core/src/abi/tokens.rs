@@ -287,7 +287,7 @@ macro_rules! tokenizable_item {
 
 tokenizable_item! {
     Token, String, Address, H256, U256, I256, U128, bool, Vec<u8>,
-    i8, i16, i32, i64, i128, u16, u32, u64, u128,
+    i8, i16, i32, i64, i128, u16, u32, u64, u128, Bytes,
 }
 
 macro_rules! impl_tokenizable_item_tuple {
