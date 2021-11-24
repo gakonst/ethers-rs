@@ -79,7 +79,6 @@ impl Contracts {
         }
 
         tokens.extend(expansions.into_iter().map(|(exp, _)| exp.into_tokens()));
-        std::fs::write("multicall.rs", tokens.to_string()).unwrap();
         Ok(tokens)
     }
 
