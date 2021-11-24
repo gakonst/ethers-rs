@@ -8,7 +8,7 @@ pub(crate) fn expand(kind: &ParamType) -> Result<TokenStream> {
 
     match kind {
         ParamType::Address => Ok(quote! { #ethers_core::types::Address }),
-        ParamType::Bytes => Ok(quote! { Vec<u8> }),
+        ParamType::Bytes => Ok(quote! { #ethers_core::types::Bytes }),
         ParamType::Int(n) => match n / 8 {
             1 => Ok(quote! { i8 }),
             2 => Ok(quote! { i16 }),
