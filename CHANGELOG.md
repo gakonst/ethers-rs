@@ -2,6 +2,10 @@
 
 ## ethers-core
 
+- Fix `format_units` to return a `String` of representing a decimal point float
+  such that the decimal places don't get truncated.
+  [597](https://github.com/gakonst/ethers-rs/pull/597)
+
 ### Unreleased
 
 ### 0.6.0
