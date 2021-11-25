@@ -63,7 +63,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn check_contract_execution_status_success() {
-        run_at_least_duration(Duration::from_millis(200), async {
+        run_at_least_duration(Duration::from_millis(250), async {
             let client = Client::new_from_env(Chain::Mainnet).unwrap();
 
             let status = client
@@ -80,7 +80,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn check_contract_execution_status_error() {
-        run_at_least_duration(Duration::from_millis(200), async {
+        run_at_least_duration(Duration::from_millis(250), async {
             let client = Client::new_from_env(Chain::Mainnet).unwrap();
 
             let err = client
@@ -99,7 +99,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn check_transaction_receipt_status_success() {
-        run_at_least_duration(Duration::from_millis(200), async {
+        run_at_least_duration(Duration::from_millis(250), async {
             let client = Client::new_from_env(Chain::Mainnet).unwrap();
 
             let success = client
@@ -116,7 +116,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn check_transaction_receipt_status_failed() {
-        run_at_least_duration(Duration::from_millis(200), async {
+        run_at_least_duration(Duration::from_millis(250), async {
             let client = Client::new_from_env(Chain::Mainnet).unwrap();
 
             let err = client
