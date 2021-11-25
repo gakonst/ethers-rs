@@ -2,7 +2,8 @@
 
 pub mod contract;
 pub mod errors;
-mod transaction;
+pub mod gas;
+pub mod transaction;
 
 use errors::EtherscanError;
 use ethers_core::{abi::Address, types::Chain};
@@ -76,6 +77,7 @@ impl Client {
                 std::env::var("ETHERSCAN_API_KEY")?
             }
             Chain::XDai => String::default(),
+            chain => return Err(EtherscanError::ChainNotSupported(chain)),
         };
         Self::new(chain, api_key)
     }

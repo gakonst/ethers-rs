@@ -19,9 +19,6 @@ struct TransactionReceiptStatus {
 impl Client {
     /// Returns the status of a contract execution
     pub async fn check_contract_execution_status(&self, tx_hash: impl AsRef<str>) -> Result<()> {
-        let mut map = HashMap::new();
-        map.insert("txhash", tx_hash.as_ref());
-
         let query = self.create_query(
             "transaction",
             "getstatus",

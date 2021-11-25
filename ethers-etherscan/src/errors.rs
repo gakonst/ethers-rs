@@ -9,6 +9,8 @@ pub enum EtherscanError {
     ExecutionFailed(String),
     #[error("tx receipt failed")]
     TransactionReceiptFailed,
+    #[error("gas estimation failed")]
+    GasEstimationFailed,
     #[error("bad status code {0}")]
     BadStatusCode(String),
     #[error(transparent)]

@@ -61,17 +61,16 @@ async fn eth_gas_station() {
 
 #[tokio::test]
 async fn etherscan() {
-    let api_key = std::env::var("ETHERSCAN_API_KEY").unwrap();
-    let api_key = Some(api_key.as_str());
+    let etherscan_client = ethers_etherscan::Client::new_from_env(Chain::Mainnet).unwrap();
 
     // initialize and fetch gas estimates from Etherscan
     // since etherscan does not support `fastest` category, we expect an error
-    let etherscan_oracle = Etherscan::new(api_key).category(GasCategory::Fastest);
+    let etherscan_oracle = Etherscan::new(etherscan_client.clone()).category(GasCategory::Fastest);
     let data = etherscan_oracle.fetch().await;
     assert!(data.is_err());
 
     // but fetching the `standard` gas price should work fine
-    let etherscan_oracle_2 = Etherscan::new(api_key).category(GasCategory::SafeLow);
+    let etherscan_oracle_2 = Etherscan::new(etherscan_client).category(GasCategory::SafeLow);
 
     let data = etherscan_oracle_2.fetch().await;
     assert!(data.is_ok());
