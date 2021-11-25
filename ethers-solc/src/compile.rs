@@ -166,8 +166,7 @@ impl Solc {
         // load the local / remote versions
         let versions = svm::installed_versions().unwrap_or_default();
         let local_versions = Self::find_matching_installation(&versions, &sol_version);
-        let (_releases, sorted_releases) = RELEASES.clone();
-        let remote_versions = Self::find_matching_installation(&sorted_releases, &sol_version);
+        let remote_versions = Self::find_matching_installation(&RELEASES.1, &sol_version);
 
         // if there's a better upstream version than the one we have, install it
         Ok(match (local_versions, remote_versions) {
@@ -244,8 +243,7 @@ impl Solc {
         hasher.update(&content);
         let checksum_calc = &hasher.finalize()[..];
 
-        let (all_releases, _sorted_releases) = RELEASES.clone();
-        let checksum_found = all_releases.get_checksum(&version).expect("checksum not found");
+        let checksum_found = &RELEASES.0.get_checksum(&version).expect("checksum not found");
 
         if checksum_calc == checksum_found {
             Ok(())
