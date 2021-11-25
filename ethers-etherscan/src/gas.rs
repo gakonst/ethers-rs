@@ -54,7 +54,11 @@ impl Client {
         }
     }
 
-    /// Returns the gas oracle
+    /// Returns the current Safe, Proposed and Fast gas prices
+    /// Post EIP-1559 changes:
+    /// - Safe/Proposed/Fast gas price recommendations are now modeled as Priority Fees.
+    /// - New field `suggestBaseFee`, the baseFee of the next pending block
+    /// - New field `gasUsedRatio`, to estimate how busy the network is
     pub async fn gas_oracle(&self) -> Result<GasOracle> {
         let query = self.create_query("gastracker", "gasoracle", serde_json::Value::Null);
         let response: Response<GasOracle> = self.get_json(&query).await?;
