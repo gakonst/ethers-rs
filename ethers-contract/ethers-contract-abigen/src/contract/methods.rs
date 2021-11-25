@@ -314,15 +314,29 @@ impl Context {
                     }
                     1 => {
                         // single additional input params
-                        if diff[0].name.is_empty() {
+                        if diff[0].name.is_empty() ||
+                            duplicate.name.to_snake_case() == diff[0].name.to_snake_case()
+                        {
                             add_alias_for_first_with_idx = true;
                             format!("{}1", duplicate.name.to_snake_case())
                         } else {
-                            format!(
+                            let alias = format!(
                                 "{}_with_{}",
                                 duplicate.name.to_snake_case(),
                                 diff[0].name.to_snake_case()
-                            )
+                            );
+                            let ident =  util::safe_ident(&alias);
+                            // check for edge case where the param names are equal
+                            if let Some(ident) =    aliases.iter_mut().find_map(|(_,alias_ident)|  {
+                                if alias_ident == &ident {
+                                    Some(alias_ident)
+                                } else {None}
+                            }) {
+                                *ident = util::safe_ident( &format!("{}0", duplicate.name.to_snake_case()));
+                                format!("{}1", duplicate.name.to_snake_case())
+                            } else {
+                                alias
+                            }
                         }
                     }
                     _ => {
