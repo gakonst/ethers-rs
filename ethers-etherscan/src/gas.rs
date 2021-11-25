@@ -83,7 +83,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn gas_estimate_success() {
-        run_at_least_duration(Duration::from_millis(250), async {
+        run_at_least_duration(Duration::from_millis(200), async {
             let client = Client::new_from_env(Chain::Mainnet).unwrap();
 
             let result = client.gas_estimate(2000000000u32.into()).await;
@@ -96,7 +96,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn gas_estimate_error() {
-        run_at_least_duration(Duration::from_millis(250), async {
+        run_at_least_duration(Duration::from_millis(200), async {
             let client = Client::new_from_env(Chain::Mainnet).unwrap();
 
             let err = client.gas_estimate(7123189371829732819379218u128.into()).await.unwrap_err();
@@ -109,7 +109,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn gas_oracle_success() {
-        run_at_least_duration(Duration::from_millis(250), async {
+        run_at_least_duration(Duration::from_millis(200), async {
             let client = Client::new_from_env(Chain::Mainnet).unwrap();
 
             let result = client.gas_oracle().await;

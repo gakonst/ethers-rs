@@ -266,7 +266,7 @@ mod tests {
     #[serial]
     #[ignore]
     async fn can_fetch_contract_abi() {
-        run_at_least_duration(Duration::from_millis(250), async {
+        run_at_least_duration(Duration::from_millis(200), async {
             let client = Client::new_from_env(Chain::Mainnet).unwrap();
 
             let _abi = client
@@ -281,7 +281,7 @@ mod tests {
     #[serial]
     #[ignore]
     async fn can_fetch_contract_source_code() {
-        run_at_least_duration(Duration::from_millis(250), async {
+        run_at_least_duration(Duration::from_millis(200), async {
             let client = Client::new_from_env(Chain::Mainnet).unwrap();
 
             let _meta = client
@@ -296,7 +296,7 @@ mod tests {
     #[serial]
     #[ignore]
     async fn can_verify_contract() {
-        run_at_least_duration(Duration::from_millis(250), async {
+        run_at_least_duration(Duration::from_millis(200), async {
             // TODO this needs further investigation
 
             // https://etherscan.io/address/0x9e744c9115b74834c0f33f4097f40c02a9ac5c33#code
