@@ -1097,7 +1097,6 @@ dependencies = [
  "rand 0.8.4",
  "reqwest",
  "serde",
- "serde-aux",
  "serde_json",
  "thiserror",
  "tokio",
