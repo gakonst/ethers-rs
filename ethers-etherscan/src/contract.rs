@@ -254,7 +254,10 @@ mod tests {
     use crate::{contract::VerifyContract, Client};
     use ethers_core::types::Chain;
 
+    use serial_test::serial;
+
     #[tokio::test]
+    #[serial]
     #[ignore]
     async fn can_fetch_contract_abi() {
         let client = Client::new_from_env(Chain::Mainnet).unwrap();
@@ -266,6 +269,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     #[ignore]
     async fn can_fetch_contract_source_code() {
         let client = Client::new_from_env(Chain::Mainnet).unwrap();
@@ -277,6 +281,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     #[ignore]
     async fn can_verify_contract() {
         // TODO this needs further investigation

@@ -10,6 +10,7 @@ use ethers_middleware::gas_oracle::{
     GasOracleMiddleware,
 };
 use ethers_providers::{Http, Middleware, Provider};
+use serial_test::serial;
 
 #[derive(Debug)]
 struct FakeGasOracle {
@@ -60,6 +61,7 @@ async fn eth_gas_station() {
 }
 
 #[tokio::test]
+#[serial]
 async fn etherscan() {
     let etherscan_client = ethers_etherscan::Client::new_from_env(Chain::Mainnet).unwrap();
 

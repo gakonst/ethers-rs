@@ -1,15 +1,17 @@
 //! Bindings for [etherscan.io web api](https://docs.etherscan.io/)
 
+use std::borrow::Cow;
+
+use reqwest::{header, Url};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
+
+use errors::EtherscanError;
+use ethers_core::{abi::Address, types::Chain};
+
 pub mod contract;
 pub mod errors;
 pub mod gas;
 pub mod transaction;
-
-use errors::EtherscanError;
-use ethers_core::{abi::Address, types::Chain};
-use reqwest::{header, Url};
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
-use std::borrow::Cow;
 
 pub type Result<T> = std::result::Result<T, EtherscanError>;
 
@@ -174,8 +176,9 @@ struct Query<'a, T: Serialize> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Client, EtherscanError};
     use ethers_core::types::Chain;
+
+    use crate::{Client, EtherscanError};
 
     #[test]
     fn chain_not_supported() {

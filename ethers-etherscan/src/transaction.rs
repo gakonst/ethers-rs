@@ -52,10 +52,14 @@ impl Client {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use serial_test::serial;
+
     use crate::Chain;
 
+    use super::*;
+
     #[tokio::test]
+    #[serial]
     async fn check_contract_execution_status_success() {
         let client = Client::new_from_env(Chain::Mainnet).unwrap();
 
@@ -69,6 +73,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn check_contract_execution_status_error() {
         let client = Client::new_from_env(Chain::Mainnet).unwrap();
 
@@ -84,6 +89,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn check_transaction_receipt_status_success() {
         let client = Client::new_from_env(Chain::Mainnet).unwrap();
 
@@ -97,6 +103,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn check_transaction_receipt_status_failed() {
         let client = Client::new_from_env(Chain::Mainnet).unwrap();
 

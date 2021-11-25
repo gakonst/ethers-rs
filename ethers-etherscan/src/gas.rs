@@ -1,8 +1,9 @@
 use std::{collections::HashMap, str::FromStr};
 
-use ethers_core::types::U256;
 use serde::{de, Deserialize};
 use serde_aux::prelude::*;
+
+use ethers_core::types::U256;
 
 use crate::{Client, EtherscanError, Response, Result};
 
@@ -69,11 +70,14 @@ impl Client {
 
 #[cfg(test)]
 mod tests {
+    use serial_test::serial;
+
     use ethers_core::types::Chain;
 
     use super::*;
 
     #[tokio::test]
+    #[serial]
     async fn gas_estimate_success() {
         let client = Client::new_from_env(Chain::Mainnet).unwrap();
 
@@ -83,6 +87,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn gas_estimate_error() {
         let client = Client::new_from_env(Chain::Mainnet).unwrap();
 
@@ -92,6 +97,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn gas_oracle_success() {
         let client = Client::new_from_env(Chain::Mainnet).unwrap();
 
