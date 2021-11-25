@@ -93,6 +93,8 @@ mod tests {
             )
             .await;
 
+        println!("{:?}", success);
+
         assert!(success.is_ok());
     }
 
@@ -106,6 +108,8 @@ mod tests {
             )
             .await
             .unwrap_err();
+
+        println!("{:?}", err);
 
         assert!(matches!(err, EtherscanError::TransactionReceiptFailed));
     }
