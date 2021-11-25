@@ -22,7 +22,7 @@ serde-aux = { version = "3.0.1", default-features = false }
 thiserror = "1.0.29"
 
 [dev-dependencies]
-tokio = { version = "1.5", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1.5", features = ["macros", "rt-multi-thread", "time"] }
 serial_test = "0.5.1"
 
 [package.metadata.docs.rs]

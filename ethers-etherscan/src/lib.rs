@@ -78,8 +78,7 @@ impl Client {
             Chain::Mainnet | Chain::Ropsten | Chain::Kovan | Chain::Rinkeby | Chain::Goerli => {
                 std::env::var("ETHERSCAN_API_KEY")?
             }
-            Chain::XDai => String::default(),
-            chain => return Err(EtherscanError::ChainNotSupported(chain)),
+            _ => String::default(),
         };
         Self::new(chain, api_key)
     }
@@ -176,6 +175,11 @@ struct Query<'a, T: Serialize> {
 
 #[cfg(test)]
 mod tests {
+    use std::{
+        future::Future,
+        time::{Duration, SystemTime},
+    };
+
     use ethers_core::types::Chain;
 
     use crate::{Client, EtherscanError};
@@ -186,5 +190,13 @@ mod tests {
 
         assert!(matches!(err, EtherscanError::ChainNotSupported(_)));
         assert_eq!(err.to_string(), "chain XDai not supported");
+    }
+
+    pub async fn run_at_least_duration(duration: Duration, block: impl Future) {
+        let start = SystemTime::now();
+        block.await;
+        if let Some(sleep) = duration.checked_sub(start.elapsed().unwrap()) {
+            tokio::time::sleep(sleep).await;
+        }
     }
 }
