@@ -249,9 +249,11 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
                 &self.paths.artifacts,
             );
 
-            let cached_artifacts = cache
-                .read_artifacts::<Artifacts>(&self.paths.artifacts)
-                .unwrap_or_else(|_| BTreeMap::default());
+            let cached_artifacts = if self.paths.artifacts.exists() {
+                cache.read_artifacts::<Artifacts>(&self.paths.artifacts)?
+            } else {
+                BTreeMap::default()
+            };
             // if nothing changed and all artifacts still exist
             if changed_files.is_empty() {
                 return Ok(ProjectCompileOutput::from_unchanged(cached_artifacts))
