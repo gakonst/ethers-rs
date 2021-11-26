@@ -219,15 +219,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
             // once matched, proceed to compile with it
             compiled.extend(self.compile_with_version(&solc, sources)?);
         }
-        if !compiled.has_compiled_contracts() &&
-            !compiled.has_compiler_errors() &&
-            self.cached &&
-            self.paths.cache.exists()
-        {
-            let cache = SolFilesCache::read(&self.paths.cache)?;
-            let artifacts = cache.read_artifacts::<Artifacts>(&self.paths.artifacts)?;
-            compiled.artifacts.extend(artifacts);
-        }
+
         Ok(compiled)
     }
 
