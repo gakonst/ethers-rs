@@ -1190,6 +1190,7 @@ dependencies = [
  "tempdir",
  "thiserror",
  "tokio",
+ "tracing",
  "walkdir",
 ]
 
