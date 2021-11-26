@@ -9,6 +9,9 @@
   [597](https://github.com/gakonst/ethers-rs/pull/597)
 - Implement hex display format for `ethers::core::Bytes` [#624](https://github.com/gakonst/ethers-rs/pull/624).
 
+## ethers-solc
+- Return cached artifacts from project `compile` when the cache only contains some files
+
 ### Unreleased
 
 ### 0.6.0

@@ -1,4 +1,4 @@
-#![doc = include_str!("../README.md")]
+#![doc = include_str ! ("../README.md")]
 
 pub mod artifacts;
 
@@ -8,9 +8,11 @@ use std::collections::btree_map::Entry;
 pub mod cache;
 
 mod compile;
+
 pub use compile::*;
 
 mod config;
+
 pub use config::{
     AllowedLibPaths, Artifact, ArtifactOutput, MinimalCombinedArtifacts, ProjectPathsConfig,
     SolcConfig,
@@ -22,6 +24,7 @@ use crate::{artifacts::Source, cache::SolFilesCache};
 
 pub mod error;
 pub mod utils;
+
 use crate::artifacts::Sources;
 use error::Result;
 use std::{
@@ -248,22 +251,28 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         }
 
         // If there's a cache set, filter to only re-compile the files which were changed
-        let sources = if self.cached && self.paths.cache.exists() {
-            let cache = SolFilesCache::read(&self.paths.cache)?;
+        let (sources, cached_artifacts) = if self.cached && self.paths.cache.exists() {
+            let mut cache = SolFilesCache::read(&self.paths.cache)?;
+            cache.remove_missing_files();
             let changed_files = cache.get_changed_or_missing_artifacts_files::<Artifacts>(
                 sources,
                 Some(&self.solc_config),
                 &self.paths.artifacts,
             );
 
+            let cached_artifacts = if self.paths.artifacts.exists() {
+                cache.read_artifacts::<Artifacts>(&self.paths.artifacts)?
+            } else {
+                BTreeMap::default()
+            };
             // if nothing changed and all artifacts still exist
             if changed_files.is_empty() {
-                let artifacts = cache.read_artifacts::<Artifacts>(&self.paths.artifacts)?;
-                return Ok(ProjectCompileOutput::from_unchanged(artifacts))
+                return Ok(ProjectCompileOutput::from_unchanged(cached_artifacts))
             }
-            changed_files
+            // There are changed files and maybe some cached files
+            (changed_files, cached_artifacts)
         } else {
-            sources
+            (sources, BTreeMap::default())
         };
 
         // replace absolute path with source name to make solc happy
@@ -303,7 +312,11 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         if !self.no_artifacts {
             Artifacts::on_output(&output, &self.paths)?;
         }
-        Ok(ProjectCompileOutput::from_compiler_output(output, self.ignored_error_codes.clone()))
+        Ok(ProjectCompileOutput::from_compiler_output_and_cache(
+            output,
+            cached_artifacts,
+            self.ignored_error_codes.clone(),
+        ))
     }
 }
 
@@ -512,6 +525,14 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
         }
     }
 
+    pub fn from_compiler_output_and_cache(
+        compiler_output: CompilerOutput,
+        cache: BTreeMap<PathBuf, T::Artifact>,
+        ignored_error_codes: Vec<u64>,
+    ) -> Self {
+        Self { compiler_output: Some(compiler_output), artifacts: cache, ignored_error_codes }
+    }
+
     /// Get the (merged) solc compiler output
     /// ```no_run
     /// use std::collections::BTreeMap;
@@ -648,7 +669,6 @@ impl<T: ArtifactOutput> fmt::Display for ProjectCompileOutput<T> {
 
 #[cfg(test)]
 mod tests {
-
     #[test]
     #[cfg(all(feature = "svm", feature = "async"))]
     fn test_build_all_versions() {
