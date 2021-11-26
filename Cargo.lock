@@ -2931,8 +2931,7 @@ checksum = "6bdef32e8150c2a081110b42772ffe7d7c9032b606bc226c8260fd97e0976601"
 [[package]]
 name = "svm-rs"
 version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3a5e16a3a87cca053bcab26e5de589ccb5779f84dda466f96eead79a98d7de7c"
+source = "git+https://github.com/gakonst/svm-rs?branch=fix/save-network-requests#fc4d4212b7a8ce2b2aca37452889c2a9e93189c2"
 dependencies = [
  "anyhow",
  "cfg-if 1.0.0",
