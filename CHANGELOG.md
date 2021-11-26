@@ -8,6 +8,9 @@
   such that the decimal places don't get truncated.
   [597](https://github.com/gakonst/ethers-rs/pull/597)
 
+## ethers-solc
+- Return cached artifacts from project `compile` when the cache only contains some files
+
 ### Unreleased
 
 ### 0.6.0
