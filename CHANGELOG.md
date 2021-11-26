@@ -7,6 +7,7 @@
 - Fix `format_units` to return a `String` of representing a decimal point float
   such that the decimal places don't get truncated.
   [597](https://github.com/gakonst/ethers-rs/pull/597)
+- Implement hex display format for `ethers::core::Bytes` [#624](https://github.com/gakonst/ethers-rs/pull/624).
 
 ### Unreleased
 
