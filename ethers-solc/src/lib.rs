@@ -98,7 +98,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         let mut cache = SolFilesCache::builder()
             .root(&self.paths.root)
             .solc_config(self.solc_config.clone())
-            .insert_files(sources)?;
+            .insert_files(sources, Some(self.paths.cache.clone()))?;
 
         // add the artifacts for each file to the cache entry
         for (file, artifacts) in artifacts {
