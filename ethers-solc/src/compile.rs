@@ -52,9 +52,9 @@ pub static RELEASES: Lazy<(svm::Releases, Vec<Version>)> = Lazy::new(|| {
         .expect("could not create tokio rt to get remote releases")
         // TODO: Can we make this future timeout at a small time amount so that
         // we do not degrade startup performance if the consumer has a weak network?
-        .block_on(svm::all_releases(svm::platform()))
+        .block_on(svm::setup_home())
     {
-        Ok(releases) => {
+        Ok((_, releases)) => {
             let mut sorted_releases = releases.releases.keys().cloned().collect::<Vec<Version>>();
             sorted_releases.sort();
             (releases, sorted_releases)
