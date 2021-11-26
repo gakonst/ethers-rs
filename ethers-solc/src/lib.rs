@@ -183,6 +183,9 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
     fn svm_compile(&self, sources: Sources) -> Result<ProjectCompileOutput<Artifacts>> {
         // split them by version
         let mut sources_by_version = BTreeMap::new();
+        // we store the solc versions by path, in case there exists a corrupt solc binary
+        let mut solc_versions = HashMap::new();
+
         for (path, source) in sources.into_iter() {
             // will detect and install the solc version
             let version = Solc::detect_version(&source)?;
@@ -194,8 +197,9 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
             if !self.allowed_lib_paths.0.is_empty() {
                 solc = solc.arg("--allow-paths").arg(self.allowed_lib_paths.to_string());
             }
+            solc_versions.insert(solc.solc.clone(), version);
             let entry = sources_by_version.entry(solc).or_insert_with(BTreeMap::new);
-            entry.insert(path, source);
+            entry.insert(path.clone(), source);
         }
 
         let mut compiled =
@@ -203,6 +207,13 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
 
         // run the compilation step for each version
         for (solc, sources) in sources_by_version {
+            // verify that this solc version's checksum matches the checksum found remotely. If
+            // not, re-install the same version.
+            let version = solc_versions.get(&solc.solc).unwrap();
+            if let Err(_e) = solc.verify_checksum() {
+                Solc::blocking_install(version)?;
+            }
+            // once matched, proceed to compile with it
             compiled.extend(self.compile_with_version(&solc, sources)?);
         }
         if !compiled.has_compiled_contracts() &&

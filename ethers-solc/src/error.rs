@@ -12,6 +12,8 @@ pub enum SolcError {
     PragmaNotFound,
     #[error("could not find solc version locally or upstream")]
     VersionNotFound,
+    #[error("checksum mismatch")]
+    ChecksumMismatch,
     #[error(transparent)]
     SemverError(#[from] semver::Error),
     /// Deserialization error

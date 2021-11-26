@@ -46,16 +46,20 @@ static LOCK: Lazy<Mutex<()>> = Lazy::new(|| Mutex::new(()));
 #[cfg(all(feature = "svm", feature = "async"))]
 /// A list of upstream Solc releases, used to check which version
 /// we should download.
-pub static RELEASES: Lazy<Vec<Version>> = Lazy::new(|| {
+pub static RELEASES: Lazy<(svm::Releases, Vec<Version>)> = Lazy::new(|| {
     // Try to download the releases, if it fails default to empty
     match tokio::runtime::Runtime::new()
         .expect("could not create tokio rt to get remote releases")
         // TODO: Can we make this future timeout at a small time amount so that
         // we do not degrade startup performance if the consumer has a weak network?
-        .block_on(svm::all_versions())
+        .block_on(svm::all_releases(svm::platform()))
     {
-        Ok(inner) => inner,
-        Err(_) => Vec::new(),
+        Ok(releases) => {
+            let mut sorted_releases = releases.releases.keys().cloned().collect::<Vec<Version>>();
+            sorted_releases.sort();
+            (releases, sorted_releases)
+        }
+        Err(_) => (svm::Releases::default(), Vec::new()),
     }
 });
 
@@ -162,7 +166,7 @@ impl Solc {
         // load the local / remote versions
         let versions = svm::installed_versions().unwrap_or_default();
         let local_versions = Self::find_matching_installation(&versions, &sol_version);
-        let remote_versions = Self::find_matching_installation(&RELEASES, &sol_version);
+        let remote_versions = Self::find_matching_installation(&RELEASES.1, &sol_version);
 
         // if there's a better upstream version than the one we have, install it
         Ok(match (local_versions, remote_versions) {
@@ -225,6 +229,29 @@ impl Solc {
         Ok(())
     }
 
+    /// Verify that the checksum for this version of solc is correct. We check against the SHA256
+    /// checksum from the build information published by binaries.soliditylang
+    #[cfg(all(feature = "svm", feature = "async"))]
+    pub fn verify_checksum(&self) -> Result<()> {
+        let version = self.version_short()?;
+        let mut version_path = svm::version_path(version.to_string().as_str());
+        version_path.push(format!("solc-{}", version.to_string().as_str()));
+        let content = std::fs::read(version_path)?;
+
+        use sha2::Digest;
+        let mut hasher = sha2::Sha256::new();
+        hasher.update(&content);
+        let checksum_calc = &hasher.finalize()[..];
+
+        let checksum_found = &RELEASES.0.get_checksum(&version).expect("checksum not found");
+
+        if checksum_calc == checksum_found {
+            Ok(())
+        } else {
+            Err(SolcError::ChecksumMismatch)
+        }
+    }
+
     /// Convenience function for compiling all sources under the given path
     pub fn compile_source(&self, path: impl AsRef<Path>) -> Result<CompilerOutput> {
         self.compile(&CompilerInput::new(path)?)
@@ -269,6 +296,11 @@ impl Solc {
 
         serde_json::to_writer(stdin, input)?;
         compile_output(child.wait_with_output()?)
+    }
+
+    pub fn version_short(&self) -> Result<Version> {
+        let version = self.version()?;
+        Ok(Version::new(version.major, version.minor, version.patch))
     }
 
     /// Returns the version from the configured `solc`
