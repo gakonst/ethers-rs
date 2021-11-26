@@ -242,13 +242,13 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         // If there's a cache set, filter to only re-compile the files which were changed
         let (sources, cached_artifacts) = if self.cached && self.paths.cache.exists() {
             let mut cache = SolFilesCache::read(&self.paths.cache)?;
+            cache.remove_missing_files();
             let changed_files = cache.get_changed_or_missing_artifacts_files::<Artifacts>(
                 sources,
                 Some(&self.solc_config),
                 &self.paths.artifacts,
             );
 
-            cache.remove_missing_files();
             let cached_artifacts = cache
                 .read_artifacts::<Artifacts>(&self.paths.artifacts)
                 .unwrap_or_else(|_| BTreeMap::default());
