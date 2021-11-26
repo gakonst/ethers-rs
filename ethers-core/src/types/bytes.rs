@@ -18,13 +18,13 @@ fn bytes_to_hex(b: &Bytes) -> String {
 
 impl Display for Bytes {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        write!(f, "{}", bytes_to_hex(self))
+        write!(f, "0x{}", bytes_to_hex(self))
     }
 }
 
 impl LowerHex for Bytes {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        write!(f, "{}", bytes_to_hex(self))
+        write!(f, "0x{}", bytes_to_hex(self))
     }
 }
 
@@ -93,7 +93,7 @@ mod tests {
     #[test]
     fn hex_formatting() {
         let b = Bytes::from(vec![1, 35, 69, 103, 137, 171, 205, 239]);
-        let expected = String::from("0123456789abcdef");
+        let expected = String::from("0x0123456789abcdef");
         assert_eq!(format!("{:x}", b), expected);
         assert_eq!(format!("{}", b), expected);
     }
