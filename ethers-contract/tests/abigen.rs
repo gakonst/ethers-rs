@@ -370,3 +370,8 @@ fn can_handle_duplicates_with_same_name() {
     let call = Log2Call { p_0: "message".to_string() };
     let _contract_call = ConsoleLogCalls::Log2(call);
 }
+
+#[test]
+fn can_abigen_console_sol() {
+    abigen!(Console, "ethers-contract/tests/solidity-contracts/console.json",);
+}
