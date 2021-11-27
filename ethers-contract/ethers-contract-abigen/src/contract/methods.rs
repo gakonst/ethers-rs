@@ -276,73 +276,90 @@ impl Context {
         // find all duplicates, where no aliases where provided
         for functions in self.abi.functions.values() {
             if functions.iter().filter(|f| !aliases.contains_key(&f.abi_signature())).count() <= 1 {
-                // no conflicts
+                // no overloads, hence no conflicts
                 continue
             }
             // sort functions by number of inputs asc
             let mut functions = functions.iter().collect::<Vec<_>>();
             functions.sort_by(|f1, f2| f1.inputs.len().cmp(&f2.inputs.len()));
-            let first = functions[0];
-            // assuming here that if there are overloaded functions with nameless params like `log;,
-            // log(string); log(string, string)` `log()` should also be aliased with its
-            // index to `log0`
-            let mut add_alias_for_first_with_idx = false;
-            for (idx, duplicate) in functions.into_iter().enumerate().skip(1) {
+            // the first function will be the function with the least amount of inputs, like log()
+            // and is the baseline for the diff
+            let first_fun = functions[0];
+
+            // assuming here that if there is an overloaded function with nameless params like
+            // `log;, log(string); log(string, string)` `log()` it should also be
+            // aliased as well with its index to `log0`
+            let mut needs_alias_for_first_fun_using_idx = false;
+
+            // all the overloaded functions together with their diffs compare to the `first_fun`
+            let mut diffs = Vec::new();
+
+            /// helper function that checks if there are any conflicts due to parameter names
+            fn name_conflicts(idx: usize, diffs: &[(usize, Vec<&Param>, &Function)]) -> bool {
+                // NOTE: the `idx` is the of the overloaded function and not the idx of the diff in
+                // the given vec
+                let diff = &diffs[idx - 1].1;
+
+                for (_, other, _) in diffs.iter().filter(|(i, _, _)| *i != idx) {
+                    let (a, b) =
+                        if other.len() > diff.len() { (other, diff) } else { (diff, other) };
+
+                    if a.iter()
+                        .all(|d| b.iter().any(|o| o.name.to_snake_case() == d.name.to_snake_case()))
+                    {
+                        return true
+                    }
+                }
+                false
+            }
+
+            // compare each overloaded function with the `first_fun`
+            for (idx, overloaded_fun) in functions.into_iter().enumerate().skip(1) {
                 // attempt to find diff in the input arguments
                 let mut diff = Vec::new();
                 let mut same_params = true;
-                for (idx, i1) in duplicate.inputs.iter().enumerate() {
-                    if first.inputs.iter().all(|i2| i1 != i2) {
+                for (idx, i1) in overloaded_fun.inputs.iter().enumerate() {
+                    if first_fun.inputs.iter().all(|i2| i1 != i2) {
                         diff.push(i1);
                         same_params = false;
                     } else {
                         // check for cases like `log(string); log(string, string)` by keep track of
                         // same order
-                        if same_params && idx + 1 > first.inputs.len() {
+                        if same_params && idx + 1 > first_fun.inputs.len() {
                             diff.push(i1);
                         }
                     }
                 }
+                diffs.push((idx, diff, overloaded_fun));
+            }
+
+            for (idx, diff, overloaded_fun) in &diffs {
                 let alias = match diff.len() {
                     0 => {
                         // this should not happen since functions with same name and inputs are
                         // illegal
                         anyhow::bail!(
                             "Function with same name and parameter types defined twice: {}",
-                            duplicate.name
+                            overloaded_fun.name
                         );
                     }
                     1 => {
                         // single additional input params
-                        if diff[0].name.is_empty() ||
-                            duplicate.name.to_snake_case() == diff[0].name.to_snake_case()
-                        {
-                            add_alias_for_first_with_idx = true;
-                            format!("{}1", duplicate.name.to_snake_case())
+                        if diff[0].name.is_empty() || name_conflicts(*idx, &diffs) {
+                            needs_alias_for_first_fun_using_idx = true;
+                            format!("{}{}", overloaded_fun.name.to_snake_case(), idx)
                         } else {
-                            let alias = format!(
+                            format!(
                                 "{}_with_{}",
-                                duplicate.name.to_snake_case(),
+                                overloaded_fun.name.to_snake_case(),
                                 diff[0].name.to_snake_case()
-                            );
-                            let ident =  util::safe_ident(&alias);
-                            // check for edge case where the param names are equal
-                            if let Some(ident) =    aliases.iter_mut().find_map(|(_,alias_ident)|  {
-                                if alias_ident == &ident {
-                                    Some(alias_ident)
-                                } else {None}
-                            }) {
-                                *ident = util::safe_ident( &format!("{}0", duplicate.name.to_snake_case()));
-                                format!("{}1", duplicate.name.to_snake_case())
-                            } else {
-                                alias
-                            }
+                            )
                         }
                     }
                     _ => {
-                        if diff.iter().any(|d| d.name.is_empty()) {
-                            add_alias_for_first_with_idx = true;
-                            format!("{}{}", duplicate.name.to_snake_case(), idx)
+                        if diff.iter().any(|d| d.name.is_empty()) || name_conflicts(*idx, &diffs) {
+                            needs_alias_for_first_fun_using_idx = true;
+                            format!("{}{}", overloaded_fun.name.to_snake_case(), idx)
                         } else {
                             // 1 + n additional input params
                             let and = diff
@@ -353,20 +370,20 @@ impl Context {
                                 .join("_and_");
                             format!(
                                 "{}_with_{}_and_{}",
-                                duplicate.name.to_snake_case(),
+                                overloaded_fun.name.to_snake_case(),
                                 diff[0].name.to_snake_case(),
                                 and
                             )
                         }
                     }
                 };
-                aliases.insert(duplicate.abi_signature(), util::safe_ident(&alias));
+                aliases.insert(overloaded_fun.abi_signature(), util::safe_ident(&alias));
             }
 
-            if add_alias_for_first_with_idx {
+            if needs_alias_for_first_fun_using_idx {
                 // insert an alias for the root duplicated call
-                let prev_alias = format!("{}0", first.name.to_snake_case());
-                aliases.insert(first.abi_signature(), util::safe_ident(&prev_alias));
+                let prev_alias = format!("{}0", first_fun.name.to_snake_case());
+                aliases.insert(first_fun.abi_signature(), util::safe_ident(&prev_alias));
             }
         }
 

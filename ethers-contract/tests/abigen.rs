@@ -361,6 +361,12 @@ fn can_handle_duplicates_with_same_name() {
     ]"#
     );
 
-    // let call = Log0Call;
-    // let _contract_call = ConsoleLogCalls::Log0(call);
+    let call = Log0Call;
+    let _contract_call = ConsoleLogCalls::Log0(call);
+
+    let call = Log1Call { p_0: 100.into() };
+    let _contract_call = ConsoleLogCalls::Log1(call);
+
+    let call = Log2Call { p_0: "message".to_string() };
+    let _contract_call = ConsoleLogCalls::Log2(call);
 }
