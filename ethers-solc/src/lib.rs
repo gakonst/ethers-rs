@@ -110,12 +110,10 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
             }
         }
 
-        tracing::trace!("writing files to disk");
         if let Some(cache_dir) = self.paths.cache.parent() {
             fs::create_dir_all(cache_dir)?
         }
         cache.write(&self.paths.cache)?;
-        tracing::trace!("files written");
 
         Ok(())
     }
@@ -227,7 +225,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
             ProjectCompileOutput::with_ignored_errors(self.ignored_error_codes.clone());
 
         // run the compilation step for each version
-        tracing::trace!("compiling all versions");
+        tracing::trace!("compiling sources with viable solc versions");
         for (solc, sources) in sources_by_version {
             let span = tracing::trace_span!("solc", "{}", solc.version_short()?);
             let _enter = span.enter();
@@ -245,7 +243,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
             compiled.extend(self.compile_with_version(&solc, sources)?);
             tracing::trace!("done compiling_with_version");
         }
-        tracing::trace!("done compiling all versions");
+        tracing::trace!("compiled sources with viable solc versions");
 
         Ok(compiled)
     }
@@ -271,7 +269,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
             path_to_source_name.insert(path.clone(), import.clone());
             source_name_to_path.insert(import, path);
         }
-        tracing::trace!("done resolving libraries");
+        tracing::trace!("resolved libraries");
 
         // If there's a cache set, filter to only re-compile the files which were changed
         let (sources, cached_artifacts) = if self.cached && self.paths.cache.exists() {
@@ -313,7 +311,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
             .with_remappings(self.paths.remappings.clone());
         tracing::trace!("calling solc");
         let output = solc.compile(&input)?;
-        tracing::trace!("done calling solc");
+        tracing::trace!("compiled input, output has error: {}", output.has_error());
         if output.has_error() {
             return Ok(ProjectCompileOutput::from_compiler_output(
                 output,
