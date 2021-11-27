@@ -349,3 +349,29 @@ fn can_handle_unique_underscore_functions() {
     let call = Log2Call("message".to_string());
     let _contract_call = ConsoleLogCalls::Log2(call);
 }
+
+#[test]
+fn can_handle_duplicates_with_same_name() {
+    abigen!(
+        ConsoleLog,
+        r#"[
+            log()
+            log(uint p0)
+            log(string p0)
+    ]"#
+    );
+
+    let call = Log0Call;
+    let _contract_call = ConsoleLogCalls::Log0(call);
+
+    let call = Log1Call { p_0: 100.into() };
+    let _contract_call = ConsoleLogCalls::Log1(call);
+
+    let call = Log2Call { p_0: "message".to_string() };
+    let _contract_call = ConsoleLogCalls::Log2(call);
+}
+
+#[test]
+fn can_abigen_console_sol() {
+    abigen!(Console, "ethers-contract/tests/solidity-contracts/console.json",);
+}
