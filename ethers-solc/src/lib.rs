@@ -251,6 +251,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
                 Some(&self.solc_config),
                 &self.paths.artifacts,
             );
+            cache.remove_changed_files(&changed_files);
 
             let cached_artifacts = if self.paths.artifacts.exists() {
                 cache.read_artifacts::<Artifacts>(&self.paths.artifacts)?

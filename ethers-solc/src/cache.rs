@@ -58,6 +58,10 @@ impl SolFilesCache {
         self.files.retain(|file, _| Path::new(file).exists())
     }
 
+    pub fn remove_changed_files(&mut self, changed_files: &Sources) {
+        self.files.retain(|file, _| !changed_files.contains_key(file))
+    }
+
     /// Returns only the files that were changed from the provided sources, to save time
     /// when compiling.
     pub fn get_changed_files<'a>(

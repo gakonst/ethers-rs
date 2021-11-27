@@ -88,7 +88,7 @@ fn can_compile_dapp_sample_with_cache() {
 
     let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let orig_root = manifest_dir.join("test-data/dapp-sample");
-    let new_file = manifest_dir.join("test-data/cache-sample/NewContract.sol");
+    let cache_testdata_dir = manifest_dir.join("test-data/cache-sample/");
     copy_dir_all(orig_root, &tmp_dir).unwrap();
     let paths = ProjectPathsConfig::builder()
         .cache(cache)
@@ -117,11 +117,34 @@ fn can_compile_dapp_sample_with_cache() {
     assert!(!compiled.is_unchanged());
 
     // new file is compiled even with partial cache
-    std::fs::copy(new_file, root.join("src/NewContract.sol")).unwrap();
+    std::fs::copy(cache_testdata_dir.join("NewContract.sol"), root.join("src/NewContract.sol"))
+        .unwrap();
     let compiled = project.compile().unwrap();
     assert!(compiled.find("Dapp").is_some());
     assert!(compiled.find("NewContract").is_some());
     assert!(!compiled.is_unchanged());
+    assert_eq!(
+        compiled.into_artifacts().map(|(name, _)| name).collect::<Vec<_>>(),
+        vec![
+            r#""Dapp.json":Dapp"#,
+            r#""DappTest.json":DappTest"#,
+            r#""DSTest.json":DSTest"#,
+            "NewContract"
+        ]
+    );
+
+    // old cached artifact is not taken from the cache
+    std::fs::copy(cache_testdata_dir.join("Dapp.sol"), root.join("src/Dapp.sol")).unwrap();
+    let compiled = project.compile().unwrap();
+    assert_eq!(
+        compiled.into_artifacts().map(|(name, _)| name).collect::<Vec<_>>(),
+        vec![
+            r#""DappTest.json":DappTest"#,
+            r#""NewContract.json":NewContract"#,
+            r#""DSTest.json":DSTest"#,
+            "Dapp"
+        ]
+    );
 
     // deleted artifact is not taken from the cache
     std::fs::remove_file(&project.paths.sources.join("Dapp.sol")).unwrap();
