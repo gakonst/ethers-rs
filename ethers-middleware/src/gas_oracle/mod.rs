@@ -35,6 +35,11 @@ pub enum GasOracleError {
     #[error(transparent)]
     HttpClientError(#[from] ReqwestError),
 
+    /// An internal error in the Etherscan client request made from the underlying
+    /// gas oracle
+    #[error(transparent)]
+    EtherscanError(#[from] ethers_etherscan::errors::EtherscanError),
+
     /// An internal error thrown when the required gas category is not
     /// supported by the gas oracle API
     #[error("gas category not supported")]

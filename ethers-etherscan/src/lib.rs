@@ -1,14 +1,17 @@
 //! Bindings for [etherscan.io web api](https://docs.etherscan.io/)
 
-pub mod contract;
-pub mod errors;
-mod transaction;
+use std::borrow::Cow;
+
+use reqwest::{header, Url};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use errors::EtherscanError;
 use ethers_core::{abi::Address, types::Chain};
-use reqwest::{header, Url};
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
-use std::borrow::Cow;
+
+pub mod contract;
+pub mod errors;
+pub mod gas;
+pub mod transaction;
 
 pub type Result<T> = std::result::Result<T, EtherscanError>;
 
@@ -75,7 +78,7 @@ impl Client {
             Chain::Mainnet | Chain::Ropsten | Chain::Kovan | Chain::Rinkeby | Chain::Goerli => {
                 std::env::var("ETHERSCAN_API_KEY")?
             }
-            Chain::XDai => String::default(),
+            Chain::XDai | Chain::Sepolia => String::default(),
         };
         Self::new(chain, api_key)
     }
@@ -172,8 +175,14 @@ struct Query<'a, T: Serialize> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Client, EtherscanError};
+    use std::{
+        future::Future,
+        time::{Duration, SystemTime},
+    };
+
     use ethers_core::types::Chain;
+
+    use crate::{Client, EtherscanError};
 
     #[test]
     fn chain_not_supported() {
@@ -181,5 +190,13 @@ mod tests {
 
         assert!(matches!(err, EtherscanError::ChainNotSupported(_)));
         assert_eq!(err.to_string(), "chain XDai not supported");
+    }
+
+    pub async fn run_at_least_duration(duration: Duration, block: impl Future) {
+        let start = SystemTime::now();
+        block.await;
+        if let Some(sleep) = duration.checked_sub(start.elapsed().unwrap()) {
+            tokio::time::sleep(sleep).await;
+        }
     }
 }
