@@ -3,12 +3,30 @@ use serde::{
     Deserialize, Deserializer, Serialize, Serializer,
 };
 
+use std::fmt::{Display, Formatter, LowerHex, Result as FmtResult};
+
 /// Wrapper type around Bytes to deserialize/serialize "0x" prefixed ethereum hex strings
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize, Ord, PartialOrd)]
 pub struct Bytes(
     #[serde(serialize_with = "serialize_bytes", deserialize_with = "deserialize_bytes")]
     pub  bytes::Bytes,
 );
+
+fn bytes_to_hex(b: &Bytes) -> String {
+    hex::encode(b.0.as_ref())
+}
+
+impl Display for Bytes {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        write!(f, "0x{}", bytes_to_hex(self))
+    }
+}
+
+impl LowerHex for Bytes {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        write!(f, "0x{}", bytes_to_hex(self))
+    }
+}
 
 impl Bytes {
     pub fn to_vec(&self) -> Vec<u8> {
@@ -65,5 +83,18 @@ where
         Ok(bytes.into())
     } else {
         Err(Error::invalid_value(Unexpected::Str(&value), &"0x prefix"))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn hex_formatting() {
+        let b = Bytes::from(vec![1, 35, 69, 103, 137, 171, 205, 239]);
+        let expected = String::from("0x0123456789abcdef");
+        assert_eq!(format!("{:x}", b), expected);
+        assert_eq!(format!("{}", b), expected);
     }
 }

@@ -10,7 +10,8 @@ name: Tests
 # so that we do not get rate limited by Etherscan (and it's free to generate as
 # many as you want)
 env:
-  ETHERSCAN_API_KEY: I5BXNZYP5GEDWFINGVEZKYIVU2695NPQZB
+  ETHERSCAN_API_KEY_ETHEREUM: I5BXNZYP5GEDWFINGVEZKYIVU2695NPQZB
+  ETHERSCAN_API_KEY_CELO: B13XSMUT6Q3Q4WZ5DNQR8RXDBA2KNTMT4M
   RINKEBY_PRIVATE_KEY: "a046a5b763923d437855a6fe64962569c9a378efba5c84920212c4b6ae270df5"
 
 jobs:
@@ -56,6 +57,7 @@ jobs:
       - name: cargo test
         run: |
             export PATH=$HOME/bin:$PATH
+            export ETHERSCAN_API_KEY=$ETHERSCAN_API_KEY_ETHEREUM
             cargo test
 
   feature-tests:
@@ -103,6 +105,7 @@ jobs:
       - name: cargo test (Celo)
         run: |
             export PATH=$HOME/bin:$PATH
+            export ETHERSCAN_API_KEY=$ETHERSCAN_API_KEY_CELO
             cargo test --all-features
 
   lint:

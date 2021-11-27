@@ -8,7 +8,7 @@ use crate::{
 use serde::{Deserialize, Serialize};
 use std::{
     collections::BTreeMap,
-    fs,
+    fs::{self, File},
     path::{Path, PathBuf},
     time::{Duration, UNIX_EPOCH},
 };
@@ -36,7 +36,7 @@ impl SolFilesCache {
     /// use ethers_solc::artifacts::Source;
     /// use ethers_solc::cache::SolFilesCache;
     /// let files = Source::read_all_from("./sources").unwrap();
-    /// let config = SolFilesCache::builder().insert_files(files).unwrap();
+    /// let config = SolFilesCache::builder().insert_files(files, None).unwrap();
     /// ```
     pub fn builder() -> SolFilesCacheBuilder {
         SolFilesCacheBuilder::default()
@@ -200,7 +200,7 @@ impl SolFilesCacheBuilder {
         self
     }
 
-    pub fn insert_files(self, sources: Sources) -> Result<SolFilesCache> {
+    pub fn insert_files(self, sources: Sources, dest: Option<PathBuf>) -> Result<SolFilesCache> {
         let format = self.format.unwrap_or_else(|| HH_FORMAT_VERSION.to_string());
         let solc_config =
             self.solc_config.map(Ok).unwrap_or_else(|| SolcConfig::builder().build())?;
@@ -234,7 +234,23 @@ impl SolFilesCacheBuilder {
             files.insert(file, entry);
         }
 
-        Ok(SolFilesCache { format, files })
+        let cache = if let Some(ref dest) = dest {
+            if dest.exists() {
+                // read the existing cache and extend it by the files that changed
+                // (if we just wrote to the cache file, we'd overwrite the existing data)
+                let reader = std::io::BufReader::new(File::open(dest)?);
+                let mut cache: SolFilesCache = serde_json::from_reader(reader)?;
+                assert_eq!(cache.format, format);
+                cache.files.extend(files);
+                cache
+            } else {
+                SolFilesCache { format, files }
+            }
+        } else {
+            SolFilesCache { format, files }
+        };
+
+        Ok(cache)
     }
 }
 

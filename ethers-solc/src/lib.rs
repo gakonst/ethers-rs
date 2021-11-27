@@ -1,4 +1,4 @@
-#![doc = include_str!("../README.md")]
+#![doc = include_str ! ("../README.md")]
 
 pub mod artifacts;
 
@@ -8,9 +8,11 @@ use std::collections::btree_map::Entry;
 pub mod cache;
 
 mod compile;
+
 pub use compile::*;
 
 mod config;
+
 pub use config::{
     AllowedLibPaths, Artifact, ArtifactOutput, MinimalCombinedArtifacts, ProjectPathsConfig,
     SolcConfig,
@@ -22,6 +24,7 @@ use crate::{artifacts::Source, cache::SolFilesCache};
 
 pub mod error;
 pub mod utils;
+
 use crate::artifacts::Sources;
 use error::Result;
 use std::{
@@ -95,7 +98,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         let mut cache = SolFilesCache::builder()
             .root(&self.paths.root)
             .solc_config(self.solc_config.clone())
-            .insert_files(sources)?;
+            .insert_files(sources, Some(self.paths.cache.clone()))?;
 
         // add the artifacts for each file to the cache entry
         for (file, artifacts) in artifacts {
@@ -183,6 +186,9 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
     fn svm_compile(&self, sources: Sources) -> Result<ProjectCompileOutput<Artifacts>> {
         // split them by version
         let mut sources_by_version = BTreeMap::new();
+        // we store the solc versions by path, in case there exists a corrupt solc binary
+        let mut solc_versions = HashMap::new();
+
         for (path, source) in sources.into_iter() {
             // will detect and install the solc version
             let version = Solc::detect_version(&source)?;
@@ -194,8 +200,9 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
             if !self.allowed_lib_paths.0.is_empty() {
                 solc = solc.arg("--allow-paths").arg(self.allowed_lib_paths.to_string());
             }
+            solc_versions.insert(solc.solc.clone(), version);
             let entry = sources_by_version.entry(solc).or_insert_with(BTreeMap::new);
-            entry.insert(path, source);
+            entry.insert(path.clone(), source);
         }
 
         let mut compiled =
@@ -203,17 +210,16 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
 
         // run the compilation step for each version
         for (solc, sources) in sources_by_version {
+            // verify that this solc version's checksum matches the checksum found remotely. If
+            // not, re-install the same version.
+            let version = solc_versions.get(&solc.solc).unwrap();
+            if let Err(_e) = solc.verify_checksum() {
+                Solc::blocking_install(version)?;
+            }
+            // once matched, proceed to compile with it
             compiled.extend(self.compile_with_version(&solc, sources)?);
         }
-        if !compiled.has_compiled_contracts() &&
-            !compiled.has_compiler_errors() &&
-            self.cached &&
-            self.paths.cache.exists()
-        {
-            let cache = SolFilesCache::read(&self.paths.cache)?;
-            let artifacts = cache.read_artifacts::<Artifacts>(&self.paths.artifacts)?;
-            compiled.artifacts.extend(artifacts);
-        }
+
         Ok(compiled)
     }
 
@@ -237,22 +243,28 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         }
 
         // If there's a cache set, filter to only re-compile the files which were changed
-        let sources = if self.cached && self.paths.cache.exists() {
-            let cache = SolFilesCache::read(&self.paths.cache)?;
+        let (sources, cached_artifacts) = if self.cached && self.paths.cache.exists() {
+            let mut cache = SolFilesCache::read(&self.paths.cache)?;
+            cache.remove_missing_files();
             let changed_files = cache.get_changed_or_missing_artifacts_files::<Artifacts>(
                 sources,
                 Some(&self.solc_config),
                 &self.paths.artifacts,
             );
 
+            let cached_artifacts = if self.paths.artifacts.exists() {
+                cache.read_artifacts::<Artifacts>(&self.paths.artifacts)?
+            } else {
+                BTreeMap::default()
+            };
             // if nothing changed and all artifacts still exist
             if changed_files.is_empty() {
-                let artifacts = cache.read_artifacts::<Artifacts>(&self.paths.artifacts)?;
-                return Ok(ProjectCompileOutput::from_unchanged(artifacts))
+                return Ok(ProjectCompileOutput::from_unchanged(cached_artifacts))
             }
-            changed_files
+            // There are changed files and maybe some cached files
+            (changed_files, cached_artifacts)
         } else {
-            sources
+            (sources, BTreeMap::default())
         };
 
         // replace absolute path with source name to make solc happy
@@ -292,7 +304,11 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         if !self.no_artifacts {
             Artifacts::on_output(&output, &self.paths)?;
         }
-        Ok(ProjectCompileOutput::from_compiler_output(output, self.ignored_error_codes.clone()))
+        Ok(ProjectCompileOutput::from_compiler_output_and_cache(
+            output,
+            cached_artifacts,
+            self.ignored_error_codes.clone(),
+        ))
     }
 }
 
@@ -501,6 +517,14 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
         }
     }
 
+    pub fn from_compiler_output_and_cache(
+        compiler_output: CompilerOutput,
+        cache: BTreeMap<PathBuf, T::Artifact>,
+        ignored_error_codes: Vec<u64>,
+    ) -> Self {
+        Self { compiler_output: Some(compiler_output), artifacts: cache, ignored_error_codes }
+    }
+
     /// Get the (merged) solc compiler output
     /// ```no_run
     /// use std::collections::BTreeMap;
@@ -637,7 +661,6 @@ impl<T: ArtifactOutput> fmt::Display for ProjectCompileOutput<T> {
 
 #[cfg(test)]
 mod tests {
-
     #[test]
     #[cfg(all(feature = "svm", feature = "async"))]
     fn test_build_all_versions() {
