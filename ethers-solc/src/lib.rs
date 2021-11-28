@@ -90,15 +90,18 @@ impl Project {
 }
 
 impl<Artifacts: ArtifactOutput> Project<Artifacts> {
+    #[tracing::instrument(skip_all, name = "Project::write_cache_file")]
     fn write_cache_file(
         &self,
         sources: Sources,
         artifacts: Vec<(PathBuf, Vec<String>)>,
     ) -> Result<()> {
+        tracing::trace!("inserting files to cache");
         let mut cache = SolFilesCache::builder()
             .root(&self.paths.root)
             .solc_config(self.solc_config.clone())
             .insert_files(sources, Some(self.paths.cache.clone()))?;
+        tracing::trace!("files inserted");
 
         // add the artifacts for each file to the cache entry
         for (file, artifacts) in artifacts {
@@ -110,10 +113,13 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         if let Some(cache_dir) = self.paths.cache.parent() {
             fs::create_dir_all(cache_dir)?
         }
-        cache.write(&self.paths.cache)
+        cache.write(&self.paths.cache)?;
+
+        Ok(())
     }
 
     /// Returns all sources found under the project's sources path
+    #[tracing::instrument(skip_all, fields(name = "sources"))]
     pub fn sources(&self) -> io::Result<Sources> {
         Source::read_all_from(self.paths.sources.as_path())
     }
@@ -167,11 +173,15 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
 
     /// NB: If the `svm` feature is enabled, this function will automatically detect
     /// solc versions across files.
+    #[tracing::instrument(skip_all, name = "compile")]
     pub fn compile(&self) -> Result<ProjectCompileOutput<Artifacts>> {
+        tracing::trace!("sources");
         let sources = self.sources()?;
+        tracing::trace!("done");
 
         #[cfg(all(feature = "svm", feature = "async"))]
         if self.auto_detect {
+            tracing::trace!("auto-compile");
             return self.svm_compile(sources)
         }
 
@@ -183,15 +193,20 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
     }
 
     #[cfg(all(feature = "svm", feature = "async"))]
+    #[tracing::instrument(skip(self, sources))]
     fn svm_compile(&self, sources: Sources) -> Result<ProjectCompileOutput<Artifacts>> {
         // split them by version
         let mut sources_by_version = BTreeMap::new();
         // we store the solc versions by path, in case there exists a corrupt solc binary
         let mut solc_versions = HashMap::new();
 
+        // TODO: Rayon
+        // tracing::trace!("parsing sources");
         for (path, source) in sources.into_iter() {
             // will detect and install the solc version
+            // tracing::trace!("finding version {}", path.display());
             let version = Solc::detect_version(&source)?;
+            // tracing::trace!("found {}", version);
             // gets the solc binary for that version, it is expected tha this will succeed
             // AND find the solc since it was installed right above
             let mut solc = Solc::find_svm_installed_version(version.to_string())?
@@ -204,21 +219,31 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
             let entry = sources_by_version.entry(solc).or_insert_with(BTreeMap::new);
             entry.insert(path.clone(), source);
         }
+        // tracing::trace!("done");
 
         let mut compiled =
             ProjectCompileOutput::with_ignored_errors(self.ignored_error_codes.clone());
 
         // run the compilation step for each version
+        tracing::trace!("compiling sources with viable solc versions");
         for (solc, sources) in sources_by_version {
+            let span = tracing::trace_span!("solc", "{}", solc.version_short()?);
+            let _enter = span.enter();
+
             // verify that this solc version's checksum matches the checksum found remotely. If
             // not, re-install the same version.
             let version = solc_versions.get(&solc.solc).unwrap();
             if let Err(_e) = solc.verify_checksum() {
+                tracing::trace!("corrupted solc version, redownloading...");
                 Solc::blocking_install(version)?;
+                tracing::trace!("done.");
             }
             // once matched, proceed to compile with it
+            tracing::trace!("compiling_with_version");
             compiled.extend(self.compile_with_version(&solc, sources)?);
+            tracing::trace!("done compiling_with_version");
         }
+        tracing::trace!("compiled sources with viable solc versions");
 
         Ok(compiled)
     }
@@ -228,6 +253,8 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         solc: &Solc,
         mut sources: Sources,
     ) -> Result<ProjectCompileOutput<Artifacts>> {
+        let span = tracing::trace_span!("compiling");
+        let _enter = span.enter();
         // add all libraries to the source set while keeping track of their actual disk path
         // (`contracts/contract.sol` -> `/Users/.../contracts.sol`)
         let mut source_name_to_path = HashMap::new();
@@ -235,17 +262,21 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         // `contracts/contract.sol`)
         let mut path_to_source_name = HashMap::new();
 
+        tracing::trace!("resolving libraries");
         for (import, (source, path)) in self.resolved_libraries(&sources)? {
             // inserting with absolute path here and keep track of the source name <-> path mappings
             sources.insert(path.clone(), source);
             path_to_source_name.insert(path.clone(), import.clone());
             source_name_to_path.insert(import, path);
         }
+        tracing::trace!("resolved libraries");
 
         // If there's a cache set, filter to only re-compile the files which were changed
         let (sources, cached_artifacts) = if self.cached && self.paths.cache.exists() {
+            tracing::trace!("reading solfiles cache for incremental compilation");
             let mut cache = SolFilesCache::read(&self.paths.cache)?;
             cache.remove_missing_files();
+            tracing::trace!("done reading solfiles cache for incremental compilation");
             let changed_files = cache.get_changed_or_missing_artifacts_files::<Artifacts>(
                 sources,
                 Some(&self.solc_config),
@@ -254,12 +285,17 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
             cache.remove_changed_files(&changed_files);
 
             let cached_artifacts = if self.paths.artifacts.exists() {
-                cache.read_artifacts::<Artifacts>(&self.paths.artifacts)?
+                tracing::trace!("reading artifacts from cache..");
+                let artifacts = cache.read_artifacts::<Artifacts>(&self.paths.artifacts)?;
+                tracing::trace!("done reading artifacts from cache");
+                artifacts
             } else {
                 BTreeMap::default()
             };
+
             // if nothing changed and all artifacts still exist
             if changed_files.is_empty() {
+                tracing::trace!("no change");
                 return Ok(ProjectCompileOutput::from_unchanged(cached_artifacts))
             }
             // There are changed files and maybe some cached files
@@ -274,7 +310,9 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         let input = CompilerInput::with_sources(sources)
             .normalize_evm_version(&solc.version()?)
             .with_remappings(self.paths.remappings.clone());
+        tracing::trace!("calling solc");
         let output = solc.compile(&input)?;
+        tracing::trace!("compiled input, output has error: {}", output.has_error());
         if output.has_error() {
             return Ok(ProjectCompileOutput::from_compiler_output(
                 output,
@@ -305,6 +343,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         if !self.no_artifacts {
             Artifacts::on_output(&output, &self.paths)?;
         }
+
         Ok(ProjectCompileOutput::from_compiler_output_and_cache(
             output,
             cached_artifacts,

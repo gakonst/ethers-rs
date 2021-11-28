@@ -43,15 +43,25 @@ impl SolFilesCache {
     }
 
     /// Reads the cache json file from the given path
+    #[tracing::instrument(skip_all, name = "sol-files-cache::read")]
     pub fn read(path: impl AsRef<Path>) -> Result<Self> {
-        let file = fs::File::open(path.as_ref())?;
-        Ok(serde_json::from_reader(file)?)
+        let path = path.as_ref();
+        tracing::trace!("reading solfiles cache at {}", path.display());
+        let file = fs::File::open(path)?;
+        let file = std::io::BufReader::new(file);
+        let cache = serde_json::from_reader(file)?;
+        tracing::trace!("done");
+        Ok(cache)
     }
 
     /// Write the cache to json file
     pub fn write(&self, path: impl AsRef<Path>) -> Result<()> {
-        let file = fs::File::create(path.as_ref())?;
-        Ok(serde_json::to_writer_pretty(file, self)?)
+        let path = path.as_ref();
+        let file = fs::File::create(path)?;
+        tracing::trace!("writing cache to json file");
+        serde_json::to_writer_pretty(file, self)?;
+        tracing::trace!("cache file located: {}", path.display());
+        Ok(())
     }
 
     pub fn remove_missing_files(&mut self) {
