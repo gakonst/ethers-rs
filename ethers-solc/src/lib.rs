@@ -234,7 +234,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
             // not, re-install the same version.
             let version = solc_versions.get(&solc.solc).unwrap();
             if let Err(_e) = solc.verify_checksum() {
-                tracing::trace!("missing version, redownloading...");
+                tracing::trace!("corrupted solc version, redownloading...");
                 Solc::blocking_install(version)?;
                 tracing::trace!("done.");
             }
