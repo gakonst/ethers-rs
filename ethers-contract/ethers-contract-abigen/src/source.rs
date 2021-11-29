@@ -174,7 +174,7 @@ impl FromStr for Source {
 /// Reads an artifact JSON file from the local filesystem.
 ///
 /// The given path can be relative or absolute and can contain env vars like
-///  `"$CARGO_MANIFEST_DIR/contracts/a.solc"`
+///  `"$CARGO_MANIFEST_DIR/contracts/a.json"`
 /// If the path is relative after all env vars have been resolved then we assume the root is either
 /// `CARGO_MANIFEST_DIR` or the current working directory.
 fn get_local_contract(path: impl AsRef<str>) -> Result<String> {
@@ -184,7 +184,7 @@ fn get_local_contract(path: impl AsRef<str>) -> Result<String> {
         let root = Path::new(&manifest_path);
         let mut contract_path = root.join(&path);
         if !contract_path.exists() {
-            contract_path = env::current_dir()?.join(&path);
+            contract_path = path.canonicalize()?;
         }
         if !contract_path.exists() {
             anyhow::bail!("Unable to find local contract \"{}\"", path.display())
