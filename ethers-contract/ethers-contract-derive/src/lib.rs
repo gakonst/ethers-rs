@@ -16,8 +16,10 @@ mod spanned;
 pub(crate) mod utils;
 
 /// Proc macro to generate type-safe bindings to a contract(s). This macro
-/// accepts one or more Ethereum contract ABI or a path. Note that this path is
+/// accepts one or more Ethereum contract ABI or a path. Note that relative paths are
 /// rooted in the crate's root `CARGO_MANIFEST_DIR`.
+/// Environment variable interpolation is supported via `$` prefix, like
+/// `"$CARGO_MANIFEST_DIR/contracts/c.json"`
 ///
 /// # Examples
 ///
