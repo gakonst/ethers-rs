@@ -10,7 +10,7 @@ use walkdir::WalkDir;
 /// statement with the named groups "path", "id".
 pub static RE_SOL_IMPORT: Lazy<Regex> = Lazy::new(|| {
     // Adapted from https://github.com/nomiclabs/hardhat/blob/cced766c65b25d3d0beb39ef847246ac9618bdd9/packages/hardhat-core/src/internal/solidity/parse.ts#L100
-    Regex::new(r#"import\s+(?:(?:"(?P<path>[^;]*)"|'([^;]*)')(?:;|\s+as\s+(?P<id>[^;]*);)|.+from\s+(?:"(.*)"|'(.*)');)"#).unwrap()
+    Regex::new(r#"import\s+(?:(?:"(?P<p1>[^;]*)"|'([^;]*)')(?:;|\s+as\s+(?P<id>[^;]*);)|.+from\s+(?:"(?P<p2>.*)"|'(?P<p3>.*)');)"#).unwrap()
 });
 
 /// A regex that matches the version part of a solidity pragma
@@ -27,7 +27,7 @@ pub static RE_SOL_PRAGMA_VERSION: Lazy<Regex> =
 pub fn find_import_paths(contract: &str) -> Vec<&str> {
     RE_SOL_IMPORT
         .captures_iter(contract)
-        .filter_map(|cap| cap.name("path"))
+        .filter_map(|cap| cap.name("p1").or_else(|| cap.name("p2")).or_else(|| cap.name("p3")))
         .map(|m| m.as_str())
         .collect()
 }
@@ -153,8 +153,13 @@ mod tests {
 pragma solidity ^0.8.0;
 import "hardhat/console.sol";
 import "../contract/Contract.sol";
+import { T } from "../Test.sol";
+import { T } from '../Test2.sol';
 "##;
-        assert_eq!(vec!["hardhat/console.sol", "../contract/Contract.sol"], find_import_paths(s));
+        assert_eq!(
+            vec!["hardhat/console.sol", "../contract/Contract.sol", "../Test.sol", "../Test2.sol"],
+            find_import_paths(s)
+        );
     }
     #[test]
     fn can_find_version() {
