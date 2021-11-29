@@ -1,4 +1,5 @@
 use ethers_core::types::Address;
+use std::path::PathBuf;
 
 use anyhow::{anyhow, Result};
 use cfg_if::cfg_if;
@@ -81,9 +82,74 @@ pub fn http_get(_url: &str) -> Result<String> {
     }
 }
 
+/// Replaces any occurrences of env vars in the `raw` str with their value
+pub fn resolve_path(raw: &str) -> Result<PathBuf> {
+    let mut unprocessed = raw;
+    let mut resolved = String::new();
+
+    while let Some(dollar_sign) = unprocessed.find('$') {
+        let (head, tail) = unprocessed.split_at(dollar_sign);
+        resolved.push_str(head);
+
+        match parse_identifier(&tail[1..]) {
+            Some((variable, rest)) => {
+                let value = std::env::var(variable)?;
+                resolved.push_str(&value);
+                unprocessed = rest;
+            }
+            None => {
+                anyhow::bail!("Unable to parse a variable from \"{}\"", tail)
+            }
+        }
+    }
+    resolved.push_str(unprocessed);
+
+    Ok(PathBuf::from(resolved))
+}
+
+fn parse_identifier(text: &str) -> Option<(&str, &str)> {
+    let mut calls = 0;
+
+    let (head, tail) = take_while(text, |c| {
+        calls += 1;
+        match c {
+            '_' => true,
+            letter if letter.is_ascii_alphabetic() => true,
+            digit if digit.is_ascii_digit() && calls > 1 => true,
+            _ => false,
+        }
+    });
+
+    if head.is_empty() {
+        None
+    } else {
+        Some((head, tail))
+    }
+}
+
+fn take_while(s: &str, mut predicate: impl FnMut(char) -> bool) -> (&str, &str) {
+    let mut index = 0;
+    for c in s.chars() {
+        if predicate(c) {
+            index += c.len_utf8();
+        } else {
+            break
+        }
+    }
+    s.split_at(index)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn can_resolve_path() {
+        let raw = "./$ENV_VAR";
+        std::env::set_var("ENV_VAR", "file.txt");
+        let resolved = resolve_path(raw).unwrap();
+        assert_eq!(resolved.to_str().unwrap(), "./file.txt");
+    }
 
     #[test]
     fn input_name_to_ident_empty() {

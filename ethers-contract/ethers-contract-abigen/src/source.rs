@@ -2,14 +2,10 @@
 use super::util;
 use ethers_core::types::Address;
 
+use crate::util::resolve_path;
 use anyhow::{anyhow, Context, Error, Result};
 use cfg_if::cfg_if;
-use std::{
-    borrow::Cow,
-    env, fs,
-    path::{Path, PathBuf},
-    str::FromStr,
-};
+use std::{env, fs, path::Path, str::FromStr};
 use url::Url;
 
 /// A source of a Truffle artifact JSON.
@@ -19,7 +15,7 @@ pub enum Source {
     String(String),
 
     /// An ABI located on the local file system.
-    Local(PathBuf),
+    Local(String),
 
     /// An ABI to be retrieved over HTTP(S).
     Http(Url),
@@ -94,7 +90,7 @@ impl Source {
         let url = base.join(source.as_ref())?;
 
         match url.scheme() {
-            "file" => Ok(Source::local(url.path())),
+            "file" => Ok(Source::local(url.path().to_string())),
             "http" | "https" => match url.host_str() {
                 Some("etherscan.io") => Source::etherscan(
                     url.path()
@@ -111,11 +107,8 @@ impl Source {
     }
 
     /// Creates a local filesystem source from a path string.
-    pub fn local<P>(path: P) -> Self
-    where
-        P: AsRef<Path>,
-    {
-        Source::Local(path.as_ref().into())
+    pub fn local(path: impl Into<String>) -> Self {
+        Source::Local(path.into())
     }
 
     /// Creates an HTTP source from a URL.
@@ -178,21 +171,27 @@ impl FromStr for Source {
     }
 }
 
-/// Reads a Truffle artifact JSON file from the local filesystem.
-fn get_local_contract(path: &Path) -> Result<String> {
+/// Reads an artifact JSON file from the local filesystem.
+///
+/// The given path can be relative or absolute and can contain env vars like
+///  `"$CARGO_MANIFEST_DIR/contracts/a.json"`
+/// If the path is relative after all env vars have been resolved then we assume the root is either
+/// `CARGO_MANIFEST_DIR` or the current working directory.
+fn get_local_contract(path: impl AsRef<str>) -> Result<String> {
+    let path = resolve_path(path.as_ref())?;
     let path = if path.is_relative() {
-        let absolute_path = path.canonicalize().with_context(|| {
-            format!(
-                "unable to canonicalize file from working dir {} with path {}",
-                env::current_dir()
-                    .map(|cwd| cwd.display().to_string())
-                    .unwrap_or_else(|err| format!("??? ({})", err)),
-                path.display(),
-            )
-        })?;
-        Cow::Owned(absolute_path)
+        let manifest_path = env::var("CARGO_MANIFEST_DIR")?;
+        let root = Path::new(&manifest_path);
+        let mut contract_path = root.join(&path);
+        if !contract_path.exists() {
+            contract_path = path.canonicalize()?;
+        }
+        if !contract_path.exists() {
+            anyhow::bail!("Unable to find local contract \"{}\"", path.display())
+        }
+        contract_path
     } else {
-        Cow::Borrowed(path)
+        path
     };
 
     let json = fs::read_to_string(&path)
