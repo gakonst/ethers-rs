@@ -151,7 +151,8 @@ impl Context {
     /// Create a context from the code generation arguments.
     pub fn from_abigen(args: Abigen) -> Result<Self> {
         // get the actual ABI string
-        let abi_str = args.abi_source.get().context("failed to get ABI JSON")?;
+        let abi_str =
+            args.abi_source.get().map_err(|e| anyhow!("failed to get ABI JSON: {}", e))?;
         let mut abi_parser = AbiParser::default();
 
         let (abi, human_readable): (Abi, _) = if let Ok(abi) = abi_parser.parse_str(&abi_str) {
