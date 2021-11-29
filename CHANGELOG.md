@@ -2,17 +2,23 @@
 
 ## ethers-core
 
-- Change types mapping for solidity `bytes` to rust `ethers::core::Bytes` and solidity `uint8[]` to rust `Vec<u8>`.
+### Unreleased
+
+- Change types mapping for solidity `bytes` to rust `ethers::core::Bytes` and
+  solidity `uint8[]` to rust `Vec<u8>`.
   [613](https://github.com/gakonst/ethers-rs/pull/613)
 - Fix `format_units` to return a `String` of representing a decimal point float
   such that the decimal places don't get truncated.
   [597](https://github.com/gakonst/ethers-rs/pull/597)
-- Implement hex display format for `ethers::core::Bytes` [#624](https://github.com/gakonst/ethers-rs/pull/624).
+- Implement hex display format for `ethers::core::Bytes`
+  [#624](https://github.com/gakonst/ethers-rs/pull/624).
 
 ## ethers-solc
-- Return cached artifacts from project `compile` when the cache only contains some files
 
 ### Unreleased
+
+- Return cached artifacts from project `compile` when the cache only contains
+  some files
 
 ### 0.6.0
 
@@ -81,6 +87,13 @@
   is addressed [#559](https://github.com/gakonst/ethers-rs/pull/559)
 
 ## ethers-contract
+
+### Unreleased
+
+- fix Etherscan conditional HTTP support
+  [#632](https://github.com/gakonst/ethers-rs/pull/632)
+- use `CARGO_MANIFEST_DIR` as root for relative paths in abigen
+  [#631](https://github.com/gakonst/ethers-rs/pull/631)
 
 ### 0.6.0
 
