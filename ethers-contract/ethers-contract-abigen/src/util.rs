@@ -74,7 +74,7 @@ where
 /// Perform an HTTP GET request and return the contents of the response.
 pub fn http_get(_url: &str) -> Result<String> {
     cfg_if! {
-        if #[cfg(any(not(target_arch = "wasm32"), not(features = "reqwest")))]{
+        if #[cfg(any(target_arch = "wasm32", not(feature = "reqwest")))]{
             Err(anyhow!("HTTP is unsupported"))
         } else {
             Ok(reqwest::blocking::get(_url)?.text()?)

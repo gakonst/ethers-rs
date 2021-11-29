@@ -279,4 +279,11 @@ mod tests {
         let hardhat_parsed = Source::parse(&hardhat_src).unwrap();
         assert_eq!(hardhat_parsed, Source::String(hardhat_src));
     }
+
+    #[test]
+    #[ignore]
+    fn get_etherscan_contract() {
+        let source = Source::etherscan("0x6b175474e89094c44da98b954eedeac495271d0f").unwrap();
+        let _dai = source.get().unwrap();
+    }
 }
