@@ -60,7 +60,7 @@ impl Source {
         if matches!(source.chars().next(), Some('[' | '{')) {
             return Ok(Source::String(source.to_owned()))
         }
-        let root = env::current_dir()?.canonicalize()?;
+        let root = env::var("CARGO_MANIFEST_DIR")?;
         Source::with_root(root, source)
     }
 
@@ -72,6 +72,7 @@ impl Source {
         P: AsRef<Path>,
         S: AsRef<str>,
     {
+        let source = source.as_ref();
         let root = root.as_ref();
         cfg_if! {
             if #[cfg(target_arch = "wasm32")] {
@@ -87,10 +88,10 @@ impl Source {
                     .map_err(|_| anyhow!("root path '{}' is not absolute", root.display()))?;
             }
         }
-        let url = base.join(source.as_ref())?;
+        let url = base.join(source)?;
 
         match url.scheme() {
-            "file" => Ok(Source::local(url.path().to_string())),
+            "file" => Ok(Source::local(source.to_string())),
             "http" | "https" => match url.host_str() {
                 Some("etherscan.io") => Source::etherscan(
                     url.path()
