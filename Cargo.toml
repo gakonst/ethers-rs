@@ -67,6 +67,7 @@ ws = ["ethers-providers/ws"]
 ipc = ["ethers-providers/ipc"]
 rustls = ["ethers-providers/rustls"]
 openssl = ["ethers-providers/openssl"]
+dev-rpc = ["ethers-providers/dev-rpc"]
 ## signers
 ledger = ["ethers-signers/ledger"]
 yubi = ["ethers-signers/yubi"]
