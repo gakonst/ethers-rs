@@ -1094,6 +1094,8 @@ pub mod dev_rpc {
         }
     }
     #[cfg(test)]
+    // Celo blocks can not get parsed when used with Ganache
+    #[cfg(not(feature = "celo"))]
     mod tests {
         use super::*;
         use crate::{Http, Provider};
