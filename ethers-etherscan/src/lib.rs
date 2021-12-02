@@ -13,7 +13,7 @@ pub mod errors;
 pub mod gas;
 pub mod transaction;
 
-pub type Result<T> = std::result::Result<T, EtherscanError>;
+pub(crate) type Result<T> = std::result::Result<T, EtherscanError>;
 
 /// The Etherscan.io API client.
 #[derive(Clone, Debug)]
