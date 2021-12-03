@@ -13,13 +13,13 @@ const MOONBEAM_DEV_ENDPOINT: &str = "http://localhost:9933";
 /// This requires a running moonbeam dev instance on `localhost:9933`
 /// See `https://docs.moonbeam.network/builders/get-started/moonbeam-dev/` for reference
 ///
-/// This has been tested against with:
+/// This has been tested against:
 ///
 /// ```bash
 ///  docker run --rm --name moonbeam_development -p 9944:9944 -p 9933:9933 purestake/moonbeam:v0.14.2 --dev --ws-external --rpc-external
+/// ```
 ///
 /// Also requires the `legacy` feature to send Legacy transaction instead of an EIP-1559
-/// ```
 #[tokio::main]
 #[cfg(feature = "legacy")]
 async fn main() -> Result<()> {
