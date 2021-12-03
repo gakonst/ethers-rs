@@ -1042,7 +1042,7 @@ pub mod dev_rpc {
         ProviderError(ProviderError),
 
         #[error("Could not revert to snapshot")]
-        NoSnapshotError,
+        NoSnapshot,
     }
 
     #[async_trait]
@@ -1090,7 +1090,7 @@ pub mod dev_rpc {
             if ok {
                 Ok(())
             } else {
-                Err(DevRpcMiddlewareError::NoSnapshotError)
+                Err(DevRpcMiddlewareError::NoSnapshot)
             }
         }
     }
