@@ -34,6 +34,20 @@ pub enum TypedTransaction {
     Eip1559(Eip1559TransactionRequest),
 }
 
+#[cfg(feature = "legacy")]
+impl Default for TypedTransaction {
+    fn default() -> Self {
+        TypedTransaction::Legacy(Default::default())
+    }
+}
+
+#[cfg(not(feature = "legacy"))]
+impl Default for TypedTransaction {
+    fn default() -> Self {
+        TypedTransaction::Eip1559(Default::default())
+    }
+}
+
 use TypedTransaction::*;
 
 impl TypedTransaction {
