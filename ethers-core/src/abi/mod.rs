@@ -22,7 +22,7 @@ pub use error::{AbiError, ParseError};
 mod human_readable;
 pub use human_readable::{parse as parse_abi, parse_str as parse_abi_str, AbiParser};
 
-use crate::types::{H256, H512, U128, U256, U64};
+use crate::types::{H256, H512, I256, U128, U256, U64};
 
 /// Extension trait for `ethabi::Function`.
 pub trait FunctionExt {
@@ -98,6 +98,8 @@ impl<T: AbiArrayType, const N: usize> AbiType for [T; N] {
     }
 }
 
+impl<T: AbiArrayType, const N: usize> AbiArrayType for [T; N] {}
+
 impl<const N: usize> AbiType for [u8; N] {
     fn param_type() -> ParamType {
         ParamType::FixedBytes(N)
@@ -138,7 +140,8 @@ impl_abi_type!(
     i16 => Int(16),
     i32 => Int(32),
     i64 => Int(64),
-    i128 => Int(128)
+    i128 => Int(128),
+    I256 => Int(256)
 );
 
 macro_rules! impl_abi_type_tuple {
