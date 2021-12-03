@@ -1,5 +1,7 @@
-use ethers::prelude::{LocalWallet, MnemonicBuilder};
-use ethers::signers::coins_bip39::English;
+use ethers::{
+    prelude::{LocalWallet, MnemonicBuilder},
+    signers::coins_bip39::English,
+};
 
 pub fn set_panic_hook() {
     // When the `console_error_panic_hook` feature is enabled, we can call the
@@ -17,12 +19,7 @@ pub const PHRASE: &str =
     "stuff inherit faith park genre spread huge knee ecology private marble supreme";
 
 pub fn key(index: u32) -> LocalWallet {
-    MnemonicBuilder::<English>::default()
-        .phrase(PHRASE)
-        .index(index)
-        .unwrap()
-        .build()
-        .unwrap()
+    MnemonicBuilder::<English>::default().phrase(PHRASE).index(index).unwrap().build().unwrap()
 }
 
 /// Bytecode of the `SimpleContract`

@@ -51,12 +51,7 @@ pub async fn deploy() {
     let factory = ContractFactory::new(SIMPLECONTRACT_ABI.clone(), bytecode.into(), client.clone());
 
     log!("Deploying contract...");
-    let contract = factory
-        .deploy("hello WASM!".to_string())
-        .unwrap()
-        .send()
-        .await
-        .unwrap();
+    let contract = factory.deploy("hello WASM!".to_string()).unwrap().send().await.unwrap();
     let addr = contract.address();
     log!("Deployed contract with address: {:?}", addr);
 
@@ -64,25 +59,11 @@ pub async fn deploy() {
 
     let value = "bye from WASM!";
     log!("Setting value... `{}`", value);
-    let receipt = contract
-        .set_value(value.to_owned())
-        .send()
-        .await
-        .unwrap()
-        .await
-        .unwrap();
-    console::log_2(
-        &"Set value receipt: ".into(),
-        &JsValue::from_serde(&receipt).unwrap(),
-    );
+    let receipt = contract.set_value(value.to_owned()).send().await.unwrap().await.unwrap();
+    console::log_2(&"Set value receipt: ".into(), &JsValue::from_serde(&receipt).unwrap());
 
     log!("Fetching logs...");
-    let logs = contract
-        .value_changed_filter()
-        .from_block(0u64)
-        .query()
-        .await
-        .unwrap();
+    let logs = contract.value_changed_filter().from_block(0u64).query().await.unwrap();
 
     let value = contract.get_value().call().await.unwrap();
 
