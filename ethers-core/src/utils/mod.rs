@@ -10,6 +10,9 @@ mod geth;
 #[cfg(not(target_arch = "wasm32"))]
 pub use geth::{Geth, GethInstance};
 
+/// Moonbeam utils
+pub mod moonbeam;
+
 mod hash;
 pub use hash::{hash_message, id, keccak256, serialize};
 
