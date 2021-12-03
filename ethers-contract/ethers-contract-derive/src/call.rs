@@ -101,7 +101,7 @@ pub fn derive_trait_impls(
              #core_crate::utils::id(Self::abi_signature())
         }
     });
-    vec![].into_iter()
+
     let ethcall_impl = quote! {
         impl #contract_crate::EthCall for #struct_name {
 

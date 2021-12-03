@@ -39,7 +39,7 @@ pub fn derive_tokenizeable_impl(input: &DeriveInput) -> proc_macro2::TokenStream
 
                 let assignments = fields.named.iter().map(|f| {
                     let name = f.ident.as_ref().expect("Named fields have names");
-                    quote_spanned! { f.span() => #name: #core_crate::abi::Tokenizable::from_token(tokens.remove(0))? }
+                    quote_spanned! { f.span() => #name: #core_crate::abi::Tokenizable::from_token(iter.next().unwrap())? }
                 });
                 let init_struct_impl = quote! { Self { #(#assignments,)* } };
 
@@ -59,7 +59,7 @@ pub fn derive_tokenizeable_impl(input: &DeriveInput) -> proc_macro2::TokenStream
                 let tokenize_predicates = quote! { #(#tokenize_predicates,)* };
 
                 let assignments = fields.unnamed.iter().map(|f| {
-                    quote_spanned! { f.span() => #core_crate::abi::Tokenizable::from_token(tokens.remove(0))? }
+                    quote_spanned! { f.span() => #core_crate::abi::Tokenizable::from_token(iter.next().unwrap())? }
                 });
                 let init_struct_impl = quote! { Self(#(#assignments,)* ) };
 
@@ -100,7 +100,7 @@ pub fn derive_tokenizeable_impl(input: &DeriveInput) -> proc_macro2::TokenStream
         ),
         _ => {
             let from_token = quote! {
-                if let #core_crate::abi::Token::Tuple(mut tokens) = token {
+                if let #core_crate::abi::Token::Tuple(tokens) = token {
                     if tokens.len() != #params_len {
                         return Err(#core_crate::abi::InvalidOutputType(::std::format!(
                             "Expected {} tokens, got {}: {:?}",
@@ -109,6 +109,8 @@ pub fn derive_tokenizeable_impl(input: &DeriveInput) -> proc_macro2::TokenStream
                             tokens
                         )));
                     }
+
+                    let mut iter = tokens.into_iter();
 
                     Ok(#init_struct_impl)
                 } else {
