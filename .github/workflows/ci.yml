@@ -129,7 +129,7 @@ jobs:
       - name: cargo fmt
         run: cargo +nightly fmt --all -- --check
       - name: cargo clippy
-        run: cargo +nightly clippy --all --all-features -- -D warnings
+        run: cargo +nightly clippy --all-features -- -D warnings
 
   wasm:
     name: WASM
