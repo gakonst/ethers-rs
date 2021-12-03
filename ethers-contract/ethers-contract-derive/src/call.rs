@@ -56,7 +56,7 @@ pub(crate) fn derive_eth_call_impl(input: DeriveInput) -> TokenStream {
                     Ok(derived) => derived,
                     Err(err) => Error::new(
                         span,
-                        format!("Unable to determine ABI for `{}` : {}", src, err.to_string()),
+                        format!("Unable to determine ABI for `{}` : {}", src, err),
                     )
                     .to_compile_error(),
                 }
@@ -138,7 +138,7 @@ pub fn derive_trait_impls(
         }
 
     };
-    let tokenize_impl = abi_ty::derive_tokenizeable_impl(&input);
+    let tokenize_impl = abi_ty::derive_tokenizeable_impl(input);
 
     quote! {
         #tokenize_impl
@@ -181,7 +181,7 @@ fn derive_trait_impls_with_abi_type(
     function_call_name: &str,
 ) -> Result<TokenStream, Error> {
     let abi_signature =
-        utils::derive_abi_signature_with_abi_type(&input, &function_call_name, "EthCall")?;
+        utils::derive_abi_signature_with_abi_type(input, function_call_name, "EthCall")?;
     let abi_signature = quote! {
          ::std::borrow::Cow::Owned(#abi_signature)
     };

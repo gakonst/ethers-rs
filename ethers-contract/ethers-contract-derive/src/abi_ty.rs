@@ -132,7 +132,7 @@ pub fn derive_tokenizeable_impl(input: &DeriveInput) -> proc_macro2::TokenStream
         }
     };
 
-    let params = match utils::derive_param_type_with_abi_type(&input, "EthAbiType") {
+    let params = match utils::derive_param_type_with_abi_type(input, "EthAbiType") {
         Ok(params) => params,
         Err(err) => return err.to_compile_error(),
     };
