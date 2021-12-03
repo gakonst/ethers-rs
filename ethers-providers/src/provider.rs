@@ -1087,9 +1087,10 @@ pub mod dev_rpc {
                 .request::<[U256; 1], bool>("evm_revert", [id])
                 .await
                 .map_err(DevRpcMiddlewareError::ProviderError)?;
-            match ok {
-                true => Ok(()),
-                false => Err(DevRpcMiddlewareError::NoSnapshotError),
+            if ok {
+                Ok(())
+            } else {
+                Err(DevRpcMiddlewareError::NoSnapshotError)
             }
         }
     }
