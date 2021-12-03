@@ -2,7 +2,7 @@ use std::fmt;
 
 use crate::types::U256;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum Chain {
     Mainnet,
     Ropsten,
@@ -15,6 +15,9 @@ pub enum Chain {
     Avalanche,
     AvalancheFuji,
     Sepolia,
+    Moonbeam,
+    MoonbeamDev,
+    Moonriver,
 }
 
 impl fmt::Display for Chain {
@@ -37,11 +40,20 @@ impl From<Chain> for u32 {
             Chain::Avalanche => 43114,
             Chain::AvalancheFuji => 43113,
             Chain::Sepolia => 11155111,
+            Chain::Moonbeam => 1287,
+            Chain::MoonbeamDev => 1281,
+            Chain::Moonriver => 1285,
         }
     }
 }
 
 impl From<Chain> for U256 {
+    fn from(chain: Chain) -> Self {
+        u32::from(chain).into()
+    }
+}
+
+impl From<Chain> for u64 {
     fn from(chain: Chain) -> Self {
         u32::from(chain).into()
     }
