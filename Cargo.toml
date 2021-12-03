@@ -32,7 +32,6 @@ default-members = [
     "ethers-middleware",
     "ethers-etherscan",
     "ethers-solc",
-    "examples/ethers-wasm",
 ]
 
 [package.metadata.docs.rs]
