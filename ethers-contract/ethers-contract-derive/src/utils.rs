@@ -1,6 +1,6 @@
 use ethers_core::{abi::ParamType, macros::ethers_core_crate, types::Selector};
 use proc_macro2::Literal;
-use quote::quote;
+use quote::{quote, quote_spanned};
 use syn::{
     parse::Error, spanned::Spanned as _, Data, DeriveInput, Expr, Fields, GenericArgument, Lit,
     PathArguments, Type,
@@ -186,4 +186,89 @@ pub fn derive_abi_inputs_from_fields(
             find_parameter_type(&f.ty).map(|ty| (name, ty))
         })
         .collect()
+}
+
+/// Use `AbiType::param_type` fo each field to construct the input types own param type
+pub fn derive_param_type_with_abi_type(
+    input: &DeriveInput,
+    trait_name: &str,
+) -> Result<proc_macro2::TokenStream, Error> {
+    let core_crate = ethers_core_crate();
+    let params = derive_abi_parameters_array(input, trait_name)?;
+    Ok(quote! {
+        #core_crate::abi::ParamType::Tuple(::std::vec!#params)
+    })
+}
+
+/// Use `AbiType::param_type` fo each field to construct the whole signature `<name>(<params,>*)` as
+/// `String`
+pub fn derive_abi_signature_with_abi_type(
+    input: &DeriveInput,
+    function_name: &str,
+    trait_name: &str,
+) -> Result<proc_macro2::TokenStream, Error> {
+    let params = derive_abi_parameters_array(input, trait_name)?;
+    Ok(quote! {
+        {
+            let params: String = #params
+                                 .iter()
+                                 .map(|p| p.to_string())
+                                 .collect::<::std::vec::Vec<_>>()
+                                 .join(",");
+            let function_name = #function_name;
+            format!("{}({})", function_name, params)
+        }
+    })
+}
+
+/// Use `AbiType::param_type` fo each field to construct the signature's parameters as runtime array
+/// `[param1, param2,...]`
+pub fn derive_abi_parameters_array(
+    input: &DeriveInput,
+    trait_name: &str,
+) -> Result<proc_macro2::TokenStream, Error> {
+    let core_crate = ethers_core_crate();
+
+    let param_types: Vec<_> = match input.data {
+        Data::Struct(ref data) => match data.fields {
+            Fields::Named(ref fields) => fields
+                .named
+                .iter()
+                .map(|f| {
+                    let ty = &f.ty;
+                    quote_spanned! { f.span() => <#ty as #core_crate::abi::AbiType>::param_type() }
+                })
+                .collect(),
+            Fields::Unnamed(ref fields) => fields
+                .unnamed
+                .iter()
+                .map(|f| {
+                    let ty = &f.ty;
+                    quote_spanned! { f.span() => <#ty as #core_crate::abi::AbiType>::param_type() }
+                })
+                .collect(),
+            Fields::Unit => {
+                return Err(Error::new(
+                    input.span(),
+                    format!("{} cannot be derived for empty structs and unit", trait_name),
+                ))
+            }
+        },
+        Data::Enum(_) => {
+            return Err(Error::new(
+                input.span(),
+                format!("{} cannot be derived for enums", trait_name),
+            ))
+        }
+        Data::Union(_) => {
+            return Err(Error::new(
+                input.span(),
+                format!("{} cannot be derived for unions", trait_name),
+            ))
+        }
+    };
+
+    Ok(quote! {
+        [#( #param_types ),*]
+    })
 }

@@ -375,3 +375,15 @@ fn can_handle_duplicates_with_same_name() {
 fn can_abigen_console_sol() {
     abigen!(Console, "ethers-contract/tests/solidity-contracts/console.json",);
 }
+
+#[test]
+fn can_generate_nested_types() {
+    abigen!(
+        Test,
+        r#"[
+        struct Outer {Inner inner; uint256[] arr;}
+        struct Inner {uint256 inner;}
+        function myfun(Outer calldata a)
+    ]"#,
+    );
+}

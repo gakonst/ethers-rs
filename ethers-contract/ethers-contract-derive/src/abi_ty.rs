@@ -1,5 +1,6 @@
 //! Helper functions for deriving `EthAbiType`
 
+use crate::utils;
 use ethers_core::macros::ethers_core_crate;
 use proc_macro2::{Ident, Literal, TokenStream};
 use quote::{quote, quote_spanned};
@@ -129,7 +130,20 @@ pub fn derive_tokenizeable_impl(input: &DeriveInput) -> proc_macro2::TokenStream
         }
     };
 
+    let params = match utils::derive_param_type_with_abi_type(&input, "EthAbiType") {
+        Ok(params) => params,
+        Err(err) => return err.to_compile_error(),
+    };
     quote! {
+
+        impl<#generic_params> #core_crate::abi::AbiType for #name<#generic_args>  {
+            fn param_type() -> #core_crate::abi::ParamType {
+                #params
+            }
+        }
+
+       impl<#generic_params> #core_crate::abi::AbiArrayType for #name<#generic_args> {}
+
          impl<#generic_params> #core_crate::abi::Tokenizable for #name<#generic_args>
          where
              #generic_predicates
