@@ -1,3 +1,5 @@
+#![allow(clippy::all)]
+
 use std::sync::Arc;
 
 use wasm_bindgen::prelude::*;
