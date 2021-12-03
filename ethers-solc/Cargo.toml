@@ -31,12 +31,16 @@ svm = { package = "svm-rs", version = "0.2.0", optional = true }
 glob = "0.3.0"
 tracing = "0.1.29"
 
-[target.'cfg(target_arch = "wasm32")'.dependencies]
-sha2 = { version = "0.9.8" }
+[target.'cfg(not(any(target_arch = "x86", target_arch = "x86_64")))'.dependencies]
+sha2 = { version = "0.9.8", default-features = false }
 
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+[target.'cfg(any(target_arch = "x86", target_arch = "x86_64"))'.dependencies]
 home = "0.5.3"
-sha2 = { version = "0.9.8", features = ["asm"] }
+sha2 = { version = "0.9.8", default-features = false, features = ["asm"] }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+# NOTE: this enables wasm compatibility for getrandom indirectly
+getrandom = { version = "0.2", features = ["js"] }
 
 [dev-dependencies]
 tokio = { version = "1.12.0", features = ["full"] }

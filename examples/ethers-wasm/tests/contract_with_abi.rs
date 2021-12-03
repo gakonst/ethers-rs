@@ -6,8 +6,7 @@ use ethers::prelude::{
     abigen, ContractFactory, Http, JsonRpcClient, LocalWallet, Provider, SignerMiddleware, Ws,
 };
 
-use std::convert::TryFrom;
-use std::sync::Arc;
+use std::{convert::TryFrom, sync::Arc};
 
 wasm_bindgen_test_configure!(run_in_browser);
 
@@ -38,12 +37,8 @@ async fn deploy<T: JsonRpcClient>(provider: Provider<T>, wallet: LocalWallet) {
 
     let bytecode = hex::decode(ethers_wasm::utils::SIMPLECONTRACT_BIN).unwrap();
     let factory = ContractFactory::new(SIMPLECONTRACT_ABI.clone(), bytecode.into(), client.clone());
-    let contract = factory
-        .deploy("Hello from Contract!".to_string())
-        .unwrap()
-        .send()
-        .await
-        .unwrap();
+    let contract =
+        factory.deploy("Hello from Contract!".to_string()).unwrap().send().await.unwrap();
     let addr = contract.address();
     console_log!("deployed to {}", addr);
 

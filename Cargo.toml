@@ -20,7 +20,8 @@ members = [
     "ethers-core",
     "ethers-middleware",
     "ethers-etherscan",
-    "ethers-solc"
+    "ethers-solc",
+    "examples/ethers-wasm",
 ]
 
 default-members = [
@@ -30,11 +31,7 @@ default-members = [
     "ethers-core",
     "ethers-middleware",
     "ethers-etherscan",
-    "ethers-solc"
-]
-
-exclude = [
-    "examples/ethers-wasm",
+    "ethers-solc",
 ]
 
 [package.metadata.docs.rs]
@@ -102,3 +99,9 @@ serde_json = "1.0.64"
 tokio = { version = "1.5", features = ["macros", "rt-multi-thread"] }
 hex = "0.4.3"
 bytes = "1.1.0"
+
+
+# profile for the wasm example
+[profile.release.package.ethers-wasm]
+# Tell `rustc` to optimize for small code size.
+opt-level = "s"
