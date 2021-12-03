@@ -1021,6 +1021,43 @@ impl TryFrom<String> for Provider<HttpProvider> {
     }
 }
 
+/// A middleware supporting development-specific JSON RPC methods
+///
+/// # Example
+///
+///```
+/// use ethers_providers::{Provider, Http, Middleware, DevRpcMiddleware};
+/// use ethers_core::types::TransactionRequest;
+/// use ethers_core::utils::Ganache;
+/// use std::convert::TryFrom;
+///
+/// # #[tokio::main]
+/// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// let ganache = Ganache::new().spawn();
+/// let provider = Provider::<Http>::try_from(ganache.endpoint()).unwrap();
+/// let client = DevRpcMiddleware::new(provider);
+///
+/// // snapshot the initial state
+/// let block0 = client.get_block_number().await.unwrap();
+/// let snap_id = client.snapshot().await.unwrap();
+///
+/// // send a transaction
+/// let accounts = client.get_accounts().await?;
+/// let from = accounts[0];
+/// let to = accounts[1];
+/// let balance_before = client.get_balance(to, None).await?;
+/// let tx = TransactionRequest::new().to(to).value(1000).from(from);
+/// client.send_transaction(tx, None).await?.await?;
+/// let balance_after = client.get_balance(to, None).await?;
+/// assert_eq!(balance_after, balance_before + 1000);
+///
+/// // revert to snapshot
+/// client.revert_to_snapshot(snap_id).await.unwrap();
+/// let balance_after_revert = client.get_balance(to, None).await?;
+/// assert_eq!(balance_after_revert, balance_before);
+/// # Ok(())
+/// # }
+/// ```
 #[cfg(feature = "dev-rpc")]
 pub mod dev_rpc {
     use crate::{FromErr, Middleware, ProviderError};
