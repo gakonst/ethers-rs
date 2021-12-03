@@ -54,11 +54,10 @@ pub(crate) fn derive_eth_call_impl(input: DeriveInput) -> TokenStream {
                 // try to determine the abi by using its fields at runtime
                 return match derive_trait_impls_with_abi_type(&input, &function_call_name) {
                     Ok(derived) => derived,
-                    Err(err) => Error::new(
-                        span,
-                        format!("Unable to determine ABI for `{}` : {}", src, err),
-                    )
-                    .to_compile_error(),
+                    Err(err) => {
+                        Error::new(span, format!("Unable to determine ABI for `{}` : {}", src, err))
+                            .to_compile_error()
+                    }
                 }
             }
         }
