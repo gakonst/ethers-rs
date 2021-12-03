@@ -61,6 +61,8 @@
 - Fix `http Provider` data race when generating new request `id`s.
 - Add support for `net_version` RPC method.
   [595](https://github.com/gakonst/ethers-rs/pull/595)
+- Add support for `evm_snapshot` and `evm_revert` dev RPC methods.
+  [640](https://github.com/gakonst/ethers-rs/pull/640)
 
 ### Unreleased
 

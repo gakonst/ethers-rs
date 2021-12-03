@@ -65,3 +65,4 @@ ipc = ["tokio", "tokio/io-util", "tokio-util", "bytes"]
 
 openssl = ["tokio-tungstenite/native-tls", "reqwest/native-tls"]
 rustls = ["tokio-tungstenite/rustls-tls", "reqwest/rustls-tls"]
+dev-rpc = []

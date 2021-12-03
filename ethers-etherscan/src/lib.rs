@@ -78,7 +78,11 @@ impl Client {
             Chain::Mainnet | Chain::Ropsten | Chain::Kovan | Chain::Rinkeby | Chain::Goerli => {
                 std::env::var("ETHERSCAN_API_KEY")?
             }
+
             Chain::XDai | Chain::Sepolia => String::default(),
+            Chain::Moonbeam | Chain::MoonbeamDev | Chain::Moonriver => {
+                std::env::var("MOONSCAN_API_KEY")?
+            }
         };
         Self::new(chain, api_key)
     }

@@ -142,7 +142,7 @@ macro_rules! poll_broadcast_fut {
             Poll::Ready(Err(e)) => {
                 // kludge. Prevents erroring on "nonce too low" which indicates
                 // a previous escalation confirmed during this broadcast attempt
-                if format!("{}", e).contains("nonce too low") {
+                if format!("{:?}", e).contains("nonce too low") {
                     check_all_receipts!($cx, $this);
                 } else {
                     tracing::error!(
