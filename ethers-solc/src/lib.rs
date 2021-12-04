@@ -3,7 +3,7 @@
 pub mod artifacts;
 
 pub use artifacts::{CompilerInput, CompilerOutput, EvmVersion};
-use std::collections::btree_map::Entry;
+use std::collections::{btree_map::Entry, hash_map};
 
 pub mod cache;
 
@@ -195,18 +195,32 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
     #[cfg(all(feature = "svm", feature = "async"))]
     #[tracing::instrument(skip(self, sources))]
     fn svm_compile(&self, sources: Sources) -> Result<ProjectCompileOutput<Artifacts>> {
+        use semver::{Version, VersionReq};
+
         // split them by version
         let mut sources_by_version = BTreeMap::new();
         // we store the solc versions by path, in case there exists a corrupt solc binary
         let mut solc_versions = HashMap::new();
 
-        // TODO: Rayon
+        // tracks unique version requirements to minimize install effort
+        let mut solc_version_req = HashMap::<VersionReq, Version>::new();
+
         // tracing::trace!("parsing sources");
         for (path, source) in sources.into_iter() {
-            // will detect and install the solc version
-            // tracing::trace!("finding version {}", path.display());
-            let version = Solc::detect_version(&source)?;
-            // tracing::trace!("found {}", version);
+            // will detect and install the solc version if it's missing
+            tracing::trace!("detecting solc version for \"{}\"", path.display());
+            let version_req = Solc::version_req(&source)?;
+
+            let version = match solc_version_req.entry(version_req) {
+                hash_map::Entry::Occupied(version) => version.get().clone(),
+                hash_map::Entry::Vacant(entry) => {
+                    let version = Solc::ensure_installed(entry.key())?;
+                    entry.insert(version.clone());
+                    version
+                }
+            };
+
+            tracing::trace!("found installed solc \"{}\"", version);
             // gets the solc binary for that version, it is expected tha this will succeed
             // AND find the solc since it was installed right above
             let mut solc = Solc::find_svm_installed_version(version.to_string())?
@@ -236,7 +250,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
             if let Err(_e) = solc.verify_checksum() {
                 tracing::trace!("corrupted solc version, redownloading...");
                 Solc::blocking_install(version)?;
-                tracing::trace!("done.");
+                tracing::trace!("reinstalled solc: \"{}\"", version);
             }
             // once matched, proceed to compile with it
             tracing::trace!("compiling_with_version");

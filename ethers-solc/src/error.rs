@@ -8,24 +8,24 @@ pub enum SolcError {
     /// Internal solc error
     #[error("Solc Error: {0}")]
     SolcError(String),
-    #[error("missing pragma from solidity file")]
+    #[error("Missing pragma from solidity file")]
     PragmaNotFound,
-    #[error("could not find solc version locally or upstream")]
+    #[error("Could not find solc version locally or upstream")]
     VersionNotFound,
-    #[error("checksum mismatch")]
+    #[error("Checksum mismatch")]
     ChecksumMismatch,
     #[error(transparent)]
     SemverError(#[from] semver::Error),
     /// Deserialization error
     #[error(transparent)]
     SerdeJson(#[from] serde_json::Error),
-    /// Deserialization error
+    /// Filesystem IO error
     #[error(transparent)]
     Io(#[from] std::io::Error),
     #[cfg(feature = "svm")]
     #[error(transparent)]
     SvmError(#[from] svm::SolcVmError),
-    #[error("no contracts found under {0}")]
+    #[error("No contracts found at \"{0}\"")]
     NoContracts(String),
     #[error(transparent)]
     PatternError(#[from] glob::PatternError),
