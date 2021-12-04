@@ -13,11 +13,6 @@ use crate::{abi_ty, utils};
 
 /// Generates the `ethcall` trait support
 pub(crate) fn derive_eth_call_impl(input: DeriveInput) -> TokenStream {
-    // the ethers crates to use
-    let core_crate = ethers_core_crate();
-    let contract_crate = ethers_contract_crate();
-
-    let name = &input.ident;
     let attributes = match parse_call_attributes(&input) {
         Ok(attributes) => attributes,
         Err(errors) => return errors,
@@ -56,27 +51,58 @@ pub(crate) fn derive_eth_call_impl(input: DeriveInput) -> TokenStream {
                     state_mutability: Default::default(),
                 }
             } else {
-                return Error::new(span, format!("Unable to determine ABI: {}", src))
-                    .to_compile_error()
+                // try to determine the abi by using its fields at runtime
+                return match derive_trait_impls_with_abi_type(&input, &function_call_name) {
+                    Ok(derived) => derived,
+                    Err(err) => {
+                        Error::new(span, format!("Unable to determine ABI for `{}` : {}", src, err))
+                            .to_compile_error()
+                    }
+                }
             }
         }
     } else {
-        // // try to determine the abi from the fields
-        match derive_abi_function_from_fields(&input) {
-            Ok(event) => event,
-            Err(err) => return err.to_compile_error(),
+        // try to determine the abi by using its fields at runtime
+        return match derive_trait_impls_with_abi_type(&input, &function_call_name) {
+            Ok(derived) => derived,
+            Err(err) => err.to_compile_error(),
         }
     };
-
     function.name = function_call_name.clone();
-
     let abi = function.abi_signature();
     let selector = utils::selector(function.selector());
+    let decode_impl = derive_decode_impl_from_function(&function);
 
-    let decode_impl = derive_decode_impl(&function);
+    derive_trait_impls(
+        &input,
+        &function_call_name,
+        quote! {#abi.into()},
+        Some(selector),
+        decode_impl,
+    )
+}
+
+/// Generates the EthCall implementation
+pub fn derive_trait_impls(
+    input: &DeriveInput,
+    function_call_name: &str,
+    abi_signature: TokenStream,
+    selector: Option<TokenStream>,
+    decode_impl: TokenStream,
+) -> TokenStream {
+    // the ethers crates to use
+    let core_crate = ethers_core_crate();
+    let contract_crate = ethers_contract_crate();
+    let struct_name = &input.ident;
+
+    let selector = selector.unwrap_or_else(|| {
+        quote! {
+             #core_crate::utils::id(Self::abi_signature())
+        }
+    });
 
     let ethcall_impl = quote! {
-        impl #contract_crate::EthCall for #name {
+        impl #contract_crate::EthCall for #struct_name {
 
             fn function_name() -> ::std::borrow::Cow<'static, str> {
                 #function_call_name.into()
@@ -87,17 +113,17 @@ pub(crate) fn derive_eth_call_impl(input: DeriveInput) -> TokenStream {
             }
 
             fn abi_signature() -> ::std::borrow::Cow<'static, str> {
-                #abi.into()
+                #abi_signature
             }
         }
 
-        impl  #core_crate::abi::AbiDecode for #name {
+        impl  #core_crate::abi::AbiDecode for #struct_name {
             fn decode(bytes: impl AsRef<[u8]>) -> Result<Self, #core_crate::abi::AbiError> {
                 #decode_impl
             }
         }
 
-        impl #core_crate::abi::AbiEncode for #name {
+        impl #core_crate::abi::AbiEncode for #struct_name {
             fn encode(self) -> ::std::vec::Vec<u8> {
                 let tokens =  #core_crate::abi::Tokenize::into_tokens(self);
                 let selector = <Self as #contract_crate::EthCall>::selector();
@@ -111,7 +137,7 @@ pub(crate) fn derive_eth_call_impl(input: DeriveInput) -> TokenStream {
         }
 
     };
-    let tokenize_impl = abi_ty::derive_tokenizeable_impl(&input);
+    let tokenize_impl = abi_ty::derive_tokenizeable_impl(input);
 
     quote! {
         #tokenize_impl
@@ -119,12 +145,23 @@ pub(crate) fn derive_eth_call_impl(input: DeriveInput) -> TokenStream {
     }
 }
 
-fn derive_decode_impl(function: &Function) -> TokenStream {
+/// Generates the decode implementation based on the function's input types
+fn derive_decode_impl_from_function(function: &Function) -> TokenStream {
+    let datatypes = function.inputs.iter().map(|input| utils::param_type_quote(&input.kind));
+    let datatypes_array = quote! {[#( #datatypes ),*]};
+    derive_decode_impl(datatypes_array)
+}
+
+/// Generates the decode implementation based on the function's runtime `AbiType` impl
+fn derive_decode_impl_with_abi_type(input: &DeriveInput) -> Result<TokenStream, Error> {
+    let datatypes_array = utils::derive_abi_parameters_array(input, "EthCall")?;
+    Ok(derive_decode_impl(datatypes_array))
+}
+
+fn derive_decode_impl(datatypes_array: TokenStream) -> TokenStream {
     let core_crate = ethers_core_crate();
     let contract_crate = ethers_contract_crate();
-    let data_types = function.inputs.iter().map(|input| utils::param_type_quote(&input.kind));
-
-    let data_types_init = quote! {let data_types = [#( #data_types ),*];};
+    let data_types_init = quote! {let data_types = #datatypes_array;};
 
     quote! {
         let bytes = bytes.as_ref();
@@ -137,20 +174,18 @@ fn derive_decode_impl(function: &Function) -> TokenStream {
     }
 }
 
-/// Determine the function's ABI by parsing the AST
-fn derive_abi_function_from_fields(input: &DeriveInput) -> Result<Function, Error> {
-    #[allow(deprecated)]
-    let function = Function {
-        name: "".to_string(),
-        inputs: utils::derive_abi_inputs_from_fields(input, "EthCall")?
-            .into_iter()
-            .map(|(name, kind)| Param { name, kind, internal_type: None })
-            .collect(),
-        outputs: vec![],
-        constant: false,
-        state_mutability: Default::default(),
+/// Use the `AbiType` trait to determine the correct `ParamType` and signature at runtime
+fn derive_trait_impls_with_abi_type(
+    input: &DeriveInput,
+    function_call_name: &str,
+) -> Result<TokenStream, Error> {
+    let abi_signature =
+        utils::derive_abi_signature_with_abi_type(input, function_call_name, "EthCall")?;
+    let abi_signature = quote! {
+         ::std::borrow::Cow::Owned(#abi_signature)
     };
-    Ok(function)
+    let decode_impl = derive_decode_impl_with_abi_type(input)?;
+    Ok(derive_trait_impls(input, function_call_name, abi_signature, None, decode_impl))
 }
 
 /// All the attributes the `EthCall` macro supports

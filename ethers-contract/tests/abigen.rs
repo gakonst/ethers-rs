@@ -1,6 +1,6 @@
 #![cfg(feature = "abigen")]
 //! Test cases to validate the `abigen!` macro
-use ethers_contract::{abigen, EthEvent};
+use ethers_contract::{abigen, EthCall, EthEvent};
 use ethers_core::{
     abi::{AbiDecode, AbiEncode, Address, Tokenizable},
     types::{transaction::eip2718::TypedTransaction, Eip1559TransactionRequest, U256},
@@ -374,4 +374,31 @@ fn can_handle_duplicates_with_same_name() {
 #[test]
 fn can_abigen_console_sol() {
     abigen!(Console, "ethers-contract/tests/solidity-contracts/console.json",);
+}
+
+#[test]
+fn can_generate_nested_types() {
+    abigen!(
+        Test,
+        r#"[
+        struct Outer {Inner inner; uint256[] arr;}
+        struct Inner {uint256 inner;}
+        function myfun(Outer calldata a)
+    ]"#,
+    );
+
+    assert_eq!(MyfunCall::abi_signature(), "myfun(((uint256),uint256[]))");
+
+    let (client, _mock) = Provider::mocked();
+    let contract = Test::new(Address::default(), Arc::new(client));
+
+    let inner = Inner { inner: 100u64.into() };
+    let a = Outer { inner, arr: vec![101u64.into()] };
+    let _ = contract.myfun(a.clone());
+
+    let call = MyfunCall { a: a.clone() };
+    let encoded_call = contract.encode("myfun", (a,)).unwrap();
+    assert_eq!(encoded_call, call.clone().encode().into());
+    let decoded_call = MyfunCall::decode(encoded_call.as_ref()).unwrap();
+    assert_eq!(call, decoded_call);
 }

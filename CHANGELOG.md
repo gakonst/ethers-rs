@@ -92,6 +92,8 @@
 
 ### Unreleased
 
+- Add AbiType implementation during EthAbiType expansion
+  [#647](https://github.com/gakonst/ethers-rs/pull/647)
 - fix Etherscan conditional HTTP support
   [#632](https://github.com/gakonst/ethers-rs/pull/632)
 - use `CARGO_MANIFEST_DIR` as root for relative paths in abigen
