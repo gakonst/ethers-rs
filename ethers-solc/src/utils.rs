@@ -2,8 +2,10 @@
 
 use std::path::{Component, Path, PathBuf};
 
+use crate::error::SolcError;
 use once_cell::sync::Lazy;
 use regex::Regex;
+use semver::Version;
 use walkdir::WalkDir;
 
 /// A regex that matches the import path and identifier of a solidity import
@@ -100,6 +102,25 @@ pub fn resolve_library(libs: &[impl AsRef<Path>], source: impl AsRef<Path>) -> O
         Component::RootDir => Some(source.into()),
         _ => None,
     }
+}
+
+/// Reads the list of Solc versions that have been installed in the machine. The version list is
+/// sorted in ascending order.
+/// Checks for installed solc versions under the given path as
+/// `<root>/<major.minor.path>`, (e.g.: `~/.svm/0.8.10`)
+/// and returns them sorted in ascending order
+pub fn installed_versions(root: impl AsRef<Path>) -> Result<Vec<Version>, SolcError> {
+    let mut versions: Vec<_> = walkdir::WalkDir::new(root)
+        .max_depth(1)
+        .into_iter()
+        .filter_map(std::result::Result::ok)
+        .filter(|e| e.file_type().is_dir())
+        .filter_map(|e: walkdir::DirEntry| {
+            e.path().file_name().and_then(|v| Version::parse(v.to_string_lossy().as_ref()).ok())
+        })
+        .collect();
+    versions.sort();
+    Ok(versions)
 }
 
 #[cfg(test)]

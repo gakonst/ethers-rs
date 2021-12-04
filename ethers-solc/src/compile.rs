@@ -1,7 +1,7 @@
 use crate::{
     artifacts::Source,
     error::{Result, SolcError},
-    CompilerInput, CompilerOutput,
+    utils, CompilerInput, CompilerOutput,
 };
 use semver::{Version, VersionReq};
 use serde::{de::DeserializeOwned, Serialize};
@@ -157,17 +157,25 @@ impl Solc {
     pub fn detect_version(source: &Source) -> Result<Version> {
         // detects the required solc version
         let sol_version = Self::version_req(source)?;
+        Self::ensure_installed(&sol_version)
+    }
 
+    /// Given a Solidity version requirement, it detects the latest compiler version which can be
+    /// used to build it, and returns it.
+    ///
+    /// If the required compiler version is not installed, it also proceeds to install it.
+    #[cfg(all(feature = "svm", feature = "async"))]
+    pub fn ensure_installed(sol_version: &VersionReq) -> Result<Version> {
         #[cfg(any(test, feature = "tests"))]
         // take the lock in tests, we use this to enforce that
         // a test does not run while a compiler version is being installed
         let _lock = LOCK.lock();
 
         // load the local / remote versions
-        let versions = svm::installed_versions().unwrap_or_default();
-        let local_versions = Self::find_matching_installation(&versions, &sol_version);
-        let remote_versions = Self::find_matching_installation(&RELEASES.1, &sol_version);
+        let versions = utils::installed_versions(svm::SVM_HOME.as_path()).unwrap_or_default();
 
+        let local_versions = Self::find_matching_installation(&versions, sol_version);
+        let remote_versions = Self::find_matching_installation(&RELEASES.1, sol_version);
         // if there's a better upstream version than the one we have, install it
         Ok(match (local_versions, remote_versions) {
             (Some(local), None) => local,
@@ -191,7 +199,7 @@ impl Solc {
     /// Parses the given source looking for the `pragma` definition and
     /// returns the corresponding SemVer version requirement.
     pub fn version_req(source: &Source) -> Result<VersionReq> {
-        let version = crate::utils::find_version_pragma(&source.content)
+        let version = utils::find_version_pragma(&source.content)
             .ok_or(SolcError::PragmaNotFound)?
             .replace(" ", ",");
 
@@ -219,12 +227,14 @@ impl Solc {
     /// ```
     #[cfg(feature = "svm")]
     pub async fn install(version: &Version) -> std::result::Result<(), svm::SolcVmError> {
+        tracing::trace!("installing solc version \"{}\"", version);
         svm::install(version).await
     }
 
     /// Blocking version of `Self::install`
     #[cfg(all(feature = "svm", feature = "async"))]
     pub fn blocking_install(version: &Version) -> std::result::Result<(), svm::SolcVmError> {
+        tracing::trace!("blocking installing solc version \"{}\"", version);
         tokio::runtime::Runtime::new().unwrap().block_on(svm::install(version))?;
         Ok(())
     }
@@ -489,7 +499,6 @@ mod tests {
         ]
         .iter()
         {
-            // println!("Checking {}", pragma);
             let source = source(pragma);
             let res = Solc::detect_version(&source).unwrap();
             assert_eq!(res, Version::from_str(expected).unwrap());
@@ -504,7 +513,7 @@ mod tests {
         let _lock = LOCK.lock();
         let ver = "0.8.6";
         let version = Version::from_str(ver).unwrap();
-        if svm::installed_versions()
+        if utils::installed_versions(svm::SVM_HOME.as_path())
             .map(|versions| !versions.contains(&version))
             .unwrap_or_default()
         {
