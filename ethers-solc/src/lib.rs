@@ -364,6 +364,17 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
             self.ignored_error_codes.clone(),
         ))
     }
+
+    /// Removes the project's artifacts and cache file
+    pub fn cleanup(&self) -> Result<()> {
+        if self.paths.cache.exists() {
+            std::fs::remove_dir_all(&self.paths.cache)?;
+        }
+        if self.paths.artifacts.exists() {
+            std::fs::remove_dir_all(&self.paths.artifacts)?;
+        }
+        Ok(())
+    }
 }
 
 fn apply_mappings(sources: Sources, mut mappings: HashMap<PathBuf, PathBuf>) -> Sources {
