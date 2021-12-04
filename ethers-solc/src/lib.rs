@@ -3,7 +3,7 @@
 pub mod artifacts;
 
 pub use artifacts::{CompilerInput, CompilerOutput, EvmVersion};
-use std::collections::btree_map::Entry;
+use std::collections::{btree_map::Entry, hash_map};
 
 pub mod cache;
 
@@ -196,7 +196,6 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
     #[tracing::instrument(skip(self, sources))]
     fn svm_compile(&self, sources: Sources) -> Result<ProjectCompileOutput<Artifacts>> {
         use semver::{Version, VersionReq};
-        use std::collections::hash_map;
 
         // split them by version
         let mut sources_by_version = BTreeMap::new();

@@ -367,12 +367,13 @@ impl Context {
             for (idx, diff, overloaded_fun) in &diffs {
                 let alias = match diff.len() {
                     0 => {
-                        // this may happen if there are functions that differ in capitalization,
+                        // this may happen if there are functions with different casing,
                         // like `INDEX`and `index`
                         if overloaded_fun.name != first_fun.name {
                             let overloaded_id = overloaded_fun.name.to_snake_case();
                             let first_fun_id = first_fun.name.to_snake_case();
                             if first_fun_id != overloaded_id {
+                                // no conflict
                                 overloaded_id
                             } else {
                                 needs_alias_for_first_fun_using_idx = true;
