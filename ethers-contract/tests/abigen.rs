@@ -1,3 +1,4 @@
+#![allow(unused)]
 #![cfg(feature = "abigen")]
 //! Test cases to validate the `abigen!` macro
 use ethers_contract::{abigen, EthCall, EthEvent};
@@ -401,4 +402,21 @@ fn can_generate_nested_types() {
     assert_eq!(encoded_call, call.clone().encode().into());
     let decoded_call = MyfunCall::decode(encoded_call.as_ref()).unwrap();
     assert_eq!(call, decoded_call);
+}
+
+#[test]
+fn can_handle_case_sensitive_calls() {
+    abigen!(
+        StakedOHM,
+        r#"[
+        index()
+        INDEX()
+    ]"#,
+    );
+
+    let (client, _mock) = Provider::mocked();
+    let contract = StakedOHM::new(Address::default(), Arc::new(client));
+
+    let _ = contract.index_0();
+    let _ = contract.index_1();
 }

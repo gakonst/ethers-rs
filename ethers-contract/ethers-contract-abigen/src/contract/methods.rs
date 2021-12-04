@@ -1,4 +1,4 @@
-use std::collections::{btree_map::Entry, BTreeMap};
+use std::collections::{btree_map::Entry, BTreeMap, HashMap};
 
 use anyhow::{Context as _, Result};
 use inflector::Inflector;
@@ -277,8 +277,19 @@ impl Context {
     // additional_params[0].name + (_and_(additional_params[1+i].name))*
     fn get_method_aliases(&self) -> Result<BTreeMap<String, Ident>> {
         let mut aliases = self.method_aliases.clone();
+
+        // it might be the case that there are functions with different capitalization so we sort
+        // them all by lc name first
+        let mut all_functions = HashMap::new();
+        for function in self.abi.functions() {
+            all_functions
+                .entry(function.name.to_lowercase())
+                .or_insert_with(Vec::new)
+                .push(function);
+        }
+
         // find all duplicates, where no aliases where provided
-        for functions in self.abi.functions.values() {
+        for functions in all_functions.values() {
             if functions.iter().filter(|f| !aliases.contains_key(&f.abi_signature())).count() <= 1 {
                 // no overloads, hence no conflicts
                 continue
@@ -318,7 +329,7 @@ impl Context {
             let mut diffs = Vec::new();
 
             /// helper function that checks if there are any conflicts due to parameter names
-            fn name_conflicts(idx: usize, diffs: &[(usize, Vec<&Param>, &Function)]) -> bool {
+            fn name_conflicts(idx: usize, diffs: &[(usize, Vec<&Param>, &&Function)]) -> bool {
                 let diff = &diffs.iter().find(|(i, _, _)| *i == idx).expect("diff exists").1;
 
                 for (_, other, _) in diffs.iter().filter(|(i, _, _)| *i != idx) {
@@ -333,7 +344,6 @@ impl Context {
                 }
                 false
             }
-
             // compare each overloaded function with the `first_fun`
             for (idx, overloaded_fun) in functions.into_iter().skip(1) {
                 // attempt to find diff in the input arguments
@@ -357,12 +367,25 @@ impl Context {
             for (idx, diff, overloaded_fun) in &diffs {
                 let alias = match diff.len() {
                     0 => {
-                        // this should not happen since functions with same name and inputs are
-                        // illegal
-                        anyhow::bail!(
-                            "Function with same name and parameter types defined twice: {}",
-                            overloaded_fun.name
-                        );
+                        // this may happen if there are functions that differ in capitalization,
+                        // like `INDEX`and `index`
+                        if overloaded_fun.name != first_fun.name {
+                            let overloaded_id = overloaded_fun.name.to_snake_case();
+                            let first_fun_id = first_fun.name.to_snake_case();
+                            if first_fun_id != overloaded_id {
+                                overloaded_id
+                            } else {
+                                needs_alias_for_first_fun_using_idx = true;
+                                format!("{}{}", overloaded_id, idx)
+                            }
+                        } else {
+                            // this should not happen since functions with same name and inputs are
+                            // illegal
+                            anyhow::bail!(
+                                "Function with same name and parameter types defined twice: {}",
+                                overloaded_fun.name
+                            );
+                        }
                     }
                     1 => {
                         // single additional input params
