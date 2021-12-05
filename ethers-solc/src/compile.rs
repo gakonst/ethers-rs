@@ -1,11 +1,12 @@
 use crate::{
     artifacts::Source,
     error::{Result, SolcError},
-    utils, CompilerInput, CompilerOutput,
+    utils, CompilerInput, CompilerOutput, Sources,
 };
 use semver::{Version, VersionReq};
 use serde::{de::DeserializeOwned, Serialize};
 use std::{
+    collections::HashMap,
     io::BufRead,
     path::{Path, PathBuf},
     process::{Command, Output, Stdio},
@@ -38,6 +39,7 @@ pub const LONDON_SOLC: Version = Version::new(0, 8, 7);
 #[cfg(any(test, all(feature = "svm", feature = "async")))]
 use once_cell::sync::Lazy;
 
+use crate::artifacts::Contracts;
 #[cfg(any(test, feature = "tests"))]
 use std::sync::Mutex;
 
@@ -403,15 +405,14 @@ impl Solc {
     /// let outputs = Solc::compile_many([(solc1, input1), (solc2, input2)], 2).await.flattened().unwrap();
     /// # }
     /// ```
-    pub async fn compile_many<I>(tasks: I, n: usize) -> CompiledMany
+    pub async fn compile_many<I>(jobs: I, n: usize) -> CompiledMany
     where
         I: IntoIterator<Item = (Solc, CompilerInput)>,
     {
         use futures_util::stream::StreamExt;
 
         let outputs = futures_util::stream::iter(
-            tasks
-                .into_iter()
+            jobs.into_iter()
                 .map(|(solc, input)| async { (solc.async_compile(&input).await, solc, input) }),
         )
         .buffer_unordered(n)
@@ -421,19 +422,82 @@ impl Solc {
     }
 }
 
+/// A helper type to handle source name/full disk mappings
+///
+/// The disk path is the actual path where a file can be found on disk.
+/// A source name is the internal identifier and is the remaining part of the disk path starting
+/// with the configured source directory, (`contracts/contract.sol`)
+#[derive(Debug, Default)]
+pub struct PathMap {
+    /// all libraries to the source set while keeping track of their actual disk path
+    /// (`contracts/contract.sol` -> `/Users/.../contracts.sol`)
+    pub source_name_to_path: HashMap<PathBuf, PathBuf>,
+    /// inverse of `source_name_to_path` : (`/Users/.../contracts.sol` -> `contracts/contract.sol`)
+    pub path_to_source_name: HashMap<PathBuf, PathBuf>,
+    /* /// All paths, source names and actual file paths
+     * paths: Vec<PathBuf> */
+}
+
+impl PathMap {
+    fn apply_mappings(sources: Sources, mappings: &HashMap<PathBuf, PathBuf>) -> Sources {
+        sources
+            .into_iter()
+            .map(|(import, source)| {
+                if let Some(path) = mappings.get(&import).cloned() {
+                    (path, source)
+                } else {
+                    (import, source)
+                }
+            })
+            .collect()
+    }
+
+    /// Returns all contract names of the files mapped with the disk path
+    pub fn get_artifacts(&self, contracts: &Contracts) -> Vec<(PathBuf, Vec<String>)> {
+        contracts
+            .iter()
+            .map(|(path, contracts)| {
+                let path = PathBuf::from(path);
+                let file = self.source_name_to_path.get(&path).cloned().unwrap_or(path);
+                (file, contracts.keys().cloned().collect::<Vec<_>>())
+            })
+            .collect()
+    }
+
+    pub fn extend(&mut self, other: PathMap) {
+        self.source_name_to_path.extend(other.source_name_to_path);
+        self.path_to_source_name.extend(other.path_to_source_name);
+    }
+
+    /// Returns a new map with the source names as keys
+    pub fn set_source_names(&self, sources: Sources) -> Sources {
+        Self::apply_mappings(sources, &self.path_to_source_name)
+    }
+
+    /// Returns a new map with the disk paths as keys
+    pub fn set_disk_paths(&self, sources: Sources) -> Sources {
+        Self::apply_mappings(sources, &self.source_name_to_path)
+    }
+}
+
 /// The result of a `solc` process bundled with its `Solc` and `CompilerInput`
-type CompileTask = (Result<CompilerOutput>, Solc, CompilerInput);
+type CompileElement = (Result<CompilerOutput>, Solc, CompilerInput);
 
 /// The output of multiple `solc` processes.
 #[derive(Debug)]
 pub struct CompiledMany {
-    outputs: Vec<CompileTask>,
+    outputs: Vec<CompileElement>,
 }
 
 impl CompiledMany {
     /// Returns an iterator over all output elements
-    pub fn outputs(&self) -> impl Iterator<Item = &CompileTask> {
+    pub fn outputs(&self) -> impl Iterator<Item = &CompileElement> {
         self.outputs.iter()
+    }
+
+    /// Returns an iterator over all output elements
+    pub fn into_outputs(self) -> impl Iterator<Item = CompileElement> {
+        self.outputs.into_iter()
     }
 
     /// Returns all `CompilerOutput` or the first error that occurred

@@ -17,6 +17,8 @@ use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 /// An ordered list of files and their source
 pub type Sources = BTreeMap<PathBuf, Source>;
 
+pub type Contracts = BTreeMap<String, BTreeMap<String, Contract>>;
+
 /// Input type `solc` expects
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct CompilerInput {
@@ -453,7 +455,7 @@ pub struct CompilerOutput {
     #[serde(default)]
     pub sources: BTreeMap<String, SourceFile>,
     #[serde(default)]
-    pub contracts: BTreeMap<String, BTreeMap<String, Contract>>,
+    pub contracts: Contracts,
 }
 
 impl CompilerOutput {
