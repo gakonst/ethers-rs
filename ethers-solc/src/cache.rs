@@ -242,7 +242,6 @@ impl SolFilesCacheBuilder {
                 solc_config: solc_config.clone(),
                 imports,
                 version_pragmas,
-                // TODO detect artifacts
                 artifacts: vec![],
             };
             files.insert(file, entry);
