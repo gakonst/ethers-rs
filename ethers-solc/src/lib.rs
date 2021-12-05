@@ -57,6 +57,8 @@ pub struct Project<Artifacts: ArtifactOutput = MinimalCombinedArtifacts> {
     pub ignored_error_codes: Vec<u64>,
     /// The paths which will be allowed for library inclusion
     pub allowed_lib_paths: AllowedLibPaths,
+    /// Maximum number of `solc` processes to run simultaneously.
+    pub solc_jobs: usize,
 }
 
 impl Project {
@@ -423,6 +425,7 @@ pub struct ProjectBuilder<Artifacts: ArtifactOutput = MinimalCombinedArtifacts> 
     pub ignored_error_codes: Vec<u64>,
     /// All allowed paths
     pub allowed_paths: Vec<PathBuf>,
+    solc_jobs: Option<usize>,
 }
 
 impl<Artifacts: ArtifactOutput> ProjectBuilder<Artifacts> {
@@ -464,6 +467,22 @@ impl<Artifacts: ArtifactOutput> ProjectBuilder<Artifacts> {
         self
     }
 
+    /// Sets the maximum number of parallel `solc` processes to run simultaneously.
+    ///
+    /// # Panics
+    ///
+    /// `jobs` must be at least 1
+    pub fn solc_jobs(mut self, jobs: usize) -> Self {
+        assert!(jobs > 0);
+        self.solc_jobs = Some(jobs);
+        self
+    }
+
+    /// Sets the number of parallel `solc` processes to `1`, no parallelization
+    pub fn single_solc_jobs(self) -> Self {
+        self.solc_jobs(1)
+    }
+
     /// Set arbitrary `ArtifactOutputHandler`
     pub fn artifacts<A: ArtifactOutput>(self) -> ProjectBuilder<A> {
         let ProjectBuilder {
@@ -475,6 +494,7 @@ impl<Artifacts: ArtifactOutput> ProjectBuilder<Artifacts> {
             auto_detect,
             ignored_error_codes,
             allowed_paths,
+            solc_jobs,
             ..
         } = self;
         ProjectBuilder {
@@ -487,6 +507,7 @@ impl<Artifacts: ArtifactOutput> ProjectBuilder<Artifacts> {
             artifacts: PhantomData::default(),
             ignored_error_codes,
             allowed_paths,
+            solc_jobs,
         }
     }
 
@@ -519,6 +540,7 @@ impl<Artifacts: ArtifactOutput> ProjectBuilder<Artifacts> {
             artifacts,
             ignored_error_codes,
             mut allowed_paths,
+            solc_jobs,
         } = self;
 
         let solc = solc.unwrap_or_default();
@@ -541,6 +563,7 @@ impl<Artifacts: ArtifactOutput> ProjectBuilder<Artifacts> {
             artifacts,
             ignored_error_codes,
             allowed_lib_paths: allowed_paths.try_into()?,
+            solc_jobs: solc_jobs.unwrap_or(::num_cpus::get()),
         })
     }
 }
@@ -557,6 +580,7 @@ impl<Artifacts: ArtifactOutput> Default for ProjectBuilder<Artifacts> {
             artifacts: PhantomData::default(),
             ignored_error_codes: Vec::new(),
             allowed_paths: vec![],
+            solc_jobs: None,
         }
     }
 }
