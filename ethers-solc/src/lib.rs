@@ -3,7 +3,7 @@
 pub mod artifacts;
 
 pub use artifacts::{CompilerInput, CompilerOutput, EvmVersion};
-use std::collections::{btree_map::Entry, hash_map};
+use std::collections::btree_map::Entry;
 
 pub mod cache;
 
@@ -96,12 +96,12 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         sources: Sources,
         artifacts: Vec<(PathBuf, Vec<String>)>,
     ) -> Result<()> {
-        tracing::trace!("inserting files to cache");
+        tracing::trace!("inserting {} sources in file cache", sources.len());
         let mut cache = SolFilesCache::builder()
             .root(&self.paths.root)
             .solc_config(self.solc_config.clone())
             .insert_files(sources, Some(self.paths.cache.clone()))?;
-        tracing::trace!("files inserted");
+        tracing::trace!("source files inserted");
 
         // add the artifacts for each file to the cache entry
         for (file, artifacts) in artifacts {
@@ -111,8 +111,11 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         }
 
         if let Some(cache_dir) = self.paths.cache.parent() {
+            tracing::trace!("creating cache file parent directory \"{}\"", cache_dir.display());
             fs::create_dir_all(cache_dir)?
         }
+
+        tracing::trace!("writing cache file to \"{}\"", self.paths.cache.display());
         cache.write(&self.paths.cache)?;
 
         Ok(())
@@ -196,6 +199,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
     #[tracing::instrument(skip(self, sources))]
     fn svm_compile(&self, sources: Sources) -> Result<ProjectCompileOutput<Artifacts>> {
         use semver::{Version, VersionReq};
+        use std::collections::hash_map;
 
         // split them by version
         let mut sources_by_version = BTreeMap::new();
@@ -205,7 +209,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         // tracks unique version requirements to minimize install effort
         let mut solc_version_req = HashMap::<VersionReq, Version>::new();
 
-        // tracing::trace!("parsing sources");
+        tracing::trace!("preprocessing source files and solc installs");
         for (path, source) in sources.into_iter() {
             // will detect and install the solc version if it's missing
             tracing::trace!("detecting solc version for \"{}\"", path.display());
@@ -224,7 +228,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
             // gets the solc binary for that version, it is expected tha this will succeed
             // AND find the solc since it was installed right above
             let mut solc = Solc::find_svm_installed_version(version.to_string())?
-                .expect("solc should have been installed");
+                .unwrap_or_else(|| panic!("solc \"{}\" should have been installed", version));
 
             if !self.allowed_lib_paths.0.is_empty() {
                 solc = solc.arg("--allow-paths").arg(self.allowed_lib_paths.to_string());
@@ -233,7 +237,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
             let entry = sources_by_version.entry(solc).or_insert_with(BTreeMap::new);
             entry.insert(path.clone(), source);
         }
-        // tracing::trace!("done");
+        tracing::trace!("preprocessing finished");
 
         let mut compiled =
             ProjectCompileOutput::with_ignored_errors(self.ignored_error_codes.clone());
@@ -262,6 +266,13 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         Ok(compiled)
     }
 
+    /// Compiles the given source files with the exact `Solc` executable
+    ///
+    /// First all libraries for the sources are resolved by scanning all their imports.
+    /// If caching is enabled for the `Project`, then all unchanged files are filtered from the
+    /// sources and their existing artifacts are read instead. This will also update the cache
+    /// file and cleans up entries for files which may have been removed. Unchanged files that
+    /// for which an artifact exist, are not compiled again.
     pub fn compile_with_version(
         &self,
         solc: &Solc,
@@ -301,7 +312,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
             let cached_artifacts = if self.paths.artifacts.exists() {
                 tracing::trace!("reading artifacts from cache..");
                 let artifacts = cache.read_artifacts::<Artifacts>(&self.paths.artifacts)?;
-                tracing::trace!("done reading artifacts from cache");
+                tracing::trace!("read artifacts from cache");
                 artifacts
             } else {
                 BTreeMap::default()
@@ -309,7 +320,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
 
             // if nothing changed and all artifacts still exist
             if changed_files.is_empty() {
-                tracing::trace!("no change");
+                tracing::trace!("unchanged source files");
                 return Ok(ProjectCompileOutput::from_unchanged(cached_artifacts))
             }
             // There are changed files and maybe some cached files
@@ -324,9 +335,10 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         let input = CompilerInput::with_sources(sources)
             .normalize_evm_version(&solc.version()?)
             .with_remappings(self.paths.remappings.clone());
-        tracing::trace!("calling solc");
+        tracing::trace!("calling solc with {} sources", input.sources.len());
         let output = solc.compile(&input)?;
         tracing::trace!("compiled input, output has error: {}", output.has_error());
+
         if output.has_error() {
             return Ok(ProjectCompileOutput::from_compiler_output(
                 output,
@@ -367,11 +379,14 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
 
     /// Removes the project's artifacts and cache file
     pub fn cleanup(&self) -> Result<()> {
+        tracing::trace!("clean up project");
         if self.paths.cache.exists() {
-            std::fs::remove_dir_all(&self.paths.cache)?;
+            std::fs::remove_file(&self.paths.cache)?;
+            tracing::trace!("removed cache file \"{}\"", self.paths.cache.display());
         }
         if self.paths.artifacts.exists() {
             std::fs::remove_dir_all(&self.paths.artifacts)?;
+            tracing::trace!("removed artifacts dir \"{}\"", self.paths.artifacts.display());
         }
         Ok(())
     }
