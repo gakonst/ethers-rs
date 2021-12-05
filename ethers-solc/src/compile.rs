@@ -40,6 +40,7 @@ use once_cell::sync::Lazy;
 
 #[cfg(any(test, feature = "tests"))]
 use std::sync::Mutex;
+
 #[cfg(any(test, feature = "tests"))]
 static LOCK: Lazy<Mutex<()>> = Lazy::new(|| Mutex::new(()));
 
@@ -379,6 +380,20 @@ impl Solc {
                 .wait_with_output()
                 .await?,
         )
+    }
+
+    async fn compile_many<'a, I>(tasks: I, amt: usize) -> Result<Vec<CompilerOutput>>
+    where
+        I: IntoIterator<Item = (&'a Solc, &'a CompilerInput)>,
+    {
+        use futures_util::stream::StreamExt;
+
+        futures_util::stream::iter(tasks.into_iter().map(|(solc, input)| solc.async_compile(input)))
+            .buffer_unordered(amt)
+            .collect::<Vec<_>>()
+            .await
+            .into_iter()
+            .collect()
     }
 }
 
