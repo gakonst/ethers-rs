@@ -382,18 +382,72 @@ impl Solc {
         )
     }
 
-    async fn compile_many<'a, I>(tasks: I, amt: usize) -> Result<Vec<CompilerOutput>>
+    /// Compiles all `CompilerInput`s with their associated `Solc`.
+    ///
+    /// This will buffer up to `n` `solc` processes and then return the `CompilerOutput`s in the
+    /// order in which they complete. No more than `n` futures will be buffered at any point in
+    /// time, and less than `n` may also be buffered depending on the state of each future.
+    ///
+    /// # Example
+    ///
+    /// Compile 2 `CompilerInput`s at once
+    ///
+    /// ```no_run
+    /// # async fn example() {
+    /// use ethers_solc::{CompilerInput, Solc};
+    /// let solc1 = Solc::default();
+    /// let solc2 = Solc::default();
+    /// let input1 = CompilerInput::new("contracts").unwrap();
+    /// let input2 = CompilerInput::new("src").unwrap();
+    ///
+    /// let outputs = Solc::compile_many([(solc1, input1), (solc2, input2)], 2).await.flattened().unwrap();
+    /// # }
+    /// ```
+    pub async fn compile_many<I>(tasks: I, n: usize) -> CompiledMany
     where
-        I: IntoIterator<Item = (&'a Solc, &'a CompilerInput)>,
+        I: IntoIterator<Item = (Solc, CompilerInput)>,
     {
         use futures_util::stream::StreamExt;
 
-        futures_util::stream::iter(tasks.into_iter().map(|(solc, input)| solc.async_compile(input)))
-            .buffer_unordered(amt)
-            .collect::<Vec<_>>()
-            .await
-            .into_iter()
-            .collect()
+        let outputs = futures_util::stream::iter(
+            tasks
+                .into_iter()
+                .map(|(solc, input)| async { (solc.async_compile(&input).await, solc, input) }),
+        )
+        .buffer_unordered(n)
+        .collect::<Vec<_>>()
+        .await;
+        CompiledMany { outputs }
+    }
+}
+
+/// The result of a `solc` process bundled with its `Solc` and `CompilerInput`
+type CompileTask = (Result<CompilerOutput>, Solc, CompilerInput);
+
+/// The output of multiple `solc` processes.
+#[derive(Debug)]
+pub struct CompiledMany {
+    outputs: Vec<CompileTask>,
+}
+
+impl CompiledMany {
+    /// Returns an iterator over all output elements
+    pub fn outputs(&self) -> impl Iterator<Item = &CompileTask> {
+        self.outputs.iter()
+    }
+
+    /// Returns all `CompilerOutput` or the first error that occurred
+    pub fn flattened(self) -> Result<Vec<CompilerOutput>> {
+        self.into_iter().collect()
+    }
+}
+
+impl IntoIterator for CompiledMany {
+    type Item = Result<CompilerOutput>;
+    type IntoIter = std::vec::IntoIter<Result<CompilerOutput>>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.outputs.into_iter().map(|(res, _, _)| res).collect::<Vec<_>>().into_iter()
     }
 }
 
