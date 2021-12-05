@@ -1,4 +1,3 @@
-#![allow(unused)]
 #![cfg(feature = "abigen")]
 //! Test cases to validate the `abigen!` macro
 use ethers_contract::{abigen, EthCall, EthEvent};
@@ -417,6 +416,6 @@ fn can_handle_case_sensitive_calls() {
     let (client, _mock) = Provider::mocked();
     let contract = StakedOHM::new(Address::default(), Arc::new(client));
 
-    let _ = contract.index_0();
-    let _ = contract.index_1();
+    let _ = contract.index();
+    let _ = contract.INDEX();
 }

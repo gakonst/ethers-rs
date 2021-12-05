@@ -47,7 +47,7 @@ impl Context {
     fn expand_call_struct(
         &self,
         function: &Function,
-        alias: Option<&Ident>,
+        alias: Option<&MethodAlias>,
     ) -> Result<TokenStream> {
         let call_name = expand_call_struct_name(function, alias);
         let fields = self.expand_input_pairs(function)?;
@@ -82,7 +82,7 @@ impl Context {
     }
 
     /// Expands all structs
-    fn expand_call_structs(&self, aliases: BTreeMap<String, Ident>) -> Result<TokenStream> {
+    fn expand_call_structs(&self, aliases: BTreeMap<String, MethodAlias>) -> Result<TokenStream> {
         let mut struct_defs = Vec::new();
         let mut struct_names = Vec::new();
         let mut variant_names = Vec::new();
@@ -236,7 +236,11 @@ impl Context {
     }
 
     /// Expands a single function with the given alias
-    fn expand_function(&self, function: &Function, alias: Option<Ident>) -> Result<TokenStream> {
+    fn expand_function(
+        &self,
+        function: &Function,
+        alias: Option<MethodAlias>,
+    ) -> Result<TokenStream> {
         let name = expand_function_name(function, alias.as_ref());
         let selector = expand_selector(function.selector());
 
@@ -275,7 +279,7 @@ impl Context {
     // The first function or the function with the least amount of arguments should
     // be named as in the ABI, the following functions suffixed with _with_ +
     // additional_params[0].name + (_and_(additional_params[1+i].name))*
-    fn get_method_aliases(&self) -> Result<BTreeMap<String, Ident>> {
+    fn get_method_aliases(&self) -> Result<BTreeMap<String, MethodAlias>> {
         let mut aliases = self.method_aliases.clone();
 
         // it might be the case that there are functions with different capitalization so we sort
@@ -376,8 +380,18 @@ impl Context {
                                 // no conflict
                                 overloaded_id
                             } else {
-                                needs_alias_for_first_fun_using_idx = true;
-                                format!("{}{}", overloaded_id, idx)
+                                let overloaded_alias = MethodAlias {
+                                    function_name: util::safe_ident(&overloaded_fun.name),
+                                    struct_name: util::safe_ident(&overloaded_fun.name),
+                                };
+                                aliases.insert(overloaded_fun.abi_signature(), overloaded_alias);
+
+                                let first_fun_alias = MethodAlias {
+                                    function_name: util::safe_ident(&first_fun.name),
+                                    struct_name: util::safe_ident(&first_fun.name),
+                                };
+                                aliases.insert(first_fun.abi_signature(), first_fun_alias);
+                                continue
                             }
                         } else {
                             // this should not happen since functions with same name and inputs are
@@ -428,13 +442,17 @@ impl Context {
                         }
                     }
                 };
-                aliases.insert(overloaded_fun.abi_signature(), util::safe_ident(&alias));
+                let alias = MethodAlias::new(&alias);
+                aliases.insert(overloaded_fun.abi_signature(), alias);
             }
 
             if needs_alias_for_first_fun_using_idx {
                 // insert an alias for the root duplicated call
                 let prev_alias = format!("{}{}", first_fun.name.to_snake_case(), first_fun_idx);
-                aliases.insert(first_fun.abi_signature(), util::safe_ident(&prev_alias));
+
+                let alias = MethodAlias::new(&prev_alias);
+
+                aliases.insert(first_fun.abi_signature(), alias);
             }
         }
 
@@ -450,7 +468,7 @@ impl Context {
                     for function in functions {
                         if let Entry::Vacant(entry) = aliases.entry(function.abi_signature()) {
                             // use the full name as alias
-                            entry.insert(util::ident(name.as_str()));
+                            entry.insert(MethodAlias::new(name.as_str()));
                         }
                     }
                 }
@@ -479,27 +497,34 @@ fn expand_selector(selector: Selector) -> TokenStream {
     quote! { [#( #bytes ),*] }
 }
 
-fn expand_function_name(function: &Function, alias: Option<&Ident>) -> Ident {
+/// Represents the aliases to use when generating method related elements
+#[derive(Debug, Clone)]
+pub struct MethodAlias {
+    pub function_name: Ident,
+    pub struct_name: Ident,
+}
+
+impl MethodAlias {
+    pub fn new(alias: &str) -> Self {
+        MethodAlias {
+            function_name: util::safe_snake_case_ident(alias),
+            struct_name: util::safe_pascal_case_ident(alias),
+        }
+    }
+}
+
+fn expand_function_name(function: &Function, alias: Option<&MethodAlias>) -> Ident {
     if let Some(alias) = alias {
-        // snake_case strips leading and trailing underscores so we simply add them back if the
-        // alias starts/ends with underscores
-        let alias = alias.to_string();
-        let ident = alias.to_snake_case();
-        util::ident(&util::preserve_underscore_delim(&ident, &alias))
+        alias.function_name.clone()
     } else {
         util::safe_ident(&function.name.to_snake_case())
     }
 }
 
 /// Expands to the name of the call struct
-fn expand_call_struct_name(function: &Function, alias: Option<&Ident>) -> Ident {
+fn expand_call_struct_name(function: &Function, alias: Option<&MethodAlias>) -> Ident {
     let name = if let Some(alias) = alias {
-        // pascal_case strips leading and trailing underscores so we simply add them back if the
-        // alias starts/ends with underscores
-        let alias = alias.to_string();
-        let ident = alias.to_pascal_case();
-        let alias = util::preserve_underscore_delim(&ident, &alias);
-        format!("{}Call", alias)
+        format!("{}Call", alias.struct_name)
     } else {
         format!("{}Call", function.name.to_pascal_case())
     };
@@ -507,15 +532,12 @@ fn expand_call_struct_name(function: &Function, alias: Option<&Ident>) -> Ident 
 }
 
 /// Expands to the name of the call struct
-fn expand_call_struct_variant_name(function: &Function, alias: Option<&Ident>) -> Ident {
-    let name = if let Some(alias) = alias {
-        let alias = alias.to_string();
-        let ident = alias.to_pascal_case();
-        util::preserve_underscore_delim(&ident, &alias)
+fn expand_call_struct_variant_name(function: &Function, alias: Option<&MethodAlias>) -> Ident {
+    if let Some(alias) = alias {
+        alias.struct_name.clone()
     } else {
-        function.name.to_pascal_case()
-    };
-    util::ident(&name)
+        util::safe_ident(&function.name.to_pascal_case())
+    }
 }
 
 /// Expands to the tuple struct definition
