@@ -126,6 +126,15 @@ macro_rules! completed {
     };
 }
 
+/// Tests Provider error for nonce too low issue through debug contents
+fn is_nonce_too_low(e: &ProviderError) -> bool {
+    let debug_str = format!("{:?}", e);
+
+    debug_str.contains("nonce too low") // Geth, Arbitrum, Optimism
+            || debug_str.contains("nonce is too low") // Parity
+            || debug_str.contains("invalid transaction nonce") // Arbitrum
+}
+
 macro_rules! poll_broadcast_fut {
     ($cx:ident, $this:ident, $fut:ident) => {
         match $fut.as_mut().poll($cx) {
@@ -142,7 +151,7 @@ macro_rules! poll_broadcast_fut {
             Poll::Ready(Err(e)) => {
                 // kludge. Prevents erroring on "nonce too low" which indicates
                 // a previous escalation confirmed during this broadcast attempt
-                if format!("{:?}", e).contains("nonce too low") {
+                if is_nonce_too_low(&e) {
                     check_all_receipts!($cx, $this);
                 } else {
                     tracing::error!(
