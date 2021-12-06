@@ -40,6 +40,7 @@ use once_cell::sync::Lazy;
 
 #[cfg(any(test, feature = "tests"))]
 use std::sync::Mutex;
+
 #[cfg(any(test, feature = "tests"))]
 static LOCK: Lazy<Mutex<()>> = Lazy::new(|| Mutex::new(()));
 
@@ -363,7 +364,7 @@ impl Solc {
             .stdout(Stdio::piped())
             .spawn()?;
         let stdin = child.stdin.as_mut().unwrap();
-        stdin.write(&content).await?;
+        stdin.write_all(&content).await?;
         stdin.flush().await?;
         compile_output(child.wait_with_output().await?)
     }
@@ -379,6 +380,78 @@ impl Solc {
                 .wait_with_output()
                 .await?,
         )
+    }
+
+    /// Compiles all `CompilerInput`s with their associated `Solc`.
+    ///
+    /// This will buffer up to `n` `solc` processes and then return the `CompilerOutput`s in the
+    /// order in which they complete. No more than `n` futures will be buffered at any point in
+    /// time, and less than `n` may also be buffered depending on the state of each future.
+    ///
+    /// # Example
+    ///
+    /// Compile 2 `CompilerInput`s at once
+    ///
+    /// ```no_run
+    /// # async fn example() {
+    /// use ethers_solc::{CompilerInput, Solc};
+    /// let solc1 = Solc::default();
+    /// let solc2 = Solc::default();
+    /// let input1 = CompilerInput::new("contracts").unwrap();
+    /// let input2 = CompilerInput::new("src").unwrap();
+    ///
+    /// let outputs = Solc::compile_many([(solc1, input1), (solc2, input2)], 2).await.flattened().unwrap();
+    /// # }
+    /// ```
+    pub async fn compile_many<I>(jobs: I, n: usize) -> CompiledMany
+    where
+        I: IntoIterator<Item = (Solc, CompilerInput)>,
+    {
+        use futures_util::stream::StreamExt;
+
+        let outputs = futures_util::stream::iter(
+            jobs.into_iter()
+                .map(|(solc, input)| async { (solc.async_compile(&input).await, solc, input) }),
+        )
+        .buffer_unordered(n)
+        .collect::<Vec<_>>()
+        .await;
+        CompiledMany { outputs }
+    }
+}
+
+/// The result of a `solc` process bundled with its `Solc` and `CompilerInput`
+type CompileElement = (Result<CompilerOutput>, Solc, CompilerInput);
+
+/// The output of multiple `solc` processes.
+#[derive(Debug)]
+pub struct CompiledMany {
+    outputs: Vec<CompileElement>,
+}
+
+impl CompiledMany {
+    /// Returns an iterator over all output elements
+    pub fn outputs(&self) -> impl Iterator<Item = &CompileElement> {
+        self.outputs.iter()
+    }
+
+    /// Returns an iterator over all output elements
+    pub fn into_outputs(self) -> impl Iterator<Item = CompileElement> {
+        self.outputs.into_iter()
+    }
+
+    /// Returns all `CompilerOutput` or the first error that occurred
+    pub fn flattened(self) -> Result<Vec<CompilerOutput>> {
+        self.into_iter().collect()
+    }
+}
+
+impl IntoIterator for CompiledMany {
+    type Item = Result<CompilerOutput>;
+    type IntoIter = std::vec::IntoIter<Result<CompilerOutput>>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.outputs.into_iter().map(|(res, _, _)| res).collect::<Vec<_>>().into_iter()
     }
 }
 
@@ -458,6 +531,17 @@ mod tests {
         let out = solc().async_compile(&input).await.unwrap();
         let other = solc().async_compile(&serde_json::json!(input)).await.unwrap();
         assert_eq!(out, other);
+    }
+    #[cfg(feature = "async")]
+    #[tokio::test]
+    async fn async_solc_compile_works2() {
+        let input = include_str!("../test-data/in/compiler-in-2.json");
+        let input: CompilerInput = serde_json::from_str(input).unwrap();
+        let out = solc().async_compile(&input).await.unwrap();
+        let other = solc().async_compile(&serde_json::json!(input)).await.unwrap();
+        assert_eq!(out, other);
+        let sync_out = solc().compile(&input).unwrap();
+        assert_eq!(out, sync_out);
     }
 
     #[test]
