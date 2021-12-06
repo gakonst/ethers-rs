@@ -25,7 +25,7 @@ use crate::{artifacts::Source, cache::SolFilesCache};
 pub mod error;
 pub mod utils;
 
-use crate::artifacts::Sources;
+use crate::{artifacts::Sources, cache::PathMap};
 use error::Result;
 use std::{
     borrow::Cow, collections::BTreeMap, convert::TryInto, fmt, fs, io, marker::PhantomData,
