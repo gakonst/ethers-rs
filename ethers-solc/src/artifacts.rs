@@ -635,6 +635,14 @@ impl<'a> CompactContractRef<'a> {
     pub fn into_parts_or_default(self) -> (Abi, Bytes, Bytes) {
         CompactContract::from(self).into_parts_or_default()
     }
+
+    pub fn bytecode(&self) -> Option<&Bytes> {
+        self.bin.as_ref().and_then(|bin| bin.as_bytes())
+    }
+
+    pub fn runtime_bytecode(&self) -> Option<&Bytes> {
+        self.bin_runtime.as_ref().and_then(|bin| bin.as_bytes())
+    }
 }
 
 impl<'a> From<&'a Contract> for CompactContractRef<'a> {

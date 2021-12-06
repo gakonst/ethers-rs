@@ -223,7 +223,8 @@ async fn deploy_and_call_contract() {
         let path = format!("./tests/solidity-contracts/{}", path);
         let compiled = Solc::default().compile_source(&path).unwrap();
         let contract = compiled.get(&path, name).expect("could not find contract");
-        (contract.abi.unwrap().clone(), contract.bin.unwrap().clone())
+        let (abi, bin, _) = contract.into_parts_or_default();
+        (abi, bin)
     }
 
     let (abi, bytecode) = compile_contract("SimpleStorage.sol", "SimpleStorage");

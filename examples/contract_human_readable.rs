@@ -54,7 +54,7 @@ async fn main() -> Result<()> {
     // 5. create a factory which will be used to deploy instances of the contract
     let factory = ContractFactory::new(
         contract.abi.unwrap().clone(),
-        contract.bin.unwrap().clone(),
+        contract.bytecode().unwrap().clone(),
         client.clone(),
     );
 

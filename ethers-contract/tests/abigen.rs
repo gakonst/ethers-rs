@@ -293,7 +293,7 @@ async fn can_handle_underscore_functions() {
     let compiled = compiled.get(path, contract).unwrap();
     let factory = ethers_contract::ContractFactory::new(
         compiled.abi.unwrap().clone(),
-        compiled.bin.unwrap().clone(),
+        compiled.bytecode().unwrap().clone(),
         client.clone(),
     );
     let addr = factory.deploy("hi".to_string()).unwrap().legacy().send().await.unwrap().address();
