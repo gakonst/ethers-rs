@@ -32,7 +32,7 @@ use std::{
     path::PathBuf,
 };
 
-/// Handles contract compiling
+/// Represents a project workspace and handles `solc` compiling of all contracts in that workspace.
 #[derive(Debug)]
 pub struct Project<Artifacts: ArtifactOutput = MinimalCombinedArtifacts> {
     /// The layout of the
@@ -125,10 +125,11 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         Ok(())
     }
 
-    /// Returns all sources found under the project's sources path
+    /// Returns all sources found under the project's configured sources path
     #[tracing::instrument(skip_all, fields(name = "sources"))]
     pub fn sources(&self) -> io::Result<Sources> {
-        Source::read_all_from(self.paths.sources.as_path())
+        tracing::trace!("reading all sources from \"{}\"", self.paths.sources.display());
+        Source::read_all_from(&self.paths.sources)
     }
 
     /// This emits the cargo [`rerun-if-changed`](https://doc.rust-lang.org/cargo/reference/build-scripts.html#cargorerun-if-changedpath) instruction.
@@ -142,7 +143,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
     ///
     /// ```no_run
     /// use ethers_solc::{Project, ProjectPathsConfig};
-    /// // configure the project with all its paths, solc, cache etc.
+    /// // configure the project with all its paths, solc, cache etc. where the root dir is the current rust project.
     /// let project = Project::builder()
     ///     .paths(ProjectPathsConfig::hardhat(env!("CARGO_MANIFEST_DIR")).unwrap())
     ///     .build()
@@ -177,18 +178,15 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
     ///
     /// NOTE: this does not check if the contracts were successfully compiled, see
     /// `CompilerOutput::has_error` instead.
-
     /// NB: If the `svm` feature is enabled, this function will automatically detect
     /// solc versions across files.
     #[tracing::instrument(skip_all, name = "compile")]
     pub fn compile(&self) -> Result<ProjectCompileOutput<Artifacts>> {
-        tracing::trace!("sources");
         let sources = self.sources()?;
-        tracing::trace!("done");
 
         #[cfg(all(feature = "svm", feature = "async"))]
         if self.auto_detect {
-            tracing::trace!("auto-compile");
+            tracing::trace!("using solc auto detection");
             return self.svm_compile(sources)
         }
 
@@ -227,8 +225,8 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
                     version
                 }
             };
-
             tracing::trace!("found installed solc \"{}\"", version);
+
             // gets the solc binary for that version, it is expected tha this will succeed
             // AND find the solc since it was installed right above
             let mut solc = Solc::find_svm_installed_version(version.to_string())?
