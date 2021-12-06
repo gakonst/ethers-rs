@@ -23,10 +23,10 @@ fn compile_many_benchmark(c: &mut Criterion) {
     #[cfg(feature = "full")]
     {
         let tasks = inputs.into_iter().map(|input| (Solc::default(), input)).collect::<Vec<_>>();
-        let num_cpus = num_cpus::get();
+        let num = tasks.len();
         group.bench_function("concurrently", |b| {
             b.to_async(tokio::runtime::Runtime::new().unwrap()).iter(|| async {
-                let _ = Solc::compile_many(tasks.clone(), num_cpus).await.flattened().unwrap();
+                let _ = Solc::compile_many(tasks.clone(), num).await.flattened().unwrap();
             });
         });
     }
