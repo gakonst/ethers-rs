@@ -9,7 +9,7 @@ use quote::quote;
 
 use syn::{Ident as SynIdent, Path};
 
-/// Expands a identifier string into an token.
+/// Expands a identifier string into a token.
 pub fn ident(name: &str) -> Ident {
     Ident::new(name, Span::call_site())
 }
@@ -20,6 +20,18 @@ pub fn ident(name: &str) -> Ident {
 /// Parsing keywords like `self` can fail, in this case we add an underscore.
 pub fn safe_ident(name: &str) -> Ident {
     syn::parse_str::<SynIdent>(name).unwrap_or_else(|_| ident(&format!("{}_", name)))
+}
+
+/// Expands an identifier as snakecase and preserve any leading or trailing underscores
+pub fn safe_snake_case_ident(name: &str) -> Ident {
+    let i = name.to_snake_case();
+    ident(&preserve_underscore_delim(&i, name))
+}
+
+/// Expands an identifier as pascal case and preserve any leading or trailing underscores
+pub fn safe_pascal_case_ident(name: &str) -> Ident {
+    let i = name.to_pascal_case();
+    ident(&preserve_underscore_delim(&i, name))
 }
 
 /// Reapplies leading and trailing underscore chars to the ident

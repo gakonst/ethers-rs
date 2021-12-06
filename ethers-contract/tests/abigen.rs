@@ -402,3 +402,20 @@ fn can_generate_nested_types() {
     let decoded_call = MyfunCall::decode(encoded_call.as_ref()).unwrap();
     assert_eq!(call, decoded_call);
 }
+
+#[test]
+fn can_handle_case_sensitive_calls() {
+    abigen!(
+        StakedOHM,
+        r#"[
+        index()
+        INDEX()
+    ]"#,
+    );
+
+    let (client, _mock) = Provider::mocked();
+    let contract = StakedOHM::new(Address::default(), Arc::new(client));
+
+    let _ = contract.index();
+    let _ = contract.INDEX();
+}

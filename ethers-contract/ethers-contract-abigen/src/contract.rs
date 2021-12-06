@@ -13,6 +13,7 @@ use ethers_core::{
     macros::{ethers_contract_crate, ethers_core_crate, ethers_providers_crate},
 };
 
+use crate::contract::methods::MethodAlias;
 use proc_macro2::{Ident, Literal, TokenStream};
 use quote::quote;
 use serde::Deserialize;
@@ -78,7 +79,7 @@ pub struct Context {
     contract_name: Ident,
 
     /// Manually specified method aliases.
-    method_aliases: BTreeMap<String, Ident>,
+    method_aliases: BTreeMap<String, MethodAlias>,
 
     /// Derives added to event structs and enums.
     event_derives: Vec<Path>,
@@ -204,7 +205,11 @@ impl Context {
         //   method will be re-defined.
         let mut method_aliases = BTreeMap::new();
         for (signature, alias) in args.method_aliases.into_iter() {
-            let alias = syn::parse_str(&alias)?;
+            let alias = MethodAlias {
+                function_name: util::safe_ident(&alias),
+                struct_name: util::safe_pascal_case_ident(&alias),
+            };
+
             if method_aliases.insert(signature.clone(), alias).is_some() {
                 return Err(anyhow!("duplicate method signature '{}' in method aliases", signature,))
             }
