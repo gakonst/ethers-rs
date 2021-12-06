@@ -364,7 +364,7 @@ impl Solc {
             .stdout(Stdio::piped())
             .spawn()?;
         let stdin = child.stdin.as_mut().unwrap();
-        stdin.write(&content).await?;
+        stdin.write_all(&content).await?;
         stdin.flush().await?;
         compile_output(child.wait_with_output().await?)
     }
@@ -531,6 +531,17 @@ mod tests {
         let out = solc().async_compile(&input).await.unwrap();
         let other = solc().async_compile(&serde_json::json!(input)).await.unwrap();
         assert_eq!(out, other);
+    }
+    #[cfg(feature = "async")]
+    #[tokio::test]
+    async fn async_solc_compile_works2() {
+        let input = include_str!("../test-data/in/compiler-in-2.json");
+        let input: CompilerInput = serde_json::from_str(input).unwrap();
+        let out = solc().async_compile(&input).await.unwrap();
+        let other = solc().async_compile(&serde_json::json!(input)).await.unwrap();
+        assert_eq!(out, other);
+        let sync_out = solc().compile(&input).unwrap();
+        assert_eq!(out, sync_out);
     }
 
     #[test]

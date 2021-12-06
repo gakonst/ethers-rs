@@ -15,7 +15,7 @@ fn compile_many_benchmark(c: &mut Criterion) {
     group.bench_function("sequential", |b| {
         b.iter(|| {
             for i in inputs.iter() {
-                solc.compile(i).unwrap();
+                let _ = solc.compile(i).unwrap();
             }
         });
     });
