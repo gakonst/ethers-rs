@@ -840,19 +840,13 @@ impl BytecodeObject {
     /// Tries to resolve the unlinked string object a valid bytecode object in place
     ///
     /// Returns the string if it is a valid
-    pub fn resolve(&mut self) -> Option<LinkedByteCode> {
-        let mut resolved = None;
-
+    pub fn resolve(&mut self) -> Option<&Bytes> {
         if let BytecodeObject::Unlinked(unlinked) = self {
             if let Ok(linked) = hex::decode(unlinked) {
-                resolved = Some(BytecodeObject::Bytecode(linked.into()));
+                *self = BytecodeObject::Bytecode(linked.into());
             }
         }
-        if let Some(resolved) = resolved {
-            std::mem::replace(self, resolved).into_unlinked().map(LinkedByteCode)
-        } else {
-            None
-        }
+        self.as_bytes()
     }
 
     /// Link using the fully qualified name of a library
@@ -913,16 +907,6 @@ impl AsRef<[u8]> for BytecodeObject {
             BytecodeObject::Bytecode(code) => code.as_ref(),
             BytecodeObject::Unlinked(code) => code.as_bytes(),
         }
-    }
-}
-
-/// A fully linked byte code that represents a valid hex string
-#[derive(Debug, Clone)]
-pub struct LinkedByteCode(String);
-
-impl From<LinkedByteCode> for Bytes {
-    fn from(inner: LinkedByteCode) -> Self {
-        hex::decode(&inner.0).expect("Is valid hex").into()
     }
 }
 
