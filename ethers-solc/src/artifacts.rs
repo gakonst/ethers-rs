@@ -856,7 +856,7 @@ impl BytecodeObject {
     /// This will replace all occurrences of the library placeholder with the given address.
     ///
     /// See also: https://docs.soliditylang.org/en/develop/using-the-compiler.html#library-linking
-    pub fn link_fully_qualified(&mut self, name: impl AsRef<str>, addr: Address) {
+    pub fn link_fully_qualified(&mut self, name: impl AsRef<str>, addr: Address) -> &mut Self {
         if let BytecodeObject::Unlinked(ref mut unlinked) = self {
             let name = name.as_ref();
             let place_holder = utils::library_hash_placeholder(name);
@@ -871,12 +871,31 @@ impl BytecodeObject {
                 .replace(&format!("__{}__", fully_qualified_placeholder), &hex_addr)
                 .replace(&format!("__{}__", place_holder), &hex_addr)
         }
+        self
     }
 
     /// Link using the `file` and `library` names as fully qualified name `<file>:<library>`
     /// See `BytecodeObject::link_fully_qualified`
-    pub fn link(&mut self, file: impl AsRef<str>, library: impl AsRef<str>, addr: Address) {
+    pub fn link(
+        &mut self,
+        file: impl AsRef<str>,
+        library: impl AsRef<str>,
+        addr: Address,
+    ) -> &mut Self {
         self.link_fully_qualified(format!("{}:{}", file.as_ref(), library.as_ref(),), addr)
+    }
+
+    /// Links the bytecode object with all provided `(file, lib, addr)`
+    pub fn link_all<I, S, T>(&mut self, libs: I) -> &mut Self
+    where
+        I: IntoIterator<Item = (S, T, Address)>,
+        S: AsRef<str>,
+        T: AsRef<str>,
+    {
+        for (file, lib, addr) in libs.into_iter() {
+            self.link(file, lib, addr);
+        }
+        self
     }
 
     /// Whether this object is still unlinked
@@ -1225,6 +1244,54 @@ where
 mod tests {
     use super::*;
     use std::{fs, path::PathBuf};
+
+    #[test]
+    fn can_link_bytecode() {
+        // test cases taken from https://github.com/ethereum/solc-js/blob/master/test/linker.js
+
+        #[derive(Serialize, Deserialize)]
+        struct Mockject {
+            object: BytecodeObject,
+        }
+        fn parse_bytecode(bytecode: &str) -> BytecodeObject {
+            let object: Mockject =
+                serde_json::from_value(serde_json::json!({ "object": bytecode })).unwrap();
+            object.object
+        }
+
+        let bytecode =  "6060604052341561000f57600080fd5b60f48061001d6000396000f300606060405260043610603e5763ffffffff7c010000000000000000000000000000000000000000000000000000000060003504166326121ff081146043575b600080fd5b3415604d57600080fd5b60536055565b005b73__lib2.sol:L____________________________6326121ff06040518163ffffffff167c010000000000000000000000000000000000000000000000000000000002815260040160006040518083038186803b151560b357600080fd5b6102c65a03f4151560c357600080fd5b5050505600a165627a7a723058207979b30bd4a07c77b02774a511f2a1dd04d7e5d65b5c2735b5fc96ad61d43ae40029";
+
+        let mut object = parse_bytecode(bytecode);
+        assert!(object.is_unlinked());
+        assert!(object.contains_placeholder("lib2.sol", "L"));
+        assert!(object.contains_fully_qualified_placeholder("lib2.sol:L"));
+        assert!(object.link("lib2.sol", "L", Address::random()).resolve().is_some());
+        assert!(!object.is_unlinked());
+
+        let mut code = Bytecode {
+            function_debug_data: Default::default(),
+            object: parse_bytecode(bytecode),
+            opcodes: None,
+            source_map: None,
+            generated_sources: vec![],
+            link_references: BTreeMap::from([(
+                "lib2.sol".to_string(),
+                BTreeMap::from([("L".to_string(), vec![])]),
+            )]),
+        };
+
+        assert!(!code.link("lib2.sol", "Y", Address::random()));
+        assert!(code.link("lib2.sol", "L", Address::random()));
+        assert!(code.link("lib2.sol", "L", Address::random()));
+
+        let hashed_placeholder = "6060604052341561000f57600080fd5b60f48061001d6000396000f300606060405260043610603e5763ffffffff7c010000000000000000000000000000000000000000000000000000000060003504166326121ff081146043575b600080fd5b3415604d57600080fd5b60536055565b005b73__$cb901161e812ceb78cfe30ca65050c4337$__6326121ff06040518163ffffffff167c010000000000000000000000000000000000000000000000000000000002815260040160006040518083038186803b151560b357600080fd5b6102c65a03f4151560c357600080fd5b5050505600a165627a7a723058207979b30bd4a07c77b02774a511f2a1dd04d7e5d65b5c2735b5fc96ad61d43ae40029";
+        let mut object = parse_bytecode(hashed_placeholder);
+        assert!(object.is_unlinked());
+        assert!(object.contains_placeholder("lib2.sol", "L"));
+        assert!(object.contains_fully_qualified_placeholder("lib2.sol:L"));
+        assert!(object.link("lib2.sol", "L", Address::default()).resolve().is_some());
+        assert!(!object.is_unlinked());
+    }
 
     #[test]
     fn can_parse_compiler_output() {
