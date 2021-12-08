@@ -223,7 +223,7 @@ pub trait Artifact {
 
 impl Artifact for CompactContract {
     fn into_inner(self) -> (Option<Abi>, Option<Bytes>) {
-        (self.abi, self.bin)
+        (self.abi, self.bin.and_then(|bin| bin.into_bytes()))
     }
 }
 
