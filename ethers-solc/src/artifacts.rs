@@ -12,6 +12,7 @@ use std::{
 };
 
 use crate::{compile::*, remappings::Remapping, utils};
+use ethers_core::abi::Address;
 use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 
 /// An ordered list of files and their source
@@ -563,20 +564,20 @@ pub struct CompactContract {
     /// The Ethereum Contract ABI. If empty, it is represented as an empty
     /// array. See https://docs.soliditylang.org/en/develop/abi-spec.html
     pub abi: Option<Abi>,
-    #[serde(
-        default,
-        deserialize_with = "deserialize_opt_bytes",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub bin: Option<Bytes>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bin: Option<BytecodeObject>,
     #[serde(default, rename = "bin-runtime", skip_serializing_if = "Option::is_none")]
-    pub bin_runtime: Option<Bytes>,
+    pub bin_runtime: Option<BytecodeObject>,
 }
 
 impl CompactContract {
     /// Returns the contents of this type as a single
     pub fn into_parts(self) -> (Option<Abi>, Option<Bytes>, Option<Bytes>) {
-        (self.abi, self.bin, self.bin_runtime)
+        (
+            self.abi,
+            self.bin.and_then(|bin| bin.into_bytes()),
+            self.bin_runtime.and_then(|bin| bin.into_bytes()),
+        )
     }
 
     /// Returns the individual parts of this contract.
@@ -585,8 +586,8 @@ impl CompactContract {
     pub fn into_parts_or_default(self) -> (Abi, Bytes, Bytes) {
         (
             self.abi.unwrap_or_default(),
-            self.bin.unwrap_or_default(),
-            self.bin_runtime.unwrap_or_default(),
+            self.bin.and_then(|bin| bin.into_bytes()).unwrap_or_default(),
+            self.bin_runtime.and_then(|bin| bin.into_bytes()).unwrap_or_default(),
         )
     }
 }
@@ -617,9 +618,9 @@ impl<'a> From<CompactContractRef<'a>> for CompactContract {
 pub struct CompactContractRef<'a> {
     pub abi: Option<&'a Abi>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub bin: Option<&'a Bytes>,
+    pub bin: Option<&'a BytecodeObject>,
     #[serde(default, rename = "bin-runtime", skip_serializing_if = "Option::is_none")]
-    pub bin_runtime: Option<&'a Bytes>,
+    pub bin_runtime: Option<&'a BytecodeObject>,
 }
 
 impl<'a> CompactContractRef<'a> {
@@ -633,6 +634,14 @@ impl<'a> CompactContractRef<'a> {
     /// If the values are `None`, then `Default` is returned.
     pub fn into_parts_or_default(self) -> (Abi, Bytes, Bytes) {
         CompactContract::from(self).into_parts_or_default()
+    }
+
+    pub fn bytecode(&self) -> Option<&Bytes> {
+        self.bin.as_ref().and_then(|bin| bin.as_bytes())
+    }
+
+    pub fn runtime_bytecode(&self) -> Option<&Bytes> {
+        self.bin_runtime.as_ref().and_then(|bin| bin.as_bytes())
     }
 }
 
@@ -708,8 +717,7 @@ pub struct Bytecode {
     #[serde(default, skip_serializing_if = "::std::collections::BTreeMap::is_empty")]
     pub function_debug_data: BTreeMap<String, FunctionDebugData>,
     /// The bytecode as a hex string.
-    #[serde(deserialize_with = "deserialize_bytes")]
-    pub object: Bytes,
+    pub object: BytecodeObject,
     /// Opcodes list (string)
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub opcodes: Option<String>,
@@ -723,6 +731,202 @@ pub struct Bytecode {
     /// If given, this is an unlinked object.
     #[serde(default)]
     pub link_references: BTreeMap<String, BTreeMap<String, Vec<Offsets>>>,
+}
+
+impl Bytecode {
+    /// Same as `Bytecode::link` but with fully qualified name (`file.sol:Math`)
+    pub fn link_fully_qualified(&mut self, name: impl AsRef<str>, addr: Address) -> bool {
+        if let Some((file, lib)) = name.as_ref().split_once(':') {
+            self.link(file, lib, addr)
+        } else {
+            false
+        }
+    }
+
+    /// Tries to link the bytecode object with the `file` and `library` name.
+    /// Replaces all library placeholders with the given address.
+    ///
+    /// Returns true if the bytecode object is fully linked, false otherwise
+    /// This is a noop if the bytecode object is already fully linked.
+    pub fn link(
+        &mut self,
+        file: impl AsRef<str>,
+        library: impl AsRef<str>,
+        address: Address,
+    ) -> bool {
+        if !self.object.is_unlinked() {
+            return true
+        }
+
+        let file = file.as_ref();
+        let library = library.as_ref();
+        if let Some((key, mut contracts)) = self.link_references.remove_entry(file) {
+            if contracts.remove(library).is_some() {
+                self.object.link(file, library, address);
+            }
+            if !contracts.is_empty() {
+                self.link_references.insert(key, contracts);
+            }
+            if self.link_references.is_empty() {
+                return self.object.resolve().is_some()
+            }
+        }
+        false
+    }
+
+    /// Links the bytecode object with all provided `(file, lib, addr)`
+    pub fn link_all<I, S, T>(&mut self, libs: I) -> bool
+    where
+        I: IntoIterator<Item = (S, T, Address)>,
+        S: AsRef<str>,
+        T: AsRef<str>,
+    {
+        for (file, lib, addr) in libs.into_iter() {
+            if self.link(file, lib, addr) {
+                return true
+            }
+        }
+        false
+    }
+
+    /// Links the bytecode object with all provided `(fully_qualified, addr)`
+    pub fn link_all_fully_qualified<I, S>(&mut self, libs: I) -> bool
+    where
+        I: IntoIterator<Item = (S, Address)>,
+        S: AsRef<str>,
+    {
+        for (name, addr) in libs.into_iter() {
+            if self.link_fully_qualified(name, addr) {
+                return true
+            }
+        }
+        false
+    }
+}
+
+/// Represents the bytecode of a contracts that might be not fully linked yet.
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[serde(untagged)]
+pub enum BytecodeObject {
+    /// Fully linked bytecode object
+    #[serde(deserialize_with = "deserialize_bytes")]
+    Bytecode(Bytes),
+    /// Bytecode as hex string that's not fully linked yet and contains library placeholders
+    Unlinked(String),
+}
+
+impl BytecodeObject {
+    pub fn into_bytes(self) -> Option<Bytes> {
+        match self {
+            BytecodeObject::Bytecode(bytes) => Some(bytes),
+            BytecodeObject::Unlinked(_) => None,
+        }
+    }
+
+    pub fn as_bytes(&self) -> Option<&Bytes> {
+        match self {
+            BytecodeObject::Bytecode(bytes) => Some(bytes),
+            BytecodeObject::Unlinked(_) => None,
+        }
+    }
+
+    pub fn into_unlinked(self) -> Option<String> {
+        match self {
+            BytecodeObject::Bytecode(_) => None,
+            BytecodeObject::Unlinked(code) => Some(code),
+        }
+    }
+
+    /// Tries to resolve the unlinked string object a valid bytecode object in place
+    ///
+    /// Returns the string if it is a valid
+    pub fn resolve(&mut self) -> Option<&Bytes> {
+        if let BytecodeObject::Unlinked(unlinked) = self {
+            if let Ok(linked) = hex::decode(unlinked) {
+                *self = BytecodeObject::Bytecode(linked.into());
+            }
+        }
+        self.as_bytes()
+    }
+
+    /// Link using the fully qualified name of a library
+    /// The fully qualified library name is the path of its source file and the library name
+    /// separated by `:` like `file.sol:Math`
+    ///
+    /// This will replace all occurrences of the library placeholder with the given address.
+    ///
+    /// See also: https://docs.soliditylang.org/en/develop/using-the-compiler.html#library-linking
+    pub fn link_fully_qualified(&mut self, name: impl AsRef<str>, addr: Address) -> &mut Self {
+        if let BytecodeObject::Unlinked(ref mut unlinked) = self {
+            let name = name.as_ref();
+            let place_holder = utils::library_hash_placeholder(name);
+            // the address as hex without prefix
+            let hex_addr = hex::encode(addr);
+
+            // the library placeholder used to be the fully qualified name of the library instead of
+            // the hash. This is also still supported by `solc` so we handle this as well
+            let fully_qualified_placeholder = utils::library_fully_qualified_placeholder(name);
+
+            *unlinked = unlinked
+                .replace(&format!("__{}__", fully_qualified_placeholder), &hex_addr)
+                .replace(&format!("__{}__", place_holder), &hex_addr)
+        }
+        self
+    }
+
+    /// Link using the `file` and `library` names as fully qualified name `<file>:<library>`
+    /// See `BytecodeObject::link_fully_qualified`
+    pub fn link(
+        &mut self,
+        file: impl AsRef<str>,
+        library: impl AsRef<str>,
+        addr: Address,
+    ) -> &mut Self {
+        self.link_fully_qualified(format!("{}:{}", file.as_ref(), library.as_ref(),), addr)
+    }
+
+    /// Links the bytecode object with all provided `(file, lib, addr)`
+    pub fn link_all<I, S, T>(&mut self, libs: I) -> &mut Self
+    where
+        I: IntoIterator<Item = (S, T, Address)>,
+        S: AsRef<str>,
+        T: AsRef<str>,
+    {
+        for (file, lib, addr) in libs.into_iter() {
+            self.link(file, lib, addr);
+        }
+        self
+    }
+
+    /// Whether this object is still unlinked
+    pub fn is_unlinked(&self) -> bool {
+        matches!(self, BytecodeObject::Unlinked(_))
+    }
+
+    /// Whether the bytecode contains a matching placeholder using the qualified name
+    pub fn contains_fully_qualified_placeholder(&self, name: impl AsRef<str>) -> bool {
+        if let BytecodeObject::Unlinked(unlinked) = self {
+            let name = name.as_ref();
+            unlinked.contains(&utils::library_hash_placeholder(name)) ||
+                unlinked.contains(&utils::library_fully_qualified_placeholder(name))
+        } else {
+            false
+        }
+    }
+
+    /// Whether the bytecode contains a matching placeholder
+    pub fn contains_placeholder(&self, file: impl AsRef<str>, library: impl AsRef<str>) -> bool {
+        self.contains_fully_qualified_placeholder(format!("{}:{}", file.as_ref(), library.as_ref()))
+    }
+}
+
+impl AsRef<[u8]> for BytecodeObject {
+    fn as_ref(&self) -> &[u8] {
+        match self {
+            BytecodeObject::Bytecode(code) => code.as_ref(),
+            BytecodeObject::Unlinked(code) => code.as_bytes(),
+        }
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
@@ -1040,6 +1244,54 @@ where
 mod tests {
     use super::*;
     use std::{fs, path::PathBuf};
+
+    #[test]
+    fn can_link_bytecode() {
+        // test cases taken from https://github.com/ethereum/solc-js/blob/master/test/linker.js
+
+        #[derive(Serialize, Deserialize)]
+        struct Mockject {
+            object: BytecodeObject,
+        }
+        fn parse_bytecode(bytecode: &str) -> BytecodeObject {
+            let object: Mockject =
+                serde_json::from_value(serde_json::json!({ "object": bytecode })).unwrap();
+            object.object
+        }
+
+        let bytecode =  "6060604052341561000f57600080fd5b60f48061001d6000396000f300606060405260043610603e5763ffffffff7c010000000000000000000000000000000000000000000000000000000060003504166326121ff081146043575b600080fd5b3415604d57600080fd5b60536055565b005b73__lib2.sol:L____________________________6326121ff06040518163ffffffff167c010000000000000000000000000000000000000000000000000000000002815260040160006040518083038186803b151560b357600080fd5b6102c65a03f4151560c357600080fd5b5050505600a165627a7a723058207979b30bd4a07c77b02774a511f2a1dd04d7e5d65b5c2735b5fc96ad61d43ae40029";
+
+        let mut object = parse_bytecode(bytecode);
+        assert!(object.is_unlinked());
+        assert!(object.contains_placeholder("lib2.sol", "L"));
+        assert!(object.contains_fully_qualified_placeholder("lib2.sol:L"));
+        assert!(object.link("lib2.sol", "L", Address::random()).resolve().is_some());
+        assert!(!object.is_unlinked());
+
+        let mut code = Bytecode {
+            function_debug_data: Default::default(),
+            object: parse_bytecode(bytecode),
+            opcodes: None,
+            source_map: None,
+            generated_sources: vec![],
+            link_references: BTreeMap::from([(
+                "lib2.sol".to_string(),
+                BTreeMap::from([("L".to_string(), vec![])]),
+            )]),
+        };
+
+        assert!(!code.link("lib2.sol", "Y", Address::random()));
+        assert!(code.link("lib2.sol", "L", Address::random()));
+        assert!(code.link("lib2.sol", "L", Address::random()));
+
+        let hashed_placeholder = "6060604052341561000f57600080fd5b60f48061001d6000396000f300606060405260043610603e5763ffffffff7c010000000000000000000000000000000000000000000000000000000060003504166326121ff081146043575b600080fd5b3415604d57600080fd5b60536055565b005b73__$cb901161e812ceb78cfe30ca65050c4337$__6326121ff06040518163ffffffff167c010000000000000000000000000000000000000000000000000000000002815260040160006040518083038186803b151560b357600080fd5b6102c65a03f4151560c357600080fd5b5050505600a165627a7a723058207979b30bd4a07c77b02774a511f2a1dd04d7e5d65b5c2735b5fc96ad61d43ae40029";
+        let mut object = parse_bytecode(hashed_placeholder);
+        assert!(object.is_unlinked());
+        assert!(object.contains_placeholder("lib2.sol", "L"));
+        assert!(object.contains_fully_qualified_placeholder("lib2.sol:L"));
+        assert!(object.link("lib2.sol", "L", Address::default()).resolve().is_some());
+        assert!(!object.is_unlinked());
+    }
 
     #[test]
     fn can_parse_compiler_output() {

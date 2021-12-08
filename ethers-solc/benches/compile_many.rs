@@ -40,10 +40,6 @@ fn load_compiler_inputs() -> Vec<CompilerInput> {
         .take(5)
     {
         let file = file.unwrap();
-        if file.path().to_string_lossy().as_ref().ends_with("20.json") {
-            // TODO needs support for parsing library placeholders first
-            continue
-        }
         let input = std::fs::read_to_string(file.path()).unwrap();
         let input: CompilerInput = serde_json::from_str(&input).unwrap();
         inputs.push(input);

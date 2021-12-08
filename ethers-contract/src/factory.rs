@@ -122,7 +122,7 @@ impl<M: Middleware> Deployer<M> {
 /// let client = std::sync::Arc::new(client);
 ///
 /// // create a factory which will be used to deploy instances of the contract
-/// let factory = ContractFactory::new(contract.abi.unwrap().clone(), contract.bin.unwrap().clone(), client);
+/// let factory = ContractFactory::new(contract.abi.unwrap().clone(), contract.bytecode().unwrap().clone(), client);
 ///
 /// // The deployer created by the `deploy` call exposes a builder which gets consumed
 /// // by the async `send` call

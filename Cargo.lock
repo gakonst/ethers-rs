@@ -1330,6 +1330,7 @@ dependencies = [
  "svm-rs",
  "tempdir",
  "thiserror",
+ "tiny-keccak",
  "tokio",
  "tracing",
  "walkdir",

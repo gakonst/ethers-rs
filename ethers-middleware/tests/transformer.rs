@@ -19,7 +19,8 @@ fn compile_contract(path: &str, name: &str) -> (Abi, Bytes) {
     let path = format!("./tests/solidity-contracts/{}", path);
     let compiled = Solc::default().compile_source(&path).unwrap();
     let contract = compiled.get(&path, name).expect("could not find contract");
-    (contract.abi.unwrap().clone(), contract.bin.unwrap().clone())
+    let (abi, bin, _) = contract.into_parts_or_default();
+    (abi, bin)
 }
 
 #[tokio::test]

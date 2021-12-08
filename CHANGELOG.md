@@ -19,6 +19,8 @@
 
 - Return cached artifacts from project `compile` when the cache only contains
   some files
+- Add support for library linking and make `Bytecode`'s `object` filed an `enum BytecodeObject`
+  [#656](https://github.com/gakonst/ethers-rs/pull/656).
 
 ### 0.6.0
 
