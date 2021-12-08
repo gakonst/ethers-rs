@@ -141,7 +141,8 @@ pub struct SourceElement {
     /// Note: In the case of instructions that are not associated with any particular source file,
     /// the source mapping assigns an integer identifier of -1. This may happen for bytecode
     /// sections stemming from compiler-generated inline assembly statements.
-    pub index: isize,
+    /// This case is represented as a `None` value
+    pub index: Option<u32>,
     /// Jump instruction
     pub jump: Jump,
     /// “modifier depth”. This depth is increased whenever the placeholder statement (_) is entered
@@ -153,7 +154,7 @@ pub struct SourceElement {
 struct SourceElementBuilder {
     pub offset: Option<usize>,
     pub length: Option<usize>,
-    pub index: Option<isize>,
+    pub index: Option<Option<u32>>,
     pub jump: Option<Jump>,
     pub modifier_depth: Option<usize>,
 }
@@ -204,7 +205,7 @@ impl SourceElementBuilder {
         None
     }
 
-    fn set_index(&mut self, index: isize, i: usize) -> Option<SyntaxError> {
+    fn set_index(&mut self, index: Option<u32>, i: usize) -> Option<SyntaxError> {
         if self.index.is_some() {
             return Some(SyntaxError::new(format!("Index already set: {}", i)))
         }
@@ -275,7 +276,18 @@ impl<'input> Iterator for Parser<'input> {
                             bail_opt!(builder.set_length(parse_number!(num, usize, pos), pos))
                         }
                         State::Index => {
-                            bail_opt!(builder.set_index(parse_number!(num, isize, pos), pos))
+                            let index = match parse_number!(num, i32, pos) {
+                                i if i < -1 => {
+                                    return Some(syntax_err!(
+                                        "Unexpected index identifier of `{}` at {}",
+                                        i,
+                                        pos
+                                    ))
+                                }
+                                -1 => None,
+                                i => Some(i as u32),
+                            };
+                            bail_opt!(builder.set_index(index, pos))
                         }
                         State::Modifier => {
                             bail_opt!(builder.set_modifier(parse_number!(num, usize, pos), pos))
@@ -357,4 +369,5 @@ mod tests {
             parse(s).unwrap_or_else(|_| panic!("Failed to parse line {}", line));
         }
     }
+
 }
