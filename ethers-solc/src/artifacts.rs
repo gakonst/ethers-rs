@@ -739,7 +739,6 @@ pub struct Bytecode {
 }
 
 impl Bytecode {
-
     /// Returns the parsed source map
     ///
     /// See also https://docs.soliditylang.org/en/v0.8.10/internals/source_mappings.html
