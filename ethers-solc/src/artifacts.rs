@@ -11,7 +11,12 @@ use std::{
     str::FromStr,
 };
 
-use crate::{compile::*, remappings::Remapping, utils};
+use crate::{
+    compile::*,
+    remappings::Remapping,
+    sourcemap::{self, SourceMap, SyntaxError},
+    utils,
+};
 use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 
 /// An ordered list of files and their source
@@ -723,6 +728,15 @@ pub struct Bytecode {
     /// If given, this is an unlinked object.
     #[serde(default)]
     pub link_references: BTreeMap<String, BTreeMap<String, Vec<Offsets>>>,
+}
+
+impl Bytecode {
+    /// Returns the parsed source map
+    ///
+    /// See also https://docs.soliditylang.org/en/v0.8.10/internals/source_mappings.html
+    pub fn source_map(&self) -> Option<Result<SourceMap, SyntaxError>> {
+        self.source_map.as_ref().map(|map| sourcemap::parse(map))
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
