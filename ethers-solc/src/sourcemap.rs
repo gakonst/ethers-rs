@@ -1,6 +1,6 @@
 use std::{fmt, iter::Peekable, str::CharIndices};
 
-pub type Spanned<Token, Loc, Error> = Result<(Token, Loc), Error>;
+type Spanned<Token, Loc, Error> = Result<(Token, Loc), Error>;
 
 macro_rules! syntax_err {
     ($msg:expr) => {{
@@ -23,7 +23,7 @@ impl SyntaxError {
 }
 
 #[derive(PartialEq)]
-pub enum Token<'a> {
+enum Token<'a> {
     Number(&'a str),
     Semicolon,
     Colon,
