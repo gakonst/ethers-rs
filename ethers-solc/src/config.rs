@@ -354,6 +354,7 @@ impl ArtifactOutput for MinimalCombinedArtifacts {
 
     fn read_cached_artifact(path: impl AsRef<Path>) -> Result<Self::Artifact> {
         let file = fs::File::open(path.as_ref())?;
+        let file = io::BufReader::new(file);
         Ok(serde_json::from_reader(file)?)
     }
 
