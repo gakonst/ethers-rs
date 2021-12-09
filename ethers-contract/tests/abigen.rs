@@ -419,3 +419,32 @@ fn can_handle_case_sensitive_calls() {
     let _ = contract.index();
     let _ = contract.INDEX();
 }
+
+#[tokio::test]
+async fn can_abiencoderv2_output() {
+    abigen!(AbiEncoderv2Test, "ethers-contract/tests/solidity-contracts/abiencoderv2test_abi.json",);
+    let ganache = ethers_core::utils::Ganache::new().spawn();
+    let from = ganache.addresses()[0];
+    let provider = Provider::try_from(ganache.endpoint())
+        .unwrap()
+        .with_sender(from)
+        .interval(std::time::Duration::from_millis(10));
+    let client = Arc::new(provider);
+
+    let contract = "AbiencoderV2Test";
+    let path = "./tests/solidity-contracts/Abiencoderv2Test.sol";
+    let compiled = Solc::default().compile_source(path).unwrap();
+    let compiled = compiled.get(path, contract).unwrap();
+    let factory = ethers_contract::ContractFactory::new(
+        compiled.abi.unwrap().clone(),
+        compiled.bytecode().unwrap().clone(),
+        client.clone(),
+    );
+    let addr = factory.deploy(()).unwrap().legacy().send().await.unwrap().address();
+
+    let contract = AbiEncoderv2Test::new(addr, client.clone());
+    let person = Person { name: "Alice".to_string(), age: 20u64.into() };
+
+    let res = contract.default_person().call().await.unwrap();
+    assert_eq!(res, person);
+}

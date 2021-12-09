@@ -202,7 +202,7 @@ impl Solc {
     pub fn version_req(source: &Source) -> Result<VersionReq> {
         let version = utils::find_version_pragma(&source.content)
             .ok_or(SolcError::PragmaNotFound)?
-            .replace(" ", ",");
+            .replace(' ', ",");
 
         // Somehow, Solidity semver without an operator is considered to be "exact",
         // but lack of operator automatically marks the operator as Caret, so we need

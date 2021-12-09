@@ -206,7 +206,7 @@ impl LedgerEthereum {
         let mut bytes = vec![depth as u8];
         for derivation_index in elements {
             let hardened = derivation_index.contains('\'');
-            let mut index = derivation_index.replace("'", "").parse::<u32>().unwrap();
+            let mut index = derivation_index.replace('\'', "").parse::<u32>().unwrap();
             if hardened {
                 index |= 0x80000000;
             }

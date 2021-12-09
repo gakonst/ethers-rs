@@ -28,8 +28,7 @@ impl Context {
         let sorted_functions: BTreeMap<_, _> = self.abi.functions.iter().collect();
         let functions = sorted_functions
             .values()
-            .map(std::ops::Deref::deref)
-            .flatten()
+            .flat_map(std::ops::Deref::deref)
             .map(|function| {
                 let signature = function.abi_signature();
                 self.expand_function(function, aliases.get(&signature).cloned())
@@ -50,7 +49,7 @@ impl Context {
         alias: Option<&MethodAlias>,
     ) -> Result<TokenStream> {
         let call_name = expand_call_struct_name(function, alias);
-        let fields = self.expand_input_pairs(function)?;
+        let fields = self.expand_input_params(function)?;
         // expand as a tuple if all fields are anonymous
         let all_anonymous_fields = function.inputs.iter().all(|input| input.name.is_empty());
         let call_type_definition = if all_anonymous_fields {
@@ -163,14 +162,32 @@ impl Context {
     }
 
     /// Expands to the `name : type` pairs of the function's inputs
-    fn expand_input_pairs(&self, fun: &Function) -> Result<Vec<(TokenStream, TokenStream)>> {
+    fn expand_input_params(&self, fun: &Function) -> Result<Vec<(TokenStream, TokenStream)>> {
         let mut args = Vec::with_capacity(fun.inputs.len());
         for (idx, param) in fun.inputs.iter().enumerate() {
             let name = util::expand_input_name(idx, &param.name);
-            let ty = self.expand_input_param(fun, &param.name, &param.kind)?;
+            let ty = self.expand_input_param_type(fun, &param.name, &param.kind)?;
             args.push((name, ty));
         }
         Ok(args)
+    }
+
+    /// Expands to the return type of a function
+    fn expand_outputs(&self, fun: &Function) -> Result<TokenStream> {
+        let mut outputs = Vec::with_capacity(fun.outputs.len());
+        for param in fun.outputs.iter() {
+            let ty = self.expand_output_param_type(fun, param, &param.kind)?;
+            outputs.push(ty);
+        }
+
+        let return_ty = match outputs.len() {
+            0 => quote! { () },
+            1 => outputs[0].clone(),
+            _ => {
+                quote! { (#( #outputs ),*) }
+            }
+        };
+        Ok(return_ty)
     }
 
     /// Expands the arguments for the call that eventually calls the contract
@@ -202,7 +219,8 @@ impl Context {
         Ok(call_args)
     }
 
-    fn expand_input_param(
+    /// returns the Tokenstream for the corresponding rust type of the param
+    fn expand_input_param_type(
         &self,
         fun: &Function,
         param: &str,
@@ -210,13 +228,13 @@ impl Context {
     ) -> Result<TokenStream> {
         match kind {
             ParamType::Array(ty) => {
-                let ty = self.expand_input_param(fun, param, ty)?;
+                let ty = self.expand_input_param_type(fun, param, ty)?;
                 Ok(quote! {
                     ::std::vec::Vec<#ty>
                 })
             }
             ParamType::FixedArray(ty, size) => {
-                let ty = self.expand_input_param(fun, param, ty)?;
+                let ty = self.expand_input_param_type(fun, param, ty)?;
                 let size = *size;
                 Ok(quote! {[#ty; #size]})
             }
@@ -235,26 +253,60 @@ impl Context {
         }
     }
 
+    /// returns the Tokenstream for the corresponding rust type of the output param
+    fn expand_output_param_type(
+        &self,
+        fun: &Function,
+        param: &Param,
+        kind: &ParamType,
+    ) -> Result<TokenStream> {
+        match kind {
+            ParamType::Array(ty) => {
+                let ty = self.expand_output_param_type(fun, param, ty)?;
+                Ok(quote! {
+                    ::std::vec::Vec<#ty>
+                })
+            }
+            ParamType::FixedArray(ty, size) => {
+                let ty = self.expand_output_param_type(fun, param, ty)?;
+                let size = *size;
+                Ok(quote! {[#ty; #size]})
+            }
+            ParamType::Tuple(_) => {
+                let ty = if let Some(rust_struct_name) =
+                    param.internal_type.as_ref().and_then(|s| {
+                        self.internal_structs.get_function_output_struct_type(&fun.name, s)
+                    }) {
+                    let ident = util::ident(rust_struct_name);
+                    quote! {#ident}
+                } else {
+                    types::expand(kind)?
+                };
+                Ok(ty)
+            }
+            _ => types::expand(kind),
+        }
+    }
+
     /// Expands a single function with the given alias
     fn expand_function(
         &self,
         function: &Function,
         alias: Option<MethodAlias>,
     ) -> Result<TokenStream> {
+        let ethers_contract = ethers_contract_crate();
+
         let name = expand_function_name(function, alias.as_ref());
         let selector = expand_selector(function.selector());
 
-        // TODO use structs
-        let outputs = expand_fn_outputs(&function.outputs)?;
-
-        let ethers_contract = ethers_contract_crate();
-
-        let result = quote! { #ethers_contract::builders::ContractCall<M, #outputs> };
-
         let contract_args = self.expand_contract_call_args(function)?;
         let function_params =
-            self.expand_input_pairs(function)?.into_iter().map(|(name, ty)| quote! { #name: #ty });
+            self.expand_input_params(function)?.into_iter().map(|(name, ty)| quote! { #name: #ty });
         let function_params = quote! { #( , #function_params )* };
+
+        let outputs = self.expand_outputs(function)?;
+
+        let result = quote! { #ethers_contract::builders::ContractCall<M, #outputs> };
 
         let doc = util::expand_doc(&format!(
             "Calls the contract's `{}` (0x{}) function",
@@ -478,20 +530,6 @@ impl Context {
     }
 }
 
-fn expand_fn_outputs(outputs: &[Param]) -> Result<TokenStream> {
-    match outputs.len() {
-        0 => Ok(quote! { () }),
-        1 => types::expand(&outputs[0].kind),
-        _ => {
-            let types = outputs
-                .iter()
-                .map(|param| types::expand(&param.kind))
-                .collect::<Result<Vec<_>>>()?;
-            Ok(quote! { (#( #types ),*) })
-        }
-    }
-}
-
 fn expand_selector(selector: Selector) -> TokenStream {
     let bytes = selector.iter().copied().map(Literal::u8_unsuffixed);
     quote! { [#( #bytes ),*] }
@@ -574,6 +612,20 @@ mod tests {
     use ethers_core::abi::ParamType;
 
     use super::*;
+
+    fn expand_fn_outputs(outputs: &[Param]) -> Result<TokenStream> {
+        match outputs.len() {
+            0 => Ok(quote! { () }),
+            1 => types::expand(&outputs[0].kind),
+            _ => {
+                let types = outputs
+                    .iter()
+                    .map(|param| types::expand(&param.kind))
+                    .collect::<Result<Vec<_>>>()?;
+                Ok(quote! { (#( #types ),*) })
+            }
+        }
+    }
 
     // packs the argument in a tuple to be used for the contract call
     fn expand_inputs_call_arg(inputs: &[Param]) -> TokenStream {
