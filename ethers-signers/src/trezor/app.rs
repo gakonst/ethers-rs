@@ -1,5 +1,5 @@
 #![allow(unused)]
-use trezor_client::client::{Trezor, AccessListItem as Trezor_AccessListItem};
+use trezor_client::client::{AccessListItem as Trezor_AccessListItem, Trezor};
 
 use futures_executor::block_on;
 use futures_util::lock::Mutex;
@@ -60,13 +60,11 @@ impl TrezorEthereum {
         let mut address = [0; 20];
         address.copy_from_slice(&hex::decode(&address_str[2..])?);
 
-
         Ok(Address::from(address))
     }
 
     /// Signs an Ethereum transaction (requires confirmation on the Trezor)
     pub async fn sign_tx(&self, tx: &TypedTransaction) -> Result<Signature, TrezorError> {
-
         let mut client = TrezorEthereum::get_client()?;
 
         let arr_path = Self::convert_path(&self.derivation);
@@ -89,18 +87,16 @@ impl TrezorEthereum {
         };
 
         let signature = match tx {
-            TypedTransaction::Eip2930(_) | TypedTransaction::Legacy(_) => {
-                client.ethereum_sign_tx(
-                    arr_path,
-                    nonce[tx.nonce().unwrap().leading_zeros() as usize/8..].to_vec(),
-                    gas_price[tx.gas_price().unwrap().leading_zeros() as usize/8..].to_vec(),
-                    gas[tx.gas().unwrap().leading_zeros() as usize/8..].to_vec(),
-                    to,
-                    value[tx.value().unwrap().leading_zeros() as usize/8..].to_vec(),
-                    tx.data().unwrap().to_vec(),
-                    self.chain_id
-                )?
-            }
+            TypedTransaction::Eip2930(_) | TypedTransaction::Legacy(_) => client.ethereum_sign_tx(
+                arr_path,
+                nonce[tx.nonce().unwrap().leading_zeros() as usize / 8..].to_vec(),
+                gas_price[tx.gas_price().unwrap().leading_zeros() as usize / 8..].to_vec(),
+                gas[tx.gas().unwrap().leading_zeros() as usize / 8..].to_vec(),
+                to,
+                value[tx.value().unwrap().leading_zeros() as usize / 8..].to_vec(),
+                tx.data().unwrap().to_vec(),
+                self.chain_id,
+            )?,
             TypedTransaction::Eip1559(eip1559_tx) => {
                 let mut m_fpg = [0 as u8; 32];
                 let mut m_pfpg = [0 as u8; 32];
@@ -110,35 +106,30 @@ impl TrezorEthereum {
 
                 let mut trezor_access_list: Vec<Trezor_AccessListItem> = Vec::new();
                 for item in &eip1559_tx.access_list.0 {
-
                     let address: String = format!("0x{}", hex::encode(item.address));
                     let mut storage_keys: Vec<Vec<u8>> = Vec::new();
 
                     for key in &item.storage_keys {
-                        storage_keys.push(
-                            key.as_bytes().to_vec()
-                        )
+                        storage_keys.push(key.as_bytes().to_vec())
                     }
 
-                    trezor_access_list.push(
-                        Trezor_AccessListItem {
-                            address,
-                            storage_keys
-                        }
-                    )
+                    trezor_access_list.push(Trezor_AccessListItem { address, storage_keys })
                 }
-                
+
                 client.ethereum_sign_eip1559_tx(
                     arr_path,
-                    nonce[tx.nonce().unwrap().leading_zeros() as usize/8..].to_vec(),
-                    gas[tx.gas().unwrap().leading_zeros() as usize/8..].to_vec(),
+                    nonce[tx.nonce().unwrap().leading_zeros() as usize / 8..].to_vec(),
+                    gas[tx.gas().unwrap().leading_zeros() as usize / 8..].to_vec(),
                     to,
-                    value[tx.value().unwrap().leading_zeros() as usize/8..].to_vec(),
+                    value[tx.value().unwrap().leading_zeros() as usize / 8..].to_vec(),
                     tx.data().unwrap().to_vec(),
                     self.chain_id,
-                    m_fpg[eip1559_tx.max_fee_per_gas.unwrap().leading_zeros() as usize / 8..].to_vec(),
-                    m_pfpg[eip1559_tx.max_priority_fee_per_gas.unwrap().leading_zeros() as usize / 8..].to_vec(),
-                    trezor_access_list
+                    m_fpg[eip1559_tx.max_fee_per_gas.unwrap().leading_zeros() as usize / 8..]
+                        .to_vec(),
+                    m_pfpg[eip1559_tx.max_priority_fee_per_gas.unwrap().leading_zeros() as usize /
+                        8..]
+                        .to_vec(),
+                    trezor_access_list,
                 )?
             }
         };
@@ -152,10 +143,7 @@ impl TrezorEthereum {
         let mut client = TrezorEthereum::get_client()?;
         let apath = Self::convert_path(&self.derivation);
 
-        let signs = client.ethereum_sign_message(
-            message.into(),
-            apath
-        )?;
+        let signs = client.ethereum_sign_message(message.into(), apath)?;
         Ok(Signature { r: signs.r, s: signs.s, v: signs.v })
     }
 
@@ -187,15 +175,17 @@ impl TrezorEthereum {
     }
 }
 
-
 #[cfg(all(test, feature = "trezor"))]
 mod tests {
     use super::*;
     use crate::Signer;
     use ethers_contract::EthAbiType;
     use ethers_core::types::{
-        transaction::eip2930::{AccessList, AccessListItem},
-        transaction::eip712::Eip712, Address, TransactionRequest, Eip1559TransactionRequest, I256, U256,
+        transaction::{
+            eip2930::{AccessList, AccessListItem},
+            eip712::Eip712,
+        },
+        Address, Eip1559TransactionRequest, TransactionRequest, I256, U256,
     };
     use ethers_derive_eip712::*;
     use std::str::FromStr;
@@ -260,8 +250,8 @@ mod tests {
         // approve uni v2 router 0xff
         let data = hex::decode("095ea7b30000000000000000000000007a250d5630b4cf539739df2c5dacb4c659f2488dffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap();
 
-        let lst = AccessList(
-            vec![AccessListItem {
+        let lst = AccessList(vec![
+            AccessListItem {
                 address: "0x8ba1f109551bd432803012645ac136ddd64dba72".parse().unwrap(),
                 storage_keys: vec![
                     "0x0000000000000000000000000000000000000000000000000000000000000000"
@@ -282,9 +272,9 @@ mod tests {
                         .parse()
                         .unwrap(),
                 ],
-            }
+            },
         ]);
-        
+
         let tx_req = Eip1559TransactionRequest::new()
             .to("2ed7afa17473e17ac59908f088b4371d28585476".parse::<Address>().unwrap())
             .gas(1000000)

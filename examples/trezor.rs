@@ -16,7 +16,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Create and broadcast a transaction (ENS enabled!)
     // (this will require confirming the tx on the device)
-    let tx = TransactionRequest::new().to("0x99E2B13A8Ea8b00C68FA017ee250E98e870D8241").value(parse_ether(10)?);
+    let tx = TransactionRequest::new()
+        .to("0x99E2B13A8Ea8b00C68FA017ee250E98e870D8241")
+        .value(parse_ether(10)?);
     let pending_tx = client.send_transaction(tx, None).await?;
 
     // Get the receipt
