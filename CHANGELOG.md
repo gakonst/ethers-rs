@@ -94,6 +94,8 @@
 
 ### Unreleased
 
+- Substitute output tuples with rust struct types for function calls
+  [#664](https://github.com/gakonst/ethers-rs/pull/664)
 - Add AbiType implementation during EthAbiType expansion
   [#647](https://github.com/gakonst/ethers-rs/pull/647)
 - fix Etherscan conditional HTTP support
