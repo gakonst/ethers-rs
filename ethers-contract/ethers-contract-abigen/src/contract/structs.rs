@@ -312,6 +312,22 @@ impl InternalStructs {
             .map(String::as_str)
     }
 
+    /// Returns the name of the rust type that will be generated if the given output is a struct
+    /// NOTE: this does not account for arrays or fixed arrays
+    pub fn get_function_output_struct_type(
+        &self,
+        function: &str,
+        internal_type: &str,
+    ) -> Option<&str> {
+        self.outputs
+            .get(function)
+            .and_then(|outputs| {
+                outputs.iter().find(|s| s.as_str() == struct_type_identifier(internal_type))
+            })
+            .and_then(|id| self.rust_type_names.get(id))
+            .map(String::as_str)
+    }
+
     /// Returns the mapping table of abi `internal type identifier -> rust type`
     pub fn rust_type_names(&self) -> &HashMap<String, String> {
         &self.rust_type_names

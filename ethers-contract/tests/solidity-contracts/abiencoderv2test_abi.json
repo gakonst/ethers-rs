@@ -1,0 +1,1 @@
+[{"inputs":[],"name":"defaultPerson","outputs":[{"components":[{"internalType":"string","name":"name","type":"string"},{"internalType":"uint256","name":"age","type":"uint256"}],"internalType":"struct Hello.Person","name":"","type":"tuple"}],"stateMutability":"pure","type":"function"}]
