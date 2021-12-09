@@ -28,8 +28,7 @@ impl Context {
         let sorted_functions: BTreeMap<_, _> = self.abi.functions.iter().collect();
         let functions = sorted_functions
             .values()
-            .map(std::ops::Deref::deref)
-            .flatten()
+            .flat_map(std::ops::Deref::deref)
             .map(|function| {
                 let signature = function.abi_signature();
                 self.expand_function(function, aliases.get(&signature).cloned())

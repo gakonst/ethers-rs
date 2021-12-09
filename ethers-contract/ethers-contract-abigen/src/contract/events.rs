@@ -38,8 +38,7 @@ impl Context {
         let sorted_events: BTreeMap<_, _> = self.abi.events.iter().collect();
         let filter_methods = sorted_events
             .values()
-            .map(std::ops::Deref::deref)
-            .flatten()
+            .flat_map(std::ops::Deref::deref)
             .map(|event| self.expand_filter(event))
             .collect::<Vec<_>>();
 
