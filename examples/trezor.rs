@@ -11,7 +11,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // (here: mainnet) for EIP155 support.
     // EIP1559 support
     // No EIP712 support yet.
-    let trezor = Trezor::new(HDPath::TrezorLive(0), 1).await?;
+    let trezor = Trezor::new(TrezorHDPath::TrezorLive(0), 1).await?;
     let client = SignerMiddleware::new(provider, trezor);
 
     // Create and broadcast a transaction (ENS enabled!)

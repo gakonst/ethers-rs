@@ -25,7 +25,7 @@ mod trezor;
 #[cfg(feature = "trezor")]
 pub use trezor::{
     app::TrezorEthereum as Trezor,
-    types::{DerivationType as HDPath, TrezorError},
+    types::{DerivationType as TrezorHDPath, TrezorError},
 };
 
 #[cfg(feature = "yubi")]
