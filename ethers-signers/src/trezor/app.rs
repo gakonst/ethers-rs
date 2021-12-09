@@ -73,8 +73,6 @@ impl TrezorEthereum {
         let mut gas = [0 as u8; 32];
         let mut gas_price = [0 as u8; 32];
         let mut value = [0 as u8; 32];
-        let mut max_fee_per_gas: Option<Vec<u8>> = None;
-        let mut max_priority_fee_per_gas: Option<Vec<u8>> = None;
 
         tx.nonce().unwrap().to_big_endian(&mut nonce);
         tx.gas().unwrap().to_big_endian(&mut gas);
