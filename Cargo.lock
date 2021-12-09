@@ -1697,31 +1697,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7ebdb29d2ea9ed0083cd8cece49bbd968021bd99b0849edb4a9a7ee0fdf6a4e0"
 
 [[package]]
-name = "hid"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "74ec4bb2e3f01d3838ea2bbbe3919d98f921c7aeed14a5491df89ac3dc4839f9"
-dependencies = [
- "hidapi-sys",
- "libc",
-]
-
-[[package]]
 name = "hidapi"
 version = "1.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8d6f5e247bc66f3255d755e96d9d43f6b191f4e182072b811d55584ff58c510f"
-dependencies = [
- "cc",
- "libc",
- "pkg-config",
-]
-
-[[package]]
-name = "hidapi-sys"
-version = "0.1.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dd8a9410aec7ca9f4571ff40c7b1813a28503c2a664a028921fc973073dcd4bf"
 dependencies = [
  "cc",
  "libc",
@@ -3698,14 +3677,14 @@ dependencies = [
 [[package]]
 name = "trezor"
 version = "0.0.1"
-source = "git+https://github.com/joshiedo/rust-trezor-api?rev=18ad9130db0a7dacf3ba951e45b49b7f5be7e38c#18ad9130db0a7dacf3ba951e45b49b7f5be7e38c"
+source = "git+https://github.com/joshiedo/rust-trezor-api?rev=8159dc8a7ab2fa03e85638121275253b9a42c7d4#8159dc8a7ab2fa03e85638121275253b9a42c7d4"
 dependencies = [
  "bitcoin",
  "bitcoin-bech32",
  "bitcoin_hashes",
  "byteorder",
  "hex 0.3.2",
- "hid",
+ "hidapi",
  "log",
  "primitive-types",
  "protobuf",
