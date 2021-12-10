@@ -218,25 +218,38 @@ impl SolcConfigBuilder {
 pub type Artifacts<T> = BTreeMap<String, BTreeMap<String, T>>;
 
 pub trait Artifact {
+    /// Returns the artifact's `Abi` and bytecode
     fn into_inner(self) -> (Option<Abi>, Option<Bytes>);
+
+    /// Turns the artifact into a container type for abi, bytecode and deployed bytecode
+    fn into_compact_contract(self) -> CompactContract;
+
+    /// Returns the contents of this type as a single tuple of abi, bytecode and deployed bytecode
+    fn into_parts(self) -> (Option<Abi>, Option<Bytes>, Option<Bytes>)
+    where
+        Self: Sized,
+    {
+        self.into_compact_contract().into_parts()
+    }
 }
 
 impl Artifact for CompactContract {
     fn into_inner(self) -> (Option<Abi>, Option<Bytes>) {
         (self.abi, self.bin.and_then(|bin| bin.into_bytes()))
     }
+
+    fn into_compact_contract(self) -> CompactContract {
+        self
+    }
 }
 
 impl Artifact for serde_json::Value {
     fn into_inner(self) -> (Option<Abi>, Option<Bytes>) {
-        let abi = self.get("abi").map(|abi| {
-            serde_json::from_value::<Abi>(abi.clone()).expect("could not get artifact abi")
-        });
-        let bytecode = self.get("bin").map(|bin| {
-            serde_json::from_value::<Bytes>(bin.clone()).expect("could not get artifact bytecode")
-        });
+        self.into_compact_contract().into_inner()
+    }
 
-        (abi, bytecode)
+    fn into_compact_contract(self) -> CompactContract {
+        self.into()
     }
 }
 

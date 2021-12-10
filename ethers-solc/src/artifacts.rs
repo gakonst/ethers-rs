@@ -565,7 +565,7 @@ pub struct Contract {
 }
 
 /// Minimal representation of a contract's abi with bytecode
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Default)]
 pub struct CompactContract {
     /// The Ethereum Contract ABI. If empty, it is represented as an empty
     /// array. See https://docs.soliditylang.org/en/develop/abi-spec.html
@@ -577,7 +577,7 @@ pub struct CompactContract {
 }
 
 impl CompactContract {
-    /// Returns the contents of this type as a single
+    /// Returns the contents of this type as a single tuple of abi, bytecode and deployed bytecode
     pub fn into_parts(self) -> (Option<Abi>, Option<Bytes>, Option<Bytes>) {
         (
             self.abi,
@@ -595,6 +595,20 @@ impl CompactContract {
             self.bin.and_then(|bin| bin.into_bytes()).unwrap_or_default(),
             self.bin_runtime.and_then(|bin| bin.into_bytes()).unwrap_or_default(),
         )
+    }
+}
+
+impl From<serde_json::Value> for CompactContract {
+    fn from(mut val: serde_json::Value) -> Self {
+        if let Some(map) = val.as_object_mut() {
+            let abi = map.remove("abi").and_then(|val| serde_json::from_value(val).ok());
+            let bin = map.remove("bin").and_then(|val| serde_json::from_value(val).ok());
+            let bin_runtime =
+                map.remove("bin-runtime").and_then(|val| serde_json::from_value(val).ok());
+            Self { abi, bin, bin_runtime }
+        } else {
+            CompactContract::default()
+        }
     }
 }
 
