@@ -23,6 +23,12 @@ pub enum Source {
     /// An address of a mainnet contract that has been verified on Etherscan.io.
     Etherscan(Address),
 
+    /// An address of a mainnet contract that has been verified on Polygonscan.com.
+    Polygonscan(Address),
+
+    /// An address of a mainnet contract that has been verified on snowtrace.io.
+    Snowtrace(Address),
+
     /// The package identifier of an npm package with a path to a Truffle
     /// artifact or ABI to be retrieved from `unpkg.io`.
     Npm(String),
@@ -91,9 +97,21 @@ impl Source {
         let url = base.join(source)?;
 
         match url.scheme() {
-            "file" => Ok(Source::local(source.to_string())),
+            "file" => Ok(Source::local(source)),
             "http" | "https" => match url.host_str() {
                 Some("etherscan.io") => Source::etherscan(
+                    url.path()
+                        .rsplit('/')
+                        .next()
+                        .ok_or_else(|| anyhow!("HTTP URL does not have a path"))?,
+                ),
+                Some("polygonscan.com") => Source::polygonscan(
+                    url.path()
+                        .rsplit('/')
+                        .next()
+                        .ok_or_else(|| anyhow!("HTTP URL does not have a path"))?,
+                ),
+                Some("snowtrace.io") => Source::snowtrace(
                     url.path()
                         .rsplit('/')
                         .next()
@@ -102,6 +120,8 @@ impl Source {
                 _ => Ok(Source::Http(url)),
             },
             "etherscan" => Source::etherscan(url.path()),
+            "polygonscan" => Source::polygonscan(url.path()),
+            "snowtrace" => Source::snowtrace(url.path()),
             "npm" => Ok(Source::npm(url.path())),
             _ => Err(anyhow!("unsupported URL '{}'", url)),
         }
@@ -130,6 +150,26 @@ impl Source {
         Ok(Source::Etherscan(address))
     }
 
+    /// Creates an Polygonscan source from an address string.
+    pub fn polygonscan<S>(address: S) -> Result<Self>
+    where
+        S: AsRef<str>,
+    {
+        let address = util::parse_address(address)
+            .context("failed to parse address for Polygonscan source")?;
+        Ok(Source::Polygonscan(address))
+    }
+
+    /// Creates an Snowtrace source from an address string.
+    pub fn snowtrace<S>(address: S) -> Result<Self>
+    where
+        S: AsRef<str>,
+    {
+        let address =
+            util::parse_address(address).context("failed to parse address for Snowtrace source")?;
+        Ok(Source::Snowtrace(address))
+    }
+
     /// Creates an Etherscan source from an address string.
     pub fn npm<S>(package_path: S) -> Self
     where
@@ -144,10 +184,12 @@ impl Source {
     pub fn get(&self) -> Result<String> {
         cfg_if! {
              if #[cfg(target_arch = "wasm32")] {
-                 match self {
+                match self {
                     Source::Local(path) => get_local_contract(path),
                     Source::Http(_) =>   panic!("Http abi location are not supported for wasm"),
                     Source::Etherscan(_) => panic!("Etherscan abi location are not supported for wasm"),
+                    Source::Polygonscan(_) => panic!("Polygonscan abi location are not supported for wasm"),
+                    Source::Snowtrace(_) => panic!("Snowtrace abi location are not supported for wasm"),
                     Source::Npm(_) => panic!("npm abi location are not supported for wasm"),
                     Source::String(abi) => Ok(abi.clone()),
                 }
@@ -155,7 +197,9 @@ impl Source {
                 match self {
                     Source::Local(path) => get_local_contract(path),
                     Source::Http(url) => get_http_contract(url),
-                    Source::Etherscan(address) => get_etherscan_contract(*address),
+                    Source::Etherscan(address) => get_etherscan_contract(*address, "etherscan.io"),
+                    Source::Polygonscan(address) => get_etherscan_contract(*address, "polygonscan.com"),
+                    Source::Snowtrace(address) => get_etherscan_contract(*address, "snowtrace.io"),
                     Source::Npm(package) => get_npm_contract(package),
                     Source::String(abi) => Ok(abi.clone()),
                 }
@@ -211,20 +255,27 @@ fn get_http_contract(url: &Url) -> Result<String> {
 /// Retrieves a contract ABI from the Etherscan HTTP API and wraps it in an
 /// artifact JSON for compatibility with the code generation facilities.
 #[cfg(not(target_arch = "wasm32"))]
-fn get_etherscan_contract(address: Address) -> Result<String> {
+fn get_etherscan_contract(address: Address, domain: &str) -> Result<String> {
     // NOTE: We do not retrieve the bytecode since deploying contracts with the
     //   same bytecode is unreliable as the libraries have already linked and
     //   probably don't reference anything when deploying on other networks.
 
-    let api_key =
-        env::var("ETHERSCAN_API_KEY").map(|key| format!("&apikey={}", key)).unwrap_or_default();
+    let api_key = {
+        let key_res = match domain {
+            "etherscan.io" => env::var("ETHERSCAN_API_KEY").ok(),
+            "polygonscan.com" => env::var("POLYGONSCAN_API_KEY").ok(),
+            "snowtrace.io" => env::var("SNOWTRACE_API_KEY").ok(),
+            _ => None,
+        };
+        key_res.map(|key| format!("&apikey={}", key)).unwrap_or_default()
+    };
 
     let abi_url = format!(
-        "http://api.etherscan.io/api\
-         ?module=contract&action=getabi&address={:?}&format=raw{}",
-        address, api_key,
+        "http://api.{}/api?module=contract&action=getabi&address={:?}&format=raw{}",
+        domain, address, api_key,
     );
-    let abi = util::http_get(&abi_url).context("failed to retrieve ABI from Etherscan.io")?;
+    let abi =
+        util::http_get(&abi_url).context(format!("failed to retrieve ABI from {}", domain))?;
     Ok(abi)
 }
 
@@ -257,8 +308,24 @@ mod tests {
                 Source::etherscan("0x0001020304050607080910111213141516171819").unwrap(),
             ),
             (
+                "polygonscan:0x0001020304050607080910111213141516171819",
+                Source::polygonscan("0x0001020304050607080910111213141516171819").unwrap(),
+            ),
+            (
+                "snowtrace:0x0001020304050607080910111213141516171819",
+                Source::snowtrace("0x0001020304050607080910111213141516171819").unwrap(),
+            ),
+            (
                 "https://etherscan.io/address/0x0001020304050607080910111213141516171819",
                 Source::etherscan("0x0001020304050607080910111213141516171819").unwrap(),
+            ),
+            (
+                "https://polygonscan.com/address/0x0001020304050607080910111213141516171819",
+                Source::polygonscan("0x0001020304050607080910111213141516171819").unwrap(),
+            ),
+            (
+                "https://snowtrace.io/address/0x0001020304050607080910111213141516171819",
+                Source::snowtrace("0x0001020304050607080910111213141516171819").unwrap(),
             ),
             (
                 "npm:@openzeppelin/contracts@2.5.0/build/contracts/IERC20.json",
