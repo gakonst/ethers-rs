@@ -1223,7 +1223,13 @@ where
     D: Deserializer<'de>,
 {
     let value = String::deserialize(d)?;
-    Ok(hex::decode(&value).map_err(|e| serde::de::Error::custom(e.to_string()))?.into())
+    if let Some(value) = value.strip_prefix("0x") {
+        hex::decode(value)
+    } else {
+        hex::decode(&value)
+    }
+    .map(Into::into)
+    .map_err(|e| serde::de::Error::custom(e.to_string()))
 }
 
 pub fn deserialize_opt_bytes<'de, D>(d: D) -> std::result::Result<Option<Bytes>, D::Error>
