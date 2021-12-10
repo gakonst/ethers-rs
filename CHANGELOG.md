@@ -13,7 +13,7 @@
 - Implement hex display format for `ethers::core::Bytes`
   [#624](https://github.com/gakonst/ethers-rs/pull/624).
 - Fix `fee_history` to first try with `block_count` encoded as a hex `QUANTITY`.
-  [#668](https://github.com/gakonst/ethers-rs/pull/668)
+  [#669](https://github.com/gakonst/ethers-rs/pull/669)
 
 ## ethers-solc
 
