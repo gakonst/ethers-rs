@@ -24,6 +24,7 @@
 
 ### Unreleased
 
+- Add more utility functions to the `Artifact` trait [#673](https://github.com/gakonst/ethers-rs/pull/673)
 - Return cached artifacts from project `compile` when the cache only contains
   some files
 - Add support for library linking and make `Bytecode`'s `object` filed an `enum BytecodeObject`
