@@ -15,6 +15,11 @@
 - Fix `fee_history` to first try with `block_count` encoded as a hex `QUANTITY`.
   [#668](https://github.com/gakonst/ethers-rs/pull/668)
 
+## ethers-contract-abigen
+
+- Implement snowtrace and polygonscan on par with the etherscan integration
+  [#666](https://github.com/gakonst/ethers-rs/pull/666).
+
 ## ethers-solc
 
 ### Unreleased
