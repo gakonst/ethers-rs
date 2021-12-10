@@ -9,6 +9,9 @@ use thiserror::Error;
 pub enum DerivationType {
     /// Trezor Live-generated HD path
     TrezorLive(usize),
+    /// Any other path. Attention! Trezor by default forbids custom derivation paths
+    /// Run trezorctl set safety-checks prompt, to allow it
+    Other(String),
 }
 
 impl fmt::Display for DerivationType {
@@ -18,6 +21,7 @@ impl fmt::Display for DerivationType {
             "{}",
             match self {
                 DerivationType::TrezorLive(index) => format!("m/44'/60'/{}'/0/0", index),
+                DerivationType::Other(inner) => inner.to_owned(),
             }
         )
     }
