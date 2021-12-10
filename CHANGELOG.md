@@ -13,6 +13,11 @@
 - Implement hex display format for `ethers::core::Bytes`
   [#624](https://github.com/gakonst/ethers-rs/pull/624).
 
+## ethers-contract-abigen
+
+- Implement snowtrace and polygonscan on par with the etherscan integration
+  [#666](https://github.com/gakonst/ethers-rs/pull/666).
+
 ## ethers-solc
 
 ### Unreleased
