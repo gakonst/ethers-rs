@@ -28,7 +28,7 @@ yubihsm = { version = "0.39.0", features = ["secp256k1", "http", "usb"], optiona
 futures-util = "0.3.18"
 futures-executor = "0.3.18"
 semver = "1.0.4"
-trezor-client = { package="trezor", git = "https://github.com/joshiedo/rust-trezor-api", rev = "8159dc8a7ab2fa03e85638121275253b9a42c7d4", optional = true }
+trezor-client = { package="trezor", git = "https://github.com/joshiedo/rust-trezor-api", rev = "f0c9775", optional = true }
 
 # aws
 rusoto_core = { version = "0.47.0", optional = true }

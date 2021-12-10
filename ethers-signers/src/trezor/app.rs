@@ -22,50 +22,65 @@ use super::types::*;
 #[derive(Debug)]
 pub struct TrezorEthereum {
     derivation: DerivationType,
+    session_id: Vec<u8>,
     pub(crate) chain_id: u64,
     pub(crate) address: Address,
 }
 
 impl TrezorEthereum {
-    fn get_client() -> Result<Trezor, TrezorError> {
-        let mut client = trezor_client::unique(false)?;
-        client.init_device()?;
+    pub async fn new(derivation: DerivationType, chain_id: u64) -> Result<Self, TrezorError> {
+        let mut blank = Self {
+            derivation: derivation.clone(),
+            chain_id,
+            address: Address::from([0 as u8; 20]),
+            session_id: vec![],
+        };
 
+        // Check if reachable
+        blank.initate_session()?;
+        blank.address = blank.get_address_with_path(&derivation).await?;
+        Ok(blank)
+    }
+
+    fn initate_session(&mut self) -> Result<(), TrezorError> {
+        let mut client = trezor_client::unique(false)?;
+        client.init_device(None)?;
+        self.session_id = client.features().unwrap().get_session_id().to_vec();
+        drop(client);
+        Ok(())
+    }
+
+    /// You need to drop(client) once you're done with it
+    fn get_client(&self, session_id: Vec<u8>) -> Result<Trezor, TrezorError> {
+        let mut client = trezor_client::unique(false)?;
+        client.init_device(Some(session_id))?;
         Ok(client)
     }
 
-    pub async fn new(derivation: DerivationType, chain_id: u64) -> Result<Self, TrezorError> {
-        // Check if reachable
-        let address = Self::get_address_with_path(&derivation).await?;
-
-        Ok(Self { derivation, chain_id, address })
-    }
-
-    /// Consume self and drop the Trezor mutex
-    pub fn close(self) {}
-
     /// Get the account which corresponds to our derivation path
     pub async fn get_address(&self) -> Result<Address, TrezorError> {
-        Ok(TrezorEthereum::get_address_with_path(&self.derivation).await?)
+        Ok(self.get_address_with_path(&self.derivation).await?)
     }
 
     /// Gets the account which corresponds to the provided derivation path
     pub async fn get_address_with_path(
+        &self,
         derivation: &DerivationType,
     ) -> Result<Address, TrezorError> {
-        let mut client = TrezorEthereum::get_client()?;
+        let mut client = self.get_client(self.session_id.clone())?;
 
         let address_str = client.ethereum_get_address(Self::convert_path(derivation))?;
 
         let mut address = [0; 20];
         address.copy_from_slice(&hex::decode(&address_str[2..])?);
 
+        drop(client);
         Ok(Address::from(address))
     }
 
     /// Signs an Ethereum transaction (requires confirmation on the Trezor)
     pub async fn sign_tx(&self, tx: &TypedTransaction) -> Result<Signature, TrezorError> {
-        let mut client = TrezorEthereum::get_client()?;
+        let mut client = self.get_client(self.session_id.clone())?;
 
         let arr_path = Self::convert_path(&self.derivation);
 
@@ -132,16 +147,19 @@ impl TrezorEthereum {
             }
         };
 
+        drop(client);
         Ok(Signature { r: signature.r, s: signature.s, v: signature.v })
     }
 
     /// Signs an ethereum personal message
     pub async fn sign_message<S: AsRef<[u8]>>(&self, message: S) -> Result<Signature, TrezorError> {
         let message = message.as_ref();
-        let mut client = TrezorEthereum::get_client()?;
+        let mut client = self.get_client(self.session_id.clone())?;
         let apath = Self::convert_path(&self.derivation);
 
         let signs = client.ethereum_sign_message(message.into(), apath)?;
+
+        drop(client);
         Ok(Signature { r: signs.r, s: signs.s, v: signs.v })
     }
 
@@ -216,7 +234,7 @@ mod tests {
             "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee".parse().unwrap()
         );
         assert_eq!(
-            TrezorEthereum::get_address_with_path(&DerivationType::TrezorLive(0)).await.unwrap(),
+            trezor.get_address_with_path(&DerivationType::TrezorLive(0)).await.unwrap(),
             "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee".parse().unwrap()
         );
     }
