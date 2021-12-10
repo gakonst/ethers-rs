@@ -3677,7 +3677,7 @@ dependencies = [
 [[package]]
 name = "trezor"
 version = "0.0.1"
-source = "git+https://github.com/joshiedo/rust-trezor-api?rev=f0c9775#f0c9775af70d35ec8be0677363f7e14ae6071801"
+source = "git+https://github.com/joshiedo/rust-trezor-api?rev=121a185#121a185796062d7b9ff3f9c74c094a47217fa76c"
 dependencies = [
  "bitcoin",
  "bitcoin-bech32",

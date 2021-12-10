@@ -45,7 +45,8 @@ impl TrezorEthereum {
     fn initate_session(&mut self) -> Result<(), TrezorError> {
         let mut client = trezor_client::unique(false)?;
         client.init_device(None)?;
-        self.session_id = client.features().unwrap().get_session_id().to_vec();
+        self.session_id =
+            client.features().ok_or(TrezorError::FeaturesError)?.get_session_id().to_vec();
 
         Ok(())
     }
@@ -83,67 +84,31 @@ impl TrezorEthereum {
 
         let arr_path = Self::convert_path(&self.derivation);
 
-        let mut nonce = [0 as u8; 32];
-        let mut gas = [0 as u8; 32];
-        let mut gas_price = [0 as u8; 32];
-        let mut value = [0 as u8; 32];
-
-        tx.nonce().unwrap().to_big_endian(&mut nonce);
-        tx.gas().unwrap().to_big_endian(&mut gas);
-        tx.gas_price().unwrap().to_big_endian(&mut gas_price);
-        tx.value().unwrap().to_big_endian(&mut value);
-
-        let to: String = match tx.to().unwrap() {
-            NameOrAddress::Name(_) => unimplemented!(),
-            NameOrAddress::Address(value) => format!("0x{}", hex::encode(value)),
-        };
+        let transaction = TrezorTransaction::load(tx)?;
 
         let signature = match tx {
             TypedTransaction::Eip2930(_) | TypedTransaction::Legacy(_) => client.ethereum_sign_tx(
                 arr_path,
-                nonce[tx.nonce().unwrap().leading_zeros() as usize / 8..].to_vec(),
-                gas_price[tx.gas_price().unwrap().leading_zeros() as usize / 8..].to_vec(),
-                gas[tx.gas().unwrap().leading_zeros() as usize / 8..].to_vec(),
-                to,
-                value[tx.value().unwrap().leading_zeros() as usize / 8..].to_vec(),
-                tx.data().unwrap().to_vec(),
+                transaction.nonce,
+                transaction.gas_price,
+                transaction.gas,
+                transaction.to,
+                transaction.value,
+                transaction.data,
                 self.chain_id,
             )?,
-            TypedTransaction::Eip1559(eip1559_tx) => {
-                let mut m_fpg = [0 as u8; 32];
-                let mut m_pfpg = [0 as u8; 32];
-
-                eip1559_tx.max_fee_per_gas.unwrap().to_big_endian(&mut m_fpg);
-                eip1559_tx.max_priority_fee_per_gas.unwrap().to_big_endian(&mut m_pfpg);
-
-                let mut trezor_access_list: Vec<Trezor_AccessListItem> = Vec::new();
-                for item in &eip1559_tx.access_list.0 {
-                    let address: String = format!("0x{}", hex::encode(item.address));
-                    let mut storage_keys: Vec<Vec<u8>> = Vec::new();
-
-                    for key in &item.storage_keys {
-                        storage_keys.push(key.as_bytes().to_vec())
-                    }
-
-                    trezor_access_list.push(Trezor_AccessListItem { address, storage_keys })
-                }
-
-                client.ethereum_sign_eip1559_tx(
-                    arr_path,
-                    nonce[tx.nonce().unwrap().leading_zeros() as usize / 8..].to_vec(),
-                    gas[tx.gas().unwrap().leading_zeros() as usize / 8..].to_vec(),
-                    to,
-                    value[tx.value().unwrap().leading_zeros() as usize / 8..].to_vec(),
-                    tx.data().unwrap().to_vec(),
-                    self.chain_id,
-                    m_fpg[eip1559_tx.max_fee_per_gas.unwrap().leading_zeros() as usize / 8..]
-                        .to_vec(),
-                    m_pfpg[eip1559_tx.max_priority_fee_per_gas.unwrap().leading_zeros() as usize /
-                        8..]
-                        .to_vec(),
-                    trezor_access_list,
-                )?
-            }
+            TypedTransaction::Eip1559(eip1559_tx) => client.ethereum_sign_eip1559_tx(
+                arr_path,
+                transaction.nonce,
+                transaction.gas,
+                transaction.to,
+                transaction.value,
+                transaction.data,
+                self.chain_id,
+                transaction.max_fee_per_gas,
+                transaction.max_priority_fee_per_gas,
+                transaction.access_list,
+            )?,
         };
 
         Ok(Signature { r: signature.r, s: signature.s, v: signature.v })
@@ -155,9 +120,9 @@ impl TrezorEthereum {
         let mut client = self.get_client(self.session_id.clone())?;
         let apath = Self::convert_path(&self.derivation);
 
-        let signs = client.ethereum_sign_message(message.into(), apath)?;
+        let signature = client.ethereum_sign_message(message.into(), apath)?;
 
-        Ok(Signature { r: signs.r, s: signs.s, v: signs.v })
+        Ok(Signature { r: signature.r, s: signature.s, v: signature.v })
     }
 
     /// Signs an EIP712 encoded domain separator and message

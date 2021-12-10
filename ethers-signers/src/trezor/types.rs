@@ -4,6 +4,9 @@
 use std::fmt;
 use thiserror::Error;
 
+use ethers_core::types::{transaction::eip2718::TypedTransaction, NameOrAddress, U256};
+use trezor_client::client::AccessListItem as Trezor_AccessListItem;
+
 #[derive(Clone, Debug)]
 /// Trezor wallet type
 pub enum DerivationType {
@@ -33,6 +36,10 @@ pub enum TrezorError {
     /// Underlying Trezor transport error
     #[error(transparent)]
     TrezorError(#[from] trezor_client::error::Error),
+    #[error("Trezor was not able to retrieve device features")]
+    FeaturesError,
+    #[error("Not able to unpack value for TrezorTransaction.")]
+    DataError,
     #[error(transparent)]
     /// Error when converting from a hex string
     HexError(#[from] hex::FromHexError),
@@ -42,4 +49,84 @@ pub enum TrezorError {
     /// Error when signing EIP712 struct with not compatible Trezor ETH app
     #[error("Trezor ethereum app requires at least version: {0:?}")]
     UnsupportedAppVersion(String),
+}
+
+/// Trezor Transaction Struct
+pub struct TrezorTransaction {
+    pub nonce: Vec<u8>,
+    pub gas: Vec<u8>,
+    pub gas_price: Vec<u8>,
+    pub value: Vec<u8>,
+    pub to: String,
+    pub data: Vec<u8>,
+    pub max_fee_per_gas: Vec<u8>,
+    pub max_priority_fee_per_gas: Vec<u8>,
+    pub access_list: Vec<Trezor_AccessListItem>,
+}
+
+impl TrezorTransaction {
+    fn to_trimmed_big_endian(_value: &U256) -> Vec<u8> {
+        let mut trimmed_value = [0 as u8; 32];
+        _value.to_big_endian(&mut trimmed_value);
+        trimmed_value[_value.leading_zeros() as usize / 8..].to_vec()
+    }
+
+    pub fn load(tx: &TypedTransaction) -> Result<Self, TrezorError> {
+        let to: String = match tx.to().ok_or(TrezorError::DataError)? {
+            NameOrAddress::Name(_) => unimplemented!(),
+            NameOrAddress::Address(value) => format!("0x{}", hex::encode(value)),
+        };
+
+        let nonce = Self::to_trimmed_big_endian(tx.nonce().ok_or(TrezorError::DataError)?);
+        let gas = Self::to_trimmed_big_endian(tx.gas().ok_or(TrezorError::DataError)?);
+        let gas_price = Self::to_trimmed_big_endian(&tx.gas_price().ok_or(TrezorError::DataError)?);
+        let value = Self::to_trimmed_big_endian(tx.value().ok_or(TrezorError::DataError)?);
+        let data = tx.data().ok_or(TrezorError::DataError)?.to_vec();
+
+        match tx {
+            TypedTransaction::Eip2930(_) | TypedTransaction::Legacy(_) => Ok(Self {
+                nonce,
+                gas,
+                gas_price,
+                value,
+                to,
+                data,
+                max_fee_per_gas: vec![],
+                max_priority_fee_per_gas: vec![],
+                access_list: vec![],
+            }),
+            TypedTransaction::Eip1559(eip1559_tx) => {
+                let max_fee_per_gas = Self::to_trimmed_big_endian(
+                    &eip1559_tx.max_fee_per_gas.ok_or(TrezorError::DataError)?,
+                );
+                let max_priority_fee_per_gas = Self::to_trimmed_big_endian(
+                    &eip1559_tx.max_priority_fee_per_gas.ok_or(TrezorError::DataError)?,
+                );
+
+                let mut access_list: Vec<Trezor_AccessListItem> = Vec::new();
+                for item in &eip1559_tx.access_list.0 {
+                    let address: String = format!("0x{}", hex::encode(item.address));
+                    let mut storage_keys: Vec<Vec<u8>> = Vec::new();
+
+                    for key in &item.storage_keys {
+                        storage_keys.push(key.as_bytes().to_vec())
+                    }
+
+                    access_list.push(Trezor_AccessListItem { address, storage_keys })
+                }
+
+                Ok(Self {
+                    nonce,
+                    gas,
+                    gas_price,
+                    value,
+                    to,
+                    data,
+                    max_fee_per_gas,
+                    max_priority_fee_per_gas,
+                    access_list,
+                })
+            }
+        }
+    }
 }
