@@ -48,7 +48,7 @@ pub enum TrezorError {
     SemVerError(#[from] semver::Error),
     /// Error when signing EIP712 struct with not compatible Trezor ETH app
     #[error("Trezor ethereum app requires at least version: {0:?}")]
-    UnsupportedAppVersion(String),
+    UnsupportedFirmwareVersion(String),
 }
 
 /// Trezor Transaction Struct

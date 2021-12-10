@@ -27,6 +27,8 @@ pub struct TrezorEthereum {
     pub(crate) address: Address,
 }
 
+const FIRMWARE_MIN_VERSION: &str = ">=2.4.2";
+
 impl TrezorEthereum {
     pub async fn new(derivation: DerivationType, chain_id: u64) -> Result<Self, TrezorError> {
         let mut blank = Self {
@@ -42,11 +44,32 @@ impl TrezorEthereum {
         Ok(blank)
     }
 
+    fn check_version(version: String) -> Result<(), TrezorError> {
+        let req = semver::VersionReq::parse(FIRMWARE_MIN_VERSION)?;
+        let version = semver::Version::parse(&version)?;
+
+        // Enforce firmware version is greater than FIRMWARE_MIN_VERSION
+        if !req.matches(&version) {
+            return Err(TrezorError::UnsupportedFirmwareVersion(FIRMWARE_MIN_VERSION.to_string()))
+        }
+
+        Ok(())
+    }
+
     fn initate_session(&mut self) -> Result<(), TrezorError> {
         let mut client = trezor_client::unique(false)?;
         client.init_device(None)?;
-        self.session_id =
-            client.features().ok_or(TrezorError::FeaturesError)?.get_session_id().to_vec();
+
+        let features = client.features().ok_or(TrezorError::FeaturesError)?;
+
+        Self::check_version(format!(
+            "{}.{}.{}",
+            features.get_major_version(),
+            features.get_minor_version(),
+            features.get_patch_version()
+        ))?;
+
+        self.session_id = features.get_session_id().to_vec();
 
         Ok(())
     }
