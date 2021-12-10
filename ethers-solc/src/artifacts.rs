@@ -185,7 +185,7 @@ impl Default for Settings {
             optimizer: Default::default(),
             metadata: None,
             output_selection: Self::default_output_selection(),
-            evm_version: Some(EvmVersion::Istanbul),
+            evm_version: Some(EvmVersion::default()),
             libraries: Default::default(),
             remappings: Default::default(),
         }
@@ -225,13 +225,19 @@ impl Default for Optimizer {
 pub enum EvmVersion {
     Homestead,
     TangerineWhistle,
-    SpuriusDragon,
+    SpuriousDragon,
+    Byzantium,
     Constantinople,
     Petersburg,
     Istanbul,
     Berlin,
-    Byzantium,
     London,
+}
+
+impl Default for EvmVersion {
+    fn default() -> Self {
+        Self::London
+    }
 }
 
 impl EvmVersion {
@@ -267,7 +273,7 @@ impl fmt::Display for EvmVersion {
         let string = match self {
             EvmVersion::Homestead => "homestead",
             EvmVersion::TangerineWhistle => "tangerineWhistle",
-            EvmVersion::SpuriusDragon => "spuriusDragon",
+            EvmVersion::SpuriousDragon => "spuriousDragon",
             EvmVersion::Constantinople => "constantinople",
             EvmVersion::Petersburg => "petersburg",
             EvmVersion::Istanbul => "istanbul",
@@ -286,7 +292,7 @@ impl FromStr for EvmVersion {
         match s {
             "homestead" => Ok(EvmVersion::Homestead),
             "tangerineWhistle" => Ok(EvmVersion::TangerineWhistle),
-            "spuriusDragon" => Ok(EvmVersion::SpuriusDragon),
+            "spuriousDragon" => Ok(EvmVersion::SpuriousDragon),
             "constantinople" => Ok(EvmVersion::Constantinople),
             "petersburg" => Ok(EvmVersion::Petersburg),
             "istanbul" => Ok(EvmVersion::Istanbul),
