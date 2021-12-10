@@ -34,7 +34,7 @@ impl TrezorEthereum {
         let mut blank = Self {
             derivation: derivation.clone(),
             chain_id,
-            address: Address::from([0 as u8; 20]),
+            address: Address::from([0_u8; 20]),
             session_id: vec![],
         };
 

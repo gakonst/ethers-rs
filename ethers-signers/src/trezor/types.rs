@@ -66,7 +66,7 @@ pub struct TrezorTransaction {
 
 impl TrezorTransaction {
     fn to_trimmed_big_endian(_value: &U256) -> Vec<u8> {
-        let mut trimmed_value = [0 as u8; 32];
+        let mut trimmed_value = [0_u8; 32];
         _value.to_big_endian(&mut trimmed_value);
         trimmed_value[_value.leading_zeros() as usize / 8..].to_vec()
     }
