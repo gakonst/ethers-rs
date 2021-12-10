@@ -1,5 +1,4 @@
 #[tokio::main]
-// #[cfg(feature = "trezor")]
 #[cfg(feature = "trezor")]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     use ethers::{prelude::*, utils::parse_ether};
@@ -26,6 +25,5 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-// #[cfg(not(feature = "trezor"))]
 #[cfg(not(feature = "trezor"))]
 fn main() {}
