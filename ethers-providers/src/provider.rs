@@ -854,6 +854,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         last_block: BlockNumber,
         reward_percentiles: &[f64],
     ) -> Result<FeeHistory, Self::Error> {
+        let block_count = block_count.into();
         let last_block = utils::serialize(&last_block);
         let reward_percentiles = utils::serialize(&reward_percentiles);
 
@@ -862,13 +863,13 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         // decode the param from client side would fallback to the old API spec.
         self.request(
             "eth_feeHistory",
-            [utils::serialize(&block_count.into()), last_block.clone(), reward_percentiles.clone()],
+            [utils::serialize(&block_count), last_block.clone(), reward_percentiles.clone()],
         )
         .await
         .or(self
             .request(
                 "eth_feeHistory",
-                [utils::serialize(&block_count.into().as_u64()), last_block, reward_percentiles],
+                [utils::serialize(&block_count.as_u64()), last_block, reward_percentiles],
             )
             .await)
     }
