@@ -601,10 +601,10 @@ impl CompactContract {
 impl From<serde_json::Value> for CompactContract {
     fn from(mut val: serde_json::Value) -> Self {
         if let Some(map) = val.as_object_mut() {
-            let abi = map.remove("abi").and_then(|abi| serde_json::from_value(abi).ok());
-            let bin = map.remove("bin").and_then(|abi| serde_json::from_value(abi).ok());
+            let abi = map.remove("abi").and_then(|val| serde_json::from_value(val).ok());
+            let bin = map.remove("bin").and_then(|val| serde_json::from_value(val).ok());
             let bin_runtime =
-                map.remove("bin-runtime").and_then(|abi| serde_json::from_value(abi).ok());
+                map.remove("bin-runtime").and_then(|val| serde_json::from_value(val).ok());
             Self { abi, bin, bin_runtime }
         } else {
             CompactContract::default()
