@@ -1342,7 +1342,7 @@ dependencies = [
  "tracing",
  "tracing-futures",
  "tracing-subscriber",
- "trezor",
+ "trezor-client",
  "yubihsm",
 ]
 
@@ -3675,9 +3675,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "trezor"
-version = "0.0.1"
-source = "git+https://github.com/joshiedo/rust-trezor-api?rev=121a185#121a185796062d7b9ff3f9c74c094a47217fa76c"
+name = "trezor-client"
+version = "0.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7ebaa901ea69675239aece61fb89610264167c204c0e0e7c445fc823f2a1128e"
 dependencies = [
  "bitcoin",
  "bitcoin-bech32",
