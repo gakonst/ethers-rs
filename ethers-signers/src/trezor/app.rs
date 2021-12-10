@@ -46,7 +46,7 @@ impl TrezorEthereum {
         let mut client = trezor_client::unique(false)?;
         client.init_device(None)?;
         self.session_id = client.features().unwrap().get_session_id().to_vec();
-        drop(client);
+
         Ok(())
     }
 
@@ -74,7 +74,6 @@ impl TrezorEthereum {
         let mut address = [0; 20];
         address.copy_from_slice(&hex::decode(&address_str[2..])?);
 
-        drop(client);
         Ok(Address::from(address))
     }
 
@@ -147,7 +146,6 @@ impl TrezorEthereum {
             }
         };
 
-        drop(client);
         Ok(Signature { r: signature.r, s: signature.s, v: signature.v })
     }
 
@@ -159,7 +157,6 @@ impl TrezorEthereum {
 
         let signs = client.ethereum_sign_message(message.into(), apath)?;
 
-        drop(client);
         Ok(Signature { r: signs.r, s: signs.s, v: signs.v })
     }
 
