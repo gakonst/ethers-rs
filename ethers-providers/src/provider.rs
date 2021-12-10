@@ -848,7 +848,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.subscribe([logs, filter]).await
     }
 
-    async fn fee_history<T: Into<U256> + serde::Serialize + Send + Sync>(
+    async fn fee_history<T: Into<U256> + Send + Sync>(
         &self,
         block_count: T,
         last_block: BlockNumber,
@@ -862,7 +862,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         // decode the param from client side would fallback to the old API spec.
         self.request(
             "eth_feeHistory",
-            [utils::serialize(&block_count), last_block.clone(), reward_percentiles.clone()],
+            [utils::serialize(&block_count.into()), last_block.clone(), reward_percentiles.clone()],
         )
         .await
         .or(self
