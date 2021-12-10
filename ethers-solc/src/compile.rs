@@ -358,6 +358,7 @@ impl Solc {
         use tokio::io::AsyncWriteExt;
         let content = serde_json::to_vec(input)?;
         let mut child = tokio::process::Command::new(&self.solc)
+            .args(&self.args)
             .arg("--standard-json")
             .stdin(Stdio::piped())
             .stderr(Stdio::piped())
