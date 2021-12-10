@@ -84,7 +84,7 @@ where
 }
 
 /// Perform an HTTP GET request and return the contents of the response.
-#[allow(unused)]
+#[cfg(not(target_arch = "wasm32"))]
 pub fn http_get(_url: &str) -> Result<String> {
     cfg_if! {
         if #[cfg(any(target_arch = "wasm32", not(feature = "reqwest")))]{
