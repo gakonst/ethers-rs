@@ -58,6 +58,20 @@ impl ProjectPathsConfig {
     pub fn current_dapptools() -> Result<Self> {
         Self::dapptools(std::env::current_dir()?)
     }
+
+    /// Creates all configured dirs and files
+    pub fn create_all(&self) -> io::Result<()> {
+        if let Some(parent) = self.cache.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        fs::create_dir_all(&self.artifacts)?;
+        fs::create_dir_all(&self.sources)?;
+        fs::create_dir_all(&self.tests)?;
+        for lib in &self.libraries {
+            fs::create_dir_all(lib)?;
+        }
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]

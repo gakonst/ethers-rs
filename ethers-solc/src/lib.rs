@@ -7,6 +7,7 @@ use std::collections::btree_map::Entry;
 
 pub mod cache;
 pub mod hh;
+pub use hh::{HardhatArtifact, HardhatArtifacts};
 
 mod compile;
 
@@ -32,6 +33,10 @@ use std::{
     borrow::Cow, collections::BTreeMap, convert::TryInto, fmt, fs, io, marker::PhantomData,
     path::PathBuf,
 };
+
+/// Mocking and testing support for (temporary) projects
+#[cfg(test)]
+pub mod mock;
 
 /// Represents a project workspace and handles `solc` compiling of all contracts in that workspace.
 #[derive(Debug)]

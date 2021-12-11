@@ -50,6 +50,8 @@ getrandom = { version = "0.2", features = ["js"] }
 criterion = { version = "0.3", features = ["async_tokio"] }
 tokio = { version = "1.12.0", features = ["full"] }
 tempdir = "0.3.7"
+fs_extra = "1.2.0"
+eyre = "0.6.5"
 
 [[bench]]
 name = "compile_many"
