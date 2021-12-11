@@ -168,7 +168,7 @@ impl SolFilesCache {
         })
     }
 
-    /// Reads all cached artifacts from disk
+    /// Reads all cached artifacts from disk using the given ArtifactOutput handler
     pub fn read_artifacts<T: ArtifactOutput>(
         &self,
         artifacts_root: &Path,

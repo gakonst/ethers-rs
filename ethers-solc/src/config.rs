@@ -2,6 +2,7 @@ use crate::{
     artifacts::{CompactContract, CompactContractRef, Contract, Settings},
     cache::SOLIDITY_FILES_CACHE_FILENAME,
     error::{Result, SolcError},
+    hh::HardhatArtifact,
     remappings::Remapping,
     CompilerOutput,
 };
@@ -369,6 +370,36 @@ impl ArtifactOutput for MinimalCombinedArtifacts {
 
     fn contract_to_artifact(_file: &str, _name: &str, contract: Contract) -> Self::Artifact {
         Self::Artifact::from(contract)
+    }
+}
+
+/// An Artifacts handler implementation that works the same as `MinimalCombinedArtifacts` but also
+/// supports reading hardhat artifacts if an intial attempt to deserialize an artifact failed
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub struct MinimalCombinedArtifactsHardhatFallback;
+
+impl ArtifactOutput for MinimalCombinedArtifactsHardhatFallback {
+    type Artifact = CompactContract;
+
+    fn on_output(output: &CompilerOutput, layout: &ProjectPathsConfig) -> Result<()> {
+        MinimalCombinedArtifacts::on_output(output, layout)
+    }
+
+    fn read_cached_artifact(path: impl AsRef<Path>) -> Result<Self::Artifact> {
+        let content = fs::read_to_string(path)?;
+        if let Ok(a) = serde_json::from_str(&content) {
+            Ok(a)
+        } else {
+            tracing::error!("Failed to deserialize compact artifact");
+            tracing::trace!("Fallback to hardhat artifact deserialization");
+            let artifact = serde_json::from_str::<HardhatArtifact>(&content)?;
+            tracing::trace!("successfully deserialized hardhat artifact");
+            Ok(artifact.into_compact_contract())
+        }
+    }
+
+    fn contract_to_artifact(file: &str, name: &str, contract: Contract) -> Self::Artifact {
+        MinimalCombinedArtifacts::contract_to_artifact(file, name, contract)
     }
 }
 
