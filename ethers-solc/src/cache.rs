@@ -14,7 +14,7 @@ use std::{
 };
 
 /// Hardhat format version
-const _HH_FORMAT_VERSION: &str = "hh-sol-cache-2";
+const HH_FORMAT_VERSION: &str = "hh-sol-cache-2";
 
 /// ethers-rs format version
 ///
@@ -47,6 +47,16 @@ impl SolFilesCache {
     /// ```
     pub fn builder() -> SolFilesCacheBuilder {
         SolFilesCacheBuilder::default()
+    }
+
+    /// Whether this cache's format is the hardhat format identifier
+    pub fn is_hardhat_format(&self) -> bool {
+        self.format == HH_FORMAT_VERSION
+    }
+
+    /// Whether this cache's format is our custom format identifier
+    pub fn is_ethers_format(&self) -> bool {
+        self.format == ETHERS_FORMAT_VERSION
     }
 
     /// Reads the cache json file from the given path

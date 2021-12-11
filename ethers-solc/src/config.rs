@@ -374,7 +374,7 @@ impl ArtifactOutput for MinimalCombinedArtifacts {
 }
 
 /// An Artifacts handler implementation that works the same as `MinimalCombinedArtifacts` but also
-/// supports reading hardhat artifacts if an intial attempt to deserialize an artifact failed
+/// supports reading hardhat artifacts if an initial attempt to deserialize an artifact failed
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct MinimalCombinedArtifactsHardhatFallback;
 
