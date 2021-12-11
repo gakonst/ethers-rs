@@ -29,10 +29,16 @@ pub enum SolcError {
     NoContracts(String),
     #[error(transparent)]
     PatternError(#[from] glob::PatternError),
+    /// General purpose message
+    #[error("{0}")]
+    Message(String),
 }
 
 impl SolcError {
     pub(crate) fn solc(msg: impl Into<String>) -> Self {
         SolcError::SolcError(msg.into())
+    }
+    pub(crate) fn msg(msg: impl Into<String>) -> Self {
+        SolcError::Message(msg.into())
     }
 }

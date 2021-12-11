@@ -6,6 +6,7 @@ pub use artifacts::{CompilerInput, CompilerOutput, EvmVersion};
 use std::collections::btree_map::Entry;
 
 pub mod cache;
+pub mod hh;
 
 mod compile;
 
@@ -763,14 +764,12 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
     }
 
     /// Finds the first contract with the given name and removes it from the set
-    pub fn remove(&mut self, contract: impl AsRef<str>) -> Option<T::Artifact> {
-        let contract = contract.as_ref();
+    pub fn remove(&mut self, contract_name: impl AsRef<str>) -> Option<T::Artifact> {
+        let contract_name = contract_name.as_ref();
         if let Some(output) = self.compiler_output.as_mut() {
-            if let contract @ Some(_) = output
-                .contracts
-                .values_mut()
-                .find_map(|c| c.remove(contract).map(T::contract_to_artifact))
-            {
+            if let contract @ Some(_) = output.contracts.iter_mut().find_map(|(file, c)| {
+                c.remove(contract_name).map(|c| T::contract_to_artifact(file, contract_name, c))
+            }) {
                 return contract
             }
         }
@@ -778,7 +777,7 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
             .artifacts
             .iter()
             .find_map(|(path, _)| {
-                T::contract_name(path).filter(|name| name == contract).map(|_| path)
+                T::contract_name(path).filter(|name| name == contract_name).map(|_| path)
             })?
             .clone();
         self.artifacts.remove(&key)
@@ -790,17 +789,20 @@ where
     T::Artifact: Clone,
 {
     /// Finds the first contract with the given name
-    pub fn find(&self, contract: impl AsRef<str>) -> Option<Cow<T::Artifact>> {
-        let contract = contract.as_ref();
+    pub fn find(&self, contract_name: impl AsRef<str>) -> Option<Cow<T::Artifact>> {
+        let contract_name = contract_name.as_ref();
         if let Some(output) = self.compiler_output.as_ref() {
-            if let contract @ Some(_) = output.contracts.values().find_map(|c| {
-                c.get(contract).map(|c| T::contract_to_artifact(c.clone())).map(Cow::Owned)
+            if let contract @ Some(_) = output.contracts.iter().find_map(|(file, contracts)| {
+                contracts
+                    .get(contract_name)
+                    .map(|c| T::contract_to_artifact(file, contract_name, c.clone()))
+                    .map(Cow::Owned)
             }) {
                 return contract
             }
         }
         self.artifacts.iter().find_map(|(path, art)| {
-            T::contract_name(path).filter(|name| name == contract).map(|_| Cow::Borrowed(art))
+            T::contract_name(path).filter(|name| name == contract_name).map(|_| Cow::Borrowed(art))
         })
     }
 }

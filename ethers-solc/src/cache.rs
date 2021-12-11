@@ -14,7 +14,14 @@ use std::{
 };
 
 /// Hardhat format version
-const HH_FORMAT_VERSION: &str = "hh-sol-cache-2";
+const _HH_FORMAT_VERSION: &str = "hh-sol-cache-2";
+
+/// ethers-rs format version
+///
+/// `ethers-solc` uses a different format version id, but the actual format is consistent with
+/// hardhat This allows ethers-solc to detect if the cache file was written by hardhat or
+/// `ethers-solc`
+const ETHERS_FORMAT_VERSION: &str = "ethers-rs-sol-cache-1";
 
 /// The file name of the default cache file
 pub const SOLIDITY_FILES_CACHE_FILENAME: &str = "solidity-files-cache.json";
@@ -215,7 +222,7 @@ impl SolFilesCacheBuilder {
     }
 
     pub fn insert_files(self, sources: Sources, dest: Option<PathBuf>) -> Result<SolFilesCache> {
-        let format = self.format.unwrap_or_else(|| HH_FORMAT_VERSION.to_string());
+        let format = self.format.unwrap_or_else(|| ETHERS_FORMAT_VERSION.to_string());
         let solc_config =
             self.solc_config.map(Ok).unwrap_or_else(|| SolcConfig::builder().build())?;
 
