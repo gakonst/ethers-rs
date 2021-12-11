@@ -34,9 +34,9 @@ use std::{
     path::PathBuf,
 };
 
-/// Mocking and testing support for (temporary) projects
-#[cfg(test)]
-pub mod mock;
+/// Utilities for creating, mocking and testing of (temporary) projects
+#[cfg(feature = "project-util")]
+pub mod project_util;
 
 /// Represents a project workspace and handles `solc` compiling of all contracts in that workspace.
 #[derive(Debug)]

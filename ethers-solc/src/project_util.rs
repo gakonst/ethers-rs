@@ -3,12 +3,9 @@ use crate::{
     cache::SOLIDITY_FILES_CACHE_FILENAME, config::ProjectPathsConfigBuilder, hh::HardhatArtifacts,
     ArtifactOutput, MinimalCombinedArtifacts, Project, ProjectPathsConfig,
 };
-use eyre::eyre;
+
 use fs_extra::{dir, file};
-use std::{
-    fs, io,
-    path::{Path, PathBuf},
-};
+use std::{io, path::Path};
 use tempdir::TempDir;
 
 pub struct TempProject<T: ArtifactOutput> {
@@ -26,11 +23,11 @@ impl<T: ArtifactOutput> TempProject<T> {
         Ok(project)
     }
 
-    pub fn with_paths(paths: ProjectPathsConfigBuilder) -> io::Result<Self> {
+    pub fn new(paths: ProjectPathsConfigBuilder) -> eyre::Result<Self> {
         let tmp_dir = TempDir::new("root")?;
         let paths = paths.build_with_root(tmp_dir.path());
         let inner = Project::builder().artifacts().paths(paths).build()?;
-        Self::create_new(tmp_dir, inner)
+        Ok(Self::create_new(tmp_dir, inner)?)
     }
 
     pub fn project(&self) -> &Project<T> {
@@ -91,10 +88,10 @@ impl<T: ArtifactOutput> TempProject<T> {
         self.copy_file(source, &self.paths().sources)
     }
 
-    pub fn copy_sources<I, T>(&self, sources: I) -> io::Result<()>
+    pub fn copy_sources<I, S>(&self, sources: I) -> eyre::Result<()>
     where
-        I: IntoIterator<Item = T>,
-        T: AsRef<Path>,
+        I: IntoIterator<Item = S>,
+        S: AsRef<Path>,
     {
         for path in sources {
             self.copy_source(path)?;
@@ -113,10 +110,10 @@ impl<T: ArtifactOutput> TempProject<T> {
     }
 
     /// Copy a series of files into the main library dir
-    pub fn copy_libs<I, T>(&self, libs: I) -> io::Result<()>
+    pub fn copy_libs<I, S>(&self, libs: I) -> eyre::Result<()>
     where
-        I: IntoIterator<Item = T>,
-        T: AsRef<Path>,
+        I: IntoIterator<Item = S>,
+        S: AsRef<Path>,
     {
         for path in libs {
             self.copy_lib(path)?;
@@ -127,7 +124,7 @@ impl<T: ArtifactOutput> TempProject<T> {
 
 impl TempProject<HardhatArtifacts> {
     /// Creates an empty new hardhat style workspace in a new temporary dir
-    fn hardhat() -> eyre::Result<Self> {
+    pub fn hardhat() -> eyre::Result<Self> {
         let tmp_dir = TempDir::new("tmp_hh")?;
         let root = tmp_dir.path().to_path_buf();
         let cache = tmp_dir.path().join("cache");
@@ -148,7 +145,7 @@ impl TempProject<HardhatArtifacts> {
 
 impl TempProject<MinimalCombinedArtifacts> {
     /// Creates an empty new dapptools style workspace in a new temporary dir
-    fn dapptools() -> eyre::Result<Self> {
+    pub fn dapptools() -> eyre::Result<Self> {
         let tmp_dir = TempDir::new("tmp_dapp")?;
         let root = tmp_dir.path().to_path_buf();
         let cache = tmp_dir.path().join("cache");
