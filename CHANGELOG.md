@@ -24,6 +24,7 @@
 
 ### Unreleased
 
+- Add support for hardhat artifacts [#677](https://github.com/gakonst/ethers-rs/pull/677)
 - Add more utility functions to the `Artifact` trait [#673](https://github.com/gakonst/ethers-rs/pull/673)
 - Return cached artifacts from project `compile` when the cache only contains
   some files

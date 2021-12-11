@@ -16,6 +16,13 @@ use std::{
 /// Hardhat format version
 const HH_FORMAT_VERSION: &str = "hh-sol-cache-2";
 
+/// ethers-rs format version
+///
+/// `ethers-solc` uses a different format version id, but the actual format is consistent with
+/// hardhat This allows ethers-solc to detect if the cache file was written by hardhat or
+/// `ethers-solc`
+const ETHERS_FORMAT_VERSION: &str = "ethers-rs-sol-cache-1";
+
 /// The file name of the default cache file
 pub const SOLIDITY_FILES_CACHE_FILENAME: &str = "solidity-files-cache.json";
 
@@ -40,6 +47,16 @@ impl SolFilesCache {
     /// ```
     pub fn builder() -> SolFilesCacheBuilder {
         SolFilesCacheBuilder::default()
+    }
+
+    /// Whether this cache's format is the hardhat format identifier
+    pub fn is_hardhat_format(&self) -> bool {
+        self.format == HH_FORMAT_VERSION
+    }
+
+    /// Whether this cache's format is our custom format identifier
+    pub fn is_ethers_format(&self) -> bool {
+        self.format == ETHERS_FORMAT_VERSION
     }
 
     /// Reads the cache json file from the given path
@@ -161,7 +178,7 @@ impl SolFilesCache {
         })
     }
 
-    /// Reads all cached artifacts from disk
+    /// Reads all cached artifacts from disk using the given ArtifactOutput handler
     pub fn read_artifacts<T: ArtifactOutput>(
         &self,
         artifacts_root: &Path,
@@ -215,7 +232,7 @@ impl SolFilesCacheBuilder {
     }
 
     pub fn insert_files(self, sources: Sources, dest: Option<PathBuf>) -> Result<SolFilesCache> {
-        let format = self.format.unwrap_or_else(|| HH_FORMAT_VERSION.to_string());
+        let format = self.format.unwrap_or_else(|| ETHERS_FORMAT_VERSION.to_string());
         let solc_config =
             self.solc_config.map(Ok).unwrap_or_else(|| SolcConfig::builder().build())?;
 

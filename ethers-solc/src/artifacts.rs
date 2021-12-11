@@ -940,6 +940,13 @@ impl BytecodeObject {
     }
 }
 
+// Returns a not deployable bytecode by default as "0x"
+impl Default for BytecodeObject {
+    fn default() -> Self {
+        BytecodeObject::Unlinked("0x".to_string())
+    }
+}
+
 impl AsRef<[u8]> for BytecodeObject {
     fn as_ref(&self) -> &[u8] {
         match self {

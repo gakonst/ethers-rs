@@ -1,12 +1,13 @@
 use crate::{
     artifacts::{CompactContract, CompactContractRef, Contract, Settings},
     cache::SOLIDITY_FILES_CACHE_FILENAME,
-    error::Result,
+    error::{Result, SolcError},
+    hh::HardhatArtifact,
     remappings::Remapping,
     CompilerOutput,
 };
 use ethers_core::{abi::Abi, types::Bytes};
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{
     collections::BTreeMap,
     convert::TryFrom,
@@ -225,37 +226,27 @@ pub trait Artifact {
     fn into_compact_contract(self) -> CompactContract;
 
     /// Returns the contents of this type as a single tuple of abi, bytecode and deployed bytecode
-    fn into_parts(self) -> (Option<Abi>, Option<Bytes>, Option<Bytes>)
-    where
-        Self: Sized,
-    {
-        self.into_compact_contract().into_parts()
-    }
+    fn into_parts(self) -> (Option<Abi>, Option<Bytes>, Option<Bytes>);
 }
 
-impl Artifact for CompactContract {
+impl<T: Into<CompactContract>> Artifact for T {
     fn into_inner(self) -> (Option<Abi>, Option<Bytes>) {
-        (self.abi, self.bin.and_then(|bin| bin.into_bytes()))
-    }
-
-    fn into_compact_contract(self) -> CompactContract {
-        self
-    }
-}
-
-impl Artifact for serde_json::Value {
-    fn into_inner(self) -> (Option<Abi>, Option<Bytes>) {
-        self.into_compact_contract().into_inner()
+        let artifact = self.into_compact_contract();
+        (artifact.abi, artifact.bin.and_then(|bin| bin.into_bytes()))
     }
 
     fn into_compact_contract(self) -> CompactContract {
         self.into()
     }
+
+    fn into_parts(self) -> (Option<Abi>, Option<Bytes>, Option<Bytes>) {
+        self.into_compact_contract().into_parts()
+    }
 }
 
 pub trait ArtifactOutput {
     /// How Artifacts are stored
-    type Artifact: Artifact;
+    type Artifact: Artifact + DeserializeOwned;
 
     /// Handle the compiler output.
     fn on_output(output: &CompilerOutput, layout: &ProjectPathsConfig) -> Result<()>;
@@ -295,7 +286,11 @@ pub trait ArtifactOutput {
         root.as_ref().join(Self::output_file(contract_file, name)).exists()
     }
 
-    fn read_cached_artifact(path: impl AsRef<Path>) -> Result<Self::Artifact>;
+    fn read_cached_artifact(path: impl AsRef<Path>) -> Result<Self::Artifact> {
+        let file = fs::File::open(path.as_ref())?;
+        let file = io::BufReader::new(file);
+        Ok(serde_json::from_reader(file)?)
+    }
 
     /// Read the cached artifacts from disk
     fn read_cached_artifacts<T, I>(files: I) -> Result<BTreeMap<PathBuf, Self::Artifact>>
@@ -313,21 +308,22 @@ pub trait ArtifactOutput {
     }
 
     /// Convert a contract to the artifact type
-    fn contract_to_artifact(contract: Contract) -> Self::Artifact;
+    fn contract_to_artifact(file: &str, name: &str, contract: Contract) -> Self::Artifact;
 
     /// Convert the compiler output into a set of artifacts
     fn output_to_artifacts(output: CompilerOutput) -> Artifacts<Self::Artifact> {
         output
             .contracts
             .into_iter()
-            .map(|(s, contracts)| {
-                (
-                    s,
-                    contracts
-                        .into_iter()
-                        .map(|(s, c)| (s, Self::contract_to_artifact(c)))
-                        .collect(),
-                )
+            .map(|(file, contracts)| {
+                let contracts = contracts
+                    .into_iter()
+                    .map(|(name, c)| {
+                        let contract = Self::contract_to_artifact(&file, &name, c);
+                        (name, contract)
+                    })
+                    .collect();
+                (file, contracts)
             })
             .collect()
     }
@@ -350,49 +346,60 @@ impl ArtifactOutput for MinimalCombinedArtifacts {
     type Artifact = CompactContract;
 
     fn on_output(output: &CompilerOutput, layout: &ProjectPathsConfig) -> Result<()> {
-        fs::create_dir_all(&layout.artifacts)?;
+        fs::create_dir_all(&layout.artifacts)
+            .map_err(|err| SolcError::msg(format!("Failed to create artifacts dir: {}", err)))?;
         for (file, contracts) in output.contracts.iter() {
             for (name, contract) in contracts {
                 let artifact = Self::output_file(file, name);
                 let file = layout.artifacts.join(artifact);
                 if let Some(parent) = file.parent() {
-                    fs::create_dir_all(parent)?;
+                    fs::create_dir_all(parent).map_err(|err| {
+                        SolcError::msg(format!(
+                            "Failed to create artifact parent folder \"{}\": {}",
+                            parent.display(),
+                            err
+                        ))
+                    })?;
                 }
                 let min = CompactContractRef::from(contract);
-                fs::write(file, serde_json::to_vec_pretty(&min)?)?
+                fs::write(&file, serde_json::to_vec_pretty(&min)?)?
             }
         }
         Ok(())
     }
 
-    fn read_cached_artifact(path: impl AsRef<Path>) -> Result<Self::Artifact> {
-        let file = fs::File::open(path.as_ref())?;
-        let file = io::BufReader::new(file);
-        Ok(serde_json::from_reader(file)?)
-    }
-
-    fn contract_to_artifact(contract: Contract) -> Self::Artifact {
-        CompactContract::from(contract)
+    fn contract_to_artifact(_file: &str, _name: &str, contract: Contract) -> Self::Artifact {
+        Self::Artifact::from(contract)
     }
 }
 
-/// Hardhat style artifacts
+/// An Artifacts handler implementation that works the same as `MinimalCombinedArtifacts` but also
+/// supports reading hardhat artifacts if an initial attempt to deserialize an artifact failed
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub struct HardhatArtifacts;
+pub struct MinimalCombinedArtifactsHardhatFallback;
 
-impl ArtifactOutput for HardhatArtifacts {
-    type Artifact = serde_json::Value;
+impl ArtifactOutput for MinimalCombinedArtifactsHardhatFallback {
+    type Artifact = CompactContract;
 
-    fn on_output(_output: &CompilerOutput, _layout: &ProjectPathsConfig) -> Result<()> {
-        todo!("Hardhat style artifacts not yet implemented")
+    fn on_output(output: &CompilerOutput, layout: &ProjectPathsConfig) -> Result<()> {
+        MinimalCombinedArtifacts::on_output(output, layout)
     }
 
-    fn read_cached_artifact(_path: impl AsRef<Path>) -> Result<Self::Artifact> {
-        todo!("Hardhat style artifacts not yet implemented")
+    fn read_cached_artifact(path: impl AsRef<Path>) -> Result<Self::Artifact> {
+        let content = fs::read_to_string(path)?;
+        if let Ok(a) = serde_json::from_str(&content) {
+            Ok(a)
+        } else {
+            tracing::error!("Failed to deserialize compact artifact");
+            tracing::trace!("Fallback to hardhat artifact deserialization");
+            let artifact = serde_json::from_str::<HardhatArtifact>(&content)?;
+            tracing::trace!("successfully deserialized hardhat artifact");
+            Ok(artifact.into_compact_contract())
+        }
     }
 
-    fn contract_to_artifact(_contract: Contract) -> Self::Artifact {
-        todo!("Hardhat style artifacts not yet implemented")
+    fn contract_to_artifact(file: &str, name: &str, contract: Contract) -> Self::Artifact {
+        MinimalCombinedArtifacts::contract_to_artifact(file, name, contract)
     }
 }
 
