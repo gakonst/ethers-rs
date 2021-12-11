@@ -79,7 +79,12 @@ pub fn format_units<T: Into<U256>, K: Into<Units>>(amount: T, units: K) -> Strin
     let amount = amount.into();
     let amount_decimals = amount % U256::from(10_u128.pow(units.as_num()));
     let amount_integer = amount / U256::from(10_u128.pow(units.as_num()));
-    amount_integer.to_string() + "." + &amount_decimals.to_string()
+    format!(
+        "{}.{:0width$}",
+        amount_integer,
+        amount_decimals.as_u128(),
+        width = units.as_num() as usize
+    )
 }
 
 /// Converts the input to a U256 and converts from Ether to Wei.
@@ -398,6 +403,9 @@ mod tests {
 
         let eth = format_units(U256::from_dec_str("1395633240123456789").unwrap(), "ether");
         assert_eq!(eth, "1.395633240123456789");
+
+        let eth = format_units(U256::from_dec_str("1005633240123456789").unwrap(), "ether");
+        assert_eq!(eth, "1.005633240123456789");
     }
 
     #[test]
