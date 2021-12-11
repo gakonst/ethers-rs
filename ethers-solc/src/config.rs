@@ -345,9 +345,8 @@ impl ArtifactOutput for MinimalCombinedArtifacts {
     type Artifact = CompactContract;
 
     fn on_output(output: &CompilerOutput, layout: &ProjectPathsConfig) -> Result<()> {
-        fs::create_dir_all(&layout.artifacts).map_err(|err| {
-            SolcError::msg(format!("Failed to create artifacts dir: {}", err))
-        })?;
+        fs::create_dir_all(&layout.artifacts)
+            .map_err(|err| SolcError::msg(format!("Failed to create artifacts dir: {}", err)))?;
         for (file, contracts) in output.contracts.iter() {
             for (name, contract) in contracts {
                 let artifact = Self::output_file(file, name);

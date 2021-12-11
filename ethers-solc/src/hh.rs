@@ -57,9 +57,8 @@ impl ArtifactOutput for HardhatArtifacts {
     type Artifact = HardhatArtifact;
 
     fn on_output(output: &CompilerOutput, layout: &ProjectPathsConfig) -> Result<()> {
-        fs::create_dir_all(&layout.artifacts).map_err(|err| {
-            SolcError::msg(format!("Failed to create artifacts dir: {}", err))
-        })?;
+        fs::create_dir_all(&layout.artifacts)
+            .map_err(|err| SolcError::msg(format!("Failed to create artifacts dir: {}", err)))?;
         for (file, contracts) in output.contracts.iter() {
             for (name, contract) in contracts {
                 let artifact = Self::output_file(file, name);
@@ -110,5 +109,21 @@ impl ArtifactOutput for HardhatArtifacts {
             link_references,
             deployed_link_references,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::Artifact;
+
+    #[test]
+    fn can_parse_hh_artifact() {
+        let s = include_str!("../test-data/hh-greeter-artifact.json");
+        let artifact = serde_json::from_str::<HardhatArtifact>(s).unwrap();
+        let compact = artifact.into_compact_contract();
+        assert!(compact.abi.is_some());
+        assert!(compact.bin.is_some());
+        assert!(compact.bin_runtime.is_some());
     }
 }
