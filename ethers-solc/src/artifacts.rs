@@ -940,7 +940,7 @@ impl BytecodeObject {
     }
 }
 
-// Returns a deployable bytecode by default as "0x"
+// Returns a not deployable bytecode by default as "0x"
 impl Default for BytecodeObject {
     fn default() -> Self {
         BytecodeObject::Unlinked("0x".to_string())
