@@ -171,11 +171,9 @@ impl ProjectPathsConfigBuilder {
         self
     }
 
-    pub fn build(self) -> io::Result<ProjectPathsConfig> {
-        let root = self.root.map(Ok).unwrap_or_else(std::env::current_dir)?;
-        let root = std::fs::canonicalize(root)?;
-
-        Ok(ProjectPathsConfig {
+    pub fn build_with_root(self, root: impl Into<PathBuf>) -> ProjectPathsConfig {
+        let root = root.into();
+        ProjectPathsConfig {
             cache: self
                 .cache
                 .unwrap_or_else(|| root.join("cache").join(SOLIDITY_FILES_CACHE_FILENAME)),
@@ -185,7 +183,13 @@ impl ProjectPathsConfigBuilder {
             libraries: self.libraries.unwrap_or_default(),
             remappings: self.remappings.unwrap_or_default(),
             root,
-        })
+        }
+    }
+
+    pub fn build(self) -> io::Result<ProjectPathsConfig> {
+        let root = self.root.clone().map(Ok).unwrap_or_else(std::env::current_dir)?;
+        let root = std::fs::canonicalize(root)?;
+        Ok(self.build_with_root(root))
     }
 }
 

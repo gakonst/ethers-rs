@@ -1,7 +1,7 @@
 //! Utilities for mocking project workspaces
 use crate::{
-    cache::SOLIDITY_FILES_CACHE_FILENAME, hh::HardhatArtifacts, ArtifactOutput,
-    MinimalCombinedArtifacts, Project, ProjectPathsConfig,
+    cache::SOLIDITY_FILES_CACHE_FILENAME, config::ProjectPathsConfigBuilder, hh::HardhatArtifacts,
+    ArtifactOutput, MinimalCombinedArtifacts, Project, ProjectPathsConfig,
 };
 use eyre::eyre;
 use fs_extra::{dir, file};
@@ -24,6 +24,13 @@ impl<T: ArtifactOutput> TempProject<T> {
         let project = Self { root, inner };
         project.paths().create_all()?;
         Ok(project)
+    }
+
+    pub fn with_paths(paths: ProjectPathsConfigBuilder) -> io::Result<Self> {
+        let tmp_dir = TempDir::new("root")?;
+        let paths = paths.build_with_root(tmp_dir.path());
+        let inner = Project::builder().artifacts().paths(paths).build()?;
+        Self::create_new(tmp_dir, inner)
     }
 
     pub fn project(&self) -> &Project<T> {
@@ -53,7 +60,7 @@ impl<T: ArtifactOutput> TempProject<T> {
     }
 
     /// Copies a single file into the given dir
-    fn copy_file(
+    pub fn copy_file(
         &self,
         source: impl AsRef<Path>,
         target_dir: impl AsRef<Path>,
@@ -70,7 +77,11 @@ impl<T: ArtifactOutput> TempProject<T> {
     }
 
     /// Copies all content of the source dir into the target dir
-    fn copy_dir(&self, source: impl AsRef<Path>, target_dir: impl AsRef<Path>) -> eyre::Result<()> {
+    pub fn copy_dir(
+        &self,
+        source: impl AsRef<Path>,
+        target_dir: impl AsRef<Path>,
+    ) -> eyre::Result<()> {
         fs_extra::dir::copy(source, target_dir, &dir_copy_options())?;
         Ok(())
     }
@@ -91,7 +102,7 @@ impl<T: ArtifactOutput> TempProject<T> {
         Ok(())
     }
 
-    /// Copies a single file into the project's first library directory
+    /// Copies a single file into the project's main library directory
     pub fn copy_lib(&self, lib: impl AsRef<Path>) -> eyre::Result<()> {
         let lib_dir = self
             .paths()
@@ -101,6 +112,7 @@ impl<T: ArtifactOutput> TempProject<T> {
         self.copy_file(lib, lib_dir)
     }
 
+    /// Copy a series of files into the main library dir
     pub fn copy_libs<I, T>(&self, libs: I) -> io::Result<()>
     where
         I: IntoIterator<Item = T>,
@@ -115,7 +127,7 @@ impl<T: ArtifactOutput> TempProject<T> {
 
 impl TempProject<HardhatArtifacts> {
     /// Creates an empty new hardhat style workspace in a new temporary dir
-    fn hardhat() -> io::Result<Self> {
+    fn hardhat() -> eyre::Result<Self> {
         let tmp_dir = TempDir::new("tmp_hh")?;
         let root = tmp_dir.path().to_path_buf();
         let cache = tmp_dir.path().join("cache");
@@ -130,14 +142,13 @@ impl TempProject<HardhatArtifacts> {
             .build()?;
 
         let inner = Project::builder().artifacts().paths(paths).build()?;
-
-        Self::create_new(tmp_dir, inner)
+        Ok(Self::create_new(tmp_dir, inner)?)
     }
 }
 
 impl TempProject<MinimalCombinedArtifacts> {
     /// Creates an empty new dapptools style workspace in a new temporary dir
-    fn dapptools() -> io::Result<Self> {
+    fn dapptools() -> eyre::Result<Self> {
         let tmp_dir = TempDir::new("tmp_dapp")?;
         let root = tmp_dir.path().to_path_buf();
         let cache = tmp_dir.path().join("cache");
@@ -152,7 +163,7 @@ impl TempProject<MinimalCombinedArtifacts> {
             .build()?;
 
         let inner = Project::builder().artifacts().paths(paths).build()?;
-        Self::create_new(tmp_dir, inner)
+        Ok(Self::create_new(tmp_dir, inner)?)
     }
 }
 
