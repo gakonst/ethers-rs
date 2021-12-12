@@ -49,17 +49,16 @@ pub fn find_version_pragma(contract: &str) -> Option<&str> {
 ///
 /// ```no_run
 /// use ethers_solc::utils;
-/// let sources = utils::source_files("./contracts").unwrap();
+/// let sources = utils::source_files("./contracts");
 /// ```
-pub fn source_files(root: impl AsRef<Path>) -> walkdir::Result<Vec<PathBuf>> {
-    let files = WalkDir::new(root)
+pub fn source_files(root: impl AsRef<Path>) -> Vec<PathBuf> {
+    WalkDir::new(root)
         .into_iter()
         .filter_map(Result::ok)
         .filter(|e| e.file_type().is_file())
         .filter(|e| e.path().extension().map(|ext| ext == "sol").unwrap_or_default())
         .map(|e| e.path().into())
-        .collect();
-    Ok(files)
+        .collect()
 }
 
 /// Returns the source name for the given source path, the ancestors of the root path
@@ -192,7 +191,7 @@ mod tests {
         File::create(&file_c).unwrap();
         File::create(&file_d).unwrap();
 
-        let files: HashSet<_> = source_files(tmp_dir.path()).unwrap().into_iter().collect();
+        let files: HashSet<_> = source_files(tmp_dir.path()).into_iter().collect();
         let expected: HashSet<_> = [file_a, file_b, file_c, file_d].into();
         assert_eq!(files, expected);
     }

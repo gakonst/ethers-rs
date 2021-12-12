@@ -247,7 +247,8 @@ impl Solc {
         let version = self.version_short()?;
         let mut version_path = svm::version_path(version.to_string().as_str());
         version_path.push(format!("solc-{}", version.to_string().as_str()));
-        let content = std::fs::read(version_path)?;
+        let content =
+            std::fs::read(&version_path).map_err(|err| SolcError::io(err, version_path))?;
 
         use sha2::Digest;
         let mut hasher = sha2::Sha256::new();
@@ -265,6 +266,7 @@ impl Solc {
 
     /// Convenience function for compiling all sources under the given path
     pub fn compile_source(&self, path: impl AsRef<Path>) -> Result<CompilerOutput> {
+        let path = path.as_ref();
         self.compile(&CompilerInput::new(path)?)
     }
 
@@ -302,11 +304,12 @@ impl Solc {
             .stdin(Stdio::piped())
             .stderr(Stdio::piped())
             .stdout(Stdio::piped())
-            .spawn()?;
+            .spawn()
+            .map_err(|err| SolcError::io(err, &self.solc))?;
         let stdin = child.stdin.take().unwrap();
 
         serde_json::to_writer(stdin, input)?;
-        compile_output(child.wait_with_output()?)
+        compile_output(child.wait_with_output().map_err(|err| SolcError::io(err, &self.solc))?)
     }
 
     pub fn version_short(&self) -> Result<Version> {
@@ -322,7 +325,8 @@ impl Solc {
                 .stdin(Stdio::piped())
                 .stderr(Stdio::piped())
                 .stdout(Stdio::piped())
-                .output()?,
+                .output()
+                .map_err(|err| SolcError::io(err, &self.solc))?,
         )
     }
 }
@@ -363,11 +367,14 @@ impl Solc {
             .stdin(Stdio::piped())
             .stderr(Stdio::piped())
             .stdout(Stdio::piped())
-            .spawn()?;
+            .spawn()
+            .map_err(|err| SolcError::io(err, &self.solc))?;
         let stdin = child.stdin.as_mut().unwrap();
-        stdin.write_all(&content).await?;
-        stdin.flush().await?;
-        compile_output(child.wait_with_output().await?)
+        stdin.write_all(&content).await.map_err(|err| SolcError::io(err, &self.solc))?;
+        stdin.flush().await.map_err(|err| SolcError::io(err, &self.solc))?;
+        compile_output(
+            child.wait_with_output().await.map_err(|err| SolcError::io(err, &self.solc))?,
+        )
     }
 
     pub async fn async_version(&self) -> Result<Version> {
@@ -377,9 +384,11 @@ impl Solc {
                 .stdin(Stdio::piped())
                 .stderr(Stdio::piped())
                 .stdout(Stdio::piped())
-                .spawn()?
+                .spawn()
+                .map_err(|err| SolcError::io(err, &self.solc))?
                 .wait_with_output()
-                .await?,
+                .await
+                .map_err(|err| SolcError::io(err, &self.solc))?,
         )
     }
 
@@ -470,7 +479,8 @@ fn version_from_output(output: Output) -> Result<Version> {
             .stdout
             .lines()
             .last()
-            .ok_or_else(|| SolcError::solc("version not found in solc output"))??;
+            .ok_or_else(|| SolcError::solc("version not found in solc output"))?
+            .map_err(|err| SolcError::msg(format!("Failed to read output: {}", err)))?;
         // NOTE: semver doesn't like `+` in g++ in build metadata which is invalid semver
         Ok(Version::from_str(&version.trim_start_matches("Version: ").replace(".g++", ".gcc"))?)
     } else {

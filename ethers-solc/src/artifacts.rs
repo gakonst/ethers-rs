@@ -6,12 +6,12 @@ use md5::Digest;
 use semver::Version;
 use std::{
     collections::BTreeMap,
-    fmt, fs, io,
+    fmt, fs,
     path::{Path, PathBuf},
     str::FromStr,
 };
 
-use crate::{compile::*, remappings::Remapping, utils};
+use crate::{compile::*, error::SolcIoError, remappings::Remapping, utils};
 use ethers_core::abi::Address;
 use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 
@@ -30,7 +30,7 @@ pub struct CompilerInput {
 
 impl CompilerInput {
     /// Reads all contracts found under the path
-    pub fn new(path: impl AsRef<Path>) -> io::Result<Self> {
+    pub fn new(path: impl AsRef<Path>) -> Result<Self, SolcIoError> {
         Source::read_all_from(path.as_ref()).map(Self::with_sources)
     }
 
@@ -382,17 +382,18 @@ pub struct Source {
 
 impl Source {
     /// Reads the file content
-    pub fn read(file: impl AsRef<Path>) -> io::Result<Self> {
-        Ok(Self { content: fs::read_to_string(file.as_ref())? })
+    pub fn read(file: impl AsRef<Path>) -> Result<Self, SolcIoError> {
+        let file = file.as_ref();
+        Ok(Self { content: fs::read_to_string(file).map_err(|err| SolcIoError::new(err, file))? })
     }
 
     /// Finds all source files under the given dir path and reads them all
-    pub fn read_all_from(dir: impl AsRef<Path>) -> io::Result<Sources> {
-        Self::read_all(utils::source_files(dir)?)
+    pub fn read_all_from(dir: impl AsRef<Path>) -> Result<Sources, SolcIoError> {
+        Self::read_all(utils::source_files(dir))
     }
 
     /// Reads all files
-    pub fn read_all<T, I>(files: I) -> io::Result<Sources>
+    pub fn read_all<T, I>(files: I) -> Result<Sources, SolcIoError>
     where
         I: IntoIterator<Item = T>,
         T: Into<PathBuf>,
@@ -421,17 +422,22 @@ impl Source {
 #[cfg(feature = "async")]
 impl Source {
     /// async version of `Self::read`
-    pub async fn async_read(file: impl AsRef<Path>) -> io::Result<Self> {
-        Ok(Self { content: tokio::fs::read_to_string(file.as_ref()).await? })
+    pub async fn async_read(file: impl AsRef<Path>) -> Result<Self, SolcIoError> {
+        let file = file.as_ref();
+        Ok(Self {
+            content: tokio::fs::read_to_string(file)
+                .await
+                .map_err(|err| SolcIoError::new(err, file))?,
+        })
     }
 
     /// Finds all source files under the given dir path and reads them all
-    pub async fn async_read_all_from(dir: impl AsRef<Path>) -> io::Result<Sources> {
-        Self::async_read_all(utils::source_files(dir.as_ref())?).await
+    pub async fn async_read_all_from(dir: impl AsRef<Path>) -> Result<Sources, SolcIoError> {
+        Self::async_read_all(utils::source_files(dir.as_ref())).await
     }
 
     /// async version of `Self::read_all`
-    pub async fn async_read_all<T, I>(files: I) -> io::Result<Sources>
+    pub async fn async_read_all<T, I>(files: I) -> Result<Sources, SolcIoError>
     where
         I: IntoIterator<Item = T>,
         T: Into<PathBuf>,
