@@ -91,7 +91,11 @@ ethers-etherscan = { version = "^0.2.0", default-features = false, path = "./eth
 
 [dev-dependencies]
 ethers-contract = { version = "^0.6.0", default-features = false, path = "./ethers-contract", features = ["abigen", "eip712"] }
+ethers-providers = { version = "^0.6.0", default-features = false, path = "./ethers-providers", features = ["ws"] }
+
+[target.'cfg(target_family = "unix")'.dev-dependencies]
 ethers-providers = { version = "^0.6.0", default-features = false, path = "./ethers-providers", features = ["ws", "ipc"] }
+
 
 anyhow = "1.0.39"
 rand = "0.8.4"

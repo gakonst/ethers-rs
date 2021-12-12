@@ -58,7 +58,7 @@ tokio = { version = "1.5", default-features = false, features = ["rt", "macros"]
 tempfile = "3.2.0"
 
 [features]
-default = ["ws", "ipc", "rustls"]
+default = ["ws", "rustls"]
 celo = ["ethers-core/celo"]
 ws = ["tokio", "tokio-tungstenite"]
 ipc = ["tokio", "tokio/io-util", "tokio-util", "bytes"]

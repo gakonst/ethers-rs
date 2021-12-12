@@ -229,6 +229,7 @@ jobs:
     env:
       CFG_RELEASE_CHANNEL: ${{ matrix.cfg_release_channel }}
     strategy:
+      max-parallel: 2
       fail-fast: false
       matrix:
         target: [
@@ -269,5 +270,5 @@ jobs:
         run: |
           rustc -Vv
           cargo -V
-          cargo build
+          cargo check --all-features --workspace
         shell: cmd
