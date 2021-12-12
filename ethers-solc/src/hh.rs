@@ -73,7 +73,8 @@ impl ArtifactOutput for HardhatArtifacts {
                     })?;
                 }
                 let artifact = Self::contract_to_artifact(file, name, contract.clone());
-                fs::write(&artifact_file, serde_json::to_vec_pretty(&artifact)?)?
+                fs::write(&artifact_file, serde_json::to_vec_pretty(&artifact)?)
+                    .map_err(|err| SolcError::io(err, artifact_file))?
             }
         }
         Ok(())

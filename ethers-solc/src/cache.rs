@@ -64,7 +64,7 @@ impl SolFilesCache {
     pub fn read(path: impl AsRef<Path>) -> Result<Self> {
         let path = path.as_ref();
         tracing::trace!("reading solfiles cache at {}", path.display());
-        let file = fs::File::open(path)?;
+        let file = fs::File::open(path).map_err(|err| SolcError::io(err, path))?;
         let file = std::io::BufReader::new(file);
         let cache = serde_json::from_reader(file)?;
         tracing::trace!("done");
@@ -74,7 +74,7 @@ impl SolFilesCache {
     /// Write the cache to json file
     pub fn write(&self, path: impl AsRef<Path>) -> Result<()> {
         let path = path.as_ref();
-        let file = fs::File::create(path)?;
+        let file = fs::File::create(path).map_err(|err| SolcError::io(err, path))?;
         tracing::trace!("writing cache to json file");
         serde_json::to_writer_pretty(file, self)?;
         tracing::trace!("cache file located: {}", path.display());
@@ -198,13 +198,16 @@ impl SolFilesCache {
 #[cfg(feature = "async")]
 impl SolFilesCache {
     pub async fn async_read(path: impl AsRef<Path>) -> Result<Self> {
-        let content = tokio::fs::read_to_string(path.as_ref()).await?;
+        let path = path.as_ref();
+        let content =
+            tokio::fs::read_to_string(path).await.map_err(|err| SolcError::io(err, path))?;
         Ok(serde_json::from_str(&content)?)
     }
 
     pub async fn async_write(&self, path: impl AsRef<Path>) -> Result<()> {
+        let path = path.as_ref();
         let content = serde_json::to_vec_pretty(self)?;
-        Ok(tokio::fs::write(path.as_ref(), content).await?)
+        Ok(tokio::fs::write(path, content).await.map_err(|err| SolcError::io(err, path))?)
     }
 }
 
@@ -236,12 +239,18 @@ impl SolFilesCacheBuilder {
         let solc_config =
             self.solc_config.map(Ok).unwrap_or_else(|| SolcConfig::builder().build())?;
 
-        let root = self.root.map(Ok).unwrap_or_else(std::env::current_dir)?;
+        let root = self
+            .root
+            .map(Ok)
+            .unwrap_or_else(std::env::current_dir)
+            .map_err(|err| SolcError::io(err, "."))?;
 
         let mut files = BTreeMap::new();
         for (file, source) in sources {
-            let last_modification_date = fs::metadata(&file)?
-                .modified()?
+            let last_modification_date = fs::metadata(&file)
+                .map_err(|err| SolcError::io(err, file.clone()))?
+                .modified()
+                .map_err(|err| SolcError::io(err, file.clone()))?
                 .duration_since(UNIX_EPOCH)
                 .map_err(|err| SolcError::solc(err.to_string()))?
                 .as_millis() as u64;
@@ -268,7 +277,9 @@ impl SolFilesCacheBuilder {
             if dest.exists() {
                 // read the existing cache and extend it by the files that changed
                 // (if we just wrote to the cache file, we'd overwrite the existing data)
-                let reader = std::io::BufReader::new(File::open(dest)?);
+                let reader = std::io::BufReader::new(
+                    File::open(dest).map_err(|err| SolcError::io(err, dest))?,
+                );
                 let mut cache: SolFilesCache = serde_json::from_reader(reader)?;
                 assert_eq!(cache.format, format);
                 cache.files.extend(files);

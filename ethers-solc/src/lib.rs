@@ -26,10 +26,14 @@ use crate::{artifacts::Source, cache::SolFilesCache};
 pub mod error;
 pub mod utils;
 
-use crate::{artifacts::Sources, cache::PathMap};
+use crate::{
+    artifacts::Sources,
+    cache::PathMap,
+    error::{SolcError, SolcIoError},
+};
 use error::Result;
 use std::{
-    borrow::Cow, collections::BTreeMap, convert::TryInto, fmt, fs, io, marker::PhantomData,
+    borrow::Cow, collections::BTreeMap, convert::TryInto, fmt, fs, marker::PhantomData,
     path::PathBuf,
 };
 
@@ -117,7 +121,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
 
         if let Some(cache_dir) = self.paths.cache.parent() {
             tracing::trace!("creating cache file parent directory \"{}\"", cache_dir.display());
-            fs::create_dir_all(cache_dir)?
+            fs::create_dir_all(cache_dir).map_err(|err| SolcError::io(err, cache_dir))?
         }
 
         tracing::trace!("writing cache file to \"{}\"", self.paths.cache.display());
@@ -128,9 +132,9 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
 
     /// Returns all sources found under the project's configured sources path
     #[tracing::instrument(skip_all, fields(name = "sources"))]
-    pub fn sources(&self) -> io::Result<Sources> {
+    pub fn sources(&self) -> Result<Sources> {
         tracing::trace!("reading all sources from \"{}\"", self.paths.sources.display());
-        Source::read_all_from(&self.paths.sources)
+        Ok(Source::read_all_from(&self.paths.sources)?)
     }
 
     /// This emits the cargo [`rerun-if-changed`](https://doc.rust-lang.org/cargo/reference/build-scripts.html#cargorerun-if-changedpath) instruction.
@@ -161,7 +165,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
     fn resolved_libraries(
         &self,
         sources: &Sources,
-    ) -> io::Result<BTreeMap<PathBuf, (Source, PathBuf)>> {
+    ) -> Result<BTreeMap<PathBuf, (Source, PathBuf)>> {
         let mut libs = BTreeMap::default();
         for source in sources.values() {
             for import in source.parse_imports() {
@@ -462,14 +466,16 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
     }
 
     /// Removes the project's artifacts and cache file
-    pub fn cleanup(&self) -> Result<()> {
+    pub fn cleanup(&self) -> std::result::Result<(), SolcIoError> {
         tracing::trace!("clean up project");
         if self.paths.cache.exists() {
-            std::fs::remove_file(&self.paths.cache)?;
+            std::fs::remove_file(&self.paths.cache)
+                .map_err(|err| SolcIoError::new(err, self.paths.cache.clone()))?;
             tracing::trace!("removed cache file \"{}\"", self.paths.cache.display());
         }
         if self.paths.artifacts.exists() {
-            std::fs::remove_dir_all(&self.paths.artifacts)?;
+            std::fs::remove_dir_all(&self.paths.artifacts)
+                .map_err(|err| SolcIoError::new(err, self.paths.artifacts.clone()))?;
             tracing::trace!("removed artifacts dir \"{}\"", self.paths.artifacts.display());
         }
         Ok(())

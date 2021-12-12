@@ -1,7 +1,7 @@
 use crate::{
     artifacts::{CompactContract, CompactContractRef, Contract, Settings},
     cache::SOLIDITY_FILES_CACHE_FILENAME,
-    error::{Result, SolcError},
+    error::{Result, SolcError, SolcIoError},
     hh::HardhatArtifact,
     remappings::Remapping,
     CompilerOutput,
@@ -51,12 +51,12 @@ impl ProjectPathsConfig {
 
     /// Creates a new config with the current directory as the root
     pub fn current_hardhat() -> Result<Self> {
-        Self::hardhat(std::env::current_dir()?)
+        Self::hardhat(std::env::current_dir().map_err(|err| SolcError::io(err, "."))?)
     }
 
     /// Creates a new config with the current directory as the root
     pub fn current_dapptools() -> Result<Self> {
-        Self::dapptools(std::env::current_dir()?)
+        Self::dapptools(std::env::current_dir().map_err(|err| SolcError::io(err, "."))?)
     }
 }
 
@@ -68,7 +68,8 @@ pub enum PathStyle {
 
 impl PathStyle {
     pub fn paths(&self, root: impl AsRef<Path>) -> Result<ProjectPathsConfig> {
-        let root = std::fs::canonicalize(root)?;
+        let root = root.as_ref();
+        let root = std::fs::canonicalize(root).map_err(|err| SolcError::io(err, root))?;
 
         Ok(match self {
             PathStyle::Dapptools => ProjectPathsConfig::builder()
@@ -157,9 +158,13 @@ impl ProjectPathsConfigBuilder {
         self
     }
 
-    pub fn build(self) -> io::Result<ProjectPathsConfig> {
-        let root = self.root.map(Ok).unwrap_or_else(std::env::current_dir)?;
-        let root = std::fs::canonicalize(root)?;
+    pub fn build(self) -> std::result::Result<ProjectPathsConfig, SolcIoError> {
+        let root = self
+            .root
+            .map(Ok)
+            .unwrap_or_else(std::env::current_dir)
+            .map_err(|err| SolcIoError::new(err, "."))?;
+        let root = std::fs::canonicalize(&root).map_err(|err| SolcIoError::new(err, root))?;
 
         Ok(ProjectPathsConfig {
             cache: self
@@ -287,7 +292,8 @@ pub trait ArtifactOutput {
     }
 
     fn read_cached_artifact(path: impl AsRef<Path>) -> Result<Self::Artifact> {
-        let file = fs::File::open(path.as_ref())?;
+        let path = path.as_ref();
+        let file = fs::File::open(path).map_err(|err| SolcError::io(err, path))?;
         let file = io::BufReader::new(file);
         Ok(serde_json::from_reader(file)?)
     }
@@ -362,7 +368,8 @@ impl ArtifactOutput for MinimalCombinedArtifacts {
                     })?;
                 }
                 let min = CompactContractRef::from(contract);
-                fs::write(&file, serde_json::to_vec_pretty(&min)?)?
+                fs::write(&file, serde_json::to_vec_pretty(&min)?)
+                    .map_err(|err| SolcError::io(err, file))?
             }
         }
         Ok(())
@@ -386,7 +393,8 @@ impl ArtifactOutput for MinimalCombinedArtifactsHardhatFallback {
     }
 
     fn read_cached_artifact(path: impl AsRef<Path>) -> Result<Self::Artifact> {
-        let content = fs::read_to_string(path)?;
+        let path = path.as_ref();
+        let content = fs::read_to_string(path).map_err(|err| SolcError::io(err, path))?;
         if let Ok(a) = serde_json::from_str(&content) {
             Ok(a)
         } else {
@@ -429,17 +437,18 @@ impl fmt::Display for AllowedLibPaths {
 }
 
 impl<T: Into<PathBuf>> TryFrom<Vec<T>> for AllowedLibPaths {
-    type Error = std::io::Error;
+    type Error = SolcIoError;
 
     fn try_from(libs: Vec<T>) -> std::result::Result<Self, Self::Error> {
         let libs = libs
             .into_iter()
             .map(|lib| {
                 let path: PathBuf = lib.into();
-                let lib = std::fs::canonicalize(path)?;
+                let lib =
+                    std::fs::canonicalize(&path).map_err(|err| SolcIoError::new(err, path))?;
                 Ok(lib)
             })
-            .collect::<std::result::Result<Vec<_>, std::io::Error>>()?;
+            .collect::<std::result::Result<Vec<_>, _>>()?;
         Ok(AllowedLibPaths(libs))
     }
 }
