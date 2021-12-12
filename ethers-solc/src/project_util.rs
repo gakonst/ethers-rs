@@ -1,10 +1,8 @@
 //! Utilities for mocking project workspaces
 use crate::{
-    cache::SOLIDITY_FILES_CACHE_FILENAME,
     config::ProjectPathsConfigBuilder,
     error::{Result, SolcError},
     hh::HardhatArtifacts,
-    remappings::Remapping,
     ArtifactOutput, MinimalCombinedArtifacts, Project, ProjectCompileOutput, ProjectPathsConfig,
     SolcIoError,
 };
@@ -99,17 +97,8 @@ impl TempProject<HardhatArtifacts> {
     /// Creates an empty new hardhat style workspace in a new temporary dir
     pub fn hardhat() -> Result<Self> {
         let tmp_dir = TempDir::new("tmp_hh").map_err(|err| SolcError::io(err, "tmp_hh"))?;
-        let root = tmp_dir.path().to_path_buf();
-        let cache = tmp_dir.path().join("cache");
-        let cache = cache.join(SOLIDITY_FILES_CACHE_FILENAME);
 
-        let paths = ProjectPathsConfig::builder()
-            .cache(cache)
-            .sources(root.join("contracts"))
-            .artifacts(root.join("artifacts"))
-            .lib(root.join("node_modules"))
-            .root(root)
-            .build()?;
+        let paths = ProjectPathsConfig::hardhat(tmp_dir.path())?;
 
         let inner = Project::builder().artifacts().paths(paths).build()?;
         Ok(Self::create_new(tmp_dir, inner)?)
@@ -120,18 +109,7 @@ impl TempProject<MinimalCombinedArtifacts> {
     /// Creates an empty new dapptools style workspace in a new temporary dir
     pub fn dapptools() -> Result<Self> {
         let tmp_dir = TempDir::new("tmp_dapp").map_err(|err| SolcError::io(err, "temp_dapp"))?;
-        let root = tmp_dir.path().to_path_buf();
-        let cache = tmp_dir.path().join("cache");
-        let cache = cache.join(SOLIDITY_FILES_CACHE_FILENAME);
-
-        let paths = ProjectPathsConfig::builder()
-            .cache(cache)
-            .sources(root.join("src"))
-            .artifacts(root.join("out"))
-            .lib(root.join("lib"))
-            .remappings(Remapping::find_many(&root.join("lib"))?)
-            .root(root)
-            .build()?;
+        let paths = ProjectPathsConfig::dapptools(tmp_dir.path())?;
 
         let inner = Project::builder().artifacts().paths(paths).build()?;
         Ok(Self::create_new(tmp_dir, inner)?)
