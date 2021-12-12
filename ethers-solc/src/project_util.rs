@@ -6,9 +6,10 @@ use crate::{
     hh::HardhatArtifacts,
     remappings::Remapping,
     ArtifactOutput, MinimalCombinedArtifacts, Project, ProjectCompileOutput, ProjectPathsConfig,
+    SolcIoError,
 };
 use fs_extra::{dir, file};
-use std::{io, path::Path};
+use std::path::Path;
 use tempdir::TempDir;
 
 pub struct TempProject<T: ArtifactOutput> {
@@ -20,14 +21,14 @@ pub struct TempProject<T: ArtifactOutput> {
 
 impl<T: ArtifactOutput> TempProject<T> {
     /// Makes sure all resources are created
-    fn create_new(root: TempDir, inner: Project<T>) -> io::Result<Self> {
+    fn create_new(root: TempDir, inner: Project<T>) -> std::result::Result<Self, SolcIoError> {
         let project = Self { root, inner };
         project.paths().create_all()?;
         Ok(project)
     }
 
     pub fn new(paths: ProjectPathsConfigBuilder) -> Result<Self> {
-        let tmp_dir = TempDir::new("root")?;
+        let tmp_dir = TempDir::new("root").map_err(|err| SolcError::io(err, "root"))?;
         let paths = paths.build_with_root(tmp_dir.path());
         let inner = Project::builder().artifacts().paths(paths).build()?;
         Ok(Self::create_new(tmp_dir, inner)?)
@@ -38,7 +39,7 @@ impl<T: ArtifactOutput> TempProject<T> {
     }
 
     pub fn compile(&self) -> Result<ProjectCompileOutput<T>> {
-        Ok(self.project().compile()?)
+        self.project().compile()
     }
 
     pub fn project_mut(&mut self) -> &mut Project<T> {
@@ -124,7 +125,7 @@ impl<T: ArtifactOutput> TempProject<T> {
 impl TempProject<HardhatArtifacts> {
     /// Creates an empty new hardhat style workspace in a new temporary dir
     pub fn hardhat() -> Result<Self> {
-        let tmp_dir = TempDir::new("tmp_hh")?;
+        let tmp_dir = TempDir::new("tmp_hh").map_err(|err| SolcError::io(err, "tmp_hh"))?;
         let root = tmp_dir.path().to_path_buf();
         let cache = tmp_dir.path().join("cache");
         let cache = cache.join(SOLIDITY_FILES_CACHE_FILENAME);
@@ -145,7 +146,7 @@ impl TempProject<HardhatArtifacts> {
 impl TempProject<MinimalCombinedArtifacts> {
     /// Creates an empty new dapptools style workspace in a new temporary dir
     pub fn dapptools() -> Result<Self> {
-        let tmp_dir = TempDir::new("tmp_dapp")?;
+        let tmp_dir = TempDir::new("tmp_dapp").map_err(|err| SolcError::io(err, "temp_dapp"))?;
         let root = tmp_dir.path().to_path_buf();
         let cache = tmp_dir.path().join("cache");
         let cache = cache.join(SOLIDITY_FILES_CACHE_FILENAME);

@@ -132,16 +132,19 @@ impl Remapping {
             // nothing to find
             return Ok(Vec::new())
         }
-        let mut paths = std::fs::read_dir(path)?.into_iter().collect::<Vec<_>>();
+        let mut paths = std::fs::read_dir(path)
+            .map_err(|err| SolcError::io(err, path))?
+            .into_iter()
+            .collect::<Vec<_>>();
 
         let mut remappings = Vec::new();
-        while let Some(path) = paths.pop() {
-            let path = path?.path();
+        while let Some(p) = paths.pop() {
+            let path = p.map_err(|err| SolcError::io(err, path))?.path();
 
             // get all the directories inside a file if it's a valid dir
             if let Ok(dir) = std::fs::read_dir(&path) {
                 for inner in dir {
-                    let inner = inner?;
+                    let inner = inner.map_err(|err| SolcError::io(err, &path))?;
                     let path = inner.path().display().to_string();
                     let path = path.rsplit('/').next().unwrap().to_string();
                     if path != DAPPTOOLS_CONTRACTS_DIR && path != JS_CONTRACTS_DIR {
