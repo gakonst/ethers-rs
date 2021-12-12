@@ -52,7 +52,6 @@ pub fn find_version_pragma(contract: &str) -> Option<&str> {
 /// let sources = utils::source_files("./contracts");
 /// ```
 pub fn source_files(root: impl AsRef<Path>) -> Vec<PathBuf> {
-    
     WalkDir::new(root)
         .into_iter()
         .filter_map(Result::ok)

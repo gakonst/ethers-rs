@@ -247,7 +247,8 @@ impl Solc {
         let version = self.version_short()?;
         let mut version_path = svm::version_path(version.to_string().as_str());
         version_path.push(format!("solc-{}", version.to_string().as_str()));
-        let content = std::fs::read(&version_path).map_err(|err| SolcError::io(err, version_path))?;
+        let content =
+            std::fs::read(&version_path).map_err(|err| SolcError::io(err, version_path))?;
 
         use sha2::Digest;
         let mut hasher = sha2::Sha256::new();
@@ -369,9 +370,11 @@ impl Solc {
             .spawn()
             .map_err(|err| SolcError::io(err, &self.solc))?;
         let stdin = child.stdin.as_mut().unwrap();
-        stdin.write_all(&content).await .map_err(|err| SolcError::io(err, &self.solc))?;
+        stdin.write_all(&content).await.map_err(|err| SolcError::io(err, &self.solc))?;
         stdin.flush().await.map_err(|err| SolcError::io(err, &self.solc))?;
-        compile_output(child.wait_with_output().await .map_err(|err| SolcError::io(err, &self.solc))  ?)
+        compile_output(
+            child.wait_with_output().await.map_err(|err| SolcError::io(err, &self.solc))?,
+        )
     }
 
     pub async fn async_version(&self) -> Result<Version> {
@@ -385,7 +388,7 @@ impl Solc {
                 .map_err(|err| SolcError::io(err, &self.solc))?
                 .wait_with_output()
                 .await
-                .map_err(|err| SolcError::io(err, &self.solc))?
+                .map_err(|err| SolcError::io(err, &self.solc))?,
         )
     }
 
