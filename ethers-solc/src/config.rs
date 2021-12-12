@@ -58,6 +58,21 @@ impl ProjectPathsConfig {
     pub fn current_dapptools() -> Result<Self> {
         Self::dapptools(std::env::current_dir().map_err(|err| SolcError::io(err, "."))?)
     }
+
+    /// Creates all configured dirs and files
+    pub fn create_all(&self) -> std::result::Result<(), SolcIoError> {
+        if let Some(parent) = self.cache.parent() {
+            fs::create_dir_all(parent).map_err(|err| SolcIoError::new(err, parent))?;
+        }
+        fs::create_dir_all(&self.artifacts)
+            .map_err(|err| SolcIoError::new(err, &self.artifacts))?;
+        fs::create_dir_all(&self.sources).map_err(|err| SolcIoError::new(err, &self.sources))?;
+        fs::create_dir_all(&self.tests).map_err(|err| SolcIoError::new(err, &self.tests))?;
+        for lib in &self.libraries {
+            fs::create_dir_all(lib).map_err(|err| SolcIoError::new(err, lib))?;
+        }
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -158,15 +173,9 @@ impl ProjectPathsConfigBuilder {
         self
     }
 
-    pub fn build(self) -> std::result::Result<ProjectPathsConfig, SolcIoError> {
-        let root = self
-            .root
-            .map(Ok)
-            .unwrap_or_else(std::env::current_dir)
-            .map_err(|err| SolcIoError::new(err, "."))?;
-        let root = std::fs::canonicalize(&root).map_err(|err| SolcIoError::new(err, root))?;
-
-        Ok(ProjectPathsConfig {
+    pub fn build_with_root(self, root: impl Into<PathBuf>) -> ProjectPathsConfig {
+        let root = root.into();
+        ProjectPathsConfig {
             cache: self
                 .cache
                 .unwrap_or_else(|| root.join("cache").join(SOLIDITY_FILES_CACHE_FILENAME)),
@@ -176,7 +185,18 @@ impl ProjectPathsConfigBuilder {
             libraries: self.libraries.unwrap_or_default(),
             remappings: self.remappings.unwrap_or_default(),
             root,
-        })
+        }
+    }
+
+    pub fn build(self) -> std::result::Result<ProjectPathsConfig, SolcIoError> {
+        let root = self
+            .root
+            .clone()
+            .map(Ok)
+            .unwrap_or_else(std::env::current_dir)
+            .map_err(|err| SolcIoError::new(err, "."))?;
+        let root = std::fs::canonicalize(&root).map_err(|err| SolcIoError::new(err, &root))?;
+        Ok(self.build_with_root(root))
     }
 }
 

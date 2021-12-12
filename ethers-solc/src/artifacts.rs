@@ -523,6 +523,7 @@ pub struct OutputDiagnostics<'a> {
 }
 
 impl<'a> OutputDiagnostics<'a> {
+    /// Returns true if there is at least one error of high severity
     pub fn has_error(&self) -> bool {
         self.errors.iter().any(|err| err.severity.is_error())
     }
