@@ -1026,13 +1026,12 @@ impl TryFrom<String> for Provider<HttpProvider> {
 /// # Example
 ///
 ///```
-/// use ethers_providers::{Provider, Http, Middleware, DevRpcMiddleware};
+/// use ethers_providers::{Provider, Http, Middleware, DevMiddleware, DevRpcMiddleware};
 /// use ethers_core::types::TransactionRequest;
 /// use ethers_core::utils::Ganache;
 /// use std::convert::TryFrom;
 ///
-/// # #[tokio::main]
-/// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// # async fn doctest_dev_rpc() -> Result<(), Box<dyn std::error::Error>> {
 /// let ganache = Ganache::new().spawn();
 /// let provider = Provider::<Http>::try_from(ganache.endpoint()).unwrap();
 /// let client = DevRpcMiddleware::new(provider);
@@ -1052,7 +1051,7 @@ impl TryFrom<String> for Provider<HttpProvider> {
 /// assert_eq!(balance_after, balance_before + 1000);
 ///
 /// // revert to snapshot
-/// client.revert_to_snapshot(snap_id).await.unwrap();
+/// client.reset(snap_id).await.unwrap();
 /// let balance_after_revert = client.get_balance(to, None).await?;
 /// assert_eq!(balance_after_revert, balance_before);
 /// # Ok(())
@@ -1066,6 +1065,12 @@ pub mod dev_rpc {
     use thiserror::Error;
 
     use std::fmt::Debug;
+
+    #[async_trait]
+    pub trait DevMiddleware: Middleware {
+        async fn snapshot(&self) -> Result<U256, DevRpcMiddlewareError<Self::Inner>>;
+        async fn reset(&self, id: U256) -> Result<(), DevRpcMiddlewareError<Self::Inner>>;
+    }
 
     #[derive(Clone, Debug)]
     pub struct DevRpcMiddleware<M>(M);
@@ -1108,17 +1113,20 @@ pub mod dev_rpc {
         }
     }
 
-    impl<M: Middleware> DevRpcMiddleware<M> {
+    impl<M> DevRpcMiddleware<M> {
         pub fn new(inner: M) -> Self {
             Self(inner)
         }
+    }
 
+    #[async_trait]
+    impl<M: Middleware> DevMiddleware for DevRpcMiddleware<M> {
         // both ganache and hardhat increment snapshot id even if no state has changed
-        pub async fn snapshot(&self) -> Result<U256, DevRpcMiddlewareError<M>> {
+        async fn snapshot(&self) -> Result<U256, DevRpcMiddlewareError<Self::Inner>> {
             self.provider().request::<(), U256>("evm_snapshot", ()).await.map_err(From::from)
         }
 
-        pub async fn revert_to_snapshot(&self, id: U256) -> Result<(), DevRpcMiddlewareError<M>> {
+        async fn reset(&self, id: U256) -> Result<(), DevRpcMiddlewareError<Self::Inner>> {
             let ok = self
                 .provider()
                 .request::<[U256; 1], bool>("evm_revert", [id])
@@ -1171,25 +1179,25 @@ pub mod dev_rpc {
             // mine some blocks
             client.provider().mine(5).await.unwrap();
 
-            // revert_to_snapshot should reset state to snap id
-            client.revert_to_snapshot(snap_id2).await.unwrap();
+            // reset should reset state to snap id
+            client.reset(snap_id2).await.unwrap();
             let block = client.get_block_number().await.unwrap();
             let time = client.get_block(block).await.unwrap().unwrap().timestamp;
             assert_eq!(block, block2);
             assert_eq!(time, time2);
 
-            client.revert_to_snapshot(snap_id1).await.unwrap();
+            client.reset(snap_id1).await.unwrap();
             let block = client.get_block_number().await.unwrap();
             let time = client.get_block(block).await.unwrap().unwrap().timestamp;
             assert_eq!(block, block1);
             assert_eq!(time, time1);
 
-            // revert_to_snapshot should throw given non-existent or
+            // reset should throw given non-existent or
             // previously used snapshot
-            let result = client.revert_to_snapshot(snap_id1).await;
+            let result = client.reset(snap_id1).await;
             assert!(result.is_err());
 
-            client.revert_to_snapshot(snap_id0).await.unwrap();
+            client.reset(snap_id0).await.unwrap();
             let block = client.get_block_number().await.unwrap();
             let time = client.get_block(block).await.unwrap().unwrap().timestamp;
             assert_eq!(block, block0);

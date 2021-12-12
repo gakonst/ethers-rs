@@ -34,7 +34,7 @@ pub use provider::{FilterKind, Provider, ProviderError};
 
 // feature-enabled support for dev-rpc methods
 #[cfg(feature = "dev-rpc")]
-pub use provider::dev_rpc::DevRpcMiddleware;
+pub use provider::dev_rpc::{DevMiddleware, DevRpcMiddleware};
 
 /// A simple gas escalation policy
 pub type EscalationPolicy = Box<dyn Fn(U256, usize) -> U256 + Send + Sync>;
