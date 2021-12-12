@@ -14,7 +14,7 @@ use tempdir::TempDir;
 
 pub struct TempProject<T: ArtifactOutput> {
     /// temporary workspace root
-    root: TempDir,
+    _root: TempDir,
     /// actual project workspace with the `root` tempdir as its root
     inner: Project<T>,
 }
@@ -22,7 +22,7 @@ pub struct TempProject<T: ArtifactOutput> {
 impl<T: ArtifactOutput> TempProject<T> {
     /// Makes sure all resources are created
     fn create_new(root: TempDir, inner: Project<T>) -> std::result::Result<Self, SolcIoError> {
-        let project = Self { root, inner };
+        let project = Self { _root: root, inner };
         project.paths().create_all()?;
         Ok(project)
     }
@@ -56,36 +56,9 @@ impl<T: ArtifactOutput> TempProject<T> {
         self.project().paths.root.as_path()
     }
 
-    /// Returns the handle to the tempdir and the project
-    ///
-    /// NOTE: the `TempDir` object deletes its directory on drop, also removing all the project's
-    /// content
-    pub fn split(self) -> (Project<T>, TempDir) {
-        (self.inner, self.root)
-    }
-
-    /// Copies a single file into the given dir
-    pub fn copy_file(&self, source: impl AsRef<Path>, target_dir: impl AsRef<Path>) -> Result<()> {
-        let source = source.as_ref();
-        let target = target_dir.as_ref().join(
-            source
-                .file_name()
-                .ok_or_else(|| SolcError::msg(format!("No file name for {}", source.display())))?,
-        );
-
-        fs_extra::file::copy(source, target, &file_copy_options())?;
-        Ok(())
-    }
-
-    /// Copies all content of the source dir into the target dir
-    pub fn copy_dir(&self, source: impl AsRef<Path>, target_dir: impl AsRef<Path>) -> Result<()> {
-        fs_extra::dir::copy(source, target_dir, &dir_copy_options())?;
-        Ok(())
-    }
-
     /// Copies a single file into the projects source
     pub fn copy_source(&self, source: impl AsRef<Path>) -> Result<()> {
-        self.copy_file(source, &self.paths().sources)
+        copy_file(source, &self.paths().sources)
     }
 
     pub fn copy_sources<I, S>(&self, sources: I) -> Result<()>
@@ -106,7 +79,7 @@ impl<T: ArtifactOutput> TempProject<T> {
             .libraries
             .get(0)
             .ok_or_else(|| SolcError::msg("No libraries folders configured"))?;
-        self.copy_file(lib, lib_dir)
+        copy_file(lib, lib_dir)
     }
 
     /// Copy a series of files into the main library dir
@@ -188,4 +161,23 @@ fn file_copy_options() -> file::CopyOptions {
         skip_exist: false,
         buffer_size: 64000, //64kb
     }
+}
+
+/// Copies a single file into the given dir
+pub fn copy_file(source: impl AsRef<Path>, target_dir: impl AsRef<Path>) -> Result<()> {
+    let source = source.as_ref();
+    let target = target_dir.as_ref().join(
+        source
+            .file_name()
+            .ok_or_else(|| SolcError::msg(format!("No file name for {}", source.display())))?,
+    );
+
+    fs_extra::file::copy(source, target, &file_copy_options())?;
+    Ok(())
+}
+
+/// Copies all content of the source dir into the target dir
+pub fn copy_dir(source: impl AsRef<Path>, target_dir: impl AsRef<Path>) -> Result<()> {
+    fs_extra::dir::copy(source, target_dir, &dir_copy_options())?;
+    Ok(())
 }
