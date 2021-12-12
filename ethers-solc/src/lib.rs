@@ -94,6 +94,21 @@ impl Project {
 }
 
 impl<Artifacts: ArtifactOutput> Project<Artifacts> {
+    /// Returns the path to the artifacts directory
+    pub fn artifacts_path(&self) -> &PathBuf {
+        &self.paths.artifacts
+    }
+
+    /// Returns the path to the sources directory
+    pub fn sources_path(&self) -> &PathBuf {
+        &self.paths.sources
+    }
+
+    /// Returns the path to the cache file
+    pub fn cache_path(&self) -> &PathBuf {
+        &self.paths.cache
+    }
+
     /// Sets the maximum number of parallel `solc` processes to run simultaneously.
     pub fn set_solc_jobs(&mut self, jobs: usize) {
         assert!(jobs > 0);
@@ -469,13 +484,13 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
     /// Removes the project's artifacts and cache file
     pub fn cleanup(&self) -> Result<()> {
         tracing::trace!("clean up project");
-        if self.paths.cache.exists() {
-            std::fs::remove_file(&self.paths.cache)?;
-            tracing::trace!("removed cache file \"{}\"", self.paths.cache.display());
+        if self.cache_path().exists() {
+            std::fs::remove_file(self.cache_path())?;
+            tracing::trace!("removed cache file \"{}\"", self.cache_path().display());
         }
         if self.paths.artifacts.exists() {
-            std::fs::remove_dir_all(&self.paths.artifacts)?;
-            tracing::trace!("removed artifacts dir \"{}\"", self.paths.artifacts.display());
+            std::fs::remove_dir_all(self.artifacts_path())?;
+            tracing::trace!("removed artifacts dir \"{}\"", self.artifacts_path().display());
         }
         Ok(())
     }

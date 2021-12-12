@@ -1,9 +1,10 @@
 //! Utilities for mocking project workspaces
 use crate::{
     cache::SOLIDITY_FILES_CACHE_FILENAME, config::ProjectPathsConfigBuilder, hh::HardhatArtifacts,
-    ArtifactOutput, MinimalCombinedArtifacts, Project, ProjectPathsConfig,
+    ArtifactOutput, MinimalCombinedArtifacts, Project, ProjectCompileOutput, ProjectPathsConfig,
 };
 
+use crate::remappings::Remapping;
 use fs_extra::{dir, file};
 use std::{io, path::Path};
 use tempdir::TempDir;
@@ -34,6 +35,10 @@ impl<T: ArtifactOutput> TempProject<T> {
         &self.inner
     }
 
+    pub fn compile(&self) -> eyre::Result<ProjectCompileOutput<T>> {
+        Ok(self.project().compile()?)
+    }
+
     pub fn project_mut(&mut self) -> &mut Project<T> {
         &mut self.inner
     }
@@ -52,8 +57,8 @@ impl<T: ArtifactOutput> TempProject<T> {
     ///
     /// NOTE: the `TempDir` object deletes its directory on drop, also removing all the project's
     /// content
-    pub fn split(self) -> (TempDir, Project<T>) {
-        (self.root, self.inner)
+    pub fn split(self) -> (Project<T>, TempDir) {
+        (self.inner, self.root)
     }
 
     /// Copies a single file into the given dir
@@ -156,6 +161,7 @@ impl TempProject<MinimalCombinedArtifacts> {
             .sources(root.join("src"))
             .artifacts(root.join("out"))
             .lib(root.join("lib"))
+            .remappings(Remapping::find_many(&root.join("lib"))?)
             .root(root)
             .build()?;
 
