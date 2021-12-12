@@ -32,6 +32,10 @@ pub enum SolcError {
     /// General purpose message
     #[error("{0}")]
     Message(String),
+
+    #[cfg(feature = "project-util")]
+    #[error(transparent)]
+    FsExtra(#[from] fs_extra::error::Error),
 }
 
 impl SolcError {
