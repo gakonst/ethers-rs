@@ -1325,7 +1325,7 @@ dependencies = [
  "rusoto_kms",
  "semver",
  "serde_json",
- "sha2 0.9.8",
+ "sha2 0.10.0",
  "spki",
  "tempfile",
  "thiserror",
@@ -1355,7 +1355,7 @@ dependencies = [
  "semver",
  "serde",
  "serde_json",
- "sha2 0.9.8",
+ "sha2 0.10.0",
  "svm-rs",
  "tempdir",
  "thiserror",
@@ -3146,6 +3146,17 @@ dependencies = [
  "cpufeatures",
  "digest 0.9.0",
  "opaque-debug 0.3.0",
+]
+
+[[package]]
+name = "sha2"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "900d964dd36bb15bcf2f2b35694c072feab74969a54f2bbeec7a2d725d2bdcb6"
+dependencies = [
+ "cfg-if 1.0.0",
+ "cpufeatures",
+ "digest 0.10.0",
  "sha2-asm",
 ]
 
