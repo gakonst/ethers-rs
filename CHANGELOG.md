@@ -14,6 +14,8 @@
   [#624](https://github.com/gakonst/ethers-rs/pull/624).
 - Fix `fee_history` to first try with `block_count` encoded as a hex `QUANTITY`.
   [#668](https://github.com/gakonst/ethers-rs/pull/668)
+- Fix `fill_transaction` to set nonces in transactions, if the sender is known
+  and no nonce is specified
 
 ## ethers-contract-abigen
 

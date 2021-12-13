@@ -248,6 +248,14 @@ pub trait Middleware: Sync + Send + Debug {
     ) -> Result<EscalatingPending<'a, Self::Provider>, Self::Error> {
         let mut original = tx.clone();
         self.fill_transaction(&mut original, None).await?;
+
+        // set the nonce, if no nonce is found
+        if original.nonce().is_none() {
+            let nonce =
+                self.get_transaction_count(tx.from().copied().unwrap_or_default(), None).await?;
+            original.set_nonce(nonce);
+        }
+
         let gas_price = original.gas_price().expect("filled");
         let chain_id = self.get_chainid().await?.low_u64();
         let sign_futs: Vec<_> = (0..escalations)
