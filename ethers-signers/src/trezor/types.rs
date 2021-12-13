@@ -4,7 +4,7 @@
 use std::fmt;
 use thiserror::Error;
 
-use ethers_core::types::{transaction::eip2718::TypedTransaction, NameOrAddress, U256};
+use ethers_core::types::{transaction::eip2718::TypedTransaction, NameOrAddress, H160, U256};
 use trezor_client::client::AccessListItem as Trezor_AccessListItem;
 
 #[derive(Clone, Debug)]
@@ -72,16 +72,16 @@ impl TrezorTransaction {
     }
 
     pub fn load(tx: &TypedTransaction) -> Result<Self, TrezorError> {
-        let to: String = match tx.to().ok_or(TrezorError::DataError)? {
+        let to: String = match tx.to().unwrap_or(&NameOrAddress::Address(H160::from(&[0; 20]))) {
             NameOrAddress::Name(_) => unimplemented!(),
             NameOrAddress::Address(value) => format!("0x{}", hex::encode(value)),
         };
 
-        let nonce = Self::to_trimmed_big_endian(tx.nonce().ok_or(TrezorError::DataError)?);
-        let gas = Self::to_trimmed_big_endian(tx.gas().ok_or(TrezorError::DataError)?);
-        let gas_price = Self::to_trimmed_big_endian(&tx.gas_price().ok_or(TrezorError::DataError)?);
-        let value = Self::to_trimmed_big_endian(tx.value().ok_or(TrezorError::DataError)?);
-        let data = tx.data().ok_or(TrezorError::DataError)?.to_vec();
+        let nonce = tx.nonce().map_or(vec![], Self::to_trimmed_big_endian);
+        let gas = tx.gas().map_or(vec![], Self::to_trimmed_big_endian);
+        let gas_price = tx.gas_price().map_or(vec![], |v| Self::to_trimmed_big_endian(&v));
+        let value = tx.value().map_or(vec![], Self::to_trimmed_big_endian);
+        let data = tx.data().map_or(vec![], |v| v.to_vec());
 
         match tx {
             TypedTransaction::Eip2930(_) | TypedTransaction::Legacy(_) => Ok(Self {
@@ -96,12 +96,12 @@ impl TrezorTransaction {
                 access_list: vec![],
             }),
             TypedTransaction::Eip1559(eip1559_tx) => {
-                let max_fee_per_gas = Self::to_trimmed_big_endian(
-                    &eip1559_tx.max_fee_per_gas.ok_or(TrezorError::DataError)?,
-                );
-                let max_priority_fee_per_gas = Self::to_trimmed_big_endian(
-                    &eip1559_tx.max_priority_fee_per_gas.ok_or(TrezorError::DataError)?,
-                );
+                let max_fee_per_gas =
+                    eip1559_tx.max_fee_per_gas.map_or(vec![], |v| Self::to_trimmed_big_endian(&v));
+
+                let max_priority_fee_per_gas = eip1559_tx
+                    .max_priority_fee_per_gas
+                    .map_or(vec![], |v| Self::to_trimmed_big_endian(&v));
 
                 let mut access_list: Vec<Trezor_AccessListItem> = Vec::new();
                 for item in &eip1559_tx.access_list.0 {

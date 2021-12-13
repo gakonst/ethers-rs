@@ -263,6 +263,20 @@ mod tests {
 
     #[tokio::test]
     #[ignore]
+    async fn test_sign_empty_txes() {
+        let trezor = TrezorEthereum::new(DerivationType::TrezorLive(0), 1).await.unwrap();
+        {
+            let tx_req = Eip1559TransactionRequest::new().into();
+            let tx = trezor.sign_transaction(&tx_req).await.unwrap();
+        }
+        {
+            let tx_req = TransactionRequest::new().into();
+            let tx = trezor.sign_transaction(&tx_req).await.unwrap();
+        }
+    }
+
+    #[tokio::test]
+    #[ignore]
     async fn test_sign_eip1559_tx() {
         let trezor = TrezorEthereum::new(DerivationType::TrezorLive(0), 1).await.unwrap();
 
