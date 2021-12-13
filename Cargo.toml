@@ -67,6 +67,7 @@ openssl = ["ethers-providers/openssl"]
 dev-rpc = ["ethers-providers/dev-rpc"]
 ## signers
 ledger = ["ethers-signers/ledger"]
+trezor = ["ethers-signers/trezor"]
 yubi = ["ethers-signers/yubi"]
 ## contracts
 abigen = ["ethers-contract/abigen"]

@@ -20,6 +20,14 @@ pub use ledger::{
     types::{DerivationType as HDPath, LedgerError},
 };
 
+#[cfg(feature = "trezor")]
+mod trezor;
+#[cfg(feature = "trezor")]
+pub use trezor::{
+    app::TrezorEthereum as Trezor,
+    types::{DerivationType as TrezorHDPath, TrezorError},
+};
+
 #[cfg(feature = "yubi")]
 pub use yubihsm;
 

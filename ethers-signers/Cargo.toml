@@ -28,6 +28,7 @@ yubihsm = { version = "0.39.0", features = ["secp256k1", "http", "usb"], optiona
 futures-util = "0.3.18"
 futures-executor = "0.3.18"
 semver = "1.0.4"
+trezor-client = { version = "0.0.3", optional = true, default-features = false, features = ["f_ethereum"] }
 
 # aws
 rusoto_core = { version = "0.47.0", optional = true }
@@ -56,3 +57,4 @@ celo = ["ethers-core/celo"]
 ledger = ["coins-ledger"]
 yubi = ["yubihsm"]
 aws = ["rusoto_core", "rusoto_kms", "tracing", "tracing-futures", "spki"]
+trezor = ["trezor-client"]
