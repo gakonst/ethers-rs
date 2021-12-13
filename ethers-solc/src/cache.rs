@@ -273,20 +273,14 @@ impl SolFilesCacheBuilder {
             files.insert(file, entry);
         }
 
-        let cache = if let Some(ref dest) = dest {
-            if dest.exists() {
-                // read the existing cache and extend it by the files that changed
-                // (if we just wrote to the cache file, we'd overwrite the existing data)
-                let reader = std::io::BufReader::new(
-                    File::open(dest).map_err(|err| SolcError::io(err, dest))?,
-                );
-                let mut cache: SolFilesCache = serde_json::from_reader(reader)?;
-                assert_eq!(cache.format, format);
-                cache.files.extend(files);
-                cache
-            } else {
-                SolFilesCache { format, files }
-            }
+        let cache = if let Some(dest) = dest.as_ref().filter(|dest| dest.exists()) {
+            // read the existing cache and extend it by the files that changed
+            // (if we just wrote to the cache file, we'd overwrite the existing data)
+            let reader =
+                std::io::BufReader::new(File::open(dest).map_err(|err| SolcError::io(err, dest))?);
+            let mut cache: SolFilesCache = serde_json::from_reader(reader)?;
+            cache.files.extend(files);
+            cache
         } else {
             SolFilesCache { format, files }
         };
