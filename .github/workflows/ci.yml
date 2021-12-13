@@ -270,5 +270,5 @@ jobs:
         run: |
           rustc -Vv
           cargo -V
-          cargo check --all-features --workspace
+          cargo check --all-features
         shell: cmd
