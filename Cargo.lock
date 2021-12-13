@@ -202,12 +202,6 @@ checksum = "43a46022bae2c3bc5a17c2d45d59c1233ce0e2cca9ae9b92e92e9ce529874177"
 
 [[package]]
 name = "bech32"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "58946044516aa9dc922182e0d6e9d124a31aafe6b421614654eb27cf90cec09c"
-
-[[package]]
-name = "bech32"
 version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2dabbe35f96fb9507f7330793dc490461b2962659ac5d427181e451a623751d1"
@@ -219,38 +213,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b1f45e9417d87227c7a56d22e471c6206462cba514c7590c09aff4cf6d1ddcad"
 dependencies = [
  "serde",
-]
-
-[[package]]
-name = "bitcoin"
-version = "0.18.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cd5e7935f613ba170459072926f01dc5ddb8aa22382dc4badf44bbb55e2d243d"
-dependencies = [
- "bitcoin-bech32",
- "bitcoin_hashes",
- "byteorder",
- "hex 0.3.2",
- "rand 0.3.23",
- "secp256k1",
-]
-
-[[package]]
-name = "bitcoin-bech32"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4e67e8ccfc663811145e6cabdb9a2a6978877f72b048516e83eb95622e9b2554"
-dependencies = [
- "bech32 0.6.0",
-]
-
-[[package]]
-name = "bitcoin_hashes"
-version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2b7a2e9773ee7ae7f2560f0426c938f57902dcb9e39321b0cbd608f47ed579a4"
-dependencies = [
- "byteorder",
 ]
 
 [[package]]
@@ -542,7 +504,7 @@ dependencies = [
  "bitvec 0.17.4",
  "coins-bip32",
  "getrandom 0.2.3",
- "hex 0.4.3",
+ "hex",
  "hmac",
  "pbkdf2",
  "rand 0.8.4",
@@ -558,11 +520,11 @@ checksum = "d257d975731955ee86fa7f348000c3fea09c262e84c70c11e994a85aa4f467a7"
 dependencies = [
  "base58check",
  "base64 0.12.3",
- "bech32 0.7.3",
+ "bech32",
  "blake2",
  "digest 0.9.0",
  "generic-array 0.14.4",
- "hex 0.4.3",
+ "hex",
  "ripemd160",
  "serde",
  "serde_derive",
@@ -1061,7 +1023,7 @@ dependencies = [
  "aes",
  "ctr 0.7.0",
  "digest 0.9.0",
- "hex 0.4.3",
+ "hex",
  "hmac",
  "pbkdf2",
  "rand 0.8.4",
@@ -1082,7 +1044,7 @@ checksum = "f76ef192b63e8a44b3d08832acebbb984c3fba154b5c26f70037c860202a0d4b"
 dependencies = [
  "anyhow",
  "ethereum-types",
- "hex 0.4.3",
+ "hex",
  "serde",
  "serde_json",
  "sha3",
@@ -1130,7 +1092,7 @@ dependencies = [
  "ethers-providers",
  "ethers-signers",
  "ethers-solc",
- "hex 0.4.3",
+ "hex",
  "rand 0.8.4",
  "serde",
  "serde_json",
@@ -1150,7 +1112,7 @@ dependencies = [
  "ethers-signers",
  "ethers-solc",
  "futures-util",
- "hex 0.4.3",
+ "hex",
  "once_cell",
  "pin-project",
  "serde",
@@ -1168,7 +1130,7 @@ dependencies = [
  "cfg-if 1.0.0",
  "ethers-core",
  "getrandom 0.2.3",
- "hex 0.4.3",
+ "hex",
  "once_cell",
  "proc-macro2",
  "quote",
@@ -1185,7 +1147,7 @@ version = "0.6.0"
 dependencies = [
  "ethers-contract-abigen",
  "ethers-core",
- "hex 0.4.3",
+ "hex",
  "proc-macro2",
  "quote",
  "serde_json",
@@ -1206,7 +1168,7 @@ dependencies = [
  "ethabi",
  "futures-util",
  "generic-array 0.14.4",
- "hex 0.4.3",
+ "hex",
  "hex-literal",
  "k256",
  "once_cell",
@@ -1231,7 +1193,7 @@ dependencies = [
  "ethers-contract-derive",
  "ethers-core",
  "ethers-signers",
- "hex 0.4.3",
+ "hex",
  "proc-macro2",
  "quote",
  "serde",
@@ -1265,7 +1227,7 @@ dependencies = [
  "ethers-signers",
  "ethers-solc",
  "futures-util",
- "hex 0.4.3",
+ "hex",
  "instant",
  "once_cell",
  "rand 0.8.4",
@@ -1292,7 +1254,7 @@ dependencies = [
  "futures-core",
  "futures-timer",
  "futures-util",
- "hex 0.4.3",
+ "hex",
  "parking_lot",
  "pin-project",
  "reqwest",
@@ -1328,7 +1290,7 @@ dependencies = [
  "ethers-derive-eip712",
  "futures-executor",
  "futures-util",
- "hex 0.4.3",
+ "hex",
  "rand 0.8.4",
  "rusoto_core",
  "rusoto_kms",
@@ -1356,7 +1318,7 @@ dependencies = [
  "futures-util",
  "getrandom 0.2.3",
  "glob",
- "hex 0.4.3",
+ "hex",
  "home",
  "md-5",
  "num_cpus",
@@ -1380,7 +1342,7 @@ version = "0.1.0"
 dependencies = [
  "console_error_panic_hook",
  "ethers",
- "hex 0.4.3",
+ "hex",
  "serde",
  "serde_derive",
  "serde_json",
@@ -1677,12 +1639,6 @@ checksum = "62b467343b94ba476dcb2500d242dadbb39557df889310ac77c5d99100aaac33"
 dependencies = [
  "libc",
 ]
-
-[[package]]
-name = "hex"
-version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "805026a5d0141ffc30abb3be3173848ad46a1b1664fe632428479619a3644d77"
 
 [[package]]
 name = "hex"
@@ -2480,16 +2436,6 @@ checksum = "643f8f41a8ebc4c5dc4515c82bb8abd397b527fc20fd681b7c011c2aee5d44fb"
 
 [[package]]
 name = "rand"
-version = "0.3.23"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "64ac302d8f83c0c1974bf758f6b041c6c8ada916fbb44a609158ca8b064cc76c"
-dependencies = [
- "libc",
- "rand 0.4.6",
-]
-
-[[package]]
-name = "rand"
 version = "0.4.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "552840b97013b1a26992c11eac34bdd778e464601a4c2054b5f0bff7c6761293"
@@ -2847,7 +2793,7 @@ dependencies = [
  "chrono",
  "digest 0.9.0",
  "futures",
- "hex 0.4.3",
+ "hex",
  "hmac",
  "http",
  "hyper",
@@ -3007,17 +2953,6 @@ checksum = "d53dcdb7c9f8158937a7981b48accfd39a43af418591a5d008c7b22b5e1b7ca4"
 dependencies = [
  "ring",
  "untrusted",
-]
-
-[[package]]
-name = "secp256k1"
-version = "0.12.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4070f3906e65249228094cf97b04a90799fba04468190bbbcfa812309cf86e32"
-dependencies = [
- "cc",
- "libc",
- "rand 0.4.6",
 ]
 
 [[package]]
@@ -3333,7 +3268,7 @@ dependencies = [
  "cfg-if 1.0.0",
  "console 0.14.1",
  "dialoguer",
- "hex 0.4.3",
+ "hex",
  "home",
  "indicatif",
  "itertools",
@@ -3676,22 +3611,17 @@ dependencies = [
 
 [[package]]
 name = "trezor-client"
-version = "0.0.2"
+version = "0.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7ebaa901ea69675239aece61fb89610264167c204c0e0e7c445fc823f2a1128e"
+checksum = "ff94fab279e0d429d762c289f9727f37a0f1b8207ea4795f09c11caad009046f"
 dependencies = [
- "bitcoin",
- "bitcoin-bech32",
- "bitcoin_hashes",
  "byteorder",
- "hex 0.3.2",
+ "hex",
  "hidapi",
  "log",
  "primitive-types",
  "protobuf",
  "rusb",
- "secp256k1",
- "unicode-normalization",
 ]
 
 [[package]]
@@ -3737,7 +3667,7 @@ checksum = "6470ab50f482bde894a037a57064480a246dbfdd5960bd65a44824693f08da5f"
 dependencies = [
  "byteorder",
  "crunchy",
- "hex 0.4.3",
+ "hex",
  "static_assertions",
 ]
 
