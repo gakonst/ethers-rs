@@ -2,7 +2,7 @@ use crate::{
     ens,
     pubsub::{PubsubClient, SubscriptionStream},
     stream::{FilterWatcher, DEFAULT_POLL_INTERVAL},
-    FeeHistory, FromErr, Http as HttpProvider, JsonRpcClient, JsonRpcClientWrapper, MockProvider,
+    FromErr, Http as HttpProvider, JsonRpcClient, JsonRpcClientWrapper, MockProvider,
     PendingTransaction, QuorumProvider,
 };
 
@@ -15,9 +15,10 @@ use ethers_core::{
     abi::{self, Detokenize, ParamType},
     types::{
         transaction::{eip2718::TypedTransaction, eip2930::AccessListWithGasUsed},
-        Address, Block, BlockId, BlockNumber, BlockTrace, Bytes, EIP1186ProofResponse, Filter, Log,
-        NameOrAddress, Selector, Signature, Trace, TraceFilter, TraceType, Transaction,
-        TransactionReceipt, TxHash, TxpoolContent, TxpoolInspect, TxpoolStatus, H256, U256, U64,
+        Address, Block, BlockId, BlockNumber, BlockTrace, Bytes, EIP1186ProofResponse, FeeHistory,
+        Filter, Log, NameOrAddress, Selector, Signature, Trace, TraceFilter, TraceType,
+        Transaction, TransactionReceipt, TxHash, TxpoolContent, TxpoolInspect, TxpoolStatus, H256,
+        U256, U64,
     },
     utils,
 };
