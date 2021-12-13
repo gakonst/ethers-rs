@@ -171,13 +171,6 @@ pub trait Middleware: Sync + Send + Debug {
             }
         }
 
-        // set the nonce, if no nonce is found
-        if tx.nonce().is_none() {
-            let nonce =
-                self.get_transaction_count(tx.from().copied().unwrap_or_default(), block).await?;
-            tx.set_nonce(nonce);
-        }
-
         // TODO: Can we poll the futures below at the same time?
         // Access List + Name resolution and then Gas price + Gas
 
