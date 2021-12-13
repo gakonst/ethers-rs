@@ -949,8 +949,7 @@ impl Provider<crate::Ws> {
     }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
-#[cfg(feature = "ipc")]
+#[cfg(all(target_family = "unix", feature = "ipc"))]
 impl Provider<crate::Ipc> {
     /// Direct connection to an IPC socket.
     pub async fn connect_ipc(path: impl AsRef<std::path::Path>) -> Result<Self, ProviderError> {

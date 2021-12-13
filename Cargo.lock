@@ -3306,9 +3306,9 @@ checksum = "6bdef32e8150c2a081110b42772ffe7d7c9032b606bc226c8260fd97e0976601"
 
 [[package]]
 name = "svm-rs"
-version = "0.2.0"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3a5e16a3a87cca053bcab26e5de589ccb5779f84dda466f96eead79a98d7de7c"
+checksum = "8733662d7e2c4bc2bdc5ca4102c7f8b13d1c3c12fb767089de07c2c3df3cd03d"
 dependencies = [
  "anyhow",
  "cfg-if 1.0.0",

@@ -10,11 +10,13 @@ use futures_channel::mpsc;
 use futures_util::stream::{Fuse, StreamExt};
 use oneshot::error::RecvError;
 use serde::{de::DeserializeOwned, Serialize};
-use std::sync::atomic::Ordering;
 use std::{
     collections::HashMap,
     path::Path,
-    sync::{atomic::AtomicU64, Arc},
+    sync::{
+        atomic::{AtomicU64, Ordering},
+        Arc,
+    },
 };
 use thiserror::Error;
 use tokio::{
@@ -37,18 +39,9 @@ type Subscription = mpsc::UnboundedSender<serde_json::Value>;
 
 #[derive(Debug)]
 enum TransportMessage {
-    Request {
-        id: u64,
-        request: String,
-        sender: Pending,
-    },
-    Subscribe {
-        id: U256,
-        sink: Subscription,
-    },
-    Unsubscribe {
-        id: U256,
-    },
+    Request { id: u64, request: String, sender: Pending },
+    Subscribe { id: U256, sink: Subscription },
+    Unsubscribe { id: U256 },
 }
 
 impl Ipc {
@@ -112,10 +105,7 @@ impl PubsubClient for Ipc {
 
     fn subscribe<T: Into<U256>>(&self, id: T) -> Result<Self::NotificationStream, IpcError> {
         let (sink, stream) = mpsc::unbounded();
-        self.send(TransportMessage::Subscribe {
-            id: id.into(),
-            sink,
-        })?;
+        self.send(TransportMessage::Subscribe { id: id.into(), sink })?;
         Ok(stream)
     }
 
@@ -157,12 +147,9 @@ where
         let f = async move {
             let mut read_buffer = Vec::new();
             loop {
-                let closed = self
-                    .process(&mut read_buffer)
-                    .await
-                    .expect("WS Server panic");
+                let closed = self.process(&mut read_buffer).await.expect("WS Server panic");
                 if closed && self.pending.is_empty() {
-                    break;
+                    break
                 }
             }
         };
@@ -197,11 +184,7 @@ where
 
     async fn handle_request(&mut self, msg: TransportMessage) -> Result<(), IpcError> {
         match msg {
-            TransportMessage::Request {
-                id,
-                request,
-                sender,
-            } => {
+            TransportMessage::Request { id, request, sender } => {
                 if self.pending.insert(id, sender).is_some() {
                     warn!("Replacing a pending request with id {:?}", id);
                 }
@@ -218,10 +201,7 @@ where
             }
             TransportMessage::Unsubscribe { id } => {
                 if self.subscriptions.remove(&id).is_none() {
-                    warn!(
-                        "Unsubscribing from non-existent subscription with id {:?}",
-                        id
-                    );
+                    warn!("Unsubscribing from non-existent subscription with id {:?}", id);
                 }
             }
         };
@@ -287,7 +267,8 @@ where
     }
 
     /// Sends JSON response through the channel based on the ID in that response.
-    /// This handles RPC calls with only one response, and the channel entry is dropped after sending.
+    /// This handles RPC calls with only one response, and the channel entry is dropped after
+    /// sending.
     fn respond(&mut self, output: Response<serde_json::Value>) -> Result<(), IpcError> {
         let id = output.id;
 
@@ -338,7 +319,10 @@ impl From<IpcError> for ProviderError {
 #[cfg(not(feature = "celo"))]
 mod test {
     use super::*;
-    use ethers_core::{utils::Geth, types::{Block, TxHash, U256}};
+    use ethers_core::{
+        types::{Block, TxHash, U256},
+        utils::Geth,
+    };
     use tempfile::NamedTempFile;
 
     #[tokio::test]
@@ -366,11 +350,7 @@ mod test {
 
         // Subscribing requires sending the sub request and then subscribing to
         // the returned sub_id
-        let block_num: u64 = ipc
-            .request::<_, U256>("eth_blockNumber", ())
-            .await
-            .unwrap()
-            .as_u64();
+        let block_num: u64 = ipc.request::<_, U256>("eth_blockNumber", ()).await.unwrap().as_u64();
         let mut blocks = Vec::new();
         for _ in 0..3 {
             let item = stream.next().await.unwrap();
@@ -378,13 +358,6 @@ mod test {
             blocks.push(block.number.unwrap_or_default().as_u64());
         }
         let offset = blocks[0] - block_num;
-        assert_eq!(
-            blocks,
-            &[
-                block_num + offset,
-                block_num + offset + 1,
-                block_num + offset + 2
-            ]
-        )
+        assert_eq!(blocks, &[block_num + offset, block_num + offset + 1, block_num + offset + 2])
     }
 }
