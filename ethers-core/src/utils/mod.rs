@@ -26,14 +26,23 @@ pub use rlp;
 pub use hex;
 
 use crate::types::{Address, Bytes, U256};
+use ethabi::ethereum_types::FromDecStrErr;
 use k256::{ecdsa::SigningKey, EncodedPoint as K256PublicKey};
-use std::ops::Neg;
+use std::{convert::TryInto, ops::Neg};
 use thiserror::Error;
 
-#[derive(Debug, Error)]
-pub enum FormatBytes32StringError {
+#[derive(Error, Debug)]
+pub enum ConversionError {
+    #[error("Unknown units: {0}")]
+    UnrecognizedUnits(String),
     #[error("bytes32 strings must not exceed 32 bytes in length")]
     TextTooLong,
+    #[error(transparent)]
+    Utf8Error(#[from] std::str::Utf8Error),
+    #[error(transparent)]
+    InvalidFloat(#[from] std::num::ParseFloatError),
+    #[error(transparent)]
+    FromDecStrError(#[from] FromDecStrErr),
 }
 
 /// 1 Ether = 1e18 Wei == 0x0de0b6b3a7640000 Wei
@@ -65,26 +74,30 @@ pub fn format_ether<T: Into<U256>>(amount: T) -> U256 {
 /// ```
 /// use ethers_core::{types::U256, utils::format_units};
 ///
-/// let eth = format_units(1395633240123456000_u128, "ether");
+/// let eth = format_units(1395633240123456000_u128, "ether").unwrap();
 /// assert_eq!(eth.parse::<f64>().unwrap(), 1.395633240123456);
 ///
-/// let eth = format_units(U256::from_dec_str("1395633240123456000").unwrap(), "ether");
+/// let eth = format_units(U256::from_dec_str("1395633240123456000").unwrap(), "ether").unwrap();
 /// assert_eq!(eth.parse::<f64>().unwrap(), 1.395633240123456);
 ///
-/// let eth = format_units(U256::from_dec_str("1395633240123456789").unwrap(), "ether");
+/// let eth = format_units(U256::from_dec_str("1395633240123456789").unwrap(), "ether").unwrap();
 /// assert_eq!(eth, "1.395633240123456789");
 /// ```
-pub fn format_units<T: Into<U256>, K: Into<Units>>(amount: T, units: K) -> String {
-    let units = units.into();
+pub fn format_units<T, K>(amount: T, units: K) -> Result<String, ConversionError>
+where
+    T: Into<U256>,
+    K: TryInto<Units, Error = ConversionError>,
+{
+    let units = units.try_into()?;
     let amount = amount.into();
     let amount_decimals = amount % U256::from(10_u128.pow(units.as_num()));
     let amount_integer = amount / U256::from(10_u128.pow(units.as_num()));
-    format!(
+    Ok(format!(
         "{}.{:0width$}",
         amount_integer,
         amount_decimals.as_u128(),
         width = units.as_num() as usize
-    )
+    ))
 }
 
 /// Converts the input to a U256 and converts from Ether to Wei.
@@ -97,7 +110,7 @@ pub fn format_units<T: Into<U256>, K: Into<Units>>(amount: T, units: K) -> Strin
 /// assert_eq!(eth, parse_ether(1usize).unwrap());
 /// assert_eq!(eth, parse_ether("1").unwrap());
 /// ```
-pub fn parse_ether<S>(eth: S) -> Result<U256, Box<dyn std::error::Error>>
+pub fn parse_ether<S>(eth: S) -> Result<U256, ConversionError>
 where
     S: ToString,
 {
@@ -122,12 +135,13 @@ where
 /// let amount_in_wei = U256::from_dec_str("15230001000").unwrap();
 /// assert_eq!(amount_in_wei, parse_units("15.230001000000000000", "wei").unwrap());
 /// ```
-pub fn parse_units<K, S>(amount: S, units: K) -> Result<U256, Box<dyn std::error::Error>>
+pub fn parse_units<K, S>(amount: S, units: K) -> Result<U256, ConversionError>
 where
     S: ToString,
-    K: Into<Units>,
+    K: TryInto<Units, Error = ConversionError>,
 {
-    let float_n: f64 = amount.to_string().parse::<f64>()? * 10u64.pow(units.into().as_num()) as f64;
+    let float_n: f64 =
+        amount.to_string().parse::<f64>()? * 10u64.pow(units.try_into()?.as_num()) as f64;
     let u256_n: U256 = U256::from_dec_str(&float_n.to_string())?;
     Ok(u256_n)
 }
@@ -261,10 +275,10 @@ pub fn to_checksum(addr: &Address, chain_id: Option<u8>) -> String {
 
 /// Returns a bytes32 string representation of text. If the length of text exceeds 32 bytes,
 /// an error is returned.
-pub fn format_bytes32_string(text: &str) -> Result<[u8; 32], FormatBytes32StringError> {
+pub fn format_bytes32_string(text: &str) -> Result<[u8; 32], ConversionError> {
     let str_bytes: &[u8] = text.as_bytes();
     if str_bytes.len() > 32 {
-        return Err(FormatBytes32StringError::TextTooLong)
+        return Err(ConversionError::TextTooLong)
     }
 
     let mut bytes32: [u8; 32] = [0u8; 32];
@@ -274,13 +288,13 @@ pub fn format_bytes32_string(text: &str) -> Result<[u8; 32], FormatBytes32String
 }
 
 /// Returns the decoded string represented by the bytes32 encoded data.
-pub fn parse_bytes32_string(bytes: &[u8; 32]) -> Result<&str, std::str::Utf8Error> {
+pub fn parse_bytes32_string(bytes: &[u8; 32]) -> Result<&str, ConversionError> {
     let mut length = 0;
     while length < 32 && bytes[length] != 0 {
         length += 1;
     }
 
-    std::str::from_utf8(&bytes[..length])
+    Ok(std::str::from_utf8(&bytes[..length])?)
 }
 
 /// The default EIP-1559 fee estimator which is based on the work by [MyCrypto](https://github.com/MyCryptoHQ/MyCrypto/blob/master/src/services/ApiService/Gas/eip1559.ts)
@@ -389,22 +403,25 @@ mod tests {
 
     #[test]
     fn test_format_units() {
-        let gwei_in_ether = format_units(WEI_IN_ETHER, 9);
+        let gwei_in_ether = format_units(WEI_IN_ETHER, 9).unwrap();
         assert_eq!(gwei_in_ether.parse::<f64>().unwrap() as u64, 1e9 as u64);
 
-        let eth = format_units(WEI_IN_ETHER, "ether");
+        let eth = format_units(WEI_IN_ETHER, "ether").unwrap();
         assert_eq!(eth.parse::<f64>().unwrap() as u64, 1);
 
-        let eth = format_units(1395633240123456000_u128, "ether");
+        let eth = format_units(1395633240123456000_u128, "ether").unwrap();
         assert_eq!(eth.parse::<f64>().unwrap(), 1.395633240123456);
 
-        let eth = format_units(U256::from_dec_str("1395633240123456000").unwrap(), "ether");
+        let eth =
+            format_units(U256::from_dec_str("1395633240123456000").unwrap(), "ether").unwrap();
         assert_eq!(eth.parse::<f64>().unwrap(), 1.395633240123456);
 
-        let eth = format_units(U256::from_dec_str("1395633240123456789").unwrap(), "ether");
+        let eth =
+            format_units(U256::from_dec_str("1395633240123456789").unwrap(), "ether").unwrap();
         assert_eq!(eth, "1.395633240123456789");
 
-        let eth = format_units(U256::from_dec_str("1005633240123456789").unwrap(), "ether");
+        let eth =
+            format_units(U256::from_dec_str("1005633240123456789").unwrap(), "ether").unwrap();
         assert_eq!(eth, "1.005633240123456789");
     }
 
@@ -633,7 +650,7 @@ mod tests {
     fn bytes32_string_formatting_too_long() {
         assert!(matches!(
             format_bytes32_string("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456").unwrap_err(),
-            FormatBytes32StringError::TextTooLong
+            ConversionError::TextTooLong
         ));
     }
 
