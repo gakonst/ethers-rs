@@ -4,6 +4,8 @@
 
 ### Unreleased
 
+- Returns error on invalid type conversion instead of panicking
+  [691](https://github.com/gakonst/ethers-rs/pull/691/files)
 - Change types mapping for solidity `bytes` to rust `ethers::core::Bytes` and
   solidity `uint8[]` to rust `Vec<u8>`.
   [613](https://github.com/gakonst/ethers-rs/pull/613)
@@ -26,12 +28,14 @@
 
 ### Unreleased
 
-- Add support for hardhat artifacts [#677](https://github.com/gakonst/ethers-rs/pull/677)
-- Add more utility functions to the `Artifact` trait [#673](https://github.com/gakonst/ethers-rs/pull/673)
+- Add support for hardhat artifacts
+  [#677](https://github.com/gakonst/ethers-rs/pull/677)
+- Add more utility functions to the `Artifact` trait
+  [#673](https://github.com/gakonst/ethers-rs/pull/673)
 - Return cached artifacts from project `compile` when the cache only contains
   some files
-- Add support for library linking and make `Bytecode`'s `object` filed an `enum BytecodeObject`
-  [#656](https://github.com/gakonst/ethers-rs/pull/656).
+- Add support for library linking and make `Bytecode`'s `object` filed an
+  `enum BytecodeObject` [#656](https://github.com/gakonst/ethers-rs/pull/656).
 
 ### 0.6.0
 
