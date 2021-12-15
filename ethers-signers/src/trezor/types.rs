@@ -49,6 +49,8 @@ pub enum TrezorError {
     /// Error when signing EIP712 struct with not compatible Trezor ETH app
     #[error("Trezor ethereum app requires at least version: {0:?}")]
     UnsupportedFirmwareVersion(String),
+    #[error("Does not suport ENS.")]
+    NoENSSupport,
 }
 
 /// Trezor Transaction Struct
@@ -74,14 +76,7 @@ impl TrezorTransaction {
     pub fn load(tx: &TypedTransaction) -> Result<Self, TrezorError> {
         let to: String = match tx.to() {
             Some(v) => match v {
-                NameOrAddress::Name(value) => {
-                    // Contract Creation
-                    if value.is_empty() {
-                        "".to_string()
-                    } else {
-                        unimplemented!()
-                    }
-                }
+                NameOrAddress::Name(_) => return Err(TrezorError::NoENSSupport),
                 NameOrAddress::Address(value) => format!("0x{}", hex::encode(value)),
             },
             // Contract Creation

@@ -294,10 +294,6 @@ mod tests {
             let tx_req = TransactionRequest::new().data(data.clone()).into();
             let tx = trezor.sign_transaction(&tx_req).await.unwrap();
         }
-        {
-            let tx_req = TransactionRequest::new().to("").data(data).into();
-            let tx = trezor.sign_transaction(&tx_req).await.unwrap();
-        }
     }
 
     #[tokio::test]
