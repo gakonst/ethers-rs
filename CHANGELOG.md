@@ -18,6 +18,8 @@
   [#668](https://github.com/gakonst/ethers-rs/pull/668)
 - Fix `fill_transaction` to set nonces in transactions, if the sender is known
   and no nonce is specified
+- Move `fill_transaction` implementation to the provider, to allow middleware
+  to properly override its behavior.
 
 ## ethers-contract-abigen
 
