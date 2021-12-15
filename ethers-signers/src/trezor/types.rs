@@ -4,7 +4,7 @@
 use std::fmt;
 use thiserror::Error;
 
-use ethers_core::types::{transaction::eip2718::TypedTransaction, NameOrAddress, H160, U256};
+use ethers_core::types::{transaction::eip2718::TypedTransaction, NameOrAddress, U256};
 use trezor_client::client::AccessListItem as Trezor_AccessListItem;
 
 #[derive(Clone, Debug)]
@@ -49,6 +49,8 @@ pub enum TrezorError {
     /// Error when signing EIP712 struct with not compatible Trezor ETH app
     #[error("Trezor ethereum app requires at least version: {0:?}")]
     UnsupportedFirmwareVersion(String),
+    #[error("Does not support ENS.")]
+    NoENSSupport,
 }
 
 /// Trezor Transaction Struct
@@ -72,9 +74,13 @@ impl TrezorTransaction {
     }
 
     pub fn load(tx: &TypedTransaction) -> Result<Self, TrezorError> {
-        let to: String = match tx.to().unwrap_or(&NameOrAddress::Address(H160::from(&[0; 20]))) {
-            NameOrAddress::Name(_) => unimplemented!(),
-            NameOrAddress::Address(value) => format!("0x{}", hex::encode(value)),
+        let to: String = match tx.to() {
+            Some(v) => match v {
+                NameOrAddress::Name(_) => return Err(TrezorError::NoENSSupport),
+                NameOrAddress::Address(value) => format!("0x{}", hex::encode(value)),
+            },
+            // Contract Creation
+            None => "".to_string(),
         };
 
         let nonce = tx.nonce().map_or(vec![], Self::to_trimmed_big_endian);

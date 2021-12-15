@@ -264,13 +264,34 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn test_sign_empty_txes() {
+        // Contract creation (empty `to`), requires data.
+        // To test without the data field, we need to specify a `to` address.
         let trezor = TrezorEthereum::new(DerivationType::TrezorLive(0), 1).await.unwrap();
         {
-            let tx_req = Eip1559TransactionRequest::new().into();
+            let tx_req = Eip1559TransactionRequest::new()
+                .to("2ed7afa17473e17ac59908f088b4371d28585476".parse::<Address>().unwrap())
+                .into();
             let tx = trezor.sign_transaction(&tx_req).await.unwrap();
         }
         {
-            let tx_req = TransactionRequest::new().into();
+            let tx_req = TransactionRequest::new()
+                .to("2ed7afa17473e17ac59908f088b4371d28585476".parse::<Address>().unwrap())
+                .into();
+            let tx = trezor.sign_transaction(&tx_req).await.unwrap();
+        }
+
+        let data = hex::decode("095ea7b30000000000000000000000007a250d5630b4cf539739df2c5dacb4c659f2488dffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap();
+
+        // Contract creation (empty `to`, with data) should show on the trezor device as:
+        //  ` "0 Wei ETH
+        //  ` new contract?"
+        let trezor = TrezorEthereum::new(DerivationType::TrezorLive(0), 1).await.unwrap();
+        {
+            let tx_req = Eip1559TransactionRequest::new().data(data.clone()).into();
+            let tx = trezor.sign_transaction(&tx_req).await.unwrap();
+        }
+        {
+            let tx_req = TransactionRequest::new().data(data.clone()).into();
             let tx = trezor.sign_transaction(&tx_req).await.unwrap();
         }
     }
