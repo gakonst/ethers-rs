@@ -159,7 +159,26 @@ pub trait Middleware: Sync + Send + Debug {
         self.inner().client_version().await.map_err(FromErr::from)
     }
 
-    /// Helper for filling a transaction
+    /// Fill necessary details of a transaction for dispatch
+    ///
+    /// This function is defined on providers to behave as follows:
+    /// 1. populate the `from` field with the default sender
+    /// 2. resolve any ENS names in the tx `to` field
+    /// 3. Estimate gas usage _without_ access lists
+    /// 4. Estimate gas usage _with_ access lists
+    /// 5. Enable access lists IFF they are cheaper
+    /// 6. Poll and set legacy or 1559 gas prices
+    ///
+    /// It does NOT set the nonce by default.
+    /// It MAY override the gas amount set by the user, if access lists are
+    /// cheaper.
+    ///
+    /// Middleware are encouraged to override any values _before_ delegating
+    /// to the inner implementation AND/OR modify the values provided by the
+    /// default implementation _after_ delegating.
+    ///
+    /// E.g. a middleware wanting to double gas prices should consider doing so
+    /// _after_ delegating and allowing the default implementation to poll gas.
     async fn fill_transaction(
         &self,
         tx: &mut TypedTransaction,
