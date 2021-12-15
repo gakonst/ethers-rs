@@ -74,9 +74,17 @@ impl TrezorTransaction {
     pub fn load(tx: &TypedTransaction) -> Result<Self, TrezorError> {
         let to: String = match tx.to() {
             Some(v) => match v {
-                NameOrAddress::Name(_) => unimplemented!(),
+                NameOrAddress::Name(value) => {
+                    // Contract Creation
+                    if value.is_empty() {
+                        "".to_string()
+                    } else {
+                        unimplemented!()
+                    }
+                }
                 NameOrAddress::Address(value) => format!("0x{}", hex::encode(value)),
             },
+            // Contract Creation
             None => "".to_string(),
         };
 
