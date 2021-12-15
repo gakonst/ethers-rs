@@ -1,3 +1,5 @@
+use super::ConversionError;
+
 /// Common Ethereum unit types.
 pub enum Units {
     /// Ether corresponds to 1e18 Wei
@@ -21,31 +23,41 @@ impl Units {
     }
 }
 
-impl From<u32> for Units {
-    fn from(src: u32) -> Self {
-        Units::Other(src)
+use std::convert::TryFrom;
+
+impl TryFrom<u32> for Units {
+    type Error = ConversionError;
+
+    fn try_from(src: u32) -> Result<Self, Self::Error> {
+        Ok(Units::Other(src))
     }
 }
 
-impl From<i32> for Units {
-    fn from(src: i32) -> Self {
-        Units::Other(src as u32)
+impl TryFrom<i32> for Units {
+    type Error = ConversionError;
+
+    fn try_from(src: i32) -> Result<Self, Self::Error> {
+        Ok(Units::Other(src as u32))
     }
 }
 
-impl From<usize> for Units {
-    fn from(src: usize) -> Self {
-        Units::Other(src as u32)
+impl TryFrom<usize> for Units {
+    type Error = ConversionError;
+
+    fn try_from(src: usize) -> Result<Self, Self::Error> {
+        Ok(Units::Other(src as u32))
     }
 }
 
-impl From<&str> for Units {
-    fn from(src: &str) -> Self {
-        match src.to_lowercase().as_str() {
+impl std::convert::TryFrom<&str> for Units {
+    type Error = ConversionError;
+
+    fn try_from(src: &str) -> Result<Self, Self::Error> {
+        Ok(match src.to_lowercase().as_str() {
             "ether" => Units::Ether,
             "gwei" => Units::Gwei,
             "wei" => Units::Wei,
-            _ => panic!("unrecognized units"),
-        }
+            _ => return Err(ConversionError::UnrecognizedUnits(src.to_string())),
+        })
     }
 }
