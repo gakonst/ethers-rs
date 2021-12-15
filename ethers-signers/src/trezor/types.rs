@@ -4,7 +4,7 @@
 use std::fmt;
 use thiserror::Error;
 
-use ethers_core::types::{transaction::eip2718::TypedTransaction, NameOrAddress, H160, U256};
+use ethers_core::types::{transaction::eip2718::TypedTransaction, NameOrAddress, U256};
 use trezor_client::client::AccessListItem as Trezor_AccessListItem;
 
 #[derive(Clone, Debug)]
@@ -72,9 +72,12 @@ impl TrezorTransaction {
     }
 
     pub fn load(tx: &TypedTransaction) -> Result<Self, TrezorError> {
-        let to: String = match tx.to().unwrap_or(&NameOrAddress::Address(H160::from(&[0; 20]))) {
-            NameOrAddress::Name(_) => unimplemented!(),
-            NameOrAddress::Address(value) => format!("0x{}", hex::encode(value)),
+        let to: String = match tx.to() {
+            Some(v) => match v {
+                NameOrAddress::Name(_) => unimplemented!(),
+                NameOrAddress::Address(value) => format!("0x{}", hex::encode(value)),
+            },
+            None => "".to_string(),
         };
 
         let nonce = tx.nonce().map_or(vec![], Self::to_trimmed_big_endian);
