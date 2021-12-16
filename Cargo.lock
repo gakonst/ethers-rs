@@ -1067,11 +1067,9 @@ dependencies = [
 
 [[package]]
 name = "ethabi"
-version = "15.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f76ef192b63e8a44b3d08832acebbb984c3fba154b5c26f70037c860202a0d4b"
+version = "16.0.0"
+source = "git+https://github.com/rust-ethereum/ethabi?branch=master#7f4bb3d6164775928485b2bad2f6e130a96f438e"
 dependencies = [
- "anyhow",
  "ethereum-types",
  "hex",
  "serde",
@@ -4142,3 +4140,8 @@ dependencies = [
  "syn",
  "synstructure",
 ]
+
+[[patch.unused]]
+name = "ethabi"
+version = "16.0.0"
+source = "git+https://github.com/rust-ethereum/ethabi#7f4bb3d6164775928485b2bad2f6e130a96f438e"

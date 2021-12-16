@@ -55,6 +55,7 @@ impl AbiParser {
             constructor: None,
             functions: BTreeMap::new(),
             events: BTreeMap::new(),
+            errors: BTreeMap::new(),
             receive: false,
             fallback: false,
         };
