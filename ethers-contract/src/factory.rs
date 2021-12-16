@@ -1,7 +1,7 @@
 use crate::{Contract, ContractError};
 
 use ethers_core::{
-    abi::{Abi, Tokenize},
+    abi::{Abi, Token, Tokenize},
     types::{transaction::eip2718::TypedTransaction, BlockNumber, Bytes, TransactionRequest},
 };
 use ethers_providers::Middleware;
@@ -148,17 +148,8 @@ impl<M: Middleware> ContractFactory<M> {
         Self { client, abi, bytecode }
     }
 
-    /// Constructs the deployment transaction based on the provided constructor
-    /// arguments and returns a `Deployer` instance. You must call `send()` in order
-    /// to actually deploy the contract.
-    ///
-    /// Notes:
-    /// 1. If there are no constructor arguments, you should pass `()` as the argument.
-    /// 1. The default poll duration is 7 seconds.
-    /// 1. The default number of confirmations is 1 block.
-    pub fn deploy<T: Tokenize>(self, constructor_args: T) -> Result<Deployer<M>, ContractError<M>> {
+    pub fn deploy_tokens(self, params: Vec<Token>) -> Result<Deployer<M>, ContractError<M>> {
         // Encode the constructor args & concatenate with the bytecode if necessary
-        let params = constructor_args.into_tokens();
         let data: Bytes = match (self.abi.constructor(), params.is_empty()) {
             (None, false) => return Err(ContractError::ConstructorError),
             (None, true) => self.bytecode.clone(),
@@ -183,5 +174,17 @@ impl<M: Middleware> ContractFactory<M> {
             confs: 1,
             block: BlockNumber::Latest,
         })
+    }
+
+    /// Constructs the deployment transaction based on the provided constructor
+    /// arguments and returns a `Deployer` instance. You must call `send()` in order
+    /// to actually deploy the contract.
+    ///
+    /// Notes:
+    /// 1. If there are no constructor arguments, you should pass `()` as the argument.
+    /// 1. The default poll duration is 7 seconds.
+    /// 1. The default number of confirmations is 1 block.
+    pub fn deploy<T: Tokenize>(self, constructor_args: T) -> Result<Deployer<M>, ContractError<M>> {
+        self.deploy_tokens(constructor_args.into_tokens())
     }
 }
