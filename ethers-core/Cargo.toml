@@ -11,7 +11,7 @@ keywords = ["ethereum", "web3", "celo", "ethers"]
 
 [dependencies]
 rlp = { version = "0.5.0", default-features = false }
-ethabi = { version = "15.0", default-features = false, features = ["full-serde", "rlp"] }
+ethabi = { git = "https://github.com/rust-ethereum/ethabi", branch = "master", default-features = false, features = ["full-serde", "rlp"] }
 arrayvec = { version = "0.7.2", default-features = false }
 rlp-derive = { version = "0.1.0", default-features = false }
 
