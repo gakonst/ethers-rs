@@ -59,7 +59,7 @@ path = "tests/project.rs"
 required-features = ["project-util"]
 
 [features]
-default = ["rustls", "asm"]
+default = ["rustls"]
 async = ["tokio", "futures-util"]
 full = ["async", "svm"]
 # Utilities for creating and testing project workspaces
