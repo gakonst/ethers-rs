@@ -269,5 +269,6 @@ jobs:
         run: |
           rustc -Vv
           cargo -V
-          cargo check --all-features
+          # we test without --all-features on Windows so that sha2-asm is not activated.
+          cargo check
         shell: cmd
