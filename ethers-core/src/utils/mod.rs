@@ -138,11 +138,11 @@ where
 pub fn parse_units<K, S>(amount: S, units: K) -> Result<U256, ConversionError>
 where
     S: ToString,
-    K: TryInto<Units, Error = ConversionError>,
+    K: TryInto<Units, Error = ConversionError> + Copy,
 {
     let float_n: f64 =
         amount.to_string().parse::<f64>()? * 10u64.pow(units.try_into()?.as_num()) as f64;
-    let u256_n: U256 = U256::from_dec_str(&float_n.to_string())?;
+    let u256_n: U256 = U256::from_dec_str(&float_n.round().to_string())?;
     Ok(u256_n)
 }
 /// The address for an Ethereum contract is deterministically computed from the
@@ -429,6 +429,9 @@ mod tests {
     fn test_parse_units() {
         let gwei = parse_units(1.5, 9).unwrap();
         assert_eq!(gwei.as_u64(), 15e8 as u64);
+
+        let token = parse_units(1163.56926418, 8).unwrap();
+        assert_eq!(token.as_u64(), 116356926418);
 
         let eth_dec_float = parse_units(1.39563324, "ether").unwrap();
         assert_eq!(eth_dec_float, U256::from_dec_str("1395633240000000000").unwrap());
