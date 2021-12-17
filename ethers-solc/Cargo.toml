@@ -27,7 +27,8 @@ md-5 = "0.10.0"
 thiserror = "1.0.30"
 hex = "0.4.3"
 colored = "2.0.0"
-svm = { package = "svm-rs", version = "0.2.1", optional = true }
+# svm = { package = "svm-rs", default-features = false, version = "0.2.1", optional = true }
+svm = { package = "svm-rs", git = "https://github.com/gakonst/svm-rs", branch = "fix/trim-deps", default-features = false, optional = true }
 glob = "0.3.0"
 tracing = "0.1.29"
 num_cpus = "1.13.0"
@@ -63,8 +64,11 @@ path = "tests/project.rs"
 required-features = ["project-util"]
 
 [features]
+default = ["rustls"]
 async = ["tokio", "futures-util"]
 full = ["async", "svm"]
 # Utilities for creating and testing project workspaces
 project-util = ["tempdir", "fs_extra"]
 tests = []
+openssl = ["svm/openssl"]
+rustls = ["svm/rustls"]
