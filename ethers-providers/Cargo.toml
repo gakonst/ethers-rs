@@ -42,7 +42,7 @@ bytes = { version  = "1.1.0", default-features = false, optional = true }
 # tokio
 tokio-util = { version = "0.6.9", default-features = false, features = ["io"], optional = true }
 tokio = { version = "1.5", default-features = false, optional = true }
-tokio-tungstenite = { version = "0.15.0", default-features = false, features = ["connect"], optional = true }
+tokio-tungstenite = { version = "0.16.1", default-features = false, features = ["connect"], optional = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 ws_stream_wasm = "0.7"
@@ -64,5 +64,7 @@ ws = ["tokio", "tokio-tungstenite"]
 ipc = ["tokio", "tokio/io-util", "tokio-util", "bytes"]
 
 openssl = ["tokio-tungstenite/native-tls", "reqwest/native-tls"]
-rustls = ["tokio-tungstenite/rustls-tls", "reqwest/rustls-tls"]
+# we use the webpki roots so we can build static binaries w/o any root cert dependencies
+# on the host
+rustls = ["tokio-tungstenite/rustls-tls-webpki-roots", "reqwest/rustls-tls"]
 dev-rpc = []
