@@ -77,8 +77,7 @@ abigen-offline = ["ethers-contract/abigen-offline"]
 solc-async = ["ethers-solc/async"]
 solc-full = ["ethers-solc/full"]
 solc-tests = ["ethers-solc/tests"]
-
-
+solc-sha2-asm = ["ethers-solc/asm"]
 
 [dependencies]
 ethers-contract = { version = "^0.6.0", default-features = false, path = "./ethers-contract" }
