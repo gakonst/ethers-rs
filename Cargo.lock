@@ -4140,8 +4140,3 @@ dependencies = [
  "syn",
  "synstructure",
 ]
-
-[[patch.unused]]
-name = "ethabi"
-version = "16.0.0"
-source = "git+https://github.com/rust-ethereum/ethabi#7f4bb3d6164775928485b2bad2f6e130a96f438e"
