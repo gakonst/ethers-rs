@@ -211,7 +211,10 @@ impl Context {
             };
 
             if method_aliases.insert(signature.clone(), alias).is_some() {
-                return Err(anyhow!("duplicate method signature '{}' in method aliases", signature,))
+                return Err(anyhow!(
+                    "duplicate method signature '{}' in method aliases",
+                    signature
+                ));
             }
         }
 
@@ -227,7 +230,7 @@ impl Context {
             .map(|derive| syn::parse_str::<Path>(derive))
             .collect::<Result<Vec<_>, _>>()
             .context("failed to parse event derives")?;
-
+        let abi_str = serde_json::to_string(&abi).context("fail to serialize abi to json")?;
         Ok(Context {
             abi,
             human_readable,
