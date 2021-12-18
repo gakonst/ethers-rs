@@ -1,6 +1,8 @@
-use ethers_contract::{abigen, EthAbiType, EthCall, EthDisplay, EthEvent, EthLogDecode};
+use ethers_contract::{
+    abigen, EthAbiCodec, EthAbiType, EthCall, EthDisplay, EthEvent, EthLogDecode,
+};
 use ethers_core::{
-    abi::{RawLog, Tokenizable},
+    abi::{AbiDecode, AbiEncode, RawLog, Tokenizable},
     types::{Address, H160, H256, I256, U128, U256},
 };
 
@@ -477,4 +479,19 @@ fn can_derive_for_enum() {
 
     let token = ActionChoices::GoLeft.into_token();
     assert_eq!(ActionChoices::GoLeft, ActionChoices::from_token(token).unwrap());
+}
+
+#[test]
+fn can_derive_abi_codec() {
+    #[derive(Debug, Clone, PartialEq, EthAbiType, EthAbiCodec)]
+    pub struct SomeType {
+        inner: Address,
+        msg: String,
+    }
+
+    let val = SomeType { inner: Default::default(), msg: "hello".to_string() };
+
+    let encoded = val.clone().encode();
+    let other = SomeType::decode(&encoded).unwrap();
+    assert_eq!(val, other);
 }
