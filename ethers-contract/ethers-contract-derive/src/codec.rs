@@ -1,10 +1,9 @@
 //! Helper functions for deriving `EthAbiType`
 
-
 use ethers_core::macros::ethers_core_crate;
 
-use quote::{quote};
-use syn::{DeriveInput};
+use quote::quote;
+use syn::DeriveInput;
 
 /// Generates the `AbiEncode` + `AbiDecode` implementation
 pub fn derive_codec_impl(input: &DeriveInput) -> proc_macro2::TokenStream {

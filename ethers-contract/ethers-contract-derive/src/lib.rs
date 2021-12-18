@@ -10,8 +10,8 @@ use abigen::Contracts;
 pub(crate) mod abi_ty;
 mod abigen;
 mod call;
-mod display;
 mod codec;
+mod display;
 mod event;
 mod spanned;
 pub(crate) mod utils;
@@ -109,7 +109,9 @@ pub fn derive_abi_type(input: TokenStream) -> TokenStream {
 ///
 /// This is an addition to `EthAbiType` that lacks the `AbiEncode`, `AbiDecode` implementation.
 ///
-/// The reason why this is a separate macro is the `AbiEncode` / `AbiDecode` are `ethers` generalized codec traits used for types, calls, etc. However, encoding/decoding a call differs from the basic encoding/decoding, (`[selector + encode(self)]`)
+/// The reason why this is a separate macro is the `AbiEncode` / `AbiDecode` are `ethers`
+/// generalized codec traits used for types, calls, etc. However, encoding/decoding a call differs
+/// from the basic encoding/decoding, (`[selector + encode(self)]`)
 ///
 /// # Example
 ///
