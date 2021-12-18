@@ -495,3 +495,68 @@ fn can_derive_abi_codec() {
     let other = SomeType::decode(&encoded).unwrap();
     assert_eq!(val, other);
 }
+
+#[test]
+fn can_derive_abi_codec_single_field() {
+    #[derive(Debug, Clone, PartialEq, EthAbiType, EthAbiCodec)]
+    pub struct SomeType {
+        inner: Vec<U256>,
+    }
+
+    let val = SomeType { inner: Default::default() };
+
+    let encoded = val.clone().encode();
+    let decoded = SomeType::decode(&encoded).unwrap();
+    assert_eq!(val, decoded);
+
+    let encoded_tuple = (Vec::<U256>::default(),).encode();
+
+    assert_eq!(encoded_tuple, encoded);
+    let decoded_tuple = SomeType::decode(&encoded_tuple).unwrap();
+    assert_eq!(decoded_tuple, decoded);
+
+    let tuple = (val,);
+    let encoded = tuple.clone().encode();
+    let decoded = <(SomeType,)>::decode(&encoded).unwrap();
+    assert_eq!(tuple, decoded);
+
+    let wrapped =
+        ethers_core::abi::encode(&ethers_core::abi::Tokenize::into_tokens(tuple.clone())).to_vec();
+    assert_eq!(wrapped, encoded);
+    let decoded_wrapped = <(SomeType,)>::decode(&wrapped).unwrap();
+
+    assert_eq!(decoded_wrapped, tuple);
+}
+
+#[test]
+fn can_derive_abi_codec_two_field() {
+    #[derive(Debug, Clone, PartialEq, EthAbiType, EthAbiCodec)]
+    pub struct SomeType {
+        inner: Vec<U256>,
+        addr: Address,
+    }
+
+    let val = SomeType { inner: Default::default(), addr: Default::default() };
+
+    let encoded = val.clone().encode();
+    let decoded = SomeType::decode(&encoded).unwrap();
+    assert_eq!(val, decoded);
+
+    let encoded_tuple = (Vec::<U256>::default(), Address::default()).encode();
+
+    assert_eq!(encoded_tuple, encoded);
+    let decoded_tuple = SomeType::decode(&encoded_tuple).unwrap();
+    assert_eq!(decoded_tuple, decoded);
+
+    let tuple = (val,);
+    let encoded = tuple.clone().encode();
+    let decoded = <(SomeType,)>::decode(&encoded).unwrap();
+    assert_eq!(tuple, decoded);
+
+    let wrapped =
+        ethers_core::abi::encode(&ethers_core::abi::Tokenize::into_tokens(tuple.clone())).to_vec();
+    assert_eq!(wrapped, encoded);
+    let decoded_wrapped = <(SomeType,)>::decode(&wrapped).unwrap();
+
+    assert_eq!(decoded_wrapped, tuple);
+}
