@@ -42,6 +42,7 @@ use once_cell::sync::Lazy;
 use std::sync::Mutex;
 
 #[cfg(any(test, feature = "tests"))]
+#[allow(unused)]
 static LOCK: Lazy<Mutex<()>> = Lazy::new(|| Mutex::new(()));
 
 #[cfg(all(feature = "svm", feature = "async"))]
