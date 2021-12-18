@@ -173,12 +173,14 @@ impl<M: Middleware> Multicall<M> {
     }
 
     /// Makes a legacy transaction instead of an EIP-1559 one
+    #[must_use]
     pub fn legacy(mut self) -> Self {
         self.legacy = true;
         self
     }
 
     /// Sets the `block` field for the multicall aggregate call
+    #[must_use]
     pub fn block<T: Into<BlockNumber>>(mut self, block: T) -> Self {
         self.block = Some(block.into());
         self

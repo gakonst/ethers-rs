@@ -166,6 +166,7 @@ impl<T: Eip712 + Clone> EIP712WithDomain<T> {
         Ok(Self { domain, inner })
     }
 
+    #[must_use]
     pub fn set_domain(self, domain: EIP712Domain) -> Self {
         Self { domain, inner: self.inner }
     }

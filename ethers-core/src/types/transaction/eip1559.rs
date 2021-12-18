@@ -68,54 +68,63 @@ impl Eip1559TransactionRequest {
     // Builder pattern helpers
 
     /// Sets the `from` field in the transaction to the provided value
+    #[must_use]
     pub fn from<T: Into<Address>>(mut self, from: T) -> Self {
         self.from = Some(from.into());
         self
     }
 
     /// Sets the `to` field in the transaction to the provided value
+    #[must_use]
     pub fn to<T: Into<NameOrAddress>>(mut self, to: T) -> Self {
         self.to = Some(to.into());
         self
     }
 
     /// Sets the `gas` field in the transaction to the provided value
+    #[must_use]
     pub fn gas<T: Into<U256>>(mut self, gas: T) -> Self {
         self.gas = Some(gas.into());
         self
     }
 
     /// Sets the `max_priority_fee_per_gas` field in the transaction to the provided value
+    #[must_use]
     pub fn max_priority_fee_per_gas<T: Into<U256>>(mut self, max_priority_fee_per_gas: T) -> Self {
         self.max_priority_fee_per_gas = Some(max_priority_fee_per_gas.into());
         self
     }
 
     /// Sets the `max_fee_per_gas` field in the transaction to the provided value
+    #[must_use]
     pub fn max_fee_per_gas<T: Into<U256>>(mut self, max_fee_per_gas: T) -> Self {
         self.max_fee_per_gas = Some(max_fee_per_gas.into());
         self
     }
 
     /// Sets the `value` field in the transaction to the provided value
+    #[must_use]
     pub fn value<T: Into<U256>>(mut self, value: T) -> Self {
         self.value = Some(value.into());
         self
     }
 
     /// Sets the `data` field in the transaction to the provided value
+    #[must_use]
     pub fn data<T: Into<Bytes>>(mut self, data: T) -> Self {
         self.data = Some(data.into());
         self
     }
 
     /// Sets the `access_list` field in the transaction to the provided value
+    #[must_use]
     pub fn access_list<T: Into<AccessList>>(mut self, access_list: T) -> Self {
         self.access_list = access_list.into();
         self
     }
 
     /// Sets the `nonce` field in the transaction to the provided value
+    #[must_use]
     pub fn nonce<T: Into<U256>>(mut self, nonce: T) -> Self {
         self.nonce = Some(nonce.into());
         self

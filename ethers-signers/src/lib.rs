@@ -79,5 +79,6 @@ pub trait Signer: std::fmt::Debug + Send + Sync {
     fn chain_id(&self) -> u64;
 
     /// Sets the signer's chain id
+    #[must_use]
     fn with_chain_id<T: Into<u64>>(self, chain_id: T) -> Self;
 }

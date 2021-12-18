@@ -219,16 +219,19 @@ pub struct SolFilesCacheBuilder {
 }
 
 impl SolFilesCacheBuilder {
+    #[must_use]
     pub fn format(mut self, format: impl Into<String>) -> Self {
         self.format = Some(format.into());
         self
     }
 
+    #[must_use]
     pub fn solc_config(mut self, solc_config: SolcConfig) -> Self {
         self.solc_config = Some(solc_config);
         self
     }
 
+    #[must_use]
     pub fn root(mut self, root: impl Into<PathBuf>) -> Self {
         self.root = Some(root.into());
         self

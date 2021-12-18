@@ -1,3 +1,5 @@
+#![allow(clippy::return_self_not_must_use)]
+
 use super::base::{decode_function_data, AbiError};
 use ethers_core::{
     abi::{AbiDecode, AbiEncode, Detokenize, Function, InvalidOutputType, Tokenizable},

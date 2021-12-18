@@ -130,6 +130,7 @@ where
         &self.signer
     }
 
+    #[must_use]
     pub fn with_signer(&self, signer: S) -> Self
     where
         S: Clone,

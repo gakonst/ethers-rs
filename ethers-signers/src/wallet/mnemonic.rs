@@ -82,6 +82,7 @@ impl<W: Wordlist> MnemonicBuilder<W> {
     /// # Ok(())
     /// # }
     /// ```
+    #[must_use]
     pub fn phrase<P: Into<PathOrString>>(mut self, phrase: P) -> Self {
         self.phrase = Some(phrase.into());
         self
@@ -104,6 +105,7 @@ impl<W: Wordlist> MnemonicBuilder<W> {
     /// # Ok(())
     /// # }
     /// ```
+    #[must_use]
     pub fn word_count(mut self, count: usize) -> Self {
         self.word_count = count;
         self
@@ -127,6 +129,7 @@ impl<W: Wordlist> MnemonicBuilder<W> {
     }
 
     /// Sets the password used to construct the seed from the mnemonic phrase.
+    #[must_use]
     pub fn password(mut self, password: &str) -> Self {
         self.password = Some(password.to_string());
         self
@@ -134,6 +137,7 @@ impl<W: Wordlist> MnemonicBuilder<W> {
 
     /// Sets the path to which the randomly generated phrase will be written to. This field is
     /// ignored when building a wallet from the provided mnemonic phrase.
+    #[must_use]
     pub fn write_to<P: Into<PathBuf>>(mut self, path: P) -> Self {
         self.write_to = Some(path.into());
         self

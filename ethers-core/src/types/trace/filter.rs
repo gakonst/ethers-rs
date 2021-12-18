@@ -29,6 +29,7 @@ pub struct TraceFilter {
 impl TraceFilter {
     /// Sets From block
     #[allow(clippy::wrong_self_convention)]
+    #[must_use]
     pub fn from_block<T: Into<BlockNumber>>(mut self, block: T) -> Self {
         self.from_block = Some(block.into());
         self
@@ -36,6 +37,7 @@ impl TraceFilter {
 
     /// Sets to block
     #[allow(clippy::wrong_self_convention)]
+    #[must_use]
     pub fn to_block<T: Into<BlockNumber>>(mut self, block: T) -> Self {
         self.to_block = Some(block.into());
         self
@@ -43,6 +45,7 @@ impl TraceFilter {
 
     /// Sets to address
     #[allow(clippy::wrong_self_convention)]
+    #[must_use]
     pub fn to_address(mut self, address: Vec<H160>) -> Self {
         self.to_address = Some(address);
         self
@@ -50,18 +53,21 @@ impl TraceFilter {
 
     /// Sets from address
     #[allow(clippy::wrong_self_convention)]
+    #[must_use]
     pub fn from_address(mut self, address: Vec<H160>) -> Self {
         self.from_address = Some(address);
         self
     }
 
     /// Sets after offset
+    #[must_use]
     pub fn after(mut self, after: usize) -> Self {
         self.after = Some(after);
         self
     }
 
     /// Sets amount of traces to display
+    #[must_use]
     pub fn count(mut self, count: usize) -> Self {
         self.count = Some(count);
         self

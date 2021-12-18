@@ -123,6 +123,7 @@ impl Default for FilterBlockOption {
 }
 
 impl FilterBlockOption {
+    #[must_use]
     pub fn set_from_block(&self, block: BlockNumber) -> Self {
         let to_block =
             if let FilterBlockOption::Range { to_block, .. } = self { *to_block } else { None };
@@ -130,6 +131,7 @@ impl FilterBlockOption {
         FilterBlockOption::Range { from_block: Some(block), to_block }
     }
 
+    #[must_use]
     pub fn set_to_block(&self, block: BlockNumber) -> Self {
         let from_block =
             if let FilterBlockOption::Range { from_block, .. } = self { *from_block } else { None };
@@ -137,6 +139,7 @@ impl FilterBlockOption {
         FilterBlockOption::Range { from_block, to_block: Some(block) }
     }
 
+    #[must_use]
     pub fn set_hash(&self, hash: H256) -> Self {
         FilterBlockOption::AtBlockHash(hash)
     }
@@ -273,64 +276,75 @@ impl Filter {
     /// let filter = Filter::new().select(..1337u64);
     /// # }
     /// ```
+    #[must_use]
     pub fn select(mut self, filter: impl Into<FilterBlockOption>) -> Self {
         self.block_option = filter.into();
         self
     }
 
     #[allow(clippy::wrong_self_convention)]
+    #[must_use]
     pub fn from_block<T: Into<BlockNumber>>(mut self, block: T) -> Self {
         self.block_option = self.block_option.set_from_block(block.into());
         self
     }
 
     #[allow(clippy::wrong_self_convention)]
+    #[must_use]
     pub fn to_block<T: Into<BlockNumber>>(mut self, block: T) -> Self {
         self.block_option = self.block_option.set_to_block(block.into());
         self
     }
 
     #[allow(clippy::wrong_self_convention)]
+    #[must_use]
     pub fn at_block_hash<T: Into<H256>>(mut self, hash: T) -> Self {
         self.block_option = self.block_option.set_hash(hash.into());
         self
     }
 
+    #[must_use]
     pub fn address<T: Into<ValueOrArray<Address>>>(mut self, address: T) -> Self {
         self.address = Some(address.into());
         self
     }
 
     /// given the event in string form, it hashes it and adds it to the topics to monitor
+    #[must_use]
     pub fn event(self, event_name: &str) -> Self {
         let hash = H256::from(keccak256(event_name.as_bytes()));
         self.topic0(hash)
     }
 
     /// Sets topic0 (the event name for non-anonymous events)
+    #[must_use]
     pub fn topic0<T: Into<ValueOrArray<H256>>>(mut self, topic: T) -> Self {
         self.topics[0] = Some(topic.into());
         self
     }
 
     /// Sets the 1st indexed topic
+    #[must_use]
     pub fn topic1<T: Into<ValueOrArray<H256>>>(mut self, topic: T) -> Self {
         self.topics[1] = Some(topic.into());
         self
     }
 
     /// Sets the 2nd indexed topic
+    #[must_use]
     pub fn topic2<T: Into<ValueOrArray<H256>>>(mut self, topic: T) -> Self {
         self.topics[2] = Some(topic.into());
         self
     }
 
     /// Sets the 3rd indexed topic
+    #[must_use]
     pub fn topic3<T: Into<ValueOrArray<H256>>>(mut self, topic: T) -> Self {
         self.topics[3] = Some(topic.into());
         self
     }
 
+    #[must_use]
     pub fn limit(mut self, limit: usize) -> Self {
         self.limit = Some(limit);
         self

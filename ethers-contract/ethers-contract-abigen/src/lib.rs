@@ -81,6 +81,7 @@ impl Abigen {
 
     /// Manually adds a solidity event alias to specify what the event struct
     /// and function name will be in Rust.
+    #[must_use]
     pub fn add_event_alias<S1, S2>(mut self, signature: S1, alias: S2) -> Self
     where
         S1: Into<String>,
@@ -93,6 +94,7 @@ impl Abigen {
     /// Manually adds a solidity method alias to specify what the method name
     /// will be in Rust. For solidity methods without an alias, the snake cased
     /// method name will be used.
+    #[must_use]
     pub fn add_method_alias<S1, S2>(mut self, signature: S1, alias: S2) -> Self
     where
         S1: Into<String>,
@@ -107,6 +109,7 @@ impl Abigen {
     ///
     /// Note that in case `rustfmt` does not exist or produces an error, the
     /// unformatted code will be used.
+    #[must_use]
     pub fn rustfmt(mut self, rustfmt: bool) -> Self {
         self.rustfmt = rustfmt;
         self
@@ -116,6 +119,7 @@ impl Abigen {
     ///
     /// This makes it possible to for example derive serde::Serialize and
     /// serde::Deserialize for events.
+    #[must_use]
     pub fn add_event_derive<S>(mut self, derive: S) -> Self
     where
         S: Into<String>,
