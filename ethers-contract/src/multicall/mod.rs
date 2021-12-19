@@ -4,6 +4,7 @@ use ethers_core::{
 };
 use ethers_providers::Middleware;
 
+use ethers_core::types::BlockId;
 use std::{collections::HashMap, str::FromStr, sync::Arc};
 
 use crate::{
@@ -121,7 +122,7 @@ pub static ADDRESS_BOOK: Lazy<HashMap<U256, Address>> = Lazy::new(|| {
 #[derive(Clone)]
 pub struct Multicall<M> {
     calls: Vec<Call>,
-    block: Option<BlockNumber>,
+    block: Option<BlockId>,
     contract: MulticallContract<M>,
     legacy: bool,
 }
@@ -179,7 +180,7 @@ impl<M: Middleware> Multicall<M> {
     }
 
     /// Sets the `block` field for the multicall aggregate call
-    pub fn block<T: Into<BlockNumber>>(mut self, block: T) -> Self {
+    pub fn block<T: Into<BlockId>>(mut self, block: T) -> Self {
         self.block = Some(block.into());
         self
     }
