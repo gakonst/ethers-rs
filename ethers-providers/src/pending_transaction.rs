@@ -102,50 +102,50 @@ impl<'a, P: JsonRpcClient> Future for PendingTransaction<'a, P> {
             PendingTxState::InitialDelay(fut) => {
                 let _ready = futures_util::ready!(fut.as_mut().poll(ctx));
                 tracing::debug!("Starting to poll pending tx {:?}", *this.tx_hash);
-                let fut = Box::pin(this.provider.get_transaction(*this.tx_hash));
-                rewake_with_new_state!(ctx, this, PendingTxState::GettingTx(fut));
-            }
-            PendingTxState::PausedGettingTx => {
-                // Wait the polling period so that we do not spam the chain when no
-                // new block has been mined
-                let _ready = futures_util::ready!(this.interval.poll_next_unpin(ctx));
-                let fut = Box::pin(this.provider.get_transaction(*this.tx_hash));
-                *this.state = PendingTxState::GettingTx(fut);
-                ctx.waker().wake_by_ref();
-            }
-            PendingTxState::GettingTx(fut) => {
-                let tx_res = futures_util::ready!(fut.as_mut().poll(ctx));
-                // If the provider errors, just try again after the interval.
-                // nbd.
-                rewake_with_new_state_if!(
-                    tx_res.is_err(),
-                    ctx,
-                    this,
-                    PendingTxState::PausedGettingTx
-                );
-
-                let tx_opt = tx_res.unwrap();
-                // If the tx is no longer in the mempool, return Ok(None)
-                if tx_opt.is_none() {
-                    tracing::debug!("Dropped from mempool, pending tx {:?}", *this.tx_hash);
-                    *this.state = PendingTxState::Completed;
-                    return Poll::Ready(Ok(None))
-                }
-
-                // If it hasn't confirmed yet, poll again later
-                let tx = tx_opt.unwrap();
-                rewake_with_new_state_if!(
-                    tx.block_number.is_none(),
-                    ctx,
-                    this,
-                    PendingTxState::PausedGettingTx
-                );
-
-                // Start polling for the receipt now
-                tracing::debug!("Getting receipt for pending tx {:?}", *this.tx_hash);
                 let fut = Box::pin(this.provider.get_transaction_receipt(*this.tx_hash));
                 rewake_with_new_state!(ctx, this, PendingTxState::GettingReceipt(fut));
             }
+            // PendingTxState::PausedGettingTx => {
+            //     // Wait the polling period so that we do not spam the chain when no
+            //     // new block has been mined
+            //     let _ready = futures_util::ready!(this.interval.poll_next_unpin(ctx));
+            //     let fut = Box::pin(this.provider.get_transaction(*this.tx_hash));
+            //     *this.state = PendingTxState::GettingTx(fut);
+            //     ctx.waker().wake_by_ref();
+            // }
+            // PendingTxState::GettingTx(fut) => {
+            //     let tx_res = futures_util::ready!(fut.as_mut().poll(ctx));
+            //     // If the provider errors, just try again after the interval.
+            //     // nbd.
+            //     rewake_with_new_state_if!(
+            //         tx_res.is_err(),
+            //         ctx,
+            //         this,
+            //         PendingTxState::PausedGettingTx
+            //     );
+            //
+            //     let tx_opt = tx_res.unwrap();
+            //     // If the tx is no longer in the mempool, return Ok(None)
+            //     if tx_opt.is_none() {
+            //         tracing::debug!("Dropped from mempool, pending tx {:?}", *this.tx_hash);
+            //         *this.state = PendingTxState::Completed;
+            //         return Poll::Ready(Ok(None))
+            //     }
+            //
+            //     // If it hasn't confirmed yet, poll again later
+            //     let tx = tx_opt.unwrap();
+            //     rewake_with_new_state_if!(
+            //         tx.block_number.is_none(),
+            //         ctx,
+            //         this,
+            //         PendingTxState::PausedGettingTx
+            //     );
+            //
+            //     // Start polling for the receipt now
+            //     tracing::debug!("Getting receipt for pending tx {:?}", *this.tx_hash);
+            //     let fut = Box::pin(this.provider.get_transaction_receipt(*this.tx_hash));
+            //     rewake_with_new_state!(ctx, this, PendingTxState::GettingReceipt(fut));
+            // }
             PendingTxState::PausedGettingReceipt => {
                 // Wait the polling period so that we do not spam the chain when no
                 // new block has been mined
@@ -184,7 +184,7 @@ impl<'a, P: JsonRpcClient> Future for PendingTransaction<'a, P> {
                 } else {
                     let receipt = receipt.take();
                     *this.state = PendingTxState::Completed;
-                    return Poll::Ready(Ok(receipt))
+                    return Poll::Ready(Ok(receipt));
                 }
             }
             PendingTxState::PausedGettingBlockNumber(receipt) => {
@@ -215,7 +215,7 @@ impl<'a, P: JsonRpcClient> Future for PendingTransaction<'a, P> {
                 if current_block > inclusion_block + *this.confirmations - 1 {
                     let receipt = Some(receipt);
                     *this.state = PendingTxState::Completed;
-                    return Poll::Ready(Ok(receipt))
+                    return Poll::Ready(Ok(receipt));
                 } else {
                     tracing::trace!(tx_hash = ?this.tx_hash, "confirmations {}/{}", current_block - inclusion_block + 1, this.confirmations);
                     *this.state = PendingTxState::PausedGettingBlockNumber(Some(receipt));
@@ -268,12 +268,11 @@ enum PendingTxState<'a> {
     /// Initial delay to ensure the GettingTx loop doesn't immediately fail
     InitialDelay(Pin<Box<Delay>>),
 
-    /// Waiting for interval to elapse before calling API again
-    PausedGettingTx,
-
-    /// Polling The blockchain to see if the Tx has confirmed or dropped
-    GettingTx(PinBoxFut<'a, Option<Transaction>>),
-
+    // /// Waiting for interval to elapse before calling API again
+    // PausedGettingTx,
+    //
+    // /// Polling The blockchain to see if the Tx has confirmed or dropped
+    // GettingTx(PinBoxFut<'a, Option<Transaction>>),
     /// Waiting for interval to elapse before calling API again
     PausedGettingReceipt,
 
@@ -299,8 +298,8 @@ impl<'a> fmt::Debug for PendingTxState<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let state = match self {
             PendingTxState::InitialDelay(_) => "InitialDelay",
-            PendingTxState::PausedGettingTx => "PausedGettingTx",
-            PendingTxState::GettingTx(_) => "GettingTx",
+            // PendingTxState::PausedGettingTx => "PausedGettingTx",
+            // PendingTxState::GettingTx(_) => "GettingTx",
             PendingTxState::PausedGettingReceipt => "PausedGettingReceipt",
             PendingTxState::GettingReceipt(_) => "GettingReceipt",
             PendingTxState::GettingBlockNumber(_, _) => "GettingBlockNumber",
