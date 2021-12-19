@@ -27,8 +27,6 @@ md-5 = "0.10.0"
 thiserror = "1.0.30"
 hex = "0.4.3"
 colored = "2.0.0"
-# svm = { package = "svm-rs", default-features = false, version = "0.2.1", optional = true }
-svm = { package = "svm-rs", git = "https://github.com/gakonst/svm-rs", branch = "fix/trim-deps", default-features = false, optional = true }
 glob = "0.3.0"
 tracing = "0.1.29"
 num_cpus = "1.13.0"
@@ -39,6 +37,9 @@ sha2 = { version = "0.9.8", default-features = false }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 home = "0.5.3"
+# SVM is not WASM compatible yet.
+# svm = { package = "svm-rs", default-features = false, version = "0.2.1", optional = true }
+svm = { package = "svm-rs", git = "https://github.com/gakonst/svm-rs", branch = "fix/trim-deps", default-features = false, optional = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 # NOTE: this enables wasm compatibility for getrandom indirectly
