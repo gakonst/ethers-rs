@@ -504,16 +504,15 @@ dependencies = [
 
 [[package]]
 name = "coins-ledger"
-version = "0.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c2943c8f53555b1f2ab5c047520b9fd73e5b0b22d216375b5b0112a7d2ae2a1c"
+version = "0.4.3-alpha.0"
+source = "git+https://github.com/joshieDo/bitcoins-rs?branch=hidapi-rusb#d154b7ab5d258e887b87f6a7c73cb97651c473b7"
 dependencies = [
  "async-trait",
  "blake2b_simd",
  "byteorder",
  "cfg-if 0.1.10",
  "futures",
- "hidapi",
+ "hidapi-rusb",
  "js-sys",
  "lazy_static",
  "libc",
@@ -1683,17 +1682,6 @@ name = "hex-literal"
 version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7ebdb29d2ea9ed0083cd8cece49bbd968021bd99b0849edb4a9a7ee0fdf6a4e0"
-
-[[package]]
-name = "hidapi"
-version = "1.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8d6f5e247bc66f3255d755e96d9d43f6b191f4e182072b811d55584ff58c510f"
-dependencies = [
- "cc",
- "libc",
- "pkg-config",
-]
 
 [[package]]
 name = "hidapi-rusb"
