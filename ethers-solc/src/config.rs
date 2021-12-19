@@ -11,7 +11,9 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{
     collections::BTreeMap,
     convert::TryFrom,
-    fmt, fs, io,
+    fmt,
+    fmt::Formatter,
+    fs, io,
     path::{Path, PathBuf},
 };
 
@@ -70,6 +72,24 @@ impl ProjectPathsConfig {
         fs::create_dir_all(&self.tests).map_err(|err| SolcIoError::new(err, &self.tests))?;
         for lib in &self.libraries {
             fs::create_dir_all(lib).map_err(|err| SolcIoError::new(err, lib))?;
+        }
+        Ok(())
+    }
+}
+
+impl fmt::Display for ProjectPathsConfig {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        writeln!(f, "root: {}", self.root.display())?;
+        writeln!(f, "contracts: {}", self.sources.display())?;
+        writeln!(f, "artifacts: {}", self.artifacts.display())?;
+        writeln!(f, "tests: {}", self.tests.display())?;
+        writeln!(f, "libs:")?;
+        for lib in &self.libraries {
+            writeln!(f, "    {}", lib.display())?;
+        }
+        writeln!(f, "remappings:")?;
+        for remapping in &self.remappings {
+            writeln!(f, "    {}", remapping)?;
         }
         Ok(())
     }
