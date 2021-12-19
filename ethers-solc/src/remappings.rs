@@ -1,4 +1,3 @@
-use crate::{error::SolcError, Result};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{hash_map::Entry, HashMap},
@@ -8,6 +7,7 @@ use std::{
 };
 
 const DAPPTOOLS_CONTRACTS_DIR: &str = "src";
+const DAPPTOOLS_LIB_DIR: &str = "lib";
 const JS_CONTRACTS_DIR: &str = "contracts";
 
 /// The solidity compiler can only reference files that exist locally on your computer.
@@ -97,87 +97,9 @@ impl fmt::Display for Remapping {
 }
 
 impl Remapping {
-    /// Detects a remapping prioritizing Dapptools-style remappings over `contracts/`-style ones.
-    fn find(root: &str) -> Result<Self> {
-        Self::find_with_type(root, DAPPTOOLS_CONTRACTS_DIR)
-            .or_else(|_| Self::find_with_type(root, JS_CONTRACTS_DIR))
-    }
-
-    /// Given a path and the style of contracts dir, it proceeds to find
-    /// a `Remapping` for it.
-    fn find_with_type(name: &str, source: &str) -> Result<Self> {
-        let pattern = if name.contains(source) {
-            format!("{}/**/*.sol", name)
-        } else {
-            format!("{}/{}/**/*.sol", name, source)
-        };
-        let mut dapptools_contracts = glob::glob(&pattern)?;
-        let next = dapptools_contracts.next();
-        if next.is_some() {
-            let path = format!("{}/{}/", name, source);
-            let mut name = name.split('/').last().unwrap().to_string();
-            name.push('/');
-            Ok(Remapping { name, path })
-        } else {
-            Err(SolcError::NoContracts(source.to_string()))
-        }
-    }
-
-    pub fn find_many_str(path: &str) -> Result<Vec<String>> {
-        let remappings = Self::find_many(path)?;
-        Ok(remappings.iter().map(|mapping| format!("{}={}", mapping.name, mapping.path)).collect())
-    }
-
-    /// Gets all the remappings detected
-    pub fn find_many(path: impl AsRef<std::path::Path>) -> Result<Vec<Self>> {
-        let path = path.as_ref();
-        if !path.exists() {
-            // nothing to find
-            return Ok(Vec::new())
-        }
-        let mut paths = std::fs::read_dir(path)
-            .map_err(|err| SolcError::io(err, path))?
-            .into_iter()
-            .collect::<Vec<_>>();
-
-        let mut remappings = Vec::new();
-        while let Some(p) = paths.pop() {
-            let path = p.map_err(|err| SolcError::io(err, path))?.path();
-
-            // get all the directories inside a file if it's a valid dir
-            if let Ok(dir) = std::fs::read_dir(&path) {
-                for inner in dir {
-                    let inner = inner.map_err(|err| SolcError::io(err, &path))?;
-                    let path = inner.path().display().to_string();
-                    let path = path.rsplit('/').next().unwrap().to_string();
-                    if path != DAPPTOOLS_CONTRACTS_DIR && path != JS_CONTRACTS_DIR {
-                        paths.push(Ok(inner));
-                    }
-                }
-            }
-
-            let remapping = Self::find(&path.display().to_string());
-            if let Ok(remapping) = remapping {
-                // skip remappings that exist already
-                if let Some(ref mut found) =
-                    remappings.iter_mut().find(|x: &&mut Remapping| x.name == remapping.name)
-                {
-                    // always replace with the shortest length path
-                    fn depth(path: &str, delim: char) -> usize {
-                        path.matches(delim).count()
-                    }
-                    // if the one which exists is larger, we should replace it
-                    // if not, ignore it
-                    if depth(&found.path, '/') > depth(&remapping.path, '/') {
-                        **found = remapping;
-                    }
-                } else {
-                    remappings.push(remapping);
-                }
-            }
-        }
-
-        Ok(remappings)
+    /// Returns all formatted remappings
+    pub fn find_many_str(path: &str) -> Vec<String> {
+        Self::find_many(path).into_iter().map(|r| r.to_string()).collect()
     }
 
     /// Attempts to autodetect all remappings given a certain root path.
@@ -209,8 +131,10 @@ impl Remapping {
     //   ├─ protocol-v2/
     //   │  ├─ contracts/
     ///
-    /// which would be multiple rededications according to our rules ("governance", "protocol-v2"), are unified into `@aave` by looking at their common ancestor, the root of this subdirectory (`@aavee`)
-    pub fn find_all(root: impl AsRef<Path>) -> Vec<Remapping> {
+    /// which would be multiple rededications according to our rules ("governance", "protocol-v2"),
+    /// are unified into `@aave` by looking at their common ancestor, the root of this subdirectory
+    /// (`@aave`)
+    pub fn find_many(root: impl AsRef<Path>) -> Vec<Remapping> {
         /// prioritize ("a", "1/2") over ("a", "1/2/3")
         fn insert_higher_path(mappings: &mut HashMap<String, PathBuf>, key: String, path: PathBuf) {
             match mappings.entry(key) {
@@ -272,7 +196,9 @@ impl Remapping {
                             }
                             continue 'outer
                         }
-                        if parent.ends_with("src") || parent.ends_with("lib") {
+                        if parent.ends_with(DAPPTOOLS_CONTRACTS_DIR) ||
+                            parent.ends_with(DAPPTOOLS_LIB_DIR)
+                        {
                             // end early
                             insert_higher_path(&mut remappings, name, path);
                             continue 'outer
@@ -312,7 +238,9 @@ fn scan_children(root: &Path) -> HashMap<String, PathBuf> {
 
                 // this will hold the actual root remapping if root is named `src` or `lib`
                 let actual_parent = root.parent().filter(|_| {
-                    root.ends_with("src") || root.ends_with("lib") || root.ends_with("contracts")
+                    root.ends_with(DAPPTOOLS_CONTRACTS_DIR) ||
+                        root.ends_with(DAPPTOOLS_LIB_DIR) ||
+                        root.ends_with(JS_CONTRACTS_DIR)
                 });
 
                 let parent = actual_parent.unwrap_or(root);
@@ -388,17 +316,16 @@ mod tests {
         mkdir_or_touch(tmp_dir_path, &paths[..]);
 
         let path = tmp_dir_path.join("repo1").display().to_string();
-        Remapping::find_with_type(&path, JS_CONTRACTS_DIR).unwrap_err();
-        let remapping = Remapping::find_with_type(&path, DAPPTOOLS_CONTRACTS_DIR).unwrap();
-
+        let remappings = Remapping::find_many(tmp_dir_path);
         // repo1/=lib/repo1/src
-        assert_eq!(remapping.name, "repo1/");
-        assert_eq!(remapping.path, format!("{}/src/", path));
+        assert_eq!(remappings.len(), 1);
+
+        assert_eq!(remappings[0].name, "repo1/");
+        assert_eq!(remappings[0].path, format!("{}/src/", path));
     }
 
     #[test]
     fn recursive_remappings() {
-        //let tmp_dir_path = PathBuf::from("."); // tempdir::TempDir::new("lib").unwrap();
         let tmp_dir = tempdir::TempDir::new("lib").unwrap();
         let tmp_dir_path = tmp_dir.path();
         let paths = [
@@ -413,7 +340,7 @@ mod tests {
         mkdir_or_touch(tmp_dir_path, &paths[..]);
 
         let path = tmp_dir_path.display().to_string();
-        let mut remappings = Remapping::find_all(&path);
+        let mut remappings = Remapping::find_many(&path);
         remappings.sort_unstable();
 
         let mut expected = vec![
@@ -461,7 +388,7 @@ mod tests {
         touch(&contract2).unwrap();
 
         let path = tmp_dir.path().display().to_string();
-        let mut remappings = Remapping::find_all(&path);
+        let mut remappings = Remapping::find_many(&path);
         remappings.sort_unstable();
         let mut expected = vec![
             Remapping {
@@ -492,7 +419,7 @@ mod tests {
             "node_modules/@ensdomains/ens/contracts/contract.sol",
         ];
         mkdir_or_touch(tmp_dir.path(), &paths[..]);
-        let mut remappings = Remapping::find_all(&tmp_dir_node_modules);
+        let mut remappings = Remapping::find_many(&tmp_dir_node_modules);
         remappings.sort_unstable();
         let mut expected = vec![
             Remapping {
