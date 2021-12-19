@@ -135,11 +135,16 @@ impl Remapping {
     /// are unified into `@aave` by looking at their common ancestor, the root of this subdirectory
     /// (`@aave`)
     pub fn find_many(root: impl AsRef<Path>) -> Vec<Remapping> {
-        /// prioritize ("a", "1/2") over ("a", "1/2/3")
-        fn insert_higher_path(mappings: &mut HashMap<String, PathBuf>, key: String, path: PathBuf) {
+        /// prioritize ("a", "1/2") over ("a", "1/2/3") or if `force` set
+        fn insert_higher_path(
+            mappings: &mut HashMap<String, PathBuf>,
+            key: String,
+            path: PathBuf,
+            force: bool,
+        ) {
             match mappings.entry(key) {
                 Entry::Occupied(mut e) => {
-                    if e.get().components().count() > path.components().count() {
+                    if force || e.get().components().count() > path.components().count() {
                         e.insert(path);
                     }
                 }
@@ -181,7 +186,27 @@ impl Remapping {
                 'outer: for (name, path) in scan_children(dir_path) {
                     let mut p = path.as_path();
                     let mut first_parent = true;
+
+                    // check for dapptools style mappings like `ds-test/` : `lib/ds-test/src`
+                    if path.ends_with(DAPPTOOLS_CONTRACTS_DIR) || path.ends_with(DAPPTOOLS_LIB_DIR)
+                    {
+                        insert_higher_path(&mut remappings, name, path, true);
+                        continue
+                    }
+
+                    // traverse the path back to the current depth 1 root and check if it can be
+                    // simplified
                     while let Some(parent) = p.parent() {
+                        // check for dapptools style mappings like `ds-test/` : `lib/ds-test/src`
+                        if parent.ends_with(DAPPTOOLS_CONTRACTS_DIR) ||
+                            parent.ends_with(DAPPTOOLS_LIB_DIR)
+                        {
+                            // end early since we reached the higher up dapptools style barrier:
+                            //  `name: demo`, `path: guni-lev/lib/ds-test/demo` and `parent:
+                            // guni-lev/lib/`
+                            insert_higher_path(&mut remappings, name, path, false);
+                            continue 'outer
+                        }
                         if parent == dir_path {
                             if !simplified {
                                 // handle trailing src,lib,contracts dir in cases like
@@ -191,16 +216,10 @@ impl Remapping {
                                     &mut remappings,
                                     format!("{}/", root_name),
                                     path,
+                                    false,
                                 );
                                 simplified = true;
                             }
-                            continue 'outer
-                        }
-                        if parent.ends_with(DAPPTOOLS_CONTRACTS_DIR) ||
-                            parent.ends_with(DAPPTOOLS_LIB_DIR)
-                        {
-                            // end early
-                            insert_higher_path(&mut remappings, name, path);
                             continue 'outer
                         }
                         first_parent = false;
@@ -261,7 +280,6 @@ fn scan_children(root: &Path) -> HashMap<String, PathBuf> {
             }
         }
     }
-
     remappings
 }
 
@@ -336,6 +354,10 @@ mod tests {
             "repo1/lib/ds-math/src/contract.sol",
             "repo1/lib/ds-math/lib/ds-test/src/",
             "repo1/lib/ds-math/lib/ds-test/src/test.sol",
+            "guni-lev/lib/ds-test/src/",
+            "guni-lev/lib/ds-test/src/test.sol",
+            "guni-lev/lib/ds-test/demo/",
+            "guni-lev/lib/ds-test/demo/demo.sol",
         ];
         mkdir_or_touch(tmp_dir_path, &paths[..]);
 
@@ -354,14 +376,12 @@ mod tests {
             },
             Remapping {
                 name: "ds-test/".to_string(),
+                path: to_str(tmp_dir_path.join("guni-lev").join("lib").join("ds-test").join("src")),
+            },
+            Remapping {
+                name: "demo/".to_string(),
                 path: to_str(
-                    tmp_dir_path
-                        .join("repo1")
-                        .join("lib")
-                        .join("ds-math")
-                        .join("lib")
-                        .join("ds-test")
-                        .join("src"),
+                    tmp_dir_path.join("guni-lev").join("lib").join("ds-test").join("demo"),
                 ),
             },
         ];
@@ -432,7 +452,6 @@ mod tests {
             },
         ];
         expected.sort_unstable();
-
         assert_eq!(remappings, expected);
     }
 }
