@@ -68,6 +68,11 @@ pub static RELEASES: Lazy<(svm::Releases, Vec<Version>)> = Lazy::new(|| {
 /// Abstraction over `solc` command line utility
 ///
 /// Supports sync and async functions.
+///
+/// By default the solc path is configured as follows, with descending priority:
+///   1. `SOLC_PATH` environment variable
+///   2. [svm](https://github.com/roynalnaruto/svm-rs)'s  `global_version` (set via `svm use <version>`), stored at `<svm_home>/.global_version`
+///   3. `solc` otherwise
 #[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Ord)]
 pub struct Solc {
     /// Path to the `solc` executable
@@ -78,7 +83,17 @@ pub struct Solc {
 
 impl Default for Solc {
     fn default() -> Self {
-        std::env::var("SOLC_PATH").map(Solc::new).unwrap_or_else(|_| Solc::new(SOLC))
+        if let Ok(solc) = std::env::var("SOLC_PATH") {
+            return Solc::new(solc)
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            if let Some(solc) = Solc::svm_global_version().filter(|p| p.exists()) {
+                return Solc::new(solc)
+            }
+        }
+
+        Solc::new(SOLC)
     }
 }
 
@@ -114,6 +129,14 @@ impl Solc {
     #[cfg(not(target_arch = "wasm32"))]
     pub fn svm_home() -> Option<PathBuf> {
         home::home_dir().map(|dir| dir.join(".svm"))
+    }
+
+    /// Returns the path to [svm](https://github.com/roynalnaruto/svm-rs)'s `.global_version` that was configured with `svm use <version>`
+    ///
+    /// This will be `~/.svm/.global_version` on unix
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn svm_global_version() -> Option<PathBuf> {
+        Self::svm_home().map(|p| p.join(".global_version"))
     }
 
     /// Returns the path for a [svm](https://github.com/roynalnaruto/svm-rs) installed version.
