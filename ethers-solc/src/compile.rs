@@ -68,6 +68,11 @@ pub static RELEASES: Lazy<(svm::Releases, Vec<Version>)> = Lazy::new(|| {
 /// Abstraction over `solc` command line utility
 ///
 /// Supports sync and async functions.
+///
+/// By default the solc path is configured as follows, with descending priority:
+///   1. `SOLC_PATH` environment variable
+///   2. [svm](https://github.com/roynalnaruto/svm-rs)'s  `global_version` (set via `svm use <version>`), stored at `<svm_home>/.global_version`
+///   3. `solc` otherwise
 #[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Ord)]
 pub struct Solc {
     /// Path to the `solc` executable
@@ -78,7 +83,20 @@ pub struct Solc {
 
 impl Default for Solc {
     fn default() -> Self {
-        std::env::var("SOLC_PATH").map(Solc::new).unwrap_or_else(|_| Solc::new(SOLC))
+        if let Ok(solc) = std::env::var("SOLC_PATH") {
+            return Solc::new(solc)
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            if let Some(solc) = Solc::svm_global_version()
+                .and_then(|vers| Solc::find_svm_installed_version(&vers.to_string()).ok())
+                .flatten()
+            {
+                return solc
+            }
+        }
+
+        Solc::new(SOLC)
     }
 }
 
@@ -116,6 +134,18 @@ impl Solc {
         home::home_dir().map(|dir| dir.join(".svm"))
     }
 
+    /// Returns the `semver::Version` [svm](https://github.com/roynalnaruto/svm-rs)'s `.global_version` is currently set to.
+    ///  `global_version` is configured with (`svm use <version>`)
+    ///
+    /// This will read the version string (eg: "0.8.9") that the  `~/.svm/.global_version` file
+    /// contains
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn svm_global_version() -> Option<Version> {
+        let version =
+            std::fs::read_to_string(Self::svm_home().map(|p| p.join(".global_version"))?).ok()?;
+        Version::parse(&version).ok()
+    }
+
     /// Returns the path for a [svm](https://github.com/roynalnaruto/svm-rs) installed version.
     ///
     /// # Example
@@ -130,17 +160,15 @@ impl Solc {
     #[cfg(not(target_arch = "wasm32"))]
     pub fn find_svm_installed_version(version: impl AsRef<str>) -> Result<Option<Self>> {
         let version = version.as_ref();
-        let solc = walkdir::WalkDir::new(
-            Self::svm_home().ok_or_else(|| SolcError::solc("svm home dir not found"))?,
-        )
-        .max_depth(1)
-        .into_iter()
-        .filter_map(std::result::Result::ok)
-        .filter(|e| e.file_type().is_dir())
-        .find(|e| e.path().ends_with(version))
-        .map(|e| e.path().join(format!("solc-{}", version)))
-        .map(Solc::new);
-        Ok(solc)
+        let solc = Self::svm_home()
+            .ok_or_else(|| SolcError::solc("svm home dir not found"))?
+            .join(version)
+            .join(format!("solc-{}", version));
+
+        if !solc.is_file() {
+            return Ok(None)
+        }
+        Ok(Some(Solc::new(solc)))
     }
 
     /// Assuming the `versions` array is sorted, it returns the first element which satisfies
@@ -509,7 +537,7 @@ mod tests {
     use crate::CompilerInput;
 
     fn solc() -> Solc {
-        std::env::var("SOLC_PATH").map(Solc::new).unwrap_or_default()
+        Solc::default()
     }
 
     #[test]
