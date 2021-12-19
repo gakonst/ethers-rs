@@ -39,7 +39,7 @@ sha2 = { version = "0.9.8", default-features = false }
 home = "0.5.3"
 # SVM is not WASM compatible yet.
 # svm = { package = "svm-rs", default-features = false, version = "0.2.1", optional = true }
-svm = { package = "svm-rs", git = "https://github.com/gakonst/svm-rs", branch = "fix/trim-deps", default-features = false, optional = true }
+svm = { package = "svm-rs", git = "https://github.com/roynalnaruto/svm-rs", default-features = false, optional = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 # NOTE: this enables wasm compatibility for getrandom indirectly
