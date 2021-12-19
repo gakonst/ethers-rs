@@ -608,6 +608,12 @@ pub trait Middleware: Sync + Send + Debug {
     ) -> Result<AccessListWithGasUsed, Self::Error> {
         self.inner().create_access_list(tx, block).await.map_err(FromErr::from)
     }
+    async fn base_fee(&self) -> Result<U256, Self::Error> {
+        self.inner().base_fee().await.map_err(FromErr::from)
+    }
+    async fn max_priority_fee_per_gas(&self) -> Result<U256, Self::Error> {
+        self.inner().base_fee().await.map_err(FromErr::from)
+    }
 }
 
 #[cfg(feature = "celo")]

@@ -535,6 +535,12 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         let block = utils::serialize(&block.unwrap_or_else(|| BlockNumber::Latest.into()));
         self.request("eth_createAccessList", [tx, block]).await
     }
+    async fn base_fee(&self) -> Result<U256, Self::Error> {
+        self.request("eth_baseFee", ()).await
+    }
+    async fn max_priority_fee_per_gas(&self) -> Result<U256, Self::Error> {
+        self.request("eth_maxPriorityFeePerGas", ()).await
+    }
 
     /// Sends the transaction to the entire Ethereum network and returns the transaction's hash
     /// This will consume gas from the account that signed the transaction.
