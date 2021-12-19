@@ -88,8 +88,11 @@ impl Default for Solc {
         }
         #[cfg(not(target_arch = "wasm32"))]
         {
-            if let Some(solc) = Solc::svm_global_version().filter(|p| p.exists()) {
-                return Solc::new(solc)
+            if let Some(solc) = Solc::svm_global_version()
+                .and_then(|vers| Solc::find_svm_installed_version(&vers.to_string()).ok())
+                .flatten()
+            {
+                return solc
             }
         }
 
@@ -131,12 +134,16 @@ impl Solc {
         home::home_dir().map(|dir| dir.join(".svm"))
     }
 
-    /// Returns the path to [svm](https://github.com/roynalnaruto/svm-rs)'s `.global_version` that was configured with `svm use <version>`
+    /// Returns the `semver::Version` [svm](https://github.com/roynalnaruto/svm-rs)'s `.global_version` is currently set to.
+    ///  `global_version` is configured with (`svm use <version>`)
     ///
-    /// This will be `~/.svm/.global_version` on unix
+    /// This will read the version string (eg: "0.8.9") that the  `~/.svm/.global_version` file
+    /// contains
     #[cfg(not(target_arch = "wasm32"))]
-    pub fn svm_global_version() -> Option<PathBuf> {
-        Self::svm_home().map(|p| p.join(".global_version"))
+    pub fn svm_global_version() -> Option<Version> {
+        let version =
+            std::fs::read_to_string(Self::svm_home().map(|p| p.join(".global_version"))?).ok()?;
+        Version::parse(&version).ok()
     }
 
     /// Returns the path for a [svm](https://github.com/roynalnaruto/svm-rs) installed version.
@@ -153,17 +160,15 @@ impl Solc {
     #[cfg(not(target_arch = "wasm32"))]
     pub fn find_svm_installed_version(version: impl AsRef<str>) -> Result<Option<Self>> {
         let version = version.as_ref();
-        let solc = walkdir::WalkDir::new(
-            Self::svm_home().ok_or_else(|| SolcError::solc("svm home dir not found"))?,
-        )
-        .max_depth(1)
-        .into_iter()
-        .filter_map(std::result::Result::ok)
-        .filter(|e| e.file_type().is_dir())
-        .find(|e| e.path().ends_with(version))
-        .map(|e| e.path().join(format!("solc-{}", version)))
-        .map(Solc::new);
-        Ok(solc)
+        let solc = Self::svm_home()
+            .ok_or_else(|| SolcError::solc("svm home dir not found"))?
+            .join(version)
+            .join(format!("solc-{}", version));
+
+        if !solc.is_file() {
+            return Ok(None)
+        }
+        Ok(Some(Solc::new(solc)))
     }
 
     /// Assuming the `versions` array is sorted, it returns the first element which satisfies
@@ -532,7 +537,7 @@ mod tests {
     use crate::CompilerInput;
 
     fn solc() -> Solc {
-        std::env::var("SOLC_PATH").map(Solc::new).unwrap_or_default()
+        Solc::default()
     }
 
     #[test]
