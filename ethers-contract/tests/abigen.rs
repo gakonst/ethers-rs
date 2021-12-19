@@ -9,6 +9,9 @@ use ethers_providers::Provider;
 use ethers_solc::Solc;
 use std::{convert::TryFrom, sync::Arc};
 
+fn assert_codec<T: AbiDecode + AbiEncode>() {}
+fn assert_tokenizeable<T: Tokenizable>() {}
+
 #[test]
 fn can_gen_human_readable() {
     abigen!(
@@ -54,18 +57,24 @@ fn can_gen_structs_readable() {
     ]"#,
         event_derives(serde::Deserialize, serde::Serialize)
     );
-    let value = Addresses {
+    let addr = Addresses {
         addr: vec!["eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee".parse().unwrap()],
         s: "hello".to_string(),
     };
-    let token = value.clone().into_token();
-    assert_eq!(value, Addresses::from_token(token).unwrap());
+    let token = addr.clone().into_token();
+    assert_eq!(addr, Addresses::from_token(token).unwrap());
 
     assert_eq!("ValueChanged", ValueChangedFilter::name());
     assert_eq!(
         "ValueChanged((address,string),(address,string),(address[],string))",
         ValueChangedFilter::abi_signature()
     );
+
+    assert_codec::<Value>();
+    assert_codec::<Addresses>();
+    let encoded = addr.clone().encode();
+    let other = Addresses::decode(&encoded).unwrap();
+    assert_eq!(addr, other);
 }
 
 #[test]
@@ -83,9 +92,10 @@ fn can_gen_structs_with_arrays_readable() {
         "ValueChanged((address,string),(address,string),(address[],string)[])",
         ValueChangedFilter::abi_signature()
     );
-}
 
-fn assert_tokenizeable<T: Tokenizable>() {}
+    assert_codec::<Value>();
+    assert_codec::<Addresses>();
+}
 
 #[test]
 fn can_generate_internal_structs() {
@@ -97,6 +107,10 @@ fn can_generate_internal_structs() {
     assert_tokenizeable::<VerifyingKey>();
     assert_tokenizeable::<G1Point>();
     assert_tokenizeable::<G2Point>();
+
+    assert_codec::<VerifyingKey>();
+    assert_codec::<G1Point>();
+    assert_codec::<G2Point>();
 }
 
 #[test]
@@ -118,6 +132,10 @@ fn can_generate_internal_structs_multiple() {
     assert_tokenizeable::<VerifyingKey>();
     assert_tokenizeable::<G1Point>();
     assert_tokenizeable::<G2Point>();
+
+    assert_codec::<VerifyingKey>();
+    assert_codec::<G1Point>();
+    assert_codec::<G2Point>();
 
     let (provider, _) = Provider::mocked();
     let client = Arc::new(provider);
@@ -153,6 +171,7 @@ fn can_gen_human_readable_with_structs() {
         event_derives(serde::Deserialize, serde::Serialize)
     );
     assert_tokenizeable::<Foo>();
+    assert_codec::<Foo>();
 
     let (client, _mock) = Provider::mocked();
     let contract = SimpleContract::new(Address::default(), Arc::new(client));

@@ -43,6 +43,8 @@
 
 ### 0.6.0
 
+- add `EthAbiCodec` proc macro to derive `AbiEncode` `AbiDecode` implementation
+  [#704](https://github.com/gakonst/ethers-rs/pull/704)
 - move `AbiEncode` `AbiDecode` trait to ethers-core and implement for core types
   [#531](https://github.com/gakonst/ethers-rs/pull/531)
 - Add EIP-712 `sign_typed_data` signer method; add ethers-core type `Eip712`
