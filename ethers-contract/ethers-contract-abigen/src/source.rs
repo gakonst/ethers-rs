@@ -229,7 +229,7 @@ fn get_local_contract(path: impl AsRef<str>) -> Result<String> {
         let root = Path::new(&manifest_path);
         let mut contract_path = root.join(&path);
         if !contract_path.exists() {
-            contract_path = path.canonicalize()?;
+            contract_path = dunce::canonicalize(&path)?;
         }
         if !contract_path.exists() {
             anyhow::bail!("Unable to find local contract \"{}\"", path.display())
