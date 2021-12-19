@@ -209,7 +209,9 @@ impl Remapping {
     //   ├─ protocol-v2/
     //   │  ├─ contracts/
     ///
-    /// which would be multiple rededications according to our rules ("governance", "protocol-v2"), are unified into `@aave` by looking at their common ancestor, the root of this subdirectory (`@aavee`)
+    /// which would be multiple rededications according to our rules ("governance", "protocol-v2"),
+    /// are unified into `@aave` by looking at their common ancestor, the root of this subdirectory
+    /// (`@aavee`)
     pub fn find_all(root: impl AsRef<Path>) -> Vec<Remapping> {
         /// prioritize ("a", "1/2") over ("a", "1/2/3")
         fn insert_higher_path(mappings: &mut HashMap<String, PathBuf>, key: String, path: PathBuf) {
