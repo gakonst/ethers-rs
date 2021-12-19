@@ -42,6 +42,9 @@ rustdoc-args = ["--cfg", "docsrs"]
 features = ["full"]
 
 [features]
+default = ["base"]
+base = ["ws", "rustls", "abigen", "eip712", "solc-full"]
+
 celo = [
     "ethers-core/celo",
     "ethers-providers/celo",
