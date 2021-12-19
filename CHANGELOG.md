@@ -30,6 +30,8 @@
 
 ### Unreleased
 
+- `Remapping::find_many` does not return a `Result` anymore
+  [#707](https://github.com/gakonst/ethers-rs/pull/707)
 - Add support for hardhat artifacts
   [#677](https://github.com/gakonst/ethers-rs/pull/677)
 - Add more utility functions to the `Artifact` trait
