@@ -11,7 +11,9 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{
     collections::BTreeMap,
     convert::TryFrom,
-    fmt, fs, io,
+    fmt,
+    fmt::Formatter,
+    fs, io,
     path::{Path, PathBuf},
 };
 
@@ -75,6 +77,24 @@ impl ProjectPathsConfig {
     }
 }
 
+impl fmt::Display for ProjectPathsConfig {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        writeln!(f, "root: {}", self.root.display())?;
+        writeln!(f, "contracts: {}", self.sources.display())?;
+        writeln!(f, "artifacts: {}", self.artifacts.display())?;
+        writeln!(f, "tests: {}", self.tests.display())?;
+        writeln!(f, "libs:")?;
+        for lib in &self.libraries {
+            writeln!(f, "    {}", lib.display())?;
+        }
+        writeln!(f, "remappings:")?;
+        for remapping in &self.remappings {
+            writeln!(f, "    {}", remapping)?;
+        }
+        Ok(())
+    }
+}
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum PathStyle {
     HardHat,
@@ -91,7 +111,7 @@ impl PathStyle {
                 .sources(root.join("src"))
                 .artifacts(root.join("out"))
                 .lib(root.join("lib"))
-                .remappings(Remapping::find_many(&root.join("lib"))?)
+                .remappings(Remapping::find_many(&root.join("lib")))
                 .root(root)
                 .build()?,
             PathStyle::HardHat => ProjectPathsConfig::builder()
