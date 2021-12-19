@@ -24,6 +24,17 @@ where
         Self { initialized: false.into(), nonce: 0.into(), inner, address }
     }
 
+    pub async fn init(&self, block: Option<BlockId>) -> Result<(), NonceManagerError<M>> {
+        // initialize the nonce the first time the manager is called
+
+        let nonce =
+            self.inner.get_transaction_count(self.address, block).await.map_err(FromErr::from)?;
+        self.nonce.store(nonce.as_u64(), Ordering::SeqCst);
+        self.initialized.store(true, Ordering::SeqCst);
+
+        Ok(())
+    }
+
     /// Returns the next nonce to be used
     pub fn next(&self) -> U256 {
         let nonce = self.nonce.fetch_add(1, Ordering::SeqCst);
@@ -34,15 +45,8 @@ where
         &self,
         block: Option<BlockId>,
     ) -> Result<U256, NonceManagerError<M>> {
-        // initialize the nonce the first time the manager is called
         if !self.initialized.load(Ordering::SeqCst) {
-            let nonce = self
-                .inner
-                .get_transaction_count(self.address, block)
-                .await
-                .map_err(FromErr::from)?;
-            self.nonce.store(nonce.as_u64(), Ordering::SeqCst);
-            self.initialized.store(true, Ordering::SeqCst);
+            self.init(block).await;
         }
 
         Ok(self.next())
