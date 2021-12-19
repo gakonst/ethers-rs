@@ -62,8 +62,8 @@ eip712 = ["ethers-contract/eip712", "ethers-core/eip712"]
 ## providers
 ws = ["ethers-providers/ws"]
 ipc = ["ethers-providers/ipc"]
-rustls = ["ethers-providers/rustls"]
-openssl = ["ethers-providers/openssl"]
+rustls = ["ethers-providers/rustls", "ethers-etherscan/rustls", "ethers-contract/rustls", "ethers-solc/rustls"]
+openssl = ["ethers-providers/openssl", "ethers-etherscan/openssl", "ethers-contract/openssl", "ethers-solc/openssl"]
 dev-rpc = ["ethers-providers/dev-rpc"]
 ## signers
 ledger = ["ethers-signers/ledger"]
@@ -77,8 +77,7 @@ abigen-offline = ["ethers-contract/abigen-offline"]
 solc-async = ["ethers-solc/async"]
 solc-full = ["ethers-solc/full"]
 solc-tests = ["ethers-solc/tests"]
-
-
+solc-sha2-asm = ["ethers-solc/asm"]
 
 [dependencies]
 ethers-contract = { version = "^0.6.0", default-features = false, path = "./ethers-contract" }
@@ -95,8 +94,6 @@ ethers-providers = { version = "^0.6.0", default-features = false, path = "./eth
 
 [target.'cfg(target_family = "unix")'.dev-dependencies]
 ethers-providers = { version = "^0.6.0", default-features = false, path = "./ethers-providers", features = ["ws", "ipc"] }
-
-
 anyhow = "1.0.39"
 rand = "0.8.4"
 serde = { version = "1.0.124", features = ["derive"] }

@@ -27,22 +27,19 @@ md-5 = "0.10.0"
 thiserror = "1.0.30"
 hex = "0.4.3"
 colored = "2.0.0"
-svm = { package = "svm-rs", version = "0.2.1", optional = true }
 glob = "0.3.0"
 tracing = "0.1.29"
 num_cpus = "1.13.0"
 tiny-keccak = { version = "2.0.2", default-features = false }
 tempdir = { version = "0.3.7", optional = true }
 fs_extra = { version = "1.2.0", optional = true }
-
-[target.'cfg(any(not(any(target_arch = "x86", target_arch = "x86_64")), target_env = "msvc"))'.dependencies]
 sha2 = { version = "0.9.8", default-features = false }
-
-[target.'cfg(all(any(target_arch = "x86", target_arch = "x86_64"), not(target_env = "msvc")))'.dependencies]
-sha2 = { version = "0.9.8", default-features = false, features = ["asm"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 home = "0.5.3"
+# SVM is not WASM compatible yet.
+# svm = { package = "svm-rs", default-features = false, version = "0.2.1", optional = true }
+svm = { package = "svm-rs", git = "https://github.com/roynalnaruto/svm-rs", default-features = false, optional = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 # NOTE: this enables wasm compatibility for getrandom indirectly
@@ -63,8 +60,12 @@ path = "tests/project.rs"
 required-features = ["project-util"]
 
 [features]
+default = ["rustls"]
 async = ["tokio", "futures-util"]
 full = ["async", "svm"]
 # Utilities for creating and testing project workspaces
 project-util = ["tempdir", "fs_extra"]
 tests = []
+openssl = ["svm/openssl"]
+rustls = ["svm/rustls"]
+asm = ["sha2/asm"]
