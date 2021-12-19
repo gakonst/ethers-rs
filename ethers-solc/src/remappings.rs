@@ -386,7 +386,7 @@ mod tests {
             },
         ];
         expected.sort_unstable();
-        assert_eq!(remappings, expected);
+        pretty_assertions::assert_eq!(remappings, expected);
     }
 
     #[test]
