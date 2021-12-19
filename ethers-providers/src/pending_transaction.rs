@@ -57,12 +57,14 @@ impl<'a, P: JsonRpcClient> PendingTransaction<'a, P> {
 
     /// Sets the number of confirmations for the pending transaction to resolve
     /// to a receipt
+    #[must_use]
     pub fn confirmations(mut self, confs: usize) -> Self {
         self.confirmations = confs;
         self
     }
 
     /// Sets the polling interval
+    #[must_use]
     pub fn interval<T: Into<Duration>>(mut self, duration: T) -> Self {
         let duration = duration.into();
 

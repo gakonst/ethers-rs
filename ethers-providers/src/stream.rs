@@ -1,3 +1,5 @@
+#![allow(clippy::return_self_not_must_use)]
+
 use crate::{JsonRpcClient, Middleware, PinBoxFut, Provider, ProviderError};
 
 use ethers_core::types::{Transaction, TxHash, U256};

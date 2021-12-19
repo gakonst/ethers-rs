@@ -88,12 +88,14 @@ impl Solc {
     }
 
     /// Adds an argument to pass to the `solc` command.
+    #[must_use]
     pub fn arg<T: Into<String>>(mut self, arg: T) -> Self {
         self.args.push(arg.into());
         self
     }
 
     /// Adds multiple arguments to pass to the `solc`.
+    #[must_use]
     pub fn args<I, S>(mut self, args: I) -> Self
     where
         I: IntoIterator<Item = S>,

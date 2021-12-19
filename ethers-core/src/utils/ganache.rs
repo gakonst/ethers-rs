@@ -93,18 +93,21 @@ impl Ganache {
     }
 
     /// Sets the port which will be used when the `ganache-cli` instance is launched.
+    #[must_use]
     pub fn port<T: Into<u16>>(mut self, port: T) -> Self {
         self.port = Some(port.into());
         self
     }
 
     /// Sets the mnemonic which will be used when the `ganache-cli` instance is launched.
+    #[must_use]
     pub fn mnemonic<T: Into<String>>(mut self, mnemonic: T) -> Self {
         self.mnemonic = Some(mnemonic.into());
         self
     }
 
     /// Sets the block-time which will be used when the `ganache-cli` instance is launched.
+    #[must_use]
     pub fn block_time<T: Into<u64>>(mut self, block_time: T) -> Self {
         self.block_time = Some(block_time.into());
         self
@@ -114,18 +117,21 @@ impl Ganache {
     /// at a given block. Input should be the HTTP location and port of the other client,
     /// e.g. `http://localhost:8545`. You can optionally specify the block to fork from
     /// using an @ sign: `http://localhost:8545@1599200`
+    #[must_use]
     pub fn fork<T: Into<String>>(mut self, fork: T) -> Self {
         self.fork = Some(fork.into());
         self
     }
 
     /// Adds an argument to pass to the `ganache-cli`.
+    #[must_use]
     pub fn arg<T: Into<String>>(mut self, arg: T) -> Self {
         self.args.push(arg.into());
         self
     }
 
     /// Adds multiple arguments to pass to the `ganache-cli`.
+    #[must_use]
     pub fn args<I, S>(mut self, args: I) -> Self
     where
         I: IntoIterator<Item = S>,

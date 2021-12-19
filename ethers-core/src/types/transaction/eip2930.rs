@@ -119,7 +119,7 @@ mod tests {
 
         let enc = rlp::encode(&tx.rlp_signed(1, &sig).as_ref());
         let expected = "b86601f8630103018261a894b94f5374fce5edbc8e2a8697c15331677e6ebf0b0a825544c001a0c9519f4f2b30335884581971573fadf60c6204f59a911df35ee8a540456b2660a032f1e8e2c5dd761f9e4f88f41c8310aeaba26a8bfcdacfedfa12ec3862d37521";
-        assert_eq!(hex::encode(enc.to_vec()), expected);
+        assert_eq!(hex::encode(&enc), expected);
     }
 
     #[test]

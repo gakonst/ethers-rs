@@ -529,39 +529,46 @@ pub struct ProjectBuilder<Artifacts: ArtifactOutput = MinimalCombinedArtifacts> 
 }
 
 impl<Artifacts: ArtifactOutput> ProjectBuilder<Artifacts> {
+    #[must_use]
     pub fn paths(mut self, paths: ProjectPathsConfig) -> Self {
         self.paths = Some(paths);
         self
     }
 
+    #[must_use]
     pub fn solc(mut self, solc: impl Into<Solc>) -> Self {
         self.solc = Some(solc.into());
         self
     }
 
+    #[must_use]
     pub fn solc_config(mut self, solc_config: SolcConfig) -> Self {
         self.solc_config = Some(solc_config);
         self
     }
 
+    #[must_use]
     pub fn ignore_error_code(mut self, code: u64) -> Self {
         self.ignored_error_codes.push(code);
         self
     }
 
     /// Disables cached builds
+    #[must_use]
     pub fn ephemeral(mut self) -> Self {
         self.cached = false;
         self
     }
 
     /// Disables writing artifacts to disk
+    #[must_use]
     pub fn no_artifacts(mut self) -> Self {
         self.no_artifacts = true;
         self
     }
 
     /// Disables automatic solc version detection
+    #[must_use]
     pub fn no_auto_detect(mut self) -> Self {
         self.auto_detect = false;
         self
@@ -572,6 +579,7 @@ impl<Artifacts: ArtifactOutput> ProjectBuilder<Artifacts> {
     /// # Panics
     ///
     /// `jobs` must be at least 1
+    #[must_use]
     pub fn solc_jobs(mut self, jobs: usize) -> Self {
         assert!(jobs > 0);
         self.solc_jobs = Some(jobs);
@@ -579,6 +587,7 @@ impl<Artifacts: ArtifactOutput> ProjectBuilder<Artifacts> {
     }
 
     /// Sets the number of parallel `solc` processes to `1`, no parallelization
+    #[must_use]
     pub fn single_solc_jobs(self) -> Self {
         self.solc_jobs(1)
     }
@@ -612,12 +621,14 @@ impl<Artifacts: ArtifactOutput> ProjectBuilder<Artifacts> {
     }
 
     /// Adds an allowed-path to the solc executable
+    #[must_use]
     pub fn allowed_path<T: Into<PathBuf>>(mut self, path: T) -> Self {
         self.allowed_paths.push(path.into());
         self
     }
 
     /// Adds multiple allowed-path to the solc executable
+    #[must_use]
     pub fn allowed_paths<I, S>(mut self, args: I) -> Self
     where
         I: IntoIterator<Item = S>,

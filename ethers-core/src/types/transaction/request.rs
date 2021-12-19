@@ -75,42 +75,49 @@ impl TransactionRequest {
     // Builder pattern helpers
 
     /// Sets the `from` field in the transaction to the provided value
+    #[must_use]
     pub fn from<T: Into<Address>>(mut self, from: T) -> Self {
         self.from = Some(from.into());
         self
     }
 
     /// Sets the `to` field in the transaction to the provided value
+    #[must_use]
     pub fn to<T: Into<NameOrAddress>>(mut self, to: T) -> Self {
         self.to = Some(to.into());
         self
     }
 
     /// Sets the `gas` field in the transaction to the provided value
+    #[must_use]
     pub fn gas<T: Into<U256>>(mut self, gas: T) -> Self {
         self.gas = Some(gas.into());
         self
     }
 
     /// Sets the `gas_price` field in the transaction to the provided value
+    #[must_use]
     pub fn gas_price<T: Into<U256>>(mut self, gas_price: T) -> Self {
         self.gas_price = Some(gas_price.into());
         self
     }
 
     /// Sets the `value` field in the transaction to the provided value
+    #[must_use]
     pub fn value<T: Into<U256>>(mut self, value: T) -> Self {
         self.value = Some(value.into());
         self
     }
 
     /// Sets the `data` field in the transaction to the provided value
+    #[must_use]
     pub fn data<T: Into<Bytes>>(mut self, data: T) -> Self {
         self.data = Some(data.into());
         self
     }
 
     /// Sets the `nonce` field in the transaction to the provided value
+    #[must_use]
     pub fn nonce<T: Into<U256>>(mut self, nonce: T) -> Self {
         self.nonce = Some(nonce.into());
         self
@@ -174,6 +181,7 @@ impl TransactionRequest {
 
     /// Sets the `fee_currency` field in the transaction to the provided value
     #[cfg_attr(docsrs, doc(cfg(feature = "celo")))]
+    #[must_use]
     pub fn fee_currency<T: Into<Address>>(mut self, fee_currency: T) -> Self {
         self.fee_currency = Some(fee_currency.into());
         self
@@ -181,6 +189,7 @@ impl TransactionRequest {
 
     /// Sets the `gateway_fee` field in the transaction to the provided value
     #[cfg_attr(docsrs, doc(cfg(feature = "celo")))]
+    #[must_use]
     pub fn gateway_fee<T: Into<U256>>(mut self, gateway_fee: T) -> Self {
         self.gateway_fee = Some(gateway_fee.into());
         self
@@ -188,6 +197,7 @@ impl TransactionRequest {
 
     /// Sets the `gateway_fee_recipient` field in the transaction to the provided value
     #[cfg_attr(docsrs, doc(cfg(feature = "celo")))]
+    #[must_use]
     pub fn gateway_fee_recipient<T: Into<Address>>(mut self, gateway_fee_recipient: T) -> Self {
         self.gateway_fee_recipient = Some(gateway_fee_recipient.into());
         self

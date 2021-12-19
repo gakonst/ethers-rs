@@ -175,6 +175,7 @@ impl<P: JsonRpcClient> Provider<P> {
         }
     }
 
+    #[must_use]
     pub fn with_sender(mut self, address: impl Into<Address>) -> Self {
         self.from = Some(address.into());
         self
@@ -973,6 +974,7 @@ impl<P: JsonRpcClient> Provider<P> {
     }
 
     /// Sets the ENS Address (default: mainnet)
+    #[must_use]
     pub fn ens<T: Into<Address>>(mut self, ens: T) -> Self {
         self.ens = Some(ens.into());
         self
@@ -980,6 +982,7 @@ impl<P: JsonRpcClient> Provider<P> {
 
     /// Sets the default polling interval for event filters and pending transactions
     /// (default: 7 seconds)
+    #[must_use]
     pub fn interval<T: Into<Duration>>(mut self, interval: T) -> Self {
         self.interval = Some(interval.into());
         self

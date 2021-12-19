@@ -24,17 +24,20 @@ pub struct Deployer<M> {
 
 impl<M: Middleware> Deployer<M> {
     /// Sets the number of confirmations to wait for the contract deployment transaction
+    #[must_use]
     pub fn confirmations<T: Into<usize>>(mut self, confirmations: T) -> Self {
         self.confs = confirmations.into();
         self
     }
 
+    #[must_use]
     pub fn block<T: Into<BlockNumber>>(mut self, block: T) -> Self {
         self.block = block.into();
         self
     }
 
     /// Uses a Legacy transaction instead of an EIP-1559 one to do the deployment
+    #[must_use]
     pub fn legacy(mut self) -> Self {
         self.tx = match self.tx {
             TypedTransaction::Eip1559(inner) => {

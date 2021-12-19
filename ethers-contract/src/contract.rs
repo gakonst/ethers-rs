@@ -247,6 +247,7 @@ impl<M: Middleware> Contract<M> {
     /// Returns a new contract instance at `address`.
     ///
     /// Clones `self` internally
+    #[must_use]
     pub fn at<T: Into<Address>>(&self, address: T) -> Self
     where
         M: Clone,
@@ -259,6 +260,7 @@ impl<M: Middleware> Contract<M> {
     /// Returns a new contract instance using the provided client
     ///
     /// Clones `self` internally
+    #[must_use]
     pub fn connect(&self, client: Arc<M>) -> Self
     where
         M: Clone,

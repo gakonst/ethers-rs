@@ -44,6 +44,7 @@ impl Etherchain {
     }
 
     /// Sets the gas price category to be used when fetching the gas price.
+    #[must_use]
     pub fn category(mut self, gas_category: GasCategory) -> Self {
         self.gas_category = gas_category;
         self

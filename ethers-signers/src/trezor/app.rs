@@ -249,7 +249,7 @@ mod tests {
         let trezor = TrezorEthereum::new(DerivationType::TrezorLive(0), 1).await.unwrap();
 
         // invalid data
-        let big_data = hex::decode("095ea7b30000000000000000000000007a250d5630b4cf539739df2c5dacb4c659f2488dffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff".to_string()+ &"ff".repeat(1032*2) + &"aa".to_string()).unwrap();
+        let big_data = hex::decode("095ea7b30000000000000000000000007a250d5630b4cf539739df2c5dacb4c659f2488dffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff".to_string()+ &"ff".repeat(1032*2) + "aa").unwrap();
         let tx_req = TransactionRequest::new()
             .to("2ed7afa17473e17ac59908f088b4371d28585476".parse::<Address>().unwrap())
             .gas(1000000)

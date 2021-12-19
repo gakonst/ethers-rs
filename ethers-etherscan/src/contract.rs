@@ -49,16 +49,19 @@ impl VerifyContract {
         }
     }
 
+    #[must_use]
     pub fn contract_name(mut self, name: impl Into<String>) -> Self {
         self.contract_name = Some(name.into());
         self
     }
 
+    #[must_use]
     pub fn runs(mut self, runs: u32) -> Self {
         self.runs = Some(format!("{}", runs));
         self
     }
 
+    #[must_use]
     pub fn optimization(self, optimization: bool) -> Self {
         if optimization {
             self.optimized()
@@ -67,26 +70,31 @@ impl VerifyContract {
         }
     }
 
+    #[must_use]
     pub fn optimized(mut self) -> Self {
         self.optimization_used = Some("1".to_string());
         self
     }
 
+    #[must_use]
     pub fn not_optimized(mut self) -> Self {
         self.optimization_used = Some("0".to_string());
         self
     }
 
+    #[must_use]
     pub fn code_format(mut self, code_format: CodeFormat) -> Self {
         self.code_format = code_format;
         self
     }
 
+    #[must_use]
     pub fn evm_version(mut self, evm_version: impl Into<String>) -> Self {
         self.evm_version = Some(evm_version.into());
         self
     }
 
+    #[must_use]
     pub fn constructor_arguments(
         mut self,
         constructor_arguments: Option<impl Into<String>>,

@@ -40,12 +40,14 @@ impl CompilerInput {
     }
 
     /// Sets the EVM version for compilation
+    #[must_use]
     pub fn evm_version(mut self, version: EvmVersion) -> Self {
         self.settings.evm_version = Some(version);
         self
     }
 
     /// Sets the optimizer runs (default = 200)
+    #[must_use]
     pub fn optimizer(mut self, runs: usize) -> Self {
         self.settings.optimizer.runs(runs);
         self
@@ -53,6 +55,7 @@ impl CompilerInput {
 
     /// Normalizes the EVM version used in the settings to be up to the latest one
     /// supported by the provided compiler version.
+    #[must_use]
     pub fn normalize_evm_version(mut self, version: &Version) -> Self {
         if let Some(ref mut evm_version) = self.settings.evm_version {
             self.settings.evm_version = evm_version.normalize_version(version);
@@ -60,6 +63,7 @@ impl CompilerInput {
         self
     }
 
+    #[must_use]
     pub fn with_remappings(mut self, remappings: Vec<Remapping>) -> Self {
         self.settings.remappings = remappings;
         self
@@ -172,6 +176,7 @@ impl Settings {
     }
 
     /// Adds `ast` to output
+    #[must_use]
     pub fn with_ast(mut self) -> Self {
         let output = self.output_selection.entry("*".to_string()).or_insert_with(BTreeMap::default);
         output.insert("".to_string(), vec!["ast".to_string()]);
