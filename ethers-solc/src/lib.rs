@@ -908,7 +908,7 @@ mod tests {
     fn test_build_many_libs() {
         use super::*;
 
-        let root = std::fs::canonicalize("./test-data/test-contract-libs").unwrap();
+        let root = dunce::canonicalize("./test-data/test-contract-libs").unwrap();
 
         let paths = ProjectPathsConfig::builder()
             .root(&root)
@@ -935,7 +935,7 @@ mod tests {
     fn test_build_remappings() {
         use super::*;
 
-        let root = std::fs::canonicalize("./test-data/test-contract-remappings").unwrap();
+        let root = dunce::canonicalize("./test-data/test-contract-remappings").unwrap();
         let paths = ProjectPathsConfig::builder()
             .root(&root)
             .sources(root.join("src"))

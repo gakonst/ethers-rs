@@ -104,7 +104,7 @@ pub enum PathStyle {
 impl PathStyle {
     pub fn paths(&self, root: impl AsRef<Path>) -> Result<ProjectPathsConfig> {
         let root = root.as_ref();
-        let root = std::fs::canonicalize(root).map_err(|err| SolcError::io(err, root))?;
+        let root = dunce::canonicalize(root).map_err(|err| SolcError::io(err, root))?;
 
         Ok(match self {
             PathStyle::Dapptools => ProjectPathsConfig::builder()
@@ -215,7 +215,7 @@ impl ProjectPathsConfigBuilder {
             .map(Ok)
             .unwrap_or_else(std::env::current_dir)
             .map_err(|err| SolcIoError::new(err, "."))?;
-        let root = std::fs::canonicalize(&root).map_err(|err| SolcIoError::new(err, &root))?;
+        let root = dunce::canonicalize(&root).map_err(|err| SolcIoError::new(err, &root))?;
         Ok(self.build_with_root(root))
     }
 }
@@ -484,8 +484,7 @@ impl<T: Into<PathBuf>> TryFrom<Vec<T>> for AllowedLibPaths {
             .into_iter()
             .map(|lib| {
                 let path: PathBuf = lib.into();
-                let lib =
-                    std::fs::canonicalize(&path).map_err(|err| SolcIoError::new(err, path))?;
+                let lib = dunce::canonicalize(&path).map_err(|err| SolcIoError::new(err, path))?;
                 Ok(lib)
             })
             .collect::<std::result::Result<Vec<_>, _>>()?;
