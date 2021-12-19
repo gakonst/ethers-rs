@@ -263,7 +263,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
     async fn fill_transaction(
         &self,
         tx: &mut TypedTransaction,
-        block: Option<BlockId>,
+        _block: Option<BlockId>,
     ) -> Result<(), Self::Error> {
         if let Some(default_sender) = self.default_sender() {
             if tx.from().is_none() {
@@ -284,25 +284,25 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         let gas = maybe(tx.gas().cloned(), self.estimate_gas(tx)).await?;
         let mut al_used = false;
 
-        // set the access lists
-        if let Some(access_list) = tx.access_list() {
-            if access_list.0.is_empty() {
-                if let Ok(al_with_gas) = self.create_access_list(tx, block).await {
-                    // only set the access list if the used gas is less than the
-                    // normally estimated gas
-                    if al_with_gas.gas_used < gas {
-                        tx.set_access_list(al_with_gas.access_list);
-                        tx.set_gas(al_with_gas.gas_used);
-                        al_used = true;
-                    }
-                }
-            }
-        }
-
+        // NOTICE: disable al
+        // // set the access lists
+        // if let Some(access_list) = tx.access_list() {
+        //     if access_list.0.is_empty() {
+        //         if let Ok(al_with_gas) = self.create_access_list(tx, block).await {
+        //             // only set the access list if the used gas is less than the
+        //             // normally estimated gas
+        //             if al_with_gas.gas_used < gas {
+        //                 tx.set_access_list(al_with_gas.access_list);
+        //                 tx.set_gas(al_with_gas.gas_used);
+        //                 al_used = true;
+        //             }
+        //         }
+        //     }
+        // }
+        //
         if !al_used {
             tx.set_gas(gas);
         }
-
         match tx {
             TypedTransaction::Eip2930(_) | TypedTransaction::Legacy(_) => {
                 let gas_price = maybe(tx.gas_price(), self.get_gas_price()).await?;
@@ -953,7 +953,7 @@ impl<P: JsonRpcClient> Provider<P> {
 
         let resolver_address: Address = decode_bytes(ParamType::Address, data);
         if resolver_address == Address::zero() {
-            return Err(ProviderError::EnsError(ens_name.to_owned()))
+            return Err(ProviderError::EnsError(ens_name.to_owned()));
         }
 
         // resolve
