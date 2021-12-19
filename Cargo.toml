@@ -92,6 +92,9 @@ ethers-etherscan = { version = "^0.2.0", default-features = false, path = "./eth
 ethers-contract = { version = "^0.6.0", default-features = false, path = "./ethers-contract", features = ["abigen", "eip712"] }
 ethers-providers = { version = "^0.6.0", default-features = false, path = "./ethers-providers", features = ["ws"] }
 
+[target.'cfg(all(any(target_arch = "x86", target_arch = "x86_64"), not(target_env = "msvc")))'.dependencies]
+ethers-solc = { version = "^0.1.0", default-features = false, path = "./ethers-solc", features = ["asm"]  }
+
 [target.'cfg(target_family = "unix")'.dev-dependencies]
 ethers-providers = { version = "^0.6.0", default-features = false, path = "./ethers-providers", features = ["ws", "ipc"] }
 anyhow = "1.0.39"
