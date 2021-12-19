@@ -91,7 +91,7 @@ impl PathStyle {
                 .sources(root.join("src"))
                 .artifacts(root.join("out"))
                 .lib(root.join("lib"))
-                .remappings(Remapping::find_many(&root.join("lib"))?)
+                .remappings(Remapping::find_many(&root.join("lib")))
                 .root(root)
                 .build()?,
             PathStyle::HardHat => ProjectPathsConfig::builder()
