@@ -401,10 +401,6 @@ mod tests {
             "repo1/lib/ds-math/lib/ds-test/src/test.sol",
             "repo1/lib/guni-lev/src",
             "repo1/lib/guni-lev/src/contract.sol",
-            "repo1/lib/guni-lev/lib/ds-test/src/",
-            "repo1/lib/guni-lev/lib/ds-test/src/test.sol",
-            "repo1/lib/guni-lev/lib/ds-test/demo/",
-            "repo1/lib/guni-lev/lib/ds-test/demo/demo.sol",
             "repo1/lib/solmate/src/auth",
             "repo1/lib/solmate/src/auth/contract.sol",
             "repo1/lib/solmate/src/tokens",
@@ -465,7 +461,7 @@ mod tests {
     }
 
     #[test]
-    fn remappings2() {
+    fn remappings() {
         let tmp_dir = tempdir::TempDir::new("tmp").unwrap();
         let tmp_dir_path = tmp_dir.path().join("lib");
         let repo1 = tmp_dir_path.join("src_repo");
@@ -551,12 +547,5 @@ mod tests {
         ];
         expected.sort_unstable();
         pretty_assertions::assert_eq!(remappings, expected);
-    }
-
-    #[test]
-    fn git_remappings() {
-        dbg!(Remapping::find_many(
-            "/Users/Matthias/git/rust/foundry-integration-tests/testdata/geb/lib"
-        ));
     }
 }
