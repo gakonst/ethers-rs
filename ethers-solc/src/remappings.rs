@@ -154,7 +154,9 @@ impl Remapping {
             }
         }
 
-        let mut remappings = HashMap::new();
+        // all combined remappings from all subdirs
+        let mut all_remappings = HashMap::new();
+
         // iterate over all dirs that are children of the root
         for dir in walkdir::WalkDir::new(root)
             .follow_links(true)
@@ -164,7 +166,10 @@ impl Remapping {
             .filter_map(std::result::Result::ok)
             .filter(|e| e.file_type().is_dir())
         {
-            let dir_path = dir.path();
+            let depth1_dir = dir.path();
+
+            // the remappings found in this depth 1 subdir
+            let mut remappings = HashMap::new();
 
             // in node_modules there could be following pattern:
             //   @aave/
@@ -180,55 +185,64 @@ impl Remapping {
             // `@aave/src` is not mergeable as that would violate dapptools style lib paths and
             // remappings. This means we can only unify/simplify them if there is no! `src` or `lib`
             // path between the remappings' path and the dir_path
-            if let Some(root_name) = dir_path.file_name().and_then(|f| f.to_str()) {
-                let mut simplified = false;
+            if let Some(root_name) = depth1_dir.file_name().and_then(|f| f.to_str()) {
                 // check all remappings in this depth 1 folder
-                'outer: for (name, path) in scan_children(dir_path) {
-                    let mut p = path.as_path();
-                    let mut first_parent = true;
+                dbg!(scan_children(depth1_dir));
 
+                // TODO based on length
+                //  find most common root with no lib/src paths
+
+                'outer: for (name, path) in scan_children(depth1_dir) {
                     // check for dapptools style mappings like `ds-test/` : `lib/ds-test/src`
-                    if path.ends_with(DAPPTOOLS_CONTRACTS_DIR) || path.ends_with(DAPPTOOLS_LIB_DIR)
+                    if is_dapptools_dir(&path)
                     {
                         insert_higher_path(&mut remappings, name, path, true);
                         continue
                     }
 
+                    let mut current_path = path.as_path();
+                    let mut next_major_lib = path.as_path();
+                    let mut next_major_name = root_name;
+                    let mut first_parent = true;
                     // traverse the path back to the current depth 1 root and check if it can be
                     // simplified
-                    while let Some(parent) = p.parent() {
-                        // check for dapptools style mappings like `ds-test/` : `lib/ds-test/src`
-                        if parent.ends_with(DAPPTOOLS_CONTRACTS_DIR) ||
-                            parent.ends_with(DAPPTOOLS_LIB_DIR)
-                        {
-                            // end early since we reached the higher up dapptools style barrier:
-                            //  `name: demo`, `path: guni-lev/lib/ds-test/demo` and `parent:
-                            // guni-lev/lib/`
-                            insert_higher_path(&mut remappings, name, path, false);
-                            continue 'outer
-                        }
-                        if parent == dir_path {
-                            if !simplified {
-                                // handle trailing src,lib,contracts dir in cases like
-                                // `dir_path/@ens/contracts`
-                                let path = if first_parent { path } else { dir_path.to_path_buf() };
-                                insert_higher_path(
-                                    &mut remappings,
-                                    format!("{}/", root_name),
-                                    path,
-                                    false,
-                                );
-                                simplified = true;
+                    while let Some(parent) = current_path.parent() {
+                        if current_path.ends_with("contracts") {
+                            next_major_lib = current_path;
+                            if let Some(name) = parent.file_name().and_then(|s|s.to_str()) {
+                                next_major_name = name;
                             }
+                        }
+
+                        if parent == depth1_dir {
+                            let name = format!("{}/", next_major_name);
+                            let path = if first_parent { path } else { next_major_lib.to_path_buf() };
+
+                            insert_higher_path(
+                                &mut remappings,
+                                name,
+                                path,
+                                false,
+                            );
                             continue 'outer
                         }
+
+                        if is_dapptools_dir(current_path) {
+                            next_major_lib = current_path;
+                        }
+
                         first_parent = false;
-                        p = parent;
+                        current_path = parent;
                     }
                 }
             }
+
+            // add the remappings from the subdir to the overall set
+            remappings.into_iter().for_each(|(name, path)| {
+                insert_higher_path(&mut all_remappings, name, path, false)
+            });
         }
-        remappings
+        all_remappings
             .into_iter()
             .map(|(name, path)| Remapping { name, path: format!("{}/", path.display()) })
             .collect()
@@ -270,8 +284,9 @@ fn scan_children(root: &Path) -> HashMap<String, PathBuf> {
             }
         } else if entry.file_type().is_dir() {
             let path = entry.path();
-            // we skip `tests` and nested `node_modules`
+            // we skip common dirs that should not be included
             if !path.ends_with("tests") || !path.ends_with("node_modules") {
+                //|| !path.ends_with("demo") {
                 for (name, path) in scan_children(path) {
                     if let Entry::Vacant(e) = remappings.entry(name) {
                         e.insert(path);
@@ -281,6 +296,10 @@ fn scan_children(root: &Path) -> HashMap<String, PathBuf> {
         }
     }
     remappings
+}
+
+fn is_dapptools_dir(path: &Path) -> bool {
+    path.ends_with(DAPPTOOLS_CONTRACTS_DIR) || path.ends_with(DAPPTOOLS_LIB_DIR)
 }
 
 #[cfg(test)]
@@ -350,14 +369,26 @@ mod tests {
             "repo1/src/",
             "repo1/src/contract.sol",
             "repo1/lib/",
+            "repo1/lib/ds-test/src/",
+            "repo1/lib/ds-test/src/test.sol",
             "repo1/lib/ds-math/src/",
             "repo1/lib/ds-math/src/contract.sol",
             "repo1/lib/ds-math/lib/ds-test/src/",
             "repo1/lib/ds-math/lib/ds-test/src/test.sol",
-            "guni-lev/lib/ds-test/src/",
-            "guni-lev/lib/ds-test/src/test.sol",
-            "guni-lev/lib/ds-test/demo/",
-            "guni-lev/lib/ds-test/demo/demo.sol",
+            "repo1/lib/guni-lev/src",
+            "repo1/lib/guni-lev/src/contract.sol",
+            "repo1/lib/guni-lev/lib/ds-test/src/",
+            "repo1/lib/guni-lev/lib/ds-test/src/test.sol",
+            "repo1/lib/guni-lev/lib/ds-test/demo/",
+            "repo1/lib/guni-lev/lib/ds-test/demo/demo.sol",
+            "repo1/lib/solmate/src",
+            "repo1/lib/solmate/src/contract.sol",
+            "repo1/lib/solmate/lib/ds-test/src/",
+            "repo1/lib/solmate/lib/ds-test/src/test.sol",
+            "repo1/lib/solmate/lib/ds-test/demo/",
+            "repo1/lib/solmate/lib/ds-test/demo/demo.sol",
+            "repo1/lib/openzeppelin-contracts/contracts/access",
+            "repo1/lib/openzeppelin-contracts/contracts/access/AccessControl.sol",
         ];
         mkdir_or_touch(tmp_dir_path, &paths[..]);
 
@@ -376,17 +407,23 @@ mod tests {
             },
             Remapping {
                 name: "ds-test/".to_string(),
-                path: to_str(tmp_dir_path.join("guni-lev").join("lib").join("ds-test").join("src")),
+                path:to_str(tmp_dir_path.join("repo1").join("lib").join("ds-test").join("src")),
             },
             Remapping {
-                name: "demo/".to_string(),
-                path: to_str(
-                    tmp_dir_path.join("guni-lev").join("lib").join("ds-test").join("demo"),
-                ),
+                name: "guni-lev/".to_string(),
+                path: to_str(tmp_dir_path.join("repo1/lib/guni-lev").join("src")),
+            },
+            Remapping {
+                name: "solmate/".to_string(),
+                path: to_str(tmp_dir_path.join("repo1/lib/solmate").join("src")),
+            },
+            Remapping {
+                name: "openzeppelin-contracts/".to_string(),
+                path: to_str(tmp_dir_path.join("repo1/lib/openzeppelin-contracts").join("contracts")),
             },
         ];
         expected.sort_unstable();
-        assert_eq!(remappings, expected);
+        pretty_assertions::assert_eq!(remappings, expected);
     }
 
     #[test]
@@ -452,6 +489,13 @@ mod tests {
             },
         ];
         expected.sort_unstable();
-        assert_eq!(remappings, expected);
+        pretty_assertions::assert_eq!(remappings, expected);
+    }
+
+    #[test]
+    fn git_remappings() {
+        dbg!(Remapping::find_many(
+            "/Users/Matthias/git/rust/foundry/integration-tests/testdata/vaults/lib"
+        ));
     }
 }
