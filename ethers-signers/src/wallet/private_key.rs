@@ -121,8 +121,7 @@ use ethers_core::k256::SecretKey as K256SecretKey;
 
 impl From<K256SecretKey> for Wallet<SigningKey> {
     fn from(key: K256SecretKey) -> Self {
-        let signer = SigningKey::from_bytes(&*key.to_bytes())
-            .expect("private key should always be convertible to signing key");
+        let signer = key.into();
         let address = secret_key_to_address(&signer);
 
         Self { signer, address, chain_id: 1 }

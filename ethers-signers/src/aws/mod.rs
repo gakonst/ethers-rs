@@ -83,7 +83,7 @@ pub enum AwsSignerError {
     #[error("{0}")]
     K256(#[from] K256Error),
     #[error("{0}")]
-    Spki(spki::der::Error),
+    Spki(spki::Error),
     #[error("{0}")]
     Other(String),
     #[error(transparent)]
@@ -100,8 +100,8 @@ impl From<String> for AwsSignerError {
     }
 }
 
-impl From<spki::der::Error> for AwsSignerError {
-    fn from(e: spki::der::Error) -> Self {
+impl From<spki::Error> for AwsSignerError {
+    fn from(e: spki::Error) -> Self {
         Self::Spki(e)
     }
 }
