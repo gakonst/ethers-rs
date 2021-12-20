@@ -119,7 +119,7 @@ impl Remapping {
     /// `name: "repo1/", path: "repo1/src/"`
     ///
     /// Nested remappings need to be separated by `src`, `lib` or `contracts`, The remapping of
-    /// `repo1/lib/ds-math/src/contract.sol` is `name: "ds-match/", "repo1/lib/ds-math/src/"`
+    /// `repo1/lib/ds-math/src/contract.sol` is `name: "ds-math/", "repo1/lib/ds-math/src/"`
     ///
     /// Remapping detection is primarily designed for dapptool's rules for lib folders, however, we
     /// attempt to detect and optimize various folder structures commonly used in `node_modules`
@@ -135,12 +135,15 @@ impl Remapping {
     /// are unified into `@aave` by looking at their common ancestor, the root of this subdirectory
     /// (`@aave`)
     pub fn find_many(root: impl AsRef<Path>) -> Vec<Remapping> {
-        /// prioritize ("a", "1/2") over ("a", "1/2/3") or if a path ends with `src`
+        /// prioritize
+        ///   - ("a", "1/2") over ("a", "1/2/3")
+        ///   - if a path ends with `src`
         fn insert_prioritized(mappings: &mut HashMap<String, PathBuf>, key: String, path: PathBuf) {
             match mappings.entry(key) {
                 Entry::Occupied(mut e) => {
                     if e.get().components().count() > path.components().count() ||
-                        path.ends_with(DAPPTOOLS_CONTRACTS_DIR)
+                        (path.ends_with(DAPPTOOLS_CONTRACTS_DIR) &&
+                            !e.get().ends_with(DAPPTOOLS_CONTRACTS_DIR))
                     {
                         e.insert(path);
                     }
@@ -179,54 +182,7 @@ impl Remapping {
                     insert_prioritized(&mut all_remappings, name, path);
                 }
             }
-
-            // TODO based on length
-            //  find most common root with no lib/src paths
-
-            // 'outer: for (name, path) in scan_children(depth1_dir) {
-            //     // check for dapptools style mappings like `ds-test/` : `lib/ds-test/src`
-            //     if is_dapptools_dir(&path) {
-            //         insert_higher_path(&mut remappings, name, path, true);
-            //         continue
-            //     }
-            //
-            //     let mut current_path = path.as_path();
-            //     let mut next_major_lib = path.as_path();
-            //     let mut next_major_name = root_name;
-            //     let mut first_parent = true;
-            //     // traverse the path back to the current depth 1 root and check if it can be
-            //     // simplified
-            //     while let Some(parent) = current_path.parent() {
-            //         if current_path.ends_with("contracts") {
-            //             next_major_lib = current_path;
-            //             if let Some(name) = parent.file_name().and_then(|s| s.to_str()) {
-            //                 next_major_name = name;
-            //             }
-            //         }
-            //
-            //         if parent == depth1_dir {
-            //             let name = format!("{}/", next_major_name);
-            //             let path =
-            //                 if first_parent { path } else { next_major_lib.to_path_buf() };
-            //
-            //             insert_higher_path(&mut remappings, name, path, false);
-            //             continue 'outer
-            //         }
-            //
-            //         if is_dapptools_dir(current_path) {
-            //             next_major_lib = current_path;
-            //         }
-            //
-            //         first_parent = false;
-            //         current_path = parent;
-            //     }
-            // }
         }
-
-        // add the remappings from the subdir to the overall set
-        // remappings.into_iter().for_each(|(name, path)| {
-        //     insert_higher_path(&mut all_remappings, name, path, false)
-        // });
         all_remappings
             .into_iter()
             .map(|(name, path)| Remapping { name, path: format!("{}/", path.display()) })
@@ -253,7 +209,6 @@ fn scan_children(root: &Path) -> HashMap<String, PathBuf> {
         if entry.file_type().is_file() && !remapping {
             if entry.file_name().to_str().filter(|f| f.ends_with(".sol")).is_some() {
                 // found a solidity file
-
                 // this will hold the actual root remapping if root is named `src` or `lib`
                 let actual_parent = root.parent().filter(|_| {
                     root.ends_with(DAPPTOOLS_CONTRACTS_DIR) ||
@@ -263,15 +218,18 @@ fn scan_children(root: &Path) -> HashMap<String, PathBuf> {
 
                 let parent = actual_parent.unwrap_or(root);
                 if let Some(name) = parent.file_name().and_then(|f| f.to_str()) {
-                    remappings.insert(format!("{}/", name), root.to_path_buf());
+                    remappings.insert(name.to_string(), root.to_path_buf());
                     remapping = true;
                 }
             }
         } else if entry.file_type().is_dir() {
             let path = entry.path();
-            // we skip common dirs that should not be included
-            if !path.ends_with("tests") || !path.ends_with("node_modules") {
-                //|| !path.ends_with("demo") {
+            // we skip commonly used subdirs that should not be included
+            if !(path.ends_with("tests") ||
+                path.ends_with("test") ||
+                path.ends_with("node_modules") ||
+                path.ends_with("demo"))
+            {
                 for (name, path) in scan_children(path) {
                     if let Entry::Vacant(e) = remappings.entry(name) {
                         e.insert(path);
@@ -283,46 +241,85 @@ fn scan_children(root: &Path) -> HashMap<String, PathBuf> {
     remappings
 }
 
+/// Determine the remapping for a path based on the ancestor
 fn to_remapping(path: PathBuf, ancestor: &Path) -> Option<(String, PathBuf)> {
-    if let Ok(rem) = path.strip_prefix(ancestor) {
-        // strip dapptools style dirs, `lib/solmate/src` -> `solmate/src`
-        if let Ok((peek, barrier)) = rem
-            .strip_prefix("src")
-            .map(|p| (p, "src"))
-            .or_else(|_| rem.strip_prefix("lib").map(|p| (p, "lib")))
-        {
-            if let Some(c) = peek.components().next() {
-                let name = c.as_os_str().to_str()?;
-                // here we need to handle layouts that deviate from dapptools layout like `peek:
-                // openzeppelin-contracts/contracts/tokens/contract.sol` which really should just
-                // `openzeppelin-contracts`
-                if peek.ends_with(DAPPTOOLS_CONTRACTS_DIR) || peek.ends_with(DAPPTOOLS_LIB_DIR) {
+    let rem = path.strip_prefix(ancestor).ok()?;
+    // strip dapptools style dirs, `lib/solmate/src` -> `solmate/src`
+    if let Ok((peek, barrier)) = rem
+        .strip_prefix(DAPPTOOLS_CONTRACTS_DIR)
+        .map(|p| (p, DAPPTOOLS_CONTRACTS_DIR))
+        .or_else(|_| rem.strip_prefix("lib").map(|p| (p, "lib")))
+    {
+        // this is considered a dapptools style dir as it starts with `src`, `lib`
+        if let Some(c) = peek.components().next() {
+            let name = c.as_os_str().to_str()?;
+            // here we need to handle layouts that deviate from dapptools layout like `peek:
+            // openzeppelin-contracts/contracts/tokens/contract.sol` which really should just
+            // `openzeppelin-contracts`
+            if peek.ends_with(DAPPTOOLS_CONTRACTS_DIR) || peek.ends_with(DAPPTOOLS_LIB_DIR) {
+                Some((format!("{}/", name), path))
+            } else {
+                // simply cut off after the next barrier (src, lib, contracts)
+                let path = join_until_next_barrier(ancestor.join(barrier), peek);
+                if path.ends_with(JS_CONTRACTS_DIR) ||
+                    path.ends_with(DAPPTOOLS_CONTRACTS_DIR) ||
+                    path.ends_with(DAPPTOOLS_LIB_DIR)
+                {
                     Some((format!("{}/", name), path))
                 } else {
-                    // simply cut off after the next barrier (src, lib, contracts)
-                    let mut path = ancestor.join(barrier);
-                    for c in peek.components() {
-                        let s = c.as_os_str();
-                        path = path.join(s);
-                        if ["src", "lib", "contracts"]
-                            .contains(&c.as_os_str().to_string_lossy().as_ref())
-                        {
-                            break
-                        }
-                    }
-                    Some((format!("{}/", name), path))
+                    let name = ancestor.file_name()?.to_str()?;
+                    Some((format!("{}/", name), ancestor.join(barrier)))
                 }
-            } else {
-                let name = ancestor.file_name().and_then(|s| s.to_str())?;
-                Some((format!("{}/", name), path))
             }
         } else {
-            let name = ancestor.file_name().and_then(|s| s.to_str())?;
-            Some((format!("{}/", name), ancestor.to_path_buf()))
+            let name = ancestor.file_name()?.to_str()?;
+            Some((format!("{}/", name), path))
         }
     } else {
-        None
+        // this is likely a hardhat/node_modules dir, in which case we assume the following
+        // `@aave/tokens/contracts` -> `@aave`
+        // `@openzeppelin/contracts` -> `@openzeppelin/contracts`
+        if ancestor.ends_with(JS_CONTRACTS_DIR) {
+            // the common ancestor is a `contracts` dir, in which case we assume the name of the
+            // remapping should be the dir name before the first higher up barrier:
+            // `dep/{a,b}/contracts` -> `dep`
+            // while `dep/contracts` will still be `dep/contracts`
+            let mut adjusted_remapping_root = None;
+            let mut p = ancestor.parent()?;
+            while let Some(parent) = p.parent() {
+                let name = parent.file_name()?.to_str()?;
+                if [DAPPTOOLS_CONTRACTS_DIR, DAPPTOOLS_LIB_DIR, "node_modules"].contains(&name) {
+                    break
+                }
+                p = parent;
+                adjusted_remapping_root = Some(p);
+            }
+            let name = p.file_name()?.to_str()?;
+            Some((format!("{}/", name), adjusted_remapping_root.unwrap_or(ancestor).to_path_buf()))
+        } else {
+            let name = ancestor.file_name()?.to_str()?;
+            if rem.starts_with(JS_CONTRACTS_DIR) {
+                Some((format!("{}/", name), ancestor.join(JS_CONTRACTS_DIR)))
+            } else {
+                Some((format!("{}/", name), ancestor.to_path_buf()))
+            }
+        }
     }
+}
+
+/// join the `base` path and all components of the `rem` path until a component is a barrier (src,
+/// lib, contracts)
+fn join_until_next_barrier(mut base: PathBuf, rem: &Path) -> PathBuf {
+    for c in rem.components() {
+        let s = c.as_os_str();
+        base = base.join(s);
+        if [DAPPTOOLS_CONTRACTS_DIR, DAPPTOOLS_LIB_DIR, JS_CONTRACTS_DIR]
+            .contains(&c.as_os_str().to_string_lossy().as_ref())
+        {
+            break
+        }
+    }
+    base
 }
 
 #[cfg(test)]
@@ -404,8 +401,10 @@ mod tests {
             "repo1/lib/guni-lev/lib/ds-test/src/test.sol",
             "repo1/lib/guni-lev/lib/ds-test/demo/",
             "repo1/lib/guni-lev/lib/ds-test/demo/demo.sol",
-            "repo1/lib/solmate/src",
-            "repo1/lib/solmate/src/contract.sol",
+            "repo1/lib/solmate/src/auth",
+            "repo1/lib/solmate/src/auth/contract.sol",
+            "repo1/lib/solmate/src/tokens",
+            "repo1/lib/solmate/src/tokens/contract.sol",
             "repo1/lib/solmate/lib/ds-test/src/",
             "repo1/lib/solmate/lib/ds-test/src/test.sol",
             "repo1/lib/solmate/lib/ds-test/demo/",
@@ -451,9 +450,10 @@ mod tests {
 
     #[test]
     fn remappings2() {
-        let tmp_dir = tempdir::TempDir::new("lib").unwrap();
-        let repo1 = tmp_dir.path().join("src_repo");
-        let repo2 = tmp_dir.path().join("contracts_repo");
+        let tmp_dir = tempdir::TempDir::new("tmp").unwrap();
+        let tmp_dir_path = tmp_dir.path().join("lib");
+        let repo1 = tmp_dir_path.join("src_repo");
+        let repo2 = tmp_dir_path.join("contracts_repo");
 
         let dir1 = repo1.join("src");
         std::fs::create_dir_all(&dir1).unwrap();
@@ -467,7 +467,7 @@ mod tests {
         let contract2 = dir2.join("contract.sol");
         touch(&contract2).unwrap();
 
-        let path = tmp_dir.path().display().to_string();
+        let path = tmp_dir_path.display().to_string();
         let mut remappings = Remapping::find_many(&path);
         remappings.sort_unstable();
         let mut expected = vec![
@@ -477,7 +477,10 @@ mod tests {
             },
             Remapping {
                 name: "contracts_repo/".to_string(),
-                path: format!("{}/", repo2.into_os_string().into_string().unwrap()),
+                path: format!(
+                    "{}/",
+                    repo2.join("contracts").into_os_string().into_string().unwrap()
+                ),
             },
         ];
         expected.sort_unstable();
@@ -497,6 +500,17 @@ mod tests {
             "node_modules/@aave/protocol-v2/contracts/protocol/lendingpool/LendingPool.sol",
             "node_modules/@ensdomains/ens/contracts/",
             "node_modules/@ensdomains/ens/contracts/contract.sol",
+            "node_modules/prettier-plugin-solidity/tests/format/ModifierDefinitions/",
+            "node_modules/prettier-plugin-solidity/tests/format/ModifierDefinitions/
+            ModifierDefinitions.sol",
+            "node_modules/@openzeppelin/contracts/tokens",
+            "node_modules/@openzeppelin/contracts/tokens/contract.sol",
+            "node_modules/@openzeppelin/contracts/access",
+            "node_modules/@openzeppelin/contracts/access/contract.sol",
+            "node_modules/eth-gas-reporter/mock/contracts",
+            "node_modules/eth-gas-reporter/mock/contracts/ConvertLib.sol",
+            "node_modules/eth-gas-reporter/mock/test/",
+            "node_modules/eth-gas-reporter/mock/test/TestMetacoin.sol",
         ];
         mkdir_or_touch(tmp_dir.path(), &paths[..]);
         let mut remappings = Remapping::find_many(&tmp_dir_node_modules);
@@ -510,6 +524,14 @@ mod tests {
                 name: "@ensdomains/".to_string(),
                 path: to_str(tmp_dir_node_modules.join("@ensdomains")),
             },
+            Remapping {
+                name: "@openzeppelin/".to_string(),
+                path: to_str(tmp_dir_node_modules.join("@openzeppelin/contracts")),
+            },
+            Remapping {
+                name: "eth-gas-reporter/".to_string(),
+                path: to_str(tmp_dir_node_modules.join("eth-gas-reporter")),
+            },
         ];
         expected.sort_unstable();
         pretty_assertions::assert_eq!(remappings, expected);
@@ -518,7 +540,7 @@ mod tests {
     #[test]
     fn git_remappings() {
         dbg!(Remapping::find_many(
-            "/Users/Matthias/git/rust/foundry/integration-tests/testdata/vaults/lib"
+            "/Users/Matthias/git/rust/foundry-integration-tests/testdata/vaults/lib"
         ));
     }
 }
