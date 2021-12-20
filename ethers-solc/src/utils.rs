@@ -151,7 +151,6 @@ pub fn library_hash(name: impl AsRef<[u8]>) -> [u8; 17] {
     output
 }
 
-
 /// Find the common ancestor, if any, between the given paths
 ///
 /// # Example
@@ -169,27 +168,17 @@ pub fn library_hash(name: impl AsRef<[u8]>) -> [u8; 17] {
 /// # }
 /// ```
 pub fn common_ancestor_all<I, P>(paths: I) -> Option<PathBuf>
-    where
-        I: IntoIterator<Item = P>,
-        P: AsRef<Path>,
-{
-    common_ancestor_all_skip(paths, |_| false)
-}
-
-/// Find the common ancestor, if any, between the given paths while ignoreing certain components
-pub fn common_ancestor_all_skip<I, P, F>(paths: I, skip: F ) -> Option<PathBuf>
-    where
-        I: IntoIterator<Item = P>,
-        P: AsRef<Path>,
-        F: Fn(&Component) -> bool
+where
+    I: IntoIterator<Item = P>,
+    P: AsRef<Path>,
 {
     let mut iter = paths.into_iter();
     let mut ret = iter.next()?.as_ref().to_path_buf();
     for path in iter {
-        if let Some(r) = common_ancestor_skip(ret, path.as_ref(), |c| (skip)(c)) {
+        if let Some(r) = common_ancestor(ret, path.as_ref()) {
             ret = r;
         } else {
-            return None;
+            return None
         }
     }
     Some(ret)
@@ -211,21 +200,16 @@ pub fn common_ancestor_all_skip<I, P, F>(paths: I, skip: F ) -> Option<PathBuf>
 /// # }
 /// ```
 pub fn common_ancestor(a: impl AsRef<Path>, b: impl AsRef<Path>) -> Option<PathBuf> {
-    common_ancestor_skip(a,b, |_| false)
-}
-
-/// Finds the common ancestor of the paths, while ignoring certain components
-pub fn common_ancestor_skip(a: impl AsRef<Path>, b: impl AsRef<Path>, skip: impl Fn(&Component) -> bool) -> Option<PathBuf> {
     let a = a.as_ref().components();
     let b = b.as_ref().components();
     let mut ret = PathBuf::new();
     let mut found = false;
     for (c1, c2) in a.zip(b) {
-        if  c1 == c2 || (skip)(&c1) || (skip)(&c2) {
+        if c1 == c2 {
             ret.push(c1);
             found = true;
         } else {
-            break;
+            break
         }
     }
     if found {
@@ -319,27 +303,11 @@ pragma solidity ^0.8.0;
 
     #[test]
     fn can_find_all_ancestor() {
-            let a = Path::new("/foo/bar/foo/example.txt");
-            let b = Path::new("/foo/bar/foo/test.txt");
-            let c = Path::new("/foo/bar/bar/foo/bar");
-            let expected = Path::new("/foo/bar");
-            let paths = vec![a, b, c];
-            assert_eq!(common_ancestor_all(paths).unwrap(), expected.to_path_buf())
+        let a = Path::new("/foo/bar/foo/example.txt");
+        let b = Path::new("/foo/bar/foo/test.txt");
+        let c = Path::new("/foo/bar/bar/foo/bar");
+        let expected = Path::new("/foo/bar");
+        let paths = vec![a, b, c];
+        assert_eq!(common_ancestor_all(paths).unwrap(), expected.to_path_buf())
     }
-
-    #[test]
-    fn can_find_dapptools_ancestor() {
-        let paths = [
-            "lib/solmate/src",
-            "lib/solmate/src/contract.sol",
-            "lib/solmate/lib/ds-test/src/",
-            "lib/solmate/lib/ds-test/src/test.sol",
-            "lib/solmate/lib/ds-test/demo/",
-            "lib/solmate/lib/ds-test/demo/demo.sol",
-        ].iter().map(|p|Path::new(p).to_path_buf()).collect::<Vec<_>>();
-
-        dbg!(common_ancestor_all(paths));
-
-    }
-
 }
