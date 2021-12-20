@@ -180,7 +180,7 @@ impl<W: Wordlist> MnemonicBuilder<W> {
     ) -> Result<Wallet<SigningKey>, WalletError> {
         let derived_priv_key =
             mnemonic.derive_key(&self.derivation_path, self.password.as_deref())?;
-        let key: &SigningKey = derived_priv_key.as_ref();
+        let key: &coins_bip32::prelude::SigningKey = derived_priv_key.as_ref();
         let signer = SigningKey::from_bytes(&key.to_bytes())?;
         let address = secret_key_to_address(&signer);
 

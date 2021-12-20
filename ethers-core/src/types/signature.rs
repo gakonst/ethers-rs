@@ -9,14 +9,14 @@ use std::{convert::TryFrom, fmt, str::FromStr};
 
 use thiserror::Error;
 
-use elliptic_curve::consts::U32;
+use elliptic_curve::{consts::U32, sec1::ToEncodedPoint};
 use generic_array::GenericArray;
 use k256::{
     ecdsa::{
         recoverable::{Id as RecoveryId, Signature as RecoverableSignature},
         Error as K256SignatureError, Signature as K256Signature,
     },
-    EncodedPoint as K256PublicKey,
+    PublicKey as K256PublicKey,
 };
 
 /// An error involving a signature.
@@ -105,15 +105,12 @@ impl Signature {
         let verify_key =
             recoverable_sig.recover_verify_key_from_digest_bytes(message_hash.as_ref().into())?;
 
-        let uncompressed_pub_key = K256PublicKey::from(&verify_key).decompress();
-        if let Some(public_key) = uncompressed_pub_key {
-            let public_key = public_key.to_bytes();
-            debug_assert_eq!(public_key[0], 0x04);
-            let hash = crate::utils::keccak256(&public_key[1..]);
-            Ok(Address::from_slice(&hash[12..]))
-        } else {
-            Err(SignatureError::RecoveryError)
-        }
+        let public_key = K256PublicKey::from(&verify_key);
+        let public_key = public_key.to_encoded_point(/* compress = */ false);
+        let public_key = public_key.as_bytes();
+        debug_assert_eq!(public_key[0], 0x04);
+        let hash = crate::utils::keccak256(&public_key[1..]);
+        Ok(Address::from_slice(&hash[12..]))
     }
 
     /// Retrieves the recovery signature.
