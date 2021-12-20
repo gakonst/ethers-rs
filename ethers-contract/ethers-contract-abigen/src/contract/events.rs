@@ -61,13 +61,15 @@ impl Context {
             .map(|e| expand_struct_name(e, self.event_aliases.get(&e.abi_signature()).cloned()))
             .collect::<Vec<_>>();
 
-        let enum_name = self.expand_event_enum_name();
-
         let ethers_core = ethers_core_crate();
         let ethers_contract = ethers_contract_crate();
 
+        // use the same derives as for events
+        let derives = util::expand_derives(&self.event_derives);
+        let enum_name = self.expand_event_enum_name();
+
         quote! {
-            #[derive(Debug, Clone, PartialEq, Eq, #ethers_contract::EthAbiType)]
+            #[derive(Debug, Clone, PartialEq, Eq, #ethers_contract::EthAbiType, #derives)]
             pub enum #enum_name {
                 #(#variants(#variants)),*
             }
