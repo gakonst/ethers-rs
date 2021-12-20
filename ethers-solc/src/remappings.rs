@@ -252,14 +252,14 @@ fn to_remapping(path: PathBuf, ancestor: &Path) -> Option<(String, PathBuf)> {
     {
         // this is considered a dapptools style dir as it starts with `src`, `lib`
         if let Some(c) = peek.components().next() {
-            let name = c.as_os_str().to_str()?;
             // here we need to handle layouts that deviate from dapptools layout like `peek:
             // openzeppelin-contracts/contracts/tokens/contract.sol` which really should just
             // `openzeppelin-contracts`
             if peek.ends_with(DAPPTOOLS_CONTRACTS_DIR) || peek.ends_with(DAPPTOOLS_LIB_DIR) {
-                Some((format!("{}/", name), path))
+                last_valid_mapping(&path)
             } else {
                 // simply cut off after the next barrier (src, lib, contracts)
+                let name = c.as_os_str().to_str()?;
                 let path = join_until_next_barrier(ancestor.join(barrier), peek);
                 if path.ends_with(JS_CONTRACTS_DIR) ||
                     path.ends_with(DAPPTOOLS_CONTRACTS_DIR) ||
@@ -280,22 +280,7 @@ fn to_remapping(path: PathBuf, ancestor: &Path) -> Option<(String, PathBuf)> {
         // `@aave/tokens/contracts` -> `@aave`
         // `@openzeppelin/contracts` -> `@openzeppelin/contracts`
         if ancestor.ends_with(JS_CONTRACTS_DIR) {
-            // the common ancestor is a `contracts` dir, in which case we assume the name of the
-            // remapping should be the dir name before the first higher up barrier:
-            // `dep/{a,b}/contracts` -> `dep`
-            // while `dep/contracts` will still be `dep/contracts`
-            let mut adjusted_remapping_root = None;
-            let mut p = ancestor.parent()?;
-            while let Some(parent) = p.parent() {
-                let name = parent.file_name()?.to_str()?;
-                if [DAPPTOOLS_CONTRACTS_DIR, DAPPTOOLS_LIB_DIR, "node_modules"].contains(&name) {
-                    break
-                }
-                p = parent;
-                adjusted_remapping_root = Some(p);
-            }
-            let name = p.file_name()?.to_str()?;
-            Some((format!("{}/", name), adjusted_remapping_root.unwrap_or(ancestor).to_path_buf()))
+            last_valid_mapping(ancestor)
         } else {
             let name = ancestor.file_name()?.to_str()?;
             if rem.starts_with(JS_CONTRACTS_DIR) {
@@ -305,6 +290,25 @@ fn to_remapping(path: PathBuf, ancestor: &Path) -> Option<(String, PathBuf)> {
             }
         }
     }
+}
+
+// the common ancestor is a `contracts` dir, in which case we assume the name of the
+// remapping should be the dir name before the first higher up barrier:
+// `dep/{a,b}/contracts` -> `dep`
+// while `dep/contracts` will still be `dep/contracts`
+fn last_valid_mapping(ancestor: &Path) -> Option<(String, PathBuf)> {
+    let mut adjusted_remapping_root = None;
+    let mut p = ancestor.parent()?;
+    while let Some(parent) = p.parent() {
+        let name = parent.file_name()?.to_str()?;
+        if [DAPPTOOLS_CONTRACTS_DIR, DAPPTOOLS_LIB_DIR, "node_modules"].contains(&name) {
+            break
+        }
+        p = parent;
+        adjusted_remapping_root = Some(p);
+    }
+    let name = p.file_name()?.to_str()?;
+    Some((format!("{}/", name), adjusted_remapping_root.unwrap_or(ancestor).to_path_buf()))
 }
 
 /// join the `base` path and all components of the `rem` path until a component is a barrier (src,
@@ -411,6 +415,10 @@ mod tests {
             "repo1/lib/solmate/lib/ds-test/demo/demo.sol",
             "repo1/lib/openzeppelin-contracts/contracts/access",
             "repo1/lib/openzeppelin-contracts/contracts/access/AccessControl.sol",
+            "repo1/lib/ds-token/lib/ds-stop/src",
+            "repo1/lib/ds-token/lib/ds-stop/src/contract.sol",
+            "repo1/lib/ds-token/lib/ds-stop/lib/ds-note/src",
+            "repo1/lib/ds-token/lib/ds-stop/lib/ds-note/src/contract.sol",
         ];
         mkdir_or_touch(tmp_dir_path, &paths[..]);
 
@@ -442,6 +450,14 @@ mod tests {
             Remapping {
                 name: "openzeppelin-contracts/".to_string(),
                 path: to_str(tmp_dir_path.join("repo1/lib/openzeppelin-contracts/contracts")),
+            },
+            Remapping {
+                name: "ds-stop/".to_string(),
+                path: to_str(tmp_dir_path.join("repo1/lib/ds-token/lib/ds-stop/src")),
+            },
+            Remapping {
+                name: "ds-note/".to_string(),
+                path: to_str(tmp_dir_path.join("repo1/lib/ds-token/lib/ds-stop/lib/ds-note/src")),
             },
         ];
         expected.sort_unstable();
@@ -540,7 +556,7 @@ mod tests {
     #[test]
     fn git_remappings() {
         dbg!(Remapping::find_many(
-            "/Users/Matthias/git/rust/foundry-integration-tests/testdata/vaults/lib"
+            "/Users/Matthias/git/rust/foundry-integration-tests/testdata/geb/lib"
         ));
     }
 }
