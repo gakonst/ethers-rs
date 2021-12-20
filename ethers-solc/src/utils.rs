@@ -151,6 +151,74 @@ pub fn library_hash(name: impl AsRef<[u8]>) -> [u8; 17] {
     output
 }
 
+/// Find the common ancestor, if any, between the given paths
+///
+/// # Example
+///
+/// ```rust
+/// use std::path::{PathBuf, Path};
+///
+/// # fn main() {
+/// use ethers_solc::utils::common_ancestor_all;
+/// let baz = Path::new("/foo/bar/baz");
+/// let bar = Path::new("/foo/bar/bar");
+/// let foo = Path::new("/foo/bar/foo");
+/// let common = common_ancestor_all(vec![baz, bar, foo]).unwrap();
+/// assert_eq!(common, Path::new("/foo/bar").to_path_buf());
+/// # }
+/// ```
+pub fn common_ancestor_all<I, P>(paths: I) -> Option<PathBuf>
+where
+    I: IntoIterator<Item = P>,
+    P: AsRef<Path>,
+{
+    let mut iter = paths.into_iter();
+    let mut ret = iter.next()?.as_ref().to_path_buf();
+    for path in iter {
+        if let Some(r) = common_ancestor(ret, path.as_ref()) {
+            ret = r;
+        } else {
+            return None
+        }
+    }
+    Some(ret)
+}
+
+/// Finds the common ancestor of both paths
+///
+/// # Example
+///
+/// ```rust
+/// use std::path::{PathBuf, Path};
+///
+/// # fn main() {
+/// use ethers_solc::utils::common_ancestor;
+/// let foo = Path::new("/foo/bar/foo");
+/// let bar = Path::new("/foo/bar/bar");
+/// let ancestor = common_ancestor(foo, bar).unwrap();
+/// assert_eq!(ancestor, Path::new("/foo/bar").to_path_buf());
+/// # }
+/// ```
+pub fn common_ancestor(a: impl AsRef<Path>, b: impl AsRef<Path>) -> Option<PathBuf> {
+    let a = a.as_ref().components();
+    let b = b.as_ref().components();
+    let mut ret = PathBuf::new();
+    let mut found = false;
+    for (c1, c2) in a.zip(b) {
+        if c1 == c2 {
+            ret.push(c1);
+            found = true;
+        } else {
+            break
+        }
+    }
+    if found {
+        Some(ret)
+    } else {
+        None
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -216,5 +284,30 @@ import { T } from '../Test2.sol';
 pragma solidity ^0.8.0;
 "##;
         assert_eq!(Some("^0.8.0"), find_version_pragma(s));
+    }
+
+    #[test]
+    fn can_find_ancestor() {
+        let a = Path::new("/foo/bar/bar/test.txt");
+        let b = Path::new("/foo/bar/foo/example/constract.sol");
+        let expected = Path::new("/foo/bar");
+        assert_eq!(common_ancestor(&a, &b).unwrap(), expected.to_path_buf())
+    }
+
+    #[test]
+    fn no_common_ancestor_path() {
+        let a = Path::new("/foo/bar");
+        let b = Path::new("./bar/foo");
+        assert!(common_ancestor(a, b).is_none());
+    }
+
+    #[test]
+    fn can_find_all_ancestor() {
+        let a = Path::new("/foo/bar/foo/example.txt");
+        let b = Path::new("/foo/bar/foo/test.txt");
+        let c = Path::new("/foo/bar/bar/foo/bar");
+        let expected = Path::new("/foo/bar");
+        let paths = vec![a, b, c];
+        assert_eq!(common_ancestor_all(paths).unwrap(), expected.to_path_buf())
     }
 }
