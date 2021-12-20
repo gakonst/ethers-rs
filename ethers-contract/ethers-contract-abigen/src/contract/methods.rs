@@ -105,11 +105,14 @@ impl Context {
         let ethers_core = ethers_core_crate();
         let ethers_contract = ethers_contract_crate();
 
+        // use the same derives as for events
+        let derives = util::expand_derives(&self.event_derives);
         let enum_name = self.expand_calls_enum_name();
+
         Ok(quote! {
             #struct_def_tokens
 
-           #[derive(Debug, Clone, PartialEq, Eq, #ethers_contract::EthAbiType)]
+           #[derive(Debug, Clone, PartialEq, Eq, #ethers_contract::EthAbiType, #derives)]
             pub enum #enum_name {
                 #(#variant_names(#struct_names)),*
             }
