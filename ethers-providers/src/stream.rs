@@ -162,7 +162,7 @@ impl From<GetTransactionError> for ProviderError {
     }
 }
 
-type TransactionFut<'a> = Pin<Box<dyn Future<Output = TransactionResult> + 'a>>;
+type TransactionFut<'a> = Pin<Box<dyn Future<Output = TransactionResult> + Send + 'a>>;
 
 type TransactionResult = Result<Transaction, GetTransactionError>;
 
