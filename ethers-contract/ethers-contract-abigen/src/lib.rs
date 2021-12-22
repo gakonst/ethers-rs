@@ -209,6 +209,9 @@ impl ContractBindings {
 ///   * The generated code is more usable in an IDE
 ///   * CI will fail if the generated code is out of date (if `abigen!` or the contract's ABI itself
 ///     changed)
+///
+/// See `MultiAbigen::ensure_consistent_bindings` for the recommended way to set this up to generate
+/// the bindings once via a test and then use the test to ensure consistency.
 #[derive(Debug, Clone)]
 pub struct MultiAbigen {
     /// whether to write all contracts in a single file instead of separated modules
