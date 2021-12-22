@@ -23,6 +23,8 @@
 
 ## ethers-contract-abigen
 
+- Add `MultiAbigen` to generate a series of contract bindings that can be kept in the repo
+  [#724](https://github.com/gakonst/ethers-rs/pull/724).
 - Add provided `event_derives` to call and event enums as well
   [#721](https://github.com/gakonst/ethers-rs/pull/721).
 - Implement snowtrace and polygonscan on par with the etherscan integration
