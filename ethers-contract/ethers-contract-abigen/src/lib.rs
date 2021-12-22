@@ -300,7 +300,7 @@ impl MultiAbigen {
     /// ...
     /// ```
     ///
-    /// and write them the `./src/contracts` location as
+    /// and write them to the `./src/contracts` location as
     ///
     /// ```text
     /// src/contracts
