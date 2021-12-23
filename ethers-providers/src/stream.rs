@@ -162,6 +162,9 @@ impl From<GetTransactionError> for ProviderError {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
+type TransactionFut<'a> = Pin<Box<dyn Future<Output = TransactionResult> + Send + 'a>>;
+#[cfg(target_arch = "wasm32")]
 type TransactionFut<'a> = Pin<Box<dyn Future<Output = TransactionResult> + 'a>>;
 
 type TransactionResult = Result<Transaction, GetTransactionError>;
