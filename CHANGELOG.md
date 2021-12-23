@@ -119,6 +119,8 @@
 
 ### Unreleased
 
+- Add `EventStream::select` to combine streams with different event types
+  [#725](https://github.com/gakonst/ethers-rs/pull/725)
 - Substitute output tuples with rust struct types for function calls
   [#664](https://github.com/gakonst/ethers-rs/pull/664)
 - Add AbiType implementation during EthAbiType expansion
