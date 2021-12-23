@@ -335,6 +335,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
                     paths.extend(map);
 
                     let input = CompilerInput::with_sources(sources)
+                        .settings(self.solc_config.settings.clone())
                         .normalize_evm_version(&solc.version()?)
                         .with_remappings(self.paths.remappings.clone());
 
@@ -397,7 +398,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         let sources = paths.set_source_names(sources);
 
         let input = CompilerInput::with_sources(sources)
-            .evm_version(self.solc_config.settings.evm_version.unwrap_or_default())
+            .settings(self.solc_config.settings.clone())
             .normalize_evm_version(&solc.version()?)
             .with_remappings(self.paths.remappings.clone());
 

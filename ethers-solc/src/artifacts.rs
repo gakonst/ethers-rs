@@ -39,6 +39,13 @@ impl CompilerInput {
         Self { language: "Solidity".to_string(), sources, settings: Default::default() }
     }
 
+    /// Sets the settings for compilation
+    #[must_use]
+    pub fn settings(mut self, settings: Settings) -> Self {
+        self.settings = settings;
+        self
+    }
+
     /// Sets the EVM version for compilation
     #[must_use]
     pub fn evm_version(mut self, version: EvmVersion) -> Self {
