@@ -38,3 +38,6 @@ rustdoc-args = ["--cfg", "docsrs"]
 default = ["reqwest", "rustls"]
 openssl = ["reqwest/native-tls"]
 rustls = ["reqwest/rustls-tls"]
+
+[dev-dependencies]
+tempfile = "3.2.0"
