@@ -169,10 +169,6 @@ impl Remapping {
         {
             let depth1_dir = dir.path();
 
-            // if !depth1_dir.starts_with("/Users/Matthias/Downloads/lib/standards/") {
-            //     continue;
-            // }
-
             // check all remappings in this depth 1 folder
             let candidates = find_remapping_candidates(depth1_dir, depth1_dir, 0);
 
@@ -232,6 +228,7 @@ fn find_remapping_candidates(
 
     // scan all entries in the current dir
     for entry in walkdir::WalkDir::new(current_dir)
+        .follow_links(true)
         .min_depth(1)
         .max_depth(1)
         .into_iter()
@@ -271,7 +268,6 @@ fn find_remapping_candidates(
 
     // need to find the actual next window in the event `open` is a lib dir
     let window_start = next_nested_window(open, current_dir);
-
     // finally, we need to merge, adjust candidates from the same level and opening window
     if is_candidate ||
         candidates
@@ -620,11 +616,6 @@ mod tests {
         ];
         expected.sort_unstable();
         pretty_assertions::assert_eq!(remappings, expected);
-    }
-
-    #[test]
-    fn find_candidates() {
-        dbg!(Remapping::find_many("/Users/Matthias/git/rust/foundry-integration-tests/testdata/jolly-roger/contracts/node_modules"));
     }
 
     #[test]
