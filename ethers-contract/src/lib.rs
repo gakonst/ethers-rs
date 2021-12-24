@@ -31,7 +31,7 @@ pub mod builders {
 
 #[cfg(any(test, feature = "abigen"))]
 #[cfg_attr(docsrs, doc(cfg(feature = "abigen")))]
-pub use ethers_contract_abigen::Abigen;
+pub use ethers_contract_abigen::{Abigen, MultiAbigen};
 
 #[cfg(any(test, feature = "abigen"))]
 #[cfg_attr(docsrs, doc(cfg(feature = "abigen")))]
