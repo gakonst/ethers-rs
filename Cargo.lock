@@ -1111,6 +1111,7 @@ dependencies = [
  "syn",
  "tempfile",
  "url",
+ "walkdir",
 ]
 
 [[package]]

@@ -266,12 +266,9 @@ impl MultiAbigen {
     /// ```
     pub fn from_json_files(dir: impl AsRef<Path>) -> Result<Self> {
         let mut abis = Vec::new();
-        for file in fs::read_dir(dir)?.into_iter().filter_map(std::io::Result::ok).filter(|p| {
-            p.path().is_file() && p.path().extension().and_then(|ext| ext.to_str()) == Some("json")
-        }) {
-            let file: fs::DirEntry = file;
-            if let Some(file_name) = file.path().file_stem().and_then(|s| s.to_str()) {
-                let content = fs::read_to_string(file.path())?;
+        for file in util::json_files(dir) {
+            if let Some(file_name) = file.file_stem().and_then(|s| s.to_str()) {
+                let content = fs::read_to_string(&file)?;
                 abis.push((file_name.to_string(), content));
             }
         }
