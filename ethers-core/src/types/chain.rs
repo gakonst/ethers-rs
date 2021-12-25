@@ -18,6 +18,8 @@ pub enum Chain {
     Moonbeam,
     MoonbeamDev,
     Moonriver,
+    Optimism,
+    OptimismKovan,
 }
 
 impl fmt::Display for Chain {
@@ -43,6 +45,8 @@ impl From<Chain> for u32 {
             Chain::Moonbeam => 1287,
             Chain::MoonbeamDev => 1281,
             Chain::Moonriver => 1285,
+            Chain::Optimism => 10,
+            Chain::OptimismKovan => 69,
         }
     }
 }
