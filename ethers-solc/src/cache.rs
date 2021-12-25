@@ -66,8 +66,8 @@ impl SolFilesCache {
         tracing::trace!("reading solfiles cache at {}", path.display());
         let file = fs::File::open(path).map_err(|err| SolcError::io(err, path))?;
         let file = std::io::BufReader::new(file);
-        let cache = serde_json::from_reader(file)?;
-        tracing::trace!("done");
+        let cache: Self = serde_json::from_reader(file)?;
+        tracing::trace!("read cache \"{}\" with {} entries", cache.format, cache.files.len());
         Ok(cache)
     }
 
@@ -75,17 +75,19 @@ impl SolFilesCache {
     pub fn write(&self, path: impl AsRef<Path>) -> Result<()> {
         let path = path.as_ref();
         let file = fs::File::create(path).map_err(|err| SolcError::io(err, path))?;
-        tracing::trace!("writing cache to json file");
+        tracing::trace!("writing cache to json file: \"{}\"", path.display());
         serde_json::to_writer_pretty(file, self)?;
-        tracing::trace!("cache file located: {}", path.display());
+        tracing::trace!("cache file located: \"{}\"", path.display());
         Ok(())
     }
 
     pub fn remove_missing_files(&mut self) {
+        tracing::trace!("remove non existing files from cache");
         self.files.retain(|file, _| Path::new(file).exists())
     }
 
     pub fn remove_changed_files(&mut self, changed_files: &Sources) {
+        tracing::trace!("remove changed files from cache");
         self.files.retain(|file, _| !changed_files.contains_key(file))
     }
 
@@ -157,16 +159,30 @@ impl SolFilesCache {
     ) -> bool {
         if let Some(entry) = self.files.get(file) {
             if entry.content_hash.as_bytes() != hash {
+                tracing::trace!("changed content hash for cached artifact \"{}\"", file.display());
                 return true
             }
             if let Some(config) = config {
                 if config != &entry.solc_config {
+                    tracing::trace!(
+                        "changed solc config for cached artifact \"{}\"",
+                        file.display()
+                    );
                     return true
                 }
             }
 
-            entry.artifacts.iter().any(|name| !T::output_exists(file, name, artifacts_root))
+            let missing_artifacts =
+                entry.artifacts.iter().any(|name| !T::output_exists(file, name, artifacts_root));
+            if missing_artifacts {
+                tracing::trace!(
+                    "missing linked artifacts for cached artifact \"{}\"",
+                    file.display()
+                );
+            }
+            missing_artifacts
         } else {
+            tracing::trace!("missing cached artifact for \"{}\"", file.display());
             true
         }
     }

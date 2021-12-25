@@ -74,6 +74,7 @@ pub fn is_local_source_name(libs: &[impl AsRef<Path>], source: impl AsRef<Path>)
 
 /// Returns the path to the library if the source path is in fact determined to be a library path,
 /// and it exists.
+/// Note: this does not handle relative imports or remappings.
 pub fn resolve_library(libs: &[impl AsRef<Path>], source: impl AsRef<Path>) -> Option<PathBuf> {
     let source = source.as_ref();
     let comp = source.components().next()?;
