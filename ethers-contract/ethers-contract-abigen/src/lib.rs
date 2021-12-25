@@ -247,7 +247,7 @@ impl MultiAbigen {
         Ok(Self::from_abigen(abis))
     }
 
-    /// Reads all json files contained in the given `dir` and use the file name for the name of the
+    /// Reads all json files contained under the given `dir` and use the file name for the name of the
     /// `ContractBindings`.
     /// This is equivalent to calling `MultiAbigen::new` with all the json files and their filename.
     ///
@@ -255,7 +255,8 @@ impl MultiAbigen {
     ///
     /// ```text
     /// abi
-    /// ├── ERC20.json
+    /// ├── ERC20.sol
+    ///     ├── ERC20.json
     /// ├── Contract1.json
     /// ├── Contract2.json
     /// ...
