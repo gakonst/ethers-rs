@@ -9,6 +9,7 @@ use std::{
 const DAPPTOOLS_CONTRACTS_DIR: &str = "src";
 const DAPPTOOLS_LIB_DIR: &str = "lib";
 const JS_CONTRACTS_DIR: &str = "contracts";
+const JS_LIB_DIR: &str = "node_modules";
 
 /// The solidity compiler can only reference files that exist locally on your computer.
 /// So importing directly from GitHub (as an example) is not possible.
@@ -169,20 +170,19 @@ impl Remapping {
             let depth1_dir = dir.path();
 
             // check all remappings in this depth 1 folder
-            let children = scan_children(depth1_dir);
+            let candidates = find_remapping_candidates(depth1_dir, depth1_dir, 0);
 
-            let ancestor = if children.len() > 1 {
-                crate::utils::common_ancestor_all(children.values()).unwrap()
-            } else {
-                depth1_dir.to_path_buf()
-            };
-
-            for path in children.into_values() {
-                if let Some((name, path)) = to_remapping(path, &ancestor) {
-                    insert_prioritized(&mut all_remappings, name, path);
+            for candidate in candidates {
+                if let Some(name) = candidate.window_start.file_name().and_then(|s| s.to_str()) {
+                    insert_prioritized(
+                        &mut all_remappings,
+                        format!("{}/", name),
+                        candidate.source_dir,
+                    );
                 }
             }
         }
+
         all_remappings
             .into_iter()
             .map(|(name, path)| Remapping { name, path: format!("{}/", path.display()) })
@@ -190,140 +190,167 @@ impl Remapping {
     }
 }
 
-/// Recursively scans sub folders and checks if they contain a solidity file
-fn scan_children(root: &Path) -> HashMap<String, PathBuf> {
-    // this is a marker if the current root is already a remapping
-    let mut remapping = false;
+#[derive(Debug, Clone)]
+struct Candidate {
+    /// dir that opened the window
+    window_start: PathBuf,
+    /// dir that contains the solidity file
+    source_dir: PathBuf,
+    /// number of the current nested dependency
+    window_level: usize,
+}
 
-    // all found remappings
-    let mut remappings = HashMap::new();
+fn is_source_dir(dir: &Path) -> bool {
+    dir.file_name()
+        .and_then(|p| p.to_str())
+        .map(|name| [DAPPTOOLS_CONTRACTS_DIR, JS_CONTRACTS_DIR].contains(&name))
+        .unwrap_or_default()
+}
 
-    for entry in walkdir::WalkDir::new(&root)
+fn is_lib_dir(dir: &Path) -> bool {
+    dir.file_name()
+        .and_then(|p| p.to_str())
+        .map(|name| [DAPPTOOLS_LIB_DIR, JS_LIB_DIR].contains(&name))
+        .unwrap_or_default()
+}
+
+/// Finds all remappings in the directory recursively
+fn find_remapping_candidates(
+    current_dir: &Path,
+    open: &Path,
+    current_level: usize,
+) -> Vec<Candidate> {
+    // this is a marker if the current root is a candidate for a remapping
+    let mut is_candidate = false;
+
+    // all found candidates
+    let mut candidates = Vec::new();
+
+    // scan all entries in the current dir
+    for entry in walkdir::WalkDir::new(current_dir)
+        .follow_links(true)
         .min_depth(1)
         .max_depth(1)
         .into_iter()
         .filter_map(std::result::Result::ok)
+        .filter(|entry| !entry.file_name().to_str().map(|s| s.starts_with('.')).unwrap_or(false))
     {
         let entry: walkdir::DirEntry = entry;
 
-        if entry.file_type().is_file() && !remapping {
-            if entry.file_name().to_str().filter(|f| f.ends_with(".sol")).is_some() {
-                // found a solidity file
-                // this will hold the actual root remapping if root is named `src` or `lib`
-                let actual_parent = root.parent().filter(|_| {
-                    root.ends_with(DAPPTOOLS_CONTRACTS_DIR) ||
-                        root.ends_with(DAPPTOOLS_LIB_DIR) ||
-                        root.ends_with(JS_CONTRACTS_DIR)
-                });
-
-                let parent = actual_parent.unwrap_or(root);
-                if let Some(name) = parent.file_name().and_then(|f| f.to_str()) {
-                    remappings.insert(name.to_string(), root.to_path_buf());
-                    remapping = true;
-                }
-            }
+        // found a solidity file directly the current dir
+        if !is_candidate &&
+            entry.file_type().is_file() &&
+            entry.path().extension() == Some("sol".as_ref())
+        {
+            is_candidate = true;
         } else if entry.file_type().is_dir() {
-            let path = entry.path();
-            // we skip commonly used subdirs that should not be included
-            if !(path.ends_with("tests") ||
-                path.ends_with("test") ||
-                path.ends_with("node_modules") ||
-                path.ends_with("demo"))
+            let subdir = entry.path();
+            // we skip commonly used subdirs that should not be searched for recursively
+            if !(subdir.ends_with("tests") || subdir.ends_with("test") || subdir.ends_with("demo"))
             {
-                for (name, path) in scan_children(path) {
-                    if let Entry::Vacant(e) = remappings.entry(name) {
-                        e.insert(path);
-                    }
-                }
-            }
-        }
-    }
-    remappings
-}
+                // scan the subdirectory for remappings, but we need a way to identify nested
+                // dependencies like `ds-token/lib/ds-stop/lib/ds-note/src/contract.sol`, or
+                // `oz/{tokens,auth}/{contracts, interfaces}/contract.sol` to assign
+                // the remappings to their root, we use a window that lies between two barriers. If
+                // we find a solidity file within a window, it belongs to the dir that opened the
+                // window.
 
-/// Determine the remapping for a path based on the ancestor
-fn to_remapping(path: PathBuf, ancestor: &Path) -> Option<(String, PathBuf)> {
-    let rem = path.strip_prefix(ancestor).ok()?;
-    // strip dapptools style dirs, `lib/solmate/src` -> `solmate/src`
-    if let Ok((peek, barrier)) = rem
-        .strip_prefix(DAPPTOOLS_CONTRACTS_DIR)
-        .map(|p| (p, DAPPTOOLS_CONTRACTS_DIR))
-        .or_else(|_| rem.strip_prefix("lib").map(|p| (p, "lib")))
-    {
-        // this is considered a dapptools style dir as it starts with `src`, `lib`
-        if let Some(c) = peek.components().next() {
-            // here we need to handle layouts that deviate from dapptools layout like `peek:
-            // openzeppelin-contracts/contracts/tokens/contract.sol` which really should just
-            // `openzeppelin-contracts`
-            if peek.ends_with(DAPPTOOLS_CONTRACTS_DIR) || peek.ends_with(DAPPTOOLS_LIB_DIR) {
-                last_valid_mapping(&path)
-            } else {
-                // simply cut off after the next barrier (src, lib, contracts)
-                let name = c.as_os_str().to_str()?;
-                let path = join_until_next_barrier(ancestor.join(barrier), peek);
-                if path.ends_with(JS_CONTRACTS_DIR) ||
-                    path.ends_with(DAPPTOOLS_CONTRACTS_DIR) ||
-                    path.ends_with(DAPPTOOLS_LIB_DIR)
-                {
-                    Some((format!("{}/", name), path))
+                // check if the subdir is a lib barrier, in which case we open a new window
+                if is_lib_dir(subdir) {
+                    candidates.extend(find_remapping_candidates(subdir, subdir, current_level + 1));
                 } else {
-                    let name = ancestor.file_name()?.to_str()?;
-                    Some((format!("{}/", name), ancestor.join(barrier)))
+                    // continue scanning with the current window
+                    candidates.extend(find_remapping_candidates(subdir, open, current_level));
                 }
-            }
-        } else {
-            let name = ancestor.file_name()?.to_str()?;
-            Some((format!("{}/", name), path))
-        }
-    } else {
-        // this is likely a hardhat/node_modules dir, in which case we assume the following
-        // `@aave/tokens/contracts` -> `@aave`
-        // `@openzeppelin/contracts` -> `@openzeppelin/contracts`
-        if ancestor.ends_with(JS_CONTRACTS_DIR) {
-            last_valid_mapping(ancestor)
-        } else {
-            let name = ancestor.file_name()?.to_str()?;
-            if rem.starts_with(JS_CONTRACTS_DIR) {
-                Some((format!("{}/", name), ancestor.join(JS_CONTRACTS_DIR)))
-            } else {
-                Some((format!("{}/", name), ancestor.to_path_buf()))
             }
         }
     }
+
+    // need to find the actual next window in the event `open` is a lib dir
+    let window_start = next_nested_window(open, current_dir);
+    // finally, we need to merge, adjust candidates from the same level and opening window
+    if is_candidate ||
+        candidates
+            .iter()
+            .filter(|c| c.window_level == current_level && c.window_start == window_start)
+            .count() >
+            1
+    {
+        // merge all candidates on the current level if the current dir is itself a candidate or
+        // there are multiple nested candidates on the current level like `current/{auth,
+        // tokens}/contracts/c.sol`
+        candidates.retain(|c| c.window_level != current_level);
+        candidates.push(Candidate {
+            window_start,
+            source_dir: current_dir.to_path_buf(),
+            window_level: current_level,
+        });
+    } else {
+        // this handles the case if there is a single nested candidate
+        if let Some(candidate) = candidates.iter_mut().find(|c| c.window_level == current_level) {
+            // we need to determine the distance from the starting point of the window to the
+            // contracts dir for cases like `current/nested/contracts/c.sol` which should point to
+            // `current`
+            let distance = dir_distance(&candidate.window_start, &candidate.source_dir);
+            if distance > 1 && candidate.source_dir.ends_with(JS_CONTRACTS_DIR) {
+                candidate.source_dir = window_start;
+            } else if !is_source_dir(&candidate.source_dir) {
+                candidate.source_dir = last_nested_source_dir(open, &candidate.source_dir);
+            }
+        }
+    }
+    candidates
 }
 
-// the common ancestor is a `contracts` dir, in which case we assume the name of the
-// remapping should be the dir name before the first higher up barrier:
-// `dep/{a,b}/contracts` -> `dep`
-// while `dep/contracts` will still be `dep/contracts`
-fn last_valid_mapping(ancestor: &Path) -> Option<(String, PathBuf)> {
-    let mut adjusted_remapping_root = None;
-    let mut p = ancestor.parent()?;
+/// Counts the number of components between `root` and `current`
+/// `dir_distance("root/a", "root/a/b/c") == 2`
+fn dir_distance(root: &Path, current: &Path) -> usize {
+    if root == current {
+        return 0
+    }
+    if let Ok(rem) = current.strip_prefix(root) {
+        rem.components().count()
+    } else {
+        0
+    }
+}
+
+/// This finds the next window between `root` and `current`
+/// If `root` ends with a `lib` component then start join components from `current` until no valid
+/// window opener is found
+fn next_nested_window(root: &Path, current: &Path) -> PathBuf {
+    if !is_lib_dir(root) || root == current {
+        return root.to_path_buf()
+    }
+    if let Ok(rem) = current.strip_prefix(root) {
+        let mut p = root.to_path_buf();
+        for c in rem.components() {
+            let next = p.join(c);
+            if !is_lib_dir(&next) || !next.ends_with(JS_CONTRACTS_DIR) {
+                return next
+            }
+            p = next
+        }
+    }
+    root.to_path_buf()
+}
+
+/// Finds the last valid source directory in the window (root -> dir)
+fn last_nested_source_dir(root: &Path, dir: &Path) -> PathBuf {
+    if is_source_dir(dir) {
+        return dir.to_path_buf()
+    }
+    let mut p = dir;
     while let Some(parent) = p.parent() {
-        let name = parent.file_name()?.to_str()?;
-        if [DAPPTOOLS_CONTRACTS_DIR, DAPPTOOLS_LIB_DIR, "node_modules"].contains(&name) {
-            break
+        if parent == root {
+            return root.to_path_buf()
+        }
+        if is_source_dir(parent) {
+            return parent.to_path_buf()
         }
         p = parent;
-        adjusted_remapping_root = Some(p);
     }
-    let name = p.file_name()?.to_str()?;
-    Some((format!("{}/", name), adjusted_remapping_root.unwrap_or(ancestor).to_path_buf()))
-}
-
-/// join the `base` path and all components of the `rem` path until a component is a barrier (src,
-/// lib, contracts)
-fn join_until_next_barrier(mut base: PathBuf, rem: &Path) -> PathBuf {
-    for c in rem.components() {
-        let s = c.as_os_str();
-        base = base.join(s);
-        if [DAPPTOOLS_CONTRACTS_DIR, DAPPTOOLS_LIB_DIR, JS_CONTRACTS_DIR]
-            .contains(&c.as_os_str().to_string_lossy().as_ref())
-        {
-            break
-        }
-    }
-    base
+    root.to_path_buf()
 }
 
 #[cfg(test)]
@@ -500,6 +527,48 @@ mod tests {
     }
 
     #[test]
+    fn simple_dapptools_remappings() {
+        let tmp_dir = tempdir::TempDir::new("lib").unwrap();
+        let tmp_dir_path = tmp_dir.path();
+        let paths = [
+            "ds-test/src",
+            "ds-test/demo",
+            "ds-test/demo/demo.sol",
+            "ds-test/src/test.sol",
+            "openzeppelin/src",
+            "openzeppelin/src/interfaces",
+            "openzeppelin/src/interfaces/c.sol",
+            "openzeppelin/src/token/ERC/",
+            "openzeppelin/src/token/ERC/c.sol",
+            "standards/src/interfaces",
+            "standards/src/interfaces/iweth.sol",
+            "uniswapv2/src",
+        ];
+        mkdir_or_touch(tmp_dir_path, &paths[..]);
+
+        let path = tmp_dir_path.display().to_string();
+        let mut remappings = Remapping::find_many(&path);
+        remappings.sort_unstable();
+
+        let mut expected = vec![
+            Remapping {
+                name: "ds-test/".to_string(),
+                path: to_str(tmp_dir_path.join("ds-test/src")),
+            },
+            Remapping {
+                name: "openzeppelin/".to_string(),
+                path: to_str(tmp_dir_path.join("openzeppelin/src")),
+            },
+            Remapping {
+                name: "standards/".to_string(),
+                path: to_str(tmp_dir_path.join("standards/src")),
+            },
+        ];
+        expected.sort_unstable();
+        pretty_assertions::assert_eq!(remappings, expected);
+    }
+
+    #[test]
     fn hardhat_remappings() {
         let tmp_dir = tempdir::TempDir::new("node_modules").unwrap();
         let tmp_dir_node_modules = tmp_dir.path().join("node_modules");
@@ -547,5 +616,18 @@ mod tests {
         ];
         expected.sort_unstable();
         pretty_assertions::assert_eq!(remappings, expected);
+    }
+
+    #[test]
+    fn can_determine_nested_window() {
+        let a = Path::new(
+            "/var/folders/l5/lprhf87s6xv8djgd017f0b2h0000gn/T/lib.Z6ODLZJQeJQa/repo1/lib",
+        );
+        let b = Path::new(
+            "/var/folders/l5/lprhf87s6xv8djgd017f0b2h0000gn/T/lib.Z6ODLZJQeJQa/repo1/lib/ds-test/src"
+        );
+        assert_eq!(next_nested_window(a, b),Path::new(
+            "/var/folders/l5/lprhf87s6xv8djgd017f0b2h0000gn/T/lib.Z6ODLZJQeJQa/repo1/lib/ds-test"
+        ));
     }
 }
