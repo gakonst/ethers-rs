@@ -58,6 +58,14 @@ impl Client {
                 Url::parse("https://api-testnet.snowtrace.io/api"),
                 Url::parse("https://testnet.snowtrace.io"),
             ),
+            Chain::Optimism => (
+                Url::parse("https://api-optimistic.etherscan.io/api"),
+                Url::parse("https://optimistic.etherscan.io"),
+            ),
+            Chain::OptimismKovan => (
+                Url::parse("https://api-kovan-optimistic.etherscan.io/api"),
+                Url::parse("https://kovan-optimistic.etherscan.io"),
+            ),
             chain => return Err(EtherscanError::ChainNotSupported(chain)),
         };
 
@@ -75,9 +83,13 @@ impl Client {
         let api_key = match chain {
             Chain::Avalanche | Chain::AvalancheFuji => std::env::var("SNOWTRACE_API_KEY")?,
             Chain::Polygon | Chain::PolygonMumbai => std::env::var("POLYGONSCAN_API_KEY")?,
-            Chain::Mainnet | Chain::Ropsten | Chain::Kovan | Chain::Rinkeby | Chain::Goerli => {
-                std::env::var("ETHERSCAN_API_KEY")?
-            }
+            Chain::Mainnet
+            | Chain::Ropsten
+            | Chain::Kovan
+            | Chain::Rinkeby
+            | Chain::Goerli
+            | Chain::Optimism
+            | Chain::OptimismKovan => std::env::var("ETHERSCAN_API_KEY")?,
 
             Chain::XDai | Chain::Sepolia => String::default(),
             Chain::Moonbeam | Chain::MoonbeamDev | Chain::Moonriver => {
