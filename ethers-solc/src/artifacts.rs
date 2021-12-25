@@ -726,7 +726,7 @@ pub struct DevDoc {
     #[serde(default, rename = "custom:experimental", skip_serializing_if = "Option::is_none")]
     pub custom_experimental: Option<String>,
     #[serde(default, skip_serializing_if = "::std::collections::BTreeMap::is_empty")]
-    pub methods: BTreeMap<String, String>,
+    pub methods: BTreeMap<String, serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
 }
