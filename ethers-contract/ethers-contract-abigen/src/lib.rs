@@ -32,6 +32,7 @@ use std::{
     io::Write,
     path::Path,
 };
+use walkdir::{WalkDir, DirEntry};
 
 /// Builder struct for generating type-safe bindings from a contract's ABI
 ///
@@ -266,10 +267,10 @@ impl MultiAbigen {
     /// ```
     pub fn from_json_files(dir: impl AsRef<Path>) -> Result<Self> {
         let mut abis = Vec::new();
-        for file in fs::read_dir(dir)?.into_iter().filter_map(std::io::Result::ok).filter(|p| {
+        for file in WalkDir::new(dir).into_iter().filter_map(Result::ok).filter(|p| {
             p.path().is_file() && p.path().extension().and_then(|ext| ext.to_str()) == Some("json")
         }) {
-            let file: fs::DirEntry = file;
+            let file: DirEntry = file;
             if let Some(file_name) = file.path().file_stem().and_then(|s| s.to_str()) {
                 let content = fs::read_to_string(file.path())?;
                 abis.push((file_name.to_string(), content));
