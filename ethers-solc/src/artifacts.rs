@@ -635,7 +635,7 @@ impl From<Contract> for CompactContract {
     fn from(c: Contract) -> Self {
         let (bin, bin_runtime) = if let Some(evm) = c.evm {
             (
-                Some(evm.bytecode.object),
+                evm.bytecode.map(|c| c.object),
                 evm.deployed_bytecode.and_then(|deployed| deployed.bytecode.map(|evm| evm.object)),
             )
         } else {
@@ -688,7 +688,7 @@ impl<'a> From<&'a Contract> for CompactContractRef<'a> {
     fn from(c: &'a Contract) -> Self {
         let (bin, bin_runtime) = if let Some(ref evm) = c.evm {
             (
-                Some(&evm.bytecode.object),
+                evm.bytecode.as_ref().map(|c| &c.object),
                 evm.deployed_bytecode
                     .as_ref()
                     .and_then(|deployed| deployed.bytecode.as_ref().map(|evm| &evm.object)),
@@ -738,7 +738,7 @@ pub struct Evm {
     pub assembly: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub legacy_assembly: Option<serde_json::Value>,
-    pub bytecode: Bytecode,
+    pub bytecode: Option<Bytecode>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub deployed_bytecode: Option<DeployedBytecode>,
     /// The list of function hashes

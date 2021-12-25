@@ -25,7 +25,7 @@ pub struct HardhatArtifact {
     pub abi: Abi,
     /// A "0x"-prefixed hex string of the unlinked deployment bytecode. If the contract is not
     /// deployable, this has the string "0x"
-    pub bytecode: BytecodeObject,
+    pub bytecode: Option<BytecodeObject>,
     /// A "0x"-prefixed hex string of the unlinked runtime/deployed bytecode. If the contract is
     /// not deployable, this has the string "0x"
     pub deployed_bytecode: Option<BytecodeObject>,
@@ -43,7 +43,7 @@ impl From<HardhatArtifact> for CompactContract {
     fn from(artifact: HardhatArtifact) -> Self {
         CompactContract {
             abi: Some(artifact.abi),
-            bin: Some(artifact.bytecode),
+            bin: artifact.bytecode,
             bin_runtime: artifact.deployed_bytecode,
         }
     }
@@ -90,12 +90,13 @@ impl ArtifactOutput for HardhatArtifacts {
                         (None, Default::default())
                     };
 
-                (
-                    evm.bytecode.object,
-                    evm.bytecode.link_references,
-                    deployed_bytecode,
-                    deployed_link_references,
-                )
+                let (bytecode, link_ref) = if let Some(bc) = evm.bytecode {
+                    (Some(bc.object), bc.link_references)
+                } else {
+                    (None, Default::default())
+                };
+
+                (bytecode, link_ref, deployed_bytecode, deployed_link_references)
             } else {
                 (Default::default(), Default::default(), None, Default::default())
             };
