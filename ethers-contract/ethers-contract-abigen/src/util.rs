@@ -151,6 +151,17 @@ fn take_while(s: &str, mut predicate: impl FnMut(char) -> bool) -> (&str, &str) 
     s.split_at(index)
 }
 
+/// Returns a list of absolute paths to all the json files under the root
+pub fn json_files(root: impl AsRef<std::path::Path>) -> Vec<PathBuf> {
+    walkdir::WalkDir::new(root)
+        .into_iter()
+        .filter_map(Result::ok)
+        .filter(|e| e.file_type().is_file())
+        .filter(|e| e.path().extension().map(|ext| ext == "json").unwrap_or_default())
+        .map(|e| e.path().into())
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
