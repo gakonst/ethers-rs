@@ -26,6 +26,7 @@ use crate::{artifacts::Source, cache::SolFilesCache};
 
 pub mod error;
 pub mod utils;
+pub mod resolve;
 
 use crate::{
     artifacts::Sources,
