@@ -204,7 +204,8 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         Ok(libs)
     }
 
-    /// Attempts to compile the contracts found at the configured location.
+    /// Attempts to compile the contracts found at the configured source location, see
+    /// `ProjectPathsConfig::sources`.
     ///
     /// NOTE: this does not check if the contracts were successfully compiled, see
     /// `CompilerOutput::has_error` instead.
@@ -295,6 +296,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         Ok(compiled)
     }
 
+    /// Compiles all sources with their intended `Solc` version sequentially.
     #[cfg(all(feature = "svm", feature = "async"))]
     fn compile_sources(
         &self,
@@ -314,6 +316,9 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         Ok(compiled)
     }
 
+    /// Compiles all sources with their intended `Solc` version in parallel.
+    ///
+    /// This runs `Self::solc_jobs` parallel `solc` jobs at most.
     #[cfg(all(feature = "svm", feature = "async"))]
     fn compile_many(
         &self,
