@@ -52,7 +52,7 @@ pub enum TrezorError {
     #[error("Does not support ENS.")]
     NoENSSupport,
     #[error("Unable to access trezor cached session.")]
-    CacheError,
+    CacheError(String),
 }
 
 /// Trezor Transaction Struct
