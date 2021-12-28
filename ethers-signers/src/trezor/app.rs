@@ -34,6 +34,9 @@ pub struct TrezorEthereum {
 
 const FIRMWARE_MIN_VERSION: &str = ">=2.4.2";
 
+// https://docs.trezor.io/trezor-firmware/common/communication/sessions.html
+const SESSION_ID_LENGTH: usize = 32;
+
 impl TrezorEthereum {
     pub async fn new(derivation: DerivationType, chain_id: u64) -> Result<Self, TrezorError> {
         let mut blank = Self {
@@ -62,17 +65,15 @@ impl TrezorEthereum {
     }
 
     fn get_cached_session() -> Result<Option<Vec<u8>>, TrezorError> {
-        let mut session = [0; 32];
+        let mut session = [0; SESSION_ID_LENGTH];
 
         let path = env::current_dir()
             .map_err(|e| TrezorError::CacheError(e.to_string()))?
             .join("cache")
             .join("trezor.session");
 
-        if let Ok(file) = fs::File::open(path) {
-            let mut file = std::io::BufReader::new(file);
-            file.read(&mut session).map_err(|e| TrezorError::CacheError(e.to_string()))?;
-
+        if let Ok(mut file) = fs::File::open(path) {
+            file.read_exact(&mut session).map_err(|e| TrezorError::CacheError(e.to_string()))?;
             Ok(Some(session.to_vec()))
         } else {
             Ok(None)
@@ -85,9 +86,9 @@ impl TrezorEthereum {
         fs::create_dir_all(&path).map_err(|e| TrezorError::CacheError(e.to_string()))?;
         path = path.join("trezor.session");
 
-        let file = fs::File::create(path).map_err(|e| TrezorError::CacheError(e.to_string()))?;
-        let mut file = std::io::BufWriter::new(file);
-        file.write(&session_id);
+        let mut file =
+            fs::File::create(path).map_err(|e| TrezorError::CacheError(e.to_string()))?;
+        file.write_all(&session_id).map_err(|e| TrezorError::CacheError(e.to_string()))?;
 
         self.session_id = session_id;
         Ok(())
