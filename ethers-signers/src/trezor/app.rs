@@ -11,7 +11,12 @@ use ethers_core::{
     },
     utils::keccak256,
 };
-use std::convert::TryFrom;
+use std::{
+    convert::TryFrom,
+    env, fs,
+    io::{Read, Write},
+    path,
+};
 use thiserror::Error;
 
 use super::types::*;
@@ -56,9 +61,40 @@ impl TrezorEthereum {
         Ok(())
     }
 
+    fn get_cached_session() -> Result<Option<Vec<u8>>, TrezorError> {
+        let mut session = vec![];
+
+        let path = env::current_dir()
+            .map_err(|_| TrezorError::CacheError)?
+            .join("cache")
+            .join("trezor.session");
+        if let Ok(file) = fs::File::open(path) {
+            let mut file = std::io::BufReader::new(file);
+            file.read(&mut session);
+            if session.len() == 32 {
+                return Ok(Some(session))
+            }
+        }
+        Ok(None)
+    }
+
+    fn save_session(&mut self, session_id: Vec<u8>) -> Result<(), TrezorError> {
+        let path = env::current_dir()
+            .map_err(|_| TrezorError::CacheError)?
+            .join("cache")
+            .join("trezor.session");
+        let file = fs::File::create(path).map_err(|_| TrezorError::CacheError)?;
+        let mut file = std::io::BufWriter::new(file);
+        file.write(&session_id);
+
+        self.session_id = session_id;
+        Ok(())
+    }
+
     fn initate_session(&mut self) -> Result<(), TrezorError> {
+        self.save_session(vec![]);
         let mut client = trezor_client::unique(false)?;
-        client.init_device(None)?;
+        client.init_device(Self::get_cached_session()?)?;
 
         let features = client.features().ok_or(TrezorError::FeaturesError)?;
 
@@ -69,7 +105,7 @@ impl TrezorEthereum {
             features.get_patch_version()
         ))?;
 
-        self.session_id = features.get_session_id().to_vec();
+        self.save_session(features.get_session_id().to_vec())?;
 
         Ok(())
     }
