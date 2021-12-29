@@ -47,7 +47,7 @@ impl TrezorEthereum {
         chain_id: u64,
         cache_dir: Option<PathBuf>,
     ) -> Result<Self, TrezorError> {
-        let cache_dir = (match cache_dir.or_else(|| home::home_dir()) {
+        let cache_dir = (match cache_dir.or_else(home::home_dir) {
             Some(path) => path,
             None => match env::current_dir() {
                 Ok(path) => path,
@@ -264,7 +264,10 @@ mod tests {
     // Replace this with your ETH addresses.
     async fn test_get_address() {
         // Instantiate it with the default trezor derivation path
-        let trezor = TrezorEthereum::new(DerivationType::TrezorLive(1), 1, Some(PathBuf::from("randomdir"))).await.unwrap();
+        let trezor =
+            TrezorEthereum::new(DerivationType::TrezorLive(1), 1, Some(PathBuf::from("randomdir")))
+                .await
+                .unwrap();
         assert_eq!(
             trezor.get_address().await.unwrap(),
             "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee".parse().unwrap()
