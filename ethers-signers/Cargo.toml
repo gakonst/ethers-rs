@@ -39,6 +39,7 @@ spki = { version = "0.5.2", optional = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 eth-keystore = { version = "0.3.0" }
+home = "0.5.3"
 
 [dev-dependencies]
 ethers-contract = { version = "^0.6.0", path = "../ethers-contract", features = ["eip712", "abigen"]}

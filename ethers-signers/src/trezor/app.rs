@@ -11,7 +11,14 @@ use ethers_core::{
     },
     utils::keccak256,
 };
-use std::convert::TryFrom;
+use home;
+use std::{
+    convert::TryFrom,
+    env, fs,
+    io::{Read, Write},
+    path,
+    path::PathBuf,
+};
 use thiserror::Error;
 
 use super::types::*;
@@ -23,17 +30,38 @@ use super::types::*;
 pub struct TrezorEthereum {
     derivation: DerivationType,
     session_id: Vec<u8>,
+    cache_dir: PathBuf,
     pub(crate) chain_id: u64,
     pub(crate) address: Address,
 }
 
 const FIRMWARE_MIN_VERSION: &str = ">=2.4.2";
 
+// https://docs.trezor.io/trezor-firmware/common/communication/sessions.html
+const SESSION_ID_LENGTH: usize = 32;
+const SESSION_FILE_NAME: &str = "trezor.session";
+
 impl TrezorEthereum {
-    pub async fn new(derivation: DerivationType, chain_id: u64) -> Result<Self, TrezorError> {
+    pub async fn new(
+        derivation: DerivationType,
+        chain_id: u64,
+        cache_dir: Option<PathBuf>,
+    ) -> Result<Self, TrezorError> {
+        let cache_dir = (match cache_dir.or_else(home::home_dir) {
+            Some(path) => path,
+            None => match env::current_dir() {
+                Ok(path) => path,
+                Err(e) => return Err(TrezorError::CacheError(e.to_string())),
+            },
+        })
+        .join(".ethers-rs")
+        .join("trezor")
+        .join("cache");
+
         let mut blank = Self {
             derivation: derivation.clone(),
             chain_id,
+            cache_dir,
             address: Address::from([0_u8; 20]),
             session_id: vec![],
         };
@@ -56,9 +84,32 @@ impl TrezorEthereum {
         Ok(())
     }
 
+    fn get_cached_session(&self) -> Result<Option<Vec<u8>>, TrezorError> {
+        let mut session = [0; SESSION_ID_LENGTH];
+
+        if let Ok(mut file) = fs::File::open(self.cache_dir.join(SESSION_FILE_NAME)) {
+            file.read_exact(&mut session).map_err(|e| TrezorError::CacheError(e.to_string()))?;
+            Ok(Some(session.to_vec()))
+        } else {
+            Ok(None)
+        }
+    }
+
+    fn save_session(&mut self, session_id: Vec<u8>) -> Result<(), TrezorError> {
+        fs::create_dir_all(&self.cache_dir).map_err(|e| TrezorError::CacheError(e.to_string()))?;
+
+        let mut file = fs::File::create(self.cache_dir.join(SESSION_FILE_NAME))
+            .map_err(|e| TrezorError::CacheError(e.to_string()))?;
+
+        file.write_all(&session_id).map_err(|e| TrezorError::CacheError(e.to_string()))?;
+
+        self.session_id = session_id;
+        Ok(())
+    }
+
     fn initate_session(&mut self) -> Result<(), TrezorError> {
         let mut client = trezor_client::unique(false)?;
-        client.init_device(None)?;
+        client.init_device(self.get_cached_session()?)?;
 
         let features = client.features().ok_or(TrezorError::FeaturesError)?;
 
@@ -69,7 +120,7 @@ impl TrezorEthereum {
             features.get_patch_version()
         ))?;
 
-        self.session_id = features.get_session_id().to_vec();
+        self.save_session(features.get_session_id().to_vec())?;
 
         Ok(())
     }
@@ -213,7 +264,10 @@ mod tests {
     // Replace this with your ETH addresses.
     async fn test_get_address() {
         // Instantiate it with the default trezor derivation path
-        let trezor = TrezorEthereum::new(DerivationType::TrezorLive(1), 1).await.unwrap();
+        let trezor =
+            TrezorEthereum::new(DerivationType::TrezorLive(1), 1, Some(PathBuf::from("randomdir")))
+                .await
+                .unwrap();
         assert_eq!(
             trezor.get_address().await.unwrap(),
             "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee".parse().unwrap()
@@ -227,7 +281,7 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn test_sign_tx() {
-        let trezor = TrezorEthereum::new(DerivationType::TrezorLive(0), 1).await.unwrap();
+        let trezor = TrezorEthereum::new(DerivationType::TrezorLive(0), 1, None).await.unwrap();
 
         // approve uni v2 router 0xff
         let data = hex::decode("095ea7b30000000000000000000000007a250d5630b4cf539739df2c5dacb4c659f2488dffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap();
@@ -246,7 +300,7 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn test_sign_big_data_tx() {
-        let trezor = TrezorEthereum::new(DerivationType::TrezorLive(0), 1).await.unwrap();
+        let trezor = TrezorEthereum::new(DerivationType::TrezorLive(0), 1, None).await.unwrap();
 
         // invalid data
         let big_data = hex::decode("095ea7b30000000000000000000000007a250d5630b4cf539739df2c5dacb4c659f2488dffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff".to_string()+ &"ff".repeat(1032*2) + "aa").unwrap();
@@ -266,7 +320,7 @@ mod tests {
     async fn test_sign_empty_txes() {
         // Contract creation (empty `to`), requires data.
         // To test without the data field, we need to specify a `to` address.
-        let trezor = TrezorEthereum::new(DerivationType::TrezorLive(0), 1).await.unwrap();
+        let trezor = TrezorEthereum::new(DerivationType::TrezorLive(0), 1, None).await.unwrap();
         {
             let tx_req = Eip1559TransactionRequest::new()
                 .to("2ed7afa17473e17ac59908f088b4371d28585476".parse::<Address>().unwrap())
@@ -285,7 +339,7 @@ mod tests {
         // Contract creation (empty `to`, with data) should show on the trezor device as:
         //  ` "0 Wei ETH
         //  ` new contract?"
-        let trezor = TrezorEthereum::new(DerivationType::TrezorLive(0), 1).await.unwrap();
+        let trezor = TrezorEthereum::new(DerivationType::TrezorLive(0), 1, None).await.unwrap();
         {
             let tx_req = Eip1559TransactionRequest::new().data(data.clone()).into();
             let tx = trezor.sign_transaction(&tx_req).await.unwrap();
@@ -299,7 +353,7 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn test_sign_eip1559_tx() {
-        let trezor = TrezorEthereum::new(DerivationType::TrezorLive(0), 1).await.unwrap();
+        let trezor = TrezorEthereum::new(DerivationType::TrezorLive(0), 1, None).await.unwrap();
 
         // approve uni v2 router 0xff
         let data = hex::decode("095ea7b30000000000000000000000007a250d5630b4cf539739df2c5dacb4c659f2488dffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap();
@@ -346,7 +400,7 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn test_sign_message() {
-        let trezor = TrezorEthereum::new(DerivationType::TrezorLive(0), 1).await.unwrap();
+        let trezor = TrezorEthereum::new(DerivationType::TrezorLive(0), 1, None).await.unwrap();
         let message = "hello world";
         let sig = trezor.sign_message(message).await.unwrap();
         let addr = trezor.get_address().await.unwrap();
@@ -356,7 +410,7 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn test_sign_eip712_struct() {
-        let trezor = TrezorEthereum::new(DerivationType::TrezorLive(0), 1u64).await.unwrap();
+        let trezor = TrezorEthereum::new(DerivationType::TrezorLive(0), 1u64, None).await.unwrap();
 
         let foo_bar = FooBar {
             foo: I256::from(10),

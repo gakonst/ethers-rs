@@ -1264,6 +1264,7 @@ dependencies = [
  "futures-executor",
  "futures-util",
  "hex",
+ "home",
  "rand 0.8.4",
  "rusoto_core",
  "rusoto_kms",
