@@ -2,7 +2,7 @@
 
 use std::path::{Component, Path, PathBuf};
 
-use crate::error::SolcError;
+use crate::{error::SolcError, SolcIoError};
 use once_cell::sync::Lazy;
 use regex::Regex;
 use semver::Version;
@@ -41,7 +41,8 @@ pub fn find_version_pragma(contract: &str) -> Option<&str> {
     RE_SOL_PRAGMA_VERSION.captures(contract)?.name("version").map(|m| m.as_str())
 }
 
-/// Returns a list of absolute paths to all the solidity files under the root
+/// Returns a list of absolute paths to all the solidity files under the root, returns an empty vec
+/// if the given path is __not__ a directory.
 ///
 /// NOTE: this does not resolve imports from other locations
 ///
@@ -53,6 +54,7 @@ pub fn find_version_pragma(contract: &str) -> Option<&str> {
 /// ```
 pub fn source_files(root: impl AsRef<Path>) -> Vec<PathBuf> {
     WalkDir::new(root)
+        .min_depth(1)
         .into_iter()
         .filter_map(Result::ok)
         .filter(|e| e.file_type().is_file())
@@ -70,6 +72,12 @@ pub fn source_name(source: &Path, root: impl AsRef<Path>) -> &Path {
 /// Attempts to determine if the given source is a local, relative import
 pub fn is_local_source_name(libs: &[impl AsRef<Path>], source: impl AsRef<Path>) -> bool {
     resolve_library(libs, source).is_none()
+}
+
+/// Canonicalize the path, platform-agnostic
+pub fn canonicalize(path: impl AsRef<Path>) -> Result<PathBuf, SolcIoError> {
+    let path = path.as_ref();
+    dunce::canonicalize(&path).map_err(|err| SolcIoError::new(err, path))
 }
 
 /// Returns the path to the library if the source path is in fact determined to be a library path,

@@ -393,15 +393,36 @@ pub struct Source {
 }
 
 impl Source {
+    /// this is a heuristically measured threshold at which we can generally expect a speedup by
+    /// using rayon's `par_iter`, See `Self::read_all_files`
+    pub const NUM_READ_PAR: usize = 8;
+
     /// Reads the file content
     pub fn read(file: impl AsRef<Path>) -> Result<Self, SolcIoError> {
         let file = file.as_ref();
         Ok(Self { content: fs::read_to_string(file).map_err(|err| SolcIoError::new(err, file))? })
     }
 
-    /// Finds all source files under the given dir path and reads them all
+    /// Recursively finds all source files under the given dir path and reads them all
     pub fn read_all_from(dir: impl AsRef<Path>) -> Result<Sources, SolcIoError> {
-        Self::read_all(utils::source_files(dir))
+        Self::read_all_files(utils::source_files(dir))
+    }
+
+    /// Reads all source files of the given vec
+    ///
+    /// Depending on the len of the vec it will try to read the files in parallel
+    pub fn read_all_files(files: Vec<PathBuf>) -> Result<Sources, SolcIoError> {
+        use rayon::prelude::*;
+
+        if files.len() < Self::NUM_READ_PAR {
+            Self::read_all(files)
+        } else {
+            files
+                .par_iter()
+                .map(Into::into)
+                .map(|file| Self::read(&file).map(|source| (file, source)))
+                .collect()
+        }
     }
 
     /// Reads all files
@@ -412,6 +433,25 @@ impl Source {
     {
         files
             .into_iter()
+            .map(Into::into)
+            .map(|file| Self::read(&file).map(|source| (file, source)))
+            .collect()
+    }
+
+    /// Parallelized version of `Self::read_all` that reads all files using a parallel iterator
+    ///
+    /// NOTE: this is only expected to be faster than `Self::read_all` if the given iterator
+    /// contains at least several paths. see also `Self::read_all_files`.
+    pub fn par_read_all<T, I>(files: I) -> Result<Sources, SolcIoError>
+    where
+        I: IntoIterator<Item = T>,
+        <I as IntoIterator>::IntoIter: Send,
+        T: Into<PathBuf> + Send,
+    {
+        use rayon::{iter::ParallelBridge, prelude::ParallelIterator};
+        files
+            .into_iter()
+            .par_bridge()
             .map(Into::into)
             .map(|file| Self::read(&file).map(|source| (file, source)))
             .collect()

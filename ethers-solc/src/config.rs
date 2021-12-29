@@ -4,7 +4,7 @@ use crate::{
     error::{Result, SolcError, SolcIoError},
     hh::HardhatArtifact,
     remappings::Remapping,
-    CompilerOutput,
+    utils, CompilerOutput, Source, Sources,
 };
 use ethers_core::{abi::Abi, types::Bytes};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -75,6 +75,47 @@ impl ProjectPathsConfig {
         }
         Ok(())
     }
+
+    /// Returns all sources found under the project's configured `sources` path
+    pub fn read_sources(&self) -> Result<Sources> {
+        tracing::trace!("reading all sources from \"{}\"", self.sources.display());
+        Ok(Source::read_all_from(&self.sources)?)
+    }
+
+    /// Returns all sources found under the project's configured `test` path
+    pub fn read_tests(&self) -> Result<Sources> {
+        tracing::trace!("reading all tests from \"{}\"", self.tests.display());
+        Ok(Source::read_all_from(&self.tests)?)
+    }
+
+    /// Returns the combined set solidity file paths for `Self::sources` and `Self::tests`
+    pub fn input_files(&self) -> Vec<PathBuf> {
+        utils::source_files(&self.sources)
+            .into_iter()
+            .chain(utils::source_files(&self.tests))
+            .collect()
+    }
+
+    /// Returns the combined set of `Self::read_sources` + `Self::read_tests`
+    pub fn read_input_files(&self) -> Result<Sources> {
+        Ok(Source::read_all_files(self.input_files())?)
+    }
+
+    /// Attempts to find the path to the real solidity file that's imported via the given `import`
+    /// path by applying the configured remappings and checking the library dirs
+    pub fn resolve_library_import(&self, import: &Path) -> Option<PathBuf> {
+        // if the import path starts with the name of the remapping then we get the resolved path by
+        // removing the name and adding the remainder to the path of the remapping
+        if let Some(path) = self
+            .remappings
+            .iter()
+            .find_map(|r| import.strip_prefix(&r.name).ok().map(|p| Path::new(&r.path).join(p)))
+        {
+            Some(self.root.join(path))
+        } else {
+            utils::resolve_library(&self.libraries, import)
+        }
+    }
 }
 
 impl fmt::Display for ProjectPathsConfig {
@@ -102,9 +143,10 @@ pub enum PathStyle {
 }
 
 impl PathStyle {
+    /// Convert into a `ProjectPathsConfig` given the root path and based on the styled
     pub fn paths(&self, root: impl AsRef<Path>) -> Result<ProjectPathsConfig> {
         let root = root.as_ref();
-        let root = dunce::canonicalize(root).map_err(|err| SolcError::io(err, root))?;
+        let root = utils::canonicalize(root)?;
 
         Ok(match self {
             PathStyle::Dapptools => ProjectPathsConfig::builder()
@@ -215,7 +257,7 @@ impl ProjectPathsConfigBuilder {
             .map(Ok)
             .unwrap_or_else(std::env::current_dir)
             .map_err(|err| SolcIoError::new(err, "."))?;
-        let root = dunce::canonicalize(&root).map_err(|err| SolcIoError::new(err, &root))?;
+        let root = utils::canonicalize(&root)?;
         Ok(self.build_with_root(root))
     }
 }
@@ -484,7 +526,7 @@ impl<T: Into<PathBuf>> TryFrom<Vec<T>> for AllowedLibPaths {
             .into_iter()
             .map(|lib| {
                 let path: PathBuf = lib.into();
-                let lib = dunce::canonicalize(&path).map_err(|err| SolcIoError::new(err, path))?;
+                let lib = utils::canonicalize(&path)?;
                 Ok(lib)
             })
             .collect::<std::result::Result<Vec<_>, _>>()?;

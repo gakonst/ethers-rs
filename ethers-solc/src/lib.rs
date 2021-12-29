@@ -7,6 +7,7 @@ use std::collections::btree_map::Entry;
 
 pub mod cache;
 pub mod hh;
+mod resolver;
 pub use hh::{HardhatArtifact, HardhatArtifacts};
 
 mod compile;
@@ -26,7 +27,6 @@ use crate::{artifacts::Source, cache::SolFilesCache};
 
 pub mod error;
 pub mod utils;
-pub mod resolve;
 
 use crate::{
     artifacts::Sources,
@@ -154,8 +154,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
     /// Returns all sources found under the project's configured sources path
     #[tracing::instrument(skip_all, fields(name = "sources"))]
     pub fn sources(&self) -> Result<Sources> {
-        tracing::trace!("reading all sources from \"{}\"", self.paths.sources.display());
-        Ok(Source::read_all_from(&self.paths.sources)?)
+        self.paths.read_sources()
     }
 
     /// This emits the cargo [`rerun-if-changed`](https://doc.rust-lang.org/cargo/reference/build-scripts.html#cargorerun-if-changedpath) instruction.
@@ -935,7 +934,7 @@ mod tests {
     fn test_build_many_libs() {
         use super::*;
 
-        let root = dunce::canonicalize("./test-data/test-contract-libs").unwrap();
+        let root = utils::canonicalize("./test-data/test-contract-libs").unwrap();
 
         let paths = ProjectPathsConfig::builder()
             .root(&root)
@@ -962,7 +961,7 @@ mod tests {
     fn test_build_remappings() {
         use super::*;
 
-        let root = dunce::canonicalize("./test-data/test-contract-remappings").unwrap();
+        let root = utils::canonicalize("./test-data/test-contract-remappings").unwrap();
         let paths = ProjectPathsConfig::builder()
             .root(&root)
             .sources(root.join("src"))
