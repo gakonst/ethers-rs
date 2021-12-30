@@ -111,11 +111,7 @@ impl Graph {
             let mut resolved_imports = Vec::with_capacity(node.data.imports.len());
 
             // parent directory of the current file
-            let node_dir = path.parent();
-            if node_dir.is_none() {
-                continue
-            }
-            let node_dir = node_dir.unwrap();
+            let node_dir = match path.parent() { Some(inner) => inner, None => continue };
 
             for import in node.data.imports.iter() {
                 let component = import.components().next();
