@@ -41,8 +41,8 @@ pub fn find_version_pragma(contract: &str) -> Option<&str> {
     RE_SOL_PRAGMA_VERSION.captures(contract)?.name("version").map(|m| m.as_str())
 }
 
-/// Returns a list of absolute paths to all the solidity files under the root, returns an empty vec
-/// if the given path is __not__ a directory.
+/// Returns a list of absolute paths to all the solidity files under the root, or the file itself,
+/// if the path is a solidity file.
 ///
 /// NOTE: this does not resolve imports from other locations
 ///
@@ -54,7 +54,6 @@ pub fn find_version_pragma(contract: &str) -> Option<&str> {
 /// ```
 pub fn source_files(root: impl AsRef<Path>) -> Vec<PathBuf> {
     WalkDir::new(root)
-        .min_depth(1)
         .into_iter()
         .filter_map(Result::ok)
         .filter(|e| e.file_type().is_file())
