@@ -202,7 +202,7 @@ impl Graph {
                     // library import
                     if let Some(node) = all_nodes.remove(&dep) {
                         sources.insert(node.path, node.source);
-                        insert_imports(dep, all_nodes, sources, &edges, num_input_files);
+                        insert_imports(dep, all_nodes, sources, edges, num_input_files);
                     }
                 }
             }
@@ -324,14 +324,13 @@ impl Graph {
                 ));
                 erroneous_nodes.insert(idx);
             } else {
-                let candidate = candidates
+                let candidate = (*candidates
                     .iter()
                     .rev()
                     .find(|v| v.is_installed())
-                    .or(candidates.iter().last())
-                    .unwrap()
-                    .clone()
-                    .clone();
+                    .or_else(|| candidates.iter().last())
+                    .unwrap())
+                .clone();
                 versioned_nodes.entry(candidate).or_insert_with(|| Vec::with_capacity(1)).push(idx);
             }
         }
