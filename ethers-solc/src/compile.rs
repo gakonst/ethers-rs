@@ -187,11 +187,15 @@ impl Solc {
 
     /// Returns the list of all solc instances installed at `SVM_HOME`
     pub fn installed_versions() -> Vec<SolcVersion> {
-        utils::installed_versions(svm::SVM_HOME.as_path())
-            .unwrap_or_default()
-            .into_iter()
-            .map(SolcVersion::Installed)
-            .collect()
+        if let Some(home) = Self::svm_home() {
+            utils::installed_versions(home)
+                .unwrap_or_default()
+                .into_iter()
+                .map(SolcVersion::Installed)
+                .collect()
+        } else {
+            Vec::new()
+        }
     }
 
     /// Returns the list of all versions that are available to download and marking those which are
