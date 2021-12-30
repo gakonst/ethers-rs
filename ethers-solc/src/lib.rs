@@ -9,6 +9,7 @@ pub mod cache;
 pub mod hh;
 mod resolver;
 pub use hh::{HardhatArtifact, HardhatArtifacts};
+pub use resolver::Graph;
 
 mod compile;
 
@@ -247,7 +248,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         for (path, source) in sources.into_iter() {
             // will detect and install the solc version if it's missing
             tracing::trace!("detecting solc version for \"{}\"", path.display());
-            let version_req = Solc::version_req(&source)?;
+            let version_req = Solc::source_version_req(&source)?;
 
             let version = match solc_version_req.entry(version_req) {
                 hash_map::Entry::Occupied(version) => version.get().clone(),

@@ -27,14 +27,15 @@
 //! which is defined on a per source file basis.
 
 use std::{
-    collections::{HashMap, VecDeque},
+    collections::{HashMap, HashSet, VecDeque},
     path::{Component, Path, PathBuf},
 };
 
 use rayon::prelude::*;
+use semver::VersionReq;
 use solang::parser::pt::{Import, SourceUnitPart};
 
-use crate::{error::Result, utils, ProjectPathsConfig, Source, Sources};
+use crate::{error::Result, utils, ProjectPathsConfig, Solc, SolcVersion, Source, Sources};
 
 /// Represents a fully-resolved solidity dependency graph. Each node in the graph
 /// is a file and edges represent dependencies between them.
@@ -63,9 +64,223 @@ impl Graph {
         &self.nodes[index]
     }
 
-    /// Returns all source files
+    /// Returns all files together with their paths
     pub fn into_sources(self) -> Sources {
         self.nodes.into_iter().map(|node| (node.path, node.source)).collect()
+    }
+
+    /// Returns an iterator that yields only those nodes that represent input files.
+    /// See `Self::resolve_sources`
+    /// This won't yield any resolved library nodes
+    pub fn input_nodes(&self) -> impl Iterator<Item = &Node> {
+        self.nodes.iter().take(self.num_input_files)
+    }
+
+    /// Ensures that all files are compatible with all of their imports.
+    ///
+    /// This will essentially do a DFS on all input sources and their transitive imports and
+    /// checking that all can compiled with the version stated in the input file.
+    ///
+    /// Returns an error message with __all__ input files that don't have compatible imports.
+    ///
+    /// This also attempts to prefer local installations over remote available.
+    /// If `offline` is set to `true` then only already installed.
+    #[cfg(all(feature = "svm", feature = "async"))]
+    pub fn ensure_compatible_imports(&self, offline: bool) -> Result<()> {
+        // this is likely called by an application and will be eventually printed so we don't exit
+        // on first error, instead gather all the errors and return a bundled error message instead
+        let mut errors = Vec::new();
+        // we also  don't want duplicate error diagnostic
+        let mut erroneous_nodes = HashSet::with_capacity(self.num_input_files);
+
+        let all_versions = if offline { Solc::installed_versions() } else { Solc::all_versions() };
+        // walking through the node's dep tree and filtering the versions along the way
+        for idx in 0..self.num_input_files {
+            let mut candidates = all_versions.iter().collect::<Vec<_>>();
+            let mut traveresd = HashSet::new();
+            if let Err(msg) = self.compatible_import_versions(idx, &mut candidates, &mut traveresd)
+            {
+                errors.push(msg);
+            }
+
+            if candidates.is_empty() && !erroneous_nodes.contains(&idx) {
+                let mut msg = String::new();
+                self.format_imports_list(idx, &mut msg).unwrap();
+                errors.push(format!(
+                    "Discovered incompatible solidity versions in following\n: {}",
+                    msg
+                ));
+                erroneous_nodes.insert(idx);
+            } else {
+                // TODO
+                let candidate = candidates
+                    .iter()
+                    .rev()
+                    .find(|v| v.is_installed())
+                    .or(candidates.iter().last())
+                    .unwrap()
+                    .clone()
+                    .clone();
+            }
+        }
+
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(crate::error::SolcError::msg(errors.join("\n")))
+        }
+    }
+
+    fn compatible_import_versions(
+        &self,
+        idx: usize,
+        candidates: &mut Vec<&SolcVersion>,
+        traversed: &mut HashSet<usize>,
+    ) -> std::result::Result<(), String> {
+        let node = self.node(idx);
+
+        // check for circular deps
+        if traversed.contains(&idx) {
+            let mut msg = String::new();
+            self.format_imports_list(idx, &mut msg).unwrap();
+            return Err(format!("Encountered circular dependencies in:\n{}", msg))
+        }
+        traversed.insert(idx);
+
+        if let Some(ref req) = node.data.version_req {
+            candidates.retain(|v| req.matches(v.as_ref()));
+        }
+        for dep in self.imported_nodes(idx) {
+            self.compatible_import_versions(*dep, candidates, traversed)?;
+        }
+        Ok(())
+    }
+
+    fn format_imports_list<W: std::fmt::Write>(
+        &self,
+        idx: usize,
+        f: &mut W,
+    ) -> std::result::Result<(), std::fmt::Error> {
+        let node = self.node(idx);
+        for dep in self.imported_nodes(idx) {
+            let dep = self.node(*dep);
+            writeln!(
+                f,
+                "  {} ({:?}) imports {} ({:?})",
+                node.path.display(),
+                node.data.version,
+                dep.path.display(),
+                dep.data.version
+            )?;
+        }
+        for dep in self.imported_nodes(idx) {
+            self.format_imports_list(*dep, f)?;
+        }
+
+        Ok(())
+    }
+
+    /// Returns all files together with their appropriate version
+    pub fn into_sources_by_version(self) -> HashMap<Solc, Sources> {
+        // strategy:
+        // determine the solc version from the input files, if a valid version was found, then
+        // bundle them together with their deps
+
+        // TODO merge with ensure_compatible_imports
+        todo!()
+    }
+
+    /// Resolves a number of sources within the given config
+    pub fn resolve_sources(paths: &ProjectPathsConfig, sources: Sources) -> Result<Graph> {
+        // we start off by reading all input files, which includes all solidity files from the
+        // source and test folder
+        let mut unresolved: VecDeque<(PathBuf, Node)> = sources
+            .into_par_iter()
+            .map(|(path, source)| {
+                let data = parse_data(source.as_ref());
+                (path.clone(), Node { path, source, data })
+            })
+            .collect();
+
+        // identifiers of all resolved files
+        let mut index: HashMap<_, _> =
+            unresolved.iter().enumerate().map(|(idx, (p, _))| (p.clone(), idx)).collect();
+
+        let num_input_files = unresolved.len();
+
+        // contains the files and their dependencies
+        let mut nodes = Vec::with_capacity(unresolved.len());
+        let mut edges = Vec::with_capacity(unresolved.len());
+        // now we need to resolve all imports for the source file and those imported from other
+        // locations
+        while let Some((path, node)) = unresolved.pop_front() {
+            let mut resolved_imports = Vec::with_capacity(node.data.imports.len());
+
+            // parent directory of the current file
+            let node_dir = path.parent();
+            if node_dir.is_none() {
+                continue
+            }
+            let node_dir = node_dir.unwrap();
+
+            for import in node.data.imports.iter() {
+                let component = import.components().next();
+                if component.is_none() {
+                    continue
+                }
+                let component = component.unwrap();
+                if component == Component::CurDir || component == Component::ParentDir {
+                    // if the import is relative we assume it's already part of the processed input
+                    // file set
+                    match utils::canonicalize(node_dir.join(import)) {
+                        Ok(target) => {
+                            // the file at least exists,
+                            if let Some(idx) = index.get(&target).cloned() {
+                                resolved_imports.push(idx);
+                            } else {
+                                // imported file is not part of the input files
+                                let node = read_node(&target)?;
+                                unresolved.push_back((target.clone(), node));
+                                let idx = index.len();
+                                index.insert(target.clone(), idx);
+                                resolved_imports.push(idx);
+                            }
+                        }
+                        Err(err) => {
+                            tracing::trace!("failed to resolve relative import \"{:?}\"", err);
+                        }
+                    }
+                } else {
+                    // resolve library file
+                    if let Some(lib) = paths.resolve_library_import(import.as_ref()) {
+                        if let Some(idx) = index.get(&lib).cloned() {
+                            resolved_imports.push(idx);
+                        } else {
+                            // imported file is not part of the input files
+                            let node = read_node(&lib)?;
+                            unresolved.push_back((lib.clone(), node));
+                            let idx = index.len();
+                            index.insert(lib.clone(), idx);
+                            resolved_imports.push(idx);
+                        }
+                    } else {
+                        tracing::trace!(
+                            "failed to resolve library import \"{:?}\"",
+                            import.display()
+                        );
+                    }
+                }
+            }
+            nodes.push(node);
+            edges.push(resolved_imports);
+        }
+
+        Ok(Graph { nodes, edges, indices: index, num_input_files })
+    }
+
+    /// Resolves the dependencies of a project's source contracts
+    pub fn resolve(paths: &ProjectPathsConfig) -> Result<Graph> {
+        Self::resolve_sources(paths, paths.read_input_files()?)
     }
 }
 
@@ -79,97 +294,8 @@ pub struct Node {
 #[derive(Debug, Clone)]
 struct SolData {
     version: Option<String>,
+    version_req: Option<VersionReq>,
     imports: Vec<PathBuf>,
-}
-
-/// Resolves a number of sources within the given config
-pub fn resolve_sources(paths: &ProjectPathsConfig, sources: Sources) -> Result<Graph> {
-    // we start off by reading all input files, which includes all solidity files from the source
-    // and test folder
-    let mut unresolved: VecDeque<(PathBuf, Node)> = sources
-        .into_par_iter()
-        .map(|(path, source)| {
-            let data = parse_data(source.as_ref());
-            (path.clone(), Node { path, source, data })
-        })
-        .collect();
-
-    // identifiers of all resolved files
-    let mut index: HashMap<_, _> =
-        unresolved.iter().enumerate().map(|(idx, (p, _))| (p.clone(), idx)).collect();
-
-    let num_input_files = unresolved.len();
-
-    // contains the files and their dependencies
-    let mut nodes = Vec::with_capacity(unresolved.len());
-    let mut edges = Vec::with_capacity(unresolved.len());
-    // now we need to resolve all imports for the source file and those imported from other
-    // locations
-    while let Some((path, node)) = unresolved.pop_front() {
-        let mut resolved_imports = Vec::with_capacity(node.data.imports.len());
-
-        // parent directory of the current file
-        let node_dir = path.parent();
-        if node_dir.is_none() {
-            continue
-        }
-        let node_dir = node_dir.unwrap();
-
-        for import in node.data.imports.iter() {
-            let component = import.components().next();
-            if component.is_none() {
-                continue
-            }
-            let component = component.unwrap();
-            if component == Component::CurDir || component == Component::ParentDir {
-                // if the import is relative we assume it's already part of the processed input file
-                // set
-                match utils::canonicalize(node_dir.join(import)) {
-                    Ok(target) => {
-                        // the file at least exists,
-                        if let Some(idx) = index.get(&target).cloned() {
-                            resolved_imports.push(idx);
-                        } else {
-                            // imported file is not part of the input files
-                            let node = read_node(&target)?;
-                            unresolved.push_back((target.clone(), node));
-                            let idx = index.len();
-                            index.insert(target.clone(), idx);
-                            resolved_imports.push(idx);
-                        }
-                    }
-                    Err(err) => {
-                        tracing::trace!("failed to resolve relative import \"{:?}\"", err);
-                    }
-                }
-            } else {
-                // resolve library file
-                if let Some(lib) = paths.resolve_library_import(import.as_ref()) {
-                    if let Some(idx) = index.get(&lib).cloned() {
-                        resolved_imports.push(idx);
-                    } else {
-                        // imported file is not part of the input files
-                        let node = read_node(&lib)?;
-                        unresolved.push_back((lib.clone(), node));
-                        let idx = index.len();
-                        index.insert(lib.clone(), idx);
-                        resolved_imports.push(idx);
-                    }
-                } else {
-                    tracing::trace!("failed to resolve library import \"{:?}\"", import.display());
-                }
-            }
-        }
-        nodes.push(node);
-        edges.push(resolved_imports);
-    }
-
-    Ok(Graph { nodes, edges, indices: index, num_input_files })
-}
-
-/// Resolves the dependencies of a project's source contracts
-pub fn resolve(paths: &ProjectPathsConfig) -> Result<Graph> {
-    resolve_sources(paths, paths.read_input_files()?)
 }
 
 fn read_node(file: impl AsRef<Path>) -> Result<Node> {
@@ -220,12 +346,14 @@ fn parse_data(content: &str) -> SolData {
                 .collect()
         }
     };
-    SolData { version, imports }
+    let version_req = if let Some(ref v) = version { Solc::version_req(v).ok() } else { None };
+    SolData { version_req, version, imports }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::RELEASES;
 
     #[test]
     fn can_resolve_dependency_graph() {
@@ -233,7 +361,7 @@ mod tests {
             ProjectPathsConfig::dapptools("../../foundry-integration-tests/testdata/solmate")
                 .unwrap();
 
-        let graph = resolve(&paths).unwrap();
+        let graph = Graph::resolve(&paths).unwrap();
 
         for (path, idx) in &graph.indices {
             println!("{}", path.display());
