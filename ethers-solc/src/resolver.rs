@@ -47,7 +47,7 @@ pub struct Graph {
     /// is the set of outgoing edges for `nodes[0]`.
     edges: Vec<Vec<usize>>,
     /// index maps for a solidity file to an index, for fast lookup.
-    _indices: HashMap<PathBuf, usize>,
+    indices: HashMap<PathBuf, usize>,
     /// with how many input files we started with, corresponds to `let input_files =
     /// nodes[..num_input_files]`.
     num_input_files: usize,
@@ -57,6 +57,11 @@ impl Graph {
     /// Returns a list of nodes the given node index points to for the given kind.
     pub fn imported_nodes(&self, from: usize) -> &[usize] {
         &self.edges[from]
+    }
+
+    /// Returns all the resolved files and their index in the graph
+    pub fn files(&self) -> &HashMap<PathBuf, usize> {
+        &self.indices
     }
 
     /// Gets a node by index.
@@ -161,7 +166,7 @@ impl Graph {
             edges.push(resolved_imports);
         }
 
-        Ok(Graph { nodes, edges, _indices: index, num_input_files })
+        Ok(Graph { nodes, edges, indices: index, num_input_files })
     }
 
     /// Resolves the dependencies of a project's source contracts
@@ -456,20 +461,20 @@ fn parse_data(content: &str) -> SolData {
 mod tests {
     use super::*;
 
-    #[test]
-    fn can_resolve_dependency_graph() {
-        let paths =
-            ProjectPathsConfig::dapptools("../../foundry-integration-tests/testdata/solmate")
-                .unwrap();
-
-        let graph = Graph::resolve(&paths).unwrap();
-
-        for (path, idx) in &graph._indices {
-            println!("{}", path.display());
-            for dep in &graph.edges[*idx] {
-                println!("    {}", graph.node(*dep).path.display());
-            }
-            println!();
-        }
-    }
+    // #[test]
+    // fn can_resolve_dependency_graph() {
+    //     let paths =
+    //         ProjectPathsConfig::dapptools("../../foundry-integration-tests/testdata/solmate")
+    //             .unwrap();
+    //
+    //     let graph = Graph::resolve(&paths).unwrap();
+    //
+    //     for (path, idx) in &graph.indices {
+    //         println!("{}", path.display());
+    //         for dep in &graph.edges[*idx] {
+    //             println!("    {}", graph.node(*dep).path.display());
+    //         }
+    //         println!();
+    //     }
+    // }
 }

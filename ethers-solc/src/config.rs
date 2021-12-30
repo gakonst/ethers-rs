@@ -179,27 +179,27 @@ pub struct ProjectPathsConfigBuilder {
 
 impl ProjectPathsConfigBuilder {
     pub fn root(mut self, root: impl Into<PathBuf>) -> Self {
-        self.root = Some(root.into());
+        self.root = Some(canonicalized(root));
         self
     }
 
     pub fn cache(mut self, cache: impl Into<PathBuf>) -> Self {
-        self.cache = Some(cache.into());
+        self.cache = Some(canonicalized(cache));
         self
     }
 
     pub fn artifacts(mut self, artifacts: impl Into<PathBuf>) -> Self {
-        self.artifacts = Some(artifacts.into());
+        self.artifacts = Some(canonicalized(artifacts));
         self
     }
 
     pub fn sources(mut self, sources: impl Into<PathBuf>) -> Self {
-        self.sources = Some(sources.into());
+        self.sources = Some(canonicalized(sources));
         self
     }
 
     pub fn tests(mut self, tests: impl Into<PathBuf>) -> Self {
-        self.tests = Some(tests.into());
+        self.tests = Some(canonicalized(tests));
         self
     }
 
@@ -210,14 +210,14 @@ impl ProjectPathsConfigBuilder {
     }
 
     pub fn lib(mut self, lib: impl Into<PathBuf>) -> Self {
-        self.libraries.get_or_insert_with(Vec::new).push(lib.into());
+        self.libraries.get_or_insert_with(Vec::new).push(canonicalized(lib));
         self
     }
 
     pub fn libs(mut self, libs: impl IntoIterator<Item = impl Into<PathBuf>>) -> Self {
         let libraries = self.libraries.get_or_insert_with(Vec::new);
         for lib in libs.into_iter() {
-            libraries.push(lib.into());
+            libraries.push(canonicalized(lib));
         }
         self
     }
@@ -236,7 +236,7 @@ impl ProjectPathsConfigBuilder {
     }
 
     pub fn build_with_root(self, root: impl Into<PathBuf>) -> ProjectPathsConfig {
-        let root = root.into();
+        let root = canonicalized(root);
         ProjectPathsConfig {
             cache: self
                 .cache
@@ -257,9 +257,22 @@ impl ProjectPathsConfigBuilder {
             .map(Ok)
             .unwrap_or_else(std::env::current_dir)
             .map_err(|err| SolcIoError::new(err, "."))?;
-        let root = utils::canonicalize(&root)?;
         Ok(self.build_with_root(root))
     }
+}
+
+/// Returns the same path config but with canonicalized paths.
+///
+/// This will take care of potential symbolic linked directories.
+/// For example, the tempdir library is creating directories hosted under `/var/`, which in OS X
+/// is a symbolic link to `/private/var/`. So if when we try to resolve imports and a path is
+/// rooted in a symbolic directory we might end up with different paths for the same file, like
+/// `private/var/.../Dapp.sol` and `/var/.../Dapp.sol`
+///
+/// This canonicalizes all the paths but does not treat non existing dirs as an error
+fn canonicalized(path: impl Into<PathBuf>) -> PathBuf {
+    let path = path.into();
+    utils::canonicalize(&path).unwrap_or(path)
 }
 
 /// The config to use when compiling the contracts

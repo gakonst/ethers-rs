@@ -214,7 +214,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
     /// solc versions across files.
     #[tracing::instrument(skip_all, name = "compile")]
     pub fn compile(&self) -> Result<ProjectCompileOutput<Artifacts>> {
-        let sources = self.sources()?;
+        let sources = self.paths.read_input_files()?;
         tracing::trace!("found {} sources to compile: {:?}", sources.len(), sources.keys());
 
         #[cfg(all(feature = "svm", feature = "async"))]
@@ -233,58 +233,9 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
     #[cfg(all(feature = "svm", feature = "async"))]
     #[tracing::instrument(skip(self, sources))]
     fn svm_compile(&self, sources: Sources) -> Result<ProjectCompileOutput<Artifacts>> {
-        use semver::{Version, VersionReq};
-        use std::collections::hash_map::{self, HashMap};
-
-        // split them by version
-        let mut sources_by_version = BTreeMap::new();
-        // we store the solc versions by path, in case there exists a corrupt solc binary
-        let mut solc_versions = HashMap::new();
-
-        // tracks unique version requirements to minimize install effort
-        let mut solc_version_req = HashMap::<VersionReq, Version>::new();
-
-        tracing::trace!("preprocessing source files and solc installs");
-        for (path, source) in sources.into_iter() {
-            // will detect and install the solc version if it's missing
-            tracing::trace!("detecting solc version for \"{}\"", path.display());
-            let version_req = Solc::source_version_req(&source)?;
-
-            let version = match solc_version_req.entry(version_req) {
-                hash_map::Entry::Occupied(version) => version.get().clone(),
-                hash_map::Entry::Vacant(entry) => {
-                    let version = Solc::ensure_installed(entry.key())?;
-                    entry.insert(version.clone());
-                    version
-                }
-            };
-            tracing::trace!("found installed solc \"{}\"", version);
-
-            // gets the solc binary for that version, it is expected tha this will succeed
-            // AND find the solc since it was installed right above
-            let mut solc = Solc::find_svm_installed_version(version.to_string())?
-                .unwrap_or_else(|| panic!("solc \"{}\" should have been installed", version));
-
-            if !self.allowed_lib_paths.0.is_empty() {
-                solc = solc.arg("--allow-paths").arg(self.allowed_lib_paths.to_string());
-            }
-            solc_versions.insert(solc.solc.clone(), version);
-            let entry = sources_by_version.entry(solc).or_insert_with(BTreeMap::new);
-            entry.insert(path.clone(), source);
-        }
-        tracing::trace!("solc version preprocessing finished");
-
-        tracing::trace!("verifying solc checksums");
-        for solc in sources_by_version.keys() {
-            // verify that this solc version's checksum matches the checksum found remotely. If
-            // not, re-install the same version.
-            let version = &solc_versions[&solc.solc];
-            if solc.verify_checksum().is_err() {
-                tracing::trace!("corrupted solc version, redownloading  \"{}\"", version);
-                Solc::blocking_install(version)?;
-                tracing::trace!("reinstalled solc: \"{}\"", version);
-            }
-        }
+        let graph = Graph::resolve_sources(&self.paths, sources)?;
+        let sources_by_version =
+            graph.into_sources_by_version(!self.auto_detect)?.get(&self.allowed_lib_paths)?;
 
         // run the compilation step for each version
         let compiled = if self.solc_jobs > 1 && sources_by_version.len() > 1 {
@@ -400,6 +351,9 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         solc: &Solc,
         sources: Sources,
     ) -> Result<ProjectCompileOutput<Artifacts>> {
+        // let resolved = Graph::resolve_sources(&self.paths, sources)?;
+        // let sources = resolved.into_sources();
+
         let (sources, paths, cached_artifacts) = match self.preprocess_sources(sources)? {
             PreprocessedJob::Unchanged(artifacts) => {
                 return Ok(ProjectCompileOutput::from_unchanged(artifacts))
