@@ -460,21 +460,54 @@ fn parse_data(content: &str) -> SolData {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::Path;
 
-    // #[test]
-    // fn can_resolve_dependency_graph() {
-    //     let paths =
-    //         ProjectPathsConfig::dapptools("../../foundry-integration-tests/testdata/solmate")
-    //             .unwrap();
-    //
-    //     let graph = Graph::resolve(&paths).unwrap();
-    //
-    //     for (path, idx) in &graph.indices {
-    //         println!("{}", path.display());
-    //         for dep in &graph.edges[*idx] {
-    //             println!("    {}", graph.node(*dep).path.display());
-    //         }
-    //         println!();
-    //     }
-    // }
+    #[test]
+    fn can_resolve_hardhat_dependency_graph() {
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test-data/hardhat-sample");
+        let paths = ProjectPathsConfig::hardhat(root).unwrap();
+
+        let graph = Graph::resolve(&paths).unwrap();
+
+        assert_eq!(graph.num_input_files, 1);
+        assert_eq!(graph.files().len(), 2);
+
+        assert_eq!(
+            graph.files().clone(),
+            HashMap::from([
+                (paths.sources.join("Greeter.sol"), 0),
+                (paths.root.join("node_modules/hardhat/console.sol"), 1),
+            ])
+        );
+    }
+
+    #[test]
+    fn can_resolve_dapp_dependency_graph() {
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test-data/dapp-sample");
+        let paths = ProjectPathsConfig::dapptools(root).unwrap();
+
+        let graph = Graph::resolve(&paths).unwrap();
+
+        assert_eq!(graph.num_input_files, 2);
+        assert_eq!(graph.files().len(), 3);
+        assert_eq!(
+            graph.files().clone(),
+            HashMap::from([
+                (paths.sources.join("Dapp.sol"), 0),
+                (paths.sources.join("Dapp.t.sol"), 1),
+                (paths.root.join("lib/ds-test/src/test.sol"), 2),
+            ])
+        );
+
+        let dapp_test = graph.node(1);
+        assert_eq!(dapp_test.path, paths.sources.join("Dapp.t.sol"));
+        assert_eq!(
+            dapp_test.data.imports,
+            vec![
+                Path::new("ds-test/test.sol").to_path_buf(),
+                Path::new("./Dapp.sol").to_path_buf()
+            ]
+        );
+        assert_eq!(graph.imported_nodes(1).clone(), vec![2, 0]);
+    }
 }
