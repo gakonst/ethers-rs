@@ -27,7 +27,7 @@
 //! which is defined on a per source file basis.
 
 use std::{
-    collections::{HashMap, HashSet, VecDeque},
+    collections::{HashMap, VecDeque},
     path::{Component, Path, PathBuf},
 };
 
@@ -35,7 +35,7 @@ use rayon::prelude::*;
 use semver::VersionReq;
 use solang::parser::pt::{Import, SourceUnitPart};
 
-use crate::{error::Result, utils, ProjectPathsConfig, Solc, SolcVersion, Source, Sources};
+use crate::{error::Result, utils, ProjectPathsConfig, Solc, Source, Sources};
 
 /// Represents a fully-resolved solidity dependency graph. Each node in the graph
 /// is a file and edges represent dependencies between them.
@@ -43,11 +43,11 @@ use crate::{error::Result, utils, ProjectPathsConfig, Solc, SolcVersion, Source,
 #[derive(Debug)]
 pub struct Graph {
     nodes: Vec<Node>,
-    /// The indexes of `edges` correspond to the `nodes`. That is, `edges[0]`
+    /// The indices of `edges` correspond to the `nodes`. That is, `edges[0]`
     /// is the set of outgoing edges for `nodes[0]`.
     edges: Vec<Vec<usize>>,
     /// index maps for a solidity file to an index, for fast lookup.
-    indices: HashMap<PathBuf, usize>,
+    _indices: HashMap<PathBuf, usize>,
     /// with how many input files we started with, corresponds to `let input_files =
     /// nodes[..num_input_files]`.
     num_input_files: usize,
@@ -74,120 +74,6 @@ impl Graph {
     /// This won't yield any resolved library nodes
     pub fn input_nodes(&self) -> impl Iterator<Item = &Node> {
         self.nodes.iter().take(self.num_input_files)
-    }
-
-    /// Ensures that all files are compatible with all of their imports.
-    ///
-    /// This will essentially do a DFS on all input sources and their transitive imports and
-    /// checking that all can compiled with the version stated in the input file.
-    ///
-    /// Returns an error message with __all__ input files that don't have compatible imports.
-    ///
-    /// This also attempts to prefer local installations over remote available.
-    /// If `offline` is set to `true` then only already installed.
-    #[cfg(all(feature = "svm", feature = "async"))]
-    pub fn ensure_compatible_imports(&self, offline: bool) -> Result<()> {
-        // this is likely called by an application and will be eventually printed so we don't exit
-        // on first error, instead gather all the errors and return a bundled error message instead
-        let mut errors = Vec::new();
-        // we also  don't want duplicate error diagnostic
-        let mut erroneous_nodes = HashSet::with_capacity(self.num_input_files);
-
-        let all_versions = if offline { Solc::installed_versions() } else { Solc::all_versions() };
-        // walking through the node's dep tree and filtering the versions along the way
-        for idx in 0..self.num_input_files {
-            let mut candidates = all_versions.iter().collect::<Vec<_>>();
-            let mut traveresd = HashSet::new();
-            if let Err(msg) = self.compatible_import_versions(idx, &mut candidates, &mut traveresd)
-            {
-                errors.push(msg);
-            }
-
-            if candidates.is_empty() && !erroneous_nodes.contains(&idx) {
-                let mut msg = String::new();
-                self.format_imports_list(idx, &mut msg).unwrap();
-                errors.push(format!(
-                    "Discovered incompatible solidity versions in following\n: {}",
-                    msg
-                ));
-                erroneous_nodes.insert(idx);
-            } else {
-                // TODO
-                let candidate = candidates
-                    .iter()
-                    .rev()
-                    .find(|v| v.is_installed())
-                    .or(candidates.iter().last())
-                    .unwrap()
-                    .clone()
-                    .clone();
-            }
-        }
-
-        if errors.is_empty() {
-            Ok(())
-        } else {
-            Err(crate::error::SolcError::msg(errors.join("\n")))
-        }
-    }
-
-    fn compatible_import_versions(
-        &self,
-        idx: usize,
-        candidates: &mut Vec<&SolcVersion>,
-        traversed: &mut HashSet<usize>,
-    ) -> std::result::Result<(), String> {
-        let node = self.node(idx);
-
-        // check for circular deps
-        if traversed.contains(&idx) {
-            let mut msg = String::new();
-            self.format_imports_list(idx, &mut msg).unwrap();
-            return Err(format!("Encountered circular dependencies in:\n{}", msg))
-        }
-        traversed.insert(idx);
-
-        if let Some(ref req) = node.data.version_req {
-            candidates.retain(|v| req.matches(v.as_ref()));
-        }
-        for dep in self.imported_nodes(idx) {
-            self.compatible_import_versions(*dep, candidates, traversed)?;
-        }
-        Ok(())
-    }
-
-    fn format_imports_list<W: std::fmt::Write>(
-        &self,
-        idx: usize,
-        f: &mut W,
-    ) -> std::result::Result<(), std::fmt::Error> {
-        let node = self.node(idx);
-        for dep in self.imported_nodes(idx) {
-            let dep = self.node(*dep);
-            writeln!(
-                f,
-                "  {} ({:?}) imports {} ({:?})",
-                node.path.display(),
-                node.data.version,
-                dep.path.display(),
-                dep.data.version
-            )?;
-        }
-        for dep in self.imported_nodes(idx) {
-            self.format_imports_list(*dep, f)?;
-        }
-
-        Ok(())
-    }
-
-    /// Returns all files together with their appropriate version
-    pub fn into_sources_by_version(self) -> HashMap<Solc, Sources> {
-        // strategy:
-        // determine the solc version from the input files, if a valid version was found, then
-        // bundle them together with their deps
-
-        // TODO merge with ensure_compatible_imports
-        todo!()
     }
 
     /// Resolves a number of sources within the given config
@@ -275,12 +161,227 @@ impl Graph {
             edges.push(resolved_imports);
         }
 
-        Ok(Graph { nodes, edges, indices: index, num_input_files })
+        Ok(Graph { nodes, edges, _indices: index, num_input_files })
     }
 
     /// Resolves the dependencies of a project's source contracts
     pub fn resolve(paths: &ProjectPathsConfig) -> Result<Graph> {
         Self::resolve_sources(paths, paths.read_input_files()?)
+    }
+}
+
+#[cfg(all(feature = "svm", feature = "async"))]
+impl Graph {
+    /// Returns all input files together with their appropriate version.
+    ///
+    /// First we determine the compatible version for each input file (sources and test, see
+    /// `Self::resolve`) Then we also add any other dependencies
+    pub fn into_sources_by_version(self, offline: bool) -> Result<VersionedSources> {
+        /// insert the imports of the given node into the sources map
+        /// There can be following graph:
+        /// `A(<=0.8.10) imports C(>0.4.0)` and `B(0.8.11) imports C(>0.4.0)`
+        /// where `C` is a library import, in which case we assign `C` only to the first input file.
+        /// However, it's not required to include them in the solc `CompilerInput` as they would get
+        /// picked up by solc otherwise, but we add them so we can create a corresponding
+        /// cache entry for them as well. This can be optimized however
+        fn insert_imports(
+            idx: usize,
+            all_nodes: &mut HashMap<usize, Node>,
+            sources: &mut Sources,
+            edges: &[Vec<usize>],
+            num_input_files: usize,
+        ) {
+            for dep in &edges[idx] {
+                let dep = *dep;
+                if dep >= num_input_files {
+                    // library import
+                    if let Some(node) = all_nodes.remove(&dep) {
+                        sources.insert(node.path, node.source);
+                        insert_imports(dep, all_nodes, sources, &edges, num_input_files);
+                    }
+                }
+            }
+        }
+
+        let versioned_nodes = self.get_input_node_versions(offline)?;
+        let Self { nodes, edges, num_input_files, .. } = self;
+        let mut versioned_sources = HashMap::with_capacity(versioned_nodes.len());
+        let mut all_nodes = nodes.into_iter().enumerate().collect::<HashMap<_, _>>();
+        for (version, input_node_indices) in versioned_nodes {
+            let mut sources = Sources::new();
+            for idx in input_node_indices {
+                // insert the input node
+                let node = all_nodes.remove(&idx).unwrap();
+                sources.insert(node.path, node.source);
+                insert_imports(idx, &mut all_nodes, &mut sources, &edges, num_input_files);
+            }
+            versioned_sources.insert(version, sources);
+        }
+        Ok(VersionedSources { inner: versioned_sources, offline })
+    }
+
+    fn format_imports_list<W: std::fmt::Write>(
+        &self,
+        idx: usize,
+        f: &mut W,
+    ) -> std::result::Result<(), std::fmt::Error> {
+        let node = self.node(idx);
+        for dep in self.imported_nodes(idx) {
+            let dep = self.node(*dep);
+            writeln!(
+                f,
+                "  {} ({:?}) imports {} ({:?})",
+                node.path.display(),
+                node.data.version,
+                dep.path.display(),
+                dep.data.version
+            )?;
+        }
+        for dep in self.imported_nodes(idx) {
+            self.format_imports_list(*dep, f)?;
+        }
+
+        Ok(())
+    }
+
+    /// Filters incompatible versions from the `candidates`.
+    fn retain_compatible_versions(
+        &self,
+        idx: usize,
+        candidates: &mut Vec<&crate::SolcVersion>,
+        traversed: &mut std::collections::HashSet<usize>,
+    ) -> std::result::Result<(), String> {
+        let node = self.node(idx);
+
+        // check for circular deps
+        if traversed.contains(&idx) {
+            let mut msg = String::new();
+            self.format_imports_list(idx, &mut msg).unwrap();
+            return Err(format!("Encountered circular dependencies in:\n{}", msg))
+        }
+        traversed.insert(idx);
+
+        if let Some(ref req) = node.data.version_req {
+            candidates.retain(|v| req.matches(v.as_ref()));
+        }
+        for dep in self.imported_nodes(idx) {
+            self.retain_compatible_versions(*dep, candidates, traversed)?;
+        }
+        Ok(())
+    }
+
+    /// Ensures that all files are compatible with all of their imports.
+    pub fn ensure_compatible_imports(&self, offline: bool) -> Result<()> {
+        self.get_input_node_versions(offline)?;
+        Ok(())
+    }
+
+    /// Returns a map of versions together with the input nodes that are compatible with that
+    /// version.
+    ///
+    /// This will essentially do a DFS on all input sources and their transitive imports and
+    /// checking that all can compiled with the version stated in the input file.
+    ///
+    /// Returns an error message with __all__ input files that don't have compatible imports.
+    ///
+    /// This also attempts to prefer local installations over remote available.
+    /// If `offline` is set to `true` then only already installed.
+    fn get_input_node_versions(
+        &self,
+        offline: bool,
+    ) -> Result<HashMap<crate::SolcVersion, Vec<usize>>> {
+        // this is likely called by an application and will be eventually printed so we don't exit
+        // on first error, instead gather all the errors and return a bundled error message instead
+        let mut errors = Vec::new();
+        // we also  don't want duplicate error diagnostic
+        let mut erroneous_nodes = std::collections::HashSet::with_capacity(self.num_input_files);
+
+        let all_versions = if offline { Solc::installed_versions() } else { Solc::all_versions() };
+
+        // stores all versions and their nodes
+        let mut versioned_nodes = HashMap::new();
+
+        // walking through the node's dep tree and filtering the versions along the way
+        for idx in 0..self.num_input_files {
+            let mut candidates = all_versions.iter().collect::<Vec<_>>();
+            let mut traveresd = std::collections::HashSet::new();
+            if let Err(msg) = self.retain_compatible_versions(idx, &mut candidates, &mut traveresd)
+            {
+                errors.push(msg);
+            }
+
+            if candidates.is_empty() && !erroneous_nodes.contains(&idx) {
+                let mut msg = String::new();
+                self.format_imports_list(idx, &mut msg).unwrap();
+                errors.push(format!(
+                    "Discovered incompatible solidity versions in following\n: {}",
+                    msg
+                ));
+                erroneous_nodes.insert(idx);
+            } else {
+                let candidate = candidates
+                    .iter()
+                    .rev()
+                    .find(|v| v.is_installed())
+                    .or(candidates.iter().last())
+                    .unwrap()
+                    .clone()
+                    .clone();
+                versioned_nodes.entry(candidate).or_insert_with(|| Vec::with_capacity(1)).push(idx);
+            }
+        }
+
+        if errors.is_empty() {
+            Ok(versioned_nodes)
+        } else {
+            Err(crate::error::SolcError::msg(errors.join("\n")))
+        }
+    }
+}
+
+/// Container type for solc versions and their compatible sources
+#[cfg(all(feature = "svm", feature = "async"))]
+#[derive(Debug)]
+pub struct VersionedSources {
+    inner: HashMap<crate::SolcVersion, Sources>,
+    offline: bool,
+}
+
+#[cfg(all(feature = "svm", feature = "async"))]
+impl VersionedSources {
+    /// Resolves or installs the corresponding `Solc` installation.
+    pub fn get(
+        self,
+        allowed_lib_paths: &crate::AllowedLibPaths,
+    ) -> Result<std::collections::BTreeMap<Solc, Sources>> {
+        use crate::SolcError;
+
+        let mut sources_by_version = std::collections::BTreeMap::new();
+        for (version, sources) in self.inner {
+            if !version.is_installed() {
+                if self.offline {
+                    return Err(SolcError::msg(format!(
+                        "missing solc \"{}\" installation in offline mode",
+                        version
+                    )))
+                } else {
+                    Solc::blocking_install(version.as_ref())?;
+                }
+            }
+            let solc = Solc::find_svm_installed_version(version.to_string())?.ok_or_else(|| {
+                SolcError::msg(format!("solc \"{}\" should have been installed", version))
+            })?;
+
+            tracing::trace!("verifying solc checksum for {}", solc.solc.display());
+            if solc.verify_checksum().is_err() {
+                tracing::trace!("corrupted solc version, redownloading  \"{}\"", version);
+                Solc::blocking_install(version.as_ref())?;
+                tracing::trace!("reinstalled solc: \"{}\"", version);
+            }
+            sources_by_version
+                .insert(solc.arg("--allow-paths").arg(allowed_lib_paths.to_string()), sources);
+        }
+        Ok(sources_by_version)
     }
 }
 
@@ -292,6 +393,7 @@ pub struct Node {
 }
 
 #[derive(Debug, Clone)]
+#[allow(unused)]
 struct SolData {
     version: Option<String>,
     version_req: Option<VersionReq>,
@@ -353,7 +455,6 @@ fn parse_data(content: &str) -> SolData {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::RELEASES;
 
     #[test]
     fn can_resolve_dependency_graph() {
@@ -363,7 +464,7 @@ mod tests {
 
         let graph = Graph::resolve(&paths).unwrap();
 
-        for (path, idx) in &graph.indices {
+        for (path, idx) in &graph._indices {
             println!("{}", path.display());
             for dep in &graph.edges[*idx] {
                 println!("    {}", graph.node(*dep).path.display());

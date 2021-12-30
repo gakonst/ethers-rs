@@ -6,7 +6,8 @@ use crate::{
 use semver::{Version, VersionReq};
 use serde::{de::DeserializeOwned, Serialize};
 use std::{
-    collections::HashSet,
+    fmt,
+    fmt::Formatter,
     io::BufRead,
     path::{Path, PathBuf},
     process::{Command, Output, Stdio},
@@ -68,7 +69,7 @@ pub static RELEASES: Lazy<(svm::Releases, Vec<Version>)> = Lazy::new(|| {
 
 /// A `Solc` version is either installed (available locally) or can be downloaded, from the remote
 /// endpoint
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum SolcVersion {
     Installed(Version),
     Remote(Version),
@@ -94,6 +95,12 @@ impl From<SolcVersion> for Version {
         match s {
             SolcVersion::Installed(v) | SolcVersion::Remote(v) => v,
         }
+    }
+}
+
+impl fmt::Display for SolcVersion {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.as_ref())
     }
 }
 
@@ -191,8 +198,12 @@ impl Solc {
     /// already installed.
     #[cfg(all(feature = "svm", feature = "async"))]
     pub fn all_versions() -> Vec<SolcVersion> {
-        let mut all_versions =
-            RELEASES.1.clone().into_iter().map(SolcVersion::Remote).collect::<HashSet<_>>();
+        let mut all_versions = RELEASES
+            .1
+            .clone()
+            .into_iter()
+            .map(SolcVersion::Remote)
+            .collect::<std::collections::HashSet<_>>();
         all_versions.extend(Self::installed_versions());
         let mut all_versions = all_versions.into_iter().collect::<Vec<_>>();
         all_versions.sort_unstable();
