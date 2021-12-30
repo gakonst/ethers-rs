@@ -51,6 +51,8 @@ pub struct Graph {
     /// with how many input files we started with, corresponds to `let input_files =
     /// nodes[..num_input_files]`.
     num_input_files: usize,
+    /// the root of the project this graph represents
+    root: PathBuf,
 }
 
 impl Graph {
@@ -166,7 +168,7 @@ impl Graph {
             edges.push(resolved_imports);
         }
 
-        Ok(Graph { nodes, edges, indices: index, num_input_files })
+        Ok(Graph { nodes, edges, indices: index, num_input_files, root: paths.root.clone() })
     }
 
     /// Resolves the dependencies of a project's source contracts
@@ -236,9 +238,9 @@ impl Graph {
             writeln!(
                 f,
                 "  {} ({:?}) imports {} ({:?})",
-                node.path.display(),
+                utils::source_name(&node.path, &self.root).display(),
                 node.data.version,
-                dep.path.display(),
+                utils::source_name(&dep.path, &self.root).display(),
                 dep.data.version
             )?;
         }
@@ -254,23 +256,26 @@ impl Graph {
         &self,
         idx: usize,
         candidates: &mut Vec<&crate::SolcVersion>,
-        traversed: &mut std::collections::HashSet<usize>,
+        traversed: &mut std::collections::HashSet<(usize, usize)>,
     ) -> std::result::Result<(), String> {
         let node = self.node(idx);
-
-        // check for circular deps
-        if traversed.contains(&idx) {
-            let mut msg = String::new();
-            self.format_imports_list(idx, &mut msg).unwrap();
-            return Err(format!("Encountered circular dependencies in:\n{}", msg))
-        }
-        traversed.insert(idx);
 
         if let Some(ref req) = node.data.version_req {
             candidates.retain(|v| req.matches(v.as_ref()));
         }
         for dep in self.imported_nodes(idx) {
-            self.retain_compatible_versions(*dep, candidates, traversed)?;
+            let dep = *dep;
+            // check for circular deps which would result in endless recursion SO here
+            // a circular dependency exists, if there was already a `dependency imports current
+            // node` relationship in the traversed path
+            if traversed.contains(&(dep, idx)) {
+                let mut msg = String::new();
+                self.format_imports_list(dep, &mut msg).unwrap();
+                return Err(format!("Encountered circular dependencies in:\n{}", msg))
+            }
+            traversed.insert((idx, dep));
+
+            self.retain_compatible_versions(dep, candidates, traversed)?;
         }
         Ok(())
     }

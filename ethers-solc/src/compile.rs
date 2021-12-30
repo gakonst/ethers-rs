@@ -186,6 +186,7 @@ impl Solc {
     }
 
     /// Returns the list of all solc instances installed at `SVM_HOME`
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn installed_versions() -> Vec<SolcVersion> {
         if let Some(home) = Self::svm_home() {
             utils::installed_versions(home)
