@@ -51,6 +51,8 @@ pub enum TrezorError {
     UnsupportedFirmwareVersion(String),
     #[error("Does not support ENS.")]
     NoENSSupport,
+    #[error("Unable to access trezor cached session.")]
+    CacheError(String),
 }
 
 /// Trezor Transaction Struct
