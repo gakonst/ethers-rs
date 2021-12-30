@@ -52,6 +52,7 @@ pub struct Graph {
     /// nodes[..num_input_files]`.
     num_input_files: usize,
     /// the root of the project this graph represents
+    #[allow(unused)]
     root: PathBuf,
 }
 
