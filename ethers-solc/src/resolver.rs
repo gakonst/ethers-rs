@@ -86,6 +86,28 @@ impl Graph {
 
     /// Resolves a number of sources within the given config
     pub fn resolve_sources(paths: &ProjectPathsConfig, sources: Sources) -> Result<Graph> {
+        /// checks if the given target path was already resolved, if so it adds its id to the list
+        /// of resolved imports. If it hasn't been resolved yet, it queues in the file for
+        /// processing
+        fn add_node(
+            unresolved: &mut VecDeque<(PathBuf, Node)>,
+            index: &mut HashMap<PathBuf, usize>,
+            resolved_imports: &mut Vec<usize>,
+            target: PathBuf,
+        ) -> Result<()> {
+            if let Some(idx) = index.get(&target).copied() {
+                resolved_imports.push(idx);
+            } else {
+                // imported file is not part of the input files
+                let node = read_node(&target)?;
+                unresolved.push_back((target.clone(), node));
+                let idx = index.len();
+                index.insert(target, idx);
+                resolved_imports.push(idx);
+            }
+            Ok(())
+        }
+
         // we start off by reading all input files, which includes all solidity files from the
         // source and test folder
         let mut unresolved: VecDeque<(PathBuf, Node)> = sources
@@ -127,16 +149,7 @@ impl Graph {
                     match utils::canonicalize(node_dir.join(import)) {
                         Ok(target) => {
                             // the file at least exists,
-                            if let Some(idx) = index.get(&target).cloned() {
-                                resolved_imports.push(idx);
-                            } else {
-                                // imported file is not part of the input files
-                                let node = read_node(&target)?;
-                                unresolved.push_back((target.clone(), node));
-                                let idx = index.len();
-                                index.insert(target.clone(), idx);
-                                resolved_imports.push(idx);
-                            }
+                            add_node(&mut unresolved, &mut index, &mut resolved_imports, target)?;
                         }
                         Err(err) => {
                             tracing::trace!("failed to resolve relative import \"{:?}\"", err);
@@ -145,16 +158,7 @@ impl Graph {
                 } else {
                     // resolve library file
                     if let Some(lib) = paths.resolve_library_import(import.as_ref()) {
-                        if let Some(idx) = index.get(&lib).cloned() {
-                            resolved_imports.push(idx);
-                        } else {
-                            // imported file is not part of the input files
-                            let node = read_node(&lib)?;
-                            unresolved.push_back((lib.clone(), node));
-                            let idx = index.len();
-                            index.insert(lib.clone(), idx);
-                            resolved_imports.push(idx);
-                        }
+                        add_node(&mut unresolved, &mut index, &mut resolved_imports, lib)?;
                     } else {
                         tracing::trace!(
                             "failed to resolve library import \"{:?}\"",
