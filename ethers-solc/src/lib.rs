@@ -227,6 +227,8 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         if !self.allowed_lib_paths.0.is_empty() {
             solc = solc.arg("--allow-paths").arg(self.allowed_lib_paths.to_string());
         }
+
+        let sources = Graph::resolve_sources(&self.paths, sources)?.into_sources();
         self.compile_with_version(&solc, sources)
     }
 
@@ -351,9 +353,6 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         solc: &Solc,
         sources: Sources,
     ) -> Result<ProjectCompileOutput<Artifacts>> {
-        // let resolved = Graph::resolve_sources(&self.paths, sources)?;
-        // let sources = resolved.into_sources();
-
         let (sources, paths, cached_artifacts) = match self.preprocess_sources(sources)? {
             PreprocessedJob::Unchanged(artifacts) => {
                 return Ok(ProjectCompileOutput::from_unchanged(artifacts))
