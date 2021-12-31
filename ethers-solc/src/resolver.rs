@@ -33,7 +33,7 @@ use std::{
 
 use rayon::prelude::*;
 use semver::VersionReq;
-use solang::parser::pt::{Import, SourceUnitPart};
+use solang_parser::pt::{Import, SourceUnitPart};
 
 use crate::{error::Result, utils, ProjectPathsConfig, Solc, Source, Sources};
 
@@ -111,14 +111,16 @@ impl Graph {
             let mut resolved_imports = Vec::with_capacity(node.data.imports.len());
 
             // parent directory of the current file
-            let node_dir = match path.parent() { Some(inner) => inner, None => continue };
+            let node_dir = match path.parent() {
+                Some(inner) => inner,
+                None => continue,
+            };
 
             for import in node.data.imports.iter() {
-                let component = import.components().next();
-                if component.is_none() {
-                    continue
-                }
-                let component = component.unwrap();
+                let component = match import.components().next() {
+                    Some(inner) => inner,
+                    None => continue,
+                };
                 if component == Component::CurDir || component == Component::ParentDir {
                     // if the import is relative we assume it's already part of the processed input
                     // file set
@@ -420,7 +422,7 @@ fn read_node(file: impl AsRef<Path>) -> Result<Node> {
 fn parse_data(content: &str) -> SolData {
     let mut version = None;
     let mut imports = Vec::new();
-    match solang::parser::parse(content, 0) {
+    match solang_parser::parse(content, 0) {
         Ok(units) => {
             for unit in units.0 {
                 match unit {
