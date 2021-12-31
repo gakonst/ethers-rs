@@ -192,7 +192,7 @@ impl Graph {
         /// `A(<=0.8.10) imports C(>0.4.0)` and `B(0.8.11) imports C(>0.4.0)`
         /// where `C` is a library import, in which case we assign `C` only to the first input file.
         /// However, it's not required to include them in the solc `CompilerInput` as they would get
-        /// picked up by solc otherwise, but we add them so we can create a corresponding
+        /// picked up by solc otherwise, but we add them, so we can create a corresponding
         /// cache entry for them as well. This can be optimized however
         fn insert_imports(
             idx: usize,
@@ -201,8 +201,7 @@ impl Graph {
             edges: &[Vec<usize>],
             num_input_files: usize,
         ) {
-            for dep in &edges[idx] {
-                let dep = *dep;
+            for dep in edges[idx].iter().copied() {
                 if dep >= num_input_files {
                     // library import
                     if let Some(node) = all_nodes.remove(&dep) {
@@ -230,6 +229,8 @@ impl Graph {
         Ok(VersionedSources { inner: versioned_sources, offline })
     }
 
+    /// Writes the list of imported files into the given formatter:
+    /// `A (version) imports B (version)`
     fn format_imports_list<W: std::fmt::Write>(
         &self,
         idx: usize,
@@ -266,8 +267,7 @@ impl Graph {
         if let Some(ref req) = node.data.version_req {
             candidates.retain(|v| req.matches(v.as_ref()));
         }
-        for dep in self.imported_nodes(idx) {
-            let dep = *dep;
+        for dep in self.imported_nodes(idx).iter().copied() {
             // check for circular deps which would result in endless recursion SO here
             // a circular dependency exists, if there was already a `dependency imports current
             // node` relationship in the traversed path
