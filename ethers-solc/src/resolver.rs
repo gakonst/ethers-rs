@@ -184,8 +184,8 @@ impl Graph {
 impl Graph {
     /// Returns all input files together with their appropriate version.
     ///
-    /// First we determine the compatible version for each input file (sources and test, see
-    /// `Self::resolve`) Then we also add any other dependencies
+    /// First we determine the compatible version for each input file (from sources and test folder,
+    /// see `Self::resolve`) and then we add all resolved library imports.
     pub fn into_sources_by_version(self, offline: bool) -> Result<VersionedSources> {
         /// insert the imports of the given node into the sources map
         /// There can be following graph:
