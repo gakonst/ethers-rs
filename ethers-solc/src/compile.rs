@@ -203,14 +203,22 @@ impl Solc {
     /// already installed.
     #[cfg(all(feature = "svm", feature = "async"))]
     pub fn all_versions() -> Vec<SolcVersion> {
-        let mut all_versions = RELEASES
-            .1
-            .clone()
-            .into_iter()
-            .map(SolcVersion::Remote)
+        let mut all_versions = Self::installed_versions();
+        let mut uniques = all_versions
+            .iter()
+            .map(|v| {
+                let v = v.as_ref();
+                (v.major, v.minor, v.patch)
+            })
             .collect::<std::collections::HashSet<_>>();
-        all_versions.extend(Self::installed_versions());
-        let mut all_versions = all_versions.into_iter().collect::<Vec<_>>();
+        all_versions.extend(
+            RELEASES
+                .1
+                .clone()
+                .into_iter()
+                .filter(|v| uniques.insert((v.major, v.minor, v.patch)))
+                .map(SolcVersion::Remote),
+        );
         all_versions.sort_unstable();
         all_versions
     }
