@@ -1,3 +1,4 @@
+use std::{io, path::PathBuf};
 use thiserror::Error;
 
 pub type Result<T> = std::result::Result<T, SolcError>;
@@ -21,7 +22,7 @@ pub enum SolcError {
     SerdeJson(#[from] serde_json::Error),
     /// Filesystem IO error
     #[error(transparent)]
-    Io(#[from] std::io::Error),
+    Io(#[from] SolcIoError),
     #[cfg(feature = "svm")]
     #[error(transparent)]
     SvmError(#[from] svm::SolcVmError),
@@ -29,10 +30,42 @@ pub enum SolcError {
     NoContracts(String),
     #[error(transparent)]
     PatternError(#[from] glob::PatternError),
+    /// General purpose message
+    #[error("{0}")]
+    Message(String),
+
+    #[cfg(feature = "project-util")]
+    #[error(transparent)]
+    FsExtra(#[from] fs_extra::error::Error),
 }
 
 impl SolcError {
+    pub(crate) fn io(err: io::Error, path: impl Into<PathBuf>) -> Self {
+        SolcIoError::new(err, path).into()
+    }
     pub(crate) fn solc(msg: impl Into<String>) -> Self {
         SolcError::SolcError(msg.into())
+    }
+    pub(crate) fn msg(msg: impl Into<String>) -> Self {
+        SolcError::Message(msg.into())
+    }
+}
+
+#[derive(Debug, Error)]
+#[error("\"{}\": {io}", self.path.display())]
+pub struct SolcIoError {
+    io: io::Error,
+    path: PathBuf,
+}
+
+impl SolcIoError {
+    pub fn new(io: io::Error, path: impl Into<PathBuf>) -> Self {
+        Self { io, path: path.into() }
+    }
+}
+
+impl From<SolcIoError> for io::Error {
+    fn from(err: SolcIoError) -> Self {
+        err.io
     }
 }

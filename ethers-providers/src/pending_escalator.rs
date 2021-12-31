@@ -1,3 +1,5 @@
+#![allow(clippy::return_self_not_must_use)]
+
 use ethers_core::types::{Bytes, TransactionReceipt, H256};
 use futures_util::{stream::FuturesUnordered, StreamExt};
 use pin_project::pin_project;

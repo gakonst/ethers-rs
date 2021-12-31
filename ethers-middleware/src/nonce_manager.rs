@@ -77,6 +77,18 @@ where
         &self.inner
     }
 
+    async fn fill_transaction(
+        &self,
+        tx: &mut TypedTransaction,
+        block: Option<BlockId>,
+    ) -> Result<(), Self::Error> {
+        if tx.nonce().is_none() {
+            tx.set_nonce(self.get_transaction_count_with_manager(block).await?);
+        }
+
+        Ok(self.inner().fill_transaction(tx, block).await.map_err(FromErr::from)?)
+    }
+
     /// Signs and broadcasts the transaction. The optional parameter `block` can be passed so that
     /// gas cost and nonce calculations take it into account. For simple transactions this can be
     /// left to `None`.

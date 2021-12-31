@@ -129,7 +129,7 @@ impl Context {
         let ethers_contract = ethers_contract_crate();
         Ok(quote! {
             #abi_signature_doc
-            #[derive(Clone, Debug, Default, Eq, PartialEq, #ethers_contract::EthAbiType, #derives)]
+            #[derive(Clone, Debug, Default, Eq, PartialEq, #ethers_contract::EthAbiType, #ethers_contract::EthAbiCodec, #derives)]
             pub struct #name {
                 #( #fields ),*
             }
@@ -191,7 +191,7 @@ impl Context {
 
         Ok(quote! {
             #abi_signature_doc
-            #[derive(Clone, Debug, Default, Eq, PartialEq, #ethers_contract::EthAbiType, #derives)]
+            #[derive(Clone, Debug, Default, Eq, PartialEq, #ethers_contract::EthAbiType, #ethers_contract::EthAbiCodec, #derives)]
             pub struct #name {
                 #( #fields ),*
             }
@@ -308,6 +308,22 @@ impl InternalStructs {
         let key = (function.to_string(), input.to_string());
         self.function_params
             .get(&key)
+            .and_then(|id| self.rust_type_names.get(id))
+            .map(String::as_str)
+    }
+
+    /// Returns the name of the rust type that will be generated if the given output is a struct
+    /// NOTE: this does not account for arrays or fixed arrays
+    pub fn get_function_output_struct_type(
+        &self,
+        function: &str,
+        internal_type: &str,
+    ) -> Option<&str> {
+        self.outputs
+            .get(function)
+            .and_then(|outputs| {
+                outputs.iter().find(|s| s.as_str() == struct_type_identifier(internal_type))
+            })
             .and_then(|id| self.rust_type_names.get(id))
             .map(String::as_str)
     }

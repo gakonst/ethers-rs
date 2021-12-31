@@ -1,6 +1,9 @@
 //! project tests
 
-use ethers_solc::{cache::SOLIDITY_FILES_CACHE_FILENAME, Project, ProjectPathsConfig};
+use ethers_solc::{
+    cache::SOLIDITY_FILES_CACHE_FILENAME, project_util::*, MinimalCombinedArtifacts, Project,
+    ProjectPathsConfig,
+};
 use std::{
     io,
     path::{Path, PathBuf},
@@ -9,23 +12,12 @@ use tempdir::TempDir;
 
 #[test]
 fn can_compile_hardhat_sample() {
-    let tmp_dir = TempDir::new("root").unwrap();
-    let cache = tmp_dir.path().join("cache");
-    let cache = cache.join(SOLIDITY_FILES_CACHE_FILENAME);
-    let artifacts = tmp_dir.path().join("artifacts");
-
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test-data/hardhat-sample");
     let paths = ProjectPathsConfig::builder()
-        .cache(cache)
         .sources(root.join("contracts"))
-        .artifacts(artifacts)
-        .lib(root.join("node_modules"))
-        .root(root)
-        .build()
-        .unwrap();
-    // let paths = ProjectPathsConfig::hardhat(root).unwrap();
+        .lib(root.join("node_modules"));
+    let project = TempProject::<MinimalCombinedArtifacts>::new(paths).unwrap();
 
-    let project = Project::builder().paths(paths).build().unwrap();
     let compiled = project.compile().unwrap();
     assert!(compiled.find("Greeter").is_some());
     assert!(compiled.find("console").is_some());
@@ -38,7 +30,7 @@ fn can_compile_hardhat_sample() {
     assert!(compiled.is_unchanged());
 
     // delete artifacts
-    std::fs::remove_dir_all(&project.paths.artifacts).unwrap();
+    std::fs::remove_dir_all(&project.paths().artifacts).unwrap();
     let compiled = project.compile().unwrap();
     assert!(compiled.find("Greeter").is_some());
     assert!(compiled.find("console").is_some());
@@ -47,22 +39,10 @@ fn can_compile_hardhat_sample() {
 
 #[test]
 fn can_compile_dapp_sample() {
-    let tmp_dir = TempDir::new("root").unwrap();
-    let cache = tmp_dir.path().join("cache");
-    let cache = cache.join(SOLIDITY_FILES_CACHE_FILENAME);
-    let artifacts = tmp_dir.path().join("out");
-
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test-data/dapp-sample");
-    let paths = ProjectPathsConfig::builder()
-        .cache(cache)
-        .sources(root.join("src"))
-        .artifacts(artifacts)
-        .lib(root.join("lib"))
-        .root(root)
-        .build()
-        .unwrap();
+    let paths = ProjectPathsConfig::builder().sources(root.join("src")).lib(root.join("lib"));
+    let project = TempProject::<MinimalCombinedArtifacts>::new(paths).unwrap();
 
-    let project = Project::builder().paths(paths).build().unwrap();
     let compiled = project.compile().unwrap();
     assert!(compiled.find("Dapp").is_some());
     assert!(!compiled.has_compiler_errors());
@@ -73,7 +53,7 @@ fn can_compile_dapp_sample() {
     assert!(compiled.is_unchanged());
 
     // delete artifacts
-    std::fs::remove_dir_all(&project.paths.artifacts).unwrap();
+    std::fs::remove_dir_all(&project.paths().artifacts).unwrap();
     let compiled = project.compile().unwrap();
     assert!(compiled.find("Dapp").is_some());
     assert!(!compiled.is_unchanged());
@@ -111,7 +91,7 @@ fn can_compile_dapp_sample_with_cache() {
     assert!(compiled.is_unchanged());
 
     // deleted artifacts cause recompile even with cache
-    std::fs::remove_dir_all(&project.paths.artifacts).unwrap();
+    std::fs::remove_dir_all(&project.artifacts_path()).unwrap();
     let compiled = project.compile().unwrap();
     assert!(compiled.find("Dapp").is_some());
     assert!(!compiled.is_unchanged());

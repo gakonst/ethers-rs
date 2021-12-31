@@ -4,6 +4,8 @@
 
 ### Unreleased
 
+- Returns error on invalid type conversion instead of panicking
+  [691](https://github.com/gakonst/ethers-rs/pull/691/files)
 - Change types mapping for solidity `bytes` to rust `ethers::core::Bytes` and
   solidity `uint8[]` to rust `Vec<u8>`.
   [613](https://github.com/gakonst/ethers-rs/pull/613)
@@ -12,18 +14,41 @@
   [597](https://github.com/gakonst/ethers-rs/pull/597)
 - Implement hex display format for `ethers::core::Bytes`
   [#624](https://github.com/gakonst/ethers-rs/pull/624).
+- Fix `fee_history` to first try with `block_count` encoded as a hex `QUANTITY`.
+  [#668](https://github.com/gakonst/ethers-rs/pull/668)
+- Fix `fill_transaction` to set nonces in transactions, if the sender is known
+  and no nonce is specified
+- Move `fill_transaction` implementation to the provider, to allow middleware
+  to properly override its behavior.
+
+## ethers-contract-abigen
+
+- Add `MultiAbigen` to generate a series of contract bindings that can be kept in the repo
+  [#724](https://github.com/gakonst/ethers-rs/pull/724).
+- Add provided `event_derives` to call and event enums as well
+  [#721](https://github.com/gakonst/ethers-rs/pull/721).
+- Implement snowtrace and polygonscan on par with the etherscan integration
+  [#666](https://github.com/gakonst/ethers-rs/pull/666).
 
 ## ethers-solc
 
 ### Unreleased
 
+- `Remapping::find_many` does not return a `Result` anymore
+  [#707](https://github.com/gakonst/ethers-rs/pull/707)
+- Add support for hardhat artifacts
+  [#677](https://github.com/gakonst/ethers-rs/pull/677)
+- Add more utility functions to the `Artifact` trait
+  [#673](https://github.com/gakonst/ethers-rs/pull/673)
 - Return cached artifacts from project `compile` when the cache only contains
   some files
-- Add support for library linking and make `Bytecode`'s `object` filed an `enum BytecodeObject`
-  [#656](https://github.com/gakonst/ethers-rs/pull/656).
+- Add support for library linking and make `Bytecode`'s `object` filed an
+  `enum BytecodeObject` [#656](https://github.com/gakonst/ethers-rs/pull/656).
 
 ### 0.6.0
 
+- add `EthAbiCodec` proc macro to derive `AbiEncode` `AbiDecode` implementation
+  [#704](https://github.com/gakonst/ethers-rs/pull/704)
 - move `AbiEncode` `AbiDecode` trait to ethers-core and implement for core types
   [#531](https://github.com/gakonst/ethers-rs/pull/531)
 - Add EIP-712 `sign_typed_data` signer method; add ethers-core type `Eip712`
@@ -94,6 +119,10 @@
 
 ### Unreleased
 
+- Add `EventStream::select` to combine streams with different event types
+  [#725](https://github.com/gakonst/ethers-rs/pull/725)
+- Substitute output tuples with rust struct types for function calls
+  [#664](https://github.com/gakonst/ethers-rs/pull/664)
 - Add AbiType implementation during EthAbiType expansion
   [#647](https://github.com/gakonst/ethers-rs/pull/647)
 - fix Etherscan conditional HTTP support

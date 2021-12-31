@@ -16,6 +16,13 @@ use std::{
 /// Hardhat format version
 const HH_FORMAT_VERSION: &str = "hh-sol-cache-2";
 
+/// ethers-rs format version
+///
+/// `ethers-solc` uses a different format version id, but the actual format is consistent with
+/// hardhat This allows ethers-solc to detect if the cache file was written by hardhat or
+/// `ethers-solc`
+const ETHERS_FORMAT_VERSION: &str = "ethers-rs-sol-cache-1";
+
 /// The file name of the default cache file
 pub const SOLIDITY_FILES_CACHE_FILENAME: &str = "solidity-files-cache.json";
 
@@ -42,33 +49,45 @@ impl SolFilesCache {
         SolFilesCacheBuilder::default()
     }
 
+    /// Whether this cache's format is the hardhat format identifier
+    pub fn is_hardhat_format(&self) -> bool {
+        self.format == HH_FORMAT_VERSION
+    }
+
+    /// Whether this cache's format is our custom format identifier
+    pub fn is_ethers_format(&self) -> bool {
+        self.format == ETHERS_FORMAT_VERSION
+    }
+
     /// Reads the cache json file from the given path
     #[tracing::instrument(skip_all, name = "sol-files-cache::read")]
     pub fn read(path: impl AsRef<Path>) -> Result<Self> {
         let path = path.as_ref();
         tracing::trace!("reading solfiles cache at {}", path.display());
-        let file = fs::File::open(path)?;
+        let file = fs::File::open(path).map_err(|err| SolcError::io(err, path))?;
         let file = std::io::BufReader::new(file);
-        let cache = serde_json::from_reader(file)?;
-        tracing::trace!("done");
+        let cache: Self = serde_json::from_reader(file)?;
+        tracing::trace!("read cache \"{}\" with {} entries", cache.format, cache.files.len());
         Ok(cache)
     }
 
     /// Write the cache to json file
     pub fn write(&self, path: impl AsRef<Path>) -> Result<()> {
         let path = path.as_ref();
-        let file = fs::File::create(path)?;
-        tracing::trace!("writing cache to json file");
+        let file = fs::File::create(path).map_err(|err| SolcError::io(err, path))?;
+        tracing::trace!("writing cache to json file: \"{}\"", path.display());
         serde_json::to_writer_pretty(file, self)?;
-        tracing::trace!("cache file located: {}", path.display());
+        tracing::trace!("cache file located: \"{}\"", path.display());
         Ok(())
     }
 
     pub fn remove_missing_files(&mut self) {
+        tracing::trace!("remove non existing files from cache");
         self.files.retain(|file, _| Path::new(file).exists())
     }
 
     pub fn remove_changed_files(&mut self, changed_files: &Sources) {
+        tracing::trace!("remove changed files from cache");
         self.files.retain(|file, _| !changed_files.contains_key(file))
     }
 
@@ -140,16 +159,30 @@ impl SolFilesCache {
     ) -> bool {
         if let Some(entry) = self.files.get(file) {
             if entry.content_hash.as_bytes() != hash {
+                tracing::trace!("changed content hash for cached artifact \"{}\"", file.display());
                 return true
             }
             if let Some(config) = config {
                 if config != &entry.solc_config {
+                    tracing::trace!(
+                        "changed solc config for cached artifact \"{}\"",
+                        file.display()
+                    );
                     return true
                 }
             }
 
-            entry.artifacts.iter().any(|name| !T::output_exists(file, name, artifacts_root))
+            let missing_artifacts =
+                entry.artifacts.iter().any(|name| !T::output_exists(file, name, artifacts_root));
+            if missing_artifacts {
+                tracing::trace!(
+                    "missing linked artifacts for cached artifact \"{}\"",
+                    file.display()
+                );
+            }
+            missing_artifacts
         } else {
+            tracing::trace!("missing cached artifact for \"{}\"", file.display());
             true
         }
     }
@@ -161,7 +194,7 @@ impl SolFilesCache {
         })
     }
 
-    /// Reads all cached artifacts from disk
+    /// Reads all cached artifacts from disk using the given ArtifactOutput handler
     pub fn read_artifacts<T: ArtifactOutput>(
         &self,
         artifacts_root: &Path,
@@ -181,13 +214,16 @@ impl SolFilesCache {
 #[cfg(feature = "async")]
 impl SolFilesCache {
     pub async fn async_read(path: impl AsRef<Path>) -> Result<Self> {
-        let content = tokio::fs::read_to_string(path.as_ref()).await?;
+        let path = path.as_ref();
+        let content =
+            tokio::fs::read_to_string(path).await.map_err(|err| SolcError::io(err, path))?;
         Ok(serde_json::from_str(&content)?)
     }
 
     pub async fn async_write(&self, path: impl AsRef<Path>) -> Result<()> {
+        let path = path.as_ref();
         let content = serde_json::to_vec_pretty(self)?;
-        Ok(tokio::fs::write(path.as_ref(), content).await?)
+        Ok(tokio::fs::write(path, content).await.map_err(|err| SolcError::io(err, path))?)
     }
 }
 
@@ -199,32 +235,41 @@ pub struct SolFilesCacheBuilder {
 }
 
 impl SolFilesCacheBuilder {
+    #[must_use]
     pub fn format(mut self, format: impl Into<String>) -> Self {
         self.format = Some(format.into());
         self
     }
 
+    #[must_use]
     pub fn solc_config(mut self, solc_config: SolcConfig) -> Self {
         self.solc_config = Some(solc_config);
         self
     }
 
+    #[must_use]
     pub fn root(mut self, root: impl Into<PathBuf>) -> Self {
         self.root = Some(root.into());
         self
     }
 
     pub fn insert_files(self, sources: Sources, dest: Option<PathBuf>) -> Result<SolFilesCache> {
-        let format = self.format.unwrap_or_else(|| HH_FORMAT_VERSION.to_string());
+        let format = self.format.unwrap_or_else(|| ETHERS_FORMAT_VERSION.to_string());
         let solc_config =
             self.solc_config.map(Ok).unwrap_or_else(|| SolcConfig::builder().build())?;
 
-        let root = self.root.map(Ok).unwrap_or_else(std::env::current_dir)?;
+        let root = self
+            .root
+            .map(Ok)
+            .unwrap_or_else(std::env::current_dir)
+            .map_err(|err| SolcError::io(err, "."))?;
 
         let mut files = BTreeMap::new();
         for (file, source) in sources {
-            let last_modification_date = fs::metadata(&file)?
-                .modified()?
+            let last_modification_date = fs::metadata(&file)
+                .map_err(|err| SolcError::io(err, file.clone()))?
+                .modified()
+                .map_err(|err| SolcError::io(err, file.clone()))?
                 .duration_since(UNIX_EPOCH)
                 .map_err(|err| SolcError::solc(err.to_string()))?
                 .as_millis() as u64;
@@ -247,18 +292,14 @@ impl SolFilesCacheBuilder {
             files.insert(file, entry);
         }
 
-        let cache = if let Some(ref dest) = dest {
-            if dest.exists() {
-                // read the existing cache and extend it by the files that changed
-                // (if we just wrote to the cache file, we'd overwrite the existing data)
-                let reader = std::io::BufReader::new(File::open(dest)?);
-                let mut cache: SolFilesCache = serde_json::from_reader(reader)?;
-                assert_eq!(cache.format, format);
-                cache.files.extend(files);
-                cache
-            } else {
-                SolFilesCache { format, files }
-            }
+        let cache = if let Some(dest) = dest.as_ref().filter(|dest| dest.exists()) {
+            // read the existing cache and extend it by the files that changed
+            // (if we just wrote to the cache file, we'd overwrite the existing data)
+            let reader =
+                std::io::BufReader::new(File::open(dest).map_err(|err| SolcError::io(err, dest))?);
+            let mut cache: SolFilesCache = serde_json::from_reader(reader)?;
+            cache.files.extend(files);
+            cache
         } else {
             SolFilesCache { format, files }
         };

@@ -1,5 +1,7 @@
 use crate::{
-    abi::{AbiArrayType, AbiError, AbiType, Detokenize, Tokenizable, TokenizableItem},
+    abi::{
+        AbiArrayType, AbiError, AbiType, Detokenize, Token, Tokenizable, TokenizableItem, Tokenize,
+    },
     types::{Address, H256, U128, U256},
 };
 
@@ -109,8 +111,7 @@ macro_rules! impl_abi_codec_tuple {
             )+
         {
             fn encode(self) -> Vec<u8> {
-                let token = self.into_token();
-                crate::abi::encode(&[token]).into()
+                crate::abi::encode(&self.into_tokens()).into()
             }
         }
 
@@ -119,10 +120,14 @@ macro_rules! impl_abi_codec_tuple {
                 $ty: AbiType +  Tokenizable,
             )+ {
                 fn decode(bytes: impl AsRef<[u8]>) -> Result<Self, AbiError> {
-                    let tokens = crate::abi::decode(
-                    &[Self::param_type()], bytes.as_ref()
-                    )?;
-                    Ok(<Self as Detokenize>::from_tokens(tokens)?)
+                    if let crate::abi::ParamType::Tuple(params) = <Self as AbiType>::param_type() {
+                      let tokens = crate::abi::decode(&params, bytes.as_ref())?;
+                      Ok(<Self as Tokenizable>::from_token(Token::Tuple(tokens))?)
+                    } else {
+                        Err(
+                            crate::abi::InvalidOutputType("Expected tuple".to_string()).into()
+                        )
+                    }
                 }
         }
     }

@@ -68,6 +68,11 @@ pub static RELEASES: Lazy<(svm::Releases, Vec<Version>)> = Lazy::new(|| {
 /// Abstraction over `solc` command line utility
 ///
 /// Supports sync and async functions.
+///
+/// By default the solc path is configured as follows, with descending priority:
+///   1. `SOLC_PATH` environment variable
+///   2. [svm](https://github.com/roynalnaruto/svm-rs)'s  `global_version` (set via `svm use <version>`), stored at `<svm_home>/.global_version`
+///   3. `solc` otherwise
 #[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Ord)]
 pub struct Solc {
     /// Path to the `solc` executable
@@ -78,7 +83,20 @@ pub struct Solc {
 
 impl Default for Solc {
     fn default() -> Self {
-        std::env::var("SOLC_PATH").map(Solc::new).unwrap_or_else(|_| Solc::new(SOLC))
+        if let Ok(solc) = std::env::var("SOLC_PATH") {
+            return Solc::new(solc)
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            if let Some(solc) = Solc::svm_global_version()
+                .and_then(|vers| Solc::find_svm_installed_version(&vers.to_string()).ok())
+                .flatten()
+            {
+                return solc
+            }
+        }
+
+        Solc::new(SOLC)
     }
 }
 
@@ -89,12 +107,14 @@ impl Solc {
     }
 
     /// Adds an argument to pass to the `solc` command.
+    #[must_use]
     pub fn arg<T: Into<String>>(mut self, arg: T) -> Self {
         self.args.push(arg.into());
         self
     }
 
     /// Adds multiple arguments to pass to the `solc`.
+    #[must_use]
     pub fn args<I, S>(mut self, args: I) -> Self
     where
         I: IntoIterator<Item = S>,
@@ -114,6 +134,18 @@ impl Solc {
         home::home_dir().map(|dir| dir.join(".svm"))
     }
 
+    /// Returns the `semver::Version` [svm](https://github.com/roynalnaruto/svm-rs)'s `.global_version` is currently set to.
+    ///  `global_version` is configured with (`svm use <version>`)
+    ///
+    /// This will read the version string (eg: "0.8.9") that the  `~/.svm/.global_version` file
+    /// contains
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn svm_global_version() -> Option<Version> {
+        let version =
+            std::fs::read_to_string(Self::svm_home().map(|p| p.join(".global_version"))?).ok()?;
+        Version::parse(&version).ok()
+    }
+
     /// Returns the path for a [svm](https://github.com/roynalnaruto/svm-rs) installed version.
     ///
     /// # Example
@@ -128,17 +160,15 @@ impl Solc {
     #[cfg(not(target_arch = "wasm32"))]
     pub fn find_svm_installed_version(version: impl AsRef<str>) -> Result<Option<Self>> {
         let version = version.as_ref();
-        let solc = walkdir::WalkDir::new(
-            Self::svm_home().ok_or_else(|| SolcError::solc("svm home dir not found"))?,
-        )
-        .max_depth(1)
-        .into_iter()
-        .filter_map(std::result::Result::ok)
-        .filter(|e| e.file_type().is_dir())
-        .find(|e| e.path().ends_with(version))
-        .map(|e| e.path().join(format!("solc-{}", version)))
-        .map(Solc::new);
-        Ok(solc)
+        let solc = Self::svm_home()
+            .ok_or_else(|| SolcError::solc("svm home dir not found"))?
+            .join(version)
+            .join(format!("solc-{}", version));
+
+        if !solc.is_file() {
+            return Ok(None)
+        }
+        Ok(Some(Solc::new(solc)))
     }
 
     /// Assuming the `versions` array is sorted, it returns the first element which satisfies
@@ -203,7 +233,7 @@ impl Solc {
     pub fn version_req(source: &Source) -> Result<VersionReq> {
         let version = utils::find_version_pragma(&source.content)
             .ok_or(SolcError::PragmaNotFound)?
-            .replace(" ", ",");
+            .replace(' ', ",");
 
         // Somehow, Solidity semver without an operator is considered to be "exact",
         // but lack of operator automatically marks the operator as Caret, so we need
@@ -248,7 +278,8 @@ impl Solc {
         let version = self.version_short()?;
         let mut version_path = svm::version_path(version.to_string().as_str());
         version_path.push(format!("solc-{}", version.to_string().as_str()));
-        let content = std::fs::read(version_path)?;
+        let content =
+            std::fs::read(&version_path).map_err(|err| SolcError::io(err, version_path))?;
 
         use sha2::Digest;
         let mut hasher = sha2::Sha256::new();
@@ -266,6 +297,7 @@ impl Solc {
 
     /// Convenience function for compiling all sources under the given path
     pub fn compile_source(&self, path: impl AsRef<Path>) -> Result<CompilerOutput> {
+        let path = path.as_ref();
         self.compile(&CompilerInput::new(path)?)
     }
 
@@ -303,11 +335,12 @@ impl Solc {
             .stdin(Stdio::piped())
             .stderr(Stdio::piped())
             .stdout(Stdio::piped())
-            .spawn()?;
+            .spawn()
+            .map_err(|err| SolcError::io(err, &self.solc))?;
         let stdin = child.stdin.take().unwrap();
 
         serde_json::to_writer(stdin, input)?;
-        compile_output(child.wait_with_output()?)
+        compile_output(child.wait_with_output().map_err(|err| SolcError::io(err, &self.solc))?)
     }
 
     pub fn version_short(&self) -> Result<Version> {
@@ -323,7 +356,8 @@ impl Solc {
                 .stdin(Stdio::piped())
                 .stderr(Stdio::piped())
                 .stdout(Stdio::piped())
-                .output()?,
+                .output()
+                .map_err(|err| SolcError::io(err, &self.solc))?,
         )
     }
 }
@@ -359,15 +393,19 @@ impl Solc {
         use tokio::io::AsyncWriteExt;
         let content = serde_json::to_vec(input)?;
         let mut child = tokio::process::Command::new(&self.solc)
+            .args(&self.args)
             .arg("--standard-json")
             .stdin(Stdio::piped())
             .stderr(Stdio::piped())
             .stdout(Stdio::piped())
-            .spawn()?;
+            .spawn()
+            .map_err(|err| SolcError::io(err, &self.solc))?;
         let stdin = child.stdin.as_mut().unwrap();
-        stdin.write_all(&content).await?;
-        stdin.flush().await?;
-        compile_output(child.wait_with_output().await?)
+        stdin.write_all(&content).await.map_err(|err| SolcError::io(err, &self.solc))?;
+        stdin.flush().await.map_err(|err| SolcError::io(err, &self.solc))?;
+        compile_output(
+            child.wait_with_output().await.map_err(|err| SolcError::io(err, &self.solc))?,
+        )
     }
 
     pub async fn async_version(&self) -> Result<Version> {
@@ -377,9 +415,11 @@ impl Solc {
                 .stdin(Stdio::piped())
                 .stderr(Stdio::piped())
                 .stdout(Stdio::piped())
-                .spawn()?
+                .spawn()
+                .map_err(|err| SolcError::io(err, &self.solc))?
                 .wait_with_output()
-                .await?,
+                .await
+                .map_err(|err| SolcError::io(err, &self.solc))?,
         )
     }
 
@@ -470,7 +510,8 @@ fn version_from_output(output: Output) -> Result<Version> {
             .stdout
             .lines()
             .last()
-            .ok_or_else(|| SolcError::solc("version not found in solc output"))??;
+            .ok_or_else(|| SolcError::solc("version not found in solc output"))?
+            .map_err(|err| SolcError::msg(format!("Failed to read output: {}", err)))?;
         // NOTE: semver doesn't like `+` in g++ in build metadata which is invalid semver
         Ok(Version::from_str(&version.trim_start_matches("Version: ").replace(".g++", ".gcc"))?)
     } else {
@@ -496,7 +537,7 @@ mod tests {
     use crate::CompilerInput;
 
     fn solc() -> Solc {
-        std::env::var("SOLC_PATH").map(Solc::new).unwrap_or_default()
+        Solc::default()
     }
 
     #[test]
@@ -578,7 +619,7 @@ mod tests {
             // update this test whenever there's a new sol
             // version. that's ok! good reminder to check the
             // patch notes.
-            (">=0.5.0", "0.8.10"),
+            (">=0.5.0", "0.8.11"),
             // range
             (">=0.4.0 <0.5.0", "0.4.26"),
         ]

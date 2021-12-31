@@ -1,8 +1,8 @@
 use crate::{
-    ens,
+    ens, maybe,
     pubsub::{PubsubClient, SubscriptionStream},
     stream::{FilterWatcher, DEFAULT_POLL_INTERVAL},
-    FeeHistory, FromErr, Http as HttpProvider, JsonRpcClient, JsonRpcClientWrapper, MockProvider,
+    FromErr, Http as HttpProvider, JsonRpcClient, JsonRpcClientWrapper, MockProvider,
     PendingTransaction, QuorumProvider,
 };
 
@@ -15,9 +15,10 @@ use ethers_core::{
     abi::{self, Detokenize, ParamType},
     types::{
         transaction::{eip2718::TypedTransaction, eip2930::AccessListWithGasUsed},
-        Address, Block, BlockId, BlockNumber, BlockTrace, Bytes, EIP1186ProofResponse, Filter, Log,
-        NameOrAddress, Selector, Signature, Trace, TraceFilter, TraceType, Transaction,
-        TransactionReceipt, TxHash, TxpoolContent, TxpoolInspect, TxpoolStatus, H256, U256, U64,
+        Address, Block, BlockId, BlockNumber, BlockTrace, Bytes, EIP1186ProofResponse, FeeHistory,
+        Filter, Log, NameOrAddress, Selector, Signature, Trace, TraceFilter, TraceType,
+        Transaction, TransactionReceipt, TxHash, TxpoolContent, TxpoolInspect, TxpoolStatus, H256,
+        U256, U64,
     },
     utils,
 };
@@ -174,6 +175,7 @@ impl<P: JsonRpcClient> Provider<P> {
         }
     }
 
+    #[must_use]
     pub fn with_sender(mut self, address: impl Into<Address>) -> Self {
         self.from = Some(address.into());
         self
@@ -257,6 +259,67 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
     /// Returns the current client version using the `web3_clientVersion` RPC.
     async fn client_version(&self) -> Result<String, Self::Error> {
         self.request("web3_clientVersion", ()).await
+    }
+
+    async fn fill_transaction(
+        &self,
+        tx: &mut TypedTransaction,
+        block: Option<BlockId>,
+    ) -> Result<(), Self::Error> {
+        if let Some(default_sender) = self.default_sender() {
+            if tx.from().is_none() {
+                tx.set_from(default_sender);
+            }
+        }
+
+        // TODO: Can we poll the futures below at the same time?
+        // Access List + Name resolution and then Gas price + Gas
+
+        // set the ENS name
+        if let Some(NameOrAddress::Name(ref ens_name)) = tx.to() {
+            let addr = self.resolve_name(ens_name).await?;
+            tx.set_to(addr);
+        }
+
+        // estimate the gas without the access list
+        let gas = maybe(tx.gas().cloned(), self.estimate_gas(tx)).await?;
+        let mut al_used = false;
+
+        // set the access lists
+        if let Some(access_list) = tx.access_list() {
+            if access_list.0.is_empty() {
+                if let Ok(al_with_gas) = self.create_access_list(tx, block).await {
+                    // only set the access list if the used gas is less than the
+                    // normally estimated gas
+                    if al_with_gas.gas_used < gas {
+                        tx.set_access_list(al_with_gas.access_list);
+                        tx.set_gas(al_with_gas.gas_used);
+                        al_used = true;
+                    }
+                }
+            }
+        }
+
+        if !al_used {
+            tx.set_gas(gas);
+        }
+
+        match tx {
+            TypedTransaction::Eip2930(_) | TypedTransaction::Legacy(_) => {
+                let gas_price = maybe(tx.gas_price(), self.get_gas_price()).await?;
+                tx.set_gas_price(gas_price);
+            }
+            TypedTransaction::Eip1559(ref mut inner) => {
+                if inner.max_fee_per_gas.is_none() || inner.max_priority_fee_per_gas.is_none() {
+                    let (max_fee_per_gas, max_priority_fee_per_gas) =
+                        self.estimate_eip1559_fees(None).await?;
+                    inner.max_fee_per_gas = Some(max_fee_per_gas);
+                    inner.max_priority_fee_per_gas = Some(max_priority_fee_per_gas);
+                };
+            }
+        }
+
+        Ok(())
     }
 
     /// Gets the latest block number via the `eth_BlockNumber` API
@@ -848,12 +911,13 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.subscribe([logs, filter]).await
     }
 
-    async fn fee_history<T: Into<U256> + serde::Serialize + Send + Sync>(
+    async fn fee_history<T: Into<U256> + Send + Sync>(
         &self,
         block_count: T,
         last_block: BlockNumber,
         reward_percentiles: &[f64],
     ) -> Result<FeeHistory, Self::Error> {
+        let block_count = block_count.into();
         let last_block = utils::serialize(&last_block);
         let reward_percentiles = utils::serialize(&reward_percentiles);
 
@@ -868,7 +932,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         .or(self
             .request(
                 "eth_feeHistory",
-                [utils::serialize(&block_count.into().as_u64()), last_block, reward_percentiles],
+                [utils::serialize(&block_count.as_u64()), last_block, reward_percentiles],
             )
             .await)
     }
@@ -910,6 +974,7 @@ impl<P: JsonRpcClient> Provider<P> {
     }
 
     /// Sets the ENS Address (default: mainnet)
+    #[must_use]
     pub fn ens<T: Into<Address>>(mut self, ens: T) -> Self {
         self.ens = Some(ens.into());
         self
@@ -917,6 +982,7 @@ impl<P: JsonRpcClient> Provider<P> {
 
     /// Sets the default polling interval for event filters and pending transactions
     /// (default: 7 seconds)
+    #[must_use]
     pub fn interval<T: Into<Duration>>(mut self, interval: T) -> Self {
         self.interval = Some(interval.into());
         self
@@ -948,8 +1014,7 @@ impl Provider<crate::Ws> {
     }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
-#[cfg(feature = "ipc")]
+#[cfg(all(target_family = "unix", feature = "ipc"))]
 impl Provider<crate::Ipc> {
     /// Direct connection to an IPC socket.
     pub async fn connect_ipc(path: impl AsRef<std::path::Path>) -> Result<Self, ProviderError> {

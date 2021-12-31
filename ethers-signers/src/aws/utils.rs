@@ -93,7 +93,8 @@ pub(super) fn decode_signature(resp: SignResponse) -> Result<KSig, AwsSignerErro
         .signature
         .ok_or_else(|| AwsSignerError::from("Signature not found in response".to_owned()))?;
 
-    let mut sig = KSig::from_der(&raw)?;
-    sig.normalize_s()?;
+    let sig = KSig::from_der(&raw)?
+        .normalize_s()
+        .ok_or_else(|| AwsSignerError::from("Could not normalize `s`".to_owned()))?;
     Ok(sig)
 }

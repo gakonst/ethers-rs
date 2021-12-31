@@ -16,12 +16,10 @@ macro_rules! if_not_wasm {
     )*}
 }
 
-if_not_wasm! {
-    #[cfg(feature = "ipc")]
-    mod ipc;
-    #[cfg(feature = "ipc")]
-    pub use ipc::Ipc;
-}
+#[cfg(all(target_family = "unix", feature = "ipc"))]
+mod ipc;
+#[cfg(all(target_family = "unix", feature = "ipc"))]
+pub use ipc::Ipc;
 
 mod http;
 pub use http::{ClientError as HttpClientError, Provider as Http};

@@ -2,7 +2,6 @@ use ethers_core::types::Address;
 use std::path::PathBuf;
 
 use anyhow::{anyhow, Result};
-use cfg_if::cfg_if;
 use inflector::Inflector;
 use proc_macro2::{Ident, Literal, Span, TokenStream};
 use quote::quote;
@@ -84,12 +83,13 @@ where
 }
 
 /// Perform an HTTP GET request and return the contents of the response.
+#[cfg(not(target_arch = "wasm32"))]
 pub fn http_get(_url: &str) -> Result<String> {
-    cfg_if! {
-        if #[cfg(any(target_arch = "wasm32", not(feature = "reqwest")))]{
-            Err(anyhow!("HTTP is unsupported"))
-        } else {
+    cfg_if::cfg_if! {
+        if #[cfg(feature = "reqwest")]{
             Ok(reqwest::blocking::get(_url)?.text()?)
+        } else {
+            Err(anyhow!("HTTP is unsupported"))
         }
     }
 }
@@ -149,6 +149,17 @@ fn take_while(s: &str, mut predicate: impl FnMut(char) -> bool) -> (&str, &str) 
         }
     }
     s.split_at(index)
+}
+
+/// Returns a list of absolute paths to all the json files under the root
+pub fn json_files(root: impl AsRef<std::path::Path>) -> Vec<PathBuf> {
+    walkdir::WalkDir::new(root)
+        .into_iter()
+        .filter_map(Result::ok)
+        .filter(|e| e.file_type().is_file())
+        .filter(|e| e.path().extension().map(|ext| ext == "json").unwrap_or_default())
+        .map(|e| e.path().into())
+        .collect()
 }
 
 #[cfg(test)]

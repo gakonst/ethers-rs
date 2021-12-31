@@ -6,13 +6,14 @@ use md5::Digest;
 use semver::Version;
 use std::{
     collections::BTreeMap,
-    fmt, fs, io,
+    fmt, fs,
     path::{Path, PathBuf},
     str::FromStr,
 };
 
 use crate::{
     compile::*,
+    error::SolcIoError,
     remappings::Remapping,
     sourcemap::{self, SourceMap, SyntaxError},
     utils,
@@ -35,7 +36,7 @@ pub struct CompilerInput {
 
 impl CompilerInput {
     /// Reads all contracts found under the path
-    pub fn new(path: impl AsRef<Path>) -> io::Result<Self> {
+    pub fn new(path: impl AsRef<Path>) -> Result<Self, SolcIoError> {
         Source::read_all_from(path.as_ref()).map(Self::with_sources)
     }
 
@@ -44,13 +45,22 @@ impl CompilerInput {
         Self { language: "Solidity".to_string(), sources, settings: Default::default() }
     }
 
+    /// Sets the settings for compilation
+    #[must_use]
+    pub fn settings(mut self, settings: Settings) -> Self {
+        self.settings = settings;
+        self
+    }
+
     /// Sets the EVM version for compilation
+    #[must_use]
     pub fn evm_version(mut self, version: EvmVersion) -> Self {
         self.settings.evm_version = Some(version);
         self
     }
 
     /// Sets the optimizer runs (default = 200)
+    #[must_use]
     pub fn optimizer(mut self, runs: usize) -> Self {
         self.settings.optimizer.runs(runs);
         self
@@ -58,6 +68,7 @@ impl CompilerInput {
 
     /// Normalizes the EVM version used in the settings to be up to the latest one
     /// supported by the provided compiler version.
+    #[must_use]
     pub fn normalize_evm_version(mut self, version: &Version) -> Self {
         if let Some(ref mut evm_version) = self.settings.evm_version {
             self.settings.evm_version = evm_version.normalize_version(version);
@@ -65,6 +76,7 @@ impl CompilerInput {
         self
     }
 
+    #[must_use]
     pub fn with_remappings(mut self, remappings: Vec<Remapping>) -> Self {
         self.settings.remappings = remappings;
         self
@@ -177,6 +189,7 @@ impl Settings {
     }
 
     /// Adds `ast` to output
+    #[must_use]
     pub fn with_ast(mut self) -> Self {
         let output = self.output_selection.entry("*".to_string()).or_insert_with(BTreeMap::default);
         output.insert("".to_string(), vec!["ast".to_string()]);
@@ -190,7 +203,7 @@ impl Default for Settings {
             optimizer: Default::default(),
             metadata: None,
             output_selection: Self::default_output_selection(),
-            evm_version: Some(EvmVersion::Istanbul),
+            evm_version: Some(EvmVersion::default()),
             libraries: Default::default(),
             remappings: Default::default(),
         }
@@ -230,13 +243,19 @@ impl Default for Optimizer {
 pub enum EvmVersion {
     Homestead,
     TangerineWhistle,
-    SpuriusDragon,
+    SpuriousDragon,
+    Byzantium,
     Constantinople,
     Petersburg,
     Istanbul,
     Berlin,
-    Byzantium,
     London,
+}
+
+impl Default for EvmVersion {
+    fn default() -> Self {
+        Self::London
+    }
 }
 
 impl EvmVersion {
@@ -272,7 +291,7 @@ impl fmt::Display for EvmVersion {
         let string = match self {
             EvmVersion::Homestead => "homestead",
             EvmVersion::TangerineWhistle => "tangerineWhistle",
-            EvmVersion::SpuriusDragon => "spuriusDragon",
+            EvmVersion::SpuriousDragon => "spuriousDragon",
             EvmVersion::Constantinople => "constantinople",
             EvmVersion::Petersburg => "petersburg",
             EvmVersion::Istanbul => "istanbul",
@@ -291,7 +310,7 @@ impl FromStr for EvmVersion {
         match s {
             "homestead" => Ok(EvmVersion::Homestead),
             "tangerineWhistle" => Ok(EvmVersion::TangerineWhistle),
-            "spuriusDragon" => Ok(EvmVersion::SpuriusDragon),
+            "spuriousDragon" => Ok(EvmVersion::SpuriousDragon),
             "constantinople" => Ok(EvmVersion::Constantinople),
             "petersburg" => Ok(EvmVersion::Petersburg),
             "istanbul" => Ok(EvmVersion::Istanbul),
@@ -381,17 +400,18 @@ pub struct Source {
 
 impl Source {
     /// Reads the file content
-    pub fn read(file: impl AsRef<Path>) -> io::Result<Self> {
-        Ok(Self { content: fs::read_to_string(file.as_ref())? })
+    pub fn read(file: impl AsRef<Path>) -> Result<Self, SolcIoError> {
+        let file = file.as_ref();
+        Ok(Self { content: fs::read_to_string(file).map_err(|err| SolcIoError::new(err, file))? })
     }
 
     /// Finds all source files under the given dir path and reads them all
-    pub fn read_all_from(dir: impl AsRef<Path>) -> io::Result<Sources> {
-        Self::read_all(utils::source_files(dir)?)
+    pub fn read_all_from(dir: impl AsRef<Path>) -> Result<Sources, SolcIoError> {
+        Self::read_all(utils::source_files(dir))
     }
 
     /// Reads all files
-    pub fn read_all<T, I>(files: I) -> io::Result<Sources>
+    pub fn read_all<T, I>(files: I) -> Result<Sources, SolcIoError>
     where
         I: IntoIterator<Item = T>,
         T: Into<PathBuf>,
@@ -420,17 +440,22 @@ impl Source {
 #[cfg(feature = "async")]
 impl Source {
     /// async version of `Self::read`
-    pub async fn async_read(file: impl AsRef<Path>) -> io::Result<Self> {
-        Ok(Self { content: tokio::fs::read_to_string(file.as_ref()).await? })
+    pub async fn async_read(file: impl AsRef<Path>) -> Result<Self, SolcIoError> {
+        let file = file.as_ref();
+        Ok(Self {
+            content: tokio::fs::read_to_string(file)
+                .await
+                .map_err(|err| SolcIoError::new(err, file))?,
+        })
     }
 
     /// Finds all source files under the given dir path and reads them all
-    pub async fn async_read_all_from(dir: impl AsRef<Path>) -> io::Result<Sources> {
-        Self::async_read_all(utils::source_files(dir.as_ref())?).await
+    pub async fn async_read_all_from(dir: impl AsRef<Path>) -> Result<Sources, SolcIoError> {
+        Self::async_read_all(utils::source_files(dir.as_ref())).await
     }
 
     /// async version of `Self::read_all`
-    pub async fn async_read_all<T, I>(files: I) -> io::Result<Sources>
+    pub async fn async_read_all<T, I>(files: I) -> Result<Sources, SolcIoError>
     where
         I: IntoIterator<Item = T>,
         T: Into<PathBuf>,
@@ -516,6 +541,7 @@ pub struct OutputDiagnostics<'a> {
 }
 
 impl<'a> OutputDiagnostics<'a> {
+    /// Returns true if there is at least one error of high severity
     pub fn has_error(&self) -> bool {
         self.errors.iter().any(|err| err.severity.is_error())
     }
@@ -564,7 +590,7 @@ pub struct Contract {
 }
 
 /// Minimal representation of a contract's abi with bytecode
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Default)]
 pub struct CompactContract {
     /// The Ethereum Contract ABI. If empty, it is represented as an empty
     /// array. See https://docs.soliditylang.org/en/develop/abi-spec.html
@@ -576,7 +602,7 @@ pub struct CompactContract {
 }
 
 impl CompactContract {
-    /// Returns the contents of this type as a single
+    /// Returns the contents of this type as a single tuple of abi, bytecode and deployed bytecode
     pub fn into_parts(self) -> (Option<Abi>, Option<Bytes>, Option<Bytes>) {
         (
             self.abi,
@@ -597,11 +623,25 @@ impl CompactContract {
     }
 }
 
+impl From<serde_json::Value> for CompactContract {
+    fn from(mut val: serde_json::Value) -> Self {
+        if let Some(map) = val.as_object_mut() {
+            let abi = map.remove("abi").and_then(|val| serde_json::from_value(val).ok());
+            let bin = map.remove("bin").and_then(|val| serde_json::from_value(val).ok());
+            let bin_runtime =
+                map.remove("bin-runtime").and_then(|val| serde_json::from_value(val).ok());
+            Self { abi, bin, bin_runtime }
+        } else {
+            CompactContract::default()
+        }
+    }
+}
+
 impl From<Contract> for CompactContract {
     fn from(c: Contract) -> Self {
         let (bin, bin_runtime) = if let Some(evm) = c.evm {
             (
-                Some(evm.bytecode.object),
+                evm.bytecode.map(|c| c.object),
                 evm.deployed_bytecode.and_then(|deployed| deployed.bytecode.map(|evm| evm.object)),
             )
         } else {
@@ -654,7 +694,7 @@ impl<'a> From<&'a Contract> for CompactContractRef<'a> {
     fn from(c: &'a Contract) -> Self {
         let (bin, bin_runtime) = if let Some(ref evm) = c.evm {
             (
-                Some(&evm.bytecode.object),
+                evm.bytecode.as_ref().map(|c| &c.object),
                 evm.deployed_bytecode
                     .as_ref()
                     .and_then(|deployed| deployed.bytecode.as_ref().map(|evm| &evm.object)),
@@ -692,7 +732,7 @@ pub struct DevDoc {
     #[serde(default, rename = "custom:experimental", skip_serializing_if = "Option::is_none")]
     pub custom_experimental: Option<String>,
     #[serde(default, skip_serializing_if = "::std::collections::BTreeMap::is_empty")]
-    pub methods: BTreeMap<String, String>,
+    pub methods: BTreeMap<String, serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
 }
@@ -704,7 +744,7 @@ pub struct Evm {
     pub assembly: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub legacy_assembly: Option<serde_json::Value>,
-    pub bytecode: Bytecode,
+    pub bytecode: Option<Bytecode>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub deployed_bytecode: Option<DeployedBytecode>,
     /// The list of function hashes
@@ -929,6 +969,13 @@ impl BytecodeObject {
     /// Whether the bytecode contains a matching placeholder
     pub fn contains_placeholder(&self, file: impl AsRef<str>, library: impl AsRef<str>) -> bool {
         self.contains_fully_qualified_placeholder(format!("{}:{}", file.as_ref(), library.as_ref()))
+    }
+}
+
+// Returns a not deployable bytecode by default as "0x"
+impl Default for BytecodeObject {
+    fn default() -> Self {
+        BytecodeObject::Unlinked("0x".to_string())
     }
 }
 
@@ -1229,7 +1276,13 @@ where
     D: Deserializer<'de>,
 {
     let value = String::deserialize(d)?;
-    Ok(hex::decode(&value).map_err(|e| serde::de::Error::custom(e.to_string()))?.into())
+    if let Some(value) = value.strip_prefix("0x") {
+        hex::decode(value)
+    } else {
+        hex::decode(&value)
+    }
+    .map(Into::into)
+    .map_err(|e| serde::de::Error::custom(e.to_string()))
 }
 
 pub fn deserialize_opt_bytes<'de, D>(d: D) -> std::result::Result<Option<Bytes>, D::Error>

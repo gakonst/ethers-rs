@@ -369,5 +369,4 @@ mod tests {
             parse(s).unwrap_or_else(|_| panic!("Failed to parse line {}", line));
         }
     }
-
 }

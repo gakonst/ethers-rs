@@ -1,16 +1,19 @@
 use crate::{
     artifacts::{CompactContract, CompactContractRef, Contract, Settings},
     cache::SOLIDITY_FILES_CACHE_FILENAME,
-    error::Result,
+    error::{Result, SolcError, SolcIoError},
+    hh::HardhatArtifact,
     remappings::Remapping,
     CompilerOutput,
 };
 use ethers_core::{abi::Abi, types::Bytes};
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{
     collections::BTreeMap,
     convert::TryFrom,
-    fmt, fs, io,
+    fmt,
+    fmt::Formatter,
+    fs, io,
     path::{Path, PathBuf},
 };
 
@@ -50,12 +53,45 @@ impl ProjectPathsConfig {
 
     /// Creates a new config with the current directory as the root
     pub fn current_hardhat() -> Result<Self> {
-        Self::hardhat(std::env::current_dir()?)
+        Self::hardhat(std::env::current_dir().map_err(|err| SolcError::io(err, "."))?)
     }
 
     /// Creates a new config with the current directory as the root
     pub fn current_dapptools() -> Result<Self> {
-        Self::dapptools(std::env::current_dir()?)
+        Self::dapptools(std::env::current_dir().map_err(|err| SolcError::io(err, "."))?)
+    }
+
+    /// Creates all configured dirs and files
+    pub fn create_all(&self) -> std::result::Result<(), SolcIoError> {
+        if let Some(parent) = self.cache.parent() {
+            fs::create_dir_all(parent).map_err(|err| SolcIoError::new(err, parent))?;
+        }
+        fs::create_dir_all(&self.artifacts)
+            .map_err(|err| SolcIoError::new(err, &self.artifacts))?;
+        fs::create_dir_all(&self.sources).map_err(|err| SolcIoError::new(err, &self.sources))?;
+        fs::create_dir_all(&self.tests).map_err(|err| SolcIoError::new(err, &self.tests))?;
+        for lib in &self.libraries {
+            fs::create_dir_all(lib).map_err(|err| SolcIoError::new(err, lib))?;
+        }
+        Ok(())
+    }
+}
+
+impl fmt::Display for ProjectPathsConfig {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        writeln!(f, "root: {}", self.root.display())?;
+        writeln!(f, "contracts: {}", self.sources.display())?;
+        writeln!(f, "artifacts: {}", self.artifacts.display())?;
+        writeln!(f, "tests: {}", self.tests.display())?;
+        writeln!(f, "libs:")?;
+        for lib in &self.libraries {
+            writeln!(f, "    {}", lib.display())?;
+        }
+        writeln!(f, "remappings:")?;
+        for remapping in &self.remappings {
+            writeln!(f, "    {}", remapping)?;
+        }
+        Ok(())
     }
 }
 
@@ -67,14 +103,15 @@ pub enum PathStyle {
 
 impl PathStyle {
     pub fn paths(&self, root: impl AsRef<Path>) -> Result<ProjectPathsConfig> {
-        let root = std::fs::canonicalize(root)?;
+        let root = root.as_ref();
+        let root = dunce::canonicalize(root).map_err(|err| SolcError::io(err, root))?;
 
         Ok(match self {
             PathStyle::Dapptools => ProjectPathsConfig::builder()
                 .sources(root.join("src"))
                 .artifacts(root.join("out"))
                 .lib(root.join("lib"))
-                .remappings(Remapping::find_many(&root.join("lib"))?)
+                .remappings(Remapping::find_many(&root.join("lib")))
                 .root(root)
                 .build()?,
             PathStyle::HardHat => ProjectPathsConfig::builder()
@@ -156,11 +193,9 @@ impl ProjectPathsConfigBuilder {
         self
     }
 
-    pub fn build(self) -> io::Result<ProjectPathsConfig> {
-        let root = self.root.map(Ok).unwrap_or_else(std::env::current_dir)?;
-        let root = std::fs::canonicalize(root)?;
-
-        Ok(ProjectPathsConfig {
+    pub fn build_with_root(self, root: impl Into<PathBuf>) -> ProjectPathsConfig {
+        let root = root.into();
+        ProjectPathsConfig {
             cache: self
                 .cache
                 .unwrap_or_else(|| root.join("cache").join(SOLIDITY_FILES_CACHE_FILENAME)),
@@ -170,7 +205,18 @@ impl ProjectPathsConfigBuilder {
             libraries: self.libraries.unwrap_or_default(),
             remappings: self.remappings.unwrap_or_default(),
             root,
-        })
+        }
+    }
+
+    pub fn build(self) -> std::result::Result<ProjectPathsConfig, SolcIoError> {
+        let root = self
+            .root
+            .clone()
+            .map(Ok)
+            .unwrap_or_else(std::env::current_dir)
+            .map_err(|err| SolcIoError::new(err, "."))?;
+        let root = dunce::canonicalize(&root).map_err(|err| SolcIoError::new(err, &root))?;
+        Ok(self.build_with_root(root))
     }
 }
 
@@ -218,31 +264,34 @@ impl SolcConfigBuilder {
 pub type Artifacts<T> = BTreeMap<String, BTreeMap<String, T>>;
 
 pub trait Artifact {
+    /// Returns the artifact's `Abi` and bytecode
     fn into_inner(self) -> (Option<Abi>, Option<Bytes>);
+
+    /// Turns the artifact into a container type for abi, bytecode and deployed bytecode
+    fn into_compact_contract(self) -> CompactContract;
+
+    /// Returns the contents of this type as a single tuple of abi, bytecode and deployed bytecode
+    fn into_parts(self) -> (Option<Abi>, Option<Bytes>, Option<Bytes>);
 }
 
-impl Artifact for CompactContract {
+impl<T: Into<CompactContract>> Artifact for T {
     fn into_inner(self) -> (Option<Abi>, Option<Bytes>) {
-        (self.abi, self.bin.and_then(|bin| bin.into_bytes()))
+        let artifact = self.into_compact_contract();
+        (artifact.abi, artifact.bin.and_then(|bin| bin.into_bytes()))
     }
-}
 
-impl Artifact for serde_json::Value {
-    fn into_inner(self) -> (Option<Abi>, Option<Bytes>) {
-        let abi = self.get("abi").map(|abi| {
-            serde_json::from_value::<Abi>(abi.clone()).expect("could not get artifact abi")
-        });
-        let bytecode = self.get("bin").map(|bin| {
-            serde_json::from_value::<Bytes>(bin.clone()).expect("could not get artifact bytecode")
-        });
+    fn into_compact_contract(self) -> CompactContract {
+        self.into()
+    }
 
-        (abi, bytecode)
+    fn into_parts(self) -> (Option<Abi>, Option<Bytes>, Option<Bytes>) {
+        self.into_compact_contract().into_parts()
     }
 }
 
 pub trait ArtifactOutput {
     /// How Artifacts are stored
-    type Artifact: Artifact;
+    type Artifact: Artifact + DeserializeOwned;
 
     /// Handle the compiler output.
     fn on_output(output: &CompilerOutput, layout: &ProjectPathsConfig) -> Result<()>;
@@ -282,7 +331,12 @@ pub trait ArtifactOutput {
         root.as_ref().join(Self::output_file(contract_file, name)).exists()
     }
 
-    fn read_cached_artifact(path: impl AsRef<Path>) -> Result<Self::Artifact>;
+    fn read_cached_artifact(path: impl AsRef<Path>) -> Result<Self::Artifact> {
+        let path = path.as_ref();
+        let file = fs::File::open(path).map_err(|err| SolcError::io(err, path))?;
+        let file = io::BufReader::new(file);
+        Ok(serde_json::from_reader(file)?)
+    }
 
     /// Read the cached artifacts from disk
     fn read_cached_artifacts<T, I>(files: I) -> Result<BTreeMap<PathBuf, Self::Artifact>>
@@ -300,21 +354,22 @@ pub trait ArtifactOutput {
     }
 
     /// Convert a contract to the artifact type
-    fn contract_to_artifact(contract: Contract) -> Self::Artifact;
+    fn contract_to_artifact(file: &str, name: &str, contract: Contract) -> Self::Artifact;
 
     /// Convert the compiler output into a set of artifacts
     fn output_to_artifacts(output: CompilerOutput) -> Artifacts<Self::Artifact> {
         output
             .contracts
             .into_iter()
-            .map(|(s, contracts)| {
-                (
-                    s,
-                    contracts
-                        .into_iter()
-                        .map(|(s, c)| (s, Self::contract_to_artifact(c)))
-                        .collect(),
-                )
+            .map(|(file, contracts)| {
+                let contracts = contracts
+                    .into_iter()
+                    .map(|(name, c)| {
+                        let contract = Self::contract_to_artifact(&file, &name, c);
+                        (name, contract)
+                    })
+                    .collect();
+                (file, contracts)
             })
             .collect()
     }
@@ -337,48 +392,62 @@ impl ArtifactOutput for MinimalCombinedArtifacts {
     type Artifact = CompactContract;
 
     fn on_output(output: &CompilerOutput, layout: &ProjectPathsConfig) -> Result<()> {
-        fs::create_dir_all(&layout.artifacts)?;
+        fs::create_dir_all(&layout.artifacts)
+            .map_err(|err| SolcError::msg(format!("Failed to create artifacts dir: {}", err)))?;
         for (file, contracts) in output.contracts.iter() {
             for (name, contract) in contracts {
                 let artifact = Self::output_file(file, name);
                 let file = layout.artifacts.join(artifact);
                 if let Some(parent) = file.parent() {
-                    fs::create_dir_all(parent)?;
+                    fs::create_dir_all(parent).map_err(|err| {
+                        SolcError::msg(format!(
+                            "Failed to create artifact parent folder \"{}\": {}",
+                            parent.display(),
+                            err
+                        ))
+                    })?;
                 }
                 let min = CompactContractRef::from(contract);
-                fs::write(file, serde_json::to_vec_pretty(&min)?)?
+                fs::write(&file, serde_json::to_vec_pretty(&min)?)
+                    .map_err(|err| SolcError::io(err, file))?
             }
         }
         Ok(())
     }
 
-    fn read_cached_artifact(path: impl AsRef<Path>) -> Result<Self::Artifact> {
-        let file = fs::File::open(path.as_ref())?;
-        Ok(serde_json::from_reader(file)?)
-    }
-
-    fn contract_to_artifact(contract: Contract) -> Self::Artifact {
-        CompactContract::from(contract)
+    fn contract_to_artifact(_file: &str, _name: &str, contract: Contract) -> Self::Artifact {
+        Self::Artifact::from(contract)
     }
 }
 
-/// Hardhat style artifacts
+/// An Artifacts handler implementation that works the same as `MinimalCombinedArtifacts` but also
+/// supports reading hardhat artifacts if an initial attempt to deserialize an artifact failed
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub struct HardhatArtifacts;
+pub struct MinimalCombinedArtifactsHardhatFallback;
 
-impl ArtifactOutput for HardhatArtifacts {
-    type Artifact = serde_json::Value;
+impl ArtifactOutput for MinimalCombinedArtifactsHardhatFallback {
+    type Artifact = CompactContract;
 
-    fn on_output(_output: &CompilerOutput, _layout: &ProjectPathsConfig) -> Result<()> {
-        todo!("Hardhat style artifacts not yet implemented")
+    fn on_output(output: &CompilerOutput, layout: &ProjectPathsConfig) -> Result<()> {
+        MinimalCombinedArtifacts::on_output(output, layout)
     }
 
-    fn read_cached_artifact(_path: impl AsRef<Path>) -> Result<Self::Artifact> {
-        todo!("Hardhat style artifacts not yet implemented")
+    fn read_cached_artifact(path: impl AsRef<Path>) -> Result<Self::Artifact> {
+        let path = path.as_ref();
+        let content = fs::read_to_string(path).map_err(|err| SolcError::io(err, path))?;
+        if let Ok(a) = serde_json::from_str(&content) {
+            Ok(a)
+        } else {
+            tracing::error!("Failed to deserialize compact artifact");
+            tracing::trace!("Fallback to hardhat artifact deserialization");
+            let artifact = serde_json::from_str::<HardhatArtifact>(&content)?;
+            tracing::trace!("successfully deserialized hardhat artifact");
+            Ok(artifact.into_compact_contract())
+        }
     }
 
-    fn contract_to_artifact(_contract: Contract) -> Self::Artifact {
-        todo!("Hardhat style artifacts not yet implemented")
+    fn contract_to_artifact(file: &str, name: &str, contract: Contract) -> Self::Artifact {
+        MinimalCombinedArtifacts::contract_to_artifact(file, name, contract)
     }
 }
 
@@ -408,17 +477,17 @@ impl fmt::Display for AllowedLibPaths {
 }
 
 impl<T: Into<PathBuf>> TryFrom<Vec<T>> for AllowedLibPaths {
-    type Error = std::io::Error;
+    type Error = SolcIoError;
 
     fn try_from(libs: Vec<T>) -> std::result::Result<Self, Self::Error> {
         let libs = libs
             .into_iter()
             .map(|lib| {
                 let path: PathBuf = lib.into();
-                let lib = std::fs::canonicalize(path)?;
+                let lib = dunce::canonicalize(&path).map_err(|err| SolcIoError::new(err, path))?;
                 Ok(lib)
             })
-            .collect::<std::result::Result<Vec<_>, std::io::Error>>()?;
+            .collect::<std::result::Result<Vec<_>, _>>()?;
         Ok(AllowedLibPaths(libs))
     }
 }

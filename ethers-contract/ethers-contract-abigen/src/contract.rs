@@ -154,27 +154,8 @@ impl Context {
         // get the actual ABI string
         let abi_str =
             args.abi_source.get().map_err(|e| anyhow!("failed to get ABI JSON: {}", e))?;
-        let mut abi_parser = AbiParser::default();
 
-        let (abi, human_readable): (Abi, _) = if let Ok(abi) = abi_parser.parse_str(&abi_str) {
-            (abi, true)
-        } else {
-            // a best-effort coercion of an ABI or an artifact JSON into an artifact JSON.
-            let json_abi_str = if abi_str.trim().starts_with('[') {
-                format!(r#"{{"abi":{}}}"#, abi_str.trim())
-            } else {
-                abi_str.clone()
-            };
-
-            #[derive(Deserialize)]
-            struct Contract {
-                abi: Abi,
-            }
-
-            let contract = serde_json::from_str::<Contract>(&json_abi_str)?;
-
-            (contract.abi, false)
-        };
+        let (abi, human_readable, abi_parser) = parse_abi(&abi_str)?;
 
         // try to extract all the solidity structs from the normal JSON ABI
         // we need to parse the json abi again because we need the internalType fields which are
@@ -250,4 +231,26 @@ impl Context {
     pub fn internal_structs_mut(&mut self) -> &mut InternalStructs {
         &mut self.internal_structs
     }
+}
+
+/// Parse the abi via `Source::parse` and return if the abi defined as human readable
+fn parse_abi(abi_str: &str) -> Result<(Abi, bool, AbiParser)> {
+    let mut abi_parser = AbiParser::default();
+    let res = if let Ok(abi) = abi_parser.parse_str(abi_str) {
+        (abi, true, abi_parser)
+    } else {
+        #[derive(Deserialize)]
+        struct Contract {
+            abi: Abi,
+        }
+        // a best-effort coercion of an ABI or an artifact JSON into an artifact JSON.
+        let contract: Contract = if abi_str.trim_start().starts_with('[') {
+            serde_json::from_str(&format!(r#"{{"abi":{}}}"#, abi_str.trim()))?
+        } else {
+            serde_json::from_str::<Contract>(abi_str)?
+        };
+
+        (contract.abi, false, abi_parser)
+    };
+    Ok(res)
 }

@@ -27,8 +27,8 @@ pub use pubsub::{PubsubClient, SubscriptionStream};
 use async_trait::async_trait;
 use auto_impl::auto_impl;
 use ethers_core::types::transaction::{eip2718::TypedTransaction, eip2930::AccessListWithGasUsed};
-use serde::{de::DeserializeOwned, Deserialize, Deserializer, Serialize};
-use std::{error::Error, fmt::Debug, future::Future, pin::Pin, str::FromStr};
+use serde::{de::DeserializeOwned, Serialize};
+use std::{error::Error, fmt::Debug, future::Future, pin::Pin};
 
 pub use provider::{FilterKind, Provider, ProviderError};
 
@@ -159,66 +159,32 @@ pub trait Middleware: Sync + Send + Debug {
         self.inner().client_version().await.map_err(FromErr::from)
     }
 
-    /// Helper for filling a transaction
+    /// Fill necessary details of a transaction for dispatch
+    ///
+    /// This function is defined on providers to behave as follows:
+    /// 1. populate the `from` field with the default sender
+    /// 2. resolve any ENS names in the tx `to` field
+    /// 3. Estimate gas usage _without_ access lists
+    /// 4. Estimate gas usage _with_ access lists
+    /// 5. Enable access lists IFF they are cheaper
+    /// 6. Poll and set legacy or 1559 gas prices
+    ///
+    /// It does NOT set the nonce by default.
+    /// It MAY override the gas amount set by the user, if access lists are
+    /// cheaper.
+    ///
+    /// Middleware are encouraged to override any values _before_ delegating
+    /// to the inner implementation AND/OR modify the values provided by the
+    /// default implementation _after_ delegating.
+    ///
+    /// E.g. a middleware wanting to double gas prices should consider doing so
+    /// _after_ delegating and allowing the default implementation to poll gas.
     async fn fill_transaction(
         &self,
         tx: &mut TypedTransaction,
         block: Option<BlockId>,
     ) -> Result<(), Self::Error> {
-        if let Some(default_sender) = self.default_sender() {
-            if tx.from().is_none() {
-                tx.set_from(default_sender);
-            }
-        }
-
-        // TODO: Can we poll the futures below at the same time?
-        // Access List + Name resolution and then Gas price + Gas
-
-        // set the ENS name
-        if let Some(NameOrAddress::Name(ref ens_name)) = tx.to() {
-            let addr = self.resolve_name(ens_name).await?;
-            tx.set_to(addr);
-        }
-
-        // estimate the gas without the access list
-        let gas = maybe(tx.gas().cloned(), self.estimate_gas(tx)).await?;
-        let mut al_used = false;
-
-        // set the access lists
-        if let Some(access_list) = tx.access_list() {
-            if access_list.0.is_empty() {
-                if let Ok(al_with_gas) = self.create_access_list(tx, block).await {
-                    // only set the access list if the used gas is less than the
-                    // normally estimated gas
-                    if al_with_gas.gas_used < gas {
-                        tx.set_access_list(al_with_gas.access_list);
-                        tx.set_gas(al_with_gas.gas_used);
-                        al_used = true;
-                    }
-                }
-            }
-        }
-
-        if !al_used {
-            tx.set_gas(gas);
-        }
-
-        match tx {
-            TypedTransaction::Eip2930(_) | TypedTransaction::Legacy(_) => {
-                let gas_price = maybe(tx.gas_price(), self.get_gas_price()).await?;
-                tx.set_gas_price(gas_price);
-            }
-            TypedTransaction::Eip1559(ref mut inner) => {
-                if inner.max_fee_per_gas.is_none() || inner.max_priority_fee_per_gas.is_none() {
-                    let (max_fee_per_gas, max_priority_fee_per_gas) =
-                        self.estimate_eip1559_fees(None).await?;
-                    inner.max_fee_per_gas = Some(max_fee_per_gas);
-                    inner.max_priority_fee_per_gas = Some(max_priority_fee_per_gas);
-                };
-            }
-        }
-
-        Ok(())
+        self.inner().fill_transaction(tx, block).await.map_err(FromErr::from)
     }
 
     async fn get_block_number(&self) -> Result<U64, Self::Error> {
@@ -248,6 +214,14 @@ pub trait Middleware: Sync + Send + Debug {
     ) -> Result<EscalatingPending<'a, Self::Provider>, Self::Error> {
         let mut original = tx.clone();
         self.fill_transaction(&mut original, None).await?;
+
+        // set the nonce, if no nonce is found
+        if original.nonce().is_none() {
+            let nonce =
+                self.get_transaction_count(tx.from().copied().unwrap_or_default(), None).await?;
+            original.set_nonce(nonce);
+        }
+
         let gas_price = original.gas_price().expect("filled");
         let chain_id = self.get_chainid().await?.low_u64();
         let sign_futs: Vec<_> = (0..escalations)
@@ -633,36 +607,6 @@ pub trait Middleware: Sync + Send + Debug {
         block: Option<BlockId>,
     ) -> Result<AccessListWithGasUsed, Self::Error> {
         self.inner().create_access_list(tx, block).await.map_err(FromErr::from)
-    }
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct FeeHistory {
-    pub base_fee_per_gas: Vec<U256>,
-    pub gas_used_ratio: Vec<f64>,
-    #[serde(deserialize_with = "from_int_or_hex")]
-    /// oldestBlock is returned as an unsigned integer up to geth v1.10.6. From
-    /// geth v1.10.7, this has been updated to return in the hex encoded form.
-    /// The custom deserializer allows backward compatibility for those clients
-    /// not running v1.10.7 yet.
-    pub oldest_block: U256,
-    pub reward: Vec<Vec<U256>>,
-}
-
-fn from_int_or_hex<'de, D>(deserializer: D) -> Result<U256, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    #[derive(Deserialize)]
-    #[serde(untagged)]
-    enum IntOrHex {
-        Int(u64),
-        Hex(String),
-    }
-    match IntOrHex::deserialize(deserializer)? {
-        IntOrHex::Int(n) => Ok(U256::from(n)),
-        IntOrHex::Hex(s) => U256::from_str(s.as_str()).map_err(serde::de::Error::custom),
     }
 }
 

@@ -123,7 +123,7 @@ mod tests {
             assert!(oracle.fast_gas_price > 0);
             assert!(oracle.last_block > 0);
             assert!(oracle.suggested_base_fee > 0.0);
-            assert!(oracle.gas_used_ratio.len() > 0);
+            assert!(!oracle.gas_used_ratio.is_empty());
         })
         .await
     }

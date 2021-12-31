@@ -31,11 +31,11 @@ pub mod builders {
 
 #[cfg(any(test, feature = "abigen"))]
 #[cfg_attr(docsrs, doc(cfg(feature = "abigen")))]
-pub use ethers_contract_abigen::Abigen;
+pub use ethers_contract_abigen::{Abigen, MultiAbigen};
 
 #[cfg(any(test, feature = "abigen"))]
 #[cfg_attr(docsrs, doc(cfg(feature = "abigen")))]
-pub use ethers_contract_derive::{abigen, EthAbiType, EthCall, EthDisplay, EthEvent};
+pub use ethers_contract_derive::{abigen, EthAbiCodec, EthAbiType, EthCall, EthDisplay, EthEvent};
 
 // Hide the Lazy re-export, it's just for convenience
 #[doc(hidden)]

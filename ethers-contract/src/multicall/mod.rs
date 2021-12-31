@@ -173,12 +173,14 @@ impl<M: Middleware> Multicall<M> {
     }
 
     /// Makes a legacy transaction instead of an EIP-1559 one
+    #[must_use]
     pub fn legacy(mut self) -> Self {
         self.legacy = true;
         self
     }
 
     /// Sets the `block` field for the multicall aggregate call
+    #[must_use]
     pub fn block<T: Into<BlockNumber>>(mut self, block: T) -> Self {
         self.block = Some(block.into());
         self
@@ -191,7 +193,7 @@ impl<M: Middleware> Multicall<M> {
     /// If more than the maximum number of supported calls are added. The maximum
     /// limits is constrained due to tokenization/detokenization support for tuples
     pub fn add_call<D: Detokenize>(&mut self, call: ContractCall<M, D>) -> &mut Self {
-        assert!(!(self.calls.len() >= 16), "Cannot support more than {} calls", 16);
+        assert!(self.calls.len() < 16, "Cannot support more than {} calls", 16);
 
         match (call.tx.to(), call.tx.data()) {
             (Some(NameOrAddress::Address(target)), Some(data)) => {

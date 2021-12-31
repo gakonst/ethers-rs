@@ -1,3 +1,5 @@
+#![allow(clippy::return_self_not_must_use)]
+
 use crate::{JsonRpcClient, Middleware, PinBoxFut, Provider, ProviderError};
 
 use ethers_core::types::{Transaction, TxHash, U256};
@@ -160,6 +162,9 @@ impl From<GetTransactionError> for ProviderError {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
+type TransactionFut<'a> = Pin<Box<dyn Future<Output = TransactionResult> + Send + 'a>>;
+#[cfg(target_arch = "wasm32")]
 type TransactionFut<'a> = Pin<Box<dyn Future<Output = TransactionResult> + 'a>>;
 
 type TransactionResult = Result<Transaction, GetTransactionError>;

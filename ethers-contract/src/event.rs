@@ -1,3 +1,5 @@
+#![allow(clippy::return_self_not_must_use)]
+
 use crate::{log::LogMeta, stream::EventStream, ContractError, EthLogDecode};
 
 use ethers_core::{

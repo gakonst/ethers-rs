@@ -12,7 +12,7 @@ name: Tests
 env:
   ETHERSCAN_API_KEY_ETHEREUM: I5BXNZYP5GEDWFINGVEZKYIVU2695NPQZB
   ETHERSCAN_API_KEY_CELO: B13XSMUT6Q3Q4WZ5DNQR8RXDBA2KNTMT4M
-  RINKEBY_PRIVATE_KEY: "a046a5b763923d437855a6fe64962569c9a378efba5c84920212c4b6ae270df5"
+  RINKEBY_PRIVATE_KEY: "fa4a1a79e869a96fcb42727f75e3232d6865a82ea675bb95de967a7fe6a773b2"
 
 jobs:
   tests:
@@ -30,7 +30,7 @@ jobs:
       - name: Install Solc
         run: |
             mkdir -p "$HOME/bin"
-            wget -q https://github.com/ethereum/solidity/releases/download/v0.6.6/solc-static-linux -O $HOME/bin/solc
+            wget -q https://github.com/ethereum/solidity/releases/download/v0.8.10/solc-static-linux -O $HOME/bin/solc
             chmod u+x "$HOME/bin/solc"
             export PATH=$HOME/bin:$PATH
             solc --version
@@ -76,7 +76,7 @@ jobs:
       - name: Install Solc
         run: |
             mkdir -p "$HOME/bin"
-            wget -q https://github.com/ethereum/solidity/releases/download/v0.6.6/solc-static-linux -O $HOME/bin/solc
+            wget -q https://github.com/ethereum/solidity/releases/download/v0.8.10/solc-static-linux -O $HOME/bin/solc
             chmod u+x "$HOME/bin/solc"
             export PATH=$HOME/bin:$PATH
             solc --version
@@ -90,8 +90,6 @@ jobs:
             export PATH=$HOME/bin:$PATH
             geth version
 
-      - name: Install libusb (for Ledger)
-        run: sudo apt update && sudo apt install pkg-config libudev-dev
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1
         with:
@@ -121,8 +119,6 @@ jobs:
           profile: minimal
           components: rustfmt, clippy
           override: true
-      - name: Install Dependencies
-        run: sudo apt-get install libudev-dev
       - uses: Swatinem/rust-cache@v1
         with:
           cache-on-failure: true
@@ -194,7 +190,7 @@ jobs:
       - name: Install Solc
         run: |
             mkdir -p "$HOME/bin"
-            wget -q https://github.com/ethereum/solidity/releases/download/v0.6.6/solc-static-linux -O $HOME/bin/solc
+            wget -q https://github.com/ethereum/solidity/releases/download/v0.8.10/solc-static-linux -O $HOME/bin/solc
             chmod u+x "$HOME/bin/solc"
             export PATH=$HOME/bin:$PATH
             solc --version
@@ -222,3 +218,53 @@ jobs:
         run: |
             export PATH=$HOME/bin:$PATH
             ./scripts/examples.sh
+
+  windows-build:
+    runs-on: windows-latest
+    name: (${{ matrix.target }}, ${{ matrix.cfg_release_channel }})
+    env:
+      CFG_RELEASE_CHANNEL: ${{ matrix.cfg_release_channel }}
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [
+            i686-pc-windows-gnu,
+            i686-pc-windows-msvc,
+            x86_64-pc-windows-gnu,
+            x86_64-pc-windows-msvc,
+        ]
+        cfg_release_channel: [nightly]
+
+    steps:
+      - name: checkout
+        uses: actions/checkout@v2
+
+        # Run build
+      - name: Install Rustup using win.rustup.rs
+        run: |
+          # disable download progress bar
+          $ProgressPreference = "SilentlyContinue"
+          Invoke-WebRequest https://win.rustup.rs/ -OutFile rustup-init.exe
+          .\rustup-init.exe -y --default-host=x86_64-pc-windows-msvc --default-toolchain=none
+          del rustup-init.exe
+          rustup target add ${{ matrix.target }}
+        shell: powershell
+
+      - name: Add mingw32 to path for i686-gnu
+        run: |
+          echo "C:\msys64\mingw32\bin" >> $GITHUB_PATH
+        if: matrix.target == 'i686-pc-windows-gnu' && matrix.channel == 'nightly'
+        shell: bash
+
+      - name: Add mingw64 to path for x86_64-gnu
+        run: echo "C:\msys64\mingw64\bin" >> $GITHUB_PATH
+        if: matrix.target == 'x86_64-pc-windows-gnu' && matrix.channel == 'nightly'
+        shell: bash
+
+      - name: build
+        run: |
+          rustc -Vv
+          cargo -V
+          # we test without --all-features on Windows so that sha2-asm is not activated.
+          cargo check
+        shell: cmd

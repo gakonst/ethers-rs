@@ -54,3 +54,6 @@ pub use chain::*;
 mod proof;
 
 pub use proof::*;
+
+mod fee;
+pub use fee::*;

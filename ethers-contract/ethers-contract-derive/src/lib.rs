@@ -10,6 +10,7 @@ use abigen::Contracts;
 pub(crate) mod abi_ty;
 mod abigen;
 mod call;
+mod codec;
 mod display;
 mod event;
 mod spanned;
@@ -43,7 +44,7 @@ pub(crate) mod utils;
 /// `ETHERSCAN_API_KEY` environment variable can be set. If it is, it will use
 /// that API key when retrieving the contract ABI.
 ///
-/// Currently the proc macro accepts additional parameters to configure some
+/// Currently, the proc macro accepts additional parameters to configure some
 /// aspects of the code generation. Specifically it accepts:
 /// - `methods`: A list of mappings from method signatures to method names allowing methods names to
 ///   be explicitely set for contract methods. This also provides a workaround for generating code
@@ -94,7 +95,7 @@ pub fn abigen(input: TokenStream) -> TokenStream {
     contracts.expand().unwrap_or_else(|err| err.to_compile_error()).into()
 }
 
-/// Derives the `Tokenizable` trait for the labeled type.
+/// Derives the `AbiType` and all `Tokenizable` traits for the labeled type.
 ///
 /// This derive macro automatically adds a type bound `field: Tokenizable` for
 /// each field type.
@@ -102,6 +103,36 @@ pub fn abigen(input: TokenStream) -> TokenStream {
 pub fn derive_abi_type(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     TokenStream::from(abi_ty::derive_tokenizeable_impl(&input))
+}
+
+/// Derives the `AbiEncode`, `AbiDecode` and traits for the labeled type.
+///
+/// This is an addition to `EthAbiType` that lacks the `AbiEncode`, `AbiDecode` implementation.
+///
+/// The reason why this is a separate macro is the `AbiEncode` / `AbiDecode` are `ethers`
+/// generalized codec traits used for types, calls, etc. However, encoding/decoding a call differs
+/// from the basic encoding/decoding, (`[selector + encode(self)]`)
+///
+/// # Example
+///
+/// ```ignore
+/// use ethers_contract::{EthAbiCodec, EthAbiType};
+/// use ethers_core::types::*;
+///
+/// #[derive(Debug, Clone, EthAbiType, EthAbiCodec)]
+/// struct MyStruct {
+///     addr: Address,
+///     old_value: String,
+///     new_value: String,
+/// }
+/// let val = MyStruct {..};
+/// let bytes = val.encode();
+/// let val = MyStruct::decode(&bytes).unwrap();
+/// ```
+#[proc_macro_derive(EthAbiCodec)]
+pub fn derive_abi_codec(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    TokenStream::from(codec::derive_codec_impl(&input))
 }
 
 /// Derives `fmt::Display` trait and generates a convenient format for all the
@@ -113,7 +144,7 @@ pub fn derive_abi_type(input: TokenStream) -> TokenStream {
 /// # Example
 ///
 /// ```ignore
-/// use ethers_contract::EthDisplay;
+/// use ethers_contract::{EthDisplay, EthAbiType};
 /// use ethers_core::types::*;
 ///
 /// #[derive(Debug, Clone, EthAbiType, EthDisplay)]

@@ -20,6 +20,14 @@ pub use ledger::{
     types::{DerivationType as HDPath, LedgerError},
 };
 
+#[cfg(feature = "trezor")]
+mod trezor;
+#[cfg(feature = "trezor")]
+pub use trezor::{
+    app::TrezorEthereum as Trezor,
+    types::{DerivationType as TrezorHDPath, TrezorError},
+};
+
 #[cfg(feature = "yubi")]
 pub use yubihsm;
 
@@ -71,5 +79,6 @@ pub trait Signer: std::fmt::Debug + Send + Sync {
     fn chain_id(&self) -> u64;
 
     /// Sets the signer's chain id
+    #[must_use]
     fn with_chain_id<T: Into<u64>>(self, chain_id: T) -> Self;
 }

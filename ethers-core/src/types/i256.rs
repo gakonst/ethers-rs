@@ -329,6 +329,7 @@ impl I256 {
     }
 
     /// Returns the sign of the number.
+    #[must_use]
     pub fn signum(self) -> Self {
         self.signum64().into()
     }
@@ -370,6 +371,7 @@ impl I256 {
     /// # Panics
     ///
     /// In debug mode, will panic if it overflows.
+    #[must_use]
     pub fn abs(self) -> Self {
         handle_overflow(self.overflowing_abs())
     }
@@ -402,12 +404,14 @@ impl I256 {
 
     /// Saturating absolute value. Computes `self.abs()`, returning `MAX` if
     /// `self == MIN` instead of overflowing.
+    #[must_use]
     pub fn saturating_abs(self) -> Self {
         self.checked_abs().unwrap_or(I256::MAX)
     }
 
     /// Wrapping absolute value. Computes `self.abs()`, wrapping around at the
     /// boundary of the type.
+    #[must_use]
     pub fn wrapping_abs(self) -> Self {
         let (result, _) = self.overflowing_abs();
         result
@@ -446,12 +450,14 @@ impl I256 {
 
     /// Saturating negation. Computes `self.neg()`, returning `MAX` if
     /// `self == MIN` instead of overflowing.
+    #[must_use]
     pub fn saturating_neg(self) -> Self {
         self.checked_neg().unwrap_or(I256::MAX)
     }
 
     /// Wrapping negation. Computes `self.neg()`, returning `MIN` if
     /// `self == MIN` instead of overflowing.
+    #[must_use]
     pub fn wrapping_neg(self) -> Self {
         let (result, _) = self.overflowing_neg();
         result
@@ -567,6 +573,7 @@ impl I256 {
     }
 
     /// Addition which saturates at the maximum value (Self::max_value()).
+    #[must_use]
     pub fn saturating_add(self, other: Self) -> Self {
         let (result, overflow) = self.overflowing_add(other);
         if overflow {
@@ -580,6 +587,7 @@ impl I256 {
     }
 
     /// Wrapping addition.
+    #[must_use]
     pub fn wrapping_add(self, other: Self) -> Self {
         let (result, _) = self.overflowing_add(other);
         result
@@ -620,6 +628,7 @@ impl I256 {
     }
 
     /// Subtraction which saturates at zero.
+    #[must_use]
     pub fn saturating_sub(self, other: Self) -> Self {
         let (result, overflow) = self.overflowing_sub(other);
         if overflow {
@@ -633,6 +642,7 @@ impl I256 {
     }
 
     /// Wrapping subtraction.
+    #[must_use]
     pub fn wrapping_sub(self, other: Self) -> Self {
         let (result, _) = self.overflowing_sub(other);
         result
@@ -662,6 +672,7 @@ impl I256 {
     }
 
     /// Multiplication which saturates at the maximum value..
+    #[must_use]
     pub fn saturating_mul(self, rhs: Self) -> Self {
         self.checked_mul(rhs).unwrap_or_else(|| {
             match Sign::from_signum64(self.signum64() * rhs.signum64()) {
@@ -672,6 +683,7 @@ impl I256 {
     }
 
     /// Wrapping multiplication.
+    #[must_use]
     pub fn wrapping_mul(self, rhs: Self) -> Self {
         let (result, _) = self.overflowing_mul(rhs);
         result
@@ -702,12 +714,14 @@ impl I256 {
     }
 
     /// Division which saturates at the maximum value.
+    #[must_use]
     pub fn saturating_div(self, rhs: Self) -> Self {
         // There is only one overflow (I256::MIN / -1 = I256::MAX)
         self.checked_div(rhs).unwrap_or(I256::MAX)
     }
 
     /// Wrapping division.
+    #[must_use]
     pub fn wrapping_div(self, rhs: Self) -> Self {
         self.overflowing_div(rhs).0
     }
@@ -737,6 +751,7 @@ impl I256 {
 
     /// Wrapping remainder. Returns the result of the operation %
     /// regardless of whether or not the division overflowed.
+    #[must_use]
     pub fn wrapping_rem(self, rhs: Self) -> Self {
         self.overflowing_rem(rhs).0
     }
@@ -749,6 +764,7 @@ impl I256 {
     /// rhs`:
     /// * If `self > 0`, this is equal to round towards zero (the default in Rust);
     /// * If `self < 0`, this is equal to round towards +/- infinity.
+    #[must_use]
     pub fn div_euclid(self, rhs: Self) -> Self {
         let q = self / rhs;
         if (self % rhs).is_negative() {
@@ -761,6 +777,7 @@ impl I256 {
     /// This is done as if by the _Euclidean division algorithm_
     /// given `r = self.rem_euclid(rhs)`, `self = rhs * self.div_euclid(rhs) + r, and 0 <= r <
     /// abs(rhs)`.
+    #[must_use]
     pub fn rem_euclid(self, rhs: Self) -> Self {
         let r = self % rhs;
         if r < Self::zero() {
@@ -801,6 +818,7 @@ impl I256 {
     /// (where `MIN` is the negative minimal value for the type).
     /// This is equivalent to `-MIN`, a positive value that is too large to represent in the type.
     /// In this case, this method returns `MIN` itself.
+    #[must_use]
     pub fn wrapping_div_euclid(self, rhs: Self) -> Self {
         self.overflowing_div_euclid(rhs).0
     }
@@ -823,6 +841,7 @@ impl I256 {
     /// (where `MIN` is the negative minimal value for the type).
     /// In this case, this method returns `0`.
     /// Panics when `rhs == 0`
+    #[must_use]
     pub fn wrapping_rem_euclid(self, rhs: Self) -> Self {
         self.overflowing_rem_euclid(rhs).0
     }
@@ -867,6 +886,7 @@ impl I256 {
     /// # Panics
     ///
     /// Panics if the result overflows the type in debug mode.
+    #[must_use]
     pub fn pow(self, exp: u32) -> Self {
         handle_overflow(self.overflowing_pow(exp))
     }
@@ -895,6 +915,7 @@ impl I256 {
 
     /// Raises self to the power of `exp`, saturating at the numeric bounds
     /// instead of overflowing.
+    #[must_use]
     pub fn saturating_pow(self, exp: u32) -> Self {
         let (result, overflow) = self.overflowing_pow(exp);
         if overflow {
@@ -909,6 +930,7 @@ impl I256 {
 
     /// Wrapping powolute value. Computes `self.pow()`, wrapping around at the
     /// boundary of the type.
+    #[must_use]
     pub fn wrapping_pow(self, exp: u32) -> Self {
         let (result, _) = self.overflowing_pow(exp);
         result
@@ -1635,7 +1657,7 @@ mod tests {
     #[test]
     #[cfg_attr(debug_assertions, should_panic)]
     fn div_euclid_overflow() {
-        I256::MIN.div_euclid(-I256::one());
+        let _ = I256::MIN.div_euclid(-I256::one());
     }
 
     #[test]
