@@ -332,6 +332,15 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         Ok(compiled)
     }
 
+    /// Returns the `solidity-versions.json` file under the artifacts directory
+    /// which contains the Solidity compiler versions which were used to compile
+    /// each file.
+    pub fn source_versions(&self) -> Result<BTreeMap<String, Vec<PathBuf>>> {
+        let versions_file_path = self.artifacts_path().join(SOLIDITY_VERSIONS);
+        let versions_file = File::open(versions_file_path)?;
+        Ok(serde_json::from_reader(versions_file)?)
+    }
+
     fn write_source_versions(
         &self,
         sources_by_version: BTreeMap<Solc, BTreeMap<PathBuf, Source>>,
