@@ -343,7 +343,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
                 // skips the platform from the compiler version string
                 let trimmed = &version.build.as_str()[..15];
                 version.build = semver::BuildMetadata::new(trimmed)?;
-                Ok((version.to_string(), sources.keys().collect::<Vec<_>>()))
+                Ok((format!("v{}", version), sources.keys().collect::<Vec<_>>()))
             })
             .collect::<Result<BTreeMap<_, _>>>()?;
         let versions_file_path = self.artifacts_path().join(SOLIDITY_VERSIONS);
