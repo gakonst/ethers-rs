@@ -33,6 +33,7 @@ use crate::{
     error::{SolcError, SolcIoError},
 };
 use error::Result;
+use serde::{Deserialize, Serialize};
 use std::{
     borrow::Cow, collections::BTreeMap, convert::TryInto, fmt, fs, marker::PhantomData,
     path::PathBuf,
@@ -44,6 +45,21 @@ pub mod project_util;
 
 /// Name of the json file containing the compiler versions used per file
 pub const SOLIDITY_VERSIONS: &str = "solidity-versions.json";
+
+#[derive(Clone, Serialize, Deserialize)]
+/// Deserialized version of artifacts file which contains the paths and solidity
+/// versions for each artifact.
+pub struct SourceVersions {
+    /// The optimizer runs used during compilation
+    // NB: Currently we compile all versions with the same [`Settings`] object.
+    // If that were to change, we'd need to move this filed inside the map, depending
+    // on how we determine which files get compiled with optimizations on and which not.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub optimizer_runs: Option<usize>,
+    /// Mapping from compiler version string to a vector of all the files
+    /// that were compiled with that compiler
+    pub versions: BTreeMap<String, Vec<PathBuf>>,
+}
 
 /// Represents a project workspace and handles `solc` compiling of all contracts in that workspace.
 #[derive(Debug)]
@@ -335,7 +351,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
     /// Returns the `solidity-versions.json` file under the artifacts directory
     /// which contains the Solidity compiler versions which were used to compile
     /// each file.
-    pub fn source_versions(&self) -> Result<BTreeMap<String, Vec<PathBuf>>> {
+    pub fn source_versions(&self) -> Result<SourceVersions> {
         let versions_file_path = self.artifacts_path().join(SOLIDITY_VERSIONS);
         let versions_file = File::open(versions_file_path)?;
         Ok(serde_json::from_reader(versions_file)?)
@@ -345,6 +361,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         &self,
         sources_by_version: BTreeMap<Solc, BTreeMap<PathBuf, Source>>,
     ) -> Result<()> {
+        let runs = self.solc_config.settings.optimizer.runs;
         let solidity_versions = sources_by_version
             .iter()
             .map(|(solc, sources)| {
@@ -352,12 +369,13 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
                 // skips the platform from the compiler version string
                 let trimmed = &version.build.as_str()[..15];
                 version.build = semver::BuildMetadata::new(trimmed)?;
-                Ok((format!("v{}", version), sources.keys().collect::<Vec<_>>()))
+                Ok((format!("v{}", version), sources.keys().cloned().collect::<Vec<_>>()))
             })
             .collect::<Result<BTreeMap<_, _>>>()?;
+        let sources_versions = SourceVersions { optimizer_runs: runs, versions: solidity_versions };
         let versions_file_path = self.artifacts_path().join(SOLIDITY_VERSIONS);
         let versions_file = File::create(versions_file_path)?;
-        serde_json::to_writer(versions_file, &solidity_versions)?;
+        serde_json::to_writer(versions_file, &sources_versions)?;
         Ok(())
     }
 
