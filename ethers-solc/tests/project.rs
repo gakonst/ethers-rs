@@ -2,9 +2,10 @@
 
 use ethers_solc::{
     cache::SOLIDITY_FILES_CACHE_FILENAME, project_util::*, MinimalCombinedArtifacts, Project,
-    ProjectPathsConfig,
+    ProjectPathsConfig, SOLIDITY_VERSIONS,
 };
 use std::{
+    collections::BTreeMap,
     io,
     path::{Path, PathBuf},
 };
@@ -51,6 +52,10 @@ fn can_compile_dapp_sample() {
     let compiled = project.compile().unwrap();
     assert!(compiled.find("Dapp").is_some());
     assert!(compiled.is_unchanged());
+
+    let solc_versions_path = project.project().artifacts_path().join(SOLIDITY_VERSIONS);
+    let reader = std::fs::File::open(solc_versions_path).unwrap();
+    let _: BTreeMap<String, Vec<PathBuf>> = serde_json::from_reader(reader).unwrap();
 
     // delete artifacts
     std::fs::remove_dir_all(&project.paths().artifacts).unwrap();

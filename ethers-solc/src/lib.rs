@@ -3,7 +3,7 @@
 pub mod artifacts;
 
 pub use artifacts::{CompilerInput, CompilerOutput, EvmVersion};
-use std::collections::btree_map::Entry;
+use std::{collections::btree_map::Entry, fs::File};
 
 pub mod cache;
 pub mod hh;
@@ -41,6 +41,9 @@ use std::{
 /// Utilities for creating, mocking and testing of (temporary) projects
 #[cfg(feature = "project-util")]
 pub mod project_util;
+
+/// Name of the json file containing the compiler versions used per file
+pub const SOLIDITY_VERSIONS: &str = "solidity-versions.json";
 
 /// Represents a project workspace and handles `solc` compiling of all contracts in that workspace.
 #[derive(Debug)]
@@ -225,7 +228,16 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         if !self.allowed_lib_paths.0.is_empty() {
             solc = solc.arg("--allow-paths").arg(self.allowed_lib_paths.to_string());
         }
-        self.compile_with_version(&solc, sources)
+
+        // Should be OK to clone here since it only happens once / not in a loop.
+        let artifacts = self.compile_with_version(&solc, sources.clone())?;
+
+        if !self.no_artifacts {
+            let sources_by_version = BTreeMap::from([(solc, sources)]);
+            self.write_source_versions(sources_by_version)?;
+        }
+
+        Ok(artifacts)
     }
 
     #[cfg(all(feature = "svm", feature = "async"))]
@@ -303,7 +315,8 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         tracing::trace!("compiling sources using a single solc job");
         let mut compiled =
             ProjectCompileOutput::with_ignored_errors(self.ignored_error_codes.clone());
-        for (solc, sources) in sources_by_version {
+
+        for (solc, sources) in sources_by_version.clone() {
             tracing::trace!(
                 "compiling {} sources with solc \"{}\"",
                 sources.len(),
@@ -311,7 +324,32 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
             );
             compiled.extend(self.compile_with_version(&solc, sources)?);
         }
+
+        if !self.no_artifacts {
+            self.write_source_versions(sources_by_version)?;
+        }
+
         Ok(compiled)
+    }
+
+    fn write_source_versions(
+        &self,
+        sources_by_version: BTreeMap<Solc, BTreeMap<PathBuf, Source>>,
+    ) -> Result<()> {
+        let solidity_versions = sources_by_version
+            .iter()
+            .map(|(solc, sources)| {
+                let mut version = solc.version()?;
+                // skips the platform from the compiler version string
+                let trimmed = &version.build.as_str()[..15];
+                version.build = semver::BuildMetadata::new(trimmed)?;
+                Ok((version.to_string(), sources.keys().collect::<Vec<_>>()))
+            })
+            .collect::<Result<BTreeMap<_, _>>>()?;
+        let versions_file_path = self.artifacts_path().join(SOLIDITY_VERSIONS);
+        let versions_file = File::create(versions_file_path)?;
+        serde_json::to_writer(versions_file, &solidity_versions)?;
+        Ok(())
     }
 
     #[cfg(all(feature = "svm", feature = "async"))]
@@ -329,7 +367,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         let mut all_artifacts = Vec::with_capacity(sources_by_version.len());
 
         // preprocess all sources
-        for (solc, sources) in sources_by_version {
+        for (solc, sources) in sources_by_version.clone() {
             match self.preprocess_sources(sources)? {
                 PreprocessedJob::Unchanged(artifacts) => {
                     compiled.extend(ProjectCompileOutput::from_unchanged(artifacts));
@@ -377,6 +415,10 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         // write the cache file
         if self.cached {
             self.write_cache_file(all_sources, all_artifacts)?;
+        }
+
+        if !self.no_artifacts {
+            self.write_source_versions(sources_by_version)?;
         }
 
         Ok(compiled)
@@ -441,6 +483,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
 
         // TODO: There seems to be some type redundancy here, c.f. discussion with @mattsse
         if !self.no_artifacts {
+            // output the artifacts to disk
             Artifacts::on_output(&output, &self.paths)?;
         }
 

@@ -33,6 +33,8 @@ pub enum SolcError {
     /// General purpose message
     #[error("{0}")]
     Message(String),
+    #[error(transparent)]
+    IoError(#[from] io::Error),
 
     #[cfg(feature = "project-util")]
     #[error(transparent)]
