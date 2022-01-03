@@ -1,16 +1,13 @@
 use std::fmt;
+use thiserror::Error;
 
 use crate::types::U256;
 use std::str::FromStr;
 
-#[derive(Debug, Clone)]
-pub struct ParseChainError;
+#[derive(Debug, Clone, Error)]
+#[error("Failed to parse chain: {0}")]
+pub struct ParseChainError(String);
 
-impl fmt::Display for ParseChainError {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        write!(formatter, "Failed to parse: {:?}", self)
-    }
-}
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum Chain {
     Mainnet,
@@ -83,16 +80,16 @@ impl FromStr for Chain {
             "kovan" => Chain::Kovan,
             "xdai" => Chain::XDai,
             "polygon" => Chain::Polygon,
-            "polygonMumbai" => Chain::PolygonMumbai,
+            "polygon-mumbai" => Chain::PolygonMumbai,
             "avalanche" => Chain::Avalanche,
-            "avalancheFuji" => Chain::AvalancheFuji,
+            "avalanche-fuji" => Chain::AvalancheFuji,
             "sepolia" => Chain::Sepolia,
             "moonbeam" => Chain::Moonbeam,
-            "moonbeamDev" => Chain::MoonbeamDev,
+            "moonbeam-dev" => Chain::MoonbeamDev,
             "moonriver" => Chain::Moonriver,
             "optimism" => Chain::Optimism,
-            "optimismKovan" => Chain::OptimismKovan,
-            _ => Chain::Mainnet,
+            "optimism-kovan" => Chain::OptimismKovan,
+            _ => return Err(ParseChainError(chain.to_owned())),
         })
     }
 }
