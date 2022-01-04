@@ -1,6 +1,9 @@
 use anyhow::Result;
-use ethers::{prelude::*, utils::Ganache};
-use ethers_solc::{ArtifactOutput, Project, ProjectCompileOutput, ProjectPathsConfig};
+use ethers::{
+    prelude::*,
+    solc::{Project, ProjectPathsConfig},
+    utils::Ganache,
+};
 use std::{convert::TryFrom, path::PathBuf, sync::Arc, time::Duration};
 
 // Generate the type-safe contract bindings by providing the ABI
@@ -22,22 +25,13 @@ async fn main() -> Result<()> {
     // we use `root` for both the project root and for where to search for contracts since
     // everything is in the same directory
     let paths = ProjectPathsConfig::builder().root(&root).sources(&root).build().unwrap();
+
     // get the solc project instance using the paths above
-    let solc = Project::builder()
-        .paths(paths)
-        .ephemeral()
-        .artifacts(ArtifactOutput::Nothing)
-        .build()
-        .unwrap();
+    let project = Project::builder().paths(paths).ephemeral().no_artifacts().build().unwrap();
     // compile the project and get the artifacts
-    let compiled = solc.compile().unwrap();
-    let compiled = match compiled {
-        ProjectCompileOutput::Compiled((output, _)) => output,
-        _ => panic!("expected compilation artifacts"),
-    };
-    let path = root.join("contract.sol");
-    let path = path.to_str();
-    let contract = compiled.get(path.unwrap(), "SimpleStorage").expect("could not find contract");
+    let output = project.compile().unwrap();
+    let contract = output.find("SimpleStorage").expect("could not find contract").into_owned();
+    let (abi, bytecode, _) = contract.into_parts_or_default();
 
     // 2. instantiate our wallet & ganache
     let ganache = Ganache::new().spawn();
@@ -52,11 +46,7 @@ async fn main() -> Result<()> {
     let client = Arc::new(client);
 
     // 5. create a factory which will be used to deploy instances of the contract
-    let factory = ContractFactory::new(
-        contract.abi.unwrap().clone(),
-        contract.bytecode().unwrap().clone(),
-        client.clone(),
-    );
+    let factory = ContractFactory::new(abi, bytecode, client.clone());
 
     // 6. deploy it with the constructor arguments
     let contract = factory.deploy("initial value".to_string())?.legacy().send().await?;
