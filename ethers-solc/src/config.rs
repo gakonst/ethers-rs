@@ -4,7 +4,7 @@ use crate::{
     error::{Result, SolcError, SolcIoError},
     hh::HardhatArtifact,
     remappings::Remapping,
-    CompilerOutput,
+    utils, CompilerOutput,
 };
 use ethers_core::{abi::Abi, types::Bytes};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -74,6 +74,36 @@ impl ProjectPathsConfig {
             fs::create_dir_all(lib).map_err(|err| SolcIoError::new(err, lib))?;
         }
         Ok(())
+    }
+
+    /// Attempts to autodetect the artifacts directory based on the given root path
+    ///
+    /// Dapptools layout takes precedence over hardhat style.
+    /// This will return:
+    ///   - `<root>/out` if it exists or `<root>/artifacts` does not exist,
+    ///   - `<root>/artifacts` if it exists and `<root>/out` does not exist.
+    pub fn find_artifacts_dir(root: impl AsRef<Path>) -> PathBuf {
+        utils::find_fave_or_alt_path(root, "out", "artifacts")
+    }
+
+    /// Attempts to autodetect the source directory based on the given root path
+    ///
+    /// Dapptools layout takes precedence over hardhat style.
+    /// This will return:
+    ///   - `<root>/src` if it exists or `<root>/contracts` does not exist,
+    ///   - `<root>/contracts` if it exists and `<root>/src` does not exist.
+    pub fn find_source_dir(root: impl AsRef<Path>) -> PathBuf {
+        utils::find_fave_or_alt_path(root, "src", "contracts")
+    }
+
+    /// Attempts to autodetect the lib directory based on the given root path
+    ///
+    /// Dapptools layout takes precedence over hardhat style.
+    /// This will return:
+    ///   - `<root>/lib` if it exists or `<root>/node_modules` does not exist,
+    ///   - `<root>/node_modules` if it exists and `<root>/lib` does not exist.
+    pub fn find_libs(root: impl AsRef<Path>) -> Vec<PathBuf> {
+        vec![utils::find_fave_or_alt_path(root, "lib", "node_modules")]
     }
 }
 
@@ -195,14 +225,17 @@ impl ProjectPathsConfigBuilder {
 
     pub fn build_with_root(self, root: impl Into<PathBuf>) -> ProjectPathsConfig {
         let root = root.into();
+
         ProjectPathsConfig {
             cache: self
                 .cache
                 .unwrap_or_else(|| root.join("cache").join(SOLIDITY_FILES_CACHE_FILENAME)),
-            artifacts: self.artifacts.unwrap_or_else(|| root.join("artifacts")),
-            sources: self.sources.unwrap_or_else(|| root.join("contracts")),
+            artifacts: self
+                .artifacts
+                .unwrap_or_else(|| ProjectPathsConfig::find_artifacts_dir(&root)),
+            sources: self.sources.unwrap_or_else(|| ProjectPathsConfig::find_source_dir(&root)),
             tests: self.tests.unwrap_or_else(|| root.join("tests")),
-            libraries: self.libraries.unwrap_or_default(),
+            libraries: self.libraries.unwrap_or_else(|| ProjectPathsConfig::find_libs(&root)),
             remappings: self.remappings.unwrap_or_default(),
             root,
         }
@@ -489,5 +522,58 @@ impl<T: Into<PathBuf>> TryFrom<Vec<T>> for AllowedLibPaths {
             })
             .collect::<std::result::Result<Vec<_>, _>>()?;
         Ok(AllowedLibPaths(libs))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn can_autodetect_dirs() {
+        let root = tempdir::TempDir::new("root").unwrap();
+        let out = root.path().join("out");
+        let artifacts = root.path().join("artifacts");
+        let contracts = root.path().join("contracts");
+        let src = root.path().join("src");
+        let lib = root.path().join("lib");
+        let node_modules = root.path().join("node_modules");
+
+        let root = root.path();
+        assert_eq!(ProjectPathsConfig::find_source_dir(root), src,);
+        assert_eq!(ProjectPathsConfig::builder().build_with_root(&root).sources, src,);
+        std::fs::File::create(&contracts).unwrap();
+        assert_eq!(ProjectPathsConfig::find_source_dir(root), contracts,);
+        assert_eq!(ProjectPathsConfig::builder().build_with_root(&root).sources, contracts,);
+        std::fs::File::create(&src).unwrap();
+        assert_eq!(ProjectPathsConfig::find_source_dir(root), src,);
+        assert_eq!(ProjectPathsConfig::builder().build_with_root(&root).sources, src,);
+
+        assert_eq!(ProjectPathsConfig::find_artifacts_dir(root), out,);
+        assert_eq!(ProjectPathsConfig::builder().build_with_root(&root).artifacts, out,);
+        std::fs::File::create(&artifacts).unwrap();
+        assert_eq!(ProjectPathsConfig::find_artifacts_dir(root), artifacts,);
+        assert_eq!(ProjectPathsConfig::builder().build_with_root(&root).artifacts, artifacts,);
+        std::fs::File::create(&out).unwrap();
+        assert_eq!(ProjectPathsConfig::find_artifacts_dir(root), out,);
+        assert_eq!(ProjectPathsConfig::builder().build_with_root(&root).artifacts, out,);
+
+        assert_eq!(ProjectPathsConfig::find_libs(root), vec![lib.clone()],);
+        assert_eq!(
+            ProjectPathsConfig::builder().build_with_root(&root).libraries,
+            vec![lib.clone()],
+        );
+        std::fs::File::create(&node_modules).unwrap();
+        assert_eq!(ProjectPathsConfig::find_libs(root), vec![node_modules.clone()],);
+        assert_eq!(
+            ProjectPathsConfig::builder().build_with_root(&root).libraries,
+            vec![node_modules.clone()],
+        );
+        std::fs::File::create(&lib).unwrap();
+        assert_eq!(ProjectPathsConfig::find_libs(root), vec![lib.clone()],);
+        assert_eq!(
+            ProjectPathsConfig::builder().build_with_root(&root).libraries,
+            vec![lib.clone()],
+        );
     }
 }
