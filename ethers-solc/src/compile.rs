@@ -48,20 +48,33 @@ static LOCK: Lazy<Mutex<()>> = Lazy::new(|| Mutex::new(()));
 #[cfg(all(feature = "svm", feature = "async"))]
 /// A list of upstream Solc releases, used to check which version
 /// we should download.
-pub static RELEASES: Lazy<(svm::Releases, Vec<Version>)> = Lazy::new(|| {
+/// The boolean value marks whether there was an error.
+pub static RELEASES: Lazy<(svm::Releases, Vec<Version>, bool)> = Lazy::new(|| {
     // Try to download the releases, if it fails default to empty
     match tokio::runtime::Runtime::new()
         .expect("could not create tokio rt to get remote releases")
-        // TODO: Can we make this future timeout at a small time amount so that
         // we do not degrade startup performance if the consumer has a weak network?
-        .block_on(svm::all_releases(svm::platform()))
-    {
-        Ok(releases) => {
+        // use a 3 sec timeout for the request which should still be fine for slower connections
+        .block_on(async {
+            tokio::time::timeout(
+                std::time::Duration::from_millis(3000),
+                svm::all_releases(svm::platform()),
+            )
+            .await
+        }) {
+        Ok(Ok(releases)) => {
             let mut sorted_releases = releases.releases.keys().cloned().collect::<Vec<Version>>();
             sorted_releases.sort();
-            (releases, sorted_releases)
+            (releases, sorted_releases, true)
         }
-        Err(_) => (svm::Releases::default(), Vec::new()),
+        Ok(Err(err)) => {
+            tracing::error!("{:?}", err);
+            (svm::Releases::default(), Vec::new(), false)
+        }
+        Err(err) => {
+            tracing::error!("Releases request timed out: {:?}", err);
+            (svm::Releases::default(), Vec::new(), false)
+        }
     }
 });
 
@@ -280,6 +293,12 @@ impl Solc {
         version_path.push(format!("solc-{}", version.to_string().as_str()));
         let content =
             std::fs::read(&version_path).map_err(|err| SolcError::io(err, version_path))?;
+
+        if !RELEASES.2 {
+            // we skip checksum verification because the underlying request to fetch release info
+            // failed so we have nothing to compare against
+            return Ok(())
+        }
 
         use sha2::Digest;
         let mut hasher = sha2::Sha256::new();
