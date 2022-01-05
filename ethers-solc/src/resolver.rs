@@ -202,6 +202,8 @@ impl Graph {
             num_input_files: usize,
         ) {
             for dep in edges[idx].iter().copied() {
+                // we only process nodes that were added as part of the resolve step because input
+                // nodes are handled separately
                 if dep >= num_input_files {
                     // library import
                     if let Some(node) = all_nodes.remove(&dep) {
@@ -216,11 +218,14 @@ impl Graph {
         let Self { nodes, edges, num_input_files, .. } = self;
         let mut versioned_sources = HashMap::with_capacity(versioned_nodes.len());
         let mut all_nodes = nodes.into_iter().enumerate().collect::<HashMap<_, _>>();
+
+        // determine the `Sources` set for each solc version
         for (version, input_node_indices) in versioned_nodes {
             let mut sources = Sources::new();
+            // we only process input nodes (from sources, tests for example)
             for idx in input_node_indices {
-                // insert the input node
-                let node = all_nodes.remove(&idx).unwrap();
+                // insert the input node in the sources set and remove it from the available set
+                let node = all_nodes.remove(&idx).expect("node is preset. qed");
                 sources.insert(node.path, node.source);
                 insert_imports(idx, &mut all_nodes, &mut sources, &edges, num_input_files);
             }

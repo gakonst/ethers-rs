@@ -107,7 +107,8 @@ impl<T: ArtifactOutput> TempProject<T> {
     /// Adds a new source file
     pub fn add_source(&self, name: impl AsRef<str>, content: impl AsRef<str>) -> Result<PathBuf> {
         let source = self.paths().sources.join(name.as_ref());
-        std::fs::write(&source, content.as_ref()).map_err(|err| SolcIoError::new(err, source.clone()))?;
+        std::fs::write(&source, content.as_ref())
+            .map_err(|err| SolcIoError::new(err, source.clone()))?;
         Ok(source)
     }
 }
