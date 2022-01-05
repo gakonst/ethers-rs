@@ -520,6 +520,6 @@ mod tests {
                 Path::new("./Dapp.sol").to_path_buf()
             ]
         );
-        assert_eq!(graph.imported_nodes(1).clone(), vec![2, 0]);
+        assert_eq!(graph.imported_nodes(1).to_vec(), vec![2, 0]);
     }
 }

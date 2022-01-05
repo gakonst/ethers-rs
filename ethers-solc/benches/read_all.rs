@@ -42,7 +42,7 @@ fn prepare_contracts(root: &Path, num: usize) -> Vec<PathBuf> {
         // let's assume a solidity file is between 2kb and 16kb
         let n: usize = rng.gen_range(2..17);
         let s: String = rng.sample_iter(&Alphanumeric).take(n * 1024).map(char::from).collect();
-        writer.write_all(&s.as_bytes()).unwrap();
+        writer.write_all(s.as_bytes()).unwrap();
         writer.flush().unwrap();
         files.push(path)
     }
