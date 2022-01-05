@@ -234,8 +234,8 @@ impl<'input> Parser<'input> {
 }
 
 macro_rules! parse_number {
-    ($num:expr, $t:ty, $pos:expr) => {
-        match $num.parse::<$t>() {
+    ($num:expr, $pos:expr) => {{
+        let num = match $num.parse::<i64>() {
             Ok(num) => num,
             Err(_) => {
                 return Some(syntax_err!(
@@ -245,8 +245,15 @@ macro_rules! parse_number {
                     $pos
                 ))
             }
+        };
+        match num {
+            i if i < -1 => {
+                return Some(syntax_err!("Unexpected negative identifier of `{}` at {}", i, $pos))
+            }
+            -1 => None,
+            i => Some(i as u32),
         }
-    };
+    }};
 }
 
 macro_rules! bail_opt {
@@ -270,27 +277,25 @@ impl<'input> Iterator for Parser<'input> {
                     Token::Semicolon => break,
                     Token::Number(num) => match state {
                         State::Offset => {
-                            bail_opt!(builder.set_offset(parse_number!(num, usize, pos), pos))
+                            bail_opt!(builder.set_offset(
+                                parse_number!(num, pos).unwrap_or_default() as usize,
+                                pos
+                            ))
                         }
                         State::Length => {
-                            bail_opt!(builder.set_length(parse_number!(num, usize, pos), pos))
+                            bail_opt!(builder.set_length(
+                                parse_number!(num, pos).unwrap_or_default() as usize,
+                                pos
+                            ))
                         }
                         State::Index => {
-                            let index = match parse_number!(num, i32, pos) {
-                                i if i < -1 => {
-                                    return Some(syntax_err!(
-                                        "Unexpected index identifier of `{}` at {}",
-                                        i,
-                                        pos
-                                    ))
-                                }
-                                -1 => None,
-                                i => Some(i as u32),
-                            };
-                            bail_opt!(builder.set_index(index, pos))
+                            bail_opt!(builder.set_index(parse_number!(num, pos), pos))
                         }
                         State::Modifier => {
-                            bail_opt!(builder.set_modifier(parse_number!(num, usize, pos), pos))
+                            bail_opt!(builder.set_modifier(
+                                parse_number!(num, pos).unwrap_or_default() as usize,
+                                pos
+                            ))
                         }
                         State::Jmp => {
                             return Some(syntax_err!("Expected Jump found number at {}", pos))
@@ -368,5 +373,11 @@ mod tests {
         for (line, s) in source_maps.lines().enumerate() {
             parse(s).unwrap_or_else(|_| panic!("Failed to parse line {}", line));
         }
+    }
+
+    #[test]
+    fn can_parse_foundry_cheatcodes_sol_maps() {
+        let s = include_str!("../test-data/cheatcodes.sol-sourcemap.txt");
+        parse(s).unwrap();
     }
 }
