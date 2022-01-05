@@ -7,7 +7,7 @@ use crate::{
     SolcIoError,
 };
 use fs_extra::{dir, file};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use tempdir::TempDir;
 
 pub struct TempProject<T: ArtifactOutput> {
@@ -49,6 +49,11 @@ impl<T: ArtifactOutput> TempProject<T> {
         &self.project().paths
     }
 
+    /// The configured paths of the project
+    pub fn paths_mut(&mut self) -> &mut ProjectPathsConfig {
+        &mut self.project_mut().paths
+    }
+
     /// The root path of the temporary workspace
     pub fn root(&self) -> &Path {
         self.project().paths.root.as_path()
@@ -70,13 +75,17 @@ impl<T: ArtifactOutput> TempProject<T> {
         Ok(())
     }
 
-    /// Copies a single file into the project's main library directory
-    pub fn copy_lib(&self, lib: impl AsRef<Path>) -> Result<()> {
-        let lib_dir = self
-            .paths()
+    fn get_lib(&self) -> Result<PathBuf> {
+        self.paths()
             .libraries
             .get(0)
-            .ok_or_else(|| SolcError::msg("No libraries folders configured"))?;
+            .cloned()
+            .ok_or_else(|| SolcError::msg("No libraries folders configured"))
+    }
+
+    /// Copies a single file into the project's main library directory
+    pub fn copy_lib(&self, lib: impl AsRef<Path>) -> Result<()> {
+        let lib_dir = self.get_lib()?;
         copy_file(lib, lib_dir)
     }
 
@@ -90,6 +99,39 @@ impl<T: ArtifactOutput> TempProject<T> {
             self.copy_lib(path)?;
         }
         Ok(())
+    }
+
+    /// Adds a new library file
+    pub fn add_lib(&self, name: impl AsRef<str>, content: impl AsRef<str>) -> Result<PathBuf> {
+        let name = contract_file_name(name);
+        let lib_dir = self.get_lib()?;
+        let lib = lib_dir.join(name);
+        create_contract_file(lib, content)
+    }
+
+    /// Adds a new source file
+    pub fn add_source(&self, name: impl AsRef<str>, content: impl AsRef<str>) -> Result<PathBuf> {
+        let name = contract_file_name(name);
+        let source = self.paths().sources.join(name);
+        create_contract_file(source, content)
+    }
+}
+
+fn create_contract_file(path: PathBuf, content: impl AsRef<str>) -> Result<PathBuf> {
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)
+            .map_err(|err| SolcIoError::new(err, parent.to_path_buf()))?;
+    }
+    std::fs::write(&path, content.as_ref()).map_err(|err| SolcIoError::new(err, path.clone()))?;
+    Ok(path)
+}
+
+fn contract_file_name(name: impl AsRef<str>) -> String {
+    let name = name.as_ref();
+    if name.ends_with(".sol") {
+        name.to_string()
+    } else {
+        format!("{}.sol", name)
     }
 }
 

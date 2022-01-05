@@ -6,6 +6,8 @@ use crate::{
 use semver::{Version, VersionReq};
 use serde::{de::DeserializeOwned, Serialize};
 use std::{
+    fmt,
+    fmt::Formatter,
     io::BufRead,
     path::{Path, PathBuf},
     process::{Command, Output, Stdio},
@@ -77,6 +79,43 @@ pub static RELEASES: Lazy<(svm::Releases, Vec<Version>, bool)> = Lazy::new(|| {
         }
     }
 });
+
+/// A `Solc` version is either installed (available locally) or can be downloaded, from the remote
+/// endpoint
+#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+pub enum SolcVersion {
+    Installed(Version),
+    Remote(Version),
+}
+
+impl SolcVersion {
+    /// Whether this version is installed
+    pub fn is_installed(&self) -> bool {
+        matches!(self, SolcVersion::Installed(_))
+    }
+}
+
+impl AsRef<Version> for SolcVersion {
+    fn as_ref(&self) -> &Version {
+        match self {
+            SolcVersion::Installed(v) | SolcVersion::Remote(v) => v,
+        }
+    }
+}
+
+impl From<SolcVersion> for Version {
+    fn from(s: SolcVersion) -> Version {
+        match s {
+            SolcVersion::Installed(v) | SolcVersion::Remote(v) => v,
+        }
+    }
+}
+
+impl fmt::Display for SolcVersion {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.as_ref())
+    }
+}
 
 /// Abstraction over `solc` command line utility
 ///
@@ -159,6 +198,44 @@ impl Solc {
         Version::parse(&version).ok()
     }
 
+    /// Returns the list of all solc instances installed at `SVM_HOME`
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn installed_versions() -> Vec<SolcVersion> {
+        if let Some(home) = Self::svm_home() {
+            utils::installed_versions(home)
+                .unwrap_or_default()
+                .into_iter()
+                .map(SolcVersion::Installed)
+                .collect()
+        } else {
+            Vec::new()
+        }
+    }
+
+    /// Returns the list of all versions that are available to download and marking those which are
+    /// already installed.
+    #[cfg(all(feature = "svm", feature = "async"))]
+    pub fn all_versions() -> Vec<SolcVersion> {
+        let mut all_versions = Self::installed_versions();
+        let mut uniques = all_versions
+            .iter()
+            .map(|v| {
+                let v = v.as_ref();
+                (v.major, v.minor, v.patch)
+            })
+            .collect::<std::collections::HashSet<_>>();
+        all_versions.extend(
+            RELEASES
+                .1
+                .clone()
+                .into_iter()
+                .filter(|v| uniques.insert((v.major, v.minor, v.patch)))
+                .map(SolcVersion::Remote),
+        );
+        all_versions.sort_unstable();
+        all_versions
+    }
+
     /// Returns the path for a [svm](https://github.com/roynalnaruto/svm-rs) installed version.
     ///
     /// # Example
@@ -201,7 +278,7 @@ impl Solc {
     #[cfg(all(feature = "svm", feature = "async"))]
     pub fn detect_version(source: &Source) -> Result<Version> {
         // detects the required solc version
-        let sol_version = Self::version_req(source)?;
+        let sol_version = Self::source_version_req(source)?;
         Self::ensure_installed(&sol_version)
     }
 
@@ -243,10 +320,15 @@ impl Solc {
 
     /// Parses the given source looking for the `pragma` definition and
     /// returns the corresponding SemVer version requirement.
-    pub fn version_req(source: &Source) -> Result<VersionReq> {
-        let version = utils::find_version_pragma(&source.content)
-            .ok_or(SolcError::PragmaNotFound)?
-            .replace(' ', ",");
+    pub fn source_version_req(source: &Source) -> Result<VersionReq> {
+        let version =
+            utils::find_version_pragma(&source.content).ok_or(SolcError::PragmaNotFound)?;
+        Self::version_req(version)
+    }
+
+    /// Returns the corresponding SemVer version requirement for the solidity version
+    pub fn version_req(version: &str) -> Result<VersionReq> {
+        let version = version.replace(' ', ",");
 
         // Somehow, Solidity semver without an operator is considered to be "exact",
         // but lack of operator automatically marks the operator as Caret, so we need
@@ -611,7 +693,7 @@ mod tests {
         let sources = versions.iter().map(|version| source(version));
 
         sources.zip(versions).for_each(|(source, version)| {
-            let version_req = Solc::version_req(&source).unwrap();
+            let version_req = Solc::source_version_req(&source).unwrap();
             assert_eq!(version_req, VersionReq::from_str(version).unwrap());
         });
 
@@ -619,7 +701,7 @@ mod tests {
         // requires them to be separated with a comma
         let version_range = ">=0.8.0 <0.9.0";
         let source = source(version_range);
-        let version_req = Solc::version_req(&source).unwrap();
+        let version_req = Solc::source_version_req(&source).unwrap();
         assert_eq!(version_req, VersionReq::from_str(">=0.8.0,<0.9.0").unwrap());
     }
 

@@ -34,6 +34,8 @@
 
 ### Unreleased
 
+- Add dependency graph and resolve all imported libraryfiles
+  [#750](https://github.com/gakonst/ethers-rs/pull/750)
 - `Remapping::find_many` does not return a `Result` anymore
   [#707](https://github.com/gakonst/ethers-rs/pull/707)
 - Add support for hardhat artifacts

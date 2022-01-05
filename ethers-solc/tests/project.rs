@@ -1,14 +1,20 @@
 //! project tests
 
-use ethers_solc::{
-    cache::SOLIDITY_FILES_CACHE_FILENAME, project_util::*, MinimalCombinedArtifacts, Project,
-    ProjectPathsConfig,
-};
 use std::{
+    collections::HashMap,
     io,
     path::{Path, PathBuf},
+    str::FromStr,
 };
+
 use tempdir::TempDir;
+
+use ethers_solc::{
+    cache::{SolFilesCache, SOLIDITY_FILES_CACHE_FILENAME},
+    project_util::*,
+    remappings::Remapping,
+    Graph, MinimalCombinedArtifacts, Project, ProjectPathsConfig,
+};
 
 #[test]
 fn can_compile_hardhat_sample() {
@@ -56,6 +62,80 @@ fn can_compile_dapp_sample() {
     std::fs::remove_dir_all(&project.paths().artifacts).unwrap();
     let compiled = project.compile().unwrap();
     assert!(compiled.find("Dapp").is_some());
+    assert!(!compiled.is_unchanged());
+}
+
+#[test]
+fn can_compile_dapp_detect_changes_in_libs() {
+    let mut project = TempProject::<MinimalCombinedArtifacts>::dapptools().unwrap();
+
+    let remapping = project.paths().libraries[0].join("remapping");
+    project
+        .paths_mut()
+        .remappings
+        .push(Remapping::from_str(&format!("remapping={}/", remapping.display())).unwrap());
+    project.project_mut().auto_detect = false;
+
+    let src = project
+        .add_source(
+            "Foo",
+            r#"
+    pragma solidity ^0.8.10;
+    import "remapping/Bar.sol";
+
+    contract Foo {}
+   "#,
+        )
+        .unwrap();
+
+    let lib = project
+        .add_lib(
+            "remapping/Bar",
+            r#"
+    pragma solidity ^0.8.10;
+
+    contract Bar {}
+    "#,
+        )
+        .unwrap();
+
+    let graph = Graph::resolve(project.paths()).unwrap();
+    assert_eq!(graph.files().len(), 2);
+    assert_eq!(graph.files().clone(), HashMap::from([(src, 0), (lib, 1),]));
+
+    let compiled = project.compile().unwrap();
+    assert!(compiled.find("Foo").is_some());
+    assert!(compiled.find("Bar").is_some());
+    assert!(!compiled.has_compiler_errors());
+
+    // nothing to compile
+    let compiled = project.compile().unwrap();
+    assert!(compiled.find("Foo").is_some());
+    assert!(compiled.is_unchanged());
+
+    let cache = SolFilesCache::read(&project.paths().cache).unwrap();
+    assert_eq!(cache.files.len(), 2);
+
+    // overwrite lib
+    project
+        .add_lib(
+            "remapping/Bar",
+            r#"
+    pragma solidity ^0.8.10;
+
+    // changed lib
+    contract Bar {}
+    "#,
+        )
+        .unwrap();
+
+    let graph = Graph::resolve(project.paths()).unwrap();
+    assert_eq!(graph.files().len(), 2);
+
+    let compiled = project.compile().unwrap();
+    assert!(compiled.find("Foo").is_some());
+    assert!(compiled.find("Bar").is_some());
+    // ensure change is detected
     assert!(!compiled.is_unchanged());
 }
 

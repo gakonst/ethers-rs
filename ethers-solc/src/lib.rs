@@ -7,7 +7,9 @@ use std::collections::btree_map::Entry;
 
 pub mod cache;
 pub mod hh;
+mod resolver;
 pub use hh::{HardhatArtifact, HardhatArtifacts};
+pub use resolver::Graph;
 
 mod compile;
 
@@ -153,8 +155,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
     /// Returns all sources found under the project's configured sources path
     #[tracing::instrument(skip_all, fields(name = "sources"))]
     pub fn sources(&self) -> Result<Sources> {
-        tracing::trace!("reading all sources from \"{}\"", self.paths.sources.display());
-        Ok(Source::read_all_from(&self.paths.sources)?)
+        self.paths.read_sources()
     }
 
     /// This emits the cargo [`rerun-if-changed`](https://doc.rust-lang.org/cargo/reference/build-scripts.html#cargorerun-if-changedpath) instruction.
@@ -204,7 +205,8 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         Ok(libs)
     }
 
-    /// Attempts to compile the contracts found at the configured location.
+    /// Attempts to compile the contracts found at the configured source location, see
+    /// `ProjectPathsConfig::sources`.
     ///
     /// NOTE: this does not check if the contracts were successfully compiled, see
     /// `CompilerOutput::has_error` instead.
@@ -212,7 +214,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
     /// solc versions across files.
     #[tracing::instrument(skip_all, name = "compile")]
     pub fn compile(&self) -> Result<ProjectCompileOutput<Artifacts>> {
-        let sources = self.sources()?;
+        let sources = self.paths.read_input_files()?;
         tracing::trace!("found {} sources to compile: {:?}", sources.len(), sources.keys());
 
         #[cfg(all(feature = "svm", feature = "async"))]
@@ -225,64 +227,17 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         if !self.allowed_lib_paths.0.is_empty() {
             solc = solc.arg("--allow-paths").arg(self.allowed_lib_paths.to_string());
         }
+
+        let sources = Graph::resolve_sources(&self.paths, sources)?.into_sources();
         self.compile_with_version(&solc, sources)
     }
 
     #[cfg(all(feature = "svm", feature = "async"))]
     #[tracing::instrument(skip(self, sources))]
     fn svm_compile(&self, sources: Sources) -> Result<ProjectCompileOutput<Artifacts>> {
-        use semver::{Version, VersionReq};
-        use std::collections::hash_map::{self, HashMap};
-
-        // split them by version
-        let mut sources_by_version = BTreeMap::new();
-        // we store the solc versions by path, in case there exists a corrupt solc binary
-        let mut solc_versions = HashMap::new();
-
-        // tracks unique version requirements to minimize install effort
-        let mut solc_version_req = HashMap::<VersionReq, Version>::new();
-
-        tracing::trace!("preprocessing source files and solc installs");
-        for (path, source) in sources.into_iter() {
-            // will detect and install the solc version if it's missing
-            tracing::trace!("detecting solc version for \"{}\"", path.display());
-            let version_req = Solc::version_req(&source)?;
-
-            let version = match solc_version_req.entry(version_req) {
-                hash_map::Entry::Occupied(version) => version.get().clone(),
-                hash_map::Entry::Vacant(entry) => {
-                    let version = Solc::ensure_installed(entry.key())?;
-                    entry.insert(version.clone());
-                    version
-                }
-            };
-            tracing::trace!("found installed solc \"{}\"", version);
-
-            // gets the solc binary for that version, it is expected tha this will succeed
-            // AND find the solc since it was installed right above
-            let mut solc = Solc::find_svm_installed_version(version.to_string())?
-                .unwrap_or_else(|| panic!("solc \"{}\" should have been installed", version));
-
-            if !self.allowed_lib_paths.0.is_empty() {
-                solc = solc.arg("--allow-paths").arg(self.allowed_lib_paths.to_string());
-            }
-            solc_versions.insert(solc.solc.clone(), version);
-            let entry = sources_by_version.entry(solc).or_insert_with(BTreeMap::new);
-            entry.insert(path.clone(), source);
-        }
-        tracing::trace!("solc version preprocessing finished");
-
-        tracing::trace!("verifying solc checksums");
-        for solc in sources_by_version.keys() {
-            // verify that this solc version's checksum matches the checksum found remotely. If
-            // not, re-install the same version.
-            let version = &solc_versions[&solc.solc];
-            if solc.verify_checksum().is_err() {
-                tracing::trace!("corrupted solc version, redownloading  \"{}\"", version);
-                Solc::blocking_install(version)?;
-                tracing::trace!("reinstalled solc: \"{}\"", version);
-            }
-        }
+        let graph = Graph::resolve_sources(&self.paths, sources)?;
+        let sources_by_version =
+            graph.into_sources_by_version(!self.auto_detect)?.get(&self.allowed_lib_paths)?;
 
         // run the compilation step for each version
         let compiled = if self.solc_jobs > 1 && sources_by_version.len() > 1 {
@@ -295,6 +250,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         Ok(compiled)
     }
 
+    /// Compiles all sources with their intended `Solc` version sequentially.
     #[cfg(all(feature = "svm", feature = "async"))]
     fn compile_sources(
         &self,
@@ -314,6 +270,9 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         Ok(compiled)
     }
 
+    /// Compiles all sources with their intended `Solc` version in parallel.
+    ///
+    /// This runs `Self::solc_jobs` parallel `solc` jobs at most.
     #[cfg(all(feature = "svm", feature = "async"))]
     fn compile_many(
         &self,
@@ -929,7 +888,7 @@ mod tests {
     fn test_build_many_libs() {
         use super::*;
 
-        let root = dunce::canonicalize("./test-data/test-contract-libs").unwrap();
+        let root = utils::canonicalize("./test-data/test-contract-libs").unwrap();
 
         let paths = ProjectPathsConfig::builder()
             .root(&root)
@@ -956,7 +915,7 @@ mod tests {
     fn test_build_remappings() {
         use super::*;
 
-        let root = dunce::canonicalize("./test-data/test-contract-remappings").unwrap();
+        let root = utils::canonicalize("./test-data/test-contract-remappings").unwrap();
         let paths = ProjectPathsConfig::builder()
             .root(&root)
             .sources(root.join("src"))
