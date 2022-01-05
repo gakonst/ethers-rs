@@ -18,7 +18,7 @@ version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b613b8e1e3cf911a086f53f03bf286f52fd7a7258e4fa606f0ef220d39d8877"
 dependencies = [
- "generic-array 0.14.4",
+ "generic-array 0.14.5",
  "rand_core 0.6.3",
 ]
 
@@ -245,7 +245,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4152116fd6e9dadb291ae18fc1ec3575ed6d84c29642d97890f4b4a3417297e4"
 dependencies = [
  "block-padding 0.2.1",
- "generic-array 0.14.4",
+ "generic-array 0.14.5",
 ]
 
 [[package]]
@@ -254,7 +254,7 @@ version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f1d36a02058e76b040de25a4464ba1c80935655595b661505c8b39b664828b95"
 dependencies = [
- "generic-array 0.14.4",
+ "generic-array 0.14.5",
 ]
 
 [[package]]
@@ -422,7 +422,7 @@ version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7ee52072ec15386f770805afd189a01c8841be8696bed250fa2f13c4c0d6dfb7"
 dependencies = [
- "generic-array 0.14.4",
+ "generic-array 0.14.5",
 ]
 
 [[package]]
@@ -493,7 +493,7 @@ dependencies = [
  "bech32",
  "blake2",
  "digest 0.9.0",
- "generic-array 0.14.4",
+ "generic-array 0.14.5",
  "hex",
  "ripemd160",
  "serde",
@@ -722,7 +722,7 @@ version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "03c6a1d5fa1de37e071642dfa44ec552ca5b299adb128fab16138e24b548fd21"
 dependencies = [
- "generic-array 0.14.4",
+ "generic-array 0.14.5",
  "rand_core 0.6.3",
  "subtle",
  "zeroize",
@@ -734,7 +734,7 @@ version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "683d6b536309245c849479fba3da410962a43ed8e51c26b729208ec0ac2798d0"
 dependencies = [
- "generic-array 0.14.4",
+ "generic-array 0.14.5",
 ]
 
 [[package]]
@@ -743,7 +743,7 @@ version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b584a330336237c1eecd3e94266efb216c56ed91225d634cb2991c5f3fd1aeab"
 dependencies = [
- "generic-array 0.14.4",
+ "generic-array 0.14.5",
  "subtle",
 ]
 
@@ -754,7 +754,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b1d1a86f49236c215f271d40892d5fc950490551400b02ef360692c29815c714"
 dependencies = [
  "cipher",
- "generic-array 0.14.4",
+ "generic-array 0.14.5",
  "subtle",
 ]
 
@@ -827,7 +827,7 @@ version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "37e797687b5f09528a48fcb63b6914d0255b8a6c760699a919af37042f09d9b3"
 dependencies = [
- "generic-array 0.14.4",
+ "generic-array 0.14.5",
 ]
 
 [[package]]
@@ -872,7 +872,7 @@ version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d3dd60d1080a57a05ab032377049e0591415d2b31afd7028356dbf3cc6dcb066"
 dependencies = [
- "generic-array 0.14.4",
+ "generic-array 0.14.5",
 ]
 
 [[package]]
@@ -883,7 +883,7 @@ checksum = "b697d66081d42af4fba142d56918a3cb21dc8eb63372c6b85d14f44fb9c5979b"
 dependencies = [
  "block-buffer 0.10.0",
  "crypto-common",
- "generic-array 0.14.4",
+ "generic-array 0.14.5",
 ]
 
 [[package]]
@@ -963,7 +963,7 @@ dependencies = [
  "crypto-bigint",
  "der",
  "ff",
- "generic-array 0.14.4",
+ "generic-array 0.14.5",
  "group",
  "rand_core 0.6.3",
  "sec1",
@@ -1140,7 +1140,7 @@ dependencies = [
  "elliptic-curve",
  "ethabi",
  "futures-util",
- "generic-array 0.14.4",
+ "generic-array 0.14.5",
  "hex",
  "hex-literal",
  "k256",
@@ -1514,9 +1514,9 @@ dependencies = [
 
 [[package]]
 name = "generic-array"
-version = "0.14.4"
+version = "0.14.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "501466ecc8a30d1d3b7fc9229b122b2ce8ed6e9d9223f1138d4babb253e51817"
+checksum = "fd48d33ec7f05fbfa152300fdad764757cbded343c1aa1cff2fbaf4134851803"
 dependencies = [
  "typenum",
  "version_check",
@@ -2935,7 +2935,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "08da66b8b0965a5555b6bd6639e68ccba85e1e2506f5fbb089e93f8a04e1a2d1"
 dependencies = [
  "der",
- "generic-array 0.14.4",
+ "generic-array 0.14.5",
  "pkcs8",
  "subtle",
  "zeroize",
