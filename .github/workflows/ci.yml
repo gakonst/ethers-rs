@@ -214,7 +214,7 @@ jobs:
       - uses: Swatinem/rust-cache@v1
         with:
           cache-on-failure: true
-      - name: cargo test
+      - name: Run all examples
         run: |
             export PATH=$HOME/bin:$PATH
             ./scripts/examples.sh
