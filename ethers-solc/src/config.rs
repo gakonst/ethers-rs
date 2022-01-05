@@ -595,39 +595,45 @@ mod tests {
 
         let root = root.path();
         assert_eq!(ProjectPathsConfig::find_source_dir(root), src,);
-        assert_eq!(ProjectPathsConfig::builder().build_with_root(&root).sources, src,);
         std::fs::File::create(&contracts).unwrap();
         assert_eq!(ProjectPathsConfig::find_source_dir(root), contracts,);
-        assert_eq!(ProjectPathsConfig::builder().build_with_root(&root).sources, contracts,);
+        assert_eq!(
+            ProjectPathsConfig::builder().build_with_root(&root).sources,
+            canonicalized(contracts),
+        );
         std::fs::File::create(&src).unwrap();
         assert_eq!(ProjectPathsConfig::find_source_dir(root), src,);
-        assert_eq!(ProjectPathsConfig::builder().build_with_root(&root).sources, src,);
+        assert_eq!(
+            ProjectPathsConfig::builder().build_with_root(&root).sources,
+            canonicalized(src),
+        );
 
         assert_eq!(ProjectPathsConfig::find_artifacts_dir(root), out,);
-        assert_eq!(ProjectPathsConfig::builder().build_with_root(&root).artifacts, out,);
         std::fs::File::create(&artifacts).unwrap();
         assert_eq!(ProjectPathsConfig::find_artifacts_dir(root), artifacts,);
-        assert_eq!(ProjectPathsConfig::builder().build_with_root(&root).artifacts, artifacts,);
+        assert_eq!(
+            ProjectPathsConfig::builder().build_with_root(&root).artifacts,
+            canonicalized(artifacts),
+        );
         std::fs::File::create(&out).unwrap();
         assert_eq!(ProjectPathsConfig::find_artifacts_dir(root), out,);
-        assert_eq!(ProjectPathsConfig::builder().build_with_root(&root).artifacts, out,);
+        assert_eq!(
+            ProjectPathsConfig::builder().build_with_root(&root).artifacts,
+            canonicalized(out),
+        );
 
         assert_eq!(ProjectPathsConfig::find_libs(root), vec![lib.clone()],);
-        assert_eq!(
-            ProjectPathsConfig::builder().build_with_root(&root).libraries,
-            vec![lib.clone()],
-        );
         std::fs::File::create(&node_modules).unwrap();
         assert_eq!(ProjectPathsConfig::find_libs(root), vec![node_modules.clone()],);
         assert_eq!(
             ProjectPathsConfig::builder().build_with_root(&root).libraries,
-            vec![node_modules.clone()],
+            vec![canonicalized(node_modules.clone())],
         );
         std::fs::File::create(&lib).unwrap();
         assert_eq!(ProjectPathsConfig::find_libs(root), vec![lib.clone()],);
         assert_eq!(
             ProjectPathsConfig::builder().build_with_root(&root).libraries,
-            vec![lib.clone()],
+            vec![canonicalized(lib.clone())],
         );
     }
 }
