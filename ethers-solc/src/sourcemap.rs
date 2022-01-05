@@ -1,4 +1,4 @@
-use std::{fmt, iter::Peekable, str::CharIndices};
+use std::{fmt, fmt::Write, iter::Peekable, str::CharIndices};
 
 type Spanned<Token, Loc, Error> = Result<(Token, Loc), Error>;
 
@@ -124,12 +124,38 @@ pub enum Jump {
     Regular,
 }
 
+impl AsRef<str> for Jump {
+    fn as_ref(&self) -> &str {
+        match self {
+            Jump::In => "i",
+            Jump::Out => "o",
+            Jump::Regular => "-",
+        }
+    }
+}
+
+impl<'a> fmt::Display for Jump {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_ref())
+    }
+}
+
 /// Represents a whole source map as list of `SourceElement`s
 ///
-/// See also https://docs.soliditylang.org/en/v0.8.10/internals/source_mappings.html
+/// See also https://docs.soliditylang.org/en/latest/internals/source_mappings.html#source-mappings
 pub type SourceMap = Vec<SourceElement>;
 
 /// Represents a single element in the source map
+/// A solidity source map entry takes the following form
+///
+/// before 0.6.0
+///   s:l:f:j
+///
+/// after 0.6.0
+///   s:l:f:j:m
+///
+/// Where s is the byte-offset to the start of the range in the source file, l is the length of the
+/// source range in bytes and f is the source index.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SourceElement {
     /// The byte-offset to the start of the range in the source file
@@ -150,6 +176,20 @@ pub struct SourceElement {
     pub modifier_depth: usize,
 }
 
+impl<'a> fmt::Display for SourceElement {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}:{}:{}:{}:{}",
+            self.offset,
+            self.length,
+            self.index.map(|i| i as i64).unwrap_or(-1),
+            self.jump,
+            self.modifier_depth
+        )
+    }
+}
+
 #[derive(Default)]
 struct SourceElementBuilder {
     pub offset: Option<usize>,
@@ -157,6 +197,74 @@ struct SourceElementBuilder {
     pub index: Option<Option<u32>>,
     pub jump: Option<Jump>,
     pub modifier_depth: Option<usize>,
+}
+
+impl<'a> fmt::Display for SourceElementBuilder {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.offset.is_none() &&
+            self.length.is_none() &&
+            self.index.is_none() &&
+            self.jump.is_none() &&
+            self.modifier_depth.is_none()
+        {
+            return Ok(())
+        }
+
+        if let Some(s) = self.offset {
+            if self.index == Some(None) {
+                f.write_str("-1")?;
+            } else {
+                s.fmt(f)?;
+            }
+        }
+        if self.length.is_none() &&
+            self.index.is_none() &&
+            self.jump.is_none() &&
+            self.modifier_depth.is_none()
+        {
+            return Ok(())
+        }
+        f.write_char(':')?;
+
+        if let Some(s) = self.length {
+            if self.index == Some(None) {
+                f.write_str("-1")?;
+            } else {
+                s.fmt(f)?;
+            }
+        }
+        if self.index.is_none() && self.jump.is_none() && self.modifier_depth.is_none() {
+            return Ok(())
+        }
+        f.write_char(':')?;
+
+        if let Some(s) = self.index {
+            let s = s.map(|s| s as i64).unwrap_or(-1);
+            s.fmt(f)?;
+        }
+        if self.jump.is_none() && self.modifier_depth.is_none() {
+            return Ok(())
+        }
+        f.write_char(':')?;
+
+        if let Some(s) = self.jump {
+            s.fmt(f)?;
+        }
+        if self.modifier_depth.is_none() {
+            return Ok(())
+        }
+        f.write_char(':')?;
+
+        if let Some(s) = self.modifier_depth {
+            if self.index == Some(None) {
+                f.write_str("-1")?;
+            } else {
+                s.fmt(f)?;
+            }
+        }
+
+        Ok(())
+    }
 }
 
 impl SourceElementBuilder {
@@ -225,11 +333,20 @@ impl SourceElementBuilder {
 pub struct Parser<'input> {
     stream: TokenStream<'input>,
     last_element: Option<SourceElement>,
+    done: bool,
+    #[cfg(test)]
+    output: Option<&'input mut dyn Write>,
 }
 
 impl<'input> Parser<'input> {
     pub fn new(input: &'input str) -> Self {
-        Self { stream: TokenStream::new(input), last_element: None }
+        Self {
+            stream: TokenStream::new(input),
+            last_element: None,
+            done: false,
+            #[cfg(test)]
+            output: None,
+        }
     }
 }
 
@@ -268,12 +385,13 @@ impl<'input> Iterator for Parser<'input> {
     type Item = Result<SourceElement, SyntaxError>;
 
     fn next(&mut self) -> Option<Self::Item> {
+        // start parsing at the offset state, `s`
         let mut state = State::Offset;
         let mut builder = SourceElementBuilder::default();
 
         loop {
-            match self.stream.next()? {
-                Ok((token, pos)) => match token {
+            match self.stream.next() {
+                Some(Ok((token, pos))) => match token {
                     Token::Semicolon => break,
                     Token::Number(num) => match state {
                         State::Offset => {
@@ -314,7 +432,24 @@ impl<'input> Iterator for Parser<'input> {
                         bail_opt!(builder.set_jmp(Jump::Regular, pos))
                     }
                 },
-                Err(err) => return Some(Err(err)),
+                Some(Err(err)) => return Some(Err(err)),
+                None => {
+                    if self.done {
+                        return None
+                    }
+                    self.done = true;
+                    break
+                }
+            }
+        }
+
+        #[cfg(test)]
+        {
+            if let Some(out) = self.output.as_mut() {
+                if self.last_element.is_some() {
+                    let _ = out.write_char(';');
+                }
+                let _ = out.write_str(&builder.to_string());
             }
         }
 
@@ -329,12 +464,18 @@ impl<'input> Iterator for Parser<'input> {
     }
 }
 
+/// State machine to keep track of separating `:`
 #[derive(Clone, PartialEq, Eq, Copy)]
 enum State {
+    // s
     Offset,
+    // l
     Length,
+    // f
     Index,
+    // j
     Jmp,
+    // m
     Modifier,
 }
 
@@ -378,6 +519,10 @@ mod tests {
     #[test]
     fn can_parse_foundry_cheatcodes_sol_maps() {
         let s = include_str!("../test-data/cheatcodes.sol-sourcemap.txt");
-        parse(s).unwrap();
+        let mut out = String::new();
+        let mut parser = Parser::new(s);
+        parser.output = Some(&mut out);
+        let _map = parser.collect::<Result<SourceMap, _>>().unwrap();
+        assert_eq!(out, s);
     }
 }
