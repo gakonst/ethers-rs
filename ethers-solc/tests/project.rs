@@ -60,6 +60,28 @@ fn can_compile_dapp_sample() {
 }
 
 #[test]
+fn can_compile_dapp_detect_changes_in_libs() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test-data/dapp-sample");
+    let paths = ProjectPathsConfig::builder().sources(root.join("src")).lib(root.join("lib"));
+    let project = TempProject::<MinimalCombinedArtifacts>::new(paths).unwrap();
+
+    let compiled = project.compile().unwrap();
+    assert!(compiled.find("Dapp").is_some());
+    assert!(!compiled.has_compiler_errors());
+
+    // nothing to compile
+    let compiled = project.compile().unwrap();
+    assert!(compiled.find("Dapp").is_some());
+    assert!(compiled.is_unchanged());
+
+    // delete artifacts
+    std::fs::remove_dir_all(&project.paths().artifacts).unwrap();
+    let compiled = project.compile().unwrap();
+    assert!(compiled.find("Dapp").is_some());
+    assert!(!compiled.is_unchanged());
+}
+
+#[test]
 fn can_compile_dapp_sample_with_cache() {
     let tmp_dir = TempDir::new("root").unwrap();
     let root = tmp_dir.path();

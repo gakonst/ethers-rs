@@ -7,7 +7,7 @@ use crate::{
     SolcIoError,
 };
 use fs_extra::{dir, file};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use tempdir::TempDir;
 
 pub struct TempProject<T: ArtifactOutput> {
@@ -70,13 +70,17 @@ impl<T: ArtifactOutput> TempProject<T> {
         Ok(())
     }
 
-    /// Copies a single file into the project's main library directory
-    pub fn copy_lib(&self, lib: impl AsRef<Path>) -> Result<()> {
-        let lib_dir = self
-            .paths()
+    fn get_lib(&self) -> Result<PathBuf> {
+        self.paths()
             .libraries
             .get(0)
-            .ok_or_else(|| SolcError::msg("No libraries folders configured"))?;
+            .cloned()
+            .ok_or_else(|| SolcError::msg("No libraries folders configured"))
+    }
+
+    /// Copies a single file into the project's main library directory
+    pub fn copy_lib(&self, lib: impl AsRef<Path>) -> Result<()> {
+        let lib_dir = self.get_lib()?;
         copy_file(lib, lib_dir)
     }
 
@@ -90,6 +94,21 @@ impl<T: ArtifactOutput> TempProject<T> {
             self.copy_lib(path)?;
         }
         Ok(())
+    }
+
+    /// Adds a new library file
+    pub fn add_lib(&self, name: impl AsRef<str>, content: impl AsRef<str>) -> Result<PathBuf> {
+        let lib_dir = self.get_lib()?;
+        let lib = lib_dir.join(name.as_ref());
+        std::fs::write(&lib, content.as_ref()).map_err(|err| SolcIoError::new(err, lib.clone()))?;
+        Ok(lib)
+    }
+
+    /// Adds a new source file
+    pub fn add_source(&self, name: impl AsRef<str>, content: impl AsRef<str>) -> Result<PathBuf> {
+        let source = self.paths().sources.join(name.as_ref());
+        std::fs::write(&source, content.as_ref()).map_err(|err| SolcIoError::new(err, source.clone()))?;
+        Ok(source)
     }
 }
 
