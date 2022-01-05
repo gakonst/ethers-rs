@@ -220,6 +220,22 @@ pub fn common_ancestor(a: impl AsRef<Path>, b: impl AsRef<Path>) -> Option<PathB
     }
 }
 
+/// Returns the right subpath in a dir
+///
+/// Returns `<root>/<fave>` if it exists or `<root>/<alt>` does not exist,
+/// Returns `<root>/<alt>` if it exists and `<root>/<fave>` does not exist.
+pub(crate) fn find_fave_or_alt_path(root: impl AsRef<Path>, fave: &str, alt: &str) -> PathBuf {
+    let root = root.as_ref();
+    let p = root.join(fave);
+    if !p.exists() {
+        let alt = root.join(alt);
+        if alt.exists() {
+            return alt
+        }
+    }
+    p
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
