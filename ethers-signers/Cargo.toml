@@ -35,7 +35,7 @@ rusoto_core = { version = "0.47.0", optional = true }
 rusoto_kms = { version = "0.47.0", optional = true }
 tracing = { version = "0.1.29", optional = true }
 tracing-futures = { version = "0.2.5", optional = true }
-spki = { version = "0.5.2", optional = true }
+spki = { version = "0.5.4", optional = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 eth-keystore = { version = "0.3.0" }
