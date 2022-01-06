@@ -11,7 +11,13 @@ use std::{
     str::FromStr,
 };
 
-use crate::{compile::*, error::SolcIoError, remappings::Remapping, utils};
+use crate::{
+    compile::*,
+    error::SolcIoError,
+    remappings::Remapping,
+    sourcemap::{self, SourceMap, SyntaxError},
+    utils,
+};
 use ethers_core::abi::Address;
 use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 
@@ -813,6 +819,13 @@ pub struct Bytecode {
 }
 
 impl Bytecode {
+    /// Returns the parsed source map
+    ///
+    /// See also https://docs.soliditylang.org/en/v0.8.10/internals/source_mappings.html
+    pub fn source_map(&self) -> Option<Result<SourceMap, SyntaxError>> {
+        self.source_map.as_ref().map(|map| sourcemap::parse(map))
+    }
+
     /// Same as `Bytecode::link` but with fully qualified name (`file.sol:Math`)
     pub fn link_fully_qualified(&mut self, name: impl AsRef<str>, addr: Address) -> bool {
         if let Some((file, lib)) = name.as_ref().split_once(':') {

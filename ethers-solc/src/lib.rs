@@ -1,6 +1,7 @@
 #![doc = include_str ! ("../README.md")]
 
 pub mod artifacts;
+pub mod sourcemap;
 
 pub use artifacts::{CompilerInput, CompilerOutput, EvmVersion};
 use std::collections::btree_map::Entry;
