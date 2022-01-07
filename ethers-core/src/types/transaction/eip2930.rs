@@ -1,8 +1,8 @@
 use super::{normalize_v, request::TransactionRequest};
 use crate::types::{Address, Bytes, Signature, H256, U256, U64};
 
-use rlp::RlpStream;
-use rlp_derive::{RlpEncodable, RlpEncodableWrapper};
+use rlp::{Decodable, DecoderError, RlpStream};
+use rlp_derive::{RlpDecodable, RlpDecodableWrapper, RlpEncodable, RlpEncodableWrapper};
 use serde::{Deserialize, Serialize};
 
 const NUM_EIP2930_FIELDS: usize = 8;
@@ -10,7 +10,17 @@ const NUM_EIP2930_FIELDS: usize = 8;
 /// Access list
 // NB: Need to use `RlpEncodableWrapper` else we get an extra [] in the output
 // https://github.com/gakonst/ethers-rs/pull/353#discussion_r680683869
-#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize, RlpEncodableWrapper)]
+#[derive(
+    Debug,
+    Default,
+    Clone,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    RlpEncodableWrapper,
+    RlpDecodableWrapper,
+)]
 pub struct AccessList(pub Vec<AccessListItem>);
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -38,7 +48,9 @@ impl TransactionRequest {
 }
 
 /// Access list item
-#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize, RlpEncodable)]
+#[derive(
+    Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize, RlpEncodable, RlpDecodable,
+)]
 #[serde(rename_all = "camelCase")]
 pub struct AccessListItem {
     /// Accessed address
@@ -60,10 +72,12 @@ impl Eip2930TransactionRequest {
         Self { tx, access_list }
     }
 
-    pub fn rlp<T: Into<U64>>(&self, chain_id: T) -> Bytes {
+    pub fn rlp(&self) -> Bytes {
         let mut rlp = RlpStream::new();
         rlp.begin_list(NUM_EIP2930_FIELDS);
-        rlp.append(&chain_id.into());
+
+        let chain_id = self.tx.chain_id.unwrap_or_else(U64::one);
+        rlp.append(&chain_id);
         self.tx.rlp_base(&mut rlp);
         // append the access list in addition to the base rlp encoding
         rlp.append(&self.access_list);
@@ -72,11 +86,11 @@ impl Eip2930TransactionRequest {
     }
 
     /// Produces the RLP encoding of the transaction with the provided signature
-    pub fn rlp_signed<T: Into<U64>>(&self, chain_id: T, signature: &Signature) -> Bytes {
+    pub fn rlp_signed(&self, signature: &Signature) -> Bytes {
         let mut rlp = RlpStream::new();
         rlp.begin_list(NUM_EIP2930_FIELDS + 3);
 
-        let chain_id = chain_id.into();
+        let chain_id = self.tx.chain_id.unwrap_or_else(U64::one);
         rlp.append(&chain_id);
         self.tx.rlp_base(&mut rlp);
         // append the access list in addition to the base rlp encoding
@@ -89,10 +103,50 @@ impl Eip2930TransactionRequest {
         rlp.append(&signature.s);
         rlp.out().freeze().into()
     }
+
+    /// Decodes fields based on the RLP offset passed
+    fn decode_base_rlp(&mut self, rlp: &rlp::Rlp, offset: &mut usize) -> Result<(), DecoderError> {
+        self.tx.chain_id = Some(rlp.val_at(*offset)?);
+        *offset += 1;
+        self.tx.nonce = Some(rlp.val_at(*offset)?);
+        *offset += 1;
+        self.tx.gas_price = Some(rlp.val_at(*offset)?);
+        *offset += 1;
+        self.tx.gas = Some(rlp.val_at(*offset)?);
+        *offset += 1;
+
+        self.tx.gas = Some(rlp.val_at(*offset)?);
+        *offset += 1;
+        self.tx.to = Some(rlp.val_at(*offset)?);
+        *offset += 1;
+        self.tx.value = Some(rlp.val_at(*offset)?);
+        *offset += 1;
+        let data = rlp::Rlp::new(rlp.at(*offset)?.as_raw()).data()?;
+        self.tx.data = match data.len() {
+            0 => None,
+            _ => Some(Bytes::from(data.to_vec())),
+        };
+        *offset += 1;
+        self.access_list = rlp.val_at(*offset)?;
+        *offset += 1;
+
+        Ok(())
+    }
+}
+
+/// Get a Eip2930TransactionRequest from a rlp encoded byte stream
+impl Decodable for Eip2930TransactionRequest {
+    fn decode(rlp: &rlp::Rlp) -> Result<Self, rlp::DecoderError> {
+        let mut new_tx = Self::new(TransactionRequest::new(), AccessList::default());
+        let mut offset = 0;
+        new_tx.decode_base_rlp(rlp, &mut offset)?;
+        Ok(new_tx)
+    }
 }
 
 #[cfg(test)]
 mod tests {
+
     use super::*;
     use crate::types::{transaction::eip2718::TypedTransaction, U256};
 
@@ -110,14 +164,14 @@ mod tests {
             .with_access_list(vec![])
             .into();
 
-        let hash = tx.sighash(1);
+        let hash = tx.sighash();
         let sig: Signature = "c9519f4f2b30335884581971573fadf60c6204f59a911df35ee8a540456b266032f1e8e2c5dd761f9e4f88f41c8310aeaba26a8bfcdacfedfa12ec3862d3752101".parse().unwrap();
         assert_eq!(
             hash,
             "49b486f0ec0a60dfbbca2d30cb07c9e8ffb2a2ff41f29a1ab6737475f6ff69f3".parse().unwrap()
         );
 
-        let enc = rlp::encode(&tx.rlp_signed(1, &sig).as_ref());
+        let enc = rlp::encode(&tx.rlp_signed(&sig).as_ref());
         let expected = "b86601f8630103018261a894b94f5374fce5edbc8e2a8697c15331677e6ebf0b0a825544c001a0c9519f4f2b30335884581971573fadf60c6204f59a911df35ee8a540456b2660a032f1e8e2c5dd761f9e4f88f41c8310aeaba26a8bfcdacfedfa12ec3862d37521";
         assert_eq!(hex::encode(&enc), expected);
     }

@@ -33,3 +33,44 @@ pub(crate) fn normalize_v(v: u64, chain_id: crate::types::U64) -> u64 {
         v
     }
 }
+
+/// extracts the chainid from the signature v value based on EIP-155
+pub(crate) fn extract_chain_id(v: u64) -> Option<crate::types::U64> {
+    // https://eips.ethereum.org/EIPS/eip-155
+    // if chainid is available, v = {0, 1} + CHAIN_ID * 2 + 35
+    if v >= 35 {
+        return Some(crate::types::U64::from((v - 35) >> 1))
+    }
+    None
+}
+
+/// Decodes the signature portion of the RLP encoding based on the RLP offset passed.
+/// Increments the offset for each element parsed.
+#[inline]
+fn decode_signature(
+    rlp: &rlp::Rlp,
+    offset: &mut usize,
+) -> Result<super::Signature, rlp::DecoderError> {
+    let sig = super::Signature {
+        v: rlp.val_at(*offset)?,
+        r: rlp.val_at(*offset + 1)?,
+        s: rlp.val_at(*offset + 2)?,
+    };
+    *offset += 3;
+    Ok(sig)
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::types::{transaction::rlp_opt, U64};
+    use rlp::RlpStream;
+
+    #[test]
+    fn test_rlp_opt_none() {
+        let mut stream = RlpStream::new_list(1);
+        let empty_chainid: Option<U64> = None;
+        rlp_opt(&mut stream, &empty_chainid);
+        let out = stream.out();
+        assert_eq!(out, vec![0xc1, 0x80]);
+    }
+}

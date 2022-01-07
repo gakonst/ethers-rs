@@ -223,7 +223,6 @@ pub trait Middleware: Sync + Send + Debug {
         }
 
         let gas_price = original.gas_price().expect("filled");
-        let chain_id = self.get_chainid().await?.low_u64();
         let sign_futs: Vec<_> = (0..escalations)
             .map(|i| {
                 let new_price = policy(gas_price, i);
@@ -234,7 +233,7 @@ pub trait Middleware: Sync + Send + Debug {
             .map(|req| async move {
                 self.sign_transaction(&req, self.default_sender().unwrap_or_default())
                     .await
-                    .map(|sig| req.rlp_signed(chain_id, &sig))
+                    .map(|sig| req.rlp_signed(&sig))
             })
             .collect();
 

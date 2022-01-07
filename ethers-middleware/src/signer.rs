@@ -117,7 +117,7 @@ where
             self.signer.sign_transaction(&tx).await.map_err(SignerMiddlewareError::SignerError)?;
 
         // Return the raw rlp-encoded signed transaction
-        Ok(tx.rlp_signed(self.signer.chain_id(), &signature))
+        Ok(tx.rlp_signed(&signature))
     }
 
     /// Returns the client's address
@@ -266,6 +266,7 @@ mod tests {
             nonce: Some(0.into()),
             gas_price: Some(21_000_000_000u128.into()),
             data: None,
+            chain_id: None,
         }
         .into();
         let chain_id = 1u64;
