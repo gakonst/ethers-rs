@@ -40,6 +40,10 @@ impl<T: ArtifactOutput> TempProject<T> {
         self.project().compile()
     }
 
+    pub fn flatten(&self, target: &PathBuf) -> Result<String> {
+        self.project().flatten(target)
+    }
+
     pub fn project_mut(&mut self) -> &mut Project<T> {
         &mut self.inner
     }

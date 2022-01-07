@@ -225,3 +225,28 @@ fn copy_dir_all(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> io::Result<()> 
     }
     Ok(())
 }
+
+#[test]
+fn can_flatten_file() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test-data/test-contract-libs");
+    let target = root.join("src").join("Foo.sol");
+    let paths = ProjectPathsConfig::builder()
+        .sources(root.join("src"))
+        .lib(root.join("lib1"))
+        .lib(root.join("lib2"));
+    let project = TempProject::<MinimalCombinedArtifacts>::new(paths).unwrap();
+
+    assert!(project.flatten(&target).is_ok());
+}
+
+#[test]
+fn can_flatten_file_with_external_lib() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test-data/hardhat-sample");
+    let target = root.join("contracts").join("Greeter.sol");
+    let paths = ProjectPathsConfig::builder()
+        .sources(root.join("contracts"))
+        .lib(root.join("node_modules"));
+    let project = TempProject::<MinimalCombinedArtifacts>::new(paths).unwrap();
+
+    assert!(project.flatten(&target).is_ok());
+}

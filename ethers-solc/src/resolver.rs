@@ -28,7 +28,7 @@
 
 use std::{
     collections::{HashMap, VecDeque},
-    path::{Component, Path, PathBuf},
+    path::{Path, PathBuf},
 };
 
 use rayon::prelude::*;
@@ -139,33 +139,12 @@ impl Graph {
             };
 
             for import in node.data.imports.iter() {
-                let component = match import.components().next() {
-                    Some(inner) => inner,
-                    None => continue,
+                match utils::resolve_import_component(import, node_dir, paths) {
+                    Ok(result) => {
+                        add_node(&mut unresolved, &mut index, &mut resolved_imports, result)?;
+                    }
+                    Err(err) => tracing::trace!("failed to resolve import component \"{:?}\"", err),
                 };
-                if component == Component::CurDir || component == Component::ParentDir {
-                    // if the import is relative we assume it's already part of the processed input
-                    // file set
-                    match utils::canonicalize(node_dir.join(import)) {
-                        Ok(target) => {
-                            // the file at least exists,
-                            add_node(&mut unresolved, &mut index, &mut resolved_imports, target)?;
-                        }
-                        Err(err) => {
-                            tracing::trace!("failed to resolve relative import \"{:?}\"", err);
-                        }
-                    }
-                } else {
-                    // resolve library file
-                    if let Some(lib) = paths.resolve_library_import(import.as_ref()) {
-                        add_node(&mut unresolved, &mut index, &mut resolved_imports, lib)?;
-                    } else {
-                        tracing::trace!(
-                            "failed to resolve library import \"{:?}\"",
-                            import.display()
-                        );
-                    }
-                }
             }
             nodes.push(node);
             edges.push(resolved_imports);
@@ -407,6 +386,12 @@ pub struct Node {
     path: PathBuf,
     source: Source,
     data: SolData,
+}
+
+impl Node {
+    pub fn content(&self) -> &str {
+        &self.source.content
+    }
 }
 
 #[derive(Debug, Clone)]

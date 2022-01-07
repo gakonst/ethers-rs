@@ -2,7 +2,10 @@
 
 use std::path::{Component, Path, PathBuf};
 
-use crate::{error::SolcError, SolcIoError};
+use crate::{
+    error::{self, SolcError},
+    ProjectPathsConfig, SolcIoError,
+};
 use once_cell::sync::Lazy;
 use regex::Regex;
 use semver::Version;
@@ -77,6 +80,36 @@ pub fn is_local_source_name(libs: &[impl AsRef<Path>], source: impl AsRef<Path>)
 pub fn canonicalize(path: impl AsRef<Path>) -> Result<PathBuf, SolcIoError> {
     let path = path.as_ref();
     dunce::canonicalize(&path).map_err(|err| SolcIoError::new(err, path))
+}
+
+pub fn resolve_import_component(
+    import: &PathBuf,
+    node_dir: &Path,
+    paths: &ProjectPathsConfig,
+) -> error::Result<PathBuf> {
+    let component = match import.components().next() {
+        Some(inner) => inner,
+        None => {
+            return Err(SolcError::msg(format!(
+                "failed to resolve import at \"{:?}\"",
+                import.display()
+            )))
+        }
+    };
+
+    if component == Component::CurDir || component == Component::ParentDir {
+        // if the import is relative we assume it's already part of the processed input file set
+        canonicalize(node_dir.join(import)).map_err(|err| err.into())
+    } else {
+        // resolve library file
+        match paths.resolve_library_import(import.as_ref()) {
+            Some(lib) => Ok(lib),
+            None => Err(SolcError::msg(format!(
+                "failed to resolve library import \"{:?}\"",
+                import.display()
+            ))),
+        }
+    }
 }
 
 /// Returns the path to the library if the source path is in fact determined to be a library path,

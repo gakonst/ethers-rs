@@ -481,6 +481,49 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         }
         Ok(())
     }
+
+    // Flatten all file imports into a single string
+    pub fn flatten(&self, target: &PathBuf) -> Result<String> {
+        tracing::trace!("flattening file");
+        let graph = Graph::resolve(&self.paths)?;
+
+        struct Flattener<'a> {
+            f: &'a dyn Fn(&Flattener, &PathBuf) -> Result<Cow<'a, str>>,
+        }
+        let flatten = Flattener {
+            f: &|flattener, target| {
+                let target_index = graph.files().get(target).ok_or(SolcError::msg(format!(
+                    "cannot resolve file at \"{:?}\"",
+                    target.display()
+                )))?;
+                let target_node = graph.node(*target_index);
+                let node_dir = target.parent().ok_or(SolcError::msg(format!(
+                    "failed to get parent directory for \"{:?}\"",
+                    target.display()
+                )))?;
+                Ok(utils::RE_SOL_IMPORT.replace_all(
+                    target_node.content(),
+                    |cap: &regex::Captures<'_>| {
+                        let import = cap.name("p1").or(cap.name("p2")).or(cap.name("p3")).unwrap(); // one of the name patterns must match
+
+                        let import_path = utils::resolve_import_component(
+                            &PathBuf::from(import.as_str()),
+                            node_dir,
+                            &self.paths,
+                        )
+                        .expect("failed to resolve import component {}");
+
+                        let result = (flattener.f)(flattener, &import_path)
+                            .expect("failed to flatten the import file");
+                        utils::RE_SOL_PRAGMA_VERSION.replace_all(&result, "").trim().to_owned()
+                    },
+                ))
+            },
+        };
+
+        let flattenned = (flatten.f)(&flatten, target)?;
+        Ok(flattenned.to_string())
+    }
 }
 
 enum PreprocessedJob<T: ArtifactOutput> {
