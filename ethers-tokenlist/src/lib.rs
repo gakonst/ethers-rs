@@ -4,7 +4,7 @@ use serde::Deserialize;
 
 use std::collections::HashMap;
 
-const TOKENS_JSON: &'static str = include_str!("./tokens/tokens.json");
+const TOKENS_JSON: &str = include_str!("./tokens/tokens.json");
 
 static TOKENS: Lazy<HashMap<String, Token>> =
     Lazy::new(|| serde_json::from_str(TOKENS_JSON).unwrap());
