@@ -84,6 +84,11 @@
 //! [`abi`]: core::abi
 //! [`types`]: core::types
 
+/// Address book consisting of frequently used contracts
+pub mod addressbook {
+    pub use ethers_addressbook::*;
+}
+
 #[doc = include_str!("../assets/CONTRACT_README.md")]
 pub mod contract {
     pub use ethers_contract::*;
@@ -119,16 +124,13 @@ pub mod etherscan {
     pub use ethers_etherscan::*;
 }
 
-/// List of frequently used tokens for multiple chains
-pub mod tokenlist {
-    pub use ethers_tokenlist::*;
-}
-
 pub use crate::core::{abi, types, utils};
 
 /// Easy imports of frequently used type definitions and traits
 #[doc(hidden)]
 pub mod prelude {
+    pub use super::addressbook::*;
+
     pub use super::contract::*;
 
     pub use super::core::{types::*, *};
@@ -142,6 +144,4 @@ pub mod prelude {
     pub use super::solc::*;
 
     pub use super::etherscan::*;
-
-    pub use super::tokenlist::*;
 }

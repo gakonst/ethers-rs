@@ -1,5 +1,5 @@
 [package]
-name = "ethers-tokenlist"
+name = "ethers-addressbook"
 version = "0.1.0"
 edition = "2021"
 

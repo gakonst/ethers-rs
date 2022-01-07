@@ -14,6 +14,7 @@ Complete Ethereum library and wallet implementation in Rust.
 
 [workspace]
 members = [
+    "ethers-addressbook",
     "ethers-contract",
     "ethers-providers",
     "ethers-signers",
@@ -21,11 +22,11 @@ members = [
     "ethers-middleware",
     "ethers-etherscan",
     "ethers-solc",
-    "ethers-tokenlist",
     "examples/ethers-wasm",
 ]
 
 default-members = [
+    "ethers-addressbook",
     "ethers-contract",
     "ethers-providers",
     "ethers-signers",
@@ -33,7 +34,6 @@ default-members = [
     "ethers-middleware",
     "ethers-etherscan",
     "ethers-solc",
-    "ethers-tokenlist",
 ]
 
 [package.metadata.docs.rs]
@@ -82,6 +82,7 @@ solc-tests = ["ethers-solc/tests"]
 solc-sha2-asm = ["ethers-solc/asm"]
 
 [dependencies]
+ethers-addressbook = { version = "^0.1.0", default-features = false, path = "./ethers-addressbook" }
 ethers-contract = { version = "^0.6.0", default-features = false, path = "./ethers-contract" }
 ethers-core = { version = "^0.6.0", default-features = false, path = "./ethers-core" }
 ethers-providers = { version = "^0.6.0", default-features = false, path = "./ethers-providers" }
@@ -89,7 +90,6 @@ ethers-signers = { version = "^0.6.0", default-features = false, path = "./ether
 ethers-middleware = { version = "^0.6.0", default-features = false, path = "./ethers-middleware" }
 ethers-solc = { version = "^0.1.0", default-features = false, path = "./ethers-solc" }
 ethers-etherscan = { version = "^0.2.0", default-features = false, path = "./ethers-etherscan" }
-ethers-tokenlist = { version = "^0.1.0", default-features = false, path = "./ethers-tokenlist" }
 
 [dev-dependencies]
 ethers-contract = { version = "^0.6.0", default-features = false, path = "./ethers-contract", features = ["abigen", "eip712"] }

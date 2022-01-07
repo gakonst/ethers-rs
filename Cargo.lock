@@ -1088,6 +1088,7 @@ version = "0.6.0"
 dependencies = [
  "anyhow",
  "bytes",
+ "ethers-addressbook",
  "ethers-contract",
  "ethers-core",
  "ethers-etherscan",
@@ -1095,12 +1096,21 @@ dependencies = [
  "ethers-providers",
  "ethers-signers",
  "ethers-solc",
- "ethers-tokenlist",
  "hex",
  "rand 0.8.4",
  "serde",
  "serde_json",
  "tokio",
+]
+
+[[package]]
+name = "ethers-addressbook"
+version = "0.1.0"
+dependencies = [
+ "ethers-core",
+ "once_cell",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -1348,16 +1358,6 @@ dependencies = [
  "tokio",
  "tracing",
  "walkdir",
-]
-
-[[package]]
-name = "ethers-tokenlist"
-version = "0.1.0"
-dependencies = [
- "ethers-core",
- "once_cell",
- "serde",
- "serde_json",
 ]
 
 [[package]]
