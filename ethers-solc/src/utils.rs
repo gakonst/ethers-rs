@@ -82,6 +82,7 @@ pub fn canonicalize(path: impl AsRef<Path>) -> Result<PathBuf, SolcIoError> {
     dunce::canonicalize(&path).map_err(|err| SolcIoError::new(err, path))
 }
 
+/// Try to resolve import to a local file or library path
 pub fn resolve_import_component(
     import: &PathBuf,
     node_dir: &Path,

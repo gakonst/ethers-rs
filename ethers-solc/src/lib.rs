@@ -482,7 +482,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         Ok(())
     }
 
-    // Flatten all file imports into a single string
+    /// Flatten all file imports into a single string
     pub fn flatten(&self, target: &PathBuf) -> Result<String> {
         tracing::trace!("flattening file");
         let graph = Graph::resolve(&self.paths)?;
