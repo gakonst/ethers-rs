@@ -1606,7 +1606,7 @@ impl SourceFiles {
     /// use std::collections::BTreeMap;
     /// use ethers_solc::artifacts::SourceFiles;
     /// # fn demo(files: SourceFiles) {
-    ///     let sources :BTreeMap<u32,String> = files.into_ids().collect();
+    ///     let sources: BTreeMap<u32,String> = files.into_ids().collect();
     /// # }
     /// ```
     pub fn into_ids(self) -> impl Iterator<Item = (u32, String)> {
