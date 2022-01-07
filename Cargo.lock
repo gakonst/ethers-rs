@@ -1350,6 +1350,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ethers-tokenlist"
+version = "0.1.0"
+dependencies = [
+ "ethers-core",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "ethers-wasm"
 version = "0.1.0"
 dependencies = [

@@ -8,7 +8,7 @@ use std::str::FromStr;
 #[error("Failed to parse chain: {0}")]
 pub struct ParseChainError(String);
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub enum Chain {
     Mainnet,
     Ropsten,
