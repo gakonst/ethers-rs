@@ -701,9 +701,11 @@ impl<'a> OutputDiagnostics<'a> {
 
 impl<'a> fmt::Display for OutputDiagnostics<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.has_warning() {
-            f.write_str("Compiler run successful with warnings")?;
-        } else if !self.has_error() {
+        if self.has_error() {
+            f.write_str("Compiler run failed")?;
+        } else if self.has_warning() {
+            f.write_str("Compiler run successful (with warnings)")?;
+        } else {
             f.write_str("Compiler run successful")?;
         }
         for err in self.errors {
