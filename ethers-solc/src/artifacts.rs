@@ -6,6 +6,7 @@ use md5::Digest;
 use semver::Version;
 use std::{
     collections::BTreeMap,
+    convert::TryFrom,
     fmt, fs,
     path::{Path, PathBuf},
     str::FromStr,
@@ -539,7 +540,18 @@ impl CompilerOutput {
         OutputDiagnostics { errors: &self.errors, ignored_error_codes }
     }
 
-    /// Finds the first contract with the given name
+    /// Finds the _first_ contract with the given name
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use ethers_solc::Project;
+    /// use ethers_solc::artifacts::*;
+    /// # fn demo(project: Project) {
+    /// let output = project.compile().unwrap().output();
+    /// let contract = output.find("Greeter").unwrap();
+    /// # }
+    /// ```
     pub fn find(&self, contract: impl AsRef<str>) -> Option<CompactContractRef> {
         let contract_name = contract.as_ref();
         self.contracts_iter().find_map(|(name, contract)| {
@@ -548,6 +560,17 @@ impl CompilerOutput {
     }
 
     /// Finds the first contract with the given name and removes it from the set
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use ethers_solc::Project;
+    /// use ethers_solc::artifacts::*;
+    /// # fn demo(project: Project) {
+    /// let mut output = project.compile().unwrap().output();
+    /// let contract = output.remove("Greeter").unwrap();
+    /// # }
+    /// ```
     pub fn remove(&mut self, contract: impl AsRef<str>) -> Option<Contract> {
         let contract_name = contract.as_ref();
         self.contracts.values_mut().find_map(|c| c.remove(contract_name))
@@ -570,6 +593,85 @@ impl CompilerOutput {
             .get(path)
             .and_then(|contracts| contracts.get(contract))
             .map(CompactContractRef::from)
+    }
+
+    /// Returns the output's source files and contracts separately, wrapped in helper types that
+    /// provide several helper methods
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use ethers_solc::Project;
+    /// # fn demo(project: Project) {
+    /// let output = project.compile().unwrap().output();
+    /// let (sources, contracts) = output.split();
+    /// # }
+    /// ```
+    pub fn split(self) -> (SourceFiles, OutputContracts) {
+        (SourceFiles(self.sources), OutputContracts(self.contracts))
+    }
+}
+
+/// A wrapper helper type for the `Contracts` type alias
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct OutputContracts(pub Contracts);
+
+impl OutputContracts {
+    /// Returns an iterator over all contracts and their source names.
+    ///
+    /// ```
+    /// use std::collections::BTreeMap;
+    /// use ethers_solc::{ artifacts::*, Artifact };
+    /// # fn demo(contracts: OutputContracts) {
+    /// let contracts: BTreeMap<String, CompactContractSome> = contracts
+    ///     .into_contracts()
+    ///     .map(|(k, c)| (k, c.into_compact_contract().unwrap()))
+    ///     .collect();
+    /// # }
+    /// ```
+    pub fn into_contracts(self) -> impl Iterator<Item = (String, Contract)> {
+        self.0.into_values().flatten()
+    }
+
+    /// Iterate over all contracts and their names
+    pub fn contracts_iter(&self) -> impl Iterator<Item = (&String, &Contract)> {
+        self.0.values().flatten()
+    }
+
+    /// Finds the _first_ contract with the given name
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use ethers_solc::Project;
+    /// use ethers_solc::artifacts::*;
+    /// # fn demo(project: Project) {
+    /// let output = project.compile().unwrap().output();
+    /// let contract = output.find("Greeter").unwrap();
+    /// # }
+    /// ```
+    pub fn find(&self, contract: impl AsRef<str>) -> Option<CompactContractRef> {
+        let contract_name = contract.as_ref();
+        self.contracts_iter().find_map(|(name, contract)| {
+            (name == contract_name).then(|| CompactContractRef::from(contract))
+        })
+    }
+
+    /// Finds the first contract with the given name and removes it from the set
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use ethers_solc::Project;
+    /// use ethers_solc::artifacts::*;
+    /// # fn demo(project: Project) {
+    /// let (_, mut contracts) = project.compile().unwrap().output().split();
+    /// let contract = contracts.remove("Greeter").unwrap();
+    /// # }
+    /// ```
+    pub fn remove(&mut self, contract: impl AsRef<str>) -> Option<Contract> {
+        let contract_name = contract.as_ref();
+        self.0.values_mut().find_map(|c| c.remove(contract_name))
     }
 }
 
@@ -606,6 +708,7 @@ impl<'a> fmt::Display for OutputDiagnostics<'a> {
     }
 }
 
+/// Represents a compiled solidity contract
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Contract {
     /// The Ethereum Contract Metadata.
@@ -629,7 +732,107 @@ pub struct Contract {
     pub ewasm: Option<Ewasm>,
 }
 
-/// Minimal representation of a contract's abi with bytecode
+/// Minimal representation of a contract with a present abi and bytecode.
+///
+/// Unlike `CompactContractSome` which contains the `BytecodeObject`, this holds the whole
+/// `Bytecode` object.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct ContractBytecode {
+    /// The Ethereum Contract ABI. If empty, it is represented as an empty
+    /// array. See https://docs.soliditylang.org/en/develop/abi-spec.html
+    pub abi: Option<Abi>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bytecode: Option<Bytecode>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub deployed_bytecode: Option<DeployedBytecode>,
+}
+
+impl ContractBytecode {
+    /// Returns the `ContractBytecodeSome` if all fields are `Some`
+    ///
+    /// # Panics
+    ///
+    /// Panics if any of the fields euqal `None`
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use ethers_solc::Project;
+    /// use ethers_solc::artifacts::*;
+    /// # fn demo(project: Project) {
+    /// let mut output = project.compile().unwrap().output();
+    /// let contract: ContractBytecode = output.remove("Greeter").unwrap().into();
+    /// let contract = contract.unwrap();
+    /// # }
+    /// ```
+    pub fn unwrap(self) -> ContractBytecodeSome {
+        ContractBytecodeSome {
+            abi: self.abi.unwrap(),
+            bytecode: self.bytecode.unwrap(),
+            deployed_bytecode: self.deployed_bytecode.unwrap(),
+        }
+    }
+}
+
+impl From<Contract> for ContractBytecode {
+    fn from(c: Contract) -> Self {
+        let (bytecode, deployed_bytecode) = if let Some(evm) = c.evm {
+            (evm.bytecode, evm.deployed_bytecode)
+        } else {
+            (None, None)
+        };
+
+        Self { abi: c.abi, bytecode, deployed_bytecode }
+    }
+}
+
+/// Minimal representation of a contract with a present abi and bytecode.
+///
+/// Unlike `CompactContractSome` which contains the `BytecodeObject`, this holds the whole
+/// `Bytecode` object.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct ContractBytecodeSome {
+    pub abi: Abi,
+    pub bytecode: Bytecode,
+    pub deployed_bytecode: DeployedBytecode,
+}
+
+impl TryFrom<ContractBytecode> for ContractBytecodeSome {
+    type Error = ContractBytecode;
+
+    fn try_from(value: ContractBytecode) -> Result<Self, Self::Error> {
+        if value.abi.is_none() || value.bytecode.is_none() || value.deployed_bytecode.is_none() {
+            return Err(value)
+        }
+        Ok(value.unwrap())
+    }
+}
+
+/// Minimal representation of a contract's artifact with a present abi and bytecode.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Default)]
+pub struct CompactContractSome {
+    /// The Ethereum Contract ABI. If empty, it is represented as an empty
+    /// array. See https://docs.soliditylang.org/en/develop/abi-spec.html
+    pub abi: Abi,
+    pub bin: BytecodeObject,
+    #[serde(rename = "bin-runtime")]
+    pub bin_runtime: BytecodeObject,
+}
+
+impl TryFrom<CompactContract> for CompactContractSome {
+    type Error = CompactContract;
+
+    fn try_from(value: CompactContract) -> Result<Self, Self::Error> {
+        if value.abi.is_none() || value.bin.is_none() || value.bin_runtime.is_none() {
+            return Err(value)
+        }
+        Ok(value.unwrap())
+    }
+}
+
+/// The general purpose minimal representation of a contract's abi with bytecode
+/// Unlike `CompactContractSome` all fields are optional so that every possible compiler output can
+/// be represented by it
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Default)]
 pub struct CompactContract {
     /// The Ethereum Contract ABI. If empty, it is represented as an empty
@@ -661,6 +864,43 @@ impl CompactContract {
             self.bin_runtime.and_then(|bin| bin.into_bytes()).unwrap_or_default(),
         )
     }
+
+    /// Returns the `CompactContractSome` if all fields are `Some`
+    ///
+    /// # Panics
+    ///
+    /// Panics if any of the fields euqal `None`
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use ethers_solc::Project;
+    /// use ethers_solc::artifacts::*;
+    /// # fn demo(project: Project) {
+    /// let mut output = project.compile().unwrap().output();
+    /// let contract: CompactContract = output.remove("Greeter").unwrap().into();
+    /// let contract = contract.unwrap();
+    /// # }
+    /// ```
+    pub fn unwrap(self) -> CompactContractSome {
+        CompactContractSome {
+            abi: self.abi.unwrap(),
+            bin: self.bin.unwrap(),
+            bin_runtime: self.bin_runtime.unwrap(),
+        }
+    }
+
+    /// Returns the `CompactContractSome` if any if the field equals `None` the `Default` value is
+    /// returned
+    ///
+    /// Unlike `unwrap`, this function does _not_ panic
+    pub fn unwrap_or_default(self) -> CompactContractSome {
+        CompactContractSome {
+            abi: self.abi.unwrap_or_default(),
+            bin: self.bin.unwrap_or_default(),
+            bin_runtime: self.bin_runtime.unwrap_or_default(),
+        }
+    }
 }
 
 impl From<serde_json::Value> for CompactContract {
@@ -677,24 +917,82 @@ impl From<serde_json::Value> for CompactContract {
     }
 }
 
+impl From<ContractBytecode> for CompactContract {
+    fn from(c: ContractBytecode) -> Self {
+        let ContractBytecode { abi, bytecode, deployed_bytecode } = c;
+        Self {
+            abi,
+            bin: bytecode.map(|c| c.object),
+            bin_runtime: deployed_bytecode
+                .and_then(|deployed| deployed.bytecode.map(|code| code.object)),
+        }
+    }
+}
+
+impl From<ContractBytecodeSome> for CompactContract {
+    fn from(c: ContractBytecodeSome) -> Self {
+        Self {
+            abi: Some(c.abi),
+            bin: Some(c.bytecode.object),
+            bin_runtime: c.deployed_bytecode.bytecode.map(|code| code.object),
+        }
+    }
+}
+
 impl From<Contract> for CompactContract {
     fn from(c: Contract) -> Self {
-        let (bin, bin_runtime) = if let Some(evm) = c.evm {
-            (
-                evm.bytecode.map(|c| c.object),
-                evm.deployed_bytecode.and_then(|deployed| deployed.bytecode.map(|evm| evm.object)),
-            )
-        } else {
-            (None, None)
-        };
+        ContractBytecode::from(c).into()
+    }
+}
 
-        Self { abi: c.abi, bin, bin_runtime }
+impl From<CompactContractSome> for CompactContract {
+    fn from(c: CompactContractSome) -> Self {
+        Self { abi: Some(c.abi), bin: Some(c.bin), bin_runtime: Some(c.bin_runtime) }
     }
 }
 
 impl<'a> From<CompactContractRef<'a>> for CompactContract {
     fn from(c: CompactContractRef<'a>) -> Self {
         Self { abi: c.abi.cloned(), bin: c.bin.cloned(), bin_runtime: c.bin_runtime.cloned() }
+    }
+}
+
+impl<'a> From<CompactContractRefSome<'a>> for CompactContract {
+    fn from(c: CompactContractRefSome<'a>) -> Self {
+        Self {
+            abi: Some(c.abi.clone()),
+            bin: Some(c.bin.clone()),
+            bin_runtime: Some(c.bin_runtime.clone()),
+        }
+    }
+}
+
+/// Minimal representation of a contract with a present abi and bytecode that borrows.
+#[derive(Copy, Clone, Debug, Serialize)]
+pub struct CompactContractRefSome<'a> {
+    pub abi: &'a Abi,
+    pub bin: &'a BytecodeObject,
+    #[serde(rename = "bin-runtime")]
+    pub bin_runtime: &'a BytecodeObject,
+}
+
+impl<'a> CompactContractRefSome<'a> {
+    /// Returns the individual parts of this contract.
+    ///
+    /// If the values are `None`, then `Default` is returned.
+    pub fn into_parts(self) -> (Abi, Bytes, Bytes) {
+        CompactContract::from(self).into_parts_or_default()
+    }
+}
+
+impl<'a> TryFrom<CompactContractRef<'a>> for CompactContractRefSome<'a> {
+    type Error = CompactContractRef<'a>;
+
+    fn try_from(value: CompactContractRef<'a>) -> Result<Self, Self::Error> {
+        if value.abi.is_none() || value.bin.is_none() || value.bin_runtime.is_none() {
+            return Err(value)
+        }
+        Ok(value.unwrap())
     }
 }
 
@@ -727,6 +1025,31 @@ impl<'a> CompactContractRef<'a> {
 
     pub fn runtime_bytecode(&self) -> Option<&Bytes> {
         self.bin_runtime.as_ref().and_then(|bin| bin.as_bytes())
+    }
+
+    /// Returns the `CompactContractRefSome` if all fields are `Some`
+    ///
+    /// # Panics
+    ///
+    /// Panics if any of the fields equal `None`
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use ethers_solc::Project;
+    /// use ethers_solc::artifacts::*;
+    /// # fn demo(project: Project) {
+    /// let output = project.compile().unwrap().output();
+    /// let contract = output.find("Greeter").unwrap();
+    /// let contract = contract.unwrap();
+    /// # }
+    /// ```
+    pub fn unwrap(self) -> CompactContractRefSome<'a> {
+        CompactContractRefSome {
+            abi: self.abi.unwrap(),
+            bin: self.bin.unwrap(),
+            bin_runtime: self.bin_runtime.unwrap(),
+        }
     }
 }
 
@@ -908,6 +1231,7 @@ pub enum BytecodeObject {
 }
 
 impl BytecodeObject {
+    /// Returns the underlying `Bytes` if the object is a valid bytecode, and not empty
     pub fn into_bytes(self) -> Option<Bytes> {
         match self {
             BytecodeObject::Bytecode(bytes) => Some(bytes),
@@ -915,6 +1239,8 @@ impl BytecodeObject {
         }
     }
 
+    /// Returns a reference to the underlying `Bytes` if the object is a valid bytecode, and not
+    /// empty
     pub fn as_bytes(&self) -> Option<&Bytes> {
         match self {
             BytecodeObject::Bytecode(bytes) => Some(bytes),
@@ -922,11 +1248,28 @@ impl BytecodeObject {
         }
     }
 
+    /// Returns the unlinked `String` if the object is unlinked or empty
     pub fn into_unlinked(self) -> Option<String> {
         match self {
             BytecodeObject::Bytecode(_) => None,
             BytecodeObject::Unlinked(code) => Some(code),
         }
+    }
+
+    /// Whether this object is still unlinked
+    pub fn is_unlinked(&self) -> bool {
+        matches!(self, BytecodeObject::Unlinked(_))
+    }
+
+    /// Whether this object a valid bytecode
+    pub fn is_bytecode(&self) -> bool {
+        matches!(self, BytecodeObject::Bytecode(_))
+    }
+
+    /// Returns `true` if the object is a valid bytecode and not empty.
+    /// Returns false the object is a valid but empty bytecode or unlinked.
+    pub fn is_non_empty_bytecode(&self) -> bool {
+        self.as_bytes().map(|c| !c.0.is_empty()).unwrap_or_default()
     }
 
     /// Tries to resolve the unlinked string object a valid bytecode object in place
@@ -988,11 +1331,6 @@ impl BytecodeObject {
             self.link(file, lib, addr);
         }
         self
-    }
-
-    /// Whether this object is still unlinked
-    pub fn is_unlinked(&self) -> bool {
-        matches!(self, BytecodeObject::Unlinked(_))
     }
 
     /// Whether the bytecode contains a matching placeholder using the qualified name
@@ -1064,6 +1402,13 @@ pub struct DeployedBytecode {
         skip_serializing_if = "::std::collections::BTreeMap::is_empty"
     )]
     pub immutable_references: BTreeMap<String, Vec<Offsets>>,
+}
+
+impl DeployedBytecode {
+    /// Returns the underlying `Bytes` if the object is a valid bytecode, and not empty
+    pub fn into_bytes(self) -> Option<Bytes> {
+        self.bytecode?.object.into_bytes()
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
@@ -1247,6 +1592,39 @@ pub struct SourceLocation {
 pub struct SourceFile {
     pub id: u32,
     pub ast: serde_json::Value,
+}
+
+/// A wrapper type for a list of source files
+/// `path -> SourceFile`
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+pub struct SourceFiles(pub BTreeMap<String, SourceFile>);
+
+impl SourceFiles {
+    /// Returns an iterator over the the source files' ids and path
+    ///
+    /// ```
+    /// use std::collections::BTreeMap;
+    /// use ethers_solc::artifacts::SourceFiles;
+    /// # fn demo(files: SourceFiles) {
+    /// let sources: BTreeMap<u32,String> = files.into_ids().collect();
+    /// # }
+    /// ```
+    pub fn into_ids(self) -> impl Iterator<Item = (u32, String)> {
+        self.0.into_iter().map(|(k, v)| (v.id, k))
+    }
+
+    /// Returns an iterator over the source files' paths and ids
+    ///
+    /// ```
+    /// use std::collections::BTreeMap;
+    /// use ethers_solc::artifacts::SourceFiles;
+    /// # fn demo(files: SourceFiles) {
+    /// let sources :BTreeMap<String, u32> = files.into_paths().collect();
+    /// # }
+    /// ```
+    pub fn into_paths(self) -> impl Iterator<Item = (String, u32)> {
+        self.0.into_iter().map(|(k, v)| (k, v.id))
+    }
 }
 
 mod display_from_str_opt {
