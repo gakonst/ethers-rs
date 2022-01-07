@@ -268,21 +268,22 @@ impl Graph {
         traversed: &mut std::collections::HashSet<(usize, usize)>,
     ) -> std::result::Result<(), String> {
         let node = self.node(idx);
-
         if let Some(ref req) = node.data.version_req {
             candidates.retain(|v| req.matches(v.as_ref()));
         }
         for dep in self.imported_nodes(idx).iter().copied() {
             // check for circular deps which would result in endless recursion SO here
             // a circular dependency exists, if there was already a `dependency imports current
-            // node` relationship in the traversed path
-            if traversed.contains(&(dep, idx)) {
-                let mut msg = String::new();
-                self.format_imports_list(dep, &mut msg).unwrap();
-                return Err(format!("Encountered circular dependencies in:\n{}", msg))
-            }
+            // node` relationship in the traversed path we skip this node
             traversed.insert((idx, dep));
-
+            if traversed.contains(&(dep, idx)) {
+                tracing::warn!(
+                    "Detected cyclic imports {} <-> {}",
+                    utils::source_name(&self.nodes[idx].path, &self.root).display(),
+                    utils::source_name(&self.nodes[dep].path, &self.root).display()
+                );
+                continue
+            }
             self.retain_compatible_versions(dep, candidates, traversed)?;
         }
         Ok(())
@@ -308,6 +309,7 @@ impl Graph {
         &self,
         offline: bool,
     ) -> Result<HashMap<crate::SolcVersion, Vec<usize>>> {
+        tracing::trace!("resolving input node versions");
         // this is likely called by an application and will be eventually printed so we don't exit
         // on first error, instead gather all the errors and return a bundled error message instead
         let mut errors = Vec::new();
@@ -349,8 +351,14 @@ impl Graph {
         }
 
         if errors.is_empty() {
+            tracing::trace!(
+                "resolved {} versions {:?}",
+                versioned_nodes.len(),
+                versioned_nodes.keys()
+            );
             Ok(versioned_nodes)
         } else {
+            tracing::error!("failed to resolve versions");
             Err(crate::error::SolcError::msg(errors.join("\n")))
         }
     }
