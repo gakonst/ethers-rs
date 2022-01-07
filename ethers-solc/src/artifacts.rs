@@ -531,9 +531,14 @@ pub struct CompilerOutput {
 }
 
 impl CompilerOutput {
-    /// Whether the output contains an compiler error
+    /// Whether the output contains a compiler error
     pub fn has_error(&self) -> bool {
         self.errors.iter().any(|err| err.severity.is_error())
+    }
+
+    /// Whether the output contains a compiler warning
+    pub fn has_warning(&self) -> bool {
+        self.errors.iter().any(|err| err.severity.is_warning())
     }
 
     pub fn diagnostics<'a>(&'a self, ignored_error_codes: &'a [u64]) -> OutputDiagnostics {
@@ -687,11 +692,20 @@ impl<'a> OutputDiagnostics<'a> {
     pub fn has_error(&self) -> bool {
         self.errors.iter().any(|err| err.severity.is_error())
     }
+
+    /// Returns true if there is at least one warning
+    pub fn has_warning(&self) -> bool {
+        self.errors.iter().any(|err| err.severity.is_warning())
+    }
 }
 
 impl<'a> fmt::Display for OutputDiagnostics<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if !self.has_error() {
+        if self.has_error() {
+            f.write_str("Compiler run failed")?;
+        } else if self.has_warning() {
+            f.write_str("Compiler run successful (with warnings)")?;
+        } else {
             f.write_str("Compiler run successful")?;
         }
         for err in self.errors {
