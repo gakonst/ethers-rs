@@ -1095,6 +1095,7 @@ dependencies = [
  "ethers-providers",
  "ethers-signers",
  "ethers-solc",
+ "ethers-tokenlist",
  "hex",
  "rand 0.8.4",
  "serde",

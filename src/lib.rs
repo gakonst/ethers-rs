@@ -119,6 +119,11 @@ pub mod etherscan {
     pub use ethers_etherscan::*;
 }
 
+/// List of frequently used tokens for multiple chains
+pub mod tokenlist {
+    pub use ethers_tokenlist::*;
+}
+
 pub use crate::core::{abi, types, utils};
 
 /// Easy imports of frequently used type definitions and traits
@@ -137,4 +142,6 @@ pub mod prelude {
     pub use super::solc::*;
 
     pub use super::etherscan::*;
+
+    pub use super::tokenlist::*;
 }
