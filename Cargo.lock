@@ -1354,6 +1354,7 @@ name = "ethers-tokenlist"
 version = "0.1.0"
 dependencies = [
  "ethers-core",
+ "once_cell",
  "serde",
  "serde_json",
 ]
