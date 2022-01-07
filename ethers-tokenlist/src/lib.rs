@@ -5,7 +5,7 @@ use serde::Deserialize;
 use std::{collections::HashMap, fs::File, io::BufReader};
 
 static TOKENS: Lazy<HashMap<String, Token>> = Lazy::new(|| {
-    let f = File::open("tokens.json").unwrap();
+    let f = File::open("./tokens.json").unwrap();
     let r = BufReader::new(f);
     serde_json::from_reader(r).unwrap()
 });
