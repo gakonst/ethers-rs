@@ -501,7 +501,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
                     "failed to get parent directory for \"{:?}\"",
                     target.display()
                 )))?;
-                Ok(utils::RE_SOL_IMPORT.replace_all(
+                let flattened = utils::RE_SOL_IMPORT.replace_all(
                     target_node.content(),
                     |cap: &regex::Captures<'_>| {
                         let import = cap.name("p1").or(cap.name("p2")).or(cap.name("p3")).unwrap(); // one of the name patterns must match
@@ -517,12 +517,12 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
                             .expect("failed to flatten the import file");
                         utils::RE_SOL_PRAGMA_VERSION.replace_all(&result, "").trim().to_owned()
                     },
-                ))
+                );
+                Ok(flattened)
             },
         };
 
-        let flattenned = (flatten.f)(&flatten, target)?;
-        Ok(flattenned.to_string())
+        Ok((flatten.f)(&flatten, target)?.to_string())
     }
 }
 
