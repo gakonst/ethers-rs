@@ -548,8 +548,8 @@ impl CompilerOutput {
     /// use ethers_solc::Project;
     /// use ethers_solc::artifacts::*;
     /// # fn demo(project: Project) {
-    ///     let output = project.compile().unwrap().output();
-    ///     let contract = output.find("Greeter").unwrap();
+    /// let output = project.compile().unwrap().output();
+    /// let contract = output.find("Greeter").unwrap();
     /// # }
     /// ```
     pub fn find(&self, contract: impl AsRef<str>) -> Option<CompactContractRef> {
@@ -567,8 +567,8 @@ impl CompilerOutput {
     /// use ethers_solc::Project;
     /// use ethers_solc::artifacts::*;
     /// # fn demo(project: Project) {
-    ///     let mut output = project.compile().unwrap().output();
-    ///     let contract = output.remove("Greeter").unwrap();
+    /// let mut output = project.compile().unwrap().output();
+    /// let contract = output.remove("Greeter").unwrap();
     /// # }
     /// ```
     pub fn remove(&mut self, contract: impl AsRef<str>) -> Option<Contract> {
@@ -603,8 +603,8 @@ impl CompilerOutput {
     /// ```
     /// use ethers_solc::Project;
     /// # fn demo(project: Project) {
-    ///     let output = project.compile().unwrap().output();
-    ///     let (sources, contracts) = output.split();
+    /// let output = project.compile().unwrap().output();
+    /// let (sources, contracts) = output.split();
     /// # }
     /// ```
     pub fn split(self) -> (SourceFiles, OutputContracts) {
@@ -623,10 +623,10 @@ impl OutputContracts {
     /// use std::collections::BTreeMap;
     /// use ethers_solc::{ artifacts::*, Artifact };
     /// # fn demo(contracts: OutputContracts) {
-    ///     let contracts: BTreeMap<String, CompactContractSome> = contracts
-    ///         .into_contracts()
-    ///         .map(|(k, c)| (k, c.into_compact_contract().unwrap()))
-    ///         .collect();
+    /// let contracts: BTreeMap<String, CompactContractSome> = contracts
+    ///     .into_contracts()
+    ///     .map(|(k, c)| (k, c.into_compact_contract().unwrap()))
+    ///     .collect();
     /// # }
     /// ```
     pub fn into_contracts(self) -> impl Iterator<Item = (String, Contract)> {
@@ -646,8 +646,8 @@ impl OutputContracts {
     /// use ethers_solc::Project;
     /// use ethers_solc::artifacts::*;
     /// # fn demo(project: Project) {
-    ///     let output = project.compile().unwrap().output();
-    ///     let contract = output.find("Greeter").unwrap();
+    /// let output = project.compile().unwrap().output();
+    /// let contract = output.find("Greeter").unwrap();
     /// # }
     /// ```
     pub fn find(&self, contract: impl AsRef<str>) -> Option<CompactContractRef> {
@@ -665,8 +665,8 @@ impl OutputContracts {
     /// use ethers_solc::Project;
     /// use ethers_solc::artifacts::*;
     /// # fn demo(project: Project) {
-    ///     let (_, mut contracts) = project.compile().unwrap().output().split();
-    ///     let contract = contracts.remove("Greeter").unwrap();
+    /// let (_, mut contracts) = project.compile().unwrap().output().split();
+    /// let contract = contracts.remove("Greeter").unwrap();
     /// # }
     /// ```
     pub fn remove(&mut self, contract: impl AsRef<str>) -> Option<Contract> {
@@ -760,9 +760,9 @@ impl ContractBytecode {
     /// use ethers_solc::Project;
     /// use ethers_solc::artifacts::*;
     /// # fn demo(project: Project) {
-    ///     let mut output = project.compile().unwrap().output();
-    ///     let contract: ContractBytecode = output.remove("Greeter").unwrap().into();
-    ///     let contract = contract.unwrap();
+    /// let mut output = project.compile().unwrap().output();
+    /// let contract: ContractBytecode = output.remove("Greeter").unwrap().into();
+    /// let contract = contract.unwrap();
     /// # }
     /// ```
     pub fn unwrap(self) -> ContractBytecodeSome {
@@ -877,9 +877,9 @@ impl CompactContract {
     /// use ethers_solc::Project;
     /// use ethers_solc::artifacts::*;
     /// # fn demo(project: Project) {
-    ///     let mut output = project.compile().unwrap().output();
-    ///     let contract: CompactContract = output.remove("Greeter").unwrap().into();
-    ///     let contract = contract.unwrap();
+    /// let mut output = project.compile().unwrap().output();
+    /// let contract: CompactContract = output.remove("Greeter").unwrap().into();
+    /// let contract = contract.unwrap();
     /// # }
     /// ```
     pub fn unwrap(self) -> CompactContractSome {
@@ -1039,9 +1039,9 @@ impl<'a> CompactContractRef<'a> {
     /// use ethers_solc::Project;
     /// use ethers_solc::artifacts::*;
     /// # fn demo(project: Project) {
-    ///     let output = project.compile().unwrap().output();
-    ///     let contract = output.find("Greeter").unwrap();
-    ///     let contract = contract.unwrap();
+    /// let output = project.compile().unwrap().output();
+    /// let contract = output.find("Greeter").unwrap();
+    /// let contract = contract.unwrap();
     /// # }
     /// ```
     pub fn unwrap(self) -> CompactContractRefSome<'a> {
@@ -1606,20 +1606,20 @@ impl SourceFiles {
     /// use std::collections::BTreeMap;
     /// use ethers_solc::artifacts::SourceFiles;
     /// # fn demo(files: SourceFiles) {
-    ///     let sources: BTreeMap<u32,String> = files.into_ids().collect();
+    /// let sources: BTreeMap<u32,String> = files.into_ids().collect();
     /// # }
     /// ```
     pub fn into_ids(self) -> impl Iterator<Item = (u32, String)> {
         self.0.into_iter().map(|(k, v)| (v.id, k))
     }
 
-    /// Returns an iterator over the the source files' paths and ids
+    /// Returns an iterator over the source files' paths and ids
     ///
     /// ```
     /// use std::collections::BTreeMap;
     /// use ethers_solc::artifacts::SourceFiles;
     /// # fn demo(files: SourceFiles) {
-    ///     let sources :BTreeMap<String, u32> = files.into_paths().collect();
+    /// let sources :BTreeMap<String, u32> = files.into_paths().collect();
     /// # }
     /// ```
     pub fn into_paths(self) -> impl Iterator<Item = (String, u32)> {
