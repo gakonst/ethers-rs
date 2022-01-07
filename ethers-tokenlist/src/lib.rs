@@ -2,13 +2,12 @@ use ethers_core::types::{Address, Chain};
 use once_cell::sync::Lazy;
 use serde::Deserialize;
 
-use std::{collections::HashMap, fs::File, io::BufReader};
+use std::collections::HashMap;
 
-static TOKENS: Lazy<HashMap<String, Token>> = Lazy::new(|| {
-    let f = File::open("./tokens.json").unwrap();
-    let r = BufReader::new(f);
-    serde_json::from_reader(r).unwrap()
-});
+const TOKENS_JSON: &'static str = include_str!("./tokens/tokens.json");
+
+static TOKENS: Lazy<HashMap<String, Token>> =
+    Lazy::new(|| serde_json::from_str(TOKENS_JSON).unwrap());
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct Token {
