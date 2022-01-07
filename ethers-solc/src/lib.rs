@@ -780,6 +780,15 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
             false
         }
     }
+    
+    /// Whether there were warnings
+    pub fn has_compiler_warnings(&self) -> bool {
+        if let Some(output) = self.compiler_output.as_ref() {
+            output.has_warning()
+        } else {
+            false
+        }
+    }
 
     /// Finds the first contract with the given name and removes it from the set
     pub fn remove(&mut self, contract_name: impl AsRef<str>) -> Option<T::Artifact> {
