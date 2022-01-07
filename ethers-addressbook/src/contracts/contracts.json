@@ -2,7 +2,7 @@
 	"dai": {
 		"addresses": {
 			"mainnet": "0x6b175474e89094c44da98b954eedeac495271d0f",
-			"rinkeby": "0x8ad3aa5d5ff084307d28c8f514d7a193b2bfe725"
+			"goerli": "0x11fE4B6AE13d2a6055C8D9cF65c55bac32B5d844"
 		}
 	},
 	"usdc": {
