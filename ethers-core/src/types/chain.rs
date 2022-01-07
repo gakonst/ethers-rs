@@ -1,14 +1,16 @@
-use std::fmt;
+use serde::Deserialize;
 use thiserror::Error;
 
+use std::{fmt, str::FromStr};
+
 use crate::types::U256;
-use std::str::FromStr;
 
 #[derive(Debug, Clone, Error)]
 #[error("Failed to parse chain: {0}")]
 pub struct ParseChainError(String);
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum Chain {
     Mainnet,
     Ropsten,
