@@ -33,7 +33,7 @@ use std::{
 
 use rayon::prelude::*;
 use semver::VersionReq;
-use solang_parser::pt::{Import, SourceUnitPart};
+use solang_parser::pt::{Import, Loc, SourceUnitPart};
 
 use crate::{error::Result, utils, ProjectPathsConfig, Solc, Source, Sources};
 
@@ -282,7 +282,7 @@ impl Graph {
                     utils::source_name(&self.nodes[idx].path, &self.root).display(),
                     utils::source_name(&self.nodes[dep].path, &self.root).display()
                 );
-                continue
+                continue;
             }
             self.retain_compatible_versions(dep, candidates, traversed)?;
         }
@@ -388,7 +388,7 @@ impl VersionedSources {
                     return Err(SolcError::msg(format!(
                         "missing solc \"{}\" installation in offline mode",
                         version
-                    )))
+                    )));
                 } else {
                     Solc::blocking_install(version.as_ref())?;
                 }
@@ -451,9 +451,9 @@ fn parse_data(content: &str) -> SolData {
                     }
                     SourceUnitPart::ImportDirective(_, import) => {
                         let import = match import {
-                            Import::Plain(s) => s,
-                            Import::GlobalSymbol(s, _) => s,
-                            Import::Rename(s, _) => s,
+                            Import::Plain(s, _) => s,
+                            Import::GlobalSymbol(s, _, _) => s,
+                            Import::Rename(s, _, _) => s,
                         };
                         imports.push(PathBuf::from(import.string));
                     }
