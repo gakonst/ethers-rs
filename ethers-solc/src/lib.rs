@@ -221,7 +221,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         #[cfg(all(feature = "svm", feature = "async"))]
         if self.auto_detect {
             tracing::trace!("using solc auto detection to compile sources");
-            return self.svm_compile(sources);
+            return self.svm_compile(sources)
         }
 
         let mut solc = self.solc.clone();
@@ -387,7 +387,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
             return Ok(ProjectCompileOutput::from_compiler_output(
                 output,
                 self.ignored_error_codes.clone(),
-            ));
+            ))
         }
 
         if self.cached {
@@ -456,7 +456,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
                     "unchanged source files, reusing artifacts {:?}",
                     cached_artifacts.keys()
                 );
-                return Ok(PreprocessedJob::Unchanged(cached_artifacts));
+                return Ok(PreprocessedJob::Unchanged(cached_artifacts))
             }
             // There are changed files and maybe some cached files
             (changed_files, cached_artifacts)
@@ -792,7 +792,7 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
             if let contract @ Some(_) = output.contracts.iter_mut().find_map(|(file, c)| {
                 c.remove(contract_name).map(|c| T::contract_to_artifact(file, contract_name, c))
             }) {
-                return contract;
+                return contract
             }
         }
         let key = self
@@ -820,7 +820,7 @@ where
                     .map(|c| T::contract_to_artifact(file, contract_name, c.clone()))
                     .map(Cow::Owned)
             }) {
-                return contract;
+                return contract
             }
         }
         self.artifacts.iter().find_map(|(path, art)| {

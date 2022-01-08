@@ -537,18 +537,17 @@ impl CompilerOutput {
     }
 
     /// Whether the output contains a compiler warning
-    pub fn has_warning<'a>(&self, ignored_error_codes: &'a [u64]) -> bool {
+    pub fn has_warning(&self, ignored_error_codes: &[u64]) -> bool {
         self.errors.iter().any(|err| {
-            let is_ignored = err.error_code.as_ref().map_or(false, |code| {
-                !ignored_error_codes.contains(code)
-            });
+            let is_ignored =
+                err.error_code.as_ref().map_or(false, |code| !ignored_error_codes.contains(code));
 
             err.severity.is_warning() && !is_ignored
         })
     }
 
     pub fn diagnostics<'a>(&'a self, ignored_error_codes: &'a [u64]) -> OutputDiagnostics {
-        OutputDiagnostics { compiler_output: &self, ignored_error_codes }
+        OutputDiagnostics { compiler_output: self, ignored_error_codes }
     }
 
     /// Finds the _first_ contract with the given name
@@ -701,20 +700,17 @@ impl<'a> OutputDiagnostics<'a> {
 
     /// Returns true if there is at least one warning
     pub fn has_warning(&self) -> bool {
-        self.compiler_output.has_warning(&self.ignored_error_codes)
+        self.compiler_output.has_warning(self.ignored_error_codes)
     }
 
     fn is_test<T: AsRef<str>>(&self, contract_path: T) -> bool {
         if contract_path.as_ref().ends_with(".t.sol") {
-            return true;
+            return true
         }
 
-        self.compiler_output.find(&contract_path)
-            .map_or(false, |contract| {
-                contract.abi.map_or(false, |abi| {
-                    abi.functions.contains_key("IS_TEST")
-                })
-            })
+        self.compiler_output.find(&contract_path).map_or(false, |contract| {
+            contract.abi.map_or(false, |abi| abi.functions.contains_key("IS_TEST"))
+        })
     }
 }
 
@@ -733,13 +729,12 @@ impl<'a> fmt::Display for OutputDiagnostics<'a> {
                     // we ignore spdx and contract size warnings in test
                     // files. if we are looking at one of these warnings
                     // from a test file we skip
-                    if self.is_test(&source_location.file)
-                        && (*code == 1878 || *code == 5574) {
-                        return true;
+                    if self.is_test(&source_location.file) && (*code == 1878 || *code == 5574) {
+                        return true
                     }
                 }
 
-                self.ignored_error_codes.contains(&code)
+                self.ignored_error_codes.contains(code)
             });
 
             if !is_ignored {
