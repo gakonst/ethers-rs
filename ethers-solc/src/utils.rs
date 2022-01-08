@@ -245,8 +245,8 @@ pub(crate) fn find_fave_or_alt_path(root: impl AsRef<Path>, fave: &str, alt: &st
 
 /// Creates a new named tempdir
 #[cfg(any(test, feature = "project-util"))]
-pub(crate) fn tempdir(name: &str) -> crate::error::Result<tempfile::TempDir> {
-    tempfile::Builder::new().prefix(name).tempdir().map_err(|err| SolcError::io(err, name))
+pub(crate) fn tempdir(name: &str) -> Result<tempfile::TempDir, SolcIoError> {
+    tempfile::Builder::new().prefix(name).tempdir().map_err(|err| SolcIoError::new(err, name))
 }
 
 #[cfg(test)]

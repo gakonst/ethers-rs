@@ -4,14 +4,17 @@ use crate::{
     error::{Result, SolcError},
     hh::HardhatArtifacts,
     utils::tempdir,
-    ArtifactOutput, MinimalCombinedArtifacts, Project, ProjectCompileOutput, ProjectPathsConfig,
-    SolcIoError,
+    ArtifactOutput, MinimalCombinedArtifacts, PathStyle, Project, ProjectCompileOutput,
+    ProjectPathsConfig, SolcIoError,
 };
 use fs_extra::{dir, file};
-use std::path::{Path, PathBuf};
+use std::{
+    fmt,
+    path::{Path, PathBuf},
+};
 use tempfile::TempDir;
 
-pub struct TempProject<T: ArtifactOutput> {
+pub struct TempProject<T: ArtifactOutput = MinimalCombinedArtifacts> {
     /// temporary workspace root
     _root: TempDir,
     /// actual project workspace with the `root` tempdir as its root
@@ -27,17 +30,25 @@ impl<T: ArtifactOutput> TempProject<T> {
     }
 
     /// Creates a new temp project inside a tempdir with a prefixed directory
-    pub fn prefixed(prefix: &str, inner: Project<T>) -> std::result::Result<Self, SolcIoError> {
-        Self::create_new(tempdir(prefix), inner)
+    pub fn prefixed(prefix: &str, paths: ProjectPathsConfigBuilder) -> Result<Self> {
+        let tmp_dir = tempdir(prefix)?;
+        let paths = paths.build_with_root(tmp_dir.path());
+        let inner = Project::builder().artifacts().paths(paths).build()?;
+        Ok(Self::create_new(tmp_dir, inner)?)
+    }
+
+    /// Creates a new temp project for the given `PathStyle`
+    pub fn with_style(prefix: &str, style: PathStyle) -> Result<Self> {
+        let tmp_dir = tempdir(prefix)?;
+        let paths = style.paths(tmp_dir.path())?;
+        let inner = Project::builder().artifacts().paths(paths).build()?;
+        Ok(Self::create_new(tmp_dir, inner)?)
     }
 
     /// Creates a new temp project using the provided paths and setting the project root to a temp
     /// dir
     pub fn new(paths: ProjectPathsConfigBuilder) -> Result<Self> {
-        let tmp_dir = tempdir("root")?;
-        let paths = paths.build_with_root(tmp_dir.path());
-        let inner = Project::builder().artifacts().paths(paths).build()?;
-        Ok(Self::create_new(tmp_dir, inner)?)
+        Ok(Self::prefixed("temp-project", paths)?)
     }
 
     pub fn project(&self) -> &Project<T> {
@@ -122,6 +133,12 @@ impl<T: ArtifactOutput> TempProject<T> {
         let name = contract_file_name(name);
         let source = self.paths().sources.join(name);
         create_contract_file(source, content)
+    }
+}
+
+impl<T: ArtifactOutput> fmt::Debug for TempProject<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("TempProject").field("paths", self.paths()).finish()
     }
 }
 
