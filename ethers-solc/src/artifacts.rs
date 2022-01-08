@@ -537,8 +537,14 @@ impl CompilerOutput {
     }
 
     /// Whether the output contains a compiler warning
-    pub fn has_warning(&self) -> bool {
-        self.errors.iter().any(|err| err.severity.is_warning())
+    pub fn has_warning<'a>(&self, ignored_error_codes: &'a [u64]) -> bool {
+        self.errors.iter().any(|err| {
+            let is_ignored = err.error_code.as_ref().map_or(false, |code| {
+                !ignored_error_codes.contains(code)
+            });
+
+            err.severity.is_warning() && !is_ignored
+        })
     }
 
     pub fn diagnostics<'a>(&'a self, ignored_error_codes: &'a [u64]) -> OutputDiagnostics {
