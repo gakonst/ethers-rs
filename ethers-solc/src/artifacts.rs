@@ -539,10 +539,11 @@ impl CompilerOutput {
     /// Whether the output contains a compiler warning
     pub fn has_warning(&self, ignored_error_codes: &[u64]) -> bool {
         self.errors.iter().any(|err| {
-            let is_ignored =
-                err.error_code.as_ref().map_or(false, |code| !ignored_error_codes.contains(code));
-
-            err.severity.is_warning() && !is_ignored
+            if err.severity.is_warning() {
+                err.error_code.as_ref().map_or(false, |code| !ignored_error_codes.contains(code))
+            } else {
+                false
+            }
         })
     }
 
@@ -724,20 +725,24 @@ impl<'a> fmt::Display for OutputDiagnostics<'a> {
             f.write_str("Compiler run successful")?;
         }
         for err in &self.compiler_output.errors {
-            let is_ignored = err.error_code.as_ref().map_or(false, |code| {
-                if let Some(source_location) = &err.source_location {
-                    // we ignore spdx and contract size warnings in test
-                    // files. if we are looking at one of these warnings
-                    // from a test file we skip
-                    if self.is_test(&source_location.file) && (*code == 1878 || *code == 5574) {
-                        return true
+            if err.severity.is_warning() {
+                let is_ignored = err.error_code.as_ref().map_or(false, |code| {
+                    if let Some(source_location) = &err.source_location {
+                        // we ignore spdx and contract size warnings in test
+                        // files. if we are looking at one of these warnings
+                        // from a test file we skip
+                        if self.is_test(&source_location.file) && (*code == 1878 || *code == 5574) {
+                            return true
+                        }
                     }
+
+                    self.ignored_error_codes.contains(code)
+                });
+
+                if !is_ignored {
+                    writeln!(f, "\n{}", err)?;
                 }
-
-                self.ignored_error_codes.contains(code)
-            });
-
-            if !is_ignored {
+            } else {
                 writeln!(f, "\n{}", err)?;
             }
         }
