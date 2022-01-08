@@ -548,7 +548,7 @@ impl CompilerOutput {
     }
 
     pub fn diagnostics<'a>(&'a self, ignored_error_codes: &'a [u64]) -> OutputDiagnostics {
-        OutputDiagnostics { errors: &self.errors, ignored_error_codes }
+        OutputDiagnostics { compiler_output: &self, ignored_error_codes }
     }
 
     /// Finds the _first_ contract with the given name
@@ -689,19 +689,19 @@ impl OutputContracts {
 /// Helper type to implement display for solc errors
 #[derive(Clone, Debug)]
 pub struct OutputDiagnostics<'a> {
-    errors: &'a [Error],
+    compiler_output: &'a CompilerOutput,
     ignored_error_codes: &'a [u64],
 }
 
 impl<'a> OutputDiagnostics<'a> {
     /// Returns true if there is at least one error of high severity
     pub fn has_error(&self) -> bool {
-        self.errors.iter().any(|err| err.severity.is_error())
+        self.compiler_output.has_error()
     }
 
     /// Returns true if there is at least one warning
     pub fn has_warning(&self) -> bool {
-        self.errors.iter().any(|err| err.severity.is_warning())
+        self.compiler_output.has_warning(&self.ignored_error_codes)
     }
 }
 
@@ -714,13 +714,10 @@ impl<'a> fmt::Display for OutputDiagnostics<'a> {
         } else {
             f.write_str("Compiler run successful")?;
         }
-        for err in self.errors {
-            // Do not log any ignored error codes
-            if let Some(error_code) = err.error_code {
-                if !self.ignored_error_codes.contains(&error_code) {
-                    writeln!(f, "\n{}", err)?;
-                }
-            } else {
+        for err in &self.compiler_output.errors {
+            let is_ignored = err.error_code.as_ref().map_or(false, |code| self.ignored_error_codes.contains(&code));
+
+            if !is_ignored {
                 writeln!(f, "\n{}", err)?;
             }
         }
