@@ -26,6 +26,11 @@ fn can_gen_human_readable() {
 }
 
 #[test]
+fn can_gen_not_human_readable() {
+    abigen!(VerifierAbiHardhatContract, "./tests/solidity-contracts/verifier_abi_hardhat.json");
+}
+
+#[test]
 fn can_gen_human_readable_multiple() {
     abigen!(
         SimpleContract1,
