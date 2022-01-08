@@ -33,7 +33,7 @@ use std::{
 
 use rayon::prelude::*;
 use semver::VersionReq;
-use solang_parser::pt::{Import, Loc, SourceUnitPart};
+use solang_parser::pt::{Import, SourceUnitPart};
 
 use crate::{error::Result, utils, ProjectPathsConfig, Solc, Source, Sources};
 
