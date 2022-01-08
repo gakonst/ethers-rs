@@ -152,7 +152,7 @@ impl Context {
     /// Create a context from the code generation arguments.
     pub fn from_abigen(args: Abigen) -> Result<Self> {
         // get the actual ABI string
-        let abi_str =
+        let mut abi_str =
             args.abi_source.get().map_err(|e| anyhow!("failed to get ABI JSON: {}", e))?;
 
         let (abi, human_readable, abi_parser) = parse_abi(&abi_str)?;
@@ -172,6 +172,13 @@ impl Context {
             internal_structs.outputs = abi_parser.outputs.clone();
 
             internal_structs
+        } else if abi_str.starts_with('{') {
+            abi_str = serde_json::to_string(&abi).context("fail to serialize abi to json")?;
+
+            serde_json::from_str::<RawAbi>(&abi_str)
+                .ok()
+                .map(InternalStructs::new)
+                .unwrap_or_default()
         } else {
             serde_json::from_str::<RawAbi>(&abi_str)
                 .ok()
