@@ -235,7 +235,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
 
     #[cfg(all(feature = "svm", feature = "async"))]
     #[tracing::instrument(skip(self, sources))]
-    fn svm_compile(&self, sources: Sources) -> Result<ProjectCompileOutput<Artifacts>> {
+    pub fn svm_compile(&self, sources: Sources) -> Result<ProjectCompileOutput<Artifacts>> {
         let graph = Graph::resolve_sources(&self.paths, sources)?;
         let sources_by_version =
             graph.into_sources_by_version(!self.auto_detect)?.get(&self.allowed_lib_paths)?;
