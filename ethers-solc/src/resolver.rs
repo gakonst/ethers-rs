@@ -282,7 +282,7 @@ impl Graph {
                     utils::source_name(&self.nodes[idx].path, &self.root).display(),
                     utils::source_name(&self.nodes[dep].path, &self.root).display()
                 );
-                continue;
+                continue
             }
             self.retain_compatible_versions(dep, candidates, traversed)?;
         }
@@ -388,7 +388,7 @@ impl VersionedSources {
                     return Err(SolcError::msg(format!(
                         "missing solc \"{}\" installation in offline mode",
                         version
-                    )));
+                    )))
                 } else {
                     Solc::blocking_install(version.as_ref())?;
                 }
