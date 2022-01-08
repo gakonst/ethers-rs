@@ -703,6 +703,19 @@ impl<'a> OutputDiagnostics<'a> {
     pub fn has_warning(&self) -> bool {
         self.compiler_output.has_warning(&self.ignored_error_codes)
     }
+
+    fn is_test<T: AsRef<str>>(&self, contract_path: T) -> bool {
+        if contract_path.as_ref().ends_with(".t.sol") {
+            return true;
+        }
+
+        self.compiler_output.find(&contract_path)
+            .map_or(false, |contract| {
+                contract.abi.map_or(false, |abi| {
+                    abi.functions.contains_key("IS_TEST")
+                })
+            })
+    }
 }
 
 impl<'a> fmt::Display for OutputDiagnostics<'a> {
@@ -715,7 +728,19 @@ impl<'a> fmt::Display for OutputDiagnostics<'a> {
             f.write_str("Compiler run successful")?;
         }
         for err in &self.compiler_output.errors {
-            let is_ignored = err.error_code.as_ref().map_or(false, |code| self.ignored_error_codes.contains(&code));
+            let is_ignored = err.error_code.as_ref().map_or(false, |code| {
+                if let Some(source_location) = &err.source_location {
+                    // we ignore spdx and contract size warnings in test
+                    // files. if we are looking at one of these warnings
+                    // from a test file we skip
+                    if self.is_test(&source_location.file)
+                        && (*code == 1878 || *code == 5574) {
+                        return true;
+                    }
+                }
+
+                self.ignored_error_codes.contains(&code)
+            });
 
             if !is_ignored {
                 writeln!(f, "\n{}", err)?;
