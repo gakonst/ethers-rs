@@ -31,7 +31,7 @@ glob = "0.3.0"
 tracing = "0.1.29"
 num_cpus = "1.13.1"
 tiny-keccak = { version = "2.0.2", default-features = false }
-tempdir = { version = "0.3.7", optional = true }
+tempfile = { version = "3.2.0", optional = true }
 fs_extra = { version = "1.2.0", optional = true }
 sha2 = { version = "0.9.8", default-features = false }
 dunce = "1.0.2"
@@ -51,7 +51,7 @@ getrandom = { version = "0.2", features = ["js"] }
 [dev-dependencies]
 criterion = { version = "0.3", features = ["async_tokio"] }
 pretty_assertions = "1.0.0"
-tempdir = "0.3.7"
+tempfile = "3.2.0"
 tokio = { version = "1.15.0", features = ["full"] }
 
 [[bench]]
@@ -72,7 +72,7 @@ default = ["rustls"]
 async = ["tokio", "futures-util"]
 full = ["async", "svm"]
 # Utilities for creating and testing project workspaces
-project-util = ["tempdir", "fs_extra"]
+project-util = ["tempfile", "fs_extra"]
 tests = []
 openssl = ["svm/openssl"]
 rustls = ["svm/rustls"]

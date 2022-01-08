@@ -7,8 +7,6 @@ use std::{
     str::FromStr,
 };
 
-use tempdir::TempDir;
-
 use ethers_solc::{
     cache::{SolFilesCache, SOLIDITY_FILES_CACHE_FILENAME},
     project_util::*,
@@ -141,7 +139,7 @@ fn can_compile_dapp_detect_changes_in_libs() {
 
 #[test]
 fn can_compile_dapp_sample_with_cache() {
-    let tmp_dir = TempDir::new("root").unwrap();
+    let tmp_dir = tempfile::tempdir().unwrap();
     let root = tmp_dir.path();
     let cache = root.join("cache").join(SOLIDITY_FILES_CACHE_FILENAME);
     let artifacts = root.join("out");

@@ -3,12 +3,13 @@ use crate::{
     config::ProjectPathsConfigBuilder,
     error::{Result, SolcError},
     hh::HardhatArtifacts,
+    utils::tempdir,
     ArtifactOutput, MinimalCombinedArtifacts, Project, ProjectCompileOutput, ProjectPathsConfig,
     SolcIoError,
 };
 use fs_extra::{dir, file};
 use std::path::{Path, PathBuf};
-use tempdir::TempDir;
+use tempfile::TempDir;
 
 pub struct TempProject<T: ArtifactOutput> {
     /// temporary workspace root
@@ -19,14 +20,21 @@ pub struct TempProject<T: ArtifactOutput> {
 
 impl<T: ArtifactOutput> TempProject<T> {
     /// Makes sure all resources are created
-    fn create_new(root: TempDir, inner: Project<T>) -> std::result::Result<Self, SolcIoError> {
+    pub fn create_new(root: TempDir, inner: Project<T>) -> std::result::Result<Self, SolcIoError> {
         let project = Self { _root: root, inner };
         project.paths().create_all()?;
         Ok(project)
     }
 
+    /// Creates a new temp project inside a tempdir with a prefixed directory
+    pub fn prefixed(prefix: &str, inner: Project<T>) -> std::result::Result<Self, SolcIoError> {
+        Self::create_new(tempdir(prefix), inner)
+    }
+
+    /// Creates a new temp project using the provided paths and setting the project root to a temp
+    /// dir
     pub fn new(paths: ProjectPathsConfigBuilder) -> Result<Self> {
-        let tmp_dir = TempDir::new("root").map_err(|err| SolcError::io(err, "root"))?;
+        let tmp_dir = tempdir("root")?;
         let paths = paths.build_with_root(tmp_dir.path());
         let inner = Project::builder().artifacts().paths(paths).build()?;
         Ok(Self::create_new(tmp_dir, inner)?)
@@ -138,7 +146,7 @@ fn contract_file_name(name: impl AsRef<str>) -> String {
 impl TempProject<HardhatArtifacts> {
     /// Creates an empty new hardhat style workspace in a new temporary dir
     pub fn hardhat() -> Result<Self> {
-        let tmp_dir = TempDir::new("tmp_hh").map_err(|err| SolcError::io(err, "tmp_hh"))?;
+        let tmp_dir = tempdir("tmp_hh")?;
 
         let paths = ProjectPathsConfig::hardhat(tmp_dir.path())?;
 
@@ -150,7 +158,7 @@ impl TempProject<HardhatArtifacts> {
 impl TempProject<MinimalCombinedArtifacts> {
     /// Creates an empty new dapptools style workspace in a new temporary dir
     pub fn dapptools() -> Result<Self> {
-        let tmp_dir = TempDir::new("tmp_dapp").map_err(|err| SolcError::io(err, "temp_dapp"))?;
+        let tmp_dir = tempdir("tmp_dapp")?;
         let paths = ProjectPathsConfig::dapptools(tmp_dir.path())?;
 
         let inner = Project::builder().artifacts().paths(paths).build()?;
