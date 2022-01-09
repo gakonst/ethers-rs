@@ -323,7 +323,7 @@ impl Solc {
     pub fn source_version_req(source: &Source) -> Result<VersionReq> {
         let version =
             utils::find_version_pragma(&source.content).ok_or(SolcError::PragmaNotFound)?;
-        Self::version_req(version)
+        Self::version_req(version.as_str())
     }
 
     /// Returns the corresponding SemVer version requirement for the solidity version

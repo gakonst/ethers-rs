@@ -32,8 +32,9 @@ use std::{
 };
 
 use rayon::prelude::*;
+use regex::Match;
 use semver::VersionReq;
-use solang_parser::pt::{Import, SourceUnitPart};
+use solang_parser::pt::{Import, Loc, SourceUnitPart};
 
 use crate::{error::Result, utils, ProjectPathsConfig, Solc, Source, Sources};
 
@@ -139,7 +140,7 @@ impl Graph {
             };
 
             for import in node.data.imports.iter() {
-                match utils::resolve_import_component(import, node_dir, paths) {
+                match utils::resolve_import_component(import.path(), node_dir, paths) {
                     Ok(result) => {
                         add_node(&mut unresolved, &mut index, &mut resolved_imports, result)?;
                     }
@@ -392,6 +393,10 @@ impl Node {
     pub fn content(&self) -> &str {
         &self.source.content
     }
+
+    pub fn imports(&self) -> &Vec<SolImport> {
+        &self.data.imports
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -399,7 +404,41 @@ impl Node {
 struct SolData {
     version: Option<String>,
     version_req: Option<VersionReq>,
-    imports: Vec<PathBuf>,
+    imports: Vec<SolImport>,
+}
+
+#[derive(Debug, Clone)]
+pub struct SolImport {
+    path: PathBuf,
+    loc: Location,
+}
+
+#[derive(Debug, Clone)]
+pub struct Location {
+    pub start: usize,
+    pub end: usize,
+}
+
+impl SolImport {
+    pub fn path(&self) -> &PathBuf {
+        &self.path
+    }
+
+    pub fn loc(&self) -> (usize, usize) {
+        (self.loc.start, self.loc.end)
+    }
+}
+
+impl From<Match<'_>> for Location {
+    fn from(src: Match) -> Self {
+        Location { start: src.start(), end: src.end() }
+    }
+}
+
+impl From<Loc> for Location {
+    fn from(src: Loc) -> Self {
+        Location { start: src.1, end: src.2 }
+    }
 }
 
 fn read_node(file: impl AsRef<Path>) -> Result<Node> {
@@ -415,7 +454,7 @@ fn read_node(file: impl AsRef<Path>) -> Result<Node> {
 /// parsing fails, we'll fall back to extract that info via regex
 fn parse_data(content: &str) -> SolData {
     let mut version = None;
-    let mut imports = Vec::new();
+    let mut imports = Vec::<SolImport>::new();
     match solang_parser::parse(content, 0) {
         Ok(units) => {
             for unit in units.0 {
@@ -427,12 +466,15 @@ fn parse_data(content: &str) -> SolData {
                         }
                     }
                     SourceUnitPart::ImportDirective(_, import) => {
-                        let import = match import {
-                            Import::Plain(s) => s,
-                            Import::GlobalSymbol(s, _) => s,
-                            Import::Rename(s, _) => s,
+                        let (import, loc) = match import {
+                            Import::Plain(s, l) => (s, l),
+                            Import::GlobalSymbol(s, _, l) => (s, l),
+                            Import::Rename(s, _, l) => (s, l),
                         };
-                        imports.push(PathBuf::from(import.string));
+                        imports.push(SolImport {
+                            path: PathBuf::from(import.string),
+                            loc: loc.into(),
+                        });
                     }
                     _ => {}
                 }
@@ -443,21 +485,19 @@ fn parse_data(content: &str) -> SolData {
                 "failed to parse solidity ast: \"{:?}\". Falling back to regex to extract data",
                 err
             );
-            version = utils::find_version_pragma(content).map(str::to_string);
+            version = utils::find_version_pragma(content).map(|m| m.as_str().to_owned());
             imports = utils::find_import_paths(content)
-                .into_iter()
-                .map(|p| Path::new(p).to_path_buf())
-                .collect()
+                .map(|m| SolImport { path: PathBuf::from(m.as_str()), loc: m.into() })
+                .collect();
         }
     };
-    let version_req = if let Some(ref v) = version { Solc::version_req(v).ok() } else { None };
+    let version_req = version.as_ref().map(|v| Solc::version_req(&v).ok()).flatten();
     SolData { version_req, version, imports }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::path::Path;
 
     #[test]
     fn can_resolve_hardhat_dependency_graph() {
@@ -499,11 +539,8 @@ mod tests {
         let dapp_test = graph.node(1);
         assert_eq!(dapp_test.path, paths.sources.join("Dapp.t.sol"));
         assert_eq!(
-            dapp_test.data.imports,
-            vec![
-                Path::new("ds-test/test.sol").to_path_buf(),
-                Path::new("./Dapp.sol").to_path_buf()
-            ]
+            dapp_test.data.imports.iter().map(|i| i.path()).collect::<Vec<&PathBuf>>(),
+            vec![&PathBuf::from("ds-test/test.sol"), &PathBuf::from("./Dapp.sol")]
         );
         assert_eq!(graph.imported_nodes(1).to_vec(), vec![2, 0]);
     }

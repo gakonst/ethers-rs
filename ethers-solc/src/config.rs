@@ -4,6 +4,7 @@ use crate::{
     error::{Result, SolcError, SolcIoError},
     hh::HardhatArtifact,
     remappings::Remapping,
+    resolver::Graph,
     utils, CompilerOutput, Source, Sources,
 };
 use ethers_core::{abi::Abi, types::Bytes};
@@ -11,8 +12,7 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{
     collections::BTreeMap,
     convert::TryFrom,
-    fmt,
-    fmt::Formatter,
+    fmt::{self, Formatter},
     fs, io,
     path::{Path, PathBuf},
 };
@@ -145,6 +145,69 @@ impl ProjectPathsConfig {
     ///   - `<root>/node_modules` if it exists and `<root>/lib` does not exist.
     pub fn find_libs(root: impl AsRef<Path>) -> Vec<PathBuf> {
         vec![utils::find_fave_or_alt_path(root, "lib", "node_modules")]
+    }
+
+    /// Flatten all file imports into a single string
+    pub fn flatten(&self, target: &PathBuf) -> Result<String> {
+        tracing::trace!("flattening file");
+        let graph = Graph::resolve(&self)?;
+
+        struct Flattener<'a> {
+            f: &'a dyn Fn(&Flattener, &PathBuf) -> Result<String>,
+        }
+        let flatten = Flattener {
+            f: &|flattener, target| {
+                let target_dir = target.parent().ok_or(SolcError::msg(format!(
+                    "failed to get parent directory for \"{:?}\"",
+                    target.display()
+                )))?;
+                let target_index = graph.files().get(target).ok_or(SolcError::msg(format!(
+                    "cannot resolve file at \"{:?}\"",
+                    target.display()
+                )))?;
+                let target_node = graph.node(*target_index);
+
+                let mut imports = target_node.imports().clone();
+                imports.sort_by(|a, b| b.loc().0.cmp(&a.loc().0));
+
+                let content = target_node.content().bytes().collect::<Vec<_>>();
+                let mut extended = vec![];
+                let mut curr_import = imports.pop();
+
+                let mut i = 0;
+                while i < content.len() {
+                    if let Some(ref import) = curr_import {
+                        let (start, end) = import.loc();
+                        if i == start {
+                            let import_path =
+                                utils::resolve_import_component(import.path(), target_dir, &self)?;
+                            let import_content = (flattener.f)(flattener, &import_path)?;
+                            let import_content =
+                                utils::RE_SOL_PRAGMA_VERSION.replace_all(&import_content, "");
+                            extended.extend(import_content.trim().as_bytes());
+                            i = end;
+                            curr_import = imports.pop();
+                            continue
+                        }
+                    }
+
+                    extended.push(content[i]);
+                    i += 1;
+                }
+
+                let result = String::from_utf8(extended).map_err(|err| {
+                    SolcError::msg(format!(
+                        "failed to convert extended bytes to string: {}",
+                        err.to_string()
+                    ))
+                })?;
+
+                Ok(result)
+            },
+        };
+
+        let flattened = (flatten.f)(&flatten, target)?;
+        Ok(flattened.to_string())
     }
 }
 

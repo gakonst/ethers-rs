@@ -7,7 +7,7 @@ use crate::{
     ProjectPathsConfig, SolcIoError,
 };
 use once_cell::sync::Lazy;
-use regex::Regex;
+use regex::{Match, Regex};
 use semver::Version;
 use tiny_keccak::{Hasher, Keccak};
 use walkdir::WalkDir;
@@ -30,18 +30,16 @@ pub static RE_SOL_PRAGMA_VERSION: Lazy<Regex> =
 /// `import "./contracts/Contract.sol";` -> `"./contracts/Contract.sol"`.
 ///
 /// See also https://docs.soliditylang.org/en/v0.8.9/grammar.html
-pub fn find_import_paths(contract: &str) -> Vec<&str> {
+pub fn find_import_paths(contract: &str) -> impl Iterator<Item = Match> {
     RE_SOL_IMPORT
         .captures_iter(contract)
-        .filter_map(|cap| cap.name("p1").or_else(|| cap.name("p2")).or_else(|| cap.name("p3")))
-        .map(|m| m.as_str())
-        .collect()
+        .filter_map(|cap| cap.name("p1").or(cap.name("p2")).or(cap.name("p3")))
 }
 
 /// Returns the solidity version pragma from the given input:
 /// `pragma solidity ^0.5.2;` => `^0.5.2`
-pub fn find_version_pragma(contract: &str) -> Option<&str> {
-    RE_SOL_PRAGMA_VERSION.captures(contract)?.name("version").map(|m| m.as_str())
+pub fn find_version_pragma(contract: &str) -> Option<Match> {
+    RE_SOL_PRAGMA_VERSION.captures(contract)?.name("version")
 }
 
 /// Returns a list of absolute paths to all the solidity files under the root, or the file itself,
@@ -333,7 +331,7 @@ import { T } from '../Test2.sol';
 "##;
         assert_eq!(
             vec!["hardhat/console.sol", "../contract/Contract.sol", "../Test.sol", "../Test2.sol"],
-            find_import_paths(s)
+            find_import_paths(s).map(|m| m.as_str()).collect::<Vec<&str>>()
         );
     }
     #[test]
@@ -341,7 +339,7 @@ import { T } from '../Test2.sol';
         let s = r##"//SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.0;
 "##;
-        assert_eq!(Some("^0.8.0"), find_version_pragma(s));
+        assert_eq!(Some("^0.8.0"), find_version_pragma(s).map(|s| s.as_str()));
     }
 
     #[test]
