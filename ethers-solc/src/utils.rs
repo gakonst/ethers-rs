@@ -33,7 +33,7 @@ pub static RE_SOL_PRAGMA_VERSION: Lazy<Regex> =
 pub fn find_import_paths(contract: &str) -> impl Iterator<Item = Match> {
     RE_SOL_IMPORT
         .captures_iter(contract)
-        .filter_map(|cap| cap.name("p1").or(cap.name("p2")).or(cap.name("p3")))
+        .filter_map(|cap| cap.name("p1").or_else(|| cap.name("p2")).or_else(|| cap.name("p3")))
 }
 
 /// Returns the solidity version pragma from the given input:
@@ -82,7 +82,7 @@ pub fn canonicalize(path: impl AsRef<Path>) -> Result<PathBuf, SolcIoError> {
 
 /// Try to resolve import to a local file or library path
 pub fn resolve_import_component(
-    import: &PathBuf,
+    import: &Path,
     node_dir: &Path,
     paths: &ProjectPathsConfig,
 ) -> error::Result<PathBuf> {

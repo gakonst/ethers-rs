@@ -40,7 +40,7 @@ impl<T: ArtifactOutput> TempProject<T> {
         self.project().compile()
     }
 
-    pub fn flatten(&self, target: &PathBuf) -> Result<String> {
+    pub fn flatten(&self, target: &Path) -> Result<String> {
         self.project().flatten(target)
     }
 

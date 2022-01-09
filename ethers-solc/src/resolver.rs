@@ -499,7 +499,7 @@ fn parse_data(content: &str) -> SolData {
                 .collect();
         }
     };
-    let version_req = version.as_ref().map(|v| Solc::version_req(&v).ok()).flatten();
+    let version_req = version.as_ref().and_then(|v| Solc::version_req(v).ok());
     SolData { version_req, version, imports }
 }
 

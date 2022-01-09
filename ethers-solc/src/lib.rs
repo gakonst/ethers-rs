@@ -37,8 +37,12 @@ use crate::{
 };
 use error::Result;
 use std::{
-    borrow::Cow, collections::BTreeMap, convert::TryInto, fmt, fs, marker::PhantomData,
-    path::PathBuf,
+    borrow::Cow,
+    collections::BTreeMap,
+    convert::TryInto,
+    fmt, fs,
+    marker::PhantomData,
+    path::{Path, PathBuf},
 };
 
 /// Utilities for creating, mocking and testing of (temporary) projects
@@ -482,7 +486,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         Ok(())
     }
 
-    pub fn flatten(&self, target: &PathBuf) -> Result<String> {
+    pub fn flatten(&self, target: &Path) -> Result<String> {
         self.paths.flatten(target)
     }
 }
