@@ -537,12 +537,18 @@ impl CompilerOutput {
     }
 
     /// Whether the output contains a compiler warning
-    pub fn has_warning(&self) -> bool {
-        self.errors.iter().any(|err| err.severity.is_warning())
+    pub fn has_warning(&self, ignored_error_codes: &[u64]) -> bool {
+        self.errors.iter().any(|err| {
+            if err.severity.is_warning() {
+                err.error_code.as_ref().map_or(false, |code| !ignored_error_codes.contains(code))
+            } else {
+                false
+            }
+        })
     }
 
     pub fn diagnostics<'a>(&'a self, ignored_error_codes: &'a [u64]) -> OutputDiagnostics {
-        OutputDiagnostics { errors: &self.errors, ignored_error_codes }
+        OutputDiagnostics { compiler_output: self, ignored_error_codes }
     }
 
     /// Finds the _first_ contract with the given name
@@ -683,19 +689,29 @@ impl OutputContracts {
 /// Helper type to implement display for solc errors
 #[derive(Clone, Debug)]
 pub struct OutputDiagnostics<'a> {
-    errors: &'a [Error],
+    compiler_output: &'a CompilerOutput,
     ignored_error_codes: &'a [u64],
 }
 
 impl<'a> OutputDiagnostics<'a> {
     /// Returns true if there is at least one error of high severity
     pub fn has_error(&self) -> bool {
-        self.errors.iter().any(|err| err.severity.is_error())
+        self.compiler_output.has_error()
     }
 
     /// Returns true if there is at least one warning
     pub fn has_warning(&self) -> bool {
-        self.errors.iter().any(|err| err.severity.is_warning())
+        self.compiler_output.has_warning(self.ignored_error_codes)
+    }
+
+    fn is_test<T: AsRef<str>>(&self, contract_path: T) -> bool {
+        if contract_path.as_ref().ends_with(".t.sol") {
+            return true
+        }
+
+        self.compiler_output.find(&contract_path).map_or(false, |contract| {
+            contract.abi.map_or(false, |abi| abi.functions.contains_key("IS_TEST"))
+        })
     }
 }
 
@@ -708,10 +724,22 @@ impl<'a> fmt::Display for OutputDiagnostics<'a> {
         } else {
             f.write_str("Compiler run successful")?;
         }
-        for err in self.errors {
-            // Do not log any ignored error codes
-            if let Some(error_code) = err.error_code {
-                if !self.ignored_error_codes.contains(&error_code) {
+        for err in &self.compiler_output.errors {
+            if err.severity.is_warning() {
+                let is_ignored = err.error_code.as_ref().map_or(false, |code| {
+                    if let Some(source_location) = &err.source_location {
+                        // we ignore spdx and contract size warnings in test
+                        // files. if we are looking at one of these warnings
+                        // from a test file we skip
+                        if self.is_test(&source_location.file) && (*code == 1878 || *code == 5574) {
+                            return true
+                        }
+                    }
+
+                    self.ignored_error_codes.contains(code)
+                });
+
+                if !is_ignored {
                     writeln!(f, "\n{}", err)?;
                 }
             } else {

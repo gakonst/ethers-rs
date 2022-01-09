@@ -451,9 +451,9 @@ fn parse_data(content: &str) -> SolData {
                     }
                     SourceUnitPart::ImportDirective(_, import) => {
                         let import = match import {
-                            Import::Plain(s) => s,
-                            Import::GlobalSymbol(s, _) => s,
-                            Import::Rename(s, _) => s,
+                            Import::Plain(s, _) => s,
+                            Import::GlobalSymbol(s, _, _) => s,
+                            Import::Rename(s, _, _) => s,
                         };
                         imports.push(PathBuf::from(import.string));
                     }

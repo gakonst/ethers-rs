@@ -550,6 +550,12 @@ impl ArtifactOutput for MinimalCombinedArtifactsHardhatFallback {
 #[derive(Clone, Debug, Default)]
 pub struct AllowedLibPaths(pub(crate) Vec<PathBuf>);
 
+impl AllowedLibPaths {
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+}
+
 impl fmt::Display for AllowedLibPaths {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let lib_paths = self
