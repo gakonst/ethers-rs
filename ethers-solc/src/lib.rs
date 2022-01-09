@@ -235,7 +235,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
 
     #[cfg(all(feature = "svm", feature = "async"))]
     #[tracing::instrument(skip(self, sources))]
-    fn svm_compile(&self, sources: Sources) -> Result<ProjectCompileOutput<Artifacts>> {
+    pub fn svm_compile(&self, sources: Sources) -> Result<ProjectCompileOutput<Artifacts>> {
         let graph = Graph::resolve_sources(&self.paths, sources)?;
         let sources_by_version =
             graph.into_sources_by_version(!self.auto_detect)?.get(&self.allowed_lib_paths)?;
@@ -778,11 +778,15 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
 
     /// Whether there were errors
     pub fn has_compiler_errors(&self) -> bool {
-        if let Some(output) = self.compiler_output.as_ref() {
-            output.has_error()
-        } else {
-            false
-        }
+        self.compiler_output.as_ref().map(|o| o.has_error()).unwrap_or_default()
+    }
+
+    /// Whether there were warnings
+    pub fn has_compiler_warnings(&self) -> bool {
+        self.compiler_output
+            .as_ref()
+            .map(|o| o.has_warning(&self.ignored_error_codes))
+            .unwrap_or_default()
     }
 
     /// Finds the first contract with the given name and removes it from the set

@@ -14,6 +14,7 @@ Complete Ethereum library and wallet implementation in Rust.
 
 [workspace]
 members = [
+    "ethers-addressbook",
     "ethers-contract",
     "ethers-providers",
     "ethers-signers",
@@ -25,6 +26,7 @@ members = [
 ]
 
 default-members = [
+    "ethers-addressbook",
     "ethers-contract",
     "ethers-providers",
     "ethers-signers",
@@ -80,6 +82,7 @@ solc-tests = ["ethers-solc/tests"]
 solc-sha2-asm = ["ethers-solc/asm"]
 
 [dependencies]
+ethers-addressbook = { version = "^0.1.0", default-features = false, path = "./ethers-addressbook" }
 ethers-contract = { version = "^0.6.0", default-features = false, path = "./ethers-contract" }
 ethers-core = { version = "^0.6.0", default-features = false, path = "./ethers-core" }
 ethers-providers = { version = "^0.6.0", default-features = false, path = "./ethers-providers" }

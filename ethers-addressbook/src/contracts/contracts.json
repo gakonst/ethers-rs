@@ -1,0 +1,19 @@
+{
+	"dai": {
+		"addresses": {
+			"mainnet": "0x6b175474e89094c44da98b954eedeac495271d0f",
+			"goerli": "0x11fE4B6AE13d2a6055C8D9cF65c55bac32B5d844"
+		}
+	},
+	"usdc": {
+		"addresses": {
+			"mainnet": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+		}
+	},
+	"weth": {
+		"addresses": {
+			"mainnet": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+			"rinkeby": "0xc778417E063141139Fce010982780140Aa0cD5Ab"
+		}
+	}
+}
