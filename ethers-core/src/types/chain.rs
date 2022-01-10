@@ -12,22 +12,22 @@ pub struct ParseChainError(String);
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Chain {
-    Mainnet,
-    Ropsten,
-    Rinkeby,
-    Goerli,
-    Kovan,
-    XDai,
-    Polygon,
-    PolygonMumbai,
-    Avalanche,
-    AvalancheFuji,
-    Sepolia,
-    Moonbeam,
-    MoonbeamDev,
-    Moonriver,
-    Optimism,
-    OptimismKovan,
+    Mainnet = 1,
+    Ropsten = 3,
+    Rinkeby = 4,
+    Goerli = 5,
+    Kovan = 42,
+    XDai = 100,
+    Polygon = 137,
+    PolygonMumbai = 80001,
+    Avalanche = 43114,
+    AvalancheFuji = 43113,
+    Sepolia = 11155111,
+    Moonbeam = 1287,
+    MoonbeamDev = 1281,
+    Moonriver = 1285,
+    Optimism = 10,
+    OptimismKovan = 69,
 }
 
 impl fmt::Display for Chain {
