@@ -13,7 +13,7 @@ use std::{
 };
 
 fn read_all_benchmark(c: &mut Criterion) {
-    let root = tempdir::TempDir::new("bench_read_many").unwrap();
+    let root = tempfile::tempdir().unwrap();
     let inputs = prepare_contracts(root.path(), 8);
 
     let mut group = c.benchmark_group("read many");
