@@ -48,7 +48,7 @@ impl<T: ArtifactOutput> TempProject<T> {
     /// Creates a new temp project using the provided paths and setting the project root to a temp
     /// dir
     pub fn new(paths: ProjectPathsConfigBuilder) -> Result<Self> {
-        Ok(Self::prefixed("temp-project", paths)?)
+        Self::prefixed("temp-project", paths)
     }
 
     pub fn project(&self) -> &Project<T> {
