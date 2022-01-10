@@ -172,6 +172,7 @@ impl SolFilesCache {
                 }
             }
 
+            // checks whether an artifact this file depends on was removed
             let missing_artifacts =
                 entry.artifacts.iter().any(|name| !T::output_exists(file, name, artifacts_root));
             if missing_artifacts {
@@ -211,6 +212,7 @@ impl SolFilesCache {
     }
 }
 
+// async variants for read and write
 #[cfg(feature = "async")]
 impl SolFilesCache {
     pub async fn async_read(path: impl AsRef<Path>) -> Result<Self> {
@@ -253,7 +255,14 @@ impl SolFilesCacheBuilder {
         self
     }
 
-    pub fn insert_files(self, sources: Sources, dest: Option<PathBuf>) -> Result<SolFilesCache> {
+    /// Creates a new `SolFilesCache` instance
+    ///
+    /// If a `cache_file` path was provided it's used as base.
+    pub fn insert_files(
+        self,
+        sources: Sources,
+        cache_file: Option<PathBuf>,
+    ) -> Result<SolFilesCache> {
         let format = self.format.unwrap_or_else(|| ETHERS_FORMAT_VERSION.to_string());
         let solc_config =
             self.solc_config.map(Ok).unwrap_or_else(|| SolcConfig::builder().build())?;
@@ -292,14 +301,18 @@ impl SolFilesCacheBuilder {
             files.insert(file, entry);
         }
 
-        let cache = if let Some(dest) = dest.as_ref().filter(|dest| dest.exists()) {
+        let cache = if let Some(dest) = cache_file.as_ref().filter(|dest| dest.exists()) {
             // read the existing cache and extend it by the files that changed
             // (if we just wrote to the cache file, we'd overwrite the existing data)
             let reader =
                 std::io::BufReader::new(File::open(dest).map_err(|err| SolcError::io(err, dest))?);
-            let mut cache: SolFilesCache = serde_json::from_reader(reader)?;
-            cache.files.extend(files);
-            cache
+            if let Ok(mut cache) = serde_json::from_reader::<_, SolFilesCache>(reader) {
+                cache.files.extend(files);
+                cache
+            } else {
+                tracing::error!("Failed to read existing cache file {}", dest.display());
+                SolFilesCache { format, files }
+            }
         } else {
             SolFilesCache { format, files }
         };
