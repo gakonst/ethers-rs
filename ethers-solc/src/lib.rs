@@ -213,6 +213,16 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
     /// `CompilerOutput::has_error` instead.
     /// NB: If the `svm` feature is enabled, this function will automatically detect
     /// solc versions across files.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use ethers_solc::Project;
+    /// # fn demo(project: Project) {
+    /// let project = Project::builder().build().unwrap();
+    /// let output = project.compile().unwrap();
+    /// # }
+    /// ```
     #[tracing::instrument(skip_all, name = "compile")]
     pub fn compile(&self) -> Result<ProjectCompileOutput<Artifacts>> {
         let sources = self.paths.read_input_files()?;
@@ -349,6 +359,22 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
     /// sources and their existing artifacts are read instead. This will also update the cache
     /// file and cleans up entries for files which may have been removed. Unchanged files that
     /// for which an artifact exist, are not compiled again.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use ethers_solc::{Project, Solc};
+    /// # fn demo(project: Project) {
+    /// let project = Project::builder().build().unwrap();
+    /// let sources = project.paths.read_sources().unwrap();
+    /// project
+    ///     .compile_with_version(
+    ///         &Solc::find_svm_installed_version("0.8.11").unwrap().unwrap(),
+    ///         sources,
+    ///     )
+    ///     .unwrap();
+    /// # }
+    /// ```
     pub fn compile_with_version(
         &self,
         solc: &Solc,
