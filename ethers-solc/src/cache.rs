@@ -227,6 +227,12 @@ impl SolFilesCache {
     }
 }
 
+impl Default for SolFilesCache {
+    fn default() -> Self {
+        SolFilesCache { format: ETHERS_FORMAT_VERSION.to_string(), files: Default::default() }
+    }
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct SolFilesCacheBuilder {
     format: Option<String>,

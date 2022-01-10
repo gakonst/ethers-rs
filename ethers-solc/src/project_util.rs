@@ -3,14 +3,18 @@ use crate::{
     config::ProjectPathsConfigBuilder,
     error::{Result, SolcError},
     hh::HardhatArtifacts,
-    ArtifactOutput, MinimalCombinedArtifacts, Project, ProjectCompileOutput, ProjectPathsConfig,
-    SolcIoError,
+    utils::tempdir,
+    ArtifactOutput, MinimalCombinedArtifacts, PathStyle, Project, ProjectCompileOutput,
+    ProjectPathsConfig, SolcIoError,
 };
 use fs_extra::{dir, file};
-use std::path::{Path, PathBuf};
-use tempdir::TempDir;
+use std::{
+    fmt,
+    path::{Path, PathBuf},
+};
+use tempfile::TempDir;
 
-pub struct TempProject<T: ArtifactOutput> {
+pub struct TempProject<T: ArtifactOutput = MinimalCombinedArtifacts> {
     /// temporary workspace root
     _root: TempDir,
     /// actual project workspace with the `root` tempdir as its root
@@ -19,17 +23,32 @@ pub struct TempProject<T: ArtifactOutput> {
 
 impl<T: ArtifactOutput> TempProject<T> {
     /// Makes sure all resources are created
-    fn create_new(root: TempDir, inner: Project<T>) -> std::result::Result<Self, SolcIoError> {
+    pub fn create_new(root: TempDir, inner: Project<T>) -> std::result::Result<Self, SolcIoError> {
         let project = Self { _root: root, inner };
         project.paths().create_all()?;
         Ok(project)
     }
 
-    pub fn new(paths: ProjectPathsConfigBuilder) -> Result<Self> {
-        let tmp_dir = TempDir::new("root").map_err(|err| SolcError::io(err, "root"))?;
+    /// Creates a new temp project inside a tempdir with a prefixed directory
+    pub fn prefixed(prefix: &str, paths: ProjectPathsConfigBuilder) -> Result<Self> {
+        let tmp_dir = tempdir(prefix)?;
         let paths = paths.build_with_root(tmp_dir.path());
         let inner = Project::builder().artifacts().paths(paths).build()?;
         Ok(Self::create_new(tmp_dir, inner)?)
+    }
+
+    /// Creates a new temp project for the given `PathStyle`
+    pub fn with_style(prefix: &str, style: PathStyle) -> Result<Self> {
+        let tmp_dir = tempdir(prefix)?;
+        let paths = style.paths(tmp_dir.path())?;
+        let inner = Project::builder().artifacts().paths(paths).build()?;
+        Ok(Self::create_new(tmp_dir, inner)?)
+    }
+
+    /// Creates a new temp project using the provided paths and setting the project root to a temp
+    /// dir
+    pub fn new(paths: ProjectPathsConfigBuilder) -> Result<Self> {
+        Self::prefixed("temp-project", paths)
     }
 
     pub fn project(&self) -> &Project<T> {
@@ -117,6 +136,12 @@ impl<T: ArtifactOutput> TempProject<T> {
     }
 }
 
+impl<T: ArtifactOutput> fmt::Debug for TempProject<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("TempProject").field("paths", self.paths()).finish()
+    }
+}
+
 fn create_contract_file(path: PathBuf, content: impl AsRef<str>) -> Result<PathBuf> {
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)
@@ -138,7 +163,7 @@ fn contract_file_name(name: impl AsRef<str>) -> String {
 impl TempProject<HardhatArtifacts> {
     /// Creates an empty new hardhat style workspace in a new temporary dir
     pub fn hardhat() -> Result<Self> {
-        let tmp_dir = TempDir::new("tmp_hh").map_err(|err| SolcError::io(err, "tmp_hh"))?;
+        let tmp_dir = tempdir("tmp_hh")?;
 
         let paths = ProjectPathsConfig::hardhat(tmp_dir.path())?;
 
@@ -150,7 +175,7 @@ impl TempProject<HardhatArtifacts> {
 impl TempProject<MinimalCombinedArtifacts> {
     /// Creates an empty new dapptools style workspace in a new temporary dir
     pub fn dapptools() -> Result<Self> {
-        let tmp_dir = TempDir::new("tmp_dapp").map_err(|err| SolcError::io(err, "temp_dapp"))?;
+        let tmp_dir = tempdir("tmp_dapp")?;
         let paths = ProjectPathsConfig::dapptools(tmp_dir.path())?;
 
         let inner = Project::builder().artifacts().paths(paths).build()?;

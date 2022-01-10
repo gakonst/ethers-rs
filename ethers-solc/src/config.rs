@@ -591,7 +591,7 @@ mod tests {
 
     #[test]
     fn can_autodetect_dirs() {
-        let root = tempdir::TempDir::new("root").unwrap();
+        let root = crate::utils::tempdir("root").unwrap();
         let out = root.path().join("out");
         let artifacts = root.path().join("artifacts");
         let contracts = root.path().join("contracts");
@@ -633,13 +633,13 @@ mod tests {
         assert_eq!(ProjectPathsConfig::find_libs(root), vec![node_modules.clone()],);
         assert_eq!(
             ProjectPathsConfig::builder().build_with_root(&root).libraries,
-            vec![canonicalized(node_modules.clone())],
+            vec![canonicalized(node_modules)],
         );
         std::fs::File::create(&lib).unwrap();
         assert_eq!(ProjectPathsConfig::find_libs(root), vec![lib.clone()],);
         assert_eq!(
             ProjectPathsConfig::builder().build_with_root(&root).libraries,
-            vec![canonicalized(lib.clone())],
+            vec![canonicalized(lib)],
         );
     }
 }
