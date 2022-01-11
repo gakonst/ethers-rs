@@ -14,7 +14,7 @@ use std::{
     fmt,
     fmt::Formatter,
     fs, io,
-    path::{Path, PathBuf},
+    path::{Component, Path, PathBuf},
 };
 
 /// Where to find all files or where to write them
@@ -99,6 +99,31 @@ impl ProjectPathsConfig {
     /// Returns the combined set of `Self::read_sources` + `Self::read_tests`
     pub fn read_input_files(&self) -> Result<Sources> {
         Ok(Source::read_all_files(self.input_files())?)
+    }
+
+    /// Attempts to resolve an `import` from the given working directory.
+    ///
+    /// The `cwd` path is the parent dir of the file that includes the `import`
+    pub fn resolve_import(&self, cwd: &Path, import: &Path) -> Result<PathBuf> {
+        let component = import
+            .components()
+            .next()
+            .ok_or_else(|| SolcError::msg(format!("Empty import path {}", import.display())))?;
+        if component == Component::CurDir || component == Component::ParentDir {
+            // if the import is relative we assume it's already part of the processed input
+            // file set
+            utils::canonicalize(cwd.join(import)).map_err(|err| {
+                SolcError::msg(format!("failed to resolve relative import \"{:?}\"", err))
+            })
+        } else {
+            // resolve library file
+            self.resolve_library_import(import.as_ref()).ok_or_else(|| {
+                SolcError::msg(format!(
+                    "failed to resolve library import \"{:?}\"",
+                    import.display()
+                ))
+            })
+        }
     }
 
     /// Attempts to find the path to the real solidity file that's imported via the given `import`

@@ -3,11 +3,11 @@ use crate::{
     artifacts::{Contracts, Sources},
     config::SolcConfig,
     error::{Result, SolcError},
-    utils, ArtifactOutput,
+    utils, ArtifactOutput, ProjectPathsConfig,
 };
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::{BTreeMap, HashMap},
+    collections::{BTreeMap, HashMap, HashSet},
     fs::{self, File},
     path::{Path, PathBuf},
     time::{Duration, UNIX_EPOCH},
@@ -133,17 +133,15 @@ impl SolFilesCache {
         &'a self,
         sources: Sources,
         config: Option<&'a SolcConfig>,
-        artifacts_root: &Path,
+        paths: &ProjectPathsConfig,
     ) -> Sources {
+        // all file hashes
+        let content_hashes: HashMap<_, _> =
+            sources.iter().map(|(file, source)| (file.clone(), source.content_hash())).collect();
         sources
             .into_iter()
-            .filter(move |(file, source)| {
-                self.has_changed_or_missing_artifact::<T>(
-                    file,
-                    source.content_hash().as_bytes(),
-                    config,
-                    artifacts_root,
-                )
+            .filter(move |(file, _)| {
+                self.has_changed_or_missing_artifact::<T>(file, &content_hashes, config, paths)
             })
             .collect()
     }
@@ -153,10 +151,11 @@ impl SolFilesCache {
     pub fn has_changed_or_missing_artifact<T: ArtifactOutput>(
         &self,
         file: &Path,
-        hash: &[u8],
+        hashes: &HashMap<PathBuf, String>,
         config: Option<&SolcConfig>,
-        artifacts_root: &Path,
+        paths: &ProjectPathsConfig,
     ) -> bool {
+        let hash = hashes.get(file).unwrap().as_bytes();
         if let Some(entry) = self.files.get(file) {
             if entry.content_hash.as_bytes() != hash {
                 tracing::trace!("changed content hash for cached artifact \"{}\"", file.display());
@@ -173,19 +172,57 @@ impl SolFilesCache {
             }
 
             // checks whether an artifact this file depends on was removed
-            let missing_artifacts =
-                entry.artifacts.iter().any(|name| !T::output_exists(file, name, artifacts_root));
-            if missing_artifacts {
+            if entry.artifacts.iter().any(|name| !T::output_exists(file, name, &paths.artifacts)) {
                 tracing::trace!(
                     "missing linked artifacts for cached artifact \"{}\"",
                     file.display()
                 );
+                return true
             }
-            missing_artifacts
+
+            // check if any of the file's imported files changed
+            self.has_changed_imports(file, entry, hashes, paths, &mut HashSet::new())
         } else {
             tracing::trace!("missing cached artifact for \"{}\"", file.display());
             true
         }
+    }
+
+    /// Returns true if the entry has any imports that were changed
+    fn has_changed_imports(
+        &self,
+        path: &Path,
+        entry: &CacheEntry,
+        hashes: &HashMap<PathBuf, String>,
+        paths: &ProjectPathsConfig,
+        traversed: &mut HashSet<PathBuf>,
+    ) -> bool {
+        let cwd = match path.parent() {
+            Some(inner) => inner,
+            None => return true,
+        };
+        if !traversed.insert(path.to_path_buf()) {
+            // skip already traversed files, this prevents SO for circular imports
+            return false
+        }
+
+        for import in entry.imports.iter() {
+            if let Some((import, import_path)) = paths
+                .resolve_import(cwd, Path::new(import.as_str()))
+                .ok()
+                .and_then(|import| self.files.get(&import).map(|e| (e, import)))
+            {
+                if let Some(hash) = hashes.get(&import_path) {
+                    if import.content_hash == hash.as_str() &&
+                        !self.has_changed_imports(&import_path, import, hashes, paths, traversed)
+                    {
+                        return false
+                    }
+                }
+            }
+        }
+
+        !entry.imports.is_empty()
     }
 
     /// Checks if all artifact files exist
