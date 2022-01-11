@@ -268,10 +268,10 @@ fn can_compile_dapp_sample_with_cache() {
     assert_eq!(
         compiled.into_artifacts().map(|(name, _)| name).collect::<Vec<_>>(),
         vec![
-            r#"Dapp.json:Dapp"#,
-            r#"DappTest.json:DappTest"#,
-            r#"DSTest.json:DSTest"#,
-            "NewContract"
+            "Dapp.json:Dapp",
+            "DappTest.json:DappTest",
+            "DSTest.json:DSTest",
+            "NewContract.json:NewContract"
         ]
     );
 
@@ -281,10 +281,10 @@ fn can_compile_dapp_sample_with_cache() {
     assert_eq!(
         compiled.into_artifacts().map(|(name, _)| name).collect::<Vec<_>>(),
         vec![
-            r#"DappTest.json:DappTest"#,
-            r#"NewContract.json:NewContract"#,
-            r#"DSTest.json:DSTest"#,
-            "Dapp"
+            "DappTest.json:DappTest",
+            "NewContract.json:NewContract",
+            "DSTest.json:DSTest",
+            "Dapp.json:Dapp"
         ]
     );
 

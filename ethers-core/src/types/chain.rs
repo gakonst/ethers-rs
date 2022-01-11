@@ -60,25 +60,25 @@ impl TryFrom<u64> for Chain {
     type Error = ParseChainError;
 
     fn try_from(chain: u64) -> Result<Chain, Self::Error> {
-        match chain {
-            1 => Ok(Chain::Mainnet),
-            3 => Ok(Chain::Ropsten),
-            4 => Ok(Chain::Rinkeby),
-            5 => Ok(Chain::Goerli),
-            42 => Ok(Chain::Kovan),
-            100 => Ok(Chain::XDai),
-            137 => Ok(Chain::Polygon),
-            80001 => Ok(Chain::PolygonMumbai),
-            43114 => Ok(Chain::Avalanche),
-            43113 => Ok(Chain::AvalancheFuji),
-            11155111 => Ok(Chain::Sepolia),
-            1287 => Ok(Chain::Moonbeam),
-            1281 => Ok(Chain::MoonbeamDev),
-            1285 => Ok(Chain::Moonriver),
-            10 => Ok(Chain::Optimism),
-            69 => Ok(Chain::OptimismKovan),
+        Ok(match chain {
+            1 => Chain::Mainnet,
+            3 => Chain::Ropsten,
+            4 => Chain::Rinkeby,
+            5 => Chain::Goerli,
+            42 => Chain::Kovan,
+            100 => Chain::XDai,
+            137 => Chain::Polygon,
+            80001 => Chain::PolygonMumbai,
+            43114 => Chain::Avalanche,
+            43113 => Chain::AvalancheFuji,
+            11155111 => Chain::Sepolia,
+            1287 => Chain::Moonbeam,
+            1281 => Chain::MoonbeamDev,
+            1285 => Chain::Moonriver,
+            10 => Chain::Optimism,
+            69 => Chain::OptimismKovan,
             _ => return Err(ParseChainError(chain.to_string())),
-        }
+        })
     }
 }
 
