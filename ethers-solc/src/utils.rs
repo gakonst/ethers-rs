@@ -275,6 +275,12 @@ pub(crate) fn find_fave_or_alt_path(root: impl AsRef<Path>, fave: &str, alt: &st
     p
 }
 
+/// Creates a new named tempdir
+#[cfg(any(test, feature = "project-util"))]
+pub(crate) fn tempdir(name: &str) -> Result<tempfile::TempDir, SolcIoError> {
+    tempfile::Builder::new().prefix(name).tempdir().map_err(|err| SolcIoError::new(err, name))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -283,7 +289,7 @@ mod tests {
         fs::{create_dir_all, File},
     };
 
-    use tempdir::TempDir;
+    use tempdir;
 
     #[test]
     fn can_determine_local_paths() {
@@ -291,7 +297,7 @@ mod tests {
         assert!(is_local_source_name(&[""], "../local/contract.sol"));
         assert!(!is_local_source_name(&[""], "/ds-test/test.sol"));
 
-        let tmp_dir = TempDir::new("contracts").unwrap();
+        let tmp_dir = tempdir("contracts").unwrap();
         let dir = tmp_dir.path().join("ds-test");
         create_dir_all(&dir).unwrap();
         File::create(dir.join("test.sol")).unwrap();
@@ -301,7 +307,7 @@ mod tests {
 
     #[test]
     fn can_find_solidity_sources() {
-        let tmp_dir = TempDir::new("contracts").unwrap();
+        let tmp_dir = tempdir("contracts").unwrap();
 
         let file_a = tmp_dir.path().join("a.sol");
         let file_b = tmp_dir.path().join("a.sol");

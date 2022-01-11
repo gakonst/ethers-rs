@@ -356,6 +356,7 @@ fn last_nested_source_dir(root: &Path, dir: &Path) -> PathBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::utils::tempdir;
 
     #[test]
     fn serde() {
@@ -398,7 +399,7 @@ mod tests {
 
     #[test]
     fn find_remapping_dapptools() {
-        let tmp_dir = tempdir::TempDir::new("lib").unwrap();
+        let tmp_dir = tempdir("lib").unwrap();
         let tmp_dir_path = tmp_dir.path();
         let paths = ["repo1/src/", "repo1/src/contract.sol"];
         mkdir_or_touch(tmp_dir_path, &paths[..]);
@@ -414,7 +415,7 @@ mod tests {
 
     #[test]
     fn recursive_remappings() {
-        let tmp_dir = tempdir::TempDir::new("lib").unwrap();
+        let tmp_dir = tempdir("lib").unwrap();
         let tmp_dir_path = tmp_dir.path();
         let paths = [
             "repo1/src/",
@@ -489,7 +490,7 @@ mod tests {
 
     #[test]
     fn remappings() {
-        let tmp_dir = tempdir::TempDir::new("tmp").unwrap();
+        let tmp_dir = tempdir("tmp").unwrap();
         let tmp_dir_path = tmp_dir.path().join("lib");
         let repo1 = tmp_dir_path.join("src_repo");
         let repo2 = tmp_dir_path.join("contracts_repo");
@@ -528,7 +529,7 @@ mod tests {
 
     #[test]
     fn simple_dapptools_remappings() {
-        let tmp_dir = tempdir::TempDir::new("lib").unwrap();
+        let tmp_dir = tempdir("lib").unwrap();
         let tmp_dir_path = tmp_dir.path();
         let paths = [
             "ds-test/src",
@@ -570,7 +571,7 @@ mod tests {
 
     #[test]
     fn hardhat_remappings() {
-        let tmp_dir = tempdir::TempDir::new("node_modules").unwrap();
+        let tmp_dir = tempdir("node_modules").unwrap();
         let tmp_dir_node_modules = tmp_dir.path().join("node_modules");
         let paths = [
             "node_modules/@aave/aave-token/contracts/token/",

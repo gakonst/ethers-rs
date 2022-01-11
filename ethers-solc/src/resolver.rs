@@ -132,17 +132,16 @@ impl Graph {
         // locations
         while let Some((path, node)) = unresolved.pop_front() {
             let mut resolved_imports = Vec::with_capacity(node.data.imports.len());
-
             // parent directory of the current file
-            let node_dir = match path.parent() {
+            let cwd = match path.parent() {
                 Some(inner) => inner,
                 None => continue,
             };
 
             for import in node.data.imports.iter() {
-                match utils::resolve_import_component(import.path(), node_dir, paths) {
-                    Ok(result) => {
-                        add_node(&mut unresolved, &mut index, &mut resolved_imports, result)?;
+                match paths.resolve_import(cwd, import.path()) {
+                    Ok(import) => {
+                        add_node(&mut unresolved, &mut index, &mut resolved_imports, import)?;
                     }
                     Err(err) => tracing::trace!("failed to resolve import component \"{:?}\"", err),
                 };
