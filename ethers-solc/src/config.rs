@@ -172,7 +172,7 @@ impl ProjectPathsConfig {
         vec![utils::find_fave_or_alt_path(root, "lib", "node_modules")]
     }
 
-    /// Flatten all file imports into a single string
+    /// Flattens all file imports into a single string
     pub fn flatten(&self, target: &Path) -> Result<String> {
         tracing::trace!("flattening file");
         let graph = Graph::resolve(self)?;
@@ -205,8 +205,7 @@ impl ProjectPathsConfig {
                     if let Some(ref import) = curr_import {
                         let (start, end) = import.loc();
                         if i == start {
-                            let import_path =
-                                utils::resolve_import_component(import.path(), target_dir, self)?;
+                            let import_path = self.resolve_import(target_dir, import.path())?;
                             let import_content = (flattener.f)(flattener, &import_path)?;
                             let import_content =
                                 utils::RE_SOL_PRAGMA_VERSION.replace_all(&import_content, "");
