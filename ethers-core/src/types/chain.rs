@@ -9,7 +9,6 @@ use crate::types::U256;
 #[derive(Debug, Clone, Error)]
 #[error("Failed to parse chain: {0}")]
 pub struct ParseChainError(String);
-pub struct TryFromUnknownChain;
 
 #[repr(u64)]
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, Deserialize)]
@@ -58,10 +57,10 @@ impl From<Chain> for u64 {
 }
 
 impl TryFrom<u64> for Chain {
-    type Error = ();
+    type Error = ParseChainError;
 
-    fn try_from(chainid: u64) -> Result<Chain, Self::Error> {
-        match chainid {
+    fn try_from(chain: u64) -> Result<Chain, Self::Error> {
+        match chain {
             1 => Ok(Chain::Mainnet),
             3 => Ok(Chain::Ropsten),
             4 => Ok(Chain::Rinkeby),
@@ -78,7 +77,7 @@ impl TryFrom<u64> for Chain {
             1285 => Ok(Chain::Moonriver),
             10 => Ok(Chain::Optimism),
             69 => Ok(Chain::OptimismKovan),
-            _ => Err(()),
+            _ => return Err(ParseChainError(chain.to_string())),
         }
     }
 }
