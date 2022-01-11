@@ -213,6 +213,16 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
     /// `CompilerOutput::has_error` instead.
     /// NB: If the `svm` feature is enabled, this function will automatically detect
     /// solc versions across files.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use ethers_solc::Project;
+    /// # fn demo(project: Project) {
+    /// let project = Project::builder().build().unwrap();
+    /// let output = project.compile().unwrap();
+    /// # }
+    /// ```
     #[tracing::instrument(skip_all, name = "compile")]
     pub fn compile(&self) -> Result<ProjectCompileOutput<Artifacts>> {
         let sources = self.paths.read_input_files()?;
@@ -349,6 +359,22 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
     /// sources and their existing artifacts are read instead. This will also update the cache
     /// file and cleans up entries for files which may have been removed. Unchanged files that
     /// for which an artifact exist, are not compiled again.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use ethers_solc::{Project, Solc};
+    /// # fn demo(project: Project) {
+    /// let project = Project::builder().build().unwrap();
+    /// let sources = project.paths.read_sources().unwrap();
+    /// project
+    ///     .compile_with_version(
+    ///         &Solc::find_svm_installed_version("0.8.11").unwrap().unwrap(),
+    ///         sources,
+    ///     )
+    ///     .unwrap();
+    /// # }
+    /// ```
     pub fn compile_with_version(
         &self,
         solc: &Solc,
@@ -436,7 +462,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
             let changed_files = cache.get_changed_or_missing_artifacts_files::<Artifacts>(
                 sources,
                 Some(&self.solc_config),
-                &self.paths.artifacts,
+                &self.paths,
             );
             tracing::trace!("detected {} changed files", changed_files.len());
             cache.remove_changed_files(&changed_files);
@@ -830,7 +856,7 @@ where
 }
 
 impl<T: ArtifactOutput + 'static> ProjectCompileOutput<T> {
-    /// All artifacts together with their contract name
+    /// All artifacts together with their contract file name and name `<file name>:<name>`
     ///
     /// # Example
     ///
@@ -844,16 +870,22 @@ impl<T: ArtifactOutput + 'static> ProjectCompileOutput<T> {
     /// ```
     pub fn into_artifacts(mut self) -> Box<dyn Iterator<Item = (String, T::Artifact)>> {
         let artifacts = self.artifacts.into_iter().filter_map(|(path, art)| {
-            T::contract_name(&path)
-                .map(|name| (format!("{:?}:{}", path.file_name().unwrap(), name), art))
+            T::contract_name(&path).map(|name| {
+                (format!("{}:{}", path.file_name().unwrap().to_string_lossy(), name), art)
+            })
         });
 
-        let artifacts: Box<dyn Iterator<Item = (String, T::Artifact)>> =
-            if let Some(output) = self.compiler_output.take() {
-                Box::new(artifacts.chain(T::output_to_artifacts(output).into_values().flatten()))
-            } else {
-                Box::new(artifacts)
-            };
+        let artifacts: Box<dyn Iterator<Item = (String, T::Artifact)>> = if let Some(output) =
+            self.compiler_output.take()
+        {
+            Box::new(artifacts.chain(T::output_to_artifacts(output).into_values().flatten().map(
+                |(name, artifact)| {
+                    (format!("{}:{}", T::output_file_name(&name).display(), name), artifact)
+                },
+            )))
+        } else {
+            Box::new(artifacts)
+        };
         artifacts
     }
 }

@@ -138,6 +138,90 @@ fn can_compile_dapp_detect_changes_in_libs() {
 }
 
 #[test]
+fn can_compile_dapp_detect_changes_in_sources() {
+    let project = TempProject::<MinimalCombinedArtifacts>::dapptools().unwrap();
+
+    let src = project
+        .add_source(
+            "DssSpell.t",
+            r#"
+    pragma solidity ^0.8.10;
+    import "./DssSpell.t.base.sol";
+
+   contract DssSpellTest is DssSpellTestBase { }
+   "#,
+        )
+        .unwrap();
+
+    let base = project
+        .add_source(
+            "DssSpell.t.base",
+            r#"
+    pragma solidity ^0.8.10;
+
+  contract DssSpellTestBase {
+       address deployed_spell;
+       function setUp() public {
+           deployed_spell = address(0xA867399B43aF7790aC800f2fF3Fa7387dc52Ec5E);
+       }
+  }
+   "#,
+        )
+        .unwrap();
+
+    let graph = Graph::resolve(project.paths()).unwrap();
+    assert_eq!(graph.files().len(), 2);
+    assert_eq!(graph.files().clone(), HashMap::from([(base, 0), (src, 1),]));
+    assert_eq!(graph.imported_nodes(1).to_vec(), vec![0]);
+
+    let compiled = project.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+    assert!(compiled.find("DssSpellTest").is_some());
+    assert!(compiled.find("DssSpellTestBase").is_some());
+
+    // nothing to compile
+    let compiled = project.compile().unwrap();
+    assert!(compiled.is_unchanged());
+    assert!(compiled.find("DssSpellTest").is_some());
+    assert!(compiled.find("DssSpellTestBase").is_some());
+
+    let cache = SolFilesCache::read(&project.paths().cache).unwrap();
+    assert_eq!(cache.files.len(), 2);
+
+    let mut artifacts = compiled.into_artifacts().collect::<HashMap<_, _>>();
+
+    // overwrite import
+    let _ = project
+        .add_source(
+            "DssSpell.t.base",
+            r#"
+    pragma solidity ^0.8.10;
+
+  contract DssSpellTestBase {
+       address deployed_spell;
+       function setUp() public {
+           deployed_spell = address(0);
+       }
+  }
+   "#,
+        )
+        .unwrap();
+    let graph = Graph::resolve(project.paths()).unwrap();
+    assert_eq!(graph.files().len(), 2);
+
+    let compiled = project.compile().unwrap();
+    assert!(compiled.find("DssSpellTest").is_some());
+    assert!(compiled.find("DssSpellTestBase").is_some());
+    // ensure change is detected
+    assert!(!compiled.is_unchanged());
+    // and all recompiled artifacts are different
+    for (p, artifact) in compiled.into_artifacts() {
+        let other = artifacts.remove(&p).unwrap();
+        assert_ne!(artifact, other);
+    }
+}
+
+#[test]
 fn can_compile_dapp_sample_with_cache() {
     let tmp_dir = tempfile::tempdir().unwrap();
     let root = tmp_dir.path();
@@ -184,9 +268,9 @@ fn can_compile_dapp_sample_with_cache() {
     assert_eq!(
         compiled.into_artifacts().map(|(name, _)| name).collect::<Vec<_>>(),
         vec![
-            r#""Dapp.json":Dapp"#,
-            r#""DappTest.json":DappTest"#,
-            r#""DSTest.json":DSTest"#,
+            r#"Dapp.json:Dapp"#,
+            r#"DappTest.json:DappTest"#,
+            r#"DSTest.json:DSTest"#,
             "NewContract"
         ]
     );
@@ -197,9 +281,9 @@ fn can_compile_dapp_sample_with_cache() {
     assert_eq!(
         compiled.into_artifacts().map(|(name, _)| name).collect::<Vec<_>>(),
         vec![
-            r#""DappTest.json":DappTest"#,
-            r#""NewContract.json":NewContract"#,
-            r#""DSTest.json":DSTest"#,
+            r#"DappTest.json:DappTest"#,
+            r#"NewContract.json:NewContract"#,
+            r#"DSTest.json:DSTest"#,
             "Dapp"
         ]
     );
