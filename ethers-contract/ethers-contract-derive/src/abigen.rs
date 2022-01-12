@@ -269,7 +269,7 @@ impl Parse for Method {
                 //   affect its signature.
                 outputs: vec![],
                 state_mutability: StateMutability::NonPayable,
-                constant: false,
+                constant: None,
             }
         };
         let signature = function.abi_signature();
