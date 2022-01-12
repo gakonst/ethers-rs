@@ -512,6 +512,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         Ok(())
     }
 
+    /// Flattens the target file into a single string suitable for verification
     pub fn flatten(&self, target: &Path) -> Result<String> {
         self.paths.flatten(target)
     }
