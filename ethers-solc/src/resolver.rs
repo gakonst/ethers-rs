@@ -28,7 +28,7 @@
 
 use std::{
     collections::{HashMap, VecDeque},
-    convert::{TryFrom, TryInto},
+    convert::TryInto,
     path::{Path, PathBuf},
 };
 
@@ -440,8 +440,7 @@ impl SolImport {
         &self,
         offset: isize,
     ) -> std::result::Result<(usize, usize), std::num::TryFromIntError> {
-        let (start, end) =
-            (isize::try_from(self.loc.start)? + offset, isize::try_from(self.loc.end)? + offset);
+        let (start, end) = (self.loc.start as isize + offset, self.loc.end as isize + offset);
         Ok((start.try_into()?, end.try_into()?))
     }
 }
