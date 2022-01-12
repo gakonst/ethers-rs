@@ -9,6 +9,8 @@ macro_rules! if_wasm {
     )*}
 }
 
+// only used with WS
+#[cfg(feature = "ws")]
 macro_rules! if_not_wasm {
     ($($item:item)*) => {$(
         #[cfg(not(target_arch = "wasm32"))]
