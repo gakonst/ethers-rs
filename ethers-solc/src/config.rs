@@ -176,10 +176,10 @@ impl ProjectPathsConfig {
     pub fn flatten(&self, target: &Path) -> Result<String> {
         tracing::trace!("flattening file");
         let graph = Graph::resolve(self)?;
-        Ok(self.flatten_file(target, &graph)?)
+        Ok(self.flatten_node(target, &graph)?)
     }
 
-    fn flatten_file(&self, target: &Path, graph: &Graph) -> Result<String> {
+    fn flatten_node(&self, target: &Path, graph: &Graph) -> Result<String> {
         let target_dir = target.parent().ok_or_else(|| {
             SolcError::msg(format!("failed to get parent directory for \"{:?}\"", target.display()))
         })?;
@@ -189,33 +189,28 @@ impl ProjectPathsConfig {
         let target_node = graph.node(*target_index);
 
         let mut imports = target_node.imports().clone();
-        imports.sort_by(|a, b| b.loc().0.cmp(&a.loc().0));
+        imports.sort_by(|a, b| a.loc().0.cmp(&b.loc().0));
 
-        let content = target_node.content().bytes().collect::<Vec<_>>();
-        let mut curr_import = imports.pop();
-        let mut extended = vec![];
+        let mut content = target_node.content().bytes().collect::<Vec<_>>();
+        let mut offset = 0_isize;
 
-        let mut ptr = 0;
-        while ptr < content.len() {
-            if let Some(ref import) = curr_import {
-                let (start, end) = import.loc();
-                if ptr == start {
-                    let import_path = self.resolve_import(target_dir, import.path())?;
-                    let import_content = self.flatten_file(&import_path, graph)?;
-                    let import_content =
-                        utils::RE_SOL_PRAGMA_VERSION.replace_all(&import_content, "");
-                    extended.extend(import_content.trim().as_bytes());
-                    ptr = end;
-                    curr_import = imports.pop();
-                    continue
-                }
-            }
-
-            extended.push(content[ptr]);
-            ptr += 1;
+        for import in imports.iter() {
+            let import_path = self.resolve_import(target_dir, import.path())?;
+            let import_content = self.flatten_node(&import_path, graph)?;
+            let import_content = utils::RE_SOL_PRAGMA_VERSION
+                .replace_all(&import_content, "")
+                .trim()
+                .as_bytes()
+                .to_owned();
+            let import_content_len = import_content.len() as isize;
+            let (start, end) =
+                import.loc_by_offset(offset).expect("failed to determine import location");
+            content.splice(start..end, import_content);
+            let import_offset = import_content_len - ((end - start) as isize);
+            offset += import_offset;
         }
 
-        let result = String::from_utf8(extended).map_err(|err| {
+        let result = String::from_utf8(content).map_err(|err| {
             SolcError::msg(format!("failed to convert extended bytes to string: {}", err))
         })?;
 
