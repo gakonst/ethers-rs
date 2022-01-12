@@ -176,60 +176,50 @@ impl ProjectPathsConfig {
     pub fn flatten(&self, target: &Path) -> Result<String> {
         tracing::trace!("flattening file");
         let graph = Graph::resolve(self)?;
+        Ok(self.flatten_file(target, &graph)?)
+    }
 
-        struct Flattener<'a> {
-            f: &'a dyn Fn(&Flattener, &Path) -> Result<String>,
-        }
-        let flatten = Flattener {
-            f: &|flattener, target| {
-                let target_dir = target.parent().ok_or_else(|| {
-                    SolcError::msg(format!(
-                        "failed to get parent directory for \"{:?}\"",
-                        target.display()
-                    ))
-                })?;
-                let target_index = graph.files().get(target).ok_or_else(|| {
-                    SolcError::msg(format!("cannot resolve file at \"{:?}\"", target.display()))
-                })?;
-                let target_node = graph.node(*target_index);
+    fn flatten_file(&self, target: &Path, graph: &Graph) -> Result<String> {
+        let target_dir = target.parent().ok_or_else(|| {
+            SolcError::msg(format!("failed to get parent directory for \"{:?}\"", target.display()))
+        })?;
+        let target_index = graph.files().get(target).ok_or_else(|| {
+            SolcError::msg(format!("cannot resolve file at \"{:?}\"", target.display()))
+        })?;
+        let target_node = graph.node(*target_index);
 
-                let mut imports = target_node.imports().clone();
-                imports.sort_by(|a, b| b.loc().0.cmp(&a.loc().0));
+        let mut imports = target_node.imports().clone();
+        imports.sort_by(|a, b| b.loc().0.cmp(&a.loc().0));
 
-                let content = target_node.content().bytes().collect::<Vec<_>>();
-                let mut curr_import = imports.pop();
-                let mut extended = vec![];
+        let content = target_node.content().bytes().collect::<Vec<_>>();
+        let mut curr_import = imports.pop();
+        let mut extended = vec![];
 
-                let mut i = 0;
-                while i < content.len() {
-                    if let Some(ref import) = curr_import {
-                        let (start, end) = import.loc();
-                        if i == start {
-                            let import_path = self.resolve_import(target_dir, import.path())?;
-                            let import_content = (flattener.f)(flattener, &import_path)?;
-                            let import_content =
-                                utils::RE_SOL_PRAGMA_VERSION.replace_all(&import_content, "");
-                            extended.extend(import_content.trim().as_bytes());
-                            i = end;
-                            curr_import = imports.pop();
-                            continue
-                        }
-                    }
-
-                    extended.push(content[i]);
-                    i += 1;
+        let mut ptr = 0;
+        while ptr < content.len() {
+            if let Some(ref import) = curr_import {
+                let (start, end) = import.loc();
+                if ptr == start {
+                    let import_path = self.resolve_import(target_dir, import.path())?;
+                    let import_content = self.flatten_file(&import_path, graph)?;
+                    let import_content =
+                        utils::RE_SOL_PRAGMA_VERSION.replace_all(&import_content, "");
+                    extended.extend(import_content.trim().as_bytes());
+                    ptr = end;
+                    curr_import = imports.pop();
+                    continue
                 }
+            }
 
-                let result = String::from_utf8(extended).map_err(|err| {
-                    SolcError::msg(format!("failed to convert extended bytes to string: {}", err))
-                })?;
+            extended.push(content[ptr]);
+            ptr += 1;
+        }
 
-                Ok(result)
-            },
-        };
+        let result = String::from_utf8(extended).map_err(|err| {
+            SolcError::msg(format!("failed to convert extended bytes to string: {}", err))
+        })?;
 
-        let flattened = (flatten.f)(&flatten, target)?;
-        Ok(flattened)
+        Ok(result)
     }
 }
 
