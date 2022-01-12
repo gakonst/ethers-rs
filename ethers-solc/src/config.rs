@@ -176,7 +176,7 @@ impl ProjectPathsConfig {
     pub fn flatten(&self, target: &Path) -> Result<String> {
         tracing::trace!("flattening file");
         let graph = Graph::resolve(self)?;
-        Ok(self.flatten_node(target, &graph)?)
+        self.flatten_node(target, &graph)
     }
 
     fn flatten_node(&self, target: &Path, graph: &Graph) -> Result<String> {
