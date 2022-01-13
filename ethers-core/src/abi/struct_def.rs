@@ -1,7 +1,7 @@
 //! Solidity struct definition parsing support
 use crate::abi::{
     error::{bail, format_err, Result},
-    human_readable::{is_whitespace, parse_identifier},
+    human_readable::{is_likely_tuple_not_uint8, is_whitespace, parse_identifier},
     param_type::Reader,
     ParamType,
 };
@@ -333,7 +333,13 @@ fn parse_field_type(s: &str) -> Result<FieldType> {
         input = input[..input.len() - 7].trim_end();
     }
     if let Ok(ty) = Reader::read(input) {
-        Ok(FieldType::Elementary(ty))
+        // See `AbiParser::parse_type`
+        if is_likely_tuple_not_uint8(&ty, s) {
+            // likely that an unknown type was resolved as `uint8`
+            StructFieldType::parse(input.trim_end())
+        } else {
+            Ok(FieldType::Elementary(ty))
+        }
     } else {
         // parsing elementary datatype failed, try struct
         StructFieldType::parse(input.trim_end())
