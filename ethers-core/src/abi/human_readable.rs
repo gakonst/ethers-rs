@@ -236,6 +236,15 @@ impl AbiParser {
         Ok(EventParam { name: name.to_string(), indexed, kind: self.parse_type(type_str)?.0 })
     }
 
+    /// Returns the parsed function from the input string
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use ethers_core::abi::AbiParser;
+    /// let f = AbiParser::default()
+    ///     .parse_function("bar(uint256 x, uint256 y, address addr)").unwrap();
+    /// ```
     pub fn parse_function(&mut self, s: &str) -> Result<Function> {
         let mut input = s.trim();
         let shorthand = !input.starts_with("function ");
@@ -330,31 +339,74 @@ impl AbiParser {
 
     /// Returns the `ethabi` `ParamType` for the function parameter and the aliased struct type, if
     /// it is a user defined struct
+    ///
+    /// **NOTE**: the  `ethabi` Reader treats unknown identifiers as `UInt(8)`, because solc uses
+    /// the _name_ of a solidity enum for the value of the `type` of the ABI, but only in sol
+    /// libraries. If the enum is defined in a contract the value of the `type` is `uint8`
+    ///
+    /// # Example ABI for an enum in a __contract__
+    /// ```json
+    /// {
+    ///   "internalType": "enum ContractTest.TestEnum",
+    ///   "name": "test",
+    ///   "type": "uint8"
+    /// }
+    /// ```
+    ///
+    /// # Example ABI for an enum in a __library__
+    /// ```json
+    /// {
+    ///   "internalType": "enum ContractTest.TestEnum",
+    ///   "name": "test",
+    ///   "type": "ContractTest.TestEnum"
+    /// }
+    /// ```
+    ///
+    /// See https://github.com/rust-ethereum/ethabi/issues/254
+    ///
+    /// Therefore, we need to double-check if the `ethabi::Reader` parsed an `uint8`, and ignore the
+    /// type if `type_str` is not uint8. However can lead to some problems if a function param is
+    /// array of custom types for example, like `Foo[]`, which the `Reader` would identify as
+    /// `uint8[]`. Therefor if the `Reader` returns an `uint8` we also check that the input string
+    /// contains a `uint8`. This however can still lead to false detection of `uint8` and is only
+    /// solvable with a more sophisticated parser: https://github.com/gakonst/ethers-rs/issues/474
     fn parse_type(&self, type_str: &str) -> Result<(ParamType, Option<String>)> {
         if let Ok(kind) = Reader::read(type_str) {
-            Ok((kind, None))
+            if is_likely_tuple_not_uint8(&kind, type_str) {
+                // if we detected an `ParamType::Uint(8)` but the input string does not include a
+                // `uint8` then it's highly likely that we try parsing a struct instead
+                self.parse_struct_type(type_str)
+            } else {
+                Ok((kind, None))
+            }
         } else {
             // try struct instead
-            if let Ok(field) = StructFieldType::parse(type_str) {
-                let struct_ty = field
-                    .as_struct()
-                    .ok_or_else(|| format_err!("Expected struct type `{}`", type_str))?;
-                let name = struct_ty.name();
-                let tuple = self
-                    .struct_tuples
-                    .get(name)
-                    .cloned()
-                    .map(ParamType::Tuple)
-                    .ok_or_else(|| format_err!("Unknown struct `{}`", struct_ty.name()))?;
+            self.parse_struct_type(type_str)
+        }
+    }
 
-                if let Some(field) = field.as_struct() {
-                    Ok((field.as_param(tuple), Some(name.to_string())))
-                } else {
-                    bail!("Expected struct type")
-                }
+    /// Attempts to parse the `type_str` as a `struct`, resolving all fields of the struct into a
+    /// `ParamType::Tuple`
+    fn parse_struct_type(&self, type_str: &str) -> Result<(ParamType, Option<String>)> {
+        if let Ok(field) = StructFieldType::parse(type_str) {
+            let struct_ty = field
+                .as_struct()
+                .ok_or_else(|| format_err!("Expected struct type `{}`", type_str))?;
+            let name = struct_ty.name();
+            let tuple = self
+                .struct_tuples
+                .get(name)
+                .cloned()
+                .map(ParamType::Tuple)
+                .ok_or_else(|| format_err!("Unknown struct `{}`", struct_ty.name()))?;
+
+            if let Some(field) = field.as_struct() {
+                Ok((field.as_param(tuple), Some(name.to_string())))
             } else {
-                bail!("Failed determine event type `{}`", type_str)
+                bail!("Expected struct type")
             }
+        } else {
+            bail!("Failed determine event type `{}`", type_str)
         }
     }
 
@@ -460,6 +512,30 @@ fn detect_state_mutability(s: &str) -> StateMutability {
         StateMutability::Payable
     } else {
         StateMutability::NonPayable
+    }
+}
+
+/// Checks if the input `ParamType` contains a `uint8` that the `type_str` also contains `uint8`
+///
+/// Returns `true` if `kind` contains `uint8` but the type_str doesnt
+///
+/// See `AbiParser::parse_type`
+pub(crate) fn is_likely_tuple_not_uint8(kind: &ParamType, type_str: &str) -> bool {
+    if contains_uint8(kind) {
+        !type_str.contains("uint8")
+    } else {
+        false
+    }
+}
+
+/// Returns true if the `ParamType` contains an `uint8`
+pub fn contains_uint8(kind: &ParamType) -> bool {
+    match kind {
+        ParamType::Uint(8) => true,
+        ParamType::Array(kind) => contains_uint8(&*kind),
+        ParamType::FixedArray(kind, _) => contains_uint8(&*kind),
+        ParamType::Tuple(tuple) => tuple.iter().any(contains_uint8),
+        _ => false,
     }
 }
 
