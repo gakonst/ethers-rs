@@ -360,7 +360,16 @@ fn parse_mapping(s: &str) -> Result<MappingType> {
         .map(str::trim)
         .map(Reader::read)??;
 
-    if let ParamType::Array(_) | ParamType::FixedArray(_, _) | ParamType::Tuple(_) = &key_type {
+    let is_illegal_ty = if let ParamType::Array(_) |
+    ParamType::FixedArray(_, _) |
+    ParamType::Tuple(_) = &key_type
+    {
+        true
+    } else {
+        is_likely_tuple_not_uint8(&key_type, s)
+    };
+
+    if is_illegal_ty {
         bail!("Expected elementary mapping key type at `{}` got {:?}", input, key_type)
     }
 
