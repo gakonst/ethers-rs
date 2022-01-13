@@ -317,7 +317,7 @@ impl AbiParser {
 
         Ok(
             #[allow(deprecated)]
-            Function { name, inputs, outputs, state_mutability, constant: false },
+            Function { name, inputs, outputs, state_mutability, constant: None },
         )
     }
 
