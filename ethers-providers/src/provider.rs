@@ -1280,9 +1280,9 @@ pub mod dev_rpc {
 #[cfg(not(target_arch = "wasm32"))]
 mod tests {
     use super::*;
-    use crate::{Http, Ws};
+    use crate::Http;
     use ethers_core::{
-        types::{TransactionRequest, H160, H256},
+        types::{TransactionRequest, H256},
         utils::Geth,
     };
     use futures_util::StreamExt;
@@ -1449,6 +1449,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[cfg(ignore)]
     async fn test_trace_call_many() {
         // TODO: Implement ErigonInstance, so it'd be possible to test this.
         let provider = Provider::new(Ws::connect("ws://127.0.0.1:8545").await.unwrap());
