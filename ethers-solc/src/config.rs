@@ -176,10 +176,16 @@ impl ProjectPathsConfig {
     pub fn flatten(&self, target: &Path) -> Result<String> {
         tracing::trace!("flattening file");
         let graph = Graph::resolve(self)?;
-        self.flatten_node(target, &graph)
+        self.flatten_node(target, &graph, false)
     }
 
-    fn flatten_node(&self, target: &Path, graph: &Graph) -> Result<String> {
+    /// Flattens a single node from the dependency graph
+    fn flatten_node(
+        &self,
+        target: &Path,
+        graph: &Graph,
+        omit_version_pragma: bool,
+    ) -> Result<String> {
         let target_dir = target.parent().ok_or_else(|| {
             SolcError::msg(format!("failed to get parent directory for \"{:?}\"", target.display()))
         })?;
@@ -194,14 +200,18 @@ impl ProjectPathsConfig {
         let mut content = target_node.content().bytes().collect::<Vec<_>>();
         let mut offset = 0_isize;
 
+        if omit_version_pragma {
+            if let Some(version) = target_node.version() {
+                let (start, end) = version.loc();
+                content.splice(start..end, std::iter::empty());
+                offset -= (end - start) as isize;
+            }
+        }
+
         for import in imports.iter() {
             let import_path = self.resolve_import(target_dir, import.path())?;
-            let import_content = self.flatten_node(&import_path, graph)?;
-            let import_content = utils::RE_SOL_PRAGMA_VERSION
-                .replace_all(&import_content, "")
-                .trim()
-                .as_bytes()
-                .to_owned();
+            let import_content = self.flatten_node(&import_path, graph, true)?;
+            let import_content = import_content.trim().as_bytes().to_owned();
             let import_content_len = import_content.len() as isize;
             let (start, end) =
                 import.loc_by_offset(offset).expect("failed to determine import location");

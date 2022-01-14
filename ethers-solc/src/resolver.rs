@@ -405,14 +405,24 @@ impl Node {
     pub fn imports(&self) -> &Vec<SolImport> {
         &self.data.imports
     }
+
+    pub fn version(&self) -> &Option<SolVersionPragma> {
+        &self.data.version
+    }
 }
 
 #[derive(Debug, Clone)]
 #[allow(unused)]
 struct SolData {
-    version: Option<String>,
+    version: Option<SolVersionPragma>,
     version_req: Option<VersionReq>,
     imports: Vec<SolImport>,
+}
+
+#[derive(Debug, Clone)]
+pub struct SolVersionPragma {
+    pub version: String,
+    loc: Location,
 }
 
 #[derive(Debug, Clone)]
@@ -425,6 +435,12 @@ pub struct SolImport {
 pub struct Location {
     pub start: usize,
     pub end: usize,
+}
+
+impl SolVersionPragma {
+    pub fn loc(&self) -> (usize, usize) {
+        (self.loc.start, self.loc.end)
+    }
 }
 
 impl SolImport {
@@ -475,10 +491,11 @@ fn parse_data(content: &str) -> SolData {
         Ok(units) => {
             for unit in units.0 {
                 match unit {
-                    SourceUnitPart::PragmaDirective(_, pragma, value) => {
+                    SourceUnitPart::PragmaDirective(loc, _, pragma, value) => {
                         if pragma.name == "solidity" {
                             // we're only interested in the solidity version pragma
-                            version = Some(value.string);
+                            version =
+                                Some(SolVersionPragma { version: value.string, loc: loc.into() });
                         }
                     }
                     SourceUnitPart::ImportDirective(_, import) => {
@@ -501,13 +518,14 @@ fn parse_data(content: &str) -> SolData {
                 "failed to parse solidity ast: \"{:?}\". Falling back to regex to extract data",
                 err
             );
-            version = utils::find_version_pragma(content).map(|m| m.as_str().to_owned());
+            version = utils::find_version_pragma(content)
+                .map(|m| SolVersionPragma { version: m.as_str().to_owned(), loc: m.into() });
             imports = utils::find_import_paths(content)
                 .map(|m| SolImport { path: PathBuf::from(m.as_str()), loc: m.into() })
                 .collect();
         }
     };
-    let version_req = version.as_ref().and_then(|v| Solc::version_req(v).ok());
+    let version_req = version.as_ref().and_then(|v| Solc::version_req(&v.version).ok());
     SolData { version_req, version, imports }
 }
 
