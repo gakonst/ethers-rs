@@ -1449,7 +1449,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[cfg(ignore)]
+    #[ignore]
     async fn test_trace_call_many() {
         // TODO: Implement ErigonInstance, so it'd be possible to test this.
         let provider = Provider::new(Ws::connect("ws://127.0.0.1:8545").await.unwrap());
