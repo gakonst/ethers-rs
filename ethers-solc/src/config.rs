@@ -195,9 +195,9 @@ impl ProjectPathsConfig {
         let target_node = graph.node(*target_index);
 
         let mut imports = target_node.imports().clone();
-        imports.sort_by(|a, b| a.loc().0.cmp(&b.loc().0));
+        imports.sort_by_key(|x| x.loc().0);
 
-        let mut content = target_node.content().bytes().collect::<Vec<_>>();
+        let mut content = target_node.content().as_bytes().to_vec();
         let mut offset = 0_isize;
 
         if omit_version_pragma {
@@ -213,11 +213,9 @@ impl ProjectPathsConfig {
             let import_content = self.flatten_node(&import_path, graph, true)?;
             let import_content = import_content.trim().as_bytes().to_owned();
             let import_content_len = import_content.len() as isize;
-            let (start, end) =
-                import.loc_by_offset(offset).expect("failed to determine import location");
+            let (start, end) = import.loc_by_offset(offset);
             content.splice(start..end, import_content);
-            let import_offset = import_content_len - ((end - start) as isize);
-            offset += import_offset;
+            offset += import_content_len - ((end - start) as isize);
         }
 
         let result = String::from_utf8(content).map_err(|err| {

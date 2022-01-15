@@ -28,7 +28,6 @@
 
 use std::{
     collections::{HashMap, VecDeque},
-    convert::TryInto,
     path::{Path, PathBuf},
 };
 
@@ -452,12 +451,11 @@ impl SolImport {
         (self.loc.start, self.loc.end)
     }
 
-    pub fn loc_by_offset(
-        &self,
-        offset: isize,
-    ) -> std::result::Result<(usize, usize), std::num::TryFromIntError> {
-        let (start, end) = (self.loc.start as isize + offset, self.loc.end as isize + offset);
-        Ok((start.try_into()?, end.try_into()?))
+    pub fn loc_by_offset(&self, offset: isize) -> (usize, usize) {
+        (
+            offset.saturating_add(self.loc.start as isize) as usize,
+            offset.saturating_add(self.loc.end as isize) as usize,
+        )
     }
 }
 
