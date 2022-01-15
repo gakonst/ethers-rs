@@ -480,6 +480,14 @@ pub trait Middleware: Sync + Send + Debug {
         self.inner().trace_call(req, trace_type, block).await.map_err(FromErr::from)
     }
 
+    async fn trace_call_many<T: Into<TypedTransaction> + Send + Sync>(
+        &self,
+        req: Vec<(T, Vec<TraceType>)>,
+        block: Option<BlockNumber>,
+    ) -> Result<Vec<BlockTrace>, Self::Error> {
+        self.inner().trace_call_many(req, block).await.map_err(FromErr::from)
+    }
+
     /// Traces a call to `eth_sendRawTransaction` without making the call, returning the traces
     async fn trace_raw_transaction(
         &self,

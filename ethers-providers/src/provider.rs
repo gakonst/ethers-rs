@@ -797,6 +797,19 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.request("trace_call", [req, trace_type, block]).await
     }
 
+    /// Executes given calls and returns a number of possible traces for each call
+    async fn trace_call_many<T: Into<TypedTransaction> + Send + Sync>(
+        &self,
+        req: Vec<(T, Vec<TraceType>)>,
+        block: Option<BlockNumber>,
+    ) -> Result<Vec<BlockTrace>, ProviderError> {
+        let req: Vec<(TypedTransaction, Vec<TraceType>)> =
+            req.into_iter().map(|(tx, trace_type)| (tx.into(), trace_type)).collect();
+        let req = utils::serialize(&req);
+        let block = utils::serialize(&block.unwrap_or(BlockNumber::Latest));
+        self.request("trace_callMany", [req, block]).await
+    }
+
     /// Traces a call to `eth_sendRawTransaction` without making the call, returning the traces
     async fn trace_raw_transaction(
         &self,
@@ -1433,5 +1446,43 @@ mod tests {
         let history =
             provider.fee_history(10u64, BlockNumber::Latest, &[10.0, 40.0]).await.unwrap();
         dbg!(&history);
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn test_trace_call_many() {
+        // TODO: Implement ErigonInstance, so it'd be possible to test this.
+        let provider = Provider::new(Ws::connect("ws://127.0.0.1:8545").await.unwrap());
+        let traces = provider
+            .trace_call_many(
+                vec![
+                    (
+                        TransactionRequest::new()
+                            .from(Address::zero())
+                            .to("0x0000000000000000000000000000000000000001"
+                                .parse::<H160>()
+                                .unwrap())
+                            .value(U256::from(10000000000000000u128)),
+                        vec![TraceType::StateDiff],
+                    ),
+                    (
+                        TransactionRequest::new()
+                            .from(
+                                "0x0000000000000000000000000000000000000001"
+                                    .parse::<H160>()
+                                    .unwrap(),
+                            )
+                            .to("0x0000000000000000000000000000000000000002"
+                                .parse::<H160>()
+                                .unwrap())
+                            .value(U256::from(10000000000000000u128)),
+                        vec![TraceType::StateDiff],
+                    ),
+                ],
+                None,
+            )
+            .await
+            .unwrap();
+        dbg!(traces);
     }
 }
