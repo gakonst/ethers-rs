@@ -321,14 +321,14 @@ fn can_flatten_file() {
     assert!(project.flatten(&target).is_ok());
 }
 
-// #[test]
-// fn can_flatten_file_with_external_lib() {
-//     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test-data/hardhat-sample");
-//     let target = root.join("contracts").join("Greeter.sol");
-//     let paths = ProjectPathsConfig::builder()
-//         .sources(root.join("contracts"))
-//         .lib(root.join("node_modules"));
-//     let project = TempProject::<MinimalCombinedArtifacts>::new(paths).unwrap();
+#[test]
+fn can_flatten_file_with_external_lib() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test-data/hardhat-sample");
+    let target = root.join("contracts").join("Greeter.sol");
+    let paths = ProjectPathsConfig::builder()
+        .sources(root.join("contracts"))
+        .lib(root.join("node_modules"));
+    let project = TempProject::<MinimalCombinedArtifacts>::new(paths).unwrap();
 
-//     assert!(project.flatten(&target).is_ok());
-// }
+    assert!(project.flatten(&target).is_ok());
+}
