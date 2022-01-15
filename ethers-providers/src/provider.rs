@@ -1450,9 +1450,12 @@ mod tests {
 
     #[tokio::test]
     #[ignore]
+    #[cfg(feature = "ws")]
     async fn test_trace_call_many() {
+        use ethers_core::types::H160;
+
         // TODO: Implement ErigonInstance, so it'd be possible to test this.
-        let provider = Provider::new(Ws::connect("ws://127.0.0.1:8545").await.unwrap());
+        let provider = Provider::new(crate::Ws::connect("ws://127.0.0.1:8545").await.unwrap());
         let traces = provider
             .trace_call_many(
                 vec![
