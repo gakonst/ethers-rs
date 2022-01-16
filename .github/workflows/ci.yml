@@ -47,8 +47,9 @@ jobs:
       - name: Install Erigon
         run: |
           wget "https://dl.google.com/go/$(curl "https://go.dev/VERSION?m=text").linux-amd64.tar.gz"
-          tar -C /usr/local -xzf $(curl "https://go.dev/VERSION?m=text").linux-amd64.tar.gz
-          export PATH=$PATH:/usr/local/go/bin
+          mkdir -p "$HOME/golang/"
+          tar -C $HOME/golang/ -xzf $(curl "https://go.dev/VERSION?m=text").linux-amd64.tar.gz
+          export PATH=$PATH:$HOME/golang/go/bin
           go version
 
           mkdir -p "$HOME/go"
