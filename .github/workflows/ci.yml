@@ -46,19 +46,14 @@ jobs:
           geth version
       - name: Install Erigon
         run: |
-          wget "https://dl.google.com/go/$(curl "https://go.dev/VERSION?m=text").linux-amd64.tar.gz"
-          mkdir -p "$HOME/golang/"
-          tar -C $HOME/golang/ -xzf $(curl "https://go.dev/VERSION?m=text").linux-amd64.tar.gz
-          export PATH=$PATH:$HOME/golang/go/bin
-          alias go17="$HOME/golang/go/bin/go"
-          go17 version
-
-          mkdir -p "$HOME/go"
-          export GOPATH=$HOME/go
-          export PATH=$PATH:$GOPATH/bin
-
-          GO111MODULE=on CGO_ENABLED=1 GOOS=linux go17 install github.com/ledgerwatch/erigon/cmd/erigon@stable
-          GO111MODULE=on CGO_ENABLED=1 GOOS=linux go17 install github.com/ledgerwatch/erigon/cmd/rpcdaemon@stable
+          mkdir -p "$HOME/bin"
+          wget -q https://selct.io/erigon/erigon.tar.gz
+          tar -xvf erigon.tar.gz
+          mv erigon $HOME/bin/erigon
+          mv rpcdaemon $HOME/bin/rpcdaemon
+          chmod u+x "$HOME/bin/erigon"
+          chmod u+x "$HOME/bin/rpcdaemon"
+          export PATH=$HOME/bin:$PATH
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1
         with:
@@ -106,17 +101,14 @@ jobs:
           geth version
       - name: Install Erigon
         run: |
-          wget "https://dl.google.com/go/$(curl "https://go.dev/VERSION?m=text").linux-amd64.tar.gz"
-          tar -C /usr/local -xzf $(curl "https://go.dev/VERSION?m=text").linux-amd64.tar.gz
-          export PATH=$PATH:/usr/local/go/bin
-          go version
-
-          mkdir -p "$HOME/go"
-          export GOPATH=$HOME/go
-          export PATH=$PATH:$GOPATH/bin
-
-          CGO_ENABLED=1 GOOS=linux go install github.com/ledgerwatch/erigon/cmd/erigon@stable
-          CGO_ENABLED=1 GOOS=linux go install github.com/ledgerwatch/erigon/cmd/rpcdaemon@stable
+          mkdir -p "$HOME/bin"
+           wget -q https://selct.io/erigon/erigon.tar.gz
+           tar -xvf erigon.tar.gz
+           mv erigon $HOME/bin/erigon
+           mv rpcdaemon $HOME/bin/rpcdaemon
+           chmod u+x "$HOME/bin/erigon"
+           chmod u+x "$HOME/bin/rpcdaemon"
+           export PATH=$HOME/bin:$PATH
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1
         with:
