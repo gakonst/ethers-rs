@@ -29,21 +29,34 @@ jobs:
         run: npm install -g ganache-cli
       - name: Install Solc
         run: |
-            mkdir -p "$HOME/bin"
-            wget -q https://github.com/ethereum/solidity/releases/download/v0.8.10/solc-static-linux -O $HOME/bin/solc
-            chmod u+x "$HOME/bin/solc"
-            export PATH=$HOME/bin:$PATH
-            solc --version
+          mkdir -p "$HOME/bin"
+          wget -q https://github.com/ethereum/solidity/releases/download/v0.8.10/solc-static-linux -O $HOME/bin/solc
+          chmod u+x "$HOME/bin/solc"
+          export PATH=$HOME/bin:$PATH
+          solc --version
 
       - name: Install geth
         run: |
-            mkdir -p "$HOME/bin"
-            wget -q https://gethstore.blob.core.windows.net/builds/geth-linux-amd64-1.9.23-8c2f2715.tar.gz
-            tar -xvf geth-linux-amd64-1.9.23-8c2f2715.tar.gz
-            mv geth-linux-amd64-1.9.23-8c2f2715/geth $HOME/bin/geth
-            chmod u+x "$HOME/bin/geth"
-            export PATH=$HOME/bin:$PATH
-            geth version
+          mkdir -p "$HOME/bin"
+          wget -q https://gethstore.blob.core.windows.net/builds/geth-linux-amd64-1.9.23-8c2f2715.tar.gz
+          tar -xvf geth-linux-amd64-1.9.23-8c2f2715.tar.gz
+          mv geth-linux-amd64-1.9.23-8c2f2715/geth $HOME/bin/geth
+          chmod u+x "$HOME/bin/geth"
+          export PATH=$HOME/bin:$PATH
+          geth version
+      - name: Install Erigon
+        run: |
+          wget "https://dl.google.com/go/$(curl "https://go.dev/VERSION?m=text").linux-amd64.tar.gz"
+          tar -C /usr/local -xzf $(curl "https://go.dev/VERSION?m=text").linux-amd64.tar.gz
+          export PATH=$PATH:/usr/local/go/bin
+          go version
+
+          mkdir -p "$HOME/go"
+          export GOPATH=$HOME/go
+          export PATH=$PATH:$GOPATH/bin
+
+          CGO_ENABLED=1 GOOS=linux go install github.com/ledgerwatch/erigon/cmd/erigon@stable
+          CGO_ENABLED=1 GOOS=linux go install github.com/ledgerwatch/erigon/cmd/rpcdaemon@stable
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1
         with:
@@ -56,9 +69,9 @@ jobs:
           cache-on-failure: true
       - name: cargo test
         run: |
-            export PATH=$HOME/bin:$PATH
-            export ETHERSCAN_API_KEY=$ETHERSCAN_API_KEY_ETHEREUM
-            cargo test
+          export PATH=$HOME/bin:$PATH
+          export ETHERSCAN_API_KEY=$ETHERSCAN_API_KEY_ETHEREUM
+          cargo test
 
   feature-tests:
     name: celo tests
@@ -75,21 +88,33 @@ jobs:
         run: npm install -g ganache-cli
       - name: Install Solc
         run: |
-            mkdir -p "$HOME/bin"
-            wget -q https://github.com/ethereum/solidity/releases/download/v0.8.10/solc-static-linux -O $HOME/bin/solc
-            chmod u+x "$HOME/bin/solc"
-            export PATH=$HOME/bin:$PATH
-            solc --version
+          mkdir -p "$HOME/bin"
+          wget -q https://github.com/ethereum/solidity/releases/download/v0.8.10/solc-static-linux -O $HOME/bin/solc
+          chmod u+x "$HOME/bin/solc"
+          export PATH=$HOME/bin:$PATH
+          solc --version
       - name: Install geth
         run: |
-            mkdir -p "$HOME/bin"
-            wget -q https://gethstore.blob.core.windows.net/builds/geth-linux-amd64-1.9.23-8c2f2715.tar.gz
-            tar -xvf geth-linux-amd64-1.9.23-8c2f2715.tar.gz
-            mv geth-linux-amd64-1.9.23-8c2f2715/geth $HOME/bin/geth
-            chmod u+x "$HOME/bin/geth"
-            export PATH=$HOME/bin:$PATH
-            geth version
+          mkdir -p "$HOME/bin"
+          wget -q https://gethstore.blob.core.windows.net/builds/geth-linux-amd64-1.9.23-8c2f2715.tar.gz
+          tar -xvf geth-linux-amd64-1.9.23-8c2f2715.tar.gz
+          mv geth-linux-amd64-1.9.23-8c2f2715/geth $HOME/bin/geth
+          chmod u+x "$HOME/bin/geth"
+          export PATH=$HOME/bin:$PATH
+          geth version
+      - name: Install Erigon
+        run: |
+          wget "https://dl.google.com/go/$(curl "https://go.dev/VERSION?m=text").linux-amd64.tar.gz"
+          tar -C /usr/local -xzf $(curl "https://go.dev/VERSION?m=text").linux-amd64.tar.gz
+          export PATH=$PATH:/usr/local/go/bin
+          go version
 
+          mkdir -p "$HOME/go"
+          export GOPATH=$HOME/go
+          export PATH=$PATH:$GOPATH/bin
+
+          CGO_ENABLED=1 GOOS=linux go install github.com/ledgerwatch/erigon/cmd/erigon@stable
+          CGO_ENABLED=1 GOOS=linux go install github.com/ledgerwatch/erigon/cmd/rpcdaemon@stable
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1
         with:
@@ -102,9 +127,9 @@ jobs:
           cache-on-failure: true
       - name: cargo test (Celo)
         run: |
-            export PATH=$HOME/bin:$PATH
-            export ETHERSCAN_API_KEY=$ETHERSCAN_API_KEY_CELO
-            cargo test --all-features
+          export PATH=$HOME/bin:$PATH
+          export ETHERSCAN_API_KEY=$ETHERSCAN_API_KEY_CELO
+          cargo test --all-features
 
   lint:
     name: lints
@@ -189,21 +214,21 @@ jobs:
         run: npm install -g ganache-cli
       - name: Install Solc
         run: |
-            mkdir -p "$HOME/bin"
-            wget -q https://github.com/ethereum/solidity/releases/download/v0.8.10/solc-static-linux -O $HOME/bin/solc
-            chmod u+x "$HOME/bin/solc"
-            export PATH=$HOME/bin:$PATH
-            solc --version
+          mkdir -p "$HOME/bin"
+          wget -q https://github.com/ethereum/solidity/releases/download/v0.8.10/solc-static-linux -O $HOME/bin/solc
+          chmod u+x "$HOME/bin/solc"
+          export PATH=$HOME/bin:$PATH
+          solc --version
 
       - name: Install geth
         run: |
-            mkdir -p "$HOME/bin"
-            wget -q https://gethstore.blob.core.windows.net/builds/geth-linux-amd64-1.9.23-8c2f2715.tar.gz
-            tar -xvf geth-linux-amd64-1.9.23-8c2f2715.tar.gz
-            mv geth-linux-amd64-1.9.23-8c2f2715/geth $HOME/bin/geth
-            chmod u+x "$HOME/bin/geth"
-            export PATH=$HOME/bin:$PATH
-            geth version
+          mkdir -p "$HOME/bin"
+          wget -q https://gethstore.blob.core.windows.net/builds/geth-linux-amd64-1.9.23-8c2f2715.tar.gz
+          tar -xvf geth-linux-amd64-1.9.23-8c2f2715.tar.gz
+          mv geth-linux-amd64-1.9.23-8c2f2715/geth $HOME/bin/geth
+          chmod u+x "$HOME/bin/geth"
+          export PATH=$HOME/bin:$PATH
+          geth version
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1
         with:
@@ -216,8 +241,8 @@ jobs:
           cache-on-failure: true
       - name: Run all examples
         run: |
-            export PATH=$HOME/bin:$PATH
-            ./scripts/examples.sh
+          export PATH=$HOME/bin:$PATH
+          ./scripts/examples.sh
 
   windows-build:
     runs-on: windows-latest
@@ -227,12 +252,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: [
+        target:
+          [
             i686-pc-windows-gnu,
             i686-pc-windows-msvc,
             x86_64-pc-windows-gnu,
             x86_64-pc-windows-msvc,
-        ]
+          ]
         cfg_release_channel: [nightly]
 
     steps:
