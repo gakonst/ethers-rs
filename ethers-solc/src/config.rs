@@ -184,7 +184,7 @@ impl ProjectPathsConfig {
         &self,
         target: &Path,
         graph: &Graph,
-        omit_version_pragma: bool,
+        strip_version_pragma: bool,
         strip_license: bool,
     ) -> Result<String> {
         let target_dir = target.parent().ok_or_else(|| {
@@ -209,7 +209,7 @@ impl ProjectPathsConfig {
             }
         }
 
-        if omit_version_pragma {
+        if strip_version_pragma {
             if let Some(version) = target_node.version() {
                 let (start, end) = version.loc_by_offset(offset);
                 content.splice(start..end, std::iter::empty());
