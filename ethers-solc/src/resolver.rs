@@ -523,10 +523,11 @@ fn parse_data(content: &str) -> SolData {
                     .collect();
         }
     };
-    let license =
-        capture_outer_and_inner(content, &utils::RE_SOL_SDPX_LICENSE_IDENTIFIER, &vec!["license"])
+    let license = content.lines().nth(0).and_then(|line| {
+        capture_outer_and_inner(line, &utils::RE_SOL_SDPX_LICENSE_IDENTIFIER, &vec!["license"])
             .first()
-            .map(|(cap, l)| SolDataUnit::new(l.as_str().to_owned(), cap.to_owned().into()));
+            .map(|(cap, l)| SolDataUnit::new(l.as_str().to_owned(), cap.to_owned().into()))
+    });
     let version_req = version.as_ref().and_then(|v| Solc::version_req(v.data()).ok());
     SolData { version_req, version, imports, license }
 }
