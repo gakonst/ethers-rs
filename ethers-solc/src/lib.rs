@@ -513,6 +513,12 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
     }
 
     /// Flattens the target file into a single string suitable for verification
+    ///
+    /// This method uses a dependency graph to resolve imported files and substitute
+    /// import directives with the contents of target files. It will strip the pragma
+    /// version directives and SDPX license identifiers from imported files.
+    /// Caution: the SDPX license identifier will be removed from the imported file
+    /// only if it is at the beginning of the file.
     pub fn flatten(&self, target: &Path) -> Result<String> {
         self.paths.flatten(target)
     }
