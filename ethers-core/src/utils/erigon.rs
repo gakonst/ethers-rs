@@ -9,7 +9,7 @@ use std::{
 };
 
 /// How long we will wait for erigon to indicate that it is ready
-const ERIGON_STARTUP_TIMEOUT_MILLIS: u64 = 10_000;
+const ERIGON_STARTUP_TIMEOUT_MILLIS: u64 = 30_000;
 
 /// The exposed APIs
 const API: &str = "eth,erigon,net,debug,trace,txpool";
