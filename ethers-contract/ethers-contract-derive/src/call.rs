@@ -47,7 +47,7 @@ pub(crate) fn derive_eth_call_impl(input: DeriveInput) -> TokenStream {
                     name: function_call_name.clone(),
                     inputs,
                     outputs: vec![],
-                    constant: false,
+                    constant: None,
                     state_mutability: Default::default(),
                 }
             } else {

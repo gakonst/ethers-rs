@@ -485,7 +485,11 @@ fn parse_data(content: &str) -> SolData {
         Ok(units) => {
             for unit in units.0 {
                 match unit {
+<<<<<<< HEAD
                     SourceUnitPart::PragmaDirective(loc, _, pragma, value) => {
+=======
+                    SourceUnitPart::PragmaDirective(_, _, pragma, value) => {
+>>>>>>> master
                         if pragma.name == "solidity" {
                             // we're only interested in the solidity version pragma
                             version = Some(SolDataUnit::new(value.string, loc.into()));

@@ -570,12 +570,12 @@ mod eth_tests {
         };
 
         let derived_foo_bar = deriveeip712test_mod::FooBar {
-            foo: foo_bar.foo.clone(),
-            bar: foo_bar.bar.clone(),
+            foo: foo_bar.foo,
+            bar: foo_bar.bar,
             fizz: foo_bar.fizz.clone(),
-            buzz: foo_bar.buzz.clone(),
+            buzz: foo_bar.buzz,
             far: foo_bar.far.clone(),
-            out: foo_bar.out.clone(),
+            out: foo_bar.out,
         };
 
         let sig = wallet.sign_typed_data(&foo_bar).await.expect("failed to sign typed data");
