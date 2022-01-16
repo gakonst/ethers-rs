@@ -1,0 +1,192 @@
+[
+  {
+    "output": "0x",
+    "trace": [
+      {
+        "traceAddress": [],
+        "subtraces": 0,
+        "action": {
+          "from": "0x0000000000000000000000000000000000000000",
+          "to": "0x0000000000000000000000000000000000000001",
+          "value": "0x2386f26fc10000",
+          "gas": "0x2fa9e78",
+          "input": "0x",
+          "callType": "call"
+        },
+        "type": "call",
+        "result": {
+          "gasUsed": "0xbb8",
+          "output": "0x"
+        },
+        "error": null
+      }
+    ],
+    "vmTrace": {
+      "code": "0x",
+      "ops": []
+    },
+    "stateDiff": {
+      "0x0000000000000000000000000000000000000000": {
+        "balance": {
+          "+": "0xb18ce83f4b8000"
+        },
+        "nonce": {
+          "+": "0x1"
+        },
+        "code": {
+          "+": "0x"
+        },
+        "storage": {}
+      },
+      "0x0000000000000000000000000000000000000001": {
+        "balance": {
+          "*": {
+            "from": "0x1",
+            "to": "0x2386f26fc10001"
+          }
+        },
+        "nonce": "=",
+        "code": "=",
+        "storage": {}
+      }
+    },
+    "transactionHash": null
+  },
+  {
+    "output": "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "trace": [
+      {
+        "traceAddress": [],
+        "subtraces": 0,
+        "action": {
+          "from": "0x0000000000000000000000000000000000000001",
+          "to": "0x0000000000000000000000000000000000000002",
+          "value": "0x2386f26fc10000",
+          "gas": "0x2fa9e78",
+          "input": "0x",
+          "callType": "call"
+        },
+        "type": "call",
+        "result": {
+          "gasUsed": "0x3c",
+          "output": "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "error": null
+      }
+    ],
+    "vmTrace": {
+      "code": "0x",
+      "ops": []
+    },
+    "stateDiff": {
+      "0x0000000000000000000000000000000000000001": {
+        "balance": {
+          "*": {
+            "from": "0x2386f26fc10001",
+            "to": "0xb18f94c4f35801"
+          }
+        },
+        "nonce": {
+          "*": {
+            "from": "0x0",
+            "to": "0x1"
+          }
+        },
+        "code": "=",
+        "storage": {}
+      },
+      "0x0000000000000000000000000000000000000002": {
+        "balance": {
+          "*": {
+            "from": "0x1",
+            "to": "0x2386f26fc10001"
+          }
+        },
+        "nonce": "=",
+        "code": "=",
+        "storage": {}
+      }
+    },
+    "transactionHash": null
+  },
+  {
+    "output": "0x",
+    "trace": [
+      {
+        "traceAddress": [],
+        "subtraces": 0,
+        "action": {
+          "from": "0x0000000000000000000000000000000000000002",
+          "value": "0x0",
+          "gas": "0x2fa2150",
+          "init": "0x600000ff"
+        },
+        "type": "create",
+        "result": {
+          "gasUsed": "0x3",
+          "code": "0x",
+          "address": "0xe536720791a7dadbebdbcd8c8546fb0791a11901"
+        },
+        "error": null
+      }
+    ],
+    "vmTrace": {
+      "code": "0x600000ff",
+      "ops": [
+        {
+          "pc": 0,
+          "cost": 3,
+          "ex": {
+            "used": 49946957,
+            "push": ["0x0"],
+            "mem": null,
+            "store": null
+          },
+          "sub": null
+        },
+        {
+          "pc": 2,
+          "cost": 0,
+          "ex": {
+            "used": 49946957,
+            "push": [],
+            "mem": null,
+            "store": null
+          },
+          "sub": null
+        }
+      ]
+    },
+    "stateDiff": {
+      "0x0000000000000000000000000000000000000002": {
+        "balance": {
+          "*": {
+            "from": "0x2386f26fc10001",
+            "to": "0xd4f9709559c201"
+          }
+        },
+        "nonce": {
+          "*": {
+            "from": "0x0",
+            "to": "0x1"
+          }
+        },
+        "code": "=",
+        "storage": {}
+      },
+      "0xe536720791a7dadbebdbcd8c8546fb0791a11901": {
+        "balance": {
+          "+": "0x0"
+        },
+        "nonce": {
+          "+": "0x1"
+        },
+        "code": {
+          "+": "0x"
+        },
+        "storage": {}
+      }
+    },
+    "transactionHash": null
+  }
+]

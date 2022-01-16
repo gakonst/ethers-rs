@@ -1280,9 +1280,9 @@ pub mod dev_rpc {
 #[cfg(not(target_arch = "wasm32"))]
 mod tests {
     use super::*;
-    use crate::Http;
+    use crate::{Http, Ws};
     use ethers_core::{
-        types::{TransactionRequest, H256},
+        types::{TransactionRequest, H160, H256},
         utils::Geth,
     };
     use futures_util::StreamExt;
@@ -1449,13 +1449,13 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
     #[cfg(feature = "ws")]
     async fn test_trace_call_many() {
-        use ethers_core::types::H160;
+        use ethers_core::utils::Erigon;
 
-        // TODO: Implement ErigonInstance, so it'd be possible to test this.
-        let provider = Provider::new(crate::Ws::connect("ws://127.0.0.1:8545").await.unwrap());
+        let erigon = Erigon::new().block_time(2u64).spawn();
+        let provider = Provider::new(Ws::connect(erigon.ws_endpoint()).await.unwrap());
+
         let traces = provider
             .trace_call_many(
                 vec![
@@ -1466,7 +1466,7 @@ mod tests {
                                 .parse::<H160>()
                                 .unwrap())
                             .value(U256::from(10000000000000000u128)),
-                        vec![TraceType::StateDiff],
+                        vec![TraceType::Trace, TraceType::StateDiff, TraceType::VmTrace],
                     ),
                     (
                         TransactionRequest::new()
@@ -1479,13 +1479,29 @@ mod tests {
                                 .parse::<H160>()
                                 .unwrap())
                             .value(U256::from(10000000000000000u128)),
-                        vec![TraceType::StateDiff],
+                        vec![TraceType::Trace, TraceType::StateDiff, TraceType::VmTrace],
+                    ),
+                    (
+                        TransactionRequest::new()
+                            .from(
+                                "0x0000000000000000000000000000000000000002"
+                                    .parse::<H160>()
+                                    .unwrap(),
+                            )
+                            .data(Bytes::from([0x60, 0x00, 0x00, 0xff])),
+                        vec![TraceType::Trace, TraceType::StateDiff, TraceType::VmTrace],
                     ),
                 ],
                 None,
             )
-            .await
-            .unwrap();
-        dbg!(traces);
+            .await;
+        assert!(traces.is_ok());
+        let traces = traces.unwrap();
+
+        let file_path = std::env::var("CARGO_MANIFEST_DIR").unwrap() + "/tests/trace_data.json";
+        let expected_traces = serde_json::from_str::<Vec<BlockTrace>>(
+            std::fs::read_to_string(file_path).unwrap().as_str(),
+        );
+        assert_eq!(traces, expected_traces.unwrap());
     }
 }
