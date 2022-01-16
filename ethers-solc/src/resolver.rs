@@ -508,23 +508,19 @@ fn parse_data(content: &str) -> SolData {
                 "failed to parse solidity ast: \"{:?}\". Falling back to regex to extract data",
                 err
             );
-            version =
-                capture_outer_and_inner(content, &utils::RE_SOL_PRAGMA_VERSION, &vec!["version"])
-                    .first()
-                    .map(|(cap, name)| {
-                        SolDataUnit::new(name.as_str().to_owned(), cap.to_owned().into())
-                    });
-            imports =
-                capture_outer_and_inner(content, &utils::RE_SOL_IMPORT, &vec!["p1", "p2", "p3"])
-                    .iter()
-                    .map(|(cap, m)| {
-                        SolDataUnit::new(PathBuf::from(m.as_str()), cap.to_owned().into())
-                    })
-                    .collect();
+            version = capture_outer_and_inner(content, &utils::RE_SOL_PRAGMA_VERSION, &["version"])
+                .first()
+                .map(|(cap, name)| {
+                    SolDataUnit::new(name.as_str().to_owned(), cap.to_owned().into())
+                });
+            imports = capture_outer_and_inner(content, &utils::RE_SOL_IMPORT, &["p1", "p2", "p3"])
+                .iter()
+                .map(|(cap, m)| SolDataUnit::new(PathBuf::from(m.as_str()), cap.to_owned().into()))
+                .collect();
         }
     };
-    let license = content.lines().nth(0).and_then(|line| {
-        capture_outer_and_inner(line, &utils::RE_SOL_SDPX_LICENSE_IDENTIFIER, &vec!["license"])
+    let license = content.lines().next().and_then(|line| {
+        capture_outer_and_inner(line, &utils::RE_SOL_SDPX_LICENSE_IDENTIFIER, &["license"])
             .first()
             .map(|(cap, l)| SolDataUnit::new(l.as_str().to_owned(), cap.to_owned().into()))
     });
