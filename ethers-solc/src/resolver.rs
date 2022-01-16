@@ -434,19 +434,25 @@ pub struct Location {
     pub end: usize,
 }
 
+/// Solidity Data Unit decorated with its location within the file
 impl<T> SolDataUnit<T> {
     pub fn new(data: T, loc: Location) -> Self {
         Self { data, loc }
     }
 
+    /// Returns the underlying data for the unit
     pub fn data(&self) -> &T {
         &self.data
     }
 
+    /// Returns the location of the given data unit
     pub fn loc(&self) -> (usize, usize) {
         (self.loc.start, self.loc.end)
     }
 
+    /// Returns the location of the given data unit adjusted by an offset.
+    /// Used to determine new position of the unit within the file after
+    /// content manipulation.
     pub fn loc_by_offset(&self, offset: isize) -> (usize, usize) {
         (
             offset.saturating_add(self.loc.start as isize) as usize,
@@ -528,6 +534,13 @@ fn parse_data(content: &str) -> SolData {
     SolData { version_req, version, imports, license }
 }
 
+/// Given the regex and the target string, find all occurrences
+/// of named groups within the string. This method returns
+/// the tuple of matches `(a, b)` where `a` is the match for the
+/// entire regex and `b` is the match for the first named group.
+///
+/// NOTE: This method will return the match for the first named
+/// group, so the order of passed named groups matters.
 fn capture_outer_and_inner<'a>(
     content: &'a str,
     regex: &regex::Regex,

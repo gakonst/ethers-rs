@@ -14,18 +14,20 @@ use walkdir::WalkDir;
 
 /// A regex that matches the import path and identifier of a solidity import
 /// statement with the named groups "path", "id".
+// Adapted from https://github.com/nomiclabs/hardhat/blob/cced766c65b25d3d0beb39ef847246ac9618bdd9/packages/hardhat-core/src/internal/solidity/parse.ts#L100
 pub static RE_SOL_IMPORT: Lazy<Regex> = Lazy::new(|| {
-    // Adapted from https://github.com/nomiclabs/hardhat/blob/cced766c65b25d3d0beb39ef847246ac9618bdd9/packages/hardhat-core/src/internal/solidity/parse.ts#L100
     Regex::new(r#"import\s+(?:(?:"(?P<p1>[^;]*)"|'([^;]*)')(?:;|\s+as\s+(?P<id>[^;]*);)|.+from\s+(?:"(?P<p2>.*)"|'(?P<p3>.*)');)"#).unwrap()
 });
 
 /// A regex that matches the version part of a solidity pragma
 /// as follows: `pragma solidity ^0.5.2;` => `^0.5.2`
-/// statement with the named groups "path", "id".
+/// statement with the named group "version".
 // Adapted from https://github.com/nomiclabs/hardhat/blob/cced766c65b25d3d0beb39ef847246ac9618bdd9/packages/hardhat-core/src/internal/solidity/parse.ts#L119
 pub static RE_SOL_PRAGMA_VERSION: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"pragma\s+solidity\s+(?P<version>.+?);").unwrap());
 
+/// A regex that matches the SDPX license identifier
+/// statement with the named group "license".
 pub static RE_SOL_SDPX_LICENSE_IDENTIFIER: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"///?\s*SPDX-License-Identifier:\s*(?P<license>.+)").unwrap());
 
