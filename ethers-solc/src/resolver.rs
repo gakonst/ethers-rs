@@ -139,7 +139,7 @@ impl Graph {
             };
 
             for import in node.data.imports.iter() {
-                match paths.resolve_import(cwd, import.path()) {
+                match paths.resolve_import(cwd, import.data()) {
                     Ok(import) => {
                         add_node(&mut unresolved, &mut index, &mut resolved_imports, import)?;
                     }
@@ -401,50 +401,46 @@ impl Node {
         &self.source.content
     }
 
-    pub fn imports(&self) -> &Vec<SolImport> {
+    pub fn imports(&self) -> &Vec<SolDataUnit<PathBuf>> {
         &self.data.imports
     }
 
-    pub fn version(&self) -> &Option<SolVersionPragma> {
+    pub fn version(&self) -> &Option<SolDataUnit<String>> {
         &self.data.version
+    }
+
+    pub fn license(&self) -> &Option<SolDataUnit<String>> {
+        &self.data.license
     }
 }
 
 #[derive(Debug, Clone)]
 #[allow(unused)]
 struct SolData {
-    version: Option<SolVersionPragma>,
+    license: Option<SolDataUnit<String>>,
+    version: Option<SolDataUnit<String>>,
+    imports: Vec<SolDataUnit<PathBuf>>,
     version_req: Option<VersionReq>,
-    imports: Vec<SolImport>,
 }
 
 #[derive(Debug, Clone)]
-pub struct SolVersionPragma {
-    pub version: String,
+pub struct SolDataUnit<T> {
     loc: Location,
+    data: T,
 }
-
-#[derive(Debug, Clone)]
-pub struct SolImport {
-    path: PathBuf,
-    loc: Location,
-}
-
 #[derive(Debug, Clone)]
 pub struct Location {
     pub start: usize,
     pub end: usize,
 }
 
-impl SolVersionPragma {
-    pub fn loc(&self) -> (usize, usize) {
-        (self.loc.start, self.loc.end)
+impl<T> SolDataUnit<T> {
+    pub fn new(data: T, loc: Location) -> Self {
+        Self { data, loc }
     }
-}
 
-impl SolImport {
-    pub fn path(&self) -> &PathBuf {
-        &self.path
+    pub fn data(&self) -> &T {
+        &self.data
     }
 
     pub fn loc(&self) -> (usize, usize) {
@@ -484,7 +480,7 @@ fn read_node(file: impl AsRef<Path>) -> Result<Node> {
 /// parsing fails, we'll fall back to extract that info via regex
 fn parse_data(content: &str) -> SolData {
     let mut version = None;
-    let mut imports = Vec::<SolImport>::new();
+    let mut imports = Vec::<SolDataUnit<PathBuf>>::new();
     match solang_parser::parse(content, 0) {
         Ok(units) => {
             for unit in units.0 {
@@ -492,8 +488,7 @@ fn parse_data(content: &str) -> SolData {
                     SourceUnitPart::PragmaDirective(loc, _, pragma, value) => {
                         if pragma.name == "solidity" {
                             // we're only interested in the solidity version pragma
-                            version =
-                                Some(SolVersionPragma { version: value.string, loc: loc.into() });
+                            version = Some(SolDataUnit::new(value.string, loc.into()));
                         }
                     }
                     SourceUnitPart::ImportDirective(_, import) => {
@@ -502,10 +497,7 @@ fn parse_data(content: &str) -> SolData {
                             Import::GlobalSymbol(s, _, l) => (s, l),
                             Import::Rename(s, _, l) => (s, l),
                         };
-                        imports.push(SolImport {
-                            path: PathBuf::from(import.string),
-                            loc: loc.into(),
-                        });
+                        imports.push(SolDataUnit::new(PathBuf::from(import.string), loc.into()));
                     }
                     _ => {}
                 }
@@ -516,15 +508,41 @@ fn parse_data(content: &str) -> SolData {
                 "failed to parse solidity ast: \"{:?}\". Falling back to regex to extract data",
                 err
             );
-            version = utils::find_version_pragma(content)
-                .map(|m| SolVersionPragma { version: m.as_str().to_owned(), loc: m.into() });
-            imports = utils::find_import_paths(content)
-                .map(|m| SolImport { path: PathBuf::from(m.as_str()), loc: m.into() })
-                .collect();
+            version =
+                capture_outer_and_inner(content, &utils::RE_SOL_PRAGMA_VERSION, &vec!["version"])
+                    .first()
+                    .map(|(cap, name)| {
+                        SolDataUnit::new(name.as_str().to_owned(), cap.to_owned().into())
+                    });
+            imports =
+                capture_outer_and_inner(content, &utils::RE_SOL_IMPORT, &vec!["p1", "p2", "p3"])
+                    .iter()
+                    .map(|(cap, m)| {
+                        SolDataUnit::new(PathBuf::from(m.as_str()), cap.to_owned().into())
+                    })
+                    .collect();
         }
     };
-    let version_req = version.as_ref().and_then(|v| Solc::version_req(&v.version).ok());
-    SolData { version_req, version, imports }
+    let license =
+        capture_outer_and_inner(content, &utils::RE_SOL_SDPX_LICENSE_IDENTIFIER, &vec!["license"])
+            .first()
+            .map(|(cap, l)| SolDataUnit::new(l.as_str().to_owned(), cap.to_owned().into()));
+    let version_req = version.as_ref().and_then(|v| Solc::version_req(v.data()).ok());
+    SolData { version_req, version, imports, license }
+}
+
+fn capture_outer_and_inner<'a>(
+    content: &'a str,
+    regex: &regex::Regex,
+    names: &[&str],
+) -> Vec<(regex::Match<'a>, regex::Match<'a>)> {
+    regex
+        .captures_iter(content)
+        .filter_map(|cap| {
+            let cap_match = names.iter().find_map(|name| cap.name(name));
+            cap_match.and_then(|m| cap.get(0).map(|outer| (outer.to_owned(), m)))
+        })
+        .collect()
 }
 
 #[cfg(test)]
@@ -571,7 +589,7 @@ mod tests {
         let dapp_test = graph.node(1);
         assert_eq!(dapp_test.path, paths.sources.join("Dapp.t.sol"));
         assert_eq!(
-            dapp_test.data.imports.iter().map(|i| i.path()).collect::<Vec<&PathBuf>>(),
+            dapp_test.data.imports.iter().map(|i| i.data()).collect::<Vec<&PathBuf>>(),
             vec![&PathBuf::from("ds-test/test.sol"), &PathBuf::from("./Dapp.sol")]
         );
         assert_eq!(graph.imported_nodes(1).to_vec(), vec![2, 0]);
