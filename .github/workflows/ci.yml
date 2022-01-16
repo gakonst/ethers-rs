@@ -50,14 +50,15 @@ jobs:
           mkdir -p "$HOME/golang/"
           tar -C $HOME/golang/ -xzf $(curl "https://go.dev/VERSION?m=text").linux-amd64.tar.gz
           export PATH=$PATH:$HOME/golang/go/bin
-          go version
+          alias go17="$HOME/golang/go/bin/go"
+          go17 version
 
           mkdir -p "$HOME/go"
           export GOPATH=$HOME/go
           export PATH=$PATH:$GOPATH/bin
 
-          CGO_ENABLED=1 GOOS=linux go install github.com/ledgerwatch/erigon/cmd/erigon@stable
-          CGO_ENABLED=1 GOOS=linux go install github.com/ledgerwatch/erigon/cmd/rpcdaemon@stable
+          GO111MODULE=on CGO_ENABLED=1 GOOS=linux go17 install github.com/ledgerwatch/erigon/cmd/erigon@stable
+          GO111MODULE=on CGO_ENABLED=1 GOOS=linux go17 install github.com/ledgerwatch/erigon/cmd/rpcdaemon@stable
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1
         with:
