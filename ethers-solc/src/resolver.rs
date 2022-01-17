@@ -385,6 +385,10 @@ impl VersionedSources {
     ) -> Result<std::collections::BTreeMap<Solc, Sources>> {
         use crate::SolcError;
 
+        // we take the installer lock here to ensure installation checking is done in sync
+        #[cfg(any(test, feature = "tests"))]
+        let _lock = crate::compile::take_solc_installer_lock();
+
         let mut sources_by_version = std::collections::BTreeMap::new();
         for (version, sources) in self.inner {
             if !version.is_installed() {
