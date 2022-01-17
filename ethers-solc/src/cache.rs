@@ -59,6 +59,11 @@ impl SolFilesCache {
         self.format == ETHERS_FORMAT_VERSION
     }
 
+    /// Returns the corresponding `CacheEntry` for the file if it exists
+    pub fn entry(&self, file: impl AsRef<Path>) -> Option<&CacheEntry> {
+        self.files.get(file.as_ref())
+    }
+
     /// Reads the cache json file from the given path
     #[tracing::instrument(skip_all, name = "sol-files-cache::read")]
     pub fn read(path: impl AsRef<Path>) -> Result<Self> {
@@ -189,7 +194,7 @@ impl SolFilesCache {
     }
 
     /// Returns true if the entry has any imports that were changed
-    fn has_changed_imports(
+    pub(crate) fn has_changed_imports(
         &self,
         path: &Path,
         entry: &CacheEntry,

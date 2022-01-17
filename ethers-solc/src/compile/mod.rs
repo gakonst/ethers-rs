@@ -14,6 +14,10 @@ use std::{
     str::FromStr,
 };
 
+pub mod many;
+#[cfg(all(feature = "svm", feature = "async"))]
+pub mod project;
+
 /// The name of the `solc` binary on the system
 pub const SOLC: &str = "solc";
 
@@ -556,7 +560,7 @@ impl Solc {
     /// let outputs = Solc::compile_many([(solc1, input1), (solc2, input2)], 2).await.flattened().unwrap();
     /// # }
     /// ```
-    pub async fn compile_many<I>(jobs: I, n: usize) -> CompiledMany
+    pub async fn compile_many<I>(jobs: I, n: usize) -> crate::many::CompiledMany
     where
         I: IntoIterator<Item = (Solc, CompilerInput)>,
     {
@@ -569,42 +573,8 @@ impl Solc {
         .buffer_unordered(n)
         .collect::<Vec<_>>()
         .await;
-        CompiledMany { outputs }
-    }
-}
 
-/// The result of a `solc` process bundled with its `Solc` and `CompilerInput`
-type CompileElement = (Result<CompilerOutput>, Solc, CompilerInput);
-
-/// The output of multiple `solc` processes.
-#[derive(Debug)]
-pub struct CompiledMany {
-    outputs: Vec<CompileElement>,
-}
-
-impl CompiledMany {
-    /// Returns an iterator over all output elements
-    pub fn outputs(&self) -> impl Iterator<Item = &CompileElement> {
-        self.outputs.iter()
-    }
-
-    /// Returns an iterator over all output elements
-    pub fn into_outputs(self) -> impl Iterator<Item = CompileElement> {
-        self.outputs.into_iter()
-    }
-
-    /// Returns all `CompilerOutput` or the first error that occurred
-    pub fn flattened(self) -> Result<Vec<CompilerOutput>> {
-        self.into_iter().collect()
-    }
-}
-
-impl IntoIterator for CompiledMany {
-    type Item = Result<CompilerOutput>;
-    type IntoIter = std::vec::IntoIter<Result<CompilerOutput>>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.outputs.into_iter().map(|(res, _, _)| res).collect::<Vec<_>>().into_iter()
+        crate::many::CompiledMany::new(outputs)
     }
 }
 
@@ -670,7 +640,7 @@ mod tests {
 
     #[test]
     fn solc_compile_works() {
-        let input = include_str!("../test-data/in/compiler-in-1.json");
+        let input = include_str!("../../test-data/in/compiler-in-1.json");
         let input: CompilerInput = serde_json::from_str(input).unwrap();
         let out = solc().compile(&input).unwrap();
         let other = solc().compile(&serde_json::json!(input)).unwrap();
@@ -680,7 +650,7 @@ mod tests {
     #[cfg(feature = "async")]
     #[tokio::test]
     async fn async_solc_compile_works() {
-        let input = include_str!("../test-data/in/compiler-in-1.json");
+        let input = include_str!("../../test-data/in/compiler-in-1.json");
         let input: CompilerInput = serde_json::from_str(input).unwrap();
         let out = solc().async_compile(&input).await.unwrap();
         let other = solc().async_compile(&serde_json::json!(input)).await.unwrap();
@@ -689,7 +659,7 @@ mod tests {
     #[cfg(feature = "async")]
     #[tokio::test]
     async fn async_solc_compile_works2() {
-        let input = include_str!("../test-data/in/compiler-in-2.json");
+        let input = include_str!("../../test-data/in/compiler-in-2.json");
         let input: CompilerInput = serde_json::from_str(input).unwrap();
         let out = solc().async_compile(&input).await.unwrap();
         let other = solc().async_compile(&serde_json::json!(input)).await.unwrap();

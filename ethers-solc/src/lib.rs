@@ -247,12 +247,25 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         self.compile_with_version(&solc, sources)
     }
 
+    /// Compiles a set of contracts using `svm` managed solc installs
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use ethers_solc::{artifacts::Source, Project, utils};
+    /// # fn demo(project: Project) {
+    /// let project = Project::builder().build().unwrap();
+    /// let files = utils::source_files("./src");
+    /// let sources = Source::read_all(files).unwrap();
+    /// let output = project.svm_compile(sources).unwrap();
+    /// # }
+    /// ```
     #[cfg(all(feature = "svm", feature = "async"))]
     #[tracing::instrument(skip(self, sources))]
     pub fn svm_compile(&self, sources: Sources) -> Result<ProjectCompileOutput<Artifacts>> {
         let graph = Graph::resolve_sources(&self.paths, sources)?;
         let sources_by_version =
-            graph.into_sources_by_version(!self.auto_detect)?.get(&self.allowed_lib_paths)?;
+            graph.into_sources_by_version(!self.auto_detect)?.0.get(&self.allowed_lib_paths)?;
 
         // run the compilation step for each version
         let compiled = if self.solc_jobs > 1 && sources_by_version.len() > 1 {
@@ -285,7 +298,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         Ok(compiled)
     }
 
-    /// Compiles all sources with their intended `Solc` version in parallel.
+    /// Compiles all sources with their intended `Solc` versions in parallel.
     ///
     /// This runs `Self::solc_jobs` parallel `solc` jobs at most.
     #[cfg(all(feature = "svm", feature = "async"))]
@@ -463,6 +476,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
             tracing::trace!("start reading solfiles cache for incremental compilation");
             let mut cache = SolFilesCache::read(&self.paths.cache)?;
             cache.remove_missing_files();
+
             let changed_files = cache.get_changed_or_missing_artifacts_files::<Artifacts>(
                 sources,
                 Some(&self.solc_config),
