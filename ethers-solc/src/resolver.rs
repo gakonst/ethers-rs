@@ -27,7 +27,7 @@
 //! which is defined on a per source file basis.
 
 use std::{
-    collections::{HashMap, VecDeque},
+    collections::{HashMap, HashSet, VecDeque},
     path::{Path, PathBuf},
 };
 
@@ -70,6 +70,21 @@ impl Graph {
     /// Gets a node by index.
     pub fn node(&self, index: usize) -> &Node {
         &self.nodes[index]
+    }
+
+    /// Returns an iterator that yields all nodes of the dependency tree that the given node id
+    /// spans, starting with the node itself.
+    ///
+    /// # Panics
+    ///
+    /// if the `start` node id is not included in the graph
+    pub fn node_ids(&self, start: usize) -> impl Iterator<Item = usize> + '_ {
+        NodesIter::new(start, self)
+    }
+
+    /// Same as `Self::node_ids` but returns the actual `Node`
+    pub fn nodes(&self, start: usize) -> impl Iterator<Item = &Node> + '_ {
+        self.node_ids(start).map(move |idx| self.node(idx))
     }
 
     /// Returns all files together with their paths
@@ -241,32 +256,18 @@ impl Graph {
     }
 
     /// Filters incompatible versions from the `candidates`.
-    fn retain_compatible_versions(
-        &self,
-        idx: usize,
-        candidates: &mut Vec<&crate::SolcVersion>,
-        traversed: &mut std::collections::HashSet<(usize, usize)>,
-    ) -> std::result::Result<(), String> {
-        let node = self.node(idx);
-        if let Some(ref req) = node.data.version_req {
-            candidates.retain(|v| req.matches(v.as_ref()));
-        }
-        for dep in self.imported_nodes(idx).iter().copied() {
-            // check for circular deps which would result in endless recursion SO here
-            // a circular dependency exists, if there was already a `dependency imports current
-            // node` relationship in the traversed path we skip this node
-            traversed.insert((idx, dep));
-            if traversed.contains(&(dep, idx)) {
-                tracing::warn!(
-                    "Detected cyclic imports {} <-> {}",
-                    utils::source_name(&self.nodes[idx].path, &self.root).display(),
-                    utils::source_name(&self.nodes[dep].path, &self.root).display()
-                );
-                continue
+    fn retain_compatible_versions(&self, idx: usize, candidates: &mut Vec<&crate::SolcVersion>) {
+        let nodes: HashSet<_> = self.node_ids(idx).collect();
+        for node in nodes {
+            let node = self.node(node);
+            if let Some(ref req) = node.data.version_req {
+                candidates.retain(|v| req.matches(v.as_ref()));
             }
-            self.retain_compatible_versions(dep, candidates, traversed)?;
+            if candidates.is_empty() {
+                // nothing to filter anymore
+                return
+            }
         }
-        Ok(())
     }
 
     /// Ensures that all files are compatible with all of their imports.
@@ -304,11 +305,7 @@ impl Graph {
         // walking through the node's dep tree and filtering the versions along the way
         for idx in 0..self.num_input_files {
             let mut candidates = all_versions.iter().collect::<Vec<_>>();
-            let mut traveresd = std::collections::HashSet::new();
-            if let Err(msg) = self.retain_compatible_versions(idx, &mut candidates, &mut traveresd)
-            {
-                errors.push(msg);
-            }
+            self.retain_compatible_versions(idx, &mut candidates);
 
             if candidates.is_empty() && !erroneous_nodes.contains(&idx) {
                 let mut msg = String::new();
@@ -341,6 +338,34 @@ impl Graph {
             tracing::error!("failed to resolve versions");
             Err(crate::error::SolcError::msg(errors.join("\n")))
         }
+    }
+}
+
+/// An iterator over a node and its dependencies
+#[derive(Debug)]
+pub struct NodesIter<'a> {
+    /// stack of nodes
+    stack: VecDeque<usize>,
+    visited: HashSet<usize>,
+    graph: &'a Graph,
+}
+
+impl<'a> NodesIter<'a> {
+    fn new(start: usize, graph: &'a Graph) -> Self {
+        Self { stack: VecDeque::from([start]), visited: Default::default(), graph }
+    }
+}
+
+impl<'a> Iterator for NodesIter<'a> {
+    type Item = usize;
+    fn next(&mut self) -> Option<Self::Item> {
+        let node = self.stack.pop_front()?;
+
+        if self.visited.insert(node) {
+            // push the node's direct dependencies to the stack if we haven't visited it already
+            self.stack.extend(self.graph.imported_nodes(node).iter().copied());
+        }
+        Some(node)
     }
 }
 
