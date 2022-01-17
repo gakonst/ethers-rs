@@ -32,8 +32,9 @@ use std::{
 };
 
 use rayon::prelude::*;
+use regex::Match;
 use semver::VersionReq;
-use solang_parser::pt::{Import, SourceUnitPart};
+use solang_parser::pt::{Import, Loc, SourceUnitPart};
 
 use crate::{error::Result, utils, ProjectPathsConfig, Solc, Source, Sources};
 
@@ -153,14 +154,12 @@ impl Graph {
             };
 
             for import in node.data.imports.iter() {
-                match paths.resolve_import(cwd, import) {
+                match paths.resolve_import(cwd, import.data()) {
                     Ok(import) => {
                         add_node(&mut unresolved, &mut index, &mut resolved_imports, import)?;
                     }
-                    Err(err) => {
-                        tracing::trace!("{}", err)
-                    }
-                }
+                    Err(err) => tracing::trace!("failed to resolve import component \"{:?}\"", err),
+                };
             }
             nodes.push(node);
             edges.push(resolved_imports);
@@ -422,12 +421,81 @@ pub struct Node {
     data: SolData,
 }
 
+impl Node {
+    pub fn content(&self) -> &str {
+        &self.source.content
+    }
+
+    pub fn imports(&self) -> &Vec<SolDataUnit<PathBuf>> {
+        &self.data.imports
+    }
+
+    pub fn version(&self) -> &Option<SolDataUnit<String>> {
+        &self.data.version
+    }
+
+    pub fn license(&self) -> &Option<SolDataUnit<String>> {
+        &self.data.license
+    }
+}
+
 #[derive(Debug, Clone)]
 #[allow(unused)]
 struct SolData {
-    version: Option<String>,
+    license: Option<SolDataUnit<String>>,
+    version: Option<SolDataUnit<String>>,
+    imports: Vec<SolDataUnit<PathBuf>>,
     version_req: Option<VersionReq>,
-    imports: Vec<PathBuf>,
+}
+
+#[derive(Debug, Clone)]
+pub struct SolDataUnit<T> {
+    loc: Location,
+    data: T,
+}
+#[derive(Debug, Clone)]
+pub struct Location {
+    pub start: usize,
+    pub end: usize,
+}
+
+/// Solidity Data Unit decorated with its location within the file
+impl<T> SolDataUnit<T> {
+    pub fn new(data: T, loc: Location) -> Self {
+        Self { data, loc }
+    }
+
+    /// Returns the underlying data for the unit
+    pub fn data(&self) -> &T {
+        &self.data
+    }
+
+    /// Returns the location of the given data unit
+    pub fn loc(&self) -> (usize, usize) {
+        (self.loc.start, self.loc.end)
+    }
+
+    /// Returns the location of the given data unit adjusted by an offset.
+    /// Used to determine new position of the unit within the file after
+    /// content manipulation.
+    pub fn loc_by_offset(&self, offset: isize) -> (usize, usize) {
+        (
+            offset.saturating_add(self.loc.start as isize) as usize,
+            offset.saturating_add(self.loc.end as isize) as usize,
+        )
+    }
+}
+
+impl From<Match<'_>> for Location {
+    fn from(src: Match) -> Self {
+        Location { start: src.start(), end: src.end() }
+    }
+}
+
+impl From<Loc> for Location {
+    fn from(src: Loc) -> Self {
+        Location { start: src.1, end: src.2 }
+    }
 }
 
 fn read_node(file: impl AsRef<Path>) -> Result<Node> {
@@ -443,24 +511,24 @@ fn read_node(file: impl AsRef<Path>) -> Result<Node> {
 /// parsing fails, we'll fall back to extract that info via regex
 fn parse_data(content: &str) -> SolData {
     let mut version = None;
-    let mut imports = Vec::new();
+    let mut imports = Vec::<SolDataUnit<PathBuf>>::new();
     match solang_parser::parse(content, 0) {
         Ok(units) => {
             for unit in units.0 {
                 match unit {
-                    SourceUnitPart::PragmaDirective(_, _, pragma, value) => {
+                    SourceUnitPart::PragmaDirective(loc, _, pragma, value) => {
                         if pragma.name == "solidity" {
                             // we're only interested in the solidity version pragma
-                            version = Some(value.string);
+                            version = Some(SolDataUnit::new(value.string, loc.into()));
                         }
                     }
                     SourceUnitPart::ImportDirective(_, import) => {
-                        let import = match import {
-                            Import::Plain(s, _) => s,
-                            Import::GlobalSymbol(s, _, _) => s,
-                            Import::Rename(s, _, _) => s,
+                        let (import, loc) = match import {
+                            Import::Plain(s, l) => (s, l),
+                            Import::GlobalSymbol(s, _, l) => (s, l),
+                            Import::Rename(s, _, l) => (s, l),
                         };
-                        imports.push(PathBuf::from(import.string));
+                        imports.push(SolDataUnit::new(PathBuf::from(import.string), loc.into()));
                     }
                     _ => {}
                 }
@@ -471,21 +539,50 @@ fn parse_data(content: &str) -> SolData {
                 "failed to parse solidity ast: \"{:?}\". Falling back to regex to extract data",
                 err
             );
-            version = utils::find_version_pragma(content).map(str::to_string);
-            imports = utils::find_import_paths(content)
-                .into_iter()
-                .map(|p| Path::new(p).to_path_buf())
-                .collect()
+            version = capture_outer_and_inner(content, &utils::RE_SOL_PRAGMA_VERSION, &["version"])
+                .first()
+                .map(|(cap, name)| {
+                    SolDataUnit::new(name.as_str().to_owned(), cap.to_owned().into())
+                });
+            imports = capture_outer_and_inner(content, &utils::RE_SOL_IMPORT, &["p1", "p2", "p3"])
+                .iter()
+                .map(|(cap, m)| SolDataUnit::new(PathBuf::from(m.as_str()), cap.to_owned().into()))
+                .collect();
         }
     };
-    let version_req = if let Some(ref v) = version { Solc::version_req(v).ok() } else { None };
-    SolData { version_req, version, imports }
+    let license = content.lines().next().and_then(|line| {
+        capture_outer_and_inner(line, &utils::RE_SOL_SDPX_LICENSE_IDENTIFIER, &["license"])
+            .first()
+            .map(|(cap, l)| SolDataUnit::new(l.as_str().to_owned(), cap.to_owned().into()))
+    });
+    let version_req = version.as_ref().and_then(|v| Solc::version_req(v.data()).ok());
+    SolData { version_req, version, imports, license }
+}
+
+/// Given the regex and the target string, find all occurrences
+/// of named groups within the string. This method returns
+/// the tuple of matches `(a, b)` where `a` is the match for the
+/// entire regex and `b` is the match for the first named group.
+///
+/// NOTE: This method will return the match for the first named
+/// group, so the order of passed named groups matters.
+fn capture_outer_and_inner<'a>(
+    content: &'a str,
+    regex: &regex::Regex,
+    names: &[&str],
+) -> Vec<(regex::Match<'a>, regex::Match<'a>)> {
+    regex
+        .captures_iter(content)
+        .filter_map(|cap| {
+            let cap_match = names.iter().find_map(|name| cap.name(name));
+            cap_match.and_then(|m| cap.get(0).map(|outer| (outer.to_owned(), m)))
+        })
+        .collect()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::path::Path;
 
     #[test]
     fn can_resolve_hardhat_dependency_graph() {
@@ -527,11 +624,8 @@ mod tests {
         let dapp_test = graph.node(1);
         assert_eq!(dapp_test.path, paths.sources.join("Dapp.t.sol"));
         assert_eq!(
-            dapp_test.data.imports,
-            vec![
-                Path::new("ds-test/test.sol").to_path_buf(),
-                Path::new("./Dapp.sol").to_path_buf()
-            ]
+            dapp_test.data.imports.iter().map(|i| i.data()).collect::<Vec<&PathBuf>>(),
+            vec![&PathBuf::from("ds-test/test.sol"), &PathBuf::from("./Dapp.sol")]
         );
         assert_eq!(graph.imported_nodes(1).to_vec(), vec![2, 0]);
     }

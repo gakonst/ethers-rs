@@ -4,6 +4,7 @@ use crate::{
     error::{Result, SolcError, SolcIoError},
     hh::HardhatArtifact,
     remappings::Remapping,
+    resolver::Graph,
     utils, CompilerOutput, Source, Sources,
 };
 use ethers_core::{abi::Abi, types::Bytes};
@@ -11,8 +12,7 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{
     collections::BTreeMap,
     convert::TryFrom,
-    fmt,
-    fmt::Formatter,
+    fmt::{self, Formatter},
     fs, io,
     path::{Component, Path, PathBuf},
 };
@@ -170,6 +170,68 @@ impl ProjectPathsConfig {
     ///   - `<root>/node_modules` if it exists and `<root>/lib` does not exist.
     pub fn find_libs(root: impl AsRef<Path>) -> Vec<PathBuf> {
         vec![utils::find_fave_or_alt_path(root, "lib", "node_modules")]
+    }
+
+    /// Flattens all file imports into a single string
+    pub fn flatten(&self, target: &Path) -> Result<String> {
+        tracing::trace!("flattening file");
+        let graph = Graph::resolve(self)?;
+        self.flatten_node(target, &graph, false, false)
+    }
+
+    /// Flattens a single node from the dependency graph
+    fn flatten_node(
+        &self,
+        target: &Path,
+        graph: &Graph,
+        strip_version_pragma: bool,
+        strip_license: bool,
+    ) -> Result<String> {
+        let target_dir = target.parent().ok_or_else(|| {
+            SolcError::msg(format!("failed to get parent directory for \"{:?}\"", target.display()))
+        })?;
+        let target_index = graph.files().get(target).ok_or_else(|| {
+            SolcError::msg(format!("cannot resolve file at \"{:?}\"", target.display()))
+        })?;
+        let target_node = graph.node(*target_index);
+
+        let mut imports = target_node.imports().clone();
+        imports.sort_by_key(|x| x.loc().0);
+
+        let mut content = target_node.content().as_bytes().to_vec();
+        let mut offset = 0_isize;
+
+        if strip_license {
+            if let Some(license) = target_node.license() {
+                let (start, end) = license.loc_by_offset(offset);
+                content.splice(start..end, std::iter::empty());
+                offset -= (end - start) as isize;
+            }
+        }
+
+        if strip_version_pragma {
+            if let Some(version) = target_node.version() {
+                let (start, end) = version.loc_by_offset(offset);
+                content.splice(start..end, std::iter::empty());
+                offset -= (end - start) as isize;
+            }
+        }
+
+        for import in imports.iter() {
+            let import_path = self.resolve_import(target_dir, import.data())?;
+            let import_content = self.flatten_node(&import_path, graph, true, true)?;
+            let import_content = import_content.trim().as_bytes().to_owned();
+            let import_content_len = import_content.len() as isize;
+            let (start, end) = import.loc_by_offset(offset);
+            content.splice(start..end, import_content);
+            offset += import_content_len - ((end - start) as isize);
+        }
+
+        let result = String::from_utf8(content).map_err(|err| {
+            SolcError::msg(format!("failed to convert extended bytes to string: {}", err))
+        })?;
+
+        Ok(result)
     }
 }
 

@@ -37,8 +37,12 @@ use crate::{
 };
 use error::Result;
 use std::{
-    borrow::Cow, collections::BTreeMap, convert::TryInto, fmt, fs, marker::PhantomData,
-    path::PathBuf,
+    borrow::Cow,
+    collections::BTreeMap,
+    convert::TryInto,
+    fmt, fs,
+    marker::PhantomData,
+    path::{Path, PathBuf},
 };
 
 /// Utilities for creating, mocking and testing of (temporary) projects
@@ -506,6 +510,18 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
             tracing::trace!("removed artifacts dir \"{}\"", self.artifacts_path().display());
         }
         Ok(())
+    }
+
+    /// Flattens the target file into a single string suitable for verification
+    ///
+    /// This method uses a dependency graph to resolve imported files and substitute
+    /// import directives with the contents of target files. It will strip the pragma
+    /// version directives and SDPX license identifiers from imported files.
+    ///
+    /// NOTE: the SDPX license identifier will be removed from the imported file
+    /// only if it is found at the beginning of the file.
+    pub fn flatten(&self, target: &Path) -> Result<String> {
+        self.paths.flatten(target)
     }
 }
 

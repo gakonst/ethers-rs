@@ -326,10 +326,10 @@ impl SolFilesCacheBuilder {
                 .map_err(|err| SolcError::solc(err.to_string()))?
                 .as_millis() as u64;
             let imports =
-                utils::find_import_paths(source.as_ref()).into_iter().map(str::to_string).collect();
+                utils::find_import_paths(source.as_ref()).map(|m| m.as_str().to_owned()).collect();
 
             let version_pragmas = utils::find_version_pragma(source.as_ref())
-                .map(|v| vec![v.to_string()])
+                .map(|v| vec![v.as_str().to_string()])
                 .unwrap_or_default();
 
             let entry = CacheEntry {

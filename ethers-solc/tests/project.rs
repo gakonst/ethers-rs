@@ -307,3 +307,56 @@ fn copy_dir_all(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> io::Result<()> 
     }
     Ok(())
 }
+
+#[test]
+fn can_flatten_file() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test-data/test-contract-libs");
+    let target = root.join("src").join("Foo.sol");
+    let paths = ProjectPathsConfig::builder()
+        .sources(root.join("src"))
+        .lib(root.join("lib1"))
+        .lib(root.join("lib2"));
+    let project = TempProject::<MinimalCombinedArtifacts>::new(paths).unwrap();
+
+    let result = project.flatten(&target);
+    assert!(result.is_ok());
+
+    let result = result.unwrap();
+    assert!(result.find("contract Foo").is_some());
+    assert!(result.find("contract Bar").is_some());
+}
+
+#[test]
+fn can_flatten_file_with_external_lib() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test-data/hardhat-sample");
+    let paths = ProjectPathsConfig::builder()
+        .sources(root.join("contracts"))
+        .lib(root.join("node_modules"));
+    let project = TempProject::<MinimalCombinedArtifacts>::new(paths).unwrap();
+
+    let target = root.join("contracts").join("Greeter.sol");
+
+    let result = project.flatten(&target);
+    assert!(result.is_ok());
+
+    let result = result.unwrap();
+    assert!(result.find("library console").is_some());
+    assert!(result.find("contract Greeter").is_some());
+}
+
+#[test]
+fn can_flatten_file_in_dapp_sample() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test-data/dapp-sample");
+    let paths = ProjectPathsConfig::builder().sources(root.join("src")).lib(root.join("lib"));
+    let project = TempProject::<MinimalCombinedArtifacts>::new(paths).unwrap();
+
+    let target = root.join("src/Dapp.t.sol");
+
+    let result = project.flatten(&target);
+    assert!(result.is_ok());
+
+    let result = result.unwrap();
+    assert!(result.find("contract DSTest").is_some());
+    assert!(result.find("contract Dapp").is_some());
+    assert!(result.find("contract DappTest").is_some());
+}
