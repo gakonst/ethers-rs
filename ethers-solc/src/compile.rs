@@ -47,6 +47,19 @@ use std::sync::Mutex;
 #[allow(unused)]
 static LOCK: Lazy<Mutex<()>> = Lazy::new(|| Mutex::new(()));
 
+/// take the lock in tests, we use this to enforce that
+/// a test does not run while a compiler version is being installed
+///
+/// This ensures that only one thread installs a missing `solc` exe.
+/// Instead of taking this lock in `Solc::blocking_install`, the lock should be taken before
+/// installation is detected.
+#[cfg(any(test, feature = "tests"))]
+#[allow(unused)]
+pub(crate) fn take_solc_installer_lock() -> std::sync::LockResult<std::sync::MutexGuard<'static, ()>>
+{
+    LOCK.lock()
+}
+
 #[cfg(all(feature = "svm", feature = "async"))]
 /// A list of upstream Solc releases, used to check which version
 /// we should download.
@@ -289,9 +302,7 @@ impl Solc {
     #[cfg(all(feature = "svm", feature = "async"))]
     pub fn ensure_installed(sol_version: &VersionReq) -> Result<Version> {
         #[cfg(any(test, feature = "tests"))]
-        // take the lock in tests, we use this to enforce that
-        // a test does not run while a compiler version is being installed
-        let _lock = LOCK.lock();
+        let _lock = take_solc_installer_lock();
 
         // load the local / remote versions
         let versions = utils::installed_versions(svm::SVM_HOME.as_path()).unwrap_or_default();
