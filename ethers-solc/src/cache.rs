@@ -172,7 +172,7 @@ impl SolFilesCache {
             }
 
             // checks whether an artifact this file depends on was removed
-            if entry.artifacts.iter().any(|name| !T::output_exists(file, name, &paths.artifacts)) {
+            if entry.artifacts.iter().any(|name| !T::output_exists(file, name, &paths.artifacts, &paths.root)) {
                 tracing::trace!(
                     "missing linked artifacts for cached artifact \"{}\"",
                     file.display()
@@ -226,9 +226,9 @@ impl SolFilesCache {
     }
 
     /// Checks if all artifact files exist
-    pub fn all_artifacts_exist<T: ArtifactOutput>(&self, artifacts_root: &Path) -> bool {
+    pub fn all_artifacts_exist<T: ArtifactOutput>(&self, artifacts: &Path, root: &Path) -> bool {
         self.files.iter().all(|(file, entry)| {
-            entry.artifacts.iter().all(|name| T::output_exists(file, name, artifacts_root))
+            entry.artifacts.iter().all(|name| T::output_exists(file, name, artifacts, root))
         })
     }
 

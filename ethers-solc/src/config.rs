@@ -443,9 +443,10 @@ pub trait ArtifactOutput {
     fn output_exists(
         contract_file: impl AsRef<Path>,
         name: impl AsRef<str>,
+        artifacts: impl AsRef<Path>,
         root: impl AsRef<Path>,
     ) -> bool {
-        root.as_ref().join(Self::output_file(contract_file, name, &root)).exists()
+        artifacts.as_ref().join(Self::output_file(contract_file, name, &root)).exists()
     }
 
     fn read_cached_artifact(path: impl AsRef<Path>) -> Result<Self::Artifact> {

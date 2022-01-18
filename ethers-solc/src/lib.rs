@@ -876,6 +876,7 @@ impl<T: ArtifactOutput + 'static> ProjectCompileOutput<T> {
     pub fn into_artifacts(mut self) -> Box<dyn Iterator<Item = (String, T::Artifact)>> {
         let artifacts = self.artifacts.into_iter().filter_map(|(path, art)| {
             T::contract_name(&path).map(|name| {
+                println!("A: {:?}", path);
                 (format!("{}:{}", path.file_name().unwrap().to_string_lossy(), name), art)
             })
         });
@@ -885,6 +886,7 @@ impl<T: ArtifactOutput + 'static> ProjectCompileOutput<T> {
         {
             Box::new(artifacts.chain(T::output_to_artifacts(output).into_values().flatten().map(
                 |(name, artifact)| {
+                    println!("B: {:?}", name);
                     (format!("{}:{}", T::output_file_name(&name).display(), name), artifact)
                 },
             )))
