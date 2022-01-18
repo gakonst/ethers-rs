@@ -678,7 +678,7 @@ impl<Artifacts: ArtifactOutput> ProjectBuilder<Artifacts> {
         } = self;
 
         let solc = solc.unwrap_or_default();
-        let solc_config = solc_config.map(Ok).unwrap_or_else(|| SolcConfig::builder().build())?;
+        let solc_config = solc_config.unwrap_or_else(|| SolcConfig::builder().build());
 
         let paths = paths.map(Ok).unwrap_or_else(ProjectPathsConfig::current_hardhat)?;
 
