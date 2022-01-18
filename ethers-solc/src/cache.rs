@@ -172,7 +172,11 @@ impl SolFilesCache {
             }
 
             // checks whether an artifact this file depends on was removed
-            if entry.artifacts.iter().any(|name| !T::output_exists(file, name, &paths.artifacts, &paths.root)) {
+            if entry
+                .artifacts
+                .iter()
+                .any(|name| !T::output_exists(file, name, &paths.artifacts, &paths.root))
+            {
                 tracing::trace!(
                     "missing linked artifacts for cached artifact \"{}\"",
                     file.display()

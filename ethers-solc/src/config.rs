@@ -18,7 +18,7 @@ use std::{
 };
 
 /// Where to find all files or where to write them
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ProjectPathsConfig {
     /// Project root
     pub root: PathBuf,

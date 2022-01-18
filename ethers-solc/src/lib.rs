@@ -236,7 +236,10 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         #[cfg(all(feature = "svm", feature = "async"))]
         if self.auto_detect {
             tracing::trace!("using solc auto detection to compile sources");
-            return self.svm_compile(sources)
+            return self.svm_compile(sources).map(|mut output| {
+                output.set_paths(self.paths.clone());
+                output
+            })
         }
 
         let mut solc = self.solc.clone();
@@ -245,7 +248,10 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         }
 
         let sources = Graph::resolve_sources(&self.paths, sources)?.into_sources();
-        self.compile_with_version(&solc, sources)
+        self.compile_with_version(&solc, sources).map(|mut output| {
+            output.set_paths(self.paths.clone());
+            output
+        })
     }
 
     #[cfg(all(feature = "svm", feature = "async"))]
@@ -474,7 +480,8 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
 
             let cached_artifacts = if self.paths.artifacts.exists() {
                 tracing::trace!("reading artifacts from cache..");
-                let artifacts = cache.read_artifacts::<Artifacts>(&self.paths.artifacts, &self.paths.root)?;
+                let artifacts =
+                    cache.read_artifacts::<Artifacts>(&self.paths.artifacts, &self.paths.root)?;
                 tracing::trace!("read {} artifacts from cache", artifacts.len());
                 artifacts
             } else {
@@ -717,6 +724,7 @@ pub struct ProjectCompileOutput<T: ArtifactOutput> {
     compiler_output: Option<CompilerOutput>,
     /// All artifacts that were read from cache
     artifacts: BTreeMap<PathBuf, T::Artifact>,
+    paths: Option<ProjectPathsConfig>,
     ignored_error_codes: Vec<u64>,
 }
 
@@ -725,12 +733,13 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
         Self {
             compiler_output: None,
             artifacts: Default::default(),
+            paths: None,
             ignored_error_codes: ignored_errors,
         }
     }
 
     pub fn from_unchanged(artifacts: BTreeMap<PathBuf, T::Artifact>) -> Self {
-        Self { compiler_output: None, artifacts, ignored_error_codes: vec![] }
+        Self { compiler_output: None, artifacts, paths: None, ignored_error_codes: vec![] }
     }
 
     pub fn from_compiler_output(
@@ -740,6 +749,7 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
         Self {
             compiler_output: Some(compiler_output),
             artifacts: Default::default(),
+            paths: None,
             ignored_error_codes,
         }
     }
@@ -749,7 +759,12 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
         cache: BTreeMap<PathBuf, T::Artifact>,
         ignored_error_codes: Vec<u64>,
     ) -> Self {
-        Self { compiler_output: Some(compiler_output), artifacts: cache, ignored_error_codes }
+        Self {
+            compiler_output: Some(compiler_output),
+            artifacts: cache,
+            paths: None,
+            ignored_error_codes,
+        }
     }
 
     /// Get the (merged) solc compiler output
@@ -768,10 +783,13 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
 
     /// Combine two outputs
     pub fn extend(&mut self, compiled: ProjectCompileOutput<T>) {
-        let ProjectCompileOutput { compiler_output, artifacts, .. } = compiled;
-        self.artifacts.extend(artifacts);
+        let ProjectCompileOutput { compiler_output, artifacts, paths, .. } = compiled;
         if let Some(output) = compiler_output {
             self.extend_output(output);
+        }
+        self.artifacts.extend(artifacts);
+        if paths.is_some() {
+            self.paths = paths;
         }
     }
 
@@ -787,6 +805,10 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
 
     pub fn extend_artifacts(&mut self, artifacts: BTreeMap<PathBuf, T::Artifact>) {
         self.artifacts.extend(artifacts);
+    }
+
+    pub fn set_paths(&mut self, paths: ProjectPathsConfig) {
+        self.paths = Some(paths);
     }
 
     /// Whether this type does not contain compiled contracts
@@ -874,20 +896,49 @@ impl<T: ArtifactOutput + 'static> ProjectCompileOutput<T> {
     /// let contracts: BTreeMap<String, CompactContract> = project.compile().unwrap().into_artifacts().collect();
     /// ```
     pub fn into_artifacts(mut self) -> Box<dyn Iterator<Item = (String, T::Artifact)>> {
-        let artifacts = self.artifacts.into_iter().filter_map(|(path, art)| {
+        let paths = self.paths.as_ref();
+        let artifacts_path = paths.map(|p| p.artifacts.clone());
+        let root_path = paths.map(|p| p.root.clone());
+
+        let artifacts = self.artifacts.into_iter().filter_map(move |(path, art)| {
+            let source_name = artifacts_path
+                .as_ref()
+                .and_then(|root| path.strip_prefix(&root).ok())
+                .and_then(|p| p.parent())
+                .map(|p| p.into());
             T::contract_name(&path).map(|name| {
-                println!("A: {:?}", path);
-                (format!("{}:{}", path.file_name().unwrap().to_string_lossy(), name), art)
+                (
+                    format!(
+                        "{}:{}",
+                        source_name.unwrap_or_else(|| T::output_file_name(&name)).display(),
+                        name
+                    ),
+                    art,
+                )
             })
         });
 
         let artifacts: Box<dyn Iterator<Item = (String, T::Artifact)>> = if let Some(output) =
             self.compiler_output.take()
         {
-            Box::new(artifacts.chain(T::output_to_artifacts(output).into_values().flatten().map(
-                |(name, artifact)| {
-                    println!("B: {:?}", name);
-                    (format!("{}:{}", T::output_file_name(&name).display(), name), artifact)
+            Box::new(artifacts.chain(T::output_to_artifacts(output).into_iter().flat_map(
+                move |(file, artifacts)| {
+                    let root_path = root_path.clone();
+                    let file_path = PathBuf::from(file);
+                    artifacts.into_iter().map(move |(name, artifact)| {
+                        let source_name = root_path
+                            .as_ref()
+                            .and_then(|root| file_path.strip_prefix(&root).ok())
+                            .map(|p| p.into());
+                        (
+                            format!(
+                                "{}:{}",
+                                source_name.unwrap_or_else(|| T::output_file_name(&name)).display(),
+                                name
+                            ),
+                            artifact,
+                        )
+                    })
                 },
             )))
         } else {
