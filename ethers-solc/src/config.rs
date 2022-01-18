@@ -415,7 +415,7 @@ pub trait ArtifactOutput {
 
     /// Returns the path to the contract's artifact location based on the contract's file and name
     ///
-    /// This returns `src/path/contract.sol/contract.json` by default
+    /// This returns `src/path/contract.sol/contract.json` or `contract.json` by default
     fn output_file(
         contract_file: impl AsRef<Path>,
         name: impl AsRef<str>,
