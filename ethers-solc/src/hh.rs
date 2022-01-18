@@ -61,7 +61,7 @@ impl ArtifactOutput for HardhatArtifacts {
             .map_err(|err| SolcError::msg(format!("Failed to create artifacts dir: {}", err)))?;
         for (file, contracts) in output.contracts.iter() {
             for (name, contract) in contracts {
-                let artifact = Self::output_file(file, name);
+                let artifact = Self::output_file(file, name, &layout.root);
                 let artifact_file = layout.artifacts.join(artifact);
                 if let Some(parent) = artifact_file.parent() {
                     fs::create_dir_all(parent).map_err(|err| {

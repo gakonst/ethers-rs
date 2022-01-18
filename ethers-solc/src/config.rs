@@ -415,12 +415,17 @@ pub trait ArtifactOutput {
 
     /// Returns the path to the contract's artifact location based on the contract's file and name
     ///
-    /// This returns `contract.sol/contract.json` by default
-    fn output_file(contract_file: impl AsRef<Path>, name: impl AsRef<str>) -> PathBuf {
+    /// This returns `/src/path/contract.sol/contract.json` by default
+    fn output_file(
+        contract_file: impl AsRef<Path>,
+        name: impl AsRef<str>,
+        root: impl AsRef<Path>,
+    ) -> PathBuf {
         let name = name.as_ref();
         contract_file
             .as_ref()
-            .file_name()
+            .strip_prefix(root)
+            .ok()
             .map(Path::new)
             .map(|p| p.join(Self::output_file_name(name)))
             .unwrap_or_else(|| Self::output_file_name(name))
@@ -440,7 +445,7 @@ pub trait ArtifactOutput {
         name: impl AsRef<str>,
         root: impl AsRef<Path>,
     ) -> bool {
-        root.as_ref().join(Self::output_file(contract_file, name)).exists()
+        root.as_ref().join(Self::output_file(contract_file, name, &root)).exists()
     }
 
     fn read_cached_artifact(path: impl AsRef<Path>) -> Result<Self::Artifact> {
@@ -508,7 +513,7 @@ impl ArtifactOutput for MinimalCombinedArtifacts {
             .map_err(|err| SolcError::msg(format!("Failed to create artifacts dir: {}", err)))?;
         for (file, contracts) in output.contracts.iter() {
             for (name, contract) in contracts {
-                let artifact = Self::output_file(file, name);
+                let artifact = Self::output_file(file, name, &layout.root);
                 let file = layout.artifacts.join(artifact);
                 if let Some(parent) = file.parent() {
                     fs::create_dir_all(parent).map_err(|err| {

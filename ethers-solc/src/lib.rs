@@ -101,6 +101,11 @@ impl Project {
 }
 
 impl<Artifacts: ArtifactOutput> Project<Artifacts> {
+    /// Returns the path to the root directory
+    pub fn root_path(&self) -> &PathBuf {
+        &self.paths.root
+    }
+
     /// Returns the path to the artifacts directory
     pub fn artifacts_path(&self) -> &PathBuf {
         &self.paths.artifacts
@@ -469,7 +474,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
 
             let cached_artifacts = if self.paths.artifacts.exists() {
                 tracing::trace!("reading artifacts from cache..");
-                let artifacts = cache.read_artifacts::<Artifacts>(&self.paths.artifacts)?;
+                let artifacts = cache.read_artifacts::<Artifacts>(&self.paths.artifacts, &self.paths.root)?;
                 tracing::trace!("read {} artifacts from cache", artifacts.len());
                 artifacts
             } else {

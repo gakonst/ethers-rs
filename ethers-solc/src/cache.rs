@@ -236,11 +236,12 @@ impl SolFilesCache {
     pub fn read_artifacts<T: ArtifactOutput>(
         &self,
         artifacts_root: &Path,
+        root: &Path,
     ) -> Result<BTreeMap<PathBuf, T::Artifact>> {
         let mut artifacts = BTreeMap::default();
         for (file, entry) in &self.files {
             for artifact in &entry.artifacts {
-                let artifact_file = artifacts_root.join(T::output_file(file, artifact));
+                let artifact_file = artifacts_root.join(T::output_file(file, artifact, root));
                 let artifact = T::read_cached_artifact(&artifact_file)?;
                 artifacts.insert(artifact_file, artifact);
             }
