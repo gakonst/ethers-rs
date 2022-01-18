@@ -66,10 +66,9 @@ impl Client {
                 Url::parse("https://api-kovan-optimistic.etherscan.io/api"),
                 Url::parse("https://kovan-optimistic.etherscan.io"),
             ),
-            Chain::Fantom => (
-                Url::parse("https://api.ftmscan.com"),
-                Url::parse("https://ftmscan.com"),
-            ),
+            Chain::Fantom => {
+                (Url::parse("https://api.ftmscan.com"), Url::parse("https://ftmscan.com"))
+            }
             Chain::FantomTestnet => (
                 Url::parse("https://api-testnet.ftmscan.com"),
                 Url::parse("https://testnet.ftmscan.com"),
