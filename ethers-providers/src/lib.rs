@@ -168,6 +168,7 @@ pub trait Middleware: Sync + Send + Debug {
     /// 4. Estimate gas usage _with_ access lists
     /// 5. Enable access lists IFF they are cheaper
     /// 6. Poll and set legacy or 1559 gas prices
+    /// 7. Set the chain_id with the provider's, if not already set
     ///
     /// It does NOT set the nonce by default.
     /// It MAY override the gas amount set by the user, if access lists are

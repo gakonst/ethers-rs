@@ -134,6 +134,13 @@ impl Eip1559TransactionRequest {
         self
     }
 
+    /// Sets the `chain_id` field in the transaction to the provided value
+    #[must_use]
+    pub fn chain_id<T: Into<U64>>(mut self, chain_id: T) -> Self {
+        self.chain_id = Some(chain_id.into());
+        self
+    }
+
     /// Hashes the transaction's data with the provided chain id
     pub fn sighash(&self) -> H256 {
         keccak256(self.rlp().as_ref()).into()
