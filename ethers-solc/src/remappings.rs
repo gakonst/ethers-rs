@@ -193,7 +193,7 @@ impl Remapping {
 /// A relative [`Remapping`] that's aware of the current location
 ///
 /// See [`RelativeRemappingPathBuf`]
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, PartialOrd, Eq, Ord)]
 pub struct RelativeRemapping {
     pub name: String,
     pub path: RelativeRemappingPathBuf,
@@ -242,7 +242,7 @@ impl From<Remapping> for RelativeRemapping {
 /// to be relative to the configuration file itself. For example, a path of
 /// `weird-erc20/=lib/weird-erc20/src/` configured in a file `/var/foundry.toml` might be desired to
 /// resolve as a `weird-erc20/=/var/lib/weird-erc20/src/` remapping.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, Debug, PartialEq, PartialOrd, Eq, Ord)]
 pub struct RelativeRemappingPathBuf {
     parent: Option<PathBuf>,
     path: PathBuf,
