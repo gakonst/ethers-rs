@@ -301,9 +301,6 @@ impl Solc {
     /// If the required compiler version is not installed, it also proceeds to install it.
     #[cfg(all(feature = "svm", feature = "async"))]
     pub fn ensure_installed(sol_version: &VersionReq) -> Result<Version> {
-        #[cfg(any(test, feature = "tests"))]
-        let _lock = take_solc_installer_lock();
-
         // load the local / remote versions
         let versions = utils::installed_versions(svm::SVM_HOME.as_path()).unwrap_or_default();
 
@@ -365,6 +362,9 @@ impl Solc {
     /// ```
     #[cfg(feature = "svm")]
     pub async fn install(version: &Version) -> std::result::Result<(), svm::SolcVmError> {
+        #[cfg(any(test, feature = "tests"))]
+        let _lock = take_solc_installer_lock();
+
         tracing::trace!("installing solc version \"{}\"", version);
         svm::install(version).await
     }
@@ -372,6 +372,9 @@ impl Solc {
     /// Blocking version of `Self::install`
     #[cfg(all(feature = "svm", feature = "async"))]
     pub fn blocking_install(version: &Version) -> std::result::Result<(), svm::SolcVmError> {
+        #[cfg(any(test, feature = "tests"))]
+        let _lock = take_solc_installer_lock();
+
         tracing::trace!("blocking installing solc version \"{}\"", version);
         tokio::runtime::Runtime::new().unwrap().block_on(svm::install(version))?;
         Ok(())
