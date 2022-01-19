@@ -195,7 +195,7 @@ impl ProjectPathsConfig {
             SolcError::msg(format!("cannot resolve file at \"{:?}\"", target.display()))
         })?;
 
-        if imported.iter().find(|&&idx| idx == *target_index).is_some() {
+        if imported.iter().any(|&idx| idx == *target_index) {
             return Ok(String::new())
         }
 
