@@ -362,7 +362,7 @@ fn can_flatten_file_in_dapp_sample() {
 }
 
 #[test]
-fn can_flatten_file_without_duplicates() {
+fn can_flatten_file_with_duplicates() {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test-data/flatten-sample");
     let paths = ProjectPathsConfig::builder().sources(root.join("contracts"));
     let project = TempProject::<MinimalCombinedArtifacts>::new(paths).unwrap();
