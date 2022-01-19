@@ -176,7 +176,7 @@ impl ProjectPathsConfig {
     pub fn flatten(&self, target: &Path) -> Result<String> {
         tracing::trace!("flattening file");
         let graph = Graph::resolve(self)?;
-        self.flatten_node(target, &graph, false, false)
+        self.flatten_node(target, &graph, &mut vec![], false, false)
     }
 
     /// Flattens a single node from the dependency graph
@@ -184,6 +184,7 @@ impl ProjectPathsConfig {
         &self,
         target: &Path,
         graph: &Graph,
+        imported: &mut Vec<usize>,
         strip_version_pragma: bool,
         strip_license: bool,
     ) -> Result<String> {
@@ -193,6 +194,11 @@ impl ProjectPathsConfig {
         let target_index = graph.files().get(target).ok_or_else(|| {
             SolcError::msg(format!("cannot resolve file at \"{:?}\"", target.display()))
         })?;
+
+        if imported.iter().any(|&idx| idx == *target_index) {
+            return Ok(String::new())
+        }
+
         let target_node = graph.node(*target_index);
 
         let mut imports = target_node.imports().clone();
@@ -219,7 +225,7 @@ impl ProjectPathsConfig {
 
         for import in imports.iter() {
             let import_path = self.resolve_import(target_dir, import.data())?;
-            let import_content = self.flatten_node(&import_path, graph, true, true)?;
+            let import_content = self.flatten_node(&import_path, graph, imported, true, true)?;
             let import_content = import_content.trim().as_bytes().to_owned();
             let import_content_len = import_content.len() as isize;
             let (start, end) = import.loc_by_offset(offset);
@@ -230,6 +236,7 @@ impl ProjectPathsConfig {
         let result = String::from_utf8(content).map_err(|err| {
             SolcError::msg(format!("failed to convert extended bytes to string: {}", err))
         })?;
+        imported.push(*target_index);
 
         Ok(result)
     }

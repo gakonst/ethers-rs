@@ -360,3 +360,20 @@ fn can_flatten_file_in_dapp_sample() {
     assert!(result.find("contract Dapp").is_some());
     assert!(result.find("contract DappTest").is_some());
 }
+
+#[test]
+fn can_flatten_file_with_duplicates() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test-data/flatten-sample");
+    let paths = ProjectPathsConfig::builder().sources(root.join("contracts"));
+    let project = TempProject::<MinimalCombinedArtifacts>::new(paths).unwrap();
+
+    let target = root.join("contracts/FooBar.sol");
+
+    let result = project.flatten(&target);
+    assert!(result.is_ok());
+
+    let result = result.unwrap();
+    assert!(result.matches("contract Foo {").collect::<Vec<_>>().len() == 1);
+    assert!(result.matches("contract Bar {").collect::<Vec<_>>().len() == 1);
+    assert!(result.matches("contract FooBar {").collect::<Vec<_>>().len() == 1);
+}
