@@ -474,7 +474,7 @@ impl Source {
 
     /// Returns all import statements of the file
     pub fn parse_imports(&self) -> Vec<&str> {
-        utils::find_import_paths(self.as_ref())
+        utils::find_import_paths(self.as_ref()).map(|m| m.as_str()).collect()
     }
 }
 

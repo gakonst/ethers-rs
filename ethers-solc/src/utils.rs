@@ -2,43 +2,49 @@
 
 use std::path::{Component, Path, PathBuf};
 
-use crate::{error::SolcError, SolcIoError};
+use crate::{
+    error::{self, SolcError},
+    ProjectPathsConfig, SolcIoError,
+};
 use once_cell::sync::Lazy;
-use regex::Regex;
+use regex::{Match, Regex};
 use semver::Version;
 use tiny_keccak::{Hasher, Keccak};
 use walkdir::WalkDir;
 
 /// A regex that matches the import path and identifier of a solidity import
 /// statement with the named groups "path", "id".
+// Adapted from https://github.com/nomiclabs/hardhat/blob/cced766c65b25d3d0beb39ef847246ac9618bdd9/packages/hardhat-core/src/internal/solidity/parse.ts#L100
 pub static RE_SOL_IMPORT: Lazy<Regex> = Lazy::new(|| {
-    // Adapted from https://github.com/nomiclabs/hardhat/blob/cced766c65b25d3d0beb39ef847246ac9618bdd9/packages/hardhat-core/src/internal/solidity/parse.ts#L100
     Regex::new(r#"import\s+(?:(?:"(?P<p1>[^;]*)"|'([^;]*)')(?:;|\s+as\s+(?P<id>[^;]*);)|.+from\s+(?:"(?P<p2>.*)"|'(?P<p3>.*)');)"#).unwrap()
 });
 
 /// A regex that matches the version part of a solidity pragma
 /// as follows: `pragma solidity ^0.5.2;` => `^0.5.2`
-/// statement with the named groups "path", "id".
+/// statement with the named group "version".
 // Adapted from https://github.com/nomiclabs/hardhat/blob/cced766c65b25d3d0beb39ef847246ac9618bdd9/packages/hardhat-core/src/internal/solidity/parse.ts#L119
 pub static RE_SOL_PRAGMA_VERSION: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"pragma\s+solidity\s+(?P<version>.+?);").unwrap());
+
+/// A regex that matches the SDPX license identifier
+/// statement with the named group "license".
+pub static RE_SOL_SDPX_LICENSE_IDENTIFIER: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"///?\s*SPDX-License-Identifier:\s*(?P<license>.+)").unwrap());
 
 /// Returns all path parts from any solidity import statement in a string,
 /// `import "./contracts/Contract.sol";` -> `"./contracts/Contract.sol"`.
 ///
 /// See also https://docs.soliditylang.org/en/v0.8.9/grammar.html
-pub fn find_import_paths(contract: &str) -> Vec<&str> {
+pub fn find_import_paths(contract: &str) -> impl Iterator<Item = Match> {
     RE_SOL_IMPORT
         .captures_iter(contract)
         .filter_map(|cap| cap.name("p1").or_else(|| cap.name("p2")).or_else(|| cap.name("p3")))
-        .map(|m| m.as_str())
-        .collect()
 }
 
 /// Returns the solidity version pragma from the given input:
 /// `pragma solidity ^0.5.2;` => `^0.5.2`
-pub fn find_version_pragma(contract: &str) -> Option<&str> {
-    RE_SOL_PRAGMA_VERSION.captures(contract)?.name("version").map(|m| m.as_str())
+pub fn find_version_pragma(contract: &str) -> Option<Match> {
+    RE_SOL_PRAGMA_VERSION.captures(contract)?.name("version")
 }
 
 /// Returns a list of absolute paths to all the solidity files under the root, or the file itself,
@@ -77,6 +83,37 @@ pub fn is_local_source_name(libs: &[impl AsRef<Path>], source: impl AsRef<Path>)
 pub fn canonicalize(path: impl AsRef<Path>) -> Result<PathBuf, SolcIoError> {
     let path = path.as_ref();
     dunce::canonicalize(&path).map_err(|err| SolcIoError::new(err, path))
+}
+
+/// Try to resolve import to a local file or library path
+pub fn resolve_import_component(
+    import: &Path,
+    node_dir: &Path,
+    paths: &ProjectPathsConfig,
+) -> error::Result<PathBuf> {
+    let component = match import.components().next() {
+        Some(inner) => inner,
+        None => {
+            return Err(SolcError::msg(format!(
+                "failed to resolve import at \"{:?}\"",
+                import.display()
+            )))
+        }
+    };
+
+    if component == Component::CurDir || component == Component::ParentDir {
+        // if the import is relative we assume it's already part of the processed input file set
+        canonicalize(node_dir.join(import)).map_err(|err| err.into())
+    } else {
+        // resolve library file
+        match paths.resolve_library_import(import.as_ref()) {
+            Some(lib) => Ok(lib),
+            None => Err(SolcError::msg(format!(
+                "failed to resolve library import \"{:?}\"",
+                import.display()
+            ))),
+        }
+    }
 }
 
 /// Returns the path to the library if the source path is in fact determined to be a library path,
@@ -305,7 +342,7 @@ import { T } from '../Test2.sol';
 "##;
         assert_eq!(
             vec!["hardhat/console.sol", "../contract/Contract.sol", "../Test.sol", "../Test2.sol"],
-            find_import_paths(s)
+            find_import_paths(s).map(|m| m.as_str()).collect::<Vec<&str>>()
         );
     }
     #[test]
@@ -313,7 +350,7 @@ import { T } from '../Test2.sol';
         let s = r##"//SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.0;
 "##;
-        assert_eq!(Some("^0.8.0"), find_version_pragma(s));
+        assert_eq!(Some("^0.8.0"), find_version_pragma(s).map(|s| s.as_str()));
     }
 
     #[test]

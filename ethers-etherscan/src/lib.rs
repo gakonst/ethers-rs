@@ -66,6 +66,13 @@ impl Client {
                 Url::parse("https://api-kovan-optimistic.etherscan.io/api"),
                 Url::parse("https://kovan-optimistic.etherscan.io"),
             ),
+            Chain::Fantom => {
+                (Url::parse("https://api.ftmscan.com"), Url::parse("https://ftmscan.com"))
+            }
+            Chain::FantomTestnet => (
+                Url::parse("https://api-testnet.ftmscan.com"),
+                Url::parse("https://testnet.ftmscan.com"),
+            ),
             chain => return Err(EtherscanError::ChainNotSupported(chain)),
         };
 
@@ -89,7 +96,9 @@ impl Client {
             Chain::Rinkeby |
             Chain::Goerli |
             Chain::Optimism |
-            Chain::OptimismKovan => std::env::var("ETHERSCAN_API_KEY")?,
+            Chain::OptimismKovan |
+            Chain::Fantom |
+            Chain::FantomTestnet => std::env::var("ETHERSCAN_API_KEY")?,
 
             Chain::XDai | Chain::Sepolia => String::default(),
             Chain::Moonbeam | Chain::MoonbeamDev | Chain::Moonriver => {
