@@ -500,7 +500,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
     pub fn cleanup(&self) -> std::result::Result<(), SolcIoError> {
         tracing::trace!("clean up project");
         if self.cache_path().exists() {
-            std::fs::remove_dir_all(self.cache_path())
+            std::fs::remove_file(self.cache_path())
                 .map_err(|err| SolcIoError::new(err, self.cache_path()))?;
             tracing::trace!("removed cache file \"{}\"", self.cache_path().display());
         }
