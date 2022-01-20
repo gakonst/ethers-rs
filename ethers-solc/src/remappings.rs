@@ -225,7 +225,11 @@ impl RelativeRemapping {
 // Remappings are printed as `prefix=target`
 impl fmt::Display for RelativeRemapping {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}={}/", self.name, self.path.original().display())
+        let mut s = format!("{}={}", self.name, self.path.original().display());
+        if !s.ends_with('/') {
+            s.push('/');
+        }
+        f.write_str(&s)
     }
 }
 

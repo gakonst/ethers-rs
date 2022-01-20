@@ -55,9 +55,8 @@ static LOCK: Lazy<Mutex<()>> = Lazy::new(|| Mutex::new(()));
 /// installation is detected.
 #[cfg(any(test, feature = "tests"))]
 #[allow(unused)]
-pub(crate) fn take_solc_installer_lock() -> std::sync::LockResult<std::sync::MutexGuard<'static, ()>>
-{
-    LOCK.lock()
+pub(crate) fn take_solc_installer_lock() -> std::sync::MutexGuard<'static, ()> {
+    LOCK.lock().unwrap()
 }
 
 #[cfg(all(feature = "svm", feature = "async"))]
