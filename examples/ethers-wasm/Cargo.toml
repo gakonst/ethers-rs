@@ -23,7 +23,7 @@ ethers = { path = "../..", features = ["abigen", "legacy", "ws"] }
 serde_derive = "1.0.126"
 wasm-bindgen-futures = "0.4.29"
 serde_json = "1.0.64"
-wasm-bindgen = { version = "0.2.74", features = ["serde-serialize"] }
+wasm-bindgen = { version = "0.2.79", features = ["serde-serialize"] }
 
 # The `console_error_panic_hook` crate provides better debugging of panics by
 # logging them with `console.error`. This is great for development, but requires
