@@ -415,7 +415,7 @@ impl SolcConfig {
     ///
     /// ```rust
     /// use ethers_solc::SolcConfig;
-    /// let config = SolcConfig::builder().build().unwrap();
+    /// let config = SolcConfig::builder().build();
     /// ```
     pub fn builder() -> SolcConfigBuilder {
         SolcConfigBuilder::default()
