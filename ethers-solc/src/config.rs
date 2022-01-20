@@ -493,6 +493,30 @@ pub trait ArtifactOutput {
             .unwrap_or_else(|| Self::output_file_name(name))
     }
 
+    // TODO: Rename this
+    // this should output `src/path[/version]/contract.sol/contract.json`
+    // returns `contract.json` by default
+    fn output_file2(
+        source_file: impl AsRef<Path>,
+        version: Option<impl AsRef<str>>,
+        name: impl AsRef<str>,
+        root: impl AsRef<Path>
+    ) -> PathBuf {
+        let mut path = PathBuf::new();
+        if let Some(src_path) = source_file
+            .as_ref()
+            .strip_prefix(root)
+            .ok()
+            .and_then(|p| p.parent()) {
+            path.push(src_path);
+        }
+        if let Some(version) = version {
+            path.push(version.as_ref());
+        }
+        path.push(Self::output_file_name(name));
+        path
+    }
+
     /// The inverse of `contract_file_name`
     ///
     /// Expected to return the solidity contract's name derived from the file path
@@ -576,7 +600,8 @@ impl ArtifactOutput for MinimalCombinedArtifacts {
             .map_err(|err| SolcError::msg(format!("Failed to create artifacts dir: {}", err)))?;
         for (file, contracts) in output.contracts.iter() {
             for (name, contract) in contracts {
-                let artifact = Self::output_file(file, name, &layout.root);
+                let version = contract.metadata.as_ref().map(|m| m.compiler.version.clone());
+                let artifact = Self::output_file2(file, version, name, &layout.root);
                 let file = layout.artifacts.join(artifact);
                 if let Some(parent) = file.parent() {
                     fs::create_dir_all(parent).map_err(|err| {
