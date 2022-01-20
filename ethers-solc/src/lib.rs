@@ -576,25 +576,51 @@ impl<Artifacts: ArtifactOutput> ProjectBuilder<Artifacts> {
         self
     }
 
+    #[must_use]
+    pub fn ignore_error_codes(mut self, codes: impl IntoIterator<Item = u64>) -> Self {
+        for code in codes {
+            self = self.ignore_error_code(code);
+        }
+        self
+    }
+
     /// Disables cached builds
     #[must_use]
-    pub fn ephemeral(mut self) -> Self {
-        self.cached = false;
+    pub fn ephemeral(self) -> Self {
+        self.set_cached(false)
+    }
+
+    /// Sets the cache status
+    #[must_use]
+    pub fn set_cached(mut self, cached: bool) -> Self {
+        self.cached = cached;
         self
     }
 
     /// Disables writing artifacts to disk
     #[must_use]
-    pub fn no_artifacts(mut self) -> Self {
-        self.no_artifacts = true;
+    pub fn no_artifacts(self) -> Self {
+        self.set_no_artifacts(true)
+    }
+
+    /// Sets the no artifacts status
+    #[must_use]
+    pub fn set_no_artifacts(mut self, artifacts: bool) -> Self {
+        self.no_artifacts = artifacts;
+        self
+    }
+
+    /// Sets automatic solc version detection
+    #[must_use]
+    pub fn set_auto_detect(mut self, auto_detect: bool) -> Self {
+        self.auto_detect = auto_detect;
         self
     }
 
     /// Disables automatic solc version detection
     #[must_use]
-    pub fn no_auto_detect(mut self) -> Self {
-        self.auto_detect = false;
-        self
+    pub fn no_auto_detect(self) -> Self {
+        self.set_auto_detect(false)
     }
 
     /// Sets the maximum number of parallel `solc` processes to run simultaneously.
@@ -678,7 +704,7 @@ impl<Artifacts: ArtifactOutput> ProjectBuilder<Artifacts> {
         } = self;
 
         let solc = solc.unwrap_or_default();
-        let solc_config = solc_config.map(Ok).unwrap_or_else(|| SolcConfig::builder().build())?;
+        let solc_config = solc_config.unwrap_or_else(|| SolcConfig::builder().build());
 
         let paths = paths.map(Ok).unwrap_or_else(ProjectPathsConfig::current_hardhat)?;
 

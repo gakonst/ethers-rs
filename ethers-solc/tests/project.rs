@@ -322,8 +322,8 @@ fn can_flatten_file() {
     assert!(result.is_ok());
 
     let result = result.unwrap();
-    assert!(result.find("contract Foo").is_some());
-    assert!(result.find("contract Bar").is_some());
+    assert!(result.contains("contract Foo"));
+    assert!(result.contains("contract Bar"));
 }
 
 #[test]
@@ -340,8 +340,8 @@ fn can_flatten_file_with_external_lib() {
     assert!(result.is_ok());
 
     let result = result.unwrap();
-    assert!(result.find("library console").is_some());
-    assert!(result.find("contract Greeter").is_some());
+    assert!(result.contains("library console"));
+    assert!(result.contains("contract Greeter"));
 }
 
 #[test]
@@ -356,9 +356,9 @@ fn can_flatten_file_in_dapp_sample() {
     assert!(result.is_ok());
 
     let result = result.unwrap();
-    assert!(result.find("contract DSTest").is_some());
-    assert!(result.find("contract Dapp").is_some());
-    assert!(result.find("contract DappTest").is_some());
+    assert!(result.contains("contract DSTest"));
+    assert!(result.contains("contract Dapp"));
+    assert!(result.contains("contract DappTest"));
 }
 
 #[test]
@@ -373,7 +373,7 @@ fn can_flatten_file_with_duplicates() {
     assert!(result.is_ok());
 
     let result = result.unwrap();
-    assert!(result.matches("contract Foo {").collect::<Vec<_>>().len() == 1);
-    assert!(result.matches("contract Bar {").collect::<Vec<_>>().len() == 1);
-    assert!(result.matches("contract FooBar {").collect::<Vec<_>>().len() == 1);
+    assert_eq!(result.matches("contract Foo {").count(), 1);
+    assert_eq!(result.matches("contract Bar {").count(), 1);
+    assert_eq!(result.matches("contract FooBar {").count(), 1);
 }

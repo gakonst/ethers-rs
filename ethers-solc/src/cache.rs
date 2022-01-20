@@ -307,8 +307,7 @@ impl SolFilesCacheBuilder {
         cache_file: Option<PathBuf>,
     ) -> Result<SolFilesCache> {
         let format = self.format.unwrap_or_else(|| ETHERS_FORMAT_VERSION.to_string());
-        let solc_config =
-            self.solc_config.map(Ok).unwrap_or_else(|| SolcConfig::builder().build())?;
+        let solc_config = self.solc_config.unwrap_or_else(|| SolcConfig::builder().build());
 
         let root = self
             .root

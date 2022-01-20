@@ -415,7 +415,7 @@ impl SolcConfig {
     ///
     /// ```rust
     /// use ethers_solc::SolcConfig;
-    /// let config = SolcConfig::builder().build().unwrap();
+    /// let config = SolcConfig::builder().build();
     /// ```
     pub fn builder() -> SolcConfigBuilder {
         SolcConfigBuilder::default()
@@ -436,9 +436,9 @@ impl SolcConfigBuilder {
     /// Creates the solc config
     ///
     /// If no solc version is configured then it will be determined by calling `solc --version`.
-    pub fn build(self) -> Result<SolcConfig> {
+    pub fn build(self) -> SolcConfig {
         let Self { settings } = self;
-        Ok(SolcConfig { settings: settings.unwrap_or_default() })
+        SolcConfig { settings: settings.unwrap_or_default() }
     }
 }
 

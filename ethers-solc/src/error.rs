@@ -46,7 +46,7 @@ impl SolcError {
     pub(crate) fn solc(msg: impl Into<String>) -> Self {
         SolcError::SolcError(msg.into())
     }
-    pub(crate) fn msg(msg: impl Into<String>) -> Self {
+    pub fn msg(msg: impl Into<String>) -> Self {
         SolcError::Message(msg.into())
     }
 }

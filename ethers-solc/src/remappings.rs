@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::{
     collections::{hash_map::Entry, HashMap},
     fmt,
+    fmt::Write,
     path::{Path, PathBuf},
     str::FromStr,
 };
@@ -93,7 +94,11 @@ impl<'de> Deserialize<'de> for Remapping {
 // Remappings are printed as `prefix=target`
 impl fmt::Display for Remapping {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}={}", self.name, self.path)
+        write!(f, "{}={}", self.name, self.path)?;
+        if !self.path.ends_with('/') {
+            f.write_char('/')?;
+        }
+        Ok(())
     }
 }
 
@@ -220,13 +225,25 @@ impl RelativeRemapping {
 // Remappings are printed as `prefix=target`
 impl fmt::Display for RelativeRemapping {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}={}", self.name, self.path.original().display())
+        let mut s = format!("{}={}", self.name, self.path.original().display());
+        if !s.ends_with('/') {
+            s.push('/');
+        }
+        f.write_str(&s)
     }
 }
 
 impl From<RelativeRemapping> for Remapping {
     fn from(r: RelativeRemapping) -> Self {
-        Remapping { name: r.name, path: r.path.relative().to_string_lossy().to_string() }
+        let RelativeRemapping { mut name, path } = r;
+        let mut path = format!("{}", path.relative().display());
+        if !path.ends_with('/') {
+            path.push('/');
+        }
+        if !name.ends_with('/') {
+            name.push('/');
+        }
+        Remapping { name, path }
     }
 }
 
