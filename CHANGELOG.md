@@ -34,6 +34,8 @@
 
 ### Unreleased
 
+- Fix duplicate files during flattening
+  [#813](https://github.com/gakonst/ethers-rs/pull/813)
 - Add ability to flatten file imports
   [#774](https://github.com/gakonst/ethers-rs/pull/774)
 - Add dependency graph and resolve all imported libraryfiles
