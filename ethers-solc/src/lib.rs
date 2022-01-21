@@ -497,11 +497,25 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
     }
 
     /// Removes the project's artifacts and cache file
+    ///
+    /// If the cache file was the only file in the folder, this also removes the empty folder.
     pub fn cleanup(&self) -> std::result::Result<(), SolcIoError> {
         tracing::trace!("clean up project");
         if self.cache_path().exists() {
             std::fs::remove_file(self.cache_path())
                 .map_err(|err| SolcIoError::new(err, self.cache_path()))?;
+            if let Some(cache_folder) = self.cache_path().parent() {
+                // remove the cache folder if the cache file was the only file
+                if cache_folder
+                    .read_dir()
+                    .map_err(|err| SolcIoError::new(err, cache_folder))?
+                    .next()
+                    .is_none()
+                {
+                    std::fs::remove_dir(cache_folder)
+                        .map_err(|err| SolcIoError::new(err, cache_folder))?;
+                }
+            }
             tracing::trace!("removed cache file \"{}\"", self.cache_path().display());
         }
         if self.paths.artifacts.exists() {
