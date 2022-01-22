@@ -21,6 +21,8 @@ pub enum Chain {
     Kovan = 42,
     XDai = 100,
     Polygon = 137,
+    Fantom = 250,
+    FantomTestnet = 4002,
     PolygonMumbai = 80001,
     Avalanche = 43114,
     AvalancheFuji = 43113,
@@ -102,6 +104,8 @@ impl FromStr for Chain {
             "moonriver" => Chain::Moonriver,
             "optimism" => Chain::Optimism,
             "optimism-kovan" => Chain::OptimismKovan,
+            "fantom" => Chain::Fantom,
+            "fantom-testnet" => Chain::FantomTestnet,
             _ => return Err(ParseChainError(chain.to_owned())),
         })
     }

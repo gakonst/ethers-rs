@@ -199,7 +199,7 @@ fn dir_copy_options() -> dir::CopyOptions {
         skip_exist: false,
         buffer_size: 64000, //64kb
         copy_inside: true,
-        content_only: false,
+        content_only: true,
         depth: 0,
     }
 }
