@@ -117,14 +117,14 @@ mod celo_tests {
         let provider =
             Provider::<Http>::try_from("https://alfajores-forno.celo-testnet.org").unwrap();
 
-        let tx_hash = "d3d27aa4517124d9ff3ac6f1d8f248e0fe47b6f841b625722546162672ac24c7"
+        let tx_hash = "a8e1d4b9e245a67fafc7c516ff844c2615cc6419d53560e7f358b124e4ce5e1d"
             .parse::<H256>()
             .unwrap();
         let tx = provider.get_transaction(tx_hash).await.unwrap().unwrap();
         assert!(tx.gateway_fee_recipient.is_none());
         assert_eq!(tx.gateway_fee.unwrap(), 0.into());
         assert_eq!(tx.hash, tx_hash);
-        assert_eq!(tx.block_number.unwrap(), 9401421.into())
+        assert_eq!(tx.block_number.unwrap(), 9534852.into())
     }
 
     #[tokio::test]
