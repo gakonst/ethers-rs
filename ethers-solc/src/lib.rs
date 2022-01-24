@@ -135,7 +135,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
     fn write_cache_file(
         &self,
         sources: Sources,
-        artifacts: Vec<(PathBuf, Vec<String>)>,
+        artifacts: Vec<(PathBuf, Vec<String>, BTreeMap<PathBuf, String>)>
     ) -> Result<()> {
         tracing::trace!("inserting {} sources in file cache", sources.len());
         let mut cache = SolFilesCache::builder()
@@ -144,10 +144,11 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
             .insert_files(sources, Some(self.paths.cache.clone()))?;
         tracing::trace!("source files inserted");
 
-        // add the artifacts for each file to the cache entry
-        for (file, artifacts) in artifacts {
+        // add the artifacts and artifact paths : versions for each file to the cache entry
+        for (file, names, ref mut paths_versions) in artifacts {
             if let Some(entry) = cache.files.get_mut(&file) {
-                entry.artifacts = artifacts;
+                entry.artifacts = names;
+                entry.artifact_paths.append(paths_versions);
             }
         }
 
@@ -365,9 +366,27 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
             if !output.has_error() {
 
                 if self.cached {
-                    // get all contract names of the files and map them to the disk file
-                    all_sources.extend(paths.set_disk_paths(input.sources.clone()));
-                    all_artifacts.extend(paths.get_artifacts(&output.contracts));
+                    let sources = paths.set_disk_paths(input.sources.clone());
+                    let artifacts = paths
+                        .get_artifacts(&output.contracts)
+                        .iter()
+                        .map(|(file, names)| {
+                            let art_paths = names
+                                .iter()
+                                .map(|name| {
+                                    let f = file.to_string_lossy().into_owned();
+                                    art_paths.get(&(f, version.clone(), name.clone())).unwrap() // TODO: Is this safe?
+                                })
+                                .map(|(_, art_path)| {
+                                    (art_path.clone(), version.clone())
+                                })
+                                .collect::<BTreeMap<PathBuf, String>>();
+                            (file.clone(), names.clone(), art_paths)
+                        })
+                        .collect::<Vec<(PathBuf, Vec<String>, BTreeMap<PathBuf, String>)>>();
+
+                    all_sources.extend(sources);
+                    all_artifacts.extend(artifacts);
                 }
 
                 if !self.no_artifacts {
@@ -453,18 +472,35 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         let output_vers = vec![(&output, version.clone())];
         let art_paths = Artifacts::versioned_artifact_paths(output_vers, &self.paths.sources);
 
-        if self.cached {
-            // get all contract names of the files and map them to the disk file
-            let artifacts = paths.get_artifacts(&output.contracts); // TODO: Keep as-is wrt versioned paths?
-            // reapply to disk paths
-            let sources = paths.set_disk_paths(input.sources);
-            // create cache file
-            self.write_cache_file(sources, artifacts)?;
-        }
-
         // TODO: There seems to be some type redundancy here, c.f. discussion with @mattsse
         if !self.no_artifacts {
-            Artifacts::on_output(&output, version, art_paths, &self.paths)?;
+            Artifacts::on_output(&output, version.clone(), art_paths.clone(), &self.paths)?;
+        }
+
+        if self.cached {
+            // reapply to disk paths
+            let sources = paths.set_disk_paths(input.sources);
+            // get all contract names of the files and map them to the disk file
+            let artifacts = paths
+                .get_artifacts(&output.contracts)
+                .iter()
+                .map(|(file, names)| {
+                    let art_paths = names
+                        .iter()
+                        .map(|name| {
+                            let f = file.to_string_lossy().into_owned();
+                            art_paths.get(&(f, version.clone(), name.clone())).unwrap() // TODO: Is this safe?
+                        })
+                        .map(|(_, art_path)| {
+                            (art_path.clone(), version.clone())
+                        })
+                        .collect::<BTreeMap<PathBuf, String>>();
+                    (file.clone(), names.clone(), art_paths)
+                })
+                .collect::<Vec<(PathBuf, Vec<String>, BTreeMap<PathBuf, String>)>>();
+
+            // create cache file
+            self.write_cache_file(sources, artifacts)?;
         }
 
         Ok(ProjectCompileOutput::from_compiler_output_and_cache(
@@ -762,7 +798,7 @@ pub struct ProjectCompileOutput<T: ArtifactOutput> {
     compiler_output: Option<CompilerOutput>,
     /// All artifacts that were read from cache
     artifacts: BTreeMap<PathBuf, T::Artifact>,
-    paths: Option<ProjectPathsConfig>,
+    paths: Option<ProjectPathsConfig>, // TODO: Remove this
     ignored_error_codes: Vec<u64>,
 }
 

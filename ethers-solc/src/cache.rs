@@ -56,7 +56,7 @@ impl SolFilesCache {
 
     /// Whether this cache's format is our custom format identifier
     pub fn is_ethers_format(&self) -> bool {
-        self.format == ETHERS_FORMAT_VERSION
+        self.format == ETHERS_FORMAT_VERSION // TODO: Should we test prefix here?
     }
 
     /// Reads the cache json file from the given path
@@ -345,6 +345,7 @@ impl SolFilesCacheBuilder {
                 imports,
                 version_pragmas,
                 artifacts: vec![],
+                artifact_paths: BTreeMap::new(),
             };
             files.insert(file, entry);
         }
@@ -380,6 +381,7 @@ pub struct CacheEntry {
     pub imports: Vec<String>,
     pub version_pragmas: Vec<String>,
     pub artifacts: Vec<String>,
+    pub artifact_paths: BTreeMap<PathBuf, String>,
 }
 
 impl CacheEntry {
