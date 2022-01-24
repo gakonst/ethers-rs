@@ -25,6 +25,8 @@ use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 /// An ordered list of files and their source
 pub type Sources = BTreeMap<PathBuf, Source>;
 
+pub type VersionedSources = BTreeMap<Solc, (Version, Sources)>;
+
 /// file -> [contract name]
 pub type Contracts = BTreeMap<String, BTreeMap<String, Contract>>;
 

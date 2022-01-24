@@ -74,16 +74,18 @@
 //! will then look in `/project/dapp-bin/library/iterable_mapping.sol`
 
 use crate::{
-    artifacts::{Error, Settings, SourceFile, VersionedContract, VersionedContracts},
+    artifacts::{
+        Error, Settings, SourceFile, VersionedContract, VersionedContracts, VersionedSources,
+    },
+    cache::CacheEntry,
     error::Result,
-    remappings::Remapping,
     resolver::GraphEdges,
     utils, ArtifactOutput, CompilerInput, CompilerOutput, Graph, PathMap, Project,
-    ProjectPathsConfig, SolFilesCache, Solc, SolcConfig, Source, Sources,
+    ProjectPathsConfig, SolFilesCache, SolcConfig, Source, Sources,
 };
 use semver::Version;
 use std::{
-    collections::{hash_map, BTreeMap, HashMap, HashSet},
+    collections::{hash_map, BTreeMap, HashMap},
     path::{Path, PathBuf},
 };
 
@@ -143,7 +145,7 @@ impl<'a, T: ArtifactOutput> ProjectCompiler<'a, T> {
     pub fn compile(self) -> Result<ProjectCompileOutput2<T>> {
         let Self { edges, project, mut sources } = self;
 
-        let mut cache = ArtifactsCache::new(&project, &edges)?;
+        let mut cache = ArtifactsCache::new(project, &edges)?;
 
         // retain only dirty sources
         sources = sources.filtered(&mut cache);
@@ -151,12 +153,13 @@ impl<'a, T: ArtifactOutput> ProjectCompiler<'a, T> {
         let output = sources.compile(&project.solc_config.settings, &project.paths)?;
 
         // TODO rebuild cache
+
         // TODO write artifacts
 
         Ok(ProjectCompileOutput2 {
             output,
             cached_artifacts: Default::default(),
-            ignored_error_codes: vec![],
+            ignored_error_codes: project.ignored_error_codes.clone(),
         })
     }
 }
@@ -165,19 +168,25 @@ impl<'a, T: ArtifactOutput> ProjectCompiler<'a, T> {
 #[derive(Debug)]
 enum CompilerSources {
     /// Compile all these sequentially
-    Sequential(BTreeMap<Solc, Sources>),
+    Sequential(VersionedSources),
     /// Compile all these in parallel using a certain amount of jobs
-    Parallel(BTreeMap<Solc, Sources>, usize),
+    Parallel(VersionedSources, usize),
 }
 
 impl CompilerSources {
     /// Filters out all sources that don't need to be compiled, see [`ArtifactsCache::filter`]
-    fn filtered<T: ArtifactOutput>(mut self, cache: &mut ArtifactsCache<T>) -> Self {
+    fn filtered<T: ArtifactOutput>(self, cache: &mut ArtifactsCache<T>) -> Self {
         fn filterd_sources<T: ArtifactOutput>(
-            sources: BTreeMap<Solc, Sources>,
+            sources: VersionedSources,
             cache: &mut ArtifactsCache<T>,
-        ) -> BTreeMap<Solc, Sources> {
-            sources.into_iter().map(|(solc, sources)| (solc, cache.filter(sources))).collect()
+        ) -> VersionedSources {
+            sources
+                .into_iter()
+                .map(|(solc, (version, sources))| {
+                    let sources = cache.filter(sources, &version);
+                    (solc, (version, sources))
+                })
+                .collect()
         }
 
         match self {
@@ -205,21 +214,19 @@ impl CompilerSources {
 
 /// Compiles the input set sequentially and returns an aggregated set of the solc `CompilerOutput`s
 fn compile_sequential(
-    input: BTreeMap<Solc, Sources>,
+    input: VersionedSources,
     settings: &Settings,
     paths: &ProjectPathsConfig,
 ) -> Result<AggregatedCompilerOutput> {
     let mut aggregated = AggregatedCompilerOutput::default();
-    for (solc, sources) in input {
-        let version = solc.version()?;
-
+    for (solc, (version, sources)) in input {
         tracing::trace!(
             "compiling {} sources with solc \"{}\"",
             sources.len(),
             solc.as_ref().display()
         );
 
-        let mut source_unit_map = PathMap::default();
+        let source_unit_map = PathMap::default();
         // replace absolute path with source name to make solc happy
         // TODO use correct path
         let sources = source_unit_map.set_source_names(sources);
@@ -230,7 +237,7 @@ fn compile_sequential(
             .with_remappings(paths.remappings.clone());
 
         tracing::trace!("calling solc `{}` with {} sources", version, input.sources.len());
-        let mut output = solc.compile(&input)?;
+        let output = solc.compile(&input)?;
         tracing::trace!("compiled input, output has error: {}", output.has_error());
 
         // TODO reapply the paths?
@@ -241,10 +248,10 @@ fn compile_sequential(
 }
 
 fn compile_parallel(
-    input: BTreeMap<Solc, Sources>,
-    jobs: usize,
-    settings: &Settings,
-    paths: &ProjectPathsConfig,
+    _input: VersionedSources,
+    _jobs: usize,
+    _settings: &Settings,
+    _paths: &ProjectPathsConfig,
 ) -> Result<AggregatedCompilerOutput> {
     todo!()
 }
@@ -265,8 +272,8 @@ pub struct ProjectCompileOutput2<T: ArtifactOutput> {
 /// The aggregated output of (multiple) compile jobs
 ///
 /// This is effectively a solc version aware `CompilerOutput`
-#[derive(Debug, Default)]
-struct AggregatedCompilerOutput {
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct AggregatedCompilerOutput {
     /// all errors from all `CompilerOutput`
     pub errors: Vec<Error>,
     /// All source files
@@ -298,7 +305,7 @@ impl AggregatedCompilerOutput {
 /// A helper abstraction over the [`SolFilesCache`] used to determine what files need to compiled
 /// and which `Artifacts` can be reused.
 struct Cache<'a, T: ArtifactOutput> {
-    /// cache file
+    /// preexisting cache file
     cache: SolFilesCache,
     /// all already existing artifacts
     cached_artifacts: BTreeMap<PathBuf, T::Artifact>,
@@ -310,6 +317,8 @@ struct Cache<'a, T: ArtifactOutput> {
     paths: &'a ProjectPathsConfig,
     /// all files that were filtered because they haven't changed
     filtered: Sources,
+    /// the corresponding cache entries for all sources that were deemed to be dirty
+    dirty_entries: Vec<(PathBuf, CacheEntry)>,
     /// the file hashes
     content_hashes: HashMap<PathBuf, String>,
 }
@@ -320,15 +329,23 @@ impl<'a, T: ArtifactOutput> Cache<'a, T> {
     ///   - were changed
     ///   - their imports were changed
     ///   - their artifact is missing
-    fn filter(&mut self, sources: Sources) -> Sources {
+    fn filter(&mut self, sources: Sources, version: &Version) -> Sources {
         self.fill_hashes(&sources);
-        sources.into_iter().filter_map(|(file, source)| self.needs_solc(file, source)).collect()
+        sources
+            .into_iter()
+            .filter_map(|(file, source)| self.needs_solc(file, source, version))
+            .collect()
     }
 
     /// Returns `Some` if the file needs to be compiled and `None` if the artifact can be reu-used
-    fn needs_solc(&mut self, file: PathBuf, source: Source) -> Option<(PathBuf, Source)> {
-        if !self.is_dirty(&file) &&
-            self.edges.imports(&file).iter().all(|file| !self.is_dirty(file))
+    fn needs_solc(
+        &mut self,
+        file: PathBuf,
+        source: Source,
+        version: &Version,
+    ) -> Option<(PathBuf, Source)> {
+        if !self.is_dirty(&file, version) &&
+            self.edges.imports(&file).iter().all(|file| !self.is_dirty(file, version))
         {
             self.filtered.insert(file, source);
             None
@@ -338,7 +355,7 @@ impl<'a, T: ArtifactOutput> Cache<'a, T> {
     }
 
     /// returns `false` if the corresponding cache entry remained unchanged otherwise `true`
-    fn is_dirty(&self, file: &Path) -> bool {
+    fn is_dirty(&self, file: &Path, _version: &Version) -> bool {
         if let Some(hash) = self.content_hashes.get(file) {
             let cache_path = utils::source_name(file, &self.paths.root);
             if let Some(entry) = self.cache.entry(&cache_path) {
@@ -403,9 +420,7 @@ impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
                 cache.remove_missing_files();
                 cache
             } else {
-                SolFilesCache::builder()
-                    .root(project.root())
-                    .solc_config(project.solc_config.clone())
+                SolFilesCache::default()
             };
 
             // read all artifacts
@@ -421,10 +436,11 @@ impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
             let cache = Cache {
                 cache,
                 cached_artifacts,
-                edges: &edges,
+                edges,
                 solc_config: &project.solc_config,
                 paths: &project.paths,
                 filtered: Default::default(),
+                dirty_entries: vec![],
                 content_hashes: Default::default(),
             };
 
@@ -438,10 +454,32 @@ impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
     }
 
     /// Filters out those sources that don't need to be compiled
-    fn filter(&mut self, sources: Sources) -> Sources {
+    fn filter(&mut self, sources: Sources, version: &Version) -> Sources {
         match self {
             ArtifactsCache::Ephemeral => sources,
-            ArtifactsCache::Cached(cache) => cache.filter(sources),
+            ArtifactsCache::Cached(cache) => cache.filter(sources, version),
+        }
+    }
+
+    fn finish(self) -> Result<BTreeMap<PathBuf, T::Artifact>> {
+        match self {
+            ArtifactsCache::Ephemeral => Ok(Default::default()),
+            ArtifactsCache::Cached(cache) => {
+                let Cache { cache, cached_artifacts, dirty_entries: _, filtered, edges: _, .. } =
+                    cache;
+                // rebuild the cache file with all compiled contracts (dirty sources), and filtered
+                // sources (clean)
+
+                let cache_entries = cache
+                    .files
+                    .into_iter()
+                    .filter(|(path, _)| filtered.contains_key(path))
+                    .collect();
+
+                let _sol_cache = SolFilesCache::new(cache_entries);
+
+                Ok(cached_artifacts)
+            }
         }
     }
 }

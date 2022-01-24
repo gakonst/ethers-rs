@@ -273,8 +273,13 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
     #[tracing::instrument(skip(self, sources))]
     pub fn svm_compile(&self, sources: Sources) -> Result<ProjectCompileOutput<Artifacts>> {
         let graph = Graph::resolve_sources(&self.paths, sources)?;
-        let sources_by_version =
-            graph.into_sources_by_version(!self.auto_detect)?.0.get(&self.allowed_lib_paths)?;
+        let sources_by_version: BTreeMap<_, _> = graph
+            .into_sources_by_version(!self.auto_detect)?
+            .0
+            .get(&self.allowed_lib_paths)?
+            .into_iter()
+            .map(|(k, (_v, s))| (k, s))
+            .collect();
 
         // run the compilation step for each version
         let compiled = if self.solc_jobs > 1 && sources_by_version.len() > 1 {

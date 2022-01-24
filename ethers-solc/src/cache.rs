@@ -3,7 +3,7 @@ use crate::{
     artifacts::{Contracts, Sources},
     config::SolcConfig,
     error::{Result, SolcError},
-    utils, ArtifactOutput, ProjectPathsConfig,
+    utils, ArtifactOutput, ProjectPathsConfig, Source,
 };
 use serde::{Deserialize, Serialize};
 use std::{
@@ -35,6 +35,10 @@ pub struct SolFilesCache {
 }
 
 impl SolFilesCache {
+    pub fn new(files: BTreeMap<PathBuf, CacheEntry>) -> Self {
+        Self { format: ETHERS_FORMAT_VERSION.to_string(), files }
+    }
+
     /// # Example
     ///
     /// Autodetect solc version and default settings
@@ -322,13 +326,7 @@ impl SolFilesCacheBuilder {
 
         let mut files = BTreeMap::new();
         for (file, source) in sources {
-            let last_modification_date = fs::metadata(&file)
-                .map_err(|err| SolcError::io(err, file.clone()))?
-                .modified()
-                .map_err(|err| SolcError::io(err, file.clone()))?
-                .duration_since(UNIX_EPOCH)
-                .map_err(|err| SolcError::solc(err.to_string()))?
-                .as_millis() as u64;
+            let last_modification_date = CacheEntry::read_last_modification_date(&file)?;
             let imports =
                 utils::find_import_paths(source.as_ref()).map(|m| m.as_str().to_owned()).collect();
 
@@ -382,9 +380,26 @@ pub struct CacheEntry {
 }
 
 impl CacheEntry {
+    pub fn new(_file: impl AsRef<Path>, _source: &Source) -> Result<Self> {
+        todo!()
+    }
+
     /// Returns the time
     pub fn last_modified(&self) -> Duration {
         Duration::from_millis(self.last_modification_date)
+    }
+
+    /// Reads the last modification date from the file's metadata
+    pub fn read_last_modification_date(file: impl AsRef<Path>) -> Result<u64> {
+        let file = file.as_ref();
+        let last_modification_date = fs::metadata(file)
+            .map_err(|err| SolcError::io(err, file.to_path_buf()))?
+            .modified()
+            .map_err(|err| SolcError::io(err, file.to_path_buf()))?
+            .duration_since(UNIX_EPOCH)
+            .map_err(|err| SolcError::solc(err.to_string()))?
+            .as_millis() as u64;
+        Ok(last_modification_date)
     }
 }
 
