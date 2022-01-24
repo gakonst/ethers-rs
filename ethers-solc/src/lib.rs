@@ -121,6 +121,10 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
     }
 
     /// Sets the maximum number of parallel `solc` processes to run simultaneously.
+    ///
+    /// # Panics
+    ///
+    /// if `jobs == 0`
     pub fn set_solc_jobs(&mut self, jobs: usize) {
         assert!(jobs > 0);
         self.solc_jobs = jobs;

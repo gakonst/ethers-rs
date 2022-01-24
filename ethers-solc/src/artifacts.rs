@@ -1520,7 +1520,7 @@ pub struct StorageType {
     pub number_of_bytes: String,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Hash)]
 #[serde(rename_all = "camelCase")]
 pub struct Error {
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1550,7 +1550,7 @@ impl fmt::Display for Error {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub enum Severity {
     Error,
     Warning,
@@ -1633,7 +1633,7 @@ impl<'de> Deserialize<'de> for Severity {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Hash)]
 pub struct SourceLocation {
     pub file: String,
     pub start: i32,

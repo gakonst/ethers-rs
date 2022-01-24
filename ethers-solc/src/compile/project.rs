@@ -111,25 +111,39 @@ impl<'a, T: ArtifactOutput> ProjectCompiler<'a, T> {
         Self::with_sources(project, project.paths.read_input_files()?)
     }
 
+    /// Bootstraps the compilation process by resolving the dependency graph of all sources and the
+    /// appropriate `Solc` -> `Sources` set as well as the compile mode to use (parallel,
+    /// sequential)
+    ///
+    /// Multiple (`Solc` -> `Sources`) pairs can be compiled in parallel if the `Project` allows
+    /// multiple `jobs`, see [`crate::Project::set_solc_jobs()`].
     pub fn with_sources(project: &'a Project<T>, sources: Sources) -> Result<Self> {
         let graph = Graph::resolve_sources(&project.paths, sources)?;
         let (versions, edges) = graph.into_sources_by_version(!project.auto_detect)?;
 
         let sources_by_version = versions.get(&project.allowed_lib_paths)?;
 
-        let mode = if project.solc_jobs > 1 && sources_by_version.len() > 1 {
+        let sources = if project.solc_jobs > 1 && sources_by_version.len() > 1 {
             // if there are multiple different versions and we can use multiple jobs we can compile
             // them in parallel
             CompilerSources::Parallel(sources_by_version, project.solc_jobs)
         } else {
             CompilerSources::Sequential(sources_by_version)
         };
-        Ok(Self { edges, project, sources: mode })
+
+        Ok(Self { edges, project, sources })
     }
 
-    /// Compiles all the sources of the `Project`
-    pub fn compile(self) {
-        let Self { edges: _, project: _, sources: _mode } = self;
+    /// Compiles all the sources of the `Project` in the appropriate mode
+    ///
+    /// If caching is enabled, the sources are filtered and only _dirty_ sources are recompiled.
+    ///
+    /// The output of the compile process can be a mix of reused artifacts and freshly compiled
+    /// `Contract`s
+    pub fn compile(self) -> Result<()> {
+        let Self { edges, project, sources } = self;
+
+        let mut cache = ArtifactsCache::new(&project, &edges)?;
 
         todo!()
     }
@@ -146,8 +160,6 @@ enum CompilerSources {
 
 impl CompilerSources {
     fn preprocess<T: ArtifactOutput>(self, _paths: &ProjectPathsConfig) -> Result<Preprocessed<T>> {
-        let cached_artifacts = BTreeMap::new();
-
         todo!()
     }
 
@@ -155,20 +167,22 @@ impl CompilerSources {
     fn compile(
         self,
         settings: Settings,
-        remappings: Vec<Remapping>,
+        paths: &ProjectPathsConfig,
     ) -> Result<AggregatedCompilerOutput> {
         match self {
-            CompilerSources::Sequential(input) => compile_sequential(input, settings, remappings),
-            CompilerSources::Parallel(input, j) => compile_parallel(input, j, settings, remappings),
+            CompilerSources::Sequential(input) => compile_sequential(input, settings, paths),
+            CompilerSources::Parallel(input, j) => compile_parallel(input, j, settings, paths),
         }
     }
 }
 
+/// Compiles the input set sequentially and returns an aggregated set of the solc `CompilerOutput`s
 fn compile_sequential(
     input: BTreeMap<Solc, Sources>,
     settings: Settings,
-    remappings: Vec<Remapping>,
+    paths: &ProjectPathsConfig,
 ) -> Result<AggregatedCompilerOutput> {
+    let mut aggregated = AggregatedCompilerOutput::default();
     for (solc, sources) in input {
         let version = solc.version()?;
 
@@ -178,70 +192,34 @@ fn compile_sequential(
             solc.as_ref().display()
         );
 
-        let mut paths = PathMap::default();
+        let mut source_unit_map = PathMap::default();
         // replace absolute path with source name to make solc happy
         // TODO use correct path
-        let sources = paths.set_source_names(sources);
+        let sources = source_unit_map.set_source_names(sources);
 
         let input = CompilerInput::with_sources(sources)
             .settings(settings.clone())
             .normalize_evm_version(&version)
-            .with_remappings(remappings.clone());
+            .with_remappings(paths.remappings.clone());
 
-        tracing::trace!("calling solc with {} sources", input.sources.len());
-        let output = solc.compile(&input)?;
+        tracing::trace!("calling solc `{}` with {} sources", version, input.sources.len());
+        let mut output = solc.compile(&input)?;
         tracing::trace!("compiled input, output has error: {}", output.has_error());
-    }
 
-    todo!()
+        // TODO reapply the paths?
+
+        aggregated.extend(version, output);
+    }
+    Ok(aggregated)
 }
 
 fn compile_parallel(
     input: BTreeMap<Solc, Sources>,
     jobs: usize,
     settings: Settings,
-    remappings: Vec<Remapping>,
+    paths: &ProjectPathsConfig,
 ) -> Result<AggregatedCompilerOutput> {
     todo!()
-}
-
-/// The aggregated output of (multiple) compile jobs
-///
-/// This is effectively a solc version aware `CompilerOutput`
-#[derive(Debug, Default)]
-struct AggregatedCompilerOutput {
-    /// all errors from all `CompilerOutput`
-    ///
-    /// this is a set so that the same error from multiple `CompilerOutput`s only appears once
-    pub errors: HashSet<Error>,
-    /// All source files
-    pub sources: BTreeMap<String, SourceFile>,
-    /// All compiled contracts combined with the solc version used to compile them
-    pub contracts: VersionedContracts,
-}
-
-impl AggregatedCompilerOutput {
-    /// adds a new `CompilerOutput` to the aggregated output
-    fn extend(&mut self, version: Version, output: CompilerOutput) {
-        self.errors.extend(compiled.errors);
-        self.sources.extend(compiled.sources);
-
-        for (file_name, new_contracts) in output.contracts {
-            let contracts = self.contracts.entry(file_name).or_default();
-            for (contract_name, contract) in new_contracts {
-                let versioned = contracts.entry(contract_name).or_default();
-                versioned.push(VersionedContract { contract, version: version.clone() });
-            }
-        }
-    }
-}
-
-/// Captures the `CompilerOutput` and the `Solc` version that produced it
-#[derive(Debug)]
-struct VersionCompilerOutput {
-    output: CompilerOutput,
-    solc: Solc,
-    version: Version,
 }
 
 /// Contains a mixture of already compiled/cached artifacts and the input set of sources that still
@@ -259,6 +237,35 @@ struct Preprocessed<T: ArtifactOutput> {
 impl<T: ArtifactOutput> Preprocessed<T> {
     /// Drives the compilation process to completion
     pub fn finish(self) {}
+}
+
+/// The aggregated output of (multiple) compile jobs
+///
+/// This is effectively a solc version aware `CompilerOutput`
+#[derive(Debug, Default)]
+struct AggregatedCompilerOutput {
+    /// all errors from all `CompilerOutput`
+    pub errors: Vec<Error>,
+    /// All source files
+    pub sources: BTreeMap<String, SourceFile>,
+    /// All compiled contracts combined with the solc version used to compile them
+    pub contracts: VersionedContracts,
+}
+
+impl AggregatedCompilerOutput {
+    /// adds a new `CompilerOutput` to the aggregated output
+    fn extend(&mut self, version: Version, output: CompilerOutput) {
+        self.errors.extend(output.errors);
+        self.sources.extend(output.sources);
+
+        for (file_name, new_contracts) in output.contracts {
+            let contracts = self.contracts.entry(file_name).or_default();
+            for (contract_name, contract) in new_contracts {
+                let versioned = contracts.entry(contract_name).or_default();
+                versioned.push(VersionedContract { contract, version: version.clone() });
+            }
+        }
+    }
 }
 
 /// A helper abstraction over the [`SolFilesCache`] used to determine what files need to compiled
@@ -359,6 +366,48 @@ enum ArtifactsCache<'a, T: ArtifactOutput> {
 }
 
 impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
+    fn new(project: &'a Project<T>, edges: &'a GraphEdges) -> Result<Self> {
+        let cache = if project.cached {
+            // read the cache file if it already exists
+            let cache = if project.cache_path().exists() {
+                let mut cache = SolFilesCache::read(project.cache_path())?;
+                // TODO this should take the project dir, since we're storing surce unit ids
+                // starting at the project dir?
+                cache.remove_missing_files();
+                cache
+            } else {
+                SolFilesCache::default()
+            };
+
+            // read all artifacts
+            let cached_artifacts = if project.paths.artifacts.exists() {
+                tracing::trace!("reading artifacts from cache..");
+                let artifacts = cache.read_artifacts::<T>(&project.paths.artifacts)?;
+                tracing::trace!("read {} artifacts from cache", artifacts.len());
+                artifacts
+            } else {
+                BTreeMap::default()
+            };
+
+            let cache = Cache {
+                cache,
+                cached_artifacts,
+                edges: &edges,
+                solc_config: &project.solc_config,
+                paths: &project.paths,
+                filtered: Default::default(),
+                content_hashes: Default::default(),
+            };
+
+            ArtifactsCache::Cached(cache)
+        } else {
+            // nothing to cache
+            ArtifactsCache::Ephemeral
+        };
+
+        Ok(cache)
+    }
+
     /// Filters out those sources that don't need to be compiled
     fn filter(&mut self, sources: Sources) -> Sources {
         match self {
