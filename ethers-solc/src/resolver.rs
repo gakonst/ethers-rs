@@ -62,9 +62,11 @@ impl GraphEdges {
         &self.edges[from]
     }
 
-    /// Returns the files imported files
-    pub fn imports(&self, path: impl AsRef<Path>) -> HashSet<&PathBuf> {
-        if let Some(start) = self.indices.get(path.as_ref()).copied() {
+    /// Returns all files imported by the given file
+    ///
+    /// *Note* this only returns the imports, the `file __excluded__
+    pub fn imports(&self, file: impl AsRef<Path>) -> HashSet<&PathBuf> {
+        if let Some(start) = self.indices.get(file.as_ref()).copied() {
             NodesIter::new(start, self).skip(1).map(move |idx| &self.rev_indices[&idx]).collect()
         } else {
             HashSet::new()
@@ -97,6 +99,10 @@ impl Graph {
     }
 
     /// Gets a node by index.
+    ///
+    /// # Panics
+    ///
+    /// if the `index` node id is not included in the graph
     pub fn node(&self, index: usize) -> &Node {
         &self.nodes[index]
     }
@@ -126,6 +132,10 @@ impl Graph {
     /// This won't yield any resolved library nodes
     pub fn input_nodes(&self) -> impl Iterator<Item = &Node> {
         self.nodes.iter().take(self.edges.num_input_files)
+    }
+
+    pub fn imports(&self, path: impl AsRef<Path>) -> HashSet<&PathBuf> {
+        self.edges.imports(path)
     }
 
     /// Resolves a number of sources within the given config

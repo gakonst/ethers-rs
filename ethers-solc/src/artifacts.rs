@@ -25,7 +25,11 @@ use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 /// An ordered list of files and their source
 pub type Sources = BTreeMap<PathBuf, Source>;
 
+/// file -> [contract name]
 pub type Contracts = BTreeMap<String, BTreeMap<String, Contract>>;
+
+/// file -> [(contract name + version)]
+pub type VersionedContracts = BTreeMap<String, BTreeMap<String, Vec<VersionedContract>>>;
 
 /// Input type `solc` expects
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -748,6 +752,13 @@ impl<'a> fmt::Display for OutputDiagnostics<'a> {
         }
         Ok(())
     }
+}
+
+/// A contract and the compiler version used to compile it
+#[derive(Clone, Debug, PartialEq)]
+pub struct VersionedContract {
+    pub contract: Contract,
+    pub version: Version,
 }
 
 /// Represents a compiled solidity contract

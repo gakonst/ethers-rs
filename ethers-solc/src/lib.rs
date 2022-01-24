@@ -466,8 +466,8 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         for (import, (source, path)) in self.resolved_libraries(&sources)? {
             // inserting with absolute path here and keep track of the source name <-> path mappings
             sources.insert(path.clone(), source);
-            paths.path_to_source_name.insert(path.clone(), import.clone());
-            paths.source_name_to_path.insert(import, path);
+            paths.path_to_source_unit_name.insert(path.clone(), import.clone());
+            paths.source_unit_name_to_path.insert(import, path);
         }
         tracing::trace!("resolved all libraries");
 

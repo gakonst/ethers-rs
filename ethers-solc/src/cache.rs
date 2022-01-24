@@ -393,15 +393,15 @@ impl CacheEntry {
 /// The disk path is the actual path where a file can be found on disk.
 /// A source name is the internal identifier and is the remaining part of the disk path starting
 /// with the configured source directory, (`contracts/contract.sol`)
+///
+/// See also [Import Path Resolution](https://docs.soliditylang.org/en/develop/path-resolution.html#path-resolution)
 #[derive(Debug, Default)]
 pub struct PathMap {
     /// all libraries to the source set while keeping track of their actual disk path
     /// (`contracts/contract.sol` -> `/Users/.../contracts.sol`)
-    pub source_name_to_path: HashMap<PathBuf, PathBuf>,
+    pub source_unit_name_to_path: HashMap<PathBuf, PathBuf>,
     /// inverse of `source_name_to_path` : (`/Users/.../contracts.sol` -> `contracts/contract.sol`)
-    pub path_to_source_name: HashMap<PathBuf, PathBuf>,
-    /* /// All paths, source names and actual file paths
-     * paths: Vec<PathBuf> */
+    pub path_to_source_unit_name: HashMap<PathBuf, PathBuf>,
 }
 
 impl PathMap {
@@ -424,25 +424,25 @@ impl PathMap {
             .iter()
             .map(|(path, contracts)| {
                 let path = PathBuf::from(path);
-                let file = self.source_name_to_path.get(&path).cloned().unwrap_or(path);
+                let file = self.source_unit_name_to_path.get(&path).cloned().unwrap_or(path);
                 (file, contracts.keys().cloned().collect::<Vec<_>>())
             })
             .collect()
     }
 
     pub fn extend(&mut self, other: PathMap) {
-        self.source_name_to_path.extend(other.source_name_to_path);
-        self.path_to_source_name.extend(other.path_to_source_name);
+        self.source_unit_name_to_path.extend(other.source_unit_name_to_path);
+        self.path_to_source_unit_name.extend(other.path_to_source_unit_name);
     }
 
     /// Returns a new map with the source names as keys
     pub fn set_source_names(&self, sources: Sources) -> Sources {
-        Self::apply_mappings(sources, &self.path_to_source_name)
+        Self::apply_mappings(sources, &self.path_to_source_unit_name)
     }
 
     /// Returns a new map with the disk paths as keys
     pub fn set_disk_paths(&self, sources: Sources) -> Sources {
-        Self::apply_mappings(sources, &self.source_name_to_path)
+        Self::apply_mappings(sources, &self.source_unit_name_to_path)
     }
 }
 
