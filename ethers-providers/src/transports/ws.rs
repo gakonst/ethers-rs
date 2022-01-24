@@ -310,7 +310,7 @@ where
     async fn handle_text(&mut self, inner: String) -> Result<(), ClientError> {
         match serde_json::from_str::<Incoming>(&inner) {
             Err(err) => {
-                return Err(ClientError::JsonError(err));
+                return Err(ClientError::JsonError(err))
             }
 
             Ok(Incoming::Response(resp)) => {
