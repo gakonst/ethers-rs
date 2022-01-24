@@ -33,7 +33,7 @@ use std::{
 
 use rayon::prelude::*;
 use regex::Match;
-use semver::{Version, VersionReq};
+use semver::VersionReq;
 use solang_parser::pt::{Import, Loc, SourceUnitPart};
 
 use crate::{error::Result, utils, ProjectPathsConfig, Solc, Source, Sources};
@@ -433,7 +433,7 @@ impl VersionedSources {
     pub fn get(
         self,
         allowed_lib_paths: &crate::AllowedLibPaths,
-    ) -> Result<std::collections::BTreeMap<Solc, (Version, Sources)>> {
+    ) -> Result<std::collections::BTreeMap<Solc, (semver::Version, Sources)>> {
         use crate::SolcError;
 
         // we take the installer lock here to ensure installation checking is done in sync

@@ -108,6 +108,7 @@ impl<'a, T: ArtifactOutput> ProjectCompiler<'a, T> {
     /// use ethers_solc::Project;
     ///
     /// let project = Project::builder().build().unwrap();
+    /// let output = project.compile().unwrap();
     /// ```
     pub fn new(project: &'a Project<T>) -> Result<Self> {
         Self::with_sources(project, project.paths.read_input_files()?)
@@ -152,13 +153,11 @@ impl<'a, T: ArtifactOutput> ProjectCompiler<'a, T> {
 
         let output = sources.compile(&project.solc_config.settings, &project.paths)?;
 
-        // TODO rebuild cache
-
-        // TODO write artifacts
+        let cached_artifacts = cache.finish()?;
 
         Ok(ProjectCompileOutput2 {
             output,
-            cached_artifacts: Default::default(),
+            cached_artifacts,
             ignored_error_codes: project.ignored_error_codes.clone(),
         })
     }
@@ -220,6 +219,10 @@ fn compile_sequential(
 ) -> Result<AggregatedCompilerOutput> {
     let mut aggregated = AggregatedCompilerOutput::default();
     for (solc, (version, sources)) in input {
+        if sources.is_empty() {
+            // nothing to compile
+            continue
+        }
         tracing::trace!(
             "compiling {} sources with solc \"{}\"",
             sources.len(),
@@ -240,7 +243,7 @@ fn compile_sequential(
         let output = solc.compile(&input)?;
         tracing::trace!("compiled input, output has error: {}", output.has_error());
 
-        // TODO reapply the paths?
+        // TODO reapply the paths
 
         aggregated.extend(version, output);
     }
@@ -350,6 +353,18 @@ impl<'a, T: ArtifactOutput> Cache<'a, T> {
             self.filtered.insert(file, source);
             None
         } else {
+            // TODO create a new dirty cacheentry
+            // let entry = CacheEntry {
+            //     last_modification_date: CacheEntry::read_last_modification_date(&file).unwrap(),
+            //     content_hash: source.content_hash(),
+            //     source_name: utils::source_name(&file, &self.paths.root).into(),
+            //     solc_config: solc_config.clone(),
+            // TODO determine imports via self.edges
+            //     imports,
+            //     version_pragmas,
+            //     artifacts: vec![],
+            // };
+
             Some((file, source))
         }
     }
@@ -405,6 +420,7 @@ impl<'a, T: ArtifactOutput> Cache<'a, T> {
 
 /// Abstraction over configured caching which can be either non-existent or an already loaded cache
 enum ArtifactsCache<'a, T: ArtifactOutput> {
+    /// Cache nothing on disk
     Ephemeral,
     Cached(Cache<'a, T>),
 }
@@ -461,6 +477,9 @@ impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
         }
     }
 
+    /// rebuilds a new [`SolFileCache`] and writes it to disk
+    ///
+    /// Returns all cached artifacts
     fn finish(self) -> Result<BTreeMap<PathBuf, T::Artifact>> {
         match self {
             ArtifactsCache::Ephemeral => Ok(Default::default()),
