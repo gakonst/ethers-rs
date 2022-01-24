@@ -120,6 +120,11 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         &self.paths.cache
     }
 
+    /// Returns the root directory of the project
+    pub fn root(&self) -> &PathBuf {
+        &self.paths.root
+    }
+
     /// Sets the maximum number of parallel `solc` processes to run simultaneously.
     ///
     /// # Panics

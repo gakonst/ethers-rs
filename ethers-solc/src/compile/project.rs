@@ -140,14 +140,24 @@ impl<'a, T: ArtifactOutput> ProjectCompiler<'a, T> {
     ///
     /// The output of the compile process can be a mix of reused artifacts and freshly compiled
     /// `Contract`s
-    pub fn compile(self) -> Result<()> {
+    pub fn compile(self) -> Result<ProjectCompileOutput2<T>> {
         let Self { edges, project, mut sources } = self;
 
         let mut cache = ArtifactsCache::new(&project, &edges)?;
 
+        // retain only dirty sources
         sources = sources.filtered(&mut cache);
 
-        todo!()
+        let output = sources.compile(&project.solc_config.settings, &project.paths)?;
+
+        // TODO rebuild cache
+        // TODO write artifacts
+
+        Ok(ProjectCompileOutput2 {
+            output,
+            cached_artifacts: Default::default(),
+            ignored_error_codes: vec![],
+        })
     }
 }
 
@@ -183,7 +193,7 @@ impl CompilerSources {
     /// Compiles all the files with `Solc`
     fn compile(
         self,
-        settings: Settings,
+        settings: &Settings,
         paths: &ProjectPathsConfig,
     ) -> Result<AggregatedCompilerOutput> {
         match self {
@@ -196,7 +206,7 @@ impl CompilerSources {
 /// Compiles the input set sequentially and returns an aggregated set of the solc `CompilerOutput`s
 fn compile_sequential(
     input: BTreeMap<Solc, Sources>,
-    settings: Settings,
+    settings: &Settings,
     paths: &ProjectPathsConfig,
 ) -> Result<AggregatedCompilerOutput> {
     let mut aggregated = AggregatedCompilerOutput::default();
@@ -233,7 +243,7 @@ fn compile_sequential(
 fn compile_parallel(
     input: BTreeMap<Solc, Sources>,
     jobs: usize,
-    settings: Settings,
+    settings: &Settings,
     paths: &ProjectPathsConfig,
 ) -> Result<AggregatedCompilerOutput> {
     todo!()
@@ -241,19 +251,15 @@ fn compile_parallel(
 
 /// Contains a mixture of already compiled/cached artifacts and the input set of sources that still
 /// need to be compiled.
-#[derive(Debug)]
-struct Preprocessed<T: ArtifactOutput> {
-    /// all artifacts that don't need to be compiled
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct ProjectCompileOutput2<T: ArtifactOutput> {
+    /// contains the aggregated `CompilerOutput`
+    ///
+    /// See [`CompilerSources::compile`]
+    output: AggregatedCompilerOutput,
+    /// All artifacts that were read from cache
     cached_artifacts: BTreeMap<PathBuf, T::Artifact>,
-
-    cache: SolFilesCache,
-
-    sources: CompilerSources,
-}
-
-impl<T: ArtifactOutput> Preprocessed<T> {
-    /// Drives the compilation process to completion
-    pub fn finish(self) {}
+    ignored_error_codes: Vec<u64>,
 }
 
 /// The aggregated output of (multiple) compile jobs
@@ -270,6 +276,10 @@ struct AggregatedCompilerOutput {
 }
 
 impl AggregatedCompilerOutput {
+    pub fn is_empty(&self) -> bool {
+        self.contracts.is_empty()
+    }
+
     /// adds a new `CompilerOutput` to the aggregated output
     fn extend(&mut self, version: Version, output: CompilerOutput) {
         self.errors.extend(output.errors);
@@ -393,7 +403,9 @@ impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
                 cache.remove_missing_files();
                 cache
             } else {
-                SolFilesCache::default()
+                SolFilesCache::builder()
+                    .root(project.root())
+                    .solc_config(project.solc_config.clone())
             };
 
             // read all artifacts
