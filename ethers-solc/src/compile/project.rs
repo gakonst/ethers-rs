@@ -141,9 +141,11 @@ impl<'a, T: ArtifactOutput> ProjectCompiler<'a, T> {
     /// The output of the compile process can be a mix of reused artifacts and freshly compiled
     /// `Contract`s
     pub fn compile(self) -> Result<()> {
-        let Self { edges, project, sources } = self;
+        let Self { edges, project, mut sources } = self;
 
         let mut cache = ArtifactsCache::new(&project, &edges)?;
+
+        sources = sources.filtered(&mut cache);
 
         todo!()
     }
@@ -159,8 +161,23 @@ enum CompilerSources {
 }
 
 impl CompilerSources {
-    fn preprocess<T: ArtifactOutput>(self, _paths: &ProjectPathsConfig) -> Result<Preprocessed<T>> {
-        todo!()
+    /// Filters out all sources that don't need to be compiled, see [`ArtifactsCache::filter`]
+    fn filtered<T: ArtifactOutput>(mut self, cache: &mut ArtifactsCache<T>) -> Self {
+        fn filterd_sources<T: ArtifactOutput>(
+            sources: BTreeMap<Solc, Sources>,
+            cache: &mut ArtifactsCache<T>,
+        ) -> BTreeMap<Solc, Sources> {
+            sources.into_iter().map(|(solc, sources)| (solc, cache.filter(sources))).collect()
+        }
+
+        match self {
+            CompilerSources::Sequential(s) => {
+                CompilerSources::Sequential(filterd_sources(s, cache))
+            }
+            CompilerSources::Parallel(s, j) => {
+                CompilerSources::Parallel(filterd_sources(s, cache), j)
+            }
+        }
     }
 
     /// Compiles all the files with `Solc`
