@@ -39,6 +39,7 @@ pub struct Request<'a, T> {
 #[derive(Serialize, Deserialize, Debug)]
 /// A JSON-RPC Notifcation
 pub struct Notification<R> {
+    #[serde(alias = "JSONRPC")]
     jsonrpc: String,
     method: String,
     pub params: Subscription<R>,
