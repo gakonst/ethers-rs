@@ -435,6 +435,8 @@ impl SolcConfigBuilder {
     }
 }
 
+pub type ArtifactPaths = BTreeMap<(String, String, String), (PathBuf, PathBuf)>;
+
 pub type Artifacts<T> = BTreeMap<String, BTreeMap<String, T>>;
 
 pub trait Artifact {
@@ -468,7 +470,11 @@ pub trait ArtifactOutput {
     type Artifact: Artifact + DeserializeOwned;
 
     /// Handle the compiler output.
-    fn on_output(output: &CompilerOutput, layout: &ProjectPathsConfig) -> Result<()>;
+    fn on_output(output: &CompilerOutput,
+                 version: String,
+                 artifact_paths: ArtifactPaths,
+                 layout: &ProjectPathsConfig
+    ) -> Result<()>;
 
     /// Returns the file name for the contract's artifact
     fn output_file_name(name: impl AsRef<str>) -> PathBuf {
@@ -577,6 +583,73 @@ pub trait ArtifactOutput {
             })
             .collect()
     }
+
+    /// TODO: doc
+    fn versioned_artifact_path(
+        source_path: impl AsRef<Path>,
+        version: Option<impl AsRef<str>>,
+        name: impl AsRef<str>,
+        source_dir: impl AsRef<Path>,
+    ) -> (PathBuf, PathBuf) {
+        let contract_name = source_path
+            .as_ref()
+            .file_name()
+            .map(PathBuf::from)
+            .unwrap_or_else(|| PathBuf::from(name.as_ref()));
+        let art_path = version
+            .map(|ver| {
+                Self::output_file_name(format!("{}.{}", name.as_ref(), ver.as_ref()))
+            })
+            .unwrap_or_else(|| Self::output_file_name(name));
+        let rel_path = source_path
+            .as_ref()
+            .strip_prefix(source_dir.as_ref())
+            .map(PathBuf::from)
+            .unwrap_or_else(|_| art_path.clone());
+        (rel_path.join(art_path.clone()), contract_name.join(art_path))
+    }
+
+    /// TODO: doc
+    fn versioned_artifact_paths(
+        outputs: Vec<(&CompilerOutput, String)>,
+        source_dir: impl AsRef<Path>
+    ) -> ArtifactPaths {
+        let mut ver_map: BTreeMap<(String, String), Vec<String>> = BTreeMap::new();
+        outputs
+            .iter()
+            .flat_map(|(output, version)| {
+                output.contracts.iter().map(move |(path, contracts)| {
+                    (path, version, contracts)
+                })
+            })
+            .flat_map(|(path, version, contracts)| {
+                contracts.keys().map(move |name| {
+                    (path, version, name)
+                })
+            })
+            .for_each(|(path, version, name)| {
+                let mut vers = vec![version.clone()];
+                if let Some(v) = ver_map.get(&(path.clone(), name.clone())) {
+                    vers.extend(v.iter().cloned());
+                }
+                ver_map.insert((path.clone(), name.clone()), vers);
+            });
+        let source_dir = source_dir.as_ref();
+        ver_map
+            .iter()
+            .flat_map(move |((path, name), vers)| {
+                vers.iter().map(move |ver| {
+                    let art_paths = Self::versioned_artifact_path(
+                        path.clone(),
+                        if vers.len() > 1 { Some(ver) } else { None },
+                        name,
+                        source_dir.clone()
+                    );
+                    ((path.clone(), ver.clone(), name.clone()), art_paths)
+                })
+            })
+            .collect::<ArtifactPaths>()
+    }
 }
 
 /// An Artifacts implementation that uses a compact representation
@@ -595,13 +668,17 @@ pub struct MinimalCombinedArtifacts;
 impl ArtifactOutput for MinimalCombinedArtifacts {
     type Artifact = CompactContract;
 
-    fn on_output(output: &CompilerOutput, layout: &ProjectPathsConfig) -> Result<()> {
+    fn on_output(output: &CompilerOutput,
+                 version: String,
+                 artifact_paths: ArtifactPaths,
+                 layout: &ProjectPathsConfig
+    ) -> Result<()> {
         fs::create_dir_all(&layout.artifacts)
             .map_err(|err| SolcError::msg(format!("Failed to create artifacts dir: {}", err)))?;
         for (file, contracts) in output.contracts.iter() {
             for (name, contract) in contracts {
-                let version = contract.metadata.as_ref().map(|m| m.compiler.version.clone());
-                let artifact = Self::output_file2(file, version, name, &layout.root);
+                // Should be impossible for this get to fail
+                let (_, artifact) = artifact_paths.get(&(file.clone(), version.clone(), name.clone())).unwrap();
                 let file = layout.artifacts.join(artifact);
                 if let Some(parent) = file.parent() {
                     fs::create_dir_all(parent).map_err(|err| {
@@ -633,8 +710,12 @@ pub struct MinimalCombinedArtifactsHardhatFallback;
 impl ArtifactOutput for MinimalCombinedArtifactsHardhatFallback {
     type Artifact = CompactContract;
 
-    fn on_output(output: &CompilerOutput, layout: &ProjectPathsConfig) -> Result<()> {
-        MinimalCombinedArtifacts::on_output(output, layout)
+    fn on_output(output: &CompilerOutput,
+                 version: String,
+                 artifact_paths: ArtifactPaths,
+                 layout: &ProjectPathsConfig
+    ) -> Result<()> {
+        MinimalCombinedArtifacts::on_output(output, version, artifact_paths, layout)
     }
 
     fn read_cached_artifact(path: impl AsRef<Path>) -> Result<Self::Artifact> {

@@ -180,7 +180,6 @@ impl Settings {
             "*".to_string(),
             vec![
                 "abi".to_string(),
-                "metadata".to_string(),
                 "evm.bytecode".to_string(),
                 "evm.deployedBytecode".to_string(),
                 "evm.methodIdentifiers".to_string(),

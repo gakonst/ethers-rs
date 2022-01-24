@@ -3,7 +3,7 @@
 use crate::{
     artifacts::{BytecodeObject, CompactContract, Contract, Offsets},
     error::{Result, SolcError},
-    ArtifactOutput, CompilerOutput, ProjectPathsConfig,
+    ArtifactOutput, ArtifactPaths, CompilerOutput, ProjectPathsConfig,
 };
 use ethers_core::abi::Abi;
 use serde::{Deserialize, Serialize};
@@ -56,13 +56,18 @@ pub struct HardhatArtifacts;
 impl ArtifactOutput for HardhatArtifacts {
     type Artifact = HardhatArtifact;
 
-    fn on_output(output: &CompilerOutput, layout: &ProjectPathsConfig) -> Result<()> {
+    fn on_output(
+        output: &CompilerOutput,
+        version: String,
+        artifact_paths: ArtifactPaths,
+        layout: &ProjectPathsConfig
+    ) -> Result<()> {
         fs::create_dir_all(&layout.artifacts)
             .map_err(|err| SolcError::msg(format!("Failed to create artifacts dir: {}", err)))?;
         for (file, contracts) in output.contracts.iter() {
             for (name, contract) in contracts {
-                let version = contract.metadata.as_ref().map(|m| m.compiler.version.clone());
-                let artifact = Self::output_file2(file, version, name, &layout.root);
+                // Should be impossible for this get to fail
+                let (_, artifact) = artifact_paths.get(&(file.clone(), version.clone(), name.clone())).unwrap();
                 let artifact_file = layout.artifacts.join(artifact);
                 if let Some(parent) = artifact_file.parent() {
                     fs::create_dir_all(parent).map_err(|err| {

@@ -19,8 +19,8 @@ pub use compile::*;
 mod config;
 
 pub use config::{
-    AllowedLibPaths, Artifact, ArtifactOutput, MinimalCombinedArtifacts, PathStyle,
-    ProjectPathsConfig, SolcConfig,
+    AllowedLibPaths, Artifact, ArtifactOutput, ArtifactPaths, MinimalCombinedArtifacts,
+    PathStyle, ProjectPathsConfig, SolcConfig,
 };
 
 pub mod remappings;
@@ -343,20 +343,38 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
             .unwrap()
             .block_on(Solc::compile_many(jobs, self.solc_jobs));
 
-        for (res, _, input) in outputs.into_outputs() {
-            let output = res?;
+        let all_output = outputs
+            .outputs()
+            .filter_map(|(res, solc, input)| {
+                res.as_ref().ok().map(|output| (output, solc, input))
+            })
+            .map(|(output, solc, input)| {
+                solc.version().map(|ver| (output, ver.to_string(), input))
+            })
+            .collect::<Result<Vec<_>>>()?;
+
+        let outputs_vers = all_output
+            .iter()
+            .cloned()
+            .map(|(output, version, _)| (output, version))
+            .collect::<Vec<_>>();
+
+        let art_paths = Artifacts::versioned_artifact_paths(outputs_vers, &self.paths.sources);
+
+        for (output, version, input) in all_output.into_iter() {
             if !output.has_error() {
+
                 if self.cached {
                     // get all contract names of the files and map them to the disk file
-                    all_sources.extend(paths.set_disk_paths(input.sources));
+                    all_sources.extend(paths.set_disk_paths(input.sources.clone()));
                     all_artifacts.extend(paths.get_artifacts(&output.contracts));
                 }
 
                 if !self.no_artifacts {
-                    Artifacts::on_output(&output, &self.paths)?;
+                    Artifacts::on_output(&output, version, art_paths.clone(), &self.paths)?;
                 }
             }
-            compiled.extend_output(output);
+            compiled.extend_output(output.clone());
         }
 
         // write the cache file
@@ -431,9 +449,13 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
             ))
         }
 
+        let version = version.to_string();
+        let output_vers = vec![(&output, version.clone())];
+        let art_paths = Artifacts::versioned_artifact_paths(output_vers, &self.paths.sources);
+
         if self.cached {
             // get all contract names of the files and map them to the disk file
-            let artifacts = paths.get_artifacts(&output.contracts);
+            let artifacts = paths.get_artifacts(&output.contracts); // TODO: Keep as-is wrt versioned paths?
             // reapply to disk paths
             let sources = paths.set_disk_paths(input.sources);
             // create cache file
@@ -442,7 +464,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
 
         // TODO: There seems to be some type redundancy here, c.f. discussion with @mattsse
         if !self.no_artifacts {
-            Artifacts::on_output(&output, &self.paths)?;
+            Artifacts::on_output(&output, version, art_paths, &self.paths)?;
         }
 
         Ok(ProjectCompileOutput::from_compiler_output_and_cache(
