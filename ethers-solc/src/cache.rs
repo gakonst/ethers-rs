@@ -134,10 +134,8 @@ impl SolFilesCache {
         sources: Sources,
         config: Option<&'a SolcConfig>,
         paths: &ProjectPathsConfig,
+        content_hashes: HashMap<PathBuf, String>
     ) -> Sources {
-        // all file hashes
-        let content_hashes: HashMap<_, _> =
-            sources.iter().map(|(file, source)| (file.clone(), source.content_hash())).collect();
         sources
             .into_iter()
             .filter(move |(file, _)| {
@@ -173,9 +171,9 @@ impl SolFilesCache {
 
             // checks whether an artifact this file depends on was removed
             if entry
-                .artifacts
-                .iter()
-                .any(|name| !T::output_exists(file, name, &paths.artifacts, &paths.root))
+                .artifact_paths
+                .keys()
+                .any(|artifact| !T::output_exists(artifact, &paths.artifacts))
             {
                 tracing::trace!(
                     "missing linked artifacts for cached artifact \"{}\"",
@@ -230,9 +228,9 @@ impl SolFilesCache {
     }
 
     /// Checks if all artifact files exist
-    pub fn all_artifacts_exist<T: ArtifactOutput>(&self, artifacts: &Path, root: &Path) -> bool {
-        self.files.iter().all(|(file, entry)| {
-            entry.artifacts.iter().all(|name| T::output_exists(file, name, artifacts, root))
+    pub fn all_artifacts_exist<T: ArtifactOutput>(&self, artifacts: &Path) -> bool {
+        self.files.iter().all(|(_, entry)| {
+            entry.artifact_paths.keys().all(|artifact| T::output_exists(artifact, artifacts))
         })
     }
 
@@ -240,12 +238,11 @@ impl SolFilesCache {
     pub fn read_artifacts<T: ArtifactOutput>(
         &self,
         artifacts_root: &Path,
-        root: &Path,
     ) -> Result<BTreeMap<PathBuf, T::Artifact>> {
         let mut artifacts = BTreeMap::default();
-        for (file, entry) in &self.files {
-            for artifact in &entry.artifacts {
-                let artifact_file = artifacts_root.join(T::output_file(file, artifact, root));
+        for (_, entry) in &self.files {
+            for artifact in entry.artifact_paths.keys() {
+                let artifact_file = artifacts_root.join(artifact);
                 let artifact = T::read_cached_artifact(&artifact_file)?;
                 artifacts.insert(artifact_file, artifact);
             }

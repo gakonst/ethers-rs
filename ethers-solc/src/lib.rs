@@ -38,7 +38,7 @@ use crate::{
 use error::Result;
 use std::{
     borrow::Cow,
-    collections::BTreeMap,
+    collections::{BTreeMap, HashMap},
     convert::TryInto,
     fmt, fs,
     marker::PhantomData,
@@ -241,10 +241,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         #[cfg(all(feature = "svm", feature = "async"))]
         if self.auto_detect {
             tracing::trace!("using solc auto detection to compile sources");
-            return self.svm_compile(sources).map(|mut output| {
-                output.set_paths(self.paths.clone());
-                output
-            })
+            return self.svm_compile(sources)
         }
 
         let mut solc = self.solc.clone();
@@ -253,10 +250,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         }
 
         let sources = Graph::resolve_sources(&self.paths, sources)?.into_sources();
-        self.compile_with_version(&solc, sources).map(|mut output| {
-            output.set_paths(self.paths.clone());
-            output
-        })
+        self.compile_with_version(&solc, sources)
     }
 
     #[cfg(all(feature = "svm", feature = "async"))]
@@ -314,9 +308,15 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         let mut all_sources = BTreeMap::default();
         let mut all_artifacts = Vec::with_capacity(sources_by_version.len());
 
+        let all_content_hashes = sources_by_version
+            .values()
+            .flatten()
+            .map(|(file, source)| (file.clone(), source.content_hash()))
+            .collect::<HashMap<_, _>>();
+
         // preprocess all sources
         for (solc, sources) in sources_by_version {
-            match self.preprocess_sources(sources)? {
+            match self.preprocess_sources(sources, all_content_hashes.clone())? {
                 PreprocessedJob::Unchanged(artifacts) => {
                     compiled.extend(ProjectCompileOutput::from_unchanged(artifacts));
                 }
@@ -432,7 +432,17 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         solc: &Solc,
         sources: Sources,
     ) -> Result<ProjectCompileOutput<Artifacts>> {
-        let (sources, paths, cached_artifacts) = match self.preprocess_sources(sources)? {
+
+        let content_hashes = sources
+            .iter()
+            .map(|(file, source)| (file.clone(), source.content_hash()))
+            .collect::<HashMap<_, _>>();
+
+        let (
+            sources,
+            paths,
+            cached_artifacts
+        ) = match self.preprocess_sources(sources, content_hashes)? {
             PreprocessedJob::Unchanged(artifacts) => {
                 return Ok(ProjectCompileOutput::from_unchanged(artifacts))
             }
@@ -512,7 +522,11 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
 
     /// Preprocesses the given source files by resolving their libs and check against cache if
     /// configured
-    fn preprocess_sources(&self, mut sources: Sources) -> Result<PreprocessedJob<Artifacts>> {
+    fn preprocess_sources(
+        &self,
+        mut sources: Sources,
+        content_hashes: HashMap<PathBuf, String>
+    ) -> Result<PreprocessedJob<Artifacts>> {
         tracing::trace!("start preprocessing {} sources files", sources.len());
 
         // keeps track of source names / disk paths
@@ -536,6 +550,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
                 sources,
                 Some(&self.solc_config),
                 &self.paths,
+                content_hashes
             );
             tracing::trace!("detected {} changed files", changed_files.len());
             cache.remove_changed_files(&changed_files);
@@ -543,7 +558,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
             let cached_artifacts = if self.paths.artifacts.exists() {
                 tracing::trace!("reading artifacts from cache..");
                 let artifacts =
-                    cache.read_artifacts::<Artifacts>(&self.paths.artifacts, &self.paths.root)?;
+                    cache.read_artifacts::<Artifacts>(&self.paths.artifacts)?;
                 tracing::trace!("read {} artifacts from cache", artifacts.len());
                 artifacts
             } else {
@@ -798,7 +813,6 @@ pub struct ProjectCompileOutput<T: ArtifactOutput> {
     compiler_output: Option<CompilerOutput>,
     /// All artifacts that were read from cache
     artifacts: BTreeMap<PathBuf, T::Artifact>,
-    paths: Option<ProjectPathsConfig>, // TODO: Remove this
     ignored_error_codes: Vec<u64>,
 }
 
@@ -807,13 +821,12 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
         Self {
             compiler_output: None,
             artifacts: Default::default(),
-            paths: None,
             ignored_error_codes: ignored_errors,
         }
     }
 
     pub fn from_unchanged(artifacts: BTreeMap<PathBuf, T::Artifact>) -> Self {
-        Self { compiler_output: None, artifacts, paths: None, ignored_error_codes: vec![] }
+        Self { compiler_output: None, artifacts, ignored_error_codes: vec![] }
     }
 
     pub fn from_compiler_output(
@@ -823,7 +836,6 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
         Self {
             compiler_output: Some(compiler_output),
             artifacts: Default::default(),
-            paths: None,
             ignored_error_codes,
         }
     }
@@ -836,7 +848,6 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
         Self {
             compiler_output: Some(compiler_output),
             artifacts: cache,
-            paths: None,
             ignored_error_codes,
         }
     }
@@ -857,14 +868,11 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
 
     /// Combine two outputs
     pub fn extend(&mut self, compiled: ProjectCompileOutput<T>) {
-        let ProjectCompileOutput { compiler_output, artifacts, paths, .. } = compiled;
+        let ProjectCompileOutput { compiler_output, artifacts, .. } = compiled;
         if let Some(output) = compiler_output {
             self.extend_output(output);
         }
         self.artifacts.extend(artifacts);
-        if paths.is_some() {
-            self.paths = paths;
-        }
     }
 
     pub fn extend_output(&mut self, compiled: CompilerOutput) {
@@ -879,10 +887,6 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
 
     pub fn extend_artifacts(&mut self, artifacts: BTreeMap<PathBuf, T::Artifact>) {
         self.artifacts.extend(artifacts);
-    }
-
-    pub fn set_paths(&mut self, paths: ProjectPathsConfig) {
-        self.paths = Some(paths);
     }
 
     /// Whether this type does not contain compiled contracts
@@ -970,21 +974,24 @@ impl<T: ArtifactOutput + 'static> ProjectCompileOutput<T> {
     /// let contracts: BTreeMap<String, CompactContract> = project.compile().unwrap().into_artifacts().collect();
     /// ```
     pub fn into_artifacts(mut self) -> Box<dyn Iterator<Item = (String, T::Artifact)>> {
-        let paths = self.paths.as_ref();
-        let artifacts_path = paths.map(|p| p.artifacts.clone());
-        let root_path = paths.map(|p| p.root.clone());
+        // TODO: WIP
+        // let paths = self.paths.as_ref();
+        // let artifacts_path = paths.map(|p| p.artifacts.clone());
+        // let root_path = paths.map(|p| p.root.clone());
 
         let artifacts = self.artifacts.into_iter().filter_map(move |(path, art)| {
-            let source_name = artifacts_path
-                .as_ref()
-                .and_then(|root| path.strip_prefix(&root).ok())
-                .and_then(|p| p.parent())
-                .map(|p| p.into());
+            // let source_name = artifacts_path
+            //     .as_ref()
+            //     .and_then(|root| path.strip_prefix(&root).ok())
+            //     .and_then(|p| p.parent())
+            //     .map(|p| p.into());
             T::contract_name(&path).map(|name| {
+                println!("A: {:?} {:?}", path, name);
                 (
                     format!(
                         "{}:{}",
-                        source_name.unwrap_or_else(|| T::output_file_name(&name)).display(),
+                        // source_name.unwrap_or_else(|| T::output_file_name(&name)).display(),
+                        T::output_file_name(&name).display(),
                         name
                     ),
                     art,
@@ -997,17 +1004,19 @@ impl<T: ArtifactOutput + 'static> ProjectCompileOutput<T> {
         {
             Box::new(artifacts.chain(T::output_to_artifacts(output).into_iter().flat_map(
                 move |(file, artifacts)| {
-                    let root_path = root_path.clone();
-                    let file_path = PathBuf::from(file);
+                    // let root_path = root_path.clone();
+                    // let file_path = PathBuf::from(file);
                     artifacts.into_iter().map(move |(name, artifact)| {
-                        let source_name = root_path
-                            .as_ref()
-                            .and_then(|root| file_path.strip_prefix(&root).ok())
-                            .map(|p| p.into());
+                        // let source_name = root_path
+                        //     .as_ref()
+                        //     .and_then(|root| file_path.strip_prefix(&root).ok())
+                        //     .map(|p| p.into());
+                        println!("B: {:?} {:?}", file, name);
                         (
                             format!(
                                 "{}:{}",
-                                source_name.unwrap_or_else(|| T::output_file_name(&name)).display(),
+                                // source_name.unwrap_or_else(|| T::output_file_name(&name)).display(),
+                                T::output_file_name(&name).display(),
                                 name
                             ),
                             artifact,
