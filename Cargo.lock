@@ -1232,6 +1232,7 @@ name = "ethers-etherscan"
 version = "0.2.0"
 dependencies = [
  "ethers-core",
+ "ethers-solc",
  "reqwest",
  "serde",
  "serde-aux",
