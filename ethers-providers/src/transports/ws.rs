@@ -12,7 +12,6 @@ use futures_util::{
     sink::{Sink, SinkExt},
     stream::{Fuse, Stream, StreamExt},
 };
-use http::Request as HttpRequest;
 use serde::{de::DeserializeOwned, Serialize};
 use std::{
     collections::{btree_map::Entry, BTreeMap},
@@ -62,6 +61,9 @@ if_not_wasm! {
     type WsError = tungstenite::Error;
     type WsStreamItem = Result<Message, WsError>;
     use tracing::{debug, error, warn};
+    use http::Request as HttpRequest;
+    use http::Uri;
+    use std::str::FromStr;
 }
 
 type Pending = oneshot::Sender<Result<serde_json::Value, JsonRpcError>>;
@@ -145,10 +147,11 @@ impl Ws {
     /// Initializes a new WebSocket Client with authentication
     #[cfg(not(target_arch = "wasm32"))]
     pub async fn connect_with_auth(
-        url: impl Into<HttpRequest<()>> + Unpin,
+        uri: impl AsRef<str> + Unpin,
         auth: Authorization,
     ) -> Result<Self, ClientError> {
-        let mut request: HttpRequest<()> = url.into();
+        let mut request: HttpRequest<()> =
+            HttpRequest::builder().method("GET").uri(Uri::from_str(uri.as_ref())?).body(())?;
         let auth_header = match auth {
             Authorization::Basic(username, password) => {
                 String::from("Basic ") + base64::encode(username + ":" + &password).as_str()
@@ -468,6 +471,16 @@ pub enum ClientError {
     #[error(transparent)]
     #[cfg(not(target_arch = "wasm32"))]
     WsAuth(#[from] http::header::InvalidHeaderValue),
+
+    /// Unable to create a valid Uri
+    #[error(transparent)]
+    #[cfg(not(target_arch = "wasm32"))]
+    UriError(#[from] http::uri::InvalidUri),
+
+    /// Unable to create a valid Request
+    #[error(transparent)]
+    #[cfg(not(target_arch = "wasm32"))]
+    RequestError(#[from] http::Error),
 }
 
 impl From<ClientError> for ProviderError {
