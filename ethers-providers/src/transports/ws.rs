@@ -5,7 +5,6 @@ use crate::{
 };
 use ethers_core::types::U256;
 
-use super::Authorization;
 use async_trait::async_trait;
 use futures_channel::{mpsc, oneshot};
 use futures_util::{
@@ -60,6 +59,7 @@ if_not_wasm! {
     type Message = tungstenite::protocol::Message;
     type WsError = tungstenite::Error;
     type WsStreamItem = Result<Message, WsError>;
+    use super::Authorization;
     use tracing::{debug, error, warn};
     use http::Request as HttpRequest;
     use http::Uri;
