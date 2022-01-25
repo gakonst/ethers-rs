@@ -249,6 +249,21 @@ impl SolFilesCache {
         }
         Ok(artifacts)
     }
+
+    /// Get source name for cache entry matching artifact name
+    pub fn source_name_for_artifact(&self, name: &String) -> Option<PathBuf> {
+        for (_, entry) in &self.files {
+            if entry.artifacts.iter().any(|art_name| art_name == name) {
+                return Some(entry.source_name.clone())
+            }
+        }
+        return None
+    }
+
+    /// Get source name for cache entry matching source path
+    pub fn source_name_for_source(&self, src_path: &String) -> Option<PathBuf> {
+        self.files.get(&PathBuf::from(src_path)).map(|entry| entry.source_name.clone())
+    }
 }
 
 // async variants for read and write

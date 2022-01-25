@@ -261,13 +261,13 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
             graph.into_sources_by_version(!self.auto_detect)?.get(&self.allowed_lib_paths)?;
 
         // run the compilation step for each version
-        let compiled = if self.solc_jobs > 1 && sources_by_version.len() > 1 {
+        let mut compiled = if self.solc_jobs > 1 && sources_by_version.len() > 1 {
             self.compile_many(sources_by_version)?
         } else {
             self.compile_sources(sources_by_version)?
         };
         tracing::trace!("compiled all sources");
-
+        compiled.cache_path = Some(self.paths.cache.clone());
         Ok(compiled)
     }
 
@@ -375,7 +375,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
                                 .iter()
                                 .map(|name| {
                                     let f = file.to_string_lossy().into_owned();
-                                    art_paths.get(&(f, version.clone(), name.clone())).unwrap() // TODO: Is this safe?
+                                    art_paths.get(&(f, version.clone(), name.clone())).unwrap() // TODO: Is this safe? No, it's not
                                 })
                                 .map(|(_, art_path)| {
                                     (art_path.clone(), version.clone())
@@ -512,12 +512,13 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
             // create cache file
             self.write_cache_file(sources, artifacts)?;
         }
-
-        Ok(ProjectCompileOutput::from_compiler_output_and_cache(
+        let mut output = ProjectCompileOutput::from_compiler_output_and_cache(
             output,
             cached_artifacts,
             self.ignored_error_codes.clone(),
-        ))
+        );
+        output.cache_path = Some(self.paths.cache.clone());
+        Ok(output)
     }
 
     /// Preprocesses the given source files by resolving their libs and check against cache if
@@ -814,6 +815,7 @@ pub struct ProjectCompileOutput<T: ArtifactOutput> {
     /// All artifacts that were read from cache
     artifacts: BTreeMap<PathBuf, T::Artifact>,
     ignored_error_codes: Vec<u64>,
+    cache_path: Option<PathBuf>,
 }
 
 impl<T: ArtifactOutput> ProjectCompileOutput<T> {
@@ -822,11 +824,12 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
             compiler_output: None,
             artifacts: Default::default(),
             ignored_error_codes: ignored_errors,
+            cache_path: None,
         }
     }
 
     pub fn from_unchanged(artifacts: BTreeMap<PathBuf, T::Artifact>) -> Self {
-        Self { compiler_output: None, artifacts, ignored_error_codes: vec![] }
+        Self { compiler_output: None, artifacts, ignored_error_codes: vec![], cache_path: None, }
     }
 
     pub fn from_compiler_output(
@@ -837,6 +840,7 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
             compiler_output: Some(compiler_output),
             artifacts: Default::default(),
             ignored_error_codes,
+            cache_path: None,
         }
     }
 
@@ -849,6 +853,7 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
             compiler_output: Some(compiler_output),
             artifacts: cache,
             ignored_error_codes,
+            cache_path: None,
         }
     }
 
@@ -974,60 +979,31 @@ impl<T: ArtifactOutput + 'static> ProjectCompileOutput<T> {
     /// let contracts: BTreeMap<String, CompactContract> = project.compile().unwrap().into_artifacts().collect();
     /// ```
     pub fn into_artifacts(mut self) -> Box<dyn Iterator<Item = (String, T::Artifact)>> {
-        // TODO: WIP
-        // let paths = self.paths.as_ref();
-        // let artifacts_path = paths.map(|p| p.artifacts.clone());
-        // let root_path = paths.map(|p| p.root.clone());
-
-        let artifacts = self.artifacts.into_iter().filter_map(move |(path, art)| {
-            // let source_name = artifacts_path
-            //     .as_ref()
-            //     .and_then(|root| path.strip_prefix(&root).ok())
-            //     .and_then(|p| p.parent())
-            //     .map(|p| p.into());
-            T::contract_name(&path).map(|name| {
-                println!("A: {:?} {:?}", path, name);
-                (
-                    format!(
-                        "{}:{}",
-                        // source_name.unwrap_or_else(|| T::output_file_name(&name)).display(),
-                        T::output_file_name(&name).display(),
-                        name
-                    ),
-                    art,
-                )
-            })
-        });
-
-        let artifacts: Box<dyn Iterator<Item = (String, T::Artifact)>> = if let Some(output) =
-            self.compiler_output.take()
-        {
-            Box::new(artifacts.chain(T::output_to_artifacts(output).into_iter().flat_map(
-                move |(file, artifacts)| {
-                    // let root_path = root_path.clone();
-                    // let file_path = PathBuf::from(file);
-                    artifacts.into_iter().map(move |(name, artifact)| {
-                        // let source_name = root_path
-                        //     .as_ref()
-                        //     .and_then(|root| file_path.strip_prefix(&root).ok())
-                        //     .map(|p| p.into());
-                        println!("B: {:?} {:?}", file, name);
-                        (
-                            format!(
-                                "{}:{}",
-                                // source_name.unwrap_or_else(|| T::output_file_name(&name)).display(),
-                                T::output_file_name(&name).display(),
-                                name
-                            ),
-                            artifact,
-                        )
-                    })
-                },
-            )))
-        } else {
-            Box::new(artifacts)
-        };
-        artifacts
+        let cache = self.cache_path.map(|path| {
+            SolFilesCache::read(path).ok()
+        }).flatten();
+        let mut out_artifacts = Vec::new();
+        for (path, art) in self.artifacts {
+            if let Some(name) = T::contract_name(&path) {
+                if let Some(src_name) = cache.clone().map(|cache| {
+                    cache.source_name_for_artifact(&name)
+                }).flatten() {
+                    out_artifacts.push((format!("{}:{}", src_name.display(), name), art))
+                }
+            }
+        }
+        if let Some(output) = self.compiler_output.take() {
+            for (file, artifacts) in T::output_to_artifacts(output) {
+                for (name, artifact) in artifacts {
+                    if let Some(src_name) = cache.clone().map(|cache| {
+                        cache.source_name_for_source(&file)
+                    }).flatten() {
+                        out_artifacts.push((format!("{}:{}", src_name.display(), name), artifact))
+                    }
+                }
+            }
+        }
+        Box::new(out_artifacts.into_iter())
     }
 }
 
