@@ -116,7 +116,7 @@ impl Provider {
     /// use url::Url;
     ///
     /// let url = Url::parse("http://localhost:8545").unwrap();
-    /// let provider = Http::new(url, Auth::Basic("admin", "good_password"));
+    /// let provider = Http::new_with_auth(url, Auth::Basic("admin", "good_password"));
     /// ```
     pub fn new_with_auth(url: impl Into<Url>, auth: Authorization) -> Self {
         let mut provider = Self::new(url);
