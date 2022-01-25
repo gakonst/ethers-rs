@@ -15,7 +15,7 @@ keywords = ["ethereum", "web3", "solc", "solidity", "ethers"]
 
 [dependencies]
 ethers-core = { version = "^0.6.0", path = "../ethers-core", default-features = false }
-serde_json = "1.0.68"
+serde_json = "1.0.67"
 serde = { version = "1.0.130", features = ["derive"] }
 semver = "1.0.4"
 walkdir = "2.3.2"
