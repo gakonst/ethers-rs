@@ -5,12 +5,14 @@ use crate::{
 };
 use ethers_core::types::U256;
 
+use super::Authorization;
 use async_trait::async_trait;
 use futures_channel::{mpsc, oneshot};
 use futures_util::{
     sink::{Sink, SinkExt},
     stream::{Fuse, Stream, StreamExt},
 };
+use http::Request as HttpRequest;
 use serde::{de::DeserializeOwned, Serialize};
 use std::{
     collections::{btree_map::Entry, BTreeMap},
@@ -138,6 +140,25 @@ impl Ws {
     ) -> Result<Self, ClientError> {
         let (ws, _) = connect_async(url).await?;
         Ok(Self::new(ws))
+    }
+
+    /// Initializes a new WebSocket Client with authentication
+    #[cfg(not(target_arch = "wasm32"))]
+    pub async fn connect_with_auth(
+        url: impl Into<HttpRequest<()>> + Unpin,
+        auth: Authorization,
+    ) -> Result<Self, ClientError> {
+        let mut request: HttpRequest<()> = url.into();
+        let auth_header = match auth {
+            Authorization::Basic(username, password) => {
+                String::from("Basic ") + base64::encode(username + ":" + &password).as_str()
+            }
+            Authorization::Bearer(token) => String::from("Bearer ") + &token,
+        };
+        request
+            .headers_mut()
+            .insert(http::header::AUTHORIZATION, http::HeaderValue::from_str(&auth_header)?);
+        Self::connect(request).await
     }
 
     fn send(&self, msg: Instruction) -> Result<(), ClientError> {
@@ -442,6 +463,11 @@ pub enum ClientError {
     /// Something caused the websocket to close
     #[error("WebSocket connection closed unexpectedly")]
     UnexpectedClose,
+
+    /// Could not create an auth header for websocket handshake
+    #[error(transparent)]
+    #[cfg(not(target_arch = "wasm32"))]
+    WsAuth(#[from] http::header::InvalidHeaderValue),
 }
 
 impl From<ClientError> for ProviderError {

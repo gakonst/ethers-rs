@@ -11,7 +11,7 @@ use std::{
 use thiserror::Error;
 use url::Url;
 
-use super::common::{JsonRpcError, Request, Response};
+use super::common::{Authorization, JsonRpcError, Request, Response};
 
 /// A low-level JSON-RPC Client over HTTP.
 ///
@@ -33,6 +33,7 @@ pub struct Provider {
     id: AtomicU64,
     client: Client,
     url: Url,
+    authorization: Option<Authorization>,
 }
 
 #[derive(Error, Debug)]
@@ -69,10 +70,19 @@ impl JsonRpcClient for Provider {
         params: T,
     ) -> Result<R, ClientError> {
         let next_id = self.id.fetch_add(1, Ordering::SeqCst);
-
         let payload = Request::new(next_id, method, params);
 
-        let res = self.client.post(self.url.as_ref()).json(&payload).send().await?;
+        let mut client = self.client.post(self.url.as_ref()).json(&payload);
+        if let Some(auth) = &self.authorization {
+            client = match auth {
+                Authorization::Basic(username, password) => {
+                    client.basic_auth(username, Some(password))
+                }
+                Authorization::Bearer(token) => client.bearer_auth(token),
+            };
+        }
+
+        let res = client.send().await?;
         let text = res.text().await?;
         let res: Response<R> =
             serde_json::from_str(&text).map_err(|err| ClientError::SerdeJson { err, text })?;
@@ -94,7 +104,24 @@ impl Provider {
     /// let provider = Http::new(url);
     /// ```
     pub fn new(url: impl Into<Url>) -> Self {
-        Self { id: AtomicU64::new(0), client: Client::new(), url: url.into() }
+        Self { id: AtomicU64::new(0), client: Client::new(), url: url.into(), authorization: None }
+    }
+
+    /// Initializes a new HTTP Client with authentication
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use ethers_providers::{Http, Auth};
+    /// use url::Url;
+    ///
+    /// let url = Url::parse("http://localhost:8545").unwrap();
+    /// let provider = Http::new(url, Auth::Basic("admin", "good_password"));
+    /// ```
+    pub fn new_with_auth(url: impl Into<Url>, auth: Authorization) -> Self {
+        let mut provider = Self::new(url);
+        provider.authorization = Some(auth);
+        provider
     }
 }
 
@@ -109,6 +136,11 @@ impl FromStr for Provider {
 
 impl Clone for Provider {
     fn clone(&self) -> Self {
-        Self { id: AtomicU64::new(0), client: self.client.clone(), url: self.url.clone() }
+        Self {
+            id: AtomicU64::new(0),
+            client: self.client.clone(),
+            url: self.url.clone(),
+            authorization: None,
+        }
     }
 }

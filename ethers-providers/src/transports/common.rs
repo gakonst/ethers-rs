@@ -94,6 +94,15 @@ impl ResponseData<serde_json::Value> {
     }
 }
 
+/// Basic or bearer authentication in http or websocket transport
+///
+/// Use to inject username and password or an auth token into requests
+#[derive(Clone, Debug)]
+pub enum Authorization {
+    Basic(String, String),
+    Bearer(String),
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
