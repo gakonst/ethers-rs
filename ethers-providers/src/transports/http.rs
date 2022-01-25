@@ -112,11 +112,11 @@ impl Provider {
     /// # Example
     ///
     /// ```
-    /// use ethers_providers::{Http, Auth};
+    /// use ethers_providers::{Authorization, Http};
     /// use url::Url;
     ///
     /// let url = Url::parse("http://localhost:8545").unwrap();
-    /// let provider = Http::new_with_auth(url, Auth::Basic("admin", "good_password"));
+    /// let provider = Http::new_with_auth(url, Authorization::Basic("admin".into(), "good_password".into()));
     /// ```
     pub fn new_with_auth(url: impl Into<Url>, auth: Authorization) -> Self {
         let mut provider = Self::new(url);
