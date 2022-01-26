@@ -77,7 +77,7 @@ use crate::{
     artifacts::{
         Error, Settings, SourceFile, VersionedContract, VersionedContracts, VersionedSources,
     },
-    cache::{CacheEntry, CacheEntry2},
+    cache::CacheEntry,
     error::Result,
     resolver::GraphEdges,
     utils, ArtifactOutput, CompilerInput, CompilerOutput, Graph, PathMap, Project,
@@ -330,14 +330,14 @@ struct Cache<'a, T: ArtifactOutput> {
     /// all files that were filtered because they haven't changed
     filtered: Sources,
     /// the corresponding cache entries for all sources that were deemed to be dirty
-    dirty_entries: HashMap<PathBuf, (CacheEntry2, HashSet<Version>)>,
+    dirty_entries: HashMap<PathBuf, (CacheEntry, HashSet<Version>)>,
     /// the file hashes
     content_hashes: HashMap<PathBuf, String>,
 }
 
 impl<'a, T: ArtifactOutput> Cache<'a, T> {
     /// Creates a new cache entry for the file
-    fn create_cache_entry(&self, file: &PathBuf, source: &Source) -> Result<CacheEntry2> {
+    fn create_cache_entry(&self, file: &PathBuf, source: &Source) -> Result<CacheEntry> {
         let imports = self
             .edges
             .imports(file)
@@ -345,7 +345,7 @@ impl<'a, T: ArtifactOutput> Cache<'a, T> {
             .map(|import| utils::source_name(import, &self.paths.root).to_path_buf())
             .collect();
 
-        let entry = CacheEntry2 {
+        let entry = CacheEntry {
             last_modification_date: CacheEntry::read_last_modification_date(&file).unwrap(),
             content_hash: source.content_hash(),
             source_name: utils::source_name(&file, &self.paths.root).into(),
@@ -410,7 +410,7 @@ impl<'a, T: ArtifactOutput> Cache<'a, T> {
     }
 
     /// returns `false` if the corresponding cache entry remained unchanged otherwise `true`
-    fn is_dirty(&self, file: &Path, _version: &Version) -> bool {
+    fn is_dirty(&self, file: &Path, version: &Version) -> bool {
         if let Some(hash) = self.content_hashes.get(file) {
             let cache_path = utils::source_name(file, &self.paths.root);
             if let Some(entry) = self.cache.entry(&cache_path) {
@@ -428,14 +428,22 @@ impl<'a, T: ArtifactOutput> Cache<'a, T> {
                     );
                     return true
                 }
-                // checks whether an artifact this file depends on was removed
-                if entry.artifacts.iter().any(|name| !self.has_artifact(file, name)) {
-                    tracing::trace!(
-                        "missing linked artifacts for cached artifact \"{}\"",
-                        file.display()
-                    );
+
+                if let Some(artifacts) = entry.artifacts.get(version) {
+                    // checks whether an artifact this file depends on was removed
+                    if artifacts.iter().any(|artifact_path| !self.has_artifact(artifact_path)) {
+                        tracing::trace!(
+                            "missing linked artifacts for cached artifact \"{}\"",
+                            file.display()
+                        );
+                        return true
+                    }
+                } else {
+                    // artifact does not exist
                     return true
                 }
+
+                // all things match
                 return false
             }
         }
@@ -451,10 +459,9 @@ impl<'a, T: ArtifactOutput> Cache<'a, T> {
         }
     }
 
-    /// Returns true if the artifact for the exists
-    fn has_artifact(&self, file: &Path, name: &str) -> bool {
-        let artifact_path = self.paths.artifacts.join(T::output_file(file, name));
-        self.cached_artifacts.contains_key(&artifact_path)
+    /// Returns true if the artifact exists
+    fn has_artifact(&self, artifact_path: &Path) -> bool {
+        self.cached_artifacts.contains_key(artifact_path)
     }
 }
 

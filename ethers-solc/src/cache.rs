@@ -316,60 +316,62 @@ impl SolFilesCacheBuilder {
         sources: Sources,
         cache_file: Option<PathBuf>,
     ) -> Result<SolFilesCache> {
-        let format = self.format.unwrap_or_else(|| ETHERS_FORMAT_VERSION.to_string());
-        let solc_config = self.solc_config.unwrap_or_else(|| SolcConfig::builder().build());
-
-        let root = self
-            .root
-            .map(Ok)
-            .unwrap_or_else(std::env::current_dir)
-            .map_err(|err| SolcError::io(err, "."))?;
-
-        let mut files = BTreeMap::new();
-        for (file, source) in sources {
-            let last_modification_date = CacheEntry::read_last_modification_date(&file)?;
-            let imports =
-                utils::find_import_paths(source.as_ref()).map(|m| m.as_str().to_owned()).collect();
-
-            let version_pragmas = utils::find_version_pragma(source.as_ref())
-                .map(|v| vec![v.as_str().to_string()])
-                .unwrap_or_default();
-
-            let entry = CacheEntry {
-                last_modification_date,
-                content_hash: source.content_hash(),
-                source_name: utils::source_name(&file, &root).into(),
-                solc_config: solc_config.clone(),
-                imports,
-                version_pragmas,
-                artifacts: vec![],
-            };
-            files.insert(file, entry);
-        }
-
-        let cache = if let Some(dest) = cache_file.as_ref().filter(|dest| dest.exists()) {
-            // read the existing cache and extend it by the files that changed
-            // (if we just wrote to the cache file, we'd overwrite the existing data)
-            let reader =
-                std::io::BufReader::new(File::open(dest).map_err(|err| SolcError::io(err, dest))?);
-            if let Ok(mut cache) = serde_json::from_reader::<_, SolFilesCache>(reader) {
-                cache.files.extend(files);
-                cache
-            } else {
-                tracing::error!("Failed to read existing cache file {}", dest.display());
-                SolFilesCache { format, files }
-            }
-        } else {
-            SolFilesCache { format, files }
-        };
-
-        Ok(cache)
+        todo!()
+        // let format = self.format.unwrap_or_else(|| ETHERS_FORMAT_VERSION.to_string());
+        // let solc_config = self.solc_config.unwrap_or_else(|| SolcConfig::builder().build());
+        //
+        // let root = self
+        //     .root
+        //     .map(Ok)
+        //     .unwrap_or_else(std::env::current_dir)
+        //     .map_err(|err| SolcError::io(err, "."))?;
+        //
+        // let mut files = BTreeMap::new();
+        // for (file, source) in sources {
+        //     let last_modification_date = CacheEntry::read_last_modification_date(&file)?;
+        //     let imports =
+        //         utils::find_import_paths(source.as_ref()).map(|m|
+        // m.as_str().to_owned()).collect();
+        //
+        //     let version_pragmas = utils::find_version_pragma(source.as_ref())
+        //         .map(|v| vec![v.as_str().to_string()])
+        //         .unwrap_or_default();
+        //
+        //     let entry = CacheEntry {
+        //         last_modification_date,
+        //         content_hash: source.content_hash(),
+        //         source_name: utils::source_name(&file, &root).into(),
+        //         solc_config: solc_config.clone(),
+        //         imports,
+        //         version_pragmas,
+        //         artifacts: vec![],
+        //     };
+        //     files.insert(file, entry);
+        // }
+        //
+        // let cache = if let Some(dest) = cache_file.as_ref().filter(|dest| dest.exists()) {
+        //     // read the existing cache and extend it by the files that changed
+        //     // (if we just wrote to the cache file, we'd overwrite the existing data)
+        //     let reader =
+        //         std::io::BufReader::new(File::open(dest).map_err(|err| SolcError::io(err,
+        // dest))?);     if let Ok(mut cache) = serde_json::from_reader::<_,
+        // SolFilesCache>(reader) {         cache.files.extend(files);
+        //         cache
+        //     } else {
+        //         tracing::error!("Failed to read existing cache file {}", dest.display());
+        //         SolFilesCache { format, files }
+        //     }
+        // } else {
+        //     SolFilesCache { format, files }
+        // };
+        //
+        // Ok(cache)
     }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CacheEntry2 {
+pub struct CacheEntry {
     /// the last modification time of this file
     pub last_modification_date: u64,
     /// hash to identify whether the content of the file changed
@@ -391,19 +393,6 @@ pub struct CacheEntry2 {
     /// file `C` would be compiled twice, with `0.8.10` and `0.8.11`, producing two different
     /// artifacts
     pub artifacts: HashMap<Version, Vec<PathBuf>>,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct CacheEntry {
-    /// the last modification time of this file
-    pub last_modification_date: u64,
-    pub content_hash: String,
-    pub source_name: PathBuf,
-    pub solc_config: SolcConfig,
-    pub imports: Vec<String>,
-    pub version_pragmas: Vec<String>,
-    pub artifacts: Vec<String>,
 }
 
 impl CacheEntry {
