@@ -49,6 +49,13 @@ impl SolFilesCache {
         SolFilesCacheBuilder::default()
     }
 
+    /// This returns a `SolFilesCache` that has read the cache file located
+    /// at the default cache location as provided by `ProjectPathsConfig`
+    pub fn cache_populated_from_defaults() -> Result<Self> {
+        let paths = ProjectPathsConfig::builder().build()?;
+        SolFilesCache::read(paths.cache)
+    }
+
     /// Whether this cache's format is the hardhat format identifier
     pub fn is_hardhat_format(&self) -> bool {
         self.format == HH_FORMAT_VERSION
@@ -263,6 +270,13 @@ impl SolFilesCache {
     /// Get source name for cache entry matching source path
     pub fn source_name_for_source(&self, src_path: &String) -> Option<PathBuf> {
         self.files.get(&PathBuf::from(src_path)).map(|entry| entry.source_name.clone())
+    }
+
+    /// Get metadata for artifacts related to source path
+    pub fn metadata_for_source(&self, path: impl AsRef<Path>) -> Option<(SolcConfig, BTreeMap<PathBuf, String>)> {
+        self.files.get(path.as_ref()).map(|entry| {
+            (entry.solc_config.clone(), entry.artifact_paths.clone())
+        })
     }
 }
 
