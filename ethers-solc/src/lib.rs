@@ -383,7 +383,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
                 }
 
                 if !self.no_artifacts {
-                    Artifacts::on_output(&output, version, art_paths.clone(), &self.paths)?;
+                    Artifacts::on_output(output, version, art_paths.clone(), &self.paths)?;
                 }
             }
             compiled.extend_output(output.clone());
@@ -964,12 +964,12 @@ impl<T: ArtifactOutput + 'static> ProjectCompileOutput<T> {
     /// let contracts: BTreeMap<String, CompactContract> = project.compile().unwrap().into_artifacts().collect();
     /// ```
     pub fn into_artifacts(mut self) -> Box<dyn Iterator<Item = (String, T::Artifact)>> {
-        let cache = self.cache_path.map(|path| SolFilesCache::read(path).ok()).flatten();
+        let cache = self.cache_path.and_then(|path| SolFilesCache::read(path).ok());
         let mut out_artifacts = Vec::new();
         for (path, art) in self.artifacts {
             if let Some(name) = T::contract_name(&path) {
                 if let Some(src_name) =
-                    cache.clone().map(|cache| cache.source_name_for_artifact(&name)).flatten()
+                    cache.clone().and_then(|cache| cache.source_name_for_artifact(&name))
                 {
                     out_artifacts.push((format!("{}:{}", src_name.display(), name), art))
                 }
@@ -979,7 +979,7 @@ impl<T: ArtifactOutput + 'static> ProjectCompileOutput<T> {
             for (file, artifacts) in T::output_to_artifacts(output) {
                 for (name, artifact) in artifacts {
                     if let Some(src_name) =
-                        cache.clone().map(|cache| cache.source_name_for_source(&file)).flatten()
+                        cache.clone().and_then(|cache| cache.source_name_for_source(&file))
                     {
                         out_artifacts.push((format!("{}:{}", src_name.display(), name), artifact))
                     }

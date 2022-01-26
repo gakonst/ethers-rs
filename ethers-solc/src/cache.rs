@@ -247,7 +247,7 @@ impl SolFilesCache {
         artifacts_root: &Path,
     ) -> Result<BTreeMap<PathBuf, T::Artifact>> {
         let mut artifacts = BTreeMap::default();
-        for (_, entry) in &self.files {
+        for entry in self.files.values() {
             for artifact in entry.artifact_paths.keys() {
                 let artifact_file = artifacts_root.join(artifact);
                 let artifact = T::read_cached_artifact(&artifact_file)?;
@@ -258,17 +258,17 @@ impl SolFilesCache {
     }
 
     /// Get source name for cache entry matching artifact name
-    pub fn source_name_for_artifact(&self, name: &String) -> Option<PathBuf> {
-        for (_, entry) in &self.files {
+    pub fn source_name_for_artifact(&self, name: &str) -> Option<PathBuf> {
+        for entry in self.files.values() {
             if entry.artifacts.iter().any(|art_name| art_name == name) {
                 return Some(entry.source_name.clone())
             }
         }
-        return None
+        None
     }
 
     /// Get source name for cache entry matching source path
-    pub fn source_name_for_source(&self, src_path: &String) -> Option<PathBuf> {
+    pub fn source_name_for_source(&self, src_path: &str) -> Option<PathBuf> {
         self.files.get(&PathBuf::from(src_path)).map(|entry| entry.source_name.clone())
     }
 

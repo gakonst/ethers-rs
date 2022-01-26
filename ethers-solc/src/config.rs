@@ -631,7 +631,7 @@ pub trait ArtifactOutput {
                         path.clone(),
                         if vers.len() > 1 { Some(ver) } else { None },
                         name,
-                        source_dir.clone(),
+                        source_dir,
                     );
                     ((path.clone(), ver.clone(), name.clone()), art_paths)
                 })
