@@ -21,7 +21,7 @@ const HH_FORMAT_VERSION: &str = "hh-sol-cache-2";
 /// `ethers-solc` uses a different format version id, but the actual format is consistent with
 /// hardhat This allows ethers-solc to detect if the cache file was written by hardhat or
 /// `ethers-solc`
-const ETHERS_FORMAT_VERSION: &str = "ethers-rs-sol-cache-1";
+const ETHERS_FORMAT_VERSION: &str = "ethers-rs-sol-cache-2";
 
 /// The file name of the default cache file
 pub const SOLIDITY_FILES_CACHE_FILENAME: &str = "solidity-files-cache.json";
@@ -63,7 +63,8 @@ impl SolFilesCache {
 
     /// Whether this cache's format is our custom format identifier
     pub fn is_ethers_format(&self) -> bool {
-        self.format == ETHERS_FORMAT_VERSION // TODO: Should we test prefix here?
+        // TODO: It may be preferable to test prefix here since we've bumped ETHERS_FORMAT_VERSION
+        self.format == ETHERS_FORMAT_VERSION
     }
 
     /// Reads the cache json file from the given path
