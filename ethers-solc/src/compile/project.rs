@@ -77,7 +77,7 @@ use crate::{
     artifacts::{
         Error, Settings, SourceFile, VersionedContract, VersionedContracts, VersionedSources,
     },
-    cache::CacheEntry,
+    cache::{CacheEntry, CacheEntry2},
     error::Result,
     resolver::GraphEdges,
     utils, ArtifactOutput, CompilerInput, CompilerOutput, Graph, PathMap, Project,
@@ -85,7 +85,7 @@ use crate::{
 };
 use semver::Version;
 use std::{
-    collections::{hash_map, BTreeMap, HashMap},
+    collections::{hash_map, BTreeMap, HashMap, HashSet},
     path::{Path, PathBuf},
 };
 
@@ -143,16 +143,25 @@ impl<'a, T: ArtifactOutput> ProjectCompiler<'a, T> {
     ///
     /// The output of the compile process can be a mix of reused artifacts and freshly compiled
     /// `Contract`s
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use ethers_solc::Project;
+    ///
+    /// let project = Project::builder().build().unwrap();
+    /// let output = project.compile().unwrap();
+    /// ```
     pub fn compile(self) -> Result<ProjectCompileOutput2<T>> {
         let Self { edges, project, mut sources } = self;
 
         let mut cache = ArtifactsCache::new(project, &edges)?;
 
-        // retain only dirty sources
+        // retain and compile only dirty sources
         sources = sources.filtered(&mut cache);
-
         let output = sources.compile(&project.solc_config.settings, &project.paths)?;
 
+        // get all cached artifacts
         let cached_artifacts = cache.finish()?;
 
         Ok(ProjectCompileOutput2 {
@@ -231,7 +240,7 @@ fn compile_sequential(
 
         let source_unit_map = PathMap::default();
         // replace absolute path with source name to make solc happy
-        // TODO use correct path
+        // TODO use correct source unit path
         let sources = source_unit_map.set_source_names(sources);
 
         let input = CompilerInput::with_sources(sources)
@@ -321,12 +330,53 @@ struct Cache<'a, T: ArtifactOutput> {
     /// all files that were filtered because they haven't changed
     filtered: Sources,
     /// the corresponding cache entries for all sources that were deemed to be dirty
-    dirty_entries: Vec<(PathBuf, CacheEntry)>,
+    dirty_entries: HashMap<PathBuf, (CacheEntry2, HashSet<Version>)>,
     /// the file hashes
     content_hashes: HashMap<PathBuf, String>,
 }
 
 impl<'a, T: ArtifactOutput> Cache<'a, T> {
+    /// Creates a new cache entry for the file
+    fn create_cache_entry(&self, file: &PathBuf, source: &Source) -> Result<CacheEntry2> {
+        let imports = self
+            .edges
+            .imports(file)
+            .into_iter()
+            .map(|import| utils::source_name(import, &self.paths.root).to_path_buf())
+            .collect();
+
+        let entry = CacheEntry2 {
+            last_modification_date: CacheEntry::read_last_modification_date(&file).unwrap(),
+            content_hash: source.content_hash(),
+            source_name: utils::source_name(&file, &self.paths.root).into(),
+            solc_config: self.solc_config.clone(),
+            imports,
+            version_requirement: self.edges.version_requirement(file).map(|v| v.to_string()),
+            // artifacts remain empty until we received the compiler output
+            artifacts: Default::default(),
+        };
+
+        Ok(entry)
+    }
+
+    /// inserts a new cache entry for the given file
+    ///
+    /// If there is already an entry available for the file the given version is added to the set
+    fn insert_new_cache_entry(
+        &mut self,
+        file: &PathBuf,
+        source: &Source,
+        version: Version,
+    ) -> Result<()> {
+        if let Some((_, versions)) = self.dirty_entries.get_mut(file) {
+            versions.insert(version);
+        } else {
+            let entry = self.create_cache_entry(file, source)?;
+            self.dirty_entries.insert(file.clone(), (entry, HashSet::from([version])));
+        }
+        Ok(())
+    }
+
     /// Returns only those sources that
     ///   - are new
     ///   - were changed
@@ -336,12 +386,12 @@ impl<'a, T: ArtifactOutput> Cache<'a, T> {
         self.fill_hashes(&sources);
         sources
             .into_iter()
-            .filter_map(|(file, source)| self.needs_solc(file, source, version))
+            .filter_map(|(file, source)| self.requires_solc(file, source, version))
             .collect()
     }
 
-    /// Returns `Some` if the file needs to be compiled and `None` if the artifact can be reu-used
-    fn needs_solc(
+    /// Returns `Some` if the file _needs_ to be compiled and `None` if the artifact can be reu-used
+    fn requires_solc(
         &mut self,
         file: PathBuf,
         source: Source,
@@ -353,17 +403,7 @@ impl<'a, T: ArtifactOutput> Cache<'a, T> {
             self.filtered.insert(file, source);
             None
         } else {
-            // TODO create a new dirty cacheentry
-            // let entry = CacheEntry {
-            //     last_modification_date: CacheEntry::read_last_modification_date(&file).unwrap(),
-            //     content_hash: source.content_hash(),
-            //     source_name: utils::source_name(&file, &self.paths.root).into(),
-            //     solc_config: solc_config.clone(),
-            // TODO determine imports via self.edges
-            //     imports,
-            //     version_pragmas,
-            //     artifacts: vec![],
-            // };
+            self.insert_new_cache_entry(&file, &source, version.clone()).unwrap();
 
             Some((file, source))
         }
@@ -456,7 +496,7 @@ impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
                 solc_config: &project.solc_config,
                 paths: &project.paths,
                 filtered: Default::default(),
-                dirty_entries: vec![],
+                dirty_entries: Default::default(),
                 content_hashes: Default::default(),
             };
 

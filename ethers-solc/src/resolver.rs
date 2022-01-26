@@ -51,6 +51,8 @@ pub struct GraphEdges {
     indices: HashMap<PathBuf, usize>,
     /// reverse of `indices` for reverse lookup
     rev_indices: HashMap<usize, PathBuf>,
+    /// the identified version requirement of a file
+    versions: HashMap<usize, Option<VersionReq>>,
     /// with how many input files we started with, corresponds to `let input_files =
     /// nodes[..num_input_files]`.
     num_input_files: usize,
@@ -71,6 +73,15 @@ impl GraphEdges {
         } else {
             HashSet::new()
         }
+    }
+
+    /// Returns the `VersionReq` for the given file
+    pub fn version_requirement(&self, file: impl AsRef<Path>) -> Option<&VersionReq> {
+        self.indices
+            .get(file.as_ref())
+            .and_then(|idx| self.versions.get(idx))
+            .map(|v| v.as_ref())
+            .flatten()
     }
 }
 
@@ -207,6 +218,11 @@ impl Graph {
             rev_indices: index.iter().map(|(k, v)| (*v, k.clone())).collect(),
             indices: index,
             num_input_files,
+            versions: nodes
+                .iter()
+                .enumerate()
+                .map(|(idx, node)| (idx, node.data.version_req.clone()))
+                .collect(),
         };
         Ok(Graph { nodes, edges, root: paths.root.clone() })
     }

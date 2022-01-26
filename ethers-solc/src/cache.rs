@@ -5,6 +5,7 @@ use crate::{
     error::{Result, SolcError},
     utils, ArtifactOutput, ProjectPathsConfig, Source,
 };
+use semver::Version;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeMap, HashMap, HashSet},
@@ -364,6 +365,32 @@ impl SolFilesCacheBuilder {
 
         Ok(cache)
     }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CacheEntry2 {
+    /// the last modification time of this file
+    pub last_modification_date: u64,
+    /// hash to identify whether the content of the file changed
+    pub content_hash: String,
+    /// identifier name see [`crate::util::source_name()`]
+    pub source_name: PathBuf,
+    /// what config was set when compiling this file
+    pub solc_config: SolcConfig,
+    /// fully resolved imports of the file
+    ///
+    /// all paths start relative from the project's root: `src/importedFile.sol`
+    pub imports: Vec<PathBuf>,
+    /// The solidity version pragma
+    pub version_requirement: Option<String>,
+    /// all artifacts produced for this file
+    ///
+    /// In theory a file can be compiled by different solc versions:
+    /// `A(<=0.8.10) imports C(>0.4.0)` and `B(0.8.11) imports C(>0.4.0)`
+    /// file `C` would be compiled twice, with `0.8.10` and `0.8.11`, producing two different
+    /// artifacts
+    pub artifacts: HashMap<Version, Vec<PathBuf>>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
