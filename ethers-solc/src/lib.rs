@@ -373,9 +373,9 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
                         .map(|(file, names)| {
                             let art_paths = names
                                 .iter()
-                                .map(|name| {
+                                .filter_map(|name| {
                                     let f = file.to_string_lossy().into_owned();
-                                    art_paths.get(&(f, version.clone(), name.clone())).unwrap() // TODO: Is this safe? No, it's not
+                                    art_paths.get(&(f, version.clone(), name.clone()))
                                 })
                                 .map(|(_, art_path)| {
                                     (art_path.clone(), version.clone())
@@ -490,16 +490,15 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         if self.cached {
             // reapply to disk paths
             let sources = paths.set_disk_paths(input.sources);
-            // get all contract names of the files and map them to the disk file
             let artifacts = paths
                 .get_artifacts(&output.contracts)
                 .iter()
                 .map(|(file, names)| {
                     let art_paths = names
                         .iter()
-                        .map(|name| {
+                        .filter_map(|name| {
                             let f = file.to_string_lossy().into_owned();
-                            art_paths.get(&(f, version.clone(), name.clone())).unwrap() // TODO: Is this safe?
+                            art_paths.get(&(f, version.clone(), name.clone()))
                         })
                         .map(|(_, art_path)| {
                             (art_path.clone(), version.clone())
