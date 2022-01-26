@@ -2,7 +2,7 @@
 use crate::{provider::ProviderError, JsonRpcClient};
 
 use async_trait::async_trait;
-use reqwest::{Client, Error as ReqwestError};
+use reqwest::{header::HeaderValue, Client, Error as ReqwestError};
 use serde::{de::DeserializeOwned, Serialize};
 use std::{
     str::FromStr,
@@ -33,7 +33,6 @@ pub struct Provider {
     id: AtomicU64,
     client: Client,
     url: Url,
-    authorization: Option<Authorization>,
 }
 
 #[derive(Error, Debug)]
@@ -72,17 +71,7 @@ impl JsonRpcClient for Provider {
         let next_id = self.id.fetch_add(1, Ordering::SeqCst);
         let payload = Request::new(next_id, method, params);
 
-        let mut client = self.client.post(self.url.as_ref()).json(&payload);
-        if let Some(auth) = &self.authorization {
-            client = match auth {
-                Authorization::Basic(username, password) => {
-                    client.basic_auth(username, Some(password))
-                }
-                Authorization::Bearer(token) => client.bearer_auth(token),
-            };
-        }
-
-        let res = client.send().await?;
+        let res = self.client.post(self.url.as_ref()).json(&payload).send().await?;
         let text = res.text().await?;
         let res: Response<R> =
             serde_json::from_str(&text).map_err(|err| ClientError::SerdeJson { err, text })?;
@@ -104,7 +93,7 @@ impl Provider {
     /// let provider = Http::new(url);
     /// ```
     pub fn new(url: impl Into<Url>) -> Self {
-        Self { id: AtomicU64::new(0), client: Client::new(), url: url.into(), authorization: None }
+        Self::new_with_client(url, Client::new())
     }
 
     /// Initializes a new HTTP Client with authentication
@@ -118,10 +107,35 @@ impl Provider {
     /// let url = Url::parse("http://localhost:8545").unwrap();
     /// let provider = Http::new_with_auth(url, Authorization::basic("admin", "good_password"));
     /// ```
-    pub fn new_with_auth(url: impl Into<Url>, auth: Authorization) -> Self {
-        let mut provider = Self::new(url);
-        provider.authorization = Some(auth);
-        provider
+    pub fn new_with_auth(
+        url: impl Into<Url>,
+        auth: Authorization,
+    ) -> Result<Self, HttpClientError> {
+        let mut auth_value = HeaderValue::from_str(&auth.into_auth_string())?;
+        auth_value.set_sensitive(true);
+
+        let mut headers = reqwest::header::HeaderMap::new();
+        headers.insert(reqwest::header::AUTHORIZATION, auth_value);
+
+        let client = Client::builder().default_headers(headers).build()?;
+
+        Ok(Self::new_with_client(url, client))
+    }
+
+    /// Allows to customize the provider by providing your own http client
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use ethers_providers::Http;
+    /// use url::Url;
+    ///
+    /// let url = Url::parse("http://localhost:8545").unwrap();
+    /// let client = reqwest::Client::builder().build().unwrap();
+    /// let provider = Http::new_with_client(url, client);
+    /// ```
+    pub fn new_with_client(url: impl Into<Url>, client: reqwest::Client) -> Self {
+        Self { id: AtomicU64::new(0), client, url: url.into() }
     }
 }
 
@@ -136,11 +150,18 @@ impl FromStr for Provider {
 
 impl Clone for Provider {
     fn clone(&self) -> Self {
-        Self {
-            id: AtomicU64::new(0),
-            client: self.client.clone(),
-            url: self.url.clone(),
-            authorization: None,
-        }
+        Self { id: AtomicU64::new(0), client: self.client.clone(), url: self.url.clone() }
     }
+}
+
+#[derive(Error, Debug)]
+/// Error thrown when dealing with Http clients
+pub enum HttpClientError {
+    /// Thrown if unable to build headers for client
+    #[error(transparent)]
+    InvalidHeader(#[from] http::header::InvalidHeaderValue),
+
+    /// Thrown if unable to build client
+    #[error(transparent)]
+    ClientBuild(#[from] reqwest::Error),
 }

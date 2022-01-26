@@ -2,7 +2,7 @@
 use ethers_core::types::U256;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::{fmt, string::ToString};
+use std::fmt;
 use thiserror::Error;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Error)]
@@ -99,17 +99,25 @@ impl ResponseData<serde_json::Value> {
 /// Use to inject username and password or an auth token into requests
 #[derive(Clone, Debug)]
 pub enum Authorization {
-    Basic(String, String),
+    Basic(String),
     Bearer(String),
 }
 
 impl Authorization {
-    pub fn basic(username: impl ToString, password: impl ToString) -> Self {
-        Self::Basic(username.to_string(), password.to_string())
+    pub fn basic(username: impl Into<String>, password: impl Into<String>) -> Self {
+        let auth_secret = base64::encode(username.into() + ":" + &password.into());
+        Self::Basic(auth_secret)
     }
 
-    pub fn bearer(token: impl ToString) -> Self {
-        Self::Bearer(token.to_string())
+    pub fn bearer(token: impl Into<String>) -> Self {
+        Self::Bearer(token.into())
+    }
+
+    pub(crate) fn into_auth_string(self) -> String {
+        match self {
+            Authorization::Basic(auth_secret) => format!("Basic {}", auth_secret),
+            Authorization::Bearer(token) => format!("Bearer {}", token),
+        }
     }
 }
 

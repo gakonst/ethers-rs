@@ -152,15 +152,11 @@ impl Ws {
     ) -> Result<Self, ClientError> {
         let mut request: HttpRequest<()> =
             HttpRequest::builder().method("GET").uri(Uri::from_str(uri.as_ref())?).body(())?;
-        let auth_header = match auth {
-            Authorization::Basic(username, password) => {
-                String::from("Basic ") + base64::encode(username + ":" + &password).as_str()
-            }
-            Authorization::Bearer(token) => String::from("Bearer ") + &token,
-        };
-        request
-            .headers_mut()
-            .insert(http::header::AUTHORIZATION, http::HeaderValue::from_str(&auth_header)?);
+
+        let mut auth_value = http::HeaderValue::from_str(&auth.into_auth_string())?;
+        auth_value.set_sensitive(true);
+
+        request.headers_mut().insert(http::header::AUTHORIZATION, auth_value);
         Self::connect(request).await
     }
 
