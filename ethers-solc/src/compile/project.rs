@@ -85,7 +85,7 @@ use crate::{
 };
 use semver::Version;
 use std::{
-    collections::{hash_map, BTreeMap, HashMap, HashSet},
+    collections::{hash_map, hash_map::Entry, BTreeMap, HashMap, HashSet},
     path::{Path, PathBuf},
 };
 
@@ -160,6 +160,12 @@ impl<'a, T: ArtifactOutput> ProjectCompiler<'a, T> {
         // retain and compile only dirty sources
         sources = sources.filtered(&mut cache);
         let output = sources.compile(&project.solc_config.settings, &project.paths)?;
+
+        // write all artifacts
+        if !project.no_artifacts {
+            // TOD get the artifact paths back
+            let artifacts = T::on_output(&output.contracts, &project.paths)?;
+        }
 
         // get all cached artifacts
         let cached_artifacts = cache.finish()?;
@@ -328,7 +334,7 @@ struct Cache<'a, T: ArtifactOutput> {
     /// project paths
     paths: &'a ProjectPathsConfig,
     /// all files that were filtered because they haven't changed
-    filtered: Sources,
+    filtered: HashMap<PathBuf, (Source, HashSet<Version>)>,
     /// the corresponding cache entries for all sources that were deemed to be dirty
     dirty_entries: HashMap<PathBuf, (CacheEntry, HashSet<Version>)>,
     /// the file hashes
@@ -377,6 +383,18 @@ impl<'a, T: ArtifactOutput> Cache<'a, T> {
         Ok(())
     }
 
+    /// inserts the filtered source with the fiven version
+    fn insert_filtered_source(&mut self, file: PathBuf, source: Source, version: Version) {
+        match self.filtered.entry(file) {
+            Entry::Occupied(mut entry) => {
+                entry.get_mut().1.insert(version);
+            }
+            Entry::Vacant(entry) => {
+                entry.insert((source, HashSet::from([version])));
+            }
+        }
+    }
+
     /// Returns only those sources that
     ///   - are new
     ///   - were changed
@@ -398,13 +416,12 @@ impl<'a, T: ArtifactOutput> Cache<'a, T> {
         version: &Version,
     ) -> Option<(PathBuf, Source)> {
         if !self.is_dirty(&file, version) &&
-            self.edges.imports(&file).iter().all(|file| !self.is_dirty(file, version))
+            self.edges.imports(&file).iter().all(|file| !self.is_dirty(file, &version))
         {
-            self.filtered.insert(file, source);
+            self.insert_filtered_source(file, source, version.clone());
             None
         } else {
             self.insert_new_cache_entry(&file, &source, version.clone()).unwrap();
-
             Some((file, source))
         }
     }
@@ -527,22 +544,20 @@ impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
     /// rebuilds a new [`SolFileCache`] and writes it to disk
     ///
     /// Returns all cached artifacts
-    fn finish(self) -> Result<BTreeMap<PathBuf, T::Artifact>> {
+    fn finish(
+        self, // TODO needs the artifact of the outpur
+    ) -> Result<BTreeMap<PathBuf, T::Artifact>> {
         match self {
             ArtifactsCache::Ephemeral => Ok(Default::default()),
             ArtifactsCache::Cached(cache) => {
-                let Cache { cache, cached_artifacts, dirty_entries: _, filtered, edges: _, .. } =
-                    cache;
-                // rebuild the cache file with all compiled contracts (dirty sources), and filtered
-                // sources (clean)
+                let Cache {
+                    mut cache, cached_artifacts, dirty_entries, filtered, edges: _, ..
+                } = cache;
 
-                let cache_entries = cache
-                    .files
-                    .into_iter()
-                    .filter(|(path, _)| filtered.contains_key(path))
-                    .collect();
+                // keep only those files that were previously filtered (not dirty, reused)
+                cache.retain(filtered.iter().map(|(p, (_, v))| (p, v)));
 
-                let _sol_cache = SolFilesCache::new(cache_entries);
+                // TODO extend the cache with the new artifacts
 
                 Ok(cached_artifacts)
             }

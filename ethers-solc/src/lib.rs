@@ -8,6 +8,7 @@ use std::collections::btree_map::Entry;
 
 pub mod cache;
 pub mod hh;
+pub mod output;
 mod resolver;
 pub use hh::{HardhatArtifact, HardhatArtifacts};
 pub use resolver::Graph;

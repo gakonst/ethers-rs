@@ -257,6 +257,20 @@ impl SolFilesCache {
         }
         Ok(artifacts)
     }
+
+    pub(crate) fn retain<I, V>(&mut self, files: I)
+    where
+        I: IntoIterator<Item = (&Path, V)>,
+        V: IntoIterator<Item = &Version>,
+    {
+    }
+
+    pub(crate) fn extend<I, V>(&mut self, files: I)
+    where
+        I: IntoIterator<Item = (&Path, V)>,
+        V: IntoIterator<Item = &Version>,
+    {
+    }
 }
 
 // async variants for read and write
