@@ -153,7 +153,7 @@ impl Ws {
         let mut request: HttpRequest<()> =
             HttpRequest::builder().method("GET").uri(Uri::from_str(uri.as_ref())?).body(())?;
 
-        let mut auth_value = http::HeaderValue::from_str(&auth.into_auth_string())?;
+        let mut auth_value = http::HeaderValue::from_str(&auth.to_string())?;
         auth_value.set_sensitive(true);
 
         request.headers_mut().insert(http::header::AUTHORIZATION, auth_value);

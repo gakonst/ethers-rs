@@ -111,7 +111,7 @@ impl Provider {
         url: impl Into<Url>,
         auth: Authorization,
     ) -> Result<Self, HttpClientError> {
-        let mut auth_value = HeaderValue::from_str(&auth.into_auth_string())?;
+        let mut auth_value = HeaderValue::from_str(&auth.to_string())?;
         auth_value.set_sensitive(true);
 
         let mut headers = reqwest::header::HeaderMap::new();

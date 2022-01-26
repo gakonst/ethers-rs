@@ -112,11 +112,13 @@ impl Authorization {
     pub fn bearer(token: impl Into<String>) -> Self {
         Self::Bearer(token.into())
     }
+}
 
-    pub(crate) fn into_auth_string(self) -> String {
+impl fmt::Display for Authorization {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Authorization::Basic(auth_secret) => format!("Basic {}", auth_secret),
-            Authorization::Bearer(token) => format!("Bearer {}", token),
+            Authorization::Basic(auth_secret) => write!(f, "Basic {}", auth_secret),
+            Authorization::Bearer(token) => write!(f, "Bearer {}", token),
         }
     }
 }
