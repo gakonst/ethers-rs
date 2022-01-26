@@ -491,7 +491,7 @@ fn last_nested_source_dir(root: &Path, dir: &Path) -> PathBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::utils::tempdir;
+    use crate::{utils::tempdir, ProjectPathsConfig};
 
     #[test]
     fn relative_remapping() {
@@ -580,10 +580,26 @@ mod tests {
             "node_modules/@openzeppelin/contracts/interfaces/IERC1155.sol",
             "node_modules/@openzeppelin/contracts/finance/VestingWallet.sol",
             "node_modules/@openzeppelin/contracts/proxy/Proxy.sol",
+            "node_modules/@openzeppelin/contracts/token/ERC20/IERC20.sol",
         ];
         mkdir_or_touch(tmp_dir.path(), &paths[..]);
         let remappings = Remapping::find_many(&tmp_dir_node_modules);
-        dbg!(remappings);
+
+        let mut paths = ProjectPathsConfig::hardhat(tmp_dir.path()).unwrap();
+        paths.remappings = remappings;
+
+        let resolved = paths
+            .resolve_library_import(Path::new("@openzeppelin/contracts/token/ERC20/IERC20.sol"))
+            .unwrap();
+        assert!(resolved.exists());
+
+        // adjust remappings
+        paths.remappings[0].name = "@openzeppelin/contracts/".to_string();
+
+        let resolved = paths
+            .resolve_library_import(Path::new("@openzeppelin/contracts/token/ERC20/IERC20.sol"))
+            .unwrap();
+        assert!(resolved.exists());
     }
 
     #[test]
