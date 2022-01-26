@@ -112,7 +112,6 @@ impl Ws {
         S: Send + Sync + Stream<Item = WsStreamItem> + Sink<Message, Error = WsError> + Unpin,
     {
         let (sink, stream) = mpsc::unbounded();
-
         // Spawn the server
         WsServer::new(ws, stream).spawn();
 
@@ -310,7 +309,8 @@ where
 
     async fn handle_text(&mut self, inner: String) -> Result<(), ClientError> {
         match serde_json::from_str::<Incoming>(&inner) {
-            Err(_) => {}
+            Err(err) => return Err(ClientError::JsonError(err)),
+
             Ok(Incoming::Response(resp)) => {
                 if let Some(request) = self.pending.remove(&resp.id) {
                     if !request.is_canceled() {
@@ -490,5 +490,15 @@ mod tests {
 
         assert_eq!(sub_id, 1.into());
         assert_eq!(blocks, vec![1, 2, 3])
+    }
+
+    #[tokio::test]
+    async fn deserialization_fails() {
+        let ganache = Ganache::new().block_time(1u64).spawn();
+        let (ws, _) = tokio_tungstenite::connect_async(ganache.ws_endpoint()).await.unwrap();
+        let malformed_data = String::from("not a valid message");
+        let (_, stream) = mpsc::unbounded();
+        let resp = WsServer::new(ws, stream).handle_text(malformed_data).await;
+        assert!(resp.is_err(), "Deserialization should not fail silently");
     }
 }

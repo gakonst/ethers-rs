@@ -112,22 +112,6 @@ mod celo_tests {
     use futures_util::stream::StreamExt;
 
     #[tokio::test]
-    // https://alfajores-blockscout.celo-testnet.org/tx/0xd3d27aa4517124d9ff3ac6f1d8f248e0fe47b6f841b625722546162672ac24c7/internal-transactions
-    async fn get_transaction() {
-        let provider =
-            Provider::<Http>::try_from("https://alfajores-forno.celo-testnet.org").unwrap();
-
-        let tx_hash = "d3d27aa4517124d9ff3ac6f1d8f248e0fe47b6f841b625722546162672ac24c7"
-            .parse::<H256>()
-            .unwrap();
-        let tx = provider.get_transaction(tx_hash).await.unwrap().unwrap();
-        assert!(tx.gateway_fee_recipient.is_none());
-        assert_eq!(tx.gateway_fee.unwrap(), 0.into());
-        assert_eq!(tx.hash, tx_hash);
-        assert_eq!(tx.block_number.unwrap(), 9401421.into())
-    }
-
-    #[tokio::test]
     async fn get_block() {
         let provider =
             Provider::<Http>::try_from("https://alfajores-forno.celo-testnet.org").unwrap();
