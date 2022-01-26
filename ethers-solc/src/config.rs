@@ -500,28 +500,6 @@ pub trait ArtifactOutput {
             .unwrap_or_else(|| Self::output_file_name(name))
     }
 
-    // TODO: Rename this
-    // this should output `src/path[/version]/contract.sol/contract.json`
-    // returns `contract.json` by default
-    fn output_file2(
-        source_file: impl AsRef<Path>,
-        version: Option<impl AsRef<str>>,
-        name: impl AsRef<str>,
-        root: impl AsRef<Path>,
-    ) -> PathBuf {
-        let mut path = PathBuf::new();
-        if let Some(src_path) =
-            source_file.as_ref().strip_prefix(root).ok().and_then(|p| p.parent())
-        {
-            path.push(src_path);
-        }
-        if let Some(version) = version {
-            path.push(version.as_ref());
-        }
-        path.push(Self::output_file_name(name));
-        path
-    }
-
     /// The inverse of `contract_file_name`
     ///
     /// Expected to return the solidity contract's name derived from the file path
@@ -578,7 +556,11 @@ pub trait ArtifactOutput {
             .collect()
     }
 
-    /// TODO: doc
+    /// This returns a maybe versioned artifact path, e.g., either
+    /// `Greeter.sol/Greeter.json` or `Greeter.sol/Greeter.version-string-xxxx.json`
+    /// depending on whether or not `version` is passed in. This also retuns
+    /// the same with the relative source path preserved.
+    /// Defaults to `Greeter.json` if there are any errors.
     fn versioned_artifact_path(
         source_path: impl AsRef<Path>,
         version: Option<impl AsRef<str>>,
@@ -601,7 +583,10 @@ pub trait ArtifactOutput {
         (rel_path.join(art_path.clone()), contract_name.join(art_path))
     }
 
-    /// TODO: doc
+    /// This returns a set of maybe versioned artifact path, e.g., either
+    /// `Greeter.sol/Greeter.json` or `Greeter.sol/Greeter.version-string-xxxx.json`
+    /// depending on whether or not multiple versions exist for an artifact.
+    /// Defaults to `Greeter.json` if there are any errors.
     fn versioned_artifact_paths(
         outputs: Vec<(&CompilerOutput, String)>,
         source_dir: impl AsRef<Path>,
