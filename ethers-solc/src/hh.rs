@@ -60,14 +60,15 @@ impl ArtifactOutput for HardhatArtifacts {
         output: &CompilerOutput,
         version: String,
         artifact_paths: ArtifactPaths,
-        layout: &ProjectPathsConfig
+        layout: &ProjectPathsConfig,
     ) -> Result<()> {
         fs::create_dir_all(&layout.artifacts)
             .map_err(|err| SolcError::msg(format!("Failed to create artifacts dir: {}", err)))?;
         for (file, contracts) in output.contracts.iter() {
             for (name, contract) in contracts {
                 // Should be impossible for this get to fail
-                let (_, artifact) = artifact_paths.get(&(file.clone(), version.clone(), name.clone())).unwrap();
+                let (_, artifact) =
+                    artifact_paths.get(&(file.clone(), version.clone(), name.clone())).unwrap();
                 let artifact_file = layout.artifacts.join(artifact);
                 if let Some(parent) = artifact_file.parent() {
                     fs::create_dir_all(parent).map_err(|err| {

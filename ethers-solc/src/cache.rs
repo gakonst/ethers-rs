@@ -141,7 +141,7 @@ impl SolFilesCache {
         sources: Sources,
         config: Option<&'a SolcConfig>,
         paths: &ProjectPathsConfig,
-        content_hashes: HashMap<PathBuf, String>
+        content_hashes: HashMap<PathBuf, String>,
     ) -> Sources {
         sources
             .into_iter()
@@ -273,10 +273,13 @@ impl SolFilesCache {
     }
 
     /// Get metadata for artifacts related to source path
-    pub fn metadata_for_source(&self, path: impl AsRef<Path>) -> Option<(SolcConfig, BTreeMap<PathBuf, String>)> {
-        self.files.get(path.as_ref()).map(|entry| {
-            (entry.solc_config.clone(), entry.artifact_paths.clone())
-        })
+    pub fn metadata_for_source(
+        &self,
+        path: impl AsRef<Path>,
+    ) -> Option<(SolcConfig, BTreeMap<PathBuf, String>)> {
+        self.files
+            .get(path.as_ref())
+            .map(|entry| (entry.solc_config.clone(), entry.artifact_paths.clone()))
     }
 }
 

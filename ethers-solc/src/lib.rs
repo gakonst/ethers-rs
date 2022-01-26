@@ -19,8 +19,8 @@ pub use compile::*;
 mod config;
 
 pub use config::{
-    AllowedLibPaths, Artifact, ArtifactOutput, ArtifactPaths, MinimalCombinedArtifacts,
-    PathStyle, ProjectPathsConfig, SolcConfig,
+    AllowedLibPaths, Artifact, ArtifactOutput, ArtifactPaths, MinimalCombinedArtifacts, PathStyle,
+    ProjectPathsConfig, SolcConfig,
 };
 
 pub mod remappings;
@@ -135,7 +135,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
     fn write_cache_file(
         &self,
         sources: Sources,
-        artifacts: Vec<(PathBuf, Vec<String>, BTreeMap<PathBuf, String>)>
+        artifacts: Vec<(PathBuf, Vec<String>, BTreeMap<PathBuf, String>)>,
     ) -> Result<()> {
         tracing::trace!("inserting {} sources in file cache", sources.len());
         let mut cache = SolFilesCache::builder()
@@ -346,12 +346,8 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
 
         let all_output = outputs
             .outputs()
-            .filter_map(|(res, solc, input)| {
-                res.as_ref().ok().map(|output| (output, solc, input))
-            })
-            .map(|(output, solc, input)| {
-                solc.version().map(|ver| (output, ver.to_string(), input))
-            })
+            .filter_map(|(res, solc, input)| res.as_ref().ok().map(|output| (output, solc, input)))
+            .map(|(output, solc, input)| solc.version().map(|ver| (output, ver.to_string(), input)))
             .collect::<Result<Vec<_>>>()?;
 
         let outputs_vers = all_output
@@ -364,7 +360,6 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
 
         for (output, version, input) in all_output.into_iter() {
             if !output.has_error() {
-
                 if self.cached {
                     let sources = paths.set_disk_paths(input.sources.clone());
                     let artifacts = paths
@@ -377,9 +372,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
                                     let f = file.to_string_lossy().into_owned();
                                     art_paths.get(&(f, version.clone(), name.clone()))
                                 })
-                                .map(|(_, art_path)| {
-                                    (art_path.clone(), version.clone())
-                                })
+                                .map(|(_, art_path)| (art_path.clone(), version.clone()))
                                 .collect::<BTreeMap<PathBuf, String>>();
                             (file.clone(), names.clone(), art_paths)
                         })
@@ -432,22 +425,18 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         solc: &Solc,
         sources: Sources,
     ) -> Result<ProjectCompileOutput<Artifacts>> {
-
         let content_hashes = sources
             .iter()
             .map(|(file, source)| (file.clone(), source.content_hash()))
             .collect::<HashMap<_, _>>();
 
-        let (
-            sources,
-            paths,
-            cached_artifacts
-        ) = match self.preprocess_sources(sources, content_hashes)? {
-            PreprocessedJob::Unchanged(artifacts) => {
-                return Ok(ProjectCompileOutput::from_unchanged(artifacts))
-            }
-            PreprocessedJob::Items(a, b, c) => (a, b, c),
-        };
+        let (sources, paths, cached_artifacts) =
+            match self.preprocess_sources(sources, content_hashes)? {
+                PreprocessedJob::Unchanged(artifacts) => {
+                    return Ok(ProjectCompileOutput::from_unchanged(artifacts))
+                }
+                PreprocessedJob::Items(a, b, c) => (a, b, c),
+            };
 
         let version = solc.version()?;
         tracing::trace!(
@@ -500,9 +489,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
                             let f = file.to_string_lossy().into_owned();
                             art_paths.get(&(f, version.clone(), name.clone()))
                         })
-                        .map(|(_, art_path)| {
-                            (art_path.clone(), version.clone())
-                        })
+                        .map(|(_, art_path)| (art_path.clone(), version.clone()))
                         .collect::<BTreeMap<PathBuf, String>>();
                     (file.clone(), names.clone(), art_paths)
                 })
@@ -525,7 +512,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
     fn preprocess_sources(
         &self,
         mut sources: Sources,
-        content_hashes: HashMap<PathBuf, String>
+        content_hashes: HashMap<PathBuf, String>,
     ) -> Result<PreprocessedJob<Artifacts>> {
         tracing::trace!("start preprocessing {} sources files", sources.len());
 
@@ -550,15 +537,14 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
                 sources,
                 Some(&self.solc_config),
                 &self.paths,
-                content_hashes
+                content_hashes,
             );
             tracing::trace!("detected {} changed files", changed_files.len());
             cache.remove_changed_files(&changed_files);
 
             let cached_artifacts = if self.paths.artifacts.exists() {
                 tracing::trace!("reading artifacts from cache..");
-                let artifacts =
-                    cache.read_artifacts::<Artifacts>(&self.paths.artifacts)?;
+                let artifacts = cache.read_artifacts::<Artifacts>(&self.paths.artifacts)?;
                 tracing::trace!("read {} artifacts from cache", artifacts.len());
                 artifacts
             } else {
@@ -828,7 +814,7 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
     }
 
     pub fn from_unchanged(artifacts: BTreeMap<PathBuf, T::Artifact>) -> Self {
-        Self { compiler_output: None, artifacts, ignored_error_codes: vec![], cache_path: None, }
+        Self { compiler_output: None, artifacts, ignored_error_codes: vec![], cache_path: None }
     }
 
     pub fn from_compiler_output(
@@ -978,15 +964,13 @@ impl<T: ArtifactOutput + 'static> ProjectCompileOutput<T> {
     /// let contracts: BTreeMap<String, CompactContract> = project.compile().unwrap().into_artifacts().collect();
     /// ```
     pub fn into_artifacts(mut self) -> Box<dyn Iterator<Item = (String, T::Artifact)>> {
-        let cache = self.cache_path.map(|path| {
-            SolFilesCache::read(path).ok()
-        }).flatten();
+        let cache = self.cache_path.map(|path| SolFilesCache::read(path).ok()).flatten();
         let mut out_artifacts = Vec::new();
         for (path, art) in self.artifacts {
             if let Some(name) = T::contract_name(&path) {
-                if let Some(src_name) = cache.clone().map(|cache| {
-                    cache.source_name_for_artifact(&name)
-                }).flatten() {
+                if let Some(src_name) =
+                    cache.clone().map(|cache| cache.source_name_for_artifact(&name)).flatten()
+                {
                     out_artifacts.push((format!("{}:{}", src_name.display(), name), art))
                 }
             }
@@ -994,9 +978,9 @@ impl<T: ArtifactOutput + 'static> ProjectCompileOutput<T> {
         if let Some(output) = self.compiler_output.take() {
             for (file, artifacts) in T::output_to_artifacts(output) {
                 for (name, artifact) in artifacts {
-                    if let Some(src_name) = cache.clone().map(|cache| {
-                        cache.source_name_for_source(&file)
-                    }).flatten() {
+                    if let Some(src_name) =
+                        cache.clone().map(|cache| cache.source_name_for_source(&file)).flatten()
+                    {
                         out_artifacts.push((format!("{}:{}", src_name.display(), name), artifact))
                     }
                 }
