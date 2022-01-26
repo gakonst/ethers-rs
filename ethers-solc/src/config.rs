@@ -144,7 +144,7 @@ impl ProjectPathsConfig {
     ///         ├── interfaces
     /// ```
     ///
-    /// has this remapping: `@aave/=@aave/` (name:path) so contracts ca be imported as
+    /// has this remapping: `@aave/=@aave/` (name:path) so contracts can be imported as
     ///
     /// ```solidity
     /// import "@aave/governance-v2/contracts/governance/Executor.sol";
@@ -154,7 +154,7 @@ impl ProjectPathsConfig {
     /// applied remappings. Applying remapping works by checking if the import path of an import
     /// statement starts with the name of a remapping and replacing it with the remapping's `path`.
     ///
-    /// There are some caveats though, dapptools style remappings usually include the `src folder
+    /// There are some caveats though, dapptools style remappings usually include the `src` folder
     /// `ds-test/=lib/ds-test/src/` so that imports look like `import "ds-test/test.sol";` (note the
     /// missing `src` in the import path).
     ///
