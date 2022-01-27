@@ -79,7 +79,7 @@ use crate::{
     },
     cache::CacheEntry,
     error::Result,
-    output::ArtifactOutput,
+    output::{ArtifactOutput, WrittenArtifacts},
     resolver::GraphEdges,
     utils, ArtifactOutput, CompilerInput, CompilerOutput, Graph, PathMap, Project,
     ProjectPathsConfig, SolFilesCache, SolcConfig, Source, Sources,
@@ -163,16 +163,19 @@ impl<'a, T: ArtifactOutput> ProjectCompiler<'a, T> {
         let output = sources.compile(&project.solc_config.settings, &project.paths)?;
 
         // write all artifacts
-        if !project.no_artifacts {
-            // TOD get the artifact paths back
-            let artifacts = T::on_output(&output.contracts, &project.paths)?;
-        }
+        let written_artifacts = if !project.no_artifacts {
+            T::on_output(&output.contracts, &project.paths)?
+        } else {
+            Default::default()
+        };
 
-        // get all cached artifacts
-        let cached_artifacts = cache.finish()?;
+        // if caching was enabled, this will write to disk and get the artifacts that weren't
+        // compiled but reused
+        let cached_artifacts = cache.finish(&written_artifacts)?;
 
         Ok(ProjectCompileOutput2 {
             output,
+            written_artifacts,
             cached_artifacts,
             ignored_error_codes: project.ignored_error_codes.clone(),
         })
@@ -283,6 +286,8 @@ pub struct ProjectCompileOutput2<T: ArtifactOutput> {
     ///
     /// See [`CompilerSources::compile`]
     output: AggregatedCompilerOutput,
+    /// all artifact files from `output` that were written
+    written_artifacts: WrittenArtifacts<T::Artifact>,
     /// All artifacts that were read from cache
     cached_artifacts: BTreeMap<PathBuf, T::Artifact>,
     ignored_error_codes: Vec<u64>,
@@ -542,11 +547,14 @@ impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
         }
     }
 
-    /// rebuilds a new [`SolFileCache`] and writes it to disk
+    /// Consumes the `Cache`, rebuilds the [`SolFileCache`] by merging all artifacts that were
+    /// filtered out in the previous step (`Cache::filtered`) and the artifacts that were just
+    /// written to disk `written_artifacts`.
     ///
-    /// Returns all cached artifacts
+    /// Returns all the _cached_ artifacts.
     fn finish(
-        self, // TODO needs the artifact of the outpur
+        self,
+        written_artifacts: &WrittenArtifacts<T::Artifact>,
     ) -> Result<BTreeMap<PathBuf, T::Artifact>> {
         match self {
             ArtifactsCache::Ephemeral => Ok(Default::default()),
