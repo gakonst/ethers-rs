@@ -84,6 +84,7 @@ use crate::{
     utils, ArtifactOutput, CompilerInput, CompilerOutput, Graph, Project, ProjectPathsConfig,
     SolFilesCache, SolcConfig, Source, SourceUnitNameMap, Sources,
 };
+use rayon::prelude::*;
 use semver::Version;
 use std::{
     collections::{btree_map::BTreeMap, hash_map, hash_map::Entry, BTreeMap, HashMap, HashSet},
@@ -289,13 +290,46 @@ fn compile_sequential(
     Ok(aggregated)
 }
 
+/// compiles the input set using `num_jobs` threads
 fn compile_parallel(
-    _input: VersionedSources,
-    _jobs: usize,
-    _settings: &Settings,
-    _paths: &ProjectPathsConfig,
+    input: VersionedSources,
+    num_jobs: usize,
+    settings: &Settings,
+    paths: &ProjectPathsConfig,
 ) -> Result<AggregatedCompilerOutput> {
-    todo!()
+    debug_assert!(num_jobs > 1);
+    tracing::trace!("compile sources in parallel using {} solc jobs", num_jobs);
+
+    let mut jobs = Vec::with_capacity(input.len());
+    for (solc, (version, sources)) in input {
+        if sources.is_empty() {
+            // nothing to compile
+            continue
+        }
+
+        let job = CompilerInput::with_sources(sources)
+            .settings(settings.clone())
+            .normalize_evm_version(&version)
+            .with_remappings(paths.remappings.clone());
+
+        jobs.push((solc, version, job))
+    }
+
+    // start a rayon threadpool that will execute all `Solc::compile()` processes
+    let pool = rayon::ThreadPoolBuilder::new().num_threads(num_jobs).build().unwrap();
+    let outputs = pool.install(move || {
+        jobs.into_par_iter()
+            .map(|(solc, version, input)| {
+                tracing::trace!("calling solc `{}` with {} sources", version, input.sources.len());
+                solc.compile(&input).map(|output| (version, output))
+            })
+            .collect::<Result<Vec<_>>>()
+    })?;
+
+    let mut aggregated = AggregatedCompilerOutput::default();
+    aggregated.extend_all(outputs);
+
+    Ok(aggregated)
 }
 
 /// Contains a mixture of already compiled/cached artifacts and the input set of sources that still
@@ -329,6 +363,15 @@ pub struct AggregatedCompilerOutput {
 impl AggregatedCompilerOutput {
     pub fn is_empty(&self) -> bool {
         self.contracts.is_empty()
+    }
+
+    fn extend_all<I>(&mut self, out: I)
+    where
+        I: IntoIterator<Item = (Version, CompilerOutput)>,
+    {
+        for (v, o) in out {
+            self.extend(v, o)
+        }
     }
 
     /// adds a new `CompilerOutput` to the aggregated output
