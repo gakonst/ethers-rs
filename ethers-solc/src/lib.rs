@@ -170,8 +170,9 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
     ///
     /// NOTE: this does not check if the contracts were successfully compiled, see
     /// `CompilerOutput::has_error` instead.
+    ///
     /// NB: If the `svm` feature is enabled, this function will automatically detect
-    /// solc versions across files.
+    /// solc versions across files, see [`Self::svm_compile()`]
     ///
     /// # Example
     ///
@@ -203,6 +204,16 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
 
     /// Compiles a set of contracts using `svm` managed solc installs
     ///
+    /// This will autodetect the appropriate `Solc` version(s) to use when compiling the provided
+    /// `Sources`. Solc auto-detection follows semver rules, see also
+    /// [`crate::resolver::Graph::get_input_node_versions()`]
+    ///
+    /// # Errors
+    ///
+    /// This returns an error if contracts in the `Sources` set are incompatible (violate semver
+    /// rules) with their imports, for example source contract `A(=0.8.11)` imports dependency
+    /// `C(<0.8.0)`, which are incompatible.
+    ///
     /// # Example
     ///
     /// ```
@@ -215,7 +226,6 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
     /// # }
     /// ```
     #[cfg(all(feature = "svm", feature = "async"))]
-    // #[tracing::instrument(skip(self, sources))]
     pub fn svm_compile(&self, sources: Sources) -> Result<ProjectCompileOutput2<Artifacts>> {
         ProjectCompiler::with_sources(self, sources)?.compile()
     }
@@ -254,6 +264,22 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
     /// Removes the project's artifacts and cache file
     ///
     /// If the cache file was the only file in the folder, this also removes the empty folder.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use ethers_solc::Project;
+    /// # fn demo(project: Project) {
+    /// let project = Project::builder().build().unwrap();
+    /// let _ = project.compile().unwrap();
+    /// assert!(project.artifacts_path().exists());
+    /// assert!(project.cache_path().exists());
+    ///
+    /// project.cleanup();
+    /// assert!(!project.artifacts_path().exists());
+    /// assert!(!project.cache_path().exists());
+    /// # }
+    /// ```
     pub fn cleanup(&self) -> std::result::Result<(), SolcIoError> {
         tracing::trace!("clean up project");
         if self.cache_path().exists() {
@@ -281,13 +307,13 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         Ok(())
     }
 
-    /// Flattens the target file into a single string suitable for verification
+    /// Flattens the target solidity file into a single string suitable for verification.
     ///
     /// This method uses a dependency graph to resolve imported files and substitute
     /// import directives with the contents of target files. It will strip the pragma
-    /// version directives and SDPX license identifiers from imported files.
+    /// version directives and SDPX license identifiers from all imported files.
     ///
-    /// NOTE: the SDPX license identifier will be removed from the imported file
+    /// NB: the SDPX license identifier will be removed from the imported file
     /// only if it is found at the beginning of the file.
     pub fn flatten(&self, target: &Path) -> Result<String> {
         self.paths.flatten(target)
