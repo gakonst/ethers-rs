@@ -27,19 +27,18 @@ use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 ///
 /// This types represents this mapping as `file name -> (contract name -> T)`, where the generic is
 /// intended to represent contract specific information, like [`Contract`] itself, See [`Contracts`]
-pub type FileContracts<T> = BTreeMap<String, BTreeMap<String, T>>;
+pub type FileToContractsMap<T> = BTreeMap<String, BTreeMap<String, T>>;
 
 /// file -> (contract name -> Contract)
-pub type Contracts = FileContracts<Contract>;
+pub type Contracts = FileToContractsMap<Contract>;
 
 /// file -> [(contract name  -> Contract + solc version)]
-pub type VersionedContracts = FileContracts<Vec<VersionedContract>>;
+pub type VersionedContracts = FileToContractsMap<Vec<VersionedContract>>;
 
 /// An ordered list of files and their source
 pub type Sources = BTreeMap<PathBuf, Source>;
 
 pub type VersionedSources = BTreeMap<Solc, (Version, Sources)>;
-
 
 /// Input type `solc` expects
 #[derive(Clone, Debug, Serialize, Deserialize)]
