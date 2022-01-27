@@ -22,16 +22,24 @@ use crate::{
 use ethers_core::abi::Address;
 use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 
+/// solidity files are up of multiple `source units`, a solidity contract is such a `source unit`,
+/// therefore a solidity file can contain multiple contracts: (1-N*) relationship.
+///
+/// This types represents this mapping as `file name -> (contract name -> T)`, where the generic is
+/// intended to represent contract specific information, like [`Contract`] itself, See [`Contracts`]
+pub type FileContracts<T> = BTreeMap<String, BTreeMap<String, T>>;
+
+/// file -> (contract name -> Contract)
+pub type Contracts = FileContracts<Contract>;
+
+/// file -> [(contract name  -> Contract + solc version)]
+pub type VersionedContracts = FileContracts<Vec<VersionedContract>>;
+
 /// An ordered list of files and their source
 pub type Sources = BTreeMap<PathBuf, Source>;
 
 pub type VersionedSources = BTreeMap<Solc, (Version, Sources)>;
 
-/// file -> [contract name]
-pub type Contracts = BTreeMap<String, BTreeMap<String, Contract>>;
-
-/// file -> [(contract name + version)]
-pub type VersionedContracts = BTreeMap<String, BTreeMap<String, Vec<VersionedContract>>>;
 
 /// Input type `solc` expects
 #[derive(Clone, Debug, Serialize, Deserialize)]

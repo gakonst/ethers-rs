@@ -16,9 +16,21 @@ use std::{
     path::{Path, PathBuf},
 };
 
+/// Represents a written [`crate::Contract`] artifact
+#[derive(Debug, Clone)]
+pub struct WrittenArtifact<T> {
+    /// The Artifact that was written
+    pub artifact: T,
+    /// path to the file where the `artifact` was written to
+    pub file: PathBuf,
+    /// `solc` version that produced this artifact
+    pub version: Version,
+}
+
 /// Bundled Artifacts: `file -> (contract name -> (Artifact, Version))`
 pub type Artifacts<T> = BTreeMap<String, BTreeMap<String, Vec<(T, Version)>>>;
 
+/// A trait representation for a [`crate::Contract`] artifact
 pub trait Artifact {
     /// Returns the artifact's `Abi` and bytecode
     fn into_inner(self) -> (Option<Abi>, Option<Bytes>);
@@ -45,12 +57,27 @@ impl<T: Into<CompactContract>> Artifact for T {
     }
 }
 
+/// Handler invoked with the output of `solc`
+///
+/// Implementers of this trait are expected to take care of [`crate::Contract`] to
+/// [`crate::ArtifactOutput::Artifact`] conversion and how that `Artifact` type is stored on disk,
+/// this includes artifact file location and naming.
+///
+/// Depending on the [`crate::Project`] contracts and their compatible versions,
+/// [`crate::ProjectCompiler::compile()`] may invoke different `solc` executables on the same
+/// solidity file leading to multiple [`crate::CompilerOutput`]s for the same `.sol` file.
+/// In addition to the `solidity file` to `contract` relationship (1-N*)
+/// [`crate::VersionedContracts`] also tracks the `contract` to (`artifact` + `solc version`)
+/// relationship (1-N+).
 pub trait ArtifactOutput {
-    /// How Artifacts are stored
+    /// Represents the artifact that will be stored for a `Contract`
     type Artifact: Artifact + DeserializeOwned;
 
-    /// Handle the compiler output.
-    fn on_output(output: &VersionedContracts, layout: &ProjectPathsConfig) -> Result<()>;
+    /// Handle the aggregated set of compiled contracts from the solc [`crate::CompilerOutput`].
+    ///
+    /// This will be invoked with all aggregated contracts from (multiple) solc `CompilerOutput`.
+    /// See [`crate::AggregatedCompilerOutput`]
+    fn on_output(contracts: &VersionedContracts, layout: &ProjectPathsConfig) -> Result<()>;
 
     /// Returns the file name for the contract's artifact
     /// `Greeter.0.8.11.json`

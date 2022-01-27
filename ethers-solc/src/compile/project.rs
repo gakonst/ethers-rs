@@ -79,6 +79,7 @@ use crate::{
     },
     cache::CacheEntry,
     error::Result,
+    output::ArtifactOutput,
     resolver::GraphEdges,
     utils, ArtifactOutput, CompilerInput, CompilerOutput, Graph, PathMap, Project,
     ProjectPathsConfig, SolFilesCache, SolcConfig, Source, Sources,
