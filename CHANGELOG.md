@@ -4,6 +4,8 @@
 
 ### Unreleased
 
+- Add BSC mainnet and testnet to the list of known chains
+  [831](https://github.com/gakonst/ethers-rs/pull/831)
 - Returns error on invalid type conversion instead of panicking
   [691](https://github.com/gakonst/ethers-rs/pull/691/files)
 - Change types mapping for solidity `bytes` to rust `ethers::core::Bytes` and
