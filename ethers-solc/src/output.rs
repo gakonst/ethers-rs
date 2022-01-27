@@ -1,10 +1,7 @@
 //! Output artifact handling
 
 use crate::{
-    artifacts::{
-        CompactContract, CompactContractRef, Contract, FileToContractsMap, VersionedContract,
-        VersionedContracts,
-    },
+    artifacts::{CompactContract, Contract, FileToContractsMap, VersionedContracts},
     error::Result,
     HardhatArtifact, ProjectPathsConfig, SolcError,
 };

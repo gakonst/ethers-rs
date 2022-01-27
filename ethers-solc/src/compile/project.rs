@@ -73,9 +73,17 @@
 //! not available there, the source unit name will be passed to the Host Filesystem Loader, which
 //! will then look in `/project/dapp-bin/library/iterable_mapping.sol`
 
-use crate::{artifacts::{
-    Error, Settings, SourceFile, VersionedContract, VersionedContracts, VersionedSources,
-}, cache::CacheEntry, error::Result, output::{WrittenArtifacts}, resolver::GraphEdges, utils, CompilerInput, CompilerOutput, Graph, Project, ProjectPathsConfig, SolFilesCache, SolcConfig, Source, SourceUnitNameMap, Sources, ArtifactOutput};
+use crate::{
+    artifacts::{
+        Error, Settings, SourceFile, VersionedContract, VersionedContracts, VersionedSources,
+    },
+    cache::CacheEntry,
+    error::Result,
+    output::WrittenArtifacts,
+    resolver::GraphEdges,
+    utils, ArtifactOutput, CompilerInput, CompilerOutput, Graph, Project, ProjectPathsConfig,
+    SolFilesCache, SolcConfig, Source, SourceUnitNameMap, Sources,
+};
 use rayon::prelude::*;
 use semver::Version;
 use std::{
@@ -158,7 +166,7 @@ impl<'a, T: ArtifactOutput> ProjectCompiler<'a, T> {
             .filtered(&mut cache)
             .set_source_unit_names(&project.paths, &mut source_unit_map);
 
-        let mut output = sources.compile(&project.solc_config.settings, &project.paths)?;
+        let output = sources.compile(&project.solc_config.settings, &project.paths)?;
 
         // TODO reapply the mappings to the contracts
 
@@ -224,9 +232,9 @@ impl CompilerSources {
         names: &mut SourceUnitNameMap,
     ) -> Self {
         fn set(
-            sources: VersionedSources,
-            paths: &ProjectPathsConfig,
-            cache: &mut SourceUnitNameMap,
+            _sources: VersionedSources,
+            _paths: &ProjectPathsConfig,
+            _cache: &mut SourceUnitNameMap,
         ) -> VersionedSources {
             todo!()
         }
@@ -412,7 +420,7 @@ struct Cache<'a, T: ArtifactOutput> {
 
 impl<'a, T: ArtifactOutput> Cache<'a, T> {
     /// Creates a new cache entry for the file
-    fn create_cache_entry(&self, file: &PathBuf, source: &Source) -> Result<CacheEntry> {
+    fn create_cache_entry(&self, file: &Path, source: &Source) -> Result<CacheEntry> {
         let imports = self
             .edges
             .imports(file)
@@ -423,7 +431,7 @@ impl<'a, T: ArtifactOutput> Cache<'a, T> {
         let entry = CacheEntry {
             last_modification_date: CacheEntry::read_last_modification_date(&file).unwrap(),
             content_hash: source.content_hash(),
-            source_name: utils::source_name(&file, &self.paths.root).into(),
+            source_name: utils::source_name(file, &self.paths.root).into(),
             solc_config: self.solc_config.clone(),
             imports,
             version_requirement: self.edges.version_requirement(file).map(|v| v.to_string()),
@@ -439,7 +447,7 @@ impl<'a, T: ArtifactOutput> Cache<'a, T> {
     /// If there is already an entry available for the file the given version is added to the set
     fn insert_new_cache_entry(
         &mut self,
-        file: &PathBuf,
+        file: &Path,
         source: &Source,
         version: Version,
     ) -> Result<()> {
@@ -447,7 +455,7 @@ impl<'a, T: ArtifactOutput> Cache<'a, T> {
             versions.insert(version);
         } else {
             let entry = self.create_cache_entry(file, source)?;
-            self.dirty_entries.insert(file.clone(), (entry, HashSet::from([version])));
+            self.dirty_entries.insert(file.to_path_buf(), (entry, HashSet::from([version])));
         }
         Ok(())
     }
@@ -485,7 +493,7 @@ impl<'a, T: ArtifactOutput> Cache<'a, T> {
         version: &Version,
     ) -> Option<(PathBuf, Source)> {
         if !self.is_dirty(&file, version) &&
-            self.edges.imports(&file).iter().all(|file| !self.is_dirty(file, &version))
+            self.edges.imports(&file).iter().all(|file| !self.is_dirty(file, version))
         {
             self.insert_filtered_source(file, source, version.clone());
             None
@@ -552,6 +560,7 @@ impl<'a, T: ArtifactOutput> Cache<'a, T> {
 }
 
 /// Abstraction over configured caching which can be either non-existent or an already loaded cache
+#[allow(clippy::large_enum_variant)]
 enum ArtifactsCache<'a, T: ArtifactOutput> {
     /// Cache nothing on disk
     Ephemeral,
@@ -617,7 +626,7 @@ impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
     /// Returns all the _cached_ artifacts.
     fn finish(
         self,
-        written_artifacts: &WrittenArtifacts<T::Artifact>,
+        _written_artifacts: &WrittenArtifacts<T::Artifact>,
     ) -> Result<BTreeMap<PathBuf, T::Artifact>> {
         match self {
             ArtifactsCache::Ephemeral => Ok(Default::default()),
@@ -632,7 +641,7 @@ impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
                 // add the artifacts to the cache entries, this way we can keep a mapping from
                 // solidity file to its artifacts
 
-                dirty_entries.into_iter().map(|(file, (mut entry, versions))| {
+                dirty_entries.into_iter().map(|(_file, (_entry, _versions))| {
 
                     // TODO need reshuffling of source units to actual paths
                     // if let Some(contracts) = written_artifacts.get(&file) {

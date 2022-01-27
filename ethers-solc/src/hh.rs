@@ -2,12 +2,11 @@
 
 use crate::{
     artifacts::{BytecodeObject, CompactContract, Contract, Offsets},
-    error::{Result, SolcError},
-    ArtifactOutput, CompilerOutput, ProjectPathsConfig,
+    ArtifactOutput,
 };
 use ethers_core::abi::Abi;
 use serde::{Deserialize, Serialize};
-use std::{collections::btree_map::BTreeMap, fs};
+use std::collections::btree_map::BTreeMap;
 
 const HH_ARTIFACT_VERSION: &str = "hh-sol-artifact-1";
 

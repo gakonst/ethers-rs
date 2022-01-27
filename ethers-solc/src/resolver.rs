@@ -80,8 +80,7 @@ impl GraphEdges {
         self.indices
             .get(file.as_ref())
             .and_then(|idx| self.versions.get(idx))
-            .map(|v| v.as_ref())
-            .flatten()
+            .and_then(|v| v.as_ref())
     }
 }
 

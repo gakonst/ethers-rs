@@ -1,23 +1,17 @@
 use crate::{
-    artifacts::{
-        CompactContract, CompactContractRef, Contract, Settings, VersionedContract,
-        VersionedContracts,
-    },
+    artifacts::Settings,
     cache::SOLIDITY_FILES_CACHE_FILENAME,
     error::{Result, SolcError, SolcIoError},
-    hh::HardhatArtifact,
     remappings::Remapping,
     resolver::Graph,
-    utils, CompilerOutput, Source, Sources,
+    utils, Source, Sources,
 };
-use ethers_core::{abi::Abi, types::Bytes};
-use semver::Version;
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+
+use serde::{Deserialize, Serialize};
 use std::{
-    collections::BTreeMap,
     convert::TryFrom,
     fmt::{self, Formatter},
-    fs, io,
+    fs,
     path::{Component, Path, PathBuf},
 };
 

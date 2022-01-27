@@ -4,7 +4,7 @@ pub mod artifacts;
 pub mod sourcemap;
 
 pub use artifacts::{CompilerInput, CompilerOutput, EvmVersion};
-use std::collections::btree_map::{BTreeMap, Entry};
+use std::collections::btree_map::BTreeMap;
 
 pub mod cache;
 pub mod hh;
@@ -39,7 +39,7 @@ use error::Result;
 use std::{
     borrow::Cow,
     convert::TryInto,
-    fmt, fs,
+    fmt,
     marker::PhantomData,
     path::{Path, PathBuf},
 };
@@ -215,16 +215,16 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
     /// # }
     /// ```
     #[cfg(all(feature = "svm", feature = "async"))]
-    #[tracing::instrument(skip(self, sources))]
-    pub fn svm_compile(&self, sources: Sources) -> Result<ProjectCompileOutput<Artifacts>> {
+    // #[tracing::instrument(skip(self, sources))]
+    pub fn svm_compile(&self, _sources: Sources) -> Result<ProjectCompileOutput<Artifacts>> {
         todo!()
     }
 
     /// Compiles all sources with their intended `Solc` version sequentially.
     #[cfg(all(feature = "svm", feature = "async"))]
-    fn compile_sources(
+    pub fn compile_sources(
         &self,
-        sources_by_version: BTreeMap<Solc, BTreeMap<PathBuf, Source>>,
+        _sources_by_version: BTreeMap<Solc, BTreeMap<PathBuf, Source>>,
     ) -> Result<ProjectCompileOutput<Artifacts>> {
         todo!()
     }
@@ -254,8 +254,8 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
     /// ```
     pub fn compile_with_version(
         &self,
-        solc: &Solc,
-        sources: Sources,
+        _solc: &Solc,
+        _sources: Sources,
     ) -> Result<ProjectCompileOutput<Artifacts>> {
         todo!()
     }
@@ -683,7 +683,7 @@ impl<T: ArtifactOutput + 'static> ProjectCompileOutput<T> {
     /// let project = Project::builder().build().unwrap();
     /// let contracts: BTreeMap<String, CompactContract> = project.compile().unwrap().into_artifacts().collect();
     /// ```
-    pub fn into_artifacts(mut self) -> Box<dyn Iterator<Item = (String, T::Artifact)>> {
+    pub fn into_artifacts(self) -> Box<dyn Iterator<Item = (String, T::Artifact)>> {
         // let artifacts = self.artifacts.into_iter().filter_map(|(path, art)| {
         //     T::contract_name(&path).map(|name| {
         //         (format!("{}:{}", path.file_name().unwrap().to_string_lossy(), name), art)

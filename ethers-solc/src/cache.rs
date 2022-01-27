@@ -3,13 +3,13 @@ use crate::{
     artifacts::{Contracts, Sources},
     config::SolcConfig,
     error::{Result, SolcError},
-    utils, ArtifactOutput, ProjectPathsConfig, Source,
+    ArtifactOutput, Source,
 };
 use semver::Version;
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::{btree_map::BTreeMap, HashMap, HashSet},
-    fs::{self, File},
+    collections::{btree_map::BTreeMap, HashMap},
+    fs::{self},
     path::{Path, PathBuf},
     time::{Duration, UNIX_EPOCH},
 };
@@ -97,7 +97,7 @@ impl SolFilesCache {
     }
 
     /// Checks if all artifact files exist
-    pub fn all_artifacts_exist<T: ArtifactOutput>(&self, artifacts_root: &Path) -> bool {
+    pub fn all_artifacts_exist<T: ArtifactOutput>(&self, _artifacts_root: &Path) -> bool {
         // self.files.iter().all(|(file, entry)| {
         //     entry.artifacts.iter().all(|name| T::output_exists(file, name, artifacts_root))
         // })
@@ -107,7 +107,7 @@ impl SolFilesCache {
     /// Reads all cached artifacts from disk using the given ArtifactOutput handler
     pub fn read_artifacts<T: ArtifactOutput>(
         &self,
-        artifacts_root: &Path,
+        _artifacts_root: &Path,
     ) -> Result<BTreeMap<PathBuf, T::Artifact>> {
         todo!()
         // let mut artifacts = BTreeMap::default();
@@ -125,7 +125,7 @@ impl SolFilesCache {
     ///
     /// In other words, only keep those cache entries with the paths (keys) that the iterator yields
     /// and only keep the versions in the cache entry that the version iterator yields.
-    pub(crate) fn retain<'a, I, V>(&mut self, files: I)
+    pub fn retain<'a, I, V>(&mut self, _files: I)
     where
         I: IntoIterator<Item = (&'a Path, V)>,
         V: IntoIterator<Item = &'a Version>,
@@ -134,7 +134,7 @@ impl SolFilesCache {
 
     /// Inserts the provided cache entries, if there is an existing `CacheEntry` it will be updated
     /// but versions will be merged.
-    pub(crate) fn extend<I, V>(&mut self, entries: I)
+    pub fn extend<I, V>(&mut self, _entries: I)
     where
         I: IntoIterator<Item = (PathBuf, CacheEntry)>,
     {
@@ -195,8 +195,8 @@ impl SolFilesCacheBuilder {
     /// If a `cache_file` path was provided it's used as base.
     pub fn insert_files(
         self,
-        sources: Sources,
-        cache_file: Option<PathBuf>,
+        _sources: Sources,
+        _cache_file: Option<PathBuf>,
     ) -> Result<SolFilesCache> {
         todo!()
         // let format = self.format.unwrap_or_else(|| ETHERS_FORMAT_VERSION.to_string());
