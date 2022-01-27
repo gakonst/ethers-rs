@@ -33,3 +33,8 @@ pub use policy::PolicyMiddleware;
 /// before the chain tip
 pub mod timelag;
 pub use timelag::TimeLag;
+
+#[cfg(feature = "forge")]
+pub mod forge;
+#[cfg(feature = "forge")]
+pub use forge::Forge;

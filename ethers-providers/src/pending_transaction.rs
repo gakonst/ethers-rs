@@ -47,6 +47,10 @@ impl<'a, P: JsonRpcClient> PendingTransaction<'a, P> {
         }
     }
 
+    pub fn set_state(&mut self, state: PendingTxState<'a>) {
+        self.state = state
+    }
+
     /// Returns the Provider associated with the pending transaction
     pub fn provider(&self) -> Provider<P>
     where
@@ -266,7 +270,7 @@ impl<'a, P> Deref for PendingTransaction<'a, P> {
 }
 
 // We box the TransactionReceipts to keep the enum small.
-enum PendingTxState<'a> {
+pub enum PendingTxState<'a> {
     /// Initial delay to ensure the GettingTx loop doesn't immediately fail
     InitialDelay(Pin<Box<Delay>>),
 

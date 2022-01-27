@@ -34,6 +34,9 @@ url = { version = "2.2.2", default-features = false }
 serde_json = { version = "1.0.64", default-features = false }
 instant = {version = "0.1.12", features = ["now"] }
 
+evm-adapters = { path = "../../foundry/evm-adapters", features = ["sputnik", "sputnik-helpers"], optional = true }
+sputnik = { package = "evm", git = "https://github.com/rust-blockchain/evm", optional = true }
+
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tokio = { version = "1.5" }
 
@@ -50,3 +53,4 @@ tokio = { version = "1.5", default-features = false, features = ["rt", "macros",
 
 [features]
 celo = ["ethers-core/celo", "ethers-providers/celo", "ethers-signers/celo", "ethers-contract/celo"]
+forge = ["evm-adapters", "sputnik"]

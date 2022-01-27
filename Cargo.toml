@@ -80,6 +80,8 @@ solc-async = ["ethers-solc/async"]
 solc-full = ["ethers-solc/full"]
 solc-tests = ["ethers-solc/tests"]
 solc-sha2-asm = ["ethers-solc/asm"]
+## middleware
+forge = ["ethers-middleware/forge"]
 
 [dependencies]
 ethers-addressbook = { version = "^0.1.0", default-features = false, path = "./ethers-addressbook" }
@@ -110,3 +112,7 @@ bytes = "1.1.0"
 [profile.release.package.ethers-wasm]
 # Tell `rustc` to optimize for small code size.
 opt-level = "s"
+
+# Patch required to compile forge feature with evm_adapters
+[patch."https://github.com/gakonst/ethers-rs"]
+ethers-core = { path = "./ethers-core"}
