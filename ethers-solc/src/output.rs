@@ -18,7 +18,7 @@ use std::{
 };
 
 /// Represents a written [`crate::Contract`] artifact
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct WrittenArtifact<T> {
     /// The Artifact that was written
     pub artifact: T,

@@ -73,21 +73,13 @@
 //! not available there, the source unit name will be passed to the Host Filesystem Loader, which
 //! will then look in `/project/dapp-bin/library/iterable_mapping.sol`
 
-use crate::{
-    artifacts::{
-        Error, Settings, SourceFile, VersionedContract, VersionedContracts, VersionedSources,
-    },
-    cache::CacheEntry,
-    error::Result,
-    output::{ArtifactOutput, WrittenArtifacts},
-    resolver::GraphEdges,
-    utils, ArtifactOutput, CompilerInput, CompilerOutput, Graph, Project, ProjectPathsConfig,
-    SolFilesCache, SolcConfig, Source, SourceUnitNameMap, Sources,
-};
+use crate::{artifacts::{
+    Error, Settings, SourceFile, VersionedContract, VersionedContracts, VersionedSources,
+}, cache::CacheEntry, error::Result, output::{WrittenArtifacts}, resolver::GraphEdges, utils, CompilerInput, CompilerOutput, Graph, Project, ProjectPathsConfig, SolFilesCache, SolcConfig, Source, SourceUnitNameMap, Sources, ArtifactOutput};
 use rayon::prelude::*;
 use semver::Version;
 use std::{
-    collections::{btree_map::BTreeMap, hash_map, hash_map::Entry, BTreeMap, HashMap, HashSet},
+    collections::{btree_map::BTreeMap, hash_map, hash_map::Entry, HashMap, HashSet},
     path::{Path, PathBuf},
 };
 
@@ -635,7 +627,7 @@ impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
                 } = cache;
 
                 // keep only those files that were previously filtered (not dirty, reused)
-                cache.retain(filtered.iter().map(|(p, (_, v))| (p, v)));
+                cache.retain(filtered.iter().map(|(p, (_, v))| (p.as_path(), v)));
 
                 // add the artifacts to the cache entries, this way we can keep a mapping from
                 // solidity file to its artifacts
