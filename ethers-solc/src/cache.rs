@@ -98,9 +98,10 @@ impl SolFilesCache {
 
     /// Checks if all artifact files exist
     pub fn all_artifacts_exist<T: ArtifactOutput>(&self, artifacts_root: &Path) -> bool {
-        self.files.iter().all(|(file, entry)| {
-            entry.artifacts.iter().all(|name| T::output_exists(file, name, artifacts_root))
-        })
+        // self.files.iter().all(|(file, entry)| {
+        //     entry.artifacts.iter().all(|name| T::output_exists(file, name, artifacts_root))
+        // })
+        todo!()
     }
 
     /// Reads all cached artifacts from disk using the given ArtifactOutput handler
@@ -108,15 +109,16 @@ impl SolFilesCache {
         &self,
         artifacts_root: &Path,
     ) -> Result<BTreeMap<PathBuf, T::Artifact>> {
-        let mut artifacts = BTreeMap::default();
-        for (file, entry) in &self.files {
-            for artifact in &entry.artifacts {
-                let artifact_file = artifacts_root.join(T::output_file(file, artifact));
-                let artifact = T::read_cached_artifact(&artifact_file)?;
-                artifacts.insert(artifact_file, artifact);
-            }
-        }
-        Ok(artifacts)
+        todo!()
+        // let mut artifacts = BTreeMap::default();
+        // for (file, entry) in &self.files {
+        //     for artifact in &entry.artifacts {
+        //         let artifact_file = artifacts_root.join(T::output_file(file, artifact));
+        //         let artifact = T::read_cached_artifact(&artifact_file)?;
+        //         artifacts.insert(artifact_file, artifact);
+        //     }
+        // }
+        // Ok(artifacts)
     }
 
     /// Retains only the `CacheEntry` specified by the file + version combination.

@@ -87,7 +87,7 @@ pub trait ArtifactOutput {
     ) -> Result<WrittenArtifacts<Self::Artifact>> {
         fs::create_dir_all(&layout.artifacts)
             .map_err(|err| SolcError::msg(format!("Failed to create artifacts dir: {}", err)))?;
-        let mut artifacts = WrittenArtifacts::new();
+        let mut artifacts = WrittenArtifacts::default();
 
         for (file, contracts) in contracts.iter() {
             let mut entries = BTreeMap::new();
@@ -100,9 +100,13 @@ pub trait ArtifactOutput {
                     } else {
                         Self::output_file(file, name)
                     };
-                    let artifact = write_contract::<Self::Artifact>(
+
+                    let artifact =
+                        Self::contract_to_artifact(file, name, contract.contract.clone());
+
+                    write_contract::<Self::Artifact>(
                         &layout.artifacts.join(&artifact_path),
-                        &contract.contract,
+                        &artifact,
                     )?;
 
                     contracts.push(WrittenArtifact {
@@ -262,10 +266,7 @@ impl ArtifactOutput for MinimalCombinedArtifactsHardhatFallback {
 }
 
 /// Writes the given contract to the `out` path creating all parent directories
-fn write_contract<C>(out: &Path, contract: &Contract) -> Result<C>
-where
-    C: From<&Contract> + Serialize,
-{
+fn write_contract<T: Serialize>(out: &Path, artifact: &T) -> Result<()> {
     if let Some(parent) = out.parent() {
         fs::create_dir_all(parent).map_err(|err| {
             SolcError::msg(format!(
@@ -275,7 +276,6 @@ where
             ))
         })?;
     }
-    let c = C::from(contract);
-    fs::write(out, serde_json::to_vec_pretty(&c)?).map_err(|err| SolcError::io(err, out))?;
-    Ok(c)
+    fs::write(out, serde_json::to_vec_pretty(artifact)?).map_err(|err| SolcError::io(err, out))?;
+    Ok(())
 }

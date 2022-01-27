@@ -684,24 +684,25 @@ impl<T: ArtifactOutput + 'static> ProjectCompileOutput<T> {
     /// let contracts: BTreeMap<String, CompactContract> = project.compile().unwrap().into_artifacts().collect();
     /// ```
     pub fn into_artifacts(mut self) -> Box<dyn Iterator<Item = (String, T::Artifact)>> {
-        let artifacts = self.artifacts.into_iter().filter_map(|(path, art)| {
-            T::contract_name(&path).map(|name| {
-                (format!("{}:{}", path.file_name().unwrap().to_string_lossy(), name), art)
-            })
-        });
-
-        let artifacts: Box<dyn Iterator<Item = (String, T::Artifact)>> = if let Some(output) =
-            self.compiler_output.take()
-        {
-            Box::new(artifacts.chain(T::output_to_artifacts(output).into_values().flatten().map(
-                |(name, artifact)| {
-                    (format!("{}:{}", T::output_file_name(&name).display(), name), artifact)
-                },
-            )))
-        } else {
-            Box::new(artifacts)
-        };
-        artifacts
+        // let artifacts = self.artifacts.into_iter().filter_map(|(path, art)| {
+        //     T::contract_name(&path).map(|name| {
+        //         (format!("{}:{}", path.file_name().unwrap().to_string_lossy(), name), art)
+        //     })
+        // });
+        //
+        // let artifacts: Box<dyn Iterator<Item = (String, T::Artifact)>> = if let Some(output) =
+        //     self.compiler_output.take()
+        // {
+        //     Box::new(artifacts.chain(T::output_to_artifacts(output).into_values().flatten().map(
+        //         |(name, artifact)| {
+        //             (format!("{}:{}", T::output_file_name(&name).display(), name), artifact)
+        //         },
+        //     )))
+        // } else {
+        //     Box::new(artifacts)
+        // };
+        // artifacts
+        todo!()
     }
 }
 
