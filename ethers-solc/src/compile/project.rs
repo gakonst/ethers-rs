@@ -81,12 +81,12 @@ use crate::{
     error::Result,
     output::{ArtifactOutput, WrittenArtifacts},
     resolver::GraphEdges,
-    utils, ArtifactOutput, CompilerInput, CompilerOutput, Graph, PathMap, Project,
-    ProjectPathsConfig, SolFilesCache, SolcConfig, Source, Sources,
+    utils, ArtifactOutput, CompilerInput, CompilerOutput, Graph, Project, ProjectPathsConfig,
+    SolFilesCache, SolcConfig, Source, SourceUnitNameMap, Sources,
 };
 use semver::Version;
 use std::{
-    collections::{hash_map, hash_map::Entry, BTreeMap, HashMap, HashSet},
+    collections::{btree_map::BTreeMap, hash_map, hash_map::Entry, BTreeMap, HashMap, HashSet},
     path::{Path, PathBuf},
 };
 
@@ -155,12 +155,19 @@ impl<'a, T: ArtifactOutput> ProjectCompiler<'a, T> {
     /// ```
     pub fn compile(self) -> Result<ProjectCompileOutput2<T>> {
         let Self { edges, project, mut sources } = self;
+        // the map that keeps track of the mapping of resolved solidity file paths -> source unit
+        // names
+        let mut source_unit_map = SourceUnitNameMap::default();
 
         let mut cache = ArtifactsCache::new(project, &edges)?;
-
         // retain and compile only dirty sources
-        sources = sources.filtered(&mut cache);
-        let output = sources.compile(&project.solc_config.settings, &project.paths)?;
+        sources = sources
+            .filtered(&mut cache)
+            .set_source_unit_names(&project.paths, &mut source_unit_map);
+
+        let mut output = sources.compile(&project.solc_config.settings, &project.paths)?;
+
+        // TODO reapply the mappings to the contracts
 
         // write all artifacts
         let written_artifacts = if !project.no_artifacts {
@@ -217,6 +224,26 @@ impl CompilerSources {
         }
     }
 
+    /// Sets the correct source unit names for all sources
+    fn set_source_unit_names(
+        self,
+        paths: &ProjectPathsConfig,
+        names: &mut SourceUnitNameMap,
+    ) -> Self {
+        fn set(
+            sources: VersionedSources,
+            paths: &ProjectPathsConfig,
+            cache: &mut SourceUnitNameMap,
+        ) -> VersionedSources {
+            todo!()
+        }
+
+        match self {
+            CompilerSources::Sequential(s) => CompilerSources::Sequential(set(s, paths, names)),
+            CompilerSources::Parallel(s, j) => CompilerSources::Parallel(set(s, paths, names), j),
+        }
+    }
+
     /// Compiles all the files with `Solc`
     fn compile(
         self,
@@ -248,11 +275,6 @@ fn compile_sequential(
             solc.as_ref().display()
         );
 
-        let source_unit_map = PathMap::default();
-        // replace absolute path with source name to make solc happy
-        // TODO use correct source unit path
-        let sources = source_unit_map.set_source_names(sources);
-
         let input = CompilerInput::with_sources(sources)
             .settings(settings.clone())
             .normalize_evm_version(&version)
@@ -261,8 +283,6 @@ fn compile_sequential(
         tracing::trace!("calling solc `{}` with {} sources", version, input.sources.len());
         let output = solc.compile(&input)?;
         tracing::trace!("compiled input, output has error: {}", output.has_error());
-
-        // TODO reapply the paths
 
         aggregated.extend(version, output);
     }

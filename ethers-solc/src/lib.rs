@@ -33,7 +33,7 @@ pub mod utils;
 
 use crate::{
     artifacts::Sources,
-    cache::PathMap,
+    cache::SourceUnitNameMap,
     error::{SolcError, SolcIoError},
 };
 use error::Result;
@@ -324,7 +324,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         tracing::trace!("compile sources in parallel using {} solc jobs", self.solc_jobs);
         let mut compiled =
             ProjectCompileOutput::with_ignored_errors(self.ignored_error_codes.clone());
-        let mut paths = PathMap::default();
+        let mut paths = SourceUnitNameMap::default();
         let mut jobs = Vec::with_capacity(sources_by_version.len());
 
         let mut all_sources = BTreeMap::default();
@@ -475,7 +475,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         tracing::trace!("start preprocessing {} sources files", sources.len());
 
         // keeps track of source names / disk paths
-        let mut paths = PathMap::default();
+        let mut paths = SourceUnitNameMap::default();
 
         tracing::trace!("start resolving libraries");
         for (import, (source, path)) in self.resolved_libraries(&sources)? {
@@ -570,7 +570,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
 
 enum PreprocessedJob<T: ArtifactOutput> {
     Unchanged(BTreeMap<PathBuf, T::Artifact>),
-    Items(Sources, PathMap, BTreeMap<PathBuf, T::Artifact>),
+    Items(Sources, SourceUnitNameMap, BTreeMap<PathBuf, T::Artifact>),
 }
 
 pub struct ProjectBuilder<Artifacts: ArtifactOutput = MinimalCombinedArtifacts> {

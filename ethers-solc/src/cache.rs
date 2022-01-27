@@ -446,7 +446,7 @@ impl CacheEntry {
 ///
 /// See also [Import Path Resolution](https://docs.soliditylang.org/en/develop/path-resolution.html#path-resolution)
 #[derive(Debug, Default)]
-pub struct PathMap {
+pub struct SourceUnitNameMap {
     /// all libraries to the source set while keeping track of their actual disk path
     /// (`contracts/contract.sol` -> `/Users/.../contracts.sol`)
     pub source_unit_name_to_path: HashMap<PathBuf, PathBuf>,
@@ -454,7 +454,7 @@ pub struct PathMap {
     pub path_to_source_unit_name: HashMap<PathBuf, PathBuf>,
 }
 
-impl PathMap {
+impl SourceUnitNameMap {
     fn apply_mappings(sources: Sources, mappings: &HashMap<PathBuf, PathBuf>) -> Sources {
         sources
             .into_iter()
@@ -480,7 +480,7 @@ impl PathMap {
             .collect()
     }
 
-    pub fn extend(&mut self, other: PathMap) {
+    pub fn extend(&mut self, other: SourceUnitNameMap) {
         self.source_unit_name_to_path.extend(other.source_unit_name_to_path);
         self.path_to_source_unit_name.extend(other.path_to_source_unit_name);
     }
