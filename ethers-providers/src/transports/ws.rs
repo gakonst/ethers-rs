@@ -59,7 +59,11 @@ if_not_wasm! {
     type Message = tungstenite::protocol::Message;
     type WsError = tungstenite::Error;
     type WsStreamItem = Result<Message, WsError>;
+    use super::Authorization;
     use tracing::{debug, error, warn};
+    use http::Request as HttpRequest;
+    use http::Uri;
+    use std::str::FromStr;
 }
 
 type Pending = oneshot::Sender<Result<serde_json::Value, JsonRpcError>>;
@@ -138,6 +142,22 @@ impl Ws {
     ) -> Result<Self, ClientError> {
         let (ws, _) = connect_async(url).await?;
         Ok(Self::new(ws))
+    }
+
+    /// Initializes a new WebSocket Client with authentication
+    #[cfg(not(target_arch = "wasm32"))]
+    pub async fn connect_with_auth(
+        uri: impl AsRef<str> + Unpin,
+        auth: Authorization,
+    ) -> Result<Self, ClientError> {
+        let mut request: HttpRequest<()> =
+            HttpRequest::builder().method("GET").uri(Uri::from_str(uri.as_ref())?).body(())?;
+
+        let mut auth_value = http::HeaderValue::from_str(&auth.to_string())?;
+        auth_value.set_sensitive(true);
+
+        request.headers_mut().insert(http::header::AUTHORIZATION, auth_value);
+        Self::connect(request).await
     }
 
     fn send(&self, msg: Instruction) -> Result<(), ClientError> {
@@ -442,6 +462,21 @@ pub enum ClientError {
     /// Something caused the websocket to close
     #[error("WebSocket connection closed unexpectedly")]
     UnexpectedClose,
+
+    /// Could not create an auth header for websocket handshake
+    #[error(transparent)]
+    #[cfg(not(target_arch = "wasm32"))]
+    WsAuth(#[from] http::header::InvalidHeaderValue),
+
+    /// Unable to create a valid Uri
+    #[error(transparent)]
+    #[cfg(not(target_arch = "wasm32"))]
+    UriError(#[from] http::uri::InvalidUri),
+
+    /// Unable to create a valid Request
+    #[error(transparent)]
+    #[cfg(not(target_arch = "wasm32"))]
+    RequestError(#[from] http::Error),
 }
 
 impl From<ClientError> for ProviderError {

@@ -1274,6 +1274,7 @@ version = "0.6.0"
 dependencies = [
  "async-trait",
  "auto_impl",
+ "base64 0.13.0",
  "bytes",
  "ethers-core",
  "futures-channel",
@@ -1281,6 +1282,7 @@ dependencies = [
  "futures-timer",
  "futures-util",
  "hex",
+ "http",
  "parking_lot",
  "pin-project",
  "reqwest",
