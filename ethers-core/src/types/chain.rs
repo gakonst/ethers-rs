@@ -116,3 +116,15 @@ impl FromStr for Chain {
         })
     }
 }
+
+impl Chain {
+    /// Helper function for checking if a chainid corresponds to a legacy chainid
+    /// without eip1559
+    pub fn is_legacy(&self) -> bool {
+        // TODO: Add other chains which do not support EIP1559.
+        matches!(
+            self,
+            Chain::Optimism | Chain::OptimismKovan | Chain::Fantom | Chain::FantomTestnet
+        )
+    }
+}
