@@ -128,14 +128,69 @@ impl ProjectPathsConfig {
 
     /// Attempts to find the path to the real solidity file that's imported via the given `import`
     /// path by applying the configured remappings and checking the library dirs
+    ///
+    /// # Example
+    ///
+    /// Following `@aave` dependency in the `lib` folder `node_modules`
+    ///
+    /// ```text
+    /// <root>/node_modules/@aave
+    /// ├── aave-token
+    /// │   ├── contracts
+    /// │   │   ├── open-zeppelin
+    /// │   │   ├── token
+    /// ├── governance-v2
+    ///     ├── contracts
+    ///         ├── interfaces
+    /// ```
+    ///
+    /// has this remapping: `@aave/=@aave/` (name:path) so contracts can be imported as
+    ///
+    /// ```solidity
+    /// import "@aave/governance-v2/contracts/governance/Executor.sol";
+    /// ```
+    ///
+    /// So that `Executor.sol` can be found by checking each `lib` folder (`node_modules`) with
+    /// applied remappings. Applying remapping works by checking if the import path of an import
+    /// statement starts with the name of a remapping and replacing it with the remapping's `path`.
+    ///
+    /// There are some caveats though, dapptools style remappings usually include the `src` folder
+    /// `ds-test/=lib/ds-test/src/` so that imports look like `import "ds-test/test.sol";` (note the
+    /// missing `src` in the import path).
+    ///
+    /// For hardhat/npm style that's not always the case, most notably for [openzeppelin-contracts](https://github.com/OpenZeppelin/openzeppelin-contracts) if installed via npm.
+    /// The remapping is detected as `'@openzeppelin/=node_modules/@openzeppelin/contracts/'`, which
+    /// includes the source directory `contracts`, however it's common to see import paths like:
+    ///
+    /// `import "@openzeppelin/contracts/token/ERC20/IERC20.sol";`
+    ///
+    /// instead of
+    ///
+    /// `import "@openzeppelin/token/ERC20/IERC20.sol";`
+    ///
+    /// There is no strict rule behind this, but because [`Remappings::find_many`] returns
+    /// `'@openzeppelin/=node_modules/@openzeppelin/contracts/'` we should handle the case if the
+    /// remapping path ends with `contracts` and the import path starts with `<remapping
+    /// name>/contracts`. Otherwise we can end up with a resolved path that has a duplicate
+    /// `contracts` segment: `@openzeppelin/contracts/contracts/token/ERC20/IERC20.sol` we check
+    /// for this edge case here so that both styles work out of the box.
     pub fn resolve_library_import(&self, import: &Path) -> Option<PathBuf> {
         // if the import path starts with the name of the remapping then we get the resolved path by
         // removing the name and adding the remainder to the path of the remapping
-        if let Some(path) = self
-            .remappings
-            .iter()
-            .find_map(|r| import.strip_prefix(&r.name).ok().map(|p| Path::new(&r.path).join(p)))
-        {
+        if let Some(path) = self.remappings.iter().find_map(|r| {
+            import.strip_prefix(&r.name).ok().map(|stripped_import| {
+                let lib_path = Path::new(&r.path).join(stripped_import);
+
+                // we handle the edge case where the path of a remapping ends with "contracts"
+                // (`<name>/=.../contracts`) and the stripped import also starts with `contracts`
+                if let Ok(adjusted_import) = stripped_import.strip_prefix("contracts/") {
+                    if r.path.ends_with("contracts/") && !lib_path.exists() {
+                        return Path::new(&r.path).join(adjusted_import)
+                    }
+                }
+                lib_path
+            })
+        }) {
             Some(self.root.join(path))
         } else {
             utils::resolve_library(&self.libraries, import)
