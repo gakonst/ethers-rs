@@ -77,10 +77,12 @@ where
 
         // Pull fields from tx to pass to evm
         let from = tx.from().unwrap();
-        let to = match tx.to().unwrap() {
-            NameOrAddress::Name(ens) => self.resolve_name(ens).await?,
-            NameOrAddress::Address(addr) => *addr,
-        };
+        let maybe_to = tx.to().map(|id| async move {
+            match id {
+                NameOrAddress::Name(ens) => self.resolve_name(ens).await.unwrap(),
+                NameOrAddress::Address(addr) => *addr,
+            }
+        });
         let data = match tx.data() {
             Some(data) => data.clone(),
             _ => Default::default(),
@@ -92,17 +94,18 @@ where
 
         let mut lock = self.vm.lock().await;
 
-        if *from == Address::zero() {
+        if let Some(fut) = maybe_to {
+            let to = fut.await;
+            // (contract) call
+            let (_bytes, exit, gas, _) = lock.call_raw(*from, to, data, *val, false).unwrap();
+            receipt.gas_used = Some(gas.into());
+            receipt.status = Some((if E::is_success(&exit) { 1usize } else { 0 }).into());
+        } else {
             // contract deployment
             let (addr, exit, gas, _) = lock.deploy(*from, data.clone(), *val).unwrap();
             receipt.gas_used = Some(gas.into());
             receipt.status = Some((if E::is_success(&exit) { 1usize } else { 0 }).into());
             receipt.contract_address = Some(addr);
-        } else {
-            // (contract) call
-            let (_bytes, exit, gas, _) = lock.call_raw(*from, to, data, *val, false).unwrap();
-            receipt.gas_used = Some(gas.into());
-            receipt.status = Some((if E::is_success(&exit) { 1usize } else { 0 }).into());
         }
 
         // Fake the tx hash for the receipt. Should be able to get a "real"
