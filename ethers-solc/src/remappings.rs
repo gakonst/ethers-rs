@@ -491,7 +491,7 @@ fn last_nested_source_dir(root: &Path, dir: &Path) -> PathBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::utils::tempdir;
+    use crate::{utils::tempdir, ProjectPathsConfig};
 
     #[test]
     fn relative_remapping() {
@@ -538,6 +538,9 @@ mod tests {
 
     fn mkdir_or_touch(tmp: &std::path::Path, paths: &[&str]) {
         for path in paths {
+            if let Some(parent) = Path::new(path).parent() {
+                std::fs::create_dir_all(tmp.join(parent)).unwrap();
+            }
             if path.ends_with(".sol") {
                 let path = tmp.join(path);
                 touch(&path).unwrap();
@@ -570,34 +573,51 @@ mod tests {
     }
 
     #[test]
+    fn can_resolve_oz_remappings() {
+        let tmp_dir = tempdir("node_modules").unwrap();
+        let tmp_dir_node_modules = tmp_dir.path().join("node_modules");
+        let paths = [
+            "node_modules/@openzeppelin/contracts/interfaces/IERC1155.sol",
+            "node_modules/@openzeppelin/contracts/finance/VestingWallet.sol",
+            "node_modules/@openzeppelin/contracts/proxy/Proxy.sol",
+            "node_modules/@openzeppelin/contracts/token/ERC20/IERC20.sol",
+        ];
+        mkdir_or_touch(tmp_dir.path(), &paths[..]);
+        let remappings = Remapping::find_many(&tmp_dir_node_modules);
+
+        let mut paths = ProjectPathsConfig::hardhat(tmp_dir.path()).unwrap();
+        paths.remappings = remappings;
+
+        let resolved = paths
+            .resolve_library_import(Path::new("@openzeppelin/contracts/token/ERC20/IERC20.sol"))
+            .unwrap();
+        assert!(resolved.exists());
+
+        // adjust remappings
+        paths.remappings[0].name = "@openzeppelin/contracts/".to_string();
+
+        let resolved = paths
+            .resolve_library_import(Path::new("@openzeppelin/contracts/token/ERC20/IERC20.sol"))
+            .unwrap();
+        assert!(resolved.exists());
+    }
+
+    #[test]
     fn recursive_remappings() {
         let tmp_dir = tempdir("lib").unwrap();
         let tmp_dir_path = tmp_dir.path();
         let paths = [
-            "repo1/src/",
             "repo1/src/contract.sol",
-            "repo1/lib/",
-            "repo1/lib/ds-test/src/",
             "repo1/lib/ds-test/src/test.sol",
-            "repo1/lib/ds-math/src/",
             "repo1/lib/ds-math/src/contract.sol",
-            "repo1/lib/ds-math/lib/ds-test/src/",
             "repo1/lib/ds-math/lib/ds-test/src/test.sol",
-            "repo1/lib/guni-lev/src",
             "repo1/lib/guni-lev/src/contract.sol",
-            "repo1/lib/solmate/src/auth",
             "repo1/lib/solmate/src/auth/contract.sol",
-            "repo1/lib/solmate/src/tokens",
             "repo1/lib/solmate/src/tokens/contract.sol",
-            "repo1/lib/solmate/lib/ds-test/src/",
             "repo1/lib/solmate/lib/ds-test/src/test.sol",
-            "repo1/lib/solmate/lib/ds-test/demo/",
             "repo1/lib/solmate/lib/ds-test/demo/demo.sol",
-            "repo1/lib/openzeppelin-contracts/contracts/access",
             "repo1/lib/openzeppelin-contracts/contracts/access/AccessControl.sol",
-            "repo1/lib/ds-token/lib/ds-stop/src",
             "repo1/lib/ds-token/lib/ds-stop/src/contract.sol",
-            "repo1/lib/ds-token/lib/ds-stop/lib/ds-note/src",
             "repo1/lib/ds-token/lib/ds-stop/lib/ds-note/src/contract.sol",
         ];
         mkdir_or_touch(tmp_dir_path, &paths[..]);
@@ -692,12 +712,8 @@ mod tests {
             "ds-test/demo",
             "ds-test/demo/demo.sol",
             "ds-test/src/test.sol",
-            "openzeppelin/src",
-            "openzeppelin/src/interfaces",
             "openzeppelin/src/interfaces/c.sol",
-            "openzeppelin/src/token/ERC/",
             "openzeppelin/src/token/ERC/c.sol",
-            "standards/src/interfaces",
             "standards/src/interfaces/iweth.sol",
             "uniswapv2/src",
         ];
@@ -730,24 +746,17 @@ mod tests {
         let tmp_dir = tempdir("node_modules").unwrap();
         let tmp_dir_node_modules = tmp_dir.path().join("node_modules");
         let paths = [
-            "node_modules/@aave/aave-token/contracts/token/",
             "node_modules/@aave/aave-token/contracts/token/AaveToken.sol",
-            "node_modules/@aave/governance-v2/contracts/governance/",
             "node_modules/@aave/governance-v2/contracts/governance/Executor.sol",
             "node_modules/@aave/protocol-v2/contracts/protocol/lendingpool/",
             "node_modules/@aave/protocol-v2/contracts/protocol/lendingpool/LendingPool.sol",
-            "node_modules/@ensdomains/ens/contracts/",
             "node_modules/@ensdomains/ens/contracts/contract.sol",
             "node_modules/prettier-plugin-solidity/tests/format/ModifierDefinitions/",
             "node_modules/prettier-plugin-solidity/tests/format/ModifierDefinitions/
             ModifierDefinitions.sol",
-            "node_modules/@openzeppelin/contracts/tokens",
             "node_modules/@openzeppelin/contracts/tokens/contract.sol",
-            "node_modules/@openzeppelin/contracts/access",
             "node_modules/@openzeppelin/contracts/access/contract.sol",
-            "node_modules/eth-gas-reporter/mock/contracts",
             "node_modules/eth-gas-reporter/mock/contracts/ConvertLib.sol",
-            "node_modules/eth-gas-reporter/mock/test/",
             "node_modules/eth-gas-reporter/mock/test/TestMetacoin.sol",
         ];
         mkdir_or_touch(tmp_dir.path(), &paths[..]);

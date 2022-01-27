@@ -94,6 +94,35 @@ impl ResponseData<serde_json::Value> {
     }
 }
 
+/// Basic or bearer authentication in http or websocket transport
+///
+/// Use to inject username and password or an auth token into requests
+#[derive(Clone, Debug)]
+pub enum Authorization {
+    Basic(String),
+    Bearer(String),
+}
+
+impl Authorization {
+    pub fn basic(username: impl Into<String>, password: impl Into<String>) -> Self {
+        let auth_secret = base64::encode(username.into() + ":" + &password.into());
+        Self::Basic(auth_secret)
+    }
+
+    pub fn bearer(token: impl Into<String>) -> Self {
+        Self::Bearer(token.into())
+    }
+}
+
+impl fmt::Display for Authorization {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Authorization::Basic(auth_secret) => write!(f, "Basic {}", auth_secret),
+            Authorization::Bearer(token) => write!(f, "Bearer {}", token),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

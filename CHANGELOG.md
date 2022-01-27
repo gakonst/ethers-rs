@@ -98,6 +98,8 @@
   [640](https://github.com/gakonst/ethers-rs/pull/640)
 
 ### Unreleased
+- Add support for basic and bearer authentication in http and non-wasm websockets.
+  [829](https://github.com/gakonst/ethers-rs/pull/829)
 
 ### 0.5.3
 
