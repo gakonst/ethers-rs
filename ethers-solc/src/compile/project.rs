@@ -342,6 +342,14 @@ struct Cache<'a, T: ArtifactOutput> {
     /// all files that were filtered because they haven't changed
     filtered: HashMap<PathBuf, (Source, HashSet<Version>)>,
     /// the corresponding cache entries for all sources that were deemed to be dirty
+    ///
+    /// `CacheEntry` are grouped by their solidity file.
+    /// During preprocessing the `artifacts` field of a new `CacheEntry` is left blank, because in
+    /// order to determine the artifacts of the solidity file, the file needs to be compiled first.
+    /// Only after the `CompilerOutput` is received and all compiled contracts are handled, see
+    /// [`crate::ArtifactOutput::on_output()`] all artifacts, their disk paths, are determined and
+    /// can be populated before the updated [`crate::SolFilesCache`] is finally written to disk,
+    /// see [`Cache::finish()`]
     dirty_entries: HashMap<PathBuf, (CacheEntry, HashSet<Version>)>,
     /// the file hashes
     content_hashes: HashMap<PathBuf, String>,
@@ -565,6 +573,18 @@ impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
 
                 // keep only those files that were previously filtered (not dirty, reused)
                 cache.retain(filtered.iter().map(|(p, (_, v))| (p, v)));
+
+                // add the artifacts to the cache entries, this way we can keep a mapping from
+                // solidity file to its artifacts
+
+                dirty_entries.into_iter().map(|(file, (mut entry, versions))| {
+
+                    // TODO need reshuffling of source units to actual paths
+                    // if let Some(contracts) = written_artifacts.get(&file) {
+                    //
+                    //
+                    // }
+                });
 
                 // TODO extend the cache with the new artifacts
 

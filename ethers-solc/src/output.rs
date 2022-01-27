@@ -90,6 +90,7 @@ pub trait ArtifactOutput {
         let mut artifacts = WrittenArtifacts::new();
 
         for (file, contracts) in contracts.iter() {
+            let mut entries = BTreeMap::new();
             for (name, versioned_contracts) in contracts {
                 let mut contracts = Vec::with_capacity(versioned_contracts.len());
                 // check if the same contract compiled with multiple solc versions
@@ -110,7 +111,9 @@ pub trait ArtifactOutput {
                         version: contract.version.clone(),
                     });
                 }
+                entries.insert(name.to_string(), contracts);
             }
+            artifacts.insert(file.to_string(), entries);
         }
 
         Ok(artifacts)
