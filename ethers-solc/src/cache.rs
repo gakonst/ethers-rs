@@ -8,7 +8,7 @@ use crate::{
 use semver::Version;
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::{btree_map::BTreeMap, BTreeMap, HashMap, HashSet},
+    collections::{btree_map::BTreeMap, HashMap, HashSet},
     fs::{self, File},
     path::{Path, PathBuf},
     time::{Duration, UNIX_EPOCH},
@@ -123,10 +123,10 @@ impl SolFilesCache {
     ///
     /// In other words, only keep those cache entries with the paths (keys) that the iterator yields
     /// and only keep the versions in the cache entry that the version iterator yields.
-    pub(crate) fn retain<I, V>(&mut self, files: I)
+    pub(crate) fn retain<'a, I, V>(&mut self, files: I)
     where
-        I: IntoIterator<Item = (&Path, V)>,
-        V: IntoIterator<Item = &Version>,
+        I: IntoIterator<Item = (&'a Path, V)>,
+        V: IntoIterator<Item = &'a Version>,
     {
     }
 

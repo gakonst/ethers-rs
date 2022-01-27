@@ -12,7 +12,7 @@ use ethers_core::{abi::Abi, types::Bytes};
 use semver::Version;
 use serde::{de::DeserializeOwned, Serialize};
 use std::{
-    collections::BTreeMap,
+    collections::btree_map::BTreeMap,
     fs, io,
     path::{Path, PathBuf},
 };
@@ -75,7 +75,7 @@ impl<T: Into<CompactContract>> Artifact for T {
 /// relationship (1-N+).
 pub trait ArtifactOutput {
     /// Represents the artifact that will be stored for a `Contract`
-    type Artifact: Artifact + DeserializeOwned + From<Contract>;
+    type Artifact: Artifact + DeserializeOwned + Serialize;
 
     /// Handle the aggregated set of compiled contracts from the solc [`crate::CompilerOutput`].
     ///
@@ -203,9 +203,7 @@ pub trait ArtifactOutput {
     }
 
     /// Convert a contract to the artifact type
-    fn contract_to_artifact(_file: &str, _name: &str, contract: Contract) -> Self::Artifact {
-        Self::Artifact::from(contract)
-    }
+    fn contract_to_artifact(_file: &str, _name: &str, contract: Contract) -> Self::Artifact;
 }
 
 /// An Artifacts implementation that uses a compact representation
@@ -223,6 +221,10 @@ pub struct MinimalCombinedArtifacts;
 
 impl ArtifactOutput for MinimalCombinedArtifacts {
     type Artifact = CompactContract;
+
+    fn contract_to_artifact(_file: &str, _name: &str, contract: Contract) -> Self::Artifact {
+        Self::Artifact::from(contract)
+    }
 }
 
 /// An Artifacts handler implementation that works the same as `MinimalCombinedArtifacts` but also

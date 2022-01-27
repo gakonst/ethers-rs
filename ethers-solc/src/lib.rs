@@ -21,10 +21,7 @@ pub use compile::*;
 
 mod config;
 
-pub use config::{
-    AllowedLibPaths, Artifact, ArtifactOutput, MinimalCombinedArtifacts, PathStyle,
-    ProjectPathsConfig, SolcConfig,
-};
+pub use config::{AllowedLibPaths, PathStyle, ProjectPathsConfig, SolcConfig};
 
 pub mod remappings;
 
@@ -41,7 +38,6 @@ use crate::{
 use error::Result;
 use std::{
     borrow::Cow,
-    collections::BTreeMap,
     convert::TryInto,
     fmt, fs,
     marker::PhantomData,
