@@ -82,7 +82,7 @@ use crate::{
     output::WrittenArtifacts,
     resolver::GraphEdges,
     utils, ArtifactOutput, CompilerInput, CompilerOutput, Graph, Project, ProjectPathsConfig,
-    SolFilesCache, SolcConfig, Source, SourceUnitNameMap, Sources,
+    SolFilesCache, Solc, SolcConfig, Source, SourceUnitNameMap, Sources,
 };
 use rayon::prelude::*;
 use semver::Version;
@@ -135,6 +135,20 @@ impl<'a, T: ArtifactOutput> ProjectCompiler<'a, T> {
         } else {
             CompilerSources::Sequential(sources_by_version)
         };
+
+        Ok(Self { edges, project, sources })
+    }
+
+    /// Compiles the sources with a pinned `Solc` instance
+    pub fn with_sources_and_solc(
+        project: &'a Project<T>,
+        sources: Sources,
+        solc: Solc,
+    ) -> Result<Self> {
+        let version = solc.version()?;
+        let (sources, edges) = Graph::resolve_sources(&project.paths, sources)?.into_sources();
+        let sources_by_version = BTreeMap::from([(solc, (version, sources))]);
+        let sources = CompilerSources::Sequential(sources_by_version);
 
         Ok(Self { edges, project, sources })
     }

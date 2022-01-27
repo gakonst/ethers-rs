@@ -34,6 +34,7 @@ use crate::{
     artifacts::Sources,
     cache::SourceUnitNameMap,
     error::{SolcError, SolcIoError},
+    project::{ProjectCompileOutput2, ProjectCompiler},
 };
 use error::Result;
 use std::{
@@ -182,7 +183,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
     /// # }
     /// ```
     #[tracing::instrument(skip_all, name = "compile")]
-    pub fn compile(&self) -> Result<ProjectCompileOutput<Artifacts>> {
+    pub fn compile(&self) -> Result<ProjectCompileOutput2<Artifacts>> {
         let sources = self.paths.read_input_files()?;
         tracing::trace!("found {} sources to compile: {:?}", sources.len(), sources.keys());
 
@@ -197,7 +198,6 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
             solc = solc.arg("--allow-paths").arg(self.allowed_lib_paths.to_string());
         }
 
-        let sources = Graph::resolve_sources(&self.paths, sources)?.into_sources();
         self.compile_with_version(&solc, sources)
     }
 
@@ -216,17 +216,8 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
     /// ```
     #[cfg(all(feature = "svm", feature = "async"))]
     // #[tracing::instrument(skip(self, sources))]
-    pub fn svm_compile(&self, _sources: Sources) -> Result<ProjectCompileOutput<Artifacts>> {
-        todo!()
-    }
-
-    /// Compiles all sources with their intended `Solc` version sequentially.
-    #[cfg(all(feature = "svm", feature = "async"))]
-    pub fn compile_sources(
-        &self,
-        _sources_by_version: BTreeMap<Solc, BTreeMap<PathBuf, Source>>,
-    ) -> Result<ProjectCompileOutput<Artifacts>> {
-        todo!()
+    pub fn svm_compile(&self, sources: Sources) -> Result<ProjectCompileOutput2<Artifacts>> {
+        ProjectCompiler::with_sources(self, sources)?.compile()
     }
 
     /// Compiles the given source files with the exact `Solc` executable
@@ -254,10 +245,10 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
     /// ```
     pub fn compile_with_version(
         &self,
-        _solc: &Solc,
-        _sources: Sources,
-    ) -> Result<ProjectCompileOutput<Artifacts>> {
-        todo!()
+        solc: &Solc,
+        sources: Sources,
+    ) -> Result<ProjectCompileOutput2<Artifacts>> {
+        ProjectCompiler::with_sources_and_solc(self, sources, solc.clone())?.compile()
     }
 
     /// Removes the project's artifacts and cache file

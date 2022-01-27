@@ -132,9 +132,11 @@ impl Graph {
         self.node_ids(start).map(move |idx| self.node(idx))
     }
 
-    /// Returns all files together with their paths
-    pub fn into_sources(self) -> Sources {
-        self.nodes.into_iter().map(|node| (node.path, node.source)).collect()
+    /// Consumes the `Graph`, effectively splitting the `nodes` and the `GraphEdges` off and
+    /// returning the `nodes` converted to `Sources`
+    pub fn into_sources(self) -> (Sources, GraphEdges) {
+        let Graph { nodes, edges, .. } = self;
+        (nodes.into_iter().map(|node| (node.path, node.source)).collect(), edges)
     }
 
     /// Returns an iterator that yields only those nodes that represent input files.
