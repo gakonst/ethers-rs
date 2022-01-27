@@ -4,11 +4,13 @@ pub mod artifacts;
 pub mod sourcemap;
 
 pub use artifacts::{CompilerInput, CompilerOutput, EvmVersion};
-use std::collections::btree_map::Entry;
+use std::collections::btree_map::{BTreeMap, Entry};
 
 pub mod cache;
 pub mod hh;
-pub mod output;
+mod output;
+pub use output::*;
+
 mod resolver;
 pub use hh::{HardhatArtifact, HardhatArtifacts};
 pub use resolver::Graph;
@@ -136,37 +138,6 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         self.solc_jobs = jobs;
     }
 
-    #[tracing::instrument(skip_all, name = "Project::write_cache_file")]
-    fn write_cache_file(
-        &self,
-        sources: Sources,
-        artifacts: Vec<(PathBuf, Vec<String>)>,
-    ) -> Result<()> {
-        tracing::trace!("inserting {} sources in file cache", sources.len());
-        let mut cache = SolFilesCache::builder()
-            .root(&self.paths.root)
-            .solc_config(self.solc_config.clone())
-            .insert_files(sources, Some(self.paths.cache.clone()))?;
-        tracing::trace!("source files inserted");
-
-        // add the artifacts for each file to the cache entry
-        for (file, artifacts) in artifacts {
-            if let Some(entry) = cache.files.get_mut(&file) {
-                entry.artifacts = artifacts;
-            }
-        }
-
-        if let Some(cache_dir) = self.paths.cache.parent() {
-            tracing::trace!("creating cache file parent directory \"{}\"", cache_dir.display());
-            fs::create_dir_all(cache_dir).map_err(|err| SolcError::io(err, cache_dir))?
-        }
-
-        tracing::trace!("writing cache file to \"{}\"", self.paths.cache.display());
-        cache.write(&self.paths.cache)?;
-
-        Ok(())
-    }
-
     /// Returns all sources found under the project's configured sources path
     #[tracing::instrument(skip_all, fields(name = "sources"))]
     pub fn sources(&self) -> Result<Sources> {
@@ -195,29 +166,6 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
     /// ```
     pub fn rerun_if_sources_changed(&self) {
         println!("cargo:rerun-if-changed={}", self.paths.sources.display())
-    }
-
-    /// Attempts to read all unique libraries that are used as imports like "hardhat/console.sol"
-    fn resolved_libraries(
-        &self,
-        sources: &Sources,
-    ) -> Result<BTreeMap<PathBuf, (Source, PathBuf)>> {
-        let mut libs = BTreeMap::default();
-        for source in sources.values() {
-            for import in source.parse_imports() {
-                if let Some(lib) = utils::resolve_library(&self.paths.libraries, import) {
-                    if let Entry::Vacant(entry) = libs.entry(import.into()) {
-                        tracing::trace!(
-                            "resolved library import \"{}\" at \"{}\"",
-                            import,
-                            lib.display()
-                        );
-                        entry.insert((Source::read(&lib)?, lib));
-                    }
-                }
-            }
-        }
-        Ok(libs)
     }
 
     /// Attempts to compile the contracts found at the configured source location, see
@@ -273,24 +221,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
     #[cfg(all(feature = "svm", feature = "async"))]
     #[tracing::instrument(skip(self, sources))]
     pub fn svm_compile(&self, sources: Sources) -> Result<ProjectCompileOutput<Artifacts>> {
-        let graph = Graph::resolve_sources(&self.paths, sources)?;
-        let sources_by_version: BTreeMap<_, _> = graph
-            .into_sources_by_version(!self.auto_detect)?
-            .0
-            .get(&self.allowed_lib_paths)?
-            .into_iter()
-            .map(|(k, (_v, s))| (k, s))
-            .collect();
-
-        // run the compilation step for each version
-        let compiled = if self.solc_jobs > 1 && sources_by_version.len() > 1 {
-            self.compile_many(sources_by_version)?
-        } else {
-            self.compile_sources(sources_by_version)?
-        };
-        tracing::trace!("compiled all sources");
-
-        Ok(compiled)
+        todo!()
     }
 
     /// Compiles all sources with their intended `Solc` version sequentially.
@@ -299,89 +230,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         &self,
         sources_by_version: BTreeMap<Solc, BTreeMap<PathBuf, Source>>,
     ) -> Result<ProjectCompileOutput<Artifacts>> {
-        tracing::trace!("compiling sources using a single solc job");
-        let mut compiled =
-            ProjectCompileOutput::with_ignored_errors(self.ignored_error_codes.clone());
-        for (solc, sources) in sources_by_version {
-            tracing::trace!(
-                "compiling {} sources with solc \"{}\"",
-                sources.len(),
-                solc.as_ref().display()
-            );
-            compiled.extend(self.compile_with_version(&solc, sources)?);
-        }
-        Ok(compiled)
-    }
-
-    /// Compiles all sources with their intended `Solc` versions in parallel.
-    ///
-    /// This runs `Self::solc_jobs` parallel `solc` jobs at most.
-    #[cfg(all(feature = "svm", feature = "async"))]
-    fn compile_many(
-        &self,
-        sources_by_version: BTreeMap<Solc, BTreeMap<PathBuf, Source>>,
-    ) -> Result<ProjectCompileOutput<Artifacts>> {
-        tracing::trace!("compile sources in parallel using {} solc jobs", self.solc_jobs);
-        let mut compiled =
-            ProjectCompileOutput::with_ignored_errors(self.ignored_error_codes.clone());
-        let mut paths = SourceUnitNameMap::default();
-        let mut jobs = Vec::with_capacity(sources_by_version.len());
-
-        let mut all_sources = BTreeMap::default();
-        let mut all_artifacts = Vec::with_capacity(sources_by_version.len());
-
-        // preprocess all sources
-        for (solc, sources) in sources_by_version {
-            match self.preprocess_sources(sources)? {
-                PreprocessedJob::Unchanged(artifacts) => {
-                    compiled.extend(ProjectCompileOutput::from_unchanged(artifacts));
-                }
-                PreprocessedJob::Items(sources, map, cached_artifacts) => {
-                    tracing::trace!("cached artifacts: \"{:?}\"", cached_artifacts.keys());
-                    tracing::trace!("compile sources: \"{:?}\"", sources.keys());
-
-                    compiled.extend_artifacts(cached_artifacts);
-                    // replace absolute path with source name to make solc happy
-                    let sources = map.set_source_names(sources);
-                    paths.extend(map);
-
-                    let input = CompilerInput::with_sources(sources)
-                        .settings(self.solc_config.settings.clone())
-                        .normalize_evm_version(&solc.version()?)
-                        .with_remappings(self.paths.remappings.clone());
-
-                    jobs.push((solc, input))
-                }
-            };
-        }
-        tracing::trace!("execute {} compile jobs in parallel", jobs.len());
-
-        let outputs = tokio::runtime::Runtime::new()
-            .unwrap()
-            .block_on(Solc::compile_many(jobs, self.solc_jobs));
-
-        for (res, _, input) in outputs.into_outputs() {
-            let output = res?;
-            if !output.has_error() {
-                if self.cached {
-                    // get all contract names of the files and map them to the disk file
-                    all_sources.extend(paths.set_disk_paths(input.sources));
-                    all_artifacts.extend(paths.get_artifacts(&output.contracts));
-                }
-
-                if !self.no_artifacts {
-                    Artifacts::on_output(&output, &self.paths)?;
-                }
-            }
-            compiled.extend_output(output);
-        }
-
-        // write the cache file
-        if self.cached {
-            self.write_cache_file(all_sources, all_artifacts)?;
-        }
-
-        Ok(compiled)
+        todo!()
     }
 
     /// Compiles the given source files with the exact `Solc` executable
@@ -412,117 +261,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         solc: &Solc,
         sources: Sources,
     ) -> Result<ProjectCompileOutput<Artifacts>> {
-        let (sources, paths, cached_artifacts) = match self.preprocess_sources(sources)? {
-            PreprocessedJob::Unchanged(artifacts) => {
-                return Ok(ProjectCompileOutput::from_unchanged(artifacts))
-            }
-            PreprocessedJob::Items(a, b, c) => (a, b, c),
-        };
-
-        let version = solc.version()?;
-        tracing::trace!(
-            "compiling {} files with {}. Using {} cached files",
-            sources.len(),
-            version,
-            cached_artifacts.len()
-        );
-        tracing::trace!("cached artifacts: \"{:?}\"", cached_artifacts.keys());
-        tracing::trace!("compile sources: \"{:?}\"", sources.keys());
-
-        // replace absolute path with source name to make solc happy
-        let sources = paths.set_source_names(sources);
-
-        let input = CompilerInput::with_sources(sources)
-            .settings(self.solc_config.settings.clone())
-            .normalize_evm_version(&version)
-            .with_remappings(self.paths.remappings.clone());
-
-        tracing::trace!("calling solc with {} sources", input.sources.len());
-        let output = solc.compile(&input)?;
-        tracing::trace!("compiled input, output has error: {}", output.has_error());
-
-        if output.has_error() {
-            return Ok(ProjectCompileOutput::from_compiler_output(
-                output,
-                self.ignored_error_codes.clone(),
-            ))
-        }
-
-        if self.cached {
-            // get all contract names of the files and map them to the disk file
-            let artifacts = paths.get_artifacts(&output.contracts);
-            // reapply to disk paths
-            let sources = paths.set_disk_paths(input.sources);
-            // create cache file
-            self.write_cache_file(sources, artifacts)?;
-        }
-
-        // TODO: There seems to be some type redundancy here, c.f. discussion with @mattsse
-        if !self.no_artifacts {
-            Artifacts::on_output(&output, &self.paths)?;
-        }
-
-        Ok(ProjectCompileOutput::from_compiler_output_and_cache(
-            output,
-            cached_artifacts,
-            self.ignored_error_codes.clone(),
-        ))
-    }
-
-    /// Preprocesses the given source files by resolving their libs and check against cache if
-    /// configured
-    fn preprocess_sources(&self, mut sources: Sources) -> Result<PreprocessedJob<Artifacts>> {
-        tracing::trace!("start preprocessing {} sources files", sources.len());
-
-        // keeps track of source names / disk paths
-        let mut paths = SourceUnitNameMap::default();
-
-        tracing::trace!("start resolving libraries");
-        for (import, (source, path)) in self.resolved_libraries(&sources)? {
-            // inserting with absolute path here and keep track of the source name <-> path mappings
-            sources.insert(path.clone(), source);
-            paths.path_to_source_unit_name.insert(path.clone(), import.clone());
-            paths.source_unit_name_to_path.insert(import, path);
-        }
-        tracing::trace!("resolved all libraries");
-
-        // If there's a cache set, filter to only re-compile the files which were changed
-        let (sources, cached_artifacts) = if self.cached && self.paths.cache.exists() {
-            tracing::trace!("start reading solfiles cache for incremental compilation");
-            let mut cache = SolFilesCache::read(&self.paths.cache)?;
-            cache.remove_missing_files();
-
-            let changed_files = cache.get_changed_or_missing_artifacts_files::<Artifacts>(
-                sources,
-                Some(&self.solc_config),
-                &self.paths,
-            );
-            tracing::trace!("detected {} changed files", changed_files.len());
-            cache.remove_changed_files(&changed_files);
-
-            let cached_artifacts = if self.paths.artifacts.exists() {
-                tracing::trace!("reading artifacts from cache..");
-                let artifacts = cache.read_artifacts::<Artifacts>(&self.paths.artifacts)?;
-                tracing::trace!("read {} artifacts from cache", artifacts.len());
-                artifacts
-            } else {
-                BTreeMap::default()
-            };
-
-            // if nothing changed and all artifacts still exist
-            if changed_files.is_empty() {
-                tracing::trace!(
-                    "unchanged source files, reusing artifacts {:?}",
-                    cached_artifacts.keys()
-                );
-                return Ok(PreprocessedJob::Unchanged(cached_artifacts))
-            }
-            // There are changed files and maybe some cached files
-            (changed_files, cached_artifacts)
-        } else {
-            (sources, BTreeMap::default())
-        };
-        Ok(PreprocessedJob::Items(sources, paths, cached_artifacts))
+        todo!()
     }
 
     /// Removes the project's artifacts and cache file
@@ -566,11 +305,6 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
     pub fn flatten(&self, target: &Path) -> Result<String> {
         self.paths.flatten(target)
     }
-}
-
-enum PreprocessedJob<T: ArtifactOutput> {
-    Unchanged(BTreeMap<PathBuf, T::Artifact>),
-    Items(Sources, SourceUnitNameMap, BTreeMap<PathBuf, T::Artifact>),
 }
 
 pub struct ProjectBuilder<Artifacts: ArtifactOutput = MinimalCombinedArtifacts> {
@@ -834,7 +568,7 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
 
     /// Get the (merged) solc compiler output
     /// ```no_run
-    /// use std::collections::BTreeMap;
+    /// use std::collections::btree_map::BTreeMap;
     /// use ethers_solc::artifacts::Contract;
     /// use ethers_solc::Project;
     ///
@@ -946,7 +680,7 @@ impl<T: ArtifactOutput + 'static> ProjectCompileOutput<T> {
     /// # Example
     ///
     /// ```no_run
-    /// use std::collections::BTreeMap;
+    /// use std::collections::btree_map::BTreeMap;
     /// use ethers_solc::artifacts::CompactContract;
     /// use ethers_solc::Project;
     ///
