@@ -466,7 +466,7 @@ impl<'a, T: ArtifactOutput> Cache<'a, T> {
                     return true
                 }
 
-                // all things match
+                // all things match, can be reused
                 return false
             }
         }

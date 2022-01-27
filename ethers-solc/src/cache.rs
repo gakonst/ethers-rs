@@ -258,6 +258,10 @@ impl SolFilesCache {
         Ok(artifacts)
     }
 
+    /// Retains only the `CacheEntry` specified by the file + version combination.
+    ///
+    /// In other words, only keep those cache entries with the paths (keys) that the iterator yields
+    /// and only keep the versions in the cache entry that the version iterator yields.
     pub(crate) fn retain<I, V>(&mut self, files: I)
     where
         I: IntoIterator<Item = (&Path, V)>,
@@ -265,10 +269,11 @@ impl SolFilesCache {
     {
     }
 
-    pub(crate) fn extend<I, V>(&mut self, files: I)
+    /// Inserts the provided cache entries, if there is an existing `CacheEntry` it will be updated
+    /// but versions will be merged.
+    pub(crate) fn extend<I, V>(&mut self, entries: I)
     where
-        I: IntoIterator<Item = (&Path, V)>,
-        V: IntoIterator<Item = &Version>,
+        I: IntoIterator<Item = (PathBuf, CacheEntry)>,
     {
     }
 }
