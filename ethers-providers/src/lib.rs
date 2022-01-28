@@ -12,8 +12,7 @@ mod provider;
 pub mod ens;
 
 mod pending_transaction;
-pub use pending_transaction::PendingTransaction;
-pub use pending_transaction::PendingTxState;
+pub use pending_transaction::{PendingTransaction, PendingTxState};
 
 mod pending_escalator;
 pub use pending_escalator::EscalatingPending;
