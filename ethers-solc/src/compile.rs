@@ -5,6 +5,7 @@ use crate::{
 };
 use semver::{Version, VersionReq};
 use serde::{de::DeserializeOwned, Serialize};
+
 use std::{
     fmt,
     fmt::Formatter,
@@ -47,6 +48,32 @@ use std::sync::Mutex;
 #[allow(unused)]
 static LOCK: Lazy<Mutex<()>> = Lazy::new(|| Mutex::new(()));
 
+#[cfg(all(feature = "svm", feature = "async"))]
+#[allow(clippy::large_enum_variant)]
+pub enum RuntimeOrHandle {
+    Runtime(tokio::runtime::Runtime),
+    Handle(tokio::runtime::Handle),
+}
+
+#[cfg(all(feature = "svm", feature = "async"))]
+impl Default for RuntimeOrHandle {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[cfg(all(feature = "svm", feature = "async"))]
+impl RuntimeOrHandle {
+    pub fn new() -> RuntimeOrHandle {
+        match tokio::runtime::Handle::try_current() {
+            Ok(handle) => RuntimeOrHandle::Handle(handle),
+            Err(_) => RuntimeOrHandle::Runtime(
+                tokio::runtime::Runtime::new().expect("Failed to start runtime"),
+            ),
+        }
+    }
+}
+
 /// take the lock in tests, we use this to enforce that
 /// a test does not run while a compiler version is being installed
 ///
@@ -65,17 +92,34 @@ pub(crate) fn take_solc_installer_lock() -> std::sync::MutexGuard<'static, ()> {
 /// The boolean value marks whether there was an error.
 pub static RELEASES: Lazy<(svm::Releases, Vec<Version>, bool)> = Lazy::new(|| {
     // Try to download the releases, if it fails default to empty
-    match tokio::runtime::Runtime::new()
-        .expect("could not create tokio rt to get remote releases")
+    let releases_result = match RuntimeOrHandle::new() {
+        RuntimeOrHandle::Runtime(runtime) =>
         // we do not degrade startup performance if the consumer has a weak network?
         // use a 3 sec timeout for the request which should still be fine for slower connections
-        .block_on(async {
-            tokio::time::timeout(
-                std::time::Duration::from_millis(3000),
-                svm::all_releases(svm::platform()),
-            )
-            .await
-        }) {
+        {
+            runtime.block_on(async {
+                tokio::time::timeout(
+                    std::time::Duration::from_millis(3000),
+                    svm::all_releases(svm::platform()),
+                )
+                .await
+            })
+        }
+        RuntimeOrHandle::Handle(handle) =>
+        // we do not degrade startup performance if the consumer has a weak network?
+        // use a 3 sec timeout for the request which should still be fine for slower connections
+        {
+            handle.block_on(async {
+                tokio::time::timeout(
+                    std::time::Duration::from_millis(3000),
+                    svm::all_releases(svm::platform()),
+                )
+                .await
+            })
+        }
+    };
+
+    match releases_result {
         Ok(Ok(releases)) => {
             let mut sorted_releases = releases.releases.keys().cloned().collect::<Vec<Version>>();
             sorted_releases.sort();
