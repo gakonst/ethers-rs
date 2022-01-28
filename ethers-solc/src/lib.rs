@@ -918,11 +918,11 @@ impl<T: ArtifactOutput + 'static> ProjectCompileOutput<T> {
     ///
     /// ```no_run
     /// use std::collections::BTreeMap;
-    /// use ethers_solc::artifacts::CompactContract;
+    /// use ethers_solc::artifacts::CompactContractBytecode;
     /// use ethers_solc::Project;
     ///
     /// let project = Project::builder().build().unwrap();
-    /// let contracts: BTreeMap<String, CompactContract> = project.compile().unwrap().into_artifacts().collect();
+    /// let contracts: BTreeMap<String, CompactContractBytecode> = project.compile().unwrap().into_artifacts().collect();
     /// ```
     pub fn into_artifacts(mut self) -> Box<dyn Iterator<Item = (String, T::Artifact)>> {
         let artifacts = self.artifacts.into_iter().filter_map(|(path, art)| {

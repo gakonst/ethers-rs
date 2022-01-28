@@ -1,7 +1,10 @@
 //! Hardhat support
 
 use crate::{
-    artifacts::{BytecodeObject, CompactContract, Contract, Offsets},
+    artifacts::{
+        Bytecode, BytecodeObject, CompactContract, CompactContractBytecode, Contract,
+        ContractBytecode, DeployedBytecode, Offsets,
+    },
     error::{Result, SolcError},
     ArtifactOutput, CompilerOutput, ProjectPathsConfig,
 };
@@ -46,6 +49,32 @@ impl From<HardhatArtifact> for CompactContract {
             bin: artifact.bytecode,
             bin_runtime: artifact.deployed_bytecode,
         }
+    }
+}
+
+impl From<HardhatArtifact> for ContractBytecode {
+    fn from(artifact: HardhatArtifact) -> Self {
+        let bytecode: Option<Bytecode> = artifact.bytecode.as_ref().map(|t| {
+            let mut bcode: Bytecode = t.clone().into();
+            bcode.link_references = artifact.link_references.clone();
+            bcode
+        });
+
+        let deployed_bytecode: Option<DeployedBytecode> = artifact.bytecode.as_ref().map(|t| {
+            let mut bcode: Bytecode = t.clone().into();
+            bcode.link_references = artifact.deployed_link_references.clone();
+            bcode.into()
+        });
+
+        ContractBytecode { abi: Some(artifact.abi), bytecode, deployed_bytecode }
+    }
+}
+
+impl From<HardhatArtifact> for CompactContractBytecode {
+    fn from(artifact: HardhatArtifact) -> Self {
+        let c: ContractBytecode = artifact.into();
+
+        c.into()
     }
 }
 
