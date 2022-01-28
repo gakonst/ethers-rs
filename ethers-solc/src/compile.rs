@@ -192,7 +192,7 @@ pub struct Solc {
 impl Default for Solc {
     fn default() -> Self {
         if let Ok(solc) = std::env::var("SOLC_PATH") {
-            return Solc::new(solc);
+            return Solc::new(solc)
         }
         #[cfg(not(target_arch = "wasm32"))]
         {
@@ -200,7 +200,7 @@ impl Default for Solc {
                 .and_then(|vers| Solc::find_svm_installed_version(&vers.to_string()).ok())
                 .flatten()
             {
-                return solc;
+                return solc
             }
         }
 
@@ -312,7 +312,7 @@ impl Solc {
             .join(format!("solc-{}", version));
 
         if !solc.is_file() {
-            return Ok(None);
+            return Ok(None)
         }
         Ok(Some(Solc::new(solc)))
     }
@@ -438,7 +438,7 @@ impl Solc {
         if !RELEASES.2 {
             // we skip checksum verification because the underlying request to fetch release info
             // failed so we have nothing to compare against
-            return Ok(());
+            return Ok(())
         }
 
         use sha2::Digest;
