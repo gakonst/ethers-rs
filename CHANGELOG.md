@@ -22,6 +22,7 @@
   and no nonce is specified
 - Move `fill_transaction` implementation to the provider, to allow middleware
   to properly override its behavior.
+- Add informational messages to solc installation and compilation.
 
 ## ethers-contract-abigen
 
