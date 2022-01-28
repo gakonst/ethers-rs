@@ -58,6 +58,12 @@ pub struct Forge<M, E, S> {
     inner: M,
     _ghost: PhantomData<S>,
 }
+
+pub enum TxOutput {
+    CallRes(Bytes),
+    CreateRes(Address),
+}
+
 impl<M, E, S> Forge<M, E, S> {
     pub fn new(inner: M, vm: Arc<RwLock<E>>) -> Self {
         Self { vm, inner, _ghost: PhantomData }
@@ -69,6 +75,50 @@ impl<M, E, S> Forge<M, E, S> {
         self.vm.write().await
     }
 }
+
+// Gives some structure to the result of Evm::call_raw()
+struct TxRes<Ex> {
+    pub output: TxOutput,
+    pub exit: Ex,
+    pub gas: u64,
+    pub logs: Vec<String>,
+}
+impl<M, E, S> Forge<M, E, S>
+where
+    Self: Middleware,
+    E: Evm<S>,
+{
+    //TODO: incoporate block parameter
+    async fn apply_tx(
+        &self,
+        tx: &TypedTransaction,
+    ) -> Result<TxRes<E::ReturnReason>, <Self as Middleware>::Error> {
+        // Pull fields from tx to pass to evm
+        let from = tx.from().unwrap();
+        let maybe_to = tx.to().map(|id| async move {
+            match id {
+                NameOrAddress::Name(ens) => self.resolve_name(ens).await.unwrap(),
+                NameOrAddress::Address(addr) => *addr,
+            }
+        });
+        let data = tx.data().map_or(Default::default(), |d| d.clone());
+        let val = tx.value().unwrap();
+
+        if let Some(fut) = maybe_to {
+            // (contract) call
+            let to = fut.await;
+            let (bytes, exit, gas, logs) =
+                self.vm_mut().await.call_raw(*from, to, data, *val, false).unwrap();
+            Ok(TxRes { output: TxOutput::CallRes(bytes), exit, gas, logs })
+        } else {
+            // contract deployment
+            let (addr, exit, gas, logs) =
+                self.vm_mut().await.deploy(*from, data.clone(), *val).unwrap();
+            Ok(TxRes { output: TxOutput::CreateRes(addr), exit, gas, logs })
+        }
+    }
+}
+
 // Stand-in impl because some sputnik component is not Debug
 impl<M, E, S> Debug for Forge<M, E, S> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -92,7 +142,8 @@ impl<M, E, S> Middleware for Forge<M, E, S>
 where
     M: Middleware,
     E: Evm<S> + VmShow + Send + Sync,
-    S: Send + Sync + Debug,
+    S: Clone + Send + Sync + Debug,
+    E::ReturnReason: Send,
 {
     type Error = ForgeError<M>;
     type Provider = M::Provider;
@@ -202,42 +253,22 @@ where
         block: Option<BlockId>,
     ) -> Result<PendingTransaction<'_, Self::Provider>, Self::Error> {
         let mut tx = tx.into();
-        // Will panic if gas or gas price aren't set, because we don't really have a provider
         self.fill_transaction(&mut tx, block).await?;
 
-        // Pull fields from tx to pass to evm
-        let from = tx.from().unwrap();
-        let maybe_to = tx.to().map(|id| async move {
-            match id {
-                NameOrAddress::Name(ens) => self.resolve_name(ens).await.unwrap(),
-                NameOrAddress::Address(addr) => *addr,
-            }
-        });
-        let data = tx.data().map_or(Default::default(), |d| d.clone());
-        let val = tx.value().unwrap();
+        // run the tx
+        let res = self.apply_tx(&tx).await?;
 
-        // receipt to populate with the result of running the partial tx
+        // create receipt and populate with result of applying the tx
         let mut receipt = TransactionReceipt::default();
-
-        if let Some(fut) = maybe_to {
-            // (contract) call
-            let to = fut.await;
-            let (_bytes, exit, gas, _) =
-                self.vm_mut().await.call_raw(*from, to, data, *val, false).unwrap();
-            receipt.gas_used = Some(gas.into());
-            receipt.status = Some((if E::is_success(&exit) { 1usize } else { 0 }).into());
-        } else {
-            // contract deployment
-            let (addr, exit, gas, _) =
-                self.vm_mut().await.deploy(*from, data.clone(), *val).unwrap();
-            receipt.gas_used = Some(gas.into());
-            receipt.status = Some((if E::is_success(&exit) { 1usize } else { 0 }).into());
+        receipt.gas_used = Some(res.gas.into());
+        receipt.status = Some((if E::is_success(&res.exit) { 1usize } else { 0 }).into());
+        if let TxOutput::CreateRes(addr) = res.output {
             receipt.contract_address = Some(addr);
         }
 
         // Fake the tx hash for the receipt. Should be able to get a "real"
         // hash modulo signature, which we may not have
-        let hash = tx.sighash(1usize);
+        let hash = tx.sighash(self.get_chainid().await?.as_u64());
         receipt.transaction_hash = hash;
 
         let mut pending = PendingTransaction::new(hash, self.provider());
@@ -248,26 +279,24 @@ where
         Ok(pending)
     }
 
-    // TODO: save and reset state after call_raw?
-    // Contract deployment?
     async fn call(
         &self,
         tx: &TypedTransaction,
         _block: Option<BlockId>,
     ) -> Result<Bytes, Self::Error> {
-        let from = tx.from().unwrap();
-        let maybe_to = tx.to().map(|id| async move {
-            match id {
-                NameOrAddress::Name(ens) => self.resolve_name(ens).await.unwrap(),
-                NameOrAddress::Address(addr) => *addr,
-            }
-        });
-        let data = tx.data().map_or(Default::default(), |d| d.clone());
-        let val = tx.value().unwrap();
+        // Simulate an eth_call by saving the state, running the tx, then resetting state
+        let state = (*self.vm().await.state()).clone();
 
-        let to = maybe_to.unwrap().await;
-        let res = self.vm_mut().await.call_raw(*from, to, data, *val, false).unwrap();
-        Ok(res.0)
+        let res = self.apply_tx(tx).await?;
+        let bytes = match res.output {
+            TxOutput::CallRes(b) => b,
+            // For a contract creation tx, return the deployed bytecode
+            TxOutput::CreateRes(addr) => self.get_code(addr, None).await?,
+        };
+
+        self.vm_mut().await.reset(state);
+
+        Ok(bytes)
     }
 }
 
