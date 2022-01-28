@@ -31,7 +31,6 @@ use crate::{
     artifacts::Sources,
     cache::SourceUnitNameMap,
     error::{SolcError, SolcIoError},
-    project::ProjectCompiler,
 };
 use error::Result;
 use std::{
@@ -224,7 +223,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
     /// ```
     #[cfg(all(feature = "svm", feature = "async"))]
     pub fn svm_compile(&self, sources: Sources) -> Result<ProjectCompileOutput2<Artifacts>> {
-        ProjectCompiler::with_sources(self, sources)?.compile()
+        project::ProjectCompiler::with_sources(self, sources)?.compile()
     }
 
     /// Compiles the given source files with the exact `Solc` executable
@@ -255,7 +254,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         solc: &Solc,
         sources: Sources,
     ) -> Result<ProjectCompileOutput2<Artifacts>> {
-        ProjectCompiler::with_sources_and_solc(self, sources, solc.clone())?.compile()
+        project::ProjectCompiler::with_sources_and_solc(self, sources, solc.clone())?.compile()
     }
 
     /// Removes the project's artifacts and cache file

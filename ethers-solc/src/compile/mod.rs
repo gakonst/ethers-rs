@@ -15,7 +15,6 @@ use std::{
 };
 
 pub mod many;
-#[cfg(all(feature = "svm", feature = "async"))]
 pub mod output;
 #[cfg(all(feature = "svm", feature = "async"))]
 pub mod project;
