@@ -4,12 +4,11 @@ use ethers_core::types::{
     TransactionReceipt, U256, U64,
 };
 use ethers_providers::{
-    maybe, FromErr, JsonRpcClient, Middleware, PendingTransaction, PendingTxState, Provider,
-    ProviderError,
+    maybe, FromErr, JsonRpcClient, Middleware, PendingTransaction, PendingTxState, ProviderError,
 };
 use evm_adapters::{
     sputnik::{Executor, SputnikExecutor},
-    Evm,
+    Evm, EvmError,
 };
 use sputnik::backend::Backend;
 use std::{
@@ -20,6 +19,8 @@ use std::{
 };
 use thiserror::Error;
 use tokio::sync::RwLock;
+
+const DEFAULT_SENDER: &'static str = "0xD3D13a578a53685B4ac36A1Bab31912D2B2A2F36";
 
 pub trait VmShow {
     fn gas_price(&self) -> U256;
@@ -87,6 +88,7 @@ impl<M, E, S> Forge<M, E, S>
 where
     Self: Middleware,
     E: Evm<S>,
+    <Self as Middleware>::Error: From<eyre::ErrReport>,
 {
     //TODO: incoporate block parameter
     async fn apply_tx(
@@ -94,26 +96,28 @@ where
         tx: &TypedTransaction,
     ) -> Result<TxRes<E::ReturnReason>, <Self as Middleware>::Error> {
         // Pull fields from tx to pass to evm
-        let from = tx.from().unwrap();
+        let default_from = DEFAULT_SENDER.parse().unwrap();
+        let default_val = U256::zero();
+
+        let from = tx.from().unwrap_or(&default_from);
         let maybe_to = tx.to().map(|id| async move {
             match id {
-                NameOrAddress::Name(ens) => self.resolve_name(ens).await.unwrap(),
-                NameOrAddress::Address(addr) => *addr,
+                NameOrAddress::Name(ens) => self.resolve_name(ens).await,
+                NameOrAddress::Address(addr) => Ok(*addr),
             }
         });
         let data = tx.data().map_or(Default::default(), |d| d.clone());
-        let val = tx.value().unwrap();
+        let val = tx.value().unwrap_or(&default_val);
 
         if let Some(fut) = maybe_to {
             // (contract) call
-            let to = fut.await;
+            let to = fut.await?;
             let (bytes, exit, gas, logs) =
-                self.vm_mut().await.call_raw(*from, to, data, *val, false).unwrap();
+                self.vm_mut().await.call_raw(*from, to, data, *val, false)?;
             Ok(TxRes { output: TxOutput::CallRes(bytes), exit, gas, logs })
         } else {
             // contract deployment
-            let (addr, exit, gas, logs) =
-                self.vm_mut().await.deploy(*from, data.clone(), *val).unwrap();
+            let (addr, exit, gas, logs) = self.vm_mut().await.deploy(*from, data.clone(), *val)?;
             Ok(TxRes { output: TxOutput::CreateRes(addr), exit, gas, logs })
         }
     }
@@ -130,10 +134,40 @@ impl<M, E, S> Debug for Forge<M, E, S> {
 pub enum ForgeError<M: Middleware> {
     #[error("{0}")]
     MiddlewareError(M::Error),
+    #[error("{0}")]
+    ProviderError(ProviderError),
+    #[error("{0}")]
+    EvmError(EvmError),
+    #[error("{0}")]
+    Eyre(eyre::Error),
 }
 impl<M: Middleware> FromErr<M::Error> for ForgeError<M> {
     fn from(src: M::Error) -> ForgeError<M> {
         ForgeError::MiddlewareError(src)
+    }
+}
+impl<M> From<ProviderError> for ForgeError<M>
+where
+    M: Middleware,
+{
+    fn from(src: ProviderError) -> Self {
+        Self::ProviderError(src)
+    }
+}
+impl<M> From<EvmError> for ForgeError<M>
+where
+    M: Middleware,
+{
+    fn from(src: EvmError) -> Self {
+        Self::EvmError(src)
+    }
+}
+impl<M> From<eyre::ErrReport> for ForgeError<M>
+where
+    M: Middleware,
+{
+    fn from(src: eyre::ErrReport) -> Self {
+        Self::EvmError(EvmError::Eyre(src))
     }
 }
 

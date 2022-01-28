@@ -1469,6 +1469,7 @@ dependencies = [
  "ethers-solc 0.1.0",
  "evm",
  "evm-adapters",
+ "eyre",
  "futures-util",
  "hex",
  "instant",
