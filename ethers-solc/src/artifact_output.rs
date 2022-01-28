@@ -1,7 +1,9 @@
 //! Output artifact handling
 
 use crate::{
-    artifacts::{CompactContract, Contract, FileToContractsMap, VersionedContracts},
+    artifacts::{
+        CompactContract, CompactContractBytecode, Contract, FileToContractsMap, VersionedContracts,
+    },
     error::Result,
     HardhatArtifact, ProjectPathsConfig, SolcError,
 };
@@ -36,20 +38,30 @@ pub trait Artifact {
     /// Returns the artifact's `Abi` and bytecode
     fn into_inner(self) -> (Option<Abi>, Option<Bytes>);
 
-    /// Turns the artifact into a container type for abi, bytecode and deployed bytecode
+    /// Turns the artifact into a container type for abi, compact bytecode and deployed bytecode
     fn into_compact_contract(self) -> CompactContract;
+
+    /// Turns the artifact into a container type for abi, full bytecode and deployed bytecode
+    fn into_contract_bytecode(self) -> CompactContractBytecode;
 
     /// Returns the contents of this type as a single tuple of abi, bytecode and deployed bytecode
     fn into_parts(self) -> (Option<Abi>, Option<Bytes>, Option<Bytes>);
 }
 
-impl<T: Into<CompactContract>> Artifact for T {
+impl<T> Artifact for T
+where
+    T: Into<CompactContractBytecode> + Into<CompactContract>,
+{
     fn into_inner(self) -> (Option<Abi>, Option<Bytes>) {
         let artifact = self.into_compact_contract();
         (artifact.abi, artifact.bin.and_then(|bin| bin.into_bytes()))
     }
 
     fn into_compact_contract(self) -> CompactContract {
+        self.into()
+    }
+
+    fn into_contract_bytecode(self) -> CompactContractBytecode {
         self.into()
     }
 
@@ -221,7 +233,7 @@ pub trait ArtifactOutput {
 pub struct MinimalCombinedArtifacts;
 
 impl ArtifactOutput for MinimalCombinedArtifacts {
-    type Artifact = CompactContract;
+    type Artifact = CompactContractBytecode;
 
     fn contract_to_artifact(_file: &str, _name: &str, contract: Contract) -> Self::Artifact {
         Self::Artifact::from(contract)
@@ -234,7 +246,7 @@ impl ArtifactOutput for MinimalCombinedArtifacts {
 pub struct MinimalCombinedArtifactsHardhatFallback;
 
 impl ArtifactOutput for MinimalCombinedArtifactsHardhatFallback {
-    type Artifact = CompactContract;
+    type Artifact = CompactContractBytecode;
 
     fn on_output(
         output: &VersionedContracts,
@@ -253,7 +265,7 @@ impl ArtifactOutput for MinimalCombinedArtifactsHardhatFallback {
             tracing::trace!("Fallback to hardhat artifact deserialization");
             let artifact = serde_json::from_str::<HardhatArtifact>(&content)?;
             tracing::trace!("successfully deserialized hardhat artifact");
-            Ok(artifact.into_compact_contract())
+            Ok(artifact.into_contract_bytecode())
         }
     }
 

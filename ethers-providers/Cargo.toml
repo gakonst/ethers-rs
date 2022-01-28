@@ -24,7 +24,7 @@ serde_json = { version = "1.0.64", default-features = false }
 thiserror = { version = "1.0.30", default-features = false }
 url = { version = "2.2.2", default-features = false }
 auto_impl = { version = "0.5.0", default-features = false }
-http = { version = "0.2", optional = true }
+http = { version = "0.2" }
 base64 = "0.13"
 
 # required for implementing stream on the filters
@@ -62,7 +62,7 @@ tempfile = "3.3.0"
 [features]
 default = ["ws", "rustls"]
 celo = ["ethers-core/celo"]
-ws = ["tokio", "tokio-tungstenite", "http"]
+ws = ["tokio", "tokio-tungstenite"]
 ipc = ["tokio", "tokio/io-util", "tokio-util", "bytes"]
 
 openssl = ["tokio-tungstenite/native-tls", "reqwest/native-tls"]
