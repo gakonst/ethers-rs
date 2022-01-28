@@ -111,6 +111,7 @@ impl<'a, T: ArtifactOutput> ProjectCompiler<'a, T> {
     /// let project = Project::builder().build().unwrap();
     /// let output = project.compile().unwrap();
     /// ```
+    #[cfg(all(feature = "svm", feature = "async"))]
     pub fn new(project: &'a Project<T>) -> Result<Self> {
         Self::with_sources(project, project.paths.read_input_files()?)
     }
@@ -121,6 +122,7 @@ impl<'a, T: ArtifactOutput> ProjectCompiler<'a, T> {
     ///
     /// Multiple (`Solc` -> `Sources`) pairs can be compiled in parallel if the `Project` allows
     /// multiple `jobs`, see [`crate::Project::set_solc_jobs()`].
+    #[cfg(all(feature = "svm", feature = "async"))]
     pub fn with_sources(project: &'a Project<T>, sources: Sources) -> Result<Self> {
         let graph = Graph::resolve_sources(&project.paths, sources)?;
         let (versions, edges) = graph.into_sources_by_version(!project.auto_detect)?;
@@ -204,7 +206,8 @@ impl<'a, T: ArtifactOutput> ProjectCompiler<'a, T> {
 }
 
 /// Determines how the `solc <-> sources` pairs are executed
-#[derive(Debug)]
+#[derive(Debug, Clone)]
+#[allow(dead_code)]
 enum CompilerSources {
     /// Compile all these sequentially
     Sequential(VersionedSources),

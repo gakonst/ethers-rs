@@ -1,8 +1,11 @@
 //! Hardhat support
 
 use crate::{
-    artifacts::{BytecodeObject, CompactContract, Contract, Offsets},
-    ArtifactOutput, CompactContractBytecode,
+    artifacts::{
+        Bytecode, BytecodeObject, CompactContract, CompactContractBytecode, Contract,
+        ContractBytecode, DeployedBytecode, Offsets,
+    },
+    ArtifactOutput,
 };
 use ethers_core::abi::Abi;
 use serde::{Deserialize, Serialize};

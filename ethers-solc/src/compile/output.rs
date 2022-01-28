@@ -50,10 +50,7 @@ impl<T: ArtifactOutput> ProjectCompileOutput2<T> {
 
     /// Whether there were warnings
     pub fn has_compiler_warnings(&self) -> bool {
-        self.compiler_output
-            .as_ref()
-            .map(|o| o.has_warning(&self.ignored_error_codes))
-            .unwrap_or_default()
+        self.compiler_output.has_warning(&self.ignored_error_codes)
     }
 }
 /// The aggregated output of (multiple) compile jobs
