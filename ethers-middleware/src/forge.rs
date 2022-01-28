@@ -4,7 +4,8 @@ use ethers_core::types::{
     TransactionReceipt, U256, U64,
 };
 use ethers_providers::{
-    maybe, JsonRpcClient, Middleware, PendingTransaction, PendingTxState, Provider, ProviderError,
+    maybe, FromErr, JsonRpcClient, Middleware, PendingTransaction, PendingTxState, Provider,
+    ProviderError,
 };
 use evm_adapters::{
     sputnik::{Executor, SputnikExecutor},
@@ -17,13 +18,15 @@ use std::{
     ops::{Deref, DerefMut},
     sync::Arc,
 };
+use thiserror::Error;
 use tokio::sync::RwLock;
 
 pub trait VmShow {
     fn gas_price(&self) -> U256;
     fn block_number(&self) -> U256;
     fn chain_id(&self) -> U256;
-    fn balance(&self, from: Address, block: Option<BlockId>) -> U256;
+    fn balance(&self, from: Address) -> U256;
+    fn gas_limit(&self) -> U256;
 }
 
 impl<'a, S, E> VmShow for Executor<S, E>
@@ -41,76 +44,66 @@ where
         self.executor.state().block_number()
     }
     // TODO: incorporate block parameter
-    fn balance(&self, addr: Address, block: Option<BlockId>) -> U256 {
+    fn balance(&self, addr: Address) -> U256 {
         self.executor.state().basic(addr).balance
     }
-}
-
-#[derive(Debug, Clone, Copy)]
-pub struct NullProvider;
-impl NullProvider {
-    pub fn new() -> Self {
-        Self
-    }
-}
-#[async_trait]
-impl JsonRpcClient for NullProvider {
-    type Error = ProviderError;
-
-    async fn request<T, R>(&self, _method: &str, _params: T) -> Result<R, Self::Error>
-    where
-        T: std::fmt::Debug + serde::Serialize + Send + Sync,
-        R: serde::de::DeserializeOwned,
-    {
-        unreachable!("Cannot send requests")
+    fn gas_limit(&self) -> U256 {
+        self.executor.state().block_gas_limit()
     }
 }
 
 #[derive(Clone)]
-pub struct Forge<V, S> {
-    pub vm: Arc<RwLock<V>>,
-    provider: Provider<NullProvider>,
-    _state: PhantomData<S>,
+pub struct Forge<M, E, S> {
+    pub vm: Arc<RwLock<E>>,
+    inner: M,
+    _ghost: PhantomData<S>,
 }
-impl<V, S> Forge<V, S> {
-    pub fn new(vm: Arc<RwLock<V>>) -> Self {
-        Self { vm, provider: Provider::new(NullProvider), _state: PhantomData }
+impl<M, E, S> Forge<M, E, S> {
+    pub fn new(inner: M, vm: Arc<RwLock<E>>) -> Self {
+        Self { vm, inner, _ghost: PhantomData }
     }
-    // async fn vm(&self) -> tokio::sync::RwLockReadGuard<'_, V> {
-    async fn vm(&self) -> impl Deref<Target = V> + '_ {
+    async fn vm(&self) -> impl Deref<Target = E> + '_ {
         self.vm.read().await
     }
-    async fn vm_mut(&self) -> impl DerefMut<Target = V> + '_ {
+    async fn vm_mut(&self) -> impl DerefMut<Target = E> + '_ {
         self.vm.write().await
     }
 }
 // Stand-in impl because some sputnik component is not Debug
-impl<V, S> Debug for Forge<V, S> {
+impl<M, E, S> Debug for Forge<M, E, S> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Forge").finish()
     }
 }
 
+#[derive(Error, Debug)]
+pub enum ForgeError<M: Middleware> {
+    #[error("{0}")]
+    MiddlewareError(M::Error),
+}
+impl<M: Middleware> FromErr<M::Error> for ForgeError<M> {
+    fn from(src: M::Error) -> ForgeError<M> {
+        ForgeError::MiddlewareError(src)
+    }
+}
+
 #[async_trait]
-impl<E, S> Middleware for Forge<E, S>
+impl<M, E, S> Middleware for Forge<M, E, S>
 where
+    M: Middleware,
     E: Evm<S> + VmShow + Send + Sync,
     S: Send + Sync + Debug,
 {
-    type Error = ProviderError;
-    type Provider = NullProvider;
-    type Inner = Provider<NullProvider>;
+    type Error = ForgeError<M>;
+    type Provider = M::Provider;
+    type Inner = M;
 
     fn inner(&self) -> &Self::Inner {
-        self.provider()
-    }
-
-    fn provider(&self) -> &Provider<Self::Provider> {
-        &self.provider
+        &self.inner
     }
 
     async fn estimate_gas(&self, _tx: &TypedTransaction) -> Result<U256, Self::Error> {
-        Ok(0usize.into())
+        Ok(self.vm().await.gas_limit())
     }
 
     async fn get_gas_price(&self) -> Result<U256, Self::Error> {
@@ -130,11 +123,14 @@ where
         from: T,
         block: Option<BlockId>,
     ) -> Result<U256, Self::Error> {
+        if block.is_some() {
+            panic!("Cannot get historical data")
+        }
         let addr = match from.into() {
             NameOrAddress::Name(ref ens) => self.resolve_name(ens).await?,
             NameOrAddress::Address(a) => a,
         };
-        Ok(self.vm().await.balance(addr, block))
+        Ok(self.vm().await.balance(addr))
     }
 
     // Copied from Provider::fill_transaction because we need other middleware
@@ -223,11 +219,9 @@ where
         // receipt to populate with the result of running the partial tx
         let mut receipt = TransactionReceipt::default();
 
-        // let mut lock = self.vm.write().await;
-
         if let Some(fut) = maybe_to {
-            let to = fut.await;
             // (contract) call
+            let to = fut.await;
             let (_bytes, exit, gas, _) =
                 self.vm_mut().await.call_raw(*from, to, data, *val, false).unwrap();
             receipt.gas_used = Some(gas.into());
@@ -248,28 +242,31 @@ where
 
         let mut pending = PendingTransaction::new(hash, self.provider());
         // Set the future to resolve immediately to the populated receipt when polled.
-        // TODO: handle confirmations > 1
+        // TODO: handle confirmations > 1. Likely need a dummy Provider that impls
+        // get_block_number() using internal evm
         pending.set_state(PendingTxState::CheckingReceipt(Some(receipt)));
         Ok(pending)
     }
 
+    // TODO: save and reset state after call_raw?
+    // Contract deployment?
     async fn call(
         &self,
         tx: &TypedTransaction,
         _block: Option<BlockId>,
     ) -> Result<Bytes, Self::Error> {
         let from = tx.from().unwrap();
-        let to = match tx.to().unwrap() {
-            NameOrAddress::Name(ens) => self.resolve_name(ens).await?,
-            NameOrAddress::Address(addr) => *addr,
-        };
-        let data = match tx.data() {
-            Some(data) => data.clone(),
-            _ => Default::default(),
-        };
+        let maybe_to = tx.to().map(|id| async move {
+            match id {
+                NameOrAddress::Name(ens) => self.resolve_name(ens).await.unwrap(),
+                NameOrAddress::Address(addr) => *addr,
+            }
+        });
+        let data = tx.data().map_or(Default::default(), |d| d.clone());
         let val = tx.value().unwrap();
-        let mut lock = self.vm.write().await;
-        let res = lock.call_raw(*from, to, data, *val, false).unwrap();
+
+        let to = maybe_to.unwrap().await;
+        let res = self.vm_mut().await.call_raw(*from, to, data, *val, false).unwrap();
         Ok(res.0)
     }
 }
@@ -284,16 +281,38 @@ mod tests {
         Executor, PRECOMPILES_MAP,
     };
 
+    #[derive(Debug, Clone, Copy)]
+    pub struct NullProvider;
+    impl NullProvider {
+        pub fn new() -> Self {
+            Self
+        }
+    }
+    #[async_trait]
+    impl JsonRpcClient for NullProvider {
+        type Error = ProviderError;
+
+        async fn request<T, R>(&self, _method: &str, _params: T) -> Result<R, Self::Error>
+        where
+            T: std::fmt::Debug + serde::Serialize + Send + Sync,
+            R: serde::de::DeserializeOwned,
+        {
+            unreachable!("Cannot send requests")
+        }
+    }
+
     #[tokio::test]
     async fn test_forge() {
         let from: Address = "0xEA674fdDe714fd979de3EdF0F56AA9716B898ec8".parse().unwrap();
         let to: Address = "0xD3D13a578a53685B4ac36A1Bab31912D2B2A2F36".parse().unwrap();
 
+        let provider = Provider::new(NullProvider);
+
         let backend = new_backend(&*VICINITY, Default::default());
         let vm = Executor::new(GAS_LIMIT, &*CFG, &backend, &*PRECOMPILES_MAP);
-        let forge = Forge::new(Arc::new(RwLock::new(vm)));
+        let forge = Forge::new(provider, Arc::new(RwLock::new(vm)));
 
-        let tx = TransactionRequest::new().to(to).from(from).value(1).gas(2300).gas_price(1);
+        let tx = TransactionRequest::new().to(to).from(from).value(1).gas(2300);
         let receipt = forge.send_transaction(tx, None).await.unwrap().await.unwrap();
         dbg!(receipt);
     }
