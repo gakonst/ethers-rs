@@ -34,7 +34,7 @@ url = { version = "2.2.2", default-features = false }
 serde_json = { version = "1.0.64", default-features = false }
 instant = {version = "0.1.12", features = ["now"] }
 
-evm-adapters = { path = "../../foundry/evm-adapters", features = ["sputnik", "sputnik-helpers"], optional = true }
+evm-adapters = { git = "https://github.com/gakonst/foundry", features = ["sputnik", "sputnik-helpers"], optional = true }
 sputnik = { package = "evm", git = "https://github.com/rust-blockchain/evm", optional = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
