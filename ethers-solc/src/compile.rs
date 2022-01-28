@@ -192,7 +192,7 @@ pub struct Solc {
 impl Default for Solc {
     fn default() -> Self {
         if let Ok(solc) = std::env::var("SOLC_PATH") {
-            return Solc::new(solc)
+            return Solc::new(solc);
         }
         #[cfg(not(target_arch = "wasm32"))]
         {
@@ -200,7 +200,7 @@ impl Default for Solc {
                 .and_then(|vers| Solc::find_svm_installed_version(&vers.to_string()).ok())
                 .flatten()
             {
-                return solc
+                return solc;
             }
         }
 
@@ -312,7 +312,7 @@ impl Solc {
             .join(format!("solc-{}", version));
 
         if !solc.is_file() {
-            return Ok(None)
+            return Ok(None);
         }
         Ok(Some(Solc::new(solc)))
     }
@@ -409,14 +409,19 @@ impl Solc {
     #[cfg(feature = "svm")]
     pub async fn install(version: &Version) -> std::result::Result<(), svm::SolcVmError> {
         tracing::trace!("installing solc version \"{}\"", version);
-        svm::install(version).await
+        println!("installing solc version \"{}\"", version);
+        let result = svm::install(version).await;
+        println!("installation complete");
+        result
     }
 
     /// Blocking version of `Self::install`
     #[cfg(all(feature = "svm", feature = "async"))]
     pub fn blocking_install(version: &Version) -> std::result::Result<(), svm::SolcVmError> {
         tracing::trace!("blocking installing solc version \"{}\"", version);
+        println!("installing solc version \"{}\"", version);
         tokio::runtime::Runtime::new().unwrap().block_on(svm::install(version))?;
+        println!("installation completed");
         Ok(())
     }
 
@@ -433,7 +438,7 @@ impl Solc {
         if !RELEASES.2 {
             // we skip checksum verification because the underlying request to fetch release info
             // failed so we have nothing to compare against
-            return Ok(())
+            return Ok(());
         }
 
         use sha2::Digest;
@@ -483,7 +488,6 @@ impl Solc {
 
     pub fn compile_output<T: Serialize>(&self, input: &T) -> Result<Vec<u8>> {
         let mut cmd = Command::new(&self.solc);
-
         let mut child = cmd
             .args(&self.args)
             .arg("--standard-json")
@@ -493,7 +497,7 @@ impl Solc {
             .spawn()
             .map_err(|err| SolcError::io(err, &self.solc))?;
         let stdin = child.stdin.take().unwrap();
-
+        println!("project compilation completed");
         serde_json::to_writer(stdin, input)?;
         compile_output(child.wait_with_output().map_err(|err| SolcError::io(err, &self.solc))?)
     }
