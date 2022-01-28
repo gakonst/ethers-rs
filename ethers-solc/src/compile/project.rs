@@ -74,15 +74,14 @@
 //! will then look in `/project/dapp-bin/library/iterable_mapping.sol`
 
 use crate::{
-    artifacts::{
-        Error, Settings, SourceFile, VersionedContract, VersionedContracts, VersionedSources,
-    },
+    artifact_output::WrittenArtifacts,
+    artifacts::{Settings, VersionedSources},
     cache::CacheEntry,
     error::Result,
-    output::WrittenArtifacts,
+    output::AggregatedCompilerOutput,
     resolver::GraphEdges,
-    utils, ArtifactOutput, CompilerInput, CompilerOutput, Graph, Project, ProjectPathsConfig,
-    SolFilesCache, Solc, SolcConfig, Source, SourceUnitNameMap, Sources,
+    utils, ArtifactOutput, CompilerInput, Graph, Project, ProjectCompileOutput2,
+    ProjectPathsConfig, SolFilesCache, Solc, SolcConfig, Source, SourceUnitNameMap, Sources,
 };
 use rayon::prelude::*;
 use semver::Version;
@@ -196,7 +195,7 @@ impl<'a, T: ArtifactOutput> ProjectCompiler<'a, T> {
         let cached_artifacts = cache.finish(&written_artifacts)?;
 
         Ok(ProjectCompileOutput2 {
-            output,
+            compiler_output: output,
             written_artifacts,
             cached_artifacts,
             ignored_error_codes: project.ignored_error_codes.clone(),
@@ -344,63 +343,6 @@ fn compile_parallel(
     aggregated.extend_all(outputs);
 
     Ok(aggregated)
-}
-
-/// Contains a mixture of already compiled/cached artifacts and the input set of sources that still
-/// need to be compiled.
-#[derive(Debug, Clone, PartialEq, Default)]
-pub struct ProjectCompileOutput2<T: ArtifactOutput> {
-    /// contains the aggregated `CompilerOutput`
-    ///
-    /// See [`CompilerSources::compile`]
-    output: AggregatedCompilerOutput,
-    /// all artifact files from `output` that were written
-    written_artifacts: WrittenArtifacts<T::Artifact>,
-    /// All artifacts that were read from cache
-    cached_artifacts: BTreeMap<PathBuf, T::Artifact>,
-    ignored_error_codes: Vec<u64>,
-}
-
-/// The aggregated output of (multiple) compile jobs
-///
-/// This is effectively a solc version aware `CompilerOutput`
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct AggregatedCompilerOutput {
-    /// all errors from all `CompilerOutput`
-    pub errors: Vec<Error>,
-    /// All source files
-    pub sources: BTreeMap<String, SourceFile>,
-    /// All compiled contracts combined with the solc version used to compile them
-    pub contracts: VersionedContracts,
-}
-
-impl AggregatedCompilerOutput {
-    pub fn is_empty(&self) -> bool {
-        self.contracts.is_empty()
-    }
-
-    fn extend_all<I>(&mut self, out: I)
-    where
-        I: IntoIterator<Item = (Version, CompilerOutput)>,
-    {
-        for (v, o) in out {
-            self.extend(v, o)
-        }
-    }
-
-    /// adds a new `CompilerOutput` to the aggregated output
-    fn extend(&mut self, version: Version, output: CompilerOutput) {
-        self.errors.extend(output.errors);
-        self.sources.extend(output.sources);
-
-        for (file_name, new_contracts) in output.contracts {
-            let contracts = self.contracts.entry(file_name).or_default();
-            for (contract_name, contract) in new_contracts {
-                let versioned = contracts.entry(contract_name).or_default();
-                versioned.push(VersionedContract { contract, version: version.clone() });
-            }
-        }
-    }
 }
 
 /// A helper abstraction over the [`SolFilesCache`] used to determine what files need to compiled

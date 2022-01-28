@@ -6,25 +6,22 @@ pub mod sourcemap;
 pub use artifacts::{CompilerInput, CompilerOutput, EvmVersion};
 use std::collections::btree_map::BTreeMap;
 
+mod artifact_output;
 pub mod cache;
 pub mod hh;
-mod output;
-pub use output::*;
+pub use artifact_output::*;
 
 mod resolver;
 pub use hh::{HardhatArtifact, HardhatArtifacts};
 pub use resolver::Graph;
 
 mod compile;
-
-pub use compile::*;
+pub use compile::{output::ProjectCompileOutput2, *};
 
 mod config;
-
 pub use config::{AllowedLibPaths, PathStyle, ProjectPathsConfig, SolcConfig};
 
 pub mod remappings;
-
 use crate::{artifacts::Source, cache::SolFilesCache};
 
 pub mod error;
@@ -34,7 +31,7 @@ use crate::{
     artifacts::Sources,
     cache::SourceUnitNameMap,
     error::{SolcError, SolcIoError},
-    project::{ProjectCompileOutput2, ProjectCompiler},
+    project::ProjectCompiler,
 };
 use error::Result;
 use std::{

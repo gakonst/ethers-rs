@@ -4,7 +4,7 @@ use crate::{
     error::{Result, SolcError},
     hh::HardhatArtifacts,
     utils::tempdir,
-    ArtifactOutput, MinimalCombinedArtifacts, PathStyle, Project, ProjectCompileOutput,
+    ArtifactOutput, MinimalCombinedArtifacts, PathStyle, Project, ProjectCompileOutput2,
     ProjectPathsConfig, SolcIoError,
 };
 use fs_extra::{dir, file};
@@ -55,7 +55,7 @@ impl<T: ArtifactOutput> TempProject<T> {
         &self.inner
     }
 
-    pub fn compile(&self) -> Result<ProjectCompileOutput<T>> {
+    pub fn compile(&self) -> Result<ProjectCompileOutput2<T>> {
         self.project().compile()
     }
 
