@@ -814,6 +814,21 @@ impl ContractBytecode {
             deployed_bytecode: self.deployed_bytecode.unwrap(),
         }
     }
+
+    /// Looks for all link references in deployment and runtime bytecodes
+    pub fn all_link_references(&self) -> BTreeMap<String, BTreeMap<String, Vec<Offsets>>> {
+        let mut links = BTreeMap::new();
+        if let Some(bcode) = &self.bytecode {
+            links.extend(bcode.link_references.clone());
+        }
+
+        if let Some(d_bcode) = &self.deployed_bytecode {
+            if let Some(bcode) = &d_bcode.bytecode {
+                links.extend(bcode.link_references.clone());
+            }
+        }
+        links
+    }
 }
 
 impl From<Contract> for ContractBytecode {
@@ -825,6 +840,80 @@ impl From<Contract> for ContractBytecode {
         };
 
         Self { abi: c.abi, bytecode, deployed_bytecode }
+    }
+}
+
+/// Minimal representation of a contract with a present abi and bytecode.
+///
+/// Unlike `CompactContractSome` which contains the `BytecodeObject`, this holds the whole
+/// `Bytecode` object.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct CompactContractBytecode {
+    /// The Ethereum Contract ABI. If empty, it is represented as an empty
+    /// array. See https://docs.soliditylang.org/en/develop/abi-spec.html
+    pub abi: Option<Abi>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bytecode: Option<CompactBytecode>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub deployed_bytecode: Option<CompactDeployedBytecode>,
+}
+
+impl CompactContractBytecode {
+    /// Looks for all link references in deployment and runtime bytecodes
+    pub fn all_link_references(&self) -> BTreeMap<String, BTreeMap<String, Vec<Offsets>>> {
+        let mut links = BTreeMap::new();
+        if let Some(bcode) = &self.bytecode {
+            links.extend(bcode.link_references.clone());
+        }
+
+        if let Some(d_bcode) = &self.deployed_bytecode {
+            if let Some(bcode) = &d_bcode.bytecode {
+                links.extend(bcode.link_references.clone());
+            }
+        }
+        links
+    }
+}
+
+impl From<Contract> for CompactContractBytecode {
+    fn from(c: Contract) -> Self {
+        let (bytecode, deployed_bytecode) = if let Some(evm) = c.evm {
+            let (maybe_bcode, maybe_runtime) = match (evm.bytecode, evm.deployed_bytecode) {
+                (Some(bcode), Some(dbcode)) => (Some(bcode.into()), Some(dbcode.into())),
+                (None, Some(dbcode)) => (None, Some(dbcode.into())),
+                (Some(bcode), None) => (Some(bcode.into()), None),
+                (None, None) => (None, None),
+            };
+            (maybe_bcode, maybe_runtime)
+        } else {
+            (None, None)
+        };
+
+        Self { abi: c.abi, bytecode, deployed_bytecode }
+    }
+}
+
+impl From<ContractBytecode> for CompactContractBytecode {
+    fn from(c: ContractBytecode) -> Self {
+        let (maybe_bcode, maybe_runtime) = match (c.bytecode, c.deployed_bytecode) {
+            (Some(bcode), Some(dbcode)) => (Some(bcode.into()), Some(dbcode.into())),
+            (None, Some(dbcode)) => (None, Some(dbcode.into())),
+            (Some(bcode), None) => (Some(bcode.into()), None),
+            (None, None) => (None, None),
+        };
+        Self { abi: c.abi, bytecode: maybe_bcode, deployed_bytecode: maybe_runtime }
+    }
+}
+
+impl From<CompactContractBytecode> for ContractBytecode {
+    fn from(c: CompactContractBytecode) -> Self {
+        let (maybe_bcode, maybe_runtime) = match (c.bytecode, c.deployed_bytecode) {
+            (Some(bcode), Some(dbcode)) => (Some(bcode.into()), Some(dbcode.into())),
+            (None, Some(dbcode)) => (None, Some(dbcode.into())),
+            (Some(bcode), None) => (Some(bcode.into()), None),
+            (None, None) => (None, None),
+        };
+        Self { abi: c.abi, bytecode: maybe_bcode, deployed_bytecode: maybe_runtime }
     }
 }
 
@@ -968,6 +1057,13 @@ impl From<ContractBytecode> for CompactContract {
             bin_runtime: deployed_bytecode
                 .and_then(|deployed| deployed.bytecode.map(|code| code.object)),
         }
+    }
+}
+
+impl From<CompactContractBytecode> for CompactContract {
+    fn from(c: CompactContractBytecode) -> Self {
+        let c: ContractBytecode = c.into();
+        c.into()
     }
 }
 
@@ -1181,6 +1277,88 @@ pub struct Bytecode {
     /// If given, this is an unlinked object.
     #[serde(default)]
     pub link_references: BTreeMap<String, BTreeMap<String, Vec<Offsets>>>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct CompactBytecode {
+    /// The bytecode as a hex string.
+    pub object: BytecodeObject,
+    /// The source mapping as a string. See the source mapping definition.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source_map: Option<String>,
+    /// If given, this is an unlinked object.
+    #[serde(default)]
+    pub link_references: BTreeMap<String, BTreeMap<String, Vec<Offsets>>>,
+}
+
+impl CompactBytecode {
+    /// Tries to link the bytecode object with the `file` and `library` name.
+    /// Replaces all library placeholders with the given address.
+    ///
+    /// Returns true if the bytecode object is fully linked, false otherwise
+    /// This is a noop if the bytecode object is already fully linked.
+    pub fn link(
+        &mut self,
+        file: impl AsRef<str>,
+        library: impl AsRef<str>,
+        address: Address,
+    ) -> bool {
+        if !self.object.is_unlinked() {
+            return true
+        }
+
+        let file = file.as_ref();
+        let library = library.as_ref();
+        if let Some((key, mut contracts)) = self.link_references.remove_entry(file) {
+            if contracts.remove(library).is_some() {
+                self.object.link(file, library, address);
+            }
+            if !contracts.is_empty() {
+                self.link_references.insert(key, contracts);
+            }
+            if self.link_references.is_empty() {
+                return self.object.resolve().is_some()
+            }
+        }
+        false
+    }
+}
+
+impl From<Bytecode> for CompactBytecode {
+    fn from(bcode: Bytecode) -> CompactBytecode {
+        CompactBytecode {
+            object: bcode.object,
+            source_map: bcode.source_map,
+            link_references: bcode.link_references,
+        }
+    }
+}
+
+impl From<CompactBytecode> for Bytecode {
+    fn from(bcode: CompactBytecode) -> Bytecode {
+        Bytecode {
+            object: bcode.object,
+            source_map: bcode.source_map,
+            link_references: bcode.link_references,
+            function_debug_data: Default::default(),
+            opcodes: Default::default(),
+            generated_sources: Default::default(),
+        }
+    }
+}
+
+impl From<BytecodeObject> for Bytecode {
+    fn from(object: BytecodeObject) -> Bytecode {
+        Bytecode {
+            object,
+            function_debug_data: Default::default(),
+            opcodes: Default::default(),
+            source_map: Default::default(),
+            generated_sources: Default::default(),
+            link_references: Default::default(),
+        }
+    }
 }
 
 impl Bytecode {
@@ -1450,6 +1628,43 @@ impl DeployedBytecode {
     /// Returns the underlying `Bytes` if the object is a valid bytecode, and not empty
     pub fn into_bytes(self) -> Option<Bytes> {
         self.bytecode?.object.into_bytes()
+    }
+}
+
+impl From<Bytecode> for DeployedBytecode {
+    fn from(bcode: Bytecode) -> DeployedBytecode {
+        DeployedBytecode { bytecode: Some(bcode), immutable_references: Default::default() }
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct CompactDeployedBytecode {
+    #[serde(flatten)]
+    pub bytecode: Option<CompactBytecode>,
+    #[serde(
+        default,
+        rename = "immutableReferences",
+        skip_serializing_if = "::std::collections::BTreeMap::is_empty"
+    )]
+    pub immutable_references: BTreeMap<String, Vec<Offsets>>,
+}
+
+impl From<DeployedBytecode> for CompactDeployedBytecode {
+    fn from(bcode: DeployedBytecode) -> CompactDeployedBytecode {
+        CompactDeployedBytecode {
+            bytecode: bcode.bytecode.map(|d_bcode| d_bcode.into()),
+            immutable_references: bcode.immutable_references,
+        }
+    }
+}
+
+impl From<CompactDeployedBytecode> for DeployedBytecode {
+    fn from(bcode: CompactDeployedBytecode) -> DeployedBytecode {
+        DeployedBytecode {
+            bytecode: bcode.bytecode.map(|d_bcode| d_bcode.into()),
+            immutable_references: bcode.immutable_references,
+        }
     }
 }
 

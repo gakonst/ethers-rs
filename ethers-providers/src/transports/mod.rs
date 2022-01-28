@@ -1,4 +1,5 @@
 mod common;
+pub use common::Authorization;
 
 // only used with WS
 #[cfg(feature = "ws")]
@@ -24,7 +25,7 @@ mod ipc;
 pub use ipc::Ipc;
 
 mod http;
-pub use http::{ClientError as HttpClientError, Provider as Http};
+pub use self::http::{ClientError as HttpClientError, Provider as Http};
 
 #[cfg(feature = "ws")]
 mod ws;

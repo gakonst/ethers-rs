@@ -4,6 +4,8 @@
 
 ### Unreleased
 
+- Add BSC mainnet and testnet to the list of known chains
+  [831](https://github.com/gakonst/ethers-rs/pull/831)
 - Returns error on invalid type conversion instead of panicking
   [691](https://github.com/gakonst/ethers-rs/pull/691/files)
 - Change types mapping for solidity `bytes` to rust `ethers::core::Bytes` and
@@ -98,6 +100,8 @@
   [640](https://github.com/gakonst/ethers-rs/pull/640)
 
 ### Unreleased
+- Add support for basic and bearer authentication in http and non-wasm websockets.
+  [829](https://github.com/gakonst/ethers-rs/pull/829)
 
 ### 0.5.3
 
