@@ -497,7 +497,6 @@ impl Solc {
             .spawn()
             .map_err(|err| SolcError::io(err, &self.solc))?;
         let stdin = child.stdin.take().unwrap();
-        println!("project compilation completed");
         serde_json::to_writer(stdin, input)?;
         compile_output(child.wait_with_output().map_err(|err| SolcError::io(err, &self.solc))?)
     }
