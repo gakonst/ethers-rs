@@ -44,7 +44,7 @@ where
             self.nonce.store(nonce.as_u64(), Ordering::SeqCst);
             self.initialized.store(true, Ordering::SeqCst);
         }
-        Ok()
+        Ok(())
     }
 
     async fn get_transaction_count_with_manager(
