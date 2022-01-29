@@ -409,14 +409,19 @@ impl Solc {
     #[cfg(feature = "svm")]
     pub async fn install(version: &Version) -> std::result::Result<(), svm::SolcVmError> {
         tracing::trace!("installing solc version \"{}\"", version);
-        svm::install(version).await
+        println!("installing solc version \"{}\"", version);
+        let result = svm::install(version).await;
+        println!("installation complete");
+        result
     }
 
     /// Blocking version of `Self::install`
     #[cfg(all(feature = "svm", feature = "async"))]
     pub fn blocking_install(version: &Version) -> std::result::Result<(), svm::SolcVmError> {
         tracing::trace!("blocking installing solc version \"{}\"", version);
+        println!("installing solc version \"{}\"", version);
         tokio::runtime::Runtime::new().unwrap().block_on(svm::install(version))?;
+        println!("installation completed");
         Ok(())
     }
 
@@ -483,7 +488,6 @@ impl Solc {
 
     pub fn compile_output<T: Serialize>(&self, input: &T) -> Result<Vec<u8>> {
         let mut cmd = Command::new(&self.solc);
-
         let mut child = cmd
             .args(&self.args)
             .arg("--standard-json")
@@ -493,7 +497,6 @@ impl Solc {
             .spawn()
             .map_err(|err| SolcError::io(err, &self.solc))?;
         let stdin = child.stdin.take().unwrap();
-
         serde_json::to_writer(stdin, input)?;
         compile_output(child.wait_with_output().map_err(|err| SolcError::io(err, &self.solc))?)
     }
