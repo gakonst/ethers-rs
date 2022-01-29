@@ -105,6 +105,17 @@ impl SolFilesCache {
     }
 
     /// Reads all cached artifacts from disk using the given ArtifactOutput handler
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use ethers_solc::cache::SolFilesCache;
+    /// use ethers_solc::Project;
+    ///
+    /// let project = Project::builder().build().unwrap();
+    /// let cache = SolFilesCache::read(project.cache_path()).unwrap();
+    /// let artifacts = cache.read_artifacts::<Project>(project.artifacts_path()).unwrap();
+    /// ```
     pub fn read_artifacts<T: ArtifactOutput>(
         &self,
         _artifacts_root: &Path,

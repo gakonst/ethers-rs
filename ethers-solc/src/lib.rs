@@ -27,7 +27,7 @@ pub mod error;
 pub mod utils;
 
 use crate::{
-    artifacts::Sources,
+    artifacts::{Contract, Sources},
     cache::SourceUnitNameMap,
     error::{SolcError, SolcIoError},
 };
@@ -525,6 +525,14 @@ impl<Artifacts: ArtifactOutput> Default for ProjectBuilder<Artifacts> {
             allowed_paths: vec![],
             solc_jobs: None,
         }
+    }
+}
+
+impl<Artifacts: ArtifactOutput> ArtifactOutput for Project<Artifacts> {
+    type Artifact = Artifacts::Artifact;
+
+    fn contract_to_artifact(file: &str, name: &str, contract: Contract) -> Self::Artifact {
+        Artifacts::contract_to_artifact(file, name, contract)
     }
 }
 
