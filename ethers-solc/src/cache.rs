@@ -3,7 +3,7 @@ use crate::{
     artifacts::{Contracts, Sources},
     config::SolcConfig,
     error::{Result, SolcError},
-    Artifacts, Source,
+    ArtifactFile, ArtifactOutput, Artifacts, ArtifactsMap, Source,
 };
 use semver::Version;
 use serde::{Deserialize, Serialize};
@@ -49,6 +49,16 @@ impl SolFilesCache {
     }
 
     /// Reads the cache json file from the given path
+    /// # Example
+    ///
+    /// ```
+    /// use ethers_solc::cache::SolFilesCache;
+    /// use ethers_solc::Project;
+    ///
+    /// let project = Project::builder().build().unwrap();
+    /// let mut cache = SolFilesCache::read(project.cache_path()).unwrap();
+    /// cache.join_all(project.artifacts_path());
+    /// ```
     #[tracing::instrument(skip_all, name = "sol-files-cache::read")]
     pub fn read(path: impl AsRef<Path>) -> Result<Self> {
         let path = path.as_ref();
@@ -109,7 +119,11 @@ impl SolFilesCache {
     /// let artifacts = cache.read_artifacts::<MinimalCombinedArtifacts>().unwrap();
     /// ```
     pub fn read_artifacts<Artifact: Serialize>(&self) -> Result<Artifacts<Artifact>> {
-        todo!()
+        let mut artifacts = ArtifactsMap::new();
+        for (file, entry) in self.files.iter() {
+            // let mut entries = BTreeMap::new();
+        }
+
         // let mut artifacts = BTreeMap::default();
         // for (file, entry) in &self.files {
         //     for artifact in &entry.artifacts {
@@ -118,7 +132,7 @@ impl SolFilesCache {
         //         artifacts.insert(artifact_file, artifact);
         //     }
         // }
-        // Ok(artifacts)
+        Ok(Artifacts(artifacts))
     }
 
     /// Retains only the `CacheEntry` specified by the file + version combination.
@@ -187,7 +201,7 @@ pub struct CacheEntry {
     /// `A(<=0.8.10) imports C(>0.4.0)` and `B(0.8.11) imports C(>0.4.0)`
     /// file `C` would be compiled twice, with `0.8.10` and `0.8.11`, producing two different
     /// artifacts
-    pub artifacts: HashMap<Version, Vec<PathBuf>>,
+    pub artifacts: BTreeMap<Version, Vec<PathBuf>>,
 }
 
 impl CacheEntry {
@@ -213,13 +227,23 @@ impl CacheEntry {
         Ok(last_modification_date)
     }
 
+    fn read_artifact_files<T: ArtifactOutput>(&self) -> Result<Vec<ArtifactFile<T::Artifact>>> {
+        for (version, files) in self.artifacts.iter() {
+            for file in files {
+                // get the contract name based on the number of versions
+            }
+        }
+
+        todo!()
+    }
+
     /// Iterator that yields all artifact files
     pub fn artifacts(&self) -> impl Iterator<Item = &PathBuf> {
-        self.artifacts.values().flat_map(|artifacts| artifacts.iter())
+        self.artifacts.values().flat_map(|artifacts| artifacts.into_iter())
     }
 
     pub fn artifacts_mut(&mut self) -> impl Iterator<Item = &mut PathBuf> {
-        self.artifacts.values_mut().flat_map(|artifacts| artifacts.iter_mut())
+        self.artifacts.values_mut().flat_map(|artifacts| artifacts.into_iter())
     }
 
     /// Checks if all artifact files exist

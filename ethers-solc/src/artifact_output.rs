@@ -8,12 +8,20 @@ use crate::{
 };
 use ethers_core::{abi::Abi, types::Bytes};
 use semver::Version;
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{
     collections::btree_map::BTreeMap,
     fs, io,
     path::{Path, PathBuf},
 };
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ArtifactInfo {
+    /// path to the file where the `artifact` was written to
+    pub file: PathBuf,
+    /// `solc` version that produced this artifact
+    pub version: Version,
+}
 
 /// Represents an artifact file representing a [`crate::Contract`]
 #[derive(Debug, Clone, PartialEq)]
@@ -59,7 +67,7 @@ impl<T> ArtifactFile<T> {
 }
 
 /// local helper type alias
-type ArtifactsMap<T> = FileToContractsMap<Vec<ArtifactFile<T>>>;
+pub(crate) type ArtifactsMap<T> = FileToContractsMap<Vec<ArtifactFile<T>>>;
 
 /// Represents a set of Artifacts
 #[derive(Debug, Clone, PartialEq)]
@@ -106,6 +114,18 @@ impl<T> Artifacts<T> {
         let base = base.as_ref();
         self.artifact_files_mut().for_each(|artifact| artifact.strip_prefix(base));
         self
+    }
+
+    /// Returns all `ArtifactFile`s for the contract with the matching name
+    fn get_contract_artifact_files(&self, contract_name: &str) -> Option<&Vec<ArtifactFile<T>>> {
+        self.0.values().find_map(|all| all.get(contract_name))
+    }
+
+    /// Returns true if this type contains an artifact with the given path for the given contract
+    pub fn has_contract_artifact(&self, contract_name: &str, artifact_path: &Path) -> bool {
+        self.get_contract_artifact_files(contract_name)
+            .map(|artifacts| artifacts.into_iter().any(|artifact| artifact.file == artifact_path))
+            .unwrap_or_default()
     }
 
     /// Returns true if this type contains an artifact with the given path
