@@ -29,6 +29,23 @@ where
         let nonce = self.nonce.fetch_add(1, Ordering::SeqCst);
         nonce.into()
     }
+    
+    pub async fn initialize_nonce(
+        &self,
+        block: Option<BlockId>,
+    ) -> Result<NonceManagerError<M>> {
+        // initialize the nonce the first time the manager is called
+        if !self.initialized.load(Ordering::SeqCst) {
+            let nonce = self
+                .inner
+                .get_transaction_count(self.address, block)
+                .await
+                .map_err(FromErr::from)?;
+            self.nonce.store(nonce.as_u64(), Ordering::SeqCst);
+            self.initialized.store(true, Ordering::SeqCst);
+        }
+        Ok()
+    }
 
     async fn get_transaction_count_with_manager(
         &self,
