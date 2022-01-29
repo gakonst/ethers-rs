@@ -262,7 +262,7 @@ impl SolFilesCache {
     pub async fn async_write(&self, path: impl AsRef<Path>) -> Result<()> {
         let path = path.as_ref();
         let content = serde_json::to_vec_pretty(self)?;
-        Ok(tokio::fs::write(path, content).await.map_err(|err| SolcError::io(err, path))?)
+        tokio::fs::write(path, content).await.map_err(|err| SolcError::io(err, path))
     }
 }
 

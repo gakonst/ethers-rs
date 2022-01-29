@@ -134,7 +134,7 @@ impl TrezorEthereum {
 
     /// Get the account which corresponds to our derivation path
     pub async fn get_address(&self) -> Result<Address, TrezorError> {
-        Ok(self.get_address_with_path(&self.derivation).await?)
+        self.get_address_with_path(&self.derivation).await
     }
 
     /// Gets the account which corresponds to the provided derivation path

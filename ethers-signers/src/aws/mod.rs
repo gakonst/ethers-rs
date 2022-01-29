@@ -177,7 +177,7 @@ impl<'a> AwsSigner<'a> {
     where
         T: AsRef<str>,
     {
-        Ok(request_get_pubkey(self.kms, key_id).await.map(utils::decode_pubkey)??)
+        request_get_pubkey(self.kms, key_id).await.map(utils::decode_pubkey)?
     }
 
     /// Fetch the pubkey associated with this signer's key ID
@@ -194,7 +194,7 @@ impl<'a> AwsSigner<'a> {
     where
         T: AsRef<str>,
     {
-        Ok(request_sign_digest(self.kms, key_id, digest).await.map(utils::decode_signature)??)
+        request_sign_digest(self.kms, key_id, digest).await.map(utils::decode_signature)?
     }
 
     /// Sign a digest with this signer's key
