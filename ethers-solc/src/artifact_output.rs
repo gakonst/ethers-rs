@@ -2,9 +2,8 @@
 
 use crate::{
     artifacts::{CompactContract, CompactContractBytecode, Contract, FileToContractsMap},
-    contracts::{VersionedContract, VersionedContracts},
+    contracts::VersionedContracts,
     error::Result,
-    output::AggregatedCompilerOutput,
     HardhatArtifact, ProjectPathsConfig, SolcError,
 };
 use ethers_core::{abi::Abi, types::Bytes};
@@ -16,9 +15,9 @@ use std::{
     path::{Path, PathBuf},
 };
 
-/// Represents a written [`crate::Contract`] artifact
+/// Represents an artifact file representing a [`crate::Contract`]
 #[derive(Debug, Clone, PartialEq)]
-pub struct WrittenArtifact<T> {
+pub struct ArtifactFile<T> {
     /// The Artifact that was written
     pub artifact: T,
     /// path to the file where the `artifact` was written to
@@ -27,32 +26,95 @@ pub struct WrittenArtifact<T> {
     pub version: Version,
 }
 
+impl<T: Serialize> ArtifactFile<T> {
+    /// Writes the given contract to the `out` path creating all parent directories
+    pub fn write(&self) -> Result<()> {
+        if let Some(parent) = self.file.parent() {
+            fs::create_dir_all(parent).map_err(|err| {
+                SolcError::msg(format!(
+                    "Failed to create artifact parent folder \"{}\": {}",
+                    parent.display(),
+                    err
+                ))
+            })?;
+        }
+        fs::write(&self.file, serde_json::to_vec_pretty(&self.artifact)?)
+            .map_err(|err| SolcError::io(err, &self.file))?;
+        Ok(())
+    }
+}
+
+impl<T> ArtifactFile<T> {
+    /// Sets the file to `root` adjoined to `self.file`.
+    pub fn join(&mut self, root: impl AsRef<Path>) {
+        self.file = root.as_ref().join(&self.file);
+    }
+
+    /// Removes `base` from the artifact's path
+    pub fn strip_prefix(&mut self, base: impl AsRef<Path>) {
+        if let Ok(prefix) = self.file.strip_prefix(base) {
+            self.file = prefix.to_path_buf();
+        }
+    }
+}
+
 /// local helper type alias
-type ArtifactsMap<T> = FileToContractsMap<Vec<WrittenArtifact<T>>>;
+type ArtifactsMap<T> = FileToContractsMap<Vec<ArtifactFile<T>>>;
 
-/// Represents the written Artifacts
+/// Represents a set of Artifacts
 #[derive(Debug, Clone, PartialEq)]
-pub struct WrittenArtifacts<T>(pub ArtifactsMap<T>);
+pub struct Artifacts<T>(pub ArtifactsMap<T>);
 
-impl<T> Default for WrittenArtifacts<T> {
+impl<T> Default for Artifacts<T> {
     fn default() -> Self {
         Self(Default::default())
     }
 }
 
-impl<T> AsRef<ArtifactsMap<T>> for WrittenArtifacts<T> {
+impl<T> AsRef<ArtifactsMap<T>> for Artifacts<T> {
     fn as_ref(&self) -> &ArtifactsMap<T> {
         &self.0
     }
 }
 
-impl<T> AsMut<ArtifactsMap<T>> for WrittenArtifacts<T> {
+impl<T> AsMut<ArtifactsMap<T>> for Artifacts<T> {
     fn as_mut(&mut self) -> &mut ArtifactsMap<T> {
         &mut self.0
     }
 }
 
-impl<T> WrittenArtifacts<T> {
+impl<T: Serialize> Artifacts<T> {
+    /// Writes all artifacts into the given `artifacts_root` folder
+    pub fn write_all(&self) -> Result<()> {
+        for artifact in self.artifact_files() {
+            artifact.write()?;
+        }
+        Ok(())
+    }
+}
+
+impl<T> Artifacts<T> {
+    /// Sets the artifact files location to `root` adjoined to `self.file`.
+    pub fn join_all(&mut self, root: impl AsRef<Path>) {
+        let root = root.as_ref();
+        self.artifact_files_mut().for_each(|artifact| artifact.join(root))
+    }
+
+    /// Removes `base` from all artifacts
+    pub fn strip_prefix_all(&mut self, base: impl AsRef<Path>) {
+        let base = base.as_ref();
+        self.artifact_files_mut().for_each(|artifact| artifact.strip_prefix(base))
+    }
+
+    /// Iterate over all artifact files
+    pub fn artifact_files(&self) -> impl Iterator<Item = &ArtifactFile<T>> {
+        self.0.values().flat_map(|c| c.values().flat_map(|artifacts| artifacts.into_iter()))
+    }
+    /// Iterate over all artifact files
+    pub fn artifact_files_mut(&mut self) -> impl Iterator<Item = &mut ArtifactFile<T>> {
+        self.0.values_mut().flat_map(|c| c.values_mut().flat_map(|artifacts| artifacts.into_iter()))
+    }
+
     /// Returns an iterator over _all_ artifacts and `<file name:contract name>`
     pub fn into_artifacts<O: ArtifactOutput<Artifact = T>>(
         self,
@@ -104,8 +166,8 @@ impl<T> WrittenArtifacts<T> {
     }
 }
 
-/// Bundled Artifacts: `file -> (contract name -> (Artifact, Version))`
-pub type Artifacts<T> = FileToContractsMap<Vec<(T, Version)>>;
+// /// Bundled Artifacts: `file -> (contract name -> (Artifact, Version))`
+// pub type Artifacts<T> = FileToContractsMap<Vec<(T, Version)>>;
 
 /// A trait representation for a [`crate::Contract`] artifact
 pub trait Artifact {
@@ -167,43 +229,11 @@ pub trait ArtifactOutput {
     fn on_output(
         contracts: &VersionedContracts,
         layout: &ProjectPathsConfig,
-    ) -> Result<WrittenArtifacts<Self::Artifact>> {
-        fs::create_dir_all(&layout.artifacts)
-            .map_err(|err| SolcError::msg(format!("Failed to create artifacts dir: {}", err)))?;
-        let mut artifacts = ArtifactsMap::new();
-
-        for (file, contracts) in contracts.as_ref().iter() {
-            let mut entries = BTreeMap::new();
-            for (name, versioned_contracts) in contracts {
-                let mut contracts = Vec::with_capacity(versioned_contracts.len());
-                // check if the same contract compiled with multiple solc versions
-                for contract in versioned_contracts {
-                    let artifact_path = if versioned_contracts.len() > 1 {
-                        Self::output_file_versioned(file, name, &contract.version)
-                    } else {
-                        Self::output_file(file, name)
-                    };
-
-                    let artifact =
-                        Self::contract_to_artifact(file, name, contract.contract.clone());
-
-                    write_contract::<Self::Artifact>(
-                        &layout.artifacts.join(&artifact_path),
-                        &artifact,
-                    )?;
-
-                    contracts.push(WrittenArtifact {
-                        artifact,
-                        file: artifact_path,
-                        version: contract.version.clone(),
-                    });
-                }
-                entries.insert(name.to_string(), contracts);
-            }
-            artifacts.insert(file.to_string(), entries);
-        }
-
-        Ok(WrittenArtifacts(artifacts))
+    ) -> Result<Artifacts<Self::Artifact>> {
+        let mut artifacts = Self::output_to_artifacts(contracts);
+        artifacts.join_all(&layout.artifacts);
+        artifacts.write_all()?;
+        Ok(artifacts)
     }
 
     /// Returns the file name for the contract's artifact
@@ -267,6 +297,13 @@ pub trait ArtifactOutput {
         root.as_ref().join(Self::output_file(contract_file, name)).exists()
     }
 
+    /// Read the artifact that's stored at the given path
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if
+    ///     - The file does not exist
+    ///     - The file's content couldn't be deserialized into the `Artifact` type
     fn read_cached_artifact(path: impl AsRef<Path>) -> Result<Self::Artifact> {
         let path = path.as_ref();
         let file = fs::File::open(path).map_err(|err| SolcError::io(err, path))?;
@@ -274,7 +311,9 @@ pub trait ArtifactOutput {
         Ok(serde_json::from_reader(file)?)
     }
 
-    /// Read the cached artifacts from disk
+    /// Read the cached artifacts that are located the paths the iterator yields
+    ///
+    /// See [`Self::read_cached_artifact()`]
     fn read_cached_artifacts<T, I>(files: I) -> Result<BTreeMap<PathBuf, Self::Artifact>>
     where
         I: IntoIterator<Item = T>,
@@ -296,29 +335,37 @@ pub trait ArtifactOutput {
     fn contract_to_artifact(_file: &str, _name: &str, contract: Contract) -> Self::Artifact;
 
     /// Convert the compiler output into a set of artifacts
-    fn output_to_artifacts(output: AggregatedCompilerOutput) -> Artifacts<Self::Artifact> {
-        output
-            .contracts
-            .into_iter()
-            .map(|(file, all_contracts)| {
-                let contracts = all_contracts
-                    .into_iter()
-                    .map(|(name, versioned_contracts)| {
-                        let artifacts = versioned_contracts
-                            .into_iter()
-                            .map(|c| {
-                                let VersionedContract { contract, version } = c;
-                                let artifact = Self::contract_to_artifact(&file, &name, contract);
-                                (artifact, version)
-                            })
-                            .collect();
-                        (name, artifacts)
-                    })
-                    .collect();
+    ///
+    /// **Note:** This does only convert, but _NOT_ write the artifacts to disk, See
+    /// [`Self::on_output()`]
+    fn output_to_artifacts(contracts: &VersionedContracts) -> Artifacts<Self::Artifact> {
+        let mut artifacts = ArtifactsMap::new();
+        for (file, contracts) in contracts.as_ref().iter() {
+            let mut entries = BTreeMap::new();
+            for (name, versioned_contracts) in contracts {
+                let mut contracts = Vec::with_capacity(versioned_contracts.len());
+                // check if the same contract compiled with multiple solc versions
+                for contract in versioned_contracts {
+                    let artifact_path = if versioned_contracts.len() > 1 {
+                        Self::output_file_versioned(file, name, &contract.version)
+                    } else {
+                        Self::output_file(file, name)
+                    };
+                    let artifact =
+                        Self::contract_to_artifact(file, name, contract.contract.clone());
 
-                (file, contracts)
-            })
-            .collect()
+                    contracts.push(ArtifactFile {
+                        artifact,
+                        file: artifact_path,
+                        version: contract.version.clone(),
+                    });
+                }
+                entries.insert(name.to_string(), contracts);
+            }
+            artifacts.insert(file.to_string(), entries);
+        }
+
+        Artifacts(artifacts)
     }
 }
 
@@ -354,7 +401,7 @@ impl ArtifactOutput for MinimalCombinedArtifactsHardhatFallback {
     fn on_output(
         output: &VersionedContracts,
         layout: &ProjectPathsConfig,
-    ) -> Result<WrittenArtifacts<Self::Artifact>> {
+    ) -> Result<Artifacts<Self::Artifact>> {
         MinimalCombinedArtifacts::on_output(output, layout)
     }
 
@@ -375,19 +422,4 @@ impl ArtifactOutput for MinimalCombinedArtifactsHardhatFallback {
     fn contract_to_artifact(file: &str, name: &str, contract: Contract) -> Self::Artifact {
         MinimalCombinedArtifacts::contract_to_artifact(file, name, contract)
     }
-}
-
-/// Writes the given contract to the `out` path creating all parent directories
-fn write_contract<T: Serialize>(out: &Path, artifact: &T) -> Result<()> {
-    if let Some(parent) = out.parent() {
-        fs::create_dir_all(parent).map_err(|err| {
-            SolcError::msg(format!(
-                "Failed to create artifact parent folder \"{}\": {}",
-                parent.display(),
-                err
-            ))
-        })?;
-    }
-    fs::write(out, serde_json::to_vec_pretty(artifact)?).map_err(|err| SolcError::io(err, out))?;
-    Ok(())
 }

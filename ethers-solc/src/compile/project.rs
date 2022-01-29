@@ -74,7 +74,7 @@
 //! will then look in `/project/dapp-bin/library/iterable_mapping.sol`
 
 use crate::{
-    artifact_output::WrittenArtifacts,
+    artifact_output::Artifacts,
     artifacts::{Settings, VersionedSources},
     cache::CacheEntry,
     error::Result,
@@ -585,7 +585,7 @@ impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
     /// Returns all the _cached_ artifacts.
     fn finish(
         self,
-        _written_artifacts: &WrittenArtifacts<T::Artifact>,
+        _written_artifacts: &Artifacts<T::Artifact>,
     ) -> Result<BTreeMap<PathBuf, T::Artifact>> {
         match self {
             ArtifactsCache::Ephemeral => Ok(Default::default()),

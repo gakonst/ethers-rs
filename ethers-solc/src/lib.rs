@@ -455,6 +455,7 @@ impl<Artifacts: ArtifactOutput> ProjectBuilder<Artifacts> {
             ignored_error_codes,
             allowed_paths,
             solc_jobs,
+            offline,
             ..
         } = self;
         ProjectBuilder {
@@ -464,6 +465,7 @@ impl<Artifacts: ArtifactOutput> ProjectBuilder<Artifacts> {
             cached,
             no_artifacts,
             auto_detect,
+            offline,
             artifacts: PhantomData::default(),
             ignored_error_codes,
             allowed_paths,
@@ -503,6 +505,7 @@ impl<Artifacts: ArtifactOutput> ProjectBuilder<Artifacts> {
             ignored_error_codes,
             mut allowed_paths,
             solc_jobs,
+            offline,
         } = self;
 
         let solc = solc.unwrap_or_default();
@@ -526,6 +529,7 @@ impl<Artifacts: ArtifactOutput> ProjectBuilder<Artifacts> {
             ignored_error_codes,
             allowed_lib_paths: allowed_paths.try_into()?,
             solc_jobs: solc_jobs.unwrap_or_else(::num_cpus::get),
+            offline,
         })
     }
 }
@@ -539,6 +543,7 @@ impl<Artifacts: ArtifactOutput> Default for ProjectBuilder<Artifacts> {
             cached: true,
             no_artifacts: false,
             auto_detect: true,
+            offline: false,
             artifacts: PhantomData::default(),
             ignored_error_codes: Vec::new(),
             allowed_paths: vec![],

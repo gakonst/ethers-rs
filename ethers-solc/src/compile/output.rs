@@ -3,7 +3,7 @@
 use crate::{
     artifacts::{CompactContractRef, Contract, Error, SourceFile, SourceFiles},
     contracts::{VersionedContract, VersionedContracts},
-    ArtifactOutput, CompilerOutput, WrittenArtifacts,
+    ArtifactOutput, Artifacts, CompilerOutput,
 };
 use semver::Version;
 use std::{collections::BTreeMap, fmt, path::PathBuf};
@@ -17,7 +17,7 @@ pub struct ProjectCompileOutput<T: ArtifactOutput> {
     /// See [`CompilerSources::compile`]
     pub(crate) compiler_output: AggregatedCompilerOutput,
     /// all artifact files from `output` that were written
-    pub(crate) written_artifacts: WrittenArtifacts<T::Artifact>,
+    pub(crate) written_artifacts: Artifacts<T::Artifact>,
     /// All artifacts that were read from cache
     pub(crate) cached_artifacts: BTreeMap<PathBuf, T::Artifact>,
     /// errors that should be omitted
