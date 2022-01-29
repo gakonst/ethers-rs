@@ -5,7 +5,6 @@ pub mod sourcemap;
 
 pub use artifacts::{CompilerInput, CompilerOutput, EvmVersion};
 
-
 mod artifact_output;
 pub mod cache;
 pub mod hh;

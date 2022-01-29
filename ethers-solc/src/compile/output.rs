@@ -1,14 +1,11 @@
 //! The output of a compiled project
 
 use crate::{
-    artifacts::{
-        CompactContractRef, Contract, Error, SourceFile, SourceFiles, VersionedContract,
-        VersionedContracts,
-    },
+    artifacts::{CompactContractRef, Contract, Error, SourceFile, SourceFiles},
+    contracts::{VersionedContract, VersionedContracts},
     ArtifactOutput, CompilerOutput, WrittenArtifacts,
 };
 use semver::Version;
-use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, fmt, path::PathBuf};
 
 /// Contains a mixture of already compiled/cached artifacts and the input set of sources that still
@@ -183,7 +180,7 @@ impl AggregatedCompilerOutput {
         self.sources.extend(output.sources);
 
         for (file_name, new_contracts) in output.contracts {
-            let contracts = self.contracts.entry(file_name).or_default();
+            let contracts = self.contracts.as_mut().entry(file_name).or_default();
             for (contract_name, contract) in new_contracts {
                 let versioned = contracts.entry(contract_name).or_default();
                 versioned.push(VersionedContract { contract, version: version.clone() });
@@ -204,10 +201,7 @@ impl AggregatedCompilerOutput {
     /// # }
     /// ```
     pub fn find(&self, contract: impl AsRef<str>) -> Option<CompactContractRef> {
-        let contract_name = contract.as_ref();
-        self.contracts_iter().find_map(|(name, contract)| {
-            (name == contract_name).then(|| CompactContractRef::from(contract))
-        })
+        self.contracts.find(contract)
     }
 
     /// Removes the _first_ contract with the given name from the set
@@ -223,45 +217,23 @@ impl AggregatedCompilerOutput {
     /// # }
     /// ```
     pub fn remove(&mut self, contract: impl AsRef<str>) -> Option<Contract> {
-        let contract_name = contract.as_ref();
-        self.contracts.values_mut().find_map(|all_contracts| {
-            let mut contract = None;
-            if let Some((c, mut contracts)) = all_contracts.remove_entry(contract_name) {
-                if !contracts.is_empty() {
-                    contract = Some(contracts.remove(0).contract);
-                }
-                if !contracts.is_empty() {
-                    all_contracts.insert(c, contracts);
-                }
-            }
-            contract
-        })
+        self.contracts.remove(contract)
     }
 
     /// Iterate over all contracts and their names
     pub fn contracts_iter(&self) -> impl Iterator<Item = (&String, &Contract)> {
-        self.contracts.values().flat_map(|c| {
-            c.iter().flat_map(|(name, c)| c.iter().map(move |c| (name, &c.contract)))
-        })
+        self.contracts.contracts_iter()
     }
 
     /// Iterate over all contracts and their names
     pub fn contracts_into_iter(self) -> impl Iterator<Item = (String, Contract)> {
-        self.contracts.into_values().flat_map(|c| {
-            c.into_iter()
-                .flat_map(|(name, c)| c.into_iter().map(move |c| (name.clone(), c.contract)))
-        })
+        self.contracts.into_contracts()
     }
 
     /// Given the contract file's path and the contract's name, tries to return the contract's
     /// bytecode, runtime bytecode, and abi
     pub fn get(&self, path: &str, contract: &str) -> Option<CompactContractRef> {
-        self.contracts
-            .get(path)
-            .and_then(|contracts| {
-                contracts.get(contract).and_then(|c| c.get(0).map(|c| &c.contract))
-            })
-            .map(CompactContractRef::from)
+        self.contracts.get(path, contract)
     }
 
     /// Returns the output's source files and contracts separately, wrapped in helper types that
@@ -276,15 +248,10 @@ impl AggregatedCompilerOutput {
     /// let (sources, contracts) = output.split();
     /// # }
     /// ```
-    pub fn split(self) -> (SourceFiles, OutputContracts) {
-        // (SourceFiles(self.sources), OutputContracts(self.contracts))
-        todo!()
+    pub fn split(self) -> (SourceFiles, VersionedContracts) {
+        (SourceFiles(self.sources), self.contracts)
     }
 }
-
-/// A wrapper helper type for the `Contracts` type alias
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-pub struct OutputContracts(pub usize);
 
 /// Helper type to implement display for solc errors
 #[derive(Clone, Debug)]

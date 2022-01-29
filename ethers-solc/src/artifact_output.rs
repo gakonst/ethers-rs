@@ -1,10 +1,8 @@
 //! Output artifact handling
 
 use crate::{
-    artifacts::{
-        CompactContract, CompactContractBytecode, Contract, FileToContractsMap, VersionedContract,
-        VersionedContracts,
-    },
+    artifacts::{CompactContract, CompactContractBytecode, Contract, FileToContractsMap},
+    contracts::{VersionedContract, VersionedContracts},
     error::Result,
     output::AggregatedCompilerOutput,
     HardhatArtifact, ProjectPathsConfig, SolcError,
@@ -174,7 +172,7 @@ pub trait ArtifactOutput {
             .map_err(|err| SolcError::msg(format!("Failed to create artifacts dir: {}", err)))?;
         let mut artifacts = ArtifactsMap::new();
 
-        for (file, contracts) in contracts.iter() {
+        for (file, contracts) in contracts.as_ref().iter() {
             let mut entries = BTreeMap::new();
             for (name, versioned_contracts) in contracts {
                 let mut contracts = Vec::with_capacity(versioned_contracts.len());

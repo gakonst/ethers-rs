@@ -32,9 +32,6 @@ pub type FileToContractsMap<T> = BTreeMap<String, BTreeMap<String, T>>;
 /// file -> (contract name -> Contract)
 pub type Contracts = FileToContractsMap<Contract>;
 
-/// file -> [(contract name  -> Contract + solc version)]
-pub type VersionedContracts = FileToContractsMap<Vec<VersionedContract>>;
-
 /// An ordered list of files and their source
 pub type Sources = BTreeMap<PathBuf, Source>;
 
@@ -561,17 +558,6 @@ impl CompilerOutput {
     }
 
     /// Finds the _first_ contract with the given name
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use ethers_solc::Project;
-    /// use ethers_solc::artifacts::*;
-    /// # fn demo(project: Project) {
-    /// let output = project.compile().unwrap().output();
-    /// let contract = output.find("Greeter").unwrap();
-    /// # }
-    /// ```
     pub fn find(&self, contract: impl AsRef<str>) -> Option<CompactContractRef> {
         let contract_name = contract.as_ref();
         self.contracts_iter().find_map(|(name, contract)| {
@@ -580,17 +566,6 @@ impl CompilerOutput {
     }
 
     /// Finds the first contract with the given name and removes it from the set
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use ethers_solc::Project;
-    /// use ethers_solc::artifacts::*;
-    /// # fn demo(project: Project) {
-    /// let mut output = project.compile().unwrap().output();
-    /// let contract = output.remove("Greeter").unwrap();
-    /// # }
-    /// ```
     pub fn remove(&mut self, contract: impl AsRef<str>) -> Option<Contract> {
         let contract_name = contract.as_ref();
         self.contracts.values_mut().find_map(|c| c.remove(contract_name))
@@ -617,16 +592,6 @@ impl CompilerOutput {
 
     /// Returns the output's source files and contracts separately, wrapped in helper types that
     /// provide several helper methods
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use ethers_solc::Project;
-    /// # fn demo(project: Project) {
-    /// let output = project.compile().unwrap().output();
-    /// let (sources, contracts) = output.split();
-    /// # }
-    /// ```
     pub fn split(self) -> (SourceFiles, OutputContracts) {
         (SourceFiles(self.sources), OutputContracts(self.contracts))
     }
@@ -638,17 +603,6 @@ pub struct OutputContracts(pub Contracts);
 
 impl OutputContracts {
     /// Returns an iterator over all contracts and their source names.
-    ///
-    /// ```
-    /// use std::collections::BTreeMap;
-    /// use ethers_solc::{ artifacts::*, Artifact };
-    /// # fn demo(contracts: OutputContracts) {
-    /// let contracts: BTreeMap<String, CompactContractSome> = contracts
-    ///     .into_contracts()
-    ///     .map(|(k, c)| (k, c.into_compact_contract().unwrap()))
-    ///     .collect();
-    /// # }
-    /// ```
     pub fn into_contracts(self) -> impl Iterator<Item = (String, Contract)> {
         self.0.into_values().flatten()
     }
@@ -659,17 +613,6 @@ impl OutputContracts {
     }
 
     /// Finds the _first_ contract with the given name
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use ethers_solc::Project;
-    /// use ethers_solc::artifacts::*;
-    /// # fn demo(project: Project) {
-    /// let output = project.compile().unwrap().output();
-    /// let contract = output.find("Greeter").unwrap();
-    /// # }
-    /// ```
     pub fn find(&self, contract: impl AsRef<str>) -> Option<CompactContractRef> {
         let contract_name = contract.as_ref();
         self.contracts_iter().find_map(|(name, contract)| {
@@ -678,28 +621,10 @@ impl OutputContracts {
     }
 
     /// Finds the first contract with the given name and removes it from the set
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use ethers_solc::Project;
-    /// use ethers_solc::artifacts::*;
-    /// # fn demo(project: Project) {
-    /// let (_, mut contracts) = project.compile().unwrap().output().split();
-    /// let contract = contracts.remove("Greeter").unwrap();
-    /// # }
-    /// ```
     pub fn remove(&mut self, contract: impl AsRef<str>) -> Option<Contract> {
         let contract_name = contract.as_ref();
         self.0.values_mut().find_map(|c| c.remove(contract_name))
     }
-}
-
-/// A contract and the compiler version used to compile it
-#[derive(Clone, Debug, PartialEq)]
-pub struct VersionedContract {
-    pub contract: Contract,
-    pub version: Version,
 }
 
 /// Represents a compiled solidity contract

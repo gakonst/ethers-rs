@@ -15,6 +15,7 @@ use std::{
     str::FromStr,
 };
 
+pub mod contracts;
 pub mod many;
 pub mod output;
 pub mod project;
