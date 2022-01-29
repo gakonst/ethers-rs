@@ -60,7 +60,7 @@ impl<T> WrittenArtifacts<T> {
         self,
     ) -> impl Iterator<Item = (String, T)> {
         self.0.into_values().flat_map(|contract_artifacts| {
-            contract_artifacts.into_iter().flat_map(|(contract_name, artifacts)| {
+            contract_artifacts.into_iter().flat_map(|(_contract_name, artifacts)| {
                 artifacts.into_iter().filter_map(|artifact| {
                     O::contract_name(&artifact.file).map(|name| {
                         (
@@ -80,7 +80,7 @@ impl<T> WrittenArtifacts<T> {
     /// Finds the first artifact `T` with a matching contract name
     pub fn find(&self, contract_name: impl AsRef<str>) -> Option<&T> {
         let contract_name = contract_name.as_ref();
-        self.0.iter().find_map(|(file, contracts)| {
+        self.0.iter().find_map(|(_file, contracts)| {
             contracts.get(contract_name).and_then(|c| c.get(0).map(|a| &a.artifact))
         })
     }
@@ -91,7 +91,7 @@ impl<T> WrittenArtifacts<T> {
     /// returns the first artifact in that set
     pub fn remove(&mut self, contract_name: impl AsRef<str>) -> Option<T> {
         let contract_name = contract_name.as_ref();
-        self.0.iter_mut().find_map(|(file, contracts)| {
+        self.0.iter_mut().find_map(|(_file, contracts)| {
             let mut artifact = None;
             if let Some((c, mut artifacts)) = contracts.remove_entry(contract_name) {
                 if !artifacts.is_empty() {

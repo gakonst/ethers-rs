@@ -4,7 +4,7 @@ pub mod artifacts;
 pub mod sourcemap;
 
 pub use artifacts::{CompilerInput, CompilerOutput, EvmVersion};
-use std::collections::btree_map::BTreeMap;
+
 
 mod artifact_output;
 pub mod cache;
@@ -34,9 +34,7 @@ use crate::{
 };
 use error::Result;
 use std::{
-    borrow::Cow,
     convert::TryInto,
-    fmt,
     marker::PhantomData,
     path::{Path, PathBuf},
 };

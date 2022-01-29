@@ -15,7 +15,6 @@ use std::{
 use crate::{
     compile::*,
     error::SolcIoError,
-    output::AggregatedCompilerOutput,
     remappings::Remapping,
     sourcemap::{self, SourceMap, SyntaxError},
     utils,

@@ -9,7 +9,7 @@ use crate::{
 };
 use semver::Version;
 use serde::{Deserialize, Serialize};
-use std::{borrow::Cow, collections::BTreeMap, fmt, path::PathBuf};
+use std::{collections::BTreeMap, fmt, path::PathBuf};
 
 /// Contains a mixture of already compiled/cached artifacts and the input set of sources that still
 /// need to be compiled.
@@ -241,7 +241,7 @@ impl AggregatedCompilerOutput {
     /// Iterate over all contracts and their names
     pub fn contracts_iter(&self) -> impl Iterator<Item = (&String, &Contract)> {
         self.contracts.values().flat_map(|c| {
-            c.into_iter().flat_map(|(name, c)| c.into_iter().map(move |c| (name, &c.contract)))
+            c.iter().flat_map(|(name, c)| c.iter().map(move |c| (name, &c.contract)))
         })
     }
 
