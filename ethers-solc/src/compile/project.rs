@@ -80,8 +80,8 @@ use crate::{
     error::Result,
     output::AggregatedCompilerOutput,
     resolver::GraphEdges,
-    utils, ArtifactOutput, CompilerInput, Graph, Project, ProjectCompileOutput2,
-    ProjectPathsConfig, SolFilesCache, Solc, SolcConfig, Source, SourceUnitNameMap, Sources,
+    utils, ArtifactOutput, CompilerInput, Graph, Project, ProjectCompileOutput, ProjectPathsConfig,
+    SolFilesCache, Solc, SolcConfig, Source, SourceUnitNameMap, Sources,
 };
 use rayon::prelude::*;
 use semver::Version;
@@ -169,7 +169,7 @@ impl<'a, T: ArtifactOutput> ProjectCompiler<'a, T> {
     /// let project = Project::builder().build().unwrap();
     /// let output = project.compile().unwrap();
     /// ```
-    pub fn compile(self) -> Result<ProjectCompileOutput2<T>> {
+    pub fn compile(self) -> Result<ProjectCompileOutput<T>> {
         let Self { edges, project, mut sources } = self;
         // the map that keeps track of the mapping of resolved solidity file paths -> source unit
         // names
@@ -196,7 +196,7 @@ impl<'a, T: ArtifactOutput> ProjectCompiler<'a, T> {
         // compiled but reused
         let cached_artifacts = cache.finish(&written_artifacts)?;
 
-        Ok(ProjectCompileOutput2 {
+        Ok(ProjectCompileOutput {
             compiler_output: output,
             written_artifacts,
             cached_artifacts,

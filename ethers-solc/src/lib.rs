@@ -15,7 +15,7 @@ pub use hh::{HardhatArtifact, HardhatArtifacts};
 pub use resolver::Graph;
 
 mod compile;
-pub use compile::{output::ProjectCompileOutput2, *};
+pub use compile::{output::ProjectCompileOutput, *};
 
 mod config;
 pub use config::{AllowedLibPaths, PathStyle, ProjectPathsConfig, SolcConfig};
@@ -177,7 +177,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
     /// # }
     /// ```
     #[tracing::instrument(skip_all, name = "compile")]
-    pub fn compile(&self) -> Result<ProjectCompileOutput2<Artifacts>> {
+    pub fn compile(&self) -> Result<ProjectCompileOutput<Artifacts>> {
         let sources = self.paths.read_input_files()?;
         tracing::trace!("found {} sources to compile: {:?}", sources.len(), sources.keys());
 
@@ -219,7 +219,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
     /// # }
     /// ```
     #[cfg(all(feature = "svm", feature = "async"))]
-    pub fn svm_compile(&self, sources: Sources) -> Result<ProjectCompileOutput2<Artifacts>> {
+    pub fn svm_compile(&self, sources: Sources) -> Result<ProjectCompileOutput<Artifacts>> {
         project::ProjectCompiler::with_sources(self, sources)?.compile()
     }
 
@@ -250,7 +250,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         &self,
         solc: &Solc,
         sources: Sources,
-    ) -> Result<ProjectCompileOutput2<Artifacts>> {
+    ) -> Result<ProjectCompileOutput<Artifacts>> {
         project::ProjectCompiler::with_sources_and_solc(self, sources, solc.clone())?.compile()
     }
 

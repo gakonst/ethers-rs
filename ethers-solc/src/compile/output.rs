@@ -11,7 +11,7 @@ use std::{collections::BTreeMap, fmt, path::PathBuf};
 /// Contains a mixture of already compiled/cached artifacts and the input set of sources that still
 /// need to be compiled.
 #[derive(Debug, Clone, PartialEq, Default)]
-pub struct ProjectCompileOutput2<T: ArtifactOutput> {
+pub struct ProjectCompileOutput<T: ArtifactOutput> {
     /// contains the aggregated `CompilerOutput`
     ///
     /// See [`CompilerSources::compile`]
@@ -24,7 +24,7 @@ pub struct ProjectCompileOutput2<T: ArtifactOutput> {
     pub(crate) ignored_error_codes: Vec<u64>,
 }
 
-impl<T: ArtifactOutput> ProjectCompileOutput2<T> {
+impl<T: ArtifactOutput> ProjectCompileOutput<T> {
     /// All artifacts together with their contract file name and name `<file name>:<name>`
     ///
     /// # Example
@@ -101,7 +101,7 @@ impl<T: ArtifactOutput> ProjectCompileOutput2<T> {
     }
 }
 
-impl<T: ArtifactOutput> ProjectCompileOutput2<T>
+impl<T: ArtifactOutput> ProjectCompileOutput<T>
 where
     T::Artifact: Clone,
 {
@@ -117,7 +117,7 @@ where
     }
 }
 
-impl<T: ArtifactOutput> fmt::Display for ProjectCompileOutput2<T> {
+impl<T: ArtifactOutput> fmt::Display for ProjectCompileOutput<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.compiler_output.is_empty() {
             f.write_str("Nothing to compile")
