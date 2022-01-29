@@ -65,6 +65,8 @@ pub struct Project<Artifacts: ArtifactOutput = MinimalCombinedArtifacts> {
     pub allowed_lib_paths: AllowedLibPaths,
     /// Maximum number of `solc` processes to run simultaneously.
     solc_jobs: usize,
+    /// Offline mode, if set, network access (download solc) is disallowed
+    offline: bool,
 }
 
 impl Project {
@@ -326,6 +328,8 @@ pub struct ProjectBuilder<Artifacts: ArtifactOutput = MinimalCombinedArtifacts> 
     no_artifacts: bool,
     /// Whether automatic solc version detection is enabled
     auto_detect: bool,
+    /// Use offline mode
+    offline: bool,
     artifacts: PhantomData<Artifacts>,
     /// Which error codes to ignore
     pub ignored_error_codes: Vec<u64>,
@@ -377,6 +381,21 @@ impl<Artifacts: ArtifactOutput> ProjectBuilder<Artifacts> {
     #[must_use]
     pub fn set_cached(mut self, cached: bool) -> Self {
         self.cached = cached;
+        self
+    }
+
+    /// Activates offline mode
+    ///
+    /// Prevents network possible access to download/check solc installs
+    #[must_use]
+    pub fn offline(self) -> Self {
+        self.set_cached(false)
+    }
+
+    /// Sets the offline status
+    #[must_use]
+    pub fn set_offline(mut self, offline: bool) -> Self {
+        self.offline = offline;
         self
     }
 

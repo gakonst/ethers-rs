@@ -125,7 +125,7 @@ impl<'a, T: ArtifactOutput> ProjectCompiler<'a, T> {
     #[cfg(all(feature = "svm", feature = "async"))]
     pub fn with_sources(project: &'a Project<T>, sources: Sources) -> Result<Self> {
         let graph = Graph::resolve_sources(&project.paths, sources)?;
-        let (versions, edges) = graph.into_sources_by_version(!project.auto_detect)?;
+        let (versions, edges) = graph.into_sources_by_version(project.offline)?;
 
         let sources_by_version = versions.get(&project.allowed_lib_paths)?;
 
