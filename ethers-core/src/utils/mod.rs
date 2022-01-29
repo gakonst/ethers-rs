@@ -25,11 +25,11 @@ pub use rlp;
 /// Re-export hex
 pub use hex;
 
-use crate::types::{Address, Bytes, U256};
+use crate::types::{Address, Bytes, I256, U256};
 use elliptic_curve::sec1::ToEncodedPoint;
 use ethabi::ethereum_types::FromDecStrErr;
 use k256::{ecdsa::SigningKey, PublicKey as K256PublicKey};
-use std::{convert::TryInto, ops::Neg};
+use std::convert::{TryFrom, TryInto};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -335,15 +335,13 @@ fn estimate_priority_fee(rewards: Vec<Vec<U256>>) -> U256 {
     let mut rewards_copy = rewards.clone();
     rewards_copy.rotate_left(1);
 
-    let mut percentage_change: Vec<i64> = rewards
+    let mut percentage_change: Vec<I256> = rewards
         .iter()
         .zip(rewards_copy.iter())
         .map(|(a, b)| {
-            if b > a {
-                ((b - a).low_u32() as i64 * 100) / (a.low_u32() as i64)
-            } else {
-                (((a - b).low_u32() as i64 * 100) / (a.low_u32() as i64)).neg()
-            }
+            let a = I256::try_from(*a).expect("priority fee overflow");
+            let b = I256::try_from(*b).expect("priority fee overflow");
+            ((b - a) * 100.into()) / a
         })
         .collect();
     percentage_change.pop();
@@ -354,7 +352,7 @@ fn estimate_priority_fee(rewards: Vec<Vec<U256>>) -> U256 {
 
     // If we encountered a big change in fees at a certain position, then consider only
     // the values >= it.
-    let values = if *max_change >= EIP1559_FEE_ESTIMATION_THRESHOLD_MAX_CHANGE &&
+    let values = if *max_change >= EIP1559_FEE_ESTIMATION_THRESHOLD_MAX_CHANGE.into() &&
         (max_change_index >= (rewards.len() / 2))
     {
         rewards[max_change_index..].to_vec()
@@ -682,5 +680,11 @@ mod tests {
 
         // The median should be taken because none of the changes are big enough to ignore values.
         assert_eq!(estimate_priority_fee(rewards), 102_000_000_000u64.into());
+
+        // Ensure fee estimation doesn't panic when overflowing a u32. This had been a divide by
+        // zero.
+        let overflow = U256::from(u32::MAX) + 1;
+        let rewards_overflow: Vec<Vec<U256>> = vec![vec![overflow], vec![overflow]];
+        assert_eq!(estimate_priority_fee(rewards_overflow), overflow);
     }
 }
