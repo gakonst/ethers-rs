@@ -6,7 +6,7 @@ use crate::{
     ArtifactOutput, Artifacts, CompilerOutput,
 };
 use semver::Version;
-use std::{collections::BTreeMap, fmt, path::PathBuf};
+use std::{collections::BTreeMap, fmt};
 
 /// Contains a mixture of already compiled/cached artifacts and the input set of sources that still
 /// need to be compiled.
@@ -19,7 +19,7 @@ pub struct ProjectCompileOutput<T: ArtifactOutput> {
     /// all artifact files from `output` that were written
     pub(crate) written_artifacts: Artifacts<T::Artifact>,
     /// All artifacts that were read from cache
-    pub(crate) cached_artifacts: BTreeMap<PathBuf, T::Artifact>,
+    pub(crate) cached_artifacts: Artifacts<T::Artifact>,
     /// errors that should be omitted
     pub(crate) ignored_error_codes: Vec<u64>,
 }
@@ -40,14 +40,7 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
     // TODO add ArtifactId (filename, contract name, version?)
     pub fn into_artifacts(self) -> impl Iterator<Item = (String, T::Artifact)> {
         let Self { cached_artifacts, written_artifacts, .. } = self;
-        cached_artifacts
-            .into_iter()
-            .filter_map(|(path, art)| {
-                T::contract_name(&path).map(|name| {
-                    (format!("{}:{}", path.file_name().unwrap().to_string_lossy(), name), art)
-                })
-            })
-            .chain(written_artifacts.into_artifacts::<T>())
+        cached_artifacts.into_artifacts::<T>().chain(written_artifacts.into_artifacts::<T>())
     }
 
     /// Get the (merged) solc compiler output
@@ -90,14 +83,7 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
         if let artifact @ Some(_) = self.written_artifacts.remove(contract_name) {
             return artifact
         }
-        let key = self
-            .cached_artifacts
-            .iter()
-            .find_map(|(path, _)| {
-                T::contract_name(path).filter(|name| name == contract_name).map(|_| path)
-            })?
-            .clone();
-        self.cached_artifacts.remove(&key)
+        self.cached_artifacts.remove(contract_name)
     }
 }
 
@@ -111,9 +97,7 @@ where
         if let artifact @ Some(_) = self.written_artifacts.find(contract_name) {
             return artifact
         }
-        self.cached_artifacts.iter().find_map(|(path, art)| {
-            T::contract_name(path).filter(|name| name == contract_name).map(|_| art)
-        })
+        self.cached_artifacts.find(contract_name)
     }
 }
 
@@ -222,7 +206,7 @@ impl AggregatedCompilerOutput {
 
     /// Iterate over all contracts and their names
     pub fn contracts_iter(&self) -> impl Iterator<Item = (&String, &Contract)> {
-        self.contracts.contracts_iter()
+        self.contracts.contracts()
     }
 
     /// Iterate over all contracts and their names

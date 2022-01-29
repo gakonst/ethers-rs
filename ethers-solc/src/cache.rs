@@ -3,7 +3,7 @@ use crate::{
     artifacts::{Contracts, Sources},
     config::SolcConfig,
     error::{Result, SolcError},
-    ArtifactOutput, Source,
+    Artifacts, Source,
 };
 use semver::Version;
 use serde::{Deserialize, Serialize};
@@ -13,9 +13,6 @@ use std::{
     path::{Path, PathBuf},
     time::{Duration, UNIX_EPOCH},
 };
-
-/// Hardhat format version
-const HH_FORMAT_VERSION: &str = "hh-sol-cache-2";
 
 /// ethers-rs format version
 ///
@@ -104,16 +101,14 @@ impl SolFilesCache {
     ///
     /// ```
     /// use ethers_solc::cache::SolFilesCache;
-    /// use ethers_solc::Project;
+    /// use ethers_solc::{MinimalCombinedArtifacts, Project};
     ///
     /// let project = Project::builder().build().unwrap();
-    /// let cache = SolFilesCache::read(project.cache_path()).unwrap();
-    /// let artifacts = cache.read_artifacts::<Project>(project.artifacts_path()).unwrap();
+    /// let mut cache = SolFilesCache::read(project.cache_path()).unwrap();
+    /// cache.join_all(project.artifacts_path());
+    /// let artifacts = cache.read_artifacts::<MinimalCombinedArtifacts>().unwrap();
     /// ```
-    pub fn read_artifacts<T: ArtifactOutput>(
-        &self,
-        _artifacts_root: &Path,
-    ) -> Result<BTreeMap<PathBuf, T::Artifact>> {
+    pub fn read_artifacts<Artifact: Serialize>(&self) -> Result<Artifacts<Artifact>> {
         todo!()
         // let mut artifacts = BTreeMap::default();
         // for (file, entry) in &self.files {
@@ -220,11 +215,11 @@ impl CacheEntry {
 
     /// Iterator that yields all artifact files
     pub fn artifacts(&self) -> impl Iterator<Item = &PathBuf> {
-        self.artifacts.values().flat_map(|artifacts| artifacts.into_iter())
+        self.artifacts.values().flat_map(|artifacts| artifacts.iter())
     }
 
     pub fn artifacts_mut(&mut self) -> impl Iterator<Item = &mut PathBuf> {
-        self.artifacts.values_mut().flat_map(|artifacts| artifacts.into_iter())
+        self.artifacts.values_mut().flat_map(|artifacts| artifacts.iter_mut())
     }
 
     /// Checks if all artifact files exist

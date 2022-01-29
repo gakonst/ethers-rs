@@ -354,7 +354,7 @@ struct Cache<'a, T: ArtifactOutput> {
     /// preexisting cache file
     cache: SolFilesCache,
     /// all already existing artifacts
-    cached_artifacts: BTreeMap<PathBuf, T::Artifact>,
+    cached_artifacts: Artifacts<T::Artifact>,
     /// relationship between all the files
     edges: &'a GraphEdges,
     /// how to configure solc
@@ -484,7 +484,10 @@ impl<'a, T: ArtifactOutput> Cache<'a, T> {
 
                 if let Some(artifacts) = entry.artifacts.get(version) {
                     // checks whether an artifact this file depends on was removed
-                    if artifacts.iter().any(|artifact_path| !self.has_artifact(artifact_path)) {
+                    if artifacts
+                        .iter()
+                        .any(|artifact_path| !self.cached_artifacts.has_artifact(artifact_path))
+                    {
                         tracing::trace!(
                             "missing linked artifacts for cached artifact \"{}\"",
                             file.display()
@@ -511,11 +514,6 @@ impl<'a, T: ArtifactOutput> Cache<'a, T> {
             }
         }
     }
-
-    /// Returns true if the artifact exists
-    fn has_artifact(&self, artifact_path: &Path) -> bool {
-        self.cached_artifacts.contains_key(artifact_path)
-    }
 }
 
 /// Abstraction over configured caching which can be either non-existent or an already loaded cache
@@ -541,11 +539,11 @@ impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
             // read all artifacts
             let cached_artifacts = if project.paths.artifacts.exists() {
                 tracing::trace!("reading artifacts from cache..");
-                let artifacts = cache.read_artifacts::<T>(&project.paths.artifacts)?;
-                tracing::trace!("read {} artifacts from cache", artifacts.len());
+                let artifacts = cache.read_artifacts::<T::Artifact>()?;
+                tracing::trace!("read {} artifacts from cache", artifacts.artifact_files().count());
                 artifacts
             } else {
-                BTreeMap::default()
+                Default::default()
             };
 
             let cache = Cache {
@@ -581,10 +579,7 @@ impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
     /// written to disk `written_artifacts`.
     ///
     /// Returns all the _cached_ artifacts.
-    fn finish(
-        self,
-        _written_artifacts: &Artifacts<T::Artifact>,
-    ) -> Result<BTreeMap<PathBuf, T::Artifact>> {
+    fn finish(self, _written_artifacts: &Artifacts<T::Artifact>) -> Result<Artifacts<T::Artifact>> {
         match self {
             ArtifactsCache::Ephemeral => Ok(Default::default()),
             ArtifactsCache::Cached(cache) => {

@@ -31,7 +31,7 @@ impl VersionedContracts {
     /// ```
     pub fn find(&self, contract: impl AsRef<str>) -> Option<CompactContractRef> {
         let contract_name = contract.as_ref();
-        self.contracts_iter().find_map(|(name, contract)| {
+        self.contracts().find_map(|(name, contract)| {
             (name == contract_name).then(|| CompactContractRef::from(contract))
         })
     }
@@ -76,7 +76,7 @@ impl VersionedContracts {
     }
 
     /// Iterate over all contracts and their names
-    pub fn contracts_iter(&self) -> impl Iterator<Item = (&String, &Contract)> {
+    pub fn contracts(&self) -> impl Iterator<Item = (&String, &Contract)> {
         self.0
             .values()
             .flat_map(|c| c.iter().flat_map(|(name, c)| c.iter().map(move |c| (name, &c.contract))))

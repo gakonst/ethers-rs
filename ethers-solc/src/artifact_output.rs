@@ -108,13 +108,18 @@ impl<T> Artifacts<T> {
         self
     }
 
+    /// Returns true if this type contains an artifact with the given path
+    pub fn has_artifact(&self, artifact_path: &Path) -> bool {
+        self.artifact_files().any(|artifact| artifact.file == artifact_path)
+    }
+
     /// Iterate over all artifact files
     pub fn artifact_files(&self) -> impl Iterator<Item = &ArtifactFile<T>> {
-        self.0.values().flat_map(|c| c.values().flat_map(|artifacts| artifacts.into_iter()))
+        self.0.values().flat_map(|c| c.values().flat_map(|artifacts| artifacts.iter()))
     }
     /// Iterate over all artifact files
     pub fn artifact_files_mut(&mut self) -> impl Iterator<Item = &mut ArtifactFile<T>> {
-        self.0.values_mut().flat_map(|c| c.values_mut().flat_map(|artifacts| artifacts.into_iter()))
+        self.0.values_mut().flat_map(|c| c.values_mut().flat_map(|artifacts| artifacts.iter_mut()))
     }
 
     /// Returns an iterator over _all_ artifacts and `<file name:contract name>`

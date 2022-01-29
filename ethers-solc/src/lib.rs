@@ -577,7 +577,7 @@ mod tests {
         assert!(!compiled.has_compiler_errors());
         let contracts = compiled.output().contracts;
         // Contracts A to F
-        assert_eq!(contracts.keys().count(), 5);
+        assert_eq!(contracts.contracts().count(), 5);
     }
 
     #[test]
@@ -604,7 +604,7 @@ mod tests {
         let compiled = project.compile().unwrap();
         assert!(!compiled.has_compiler_errors());
         let contracts = compiled.output().contracts;
-        assert_eq!(contracts.keys().count(), 3);
+        assert_eq!(contracts.contracts().count(), 3);
     }
 
     #[test]
@@ -623,6 +623,6 @@ mod tests {
         let compiled = project.compile().unwrap();
         assert!(!compiled.has_compiler_errors());
         let contracts = compiled.output().contracts;
-        assert_eq!(contracts.keys().count(), 2);
+        assert_eq!(contracts.contracts().count(), 2);
     }
 }
