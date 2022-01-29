@@ -95,15 +95,17 @@ impl<T: Serialize> Artifacts<T> {
 
 impl<T> Artifacts<T> {
     /// Sets the artifact files location to `root` adjoined to `self.file`.
-    pub fn join_all(&mut self, root: impl AsRef<Path>) {
+    pub fn join_all(&mut self, root: impl AsRef<Path>) -> &mut Self {
         let root = root.as_ref();
-        self.artifact_files_mut().for_each(|artifact| artifact.join(root))
+        self.artifact_files_mut().for_each(|artifact| artifact.join(root));
+        self
     }
 
     /// Removes `base` from all artifacts
-    pub fn strip_prefix_all(&mut self, base: impl AsRef<Path>) {
+    pub fn strip_prefix_all(&mut self, base: impl AsRef<Path>) -> &mut Self {
         let base = base.as_ref();
-        self.artifact_files_mut().for_each(|artifact| artifact.strip_prefix(base))
+        self.artifact_files_mut().for_each(|artifact| artifact.strip_prefix(base));
+        self
     }
 
     /// Iterate over all artifact files

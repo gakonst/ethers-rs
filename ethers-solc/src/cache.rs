@@ -36,37 +36,19 @@ pub struct SolFilesCache {
 }
 
 impl SolFilesCache {
+    /// Create a new cache instance with the given files
     pub fn new(files: BTreeMap<PathBuf, CacheEntry>) -> Self {
         Self { format: ETHERS_FORMAT_VERSION.to_string(), files }
-    }
-
-    /// # Example
-    ///
-    /// Autodetect solc version and default settings
-    ///
-    /// ```no_run
-    /// use ethers_solc::artifacts::Source;
-    /// use ethers_solc::cache::SolFilesCache;
-    /// let files = Source::read_all_from("./sources").unwrap();
-    /// let config = SolFilesCache::builder().insert_files(files, None).unwrap();
-    /// ```
-    pub fn builder() -> SolFilesCacheBuilder {
-        SolFilesCacheBuilder::default()
-    }
-
-    /// Whether this cache's format is the hardhat format identifier
-    pub fn is_hardhat_format(&self) -> bool {
-        self.format == HH_FORMAT_VERSION
-    }
-
-    /// Whether this cache's format is our custom format identifier
-    pub fn is_ethers_format(&self) -> bool {
-        self.format == ETHERS_FORMAT_VERSION
     }
 
     /// Returns the corresponding `CacheEntry` for the file if it exists
     pub fn entry(&self, file: impl AsRef<Path>) -> Option<&CacheEntry> {
         self.files.get(file.as_ref())
+    }
+
+    /// Returns the corresponding `CacheEntry` for the file if it exists
+    pub fn entry_mut(&mut self, file: impl AsRef<Path>) -> Option<&mut CacheEntry> {
+        self.files.get_mut(file.as_ref())
     }
 
     /// Reads the cache json file from the given path
@@ -91,17 +73,29 @@ impl SolFilesCache {
         Ok(())
     }
 
+    /// Sets the artifact files location to `base` adjoined to the `CachEntries` artifacts.
+    pub fn join_all(&mut self, base: impl AsRef<Path>) -> &mut Self {
+        let base = base.as_ref();
+        self.files.values_mut().for_each(|entry| entry.join(base));
+        self
+    }
+
+    /// Removes `base` from all artifact file paths
+    pub fn strip_prefix_all(&mut self, base: impl AsRef<Path>) -> &mut Self {
+        let base = base.as_ref();
+        self.files.values_mut().for_each(|entry| entry.strip_prefix(base));
+        self
+    }
+
+    /// Removes all `CacheEntry` which source files are missing
     pub fn remove_missing_files(&mut self) {
         tracing::trace!("remove non existing files from cache");
-        self.files.retain(|file, _| Path::new(file).exists())
+        self.files.retain(|file, _| file.exists())
     }
 
     /// Checks if all artifact files exist
-    pub fn all_artifacts_exist<T: ArtifactOutput>(&self, _artifacts_root: &Path) -> bool {
-        // self.files.iter().all(|(file, entry)| {
-        //     entry.artifacts.iter().all(|name| T::output_exists(file, name, artifacts_root))
-        // })
-        todo!()
+    pub fn all_artifacts_exist(&self) -> bool {
+        self.files.values().all(|entry| entry.all_artifacts_exist())
     }
 
     /// Reads all cached artifacts from disk using the given ArtifactOutput handler
@@ -175,93 +169,6 @@ impl Default for SolFilesCache {
     }
 }
 
-#[derive(Debug, Clone, Default)]
-pub struct SolFilesCacheBuilder {
-    format: Option<String>,
-    solc_config: Option<SolcConfig>,
-    root: Option<PathBuf>,
-}
-
-impl SolFilesCacheBuilder {
-    #[must_use]
-    pub fn format(mut self, format: impl Into<String>) -> Self {
-        self.format = Some(format.into());
-        self
-    }
-
-    #[must_use]
-    pub fn solc_config(mut self, solc_config: SolcConfig) -> Self {
-        self.solc_config = Some(solc_config);
-        self
-    }
-
-    #[must_use]
-    pub fn root(mut self, root: impl Into<PathBuf>) -> Self {
-        self.root = Some(root.into());
-        self
-    }
-
-    /// Creates a new `SolFilesCache` instance
-    ///
-    /// If a `cache_file` path was provided it's used as base.
-    pub fn insert_files(
-        self,
-        _sources: Sources,
-        _cache_file: Option<PathBuf>,
-    ) -> Result<SolFilesCache> {
-        todo!()
-        // let format = self.format.unwrap_or_else(|| ETHERS_FORMAT_VERSION.to_string());
-        // let solc_config = self.solc_config.unwrap_or_else(|| SolcConfig::builder().build());
-        //
-        // let root = self
-        //     .root
-        //     .map(Ok)
-        //     .unwrap_or_else(std::env::current_dir)
-        //     .map_err(|err| SolcError::io(err, "."))?;
-        //
-        // let mut files = BTreeMap::new();
-        // for (file, source) in sources {
-        //     let last_modification_date = CacheEntry::read_last_modification_date(&file)?;
-        //     let imports =
-        //         utils::find_import_paths(source.as_ref()).map(|m|
-        // m.as_str().to_owned()).collect();
-        //
-        //     let version_pragmas = utils::find_version_pragma(source.as_ref())
-        //         .map(|v| vec![v.as_str().to_string()])
-        //         .unwrap_or_default();
-        //
-        //     let entry = CacheEntry {
-        //         last_modification_date,
-        //         content_hash: source.content_hash(),
-        //         source_name: utils::source_name(&file, &root).into(),
-        //         solc_config: solc_config.clone(),
-        //         imports,
-        //         version_pragmas,
-        //         artifacts: vec![],
-        //     };
-        //     files.insert(file, entry);
-        // }
-        //
-        // let cache = if let Some(dest) = cache_file.as_ref().filter(|dest| dest.exists()) {
-        //     // read the existing cache and extend it by the files that changed
-        //     // (if we just wrote to the cache file, we'd overwrite the existing data)
-        //     let reader =
-        //         std::io::BufReader::new(File::open(dest).map_err(|err| SolcError::io(err,
-        // dest))?);     if let Ok(mut cache) = serde_json::from_reader::<_,
-        // SolFilesCache>(reader) {         cache.files.extend(files);
-        //         cache
-        //     } else {
-        //         tracing::error!("Failed to read existing cache file {}", dest.display());
-        //         SolFilesCache { format, files }
-        //     }
-        // } else {
-        //     SolFilesCache { format, files }
-        // };
-        //
-        // Ok(cache)
-    }
-}
-
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CacheEntry {
@@ -309,6 +216,36 @@ impl CacheEntry {
             .map_err(|err| SolcError::solc(err.to_string()))?
             .as_millis() as u64;
         Ok(last_modification_date)
+    }
+
+    /// Iterator that yields all artifact files
+    pub fn artifacts(&self) -> impl Iterator<Item = &PathBuf> {
+        self.artifacts.values().flat_map(|artifacts| artifacts.into_iter())
+    }
+
+    pub fn artifacts_mut(&mut self) -> impl Iterator<Item = &mut PathBuf> {
+        self.artifacts.values_mut().flat_map(|artifacts| artifacts.into_iter())
+    }
+
+    /// Checks if all artifact files exist
+    pub fn all_artifacts_exist(&self) -> bool {
+        self.artifacts().all(|p| p.exists())
+    }
+
+    /// Sets the artifact's paths to `base` adjoined to the artifact's `path`.
+    pub fn join(&mut self, base: impl AsRef<Path>) {
+        let base = base.as_ref();
+        self.artifacts_mut().for_each(|p| *p = p.join(base))
+    }
+
+    /// Removes `base` from the artifact's path
+    pub fn strip_prefix(&mut self, base: impl AsRef<Path>) {
+        let base = base.as_ref();
+        self.artifacts_mut().for_each(|p| {
+            if let Ok(prefix) = p.strip_prefix(base) {
+                *p = prefix.to_path_buf();
+            }
+        })
     }
 }
 

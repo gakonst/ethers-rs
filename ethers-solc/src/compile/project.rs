@@ -532,9 +532,7 @@ impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
             // read the cache file if it already exists
             let cache = if project.cache_path().exists() {
                 let mut cache = SolFilesCache::read(project.cache_path())?;
-                // TODO this should take the project dir, since we're storing surce unit ids
-                // starting at the project dir?
-                cache.remove_missing_files();
+                cache.join_all(project.artifacts_path()).remove_missing_files();
                 cache
             } else {
                 SolFilesCache::default()

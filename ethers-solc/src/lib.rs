@@ -66,7 +66,7 @@ pub struct Project<Artifacts: ArtifactOutput = MinimalCombinedArtifacts> {
     /// Maximum number of `solc` processes to run simultaneously.
     solc_jobs: usize,
     /// Offline mode, if set, network access (download solc) is disallowed
-    offline: bool,
+    pub offline: bool,
 }
 
 impl Project {
