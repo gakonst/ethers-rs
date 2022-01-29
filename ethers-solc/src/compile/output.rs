@@ -1,11 +1,15 @@
 //! The output of a compiled project
 
 use crate::{
-    artifacts::{Error, SourceFile, VersionedContract, VersionedContracts},
+    artifacts::{
+        CompactContractRef, Contract, Error, SourceFile, SourceFiles, VersionedContract,
+        VersionedContracts,
+    },
     ArtifactOutput, CompilerOutput, WrittenArtifacts,
 };
 use semver::Version;
-use std::{collections::BTreeMap, path::PathBuf};
+use serde::{Deserialize, Serialize};
+use std::{borrow::Cow, collections::BTreeMap, fmt, path::PathBuf};
 
 /// Contains a mixture of already compiled/cached artifacts and the input set of sources that still
 /// need to be compiled.
@@ -24,6 +28,31 @@ pub struct ProjectCompileOutput2<T: ArtifactOutput> {
 }
 
 impl<T: ArtifactOutput> ProjectCompileOutput2<T> {
+    /// All artifacts together with their contract file name and name `<file name>:<name>`
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use std::collections::btree_map::BTreeMap;
+    /// use ethers_solc::artifacts::CompactContractBytecode;
+    /// use ethers_solc::Project;
+    ///
+    /// let project = Project::builder().build().unwrap();
+    /// let contracts: BTreeMap<String, CompactContractBytecode> = project.compile().unwrap().into_artifacts().collect();
+    /// ```
+    // TODO add ArtifactId (filename, contract name, version?)
+    pub fn into_artifacts(self) -> impl Iterator<Item = (String, T::Artifact)> {
+        let Self { cached_artifacts, written_artifacts, .. } = self;
+        cached_artifacts
+            .into_iter()
+            .filter_map(|(path, art)| {
+                T::contract_name(&path).map(|name| {
+                    (format!("{}:{}", path.file_name().unwrap().to_string_lossy(), name), art)
+                })
+            })
+            .chain(written_artifacts.into_artifacts::<T>())
+    }
+
     /// Get the (merged) solc compiler output
     /// ```no_run
     /// use std::collections::btree_map::BTreeMap;
@@ -43,6 +72,11 @@ impl<T: ArtifactOutput> ProjectCompileOutput2<T> {
         self.compiler_output.is_empty()
     }
 
+    /// Whether this type does not contain compiled contracts
+    pub fn is_unchanged(&self) -> bool {
+        !self.has_compiled_contracts()
+    }
+
     /// Whether there were errors
     pub fn has_compiler_errors(&self) -> bool {
         self.compiler_output.has_error()
@@ -52,7 +86,50 @@ impl<T: ArtifactOutput> ProjectCompileOutput2<T> {
     pub fn has_compiler_warnings(&self) -> bool {
         self.compiler_output.has_warning(&self.ignored_error_codes)
     }
+
+    /// Finds the first contract with the given name and removes it from the set
+    pub fn remove(&mut self, contract_name: impl AsRef<str>) -> Option<T::Artifact> {
+        let contract_name = contract_name.as_ref();
+        if let artifact @ Some(_) = self.written_artifacts.remove(contract_name) {
+            return artifact
+        }
+        let key = self
+            .cached_artifacts
+            .iter()
+            .find_map(|(path, _)| {
+                T::contract_name(path).filter(|name| name == contract_name).map(|_| path)
+            })?
+            .clone();
+        self.cached_artifacts.remove(&key)
+    }
 }
+
+impl<T: ArtifactOutput> ProjectCompileOutput2<T>
+where
+    T::Artifact: Clone,
+{
+    /// Finds the first contract with the given name
+    pub fn find(&self, contract_name: impl AsRef<str>) -> Option<&T::Artifact> {
+        let contract_name = contract_name.as_ref();
+        if let artifact @ Some(_) = self.written_artifacts.find(contract_name) {
+            return artifact
+        }
+        self.cached_artifacts.iter().find_map(|(path, art)| {
+            T::contract_name(path).filter(|name| name == contract_name).map(|_| art)
+        })
+    }
+}
+
+impl<T: ArtifactOutput> fmt::Display for ProjectCompileOutput2<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.compiler_output.is_empty() {
+            f.write_str("Nothing to compile")
+        } else {
+            self.compiler_output.diagnostics(&self.ignored_error_codes).fmt(f)
+        }
+    }
+}
+
 /// The aggregated output of (multiple) compile jobs
 ///
 /// This is effectively a solc version aware `CompilerOutput`
@@ -83,6 +160,10 @@ impl AggregatedCompilerOutput {
         })
     }
 
+    pub fn diagnostics<'a>(&'a self, ignored_error_codes: &'a [u64]) -> OutputDiagnostics {
+        OutputDiagnostics { compiler_output: self, ignored_error_codes }
+    }
+
     pub fn is_empty(&self) -> bool {
         self.contracts.is_empty()
     }
@@ -108,5 +189,164 @@ impl AggregatedCompilerOutput {
                 versioned.push(VersionedContract { contract, version: version.clone() });
             }
         }
+    }
+
+    /// Finds the _first_ contract with the given name
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use ethers_solc::Project;
+    /// use ethers_solc::artifacts::*;
+    /// # fn demo(project: Project) {
+    /// let output = project.compile().unwrap().output();
+    /// let contract = output.find("Greeter").unwrap();
+    /// # }
+    /// ```
+    pub fn find(&self, contract: impl AsRef<str>) -> Option<CompactContractRef> {
+        let contract_name = contract.as_ref();
+        self.contracts_iter().find_map(|(name, contract)| {
+            (name == contract_name).then(|| CompactContractRef::from(contract))
+        })
+    }
+
+    /// Removes the _first_ contract with the given name from the set
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use ethers_solc::Project;
+    /// use ethers_solc::artifacts::*;
+    /// # fn demo(project: Project) {
+    /// let mut output = project.compile().unwrap().output();
+    /// let contract = output.remove("Greeter").unwrap();
+    /// # }
+    /// ```
+    pub fn remove(&mut self, contract: impl AsRef<str>) -> Option<Contract> {
+        let contract_name = contract.as_ref();
+        self.contracts.values_mut().find_map(|all_contracts| {
+            let mut contract = None;
+            if let Some((c, mut contracts)) = all_contracts.remove_entry(contract_name) {
+                if !contracts.is_empty() {
+                    contract = Some(contracts.remove(0).contract);
+                }
+                if !contracts.is_empty() {
+                    all_contracts.insert(c, contracts);
+                }
+            }
+            contract
+        })
+    }
+
+    /// Iterate over all contracts and their names
+    pub fn contracts_iter(&self) -> impl Iterator<Item = (&String, &Contract)> {
+        self.contracts.values().flat_map(|c| {
+            c.into_iter().flat_map(|(name, c)| c.into_iter().map(move |c| (name, &c.contract)))
+        })
+    }
+
+    /// Iterate over all contracts and their names
+    pub fn contracts_into_iter(self) -> impl Iterator<Item = (String, Contract)> {
+        self.contracts.into_values().flat_map(|c| {
+            c.into_iter()
+                .flat_map(|(name, c)| c.into_iter().map(move |c| (name.clone(), c.contract)))
+        })
+    }
+
+    /// Given the contract file's path and the contract's name, tries to return the contract's
+    /// bytecode, runtime bytecode, and abi
+    pub fn get(&self, path: &str, contract: &str) -> Option<CompactContractRef> {
+        self.contracts
+            .get(path)
+            .and_then(|contracts| {
+                contracts.get(contract).and_then(|c| c.get(0).map(|c| &c.contract))
+            })
+            .map(CompactContractRef::from)
+    }
+
+    /// Returns the output's source files and contracts separately, wrapped in helper types that
+    /// provide several helper methods
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use ethers_solc::Project;
+    /// # fn demo(project: Project) {
+    /// let output = project.compile().unwrap().output();
+    /// let (sources, contracts) = output.split();
+    /// # }
+    /// ```
+    pub fn split(self) -> (SourceFiles, OutputContracts) {
+        // (SourceFiles(self.sources), OutputContracts(self.contracts))
+        todo!()
+    }
+}
+
+/// A wrapper helper type for the `Contracts` type alias
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct OutputContracts(pub usize);
+
+/// Helper type to implement display for solc errors
+#[derive(Clone, Debug)]
+pub struct OutputDiagnostics<'a> {
+    compiler_output: &'a AggregatedCompilerOutput,
+    ignored_error_codes: &'a [u64],
+}
+
+impl<'a> OutputDiagnostics<'a> {
+    /// Returns true if there is at least one error of high severity
+    pub fn has_error(&self) -> bool {
+        self.compiler_output.has_error()
+    }
+
+    /// Returns true if there is at least one warning
+    pub fn has_warning(&self) -> bool {
+        self.compiler_output.has_warning(self.ignored_error_codes)
+    }
+
+    /// Returns true if the contract is a expected to be a test
+    fn is_test<T: AsRef<str>>(&self, contract_path: T) -> bool {
+        if contract_path.as_ref().ends_with(".t.sol") {
+            return true
+        }
+
+        self.compiler_output.find(&contract_path).map_or(false, |contract| {
+            contract.abi.map_or(false, |abi| abi.functions.contains_key("IS_TEST"))
+        })
+    }
+}
+
+impl<'a> fmt::Display for OutputDiagnostics<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.has_error() {
+            f.write_str("Compiler run failed")?;
+        } else if self.has_warning() {
+            f.write_str("Compiler run successful (with warnings)")?;
+        } else {
+            f.write_str("Compiler run successful")?;
+        }
+        for err in &self.compiler_output.errors {
+            if err.severity.is_warning() {
+                let is_ignored = err.error_code.as_ref().map_or(false, |code| {
+                    if let Some(source_location) = &err.source_location {
+                        // we ignore spdx and contract size warnings in test
+                        // files. if we are looking at one of these warnings
+                        // from a test file we skip
+                        if self.is_test(&source_location.file) && (*code == 1878 || *code == 5574) {
+                            return true
+                        }
+                    }
+
+                    self.ignored_error_codes.contains(code)
+                });
+
+                if !is_ignored {
+                    writeln!(f, "\n{}", err)?;
+                }
+            } else {
+                writeln!(f, "\n{}", err)?;
+            }
+        }
+        Ok(())
     }
 }

@@ -15,6 +15,7 @@ use std::{
 use crate::{
     compile::*,
     error::SolcIoError,
+    output::AggregatedCompilerOutput,
     remappings::Remapping,
     sourcemap::{self, SourceMap, SyntaxError},
     utils,
@@ -560,10 +561,6 @@ impl CompilerOutput {
         })
     }
 
-    pub fn diagnostics<'a>(&'a self, ignored_error_codes: &'a [u64]) -> OutputDiagnostics {
-        OutputDiagnostics { compiler_output: self, ignored_error_codes }
-    }
-
     /// Finds the _first_ contract with the given name
     ///
     /// # Example
@@ -696,70 +693,6 @@ impl OutputContracts {
     pub fn remove(&mut self, contract: impl AsRef<str>) -> Option<Contract> {
         let contract_name = contract.as_ref();
         self.0.values_mut().find_map(|c| c.remove(contract_name))
-    }
-}
-
-/// Helper type to implement display for solc errors
-#[derive(Clone, Debug)]
-pub struct OutputDiagnostics<'a> {
-    compiler_output: &'a CompilerOutput,
-    ignored_error_codes: &'a [u64],
-}
-
-impl<'a> OutputDiagnostics<'a> {
-    /// Returns true if there is at least one error of high severity
-    pub fn has_error(&self) -> bool {
-        self.compiler_output.has_error()
-    }
-
-    /// Returns true if there is at least one warning
-    pub fn has_warning(&self) -> bool {
-        self.compiler_output.has_warning(self.ignored_error_codes)
-    }
-
-    fn is_test<T: AsRef<str>>(&self, contract_path: T) -> bool {
-        if contract_path.as_ref().ends_with(".t.sol") {
-            return true
-        }
-
-        self.compiler_output.find(&contract_path).map_or(false, |contract| {
-            contract.abi.map_or(false, |abi| abi.functions.contains_key("IS_TEST"))
-        })
-    }
-}
-
-impl<'a> fmt::Display for OutputDiagnostics<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.has_error() {
-            f.write_str("Compiler run failed")?;
-        } else if self.has_warning() {
-            f.write_str("Compiler run successful (with warnings)")?;
-        } else {
-            f.write_str("Compiler run successful")?;
-        }
-        for err in &self.compiler_output.errors {
-            if err.severity.is_warning() {
-                let is_ignored = err.error_code.as_ref().map_or(false, |code| {
-                    if let Some(source_location) = &err.source_location {
-                        // we ignore spdx and contract size warnings in test
-                        // files. if we are looking at one of these warnings
-                        // from a test file we skip
-                        if self.is_test(&source_location.file) && (*code == 1878 || *code == 5574) {
-                            return true
-                        }
-                    }
-
-                    self.ignored_error_codes.contains(code)
-                });
-
-                if !is_ignored {
-                    writeln!(f, "\n{}", err)?;
-                }
-            } else {
-                writeln!(f, "\n{}", err)?;
-            }
-        }
-        Ok(())
     }
 }
 

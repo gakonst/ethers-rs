@@ -2,9 +2,11 @@
 
 use crate::{
     artifacts::{
-        CompactContract, CompactContractBytecode, Contract, FileToContractsMap, VersionedContracts,
+        CompactContract, CompactContractBytecode, Contract, FileToContractsMap, VersionedContract,
+        VersionedContracts,
     },
     error::Result,
+    output::AggregatedCompilerOutput,
     HardhatArtifact, ProjectPathsConfig, SolcError,
 };
 use ethers_core::{abi::Abi, types::Bytes};
@@ -27,8 +29,82 @@ pub struct WrittenArtifact<T> {
     pub version: Version,
 }
 
+/// local helper type alias
+type ArtifactsMap<T> = FileToContractsMap<Vec<WrittenArtifact<T>>>;
+
 /// Represents the written Artifacts
-pub type WrittenArtifacts<T> = FileToContractsMap<Vec<WrittenArtifact<T>>>;
+#[derive(Debug, Clone, PartialEq)]
+pub struct WrittenArtifacts<T>(pub ArtifactsMap<T>);
+
+impl<T> Default for WrittenArtifacts<T> {
+    fn default() -> Self {
+        Self(Default::default())
+    }
+}
+
+impl<T> AsRef<ArtifactsMap<T>> for WrittenArtifacts<T> {
+    fn as_ref(&self) -> &ArtifactsMap<T> {
+        &self.0
+    }
+}
+
+impl<T> AsMut<ArtifactsMap<T>> for WrittenArtifacts<T> {
+    fn as_mut(&mut self) -> &mut ArtifactsMap<T> {
+        &mut self.0
+    }
+}
+
+impl<T> WrittenArtifacts<T> {
+    /// Returns an iterator over _all_ artifacts and `<file name:contract name>`
+    pub fn into_artifacts<O: ArtifactOutput<Artifact = T>>(
+        self,
+    ) -> impl Iterator<Item = (String, T)> {
+        self.0.into_values().flat_map(|contract_artifacts| {
+            contract_artifacts.into_iter().flat_map(|(contract_name, artifacts)| {
+                artifacts.into_iter().filter_map(|artifact| {
+                    O::contract_name(&artifact.file).map(|name| {
+                        (
+                            format!(
+                                "{}:{}",
+                                artifact.file.file_name().unwrap().to_string_lossy(),
+                                name
+                            ),
+                            artifact.artifact,
+                        )
+                    })
+                })
+            })
+        })
+    }
+
+    /// Finds the first artifact `T` with a matching contract name
+    pub fn find(&self, contract_name: impl AsRef<str>) -> Option<&T> {
+        let contract_name = contract_name.as_ref();
+        self.0.iter().find_map(|(file, contracts)| {
+            contracts.get(contract_name).and_then(|c| c.get(0).map(|a| &a.artifact))
+        })
+    }
+
+    /// Removes the first artifact `T` with a matching contract name
+    ///
+    /// *Note:* if there are multiple artifacts (contract compiled with different solc) then this
+    /// returns the first artifact in that set
+    pub fn remove(&mut self, contract_name: impl AsRef<str>) -> Option<T> {
+        let contract_name = contract_name.as_ref();
+        self.0.iter_mut().find_map(|(file, contracts)| {
+            let mut artifact = None;
+            if let Some((c, mut artifacts)) = contracts.remove_entry(contract_name) {
+                if !artifacts.is_empty() {
+                    artifact = Some(artifacts.remove(0).artifact);
+                }
+                if !artifacts.is_empty() {
+                    contracts.insert(c, artifacts);
+                }
+            }
+            artifact
+        })
+    }
+}
 
 /// Bundled Artifacts: `file -> (contract name -> (Artifact, Version))`
 pub type Artifacts<T> = FileToContractsMap<Vec<(T, Version)>>;
@@ -96,7 +172,7 @@ pub trait ArtifactOutput {
     ) -> Result<WrittenArtifacts<Self::Artifact>> {
         fs::create_dir_all(&layout.artifacts)
             .map_err(|err| SolcError::msg(format!("Failed to create artifacts dir: {}", err)))?;
-        let mut artifacts = WrittenArtifacts::default();
+        let mut artifacts = ArtifactsMap::new();
 
         for (file, contracts) in contracts.iter() {
             let mut entries = BTreeMap::new();
@@ -129,7 +205,7 @@ pub trait ArtifactOutput {
             artifacts.insert(file.to_string(), entries);
         }
 
-        Ok(artifacts)
+        Ok(WrittenArtifacts(artifacts))
     }
 
     /// Returns the file name for the contract's artifact
@@ -217,6 +293,32 @@ pub trait ArtifactOutput {
 
     /// Convert a contract to the artifact type
     fn contract_to_artifact(_file: &str, _name: &str, contract: Contract) -> Self::Artifact;
+
+    /// Convert the compiler output into a set of artifacts
+    fn output_to_artifacts(output: AggregatedCompilerOutput) -> Artifacts<Self::Artifact> {
+        output
+            .contracts
+            .into_iter()
+            .map(|(file, all_contracts)| {
+                let contracts = all_contracts
+                    .into_iter()
+                    .map(|(name, versioned_contracts)| {
+                        let artifacts = versioned_contracts
+                            .into_iter()
+                            .map(|c| {
+                                let VersionedContract { contract, version } = c;
+                                let artifact = Self::contract_to_artifact(&file, &name, contract);
+                                (artifact, version)
+                            })
+                            .collect();
+                        (name, artifacts)
+                    })
+                    .collect();
+
+                (file, contracts)
+            })
+            .collect()
+    }
 }
 
 /// An Artifacts implementation that uses a compact representation
