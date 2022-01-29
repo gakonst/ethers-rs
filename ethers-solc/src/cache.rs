@@ -119,8 +119,8 @@ impl SolFilesCache {
     /// let artifacts = cache.read_artifacts::<MinimalCombinedArtifacts>().unwrap();
     /// ```
     pub fn read_artifacts<Artifact: Serialize>(&self) -> Result<Artifacts<Artifact>> {
-        let mut artifacts = ArtifactsMap::new();
-        for (file, entry) in self.files.iter() {
+        let artifacts = ArtifactsMap::new();
+        for (_file, _entry) in self.files.iter() {
             // let mut entries = BTreeMap::new();
         }
 
@@ -228,8 +228,8 @@ impl CacheEntry {
     }
 
     fn read_artifact_files<T: ArtifactOutput>(&self) -> Result<Vec<ArtifactFile<T::Artifact>>> {
-        for (version, files) in self.artifacts.iter() {
-            for file in files {
+        for (_version, files) in self.artifacts.iter() {
+            for _file in files {
                 // get the contract name based on the number of versions
             }
         }
@@ -239,11 +239,11 @@ impl CacheEntry {
 
     /// Iterator that yields all artifact files
     pub fn artifacts(&self) -> impl Iterator<Item = &PathBuf> {
-        self.artifacts.values().flat_map(|artifacts| artifacts.into_iter())
+        self.artifacts.values().flat_map(|artifacts| artifacts.iter())
     }
 
     pub fn artifacts_mut(&mut self) -> impl Iterator<Item = &mut PathBuf> {
-        self.artifacts.values_mut().flat_map(|artifacts| artifacts.into_iter())
+        self.artifacts.values_mut().flat_map(|artifacts| artifacts.iter_mut())
     }
 
     /// Checks if all artifact files exist

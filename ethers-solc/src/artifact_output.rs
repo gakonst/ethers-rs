@@ -8,7 +8,7 @@ use crate::{
 };
 use ethers_core::{abi::Abi, types::Bytes};
 use semver::Version;
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Serialize};
 use std::{
     collections::btree_map::BTreeMap,
     fs, io,
@@ -16,11 +16,11 @@ use std::{
 };
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct ArtifactInfo {
-    /// path to the file where the `artifact` was written to
-    pub file: PathBuf,
+pub struct ArtifactsInfo {
     /// `solc` version that produced this artifact
     pub version: Version,
+    /// path to the file where the `artifact` was written to
+    pub file: PathBuf,
 }
 
 /// Represents an artifact file representing a [`crate::Contract`]
@@ -124,7 +124,7 @@ impl<T> Artifacts<T> {
     /// Returns true if this type contains an artifact with the given path for the given contract
     pub fn has_contract_artifact(&self, contract_name: &str, artifact_path: &Path) -> bool {
         self.get_contract_artifact_files(contract_name)
-            .map(|artifacts| artifacts.into_iter().any(|artifact| artifact.file == artifact_path))
+            .map(|artifacts| artifacts.iter().any(|artifact| artifact.file == artifact_path))
             .unwrap_or_default()
     }
 
