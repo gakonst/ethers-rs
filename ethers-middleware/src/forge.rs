@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use ethers_core::types::{
-    transaction::eip2718::TypedTransaction, Address, BlockId, Bytes, NameOrAddress,
-    TransactionReceipt, U256, U64,
+    transaction::eip2718::TypedTransaction, Address, Block, BlockId, BlockNumber, Bytes,
+    NameOrAddress, TransactionReceipt, TxHash, H256, U256, U64,
 };
 use ethers_providers::{
     maybe, FromErr, JsonRpcClient, Middleware, PendingTransaction, PendingTxState, ProviderError,
@@ -28,6 +28,7 @@ pub trait VmShow {
     fn chain_id(&self) -> U256;
     fn balance(&self, from: Address) -> U256;
     fn gas_limit(&self) -> U256;
+    fn block_hash(&self, num: U256) -> H256;
 }
 
 impl<'a, S, E> VmShow for Executor<S, E>
@@ -44,12 +45,14 @@ where
     fn chain_id(&self) -> U256 {
         self.executor.state().block_number()
     }
-    // TODO: incorporate block parameter
     fn balance(&self, addr: Address) -> U256 {
         self.executor.state().basic(addr).balance
     }
     fn gas_limit(&self) -> U256 {
         self.executor.state().block_gas_limit()
+    }
+    fn block_hash(&self, num: U256) -> H256 {
+        self.executor.state().block_hash(num)
     }
 }
 
@@ -87,7 +90,7 @@ struct TxRes<Ex> {
 impl<M, E, S> Forge<M, E, S>
 where
     Self: Middleware,
-    E: Evm<S>,
+    E: Evm<S> + VmShow,
     <Self as Middleware>::Error: From<eyre::ErrReport>,
 {
     //TODO: incoporate block parameter
@@ -121,9 +124,44 @@ where
             Ok(TxRes { output: TxOutput::CreateRes(addr), exit, gas, logs })
         }
     }
+
+    async fn is_latest(&self, id: BlockId) -> Result<bool, <Self as Middleware>::Error> {
+        match id {
+            BlockId::Hash(hash) => {
+                let vm = self.vm().await;
+                // let last_num = vm.block_number() - U256::one();
+                let last_hash = vm.block_hash(vm.block_number() - U256::one());
+                // If we get the default hash back, the vm doesn't have the block data
+                Ok(last_hash != Default::default() && hash == last_hash)
+            }
+            BlockId::Number(n) => match n {
+                BlockNumber::Latest => Ok(true),
+                BlockNumber::Number(num) => {
+                    Ok(num == (self.get_block_number().await? - U64::one()))
+                }
+                // BlockNumber::Pending => Ok(false), //TODO
+                _ => Ok(false),
+            },
+        }
+    }
+
+    // Sputnik can provide hashes for any block it produced, but not the rest of the block data
+    async fn get_block_hash(&self, num: U256) -> H256 {
+        todo!()
+    }
+
+    async fn to_addr<T: Into<NameOrAddress>>(
+        &self,
+        id: T,
+    ) -> Result<Address, <Self as Middleware>::Error> {
+        match id.into() {
+            NameOrAddress::Name(ref ens) => self.resolve_name(ens).await,
+            NameOrAddress::Address(a) => Ok(a),
+        }
+    }
 }
 
-// Stand-in impl because some sputnik component is not Debug
+// TODO: Stand-in impl because some sputnik component is not Debug
 impl<M, E, S> Debug for Forge<M, E, S> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Forge").finish()
@@ -199,6 +237,26 @@ where
         Ok(self.vm().await.block_number().as_u64().into())
     }
 
+    async fn get_block<T: Into<BlockId> + Send + Sync>(
+        &self,
+        id: T,
+    ) -> Result<Option<Block<TxHash>>, Self::Error> {
+        let id = id.into();
+        if self.is_latest(id).await? {
+            // TODO: don't do a very good job of reconstructing block data here.
+            // Try to reconstruct as much of the block from evm data as possible.
+            let mut block: Block<TxHash> = Default::default();
+            let vm = self.vm().await;
+            let num = vm.block_number() - U256::one();
+            block.number = Some(num.as_u64().into());
+            block.hash = Some(vm.block_hash(num));
+            block.parent_hash = self.get_block_hash(num - U256::one()).await;
+            Ok(Some(block))
+        } else {
+            self.inner().get_block(id).await.map_err(FromErr::from)
+        }
+    }
+
     async fn get_chainid(&self) -> Result<U256, Self::Error> {
         Ok(self.vm().await.chain_id())
     }
@@ -208,14 +266,64 @@ where
         from: T,
         block: Option<BlockId>,
     ) -> Result<U256, Self::Error> {
-        if block.is_some() {
-            panic!("Cannot get historical data")
+        if block.is_none() || self.is_latest(block.unwrap()).await? {
+            let addr = self.to_addr(from).await?;
+            Ok(self.vm().await.balance(addr))
+        } else {
+            self.inner.get_balance(from, block).await.map_err(FromErr::from)
         }
-        let addr = match from.into() {
-            NameOrAddress::Name(ref ens) => self.resolve_name(ens).await?,
-            NameOrAddress::Address(a) => a,
+    }
+
+    async fn send_transaction<T: Into<TypedTransaction> + Send + Sync>(
+        &self,
+        tx: T,
+        block: Option<BlockId>,
+    ) -> Result<PendingTransaction<'_, Self::Provider>, Self::Error> {
+        let mut tx = tx.into();
+        self.fill_transaction(&mut tx, block).await?;
+
+        // run the tx
+        let res = self.apply_tx(&tx).await?;
+
+        // create receipt and populate with result of applying the tx
+        let mut receipt = TransactionReceipt::default();
+        receipt.gas_used = Some(res.gas.into());
+        receipt.status = Some((if E::is_success(&res.exit) { 1usize } else { 0 }).into());
+        if let TxOutput::CreateRes(addr) = res.output {
+            receipt.contract_address = Some(addr);
+        }
+
+        // Fake the tx hash for the receipt. Should be able to get a "real"
+        // hash modulo signature, which we may not have
+        let hash = tx.sighash(self.get_chainid().await?.as_u64());
+        receipt.transaction_hash = hash;
+
+        let mut pending = PendingTransaction::new(hash, self.provider());
+        // Set the future to resolve immediately to the populated receipt when polled.
+        // TODO: handle confirmations > 1. Likely need a dummy Provider that impls
+        // get_block_number() using internal evm
+        pending.set_state(PendingTxState::CheckingReceipt(Some(receipt)));
+        Ok(pending)
+    }
+
+    async fn call(
+        &self,
+        tx: &TypedTransaction,
+        _block: Option<BlockId>,
+    ) -> Result<Bytes, Self::Error> {
+        // Simulate an eth_call by saving the state, running the tx, then resetting state
+        let state = (*self.vm().await.state()).clone();
+
+        let res = self.apply_tx(tx).await?;
+        let bytes = match res.output {
+            TxOutput::CallRes(b) => b,
+            // For a contract creation tx, return the deployed bytecode
+            TxOutput::CreateRes(addr) => self.get_code(addr, None).await?,
         };
-        Ok(self.vm().await.balance(addr))
+
+        self.vm_mut().await.reset(state);
+
+        Ok(bytes)
     }
 
     // Copied from Provider::fill_transaction because we need other middleware
@@ -280,58 +388,6 @@ where
 
         Ok(())
     }
-
-    async fn send_transaction<T: Into<TypedTransaction> + Send + Sync>(
-        &self,
-        tx: T,
-        block: Option<BlockId>,
-    ) -> Result<PendingTransaction<'_, Self::Provider>, Self::Error> {
-        let mut tx = tx.into();
-        self.fill_transaction(&mut tx, block).await?;
-
-        // run the tx
-        let res = self.apply_tx(&tx).await?;
-
-        // create receipt and populate with result of applying the tx
-        let mut receipt = TransactionReceipt::default();
-        receipt.gas_used = Some(res.gas.into());
-        receipt.status = Some((if E::is_success(&res.exit) { 1usize } else { 0 }).into());
-        if let TxOutput::CreateRes(addr) = res.output {
-            receipt.contract_address = Some(addr);
-        }
-
-        // Fake the tx hash for the receipt. Should be able to get a "real"
-        // hash modulo signature, which we may not have
-        let hash = tx.sighash(self.get_chainid().await?.as_u64());
-        receipt.transaction_hash = hash;
-
-        let mut pending = PendingTransaction::new(hash, self.provider());
-        // Set the future to resolve immediately to the populated receipt when polled.
-        // TODO: handle confirmations > 1. Likely need a dummy Provider that impls
-        // get_block_number() using internal evm
-        pending.set_state(PendingTxState::CheckingReceipt(Some(receipt)));
-        Ok(pending)
-    }
-
-    async fn call(
-        &self,
-        tx: &TypedTransaction,
-        _block: Option<BlockId>,
-    ) -> Result<Bytes, Self::Error> {
-        // Simulate an eth_call by saving the state, running the tx, then resetting state
-        let state = (*self.vm().await.state()).clone();
-
-        let res = self.apply_tx(tx).await?;
-        let bytes = match res.output {
-            TxOutput::CallRes(b) => b,
-            // For a contract creation tx, return the deployed bytecode
-            TxOutput::CreateRes(addr) => self.get_code(addr, None).await?,
-        };
-
-        self.vm_mut().await.reset(state);
-
-        Ok(bytes)
-    }
 }
 
 #[cfg(test)]
@@ -339,6 +395,7 @@ mod tests {
     use super::*;
 
     use ethers_core::types::{Address, TransactionRequest};
+    use ethers_providers::Provider;
     use evm_adapters::sputnik::{
         helpers::{new_backend, CFG, GAS_LIMIT, VICINITY},
         Executor, PRECOMPILES_MAP,
