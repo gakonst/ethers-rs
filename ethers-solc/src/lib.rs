@@ -120,6 +120,14 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         &self.paths.root
     }
 
+    /// Applies the configured settings to the given `Solc`
+    fn configure_solc(&self, mut solc: Solc) -> Solc {
+        if !self.allowed_lib_paths.0.is_empty() {
+            solc = solc.arg("--allow-paths").arg(self.allowed_lib_paths.to_string());
+        }
+        solc
+    }
+
     /// Sets the maximum number of parallel `solc` processes to run simultaneously.
     ///
     /// # Panics
@@ -189,10 +197,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
             return self.svm_compile(sources)
         }
 
-        let mut solc = self.solc.clone();
-        if !self.allowed_lib_paths.0.is_empty() {
-            solc = solc.arg("--allow-paths").arg(self.allowed_lib_paths.to_string());
-        }
+        let solc = self.configure_solc(self.solc.clone());
 
         self.compile_with_version(&solc, sources)
     }
@@ -253,7 +258,12 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         solc: &Solc,
         sources: Sources,
     ) -> Result<ProjectCompileOutput<Artifacts>> {
-        project::ProjectCompiler::with_sources_and_solc(self, sources, solc.clone())?.compile()
+        project::ProjectCompiler::with_sources_and_solc(
+            self,
+            sources,
+            self.configure_solc(solc.clone()),
+        )?
+        .compile()
     }
 
     /// Removes the project's artifacts and cache file
