@@ -171,42 +171,86 @@ impl<'a, T: ArtifactOutput> ProjectCompiler<'a, T> {
     /// let output = project.compile().unwrap();
     /// ```
     pub fn compile(self) -> Result<ProjectCompileOutput<T>> {
-        let Self { edges, project, mut sources } = self;
-        // the map that keeps track of the mapping of resolved solidity file paths -> source unit
-        // names
-        let mut source_unit_map = SourceUnitNameMap::default();
-
-        let mut cache = ArtifactsCache::new(project, &edges)?;
-        // retain and compile only dirty sources
-        sources = sources.filtered(&mut cache).set_source_unit_names(
-            &project.paths,
-            &edges,
-            &mut source_unit_map,
-        );
-
-        let mut output = sources.compile(&project.solc_config.settings, &project.paths)?;
-
-        // reverse the applied source unit names
-        output.contracts = source_unit_map.reverse(output.contracts);
-
-        // write all artifacts
-        let written_artifacts = if !project.no_artifacts {
-            T::on_output(&output.contracts, &project.paths)?
-        } else {
-            Default::default()
-        };
-
-        // if caching was enabled, this will write to disk and get the artifacts that weren't
-        // compiled but reused
-        let cached_artifacts = cache.finish(&written_artifacts)?;
-
-        Ok(ProjectCompileOutput {
-            compiler_output: output,
-            written_artifacts,
-            cached_artifacts,
-            ignored_error_codes: project.ignored_error_codes.clone(),
-        })
+        todo!()
+        // let Self { edges, project, mut sources } = self;
+        // // the map that keeps track of the mapping of resolved solidity file paths -> source unit
+        // // names
+        // let mut source_unit_map = SourceUnitNameMap::default();
+        //
+        // let mut cache = ArtifactsCache::new(project, &edges)?;
+        // // retain and compile only dirty sources
+        // sources = sources.filtered(&mut cache).set_source_unit_names(
+        //     &project.paths,
+        //     &edges,
+        //     &mut source_unit_map,
+        // );
+        //
+        // let mut output = sources.compile(&project.solc_config.settings, &project.paths)?;
+        //
+        // // reverse the applied source unit names
+        // output.contracts = source_unit_map.reverse(output.contracts);
+        //
+        // // write all artifacts
+        // let written_artifacts = if !project.no_artifacts {
+        //     T::on_output(&output.contracts, &project.paths)?
+        // } else {
+        //     Default::default()
+        // };
+        //
+        // // if caching was enabled, this will write to disk and get the artifacts that weren't
+        // // compiled but reused
+        // let cached_artifacts = cache.finish(&written_artifacts)?;
+        //
+        // Ok(ProjectCompileOutput {
+        //     compiler_output: output,
+        //     written_artifacts,
+        //     cached_artifacts,
+        //     ignored_error_codes: project.ignored_error_codes.clone(),
+        // })
     }
+
+    fn preprocess(self) -> Result<PreprocessedState<'a, T>> {
+        todo!()
+    }
+}
+
+/// A series of states that comprise the [`ProjectCompiler::compile()`] state machine
+struct PreprocessedState<'a, T: ArtifactOutput> {
+    sources: CompilerSources,
+    cache: ArtifactsCache<'a, T>,
+    source_unit_map: SourceUnitNameMap,
+}
+
+impl<'a, T:ArtifactOutput> PreprocessedState<'a, T>{
+
+    fn new() -> Self {
+
+        todo!()
+    }
+
+    fn compile(self) -> Result<CompiledState<'a, T>> {
+
+        todo!()
+    }
+}
+
+
+struct CompiledState<'a, T: ArtifactOutput> {
+    sources: CompilerSources,
+    cache: ArtifactsCache<'a, T>,
+    source_unit_map: SourceUnitNameMap,
+}
+
+impl<'a, T:ArtifactOutput> CompiledState<'a, T>{
+
+    fn artifacts(self) ->  Result<ArtifactsState<'a, T>> {
+        todo!()
+    }
+
+}
+
+struct ArtifactsState<'a, T: ArtifactOutput> {
+    cache: ArtifactsCache<'a, T>,
 }
 
 /// Determines how the `solc <-> sources` pairs are executed
@@ -384,11 +428,9 @@ struct Cache<'a, T: ArtifactOutput> {
     /// all already existing artifacts
     cached_artifacts: Artifacts<T::Artifact>,
     /// relationship between all the files
-    edges: &'a GraphEdges,
-    /// how to configure solc
-    solc_config: &'a SolcConfig,
-    /// project paths
-    paths: &'a ProjectPathsConfig,
+    edges: GraphEdges,
+    /// the project
+    project: &'a Project<T>,
     /// all files that were filtered because they haven't changed
     filtered: HashMap<PathBuf, (Source, HashSet<Version>)>,
     /// the corresponding cache entries for all sources that were deemed to be dirty
@@ -412,14 +454,14 @@ impl<'a, T: ArtifactOutput> Cache<'a, T> {
             .edges
             .imports(file)
             .into_iter()
-            .map(|import| utils::source_name(import, &self.paths.root).to_path_buf())
+            .map(|import| utils::source_name(import, self.project.root()).to_path_buf())
             .collect();
 
         let entry = CacheEntry {
             last_modification_date: CacheEntry::read_last_modification_date(&file).unwrap(),
             content_hash: source.content_hash(),
-            source_name: utils::source_name(file, &self.paths.root).into(),
-            solc_config: self.solc_config.clone(),
+            source_name: utils::source_name(file, self.project.root()).into(),
+            solc_config: self.project.solc_config.clone(),
             imports,
             version_requirement: self.edges.version_requirement(file).map(|v| v.to_string()),
             // artifacts remain empty until we received the compiler output
@@ -493,7 +535,7 @@ impl<'a, T: ArtifactOutput> Cache<'a, T> {
     /// returns `false` if the corresponding cache entry remained unchanged otherwise `true`
     fn is_dirty(&self, file: &Path, version: &Version) -> bool {
         if let Some(hash) = self.content_hashes.get(file) {
-            let cache_path = utils::source_name(file, &self.paths.root);
+            let cache_path = utils::source_name(file, self.project.root());
             if let Some(entry) = self.cache.entry(&cache_path) {
                 if entry.content_hash.as_bytes() != hash.as_bytes() {
                     tracing::trace!(
@@ -502,7 +544,7 @@ impl<'a, T: ArtifactOutput> Cache<'a, T> {
                     );
                     return true
                 }
-                if self.solc_config != &entry.solc_config {
+                if self.project.solc_config != entry.solc_config {
                     tracing::trace!(
                         "changed solc config for cached artifact \"{}\"",
                         file.display()
@@ -547,7 +589,7 @@ enum ArtifactsCache<'a, T: ArtifactOutput> {
 }
 
 impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
-    fn new(project: &'a Project<T>, edges: &'a GraphEdges) -> Result<Self> {
+    fn new(project: &'a Project<T>, edges: GraphEdges) -> Result<Self> {
         let cache = if project.cached {
             // read the cache file if it already exists
             let cache = if project.cache_path().exists() {
@@ -574,8 +616,7 @@ impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
                 cache,
                 cached_artifacts,
                 edges,
-                solc_config: &project.solc_config,
-                paths: &project.paths,
+                project,
                 filtered: Default::default(),
                 dirty_entries: Default::default(),
                 content_hashes: Default::default(),
@@ -608,7 +649,7 @@ impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
             ArtifactsCache::Ephemeral => Ok(Default::default()),
             ArtifactsCache::Cached(cache) => {
                 let Cache {
-                    mut cache, cached_artifacts, mut dirty_entries, filtered, paths, ..
+                    mut cache, cached_artifacts, mut dirty_entries, filtered, project, ..
                 } = cache;
 
                 // keep only those files that were previously filtered (not dirty, reused)
@@ -636,10 +677,28 @@ impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
                 cache.extend(dirty_entries.into_iter().map(|(file, (entry, _))| (file, entry)));
 
                 // write to disk
-                cache.write(&paths.cache)?;
+                cache.write(project.cache_path())?;
 
                 Ok(cached_artifacts)
             }
         }
+    }
+}
+
+
+#[cfg(test)]
+#[cfg(feature = "project-util")]
+mod tests {
+    use crate::project_util::TempProject;
+    use super::*;
+
+    #[test]
+    fn can_preprocess() {
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test-data/dapp-sample");
+        let project = Project::builder().paths(ProjectPathsConfig::dapptools(root).unwrap()).build().unwrap();
+
+        let compiler = ProjectCompiler::new(&project).unwrap();
+
+
     }
 }
