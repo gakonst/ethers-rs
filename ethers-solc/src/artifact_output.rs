@@ -15,14 +15,6 @@ use std::{
     path::{Path, PathBuf},
 };
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct ArtifactsInfo {
-    /// `solc` version that produced this artifact
-    pub version: Version,
-    /// path to the file where the `artifact` was written to
-    pub file: PathBuf,
-}
-
 /// Represents an artifact file representing a [`crate::Contract`]
 #[derive(Debug, Clone, PartialEq)]
 pub struct ArtifactFile<T> {
@@ -66,7 +58,7 @@ impl<T> ArtifactFile<T> {
     }
 }
 
-/// local helper type alias
+/// local helper type alias `file name -> (contract name  -> Vec<..>)`
 pub(crate) type ArtifactsMap<T> = FileToContractsMap<Vec<ArtifactFile<T>>>;
 
 /// Represents a set of Artifacts

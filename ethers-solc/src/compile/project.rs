@@ -482,23 +482,17 @@ impl<'a, T: ArtifactOutput> Cache<'a, T> {
                     return true
                 }
 
-                if let Some(artifacts) = entry.artifacts.get(version) {
-                    // checks whether an artifact this file depends on was removed
-                    if artifacts
-                        .iter()
-                        .any(|artifact_path| !self.cached_artifacts.has_artifact(artifact_path))
-                    {
-                        tracing::trace!(
-                            "missing linked artifacts for cached artifact \"{}\"",
-                            file.display()
-                        );
-                        return true
-                    }
-                } else {
-                    // artifact does not exist
+                if !entry.contains_version(version) {
+                    tracing::trace!("missing linked artifacts for version \"{}\"", version);
                     return true
                 }
 
+                if entry.artifacts_for_version(version).any(|artifact_path| {
+                    // artifact does not exist
+                    !self.cached_artifacts.has_artifact(artifact_path)
+                }) {
+                    return true
+                }
                 // all things match, can be reused
                 return false
             }

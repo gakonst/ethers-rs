@@ -178,6 +178,11 @@ impl Default for SolFilesCache {
     }
 }
 
+/// A `CacheEntry` in the cache file represents a solidity file
+///
+/// A solidity file can contain several contracts, for every contract a separate `Artifact` is
+/// emitted. so the `CacheEntry` tracks the artifacts by name. A file can be compiled with multiple
+/// `solc` versions generating version specific artifacts.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CacheEntry {
@@ -200,8 +205,11 @@ pub struct CacheEntry {
     /// In theory a file can be compiled by different solc versions:
     /// `A(<=0.8.10) imports C(>0.4.0)` and `B(0.8.11) imports C(>0.4.0)`
     /// file `C` would be compiled twice, with `0.8.10` and `0.8.11`, producing two different
-    /// artifacts
-    pub artifacts: BTreeMap<Version, Vec<PathBuf>>,
+    /// artifacts.
+    ///
+    /// This map tracks the artifacts by `name -> (Version -> PathBuf)`.
+    /// This mimics the default artifacts directory structure
+    pub artifacts: BTreeMap<String, BTreeMap<Version, PathBuf>>,
 }
 
 impl CacheEntry {
@@ -237,13 +245,29 @@ impl CacheEntry {
         todo!()
     }
 
-    /// Iterator that yields all artifact files
-    pub fn artifacts(&self) -> impl Iterator<Item = &PathBuf> {
-        self.artifacts.values().flat_map(|artifacts| artifacts.iter())
+    /// Returns `true` if the artifacts set contains the given version
+    pub fn contains_version(&self, version: &Version) -> bool {
+        self.artifacts_versions().any(|(v, _)| v == version)
     }
 
+    /// Iterator that yields all artifact files and their version
+    pub fn artifacts_versions(&self) -> impl Iterator<Item = (&Version, &PathBuf)> {
+        self.artifacts.values().flat_map(|artifacts| artifacts.into_iter())
+    }
+
+    /// Iterator that yields all artifact files and their version
+    pub fn artifacts_for_version(&self, version: &Version) -> impl Iterator<Item = &PathBuf> {
+        self.artifacts_versions().filter_map(|(ver, file)| (ver == version).then(|| file))
+    }
+
+    /// Iterator that yields all artifact files
+    pub fn artifacts(&self) -> impl Iterator<Item = &PathBuf> {
+        self.artifacts.values().flat_map(|artifacts| artifacts.values())
+    }
+
+    /// Mutable iterator over all artifact files
     pub fn artifacts_mut(&mut self) -> impl Iterator<Item = &mut PathBuf> {
-        self.artifacts.values_mut().flat_map(|artifacts| artifacts.iter_mut())
+        self.artifacts.values_mut().flat_map(|artifacts| artifacts.values_mut())
     }
 
     /// Checks if all artifact files exist
