@@ -149,7 +149,7 @@ impl SolFilesCache {
 
     /// Inserts the provided cache entries, if there is an existing `CacheEntry` it will be updated
     /// but versions will be merged.
-    pub fn extend<I, V>(&mut self, entries: I)
+    pub fn extend<I>(&mut self, entries: I)
     where
         I: IntoIterator<Item = (PathBuf, CacheEntry)>,
     {
@@ -258,6 +258,19 @@ impl CacheEntry {
             artifacts.insert(artifact_name.clone(), files);
         }
         Ok(artifacts)
+    }
+
+    pub(crate) fn insert_artifacts<'a, I, T: 'a>(&mut self, artifacts: I)
+    where
+        I: IntoIterator<Item = (&'a String, Vec<&'a ArtifactFile<T>>)>,
+    {
+        for (name, artifacts) in artifacts.into_iter().filter(|(_, a)| !a.is_empty()) {
+            let entries: BTreeMap<_, _> = artifacts
+                .into_iter()
+                .map(|artifact| (artifact.version.clone(), artifact.file.clone()))
+                .collect();
+            self.artifacts.insert(name.clone(), entries);
+        }
     }
 
     /// Merges another `CacheEntries` artifacts into the existing set

@@ -574,12 +574,17 @@ impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
     /// written to disk `written_artifacts`.
     ///
     /// Returns all the _cached_ artifacts.
-    fn finish(self, _written_artifacts: &Artifacts<T::Artifact>) -> Result<Artifacts<T::Artifact>> {
+    fn finish(self, written_artifacts: &Artifacts<T::Artifact>) -> Result<Artifacts<T::Artifact>> {
         match self {
             ArtifactsCache::Ephemeral => Ok(Default::default()),
             ArtifactsCache::Cached(cache) => {
                 let Cache {
-                    mut cache, cached_artifacts, dirty_entries, filtered, edges: _, ..
+                    mut cache,
+                    cached_artifacts,
+                    mut dirty_entries,
+                    filtered,
+                    edges: _,
+                    ..
                 } = cache;
 
                 // keep only those files that were previously filtered (not dirty, reused)
@@ -587,17 +592,23 @@ impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
 
                 // add the artifacts to the cache entries, this way we can keep a mapping from
                 // solidity file to its artifacts
+                // this step is necessary because the concrete artifacts are only known after solc
+                // was invoked and received as output, before that we merely know the the file and
+                // the versions so we add the artifacts on a file by file basis
+                for (file, artifacts) in written_artifacts.as_ref() {
+                    let file_path = Path::new(&file);
+                    if let Some((entry, versions)) = dirty_entries.get_mut(file_path) {
+                        entry.insert_artifacts(artifacts.into_iter().map(|(name, artifacts)| {
+                            let artifacts = artifacts
+                                .into_iter()
+                                .filter(|artifact| versions.contains(&artifact.version))
+                                .collect::<Vec<_>>();
+                            (name, artifacts)
+                        }));
+                    }
+                }
 
-                dirty_entries.into_iter().map(|(_file, (_entry, _versions))| {
-
-                    // TODO need reshuffling of source units to actual paths
-                    // if let Some(contracts) = written_artifacts.get(&file) {
-                    //
-                    //
-                    // }
-                });
-
-                // TODO extend the cache with the new artifacts
+                cache.extend(dirty_entries.into_iter().map(|(file, (entry, _))| (file, entry)));
 
                 Ok(cached_artifacts)
             }

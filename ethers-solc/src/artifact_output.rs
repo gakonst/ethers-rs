@@ -94,6 +94,10 @@ impl<T: Serialize> Artifacts<T> {
 }
 
 impl<T> Artifacts<T> {
+    pub fn into_inner(self) -> ArtifactsMap<T> {
+        self.0
+    }
+
     /// Sets the artifact files location to `root` adjoined to `self.file`.
     pub fn join_all(&mut self, root: impl AsRef<Path>) -> &mut Self {
         let root = root.as_ref();
