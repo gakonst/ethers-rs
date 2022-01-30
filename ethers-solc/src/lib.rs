@@ -21,7 +21,7 @@ mod config;
 pub use config::{AllowedLibPaths, PathStyle, ProjectPathsConfig, SolcConfig};
 
 pub mod remappings;
-use crate::{artifacts::Source, cache::SolFilesCache};
+use crate::artifacts::Source;
 
 pub mod error;
 pub mod utils;

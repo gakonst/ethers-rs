@@ -77,19 +77,16 @@
 use crate::{
     artifact_output::Artifacts,
     artifacts::{Settings, VersionedSources},
-    cache::{ArtifactsCache, CacheEntry},
+    cache::ArtifactsCache,
     error::Result,
     output::AggregatedCompilerOutput,
     resolver::GraphEdges,
-    utils, ArtifactOutput, CompilerInput, Graph, Project, ProjectCompileOutput, ProjectPathsConfig,
-    SolFilesCache, Solc, Source, SourceUnitNameMap, Sources,
+    ArtifactOutput, CompilerInput, Graph, Project, ProjectCompileOutput, ProjectPathsConfig, Solc,
+    SourceUnitNameMap, Sources,
 };
 use rayon::prelude::*;
-use semver::Version;
-use std::{
-    collections::{btree_map::BTreeMap, hash_map, hash_map::Entry, HashMap, HashSet},
-    path::{Path, PathBuf},
-};
+
+use std::collections::btree_map::BTreeMap;
 
 #[derive(Debug)]
 pub struct ProjectCompiler<'a, T: ArtifactOutput> {
@@ -437,7 +434,7 @@ fn compile_parallel(
 #[cfg(feature = "project-util")]
 mod tests {
     use super::*;
-    use crate::project_util::TempProject;
+    use std::path::PathBuf;
 
     #[test]
     fn can_preprocess() {
@@ -445,6 +442,6 @@ mod tests {
         let project =
             Project::builder().paths(ProjectPathsConfig::dapptools(root).unwrap()).build().unwrap();
 
-        let compiler = ProjectCompiler::new(&project).unwrap();
+        let _compiler = ProjectCompiler::new(&project).unwrap();
     }
 }
