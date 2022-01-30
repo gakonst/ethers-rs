@@ -593,9 +593,9 @@ impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
                 for (file, artifacts) in written_artifacts.as_ref() {
                     let file_path = Path::new(&file);
                     if let Some((entry, versions)) = dirty_entries.get_mut(file_path) {
-                        entry.insert_artifacts(artifacts.into_iter().map(|(name, artifacts)| {
+                        entry.insert_artifacts(artifacts.iter().map(|(name, artifacts)| {
                             let artifacts = artifacts
-                                .into_iter()
+                                .iter()
                                 .filter(|artifact| versions.contains(&artifact.version))
                                 .collect::<Vec<_>>();
                             (name, artifacts)

@@ -179,7 +179,7 @@ impl SolFilesCache {
     pub async fn async_write(&self, path: impl AsRef<Path>) -> Result<()> {
         let path = path.as_ref();
         let content = serde_json::to_vec_pretty(self)?;
-        Ok(tokio::fs::write(path, content).await.map_err(|err| SolcError::io(err, path))?)
+        tokio::fs::write(path, content).await.map_err(|err| SolcError::io(err, path))
     }
 }
 
@@ -306,7 +306,7 @@ impl CacheEntry {
 
     /// Iterator that yields all artifact files and their version
     pub fn artifacts_versions(&self) -> impl Iterator<Item = (&Version, &PathBuf)> {
-        self.artifacts.values().flat_map(|artifacts| artifacts.into_iter())
+        self.artifacts.values().flat_map(|artifacts| artifacts.iter())
     }
 
     /// Iterator that yields all artifact files and their version
