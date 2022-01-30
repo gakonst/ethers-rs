@@ -3,12 +3,15 @@ use crate::{
     artifacts::{Contracts, Sources},
     config::SolcConfig,
     error::{Result, SolcError},
-    utils, ArtifactFile, Artifacts, ArtifactsMap, Source,
+    utils, ArtifactFile, Artifacts, ArtifactsMap,
 };
 use semver::Version;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{
-    collections::{btree_map::BTreeMap, HashMap},
+    collections::{
+        btree_map::{BTreeMap, Entry},
+        HashMap, HashSet,
+    },
     fs::{self},
     path::{Path, PathBuf},
     time::{Duration, UNIX_EPOCH},
@@ -129,19 +132,37 @@ impl SolFilesCache {
     ///
     /// In other words, only keep those cache entries with the paths (keys) that the iterator yields
     /// and only keep the versions in the cache entry that the version iterator yields.
-    pub fn retain<'a, I, V>(&mut self, _files: I)
+    pub fn retain<'a, I, V>(&mut self, files: I)
     where
         I: IntoIterator<Item = (&'a Path, V)>,
         V: IntoIterator<Item = &'a Version>,
     {
+        let mut files: HashMap<_, _> = files.into_iter().map(|(p, v)| (p, v)).collect();
+
+        self.files.retain(|file, entry| {
+            if let Some(versions) = files.remove(file.as_path()) {
+                entry.retain_versions(versions);
+            }
+            !entry.artifacts.is_empty()
+        });
     }
 
     /// Inserts the provided cache entries, if there is an existing `CacheEntry` it will be updated
     /// but versions will be merged.
-    pub fn extend<I, V>(&mut self, _entries: I)
+    pub fn extend<I, V>(&mut self, entries: I)
     where
         I: IntoIterator<Item = (PathBuf, CacheEntry)>,
     {
+        for (file, entry) in entries.into_iter() {
+            match self.files.entry(file) {
+                Entry::Vacant(e) => {
+                    e.insert(entry);
+                }
+                Entry::Occupied(mut other) => {
+                    other.get_mut().merge_artifacts(entry);
+                }
+            }
+        }
     }
 }
 
@@ -203,11 +224,7 @@ pub struct CacheEntry {
 }
 
 impl CacheEntry {
-    pub fn new(_file: impl AsRef<Path>, _source: &Source) -> Result<Self> {
-        todo!()
-    }
-
-    /// Returns the time
+    /// Returns the last modified timestamp `Duration`
     pub fn last_modified(&self) -> Duration {
         Duration::from_millis(self.last_modification_date)
     }
@@ -241,6 +258,32 @@ impl CacheEntry {
             artifacts.insert(artifact_name.clone(), files);
         }
         Ok(artifacts)
+    }
+
+    /// Merges another `CacheEntries` artifacts into the existing set
+    fn merge_artifacts(&mut self, other: CacheEntry) {
+        for (name, artifacts) in other.artifacts {
+            match self.artifacts.entry(name) {
+                Entry::Vacant(entry) => {
+                    entry.insert(artifacts);
+                }
+                Entry::Occupied(mut entry) => {
+                    entry.get_mut().extend(artifacts.into_iter());
+                }
+            }
+        }
+    }
+
+    /// Retains only those artifacts that match the provided version.
+    pub fn retain_versions<'a, I>(&mut self, versions: I)
+    where
+        I: IntoIterator<Item = &'a Version>,
+    {
+        let versions = versions.into_iter().collect::<HashSet<_>>();
+        self.artifacts.retain(|_, artifacts| {
+            artifacts.retain(|version, _| versions.contains(version));
+            !artifacts.is_empty()
+        })
     }
 
     /// Returns `true` if the artifacts set contains the given version
