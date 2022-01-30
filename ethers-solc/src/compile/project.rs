@@ -579,12 +579,7 @@ impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
             ArtifactsCache::Ephemeral => Ok(Default::default()),
             ArtifactsCache::Cached(cache) => {
                 let Cache {
-                    mut cache,
-                    cached_artifacts,
-                    mut dirty_entries,
-                    filtered,
-                    edges: _,
-                    ..
+                    mut cache, cached_artifacts, mut dirty_entries, filtered, paths, ..
                 } = cache;
 
                 // keep only those files that were previously filtered (not dirty, reused)
@@ -608,7 +603,11 @@ impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
                     }
                 }
 
+                // add the new cache entries to the cache file
                 cache.extend(dirty_entries.into_iter().map(|(file, (entry, _))| (file, entry)));
+
+                // write to disk
+                cache.write(&paths.cache)?;
 
                 Ok(cached_artifacts)
             }
