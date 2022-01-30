@@ -168,6 +168,7 @@ pub trait Middleware: Sync + Send + Debug {
     /// 4. Estimate gas usage _with_ access lists
     /// 5. Enable access lists IFF they are cheaper
     /// 6. Poll and set legacy or 1559 gas prices
+    /// 7. Set the chain_id with the provider's, if not already set
     ///
     /// It does NOT set the nonce by default.
     /// It MAY override the gas amount set by the user, if access lists are
@@ -223,7 +224,6 @@ pub trait Middleware: Sync + Send + Debug {
         }
 
         let gas_price = original.gas_price().expect("filled");
-        let chain_id = self.get_chainid().await?.low_u64();
         let sign_futs: Vec<_> = (0..escalations)
             .map(|i| {
                 let new_price = policy(gas_price, i);
@@ -234,7 +234,7 @@ pub trait Middleware: Sync + Send + Debug {
             .map(|req| async move {
                 self.sign_transaction(&req, self.default_sender().unwrap_or_default())
                     .await
-                    .map(|sig| req.rlp_signed(chain_id, &sig))
+                    .map(|sig| req.rlp_signed(&sig))
             })
             .collect();
 

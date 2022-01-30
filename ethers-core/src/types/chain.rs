@@ -124,7 +124,12 @@ impl Chain {
         // TODO: Add other chains which do not support EIP1559.
         matches!(
             self,
-            Chain::Optimism | Chain::OptimismKovan | Chain::Fantom | Chain::FantomTestnet
+            Chain::Optimism |
+                Chain::OptimismKovan |
+                Chain::Fantom |
+                Chain::FantomTestnet |
+                Chain::BinanceSmartChain |
+                Chain::BinanceSmartChainTestnet
         )
     }
 }

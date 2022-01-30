@@ -18,7 +18,7 @@ use ethers_core::{
     },
     types::{
         transaction::{eip2718::TypedTransaction, eip712::Eip712},
-        Address, Signature, H256, U256,
+        Address, Signature, H256, U256, U64,
     },
     utils::hash_message,
 };
@@ -83,7 +83,23 @@ impl<D: Sync + Send + DigestSigner<Sha256Proxy, RecoverableSignature>> Signer fo
     }
 
     async fn sign_transaction(&self, tx: &TypedTransaction) -> Result<Signature, Self::Error> {
-        Ok(self.sign_transaction_sync(tx))
+        let chain_id = tx.chain_id();
+        match chain_id {
+            Some(id) => {
+                if U64::from(self.chain_id) != id {
+                    return Err(WalletError::InvalidTransactionError(
+                        "transaction chain_id does not match the signer".to_string(),
+                    ))
+                }
+                Ok(self.sign_transaction_sync(tx))
+            }
+            None => {
+                // in the case we don't have a chain_id, let's use the signer chain id instead
+                let mut tx_with_chain = tx.clone();
+                tx_with_chain.set_chain_id(self.chain_id);
+                Ok(self.sign_transaction_sync(&tx_with_chain))
+            }
+        }
     }
 
     async fn sign_typed_data<T: Eip712 + Send + Sync>(
@@ -119,7 +135,7 @@ impl<D: Sync + Send + DigestSigner<Sha256Proxy, RecoverableSignature>> Signer fo
 impl<D: DigestSigner<Sha256Proxy, RecoverableSignature>> Wallet<D> {
     /// Synchronously signs the provided transaction.
     pub fn sign_transaction_sync(&self, tx: &TypedTransaction) -> Signature {
-        let sighash = tx.sighash(self.chain_id);
+        let sighash = tx.sighash();
         self.sign_hash(sighash, true)
     }
 

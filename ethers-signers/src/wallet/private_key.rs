@@ -46,6 +46,8 @@ pub enum WalletError {
     /// Error type from Eip712Error message
     #[error("error encoding eip712 struct: {0:?}")]
     Eip712Error(String),
+    #[error("invalid transaction: {0:?}")]
+    InvalidTransactionError(String),
 }
 
 impl Clone for Wallet<SigningKey> {
@@ -142,8 +144,8 @@ impl FromStr for Wallet<SigningKey> {
 #[cfg(not(target_arch = "wasm32"))]
 mod tests {
     use super::*;
-    use crate::Signer;
-    use ethers_core::types::Address;
+    use crate::{Signer, TypedTransaction};
+    use ethers_core::types::{Address, U64};
     use tempfile::tempdir;
 
     #[tokio::test]
@@ -195,7 +197,7 @@ mod tests {
         use ethers_core::types::TransactionRequest;
         // retrieved test vector from:
         // https://web3js.readthedocs.io/en/v1.2.0/web3-eth-accounts.html#eth-accounts-signtransaction
-        let tx = TransactionRequest {
+        let tx: TypedTransaction = TransactionRequest {
             from: None,
             to: Some("F0109fC8DF283027b6285cc889F5aA624EaC1F55".parse::<Address>().unwrap().into()),
             value: Some(1_000_000_000.into()),
@@ -203,16 +205,15 @@ mod tests {
             nonce: Some(0.into()),
             gas_price: Some(21_000_000_000u128.into()),
             data: None,
+            chain_id: Some(U64::one()),
         }
         .into();
-        let chain_id = 1u64;
-
         let wallet: Wallet<SigningKey> =
             "4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318".parse().unwrap();
-        let wallet = wallet.with_chain_id(chain_id);
+        let wallet = wallet.with_chain_id(tx.chain_id().unwrap().as_u64());
 
         let sig = wallet.sign_transaction(&tx).await.unwrap();
-        let sighash = tx.sighash(chain_id);
+        let sighash = tx.sighash();
         assert!(sig.verify(sighash, wallet.address).is_ok());
     }
 

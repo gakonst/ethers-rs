@@ -94,6 +94,9 @@ pub enum SignerMiddlewareError<M: Middleware, S: Signer> {
     /// Thrown if a signature is requested from a different address
     #[error("specified from address is not signer")]
     WrongSigner,
+    /// Thrown if the signer's chain_id is different than the chain_id of the transaction
+    #[error("specified chain_id is different than the signer's chain_id")]
+    DifferentChainID,
 }
 
 // Helper functions for locally signing transactions
@@ -113,11 +116,25 @@ where
         &self,
         tx: TypedTransaction,
     ) -> Result<Bytes, SignerMiddlewareError<M, S>> {
+        // compare chain_id and use signer's chain_id if the tranasaction's chain_id is None,
+        // return an error if they are not consistent
+        let chain_id = self.signer.chain_id();
+        match tx.chain_id() {
+            Some(id) if id.as_u64() != chain_id => {
+                return Err(SignerMiddlewareError::DifferentChainID)
+            }
+            None => {
+                let mut tx = tx.clone();
+                tx.set_chain_id(chain_id);
+            }
+            _ => {}
+        }
+
         let signature =
             self.signer.sign_transaction(&tx).await.map_err(SignerMiddlewareError::SignerError)?;
 
         // Return the raw rlp-encoded signed transaction
-        Ok(tx.rlp_signed(self.signer.chain_id(), &signature))
+        Ok(tx.rlp_signed(&signature))
     }
 
     /// Returns the client's address
@@ -189,6 +206,12 @@ where
             self.address
         };
         tx.set_from(from);
+
+        // get the signer's chain_id if the transaction does not set it
+        let chain_id = self.signer.chain_id();
+        if tx.chain_id().is_none() {
+            tx.set_chain_id(chain_id);
+        }
 
         let nonce = maybe(tx.nonce().cloned(), self.get_transaction_count(from, block)).await?;
         tx.set_nonce(nonce);
@@ -266,6 +289,7 @@ mod tests {
             nonce: Some(0.into()),
             gas_price: Some(21_000_000_000u128.into()),
             data: None,
+            chain_id: None,
         }
         .into();
         let chain_id = 1u64;

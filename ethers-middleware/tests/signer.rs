@@ -39,7 +39,7 @@ async fn send_eth() {
     let provider = SignerMiddleware::new(provider, wallet);
 
     // craft the transaction
-    let tx = TransactionRequest::new().to(wallet2.address()).value(10000);
+    let tx = TransactionRequest::new().to(wallet2.address()).value(10000).chain_id(chain_id);
 
     let balance_before = provider.get_balance(provider.address(), None).await.unwrap();
 

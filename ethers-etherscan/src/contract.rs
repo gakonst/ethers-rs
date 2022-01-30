@@ -201,7 +201,7 @@ impl Client {
         contract: &VerifyContract,
     ) -> Result<Response<String>> {
         let body = self.create_query("contract", "verifysourcecode", contract);
-        Ok(self.post_form(&body).await?)
+        self.post_form(&body).await
     }
 
     /// Check Source Code Verification Status with receipt received from
@@ -215,7 +215,7 @@ impl Client {
             "checkverifystatus",
             HashMap::from([("guid", guid.as_ref())]),
         );
-        Ok(self.post_form(&body).await?)
+        self.post_form(&body).await
     }
 
     /// Returns the contract ABI of a verified contract
