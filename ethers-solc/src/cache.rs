@@ -1,6 +1,6 @@
 //! Support for compiling contracts
 use crate::{
-    artifacts::{Sources},
+    artifacts::Sources,
     config::SolcConfig,
     contracts::VersionedContracts,
     error::{Result, SolcError},
@@ -358,13 +358,10 @@ impl CacheEntry {
 ///
 /// See also [Import Path Resolution](https://docs.soliditylang.org/en/develop/path-resolution.html#path-resolution)
 #[derive(Debug, Default)]
-pub struct SourceUnitNameMap {
+pub(crate) struct SourceUnitNameMap {
     /// all libraries to the source set while keeping track of their actual disk path
     /// (`contracts/contract.sol` -> `/Users/.../contracts.sol`)
     pub source_unit_name_to_absolute_path: HashMap<PathBuf, PathBuf>,
-    // /// inverse of `source_name_to_path` : (`/Users/.../contracts.sol` ->
-    // `contracts/contract.sol`) pub aboslute_path_to_source_unit_name: HashMap<PathBuf,
-    // PathBuf>,
 }
 
 impl SourceUnitNameMap {
@@ -388,8 +385,10 @@ impl SourceUnitNameMap {
         let contracts = contracts
             .into_iter()
             .map(|(source_unit_name, contracts)| {
-                if let Some(file) =
-                    self.source_unit_name_to_absolute_path.get(Path::new(&source_unit_name)).cloned()
+                if let Some(file) = self
+                    .source_unit_name_to_absolute_path
+                    .get(Path::new(&source_unit_name))
+                    .cloned()
                 {
                     (format!("{}", file.display()), contracts)
                 } else {
