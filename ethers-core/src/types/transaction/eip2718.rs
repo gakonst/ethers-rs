@@ -162,6 +162,23 @@ impl TypedTransaction {
         };
     }
 
+    pub fn chain_id(&self) -> Option<U64> {
+        match self {
+            Legacy(inner) => inner.chain_id,
+            Eip2930(inner) => inner.tx.chain_id,
+            Eip1559(inner) => inner.chain_id,
+        }
+    }
+
+    pub fn set_chain_id<T: Into<U64>>(&mut self, chain_id: T) {
+        let chain_id = chain_id.into();
+        match self {
+            Legacy(inner) => inner.chain_id = Some(chain_id),
+            Eip2930(inner) => inner.tx.chain_id = Some(chain_id),
+            Eip1559(inner) => inner.chain_id = Some(chain_id),
+        };
+    }
+
     pub fn data(&self) -> Option<&Bytes> {
         match self {
             Legacy(inner) => inner.data.as_ref(),
@@ -194,7 +211,7 @@ impl TypedTransaction {
         };
     }
 
-    pub fn rlp_signed<T: Into<U64>>(&self, chain_id: T, signature: &Signature) -> Bytes {
+    pub fn rlp_signed(&self, signature: &Signature) -> Bytes {
         let mut encoded = vec![];
         match self {
             Legacy(ref tx) => {
@@ -202,41 +219,68 @@ impl TypedTransaction {
             }
             Eip2930(inner) => {
                 encoded.extend_from_slice(&[0x1]);
-                encoded.extend_from_slice(inner.rlp_signed(chain_id, signature).as_ref());
+                encoded.extend_from_slice(inner.rlp_signed(signature).as_ref());
             }
             Eip1559(inner) => {
                 encoded.extend_from_slice(&[0x2]);
-                encoded.extend_from_slice(inner.rlp_signed(chain_id, signature).as_ref());
+                encoded.extend_from_slice(inner.rlp_signed(signature).as_ref());
             }
         };
         encoded.into()
     }
 
-    pub fn rlp<T: Into<U64>>(&self, chain_id: T) -> Bytes {
-        let chain_id = chain_id.into();
+    pub fn rlp(&self) -> Bytes {
         let mut encoded = vec![];
         match self {
             Legacy(inner) => {
-                encoded.extend_from_slice(inner.rlp(chain_id).as_ref());
+                encoded.extend_from_slice(inner.rlp().as_ref());
             }
             Eip2930(inner) => {
                 encoded.extend_from_slice(&[0x1]);
-                encoded.extend_from_slice(inner.rlp(chain_id).as_ref());
+                encoded.extend_from_slice(inner.rlp().as_ref());
             }
             Eip1559(inner) => {
                 encoded.extend_from_slice(&[0x2]);
-                encoded.extend_from_slice(inner.rlp(chain_id).as_ref());
+                encoded.extend_from_slice(inner.rlp().as_ref());
             }
         };
 
         encoded.into()
     }
 
-    /// Hashes the transaction's data with the provided chain id
-    /// Does not double-RLP encode
-    pub fn sighash<T: Into<U64>>(&self, chain_id: T) -> H256 {
-        let encoded = self.rlp(chain_id);
+    /// Hashes the transaction's data. Does not double-RLP encode
+    pub fn sighash(&self) -> H256 {
+        let encoded = self.rlp();
         keccak256(encoded).into()
+    }
+}
+
+/// Get a TypedTransaction directly from an rlp encoded byte stream
+impl rlp::Decodable for TypedTransaction {
+    fn decode(rlp: &rlp::Rlp) -> Result<Self, rlp::DecoderError> {
+        let tx_type: Option<U64> = match rlp.is_data() {
+            true => Some(rlp.data().unwrap().into()),
+            false => None,
+        };
+        let rest = rlp::Rlp::new(
+            rlp.as_raw().get(1..).ok_or(rlp::DecoderError::Custom("no transaction payload"))?,
+        );
+
+        match tx_type {
+            Some(x) if x == U64::from(1) => {
+                // EIP-2930 (0x01)
+                Ok(Self::Eip2930(Eip2930TransactionRequest::decode(&rest)?))
+            }
+            Some(x) if x == U64::from(2) => {
+                // EIP-1559 (0x02)
+                Ok(Self::Eip1559(Eip1559TransactionRequest::decode(&rest)?))
+            }
+            _ => {
+                // Legacy (0x00)
+                // use the original rlp
+                Ok(Self::Legacy(TransactionRequest::decode(rlp)?))
+            }
+        }
     }
 }
 
@@ -260,8 +304,11 @@ impl From<Eip1559TransactionRequest> for TypedTransaction {
 
 #[cfg(test)]
 mod tests {
+    use rlp::Decodable;
+
     use super::*;
     use crate::types::{Address, U256};
+    use std::str::FromStr;
 
     #[test]
     fn serde_legacy_tx() {
@@ -275,5 +322,103 @@ mod tests {
 
         let de: TransactionRequest = serde_json::from_str(&serialized).unwrap();
         assert_eq!(tx, TypedTransaction::Legacy(de));
+    }
+
+    #[test]
+    fn test_typed_tx_without_access_list() {
+        let tx: Eip1559TransactionRequest = serde_json::from_str(
+            r#"{
+            "gas": "0x186a0",
+            "maxFeePerGas": "0x77359400",
+            "maxPriorityFeePerGas": "0x77359400",
+            "data": "0x5544",
+            "nonce": "0x2",
+            "to": "0x96216849c49358B10257cb55b28eA603c874b05E",
+            "value": "0x5af3107a4000",
+            "type": "0x2",
+            "chainId": "0x539",
+            "accessList": [],
+            "v": "0x1",
+            "r": "0xc3000cd391f991169ebfd5d3b9e93c89d31a61c998a21b07a11dc6b9d66f8a8e",
+            "s": "0x22cfe8424b2fbd78b16c9911da1be2349027b0a3c40adf4b6459222323773f74"
+        }"#,
+        )
+        .unwrap();
+
+        let envelope = TypedTransaction::Eip1559(tx);
+
+        let expected =
+            H256::from_str("0xa1ea3121940930f7e7b54506d80717f14c5163807951624c36354202a8bffda6")
+                .unwrap();
+        let actual = envelope.sighash();
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn test_typed_tx() {
+        let tx: Eip1559TransactionRequest = serde_json::from_str(
+            r#"{
+            "gas": "0x186a0",
+            "maxFeePerGas": "0x77359400",
+            "maxPriorityFeePerGas": "0x77359400",
+            "data": "0x5544",
+            "nonce": "0x2",
+            "to": "0x96216849c49358B10257cb55b28eA603c874b05E",
+            "value": "0x5af3107a4000",
+            "type": "0x2",
+            "accessList": [
+                {
+                    "address": "0x0000000000000000000000000000000000000001",
+                    "storageKeys": [
+                        "0x0100000000000000000000000000000000000000000000000000000000000000"
+                    ]
+                }
+            ],
+            "chainId": "0x539",
+            "v": "0x1",
+            "r": "0xc3000cd391f991169ebfd5d3b9e93c89d31a61c998a21b07a11dc6b9d66f8a8e",
+            "s": "0x22cfe8424b2fbd78b16c9911da1be2349027b0a3c40adf4b6459222323773f74"
+        }"#,
+        )
+        .unwrap();
+
+        let envelope = TypedTransaction::Eip1559(tx);
+
+        let expected =
+            H256::from_str("0x090b19818d9d087a49c3d2ecee4829ee4acea46089c1381ac5e588188627466d")
+                .unwrap();
+        let actual = envelope.sighash();
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn test_typed_tx_decode() {
+        // this is the same transaction as the above test
+        let typed_tx_hex = hex::decode("02f86b8205390284773594008477359400830186a09496216849c49358b10257cb55b28ea603c874b05e865af3107a4000825544f838f7940000000000000000000000000000000000000001e1a00100000000000000000000000000000000000000000000000000000000000000").unwrap();
+        let tx_rlp = rlp::Rlp::new(typed_tx_hex.as_slice());
+        let actual_tx = TypedTransaction::decode(&tx_rlp).unwrap();
+
+        let expected =
+            H256::from_str("0x090b19818d9d087a49c3d2ecee4829ee4acea46089c1381ac5e588188627466d")
+                .unwrap();
+        let actual = actual_tx.sighash();
+        assert_eq!(expected, actual);
+    }
+
+    #[cfg(not(feature = "celo"))]
+    #[test]
+    fn test_eip155_decode() {
+        let tx = TransactionRequest::new()
+            .nonce(9)
+            .to("3535353535353535353535353535353535353535".parse::<Address>().unwrap())
+            .value(1000000000000000000u64)
+            .gas_price(20000000000u64)
+            .gas(21000)
+            .chain_id(1);
+
+        let expected_hex = hex::decode("ec098504a817c800825208943535353535353535353535353535353535353535880de0b6b3a764000080018080").unwrap();
+        let expected_rlp = rlp::Rlp::new(expected_hex.as_slice());
+        let decoded_transaction = TypedTransaction::decode(&expected_rlp).unwrap();
+        assert_eq!(tx.sighash(), decoded_transaction.sighash());
     }
 }

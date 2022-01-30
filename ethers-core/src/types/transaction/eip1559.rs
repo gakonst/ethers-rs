@@ -3,7 +3,7 @@ use crate::{
     types::{Address, Bytes, NameOrAddress, Signature, H256, U256, U64},
     utils::keccak256,
 };
-use rlp::RlpStream;
+use rlp::{Decodable, DecoderError, RlpStream};
 
 /// EIP-1559 transactions have 9 fields
 const NUM_TX_FIELDS: usize = 9;
@@ -57,6 +57,10 @@ pub struct Eip1559TransactionRequest {
     /// baseFeePerGas and maxPriorityFeePerGas). The difference between maxFeePerGas and
     /// baseFeePerGas + maxPriorityFeePerGas is “refunded” to the user.
     pub max_fee_per_gas: Option<U256>,
+
+    #[serde(rename = "chainId", default, skip_serializing_if = "Option::is_none")]
+    /// Chain ID (None for mainnet)
+    pub chain_id: Option<U64>,
 }
 
 impl Eip1559TransactionRequest {
@@ -130,25 +134,34 @@ impl Eip1559TransactionRequest {
         self
     }
 
+    /// Sets the `chain_id` field in the transaction to the provided value
+    #[must_use]
+    pub fn chain_id<T: Into<U64>>(mut self, chain_id: T) -> Self {
+        self.chain_id = Some(chain_id.into());
+        self
+    }
+
     /// Hashes the transaction's data with the provided chain id
-    pub fn sighash<T: Into<U64>>(&self, chain_id: T) -> H256 {
-        keccak256(self.rlp(chain_id).as_ref()).into()
+    pub fn sighash(&self) -> H256 {
+        keccak256(self.rlp().as_ref()).into()
     }
 
     /// Gets the unsigned transaction's RLP encoding
-    pub fn rlp<T: Into<U64>>(&self, chain_id: T) -> Bytes {
+    pub fn rlp(&self) -> Bytes {
         let mut rlp = RlpStream::new();
         rlp.begin_list(NUM_TX_FIELDS);
-        self.rlp_base(chain_id, &mut rlp);
+        self.rlp_base(&mut rlp);
         rlp.out().freeze().into()
     }
 
     /// Produces the RLP encoding of the transaction with the provided signature
-    pub fn rlp_signed<T: Into<U64>>(&self, chain_id: T, signature: &Signature) -> Bytes {
+    pub fn rlp_signed(&self, signature: &Signature) -> Bytes {
         let mut rlp = RlpStream::new();
         rlp.begin_unbounded_list();
-        let chain_id = chain_id.into();
-        self.rlp_base(chain_id, &mut rlp);
+        self.rlp_base(&mut rlp);
+
+        // if the chain_id is none we assume mainnet and choose one
+        let chain_id = self.chain_id.unwrap_or_else(U64::one);
 
         // append the signature
         let v = normalize_v(signature.v, chain_id);
@@ -159,8 +172,8 @@ impl Eip1559TransactionRequest {
         rlp.out().freeze().into()
     }
 
-    pub(crate) fn rlp_base<T: Into<U64>>(&self, chain_id: T, rlp: &mut RlpStream) {
-        rlp.append(&chain_id.into());
+    pub(crate) fn rlp_base(&self, rlp: &mut RlpStream) {
+        rlp_opt(rlp, &self.chain_id);
         rlp_opt(rlp, &self.nonce);
         rlp_opt(rlp, &self.max_priority_fee_per_gas);
         rlp_opt(rlp, &self.max_fee_per_gas);
@@ -169,6 +182,44 @@ impl Eip1559TransactionRequest {
         rlp_opt(rlp, &self.value);
         rlp_opt(rlp, &self.data.as_ref().map(|d| d.as_ref()));
         rlp.append(&self.access_list);
+    }
+
+    /// Decodes fields of the request starting at the RLP offset passed. Increments the offset for
+    /// each element parsed.
+    #[inline]
+    fn decode_base_rlp(&mut self, rlp: &rlp::Rlp, offset: &mut usize) -> Result<(), DecoderError> {
+        self.chain_id = Some(rlp.val_at(*offset)?);
+        *offset += 1;
+        self.nonce = Some(rlp.val_at(*offset)?);
+        *offset += 1;
+        self.max_priority_fee_per_gas = Some(rlp.val_at(*offset)?);
+        *offset += 1;
+        self.max_fee_per_gas = Some(rlp.val_at(*offset)?);
+        *offset += 1;
+        self.gas = Some(rlp.val_at(*offset)?);
+        *offset += 1;
+        self.to = Some(rlp.val_at(*offset)?);
+        *offset += 1;
+        self.value = Some(rlp.val_at(*offset)?);
+        *offset += 1;
+        let data = rlp::Rlp::new(rlp.at(*offset)?.as_raw()).data()?;
+        self.data = match data.len() {
+            0 => None,
+            _ => Some(Bytes::from(data.to_vec())),
+        };
+        *offset += 1;
+        self.access_list = rlp.val_at(*offset)?;
+        *offset += 1;
+        Ok(())
+    }
+}
+
+impl Decodable for Eip1559TransactionRequest {
+    fn decode(rlp: &rlp::Rlp) -> Result<Self, rlp::DecoderError> {
+        let mut txn = Eip1559TransactionRequest::new();
+        let mut offset = 0;
+        txn.decode_base_rlp(rlp, &mut offset)?;
+        Ok(txn)
     }
 }
 
@@ -188,6 +239,7 @@ impl From<Eip1559TransactionRequest> for super::request::TransactionRequest {
             gateway_fee_recipient: None,
             #[cfg(feature = "celo")]
             gateway_fee: None,
+            chain_id: tx.chain_id,
         }
     }
 }

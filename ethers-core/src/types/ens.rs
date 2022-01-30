@@ -1,5 +1,7 @@
+use std::cmp::Ordering;
+
 use crate::types::Address;
-use rlp::{Encodable, RlpStream};
+use rlp::{Decodable, Encodable, RlpStream};
 use serde::{ser::Error as SerializationError, Deserialize, Deserializer, Serialize, Serializer};
 
 /// ENS name or Ethereum Address. Not RLP encoded/serialized if it's a name
@@ -25,6 +27,25 @@ impl Encodable for NameOrAddress {
     fn rlp_append(&self, s: &mut RlpStream) {
         if let NameOrAddress::Address(inner) = self {
             inner.rlp_append(s);
+        }
+    }
+}
+
+impl Decodable for NameOrAddress {
+    fn decode(rlp: &rlp::Rlp) -> Result<Self, rlp::DecoderError> {
+        // An address (H160) is 20 bytes, so let's only accept 20 byte rlp string encodings.
+        if !rlp.is_data() {
+            return Err(rlp::DecoderError::RlpExpectedToBeData)
+        }
+
+        // the data needs to be 20 bytes long
+        match 20.cmp(&rlp.size()) {
+            Ordering::Less => Err(rlp::DecoderError::RlpIsTooShort),
+            Ordering::Greater => Err(rlp::DecoderError::RlpIsTooBig),
+            Ordering::Equal => {
+                let rlp_data = rlp.data()?;
+                Ok(NameOrAddress::Address(Address::from_slice(rlp_data)))
+            }
         }
     }
 }
@@ -71,6 +92,8 @@ impl<'de> Deserialize<'de> for NameOrAddress {
 
 #[cfg(test)]
 mod tests {
+    use rlp::Rlp;
+
     use super::*;
 
     #[test]
@@ -101,6 +124,20 @@ mod tests {
         let mut rlp = RlpStream::new();
         (&union).rlp_append(&mut rlp);
         assert_eq!(rlp.as_raw(), expected.as_raw());
+    }
+
+    #[test]
+    fn rlp_address_deserialized() {
+        let addr = "3dd6f334b732d23b51dfbee2070b40bbd1a97a8f".parse().unwrap();
+        let expected = NameOrAddress::Address(addr);
+
+        let mut rlp = RlpStream::new();
+        rlp.append(&addr);
+        let rlp_bytes = &rlp.out().freeze()[..];
+        let data = Rlp::new(rlp_bytes);
+        let name = NameOrAddress::decode(&data).unwrap();
+
+        assert_eq!(name, expected);
     }
 
     #[test]

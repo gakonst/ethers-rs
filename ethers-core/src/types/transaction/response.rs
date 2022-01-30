@@ -1,10 +1,10 @@
 //! Transaction types
-use super::{eip2930::AccessList, normalize_v, rlp_opt};
+use super::{decode_signature, eip2930::AccessList, normalize_v, rlp_opt};
 use crate::{
     types::{Address, Bloom, Bytes, Log, H256, U256, U64},
     utils::keccak256,
 };
-use rlp::RlpStream;
+use rlp::{Decodable, DecoderError, RlpStream};
 use serde::{Deserialize, Serialize};
 
 /// Details of a signed transaction
@@ -200,6 +200,152 @@ impl Transaction {
             }
             _ => rlp_bytes,
         }
+    }
+
+    /// Decodes the Celo-specific metadata starting at the RLP offset passed.
+    /// Increments the offset for each element parsed.
+    #[cfg(feature = "celo")]
+    #[inline]
+    fn decode_celo_metadata(
+        &mut self,
+        rlp: &rlp::Rlp,
+        offset: &mut usize,
+    ) -> Result<(), DecoderError> {
+        self.fee_currency = Some(rlp.val_at(*offset)?);
+        *offset += 1;
+        self.gateway_fee_recipient = Some(rlp.val_at(*offset)?);
+        *offset += 1;
+        self.gateway_fee = Some(rlp.val_at(*offset)?);
+        *offset += 1;
+        Ok(())
+    }
+
+    /// Decodes fields of the type 2 transaction response starting at the RLP offset passed.
+    /// Increments the offset for each element parsed.
+    #[inline]
+    fn decode_base_eip1559(
+        &mut self,
+        rlp: &rlp::Rlp,
+        offset: &mut usize,
+    ) -> Result<(), DecoderError> {
+        self.chain_id = Some(rlp.val_at(*offset)?);
+        *offset += 1;
+        self.nonce = rlp.val_at(*offset)?;
+        *offset += 1;
+        self.max_priority_fee_per_gas = Some(rlp.val_at(*offset)?);
+        *offset += 1;
+        self.max_fee_per_gas = Some(rlp.val_at(*offset)?);
+        *offset += 1;
+        self.gas = rlp.val_at(*offset)?;
+        *offset += 1;
+        self.to = Some(rlp.val_at(*offset)?);
+        *offset += 1;
+        self.value = rlp.val_at(*offset)?;
+        *offset += 1;
+        let input = rlp::Rlp::new(rlp.at(*offset)?.as_raw()).data()?;
+        self.input = Bytes::from(input.to_vec());
+        *offset += 1;
+        self.access_list = Some(rlp.val_at(*offset)?);
+        *offset += 1;
+        Ok(())
+    }
+
+    /// Decodes fields of the type 1 transaction response based on the RLP offset passed.
+    /// Increments the offset for each element parsed.
+    fn decode_base_eip2930(
+        &mut self,
+        rlp: &rlp::Rlp,
+        offset: &mut usize,
+    ) -> Result<(), DecoderError> {
+        self.chain_id = Some(rlp.val_at(*offset)?);
+        *offset += 1;
+        self.nonce = rlp.val_at(*offset)?;
+        *offset += 1;
+        self.gas_price = Some(rlp.val_at(*offset)?);
+        *offset += 1;
+        self.gas = rlp.val_at(*offset)?;
+        *offset += 1;
+
+        #[cfg(feature = "celo")]
+        self.decode_celo_metadata(rlp, offset)?;
+
+        self.gas = rlp.val_at(*offset)?;
+        *offset += 1;
+        self.to = Some(rlp.val_at(*offset)?);
+        *offset += 1;
+        self.value = rlp.val_at(*offset)?;
+        *offset += 1;
+        let input = rlp::Rlp::new(rlp.at(*offset)?.as_raw()).data()?;
+        self.input = Bytes::from(input.to_vec());
+        *offset += 1;
+        self.access_list = Some(rlp.val_at(*offset)?);
+        *offset += 1;
+
+        Ok(())
+    }
+
+    /// Decodes a legacy transaction starting at the RLP offset passed.
+    /// Increments the offset for each element parsed.
+    #[inline]
+    fn decode_base_legacy(
+        &mut self,
+        rlp: &rlp::Rlp,
+        offset: &mut usize,
+    ) -> Result<(), DecoderError> {
+        println!("are we a list {}", rlp.is_list());
+        self.nonce = rlp.val_at(*offset)?;
+        *offset += 1;
+        self.gas_price = Some(rlp.val_at(*offset)?);
+        *offset += 1;
+        self.gas = rlp.val_at(*offset)?;
+        *offset += 1;
+
+        #[cfg(feature = "celo")]
+        self.decode_celo_metadata(rlp, offset)?;
+
+        self.to = Some(rlp.val_at(*offset)?);
+        *offset += 1;
+        self.value = rlp.val_at(*offset)?;
+        *offset += 1;
+        let input = rlp::Rlp::new(rlp.at(*offset)?.as_raw()).data()?;
+        self.input = Bytes::from(input.to_vec());
+        *offset += 1;
+        Ok(())
+    }
+}
+
+/// Get a TransactionReceipt directly from an rlp encoded byte stream
+impl Decodable for Transaction {
+    fn decode(rlp: &rlp::Rlp) -> Result<Self, DecoderError> {
+        let mut txn = Self::default();
+        // we can get the type from the first value
+        let mut offset = 0;
+        txn.transaction_type = Some(rlp.data().unwrap().into());
+        let rest = rlp::Rlp::new(
+            rlp.as_raw().get(1..).ok_or(DecoderError::Custom("no transaction payload"))?,
+        );
+
+        match txn.transaction_type {
+            Some(x) if x == U64::from(1) => {
+                // EIP-2930 (0x01)
+                txn.decode_base_eip2930(&rest, &mut offset)?;
+            }
+            Some(x) if x == U64::from(2) => {
+                // EIP-1559 (0x02)
+                txn.decode_base_eip1559(&rest, &mut offset)?;
+            }
+            _ => {
+                // Legacy (0x00)
+                txn.decode_base_legacy(&rest, &mut offset)?;
+            }
+        }
+
+        let sig = decode_signature(&rest, &mut offset)?;
+        txn.r = sig.r;
+        txn.s = sig.s;
+        txn.v = sig.v.into();
+
+        Ok(txn)
     }
 }
 
@@ -400,5 +546,95 @@ mod tests {
                 hex::decode("f8aa808512ec276caf83010e2b94dac17f958d2ee523a2206206994597c13d831ec780b844a9059cbb000000000000000000000000fdae129ecc2c27d166a3131098bc05d143fa258e0000000000000000000000000000000000000000000000000000000002faf08025a0c81e70f9e49e0d3b854720143e86d172fecc9e76ef8a8666f2fdc017017c5141a01dd3410180f6a6ca3e25ad3058789cd0df3321ed76b5b4dbe0a2bb2dc28ae274").unwrap()
             )
         );
+    }
+
+    #[test]
+    fn rlp_london_goerli() {
+        let tx = Transaction {
+            hash: H256::from_str(
+                "5e2fc091e15119c97722e9b63d5d32b043d077d834f377b91f80d32872c78109",
+            )
+            .unwrap(),
+            nonce: 65.into(),
+            block_hash: Some(
+                H256::from_str("f43869e67c02c57d1f9a07bb897b54bec1cfa1feb704d91a2ee087566de5df2c")
+                    .unwrap(),
+            ),
+            block_number: Some(6203173.into()),
+            transaction_index: Some(10.into()),
+            from: Address::from_str("e66b278fa9fbb181522f6916ec2f6d66ab846e04").unwrap(),
+            to: Some(Address::from_str("11d7c2ab0d4aa26b7d8502f6a7ef6844908495c2").unwrap()),
+            value: 0.into(),
+            gas_price: Some(1500000007.into()),
+            gas: 106703.into(),
+            input: hex::decode("e5225381").unwrap().into(),
+            v: 1.into(),
+            r: U256::from_str_radix(
+                "12010114865104992543118914714169554862963471200433926679648874237672573604889",
+                10,
+            )
+            .unwrap(),
+            s: U256::from_str_radix(
+                "22830728216401371437656932733690354795366167672037272747970692473382669718804",
+                10,
+            )
+            .unwrap(),
+            transaction_type: Some(2.into()),
+            access_list: Some(AccessList::default()),
+            max_priority_fee_per_gas: Some(1500000000.into()),
+            max_fee_per_gas: Some(1500000009.into()),
+            chain_id: Some(5.into()),
+        };
+        assert_eq!(
+            tx.rlp(),
+            Bytes::from(
+                hex::decode("02f86f05418459682f008459682f098301a0cf9411d7c2ab0d4aa26b7d8502f6a7ef6844908495c28084e5225381c001a01a8d7bef47f6155cbdf13d57107fc577fd52880fa2862b1a50d47641f8839419a03279bbf73fde76de83440d04b9d97f3809fec8617d3557ee40ac3e0edc391514").unwrap()
+            )
+        );
+    }
+
+    #[test]
+    fn decode_rlp_london_goerli() {
+        let tx = Transaction {
+            hash: H256::from_str(
+                "5e2fc091e15119c97722e9b63d5d32b043d077d834f377b91f80d32872c78109",
+            )
+            .unwrap(),
+            nonce: 65.into(),
+            block_hash: Some(
+                H256::from_str("f43869e67c02c57d1f9a07bb897b54bec1cfa1feb704d91a2ee087566de5df2c")
+                    .unwrap(),
+            ),
+            block_number: Some(6203173.into()),
+            transaction_index: Some(10.into()),
+            from: Address::from_str("e66b278fa9fbb181522f6916ec2f6d66ab846e04").unwrap(),
+            to: Some(Address::from_str("11d7c2ab0d4aa26b7d8502f6a7ef6844908495c2").unwrap()),
+            value: 0.into(),
+            gas_price: Some(1500000007.into()),
+            gas: 106703.into(),
+            input: hex::decode("e5225381").unwrap().into(),
+            v: 1.into(),
+            r: U256::from_str_radix(
+                "12010114865104992543118914714169554862963471200433926679648874237672573604889",
+                10,
+            )
+            .unwrap(),
+            s: U256::from_str_radix(
+                "22830728216401371437656932733690354795366167672037272747970692473382669718804",
+                10,
+            )
+            .unwrap(),
+            transaction_type: Some(2.into()),
+            access_list: Some(AccessList::default()),
+            max_priority_fee_per_gas: Some(1500000000.into()),
+            max_fee_per_gas: Some(1500000009.into()),
+            chain_id: Some(5.into()),
+        };
+
+        let rlp_bytes = hex::decode("02f86f05418459682f008459682f098301a0cf9411d7c2ab0d4aa26b7d8502f6a7ef6844908495c28084e5225381c001a01a8d7bef47f6155cbdf13d57107fc577fd52880fa2862b1a50d47641f8839419a03279bbf73fde76de83440d04b9d97f3809fec8617d3557ee40ac3e0edc391514").unwrap();
+        let decoded_transaction = Transaction::decode(&rlp::Rlp::new(&rlp_bytes)).unwrap();
+
+        // we compare hash because the hash depends on the rlp encoding
+        assert_eq!(decoded_transaction.hash(), tx.hash());
     }
 }

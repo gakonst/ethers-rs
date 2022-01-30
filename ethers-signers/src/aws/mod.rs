@@ -235,7 +235,7 @@ impl<'a> super::Signer for AwsSigner<'a> {
 
     #[instrument(err)]
     async fn sign_transaction(&self, tx: &TypedTransaction) -> Result<EthSig, Self::Error> {
-        let sighash = tx.sighash(self.chain_id);
+        let sighash = tx.sighash();
         self.sign_digest_with_eip155(sighash).await
     }
 
