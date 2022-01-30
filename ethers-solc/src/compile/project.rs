@@ -533,7 +533,8 @@ impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
             // read all artifacts
             let cached_artifacts = if project.paths.artifacts.exists() {
                 tracing::trace!("reading artifacts from cache..");
-                let artifacts = cache.read_artifacts::<T::Artifact>()?;
+                // if we failed to read the whole set of artifacts we use an empty set
+                let artifacts = cache.read_artifacts::<T::Artifact>().unwrap_or_default();
                 tracing::trace!("read {} artifacts from cache", artifacts.artifact_files().count());
                 artifacts
             } else {

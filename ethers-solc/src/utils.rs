@@ -6,6 +6,7 @@ use crate::{error::SolcError, SolcIoError};
 use once_cell::sync::Lazy;
 use regex::{Match, Regex};
 use semver::Version;
+use serde::de::DeserializeOwned;
 use tiny_keccak::{Hasher, Keccak};
 use walkdir::WalkDir;
 
@@ -250,6 +251,15 @@ pub(crate) fn find_fave_or_alt_path(root: impl AsRef<Path>, fave: &str, alt: &st
 #[cfg(any(test, feature = "project-util"))]
 pub(crate) fn tempdir(name: &str) -> Result<tempfile::TempDir, SolcIoError> {
     tempfile::Builder::new().prefix(name).tempdir().map_err(|err| SolcIoError::new(err, name))
+}
+
+/// Reads the json file and deserialize it into the provided type
+pub(crate) fn read_json_file<T: DeserializeOwned>(path: impl AsRef<Path>) -> Result<T, SolcError> {
+    let path = path.as_ref();
+    let file = std::fs::File::open(path).map_err(|err| SolcError::io(err, path))?;
+    let file = std::io::BufReader::new(file);
+    let val: T = serde_json::from_reader(file)?;
+    Ok(val)
 }
 
 #[cfg(test)]

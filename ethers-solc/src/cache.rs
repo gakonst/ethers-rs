@@ -3,10 +3,10 @@ use crate::{
     artifacts::{Contracts, Sources},
     config::SolcConfig,
     error::{Result, SolcError},
-    ArtifactFile, ArtifactOutput, Artifacts, ArtifactsMap, Source,
+    utils, ArtifactFile, Artifacts, ArtifactsMap, Source,
 };
 use semver::Version;
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{
     collections::{btree_map::BTreeMap, HashMap},
     fs::{self},
@@ -63,9 +63,7 @@ impl SolFilesCache {
     pub fn read(path: impl AsRef<Path>) -> Result<Self> {
         let path = path.as_ref();
         tracing::trace!("reading solfiles cache at {}", path.display());
-        let file = fs::File::open(path).map_err(|err| SolcError::io(err, path))?;
-        let file = std::io::BufReader::new(file);
-        let cache: Self = serde_json::from_reader(file)?;
+        let cache: SolFilesCache = utils::read_json_file(path)?;
         tracing::trace!("read cache \"{}\" with {} entries", cache.format, cache.files.len());
         Ok(cache)
     }
@@ -118,20 +116,12 @@ impl SolFilesCache {
     /// cache.join_all(project.artifacts_path());
     /// let artifacts = cache.read_artifacts::<MinimalCombinedArtifacts>().unwrap();
     /// ```
-    pub fn read_artifacts<Artifact: Serialize>(&self) -> Result<Artifacts<Artifact>> {
-        let artifacts = ArtifactsMap::new();
-        for (_file, _entry) in self.files.iter() {
-            // let mut entries = BTreeMap::new();
+    pub fn read_artifacts<Artifact: DeserializeOwned>(&self) -> Result<Artifacts<Artifact>> {
+        let mut artifacts = ArtifactsMap::new();
+        for (file, entry) in self.files.iter() {
+            let file_name = format!("{}", file.display());
+            artifacts.insert(file_name, entry.read_artifact_files()?);
         }
-
-        // let mut artifacts = BTreeMap::default();
-        // for (file, entry) in &self.files {
-        //     for artifact in &entry.artifacts {
-        //         let artifact_file = artifacts_root.join(T::output_file(file, artifact));
-        //         let artifact = T::read_cached_artifact(&artifact_file)?;
-        //         artifacts.insert(artifact_file, artifact);
-        //     }
-        // }
         Ok(Artifacts(artifacts))
     }
 
@@ -235,14 +225,22 @@ impl CacheEntry {
         Ok(last_modification_date)
     }
 
-    fn read_artifact_files<T: ArtifactOutput>(&self) -> Result<Vec<ArtifactFile<T::Artifact>>> {
-        for (_version, files) in self.artifacts.iter() {
-            for _file in files {
-                // get the contract name based on the number of versions
+    /// Reads all artifact files associated with the `CacheEntry`
+    ///
+    /// **Note:** all artifact file paths should be absolute, see [`Self::join`]
+    fn read_artifact_files<Artifact: DeserializeOwned>(
+        &self,
+    ) -> Result<BTreeMap<String, Vec<ArtifactFile<Artifact>>>> {
+        let mut artifacts = BTreeMap::new();
+        for (artifact_name, versioned_files) in self.artifacts.iter() {
+            let mut files = Vec::with_capacity(versioned_files.len());
+            for (version, file) in versioned_files {
+                let artifact: Artifact = utils::read_json_file(file)?;
+                files.push(ArtifactFile { artifact, file: file.clone(), version: version.clone() });
             }
+            artifacts.insert(artifact_name.clone(), files);
         }
-
-        todo!()
+        Ok(artifacts)
     }
 
     /// Returns `true` if the artifacts set contains the given version
@@ -256,8 +254,11 @@ impl CacheEntry {
     }
 
     /// Iterator that yields all artifact files and their version
-    pub fn artifacts_for_version(&self, version: &Version) -> impl Iterator<Item = &PathBuf> {
-        self.artifacts_versions().filter_map(|(ver, file)| (ver == version).then(|| file))
+    pub fn artifacts_for_version<'a>(
+        &'a self,
+        version: &'a Version,
+    ) -> impl Iterator<Item = &'a PathBuf> + 'a {
+        self.artifacts_versions().filter_map(move |(ver, file)| (ver == version).then(|| file))
     }
 
     /// Iterator that yields all artifact files
