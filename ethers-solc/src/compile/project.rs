@@ -69,9 +69,10 @@
 //! import "github.com/ethereum/dapp-bin/library/math.sol"; // source unit name: dapp-bin/library/math.sol
 //! ```
 //!
-//! The compiler will look for the file in the VFS under `dapp-bin/library/math.sol`. If the file is
-//! not available there, the source unit name will be passed to the Host Filesystem Loader, which
-//! will then look in `/project/dapp-bin/library/iterable_mapping.sol`
+//! If compiled with `solc github.com/ethereum/dapp-bin/=dapp-bin/` the compiler will look for the
+//! file in the VFS under `dapp-bin/library/math.sol`. If the file is not available there, the
+//! source unit name will be passed to the Host Filesystem Loader, which will then look in
+//! `/project/dapp-bin/library/iterable_mapping.sol`
 
 use crate::{
     artifact_output::Artifacts,
@@ -177,13 +178,16 @@ impl<'a, T: ArtifactOutput> ProjectCompiler<'a, T> {
 
         let mut cache = ArtifactsCache::new(project, &edges)?;
         // retain and compile only dirty sources
-        sources = sources
-            .filtered(&mut cache)
-            .set_source_unit_names(&project.paths, &mut source_unit_map);
+        sources = sources.filtered(&mut cache).set_source_unit_names(
+            &project.paths,
+            &edges,
+            &mut source_unit_map,
+        );
 
-        let output = sources.compile(&project.solc_config.settings, &project.paths)?;
+        let mut output = sources.compile(&project.solc_config.settings, &project.paths)?;
 
-        // TODO reapply the mappings to the contracts
+        // reverse the applied source unit names
+        output.contracts = source_unit_map.reverse(output.contracts);
 
         // write all artifacts
         let written_artifacts = if !project.no_artifacts {
@@ -242,22 +246,46 @@ impl CompilerSources {
     }
 
     /// Sets the correct source unit names for all sources
+    ///
+    /// This helps the compiler to find the right source in the `CompilerInput`.
+    /// the source unit name depends on how it is imported,
+    /// see [Import Path Resolution](https://docs.soliditylang.org/en/develop/path-resolution.html#path-resolution)
+    ///
+    /// For contracts imported from the project's src directory the source unit name is the relative
+    /// path, starting at the project's root path.
+    ///
+    /// The source name for a resolved library import is the applied remapping, also starting
+    /// relatively at the project's root path.
     fn set_source_unit_names(
         self,
         paths: &ProjectPathsConfig,
+        edges: &GraphEdges,
         names: &mut SourceUnitNameMap,
     ) -> Self {
         fn set(
-            _sources: VersionedSources,
-            _paths: &ProjectPathsConfig,
-            _cache: &mut SourceUnitNameMap,
+            sources: VersionedSources,
+            paths: &ProjectPathsConfig,
+            edges: &GraphEdges,
+            names: &mut SourceUnitNameMap,
         ) -> VersionedSources {
-            todo!()
+            sources
+                .into_iter()
+                .map(|(solc, (version, sources))| {
+                    let sources = names.apply_source_names_with(sources, |file| {
+                        edges.get_source_unit_name(file, &paths.root)
+                    });
+                    (solc, (version, sources))
+                })
+                .collect()
         }
 
         match self {
-            CompilerSources::Sequential(s) => CompilerSources::Sequential(set(s, paths, names)),
-            CompilerSources::Parallel(s, j) => CompilerSources::Parallel(set(s, paths, names), j),
+            CompilerSources::Sequential(s) => {
+                CompilerSources::Sequential(set(s, paths, edges, names))
+            }
+            CompilerSources::Parallel(s, j) => {
+                CompilerSources::Parallel(set(s, paths, edges, names), j)
+            }
         }
     }
 
@@ -524,6 +552,7 @@ impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
             // read the cache file if it already exists
             let cache = if project.cache_path().exists() {
                 let mut cache = SolFilesCache::read(project.cache_path())?;
+                // TODO are relative?
                 cache.join_all(project.artifacts_path()).remove_missing_files();
                 cache
             } else {
@@ -588,8 +617,8 @@ impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
                 // add the artifacts to the cache entries, this way we can keep a mapping from
                 // solidity file to its artifacts
                 // this step is necessary because the concrete artifacts are only known after solc
-                // was invoked and received as output, before that we merely know the the file and
-                // the versions so we add the artifacts on a file by file basis
+                // was invoked and received as output, before that we merely know the file and
+                // the versions, so we add the artifacts on a file by file basis
                 for (file, artifacts) in written_artifacts.as_ref() {
                     let file_path = Path::new(&file);
                     if let Some((entry, versions)) = dirty_entries.get_mut(file_path) {

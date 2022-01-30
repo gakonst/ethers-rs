@@ -1,7 +1,8 @@
 //! Support for compiling contracts
 use crate::{
-    artifacts::{Contracts, Sources},
+    artifacts::{Sources},
     config::SolcConfig,
+    contracts::VersionedContracts,
     error::{Result, SolcError},
     utils, ArtifactFile, Artifacts, ArtifactsMap,
 };
@@ -360,50 +361,43 @@ impl CacheEntry {
 pub struct SourceUnitNameMap {
     /// all libraries to the source set while keeping track of their actual disk path
     /// (`contracts/contract.sol` -> `/Users/.../contracts.sol`)
-    pub source_unit_name_to_path: HashMap<PathBuf, PathBuf>,
-    /// inverse of `source_name_to_path` : (`/Users/.../contracts.sol` -> `contracts/contract.sol`)
-    pub path_to_source_unit_name: HashMap<PathBuf, PathBuf>,
+    pub source_unit_name_to_absolute_path: HashMap<PathBuf, PathBuf>,
+    // /// inverse of `source_name_to_path` : (`/Users/.../contracts.sol` ->
+    // `contracts/contract.sol`) pub aboslute_path_to_source_unit_name: HashMap<PathBuf,
+    // PathBuf>,
 }
 
 impl SourceUnitNameMap {
-    fn apply_mappings(sources: Sources, mappings: &HashMap<PathBuf, PathBuf>) -> Sources {
+    /// Sets the source unit names of the sources using the provided mapper
+    pub(crate) fn apply_source_names_with<M>(&mut self, sources: Sources, mapper: M) -> Sources
+    where
+        M: for<'a> Fn(&Path) -> PathBuf,
+    {
         sources
             .into_iter()
-            .map(|(import, source)| {
-                if let Some(path) = mappings.get(&import).cloned() {
-                    (path, source)
+            .map(|(file, source)| {
+                let source_unit_name = mapper(&file);
+                self.source_unit_name_to_absolute_path.insert(source_unit_name.clone(), file);
+                (source_unit_name, source)
+            })
+            .collect()
+    }
+
+    /// Reverses all previous source unit mappings
+    pub(crate) fn reverse(&self, contracts: VersionedContracts) -> VersionedContracts {
+        let contracts = contracts
+            .into_iter()
+            .map(|(source_unit_name, contracts)| {
+                if let Some(file) =
+                    self.source_unit_name_to_absolute_path.get(Path::new(&source_unit_name)).cloned()
+                {
+                    (format!("{}", file.display()), contracts)
                 } else {
-                    (import, source)
+                    (source_unit_name, contracts)
                 }
             })
-            .collect()
-    }
-
-    /// Returns all contract names of the files mapped with the disk path
-    pub fn get_artifacts(&self, contracts: &Contracts) -> Vec<(PathBuf, Vec<String>)> {
-        contracts
-            .iter()
-            .map(|(path, contracts)| {
-                let path = PathBuf::from(path);
-                let file = self.source_unit_name_to_path.get(&path).cloned().unwrap_or(path);
-                (file, contracts.keys().cloned().collect::<Vec<_>>())
-            })
-            .collect()
-    }
-
-    pub fn extend(&mut self, other: SourceUnitNameMap) {
-        self.source_unit_name_to_path.extend(other.source_unit_name_to_path);
-        self.path_to_source_unit_name.extend(other.path_to_source_unit_name);
-    }
-
-    /// Returns a new map with the source names as keys
-    pub fn set_source_names(&self, sources: Sources) -> Sources {
-        Self::apply_mappings(sources, &self.path_to_source_unit_name)
-    }
-
-    /// Returns a new map with the disk paths as keys
-    pub fn set_disk_paths(&self, sources: Sources) -> Sources {
-        Self::apply_mappings(sources, &self.source_unit_name_to_path)
+            .collect();
+        VersionedContracts(contracts)
     }
 }
 

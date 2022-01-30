@@ -55,6 +55,9 @@ pub struct GraphEdges {
     versions: HashMap<usize, Option<VersionReq>>,
     /// with how many input files we started with, corresponds to `let input_files =
     /// nodes[..num_input_files]`.
+    ///
+    /// Combined with the `indices` this way we can determine if a file was original added to the
+    /// graph as input or was added as resolved import, see [`Self::is_input_file()`]
     num_input_files: usize,
 }
 
@@ -73,6 +76,34 @@ impl GraphEdges {
         } else {
             HashSet::new()
         }
+    }
+
+    /// Returns true if the `file` was originally included when the graph was first created and not
+    /// added when all `imports` were resolved
+    pub fn is_input_file(&self, file: impl AsRef<Path>) -> bool {
+        if let Some(idx) = self.indices.get(file.as_ref()).copied() {
+            idx < self.num_input_files
+        } else {
+            false
+        }
+    }
+
+    /// Returns the source unit name for the `file`
+    ///
+    /// Read more about [Import Path Resolution](https://docs.soliditylang.org/en/develop/path-resolution.html#path-resolution)
+    ///
+    /// If the `file` is an `input` file, see [`Self::is_input_file()`], then this returns the
+    /// relative part to that file starting from the project's root directory. So that the
+    /// source unit name of `/user/projects/myproject/src/Contract.sol` is `src/Contract.sol` if the
+    /// `myproject` dir is the project's root directory.
+    ///
+    /// If the `file` is a resolved import, then this returns the relative part after the remappings
+    /// are applied, also starting at the project's root directory.
+    ///
+    /// **NOTE:** All remappings are already applied when imports are resolved, therefore the source
+    /// unit name is always determined by [`utils::source_name()`].
+    pub fn get_source_unit_name(&self, file: impl AsRef<Path>, root: impl AsRef<Path>) -> PathBuf {
+        utils::source_name(file.as_ref(), root).to_path_buf()
     }
 
     /// Returns the `VersionReq` for the given file
