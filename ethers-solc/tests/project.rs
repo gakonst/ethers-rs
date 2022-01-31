@@ -378,3 +378,26 @@ fn can_flatten_file_with_duplicates() {
     assert_eq!(result.matches("contract FooBar {").count(), 1);
     assert_eq!(result.matches(";").count(), 1);
 }
+
+#[test]
+fn can_detect_type_error() {
+    let project = TempProject::<MinimalCombinedArtifacts>::dapptools().unwrap();
+
+    project
+        .add_source(
+            "Contract",
+            r#"
+    pragma solidity ^0.8.10;
+
+   contract Contract {
+        function xyz() public {
+            require(address(0), "Error");
+        }
+   }
+   "#,
+        )
+        .unwrap();
+
+    let compiled = project.compile().unwrap();
+    assert!(compiled.has_compiler_errors());
+}

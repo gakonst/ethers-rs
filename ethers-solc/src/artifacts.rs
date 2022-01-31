@@ -1733,7 +1733,7 @@ pub struct Error {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub source_location: Option<SourceLocation>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub secondary_source_locations: Vec<SourceLocation>,
+    pub secondary_source_locations: Vec<SecondarySourceLocation>,
     pub r#type: String,
     pub component: String,
     pub severity: Severity,
@@ -1845,6 +1845,13 @@ pub struct SourceLocation {
     pub file: String,
     pub start: i32,
     pub end: i32,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+pub struct SecondarySourceLocation {
+    pub file: Option<String>,
+    pub start: Option<i32>,
+    pub end: Option<i32>,
     pub message: Option<String>,
 }
 
