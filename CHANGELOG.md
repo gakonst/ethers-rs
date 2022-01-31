@@ -182,6 +182,7 @@
   [#568](https://github.com/gakonst/ethers-rs/pull/568)
 - Removes GasNow as a gas price oracle
   [#508](https://github.com/gakonst/ethers-rs/pull/508)
+- add initialize_nonce public function to initialize NonceMiddleManager
 
 ### 0.5.3
 
