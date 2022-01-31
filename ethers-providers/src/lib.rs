@@ -83,7 +83,9 @@ where
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum SyncingStatus {
-    IsFalse(bool),
+    /// When client is synced to highest block, eth_syncing with return string "false"
+    IsFalse,
+    /// When client is still syncing past blocks we get IsSyncing mode.
     IsSyncing { starting_block: U256, current_block: U256, highest_block: U256 },
 }
 
