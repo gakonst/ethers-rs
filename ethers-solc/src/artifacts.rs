@@ -1724,7 +1724,7 @@ pub struct SourceLocation {
     pub end: i32,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Hash)]
 pub struct SecondarySourceLocation {
     pub file: Option<String>,
     pub start: Option<i32>,
