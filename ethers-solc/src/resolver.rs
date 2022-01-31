@@ -97,13 +97,18 @@ impl GraphEdges {
     /// source unit name of `/user/projects/myproject/src/Contract.sol` is `src/Contract.sol` if the
     /// `myproject` dir is the project's root directory.
     ///
-    /// If the `file` is a resolved import, then this returns the relative part after the remappings
-    /// are applied, also starting at the project's root directory.
+    /// If the `file` is a resolved import, then this returns the resolved path, after remappings
+    /// were applied, because, solc also applies them during their VFS lookup and they are provided
+    /// in the `CompilerInput`'s `Settings`: see [`CompilerInput::with_remappings()`]
     ///
-    /// **NOTE:** All remappings are already applied when imports are resolved, therefore the source
-    /// unit name is always determined by [`utils::source_name()`].
+    /// Read more about [Import Remapping](https://docs.soliditylang.org/en/develop/path-resolution.html#import-remapping)
     pub fn get_source_unit_name(&self, file: impl AsRef<Path>, root: impl AsRef<Path>) -> PathBuf {
-        utils::source_name(file.as_ref(), root).to_path_buf()
+        let file = file.as_ref();
+        if self.is_input_file(file) {
+            utils::source_name(file, root).to_path_buf()
+        } else {
+            file.to_path_buf()
+        }
     }
 
     /// Returns the `VersionReq` for the given file

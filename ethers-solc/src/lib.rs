@@ -518,10 +518,10 @@ impl<Artifacts: ArtifactOutput> ProjectBuilder<Artifacts> {
             offline,
         } = self;
 
+        let paths = paths.map(Ok).unwrap_or_else(ProjectPathsConfig::current_hardhat)?;
+
         let solc = solc.unwrap_or_default();
         let solc_config = solc_config.unwrap_or_else(|| SolcConfig::builder().build());
-
-        let paths = paths.map(Ok).unwrap_or_else(ProjectPathsConfig::current_hardhat)?;
 
         if allowed_paths.is_empty() {
             // allow every contract under root by default

@@ -43,6 +43,14 @@ impl SolFilesCache {
         Self { format: ETHERS_FORMAT_VERSION.to_string(), files }
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.files.is_empty()
+    }
+
+    pub fn len(&self) -> usize {
+        self.files.len()
+    }
+
     /// Returns the corresponding `CacheEntry` for the file if it exists
     pub fn entry(&self, file: impl AsRef<Path>) -> Option<&CacheEntry> {
         self.files.get(file.as_ref())
@@ -356,15 +364,15 @@ impl CacheEntry {
 #[derive(Debug)]
 pub(crate) struct ArtifactsCacheInner<'a, T: ArtifactOutput> {
     /// preexisting cache file
-    cache: SolFilesCache,
+    pub cache: SolFilesCache,
     /// all already existing artifacts
-    cached_artifacts: Artifacts<T::Artifact>,
+    pub cached_artifacts: Artifacts<T::Artifact>,
     /// relationship between all the files
-    edges: GraphEdges,
+    pub edges: GraphEdges,
     /// the project
-    project: &'a Project<T>,
+    pub project: &'a Project<T>,
     /// all files that were filtered because they haven't changed
-    filtered: HashMap<PathBuf, (Source, HashSet<Version>)>,
+    pub filtered: HashMap<PathBuf, (Source, HashSet<Version>)>,
     /// the corresponding cache entries for all sources that were deemed to be dirty
     ///
     /// `CacheEntry` are grouped by their solidity file.
@@ -374,9 +382,9 @@ pub(crate) struct ArtifactsCacheInner<'a, T: ArtifactOutput> {
     /// [`crate::ArtifactOutput::on_output()`] all artifacts, their disk paths, are determined and
     /// can be populated before the updated [`crate::SolFilesCache`] is finally written to disk,
     /// see [`Cache::finish()`]
-    dirty_entries: HashMap<PathBuf, (CacheEntry, HashSet<Version>)>,
+    pub dirty_entries: HashMap<PathBuf, (CacheEntry, HashSet<Version>)>,
     /// the file hashes
-    content_hashes: HashMap<PathBuf, String>,
+    pub content_hashes: HashMap<PathBuf, String>,
 }
 
 impl<'a, T: ArtifactOutput> ArtifactsCacheInner<'a, T> {
@@ -562,6 +570,14 @@ impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
         };
 
         Ok(cache)
+    }
+
+    #[cfg(test)]
+    pub fn as_cached(&self) -> Option<&ArtifactsCacheInner<'a, T>> {
+        match self {
+            ArtifactsCache::Ephemeral(_, _) => None,
+            ArtifactsCache::Cached(cached) => Some(cached),
+        }
     }
 
     pub fn edges(&self) -> &GraphEdges {

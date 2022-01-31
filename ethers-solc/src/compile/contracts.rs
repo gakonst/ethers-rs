@@ -17,6 +17,11 @@ impl VersionedContracts {
         self.0.len()
     }
 
+    /// Returns an iterator over all files
+    pub fn files(&self) -> impl Iterator<Item = &String> + '_ {
+        self.0.keys()
+    }
+
     /// Finds the _first_ contract with the given name
     ///
     /// # Example

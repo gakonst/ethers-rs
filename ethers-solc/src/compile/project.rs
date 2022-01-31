@@ -128,7 +128,7 @@ impl<'a, T: ArtifactOutput> ProjectCompiler<'a, T> {
         let sources_by_version = versions.get(&project.allowed_lib_paths)?;
 
         let sources = if project.solc_jobs > 1 && sources_by_version.len() > 1 {
-            // if there are multiple different versions and we can use multiple jobs we can compile
+            // if there are multiple different versions, and we can use multiple jobs we can compile
             // them in parallel
             CompilerSources::Parallel(sources_by_version, project.solc_jobs)
         } else {
@@ -447,5 +447,17 @@ mod tests {
 
         let compiler = ProjectCompiler::new(&project).unwrap();
         let prep = compiler.preprocess().unwrap();
+        let cache = prep.cache.as_cached().unwrap();
+        // 3 contracts
+        assert_eq!(cache.dirty_entries.len(), 3);
+        assert!(cache.filtered.is_empty());
+        assert!(cache.cache.is_empty());
+        assert_eq!(prep.source_unit_map.source_unit_name_to_absolute_path.len(), 3);
+
+        let compiled = prep.compile().unwrap();
+        let files = compiled.output.contracts.files().collect::<Vec<_>>();
+        assert_eq!(files.len(), 3);
+
+        // dbg!(compiled.output.sources.keys());
     }
 }
