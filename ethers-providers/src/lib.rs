@@ -27,7 +27,7 @@ pub use pubsub::{PubsubClient, SubscriptionStream};
 use async_trait::async_trait;
 use auto_impl::auto_impl;
 use ethers_core::types::transaction::{eip2718::TypedTransaction, eip2930::AccessListWithGasUsed};
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{error::Error, fmt::Debug, future::Future, pin::Pin};
 
 pub use provider::{FilterKind, Provider, ProviderError};
@@ -77,6 +77,14 @@ where
     } else {
         f.await
     }
+}
+
+/// Structure used in eth_syncing RPC
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(untagged)]
+pub enum SyncingStatus {
+    IsFalse(bool),
+    IsSyncing { starting_block: U256, current_block: U256, highest_block: U256 },
 }
 
 /// A middleware allows customizing requests send and received from an ethereum node.
@@ -301,6 +309,10 @@ pub trait Middleware: Sync + Send + Debug {
         block: Option<BlockId>,
     ) -> Result<Bytes, Self::Error> {
         self.inner().call(tx, block).await.map_err(FromErr::from)
+    }
+
+    async fn syncing(&self) -> Result<SyncingStatus, Self::Error> {
+        self.inner().syncing().await.map_err(FromErr::from)
     }
 
     async fn get_chainid(&self) -> Result<U256, Self::Error> {

@@ -3,7 +3,7 @@ use crate::{
     pubsub::{PubsubClient, SubscriptionStream},
     stream::{FilterWatcher, DEFAULT_POLL_INTERVAL},
     FromErr, Http as HttpProvider, JsonRpcClient, JsonRpcClientWrapper, MockProvider,
-    PendingTransaction, QuorumProvider,
+    PendingTransaction, QuorumProvider, SyncingStatus,
 };
 
 #[cfg(feature = "celo")]
@@ -495,6 +495,11 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
     /// transaction signing as introduced by EIP-155.
     async fn get_chainid(&self) -> Result<U256, ProviderError> {
         self.request("eth_chainId", ()).await
+    }
+
+    /// Return current client syncing status. If IsFalse sync is over.
+    async fn syncing(&self) -> Result<SyncingStatus, Self::Error> {
+        self.request("eth_syncing", ()).await
     }
 
     /// Returns the network version.
