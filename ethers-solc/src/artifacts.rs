@@ -752,6 +752,7 @@ impl<'a> fmt::Display for OutputDiagnostics<'a> {
 
 /// Represents a compiled solidity contract
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
 pub struct Contract {
     /// The Ethereum Contract Metadata.
     /// See https://docs.soliditylang.org/en/develop/metadata.html
@@ -764,7 +765,7 @@ pub struct Contract {
     pub devdoc: DevDoc,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ir: Option<String>,
-    #[serde(default, rename = "storageLayout", skip_serializing_if = "StorageLayout::is_empty")]
+    #[serde(default, skip_serializing_if = "StorageLayout::is_empty")]
     pub storage_layout: StorageLayout,
     /// EVM-related outputs
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -772,6 +773,8 @@ pub struct Contract {
     /// Ewasm related outputs
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ewasm: Option<Ewasm>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ir_optimized: Option<String>,
 }
 
 /// Minimal representation of a contract with a present abi and bytecode.
