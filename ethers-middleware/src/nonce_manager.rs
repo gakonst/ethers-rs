@@ -29,7 +29,7 @@ where
         let nonce = self.nonce.fetch_add(1, Ordering::SeqCst);
         nonce.into()
     }
-    
+
     pub async fn initialize_nonce(
         &self,
         block: Option<BlockId>,
