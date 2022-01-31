@@ -196,6 +196,7 @@ impl<'a, T: ArtifactOutput> ProjectCompiler<'a, T> {
 /// A series of states that comprise the [`ProjectCompiler::compile()`] state machine
 ///
 /// The main reason is to debug all states individually
+#[derive(Debug)]
 struct PreprocessedState<'a, T: ArtifactOutput> {
     sources: CompilerSources,
     cache: ArtifactsCache<'a, T>,
@@ -217,6 +218,7 @@ impl<'a, T: ArtifactOutput> PreprocessedState<'a, T> {
 }
 
 /// Represents the state after `solc` was successfully invoked
+#[derive(Debug)]
 struct CompiledState<'a, T: ArtifactOutput> {
     output: AggregatedCompilerOutput,
     cache: ArtifactsCache<'a, T>,
@@ -240,6 +242,7 @@ impl<'a, T: ArtifactOutput> CompiledState<'a, T> {
 }
 
 /// Represents the state after all artifacts were written to disk
+#[derive(Debug)]
 struct ArtifactsState<'a, T: ArtifactOutput> {
     output: AggregatedCompilerOutput,
     cache: ArtifactsCache<'a, T>,
@@ -442,6 +445,7 @@ mod tests {
         let project =
             Project::builder().paths(ProjectPathsConfig::dapptools(root).unwrap()).build().unwrap();
 
-        let _compiler = ProjectCompiler::new(&project).unwrap();
+        let compiler = ProjectCompiler::new(&project).unwrap();
+        let prep = compiler.preprocess().unwrap();
     }
 }

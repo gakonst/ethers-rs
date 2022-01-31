@@ -11,7 +11,7 @@ use semver::Version;
 use serde::{de::DeserializeOwned, Serialize};
 use std::{
     collections::btree_map::BTreeMap,
-    fs, io,
+    fmt, fs, io,
     path::{Path, PathBuf},
 };
 
@@ -243,7 +243,7 @@ where
 /// relationship (1-N+).
 pub trait ArtifactOutput {
     /// Represents the artifact that will be stored for a `Contract`
-    type Artifact: Artifact + DeserializeOwned + Serialize;
+    type Artifact: Artifact + DeserializeOwned + Serialize + fmt::Debug;
 
     /// Handle the aggregated set of compiled contracts from the solc [`crate::CompilerOutput`].
     ///

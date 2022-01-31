@@ -353,6 +353,7 @@ impl CacheEntry {
 
 /// A helper abstraction over the [`SolFilesCache`] used to determine what files need to compiled
 /// and which `Artifacts` can be reused.
+#[derive(Debug)]
 pub(crate) struct ArtifactsCacheInner<'a, T: ArtifactOutput> {
     /// preexisting cache file
     cache: SolFilesCache,
@@ -513,6 +514,7 @@ impl<'a, T: ArtifactOutput> ArtifactsCacheInner<'a, T> {
 
 /// Abstraction over configured caching which can be either non-existent or an already loaded cache
 #[allow(clippy::large_enum_variant)]
+#[derive(Debug)]
 pub(crate) enum ArtifactsCache<'a, T: ArtifactOutput> {
     /// Cache nothing on disk
     Ephemeral(GraphEdges, &'a Project<T>),
