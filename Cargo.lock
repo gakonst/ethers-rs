@@ -1016,9 +1016,9 @@ checksum = "e78d4f1cc4ae33bbfc157ed5d5a5ef3bc29227303d595861deb238fcec4e9457"
 
 [[package]]
 name = "elliptic-curve"
-version = "0.11.10"
+version = "0.11.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "23f80ad035a844638d4ce3d4a27ef4e00f2304e1a37f9f43c6a3c73622f39e79"
+checksum = "25b477563c2bfed38a3b7a60964c49e058b2510ad3f12ba3483fd8f62c2306d6"
 dependencies = [
  "base16ct",
  "crypto-bigint",
@@ -3486,8 +3486,8 @@ checksum = "6bdef32e8150c2a081110b42772ffe7d7c9032b606bc226c8260fd97e0976601"
 
 [[package]]
 name = "svm-rs"
-version = "0.2.1"
-source = "git+https://github.com/roynalnaruto/svm-rs#aca7b30ea8509300ef8c960b517716702cb847a0"
+version = "0.2.2"
+source = "git+https://github.com/roynalnaruto/svm-rs#146021b95ef9f17bb3b084bc77fbb84f3d4c5ee2"
 dependencies = [
  "anyhow",
  "cfg-if 1.0.0",
