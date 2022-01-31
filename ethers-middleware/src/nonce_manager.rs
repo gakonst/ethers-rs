@@ -33,7 +33,7 @@ where
     pub async fn initialize_nonce(
         &self,
         block: Option<BlockId>,
-    ) -> Result<NonceManagerError<M>> {
+    ) -> Result<U256, NonceManagerError<M>> {
         // initialize the nonce the first time the manager is called
         if !self.initialized.load(Ordering::SeqCst) {
             let nonce = self
@@ -44,7 +44,8 @@ where
             self.nonce.store(nonce.as_u64(), Ordering::SeqCst);
             self.initialized.store(true, Ordering::SeqCst);
         }
-        Ok(())
+        // return current nonce
+        Ok(self.nonce.into())
     }
 
     async fn get_transaction_count_with_manager(
