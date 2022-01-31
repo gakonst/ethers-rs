@@ -262,6 +262,21 @@ pub(crate) fn read_json_file<T: DeserializeOwned>(path: impl AsRef<Path>) -> Res
     Ok(val)
 }
 
+/// Creates the
+pub fn create_parent_dir_all(file: impl AsRef<Path>) -> Result<(), SolcError> {
+    let file = file.as_ref();
+    if let Some(parent) = file.parent() {
+        std::fs::create_dir_all(parent).map_err(|err| {
+            SolcError::msg(format!(
+                "Failed to create artifact parent folder \"{}\": {}",
+                parent.display(),
+                err
+            ))
+        })?;
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -4,7 +4,7 @@ use crate::{
     artifacts::{CompactContract, CompactContractBytecode, Contract, FileToContractsMap},
     contracts::VersionedContracts,
     error::Result,
-    HardhatArtifact, ProjectPathsConfig, SolcError,
+    utils, HardhatArtifact, ProjectPathsConfig, SolcError,
 };
 use ethers_core::{abi::Abi, types::Bytes};
 use semver::Version;
@@ -29,15 +29,7 @@ pub struct ArtifactFile<T> {
 impl<T: Serialize> ArtifactFile<T> {
     /// Writes the given contract to the `out` path creating all parent directories
     pub fn write(&self) -> Result<()> {
-        if let Some(parent) = self.file.parent() {
-            fs::create_dir_all(parent).map_err(|err| {
-                SolcError::msg(format!(
-                    "Failed to create artifact parent folder \"{}\": {}",
-                    parent.display(),
-                    err
-                ))
-            })?;
-        }
+        utils::create_parent_dir_all(&self.file)?;
         fs::write(&self.file, serde_json::to_vec_pretty(&self.artifact)?)
             .map_err(|err| SolcError::io(err, &self.file))?;
         Ok(())
@@ -256,7 +248,62 @@ pub trait ArtifactOutput {
         let mut artifacts = Self::output_to_artifacts(contracts);
         artifacts.join_all(&layout.artifacts);
         artifacts.write_all()?;
+
+        Self::write_extras(contracts, layout)?;
+
         Ok(artifacts)
+    }
+
+    /// Writes additional files for the contracts if the included in the `Contract`, such as `ir`,
+    /// `ewasm`, `iropt`.
+    ///
+    /// By default, these fields are _not_ enabled in the [`crate::Settings`], see
+    /// [`crate::Settings::default_output_selection()`], and the respective fields of the
+    /// [`Contract`] will `None`. If they'll be manually added to the `output_selection`, then
+    /// we're also creating individual files for this output, such as `Greeter.iropt`,
+    /// `Gretter.ewasm`
+    fn write_extras(contracts: &VersionedContracts, layout: &ProjectPathsConfig) -> Result<()> {
+        for (file, contracts) in contracts.as_ref().iter() {
+            for (name, versioned_contracts) in contracts {
+                for c in versioned_contracts {
+                    let artifact_path = if versioned_contracts.len() > 1 {
+                        Self::output_file_versioned(file, name, &c.version)
+                    } else {
+                        Self::output_file(file, name)
+                    };
+
+                    let file = layout.artifacts.join(artifact_path);
+                    utils::create_parent_dir_all(&file)?;
+
+                    if let Some(iropt) = &c.contract.ir_optimized {
+                        fs::write(&file.with_extension("iropt"), iropt)
+                            .map_err(|err| SolcError::io(err, file.with_extension("iropt")))?
+                    }
+
+                    if let Some(ir) = &c.contract.ir {
+                        fs::write(&file.with_extension("ir"), ir)
+                            .map_err(|err| SolcError::io(err, file.with_extension("ir")))?
+                    }
+
+                    if let Some(ewasm) = &c.contract.ewasm {
+                        fs::write(
+                            &file.with_extension("ewasm"),
+                            serde_json::to_vec_pretty(&ewasm)?,
+                        )
+                        .map_err(|err| SolcError::io(err, file.with_extension("ewasm")))?;
+                    }
+
+                    if let Some(evm) = &c.contract.evm {
+                        if let Some(asm) = &evm.assembly {
+                            fs::write(&file.with_extension("asm"), asm)
+                                .map_err(|err| SolcError::io(err, file.with_extension("asm")))?
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(())
     }
 
     /// Returns the file name for the contract's artifact
