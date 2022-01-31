@@ -399,7 +399,7 @@ impl<Artifacts: ArtifactOutput> ProjectBuilder<Artifacts> {
     /// Prevents network possible access to download/check solc installs
     #[must_use]
     pub fn offline(self) -> Self {
-        self.set_cached(false)
+        self.set_offline(true)
     }
 
     /// Sets the offline status
