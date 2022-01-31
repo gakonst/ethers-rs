@@ -1,12 +1,24 @@
 //! Transaction types
 use super::{decode_to, extract_chain_id, rlp_opt, NUM_TX_FIELDS};
 use crate::{
-    types::{Address, Bytes, NameOrAddress, Signature, Transaction, H256, U256, U64},
+    types::{Address, Bytes, NameOrAddress, Signature, Transaction, H256, U256, U64, SignatureError},
     utils::keccak256,
 };
 
+use thiserror::Error;
 use rlp::{Decodable, RlpStream};
 use serde::{Deserialize, Serialize};
+
+/// An error involving a transaction request.
+#[derive(Debug, Error)]
+pub enum RequestError {
+    /// When decoding a transaction request from RLP
+    #[error(transparent)]
+    DecodingError(#[from] rlp::DecoderError),
+    /// When recovering the address from a signature
+    #[error(transparent)]
+    RecoveryError(#[from] SignatureError),
+}
 
 /// Parameters for sending a transaction
 #[derive(Clone, Default, Serialize, Deserialize, PartialEq, Eq, Debug)]
@@ -195,7 +207,7 @@ impl TransactionRequest {
 
     /// Decodes the unsigned rlp, returning the transaction request and incrementing the counter
     /// passed as we are traversing the rlp list.
-    fn decode_unsigned_rlp_base(
+    pub(crate) fn decode_unsigned_rlp_base(
         rlp: &rlp::Rlp,
         offset: &mut usize,
     ) -> Result<Self, rlp::DecoderError> {
@@ -249,12 +261,12 @@ impl TransactionRequest {
     }
 
     /// Decodes the given RLP into a transaction, attempting to decode its signature as well.
-    pub fn decode_signed_rlp(rlp: &rlp::Rlp) -> Result<(Self, Signature), rlp::DecoderError> {
+    pub fn decode_signed_rlp(rlp: &rlp::Rlp) -> Result<(Self, Signature), RequestError> {
         let mut offset = 0;
         let mut txn = Self::decode_unsigned_rlp_base(rlp, &mut offset)?;
 
         let v = rlp.at(offset)?.as_val()?;
-        // populate chainid from v
+        // populate chainid from v in case the signature follows EIP155
         txn.chain_id = extract_chain_id(v);
         offset += 1;
         let r = rlp.at(offset)?.as_val()?;
@@ -262,6 +274,8 @@ impl TransactionRequest {
         let s = rlp.at(offset)?.as_val()?;
 
         let sig = Signature { r, s, v };
+        txn.from = Some(sig.recover(txn.sighash())?);
+
         Ok((txn, sig))
     }
 }
@@ -269,7 +283,7 @@ impl TransactionRequest {
 impl Decodable for TransactionRequest {
     /// Decodes the given RLP into a transaction request, ignoring the signature if populated
     fn decode(rlp: &rlp::Rlp) -> Result<Self, rlp::DecoderError> {
-        TransactionRequest::decode_unsigned_rlp(rlp)
+        Self::decode_unsigned_rlp(rlp)
     }
 }
 
