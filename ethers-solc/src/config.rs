@@ -653,6 +653,29 @@ impl ArtifactOutput for MinimalCombinedArtifacts {
                         ))
                     })?;
                 }
+
+                if let Some(iropt) = &contract.ir_optimized {
+                    fs::write(&file.with_extension("iropt"), iropt)
+                        .map_err(|err| SolcError::io(err, file.with_extension("iropt")))?
+                }
+
+                if let Some(ir) = &contract.ir {
+                    fs::write(&file.with_extension("ir"), ir)
+                        .map_err(|err| SolcError::io(err, file.with_extension("ir")))?
+                }
+
+                if let Some(ewasm) = &contract.ewasm {
+                    fs::write(&file.with_extension("ewasm"), serde_json::to_vec_pretty(&ewasm)?)
+                        .map_err(|err| SolcError::io(err, file.with_extension("ewasm")))?;
+                }
+
+                if let Some(evm) = &contract.evm {
+                    if let Some(asm) = &evm.assembly {
+                        fs::write(&file.with_extension("asm"), asm)
+                            .map_err(|err| SolcError::io(err, file.with_extension("asm")))?
+                    }
+                }
+
                 let min = CompactContractBytecode::from(contract.clone());
                 fs::write(&file, serde_json::to_vec_pretty(&min)?)
                     .map_err(|err| SolcError::io(err, file))?
