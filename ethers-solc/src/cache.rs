@@ -62,15 +62,22 @@ impl SolFilesCache {
     }
 
     /// Reads the cache json file from the given path
+    ///
+    /// # Errors
+    ///
+    /// If the cache file does not exist
+    ///
     /// # Example
     ///
     /// ```
+    /// # fn t() {
     /// use ethers_solc::cache::SolFilesCache;
     /// use ethers_solc::Project;
     ///
     /// let project = Project::builder().build().unwrap();
     /// let mut cache = SolFilesCache::read(project.cache_path()).unwrap();
     /// cache.join_all(project.artifacts_path());
+    /// # }
     /// ```
     #[tracing::instrument(skip_all, name = "sol-files-cache::read")]
     pub fn read(path: impl AsRef<Path>) -> Result<Self> {
@@ -81,7 +88,7 @@ impl SolFilesCache {
         Ok(cache)
     }
 
-    /// Write the cache to json file
+    /// Write the cache as json file to the given path
     pub fn write(&self, path: impl AsRef<Path>) -> Result<()> {
         let path = path.as_ref();
         let file = fs::File::create(path).map_err(|err| SolcError::io(err, path))?;
@@ -122,12 +129,14 @@ impl SolFilesCache {
     ///
     /// ```
     /// use ethers_solc::cache::SolFilesCache;
-    /// use ethers_solc::{MinimalCombinedArtifacts, Project};
-    ///
+    /// use ethers_solc::Project;
+    /// use ethers_solc::artifacts::CompactContractBytecode;
+    /// # fn t() {
     /// let project = Project::builder().build().unwrap();
     /// let mut cache = SolFilesCache::read(project.cache_path()).unwrap();
     /// cache.join_all(project.artifacts_path());
-    /// let artifacts = cache.read_artifacts::<MinimalCombinedArtifacts>().unwrap();
+    /// let artifacts = cache.read_artifacts::<CompactContractBytecode>().unwrap();
+    /// # }
     /// ```
     pub fn read_artifacts<Artifact: DeserializeOwned>(&self) -> Result<Artifacts<Artifact>> {
         let mut artifacts = ArtifactsMap::new();
