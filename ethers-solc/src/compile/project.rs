@@ -455,9 +455,6 @@ mod tests {
         assert_eq!(prep.source_unit_map.source_unit_name_to_absolute_path.len(), 3);
 
         let compiled = prep.compile().unwrap();
-        let files = compiled.output.contracts.files().collect::<Vec<_>>();
-        assert_eq!(files.len(), 3);
-
-        // dbg!(compiled.output.sources.keys());
+        assert_eq!(compiled.output.contracts.files().count(), 3);
     }
 }
