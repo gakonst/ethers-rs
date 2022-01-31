@@ -705,14 +705,3 @@ impl SourceUnitNameMap {
         VersionedContracts(contracts)
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn can_parse_solidity_files_cache() {
-        let input = include_str!("../test-data/solidity-files-cache.json");
-        let _ = serde_json::from_str::<SolFilesCache>(input).unwrap();
-    }
-}

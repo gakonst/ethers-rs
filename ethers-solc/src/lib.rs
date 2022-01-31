@@ -572,6 +572,8 @@ impl<Artifacts: ArtifactOutput> ArtifactOutput for Project<Artifacts> {
 
 #[cfg(test)]
 mod tests {
+    use crate::remappings::Remapping;
+
     #[test]
     #[cfg(all(feature = "svm", feature = "async"))]
     fn test_build_all_versions() {
@@ -627,6 +629,7 @@ mod tests {
             .root(&root)
             .sources(root.join("src"))
             .lib(root.join("lib"))
+            .remappings(Remapping::find_many(&root.join("lib")))
             .build()
             .unwrap();
         let project = Project::builder().no_artifacts().paths(paths).ephemeral().build().unwrap();

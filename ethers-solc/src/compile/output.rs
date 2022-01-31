@@ -103,7 +103,7 @@ where
 
 impl<T: ArtifactOutput> fmt::Display for ProjectCompileOutput<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.compiler_output.is_empty() {
+        if self.compiler_output.contracts.is_empty() && self.compiler_output.errors.is_empty() {
             f.write_str("Nothing to compile")
         } else {
             self.compiler_output.diagnostics(&self.ignored_error_codes).fmt(f)
