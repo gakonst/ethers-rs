@@ -604,6 +604,11 @@ mod tests {
             .sources(root.join("src"))
             .lib(root.join("lib1"))
             .lib(root.join("lib2"))
+            .remappings(
+                Remapping::find_many(&root.join("lib1"))
+                    .into_iter()
+                    .chain(Remapping::find_many(&root.join("lib2"))),
+            )
             .build()
             .unwrap();
         let project = Project::builder()
