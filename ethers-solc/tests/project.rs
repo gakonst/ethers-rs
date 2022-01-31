@@ -376,4 +376,5 @@ fn can_flatten_file_with_duplicates() {
     assert_eq!(result.matches("contract Foo {").count(), 1);
     assert_eq!(result.matches("contract Bar {").count(), 1);
     assert_eq!(result.matches("contract FooBar {").count(), 1);
+    assert_eq!(result.matches(";").count(), 1);
 }

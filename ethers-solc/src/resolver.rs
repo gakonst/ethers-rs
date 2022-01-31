@@ -485,7 +485,8 @@ impl<T> SolDataUnit<T> {
     pub fn loc_by_offset(&self, offset: isize) -> (usize, usize) {
         (
             offset.saturating_add(self.loc.start as isize) as usize,
-            offset.saturating_add(self.loc.end as isize) as usize,
+            // make the end location exclusive
+            offset.saturating_add(self.loc.end as isize + 1) as usize,
         )
     }
 }
