@@ -38,6 +38,8 @@
 
 ### Unreleased
 
+- Fix flatten replacement target location
+  [#846](https://github.com/gakonst/ethers-rs/pull/846)
 - Fix duplicate files during flattening
   [#813](https://github.com/gakonst/ethers-rs/pull/813)
 - Add ability to flatten file imports
