@@ -42,7 +42,7 @@ fn can_compile_hardhat_sample() {
 }
 
 #[test]
-fn can_compile_dapp_sample() {
+fn can_compile_dapp_sample2() {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test-data/dapp-sample");
     let paths = ProjectPathsConfig::builder().sources(root.join("src")).lib(root.join("lib"));
     let project = TempProject::<MinimalCombinedArtifacts>::new(paths).unwrap();

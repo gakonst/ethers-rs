@@ -414,6 +414,9 @@ impl ProjectPathsConfigBuilder {
 
     pub fn build_with_root(self, root: impl Into<PathBuf>) -> ProjectPathsConfig {
         let root = canonicalized(root);
+
+        let libraries = self.libraries.unwrap_or_else(|| ProjectPathsConfig::find_libs(&root));
+
         ProjectPathsConfig {
             cache: self
                 .cache
@@ -423,8 +426,10 @@ impl ProjectPathsConfigBuilder {
                 .unwrap_or_else(|| ProjectPathsConfig::find_artifacts_dir(&root)),
             sources: self.sources.unwrap_or_else(|| ProjectPathsConfig::find_source_dir(&root)),
             tests: self.tests.unwrap_or_else(|| root.join("tests")),
-            libraries: self.libraries.unwrap_or_else(|| ProjectPathsConfig::find_libs(&root)),
-            remappings: self.remappings.unwrap_or_default(),
+            remappings: self.remappings.unwrap_or_else(|| {
+                libraries.iter().flat_map(|lib| Remapping::find_many(lib)).collect()
+            }),
+            libraries,
             root,
         }
     }
