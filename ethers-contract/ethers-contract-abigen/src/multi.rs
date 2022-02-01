@@ -278,7 +278,8 @@ impl MultiBindings {
     /// ```no_run
     /// # use ethers_contract_abigen::MultiAbigen;
     /// let gen = MultiAbigen::from_json_files("./abi").unwrap();
-    /// gen.write_to_module("./src/contracts").unwrap();
+    /// let bindings = gen.build().unwrap();
+    /// bindings.write_to_module("./src/contracts", false).unwrap();
     /// ```
     pub fn write_to_module(self, module: impl AsRef<Path>, single_file: bool) -> Result<()> {
         let module = module.as_ref();
@@ -303,6 +304,8 @@ impl MultiBindings {
     /// ├── ERC20.json
     /// ├── Contract1.json
     /// ├── Contract2.json
+    /// ├── Contract3/
+    ///     ├── Contract3.json
     /// ...
     /// ```
     ///
@@ -322,7 +325,10 @@ impl MultiBindings {
     /// ```no_run
     /// # use ethers_contract_abigen::MultiAbigen;
     /// let gen = MultiAbigen::from_json_files("./abi").unwrap();
-    /// gen.write_to_crate("./bindings").unwrap();
+    /// let bindings = gen.build().unwrap();
+    /// bindings.write_to_crate(
+    ///     "my-crate", "0.0.5", "./bindings", false
+    /// ).unwrap();
     /// ```
     pub fn write_to_crate(
         self,
@@ -398,7 +404,10 @@ impl MultiBindings {
     ///  let project_root = std::path::Path::new(&env!("CARGO_MANIFEST_DIR"));
     ///  let abi_dir = project_root.join("abi");
     ///  let gen = MultiAbigen::from_json_files(&abi_dir).unwrap();
-    ///  gen.ensure_consistent_crate("my-crate", "0.0.1", project_root.join("src/contracts"), false).expect("inconsistent bindings");
+    ///  let bindings = gen.build().unwrap();
+    ///  bindings.ensure_consistent_crate(
+    ///     "my-crate", "0.0.1", project_root.join("src/contracts"), false
+    ///  ).expect("inconsistent bindings");
     /// }
     /// ```
     pub fn ensure_consistent_crate(
@@ -444,7 +453,10 @@ impl MultiBindings {
     ///  let project_root = std::path::Path::new(&env!("CARGO_MANIFEST_DIR"));
     ///  let abi_dir = project_root.join("abi");
     ///  let gen = MultiAbigen::from_json_files(&abi_dir).unwrap();
-    ///  gen.ensure_consistent_module(project_root.join("src/contracts"), false).expect("inconsistent bindings");
+    ///  let bindings = gen.build().unwrap();
+    ///  bindings.ensure_consistent_module(
+    ///     project_root.join("src/contracts"), false
+    ///  ).expect("inconsistent bindings");
     /// }
     /// ```
     pub fn ensure_consistent_module(
