@@ -79,6 +79,15 @@ where
     }
 }
 
+/// Structure used in eth_syncing RPC
+#[derive(Clone, Debug)]
+pub enum SyncingStatus {
+    /// When client is synced to highest block, eth_syncing with return string "false"
+    IsFalse,
+    /// When client is still syncing past blocks we get IsSyncing information.
+    IsSyncing { starting_block: U256, current_block: U256, highest_block: U256 },
+}
+
 /// A middleware allows customizing requests send and received from an ethereum node.
 ///
 /// Writing a middleware is as simple as:
@@ -301,6 +310,10 @@ pub trait Middleware: Sync + Send + Debug {
         block: Option<BlockId>,
     ) -> Result<Bytes, Self::Error> {
         self.inner().call(tx, block).await.map_err(FromErr::from)
+    }
+
+    async fn syncing(&self) -> Result<SyncingStatus, Self::Error> {
+        self.inner().syncing().await.map_err(FromErr::from)
     }
 
     async fn get_chainid(&self) -> Result<U256, Self::Error> {
