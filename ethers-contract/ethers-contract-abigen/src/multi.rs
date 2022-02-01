@@ -22,6 +22,18 @@ impl std::ops::Deref for MultiAbigen {
     }
 }
 
+impl From<Vec<Abigen>> for MultiAbigen {
+    fn from(abigens: Vec<Abigen>) -> Self {
+        Self { abigens }
+    }
+}
+
+impl std::iter::FromIterator<Abigen> for MultiAbigen {
+    fn from_iter<I: IntoIterator<Item = Abigen>>(iter: I) -> Self {
+        iter.into_iter().collect::<Vec<_>>().into()
+    }
+}
+
 impl MultiAbigen {
     /// Create a new instance from a series (`contract name`, `abi_source`)
     ///
@@ -42,7 +54,7 @@ impl MultiAbigen {
 
     /// Create a new instance from a series of already resolved `Abigen`
     pub fn from_abigen(abis: impl IntoIterator<Item = Abigen>) -> Self {
-        Self { abigens: abis.into_iter().collect() }
+        abis.into_iter().collect()
     }
 
     /// Reads all json files contained in the given `dir` and use the file name for the name of the
@@ -124,6 +136,15 @@ impl MultiAbigen {
 pub struct MultiBindings {
     /// Abigen objects to be written
     bindings: BTreeMap<String, ContractBindings>,
+}
+
+// deref allows for inspection without modification
+impl std::ops::Deref for MultiBindings {
+    type Target = BTreeMap<String, ContractBindings>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.bindings
+    }
 }
 
 impl MultiBindings {
