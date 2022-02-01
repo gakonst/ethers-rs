@@ -65,6 +65,7 @@ impl MultiAbigen {
     /// ```
     pub fn from_json_files(dir: impl AsRef<Path>) -> Result<Self> {
         let mut abis = Vec::new();
+
         for file in util::json_files(dir) {
             if let Some(file_name) = file.file_stem().and_then(|s| s.to_str()) {
                 let content = fs::read_to_string(&file)?;
@@ -331,34 +332,11 @@ impl MultiBindings {
         Ok(())
     }
 
-    /// This ensures that the already generated contract bindings match the output of a fresh new
-    /// run. Run this in a rust test, to get notified in CI if the newly generated bindings
-    /// deviate from the already generated ones, and it's time to generate them again. This could
-    /// happen if the ABI of a contract or the output that `ethers` generates changed.
+    /// Ensures the contents of the bindings directory are correct
     ///
-    /// So if this functions is run within a test during CI and fails, then it's time to update all
-    /// bindings.
-    ///
-    /// Returns `true` if the freshly generated bindings match with the existing bindings, `false`
-    /// otherwise
-    ///
-    /// # Example
-    ///
-    /// Check that the generated files are up to date
-    ///
-    /// ```no_run
-    /// # use ethers_contract_abigen::MultiAbigen;
-    /// #[test]
-    /// fn generated_bindings_are_fresh() {
-    ///  let project_root = std::path::Path::new(&env!("CARGO_MANIFEST_DIR"));
-    ///  let abi_dir = project_root.join("abi");
-    ///  let gen = MultiAbigen::from_json_files(&abi_dir).unwrap();
-    ///  gen.ensure_consistent_bindings(project_root.join("src/contracts")).expect("inconsistent bindings");
-    /// }
-    ///
-    /// gen.write_to_module("./src/contracts").unwrap();
-    /// ```
-    pub fn ensure_consistent_bindings(
+    /// Does this by first generating the `lib.rs` or `mod.rs`, then the
+    /// contents of each binding file in turn.
+    fn ensure_consistent_bindings(
         self,
         dir: impl AsRef<Path>,
         is_crate: bool,
@@ -381,7 +359,35 @@ impl MultiBindings {
         Ok(())
     }
 
-    /// TODO
+    /// This ensures that the already generated bindings crate matches the
+    /// output of a fresh new run. Run this in a rust test, to get notified in
+    /// CI if the newly generated bindings deviate from the already generated
+    /// ones, and it's time to generate them again. This could happen if the
+    /// ABI of a contract or the output that `ethers` generates changed.
+    ///
+    /// If this functions is run within a test during CI and fails, then it's
+    /// time to update all bindings.
+    ///
+    /// # Returns
+    ///
+    /// `Ok(())` if the freshly generated bindings match with the
+    /// existing bindings. Otherwise an `Err(_)` containing an `anyhow::Report`
+    /// with more information.
+    ///
+    /// # Example
+    ///
+    /// Check that the generated files are up to date
+    ///
+    /// ```no_run
+    /// # use ethers_contract_abigen::MultiAbigen;
+    /// #[test]
+    /// fn generated_bindings_are_fresh() {
+    ///  let project_root = std::path::Path::new(&env!("CARGO_MANIFEST_DIR"));
+    ///  let abi_dir = project_root.join("abi");
+    ///  let gen = MultiAbigen::from_json_files(&abi_dir).unwrap();
+    ///  gen.ensure_consistent_crate("my-crate", "0.0.1", project_root.join("src/contracts"), false).expect("inconsistent bindings");
+    /// }
+    /// ```
     pub fn ensure_consistent_crate(
         self,
         name: impl AsRef<str>,
@@ -399,7 +405,35 @@ impl MultiBindings {
         Ok(())
     }
 
-    /// TODO
+    /// This ensures that the already generated bindings module matches the
+    /// output of a fresh new run. Run this in a rust test, to get notified in
+    /// CI if the newly generated bindings deviate from the already generated
+    /// ones, and it's time to generate them again. This could happen if the
+    /// ABI of a contract or the output that `ethers` generates changed.
+    ///
+    /// If this functions is run within a test during CI and fails, then it's
+    /// time to update all bindings.
+    ///
+    /// # Returns
+    ///
+    /// `Ok(())` if the freshly generated bindings match with the
+    /// existing bindings. Otherwise an `Err(_)` containing an `anyhow::Report`
+    /// with more information.
+    ///
+    /// # Example
+    ///
+    /// Check that the generated files are up to date
+    ///
+    /// ```no_run
+    /// # use ethers_contract_abigen::MultiAbigen;
+    /// #[test]
+    /// fn generated_bindings_are_fresh() {
+    ///  let project_root = std::path::Path::new(&env!("CARGO_MANIFEST_DIR"));
+    ///  let abi_dir = project_root.join("abi");
+    ///  let gen = MultiAbigen::from_json_files(&abi_dir).unwrap();
+    ///  gen.ensure_consistent_module(project_root.join("src/contracts"), false).expect("inconsistent bindings");
+    /// }
+    /// ```
     pub fn ensure_consistent_module(
         self,
         module: impl AsRef<Path>,
