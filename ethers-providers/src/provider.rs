@@ -3,7 +3,7 @@ use crate::{
     pubsub::{PubsubClient, SubscriptionStream},
     stream::{FilterWatcher, DEFAULT_POLL_INTERVAL},
     FromErr, Http as HttpProvider, JsonRpcClient, JsonRpcClientWrapper, MockProvider,
-    PendingTransaction, QuorumProvider,
+    PendingTransaction, QuorumProvider, SyncingStatus,
 };
 
 #[cfg(feature = "celo")]
@@ -23,7 +23,7 @@ use ethers_core::{
     utils,
 };
 use hex::FromHex;
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use thiserror::Error;
 use url::{ParseError, Url};
 
@@ -495,6 +495,30 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
     /// transaction signing as introduced by EIP-155.
     async fn get_chainid(&self) -> Result<U256, ProviderError> {
         self.request("eth_chainId", ()).await
+    }
+
+    /// Return current client syncing status. If IsFalse sync is over.
+    async fn syncing(&self) -> Result<SyncingStatus, Self::Error> {
+        #[derive(Debug, Serialize, Deserialize)]
+        #[serde(untagged)]
+        pub enum SyncingStatusIntermediate {
+            /// When client is synced to highest block, eth_syncing with return string "false"
+            IsFalse(bool),
+            /// When client is still syncing past blocks we get IsSyncing information.
+            IsSyncing { starting_block: U256, current_block: U256, highest_block: U256 },
+        }
+        let intermediate: SyncingStatusIntermediate = self.request("eth_syncing", ()).await?;
+        match intermediate {
+            SyncingStatusIntermediate::IsFalse(false) => Ok(SyncingStatus::IsFalse),
+            SyncingStatusIntermediate::IsFalse(true) => Err(ProviderError::CustomError(
+                "eth_syncing returned `true` that is undefined value.".to_owned(),
+            )),
+            SyncingStatusIntermediate::IsSyncing {
+                starting_block,
+                current_block,
+                highest_block,
+            } => Ok(SyncingStatus::IsSyncing { starting_block, current_block, highest_block }),
+        }
     }
 
     /// Returns the network version.
