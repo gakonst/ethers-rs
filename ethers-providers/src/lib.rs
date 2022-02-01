@@ -27,7 +27,7 @@ pub use pubsub::{PubsubClient, SubscriptionStream};
 use async_trait::async_trait;
 use auto_impl::auto_impl;
 use ethers_core::types::transaction::{eip2718::TypedTransaction, eip2930::AccessListWithGasUsed};
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Serialize};
 use std::{error::Error, fmt::Debug, future::Future, pin::Pin};
 
 pub use provider::{FilterKind, Provider, ProviderError};
@@ -80,12 +80,11 @@ where
 }
 
 /// Structure used in eth_syncing RPC
-#[derive(Clone, Debug, Deserialize, Serialize)]
-#[serde(untagged)]
+#[derive(Clone, Debug)]
 pub enum SyncingStatus {
     /// When client is synced to highest block, eth_syncing with return string "false"
     IsFalse,
-    /// When client is still syncing past blocks we get IsSyncing mode.
+    /// When client is still syncing past blocks we get IsSyncing information.
     IsSyncing { starting_block: U256, current_block: U256, highest_block: U256 },
 }
 
