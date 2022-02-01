@@ -49,11 +49,11 @@ impl MultiAbigen {
             .map(|(contract_name, abi_source)| Abigen::new(contract_name.as_ref(), abi_source))
             .collect::<Result<Vec<_>>>()?;
 
-        Ok(Self::from_abigen(abis))
+        Ok(Self::from_abigens(abis))
     }
 
     /// Create a new instance from a series of already resolved `Abigen`
-    pub fn from_abigen(abis: impl IntoIterator<Item = Abigen>) -> Self {
+    pub fn from_abigens(abis: impl IntoIterator<Item = Abigen>) -> Self {
         abis.into_iter().collect()
     }
 
@@ -75,16 +75,8 @@ impl MultiAbigen {
     /// # use ethers_contract_abigen::MultiAbigen;
     /// let gen = MultiAbigen::from_json_files("./abi").unwrap();
     /// ```
-    pub fn from_json_files(dir: impl AsRef<Path>) -> Result<Self> {
-        let mut abis = Vec::new();
-
-        for file in util::json_files(dir) {
-            if let Some(file_name) = file.file_stem().and_then(|s| s.to_str()) {
-                let content = fs::read_to_string(&file)?;
-                abis.push((file_name.to_string(), content));
-            }
-        }
-        Self::new(abis)
+    pub fn from_json_files(root: impl AsRef<Path>) -> Result<Self> {
+        util::json_files(root.as_ref()).into_iter().map(Abigen::from_file).collect()
     }
 
     /// Add another Abigen to the module or lib
@@ -526,7 +518,7 @@ mod tests {
         )
         .unwrap();
 
-        let multi_gen = MultiAbigen::from_abigen([console, simple_storage, human_readable]);
+        let multi_gen = MultiAbigen::from_abigens([console, simple_storage, human_readable]);
 
         let mod_root = tempfile::tempdir().unwrap().path().join("contracts");
         let context = Context { multi_gen, mod_root };

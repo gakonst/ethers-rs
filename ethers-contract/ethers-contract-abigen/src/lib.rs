@@ -84,6 +84,19 @@ impl Abigen {
         })
     }
 
+    /// Attemtps to load a new builder from an ABI JSON file at the specific
+    /// path.
+    pub fn from_file(path: impl AsRef<Path>) -> Result<Self> {
+        let name = path
+            .as_ref()
+            .file_stem()
+            .ok_or_else(|| anyhow::format_err!("Missing file stem in path"))?
+            .to_str()
+            .ok_or_else(|| anyhow::format_err!("Unable to convert file stem to string"))?;
+
+        Self::new(name, std::fs::read_to_string(path.as_ref())?)
+    }
+
     /// Manually adds a solidity event alias to specify what the event struct
     /// and function name will be in Rust.
     #[must_use]
