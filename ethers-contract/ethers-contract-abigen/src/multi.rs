@@ -208,11 +208,9 @@ impl MultiBindings {
 
     /// Append module declarations to the `lib.rs` or `mod.rs`
     fn append_module_names(&self, mut buf: impl Write) -> Result<()> {
-        let modules: Vec<_> =
-            self.bindings.keys().map(|name| format!("pub mod {};", name.to_snake_case())).collect();
-
         // sorting here not necessary, as btreemap keys are ordered
-        for module in modules.into_iter() {
+        for module in self.bindings.keys().map(|name| format!("pub mod {};", name.to_snake_case()))
+        {
             writeln!(buf, "{}", module)?;
         }
 
