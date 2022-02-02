@@ -199,7 +199,7 @@ impl Context {
             };
 
             if method_aliases.insert(signature.clone(), alias).is_some() {
-                return Err(eyre!("duplicate method signature '{}' in method aliases", signature,))
+                eyre::bail!("duplicate method signature '{}' in method aliases", signature)
             }
         }
 
