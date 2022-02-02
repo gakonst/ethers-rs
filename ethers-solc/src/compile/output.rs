@@ -37,7 +37,6 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
     /// let project = Project::builder().build().unwrap();
     /// let contracts: BTreeMap<String, CompactContractBytecode> = project.compile().unwrap().into_artifacts().collect();
     /// ```
-    // TODO add ArtifactId (filename, contract name, version?)
     pub fn into_artifacts(self) -> impl Iterator<Item = (String, T::Artifact)> {
         let Self { cached_artifacts, written_artifacts, .. } = self;
         cached_artifacts.into_artifacts::<T>().chain(written_artifacts.into_artifacts::<T>())

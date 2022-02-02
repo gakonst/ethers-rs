@@ -262,7 +262,8 @@ pub(crate) fn read_json_file<T: DeserializeOwned>(path: impl AsRef<Path>) -> Res
     Ok(val)
 }
 
-/// Creates the
+/// Creates the parent directory of the `file` and all its ancestors if it does not exist
+/// See [`std::fs::create_dir_all()`]
 pub fn create_parent_dir_all(file: impl AsRef<Path>) -> Result<(), SolcError> {
     let file = file.as_ref();
     if let Some(parent) = file.parent() {

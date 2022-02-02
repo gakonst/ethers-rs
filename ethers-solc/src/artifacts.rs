@@ -22,8 +22,8 @@ use crate::{
 use ethers_core::abi::Address;
 use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 
-/// Solidity files are made up of multiple `source units`, a solidity contract is such a `source unit`,
-/// therefore a solidity file can contain multiple contracts: (1-N*) relationship.
+/// Solidity files are made up of multiple `source units`, a solidity contract is such a `source
+/// unit`, therefore a solidity file can contain multiple contracts: (1-N*) relationship.
 ///
 /// This types represents this mapping as `file name -> (contract name -> T)`, where the generic is
 /// intended to represent contract specific information, like [`Contract`] itself, See [`Contracts`]

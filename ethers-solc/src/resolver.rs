@@ -68,8 +68,6 @@ impl GraphEdges {
     }
 
     /// Returns all files imported by the given file
-    ///
-    /// *Note* this only returns the imports, the `file __excluded__
     pub fn imports(&self, file: impl AsRef<Path>) -> HashSet<&PathBuf> {
         if let Some(start) = self.indices.get(file.as_ref()).copied() {
             NodesIter::new(start, self).skip(1).map(move |idx| &self.rev_indices[&idx]).collect()
