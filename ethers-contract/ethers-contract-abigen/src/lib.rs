@@ -26,7 +26,7 @@ pub use ethers_core::types::Address;
 pub use source::Source;
 pub use util::parse_address;
 
-use anyhow::Result;
+use eyre::Result;
 use inflector::Inflector;
 use proc_macro2::TokenStream;
 use std::{collections::HashMap, fs::File, io::Write, path::Path};
@@ -90,9 +90,9 @@ impl Abigen {
         let name = path
             .as_ref()
             .file_stem()
-            .ok_or_else(|| anyhow::format_err!("Missing file stem in path"))?
+            .ok_or_else(|| eyre::format_err!("Missing file stem in path"))?
             .to_str()
-            .ok_or_else(|| anyhow::format_err!("Unable to convert file stem to string"))?;
+            .ok_or_else(|| eyre::format_err!("Unable to convert file stem to string"))?;
 
         Self::new(name, std::fs::read_to_string(path.as_ref())?)
     }

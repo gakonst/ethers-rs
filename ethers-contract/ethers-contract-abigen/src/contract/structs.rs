@@ -1,7 +1,7 @@
 //! Methods for expanding structs
 use std::collections::{HashMap, VecDeque};
 
-use anyhow::{Context as _, Result};
+use eyre::{eyre, Result};
 use inflector::Inflector;
 use proc_macro2::TokenStream;
 use quote::quote;
@@ -55,17 +55,18 @@ impl Context {
 
     /// Generates the type definition for the name that matches the given identifier
     fn generate_internal_struct(&self, id: &str) -> Result<TokenStream> {
-        let sol_struct = self.internal_structs.structs.get(id).context("struct not found")?;
+        let sol_struct =
+            self.internal_structs.structs.get(id).ok_or_else(|| eyre!("struct not found"))?;
         let struct_name = self
             .internal_structs
             .rust_type_names
             .get(id)
-            .context(format!("No types found for {}", id))?;
+            .ok_or_else(|| eyre!("No types found for {}", id))?;
         let tuple = self
             .internal_structs
             .struct_tuples
             .get(id)
-            .context(format!("No types found for {}", id))?
+            .ok_or_else(|| eyre!("No types found for {}", id))?
             .clone();
         self.expand_internal_struct(struct_name, sol_struct, tuple)
     }
@@ -102,11 +103,7 @@ impl Context {
                     fields.push(quote! { pub #field_name: #ty });
                 }
                 FieldType::Mapping(_) => {
-                    return Err(anyhow::anyhow!(
-                        "Mapping types in struct `{}` are not supported {:?}",
-                        name,
-                        field
-                    ))
+                    eyre::bail!("Mapping types in struct `{}` are not supported {:?}", name, field)
                 }
             }
         }
@@ -137,7 +134,8 @@ impl Context {
     }
 
     fn generate_human_readable_struct(&self, name: &str) -> Result<TokenStream> {
-        let sol_struct = self.abi_parser.structs.get(name).context("struct not found")?;
+        let sol_struct =
+            self.abi_parser.structs.get(name).ok_or_else(|| eyre!("struct not found"))?;
         let mut fields = Vec::with_capacity(sol_struct.fields().len());
         let mut param_types = Vec::with_capacity(sol_struct.fields().len());
         for field in sol_struct.fields() {
@@ -157,18 +155,14 @@ impl Context {
                         .abi_parser
                         .struct_tuples
                         .get(name)
-                        .context(format!("No types found for {}", name))?
+                        .ok_or_else(|| eyre!("No types found for {}", name))?
                         .clone();
                     let tuple = ParamType::Tuple(tuple);
 
                     param_types.push(struct_ty.as_param(tuple));
                 }
                 FieldType::Mapping(_) => {
-                    return Err(anyhow::anyhow!(
-                        "Mapping types in struct `{}` are not supported {:?}",
-                        name,
-                        field
-                    ))
+                    eyre::bail!("Mapping types in struct `{}` are not supported {:?}", name, field)
                 }
             }
         }

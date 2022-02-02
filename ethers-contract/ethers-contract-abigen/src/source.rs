@@ -3,8 +3,8 @@ use super::util;
 use ethers_core::types::Address;
 
 use crate::util::resolve_path;
-use anyhow::{anyhow, Context, Error, Result};
 use cfg_if::cfg_if;
+use eyre::{eyre, Context, Error, Result};
 use std::{env, fs, path::Path, str::FromStr};
 use url::Url;
 
@@ -88,10 +88,10 @@ impl Source {
                     format!("{}", root.display())
                 };
                 let base = Url::parse(&root)
-                    .map_err(|_| anyhow!("root path '{}' is not absolute", root))?;
+                    .map_err(|_| eyre!("root path '{}' is not absolute", root))?;
             } else {
                 let base = Url::from_directory_path(root)
-                    .map_err(|_| anyhow!("root path '{}' is not absolute", root.display()))?;
+                    .map_err(|_| eyre!("root path '{}' is not absolute", root.display()))?;
             }
         }
         let url = base.join(source)?;
@@ -103,19 +103,19 @@ impl Source {
                     url.path()
                         .rsplit('/')
                         .next()
-                        .ok_or_else(|| anyhow!("HTTP URL does not have a path"))?,
+                        .ok_or_else(|| eyre!("HTTP URL does not have a path"))?,
                 ),
                 Some("polygonscan.com") => Source::polygonscan(
                     url.path()
                         .rsplit('/')
                         .next()
-                        .ok_or_else(|| anyhow!("HTTP URL does not have a path"))?,
+                        .ok_or_else(|| eyre!("HTTP URL does not have a path"))?,
                 ),
                 Some("snowtrace.io") => Source::snowtrace(
                     url.path()
                         .rsplit('/')
                         .next()
-                        .ok_or_else(|| anyhow!("HTTP URL does not have a path"))?,
+                        .ok_or_else(|| eyre!("HTTP URL does not have a path"))?,
                 ),
                 _ => Ok(Source::Http(url)),
             },
@@ -123,7 +123,7 @@ impl Source {
             "polygonscan" => Source::polygonscan(url.path()),
             "snowtrace" => Source::snowtrace(url.path()),
             "npm" => Ok(Source::npm(url.path())),
-            _ => Err(anyhow!("unsupported URL '{}'", url)),
+            _ => Err(eyre!("unsupported URL '{}'", url)),
         }
     }
 
@@ -232,7 +232,7 @@ fn get_local_contract(path: impl AsRef<str>) -> Result<String> {
             contract_path = dunce::canonicalize(&path)?;
         }
         if !contract_path.exists() {
-            anyhow::bail!("Unable to find local contract \"{}\"", path.display())
+            eyre::bail!("Unable to find local contract \"{}\"", path.display())
         }
         contract_path
     } else {
