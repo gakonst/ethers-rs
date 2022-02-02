@@ -1,6 +1,6 @@
 use std::collections::{btree_map::Entry, BTreeMap, HashMap};
 
-use anyhow::{Context as _, Result};
+use eyre::{Context as _, Result};
 use inflector::Inflector;
 use proc_macro2::{Literal, TokenStream};
 use quote::quote;
@@ -451,7 +451,7 @@ impl Context {
                         } else {
                             // this should not happen since functions with same name and inputs are
                             // illegal
-                            anyhow::bail!(
+                            eyre::bail!(
                                 "Function with same name and parameter types defined twice: {}",
                                 overloaded_fun.name
                             );

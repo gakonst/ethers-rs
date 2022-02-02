@@ -1179,10 +1179,10 @@ name = "ethers-contract-abigen"
 version = "0.6.0"
 dependencies = [
  "Inflector",
- "anyhow",
  "cfg-if 1.0.0",
  "dunce",
  "ethers-core",
+ "eyre",
  "getrandom 0.2.4",
  "hex",
  "once_cell",
@@ -1416,6 +1416,16 @@ dependencies = [
  "wasm-bindgen-test",
  "web-sys",
  "wee_alloc",
+]
+
+[[package]]
+name = "eyre"
+version = "0.6.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bc225d8f637923fe585089fcf03e705c222131232d2c1fb622e84ecf725d0eb8"
+dependencies = [
+ "indenter",
+ "once_cell",
 ]
 
 [[package]]
@@ -1880,6 +1890,12 @@ dependencies = [
  "quote",
  "syn",
 ]
+
+[[package]]
+name = "indenter"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ce23b50ad8242c51a442f3ff322d56b02f08852c77e4c0b4d3fd684abc89c683"
 
 [[package]]
 name = "indexmap"
