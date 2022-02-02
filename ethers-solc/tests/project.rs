@@ -85,7 +85,6 @@ fn can_compile_dapp_detect_changes_in_libs() {
         .paths_mut()
         .remappings
         .push(Remapping::from_str(&format!("remapping={}/", remapping.display())).unwrap());
-    project.project_mut().auto_detect = false;
 
     let src = project
         .add_source(

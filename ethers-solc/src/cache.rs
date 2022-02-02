@@ -12,7 +12,7 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{
     collections::{
         btree_map::{BTreeMap, Entry},
-        hash_map, HashMap, HashSet,
+        hash_map, BTreeSet, HashMap, HashSet,
     },
     fs::{self},
     path::{Path, PathBuf},
@@ -236,7 +236,7 @@ pub struct CacheEntry {
     /// fully resolved imports of the file
     ///
     /// all paths start relative from the project's root: `src/importedFile.sol`
-    pub imports: Vec<PathBuf>,
+    pub imports: BTreeSet<PathBuf>,
     /// The solidity version pragma
     pub version_requirement: Option<String>,
     /// all artifacts produced for this file

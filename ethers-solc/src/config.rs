@@ -426,9 +426,9 @@ impl ProjectPathsConfigBuilder {
                 .unwrap_or_else(|| ProjectPathsConfig::find_artifacts_dir(&root)),
             sources: self.sources.unwrap_or_else(|| ProjectPathsConfig::find_source_dir(&root)),
             tests: self.tests.unwrap_or_else(|| root.join("tests")),
-            remappings: self.remappings.unwrap_or_else(|| {
-                libraries.iter().flat_map(|lib| Remapping::find_many(lib)).collect()
-            }),
+            remappings: self
+                .remappings
+                .unwrap_or_else(|| libraries.iter().flat_map(Remapping::find_many).collect()),
             libraries,
             root,
         }

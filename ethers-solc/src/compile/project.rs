@@ -124,7 +124,6 @@ impl<'a, T: ArtifactOutput> ProjectCompiler<'a, T> {
     pub fn with_sources(project: &'a Project<T>, sources: Sources) -> Result<Self> {
         let graph = Graph::resolve_sources(&project.paths, sources)?;
         let (versions, edges) = graph.into_sources_by_version(project.offline)?;
-
         let sources_by_version = versions.get(&project.allowed_lib_paths)?;
 
         let sources = if project.solc_jobs > 1 && sources_by_version.len() > 1 {
@@ -366,6 +365,7 @@ fn compile_sequential(
     paths: &ProjectPathsConfig,
 ) -> Result<AggregatedCompilerOutput> {
     let mut aggregated = AggregatedCompilerOutput::default();
+    tracing::trace!("compiling {} jobs sequentially", input.len());
     for (solc, (version, sources)) in input {
         if sources.is_empty() {
             // nothing to compile
@@ -440,6 +440,7 @@ mod tests {
     use crate::{project_util::TempProject, MinimalCombinedArtifacts};
     use std::path::PathBuf;
 
+    #[allow(unused)]
     fn init_tracing() {
         tracing_subscriber::fmt()
             .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
@@ -467,8 +468,6 @@ mod tests {
 
     #[test]
     fn can_detect_cached_files() {
-        init_tracing();
-
         let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test-data/dapp-sample");
         let paths = ProjectPathsConfig::builder().sources(root.join("src")).lib(root.join("lib"));
         let project = TempProject::<MinimalCombinedArtifacts>::new(paths).unwrap();

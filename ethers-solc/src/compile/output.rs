@@ -17,9 +17,9 @@ pub struct ProjectCompileOutput<T: ArtifactOutput> {
     /// See [`CompilerSources::compile`]
     pub(crate) compiler_output: AggregatedCompilerOutput,
     /// all artifact files from `output` that were written
-    pub written_artifacts: Artifacts<T::Artifact>,
+    pub(crate) written_artifacts: Artifacts<T::Artifact>,
     /// All artifacts that were read from cache
-    pub cached_artifacts: Artifacts<T::Artifact>,
+    pub(crate) cached_artifacts: Artifacts<T::Artifact>,
     /// errors that should be omitted
     pub(crate) ignored_error_codes: Vec<u64>,
 }

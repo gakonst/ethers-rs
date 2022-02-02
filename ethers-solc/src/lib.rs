@@ -1,5 +1,3 @@
-#![doc = include_str ! ("../README.md")]
-
 pub mod artifacts;
 pub mod sourcemap;
 
@@ -122,7 +120,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
 
     /// Applies the configured settings to the given `Solc`
     fn configure_solc(&self, mut solc: Solc) -> Solc {
-        if !self.allowed_lib_paths.0.is_empty() {
+        if self.allowed_lib_paths.0.is_empty() {
             solc = solc.arg("--allow-paths").arg(self.allowed_lib_paths.to_string());
         }
         solc

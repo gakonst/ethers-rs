@@ -501,7 +501,7 @@ impl Solc {
             .stdout(Stdio::piped())
             .spawn()
             .map_err(|err| SolcError::io(err, &self.solc))?;
-        let stdin = child.stdin.take().unwrap();
+        let stdin = child.stdin.take().expect("Stdin exists.");
         serde_json::to_writer(stdin, input)?;
         compile_output(child.wait_with_output().map_err(|err| SolcError::io(err, &self.solc))?)
     }
