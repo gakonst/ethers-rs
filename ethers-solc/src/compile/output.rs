@@ -63,7 +63,7 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
 
     /// Whether this type does not contain compiled contracts
     pub fn is_unchanged(&self) -> bool {
-        !self.has_compiled_contracts()
+        self.compiler_output.is_unchanged()
     }
 
     /// Whether there were errors
@@ -102,7 +102,7 @@ where
 
 impl<T: ArtifactOutput> fmt::Display for ProjectCompileOutput<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.compiler_output.contracts.is_empty() && self.compiler_output.errors.is_empty() {
+        if self.compiler_output.is_unchanged() {
             f.write_str("Nothing to compile")
         } else {
             self.compiler_output.diagnostics(&self.ignored_error_codes).fmt(f)
@@ -146,6 +146,10 @@ impl AggregatedCompilerOutput {
 
     pub fn is_empty(&self) -> bool {
         self.contracts.is_empty()
+    }
+
+    pub fn is_unchanged(&self) -> bool {
+        self.contracts.is_empty() && self.errors.is_empty()
     }
 
     pub fn extend_all<I>(&mut self, out: I)

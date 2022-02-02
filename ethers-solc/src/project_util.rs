@@ -77,6 +77,21 @@ impl<T: ArtifactOutput> TempProject<T> {
         &mut self.project_mut().paths
     }
 
+    /// Returns the path to the artifacts directory
+    pub fn artifacts_path(&self) -> &PathBuf {
+        &self.paths().artifacts
+    }
+
+    /// Returns the path to the sources directory
+    pub fn sources_path(&self) -> &PathBuf {
+        &self.paths().sources
+    }
+
+    /// Returns the path to the cache file
+    pub fn cache_path(&self) -> &PathBuf {
+        &self.paths().cache
+    }
+
     /// The root path of the temporary workspace
     pub fn root(&self) -> &Path {
         self.project().paths.root.as_path()

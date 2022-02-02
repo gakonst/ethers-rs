@@ -437,7 +437,7 @@ fn compile_parallel(
 #[cfg(feature = "project-util")]
 mod tests {
     use super::*;
-    use crate::{cache::SolFilesCache, project_util::TempProject, MinimalCombinedArtifacts};
+    use crate::{project_util::TempProject, MinimalCombinedArtifacts};
     use std::path::PathBuf;
 
     fn init_tracing() {

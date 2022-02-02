@@ -91,6 +91,7 @@ impl SolFilesCache {
     /// Write the cache as json file to the given path
     pub fn write(&self, path: impl AsRef<Path>) -> Result<()> {
         let path = path.as_ref();
+        utils::create_parent_dir_all(path)?;
         let file = fs::File::create(path).map_err(|err| SolcError::io(err, path))?;
         tracing::trace!("writing cache to json file: \"{}\"", path.display());
         serde_json::to_writer_pretty(file, self)?;
@@ -115,7 +116,13 @@ impl SolFilesCache {
     /// Removes all `CacheEntry` which source files are missing
     pub fn remove_missing_files(&mut self) {
         tracing::trace!("remove non existing files from cache");
-        self.files.retain(|file, _| file.exists())
+        self.files.retain(|file, _| {
+            let exists = file.exists();
+            if !exists {
+                tracing::trace!("remove {} from cache", file.display());
+            }
+            exists
+        })
     }
 
     /// Checks if all artifact files exist
@@ -470,6 +477,9 @@ impl<'a, T: ArtifactOutput> ArtifactsCacheInner<'a, T> {
         source: Source,
         version: &Version,
     ) -> Option<(PathBuf, Source)> {
+        dbg!(self.is_dirty(&file, version));
+        dbg!(file.clone());
+
         if !self.is_dirty(&file, version) &&
             self.edges.imports(&file).iter().all(|file| !self.is_dirty(file, version))
         {
@@ -484,8 +494,7 @@ impl<'a, T: ArtifactOutput> ArtifactsCacheInner<'a, T> {
     /// returns `false` if the corresponding cache entry remained unchanged otherwise `true`
     fn is_dirty(&self, file: &Path, version: &Version) -> bool {
         if let Some(hash) = self.content_hashes.get(file) {
-            let cache_path = utils::source_name(file, self.project.root());
-            if let Some(entry) = self.cache.entry(&cache_path) {
+            if let Some(entry) = self.cache.entry(&file) {
                 if entry.content_hash.as_bytes() != hash.as_bytes() {
                     tracing::trace!(
                         "changed content hash for cached artifact \"{}\"",
@@ -518,6 +527,7 @@ impl<'a, T: ArtifactOutput> ArtifactsCacheInner<'a, T> {
                 // all things match, can be reused
                 return false
             }
+            tracing::trace!("Missing cache entry for {}", file.display());
         }
         true
     }
@@ -547,7 +557,7 @@ impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
         let cache = if project.cached {
             // read the cache file if it already exists
             let cache = if project.cache_path().exists() {
-                let mut cache = SolFilesCache::read(project.cache_path())?;
+                let mut cache = SolFilesCache::read(project.cache_path()).unwrap_or_default();
                 cache.join_all(project.artifacts_path()).remove_missing_files();
                 cache
             } else {
