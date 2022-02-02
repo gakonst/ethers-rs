@@ -168,6 +168,8 @@ impl SolFilesCache {
         self.files.retain(|file, entry| {
             if let Some(versions) = files.remove(file.as_path()) {
                 entry.retain_versions(versions);
+            } else {
+                return false
             }
             !entry.artifacts.is_empty()
         });
@@ -405,7 +407,7 @@ pub(crate) struct ArtifactsCacheInner<'a, T: ArtifactOutput> {
 
 impl<'a, T: ArtifactOutput> ArtifactsCacheInner<'a, T> {
     /// Creates a new cache entry for the file
-    fn create_cache_entry(&self, file: &Path, source: &Source) -> Result<CacheEntry> {
+    fn create_cache_entry(&self, file: &Path, source: &Source) -> CacheEntry {
         let imports = self
             .edges
             .imports(file)
@@ -414,7 +416,8 @@ impl<'a, T: ArtifactOutput> ArtifactsCacheInner<'a, T> {
             .collect();
 
         let entry = CacheEntry {
-            last_modification_date: CacheEntry::read_last_modification_date(&file).unwrap(),
+            last_modification_date: CacheEntry::read_last_modification_date(&file)
+                .unwrap_or_default(),
             content_hash: source.content_hash(),
             source_name: utils::source_name(file, self.project.root()).into(),
             solc_config: self.project.solc_config.clone(),
@@ -424,25 +427,19 @@ impl<'a, T: ArtifactOutput> ArtifactsCacheInner<'a, T> {
             artifacts: Default::default(),
         };
 
-        Ok(entry)
+        entry
     }
 
     /// inserts a new cache entry for the given file
     ///
     /// If there is already an entry available for the file the given version is added to the set
-    fn insert_new_cache_entry(
-        &mut self,
-        file: &Path,
-        source: &Source,
-        version: Version,
-    ) -> Result<()> {
+    fn insert_new_cache_entry(&mut self, file: &Path, source: &Source, version: Version) {
         if let Some((_, versions)) = self.dirty_entries.get_mut(file) {
             versions.insert(version);
         } else {
-            let entry = self.create_cache_entry(file, source)?;
+            let entry = self.create_cache_entry(file, source);
             self.dirty_entries.insert(file.to_path_buf(), (entry, HashSet::from([version])));
         }
-        Ok(())
     }
 
     /// inserts the filtered source with the fiven version
@@ -477,16 +474,14 @@ impl<'a, T: ArtifactOutput> ArtifactsCacheInner<'a, T> {
         source: Source,
         version: &Version,
     ) -> Option<(PathBuf, Source)> {
-        dbg!(self.is_dirty(&file, version));
-        dbg!(file.clone());
-
         if !self.is_dirty(&file, version) &&
             self.edges.imports(&file).iter().all(|file| !self.is_dirty(file, version))
         {
             self.insert_filtered_source(file, source, version.clone());
             None
         } else {
-            self.insert_new_cache_entry(&file, &source, version.clone()).unwrap();
+            self.insert_new_cache_entry(&file, &source, version.clone());
+
             Some((file, source))
         }
     }
@@ -638,7 +633,7 @@ impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
             ArtifactsCache::Cached(cache) => {
                 let ArtifactsCacheInner {
                     mut cache,
-                    cached_artifacts,
+                    mut cached_artifacts,
                     mut dirty_entries,
                     filtered,
                     project,
@@ -663,6 +658,23 @@ impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
                                 .collect::<Vec<_>>();
                             (name, artifacts)
                         }));
+                    }
+
+                    // cached artifacts that were overwritten also need to be removed from the
+                    // `cached_artifacts` set
+                    if let Some((f, mut cached)) = cached_artifacts.0.remove_entry(file) {
+                        cached.retain(|name, files| {
+                            if let Some(written_files) = artifacts.get(name) {
+                                files.retain(|f| {
+                                    written_files.iter().all(|other| other.version != f.version)
+                                });
+                                return !files.is_empty()
+                            }
+                            false
+                        });
+                        if !cached.is_empty() {
+                            cached_artifacts.0.insert(f, cached);
+                        }
                     }
                 }
 

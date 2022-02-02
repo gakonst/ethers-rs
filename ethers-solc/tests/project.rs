@@ -228,6 +228,7 @@ fn can_compile_dapp_detect_changes_in_sources() {
     assert!(compiled.find("DssSpellTestBase").is_some());
     // ensure change is detected
     assert!(!compiled.is_unchanged());
+
     // and all recompiled artifacts are different
     for (p, artifact) in compiled.into_artifacts() {
         let other = artifacts.remove(&p).unwrap();
