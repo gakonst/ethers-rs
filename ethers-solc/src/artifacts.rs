@@ -1744,7 +1744,7 @@ pub struct SourceFile {
 pub struct SourceFiles(pub BTreeMap<String, SourceFile>);
 
 impl SourceFiles {
-    /// Returns an iterator over the the source files' ids and path
+    /// Returns an iterator over the source files' ids and path
     ///
     /// ```
     /// use std::collections::BTreeMap;
