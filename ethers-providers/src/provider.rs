@@ -1133,7 +1133,7 @@ impl TryFrom<String> for Provider<HttpProvider> {
 /// use ethers_core::utils::Ganache;
 /// use std::convert::TryFrom;
 ///
-/// # #[tokio::main]
+/// # #[tokio::main(flavor = "current_thread")]
 /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// let ganache = Ganache::new().spawn();
 /// let provider = Provider::<Http>::try_from(ganache.endpoint()).unwrap();
