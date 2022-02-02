@@ -46,9 +46,7 @@ pub(crate) fn expand(kind: &ParamType) -> Result<TokenStream> {
             Ok(quote! { [#inner; #size] })
         }
         ParamType::Tuple(members) => {
-            if members.is_empty() {
-                eyre::bail!("Tuple must have at least 1 member")
-            }
+            eyre::ensure!(!members.is_empty(), "Tuple must have at least 1 member");
 
             let members = members.iter().map(expand).collect::<Result<Vec<_>, _>>()?;
             Ok(quote! { (#(#members,)*) })

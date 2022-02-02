@@ -1,7 +1,7 @@
 use ethers_core::types::Address;
 use std::path::PathBuf;
 
-use eyre::{eyre, Result};
+use eyre::Result;
 use inflector::Inflector;
 use proc_macro2::{Ident, Literal, Span, TokenStream};
 use quote::quote;
@@ -76,9 +76,7 @@ where
     S: AsRef<str>,
 {
     let address_str = address_str.as_ref();
-    if !address_str.starts_with("0x") {
-        eyre::bail!("address must start with '0x'")
-    }
+    eyre::ensure!(address_str.starts_with("0x"), "address must start with '0x'");
     Ok(address_str[2..].parse()?)
 }
 
