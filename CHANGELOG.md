@@ -25,6 +25,9 @@
 - Move `fill_transaction` implementation to the provider, to allow middleware
   to properly override its behavior.
 - Add informational messages to solc installation and compilation.
+- Significantly refactor `MultiAbigen` module generation. Now allows for lib
+  generation, and does not make unnecessary disk writes.
+  [#854](https://github.com/gakonst/ethers-rs/pull/852)
 
 ## ethers-contract-abigen
 
@@ -105,6 +108,7 @@
   [640](https://github.com/gakonst/ethers-rs/pull/640)
 
 ### Unreleased
+
 - Add support for basic and bearer authentication in http and non-wasm websockets.
   [829](https://github.com/gakonst/ethers-rs/pull/829)
 
