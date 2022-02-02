@@ -87,7 +87,7 @@ pub fn http_get(_url: &str) -> Result<String> {
         if #[cfg(feature = "reqwest")]{
             Ok(reqwest::blocking::get(_url)?.text()?)
         } else {
-            Err(eyre!("HTTP is unsupported"))
+            eyre::bail!("HTTP is unsupported")
         }
     }
 }

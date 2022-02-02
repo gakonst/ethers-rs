@@ -103,11 +103,7 @@ impl Context {
                     fields.push(quote! { pub #field_name: #ty });
                 }
                 FieldType::Mapping(_) => {
-                    return Err(eyre::eyre!(
-                        "Mapping types in struct `{}` are not supported {:?}",
-                        name,
-                        field
-                    ))
+                    eyre::bail!("Mapping types in struct `{}` are not supported {:?}", name, field)
                 }
             }
         }

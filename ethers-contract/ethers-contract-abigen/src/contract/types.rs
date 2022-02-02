@@ -1,5 +1,5 @@
 use ethers_core::{abi::ParamType, macros::ethers_core_crate};
-use eyre::{eyre, Result};
+use eyre::{bail, Result};
 use proc_macro2::{Literal, TokenStream};
 use quote::quote;
 
@@ -16,7 +16,7 @@ pub(crate) fn expand(kind: &ParamType) -> Result<TokenStream> {
             5..=8 => Ok(quote! { i64 }),
             9..=16 => Ok(quote! { i128 }),
             17..=32 => Ok(quote! { I256 }),
-            _ => Err(eyre!("unsupported solidity type int{}", n)),
+            _ => bail!("unsupported solidity type int{}", n),
         },
         ParamType::Uint(n) => match n / 8 {
             1 => Ok(quote! { u8 }),
@@ -25,7 +25,7 @@ pub(crate) fn expand(kind: &ParamType) -> Result<TokenStream> {
             5..=8 => Ok(quote! { u64 }),
             9..=16 => Ok(quote! { u128 }),
             17..=32 => Ok(quote! { #ethers_core::types::U256 }),
-            _ => Err(eyre!("unsupported solidity type uint{}", n)),
+            _ => bail!("unsupported solidity type uint{}", n),
         },
         ParamType::Bool => Ok(quote! { bool }),
         ParamType::String => Ok(quote! { String }),
