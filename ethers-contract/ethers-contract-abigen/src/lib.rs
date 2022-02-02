@@ -219,7 +219,7 @@ impl ContractBindings {
         self.tokens
     }
 
-    /// Generate the defaul module name (snake case of the contract name)
+    /// Generate the default module name (snake case of the contract name)
     pub fn module_name(&self) -> String {
         self.name.to_snake_case()
     }
