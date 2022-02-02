@@ -2,7 +2,7 @@ use crate::{
     abi::{
         AbiArrayType, AbiError, AbiType, Detokenize, Token, Tokenizable, TokenizableItem, Tokenize,
     },
-    types::{Address, H256, U128, U256},
+    types::{Address, Bytes, H256, U128, U256},
 };
 
 /// Trait for ABI encoding
@@ -40,6 +40,7 @@ macro_rules! impl_abi_codec {
 
 impl_abi_codec!(
     Vec<u8>,
+    Bytes,
     Address,
     bool,
     String,
@@ -227,5 +228,12 @@ mod tests {
         .map(char::from)
         .collect::<String>()
         };
+    }
+
+    #[test]
+    fn bytes_codec() {
+        let bytes: Bytes = std::iter::repeat_with(random::<u8>).take(10).collect::<Vec<_>>().into();
+        let v = vec![bytes];
+        assert_codec(v);
     }
 }

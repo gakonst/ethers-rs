@@ -3,7 +3,7 @@ use ethers_contract::{
 };
 use ethers_core::{
     abi::{AbiDecode, AbiEncode, RawLog, Tokenizable},
-    types::{Address, H160, H256, I256, U128, U256},
+    types::{Address, Bytes, H160, H256, I256, U128, U256},
 };
 
 fn assert_tokenizeable<T: Tokenizable>() {}
@@ -559,4 +559,16 @@ fn can_derive_abi_codec_two_field() {
     let decoded_wrapped = <(SomeType,)>::decode(&wrapped).unwrap();
 
     assert_eq!(decoded_wrapped, tuple);
+}
+
+#[test]
+fn can_derive_ethcall_for_bytes() {
+    #[derive(Clone, Debug, Default, Eq, PartialEq, EthCall, EthDisplay)]
+    #[ethcall(name = "batch", abi = "batch(bytes[],bool)")]
+    pub struct BatchCall {
+        pub calls: Vec<Bytes>,
+        pub revert_on_fail: bool,
+    }
+
+    assert_ethcall::<BatchCall>();
 }
