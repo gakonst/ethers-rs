@@ -50,7 +50,7 @@ getrandom = { version = "0.2", features = ["js"] }
 
 [dev-dependencies]
 criterion = { version = "0.3", features = ["async_tokio"] }
-pretty_assertions = "1.0.0"
+pretty_assertions = "1.1.0"
 tempfile = "3.3.0"
 tokio = { version = "1.15.0", features = ["full"] }
 
