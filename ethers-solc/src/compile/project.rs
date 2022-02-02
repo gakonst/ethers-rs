@@ -437,7 +437,14 @@ fn compile_parallel(
 #[cfg(feature = "project-util")]
 mod tests {
     use super::*;
+    use crate::{cache::SolFilesCache, project_util::TempProject, MinimalCombinedArtifacts};
     use std::path::PathBuf;
+
+    fn init_tracing() {
+        tracing_subscriber::fmt()
+            .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+            .init();
+    }
 
     #[test]
     fn can_preprocess() {
@@ -456,5 +463,22 @@ mod tests {
 
         let compiled = prep.compile().unwrap();
         assert_eq!(compiled.output.contracts.files().count(), 3);
+    }
+
+    #[test]
+    fn can_detect_cached_files() {
+        init_tracing();
+
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test-data/dapp-sample");
+        let paths = ProjectPathsConfig::builder().sources(root.join("src")).lib(root.join("lib"));
+        let project = TempProject::<MinimalCombinedArtifacts>::new(paths).unwrap();
+
+        let compiled = project.compile().unwrap();
+        assert!(!compiled.has_compiler_errors());
+
+        let inner = project.project();
+        let compiler = ProjectCompiler::new(inner).unwrap();
+        let prep = compiler.preprocess().unwrap();
+        assert!(prep.cache.as_cached().unwrap().dirty_entries.is_empty())
     }
 }

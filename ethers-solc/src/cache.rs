@@ -24,7 +24,7 @@ use std::{
 /// `ethers-solc` uses a different format version id, but the actual format is consistent with
 /// hardhat This allows ethers-solc to detect if the cache file was written by hardhat or
 /// `ethers-solc`
-const ETHERS_FORMAT_VERSION: &str = "ethers-rs-sol-cache-1";
+const ETHERS_FORMAT_VERSION: &str = "ethers-rs-sol-cache-2";
 
 /// The file name of the default cache file
 pub const SOLIDITY_FILES_CACHE_FILENAME: &str = "solidity-files-cache.json";
@@ -354,15 +354,15 @@ impl CacheEntry {
     /// Sets the artifact's paths to `base` adjoined to the artifact's `path`.
     pub fn join(&mut self, base: impl AsRef<Path>) {
         let base = base.as_ref();
-        self.artifacts_mut().for_each(|p| *p = p.join(base))
+        self.artifacts_mut().for_each(|p| *p = base.join(&*p))
     }
 
     /// Removes `base` from the artifact's path
     pub fn strip_prefix(&mut self, base: impl AsRef<Path>) {
         let base = base.as_ref();
         self.artifacts_mut().for_each(|p| {
-            if let Ok(prefix) = p.strip_prefix(base) {
-                *p = prefix.to_path_buf();
+            if let Ok(rem) = p.strip_prefix(base) {
+                *p = rem.to_path_buf();
             }
         })
     }
@@ -507,8 +507,11 @@ impl<'a, T: ArtifactOutput> ArtifactsCacheInner<'a, T> {
                 }
 
                 if entry.artifacts_for_version(version).any(|artifact_path| {
-                    // artifact does not exist
-                    !self.cached_artifacts.has_artifact(artifact_path)
+                    let missing_artifact = !self.cached_artifacts.has_artifact(artifact_path);
+                    if missing_artifact {
+                        tracing::trace!("missing artifact \"{}\"", artifact_path.display());
+                    }
+                    missing_artifact
                 }) {
                     return true
                 }
@@ -656,6 +659,7 @@ impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
                 // add the new cache entries to the cache file
                 cache.extend(dirty_entries.into_iter().map(|(file, (entry, _))| (file, entry)));
 
+                cache.strip_prefix_all(project.artifacts_path());
                 // write to disk
                 cache.write(project.cache_path())?;
 
