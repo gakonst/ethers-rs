@@ -166,11 +166,7 @@ impl Context {
                     param_types.push(struct_ty.as_param(tuple));
                 }
                 FieldType::Mapping(_) => {
-                    return Err(eyre::eyre!(
-                        "Mapping types in struct `{}` are not supported {:?}",
-                        name,
-                        field
-                    ))
+                    eyre::bail!("Mapping types in struct `{}` are not supported {:?}", name, field)
                 }
             }
         }

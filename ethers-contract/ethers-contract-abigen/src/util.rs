@@ -77,7 +77,7 @@ where
 {
     let address_str = address_str.as_ref();
     if !address_str.starts_with("0x") {
-        return Err(eyre!("address must start with '0x'"))
+        eyre::bail!("address must start with '0x'")
     }
     Ok(address_str[2..].parse()?)
 }
