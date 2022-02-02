@@ -1,9 +1,9 @@
 use super::{types, util, Context};
-use anyhow::Result;
 use ethers_core::{
     abi::{Event, EventExt, EventParam, ParamType, SolStruct},
     macros::{ethers_contract_crate, ethers_core_crate},
 };
+use eyre::Result;
 use inflector::Inflector;
 use proc_macro2::{Ident, Literal, TokenStream};
 use quote::quote;

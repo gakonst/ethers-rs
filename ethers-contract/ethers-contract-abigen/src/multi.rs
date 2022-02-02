@@ -1,6 +1,6 @@
 //! TODO
 
-use anyhow::Result;
+use eyre::Result;
 use inflector::Inflector;
 use std::{collections::BTreeMap, fs, io::Write, path::Path};
 
@@ -388,7 +388,7 @@ impl MultiBindings {
     /// # Returns
     ///
     /// `Ok(())` if the freshly generated bindings match with the
-    /// existing bindings. Otherwise an `Err(_)` containing an `anyhow::Report`
+    /// existing bindings. Otherwise an `Err(_)` containing an `eyre::Report`
     /// with more information.
     ///
     /// # Example
@@ -437,7 +437,7 @@ impl MultiBindings {
     /// # Returns
     ///
     /// `Ok(())` if the freshly generated bindings match with the
-    /// existing bindings. Otherwise an `Err(_)` containing an `anyhow::Report`
+    /// existing bindings. Otherwise an `Err(_)` containing an `eyre::Report`
     /// with more information.
     ///
     /// # Example
@@ -468,13 +468,13 @@ impl MultiBindings {
 }
 
 fn check_file_in_dir(dir: &Path, file_name: &str, expected_contents: &[u8]) -> Result<()> {
-    anyhow::ensure!(dir.is_dir(), "Not a directory: {}", dir.display());
+    eyre::ensure!(dir.is_dir(), "Not a directory: {}", dir.display());
 
     let file_path = dir.join(file_name);
-    anyhow::ensure!(file_path.is_file(), "Not a file: {}", file_path.display());
+    eyre::ensure!(file_path.is_file(), "Not a file: {}", file_path.display());
 
     let contents = fs::read(file_path).expect("Unable to read file");
-    anyhow::ensure!(contents == expected_contents, "file contents do not match");
+    eyre::ensure!(contents == expected_contents, "file contents do not match");
     Ok(())
 }
 

@@ -7,11 +7,11 @@ mod types;
 
 use super::{util, Abigen};
 use crate::{contract::structs::InternalStructs, rawabi::RawAbi};
-use anyhow::{anyhow, Context as _, Result};
 use ethers_core::{
     abi::{Abi, AbiParser},
     macros::{ethers_contract_crate, ethers_core_crate, ethers_providers_crate},
 };
+use eyre::{eyre, Context as _, Result};
 
 use crate::contract::methods::MethodAlias;
 use proc_macro2::{Ident, Literal, TokenStream};
@@ -153,7 +153,7 @@ impl Context {
     pub fn from_abigen(args: Abigen) -> Result<Self> {
         // get the actual ABI string
         let mut abi_str =
-            args.abi_source.get().map_err(|e| anyhow!("failed to get ABI JSON: {}", e))?;
+            args.abi_source.get().map_err(|e| eyre!("failed to get ABI JSON: {}", e))?;
 
         let (abi, human_readable, abi_parser) = parse_abi(&abi_str)?;
 
@@ -199,7 +199,7 @@ impl Context {
             };
 
             if method_aliases.insert(signature.clone(), alias).is_some() {
-                return Err(anyhow!("duplicate method signature '{}' in method aliases", signature,))
+                eyre::bail!("duplicate method signature '{}' in method aliases", signature)
             }
         }
 

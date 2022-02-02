@@ -1,6 +1,6 @@
 use std::collections::{btree_map::Entry, BTreeMap, HashMap};
 
-use anyhow::{Context as _, Result};
+use eyre::{Context as _, Result};
 use inflector::Inflector;
 use proc_macro2::{Literal, TokenStream};
 use quote::quote;
@@ -428,33 +428,33 @@ impl Context {
                     0 => {
                         // this may happen if there are functions with different casing,
                         // like `INDEX`and `index`
-                        if overloaded_fun.name != first_fun.name {
-                            let overloaded_id = overloaded_fun.name.to_snake_case();
-                            let first_fun_id = first_fun.name.to_snake_case();
-                            if first_fun_id != overloaded_id {
-                                // no conflict
-                                overloaded_id
-                            } else {
-                                let overloaded_alias = MethodAlias {
-                                    function_name: util::safe_ident(&overloaded_fun.name),
-                                    struct_name: util::safe_ident(&overloaded_fun.name),
-                                };
-                                aliases.insert(overloaded_fun.abi_signature(), overloaded_alias);
 
-                                let first_fun_alias = MethodAlias {
-                                    function_name: util::safe_ident(&first_fun.name),
-                                    struct_name: util::safe_ident(&first_fun.name),
-                                };
-                                aliases.insert(first_fun.abi_signature(), first_fun_alias);
-                                continue
-                            }
+                        // this should not happen since functions with same
+                        // name and inputs are illegal
+                        eyre::ensure!(
+                            overloaded_fun.name != first_fun.name,
+                            "Function with same name and parameter types defined twice: {}",
+                            overloaded_fun.name
+                        );
+
+                        let overloaded_id = overloaded_fun.name.to_snake_case();
+                        let first_fun_id = first_fun.name.to_snake_case();
+                        if first_fun_id != overloaded_id {
+                            // no conflict
+                            overloaded_id
                         } else {
-                            // this should not happen since functions with same name and inputs are
-                            // illegal
-                            anyhow::bail!(
-                                "Function with same name and parameter types defined twice: {}",
-                                overloaded_fun.name
-                            );
+                            let overloaded_alias = MethodAlias {
+                                function_name: util::safe_ident(&overloaded_fun.name),
+                                struct_name: util::safe_ident(&overloaded_fun.name),
+                            };
+                            aliases.insert(overloaded_fun.abi_signature(), overloaded_alias);
+
+                            let first_fun_alias = MethodAlias {
+                                function_name: util::safe_ident(&first_fun.name),
+                                struct_name: util::safe_ident(&first_fun.name),
+                            };
+                            aliases.insert(first_fun.abi_signature(), first_fun_alias);
+                            continue
                         }
                     }
                     1 => {

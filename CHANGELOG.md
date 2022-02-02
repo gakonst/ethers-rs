@@ -28,6 +28,8 @@
 - Significantly refactor `MultiAbigen` module generation. Now allows for lib
   generation, and does not make unnecessary disk writes.
   [#854](https://github.com/gakonst/ethers-rs/pull/852)
+- Refactor `ethers-contract-abigen` to use `eyre` instead of `anyhow` via
+  [#858](https://github.com/gakonst/ethers-rs/pull/858)
 
 ## ethers-contract-abigen
 
