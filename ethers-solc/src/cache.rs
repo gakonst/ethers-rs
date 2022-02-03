@@ -705,7 +705,7 @@ impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
 
     /// Consumes the `Cache`, rebuilds the [`SolFileCache`] by merging all artifacts that were
     /// filtered out in the previous step (`Cache::filtered`) and the artifacts that were just
-    /// written to disk `written_artifacts`.
+    /// compiled and written to disk `written_artifacts`.
     ///
     /// Returns all the _cached_ artifacts.
     pub fn write_cache(

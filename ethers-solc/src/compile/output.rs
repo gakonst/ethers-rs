@@ -6,7 +6,7 @@ use crate::{
     ArtifactOutput, Artifacts, CompilerOutput,
 };
 use semver::Version;
-use std::{collections::BTreeMap, fmt};
+use std::{collections::BTreeMap, fmt, path::Path};
 
 /// Contains a mixture of already compiled/cached artifacts and the input set of sources that still
 /// need to be compiled.
@@ -16,8 +16,8 @@ pub struct ProjectCompileOutput<T: ArtifactOutput> {
     ///
     /// See [`CompilerSources::compile`]
     pub(crate) compiler_output: AggregatedCompilerOutput,
-    /// all artifact files from `output` that were written
-    pub(crate) written_artifacts: Artifacts<T::Artifact>,
+    /// all artifact files from `output` that were freshly compiled and written
+    pub(crate) compiled_artifacts: Artifacts<T::Artifact>,
     /// All artifacts that were read from cache
     pub(crate) cached_artifacts: Artifacts<T::Artifact>,
     /// errors that should be omitted
@@ -26,6 +26,8 @@ pub struct ProjectCompileOutput<T: ArtifactOutput> {
 
 impl<T: ArtifactOutput> ProjectCompileOutput<T> {
     /// All artifacts together with their contract file name and name `<file name>:<name>`
+    ///
+    /// This returns a chained iterator of both cached and recompiled contract artifacts
     ///
     /// # Example
     ///
@@ -38,8 +40,53 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
     /// let contracts: BTreeMap<String, CompactContractBytecode> = project.compile().unwrap().into_artifacts().collect();
     /// ```
     pub fn into_artifacts(self) -> impl Iterator<Item = (String, T::Artifact)> {
-        let Self { cached_artifacts, written_artifacts, .. } = self;
-        cached_artifacts.into_artifacts::<T>().chain(written_artifacts.into_artifacts::<T>())
+        let Self { cached_artifacts, compiled_artifacts, .. } = self;
+        cached_artifacts.into_artifacts::<T>().chain(compiled_artifacts.into_artifacts::<T>())
+    }
+
+    /// All artifacts together with their contract file and name as tuple `(file, contract
+    /// name, artifact)`
+    ///
+    /// This returns a chained iterator of both cached and recompiled contract artifacts
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use std::collections::btree_map::BTreeMap;
+    /// use ethers_solc::artifacts::CompactContractBytecode;
+    /// use ethers_solc::Project;
+    ///
+    /// let project = Project::builder().build().unwrap();
+    /// let contracts: Vec<(String, String, CompactContractBytecode)> = project.compile().unwrap().into_artifacts_with_files().collect();
+    /// ```
+    ///
+    /// **NOTE** the `file` will be returned as is, see also [`Self::with_stripped_file_prefixes()`]
+    pub fn into_artifacts_with_files(self) -> impl Iterator<Item = (String, String, T::Artifact)> {
+        let Self { cached_artifacts, compiled_artifacts, .. } = self;
+        cached_artifacts
+            .into_artifacts_with_files()
+            .chain(compiled_artifacts.into_artifacts_with_files())
+    }
+
+    /// Strips the given prefix from all artifact file paths to make them relative to the given
+    /// `root` argument
+    ///
+    /// # Example
+    ///
+    /// Make all artifact files relative tot the project's root directory
+    ///
+    /// ```no_run
+    /// use ethers_solc::artifacts::CompactContractBytecode;
+    /// use ethers_solc::Project;
+    ///
+    /// let project = Project::builder().build().unwrap();
+    /// let output = project.compile().unwrap().with_stripped_file_prefixes(project.root());
+    /// ```
+    pub fn with_stripped_file_prefixes(mut self, base: impl AsRef<Path>) -> Self {
+        let base = base.as_ref();
+        self.cached_artifacts = self.cached_artifacts.into_stripped_file_prefixes(base);
+        self.compiled_artifacts = self.compiled_artifacts.into_stripped_file_prefixes(base);
+        self
     }
 
     /// Get the (merged) solc compiler output
@@ -79,10 +126,20 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
     /// Finds the first contract with the given name and removes it from the set
     pub fn remove(&mut self, contract_name: impl AsRef<str>) -> Option<T::Artifact> {
         let contract_name = contract_name.as_ref();
-        if let artifact @ Some(_) = self.written_artifacts.remove(contract_name) {
+        if let artifact @ Some(_) = self.compiled_artifacts.remove(contract_name) {
             return artifact
         }
         self.cached_artifacts.remove(contract_name)
+    }
+
+    /// Returns the set of `Artifacts` that were cached and got reused during [`Project::compile()`]
+    pub fn cached_artifacts(&self) -> &Artifacts<T::Artifact> {
+        &self.cached_artifacts
+    }
+
+    /// Returns the set of `Artifacts` that were compiled with `solc` in [`Project::compile()`]
+    pub fn compiled_artifacts(&self) -> &Artifacts<T::Artifact> {
+        &self.compiled_artifacts
     }
 }
 
@@ -93,7 +150,7 @@ where
     /// Finds the first contract with the given name
     pub fn find(&self, contract_name: impl AsRef<str>) -> Option<&T::Artifact> {
         let contract_name = contract_name.as_ref();
-        if let artifact @ Some(_) = self.written_artifacts.find(contract_name) {
+        if let artifact @ Some(_) = self.compiled_artifacts.find(contract_name) {
             return artifact
         }
         self.cached_artifacts.find(contract_name)

@@ -57,6 +57,32 @@ pub(crate) type ArtifactsMap<T> = FileToContractsMap<Vec<ArtifactFile<T>>>;
 #[derive(Debug, Clone, PartialEq)]
 pub struct Artifacts<T>(pub ArtifactsMap<T>);
 
+impl<T> From<ArtifactsMap<T>> for Artifacts<T> {
+    fn from(m: ArtifactsMap<T>) -> Self {
+        Self(m)
+    }
+}
+
+impl<'a, T> IntoIterator for &'a Artifacts<T> {
+    type Item = (&'a String, &'a BTreeMap<String, Vec<ArtifactFile<T>>>);
+    type IntoIter =
+        std::collections::btree_map::Iter<'a, String, BTreeMap<String, Vec<ArtifactFile<T>>>>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        (&self.0).into_iter()
+    }
+}
+
+impl<T> IntoIterator for Artifacts<T> {
+    type Item = (String, BTreeMap<String, Vec<ArtifactFile<T>>>);
+    type IntoIter =
+        std::collections::btree_map::IntoIter<String, BTreeMap<String, Vec<ArtifactFile<T>>>>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
+
 impl<T> Default for Artifacts<T> {
     fn default() -> Self {
         Self(Default::default())
@@ -152,6 +178,40 @@ impl<T> Artifacts<T> {
         })
     }
 
+    /// Returns an iterator that yields the tuple `(file, contract name, artifact)`
+    ///
+    /// **NOTE** this returns the path as is
+    pub fn into_artifacts_with_files(self) -> impl Iterator<Item = (String, String, T)> {
+        self.0.into_iter().flat_map(|(f, contract_artifacts)| {
+            contract_artifacts.into_iter().flat_map(move |(name, artifacts)| {
+                let contract_name = name.clone();
+                let file = f.clone();
+                artifacts
+                    .into_iter()
+                    .map(move |artifact| (file.clone(), contract_name.clone(), artifact.artifact))
+            })
+        })
+    }
+    /// Strips the given prefix from all artifact file paths to make them relative to the given
+    /// `root` argument
+    pub fn into_stripped_file_prefixes(self, base: impl AsRef<Path>) -> Self {
+        let base = base.as_ref();
+        let artifacts = self
+            .0
+            .into_iter()
+            .map(|(file, c)| {
+                let file_path = Path::new(&file);
+                if let Ok(p) = file_path.strip_prefix(base) {
+                    (p.to_string_lossy().to_string(), c)
+                } else {
+                    (file, c)
+                }
+            })
+            .collect();
+
+        Artifacts(artifacts)
+    }
+
     /// Finds the first artifact `T` with a matching contract name
     pub fn find(&self, contract_name: impl AsRef<str>) -> Option<&T> {
         let contract_name = contract_name.as_ref();
@@ -180,9 +240,6 @@ impl<T> Artifacts<T> {
         })
     }
 }
-
-// /// Bundled Artifacts: `file -> (contract name -> (Artifact, Version))`
-// pub type Artifacts<T> = FileToContractsMap<Vec<(T, Version)>>;
 
 /// A trait representation for a [`crate::Contract`] artifact
 pub trait Artifact {

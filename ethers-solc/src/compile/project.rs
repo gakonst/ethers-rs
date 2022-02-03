@@ -230,13 +230,13 @@ impl<'a, T: ArtifactOutput> CompiledState<'a, T> {
     fn write_artifacts(self) -> Result<ArtifactsState<'a, T>> {
         let CompiledState { output, cache } = self;
         // write all artifacts
-        let written_artifacts = if !cache.project().no_artifacts {
+        let compiled_artifacts = if !cache.project().no_artifacts {
             T::on_output(&output.contracts, &cache.project().paths)?
         } else {
             Default::default()
         };
 
-        Ok(ArtifactsState { output, cache, written_artifacts })
+        Ok(ArtifactsState { output, cache, compiled_artifacts })
     }
 }
 
@@ -245,7 +245,7 @@ impl<'a, T: ArtifactOutput> CompiledState<'a, T> {
 struct ArtifactsState<'a, T: ArtifactOutput> {
     output: AggregatedCompilerOutput,
     cache: ArtifactsCache<'a, T>,
-    written_artifacts: Artifacts<T::Artifact>,
+    compiled_artifacts: Artifacts<T::Artifact>,
 }
 
 impl<'a, T: ArtifactOutput> ArtifactsState<'a, T> {
@@ -253,12 +253,12 @@ impl<'a, T: ArtifactOutput> ArtifactsState<'a, T> {
     ///
     /// this concludes the [`Project::compile()`] statemachine
     fn write_cache(self) -> Result<ProjectCompileOutput<T>> {
-        let ArtifactsState { output, cache, written_artifacts } = self;
+        let ArtifactsState { output, cache, compiled_artifacts } = self;
         let ignored_error_codes = cache.project().ignored_error_codes.clone();
-        let cached_artifacts = cache.write_cache(&written_artifacts)?;
+        let cached_artifacts = cache.write_cache(&compiled_artifacts)?;
         Ok(ProjectCompileOutput {
             compiler_output: output,
-            written_artifacts,
+            compiled_artifacts,
             cached_artifacts,
             ignored_error_codes,
         })
