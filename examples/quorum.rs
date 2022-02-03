@@ -5,7 +5,7 @@ use ethers::{prelude::*, utils::Ganache};
 use std::{str::FromStr, time::Duration};
 
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
+async fn main() -> eyre::Result<()> {
     let ganache = Ganache::new().spawn();
 
     // create a quorum provider with some providers
