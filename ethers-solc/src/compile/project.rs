@@ -82,7 +82,7 @@ use crate::{
     output::AggregatedCompilerOutput,
     resolver::GraphEdges,
     ArtifactOutput, CompilerInput, Graph, Project, ProjectCompileOutput, ProjectPathsConfig, Solc,
-    SourceUnitNameMap, Sources,
+    Sources,
 };
 use rayon::prelude::*;
 
@@ -176,19 +176,12 @@ impl<'a, T: ArtifactOutput> ProjectCompiler<'a, T> {
     ///   - check cache
     fn preprocess(self) -> Result<PreprocessedState<'a, T>> {
         let Self { edges, project, mut sources } = self;
-        // the map that keeps track of the mapping of resolved solidity file paths -> source unit
-        // names
-        let mut source_unit_map = SourceUnitNameMap::default();
 
         let mut cache = ArtifactsCache::new(project, edges)?;
         // retain and compile only dirty sources
-        sources = sources.filtered(&mut cache).set_source_unit_names(
-            &project.paths,
-            cache.edges(),
-            &mut source_unit_map,
-        );
+        sources = sources.filtered(&mut cache);
 
-        Ok(PreprocessedState { sources, cache, source_unit_map })
+        Ok(PreprocessedState { sources, cache })
     }
 }
 
@@ -199,18 +192,14 @@ impl<'a, T: ArtifactOutput> ProjectCompiler<'a, T> {
 struct PreprocessedState<'a, T: ArtifactOutput> {
     sources: CompilerSources,
     cache: ArtifactsCache<'a, T>,
-    source_unit_map: SourceUnitNameMap,
 }
 
 impl<'a, T: ArtifactOutput> PreprocessedState<'a, T> {
     /// advance to the next state by compiling all sources
     fn compile(self) -> Result<CompiledState<'a, T>> {
-        let PreprocessedState { sources, cache, source_unit_map } = self;
-        let mut output =
+        let PreprocessedState { sources, cache } = self;
+        let output =
             sources.compile(&cache.project().solc_config.settings, &cache.project().paths)?;
-
-        // reverse the applied source unit names
-        output.contracts = source_unit_map.reverse(output.contracts);
 
         Ok(CompiledState { output, cache })
     }
@@ -297,50 +286,6 @@ impl CompilerSources {
             }
             CompilerSources::Parallel(s, j) => {
                 CompilerSources::Parallel(filtered_sources(s, cache), j)
-            }
-        }
-    }
-
-    /// Sets the correct source unit names for all sources
-    ///
-    /// This helps the compiler to find the right source in the `CompilerInput`.
-    /// the source unit name depends on how it is imported,
-    /// see [Import Path Resolution](https://docs.soliditylang.org/en/develop/path-resolution.html#path-resolution)
-    ///
-    /// For contracts imported from the project's src directory the source unit name is the relative
-    /// path, starting at the project's root path.
-    ///
-    /// The source name for a resolved library import is the applied remapping, also starting
-    /// relatively at the project's root path.
-    fn set_source_unit_names(
-        self,
-        paths: &ProjectPathsConfig,
-        edges: &GraphEdges,
-        names: &mut SourceUnitNameMap,
-    ) -> Self {
-        fn set(
-            sources: VersionedSources,
-            paths: &ProjectPathsConfig,
-            edges: &GraphEdges,
-            names: &mut SourceUnitNameMap,
-        ) -> VersionedSources {
-            sources
-                .into_iter()
-                .map(|(solc, (version, sources))| {
-                    let sources = names.apply_source_names_with(sources, |file| {
-                        edges.get_source_unit_name(file, &paths.root)
-                    });
-                    (solc, (version, sources))
-                })
-                .collect()
-        }
-
-        match self {
-            CompilerSources::Sequential(s) => {
-                CompilerSources::Sequential(set(s, paths, edges, names))
-            }
-            CompilerSources::Parallel(s, j) => {
-                CompilerSources::Parallel(set(s, paths, edges, names), j)
             }
         }
     }
@@ -473,7 +418,6 @@ mod tests {
         assert_eq!(cache.dirty_entries.len(), 3);
         assert!(cache.filtered.is_empty());
         assert!(cache.cache.is_empty());
-        assert_eq!(prep.source_unit_map.source_unit_name_to_absolute_path.len(), 3);
 
         let compiled = prep.compile().unwrap();
         assert_eq!(compiled.output.contracts.files().count(), 3);

@@ -2,7 +2,6 @@
 use crate::{
     artifacts::Sources,
     config::SolcConfig,
-    contracts::VersionedContracts,
     error::{Result, SolcError},
     resolver::GraphEdges,
     utils, ArtifactFile, ArtifactOutput, Artifacts, ArtifactsMap, Project, ProjectPathsConfig,
@@ -177,7 +176,7 @@ impl SolFilesCache {
     /// let cache = SolFilesCache::read(project.cache_path())
     ///     .unwrap()
     ///     .with_stripped_file_prefixes(project.root());
-    /// cache.read_artifact::<CompactContract>("src/Greeter.sol", "Greeter").unwrap();
+    /// let artifact: CompactContract = cache.read_artifact("src/Greeter.sol", "Greeter").unwrap();
     /// # }
     /// ```
     ///
@@ -227,7 +226,7 @@ impl SolFilesCache {
     ///
     /// let project = Project::builder().build().unwrap();
     /// let cache = SolFilesCache::read_joined(&project.paths).unwrap();
-    /// cache.read_artifact::<CompactContract>("/Users/git/myproject/src/Greeter.sol", "Greeter");
+    /// let artifact: CompactContract = cache.read_artifact("/Users/git/myproject/src/Greeter.sol", "Greeter").unwrap();
     /// # }
     /// ```
     ///
@@ -726,13 +725,6 @@ impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
         }
     }
 
-    pub fn edges(&self) -> &GraphEdges {
-        match self {
-            ArtifactsCache::Ephemeral(edges, _) => edges,
-            ArtifactsCache::Cached(cache) => &cache.edges,
-        }
-    }
-
     pub fn project(&self) -> &'a Project<T> {
         match self {
             ArtifactsCache::Ephemeral(_, project) => project,
@@ -817,55 +809,5 @@ impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
                 Ok(cached_artifacts)
             }
         }
-    }
-}
-
-/// A helper type to handle source name/full disk mappings
-///
-/// The disk path is the actual path where a file can be found on disk.
-/// A source name is the internal identifier and is the remaining part of the disk path starting
-/// with the configured source directory, (`contracts/contract.sol`)
-///
-/// See also [Import Path Resolution](https://docs.soliditylang.org/en/develop/path-resolution.html#path-resolution)
-#[derive(Debug, Default)]
-pub(crate) struct SourceUnitNameMap {
-    /// all libraries to the source set while keeping track of their actual disk path
-    /// (`contracts/contract.sol` -> `/Users/.../contracts.sol`)
-    pub source_unit_name_to_absolute_path: HashMap<PathBuf, PathBuf>,
-}
-
-impl SourceUnitNameMap {
-    /// Sets the source unit names of the sources using the provided mapper
-    pub(crate) fn apply_source_names_with<M>(&mut self, sources: Sources, mapper: M) -> Sources
-    where
-        M: for<'a> Fn(&Path) -> PathBuf,
-    {
-        sources
-            .into_iter()
-            .map(|(file, source)| {
-                let source_unit_name = mapper(&file);
-                self.source_unit_name_to_absolute_path.insert(source_unit_name.clone(), file);
-                (source_unit_name, source)
-            })
-            .collect()
-    }
-
-    /// Reverses all previous source unit mappings
-    pub(crate) fn reverse(&self, contracts: VersionedContracts) -> VersionedContracts {
-        let contracts = contracts
-            .into_iter()
-            .map(|(source_unit_name, contracts)| {
-                if let Some(file) = self
-                    .source_unit_name_to_absolute_path
-                    .get(Path::new(&source_unit_name))
-                    .cloned()
-                {
-                    (format!("{}", file.display()), contracts)
-                } else {
-                    (source_unit_name, contracts)
-                }
-            })
-            .collect();
-        VersionedContracts(contracts)
     }
 }

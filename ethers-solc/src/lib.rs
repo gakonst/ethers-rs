@@ -29,7 +29,6 @@ pub mod utils;
 
 use crate::{
     artifacts::{Contract, Sources},
-    cache::SourceUnitNameMap,
     error::{SolcError, SolcIoError},
 };
 use error::Result;
