@@ -102,11 +102,13 @@ impl GraphEdges {
     /// Read more about [Import Remapping](https://docs.soliditylang.org/en/develop/path-resolution.html#import-remapping)
     pub fn get_source_unit_name(&self, file: impl AsRef<Path>, root: impl AsRef<Path>) -> PathBuf {
         let file = file.as_ref();
-        if self.is_input_file(file) {
-            utils::source_name(file, root).to_path_buf()
-        } else {
-            file.to_path_buf()
-        }
+        // let f = if self.is_input_file(file) {
+        //     utils::source_name(file, root).to_path_buf()
+        // } else {
+        //     file.to_path_buf()
+        // };
+        // dbg!(f.clone());
+        file.to_path_buf()
     }
 
     /// Returns the `VersionReq` for the given file

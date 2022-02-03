@@ -372,9 +372,10 @@ fn compile_sequential(
             continue
         }
         tracing::trace!(
-            "compiling {} sources with solc \"{}\"",
+            "compiling {} sources with solc \"{}\" {:?}",
             sources.len(),
-            solc.as_ref().display()
+            solc.as_ref().display(),
+            solc.args
         );
 
         let input = CompilerInput::with_sources(sources)
@@ -382,7 +383,12 @@ fn compile_sequential(
             .normalize_evm_version(&version)
             .with_remappings(paths.remappings.clone());
 
-        tracing::trace!("calling solc `{}` with {} sources", version, input.sources.len());
+        tracing::trace!(
+            "calling solc `{}` with {} sources {:?}",
+            version,
+            input.sources.len(),
+            input.sources.keys()
+        );
         let output = solc.compile(&input)?;
         tracing::trace!("compiled input, output has error: {}", output.has_error());
 
@@ -421,7 +427,13 @@ fn compile_parallel(
     let outputs = pool.install(move || {
         jobs.into_par_iter()
             .map(|(solc, version, input)| {
-                tracing::trace!("calling solc `{}` with {} sources", version, input.sources.len());
+                tracing::trace!(
+                    "calling solc `{}` {:?} with {} sources: {:?}",
+                    version,
+                    solc.args,
+                    input.sources.len(),
+                    input.sources.keys()
+                );
                 solc.compile(&input).map(|output| (version, output))
             })
             .collect::<Result<Vec<_>>>()
@@ -442,9 +454,10 @@ mod tests {
 
     #[allow(unused)]
     fn init_tracing() {
-        tracing_subscriber::fmt()
+        let _ = tracing_subscriber::fmt()
             .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
-            .init();
+            .try_init()
+            .ok();
     }
 
     #[test]

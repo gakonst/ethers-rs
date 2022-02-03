@@ -169,14 +169,15 @@ impl SolFilesCache {
     /// # Example
     ///
     /// ```
-    /// # fn t() {
+    /// fn t() {
+    /// use ethers_solc::artifacts::CompactContract;
     /// use ethers_solc::cache::SolFilesCache;
     /// use ethers_solc::Project;
+    /// let project = Project::builder().build().unwrap();
     /// let cache = SolFilesCache::read(project.cache_path())
     ///     .unwrap()
     ///     .with_stripped_file_prefixes(project.root());
-    /// let project = Project::builder().build().unwrap();
-    /// cache.read_artifact("src/Greeter.sol", "Greeter").unwrap();
+    /// cache.read_artifact::<CompactContract>("src/Greeter.sol", "Greeter").unwrap();
     /// # }
     /// ```
     ///
@@ -219,13 +220,14 @@ impl SolFilesCache {
     /// # Example
     ///
     /// ```
-    /// # fn t() {
+    /// fn t() {
     /// use ethers_solc::cache::SolFilesCache;
     /// use ethers_solc::Project;
+    /// use ethers_solc::artifacts::CompactContract;
     ///
     /// let project = Project::builder().build().unwrap();
     /// let cache = SolFilesCache::read_joined(&project.paths).unwrap();
-    /// cache.read_artifact("/Users/git/myproject/src/Greeter.sol", "Greeter");
+    /// cache.read_artifact::<CompactContract>("/Users/git/myproject/src/Greeter.sol", "Greeter");
     /// # }
     /// ```
     ///
