@@ -1697,7 +1697,7 @@ pub struct Ewasm {
 #[derive(Clone, Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
 pub struct StorageLayout {
     pub storage: Vec<Storage>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "default_for_null")]
     pub types: BTreeMap<String, StorageType>,
 }
 
@@ -1988,6 +1988,14 @@ where
     } else {
         Ok(None)
     }
+}
+
+fn default_for_null<'de, D, T>(deserializer: D) -> Result<T, D::Error>
+where
+    D: Deserializer<'de>,
+    T: Deserialize<'de> + Default,
+{
+    Ok(Option::<T>::deserialize(deserializer)?.unwrap_or_default())
 }
 
 #[cfg(test)]
