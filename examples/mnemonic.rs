@@ -1,6 +1,6 @@
 use ethers::signers::{coins_bip39::English, MnemonicBuilder};
 
-fn main() -> anyhow::Result<()> {
+fn main() -> eyre::Result<()> {
     let phrase = "work man father plunge mystery proud hollow address reunion sauce theory bonus";
     let index = 0u32;
     let password = "TREZOR123";

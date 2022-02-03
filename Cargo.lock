@@ -1125,7 +1125,6 @@ dependencies = [
 name = "ethers"
 version = "0.6.0"
 dependencies = [
- "anyhow",
  "bytes",
  "ethers-addressbook",
  "ethers-contract",
@@ -1135,6 +1134,7 @@ dependencies = [
  "ethers-providers",
  "ethers-signers",
  "ethers-solc",
+ "eyre",
  "hex",
  "rand 0.8.4",
  "serde",

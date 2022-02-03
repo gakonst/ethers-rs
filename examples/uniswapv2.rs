@@ -1,5 +1,5 @@
-use anyhow::Result;
 use ethers::prelude::*;
+use eyre::Result;
 use std::sync::Arc;
 
 // Generate the type-safe contract bindings by providing the ABI

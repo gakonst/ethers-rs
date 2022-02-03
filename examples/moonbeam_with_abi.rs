@@ -1,5 +1,5 @@
-use anyhow::Result;
 use ethers::prelude::*;
+use eyre::Result;
 use std::{convert::TryFrom, path::Path, sync::Arc, time::Duration};
 
 abigen!(

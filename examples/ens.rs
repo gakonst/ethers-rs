@@ -1,5 +1,5 @@
-use anyhow::Result;
 use ethers::{prelude::*, utils::Ganache};
+use eyre::Result;
 use std::convert::TryFrom;
 
 #[tokio::main]
@@ -20,7 +20,7 @@ async fn main() -> Result<()> {
         .send_transaction(tx, None)
         .await?
         .await?
-        .ok_or_else(|| anyhow::format_err!("tx dropped from mempool"))?;
+        .ok_or_else(|| eyre::format_err!("tx dropped from mempool"))?;
     let tx = provider.get_transaction(receipt.transaction_hash).await?;
 
     println!("{}", serde_json::to_string(&tx)?);

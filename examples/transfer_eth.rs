@@ -1,5 +1,5 @@
-use anyhow::Result;
 use ethers::{prelude::*, utils::Ganache};
+use eyre::Result;
 use std::convert::TryFrom;
 
 #[tokio::main]
