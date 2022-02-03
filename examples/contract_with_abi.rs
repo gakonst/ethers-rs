@@ -1,5 +1,5 @@
-use anyhow::Result;
 use ethers::{prelude::*, utils::Ganache};
+use eyre::Result;
 use std::{convert::TryFrom, path::Path, sync::Arc, time::Duration};
 
 // Generate the type-safe contract bindings by providing the ABI

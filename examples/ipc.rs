@@ -1,6 +1,6 @@
 #[tokio::main]
 #[cfg(feature = "ipc")]
-async fn main() -> anyhow::Result<()> {
+async fn main() -> eyre::Result<()> {
     use ethers::prelude::*;
 
     let provider = Provider::connect_ipc("~/.ethereum/geth.ipc")

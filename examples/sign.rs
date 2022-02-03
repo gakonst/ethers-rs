@@ -1,5 +1,5 @@
-// use the anyhow crate for easy idiomatic error handling
-use anyhow::Result;
+// use the eyre crate for easy idiomatic error handling
+use eyre::Result;
 // use the ethers_core rand for rng
 use ethers_core::rand::thread_rng;
 // use the ethers_signers crate to manage LocalWallet and Signer

@@ -1,6 +1,6 @@
 use ethers::{contract::Abigen, solc::Solc};
 
-fn main() -> anyhow::Result<()> {
+fn main() -> eyre::Result<()> {
     let mut args = std::env::args();
     args.next().unwrap(); // skip program name
 

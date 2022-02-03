@@ -1,9 +1,9 @@
-use anyhow::Result;
 use ethers::{
     prelude::*,
     solc::{Project, ProjectPathsConfig},
     utils::Ganache,
 };
+use eyre::Result;
 use std::{convert::TryFrom, path::PathBuf, sync::Arc, time::Duration};
 
 // Generate the type-safe contract bindings by providing the ABI

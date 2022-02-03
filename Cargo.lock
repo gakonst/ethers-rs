@@ -1138,7 +1138,6 @@ dependencies = [
 name = "ethers"
 version = "0.6.0"
 dependencies = [
- "anyhow",
  "bytes",
  "ethers-addressbook",
  "ethers-contract",
@@ -1148,6 +1147,7 @@ dependencies = [
  "ethers-providers",
  "ethers-signers",
  "ethers-solc",
+ "eyre",
  "hex",
  "rand 0.8.4",
  "serde",
@@ -3475,7 +3475,7 @@ dependencies = [
 [[package]]
 name = "solang-parser"
 version = "0.1.1"
-source = "git+https://github.com/hyperledger-labs/solang#4ad9d87881460fe89f2c4a0f762511f8fa445849"
+source = "git+https://github.com/hyperledger-labs/solang#f3e8f6fcabab91c959833cf85e3f13d327b00e38"
 dependencies = [
  "lalrpop",
  "lalrpop-util",
