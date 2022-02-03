@@ -222,7 +222,7 @@ impl<'a, T: ArtifactOutput> CompiledState<'a, T> {
         let compiled_artifacts = if !cache.project().no_artifacts {
             T::on_output(&output.contracts, &cache.project().paths)?
         } else {
-            Default::default()
+            T::output_to_artifacts(&output.contracts)
         };
 
         Ok(ArtifactsState { output, cache, compiled_artifacts })
@@ -350,7 +350,7 @@ fn compile_parallel(
     paths: &ProjectPathsConfig,
 ) -> Result<AggregatedCompilerOutput> {
     debug_assert!(num_jobs > 1);
-    tracing::trace!("compile sources in parallel using {} solc jobs", num_jobs);
+    tracing::trace!("compile sources in parallel using up to {} solc jobs", num_jobs);
 
     let mut jobs = Vec::with_capacity(input.len());
     for (solc, (version, sources)) in input {
