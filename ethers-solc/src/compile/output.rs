@@ -69,7 +69,7 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
     }
 
     /// Strips the given prefix from all artifact file paths to make them relative to the given
-    /// `root` argument
+    /// `base` argument
     ///
     /// # Example
     ///

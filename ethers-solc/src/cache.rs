@@ -79,7 +79,7 @@ impl SolFilesCache {
     ///
     /// let project = Project::builder().build().unwrap();
     /// let mut cache = SolFilesCache::read(project.cache_path()).unwrap();
-    /// cache.join_all(project.artifacts_path());
+    /// cache.join_artifacts_files(project.artifacts_path());
     /// # }
     /// ```
     #[tracing::instrument(skip_all, name = "sol-files-cache::read")]
@@ -107,7 +107,7 @@ impl SolFilesCache {
     /// ```
     pub fn read_joined(paths: &ProjectPathsConfig) -> Result<Self> {
         let mut cache = SolFilesCache::read(&paths.cache)?;
-        cache.join_all(&paths.artifacts);
+        cache.join_artifacts_files(&paths.artifacts);
         Ok(cache)
     }
 
@@ -116,27 +116,33 @@ impl SolFilesCache {
         let path = path.as_ref();
         utils::create_parent_dir_all(path)?;
         let file = fs::File::create(path).map_err(|err| SolcError::io(err, path))?;
-        tracing::trace!("writing cache to json file: \"{}\"", path.display());
+        tracing::trace!(
+            "writing cache with {} entries to json file: \"{}\"",
+            self.files.len(),
+            path.display()
+        );
         serde_json::to_writer_pretty(file, self)?;
         tracing::trace!("cache file located: \"{}\"", path.display());
         Ok(())
     }
 
     /// Sets the artifact files location to `base` adjoined to the `CachEntries` artifacts.
-    pub fn join_all(&mut self, base: impl AsRef<Path>) -> &mut Self {
+    pub fn join_artifacts_files(&mut self, base: impl AsRef<Path>) -> &mut Self {
         let base = base.as_ref();
-        self.files.values_mut().for_each(|entry| entry.join(base));
+        self.files.values_mut().for_each(|entry| entry.join_artifacts_files(base));
         self
     }
 
     /// Removes `base` from all artifact file paths
-    pub fn strip_prefix_all(&mut self, base: impl AsRef<Path>) -> &mut Self {
+    pub fn strip_artifact_files_prefixes(&mut self, base: impl AsRef<Path>) -> &mut Self {
         let base = base.as_ref();
-        self.files.values_mut().for_each(|entry| entry.strip_prefix(base));
+        self.files.values_mut().for_each(|entry| entry.strip_artifact_files_prefixes(base));
         self
     }
 
-    /// Removes all `CacheEntry` which source files are missing
+    /// Removes all `CacheEntry` which source files don't exist on disk
+    ///
+    /// **NOTE:** this assumes the `files` are absolute
     pub fn remove_missing_files(&mut self) {
         tracing::trace!("remove non existing files from cache");
         self.files.retain(|file, _| {
@@ -153,6 +159,38 @@ impl SolFilesCache {
         self.files.values().all(|entry| entry.all_artifacts_exist())
     }
 
+    /// Strips the given prefix from all `file` paths that identify a `CacheEntry` to make them
+    /// relative to the given `base` argument
+    ///
+    /// In other words this sets the keys (the file path of a solidity file) relative to the `base`
+    /// argument, so that the key `/Users/me/project/src/Greeter.sol` will be changed to
+    /// `src/Greeter.sol` if `base` is `/Users/me/project`
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # fn t() {
+    /// use ethers_solc::cache::SolFilesCache;
+    /// use ethers_solc::Project;
+    /// let cache = SolFilesCache::read(project.cache_path())
+    ///     .unwrap()
+    ///     .with_stripped_file_prefixes(project.root());
+    /// let project = Project::builder().build().unwrap();
+    /// cache.read_artifact("src/Greeter.sol", "Greeter").unwrap();
+    /// # }
+    /// ```
+    ///
+    /// **Note:** this only affects the source files, see [`Self::strip_artifact_files_prefixes()`]
+    pub fn with_stripped_file_prefixes(mut self, base: impl AsRef<Path>) -> Self {
+        let base = base.as_ref();
+        self.files = self
+            .files
+            .into_iter()
+            .map(|(f, e)| (utils::source_name(&f, base).to_path_buf(), e))
+            .collect();
+        self
+    }
+
     /// Returns the path to the artifact of the given `(file, contract)` pair
     ///
     /// # Example
@@ -164,7 +202,7 @@ impl SolFilesCache {
     ///
     /// let project = Project::builder().build().unwrap();
     /// let cache = SolFilesCache::read_joined(&project.paths).unwrap();
-    /// cache.find_artifact_path("/.../src/Greeter.sol", "Greeter");
+    /// cache.find_artifact_path("/Users/git/myproject/src/Greeter.sol", "Greeter");
     /// # }
     /// ```
     pub fn find_artifact_path(
@@ -187,9 +225,12 @@ impl SolFilesCache {
     ///
     /// let project = Project::builder().build().unwrap();
     /// let cache = SolFilesCache::read_joined(&project.paths).unwrap();
-    /// cache.read_artifact("/.../src/Greeter.sol", "Greeter");
+    /// cache.read_artifact("/Users/git/myproject/src/Greeter.sol", "Greeter");
     /// # }
     /// ```
+    ///
+    /// **NOTE**: unless the cache's `files` keys were modified `contract_file` is expected to be
+    /// absolute, see [``]
     pub fn read_artifact<Artifact: DeserializeOwned>(
         &self,
         contract_file: impl AsRef<Path>,
@@ -447,13 +488,13 @@ impl CacheEntry {
     }
 
     /// Sets the artifact's paths to `base` adjoined to the artifact's `path`.
-    pub fn join(&mut self, base: impl AsRef<Path>) {
+    pub fn join_artifacts_files(&mut self, base: impl AsRef<Path>) {
         let base = base.as_ref();
         self.artifacts_mut().for_each(|p| *p = base.join(&*p))
     }
 
     /// Removes `base` from the artifact's path
-    pub fn strip_prefix(&mut self, base: impl AsRef<Path>) {
+    pub fn strip_artifact_files_prefixes(&mut self, base: impl AsRef<Path>) {
         let base = base.as_ref();
         self.artifacts_mut().for_each(|p| {
             if let Ok(rem) = p.strip_prefix(base) {
@@ -637,11 +678,13 @@ impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
     pub fn new(project: &'a Project<T>, edges: GraphEdges) -> Result<Self> {
         let cache = if project.cached {
             // read the cache file if it already exists
-            let cache = if project.cache_path().exists() {
+            let mut cache = if project.cache_path().exists() {
                 SolFilesCache::read_joined(&project.paths).unwrap_or_default()
             } else {
                 SolFilesCache::default()
             };
+
+            cache.remove_missing_files();
 
             // read all artifacts
             let cached_artifacts = if project.paths.artifacts.exists() {
@@ -765,7 +808,7 @@ impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
                 // add the new cache entries to the cache file
                 cache.extend(dirty_entries.into_iter().map(|(file, (entry, _))| (file, entry)));
 
-                cache.strip_prefix_all(project.artifacts_path());
+                cache.strip_artifact_files_prefixes(project.artifacts_path());
                 // write to disk
                 cache.write(project.cache_path())?;
 

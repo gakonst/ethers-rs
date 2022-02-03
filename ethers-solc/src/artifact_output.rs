@@ -69,7 +69,7 @@ impl<'a, T> IntoIterator for &'a Artifacts<T> {
         std::collections::btree_map::Iter<'a, String, BTreeMap<String, Vec<ArtifactFile<T>>>>;
 
     fn into_iter(self) -> Self::IntoIter {
-        (&self.0).into_iter()
+        self.0.iter()
     }
 }
 
@@ -184,7 +184,7 @@ impl<T> Artifacts<T> {
     pub fn into_artifacts_with_files(self) -> impl Iterator<Item = (String, String, T)> {
         self.0.into_iter().flat_map(|(f, contract_artifacts)| {
             contract_artifacts.into_iter().flat_map(move |(name, artifacts)| {
-                let contract_name = name.clone();
+                let contract_name = name;
                 let file = f.clone();
                 artifacts
                     .into_iter()
@@ -192,6 +192,7 @@ impl<T> Artifacts<T> {
             })
         })
     }
+
     /// Strips the given prefix from all artifact file paths to make them relative to the given
     /// `root` argument
     pub fn into_stripped_file_prefixes(self, base: impl AsRef<Path>) -> Self {
