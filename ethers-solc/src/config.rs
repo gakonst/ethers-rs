@@ -9,7 +9,6 @@ use crate::{
 
 use serde::{Deserialize, Serialize};
 use std::{
-    convert::TryFrom,
     fmt::{self, Formatter},
     fs,
     path::{Component, Path, PathBuf},
@@ -356,27 +355,27 @@ pub struct ProjectPathsConfigBuilder {
 
 impl ProjectPathsConfigBuilder {
     pub fn root(mut self, root: impl Into<PathBuf>) -> Self {
-        self.root = Some(canonicalized(root));
+        self.root = Some(utils::canonicalized(root));
         self
     }
 
     pub fn cache(mut self, cache: impl Into<PathBuf>) -> Self {
-        self.cache = Some(canonicalized(cache));
+        self.cache = Some(utils::canonicalized(cache));
         self
     }
 
     pub fn artifacts(mut self, artifacts: impl Into<PathBuf>) -> Self {
-        self.artifacts = Some(canonicalized(artifacts));
+        self.artifacts = Some(utils::canonicalized(artifacts));
         self
     }
 
     pub fn sources(mut self, sources: impl Into<PathBuf>) -> Self {
-        self.sources = Some(canonicalized(sources));
+        self.sources = Some(utils::canonicalized(sources));
         self
     }
 
     pub fn tests(mut self, tests: impl Into<PathBuf>) -> Self {
-        self.tests = Some(canonicalized(tests));
+        self.tests = Some(utils::canonicalized(tests));
         self
     }
 
@@ -387,14 +386,14 @@ impl ProjectPathsConfigBuilder {
     }
 
     pub fn lib(mut self, lib: impl Into<PathBuf>) -> Self {
-        self.libraries.get_or_insert_with(Vec::new).push(canonicalized(lib));
+        self.libraries.get_or_insert_with(Vec::new).push(utils::canonicalized(lib));
         self
     }
 
     pub fn libs(mut self, libs: impl IntoIterator<Item = impl Into<PathBuf>>) -> Self {
         let libraries = self.libraries.get_or_insert_with(Vec::new);
         for lib in libs.into_iter() {
-            libraries.push(canonicalized(lib));
+            libraries.push(utils::canonicalized(lib));
         }
         self
     }
@@ -413,7 +412,7 @@ impl ProjectPathsConfigBuilder {
     }
 
     pub fn build_with_root(self, root: impl Into<PathBuf>) -> ProjectPathsConfig {
-        let root = canonicalized(root);
+        let root = utils::canonicalized(root);
 
         let libraries = self.libraries.unwrap_or_else(|| ProjectPathsConfig::find_libs(&root));
 
@@ -443,20 +442,6 @@ impl ProjectPathsConfigBuilder {
             .map_err(|err| SolcIoError::new(err, "."))?;
         Ok(self.build_with_root(root))
     }
-}
-
-/// Returns the same path config but with canonicalized paths.
-///
-/// This will take care of potential symbolic linked directories.
-/// For example, the tempdir library is creating directories hosted under `/var/`, which in OS X
-/// is a symbolic link to `/private/var/`. So if when we try to resolve imports and a path is
-/// rooted in a symbolic directory we might end up with different paths for the same file, like
-/// `private/var/.../Dapp.sol` and `/var/.../Dapp.sol`
-///
-/// This canonicalizes all the paths but does not treat non existing dirs as an error
-fn canonicalized(path: impl Into<PathBuf>) -> PathBuf {
-    let path = path.into();
-    utils::canonicalize(&path).unwrap_or(path)
 }
 
 /// The config to use when compiling the contracts
@@ -531,19 +516,10 @@ impl fmt::Display for AllowedLibPaths {
     }
 }
 
-impl<T: Into<PathBuf>> TryFrom<Vec<T>> for AllowedLibPaths {
-    type Error = SolcIoError;
-
-    fn try_from(libs: Vec<T>) -> std::result::Result<Self, Self::Error> {
-        let libs = libs
-            .into_iter()
-            .map(|lib| {
-                let path: PathBuf = lib.into();
-                let lib = utils::canonicalize(&path)?;
-                Ok(lib)
-            })
-            .collect::<std::result::Result<Vec<_>, _>>()?;
-        Ok(AllowedLibPaths(libs))
+impl<T: Into<PathBuf>> From<Vec<T>> for AllowedLibPaths {
+    fn from(libs: Vec<T>) -> Self {
+        let libs = libs.into_iter().map(utils::canonicalized).collect();
+        AllowedLibPaths(libs)
     }
 }
 
@@ -567,13 +543,13 @@ mod tests {
         assert_eq!(ProjectPathsConfig::find_source_dir(root), contracts,);
         assert_eq!(
             ProjectPathsConfig::builder().build_with_root(&root).sources,
-            canonicalized(contracts),
+            utils::canonicalized(contracts),
         );
         std::fs::File::create(&src).unwrap();
         assert_eq!(ProjectPathsConfig::find_source_dir(root), src,);
         assert_eq!(
             ProjectPathsConfig::builder().build_with_root(&root).sources,
-            canonicalized(src),
+            utils::canonicalized(src),
         );
 
         assert_eq!(ProjectPathsConfig::find_artifacts_dir(root), out,);
@@ -581,13 +557,13 @@ mod tests {
         assert_eq!(ProjectPathsConfig::find_artifacts_dir(root), artifacts,);
         assert_eq!(
             ProjectPathsConfig::builder().build_with_root(&root).artifacts,
-            canonicalized(artifacts),
+            utils::canonicalized(artifacts),
         );
         std::fs::File::create(&out).unwrap();
         assert_eq!(ProjectPathsConfig::find_artifacts_dir(root), out,);
         assert_eq!(
             ProjectPathsConfig::builder().build_with_root(&root).artifacts,
-            canonicalized(out),
+            utils::canonicalized(out),
         );
 
         assert_eq!(ProjectPathsConfig::find_libs(root), vec![lib.clone()],);
@@ -595,13 +571,13 @@ mod tests {
         assert_eq!(ProjectPathsConfig::find_libs(root), vec![node_modules.clone()],);
         assert_eq!(
             ProjectPathsConfig::builder().build_with_root(&root).libraries,
-            vec![canonicalized(node_modules)],
+            vec![utils::canonicalized(node_modules)],
         );
         std::fs::File::create(&lib).unwrap();
         assert_eq!(ProjectPathsConfig::find_libs(root), vec![lib.clone()],);
         assert_eq!(
             ProjectPathsConfig::builder().build_with_root(&root).libraries,
-            vec![canonicalized(lib)],
+            vec![utils::canonicalized(lib)],
         );
     }
 }

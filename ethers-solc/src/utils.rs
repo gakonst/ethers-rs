@@ -83,6 +83,20 @@ pub fn canonicalize(path: impl AsRef<Path>) -> Result<PathBuf, SolcIoError> {
     dunce::canonicalize(&path).map_err(|err| SolcIoError::new(err, path))
 }
 
+/// Returns the same path config but with canonicalized paths.
+///
+/// This will take care of potential symbolic linked directories.
+/// For example, the tempdir library is creating directories hosted under `/var/`, which in OS X
+/// is a symbolic link to `/private/var/`. So if when we try to resolve imports and a path is
+/// rooted in a symbolic directory we might end up with different paths for the same file, like
+/// `private/var/.../Dapp.sol` and `/var/.../Dapp.sol`
+///
+/// This canonicalizes all the paths but does not treat non existing dirs as an error
+pub fn canonicalized(path: impl Into<PathBuf>) -> PathBuf {
+    let path = path.into();
+    canonicalize(&path).unwrap_or(path)
+}
+
 /// Returns the path to the library if the source path is in fact determined to be a library path,
 /// and it exists.
 /// Note: this does not handle relative imports or remappings.

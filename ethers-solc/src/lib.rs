@@ -33,7 +33,6 @@ use crate::{
 };
 use error::Result;
 use std::{
-    convert::TryInto,
     marker::PhantomData,
     path::{Path, PathBuf},
 };
@@ -537,7 +536,7 @@ impl<Artifacts: ArtifactOutput> ProjectBuilder<Artifacts> {
             auto_detect,
             artifacts,
             ignored_error_codes,
-            allowed_lib_paths: allowed_paths.try_into()?,
+            allowed_lib_paths: allowed_paths.into(),
             solc_jobs: solc_jobs.unwrap_or_else(::num_cpus::get),
             offline,
         })
