@@ -13,7 +13,10 @@ pub use hh::{HardhatArtifact, HardhatArtifacts};
 pub use resolver::Graph;
 
 mod compile;
-pub use compile::{output::ProjectCompileOutput, *};
+pub use compile::{
+    output::{AggregatedCompilerOutput, ProjectCompileOutput},
+    *,
+};
 
 mod config;
 pub use config::{AllowedLibPaths, PathStyle, ProjectPathsConfig, SolcConfig};
