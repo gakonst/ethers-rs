@@ -5,7 +5,8 @@ use crate::{
     contracts::VersionedContracts,
     error::{Result, SolcError},
     resolver::GraphEdges,
-    utils, ArtifactFile, ArtifactOutput, Artifacts, ArtifactsMap, Project, Source,
+    utils, ArtifactFile, ArtifactOutput, Artifacts, ArtifactsMap, Project, ProjectPathsConfig,
+    Source,
 };
 use semver::Version;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -63,6 +64,8 @@ impl SolFilesCache {
 
     /// Reads the cache json file from the given path
     ///
+    /// See also [`Self::read_joined()`]
+    ///
     /// # Errors
     ///
     /// If the cache file does not exist
@@ -85,6 +88,26 @@ impl SolFilesCache {
         tracing::trace!("reading solfiles cache at {}", path.display());
         let cache: SolFilesCache = utils::read_json_file(path)?;
         tracing::trace!("read cache \"{}\" with {} entries", cache.format, cache.files.len());
+        Ok(cache)
+    }
+
+    /// Reads the cache json file from the given path and returns the cache with modified paths
+    ///
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # fn t() {
+    /// use ethers_solc::cache::SolFilesCache;
+    /// use ethers_solc::Project;
+    ///
+    /// let project = Project::builder().build().unwrap();
+    /// let cache = SolFilesCache::read_joined(&project.paths).unwrap();
+    /// # }
+    /// ```
+    pub fn read_joined(paths: &ProjectPathsConfig) -> Result<Self> {
+        let mut cache = SolFilesCache::read(&paths.cache)?;
+        cache.join_all(&paths.artifacts);
         Ok(cache)
     }
 
@@ -130,6 +153,59 @@ impl SolFilesCache {
         self.files.values().all(|entry| entry.all_artifacts_exist())
     }
 
+    /// Returns the path to the artifact of the given `(file, contract)` pair
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # fn t() {
+    /// use ethers_solc::cache::SolFilesCache;
+    /// use ethers_solc::Project;
+    ///
+    /// let project = Project::builder().build().unwrap();
+    /// let cache = SolFilesCache::read_joined(&project.paths).unwrap();
+    /// cache.find_artifact_path("/.../src/Greeter.sol", "Greeter");
+    /// # }
+    /// ```
+    pub fn find_artifact_path(
+        &self,
+        contract_file: impl AsRef<Path>,
+        contract_name: impl AsRef<str>,
+    ) -> Option<&PathBuf> {
+        let entry = self.entry(contract_file)?;
+        entry.find_artifact_path(contract_name)
+    }
+
+    /// Finds the path to the artifact of the given `(file, contract)` pair, see
+    /// [`Self::find_artifact_path()`], and reads the artifact as json file
+    /// # Example
+    ///
+    /// ```
+    /// # fn t() {
+    /// use ethers_solc::cache::SolFilesCache;
+    /// use ethers_solc::Project;
+    ///
+    /// let project = Project::builder().build().unwrap();
+    /// let cache = SolFilesCache::read_joined(&project.paths).unwrap();
+    /// cache.read_artifact("/.../src/Greeter.sol", "Greeter");
+    /// # }
+    /// ```
+    pub fn read_artifact<Artifact: DeserializeOwned>(
+        &self,
+        contract_file: impl AsRef<Path>,
+        contract_name: impl AsRef<str>,
+    ) -> Result<Artifact> {
+        let contract_file = contract_file.as_ref();
+        let contract_name = contract_name.as_ref();
+
+        let artifact_path =
+            self.find_artifact_path(contract_file, contract_name).ok_or_else(|| {
+                SolcError::ArtifactNotFound(contract_file.to_path_buf(), contract_name.to_string())
+            })?;
+
+        utils::read_json_file(artifact_path)
+    }
+
     /// Reads all cached artifacts from disk using the given ArtifactOutput handler
     ///
     /// # Example
@@ -140,8 +216,7 @@ impl SolFilesCache {
     /// use ethers_solc::artifacts::CompactContractBytecode;
     /// # fn t() {
     /// let project = Project::builder().build().unwrap();
-    /// let mut cache = SolFilesCache::read(project.cache_path()).unwrap();
-    /// cache.join_all(project.artifacts_path());
+    /// let cache = SolFilesCache::read_joined(&project.paths).unwrap();
     /// let artifacts = cache.read_artifacts::<CompactContractBytecode>().unwrap();
     /// # }
     /// ```
@@ -255,6 +330,17 @@ impl CacheEntry {
     /// Returns the last modified timestamp `Duration`
     pub fn last_modified(&self) -> Duration {
         Duration::from_millis(self.last_modification_date)
+    }
+
+    /// Returns the artifact path for the contract name
+    /// ```
+    /// use ethers_solc::cache::CacheEntry;
+    /// # fn t(entry: CacheEntry) {
+    /// entry.find_artifact_path("Greeter");
+    /// # }
+    /// ```
+    pub fn find_artifact_path(&self, contract_name: impl AsRef<str>) -> Option<&PathBuf> {
+        self.artifacts.get(contract_name.as_ref())?.iter().next().map(|(_, p)| p)
     }
 
     /// Reads the last modification date from the file's metadata
@@ -552,9 +638,7 @@ impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
         let cache = if project.cached {
             // read the cache file if it already exists
             let cache = if project.cache_path().exists() {
-                let mut cache = SolFilesCache::read(project.cache_path()).unwrap_or_default();
-                cache.join_all(project.artifacts_path()).remove_missing_files();
-                cache
+                SolFilesCache::read_joined(&project.paths).unwrap_or_default()
             } else {
                 SolFilesCache::default()
             };

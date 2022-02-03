@@ -197,6 +197,20 @@ pub trait Artifact {
 
     /// Returns the contents of this type as a single tuple of abi, bytecode and deployed bytecode
     fn into_parts(self) -> (Option<Abi>, Option<Bytes>, Option<Bytes>);
+
+    /// Same as [`Self::into_parts()`] but returns `Err` if an element is `None`
+    fn try_into_parts(self) -> Result<(Abi, Bytes, Bytes)>
+    where
+        Self: Sized,
+    {
+        let (abi, bytecode, deployed_bytecode) = self.into_parts();
+
+        Ok((
+            abi.ok_or_else(|| SolcError::msg("abi missing"))?,
+            bytecode.ok_or_else(|| SolcError::msg("bytecode missing"))?,
+            deployed_bytecode.ok_or_else(|| SolcError::msg("deployed bytecode missing"))?,
+        ))
+    }
 }
 
 impl<T> Artifact for T

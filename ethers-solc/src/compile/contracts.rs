@@ -87,6 +87,15 @@ impl VersionedContracts {
             .flat_map(|c| c.iter().flat_map(|(name, c)| c.iter().map(move |c| (name, &c.contract))))
     }
 
+    /// Returns an iterator over (`file`, `name`, `Contract`)
+    pub fn contracts_with_files(&self) -> impl Iterator<Item = (&String, &String, &Contract)> {
+        self.0.iter().flat_map(|(file, contracts)| {
+            contracts
+                .iter()
+                .flat_map(move |(name, c)| c.iter().map(move |c| (file, name, &c.contract)))
+        })
+    }
+
     /// Returns an iterator over all contracts and their source names.
     ///
     /// ```

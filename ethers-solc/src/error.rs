@@ -34,6 +34,9 @@ pub enum SolcError {
     #[error("{0}")]
     Message(String),
 
+    #[error("No artifact found for `{}:{}`", .0.display(), .1)]
+    ArtifactNotFound(PathBuf, String),
+
     #[cfg(feature = "project-util")]
     #[error(transparent)]
     FsExtra(#[from] fs_extra::error::Error),
