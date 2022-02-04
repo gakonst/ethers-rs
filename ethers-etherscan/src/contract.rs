@@ -262,11 +262,12 @@ impl Client {
 
 #[cfg(test)]
 mod tests {
-    use std::time::Duration;
+    use std::{path::PathBuf, time::Duration};
 
     use serial_test::serial;
 
     use ethers_core::types::Chain;
+    use ethers_solc::{MinimalCombinedArtifacts, Project, ProjectPathsConfig};
 
     use crate::{contract::VerifyContract, tests::run_at_least_duration, Client};
 
@@ -302,26 +303,32 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    #[ignore]
-    async fn can_verify_contract() {
+    async fn can_flatten_and_verify_contract() {
         run_at_least_duration(Duration::from_millis(250), async {
-            // TODO this needs further investigation
+            let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("resources");
+            let paths = ProjectPathsConfig::builder()
+                .sources(&root)
+                .build()
+                .expect("failed to resolve project paths");
+            let project = Project::<MinimalCombinedArtifacts>::builder()
+                .paths(paths)
+                .build()
+                .expect("failed to build the project");
 
-            // https://etherscan.io/address/0x9e744c9115b74834c0f33f4097f40c02a9ac5c33#code
-            let contract = include_str!("../resources/UniswapExchange.sol");
             let address = "0x9e744c9115b74834c0f33f4097f40c02a9ac5c33".parse().unwrap();
             let compiler_version = "v0.5.17+commit.d19bba13";
             let constructor_args = "0x000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000a00000000000000000000000000000000000000000000000000000000005f5e1000000000000000000000000000000000000000000000000000000000000000007596179537761700000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000035941590000000000000000000000000000000000000000000000000000000000";
+            let contract = project.flatten(&root.join("UniswapExchange.sol")).expect("failed to flatten contract");
 
             let client = Client::new_from_env(Chain::Mainnet).unwrap();
 
             let contract =
-                VerifyContract::new(address, contract.to_string(), compiler_version.to_string())
+                VerifyContract::new(address, contract, compiler_version.to_string())
                     .constructor_arguments(Some(constructor_args))
                     .optimization(true)
                     .runs(200);
-
             let _resp = client.submit_contract_verification(&contract).await;
-        }).await
+        })
+        .await
     }
 }
