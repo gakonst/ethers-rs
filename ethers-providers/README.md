@@ -15,7 +15,7 @@ use std::convert::TryFrom;
 
 # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
 let provider = Provider::<Http>::try_from(
-    "https://mainnet.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27"
+    "https://mainnet.infura.io/v3/YOUR_API_KEY"
 )?;
 
 let block = provider.get_block(100u64).await?;
@@ -53,7 +53,7 @@ method on the provider.
 # use std::convert::TryFrom;
 # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
 # let provider = Provider::<Http>::try_from(
-#     "https://mainnet.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27"
+#     "https://mainnet.infura.io/v3/YOUR_API_KEY"
 # )?;
 // Resolve ENS name to Address
 let name = "vitalik.eth";
