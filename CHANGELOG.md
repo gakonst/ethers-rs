@@ -44,6 +44,10 @@
 
 ### Unreleased
 
+- Total revamp of the `Project::compile` pipeline
+  [#802](https://github.com/gakonst/ethers-rs/pull/802)
+  - Support multiple versions of compiled contracts
+  - Breaking: deprecate hardhat cache file compatibility, cache file now tracks artifact paths and their versions
 - Fix flatten replacement target location
   [#846](https://github.com/gakonst/ethers-rs/pull/846)
 - Fix duplicate files during flattening

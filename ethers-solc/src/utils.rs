@@ -6,6 +6,7 @@ use crate::{error::SolcError, SolcIoError};
 use once_cell::sync::Lazy;
 use regex::{Match, Regex};
 use semver::Version;
+use serde::de::DeserializeOwned;
 use tiny_keccak::{Hasher, Keccak};
 use walkdir::WalkDir;
 
@@ -80,6 +81,20 @@ pub fn is_local_source_name(libs: &[impl AsRef<Path>], source: impl AsRef<Path>)
 pub fn canonicalize(path: impl AsRef<Path>) -> Result<PathBuf, SolcIoError> {
     let path = path.as_ref();
     dunce::canonicalize(&path).map_err(|err| SolcIoError::new(err, path))
+}
+
+/// Returns the same path config but with canonicalized paths.
+///
+/// This will take care of potential symbolic linked directories.
+/// For example, the tempdir library is creating directories hosted under `/var/`, which in OS X
+/// is a symbolic link to `/private/var/`. So if when we try to resolve imports and a path is
+/// rooted in a symbolic directory we might end up with different paths for the same file, like
+/// `private/var/.../Dapp.sol` and `/var/.../Dapp.sol`
+///
+/// This canonicalizes all the paths but does not treat non existing dirs as an error
+pub fn canonicalized(path: impl Into<PathBuf>) -> PathBuf {
+    let path = path.into();
+    canonicalize(&path).unwrap_or(path)
 }
 
 /// Returns the path to the library if the source path is in fact determined to be a library path,
@@ -250,6 +265,31 @@ pub(crate) fn find_fave_or_alt_path(root: impl AsRef<Path>, fave: &str, alt: &st
 #[cfg(any(test, feature = "project-util"))]
 pub(crate) fn tempdir(name: &str) -> Result<tempfile::TempDir, SolcIoError> {
     tempfile::Builder::new().prefix(name).tempdir().map_err(|err| SolcIoError::new(err, name))
+}
+
+/// Reads the json file and deserialize it into the provided type
+pub fn read_json_file<T: DeserializeOwned>(path: impl AsRef<Path>) -> Result<T, SolcError> {
+    let path = path.as_ref();
+    let file = std::fs::File::open(path).map_err(|err| SolcError::io(err, path))?;
+    let file = std::io::BufReader::new(file);
+    let val: T = serde_json::from_reader(file)?;
+    Ok(val)
+}
+
+/// Creates the parent directory of the `file` and all its ancestors if it does not exist
+/// See [`std::fs::create_dir_all()`]
+pub fn create_parent_dir_all(file: impl AsRef<Path>) -> Result<(), SolcError> {
+    let file = file.as_ref();
+    if let Some(parent) = file.parent() {
+        std::fs::create_dir_all(parent).map_err(|err| {
+            SolcError::msg(format!(
+                "Failed to create artifact parent folder \"{}\": {}",
+                parent.display(),
+                err
+            ))
+        })?;
+    }
+    Ok(())
 }
 
 #[cfg(test)]

@@ -1,19 +1,16 @@
 use crate::{
-    artifacts::{CompactContract, CompactContractBytecode, Contract, Settings},
+    artifacts::Settings,
     cache::SOLIDITY_FILES_CACHE_FILENAME,
     error::{Result, SolcError, SolcIoError},
-    hh::HardhatArtifact,
     remappings::Remapping,
     resolver::Graph,
-    utils, CompilerOutput, Source, Sources,
+    utils, Source, Sources,
 };
-use ethers_core::{abi::Abi, types::Bytes};
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+
+use serde::{Deserialize, Serialize};
 use std::{
-    collections::BTreeMap,
-    convert::TryFrom,
     fmt::{self, Formatter},
-    fs, io,
+    fs,
     path::{Component, Path, PathBuf},
 };
 
@@ -358,27 +355,27 @@ pub struct ProjectPathsConfigBuilder {
 
 impl ProjectPathsConfigBuilder {
     pub fn root(mut self, root: impl Into<PathBuf>) -> Self {
-        self.root = Some(canonicalized(root));
+        self.root = Some(utils::canonicalized(root));
         self
     }
 
     pub fn cache(mut self, cache: impl Into<PathBuf>) -> Self {
-        self.cache = Some(canonicalized(cache));
+        self.cache = Some(utils::canonicalized(cache));
         self
     }
 
     pub fn artifacts(mut self, artifacts: impl Into<PathBuf>) -> Self {
-        self.artifacts = Some(canonicalized(artifacts));
+        self.artifacts = Some(utils::canonicalized(artifacts));
         self
     }
 
     pub fn sources(mut self, sources: impl Into<PathBuf>) -> Self {
-        self.sources = Some(canonicalized(sources));
+        self.sources = Some(utils::canonicalized(sources));
         self
     }
 
     pub fn tests(mut self, tests: impl Into<PathBuf>) -> Self {
-        self.tests = Some(canonicalized(tests));
+        self.tests = Some(utils::canonicalized(tests));
         self
     }
 
@@ -389,14 +386,14 @@ impl ProjectPathsConfigBuilder {
     }
 
     pub fn lib(mut self, lib: impl Into<PathBuf>) -> Self {
-        self.libraries.get_or_insert_with(Vec::new).push(canonicalized(lib));
+        self.libraries.get_or_insert_with(Vec::new).push(utils::canonicalized(lib));
         self
     }
 
     pub fn libs(mut self, libs: impl IntoIterator<Item = impl Into<PathBuf>>) -> Self {
         let libraries = self.libraries.get_or_insert_with(Vec::new);
         for lib in libs.into_iter() {
-            libraries.push(canonicalized(lib));
+            libraries.push(utils::canonicalized(lib));
         }
         self
     }
@@ -415,7 +412,10 @@ impl ProjectPathsConfigBuilder {
     }
 
     pub fn build_with_root(self, root: impl Into<PathBuf>) -> ProjectPathsConfig {
-        let root = canonicalized(root);
+        let root = utils::canonicalized(root);
+
+        let libraries = self.libraries.unwrap_or_else(|| ProjectPathsConfig::find_libs(&root));
+
         ProjectPathsConfig {
             cache: self
                 .cache
@@ -425,8 +425,10 @@ impl ProjectPathsConfigBuilder {
                 .unwrap_or_else(|| ProjectPathsConfig::find_artifacts_dir(&root)),
             sources: self.sources.unwrap_or_else(|| ProjectPathsConfig::find_source_dir(&root)),
             tests: self.tests.unwrap_or_else(|| root.join("tests")),
-            libraries: self.libraries.unwrap_or_else(|| ProjectPathsConfig::find_libs(&root)),
-            remappings: self.remappings.unwrap_or_default(),
+            remappings: self
+                .remappings
+                .unwrap_or_else(|| libraries.iter().flat_map(Remapping::find_many).collect()),
+            libraries,
             root,
         }
     }
@@ -440,20 +442,6 @@ impl ProjectPathsConfigBuilder {
             .map_err(|err| SolcIoError::new(err, "."))?;
         Ok(self.build_with_root(root))
     }
-}
-
-/// Returns the same path config but with canonicalized paths.
-///
-/// This will take care of potential symbolic linked directories.
-/// For example, the tempdir library is creating directories hosted under `/var/`, which in OS X
-/// is a symbolic link to `/private/var/`. So if when we try to resolve imports and a path is
-/// rooted in a symbolic directory we might end up with different paths for the same file, like
-/// `private/var/.../Dapp.sol` and `/var/.../Dapp.sol`
-///
-/// This canonicalizes all the paths but does not treat non existing dirs as an error
-fn canonicalized(path: impl Into<PathBuf>) -> PathBuf {
-    let path = path.into();
-    utils::canonicalize(&path).unwrap_or(path)
 }
 
 /// The config to use when compiling the contracts
@@ -497,229 +485,6 @@ impl SolcConfigBuilder {
     }
 }
 
-pub type Artifacts<T> = BTreeMap<String, BTreeMap<String, T>>;
-
-pub trait Artifact {
-    /// Returns the artifact's `Abi` and bytecode
-    fn into_inner(self) -> (Option<Abi>, Option<Bytes>);
-
-    /// Turns the artifact into a container type for abi, compact bytecode and deployed bytecode
-    fn into_compact_contract(self) -> CompactContract;
-
-    /// Turns the artifact into a container type for abi, full bytecode and deployed bytecode
-    fn into_contract_bytecode(self) -> CompactContractBytecode;
-
-    /// Returns the contents of this type as a single tuple of abi, bytecode and deployed bytecode
-    fn into_parts(self) -> (Option<Abi>, Option<Bytes>, Option<Bytes>);
-}
-
-impl<T> Artifact for T
-where
-    T: Into<CompactContractBytecode> + Into<CompactContract>,
-{
-    fn into_inner(self) -> (Option<Abi>, Option<Bytes>) {
-        let artifact = self.into_compact_contract();
-        (artifact.abi, artifact.bin.and_then(|bin| bin.into_bytes()))
-    }
-
-    fn into_compact_contract(self) -> CompactContract {
-        self.into()
-    }
-
-    fn into_contract_bytecode(self) -> CompactContractBytecode {
-        self.into()
-    }
-
-    fn into_parts(self) -> (Option<Abi>, Option<Bytes>, Option<Bytes>) {
-        self.into_compact_contract().into_parts()
-    }
-}
-
-pub trait ArtifactOutput {
-    /// How Artifacts are stored
-    type Artifact: Artifact + DeserializeOwned;
-
-    /// Handle the compiler output.
-    fn on_output(output: &CompilerOutput, layout: &ProjectPathsConfig) -> Result<()>;
-
-    /// Returns the file name for the contract's artifact
-    fn output_file_name(name: impl AsRef<str>) -> PathBuf {
-        format!("{}.json", name.as_ref()).into()
-    }
-
-    /// Returns the path to the contract's artifact location based on the contract's file and name
-    ///
-    /// This returns `contract.sol/contract.json` by default
-    fn output_file(contract_file: impl AsRef<Path>, name: impl AsRef<str>) -> PathBuf {
-        let name = name.as_ref();
-        contract_file
-            .as_ref()
-            .file_name()
-            .map(Path::new)
-            .map(|p| p.join(Self::output_file_name(name)))
-            .unwrap_or_else(|| Self::output_file_name(name))
-    }
-
-    /// The inverse of `contract_file_name`
-    ///
-    /// Expected to return the solidity contract's name derived from the file path
-    /// `sources/Greeter.sol` -> `Greeter`
-    fn contract_name(file: impl AsRef<Path>) -> Option<String> {
-        file.as_ref().file_stem().and_then(|s| s.to_str().map(|s| s.to_string()))
-    }
-
-    /// Whether the corresponding artifact of the given contract file and name exists
-    fn output_exists(
-        contract_file: impl AsRef<Path>,
-        name: impl AsRef<str>,
-        root: impl AsRef<Path>,
-    ) -> bool {
-        root.as_ref().join(Self::output_file(contract_file, name)).exists()
-    }
-
-    fn read_cached_artifact(path: impl AsRef<Path>) -> Result<Self::Artifact> {
-        let path = path.as_ref();
-        let file = fs::File::open(path).map_err(|err| SolcError::io(err, path))?;
-        let file = io::BufReader::new(file);
-        Ok(serde_json::from_reader(file)?)
-    }
-
-    /// Read the cached artifacts from disk
-    fn read_cached_artifacts<T, I>(files: I) -> Result<BTreeMap<PathBuf, Self::Artifact>>
-    where
-        I: IntoIterator<Item = T>,
-        T: Into<PathBuf>,
-    {
-        let mut artifacts = BTreeMap::default();
-        for path in files.into_iter() {
-            let path = path.into();
-            let artifact = Self::read_cached_artifact(&path)?;
-            artifacts.insert(path, artifact);
-        }
-        Ok(artifacts)
-    }
-
-    /// Convert a contract to the artifact type
-    fn contract_to_artifact(file: &str, name: &str, contract: Contract) -> Self::Artifact;
-
-    /// Convert the compiler output into a set of artifacts
-    fn output_to_artifacts(output: CompilerOutput) -> Artifacts<Self::Artifact> {
-        output
-            .contracts
-            .into_iter()
-            .map(|(file, contracts)| {
-                let contracts = contracts
-                    .into_iter()
-                    .map(|(name, c)| {
-                        let contract = Self::contract_to_artifact(&file, &name, c);
-                        (name, contract)
-                    })
-                    .collect();
-                (file, contracts)
-            })
-            .collect()
-    }
-}
-
-/// An Artifacts implementation that uses a compact representation
-///
-/// Creates a single json artifact with
-/// ```json
-///  {
-///    "abi": [],
-///    "bin": "...",
-///    "runtime-bin": "..."
-///  }
-/// ```
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub struct MinimalCombinedArtifacts;
-
-impl ArtifactOutput for MinimalCombinedArtifacts {
-    type Artifact = CompactContractBytecode;
-
-    fn on_output(output: &CompilerOutput, layout: &ProjectPathsConfig) -> Result<()> {
-        fs::create_dir_all(&layout.artifacts)
-            .map_err(|err| SolcError::msg(format!("Failed to create artifacts dir: {}", err)))?;
-        for (file, contracts) in output.contracts.iter() {
-            for (name, contract) in contracts {
-                let artifact = Self::output_file(file, name);
-                let file = layout.artifacts.join(artifact);
-                if let Some(parent) = file.parent() {
-                    fs::create_dir_all(parent).map_err(|err| {
-                        SolcError::msg(format!(
-                            "Failed to create artifact parent folder \"{}\": {}",
-                            parent.display(),
-                            err
-                        ))
-                    })?;
-                }
-
-                if let Some(iropt) = &contract.ir_optimized {
-                    fs::write(&file.with_extension("iropt"), iropt)
-                        .map_err(|err| SolcError::io(err, file.with_extension("iropt")))?
-                }
-
-                if let Some(ir) = &contract.ir {
-                    fs::write(&file.with_extension("ir"), ir)
-                        .map_err(|err| SolcError::io(err, file.with_extension("ir")))?
-                }
-
-                if let Some(ewasm) = &contract.ewasm {
-                    fs::write(&file.with_extension("ewasm"), serde_json::to_vec_pretty(&ewasm)?)
-                        .map_err(|err| SolcError::io(err, file.with_extension("ewasm")))?;
-                }
-
-                if let Some(evm) = &contract.evm {
-                    if let Some(asm) = &evm.assembly {
-                        fs::write(&file.with_extension("asm"), asm)
-                            .map_err(|err| SolcError::io(err, file.with_extension("asm")))?
-                    }
-                }
-
-                let min = CompactContractBytecode::from(contract.clone());
-                fs::write(&file, serde_json::to_vec_pretty(&min)?)
-                    .map_err(|err| SolcError::io(err, file))?
-            }
-        }
-        Ok(())
-    }
-
-    fn contract_to_artifact(_file: &str, _name: &str, contract: Contract) -> Self::Artifact {
-        Self::Artifact::from(contract)
-    }
-}
-
-/// An Artifacts handler implementation that works the same as `MinimalCombinedArtifacts` but also
-/// supports reading hardhat artifacts if an initial attempt to deserialize an artifact failed
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub struct MinimalCombinedArtifactsHardhatFallback;
-
-impl ArtifactOutput for MinimalCombinedArtifactsHardhatFallback {
-    type Artifact = CompactContractBytecode;
-
-    fn on_output(output: &CompilerOutput, layout: &ProjectPathsConfig) -> Result<()> {
-        MinimalCombinedArtifacts::on_output(output, layout)
-    }
-
-    fn read_cached_artifact(path: impl AsRef<Path>) -> Result<Self::Artifact> {
-        let path = path.as_ref();
-        let content = fs::read_to_string(path).map_err(|err| SolcError::io(err, path))?;
-        if let Ok(a) = serde_json::from_str(&content) {
-            Ok(a)
-        } else {
-            tracing::error!("Failed to deserialize compact artifact");
-            tracing::trace!("Fallback to hardhat artifact deserialization");
-            let artifact = serde_json::from_str::<HardhatArtifact>(&content)?;
-            tracing::trace!("successfully deserialized hardhat artifact");
-            Ok(artifact.into_contract_bytecode())
-        }
-    }
-
-    fn contract_to_artifact(file: &str, name: &str, contract: Contract) -> Self::Artifact {
-        MinimalCombinedArtifacts::contract_to_artifact(file, name, contract)
-    }
-}
-
 /// Helper struct for serializing `--allow-paths` arguments to Solc
 ///
 /// From the [Solc docs](https://docs.soliditylang.org/en/v0.8.9/using-the-compiler.html#base-path-and-import-remapping):
@@ -751,19 +516,10 @@ impl fmt::Display for AllowedLibPaths {
     }
 }
 
-impl<T: Into<PathBuf>> TryFrom<Vec<T>> for AllowedLibPaths {
-    type Error = SolcIoError;
-
-    fn try_from(libs: Vec<T>) -> std::result::Result<Self, Self::Error> {
-        let libs = libs
-            .into_iter()
-            .map(|lib| {
-                let path: PathBuf = lib.into();
-                let lib = utils::canonicalize(&path)?;
-                Ok(lib)
-            })
-            .collect::<std::result::Result<Vec<_>, _>>()?;
-        Ok(AllowedLibPaths(libs))
+impl<T: Into<PathBuf>> From<Vec<T>> for AllowedLibPaths {
+    fn from(libs: Vec<T>) -> Self {
+        let libs = libs.into_iter().map(utils::canonicalized).collect();
+        AllowedLibPaths(libs)
     }
 }
 
@@ -787,13 +543,13 @@ mod tests {
         assert_eq!(ProjectPathsConfig::find_source_dir(root), contracts,);
         assert_eq!(
             ProjectPathsConfig::builder().build_with_root(&root).sources,
-            canonicalized(contracts),
+            utils::canonicalized(contracts),
         );
         std::fs::File::create(&src).unwrap();
         assert_eq!(ProjectPathsConfig::find_source_dir(root), src,);
         assert_eq!(
             ProjectPathsConfig::builder().build_with_root(&root).sources,
-            canonicalized(src),
+            utils::canonicalized(src),
         );
 
         assert_eq!(ProjectPathsConfig::find_artifacts_dir(root), out,);
@@ -801,13 +557,13 @@ mod tests {
         assert_eq!(ProjectPathsConfig::find_artifacts_dir(root), artifacts,);
         assert_eq!(
             ProjectPathsConfig::builder().build_with_root(&root).artifacts,
-            canonicalized(artifacts),
+            utils::canonicalized(artifacts),
         );
         std::fs::File::create(&out).unwrap();
         assert_eq!(ProjectPathsConfig::find_artifacts_dir(root), out,);
         assert_eq!(
             ProjectPathsConfig::builder().build_with_root(&root).artifacts,
-            canonicalized(out),
+            utils::canonicalized(out),
         );
 
         assert_eq!(ProjectPathsConfig::find_libs(root), vec![lib.clone()],);
@@ -815,13 +571,13 @@ mod tests {
         assert_eq!(ProjectPathsConfig::find_libs(root), vec![node_modules.clone()],);
         assert_eq!(
             ProjectPathsConfig::builder().build_with_root(&root).libraries,
-            vec![canonicalized(node_modules)],
+            vec![utils::canonicalized(node_modules)],
         );
         std::fs::File::create(&lib).unwrap();
         assert_eq!(ProjectPathsConfig::find_libs(root), vec![lib.clone()],);
         assert_eq!(
             ProjectPathsConfig::builder().build_with_root(&root).libraries,
-            vec![canonicalized(lib)],
+            vec![utils::canonicalized(lib)],
         );
     }
 }

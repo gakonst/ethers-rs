@@ -5,12 +5,11 @@ use crate::{
         Bytecode, BytecodeObject, CompactContract, CompactContractBytecode, Contract,
         ContractBytecode, DeployedBytecode, Offsets,
     },
-    error::{Result, SolcError},
-    ArtifactOutput, CompilerOutput, ProjectPathsConfig,
+    ArtifactOutput,
 };
 use ethers_core::abi::Abi;
 use serde::{Deserialize, Serialize};
-use std::{collections::BTreeMap, fs};
+use std::collections::btree_map::BTreeMap;
 
 const HH_ARTIFACT_VERSION: &str = "hh-sol-artifact-1";
 
@@ -84,30 +83,6 @@ pub struct HardhatArtifacts;
 
 impl ArtifactOutput for HardhatArtifacts {
     type Artifact = HardhatArtifact;
-
-    fn on_output(output: &CompilerOutput, layout: &ProjectPathsConfig) -> Result<()> {
-        fs::create_dir_all(&layout.artifacts)
-            .map_err(|err| SolcError::msg(format!("Failed to create artifacts dir: {}", err)))?;
-        for (file, contracts) in output.contracts.iter() {
-            for (name, contract) in contracts {
-                let artifact = Self::output_file(file, name);
-                let artifact_file = layout.artifacts.join(artifact);
-                if let Some(parent) = artifact_file.parent() {
-                    fs::create_dir_all(parent).map_err(|err| {
-                        SolcError::msg(format!(
-                            "Failed to create artifact parent folder \"{}\": {}",
-                            parent.display(),
-                            err
-                        ))
-                    })?;
-                }
-                let artifact = Self::contract_to_artifact(file, name, contract.clone());
-                fs::write(&artifact_file, serde_json::to_vec_pretty(&artifact)?)
-                    .map_err(|err| SolcError::io(err, artifact_file))?
-            }
-        }
-        Ok(())
-    }
 
     fn contract_to_artifact(file: &str, name: &str, contract: Contract) -> Self::Artifact {
         let (bytecode, link_references, deployed_bytecode, deployed_link_references) =

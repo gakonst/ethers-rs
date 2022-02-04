@@ -1,7 +1,7 @@
 //! project tests
 
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     io,
     path::{Path, PathBuf},
     str::FromStr,
@@ -11,8 +11,16 @@ use ethers_solc::{
     cache::{SolFilesCache, SOLIDITY_FILES_CACHE_FILENAME},
     project_util::*,
     remappings::Remapping,
-    Graph, MinimalCombinedArtifacts, Project, ProjectPathsConfig,
+    Graph, MinimalCombinedArtifacts, Project, ProjectCompileOutput, ProjectPathsConfig,
 };
+use pretty_assertions::assert_eq;
+
+#[allow(unused)]
+fn init_tracing() {
+    tracing_subscriber::fmt()
+        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+        .init();
+}
 
 #[test]
 fn can_compile_hardhat_sample() {
@@ -56,11 +64,16 @@ fn can_compile_dapp_sample() {
     assert!(compiled.find("Dapp").is_some());
     assert!(compiled.is_unchanged());
 
+    let cache = SolFilesCache::read(project.cache_path()).unwrap();
+
     // delete artifacts
     std::fs::remove_dir_all(&project.paths().artifacts).unwrap();
     let compiled = project.compile().unwrap();
     assert!(compiled.find("Dapp").is_some());
     assert!(!compiled.is_unchanged());
+
+    let updated_cache = SolFilesCache::read(project.cache_path()).unwrap();
+    assert_eq!(cache, updated_cache);
 }
 
 #[test]
@@ -72,7 +85,6 @@ fn can_compile_dapp_detect_changes_in_libs() {
         .paths_mut()
         .remappings
         .push(Remapping::from_str(&format!("remapping={}/", remapping.display())).unwrap());
-    project.project_mut().auto_detect = false;
 
     let src = project
         .add_source(
@@ -139,6 +151,7 @@ fn can_compile_dapp_detect_changes_in_libs() {
 
 #[test]
 fn can_compile_dapp_detect_changes_in_sources() {
+    init_tracing();
     let project = TempProject::<MinimalCombinedArtifacts>::dapptools().unwrap();
 
     let src = project
@@ -214,6 +227,7 @@ fn can_compile_dapp_detect_changes_in_sources() {
     assert!(compiled.find("DssSpellTestBase").is_some());
     // ensure change is detected
     assert!(!compiled.is_unchanged());
+
     // and all recompiled artifacts are different
     for (p, artifact) in compiled.into_artifacts() {
         let other = artifacts.remove(&p).unwrap();
@@ -266,31 +280,31 @@ fn can_compile_dapp_sample_with_cache() {
     assert!(compiled.find("NewContract").is_some());
     assert!(!compiled.is_unchanged());
     assert_eq!(
-        compiled.into_artifacts().map(|(name, _)| name).collect::<Vec<_>>(),
-        vec![
-            "Dapp.json:Dapp",
-            "DappTest.json:DappTest",
-            "DSTest.json:DSTest",
-            "NewContract.json:NewContract"
-        ]
+        compiled.into_artifacts().map(|(name, _)| name).collect::<HashSet<_>>(),
+        HashSet::from([
+            "Dapp.json:Dapp".to_string(),
+            "DappTest.json:DappTest".to_string(),
+            "DSTest.json:DSTest".to_string(),
+            "NewContract.json:NewContract".to_string(),
+        ])
     );
 
     // old cached artifact is not taken from the cache
     std::fs::copy(cache_testdata_dir.join("Dapp.sol"), root.join("src/Dapp.sol")).unwrap();
     let compiled = project.compile().unwrap();
     assert_eq!(
-        compiled.into_artifacts().map(|(name, _)| name).collect::<Vec<_>>(),
-        vec![
-            "DappTest.json:DappTest",
-            "NewContract.json:NewContract",
-            "DSTest.json:DSTest",
-            "Dapp.json:Dapp"
-        ]
+        compiled.into_artifacts().map(|(name, _)| name).collect::<HashSet<_>>(),
+        HashSet::from([
+            "DappTest.json:DappTest".to_string(),
+            "NewContract.json:NewContract".to_string(),
+            "DSTest.json:DSTest".to_string(),
+            "Dapp.json:Dapp".to_string(),
+        ])
     );
 
     // deleted artifact is not taken from the cache
     std::fs::remove_file(&project.paths.sources.join("Dapp.sol")).unwrap();
-    let compiled = project.compile().unwrap();
+    let compiled: ProjectCompileOutput<_> = project.compile().unwrap();
     assert!(compiled.find("Dapp").is_none());
 }
 
@@ -376,7 +390,7 @@ fn can_flatten_file_with_duplicates() {
     assert_eq!(result.matches("contract Foo {").count(), 1);
     assert_eq!(result.matches("contract Bar {").count(), 1);
     assert_eq!(result.matches("contract FooBar {").count(), 1);
-    assert_eq!(result.matches(";").count(), 1);
+    assert_eq!(result.matches(';').count(), 1);
 }
 
 #[test]

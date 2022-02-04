@@ -1,6 +1,6 @@
 [package]
 name = "ethers-solc"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Matthias Seitz <matthias.seitz@outlook.de>", "Georgios Konstantopoulos <me@gakonst.com>"]
 license = "MIT OR Apache-2.0"
 edition = "2018"
@@ -17,7 +17,7 @@ keywords = ["ethereum", "web3", "solc", "solidity", "ethers"]
 ethers-core = { version = "^0.6.0", path = "../ethers-core", default-features = false }
 serde_json = "1.0.68"
 serde = { version = "1.0.130", features = ["derive"] }
-semver = "1.0.4"
+semver = { version = "1.0.4", features = ["serde"] }
 walkdir = "2.3.2"
 tokio = { version = "1.15.0", default-features = false, features = ["process", "io-util", "fs", "time"], optional = true }
 futures-util = { version = "^0.3", optional = true }
@@ -50,6 +50,9 @@ getrandom = { version = "0.2", features = ["js"] }
 
 [dev-dependencies]
 criterion = { version = "0.3", features = ["async_tokio"] }
+env_logger = "*"
+tracing-subscriber = {version = "0.3", default-features = false, features = ["env-filter", "fmt"]}
+rand = "0.8.4"
 pretty_assertions = "1.1.0"
 tempfile = "3.3.0"
 tokio = { version = "1.15.0", features = ["full"] }

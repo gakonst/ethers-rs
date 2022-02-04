@@ -22,10 +22,20 @@ use crate::{
 use ethers_core::abi::Address;
 use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 
+/// Solidity files are made up of multiple `source units`, a solidity contract is such a `source
+/// unit`, therefore a solidity file can contain multiple contracts: (1-N*) relationship.
+///
+/// This types represents this mapping as `file name -> (contract name -> T)`, where the generic is
+/// intended to represent contract specific information, like [`Contract`] itself, See [`Contracts`]
+pub type FileToContractsMap<T> = BTreeMap<String, BTreeMap<String, T>>;
+
+/// file -> (contract name -> Contract)
+pub type Contracts = FileToContractsMap<Contract>;
+
 /// An ordered list of files and their source
 pub type Sources = BTreeMap<PathBuf, Source>;
 
-pub type Contracts = BTreeMap<String, BTreeMap<String, Contract>>;
+pub type VersionedSources = BTreeMap<Solc, (Version, Sources)>;
 
 /// Input type `solc` expects
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -547,22 +557,7 @@ impl CompilerOutput {
         })
     }
 
-    pub fn diagnostics<'a>(&'a self, ignored_error_codes: &'a [u64]) -> OutputDiagnostics {
-        OutputDiagnostics { compiler_output: self, ignored_error_codes }
-    }
-
     /// Finds the _first_ contract with the given name
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use ethers_solc::Project;
-    /// use ethers_solc::artifacts::*;
-    /// # fn demo(project: Project) {
-    /// let output = project.compile().unwrap().output();
-    /// let contract = output.find("Greeter").unwrap();
-    /// # }
-    /// ```
     pub fn find(&self, contract: impl AsRef<str>) -> Option<CompactContractRef> {
         let contract_name = contract.as_ref();
         self.contracts_iter().find_map(|(name, contract)| {
@@ -571,17 +566,6 @@ impl CompilerOutput {
     }
 
     /// Finds the first contract with the given name and removes it from the set
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use ethers_solc::Project;
-    /// use ethers_solc::artifacts::*;
-    /// # fn demo(project: Project) {
-    /// let mut output = project.compile().unwrap().output();
-    /// let contract = output.remove("Greeter").unwrap();
-    /// # }
-    /// ```
     pub fn remove(&mut self, contract: impl AsRef<str>) -> Option<Contract> {
         let contract_name = contract.as_ref();
         self.contracts.values_mut().find_map(|c| c.remove(contract_name))
@@ -608,16 +592,6 @@ impl CompilerOutput {
 
     /// Returns the output's source files and contracts separately, wrapped in helper types that
     /// provide several helper methods
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use ethers_solc::Project;
-    /// # fn demo(project: Project) {
-    /// let output = project.compile().unwrap().output();
-    /// let (sources, contracts) = output.split();
-    /// # }
-    /// ```
     pub fn split(self) -> (SourceFiles, OutputContracts) {
         (SourceFiles(self.sources), OutputContracts(self.contracts))
     }
@@ -629,17 +603,6 @@ pub struct OutputContracts(pub Contracts);
 
 impl OutputContracts {
     /// Returns an iterator over all contracts and their source names.
-    ///
-    /// ```
-    /// use std::collections::BTreeMap;
-    /// use ethers_solc::{ artifacts::*, Artifact };
-    /// # fn demo(contracts: OutputContracts) {
-    /// let contracts: BTreeMap<String, CompactContractSome> = contracts
-    ///     .into_contracts()
-    ///     .map(|(k, c)| (k, c.into_compact_contract().unwrap()))
-    ///     .collect();
-    /// # }
-    /// ```
     pub fn into_contracts(self) -> impl Iterator<Item = (String, Contract)> {
         self.0.into_values().flatten()
     }
@@ -650,17 +613,6 @@ impl OutputContracts {
     }
 
     /// Finds the _first_ contract with the given name
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use ethers_solc::Project;
-    /// use ethers_solc::artifacts::*;
-    /// # fn demo(project: Project) {
-    /// let output = project.compile().unwrap().output();
-    /// let contract = output.find("Greeter").unwrap();
-    /// # }
-    /// ```
     pub fn find(&self, contract: impl AsRef<str>) -> Option<CompactContractRef> {
         let contract_name = contract.as_ref();
         self.contracts_iter().find_map(|(name, contract)| {
@@ -669,84 +621,9 @@ impl OutputContracts {
     }
 
     /// Finds the first contract with the given name and removes it from the set
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use ethers_solc::Project;
-    /// use ethers_solc::artifacts::*;
-    /// # fn demo(project: Project) {
-    /// let (_, mut contracts) = project.compile().unwrap().output().split();
-    /// let contract = contracts.remove("Greeter").unwrap();
-    /// # }
-    /// ```
     pub fn remove(&mut self, contract: impl AsRef<str>) -> Option<Contract> {
         let contract_name = contract.as_ref();
         self.0.values_mut().find_map(|c| c.remove(contract_name))
-    }
-}
-
-/// Helper type to implement display for solc errors
-#[derive(Clone, Debug)]
-pub struct OutputDiagnostics<'a> {
-    compiler_output: &'a CompilerOutput,
-    ignored_error_codes: &'a [u64],
-}
-
-impl<'a> OutputDiagnostics<'a> {
-    /// Returns true if there is at least one error of high severity
-    pub fn has_error(&self) -> bool {
-        self.compiler_output.has_error()
-    }
-
-    /// Returns true if there is at least one warning
-    pub fn has_warning(&self) -> bool {
-        self.compiler_output.has_warning(self.ignored_error_codes)
-    }
-
-    fn is_test<T: AsRef<str>>(&self, contract_path: T) -> bool {
-        if contract_path.as_ref().ends_with(".t.sol") {
-            return true
-        }
-
-        self.compiler_output.find(&contract_path).map_or(false, |contract| {
-            contract.abi.map_or(false, |abi| abi.functions.contains_key("IS_TEST"))
-        })
-    }
-}
-
-impl<'a> fmt::Display for OutputDiagnostics<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.has_error() {
-            f.write_str("Compiler run failed")?;
-        } else if self.has_warning() {
-            f.write_str("Compiler run successful (with warnings)")?;
-        } else {
-            f.write_str("Compiler run successful")?;
-        }
-        for err in &self.compiler_output.errors {
-            if err.severity.is_warning() {
-                let is_ignored = err.error_code.as_ref().map_or(false, |code| {
-                    if let Some(source_location) = &err.source_location {
-                        // we ignore spdx and contract size warnings in test
-                        // files. if we are looking at one of these warnings
-                        // from a test file we skip
-                        if self.is_test(&source_location.file) && (*code == 1878 || *code == 5574) {
-                            return true
-                        }
-                    }
-
-                    self.ignored_error_codes.contains(code)
-                });
-
-                if !is_ignored {
-                    writeln!(f, "\n{}", err)?;
-                }
-            } else {
-                writeln!(f, "\n{}", err)?;
-            }
-        }
-        Ok(())
     }
 }
 
@@ -1727,7 +1604,7 @@ pub struct StorageType {
     pub number_of_bytes: String,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Hash)]
 #[serde(rename_all = "camelCase")]
 pub struct Error {
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1757,7 +1634,7 @@ impl fmt::Display for Error {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub enum Severity {
     Error,
     Warning,
@@ -1840,14 +1717,14 @@ impl<'de> Deserialize<'de> for Severity {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Hash)]
 pub struct SourceLocation {
     pub file: String,
     pub start: i32,
     pub end: i32,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Hash)]
 pub struct SecondarySourceLocation {
     pub file: Option<String>,
     pub start: Option<i32>,
@@ -1867,7 +1744,7 @@ pub struct SourceFile {
 pub struct SourceFiles(pub BTreeMap<String, SourceFile>);
 
 impl SourceFiles {
-    /// Returns an iterator over the the source files' ids and path
+    /// Returns an iterator over the source files' ids and path
     ///
     /// ```
     /// use std::collections::BTreeMap;

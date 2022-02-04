@@ -1,46 +1,38 @@
-#![doc = include_str ! ("../README.md")]
-
 pub mod artifacts;
 pub mod sourcemap;
 
 pub use artifacts::{CompilerInput, CompilerOutput, EvmVersion};
-use std::collections::btree_map::Entry;
 
+mod artifact_output;
 pub mod cache;
 pub mod hh;
+pub use artifact_output::*;
+
 mod resolver;
 pub use hh::{HardhatArtifact, HardhatArtifacts};
 pub use resolver::Graph;
 
 mod compile;
-
-pub use compile::*;
-
-mod config;
-
-pub use config::{
-    AllowedLibPaths, Artifact, ArtifactOutput, MinimalCombinedArtifacts, PathStyle,
-    ProjectPathsConfig, SolcConfig,
+pub use compile::{
+    output::{AggregatedCompilerOutput, ProjectCompileOutput},
+    *,
 };
 
-pub mod remappings;
+mod config;
+pub use config::{AllowedLibPaths, PathStyle, ProjectPathsConfig, SolcConfig};
 
-use crate::{artifacts::Source, cache::SolFilesCache};
+pub mod remappings;
+use crate::artifacts::Source;
 
 pub mod error;
 pub mod utils;
 
 use crate::{
-    artifacts::Sources,
-    cache::PathMap,
+    artifacts::{Contract, Sources},
     error::{SolcError, SolcIoError},
 };
 use error::Result;
 use std::{
-    borrow::Cow,
-    collections::BTreeMap,
-    convert::TryInto,
-    fmt, fs,
     marker::PhantomData,
     path::{Path, PathBuf},
 };
@@ -72,6 +64,8 @@ pub struct Project<Artifacts: ArtifactOutput = MinimalCombinedArtifacts> {
     pub allowed_lib_paths: AllowedLibPaths,
     /// Maximum number of `solc` processes to run simultaneously.
     solc_jobs: usize,
+    /// Offline mode, if set, network access (download solc) is disallowed
+    pub offline: bool,
 }
 
 impl Project {
@@ -120,41 +114,27 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         &self.paths.cache
     }
 
+    /// Returns the root directory of the project
+    pub fn root(&self) -> &PathBuf {
+        &self.paths.root
+    }
+
+    /// Applies the configured settings to the given `Solc`
+    fn configure_solc(&self, mut solc: Solc) -> Solc {
+        if self.allowed_lib_paths.0.is_empty() {
+            solc = solc.arg("--allow-paths").arg(self.allowed_lib_paths.to_string());
+        }
+        solc
+    }
+
     /// Sets the maximum number of parallel `solc` processes to run simultaneously.
+    ///
+    /// # Panics
+    ///
+    /// if `jobs == 0`
     pub fn set_solc_jobs(&mut self, jobs: usize) {
         assert!(jobs > 0);
         self.solc_jobs = jobs;
-    }
-
-    #[tracing::instrument(skip_all, name = "Project::write_cache_file")]
-    fn write_cache_file(
-        &self,
-        sources: Sources,
-        artifacts: Vec<(PathBuf, Vec<String>)>,
-    ) -> Result<()> {
-        tracing::trace!("inserting {} sources in file cache", sources.len());
-        let mut cache = SolFilesCache::builder()
-            .root(&self.paths.root)
-            .solc_config(self.solc_config.clone())
-            .insert_files(sources, Some(self.paths.cache.clone()))?;
-        tracing::trace!("source files inserted");
-
-        // add the artifacts for each file to the cache entry
-        for (file, artifacts) in artifacts {
-            if let Some(entry) = cache.files.get_mut(&file) {
-                entry.artifacts = artifacts;
-            }
-        }
-
-        if let Some(cache_dir) = self.paths.cache.parent() {
-            tracing::trace!("creating cache file parent directory \"{}\"", cache_dir.display());
-            fs::create_dir_all(cache_dir).map_err(|err| SolcError::io(err, cache_dir))?
-        }
-
-        tracing::trace!("writing cache file to \"{}\"", self.paths.cache.display());
-        cache.write(&self.paths.cache)?;
-
-        Ok(())
     }
 
     /// Returns all sources found under the project's configured sources path
@@ -187,36 +167,14 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         println!("cargo:rerun-if-changed={}", self.paths.sources.display())
     }
 
-    /// Attempts to read all unique libraries that are used as imports like "hardhat/console.sol"
-    fn resolved_libraries(
-        &self,
-        sources: &Sources,
-    ) -> Result<BTreeMap<PathBuf, (Source, PathBuf)>> {
-        let mut libs = BTreeMap::default();
-        for source in sources.values() {
-            for import in source.parse_imports() {
-                if let Some(lib) = utils::resolve_library(&self.paths.libraries, import) {
-                    if let Entry::Vacant(entry) = libs.entry(import.into()) {
-                        tracing::trace!(
-                            "resolved library import \"{}\" at \"{}\"",
-                            import,
-                            lib.display()
-                        );
-                        entry.insert((Source::read(&lib)?, lib));
-                    }
-                }
-            }
-        }
-        Ok(libs)
-    }
-
     /// Attempts to compile the contracts found at the configured source location, see
     /// `ProjectPathsConfig::sources`.
     ///
     /// NOTE: this does not check if the contracts were successfully compiled, see
     /// `CompilerOutput::has_error` instead.
+    ///
     /// NB: If the `svm` feature is enabled, this function will automatically detect
-    /// solc versions across files.
+    /// solc versions across files, see [`Self::svm_compile()`]
     ///
     /// # Example
     ///
@@ -238,122 +196,37 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
             return self.svm_compile(sources)
         }
 
-        let mut solc = self.solc.clone();
-        if !self.allowed_lib_paths.0.is_empty() {
-            solc = solc.arg("--allow-paths").arg(self.allowed_lib_paths.to_string());
-        }
+        let solc = self.configure_solc(self.solc.clone());
 
-        let sources = Graph::resolve_sources(&self.paths, sources)?.into_sources();
         self.compile_with_version(&solc, sources)
     }
 
-    #[cfg(all(feature = "svm", feature = "async"))]
-    #[tracing::instrument(skip(self, sources))]
-    pub fn svm_compile(&self, sources: Sources) -> Result<ProjectCompileOutput<Artifacts>> {
-        let graph = Graph::resolve_sources(&self.paths, sources)?;
-        let sources_by_version =
-            graph.into_sources_by_version(!self.auto_detect)?.get(&self.allowed_lib_paths)?;
-
-        // run the compilation step for each version
-        let compiled = if self.solc_jobs > 1 && sources_by_version.len() > 1 {
-            self.compile_many(sources_by_version)?
-        } else {
-            self.compile_sources(sources_by_version)?
-        };
-        tracing::trace!("compiled all sources");
-
-        Ok(compiled)
-    }
-
-    /// Compiles all sources with their intended `Solc` version sequentially.
-    #[cfg(all(feature = "svm", feature = "async"))]
-    fn compile_sources(
-        &self,
-        sources_by_version: BTreeMap<Solc, BTreeMap<PathBuf, Source>>,
-    ) -> Result<ProjectCompileOutput<Artifacts>> {
-        tracing::trace!("compiling sources using a single solc job");
-        let mut compiled =
-            ProjectCompileOutput::with_ignored_errors(self.ignored_error_codes.clone());
-        for (solc, sources) in sources_by_version {
-            tracing::trace!(
-                "compiling {} sources with solc \"{}\"",
-                sources.len(),
-                solc.as_ref().display()
-            );
-            compiled.extend(self.compile_with_version(&solc, sources)?);
-        }
-        Ok(compiled)
-    }
-
-    /// Compiles all sources with their intended `Solc` version in parallel.
+    /// Compiles a set of contracts using `svm` managed solc installs
     ///
-    /// This runs `Self::solc_jobs` parallel `solc` jobs at most.
+    /// This will autodetect the appropriate `Solc` version(s) to use when compiling the provided
+    /// `Sources`. Solc auto-detection follows semver rules, see also
+    /// [`crate::resolver::Graph::get_input_node_versions()`]
+    ///
+    /// # Errors
+    ///
+    /// This returns an error if contracts in the `Sources` set are incompatible (violate semver
+    /// rules) with their imports, for example source contract `A(=0.8.11)` imports dependency
+    /// `C(<0.8.0)`, which are incompatible.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use ethers_solc::{artifacts::Source, Project, utils};
+    /// # fn demo(project: Project) {
+    /// let project = Project::builder().build().unwrap();
+    /// let files = utils::source_files("./src");
+    /// let sources = Source::read_all(files).unwrap();
+    /// let output = project.svm_compile(sources).unwrap();
+    /// # }
+    /// ```
     #[cfg(all(feature = "svm", feature = "async"))]
-    fn compile_many(
-        &self,
-        sources_by_version: BTreeMap<Solc, BTreeMap<PathBuf, Source>>,
-    ) -> Result<ProjectCompileOutput<Artifacts>> {
-        tracing::trace!("compile sources in parallel using {} solc jobs", self.solc_jobs);
-        let mut compiled =
-            ProjectCompileOutput::with_ignored_errors(self.ignored_error_codes.clone());
-        let mut paths = PathMap::default();
-        let mut jobs = Vec::with_capacity(sources_by_version.len());
-
-        let mut all_sources = BTreeMap::default();
-        let mut all_artifacts = Vec::with_capacity(sources_by_version.len());
-
-        // preprocess all sources
-        for (solc, sources) in sources_by_version {
-            match self.preprocess_sources(sources)? {
-                PreprocessedJob::Unchanged(artifacts) => {
-                    compiled.extend(ProjectCompileOutput::from_unchanged(artifacts));
-                }
-                PreprocessedJob::Items(sources, map, cached_artifacts) => {
-                    tracing::trace!("cached artifacts: \"{:?}\"", cached_artifacts.keys());
-                    tracing::trace!("compile sources: \"{:?}\"", sources.keys());
-
-                    compiled.extend_artifacts(cached_artifacts);
-                    // replace absolute path with source name to make solc happy
-                    let sources = map.set_source_names(sources);
-                    paths.extend(map);
-
-                    let input = CompilerInput::with_sources(sources)
-                        .settings(self.solc_config.settings.clone())
-                        .normalize_evm_version(&solc.version()?)
-                        .with_remappings(self.paths.remappings.clone());
-
-                    jobs.push((solc, input))
-                }
-            };
-        }
-        tracing::trace!("execute {} compile jobs in parallel", jobs.len());
-
-        let outputs = tokio::runtime::Runtime::new()
-            .unwrap()
-            .block_on(Solc::compile_many(jobs, self.solc_jobs));
-
-        for (res, _, input) in outputs.into_outputs() {
-            let output = res?;
-            if !output.has_error() {
-                if self.cached {
-                    // get all contract names of the files and map them to the disk file
-                    all_sources.extend(paths.set_disk_paths(input.sources));
-                    all_artifacts.extend(paths.get_artifacts(&output.contracts));
-                }
-
-                if !self.no_artifacts {
-                    Artifacts::on_output(&output, &self.paths)?;
-                }
-            }
-            compiled.extend_output(output);
-        }
-
-        // write the cache file
-        if self.cached {
-            self.write_cache_file(all_sources, all_artifacts)?;
-        }
-
-        Ok(compiled)
+    pub fn svm_compile(&self, sources: Sources) -> Result<ProjectCompileOutput<Artifacts>> {
+        project::ProjectCompiler::with_sources(self, sources)?.compile()
     }
 
     /// Compiles the given source files with the exact `Solc` executable
@@ -384,121 +257,33 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         solc: &Solc,
         sources: Sources,
     ) -> Result<ProjectCompileOutput<Artifacts>> {
-        let (sources, paths, cached_artifacts) = match self.preprocess_sources(sources)? {
-            PreprocessedJob::Unchanged(artifacts) => {
-                return Ok(ProjectCompileOutput::from_unchanged(artifacts))
-            }
-            PreprocessedJob::Items(a, b, c) => (a, b, c),
-        };
-
-        let version = solc.version()?;
-        tracing::trace!(
-            "compiling {} files with {}. Using {} cached files",
-            sources.len(),
-            version,
-            cached_artifacts.len()
-        );
-        tracing::trace!("cached artifacts: \"{:?}\"", cached_artifacts.keys());
-        tracing::trace!("compile sources: \"{:?}\"", sources.keys());
-
-        // replace absolute path with source name to make solc happy
-        let sources = paths.set_source_names(sources);
-
-        let input = CompilerInput::with_sources(sources)
-            .settings(self.solc_config.settings.clone())
-            .normalize_evm_version(&version)
-            .with_remappings(self.paths.remappings.clone());
-
-        tracing::trace!("calling solc with {} sources", input.sources.len());
-        let output = solc.compile(&input)?;
-        tracing::trace!("compiled input, output has error: {}", output.has_error());
-
-        if output.has_error() {
-            return Ok(ProjectCompileOutput::from_compiler_output(
-                output,
-                self.ignored_error_codes.clone(),
-            ))
-        }
-
-        if self.cached {
-            // get all contract names of the files and map them to the disk file
-            let artifacts = paths.get_artifacts(&output.contracts);
-            // reapply to disk paths
-            let sources = paths.set_disk_paths(input.sources);
-            // create cache file
-            self.write_cache_file(sources, artifacts)?;
-        }
-
-        // TODO: There seems to be some type redundancy here, c.f. discussion with @mattsse
-        if !self.no_artifacts {
-            Artifacts::on_output(&output, &self.paths)?;
-        }
-
-        Ok(ProjectCompileOutput::from_compiler_output_and_cache(
-            output,
-            cached_artifacts,
-            self.ignored_error_codes.clone(),
-        ))
-    }
-
-    /// Preprocesses the given source files by resolving their libs and check against cache if
-    /// configured
-    fn preprocess_sources(&self, mut sources: Sources) -> Result<PreprocessedJob<Artifacts>> {
-        tracing::trace!("start preprocessing {} sources files", sources.len());
-
-        // keeps track of source names / disk paths
-        let mut paths = PathMap::default();
-
-        tracing::trace!("start resolving libraries");
-        for (import, (source, path)) in self.resolved_libraries(&sources)? {
-            // inserting with absolute path here and keep track of the source name <-> path mappings
-            sources.insert(path.clone(), source);
-            paths.path_to_source_name.insert(path.clone(), import.clone());
-            paths.source_name_to_path.insert(import, path);
-        }
-        tracing::trace!("resolved all libraries");
-
-        // If there's a cache set, filter to only re-compile the files which were changed
-        let (sources, cached_artifacts) = if self.cached && self.paths.cache.exists() {
-            tracing::trace!("start reading solfiles cache for incremental compilation");
-            let mut cache = SolFilesCache::read(&self.paths.cache)?;
-            cache.remove_missing_files();
-            let changed_files = cache.get_changed_or_missing_artifacts_files::<Artifacts>(
-                sources,
-                Some(&self.solc_config),
-                &self.paths,
-            );
-            tracing::trace!("detected {} changed files", changed_files.len());
-            cache.remove_changed_files(&changed_files);
-
-            let cached_artifacts = if self.paths.artifacts.exists() {
-                tracing::trace!("reading artifacts from cache..");
-                let artifacts = cache.read_artifacts::<Artifacts>(&self.paths.artifacts)?;
-                tracing::trace!("read {} artifacts from cache", artifacts.len());
-                artifacts
-            } else {
-                BTreeMap::default()
-            };
-
-            // if nothing changed and all artifacts still exist
-            if changed_files.is_empty() {
-                tracing::trace!(
-                    "unchanged source files, reusing artifacts {:?}",
-                    cached_artifacts.keys()
-                );
-                return Ok(PreprocessedJob::Unchanged(cached_artifacts))
-            }
-            // There are changed files and maybe some cached files
-            (changed_files, cached_artifacts)
-        } else {
-            (sources, BTreeMap::default())
-        };
-        Ok(PreprocessedJob::Items(sources, paths, cached_artifacts))
+        project::ProjectCompiler::with_sources_and_solc(
+            self,
+            sources,
+            self.configure_solc(solc.clone()),
+        )?
+        .compile()
     }
 
     /// Removes the project's artifacts and cache file
     ///
     /// If the cache file was the only file in the folder, this also removes the empty folder.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use ethers_solc::Project;
+    /// # fn demo(project: Project) {
+    /// let project = Project::builder().build().unwrap();
+    /// let _ = project.compile().unwrap();
+    /// assert!(project.artifacts_path().exists());
+    /// assert!(project.cache_path().exists());
+    ///
+    /// project.cleanup();
+    /// assert!(!project.artifacts_path().exists());
+    /// assert!(!project.cache_path().exists());
+    /// # }
+    /// ```
     pub fn cleanup(&self) -> std::result::Result<(), SolcIoError> {
         tracing::trace!("clean up project");
         if self.cache_path().exists() {
@@ -526,22 +311,17 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         Ok(())
     }
 
-    /// Flattens the target file into a single string suitable for verification
+    /// Flattens the target solidity file into a single string suitable for verification.
     ///
     /// This method uses a dependency graph to resolve imported files and substitute
     /// import directives with the contents of target files. It will strip the pragma
-    /// version directives and SDPX license identifiers from imported files.
+    /// version directives and SDPX license identifiers from all imported files.
     ///
-    /// NOTE: the SDPX license identifier will be removed from the imported file
+    /// NB: the SDPX license identifier will be removed from the imported file
     /// only if it is found at the beginning of the file.
     pub fn flatten(&self, target: &Path) -> Result<String> {
         self.paths.flatten(target)
     }
-}
-
-enum PreprocessedJob<T: ArtifactOutput> {
-    Unchanged(BTreeMap<PathBuf, T::Artifact>),
-    Items(Sources, PathMap, BTreeMap<PathBuf, T::Artifact>),
 }
 
 pub struct ProjectBuilder<Artifacts: ArtifactOutput = MinimalCombinedArtifacts> {
@@ -557,6 +337,8 @@ pub struct ProjectBuilder<Artifacts: ArtifactOutput = MinimalCombinedArtifacts> 
     no_artifacts: bool,
     /// Whether automatic solc version detection is enabled
     auto_detect: bool,
+    /// Use offline mode
+    offline: bool,
     artifacts: PhantomData<Artifacts>,
     /// Which error codes to ignore
     pub ignored_error_codes: Vec<u64>,
@@ -608,6 +390,21 @@ impl<Artifacts: ArtifactOutput> ProjectBuilder<Artifacts> {
     #[must_use]
     pub fn set_cached(mut self, cached: bool) -> Self {
         self.cached = cached;
+        self
+    }
+
+    /// Activates offline mode
+    ///
+    /// Prevents network possible access to download/check solc installs
+    #[must_use]
+    pub fn offline(self) -> Self {
+        self.set_offline(true)
+    }
+
+    /// Sets the offline status
+    #[must_use]
+    pub fn set_offline(mut self, offline: bool) -> Self {
+        self.offline = offline;
         self
     }
 
@@ -667,6 +464,7 @@ impl<Artifacts: ArtifactOutput> ProjectBuilder<Artifacts> {
             ignored_error_codes,
             allowed_paths,
             solc_jobs,
+            offline,
             ..
         } = self;
         ProjectBuilder {
@@ -676,6 +474,7 @@ impl<Artifacts: ArtifactOutput> ProjectBuilder<Artifacts> {
             cached,
             no_artifacts,
             auto_detect,
+            offline,
             artifacts: PhantomData::default(),
             ignored_error_codes,
             allowed_paths,
@@ -715,12 +514,13 @@ impl<Artifacts: ArtifactOutput> ProjectBuilder<Artifacts> {
             ignored_error_codes,
             mut allowed_paths,
             solc_jobs,
+            offline,
         } = self;
+
+        let paths = paths.map(Ok).unwrap_or_else(ProjectPathsConfig::current_hardhat)?;
 
         let solc = solc.unwrap_or_default();
         let solc_config = solc_config.unwrap_or_else(|| SolcConfig::builder().build());
-
-        let paths = paths.map(Ok).unwrap_or_else(ProjectPathsConfig::current_hardhat)?;
 
         if allowed_paths.is_empty() {
             // allow every contract under root by default
@@ -736,8 +536,9 @@ impl<Artifacts: ArtifactOutput> ProjectBuilder<Artifacts> {
             auto_detect,
             artifacts,
             ignored_error_codes,
-            allowed_lib_paths: allowed_paths.try_into()?,
+            allowed_lib_paths: allowed_paths.into(),
             solc_jobs: solc_jobs.unwrap_or_else(::num_cpus::get),
+            offline,
         })
     }
 }
@@ -751,6 +552,7 @@ impl<Artifacts: ArtifactOutput> Default for ProjectBuilder<Artifacts> {
             cached: true,
             no_artifacts: false,
             auto_detect: true,
+            offline: false,
             artifacts: PhantomData::default(),
             ignored_error_codes: Vec::new(),
             allowed_paths: vec![],
@@ -759,205 +561,18 @@ impl<Artifacts: ArtifactOutput> Default for ProjectBuilder<Artifacts> {
     }
 }
 
-/// The outcome of `Project::compile`
-#[derive(Debug, Clone, PartialEq, Default)]
-pub struct ProjectCompileOutput<T: ArtifactOutput> {
-    /// If solc was invoked multiple times in `Project::compile` then this contains a merged
-    /// version of all `CompilerOutput`s. If solc was called only once then `compiler_output`
-    /// holds the `CompilerOutput` of that call.
-    compiler_output: Option<CompilerOutput>,
-    /// All artifacts that were read from cache
-    artifacts: BTreeMap<PathBuf, T::Artifact>,
-    ignored_error_codes: Vec<u64>,
-}
+impl<Artifacts: ArtifactOutput> ArtifactOutput for Project<Artifacts> {
+    type Artifact = Artifacts::Artifact;
 
-impl<T: ArtifactOutput> ProjectCompileOutput<T> {
-    pub fn with_ignored_errors(ignored_errors: Vec<u64>) -> Self {
-        Self {
-            compiler_output: None,
-            artifacts: Default::default(),
-            ignored_error_codes: ignored_errors,
-        }
-    }
-
-    pub fn from_unchanged(artifacts: BTreeMap<PathBuf, T::Artifact>) -> Self {
-        Self { compiler_output: None, artifacts, ignored_error_codes: vec![] }
-    }
-
-    pub fn from_compiler_output(
-        compiler_output: CompilerOutput,
-        ignored_error_codes: Vec<u64>,
-    ) -> Self {
-        Self {
-            compiler_output: Some(compiler_output),
-            artifacts: Default::default(),
-            ignored_error_codes,
-        }
-    }
-
-    pub fn from_compiler_output_and_cache(
-        compiler_output: CompilerOutput,
-        cache: BTreeMap<PathBuf, T::Artifact>,
-        ignored_error_codes: Vec<u64>,
-    ) -> Self {
-        Self { compiler_output: Some(compiler_output), artifacts: cache, ignored_error_codes }
-    }
-
-    /// Get the (merged) solc compiler output
-    /// ```no_run
-    /// use std::collections::BTreeMap;
-    /// use ethers_solc::artifacts::Contract;
-    /// use ethers_solc::Project;
-    ///
-    /// let project = Project::builder().build().unwrap();
-    /// let contracts: BTreeMap<String, Contract> =
-    ///     project.compile().unwrap().output().contracts_into_iter().collect();
-    /// ```
-    pub fn output(self) -> CompilerOutput {
-        self.compiler_output.unwrap_or_default()
-    }
-
-    /// Combine two outputs
-    pub fn extend(&mut self, compiled: ProjectCompileOutput<T>) {
-        let ProjectCompileOutput { compiler_output, artifacts, .. } = compiled;
-        self.artifacts.extend(artifacts);
-        if let Some(output) = compiler_output {
-            self.extend_output(output);
-        }
-    }
-
-    pub fn extend_output(&mut self, compiled: CompilerOutput) {
-        if let Some(output) = self.compiler_output.as_mut() {
-            output.errors.extend(compiled.errors);
-            output.sources.extend(compiled.sources);
-            output.contracts.extend(compiled.contracts);
-        } else {
-            self.compiler_output = Some(compiled);
-        }
-    }
-
-    pub fn extend_artifacts(&mut self, artifacts: BTreeMap<PathBuf, T::Artifact>) {
-        self.artifacts.extend(artifacts);
-    }
-
-    /// Whether this type does not contain compiled contracts
-    pub fn is_unchanged(&self) -> bool {
-        !self.has_compiled_contracts()
-    }
-
-    /// Whether this type has a compiler output
-    pub fn has_compiled_contracts(&self) -> bool {
-        if let Some(output) = self.compiler_output.as_ref() {
-            !output.contracts.is_empty()
-        } else {
-            false
-        }
-    }
-
-    /// Whether there were errors
-    pub fn has_compiler_errors(&self) -> bool {
-        self.compiler_output.as_ref().map(|o| o.has_error()).unwrap_or_default()
-    }
-
-    /// Whether there were warnings
-    pub fn has_compiler_warnings(&self) -> bool {
-        self.compiler_output
-            .as_ref()
-            .map(|o| o.has_warning(&self.ignored_error_codes))
-            .unwrap_or_default()
-    }
-
-    /// Finds the first contract with the given name and removes it from the set
-    pub fn remove(&mut self, contract_name: impl AsRef<str>) -> Option<T::Artifact> {
-        let contract_name = contract_name.as_ref();
-        if let Some(output) = self.compiler_output.as_mut() {
-            if let contract @ Some(_) = output.contracts.iter_mut().find_map(|(file, c)| {
-                c.remove(contract_name).map(|c| T::contract_to_artifact(file, contract_name, c))
-            }) {
-                return contract
-            }
-        }
-        let key = self
-            .artifacts
-            .iter()
-            .find_map(|(path, _)| {
-                T::contract_name(path).filter(|name| name == contract_name).map(|_| path)
-            })?
-            .clone();
-        self.artifacts.remove(&key)
-    }
-}
-
-impl<T: ArtifactOutput> ProjectCompileOutput<T>
-where
-    T::Artifact: Clone,
-{
-    /// Finds the first contract with the given name
-    pub fn find(&self, contract_name: impl AsRef<str>) -> Option<Cow<T::Artifact>> {
-        let contract_name = contract_name.as_ref();
-        if let Some(output) = self.compiler_output.as_ref() {
-            if let contract @ Some(_) = output.contracts.iter().find_map(|(file, contracts)| {
-                contracts
-                    .get(contract_name)
-                    .map(|c| T::contract_to_artifact(file, contract_name, c.clone()))
-                    .map(Cow::Owned)
-            }) {
-                return contract
-            }
-        }
-        self.artifacts.iter().find_map(|(path, art)| {
-            T::contract_name(path).filter(|name| name == contract_name).map(|_| Cow::Borrowed(art))
-        })
-    }
-}
-
-impl<T: ArtifactOutput + 'static> ProjectCompileOutput<T> {
-    /// All artifacts together with their contract file name and name `<file name>:<name>`
-    ///
-    /// # Example
-    ///
-    /// ```no_run
-    /// use std::collections::BTreeMap;
-    /// use ethers_solc::artifacts::CompactContractBytecode;
-    /// use ethers_solc::Project;
-    ///
-    /// let project = Project::builder().build().unwrap();
-    /// let contracts: BTreeMap<String, CompactContractBytecode> = project.compile().unwrap().into_artifacts().collect();
-    /// ```
-    pub fn into_artifacts(mut self) -> Box<dyn Iterator<Item = (String, T::Artifact)>> {
-        let artifacts = self.artifacts.into_iter().filter_map(|(path, art)| {
-            T::contract_name(&path).map(|name| {
-                (format!("{}:{}", path.file_name().unwrap().to_string_lossy(), name), art)
-            })
-        });
-
-        let artifacts: Box<dyn Iterator<Item = (String, T::Artifact)>> = if let Some(output) =
-            self.compiler_output.take()
-        {
-            Box::new(artifacts.chain(T::output_to_artifacts(output).into_values().flatten().map(
-                |(name, artifact)| {
-                    (format!("{}:{}", T::output_file_name(&name).display(), name), artifact)
-                },
-            )))
-        } else {
-            Box::new(artifacts)
-        };
-        artifacts
-    }
-}
-
-impl<T: ArtifactOutput> fmt::Display for ProjectCompileOutput<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if let Some(output) = self.compiler_output.as_ref() {
-            output.diagnostics(&self.ignored_error_codes).fmt(f)
-        } else {
-            f.write_str("Nothing to compile")
-        }
+    fn contract_to_artifact(file: &str, name: &str, contract: Contract) -> Self::Artifact {
+        Artifacts::contract_to_artifact(file, name, contract)
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::remappings::Remapping;
+
     #[test]
     #[cfg(all(feature = "svm", feature = "async"))]
     fn test_build_all_versions() {
@@ -973,7 +588,7 @@ mod tests {
         assert!(!compiled.has_compiler_errors());
         let contracts = compiled.output().contracts;
         // Contracts A to F
-        assert_eq!(contracts.keys().count(), 5);
+        assert_eq!(contracts.contracts().count(), 5);
     }
 
     #[test]
@@ -988,6 +603,11 @@ mod tests {
             .sources(root.join("src"))
             .lib(root.join("lib1"))
             .lib(root.join("lib2"))
+            .remappings(
+                Remapping::find_many(&root.join("lib1"))
+                    .into_iter()
+                    .chain(Remapping::find_many(&root.join("lib2"))),
+            )
             .build()
             .unwrap();
         let project = Project::builder()
@@ -1000,7 +620,7 @@ mod tests {
         let compiled = project.compile().unwrap();
         assert!(!compiled.has_compiler_errors());
         let contracts = compiled.output().contracts;
-        assert_eq!(contracts.keys().count(), 3);
+        assert_eq!(contracts.contracts().count(), 3);
     }
 
     #[test]
@@ -1013,12 +633,13 @@ mod tests {
             .root(&root)
             .sources(root.join("src"))
             .lib(root.join("lib"))
+            .remappings(Remapping::find_many(&root.join("lib")))
             .build()
             .unwrap();
         let project = Project::builder().no_artifacts().paths(paths).ephemeral().build().unwrap();
         let compiled = project.compile().unwrap();
         assert!(!compiled.has_compiler_errors());
         let contracts = compiled.output().contracts;
-        assert_eq!(contracts.keys().count(), 2);
+        assert_eq!(contracts.contracts().count(), 2);
     }
 }
