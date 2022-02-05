@@ -135,7 +135,9 @@ impl Chain {
                 Chain::Fantom |
                 Chain::FantomTestnet |
                 Chain::BinanceSmartChain |
-                Chain::BinanceSmartChainTestnet
+                Chain::BinanceSmartChainTestnet |
+                Chain::Arbitrum |
+                Chain::ArbitrumTestnet,
         )
     }
 }

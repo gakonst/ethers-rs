@@ -114,8 +114,8 @@ impl Client {
             Chain::Fantom |
             Chain::FantomTestnet |
             Chain::BinanceSmartChain |
-            Chain::BinanceSmartChainTestnet | 
-            Chain::Arbitrum | 
+            Chain::BinanceSmartChainTestnet |
+            Chain::Arbitrum |
             Chain::ArbitrumTestnet => std::env::var("ETHERSCAN_API_KEY")?,
 
             Chain::XDai | Chain::Sepolia => String::default(),
