@@ -301,6 +301,15 @@ impl CompilerSources {
             CompilerSources::Parallel(input, j) => compile_parallel(input, j, settings, paths),
         }
     }
+
+    #[cfg(test)]
+    #[allow(unused)]
+    fn sources(&self) -> &VersionedSources {
+        match self {
+            CompilerSources::Sequential(v) => v,
+            CompilerSources::Parallel(v, _) => v,
+        }
+    }
 }
 
 /// Compiles the input set sequentially and returns an aggregated set of the solc `CompilerOutput`s
@@ -350,7 +359,11 @@ fn compile_parallel(
     paths: &ProjectPathsConfig,
 ) -> Result<AggregatedCompilerOutput> {
     debug_assert!(num_jobs > 1);
-    tracing::trace!("compile sources in parallel using up to {} solc jobs", num_jobs);
+    tracing::trace!(
+        "compile {} sources in parallel using up to {} solc jobs",
+        input.len(),
+        num_jobs
+    );
 
     let mut jobs = Vec::with_capacity(input.len());
     for (solc, (version, sources)) in input {
@@ -384,6 +397,8 @@ fn compile_parallel(
             .collect::<Result<Vec<_>>>()
     })?;
 
+    // TODO need to do post filtering as the output can contain more files than provided in the
+    // input
     let mut aggregated = AggregatedCompilerOutput::default();
     aggregated.extend_all(outputs);
 
@@ -395,6 +410,7 @@ fn compile_parallel(
 mod tests {
     use super::*;
     use crate::{project_util::TempProject, MinimalCombinedArtifacts};
+
     use std::path::PathBuf;
 
     #[allow(unused)]
@@ -415,7 +431,7 @@ mod tests {
         let prep = compiler.preprocess().unwrap();
         let cache = prep.cache.as_cached().unwrap();
         // 3 contracts
-        assert_eq!(cache.dirty_entries.len(), 3);
+        assert_eq!(cache.dirty_source_files.len(), 3);
         assert!(cache.filtered.is_empty());
         assert!(cache.cache.is_empty());
 
@@ -435,6 +451,20 @@ mod tests {
         let inner = project.project();
         let compiler = ProjectCompiler::new(inner).unwrap();
         let prep = compiler.preprocess().unwrap();
-        assert!(prep.cache.as_cached().unwrap().dirty_entries.is_empty())
+        assert!(prep.cache.as_cached().unwrap().dirty_source_files.is_empty())
+    }
+
+    #[test]
+    #[ignore]
+    fn can_compile_real_project() {
+        init_tracing();
+        let paths = ProjectPathsConfig::builder()
+            .root("../../foundry-integration-tests/testdata/solmate")
+            .build()
+            .unwrap();
+        let project = Project::builder().paths(paths).build().unwrap();
+        let compiler = ProjectCompiler::new(&project).unwrap();
+        let out = compiler.compile().unwrap();
+        println!("{}", out);
     }
 }

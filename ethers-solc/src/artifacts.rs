@@ -5,7 +5,7 @@ use colored::Colorize;
 use md5::Digest;
 use semver::Version;
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, HashSet},
     convert::TryFrom,
     fmt, fs,
     path::{Path, PathBuf},
@@ -594,6 +594,22 @@ impl CompilerOutput {
     /// provide several helper methods
     pub fn split(self) -> (SourceFiles, OutputContracts) {
         (SourceFiles(self.sources), OutputContracts(self.contracts))
+    }
+
+    /// Retains only those files the given iterator yields
+    ///
+    /// In other words, removes all contracts for files not included in the iterator
+    pub fn retain_files<'a, I>(&mut self, files: I)
+    where
+        I: IntoIterator<Item = &'a str>,
+    {
+        let files: HashSet<_> = files.into_iter().collect();
+
+        self.contracts.retain(|f, _| files.contains(f.as_str()));
+        self.sources.retain(|f, _| files.contains(f.as_str()));
+        self.errors.retain(|err| {
+            err.source_location.as_ref().map(|s| files.contains(s.file.as_str())).unwrap_or(true)
+        });
     }
 }
 

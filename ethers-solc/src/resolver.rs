@@ -14,6 +14,26 @@
 //! Finding all dependencies is fairly simple, we're simply doing a DFS, starting the source
 //! contracts
 //!
+//! ## Solc version auto-detection
+//!
+//! Solving a constraint graph is an NP-hard problem. The algorithm for finding the "best" solution
+//! makes several assumptions and tries to find a version of "Solc" that is compatible with all
+//! source files.
+//!
+//! The algorithm employed here is fairly simple, we simply do a DFS over all the source files and
+//! find the set of Solc versions that the file and all its imports are compatible with, and then we
+//! try to find a single Solc version that is compatible with all the files. This is effectively the
+//! intersection of all version sets.
+//!
+//! We always try to activate the highest (installed) solc version first. Uninstalled solc is only
+//! used if this version is the only compatible version for a single file or in the intersection of
+//! all version sets.
+//!
+//! This leads to finding the optimal version, if there is one. If there is no single Solc version
+//! that is compatible with all sources and their imports, then suddenly this becomes a very
+//! difficult problem, because what would be the "best" solution. In this case, just choose the
+//! latest (installed) Solc version and try to minimize the number of Solc versions used.
+//!
 //! ## Performance
 //!
 //! Note that this is a relatively performance-critical portion of the ethers-solc preprocessing.
@@ -375,14 +395,21 @@ impl Graph {
         let mut erroneous_nodes =
             std::collections::HashSet::with_capacity(self.edges.num_input_files);
 
+        // the sorted list of all versions
         let all_versions = if offline { Solc::installed_versions() } else { Solc::all_versions() };
 
-        // stores all versions and their nodes
+        // stores all versions and their nodes that can be compiled
         let mut versioned_nodes = HashMap::new();
+
+        // stores all files and the versions they're compatible with
+        let mut all_candidates = Vec::with_capacity(self.edges.num_input_files);
 
         // walking through the node's dep tree and filtering the versions along the way
         for idx in 0..self.edges.num_input_files {
             let mut candidates = all_versions.iter().collect::<Vec<_>>();
+            // dbg!(candidates.len());
+            // remove all incompatible versions from the candidates list by checking the node and
+            // all its imports
             self.retain_compatible_versions(idx, &mut candidates);
 
             if candidates.is_empty() && !erroneous_nodes.contains(&idx) {
@@ -394,15 +421,33 @@ impl Graph {
                 ));
                 erroneous_nodes.insert(idx);
             } else {
-                let candidate = (*candidates
-                    .iter()
-                    .rev()
-                    .find(|v| v.is_installed())
-                    .or_else(|| candidates.iter().last())
-                    .unwrap())
-                .clone();
+                // found viable candidates, pick the most recent version that's already installed
+                let candidate =
+                    if let Some(pos) = candidates.iter().rposition(|v| v.is_installed()) {
+                        candidates[pos]
+                    } else {
+                        candidates.last().expect("not empty; qed.")
+                    }
+                    .clone();
+
+                // also store all possible candidates to optimize the set
+                all_candidates.push((idx, candidates.into_iter().collect::<HashSet<_>>()));
+
                 versioned_nodes.entry(candidate).or_insert_with(|| Vec::with_capacity(1)).push(idx);
             }
+        }
+
+        // detected multiple versions but there might still exist a single version that satisfies
+        // all sources
+        if versioned_nodes.len() > 1 {
+            versioned_nodes = Self::resolve_multiple_versions(all_candidates);
+        }
+
+        if versioned_nodes.len() == 1 {
+            tracing::trace!(
+                "found exact solc version for all sources  \"{}\"",
+                versioned_nodes.keys().next().unwrap()
+            );
         }
 
         if errors.is_empty() {
@@ -416,6 +461,90 @@ impl Graph {
             tracing::error!("failed to resolve versions");
             Err(crate::error::SolcError::msg(errors.join("\n")))
         }
+    }
+
+    /// Tries to find the "best" set of versions to nodes, See [Solc version
+    /// auto-detection](#solc-version-auto-detection)
+    ///
+    /// This is a bit inefficient but is fine, the max. number of versions is ~80 and there's
+    /// a high chance that the number of source files is <50, even for larger projects.
+    fn resolve_multiple_versions(
+        all_candidates: Vec<(usize, HashSet<&crate::SolcVersion>)>,
+    ) -> HashMap<crate::SolcVersion, Vec<usize>> {
+        // returns the intersection as sorted set of nodes
+        fn intersection<'a>(
+            mut sets: Vec<&HashSet<&'a crate::SolcVersion>>,
+        ) -> Vec<&'a crate::SolcVersion> {
+            if sets.is_empty() {
+                return Vec::new()
+            }
+
+            let mut result = sets.pop().cloned().expect("not empty; qed.").clone();
+            if sets.len() > 1 {
+                result.retain(|item| sets.iter().all(|set| set.contains(item)));
+            }
+
+            let mut v = result.into_iter().collect::<Vec<_>>();
+            v.sort_unstable();
+            v
+        }
+
+        /// returns the highest version that is installed
+        /// if the candidates set only contains uninstalled versions then this returns the highest
+        /// uninstalled version
+        fn remove_candidate(candidates: &mut Vec<&crate::SolcVersion>) -> crate::SolcVersion {
+            debug_assert!(!candidates.is_empty());
+
+            if let Some(pos) = candidates.iter().rposition(|v| v.is_installed()) {
+                candidates.remove(pos)
+            } else {
+                candidates.pop().expect("not empty; qed.")
+            }
+            .clone()
+        }
+
+        let all_sets = all_candidates.iter().map(|(_, versions)| versions).collect();
+
+        // find all versions that satisfy all nodes
+        let mut intersection = intersection(all_sets);
+        if !intersection.is_empty() {
+            let exact_version = remove_candidate(&mut intersection);
+            let all_nodes = all_candidates.into_iter().map(|(node, _)| node).collect();
+            tracing::trace!(
+                "resolved solc version compatible with all sources  \"{}\"",
+                exact_version
+            );
+            return HashMap::from([(exact_version, all_nodes)])
+        }
+
+        // no version satisfies all nodes
+        let mut versioned_nodes: HashMap<crate::SolcVersion, Vec<usize>> = HashMap::new();
+
+        // try to minimize the set of versions, this is guaranteed to lead to `versioned_nodes.len()
+        // > 1` as no solc version exists that can satisfy all sources
+        for (node, versions) in all_candidates {
+            // need to sort them again
+            let mut versions = versions.into_iter().collect::<Vec<_>>();
+            versions.sort_unstable();
+
+            let candidate =
+                if let Some(idx) = versions.iter().rposition(|v| versioned_nodes.contains_key(v)) {
+                    // use a version that's already in the set
+                    versions.remove(idx).clone()
+                } else {
+                    // use the highest version otherwise
+                    remove_candidate(&mut versions)
+                };
+
+            versioned_nodes.entry(candidate).or_insert_with(|| Vec::with_capacity(1)).push(node);
+        }
+
+        tracing::trace!(
+            "no solc version can satisfy all source files, resolved multiple versions  \"{:?}\"",
+            versioned_nodes.keys()
+        );
+
+        versioned_nodes
     }
 }
 
