@@ -34,6 +34,8 @@ pub enum Chain {
     OptimismKovan = 69,
     BinanceSmartChain = 56,
     BinanceSmartChainTestnet = 97,
+    Arbitrum = 42161,
+    ArbitrumTestnet = 421611,
 }
 
 impl fmt::Display for Chain {
@@ -83,6 +85,8 @@ impl TryFrom<u64> for Chain {
             69 => Chain::OptimismKovan,
             56 => Chain::BinanceSmartChain,
             97 => Chain::BinanceSmartChainTestnet,
+            42161 => Chain::Arbitrum,
+            421611 => Chain::ArbitrumTestnet,
             _ => return Err(ParseChainError(chain.to_string())),
         })
     }
@@ -112,6 +116,8 @@ impl FromStr for Chain {
             "fantom-testnet" => Chain::FantomTestnet,
             "bsc" => Chain::BinanceSmartChain,
             "bsc-testnet" => Chain::BinanceSmartChainTestnet,
+            "arbitrum" => Chain::Arbitrum,
+            "arbitrum-testnet" => Chain::ArbitrumTestnet,
             _ => return Err(ParseChainError(chain.to_owned())),
         })
     }
@@ -129,7 +135,9 @@ impl Chain {
                 Chain::Fantom |
                 Chain::FantomTestnet |
                 Chain::BinanceSmartChain |
-                Chain::BinanceSmartChainTestnet
+                Chain::BinanceSmartChainTestnet |
+                Chain::Arbitrum |
+                Chain::ArbitrumTestnet,
         )
     }
 }

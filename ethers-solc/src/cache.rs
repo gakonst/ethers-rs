@@ -47,8 +47,19 @@ impl SolFilesCache {
         self.files.is_empty()
     }
 
+    /// How many entries the cache contains where each entry represents a sourc file
     pub fn len(&self) -> usize {
         self.files.len()
+    }
+
+    /// How many `Artifacts` this cache references, where a source file can have multiple artifacts
+    pub fn artifacts_len(&self) -> usize {
+        self.entries().map(|entry| entry.artifacts().count()).sum()
+    }
+
+    /// Returns an iterator over all `CacheEntry` this cache contains
+    pub fn entries(&self) -> impl Iterator<Item = &CacheEntry> {
+        self.files.values()
     }
 
     /// Returns the corresponding `CacheEntry` for the file if it exists
@@ -117,7 +128,7 @@ impl SolFilesCache {
         let file = fs::File::create(path).map_err(|err| SolcError::io(err, path))?;
         tracing::trace!(
             "writing cache with {} entries to json file: \"{}\"",
-            self.files.len(),
+            self.len(),
             path.display()
         );
         serde_json::to_writer_pretty(file, self)?;
@@ -528,7 +539,7 @@ pub(crate) struct ArtifactsCacheInner<'a, T: ArtifactOutput> {
     /// [`crate::ArtifactOutput::on_output()`] all artifacts, their disk paths, are determined and
     /// can be populated before the updated [`crate::SolFilesCache`] is finally written to disk,
     /// see [`Cache::finish()`]
-    pub dirty_entries: HashMap<PathBuf, (CacheEntry, HashSet<Version>)>,
+    pub dirty_source_files: HashMap<PathBuf, (CacheEntry, HashSet<Version>)>,
     /// the file hashes
     pub content_hashes: HashMap<PathBuf, String>,
 }
@@ -562,11 +573,11 @@ impl<'a, T: ArtifactOutput> ArtifactsCacheInner<'a, T> {
     ///
     /// If there is already an entry available for the file the given version is added to the set
     fn insert_new_cache_entry(&mut self, file: &Path, source: &Source, version: Version) {
-        if let Some((_, versions)) = self.dirty_entries.get_mut(file) {
+        if let Some((_, versions)) = self.dirty_source_files.get_mut(file) {
             versions.insert(version);
         } else {
             let entry = self.create_cache_entry(file, source);
-            self.dirty_entries.insert(file.to_path_buf(), (entry, HashSet::from([version])));
+            self.dirty_source_files.insert(file.to_path_buf(), (entry, HashSet::from([version])));
         }
     }
 
@@ -619,22 +630,20 @@ impl<'a, T: ArtifactOutput> ArtifactsCacheInner<'a, T> {
         if let Some(hash) = self.content_hashes.get(file) {
             if let Some(entry) = self.cache.entry(&file) {
                 if entry.content_hash.as_bytes() != hash.as_bytes() {
-                    tracing::trace!(
-                        "changed content hash for cached artifact \"{}\"",
-                        file.display()
-                    );
+                    tracing::trace!("changed content hash for source file \"{}\"", file.display());
                     return true
                 }
                 if self.project.solc_config != entry.solc_config {
-                    tracing::trace!(
-                        "changed solc config for cached artifact \"{}\"",
-                        file.display()
-                    );
+                    tracing::trace!("changed solc config for source file \"{}\"", file.display());
                     return true
                 }
 
                 if !entry.contains_version(version) {
-                    tracing::trace!("missing linked artifacts for version \"{}\"", version);
+                    tracing::trace!(
+                        "missing linked artifacts for source file `{}` for version \"{}\"",
+                        file.display(),
+                        version
+                    );
                     return true
                 }
 
@@ -689,7 +698,7 @@ impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
 
             // read all artifacts
             let cached_artifacts = if project.paths.artifacts.exists() {
-                tracing::trace!("reading artifacts from cache..");
+                tracing::trace!("reading artifacts from cache...");
                 // if we failed to read the whole set of artifacts we use an empty set
                 let artifacts = cache.read_artifacts::<T::Artifact>().unwrap_or_default();
                 tracing::trace!("read {} artifacts from cache", artifacts.artifact_files().count());
@@ -704,7 +713,7 @@ impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
                 edges,
                 project,
                 filtered: Default::default(),
-                dirty_entries: Default::default(),
+                dirty_source_files: Default::default(),
                 content_hashes: Default::default(),
             };
 
@@ -755,7 +764,7 @@ impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
                 let ArtifactsCacheInner {
                     mut cache,
                     mut cached_artifacts,
-                    mut dirty_entries,
+                    mut dirty_source_files,
                     filtered,
                     project,
                     ..
@@ -771,7 +780,7 @@ impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
                 // the versions, so we add the artifacts on a file by file basis
                 for (file, artifacts) in written_artifacts.as_ref() {
                     let file_path = Path::new(&file);
-                    if let Some((entry, versions)) = dirty_entries.get_mut(file_path) {
+                    if let Some((entry, versions)) = dirty_source_files.get_mut(file_path) {
                         entry.insert_artifacts(artifacts.iter().map(|(name, artifacts)| {
                             let artifacts = artifacts
                                 .iter()
@@ -800,7 +809,8 @@ impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
                 }
 
                 // add the new cache entries to the cache file
-                cache.extend(dirty_entries.into_iter().map(|(file, (entry, _))| (file, entry)));
+                cache
+                    .extend(dirty_source_files.into_iter().map(|(file, (entry, _))| (file, entry)));
 
                 cache.strip_artifact_files_prefixes(project.artifacts_path());
                 // write to disk
