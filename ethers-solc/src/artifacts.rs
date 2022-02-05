@@ -228,6 +228,11 @@ pub struct Optimizer {
     pub enabled: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub runs: Option<usize>,
+    /// Switch optimizer components on or off in detail.
+    /// The "enabled" switch above provides two defaults which can be
+    /// tweaked here. If "details" is given, "enabled" can be omitted.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub details: Option<OptimizerDetails>,
 }
 
 impl Optimizer {
@@ -246,8 +251,61 @@ impl Optimizer {
 
 impl Default for Optimizer {
     fn default() -> Self {
-        Self { enabled: Some(false), runs: Some(200) }
+        Self { enabled: Some(false), runs: Some(200), details: None }
     }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct OptimizerDetails {
+    /// The peephole optimizer is always on if no details are given,
+    /// use details to switch it off.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub peephole: Option<bool>,
+    /// The inliner is always on if no details are given,
+    /// use details to switch it off.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub inliner: Option<bool>,
+    /// The unused jumpdest remover is always on if no details are given,
+    /// use details to switch it off.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub jumpdest_remover: Option<bool>,
+    /// Sometimes re-orders literals in commutative operations.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub order_literals: Option<bool>,
+    /// Removes duplicate code blocks
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub deduplicate: Option<bool>,
+    /// Common subexpression elimination, this is the most complicated step but
+    /// can also provide the largest gain.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cse: Option<bool>,
+    /// Optimize representation of literal numbers and strings in code.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub constant_optimizer: Option<bool>,
+    /// The new Yul optimizer. Mostly operates on the code of ABI coder v2
+    /// and inline assembly.
+    /// It is activated together with the global optimizer setting
+    /// and can be deactivated here.
+    /// Before Solidity 0.6.0 it had to be activated through this switch.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub yul: Option<bool>,
+    /// Tuning options for the Yul optimizer.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub yul_details: Option<YulDetails>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct YulDetails {
+    /// Improve allocation of stack slots for variables, can free up stack slots early.
+    /// Activated by default if the Yul optimizer is activated.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stack_allocation: Option<bool>,
+    /// Select optimization steps to be applied.
+    /// Optional, the optimizer will use the default sequence if omitted.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub optimizer_steps: Option<String>,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
