@@ -397,8 +397,6 @@ fn compile_parallel(
             .collect::<Result<Vec<_>>>()
     })?;
 
-    // TODO need to do post filtering as the output can contain more files than provided in the
-    // input
     let mut aggregated = AggregatedCompilerOutput::default();
     aggregated.extend_all(outputs);
 
