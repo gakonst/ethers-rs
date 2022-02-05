@@ -443,6 +443,13 @@ impl Graph {
             versioned_nodes = Self::resolve_multiple_versions(all_candidates);
         }
 
+        if versioned_nodes.len() == 1 {
+            tracing::trace!(
+                "found exact solc version for all sources  \"{}\"",
+                &versioned_nodes[0]
+            );
+        }
+
         if errors.is_empty() {
             tracing::trace!(
                 "resolved {} versions {:?}",
@@ -501,6 +508,10 @@ impl Graph {
         if !intersection.is_empty() {
             let exact_version = remove_candidate(&mut intersection);
             let all_nodes = all_candidates.into_iter().map(|(node, _)| node).collect();
+            tracing::trace!(
+                "resolved solc version compatible with all sources  \"{}\"",
+                exact_version
+            );
             return HashMap::from([(exact_version, all_nodes)])
         }
 
@@ -525,6 +536,11 @@ impl Graph {
 
             versioned_nodes.entry(candidate).or_insert_with(|| Vec::with_capacity(1)).push(node);
         }
+
+        tracing::trace!(
+            "no solc version can satisfy all source files, resolved multiple versions  \"{:?}\"",
+            versioned_nodes.keys()
+        );
 
         versioned_nodes
     }
