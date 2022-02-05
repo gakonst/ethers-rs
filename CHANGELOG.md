@@ -30,6 +30,9 @@
   [#854](https://github.com/gakonst/ethers-rs/pull/852)
 - Refactor `ethers-contract-abigen` to use `eyre` instead of `anyhow` via
   [#858](https://github.com/gakonst/ethers-rs/pull/858)
+- Add `Deployer.send_with_receipt -> Result<(Contract, Receipt), Error>`
+  so that the receipt can be returned to the called when deploying
+  a contract [#865](https://github.com/gakonst/ethers-rs/pull/865)
 - Add Arbitrum mainnet and testnet to the list of known chains
 
 ## ethers-contract-abigen

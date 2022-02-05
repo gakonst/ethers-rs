@@ -2,7 +2,10 @@ use crate::{Contract, ContractError};
 
 use ethers_core::{
     abi::{Abi, Token, Tokenize},
-    types::{transaction::eip2718::TypedTransaction, BlockNumber, Bytes, TransactionRequest},
+    types::{
+        transaction::eip2718::TypedTransaction, BlockNumber, Bytes, TransactionReceipt,
+        TransactionRequest,
+    },
 };
 use ethers_providers::Middleware;
 
@@ -66,6 +69,17 @@ impl<M: Middleware> Deployer<M> {
     /// be sufficiently confirmed (default: 1), it returns a [`Contract`](crate::Contract)
     /// struct at the deployed contract's address.
     pub async fn send(self) -> Result<Contract<M>, ContractError<M>> {
+        let (contract, _) = self.send_with_receipt().await?;
+        Ok(contract)
+    }
+
+    /// Broadcasts the contract deployment transaction and after waiting for it to
+    /// be sufficiently confirmed (default: 1), it returns a tuple with
+    /// the [`Contract`](crate::Contract) struct at the deployed contract's address
+    /// and the corresponding [`TransactionReceipt`](ethers_core::types::TransactionReceipt).
+    pub async fn send_with_receipt(
+        self,
+    ) -> Result<(Contract<M>, TransactionReceipt), ContractError<M>> {
         let pending_tx = self
             .client
             .send_transaction(self.tx, Some(self.block.into()))
@@ -81,7 +95,7 @@ impl<M: Middleware> Deployer<M> {
         let address = receipt.contract_address.ok_or(ContractError::ContractNotDeployed)?;
 
         let contract = Contract::new(address, self.abi.clone(), self.client);
-        Ok(contract)
+        Ok((contract, receipt))
     }
 
     /// Returns a reference to the deployer's ABI
