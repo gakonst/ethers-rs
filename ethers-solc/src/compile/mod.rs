@@ -4,11 +4,10 @@ use crate::{
     utils, CompilerInput, CompilerOutput,
 };
 use semver::{Version, VersionReq};
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use std::{
     fmt,
-    fmt::Formatter,
     io::BufRead,
     path::{Path, PathBuf},
     process::{Command, Output, Stdio},
@@ -173,7 +172,7 @@ impl From<SolcVersion> for Version {
 }
 
 impl fmt::Display for SolcVersion {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.as_ref())
     }
 }
@@ -186,7 +185,7 @@ impl fmt::Display for SolcVersion {
 ///   1. `SOLC_PATH` environment variable
 ///   2. [svm](https://github.com/roynalnaruto/svm-rs)'s  `global_version` (set via `svm use <version>`), stored at `<svm_home>/.global_version`
 ///   3. `solc` otherwise
-#[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct Solc {
     /// Path to the `solc` executable
     pub solc: PathBuf,
@@ -210,6 +209,16 @@ impl Default for Solc {
         }
 
         Solc::new(SOLC)
+    }
+}
+
+impl fmt::Display for Solc {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.solc.display())?;
+        if !self.args.is_empty() {
+            write!(f, " {}", self.args.join(" "))?;
+        }
+        Ok(())
     }
 }
 

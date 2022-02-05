@@ -301,6 +301,15 @@ impl CompilerSources {
             CompilerSources::Parallel(input, j) => compile_parallel(input, j, settings, paths),
         }
     }
+
+    #[cfg(test)]
+    #[allow(unused)]
+    fn sources(&self) -> &VersionedSources {
+        match self {
+            CompilerSources::Sequential(v) => v,
+            CompilerSources::Parallel(v, _) => v,
+        }
+    }
 }
 
 /// Compiles the input set sequentially and returns an aggregated set of the solc `CompilerOutput`s
@@ -350,7 +359,11 @@ fn compile_parallel(
     paths: &ProjectPathsConfig,
 ) -> Result<AggregatedCompilerOutput> {
     debug_assert!(num_jobs > 1);
-    tracing::trace!("compile sources in parallel using up to {} solc jobs", num_jobs);
+    tracing::trace!(
+        "compile {} sources in parallel using up to {} solc jobs",
+        input.len(),
+        num_jobs
+    );
 
     let mut jobs = Vec::with_capacity(input.len());
     for (solc, (version, sources)) in input {
@@ -384,6 +397,8 @@ fn compile_parallel(
             .collect::<Result<Vec<_>>>()
     })?;
 
+    // TODO need to do post filtering as the output can contain more files than provided in the
+    // input
     let mut aggregated = AggregatedCompilerOutput::default();
     aggregated.extend_all(outputs);
 
@@ -394,7 +409,10 @@ fn compile_parallel(
 #[cfg(feature = "project-util")]
 mod tests {
     use super::*;
-    use crate::{project_util::TempProject, MinimalCombinedArtifacts};
+    use crate::{
+        artifacts::FileToContractsMap, project_util::TempProject, MinimalCombinedArtifacts,
+    };
+    use semver::Version;
     use std::path::PathBuf;
 
     #[allow(unused)]
@@ -415,7 +433,7 @@ mod tests {
         let prep = compiler.preprocess().unwrap();
         let cache = prep.cache.as_cached().unwrap();
         // 3 contracts
-        assert_eq!(cache.dirty_entries.len(), 3);
+        assert_eq!(cache.dirty_source_files.len(), 3);
         assert!(cache.filtered.is_empty());
         assert!(cache.cache.is_empty());
 
@@ -435,6 +453,70 @@ mod tests {
         let inner = project.project();
         let compiler = ProjectCompiler::new(inner).unwrap();
         let prep = compiler.preprocess().unwrap();
-        assert!(prep.cache.as_cached().unwrap().dirty_entries.is_empty())
+        assert!(prep.cache.as_cached().unwrap().dirty_source_files.is_empty())
+    }
+
+    #[test]
+    fn can_compile_real_project() {
+        init_tracing();
+        let paths = ProjectPathsConfig::builder()
+            .root("../../foundry-integration-tests/testdata/solmate")
+            .build()
+            .unwrap();
+        let project = Project::builder().paths(paths).build().unwrap();
+        let compiler = ProjectCompiler::new(&project).unwrap();
+        let sources: BTreeMap<_, _> =
+            compiler.sources.sources().into_iter().map(|(s, v)| (s.to_string(), v)).collect();
+        std::fs::write("sources.json", serde_json::to_string_pretty(&sources).unwrap()).unwrap();
+
+        let state = compiler.preprocess().unwrap();
+        // let cache = state.cache.as_cached().unwrap();
+        // // dbg!(cache.cached_artifacts.as_ref().keys());
+        // // dbg!(cache.cache.len());
+        //
+        // std::fs::write("dirty.json",
+        // serde_json::to_string_pretty(&cache.dirty_source_files).unwrap()).unwrap();
+        // dbg!(&cache.dirty_entries);
+
+        let state = state.compile().unwrap();
+        let contracts: FileToContractsMap<Vec<Version>> = state
+            .output
+            .contracts
+            .as_ref()
+            .clone()
+            .into_iter()
+            .map(|(file, contracts)| {
+                let contracts = contracts
+                    .into_iter()
+                    .map(|(name, versioned)| {
+                        let versions = versioned.into_iter().map(|v| v.version).collect::<Vec<_>>();
+                        (name, versions)
+                    })
+                    .collect();
+                (file, contracts)
+            })
+            .collect();
+
+        std::fs::write("contracts.json", serde_json::to_string_pretty(&contracts).unwrap())
+            .unwrap();
+
+        state.output.contracts.contracts_with_files_and_version().for_each(|(file, name, _, v)| {
+            println!("{}  {} {}", file, name, v);
+        });
+
+        // let state = state.write_artifacts().unwrap();
+        // // state.output.contracts.contracts_with_files_and_version().for_each(|(file, name,_, v)|
+        // { //     println!("{}  {} {}", file, name, v);
+        // // });
+        // assert_eq!(state.output.contracts, contracts);
+        // state.compiled_artifacts.artifact_files().for_each(|f| {
+        //     dbg!(f.file.clone());
+        // });
+        // dbg!(state.compiled_artifacts.artifact_files().count());
+        //
+        // let state = state.write_cache().unwrap();
+        // dbg!(state.compiled_artifacts.artifact_files().count());
+
+        // dbg!(cache.cache.len());
     }
 }
