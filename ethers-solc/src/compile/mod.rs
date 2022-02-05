@@ -475,6 +475,29 @@ impl Solc {
         self.compile(&CompilerInput::new(path)?)
     }
 
+    /// Same as [`Self::compile()`], but only returns those files which are included in the
+    /// `CompilerInput`.
+    ///
+    /// In other words, this removes those files from the `CompilerOutput` that are __not__ included
+    /// in the provided `CompilerInput`.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    ///  use ethers_solc::{CompilerInput, Solc};
+    /// let solc = Solc::default();
+    /// let input = CompilerInput::new("./contracts")?;
+    /// let output = solc.compile_exact(&input)?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn compile_exact(&self, input: &CompilerInput) -> Result<CompilerOutput> {
+        let mut out = self.compile(input)?;
+        out.retain_files(input.sources.keys().filter_map(|p| p.to_str()));
+        Ok(out)
+    }
+
     /// Run `solc --stand-json` and return the `solc`'s output as
     /// `CompilerOutput`
     ///

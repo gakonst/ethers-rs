@@ -409,10 +409,8 @@ fn compile_parallel(
 #[cfg(feature = "project-util")]
 mod tests {
     use super::*;
-    use crate::{
-        artifacts::FileToContractsMap, project_util::TempProject, MinimalCombinedArtifacts,
-    };
-    use semver::Version;
+    use crate::{project_util::TempProject, MinimalCombinedArtifacts};
+
     use std::path::PathBuf;
 
     #[allow(unused)]
@@ -457,6 +455,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn can_compile_real_project() {
         init_tracing();
         let paths = ProjectPathsConfig::builder()
@@ -465,58 +464,7 @@ mod tests {
             .unwrap();
         let project = Project::builder().paths(paths).build().unwrap();
         let compiler = ProjectCompiler::new(&project).unwrap();
-        let sources: BTreeMap<_, _> =
-            compiler.sources.sources().into_iter().map(|(s, v)| (s.to_string(), v)).collect();
-        std::fs::write("sources.json", serde_json::to_string_pretty(&sources).unwrap()).unwrap();
-
-        let state = compiler.preprocess().unwrap();
-        // let cache = state.cache.as_cached().unwrap();
-        // // dbg!(cache.cached_artifacts.as_ref().keys());
-        // // dbg!(cache.cache.len());
-        //
-        // std::fs::write("dirty.json",
-        // serde_json::to_string_pretty(&cache.dirty_source_files).unwrap()).unwrap();
-        // dbg!(&cache.dirty_entries);
-
-        let state = state.compile().unwrap();
-        let contracts: FileToContractsMap<Vec<Version>> = state
-            .output
-            .contracts
-            .as_ref()
-            .clone()
-            .into_iter()
-            .map(|(file, contracts)| {
-                let contracts = contracts
-                    .into_iter()
-                    .map(|(name, versioned)| {
-                        let versions = versioned.into_iter().map(|v| v.version).collect::<Vec<_>>();
-                        (name, versions)
-                    })
-                    .collect();
-                (file, contracts)
-            })
-            .collect();
-
-        std::fs::write("contracts.json", serde_json::to_string_pretty(&contracts).unwrap())
-            .unwrap();
-
-        state.output.contracts.contracts_with_files_and_version().for_each(|(file, name, _, v)| {
-            println!("{}  {} {}", file, name, v);
-        });
-
-        // let state = state.write_artifacts().unwrap();
-        // // state.output.contracts.contracts_with_files_and_version().for_each(|(file, name,_, v)|
-        // { //     println!("{}  {} {}", file, name, v);
-        // // });
-        // assert_eq!(state.output.contracts, contracts);
-        // state.compiled_artifacts.artifact_files().for_each(|f| {
-        //     dbg!(f.file.clone());
-        // });
-        // dbg!(state.compiled_artifacts.artifact_files().count());
-        //
-        // let state = state.write_cache().unwrap();
-        // dbg!(state.compiled_artifacts.artifact_files().count());
-
-        // dbg!(cache.cache.len());
+        let out = compiler.compile().unwrap();
+        println!("{}", out);
     }
 }

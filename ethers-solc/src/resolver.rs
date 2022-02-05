@@ -56,7 +56,7 @@ use regex::Match;
 use semver::VersionReq;
 use solang_parser::pt::{Import, Loc, SourceUnitPart};
 
-use crate::{error::Result, utils, ProjectPathsConfig, Solc, SolcVersion, Source, Sources};
+use crate::{error::Result, utils, ProjectPathsConfig, Solc, Source, Sources};
 
 /// The underlying edges of the graph which only contains the raw relationship data.
 ///
@@ -446,7 +446,7 @@ impl Graph {
         if versioned_nodes.len() == 1 {
             tracing::trace!(
                 "found exact solc version for all sources  \"{}\"",
-                &versioned_nodes[0]
+                versioned_nodes.keys().next().unwrap()
             );
         }
 
@@ -469,10 +469,12 @@ impl Graph {
     /// This is a bit inefficient but is fine, the max. number of versions is ~80 and there's
     /// a high chance that the number of source files is <50, even for larger projects.
     fn resolve_multiple_versions(
-        all_candidates: Vec<(usize, HashSet<&SolcVersion>)>,
+        all_candidates: Vec<(usize, HashSet<&crate::SolcVersion>)>,
     ) -> HashMap<crate::SolcVersion, Vec<usize>> {
         // returns the intersection as sorted set of nodes
-        fn intersection<'a>(mut sets: Vec<&HashSet<&'a SolcVersion>>) -> Vec<&'a SolcVersion> {
+        fn intersection<'a>(
+            mut sets: Vec<&HashSet<&'a crate::SolcVersion>>,
+        ) -> Vec<&'a crate::SolcVersion> {
             if sets.is_empty() {
                 return Vec::new()
             }
@@ -490,7 +492,7 @@ impl Graph {
         /// returns the highest version that is installed
         /// if the candidates set only contains uninstalled versions then this returns the highest
         /// uninstalled version
-        fn remove_candidate(candidates: &mut Vec<&SolcVersion>) -> SolcVersion {
+        fn remove_candidate(candidates: &mut Vec<&crate::SolcVersion>) -> crate::SolcVersion {
             debug_assert!(!candidates.is_empty());
 
             if let Some(pos) = candidates.iter().rposition(|v| v.is_installed()) {

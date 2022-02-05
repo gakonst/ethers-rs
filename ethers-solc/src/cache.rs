@@ -781,7 +781,6 @@ impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
                 for (file, artifacts) in written_artifacts.as_ref() {
                     let file_path = Path::new(&file);
                     if let Some((entry, versions)) = dirty_source_files.get_mut(file_path) {
-                        // TODO
                         entry.insert_artifacts(artifacts.iter().map(|(name, artifacts)| {
                             let artifacts = artifacts
                                 .iter()
