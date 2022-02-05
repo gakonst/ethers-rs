@@ -42,7 +42,8 @@ mod eth_tests {
         // dry runs the deployment of the contract. takes the deployer by reference, no need to
         // clone.
         assert!(deployer.call().await.is_ok());
-        let contract = deployer.clone().send().await.unwrap();
+        let (contract, receipt) = deployer.clone().send_with_receipt().await.unwrap();
+        assert_eq!(receipt.contract_address.unwrap(), contract.address());
 
         let get_value = contract.method::<_, String>("getValue", ()).unwrap();
         let last_sender = contract.method::<_, Address>("lastSender", ()).unwrap();
