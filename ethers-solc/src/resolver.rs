@@ -334,19 +334,14 @@ impl Graph {
         f: &mut W,
     ) -> std::result::Result<(), std::fmt::Error> {
         let node = self.node(idx);
-        for dep in self.imported_nodes(idx) {
-            let dep = self.node(*dep);
-            writeln!(
-                f,
-                "  {} ({:?}) imports {} ({:?})",
-                utils::source_name(&node.path, &self.root).display(),
-                node.data.version,
-                utils::source_name(&dep.path, &self.root).display(),
-                dep.data.version
-            )?;
-        }
-        for dep in self.imported_nodes(idx) {
-            self.format_imports_list(*dep, f)?;
+        write!(f, "{} ", utils::source_name(&node.path, &self.root).display(),)?;
+        node.data.fmt_version(f)?;
+        write!(f, " imports:",)?;
+        for dep in self.node_ids(idx).skip(1) {
+            writeln!(f)?;
+            let dep = self.node(dep);
+            write!(f, "    {} ", utils::source_name(&dep.path, &self.root).display())?;
+            dep.data.fmt_version(f)?;
         }
 
         Ok(())
@@ -403,11 +398,9 @@ impl Graph {
 
         // stores all files and the versions they're compatible with
         let mut all_candidates = Vec::with_capacity(self.edges.num_input_files);
-
         // walking through the node's dep tree and filtering the versions along the way
         for idx in 0..self.edges.num_input_files {
             let mut candidates = all_versions.iter().collect::<Vec<_>>();
-            // dbg!(candidates.len());
             // remove all incompatible versions from the candidates list by checking the node and
             // all its imports
             self.retain_compatible_versions(idx, &mut candidates);
@@ -659,6 +652,18 @@ struct SolData {
     version: Option<SolDataUnit<String>>,
     imports: Vec<SolDataUnit<PathBuf>>,
     version_req: Option<VersionReq>,
+}
+
+impl SolData {
+    fn fmt_version<W: std::fmt::Write>(
+        &self,
+        f: &mut W,
+    ) -> std::result::Result<(), std::fmt::Error> {
+        if let Some(ref version) = self.version {
+            write!(f, "({})", version.data)?;
+        }
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone)]
