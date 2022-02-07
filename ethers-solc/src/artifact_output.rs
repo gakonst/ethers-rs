@@ -15,6 +15,17 @@ use std::{
     path::{Path, PathBuf},
 };
 
+/// Represents unique artifact metadata for identifying artifacts on output
+pub struct ArtifactId {
+    /// `artifact` cache path
+    pub path: PathBuf,
+    pub name: String,
+    /// Original source file path
+    pub source: PathBuf,
+    /// `solc` version that produced this artifact
+    pub version: Version,
+}
+
 /// Represents an artifact file representing a [`crate::Contract`]
 #[derive(Debug, Clone, PartialEq)]
 pub struct ArtifactFile<T> {
