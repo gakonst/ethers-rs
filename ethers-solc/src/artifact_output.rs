@@ -565,3 +565,16 @@ impl ArtifactOutput for MinimalCombinedArtifactsHardhatFallback {
         MinimalCombinedArtifacts::contract_to_artifact(file, name, contract)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn is_artifact() {
+        fn assert_artifact<T: Artifact>() {}
+
+        assert_artifact::<CompactContractBytecode>();
+        assert_artifact::<serde_json::Value>();
+    }
+}
