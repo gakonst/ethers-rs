@@ -59,7 +59,7 @@ pub struct Eip1559TransactionRequest {
     pub max_fee_per_gas: Option<U256>,
 
     #[serde(skip_serializing)]
-    #[serde(rename = "chainId")]
+    #[serde(default, rename = "chainId")]
     /// Chain ID (None for mainnet)
     pub chain_id: Option<U64>,
 }

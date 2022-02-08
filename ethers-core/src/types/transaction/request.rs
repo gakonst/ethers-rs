@@ -43,7 +43,7 @@ pub struct TransactionRequest {
 
     /// Chain ID (None for mainnet)
     #[serde(skip_serializing)]
-    #[serde(rename = "chainId")]
+    #[serde(default, rename = "chainId")]
     pub chain_id: Option<U64>,
 
     /////////////////  Celo-specific transaction fields /////////////////
