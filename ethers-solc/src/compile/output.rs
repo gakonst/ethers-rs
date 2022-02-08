@@ -3,7 +3,7 @@
 use crate::{
     artifacts::{CompactContractRef, Contract, Error, SourceFile, SourceFiles},
     contracts::{VersionedContract, VersionedContracts},
-    ArtifactOutput, Artifacts, CompilerOutput, ArtifactId,
+    ArtifactId, ArtifactOutput, Artifacts, CompilerOutput,
 };
 use semver::Version;
 use std::{collections::BTreeMap, fmt, path::Path};

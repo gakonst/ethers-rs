@@ -30,11 +30,7 @@ pub struct ArtifactId {
 impl ArtifactId {
     /// Returns a <filename>:<name> slug that identifies an artifact
     pub fn slug(&self) -> String {
-        format!(
-            "{}.json:{}",
-            self.path.file_stem().unwrap().to_string_lossy(),
-            self.name
-        )
+        format!("{}.json:{}", self.path.file_stem().unwrap().to_string_lossy(), self.name)
     }
 }
 
