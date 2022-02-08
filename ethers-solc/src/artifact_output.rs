@@ -16,6 +16,7 @@ use std::{
 };
 
 /// Represents unique artifact metadata for identifying artifacts on output
+#[derive(Debug, Clone)]
 pub struct ArtifactId {
     /// `artifact` cache path
     pub path: PathBuf,
@@ -24,6 +25,17 @@ pub struct ArtifactId {
     pub source: PathBuf,
     /// `solc` version that produced this artifact
     pub version: Version,
+}
+
+impl ArtifactId {
+    /// Returns a <filename>:<name> slug that identifies an artifact
+    pub fn slug(&self) -> String {
+        format!(
+            "{}.json:{}",
+            self.path.file_stem().unwrap().to_string_lossy(),
+            self.name
+        )
+    }
 }
 
 /// Represents an artifact file representing a [`crate::Contract`]
@@ -170,17 +182,20 @@ impl<T> Artifacts<T> {
     /// Returns an iterator over _all_ artifacts and `<file name:contract name>`
     pub fn into_artifacts<O: ArtifactOutput<Artifact = T>>(
         self,
-    ) -> impl Iterator<Item = (String, T)> {
-        self.0.into_values().flat_map(|contract_artifacts| {
-            contract_artifacts.into_iter().flat_map(|(_contract_name, artifacts)| {
-                artifacts.into_iter().filter_map(|artifact| {
+    ) -> impl Iterator<Item = (ArtifactId, T)> {
+        self.0.into_iter().flat_map(|(file, contract_artifacts)| {
+            let file = file.clone();
+            contract_artifacts.into_iter().flat_map(move |(_contract_name, artifacts)| {
+                let source = PathBuf::from(file.clone());
+                artifacts.into_iter().filter_map(move |artifact| {
                     O::contract_name(&artifact.file).map(|name| {
                         (
-                            format!(
-                                "{}:{}",
-                                artifact.file.file_name().unwrap().to_string_lossy(),
-                                name
-                            ),
+                            ArtifactId {
+                                path: PathBuf::from(&artifact.file),
+                                name,
+                                source: source.clone(),
+                                version: artifact.version,
+                            },
                             artifact.artifact,
                         )
                     })

@@ -3,7 +3,7 @@
 use crate::{
     artifacts::{CompactContractRef, Contract, Error, SourceFile, SourceFiles},
     contracts::{VersionedContract, VersionedContracts},
-    ArtifactOutput, Artifacts, CompilerOutput,
+    ArtifactOutput, Artifacts, CompilerOutput, ArtifactId,
 };
 use semver::Version;
 use std::{collections::BTreeMap, fmt, path::Path};
@@ -39,7 +39,7 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
     /// let project = Project::builder().build().unwrap();
     /// let contracts: BTreeMap<String, CompactContractBytecode> = project.compile().unwrap().into_artifacts().collect();
     /// ```
-    pub fn into_artifacts(self) -> impl Iterator<Item = (String, T::Artifact)> {
+    pub fn into_artifacts(self) -> impl Iterator<Item = (ArtifactId, T::Artifact)> {
         let Self { cached_artifacts, compiled_artifacts, .. } = self;
         cached_artifacts.into_artifacts::<T>().chain(compiled_artifacts.into_artifacts::<T>())
     }
