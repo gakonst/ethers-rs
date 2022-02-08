@@ -32,6 +32,17 @@ impl ArtifactId {
     pub fn slug(&self) -> String {
         format!("{}.json:{}", self.path.file_stem().unwrap().to_string_lossy(), self.name)
     }
+    /// Returns a <filename><version>:<name> slug that identifies an artifact
+    pub fn slug_versioned(&self) -> String {
+        format!(
+            "{}.{}.{}.{}.json:{}",
+            self.path.file_stem().unwrap().to_string_lossy(),
+            self.version.major,
+            self.version.minor,
+            self.version.patch,
+            self.name
+        )
+    }
 }
 
 /// Represents an artifact file representing a [`crate::Contract`]
