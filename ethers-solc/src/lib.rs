@@ -25,6 +25,7 @@ pub mod remappings;
 use crate::artifacts::Source;
 
 pub mod error;
+pub mod report;
 pub mod utils;
 
 use crate::{

@@ -655,6 +655,7 @@ struct SolData {
 }
 
 impl SolData {
+    #[allow(unused)]
     fn fmt_version<W: std::fmt::Write>(
         &self,
         f: &mut W,
