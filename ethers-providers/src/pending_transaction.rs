@@ -50,7 +50,7 @@ use wasm_timer::Delay;
 /// # assert_eq!(balance_after, balance_before + 1000);
 /// # Ok(())
 /// # }
-///```
+/// ```
 #[pin_project]
 pub struct PendingTransaction<'a, P> {
     tx_hash: TxHash,
@@ -105,16 +105,20 @@ impl<'a, P: JsonRpcClient> PendingTransaction<'a, P> {
 }
 
 impl<'a, P> PendingTransaction<'a, P> {
-    pub fn log_msg<S: std::fmt::Display>(self, msg: S) -> Self {
-        println!("{}: {:?}", msg, *self);
+    pub fn inspect<F>(self, mut f: F) -> Self
+    where
+        F: FnMut(&Self),
+    {
+        f(&self);
         self
+    }
+    pub fn log_msg<S: std::fmt::Display>(self, msg: S) -> Self {
+        self.inspect(|s| println!("{}: {:?}", msg, *s))
     }
     pub fn log(self) -> Self {
-        println!("Pending hash: {:?}", *self);
-        self
+        self.inspect(|s| println!("Pending hash: {:?}", *s))
     }
 }
-
 
 macro_rules! rewake_with_new_state {
     ($ctx:ident, $this:ident, $new_state:expr) => {
