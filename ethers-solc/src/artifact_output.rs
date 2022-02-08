@@ -180,7 +180,6 @@ impl<T> Artifacts<T> {
         self,
     ) -> impl Iterator<Item = (ArtifactId, T)> {
         self.0.into_iter().flat_map(|(file, contract_artifacts)| {
-            let file = file.clone();
             contract_artifacts.into_iter().flat_map(move |(_contract_name, artifacts)| {
                 let source = PathBuf::from(file.clone());
                 artifacts.into_iter().filter_map(move |artifact| {
