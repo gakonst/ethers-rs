@@ -58,7 +58,8 @@ pub struct Eip1559TransactionRequest {
     /// baseFeePerGas + maxPriorityFeePerGas is “refunded” to the user.
     pub max_fee_per_gas: Option<U256>,
 
-    #[serde(rename = "chainId", default, skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing)]
+    #[serde(default, rename = "chainId")]
     /// Chain ID (None for mainnet)
     pub chain_id: Option<U64>,
 }

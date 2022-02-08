@@ -42,7 +42,8 @@ pub struct TransactionRequest {
     pub nonce: Option<U256>,
 
     /// Chain ID (None for mainnet)
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing)]
+    #[serde(default, rename = "chainId")]
     pub chain_id: Option<U64>,
 
     /////////////////  Celo-specific transaction fields /////////////////
