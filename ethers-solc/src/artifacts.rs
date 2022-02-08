@@ -801,7 +801,7 @@ impl From<Contract> for ContractBytecode {
 ///
 /// Unlike `CompactContractSome` which contains the `BytecodeObject`, this holds the whole
 /// `Bytecode` object.
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
 pub struct CompactContractBytecode {
     /// The Ethereum Contract ABI. If empty, it is represented as an empty
     /// array. See https://docs.soliditylang.org/en/develop/abi-spec.html
@@ -999,6 +999,12 @@ impl From<serde_json::Value> for CompactContract {
         } else {
             CompactContract::default()
         }
+    }
+}
+
+impl From<serde_json::Value> for CompactContractBytecode {
+    fn from(val: serde_json::Value) -> Self {
+        serde_json::from_value(val).unwrap_or_default()
     }
 }
 
