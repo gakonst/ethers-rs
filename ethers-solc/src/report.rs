@@ -99,7 +99,7 @@ fn get_global() -> Option<&'static Report> {
 /// Executes a closure with a reference to the `Reporter`.
 pub fn with_global<T>(f: impl FnOnce(&Report) -> T) -> Option<T> {
     let dispatch = get_global()?;
-    Some(f(&dispatch))
+    Some(f(dispatch))
 }
 
 /// A no-op [`Reporter`] that does nothing.
