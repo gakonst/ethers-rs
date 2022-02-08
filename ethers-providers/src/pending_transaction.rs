@@ -105,6 +105,9 @@ impl<'a, P: JsonRpcClient> PendingTransaction<'a, P> {
 }
 
 impl<'a, P> PendingTransaction<'a, P> {
+    /// Allows inspecting the content of a pending transaction in a builder-like way to avoid
+    /// more verbose calls, e.g.: 
+    /// `let mined = token.transfer(recipient, amt).send().await?.inspect(|tx| println!(".{}", *tx)).await?;`
     pub fn inspect<F>(self, mut f: F) -> Self
     where
         F: FnMut(&Self),
@@ -112,9 +115,13 @@ impl<'a, P> PendingTransaction<'a, P> {
         f(&self);
         self
     }
+    
+    /// Logs the pending transaction hash along with a custom message before it.
     pub fn log_msg<S: std::fmt::Display>(self, msg: S) -> Self {
         self.inspect(|s| println!("{}: {:?}", msg, *s))
     }
+    
+    /// Logs the pending transaction's hash
     pub fn log(self) -> Self {
         self.inspect(|s| println!("Pending hash: {:?}", *s))
     }
