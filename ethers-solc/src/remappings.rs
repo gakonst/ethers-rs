@@ -426,7 +426,7 @@ fn find_remapping_candidates(
         // └── src/test.sol
         // ```
         // which effectively ignores the `aux` dir by prioritizing source dirs and keeps
-        // `dst-test/=ds-test/src/`
+        // `ds-test/=ds-test/src/`
         if let Some(pos) = candidates.iter().position(Candidate::is_candidate_source_a_source_dir) {
             let c = candidates.remove(pos);
             candidates = vec![c];
