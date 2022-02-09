@@ -75,10 +75,12 @@ pub(crate) fn solc_success(solc: &Solc, version: &Version, output: &CompilerOutp
     with_global(|r| r.reporter.on_solc_success(solc, version, output));
 }
 
+#[allow(unused)]
 pub(crate) fn solc_installation_start(version: &Version) {
     with_global(|r| r.reporter.on_solc_installation_start(version));
 }
 
+#[allow(unused)]
 pub(crate) fn solc_installation_success(version: &Version) {
     with_global(|r| r.reporter.on_solc_installation_success(version));
 }

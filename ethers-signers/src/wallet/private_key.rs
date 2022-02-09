@@ -144,8 +144,8 @@ impl FromStr for Wallet<SigningKey> {
 #[cfg(not(target_arch = "wasm32"))]
 mod tests {
     use super::*;
-    use crate::{Signer, TypedTransaction};
-    use ethers_core::types::{Address, U64};
+    use crate::Signer;
+    use ethers_core::types::Address;
     use tempfile::tempdir;
 
     #[tokio::test]
@@ -194,7 +194,8 @@ mod tests {
     #[tokio::test]
     #[cfg(not(feature = "celo"))]
     async fn signs_tx() {
-        use ethers_core::types::TransactionRequest;
+        use crate::TypedTransaction;
+        use ethers_core::types::{TransactionRequest, U64};
         // retrieved test vector from:
         // https://web3js.readthedocs.io/en/v1.2.0/web3-eth-accounts.html#eth-accounts-signtransaction
         let tx: TypedTransaction = TransactionRequest {
