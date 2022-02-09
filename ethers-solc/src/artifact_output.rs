@@ -16,7 +16,7 @@ use std::{
 };
 
 /// Represents unique artifact metadata for identifying artifacts on output
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct ArtifactId {
     /// `artifact` cache path
     pub path: PathBuf,
