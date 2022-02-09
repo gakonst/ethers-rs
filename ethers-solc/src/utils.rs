@@ -1,6 +1,9 @@
 //! Utility functions
 
-use std::path::{Component, Path, PathBuf};
+use std::{
+    collections::HashSet,
+    path::{Component, Path, PathBuf},
+};
 
 use crate::{error::SolcError, SolcIoError};
 use once_cell::sync::Lazy;
@@ -63,6 +66,46 @@ pub fn source_files(root: impl AsRef<Path>) -> Vec<PathBuf> {
         .filter(|e| e.file_type().is_file())
         .filter(|e| e.path().extension().map(|ext| ext == "sol").unwrap_or_default())
         .map(|e| e.path().into())
+        .collect()
+}
+
+/// Returns a list of _unique_ paths to all folders under `root` that contain at least one solidity
+/// file (`*.sol`).
+///
+/// # Example
+///
+/// ```no_run
+/// use ethers_solc::utils;
+/// let dirs = utils::solidity_dirs("./lib");
+/// ```
+///
+/// for following layout will return
+/// `["lib/ds-token/src", "lib/ds-token/src/test", "lib/ds-token/lib/ds-math/src", ...]`
+///
+/// ```text
+/// lib
+/// └── ds-token
+///     ├── lib
+///     │   ├── ds-math
+///     │   │   └── src/Contract.sol
+///     │   ├── ds-stop
+///     │   │   └── src/Contract.sol
+///     │   ├── ds-test
+///     │       └── src//Contract.sol
+///     └── src
+///         ├── base.sol
+///         ├── test
+///         │   ├── base.t.sol
+///         └── token.sol
+/// ```
+pub fn solidity_dirs(root: impl AsRef<Path>) -> Vec<PathBuf> {
+    let sources = source_files(root);
+    sources
+        .iter()
+        .filter_map(|p| p.parent())
+        .collect::<HashSet<_>>()
+        .into_iter()
+        .map(|p| p.to_path_buf())
         .collect()
 }
 
