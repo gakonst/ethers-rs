@@ -335,6 +335,14 @@ struct Candidate {
     window_level: usize,
 }
 
+impl Candidate {
+    /// Returns `true` if the source dir of this candidate ends with `/src` or `/contracts`
+    fn is_candidate_source_a_source_dir(&self) -> bool {
+        self.source_dir.ends_with(DAPPTOOLS_CONTRACTS_DIR) ||
+            self.source_dir.ends_with(JS_CONTRACTS_DIR)
+    }
+}
+
 fn is_source_dir(dir: &Path) -> bool {
     dir.file_name()
         .and_then(|p| p.to_str())
@@ -411,15 +419,28 @@ fn find_remapping_candidates(
             .count() >
             1
     {
-        // merge all candidates on the current level if the current dir is itself a candidate or
-        // there are multiple nested candidates on the current level like `current/{auth,
-        // tokens}/contracts/c.sol`
-        candidates.retain(|c| c.window_level != current_level);
-        candidates.push(Candidate {
-            window_start,
-            source_dir: current_dir.to_path_buf(),
-            window_level: current_level,
-        });
+        // here we need to check for layouts like
+        // ```test
+        // ds-test/
+        // ├── aux/demo.sol
+        // └── src/test.sol
+        // ```
+        // which effectively ignores the `aux` dir by prioritizing source dirs and keeps
+        // `ds-test/=ds-test/src/`
+        if let Some(pos) = candidates.iter().position(Candidate::is_candidate_source_a_source_dir) {
+            let c = candidates.remove(pos);
+            candidates = vec![c];
+        } else {
+            // merge all candidates on the current level if the current dir is itself a candidate or
+            // there are multiple nested candidates on the current level like `current/{auth,
+            // tokens}/contracts/c.sol`
+            candidates.retain(|c| c.window_level != current_level);
+            candidates.push(Candidate {
+                window_start,
+                source_dir: current_dir.to_path_buf(),
+                window_level: current_level,
+            });
+        }
     } else {
         // this handles the case if there is a single nested candidate
         if let Some(candidate) = candidates.iter_mut().find(|c| c.window_level == current_level) {
@@ -429,7 +450,9 @@ fn find_remapping_candidates(
             let distance = dir_distance(&candidate.window_start, &candidate.source_dir);
             if distance > 1 && candidate.source_dir.ends_with(JS_CONTRACTS_DIR) {
                 candidate.source_dir = window_start;
-            } else if !is_source_dir(&candidate.source_dir) {
+            } else if !is_source_dir(&candidate.source_dir) &&
+                candidate.source_dir != candidate.window_start
+            {
                 candidate.source_dir = last_nested_source_dir(open, &candidate.source_dir);
             }
         }
@@ -570,6 +593,67 @@ mod tests {
 
         assert_eq!(remappings[0].name, "repo1/");
         assert_eq!(remappings[0].path, format!("{}/src/", path));
+    }
+
+    #[test]
+    fn can_resolve_geb_remappings() {
+        let tmp_dir = tempdir("geb").unwrap();
+        let paths = [
+            "lib/ds-token/src/test/Contract.sol",
+            "lib/ds-token/lib/ds-test/src/Contract.sol",
+            "lib/ds-token/lib/ds-test/aux/Contract.sol",
+            "lib/ds-token/lib/ds-stop/lib/ds-test/src/Contract.sol",
+            "lib/ds-token/lib/ds-stop/lib/ds-note/src/Contract.sol",
+            "lib/ds-token/lib/ds-math/lib/ds-test/aux/Contract.sol",
+            "lib/ds-token/lib/ds-math/src/Contract.sol",
+            "lib/ds-token/lib/ds-stop/lib/ds-test/aux/Contract.sol",
+            "lib/ds-token/lib/ds-stop/lib/ds-note/lib/ds-test/src/Contract.sol",
+            "lib/ds-token/lib/ds-math/lib/ds-test/src/Contract.sol",
+            "lib/ds-token/lib/ds-stop/lib/ds-auth/lib/ds-test/src/Contract.sol",
+            "lib/ds-token/lib/ds-stop/src/Contract.sol",
+            "lib/ds-token/src/Contract.sol",
+            "lib/ds-token/lib/erc20/src/Contract.sol",
+            "lib/ds-token/lib/ds-stop/lib/ds-auth/lib/ds-test/aux/Contract.sol",
+            "lib/ds-token/lib/ds-stop/lib/ds-auth/src/Contract.sol",
+            "lib/ds-token/lib/ds-stop/lib/ds-note/lib/ds-test/aux/Contract.sol",
+        ];
+        mkdir_or_touch(tmp_dir.path(), &paths[..]);
+
+        let tmp_dir_path = tmp_dir.path().join("lib");
+        let mut remappings = Remapping::find_many(&tmp_dir_path);
+        remappings.sort_unstable();
+        let mut expected = vec![
+            Remapping {
+                name: "ds-auth/".to_string(),
+                path: to_str(tmp_dir_path.join("ds-token/lib/ds-stop/lib/ds-auth/src")),
+            },
+            Remapping {
+                name: "ds-math/".to_string(),
+                path: to_str(tmp_dir_path.join("ds-token/lib/ds-math/src")),
+            },
+            Remapping {
+                name: "ds-note/".to_string(),
+                path: to_str(tmp_dir_path.join("ds-token/lib/ds-stop/lib/ds-note/src")),
+            },
+            Remapping {
+                name: "ds-stop/".to_string(),
+                path: to_str(tmp_dir_path.join("ds-token/lib/ds-stop/src")),
+            },
+            Remapping {
+                name: "ds-test/".to_string(),
+                path: to_str(tmp_dir_path.join("ds-token/lib/ds-test/src")),
+            },
+            Remapping {
+                name: "ds-token/".to_string(),
+                path: to_str(tmp_dir_path.join("ds-token/src")),
+            },
+            Remapping {
+                name: "erc20/".to_string(),
+                path: to_str(tmp_dir_path.join("ds-token/lib/erc20/src")),
+            },
+        ];
+        expected.sort_unstable();
+        pretty_assertions::assert_eq!(remappings, expected);
     }
 
     #[test]
