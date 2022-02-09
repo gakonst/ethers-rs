@@ -1,5 +1,5 @@
 use crate::{
-    ens, maybe,
+    ens, erc, maybe,
     pubsub::{PubsubClient, SubscriptionStream},
     stream::{FilterWatcher, DEFAULT_POLL_INTERVAL},
     FromErr, Http as HttpProvider, JsonRpcClient, JsonRpcClientWrapper, MockProvider,
@@ -17,8 +17,8 @@ use ethers_core::{
         transaction::{eip2718::TypedTransaction, eip2930::AccessListWithGasUsed},
         Address, Block, BlockId, BlockNumber, BlockTrace, Bytes, EIP1186ProofResponse, FeeHistory,
         Filter, Log, NameOrAddress, Selector, Signature, Trace, TraceFilter, TraceType,
-        Transaction, TransactionReceipt, TxHash, TxpoolContent, TxpoolInspect, TxpoolStatus, H256,
-        U256, U64,
+        Transaction, TransactionReceipt, TransactionRequest, TxHash, TxpoolContent, TxpoolInspect,
+        TxpoolStatus, H256, U256, U64,
     },
     utils,
 };
@@ -786,6 +786,151 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.query_resolver(ParamType::String, &ens_name, ens::NAME_SELECTOR).await
     }
 
+    /// Returns the avatar HTTP link of the avatar that the `ens_name` resolves to (or None
+    /// if not configured)
+    ///
+    /// # Panics
+    ///
+    /// If the bytes returned from the ENS registrar/resolver cannot be interpreted as
+    /// a string. This should theoretically never happen.
+    async fn resolve_avatar(&self, ens_name: &str) -> Result<Url, ProviderError> {
+        let field = self.resolve_field(ens_name, "avatar").await?;
+        let url = Url::from_str(&field).map_err(|e| ProviderError::CustomError(e.to_string()))?;
+        let owner = self.resolve_name(ens_name).await?;
+        match url.scheme() {
+            "https" | "data" => Ok(url),
+            "ipfs" => erc::http_link_ipfs(url).map_err(ProviderError::CustomError),
+            "eip155" => {
+                let split: Vec<&str> = url.path().trim_start_matches("1/").split(':').collect();
+                let (inner_scheme, inner_path) = if split.len() == 2 {
+                    (split[0], split[1])
+                } else {
+                    return Err(ProviderError::CustomError("Unsupported ERC link".to_string()));
+                };
+
+                let token_split: Vec<&str> = inner_path.split('/').collect();
+                let (contract_addr, token_id) = if token_split.len() == 2 {
+                    let token_id = U256::from_dec_str(token_split[1]).map_err(|e| {
+                        ProviderError::CustomError(format!(
+                            "Unsupported token id type: {} {}",
+                            token_split[1], e
+                        ))
+                    })?;
+                    let mut token_id_bytes = [0x0; 32];
+                    token_id.to_big_endian(&mut token_id_bytes);
+                    (
+                        Address::from_str(token_split[0].trim_start_matches("0x")).map_err(
+                            |e| {
+                                ProviderError::CustomError(format!(
+                                    "Invalid contract address: {} {}",
+                                    token_split[0], e
+                                ))
+                            },
+                        )?,
+                        token_id_bytes,
+                    )
+                } else {
+                    return Err(ProviderError::CustomError(
+                        "Unsupported ERC link path".to_string(),
+                    ));
+                };
+                let selector: Selector = match inner_scheme {
+                    "erc721" => {
+                        let tx = TransactionRequest {
+                            data: Some([&erc::ERC721_SELECTOR[..], &token_id].concat().into()),
+                            to: Some(NameOrAddress::Address(contract_addr)),
+                            ..Default::default()
+                        };
+                        let data = self.call(&tx.into(), None).await?;
+                        if decode_bytes::<Address>(ParamType::Address, data) != owner {
+                            return Err(ProviderError::CustomError("Incorrect owner.".to_string()));
+                        }
+                        [0xc8, 0x7b, 0x56, 0xdd]
+                    }
+                    "erc1155" => {
+                        let tx = TransactionRequest {
+                            data: Some(
+                                [&erc::ERC1155_SELECTOR[..], &[0x0; 12], &owner.0, &token_id]
+                                    .concat()
+                                    .into(),
+                            ),
+                            to: Some(NameOrAddress::Address(contract_addr)),
+                            ..Default::default()
+                        };
+                        let data = self.call(&tx.into(), None).await?;
+                        if decode_bytes::<u64>(ParamType::Uint(64), data) == 0 {
+                            return Err(ProviderError::CustomError(
+                                "Incorrect balance.".to_string(),
+                            ));
+                        }
+                        [0x0e, 0x89, 0x34, 0x1c]
+                    }
+                    _ => {
+                        return Err(ProviderError::CustomError(
+                            "Unsupported eip155 token type".to_string(),
+                        ))
+                    }
+                };
+
+                let tx = TransactionRequest {
+                    data: Some([&selector[..], &token_id].concat().into()),
+                    to: Some(NameOrAddress::Address(contract_addr)),
+                    ..Default::default()
+                };
+                let data = self.call(&tx.into(), None).await?;
+                let mut metadata_url = Url::parse(&decode_bytes::<String>(ParamType::String, data))
+                    .map_err(|e| {
+                        ProviderError::CustomError(format!("Invalid metadata url: {}", e))
+                    })?;
+
+                if inner_scheme == "erc1155" {
+                    metadata_url.set_path(
+                        &metadata_url.path().replace("%7Bid%7D", &hex::encode(&token_id)),
+                    );
+                }
+                if metadata_url.scheme() == "ipfs" {
+                    metadata_url =
+                        erc::http_link_ipfs(metadata_url).map_err(ProviderError::CustomError)?;
+                }
+                let metadata: erc::Metadata = reqwest::get(metadata_url)
+                    .await
+                    .map_err(|e| ProviderError::CustomError(e.to_string()))?
+                    .json()
+                    .await
+                    .map_err(|e| ProviderError::CustomError(e.to_string()))?;
+
+                let image_url = Url::parse(&metadata.image)
+                    .map_err(|e| ProviderError::CustomError(e.to_string()))?;
+                match image_url.scheme() {
+                    "https" | "data" => Ok(image_url),
+                    "ipfs" => erc::http_link_ipfs(image_url).map_err(ProviderError::CustomError),
+                    _ => Err(ProviderError::CustomError(
+                        "Unsupported scheme for the image".to_string(),
+                    )),
+                }
+            }
+            _ => Err(ProviderError::CustomError("Unsupported scheme".to_string())),
+        }
+    }
+
+    /// Fetch a field for the `ens_name` (no None if not configured).
+    ///
+    /// # Panics
+    ///
+    /// If the bytes returned from the ENS registrar/resolver cannot be interpreted as
+    /// a string. This should theoretically never happen.
+    async fn resolve_field(&self, ens_name: &str, field: &str) -> Result<String, ProviderError> {
+        let field: String = self
+            .query_resolver_parameters(
+                ParamType::String,
+                ens_name,
+                ens::FIELD_SELECTOR,
+                Some(&ens::parameterhash(field)),
+            )
+            .await?;
+        Ok(field)
+    }
+
     /// Returns the details of all transactions currently pending for inclusion in the next
     /// block(s), as well as the ones that are being scheduled for future execution only.
     /// Ref: [Here](https://geth.ethereum.org/docs/rpc/ns-txpool#txpool_content)
@@ -982,6 +1127,16 @@ impl<P: JsonRpcClient> Provider<P> {
         ens_name: &str,
         selector: Selector,
     ) -> Result<T, ProviderError> {
+        self.query_resolver_parameters(param, ens_name, selector, None).await
+    }
+
+    async fn query_resolver_parameters<T: Detokenize>(
+        &self,
+        param: ParamType,
+        ens_name: &str,
+        selector: Selector,
+        parameters: Option<&[u8]>,
+    ) -> Result<T, ProviderError> {
         // Get the ENS address, prioritize the local override variable
         let ens_addr = self.ens.unwrap_or(ens::ENS_ADDRESS);
 
@@ -991,12 +1146,13 @@ impl<P: JsonRpcClient> Provider<P> {
 
         let resolver_address: Address = decode_bytes(ParamType::Address, data);
         if resolver_address == Address::zero() {
-            return Err(ProviderError::EnsError(ens_name.to_owned()))
+            return Err(ProviderError::EnsError(ens_name.to_owned()));
         }
 
         // resolve
-        let data =
-            self.call(&ens::resolve(resolver_address, selector, ens_name).into(), None).await?;
+        let data = self
+            .call(&ens::resolve(resolver_address, selector, ens_name, parameters).into(), None)
+            .await?;
 
         Ok(decode_bytes(param, data))
     }
@@ -1344,6 +1500,30 @@ mod tests {
             .lookup_address("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA".parse().unwrap())
             .await
             .unwrap_err();
+    }
+
+    #[tokio::test]
+    async fn mainnet_resolve_avatar() {
+        let provider = Provider::<HttpProvider>::try_from(INFURA).unwrap();
+
+        for (ens_name, res) in &[
+            // HTTPS
+            ("alisha.eth", "https://ipfs.io/ipfs/QmeQm91kAdPGnUKsE74WvkqYKUeHvc2oHd2FW11V3TrqkQ"),
+            // ERC-1155
+            ("nick.eth", "https://lh3.googleusercontent.com/hKHZTZSTmcznonu8I6xcVZio1IF76fq0XmcxnvUykC-FGuVJ75UPdLDlKJsfgVXH9wOSmkyHw0C39VAYtsGyxT7WNybjQ6s3fM3macE"),
+            // HTTPS
+            ("parishilton.eth", "https://i.imgur.com/YW3Hzph.jpg"),
+            // ERC-721
+            ("shaq.eth", "https://creature.mypinata.cloud/ipfs/QmY4mSRgKa9BdB4iCaQ3tt7Vy7evvhduPwHn9JFG6iC3ie/9018.jpg"),
+            // ERC-1155 with IPFS link
+            ("vitalik.eth", "https://ipfs.io/ipfs/QmSP4nq9fnN9dAiCj42ug9Wa79rqmQerZXZch82VqpiH7U/image.gif"),
+            // IPFS
+            ("cdixon.eth", "https://ipfs.io/ipfs/QmYA6ZpEARgHvRHZQdFPynMMX8NtdL2JCadvyuyG2oA88u"),
+            ("0age.eth", "data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHN0eWxlPSJiYWNrZ3JvdW5kLWNvbG9yOmJsYWNrIiB2aWV3Qm94PSIwIDAgNTAwIDUwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB4PSIxNTUiIHk9IjYwIiB3aWR0aD0iMTkwIiBoZWlnaHQ9IjM5MCIgZmlsbD0iIzY5ZmYzNyIvPjwvc3ZnPg==")
+        ] {
+        println!("Resolving: {}", ens_name);
+        assert_eq!(provider.resolve_avatar(ens_name).await.unwrap(), Url::parse(res).unwrap());
+    }
     }
 
     #[tokio::test]
