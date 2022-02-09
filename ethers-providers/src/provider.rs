@@ -27,7 +27,7 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use thiserror::Error;
 use url::{ParseError, Url};
 
-use futures_util::lock::Mutex;
+use futures_util::{lock::Mutex, try_join};
 use std::{convert::TryFrom, fmt::Debug, str::FromStr, sync::Arc, time::Duration};
 use tracing::trace;
 use tracing_futures::Instrument;
@@ -794,9 +794,9 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
     /// If the bytes returned from the ENS registrar/resolver cannot be interpreted as
     /// a string. This should theoretically never happen.
     async fn resolve_avatar(&self, ens_name: &str) -> Result<Url, ProviderError> {
-        let field = self.resolve_field(ens_name, "avatar").await?;
+        let (field, owner) =
+            try_join!(self.resolve_field(ens_name, "avatar"), self.resolve_name(ens_name))?;
         let url = Url::from_str(&field).map_err(|e| ProviderError::CustomError(e.to_string()))?;
-        let owner = self.resolve_name(ens_name).await?;
         match url.scheme() {
             "https" | "data" => Ok(url),
             "ipfs" => erc::http_link_ipfs(url).map_err(ProviderError::CustomError),
