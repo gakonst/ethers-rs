@@ -25,11 +25,15 @@ use wasm_timer::Delay;
 /// once the transaction has enough `confirmations`. The default number of confirmations
 /// is 1, but may be adjusted with the `confirmations` method. If the transaction does not
 /// have enough confirmations or is not mined, the future will stay in the pending state.
+///
+/// # Example
+///
 ///```
-/// use ethers_providers::{Provider, Http, Middleware};
+/// # use ethers_providers::{Provider, Http};
+/// # use ethers_core::utils::Ganache;
+/// # use std::convert::TryFrom;
+/// use ethers_providers::Middleware;
 /// use ethers_core::types::TransactionRequest;
-/// use ethers_core::utils::Ganache;
-/// use std::convert::TryFrom;
 ///
 /// # #[tokio::main(flavor = "current_thread")]
 /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -106,8 +110,9 @@ impl<'a, P: JsonRpcClient> PendingTransaction<'a, P> {
 
 impl<'a, P> PendingTransaction<'a, P> {
     /// Allows inspecting the content of a pending transaction in a builder-like way to avoid
-    /// more verbose calls, e.g.: 
-    /// `let mined = token.transfer(recipient, amt).send().await?.inspect(|tx| println!(".{}", *tx)).await?;`
+    /// more verbose calls, e.g.:
+    /// `let mined = token.transfer(recipient, amt).send().await?.inspect(|tx| println!(".{}",
+    /// *tx)).await?;`
     pub fn inspect<F>(self, mut f: F) -> Self
     where
         F: FnMut(&Self),
@@ -115,15 +120,15 @@ impl<'a, P> PendingTransaction<'a, P> {
         f(&self);
         self
     }
-    
+
     /// Logs the pending transaction hash along with a custom message before it.
     pub fn log_msg<S: std::fmt::Display>(self, msg: S) -> Self {
-        self.inspect(|s| println!("{}: {:?}", msg, *s))
+        self.inspect(|s| println!("{}: {:?}", msg, **s))
     }
-    
+
     /// Logs the pending transaction's hash
     pub fn log(self) -> Self {
-        self.inspect(|s| println!("Pending hash: {:?}", *s))
+        self.inspect(|s| println!("Pending hash: {:?}", **s))
     }
 }
 
