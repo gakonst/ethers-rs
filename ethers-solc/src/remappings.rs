@@ -336,10 +336,80 @@ struct Candidate {
 }
 
 impl Candidate {
-    /// Returns `true` if the source dir of this candidate ends with `/src` or `/contracts`
-    fn is_candidate_source_a_source_dir(&self) -> bool {
-        self.source_dir.ends_with(DAPPTOOLS_CONTRACTS_DIR) ||
-            self.source_dir.ends_with(JS_CONTRACTS_DIR)
+    /// There are several cases where multiple candidates are detected for the same level
+    ///
+    /// # Example - Dapptools style
+    ///
+    /// Another directory next to a `src` dir:
+    ///  ```text
+    ///  ds-test/
+    ///  ├── aux/demo.sol
+    ///  └── src/test.sol
+    ///  ```
+    ///  which effectively ignores the `aux` dir by prioritizing source dirs and keeps
+    ///  `ds-test/=ds-test/src/`
+    ///
+    ///
+    /// # Example - node_modules / commonly onpenzeppelin related
+    ///
+    /// The `@openzeppelin` domain can contain several nested dirs in `node_modules/@openzeppelin`.
+    /// Such as
+    ///    - `node_modules/@openzeppelin/contracts`
+    ///    - `node_modules/@openzeppelin/contracts-upgradeable`
+    ///
+    /// Which should be resolved to the top level dir `@openzeppelin`
+    ///
+    /// In order to support these cases, we treat the Dapptools case as the outlier, in which case
+    /// we only keep the candidate that ends with `src`
+    fn merge_on_same_level(
+        candidates: &mut Vec<Candidate>,
+        current_dir: &Path,
+        current_level: usize,
+        window_start: PathBuf,
+    ) {
+        if let Some(pos) =
+            candidates.iter().position(|c| c.source_dir.ends_with(DAPPTOOLS_CONTRACTS_DIR))
+        {
+            let c = candidates.remove(pos);
+            *candidates = vec![c];
+        } else {
+            // merge all candidates on the current level if the current dir is itself a candidate or
+            // there are multiple nested candidates on the current level like `current/{auth,
+            // tokens}/contracts/c.sol`
+            candidates.retain(|c| c.window_level != current_level);
+            candidates.push(Candidate {
+                window_start,
+                source_dir: current_dir.to_path_buf(),
+                window_level: current_level,
+            });
+        }
+    }
+
+    /// Returns `true` if the `source_dir` ends with `contracts` or `contracts/src`
+    ///
+    /// This is used to detect an edge case in `"@chainlink/contracts"` which layout is
+    ///
+    /// ```text
+    /// contracts/src
+    /// ├── v0.4
+    ///     ├── Pointer.sol
+    ///     ├── interfaces
+    ///         ├── AggregatorInterface.sol
+    ///     ├── tests
+    ///         ├── BasicConsumer.sol
+    /// ├── v0.5
+    ///     ├── Chainlink.sol
+    /// ├── v0.6
+    ///     ├── AccessControlledAggregator.sol
+    /// ```
+    ///
+    /// And import commonly used is
+    ///
+    /// ```solidity
+    /// import '@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol';
+    /// ```
+    fn source_dir_ends_with_js_source(&self) -> bool {
+        self.source_dir.ends_with(JS_CONTRACTS_DIR) || self.source_dir.ends_with("contracts/src/")
     }
 }
 
@@ -419,28 +489,7 @@ fn find_remapping_candidates(
             .count() >
             1
     {
-        // here we need to check for layouts like
-        // ```test
-        // ds-test/
-        // ├── aux/demo.sol
-        // └── src/test.sol
-        // ```
-        // which effectively ignores the `aux` dir by prioritizing source dirs and keeps
-        // `ds-test/=ds-test/src/`
-        if let Some(pos) = candidates.iter().position(Candidate::is_candidate_source_a_source_dir) {
-            let c = candidates.remove(pos);
-            candidates = vec![c];
-        } else {
-            // merge all candidates on the current level if the current dir is itself a candidate or
-            // there are multiple nested candidates on the current level like `current/{auth,
-            // tokens}/contracts/c.sol`
-            candidates.retain(|c| c.window_level != current_level);
-            candidates.push(Candidate {
-                window_start,
-                source_dir: current_dir.to_path_buf(),
-                window_level: current_level,
-            });
-        }
+        Candidate::merge_on_same_level(&mut candidates, current_dir, current_level, window_start);
     } else {
         // this handles the case if there is a single nested candidate
         if let Some(candidate) = candidates.iter_mut().find(|c| c.window_level == current_level) {
@@ -448,7 +497,7 @@ fn find_remapping_candidates(
             // contracts dir for cases like `current/nested/contracts/c.sol` which should point to
             // `current`
             let distance = dir_distance(&candidate.window_start, &candidate.source_dir);
-            if distance > 1 && candidate.source_dir.ends_with(JS_CONTRACTS_DIR) {
+            if distance > 1 && candidate.source_dir_ends_with_js_source() {
                 candidate.source_dir = window_start;
             } else if !is_source_dir(&candidate.source_dir) &&
                 candidate.source_dir != candidate.window_start
@@ -653,6 +702,129 @@ mod tests {
             },
         ];
         expected.sort_unstable();
+        pretty_assertions::assert_eq!(remappings, expected);
+    }
+
+    #[test]
+    fn can_resolve_nested_chainlink_remappings() {
+        let tmp_dir = tempdir("root").unwrap();
+        let paths = [
+            "@chainlink/contracts/src/v0.6/vendor/Contract.sol",
+            "@chainlink/contracts/src/v0.8/tests/Contract.sol",
+            "@chainlink/contracts/src/v0.7/Contract.sol",
+            "@chainlink/contracts/src/v0.6/Contract.sol",
+            "@chainlink/contracts/src/v0.5/Contract.sol",
+            "@chainlink/contracts/src/v0.7/tests/Contract.sol",
+            "@chainlink/contracts/src/v0.7/interfaces/Contract.sol",
+            "@chainlink/contracts/src/v0.4/tests/Contract.sol",
+            "@chainlink/contracts/src/v0.6/tests/Contract.sol",
+            "@chainlink/contracts/src/v0.5/tests/Contract.sol",
+            "@chainlink/contracts/src/v0.8/vendor/Contract.sol",
+            "@chainlink/contracts/src/v0.5/dev/Contract.sol",
+            "@chainlink/contracts/src/v0.6/examples/Contract.sol",
+            "@chainlink/contracts/src/v0.5/interfaces/Contract.sol",
+            "@chainlink/contracts/src/v0.4/interfaces/Contract.sol",
+            "@chainlink/contracts/src/v0.4/vendor/Contract.sol",
+            "@chainlink/contracts/src/v0.6/interfaces/Contract.sol",
+            "@chainlink/contracts/src/v0.7/dev/Contract.sol",
+            "@chainlink/contracts/src/v0.8/dev/Contract.sol",
+            "@chainlink/contracts/src/v0.5/vendor/Contract.sol",
+            "@chainlink/contracts/src/v0.7/vendor/Contract.sol",
+            "@chainlink/contracts/src/v0.4/Contract.sol",
+            "@chainlink/contracts/src/v0.8/interfaces/Contract.sol",
+            "@chainlink/contracts/src/v0.6/dev/Contract.sol",
+        ];
+        mkdir_or_touch(tmp_dir.path(), &paths[..]);
+        let remappings = Remapping::find_many(tmp_dir.path());
+
+        let expected = vec![Remapping {
+            name: "@chainlink/".to_string(),
+            path: to_str(tmp_dir.path().join("@chainlink")),
+        }];
+        pretty_assertions::assert_eq!(remappings, expected);
+    }
+
+    #[test]
+    fn can_resolve_oz_upgradeable_remappings() {
+        let tmp_dir = tempdir("root").unwrap();
+        let paths = [
+            "@openzeppelin/contracts-upgradeable/proxy/ERC1967/Contract.sol",
+            "@openzeppelin/contracts-upgradeable/token/ERC1155/Contract.sol",
+            "@openzeppelin/contracts/token/ERC777/Contract.sol",
+            "@openzeppelin/contracts/token/ERC721/presets/Contract.sol",
+            "@openzeppelin/contracts/interfaces/Contract.sol",
+            "@openzeppelin/contracts-upgradeable/token/ERC777/presets/Contract.sol",
+            "@openzeppelin/contracts/token/ERC1155/extensions/Contract.sol",
+            "@openzeppelin/contracts/proxy/Contract.sol",
+            "@openzeppelin/contracts/proxy/utils/Contract.sol",
+            "@openzeppelin/contracts-upgradeable/security/Contract.sol",
+            "@openzeppelin/contracts-upgradeable/utils/Contract.sol",
+            "@openzeppelin/contracts/token/ERC20/Contract.sol",
+            "@openzeppelin/contracts-upgradeable/utils/introspection/Contract.sol",
+            "@openzeppelin/contracts/metatx/Contract.sol",
+            "@openzeppelin/contracts/utils/cryptography/Contract.sol",
+            "@openzeppelin/contracts/token/ERC20/utils/Contract.sol",
+            "@openzeppelin/contracts-upgradeable/token/ERC20/utils/Contract.sol",
+            "@openzeppelin/contracts-upgradeable/proxy/Contract.sol",
+            "@openzeppelin/contracts-upgradeable/token/ERC20/presets/Contract.sol",
+            "@openzeppelin/contracts-upgradeable/utils/math/Contract.sol",
+            "@openzeppelin/contracts-upgradeable/utils/escrow/Contract.sol",
+            "@openzeppelin/contracts/governance/extensions/Contract.sol",
+            "@openzeppelin/contracts-upgradeable/interfaces/Contract.sol",
+            "@openzeppelin/contracts/proxy/transparent/Contract.sol",
+            "@openzeppelin/contracts/utils/structs/Contract.sol",
+            "@openzeppelin/contracts-upgradeable/access/Contract.sol",
+            "@openzeppelin/contracts/governance/compatibility/Contract.sol",
+            "@openzeppelin/contracts/governance/Contract.sol",
+            "@openzeppelin/contracts-upgradeable/governance/extensions/Contract.sol",
+            "@openzeppelin/contracts/security/Contract.sol",
+            "@openzeppelin/contracts-upgradeable/metatx/Contract.sol",
+            "@openzeppelin/contracts-upgradeable/token/ERC721/utils/Contract.sol",
+            "@openzeppelin/contracts/token/ERC721/utils/Contract.sol",
+            "@openzeppelin/contracts-upgradeable/governance/compatibility/Contract.sol",
+            "@openzeppelin/contracts/token/common/Contract.sol",
+            "@openzeppelin/contracts/proxy/beacon/Contract.sol",
+            "@openzeppelin/contracts-upgradeable/token/ERC721/Contract.sol",
+            "@openzeppelin/contracts-upgradeable/proxy/beacon/Contract.sol",
+            "@openzeppelin/contracts/token/ERC1155/utils/Contract.sol",
+            "@openzeppelin/contracts/token/ERC777/presets/Contract.sol",
+            "@openzeppelin/contracts-upgradeable/token/ERC20/Contract.sol",
+            "@openzeppelin/contracts-upgradeable/utils/structs/Contract.sol",
+            "@openzeppelin/contracts/utils/escrow/Contract.sol",
+            "@openzeppelin/contracts/utils/Contract.sol",
+            "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/Contract.sol",
+            "@openzeppelin/contracts/token/ERC721/extensions/Contract.sol",
+            "@openzeppelin/contracts-upgradeable/token/ERC777/Contract.sol",
+            "@openzeppelin/contracts/token/ERC1155/presets/Contract.sol",
+            "@openzeppelin/contracts/token/ERC721/Contract.sol",
+            "@openzeppelin/contracts/token/ERC1155/Contract.sol",
+            "@openzeppelin/contracts-upgradeable/governance/Contract.sol",
+            "@openzeppelin/contracts/token/ERC20/extensions/Contract.sol",
+            "@openzeppelin/contracts-upgradeable/utils/cryptography/Contract.sol",
+            "@openzeppelin/contracts-upgradeable/token/ERC1155/presets/Contract.sol",
+            "@openzeppelin/contracts/access/Contract.sol",
+            "@openzeppelin/contracts/governance/utils/Contract.sol",
+            "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/Contract.sol",
+            "@openzeppelin/contracts-upgradeable/token/common/Contract.sol",
+            "@openzeppelin/contracts-upgradeable/token/ERC1155/utils/Contract.sol",
+            "@openzeppelin/contracts/proxy/ERC1967/Contract.sol",
+            "@openzeppelin/contracts/finance/Contract.sol",
+            "@openzeppelin/contracts-upgradeable/token/ERC1155/extensions/Contract.sol",
+            "@openzeppelin/contracts-upgradeable/governance/utils/Contract.sol",
+            "@openzeppelin/contracts-upgradeable/proxy/utils/Contract.sol",
+            "@openzeppelin/contracts/token/ERC20/presets/Contract.sol",
+            "@openzeppelin/contracts/utils/math/Contract.sol",
+            "@openzeppelin/contracts-upgradeable/token/ERC721/presets/Contract.sol",
+            "@openzeppelin/contracts-upgradeable/finance/Contract.sol",
+            "@openzeppelin/contracts/utils/introspection/Contract.sol",
+        ];
+        mkdir_or_touch(tmp_dir.path(), &paths[..]);
+        let remappings = Remapping::find_many(tmp_dir.path());
+
+        let expected = vec![Remapping {
+            name: "@openzeppelin/".to_string(),
+            path: to_str(tmp_dir.path().join("@openzeppelin")),
+        }];
         pretty_assertions::assert_eq!(remappings, expected);
     }
 
