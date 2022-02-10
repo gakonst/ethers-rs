@@ -24,7 +24,7 @@ pub use stream::{interval, FilterWatcher, TransactionStream, DEFAULT_POLL_INTERV
 mod pubsub;
 pub use pubsub::{PubsubClient, SubscriptionStream};
 
-mod erc;
+pub mod erc;
 
 use async_trait::async_trait;
 use auto_impl::auto_impl;
@@ -268,6 +268,10 @@ pub trait Middleware: Sync + Send + Debug {
 
     async fn resolve_avatar(&self, ens_name: &str) -> Result<Url, Self::Error> {
         self.inner().resolve_avatar(ens_name).await.map_err(FromErr::from)
+    }
+
+    async fn resolve_token(&self, token: erc::ERCToken) -> Result<Url, Self::Error> {
+        self.inner().resolve_token(token).await.map_err(FromErr::from)
     }
 
     async fn resolve_field(&self, ens_name: &str, field: &str) -> Result<String, Self::Error> {

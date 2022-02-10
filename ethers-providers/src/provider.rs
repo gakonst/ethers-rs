@@ -792,6 +792,18 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
     /// Returns the avatar HTTP link of the avatar that the `ens_name` resolves to (or None
     /// if not configured)
     ///
+    /// # Example
+    /// ```
+    /// # use ethers_providers::{Provider, Http as HttpProvider, Middleware};
+    /// # use std::convert::TryFrom;
+    /// # #[tokio::main(flavor = "current_thread")]
+    /// # async fn main() {
+    /// # let provider = Provider::<HttpProvider>::try_from("https://mainnet.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27").unwrap();
+    /// let avatar = provider.resolve_avatar("parishilton.eth").await.unwrap();
+    /// assert_eq!(avatar.to_string(), "https://i.imgur.com/YW3Hzph.jpg");
+    /// # }
+    /// ```
+    ///
     /// # Panics
     ///
     /// If the bytes returned from the ENS registrar/resolver cannot be interpreted as
@@ -804,60 +816,35 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
             "https" | "data" => Ok(url),
             "ipfs" => erc::http_link_ipfs(url).map_err(ProviderError::CustomError),
             "eip155" => {
-                let split: Vec<&str> = url.path().trim_start_matches("1/").split(':').collect();
-                let (inner_scheme, inner_path) = if split.len() == 2 {
-                    (split[0], split[1])
-                } else {
-                    return Err(ProviderError::CustomError("Unsupported ERC link".to_string()));
-                };
-
-                let token_split: Vec<&str> = inner_path.split('/').collect();
-                let (contract_addr, token_id) = if token_split.len() == 2 {
-                    let token_id = U256::from_dec_str(token_split[1]).map_err(|e| {
-                        ProviderError::CustomError(format!(
-                            "Unsupported token id type: {} {}",
-                            token_split[1], e
-                        ))
-                    })?;
-                    let mut token_id_bytes = [0x0; 32];
-                    token_id.to_big_endian(&mut token_id_bytes);
-                    (
-                        Address::from_str(token_split[0].trim_start_matches("0x")).map_err(
-                            |e| {
-                                ProviderError::CustomError(format!(
-                                    "Invalid contract address: {} {}",
-                                    token_split[0], e
-                                ))
-                            },
-                        )?,
-                        token_id_bytes,
-                    )
-                } else {
-                    return Err(ProviderError::CustomError(
-                        "Unsupported ERC link path".to_string(),
-                    ));
-                };
-                let selector: Selector = match inner_scheme {
-                    "erc721" => {
+                let token =
+                    erc::ERCToken::from_str(url.path()).map_err(ProviderError::CustomError)?;
+                match token.type_ {
+                    erc::ERCTokenType::ERC721 => {
                         let tx = TransactionRequest {
-                            data: Some([&erc::ERC721_SELECTOR[..], &token_id].concat().into()),
-                            to: Some(NameOrAddress::Address(contract_addr)),
+                            data: Some(
+                                [&erc::ERC721_OWNER_SELECTOR[..], &token.id].concat().into(),
+                            ),
+                            to: Some(NameOrAddress::Address(token.contract)),
                             ..Default::default()
                         };
                         let data = self.call(&tx.into(), None).await?;
                         if decode_bytes::<Address>(ParamType::Address, data) != owner {
                             return Err(ProviderError::CustomError("Incorrect owner.".to_string()));
                         }
-                        [0xc8, 0x7b, 0x56, 0xdd]
                     }
-                    "erc1155" => {
+                    erc::ERCTokenType::ERC1155 => {
                         let tx = TransactionRequest {
                             data: Some(
-                                [&erc::ERC1155_SELECTOR[..], &[0x0; 12], &owner.0, &token_id]
-                                    .concat()
-                                    .into(),
+                                [
+                                    &erc::ERC1155_BALANCE_SELECTOR[..],
+                                    &[0x0; 12],
+                                    &owner.0,
+                                    &token.id,
+                                ]
+                                .concat()
+                                .into(),
                             ),
-                            to: Some(NameOrAddress::Address(contract_addr)),
+                            to: Some(NameOrAddress::Address(token.contract)),
                             ..Default::default()
                         };
                         let data = self.call(&tx.into(), None).await?;
@@ -866,39 +853,10 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
                                 "Incorrect balance.".to_string(),
                             ));
                         }
-                        [0x0e, 0x89, 0x34, 0x1c]
                     }
-                    _ => {
-                        return Err(ProviderError::CustomError(
-                            "Unsupported eip155 token type".to_string(),
-                        ))
-                    }
-                };
-
-                let tx = TransactionRequest {
-                    data: Some([&selector[..], &token_id].concat().into()),
-                    to: Some(NameOrAddress::Address(contract_addr)),
-                    ..Default::default()
-                };
-                let data = self.call(&tx.into(), None).await?;
-                let mut metadata_url = Url::parse(&decode_bytes::<String>(ParamType::String, data))
-                    .map_err(|e| {
-                        ProviderError::CustomError(format!("Invalid metadata url: {}", e))
-                    })?;
-
-                if inner_scheme == "erc1155" {
-                    metadata_url.set_path(
-                        &metadata_url.path().replace("%7Bid%7D", &hex::encode(&token_id)),
-                    );
                 }
-                if metadata_url.scheme() == "ipfs" {
-                    metadata_url =
-                        erc::http_link_ipfs(metadata_url).map_err(ProviderError::CustomError)?;
-                }
-                let metadata: erc::Metadata = reqwest::get(metadata_url).await?.json().await?;
 
-                let image_url = Url::parse(&metadata.image)
-                    .map_err(|e| ProviderError::CustomError(e.to_string()))?;
+                let image_url = self.resolve_token(token).await?;
                 match image_url.scheme() {
                     "https" | "data" => Ok(image_url),
                     "ipfs" => erc::http_link_ipfs(image_url).map_err(ProviderError::CustomError),
@@ -909,6 +867,47 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
             }
             _ => Err(ProviderError::CustomError("Unsupported scheme".to_string())),
         }
+    }
+
+    /// Returns the URL (not necesserily HTTP) of the image behind a token.
+    ///
+    /// # Example
+    /// ```
+    /// # use ethers_providers::{Provider, Http as HttpProvider, Middleware};
+    /// # use std::{str::FromStr, convert::TryFrom};
+    /// # #[tokio::main(flavor = "current_thread")]
+    /// # async fn main() {
+    /// # let provider = Provider::<HttpProvider>::try_from("https://mainnet.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27").unwrap();
+    /// let token = ethers_providers::erc::ERCToken::from_str("erc721:0xc92ceddfb8dd984a89fb494c376f9a48b999aafc/9018").unwrap();
+    /// let token_image = provider.resolve_token(token).await.unwrap();
+    /// assert_eq!(token_image.to_string(), "https://creature.mypinata.cloud/ipfs/QmY4mSRgKa9BdB4iCaQ3tt7Vy7evvhduPwHn9JFG6iC3ie/9018.jpg");
+    /// # }
+    /// ```
+    ///
+    /// # Panics
+    ///
+    /// If the bytes returned from the ENS registrar/resolver cannot be interpreted as
+    /// a string. This should theoretically never happen.
+    async fn resolve_token(&self, token: erc::ERCToken) -> Result<Url, ProviderError> {
+        let selector = token.type_.resolution_selector();
+        let tx = TransactionRequest {
+            data: Some([&selector[..], &token.id].concat().into()),
+            to: Some(NameOrAddress::Address(token.contract)),
+            ..Default::default()
+        };
+        let data = self.call(&tx.into(), None).await?;
+        let mut metadata_url = Url::parse(&decode_bytes::<String>(ParamType::String, data))
+            .map_err(|e| ProviderError::CustomError(format!("Invalid metadata url: {}", e)))?;
+
+        if token.type_ == erc::ERCTokenType::ERC1155 {
+            metadata_url
+                .set_path(&metadata_url.path().replace("%7Bid%7D", &hex::encode(&token.id)));
+        }
+        if metadata_url.scheme() == "ipfs" {
+            metadata_url = erc::http_link_ipfs(metadata_url).map_err(ProviderError::CustomError)?;
+        }
+        let metadata: erc::Metadata = reqwest::get(metadata_url).await?.json().await?;
+        Url::parse(&metadata.image).map_err(|e| ProviderError::CustomError(e.to_string()))
     }
 
     /// Fetch a field for the `ens_name` (no None if not configured).
