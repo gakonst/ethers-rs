@@ -343,6 +343,28 @@ impl Candidate {
     }
 
     /// Returns `true` if the `source_dir` ends with `contracts` or `contracts/src`
+    ///
+    /// This is used to detect an edge case in `"@chainlink/contracts"` which layout is
+    ///
+    /// ```text
+    /// contracts/src
+    /// ├── v0.4
+    ///     ├── Pointer.sol
+    ///     ├── interfaces
+    ///         ├── AggregatorInterface.sol
+    ///     ├── tests
+    ///         ├── BasicConsumer.sol
+    /// ├── v0.5
+    ///     ├── Chainlink.sol
+    /// ├── v0.6
+    ///     ├── AccessControlledAggregator.sol
+    /// ```
+    ///
+    /// And import commonly used is
+    ///
+    /// ```solidity
+    /// import '@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol';
+    /// ```
     fn source_dir_ends_with_js_source(&self) -> bool {
         self.source_dir.ends_with(JS_CONTRACTS_DIR) || self.source_dir.ends_with("contracts/src/")
     }
