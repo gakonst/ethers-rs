@@ -726,6 +726,17 @@ mod tests {
         assert_eq!(out, other);
     }
 
+    #[test]
+    fn solc_metadata_works() {
+        let input = include_str!("../../test-data/in/compiler-in-1.json");
+        let mut input: CompilerInput = serde_json::from_str(input).unwrap();
+        input.settings.push_output_selection("metadata");
+        let out = solc().compile(&input).unwrap();
+        for (_, c) in out.split().1.contracts_iter() {
+            assert!(c.metadata.is_some());
+        }
+    }
+
     #[cfg(feature = "async")]
     #[tokio::test]
     async fn async_solc_compile_works() {

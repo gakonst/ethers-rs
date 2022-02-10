@@ -103,9 +103,14 @@ impl Default for CompilerInput {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Settings {
+    /// Stop compilation after the given stage.
+    /// since 0.8.11: only "parsing" is valid here
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stop_after: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub remappings: Vec<Remapping>,
     pub optimizer: Optimizer,
+    /// Metadata settings
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub metadata: Option<SettingsMetadata>,
     /// This field can be used to select desired outputs based
@@ -199,6 +204,50 @@ impl Settings {
         output_selection
     }
 
+    /// Inserts the value for all files and contracts
+    pub fn push_output_selection(&mut self, value: impl Into<String>) {
+        self.push_contract_output_selection("*", value)
+    }
+
+    /// Inserts the `key` `value` pair to the `output_selection` for all files
+    ///
+    /// If the `key` already exists, then the value is added to the existing list
+    pub fn push_contract_output_selection(
+        &mut self,
+        contracts: impl Into<String>,
+        value: impl Into<String>,
+    ) {
+        let value = value.into();
+        let values = self
+            .output_selection
+            .entry("*".to_string())
+            .or_default()
+            .entry(contracts.into())
+            .or_default();
+        if !values.contains(&value) {
+            values.push(value)
+        }
+    }
+
+    /// Sets the value for all files and contracts
+    pub fn set_output_selection(&mut self, values: impl IntoIterator<Item = impl Into<String>>) {
+        self.set_contract_output_selection("*", values)
+    }
+
+    /// Sets the `key` to the `values` pair to the `output_selection` for all files
+    ///
+    /// This will replace the existing values for `key` if they're present
+    pub fn set_contract_output_selection(
+        &mut self,
+        key: impl Into<String>,
+        values: impl IntoIterator<Item = impl Into<String>>,
+    ) {
+        self.output_selection
+            .entry("*".to_string())
+            .or_default()
+            .insert(key.into(), values.into_iter().map(Into::into).collect());
+    }
+
     /// Adds `ast` to output
     #[must_use]
     pub fn with_ast(mut self) -> Self {
@@ -211,6 +260,7 @@ impl Settings {
 impl Default for Settings {
     fn default() -> Self {
         Self {
+            stop_after: None,
             optimizer: Default::default(),
             metadata: None,
             output_selection: Self::default_output_selection(),
@@ -392,26 +442,60 @@ impl FromStr for EvmVersion {
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SettingsMetadata {
+    /// Use only literal content and not URLs (false by default)
     #[serde(default, rename = "useLiteralContent", skip_serializing_if = "Option::is_none")]
     pub use_literal_content: Option<bool>,
+    /// Use the given hash method for the metadata hash that is appended to the bytecode.
+    /// The metadata hash can be removed from the bytecode via option "none".
+    /// The other options are "ipfs" and "bzzr1".
+    /// If the option is omitted, "ipfs" is used by default.
     #[serde(default, rename = "bytecodeHash", skip_serializing_if = "Option::is_none")]
     pub bytecode_hash: Option<String>,
 }
 
+/// Bindings for [`solc` contract metadata](https://docs.soliditylang.org/en/latest/metadata.html)
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Metadata {
     pub compiler: Compiler,
     pub language: String,
     pub output: Output,
-    pub settings: Settings,
+    pub settings: MetadataSettings,
     pub sources: MetadataSources,
     pub version: i64,
 }
 
+/// Compiler settings
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MetadataSettings {
+    /// Required for Solidity: File and name of the contract or library this metadata is created
+    /// for.
+    #[serde(default, rename = "compilationTarget")]
+    pub compilation_target: BTreeMap<String, String>,
+    #[serde(flatten)]
+    pub inner: Settings,
+}
+
+/// Compilation source files/source units, keys are file names
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MetadataSources {
     #[serde(flatten)]
-    pub inner: BTreeMap<String, serde_json::Value>,
+    pub inner: BTreeMap<String, MetadataSource>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MetadataSource {
+    /// Required: keccak256 hash of the source file
+    pub keccak256: String,
+    /// Required (unless "content" is used, see below): Sorted URL(s)
+    /// to the source file, protocol is more or less arbitrary, but a
+    /// Swarm URL is recommended
+    #[serde(default)]
+    pub urls: Vec<String>,
+    /// Required (unless "url" is used): literal contents of the source file
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub content: Option<String>,
+    /// Optional: SPDX license identifier as given in the source file
+    pub license: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
