@@ -718,7 +718,7 @@ impl From<Loc> for Location {
 
 fn read_node(file: impl AsRef<Path>) -> Result<Node> {
     let file = file.as_ref();
-    let source = Source::read(file).map_err(|err| SolcError::Resolve(err))?;
+    let source = Source::read(file).map_err(SolcError::Resolve)?;
     let data = parse_data(source.as_ref(), file);
     Ok(Node { path: file.to_path_buf(), source, data })
 }
