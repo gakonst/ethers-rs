@@ -118,6 +118,9 @@ pub enum ProviderError {
     #[error(transparent)]
     HexError(#[from] hex::FromHexError),
 
+    #[error(transparent)]
+    HTTPError(#[from] reqwest::Error),
+
     #[error("custom error: {0}")]
     CustomError(String),
 
@@ -892,12 +895,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
                     metadata_url =
                         erc::http_link_ipfs(metadata_url).map_err(ProviderError::CustomError)?;
                 }
-                let metadata: erc::Metadata = reqwest::get(metadata_url)
-                    .await
-                    .map_err(|e| ProviderError::CustomError(e.to_string()))?
-                    .json()
-                    .await
-                    .map_err(|e| ProviderError::CustomError(e.to_string()))?;
+                let metadata: erc::Metadata = reqwest::get(metadata_url).await?.json().await?;
 
                 let image_url = Url::parse(&metadata.image)
                     .map_err(|e| ProviderError::CustomError(e.to_string()))?;
