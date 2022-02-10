@@ -1,7 +1,7 @@
 use crate::{
     artifacts::Source,
     error::{Result, SolcError},
-    report, utils, CompilerInput, CompilerOutput,
+    utils, CompilerInput, CompilerOutput,
 };
 use semver::{Version, VersionReq};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -423,9 +423,9 @@ impl Solc {
     #[cfg(feature = "svm")]
     pub async fn install(version: &Version) -> std::result::Result<(), svm::SolcVmError> {
         tracing::trace!("installing solc version \"{}\"", version);
-        report::solc_installation_start(version);
+        crate::report::solc_installation_start(version);
         let result = svm::install(version).await;
-        report::solc_installation_success(version);
+        crate::report::solc_installation_success(version);
         result
     }
 
@@ -433,9 +433,9 @@ impl Solc {
     #[cfg(all(feature = "svm", feature = "async"))]
     pub fn blocking_install(version: &Version) -> std::result::Result<(), svm::SolcVmError> {
         tracing::trace!("blocking installing solc version \"{}\"", version);
-        report::solc_installation_start(version);
+        crate::report::solc_installation_start(version);
         tokio::runtime::Runtime::new().unwrap().block_on(svm::install(version))?;
-        report::solc_installation_success(version);
+        crate::report::solc_installation_success(version);
         Ok(())
     }
 
