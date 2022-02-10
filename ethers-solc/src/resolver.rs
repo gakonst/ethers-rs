@@ -210,7 +210,7 @@ impl Graph {
         let mut unresolved: VecDeque<(PathBuf, Node)> = sources
             .into_par_iter()
             .map(|(path, source)| {
-                let data = parse_data(source.as_ref());
+                let data = parse_data(source.as_ref(), &path);
                 (path.clone(), Node { path, source, data })
             })
             .collect();
@@ -721,7 +721,7 @@ impl From<Loc> for Location {
 fn read_node(file: impl AsRef<Path>) -> Result<Node> {
     let file = file.as_ref();
     let source = Source::read(file)?;
-    let data = parse_data(source.as_ref());
+    let data = parse_data(source.as_ref(), file);
     Ok(Node { path: file.to_path_buf(), source, data })
 }
 
@@ -729,7 +729,7 @@ fn read_node(file: impl AsRef<Path>) -> Result<Node> {
 ///
 /// This will attempt to parse the solidity AST and extract the imports and version pragma. If
 /// parsing fails, we'll fall back to extract that info via regex
-fn parse_data(content: &str) -> SolData {
+fn parse_data(content: &str, file: &Path) -> SolData {
     let mut version = None;
     let mut imports = Vec::<SolDataUnit<PathBuf>>::new();
     match solang_parser::parse(content, 0) {
@@ -756,7 +756,8 @@ fn parse_data(content: &str) -> SolData {
         }
         Err(err) => {
             tracing::trace!(
-                "failed to parse solidity ast: \"{:?}\". Falling back to regex to extract data",
+                "failed to parse \"{}\" ast: \"{:?}\". Falling back to regex to extract data",
+                file.display(),
                 err
             );
             version = capture_outer_and_inner(content, &utils::RE_SOL_PRAGMA_VERSION, &["version"])
@@ -764,9 +765,8 @@ fn parse_data(content: &str) -> SolData {
                 .map(|(cap, name)| {
                     SolDataUnit::new(name.as_str().to_owned(), cap.to_owned().into())
                 });
-            imports = capture_outer_and_inner(content, &utils::RE_SOL_IMPORT, &["p1", "p2", "p3"])
-                .iter()
-                .map(|(cap, m)| SolDataUnit::new(PathBuf::from(m.as_str()), cap.to_owned().into()))
+            imports = utils::find_import_paths(content)
+                .map(|m| SolDataUnit::new(PathBuf::from(m.as_str()), m.to_owned().into()))
                 .collect();
         }
     };
