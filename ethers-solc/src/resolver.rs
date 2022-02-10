@@ -56,7 +56,7 @@ use regex::Match;
 use semver::VersionReq;
 use solang_parser::pt::{Import, Loc, SourceUnitPart};
 
-use crate::{error::Result, utils, ProjectPathsConfig, Solc, Source, Sources};
+use crate::{error::Result, utils, ProjectPathsConfig, Solc, SolcError, Source, Sources};
 
 /// The underlying edges of the graph which only contains the raw relationship data.
 ///
@@ -452,7 +452,7 @@ impl Graph {
             Ok(versioned_nodes)
         } else {
             tracing::error!("failed to resolve versions");
-            Err(crate::error::SolcError::msg(errors.join("\n")))
+            Err(SolcError::msg(errors.join("\n")))
         }
     }
 
@@ -720,7 +720,7 @@ impl From<Loc> for Location {
 
 fn read_node(file: impl AsRef<Path>) -> Result<Node> {
     let file = file.as_ref();
-    let source = Source::read(file)?;
+    let source = Source::read(file).map_err(|err| SolcError::Resolve(err))?;
     let data = parse_data(source.as_ref(), file);
     Ok(Node { path: file.to_path_buf(), source, data })
 }
