@@ -584,8 +584,6 @@ impl VersionedSources {
         self,
         allowed_lib_paths: &crate::AllowedLibPaths,
     ) -> Result<std::collections::BTreeMap<Solc, (semver::Version, Sources)>> {
-        use crate::SolcError;
-
         // we take the installer lock here to ensure installation checking is done in sync
         #[cfg(any(test, feature = "tests"))]
         let _lock = crate::compile::take_solc_installer_lock();

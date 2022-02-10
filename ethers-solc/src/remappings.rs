@@ -341,6 +341,11 @@ impl Candidate {
         self.source_dir.ends_with(DAPPTOOLS_CONTRACTS_DIR) ||
             self.source_dir.ends_with(JS_CONTRACTS_DIR)
     }
+
+    /// Returns `true` if the `source_dir` ends with `contracts` or `contracts/src`
+    fn source_dir_ends_with_js_source(&self) -> bool {
+        self.source_dir.ends_with(JS_CONTRACTS_DIR) || self.source_dir.ends_with("contracts/src/")
+    }
 }
 
 fn is_source_dir(dir: &Path) -> bool {
@@ -409,6 +414,9 @@ fn find_remapping_candidates(
         }
     }
 
+    let is_dup = current_level == 0;
+    if is_dup {}
+
     // need to find the actual next window in the event `open` is a lib dir
     let window_start = next_nested_window(open, current_dir);
     // finally, we need to merge, adjust candidates from the same level and opening window
@@ -448,7 +456,7 @@ fn find_remapping_candidates(
             // contracts dir for cases like `current/nested/contracts/c.sol` which should point to
             // `current`
             let distance = dir_distance(&candidate.window_start, &candidate.source_dir);
-            if distance > 1 && candidate.source_dir.ends_with(JS_CONTRACTS_DIR) {
+            if distance > 1 && candidate.source_dir_ends_with_js_source() {
                 candidate.source_dir = window_start;
             } else if !is_source_dir(&candidate.source_dir) &&
                 candidate.source_dir != candidate.window_start
@@ -653,6 +661,45 @@ mod tests {
             },
         ];
         expected.sort_unstable();
+        pretty_assertions::assert_eq!(remappings, expected);
+    }
+
+    #[test]
+    fn can_resolve_more_oz_remappings() {
+        let tmp_dir = tempdir("root").unwrap();
+        let paths = [
+            "@chainlink/contracts/src/v0.6/vendor/Contract.sol",
+            "@chainlink/contracts/src/v0.8/tests/Contract.sol",
+            "@chainlink/contracts/src/v0.7/Contract.sol",
+            "@chainlink/contracts/src/v0.6/Contract.sol",
+            "@chainlink/contracts/src/v0.5/Contract.sol",
+            "@chainlink/contracts/src/v0.7/tests/Contract.sol",
+            "@chainlink/contracts/src/v0.7/interfaces/Contract.sol",
+            "@chainlink/contracts/src/v0.4/tests/Contract.sol",
+            "@chainlink/contracts/src/v0.6/tests/Contract.sol",
+            "@chainlink/contracts/src/v0.5/tests/Contract.sol",
+            "@chainlink/contracts/src/v0.8/vendor/Contract.sol",
+            "@chainlink/contracts/src/v0.5/dev/Contract.sol",
+            "@chainlink/contracts/src/v0.6/examples/Contract.sol",
+            "@chainlink/contracts/src/v0.5/interfaces/Contract.sol",
+            "@chainlink/contracts/src/v0.4/interfaces/Contract.sol",
+            "@chainlink/contracts/src/v0.4/vendor/Contract.sol",
+            "@chainlink/contracts/src/v0.6/interfaces/Contract.sol",
+            "@chainlink/contracts/src/v0.7/dev/Contract.sol",
+            "@chainlink/contracts/src/v0.8/dev/Contract.sol",
+            "@chainlink/contracts/src/v0.5/vendor/Contract.sol",
+            "@chainlink/contracts/src/v0.7/vendor/Contract.sol",
+            "@chainlink/contracts/src/v0.4/Contract.sol",
+            "@chainlink/contracts/src/v0.8/interfaces/Contract.sol",
+            "@chainlink/contracts/src/v0.6/dev/Contract.sol",
+        ];
+        mkdir_or_touch(tmp_dir.path(), &paths[..]);
+        let remappings = Remapping::find_many(tmp_dir.path());
+
+        let expected = vec![Remapping {
+            name: "@chainlink/".to_string(),
+            path: to_str(tmp_dir.path().join("@chainlink")),
+        }];
         pretty_assertions::assert_eq!(remappings, expected);
     }
 
