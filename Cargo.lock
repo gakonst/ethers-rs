@@ -1094,7 +1094,7 @@ dependencies = [
 [[package]]
 name = "ethabi"
 version = "16.0.0"
-source = "git+https://github.com/rust-ethereum/ethabi?branch=master#6f18e11621d29b6cd978ef39b48fa572b823bb80"
+source = "git+https://github.com/rust-ethereum/ethabi?branch=master#321a651e767d7dbe81e8606cbf42f08dedf58c2b"
 dependencies = [
  "ethereum-types",
  "hex",
