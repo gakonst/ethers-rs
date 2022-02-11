@@ -272,8 +272,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
             }
         }
 
-        // TODO: Can we poll the futures below at the same time?
-        // Access List + Name resolution and then Gas price + Gas
+        // TODO: Can we poll the futures below at the same time as the gas price?
 
         // set the ENS name
         if let Some(NameOrAddress::Name(ref ens_name)) = tx.to() {
@@ -281,27 +280,35 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
             tx.set_to(addr);
         }
 
-        // estimate the gas without the access list
-        let gas = maybe(tx.gas().cloned(), self.estimate_gas(tx)).await?;
-        let mut al_used = false;
+        // If we have an empty access list, attempt to populate it. If we attempt to fill
+        // the access list, maybe_gas_res becomes Some(Ok(min(estimated_gas, gas_with_access_list)))
+        let mut maybe_gas_res = None;
+        if let Some(starting_al) = tx.access_list() {
+            if starting_al.0.is_empty() {
+                let (mut gas_res, al_res) = futures_util::join!(
+                    maybe(tx.gas().cloned(), self.estimate_gas(tx)),
+                    self.create_access_list(tx, block)
+                );
 
-        // set the access lists
-        if let Some(access_list) = tx.access_list() {
-            if access_list.0.is_empty() {
-                if let Ok(al_with_gas) = self.create_access_list(tx, block).await {
-                    // only set the access list if the used gas is less than the
-                    // normally estimated gas
-                    if al_with_gas.gas_used < gas {
+                if let Ok(al_with_gas) = al_res {
+                    // Set access list if it saves gas over the estimated (or previously set) value
+                    if gas_res.is_err() || al_with_gas.gas_used < gas_res.as_ref().unwrap().clone()
+                    {
+                        gas_res = Ok(al_with_gas.gas_used);
                         tx.set_access_list(al_with_gas.access_list);
-                        tx.set_gas(al_with_gas.gas_used);
-                        al_used = true;
                     }
                 }
+                maybe_gas_res = Some(gas_res);
             }
         }
 
-        if !al_used {
-            tx.set_gas(gas);
+        // Set gas to estimate only if it was not set by the caller
+        if tx.gas().is_none() {
+            let gas_estimate = match maybe_gas_res {
+                Some(gas_res) => gas_res?, // re-use previous attempt to estimate gas
+                _ => self.estimate_gas(tx).await?,
+            };
+            tx.set_gas(gas_estimate);
         }
 
         match tx {
@@ -1306,7 +1313,9 @@ mod tests {
     use super::*;
     use crate::Http;
     use ethers_core::{
-        types::{TransactionRequest, H256},
+        types::{
+            transaction::eip2930::AccessList, Eip1559TransactionRequest, TransactionRequest, H256,
+        },
         utils::Geth,
     };
     use futures_util::StreamExt;
@@ -1511,5 +1520,151 @@ mod tests {
             .await
             .unwrap();
         dbg!(traces);
+    }
+
+    #[tokio::test]
+    async fn test_fill_transaction_1559() {
+        let (mut provider, mock) = Provider::mocked();
+        provider.from = Some("0x6fC21092DA55B392b045eD78F4732bff3C580e2c".parse().unwrap());
+
+        let gas = U256::from(21000_usize);
+        let basefee = U256::from(25_usize);
+        let prio_fee = U256::from(25_usize);
+        let access_list: AccessList = vec![Default::default()].into();
+
+        // --- leaves a filled 1559 transaction unchanged, making no requests
+        let from: Address = "0x0000000000000000000000000000000000000001".parse().unwrap();
+        let to: Address = "0x0000000000000000000000000000000000000002".parse().unwrap();
+        let mut tx = Eip1559TransactionRequest::new()
+            .from(from)
+            .to(to)
+            .gas(gas)
+            .max_fee_per_gas(basefee)
+            .max_priority_fee_per_gas(prio_fee)
+            .access_list(access_list.clone())
+            .into();
+        provider.fill_transaction(&mut tx, None).await.unwrap();
+
+        assert_eq!(tx.from(), Some(&from));
+        assert_eq!(tx.to(), Some(&to.into()));
+        assert_eq!(tx.gas(), Some(&gas));
+        assert_eq!(tx.gas_price(), Some(basefee + prio_fee));
+        assert_eq!(tx.access_list(), Some(&access_list));
+
+        // --- fills a 1559 transaction, leaving the existing gas limit unchanged, but including
+        // access list if cheaper
+        let gas_with_al = gas - 1;
+        let mut tx = Eip1559TransactionRequest::new()
+            .gas(gas)
+            .max_fee_per_gas(basefee)
+            .max_priority_fee_per_gas(prio_fee)
+            .into();
+
+        mock.push(AccessListWithGasUsed {
+            access_list: access_list.clone(),
+            gas_used: gas_with_al,
+        })
+        .unwrap();
+
+        provider.fill_transaction(&mut tx, None).await.unwrap();
+
+        assert_eq!(tx.from(), provider.from.as_ref());
+        assert!(tx.to().is_none());
+        assert_eq!(tx.gas(), Some(&gas));
+        assert_eq!(tx.access_list(), Some(&access_list));
+
+        // --- fills a 1559 transaction, ignoring access list if more expensive
+        let gas_with_al = gas + 1;
+        let mut tx = Eip1559TransactionRequest::new()
+            .max_fee_per_gas(basefee)
+            .max_priority_fee_per_gas(prio_fee)
+            .into();
+
+        mock.push(AccessListWithGasUsed {
+            access_list: access_list.clone(),
+            gas_used: gas_with_al,
+        })
+        .unwrap();
+        mock.push(gas).unwrap();
+
+        provider.fill_transaction(&mut tx, None).await.unwrap();
+
+        assert_eq!(tx.from(), provider.from.as_ref());
+        assert!(tx.to().is_none());
+        assert_eq!(tx.gas(), Some(&gas));
+        assert_eq!(tx.access_list(), Some(&Default::default()));
+
+        // --- fills a 1559 transaction, using estimated gas if create_access_list() errors
+        let mut tx = Eip1559TransactionRequest::new()
+            .max_fee_per_gas(basefee)
+            .max_priority_fee_per_gas(prio_fee)
+            .into();
+
+        // bad mock value causes error response for eth_createAccessList
+        mock.push(b'b').unwrap();
+        mock.push(gas).unwrap();
+
+        provider.fill_transaction(&mut tx, None).await.unwrap();
+
+        assert_eq!(tx.from(), provider.from.as_ref());
+        assert!(tx.to().is_none());
+        assert_eq!(tx.gas(), Some(&gas));
+        assert_eq!(tx.access_list(), Some(&Default::default()));
+
+        // --- fills a 1559 transaction, populating access list and using access list gas if
+        // estimate_gas() errors
+        let mut tx = Eip1559TransactionRequest::new()
+            .max_fee_per_gas(basefee)
+            .max_priority_fee_per_gas(prio_fee)
+            .into();
+
+        mock.push(AccessListWithGasUsed {
+            access_list: access_list.clone(),
+            gas_used: gas_with_al,
+        })
+        .unwrap();
+        // bad mock value causes error response for eth_estimateGas
+        mock.push(b'b').unwrap();
+
+        provider.fill_transaction(&mut tx, None).await.unwrap();
+
+        assert_eq!(tx.from(), provider.from.as_ref());
+        assert!(tx.to().is_none());
+        assert_eq!(tx.gas(), Some(&gas_with_al));
+        assert_eq!(tx.access_list(), Some(&access_list));
+    }
+
+    #[tokio::test]
+    async fn test_fill_transaction_legacy() {
+        let (mut provider, mock) = Provider::mocked();
+        provider.from = Some("0x6fC21092DA55B392b045eD78F4732bff3C580e2c".parse().unwrap());
+
+        let gas = U256::from(21000_usize);
+        let gas_price = U256::from(50_usize);
+
+        // --- leaves a filled legacy transaction unchanged, making no requests
+        let from: Address = "0x0000000000000000000000000000000000000001".parse().unwrap();
+        let to: Address = "0x0000000000000000000000000000000000000002".parse().unwrap();
+        let mut tx =
+            TransactionRequest::new().from(from).to(to).gas(gas).gas_price(gas_price).into();
+        provider.fill_transaction(&mut tx, None).await.unwrap();
+
+        assert_eq!(tx.from(), Some(&from));
+        assert_eq!(tx.to(), Some(&to.into()));
+        assert_eq!(tx.gas(), Some(&gas));
+        assert_eq!(tx.gas_price(), Some(gas_price));
+        assert!(tx.access_list().is_none());
+
+        // --- fills an empty legacy transaction
+        let mut tx = TransactionRequest::new().into();
+        mock.push(gas_price).unwrap();
+        mock.push(gas).unwrap();
+        provider.fill_transaction(&mut tx, None).await.unwrap();
+
+        assert_eq!(tx.from(), provider.from.as_ref());
+        assert!(tx.to().is_none());
+        assert_eq!(tx.gas(), Some(&gas));
+        assert_eq!(tx.gas_price(), Some(gas_price));
+        assert!(tx.access_list().is_none());
     }
 }
