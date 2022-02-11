@@ -34,6 +34,7 @@
   so that the receipt can be returned to the called when deploying
   a contract [#865](https://github.com/gakonst/ethers-rs/pull/865)
 - Add Arbitrum mainnet and testnet to the list of known chains
+- Do not override gas limits provided by an outer middleware when including an EIP-2930 access list. [#901](https://github.com/gakonst/ethers-rs/pull/901)
 
 ## ethers-contract-abigen
 
