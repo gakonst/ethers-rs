@@ -237,7 +237,7 @@ impl Settings {
     /// let mut selection = Settings::default();
     /// selection.push_output_selection(ContractOutputSelection::Metadata);
     /// ```
-    pub fn push_output_selection(&mut self, value: impl Into<String>) {
+    pub fn push_output_selection(&mut self, value: impl ToString) {
         self.push_contract_output_selection("*", value)
     }
 
@@ -247,9 +247,9 @@ impl Settings {
     pub fn push_contract_output_selection(
         &mut self,
         contracts: impl Into<String>,
-        value: impl Into<String>,
+        value: impl ToString,
     ) {
-        let value = value.into();
+        let value = value.to_string();
         let values = self
             .output_selection
             .entry("*".to_string())
@@ -262,7 +262,7 @@ impl Settings {
     }
 
     /// Sets the value for all files and contracts
-    pub fn set_output_selection(&mut self, values: impl IntoIterator<Item = impl Into<String>>) {
+    pub fn set_output_selection(&mut self, values: impl IntoIterator<Item = impl ToString>) {
         self.set_contract_output_selection("*", values)
     }
 
@@ -272,12 +272,12 @@ impl Settings {
     pub fn set_contract_output_selection(
         &mut self,
         key: impl Into<String>,
-        values: impl IntoIterator<Item = impl Into<String>>,
+        values: impl IntoIterator<Item = impl ToString>,
     ) {
         self.output_selection
             .entry("*".to_string())
             .or_default()
-            .insert(key.into(), values.into_iter().map(Into::into).collect());
+            .insert(key.into(), values.into_iter().map(|s| s.to_string()).collect());
     }
 
     /// Adds `ast` to output
