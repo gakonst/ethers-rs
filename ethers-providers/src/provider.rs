@@ -292,8 +292,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
 
                 if let Ok(al_with_gas) = al_res {
                     // Set access list if it saves gas over the estimated (or previously set) value
-                    if gas_res.is_err() || al_with_gas.gas_used < gas_res.as_ref().unwrap().clone()
-                    {
+                    if gas_res.is_err() || al_with_gas.gas_used < *gas_res.as_ref().unwrap() {
                         gas_res = Ok(al_with_gas.gas_used);
                         tx.set_access_list(al_with_gas.access_list);
                     }
