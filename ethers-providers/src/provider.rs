@@ -793,7 +793,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
     /// if not configured)
     ///
     /// # Example
-    /// ```
+    /// ```no_run
     /// # use ethers_providers::{Provider, Http as HttpProvider, Middleware};
     /// # use std::convert::TryFrom;
     /// # #[tokio::main(flavor = "current_thread")]
@@ -872,7 +872,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
     /// Returns the URL (not necesserily HTTP) of the image behind a token.
     ///
     /// # Example
-    /// ```
+    /// ```no_run
     /// # use ethers_providers::{Provider, Http as HttpProvider, Middleware};
     /// # use std::{str::FromStr, convert::TryFrom};
     /// # #[tokio::main(flavor = "current_thread")]
