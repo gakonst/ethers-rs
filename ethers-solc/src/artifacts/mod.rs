@@ -195,24 +195,48 @@ pub struct Settings {
 }
 
 impl Settings {
+    /// Creates a new `Settings` instance with the given `output_selection`
+    pub fn new(output_selection: BTreeMap<String, BTreeMap<String, Vec<String>>>) -> Self {
+        Self { output_selection, ..Default::default() }
+    }
+
+    /// select all outputs the compiler can possibly generate, use
+    /// `{ "*": { "*": [ "*" ], "": [ "*" ] } }`
+    /// but note that this might slow down the compilation process needlessly.
+    pub fn complete_output_selection() -> BTreeMap<String, BTreeMap<String, Vec<String>>> {
+        BTreeMap::from([(
+            "*".to_string(),
+            BTreeMap::from([
+                ("*".to_string(), vec!["*".to_string()]),
+                ("".to_string(), vec!["*".to_string()]),
+            ]),
+        )])
+    }
+
     /// Default output selection for compiler output
     pub fn default_output_selection() -> BTreeMap<String, BTreeMap<String, Vec<String>>> {
-        let mut output_selection = BTreeMap::default();
-        let mut output = BTreeMap::default();
-        output.insert(
+        BTreeMap::from([(
             "*".to_string(),
-            vec![
-                "abi".to_string(),
-                "evm.bytecode".to_string(),
-                "evm.deployedBytecode".to_string(),
-                "evm.methodIdentifiers".to_string(),
-            ],
-        );
-        output_selection.insert("*".to_string(), output);
-        output_selection
+            BTreeMap::from([(
+                "*".to_string(),
+                vec![
+                    "abi".to_string(),
+                    "evm.bytecode".to_string(),
+                    "evm.deployedBytecode".to_string(),
+                    "evm.methodIdentifiers".to_string(),
+                ],
+            )]),
+        )])
     }
 
     /// Inserts the value for all files and contracts
+    ///
+    /// ```
+    /// use ethers_solc::artifacts::output_selection::ContractOutputSelection;
+    /// use ethers_solc::artifacts::Settings;
+    /// let mut selection = Settings::default();
+    /// selection.push_output_selection(ContractOutputSelection::Metadata);
+    /// ```
     pub fn push_output_selection(&mut self, value: impl Into<String>) {
         self.push_contract_output_selection("*", value)
     }
