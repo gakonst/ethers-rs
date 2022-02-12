@@ -5,6 +5,7 @@ use semver::Version;
 use std::{
     error::Error,
     fmt,
+    path::Path,
     sync::{
         atomic::{AtomicUsize, Ordering},
         Arc,
@@ -65,6 +66,9 @@ pub trait Reporter: 'static {
 
     /// Invoked before a new [`Solc`] bin was successfully installed
     fn on_solc_installation_success(&self, _version: &Version) {}
+
+    /// Invoked if the import couldn't be resolved
+    fn on_unresolved_import(&self, _import: &Path) {}
 }
 
 pub(crate) fn solc_spawn(solc: &Solc, version: &Version, input: &CompilerInput) {
@@ -83,6 +87,10 @@ pub(crate) fn solc_installation_start(version: &Version) {
 #[allow(unused)]
 pub(crate) fn solc_installation_success(version: &Version) {
     with_global(|r| r.reporter.on_solc_installation_success(version));
+}
+
+pub(crate) fn unresolved_import(import: &Path) {
+    with_global(|r| r.reporter.on_unresolved_import(import));
 }
 
 fn get_global() -> Option<&'static Report> {
@@ -138,6 +146,10 @@ impl Reporter for BasicStdoutReporter {
     /// Invoked before a new [`Solc`] bin was successfully installed
     fn on_solc_installation_success(&self, version: &Version) {
         println!("Successfully installed solc {}", version);
+    }
+
+    fn on_unresolved_import(&self, import: &Path) {
+        println!("Unable to resolve imported file: \"{}\"", import.display());
     }
 }
 

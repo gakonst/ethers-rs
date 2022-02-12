@@ -239,7 +239,10 @@ impl Graph {
                     Ok(import) => {
                         add_node(&mut unresolved, &mut index, &mut resolved_imports, import)?;
                     }
-                    Err(err) => tracing::trace!("failed to resolve import component \"{:?}\"", err),
+                    Err(err) => {
+                        crate::report::unresolved_import(import.data());
+                        tracing::trace!("failed to resolve import component \"{:?}\"", err)
+                    }
                 };
             }
             nodes.push(node);
