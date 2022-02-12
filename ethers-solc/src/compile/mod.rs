@@ -42,15 +42,12 @@ pub const BERLIN_SOLC: Version = Version::new(0, 8, 5);
 /// https://blog.soliditylang.org/2021/08/11/solidity-0.8.7-release-announcement/
 pub const LONDON_SOLC: Version = Version::new(0, 8, 7);
 
-#[cfg(any(test, all(feature = "svm", feature = "async")))]
-use once_cell::sync::Lazy;
-
 #[cfg(any(test, feature = "tests"))]
 use std::sync::Mutex;
 
 #[cfg(any(test, feature = "tests"))]
 #[allow(unused)]
-static LOCK: Lazy<Mutex<()>> = Lazy::new(|| Mutex::new(()));
+static LOCK: once_cell::sync::Lazy<Mutex<()>> = once_cell::sync::Lazy::new(|| Mutex::new(()));
 
 /// take the lock in tests, we use this to enforce that
 /// a test does not run while a compiler version is being installed
