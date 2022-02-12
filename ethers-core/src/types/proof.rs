@@ -9,6 +9,7 @@ pub struct StorageProof {
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct EIP1186ProofResponse {
     address: Address,
     balance: U256,
@@ -17,4 +18,15 @@ pub struct EIP1186ProofResponse {
     storage_hash: H256,
     account_proof: Vec<Bytes>,
     storage_proof: Vec<StorageProof>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn can_deserialize_proof() {
+        serde_json::from_str::<EIP1186ProofResponse>(include_str!("../../testdata/proof.json"))
+            .unwrap();
+    }
 }
