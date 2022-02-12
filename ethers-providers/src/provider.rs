@@ -280,8 +280,9 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
             tx.set_to(addr);
         }
 
-        // If we have an empty access list, attempt to populate it. If we attempt to fill
-        // the access list, maybe_gas_res becomes Some(Ok(min(estimated_gas, gas_with_access_list)))
+        // If the tx has an access list but it is empty, it is an Eip1559 or Eip2930 tx,
+        // and we attempt to populate the acccess list. This may require `eth_estimateGas`,
+        // in which case we save the result in maybe_gas_res for later
         let mut maybe_gas_res = None;
         if let Some(starting_al) = tx.access_list() {
             if starting_al.0.is_empty() {
@@ -293,6 +294,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
                 if let Ok(al_with_gas) = al_res {
                     // Set access list if it saves gas over the estimated (or previously set) value
                     if gas_res.is_err() || al_with_gas.gas_used < *gas_res.as_ref().unwrap() {
+                        // Update the gas estimate with the lower amount
                         gas_res = Ok(al_with_gas.gas_used);
                         tx.set_access_list(al_with_gas.access_list);
                     }
@@ -301,7 +303,8 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
             }
         }
 
-        // Set gas to estimate only if it was not set by the caller
+        // Set gas to estimated value only if it was not set by the caller,
+        // even if the access list has been populated and saves gas
         if tx.gas().is_none() {
             let gas_estimate = match maybe_gas_res {
                 Some(gas_res) => gas_res?, // re-use previous attempt to estimate gas
