@@ -74,7 +74,7 @@ pub static RELEASES: once_cell::sync::Lazy<(svm::Releases, Vec<Version>, bool)> 
             let sorted_versions = releases.clone().into_versions();
             (releases, sorted_versions, true)
         }
-        Ok(err) => {
+        Err(err) => {
             tracing::error!("{:?}", err);
             (svm::Releases::default(), Vec::new(), false)
         }
