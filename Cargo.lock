@@ -3475,8 +3475,9 @@ dependencies = [
 
 [[package]]
 name = "solang-parser"
-version = "0.1.1"
-source = "git+https://github.com/hyperledger-labs/solang#b286b63d8003a17092e0ae54d89898970df6d6fa"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ec12f31165397a3b145b0b06bc47470226ac9bf52b9aa8ea1ab7aa6e74809b39"
 dependencies = [
  "lalrpop",
  "lalrpop-util",
@@ -3536,9 +3537,8 @@ checksum = "6bdef32e8150c2a081110b42772ffe7d7c9032b606bc226c8260fd97e0976601"
 
 [[package]]
 name = "svm-rs"
-version = "0.2.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "01ebb94785ad8eecc53c119257322f72afd3e3ab5016e74b2b2b143449107135"
+version = "0.2.8"
+source = "git+https://github.com/roynalnaruto/svm-rs#9b3627cfde2763fdc35afa9cbcea8ebc2926938d"
 dependencies = [
  "anyhow",
  "cfg-if 1.0.0",
