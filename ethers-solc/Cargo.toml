@@ -41,7 +41,7 @@ rayon = "1.5.1"
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 home = "0.5.3"
 # SVM is not WASM compatible yet.
-svm = { package = "svm-rs", default-features = false, version = "0.2.6", optional = true }
+svm = { package = "svm-rs", default-features = false, version = "0.2.7", optional = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 # NOTE: this enables wasm compatibility for getrandom indirectly
@@ -72,7 +72,7 @@ required-features = ["project-util"]
 [features]
 default = ["rustls"]
 async = ["tokio", "futures-util"]
-full = ["async", "svm"]
+full = ["async", "svm", "svm/blocking"]
 # Utilities for creating and testing project workspaces
 project-util = ["tempfile", "fs_extra"]
 tests = []
