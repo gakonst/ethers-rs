@@ -35,6 +35,9 @@
   so that the receipt can be returned to the called when deploying
   a contract [#865](https://github.com/gakonst/ethers-rs/pull/865)
 - Add Arbitrum mainnet and testnet to the list of known chains
+- Add a getter to `ProjectCompileOutput` that returns a mapping of compiler
+  versions to a vector of name + contract struct tuples
+  [#908](https://github.com/gakonst/ethers-rs/pull/908)
 
 ## ethers-contract-abigen
 
