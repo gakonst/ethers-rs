@@ -92,7 +92,7 @@ impl Project {
     ///
     /// ```rust
     /// use ethers_solc::{MinimalCombinedArtifacts, ProjectBuilder};
-    /// let config = ProjectBuilder::default().build().unwrap();
+    /// let config = ProjectBuilder::<MinimalCombinedArtifacts>::default().build().unwrap();
     /// ```
     pub fn builder() -> ProjectBuilder {
         ProjectBuilder::default()
