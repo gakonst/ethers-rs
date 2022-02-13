@@ -325,9 +325,35 @@ pub trait ArtifactOutput {
         artifacts.join_all(&layout.artifacts);
         artifacts.write_all()?;
 
-        Self::write_extras(contracts, layout)?;
+        self.write_extras(contracts, layout)?;
 
         Ok(artifacts)
+    }
+
+    /// Write additional files for the contract
+    fn write_contract_extras(&self, contract: &Contract, file: &Path) -> Result<()> {
+        if let Some(ref iropt) = contract.ir_optimized {
+            fs::write(&file.with_extension("iropt"), iropt)
+                .map_err(|err| SolcError::io(err, file.with_extension("iropt")))?
+        }
+
+        if let Some(ref ir) = contract.ir {
+            fs::write(&file.with_extension("ir"), ir)
+                .map_err(|err| SolcError::io(err, file.with_extension("ir")))?
+        }
+
+        if let Some(ref ewasm) = contract.ewasm {
+            fs::write(&file.with_extension("ewasm"), serde_json::to_vec_pretty(&ewasm)?)
+                .map_err(|err| SolcError::io(err, file.with_extension("ewasm")))?;
+        }
+
+        if let Some(ref evm) = contract.evm {
+            if let Some(ref asm) = evm.assembly {
+                fs::write(&file.with_extension("asm"), asm)
+                    .map_err(|err| SolcError::io(err, file.with_extension("asm")))?
+            }
+        }
+        Ok(())
     }
 
     /// Writes additional files for the contracts if the included in the `Contract`, such as `ir`,
@@ -338,7 +364,11 @@ pub trait ArtifactOutput {
     /// [`Contract`] will `None`. If they'll be manually added to the `output_selection`, then
     /// we're also creating individual files for this output, such as `Greeter.iropt`,
     /// `Gretter.ewasm`
-    fn write_extras(contracts: &VersionedContracts, layout: &ProjectPathsConfig) -> Result<()> {
+    fn write_extras(
+        &self,
+        contracts: &VersionedContracts,
+        layout: &ProjectPathsConfig,
+    ) -> Result<()> {
         for (file, contracts) in contracts.as_ref().iter() {
             for (name, versioned_contracts) in contracts {
                 for c in versioned_contracts {
@@ -351,30 +381,7 @@ pub trait ArtifactOutput {
                     let file = layout.artifacts.join(artifact_path);
                     utils::create_parent_dir_all(&file)?;
 
-                    if let Some(iropt) = &c.contract.ir_optimized {
-                        fs::write(&file.with_extension("iropt"), iropt)
-                            .map_err(|err| SolcError::io(err, file.with_extension("iropt")))?
-                    }
-
-                    if let Some(ir) = &c.contract.ir {
-                        fs::write(&file.with_extension("ir"), ir)
-                            .map_err(|err| SolcError::io(err, file.with_extension("ir")))?
-                    }
-
-                    if let Some(ewasm) = &c.contract.ewasm {
-                        fs::write(
-                            &file.with_extension("ewasm"),
-                            serde_json::to_vec_pretty(&ewasm)?,
-                        )
-                        .map_err(|err| SolcError::io(err, file.with_extension("ewasm")))?;
-                    }
-
-                    if let Some(evm) = &c.contract.evm {
-                        if let Some(asm) = &evm.assembly {
-                            fs::write(&file.with_extension("asm"), asm)
-                                .map_err(|err| SolcError::io(err, file.with_extension("asm")))?
-                        }
-                    }
+                    self.write_contract_extras(&c.contract, &file)?;
                 }
             }
         }
