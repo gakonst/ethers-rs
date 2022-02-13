@@ -922,6 +922,7 @@ impl From<Contract> for ContractBytecode {
 /// Unlike `CompactContractSome` which contains the `BytecodeObject`, this holds the whole
 /// `Bytecode` object.
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
 pub struct CompactContractBytecode {
     /// The Ethereum Contract ABI. If empty, it is represented as an empty
     /// array. See https://docs.soliditylang.org/en/develop/abi-spec.html
