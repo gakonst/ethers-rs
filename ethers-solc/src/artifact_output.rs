@@ -314,10 +314,11 @@ pub trait ArtifactOutput {
     /// This will be invoked with all aggregated contracts from (multiple) solc `CompilerOutput`.
     /// See [`crate::AggregatedCompilerOutput`]
     fn on_output(
+        &self,
         contracts: &VersionedContracts,
         layout: &ProjectPathsConfig,
     ) -> Result<Artifacts<Self::Artifact>> {
-        let mut artifacts = Self::output_to_artifacts(contracts);
+        let mut artifacts = self.output_to_artifacts(contracts);
         artifacts.join_all(&layout.artifacts);
         artifacts.write_all()?;
 
@@ -474,13 +475,13 @@ pub trait ArtifactOutput {
     ///
     /// This is the core conversion function that takes care of converting a `Contract` into the
     /// associated `Artifact` type
-    fn contract_to_artifact(_file: &str, _name: &str, contract: Contract) -> Self::Artifact;
+    fn contract_to_artifact(&self, _file: &str, _name: &str, contract: Contract) -> Self::Artifact;
 
     /// Convert the compiler output into a set of artifacts
     ///
     /// **Note:** This does only convert, but _NOT_ write the artifacts to disk, See
     /// [`Self::on_output()`]
-    fn output_to_artifacts(contracts: &VersionedContracts) -> Artifacts<Self::Artifact> {
+    fn output_to_artifacts(&self, contracts: &VersionedContracts) -> Artifacts<Self::Artifact> {
         let mut artifacts = ArtifactsMap::new();
         for (file, contracts) in contracts.as_ref().iter() {
             let mut entries = BTreeMap::new();
@@ -493,8 +494,7 @@ pub trait ArtifactOutput {
                     } else {
                         Self::output_file(file, name)
                     };
-                    let artifact =
-                        Self::contract_to_artifact(file, name, contract.contract.clone());
+                    let artifact = self.contract_to_artifact(file, name, contract.contract.clone());
 
                     contracts.push(ArtifactFile {
                         artifact,
@@ -511,7 +511,7 @@ pub trait ArtifactOutput {
     }
 }
 
-/// An Artifacts implementation that uses a compact representation
+/// An `Artifact` implementation that uses a compact representation
 ///
 /// Creates a single json artifact with
 /// ```json
@@ -521,30 +521,35 @@ pub trait ArtifactOutput {
 ///    "runtime-bin": "..."
 ///  }
 /// ```
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub struct MinimalCombinedArtifacts;
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Default)]
+pub struct MinimalCombinedArtifacts {
+    _priv: (),
+}
 
 impl ArtifactOutput for MinimalCombinedArtifacts {
     type Artifact = CompactContractBytecode;
 
-    fn contract_to_artifact(_file: &str, _name: &str, contract: Contract) -> Self::Artifact {
+    fn contract_to_artifact(&self, _file: &str, _name: &str, contract: Contract) -> Self::Artifact {
         Self::Artifact::from(contract)
     }
 }
 
 /// An Artifacts handler implementation that works the same as `MinimalCombinedArtifacts` but also
 /// supports reading hardhat artifacts if an initial attempt to deserialize an artifact failed
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub struct MinimalCombinedArtifactsHardhatFallback;
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Default)]
+pub struct MinimalCombinedArtifactsHardhatFallback {
+    _priv: (),
+}
 
 impl ArtifactOutput for MinimalCombinedArtifactsHardhatFallback {
     type Artifact = CompactContractBytecode;
 
     fn on_output(
+        &self,
         output: &VersionedContracts,
         layout: &ProjectPathsConfig,
     ) -> Result<Artifacts<Self::Artifact>> {
-        MinimalCombinedArtifacts::on_output(output, layout)
+        MinimalCombinedArtifacts::default().on_output(output, layout)
     }
 
     fn read_cached_artifact(path: impl AsRef<Path>) -> Result<Self::Artifact> {
@@ -561,8 +566,8 @@ impl ArtifactOutput for MinimalCombinedArtifactsHardhatFallback {
         }
     }
 
-    fn contract_to_artifact(file: &str, name: &str, contract: Contract) -> Self::Artifact {
-        MinimalCombinedArtifacts::contract_to_artifact(file, name, contract)
+    fn contract_to_artifact(&self, file: &str, name: &str, contract: Contract) -> Self::Artifact {
+        MinimalCombinedArtifacts::default().contract_to_artifact(file, name, contract)
     }
 }
 

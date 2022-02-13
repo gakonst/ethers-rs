@@ -33,10 +33,7 @@ use crate::{
     error::{SolcError, SolcIoError},
 };
 use error::Result;
-use std::{
-    marker::PhantomData,
-    path::{Path, PathBuf},
-};
+use std::path::{Path, PathBuf};
 
 /// Utilities for creating, mocking and testing of (temporary) projects
 #[cfg(feature = "project-util")]
@@ -44,7 +41,7 @@ pub mod project_util;
 
 /// Represents a project workspace and handles `solc` compiling of all contracts in that workspace.
 #[derive(Debug)]
-pub struct Project<Artifacts: ArtifactOutput = MinimalCombinedArtifacts> {
+pub struct Project<T: ArtifactOutput = MinimalCombinedArtifacts> {
     /// The layout of the
     pub paths: ProjectPathsConfig,
     /// Where to find solc
@@ -57,8 +54,8 @@ pub struct Project<Artifacts: ArtifactOutput = MinimalCombinedArtifacts> {
     pub no_artifacts: bool,
     /// Whether writing artifacts to disk is enabled
     pub auto_detect: bool,
-    /// How to handle compiler output
-    pub artifacts: PhantomData<Artifacts>,
+    /// Handles all artifacts related tasks, reading and writing from the artifact dir.
+    pub artifacts: T,
     /// Errors/Warnings which match these error codes are not going to be logged
     pub ignored_error_codes: Vec<u64>,
     /// The paths which will be allowed for library inclusion
@@ -92,14 +89,14 @@ impl Project {
     ///
     /// ```rust
     /// use ethers_solc::{MinimalCombinedArtifacts, ProjectBuilder};
-    /// let config = ProjectBuilder::<MinimalCombinedArtifacts>::default().build().unwrap();
+    /// let config = ProjectBuilder::default().build().unwrap();
     /// ```
     pub fn builder() -> ProjectBuilder {
         ProjectBuilder::default()
     }
 }
 
-impl<Artifacts: ArtifactOutput> Project<Artifacts> {
+impl<T: ArtifactOutput> Project<T> {
     /// Returns the path to the artifacts directory
     pub fn artifacts_path(&self) -> &PathBuf {
         &self.paths.artifacts
@@ -118,6 +115,11 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
     /// Returns the root directory of the project
     pub fn root(&self) -> &PathBuf {
         &self.paths.root
+    }
+
+    /// Returns the handler that takes care of processing all artifacts
+    pub fn artifacts_handler(&self) -> &T {
+        &self.artifacts
     }
 
     /// Applies the configured settings to the given `Solc`
@@ -187,7 +189,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
     /// # }
     /// ```
     #[tracing::instrument(skip_all, name = "compile")]
-    pub fn compile(&self) -> Result<ProjectCompileOutput<Artifacts>> {
+    pub fn compile(&self) -> Result<ProjectCompileOutput<T>> {
         let sources = self.paths.read_input_files()?;
         tracing::trace!("found {} sources to compile: {:?}", sources.len(), sources.keys());
 
@@ -226,7 +228,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
     /// # }
     /// ```
     #[cfg(all(feature = "svm", feature = "async"))]
-    pub fn svm_compile(&self, sources: Sources) -> Result<ProjectCompileOutput<Artifacts>> {
+    pub fn svm_compile(&self, sources: Sources) -> Result<ProjectCompileOutput<T>> {
         project::ProjectCompiler::with_sources(self, sources)?.compile()
     }
 
@@ -257,7 +259,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
         &self,
         solc: &Solc,
         sources: Sources,
-    ) -> Result<ProjectCompileOutput<Artifacts>> {
+    ) -> Result<ProjectCompileOutput<T>> {
         project::ProjectCompiler::with_sources_and_solc(
             self,
             sources,
@@ -325,7 +327,7 @@ impl<Artifacts: ArtifactOutput> Project<Artifacts> {
     }
 }
 
-pub struct ProjectBuilder<Artifacts: ArtifactOutput = MinimalCombinedArtifacts> {
+pub struct ProjectBuilder<T: ArtifactOutput = MinimalCombinedArtifacts> {
     /// The layout of the
     paths: Option<ProjectPathsConfig>,
     /// Where to find solc
@@ -340,7 +342,8 @@ pub struct ProjectBuilder<Artifacts: ArtifactOutput = MinimalCombinedArtifacts> 
     auto_detect: bool,
     /// Use offline mode
     offline: bool,
-    artifacts: PhantomData<Artifacts>,
+    /// handles all artifacts related tasks
+    artifacts: T,
     /// Which error codes to ignore
     pub ignored_error_codes: Vec<u64>,
     /// All allowed paths
@@ -348,7 +351,7 @@ pub struct ProjectBuilder<Artifacts: ArtifactOutput = MinimalCombinedArtifacts> 
     solc_jobs: Option<usize>,
 }
 
-impl<Artifacts: ArtifactOutput> ProjectBuilder<Artifacts> {
+impl<T: ArtifactOutput> ProjectBuilder<T> {
     #[must_use]
     pub fn paths(mut self, paths: ProjectPathsConfig) -> Self {
         self.paths = Some(paths);
@@ -454,7 +457,7 @@ impl<Artifacts: ArtifactOutput> ProjectBuilder<Artifacts> {
     }
 
     /// Set arbitrary `ArtifactOutputHandler`
-    pub fn artifacts<A: ArtifactOutput>(self) -> ProjectBuilder<A> {
+    pub fn artifacts<A: ArtifactOutput>(self, artifacts: A) -> ProjectBuilder<A> {
         let ProjectBuilder {
             paths,
             solc,
@@ -476,7 +479,7 @@ impl<Artifacts: ArtifactOutput> ProjectBuilder<Artifacts> {
             no_artifacts,
             auto_detect,
             offline,
-            artifacts: PhantomData::default(),
+            artifacts,
             ignored_error_codes,
             allowed_paths,
             solc_jobs,
@@ -485,7 +488,7 @@ impl<Artifacts: ArtifactOutput> ProjectBuilder<Artifacts> {
 
     /// Adds an allowed-path to the solc executable
     #[must_use]
-    pub fn allowed_path<T: Into<PathBuf>>(mut self, path: T) -> Self {
+    pub fn allowed_path<P: Into<PathBuf>>(mut self, path: P) -> Self {
         self.allowed_paths.push(path.into());
         self
     }
@@ -503,7 +506,7 @@ impl<Artifacts: ArtifactOutput> ProjectBuilder<Artifacts> {
         self
     }
 
-    pub fn build(self) -> Result<Project<Artifacts>> {
+    pub fn build(self) -> Result<Project<T>> {
         let Self {
             paths,
             solc,
@@ -544,7 +547,7 @@ impl<Artifacts: ArtifactOutput> ProjectBuilder<Artifacts> {
     }
 }
 
-impl<Artifacts: ArtifactOutput> Default for ProjectBuilder<Artifacts> {
+impl<T: ArtifactOutput + Default> Default for ProjectBuilder<T> {
     fn default() -> Self {
         Self {
             paths: None,
@@ -554,7 +557,7 @@ impl<Artifacts: ArtifactOutput> Default for ProjectBuilder<Artifacts> {
             no_artifacts: false,
             auto_detect: true,
             offline: false,
-            artifacts: PhantomData::default(),
+            artifacts: T::default(),
             ignored_error_codes: Vec::new(),
             allowed_paths: vec![],
             solc_jobs: None,
@@ -562,12 +565,14 @@ impl<Artifacts: ArtifactOutput> Default for ProjectBuilder<Artifacts> {
     }
 }
 
-impl<Artifacts: ArtifactOutput> ArtifactOutput for Project<Artifacts> {
-    type Artifact = Artifacts::Artifact;
+impl<T: ArtifactOutput> ArtifactOutput for Project<T> {
+    type Artifact = T::Artifact;
 
-    fn contract_to_artifact(file: &str, name: &str, contract: Contract) -> Self::Artifact {
-        Artifacts::contract_to_artifact(file, name, contract)
+    fn contract_to_artifact(&self, file: &str, name: &str, contract: Contract) -> Self::Artifact {
+        self.artifacts_handler().contract_to_artifact(file, name, contract)
     }
+
+    // TODO delegate all functions
 }
 
 #[cfg(test)]
