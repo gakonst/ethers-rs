@@ -32,28 +32,6 @@ impl<T: ArtifactOutput> TempProject<T> {
         Ok(project)
     }
 
-    /// Creates a new temp project inside a tempdir with a prefixed directory
-    pub fn prefixed(prefix: &str, paths: ProjectPathsConfigBuilder) -> Result<Self> {
-        let tmp_dir = tempdir(prefix)?;
-        let paths = paths.build_with_root(tmp_dir.path());
-        let inner = Project::builder().artifacts().paths(paths).build()?;
-        Ok(Self::create_new(tmp_dir, inner)?)
-    }
-
-    /// Creates a new temp project for the given `PathStyle`
-    pub fn with_style(prefix: &str, style: PathStyle) -> Result<Self> {
-        let tmp_dir = tempdir(prefix)?;
-        let paths = style.paths(tmp_dir.path())?;
-        let inner = Project::builder().artifacts().paths(paths).build()?;
-        Ok(Self::create_new(tmp_dir, inner)?)
-    }
-
-    /// Creates a new temp project using the provided paths and setting the project root to a temp
-    /// dir
-    pub fn new(paths: ProjectPathsConfigBuilder) -> Result<Self> {
-        Self::prefixed("temp-project", paths)
-    }
-
     pub fn project(&self) -> &Project<T> {
         &self.inner
     }
@@ -158,6 +136,30 @@ impl<T: ArtifactOutput> TempProject<T> {
     }
 }
 
+impl<T: ArtifactOutput + Default> TempProject<T> {
+    /// Creates a new temp project inside a tempdir with a prefixed directory
+    pub fn prefixed(prefix: &str, paths: ProjectPathsConfigBuilder) -> Result<Self> {
+        let tmp_dir = tempdir(prefix)?;
+        let paths = paths.build_with_root(tmp_dir.path());
+        let inner = Project::builder().artifacts(T::default()).paths(paths).build()?;
+        Ok(Self::create_new(tmp_dir, inner)?)
+    }
+
+    /// Creates a new temp project for the given `PathStyle`
+    pub fn with_style(prefix: &str, style: PathStyle) -> Result<Self> {
+        let tmp_dir = tempdir(prefix)?;
+        let paths = style.paths(tmp_dir.path())?;
+        let inner = Project::builder().artifacts(T::default()).paths(paths).build()?;
+        Ok(Self::create_new(tmp_dir, inner)?)
+    }
+
+    /// Creates a new temp project using the provided paths and setting the project root to a temp
+    /// dir
+    pub fn new(paths: ProjectPathsConfigBuilder) -> Result<Self> {
+        Self::prefixed("temp-project", paths)
+    }
+}
+
 impl<T: ArtifactOutput> fmt::Debug for TempProject<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("TempProject").field("paths", self.paths()).finish()
@@ -189,7 +191,8 @@ impl TempProject<HardhatArtifacts> {
 
         let paths = ProjectPathsConfig::hardhat(tmp_dir.path())?;
 
-        let inner = Project::builder().artifacts().paths(paths).build()?;
+        let inner =
+            Project::builder().artifacts(HardhatArtifacts::default()).paths(paths).build()?;
         Ok(Self::create_new(tmp_dir, inner)?)
     }
 }
@@ -200,7 +203,7 @@ impl TempProject<MinimalCombinedArtifacts> {
         let tmp_dir = tempdir("tmp_dapp")?;
         let paths = ProjectPathsConfig::dapptools(tmp_dir.path())?;
 
-        let inner = Project::builder().artifacts().paths(paths).build()?;
+        let inner = Project::builder().paths(paths).build()?;
         Ok(Self::create_new(tmp_dir, inner)?)
     }
 }

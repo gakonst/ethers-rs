@@ -78,8 +78,10 @@ impl From<HardhatArtifact> for CompactContractBytecode {
 }
 
 /// Hardhat style artifacts handler
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub struct HardhatArtifacts;
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Default)]
+pub struct HardhatArtifacts {
+    _priv: (),
+}
 
 impl ArtifactOutput for HardhatArtifacts {
     type Artifact = HardhatArtifact;
