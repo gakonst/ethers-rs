@@ -24,6 +24,7 @@ use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 
 pub mod output_selection;
 pub mod serde_helpers;
+use crate::artifacts::output_selection::ContractOutputSelection;
 pub use serde_helpers::{deserialize_bytes, deserialize_opt_bytes};
 
 /// Solidity files are made up of multiple `source units`, a solidity contract is such a `source
@@ -227,6 +228,13 @@ impl Settings {
                 ],
             )]),
         )])
+    }
+
+    /// Inserts a set of `ContractOutputSelection`
+    pub fn push_all(&mut self, settings: impl IntoIterator<Item = ContractOutputSelection>) {
+        for value in settings {
+            self.push_output_selection(value)
+        }
     }
 
     /// Inserts the value for all files and contracts

@@ -2,6 +2,7 @@
 
 use crate::{
     artifacts::{
+        output_selection::{ContractOutputSelection, EvmOutputSelection},
         CompactContract, CompactContractBytecode, CompactEvm, DevDoc, Ewasm, GasEstimates,
         Metadata, StorageLayout, UserDoc,
     },
@@ -91,6 +92,10 @@ pub struct ConfigurableArtifacts {
 
 impl ArtifactOutput for ConfigurableArtifacts {
     type Artifact = ConfigurableContractArtifact;
+
+    fn write_contract_extras(&self, contract: &Contract, file: &Path) -> Result<(), SolcError> {
+        self.additional_files.write_extras(contract, file)
+    }
 
     fn contract_to_artifact(&self, _file: &str, _name: &str, contract: Contract) -> Self::Artifact {
         let mut artifact_userdoc = None;
@@ -184,10 +189,6 @@ impl ArtifactOutput for ConfigurableArtifacts {
             ewasm: artifact_ewasm,
         }
     }
-
-    fn write_contract_extras(&self, contract: &Contract, file: &Path) -> Result<(), SolcError> {
-        self.additional_files.write_extras(contract, file)
-    }
 }
 
 /// Determines the additional values to include in the contract's artifact file
@@ -221,6 +222,79 @@ pub struct AdditionalArtifactValues {
     pub __non_exhaustive: (),
 }
 
+impl AdditionalArtifactValues {
+    /// Returns an instance where all values are set to `true`
+    pub fn all() -> Self {
+        Self {
+            ast: true,
+            userdoc: true,
+            devdoc: true,
+            method_identifiers: true,
+            storage_layout: true,
+            assembly: true,
+            gas_estimates: true,
+            compact_format: true,
+            metadata: true,
+            ir: true,
+            ir_optimized: true,
+            ewasm: true,
+            __non_exhaustive: (),
+        }
+    }
+
+    /// Sets the values based on a set of `ContractOutputSelection`
+    pub fn from_output_selection(
+        settings: impl IntoIterator<Item = ContractOutputSelection>,
+    ) -> Self {
+        let mut config = Self::default();
+        for value in settings.into_iter() {
+            match value {
+                ContractOutputSelection::DevDoc => {
+                    config.devdoc = true;
+                }
+                ContractOutputSelection::UserDoc => {
+                    config.userdoc = true;
+                }
+                ContractOutputSelection::Metadata => {
+                    config.metadata = true;
+                }
+                ContractOutputSelection::Ir => {
+                    config.ir = true;
+                }
+                ContractOutputSelection::IrOptimized => {
+                    config.ir_optimized = true;
+                }
+                ContractOutputSelection::StorageLayout => {
+                    config.storage_layout = true;
+                }
+                ContractOutputSelection::Evm(evm) => match evm {
+                    EvmOutputSelection::All => {
+                        config.assembly = true;
+                        config.gas_estimates = true;
+                        config.method_identifiers = true;
+                    }
+                    EvmOutputSelection::Assembly => {
+                        config.assembly = true;
+                    }
+                    EvmOutputSelection::MethodIdentifiers => {
+                        config.method_identifiers = true;
+                    }
+                    EvmOutputSelection::GasEstimates => {
+                        config.gas_estimates = true;
+                    }
+                    _ => {}
+                },
+                ContractOutputSelection::Ewasm(_) => {
+                    config.ewasm = true;
+                }
+                _ => {}
+            }
+        }
+
+        config
+    }
+}
+
 /// Determines what to emit as additional file
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Default)]
 pub struct AdditionalArtifactFiles {
@@ -245,6 +319,7 @@ pub struct AdditionalArtifactFiles {
 }
 
 impl AdditionalArtifactFiles {
+    /// Returns an instance where all values are set to `true`
     pub fn all() -> Self {
         Self {
             metadata: true,
@@ -255,6 +330,7 @@ impl AdditionalArtifactFiles {
         }
     }
 
+    /// Write the set values as separate files
     pub fn write_extras(&self, contract: &Contract, file: &Path) -> Result<(), SolcError> {
         if self.metadata {
             if let Some(ref metadata) = contract.metadata {
