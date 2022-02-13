@@ -2,6 +2,7 @@ pub mod artifacts;
 pub mod sourcemap;
 
 pub use artifacts::{CompilerInput, CompilerOutput, EvmVersion};
+use std::collections::BTreeMap;
 
 mod artifact_output;
 pub mod cache;
@@ -30,9 +31,11 @@ pub mod utils;
 
 use crate::{
     artifacts::{Contract, Sources},
+    contracts::VersionedContracts,
     error::{SolcError, SolcIoError},
 };
 use error::Result;
+use semver::Version;
 use std::path::{Path, PathBuf};
 
 /// Utilities for creating, mocking and testing of (temporary) projects
@@ -568,11 +571,77 @@ impl<T: ArtifactOutput + Default> Default for ProjectBuilder<T> {
 impl<T: ArtifactOutput> ArtifactOutput for Project<T> {
     type Artifact = T::Artifact;
 
+    fn on_output(
+        &self,
+        contracts: &VersionedContracts,
+        layout: &ProjectPathsConfig,
+    ) -> Result<Artifacts<Self::Artifact>> {
+        self.artifacts_handler().on_output(contracts, layout)
+    }
+
+    fn write_contract_extras(&self, contract: &Contract, file: &Path) -> Result<()> {
+        self.artifacts_handler().write_contract_extras(contract, file)
+    }
+
+    fn write_extras(
+        &self,
+        contracts: &VersionedContracts,
+        layout: &ProjectPathsConfig,
+    ) -> Result<()> {
+        self.artifacts_handler().write_extras(contracts, layout)
+    }
+
+    fn output_file_name(name: impl AsRef<str>) -> PathBuf {
+        T::output_file_name(name)
+    }
+
+    fn output_file_name_versioned(name: impl AsRef<str>, version: &Version) -> PathBuf {
+        T::output_file_name_versioned(name, version)
+    }
+
+    fn output_file(contract_file: impl AsRef<Path>, name: impl AsRef<str>) -> PathBuf {
+        T::output_file(contract_file, name)
+    }
+
+    fn output_file_versioned(
+        contract_file: impl AsRef<Path>,
+        name: impl AsRef<str>,
+        version: &Version,
+    ) -> PathBuf {
+        T::output_file_versioned(contract_file, name, version)
+    }
+
+    fn contract_name(file: impl AsRef<Path>) -> Option<String> {
+        T::contract_name(file)
+    }
+
+    fn output_exists(
+        contract_file: impl AsRef<Path>,
+        name: impl AsRef<str>,
+        root: impl AsRef<Path>,
+    ) -> bool {
+        T::output_exists(contract_file, name, root)
+    }
+
+    fn read_cached_artifact(path: impl AsRef<Path>) -> Result<Self::Artifact> {
+        T::read_cached_artifact(path)
+    }
+
+    fn read_cached_artifacts<P, I>(files: I) -> Result<BTreeMap<PathBuf, Self::Artifact>>
+    where
+        I: IntoIterator<Item = P>,
+        P: Into<PathBuf>,
+    {
+        T::read_cached_artifacts(files)
+    }
+
     fn contract_to_artifact(&self, file: &str, name: &str, contract: Contract) -> Self::Artifact {
         self.artifacts_handler().contract_to_artifact(file, name, contract)
     }
 
-    // TODO delegate all functions
+    fn output_to_artifacts(&self, contracts: &VersionedContracts) -> Artifacts<Self::Artifact> {
+        self.artifacts_handler().output_to_artifacts(contracts)
+    }
 }
 
 #[cfg(test)]
