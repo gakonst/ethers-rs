@@ -332,28 +332,7 @@ pub trait ArtifactOutput {
 
     /// Write additional files for the contract
     fn write_contract_extras(&self, contract: &Contract, file: &Path) -> Result<()> {
-        if let Some(ref iropt) = contract.ir_optimized {
-            fs::write(&file.with_extension("iropt"), iropt)
-                .map_err(|err| SolcError::io(err, file.with_extension("iropt")))?
-        }
-
-        if let Some(ref ir) = contract.ir {
-            fs::write(&file.with_extension("ir"), ir)
-                .map_err(|err| SolcError::io(err, file.with_extension("ir")))?
-        }
-
-        if let Some(ref ewasm) = contract.ewasm {
-            fs::write(&file.with_extension("ewasm"), serde_json::to_vec_pretty(&ewasm)?)
-                .map_err(|err| SolcError::io(err, file.with_extension("ewasm")))?;
-        }
-
-        if let Some(ref evm) = contract.evm {
-            if let Some(ref asm) = evm.assembly {
-                fs::write(&file.with_extension("asm"), asm)
-                    .map_err(|err| SolcError::io(err, file.with_extension("asm")))?
-            }
-        }
-        Ok(())
+        AdditionalArtifactFiles::all().write_extras(contract, file)
     }
 
     /// Writes additional files for the contracts if the included in the `Contract`, such as `ir`,

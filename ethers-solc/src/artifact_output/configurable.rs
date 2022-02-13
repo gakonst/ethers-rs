@@ -5,10 +5,10 @@ use crate::{
         CompactContract, CompactContractBytecode, CompactEvm, DevDoc, Ewasm, GasEstimates,
         Metadata, StorageLayout, UserDoc,
     },
-    ArtifactOutput, Contract,
+    ArtifactOutput, Contract, SolcError,
 };
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, fs, path::Path};
 
 /// Represents the `Artifact` that `ConfigurableArtifacts` emits.
 ///
@@ -184,6 +184,10 @@ impl ArtifactOutput for ConfigurableArtifacts {
             ewasm: artifact_ewasm,
         }
     }
+
+    fn write_contract_extras(&self, contract: &Contract, file: &Path) -> Result<(), SolcError> {
+        self.additional_files.write_extras(contract, file)
+    }
 }
 
 /// Determines the additional values to include in the contract's artifact file
@@ -221,10 +225,9 @@ pub struct AdditionalArtifactValues {
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Default)]
 pub struct AdditionalArtifactFiles {
     pub metadata: bool,
-    pub ir: bool,
     pub ir_optimized: bool,
+    pub ewasm: bool,
     pub assembly: bool,
-    pub method_identifiers: bool,
 
     /// PRIVATE: This structure may grow, As such, constructing this structure should
     /// _always_ be done using a public constructor or update syntax:
@@ -233,10 +236,65 @@ pub struct AdditionalArtifactFiles {
     /// 
     /// use ethers_solc::AdditionalArtifactFiles;
     /// let config = AdditionalArtifactFiles {
-    ///     ir: true,
+    ///     metadata: true,
     ///     ..Default::default()
     /// };
     /// ```
     #[doc(hidden)]
     pub __non_exhaustive: (),
+}
+
+impl AdditionalArtifactFiles {
+    pub fn all() -> Self {
+        Self {
+            metadata: true,
+            ir_optimized: true,
+            ewasm: true,
+            assembly: true,
+            __non_exhaustive: (),
+        }
+    }
+
+    pub fn write_extras(&self, contract: &Contract, file: &Path) -> Result<(), SolcError> {
+        if self.metadata {
+            if let Some(ref metadata) = contract.metadata {
+                let file = file.join(".metadata.json");
+                fs::write(&file, serde_json::to_string_pretty(metadata)?)
+                    .map_err(|err| SolcError::io(err, file))?
+            }
+        }
+
+        if self.ir_optimized {
+            if let Some(ref iropt) = contract.ir_optimized {
+                let file = file.with_extension("iropt");
+                fs::write(&file, iropt).map_err(|err| SolcError::io(err, file))?
+            }
+        }
+
+        if self.ewasm {
+            if let Some(ref ir) = contract.ir {
+                let file = file.with_extension("ir");
+                fs::write(&file, ir).map_err(|err| SolcError::io(err, file))?
+            }
+        }
+
+        if self.ewasm {
+            if let Some(ref ewasm) = contract.ewasm {
+                let file = file.with_extension("ewasm");
+                fs::write(&file, serde_json::to_vec_pretty(ewasm)?)
+                    .map_err(|err| SolcError::io(err, file))?;
+            }
+        }
+
+        if self.assembly {
+            if let Some(ref evm) = contract.evm {
+                if let Some(ref asm) = evm.assembly {
+                    let file = file.with_extension("asm");
+                    fs::write(&file, asm).map_err(|err| SolcError::io(err, file))?
+                }
+            }
+        }
+
+        Ok(())
+    }
 }
