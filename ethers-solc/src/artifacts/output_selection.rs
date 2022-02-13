@@ -4,7 +4,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{fmt, str::FromStr};
 
 /// Contract level output selection
-#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum ContractOutputSelection {
     Abi,
     DevDoc,
@@ -72,7 +72,7 @@ impl FromStr for ContractOutputSelection {
 }
 
 /// Contract level output selection for `evm`
-#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum EvmOutputSelection {
     All,
     Assembly,
@@ -137,7 +137,7 @@ impl FromStr for EvmOutputSelection {
 }
 
 /// Contract level output selection for `evm.bytecode`
-#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum BytecodeOutputSelection {
     All,
     FunctionDebugData,
@@ -202,7 +202,7 @@ impl FromStr for BytecodeOutputSelection {
 }
 
 /// Contract level output selection for `evm.deployedBytecode`
-#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum DeployedBytecodeOutputSelection {
     All,
     FunctionDebugData,
@@ -277,7 +277,7 @@ impl FromStr for DeployedBytecodeOutputSelection {
 }
 
 /// Contract level output selection for `evm.ewasm`
-#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum EwasmOutputSelection {
     All,
     Wast,

@@ -953,13 +953,8 @@ impl CompactContractBytecode {
 impl From<Contract> for CompactContractBytecode {
     fn from(c: Contract) -> Self {
         let (bytecode, deployed_bytecode) = if let Some(evm) = c.evm {
-            let (maybe_bcode, maybe_runtime) = match (evm.bytecode, evm.deployed_bytecode) {
-                (Some(bcode), Some(dbcode)) => (Some(bcode.into()), Some(dbcode.into())),
-                (None, Some(dbcode)) => (None, Some(dbcode.into())),
-                (Some(bcode), None) => (Some(bcode.into()), None),
-                (None, None) => (None, None),
-            };
-            (maybe_bcode, maybe_runtime)
+            let evm = evm.into_compact();
+            (evm.bytecode, evm.deployed_bytecode)
         } else {
             (None, None)
         };
@@ -1329,6 +1324,55 @@ pub struct Evm {
     pub bytecode: Option<Bytecode>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub deployed_bytecode: Option<DeployedBytecode>,
+    /// The list of function hashes
+    #[serde(default, skip_serializing_if = "::std::collections::BTreeMap::is_empty")]
+    pub method_identifiers: BTreeMap<String, String>,
+    /// Function gas estimates
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gas_estimates: Option<GasEstimates>,
+}
+
+impl Evm {
+    /// Crate internal helper do transform the underlying bytecode artifacts into a more convenient
+    /// structure
+    pub(crate) fn into_compact(self) -> CompactEvm {
+        let Evm {
+            assembly,
+            legacy_assembly,
+            bytecode,
+            deployed_bytecode,
+            method_identifiers,
+            gas_estimates,
+        } = self;
+
+        let (bytecode, deployed_bytecode) = match (bytecode, deployed_bytecode) {
+            (Some(bcode), Some(dbcode)) => (Some(bcode.into()), Some(dbcode.into())),
+            (None, Some(dbcode)) => (None, Some(dbcode.into())),
+            (Some(bcode), None) => (Some(bcode.into()), None),
+            (None, None) => (None, None),
+        };
+
+        CompactEvm {
+            assembly,
+            legacy_assembly,
+            bytecode,
+            deployed_bytecode,
+            method_identifiers,
+            gas_estimates,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct CompactEvm {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub assembly: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub legacy_assembly: Option<serde_json::Value>,
+    pub bytecode: Option<CompactBytecode>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub deployed_bytecode: Option<CompactDeployedBytecode>,
     /// The list of function hashes
     #[serde(default, skip_serializing_if = "::std::collections::BTreeMap::is_empty")]
     pub method_identifiers: BTreeMap<String, String>,
