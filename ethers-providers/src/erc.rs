@@ -12,21 +12,21 @@ pub const ERC1155_BALANCE_SELECTOR: Selector = [0x00, 0xfd, 0xd5, 0x8e];
 
 const IPFS_GATEWAY: &str = "https://ipfs.io/ipfs/";
 
-/// A ERC 721 or 1155 token
-pub struct ERCToken {
-    pub type_: ERCTokenType,
+/// An ERC 721 or 1155 token
+pub struct ERCNFT {
+    pub type_: ERCNFTType,
     pub contract: Address,
     pub id: [u8; 32],
 }
 
-impl FromStr for ERCToken {
+impl FromStr for ERCNFT {
     type Err = String;
-    fn from_str(input: &str) -> Result<ERCToken, Self::Err> {
+    fn from_str(input: &str) -> Result<ERCNFT, Self::Err> {
         let split: Vec<&str> =
             input.trim_start_matches("eip155:").trim_start_matches("1/").split(':').collect();
         let (token_type, inner_path) = if split.len() == 2 {
             (
-                ERCTokenType::from_str(split[0])
+                ERCNFTType::from_str(split[0])
                     .map_err(|_| "Unsupported ERC token type".to_string())?,
                 split[1],
             )
@@ -48,35 +48,35 @@ impl FromStr for ERCToken {
         } else {
             return Err("Unsupported ERC link path".to_string());
         };
-        Ok(ERCToken { id: token_id, type_: token_type, contract: contract_addr })
+        Ok(ERCNFT { id: token_id, type_: token_type, contract: contract_addr })
     }
 }
 
 /// Supported ERCs
 #[derive(PartialEq)]
-pub enum ERCTokenType {
+pub enum ERCNFTType {
     ERC721,
     ERC1155,
 }
 
-impl FromStr for ERCTokenType {
+impl FromStr for ERCNFTType {
     type Err = ();
-    fn from_str(input: &str) -> Result<ERCTokenType, Self::Err> {
+    fn from_str(input: &str) -> Result<ERCNFTType, Self::Err> {
         match input {
-            "erc721" => Ok(ERCTokenType::ERC721),
-            "erc1155" => Ok(ERCTokenType::ERC1155),
+            "erc721" => Ok(ERCNFTType::ERC721),
+            "erc1155" => Ok(ERCNFTType::ERC1155),
             _ => Err(()),
         }
     }
 }
 
-impl ERCTokenType {
+impl ERCNFTType {
     pub fn resolution_selector(&self) -> Selector {
         match self {
             // tokenURI(uint256)
-            ERCTokenType::ERC721 => [0xc8, 0x7b, 0x56, 0xdd],
+            ERCNFTType::ERC721 => [0xc8, 0x7b, 0x56, 0xdd],
             // url(uint256)
-            ERCTokenType::ERC1155 => [0x0e, 0x89, 0x34, 0x1c],
+            ERCNFTType::ERC1155 => [0x0e, 0x89, 0x34, 0x1c],
         }
     }
 }

@@ -817,9 +817,9 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
             "ipfs" => erc::http_link_ipfs(url).map_err(ProviderError::CustomError),
             "eip155" => {
                 let token =
-                    erc::ERCToken::from_str(url.path()).map_err(ProviderError::CustomError)?;
+                    erc::ERCNFT::from_str(url.path()).map_err(ProviderError::CustomError)?;
                 match token.type_ {
-                    erc::ERCTokenType::ERC721 => {
+                    erc::ERCNFTType::ERC721 => {
                         let tx = TransactionRequest {
                             data: Some(
                                 [&erc::ERC721_OWNER_SELECTOR[..], &token.id].concat().into(),
@@ -832,7 +832,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
                             return Err(ProviderError::CustomError("Incorrect owner.".to_string()));
                         }
                     }
-                    erc::ERCTokenType::ERC1155 => {
+                    erc::ERCNFTType::ERC1155 => {
                         let tx = TransactionRequest {
                             data: Some(
                                 [
@@ -856,7 +856,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
                     }
                 }
 
-                let image_url = self.resolve_token(token).await?;
+                let image_url = self.resolve_nft(token).await?;
                 match image_url.scheme() {
                     "https" | "data" => Ok(image_url),
                     "ipfs" => erc::http_link_ipfs(image_url).map_err(ProviderError::CustomError),
@@ -878,9 +878,9 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
     /// # #[tokio::main(flavor = "current_thread")]
     /// # async fn main() {
     /// # let provider = Provider::<HttpProvider>::try_from("https://mainnet.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27").unwrap();
-    /// let token = ethers_providers::erc::ERCToken::from_str("erc721:0xc92ceddfb8dd984a89fb494c376f9a48b999aafc/9018").unwrap();
-    /// let token_image = provider.resolve_token(token).await.unwrap();
-    /// assert_eq!(token_image.to_string(), "https://creature.mypinata.cloud/ipfs/QmY4mSRgKa9BdB4iCaQ3tt7Vy7evvhduPwHn9JFG6iC3ie/9018.jpg");
+    /// let token = ethers_providers::erc::ERCNFT::from_str("erc721:0xc92ceddfb8dd984a89fb494c376f9a48b999aafc/9018").unwrap();
+    /// let token_image = provider.resolve_nft(token).await.unwrap();
+    /// assert_eq!(token_image.to_string(), "https://creature.mypinata.cloud/ipfs/QmNwj3aUzXfG4twV3no7hJRYxLLAWNPk6RrfQaqJ6nVJFa/9018.jpg");
     /// # }
     /// ```
     ///
@@ -888,7 +888,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
     ///
     /// If the bytes returned from the ENS registrar/resolver cannot be interpreted as
     /// a string. This should theoretically never happen.
-    async fn resolve_token(&self, token: erc::ERCToken) -> Result<Url, ProviderError> {
+    async fn resolve_nft(&self, token: erc::ERCNFT) -> Result<Url, ProviderError> {
         let selector = token.type_.resolution_selector();
         let tx = TransactionRequest {
             data: Some([&selector[..], &token.id].concat().into()),
@@ -899,7 +899,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         let mut metadata_url = Url::parse(&decode_bytes::<String>(ParamType::String, data))
             .map_err(|e| ProviderError::CustomError(format!("Invalid metadata url: {}", e)))?;
 
-        if token.type_ == erc::ERCTokenType::ERC1155 {
+        if token.type_ == erc::ERCNFTType::ERC1155 {
             metadata_url
                 .set_path(&metadata_url.path().replace("%7Bid%7D", &hex::encode(&token.id)));
         }
@@ -1511,7 +1511,7 @@ mod tests {
             // HTTPS
             ("parishilton.eth", "https://i.imgur.com/YW3Hzph.jpg"),
             // ERC-721
-            ("shaq.eth", "https://creature.mypinata.cloud/ipfs/QmY4mSRgKa9BdB4iCaQ3tt7Vy7evvhduPwHn9JFG6iC3ie/9018.jpg"),
+            ("shaq.eth", "https://creature.mypinata.cloud/ipfs/QmNwj3aUzXfG4twV3no7hJRYxLLAWNPk6RrfQaqJ6nVJFa/9018.jpg"),
             // ERC-1155 with IPFS link
             ("vitalik.eth", "https://ipfs.io/ipfs/QmSP4nq9fnN9dAiCj42ug9Wa79rqmQerZXZch82VqpiH7U/image.gif"),
             // IPFS
