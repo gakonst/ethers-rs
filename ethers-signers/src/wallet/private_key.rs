@@ -70,13 +70,14 @@ impl Wallet<SigningKey> {
         dir: P,
         rng: &mut R,
         password: S,
+        name: Option<&str>,
     ) -> Result<(Self, String), WalletError>
     where
         P: AsRef<Path>,
         R: Rng + CryptoRng + rand_core::CryptoRng,
         S: AsRef<[u8]>,
     {
-        let (secret, uuid) = eth_keystore::new(dir, rng, password)?;
+        let (secret, uuid) = eth_keystore::new(dir, rng, password, name)?;
         let signer = SigningKey::from_bytes(secret.as_slice())?;
         let address = secret_key_to_address(&signer);
         Ok((Self { signer, address, chain_id: 1 }, uuid))
@@ -153,7 +154,8 @@ mod tests {
         // create and store a random encrypted JSON keystore in this directory
         let dir = tempdir().unwrap();
         let mut rng = rand::thread_rng();
-        let (key, uuid) = Wallet::<SigningKey>::new_keystore(&dir, &mut rng, "randpsswd").unwrap();
+        let (key, uuid) =
+            Wallet::<SigningKey>::new_keystore(&dir, &mut rng, "randpsswd", None).unwrap();
 
         // sign a message using the above key
         let message = "Some data";
