@@ -329,9 +329,7 @@ mod tests {
                     .optimization(true)
                     .runs(200);
             let resp = client.submit_contract_verification(&contract).await.expect("failed to send the request");
-            println!("resp {:?}", resp);
             assert_ne!(resp.result, "Error!");
-            assert!(false);
         })
         .await
     }
