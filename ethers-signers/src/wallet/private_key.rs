@@ -64,7 +64,8 @@ impl Clone for Wallet<SigningKey> {
 impl Wallet<SigningKey> {
     /// Creates a new random encrypted JSON with the provided password and stores it in the
     /// provided directory. Returns a tuple (Wallet, String) of the wallet instance for the
-    /// keystore with its random UUID.
+    /// keystore with its random UUID. Accepts an optional name for the keystore file. If `None`,
+    /// the keystore is stored as the stringified UUID.
     #[cfg(not(target_arch = "wasm32"))]
     pub fn new_keystore<P, R, S>(
         dir: P,
