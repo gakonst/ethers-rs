@@ -55,11 +55,10 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
     ///
     /// ```no_run
     /// use std::collections::btree_map::BTreeMap;
-    /// use ethers_solc::artifacts::CompactContractBytecode;
-    /// use ethers_solc::Project;
+    /// use ethers_solc::{ConfigurableContractArtifact, Project};
     ///
     /// let project = Project::builder().build().unwrap();
-    /// let contracts: Vec<(String, String, CompactContractBytecode)> = project.compile().unwrap().into_artifacts_with_files().collect();
+    /// let contracts: Vec<(String, String, ConfigurableContractArtifact)> = project.compile().unwrap().into_artifacts_with_files().collect();
     /// ```
     ///
     /// **NOTE** the `file` will be returned as is, see also [`Self::with_stripped_file_prefixes()`]
