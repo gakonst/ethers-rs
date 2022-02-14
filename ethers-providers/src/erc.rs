@@ -32,7 +32,7 @@ impl FromStr for ERCNFT {
                 split[1],
             )
         } else {
-            return Err("Unsupported ERC link".to_string());
+            return Err("Unsupported ERC link".to_string())
         };
 
         let token_split: Vec<&str> = inner_path.split('/').collect();
@@ -47,7 +47,7 @@ impl FromStr for ERCNFT {
                 token_id_bytes,
             )
         } else {
-            return Err("Unsupported ERC link path".to_string());
+            return Err("Unsupported ERC link path".to_string())
         };
         Ok(ERCNFT { id: token_id, type_: token_type, contract: contract_addr })
     }

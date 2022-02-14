@@ -829,7 +829,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
                         };
                         let data = self.call(&tx.into(), None).await?;
                         if decode_bytes::<Address>(ParamType::Address, data) != owner {
-                            return Err(ProviderError::CustomError("Incorrect owner.".to_string()));
+                            return Err(ProviderError::CustomError("Incorrect owner.".to_string()))
                         }
                     }
                     erc::ERCNFTType::ERC1155 => {
@@ -849,9 +849,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
                         };
                         let data = self.call(&tx.into(), None).await?;
                         if decode_bytes::<u64>(ParamType::Uint(64), data) == 0 {
-                            return Err(ProviderError::CustomError(
-                                "Incorrect balance.".to_string(),
-                            ));
+                            return Err(ProviderError::CustomError("Incorrect balance.".to_string()))
                         }
                     }
                 }
@@ -1143,7 +1141,7 @@ impl<P: JsonRpcClient> Provider<P> {
 
         let resolver_address: Address = decode_bytes(ParamType::Address, data);
         if resolver_address == Address::zero() {
-            return Err(ProviderError::EnsError(ens_name.to_owned()));
+            return Err(ProviderError::EnsError(ens_name.to_owned()))
         }
 
         // resolve
