@@ -38,7 +38,7 @@ tracing-futures = { version = "0.2.5", optional = true }
 spki = { version = "0.5.4", optional = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-eth-keystore = { version = "0.3.0" }
+eth-keystore = { version = "0.4.0" }
 home = "0.5.3"
 
 [dev-dependencies]
