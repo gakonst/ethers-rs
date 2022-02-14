@@ -140,6 +140,9 @@
 
 ### Unreleased
 
+- `eth-keystore-rs` crate updated. Allow an optional name for the to-be-generated
+  keystore file [#910](https://github.com/gakonst/ethers-rs/pull/910)
+
 ### 0.6.0
 
 - `LocalWallet::new_keystore` now returns a tuple `(LocalWallet, String)`
