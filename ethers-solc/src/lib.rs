@@ -44,7 +44,7 @@ pub mod project_util;
 
 /// Represents a project workspace and handles `solc` compiling of all contracts in that workspace.
 #[derive(Debug)]
-pub struct Project<T: ArtifactOutput = MinimalCombinedArtifacts> {
+pub struct Project<T: ArtifactOutput = ConfigurableArtifacts> {
     /// The layout of the
     pub paths: ProjectPathsConfig,
     /// Where to find solc
@@ -74,7 +74,7 @@ impl Project {
     ///
     /// # Example
     ///
-    /// Configure with `MinimalCombinedArtifacts` artifacts output
+    /// Configure with `ConfigurableArtifacts` artifacts output
     ///
     /// ```rust
     /// use ethers_solc::Project;
@@ -91,8 +91,8 @@ impl Project {
     /// or use the builder directly
     ///
     /// ```rust
-    /// use ethers_solc::{MinimalCombinedArtifacts, ProjectBuilder};
-    /// let config = ProjectBuilder::<MinimalCombinedArtifacts>::default().build().unwrap();
+    /// use ethers_solc::{ConfigurableArtifacts, ProjectBuilder};
+    /// let config = ProjectBuilder::<ConfigurableArtifacts>::default().build().unwrap();
     /// ```
     pub fn builder() -> ProjectBuilder {
         ProjectBuilder::default()
@@ -330,7 +330,7 @@ impl<T: ArtifactOutput> Project<T> {
     }
 }
 
-pub struct ProjectBuilder<T: ArtifactOutput = MinimalCombinedArtifacts> {
+pub struct ProjectBuilder<T: ArtifactOutput = ConfigurableArtifacts> {
     /// The layout of the
     paths: Option<ProjectPathsConfig>,
     /// Where to find solc

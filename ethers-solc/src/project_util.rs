@@ -4,7 +4,7 @@ use crate::{
     error::{Result, SolcError},
     hh::HardhatArtifacts,
     utils::tempdir,
-    ArtifactOutput, MinimalCombinedArtifacts, PathStyle, Project, ProjectCompileOutput,
+    ArtifactOutput, ConfigurableArtifacts, PathStyle, Project, ProjectCompileOutput,
     ProjectPathsConfig, SolcIoError,
 };
 use fs_extra::{dir, file};
@@ -17,7 +17,7 @@ use tempfile::TempDir;
 /// A [`Project`] wrapper that lives in a new temporary directory
 ///
 /// Once `TempProject` is dropped, the temp dir is automatically removed, see [`TempDir::drop()`]
-pub struct TempProject<T: ArtifactOutput = MinimalCombinedArtifacts> {
+pub struct TempProject<T: ArtifactOutput = ConfigurableArtifacts> {
     /// temporary workspace root
     _root: TempDir,
     /// actual project workspace with the `root` tempdir as its root
@@ -197,7 +197,7 @@ impl TempProject<HardhatArtifacts> {
     }
 }
 
-impl TempProject<MinimalCombinedArtifacts> {
+impl TempProject<ConfigurableArtifacts> {
     /// Creates an empty new dapptools style workspace in a new temporary dir
     pub fn dapptools() -> Result<Self> {
         let tmp_dir = tempdir("tmp_dapp")?;
