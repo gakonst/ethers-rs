@@ -355,6 +355,23 @@ pub struct ProjectBuilder<T: ArtifactOutput = MinimalCombinedArtifacts> {
 }
 
 impl<T: ArtifactOutput> ProjectBuilder<T> {
+    /// Create a new builder with the given artifacts handler
+    pub fn new(artifacts: T) -> Self {
+        Self {
+            paths: None,
+            solc: None,
+            solc_config: None,
+            cached: true,
+            no_artifacts: false,
+            auto_detect: true,
+            offline: false,
+            artifacts,
+            ignored_error_codes: Vec::new(),
+            allowed_paths: vec![],
+            solc_jobs: None,
+        }
+    }
+
     #[must_use]
     pub fn paths(mut self, paths: ProjectPathsConfig) -> Self {
         self.paths = Some(paths);
@@ -552,19 +569,7 @@ impl<T: ArtifactOutput> ProjectBuilder<T> {
 
 impl<T: ArtifactOutput + Default> Default for ProjectBuilder<T> {
     fn default() -> Self {
-        Self {
-            paths: None,
-            solc: None,
-            solc_config: None,
-            cached: true,
-            no_artifacts: false,
-            auto_detect: true,
-            offline: false,
-            artifacts: T::default(),
-            ignored_error_codes: Vec::new(),
-            allowed_paths: vec![],
-            solc_jobs: None,
-        }
+        Self::new(T::default())
     }
 }
 

@@ -43,6 +43,13 @@ pub struct ConfigurableContractArtifact {
     pub ewasm: Option<Ewasm>,
 }
 
+impl ConfigurableContractArtifact {
+    /// Returns the inner element that contains the core bytecode related information
+    pub fn into_contract_bytecode(self) -> CompactContractBytecode {
+        self.compact
+    }
+}
+
 impl From<ConfigurableContractArtifact> for CompactContractBytecode {
     fn from(artifact: ConfigurableContractArtifact) -> Self {
         artifact.compact

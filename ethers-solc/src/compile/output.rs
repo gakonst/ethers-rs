@@ -1,9 +1,11 @@
 //! The output of a compiled project
 
 use crate::{
-    artifacts::{CompactContractRef, Contract, Error, SourceFile, SourceFiles},
+    artifacts::{
+        CompactContractBytecode, CompactContractRef, Contract, Error, SourceFile, SourceFiles,
+    },
     contracts::{VersionedContract, VersionedContracts},
-    ArtifactOutput, Artifacts, CompilerOutput,
+    ArtifactOutput, Artifacts, CompilerOutput, ConfigurableArtifacts,
 };
 use semver::Version;
 use std::{collections::BTreeMap, fmt, path::Path};
@@ -33,11 +35,11 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
     ///
     /// ```no_run
     /// use std::collections::btree_map::BTreeMap;
-    /// use ethers_solc::artifacts::CompactContractBytecode;
+    /// use ethers_solc::ConfigurableContractArtifact;
     /// use ethers_solc::Project;
     ///
     /// let project = Project::builder().build().unwrap();
-    /// let contracts: BTreeMap<String, CompactContractBytecode> = project.compile().unwrap().into_artifacts().collect();
+    /// let contracts: BTreeMap<String, ConfigurableContractArtifact> = project.compile().unwrap().into_artifacts().collect();
     /// ```
     pub fn into_artifacts(self) -> impl Iterator<Item = (String, T::Artifact)> {
         let Self { cached_artifacts, compiled_artifacts, .. } = self;
@@ -170,6 +172,27 @@ where
             return artifact
         }
         self.cached_artifacts.find(contract_name)
+    }
+}
+
+impl ProjectCompileOutput<ConfigurableArtifacts> {
+    /// A helper functions that extracts the underlying [`CompactContractBytecode`] from the
+    /// [`ConfigurableContractArtifact`]
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use std::collections::btree_map::BTreeMap;
+    /// use ethers_solc::artifacts::CompactContractBytecode;
+    /// use ethers_solc::Project;
+    ///
+    /// let project = Project::builder().build().unwrap();
+    /// let contracts: BTreeMap<String, CompactContractBytecode> = project.compile().unwrap().into_contract_bytecodes().collect();
+    /// ```
+    pub fn into_contract_bytecodes(
+        self,
+    ) -> impl Iterator<Item = (String, CompactContractBytecode)> {
+        self.into_artifacts().map(|(name, artifact)| (name, artifact.into_contract_bytecode()))
     }
 }
 
