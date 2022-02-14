@@ -3,11 +3,12 @@
 use crate::{
     artifacts::{
         output_selection::{ContractOutputSelection, EvmOutputSelection},
-        CompactContract, CompactContractBytecode, CompactEvm, DevDoc, Ewasm, GasEstimates,
-        Metadata, StorageLayout, UserDoc,
+        CompactBytecode, CompactContract, CompactContractBytecode, CompactDeployedBytecode,
+        CompactEvm, DevDoc, Ewasm, GasEstimates, Metadata, StorageLayout, UserDoc,
     },
     ArtifactOutput, Contract, SolcError,
 };
+use ethers_core::abi::Abi;
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, fs, path::Path};
 
@@ -17,9 +18,13 @@ use std::{collections::BTreeMap, fs, path::Path};
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct ConfigurableContractArtifact {
-    /// The essential values of the contract, abi, bytecode, deployedBytecode
-    #[serde(flatten)]
-    pub compact: CompactContractBytecode,
+    /// The Ethereum Contract ABI. If empty, it is represented as an empty
+    /// array. See https://docs.soliditylang.org/en/develop/abi-spec.html
+    pub abi: Option<Abi>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bytecode: Option<CompactBytecode>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub deployed_bytecode: Option<CompactDeployedBytecode>,
 
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub assembly: Option<String>,
@@ -46,19 +51,23 @@ pub struct ConfigurableContractArtifact {
 impl ConfigurableContractArtifact {
     /// Returns the inner element that contains the core bytecode related information
     pub fn into_contract_bytecode(self) -> CompactContractBytecode {
-        self.compact
+        self.into()
     }
 }
 
 impl From<ConfigurableContractArtifact> for CompactContractBytecode {
     fn from(artifact: ConfigurableContractArtifact) -> Self {
-        artifact.compact
+        CompactContractBytecode {
+            abi: artifact.abi,
+            bytecode: artifact.bytecode,
+            deployed_bytecode: artifact.deployed_bytecode,
+        }
     }
 }
 
 impl From<ConfigurableContractArtifact> for CompactContract {
     fn from(artifact: ConfigurableContractArtifact) -> Self {
-        artifact.compact.into()
+        CompactContractBytecode::from(artifact).into()
     }
 }
 
@@ -176,14 +185,10 @@ impl ArtifactOutput for ConfigurableArtifacts {
             }
         }
 
-        let compact = CompactContractBytecode {
+        ConfigurableContractArtifact {
             abi,
             bytecode: artifact_bytecode,
             deployed_bytecode: artifact_deployed_bytecode,
-        };
-
-        ConfigurableContractArtifact {
-            compact,
             assembly: artifact_assembly,
             method_identifiers: artifact_method_identifiers,
             gas_estimates: artifact_gas_estimates,
