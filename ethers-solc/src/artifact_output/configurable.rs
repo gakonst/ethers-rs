@@ -4,7 +4,7 @@ use crate::{
     artifacts::{
         output_selection::{ContractOutputSelection, EvmOutputSelection},
         CompactBytecode, CompactContract, CompactContractBytecode, CompactDeployedBytecode,
-        CompactEvm, DevDoc, Ewasm, GasEstimates, Metadata, StorageLayout, UserDoc,
+        CompactEvm, DevDoc, Ewasm, GasEstimates, Metadata, Offsets, StorageLayout, UserDoc,
     },
     ArtifactOutput, Contract, SolcError,
 };
@@ -52,6 +52,21 @@ impl ConfigurableContractArtifact {
     /// Returns the inner element that contains the core bytecode related information
     pub fn into_contract_bytecode(self) -> CompactContractBytecode {
         self.into()
+    }
+
+    /// Looks for all link references in deployment and runtime bytecodes
+    pub fn all_link_references(&self) -> BTreeMap<String, BTreeMap<String, Vec<Offsets>>> {
+        let mut links = BTreeMap::new();
+        if let Some(bcode) = &self.bytecode {
+            links.extend(bcode.link_references.clone());
+        }
+
+        if let Some(d_bcode) = &self.deployed_bytecode {
+            if let Some(bcode) = &d_bcode.bytecode {
+                links.extend(bcode.link_references.clone());
+            }
+        }
+        links
     }
 }
 
