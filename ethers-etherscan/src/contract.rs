@@ -9,14 +9,16 @@ use crate::{Client, Response, Result};
 /// Arguments for verifying contracts
 #[derive(Debug, Clone, Serialize)]
 pub struct VerifyContract {
+    #[serde(rename = "contractaddress")]
     pub address: Address,
+    #[serde(rename = "sourceCode")]
     pub source: String,
     #[serde(rename = "codeformat")]
     pub code_format: CodeFormat,
     /// if codeformat=solidity-standard-json-input, then expected as
     /// `erc20.sol:erc20`
-    #[serde(rename = "contractname", skip_serializing_if = "Option::is_none")]
-    pub contract_name: Option<String>,
+    #[serde(rename = "contractname")]
+    pub contract_name: String,
     #[serde(rename = "compilerversion")]
     pub compiler_version: String,
     /// applicable when codeformat=solidity-single-file
@@ -24,8 +26,7 @@ pub struct VerifyContract {
     optimization_used: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub runs: Option<String>,
-    /// NOTE: there is a typo in the etherscan API `constructorArguements`
-    #[serde(rename = "constructorArguements", skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "constructorArguments", skip_serializing_if = "Option::is_none")]
     pub constructor_arguments: Option<String>,
     #[serde(rename = "evmversion")]
     pub evm_version: Option<String>,
@@ -34,12 +35,17 @@ pub struct VerifyContract {
 }
 
 impl VerifyContract {
-    pub fn new(address: Address, source: String, compiler_version: String) -> Self {
+    pub fn new(
+        address: Address,
+        contract_name: String,
+        source: String,
+        compiler_version: String,
+    ) -> Self {
         Self {
             address,
             source,
             code_format: Default::default(),
-            contract_name: None,
+            contract_name,
             compiler_version,
             optimization_used: None,
             runs: None,
@@ -47,12 +53,6 @@ impl VerifyContract {
             evm_version: None,
             other: Default::default(),
         }
-    }
-
-    #[must_use]
-    pub fn contract_name(mut self, name: impl Into<String>) -> Self {
-        self.contract_name = Some(name.into());
-        self
     }
 
     #[must_use]
@@ -319,15 +319,17 @@ mod tests {
             let compiler_version = "v0.5.17+commit.d19bba13";
             let constructor_args = "0x000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000a00000000000000000000000000000000000000000000000000000000005f5e1000000000000000000000000000000000000000000000000000000000000000007596179537761700000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000035941590000000000000000000000000000000000000000000000000000000000";
             let contract = project.flatten(&root.join("UniswapExchange.sol")).expect("failed to flatten contract");
+            let contract_name = "UniswapExchange".to_owned();
 
             let client = Client::new_from_env(Chain::Mainnet).unwrap();
 
             let contract =
-                VerifyContract::new(address, contract, compiler_version.to_string())
+                VerifyContract::new(address, contract_name, contract, compiler_version.to_string())
                     .constructor_arguments(Some(constructor_args))
                     .optimization(true)
                     .runs(200);
-            let _resp = client.submit_contract_verification(&contract).await;
+            let resp = client.submit_contract_verification(&contract).await.expect("failed to send the request");
+            assert_ne!(resp.result, "Error!");
         })
         .await
     }

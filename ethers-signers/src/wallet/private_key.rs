@@ -64,19 +64,21 @@ impl Clone for Wallet<SigningKey> {
 impl Wallet<SigningKey> {
     /// Creates a new random encrypted JSON with the provided password and stores it in the
     /// provided directory. Returns a tuple (Wallet, String) of the wallet instance for the
-    /// keystore with its random UUID.
+    /// keystore with its random UUID. Accepts an optional name for the keystore file. If `None`,
+    /// the keystore is stored as the stringified UUID.
     #[cfg(not(target_arch = "wasm32"))]
     pub fn new_keystore<P, R, S>(
         dir: P,
         rng: &mut R,
         password: S,
+        name: Option<&str>,
     ) -> Result<(Self, String), WalletError>
     where
         P: AsRef<Path>,
         R: Rng + CryptoRng + rand_core::CryptoRng,
         S: AsRef<[u8]>,
     {
-        let (secret, uuid) = eth_keystore::new(dir, rng, password)?;
+        let (secret, uuid) = eth_keystore::new(dir, rng, password, name)?;
         let signer = SigningKey::from_bytes(secret.as_slice())?;
         let address = secret_key_to_address(&signer);
         Ok((Self { signer, address, chain_id: 1 }, uuid))
@@ -153,7 +155,8 @@ mod tests {
         // create and store a random encrypted JSON keystore in this directory
         let dir = tempdir().unwrap();
         let mut rng = rand::thread_rng();
-        let (key, uuid) = Wallet::<SigningKey>::new_keystore(&dir, &mut rng, "randpsswd").unwrap();
+        let (key, uuid) =
+            Wallet::<SigningKey>::new_keystore(&dir, &mut rng, "randpsswd", None).unwrap();
 
         // sign a message using the above key
         let message = "Some data";

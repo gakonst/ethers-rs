@@ -141,6 +141,22 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
     pub fn compiled_artifacts(&self) -> &Artifacts<T::Artifact> {
         &self.compiled_artifacts
     }
+
+    /// Returns a `BTreeMap` that maps the compiler version used during [`Project::compile()`]
+    /// to a Vector of tuples containing the contract name and the `Contract`
+    pub fn compiled_contracts_by_compiler_version(
+        &self,
+    ) -> BTreeMap<Version, Vec<(String, Contract)>> {
+        let mut contracts = BTreeMap::new();
+        let versioned_contracts = &self.compiler_output.contracts;
+        for (_, name, contract, version) in versioned_contracts.contracts_with_files_and_version() {
+            contracts
+                .entry(version.to_owned())
+                .or_insert(Vec::<(String, Contract)>::new())
+                .push((name.to_string(), contract.clone()));
+        }
+        contracts
+    }
 }
 
 impl<T: ArtifactOutput> ProjectCompileOutput<T>
