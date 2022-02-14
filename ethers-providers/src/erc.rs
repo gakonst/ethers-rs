@@ -1,3 +1,4 @@
+//! ERC related utilities. Only supporting NFTs for now.
 use ethers_core::types::{Address, Selector, U256};
 
 use serde::Deserialize;

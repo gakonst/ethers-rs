@@ -62,6 +62,16 @@ let address = provider.resolve_name(name).await?;
 // Lookup ENS name given Address
 let resolved_name = provider.lookup_address(address).await?;
 assert_eq!(name, resolved_name);
+
+/// Lookup ENS field
+let url = "https://vitalik.ca".to_string();
+let resolved_url = provider.resolve_field(name, "url").await?;
+assert_eq!(url, resolved_url);
+
+/// Lookup and resolve ENS avatar
+let avatar = "https://ipfs.io/ipfs/QmSP4nq9fnN9dAiCj42ug9Wa79rqmQerZXZch82VqpiH7U/image.gif".to_string();
+let resolved_avatar = provider.resolve_avatar(name).await?;
+assert_eq!(avatar, resolved_avatar.to_string());
 # Ok(())
 # }
 ```
