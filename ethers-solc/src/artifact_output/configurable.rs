@@ -2,11 +2,12 @@
 
 use crate::{
     artifacts::{
-        output_selection::{ContractOutputSelection, EvmOutputSelection},
+        output_selection::{ContractOutputSelection, EvmOutputSelection, EwasmOutputSelection},
         CompactBytecode, CompactContract, CompactContractBytecode, CompactDeployedBytecode,
-        CompactEvm, DevDoc, Ewasm, GasEstimates, Metadata, Offsets, StorageLayout, UserDoc,
+        CompactEvm, DevDoc, Ewasm, GasEstimates, Metadata, Offsets, Settings, StorageLayout,
+        UserDoc,
     },
-    ArtifactOutput, Contract, SolcError,
+    ArtifactOutput, Contract, SolcConfig, SolcError,
 };
 use ethers_core::abi::Abi;
 use serde::{Deserialize, Serialize};
@@ -119,6 +120,46 @@ pub struct ConfigurableArtifacts {
     /// ```
     #[doc(hidden)]
     pub __non_exhaustive: (),
+}
+
+impl ConfigurableArtifacts {
+    /// Returns the `Settings` this configuration corresponds to
+    pub fn settings(&self) -> Settings {
+        SolcConfig::builder().additional_outputs(self.output_selection()).build().into()
+    }
+
+    /// Returns the output selection corresponding to this configuration
+    pub fn output_selection(&self) -> Vec<ContractOutputSelection> {
+        let mut selection = ContractOutputSelection::basic();
+        if self.additional_values.ir {
+            selection.push(ContractOutputSelection::Ir);
+        }
+        if self.additional_values.ir_optimized {
+            selection.push(ContractOutputSelection::IrOptimized);
+        }
+        if self.additional_values.metadata {
+            selection.push(ContractOutputSelection::Metadata);
+        }
+        if self.additional_values.storage_layout {
+            selection.push(ContractOutputSelection::StorageLayout);
+        }
+        if self.additional_values.devdoc {
+            selection.push(ContractOutputSelection::DevDoc);
+        }
+        if self.additional_values.userdoc {
+            selection.push(ContractOutputSelection::UserDoc);
+        }
+        if self.additional_values.gas_estimates {
+            selection.push(EvmOutputSelection::GasEstimates.into());
+        }
+        if self.additional_values.assembly {
+            selection.push(EvmOutputSelection::Assembly.into());
+        }
+        if self.additional_values.ewasm {
+            selection.push(EwasmOutputSelection::All.into());
+        }
+        selection
+    }
 }
 
 impl ArtifactOutput for ConfigurableArtifacts {

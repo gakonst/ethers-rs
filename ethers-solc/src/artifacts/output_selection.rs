@@ -17,6 +17,23 @@ pub enum ContractOutputSelection {
     Ewasm(EwasmOutputSelection),
 }
 
+impl ContractOutputSelection {
+    /// Returns the basic set of contract level settings that should be included in the `Contract`
+    /// that solc emits:
+    ///    - "abi"
+    ///    - "evm.bytecode"
+    ///    - "evm.deployedBytecode"
+    ///    - "evm.methodIdentifiers"
+    pub fn basic() -> Vec<ContractOutputSelection> {
+        vec![
+            ContractOutputSelection::Abi,
+            BytecodeOutputSelection::All.into(),
+            DeployedBytecodeOutputSelection::All.into(),
+            EvmOutputSelection::MethodIdentifiers.into(),
+        ]
+    }
+}
+
 impl Serialize for ContractOutputSelection {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -71,6 +88,18 @@ impl FromStr for ContractOutputSelection {
     }
 }
 
+impl<T: Into<EvmOutputSelection>> From<T> for ContractOutputSelection {
+    fn from(evm: T) -> Self {
+        ContractOutputSelection::Evm(evm.into())
+    }
+}
+
+impl From<EwasmOutputSelection> for ContractOutputSelection {
+    fn from(ewasm: EwasmOutputSelection) -> Self {
+        ContractOutputSelection::Ewasm(ewasm)
+    }
+}
+
 /// Contract level output selection for `evm`
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum EvmOutputSelection {
@@ -81,6 +110,18 @@ pub enum EvmOutputSelection {
     GasEstimates,
     ByteCode(BytecodeOutputSelection),
     DeployedByteCode(DeployedBytecodeOutputSelection),
+}
+
+impl From<BytecodeOutputSelection> for EvmOutputSelection {
+    fn from(b: BytecodeOutputSelection) -> Self {
+        EvmOutputSelection::ByteCode(b)
+    }
+}
+
+impl From<DeployedBytecodeOutputSelection> for EvmOutputSelection {
+    fn from(b: DeployedBytecodeOutputSelection) -> Self {
+        EvmOutputSelection::DeployedByteCode(b)
+    }
 }
 
 impl Serialize for EvmOutputSelection {

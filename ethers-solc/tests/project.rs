@@ -11,7 +11,8 @@ use ethers_solc::{
     cache::{SolFilesCache, SOLIDITY_FILES_CACHE_FILENAME},
     project_util::*,
     remappings::Remapping,
-    ConfigurableArtifacts, Graph, Project, ProjectCompileOutput, ProjectPathsConfig,
+    AdditionalArtifactValues, ConfigurableArtifacts, Graph, Project, ProjectCompileOutput,
+    ProjectPathsConfig,
 };
 use pretty_assertions::assert_eq;
 
@@ -74,6 +75,30 @@ fn can_compile_dapp_sample() {
 
     let updated_cache = SolFilesCache::read(project.cache_path()).unwrap();
     assert_eq!(cache, updated_cache);
+}
+
+#[test]
+fn can_compile_configured() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test-data/dapp-sample");
+    let paths = ProjectPathsConfig::builder().sources(root.join("src")).lib(root.join("lib"));
+
+    let handler = ConfigurableArtifacts {
+        additional_values: AdditionalArtifactValues {
+            metadata: true,
+            ir: true,
+            ir_optimized: true,
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+
+    let settings = handler.settings();
+    let project = TempProject::with_artifacts(paths, handler).unwrap().with_settings(settings);
+    let compiled = project.compile().unwrap();
+    let artifact = compiled.find("Dapp").unwrap();
+    assert!(artifact.metadata.is_some());
+    assert!(artifact.ir.is_some());
+    assert!(artifact.ir_optimized.is_some());
 }
 
 #[test]
@@ -151,7 +176,6 @@ fn can_compile_dapp_detect_changes_in_libs() {
 
 #[test]
 fn can_compile_dapp_detect_changes_in_sources() {
-    init_tracing();
     let project = TempProject::<ConfigurableArtifacts>::dapptools().unwrap();
 
     let src = project

@@ -1,5 +1,6 @@
 //! Utilities for mocking project workspaces
 use crate::{
+    artifacts::Settings,
     config::ProjectPathsConfigBuilder,
     error::{Result, SolcError},
     hh::HardhatArtifacts,
@@ -30,6 +31,31 @@ impl<T: ArtifactOutput> TempProject<T> {
         let project = Self { _root: root, inner };
         project.paths().create_all()?;
         Ok(project)
+    }
+
+    /// Creates a new temp project using the provided paths and artifacts handler.
+    /// sets the project root to a temp dir
+    pub fn with_artifacts(paths: ProjectPathsConfigBuilder, artifacts: T) -> Result<Self> {
+        Self::prefixed_with_artifacts("temp-project", paths, artifacts)
+    }
+
+    /// Creates a new temp project inside a tempdir with a prefixed directory and the given
+    /// artifacts handler
+    pub fn prefixed_with_artifacts(
+        prefix: &str,
+        paths: ProjectPathsConfigBuilder,
+        artifacts: T,
+    ) -> Result<Self> {
+        let tmp_dir = tempdir(prefix)?;
+        let paths = paths.build_with_root(tmp_dir.path());
+        let inner = Project::builder().artifacts(artifacts).paths(paths).build()?;
+        Ok(Self::create_new(tmp_dir, inner)?)
+    }
+
+    /// Overwrites the settings to pass to `solc`
+    pub fn with_settings(mut self, settings: impl Into<Settings>) -> Self {
+        self.inner.solc_config.settings = settings.into();
+        self
     }
 
     pub fn project(&self) -> &Project<T> {
@@ -139,10 +165,7 @@ impl<T: ArtifactOutput> TempProject<T> {
 impl<T: ArtifactOutput + Default> TempProject<T> {
     /// Creates a new temp project inside a tempdir with a prefixed directory
     pub fn prefixed(prefix: &str, paths: ProjectPathsConfigBuilder) -> Result<Self> {
-        let tmp_dir = tempdir(prefix)?;
-        let paths = paths.build_with_root(tmp_dir.path());
-        let inner = Project::builder().artifacts(T::default()).paths(paths).build()?;
-        Ok(Self::create_new(tmp_dir, inner)?)
+        Self::prefixed_with_artifacts(prefix, paths, T::default())
     }
 
     /// Creates a new temp project for the given `PathStyle`
