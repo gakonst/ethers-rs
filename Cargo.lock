@@ -1063,9 +1063,9 @@ dependencies = [
 
 [[package]]
 name = "eth-keystore"
-version = "0.4.0"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b9cdd5504a7b6b93c1176b0f4c193218221a927dd38bd1f4a1feb5ddd3ddb7f9"
+checksum = "aff9543a3535519a0d2ebbb6ae0afd58175258162e2fa4c1b57981edaad60fcb"
 dependencies = [
  "aes",
  "ctr",
