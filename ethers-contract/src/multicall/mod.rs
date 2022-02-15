@@ -308,10 +308,8 @@ impl<M: Middleware> Multicall<M> {
     /// # let client = Provider::<Http>::try_from("http://localhost:8545")?;
     /// #
     /// # let multicall = Multicall::new(client, None).await?;
-    /// // If the Solidity function calls has the following return types:
-    /// // 1. `returns (uint256)`
-    /// // 2. `returns (string, address)`
-    /// // 3. `returns (bool)`
+    /// // The consumer of the API is responsible for detokenizing the results
+    /// // as the results will be a Vec<Token>
     /// let tokens = multicall.call_raw().await?;
     /// # Ok(())
     /// # }
