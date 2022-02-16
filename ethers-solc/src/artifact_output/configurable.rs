@@ -145,10 +145,10 @@ impl ConfigurableArtifacts {
         if self.additional_values.ir {
             selection.push(ContractOutputSelection::Ir);
         }
-        if self.additional_values.ir_optimized {
+        if self.additional_values.ir_optimized || self.additional_files.ir_optimized {
             selection.push(ContractOutputSelection::IrOptimized);
         }
-        if self.additional_values.metadata {
+        if self.additional_values.metadata || self.additional_files.metadata {
             selection.push(ContractOutputSelection::Metadata);
         }
         if self.additional_values.storage_layout {
@@ -163,10 +163,10 @@ impl ConfigurableArtifacts {
         if self.additional_values.gas_estimates {
             selection.push(EvmOutputSelection::GasEstimates.into());
         }
-        if self.additional_values.assembly {
+        if self.additional_values.assembly || self.additional_files.assembly {
             selection.push(EvmOutputSelection::Assembly.into());
         }
-        if self.additional_values.ewasm {
+        if self.additional_values.ewasm || self.additional_files.ewasm {
             selection.push(EwasmOutputSelection::All.into());
         }
         selection
@@ -444,7 +444,7 @@ impl ExtraOutputFiles {
     pub fn write_extras(&self, contract: &Contract, file: &Path) -> Result<(), SolcError> {
         if self.metadata {
             if let Some(ref metadata) = contract.metadata {
-                let file = file.join(".metadata.json");
+                let file = file.with_extension("metadata.json");
                 fs::write(&file, serde_json::to_string_pretty(metadata)?)
                     .map_err(|err| SolcError::io(err, file))?
             }

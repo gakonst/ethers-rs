@@ -168,7 +168,7 @@ impl FromStr for EvmOutputSelection {
             "evm" => Ok(EvmOutputSelection::All),
             "asm" | "evm.assembly" => Ok(EvmOutputSelection::Assembly),
             "evm.legacyAssembly" => Ok(EvmOutputSelection::LegacyAssembly),
-            "hashes" | "methodidentifiers" | "evm.methodIdentifiers" | "evm.methodidentifiers" => {
+            "methodidentifiers" | "evm.methodIdentifiers" | "evm.methodidentifiers" => {
                 Ok(EvmOutputSelection::MethodIdentifiers)
             }
             "gas" | "evm.gasEstimates" | "evm.gasestimates" => Ok(EvmOutputSelection::GasEstimates),
