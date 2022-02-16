@@ -40,7 +40,32 @@ pub enum Chain {
 
 impl fmt::Display for Chain {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        write!(formatter, "{:?}", self)
+        let chain = match self {
+            Chain::Mainnet => "mainnet",
+            Chain::Ropsten => "ropsten",
+            Chain::Rinkeby => "rinkeby",
+            Chain::Goerli => "goerli",
+            Chain::Kovan => "kovan",
+            Chain::XDai => "xdai",
+            Chain::Polygon => "polygon",
+            Chain::PolygonMumbai => "polygon-mumbai",
+            Chain::Avalanche => "avalanche",
+            Chain::AvalancheFuji => "avalanche-fuji",
+            Chain::Sepolia => "sepolia",
+            Chain::Moonbeam => "moonbeam",
+            Chain::MoonbeamDev => "moonbeam-dev",
+            Chain::Moonriver => "moonriver",
+            Chain::Optimism => "optimism",
+            Chain::OptimismKovan => "optimism-kovan",
+            Chain::Fantom => "fantom",
+            Chain::FantomTestnet => "fantom-testnet",
+            Chain::BinanceSmartChain => "bsc",
+            Chain::BinanceSmartChainTestnet => "bsc-testnet",
+            Chain::Arbitrum => "arbitrum",
+            Chain::ArbitrumTestnet => "arbitrum-testnet",
+        };
+
+        write!(formatter, "{}", chain)
     }
 }
 

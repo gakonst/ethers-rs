@@ -727,6 +727,9 @@ impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
     }
 
     #[cfg(test)]
+    #[allow(unused)]
+    #[doc(hidden)]
+    // only useful for debugging for debugging purposes
     pub fn as_cached(&self) -> Option<&ArtifactsCacheInner<'a, T>> {
         match self {
             ArtifactsCache::Ephemeral(_, _) => None,

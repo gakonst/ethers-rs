@@ -25,6 +25,7 @@ pub mod remappings;
 use crate::artifacts::Source;
 
 pub mod error;
+pub mod report;
 pub mod utils;
 
 use crate::{
@@ -570,11 +571,11 @@ impl<Artifacts: ArtifactOutput> ArtifactOutput for Project<Artifacts> {
 }
 
 #[cfg(test)]
+#[cfg(all(feature = "svm", feature = "async"))]
 mod tests {
     use crate::remappings::Remapping;
 
     #[test]
-    #[cfg(all(feature = "svm", feature = "async"))]
     fn test_build_all_versions() {
         use super::*;
 
@@ -592,7 +593,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(all(feature = "svm", feature = "async"))]
     fn test_build_many_libs() {
         use super::*;
 
@@ -624,7 +624,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(all(feature = "svm", feature = "async"))]
     fn test_build_remappings() {
         use super::*;
 

@@ -4,6 +4,7 @@
 
 ### Unreleased
 
+- `Chain::to_string` will return the same chain name as `Chain::from_str`
 - Add `eth_syncing` [848](https://github.com/gakonst/ethers-rs/pull/848)
 - Fix overflow and possible divide-by-zero in `estimate_priority_fee`
 - Add BSC mainnet and testnet to the list of known chains
@@ -36,6 +37,9 @@
 - Add Arbitrum mainnet and testnet to the list of known chains
 - Add ENS avatar and TXT records resolution
   [#889](https://github.com/gakonst/ethers-rs/pull/889)
+- Add a getter to `ProjectCompileOutput` that returns a mapping of compiler
+  versions to a vector of name + contract struct tuples
+  [#908](https://github.com/gakonst/ethers-rs/pull/908)
 
 ## ethers-contract-abigen
 
@@ -137,6 +141,9 @@
 ## ethers-signers
 
 ### Unreleased
+
+- `eth-keystore-rs` crate updated. Allow an optional name for the to-be-generated
+  keystore file [#910](https://github.com/gakonst/ethers-rs/pull/910)
 
 ### 0.6.0
 

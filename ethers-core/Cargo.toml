@@ -20,7 +20,7 @@ ecdsa = { version = "0.13.4", default-features = false, features = ["std"] }
 elliptic-curve = { version = "0.11.12", default-features = false }
 generic-array = { version = "0.14.5", default-features = false }
 k256 = { version = "0.10.2", default-features = false, features = ["keccak256", "ecdsa"] }
-rand = { version = "0.8.4", default-features = false }
+rand = { version = "0.8.5", default-features = false }
 tiny-keccak = { version = "2.0.2", default-features = false }
 
 # misc
@@ -51,7 +51,7 @@ bincode = { version = "1.3.3", default-features = false }
 once_cell = { version = "1.8.0" }
 hex-literal = "0.3.4"
 futures-util = { version = "^0.3" }
-rand = "0.8.4"
+rand = "0.8.5"
 
 [features]
 celo = ["legacy"] # celo support extends the transaction format with extra fields

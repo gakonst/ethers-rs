@@ -9,6 +9,7 @@ mod eth_tests {
     use super::*;
     use ethers_contract::{LogMeta, Multicall};
     use ethers_core::{
+        abi::{Detokenize, Token, Tokenizable},
         types::{transaction::eip712::Eip712, Address, BlockId, Bytes, I256, U256},
         utils::{keccak256, Ganache},
     };
@@ -374,7 +375,8 @@ mod eth_tests {
         let (abi, bytecode) = compile_contract("SimpleStorage", "SimpleStorage.sol");
 
         // launch ganache
-        let ganache = Ganache::new().spawn();
+        // some tests expect 100 ether (-e === --wallet.defaultBalance in ether)
+        let ganache = Ganache::new().arg("-e").arg("100").spawn();
 
         // Instantiate the clients. We assume that clients consume the provider and the wallet
         // (which makes sense), so for multi-client tests, you must clone the provider.
@@ -425,6 +427,7 @@ mod eth_tests {
             .send()
             .await
             .unwrap();
+
         not_so_simple_contract
             .connect(client3.clone())
             .method::<_, H256>("setValue", "reset second".to_owned())
@@ -498,10 +501,42 @@ mod eth_tests {
             .eth_balance_of(addrs[4])
             .eth_balance_of(addrs[5])
             .eth_balance_of(addrs[6]);
+
         let balances: (U256, U256, U256) = multicall.call().await.unwrap();
-        assert_eq!(balances.0, U256::from(100000000000000000000u128));
-        assert_eq!(balances.1, U256::from(100000000000000000000u128));
-        assert_eq!(balances.2, U256::from(100000000000000000000u128));
+        assert_eq!(balances.0, U256::from(100_000_000_000_000_000_000u128));
+        assert_eq!(balances.1, U256::from(100_000_000_000_000_000_000u128));
+        assert_eq!(balances.2, U256::from(100_000_000_000_000_000_000u128));
+
+        // clear multicall so we can test `call_raw` w/ >16 calls
+        multicall.clear_calls();
+
+        // clear the current value
+        simple_contract
+            .connect(client2.clone())
+            .method::<_, H256>("setValue", "many".to_owned())
+            .unwrap()
+            .legacy()
+            .send()
+            .await
+            .unwrap();
+
+        // build up a list of calls greater than the 16 max restriction
+        for i in 0..=16 {
+            let call = simple_contract.method::<_, String>("getValue", ()).unwrap();
+            multicall.add_call(call);
+        }
+
+        // must use `call_raw` as `.calls` > 16
+        let tokens = multicall.call_raw().await.unwrap();
+        // if want to use, must detokenize manually
+        let results: Vec<String> = tokens
+            .iter()
+            .map(|token| {
+                // decode manually using Tokenizable method
+                String::from_token(token.to_owned()).unwrap()
+            })
+            .collect();
+        assert_eq!(results, ["many"; 17]);
     }
 
     #[tokio::test]

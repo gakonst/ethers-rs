@@ -14,6 +14,9 @@ use std::{
 };
 use tempfile::TempDir;
 
+/// A [`Project`] wrapper that lives in a new temporary directory
+///
+/// Once `TempProject` is dropped, the temp dir is automatically removed, see [`TempDir::drop()`]
 pub struct TempProject<T: ArtifactOutput = MinimalCombinedArtifacts> {
     /// temporary workspace root
     _root: TempDir,
@@ -208,6 +211,7 @@ impl<T: ArtifactOutput> AsRef<Project<T>> for TempProject<T> {
     }
 }
 
+/// commonly used options for copying entire folders
 fn dir_copy_options() -> dir::CopyOptions {
     dir::CopyOptions {
         overwrite: true,
@@ -219,6 +223,7 @@ fn dir_copy_options() -> dir::CopyOptions {
     }
 }
 
+/// commonly used options for copying files
 fn file_copy_options() -> file::CopyOptions {
     file::CopyOptions {
         overwrite: true,
