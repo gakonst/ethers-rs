@@ -160,9 +160,6 @@ pub struct Filter {
     // TODO: We could improve the low level API here by using ethabi's RawTopicFilter
     // and/or TopicFilter
     pub topics: [Option<ValueOrArray<H256>>; 4],
-
-    /// Limit
-    limit: Option<usize>,
 }
 
 impl Serialize for Filter {
@@ -201,10 +198,6 @@ impl Serialize for Filter {
             }
         }
         s.serialize_field("topics", &filtered_topics)?;
-
-        if let Some(ref limit) = self.limit {
-            s.serialize_field("limit", limit)?;
-        }
 
         s.end()
     }
@@ -341,12 +334,6 @@ impl Filter {
     #[must_use]
     pub fn topic3<T: Into<ValueOrArray<H256>>>(mut self, topic: T) -> Self {
         self.topics[3] = Some(topic.into());
-        self
-    }
-
-    #[must_use]
-    pub fn limit(mut self, limit: usize) -> Self {
-        self.limit = Some(limit);
         self
     }
 }
