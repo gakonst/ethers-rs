@@ -1508,8 +1508,8 @@ mod tests {
             ("nick.eth", "https://lh3.googleusercontent.com/hKHZTZSTmcznonu8I6xcVZio1IF76fq0XmcxnvUykC-FGuVJ75UPdLDlKJsfgVXH9wOSmkyHw0C39VAYtsGyxT7WNybjQ6s3fM3macE"),
             // HTTPS
             ("parishilton.eth", "https://i.imgur.com/YW3Hzph.jpg"),
-            // ERC-721
-            ("shaq.eth", "https://creature.mypinata.cloud/ipfs/QmNwj3aUzXfG4twV3no7hJRYxLLAWNPk6RrfQaqJ6nVJFa/9018.jpg"),
+            // ERC-721 with IPFS link
+            ("ikehaya-nft.eth", "https://ipfs.io/ipfs/QmdKkwCE8uVhgYd7tWBfhtHdQZDnbNukWJ8bvQmR6nZKsk"),
             // ERC-1155 with IPFS link
             ("vitalik.eth", "https://ipfs.io/ipfs/QmSP4nq9fnN9dAiCj42ug9Wa79rqmQerZXZch82VqpiH7U/image.gif"),
             // IPFS
