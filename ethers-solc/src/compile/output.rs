@@ -13,7 +13,7 @@ use std::{collections::BTreeMap, fmt, path::Path};
 /// Contains a mixture of already compiled/cached artifacts and the input set of sources that still
 /// need to be compiled.
 #[derive(Debug, Clone, PartialEq, Default)]
-pub struct ProjectCompileOutput<T: ArtifactOutput> {
+pub struct ProjectCompileOutput<T: ArtifactOutput = ConfigurableArtifacts> {
     /// contains the aggregated `CompilerOutput`
     ///
     /// See [`CompilerSources::compile`]
