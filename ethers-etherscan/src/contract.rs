@@ -26,7 +26,8 @@ pub struct VerifyContract {
     optimization_used: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub runs: Option<String>,
-    #[serde(rename = "constructorArguments", skip_serializing_if = "Option::is_none")]
+    /// NOTE: there is a typo in the etherscan API `constructorArguements`
+    #[serde(rename = "constructorArguements", skip_serializing_if = "Option::is_none")]
     pub constructor_arguments: Option<String>,
     #[serde(rename = "evmversion")]
     pub evm_version: Option<String>,
@@ -329,7 +330,7 @@ mod tests {
                     .optimization(true)
                     .runs(200);
             let resp = client.submit_contract_verification(&contract).await.expect("failed to send the request");
-            assert_ne!(resp.result, "Error!");
+            assert_ne!(resp.result, "Error!"); // `Error!` result means that request was malformatted
         })
         .await
     }
