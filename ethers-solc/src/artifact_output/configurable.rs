@@ -102,19 +102,19 @@ impl From<ConfigurableContractArtifact> for CompactContract {
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Default)]
 pub struct ConfigurableArtifacts {
     /// A set of additional values to include in the contract's artifact file
-    pub additional_values: AdditionalArtifactValues,
+    pub additional_values: ExtraOutputValues,
 
     /// A set of values that should be written to a separate file
-    pub additional_files: AdditionalArtifactFiles,
+    pub additional_files: ExtraOutputFiles,
 
     /// PRIVATE: This structure may grow, As such, constructing this structure should
     /// _always_ be done using a public constructor or update syntax:
     ///
     /// ```rust
     /// 
-    /// use ethers_solc::{AdditionalArtifactFiles, ConfigurableArtifacts};
+    /// use ethers_solc::{ExtraOutputFiles, ConfigurableArtifacts};
     /// let config = ConfigurableArtifacts {
-    ///     additional_files: AdditionalArtifactFiles { metadata: true, ..Default::default() },
+    ///     additional_files: ExtraOutputFiles { metadata: true, ..Default::default() },
     ///     ..Default::default()
     /// };
     /// ```
@@ -123,6 +123,17 @@ pub struct ConfigurableArtifacts {
 }
 
 impl ConfigurableArtifacts {
+    pub fn new(
+        extra_values: impl IntoIterator<Item = ContractOutputSelection>,
+        extra_files: impl IntoIterator<Item = ContractOutputSelection>,
+    ) -> Self {
+        Self {
+            additional_values: ExtraOutputValues::from_output_selection(extra_values),
+            additional_files: ExtraOutputFiles::from_output_selection(extra_files),
+            ..Default::default()
+        }
+    }
+
     /// Returns the `Settings` this configuration corresponds to
     pub fn settings(&self) -> Settings {
         SolcConfig::builder().additional_outputs(self.output_selection()).build().into()
@@ -261,7 +272,7 @@ impl ArtifactOutput for ConfigurableArtifacts {
 
 /// Determines the additional values to include in the contract's artifact file
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Default)]
-pub struct AdditionalArtifactValues {
+pub struct ExtraOutputValues {
     pub ast: bool,
     pub userdoc: bool,
     pub devdoc: bool,
@@ -280,8 +291,8 @@ pub struct AdditionalArtifactValues {
     ///
     /// ```rust
     /// 
-    /// use ethers_solc::AdditionalArtifactValues;
-    /// let config = AdditionalArtifactValues {
+    /// use ethers_solc::ExtraOutputValues;
+    /// let config = ExtraOutputValues {
     ///     ir: true,
     ///     ..Default::default()
     /// };
@@ -290,7 +301,7 @@ pub struct AdditionalArtifactValues {
     pub __non_exhaustive: (),
 }
 
-impl AdditionalArtifactValues {
+impl ExtraOutputValues {
     /// Returns an instance where all values are set to `true`
     pub fn all() -> Self {
         Self {
@@ -365,7 +376,7 @@ impl AdditionalArtifactValues {
 
 /// Determines what to emit as additional file
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Default)]
-pub struct AdditionalArtifactFiles {
+pub struct ExtraOutputFiles {
     pub metadata: bool,
     pub ir_optimized: bool,
     pub ewasm: bool,
@@ -376,8 +387,8 @@ pub struct AdditionalArtifactFiles {
     ///
     /// ```rust
     /// 
-    /// use ethers_solc::AdditionalArtifactFiles;
-    /// let config = AdditionalArtifactFiles {
+    /// use ethers_solc::ExtraOutputFiles;
+    /// let config = ExtraOutputFiles {
     ///     metadata: true,
     ///     ..Default::default()
     /// };
@@ -386,7 +397,7 @@ pub struct AdditionalArtifactFiles {
     pub __non_exhaustive: (),
 }
 
-impl AdditionalArtifactFiles {
+impl ExtraOutputFiles {
     /// Returns an instance where all values are set to `true`
     pub fn all() -> Self {
         Self {
@@ -396,6 +407,37 @@ impl AdditionalArtifactFiles {
             assembly: true,
             __non_exhaustive: (),
         }
+    }
+
+    /// Sets the values based on a set of `ContractOutputSelection`
+    pub fn from_output_selection(
+        settings: impl IntoIterator<Item = ContractOutputSelection>,
+    ) -> Self {
+        let mut config = Self::default();
+        for value in settings.into_iter() {
+            match value {
+                ContractOutputSelection::Metadata => {
+                    config.metadata = true;
+                }
+                ContractOutputSelection::IrOptimized => {
+                    config.ir_optimized = true;
+                }
+                ContractOutputSelection::Evm(evm) => match evm {
+                    EvmOutputSelection::All => {
+                        config.assembly = true;
+                    }
+                    EvmOutputSelection::Assembly => {
+                        config.assembly = true;
+                    }
+                    _ => {}
+                },
+                ContractOutputSelection::Ewasm(_) => {
+                    config.ewasm = true;
+                }
+                _ => {}
+            }
+        }
+        config
     }
 
     /// Write the set values as separate files

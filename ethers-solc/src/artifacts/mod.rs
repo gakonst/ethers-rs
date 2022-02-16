@@ -237,6 +237,18 @@ impl Settings {
         }
     }
 
+    /// Inserts a set of `ContractOutputSelection`
+    #[must_use]
+    pub fn with_extra_output(
+        mut self,
+        settings: impl IntoIterator<Item = ContractOutputSelection>,
+    ) -> Self {
+        for value in settings {
+            self.push_output_selection(value)
+        }
+        self
+    }
+
     /// Inserts the value for all files and contracts
     ///
     /// ```

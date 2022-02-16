@@ -332,7 +332,7 @@ pub trait ArtifactOutput {
 
     /// Write additional files for the contract
     fn write_contract_extras(&self, contract: &Contract, file: &Path) -> Result<()> {
-        AdditionalArtifactFiles::all().write_extras(contract, file)
+        ExtraOutputFiles::all().write_extras(contract, file)
     }
 
     /// Writes additional files for the contracts if the included in the `Contract`, such as `ir`,

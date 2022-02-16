@@ -11,7 +11,7 @@ use ethers_solc::{
     cache::{SolFilesCache, SOLIDITY_FILES_CACHE_FILENAME},
     project_util::*,
     remappings::Remapping,
-    AdditionalArtifactValues, ConfigurableArtifacts, Graph, Project, ProjectCompileOutput,
+    ConfigurableArtifacts, ExtraOutputValues, Graph, Project, ProjectCompileOutput,
     ProjectPathsConfig,
 };
 use pretty_assertions::assert_eq;
@@ -83,7 +83,7 @@ fn can_compile_configured() {
     let paths = ProjectPathsConfig::builder().sources(root.join("src")).lib(root.join("lib"));
 
     let handler = ConfigurableArtifacts {
-        additional_values: AdditionalArtifactValues {
+        additional_values: ExtraOutputValues {
             metadata: true,
             ir: true,
             ir_optimized: true,

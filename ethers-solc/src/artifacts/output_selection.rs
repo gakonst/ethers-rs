@@ -78,8 +78,12 @@ impl FromStr for ContractOutputSelection {
             "userdoc" => Ok(ContractOutputSelection::UserDoc),
             "metadata" => Ok(ContractOutputSelection::Metadata),
             "ir" => Ok(ContractOutputSelection::Ir),
-            "irOptimized" => Ok(ContractOutputSelection::IrOptimized),
-            "storageLayout" => Ok(ContractOutputSelection::StorageLayout),
+            "ir-optimized" | "irOptimized" | "iroptimized" => {
+                Ok(ContractOutputSelection::IrOptimized)
+            }
+            "storage-layout" | "storagelayout" | "storageLayout" => {
+                Ok(ContractOutputSelection::StorageLayout)
+            }
             s => EvmOutputSelection::from_str(s)
                 .map(ContractOutputSelection::Evm)
                 .or_else(|_| EwasmOutputSelection::from_str(s).map(ContractOutputSelection::Ewasm))
@@ -162,10 +166,12 @@ impl FromStr for EvmOutputSelection {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "evm" => Ok(EvmOutputSelection::All),
-            "evm.assembly" => Ok(EvmOutputSelection::Assembly),
+            "asm" | "evm.assembly" => Ok(EvmOutputSelection::Assembly),
             "evm.legacyAssembly" => Ok(EvmOutputSelection::LegacyAssembly),
-            "evm.methodIdentifiers" => Ok(EvmOutputSelection::MethodIdentifiers),
-            "evm.gasEstimates" => Ok(EvmOutputSelection::GasEstimates),
+            "hashes" | "methodidentifiers" | "evm.methodIdentifiers" | "evm.methodidentifiers" => {
+                Ok(EvmOutputSelection::MethodIdentifiers)
+            }
+            "gas" | "evm.gasEstimates" | "evm.gasestimates" => Ok(EvmOutputSelection::GasEstimates),
             s => BytecodeOutputSelection::from_str(s)
                 .map(EvmOutputSelection::ByteCode)
                 .or_else(|_| {
