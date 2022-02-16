@@ -52,7 +52,7 @@ getrandom = { version = "0.2", features = ["js"] }
 criterion = { version = "0.3", features = ["async_tokio"] }
 env_logger = "*"
 tracing-subscriber = {version = "0.3", default-features = false, features = ["env-filter", "fmt"]}
-rand = "0.8.4"
+rand = "0.8.5"
 pretty_assertions = "1.1.0"
 tempfile = "3.3.0"
 tokio = { version = "1.15.0", features = ["full"] }

@@ -1,5 +1,5 @@
 use crate::{
-    ens, maybe,
+    ens, erc, maybe,
     pubsub::{PubsubClient, SubscriptionStream},
     stream::{FilterWatcher, DEFAULT_POLL_INTERVAL},
     FromErr, Http as HttpProvider, JsonRpcClient, JsonRpcClientWrapper, MockProvider,
@@ -17,8 +17,8 @@ use ethers_core::{
         transaction::{eip2718::TypedTransaction, eip2930::AccessListWithGasUsed},
         Address, Block, BlockId, BlockNumber, BlockTrace, Bytes, EIP1186ProofResponse, FeeHistory,
         Filter, Log, NameOrAddress, Selector, Signature, Trace, TraceFilter, TraceType,
-        Transaction, TransactionReceipt, TxHash, TxpoolContent, TxpoolInspect, TxpoolStatus, H256,
-        U256, U64,
+        Transaction, TransactionReceipt, TransactionRequest, TxHash, TxpoolContent, TxpoolInspect,
+        TxpoolStatus, H256, U256, U64,
     },
     utils,
 };
@@ -27,7 +27,7 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use thiserror::Error;
 use url::{ParseError, Url};
 
-use futures_util::lock::Mutex;
+use futures_util::{lock::Mutex, try_join};
 use std::{convert::TryFrom, fmt::Debug, str::FromStr, sync::Arc, time::Duration};
 use tracing::trace;
 use tracing_futures::Instrument;
@@ -117,6 +117,9 @@ pub enum ProviderError {
 
     #[error(transparent)]
     HexError(#[from] hex::FromHexError),
+
+    #[error(transparent)]
+    HTTPError(#[from] reqwest::Error),
 
     #[error("custom error: {0}")]
     CustomError(String),
@@ -786,6 +789,143 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.query_resolver(ParamType::String, &ens_name, ens::NAME_SELECTOR).await
     }
 
+    /// Returns the avatar HTTP link of the avatar that the `ens_name` resolves to (or None
+    /// if not configured)
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use ethers_providers::{Provider, Http as HttpProvider, Middleware};
+    /// # use std::convert::TryFrom;
+    /// # #[tokio::main(flavor = "current_thread")]
+    /// # async fn main() {
+    /// # let provider = Provider::<HttpProvider>::try_from("https://mainnet.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27").unwrap();
+    /// let avatar = provider.resolve_avatar("parishilton.eth").await.unwrap();
+    /// assert_eq!(avatar.to_string(), "https://i.imgur.com/YW3Hzph.jpg");
+    /// # }
+    /// ```
+    ///
+    /// # Panics
+    ///
+    /// If the bytes returned from the ENS registrar/resolver cannot be interpreted as
+    /// a string. This should theoretically never happen.
+    async fn resolve_avatar(&self, ens_name: &str) -> Result<Url, ProviderError> {
+        let (field, owner) =
+            try_join!(self.resolve_field(ens_name, "avatar"), self.resolve_name(ens_name))?;
+        let url = Url::from_str(&field).map_err(|e| ProviderError::CustomError(e.to_string()))?;
+        match url.scheme() {
+            "https" | "data" => Ok(url),
+            "ipfs" => erc::http_link_ipfs(url).map_err(ProviderError::CustomError),
+            "eip155" => {
+                let token =
+                    erc::ERCNFT::from_str(url.path()).map_err(ProviderError::CustomError)?;
+                match token.type_ {
+                    erc::ERCNFTType::ERC721 => {
+                        let tx = TransactionRequest {
+                            data: Some(
+                                [&erc::ERC721_OWNER_SELECTOR[..], &token.id].concat().into(),
+                            ),
+                            to: Some(NameOrAddress::Address(token.contract)),
+                            ..Default::default()
+                        };
+                        let data = self.call(&tx.into(), None).await?;
+                        if decode_bytes::<Address>(ParamType::Address, data) != owner {
+                            return Err(ProviderError::CustomError("Incorrect owner.".to_string()))
+                        }
+                    }
+                    erc::ERCNFTType::ERC1155 => {
+                        let tx = TransactionRequest {
+                            data: Some(
+                                [
+                                    &erc::ERC1155_BALANCE_SELECTOR[..],
+                                    &[0x0; 12],
+                                    &owner.0,
+                                    &token.id,
+                                ]
+                                .concat()
+                                .into(),
+                            ),
+                            to: Some(NameOrAddress::Address(token.contract)),
+                            ..Default::default()
+                        };
+                        let data = self.call(&tx.into(), None).await?;
+                        if decode_bytes::<u64>(ParamType::Uint(64), data) == 0 {
+                            return Err(ProviderError::CustomError("Incorrect balance.".to_string()))
+                        }
+                    }
+                }
+
+                let image_url = self.resolve_nft(token).await?;
+                match image_url.scheme() {
+                    "https" | "data" => Ok(image_url),
+                    "ipfs" => erc::http_link_ipfs(image_url).map_err(ProviderError::CustomError),
+                    _ => Err(ProviderError::CustomError(
+                        "Unsupported scheme for the image".to_string(),
+                    )),
+                }
+            }
+            _ => Err(ProviderError::CustomError("Unsupported scheme".to_string())),
+        }
+    }
+
+    /// Returns the URL (not necesserily HTTP) of the image behind a token.
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use ethers_providers::{Provider, Http as HttpProvider, Middleware};
+    /// # use std::{str::FromStr, convert::TryFrom};
+    /// # #[tokio::main(flavor = "current_thread")]
+    /// # async fn main() {
+    /// # let provider = Provider::<HttpProvider>::try_from("https://mainnet.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27").unwrap();
+    /// let token = ethers_providers::erc::ERCNFT::from_str("erc721:0xc92ceddfb8dd984a89fb494c376f9a48b999aafc/9018").unwrap();
+    /// let token_image = provider.resolve_nft(token).await.unwrap();
+    /// assert_eq!(token_image.to_string(), "https://creature.mypinata.cloud/ipfs/QmNwj3aUzXfG4twV3no7hJRYxLLAWNPk6RrfQaqJ6nVJFa/9018.jpg");
+    /// # }
+    /// ```
+    ///
+    /// # Panics
+    ///
+    /// If the bytes returned from the ENS registrar/resolver cannot be interpreted as
+    /// a string. This should theoretically never happen.
+    async fn resolve_nft(&self, token: erc::ERCNFT) -> Result<Url, ProviderError> {
+        let selector = token.type_.resolution_selector();
+        let tx = TransactionRequest {
+            data: Some([&selector[..], &token.id].concat().into()),
+            to: Some(NameOrAddress::Address(token.contract)),
+            ..Default::default()
+        };
+        let data = self.call(&tx.into(), None).await?;
+        let mut metadata_url = Url::parse(&decode_bytes::<String>(ParamType::String, data))
+            .map_err(|e| ProviderError::CustomError(format!("Invalid metadata url: {}", e)))?;
+
+        if token.type_ == erc::ERCNFTType::ERC1155 {
+            metadata_url
+                .set_path(&metadata_url.path().replace("%7Bid%7D", &hex::encode(&token.id)));
+        }
+        if metadata_url.scheme() == "ipfs" {
+            metadata_url = erc::http_link_ipfs(metadata_url).map_err(ProviderError::CustomError)?;
+        }
+        let metadata: erc::Metadata = reqwest::get(metadata_url).await?.json().await?;
+        Url::parse(&metadata.image).map_err(|e| ProviderError::CustomError(e.to_string()))
+    }
+
+    /// Fetch a field for the `ens_name` (no None if not configured).
+    ///
+    /// # Panics
+    ///
+    /// If the bytes returned from the ENS registrar/resolver cannot be interpreted as
+    /// a string. This should theoretically never happen.
+    async fn resolve_field(&self, ens_name: &str, field: &str) -> Result<String, ProviderError> {
+        let field: String = self
+            .query_resolver_parameters(
+                ParamType::String,
+                ens_name,
+                ens::FIELD_SELECTOR,
+                Some(&ens::parameterhash(field)),
+            )
+            .await?;
+        Ok(field)
+    }
+
     /// Returns the details of all transactions currently pending for inclusion in the next
     /// block(s), as well as the ones that are being scheduled for future execution only.
     /// Ref: [Here](https://geth.ethereum.org/docs/rpc/ns-txpool#txpool_content)
@@ -982,6 +1122,16 @@ impl<P: JsonRpcClient> Provider<P> {
         ens_name: &str,
         selector: Selector,
     ) -> Result<T, ProviderError> {
+        self.query_resolver_parameters(param, ens_name, selector, None).await
+    }
+
+    async fn query_resolver_parameters<T: Detokenize>(
+        &self,
+        param: ParamType,
+        ens_name: &str,
+        selector: Selector,
+        parameters: Option<&[u8]>,
+    ) -> Result<T, ProviderError> {
         // Get the ENS address, prioritize the local override variable
         let ens_addr = self.ens.unwrap_or(ens::ENS_ADDRESS);
 
@@ -995,8 +1145,9 @@ impl<P: JsonRpcClient> Provider<P> {
         }
 
         // resolve
-        let data =
-            self.call(&ens::resolve(resolver_address, selector, ens_name).into(), None).await?;
+        let data = self
+            .call(&ens::resolve(resolver_address, selector, ens_name, parameters).into(), None)
+            .await?;
 
         Ok(decode_bytes(param, data))
     }
@@ -1344,6 +1495,30 @@ mod tests {
             .lookup_address("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA".parse().unwrap())
             .await
             .unwrap_err();
+    }
+
+    #[tokio::test]
+    async fn mainnet_resolve_avatar() {
+        let provider = Provider::<HttpProvider>::try_from(INFURA).unwrap();
+
+        for (ens_name, res) in &[
+            // HTTPS
+            ("alisha.eth", "https://ipfs.io/ipfs/QmeQm91kAdPGnUKsE74WvkqYKUeHvc2oHd2FW11V3TrqkQ"),
+            // ERC-1155
+            ("nick.eth", "https://lh3.googleusercontent.com/hKHZTZSTmcznonu8I6xcVZio1IF76fq0XmcxnvUykC-FGuVJ75UPdLDlKJsfgVXH9wOSmkyHw0C39VAYtsGyxT7WNybjQ6s3fM3macE"),
+            // HTTPS
+            ("parishilton.eth", "https://i.imgur.com/YW3Hzph.jpg"),
+            // ERC-721 with IPFS link
+            ("ikehaya-nft.eth", "https://ipfs.io/ipfs/QmdKkwCE8uVhgYd7tWBfhtHdQZDnbNukWJ8bvQmR6nZKsk"),
+            // ERC-1155 with IPFS link
+            ("vitalik.eth", "https://ipfs.io/ipfs/QmSP4nq9fnN9dAiCj42ug9Wa79rqmQerZXZch82VqpiH7U/image.gif"),
+            // IPFS
+            ("cdixon.eth", "https://ipfs.io/ipfs/QmYA6ZpEARgHvRHZQdFPynMMX8NtdL2JCadvyuyG2oA88u"),
+            ("0age.eth", "data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHN0eWxlPSJiYWNrZ3JvdW5kLWNvbG9yOmJsYWNrIiB2aWV3Qm94PSIwIDAgNTAwIDUwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB4PSIxNTUiIHk9IjYwIiB3aWR0aD0iMTkwIiBoZWlnaHQ9IjM5MCIgZmlsbD0iIzY5ZmYzNyIvPjwvc3ZnPg==")
+        ] {
+        println!("Resolving: {}", ens_name);
+        assert_eq!(provider.resolve_avatar(ens_name).await.unwrap(), Url::parse(res).unwrap());
+    }
     }
 
     #[tokio::test]

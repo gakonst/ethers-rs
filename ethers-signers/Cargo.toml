@@ -23,7 +23,7 @@ hex = { version = "0.4.3", default-features = false, features = ["std"] }
 async-trait = { version = "0.1.50", default-features = false }
 elliptic-curve = { version = "0.11.12", default-features = false }
 sha2 = { version = "0.9.8", default-features = false }
-rand = { version = "0.8.4", default-features = false }
+rand = { version = "0.8.5", default-features = false }
 yubihsm = { version = "0.40.0", features = ["secp256k1", "http", "usb"], optional = true }
 futures-util = "^0.3"
 futures-executor = "^0.3"
@@ -38,7 +38,7 @@ tracing-futures = { version = "0.2.5", optional = true }
 spki = { version = "0.5.4", optional = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-eth-keystore = { version = "0.4.0" }
+eth-keystore = { version = "0.4.1" }
 home = "0.5.3"
 
 [dev-dependencies]

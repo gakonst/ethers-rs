@@ -24,11 +24,14 @@ pub use stream::{interval, FilterWatcher, TransactionStream, DEFAULT_POLL_INTERV
 mod pubsub;
 pub use pubsub::{PubsubClient, SubscriptionStream};
 
+pub mod erc;
+
 use async_trait::async_trait;
 use auto_impl::auto_impl;
 use ethers_core::types::transaction::{eip2718::TypedTransaction, eip2930::AccessListWithGasUsed};
 use serde::{de::DeserializeOwned, Serialize};
 use std::{error::Error, fmt::Debug, future::Future, pin::Pin};
+use url::Url;
 
 pub use provider::{FilterKind, Provider, ProviderError};
 
@@ -261,6 +264,18 @@ pub trait Middleware: Sync + Send + Debug {
 
     async fn lookup_address(&self, address: Address) -> Result<String, Self::Error> {
         self.inner().lookup_address(address).await.map_err(FromErr::from)
+    }
+
+    async fn resolve_avatar(&self, ens_name: &str) -> Result<Url, Self::Error> {
+        self.inner().resolve_avatar(ens_name).await.map_err(FromErr::from)
+    }
+
+    async fn resolve_nft(&self, token: erc::ERCNFT) -> Result<Url, Self::Error> {
+        self.inner().resolve_nft(token).await.map_err(FromErr::from)
+    }
+
+    async fn resolve_field(&self, ens_name: &str, field: &str) -> Result<String, Self::Error> {
+        self.inner().resolve_field(ens_name, field).await.map_err(FromErr::from)
     }
 
     async fn get_block<T: Into<BlockId> + Send + Sync>(
