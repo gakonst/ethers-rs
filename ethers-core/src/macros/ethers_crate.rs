@@ -43,7 +43,14 @@ pub fn ethers_providers_crate() -> Path {
 /// `cargo metadata` if a `Cargo.lock` file exists and delete it afterwards if
 /// it was created by `cargo metadata`.
 pub fn determine_ethers_crates() -> (&'static str, &'static str, &'static str) {
-    let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").expect("No Manifest found");
+    let manifest_dir = std::env::var("CARGO_MANIFEST_DIR");
+
+    // if there is no cargo manifest, default to `ethers::`-style imports.
+    let manifest_dir = if let Ok(manifest_dir) = manifest_dir {
+        manifest_dir
+    } else {
+        return ("ethers::core", "ethers::contract", "ethers::providers")
+    };
 
     // check if the lock file exists, if it's missing we need to clean up afterward
     let lock_file = format!("{}/Cargo.lock", manifest_dir);
