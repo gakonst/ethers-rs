@@ -11,7 +11,8 @@ use ethers_solc::{
     cache::{SolFilesCache, SOLIDITY_FILES_CACHE_FILENAME},
     project_util::*,
     remappings::Remapping,
-    Graph, MinimalCombinedArtifacts, Project, ProjectCompileOutput, ProjectPathsConfig,
+    ConfigurableArtifacts, ExtraOutputValues, Graph, Project, ProjectCompileOutput,
+    ProjectPathsConfig,
 };
 use pretty_assertions::assert_eq;
 
@@ -28,7 +29,7 @@ fn can_compile_hardhat_sample() {
     let paths = ProjectPathsConfig::builder()
         .sources(root.join("contracts"))
         .lib(root.join("node_modules"));
-    let project = TempProject::<MinimalCombinedArtifacts>::new(paths).unwrap();
+    let project = TempProject::<ConfigurableArtifacts>::new(paths).unwrap();
 
     let compiled = project.compile().unwrap();
     assert!(compiled.find("Greeter").is_some());
@@ -53,7 +54,7 @@ fn can_compile_hardhat_sample() {
 fn can_compile_dapp_sample() {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test-data/dapp-sample");
     let paths = ProjectPathsConfig::builder().sources(root.join("src")).lib(root.join("lib"));
-    let project = TempProject::<MinimalCombinedArtifacts>::new(paths).unwrap();
+    let project = TempProject::<ConfigurableArtifacts>::new(paths).unwrap();
 
     let compiled = project.compile().unwrap();
     assert!(compiled.find("Dapp").is_some());
@@ -77,8 +78,32 @@ fn can_compile_dapp_sample() {
 }
 
 #[test]
+fn can_compile_configured() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test-data/dapp-sample");
+    let paths = ProjectPathsConfig::builder().sources(root.join("src")).lib(root.join("lib"));
+
+    let handler = ConfigurableArtifacts {
+        additional_values: ExtraOutputValues {
+            metadata: true,
+            ir: true,
+            ir_optimized: true,
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+
+    let settings = handler.settings();
+    let project = TempProject::with_artifacts(paths, handler).unwrap().with_settings(settings);
+    let compiled = project.compile().unwrap();
+    let artifact = compiled.find("Dapp").unwrap();
+    assert!(artifact.metadata.is_some());
+    assert!(artifact.ir.is_some());
+    assert!(artifact.ir_optimized.is_some());
+}
+
+#[test]
 fn can_compile_dapp_detect_changes_in_libs() {
-    let mut project = TempProject::<MinimalCombinedArtifacts>::dapptools().unwrap();
+    let mut project = TempProject::<ConfigurableArtifacts>::dapptools().unwrap();
 
     let remapping = project.paths().libraries[0].join("remapping");
     project
@@ -151,8 +176,7 @@ fn can_compile_dapp_detect_changes_in_libs() {
 
 #[test]
 fn can_compile_dapp_detect_changes_in_sources() {
-    init_tracing();
-    let project = TempProject::<MinimalCombinedArtifacts>::dapptools().unwrap();
+    let project = TempProject::<ConfigurableArtifacts>::dapptools().unwrap();
 
     let src = project
         .add_source(
@@ -330,7 +354,7 @@ fn can_flatten_file() {
         .sources(root.join("src"))
         .lib(root.join("lib1"))
         .lib(root.join("lib2"));
-    let project = TempProject::<MinimalCombinedArtifacts>::new(paths).unwrap();
+    let project = TempProject::<ConfigurableArtifacts>::new(paths).unwrap();
 
     let result = project.flatten(&target);
     assert!(result.is_ok());
@@ -346,7 +370,7 @@ fn can_flatten_file_with_external_lib() {
     let paths = ProjectPathsConfig::builder()
         .sources(root.join("contracts"))
         .lib(root.join("node_modules"));
-    let project = TempProject::<MinimalCombinedArtifacts>::new(paths).unwrap();
+    let project = TempProject::<ConfigurableArtifacts>::new(paths).unwrap();
 
     let target = root.join("contracts").join("Greeter.sol");
 
@@ -362,7 +386,7 @@ fn can_flatten_file_with_external_lib() {
 fn can_flatten_file_in_dapp_sample() {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test-data/dapp-sample");
     let paths = ProjectPathsConfig::builder().sources(root.join("src")).lib(root.join("lib"));
-    let project = TempProject::<MinimalCombinedArtifacts>::new(paths).unwrap();
+    let project = TempProject::<ConfigurableArtifacts>::new(paths).unwrap();
 
     let target = root.join("src/Dapp.t.sol");
 
@@ -379,7 +403,7 @@ fn can_flatten_file_in_dapp_sample() {
 fn can_flatten_file_with_duplicates() {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test-data/flatten-sample");
     let paths = ProjectPathsConfig::builder().sources(root.join("contracts"));
-    let project = TempProject::<MinimalCombinedArtifacts>::new(paths).unwrap();
+    let project = TempProject::<ConfigurableArtifacts>::new(paths).unwrap();
 
     let target = root.join("contracts/FooBar.sol");
 
@@ -395,7 +419,7 @@ fn can_flatten_file_with_duplicates() {
 
 #[test]
 fn can_detect_type_error() {
-    let project = TempProject::<MinimalCombinedArtifacts>::dapptools().unwrap();
+    let project = TempProject::<ConfigurableArtifacts>::dapptools().unwrap();
 
     project
         .add_source(

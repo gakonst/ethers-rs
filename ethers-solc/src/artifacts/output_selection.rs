@@ -4,7 +4,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{fmt, str::FromStr};
 
 /// Contract level output selection
-#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum ContractOutputSelection {
     Abi,
     DevDoc,
@@ -15,6 +15,23 @@ pub enum ContractOutputSelection {
     StorageLayout,
     Evm(EvmOutputSelection),
     Ewasm(EwasmOutputSelection),
+}
+
+impl ContractOutputSelection {
+    /// Returns the basic set of contract level settings that should be included in the `Contract`
+    /// that solc emits:
+    ///    - "abi"
+    ///    - "evm.bytecode"
+    ///    - "evm.deployedBytecode"
+    ///    - "evm.methodIdentifiers"
+    pub fn basic() -> Vec<ContractOutputSelection> {
+        vec![
+            ContractOutputSelection::Abi,
+            BytecodeOutputSelection::All.into(),
+            DeployedBytecodeOutputSelection::All.into(),
+            EvmOutputSelection::MethodIdentifiers.into(),
+        ]
+    }
 }
 
 impl Serialize for ContractOutputSelection {
@@ -61,8 +78,12 @@ impl FromStr for ContractOutputSelection {
             "userdoc" => Ok(ContractOutputSelection::UserDoc),
             "metadata" => Ok(ContractOutputSelection::Metadata),
             "ir" => Ok(ContractOutputSelection::Ir),
-            "irOptimized" => Ok(ContractOutputSelection::IrOptimized),
-            "storageLayout" => Ok(ContractOutputSelection::StorageLayout),
+            "ir-optimized" | "irOptimized" | "iroptimized" => {
+                Ok(ContractOutputSelection::IrOptimized)
+            }
+            "storage-layout" | "storagelayout" | "storageLayout" => {
+                Ok(ContractOutputSelection::StorageLayout)
+            }
             s => EvmOutputSelection::from_str(s)
                 .map(ContractOutputSelection::Evm)
                 .or_else(|_| EwasmOutputSelection::from_str(s).map(ContractOutputSelection::Ewasm))
@@ -71,8 +92,20 @@ impl FromStr for ContractOutputSelection {
     }
 }
 
+impl<T: Into<EvmOutputSelection>> From<T> for ContractOutputSelection {
+    fn from(evm: T) -> Self {
+        ContractOutputSelection::Evm(evm.into())
+    }
+}
+
+impl From<EwasmOutputSelection> for ContractOutputSelection {
+    fn from(ewasm: EwasmOutputSelection) -> Self {
+        ContractOutputSelection::Ewasm(ewasm)
+    }
+}
+
 /// Contract level output selection for `evm`
-#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum EvmOutputSelection {
     All,
     Assembly,
@@ -81,6 +114,18 @@ pub enum EvmOutputSelection {
     GasEstimates,
     ByteCode(BytecodeOutputSelection),
     DeployedByteCode(DeployedBytecodeOutputSelection),
+}
+
+impl From<BytecodeOutputSelection> for EvmOutputSelection {
+    fn from(b: BytecodeOutputSelection) -> Self {
+        EvmOutputSelection::ByteCode(b)
+    }
+}
+
+impl From<DeployedBytecodeOutputSelection> for EvmOutputSelection {
+    fn from(b: DeployedBytecodeOutputSelection) -> Self {
+        EvmOutputSelection::DeployedByteCode(b)
+    }
 }
 
 impl Serialize for EvmOutputSelection {
@@ -121,10 +166,12 @@ impl FromStr for EvmOutputSelection {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "evm" => Ok(EvmOutputSelection::All),
-            "evm.assembly" => Ok(EvmOutputSelection::Assembly),
+            "asm" | "evm.assembly" => Ok(EvmOutputSelection::Assembly),
             "evm.legacyAssembly" => Ok(EvmOutputSelection::LegacyAssembly),
-            "evm.methodIdentifiers" => Ok(EvmOutputSelection::MethodIdentifiers),
-            "evm.gasEstimates" => Ok(EvmOutputSelection::GasEstimates),
+            "methodidentifiers" | "evm.methodIdentifiers" | "evm.methodidentifiers" => {
+                Ok(EvmOutputSelection::MethodIdentifiers)
+            }
+            "gas" | "evm.gasEstimates" | "evm.gasestimates" => Ok(EvmOutputSelection::GasEstimates),
             s => BytecodeOutputSelection::from_str(s)
                 .map(EvmOutputSelection::ByteCode)
                 .or_else(|_| {
@@ -137,7 +184,7 @@ impl FromStr for EvmOutputSelection {
 }
 
 /// Contract level output selection for `evm.bytecode`
-#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum BytecodeOutputSelection {
     All,
     FunctionDebugData,
@@ -202,7 +249,7 @@ impl FromStr for BytecodeOutputSelection {
 }
 
 /// Contract level output selection for `evm.deployedBytecode`
-#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum DeployedBytecodeOutputSelection {
     All,
     FunctionDebugData,
@@ -277,7 +324,7 @@ impl FromStr for DeployedBytecodeOutputSelection {
 }
 
 /// Contract level output selection for `evm.ewasm`
-#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum EwasmOutputSelection {
     All,
     Wast,

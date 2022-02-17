@@ -54,6 +54,8 @@
 
 ### Unreleased
 
+- Let `Project` take ownership of `ArtifactOutput` and change trait interface
+  [#907](https://github.com/gakonst/ethers-rs/pull/907)
 - Total revamp of the `Project::compile` pipeline
   [#802](https://github.com/gakonst/ethers-rs/pull/802)
   - Support multiple versions of compiled contracts
