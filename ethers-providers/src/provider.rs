@@ -184,7 +184,7 @@ impl<P: JsonRpcClient> Provider<P> {
         self
     }
 
-    async fn request<T, R>(&self, method: &str, params: T) -> Result<R, ProviderError>
+    pub async fn request<T, R>(&self, method: &str, params: T) -> Result<R, ProviderError>
     where
         T: Debug + Serialize + Send + Sync,
         R: Serialize + DeserializeOwned + Debug,
