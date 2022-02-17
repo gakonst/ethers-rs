@@ -29,6 +29,8 @@ pub static ADDRESS_BOOK: Lazy<HashMap<U256, Address>> = Lazy::new(|| {
         (Chain::XDai.into(), decode_address("b5b692a88bdfc81ca69dcb1d924f59f0413a602a")),
         (Chain::Polygon.into(), decode_address("11ce4B23bD875D7F5C6a31084f55fDe1e9A87507")),
         (Chain::PolygonMumbai.into(), decode_address("08411ADd0b5AA8ee47563b146743C13b3556c9Cc")),
+        (Chain::Fantom.into(), decode_address("C30EB95BC3ff9D322C4300b65a1575F09b4a3eB1")),
+        (Chain::FantomTestnet.into(), decode_address("280A512EB24Fb655395E0C52D06dcf2dE5253172")),
     ]
     .into()
 });
