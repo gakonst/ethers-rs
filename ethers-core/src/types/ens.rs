@@ -105,7 +105,7 @@ mod tests {
         assert!(rlp.is_empty());
 
         let mut rlp = RlpStream::new();
-        (&name).rlp_append(&mut rlp);
+        name.rlp_append(&mut rlp);
         assert!(rlp.is_empty());
     }
 
@@ -122,7 +122,7 @@ mod tests {
         assert_eq!(rlp.as_raw(), expected.as_raw());
 
         let mut rlp = RlpStream::new();
-        (&union).rlp_append(&mut rlp);
+        union.rlp_append(&mut rlp);
         assert_eq!(rlp.as_raw(), expected.as_raw());
     }
 
