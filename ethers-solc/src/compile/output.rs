@@ -5,7 +5,7 @@ use crate::{
         CompactContractBytecode, CompactContractRef, Contract, Error, SourceFile, SourceFiles,
     },
     contracts::{VersionedContract, VersionedContracts},
-    ArtifactOutput, Artifacts, CompilerOutput, ConfigurableArtifacts,
+    ArtifactId, ArtifactOutput, Artifacts, CompilerOutput, ConfigurableArtifacts,
 };
 use semver::Version;
 use std::{collections::BTreeMap, fmt, path::Path};
@@ -36,12 +36,12 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
     /// ```no_run
     /// use std::collections::btree_map::BTreeMap;
     /// use ethers_solc::ConfigurableContractArtifact;
-    /// use ethers_solc::Project;
+    /// use ethers_solc::{ArtifactId, Project};
     ///
     /// let project = Project::builder().build().unwrap();
-    /// let contracts: BTreeMap<String, ConfigurableContractArtifact> = project.compile().unwrap().into_artifacts().collect();
+    /// let contracts: BTreeMap<ArtifactId, ConfigurableContractArtifact> = project.compile().unwrap().into_artifacts().collect();
     /// ```
-    pub fn into_artifacts(self) -> impl Iterator<Item = (String, T::Artifact)> {
+    pub fn into_artifacts(self) -> impl Iterator<Item = (ArtifactId, T::Artifact)> {
         let Self { cached_artifacts, compiled_artifacts, .. } = self;
         cached_artifacts.into_artifacts::<T>().chain(compiled_artifacts.into_artifacts::<T>())
     }
@@ -183,15 +183,16 @@ impl ProjectCompileOutput<ConfigurableArtifacts> {
     /// ```no_run
     /// use std::collections::btree_map::BTreeMap;
     /// use ethers_solc::artifacts::CompactContractBytecode;
-    /// use ethers_solc::Project;
+    /// use ethers_solc::{ArtifactId, Project};
     ///
     /// let project = Project::builder().build().unwrap();
-    /// let contracts: BTreeMap<String, CompactContractBytecode> = project.compile().unwrap().into_contract_bytecodes().collect();
+    /// let contracts: BTreeMap<ArtifactId, CompactContractBytecode> = project.compile().unwrap().into_contract_bytecodes().collect();
     /// ```
     pub fn into_contract_bytecodes(
         self,
-    ) -> impl Iterator<Item = (String, CompactContractBytecode)> {
-        self.into_artifacts().map(|(name, artifact)| (name, artifact.into_contract_bytecode()))
+    ) -> impl Iterator<Item = (ArtifactId, CompactContractBytecode)> {
+        self.into_artifacts()
+            .map(|(artifact_id, artifact)| (artifact_id, artifact.into_contract_bytecode()))
     }
 }
 

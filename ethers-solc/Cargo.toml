@@ -68,7 +68,7 @@ harness = false
 [[test]]
 name = "project"
 path = "tests/project.rs"
-required-features = ["project-util"]
+required-features = ["async", "svm", "project-util"]
 
 [features]
 default = ["rustls"]

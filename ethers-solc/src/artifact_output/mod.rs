@@ -18,6 +18,36 @@ use std::{
 mod configurable;
 pub use configurable::*;
 
+/// Represents unique artifact metadata for identifying artifacts on output
+#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
+pub struct ArtifactId {
+    /// `artifact` cache path
+    pub path: PathBuf,
+    pub name: String,
+    /// Original source file path
+    pub source: PathBuf,
+    /// `solc` version that produced this artifact
+    pub version: Version,
+}
+
+impl ArtifactId {
+    /// Returns a <filename>:<name> slug that identifies an artifact
+    pub fn slug(&self) -> String {
+        format!("{}.json:{}", self.path.file_stem().unwrap().to_string_lossy(), self.name)
+    }
+    /// Returns a <filename><version>:<name> slug that identifies an artifact
+    pub fn slug_versioned(&self) -> String {
+        format!(
+            "{}.{}.{}.{}.json:{}",
+            self.path.file_stem().unwrap().to_string_lossy(),
+            self.version.major,
+            self.version.minor,
+            self.version.patch,
+            self.name
+        )
+    }
+}
+
 /// Represents an artifact file representing a [`crate::Contract`]
 #[derive(Debug, Clone, PartialEq)]
 pub struct ArtifactFile<T> {
@@ -162,17 +192,19 @@ impl<T> Artifacts<T> {
     /// Returns an iterator over _all_ artifacts and `<file name:contract name>`
     pub fn into_artifacts<O: ArtifactOutput<Artifact = T>>(
         self,
-    ) -> impl Iterator<Item = (String, T)> {
-        self.0.into_values().flat_map(|contract_artifacts| {
-            contract_artifacts.into_iter().flat_map(|(_contract_name, artifacts)| {
-                artifacts.into_iter().filter_map(|artifact| {
+    ) -> impl Iterator<Item = (ArtifactId, T)> {
+        self.0.into_iter().flat_map(|(file, contract_artifacts)| {
+            contract_artifacts.into_iter().flat_map(move |(_contract_name, artifacts)| {
+                let source = PathBuf::from(file.clone());
+                artifacts.into_iter().filter_map(move |artifact| {
                     O::contract_name(&artifact.file).map(|name| {
                         (
-                            format!(
-                                "{}:{}",
-                                artifact.file.file_name().unwrap().to_string_lossy(),
-                                name
-                            ),
+                            ArtifactId {
+                                path: PathBuf::from(&artifact.file),
+                                name,
+                                source: source.clone(),
+                                version: artifact.version,
+                            },
                             artifact.artifact,
                         )
                     })
