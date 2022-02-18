@@ -7,6 +7,8 @@ pub enum EtherscanError {
     ChainNotSupported(Chain),
     #[error("contract execution call failed: {0}")]
     ExecutionFailed(String),
+    #[error("balance failed")]
+    BalanceFailed,
     #[error("tx receipt failed")]
     TransactionReceiptFailed,
     #[error("gas estimation failed")]

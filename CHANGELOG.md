@@ -4,6 +4,7 @@
 
 ### Unreleased
 
+- Add Etherscan account API endpoints [939](https://github.com/gakonst/ethers-rs/pull/939)
 - Add FTM Mainet and testnet to parse method "try_from" from Chain.rs and add cronos mainet and testnet to "from_str"
 - Add FTM mainnet and testnet Multicall addresses [927](https://github.com/gakonst/ethers-rs/pull/927)
 - Add Cronos mainnet beta and testnet to the list of known chains
