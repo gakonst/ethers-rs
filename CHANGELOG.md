@@ -4,6 +4,7 @@
 
 ### Unreleased
 
+- Add FTM mainnet and testnet Multicall addresses [927](https://github.com/gakonst/ethers-rs/pull/927)
 - Add Cronos mainnet beta and testnet to the list of known chains
   [926](https://github.com/gakonst/ethers-rs/pull/926)
 - `Chain::to_string` will return the same chain name as `Chain::from_str`
