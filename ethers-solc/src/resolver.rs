@@ -476,7 +476,7 @@ impl Graph {
             }
 
             let mut result = sets.pop().cloned().expect("not empty; qed.").clone();
-            if sets.len() > 1 {
+            if !sets.is_empty() {
                 result.retain(|item| sets.iter().all(|set| set.contains(item)));
             }
 
