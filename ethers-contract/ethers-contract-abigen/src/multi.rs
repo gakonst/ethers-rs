@@ -158,7 +158,10 @@ impl MultiBindings {
         writeln!(toml, "[dependencies]")?;
         writeln!(
             toml,
-            r#"ethers = {{ git = "https://github.com/gakonst/ethers-rs", default-features = false }}"#
+            r#"
+ethers = {{ git = "https://github.com/gakonst/ethers-rs", default-features = false }}
+serde_json = "1.0.79"
+"#
         )?;
         Ok(toml)
     }

@@ -4,7 +4,9 @@
 
 ### Unreleased
 
-- Add FTM mainnet and testnet Multicall addresses
+- Add FTM mainnet and testnet Multicall addresses [927](https://github.com/gakonst/ethers-rs/pull/927)
+- Add Cronos mainnet beta and testnet to the list of known chains
+  [926](https://github.com/gakonst/ethers-rs/pull/926)
 - `Chain::to_string` will return the same chain name as `Chain::from_str`
 - Add `eth_syncing` [848](https://github.com/gakonst/ethers-rs/pull/848)
 - Fix overflow and possible divide-by-zero in `estimate_priority_fee`
@@ -55,6 +57,8 @@
 
 ### Unreleased
 
+- Let `Project` take ownership of `ArtifactOutput` and change trait interface
+  [#907](https://github.com/gakonst/ethers-rs/pull/907)
 - Total revamp of the `Project::compile` pipeline
   [#802](https://github.com/gakonst/ethers-rs/pull/802)
   - Support multiple versions of compiled contracts

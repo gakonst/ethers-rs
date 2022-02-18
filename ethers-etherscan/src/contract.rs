@@ -311,7 +311,7 @@ mod tests {
                 .sources(&root)
                 .build()
                 .expect("failed to resolve project paths");
-            let project = Project::<MinimalCombinedArtifacts>::builder()
+            let project = Project::builder()
                 .paths(paths)
                 .build()
                 .expect("failed to build the project");

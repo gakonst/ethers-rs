@@ -33,7 +33,7 @@ trezor-client = { version = "0.0.4", optional = true, default-features = false, 
 # aws
 rusoto_core = { version = "0.47.0", optional = true }
 rusoto_kms = { version = "0.47.0", optional = true }
-tracing = { version = "0.1.30", optional = true }
+tracing = { version = "0.1.31", optional = true }
 tracing-futures = { version = "0.2.5", optional = true }
 spki = { version = "0.5.4", optional = true }
 
@@ -45,7 +45,7 @@ home = "0.5.3"
 ethers-contract = { version = "^0.6.0", path = "../ethers-contract", features = ["eip712", "abigen"]}
 ethers-derive-eip712 = { version = "0.2.0", path = "../ethers-core/ethers-derive-eip712" }
 serde_json = { version = "1.0.64" }
-tracing-subscriber = "0.3.8"
+tracing-subscriber = "0.3.9"
 yubihsm = { version = "0.40.0", features = ["secp256k1", "usb", "mockhsm"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
