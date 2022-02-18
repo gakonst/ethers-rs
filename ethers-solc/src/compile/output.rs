@@ -191,7 +191,8 @@ impl ProjectCompileOutput<ConfigurableArtifacts> {
     pub fn into_contract_bytecodes(
         self,
     ) -> impl Iterator<Item = (ArtifactId, CompactContractBytecode)> {
-        self.into_artifacts().map(|(artifact_id, artifact)| (artifact_id, artifact.into_contract_bytecode()))
+        self.into_artifacts()
+            .map(|(artifact_id, artifact)| (artifact_id, artifact.into_contract_bytecode()))
     }
 }
 

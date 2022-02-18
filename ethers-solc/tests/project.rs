@@ -24,16 +24,16 @@ fn init_tracing() {
 }
 
 #[test]
+#[ignore]
 fn can_get_versioned_linkrefs() {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test-data/test-versioned-linkrefs");
-    let paths = ProjectPathsConfig::builder().sources(root.join("src")).lib(root.join("lib")).build().unwrap();
-
-    let project = Project::builder()
-        .paths(paths)
-        .ephemeral()
-        .no_artifacts()
+    let paths = ProjectPathsConfig::builder()
+        .sources(root.join("src"))
+        .lib(root.join("lib"))
         .build()
         .unwrap();
+
+    let project = Project::builder().paths(paths).ephemeral().no_artifacts().build().unwrap();
 
     let compiled = project.compile().unwrap();
     assert!(!compiled.has_compiler_errors());
