@@ -324,10 +324,10 @@ fn can_compile_dapp_sample_with_cache() {
     assert_eq!(
         compiled.into_artifacts().map(|(artifact_id, _)| artifact_id.name).collect::<HashSet<_>>(),
         HashSet::from([
-            "Dapp.json:Dapp".to_string(),
-            "DappTest.json:DappTest".to_string(),
-            "DSTest.json:DSTest".to_string(),
-            "NewContract.json:NewContract".to_string(),
+            "Dapp".to_string(),
+            "DappTest".to_string(),
+            "DSTest".to_string(),
+            "NewContract".to_string(),
         ])
     );
 
@@ -337,10 +337,10 @@ fn can_compile_dapp_sample_with_cache() {
     assert_eq!(
         compiled.into_artifacts().map(|(artifact_id, _)| artifact_id.name).collect::<HashSet<_>>(),
         HashSet::from([
-            "DappTest.json:DappTest".to_string(),
-            "NewContract.json:NewContract".to_string(),
-            "DSTest.json:DSTest".to_string(),
-            "Dapp.json:Dapp".to_string(),
+            "DappTest".to_string(),
+            "NewContract".to_string(),
+            "DSTest".to_string(),
+            "Dapp".to_string(),
         ])
     );
 
