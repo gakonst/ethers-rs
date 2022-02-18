@@ -36,6 +36,8 @@ pub enum Chain {
     BinanceSmartChainTestnet = 97,
     Arbitrum = 42161,
     ArbitrumTestnet = 421611,
+    Cronos = 25,
+    CronosTestnet = 338,
 }
 
 impl fmt::Display for Chain {
@@ -63,6 +65,8 @@ impl fmt::Display for Chain {
             Chain::BinanceSmartChainTestnet => "bsc-testnet",
             Chain::Arbitrum => "arbitrum",
             Chain::ArbitrumTestnet => "arbitrum-testnet",
+            Chain::Cronos => "cronos",
+            Chain::CronosTestnet => "cronos-testnet",
         };
 
         write!(formatter, "{}", chain)
@@ -162,7 +166,8 @@ impl Chain {
                 Chain::BinanceSmartChain |
                 Chain::BinanceSmartChainTestnet |
                 Chain::Arbitrum |
-                Chain::ArbitrumTestnet,
+                Chain::ArbitrumTestnet |
+                Chain::Cronos,
         )
     }
 }
