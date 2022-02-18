@@ -423,7 +423,7 @@ impl Candidate {
             candidates.retain(|c| c.window_level != current_level);
 
             let source_dir = if is_inside_node_modules {
-                window_start.to_path_buf()
+                window_start.clone()
             } else {
                 current_dir.to_path_buf()
             };
