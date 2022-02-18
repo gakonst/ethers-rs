@@ -232,7 +232,7 @@ mod tests {
         let err = Client::new_from_env(Chain::XDai).unwrap_err();
 
         assert!(matches!(err, EtherscanError::ChainNotSupported(_)));
-        assert_eq!(err.to_string(), "chain XDai not supported");
+        assert_eq!(err.to_string(), "chain xdai not supported");
     }
 
     pub async fn run_at_least_duration(duration: Duration, block: impl Future) {

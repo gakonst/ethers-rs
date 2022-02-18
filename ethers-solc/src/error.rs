@@ -23,6 +23,9 @@ pub enum SolcError {
     /// Filesystem IO error
     #[error(transparent)]
     Io(#[from] SolcIoError),
+    /// Failed to resolve a file
+    #[error("Failed to resolve file: {0}.\n Check configured remappings.")]
+    Resolve(SolcIoError),
     #[cfg(feature = "svm")]
     #[error(transparent)]
     SvmError(#[from] svm::SolcVmError),

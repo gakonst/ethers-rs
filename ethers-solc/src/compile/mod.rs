@@ -42,41 +42,12 @@ pub const BERLIN_SOLC: Version = Version::new(0, 8, 5);
 /// https://blog.soliditylang.org/2021/08/11/solidity-0.8.7-release-announcement/
 pub const LONDON_SOLC: Version = Version::new(0, 8, 7);
 
-#[cfg(any(test, all(feature = "svm", feature = "async")))]
-use once_cell::sync::Lazy;
-
 #[cfg(any(test, feature = "tests"))]
 use std::sync::Mutex;
 
 #[cfg(any(test, feature = "tests"))]
 #[allow(unused)]
-static LOCK: Lazy<Mutex<()>> = Lazy::new(|| Mutex::new(()));
-
-#[cfg(all(feature = "svm", feature = "async"))]
-#[allow(clippy::large_enum_variant)]
-pub enum RuntimeOrHandle {
-    Runtime(tokio::runtime::Runtime),
-    Handle(tokio::runtime::Handle),
-}
-
-#[cfg(all(feature = "svm", feature = "async"))]
-impl Default for RuntimeOrHandle {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-#[cfg(all(feature = "svm", feature = "async"))]
-impl RuntimeOrHandle {
-    pub fn new() -> RuntimeOrHandle {
-        match tokio::runtime::Handle::try_current() {
-            Ok(handle) => RuntimeOrHandle::Handle(handle),
-            Err(_) => RuntimeOrHandle::Runtime(
-                tokio::runtime::Runtime::new().expect("Failed to start runtime"),
-            ),
-        }
-    }
-}
+static LOCK: once_cell::sync::Lazy<Mutex<()>> = once_cell::sync::Lazy::new(|| Mutex::new(()));
 
 /// take the lock in tests, we use this to enforce that
 /// a test does not run while a compiler version is being installed
@@ -90,55 +61,21 @@ pub(crate) fn take_solc_installer_lock() -> std::sync::MutexGuard<'static, ()> {
     LOCK.lock().unwrap()
 }
 
-#[cfg(all(feature = "svm", feature = "async"))]
 /// A list of upstream Solc releases, used to check which version
 /// we should download.
 /// The boolean value marks whether there was an error.
-pub static RELEASES: Lazy<(svm::Releases, Vec<Version>, bool)> = Lazy::new(|| {
-    // Try to download the releases, if it fails default to empty
-    let releases_result = match RuntimeOrHandle::new() {
-        RuntimeOrHandle::Runtime(runtime) =>
-        // we do not degrade startup performance if the consumer has a weak network?
-        // use a 3 sec timeout for the request which should still be fine for slower connections
-        {
-            runtime.block_on(async {
-                tokio::time::timeout(
-                    std::time::Duration::from_millis(3000),
-                    svm::all_releases(svm::platform()),
-                )
-                .await
-            })
+#[cfg(all(feature = "svm"))]
+pub static RELEASES: once_cell::sync::Lazy<(svm::Releases, Vec<Version>, bool)> =
+    once_cell::sync::Lazy::new(|| match svm::blocking_all_releases(svm::platform()) {
+        Ok(releases) => {
+            let sorted_versions = releases.clone().into_versions();
+            (releases, sorted_versions, true)
         }
-        RuntimeOrHandle::Handle(handle) =>
-        // we do not degrade startup performance if the consumer has a weak network?
-        // use a 3 sec timeout for the request which should still be fine for slower connections
-        {
-            handle.block_on(async {
-                tokio::time::timeout(
-                    std::time::Duration::from_millis(3000),
-                    svm::all_releases(svm::platform()),
-                )
-                .await
-            })
-        }
-    };
-
-    match releases_result {
-        Ok(Ok(releases)) => {
-            let mut sorted_releases = releases.releases.keys().cloned().collect::<Vec<Version>>();
-            sorted_releases.sort();
-            (releases, sorted_releases, true)
-        }
-        Ok(Err(err)) => {
+        Err(err) => {
             tracing::error!("{:?}", err);
             (svm::Releases::default(), Vec::new(), false)
         }
-        Err(err) => {
-            tracing::error!("Releases request timed out: {:?}", err);
-            (svm::Releases::default(), Vec::new(), false)
-        }
-    }
-});
+    });
 
 /// A `Solc` version is either installed (available locally) or can be downloaded, from the remote
 /// endpoint
@@ -423,9 +360,9 @@ impl Solc {
     #[cfg(feature = "svm")]
     pub async fn install(version: &Version) -> std::result::Result<(), svm::SolcVmError> {
         tracing::trace!("installing solc version \"{}\"", version);
-        println!("installing solc version \"{}\"", version);
+        crate::report::solc_installation_start(version);
         let result = svm::install(version).await;
-        println!("installation complete");
+        crate::report::solc_installation_success(version);
         result
     }
 
@@ -433,9 +370,9 @@ impl Solc {
     #[cfg(all(feature = "svm", feature = "async"))]
     pub fn blocking_install(version: &Version) -> std::result::Result<(), svm::SolcVmError> {
         tracing::trace!("blocking installing solc version \"{}\"", version);
-        println!("installing solc version \"{}\"", version);
-        tokio::runtime::Runtime::new().unwrap().block_on(svm::install(version))?;
-        println!("installation completed");
+        crate::report::solc_installation_start(version);
+        svm::blocking_install(version)?;
+        crate::report::solc_installation_success(version);
         Ok(())
     }
 
@@ -726,6 +663,17 @@ mod tests {
         assert_eq!(out, other);
     }
 
+    #[test]
+    fn solc_metadata_works() {
+        let input = include_str!("../../test-data/in/compiler-in-1.json");
+        let mut input: CompilerInput = serde_json::from_str(input).unwrap();
+        input.settings.push_output_selection("metadata");
+        let out = solc().compile(&input).unwrap();
+        for (_, c) in out.split().1.contracts_iter() {
+            assert!(c.metadata.is_some());
+        }
+    }
+
     #[cfg(feature = "async")]
     #[tokio::test]
     async fn async_solc_compile_works() {
@@ -780,7 +728,7 @@ mod tests {
             // update this test whenever there's a new sol
             // version. that's ok! good reminder to check the
             // patch notes.
-            (">=0.5.0", "0.8.11"),
+            (">=0.5.0", "0.8.12"),
             // range
             (">=0.4.0 <0.5.0", "0.4.26"),
         ]

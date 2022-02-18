@@ -78,13 +78,15 @@ impl From<HardhatArtifact> for CompactContractBytecode {
 }
 
 /// Hardhat style artifacts handler
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub struct HardhatArtifacts;
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Default)]
+pub struct HardhatArtifacts {
+    _priv: (),
+}
 
 impl ArtifactOutput for HardhatArtifacts {
     type Artifact = HardhatArtifact;
 
-    fn contract_to_artifact(file: &str, name: &str, contract: Contract) -> Self::Artifact {
+    fn contract_to_artifact(&self, file: &str, name: &str, contract: Contract) -> Self::Artifact {
         let (bytecode, link_references, deployed_bytecode, deployed_link_references) =
             if let Some(evm) = contract.evm {
                 let (deployed_bytecode, deployed_link_references) =

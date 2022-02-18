@@ -1,6 +1,9 @@
 //! Utility functions
 
-use std::path::{Component, Path, PathBuf};
+use std::{
+    collections::HashSet,
+    path::{Component, Path, PathBuf},
+};
 
 use crate::{error::SolcError, SolcIoError};
 use once_cell::sync::Lazy;
@@ -14,7 +17,7 @@ use walkdir::WalkDir;
 /// statement with the named groups "path", "id".
 // Adapted from https://github.com/nomiclabs/hardhat/blob/cced766c65b25d3d0beb39ef847246ac9618bdd9/packages/hardhat-core/src/internal/solidity/parse.ts#L100
 pub static RE_SOL_IMPORT: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r#"import\s+(?:(?:"(?P<p1>[^;]*)"|'([^;]*)')(?:;|\s+as\s+(?P<id>[^;]*);)|.+from\s+(?:"(?P<p2>.*)"|'(?P<p3>.*)');)"#).unwrap()
+    Regex::new(r#"import\s+(?:(?:"(?P<p1>[^;]*)"|'(?P<p2>[^;]*)')(?:;|\s+as\s+(?P<id>[^;]*);)|.+from\s+(?:"(?P<p3>.*)"|'(?P<p4>.*)');)"#).unwrap()
 });
 
 /// A regex that matches the version part of a solidity pragma
@@ -34,9 +37,12 @@ pub static RE_SOL_SDPX_LICENSE_IDENTIFIER: Lazy<Regex> =
 ///
 /// See also https://docs.soliditylang.org/en/v0.8.9/grammar.html
 pub fn find_import_paths(contract: &str) -> impl Iterator<Item = Match> {
-    RE_SOL_IMPORT
-        .captures_iter(contract)
-        .filter_map(|cap| cap.name("p1").or_else(|| cap.name("p2")).or_else(|| cap.name("p3")))
+    RE_SOL_IMPORT.captures_iter(contract).filter_map(|cap| {
+        cap.name("p1")
+            .or_else(|| cap.name("p2"))
+            .or_else(|| cap.name("p3"))
+            .or_else(|| cap.name("p4"))
+    })
 }
 
 /// Returns the solidity version pragma from the given input:
@@ -63,6 +69,46 @@ pub fn source_files(root: impl AsRef<Path>) -> Vec<PathBuf> {
         .filter(|e| e.file_type().is_file())
         .filter(|e| e.path().extension().map(|ext| ext == "sol").unwrap_or_default())
         .map(|e| e.path().into())
+        .collect()
+}
+
+/// Returns a list of _unique_ paths to all folders under `root` that contain at least one solidity
+/// file (`*.sol`).
+///
+/// # Example
+///
+/// ```no_run
+/// use ethers_solc::utils;
+/// let dirs = utils::solidity_dirs("./lib");
+/// ```
+///
+/// for following layout will return
+/// `["lib/ds-token/src", "lib/ds-token/src/test", "lib/ds-token/lib/ds-math/src", ...]`
+///
+/// ```text
+/// lib
+/// └── ds-token
+///     ├── lib
+///     │   ├── ds-math
+///     │   │   └── src/Contract.sol
+///     │   ├── ds-stop
+///     │   │   └── src/Contract.sol
+///     │   ├── ds-test
+///     │       └── src//Contract.sol
+///     └── src
+///         ├── base.sol
+///         ├── test
+///         │   ├── base.t.sol
+///         └── token.sol
+/// ```
+pub fn solidity_dirs(root: impl AsRef<Path>) -> Vec<PathBuf> {
+    let sources = source_files(root);
+    sources
+        .iter()
+        .filter_map(|p| p.parent())
+        .collect::<HashSet<_>>()
+        .into_iter()
+        .map(|p| p.to_path_buf())
         .collect()
 }
 
@@ -335,6 +381,31 @@ mod tests {
         let files: HashSet<_> = source_files(tmp_dir.path()).into_iter().collect();
         let expected: HashSet<_> = [file_a, file_b, file_c, file_d].into();
         assert_eq!(files, expected);
+    }
+
+    #[test]
+    fn can_find_single_quote_imports() {
+        let content = r#"
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.6;
+
+import '@openzeppelin/contracts/access/Ownable.sol';
+import '@openzeppelin/contracts/utils/Address.sol';
+
+import './../interfaces/IJBDirectory.sol';
+import './../libraries/JBTokens.sol';
+        "#;
+        let imports: Vec<_> = find_import_paths(content).map(|m| m.as_str()).collect();
+
+        assert_eq!(
+            imports,
+            vec![
+                "@openzeppelin/contracts/access/Ownable.sol",
+                "@openzeppelin/contracts/utils/Address.sol",
+                "./../interfaces/IJBDirectory.sol",
+                "./../libraries/JBTokens.sol",
+            ]
+        );
     }
 
     #[test]

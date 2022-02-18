@@ -25,6 +25,36 @@ use wasm_timer::Delay;
 /// once the transaction has enough `confirmations`. The default number of confirmations
 /// is 1, but may be adjusted with the `confirmations` method. If the transaction does not
 /// have enough confirmations or is not mined, the future will stay in the pending state.
+///
+/// # Example
+///
+///```
+/// # use ethers_providers::{Provider, Http};
+/// # use ethers_core::utils::Ganache;
+/// # use std::convert::TryFrom;
+/// use ethers_providers::Middleware;
+/// use ethers_core::types::TransactionRequest;
+///
+/// # #[tokio::main(flavor = "current_thread")]
+/// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// # let ganache = Ganache::new().spawn();
+/// # let client = Provider::<Http>::try_from(ganache.endpoint()).unwrap();
+/// # let accounts = client.get_accounts().await?;
+/// # let from = accounts[0];
+/// # let to = accounts[1];
+/// # let balance_before = client.get_balance(to, None).await?;
+/// let tx = TransactionRequest::new().to(to).value(1000).from(from);
+/// let receipt = client
+///     .send_transaction(tx, None)
+///     .await?                           // PendingTransaction<_>
+///     .log_msg("Pending transfer hash") // print pending tx hash with message
+///     .await?;                          // Result<Option<TransactionReceipt>, _>
+/// # let _ = receipt;
+/// # let balance_after = client.get_balance(to, None).await?;
+/// # assert_eq!(balance_after, balance_before + 1000);
+/// # Ok(())
+/// # }
+/// ```
 #[pin_project]
 pub struct PendingTransaction<'a, P> {
     tx_hash: TxHash,
@@ -75,6 +105,30 @@ impl<'a, P: JsonRpcClient> PendingTransaction<'a, P> {
         }
 
         self
+    }
+}
+
+impl<'a, P> PendingTransaction<'a, P> {
+    /// Allows inspecting the content of a pending transaction in a builder-like way to avoid
+    /// more verbose calls, e.g.:
+    /// `let mined = token.transfer(recipient, amt).send().await?.inspect(|tx| println!(".{}",
+    /// *tx)).await?;`
+    pub fn inspect<F>(self, mut f: F) -> Self
+    where
+        F: FnMut(&Self),
+    {
+        f(&self);
+        self
+    }
+
+    /// Logs the pending transaction hash along with a custom message before it.
+    pub fn log_msg<S: std::fmt::Display>(self, msg: S) -> Self {
+        self.inspect(|s| println!("{}: {:?}", msg, **s))
+    }
+
+    /// Logs the pending transaction's hash
+    pub fn log(self) -> Self {
+        self.inspect(|s| println!("Pending hash: {:?}", **s))
     }
 }
 

@@ -267,16 +267,17 @@ impl TryFrom<&syn::DeriveInput> for EIP712Domain {
                                                         .to_compile_error())
                                                     }
 
-                                                    domain.chain_id = lit_int
-                                                        .base10_digits()
-                                                        .parse()
-                                                        .map_err(|_| {
-                                                            Error::new(
-                                                                meta.path.span(),
-                                                                "failed to parse chain id",
-                                                            )
-                                                            .to_compile_error()
-                                                        })?;
+                                                    domain.chain_id = U256::from(
+                                                        lit_int.base10_parse::<u64>().map_err(
+                                                            |_| {
+                                                                Error::new(
+                                                                    meta.path.span(),
+                                                                    "failed to parse chain id",
+                                                                )
+                                                                .to_compile_error()
+                                                            },
+                                                        )?,
+                                                    );
                                                 }
                                                 _ => {
                                                     return Err(Error::new(

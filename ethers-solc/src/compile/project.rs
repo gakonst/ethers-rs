@@ -80,6 +80,7 @@ use crate::{
     cache::ArtifactsCache,
     error::Result,
     output::AggregatedCompilerOutput,
+    report,
     resolver::GraphEdges,
     ArtifactOutput, CompilerInput, Graph, Project, ProjectCompileOutput, ProjectPathsConfig, Solc,
     Sources,
@@ -218,11 +219,15 @@ impl<'a, T: ArtifactOutput> CompiledState<'a, T> {
     /// Writes all output contracts to disk if enabled in the `Project`
     fn write_artifacts(self) -> Result<ArtifactsState<'a, T>> {
         let CompiledState { output, cache } = self;
+
         // write all artifacts
         let compiled_artifacts = if !cache.project().no_artifacts {
-            T::on_output(&output.contracts, &cache.project().paths)?
+            cache
+                .project()
+                .artifacts_handler()
+                .on_output(&output.contracts, &cache.project().paths)?
         } else {
-            T::output_to_artifacts(&output.contracts)
+            cache.project().artifacts_handler().output_to_artifacts(&output.contracts)
         };
 
         Ok(ArtifactsState { output, cache, compiled_artifacts })
@@ -343,7 +348,10 @@ fn compile_sequential(
             input.sources.len(),
             input.sources.keys()
         );
-        let output = solc.compile(&input)?;
+
+        report::solc_spawn(&solc, &version, &input);
+        let output = solc.compile_exact(&input)?;
+        report::solc_success(&solc, &version, &output);
         tracing::trace!("compiled input, output has error: {}", output.has_error());
 
         aggregated.extend(version, output);
@@ -392,7 +400,11 @@ fn compile_parallel(
                     input.sources.len(),
                     input.sources.keys()
                 );
-                solc.compile(&input).map(|output| (version, output))
+                report::solc_spawn(&solc, &version, &input);
+                solc.compile(&input).map(move |output| {
+                    report::solc_success(&solc, &version, &output);
+                    (version, output)
+                })
             })
             .collect::<Result<Vec<_>>>()
     })?;
