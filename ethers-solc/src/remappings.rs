@@ -1091,7 +1091,7 @@ mod tests {
             },
             Remapping {
                 name: "@openzeppelin/".to_string(),
-                path: to_str(tmp_dir_node_modules.join("@openzeppelin/contracts")),
+                path: to_str(tmp_dir_node_modules.join("@openzeppelin")),
             },
             Remapping {
                 name: "eth-gas-reporter/".to_string(),
