@@ -235,6 +235,49 @@ impl<T: ArtifactOutput> Project<T> {
         project::ProjectCompiler::with_sources(self, sources)?.compile()
     }
 
+    /// Convenience function to compile a single solidity file with the project's settings.
+    /// Same as [`Self::svm_compile()`] but with the given `file` as input.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use ethers_solc::Project;
+    /// # fn demo(project: Project) {
+    /// let project = Project::builder().build().unwrap();
+    /// let output = project.compile_file("example/Greeter.sol").unwrap();
+    /// # }
+    /// ```
+    #[cfg(all(feature = "svm", feature = "async"))]
+    pub fn compile_file(&self, file: impl Into<PathBuf>) -> Result<ProjectCompileOutput<T>> {
+        let file = file.into();
+        let source = Source::read(&file)?;
+        project::ProjectCompiler::with_sources(self, Sources::from([(file, source)]))?.compile()
+    }
+
+    /// Convenience function to compile a series of solidity files with the project's settings.
+    /// Same as [`Self::svm_compile()`] but with the given `files` as input.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use ethers_solc::Project;
+    /// # fn demo(project: Project) {
+    /// let project = Project::builder().build().unwrap();
+    /// let output = project
+    ///     .compile_files(
+    ///         vec!["examples/Foo.sol", "examples/Bar.sol"]
+    ///     ).unwrap();
+    /// # }
+    /// ```
+    #[cfg(all(feature = "svm", feature = "async"))]
+    pub fn compile_files<P, I>(&self, files: I) -> Result<ProjectCompileOutput<T>>
+    where
+        I: IntoIterator<Item = P>,
+        P: Into<PathBuf>,
+    {
+        project::ProjectCompiler::with_sources(self, Source::read_all(files)?)?.compile()
+    }
+
     /// Compiles the given source files with the exact `Solc` executable
     ///
     /// First all libraries for the sources are resolved by scanning all their imports.

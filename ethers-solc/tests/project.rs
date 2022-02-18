@@ -454,3 +454,39 @@ fn can_detect_type_error() {
     let compiled = project.compile().unwrap();
     assert!(compiled.has_compiler_errors());
 }
+
+#[test]
+fn can_compile_single_files() {
+    let tmp = TempProject::dapptools().unwrap();
+
+    let foo = tmp
+        .add_contract(
+            "examples/Foo",
+            r#"
+    pragma solidity ^0.8.10;
+
+    contract Foo {}
+   "#,
+        )
+        .unwrap();
+
+    let compiled = tmp.project().compile_file(foo.clone()).unwrap();
+    assert!(!compiled.has_compiler_errors());
+    assert!(compiled.find("Foo").is_some());
+
+    let bar = tmp
+        .add_contract(
+            "examples/Bar",
+            r#"
+    pragma solidity ^0.8.10;
+
+    contract Bar {}
+   "#,
+        )
+        .unwrap();
+
+    let compiled = tmp.project().compile_files(vec![foo, bar]).unwrap();
+    assert!(!compiled.has_compiler_errors());
+    assert!(compiled.find("Foo").is_some());
+    assert!(compiled.find("Bar").is_some());
+}
