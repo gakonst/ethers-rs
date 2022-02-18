@@ -24,7 +24,6 @@ fn init_tracing() {
 }
 
 #[test]
-#[ignore]
 fn can_get_versioned_linkrefs() {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test-data/test-versioned-linkrefs");
     let paths = ProjectPathsConfig::builder()
@@ -37,8 +36,6 @@ fn can_get_versioned_linkrefs() {
 
     let compiled = project.compile().unwrap();
     assert!(!compiled.has_compiler_errors());
-
-    // TODO:
 }
 
 #[test]
