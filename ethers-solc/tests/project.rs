@@ -304,7 +304,7 @@ fn can_compile_dapp_sample_with_cache() {
     assert!(compiled.find("NewContract").is_some());
     assert!(!compiled.is_unchanged());
     assert_eq!(
-        compiled.into_artifacts().map(|(name, _)| name).collect::<HashSet<_>>(),
+        compiled.into_artifacts().map(|(artifact_id, _)| artifact_id.name).collect::<HashSet<_>>(),
         HashSet::from([
             "Dapp.json:Dapp".to_string(),
             "DappTest.json:DappTest".to_string(),
@@ -317,7 +317,7 @@ fn can_compile_dapp_sample_with_cache() {
     std::fs::copy(cache_testdata_dir.join("Dapp.sol"), root.join("src/Dapp.sol")).unwrap();
     let compiled = project.compile().unwrap();
     assert_eq!(
-        compiled.into_artifacts().map(|(name, _)| name).collect::<HashSet<_>>(),
+        compiled.into_artifacts().map(|(artifact_id, _)| artifact_id.name).collect::<HashSet<_>>(),
         HashSet::from([
             "DappTest.json:DappTest".to_string(),
             "NewContract.json:NewContract".to_string(),

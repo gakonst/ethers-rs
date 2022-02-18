@@ -36,10 +36,10 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
     /// ```no_run
     /// use std::collections::btree_map::BTreeMap;
     /// use ethers_solc::ConfigurableContractArtifact;
-    /// use ethers_solc::Project;
+    /// use ethers_solc::{ArtifactId, Project};
     ///
     /// let project = Project::builder().build().unwrap();
-    /// let contracts: BTreeMap<String, ConfigurableContractArtifact> = project.compile().unwrap().into_artifacts().collect();
+    /// let contracts: BTreeMap<ArtifactId, ConfigurableContractArtifact> = project.compile().unwrap().into_artifacts().collect();
     /// ```
     pub fn into_artifacts(self) -> impl Iterator<Item = (ArtifactId, T::Artifact)> {
         let Self { cached_artifacts, compiled_artifacts, .. } = self;
@@ -183,10 +183,10 @@ impl ProjectCompileOutput<ConfigurableArtifacts> {
     /// ```no_run
     /// use std::collections::btree_map::BTreeMap;
     /// use ethers_solc::artifacts::CompactContractBytecode;
-    /// use ethers_solc::Project;
+    /// use ethers_solc::{ArtifactId, Project};
     ///
     /// let project = Project::builder().build().unwrap();
-    /// let contracts: BTreeMap<String, CompactContractBytecode> = project.compile().unwrap().into_contract_bytecodes().collect();
+    /// let contracts: BTreeMap<ArtifactId, CompactContractBytecode> = project.compile().unwrap().into_contract_bytecodes().collect();
     /// ```
     pub fn into_contract_bytecodes(
         self,
