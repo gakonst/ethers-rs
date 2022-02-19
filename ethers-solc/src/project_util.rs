@@ -154,10 +154,18 @@ impl<T: ArtifactOutput> TempProject<T> {
         create_contract_file(lib, content)
     }
 
-    /// Adds a new source file
+    /// Adds a new source file inside the project's source dir
     pub fn add_source(&self, name: impl AsRef<str>, content: impl AsRef<str>) -> Result<PathBuf> {
         let name = contract_file_name(name);
         let source = self.paths().sources.join(name);
+        create_contract_file(source, content)
+    }
+
+    /// Adds a solidity contract in the project's root dir.
+    /// This will also create all intermediary dirs.
+    pub fn add_contract(&self, name: impl AsRef<str>, content: impl AsRef<str>) -> Result<PathBuf> {
+        let name = contract_file_name(name);
+        let source = self.root().join(name);
         create_contract_file(source, content)
     }
 }
