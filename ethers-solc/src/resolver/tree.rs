@@ -38,7 +38,7 @@ pub struct TreeOptions {
     /// The style of characters to use.
     pub charset: Charset,
     /// If `true`, duplicate imports will be repeated.
-    /// If `false`, duplicates are suffixed with `(*)`, and their dependencies
+    /// If `false`, duplicates are suffixed with `(*)`, and their imports
     /// won't be shown.
     pub no_dedupe: bool,
 }
@@ -68,8 +68,8 @@ pub fn print(graph: &Graph, opts: &TreeOptions, out: &mut dyn Write) -> io::Resu
     // when printing a line.
     let mut levels_continue = Vec::new();
     // used to detect dependency cycles when --no-dedupe is used.
-    // contains a Node for each level.
-    let mut print_stack = Vec::new();
+    // contains a `Node` for each level.
+    let mut write_stack = Vec::new();
 
     for (node_index, _) in graph.input_nodes().enumerate() {
         print_node(
@@ -79,7 +79,7 @@ pub fn print(graph: &Graph, opts: &TreeOptions, out: &mut dyn Write) -> io::Resu
             opts.no_dedupe,
             &mut visited_imports,
             &mut levels_continue,
-            &mut print_stack,
+            &mut write_stack,
             out,
         )?;
     }
@@ -95,7 +95,7 @@ fn print_node(
     no_dedupe: bool,
     visited_imports: &mut HashSet<usize>,
     levels_continue: &mut Vec<bool>,
-    print_stack: &mut Vec<usize>,
+    write_stack: &mut Vec<usize>,
     out: &mut dyn Write,
 ) -> io::Result<()> {
     let new_node = no_dedupe || visited_imports.insert(node_index);
@@ -110,8 +110,8 @@ fn print_node(
         write!(out, "{0}{1}{1} ", c, symbols.right)?;
     }
 
-    let in_cycle = print_stack.contains(&node_index);
-    // If this node does not have any outgoing edges, don't include the (*)
+    let in_cycle = write_stack.contains(&node_index);
+    // if this node does not have any outgoing edges, don't include the (*)
     // since there isn't really anything "deduplicated", and it generally just
     // adds noise.
     let has_deps = graph.has_outgoing_edges(node_index);
@@ -122,7 +122,7 @@ fn print_node(
     if !new_node || in_cycle {
         return Ok(())
     }
-    print_stack.push(node_index);
+    write_stack.push(node_index);
 
     print_imports(
         graph,
@@ -131,11 +131,11 @@ fn print_node(
         no_dedupe,
         visited_imports,
         levels_continue,
-        print_stack,
+        write_stack,
         out,
     )?;
 
-    print_stack.pop();
+    write_stack.pop();
 
     Ok(())
 }
@@ -149,7 +149,7 @@ fn print_imports(
     no_dedupe: bool,
     visited_imports: &mut HashSet<usize>,
     levels_continue: &mut Vec<bool>,
-    print_stack: &mut Vec<usize>,
+    write_stack: &mut Vec<usize>,
     out: &mut dyn Write,
 ) -> io::Result<()> {
     let imports = graph.imported_nodes(node_index);
@@ -173,7 +173,7 @@ fn print_imports(
             no_dedupe,
             visited_imports,
             levels_continue,
-            print_stack,
+            write_stack,
             out,
         )?;
         levels_continue.pop();
