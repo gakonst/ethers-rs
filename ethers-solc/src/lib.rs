@@ -9,7 +9,7 @@ pub mod cache;
 pub mod hh;
 pub use artifact_output::*;
 
-mod resolver;
+pub mod resolver;
 pub use hh::{HardhatArtifact, HardhatArtifacts};
 pub use resolver::Graph;
 

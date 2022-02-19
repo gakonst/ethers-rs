@@ -48,6 +48,7 @@
 
 use std::{
     collections::{HashMap, HashSet, VecDeque},
+    fmt, io,
     path::{Path, PathBuf},
 };
 
@@ -57,6 +58,9 @@ use semver::VersionReq;
 use solang_parser::pt::{Import, Loc, SourceUnitPart};
 
 use crate::{error::Result, utils, ProjectPathsConfig, Solc, SolcError, Source, Sources};
+
+mod tree;
+pub use tree::{print, Charset, TreeOptions};
 
 /// The underlying edges of the graph which only contains the raw relationship data.
 ///
@@ -129,9 +133,26 @@ pub struct Graph {
 }
 
 impl Graph {
+    /// Print the graph to `StdOut`
+    pub fn print(&self) {
+        self.print_with_options(Default::default())
+    }
+
+    /// Print the graph to `StdOut` using the provided `TreeOptions`
+    pub fn print_with_options(&self, opts: TreeOptions) {
+        let stdout = io::stdout();
+        let mut out = stdout.lock();
+        tree::print(self, &opts, &mut out).expect("failed to write to stdout.")
+    }
+
     /// Returns a list of nodes the given node index points to for the given kind.
     pub fn imported_nodes(&self, from: usize) -> &[usize] {
         self.edges.imported_nodes(from)
+    }
+
+    /// Returns `true` if the given node has any outgoing edges.
+    pub(crate) fn has_outgoing_edges(&self, index: usize) -> bool {
+        !self.edges.edges[index].is_empty()
     }
 
     /// Returns all the resolved files and their index in the graph
@@ -148,6 +169,9 @@ impl Graph {
         &self.nodes[index]
     }
 
+    pub(crate) fn display_node(&self, index: usize) -> DisplayNode {
+        DisplayNode { node: self.node(index), root: &self.root }
+    }
     /// Returns an iterator that yields all nodes of the dependency tree that the given node id
     /// spans, starting with the node itself.
     ///
@@ -646,6 +670,23 @@ impl Node {
     }
 }
 
+/// Helper type for formatting a node
+pub(crate) struct DisplayNode<'a> {
+    node: &'a Node,
+    root: &'a PathBuf,
+}
+
+impl<'a> fmt::Display for DisplayNode<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let path = utils::source_name(&self.node.path, self.root);
+        write!(f, "{}", path.display())?;
+        if let Some(ref v) = self.node.data.version {
+            write!(f, " {}", v.data())?;
+        }
+        Ok(())
+    }
+}
+
 #[derive(Debug, Clone)]
 #[allow(unused)]
 struct SolData {
@@ -849,5 +890,48 @@ mod tests {
             vec![&PathBuf::from("ds-test/test.sol"), &PathBuf::from("./Dapp.sol")]
         );
         assert_eq!(graph.imported_nodes(1).to_vec(), vec![2, 0]);
+    }
+
+    #[test]
+    #[cfg(not(target_os = "windows"))]
+    fn can_print_dapp_sample_graph() {
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test-data/dapp-sample");
+        let paths = ProjectPathsConfig::dapptools(root).unwrap();
+        let graph = Graph::resolve(&paths).unwrap();
+        let mut out = Vec::<u8>::new();
+        tree::print(&graph, &Default::default(), &mut out).unwrap();
+
+        assert_eq!(
+            "
+src/Dapp.sol >=0.6.6
+src/Dapp.t.sol >=0.6.6
+├── lib/ds-test/src/test.sol >=0.4.23
+└── src/Dapp.sol >=0.6.6
+"
+            .trim_start()
+            .as_bytes()
+            .to_vec(),
+            out
+        );
+    }
+
+    #[test]
+    #[cfg(not(target_os = "windows"))]
+    fn can_print_hardhat_sample_graph() {
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test-data/hardhat-sample");
+        let paths = ProjectPathsConfig::hardhat(root).unwrap();
+        let graph = Graph::resolve(&paths).unwrap();
+        let mut out = Vec::<u8>::new();
+        tree::print(&graph, &Default::default(), &mut out).unwrap();
+        assert_eq!(
+            "
+contracts/Greeter.sol >=0.6.0
+└── node_modules/hardhat/console.sol >= 0.4.22 <0.9.0
+"
+            .trim_start()
+            .as_bytes()
+            .to_vec(),
+            out
+        );
     }
 }
