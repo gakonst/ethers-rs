@@ -1,6 +1,6 @@
 //! Bindings for [etherscan.io web api](https://docs.etherscan.io/)
 
-use std::borrow::Cow;
+use std::{borrow::Cow, path::PathBuf};
 
 use reqwest::{header, Url};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -28,9 +28,21 @@ pub struct Client {
     etherscan_api_url: Url,
     /// Etherscan base endpoint like <https://etherscan.io>
     etherscan_url: Url,
+    /// Path to where ABI files should be cached
+    cache: Option<PathBuf>,
 }
 
 impl Client {
+    pub fn new_cached(
+        chain: Chain,
+        api_key: impl Into<String>,
+        cache: Option<PathBuf>,
+    ) -> Result<Self> {
+        let mut this = Self::new(chain, api_key)?;
+        this.cache = cache;
+        Ok(this)
+    }
+
     /// Create a new client with the correct endpoints based on the chain and provided API key
     pub fn new(chain: Chain, api_key: impl Into<String>) -> Result<Self> {
         let (etherscan_api_url, etherscan_url) = match chain {
@@ -101,6 +113,7 @@ impl Client {
             api_key: api_key.into(),
             etherscan_api_url: etherscan_api_url.expect("is valid http"),
             etherscan_url: etherscan_url.expect("is valid http"),
+            cache: None,
         })
     }
 
