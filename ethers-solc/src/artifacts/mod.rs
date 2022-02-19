@@ -1872,7 +1872,11 @@ pub struct StorageType {
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Hash)]
 #[serde(rename_all = "camelCase")]
 pub struct Error {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "serde_helpers::default_on_error"
+    )]
     pub source_location: Option<SourceLocation>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub secondary_source_locations: Vec<SecondarySourceLocation>,
