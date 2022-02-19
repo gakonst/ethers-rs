@@ -234,6 +234,14 @@ impl Client {
     /// # }
     /// ```
     pub async fn contract_abi(&self, address: Address) -> Result<Abi> {
+        // apply caching
+        if let Some(ref cache) = self.cache {
+            let path = cache.join("abis").join(format!("{:?}.json", address));
+            let reader = std::io::BufReader::new(std::fs::File::create(path)?);
+            let abi = serde_json::from_reader(reader)?;
+            return Ok(abi)
+        }
+
         let query = self.create_query("contract", "getabi", HashMap::from([("address", address)]));
         let resp: Response<String> = self.get_json(&query).await?;
         Ok(serde_json::from_str(&resp.result)?)
@@ -254,6 +262,14 @@ impl Client {
     /// # }
     /// ```
     pub async fn contract_source_code(&self, address: Address) -> Result<ContractMetadata> {
+        // apply caching
+        if let Some(ref cache) = self.cache {
+            let path = cache.join("sources").join(format!("{:?}.json", address));
+            let reader = std::io::BufReader::new(std::fs::File::create(path)?);
+            let src = serde_json::from_reader(reader)?;
+            return Ok(src)
+        }
+
         let query =
             self.create_query("contract", "getsourcecode", HashMap::from([("address", address)]));
         let response: Response<Vec<Metadata>> = self.get_json(&query).await?;

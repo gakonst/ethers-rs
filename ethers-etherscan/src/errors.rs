@@ -19,4 +19,6 @@ pub enum EtherscanError {
     Reqwest(#[from] reqwest::Error),
     #[error(transparent)]
     Serde(#[from] serde_json::Error),
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
 }
