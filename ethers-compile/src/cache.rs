@@ -1,7 +1,7 @@
 //! Support for compiling contracts
 use crate::{
     artifacts::Sources,
-    config::SolcConfig,
+    config::CompilerConfig,
     error::{Result, CompilerError},
     resolver::GraphEdges,
     utils, ArtifactFile, ArtifactOutput, Artifacts, ArtifactsMap, Project, ProjectPathsConfig,
@@ -360,7 +360,7 @@ pub struct CacheEntry {
     /// identifier name see [`crate::util::source_name()`]
     pub source_name: PathBuf,
     /// what config was set when compiling this file
-    pub solc_config: SolcConfig,
+    pub solc_config: CompilerConfig,
     /// fully resolved imports of the file
     ///
     /// all paths start relative from the project's root: `src/importedFile.sol`

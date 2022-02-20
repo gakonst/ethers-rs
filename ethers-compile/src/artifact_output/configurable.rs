@@ -7,7 +7,7 @@ use crate::{
         CompactEvm, DevDoc, Ewasm, GasEstimates, Metadata, Offsets, Settings, StorageLayout,
         UserDoc,
     },
-    ArtifactOutput, Contract, SolcConfig, CompilerError,
+    ArtifactOutput, Contract, CompilerConfig, CompilerError,
 };
 use ethers_core::abi::Abi;
 use serde::{Deserialize, Serialize};
@@ -136,7 +136,7 @@ impl ConfigurableArtifacts {
 
     /// Returns the `Settings` this configuration corresponds to
     pub fn settings(&self) -> Settings {
-        SolcConfig::builder().additional_outputs(self.output_selection()).build().into()
+        CompilerConfig::builder().additional_outputs(self.output_selection()).build().into()
     }
 
     /// Returns the output selection corresponding to this configuration

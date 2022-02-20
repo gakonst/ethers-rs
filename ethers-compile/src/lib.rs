@@ -20,7 +20,7 @@ pub use compile::{
 };
 
 mod config;
-pub use config::{AllowedLibPaths, PathStyle, ProjectPathsConfig, SolcConfig};
+pub use config::{AllowedLibPaths, PathStyle, ProjectPathsConfig, CompilerConfig};
 
 pub mod remappings;
 use crate::artifacts::Source;
@@ -50,7 +50,7 @@ pub struct Project<T: ArtifactOutput = ConfigurableArtifacts> {
     /// Where to find solc
     pub solc: Solc,
     /// How solc invocation should be configured.
-    pub solc_config: SolcConfig,
+    pub solc_config: CompilerConfig,
     /// Whether caching is enabled
     pub cached: bool,
     /// Whether writing artifacts to disk is enabled
@@ -336,7 +336,7 @@ pub struct ProjectBuilder<T: ArtifactOutput = ConfigurableArtifacts> {
     /// Where to find solc
     solc: Option<Solc>,
     /// How solc invocation should be configured.
-    solc_config: Option<SolcConfig>,
+    solc_config: Option<CompilerConfig>,
     /// Whether caching is enabled, default is true.
     cached: bool,
     /// Whether writing artifacts to disk is enabled, default is true.
@@ -385,7 +385,7 @@ impl<T: ArtifactOutput> ProjectBuilder<T> {
     }
 
     #[must_use]
-    pub fn solc_config(mut self, solc_config: SolcConfig) -> Self {
+    pub fn solc_config(mut self, solc_config: CompilerConfig) -> Self {
         self.solc_config = Some(solc_config);
         self
     }
@@ -544,7 +544,7 @@ impl<T: ArtifactOutput> ProjectBuilder<T> {
         let paths = paths.map(Ok).unwrap_or_else(ProjectPathsConfig::current_hardhat)?;
 
         let solc = solc.unwrap_or_default();
-        let solc_config = solc_config.unwrap_or_else(|| SolcConfig::builder().build());
+        let solc_config = solc_config.unwrap_or_else(|| CompilerConfig::builder().build());
 
         if allowed_paths.is_empty() {
             // allow every contract under root by default

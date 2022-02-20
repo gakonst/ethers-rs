@@ -447,40 +447,40 @@ impl ProjectPathsConfigBuilder {
 
 /// The config to use when compiling the contracts
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub struct SolcConfig {
+pub struct CompilerConfig {
     /// How the file was compiled
     pub settings: Settings,
 }
 
-impl SolcConfig {
+impl CompilerConfig {
     /// # Example
     ///
     /// Autodetect solc version and default settings
     ///
     /// ```rust
-    /// use ethers_solc::SolcConfig;
-    /// let config = SolcConfig::builder().build();
+    /// use ethers_solc::CompilerConfig;
+    /// let config = CompilerConfig::builder().build();
     /// ```
-    pub fn builder() -> SolcConfigBuilder {
-        SolcConfigBuilder::default()
+    pub fn builder() -> CompilerConfigBuilder {
+        CompilerConfigBuilder::default()
     }
 }
 
-impl From<SolcConfig> for Settings {
-    fn from(config: SolcConfig) -> Self {
+impl From<CompilerConfig> for Settings {
+    fn from(config: CompilerConfig) -> Self {
         config.settings
     }
 }
 
 #[derive(Default)]
-pub struct SolcConfigBuilder {
+pub struct CompilerConfigBuilder {
     settings: Option<Settings>,
 
     /// additionally selected outputs that should be included in the `Contract` that `solc´ creates
     output_selection: Vec<ContractOutputSelection>,
 }
 
-impl SolcConfigBuilder {
+impl CompilerConfigBuilder {
     pub fn settings(mut self, settings: Settings) -> Self {
         self.settings = Some(settings);
         self
@@ -509,11 +509,11 @@ impl SolcConfigBuilder {
     /// Creates the solc config
     ///
     /// If no solc version is configured then it will be determined by calling `solc --version`.
-    pub fn build(self) -> SolcConfig {
+    pub fn build(self) -> CompilerConfig {
         let Self { settings, output_selection } = self;
         let mut settings = settings.unwrap_or_default();
         settings.push_all(output_selection);
-        SolcConfig { settings }
+        CompilerConfig { settings }
     }
 }
 
