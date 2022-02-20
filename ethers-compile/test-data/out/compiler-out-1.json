@@ -1,0 +1,100 @@
+{
+  "errors": [
+    {
+      "sourceLocation": {
+        "file": "sourceFile.sol",
+        "start": 0,
+        "end": 100
+      },
+      "secondarySourceLocations": [
+        {
+          "file": "sourceFile.sol",
+          "start": 64,
+          "end": 92,
+          "message": "Other declaration is here:"
+        }
+      ],
+
+      "type": "TypeError",
+      "component": "general",
+      "severity": "error",
+      "errorCode": "3141",
+      "message": "Invalid keyword",
+      "formattedMessage": "sourceFile.sol:100: Invalid keyword"
+    }
+  ],
+  "sources": {
+    "sourceFile.sol": {
+      "id": 1,
+      "ast": {}
+    }
+  },
+  "contracts": {
+    "sourceFile.sol": {
+      "ContractName": {
+        "abi": [],
+        "userdoc": {},
+        "devdoc": {},
+        "ir": "",
+        "storageLayout": {"storage": [], "types": {} },
+        "evm": {
+          "assembly": "",
+          "legacyAssembly": {},
+          "bytecode": {
+            "functionDebugData": {
+              "@mint_13": {
+                "entryPoint": 128,
+                "id": 13,
+                "parameterSlots": 2,
+                "returnSlots": 1
+              }
+            },
+            "object": "00fe",
+            "opcodes": "",
+            "sourceMap": "",
+            "generatedSources": [{
+              "ast": {},
+              "contents":"{ function abi_decode(start, end) -> data { data := calldataload(start) } }",
+              "id": 2,
+              "language": "Yul",
+              "name": "#utility.yul"
+            }],
+            "linkReferences": {
+              "libraryFile.sol": {
+                "Library1": [
+                  { "start": 0, "length": 20 },
+                  { "start": 200, "length": 20 }
+                ]
+              }
+            }
+          },
+          "deployedBytecode": {
+            "immutableReferences": {
+              "3": [{ "start": 42, "length": 32 }, { "start": 80, "length": 32 }]
+            }
+          },
+          "methodIdentifiers": {
+            "delegate(address)": "5c19a95c"
+          },
+          "gasEstimates": {
+            "creation": {
+              "codeDepositCost": "420000",
+              "executionCost": "infinite",
+              "totalCost": "infinite"
+            },
+            "external": {
+              "delegate(address)": "25000"
+            },
+            "internal": {
+              "heavyLifting()": "infinite"
+            }
+          }
+        },
+        "ewasm": {
+          "wast": "",
+          "wasm": ""
+        }
+      }
+    }
+  }
+}

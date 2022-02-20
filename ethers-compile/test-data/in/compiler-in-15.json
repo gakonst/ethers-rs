@@ -1,0 +1,1 @@
+{"language":"Solidity","sources":{"contracts/B.sol":{"content":"pragma solidity >0.6.1;\n\ncontract B {}\n"}},"settings":{"optimizer":{"enabled":false,"runs":200},"outputSelection":{"*":{"*":["abi","evm.bytecode","evm.deployedBytecode","evm.methodIdentifiers"],"":["ast"]}}}}

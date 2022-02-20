@@ -1,0 +1,110 @@
+{
+  "_format": "ethers-rs-sol-cache-2",
+  "files": {
+    "/Users/Matthias/git/rust/ethers-rs/ethers-solc/test-data/dapp-sample/lib/ds-test/src/test.sol": {
+      "lastModificationDate": 1638218667720,
+      "contentHash": "5d45a46528eaf8a26f0a8d93669f3148",
+      "sourceName": "/Users/Matthias/git/rust/ethers-rs/ethers-solc/test-data/dapp-sample/lib/ds-test/src/test.sol",
+      "solcConfig": {
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "": [
+                "ast"
+              ],
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers"
+              ]
+            }
+          },
+          "evmVersion": "london"
+        }
+      },
+      "imports": [],
+      "versionRequirement": ">=0.4.23",
+      "artifacts": {
+        "DSTest": {
+          "0.8.11+commit.d7f03943.Darwin.appleclang": "test.sol/DSTest.json"
+        }
+      }
+    },
+    "/Users/Matthias/git/rust/ethers-rs/ethers-solc/test-data/dapp-sample/src/Dapp.sol": {
+      "lastModificationDate": 1638193396942,
+      "contentHash": "a41ddb3b99ae6b72b59341eabf948542",
+      "sourceName": "/Users/Matthias/git/rust/ethers-rs/ethers-solc/test-data/dapp-sample/src/Dapp.sol",
+      "solcConfig": {
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "": [
+                "ast"
+              ],
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers"
+              ]
+            }
+          },
+          "evmVersion": "london"
+        }
+      },
+      "imports": [],
+      "versionRequirement": ">=0.6.6",
+      "artifacts": {
+        "Dapp": {
+          "0.8.11+commit.d7f03943.Darwin.appleclang": "Dapp.sol/Dapp.json"
+        }
+      }
+    },
+    "/Users/Matthias/git/rust/ethers-rs/ethers-solc/test-data/dapp-sample/src/Dapp.t.sol": {
+      "lastModificationDate": 1638193396942,
+      "contentHash": "5f5038d89f69269d0734659efaa2ec52",
+      "sourceName": "/Users/Matthias/git/rust/ethers-rs/ethers-solc/test-data/dapp-sample/src/Dapp.t.sol",
+      "solcConfig": {
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "": [
+                "ast"
+              ],
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers"
+              ]
+            }
+          },
+          "evmVersion": "london"
+        }
+      },
+      "imports": [
+        "/Users/Matthias/git/rust/ethers-rs/ethers-solc/test-data/dapp-sample/lib/ds-test/src/test.sol",
+        "/Users/Matthias/git/rust/ethers-rs/ethers-solc/test-data/dapp-sample/src/Dapp.sol"
+      ],
+      "versionRequirement": ">=0.6.6",
+      "artifacts": {
+        "DappTest": {
+          "0.8.11+commit.d7f03943.Darwin.appleclang": "Dapp.t.sol/DappTest.json"
+        }
+      }
+    }
+  }
+}
