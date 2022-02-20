@@ -32,7 +32,7 @@ pub mod utils;
 use crate::{
     artifacts::{Contract, Sources},
     contracts::VersionedContracts,
-    error::{CompilerError, SolcIoError},
+    error::{CompilerError, CompilerIoError},
 };
 use error::Result;
 use semver::Version;
@@ -290,28 +290,28 @@ impl<T: ArtifactOutput> Project<T> {
     /// assert!(!project.cache_path().exists());
     /// # }
     /// ```
-    pub fn cleanup(&self) -> std::result::Result<(), SolcIoError> {
+    pub fn cleanup(&self) -> std::result::Result<(), CompilerIoError> {
         tracing::trace!("clean up project");
         if self.cache_path().exists() {
             std::fs::remove_file(self.cache_path())
-                .map_err(|err| SolcIoError::new(err, self.cache_path()))?;
+                .map_err(|err| CompilerIoError::new(err, self.cache_path()))?;
             if let Some(cache_folder) = self.cache_path().parent() {
                 // remove the cache folder if the cache file was the only file
                 if cache_folder
                     .read_dir()
-                    .map_err(|err| SolcIoError::new(err, cache_folder))?
+                    .map_err(|err| CompilerIoError::new(err, cache_folder))?
                     .next()
                     .is_none()
                 {
                     std::fs::remove_dir(cache_folder)
-                        .map_err(|err| SolcIoError::new(err, cache_folder))?;
+                        .map_err(|err| CompilerIoError::new(err, cache_folder))?;
                 }
             }
             tracing::trace!("removed cache file \"{}\"", self.cache_path().display());
         }
         if self.paths.artifacts.exists() {
             std::fs::remove_dir_all(self.artifacts_path())
-                .map_err(|err| SolcIoError::new(err, self.artifacts_path().clone()))?;
+                .map_err(|err| CompilerIoError::new(err, self.artifacts_path().clone()))?;
             tracing::trace!("removed artifacts dir \"{}\"", self.artifacts_path().display());
         }
         Ok(())

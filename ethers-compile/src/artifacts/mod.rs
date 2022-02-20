@@ -14,7 +14,7 @@ use std::{
 
 use crate::{
     compile::*,
-    error::SolcIoError,
+    error::CompilerIoError,
     remappings::Remapping,
     sourcemap::{self, SourceMap, SyntaxError},
     utils,
@@ -52,7 +52,7 @@ pub struct CompilerInput {
 
 impl CompilerInput {
     /// Reads all contracts found under the path
-    pub fn new(path: impl AsRef<Path>) -> Result<Self, SolcIoError> {
+    pub fn new(path: impl AsRef<Path>) -> Result<Self, CompilerIoError> {
         Source::read_all_from(path.as_ref()).map(Self::with_sources)
     }
 
@@ -609,20 +609,20 @@ impl Source {
     pub const NUM_READ_PAR: usize = 8;
 
     /// Reads the file content
-    pub fn read(file: impl AsRef<Path>) -> Result<Self, SolcIoError> {
+    pub fn read(file: impl AsRef<Path>) -> Result<Self, CompilerIoError> {
         let file = file.as_ref();
-        Ok(Self { content: fs::read_to_string(file).map_err(|err| SolcIoError::new(err, file))? })
+        Ok(Self { content: fs::read_to_string(file).map_err(|err| CompilerIoError::new(err, file))? })
     }
 
     /// Recursively finds all source files under the given dir path and reads them all
-    pub fn read_all_from(dir: impl AsRef<Path>) -> Result<Sources, SolcIoError> {
+    pub fn read_all_from(dir: impl AsRef<Path>) -> Result<Sources, CompilerIoError> {
         Self::read_all_files(utils::source_files(dir))
     }
 
     /// Reads all source files of the given vec
     ///
     /// Depending on the len of the vec it will try to read the files in parallel
-    pub fn read_all_files(files: Vec<PathBuf>) -> Result<Sources, SolcIoError> {
+    pub fn read_all_files(files: Vec<PathBuf>) -> Result<Sources, CompilerIoError> {
         use rayon::prelude::*;
 
         if files.len() < Self::NUM_READ_PAR {
@@ -637,7 +637,7 @@ impl Source {
     }
 
     /// Reads all files
-    pub fn read_all<T, I>(files: I) -> Result<Sources, SolcIoError>
+    pub fn read_all<T, I>(files: I) -> Result<Sources, CompilerIoError>
     where
         I: IntoIterator<Item = T>,
         T: Into<PathBuf>,
@@ -653,7 +653,7 @@ impl Source {
     ///
     /// NOTE: this is only expected to be faster than `Self::read_all` if the given iterator
     /// contains at least several paths. see also `Self::read_all_files`.
-    pub fn par_read_all<T, I>(files: I) -> Result<Sources, SolcIoError>
+    pub fn par_read_all<T, I>(files: I) -> Result<Sources, CompilerIoError>
     where
         I: IntoIterator<Item = T>,
         <I as IntoIterator>::IntoIter: Send,
@@ -685,22 +685,22 @@ impl Source {
 #[cfg(feature = "async")]
 impl Source {
     /// async version of `Self::read`
-    pub async fn async_read(file: impl AsRef<Path>) -> Result<Self, SolcIoError> {
+    pub async fn async_read(file: impl AsRef<Path>) -> Result<Self, CompilerIoError> {
         let file = file.as_ref();
         Ok(Self {
             content: tokio::fs::read_to_string(file)
                 .await
-                .map_err(|err| SolcIoError::new(err, file))?,
+                .map_err(|err| CompilerIoError::new(err, file))?,
         })
     }
 
     /// Finds all source files under the given dir path and reads them all
-    pub async fn async_read_all_from(dir: impl AsRef<Path>) -> Result<Sources, SolcIoError> {
+    pub async fn async_read_all_from(dir: impl AsRef<Path>) -> Result<Sources, CompilerIoError> {
         Self::async_read_all(utils::source_files(dir.as_ref())).await
     }
 
     /// async version of `Self::read_all`
-    pub async fn async_read_all<T, I>(files: I) -> Result<Sources, SolcIoError>
+    pub async fn async_read_all<T, I>(files: I) -> Result<Sources, CompilerIoError>
     where
         I: IntoIterator<Item = T>,
         T: Into<PathBuf>,

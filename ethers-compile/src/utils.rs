@@ -5,7 +5,7 @@ use std::{
     path::{Component, Path, PathBuf},
 };
 
-use crate::{error::CompilerError, SolcIoError};
+use crate::{error::CompilerError, CompilerIoError};
 use once_cell::sync::Lazy;
 use regex::{Match, Regex};
 use semver::Version;
@@ -124,9 +124,9 @@ pub fn is_local_source_name(libs: &[impl AsRef<Path>], source: impl AsRef<Path>)
 }
 
 /// Canonicalize the path, platform-agnostic
-pub fn canonicalize(path: impl AsRef<Path>) -> Result<PathBuf, SolcIoError> {
+pub fn canonicalize(path: impl AsRef<Path>) -> Result<PathBuf, CompilerIoError> {
     let path = path.as_ref();
-    dunce::canonicalize(&path).map_err(|err| SolcIoError::new(err, path))
+    dunce::canonicalize(&path).map_err(|err| CompilerIoError::new(err, path))
 }
 
 /// Returns the same path config but with canonicalized paths.
@@ -309,8 +309,8 @@ pub(crate) fn find_fave_or_alt_path(root: impl AsRef<Path>, fave: &str, alt: &st
 
 /// Creates a new named tempdir
 #[cfg(any(test, feature = "project-util"))]
-pub(crate) fn tempdir(name: &str) -> Result<tempfile::TempDir, SolcIoError> {
-    tempfile::Builder::new().prefix(name).tempdir().map_err(|err| SolcIoError::new(err, name))
+pub(crate) fn tempdir(name: &str) -> Result<tempfile::TempDir, CompilerIoError> {
+    tempfile::Builder::new().prefix(name).tempdir().map_err(|err| CompilerIoError::new(err, name))
 }
 
 /// Reads the json file and deserialize it into the provided type

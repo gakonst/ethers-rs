@@ -6,7 +6,7 @@ use crate::{
     hh::HardhatArtifacts,
     utils::tempdir,
     ArtifactOutput, ConfigurableArtifacts, PathStyle, Project, ProjectCompileOutput,
-    ProjectPathsConfig, SolcIoError,
+    ProjectPathsConfig, CompilerIoError,
 };
 use fs_extra::{dir, file};
 use std::{
@@ -27,7 +27,7 @@ pub struct TempProject<T: ArtifactOutput = ConfigurableArtifacts> {
 
 impl<T: ArtifactOutput> TempProject<T> {
     /// Makes sure all resources are created
-    pub fn create_new(root: TempDir, inner: Project<T>) -> std::result::Result<Self, SolcIoError> {
+    pub fn create_new(root: TempDir, inner: Project<T>) -> std::result::Result<Self, CompilerIoError> {
         let project = Self { _root: root, inner };
         project.paths().create_all()?;
         Ok(project)
@@ -192,9 +192,9 @@ impl<T: ArtifactOutput> fmt::Debug for TempProject<T> {
 fn create_contract_file(path: PathBuf, content: impl AsRef<str>) -> Result<PathBuf> {
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)
-            .map_err(|err| SolcIoError::new(err, parent.to_path_buf()))?;
+            .map_err(|err| CompilerIoError::new(err, parent.to_path_buf()))?;
     }
-    std::fs::write(&path, content.as_ref()).map_err(|err| SolcIoError::new(err, path.clone()))?;
+    std::fs::write(&path, content.as_ref()).map_err(|err| CompilerIoError::new(err, path.clone()))?;
     Ok(path)
 }
 

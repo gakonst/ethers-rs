@@ -6,12 +6,12 @@ pub type Result<T> = std::result::Result<T, CompilerError>;
 /// Various error types
 #[derive(Debug, Error)]
 pub enum CompilerError {
-    /// Internal solc error
-    #[error("Solc Error: {0}")]
+    /// Internal compiler error
+    #[error("Compiler Error: {0}")]
     CompilerError(String),
     #[error("Missing pragma from solidity file")]
     PragmaNotFound,
-    #[error("Could not find solc version locally or upstream")]
+    #[error("Could not find compiler version locally or upstream")]
     VersionNotFound,
     #[error("Checksum mismatch")]
     ChecksumMismatch,
@@ -22,10 +22,10 @@ pub enum CompilerError {
     SerdeJson(#[from] serde_json::Error),
     /// Filesystem IO error
     #[error(transparent)]
-    Io(#[from] SolcIoError),
+    Io(#[from] CompilerIoError),
     /// Failed to resolve a file
     #[error("Failed to resolve file: {0}.\n Check configured remappings.")]
-    Resolve(SolcIoError),
+    Resolve(CompilerIoError),
     #[cfg(feature = "svm")]
     #[error(transparent)]
     SvmError(#[from] svm::SolcVmError),
@@ -47,7 +47,7 @@ pub enum CompilerError {
 
 impl CompilerError {
     pub(crate) fn io(err: io::Error, path: impl Into<PathBuf>) -> Self {
-        SolcIoError::new(err, path).into()
+        CompilerIoError::new(err, path).into()
     }
     pub(crate) fn solc(msg: impl Into<String>) -> Self {
         CompilerError::CompilerError(msg.into())
@@ -59,19 +59,19 @@ impl CompilerError {
 
 #[derive(Debug, Error)]
 #[error("\"{}\": {io}", self.path.display())]
-pub struct SolcIoError {
+pub struct CompilerIoError {
     io: io::Error,
     path: PathBuf,
 }
 
-impl SolcIoError {
+impl CompilerIoError {
     pub fn new(io: io::Error, path: impl Into<PathBuf>) -> Self {
         Self { io, path: path.into() }
     }
 }
 
-impl From<SolcIoError> for io::Error {
-    fn from(err: SolcIoError) -> Self {
+impl From<CompilerIoError> for io::Error {
+    fn from(err: CompilerIoError) -> Self {
         err.io
     }
 }

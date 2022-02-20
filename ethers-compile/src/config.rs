@@ -1,7 +1,7 @@
 use crate::{
     artifacts::Settings,
     cache::SOLIDITY_FILES_CACHE_FILENAME,
-    error::{Result, CompilerError, SolcIoError},
+    error::{Result, CompilerError, CompilerIoError},
     remappings::Remapping,
     resolver::Graph,
     utils, Source, Sources,
@@ -60,16 +60,16 @@ impl ProjectPathsConfig {
     }
 
     /// Creates all configured dirs and files
-    pub fn create_all(&self) -> std::result::Result<(), SolcIoError> {
+    pub fn create_all(&self) -> std::result::Result<(), CompilerIoError> {
         if let Some(parent) = self.cache.parent() {
-            fs::create_dir_all(parent).map_err(|err| SolcIoError::new(err, parent))?;
+            fs::create_dir_all(parent).map_err(|err| CompilerIoError::new(err, parent))?;
         }
         fs::create_dir_all(&self.artifacts)
-            .map_err(|err| SolcIoError::new(err, &self.artifacts))?;
-        fs::create_dir_all(&self.sources).map_err(|err| SolcIoError::new(err, &self.sources))?;
-        fs::create_dir_all(&self.tests).map_err(|err| SolcIoError::new(err, &self.tests))?;
+            .map_err(|err| CompilerIoError::new(err, &self.artifacts))?;
+        fs::create_dir_all(&self.sources).map_err(|err| CompilerIoError::new(err, &self.sources))?;
+        fs::create_dir_all(&self.tests).map_err(|err| CompilerIoError::new(err, &self.tests))?;
         for lib in &self.libraries {
-            fs::create_dir_all(lib).map_err(|err| SolcIoError::new(err, lib))?;
+            fs::create_dir_all(lib).map_err(|err| CompilerIoError::new(err, lib))?;
         }
         Ok(())
     }
@@ -434,13 +434,13 @@ impl ProjectPathsConfigBuilder {
         }
     }
 
-    pub fn build(self) -> std::result::Result<ProjectPathsConfig, SolcIoError> {
+    pub fn build(self) -> std::result::Result<ProjectPathsConfig, CompilerIoError> {
         let root = self
             .root
             .clone()
             .map(Ok)
             .unwrap_or_else(std::env::current_dir)
-            .map_err(|err| SolcIoError::new(err, "."))?;
+            .map_err(|err| CompilerIoError::new(err, "."))?;
         Ok(self.build_with_root(root))
     }
 }
