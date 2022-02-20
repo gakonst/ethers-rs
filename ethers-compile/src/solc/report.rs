@@ -1,6 +1,7 @@
 //! Subscribe to events in the compiler pipeline
 
-use crate::{CompilerInput, CompilerOutput, Solc};
+use crate::{CompilerInput, CompilerOutput};
+use super::{Solc};
 use semver::Version;
 use std::{
     error::Error,

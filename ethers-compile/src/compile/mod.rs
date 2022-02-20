@@ -18,7 +18,6 @@ pub mod contracts;
 pub mod many;
 pub mod output;
 pub mod project;
-pub mod vyper;
 
 fn compile_output(output: Output) -> Result<Vec<u8>> {
     if output.status.success() {

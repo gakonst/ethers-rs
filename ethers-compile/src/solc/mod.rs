@@ -1,3 +1,23 @@
+pub mod report;
+pub mod sourcemap;
+
+use crate::{
+    artifacts::Source,
+    error::{Result, CompilerError},
+    utils, CompilerInput, CompilerOutput,
+    compile::{compile_output, version_from_output}
+};
+use semver::{Version, VersionReq};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
+
+use std::{
+    fmt,
+    io::BufRead,
+    path::{Path, PathBuf},
+    process::{Command, Output, Stdio},
+    str::FromStr,
+};
+
 /// The name of the `solc` binary on the system
 pub const SOLC: &str = "solc";
 
@@ -340,9 +360,9 @@ impl Solc {
     #[cfg(feature = "svm")]
     pub async fn install(version: &Version) -> std::result::Result<(), svm::SolcVmError> {
         tracing::trace!("installing solc version \"{}\"", version);
-        crate::report::solc_installation_start(version);
+        crate::solc::report::solc_installation_start(version);
         let result = svm::install(version).await;
-        crate::report::solc_installation_success(version);
+        crate::solc::report::solc_installation_success(version);
         result
     }
 
@@ -350,9 +370,9 @@ impl Solc {
     #[cfg(all(feature = "svm", feature = "async"))]
     pub fn blocking_install(version: &Version) -> std::result::Result<(), svm::SolcVmError> {
         tracing::trace!("blocking installing solc version \"{}\"", version);
-        crate::report::solc_installation_start(version);
+        crate::solc::report::solc_installation_start(version);
         svm::blocking_install(version)?;
-        crate::report::solc_installation_success(version);
+        crate::solc::report::solc_installation_success(version);
         Ok(())
     }
 

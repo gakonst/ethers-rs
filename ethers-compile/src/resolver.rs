@@ -56,7 +56,7 @@ use regex::Match;
 use semver::VersionReq;
 use solang_parser::pt::{Import, Loc, SourceUnitPart};
 
-use crate::{error::Result, utils, ProjectPathsConfig, Solc, CompilerError, Source, Sources};
+use crate::{error::Result, utils, ProjectPathsConfig, solc::Solc, CompilerError, Source, Sources};
 
 /// The underlying edges of the graph which only contains the raw relationship data.
 ///
@@ -240,7 +240,7 @@ impl Graph {
                         add_node(&mut unresolved, &mut index, &mut resolved_imports, import)?;
                     }
                     Err(err) => {
-                        crate::report::unresolved_import(import.data());
+                        crate::solc::report::unresolved_import(import.data());
                         tracing::trace!("failed to resolve import component \"{:?}\"", err)
                     }
                 };

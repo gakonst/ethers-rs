@@ -80,10 +80,10 @@ use crate::{
     cache::ArtifactsCache,
     error::Result,
     output::AggregatedCompilerOutput,
-    report,
+    solc::{Solc, report},
     resolver::GraphEdges,
     vyper::Vyper,
-    ArtifactOutput, CompilerInput, Graph, Project, ProjectCompileOutput, ProjectPathsConfig, Solc,
+    ArtifactOutput, CompilerInput, Graph, Project, ProjectCompileOutput, ProjectPathsConfig,
     Sources,
 };
 use rayon::prelude::*;

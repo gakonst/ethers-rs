@@ -8,9 +8,8 @@ use std::{
 use crate::{
     error::{Result, CompilerError},
     CompilerInput, CompilerOutput, Source,
+    compile::{compile_output, version_from_output}
 };
-
-use super::{compile_output, version_from_output};
 
 /// The name of the `solc` binary on the system
 pub const VYPER: &str = "vyper";

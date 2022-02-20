@@ -1,5 +1,6 @@
 pub mod artifacts;
-pub mod sourcemap;
+pub mod solc;
+pub mod vyper;
 
 pub use artifacts::{CompilerInput, CompilerOutput, EvmVersion};
 use std::collections::BTreeMap;
@@ -26,7 +27,6 @@ pub mod remappings;
 use crate::artifacts::Source;
 
 pub mod error;
-pub mod report;
 pub mod utils;
 
 use crate::{

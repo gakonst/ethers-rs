@@ -16,8 +16,11 @@ use crate::{
     compile::*,
     error::CompilerIoError,
     remappings::Remapping,
-    sourcemap::{self, SourceMap, SyntaxError},
     utils,
+};
+use crate::{
+    solc::*,
+    solc::sourcemap::{self, SourceMap, SyntaxError}
 };
 use ethers_core::abi::Address;
 use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
