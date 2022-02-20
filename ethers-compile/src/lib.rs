@@ -50,7 +50,7 @@ pub struct Project<T: ArtifactOutput = ConfigurableArtifacts> {
     /// Where to find solc
     pub solc: Solc,
     /// How solc invocation should be configured.
-    pub solc_config: CompilerConfig,
+    pub compiler_config: CompilerConfig,
     /// Whether caching is enabled
     pub cached: bool,
     /// Whether writing artifacts to disk is enabled
@@ -336,7 +336,7 @@ pub struct ProjectBuilder<T: ArtifactOutput = ConfigurableArtifacts> {
     /// Where to find solc
     solc: Option<Solc>,
     /// How solc invocation should be configured.
-    solc_config: Option<CompilerConfig>,
+    compiler_config: Option<CompilerConfig>,
     /// Whether caching is enabled, default is true.
     cached: bool,
     /// Whether writing artifacts to disk is enabled, default is true.
@@ -360,7 +360,7 @@ impl<T: ArtifactOutput> ProjectBuilder<T> {
         Self {
             paths: None,
             solc: None,
-            solc_config: None,
+            compiler_config: None,
             cached: true,
             no_artifacts: false,
             auto_detect: true,
@@ -385,8 +385,8 @@ impl<T: ArtifactOutput> ProjectBuilder<T> {
     }
 
     #[must_use]
-    pub fn solc_config(mut self, solc_config: CompilerConfig) -> Self {
-        self.solc_config = Some(solc_config);
+    pub fn compiler_config(mut self, compiler_config: CompilerConfig) -> Self {
+        self.compiler_config = Some(compiler_config);
         self
     }
 
@@ -481,7 +481,7 @@ impl<T: ArtifactOutput> ProjectBuilder<T> {
         let ProjectBuilder {
             paths,
             solc,
-            solc_config,
+            compiler_config,
             cached,
             no_artifacts,
             auto_detect,
@@ -494,7 +494,7 @@ impl<T: ArtifactOutput> ProjectBuilder<T> {
         ProjectBuilder {
             paths,
             solc,
-            solc_config,
+            compiler_config,
             cached,
             no_artifacts,
             auto_detect,
@@ -530,7 +530,7 @@ impl<T: ArtifactOutput> ProjectBuilder<T> {
         let Self {
             paths,
             solc,
-            solc_config,
+            compiler_config,
             cached,
             no_artifacts,
             auto_detect,
@@ -544,7 +544,7 @@ impl<T: ArtifactOutput> ProjectBuilder<T> {
         let paths = paths.map(Ok).unwrap_or_else(ProjectPathsConfig::current_hardhat)?;
 
         let solc = solc.unwrap_or_default();
-        let solc_config = solc_config.unwrap_or_else(|| CompilerConfig::builder().build());
+        let compiler_config = compiler_config.unwrap_or_else(|| CompilerConfig::builder().build());
 
         if allowed_paths.is_empty() {
             // allow every contract under root by default
@@ -554,7 +554,7 @@ impl<T: ArtifactOutput> ProjectBuilder<T> {
         Ok(Project {
             paths,
             solc,
-            solc_config,
+            compiler_config,
             cached,
             no_artifacts,
             auto_detect,

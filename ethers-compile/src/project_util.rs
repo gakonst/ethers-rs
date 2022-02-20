@@ -54,7 +54,7 @@ impl<T: ArtifactOutput> TempProject<T> {
 
     /// Overwrites the settings to pass to `solc`
     pub fn with_settings(mut self, settings: impl Into<Settings>) -> Self {
-        self.inner.solc_config.settings = settings.into();
+        self.inner.compiler_config.settings = settings.into();
         self
     }
 

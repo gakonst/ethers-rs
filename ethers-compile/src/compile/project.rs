@@ -201,7 +201,7 @@ impl<'a, T: ArtifactOutput> PreprocessedState<'a, T> {
     fn compile(self) -> Result<CompiledState<'a, T>> {
         let PreprocessedState { sources, cache } = self;
         let output =
-            sources.compile(&cache.project().solc_config.settings, &cache.project().paths)?;
+            sources.compile(&cache.project().compiler_config.settings, &cache.project().paths)?;
 
         Ok(CompiledState { output, cache })
     }

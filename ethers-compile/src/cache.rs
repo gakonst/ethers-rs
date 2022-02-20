@@ -360,7 +360,7 @@ pub struct CacheEntry {
     /// identifier name see [`crate::util::source_name()`]
     pub source_name: PathBuf,
     /// what config was set when compiling this file
-    pub solc_config: CompilerConfig,
+    pub compiler_config: CompilerConfig,
     /// fully resolved imports of the file
     ///
     /// all paths start relative from the project's root: `src/importedFile.sol`
@@ -559,7 +559,7 @@ impl<'a, T: ArtifactOutput> ArtifactsCacheInner<'a, T> {
                 .unwrap_or_default(),
             content_hash: source.content_hash(),
             source_name: utils::source_name(file, self.project.root()).into(),
-            solc_config: self.project.solc_config.clone(),
+            compiler_config: self.project.compiler_config.clone(),
             imports,
             version_requirement: self.edges.version_requirement(file).map(|v| v.to_string()),
             // artifacts remain empty until we received the compiler output
@@ -633,7 +633,7 @@ impl<'a, T: ArtifactOutput> ArtifactsCacheInner<'a, T> {
                     tracing::trace!("changed content hash for source file \"{}\"", file.display());
                     return true
                 }
-                if self.project.solc_config != entry.solc_config {
+                if self.project.compiler_config != entry.compiler_config {
                     tracing::trace!("changed solc config for source file \"{}\"", file.display());
                     return true
                 }
