@@ -3,9 +3,9 @@ pub mod sourcemap;
 
 use crate::{
     artifacts::Source,
-    error::{Result, CompilerError},
+    compile::{compile_output, version_from_output},
+    error::{CompilerError, Result},
     utils, CompilerInput, CompilerOutput,
-    compile::{compile_output, version_from_output}
 };
 use semver::{Version, VersionReq};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -248,7 +248,7 @@ impl Solc {
     /// # Example
     /// ```no_run
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    ///  use ethers_solc::Solc;
+    ///  use ethers_compile::solc::Solc;
     /// let solc = Solc::find_svm_installed_version("0.8.9").unwrap();
     /// assert_eq!(solc, Some(Solc::new("~/.svm/0.8.9/solc-0.8.9")));
     /// # Ok(())
@@ -351,7 +351,7 @@ impl Solc {
     /// # Example
     /// ```no_run
     /// # async fn run() -> Result<(), Box<dyn std::error::Error>> {
-    ///  use ethers_solc::{Solc, ISTANBUL_SOLC};
+    ///  use ethers_compile::solc::{Solc, ISTANBUL_SOLC};
     ///  Solc::install(&ISTANBUL_SOLC).await.unwrap();
     ///  let solc = Solc::find_svm_installed_version(&ISTANBUL_SOLC.to_string());
     /// # Ok(())
@@ -422,7 +422,7 @@ impl Solc {
     ///
     /// ```no_run
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    ///  use ethers_solc::{CompilerInput, Solc};
+    ///  use ethers_compile::{CompilerInput, solc::Solc};
     /// let solc = Solc::default();
     /// let input = CompilerInput::new("./contracts")?;
     /// let output = solc.compile_exact(&input)?;
@@ -442,7 +442,7 @@ impl Solc {
     ///
     /// ```no_run
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    ///  use ethers_solc::{CompilerInput, Solc};
+    ///  use ethers_compile::{CompilerInput, solc::Solc};
     /// let solc = Solc::default();
     /// let input = CompilerInput::new("./contracts")?;
     /// let output = solc.compile(&input)?;
@@ -493,7 +493,6 @@ impl Solc {
         )
     }
 }
-
 
 #[cfg(feature = "async")]
 impl Solc {
@@ -568,7 +567,7 @@ impl Solc {
     ///
     /// ```no_run
     /// # async fn example() {
-    /// use ethers_solc::{CompilerInput, Solc};
+    /// use ethers_compile::{CompilerInput, Solc};
     /// let solc1 = Solc::default();
     /// let solc2 = Solc::default();
     /// let input1 = CompilerInput::new("contracts").unwrap();
@@ -592,5 +591,17 @@ impl Solc {
         .await;
 
         crate::many::CompiledMany::new(outputs)
+    }
+}
+
+impl AsRef<Path> for Solc {
+    fn as_ref(&self) -> &Path {
+        &self.solc
+    }
+}
+
+impl<T: Into<PathBuf>> From<T> for Solc {
+    fn from(solc: T) -> Self {
+        Solc::new(solc.into())
     }
 }

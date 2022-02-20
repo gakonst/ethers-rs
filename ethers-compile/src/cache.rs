@@ -2,7 +2,7 @@
 use crate::{
     artifacts::Sources,
     config::CompilerConfig,
-    error::{Result, CompilerError},
+    error::{CompilerError, Result},
     resolver::GraphEdges,
     utils, ArtifactFile, ArtifactOutput, Artifacts, ArtifactsMap, Project, ProjectPathsConfig,
     Source,
@@ -84,8 +84,8 @@ impl SolFilesCache {
     ///
     /// ```
     /// # fn t() {
-    /// use ethers_solc::cache::SolFilesCache;
-    /// use ethers_solc::Project;
+    /// use ethers_compile::cache::SolFilesCache;
+    /// use ethers_compile::Project;
     ///
     /// let project = Project::builder().build().unwrap();
     /// let mut cache = SolFilesCache::read(project.cache_path()).unwrap();
@@ -108,8 +108,8 @@ impl SolFilesCache {
     ///
     /// ```
     /// # fn t() {
-    /// use ethers_solc::cache::SolFilesCache;
-    /// use ethers_solc::Project;
+    /// use ethers_compile::cache::SolFilesCache;
+    /// use ethers_compile::Project;
     ///
     /// let project = Project::builder().build().unwrap();
     /// let cache = SolFilesCache::read_joined(&project.paths).unwrap();
@@ -180,9 +180,9 @@ impl SolFilesCache {
     ///
     /// ```
     /// fn t() {
-    /// use ethers_solc::artifacts::CompactContract;
-    /// use ethers_solc::cache::SolFilesCache;
-    /// use ethers_solc::Project;
+    /// use ethers_compile::artifacts::CompactContract;
+    /// use ethers_compile::cache::SolFilesCache;
+    /// use ethers_compile::Project;
     /// let project = Project::builder().build().unwrap();
     /// let cache = SolFilesCache::read(project.cache_path())
     ///     .unwrap()
@@ -208,8 +208,8 @@ impl SolFilesCache {
     ///
     /// ```
     /// # fn t() {
-    /// use ethers_solc::cache::SolFilesCache;
-    /// use ethers_solc::Project;
+    /// use ethers_compile::cache::SolFilesCache;
+    /// use ethers_compile::Project;
     ///
     /// let project = Project::builder().build().unwrap();
     /// let cache = SolFilesCache::read_joined(&project.paths).unwrap();
@@ -231,9 +231,9 @@ impl SolFilesCache {
     ///
     /// ```
     /// fn t() {
-    /// use ethers_solc::cache::SolFilesCache;
-    /// use ethers_solc::Project;
-    /// use ethers_solc::artifacts::CompactContract;
+    /// use ethers_compile::cache::SolFilesCache;
+    /// use ethers_compile::Project;
+    /// use ethers_compile::artifacts::CompactContract;
     ///
     /// let project = Project::builder().build().unwrap();
     /// let cache = SolFilesCache::read_joined(&project.paths).unwrap();
@@ -253,7 +253,10 @@ impl SolFilesCache {
 
         let artifact_path =
             self.find_artifact_path(contract_file, contract_name).ok_or_else(|| {
-                CompilerError::ArtifactNotFound(contract_file.to_path_buf(), contract_name.to_string())
+                CompilerError::ArtifactNotFound(
+                    contract_file.to_path_buf(),
+                    contract_name.to_string(),
+                )
             })?;
 
         utils::read_json_file(artifact_path)
@@ -264,9 +267,9 @@ impl SolFilesCache {
     /// # Example
     ///
     /// ```
-    /// use ethers_solc::cache::SolFilesCache;
-    /// use ethers_solc::Project;
-    /// use ethers_solc::artifacts::CompactContractBytecode;
+    /// use ethers_compile::cache::SolFilesCache;
+    /// use ethers_compile::Project;
+    /// use ethers_compile::artifacts::CompactContractBytecode;
     /// # fn t() {
     /// let project = Project::builder().build().unwrap();
     /// let cache = SolFilesCache::read_joined(&project.paths).unwrap();
@@ -387,7 +390,7 @@ impl CacheEntry {
 
     /// Returns the artifact path for the contract name
     /// ```
-    /// use ethers_solc::cache::CacheEntry;
+    /// use ethers_compile::cache::CacheEntry;
     /// # fn t(entry: CacheEntry) {
     /// entry.find_artifact_path("Greeter");
     /// # }

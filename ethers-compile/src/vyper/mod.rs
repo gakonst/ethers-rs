@@ -6,9 +6,9 @@ use std::{
 };
 
 use crate::{
-    error::{Result, CompilerError},
+    compile::{compile_output, version_from_output},
+    error::{CompilerError, Result},
     CompilerInput, CompilerOutput, Source,
-    compile::{compile_output, version_from_output}
 };
 
 /// The name of the `solc` binary on the system
@@ -85,7 +85,9 @@ impl Vyper {
             .map_err(|err| CompilerError::io(err, &self.vyper))?; // todo error
         let stdin = child.stdin.take().expect("Stdin exists.");
         serde_json::to_writer(stdin, input)?;
-        compile_output(child.wait_with_output().map_err(|err| CompilerError::Message(err.to_string()))?)
+        compile_output(
+            child.wait_with_output().map_err(|err| CompilerError::Message(err.to_string()))?,
+        )
     }
 
     pub fn version_short(&self) -> Result<Version> {

@@ -27,8 +27,8 @@ impl VersionedContracts {
     /// # Example
     ///
     /// ```
-    /// use ethers_solc::Project;
-    /// use ethers_solc::artifacts::*;
+    /// use ethers_compile::Project;
+    /// use ethers_compile::artifacts::*;
     /// # fn demo(project: Project) {
     /// let output = project.compile().unwrap().output();
     /// let contract = output.find("Greeter").unwrap();
@@ -46,8 +46,8 @@ impl VersionedContracts {
     /// # Example
     ///
     /// ```
-    /// use ethers_solc::Project;
-    /// use ethers_solc::artifacts::*;
+    /// use ethers_compile::Project;
+    /// use ethers_compile::artifacts::*;
     /// # fn demo(project: Project) {
     /// let (_, mut contracts) = project.compile().unwrap().output().split();
     /// let contract = contracts.remove("Greeter").unwrap();
@@ -111,7 +111,7 @@ impl VersionedContracts {
     ///
     /// ```
     /// use std::collections::BTreeMap;
-    /// use ethers_solc::{ artifacts::*, Artifact };
+    /// use ethers_compile::{ artifacts::*, Artifact };
     /// # fn demo(contracts: OutputContracts) {
     /// let contracts: BTreeMap<String, CompactContractSome> = contracts
     ///     .into_contracts()

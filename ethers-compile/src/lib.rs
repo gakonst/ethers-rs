@@ -21,7 +21,7 @@ pub use compile::{
 };
 
 mod config;
-pub use config::{AllowedLibPaths, PathStyle, ProjectPathsConfig, CompilerConfig};
+pub use config::{AllowedLibPaths, CompilerConfig, PathStyle, ProjectPathsConfig};
 
 pub mod remappings;
 use crate::artifacts::Source;
@@ -48,7 +48,7 @@ pub struct Project<T: ArtifactOutput = ConfigurableArtifacts> {
     /// The layout of the
     pub paths: ProjectPathsConfig,
     /// Where to find solc
-    pub solc: Solc,
+    pub solc: solc::Solc,
     /// How solc invocation should be configured.
     pub compiler_config: CompilerConfig,
     /// Whether caching is enabled
@@ -77,21 +77,21 @@ impl Project {
     /// Configure with `ConfigurableArtifacts` artifacts output
     ///
     /// ```rust
-    /// use ethers_solc::Project;
+    /// use ethers_compile::Project;
     /// let config = Project::builder().build().unwrap();
     /// ```
     ///
     /// To configure any a project with any `ArtifactOutput` use either
     ///
     /// ```rust
-    /// use ethers_solc::Project;
+    /// use ethers_compile::Project;
     /// let config = Project::builder().build().unwrap();
     /// ```
     ///
     /// or use the builder directly
     ///
     /// ```rust
-    /// use ethers_solc::{ConfigurableArtifacts, ProjectBuilder};
+    /// use ethers_compile::{ConfigurableArtifacts, ProjectBuilder};
     /// let config = ProjectBuilder::<ConfigurableArtifacts>::default().build().unwrap();
     /// ```
     pub fn builder() -> ProjectBuilder {
@@ -126,7 +126,7 @@ impl<T: ArtifactOutput> Project<T> {
     }
 
     /// Applies the configured settings to the given `Solc`
-    fn configure_solc(&self, mut solc: Solc) -> Solc {
+    fn configure_solc(&self, mut solc: solc::Solc) -> solc::Solc {
         if self.allowed_lib_paths.0.is_empty() {
             solc = solc.arg("--allow-paths").arg(self.allowed_lib_paths.to_string());
         }
@@ -159,7 +159,7 @@ impl<T: ArtifactOutput> Project<T> {
     ///
     ///
     /// ```no_run
-    /// use ethers_solc::{Project, ProjectPathsConfig};
+    /// use ethers_compile::{Project, ProjectPathsConfig};
     /// // configure the project with all its paths, solc, cache etc. where the root dir is the current rust project.
     /// let project = Project::builder()
     ///     .paths(ProjectPathsConfig::hardhat(env!("CARGO_MANIFEST_DIR")).unwrap())
@@ -185,7 +185,7 @@ impl<T: ArtifactOutput> Project<T> {
     /// # Example
     ///
     /// ```
-    /// use ethers_solc::Project;
+    /// use ethers_compile::Project;
     /// # fn demo(project: Project) {
     /// let project = Project::builder().build().unwrap();
     /// let output = project.compile().unwrap();
@@ -222,7 +222,7 @@ impl<T: ArtifactOutput> Project<T> {
     /// # Example
     ///
     /// ```
-    /// use ethers_solc::{artifacts::Source, Project, utils};
+    /// use ethers_compile::{artifacts::Source, Project, utils};
     /// # fn demo(project: Project) {
     /// let project = Project::builder().build().unwrap();
     /// let files = utils::source_files("./src");
@@ -246,7 +246,7 @@ impl<T: ArtifactOutput> Project<T> {
     /// # Example
     ///
     /// ```
-    /// use ethers_solc::{Project, Solc};
+    /// use ethers_compile::{Project, solc::Solc};
     /// # fn demo(project: Project) {
     /// let project = Project::builder().build().unwrap();
     /// let sources = project.paths.read_sources().unwrap();
@@ -260,7 +260,7 @@ impl<T: ArtifactOutput> Project<T> {
     /// ```
     pub fn compile_with_version(
         &self,
-        solc: &Solc,
+        solc: &solc::Solc,
         sources: Sources,
     ) -> Result<ProjectCompileOutput<T>> {
         project::ProjectCompiler::with_sources_and_solc(
@@ -278,7 +278,7 @@ impl<T: ArtifactOutput> Project<T> {
     /// # Example
     ///
     /// ```
-    /// use ethers_solc::Project;
+    /// use ethers_compile::Project;
     /// # fn demo(project: Project) {
     /// let project = Project::builder().build().unwrap();
     /// let _ = project.compile().unwrap();
@@ -334,7 +334,7 @@ pub struct ProjectBuilder<T: ArtifactOutput = ConfigurableArtifacts> {
     /// The layout of the
     paths: Option<ProjectPathsConfig>,
     /// Where to find solc
-    solc: Option<Solc>,
+    solc: Option<solc::Solc>,
     /// How solc invocation should be configured.
     compiler_config: Option<CompilerConfig>,
     /// Whether caching is enabled, default is true.
@@ -379,7 +379,7 @@ impl<T: ArtifactOutput> ProjectBuilder<T> {
     }
 
     #[must_use]
-    pub fn solc(mut self, solc: impl Into<Solc>) -> Self {
+    pub fn solc(mut self, solc: impl Into<solc::Solc>) -> Self {
         self.solc = Some(solc.into());
         self
     }

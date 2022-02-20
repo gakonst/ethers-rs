@@ -3,7 +3,7 @@
 extern crate criterion;
 
 use criterion::Criterion;
-use ethers_solc::{CompilerInput, Solc};
+use ethers_compile::{CompilerInput, Solc};
 use std::path::Path;
 
 fn compile_many_benchmark(c: &mut Criterion) {

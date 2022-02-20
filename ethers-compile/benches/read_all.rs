@@ -3,8 +3,8 @@
 extern crate criterion;
 
 use criterion::Criterion;
+use ethers_compile::artifacts::Source;
 use ethers_core::rand;
-use ethers_solc::artifacts::Source;
 use rand::{distributions::Alphanumeric, Rng};
 use std::{
     fs::File,

@@ -4,7 +4,7 @@ use crate::{
     artifacts::{CompactContract, CompactContractBytecode, Contract, FileToContractsMap},
     contracts::VersionedContracts,
     error::Result,
-    utils, HardhatArtifact, ProjectPathsConfig, CompilerError,
+    utils, CompilerError, HardhatArtifact, ProjectPathsConfig,
 };
 use ethers_core::{abi::Abi, types::Bytes};
 use semver::Version;

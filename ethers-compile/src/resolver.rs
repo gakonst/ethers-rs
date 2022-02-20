@@ -56,7 +56,7 @@ use regex::Match;
 use semver::VersionReq;
 use solang_parser::pt::{Import, Loc, SourceUnitPart};
 
-use crate::{error::Result, utils, ProjectPathsConfig, solc::Solc, CompilerError, Source, Sources};
+use crate::{error::Result, solc::Solc, utils, CompilerError, ProjectPathsConfig, Source, Sources};
 
 /// The underlying edges of the graph which only contains the raw relationship data.
 ///

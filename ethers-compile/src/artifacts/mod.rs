@@ -13,14 +13,13 @@ use std::{
 };
 
 use crate::{
-    compile::*,
     error::CompilerIoError,
     remappings::Remapping,
+    solc::{
+        sourcemap::{self, SourceMap, SyntaxError},
+        *,
+    },
     utils,
-};
-use crate::{
-    solc::*,
-    solc::sourcemap::{self, SourceMap, SyntaxError}
 };
 use ethers_core::abi::Address;
 use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
@@ -255,8 +254,8 @@ impl Settings {
     /// Inserts the value for all files and contracts
     ///
     /// ```
-    /// use ethers_solc::artifacts::output_selection::ContractOutputSelection;
-    /// use ethers_solc::artifacts::Settings;
+    /// use ethers_compile::artifacts::output_selection::ContractOutputSelection;
+    /// use ethers_compile::artifacts::Settings;
     /// let mut selection = Settings::default();
     /// selection.push_output_selection(ContractOutputSelection::Metadata);
     /// ```
@@ -614,7 +613,9 @@ impl Source {
     /// Reads the file content
     pub fn read(file: impl AsRef<Path>) -> Result<Self, CompilerIoError> {
         let file = file.as_ref();
-        Ok(Self { content: fs::read_to_string(file).map_err(|err| CompilerIoError::new(err, file))? })
+        Ok(Self {
+            content: fs::read_to_string(file).map_err(|err| CompilerIoError::new(err, file))?,
+        })
     }
 
     /// Recursively finds all source files under the given dir path and reads them all
@@ -896,8 +897,8 @@ impl ContractBytecode {
     /// # Example
     ///
     /// ```
-    /// use ethers_solc::Project;
-    /// use ethers_solc::artifacts::*;
+    /// use ethers_compile::Project;
+    /// use ethers_compile::artifacts::*;
     /// # fn demo(project: Project) {
     /// let mut output = project.compile().unwrap().output();
     /// let contract: ContractBytecode = output.remove("Greeter").unwrap().into();
@@ -1098,8 +1099,8 @@ impl CompactContract {
     /// # Example
     ///
     /// ```
-    /// use ethers_solc::Project;
-    /// use ethers_solc::artifacts::*;
+    /// use ethers_compile::Project;
+    /// use ethers_compile::artifacts::*;
     /// # fn demo(project: Project) {
     /// let mut output = project.compile().unwrap().output();
     /// let contract: CompactContract = output.remove("Greeter").unwrap().into();
@@ -1273,8 +1274,8 @@ impl<'a> CompactContractRef<'a> {
     /// # Example
     ///
     /// ```
-    /// use ethers_solc::Project;
-    /// use ethers_solc::artifacts::*;
+    /// use ethers_compile::Project;
+    /// use ethers_compile::artifacts::*;
     /// # fn demo(project: Project) {
     /// let output = project.compile().unwrap().output();
     /// let contract = output.find("Greeter").unwrap();
@@ -2020,7 +2021,7 @@ impl SourceFiles {
     ///
     /// ```
     /// use std::collections::BTreeMap;
-    /// use ethers_solc::artifacts::SourceFiles;
+    /// use ethers_compile::artifacts::SourceFiles;
     /// # fn demo(files: SourceFiles) {
     /// let sources: BTreeMap<u32,String> = files.into_ids().collect();
     /// # }
@@ -2033,7 +2034,7 @@ impl SourceFiles {
     ///
     /// ```
     /// use std::collections::BTreeMap;
-    /// use ethers_solc::artifacts::SourceFiles;
+    /// use ethers_compile::artifacts::SourceFiles;
     /// # fn demo(files: SourceFiles) {
     /// let sources :BTreeMap<String, u32> = files.into_paths().collect();
     /// # }

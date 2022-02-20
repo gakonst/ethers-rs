@@ -1,6 +1,6 @@
 use crate::{
     artifacts::Source,
-    error::{Result, CompilerError},
+    error::{CompilerError, Result},
     utils, CompilerInput, CompilerOutput,
 };
 use semver::{Version, VersionReq};
@@ -19,7 +19,7 @@ pub mod many;
 pub mod output;
 pub mod project;
 
-fn compile_output(output: Output) -> Result<Vec<u8>> {
+pub fn compile_output(output: Output) -> Result<Vec<u8>> {
     if output.status.success() {
         Ok(output.stdout)
     } else {
@@ -27,7 +27,7 @@ fn compile_output(output: Output) -> Result<Vec<u8>> {
     }
 }
 
-fn version_from_output(output: Output) -> Result<Version> {
+pub fn version_from_output(output: Output) -> Result<Version> {
     if output.status.success() {
         let version = output
             .stdout
@@ -42,25 +42,13 @@ fn version_from_output(output: Output) -> Result<Version> {
     }
 }
 
-impl AsRef<Path> for Solc {
-    fn as_ref(&self) -> &Path {
-        &self.solc
-    }
-}
-
-impl<T: Into<PathBuf>> From<T> for Solc {
-    fn from(solc: T) -> Self {
-        Solc::new(solc.into())
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::CompilerInput;
+    use crate::{solc, CompilerInput};
 
-    fn solc() -> Solc {
-        Solc::default()
+    fn solc() -> solc::Solc {
+        solc::Solc::default()
     }
 
     #[test]
@@ -126,7 +114,7 @@ mod tests {
         let sources = versions.iter().map(|version| source(version));
 
         sources.zip(versions).for_each(|(source, version)| {
-            let version_req = Solc::source_version_req(&source).unwrap();
+            let version_req = solc::Solc::source_version_req(&source).unwrap();
             assert_eq!(version_req, VersionReq::from_str(version).unwrap());
         });
 
@@ -134,7 +122,7 @@ mod tests {
         // requires them to be separated with a comma
         let version_range = ">=0.8.0 <0.9.0";
         let source = source(version_range);
-        let version_req = Solc::source_version_req(&source).unwrap();
+        let version_req = solc::Solc::source_version_req(&source).unwrap();
         assert_eq!(version_req, VersionReq::from_str(">=0.8.0,<0.9.0").unwrap());
     }
 
@@ -160,7 +148,7 @@ mod tests {
         .iter()
         {
             let source = source(pragma);
-            let res = Solc::detect_version(&source).unwrap();
+            let res = solc::Solc::detect_version(&source).unwrap();
             assert_eq!(res, Version::from_str(expected).unwrap());
         }
     }
@@ -177,9 +165,9 @@ mod tests {
             .map(|versions| !versions.contains(&version))
             .unwrap_or_default()
         {
-            Solc::blocking_install(&version).unwrap();
+            solc::Solc::blocking_install(&version).unwrap();
         }
-        let res = Solc::find_svm_installed_version(&version.to_string()).unwrap().unwrap();
+        let res = solc::Solc::find_svm_installed_version(&version.to_string()).unwrap().unwrap();
         let expected = svm::SVM_HOME.join(ver).join(format!("solc-{}", ver));
         assert_eq!(res.solc, expected);
     }
@@ -188,7 +176,7 @@ mod tests {
     fn does_not_find_not_installed_version() {
         let ver = "1.1.1";
         let version = Version::from_str(ver).unwrap();
-        let res = Solc::find_svm_installed_version(&version.to_string()).unwrap();
+        let res = solc::Solc::find_svm_installed_version(&version.to_string()).unwrap();
         assert!(res.is_none());
     }
 
@@ -201,7 +189,7 @@ mod tests {
 
         let required = VersionReq::from_str(">=0.4.24").unwrap();
 
-        let got = Solc::find_matching_installation(&versions, &required).unwrap();
+        let got = solc::Solc::find_matching_installation(&versions, &required).unwrap();
         assert_eq!(got, versions[2]);
     }
 
@@ -213,7 +201,7 @@ mod tests {
             .collect::<Vec<_>>();
 
         let required = VersionReq::from_str(">=0.6.0").unwrap();
-        let got = Solc::find_matching_installation(&versions, &required);
+        let got = solc::Solc::find_matching_installation(&versions, &required);
         assert!(got.is_none());
     }
 

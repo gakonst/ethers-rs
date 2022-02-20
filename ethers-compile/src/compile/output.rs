@@ -35,8 +35,8 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
     ///
     /// ```no_run
     /// use std::collections::btree_map::BTreeMap;
-    /// use ethers_solc::ConfigurableContractArtifact;
-    /// use ethers_solc::{ArtifactId, Project};
+    /// use ethers_compile::ConfigurableContractArtifact;
+    /// use ethers_compile::{ArtifactId, Project};
     ///
     /// let project = Project::builder().build().unwrap();
     /// let contracts: BTreeMap<ArtifactId, ConfigurableContractArtifact> = project.compile().unwrap().into_artifacts().collect();
@@ -55,7 +55,7 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
     ///
     /// ```no_run
     /// use std::collections::btree_map::BTreeMap;
-    /// use ethers_solc::{ConfigurableContractArtifact, Project};
+    /// use ethers_compile::{ConfigurableContractArtifact, Project};
     ///
     /// let project = Project::builder().build().unwrap();
     /// let contracts: Vec<(String, String, ConfigurableContractArtifact)> = project.compile().unwrap().into_artifacts_with_files().collect();
@@ -77,8 +77,8 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
     /// Make all artifact files relative tot the project's root directory
     ///
     /// ```no_run
-    /// use ethers_solc::artifacts::CompactContractBytecode;
-    /// use ethers_solc::Project;
+    /// use ethers_compile::artifacts::CompactContractBytecode;
+    /// use ethers_compile::Project;
     ///
     /// let project = Project::builder().build().unwrap();
     /// let output = project.compile().unwrap().with_stripped_file_prefixes(project.root());
@@ -93,8 +93,8 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
     /// Get the (merged) solc compiler output
     /// ```no_run
     /// use std::collections::btree_map::BTreeMap;
-    /// use ethers_solc::artifacts::Contract;
-    /// use ethers_solc::Project;
+    /// use ethers_compile::artifacts::Contract;
+    /// use ethers_compile::Project;
     ///
     /// let project = Project::builder().build().unwrap();
     /// let contracts: BTreeMap<String, Contract> =
@@ -182,8 +182,8 @@ impl ProjectCompileOutput<ConfigurableArtifacts> {
     ///
     /// ```no_run
     /// use std::collections::btree_map::BTreeMap;
-    /// use ethers_solc::artifacts::CompactContractBytecode;
-    /// use ethers_solc::{ArtifactId, Project};
+    /// use ethers_compile::artifacts::CompactContractBytecode;
+    /// use ethers_compile::{ArtifactId, Project};
     ///
     /// let project = Project::builder().build().unwrap();
     /// let contracts: BTreeMap<ArtifactId, CompactContractBytecode> = project.compile().unwrap().into_contract_bytecodes().collect();
@@ -276,8 +276,8 @@ impl AggregatedCompilerOutput {
     /// # Example
     ///
     /// ```
-    /// use ethers_solc::Project;
-    /// use ethers_solc::artifacts::*;
+    /// use ethers_compile::Project;
+    /// use ethers_compile::artifacts::*;
     /// # fn demo(project: Project) {
     /// let output = project.compile().unwrap().output();
     /// let contract = output.find("Greeter").unwrap();
@@ -292,8 +292,8 @@ impl AggregatedCompilerOutput {
     /// # Example
     ///
     /// ```
-    /// use ethers_solc::Project;
-    /// use ethers_solc::artifacts::*;
+    /// use ethers_compile::Project;
+    /// use ethers_compile::artifacts::*;
     /// # fn demo(project: Project) {
     /// let mut output = project.compile().unwrap().output();
     /// let contract = output.remove("Greeter").unwrap();
@@ -325,7 +325,7 @@ impl AggregatedCompilerOutput {
     /// # Example
     ///
     /// ```
-    /// use ethers_solc::Project;
+    /// use ethers_compile::Project;
     /// # fn demo(project: Project) {
     /// let output = project.compile().unwrap().output();
     /// let (sources, contracts) = output.split();

@@ -7,7 +7,7 @@ use std::{
     str::FromStr,
 };
 
-use ethers_solc::{
+use ethers_compile::{
     cache::{SolFilesCache, SOLIDITY_FILES_CACHE_FILENAME},
     project_util::*,
     remappings::Remapping,

@@ -1,4 +1,4 @@
-use crate::{error::Result, CompilerInput, CompilerOutput, solc::Solc};
+use crate::{error::Result, solc::Solc, CompilerInput, CompilerOutput};
 
 /// The result of a `solc` process bundled with its `Solc` and `CompilerInput`
 type CompileElement = (Result<CompilerOutput>, Solc, CompilerInput);

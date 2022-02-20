@@ -59,7 +59,7 @@ pub fn find_version_pragma(contract: &str) -> Option<Match> {
 /// # Example
 ///
 /// ```no_run
-/// use ethers_solc::utils;
+/// use ethers_compile::utils;
 /// let sources = utils::source_files("./contracts");
 /// ```
 pub fn source_files(root: impl AsRef<Path>) -> Vec<PathBuf> {
@@ -78,7 +78,7 @@ pub fn source_files(root: impl AsRef<Path>) -> Vec<PathBuf> {
 /// # Example
 ///
 /// ```no_run
-/// use ethers_solc::utils;
+/// use ethers_compile::utils;
 /// let dirs = utils::solidity_dirs("./lib");
 /// ```
 ///
@@ -231,7 +231,7 @@ pub fn library_hash(name: impl AsRef<[u8]>) -> [u8; 17] {
 /// use std::path::{PathBuf, Path};
 ///
 /// # fn main() {
-/// use ethers_solc::utils::common_ancestor_all;
+/// use ethers_compile::utils::common_ancestor_all;
 /// let baz = Path::new("/foo/bar/baz");
 /// let bar = Path::new("/foo/bar/bar");
 /// let foo = Path::new("/foo/bar/foo");
@@ -264,7 +264,7 @@ where
 /// use std::path::{PathBuf, Path};
 ///
 /// # fn main() {
-/// use ethers_solc::utils::common_ancestor;
+/// use ethers_compile::utils::common_ancestor;
 /// let foo = Path::new("/foo/bar/foo");
 /// let bar = Path::new("/foo/bar/bar");
 /// let ancestor = common_ancestor(foo, bar).unwrap();

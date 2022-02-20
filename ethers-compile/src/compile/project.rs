@@ -80,8 +80,8 @@ use crate::{
     cache::ArtifactsCache,
     error::Result,
     output::AggregatedCompilerOutput,
-    solc::{Solc, report},
     resolver::GraphEdges,
+    solc::{report, Solc},
     vyper::Vyper,
     ArtifactOutput, CompilerInput, Graph, Project, ProjectCompileOutput, ProjectPathsConfig,
     Sources,
@@ -106,7 +106,7 @@ impl<'a, T: ArtifactOutput> ProjectCompiler<'a, T> {
     /// # Example
     ///
     /// ```no_run
-    /// use ethers_solc::Project;
+    /// use ethers_compile::Project;
     ///
     /// let project = Project::builder().build().unwrap();
     /// let output = project.compile().unwrap();
@@ -163,7 +163,7 @@ impl<'a, T: ArtifactOutput> ProjectCompiler<'a, T> {
     /// # Example
     ///
     /// ```no_run
-    /// use ethers_solc::Project;
+    /// use ethers_compile::Project;
     ///
     /// let project = Project::builder().build().unwrap();
     /// let output = project.compile().unwrap();

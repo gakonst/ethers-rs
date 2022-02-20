@@ -1,7 +1,7 @@
 //! Subscribe to events in the compiler pipeline
 
+use super::Solc;
 use crate::{CompilerInput, CompilerOutput};
-use super::{Solc};
 use semver::Version;
 use std::{
     error::Error,
@@ -35,8 +35,8 @@ where
 /// Panics if the initialization was unsuccessful, likely because a
 /// global reporter was already installed by another call to `try_init`.
 /// ```rust
-/// use ethers_solc::report::BasicStdoutReporter;
-/// let subscriber = ethers_solc::report::init(BasicStdoutReporter::default());
+/// use ethers_compile::solc::report::BasicStdoutReporter;
+/// let subscriber = ethers_compile::solc::report::init(BasicStdoutReporter::default());
 /// ```
 pub fn init<T>(reporter: T)
 where

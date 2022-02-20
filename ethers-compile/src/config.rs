@@ -1,7 +1,7 @@
 use crate::{
     artifacts::Settings,
     cache::SOLIDITY_FILES_CACHE_FILENAME,
-    error::{Result, CompilerError, CompilerIoError},
+    error::{CompilerError, CompilerIoError, Result},
     remappings::Remapping,
     resolver::Graph,
     utils, Source, Sources,
@@ -66,7 +66,8 @@ impl ProjectPathsConfig {
         }
         fs::create_dir_all(&self.artifacts)
             .map_err(|err| CompilerIoError::new(err, &self.artifacts))?;
-        fs::create_dir_all(&self.sources).map_err(|err| CompilerIoError::new(err, &self.sources))?;
+        fs::create_dir_all(&self.sources)
+            .map_err(|err| CompilerIoError::new(err, &self.sources))?;
         fs::create_dir_all(&self.tests).map_err(|err| CompilerIoError::new(err, &self.tests))?;
         for lib in &self.libraries {
             fs::create_dir_all(lib).map_err(|err| CompilerIoError::new(err, lib))?;
@@ -242,7 +243,10 @@ impl ProjectPathsConfig {
         strip_license: bool,
     ) -> Result<String> {
         let target_dir = target.parent().ok_or_else(|| {
-            CompilerError::msg(format!("failed to get parent directory for \"{:?}\"", target.display()))
+            CompilerError::msg(format!(
+                "failed to get parent directory for \"{:?}\"",
+                target.display()
+            ))
         })?;
         let target_index = graph.files().get(target).ok_or_else(|| {
             CompilerError::msg(format!("cannot resolve file at \"{:?}\"", target.display()))
@@ -458,7 +462,7 @@ impl CompilerConfig {
     /// Autodetect solc version and default settings
     ///
     /// ```rust
-    /// use ethers_solc::CompilerConfig;
+    /// use ethers_compile::CompilerConfig;
     /// let config = CompilerConfig::builder().build();
     /// ```
     pub fn builder() -> CompilerConfigBuilder {

@@ -7,7 +7,7 @@ use crate::{
         CompactEvm, DevDoc, Ewasm, GasEstimates, Metadata, Offsets, Settings, StorageLayout,
         UserDoc,
     },
-    ArtifactOutput, Contract, CompilerConfig, CompilerError,
+    ArtifactOutput, CompilerConfig, CompilerError, Contract,
 };
 use ethers_core::abi::Abi;
 use serde::{Deserialize, Serialize};
@@ -112,7 +112,7 @@ pub struct ConfigurableArtifacts {
     ///
     /// ```rust
     /// 
-    /// use ethers_solc::{ExtraOutputFiles, ConfigurableArtifacts};
+    /// use ethers_compile::{ExtraOutputFiles, ConfigurableArtifacts};
     /// let config = ConfigurableArtifacts {
     ///     additional_files: ExtraOutputFiles { metadata: true, ..Default::default() },
     ///     ..Default::default()
@@ -291,7 +291,7 @@ pub struct ExtraOutputValues {
     ///
     /// ```rust
     /// 
-    /// use ethers_solc::ExtraOutputValues;
+    /// use ethers_compile::ExtraOutputValues;
     /// let config = ExtraOutputValues {
     ///     ir: true,
     ///     ..Default::default()
@@ -387,7 +387,7 @@ pub struct ExtraOutputFiles {
     ///
     /// ```rust
     /// 
-    /// use ethers_solc::ExtraOutputFiles;
+    /// use ethers_compile::ExtraOutputFiles;
     /// let config = ExtraOutputFiles {
     ///     metadata: true,
     ///     ..Default::default()
