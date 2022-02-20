@@ -263,10 +263,10 @@ impl<T: ArtifactOutput> Project<T> {
         solc: &solc::Solc,
         sources: Sources,
     ) -> Result<ProjectCompileOutput<T>> {
-        project::ProjectCompiler::with_sources_and_solc(
+        project::ProjectCompiler::with_sources_and_compiler(
             self,
             sources,
-            self.configure_solc(solc.clone()),
+            CompilerKind::Solc(self.configure_solc(solc.clone()), solc.version().expect("version")),
         )?
         .compile()
     }

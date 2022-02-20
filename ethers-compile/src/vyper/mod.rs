@@ -1,5 +1,5 @@
 use semver::Version;
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{
     path::{Path, PathBuf},
     process::{Command, Stdio},
@@ -14,6 +14,7 @@ use crate::{
 /// The name of the `solc` binary on the system
 pub const VYPER: &str = "vyper";
 
+#[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct Vyper {
     /// Path to the `solc` executable
     pub vyper: PathBuf,
@@ -35,6 +36,26 @@ impl Vyper {
     /// A new instance which points to `vyper`
     pub fn new(path: impl Into<PathBuf>) -> Self {
         Vyper { vyper: path.into(), args: Vec::new() }
+    }
+
+    /// Adds an argument to pass to the `solc` command.
+    #[must_use]
+    pub fn arg<T: Into<String>>(mut self, arg: T) -> Self {
+        self.args.push(arg.into());
+        self
+    }
+
+    /// Adds multiple arguments to pass to the `solc`.
+    #[must_use]
+    pub fn args<I, S>(mut self, args: I) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        for arg in args {
+            self = self.arg(arg);
+        }
+        self
     }
 
     pub fn compile_source(&self, path: impl AsRef<Path>) -> Result<CompilerOutput> {

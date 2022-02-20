@@ -1,7 +1,10 @@
 use crate::{
     artifacts::Source,
     error::{CompilerError, Result},
-    utils, CompilerInput, CompilerOutput,
+    solc::Solc,
+    utils,
+    vyper::Vyper,
+    CompilerInput, CompilerOutput,
 };
 use semver::{Version, VersionReq};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -18,6 +21,52 @@ pub mod contracts;
 pub mod many;
 pub mod output;
 pub mod project;
+
+#[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
+pub struct Placeholder {
+    pub path: Option<PathBuf>,
+    /// Additional arguments passed to the `solc` exectuable
+    pub args: Vec<String>,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
+pub enum CompilerKind {
+    Placeholder(Placeholder, Version),
+    Solc(Solc, Version),
+    Vyper(Vyper, Version),
+}
+
+pub fn get_compiler_language(compiler: &CompilerKind) -> String {
+    match compiler {
+        CompilerKind::Placeholder(obj, _) => "none".to_string(),
+        CompilerKind::Solc(obj, _) => return "Solidity".to_string(),
+        CompilerKind::Vyper(obj, _) => return "Vyper".to_string(),
+    }
+}
+
+pub fn get_compiler_args(compiler: &CompilerKind) -> Vec<String> {
+    match compiler {
+        CompilerKind::Placeholder(obj, _) => return obj.args.clone(),
+        CompilerKind::Solc(obj, _) => return obj.args.clone(),
+        CompilerKind::Vyper(obj, _) => return obj.args.clone(),
+    }
+}
+
+pub fn get_compiler_path(compiler: &CompilerKind) -> Option<PathBuf> {
+    match compiler {
+        CompilerKind::Placeholder(obj, _) => return obj.path.clone(),
+        CompilerKind::Solc(obj, _) => return Some(obj.solc.clone()),
+        CompilerKind::Vyper(obj, _) => return Some(obj.vyper.clone()),
+    }
+}
+
+pub fn get_compiler_version(compiler: &CompilerKind) -> Version {
+    match compiler {
+        CompilerKind::Placeholder(_, v) => return v.clone(),
+        CompilerKind::Solc(_, v) => return v.clone(),
+        CompilerKind::Vyper(_, v) => return v.clone(),
+    }
+}
 
 pub fn compile_output(output: Output) -> Result<Vec<u8>> {
     if output.status.success() {

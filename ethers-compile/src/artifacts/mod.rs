@@ -19,7 +19,7 @@ use crate::{
         sourcemap::{self, SourceMap, SyntaxError},
         *,
     },
-    utils,
+    utils, CompilerKind,
 };
 use ethers_core::abi::Address;
 use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
@@ -42,7 +42,7 @@ pub type Contracts = FileToContractsMap<Contract>;
 /// An ordered list of files and their source
 pub type Sources = BTreeMap<PathBuf, Source>;
 
-pub type VersionedSources = BTreeMap<Solc, (Version, Sources)>;
+pub type VersionedSources = BTreeMap<CompilerKind, (Version, Sources)>;
 
 /// Input type `solc` expects
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -61,6 +61,11 @@ impl CompilerInput {
     /// Creates a new Compiler input with default settings and the given sources
     pub fn with_sources(sources: Sources) -> Self {
         Self { language: "Solidity".to_string(), sources, settings: Default::default() }
+    }
+
+    pub fn language(mut self, language: String) -> Self {
+        self.language = language;
+        self
     }
 
     /// Sets the settings for compilation
