@@ -56,7 +56,10 @@ use regex::Match;
 use semver::VersionReq;
 use solang_parser::pt::{Import, Loc, SourceUnitPart};
 
-use crate::{error::Result, solc::Solc, utils, CompilerError, ProjectPathsConfig, Source, Sources};
+use crate::{
+    error::Result, solc::Solc, utils, CompilerError, CompilerKind, ProjectPathsConfig, Source,
+    Sources,
+};
 
 /// The underlying edges of the graph which only contains the raw relationship data.
 ///
@@ -351,7 +354,11 @@ impl Graph {
     }
 
     /// Filters incompatible versions from the `candidates`.
-    fn retain_compatible_versions(&self, idx: usize, candidates: &mut Vec<&crate::SolcVersion>) {
+    fn retain_compatible_versions(
+        &self,
+        idx: usize,
+        candidates: &mut Vec<&crate::solc::CompilerVersion>,
+    ) {
         let nodes: HashSet<_> = self.node_ids(idx).collect();
         for node in nodes {
             let node = self.node(node);
@@ -384,7 +391,7 @@ impl Graph {
     fn get_input_node_versions(
         &self,
         offline: bool,
-    ) -> Result<HashMap<crate::SolcVersion, Vec<usize>>> {
+    ) -> Result<HashMap<crate::solc::CompilerVersion, Vec<usize>>> {
         tracing::trace!("resolving input node versions");
         // this is likely called by an application and will be eventually printed so we don't exit
         // on first error, instead gather all the errors and return a bundled error message instead
@@ -465,12 +472,12 @@ impl Graph {
     /// This is a bit inefficient but is fine, the max. number of versions is ~80 and there's
     /// a high chance that the number of source files is <50, even for larger projects.
     fn resolve_multiple_versions(
-        all_candidates: Vec<(usize, HashSet<&crate::SolcVersion>)>,
-    ) -> HashMap<crate::SolcVersion, Vec<usize>> {
+        all_candidates: Vec<(usize, HashSet<&crate::solc::CompilerVersion>)>,
+    ) -> HashMap<crate::solc::CompilerVersion, Vec<usize>> {
         // returns the intersection as sorted set of nodes
         fn intersection<'a>(
-            mut sets: Vec<&HashSet<&'a crate::SolcVersion>>,
-        ) -> Vec<&'a crate::SolcVersion> {
+            mut sets: Vec<&HashSet<&'a crate::solc::CompilerVersion>>,
+        ) -> Vec<&'a crate::solc::CompilerVersion> {
             if sets.is_empty() {
                 return Vec::new()
             }
@@ -488,7 +495,9 @@ impl Graph {
         /// returns the highest version that is installed
         /// if the candidates set only contains uninstalled versions then this returns the highest
         /// uninstalled version
-        fn remove_candidate(candidates: &mut Vec<&crate::SolcVersion>) -> crate::SolcVersion {
+        fn remove_candidate(
+            candidates: &mut Vec<&crate::solc::CompilerVersion>,
+        ) -> crate::solc::CompilerVersion {
             debug_assert!(!candidates.is_empty());
 
             if let Some(pos) = candidates.iter().rposition(|v| v.is_installed()) {
@@ -514,7 +523,7 @@ impl Graph {
         }
 
         // no version satisfies all nodes
-        let mut versioned_nodes: HashMap<crate::SolcVersion, Vec<usize>> = HashMap::new();
+        let mut versioned_nodes: HashMap<crate::solc::CompilerVersion, Vec<usize>> = HashMap::new();
 
         // try to minimize the set of versions, this is guaranteed to lead to `versioned_nodes.len()
         // > 1` as no solc version exists that can satisfy all sources
@@ -576,7 +585,7 @@ impl<'a> Iterator for NodesIter<'a> {
 #[cfg(all(feature = "svm", feature = "async"))]
 #[derive(Debug)]
 pub struct VersionedSources {
-    inner: HashMap<crate::SolcVersion, Sources>,
+    inner: HashMap<crate::solc::CompilerVersion, Sources>,
     offline: bool,
 }
 
@@ -586,10 +595,10 @@ impl VersionedSources {
     pub fn get(
         self,
         allowed_lib_paths: &crate::AllowedLibPaths,
-    ) -> Result<std::collections::BTreeMap<Solc, (semver::Version, Sources)>> {
+    ) -> Result<std::collections::BTreeMap<CompilerKind, (semver::Version, Sources)>> {
         // we take the installer lock here to ensure installation checking is done in sync
         #[cfg(any(test, feature = "tests"))]
-        let _lock = crate::compile::take_solc_installer_lock();
+        let _lock = crate::solc::take_solc_installer_lock();
 
         let mut sources_by_version = std::collections::BTreeMap::new();
         for (version, sources) in self.inner {
@@ -615,7 +624,8 @@ impl VersionedSources {
             }
             let solc = solc.arg("--allow-paths").arg(allowed_lib_paths.to_string());
             let version = solc.version()?;
-            sources_by_version.insert(solc, (version, sources));
+            sources_by_version
+                .insert(CompilerKind::Solc(solc, version.clone()), (version, sources));
         }
         Ok(sources_by_version)
     }

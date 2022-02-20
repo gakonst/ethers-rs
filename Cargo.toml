@@ -21,6 +21,7 @@ members = [
     "ethers-core",
     "ethers-middleware",
     "ethers-etherscan",
+    "ethers-compile",
     "ethers-solc",
     "examples/ethers-wasm",
 ]
@@ -33,6 +34,7 @@ default-members = [
     "ethers-core",
     "ethers-middleware",
     "ethers-etherscan",
+    "ethers-compile",
     "ethers-solc",
 ]
 
@@ -64,8 +66,8 @@ eip712 = ["ethers-contract/eip712", "ethers-core/eip712"]
 ## providers
 ws = ["ethers-providers/ws"]
 ipc = ["ethers-providers/ipc"]
-rustls = ["ethers-providers/rustls", "ethers-etherscan/rustls", "ethers-contract/rustls", "ethers-solc/rustls"]
-openssl = ["ethers-providers/openssl", "ethers-etherscan/openssl", "ethers-contract/openssl", "ethers-solc/openssl"]
+rustls = ["ethers-providers/rustls", "ethers-etherscan/rustls", "ethers-contract/rustls", "ethers-solc/rustls", "ethers-compile/rustls"]
+openssl = ["ethers-providers/openssl", "ethers-etherscan/openssl", "ethers-contract/openssl", "ethers-solc/openssl", "ethers-compile/openssl"]
 dev-rpc = ["ethers-providers/dev-rpc"]
 ## signers
 ledger = ["ethers-signers/ledger"]
@@ -76,10 +78,15 @@ abigen = ["ethers-contract/abigen"]
 ### abigen without reqwest
 abigen-offline = ["ethers-contract/abigen-offline"]
 ## solc
-solc-async = ["ethers-solc/async"]
-solc-full = ["ethers-solc/full"]
-solc-tests = ["ethers-solc/tests"]
-solc-sha2-asm = ["ethers-solc/asm"]
+solc-async = ["ethers-compile/async", "ethers-solc/async"]
+solc-full = ["ethers-compile/full", "ethers-solc/full"]
+solc-tests = ["ethers-compile/tests", "ethers-solc/tests"]
+solc-sha2-asm = ["ethers-compile/asm", "ethers-solc/asm"]
+## compiler
+compile-async = ["ethers-compile/async"]
+compile-full = ["ethers-compile/full"]
+compile-tests = ["ethers-compile/tests"]
+compile-sha2-asm = ["ethers-compile/asm"]
 
 [dependencies]
 ethers-addressbook = { version = "^0.1.0", default-features = false, path = "./ethers-addressbook" }
@@ -89,6 +96,7 @@ ethers-providers = { version = "^0.6.0", default-features = false, path = "./eth
 ethers-signers = { version = "^0.6.0", default-features = false, path = "./ethers-signers" }
 ethers-middleware = { version = "^0.6.0", default-features = false, path = "./ethers-middleware" }
 ethers-solc = { version = "^0.3.0", default-features = false, path = "./ethers-solc" }
+ethers-compile= { version = "^0.1.0", default-features = false, path = "./ethers-compile" }
 ethers-etherscan = { version = "^0.2.0", default-features = false, path = "./ethers-etherscan" }
 
 [dev-dependencies]

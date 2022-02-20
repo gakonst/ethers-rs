@@ -1132,6 +1132,7 @@ version = "0.6.0"
 dependencies = [
  "bytes",
  "ethers-addressbook",
+ "ethers-compile",
  "ethers-contract",
  "ethers-core",
  "ethers-etherscan",
@@ -1155,6 +1156,44 @@ dependencies = [
  "once_cell",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "ethers-compile"
+version = "0.1.0"
+dependencies = [
+ "colored",
+ "criterion",
+ "dunce",
+ "env_logger",
+ "ethers-core",
+ "eyre",
+ "fs_extra",
+ "futures-util",
+ "getrandom 0.2.4",
+ "glob",
+ "hex",
+ "home",
+ "md-5 0.10.1",
+ "num_cpus",
+ "once_cell",
+ "pretty_assertions",
+ "rand 0.8.5",
+ "rayon",
+ "regex",
+ "semver",
+ "serde",
+ "serde_json",
+ "sha2 0.9.9",
+ "solang-parser",
+ "svm-rs",
+ "tempfile",
+ "thiserror",
+ "tiny-keccak",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "walkdir",
 ]
 
 [[package]]

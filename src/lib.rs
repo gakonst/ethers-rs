@@ -114,9 +114,14 @@ pub mod signers {
     pub use ethers_signers::*;
 }
 
+// #[doc = include_str!("../assets/SOLC_README.md")]
+// pub mod solc {
+//     pub use ethers_solc::*;
+// }
+
 #[doc = include_str!("../assets/SOLC_README.md")]
-pub mod solc {
-    pub use ethers_solc::*;
+pub mod compile {
+    pub use ethers_compile::*;
 }
 
 /// Etherscan bindings
@@ -141,7 +146,9 @@ pub mod prelude {
 
     pub use super::signers::*;
 
-    pub use super::solc::*;
+    // pub use super::solc::*;
+
+    pub use super::compile::*;
 
     pub use super::etherscan::*;
 }

@@ -5,7 +5,7 @@ use crate::{
     artifacts::Source,
     compile::{compile_output, version_from_output},
     error::{CompilerError, Result},
-    utils, CompilerInput, CompilerOutput,
+    utils, CompilerInput, CompilerKind, CompilerOutput,
 };
 use semver::{Version, VersionReq};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -80,35 +80,35 @@ pub static RELEASES: once_cell::sync::Lazy<(svm::Releases, Vec<Version>, bool)> 
 /// endpoint
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 #[serde(untagged)]
-pub enum SolcVersion {
+pub enum CompilerVersion {
     Installed(Version),
     Remote(Version),
 }
 
-impl SolcVersion {
+impl CompilerVersion {
     /// Whether this version is installed
     pub fn is_installed(&self) -> bool {
-        matches!(self, SolcVersion::Installed(_))
+        matches!(self, CompilerVersion::Installed(_))
     }
 }
 
-impl AsRef<Version> for SolcVersion {
+impl AsRef<Version> for CompilerVersion {
     fn as_ref(&self) -> &Version {
         match self {
-            SolcVersion::Installed(v) | SolcVersion::Remote(v) => v,
+            CompilerVersion::Installed(v) | CompilerVersion::Remote(v) => v,
         }
     }
 }
 
-impl From<SolcVersion> for Version {
-    fn from(s: SolcVersion) -> Version {
+impl From<CompilerVersion> for Version {
+    fn from(s: CompilerVersion) -> Version {
         match s {
-            SolcVersion::Installed(v) | SolcVersion::Remote(v) => v,
+            CompilerVersion::Installed(v) | CompilerVersion::Remote(v) => v,
         }
     }
 }
 
-impl fmt::Display for SolcVersion {
+impl fmt::Display for CompilerVersion {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.as_ref())
     }
@@ -207,12 +207,12 @@ impl Solc {
 
     /// Returns the list of all solc instances installed at `SVM_HOME`
     #[cfg(not(target_arch = "wasm32"))]
-    pub fn installed_versions() -> Vec<SolcVersion> {
+    pub fn installed_versions() -> Vec<CompilerVersion> {
         if let Some(home) = Self::svm_home() {
             utils::installed_versions(home)
                 .unwrap_or_default()
                 .into_iter()
-                .map(SolcVersion::Installed)
+                .map(CompilerVersion::Installed)
                 .collect()
         } else {
             Vec::new()
@@ -222,7 +222,7 @@ impl Solc {
     /// Returns the list of all versions that are available to download and marking those which are
     /// already installed.
     #[cfg(all(feature = "svm", feature = "async"))]
-    pub fn all_versions() -> Vec<SolcVersion> {
+    pub fn all_versions() -> Vec<CompilerVersion> {
         let mut all_versions = Self::installed_versions();
         let mut uniques = all_versions
             .iter()
@@ -237,7 +237,7 @@ impl Solc {
                 .clone()
                 .into_iter()
                 .filter(|v| uniques.insert((v.major, v.minor, v.patch)))
-                .map(SolcVersion::Remote),
+                .map(CompilerVersion::Remote),
         );
         all_versions.sort_unstable();
         all_versions
@@ -582,10 +582,10 @@ impl Solc {
     {
         use futures_util::stream::StreamExt;
 
-        let outputs = futures_util::stream::iter(
-            jobs.into_iter()
-                .map(|(solc, input)| async { (solc.async_compile(&input).await, solc, input) }),
-        )
+        let outputs = futures_util::stream::iter(jobs.into_iter().map(|(solc, input)| async {
+            let version = solc.version().expect("solc version");
+            (solc.async_compile(&input).await, CompilerKind::Solc(solc, version), input)
+        }))
         .buffer_unordered(n)
         .collect::<Vec<_>>()
         .await;
