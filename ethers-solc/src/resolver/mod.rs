@@ -59,6 +59,7 @@ use solang_parser::pt::{Import, Loc, SourceUnitPart};
 
 use crate::{error::Result, utils, ProjectPathsConfig, Solc, SolcError, Source, Sources};
 
+mod components;
 mod tree;
 pub use tree::{print, Charset, TreeOptions};
 
