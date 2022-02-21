@@ -92,7 +92,23 @@ impl GenericCompiler {
     }
 
     pub fn to_vyper(&self) -> Vyper {
-        Vyper { args: self.get_args(), ..Default::default() }
+        
+        // Filter out solc arguments
+        let mut args = vec![];
+        let mut skip = false;
+        for arg in &self.args {
+            if skip {
+                continue
+            }
+            if arg == "--allow-paths" {
+                skip = true;
+            } else {
+                skip = false;
+                args.push(arg.clone());
+            }
+        }
+
+        Vyper { args: args, ..Default::default() }
     }
 
     pub fn to_solc(&self) -> Solc {

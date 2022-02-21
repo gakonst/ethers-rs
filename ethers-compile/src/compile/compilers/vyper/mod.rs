@@ -103,23 +103,8 @@ impl Vyper {
     pub fn compile_output<T: Serialize>(&self, input: &T) -> Result<Vec<u8>> {
         let mut cmd = Command::new(&self.vyper);
 
-        // Filter out solc arguments
-        let mut args = vec![];
-        let mut skip = false;
-        for arg in &self.args {
-            if skip {
-                continue
-            }
-            if arg == "--allow-paths" {
-                skip = true;
-            } else {
-                skip = false;
-                args.push(arg);
-            }
-        }
-
         let mut child = cmd
-            .args(&args)
+            .args(&self.args)
             .arg("--standard-json")
             .stdin(Stdio::piped())
             .stderr(Stdio::piped())
