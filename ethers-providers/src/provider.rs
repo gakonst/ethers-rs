@@ -332,21 +332,6 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
             tx.set_gas(gas_estimate);
         }
 
-        // match tx {
-        //     TypedTransaction::Eip2930(_) | TypedTransaction::Legacy(_) => {
-        //         let gas_price = maybe(tx.gas_price(), self.get_gas_price()).await?;
-        //         tx.set_gas_price(gas_price);
-        //     }
-        //     TypedTransaction::Eip1559(ref mut inner) => {
-        //         if inner.max_fee_per_gas.is_none() || inner.max_priority_fee_per_gas.is_none() {
-        //             let (max_fee_per_gas, max_priority_fee_per_gas) =
-        //                 self.estimate_eip1559_fees(None).await?;
-        //             inner.max_fee_per_gas = Some(max_fee_per_gas);
-        //             inner.max_priority_fee_per_gas = Some(max_priority_fee_per_gas);
-        //         };
-        //     }
-        // }
-
         Ok(())
     }
 
