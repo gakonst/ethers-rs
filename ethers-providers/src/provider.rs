@@ -272,12 +272,28 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
             }
         }
 
-        // TODO: Can we poll the futures below at the same time as the gas price?
+        // TODO: Join the name resolution and gas price future
 
         // set the ENS name
         if let Some(NameOrAddress::Name(ref ens_name)) = tx.to() {
             let addr = self.resolve_name(ens_name).await?;
             tx.set_to(addr);
+        }
+
+        // fill gas price
+        match tx {
+            TypedTransaction::Eip2930(_) | TypedTransaction::Legacy(_) => {
+                let gas_price = maybe(tx.gas_price(), self.get_gas_price()).await?;
+                tx.set_gas_price(gas_price);
+            }
+            TypedTransaction::Eip1559(ref mut inner) => {
+                if inner.max_fee_per_gas.is_none() || inner.max_priority_fee_per_gas.is_none() {
+                    let (max_fee_per_gas, max_priority_fee_per_gas) =
+                        self.estimate_eip1559_fees(None).await?;
+                    inner.max_fee_per_gas = Some(max_fee_per_gas);
+                    inner.max_priority_fee_per_gas = Some(max_priority_fee_per_gas);
+                };
+            }
         }
 
         // If the tx has an access list but it is empty, it is an Eip1559 or Eip2930 tx,
@@ -313,20 +329,20 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
             tx.set_gas(gas_estimate);
         }
 
-        match tx {
-            TypedTransaction::Eip2930(_) | TypedTransaction::Legacy(_) => {
-                let gas_price = maybe(tx.gas_price(), self.get_gas_price()).await?;
-                tx.set_gas_price(gas_price);
-            }
-            TypedTransaction::Eip1559(ref mut inner) => {
-                if inner.max_fee_per_gas.is_none() || inner.max_priority_fee_per_gas.is_none() {
-                    let (max_fee_per_gas, max_priority_fee_per_gas) =
-                        self.estimate_eip1559_fees(None).await?;
-                    inner.max_fee_per_gas = Some(max_fee_per_gas);
-                    inner.max_priority_fee_per_gas = Some(max_priority_fee_per_gas);
-                };
-            }
-        }
+        // match tx {
+        //     TypedTransaction::Eip2930(_) | TypedTransaction::Legacy(_) => {
+        //         let gas_price = maybe(tx.gas_price(), self.get_gas_price()).await?;
+        //         tx.set_gas_price(gas_price);
+        //     }
+        //     TypedTransaction::Eip1559(ref mut inner) => {
+        //         if inner.max_fee_per_gas.is_none() || inner.max_priority_fee_per_gas.is_none() {
+        //             let (max_fee_per_gas, max_priority_fee_per_gas) =
+        //                 self.estimate_eip1559_fees(None).await?;
+        //             inner.max_fee_per_gas = Some(max_fee_per_gas);
+        //             inner.max_priority_fee_per_gas = Some(max_priority_fee_per_gas);
+        //         };
+        //     }
+        // }
 
         Ok(())
     }
@@ -1659,8 +1675,8 @@ mod tests {
 
         // --- fills an empty legacy transaction
         let mut tx = TransactionRequest::new().into();
-        mock.push(gas_price).unwrap();
         mock.push(gas).unwrap();
+        mock.push(gas_price).unwrap();
         provider.fill_transaction(&mut tx, None).await.unwrap();
 
         assert_eq!(tx.from(), provider.from.as_ref());
