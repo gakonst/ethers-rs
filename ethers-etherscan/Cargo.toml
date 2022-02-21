@@ -24,7 +24,7 @@ thiserror = "1.0.29"
 
 [dev-dependencies]
 tokio = { version = "1.5", features = ["macros", "rt-multi-thread", "time"] }
-serial_test = "0.5.1"
+serial_test = "0.6.0"
 
 [package.metadata.docs.rs]
 all-features = true
