@@ -79,7 +79,7 @@ use crate::{
     artifacts::{Settings, VersionedSources},
     cache::ArtifactsCache,
     compile::compilers::{CompilerKindEnum, GenericCompiler},
-    error::{Result},
+    error::Result,
     output::AggregatedCompilerOutput,
     resolver::GraphEdges,
     ArtifactOutput, CompilerInput, CompilerOutput, CompilerTrait, Graph, Project,
@@ -90,7 +90,7 @@ use rayon::prelude::*;
 use semver::Version;
 use uuid::Uuid;
 
-use std::{collections::btree_map::BTreeMap};
+use std::collections::btree_map::BTreeMap;
 
 #[derive(Debug)]
 pub struct ProjectCompiler<'a, T: ArtifactOutput> {

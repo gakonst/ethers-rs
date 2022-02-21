@@ -3,7 +3,6 @@ use std::{
     process::{Command, Stdio},
 };
 
-
 use semver::Version;
 
 use crate::{
@@ -30,12 +29,10 @@ impl CompilerTrait for GenericCompiler {
         self.path.clone()
     }
 
-    
     fn arg(&mut self, arg: String) {
         self.args.push(arg);
     }
 
-    
     fn args(&mut self, args: Vec<String>) {
         for arg in args {
             self.arg(arg);
@@ -95,9 +92,7 @@ impl GenericCompiler {
     }
 
     pub fn to_vyper(&self) -> Vyper {
-        let mut vyper = Vyper::default();
-        vyper.args(self.get_args());
-        vyper
+        Vyper { args: self.get_args(), ..Default::default() }
     }
 
     pub fn to_solc(&self) -> Solc {

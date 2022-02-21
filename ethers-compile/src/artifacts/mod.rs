@@ -20,7 +20,7 @@ use crate::{
         sourcemap::{self, SourceMap, SyntaxError},
         *,
     },
-    utils, CompilerTrait, GenericCompiler,
+    utils, GenericCompiler,
 };
 use ethers_core::abi::Address;
 use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};

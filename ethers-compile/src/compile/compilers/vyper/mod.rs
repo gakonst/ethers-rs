@@ -37,12 +37,10 @@ impl CompilerTrait for Vyper {
         self.vyper.clone()
     }
 
-    
     fn arg(&mut self, arg: String) {
         self.args.push(arg);
     }
 
-    
     fn args(&mut self, args: Vec<String>) {
         for arg in args {
             self.arg(arg);

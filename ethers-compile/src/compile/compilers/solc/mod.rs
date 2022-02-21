@@ -44,7 +44,8 @@ use std::sync::Mutex;
 
 #[cfg(any(test, feature = "tests"))]
 #[allow(unused)]
-static LOCK: once_cell::sync::Lazy<Mutex<()>> = once_cell::sync::Lazy::new(|| Mutex::new(()));
+pub(crate) static LOCK: once_cell::sync::Lazy<Mutex<()>> =
+    once_cell::sync::Lazy::new(|| Mutex::new(()));
 
 /// take the lock in tests, we use this to enforce that
 /// a test does not run while a compiler version is being installed
@@ -162,12 +163,10 @@ impl CompilerTrait for Solc {
         self.solc.clone()
     }
 
-    
     fn arg(&mut self, arg: String) {
         self.args.push(arg);
     }
 
-    
     fn args(&mut self, args: Vec<String>) {
         for arg in args {
             self.arg(arg);
@@ -206,7 +205,7 @@ impl CompilerTrait for Solc {
     ///
     /// ```no_run
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    ///  use ethers_compile::{CompilerInput, solc::Solc};
+    ///  use ethers_compile::{CompilerTrait, CompilerInput, solc::Solc};
     /// let solc = Solc::default();
     /// let input = CompilerInput::new("./contracts")?;
     /// let output = solc.compile_exact(&input)?;
@@ -226,7 +225,7 @@ impl CompilerTrait for Solc {
     ///
     /// ```no_run
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    ///  use ethers_compile::{CompilerInput, solc::Solc};
+    ///  use ethers_compile::{CompilerTrait, CompilerInput, solc::Solc};
     /// let solc = Solc::default();
     /// let input = CompilerInput::new("./contracts")?;
     /// let output = solc.compile(&input)?;

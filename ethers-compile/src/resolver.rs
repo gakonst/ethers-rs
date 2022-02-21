@@ -57,7 +57,7 @@ use crate::{
 };
 use rayon::prelude::*;
 use regex::Match;
-use semver::{VersionReq};
+use semver::VersionReq;
 use solang_parser::pt::{Import, Loc, SourceUnitPart};
 use uuid::Uuid;
 
