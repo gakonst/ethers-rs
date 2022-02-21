@@ -39,7 +39,6 @@ solang-parser = { default-features = false, version = "0.1.2" }
 rayon = "1.5.1"
 eyre = "0.6.6"
 async-trait = "0.1.52"
-uuid = { version = "0.8", features = ["v4"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 home = "0.5.3"

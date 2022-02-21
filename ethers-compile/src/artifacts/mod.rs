@@ -11,7 +11,6 @@ use std::{
     path::{Path, PathBuf},
     str::FromStr,
 };
-use uuid::Uuid;
 
 use crate::{
     error::CompilerIoError,
@@ -43,7 +42,7 @@ pub type Contracts = FileToContractsMap<Contract>;
 /// An ordered list of files and their source
 pub type Sources = BTreeMap<PathBuf, Source>;
 
-pub type VersionedSources = BTreeMap<Uuid, (GenericCompiler, Version, Sources)>;
+pub type VersionedSources = BTreeMap<GenericCompiler, (Version, Sources)>;
 
 /// Input type `solc` expects
 #[derive(Clone, Debug, Serialize, Deserialize)]

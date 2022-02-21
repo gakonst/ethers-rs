@@ -11,13 +11,13 @@ use crate::{
     version_from_output, CompilerInput, CompilerOutput, Solc, Vyper,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord)]
 pub enum CompilerKindEnum {
     Solc,
     Vyper,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord)]
 pub struct GenericCompiler {
     pub path: PathBuf,
     pub args: Vec<String>,

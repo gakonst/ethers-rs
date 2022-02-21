@@ -88,7 +88,6 @@ use crate::{
 
 use rayon::prelude::*;
 use semver::Version;
-use uuid::Uuid;
 
 use std::collections::btree_map::BTreeMap;
 
@@ -149,7 +148,7 @@ impl<'a, T: ArtifactOutput> ProjectCompiler<'a, T> {
     ) -> Result<Self> {
         let version = compiler.version();
         let (sources, edges) = Graph::resolve_sources(&project.paths, sources)?.into_sources();
-        let sources_by_version = BTreeMap::from([(Uuid::new_v4(), (compiler, version, sources))]);
+        let sources_by_version = BTreeMap::from([(compiler, (version, sources))]);
         let sources = CompilerSources::Sequential(sources_by_version);
 
         Ok(Self { edges, project, sources })
@@ -278,7 +277,7 @@ impl CompilerSources {
         fn triage_sources(input: VersionedSources) -> VersionedSources {
             let mut vsources: VersionedSources = VersionedSources::new();
 
-            for (_uuid, (compiler, _version, sources)) in &input {
+            for (compiler, (_version, sources)) in &input {
                 if sources.is_empty() {
                     continue
                 }
@@ -305,23 +304,15 @@ impl CompilerSources {
 
                 if !solc_sources.is_empty() {
                     vsources.insert(
-                        Uuid::new_v4(),
-                        (
-                            compiler.set_kind(CompilerKindEnum::Solc),
-                            solc_version.expect("solc version"),
-                            solc_sources,
-                        ),
+                        compiler.set_kind(CompilerKindEnum::Solc),
+                        (solc_version.expect("solc version"), solc_sources),
                     );
                 }
 
                 if !vyper_sources.is_empty() {
                     vsources.insert(
-                        Uuid::new_v4(),
-                        (
-                            compiler.set_kind(CompilerKindEnum::Vyper),
-                            vyper_version.expect("vyper version"),
-                            vyper_sources,
-                        ),
+                        compiler.set_kind(CompilerKindEnum::Vyper),
+                        (vyper_version.expect("vyper version"), vyper_sources),
                     );
                 }
             }
@@ -342,9 +333,9 @@ impl CompilerSources {
         ) -> VersionedSources {
             sources
                 .into_iter()
-                .map(|(uuid, (compiler, version, sources))| {
+                .map(|(compiler, (version, sources))| {
                     let sources = cache.filter(sources, &version);
-                    (uuid, (compiler, version, sources))
+                    (compiler, (version, sources))
                 })
                 .collect()
         }
@@ -390,7 +381,7 @@ fn compile_sequential(
     let mut aggregated = AggregatedCompilerOutput::default();
 
     tracing::trace!("compiling {} jobs sequentially", input.len());
-    for (_uuid, (compiler, version, sources)) in input {
+    for (compiler, (version, sources)) in input {
         if sources.is_empty() {
             // nothing to compile
             continue
@@ -441,7 +432,7 @@ fn compile_parallel(
     );
 
     let mut jobs = Vec::with_capacity(input.len());
-    for (_uuid, (compiler, version, sources)) in input {
+    for (compiler, (version, sources)) in input {
         if sources.is_empty() {
             // nothing to compile
             continue

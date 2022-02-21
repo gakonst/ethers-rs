@@ -59,7 +59,6 @@ use rayon::prelude::*;
 use regex::Match;
 use semver::VersionReq;
 use solang_parser::pt::{Import, Loc, SourceUnitPart};
-use uuid::Uuid;
 
 /// The underlying edges of the graph which only contains the raw relationship data.
 ///
@@ -596,7 +595,7 @@ impl VersionedSources {
     pub fn get(
         self,
         allowed_lib_paths: &crate::AllowedLibPaths,
-    ) -> Result<std::collections::BTreeMap<Uuid, (GenericCompiler, semver::Version, Sources)>> {
+    ) -> Result<std::collections::BTreeMap<GenericCompiler, (semver::Version, Sources)>> {
         // we take the installer lock here to ensure installation checking is done in sync
         #[cfg(any(test, feature = "tests"))]
         let _lock = crate::compilers::solc::take_solc_installer_lock();
@@ -632,12 +631,8 @@ impl VersionedSources {
 
             let version = solc.version()?;
             sources_by_version.insert(
-                Uuid::new_v4(),
-                (
-                    GenericCompiler { path: solc.solc, args, kind: Some(CompilerKindEnum::Solc) },
-                    version,
-                    sources,
-                ),
+                GenericCompiler { path: solc.solc, args, kind: Some(CompilerKindEnum::Solc) },
+                (version, sources),
             );
         }
         Ok(sources_by_version)
