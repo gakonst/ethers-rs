@@ -92,7 +92,6 @@ impl GenericCompiler {
     }
 
     pub fn to_vyper(&self) -> Vyper {
-        
         // Filter out solc arguments
         let mut args = vec![];
         let mut skip = false;
@@ -108,7 +107,7 @@ impl GenericCompiler {
             }
         }
 
-        Vyper { args: args, ..Default::default() }
+        Vyper { args, ..Default::default() }
     }
 
     pub fn to_solc(&self) -> Solc {

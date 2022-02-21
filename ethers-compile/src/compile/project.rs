@@ -81,6 +81,7 @@ use crate::{
     compile::compilers::{CompilerKindEnum, GenericCompiler},
     error::Result,
     output::AggregatedCompilerOutput,
+    report,
     resolver::GraphEdges,
     ArtifactOutput, CompilerInput, CompilerOutput, CompilerTrait, Graph, Project,
     ProjectCompileOutput, ProjectPathsConfig, Sources,
@@ -451,23 +452,24 @@ fn compile_parallel(
     let pool = rayon::ThreadPoolBuilder::new().num_threads(num_jobs).build().unwrap();
     let outputs = pool.install(move || {
         jobs.into_par_iter()
-            .map(|(compiler, version, input)| {
-                let compiler = compiler.into_kind();
+            .map(|(compiler, version, input)| match compiler.into_kind() {
+                Some(obj) => {
+                    tracing::trace!(
+                        "calling compiler for {} `{}` {:?} with {} sources: {:?}",
+                        obj.language(),
+                        obj.version(),
+                        obj.get_args(),
+                        input.sources.len(),
+                        input.sources.keys()
+                    );
 
-                match compiler {
-                    Some(obj) => {
-                        tracing::trace!(
-                            "calling compiler for {} `{}` {:?} with {} sources: {:?}",
-                            obj.language(),
-                            obj.version(),
-                            obj.get_args(),
-                            input.sources.len(),
-                            input.sources.keys()
-                        );
-                        obj.compile(&input).map(move |output| (version, output))
-                    }
-                    None => todo!(),
+                    report::compiler_spawn(&compiler, &version, &input);
+                    obj.compile(&input).map(move |output| {
+                        report::compiler_success(&compiler, &version, &output);
+                        (version, output)
+                    })
                 }
+                None => todo!(),
             })
             .collect::<Result<Vec<_>>>()
     })?;

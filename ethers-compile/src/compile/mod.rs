@@ -5,6 +5,8 @@ pub use crate::compile::compilers::*;
 
 use std::{io::BufRead, process::Output, str::FromStr};
 
+pub mod report;
+
 pub mod compilers;
 pub mod contracts;
 pub mod many;

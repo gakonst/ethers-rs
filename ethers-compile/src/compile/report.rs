@@ -1,6 +1,6 @@
 //! Subscribe to events in the compiler pipeline
 
-use super::Solc;
+use super::CompilerTrait;
 use crate::{CompilerInput, CompilerOutput};
 use semver::Version;
 use std::{
@@ -35,8 +35,8 @@ where
 /// Panics if the initialization was unsuccessful, likely because a
 /// global reporter was already installed by another call to `try_init`.
 /// ```rust
-/// use ethers_compile::solc::report::BasicStdoutReporter;
-/// let subscriber = ethers_compile::solc::report::init(BasicStdoutReporter::default());
+/// use ethers_compile::compiler::report::BasicStdoutReporter;
+/// let subscriber = ethers_compile::compiler::report::init(BasicStdoutReporter::default());
 /// ```
 pub fn init<T>(reporter: T)
 where
@@ -56,38 +56,58 @@ where
 ///
 /// A `Reporter` is entirely passive and only listens to incoming "events".
 pub trait Reporter: 'static {
-    /// Callback invoked right before [`Solc::compile()`] is called
-    fn on_solc_spawn(&self, _solc: &Solc, _version: &Version, _input: &CompilerInput) {}
+    /// Callback invoked right before [`CompilerTrait::compile()`] is called
+    fn on_compiler_spawn(
+        &self,
+        _compiler: &(dyn CompilerTrait),
+        _version: &Version,
+        _input: &CompilerInput,
+    ) {
+    }
 
-    /// Invoked with the `CompilerOutput` if [`Solc::compiled()`] was successful
-    fn on_solc_success(&self, _solc: &Solc, _version: &Version, _output: &CompilerOutput) {}
+    /// Invoked with the `CompilerOutput` if [`CompilerTrait::compiled()`] was successful
+    fn on_compiler_success(
+        &self,
+        _compiler: &(dyn CompilerTrait),
+        _version: &Version,
+        _output: &CompilerOutput,
+    ) {
+    }
 
-    /// Invoked before a new [`Solc`] bin is installed
-    fn on_solc_installation_start(&self, _version: &Version) {}
+    /// Invoked before a new [`CompilerTrait`] bin is installed
+    fn on_compiler_installation_start(&self, _version: &Version) {}
 
-    /// Invoked before a new [`Solc`] bin was successfully installed
-    fn on_solc_installation_success(&self, _version: &Version) {}
+    /// Invoked before a new [`CompilerTrait`] bin was successfully installed
+    fn on_compiler_installation_success(&self, _version: &Version) {}
 
     /// Invoked if the import couldn't be resolved
     fn on_unresolved_import(&self, _import: &Path) {}
 }
 
-pub(crate) fn solc_spawn(solc: &Solc, version: &Version, input: &CompilerInput) {
-    with_global(|r| r.reporter.on_solc_spawn(solc, version, input));
+pub(crate) fn compiler_spawn(
+    compiler: &dyn CompilerTrait,
+    version: &Version,
+    input: &CompilerInput,
+) {
+    with_global(|r| r.reporter.on_compiler_spawn(compiler, version, input));
 }
 
-pub(crate) fn solc_success(solc: &Solc, version: &Version, output: &CompilerOutput) {
-    with_global(|r| r.reporter.on_solc_success(solc, version, output));
+pub(crate) fn compiler_success(
+    compiler: &(dyn CompilerTrait),
+    version: &Version,
+    output: &CompilerOutput,
+) {
+    with_global(|r| r.reporter.on_compiler_success(compiler, version, output));
 }
 
 #[allow(unused)]
-pub(crate) fn solc_installation_start(version: &Version) {
-    with_global(|r| r.reporter.on_solc_installation_start(version));
+pub(crate) fn compiler_installation_start(version: &Version) {
+    with_global(|r| r.reporter.on_compiler_installation_start(version));
 }
 
 #[allow(unused)]
-pub(crate) fn solc_installation_success(version: &Version) {
-    with_global(|r| r.reporter.on_solc_installation_success(version));
+pub(crate) fn compiler_installation_success(version: &Version) {
+    with_global(|r| r.reporter.on_compiler_installation_success(version));
 }
 
 pub(crate) fn unresolved_import(import: &Path) {
@@ -124,8 +144,13 @@ impl Reporter for NoReporter {}
 pub struct BasicStdoutReporter(());
 
 impl Reporter for BasicStdoutReporter {
-    /// Callback invoked right before [`Solc::compile()`] is called
-    fn on_solc_spawn(&self, _solc: &Solc, version: &Version, input: &CompilerInput) {
+    /// Callback invoked right before [`CompilerTrait::compile()`] is called
+    fn on_compiler_spawn(
+        &self,
+        _compiler: &dyn CompilerTrait,
+        version: &Version,
+        input: &CompilerInput,
+    ) {
         println!(
             "Compiling {} files with {}.{}.{}",
             input.sources.len(),
@@ -135,18 +160,18 @@ impl Reporter for BasicStdoutReporter {
         );
     }
 
-    /// Invoked with the `CompilerOutput` if [`Solc::compiled()`] was successful
-    fn on_solc_success(&self, _: &Solc, _: &Version, _: &CompilerOutput) {
+    /// Invoked with the `CompilerOutput` if [`CompilerTrait::compiled()`] was successful
+    fn on_compiler_success(&self, _: &(dyn CompilerTrait), _: &Version, _: &CompilerOutput) {
         println!("Compilation finished successfully");
     }
-    /// Invoked before a new [`Solc`] bin is installed
-    fn on_solc_installation_start(&self, version: &Version) {
-        println!("installing solc version \"{}\"", version);
+    /// Invoked before a new [`CompilerTrait`] bin is installed
+    fn on_compiler_installation_start(&self, version: &Version) {
+        println!("installing compiler version \"{}\"", version);
     }
 
-    /// Invoked before a new [`Solc`] bin was successfully installed
-    fn on_solc_installation_success(&self, version: &Version) {
-        println!("Successfully installed solc {}", version);
+    /// Invoked before a new [`CompilerTrait`] bin was successfully installed
+    fn on_compiler_installation_success(&self, version: &Version) {
+        println!("Successfully installed compiler {}", version);
     }
 
     fn on_unresolved_import(&self, import: &Path) {
