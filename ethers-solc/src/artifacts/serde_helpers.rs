@@ -45,14 +45,6 @@ where
     Ok(Option::<T>::deserialize(deserializer)?.unwrap_or_default())
 }
 
-pub fn default_on_error<'de, D, T>(deserializer: D) -> Result<T, D::Error>
-where
-    D: Deserializer<'de>,
-    T: Deserialize<'de> + Default,
-{
-    Ok(Option::<T>::deserialize(deserializer).unwrap_or_default().unwrap_or_default())
-}
-
 pub mod json_string_opt {
     use serde::{
         de::{self, DeserializeOwned},

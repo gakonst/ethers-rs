@@ -18,7 +18,6 @@ pub mod contracts;
 pub mod many;
 pub mod output;
 pub mod project;
-pub mod vyper;
 
 /// The name of the `solc` binary on the system
 pub const SOLC: &str = "solc";

@@ -76,19 +76,18 @@
 
 use crate::{
     artifact_output::Artifacts,
-    artifacts::{Settings, Source, VersionedSources},
+    artifacts::{Settings, VersionedSources},
     cache::ArtifactsCache,
     error::Result,
     output::AggregatedCompilerOutput,
     report,
     resolver::GraphEdges,
-    vyper::Vyper,
     ArtifactOutput, CompilerInput, Graph, Project, ProjectCompileOutput, ProjectPathsConfig, Solc,
     Sources,
 };
 use rayon::prelude::*;
 
-use std::{collections::btree_map::BTreeMap, path::PathBuf};
+use std::collections::btree_map::BTreeMap;
 
 #[derive(Debug)]
 pub struct ProjectCompiler<'a, T: ArtifactOutput> {
@@ -325,69 +324,37 @@ fn compile_sequential(
     paths: &ProjectPathsConfig,
 ) -> Result<AggregatedCompilerOutput> {
     let mut aggregated = AggregatedCompilerOutput::default();
-
-    let mut vyper_sources: BTreeMap<PathBuf, Source> = BTreeMap::new();
-    let mut solc_sources: BTreeMap<PathBuf, Source> = BTreeMap::new();
-
     tracing::trace!("compiling {} jobs sequentially", input.len());
     for (solc, (version, sources)) in input {
         if sources.is_empty() {
             // nothing to compile
             continue
         }
+        tracing::trace!(
+            "compiling {} sources with solc \"{}\" {:?}",
+            sources.len(),
+            solc.as_ref().display(),
+            solc.args
+        );
 
-        for (path, source) in &sources {
-            if path.extension().unwrap().to_str().unwrap() == "vy" {
-                vyper_sources.insert(path.clone(), source.clone());
-            } else {
-                solc_sources.insert(path.clone(), source.clone());
-            }
-        }
+        let input = CompilerInput::with_sources(sources)
+            .settings(settings.clone())
+            .normalize_evm_version(&version)
+            .with_remappings(paths.remappings.clone());
 
-        if vyper_sources.len() > 0 {
-            let mut vyper = Vyper::default();
-            vyper.args = solc.args.clone();
-            let version = version.clone();
-            let mut input = CompilerInput::with_sources(vyper_sources.clone())
-                .settings(settings.clone())
-                .normalize_evm_version(&version)
-                .with_remappings(paths.remappings.clone());
+        tracing::trace!(
+            "calling solc `{}` with {} sources {:?}",
+            version,
+            input.sources.len(),
+            input.sources.keys()
+        );
 
-            input.language = "Vyper".to_string();
+        report::solc_spawn(&solc, &version, &input);
+        let output = solc.compile_exact(&input)?;
+        report::solc_success(&solc, &version, &output);
+        tracing::trace!("compiled input, output has error: {}", output.has_error());
 
-            let output = vyper.compile_exact(&input)?;
-
-            tracing::trace!("compiled input, output has error: {}", output.has_error());
-            aggregated.extend(version, output);
-        }
-
-        if solc_sources.len() > 0 {
-            tracing::trace!(
-                "compiling {} sources with solc \"{}\" {:?}",
-                solc_sources.clone().len(),
-                solc.as_ref().display(),
-                solc.args
-            );
-
-            let input = CompilerInput::with_sources(solc_sources.clone())
-                .settings(settings.clone())
-                .normalize_evm_version(&version)
-                .with_remappings(paths.remappings.clone());
-
-            tracing::trace!(
-                "calling solc `{}` with {} sources {:?}",
-                version,
-                input.sources.len(),
-                input.sources.keys()
-            );
-
-            report::solc_spawn(&solc, &version, &input);
-            let output = solc.compile_exact(&input)?;
-            report::solc_success(&solc, &version, &output);
-            tracing::trace!("compiled input, output has error: {}", output.has_error());
-
-            aggregated.extend(version, output);
-        }
+        aggregated.extend(version, output);
     }
     Ok(aggregated)
 }
