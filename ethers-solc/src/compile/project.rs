@@ -219,11 +219,15 @@ impl<'a, T: ArtifactOutput> CompiledState<'a, T> {
     /// Writes all output contracts to disk if enabled in the `Project`
     fn write_artifacts(self) -> Result<ArtifactsState<'a, T>> {
         let CompiledState { output, cache } = self;
+
         // write all artifacts
         let compiled_artifacts = if !cache.project().no_artifacts {
-            T::on_output(&output.contracts, &cache.project().paths)?
+            cache
+                .project()
+                .artifacts_handler()
+                .on_output(&output.contracts, &cache.project().paths)?
         } else {
-            T::output_to_artifacts(&output.contracts)
+            cache.project().artifacts_handler().output_to_artifacts(&output.contracts)
         };
 
         Ok(ArtifactsState { output, cache, compiled_artifacts })

@@ -87,6 +87,9 @@ impl Client {
                 Url::parse("https://api-testnet.arbiscan.io/api"),
                 Url::parse("https://testnet.arbiscan.io"),
             ),
+            Chain::Cronos => {
+                (Url::parse("https://api.cronoscan.com/api"), Url::parse("https://cronoscan.com"))
+            }
             chain => return Err(EtherscanError::ChainNotSupported(chain)),
         };
 
@@ -116,9 +119,10 @@ impl Client {
             Chain::BinanceSmartChain |
             Chain::BinanceSmartChainTestnet |
             Chain::Arbitrum |
-            Chain::ArbitrumTestnet => std::env::var("ETHERSCAN_API_KEY")?,
+            Chain::ArbitrumTestnet |
+            Chain::Cronos => std::env::var("ETHERSCAN_API_KEY")?,
 
-            Chain::XDai | Chain::Sepolia => String::default(),
+            Chain::XDai | Chain::Sepolia | Chain::CronosTestnet => String::default(),
             Chain::Moonbeam | Chain::MoonbeamDev | Chain::Moonriver => {
                 std::env::var("MOONSCAN_API_KEY")?
             }
@@ -232,7 +236,7 @@ mod tests {
         let err = Client::new_from_env(Chain::XDai).unwrap_err();
 
         assert!(matches!(err, EtherscanError::ChainNotSupported(_)));
-        assert_eq!(err.to_string(), "chain XDai not supported");
+        assert_eq!(err.to_string(), "chain xdai not supported");
     }
 
     pub async fn run_at_least_duration(duration: Duration, block: impl Future) {

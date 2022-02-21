@@ -140,7 +140,7 @@ impl Remapping {
     /// which would be multiple rededications according to our rules ("governance", "protocol-v2"),
     /// are unified into `@aave` by looking at their common ancestor, the root of this subdirectory
     /// (`@aave`)
-    pub fn find_many(root: impl AsRef<Path>) -> Vec<Remapping> {
+    pub fn find_many(dir: impl AsRef<Path>) -> Vec<Remapping> {
         /// prioritize
         ///   - ("a", "1/2") over ("a", "1/2/3")
         ///   - if a path ends with `src`
@@ -163,8 +163,10 @@ impl Remapping {
         // all combined remappings from all subdirs
         let mut all_remappings = HashMap::new();
 
+        let dir = dir.as_ref();
+        let is_inside_node_modules = dir.ends_with("node_modules");
         // iterate over all dirs that are children of the root
-        for dir in walkdir::WalkDir::new(root)
+        for dir in walkdir::WalkDir::new(dir)
             .follow_links(true)
             .min_depth(1)
             .max_depth(1)
@@ -173,9 +175,9 @@ impl Remapping {
             .filter(|e| e.file_type().is_dir())
         {
             let depth1_dir = dir.path();
-
             // check all remappings in this depth 1 folder
-            let candidates = find_remapping_candidates(depth1_dir, depth1_dir, 0);
+            let candidates =
+                find_remapping_candidates(depth1_dir, depth1_dir, 0, is_inside_node_modules);
 
             for candidate in candidates {
                 if let Some(name) = candidate.window_start.file_name().and_then(|s| s.to_str()) {
@@ -359,13 +361,55 @@ impl Candidate {
     ///
     /// Which should be resolved to the top level dir `@openzeppelin`
     ///
+    /// We also treat candidates with a `node_modules` parent directory differently and consider
+    /// them to `hardhat` style. In which case the trailing library barrier `contracts` will be
+    /// stripped from the remapping path. This differs from dapptools style which does not include
+    /// the library barrier path `src` in the solidity import statements. For example, for
+    /// dapptools you could have
+    ///
+    /// ```text
+    /// <root>/lib/<library>
+    /// ├── src
+    ///     ├── A.sol
+    ///     ├── B.sol
+    /// ```
+    ///
+    /// with remapping `library/=library/src/`
+    ///
+    /// whereas with hardhat's import resolver the import statement
+    ///
+    /// ```text
+    /// <root>/node_modules/<library>
+    /// ├── contracts
+    ///     ├── A.sol
+    ///     ├── B.sol
+    /// ```
+    /// with the simple remapping `library/=library/` because hardhat's lib resolver essentially
+    /// joins the import path inside a solidity file with the `nodes_modules` folder when it tries
+    /// to find an imported solidity file. For example
+    ///
+    /// ```solidity
+    /// import "hardhat/console.sol";
+    /// ```
+    /// expects the file to be at: `<root>/node_modules/hardhat/console.sol`.
+    ///
     /// In order to support these cases, we treat the Dapptools case as the outlier, in which case
     /// we only keep the candidate that ends with `src`
+    ///
+    ///   - `candidates`: list of viable remapping candidates
+    ///   - `current_dir`: the directory that's currently processed, like `@openzeppelin/contracts`
+    ///   - `current_level`: the number of nested library dirs encountered
+    ///   - `window_start`: This contains the root directory of the current window. In other words
+    ///     this will be the parent directory of the most recent library barrier, which will be
+    ///     `@openzeppelin` if the `current_dir` is `@openzeppelin/contracts` See also
+    ///     [`next_nested_window()`]
+    ///   - `is_inside_node_modules` whether we're inside a `node_modules` lib
     fn merge_on_same_level(
         candidates: &mut Vec<Candidate>,
         current_dir: &Path,
         current_level: usize,
         window_start: PathBuf,
+        is_inside_node_modules: bool,
     ) {
         if let Some(pos) =
             candidates.iter().position(|c| c.source_dir.ends_with(DAPPTOOLS_CONTRACTS_DIR))
@@ -377,11 +421,14 @@ impl Candidate {
             // there are multiple nested candidates on the current level like `current/{auth,
             // tokens}/contracts/c.sol`
             candidates.retain(|c| c.window_level != current_level);
-            candidates.push(Candidate {
-                window_start,
-                source_dir: current_dir.to_path_buf(),
-                window_level: current_level,
-            });
+
+            let source_dir = if is_inside_node_modules {
+                window_start.clone()
+            } else {
+                current_dir.to_path_buf()
+            };
+
+            candidates.push(Candidate { window_start, source_dir, window_level: current_level });
         }
     }
 
@@ -432,6 +479,7 @@ fn find_remapping_candidates(
     current_dir: &Path,
     open: &Path,
     current_level: usize,
+    is_inside_node_modules: bool,
 ) -> Vec<Candidate> {
     // this is a marker if the current root is a candidate for a remapping
     let mut is_candidate = false;
@@ -470,15 +518,24 @@ fn find_remapping_candidates(
 
                 // check if the subdir is a lib barrier, in which case we open a new window
                 if is_lib_dir(subdir) {
-                    candidates.extend(find_remapping_candidates(subdir, subdir, current_level + 1));
+                    candidates.extend(find_remapping_candidates(
+                        subdir,
+                        subdir,
+                        current_level + 1,
+                        is_inside_node_modules,
+                    ));
                 } else {
                     // continue scanning with the current window
-                    candidates.extend(find_remapping_candidates(subdir, open, current_level));
+                    candidates.extend(find_remapping_candidates(
+                        subdir,
+                        open,
+                        current_level,
+                        is_inside_node_modules,
+                    ));
                 }
             }
         }
     }
-
     // need to find the actual next window in the event `open` is a lib dir
     let window_start = next_nested_window(open, current_dir);
     // finally, we need to merge, adjust candidates from the same level and opening window
@@ -489,7 +546,13 @@ fn find_remapping_candidates(
             .count() >
             1
     {
-        Candidate::merge_on_same_level(&mut candidates, current_dir, current_level, window_start);
+        Candidate::merge_on_same_level(
+            &mut candidates,
+            current_dir,
+            current_level,
+            window_start,
+            is_inside_node_modules,
+        );
     } else {
         // this handles the case if there is a single nested candidate
         if let Some(candidate) = candidates.iter_mut().find(|c| c.window_level == current_level) {
@@ -840,7 +903,6 @@ mod tests {
         ];
         mkdir_or_touch(tmp_dir.path(), &paths[..]);
         let remappings = Remapping::find_many(&tmp_dir_node_modules);
-
         let mut paths = ProjectPathsConfig::hardhat(tmp_dir.path()).unwrap();
         paths.remappings = remappings;
 
@@ -850,7 +912,7 @@ mod tests {
         assert!(resolved.exists());
 
         // adjust remappings
-        paths.remappings[0].name = "@openzeppelin/contracts/".to_string();
+        paths.remappings[0].name = "@openzeppelin/".to_string();
 
         let resolved = paths
             .resolve_library_import(Path::new("@openzeppelin/contracts/token/ERC20/IERC20.sol"))
@@ -1029,7 +1091,7 @@ mod tests {
             },
             Remapping {
                 name: "@openzeppelin/".to_string(),
-                path: to_str(tmp_dir_node_modules.join("@openzeppelin/contracts")),
+                path: to_str(tmp_dir_node_modules.join("@openzeppelin")),
             },
             Remapping {
                 name: "eth-gas-reporter/".to_string(),
