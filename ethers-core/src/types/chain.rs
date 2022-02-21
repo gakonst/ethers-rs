@@ -103,6 +103,8 @@ impl TryFrom<u64> for Chain {
             42 => Chain::Kovan,
             100 => Chain::XDai,
             137 => Chain::Polygon,
+            250 => Chain::Fantom,
+            4002 => Chain::FantomTestnet,
             80001 => Chain::PolygonMumbai,
             43114 => Chain::Avalanche,
             43113 => Chain::AvalancheFuji,
@@ -116,6 +118,8 @@ impl TryFrom<u64> for Chain {
             97 => Chain::BinanceSmartChainTestnet,
             42161 => Chain::Arbitrum,
             421611 => Chain::ArbitrumTestnet,
+            25 => Chain::Cronos,
+            338 => Chain::CronosTestnet,
             _ => return Err(ParseChainError(chain.to_string())),
         })
     }
@@ -147,6 +151,8 @@ impl FromStr for Chain {
             "bsc-testnet" => Chain::BinanceSmartChainTestnet,
             "arbitrum" => Chain::Arbitrum,
             "arbitrum-testnet" => Chain::ArbitrumTestnet,
+            "cronos" => Chain::Cronos,
+            "cronos-testnet" => Chain::CronosTestnet,
             _ => return Err(ParseChainError(chain.to_owned())),
         })
     }
