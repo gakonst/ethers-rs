@@ -22,6 +22,22 @@ pub mod many;
 pub mod output;
 pub mod project;
 
+use async_trait::async_trait;
+
+#[async_trait]
+pub trait CompilerTrait {
+    fn path(&self) -> PathBuf;
+
+    fn arg(&mut self, arg: String);
+    fn args(&mut self, args: Vec<String>);
+
+    fn version(&self) -> Result<Version>;
+    fn language(&self) -> String;
+
+    fn compile_exact(&self, input: &CompilerInput) -> Result<CompilerOutput>;
+    fn compile(&self, input: &CompilerInput) -> Result<CompilerOutput>;
+}
+
 #[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct Placeholder {
     pub path: Option<PathBuf>,

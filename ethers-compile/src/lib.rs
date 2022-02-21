@@ -128,7 +128,8 @@ impl<T: ArtifactOutput> Project<T> {
     /// Applies the configured settings to the given `Solc`
     fn configure_solc(&self, mut solc: solc::Solc) -> solc::Solc {
         if self.allowed_lib_paths.0.is_empty() {
-            solc = solc.arg("--allow-paths").arg(self.allowed_lib_paths.to_string());
+            solc.arg("--allow-paths".to_string());
+            solc.arg(self.allowed_lib_paths.to_string());
         }
         solc
     }

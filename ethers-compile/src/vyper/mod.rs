@@ -6,7 +6,7 @@ use std::{
 };
 
 use crate::{
-    compile::{compile_output, version_from_output},
+    compile::{compile_output, version_from_output, CompilerTrait},
     error::{CompilerError, Result},
     CompilerInput, CompilerOutput, Source,
 };
@@ -32,45 +32,59 @@ impl Default for Vyper {
     }
 }
 
+impl CompilerTrait for Vyper {
+    fn path(&self) -> PathBuf {
+        self.vyper.clone()
+    }
+
+    #[must_use]
+    fn arg(&mut self, arg: String) {
+        self.args.push(arg.into());
+    }
+
+    #[must_use]
+    fn args(&mut self, args: Vec<String>) {
+        for arg in args {
+            self.arg(arg);
+        }
+    }
+
+    fn version(&self) -> Result<Version> {
+        version_from_output(
+            Command::new(&self.vyper)
+                .arg("--version")
+                .stdin(Stdio::piped())
+                .stderr(Stdio::piped())
+                .stdout(Stdio::piped())
+                .output()
+                .map_err(|err| CompilerError::io(err, &self.vyper))?,
+        )
+    }
+
+    fn language(&self) -> String {
+        "Vyper".to_string()
+    }
+
+    fn compile_exact(&self, input: &CompilerInput) -> Result<CompilerOutput> {
+        let mut out = self.compile(input)?;
+        out.retain_files(input.sources.keys().filter_map(|p| p.to_str()));
+        Ok(out)
+    }
+
+    fn compile(&self, input: &CompilerInput) -> Result<CompilerOutput> {
+        self.compile_as(input)
+    }
+}
+
 impl Vyper {
     /// A new instance which points to `vyper`
     pub fn new(path: impl Into<PathBuf>) -> Self {
         Vyper { vyper: path.into(), args: Vec::new() }
     }
 
-    /// Adds an argument to pass to the `solc` command.
-    #[must_use]
-    pub fn arg<T: Into<String>>(mut self, arg: T) -> Self {
-        self.args.push(arg.into());
-        self
-    }
-
-    /// Adds multiple arguments to pass to the `solc`.
-    #[must_use]
-    pub fn args<I, S>(mut self, args: I) -> Self
-    where
-        I: IntoIterator<Item = S>,
-        S: Into<String>,
-    {
-        for arg in args {
-            self = self.arg(arg);
-        }
-        self
-    }
-
     pub fn compile_source(&self, path: impl AsRef<Path>) -> Result<CompilerOutput> {
         let path = path.as_ref();
         self.compile(&CompilerInput::new(path)?)
-    }
-
-    pub fn compile_exact(&self, input: &CompilerInput) -> Result<CompilerOutput> {
-        let mut out = self.compile(input)?;
-        out.retain_files(input.sources.keys().filter_map(|p| p.to_str()));
-        Ok(out)
-    }
-
-    pub fn compile<T: Serialize>(&self, input: &T) -> Result<CompilerOutput> {
-        self.compile_as(input)
     }
 
     pub fn compile_as<T: Serialize, D: DeserializeOwned>(&self, input: &T) -> Result<D> {

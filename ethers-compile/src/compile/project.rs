@@ -84,7 +84,7 @@ use crate::{
     resolver::GraphEdges,
     solc::{report, Solc},
     vyper::Vyper,
-    ArtifactOutput, CompilerInput, CompilerKind, CompilerOutput, Graph, Project,
+    ArtifactOutput, CompilerInput, CompilerKind, CompilerOutput, CompilerTrait, Graph, Project,
     ProjectCompileOutput, ProjectPathsConfig, Sources,
 };
 use eyre::eyre;
@@ -305,10 +305,11 @@ impl CompilerSources {
                 }
 
                 if solc_sources.len() > 0 {
-                    let solc = match get_compiler_path(compiler) {
-                        Some(path) => Solc::new(path).args(get_compiler_args(compiler)),
-                        None => Solc::default().args(get_compiler_args(compiler)),
+                    let mut solc = match get_compiler_path(compiler) {
+                        Some(path) => Solc::new(path),
+                        None => Solc::default(),
                     };
+                    solc.args(get_compiler_args(compiler));
 
                     vsources.insert(
                         CompilerKind::Solc(solc, solc_version.clone().expect("solc version")),
@@ -321,7 +322,8 @@ impl CompilerSources {
                     //     Some(path) => Vyper::new(path).args(get_compiler_args(compiler)),
                     //     None => Vyper::default().args(get_compiler_args(compiler)),
                     // };
-                    let vyper = Vyper::default().args(get_compiler_args(compiler));
+                    let mut vyper = Vyper::default();
+                    vyper.args(get_compiler_args(compiler));
 
                     vsources.insert(
                         CompilerKind::Vyper(vyper, vyper_version.clone().expect("vyper version")),

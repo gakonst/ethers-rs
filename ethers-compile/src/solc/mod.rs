@@ -5,7 +5,7 @@ use crate::{
     artifacts::Source,
     compile::{compile_output, version_from_output},
     error::{CompilerError, Result},
-    utils, CompilerInput, CompilerKind, CompilerOutput,
+    utils, CompilerInput, CompilerKind, CompilerOutput, CompilerTrait,
 };
 use semver::{Version, VersionReq};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -159,30 +159,85 @@ impl fmt::Display for Solc {
     }
 }
 
+impl CompilerTrait for Solc {
+    fn path(&self) -> PathBuf {
+        self.solc.clone()
+    }
+
+    #[must_use]
+    fn arg(&mut self, arg: String) {
+        self.args.push(arg.into());
+    }
+
+    #[must_use]
+    fn args(&mut self, args: Vec<String>) {
+        for arg in args {
+            self.arg(arg);
+        }
+    }
+
+    fn version(&self) -> Result<Version> {
+        version_from_output(
+            Command::new(&self.solc)
+                .arg("--version")
+                .stdin(Stdio::piped())
+                .stderr(Stdio::piped())
+                .stdout(Stdio::piped())
+                .output()
+                .map_err(|err| CompilerError::io(err, &self.solc))?,
+        )
+    }
+
+    fn language(&self) -> String {
+        "Solidity".to_string()
+    }
+
+    /// Same as [`Self::compile()`], but only returns those files which are included in the
+    /// `CompilerInput`.
+    ///
+    /// In other words, this removes those files from the `CompilerOutput` that are __not__ included
+    /// in the provided `CompilerInput`.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    ///  use ethers_compile::{CompilerInput, solc::Solc};
+    /// let solc = Solc::default();
+    /// let input = CompilerInput::new("./contracts")?;
+    /// let output = solc.compile_exact(&input)?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    fn compile_exact(&self, input: &CompilerInput) -> Result<CompilerOutput> {
+        let mut out = self.compile(input)?;
+        out.retain_files(input.sources.keys().filter_map(|p| p.to_str()));
+        Ok(out)
+    }
+
+    /// Run `solc --stand-json` and return the `solc`'s output as
+    /// `CompilerOutput`
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    ///  use ethers_compile::{CompilerInput, solc::Solc};
+    /// let solc = Solc::default();
+    /// let input = CompilerInput::new("./contracts")?;
+    /// let output = solc.compile(&input)?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    fn compile(&self, input: &CompilerInput) -> Result<CompilerOutput> {
+        self.compile_as(input)
+    }
+}
+
 impl Solc {
     /// A new instance which points to `solc`
     pub fn new(path: impl Into<PathBuf>) -> Self {
         Solc { solc: path.into(), args: Vec::new() }
-    }
-
-    /// Adds an argument to pass to the `solc` command.
-    #[must_use]
-    pub fn arg<T: Into<String>>(mut self, arg: T) -> Self {
-        self.args.push(arg.into());
-        self
-    }
-
-    /// Adds multiple arguments to pass to the `solc`.
-    #[must_use]
-    pub fn args<I, S>(mut self, args: I) -> Self
-    where
-        I: IntoIterator<Item = S>,
-        S: Into<String>,
-    {
-        for arg in args {
-            self = self.arg(arg);
-        }
-        self
     }
 
     /// Returns the directory in which [svm](https://github.com/roynalnaruto/svm-rs) stores all versions
@@ -410,47 +465,6 @@ impl Solc {
     pub fn compile_source(&self, path: impl AsRef<Path>) -> Result<CompilerOutput> {
         let path = path.as_ref();
         self.compile(&CompilerInput::new(path)?)
-    }
-
-    /// Same as [`Self::compile()`], but only returns those files which are included in the
-    /// `CompilerInput`.
-    ///
-    /// In other words, this removes those files from the `CompilerOutput` that are __not__ included
-    /// in the provided `CompilerInput`.
-    ///
-    /// # Example
-    ///
-    /// ```no_run
-    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    ///  use ethers_compile::{CompilerInput, solc::Solc};
-    /// let solc = Solc::default();
-    /// let input = CompilerInput::new("./contracts")?;
-    /// let output = solc.compile_exact(&input)?;
-    /// # Ok(())
-    /// # }
-    /// ```
-    pub fn compile_exact(&self, input: &CompilerInput) -> Result<CompilerOutput> {
-        let mut out = self.compile(input)?;
-        out.retain_files(input.sources.keys().filter_map(|p| p.to_str()));
-        Ok(out)
-    }
-
-    /// Run `solc --stand-json` and return the `solc`'s output as
-    /// `CompilerOutput`
-    ///
-    /// # Example
-    ///
-    /// ```no_run
-    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    ///  use ethers_compile::{CompilerInput, solc::Solc};
-    /// let solc = Solc::default();
-    /// let input = CompilerInput::new("./contracts")?;
-    /// let output = solc.compile(&input)?;
-    /// # Ok(())
-    /// # }
-    /// ```
-    pub fn compile<T: Serialize>(&self, input: &T) -> Result<CompilerOutput> {
-        self.compile_as(input)
     }
 
     /// Run `solc --stand-json` and return the `solc`'s output as the given json
