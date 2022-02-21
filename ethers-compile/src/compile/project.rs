@@ -79,7 +79,7 @@ use crate::{
     artifacts::{Settings, VersionedSources},
     cache::ArtifactsCache,
     compile::compilers::{CompilerKindEnum, GenericCompiler},
-    error::Result,
+    error::{CompilerError, Result},
     output::AggregatedCompilerOutput,
     report,
     resolver::GraphEdges,
@@ -410,7 +410,12 @@ fn compile_sequential(
             input.sources.len(),
             input.sources.keys()
         );
-        let output: CompilerOutput = compiler.compile_exact(&input)?;
+
+        let output: CompilerOutput = match compiler.into_kind() {
+            Some(obj) => obj.compile_exact(&input)?,
+            None => return Err(CompilerError::Message("no kind on generic compiler".to_string())),
+        };
+
         tracing::trace!("compiled input, output has error: {}", output.has_error());
 
         aggregated.extend(version, output);
