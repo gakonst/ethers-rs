@@ -35,8 +35,8 @@ where
 /// Panics if the initialization was unsuccessful, likely because a
 /// global reporter was already installed by another call to `try_init`.
 /// ```rust
-/// use ethers_compile::compiler::report::BasicStdoutReporter;
-/// let subscriber = ethers_compile::compiler::report::init(BasicStdoutReporter::default());
+/// use ethers_compile::report::BasicStdoutReporter;
+/// let subscriber = ethers_compile::report::init(BasicStdoutReporter::default());
 /// ```
 pub fn init<T>(reporter: T)
 where
