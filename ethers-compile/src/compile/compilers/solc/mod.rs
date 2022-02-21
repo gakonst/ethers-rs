@@ -1,21 +1,19 @@
 pub mod report;
 pub mod sourcemap;
 
+use super::CompilerTrait;
 use crate::{
     artifacts::Source,
     compile::{compile_output, version_from_output},
     error::{CompilerError, Result},
-    utils, CompilerInput, CompilerKind, CompilerOutput, CompilerTrait,
+    utils, CompilerInput, CompilerOutput,
 };
 use semver::{Version, VersionReq};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
-
 use std::{
     fmt,
-    io::BufRead,
     path::{Path, PathBuf},
-    process::{Command, Output, Stdio},
-    str::FromStr,
+    process::{Command, Stdio},
 };
 
 /// The name of the `solc` binary on the system
@@ -164,19 +162,23 @@ impl CompilerTrait for Solc {
         self.solc.clone()
     }
 
-    #[must_use]
+    
     fn arg(&mut self, arg: String) {
-        self.args.push(arg.into());
+        self.args.push(arg);
     }
 
-    #[must_use]
+    
     fn args(&mut self, args: Vec<String>) {
         for arg in args {
             self.arg(arg);
         }
     }
 
-    fn version(&self) -> Result<Version> {
+    fn get_args(&self) -> Vec<String> {
+        self.args.clone()
+    }
+
+    fn version(&self) -> Version {
         version_from_output(
             Command::new(&self.solc)
                 .arg("--version")
@@ -184,12 +186,14 @@ impl CompilerTrait for Solc {
                 .stderr(Stdio::piped())
                 .stdout(Stdio::piped())
                 .output()
-                .map_err(|err| CompilerError::io(err, &self.solc))?,
+                .map_err(|err| CompilerError::io(err, &self.solc))
+                .expect("version"),
         )
+        .expect("version")
     }
 
     fn language(&self) -> String {
-        "Solidity".to_string()
+        Solc::compiler_language()
     }
 
     /// Same as [`Self::compile()`], but only returns those files which are included in the
@@ -238,6 +242,10 @@ impl Solc {
     /// A new instance which points to `solc`
     pub fn new(path: impl Into<PathBuf>) -> Self {
         Solc { solc: path.into(), args: Vec::new() }
+    }
+
+    pub fn compiler_language() -> String {
+        "Solidity".to_string()
     }
 
     /// Returns the directory in which [svm](https://github.com/roynalnaruto/svm-rs) stores all versions
@@ -415,9 +423,9 @@ impl Solc {
     #[cfg(feature = "svm")]
     pub async fn install(version: &Version) -> std::result::Result<(), svm::SolcVmError> {
         tracing::trace!("installing solc version \"{}\"", version);
-        crate::solc::report::solc_installation_start(version);
+        crate::compilers::solc::report::solc_installation_start(version);
         let result = svm::install(version).await;
-        crate::solc::report::solc_installation_success(version);
+        crate::compilers::solc::report::solc_installation_success(version);
         result
     }
 
@@ -425,9 +433,9 @@ impl Solc {
     #[cfg(all(feature = "svm", feature = "async"))]
     pub fn blocking_install(version: &Version) -> std::result::Result<(), svm::SolcVmError> {
         tracing::trace!("blocking installing solc version \"{}\"", version);
-        crate::solc::report::solc_installation_start(version);
+        crate::compilers::solc::report::solc_installation_start(version);
         svm::blocking_install(version)?;
-        crate::solc::report::solc_installation_success(version);
+        crate::compilers::solc::report::solc_installation_success(version);
         Ok(())
     }
 
@@ -590,21 +598,21 @@ impl Solc {
     /// let outputs = Solc::compile_many([(solc1, input1), (solc2, input2)], 2).await.flattened().unwrap();
     /// # }
     /// ```
-    pub async fn compile_many<I>(jobs: I, n: usize) -> crate::many::CompiledMany
+    pub async fn compile_many<I>(jobs: I, n: usize) -> crate::many::CompiledMany<Solc>
     where
         I: IntoIterator<Item = (Solc, CompilerInput)>,
     {
         use futures_util::stream::StreamExt;
 
         let outputs = futures_util::stream::iter(jobs.into_iter().map(|(solc, input)| async {
-            let version = solc.version().expect("solc version");
-            (solc.async_compile(&input).await, CompilerKind::Solc(solc, version), input)
+            // let version = solc.version().expect("solc version");
+            (solc.async_compile(&input).await, solc, input)
         }))
         .buffer_unordered(n)
         .collect::<Vec<_>>()
         .await;
 
-        crate::many::CompiledMany::new(outputs)
+        crate::many::CompiledMany::<Solc>::new(outputs)
     }
 }
 

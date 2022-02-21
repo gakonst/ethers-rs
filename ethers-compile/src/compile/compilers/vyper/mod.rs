@@ -37,19 +37,23 @@ impl CompilerTrait for Vyper {
         self.vyper.clone()
     }
 
-    #[must_use]
+    
     fn arg(&mut self, arg: String) {
-        self.args.push(arg.into());
+        self.args.push(arg);
     }
 
-    #[must_use]
+    
     fn args(&mut self, args: Vec<String>) {
         for arg in args {
             self.arg(arg);
         }
     }
 
-    fn version(&self) -> Result<Version> {
+    fn get_args(&self) -> Vec<String> {
+        self.args.clone()
+    }
+
+    fn version(&self) -> Version {
         version_from_output(
             Command::new(&self.vyper)
                 .arg("--version")
@@ -57,12 +61,14 @@ impl CompilerTrait for Vyper {
                 .stderr(Stdio::piped())
                 .stdout(Stdio::piped())
                 .output()
-                .map_err(|err| CompilerError::io(err, &self.vyper))?,
+                .map_err(|err| CompilerError::io(err, &self.vyper))
+                .expect("version"),
         )
+        .expect("version")
     }
 
     fn language(&self) -> String {
-        "Vyper".to_string()
+        Vyper::compiler_language()
     }
 
     fn compile_exact(&self, input: &CompilerInput) -> Result<CompilerOutput> {
@@ -80,6 +86,10 @@ impl Vyper {
     /// A new instance which points to `vyper`
     pub fn new(path: impl Into<PathBuf>) -> Self {
         Vyper { vyper: path.into(), args: Vec::new() }
+    }
+
+    pub fn compiler_language() -> String {
+        "Vyper".to_string()
     }
 
     pub fn compile_source(&self, path: impl AsRef<Path>) -> Result<CompilerOutput> {

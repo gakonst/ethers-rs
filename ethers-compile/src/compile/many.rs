@@ -1,26 +1,26 @@
-use crate::{error::Result, CompilerInput, CompilerKind, CompilerOutput};
+use crate::{error::Result, CompilerInput, CompilerOutput};
 
 /// The result of a `solc` process bundled with its `Solc` and `CompilerInput`
-type CompileElement = (Result<CompilerOutput>, CompilerKind, CompilerInput);
+type CompileElement<T> = (Result<CompilerOutput>, T, CompilerInput);
 
 /// The bundled output of multiple `solc` processes.
 #[derive(Debug)]
-pub struct CompiledMany {
-    outputs: Vec<CompileElement>,
+pub struct CompiledMany<T> {
+    outputs: Vec<CompileElement<T>>,
 }
 
-impl CompiledMany {
-    pub fn new(outputs: Vec<CompileElement>) -> Self {
+impl<T> CompiledMany<T> {
+    pub fn new(outputs: Vec<CompileElement<T>>) -> Self {
         Self { outputs }
     }
 
     /// Returns an iterator over all output elements
-    pub fn outputs(&self) -> impl Iterator<Item = &CompileElement> {
+    pub fn outputs(&self) -> impl Iterator<Item = &CompileElement<T>> {
         self.outputs.iter()
     }
 
     /// Returns an iterator over all output elements
-    pub fn into_outputs(self) -> impl Iterator<Item = CompileElement> {
+    pub fn into_outputs(self) -> impl Iterator<Item = CompileElement<T>> {
         self.outputs.into_iter()
     }
 
@@ -30,7 +30,7 @@ impl CompiledMany {
     }
 }
 
-impl IntoIterator for CompiledMany {
+impl<T> IntoIterator for CompiledMany<T> {
     type Item = Result<CompilerOutput>;
     type IntoIter = std::vec::IntoIter<Result<CompilerOutput>>;
 

@@ -1,6 +1,10 @@
+mod compile;
+pub use compile::{
+    output::{AggregatedCompilerOutput, ProjectCompileOutput},
+    *,
+};
+
 pub mod artifacts;
-pub mod solc;
-pub mod vyper;
 
 pub use artifacts::{CompilerInput, CompilerOutput, EvmVersion};
 use std::collections::BTreeMap;
@@ -13,12 +17,6 @@ pub use artifact_output::*;
 mod resolver;
 pub use hh::{HardhatArtifact, HardhatArtifacts};
 pub use resolver::Graph;
-
-mod compile;
-pub use compile::{
-    output::{AggregatedCompilerOutput, ProjectCompileOutput},
-    *,
-};
 
 mod config;
 pub use config::{AllowedLibPaths, CompilerConfig, PathStyle, ProjectPathsConfig};
@@ -267,7 +265,7 @@ impl<T: ArtifactOutput> Project<T> {
         project::ProjectCompiler::with_sources_and_compiler(
             self,
             sources,
-            CompilerKind::Solc(self.configure_solc(solc.clone()), solc.version().expect("version")),
+            self.configure_solc(solc.clone()).into(),
         )?
         .compile()
     }

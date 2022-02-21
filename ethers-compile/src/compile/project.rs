@@ -6,7 +6,7 @@
 //! dependencies are resolved. The graph holds all the relationships between the files and their
 //! versions. From there the appropriate version set is derived
 //! [`crate::Graph::into_sources_by_version()`] which need to be compiled with different
-//! [`crate::Solc`] versions.
+//! [`crate::compilers::solc`] versions.
 //!
 //! At this point we check if we need to compile a source file or whether we can reuse an _existing_
 //! `Artifact`. We don't to compile if:
@@ -76,22 +76,21 @@
 
 use crate::{
     artifact_output::Artifacts,
-    artifacts::{Settings, Source, VersionedSources},
+    artifacts::{Settings, VersionedSources},
     cache::ArtifactsCache,
-    error::{CompilerError, Result},
-    get_compiler_args, get_compiler_language, get_compiler_path, get_compiler_version,
+    compile::compilers::{CompilerKindEnum, GenericCompiler},
+    error::{Result},
     output::AggregatedCompilerOutput,
     resolver::GraphEdges,
-    solc::{report, Solc},
-    vyper::Vyper,
-    ArtifactOutput, CompilerInput, CompilerKind, CompilerOutput, CompilerTrait, Graph, Project,
+    ArtifactOutput, CompilerInput, CompilerOutput, CompilerTrait, Graph, Project,
     ProjectCompileOutput, ProjectPathsConfig, Sources,
 };
-use eyre::eyre;
+
 use rayon::prelude::*;
 use semver::Version;
+use uuid::Uuid;
 
-use std::{collections::btree_map::BTreeMap, path::PathBuf};
+use std::{collections::btree_map::BTreeMap};
 
 #[derive(Debug)]
 pub struct ProjectCompiler<'a, T: ArtifactOutput> {
@@ -146,11 +145,11 @@ impl<'a, T: ArtifactOutput> ProjectCompiler<'a, T> {
     pub fn with_sources_and_compiler(
         project: &'a Project<T>,
         sources: Sources,
-        compiler: CompilerKind,
+        compiler: GenericCompiler,
     ) -> Result<Self> {
-        let version = get_compiler_version(&compiler);
+        let version = compiler.version();
         let (sources, edges) = Graph::resolve_sources(&project.paths, sources)?.into_sources();
-        let sources_by_version = BTreeMap::from([(compiler, (version, sources))]);
+        let sources_by_version = BTreeMap::from([(Uuid::new_v4(), (compiler, version, sources))]);
         let sources = CompilerSources::Sequential(sources_by_version);
 
         Ok(Self { edges, project, sources })
@@ -264,7 +263,7 @@ impl<'a, T: ArtifactOutput> ArtifactsState<'a, T> {
 }
 
 /// Determines how the `solc <-> sources` pairs are executed
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 #[allow(dead_code)]
 enum CompilerSources {
     /// Compile all these sequentially
@@ -279,7 +278,7 @@ impl CompilerSources {
         fn triage_sources(input: VersionedSources) -> VersionedSources {
             let mut vsources: VersionedSources = VersionedSources::new();
 
-            for (compiler, (version, sources)) in &input {
+            for (_uuid, (compiler, _version, sources)) in &input {
                 if sources.is_empty() {
                     continue
                 }
@@ -294,40 +293,35 @@ impl CompilerSources {
                     if path.extension().unwrap().to_str().unwrap() == "vy" {
                         vyper_sources.insert(path.clone(), source.clone());
                         if vyper_version.is_none() {
-                            vyper_version = Some(get_compiler_version(&compiler));
+                            vyper_version = Some(compiler.version());
                         }
                     } else {
                         solc_sources.insert(path.clone(), source.clone());
                         if solc_version.is_none() {
-                            solc_version = Some(get_compiler_version(&compiler));
+                            solc_version = Some(compiler.version());
                         }
                     }
                 }
 
-                if solc_sources.len() > 0 {
-                    let mut solc = match get_compiler_path(compiler) {
-                        Some(path) => Solc::new(path),
-                        None => Solc::default(),
-                    };
-                    solc.args(get_compiler_args(compiler));
-
+                if !solc_sources.is_empty() {
                     vsources.insert(
-                        CompilerKind::Solc(solc, solc_version.clone().expect("solc version")),
-                        (solc_version.expect("solc version"), solc_sources),
+                        Uuid::new_v4(),
+                        (
+                            compiler.set_kind(CompilerKindEnum::Solc),
+                            solc_version.expect("solc version"),
+                            solc_sources,
+                        ),
                     );
                 }
 
-                if vyper_sources.len() > 0 {
-                    // let vyper = match get_compiler_path(compiler) {
-                    //     Some(path) => Vyper::new(path).args(get_compiler_args(compiler)),
-                    //     None => Vyper::default().args(get_compiler_args(compiler)),
-                    // };
-                    let mut vyper = Vyper::default();
-                    vyper.args(get_compiler_args(compiler));
-
+                if !vyper_sources.is_empty() {
                     vsources.insert(
-                        CompilerKind::Vyper(vyper, vyper_version.clone().expect("vyper version")),
-                        (vyper_version.expect("vyper version"), vyper_sources),
+                        Uuid::new_v4(),
+                        (
+                            compiler.set_kind(CompilerKindEnum::Vyper),
+                            vyper_version.expect("vyper version"),
+                            vyper_sources,
+                        ),
                     );
                 }
             }
@@ -348,9 +342,9 @@ impl CompilerSources {
         ) -> VersionedSources {
             sources
                 .into_iter()
-                .map(|(solc, (version, sources))| {
+                .map(|(uuid, (compiler, version, sources))| {
                     let sources = cache.filter(sources, &version);
-                    (solc, (version, sources))
+                    (uuid, (compiler, version, sources))
                 })
                 .collect()
         }
@@ -396,19 +390,19 @@ fn compile_sequential(
     let mut aggregated = AggregatedCompilerOutput::default();
 
     tracing::trace!("compiling {} jobs sequentially", input.len());
-    for (compiler, (version, sources)) in input {
+    for (_uuid, (compiler, version, sources)) in input {
         if sources.is_empty() {
             // nothing to compile
             continue
         }
 
-        let compiler_language = get_compiler_language(&compiler);
+        let compiler_language = compiler.language();
         tracing::trace!(
             "compiling {} sources with {} \"_\" {:?}",
             sources.clone().len(),
             compiler_language,
             // compiler.as_ref().display(),
-            get_compiler_args(&compiler)
+            compiler.get_args()
         );
 
         let input = CompilerInput::with_sources(sources.clone())
@@ -420,18 +414,11 @@ fn compile_sequential(
         tracing::trace!(
             "calling {} `{}` with {} sources {:?}",
             compiler_language,
-            get_compiler_version(&compiler),
+            compiler.version(),
             input.sources.len(),
             input.sources.keys()
         );
-
-        let output: CompilerOutput = match compiler {
-            CompilerKind::Placeholder(_, _) => {
-                return Err(CompilerError::CompilerError("Placeholder cannot compile".to_string()))
-            }
-            CompilerKind::Solc(obj, _) => obj.compile_exact(&input)?,
-            CompilerKind::Vyper(obj, _) => obj.compile_exact(&input)?,
-        };
+        let output: CompilerOutput = compiler.compile_exact(&input)?;
         tracing::trace!("compiled input, output has error: {}", output.has_error());
 
         aggregated.extend(version, output);
@@ -454,14 +441,14 @@ fn compile_parallel(
     );
 
     let mut jobs = Vec::with_capacity(input.len());
-    for (compiler, (version, sources)) in input {
+    for (_uuid, (compiler, version, sources)) in input {
         if sources.is_empty() {
             // nothing to compile
             continue
         }
 
         let job = CompilerInput::with_sources(sources)
-            .language(get_compiler_language(&compiler))
+            .language(compiler.language())
             .settings(settings.clone())
             .normalize_evm_version(&version)
             .with_remappings(paths.remappings.clone());
@@ -474,25 +461,21 @@ fn compile_parallel(
     let outputs = pool.install(move || {
         jobs.into_par_iter()
             .map(|(compiler, version, input)| {
-                tracing::trace!(
-                    "calling solc `{}` {:?} with {} sources: {:?}",
-                    version,
-                    get_compiler_args(&compiler),
-                    input.sources.len(),
-                    input.sources.keys()
-                );
-                // report::solc_spawn(&solc, &version, &input);
+                let compiler = compiler.into_kind();
+
                 match compiler {
-                    CompilerKind::Placeholder(_, _) => {
-                        Err(CompilerError::CompilerError("Placeholder cannot compile".to_string()))
-                    }
-                    CompilerKind::Solc(obj, _) => obj.compile(&input).map(move |output| {
-                        report::solc_success(&obj, &version, &output);
-                        (version, output)
-                    }),
-                    CompilerKind::Vyper(obj, _) => {
+                    Some(obj) => {
+                        tracing::trace!(
+                            "calling compiler for {} `{}` {:?} with {} sources: {:?}",
+                            obj.language(),
+                            obj.version(),
+                            obj.get_args(),
+                            input.sources.len(),
+                            input.sources.keys()
+                        );
                         obj.compile(&input).map(move |output| (version, output))
                     }
+                    None => todo!(),
                 }
             })
             .collect::<Result<Vec<_>>>()

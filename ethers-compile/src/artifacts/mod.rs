@@ -11,6 +11,7 @@ use std::{
     path::{Path, PathBuf},
     str::FromStr,
 };
+use uuid::Uuid;
 
 use crate::{
     error::CompilerIoError,
@@ -19,7 +20,7 @@ use crate::{
         sourcemap::{self, SourceMap, SyntaxError},
         *,
     },
-    utils, CompilerKind,
+    utils, CompilerTrait, GenericCompiler,
 };
 use ethers_core::abi::Address;
 use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
@@ -42,7 +43,7 @@ pub type Contracts = FileToContractsMap<Contract>;
 /// An ordered list of files and their source
 pub type Sources = BTreeMap<PathBuf, Source>;
 
-pub type VersionedSources = BTreeMap<CompilerKind, (Version, Sources)>;
+pub type VersionedSources = BTreeMap<Uuid, (GenericCompiler, Version, Sources)>;
 
 /// Input type `solc` expects
 #[derive(Clone, Debug, Serialize, Deserialize)]
