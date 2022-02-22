@@ -173,12 +173,16 @@ impl Context {
 
             internal_structs
         } else if abi_str.starts_with('{') {
-            abi_str = serde_json::to_string(&abi).context("fail to serialize abi to json")?;
-
-            serde_json::from_str::<RawAbi>(&abi_str)
-                .ok()
-                .map(InternalStructs::new)
-                .unwrap_or_default()
+            if let Ok(abi) = serde_json::from_str::<RawAbi>(&abi_str) {
+                if let Ok(s) = serde_json::to_string(&abi) {
+                    // need to update the `abi_str` here because we only want the `"abi": [...]`
+                    // part of the json object in the contract binding
+                    abi_str = s;
+                }
+                InternalStructs::new(abi)
+            } else {
+                InternalStructs::default()
+            }
         } else {
             serde_json::from_str::<RawAbi>(&abi_str)
                 .ok()

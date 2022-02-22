@@ -718,7 +718,7 @@ mod tests {
     }
 
     #[test]
-    fn can_detect_incosistent_single_file_crate() {
+    fn can_detect_inconsistent_single_file_crate() {
         run_test(|context| {
             let Context { multi_gen, mod_root } = context;
 

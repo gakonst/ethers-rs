@@ -8,7 +8,8 @@ use serde::{
 };
 
 /// Contract ABI as a list of items where each item can be a function, constructor or event
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
+#[serde(transparent)]
 pub struct RawAbi(Vec<Item>);
 
 impl IntoIterator for RawAbi {
