@@ -2,11 +2,15 @@
 
 use std::{borrow::Cow, path::PathBuf};
 
+use contract::ContractMetadata;
 use reqwest::{header, Url};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use errors::EtherscanError;
-use ethers_core::{abi::Address, types::Chain};
+use ethers_core::{
+    abi::{Abi, Address},
+    types::Chain,
+};
 
 pub mod contract;
 pub mod errors;
@@ -27,7 +31,45 @@ pub struct Client {
     /// Etherscan base endpoint like https://etherscan.io
     etherscan_url: Url,
     /// Path to where ABI files should be cached
-    cache: Option<PathBuf>,
+    cache: Option<Cache>,
+}
+
+#[derive(Clone, Debug)]
+// Simple cache for etherscan requests
+struct Cache(PathBuf);
+
+impl Cache {
+    fn get_abi(&self, address: Address) -> Result<Option<ethers_core::abi::Abi>> {
+        self.get("abi", address)
+    }
+
+    fn set_abi(&self, address: Address, abi: &Abi) -> Result<()> {
+        self.set("abi", address, abi)
+    }
+
+    fn get_source(&self, address: Address) -> Result<Option<ContractMetadata>> {
+        self.get("sources", address)
+    }
+
+    fn set_source(&self, address: Address, source: &ContractMetadata) -> Result<()> {
+        self.set("sources", address, source)
+    }
+
+    fn set<T: Serialize>(&self, prefix: &str, address: Address, item: T) -> Result<()> {
+        let path = self.0.join(prefix).join(format!("{:?}.json", address));
+        let writer = std::io::BufWriter::new(std::fs::File::create(path)?);
+        serde_json::to_writer(writer, &item)?;
+        Ok(())
+    }
+
+    fn get<T: DeserializeOwned>(&self, prefix: &str, address: Address) -> Result<Option<T>> {
+        let path = self.0.join(prefix).join(format!("{:?}.json", address));
+        let reader = std::io::BufReader::new(std::fs::File::create(path)?);
+        if let Ok(inner) = serde_json::from_reader(reader) {
+            return Ok(Some(inner))
+        }
+        Ok(None)
+    }
 }
 
 impl Client {
@@ -37,7 +79,7 @@ impl Client {
         cache: Option<PathBuf>,
     ) -> Result<Self> {
         let mut this = Self::new(chain, api_key)?;
-        this.cache = cache;
+        this.cache = cache.map(Cache);
         Ok(this)
     }
 

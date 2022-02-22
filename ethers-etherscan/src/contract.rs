@@ -236,15 +236,20 @@ impl Client {
     pub async fn contract_abi(&self, address: Address) -> Result<Abi> {
         // apply caching
         if let Some(ref cache) = self.cache {
-            let path = cache.join("abis").join(format!("{:?}.json", address));
-            let reader = std::io::BufReader::new(std::fs::File::create(path)?);
-            let abi = serde_json::from_reader(reader)?;
-            return Ok(abi)
+            if let Some(abi) = cache.get_abi(address)? {
+                return Ok(abi)
+            }
         }
 
         let query = self.create_query("contract", "getabi", HashMap::from([("address", address)]));
         let resp: Response<String> = self.get_json(&query).await?;
-        Ok(serde_json::from_str(&resp.result)?)
+        let abi = serde_json::from_str(&resp.result)?;
+
+        if let Some(ref cache) = self.cache {
+            cache.set_abi(address, &abi)?;
+        }
+
+        Ok(abi)
     }
 
     /// Get Contract Source Code for Verified Contract Source Codes
@@ -264,16 +269,21 @@ impl Client {
     pub async fn contract_source_code(&self, address: Address) -> Result<ContractMetadata> {
         // apply caching
         if let Some(ref cache) = self.cache {
-            let path = cache.join("sources").join(format!("{:?}.json", address));
-            let reader = std::io::BufReader::new(std::fs::File::create(path)?);
-            let src = serde_json::from_reader(reader)?;
-            return Ok(src)
+            if let Some(src) = cache.get_source(address)? {
+                return Ok(src)
+            }
         }
 
         let query =
             self.create_query("contract", "getsourcecode", HashMap::from([("address", address)]));
         let response: Response<Vec<Metadata>> = self.get_json(&query).await?;
-        Ok(ContractMetadata { items: response.result })
+        let res = ContractMetadata { items: response.result };
+
+        if let Some(ref cache) = self.cache {
+            cache.set_source(address, &res)?;
+        }
+
+        Ok(res)
     }
 }
 
@@ -284,7 +294,7 @@ mod tests {
     use serial_test::serial;
 
     use ethers_core::types::Chain;
-    use ethers_solc::{MinimalCombinedArtifacts, Project, ProjectPathsConfig};
+    use ethers_solc::{Project, ProjectPathsConfig};
 
     use crate::{contract::VerifyContract, tests::run_at_least_duration, Client};
 
