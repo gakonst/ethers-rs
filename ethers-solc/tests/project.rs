@@ -496,7 +496,7 @@ fn can_detect_type_error() {
 fn can_compile_single_files() {
     let tmp = TempProject::dapptools().unwrap();
 
-    let foo = tmp
+    let f = tmp
         .add_contract(
             "examples/Foo",
             r#"
@@ -507,7 +507,7 @@ fn can_compile_single_files() {
         )
         .unwrap();
 
-    let compiled = tmp.project().compile_file(foo.clone()).unwrap();
+    let compiled = tmp.project().compile_file(f.clone()).unwrap();
     assert!(!compiled.has_compiler_errors());
     assert!(compiled.find("Foo").is_some());
 
@@ -522,8 +522,43 @@ fn can_compile_single_files() {
         )
         .unwrap();
 
-    let compiled = tmp.project().compile_files(vec![foo, bar]).unwrap();
+    let compiled = tmp.project().compile_files(vec![f, bar]).unwrap();
     assert!(!compiled.has_compiler_errors());
     assert!(compiled.find("Foo").is_some());
     assert!(compiled.find("Bar").is_some());
+}
+
+#[test]
+fn consistent_bytecode() {
+    let tmp = TempProject::dapptools().unwrap();
+
+    tmp.add_source(
+        "LinkTest",
+        r#"
+// SPDX-License-Identifier: MIT
+library LibTest {
+    function foobar(uint256 a) public view returns (uint256) {
+    	return a * 100;
+    }
+}
+contract LinkTest {
+    function foo() public returns (uint256) {
+        return LibTest.foobar(1);
+    }
+}
+"#,
+    )
+    .unwrap();
+
+    let compiled = tmp.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+
+    let contract = compiled.find("LinkTest").unwrap();
+    let bytecode = &contract.bytecode.as_ref().unwrap().object;
+    assert!(bytecode.is_unlinked());
+    let s = bytecode.as_str().unwrap();
+    assert!(!s.starts_with("0x"));
+
+    let s = serde_json::to_string(&bytecode).unwrap();
+    assert_eq!(bytecode.clone(), serde_json::from_str(&s).unwrap());
 }

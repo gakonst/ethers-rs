@@ -77,6 +77,34 @@ pub mod json_string_opt {
     }
 }
 
+/// serde support for string
+pub mod string_bytes {
+    use serde::{Deserialize, Deserializer, Serializer};
+
+    pub fn serialize<S>(value: &String, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        if value.starts_with("0x") {
+            serializer.serialize_str(value.as_str())
+        } else {
+            serializer.serialize_str(&format!("0x{}", value))
+        }
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<String, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let value = String::deserialize(deserializer)?;
+        if let Some(rem) = value.strip_prefix("0x") {
+            Ok(rem.to_string())
+        } else {
+            Ok(value)
+        }
+    }
+}
+
 pub mod display_from_str_opt {
     use serde::{de, Deserialize, Deserializer, Serializer};
     use std::{fmt, str::FromStr};
