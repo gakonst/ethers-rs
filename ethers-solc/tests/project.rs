@@ -429,11 +429,17 @@ fn can_flatten_file_with_duplicates() {
     assert!(result.is_ok());
 
     let result = result.unwrap();
-    assert!(!result.contains("import"));
-    assert_eq!(result.matches("contract Foo {").count(), 1);
-    assert_eq!(result.matches("contract Bar {").count(), 1);
-    assert_eq!(result.matches("contract FooBar {").count(), 1);
-    assert_eq!(result.matches(';').count(), 1);
+    assert_eq!(
+        result,
+        r#"//SPDX-License-Identifier: UNLICENSED
+pragma solidity >=0.6.0;
+
+contract Bar {}
+contract Foo {}
+
+contract FooBar {}
+"#
+    );
 }
 
 #[test]
@@ -449,9 +455,18 @@ fn can_flatten_on_solang_failure() {
     assert!(result.is_ok());
 
     let result = result.unwrap();
-    assert!(!result.contains("import"));
-    assert_eq!(result.matches("contract Contract {").count(), 1);
-    assert_eq!(result.matches("library Lib {").count(), 1);
+    assert_eq!(
+        result,
+        r#"// SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.10;
+
+library Lib {}
+// Intentionally erroneous code
+contract Contract {
+    failure();
+}
+"#
+    );
 }
 
 #[test]
