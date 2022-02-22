@@ -91,22 +91,42 @@ impl Context {
         tuple: ParamType,
     ) -> Result<TokenStream> {
         let mut fields = Vec::with_capacity(sol_struct.fields().len());
+
+        // determines whether we have enough info to create named fields
+        let is_tuple = sol_struct.has_nameless_field();
+
         for field in sol_struct.fields() {
-            let field_name = util::ident(&field.name().to_snake_case());
-            match field.r#type() {
-                FieldType::Elementary(ty) => {
-                    let ty = types::expand(ty)?;
-                    fields.push(quote! { pub #field_name: #ty });
-                }
-                FieldType::Struct(struct_ty) => {
-                    let ty = expand_struct_type(struct_ty);
-                    fields.push(quote! { pub #field_name: #ty });
-                }
+            let ty = match field.r#type() {
+                FieldType::Elementary(ty) => types::expand(ty)?,
+                FieldType::Struct(struct_ty) => expand_struct_type(struct_ty),
                 FieldType::Mapping(_) => {
                     eyre::bail!("Mapping types in struct `{}` are not supported {:?}", name, field)
                 }
+            };
+
+            if is_tuple {
+                fields.push(ty);
+            } else {
+                let field_name = util::ident(&field.name().to_snake_case());
+                fields.push(quote! { pub #field_name: #ty });
             }
         }
+
+        let name = util::ident(name);
+
+        let struct_def = if is_tuple {
+            quote! {
+                pub struct #name(
+                    #( #fields ),*
+                );
+            }
+        } else {
+            quote! {
+                pub struct #name {
+                    #( #fields ),*
+                }
+            }
+        };
 
         let sig = if let ParamType::Tuple(ref tokens) = tuple {
             tokens.iter().map(|kind| kind.to_string()).collect::<Vec<_>>().join(",")
@@ -118,8 +138,6 @@ impl Context {
 
         let abi_signature_doc = util::expand_doc(&format!("`{}`", abi_signature));
 
-        let name = util::ident(name);
-
         // use the same derives as for events
         let derives = util::expand_derives(&self.event_derives);
 
@@ -127,9 +145,7 @@ impl Context {
         Ok(quote! {
             #abi_signature_doc
             #[derive(Clone, Debug, Default, Eq, PartialEq, #ethers_contract::EthAbiType, #ethers_contract::EthAbiCodec, #derives)]
-            pub struct #name {
-                #( #fields ),*
-            }
+            #struct_def
         })
     }
 

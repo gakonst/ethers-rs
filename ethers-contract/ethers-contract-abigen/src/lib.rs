@@ -231,3 +231,17 @@ impl ContractBindings {
         name
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn can_generate_structs() {
+        let greeter = include_str!("../../tests/solidity-contracts/greeter_with_struct.json");
+        let abigen = Abigen::new("Greeter", greeter).unwrap();
+        let gen = abigen.generate().unwrap();
+        let out = gen.tokens.to_string();
+        assert!(out.contains("pub struct Stuff"));
+    }
+}
