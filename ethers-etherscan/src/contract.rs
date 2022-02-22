@@ -286,10 +286,9 @@ impl Client {
     pub async fn contract_abi(&self, address: Address) -> Result<Abi> {
         // apply caching
         if let Some(ref cache) = self.cache {
-            let path = cache.join("abis").join(format!("{:?}.json", address));
-            let reader = std::io::BufReader::new(std::fs::File::create(path)?);
-            let abi = serde_json::from_reader(reader)?;
-            return Ok(abi)
+            if let Some(abi) = cache.get_abi(address)? {
+                return Ok(abi)
+            }
         }
 
         let query = self.create_query("contract", "getabi", HashMap::from([("address", address)]));
@@ -297,7 +296,13 @@ impl Client {
         if resp.result.starts_with("Contract source code not verified") {
             return Err(EtherscanError::ContractCodeNotVerified(address))
         }
-        Ok(serde_json::from_str(&resp.result)?)
+        let abi = serde_json::from_str(&resp.result)?;
+
+        if let Some(ref cache) = self.cache {
+            cache.set_abi(address, &abi)?;
+        }
+
+        Ok(abi)
     }
 
     /// Get Contract Source Code for Verified Contract Source Codes
@@ -317,10 +322,9 @@ impl Client {
     pub async fn contract_source_code(&self, address: Address) -> Result<ContractMetadata> {
         // apply caching
         if let Some(ref cache) = self.cache {
-            let path = cache.join("sources").join(format!("{:?}.json", address));
-            let reader = std::io::BufReader::new(std::fs::File::create(path)?);
-            let src = serde_json::from_reader(reader)?;
-            return Ok(src)
+            if let Some(src) = cache.get_source(address)? {
+                return Ok(src)
+            }
         }
 
         let query =
@@ -329,7 +333,13 @@ impl Client {
         if response.result.iter().any(|item| item.abi == "Contract source code not verified") {
             return Err(EtherscanError::ContractCodeNotVerified(address))
         }
-        Ok(ContractMetadata { items: response.result })
+        let res = ContractMetadata { items: response.result };
+
+        if let Some(ref cache) = self.cache {
+            cache.set_source(address, &res)?;
+        }
+
+        Ok(res)
     }
 }
 
