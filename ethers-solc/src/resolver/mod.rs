@@ -229,6 +229,8 @@ impl Graph {
             Ok(())
         }
 
+        println!("paths {:?}", paths);
+
         // we start off by reading all input files, which includes all solidity files from the
         // source and test folder
         let mut unresolved: VecDeque<(PathBuf, Node)> = sources
@@ -772,10 +774,12 @@ fn read_node(file: impl AsRef<Path>) -> Result<Node> {
 /// This will attempt to parse the solidity AST and extract the imports and version pragma. If
 /// parsing fails, we'll fall back to extract that info via regex
 fn parse_data(content: &str, file: &Path) -> SolData {
+    println!("parsing {}", file.display());
     let mut version = None;
     let mut imports = Vec::<SolDataUnit<PathBuf>>::new();
     match solang_parser::parse(content, 0) {
         Ok((units, _)) => {
+            // println!("{:?}", units.0);
             for unit in units.0 {
                 match unit {
                     SourceUnitPart::PragmaDirective(loc, _, pragma, value) => {
@@ -790,6 +794,7 @@ fn parse_data(content: &str, file: &Path) -> SolData {
                             Import::GlobalSymbol(s, _, l) => (s, l),
                             Import::Rename(s, _, l) => (s, l),
                         };
+                        println!("solang {:?} ... {:?}", import, loc);
                         imports.push(SolDataUnit::new(PathBuf::from(import.string), loc.into()));
                     }
                     _ => {}
@@ -797,6 +802,7 @@ fn parse_data(content: &str, file: &Path) -> SolData {
             }
         }
         Err(err) => {
+            println!("solang failed!!!");
             tracing::trace!(
                 "failed to parse \"{}\" ast: \"{:?}\". Falling back to regex to extract data",
                 file.display(),

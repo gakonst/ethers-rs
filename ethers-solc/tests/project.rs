@@ -426,10 +426,27 @@ fn can_flatten_file_with_duplicates() {
     assert!(result.is_ok());
 
     let result = result.unwrap();
+    println!("{}", result); // TODO:
     assert_eq!(result.matches("contract Foo {").count(), 1);
     assert_eq!(result.matches("contract Bar {").count(), 1);
     assert_eq!(result.matches("contract FooBar {").count(), 1);
     assert_eq!(result.matches(';').count(), 1);
+}
+
+// TODO:
+#[test]
+fn can_flatten() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test-data/protograva");
+    let paths = ProjectPathsConfig::builder().sources(&root.join("src")).lib(&root.join("libs"));
+    let project = TempProject::<ConfigurableArtifacts>::new(paths).unwrap();
+
+    let target = root.join("src/ProtoGravaNFT.sol");
+
+    let result = project.flatten(&target);
+    assert!(result.is_ok());
+    let result = result.unwrap();
+    println!("{}", result); // TODO:
+    assert!(false);
 }
 
 #[test]
