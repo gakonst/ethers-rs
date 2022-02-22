@@ -502,7 +502,7 @@ mod tests {
 
     fn run_test<T>(test: T)
     where
-        T: FnOnce(&Context) -> () + panic::UnwindSafe,
+        T: FnOnce(&Context) + panic::UnwindSafe,
     {
         let crate_root = std::path::Path::new(&env!("CARGO_MANIFEST_DIR")).to_owned();
         let console = Abigen::new(
