@@ -1592,6 +1592,7 @@ pub enum BytecodeObject {
     #[serde(deserialize_with = "serde_helpers::deserialize_bytes")]
     Bytecode(Bytes),
     /// Bytecode as hex string that's not fully linked yet and contains library placeholders
+    #[serde(with = "serde_helpers::string_bytes")]
     Unlinked(String),
 }
 
@@ -1610,6 +1611,13 @@ impl BytecodeObject {
         match self {
             BytecodeObject::Bytecode(bytes) => Some(bytes),
             BytecodeObject::Unlinked(_) => None,
+        }
+    }
+    /// Returns a reference to the underlying `String` if the object is unlinked
+    pub fn as_str(&self) -> Option<&str> {
+        match self {
+            BytecodeObject::Bytecode(_) => None,
+            BytecodeObject::Unlinked(s) => Some(s.as_str()),
         }
     }
 
@@ -1715,10 +1723,10 @@ impl BytecodeObject {
     }
 }
 
-// Returns a not deployable bytecode by default as "0x"
+// Returns a not deployable bytecode by default as empty
 impl Default for BytecodeObject {
     fn default() -> Self {
-        BytecodeObject::Unlinked("0x".to_string())
+        BytecodeObject::Unlinked("".to_string())
     }
 }
 
