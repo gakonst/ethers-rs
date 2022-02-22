@@ -375,6 +375,7 @@ fn can_flatten_file() {
     assert!(result.is_ok());
 
     let result = result.unwrap();
+    assert!(!result.contains("import"));
     assert!(result.contains("contract Foo"));
     assert!(result.contains("contract Bar"));
 }
@@ -393,6 +394,7 @@ fn can_flatten_file_with_external_lib() {
     assert!(result.is_ok());
 
     let result = result.unwrap();
+    assert!(!result.contains("import"));
     assert!(result.contains("library console"));
     assert!(result.contains("contract Greeter"));
 }
@@ -409,6 +411,7 @@ fn can_flatten_file_in_dapp_sample() {
     assert!(result.is_ok());
 
     let result = result.unwrap();
+    assert!(!result.contains("import"));
     assert!(result.contains("contract DSTest"));
     assert!(result.contains("contract Dapp"));
     assert!(result.contains("contract DappTest"));
@@ -416,7 +419,7 @@ fn can_flatten_file_in_dapp_sample() {
 
 #[test]
 fn can_flatten_file_with_duplicates() {
-    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test-data/flatten-sample");
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test-data/test-flatten-duplicates");
     let paths = ProjectPathsConfig::builder().sources(root.join("contracts"));
     let project = TempProject::<ConfigurableArtifacts>::new(paths).unwrap();
 
@@ -426,27 +429,29 @@ fn can_flatten_file_with_duplicates() {
     assert!(result.is_ok());
 
     let result = result.unwrap();
-    println!("{}", result); // TODO:
+    assert!(!result.contains("import"));
     assert_eq!(result.matches("contract Foo {").count(), 1);
     assert_eq!(result.matches("contract Bar {").count(), 1);
     assert_eq!(result.matches("contract FooBar {").count(), 1);
     assert_eq!(result.matches(';').count(), 1);
 }
 
-// TODO:
 #[test]
-fn can_flatten() {
-    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test-data/protograva");
-    let paths = ProjectPathsConfig::builder().sources(&root.join("src")).lib(&root.join("libs"));
+fn can_flatten_on_solang_failure() {
+    let root =
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test-data/test-flatten-solang-failure");
+    let paths = ProjectPathsConfig::builder().sources(&root.join("contracts"));
     let project = TempProject::<ConfigurableArtifacts>::new(paths).unwrap();
 
-    let target = root.join("src/ProtoGravaNFT.sol");
+    let target = root.join("contracts/Contract.sol");
 
     let result = project.flatten(&target);
     assert!(result.is_ok());
+
     let result = result.unwrap();
-    println!("{}", result); // TODO:
-    assert!(false);
+    assert!(!result.contains("import"));
+    assert_eq!(result.matches("contract Contract {").count(), 1);
+    assert_eq!(result.matches("library Lib {").count(), 1);
 }
 
 #[test]
