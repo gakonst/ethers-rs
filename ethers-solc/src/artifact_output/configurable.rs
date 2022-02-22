@@ -4,12 +4,11 @@ use crate::{
     artifacts::{
         output_selection::{ContractOutputSelection, EvmOutputSelection, EwasmOutputSelection},
         CompactBytecode, CompactContract, CompactContractBytecode, CompactDeployedBytecode,
-        CompactEvm, DevDoc, Ewasm, GasEstimates, Metadata, Offsets, Settings, StorageLayout,
-        UserDoc,
+        CompactEvm, DevDoc, Ewasm, GasEstimates, LosslessAbi, Metadata, Offsets, Settings,
+        StorageLayout, UserDoc,
     },
     ArtifactOutput, Contract, SolcConfig, SolcError,
 };
-use ethers_core::abi::Abi;
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, fs, path::Path};
 
@@ -21,7 +20,7 @@ use std::{collections::BTreeMap, fs, path::Path};
 pub struct ConfigurableContractArtifact {
     /// The Ethereum Contract ABI. If empty, it is represented as an empty
     /// array. See https://docs.soliditylang.org/en/develop/abi-spec.html
-    pub abi: Option<Abi>,
+    pub abi: Option<LosslessAbi>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub bytecode: Option<CompactBytecode>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -74,7 +73,7 @@ impl ConfigurableContractArtifact {
 impl From<ConfigurableContractArtifact> for CompactContractBytecode {
     fn from(artifact: ConfigurableContractArtifact) -> Self {
         CompactContractBytecode {
-            abi: artifact.abi,
+            abi: artifact.abi.map(Into::into),
             bytecode: artifact.bytecode,
             deployed_bytecode: artifact.deployed_bytecode,
         }
