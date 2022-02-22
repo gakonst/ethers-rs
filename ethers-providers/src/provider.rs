@@ -1,4 +1,5 @@
 use crate::{
+    cache::Cache,
     ens, erc, maybe,
     pubsub::{PubsubClient, SubscriptionStream},
     stream::{FilterWatcher, DEFAULT_POLL_INTERVAL},
@@ -28,7 +29,7 @@ use thiserror::Error;
 use url::{ParseError, Url};
 
 use futures_util::{lock::Mutex, try_join};
-use std::{convert::TryFrom, fmt::Debug, str::FromStr, sync::Arc, time::Duration};
+use std::{convert::TryFrom, fmt::Debug, path::PathBuf, str::FromStr, sync::Arc, time::Duration};
 use tracing::trace;
 use tracing_futures::Instrument;
 
@@ -83,6 +84,7 @@ pub struct Provider<P> {
     ens: Option<Address>,
     interval: Option<Duration>,
     from: Option<Address>,
+    cache: Option<Cache>,
     /// Node client hasn't been checked yet = `None`
     /// Unsupported node client = `Some(None)`
     /// Supported node client = `Some(Some(NodeClient))`
@@ -132,6 +134,9 @@ pub enum ProviderError {
 
     #[error("Attempted to sign a transaction with no available signer. Hint: did you mean to use a SignerMiddleware?")]
     SignerUnavailable,
+
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
 }
 
 /// Types of filters supported by the JSON-RPC.
@@ -157,7 +162,12 @@ impl<P: JsonRpcClient> Provider<P> {
             interval: None,
             from: None,
             _node_client: Arc::new(Mutex::new(None)),
+            cache: None,
         }
+    }
+
+    pub fn cache(&self) -> Option<&Cache> {
+        self.cache.as_ref()
     }
 
     /// Returns the type of node we're connected to, while also caching the value for use
@@ -193,9 +203,22 @@ impl<P: JsonRpcClient> Provider<P> {
             tracing::trace_span!("rpc", method = method, params = ?serde_json::to_string(&params)?);
         // https://docs.rs/tracing/0.1.22/tracing/span/struct.Span.html#in-asynchronous-code
         let res = async move {
+            // if there's a cache hit, return it
+            if let Some(ref cache) = self.cache {
+                if let Some(res) = cache.get(method, &params)? {
+                    return Ok(res)
+                }
+            }
+
             trace!("tx");
-            let res: R = self.inner.request(method, params).await.map_err(Into::into)?;
+            let res: R = self.inner.request(method, &params).await.map_err(Into::into)?;
             trace!(rx = ?serde_json::to_string(&res)?);
+
+            // save the response if there was a cache set
+            if let Some(ref cache) = self.cache {
+                cache.set(method, params, &res)?;
+            }
+
             Ok::<_, ProviderError>(res)
         }
         .instrument(span)
@@ -1178,6 +1201,13 @@ impl<P: JsonRpcClient> Provider<P> {
     #[must_use]
     pub fn interval<T: Into<Duration>>(mut self, interval: T) -> Self {
         self.interval = Some(interval.into());
+        self
+    }
+
+    #[must_use]
+    /// Sets the provider's cache to avoid making redundant network requests.
+    pub fn with_cache(mut self, cache: PathBuf) -> Self {
+        self.cache = Some(Cache::new(cache).unwrap());
         self
     }
 

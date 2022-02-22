@@ -8,6 +8,8 @@ pub use transports::*;
 
 mod provider;
 
+mod cache;
+
 // ENS support
 pub mod ens;
 
