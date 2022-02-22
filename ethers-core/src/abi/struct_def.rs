@@ -282,7 +282,7 @@ impl SolStruct {
 
     /// Returns `true` if a field with an empty name exists
     pub fn has_nameless_field(&self) -> bool {
-        self.fields.iter().any(|f|f.name.is_empty())
+        self.fields.iter().any(|f| f.name.is_empty())
     }
 
     /// If the struct only consists of elementary fields, this will return `ParamType::Tuple` with
