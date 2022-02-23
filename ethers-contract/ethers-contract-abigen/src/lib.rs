@@ -26,6 +26,7 @@ pub use ethers_core::types::Address;
 pub use source::Source;
 pub use util::parse_address;
 
+use crate::contract::ExpandedContract;
 use eyre::Result;
 use inflector::Inflector;
 use proc_macro2::TokenStream;
@@ -87,7 +88,7 @@ impl Abigen {
         })
     }
 
-    /// Attemtps to load a new builder from an ABI JSON file at the specific
+    /// Attempts to load a new builder from an ABI JSON file at the specific
     /// path.
     pub fn from_file(path: impl AsRef<Path>) -> Result<Self> {
         let name = path
@@ -153,8 +154,15 @@ impl Abigen {
     pub fn generate(self) -> Result<ContractBindings> {
         let rustfmt = self.rustfmt;
         let name = self.contract_name.clone();
-        let tokens = Context::from_abigen(self)?.expand()?.into_tokens();
-        Ok(ContractBindings { tokens, rustfmt, name })
+        let (expanded, _) = self.expand()?;
+        Ok(ContractBindings { tokens: expanded.into_tokens(), rustfmt, name })
+    }
+
+    /// Expands the `Abigen` and returns the [`ExpandedContract`] that holds all tokens and the
+    /// [`Context`] that holds the state used during expansion.
+    pub fn expand(self) -> Result<(ExpandedContract, Context)> {
+        let ctx = Context::from_abigen(self)?;
+        Ok((ctx.expand()?, ctx))
     }
 }
 

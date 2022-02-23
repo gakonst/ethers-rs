@@ -2,9 +2,87 @@
 
 use eyre::Result;
 use inflector::Inflector;
-use std::{collections::BTreeMap, fs, io::Write, path::Path};
+use proc_macro2::TokenStream;
+use quote::quote;
+use std::{
+    collections::{BTreeMap, HashMap, HashSet},
+    fs,
+    io::Write,
+    path::Path,
+};
 
-use crate::{util, Abigen, ContractBindings};
+use crate::{util, Abigen, Context, ContractBindings, ExpandedContract};
+
+/// Represents a collection of [`Abigen::expand()`]
+pub struct MultiExpansion {
+    // all expanded contracts collection from [`Abigen::expand()`]
+    contracts: Vec<(ExpandedContract, Context)>,
+}
+
+impl MultiExpansion {
+    /// Create a new instance that wraps the given `contracts`
+    pub fn new(contracts: Vec<(ExpandedContract, Context)>) -> Self {
+        Self { contracts }
+    }
+
+    /// Create a new instance by expanding all `Abigen` elements the given iterator yields
+    pub fn from_abigen(abigens: impl IntoIterator<Item = Abigen>) -> Result<Self> {
+        let contracts = abigens.into_iter().map(|abigen| abigen.expand()).collect::<Result<_>>()?;
+        Ok(Self::new(contracts))
+    }
+
+    /// Expands all contracts into a single `TokenStream`
+    ///
+    /// This will deduplicate types into a separate `mod __shared_types` module, if any.
+    pub fn expand_inplace(self) -> TokenStream {
+        let mut tokens = TokenStream::new();
+        let mut expansions = self.contracts;
+
+        // merge all types if more than 1 contract
+        if expansions.len() > 1 {
+            // check for type conflicts
+            let mut conflicts: HashMap<String, Vec<usize>> = HashMap::new();
+            for (idx, (_, ctx)) in expansions.iter().enumerate() {
+                for type_identifier in ctx.internal_structs().rust_type_names().keys() {
+                    conflicts
+                        .entry(type_identifier.clone())
+                        .or_insert_with(|| Vec::with_capacity(1))
+                        .push(idx);
+                }
+            }
+
+            let mut shared_types = TokenStream::new();
+            let shared_types_mdoule = quote!(__shared_types);
+            let mut dirty = HashSet::new();
+            // resolve type conflicts
+            for (id, contracts) in conflicts.iter().filter(|(_, c)| c.len() > 1) {
+                // extract the shared type once
+                shared_types.extend(expansions[contracts[0]].1.struct_definition(id).unwrap());
+                // remove the shared type
+                for contract in contracts.iter().copied() {
+                    expansions[contract].1.remove_struct(id);
+                    dirty.insert(contract);
+                }
+            }
+
+            // regenerate all struct definitions that were hit and adjust imports
+            for contract in dirty {
+                let (expanded, ctx) = &mut expansions[contract];
+                expanded.abi_structs = ctx.abi_structs().unwrap();
+                expanded.imports.extend(quote!( pub use super::#shared_types_mdoule::*;));
+            }
+            tokens.extend(quote! {
+                pub mod #shared_types_mdoule {
+                    #shared_types
+                }
+            });
+        }
+
+        tokens.extend(expansions.into_iter().map(|(exp, _)| exp.into_tokens()));
+
+        tokens
+    }
+}
 
 /// Collects Abigen structs for a series of contracts, pending generation of
 /// the contract bindings.
