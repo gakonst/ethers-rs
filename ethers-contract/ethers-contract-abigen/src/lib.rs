@@ -43,7 +43,7 @@ use std::{collections::HashMap, fs::File, io::Write, path::Path};
 ///
 /// Running the code below will generate a file called `token.rs` containing the
 /// bindings inside, which exports an `ERC20Token` struct, along with all its events. Put into a
-/// `build.rs` file this will generate the bindings during `cargo build`
+/// `build.rs` file this will generate the bindings during `cargo build`.
 ///
 /// ```no_run
 /// # use ethers_contract_abigen::Abigen;
