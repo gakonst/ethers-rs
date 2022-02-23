@@ -35,12 +35,23 @@ impl MultiExpansion {
     ///
     /// This will deduplicate types into a separate `mod __shared_types` module, if any.
     pub fn expand_inplace(self) -> TokenStream {
-        let mut tokens = TokenStream::new();
+        self.expand().expand_inplace()
+    }
+
+    /// Expands all contracts into separated [`TokenStream`]s
+    ///
+    /// If there was type deduplication, this returns a list of [`TokenStream`] containing the type
+    /// definitions of all shared types.
+    pub fn expand(self) -> MultiExpansionResult {
         let mut expansions = self.contracts;
+        let mut shared_types = Vec::new();
+        // this keeps track of those contracts that need to be updated after a struct was
+        // extracted from the contract's module and moved to the shared module
+        let mut dirty_contracts = HashSet::new();
 
         // merge all types if more than 1 contract
         if expansions.len() > 1 {
-            // check for type conflicts
+            // check for type conflicts across all contracts
             let mut conflicts: HashMap<String, Vec<usize>> = HashMap::new();
             for (idx, (_, ctx)) in expansions.iter().enumerate() {
                 for type_identifier in ctx.internal_structs().rust_type_names().keys() {
@@ -51,36 +62,74 @@ impl MultiExpansion {
                 }
             }
 
-            let mut shared_types = TokenStream::new();
-            let shared_types_mdoule = quote!(__shared_types);
-            let mut dirty = HashSet::new();
             // resolve type conflicts
             for (id, contracts) in conflicts.iter().filter(|(_, c)| c.len() > 1) {
                 // extract the shared type once
-                shared_types.extend(expansions[contracts[0]].1.struct_definition(id).unwrap());
-                // remove the shared type
+                shared_types.push(
+                    expansions[contracts[0]]
+                        .1
+                        .struct_definition(id)
+                        .expect("struct def succeeded previously"),
+                );
+
+                // remove the shared type from the contract's bindings
                 for contract in contracts.iter().copied() {
                     expansions[contract].1.remove_struct(id);
-                    dirty.insert(contract);
+                    dirty_contracts.insert(contract);
                 }
             }
 
-            // regenerate all struct definitions that were hit and adjust imports
-            for contract in dirty {
+            // regenerate all struct definitions that were hit
+            for contract in dirty_contracts.iter().copied() {
                 let (expanded, ctx) = &mut expansions[contract];
-                expanded.abi_structs = ctx.abi_structs().unwrap();
-                expanded.imports.extend(quote!( pub use super::#shared_types_mdoule::*;));
+                expanded.abi_structs = ctx.abi_structs().expect("struct def succeeded previously");
             }
-            tokens.extend(quote! {
-                pub mod #shared_types_mdoule {
-                    #shared_types
-                }
-            });
         }
 
-        tokens.extend(expansions.into_iter().map(|(exp, _)| exp.into_tokens()));
+        MultiExpansionResult { contracts: expansions, dirty_contracts, shared_types }
+    }
+}
+
+/// Represents an intermediary result of [`MultiExpansion::expand()`]
+pub struct MultiExpansionResult {
+    contracts: Vec<(ExpandedContract, Context)>,
+    /// contains the indices of contracts which structs need to updated
+    dirty_contracts: HashSet<usize>,
+    /// all type definitions of types that are shared by multiple contracts
+    shared_types: Vec<TokenStream>,
+}
+
+impl MultiExpansionResult {
+    /// Expands all contracts into a single [`TokenStream`]
+    pub fn expand_inplace(mut self) -> TokenStream {
+        let mut tokens = TokenStream::new();
+
+        let shared_types_module = quote! {__shared_types};
+        // the import path to the shared types
+        let shared_path = quote!(
+            pub use super::#shared_types_module::*;
+        );
+        self.add_shared_import_path(shared_path);
+
+        let Self { contracts, shared_types, .. } = self;
+
+        tokens.extend(quote! {
+            pub mod #shared_types_module {
+                #( #shared_types )*
+            }
+        });
+
+        tokens.extend(contracts.into_iter().map(|(exp, _)| exp.into_tokens()));
 
         tokens
+    }
+
+    /// adds the `shared` import path to every `dirty` contract
+    fn add_shared_import_path(&mut self, shared: TokenStream) {
+        for contract in self.dirty_contracts.iter().copied() {
+            let (expanded, ..) = &mut self.contracts[contract];
+            expanded.imports.extend(shared.clone());
+        }
     }
 }
 
@@ -172,6 +221,8 @@ impl MultiAbigen {
             .into_iter()
             .map(|v| (v.name.clone(), v))
             .collect();
+
+        // TODO MultiExpansion for type deduplication
 
         Ok(MultiBindings { bindings })
     }
