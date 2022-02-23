@@ -37,10 +37,13 @@ use std::{collections::HashMap, fs::File, io::Write, path::Path};
 /// [still not supported by Vyper](https://github.com/vyperlang/vyper/issues/1931), so you must adjust your ABIs and replace
 /// `constant` functions with `view` or `pure`.
 ///
+/// To generate bindings for _multiple_ contracts at once see also [`crate::MultiAbigen`].
+///
 /// # Example
 ///
-/// Running the command below will generate a file called `token.rs` containing the
-/// bindings inside, which exports an `ERC20Token` struct, along with all its events.
+/// Running the code below will generate a file called `token.rs` containing the
+/// bindings inside, which exports an `ERC20Token` struct, along with all its events. Put into a
+/// `build.rs` file this will generate the bindings during `cargo build`.
 ///
 /// ```no_run
 /// # use ethers_contract_abigen::Abigen;
