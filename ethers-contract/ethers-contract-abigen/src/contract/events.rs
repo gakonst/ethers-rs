@@ -102,7 +102,7 @@ impl Context {
 
     /// The name ident of the events enum
     fn expand_event_enum_name(&self) -> Ident {
-        util::ident(&format!("{}Events", self.contract_name))
+        util::ident(&format!("{}Events", self.contract_ident))
     }
 
     /// Expands the `events` function that bundles all declared events of this contract

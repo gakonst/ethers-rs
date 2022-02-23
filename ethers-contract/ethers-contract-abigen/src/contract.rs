@@ -76,7 +76,10 @@ pub struct Context {
     human_readable: bool,
 
     /// The contract name as an identifier.
-    contract_name: Ident,
+    contract_ident: Ident,
+
+    /// The contract name as string
+    contract_name: String,
 
     /// Manually specified method aliases.
     method_aliases: BTreeMap<String, MethodAlias>,
@@ -91,9 +94,9 @@ pub struct Context {
 impl Context {
     /// Expands the whole rust contract
     pub fn expand(&self) -> Result<ExpandedContract> {
-        let name = &self.contract_name;
+        let name = &self.contract_ident;
         let name_mod =
-            util::ident(&format!("{}_mod", self.contract_name.to_string().to_lowercase()));
+            util::ident(&format!("{}_mod", self.contract_ident.to_string().to_lowercase()));
 
         let abi_name = super::util::safe_ident(&format!("{}_ABI", name.to_string().to_uppercase()));
 
@@ -190,7 +193,7 @@ impl Context {
                 .unwrap_or_default()
         };
 
-        let contract_name = util::ident(&args.contract_name);
+        let contract_ident = util::ident(&args.contract_name);
 
         // NOTE: We only check for duplicate signatures here, since if there are
         //   duplicate aliases, the compiler will produce a warning because a
@@ -226,11 +229,17 @@ impl Context {
             abi_str: Literal::string(&abi_str),
             abi_parser,
             internal_structs,
-            contract_name,
+            contract_ident,
+            contract_name: args.contract_name,
             method_aliases,
             event_derives,
             event_aliases,
         })
+    }
+
+    /// The initial name fo the contract
+    pub(crate) fn contract_name(&self) -> &str {
+        &self.contract_name
     }
 
     /// The internal abi struct mapping table

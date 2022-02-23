@@ -31,7 +31,7 @@ pub(crate) fn imports(name: &str) -> TokenStream {
 
 /// Generates the static `Abi` constants and the contract struct
 pub(crate) fn struct_declaration(cx: &Context, abi_name: &proc_macro2::Ident) -> TokenStream {
-    let name = &cx.contract_name;
+    let name = &cx.contract_ident;
     let abi = &cx.abi_str;
 
     let ethers_core = ethers_core_crate();
