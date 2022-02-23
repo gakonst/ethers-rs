@@ -238,6 +238,7 @@ impl ContractBindings {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ethers_solc::project_util::TempProject;
 
     #[test]
     fn can_generate_structs() {
@@ -246,5 +247,43 @@ mod tests {
         let gen = abigen.generate().unwrap();
         let out = gen.tokens.to_string();
         assert!(out.contains("pub struct Stuff"));
+    }
+
+    #[test]
+    fn can_compile_and_generate() {
+        let tmp = TempProject::dapptools().unwrap();
+
+        tmp.add_source(
+            "Greeter",
+            r#"
+// SPDX-License-Identifier: MIT
+pragma solidity >=0.8.0;
+
+contract Greeter {
+
+    struct Inner {
+        bool a;
+    }
+
+    struct Stuff {
+        Inner inner;
+    }
+
+    function greet(Stuff calldata stuff) public view returns (Stuff memory) {
+        return stuff;
+    }
+}
+"#,
+        )
+        .unwrap();
+
+        let _ = tmp.compile().unwrap();
+
+        let abigen =
+            Abigen::from_file(tmp.artifacts_path().join("Greeter.sol/Greeter.json")).unwrap();
+        let gen = abigen.generate().unwrap();
+        let out = gen.tokens.to_string();
+        assert!(out.contains("pub struct Stuff"));
+        assert!(out.contains("pub struct Inner"));
     }
 }

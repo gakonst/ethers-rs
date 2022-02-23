@@ -58,6 +58,8 @@
 
 ### Unreleased
 
+- Wrap `ethabi::Contract` into new type `LosslessAbi` and `abi: Option<Abi>` with `abi: Option<LosslessAbi>` in `ConfigurableContractArtifact`
+  [#952](https://github.com/gakonst/ethers-rs/pull/952)
 - Let `Project` take ownership of `ArtifactOutput` and change trait interface
   [#907](https://github.com/gakonst/ethers-rs/pull/907)
 - Total revamp of the `Project::compile` pipeline
