@@ -113,11 +113,13 @@ impl MultiExpansionResult {
 
         let Self { contracts, shared_types, .. } = self;
 
-        tokens.extend(quote! {
-            pub mod #shared_types_module {
-                #( #shared_types )*
-            }
-        });
+        if !shared_types.is_empty() {
+            tokens.extend(quote! {
+                pub mod #shared_types_module {
+                    #( #shared_types )*
+                }
+            });
+        }
 
         tokens.extend(contracts.into_iter().map(|(exp, _)| exp.into_tokens()));
 
@@ -975,6 +977,22 @@ mod tests {
             // ensure inconsistent bindings are detected
             assert!(result, "Inconsistent bindings wrongly approved");
         })
+    }
+
+    #[test]
+    fn does_not_generate_shared_types_if_empty() {
+        let gen = Abigen::new(
+            "Greeter",
+            r#"[
+                        struct Inner {bool a;}
+                        greet1() (uint256)
+                        greet2(Inner inner) (string)
+                    ]"#,
+        )
+        .unwrap();
+
+        let tokens = MultiExpansion::new(vec![gen.expand().unwrap()]).expand_inplace().to_string();
+        assert!(!tokens.contains("mod __shared_types"));
     }
 
     #[test]
