@@ -5,13 +5,13 @@ use crate::spanned::{ParseInner, Spanned};
 use ethers_contract_abigen::Abigen;
 use ethers_core::abi::{Function, FunctionExt, Param, StateMutability};
 
-use ethers_contract_abigen::contract::{Context, ExpandedContract};
-use proc_macro2::{Span, TokenStream as TokenStream2};
-use quote::{quote, ToTokens};
-use std::{
-    collections::{HashMap, HashSet},
-    error::Error,
+use ethers_contract_abigen::{
+    contract::{Context, ExpandedContract},
+    multi::MultiExpansion,
 };
+use proc_macro2::{Span, TokenStream as TokenStream2};
+use quote::ToTokens;
+use std::{collections::HashSet, error::Error};
 use syn::{
     braced,
     ext::IdentExt,
@@ -28,7 +28,6 @@ pub(crate) struct Contracts {
 
 impl Contracts {
     pub(crate) fn expand(self) -> Result<TokenStream2, syn::Error> {
-        let mut tokens = TokenStream2::new();
         let mut expansions = Vec::with_capacity(self.inner.len());
 
         // expand all contracts
@@ -38,56 +37,14 @@ impl Contracts {
             expansions.push(contract);
         }
 
-        // merge all types if more than 1 contract
-        if expansions.len() > 1 {
-            // check for type conflicts
-            let mut conflicts: HashMap<String, Vec<usize>> = HashMap::new();
-            for (idx, (_, ctx)) in expansions.iter().enumerate() {
-                for type_identifier in ctx.internal_structs().rust_type_names().keys() {
-                    conflicts
-                        .entry(type_identifier.clone())
-                        .or_insert_with(|| Vec::with_capacity(1))
-                        .push(idx);
-                }
-            }
-
-            let mut shared_types = TokenStream2::new();
-            let shared_types_mdoule = quote!(__shared_types);
-            let mut dirty = HashSet::new();
-            // resolve type conflicts
-            for (id, contracts) in conflicts.iter().filter(|(_, c)| c.len() > 1) {
-                // extract the shared type once
-                shared_types.extend(expansions[contracts[0]].1.struct_definition(id).unwrap());
-                // remove the shared type
-                for contract in contracts.iter().copied() {
-                    expansions[contract].1.remove_struct(id);
-                    dirty.insert(contract);
-                }
-            }
-
-            // regenerate all struct definitions that were hit and adjust imports
-            for contract in dirty {
-                let (expanded, ctx) = &mut expansions[contract];
-                expanded.abi_structs = ctx.abi_structs().unwrap();
-                expanded.imports.extend(quote!( pub use super::#shared_types_mdoule::*;));
-            }
-            tokens.extend(quote! {
-                pub mod #shared_types_mdoule {
-                    #shared_types
-                }
-            });
-        }
-
-        tokens.extend(expansions.into_iter().map(|(exp, _)| exp.into_tokens()));
-        Ok(tokens)
+        // expand all contract expansions
+        Ok(MultiExpansion::new(expansions).expand_inplace())
     }
 
     fn expand_contract(
         contract: ContractArgs,
     ) -> Result<(ExpandedContract, Context), Box<dyn Error>> {
-        let contract = contract.into_builder()?;
-        let ctx = Context::from_abigen(contract)?;
-        Ok((ctx.expand()?, ctx))
+        Ok(contract.into_builder()?.expand()?)
     }
 }
 

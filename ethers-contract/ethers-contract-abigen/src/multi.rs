@@ -2,9 +2,190 @@
 
 use eyre::Result;
 use inflector::Inflector;
-use std::{collections::BTreeMap, fs, io::Write, path::Path};
+use proc_macro2::TokenStream;
+use quote::quote;
+use std::{
+    collections::{BTreeMap, BTreeSet, HashMap, HashSet},
+    fs,
+    io::Write,
+    path::Path,
+};
 
-use crate::{util, Abigen, ContractBindings};
+use crate::{util, Abigen, Context, ContractBindings, ExpandedContract};
+
+/// Represents a collection of [`Abigen::expand()`]
+pub struct MultiExpansion {
+    // all expanded contracts collection from [`Abigen::expand()`]
+    contracts: Vec<(ExpandedContract, Context)>,
+}
+
+impl MultiExpansion {
+    /// Create a new instance that wraps the given `contracts`
+    pub fn new(contracts: Vec<(ExpandedContract, Context)>) -> Self {
+        Self { contracts }
+    }
+
+    /// Create a new instance by expanding all `Abigen` elements the given iterator yields
+    pub fn from_abigen(abigens: impl IntoIterator<Item = Abigen>) -> Result<Self> {
+        let contracts = abigens.into_iter().map(|abigen| abigen.expand()).collect::<Result<_>>()?;
+        Ok(Self::new(contracts))
+    }
+
+    /// Expands all contracts into a single `TokenStream`
+    ///
+    /// This will deduplicate types into a separate `mod __shared_types` module, if any.
+    pub fn expand_inplace(self) -> TokenStream {
+        self.expand().expand_inplace()
+    }
+
+    /// Expands all contracts into separated [`TokenStream`]s
+    ///
+    /// If there was type deduplication, this returns a list of [`TokenStream`] containing the type
+    /// definitions of all shared types.
+    pub fn expand(self) -> MultiExpansionResult {
+        let mut expansions = self.contracts;
+        let mut shared_types = Vec::new();
+        // this keeps track of those contracts that need to be updated after a struct was
+        // extracted from the contract's module and moved to the shared module
+        let mut dirty_contracts = HashSet::new();
+
+        // merge all types if more than 1 contract
+        if expansions.len() > 1 {
+            // check for type conflicts across all contracts
+            let mut conflicts: HashMap<String, Vec<usize>> = HashMap::new();
+            for (idx, (_, ctx)) in expansions.iter().enumerate() {
+                for type_identifier in ctx.internal_structs().rust_type_names().keys() {
+                    conflicts
+                        .entry(type_identifier.clone())
+                        .or_insert_with(|| Vec::with_capacity(1))
+                        .push(idx);
+                }
+            }
+
+            // resolve type conflicts
+            for (id, contracts) in conflicts.iter().filter(|(_, c)| c.len() > 1) {
+                // extract the shared type once
+                shared_types.push(
+                    expansions[contracts[0]]
+                        .1
+                        .struct_definition(id)
+                        .expect("struct def succeeded previously"),
+                );
+
+                // remove the shared type from the contract's bindings
+                for contract in contracts.iter().copied() {
+                    expansions[contract].1.remove_struct(id);
+                    dirty_contracts.insert(contract);
+                }
+            }
+
+            // regenerate all struct definitions that were hit
+            for contract in dirty_contracts.iter().copied() {
+                let (expanded, ctx) = &mut expansions[contract];
+                expanded.abi_structs = ctx.abi_structs().expect("struct def succeeded previously");
+            }
+        }
+
+        MultiExpansionResult { contracts: expansions, dirty_contracts, shared_types }
+    }
+}
+
+/// Represents an intermediary result of [`MultiExpansion::expand()`]
+pub struct MultiExpansionResult {
+    contracts: Vec<(ExpandedContract, Context)>,
+    /// contains the indices of contracts with structs that need to be updated
+    dirty_contracts: HashSet<usize>,
+    /// all type definitions of types that are shared by multiple contracts
+    shared_types: Vec<TokenStream>,
+}
+
+impl MultiExpansionResult {
+    /// Expands all contracts into a single [`TokenStream`]
+    pub fn expand_inplace(mut self) -> TokenStream {
+        let mut tokens = TokenStream::new();
+
+        let shared_types_module = quote! {__shared_types};
+        // the import path to the shared types
+        let shared_path = quote!(
+            pub use super::#shared_types_module::*;
+        );
+        self.add_shared_import_path(shared_path);
+
+        let Self { contracts, shared_types, .. } = self;
+
+        tokens.extend(quote! {
+            pub mod #shared_types_module {
+                #( #shared_types )*
+            }
+        });
+
+        tokens.extend(contracts.into_iter().map(|(exp, _)| exp.into_tokens()));
+
+        tokens
+    }
+
+    /// Sets the path to the shared types module according to the value of `single_file`
+    ///
+    /// If `single_file` then it's expected that types will be written to `shared_types.rs`
+    fn set_shared_import_path(&mut self, single_file: bool) {
+        let shared_path = if single_file {
+            quote!(
+                pub use super::__shared_types::*;
+            )
+        } else {
+            quote!(
+                pub use super::super::shared_types::*;
+            )
+        };
+        self.add_shared_import_path(shared_path);
+    }
+
+    /// adds the `shared` import path to every `dirty` contract
+    fn add_shared_import_path(&mut self, shared: TokenStream) {
+        for contract in self.dirty_contracts.iter().copied() {
+            let (expanded, ..) = &mut self.contracts[contract];
+            expanded.imports.extend(shared.clone());
+        }
+    }
+
+    /// Converts this result into [`MultiBindingsInner`]
+    fn into_bindings(mut self, single_file: bool, rustfmt: bool) -> MultiBindingsInner {
+        self.set_shared_import_path(single_file);
+        let Self { contracts, shared_types, .. } = self;
+        let bindings = contracts
+            .into_iter()
+            .map(|(expanded, ctx)| ContractBindings {
+                tokens: expanded.into_tokens(),
+                rustfmt,
+                name: ctx.contract_name().to_string(),
+            })
+            .map(|v| (v.name.clone(), v))
+            .collect();
+
+        let shared_types = if !shared_types.is_empty() {
+            let shared_types = if single_file {
+                quote! {
+                    pub mod __shared_types {
+                        #( #shared_types )*
+                    }
+                }
+            } else {
+                quote! {
+                    #( #shared_types )*
+                }
+            };
+            Some(ContractBindings {
+                tokens: shared_types,
+                rustfmt,
+                name: "shared_types".to_string(),
+            })
+        } else {
+            None
+        };
+
+        MultiBindingsInner { bindings, shared_types }
+    }
+}
 
 /// Collects Abigen structs for a series of contracts, pending generation of
 /// the contract bindings.
@@ -86,16 +267,11 @@ impl MultiAbigen {
 
     /// Build the contract bindings and prepare for writing
     pub fn build(self) -> Result<MultiBindings> {
-        let bindings = self
-            .abigens
-            .into_iter()
-            .map(|v| v.generate())
-            .collect::<Result<Vec<_>>>()?
-            .into_iter()
-            .map(|v| (v.name.clone(), v))
-            .collect();
-
-        Ok(MultiBindings { bindings })
+        let rustfmt = self.abigens.iter().any(|gen| gen.rustfmt);
+        Ok(MultiBindings {
+            expansion: MultiExpansion::from_abigen(self.abigens)?.expand(),
+            rustfmt,
+        })
     }
 }
 
@@ -126,12 +302,188 @@ impl MultiAbigen {
 ///   * CI will fail if the generated code is out of date (if `abigen!` or the contract's ABI itself
 ///     changed)
 pub struct MultiBindings {
+    expansion: MultiExpansionResult,
+    rustfmt: bool,
+}
+
+impl MultiBindings {
+    fn into_inner(self, single_file: bool) -> MultiBindingsInner {
+        self.expansion.into_bindings(single_file, self.rustfmt)
+    }
+
+    /// Generates all the bindings and writes them to the given module
+    ///
+    /// # Example
+    ///
+    /// Read all json abi files from the `./abi` directory
+    /// ```text
+    /// abi
+    /// ├── ERC20.json
+    /// ├── Contract1.json
+    /// ├── Contract2.json
+    /// ...
+    /// ```
+    ///
+    /// and write them to the `./src/contracts` location as
+    ///
+    /// ```text
+    /// src/contracts
+    /// ├── mod.rs
+    /// ├── er20.rs
+    /// ├── contract1.rs
+    /// ├── contract2.rs
+    /// ...
+    /// ```
+    ///
+    /// ```no_run
+    /// # use ethers_contract_abigen::MultiAbigen;
+    /// let gen = MultiAbigen::from_json_files("./abi").unwrap();
+    /// let bindings = gen.build().unwrap();
+    /// bindings.write_to_module("./src/contracts", false).unwrap();
+    /// ```
+    pub fn write_to_module(self, module: impl AsRef<Path>, single_file: bool) -> Result<()> {
+        self.into_inner(single_file).write_to_module(module, single_file)
+    }
+
+    /// Generates all the bindings and writes a library crate containing them
+    /// to the provided path
+    ///
+    /// # Example
+    ///
+    /// Read all json abi files from the `./abi` directory
+    /// ```text
+    /// abi
+    /// ├── ERC20.json
+    /// ├── Contract1.json
+    /// ├── Contract2.json
+    /// ├── Contract3/
+    ///     ├── Contract3.json
+    /// ...
+    /// ```
+    ///
+    /// and write them to the `./bindings` location as
+    ///
+    /// ```text
+    /// bindings
+    /// ├── Cargo.toml
+    /// ├── src/
+    ///     ├── lib.rs
+    ///     ├── er20.rs
+    ///     ├── contract1.rs
+    ///     ├── contract2.rs
+    /// ...
+    /// ```
+    ///
+    /// ```no_run
+    /// # use ethers_contract_abigen::MultiAbigen;
+    /// let gen = MultiAbigen::from_json_files("./abi").unwrap();
+    /// let bindings = gen.build().unwrap();
+    /// bindings.write_to_crate(
+    ///     "my-crate", "0.0.5", "./bindings", false
+    /// ).unwrap();
+    /// ```
+    pub fn write_to_crate(
+        self,
+        name: impl AsRef<str>,
+        version: impl AsRef<str>,
+        lib: impl AsRef<Path>,
+        single_file: bool,
+    ) -> Result<()> {
+        self.into_inner(single_file).write_to_crate(name, version, lib, single_file)
+    }
+
+    /// This ensures that the already generated bindings crate matches the
+    /// output of a fresh new run. Run this in a rust test, to get notified in
+    /// CI if the newly generated bindings deviate from the already generated
+    /// ones, and it's time to generate them again. This could happen if the
+    /// ABI of a contract or the output that `ethers` generates changed.
+    ///
+    /// If this functions is run within a test during CI and fails, then it's
+    /// time to update all bindings.
+    ///
+    /// # Returns
+    ///
+    /// `Ok(())` if the freshly generated bindings match with the
+    /// existing bindings. Otherwise an `Err(_)` containing an `eyre::Report`
+    /// with more information.
+    ///
+    /// # Example
+    ///
+    /// Check that the generated files are up to date
+    ///
+    /// ```no_run
+    /// # use ethers_contract_abigen::MultiAbigen;
+    /// #[test]
+    /// fn generated_bindings_are_fresh() {
+    ///  let project_root = std::path::Path::new(&env!("CARGO_MANIFEST_DIR"));
+    ///  let abi_dir = project_root.join("abi");
+    ///  let gen = MultiAbigen::from_json_files(&abi_dir).unwrap();
+    ///  let bindings = gen.build().unwrap();
+    ///  bindings.ensure_consistent_crate(
+    ///     "my-crate", "0.0.1", project_root.join("src/contracts"), false
+    ///  ).expect("inconsistent bindings");
+    /// }
+    /// ```
+    pub fn ensure_consistent_crate(
+        self,
+        name: impl AsRef<str>,
+        version: impl AsRef<str>,
+        crate_path: impl AsRef<Path>,
+        single_file: bool,
+    ) -> Result<()> {
+        self.into_inner(single_file).ensure_consistent_crate(name, version, crate_path, single_file)
+    }
+
+    /// This ensures that the already generated bindings module matches the
+    /// output of a fresh new run. Run this in a rust test, to get notified in
+    /// CI if the newly generated bindings deviate from the already generated
+    /// ones, and it's time to generate them again. This could happen if the
+    /// ABI of a contract or the output that `ethers` generates changed.
+    ///
+    /// If this functions is run within a test during CI and fails, then it's
+    /// time to update all bindings.
+    ///
+    /// # Returns
+    ///
+    /// `Ok(())` if the freshly generated bindings match with the
+    /// existing bindings. Otherwise an `Err(_)` containing an `eyre::Report`
+    /// with more information.
+    ///
+    /// # Example
+    ///
+    /// Check that the generated files are up to date
+    ///
+    /// ```no_run
+    /// # use ethers_contract_abigen::MultiAbigen;
+    /// #[test]
+    /// fn generated_bindings_are_fresh() {
+    ///  let project_root = std::path::Path::new(&env!("CARGO_MANIFEST_DIR"));
+    ///  let abi_dir = project_root.join("abi");
+    ///  let gen = MultiAbigen::from_json_files(&abi_dir).unwrap();
+    ///  let bindings = gen.build().unwrap();
+    ///  bindings.ensure_consistent_module(
+    ///     project_root.join("src/contracts"), false
+    ///  ).expect("inconsistent bindings");
+    /// }
+    /// ```
+    pub fn ensure_consistent_module(
+        self,
+        module: impl AsRef<Path>,
+        single_file: bool,
+    ) -> Result<()> {
+        self.into_inner(single_file).ensure_consistent_module(module, single_file)
+    }
+}
+
+struct MultiBindingsInner {
     /// Abigen objects to be written
     bindings: BTreeMap<String, ContractBindings>,
+    /// contains the content of the shared types if any
+    shared_types: Option<ContractBindings>,
 }
 
 // deref allows for inspection without modification
-impl std::ops::Deref for MultiBindings {
+impl std::ops::Deref for MultiBindingsInner {
     type Target = BTreeMap<String, ContractBindings>;
 
     fn deref(&self) -> &Self::Target {
@@ -139,8 +491,8 @@ impl std::ops::Deref for MultiBindings {
     }
 }
 
-impl MultiBindings {
-    /// Generat the contents of the `Cargo.toml` file for a lib
+impl MultiBindingsInner {
+    /// Generate the contents of the `Cargo.toml` file for a lib
     fn generate_cargo_toml(
         &self,
         name: impl AsRef<str>,
@@ -185,34 +537,14 @@ serde_json = "1.0.79"
         Ok(())
     }
 
-    /// Generate the shared prefix of the `lib.rs` or `mod.rs`
-    fn generate_prefix(
-        &self,
-        mut buf: impl Write,
-        is_crate: bool,
-        single_file: bool,
-    ) -> Result<()> {
-        writeln!(buf, "#![allow(clippy::all)]")?;
-        writeln!(
-            buf,
-            "//! This {} contains abigen! generated bindings for solidity contracts.",
-            if is_crate { "lib" } else { "module" }
-        )?;
-        writeln!(buf, "//! This is autogenerated code.")?;
-        writeln!(buf, "//! Do not manually edit these files.")?;
-        writeln!(
-            buf,
-            "//! {} may be overwritten by the codegen system at any time.",
-            if single_file && !is_crate { "This file" } else { "These files" }
-        )?;
-
-        Ok(())
-    }
-
     /// Append module declarations to the `lib.rs` or `mod.rs`
     fn append_module_names(&self, mut buf: impl Write) -> Result<()> {
-        // sorting here not necessary, as btreemap keys are ordered
-        for module in self.bindings.keys().map(|name| format!("pub mod {};", name.to_snake_case()))
+        let mut mod_names: BTreeSet<_> = self.bindings.keys().collect();
+        if let Some(ref shared) = self.shared_types {
+            mod_names.insert(&shared.name);
+        }
+
+        for module in mod_names.into_iter().map(|name| format!("pub mod {};", name.to_snake_case()))
         {
             writeln!(buf, "{}", module)?;
         }
@@ -223,14 +555,17 @@ serde_json = "1.0.79"
     /// Generate the contents of `lib.rs` or `mod.rs`
     fn generate_super_contents(&self, is_crate: bool, single_file: bool) -> Result<Vec<u8>> {
         let mut contents = vec![];
-        self.generate_prefix(&mut contents, is_crate, single_file)?;
+        generate_prefix(&mut contents, is_crate, single_file)?;
 
-        if !single_file {
-            self.append_module_names(&mut contents)?;
-        } else {
+        if single_file {
+            if let Some(ref shared) = self.shared_types {
+                shared.write(&mut contents)?;
+            }
             for binding in self.bindings.values() {
                 binding.write(&mut contents)?;
             }
+        } else {
+            self.append_module_names(&mut contents)?;
         }
 
         Ok(contents)
@@ -246,43 +581,16 @@ serde_json = "1.0.79"
 
     /// Write all contract bindings to their respective files
     fn write_bindings(&self, path: &Path) -> Result<()> {
+        if let Some(ref shared) = self.shared_types {
+            shared.write_module_in_dir(path)?;
+        }
         for binding in self.bindings.values() {
             binding.write_module_in_dir(path)?;
         }
         Ok(())
     }
 
-    /// Generates all the bindings and writes them to the given module
-    ///
-    /// # Example
-    ///
-    /// Read all json abi files from the `./abi` directory
-    /// ```text
-    /// abi
-    /// ├── ERC20.json
-    /// ├── Contract1.json
-    /// ├── Contract2.json
-    /// ...
-    /// ```
-    ///
-    /// and write them to the `./src/contracts` location as
-    ///
-    /// ```text
-    /// src/contracts
-    /// ├── mod.rs
-    /// ├── er20.rs
-    /// ├── contract1.rs
-    /// ├── contract2.rs
-    /// ...
-    /// ```
-    ///
-    /// ```no_run
-    /// # use ethers_contract_abigen::MultiAbigen;
-    /// let gen = MultiAbigen::from_json_files("./abi").unwrap();
-    /// let bindings = gen.build().unwrap();
-    /// bindings.write_to_module("./src/contracts", false).unwrap();
-    /// ```
-    pub fn write_to_module(self, module: impl AsRef<Path>, single_file: bool) -> Result<()> {
+    fn write_to_module(self, module: impl AsRef<Path>, single_file: bool) -> Result<()> {
         let module = module.as_ref();
         fs::create_dir_all(module)?;
 
@@ -294,44 +602,7 @@ serde_json = "1.0.79"
         Ok(())
     }
 
-    /// Generates all the bindings and writes a library crate containing them
-    /// to the provided path
-    ///
-    /// # Example
-    ///
-    /// Read all json abi files from the `./abi` directory
-    /// ```text
-    /// abi
-    /// ├── ERC20.json
-    /// ├── Contract1.json
-    /// ├── Contract2.json
-    /// ├── Contract3/
-    ///     ├── Contract3.json
-    /// ...
-    /// ```
-    ///
-    /// and write them to the `./bindings` location as
-    ///
-    /// ```text
-    /// bindings
-    /// ├── Cargo.toml
-    /// ├── src/
-    ///     ├── lib.rs
-    ///     ├── er20.rs
-    ///     ├── contract1.rs
-    ///     ├── contract2.rs
-    /// ...
-    /// ```
-    ///
-    /// ```no_run
-    /// # use ethers_contract_abigen::MultiAbigen;
-    /// let gen = MultiAbigen::from_json_files("./abi").unwrap();
-    /// let bindings = gen.build().unwrap();
-    /// bindings.write_to_crate(
-    ///     "my-crate", "0.0.5", "./bindings", false
-    /// ).unwrap();
-    /// ```
-    pub fn write_to_crate(
+    fn write_to_crate(
         self,
         name: impl AsRef<str>,
         version: impl AsRef<str>,
@@ -379,39 +650,7 @@ serde_json = "1.0.79"
         Ok(())
     }
 
-    /// This ensures that the already generated bindings crate matches the
-    /// output of a fresh new run. Run this in a rust test, to get notified in
-    /// CI if the newly generated bindings deviate from the already generated
-    /// ones, and it's time to generate them again. This could happen if the
-    /// ABI of a contract or the output that `ethers` generates changed.
-    ///
-    /// If this functions is run within a test during CI and fails, then it's
-    /// time to update all bindings.
-    ///
-    /// # Returns
-    ///
-    /// `Ok(())` if the freshly generated bindings match with the
-    /// existing bindings. Otherwise an `Err(_)` containing an `eyre::Report`
-    /// with more information.
-    ///
-    /// # Example
-    ///
-    /// Check that the generated files are up to date
-    ///
-    /// ```no_run
-    /// # use ethers_contract_abigen::MultiAbigen;
-    /// #[test]
-    /// fn generated_bindings_are_fresh() {
-    ///  let project_root = std::path::Path::new(&env!("CARGO_MANIFEST_DIR"));
-    ///  let abi_dir = project_root.join("abi");
-    ///  let gen = MultiAbigen::from_json_files(&abi_dir).unwrap();
-    ///  let bindings = gen.build().unwrap();
-    ///  bindings.ensure_consistent_crate(
-    ///     "my-crate", "0.0.1", project_root.join("src/contracts"), false
-    ///  ).expect("inconsistent bindings");
-    /// }
-    /// ```
-    pub fn ensure_consistent_crate(
+    fn ensure_consistent_crate(
         self,
         name: impl AsRef<str>,
         version: impl AsRef<str>,
@@ -428,46 +667,28 @@ serde_json = "1.0.79"
         Ok(())
     }
 
-    /// This ensures that the already generated bindings module matches the
-    /// output of a fresh new run. Run this in a rust test, to get notified in
-    /// CI if the newly generated bindings deviate from the already generated
-    /// ones, and it's time to generate them again. This could happen if the
-    /// ABI of a contract or the output that `ethers` generates changed.
-    ///
-    /// If this functions is run within a test during CI and fails, then it's
-    /// time to update all bindings.
-    ///
-    /// # Returns
-    ///
-    /// `Ok(())` if the freshly generated bindings match with the
-    /// existing bindings. Otherwise an `Err(_)` containing an `eyre::Report`
-    /// with more information.
-    ///
-    /// # Example
-    ///
-    /// Check that the generated files are up to date
-    ///
-    /// ```no_run
-    /// # use ethers_contract_abigen::MultiAbigen;
-    /// #[test]
-    /// fn generated_bindings_are_fresh() {
-    ///  let project_root = std::path::Path::new(&env!("CARGO_MANIFEST_DIR"));
-    ///  let abi_dir = project_root.join("abi");
-    ///  let gen = MultiAbigen::from_json_files(&abi_dir).unwrap();
-    ///  let bindings = gen.build().unwrap();
-    ///  bindings.ensure_consistent_module(
-    ///     project_root.join("src/contracts"), false
-    ///  ).expect("inconsistent bindings");
-    /// }
-    /// ```
-    pub fn ensure_consistent_module(
-        self,
-        module: impl AsRef<Path>,
-        single_file: bool,
-    ) -> Result<()> {
+    fn ensure_consistent_module(self, module: impl AsRef<Path>, single_file: bool) -> Result<()> {
         self.ensure_consistent_bindings(module, false, single_file)?;
         Ok(())
     }
+}
+
+/// Generate the shared prefix of the `lib.rs` or `mod.rs`
+fn generate_prefix(mut buf: impl Write, is_crate: bool, single_file: bool) -> Result<()> {
+    writeln!(buf, "#![allow(clippy::all)]")?;
+    writeln!(
+        buf,
+        "//! This {} contains abigen! generated bindings for solidity contracts.",
+        if is_crate { "lib" } else { "module" }
+    )?;
+    writeln!(buf, "//! This is autogenerated code.")?;
+    writeln!(buf, "//! Do not manually edit these files.")?;
+    writeln!(
+        buf,
+        "//! {} may be overwritten by the codegen system at any time.",
+        if single_file && !is_crate { "This file" } else { "These files" }
+    )?;
+    Ok(())
 }
 
 fn check_file_in_dir(dir: &Path, file_name: &str, expected_contents: &[u8]) -> Result<()> {
@@ -493,6 +714,7 @@ fn check_binding_in_dir(dir: &Path, binding: &ContractBindings) -> Result<()> {
 mod tests {
     use super::*;
 
+    use ethers_solc::project_util::TempProject;
     use std::{panic, path::PathBuf};
 
     struct Context {
@@ -753,5 +975,83 @@ mod tests {
             // ensure inconsistent bindings are detected
             assert!(result, "Inconsistent bindings wrongly approved");
         })
+    }
+
+    #[test]
+    fn can_deduplicate_types() {
+        let tmp = TempProject::dapptools().unwrap();
+
+        tmp.add_source(
+            "Greeter",
+            r#"
+// SPDX-License-Identifier: MIT
+pragma solidity >=0.8.0;
+
+struct Inner {
+    bool a;
+}
+
+struct Stuff {
+    Inner inner;
+}
+
+contract Greeter1 {
+
+    function greet(Stuff calldata stuff) public pure returns (Stuff memory) {
+        return stuff;
+    }
+}
+
+contract Greeter2 {
+
+    function greet(Stuff calldata stuff) public pure returns (Stuff memory) {
+        return stuff;
+    }
+}
+"#,
+        )
+        .unwrap();
+
+        let _ = tmp.compile().unwrap();
+
+        let gen = MultiAbigen::from_json_files(tmp.artifacts_path()).unwrap();
+        let bindings = gen.build().unwrap();
+        let single_file_dir = tmp.root().join("single_bindings");
+        bindings.write_to_module(&single_file_dir, true).unwrap();
+
+        let single_file_mod = single_file_dir.join("mod.rs");
+        assert!(single_file_mod.exists());
+        let content = fs::read_to_string(&single_file_mod).unwrap();
+        assert!(content.contains("mod __shared_types"));
+        assert!(content.contains("pub struct Inner"));
+        assert!(content.contains("pub struct Stuff"));
+
+        // multiple files
+        let gen = MultiAbigen::from_json_files(tmp.artifacts_path()).unwrap();
+        let bindings = gen.build().unwrap();
+        let multi_file_dir = tmp.root().join("multi_bindings");
+        bindings.write_to_module(&multi_file_dir, false).unwrap();
+        let multi_file_mod = multi_file_dir.join("mod.rs");
+        assert!(multi_file_mod.exists());
+        let content = fs::read_to_string(&multi_file_mod).unwrap();
+        assert!(content.contains("pub mod shared_types"));
+
+        let greeter1 = multi_file_dir.join("greeter_1.rs");
+        assert!(greeter1.exists());
+        let content = fs::read_to_string(&greeter1).unwrap();
+        assert!(!content.contains("pub struct Inner"));
+        assert!(!content.contains("pub struct Stuff"));
+
+        let greeter2 = multi_file_dir.join("greeter_2.rs");
+        assert!(greeter2.exists());
+        let content = fs::read_to_string(&greeter2).unwrap();
+        assert!(!content.contains("pub struct Inner"));
+        assert!(!content.contains("pub struct Stuff"));
+
+        let shared_types = multi_file_dir.join("shared_types.rs");
+        assert!(shared_types.exists());
+        let content = fs::read_to_string(&shared_types).unwrap();
+        assert!(content.contains("pub struct Inner"));
+        assert!(content.contains("pub struct Stuff"));
     }
 }
