@@ -807,13 +807,7 @@ fn parse_data(content: &str, file: &Path) -> SolData {
                 .map(|(cap, name)| {
                     SolDataUnit::new(name.as_str().to_owned(), cap.to_owned().into())
                 });
-            imports =
-                capture_outer_and_inner(content, &utils::RE_SOL_IMPORT, &["p1", "p2", "p3", "p4"])
-                    .iter()
-                    .map(|(cap, m)| {
-                        SolDataUnit::new(PathBuf::from(m.as_str()), cap.to_owned().into())
-                    })
-                    .collect();
+            imports = capture_imports(content);
         }
     };
     let license = content.lines().next().and_then(|line| {
@@ -846,9 +840,42 @@ fn capture_outer_and_inner<'a>(
         .collect()
 }
 
+fn capture_imports(content: &str) -> Vec<SolDataUnit<PathBuf>> {
+    capture_outer_and_inner(content, &utils::RE_SOL_IMPORT, &["p1", "p2", "p3", "p4"])
+        .iter()
+        .map(|(cap, m)| SolDataUnit::new(PathBuf::from(m.as_str()), cap.to_owned().into()))
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn can_capture_curly_imports() {
+        let content = r#"
+import { T } from "../Test.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {DsTest} from "ds-test/test.sol";
+"#;
+
+        let captured_imports =
+            capture_imports(content).into_iter().map(|s| s.data).collect::<Vec<_>>();
+
+        let expected =
+            utils::find_import_paths(content).map(|m| m.as_str().into()).collect::<Vec<PathBuf>>();
+
+        assert_eq!(captured_imports, expected);
+
+        assert_eq!(
+            captured_imports,
+            vec![
+                PathBuf::from("../Test.sol"),
+                "@openzeppelin/contracts/utils/ReentrancyGuard.sol".into(),
+                "ds-test/test.sol".into(),
+            ]
+        );
+    }
 
     #[test]
     fn can_resolve_hardhat_dependency_graph() {
