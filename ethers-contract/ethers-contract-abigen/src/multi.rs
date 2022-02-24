@@ -987,17 +987,24 @@ mod tests {
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.0;
 
-contract Greeter {
+struct Inner {
+    bool a;
+}
 
-    struct Inner {
-        bool a;
+struct Stuff {
+    Inner inner;
+}
+
+contract Greeter1 {
+
+    function greet(Stuff calldata stuff) public pure returns (Stuff memory) {
+        return stuff;
     }
+}
 
-    struct Stuff {
-        Inner inner;
-    }
+contract Greeter2 {
 
-    function greet(Stuff calldata stuff) public view returns (Stuff memory) {
+    function greet(Stuff calldata stuff) public pure returns (Stuff memory) {
         return stuff;
     }
 }
@@ -1009,6 +1016,42 @@ contract Greeter {
 
         let gen = MultiAbigen::from_json_files(tmp.artifacts_path()).unwrap();
         let bindings = gen.build().unwrap();
-        bindings.write_to_module("bindings", true).unwrap();
+        let single_file_dir = tmp.root().join("single_bindings");
+        bindings.write_to_module(&single_file_dir, true).unwrap();
+
+        let single_file_mod = single_file_dir.join("mod.rs");
+        assert!(single_file_mod.exists());
+        let content = fs::read_to_string(&single_file_mod).unwrap();
+        assert!(content.contains("mod __shared_types"));
+        assert!(content.contains("pub struct Inner"));
+        assert!(content.contains("pub struct Stuff"));
+
+        // multiple files
+        let gen = MultiAbigen::from_json_files(tmp.artifacts_path()).unwrap();
+        let bindings = gen.build().unwrap();
+        let multi_file_dir = tmp.root().join("multi_bindings");
+        bindings.write_to_module(&multi_file_dir, false).unwrap();
+        let multi_file_mod = multi_file_dir.join("mod.rs");
+        assert!(multi_file_mod.exists());
+        let content = fs::read_to_string(&multi_file_mod).unwrap();
+        assert!(content.contains("pub mod shared_types"));
+
+        let greeter1 = multi_file_dir.join("greeter_1.rs");
+        assert!(greeter1.exists());
+        let content = fs::read_to_string(&greeter1).unwrap();
+        assert!(!content.contains("pub struct Inner"));
+        assert!(!content.contains("pub struct Stuff"));
+
+        let greeter2 = multi_file_dir.join("greeter_2.rs");
+        assert!(greeter2.exists());
+        let content = fs::read_to_string(&greeter2).unwrap();
+        assert!(!content.contains("pub struct Inner"));
+        assert!(!content.contains("pub struct Stuff"));
+
+        let shared_types = multi_file_dir.join("shared_types.rs");
+        assert!(shared_types.exists());
+        let content = fs::read_to_string(&shared_types).unwrap();
+        assert!(content.contains("pub struct Inner"));
+        assert!(content.contains("pub struct Stuff"));
     }
 }
