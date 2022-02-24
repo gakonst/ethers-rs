@@ -323,8 +323,8 @@ impl Client {
     /// # async fn main() {
     ///     let client = Client::new(Chain::Mainnet, "API_KEY").unwrap();
     ///     let balance = client
-    ///         .get_ether_balance_single("0x58eB28A67731c570Ef827C365c89B5751F9E6b0a", None)
-    ///         .await.unwrap();
+    ///         .get_ether_balance_single(&"0x58eB28A67731c570Ef827C365c89B5751F9E6b0a".parse().unwrap(),
+    ///         None).await.unwrap();
     /// # }
     /// ```
     pub async fn get_ether_balance_single(
@@ -358,8 +358,8 @@ impl Client {
     /// # async fn main() {
     ///     let client = Client::new(Chain::Mainnet, "API_KEY").unwrap();
     ///     let balances = client
-    ///         .get_ether_balance_multi(&vec!["0x58eB28A67731c570Ef827C365c89B5751F9E6b0a"], None)
-    ///         .await.unwrap();
+    ///         .get_ether_balance_multi(&vec![&"0x58eB28A67731c570Ef827C365c89B5751F9E6b0a".parse().unwrap()],
+    ///         None).await.unwrap();
     /// # }
     /// ```
     pub async fn get_ether_balance_multi(
@@ -393,8 +393,8 @@ impl Client {
     /// # async fn main() {
     ///     let client = Client::new(Chain::Mainnet, "API_KEY").unwrap();
     ///     let txs = client
-    ///         .get_normal_transactions("0x58eB28A67731c570Ef827C365c89B5751F9E6b0a", None)
-    ///         .await.unwrap();
+    ///         .get_normal_transactions(&"0x58eB28A67731c570Ef827C365c89B5751F9E6b0a".parse().unwrap(),
+    ///         None).await.unwrap();
     /// # }
     /// ```
     pub async fn get_normal_transactions(
