@@ -1139,6 +1139,11 @@ impl<P: JsonRpcClient> Provider<P> {
         // the call will return a Bytes array which we convert to an address
         let data = self.call(&ens::get_resolver(ens_addr, ens_name).into(), None).await?;
 
+        // otherwise, decode_bytes panics
+        if data.0.is_empty() {
+            return Err(ProviderError::EnsError(ens_name.to_owned()))
+        }
+
         let resolver_address: Address = decode_bytes(ParamType::Address, data);
         if resolver_address == Address::zero() {
             return Err(ProviderError::EnsError(ens_name.to_owned()))
