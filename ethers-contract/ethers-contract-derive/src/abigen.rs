@@ -5,7 +5,10 @@ use crate::spanned::{ParseInner, Spanned};
 use ethers_contract_abigen::Abigen;
 use ethers_core::abi::{Function, FunctionExt, Param, StateMutability};
 
-use ethers_contract_abigen::contract::{Context, ExpandedContract};
+use ethers_contract_abigen::{
+    contract::{Context, ExpandedContract},
+    multi::MultiExpansion,
+};
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::{quote, ToTokens};
 use std::{
@@ -19,7 +22,6 @@ use syn::{
     parse::{Error as ParseError, Parse, ParseStream, Result as ParseResult},
     Ident, LitStr, Path, Token,
 };
-use ethers_contract_abigen::multi::MultiExpansion;
 
 /// A series of `ContractArgs` separated by `;`
 #[cfg_attr(test, derive(Debug))]
@@ -38,8 +40,8 @@ impl Contracts {
             expansions.push(contract);
         }
 
-         // expand all contract expansions
-         Ok(MultiExpansion::new(expansions).expand_inplace())
+        // expand all contract expansions
+        Ok(MultiExpansion::new(expansions).expand_inplace())
     }
 
     fn expand_contract(
