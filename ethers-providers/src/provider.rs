@@ -1140,7 +1140,7 @@ impl<P: JsonRpcClient> Provider<P> {
         let data = self.call(&ens::get_resolver(ens_addr, ens_name).into(), None).await?;
 
         // otherwise, decode_bytes panics
-        if data.0.len() == 0 {
+        if data.0.is_empty() {
             return Err(ProviderError::EnsError(ens_name.to_owned()))
         }
 
