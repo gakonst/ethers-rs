@@ -5,7 +5,7 @@ use ethers_core::{
     abi::{AbiDecode, AbiEncode, Address, Tokenizable},
     types::{transaction::eip2718::TypedTransaction, Eip1559TransactionRequest, U256},
 };
-use ethers_providers::Provider;
+use ethers_providers::{MockProvider, Provider};
 use ethers_solc::Solc;
 use std::{convert::TryFrom, sync::Arc};
 
@@ -471,4 +471,16 @@ async fn can_abiencoderv2_output() {
 
     let res = contract.default_person().call().await.unwrap();
     assert_eq!(res, person);
+}
+
+#[test]
+fn can_gen_multi_etherscan() {
+    abigen!(
+        MyContract, "etherscan:0xdAC17F958D2ee523a2206206994597C13D831ec7";
+        MyContract2, "etherscan:0x8418bb725b3ac45ec8fff3791dd8b4e0480cc2a2";
+    );
+
+    let provider = Arc::new(Provider::new(MockProvider::new()));
+    let _contract = MyContract::new(Address::default(), Arc::clone(&provider));
+    let _contract = MyContract2::new(Address::default(), provider);
 }
