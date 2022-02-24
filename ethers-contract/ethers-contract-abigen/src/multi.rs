@@ -93,7 +93,7 @@ impl MultiExpansion {
 /// Represents an intermediary result of [`MultiExpansion::expand()`]
 pub struct MultiExpansionResult {
     contracts: Vec<(ExpandedContract, Context)>,
-    /// contains the indices of contracts which structs need to updated
+    /// contains the indices of contracts with structs that need to be updated
     dirty_contracts: HashSet<usize>,
     /// all type definitions of types that are shared by multiple contracts
     shared_types: Vec<TokenStream>,
