@@ -843,9 +843,7 @@ fn capture_outer_and_inner<'a>(
 fn capture_imports(content: &str) -> Vec<SolDataUnit<PathBuf>> {
     capture_outer_and_inner(content, &utils::RE_SOL_IMPORT, &["p1", "p2", "p3", "p4"])
         .iter()
-        .map(|(cap, m)| {
-            SolDataUnit::new(PathBuf::from(m.as_str()), cap.to_owned().into())
-        })
+        .map(|(cap, m)| SolDataUnit::new(PathBuf::from(m.as_str()), cap.to_owned().into()))
         .collect()
 }
 
@@ -861,14 +859,13 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 import {DsTest} from "ds-test/test.sol";
 "#;
 
-        let captured_imports = capture_imports(content).into_iter().map(|s|s.data).collect::<Vec<_>>();
+        let captured_imports =
+            capture_imports(content).into_iter().map(|s| s.data).collect::<Vec<_>>();
 
-        let expected =    utils::find_import_paths(content).map(|m| m.as_str().into()).collect::<Vec<PathBuf>>();
+        let expected =
+            utils::find_import_paths(content).map(|m| m.as_str().into()).collect::<Vec<PathBuf>>();
 
-        assert_eq!(
-            captured_imports,
-            expected
-        );
+        assert_eq!(captured_imports, expected);
 
         assert_eq!(
             captured_imports,
