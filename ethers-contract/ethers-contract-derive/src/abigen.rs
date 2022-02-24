@@ -10,11 +10,8 @@ use ethers_contract_abigen::{
     multi::MultiExpansion,
 };
 use proc_macro2::{Span, TokenStream as TokenStream2};
-use quote::{quote, ToTokens};
-use std::{
-    collections::{HashMap, HashSet},
-    error::Error,
-};
+use quote::ToTokens;
+use std::{collections::HashSet, error::Error};
 use syn::{
     braced,
     ext::IdentExt,
