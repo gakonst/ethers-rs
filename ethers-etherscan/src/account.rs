@@ -4,6 +4,10 @@ use std::{
     fmt::{Display, Error, Formatter},
 };
 
+use ethers_core::{
+    abi::Address,
+    types::{BlockNumber, Bytes, H256, U256, U64},
+};
 use serde::{Deserialize, Serialize};
 
 use crate::{Client, EtherscanError, Query, Response, Result};
@@ -11,8 +15,62 @@ use crate::{Client, EtherscanError, Query, Response, Result};
 /// The raw response from the balance-related API endpoints
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AccountBalance {
-    pub account: String,
+    pub account: Address,
     pub balance: String,
+}
+
+mod jsonstring {
+    use super::*;
+    use serde::{
+        de::{DeserializeOwned, Error as _},
+        ser::Error as _,
+        Deserializer, Serializer,
+    };
+
+    pub fn serialize<T, S>(
+        value: &GenesisOption<T>,
+        serializer: S,
+    ) -> std::result::Result<S::Ok, S::Error>
+    where
+        T: Serialize,
+        S: Serializer,
+    {
+        let json = match value {
+            GenesisOption::None => Cow::from(""),
+            GenesisOption::Genesis => Cow::from("GENESIS"),
+            GenesisOption::Some(value) => {
+                serde_json::to_string(value).map_err(S::Error::custom)?.into()
+            }
+        };
+        serializer.serialize_str(&json)
+    }
+
+    pub fn deserialize<'de, T, D>(
+        deserializer: D,
+    ) -> std::result::Result<GenesisOption<T>, D::Error>
+    where
+        T: DeserializeOwned,
+        D: Deserializer<'de>,
+    {
+        let json = Cow::<'de, str>::deserialize(deserializer)?;
+        if !json.is_empty() && !json.starts_with("GENESIS") {
+            let value =
+                serde_json::from_str(&format!("\"{}\"", &json)).map_err(D::Error::custom)?;
+            Ok(GenesisOption::Some(value))
+        } else if json.starts_with("GENESIS") {
+            Ok(GenesisOption::Genesis)
+        } else {
+            Ok(GenesisOption::None)
+        }
+    }
+}
+
+/// Possible values for some field responses
+#[derive(Debug)]
+pub enum GenesisOption<T> {
+    None,
+    Genesis,
+    Some(T),
 }
 
 /// The raw response from the transaction list API endpoint
@@ -20,24 +78,30 @@ pub struct AccountBalance {
 #[serde(rename_all = "camelCase")]
 pub struct NormalTransaction {
     pub is_error: String,
-    pub block_number: String,
+    pub block_number: BlockNumber,
     pub time_stamp: String,
-    pub hash: String,
-    pub nonce: String,
-    pub block_hash: String,
-    pub transaction_index: String,
-    pub from: String,
-    pub to: String,
-    pub value: String,
-    pub gas: String,
-    pub gas_price: String,
+    #[serde(with = "jsonstring")]
+    pub hash: GenesisOption<H256>,
+    #[serde(with = "jsonstring")]
+    pub nonce: GenesisOption<U256>,
+    #[serde(with = "jsonstring")]
+    pub block_hash: GenesisOption<U256>,
+    pub transaction_index: Option<U64>,
+    #[serde(with = "jsonstring")]
+    pub from: GenesisOption<Address>,
+    pub to: Option<Address>,
+    pub value: U256,
+    pub gas: U256,
+    pub gas_price: Option<U256>,
     #[serde(rename = "txreceipt_status")]
     pub tx_receipt_status: String,
-    pub input: String,
-    pub contract_address: String,
-    pub gas_used: String,
-    pub cumulative_gas_used: String,
-    pub confirmations: String,
+    #[serde(with = "jsonstring")]
+    pub input: GenesisOption<Bytes>,
+    #[serde(with = "jsonstring")]
+    pub contract_address: GenesisOption<Address>,
+    pub gas_used: U256,
+    pub cumulative_gas_used: U256,
+    pub confirmations: U64,
 }
 
 /// The raw response from the internal transaction list API endpoint
@@ -265,23 +329,21 @@ impl Client {
     /// ```
     pub async fn get_ether_balance_single(
         &self,
-        address: impl AsRef<str>,
+        address: &Address,
         tag: Option<Tag>,
     ) -> Result<AccountBalance> {
         let tag_str = tag.unwrap_or_default().to_string();
+        let addr_str = format!("{:?}", address);
         let query = self.create_query(
             "account",
             "balance",
-            HashMap::from([("address", address.as_ref()), ("tag", &tag_str)]),
+            HashMap::from([("address", &addr_str), ("tag", &tag_str)]),
         );
         let response: Response<String> = self.get_json(&query).await?;
 
         match response.status.as_str() {
             "0" => Err(EtherscanError::BalanceFailed),
-            "1" => Ok(AccountBalance {
-                account: address.as_ref().to_string(),
-                balance: response.result,
-            }),
+            "1" => Ok(AccountBalance { account: *address, balance: response.result }),
             err => Err(EtherscanError::BadStatusCode(err.to_string())),
         }
     }
@@ -300,14 +362,13 @@ impl Client {
     ///         .await.unwrap();
     /// # }
     /// ```
-    pub async fn get_ether_balance_multi<A: AsRef<str>>(
+    pub async fn get_ether_balance_multi(
         &self,
-        addresses: &[A],
+        addresses: &[&Address],
         tag: Option<Tag>,
     ) -> Result<Vec<AccountBalance>> {
         let tag_str = tag.unwrap_or_default().to_string();
-        let addrs = addresses.iter().map(AsRef::as_ref).collect::<Vec<&str>>().join(",");
-
+        let addrs = addresses.iter().map(|x| format!("{:?}", x)).collect::<Vec<String>>().join(",");
         let query: Query<HashMap<&str, &str>> = self.create_query(
             "account",
             "balancemulti",
@@ -338,11 +399,11 @@ impl Client {
     /// ```
     pub async fn get_normal_transactions(
         &self,
-        address: impl AsRef<str>,
+        address: &Address,
         params: Option<TxListParams>,
     ) -> Result<Vec<NormalTransaction>> {
         let mut tx_params: HashMap<&str, String> = params.unwrap_or_default().into();
-        tx_params.insert("address", address.as_ref().to_string());
+        tx_params.insert("address", format!("{:?}", address));
         let query = self.create_query("account", "txlist", tx_params);
         let response: Response<Vec<NormalTransaction>> = self.get_json(&query).await?;
 
@@ -495,7 +556,10 @@ mod tests {
             let client = Client::new_from_env(Chain::Mainnet).unwrap();
 
             let balance = client
-                .get_ether_balance_single("0x58eB28A67731c570Ef827C365c89B5751F9E6b0a", None)
+                .get_ether_balance_single(
+                    &"0x58eB28A67731c570Ef827C365c89B5751F9E6b0a".parse().unwrap(),
+                    None,
+                )
                 .await;
             assert!(balance.is_ok());
         })
@@ -509,7 +573,10 @@ mod tests {
             let client = Client::new_from_env(Chain::Mainnet).unwrap();
 
             let balances = client
-                .get_ether_balance_multi(&vec!["0x58eB28A67731c570Ef827C365c89B5751F9E6b0a"], None)
+                .get_ether_balance_multi(
+                    &vec![&"0x58eB28A67731c570Ef827C365c89B5751F9E6b0a".parse().unwrap()],
+                    None,
+                )
                 .await;
             assert!(balances.is_ok());
             let balances = balances.unwrap();
@@ -525,8 +592,12 @@ mod tests {
             let client = Client::new_from_env(Chain::Mainnet).unwrap();
 
             let txs = client
-                .get_normal_transactions("0x58eB28A67731c570Ef827C365c89B5751F9E6b0a", None)
+                .get_normal_transactions(
+                    &"0x58eB28A67731c570Ef827C365c89B5751F9E6b0a".parse().unwrap(),
+                    None,
+                )
                 .await;
+            dbg!(&txs);
             assert!(txs.is_ok());
         })
         .await
