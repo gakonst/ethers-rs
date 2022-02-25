@@ -73,6 +73,28 @@ pub enum GenesisOption<T> {
     Some(T),
 }
 
+impl<T> From<GenesisOption<T>> for Option<T> {
+    fn from(value: GenesisOption<T>) -> Self {
+        match value {
+            GenesisOption::Some(value) => Some(value),
+            _ => None,
+        }
+    }
+}
+
+impl<T> GenesisOption<T> {
+    pub fn is_genesis(&self) -> bool {
+        matches!(self, GenesisOption::Genesis)
+    }
+
+    pub fn value(&self) -> Option<&T> {
+        match self {
+            GenesisOption::Some(value) => Some(value),
+            _ => None,
+        }
+    }
+}
+
 /// The raw response from the transaction list API endpoint
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -108,18 +130,21 @@ pub struct NormalTransaction {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InternalTransaction {
-    pub block_number: String,
+    pub block_number: BlockNumber,
     pub time_stamp: String,
-    pub hash: String,
-    pub from: String,
-    pub to: String,
-    pub value: String,
-    pub contract_address: String,
-    pub input: String,
+    pub hash: H256,
+    pub from: Address,
+    #[serde(with = "jsonstring")]
+    pub to: GenesisOption<Address>,
+    pub value: U256,
+    #[serde(with = "jsonstring")]
+    pub contract_address: GenesisOption<Address>,
+    #[serde(with = "jsonstring")]
+    pub input: GenesisOption<Bytes>,
     #[serde(rename = "type")]
     pub result_type: String,
-    pub gas: String,
-    pub gas_used: String,
+    pub gas: U256,
+    pub gas_used: U256,
     pub trace_id: String,
     pub is_error: String,
     pub err_code: String,
@@ -129,58 +154,60 @@ pub struct InternalTransaction {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ERC20TokenTransferEvent {
-    pub block_number: String,
+    pub block_number: BlockNumber,
     pub time_stamp: String,
-    pub hash: String,
-    pub nonce: String,
-    pub block_hash: String,
-    pub from: String,
-    pub contract_address: String,
-    pub to: String,
-    pub value: String,
+    pub hash: H256,
+    pub nonce: U256,
+    pub block_hash: H256,
+    pub from: Address,
+    pub contract_address: Address,
+    pub to: Option<Address>,
+    pub value: U256,
     pub token_name: String,
     pub token_symbol: String,
     pub token_decimal: String,
-    pub transaction_index: String,
-    pub gas: String,
-    pub gas_price: String,
-    pub gas_used: String,
-    pub cumulative_gas_used: String,
+    pub transaction_index: U64,
+    pub gas: U256,
+    pub gas_price: Option<U256>,
+    pub gas_used: U256,
+    pub cumulative_gas_used: U256,
+    /// deprecated
     pub input: String,
-    pub confirmations: String,
+    pub confirmations: U64,
 }
 
 /// The raw response from the ERC721 transfer list API endpoint
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ERC721TokenTransferEvent {
-    pub block_number: String,
+    pub block_number: BlockNumber,
     pub time_stamp: String,
-    pub hash: String,
-    pub nonce: String,
-    pub block_hash: String,
-    pub from: String,
-    pub contract_address: String,
-    pub to: String,
+    pub hash: H256,
+    pub nonce: U256,
+    pub block_hash: H256,
+    pub from: Address,
+    pub contract_address: Address,
+    pub to: Option<Address>,
     #[serde(rename = "tokenID")]
     pub token_id: String,
     pub token_name: String,
     pub token_symbol: String,
     pub token_decimal: String,
-    pub transaction_index: String,
-    pub gas: String,
-    pub gas_price: String,
-    pub gas_used: String,
-    pub cumulative_gas_used: String,
+    pub transaction_index: U64,
+    pub gas: U256,
+    pub gas_price: Option<U256>,
+    pub gas_used: U256,
+    pub cumulative_gas_used: U256,
+    /// deprecated
     pub input: String,
-    pub confirmations: String,
+    pub confirmations: U64,
 }
 
 /// The raw response from the mined blocks API endpoint
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MinedBlock {
-    pub block_number: String,
+    pub block_number: BlockNumber,
     pub time_stamp: String,
     pub block_reward: String,
 }
@@ -257,34 +284,34 @@ impl From<TxListParams> for HashMap<&'static str, String> {
 }
 
 /// Options for querying internal transactions
-pub enum InternalTxQueryOption<A> {
-    ByAddress(A),
-    ByTransactionHash(A),
+pub enum InternalTxQueryOption {
+    ByAddress(Address),
+    ByTransactionHash(H256),
     ByBlockRange,
 }
 
 /// Options for querying ERC20 or ERC721 token transfers
-pub enum TokenQueryOption<A> {
-    ByAddress(A),
-    ByContract(A),
-    ByAddressAndContract(A, A),
+pub enum TokenQueryOption {
+    ByAddress(Address),
+    ByContract(Address),
+    ByAddressAndContract(Address, Address),
 }
 
-impl<'a, A: Into<Cow<'a, str>>> TokenQueryOption<A> {
+impl TokenQueryOption {
     pub fn into_params(self, list_params: TxListParams) -> HashMap<&'static str, String> {
         let mut params: HashMap<&'static str, String> = list_params.into();
         match self {
             TokenQueryOption::ByAddress(address) => {
-                params.insert("address", address.into().into_owned());
+                params.insert("address", format!("{:?}", address));
                 params
             }
             TokenQueryOption::ByContract(contract) => {
-                params.insert("contractaddress", contract.into().into_owned());
+                params.insert("contractaddress", format!("{:?}", contract));
                 params
             }
             TokenQueryOption::ByAddressAndContract(address, contract) => {
-                params.insert("address", address.into().into_owned());
-                params.insert("contractaddress", contract.into().into_owned());
+                params.insert("address", format!("{:?}", address));
+                params.insert("contractaddress", format!("{:?}", contract));
                 params
             }
         }
@@ -393,11 +420,11 @@ impl Client {
     /// # async fn main() {
     ///     let client = Client::new(Chain::Mainnet, "API_KEY").unwrap();
     ///     let txs = client
-    ///         .get_normal_transactions(&"0x58eB28A67731c570Ef827C365c89B5751F9E6b0a".parse().unwrap(),
+    ///         .get_transactions(&"0x58eB28A67731c570Ef827C365c89B5751F9E6b0a".parse().unwrap(),
     ///         None).await.unwrap();
     /// # }
     /// ```
-    pub async fn get_normal_transactions(
+    pub async fn get_transactions(
         &self,
         address: &Address,
         params: Option<TxListParams>,
@@ -422,22 +449,22 @@ impl Client {
     ///     let client = Client::new(Chain::Mainnet, "API_KEY").unwrap();
     ///     let txs = client
     ///         .get_internal_transactions(
-    ///             InternalTxQueryOption::ByAddress("0x2c1ba59d6f58433fb1eaee7d20b26ed83bda51a3"),
-    ///             None).await.unwrap();
+    ///             InternalTxQueryOption::ByAddress(
+    ///                 "0x2c1ba59d6f58433fb1eaee7d20b26ed83bda51a3".parse().unwrap()), None).await.unwrap();
     /// # }
     /// ```
-    pub async fn get_internal_transactions<'a, A: Into<Cow<'a, str>>>(
+    pub async fn get_internal_transactions(
         &self,
-        tx_query_option: InternalTxQueryOption<A>,
+        tx_query_option: InternalTxQueryOption,
         params: Option<TxListParams>,
     ) -> Result<Vec<InternalTransaction>> {
         let mut tx_params: HashMap<&str, String> = params.unwrap_or_default().into();
         match tx_query_option {
             InternalTxQueryOption::ByAddress(address) => {
-                tx_params.insert("address", address.into().into_owned());
+                tx_params.insert("address", format!("{:?}", address));
             }
             InternalTxQueryOption::ByTransactionHash(tx_hash) => {
-                tx_params.insert("txhash", tx_hash.into().into_owned());
+                tx_params.insert("txhash", format!("{:?}", tx_hash));
             }
             _ => {}
         }
@@ -459,13 +486,13 @@ impl Client {
     ///     let client = Client::new(Chain::Mainnet, "API_KEY").unwrap();
     ///     let txs = client
     ///         .get_erc20_token_transfer_events(
-    ///             TokenQueryOption::ByAddress("0x4e83362442b8d1bec281594cea3050c8eb01311c"),
-    ///             None).await.unwrap();
+    ///             TokenQueryOption::ByAddress(
+    ///                 "0x4e83362442b8d1bec281594cea3050c8eb01311c".parse().unwrap()), None).await.unwrap();
     /// # }
     /// ```
-    pub async fn get_erc20_token_transfer_events<'a, A: Into<Cow<'a, str>>>(
+    pub async fn get_erc20_token_transfer_events(
         &self,
-        event_query_option: TokenQueryOption<A>,
+        event_query_option: TokenQueryOption,
         params: Option<TxListParams>,
     ) -> Result<Vec<ERC20TokenTransferEvent>> {
         let params = event_query_option.into_params(params.unwrap_or_default());
@@ -488,14 +515,14 @@ impl Client {
     ///     let txs = client
     ///         .get_erc721_token_transfer_events(
     ///             TokenQueryOption::ByAddressAndContract(
-    ///                 "0x6975be450864c02b4613023c2152ee0743572325",
-    ///                 "0x06012c8cf97bead5deae237070f9587f8e7a266d",
+    ///                 "0x6975be450864c02b4613023c2152ee0743572325".parse().unwrap(),
+    ///                 "0x06012c8cf97bead5deae237070f9587f8e7a266d".parse().unwrap(),
     ///          ), None).await.unwrap();
     /// # }
     /// ```
-    pub async fn get_erc721_token_transfer_events<'a, A: Into<Cow<'a, str>>>(
+    pub async fn get_erc721_token_transfer_events(
         &self,
-        event_query_option: TokenQueryOption<A>,
+        event_query_option: TokenQueryOption,
         params: Option<TxListParams>,
     ) -> Result<Vec<ERC721TokenTransferEvent>> {
         let params = event_query_option.into_params(params.unwrap_or_default());
@@ -515,18 +542,18 @@ impl Client {
     /// # async fn main() {
     ///     let client = Client::new(Chain::Mainnet, "API_KEY").unwrap();
     ///     let blocks = client
-    ///         .get_mined_blocks("0x9dd134d14d1e65f84b706d6f205cd5b1cd03a46b", None, None)
+    ///         .get_mined_blocks(&"0x9dd134d14d1e65f84b706d6f205cd5b1cd03a46b".parse().unwrap(), None, None)
     ///         .await.unwrap();
     /// # }
     /// ```
     pub async fn get_mined_blocks(
         &self,
-        address: impl AsRef<str>,
+        address: &Address,
         block_type: Option<BlockType>,
         page_and_offset: Option<(u64, u64)>,
     ) -> Result<Vec<MinedBlock>> {
         let mut params = HashMap::new();
-        params.insert("address", address.as_ref().to_string());
+        params.insert("address", format!("{:?}", address));
         params.insert("blocktype", block_type.unwrap_or_default().to_string());
         if let Some((page, offset)) = page_and_offset {
             params.insert("page", page.to_string());
@@ -587,12 +614,12 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    async fn get_normal_transactions_success() {
+    async fn get_transactions_success() {
         run_at_least_duration(Duration::from_millis(250), async {
             let client = Client::new_from_env(Chain::Mainnet).unwrap();
 
             let txs = client
-                .get_normal_transactions(
+                .get_transactions(
                     &"0x58eB28A67731c570Ef827C365c89B5751F9E6b0a".parse().unwrap(),
                     None,
                 )
@@ -611,7 +638,9 @@ mod tests {
 
             let txs = client
                 .get_internal_transactions(
-                    InternalTxQueryOption::ByAddress("0x2c1ba59d6f58433fb1eaee7d20b26ed83bda51a3"),
+                    InternalTxQueryOption::ByAddress(
+                        "0x2c1ba59d6f58433fb1eaee7d20b26ed83bda51a3".parse().unwrap(),
+                    ),
                     None,
                 )
                 .await;
@@ -629,7 +658,9 @@ mod tests {
             let txs = client
                 .get_internal_transactions(
                     InternalTxQueryOption::ByTransactionHash(
-                        "0x40eb908387324f2b575b4879cd9d7188f69c8fc9d87c901b9e2daaea4b442170",
+                        "0x40eb908387324f2b575b4879cd9d7188f69c8fc9d87c901b9e2daaea4b442170"
+                            .parse()
+                            .unwrap(),
                     ),
                     None,
                 )
@@ -647,7 +678,9 @@ mod tests {
 
             let txs = client
                 .get_erc20_token_transfer_events(
-                    TokenQueryOption::ByAddress("0x4e83362442b8d1bec281594cea3050c8eb01311c"),
+                    TokenQueryOption::ByAddress(
+                        "0x4e83362442b8d1bec281594cea3050c8eb01311c".parse().unwrap(),
+                    ),
                     None,
                 )
                 .await;
@@ -665,8 +698,8 @@ mod tests {
             let txs = client
                 .get_erc721_token_transfer_events(
                     TokenQueryOption::ByAddressAndContract(
-                        "0x6975be450864c02b4613023c2152ee0743572325",
-                        "0x06012c8cf97bead5deae237070f9587f8e7a266d",
+                        "0x6975be450864c02b4613023c2152ee0743572325".parse().unwrap(),
+                        "0x06012c8cf97bead5deae237070f9587f8e7a266d".parse().unwrap(),
                     ),
                     None,
                 )
@@ -683,7 +716,11 @@ mod tests {
             let client = Client::new_from_env(Chain::Mainnet).unwrap();
 
             let blocks = client
-                .get_mined_blocks("0x9dd134d14d1e65f84b706d6f205cd5b1cd03a46b", None, None)
+                .get_mined_blocks(
+                    &"0x9dd134d14d1e65f84b706d6f205cd5b1cd03a46b".parse().unwrap(),
+                    None,
+                    None,
+                )
                 .await;
             assert!(blocks.is_ok());
         })
