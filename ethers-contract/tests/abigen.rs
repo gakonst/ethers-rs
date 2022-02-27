@@ -428,6 +428,23 @@ fn can_generate_nested_types() {
 }
 
 #[test]
+fn can_handle_different_calls() {
+    abigen!(
+        Test,
+        r#"[
+        function fooBar()
+        function FOO_BAR()
+    ]"#,
+    );
+
+    let (client, _mock) = Provider::mocked();
+    let contract = Test::new(Address::default(), Arc::new(client));
+
+    let _ = contract.fooBar();
+    let _ = contract.FOO_BAR();
+}
+
+#[test]
 fn can_handle_case_sensitive_calls() {
     abigen!(
         StakedOHM,

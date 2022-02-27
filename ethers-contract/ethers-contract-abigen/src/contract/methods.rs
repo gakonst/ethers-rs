@@ -342,7 +342,7 @@ impl Context {
         let mut all_functions = HashMap::new();
         for function in self.abi.functions() {
             all_functions
-                .entry(function.name.to_lowercase())
+                .entry(util::safe_snake_case_ident(&function.name))
                 .or_insert_with(Vec::new)
                 .push(function);
         }
