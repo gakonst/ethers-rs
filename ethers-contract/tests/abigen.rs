@@ -375,6 +375,23 @@ fn can_handle_unique_underscore_functions() {
 }
 
 #[test]
+fn can_handle_underscore_numeric() {
+    abigen!(
+        Test,
+        r#"[
+            _100pct(string)
+        ]"#
+    );
+    let call = _100PctCall("message".to_string());
+
+    let provider = Arc::new(Provider::new(MockProvider::new()));
+    let contract = Test::new(Address::default(), Arc::clone(&provider));
+    // NOTE: this seems to be weird behaviour of `Inflector::to_snake_case` which turns "100pct" ->
+    // "10_0pct"
+    let _call = contract._10_0pct("hello".to_string());
+}
+
+#[test]
 fn can_handle_duplicates_with_same_name() {
     abigen!(
         ConsoleLog,

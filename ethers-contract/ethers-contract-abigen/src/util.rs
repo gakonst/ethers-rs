@@ -21,6 +21,25 @@ pub fn safe_ident(name: &str) -> Ident {
     syn::parse_str::<SynIdent>(name).unwrap_or_else(|_| ident(&format!("{}_", name)))
 }
 
+///  Converts a `&str` to `snake_case` `String` while respecting identifier rules
+pub fn safe_snake_case(ident: &str) -> String {
+    safe_identifier_name(ident.to_snake_case())
+}
+
+///  Converts a `&str` to `PascalCase` `String` while respecting identifier rules
+pub fn safe_pascal_case(ident: &str) -> String {
+    safe_identifier_name(ident.to_pascal_case())
+}
+
+/// respects identifier rules, such as, an identifier must not start with a numeric char
+fn safe_identifier_name(name: String) -> String {
+    if name.starts_with(|c: char| c.is_numeric()) {
+        format!("_{}", name)
+    } else {
+        name
+    }
+}
+
 /// Expands an identifier as snakecase and preserve any leading or trailing underscores
 pub fn safe_snake_case_ident(name: &str) -> Ident {
     let i = name.to_snake_case();
