@@ -279,6 +279,12 @@ fn get_etherscan_contract(address: Address, domain: &str) -> Result<String> {
     if abi.starts_with("Contract source code not verified") {
         eyre::bail!("Contract source code not verified: {:?}", address);
     }
+    if abi.starts_with('{') && abi.contains("Max rate limit reached") {
+        eyre::bail!(
+            "Max rate limit reached, please use etherscan API Key for higher rate limit: {:?}",
+            address
+        );
+    }
 
     Ok(abi)
 }
