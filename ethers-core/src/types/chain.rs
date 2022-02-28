@@ -2,7 +2,7 @@ use serde::Deserialize;
 use thiserror::Error;
 
 use core::convert::TryFrom;
-use std::{fmt, str::FromStr};
+use std::{default, fmt, str::FromStr};
 
 use crate::types::U256;
 
@@ -176,4 +176,15 @@ impl Chain {
                 Chain::Cronos,
         )
     }
+}
+
+impl default::Default for Chain {
+    fn default() -> Self {
+        Chain::Mainnet
+    }
+}
+
+#[test]
+fn test_default_chain() {
+    assert_eq!(Chain::default(), Chain::Mainnet);
 }
