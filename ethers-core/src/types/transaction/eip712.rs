@@ -87,7 +87,7 @@ pub trait Eip712 {
     /// When using the derive macro, this is the primary method used for computing the final
     /// EIP-712 encoded payload. This method relies on the aforementioned methods for computing
     /// the final encoded payload.
-    fn encode_eip712(&self) -> Result<[u8; 32], Self::Error> {
+    fn encode_eip712(&self) -> Result<Vec<u8>, Self::Error> {
         // encode the digest to be compatible with solidity abi.encodePacked()
         // See: https://github.com/gakonst/ethers-rs/blob/master/examples/permit_hash.rs#L72
 
@@ -96,7 +96,12 @@ pub trait Eip712 {
 
         let digest_input = [&[0x19, 0x01], &domain_separator[..], &struct_hash[..]].concat();
 
-        Ok(keccak256(digest_input))
+        Ok(digest_input)
+    }
+
+    /// Computes the EIP-712 hash of the data after computing the encoded payload.
+    fn eip712_hash(&self) -> Result<[u8; 32], Self::Error> {
+        Ok(keccak256(self.encode_eip712()?))
     }
 }
 

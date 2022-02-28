@@ -38,7 +38,7 @@ fn test_derive_eip712() {
         project: "radicle-reward".to_string(),
     };
 
-    let hash = puzzle.encode_eip712().expect("failed to encode struct");
+    let hash = puzzle.eip712_hash().expect("failed to encode struct");
 
     assert_eq!(hash.len(), 32)
 }
@@ -154,7 +154,7 @@ fn test_uniswap_v2_permit_hash() {
         deadline: U256::from(3133728498 as u32),
     };
 
-    let permit_hash = permit.encode_eip712().unwrap();
+    let permit_hash = permit.eip712_hash().unwrap();
 
     assert_eq!(
         hex::encode(permit_hash),
