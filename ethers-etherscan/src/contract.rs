@@ -268,7 +268,7 @@ mod tests {
     use serial_test::serial;
 
     use ethers_core::types::Chain;
-    use ethers_solc::{MinimalCombinedArtifacts, Project, ProjectPathsConfig};
+    use ethers_solc::{Project, ProjectPathsConfig};
 
     use crate::{contract::VerifyContract, tests::run_at_least_duration, Client};
 
