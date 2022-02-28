@@ -366,6 +366,7 @@ where
     async fn handle(&mut self, resp: Message) -> Result<(), ClientError> {
         match resp {
             Message::Text(inner) => self.handle_text(inner).await,
+            Message::Frame(_) => Ok(()), // Server is allowed to send Raw frames
             Message::Ping(inner) => self.handle_ping(inner).await,
             Message::Pong(_) => Ok(()), // Server is allowed to send unsolicited pongs.
             Message::Close(Some(frame)) => Err(ClientError::WsClosed(frame)),
