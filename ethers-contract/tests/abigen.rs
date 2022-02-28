@@ -5,7 +5,7 @@ use ethers_core::{
     abi::{AbiDecode, AbiEncode, Address, Tokenizable},
     types::{transaction::eip2718::TypedTransaction, Eip1559TransactionRequest, U256},
 };
-use ethers_providers::Provider;
+use ethers_providers::{MockProvider, Provider};
 use ethers_solc::Solc;
 use std::{convert::TryFrom, sync::Arc};
 
@@ -375,6 +375,23 @@ fn can_handle_unique_underscore_functions() {
 }
 
 #[test]
+fn can_handle_underscore_numeric() {
+    abigen!(
+        Test,
+        r#"[
+            _100pct(string)
+        ]"#
+    );
+    let call = _100PctCall("message".to_string());
+
+    let provider = Arc::new(Provider::new(MockProvider::new()));
+    let contract = Test::new(Address::default(), Arc::clone(&provider));
+    // NOTE: this seems to be weird behaviour of `Inflector::to_snake_case` which turns "100pct" ->
+    // "10_0pct"
+    let _call = contract._10_0pct("hello".to_string());
+}
+
+#[test]
 fn can_handle_duplicates_with_same_name() {
     abigen!(
         ConsoleLog,
@@ -428,6 +445,23 @@ fn can_generate_nested_types() {
 }
 
 #[test]
+fn can_handle_different_calls() {
+    abigen!(
+        Test,
+        r#"[
+        function fooBar()
+        function FOO_BAR()
+    ]"#,
+    );
+
+    let (client, _mock) = Provider::mocked();
+    let contract = Test::new(Address::default(), Arc::new(client));
+
+    let _ = contract.fooBar();
+    let _ = contract.FOO_BAR();
+}
+
+#[test]
 fn can_handle_case_sensitive_calls() {
     abigen!(
         StakedOHM,
@@ -471,4 +505,16 @@ async fn can_abiencoderv2_output() {
 
     let res = contract.default_person().call().await.unwrap();
     assert_eq!(res, person);
+}
+
+#[test]
+fn can_gen_multi_etherscan() {
+    abigen!(
+        MyContract, "etherscan:0xdAC17F958D2ee523a2206206994597C13D831ec7";
+        MyContract2, "etherscan:0x8418bb725b3ac45ec8fff3791dd8b4e0480cc2a2";
+    );
+
+    let provider = Arc::new(Provider::new(MockProvider::new()));
+    let _contract = MyContract::new(Address::default(), Arc::clone(&provider));
+    let _contract = MyContract2::new(Address::default(), provider);
 }

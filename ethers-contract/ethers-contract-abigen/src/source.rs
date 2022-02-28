@@ -259,7 +259,6 @@ fn get_etherscan_contract(address: Address, domain: &str) -> Result<String> {
     // NOTE: We do not retrieve the bytecode since deploying contracts with the
     //   same bytecode is unreliable as the libraries have already linked and
     //   probably don't reference anything when deploying on other networks.
-
     let api_key = {
         let key_res = match domain {
             "etherscan.io" => env::var("ETHERSCAN_API_KEY").ok(),
@@ -276,6 +275,17 @@ fn get_etherscan_contract(address: Address, domain: &str) -> Result<String> {
     );
     let abi =
         util::http_get(&abi_url).context(format!("failed to retrieve ABI from {}", domain))?;
+
+    if abi.starts_with("Contract source code not verified") {
+        eyre::bail!("Contract source code not verified: {:?}", address);
+    }
+    if abi.starts_with('{') && abi.contains("Max rate limit reached") {
+        eyre::bail!(
+            "Max rate limit reached, please use etherscan API Key for higher rate limit: {:?}",
+            address
+        );
+    }
+
     Ok(abi)
 }
 

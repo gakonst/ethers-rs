@@ -8,6 +8,7 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use errors::EtherscanError;
 use ethers_core::{abi::Address, types::Chain};
 
+pub mod account;
 pub mod contract;
 pub mod errors;
 pub mod gas;

@@ -1,4 +1,4 @@
-use ethers_core::types::Chain;
+use ethers_core::types::{Address, Chain};
 use std::env::VarError;
 
 #[derive(Debug, thiserror::Error)]
@@ -7,6 +7,8 @@ pub enum EtherscanError {
     ChainNotSupported(Chain),
     #[error("contract execution call failed: {0}")]
     ExecutionFailed(String),
+    #[error("balance failed")]
+    BalanceFailed,
     #[error("tx receipt failed")]
     TransactionReceiptFailed,
     #[error("gas estimation failed")]
@@ -19,4 +21,6 @@ pub enum EtherscanError {
     Reqwest(#[from] reqwest::Error),
     #[error(transparent)]
     Serde(#[from] serde_json::Error),
+    #[error("Contract source code not verified: {0}")]
+    ContractCodeNotVerified(Address),
 }

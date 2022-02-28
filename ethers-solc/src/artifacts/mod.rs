@@ -843,7 +843,7 @@ impl OutputContracts {
 pub struct Contract {
     /// The Ethereum Contract Metadata.
     /// See https://docs.soliditylang.org/en/develop/metadata.html
-    pub abi: Option<Abi>,
+    pub abi: Option<LosslessAbi>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
@@ -866,6 +866,48 @@ pub struct Contract {
     pub ewasm: Option<Ewasm>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ir_optimized: Option<String>,
+}
+
+/// A helper type that ensures lossless (de)serialisation unlike [`ethabi::Contract`] which omits
+/// some information of (nested) components in a serde roundtrip. This is a problem for
+/// abienconderv2 structs because `ethabi::Contract`'s representation of those are [`ethabi::Param`]
+/// and the `kind` field of type [`ethabi::ParamType`] does not support deeply nested components as
+/// it's the case for structs. This is not easily fixable in ethabi as it would require a redesign
+/// of the overall `Param` and `ParamType` types. Instead, this type keeps a copy of the
+/// [`serde_json::Value`] when deserialized from the `solc` json compiler output and uses it to
+/// serialize the `abi` without loss.
+#[derive(Clone, Debug, PartialEq, Default)]
+pub struct LosslessAbi {
+    /// The complete abi as json value
+    pub abi_value: serde_json::Value,
+    /// The deserialised version of `abi_value`
+    pub abi: Abi,
+}
+
+impl From<LosslessAbi> for Abi {
+    fn from(abi: LosslessAbi) -> Self {
+        abi.abi
+    }
+}
+
+impl Serialize for LosslessAbi {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        self.abi_value.serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for LosslessAbi {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let abi_value = serde_json::Value::deserialize(deserializer)?;
+        let abi = serde_json::from_value(abi_value.clone()).map_err(serde::de::Error::custom)?;
+        Ok(Self { abi_value, abi })
+    }
 }
 
 /// Minimal representation of a contract with a present abi and bytecode.
@@ -933,7 +975,7 @@ impl From<Contract> for ContractBytecode {
             (None, None)
         };
 
-        Self { abi: c.abi, bytecode, deployed_bytecode }
+        Self { abi: c.abi.map(Into::into), bytecode, deployed_bytecode }
     }
 }
 
@@ -979,7 +1021,7 @@ impl From<Contract> for CompactContractBytecode {
             (None, None)
         };
 
-        Self { abi: c.abi, bytecode, deployed_bytecode }
+        Self { abi: c.abi.map(Into::into), bytecode, deployed_bytecode }
     }
 }
 
@@ -1300,7 +1342,7 @@ impl<'a> From<&'a Contract> for CompactContractRef<'a> {
             (None, None)
         };
 
-        Self { abi: c.abi.as_ref(), bin, bin_runtime }
+        Self { abi: c.abi.as_ref().map(|abi| &abi.abi), bin, bin_runtime }
     }
 }
 
@@ -1592,6 +1634,7 @@ pub enum BytecodeObject {
     #[serde(deserialize_with = "serde_helpers::deserialize_bytes")]
     Bytecode(Bytes),
     /// Bytecode as hex string that's not fully linked yet and contains library placeholders
+    #[serde(with = "serde_helpers::string_bytes")]
     Unlinked(String),
 }
 
@@ -1610,6 +1653,13 @@ impl BytecodeObject {
         match self {
             BytecodeObject::Bytecode(bytes) => Some(bytes),
             BytecodeObject::Unlinked(_) => None,
+        }
+    }
+    /// Returns a reference to the underlying `String` if the object is unlinked
+    pub fn as_str(&self) -> Option<&str> {
+        match self {
+            BytecodeObject::Bytecode(_) => None,
+            BytecodeObject::Unlinked(s) => Some(s.as_str()),
         }
     }
 
@@ -1715,10 +1765,10 @@ impl BytecodeObject {
     }
 }
 
-// Returns a not deployable bytecode by default as "0x"
+// Returns a not deployable bytecode by default as empty
 impl Default for BytecodeObject {
     fn default() -> Self {
-        BytecodeObject::Unlinked("0x".to_string())
+        BytecodeObject::Unlinked("".to_string())
     }
 }
 

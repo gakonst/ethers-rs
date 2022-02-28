@@ -278,8 +278,11 @@ impl ProjectPathsConfig {
 
         for import in imports.iter() {
             let import_path = self.resolve_import(target_dir, import.data())?;
-            let import_content = self.flatten_node(&import_path, graph, imported, true, true)?;
-            let import_content = import_content.trim().as_bytes().to_owned();
+            let import_content = self
+                .flatten_node(&import_path, graph, imported, true, true)?
+                .trim()
+                .as_bytes()
+                .to_owned();
             let import_content_len = import_content.len() as isize;
             let (start, end) = import.loc_by_offset(offset);
             content.splice(start..end, import_content);

@@ -26,6 +26,7 @@ pub use ethers_core::types::Address;
 pub use source::Source;
 pub use util::parse_address;
 
+use crate::contract::ExpandedContract;
 use eyre::Result;
 use inflector::Inflector;
 use proc_macro2::TokenStream;
@@ -37,10 +38,13 @@ use std::{collections::HashMap, fs::File, io::Write, path::Path};
 /// [still not supported by Vyper](https://github.com/vyperlang/vyper/issues/1931), so you must adjust your ABIs and replace
 /// `constant` functions with `view` or `pure`.
 ///
+/// To generate bindings for _multiple_ contracts at once see also [`crate::MultiAbigen`].
+///
 /// # Example
 ///
-/// Running the command below will generate a file called `token.rs` containing the
-/// bindings inside, which exports an `ERC20Token` struct, along with all its events.
+/// Running the code below will generate a file called `token.rs` containing the
+/// bindings inside, which exports an `ERC20Token` struct, along with all its events. Put into a
+/// `build.rs` file this will generate the bindings during `cargo build`.
 ///
 /// ```no_run
 /// # use ethers_contract_abigen::Abigen;
@@ -84,7 +88,7 @@ impl Abigen {
         })
     }
 
-    /// Attemtps to load a new builder from an ABI JSON file at the specific
+    /// Attempts to load a new builder from an ABI JSON file at the specific
     /// path.
     pub fn from_file(path: impl AsRef<Path>) -> Result<Self> {
         let name = path
@@ -150,8 +154,15 @@ impl Abigen {
     pub fn generate(self) -> Result<ContractBindings> {
         let rustfmt = self.rustfmt;
         let name = self.contract_name.clone();
-        let tokens = Context::from_abigen(self)?.expand()?.into_tokens();
-        Ok(ContractBindings { tokens, rustfmt, name })
+        let (expanded, _) = self.expand()?;
+        Ok(ContractBindings { tokens: expanded.into_tokens(), rustfmt, name })
+    }
+
+    /// Expands the `Abigen` and returns the [`ExpandedContract`] that holds all tokens and the
+    /// [`Context`] that holds the state used during expansion.
+    pub fn expand(self) -> Result<(ExpandedContract, Context)> {
+        let ctx = Context::from_abigen(self)?;
+        Ok((ctx.expand()?, ctx))
     }
 }
 
@@ -229,5 +240,58 @@ impl ContractBindings {
         let mut name = self.module_name();
         name.extend([".rs"]);
         name
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ethers_solc::project_util::TempProject;
+
+    #[test]
+    fn can_generate_structs() {
+        let greeter = include_str!("../../tests/solidity-contracts/greeter_with_struct.json");
+        let abigen = Abigen::new("Greeter", greeter).unwrap();
+        let gen = abigen.generate().unwrap();
+        let out = gen.tokens.to_string();
+        assert!(out.contains("pub struct Stuff"));
+    }
+
+    #[test]
+    fn can_compile_and_generate() {
+        let tmp = TempProject::dapptools().unwrap();
+
+        tmp.add_source(
+            "Greeter",
+            r#"
+// SPDX-License-Identifier: MIT
+pragma solidity >=0.8.0;
+
+contract Greeter {
+
+    struct Inner {
+        bool a;
+    }
+
+    struct Stuff {
+        Inner inner;
+    }
+
+    function greet(Stuff calldata stuff) public view returns (Stuff memory) {
+        return stuff;
+    }
+}
+"#,
+        )
+        .unwrap();
+
+        let _ = tmp.compile().unwrap();
+
+        let abigen =
+            Abigen::from_file(tmp.artifacts_path().join("Greeter.sol/Greeter.json")).unwrap();
+        let gen = abigen.generate().unwrap();
+        let out = gen.tokens.to_string();
+        assert!(out.contains("pub struct Stuff"));
+        assert!(out.contains("pub struct Inner"));
     }
 }

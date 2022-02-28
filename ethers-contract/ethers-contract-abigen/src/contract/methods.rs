@@ -161,7 +161,7 @@ impl Context {
 
     /// The name ident of the calls enum
     fn expand_calls_enum_name(&self) -> Ident {
-        util::ident(&format!("{}Calls", self.contract_name))
+        util::ident(&format!("{}Calls", self.contract_ident))
     }
 
     /// Expands to the `name : type` pairs of the function's inputs
@@ -342,7 +342,7 @@ impl Context {
         let mut all_functions = HashMap::new();
         for function in self.abi.functions() {
             all_functions
-                .entry(function.name.to_lowercase())
+                .entry(util::safe_snake_case_ident(&function.name))
                 .or_insert_with(Vec::new)
                 .push(function);
         }
@@ -558,7 +558,7 @@ fn expand_function_name(function: &Function, alias: Option<&MethodAlias>) -> Ide
     if let Some(alias) = alias {
         alias.function_name.clone()
     } else {
-        util::safe_ident(&function.name.to_snake_case())
+        util::safe_ident(&util::safe_snake_case(&function.name))
     }
 }
 
@@ -567,7 +567,7 @@ fn expand_call_struct_name(function: &Function, alias: Option<&MethodAlias>) -> 
     let name = if let Some(alias) = alias {
         format!("{}Call", alias.struct_name)
     } else {
-        format!("{}Call", function.name.to_pascal_case())
+        format!("{}Call", util::safe_pascal_case(&function.name))
     };
     util::ident(&name)
 }
@@ -577,7 +577,7 @@ fn expand_call_struct_variant_name(function: &Function, alias: Option<&MethodAli
     if let Some(alias) = alias {
         alias.struct_name.clone()
     } else {
-        util::safe_ident(&function.name.to_pascal_case())
+        util::safe_ident(&util::safe_pascal_case(&function.name))
     }
 }
 
