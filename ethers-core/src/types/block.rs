@@ -4,7 +4,8 @@ use serde::{ser::SerializeStruct, Deserialize, Deserializer, Serialize, Serializ
 use std::str::FromStr;
 
 /// The block type returned from RPC calls.
-/// This is generic over a `TX` type which will be either the hash or the
+/// This is generic over a `TX` type which will be either the hash or the full transaction,
+/// i.e. `Block<TxHash>` or Block<Transaction>`.
 #[derive(Debug, Default, Clone, PartialEq, Deserialize, Serialize)]
 pub struct Block<TX> {
     /// Hash of the block
