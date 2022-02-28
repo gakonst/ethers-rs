@@ -14,7 +14,7 @@ pub use geth::{Geth, GethInstance};
 pub mod moonbeam;
 
 mod hash;
-pub use hash::{hash_message, id, keccak256, serialize};
+pub use hash::{eth_signed_message, hash_message, id, keccak256, serialize};
 
 mod units;
 pub use units::Units;

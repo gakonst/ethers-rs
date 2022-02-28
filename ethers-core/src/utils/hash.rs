@@ -4,21 +4,24 @@ use tiny_keccak::{Hasher, Keccak};
 
 const PREFIX: &str = "\x19Ethereum Signed Message:\n";
 
-/// Hash a message according to EIP-191.
-///
-/// The data is a UTF-8 encoded string and will enveloped as follows:
-/// `"\x19Ethereum Signed Message:\n" + message.length + message` and hashed
-/// using keccak256.
-pub fn hash_message<S>(message: S) -> H256
+/// Prefixes a buffer with Ethereum Signed Message:
+/// `"\x19Ethereum Signed Message:\n" + message.length + message`
+pub fn eth_signed_message<S>(message: S) -> Vec<u8>
 where
     S: AsRef<[u8]>,
 {
     let message = message.as_ref();
-
     let mut eth_message = format!("{}{}", PREFIX, message.len()).into_bytes();
     eth_message.extend_from_slice(message);
+    eth_message
+}
 
-    keccak256(&eth_message).into()
+/// Hash a message with Keccak-256 according to EIP-191.
+pub fn hash_message<S>(message: S) -> H256
+where
+    S: AsRef<[u8]>,
+{
+    keccak256(eth_signed_message(message)).into()
 }
 
 /// Compute the Keccak-256 hash of input bytes.
