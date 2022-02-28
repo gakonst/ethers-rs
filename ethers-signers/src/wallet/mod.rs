@@ -12,17 +12,16 @@ mod yubi;
 use crate::{to_eip155_v, Signer};
 use ethers_core::{
     k256::{
-        ecdsa::{recoverable::Signature as RecoverableSignature, signature::DigestSigner},
+        ecdsa::{recoverable::Signature as RecoverableSignature, signature::Signer as K256Signer},
         elliptic_curve::FieldBytes,
         Secp256k1,
     },
     types::{
         transaction::{eip2718::TypedTransaction, eip712::Eip712},
-        Address, Signature, H256, U256, U64,
+        Address, Signature, U256, U64,
     },
-    utils::hash_message,
+    utils::eth_signed_message,
 };
-use hash::Sha256Proxy;
 
 use async_trait::async_trait;
 use std::fmt;
@@ -58,7 +57,7 @@ use std::fmt;
 ///
 /// [`Signature`]: ethers_core::types::Signature
 /// [`hash_message`]: fn@ethers_core::utils::hash_message
-pub struct Wallet<D: DigestSigner<Sha256Proxy, RecoverableSignature>> {
+pub struct Wallet<D: K256Signer<RecoverableSignature>> {
     /// The Wallet's private Key
     pub(crate) signer: D,
     /// The wallet's address
@@ -69,17 +68,14 @@ pub struct Wallet<D: DigestSigner<Sha256Proxy, RecoverableSignature>> {
 
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
-impl<D: Sync + Send + DigestSigner<Sha256Proxy, RecoverableSignature>> Signer for Wallet<D> {
+impl<D: Sync + Send + K256Signer<RecoverableSignature>> Signer for Wallet<D> {
     type Error = WalletError;
 
     async fn sign_message<S: Send + Sync + AsRef<[u8]>>(
         &self,
         message: S,
     ) -> Result<Signature, Self::Error> {
-        let message = message.as_ref();
-        let message_hash = hash_message(message);
-
-        Ok(self.sign_hash(message_hash, false))
+        Ok(self.sign(eth_signed_message(message), false))
     }
 
     async fn sign_transaction(&self, tx: &TypedTransaction) -> Result<Signature, Self::Error> {
@@ -109,7 +105,7 @@ impl<D: Sync + Send + DigestSigner<Sha256Proxy, RecoverableSignature>> Signer fo
         let encoded =
             payload.encode_eip712().map_err(|e| Self::Error::Eip712Error(e.to_string()))?;
 
-        Ok(self.sign_hash(H256::from(encoded), false))
+        Ok(self.sign(encoded, false))
     }
 
     fn address(&self) -> Address {
@@ -132,18 +128,16 @@ impl<D: Sync + Send + DigestSigner<Sha256Proxy, RecoverableSignature>> Signer fo
     }
 }
 
-impl<D: DigestSigner<Sha256Proxy, RecoverableSignature>> Wallet<D> {
+impl<D: K256Signer<RecoverableSignature>> Wallet<D> {
     /// Synchronously signs the provided transaction.
     pub fn sign_transaction_sync(&self, tx: &TypedTransaction) -> Signature {
-        let sighash = tx.sighash();
-        self.sign_hash(sighash, true)
+        self.sign(tx.rlp(), true)
     }
 
-    /// Signs the provided hash and proceeds to normalize the `v` value of the
+    /// Signs the provided bytes array and proceeds to normalize the `v` value of the
     /// signature with EIP-155 if the flag is set to true.
-    pub fn sign_hash(&self, hash: H256, eip155: bool) -> Signature {
-        let recoverable_sig: RecoverableSignature =
-            self.signer.sign_digest(Sha256Proxy::from(hash));
+    pub fn sign(&self, data: impl AsRef<[u8]>, eip155: bool) -> Signature {
+        let recoverable_sig: RecoverableSignature = self.signer.sign(data.as_ref());
 
         let v = if eip155 {
             to_eip155_v(recoverable_sig.recovery_id(), self.chain_id)
@@ -166,7 +160,7 @@ impl<D: DigestSigner<Sha256Proxy, RecoverableSignature>> Wallet<D> {
 }
 
 // do not log the signer
-impl<D: DigestSigner<Sha256Proxy, RecoverableSignature>> fmt::Debug for Wallet<D> {
+impl<D: K256Signer<RecoverableSignature>> fmt::Debug for Wallet<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Wallet")
             .field("address", &self.address)
