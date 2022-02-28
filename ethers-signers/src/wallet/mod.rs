@@ -1,5 +1,3 @@
-mod hash;
-
 mod mnemonic;
 pub use mnemonic::{MnemonicBuilder, MnemonicBuilderError};
 
