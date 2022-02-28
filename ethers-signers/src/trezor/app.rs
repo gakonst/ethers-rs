@@ -422,7 +422,7 @@ mod tests {
         };
 
         let sig = trezor.sign_typed_struct(&foo_bar).await.expect("failed to sign typed data");
-        let foo_bar_hash = foo_bar.encode_eip712().unwrap();
+        let foo_bar_hash = foo_bar.eip712_hash().unwrap();
         sig.verify(foo_bar_hash, trezor.address).unwrap();
     }
 }
