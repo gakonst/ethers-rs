@@ -50,7 +50,7 @@
 //!     project: "radicle-reward".to_string(),
 //! };
 //!
-//! let hash = puzzle.encode_eip712().unwrap();
+//! let hash = puzzle.eip712_hash().unwrap();
 //! ```
 //!
 //! # Limitations

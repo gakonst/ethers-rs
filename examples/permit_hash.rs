@@ -30,6 +30,6 @@ fn main() {
         nonce: 0.into(),
         deadline: U256::MAX,
     };
-    let permit_hash = permit.encode_eip712().unwrap();
+    let permit_hash = permit.eip712_hash().unwrap();
     println!("Permit hash: 0x{}", hex::encode(permit_hash));
 }

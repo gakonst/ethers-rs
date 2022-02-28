@@ -672,7 +672,7 @@ mod eth_tests {
         assert_eq!(
             encoded,
             foo_bar
-                .encode_eip712()
+                .eip712_hash()
                 .expect("failed to return domain_separator from Eip712 implemented struct"),
             "Encoded value does not match!"
         );
