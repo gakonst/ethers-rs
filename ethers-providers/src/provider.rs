@@ -302,33 +302,31 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         // If the tx has an access list but it is empty, it is an Eip1559 or Eip2930 tx,
         // and we attempt to populate the acccess list. This may require `eth_estimateGas`,
         // in which case we save the result in maybe_gas_res for later
-        let mut maybe_gas_res = None;
+        let mut maybe_gas = None;
         if let Some(starting_al) = tx.access_list() {
             if starting_al.0.is_empty() {
-                let (mut gas_res, al_res) = futures_util::join!(
+                let (gas_res, al_res) = futures_util::join!(
                     maybe(tx.gas().cloned(), self.estimate_gas(tx)),
                     self.create_access_list(tx, block)
                 );
+                let mut gas = gas_res?;
 
                 if let Ok(al_with_gas) = al_res {
                     // Set access list if it saves gas over the estimated (or previously set) value
-                    if gas_res.is_err() || al_with_gas.gas_used < *gas_res.as_ref().unwrap() {
+                    if al_with_gas.gas_used < gas {
                         // Update the gas estimate with the lower amount
-                        gas_res = Ok(al_with_gas.gas_used);
+                        gas = al_with_gas.gas_used;
                         tx.set_access_list(al_with_gas.access_list);
                     }
                 }
-                maybe_gas_res = Some(gas_res);
+                maybe_gas = Some(gas);
             }
         }
 
         // Set gas to estimated value only if it was not set by the caller,
         // even if the access list has been populated and saves gas
         if tx.gas().is_none() {
-            let gas_estimate = match maybe_gas_res {
-                Some(gas_res) => gas_res?, // re-use previous attempt to estimate gas
-                _ => self.estimate_gas(tx).await?,
-            };
+            let gas_estimate = maybe(maybe_gas, self.estimate_gas(tx)).await?;
             tx.set_gas(gas_estimate);
         }
 
@@ -1789,27 +1787,18 @@ mod tests {
         assert_eq!(tx.gas(), Some(&gas));
         assert_eq!(tx.access_list(), Some(&Default::default()));
 
-        // --- fills a 1559 transaction, populating access list and using access list gas if
-        // estimate_gas() errors
+        // --- propogates estimate_gas() error
         let mut tx = Eip1559TransactionRequest::new()
             .max_fee_per_gas(basefee)
             .max_priority_fee_per_gas(prio_fee)
             .into();
 
-        mock.push(AccessListWithGasUsed {
-            access_list: access_list.clone(),
-            gas_used: gas_with_al,
-        })
-        .unwrap();
         // bad mock value causes error response for eth_estimateGas
         mock.push(b'b').unwrap();
 
-        provider.fill_transaction(&mut tx, None).await.unwrap();
+        let res = provider.fill_transaction(&mut tx, None).await;
 
-        assert_eq!(tx.from(), provider.from.as_ref());
-        assert!(tx.to().is_none());
-        assert_eq!(tx.gas(), Some(&gas_with_al));
-        assert_eq!(tx.access_list(), Some(&access_list));
+        assert!(matches!(res, Err(ProviderError::JsonRpcClientError(_))));
     }
 
     #[tokio::test]
