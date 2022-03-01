@@ -42,6 +42,8 @@
 - Add Arbitrum mainnet and testnet to the list of known chains
 - Add ENS avatar and TXT records resolution
   [#889](https://github.com/gakonst/ethers-rs/pull/889)
+- Do not override gas limits provided by an outer middleware when including an EIP-2930 access list
+  [#901](https://github.com/gakonst/ethers-rs/pull/901)
 - Add a getter to `ProjectCompileOutput` that returns a mapping of compiler
   versions to a vector of name + contract struct tuples
   [#908](https://github.com/gakonst/ethers-rs/pull/908)
