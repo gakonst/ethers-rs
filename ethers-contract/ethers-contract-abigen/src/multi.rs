@@ -309,6 +309,16 @@ pub struct MultiBindings {
 }
 
 impl MultiBindings {
+    /// Returns the number of contracts to generate bindings for.
+    pub fn len(&self) -> usize {
+        self.expansion.contracts.len()
+    }
+
+    /// Returns whether there are any bindings to be generated
+    pub fn is_empty(&self) -> bool {
+        self.expansion.contracts.is_empty()
+    }
+
     fn into_inner(self, single_file: bool) -> MultiBindingsInner {
         self.expansion.into_bindings(single_file, self.rustfmt)
     }
