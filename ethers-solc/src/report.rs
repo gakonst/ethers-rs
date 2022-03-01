@@ -134,10 +134,6 @@ impl Reporter for BasicStdoutReporter {
         );
     }
 
-    /// Invoked with the `CompilerOutput` if [`Solc::compiled()`] was successful
-    fn on_solc_success(&self, _: &Solc, _: &Version, _: &CompilerOutput) {
-        println!("Compilation finished successfully");
-    }
     /// Invoked before a new [`Solc`] bin is installed
     fn on_solc_installation_start(&self, version: &Version) {
         println!("installing solc version \"{}\"", version);
