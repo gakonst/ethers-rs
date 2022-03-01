@@ -10,8 +10,9 @@ repository = "https://github.com/gakonst/ethers-rs"
 keywords = ["ethereum", "web3", "celo", "ethers"]
 
 [dependencies]
-rlp = { version = "0.5.0", default-features = false }
-ethabi = { git = "https://github.com/rust-ethereum/ethabi", branch = "master", default-features = false, features = ["full-serde", "rlp"] }
+# rlp = { version = "0.5.0", default-features = false }
+rlp = { git = "https://github.com/gakonst/parity-common", branch = "trim", default-features = false }
+ethabi = { git = "https://github.com/gakonst/ethabi", branch = "more-trim", default-features = false, features = ["full-serde", "rlp"] }
 arrayvec = { version = "0.7.2", default-features = false }
 rlp-derive = { version = "0.1.0", default-features = false }
 
