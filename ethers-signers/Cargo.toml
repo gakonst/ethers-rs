@@ -28,7 +28,8 @@ yubihsm = { version = "0.40.0", features = ["secp256k1", "http", "usb"], optiona
 futures-util = "^0.3"
 futures-executor = "^0.3"
 semver = "1.0.6"
-trezor-client = { version = "0.0.4", optional = true, default-features = false, features = ["f_ethereum"] }
+# trezor-client = { version = "0.0.4", optional = true, default-features = false, features = ["f_ethereum"] }
+trezor-client = { git = "https://github.com/gakonst/rust-trezor-api", branch = "chore/bump-eth-types", optional = true, default-features = false, features = ["f_ethereum"] }
 
 # aws
 rusoto_core = { version = "0.47.0", optional = true }
