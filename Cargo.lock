@@ -1085,8 +1085,9 @@ dependencies = [
 
 [[package]]
 name = "ethabi"
-version = "16.0.0"
-source = "git+https://github.com/rust-ethereum/ethabi?branch=master#d64dfbac38d10de01cf1c7b6ab669f07b375ecc6"
+version = "17.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b69517146dfab88e9238c00c724fd8e277951c3cc6f22b016d72f422a832213e"
 dependencies = [
  "ethereum-types",
  "hex",
@@ -1094,7 +1095,7 @@ dependencies = [
  "regex",
  "serde",
  "serde_json",
- "sha3 0.9.1",
+ "sha3 0.10.0",
  "thiserror",
  "uint",
 ]
@@ -3946,8 +3947,9 @@ dependencies = [
 
 [[package]]
 name = "trezor-client"
-version = "0.0.4"
-source = "git+https://github.com/gakonst/rust-trezor-api?branch=chore/bump-eth-types#113dbd29f4ce2c76e997dbd7e273ec456d179d97"
+version = "0.0.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "564f142443726ea9c84923a895a35a9d625ac86c33fd5d41330b048e95433c87"
 dependencies = [
  "byteorder",
  "hex",
