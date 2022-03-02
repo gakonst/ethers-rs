@@ -84,6 +84,35 @@ impl BaseContract {
         decode_function_data_raw(function, bytes, true)
     }
 
+    /// Decodes the provided ABI encoded function output with the selected function name.
+    ///
+    /// If the function exists multiple times and you want to use one of the overloaded
+    /// versions, consider using `decode_with_selector`
+    pub fn decode_output<D: Detokenize, T: AsRef<[u8]>>(
+        &self,
+        name: &str,
+        bytes: T,
+    ) -> Result<D, AbiError> {
+        let function = self.abi.function(name)?;
+        decode_function_data(function, bytes, false)
+    }
+
+    /// Decodes the provided ABI encoded function output with the selected function name.
+    ///
+    /// If the function exists multiple times and you want to use one of the overloaded
+    /// versions, consider using `decode_with_selector`
+    ///
+    /// Returns a [`Token`] vector, which lets you decode function arguments dynamically
+    /// without knowing the return type.
+    pub fn decode_output_raw<D: Detokenize, T: AsRef<[u8]>>(
+        &self,
+        name: &str,
+        bytes: T,
+    ) -> Result<Vec<Token>, AbiError> {
+        let function = self.abi.function(name)?;
+        decode_function_data_raw(function, bytes, false)
+    }
+
     /// Decodes for a given event name, given the `log.topics` and
     /// `log.data` fields from the transaction receipt
     pub fn decode_event<D: Detokenize>(
@@ -132,6 +161,28 @@ impl BaseContract {
     ) -> Result<D, AbiError> {
         let function = self.get_from_signature(signature)?;
         decode_function_data(function, bytes, true)
+    }
+
+    pub fn decode_output_with_selector<D: Detokenize, T: AsRef<[u8]>>(
+        &self,
+        signature: Selector,
+        bytes: T,
+    ) -> Result<D, AbiError> {
+        let function = self.get_from_signature(signature)?;
+        decode_function_data(function, bytes, false)
+    }
+
+    /// Decodes the provided ABI encoded bytes with the selected function selector
+    ///
+    /// Returns a [`Token`] vector, which lets you decode function arguments dynamically
+    /// without knowing the return type.
+    pub fn decode_output_with_selector_raw<T: AsRef<[u8]>>(
+        &self,
+        signature: Selector,
+        bytes: T,
+    ) -> Result<Vec<Token>, AbiError> {
+        let function = self.get_from_signature(signature)?;
+        decode_function_data_raw(function, bytes, false)
     }
 
     fn get_from_signature(&self, signature: Selector) -> Result<&Function, AbiError> {
