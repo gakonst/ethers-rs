@@ -3947,7 +3947,7 @@ dependencies = [
 [[package]]
 name = "trezor-client"
 version = "0.0.4"
-source = "git+https://github.com/gakonst/rust-trezor-api?branch=chore/bump-eth-types#113dbd29f4ce2c76e997dbd7e273ec456d179d97"
+source = "git+https://github.com/gakonst/rust-trezor-api?branch=chore/bump-eth-types#02928b582df79509fe9bf88a364afdf8a372727c"
 dependencies = [
  "byteorder",
  "hex",
