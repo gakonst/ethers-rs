@@ -756,7 +756,10 @@ impl From<Match<'_>> for Location {
 
 impl From<Loc> for Location {
     fn from(src: Loc) -> Self {
-        Location { start: src.1, end: src.2 }
+        match src {
+            Loc::File(_, start, end) => Location { start, end },
+            _ => Location { start: 0, end: 0 },
+        }
     }
 }
 
