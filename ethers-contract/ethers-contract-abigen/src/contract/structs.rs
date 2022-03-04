@@ -107,7 +107,7 @@ impl Context {
             if is_tuple {
                 fields.push(ty);
             } else {
-                let field_name = util::ident(&field.name().to_snake_case());
+                let field_name = util::safe_ident(&field.name().to_snake_case());
                 fields.push(quote! { pub #field_name: #ty });
             }
         }
@@ -155,7 +155,7 @@ impl Context {
         let mut fields = Vec::with_capacity(sol_struct.fields().len());
         let mut param_types = Vec::with_capacity(sol_struct.fields().len());
         for field in sol_struct.fields() {
-            let field_name = util::ident(&field.name().to_snake_case());
+            let field_name = util::safe_ident(&field.name().to_snake_case());
             match field.r#type() {
                 FieldType::Elementary(ty) => {
                     param_types.push(ty.clone());

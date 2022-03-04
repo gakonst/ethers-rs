@@ -518,3 +518,15 @@ fn can_gen_multi_etherscan() {
     let _contract = MyContract::new(Address::default(), Arc::clone(&provider));
     let _contract = MyContract2::new(Address::default(), provider);
 }
+
+#[test]
+fn can_gen_reserved_word_field_names() {
+    abigen!(
+        Test,
+        r#"[
+        struct Foo { uint256 ref; }
+    ]"#,
+    );
+
+    let _foo = Foo { ref_: U256::default() };
+}

@@ -50,6 +50,13 @@
 
 ## ethers-contract-abigen
 
+### Unreleased
+
+- Generate correct bindings of struct's field names that are reserved words
+  [#989](https://github.com/gakonst/ethers-rs/pull/989).
+
+### 0.6.0
+
 - Add `MultiAbigen` to generate a series of contract bindings that can be kept in the repo
   [#724](https://github.com/gakonst/ethers-rs/pull/724).
 - Add provided `event_derives` to call and event enums as well
