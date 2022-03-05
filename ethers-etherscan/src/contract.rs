@@ -1,10 +1,13 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, path::Path};
 
 use serde::{Deserialize, Serialize};
 
 use ethers_core::abi::{Abi, Address};
 
-use crate::{Client, EtherscanError, Response, Result};
+use crate::{
+    source_tree::{SourceTree, SourceTreeEntry},
+    Client, EtherscanError, Response, Result,
+};
 
 /// Arguments for verifying contracts
 #[derive(Debug, Clone, Serialize)]
@@ -148,6 +151,16 @@ impl IntoIterator for ContractMetadata {
     }
 }
 
+#[derive(Deserialize)]
+struct EtherscanSourceEntry {
+    content: String,
+}
+
+#[derive(Deserialize)]
+struct EtherscanSourceJsonMetadata {
+    sources: HashMap<String, EtherscanSourceEntry>,
+}
+
 impl ContractMetadata {
     /// All ABI from all contracts in the source file
     pub fn abis(&self) -> Result<Vec<Abi>> {
@@ -161,6 +174,42 @@ impl ContractMetadata {
     /// Combined source code of all contracts
     pub fn source_code(&self) -> String {
         self.items.iter().map(|c| c.source_code.as_str()).collect::<Vec<_>>().join("\n")
+    }
+
+    /// Etherscan can either return one raw string that includes all of the solidity for a verified
+    /// contract or a json struct surrounded in an extra set of {} that includes a directory
+    /// structure with paths and source code.
+    fn get_sources_from_etherscan_source_value(
+        contract_name: &str,
+        etherscan_source: &str,
+    ) -> Result<Vec<(String, String)>> {
+        if etherscan_source.starts_with("{{") && etherscan_source.ends_with("}}") {
+            let json = &etherscan_source[1..etherscan_source.len() - 1];
+            let parsed: EtherscanSourceJsonMetadata = serde_json::from_str(json)?;
+            Ok(parsed
+                .sources
+                .into_iter()
+                .map(|(path, source_struct)| (path, source_struct.content))
+                .collect())
+        } else {
+            Ok(vec![(contract_name.to_string(), etherscan_source.to_string())])
+        }
+    }
+
+    pub fn source_tree(&self) -> Result<SourceTree> {
+        let mut entries = vec![];
+        for item in &self.items {
+            let contract_root = Path::new(&item.contract_name);
+            let source_paths = Self::get_sources_from_etherscan_source_value(
+                &item.contract_name,
+                &item.source_code,
+            )?;
+            for (path, contents) in source_paths {
+                let joined = contract_root.join(&path);
+                entries.push(SourceTreeEntry { path: joined, contents });
+            }
+        }
+        Ok(SourceTree { entries })
     }
 }
 
@@ -301,6 +350,45 @@ mod tests {
                 .contract_source_code("0xBB9bc244D798123fDe783fCc1C72d3Bb8C189413".parse().unwrap())
                 .await
                 .unwrap();
+        })
+        .await
+    }
+
+    /// Query a contract that has a single string source entry instead of underlying JSON metadata.
+    #[tokio::test]
+    #[serial]
+    #[ignore]
+    async fn can_fetch_contract_source_tree_for_singleton_contract() {
+        run_at_least_duration(Duration::from_millis(250), async {
+            let client = Client::new_from_env(Chain::Mainnet).unwrap();
+
+            let meta = client
+                .contract_source_code("0xBB9bc244D798123fDe783fCc1C72d3Bb8C189413".parse().unwrap())
+                .await
+                .unwrap();
+
+            let source_tree = meta.source_tree().unwrap();
+            assert_eq!(source_tree.entries.len(), 1);
+        })
+        .await
+    }
+
+    /// Query a contract that has many source entries as JSON metadata and ensure they are
+    /// reflected.
+    #[tokio::test]
+    #[serial]
+    #[ignore]
+    async fn can_fetch_contract_source_tree_for_multi_entry_contract() {
+        run_at_least_duration(Duration::from_millis(250), async {
+            let client = Client::new_from_env(Chain::Mainnet).unwrap();
+
+            let meta = client
+                .contract_source_code("0x8d04a8c79cEB0889Bdd12acdF3Fa9D207eD3Ff63".parse().unwrap())
+                .await
+                .unwrap();
+
+            let source_tree = meta.source_tree().unwrap();
+            assert_eq!(source_tree.entries.len(), 15);
         })
         .await
     }
