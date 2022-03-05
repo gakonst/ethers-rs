@@ -61,6 +61,10 @@ impl CompilerInput {
         Self { language: "Solidity".to_string(), sources, settings: Default::default() }
     }
 
+    pub fn with_yul_sources(sources: Sources) -> Self {
+        Self { language: "Yul".to_string(), sources, settings: Default::default() }
+    }
+
     /// Sets the settings for compilation
     #[must_use]
     pub fn settings(mut self, settings: Settings) -> Self {

@@ -318,6 +318,48 @@ impl CompilerSources {
 }
 
 /// Compiles the input set sequentially and returns an aggregated set of the solc `CompilerOutput`s
+fn compile_sequential_yul(
+    input: VersionedSources,
+    settings: &Settings,
+    paths: &ProjectPathsConfig,
+) -> Result<AggregatedCompilerOutput> {
+    let mut aggregated = AggregatedCompilerOutput::default();
+    tracing::trace!("compiling {} jobs sequentially", input.len());
+    for (solc, (version, sources)) in input {
+        if sources.is_empty() {
+            // nothing to compile
+            continue
+        }
+        tracing::trace!(
+            "compiling {} sources with solc \"{}\" {:?}",
+            sources.len(),
+            solc.as_ref().display(),
+            solc.args
+        );
+
+        let input = CompilerInput::with_yul_sources(sources)
+            .settings(settings.clone())
+            .normalize_evm_version(&version)
+            .with_remappings(paths.remappings.clone());
+
+        tracing::trace!(
+            "calling solc `{}` with {} sources {:?}",
+            version,
+            input.sources.len(),
+            input.sources.keys()
+        );
+
+        report::solc_spawn(&solc, &version, &input);
+        let output = solc.compile_exact(&input)?;
+        report::solc_success(&solc, &version, &output);
+        tracing::trace!("compiled input, output has error: {}", output.has_error());
+
+        aggregated.extend(version, output);
+    }
+    Ok(aggregated)
+}
+
+/// Compiles the input set sequentially and returns an aggregated set of the solc `CompilerOutput`s
 fn compile_sequential(
     input: VersionedSources,
     settings: &Settings,
