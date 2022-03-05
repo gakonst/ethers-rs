@@ -199,7 +199,7 @@ impl<T: ArtifactOutput> Project<T> {
         #[cfg(all(feature = "svm", feature = "async"))]
         if self.auto_detect {
             tracing::trace!("using solc auto detection to compile sources");
-            return self.svm_compile(sources)
+            return self.svm_compile(sources);
         }
 
         let solc = self.configure_solc(self.solc.clone());
@@ -233,6 +233,11 @@ impl<T: ArtifactOutput> Project<T> {
     #[cfg(all(feature = "svm", feature = "async"))]
     pub fn svm_compile(&self, sources: Sources) -> Result<ProjectCompileOutput<T>> {
         project::ProjectCompiler::with_sources(self, sources)?.compile()
+    }
+
+    #[cfg(all(feature = "svm", feature = "async"))]
+    pub fn svm_compile_yul(&self, sources: Sources) -> Result<ProjectCompileOutput<T>> {
+        project::ProjectCompiler::with_yul_sources(self, sources)?.compile()
     }
 
     /// Convenience function to compile a single solidity file with the project's settings.
