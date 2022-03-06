@@ -52,13 +52,25 @@ pub struct CompilerInput {
 
 impl CompilerInput {
     /// Reads all contracts found under the path
-    pub fn new(path: impl AsRef<Path>) -> Result<Self, SolcIoError> {
+    pub fn new(path: impl AsRef<Path>) -> Result<Vec<Self>, SolcIoError> {
         Source::read_all_from(path.as_ref()).map(Self::with_sources)
     }
 
     /// Creates a new Compiler input with default settings and the given sources
-    pub fn with_sources(sources: Sources) -> Self {
-        Self { language: "Solidity".to_string(), sources, settings: Default::default() }
+    pub fn with_sources(sources: Sources) -> Vec<Self> {
+        let mut solidity_sources = BTreeMap::new();
+        let mut yul_sources = BTreeMap::new();
+        for (path, source) in sources {
+            if path.extension() == Some(std::ffi::OsStr::new("yul")) {
+                yul_sources.insert(path, source);
+            } else {
+                solidity_sources.insert(path, source);
+            }
+        }
+        vec![
+            Self { language: "Solidity".to_string(), sources: solidity_sources, settings: Default::default() }, 
+            Self { language: "Yul".to_string(), sources: yul_sources, settings: Default::default() }
+        ]
     }
 
     /// Sets the settings for compilation
@@ -96,12 +108,6 @@ impl CompilerInput {
     pub fn with_remappings(mut self, remappings: Vec<Remapping>) -> Self {
         self.settings.remappings = remappings;
         self
-    }
-}
-
-impl Default for CompilerInput {
-    fn default() -> Self {
-        Self::with_sources(Default::default())
     }
 }
 
