@@ -23,4 +23,6 @@ pub enum EtherscanError {
     Serde(#[from] serde_json::Error),
     #[error("Contract source code not verified: {0}")]
     ContractCodeNotVerified(Address),
+    #[error(transparent)]
+    IO(#[from] std::io::Error),
 }

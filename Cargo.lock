@@ -1275,6 +1275,7 @@ dependencies = [
  "serde-aux",
  "serde_json",
  "serial_test",
+ "tempfile",
  "thiserror",
  "tokio",
 ]
