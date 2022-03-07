@@ -122,7 +122,6 @@ fn can_compile_yul_sample() {
     assert_eq!(cache, updated_cache);
 }
 
-
 #[test]
 fn can_compile_configured() {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test-data/dapp-sample");
