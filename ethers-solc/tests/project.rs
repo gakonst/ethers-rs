@@ -99,7 +99,6 @@ fn can_compile_yul_sample() {
     let project = TempProject::<ConfigurableArtifacts>::new(paths).unwrap();
 
     let compiled = project.compile().unwrap();
-    dbg!(compiled.clone());
     assert!(compiled.find("Dapp").is_some());
     assert!(!compiled.has_compiler_errors());
 
