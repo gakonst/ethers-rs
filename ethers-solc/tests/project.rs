@@ -125,7 +125,7 @@ fn can_compile_yul() {
         .add_source(
         "Foo",
         r#"
-        object "SimpleStore" {
+        object "Foo" {
             code {
               datacopy(0, dataoffset("Runtime"), datasize("Runtime"))
               return(0, datasize("Runtime"))
@@ -185,16 +185,14 @@ fn can_compile_yul() {
         .unwrap();
 
     let graph = Graph::resolve(project.paths()).unwrap();
-
     let compiled = project.compile_yul().unwrap();
 
-  
+    assert!(compiled.find("Foo").is_some());
     let contract = compiled.find("Foo").unwrap();
     let bytecode = &contract.bytecode.as_ref().unwrap().object;
-    
-    assert!(!compiled.has_compiler_errors());
-    println!("{}", bytecode.as_str().unwrap());
 
+    assert!(!compiled.has_compiler_errors());
+    println!("{:?}", bytecode.as_bytes().unwrap().to_string());
 }
 
 #[test]
