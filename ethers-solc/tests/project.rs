@@ -418,6 +418,57 @@ fn can_flatten_file_in_dapp_sample() {
 }
 
 #[test]
+fn can_flatten_unique() {
+    let project = TempProject::dapptools().unwrap();
+
+    let f = project
+        .add_source(
+            "A",
+            r#"
+pragma solidity ^0.8.10;
+import "./C.sol";
+import "./B.sol";
+contract A { }
+"#,
+        )
+        .unwrap();
+
+    project
+        .add_source(
+            "B",
+            r#"
+pragma solidity ^0.8.10;
+import "./C.sol";
+contract B { }
+"#,
+        )
+        .unwrap();
+
+    project
+        .add_source(
+            "C",
+            r#"
+pragma solidity ^0.8.10;
+import "./A.sol";
+contract C { }
+"#,
+        )
+        .unwrap();
+
+    let result = project.flatten(&f).unwrap();
+
+    assert_eq!(
+        result,
+        r#"
+pragma solidity ^0.8.10;
+contract C { }
+contract B { }
+contract A { }
+"#
+    );
+}
+
+#[test]
 fn can_flatten_file_with_duplicates() {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test-data/test-flatten-duplicates");
     let paths = ProjectPathsConfig::builder().sources(root.join("contracts"));
