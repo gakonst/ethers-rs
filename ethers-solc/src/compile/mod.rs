@@ -425,7 +425,7 @@ impl Solc {
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     ///  use ethers_solc::{CompilerInput, Solc};
     /// let solc = Solc::default();
-    /// let input = CompilerInput::new("./contracts")?;
+    /// let input = CompilerInput::new("./contracts")?[0].clone();
     /// let output = solc.compile_exact(&input)?;
     /// # Ok(())
     /// # }
