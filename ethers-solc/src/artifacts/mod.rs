@@ -69,10 +69,18 @@ impl CompilerInput {
         }
         let mut res = Vec::new();
         if !solidity_sources.is_empty() {
-            res.push(Self { language: "Solidity".to_string(), sources: solidity_sources, settings: Default::default() });
+            res.push(Self {
+                language: "Solidity".to_string(),
+                sources: solidity_sources,
+                settings: Default::default(),
+            });
         }
         if !yul_sources.is_empty() {
-            res.push(Self { language: "Yul".to_string(), sources: yul_sources, settings: Default::default() });
+            res.push(Self {
+                language: "Yul".to_string(),
+                sources: yul_sources,
+                settings: Default::default(),
+            });
         }
         res
     }
