@@ -571,8 +571,8 @@ impl Solc {
     /// use ethers_solc::{CompilerInput, Solc};
     /// let solc1 = Solc::default();
     /// let solc2 = Solc::default();
-    /// let input1 = CompilerInput::new("contracts").unwrap();
-    /// let input2 = CompilerInput::new("src").unwrap();
+    /// let input1 = CompilerInput::new("contracts").unwrap()[0].clone();
+    /// let input2 = CompilerInput::new("src").unwrap()[0].clone();
     ///
     /// let outputs = Solc::compile_many([(solc1, input1), (solc2, input2)], 2).await.flattened().unwrap();
     /// # }

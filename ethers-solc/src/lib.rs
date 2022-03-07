@@ -740,6 +740,7 @@ mod tests {
             .build()
             .unwrap();
         let compiled = project.compile().unwrap();
+        dbg!(compiled.clone());
         assert!(!compiled.has_compiler_errors());
         let contracts = compiled.output().contracts;
         assert_eq!(contracts.contracts().count(), 3);

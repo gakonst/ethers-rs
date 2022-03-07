@@ -67,10 +67,14 @@ impl CompilerInput {
                 solidity_sources.insert(path, source);
             }
         }
-        vec![
-            Self { language: "Solidity".to_string(), sources: solidity_sources, settings: Default::default() }, 
-            Self { language: "Yul".to_string(), sources: yul_sources, settings: Default::default() }
-        ]
+        let mut res = Vec::new();
+        if !solidity_sources.is_empty() {
+            res.push(Self { language: "Solidity".to_string(), sources: solidity_sources, settings: Default::default() });
+        }
+        if !yul_sources.is_empty() {
+            res.push(Self { language: "Yul".to_string(), sources: yul_sources, settings: Default::default() });
+        }
+        res
     }
 
     /// Sets the settings for compilation
