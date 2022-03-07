@@ -45,8 +45,6 @@ features = ["full"]
 
 [features]
 
-yul=["svm", "async"]
-
 celo = [
     "ethers-core/celo",
     "ethers-providers/celo",
