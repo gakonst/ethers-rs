@@ -207,6 +207,22 @@ impl<T: ArtifactOutput> Project<T> {
         self.compile_with_version(&solc, sources)
     }
 
+    #[tracing::instrument(skip_all, name = "compile")]
+    pub fn compile_yul_project(&self) -> Result<ProjectCompileOutput<T>> {
+        let sources = self.paths.read_input_files()?;
+        tracing::trace!("found {} sources to compile: {:?}", sources.len(), sources.keys());
+
+        #[cfg(all(feature = "svm", feature = "async"))]
+        if self.auto_detect {
+            tracing::trace!("using solc auto detection to compile sources");
+            return self.svm_compile_yul(sources);
+        }
+
+        let solc = self.configure_solc(self.solc.clone());
+
+        self.compile_with_version(&solc, sources)
+    }
+
     /// Compiles a set of contracts using `svm` managed solc installs
     ///
     /// This will autodetect the appropriate `Solc` version(s) to use when compiling the provided
@@ -237,7 +253,7 @@ impl<T: ArtifactOutput> Project<T> {
 
     #[cfg(all(feature = "svm", feature = "async"))]
     pub fn svm_compile_yul(&self, sources: Sources) -> Result<ProjectCompileOutput<T>> {
-        project::ProjectCompiler::with_yul_sources(self, sources)?.compile()
+        project::ProjectCompiler::with_yul_sources(self, sources)?.compile_yul()
     }
 
     /// Convenience function to compile a single solidity file with the project's settings.

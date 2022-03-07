@@ -66,6 +66,10 @@ impl<T: ArtifactOutput> TempProject<T> {
         self.project().compile()
     }
 
+    pub fn compile_yul(&self) -> Result<ProjectCompileOutput<T>> {
+        self.project().compile_yul_project()
+    }
+
     pub fn flatten(&self, target: &Path) -> Result<String> {
         self.project().flatten(target)
     }

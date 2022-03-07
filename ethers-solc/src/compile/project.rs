@@ -138,6 +138,18 @@ impl<'a, T: ArtifactOutput> ProjectCompiler<'a, T> {
         Ok(Self { edges, project, sources })
     }
 
+    /// Since Yul only compiles sequentially atm
+    #[cfg(all(feature = "svm", feature = "async"))]
+    pub fn with_yul_sources(project: &'a Project<T>, sources: Sources) -> Result<Self> {
+        let graph = Graph::resolve_sources(&project.paths, sources)?;
+        let (versions, edges) = graph.into_sources_by_version(project.offline)?;
+        let sources_by_version = versions.get(&project.allowed_lib_paths)?;
+
+        let sources =  CompilerSources::Sequential(sources_by_version);
+
+        Ok(Self { edges, project, sources })
+    }
+
     /// Compiles the sources with a pinned `Solc` instance
     pub fn with_sources_and_solc(
         project: &'a Project<T>,
@@ -172,6 +184,11 @@ impl<'a, T: ArtifactOutput> ProjectCompiler<'a, T> {
         self.preprocess()?.compile()?.write_artifacts()?.write_cache()
     }
 
+    pub fn compile_yul(self) -> Result<ProjectCompileOutput<T>> {
+        // drive the compiler statemachine to completion
+        self.preprocess()?.compile_yul()?.write_artifacts()?.write_cache()
+    }
+
     /// Does basic preprocessing
     ///   - sets proper source unit names
     ///   - check cache
@@ -201,6 +218,15 @@ impl<'a, T: ArtifactOutput> PreprocessedState<'a, T> {
         let PreprocessedState { sources, cache } = self;
         let output =
             sources.compile(&cache.project().solc_config.settings, &cache.project().paths)?;
+
+        Ok(CompiledState { output, cache })
+    }
+
+    /// advance to the next state by compiling all sources
+    fn compile_yul(self) -> Result<CompiledState<'a, T>> {
+        let PreprocessedState { sources, cache } = self;
+        let output =
+            sources.compile_yul(&cache.project().solc_config.settings, &cache.project().paths)?;
 
         Ok(CompiledState { output, cache })
     }
@@ -307,6 +333,18 @@ impl CompilerSources {
         }
     }
 
+    /// Compiles all the files with `Solc`
+    fn compile_yul(
+        self,
+        settings: &Settings,
+        paths: &ProjectPathsConfig,
+    ) -> Result<AggregatedCompilerOutput> {
+        match self {
+            CompilerSources::Sequential(input) => compile_sequential_yul(input, settings, paths),
+            CompilerSources::Parallel(input, _j) => compile_sequential_yul(input, settings, paths),
+        }
+    }
+
     #[cfg(test)]
     #[allow(unused)]
     fn sources(&self) -> &VersionedSources {
@@ -317,47 +355,47 @@ impl CompilerSources {
     }
 }
 
-/// Compiles the input set sequentially and returns an aggregated set of the solc `CompilerOutput`s
-fn compile_sequential_yul(
-    input: VersionedSources,
-    settings: &Settings,
-    paths: &ProjectPathsConfig,
-) -> Result<AggregatedCompilerOutput> {
-    let mut aggregated = AggregatedCompilerOutput::default();
-    tracing::trace!("compiling {} jobs sequentially", input.len());
-    for (solc, (version, sources)) in input {
-        if sources.is_empty() {
-            // nothing to compile
-            continue
+    /// Compiles the input set sequentially and returns an aggregated set of the solc `CompilerOutput`s
+    fn compile_sequential_yul(
+        input: VersionedSources,
+        settings: &Settings,
+        paths: &ProjectPathsConfig,
+    ) -> Result<AggregatedCompilerOutput> {
+        let mut aggregated = AggregatedCompilerOutput::default();
+        tracing::trace!("compiling {} jobs sequentially", input.len());
+        for (solc, (version, sources)) in input {
+            if sources.is_empty() {
+                // nothing to compile
+                continue
+            }
+            tracing::trace!(
+                "compiling {} sources with solc \"{}\" {:?}",
+                sources.len(),
+                solc.as_ref().display(),
+                solc.args
+            );
+
+            let input = CompilerInput::with_yul_sources(sources)
+                .settings(settings.clone())
+                .normalize_evm_version(&version)
+                .with_remappings(paths.remappings.clone());
+
+            tracing::trace!(
+                "calling solc `{}` with {} sources {:?}",
+                version,
+                input.sources.len(),
+                input.sources.keys()
+            );
+
+            report::solc_spawn(&solc, &version, &input);
+            let output = solc.compile_exact(&input)?;
+            report::solc_success(&solc, &version, &output);
+            tracing::trace!("compiled input, output has error: {}", output.has_error());
+
+            aggregated.extend(version, output);
         }
-        tracing::trace!(
-            "compiling {} sources with solc \"{}\" {:?}",
-            sources.len(),
-            solc.as_ref().display(),
-            solc.args
-        );
-
-        let input = CompilerInput::with_yul_sources(sources)
-            .settings(settings.clone())
-            .normalize_evm_version(&version)
-            .with_remappings(paths.remappings.clone());
-
-        tracing::trace!(
-            "calling solc `{}` with {} sources {:?}",
-            version,
-            input.sources.len(),
-            input.sources.keys()
-        );
-
-        report::solc_spawn(&solc, &version, &input);
-        let output = solc.compile_exact(&input)?;
-        report::solc_success(&solc, &version, &output);
-        tracing::trace!("compiled input, output has error: {}", output.has_error());
-
-        aggregated.extend(version, output);
+        Ok(aggregated)
     }
-    Ok(aggregated)
-}
 
 /// Compiles the input set sequentially and returns an aggregated set of the solc `CompilerOutput`s
 fn compile_sequential(

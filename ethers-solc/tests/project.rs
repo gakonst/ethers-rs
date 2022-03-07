@@ -186,13 +186,14 @@ fn can_compile_yul() {
 
     let graph = Graph::resolve(project.paths()).unwrap();
 
-    let compiled = project.svm_compile_yul().unwrap();
+    let compiled = project.compile_yul().unwrap();
 
   
-    let contract = compiled.find("SimpleStore").unwrap();
+    let contract = compiled.find("Foo").unwrap();
     let bytecode = &contract.bytecode.as_ref().unwrap().object;
+    
     assert!(!compiled.has_compiler_errors());
-    println!("{}", bytecode);
+    println!("{}", bytecode.as_str().unwrap());
 
 }
 
