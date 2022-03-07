@@ -410,7 +410,12 @@ impl Solc {
     /// Convenience function for compiling all sources under the given path
     pub fn compile_source(&self, path: impl AsRef<Path>) -> Result<CompilerOutput> {
         let path = path.as_ref();
-        self.compile(&CompilerInput::new(path)?)
+        let mut res: CompilerOutput = Default::default();
+        for input in CompilerInput::new(path)? {
+            let output = self.compile(&input)?;
+            res.merge(output)
+        }
+        Ok(res)
     }
 
     /// Same as [`Self::compile()`], but only returns those files which are included in the

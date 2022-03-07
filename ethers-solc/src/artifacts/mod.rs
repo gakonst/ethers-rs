@@ -823,6 +823,12 @@ impl CompilerOutput {
             err.source_location.as_ref().map(|s| files.contains(s.file.as_str())).unwrap_or(true)
         });
     }
+
+    pub fn merge(&mut self, other: CompilerOutput) {
+        self.errors.extend(other.errors);
+        self.contracts.extend(other.contracts);
+        self.sources.extend(other.sources);
+    }
 }
 
 /// A wrapper helper type for the `Contracts` type alias
