@@ -1,7 +1,9 @@
 //! Output artifact handling
 
 use crate::{
-    artifacts::{CompactContract, CompactContractBytecode, Contract, FileToContractsMap},
+    artifacts::{
+        CompactContract, CompactContractBytecode, Contract, FileToContractsMap, LosslessAbi,
+    },
     contracts::VersionedContracts,
     error::Result,
     utils, HardhatArtifact, ProjectPathsConfig, SolcError,
@@ -9,11 +11,14 @@ use crate::{
 use ethers_core::{abi::Abi, types::Bytes};
 use semver::Version;
 use serde::{de::DeserializeOwned, Serialize};
+use serde_json::map::OccupiedEntry;
+use std::collections::hash_map::Entry;
 use std::{
     collections::btree_map::BTreeMap,
     fmt, fs, io,
     path::{Path, PathBuf},
 };
+use std::{collections::HashMap, ffi::OsStr};
 
 mod configurable;
 pub use configurable::*;
@@ -503,6 +508,14 @@ pub trait ArtifactOutput {
     /// **Note:** This does only convert, but _NOT_ write the artifacts to disk, See
     /// [`Self::on_output()`]
     fn output_to_artifacts(&self, contracts: &VersionedContracts) -> Artifacts<Self::Artifact> {
+        //Hash map to store the yul abi targets. Each value in the hashmap is a (String, String, &LosslessAbi)
+        //Each key in the hashmap is the file path of the target yul artifact to inject the abi into
+        //The first value in the tuple is the name of the contract in the artifact
+        //the second value is the abi that will be injected into the yul artifact
+        //the third value is the abi.sol file path to be removed from artifacts
+
+        let mut yul_abi_targets: HashMap<String, (String, &LosslessAbi, String)> = HashMap::new();
+
         let mut artifacts = ArtifactsMap::new();
         for (file, contracts) in contracts.as_ref().iter() {
             let mut entries = BTreeMap::new();
@@ -517,18 +530,66 @@ pub trait ArtifactOutput {
                     };
                     let artifact = self.contract_to_artifact(file, name, contract.contract.clone());
 
+                    //if the artifact path has a yul abi extension, then add the target yul contract file path
+                    //and abi to yul_abi_targets
+                    if is_yul_abi(artifact_path.clone()) {
+                        //Add the target file path
+                        let target_file = file.as_str().replace(".abi.sol", ".yul");
+                        let artifact_name = name.as_str();
+
+                        yul_abi_targets.insert(
+                            target_file,
+                            (
+                                artifact_name.to_string(),
+                                contract.contract.abi.as_ref().unwrap(),
+                                file.to_string(),
+                            ),
+                        );
+                    } else {
+                    }
+                    //Debug--------------------------------------
+
                     contracts.push(ArtifactFile {
                         artifact,
                         file: artifact_path,
                         version: contract.version.clone(),
                     });
                 }
+
                 entries.insert(name.to_string(), contracts);
             }
             artifacts.insert(file.to_string(), entries);
         }
 
+        //inject yul abis into target .yul artifacts
+        for (yul_target_path, artifact_tuple) in yul_abi_targets {
+            //find the target yul entry with the target file path
+            let mut _entries = artifacts.entry(yul_target_path).or_insert(BTreeMap::new());
+
+            let artifact_file = &_entries.get(&artifact_tuple.0).unwrap()[0];
+
+            //TODO: Update logic to get the ConfigurableContractArtifact and inject the abi
+            println!("{:?}", artifact_file.artifact);
+            println!("\n");
+        }
+
         Artifacts(artifacts)
+    }
+}
+
+//check if .abi.sol in the file extension
+fn is_yul_abi(artifact_path: PathBuf) -> bool {
+    //get the file name from the artifact
+    let artifact_file_name = artifact_path.into_os_string().into_string().unwrap();
+
+    //parse the file extension
+    let parsed_file_ext: Vec<&str> = artifact_file_name.split(".").collect::<Vec<&str>>();
+
+    //if the file extension contains .abi.sol
+    if parsed_file_ext[1] == "abi" {
+        true
+    } else {
+        false
     }
 }
 
