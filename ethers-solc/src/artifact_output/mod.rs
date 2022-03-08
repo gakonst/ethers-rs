@@ -547,7 +547,6 @@ pub trait ArtifactOutput {
                         );
                     } else {
                     }
-                    //Debug--------------------------------------
 
                     contracts.push(ArtifactFile {
                         artifact,
