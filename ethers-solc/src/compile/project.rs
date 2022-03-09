@@ -179,7 +179,7 @@ impl<'a, T: ArtifactOutput> ProjectCompiler<'a, T> {
         let Self { edges, project, mut sources } = self;
 
         let mut cache = ArtifactsCache::new(project, edges)?;
-        // retain and compile only dirty sources
+        // retain and compile only dirty sources and all their imports
         sources = sources.filtered(&mut cache);
 
         Ok(PreprocessedState { sources, cache })
@@ -224,16 +224,14 @@ impl<'a, T: ArtifactOutput> CompiledState<'a, T> {
         // write all artifacts via the handler but only if the build succeeded
         let compiled_artifacts = if cache.project().no_artifacts {
             cache.project().artifacts_handler().output_to_artifacts(&output.contracts)
+        } else if output.has_error() {
+            tracing::trace!("skip writing cache file due to solc errors: {:?}", output.errors);
+            cache.project().artifacts_handler().output_to_artifacts(&output.contracts)
         } else {
-            if output.has_error() {
-                tracing::trace!("skip writing cache file due to solc errors: {:?}", output.errors);
-                cache.project().artifacts_handler().output_to_artifacts(&output.contracts)
-            } else {
-                cache
-                    .project()
-                    .artifacts_handler()
-                    .on_output(&output.contracts, &cache.project().paths)?
-            }
+            cache
+                .project()
+                .artifacts_handler()
+                .on_output(&output.contracts, &cache.project().paths)?
         };
 
         Ok(ArtifactsState { output, cache, compiled_artifacts })

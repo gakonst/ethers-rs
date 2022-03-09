@@ -91,6 +91,11 @@ impl GraphEdges {
         &self.edges[from]
     }
 
+    /// Returns an iterator that yields all imports of a node and all their imports
+    pub fn all_imported_nodes(&self, from: usize) -> impl Iterator<Item = usize> + '_ {
+        NodesIter::new(from, self).skip(1)
+    }
+
     /// Returns all files imported by the given file
     pub fn imports(&self, file: impl AsRef<Path>) -> HashSet<&PathBuf> {
         if let Some(start) = self.indices.get(file.as_ref()).copied() {
@@ -98,6 +103,11 @@ impl GraphEdges {
         } else {
             HashSet::new()
         }
+    }
+
+    /// Returns the id of the given file
+    pub fn node_id(&self, file: impl AsRef<Path>) -> usize {
+        self.indices[file.as_ref()]
     }
 
     /// Returns true if the `file` was originally included when the graph was first created and not
