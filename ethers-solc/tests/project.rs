@@ -613,3 +613,43 @@ contract LinkTest {
     let s = serde_json::to_string(&bytecode).unwrap();
     assert_eq!(bytecode.clone(), serde_json::from_str(&s).unwrap());
 }
+
+#[test]
+fn can_recompile_with_changes() {
+    let mut tmp = TempProject::dapptools().unwrap();
+    tmp.project_mut().allowed_lib_paths = vec![tmp.root().join("modules")].into();
+
+    let content = r#"
+    pragma solidity ^0.8.10;
+    import "../modules/B.sol";
+    contract A {}
+   "#;
+    tmp.add_source("A", content).unwrap();
+
+    tmp.add_contract(
+        "modules/B",
+        r#"
+    pragma solidity ^0.8.10;
+    contract B {}
+   "#,
+    )
+    .unwrap();
+
+    let compiled = tmp.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+    assert!(compiled.find("A").is_some());
+    assert!(compiled.find("B").is_some());
+
+    let compiled = tmp.compile().unwrap();
+    assert!(compiled.find("A").is_some());
+    assert!(compiled.find("B").is_some());
+    assert!(compiled.is_unchanged());
+
+    // modify A.sol
+    tmp.add_source("A", format!("{}\n", content)).unwrap();
+    let compiled = tmp.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+    assert!(!compiled.is_unchanged());
+    assert!(compiled.find("A").is_some());
+    assert!(compiled.find("B").is_some());
+}
