@@ -320,7 +320,7 @@ where
     }
 
     fn replace_abi(self, new_abi: Option<Abi>) {
-        let artifact = self.into_compact_contract();
+        let mut artifact = self.into_compact_contract();
         artifact.abi = new_abi;
     }
 
@@ -571,7 +571,13 @@ pub trait ArtifactOutput {
             //get the artifact file from the entry
             let artifact_file = &_entries.get(&artifact_tuple.0).unwrap()[0];
             //inject the abi into the yul artifact
-            let abi = &artifact_file.clone().artifact.into_inner();
+
+            let mut temp_yul_artifact =
+                &self.contract_to_artifact(&yul_target_path, &artifact_tuple.0, artifact_tuple.1);
+
+            let new_yul_abi = temp_yul_artifact.clone().into_inner().0;
+
+            let abi = &artifact_file.clone().artifact.replace_abi(new_yul_abi);
 
             println!("{:?}", artifact_file);
             println!("{:?}", abi);
