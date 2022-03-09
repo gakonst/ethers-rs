@@ -577,10 +577,11 @@ pub trait ArtifactOutput {
 
             let new_yul_abi = temp_yul_artifact.clone().into_inner().0;
 
-            let abi = &artifact_file.clone().artifact.replace_abi(new_yul_abi);
+            let mut new_Contract = artifact_file.clone().artifact.into_compact_contract();
 
-            println!("{:?}", artifact_file);
-            println!("{:?}", abi);
+            new_Contract.abi = new_yul_abi;
+
+            println!("{:?}", new_Contract);
             //artifacts.remove_entry(&artifact_tuple.2);
         }
 
