@@ -160,7 +160,6 @@ fn print_imports(
     let mut iter = imports.iter().peekable();
 
     while let Some(import) = iter.next() {
-        // levels_continue.push(false);
         levels_continue.push(iter.peek().is_some());
         print_node(
             graph,
