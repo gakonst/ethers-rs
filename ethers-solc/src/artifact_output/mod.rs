@@ -2,23 +2,21 @@
 
 use crate::{
     artifacts::{
-        CompactContract, CompactContractBytecode, Contract, FileToContractsMap, LosslessAbi,
+        CompactContract, CompactContractBytecode, Contract, FileToContractsMap,
     },
     contracts::VersionedContracts,
     error::Result,
     utils, HardhatArtifact, ProjectPathsConfig, SolcError,
 };
-use ethers_core::{abi::Abi, types::Bytes};
+use ethers_core::{abi::{Abi, self}, types::Bytes};
 use semver::Version;
 use serde::{de::DeserializeOwned, Serialize};
-use serde_json::map::OccupiedEntry;
-use std::collections::hash_map::Entry;
 use std::{
     collections::btree_map::BTreeMap,
     fmt, fs, io,
     path::{Path, PathBuf},
 };
-use std::{collections::HashMap, ffi::OsStr};
+use std::{collections::HashMap};
 
 mod configurable;
 pub use configurable::*;
@@ -286,7 +284,8 @@ impl<T> Artifacts<T> {
 pub trait Artifact {
     /// Returns the artifact's `Abi` and bytecode
     fn into_inner(self) -> (Option<Abi>, Option<Bytes>);
-
+    /// Alows an Artifact's ABI to be changed
+    fn replace_abi(self, new_abi: Option<Abi>);
     /// Turns the artifact into a container type for abi, compact bytecode and deployed bytecode
     fn into_compact_contract(self) -> CompactContract;
 
@@ -318,6 +317,11 @@ where
     fn into_inner(self) -> (Option<Abi>, Option<Bytes>) {
         let artifact = self.into_compact_contract();
         (artifact.abi, artifact.bin.and_then(|bin| bin.into_bytes()))
+    }
+
+    fn replace_abi(self, new_abi: Option<Abi>) {
+        let artifact = self.into_compact_contract();
+        artifact.abi = new_abi;
     }
 
     fn into_compact_contract(self) -> CompactContract {
@@ -567,10 +571,11 @@ pub trait ArtifactOutput {
             //get the artifact file from the entry
             let artifact_file = &_entries.get(&artifact_tuple.0).unwrap()[0];
             //inject the abi into the yul artifact
-            let mut yul_artifact = &artifact_file.artifact;
+            let abi = &artifact_file.clone().artifact.into_inner();
 
-            let yul_artifact =
-                &self.contract_to_artifact(&yul_target_path, &artifact_tuple.0, artifact_tuple.1);
+            println!("{:?}", artifact_file);
+            println!("{:?}", abi);
+            //artifacts.remove_entry(&artifact_tuple.2);
         }
 
         Artifacts(artifacts)
