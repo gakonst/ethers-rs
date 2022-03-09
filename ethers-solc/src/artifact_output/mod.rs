@@ -514,7 +514,7 @@ pub trait ArtifactOutput {
         //the second value is the abi that will be injected into the yul artifact
         //the third value is the abi.sol file path to be removed from artifacts
 
-        let mut yul_abi_targets: HashMap<String, (String, Abi, String)> = HashMap::new();
+        let mut yul_abi_targets: HashMap<String, (String, Contract, String)> = HashMap::new();
 
         let mut artifacts = ArtifactsMap::new();
         for (file, contracts) in contracts.as_ref().iter() {
@@ -541,7 +541,7 @@ pub trait ArtifactOutput {
                             target_file,
                             (
                                 artifact_name.to_string(),
-                                contract.contract.abi.as_ref().unwrap().abi.clone(),
+                                contract.contract.clone(),
                                 file.to_string(),
                             ),
                         );
@@ -563,23 +563,14 @@ pub trait ArtifactOutput {
         //inject yul abis into target .yul artifacts
         for (yul_target_path, artifact_tuple) in yul_abi_targets {
             //find the target yul entry with the target file path
-            let mut _entries = artifacts.entry(yul_target_path).or_insert(BTreeMap::new());
+            let mut _entries = artifacts.entry(yul_target_path.clone()).or_insert(BTreeMap::new());
             //get the artifact file from the entry
             let artifact_file = &_entries.get(&artifact_tuple.0).unwrap()[0];
             //inject the abi into the yul artifact
             let mut yul_artifact = &artifact_file.artifact;
 
-            // create a new artifact
-            let new_artifact = artifact_file.artifact.clone();
-            //get the contract_abi of the new artifact
-            let mut contract_abi = new_artifact.into_inner().0;
-
-            //set the contract abi to the corresponding .abi.sol file
-            contract_abi = Some(artifact_tuple.1);
-
-            //TODO: Abi is injecting, now we just need to reassign the yul_artifact to be the new_artifact
-            println!("{:?}", contract_abi);
-            println!("\n");
+            let yul_artifact =
+                &self.contract_to_artifact(&yul_target_path, &artifact_tuple.0, artifact_tuple.1);
         }
 
         Artifacts(artifacts)
