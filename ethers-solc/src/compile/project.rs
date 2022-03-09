@@ -216,18 +216,24 @@ struct CompiledState<'a, T: ArtifactOutput> {
 impl<'a, T: ArtifactOutput> CompiledState<'a, T> {
     /// advance to the next state by handling all artifacts
     ///
-    /// Writes all output contracts to disk if enabled in the `Project`
+    /// Writes all output contracts to disk if enabled in the `Project` and if the build was
+    /// successful
     fn write_artifacts(self) -> Result<ArtifactsState<'a, T>> {
         let CompiledState { output, cache } = self;
 
-        // write all artifacts
-        let compiled_artifacts = if !cache.project().no_artifacts {
-            cache
-                .project()
-                .artifacts_handler()
-                .on_output(&output.contracts, &cache.project().paths)?
-        } else {
+        // write all artifacts via the handler but only if the build succeeded
+        let compiled_artifacts = if cache.project().no_artifacts {
             cache.project().artifacts_handler().output_to_artifacts(&output.contracts)
+        } else {
+            if output.has_error() {
+                tracing::trace!("skip writing cache file due to solc errors: {:?}", output.errors);
+                cache.project().artifacts_handler().output_to_artifacts(&output.contracts)
+            } else {
+                cache
+                    .project()
+                    .artifacts_handler()
+                    .on_output(&output.contracts, &cache.project().paths)?
+            }
         };
 
         Ok(ArtifactsState { output, cache, compiled_artifacts })
