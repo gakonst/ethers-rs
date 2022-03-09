@@ -391,13 +391,6 @@ mod tests {
     use super::*;
 
     #[test]
-    fn report_is_noop() {
-        get_default(|reporter| {
-            assert!(reporter.is::<NoReporter>());
-        });
-    }
-
-    #[test]
     fn scoped_reporter_works() {
         struct TestReporter;
         impl Reporter for TestReporter {}
@@ -409,6 +402,10 @@ mod tests {
 
     #[test]
     fn global_and_scoped_reporter_works() {
+        get_default(|reporter| {
+            assert!(reporter.is::<NoReporter>());
+        });
+
         set_global_reporter(Report::new(BasicStdoutReporter::default())).unwrap();
         struct TestReporter;
         impl Reporter for TestReporter {}
