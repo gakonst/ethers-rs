@@ -157,11 +157,6 @@ fn print_imports(
         return Ok(())
     }
 
-    for continues in &**levels_continue {
-        let c = if *continues { symbols.down } else { " " };
-        write!(out, "{}   ", c)?;
-    }
-
     let mut iter = imports.iter().peekable();
 
     while let Some(import) = iter.next() {
