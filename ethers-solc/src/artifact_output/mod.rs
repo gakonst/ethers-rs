@@ -8,7 +8,7 @@ use crate::{
     error::Result,
     utils, HardhatArtifact, ProjectPathsConfig, SolcError,
 };
-use ethers_core::{abi::{Abi, self}, types::Bytes};
+use ethers_core::{abi::{Abi}, types::Bytes};
 use semver::Version;
 use serde::{de::DeserializeOwned, Serialize};
 use std::{
@@ -533,7 +533,6 @@ pub trait ArtifactOutput {
                     if is_yul_abi(artifact_path.clone()) {
                         //Add the target file path
                         let target_file = file.as_str().replace(".abi.sol", ".yul");
-                        let artifact_name = name.as_str();
 
                         yul_abi_targets.insert(
                             target_file,
@@ -564,25 +563,25 @@ pub trait ArtifactOutput {
         }
 
         for mut yul_contract in yul_contracts {
-            for (yul_target_path, new_abi) in &yul_abi_targets {
+            for (yul_target_path, needed_artifact_fragments) in &yul_abi_targets {
 
-                yul_contract.abi = new_abi.1.clone();
+                yul_contract.abi = needed_artifact_fragments.1.clone();
 
-                let new_artifact = self.contract_to_artifact(&yul_target_path, &new_abi.0, yul_contract.clone());
+                let new_artifact = self.contract_to_artifact(yul_target_path, &needed_artifact_fragments.0, yul_contract.clone());
 
                 let revised_artifact_file = ArtifactFile {
                     artifact: new_artifact,
-                    file: new_abi.4.clone(),
-                    version: new_abi.2.clone(),
+                    file: needed_artifact_fragments.4.clone(),
+                    version: needed_artifact_fragments.2.clone(),
                 };
                 let mut entries = BTreeMap::new();
                 let mut contracts = Vec::with_capacity(1);
 
                 contracts.push(revised_artifact_file);
 
-                entries.insert(new_abi.3.clone(), contracts);
+                entries.insert(needed_artifact_fragments.3.clone(), contracts);
 
-                artifacts.insert(new_abi.0.clone(), entries);
+                artifacts.insert(needed_artifact_fragments.0.clone(), entries);
             }
         }
         
@@ -597,14 +596,10 @@ fn is_yul_abi(artifact_path: PathBuf) -> bool {
     let artifact_file_name = artifact_path.into_os_string().into_string().unwrap();
 
     //parse the file extension
-    let parsed_file_ext: Vec<&str> = artifact_file_name.split(".").collect::<Vec<&str>>();
+    let parsed_file_ext: Vec<&str> = artifact_file_name.split('.').collect::<Vec<&str>>();
 
     //if the file extension contains .abi.sol
-    if parsed_file_ext[1] == "abi" {
-        true
-    } else {
-        false
-    }
+    parsed_file_ext[1] == "abi" 
 }
 
 //check if .abi.sol in the file extension
@@ -613,14 +608,10 @@ fn is_yul_artifact(artifact_path: PathBuf) -> bool {
     let artifact_file_name = artifact_path.into_os_string().into_string().unwrap();
 
     //parse the file extension
-    let parsed_file_ext: Vec<&str> = artifact_file_name.split(".").collect::<Vec<&str>>();
+    let parsed_file_ext: Vec<&str> = artifact_file_name.split('.').collect::<Vec<&str>>();
 
     //if the file extension contains .abi.sol
-    if parsed_file_ext[1].split("/").collect::<Vec<&str>>()[0] == "yul" {
-        true
-    } else {
-        false
-    }
+    parsed_file_ext[1].split('/').collect::<Vec<&str>>()[0] == "yul"
 }
 
 /// An `Artifact` implementation that uses a compact representation
