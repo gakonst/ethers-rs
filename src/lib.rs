@@ -119,6 +119,11 @@ pub mod solc {
     pub use ethers_solc::*;
 }
 
+#[doc = include_str!("../assets/COMPILE_README.md")]
+pub mod compile {
+    pub use ethers_compile::*;
+}
+
 /// Etherscan bindings
 pub mod etherscan {
     pub use ethers_etherscan::*;

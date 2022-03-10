@@ -22,6 +22,7 @@ members = [
     "ethers-middleware",
     "ethers-etherscan",
     "ethers-solc",
+    "ethers-compile",
     "examples/ethers-wasm",
 ]
 
@@ -34,6 +35,7 @@ default-members = [
     "ethers-middleware",
     "ethers-etherscan",
     "ethers-solc",
+    "ethers-compile",
 ]
 
 [package.metadata.docs.rs]
@@ -80,6 +82,8 @@ solc-async = ["ethers-solc/async"]
 solc-full = ["ethers-solc/full"]
 solc-tests = ["ethers-solc/tests"]
 solc-sha2-asm = ["ethers-solc/asm"]
+## compiler
+# TODO: ...
 
 [dependencies]
 ethers-addressbook = { version = "^0.1.0", default-features = false, path = "./ethers-addressbook" }
@@ -90,6 +94,7 @@ ethers-signers = { version = "^0.6.0", default-features = false, path = "./ether
 ethers-middleware = { version = "^0.6.0", default-features = false, path = "./ethers-middleware" }
 ethers-solc = { version = "^0.3.0", default-features = false, path = "./ethers-solc" }
 ethers-etherscan = { version = "^0.2.0", default-features = false, path = "./ethers-etherscan" }
+ethers-compile = { version = "^0.1.0", default-features = false, path = "./ethers-compile" }
 
 [dev-dependencies]
 ethers-contract = { version = "^0.6.0", default-features = false, path = "./ethers-contract", features = ["abigen", "eip712"] }

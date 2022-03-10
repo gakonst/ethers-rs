@@ -1133,6 +1133,7 @@ version = "0.6.0"
 dependencies = [
  "bytes",
  "ethers-addressbook",
+ "ethers-compile",
  "ethers-contract",
  "ethers-core",
  "ethers-etherscan",
@@ -1157,6 +1158,10 @@ dependencies = [
  "serde",
  "serde_json",
 ]
+
+[[package]]
+name = "ethers-compile"
+version = "0.1.0"
 
 [[package]]
 name = "ethers-contract"
