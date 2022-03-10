@@ -24,7 +24,7 @@ async-trait = { version = "0.1.50", default-features = false }
 serde = { version = "1.0.124", default-features = false, features = ["derive"] }
 thiserror = { version = "1.0.30", default-features = false }
 futures-util = { version = "^0.3" }
-tracing = { version = "0.1.31", default-features = false }
+tracing = { version = "0.1.32", default-features = false }
 tracing-futures = { version = "0.2.5", default-features = false }
 
 # for gas oracles
