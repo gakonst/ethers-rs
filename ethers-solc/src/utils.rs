@@ -67,7 +67,9 @@ pub fn source_files(root: impl AsRef<Path>) -> Vec<PathBuf> {
         .into_iter()
         .filter_map(Result::ok)
         .filter(|e| e.file_type().is_file())
-        .filter(|e| e.path().extension().map(|ext| ext == "sol").unwrap_or_default())
+        .filter(|e| {
+            e.path().extension().map(|ext| (ext == "sol") || (ext == "yul")).unwrap_or_default()
+        })
         .map(|e| e.path().into())
         .collect()
 }

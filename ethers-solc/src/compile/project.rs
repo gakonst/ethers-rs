@@ -341,24 +341,23 @@ fn compile_sequential(
             solc.args
         );
 
-        let input = CompilerInput::with_sources(sources)
-            .settings(settings.clone())
-            .normalize_evm_version(&version)
-            .with_remappings(paths.remappings.clone());
-
-        tracing::trace!(
-            "calling solc `{}` with {} sources {:?}",
-            version,
-            input.sources.len(),
-            input.sources.keys()
-        );
-
-        report::solc_spawn(&solc, &version, &input);
-        let output = solc.compile_exact(&input)?;
-        report::solc_success(&solc, &version, &output);
-        tracing::trace!("compiled input, output has error: {}", output.has_error());
-
-        aggregated.extend(version, output);
+        for input in CompilerInput::with_sources(sources) {
+            let input = input
+                .settings(settings.clone())
+                .normalize_evm_version(&version)
+                .with_remappings(paths.remappings.clone());
+            tracing::trace!(
+                "calling solc `{}` with {} sources {:?}",
+                version,
+                input.sources.len(),
+                input.sources.keys()
+            );
+            report::solc_spawn(&solc, &version, &input);
+            let output = solc.compile_exact(&input)?;
+            report::solc_success(&solc, &version, &output);
+            tracing::trace!("compiled input, output has error: {}", output.has_error());
+            aggregated.extend(version.clone(), output);
+        }
     }
     Ok(aggregated)
 }
@@ -383,13 +382,14 @@ fn compile_parallel(
             // nothing to compile
             continue
         }
+        for input in CompilerInput::with_sources(sources) {
+            let job = input
+                .settings(settings.clone())
+                .normalize_evm_version(&version)
+                .with_remappings(paths.remappings.clone());
 
-        let job = CompilerInput::with_sources(sources)
-            .settings(settings.clone())
-            .normalize_evm_version(&version)
-            .with_remappings(paths.remappings.clone());
-
-        jobs.push((solc, version, job))
+            jobs.push((solc.clone(), version.clone(), job))
+        }
     }
 
     // start a rayon threadpool that will execute all `Solc::compile()` processes

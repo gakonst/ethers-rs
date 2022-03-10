@@ -47,6 +47,7 @@
 - Add a getter to `ProjectCompileOutput` that returns a mapping of compiler
   versions to a vector of name + contract struct tuples
   [#908](https://github.com/gakonst/ethers-rs/pull/908)
+- Add Yul compilation [994](https://github.com/gakonst/ethers-rs/pull/994)
 - Enforce commutativity of ENS reverse resolution
   [#996](https://github.com/gakonst/ethers-rs/pull/996)
 

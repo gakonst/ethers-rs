@@ -93,6 +93,36 @@ fn can_compile_dapp_sample() {
 }
 
 #[test]
+fn can_compile_yul_sample() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test-data/yul-sample");
+    let paths = ProjectPathsConfig::builder().sources(root);
+    let project = TempProject::<ConfigurableArtifacts>::new(paths).unwrap();
+
+    let compiled = project.compile().unwrap();
+    assert!(compiled.find("Dapp").is_some());
+    assert!(compiled.find("SimpleStore").is_some());
+    assert!(!compiled.has_compiler_errors());
+
+    // nothing to compile
+    let compiled = project.compile().unwrap();
+    assert!(compiled.find("Dapp").is_some());
+    assert!(compiled.find("SimpleStore").is_some());
+    assert!(compiled.is_unchanged());
+
+    let cache = SolFilesCache::read(project.cache_path()).unwrap();
+
+    // delete artifacts
+    std::fs::remove_dir_all(&project.paths().artifacts).unwrap();
+    let compiled = project.compile().unwrap();
+    assert!(compiled.find("Dapp").is_some());
+    assert!(compiled.find("SimpleStore").is_some());
+    assert!(!compiled.is_unchanged());
+
+    let updated_cache = SolFilesCache::read(project.cache_path()).unwrap();
+    assert_eq!(cache, updated_cache);
+}
+
+#[test]
 fn can_compile_configured() {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test-data/dapp-sample");
     let paths = ProjectPathsConfig::builder().sources(root.join("src")).lib(root.join("lib"));

@@ -410,7 +410,12 @@ impl Solc {
     /// Convenience function for compiling all sources under the given path
     pub fn compile_source(&self, path: impl AsRef<Path>) -> Result<CompilerOutput> {
         let path = path.as_ref();
-        self.compile(&CompilerInput::new(path)?)
+        let mut res: CompilerOutput = Default::default();
+        for input in CompilerInput::new(path)? {
+            let output = self.compile(&input)?;
+            res.merge(output)
+        }
+        Ok(res)
     }
 
     /// Same as [`Self::compile()`], but only returns those files which are included in the
@@ -425,7 +430,7 @@ impl Solc {
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     ///  use ethers_solc::{CompilerInput, Solc};
     /// let solc = Solc::default();
-    /// let input = CompilerInput::new("./contracts")?;
+    /// let input = CompilerInput::new("./contracts")?[0].clone();
     /// let output = solc.compile_exact(&input)?;
     /// # Ok(())
     /// # }
@@ -571,8 +576,8 @@ impl Solc {
     /// use ethers_solc::{CompilerInput, Solc};
     /// let solc1 = Solc::default();
     /// let solc2 = Solc::default();
-    /// let input1 = CompilerInput::new("contracts").unwrap();
-    /// let input2 = CompilerInput::new("src").unwrap();
+    /// let input1 = CompilerInput::new("contracts").unwrap()[0].clone();
+    /// let input2 = CompilerInput::new("src").unwrap()[0].clone();
     ///
     /// let outputs = Solc::compile_many([(solc1, input1), (solc2, input2)], 2).await.flattened().unwrap();
     /// # }
