@@ -505,13 +505,14 @@ pub trait ArtifactOutput {
     /// **Note:** This does only convert, but _NOT_ write the artifacts to disk, See
     /// [`Self::on_output()`]
     fn output_to_artifacts(&self, contracts: &VersionedContracts) -> Artifacts<Self::Artifact> {
-        //Hash map to store the yul abi targets. Each value in the hashmap is a (String, String, &LosslessAbi)
-        //Each key in the hashmap is the file path of the target yul artifact to inject the abi into
-        //The first value in the tuple is the name of the contract in the artifact
-        //the third value is the abi that will be injected into the yul artifact
-        //the fourth value is the abi.sol file path to be removed from artifacts
 
+        // Yul ABI targets is needed to store all of the needed parts of the .abi.sol file for each .yul file
+        // It's a hashmap mapping the name of each .yul file to the ABI, Version, name, and Path it should be matched with
         let mut yul_abi_targets: HashMap<String, (String,Option<LosslessAbi>, Version, String, PathBuf)> = HashMap::new();
+
+        // A Cache to store all of the Yul Contracts
+        // This is becase while we can fetch the Artifact, I was unable to convert it back into a Contract
+        // So instead we just save the Contracts for later, as teh Contract Object is easy to modify, then convert into an Artifact
         let mut yul_contracts: Vec<Contract> = Vec::<Contract>::new();
 
         let mut artifacts = ArtifactsMap::new();
@@ -531,9 +532,13 @@ pub trait ArtifactOutput {
                     //if the artifact path has a yul abi extension, then add the target yul contract file path
                     //and abi to yul_abi_targets
                     if is_yul_abi(artifact_path.clone()) {
-                        //Add the target file path
+                        // Replace the .abi.sol with .yul, so the resulting file path should be that of the 
+                        // contract this ABI is for
                         let target_file = file.as_str().replace(".abi.sol", ".yul");
 
+                        // All of these are needed parts of the .abi.sol file which should be added to / use with the Yul contract
+                        // Filepath is needed to identify the artiface with bytecode inside of artifacts (as is name)
+                        // version is needed to convert to Versioned contract later
                         yul_abi_targets.insert(
                             target_file,
                             (
@@ -546,10 +551,9 @@ pub trait ArtifactOutput {
                         );
                     } 
                     if is_yul_artifact(artifact_path.clone()){
+                        // If its just a .yul file save its Contract for later, so that we can add in its ABI later
                         yul_contracts.push(contract.contract.clone());
-                    } else {
                     }
-
                     contracts.push(ArtifactFile {
                         artifact,
                         file: artifact_path,
@@ -562,18 +566,26 @@ pub trait ArtifactOutput {
             artifacts.insert(file.to_string(), entries);
         }
 
+        // Loop through all the Yul Contracts we cached which now need an ABI inserted into them
         for mut yul_contract in yul_contracts {
+            // Loop through all the Yul ABIs we found, and see if they match, and then add the ABI to the Yul contract
+            // and then convert Yul Contract with ABI into an Artifact, and save the Artifact for our return
             for (yul_target_path, needed_artifact_fragments) in &yul_abi_targets {
 
+                // Set the (empty) ABI on the Yul Contract to the abi of its matching .abi.sol file
                 yul_contract.abi = needed_artifact_fragments.1.clone();
 
+                // Then convert the contract back into an Artifact
                 let new_artifact = self.contract_to_artifact(yul_target_path, &needed_artifact_fragments.0, yul_contract.clone());
 
+                // Wrap the Artifact into an Artifact File
                 let revised_artifact_file = ArtifactFile {
                     artifact: new_artifact,
                     file: needed_artifact_fragments.4.clone(),
                     version: needed_artifact_fragments.2.clone(),
                 };
+
+                // Then perform the needed wrapping so that it can be inserted back into Artifacts as if it compiled normally
                 let mut entries = BTreeMap::new();
                 let mut contracts = Vec::with_capacity(1);
 
