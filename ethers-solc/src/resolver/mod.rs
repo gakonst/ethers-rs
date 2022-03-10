@@ -91,6 +91,11 @@ impl GraphEdges {
         &self.edges[from]
     }
 
+    /// Returns an iterator that yields all imports of a node and all their imports
+    pub fn all_imported_nodes(&self, from: usize) -> impl Iterator<Item = usize> + '_ {
+        NodesIter::new(from, self).skip(1)
+    }
+
     /// Returns all files imported by the given file
     pub fn imports(&self, file: impl AsRef<Path>) -> HashSet<&PathBuf> {
         if let Some(start) = self.indices.get(file.as_ref()).copied() {
@@ -98,6 +103,11 @@ impl GraphEdges {
         } else {
             HashSet::new()
         }
+    }
+
+    /// Returns the id of the given file
+    pub fn node_id(&self, file: impl AsRef<Path>) -> usize {
+        self.indices[file.as_ref()]
     }
 
     /// Returns true if the `file` was originally included when the graph was first created and not
@@ -631,11 +641,18 @@ impl VersionedSources {
                 SolcError::msg(format!("solc \"{}\" should have been installed", version))
             })?;
 
-            tracing::trace!("verifying solc checksum for {}", solc.solc.display());
-            if solc.verify_checksum().is_err() {
-                tracing::trace!("corrupted solc version, redownloading  \"{}\"", version);
-                Solc::blocking_install(version.as_ref())?;
-                tracing::trace!("reinstalled solc: \"{}\"", version);
+            if self.offline {
+                tracing::trace!(
+                    "skip verifying solc checksum for {} in offline mode",
+                    solc.solc.display()
+                );
+            } else {
+                tracing::trace!("verifying solc checksum for {}", solc.solc.display());
+                if solc.verify_checksum().is_err() {
+                    tracing::trace!("corrupted solc version, redownloading  \"{}\"", version);
+                    Solc::blocking_install(version.as_ref())?;
+                    tracing::trace!("reinstalled solc: \"{}\"", version);
+                }
             }
             let solc = solc.arg("--allow-paths").arg(allowed_lib_paths.to_string());
             let version = solc.version()?;

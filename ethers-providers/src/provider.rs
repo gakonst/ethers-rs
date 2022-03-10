@@ -112,6 +112,10 @@ pub enum ProviderError {
     #[error("ens name not found: {0}")]
     EnsError(String),
 
+    /// Invalid reverse ENS name
+    #[error("reverse ens name not pointing to itself: {0}")]
+    EnsNotOwned(String),
+
     #[error(transparent)]
     SerdeJson(#[from] serde_json::Error),
 
@@ -794,7 +798,14 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
     /// a string. This should theoretically never happen.
     async fn lookup_address(&self, address: Address) -> Result<String, ProviderError> {
         let ens_name = ens::reverse_address(address);
-        self.query_resolver(ParamType::String, &ens_name, ens::NAME_SELECTOR).await
+        let domain: String =
+            self.query_resolver(ParamType::String, &ens_name, ens::NAME_SELECTOR).await?;
+        let reverse_address = self.resolve_name(&domain).await?;
+        if address != reverse_address {
+            Err(ProviderError::EnsNotOwned(domain))
+        } else {
+            Ok(domain)
+        }
     }
 
     /// Returns the avatar HTTP link of the avatar that the `ens_name` resolves to (or None

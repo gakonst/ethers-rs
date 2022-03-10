@@ -10,6 +10,7 @@ use crate::{
 use crate::artifacts::output_selection::ContractOutputSelection;
 use serde::{Deserialize, Serialize};
 use std::{
+    collections::HashSet,
     fmt::{self, Formatter},
     fs,
     path::{Component, Path, PathBuf},
@@ -229,7 +230,7 @@ impl ProjectPathsConfig {
     pub fn flatten(&self, target: &Path) -> Result<String> {
         tracing::trace!("flattening file");
         let graph = Graph::resolve(self)?;
-        self.flatten_node(target, &graph, &mut vec![], false, false)
+        self.flatten_node(target, &graph, &mut Default::default(), false, false)
     }
 
     /// Flattens a single node from the dependency graph
@@ -237,7 +238,7 @@ impl ProjectPathsConfig {
         &self,
         target: &Path,
         graph: &Graph,
-        imported: &mut Vec<usize>,
+        imported: &mut HashSet<usize>,
         strip_version_pragma: bool,
         strip_license: bool,
     ) -> Result<String> {
@@ -248,9 +249,11 @@ impl ProjectPathsConfig {
             SolcError::msg(format!("cannot resolve file at \"{:?}\"", target.display()))
         })?;
 
-        if imported.iter().any(|&idx| idx == *target_index) {
+        if imported.contains(target_index) {
+            // short circuit nodes that were already imported, if both A.sol and B.sol import C.sol
             return Ok(String::new())
         }
+        imported.insert(*target_index);
 
         let target_node = graph.node(*target_index);
 
@@ -278,21 +281,17 @@ impl ProjectPathsConfig {
 
         for import in imports.iter() {
             let import_path = self.resolve_import(target_dir, import.data())?;
-            let import_content = self
-                .flatten_node(&import_path, graph, imported, true, true)?
-                .trim()
-                .as_bytes()
-                .to_owned();
+            let s = self.flatten_node(&import_path, graph, imported, true, true)?;
+            let import_content = s.trim().as_bytes();
             let import_content_len = import_content.len() as isize;
             let (start, end) = import.loc_by_offset(offset);
-            content.splice(start..end, import_content);
+            content.splice(start..end, import_content.iter().copied());
             offset += import_content_len - ((end - start) as isize);
         }
 
         let result = String::from_utf8(content).map_err(|err| {
             SolcError::msg(format!("failed to convert extended bytes to string: {}", err))
         })?;
-        imported.push(*target_index);
 
         Ok(result)
     }
