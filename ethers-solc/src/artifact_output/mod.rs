@@ -2,7 +2,7 @@
 
 use crate::{
     artifacts::{
-        CompactContract, CompactContractBytecode, Contract, FileToContractsMap,
+        CompactContract, CompactContractBytecode, Contract, FileToContractsMap, LosslessAbi,
     },
     contracts::VersionedContracts,
     error::Result,
@@ -284,8 +284,6 @@ impl<T> Artifacts<T> {
 pub trait Artifact {
     /// Returns the artifact's `Abi` and bytecode
     fn into_inner(self) -> (Option<Abi>, Option<Bytes>);
-    /// Alows an Artifact's ABI to be changed
-    fn replace_abi(self, new_abi: Option<Abi>);
     /// Turns the artifact into a container type for abi, compact bytecode and deployed bytecode
     fn into_compact_contract(self) -> CompactContract;
 
@@ -317,11 +315,6 @@ where
     fn into_inner(self) -> (Option<Abi>, Option<Bytes>) {
         let artifact = self.into_compact_contract();
         (artifact.abi, artifact.bin.and_then(|bin| bin.into_bytes()))
-    }
-
-    fn replace_abi(self, new_abi: Option<Abi>) {
-        let mut artifact = self.into_compact_contract();
-        artifact.abi = new_abi;
     }
 
     fn into_compact_contract(self) -> CompactContract {
@@ -515,10 +508,11 @@ pub trait ArtifactOutput {
         //Hash map to store the yul abi targets. Each value in the hashmap is a (String, String, &LosslessAbi)
         //Each key in the hashmap is the file path of the target yul artifact to inject the abi into
         //The first value in the tuple is the name of the contract in the artifact
-        //the second value is the abi that will be injected into the yul artifact
-        //the third value is the abi.sol file path to be removed from artifacts
+        //the third value is the abi that will be injected into the yul artifact
+        //the fourth value is the abi.sol file path to be removed from artifacts
 
-        let mut yul_abi_targets: HashMap<String, (String, Contract, String)> = HashMap::new();
+        let mut yul_abi_targets: HashMap<String, (String,Option<LosslessAbi>, Version, String)> = HashMap::new();
+        let mut yul_contracts: Vec<Contract> = Vec::<Contract>::new();
 
         let mut artifacts = ArtifactsMap::new();
         for (file, contracts) in contracts.as_ref().iter() {
@@ -544,11 +538,15 @@ pub trait ArtifactOutput {
                         yul_abi_targets.insert(
                             target_file,
                             (
-                                artifact_name.to_string(),
-                                contract.contract.clone(),
                                 file.to_string(),
+                                contract.contract.clone().abi,
+                                contract.version.clone(),
+                                name.to_string(),
                             ),
                         );
+                    } 
+                    if is_yul_artifact(artifact_path.clone()){
+                        yul_contracts.push(contract.contract.clone());
                     } else {
                     }
 
@@ -564,26 +562,29 @@ pub trait ArtifactOutput {
             artifacts.insert(file.to_string(), entries);
         }
 
-        //inject yul abis into target .yul artifacts
-        for (yul_target_path, artifact_tuple) in yul_abi_targets {
-            //find the target yul entry with the target file path
-            let mut _entries = artifacts.entry(yul_target_path.clone()).or_insert(BTreeMap::new());
-            //get the artifact file from the entry
-            let artifact_file = &_entries.get(&artifact_tuple.0).unwrap()[0];
-            //inject the abi into the yul artifact
+        for mut yul_contract in yul_contracts {
+            for (yul_target_path, new_abi) in &yul_abi_targets {
 
-            let mut temp_yul_artifact =
-                &self.contract_to_artifact(&yul_target_path, &artifact_tuple.0, artifact_tuple.1);
+                yul_contract.abi = new_abi.1.clone();
 
-            let new_yul_abi = temp_yul_artifact.clone().into_inner().0;
+                let new_artifact = self.contract_to_artifact(&yul_target_path, &new_abi.0, yul_contract.clone());
 
-            let mut new_Contract = artifact_file.clone().artifact.into_compact_contract();
+                let revised_artifact_file = ArtifactFile {
+                    artifact: new_artifact,
+                    file: PathBuf::from(yul_target_path),
+                    version: new_abi.2.clone(),
+                };
+                let mut entries = BTreeMap::new();
+                let mut contracts = Vec::with_capacity(1);
 
-            new_Contract.abi = new_yul_abi;
+                contracts.push(revised_artifact_file);
 
-            println!("{:?}", new_Contract);
-            //artifacts.remove_entry(&artifact_tuple.2);
+                entries.insert(new_abi.3.clone(), contracts);
+
+                artifacts.insert(new_abi.0.clone(), entries);
+            }
         }
+        
 
         Artifacts(artifacts)
     }
@@ -599,6 +600,22 @@ fn is_yul_abi(artifact_path: PathBuf) -> bool {
 
     //if the file extension contains .abi.sol
     if parsed_file_ext[1] == "abi" {
+        true
+    } else {
+        false
+    }
+}
+
+//check if .abi.sol in the file extension
+fn is_yul_artifact(artifact_path: PathBuf) -> bool {
+    //get the file name from the artifact
+    let artifact_file_name = artifact_path.into_os_string().into_string().unwrap();
+
+    //parse the file extension
+    let parsed_file_ext: Vec<&str> = artifact_file_name.split(".").collect::<Vec<&str>>();
+
+    //if the file extension contains .abi.sol
+    if parsed_file_ext[1].split("/").collect::<Vec<&str>>()[0] == "yul" {
         true
     } else {
         false
@@ -630,7 +647,7 @@ impl ArtifactOutput for MinimalCombinedArtifacts {
 
 /// An Artifacts handler implementation that works the same as `MinimalCombinedArtifacts` but also
 /// supports reading hardhat artifacts if an initial attempt to deserialize an artifact failed
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Default)]
+#[derive(Debug, Clone, Eq, PartialEq, Default)]
 pub struct MinimalCombinedArtifactsHardhatFallback {
     _priv: (),
 }

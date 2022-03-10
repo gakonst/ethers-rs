@@ -107,6 +107,7 @@ fn can_compile_yul_sample() {
     let compiled = project.compile().unwrap();
     assert!(compiled.find("Dapp").is_some());
     assert!(compiled.find("SimpleStore").is_some());
+    println!{"{:?}", compiled};
     assert!(compiled.is_unchanged());
 
     let cache = SolFilesCache::read(project.cache_path()).unwrap();
