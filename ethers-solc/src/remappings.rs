@@ -49,6 +49,13 @@ pub struct Remapping {
     pub path: String,
 }
 
+impl Remapping {
+    /// Convenience function for [`RelativeRemapping::new`]
+    pub fn into_relative(self, root: impl AsRef<Path>) -> RelativeRemapping {
+        RelativeRemapping::new(self, root)
+    }
+}
+
 #[derive(thiserror::Error, Debug, PartialEq, PartialOrd)]
 pub enum RemappingError {
     #[error("no prefix found")]
@@ -222,6 +229,12 @@ impl RelativeRemapping {
         self.path.parent = Some(root);
         self.into()
     }
+
+    /// Converts this relative remapping into [`Remapping`] without the root path
+    pub fn to_relative_remapping(mut self) -> Remapping {
+        self.path.parent.take();
+        self.into()
+    }
 }
 
 // Remappings are printed as `prefix=target`
@@ -263,8 +276,8 @@ impl From<Remapping> for RelativeRemapping {
 /// resolve as a `weird-erc20/=/var/lib/weird-erc20/src/` remapping.
 #[derive(Clone, Debug, PartialEq, PartialOrd, Eq, Ord)]
 pub struct RelativeRemappingPathBuf {
-    parent: Option<PathBuf>,
-    path: PathBuf,
+    pub parent: Option<PathBuf>,
+    pub path: PathBuf,
 }
 
 impl RelativeRemappingPathBuf {
@@ -647,6 +660,9 @@ mod tests {
         assert_eq!(relative.path.relative(), Path::new(&remapping.path));
         assert_eq!(relative.path.original(), Path::new(&remapping.path));
         assert!(relative.path.parent.is_none());
+
+        let relative = RelativeRemapping::new(remapping.clone(), "/a/b");
+        assert_eq!(relative.to_relative_remapping(), Remapping::from_str("oz/=c/d/").unwrap());
     }
 
     #[test]
