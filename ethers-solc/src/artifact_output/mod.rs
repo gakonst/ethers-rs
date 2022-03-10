@@ -511,7 +511,7 @@ pub trait ArtifactOutput {
         //the third value is the abi that will be injected into the yul artifact
         //the fourth value is the abi.sol file path to be removed from artifacts
 
-        let mut yul_abi_targets: HashMap<String, (String,Option<LosslessAbi>, Version, String)> = HashMap::new();
+        let mut yul_abi_targets: HashMap<String, (String,Option<LosslessAbi>, Version, String, PathBuf)> = HashMap::new();
         let mut yul_contracts: Vec<Contract> = Vec::<Contract>::new();
 
         let mut artifacts = ArtifactsMap::new();
@@ -542,6 +542,7 @@ pub trait ArtifactOutput {
                                 contract.contract.clone().abi,
                                 contract.version.clone(),
                                 name.to_string(),
+                                artifact_path.clone()
                             ),
                         );
                     } 
@@ -571,7 +572,7 @@ pub trait ArtifactOutput {
 
                 let revised_artifact_file = ArtifactFile {
                     artifact: new_artifact,
-                    file: PathBuf::from(yul_target_path),
+                    file: new_abi.4.clone(),
                     version: new_abi.2.clone(),
                 };
                 let mut entries = BTreeMap::new();
