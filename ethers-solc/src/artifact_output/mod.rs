@@ -513,9 +513,11 @@ pub trait ArtifactOutput {
         // A Cache to store all of the Yul Contracts
         // This is becase while we can fetch the Artifact, I was unable to convert it back into a Contract
         // So instead we just save the Contracts for later, as teh Contract Object is easy to modify, then convert into an Artifact
-        let mut yul_contracts: Vec<Contract> = Vec::<Contract>::new();
+        // Map that maps the name of an artifact to the Contract object for cheaper access
+        let mut yul_contracts: HashMap<String, Contract> = HashMap::new();
 
         let mut artifacts = ArtifactsMap::new();
+
         for (file, contracts) in contracts.as_ref().iter() {
             let mut entries = BTreeMap::new();
             for (name, versioned_contracts) in contracts {
@@ -551,8 +553,9 @@ pub trait ArtifactOutput {
                         );
                     } 
                     if is_yul_artifact(artifact_path.clone()){
+                        let target_file = file.as_str().replace(".abi.sol", ".yul");
                         // If its just a .yul file save its Contract for later, so that we can add in its ABI later
-                        yul_contracts.push(contract.contract.clone());
+                        yul_contracts.insert(target_file, contract.contract.clone()); 
                     }
                     contracts.push(ArtifactFile {
                         artifact,
@@ -567,35 +570,35 @@ pub trait ArtifactOutput {
         }
 
         // Loop through all the Yul Contracts we cached which now need an ABI inserted into them
-        for mut yul_contract in yul_contracts {
-            // Loop through all the Yul ABIs we found, and see if they match, and then add the ABI to the Yul contract
-            // and then convert Yul Contract with ABI into an Artifact, and save the Artifact for our return
-            for (yul_target_path, needed_artifact_fragments) in &yul_abi_targets {
+        // Loop through all the Yul ABIs we found, and see if they match, and then add the ABI to the Yul contract
+        // and then convert Yul Contract with ABI into an Artifact, and save the Artifact for our return
+        for (yul_target_path, needed_artifact_fragments) in &yul_abi_targets {
+            let mut yul_contract = yul_contracts.get(yul_target_path).unwrap().to_owned();
 
-                // Set the (empty) ABI on the Yul Contract to the abi of its matching .abi.sol file
-                yul_contract.abi = needed_artifact_fragments.1.clone();
+            // Set the (empty) ABI on the Yul Contract to the abi of its matching .abi.sol file
+            yul_contract.abi = needed_artifact_fragments.1.clone();
 
-                // Then convert the contract back into an Artifact
-                let new_artifact = self.contract_to_artifact(yul_target_path, &needed_artifact_fragments.0, yul_contract.clone());
+            // Then convert the contract back into an Artifact
+            let new_artifact = self.contract_to_artifact(yul_target_path, &needed_artifact_fragments.0, yul_contract.clone());
 
-                // Wrap the Artifact into an Artifact File
-                let revised_artifact_file = ArtifactFile {
-                    artifact: new_artifact,
-                    file: needed_artifact_fragments.4.clone(),
-                    version: needed_artifact_fragments.2.clone(),
-                };
+            // Wrap the Artifact into an Artifact File
+            let revised_artifact_file = ArtifactFile {
+                artifact: new_artifact,
+                file: needed_artifact_fragments.4.clone(),
+                version: needed_artifact_fragments.2.clone(),
+            };
 
-                // Then perform the needed wrapping so that it can be inserted back into Artifacts as if it compiled normally
-                let mut entries = BTreeMap::new();
-                let mut contracts = Vec::with_capacity(1);
+            // Then perform the needed wrapping so that it can be inserted back into Artifacts as if it compiled normally
+            let mut entries = BTreeMap::new();
+            let mut contracts = Vec::with_capacity(1);
 
-                contracts.push(revised_artifact_file);
+            contracts.push(revised_artifact_file);
 
-                entries.insert(needed_artifact_fragments.3.clone(), contracts);
+            entries.insert(needed_artifact_fragments.3.clone(), contracts);
 
-                artifacts.insert(needed_artifact_fragments.0.clone(), entries);
-            }
+            artifacts.insert(needed_artifact_fragments.0.clone(), entries);
         }
+
         
 
         Artifacts(artifacts)
