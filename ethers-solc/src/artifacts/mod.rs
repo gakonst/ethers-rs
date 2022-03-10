@@ -582,13 +582,16 @@ pub struct Output {
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SolcAbi {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub inputs: Vec<Item>,
     #[serde(rename = "stateMutability")]
     pub state_mutability: Option<String>,
     #[serde(rename = "type")]
     pub abi_type: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
-    pub outputs: Option<Vec<Item>>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub outputs: Vec<Item>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -1377,7 +1380,7 @@ pub struct UserDoc {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub kind: Option<String>,
     #[serde(default, skip_serializing_if = "::std::collections::BTreeMap::is_empty")]
-    pub methods: BTreeMap<String, String>,
+    pub methods: BTreeMap<String, BTreeMap<String, String>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub notice: Option<String>,
 }
@@ -1395,9 +1398,19 @@ pub struct DevDoc {
     #[serde(default, rename = "custom:experimental", skip_serializing_if = "Option::is_none")]
     pub custom_experimental: Option<String>,
     #[serde(default, skip_serializing_if = "::std::collections::BTreeMap::is_empty")]
-    pub methods: BTreeMap<String, serde_json::Value>,
+    pub methods: BTreeMap<String, MethodDoc>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
+pub struct MethodDoc {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub details: Option<String>,
+    #[serde(default, skip_serializing_if = "::std::collections::BTreeMap::is_empty")]
+    pub params: BTreeMap<String, String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub r#return: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]

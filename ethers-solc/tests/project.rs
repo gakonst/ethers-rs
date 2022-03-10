@@ -116,8 +116,6 @@ fn can_compile_yul_sample() {
     std::fs::remove_dir_all(&project.paths().artifacts).unwrap();
     let compiled = project.compile().unwrap();
     // Make sure ABI does exist
-
-    
     assert!(compiled.find("Dapp").is_some());
     assert!(compiled.find("SimpleStore").is_some());
     assert!(!compiled.is_unchanged());
