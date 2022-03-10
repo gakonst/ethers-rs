@@ -179,7 +179,6 @@ impl ArtifactOutput for ConfigurableArtifacts {
         self.additional_files.write_extras(contract, file)
     }
 
-
     fn contract_to_artifact(&self, _file: &str, _name: &str, contract: Contract) -> Self::Artifact {
         let mut artifact_userdoc = None;
         let mut artifact_devdoc = None;
