@@ -62,8 +62,7 @@ if_not_wasm! {
     use super::Authorization;
     use tracing::{debug, error, warn};
     use http::Request as HttpRequest;
-    use http::Uri;
-    use std::str::FromStr;
+    use tungstenite::client::IntoClientRequest;
 }
 
 type Pending = oneshot::Sender<Result<serde_json::Value, JsonRpcError>>;
@@ -137,9 +136,7 @@ impl Ws {
 
     /// Initializes a new WebSocket Client
     #[cfg(not(target_arch = "wasm32"))]
-    pub async fn connect(
-        url: impl tungstenite::client::IntoClientRequest + Unpin,
-    ) -> Result<Self, ClientError> {
+    pub async fn connect(url: impl IntoClientRequest + Unpin) -> Result<Self, ClientError> {
         let (ws, _) = connect_async(url).await?;
         Ok(Self::new(ws))
     }
@@ -147,11 +144,10 @@ impl Ws {
     /// Initializes a new WebSocket Client with authentication
     #[cfg(not(target_arch = "wasm32"))]
     pub async fn connect_with_auth(
-        uri: impl AsRef<str> + Unpin,
+        uri: impl IntoClientRequest + Unpin,
         auth: Authorization,
     ) -> Result<Self, ClientError> {
-        let mut request: HttpRequest<()> =
-            HttpRequest::builder().method("GET").uri(Uri::from_str(uri.as_ref())?).body(())?;
+        let mut request: HttpRequest<()> = uri.into_client_request()?;
 
         let mut auth_value = http::HeaderValue::from_str(&auth.to_string())?;
         auth_value.set_sensitive(true);
