@@ -641,11 +641,18 @@ impl VersionedSources {
                 SolcError::msg(format!("solc \"{}\" should have been installed", version))
             })?;
 
-            tracing::trace!("verifying solc checksum for {}", solc.solc.display());
-            if solc.verify_checksum().is_err() {
-                tracing::trace!("corrupted solc version, redownloading  \"{}\"", version);
-                Solc::blocking_install(version.as_ref())?;
-                tracing::trace!("reinstalled solc: \"{}\"", version);
+            if self.offline {
+                tracing::trace!(
+                    "skip verifying solc checksum for {} in offline mode",
+                    solc.solc.display()
+                );
+            } else {
+                tracing::trace!("verifying solc checksum for {}", solc.solc.display());
+                if solc.verify_checksum().is_err() {
+                    tracing::trace!("corrupted solc version, redownloading  \"{}\"", version);
+                    Solc::blocking_install(version.as_ref())?;
+                    tracing::trace!("reinstalled solc: \"{}\"", version);
+                }
             }
             let solc = solc.arg("--allow-paths").arg(allowed_lib_paths.to_string());
             let version = solc.version()?;
