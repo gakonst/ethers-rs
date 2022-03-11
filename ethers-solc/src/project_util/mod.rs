@@ -4,6 +4,7 @@ use crate::{
     config::ProjectPathsConfigBuilder,
     error::{Result, SolcError},
     hh::HardhatArtifacts,
+    project_util::gen::{MockProjectGenerator, MockProjectSettings},
     utils::tempdir,
     ArtifactOutput, ConfigurableArtifacts, PathStyle, Project, ProjectCompileOutput,
     ProjectPathsConfig, SolcIoError,
@@ -170,6 +171,11 @@ impl<T: ArtifactOutput> TempProject<T> {
         let source = self.root().join(name);
         create_contract_file(source, content)
     }
+
+    /// Populate the project with mock files
+    pub fn mock(&self, gen: &MockProjectGenerator, version: impl AsRef<str>) -> Result<()> {
+        gen.write_to(self.paths(), version)
+    }
 }
 
 impl<T: ArtifactOutput + Default> TempProject<T> {
@@ -199,7 +205,7 @@ impl<T: ArtifactOutput> fmt::Debug for TempProject<T> {
     }
 }
 
-fn create_contract_file(path: PathBuf, content: impl AsRef<str>) -> Result<PathBuf> {
+pub(crate) fn create_contract_file(path: PathBuf, content: impl AsRef<str>) -> Result<PathBuf> {
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)
             .map_err(|err| SolcIoError::new(err, parent.to_path_buf()))?;
@@ -238,6 +244,37 @@ impl TempProject<ConfigurableArtifacts> {
 
         let inner = Project::builder().paths(paths).build()?;
         Ok(Self::create_new(tmp_dir, inner)?)
+    }
+
+    /// Create a new temporary project and populate it with mock files
+    ///
+    /// ```no_run
+    /// use ethers_solc::project_util::gen::MockProjectSettings;
+    /// use ethers_solc::project_util::TempProject;
+    /// let tmp = TempProject::mocked(&MockProjectSettings::default(), "^0.8.10").unwrap();
+    /// ```
+    pub fn mocked(settings: &MockProjectSettings, version: impl AsRef<str>) -> Result<Self> {
+        let tmp = Self::dapptools()?;
+        tmp.mock(&MockProjectGenerator::new(settings), version)?;
+        Ok(tmp)
+    }
+
+    /// Create a new temporary project and populate it with a random layout
+    ///
+    /// ```no_run
+    /// use ethers_solc::project_util::TempProject;
+    /// let tmp = TempProject::mocked_random("^0.8.10").unwrap();
+    /// ```
+    ///
+    /// This is a convenience function for:
+    ///
+    /// ```no_run
+    /// use ethers_solc::project_util::gen::MockProjectSettings;
+    /// use ethers_solc::project_util::TempProject;
+    /// let tmp = TempProject::mocked(&MockProjectSettings::random(), "^0.8.10").unwrap();
+    /// ```
+    pub fn mocked_random(version: impl AsRef<str>) -> Result<Self> {
+        Self::mocked(&MockProjectSettings::random(), version)
     }
 }
 
@@ -285,4 +322,16 @@ pub fn copy_file(source: impl AsRef<Path>, target_dir: impl AsRef<Path>) -> Resu
 pub fn copy_dir(source: impl AsRef<Path>, target_dir: impl AsRef<Path>) -> Result<()> {
     fs_extra::dir::copy(source, target_dir, &dir_copy_options())?;
     Ok(())
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn can_mock_project() {
+        let _prj = TempProject::mocked(&Default::default(), "^0.8.11").unwrap();
+        let _prj = TempProject::mocked_random( "^0.8.11").unwrap();
+    }
 }

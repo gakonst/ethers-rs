@@ -1,13 +1,8 @@
 //! Helpers to generate mock projects
 
-use once_cell::sync::Lazy;
-use rand::{self, distributions::Distribution, Rng};
-use std::{
-    cell::RefCell,
-    collections::{BTreeSet, HashSet},
-};
-
-pub static SOLMATE_EDGES: Lazy<()> = Lazy::new(|| ());
+use crate::{error::Result, remappings::Remapping, ProjectPathsConfig};
+use rand::{self, seq::SliceRandom, Rng};
+use std::collections::BTreeSet;
 
 /// Represents a virtual project
 // #[derive(Debug, Clone)]
@@ -37,6 +32,66 @@ impl Default for MockProjectGenerator {
 }
 
 impl MockProjectGenerator {
+    /// Generate all solidity files and write under the paths config
+    pub fn write_to(&self, paths: &ProjectPathsConfig, version: impl AsRef<str>) -> Result<()> {
+        let version = version.as_ref();
+        for file in self.files.iter() {
+            let mut imports = Vec::with_capacity(file.imports.len());
+
+            for import in file.imports.iter() {
+                match *import {
+                    MockImport::Internal(f) => {
+                        imports.push(format!("import \"./{}.sol\";", self.files[f].name));
+                    }
+                    MockImport::External(lib, f) => {
+                        imports.push(format!(
+                            "import \"{}/{}.sol\";",
+                            self.libraries[lib].name, self.files[f].name
+                        ));
+                    }
+                }
+            }
+
+            let content = format!(
+                r#"
+pragma solidity {};
+{}
+
+contract {} {{}}
+            "#,
+                version,
+                imports.join("\n"),
+                file.name
+            );
+
+            let mut target = if let Some(lib) = file.lib_id {
+                paths.sources.join(&self.libraries[lib].name).join("src").join(&file.name)
+            } else {
+                paths.sources.join(&file.name)
+            };
+            target.set_extension("sol");
+
+            super::create_contract_file(target, content)?;
+        }
+
+        Ok(())
+    }
+
+    /// Returns all the remappings for the project
+    pub fn remappings(&self) -> Vec<Remapping> {
+        self.libraries
+            .iter()
+            .map(|lib| format!("{0}/=lib/{0}/src/", lib.name).parse().unwrap())
+            .collect()
+    }
+
+    /// Create a new project and populate it using the given settings
+    pub fn new(settings: &MockProjectSettings) -> Self {
+        let mut mock = Self::default();
+        mock.populate(settings);
+        mock
+    }
+
     /// Generates a random project with random settings
     pub fn random() -> Self {
         let settings = MockProjectSettings::random();
@@ -108,7 +163,7 @@ impl MockProjectGenerator {
 
         // populate imports
         for id in 0..self.files.len() {
-            let imports = if let Some(lib) = self.files[id].lib_id.clone() {
+            let imports = if let Some(lib) = self.files[id].lib_id {
                 let num_imports = rng
                     .gen_range(settings.min_imports..=settings.max_imports)
                     .min(self.libraries[lib].num_files.saturating_sub(1));
@@ -126,7 +181,7 @@ impl MockProjectGenerator {
     }
 
     fn get_import(&self, id: usize) -> MockImport {
-        if let Some(lib) = self.files[id].lib_id.clone() {
+        if let Some(lib) = self.files[id].lib_id {
             MockImport::External(lib, id)
         } else {
             MockImport::Internal(id)
@@ -160,9 +215,9 @@ impl MockProjectGenerator {
         num: usize,
     ) -> BTreeSet<MockImport> {
         assert!(self.files.len() > num);
-        let sampled = RefCell::new(HashSet::from([id]));
-        let distro = UniqueIds { sampled, start: 0, end: self.files.len() };
-        rng.sample_iter(distro).take(num).map(|import| self.get_import(import)).collect()
+        let mut imports: Vec<_> = (0..self.files.len()).collect();
+        imports.shuffle(rng);
+        imports.into_iter().filter(|i| *i != id).map(|id| self.get_import(id)).take(num).collect()
     }
 
     /// generates exactly `num` unique imports in the range of a lib's files
@@ -179,27 +234,9 @@ impl MockProjectGenerator {
     ) -> BTreeSet<MockImport> {
         let lib = &self.libraries[lib_id];
         assert!(lib.num_files > num);
-        let sampled = RefCell::new(HashSet::from([id]));
-        let distro = UniqueIds { sampled, start: lib.offset, end: lib.offset + lib.len() };
-        rng.sample_iter(distro).take(num).map(|import| self.get_import(import)).collect()
-    }
-}
-
-/// A distribution that generates non-repeating ids within the `start..end` range.
-struct UniqueIds {
-    sampled: RefCell<HashSet<usize>>,
-    start: usize,
-    end: usize,
-}
-
-impl Distribution<usize> for UniqueIds {
-    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> usize {
-        loop {
-            let next = rng.gen_range(self.start..self.end);
-            if self.sampled.borrow_mut().insert(next) {
-                return next
-            }
-        }
+        let mut imports: Vec<_> = (lib.offset..(lib.offset + lib.len())).collect();
+        imports.shuffle(rng);
+        imports.into_iter().filter(|i| *i != id).map(|id| self.get_import(id)).take(num).collect()
     }
 }
 
@@ -318,6 +355,7 @@ impl MockProjectSettings {
 
     /// Generates settings for a large project
     pub fn large() -> Self {
+        // arbitrary thresholds
         MockProjectSettings {
             num_sources: 80,
             num_libs: 10,
@@ -340,7 +378,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn can_generate_project() {
+    fn can_generate_mock_project() {
         let _ = MockProjectGenerator::random();
     }
 }
