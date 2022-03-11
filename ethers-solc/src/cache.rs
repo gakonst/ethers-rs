@@ -29,7 +29,7 @@ const ETHERS_FORMAT_VERSION: &str = "ethers-rs-sol-cache-2";
 /// The file name of the default cache file
 pub const SOLIDITY_FILES_CACHE_FILENAME: &str = "solidity-files-cache.json";
 
-/// A hardhat compatible cache representation
+/// A multi version cache file
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct SolFilesCache {
     #[serde(rename = "_format")]
