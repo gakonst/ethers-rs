@@ -73,6 +73,33 @@
 //! file in the VFS under `dapp-bin/library/math.sol`. If the file is not available there, the
 //! source unit name will be passed to the Host Filesystem Loader, which will then look in
 //! `/project/dapp-bin/library/iterable_mapping.sol`
+//!
+//!
+//! ### Caching and Change detection
+//!
+//! If caching is enabled in the [Project](crate::Project) a cache file will be created upon a
+//! successful solc build. The [cache file](crate::SolFilesCache) stores metadata for all the files
+//! that were provided to solc.
+//! For every file the cache file contains a dedicated [cache
+//! entry](crate::CacheEntry), which represents the state of the file. A solidity file can contain
+//! several contracts, for every contract a separate [artifact](crate::Artifact) is emitted.
+//! Therefor the entry also tracks all artifacts emitted by a file. A solidity file can also be
+//! compiled with several solc versions.
+//!
+//! For example in `A(<=0.8.10) imports C(>0.4.0)` and
+//! `B(0.8.11) imports C(>0.4.0)`, both `A` and `B` import `C` but there's no solc version that's
+//! compatible with `A` and `B`, in which case two sets are compiled: [`A`, `C`] and [`B`, `C`].
+//! This is reflected in the cache entry which tracks the file's artifacts by version.
+//!
+//! The cache makes it possible to detect changes during recompilation, so that only the changed,
+//! dirty, files need to be passed to solc. A file will be considered as dirty if:
+//!   - the file is new, not included in the existing cache
+//!   - the file was modified since the last compiler run, detected by comparing content hashes
+//!   - any of the imported files is dirty
+//!   - the file's artifacts don't exist, were deleted.
+//!
+//! Recompiling a project with cache enabled detects all files that meet these criteria and provides
+//! solc with only these dirty files instead of the entire source set.
 
 use crate::{
     artifact_output::Artifacts,
@@ -283,7 +310,13 @@ impl CompilerSources {
             sources
                 .into_iter()
                 .map(|(solc, (version, sources))| {
+                    tracing::trace!("Filtering {} sources for {}", sources.len(), version);
                     let sources = cache.filter(sources, &version);
+                    tracing::trace!(
+                        "Detected {} dirty sources {:?}",
+                        sources.len(),
+                        sources.keys()
+                    );
                     (solc, (version, sources))
                 })
                 .collect()
