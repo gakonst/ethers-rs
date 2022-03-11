@@ -37,6 +37,7 @@ sha2 = { version = "0.9.8", default-features = false }
 dunce = "1.0.2"
 solang-parser = { default-features = false, version = "0.1.10" }
 rayon = "1.5.1"
+rand = { version = "0.8.5", optional = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 home = "0.5.3"
@@ -75,7 +76,7 @@ default = ["rustls"]
 async = ["tokio", "futures-util"]
 full = ["async", "svm", "svm/blocking"]
 # Utilities for creating and testing project workspaces
-project-util = ["tempfile", "fs_extra"]
+project-util = ["tempfile", "fs_extra", "rand"]
 tests = []
 openssl = ["svm/openssl"]
 rustls = ["svm/rustls"]

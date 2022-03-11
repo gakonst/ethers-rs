@@ -15,6 +15,8 @@ use std::{
 };
 use tempfile::TempDir;
 
+pub mod gen;
+
 /// A [`Project`] wrapper that lives in a new temporary directory
 ///
 /// Once `TempProject` is dropped, the temp dir is automatically removed, see [`TempDir::drop()`]
