@@ -13,13 +13,13 @@ pub type Result<T, E> = std::result::Result<T, E>;
 ///
 /// pub struct Sanskrit {};
 ///
-/// pub enum SEroor {
+/// pub enum SError {
 ///   IO,
 ///   Compile,
 ///   Unknown
 /// };
 ///
-/// impl Compiler<u64, u64, SEroor> for Sanskrit {
+/// impl Compiler<u64, u64, SError> for Sanskrit {
 ///   fn compile(&self, input: &Self::Input) -> Result<Self::Output, Self::Error> {
 ///     return Ok(1);
 ///   }

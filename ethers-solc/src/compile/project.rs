@@ -9,7 +9,7 @@
 //! [`crate::Solc`] versions.
 //!
 //! At this point we check if we need to compile a source file or whether we can reuse an _existing_
-//! `Artifact`. We don't to compile if:
+//! `Artifact`. We don't want to compile if:
 //!     - caching is enabled
 //!     - the file is **not** dirty [`Cache::is_dirty()`]
 //!     - the artifact for that file exists

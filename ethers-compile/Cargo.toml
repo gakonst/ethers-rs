@@ -14,7 +14,7 @@ Compiler Abstraction
 keywords = ["ethereum", "web3", "solc", "solidity", "ethers", "vyper"]
 
 [dependencies]
-
+rayon = "1.5.1"
 
 [features]
 # default = ["rustls"]
