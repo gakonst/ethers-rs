@@ -283,7 +283,13 @@ impl CompilerSources {
             sources
                 .into_iter()
                 .map(|(solc, (version, sources))| {
+                    tracing::trace!("Filtering {} sources for {}", sources.len(), version);
                     let sources = cache.filter(sources, &version);
+                    tracing::trace!(
+                        "Detected {} dirty sources {:?}",
+                        sources.len(),
+                        sources.keys()
+                    );
                     (solc, (version, sources))
                 })
                 .collect()
