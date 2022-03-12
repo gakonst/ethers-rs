@@ -33,5 +33,8 @@ pub trait Compiler {
   type Output;
   type Error;
 
-  fn compile(&self, input: &Self::Input) -> Result<Self::Output, Self::Error>;
+  pub fn compile(&self, input: &Self::Input) -> Result<Self::Output, Self::Error>;
+
+  /// Exposes an api to set the underlying compiler version
+  pub fn configure_version(&self) -> Result<bool, Self::Error>;
 }
