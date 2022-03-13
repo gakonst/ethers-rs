@@ -638,23 +638,28 @@ impl<'a, T: ArtifactOutput> ArtifactsCacheInner<'a, T> {
                     return true
                 }
 
-                if !entry.contains_version(version) {
-                    tracing::trace!(
-                        "missing linked artifacts for source file `{}` for version \"{}\"",
-                        file.display(),
-                        version
-                    );
-                    return true
-                }
-
-                if entry.artifacts_for_version(version).any(|artifact_path| {
-                    let missing_artifact = !self.cached_artifacts.has_artifact(artifact_path);
-                    if missing_artifact {
-                        tracing::trace!("missing artifact \"{}\"", artifact_path.display());
+                // only check artifact's existence if the file generated artifacts.
+                // e.g. a solidity file consisting only of import statements (like interfaces that
+                // re-export) do not create artifacts
+                if !entry.artifacts.is_empty() {
+                    if !entry.contains_version(version) {
+                        tracing::trace!(
+                            "missing linked artifacts for source file `{}` for version \"{}\"",
+                            file.display(),
+                            version
+                        );
+                        return true
                     }
-                    missing_artifact
-                }) {
-                    return true
+
+                    if entry.artifacts_for_version(version).any(|artifact_path| {
+                        let missing_artifact = !self.cached_artifacts.has_artifact(artifact_path);
+                        if missing_artifact {
+                            tracing::trace!("missing artifact \"{}\"", artifact_path.display());
+                        }
+                        missing_artifact
+                    }) {
+                        return true
+                    }
                 }
                 // all things match, can be reused
                 return false
