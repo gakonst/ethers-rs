@@ -657,3 +657,53 @@ pub trait CeloMiddleware: Middleware {
         self.provider().get_validators_bls_public_keys(block_id).await.map_err(FromErr::from)
     }
 }
+
+pub use test_provider::{GOERLI, MAINNET, RINKEBY, ROPSTEN};
+
+/// Pre-instantiated Infura HTTP clients which rotate through multiple API keys
+/// to prevent rate limits
+pub mod test_provider {
+    use super::*;
+    use crate::Http;
+    use once_cell::sync::Lazy;
+    use std::{convert::TryFrom, iter::Cycle, slice::Iter, sync::Mutex};
+
+    // List of infura keys to rotate through so we don't get rate limited
+    const INFURA_KEYS: &[&str] = &[
+        "6770454bc6ea42c58aac12978531b93f",
+        "7a8769b798b642f6933f2ed52042bd70",
+        "631fd9a6539644088297dc605d35fff3",
+        "16a8be88795540b9b3903d8de0f7baa5",
+        "f4a0bdad42674adab5fc0ac077ffab2b",
+        "5c812e02193c4ba793f8c214317582bd",
+    ];
+
+    pub static RINKEBY: Lazy<TestProvider> =
+        Lazy::new(|| TestProvider::new(INFURA_KEYS, "rinkeby"));
+    pub static MAINNET: Lazy<TestProvider> =
+        Lazy::new(|| TestProvider::new(INFURA_KEYS, "mainnet"));
+    pub static GOERLI: Lazy<TestProvider> = Lazy::new(|| TestProvider::new(INFURA_KEYS, "goerli"));
+    pub static ROPSTEN: Lazy<TestProvider> =
+        Lazy::new(|| TestProvider::new(INFURA_KEYS, "ropsten"));
+
+    #[derive(Debug)]
+    pub struct TestProvider {
+        network: String,
+        keys: Mutex<Cycle<Iter<'static, &'static str>>>,
+    }
+
+    impl TestProvider {
+        pub fn new(keys: &'static [&'static str], network: &str) -> Self {
+            Self { keys: Mutex::new(keys.iter().cycle()), network: network.to_owned() }
+        }
+
+        pub fn provider(&self) -> Provider<Http> {
+            let url = format!(
+                "https://{}.infura.io/v3/{}",
+                self.network,
+                self.keys.lock().unwrap().next().unwrap()
+            );
+            Provider::try_from(url.as_str()).unwrap()
+        }
+    }
+}

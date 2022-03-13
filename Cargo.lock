@@ -1322,6 +1322,7 @@ dependencies = [
  "futures-util",
  "hex",
  "http",
+ "once_cell",
  "parking_lot",
  "pin-project",
  "reqwest",
