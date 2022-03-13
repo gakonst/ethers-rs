@@ -1,5 +1,5 @@
 #![allow(unused)]
-use ethers_providers::{Http, JsonRpcClient, Middleware, Provider};
+use ethers_providers::{Http, JsonRpcClient, Middleware, Provider, RINKEBY};
 
 use ethers_core::{
     types::{BlockNumber, TransactionRequest},
@@ -8,7 +8,7 @@ use ethers_core::{
 use ethers_middleware::signer::SignerMiddleware;
 use ethers_signers::{coins_bip39::English, LocalWallet, MnemonicBuilder, Signer};
 use once_cell::sync::Lazy;
-use std::{convert::TryFrom, sync::atomic::AtomicU8, time::Duration};
+use std::{convert::TryFrom, iter::Cycle, sync::atomic::AtomicU8, time::Duration};
 
 static WALLETS: Lazy<TestWallets> = Lazy::new(|| {
     TestWallets {
@@ -54,10 +54,7 @@ async fn send_eth() {
 #[tokio::test]
 #[cfg(not(feature = "celo"))]
 async fn pending_txs_with_confirmations_testnet() {
-    let provider =
-        Provider::<Http>::try_from("https://rinkeby.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27")
-            .unwrap()
-            .interval(Duration::from_millis(3000));
+    let provider = RINKEBY.provider().interval(Duration::from_millis(3000));
     let chain_id = provider.get_chainid().await.unwrap();
     let wallet = WALLETS.next().with_chain_id(chain_id.as_u64());
     let address = wallet.address();
@@ -97,9 +94,7 @@ async fn generic_pending_txs_test<M: Middleware>(provider: M, who: Address) {
 #[tokio::test]
 #[cfg(not(feature = "celo"))]
 async fn typed_txs() {
-    let provider =
-        Provider::<Http>::try_from("https://rinkeby.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27")
-            .unwrap();
+    let provider = RINKEBY.provider();
 
     let chain_id = provider.get_chainid().await.unwrap();
     let wallet = WALLETS.next().with_chain_id(chain_id.as_u64());
