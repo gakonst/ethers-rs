@@ -35,11 +35,7 @@ mod eth_tests {
     // Without TLS this would error with "TLS Support not compiled in"
     #[tokio::test]
     async fn ssl_websocket() {
-        use ethers_providers::Ws;
-        let ws = Ws::connect("wss://rinkeby.infura.io/ws/v3/c60b0bb42f8a4c6481ecd229eddaca27")
-            .await
-            .unwrap();
-        let provider = Provider::new(ws);
+        let provider = RINKEBY.ws().await;
         let _number = provider.get_block_number().await.unwrap();
     }
 

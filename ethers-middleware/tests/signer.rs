@@ -69,11 +69,7 @@ use ethers_core::types::{Address, Eip1559TransactionRequest};
 #[tokio::test]
 #[cfg(not(feature = "celo"))]
 async fn websocket_pending_txs_with_confirmations_testnet() {
-    let provider =
-        Provider::connect("wss://rinkeby.infura.io/ws/v3/c60b0bb42f8a4c6481ecd229eddaca27")
-            .await
-            .unwrap()
-            .interval(Duration::from_millis(3000));
+    let provider = RINKEBY.ws().await.interval(Duration::from_millis(3000));
     let chain_id = provider.get_chainid().await.unwrap();
     let wallet = WALLETS.next().with_chain_id(chain_id.as_u64());
     let address = wallet.address();

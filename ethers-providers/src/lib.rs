@@ -664,7 +664,7 @@ pub use test_provider::{GOERLI, MAINNET, RINKEBY, ROPSTEN};
 /// to prevent rate limits
 pub mod test_provider {
     use super::*;
-    use crate::Http;
+    use crate::{Http, Ws};
     use once_cell::sync::Lazy;
     use std::{convert::TryFrom, iter::Cycle, slice::Iter, sync::Mutex};
 
@@ -704,6 +704,15 @@ pub mod test_provider {
                 self.keys.lock().unwrap().next().unwrap()
             );
             Provider::try_from(url.as_str()).unwrap()
+        }
+
+        pub async fn ws(&self) -> Provider<Ws> {
+            let url = format!(
+                "wss://{}.infura.io/ws/v3/{}",
+                self.network,
+                self.keys.lock().unwrap().next().unwrap()
+            );
+            Provider::connect(url.as_str()).await.unwrap()
         }
     }
 }
