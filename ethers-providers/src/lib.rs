@@ -666,8 +666,7 @@ pub mod test_provider {
     use super::*;
     use crate::Http;
     use once_cell::sync::Lazy;
-    use std::sync::Mutex;
-    use std::{convert::TryFrom, iter::Cycle, slice::Iter};
+    use std::{convert::TryFrom, iter::Cycle, slice::Iter, sync::Mutex};
 
     // List of infura keys to rotate through so we don't get rate limited
     const INFURA_KEYS: &[&str] = &[
