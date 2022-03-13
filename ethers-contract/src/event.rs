@@ -7,7 +7,7 @@ use ethers_core::{
     types::{BlockNumber, Filter, Log, ValueOrArray, H256},
 };
 use ethers_providers::{FilterWatcher, Middleware, PubsubClient, SubscriptionStream};
-use std::{borrow::Cow, marker::PhantomData};
+use std::{borrow::Cow, marker::PhantomData, sync::Arc};
 
 /// A trait for implementing event bindings
 pub trait EthEvent: Detokenize + Send + Sync {
@@ -32,7 +32,7 @@ pub trait EthEvent: Detokenize + Send + Sync {
     fn is_anonymous() -> bool;
 
     /// Returns an Event builder for the ethereum event represented by this types ABI signature.
-    fn new<M: Middleware>(filter: Filter, provider: &M) -> Event<M, Self>
+    fn new<M: Middleware>(filter: Filter, provider: Arc<M>) -> Event<M, Self>
     where
         Self: Sized,
     {
@@ -54,16 +54,16 @@ impl<T: EthEvent> EthLogDecode for T {
 /// Helper for managing the event filter before querying or streaming its logs
 #[derive(Debug)]
 #[must_use = "event filters do nothing unless you `query` or `stream` them"]
-pub struct Event<'a, M, D> {
+pub struct Event<M, D> {
     /// The event filter's state
     pub filter: Filter,
-    pub(crate) provider: &'a M,
+    pub(crate) provider: Arc<M>,
     /// Stores the event datatype
     pub(crate) datatype: PhantomData<D>,
 }
 
 // TODO: Improve these functions
-impl<M, D: EthLogDecode> Event<'_, M, D> {
+impl<M, D: EthLogDecode> Event<M, D> {
     /// Sets the filter's `from` block
     #[allow(clippy::wrong_self_convention)]
     pub fn from_block<T: Into<BlockNumber>>(mut self, block: T) -> Self {
@@ -111,17 +111,17 @@ impl<M, D: EthLogDecode> Event<'_, M, D> {
     }
 }
 
-impl<'a, M, D> Event<'a, M, D>
+impl<M, D> Event<M, D>
 where
     M: Middleware,
     D: EthLogDecode,
 {
     /// Returns a stream for the event
     pub async fn stream(
-        &'a self,
+        &self,
     ) -> Result<
         // Wraps the FilterWatcher with a mapping to the event
-        EventStream<'a, FilterWatcher<'a, M::Provider, Log>, D, ContractError<M>>,
+        EventStream<'_, FilterWatcher<'_, M::Provider, Log>, D, ContractError<M>>,
         ContractError<M>,
     > {
         let filter =
@@ -130,7 +130,7 @@ where
     }
 }
 
-impl<'a, M, D> Event<'a, M, D>
+impl<M, D> Event<M, D>
 where
     M: Middleware,
     <M as Middleware>::Provider: PubsubClient,
@@ -138,10 +138,10 @@ where
 {
     /// Returns a subscription for the event
     pub async fn subscribe(
-        &'a self,
+        &self,
     ) -> Result<
         // Wraps the SubscriptionStream with a mapping to the event
-        EventStream<'a, SubscriptionStream<'a, M::Provider, Log>, D, ContractError<M>>,
+        EventStream<'_, SubscriptionStream<'_, M::Provider, Log>, D, ContractError<M>>,
         ContractError<M>,
     > {
         let filter = self
@@ -153,7 +153,7 @@ where
     }
 }
 
-impl<M, D> Event<'_, M, D>
+impl<M, D> Event<M, D>
 where
     M: Middleware,
     D: EthLogDecode,

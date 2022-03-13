@@ -180,6 +180,8 @@
 
 ### Unreleased
 
+- Make `Event` an owned struct by storing `Arc<M>` instead of `&M`
+  [#1015](https://github.com/gakonst/ethers-rs/pull/1015)
 - Add `EventStream::select` to combine streams with different event types
   [#725](https://github.com/gakonst/ethers-rs/pull/725)
 - Substitute output tuples with rust struct types for function calls

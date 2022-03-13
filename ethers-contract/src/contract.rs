@@ -171,7 +171,7 @@ impl<M: Middleware> Contract<M> {
     /// Returns an [`Event`](crate::builders::Event) builder with the provided filter.
     pub fn event_with_filter<D: EthLogDecode>(&self, filter: Filter) -> Event<M, D> {
         Event {
-            provider: &self.client,
+            provider: self.client.clone(),
             filter: filter.address(ValueOrArray::Value(self.address)),
             datatype: PhantomData,
         }
