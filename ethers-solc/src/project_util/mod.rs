@@ -4,7 +4,7 @@ use crate::{
     config::ProjectPathsConfigBuilder,
     error::{Result, SolcError},
     hh::HardhatArtifacts,
-    project_util::gen::{MockProjectGenerator, MockProjectSettings},
+    project_util::mock::{MockProjectGenerator, MockProjectSettings},
     utils::tempdir,
     ArtifactOutput, ConfigurableArtifacts, PathStyle, Project, ProjectCompileOutput,
     ProjectPathsConfig, SolcIoError,
@@ -16,7 +16,7 @@ use std::{
 };
 use tempfile::TempDir;
 
-pub mod gen;
+pub mod mock;
 
 /// A [`Project`] wrapper that lives in a new temporary directory
 ///
@@ -249,7 +249,7 @@ impl TempProject<ConfigurableArtifacts> {
     /// Create a new temporary project and populate it with mock files
     ///
     /// ```no_run
-    /// use ethers_solc::project_util::gen::MockProjectSettings;
+    /// use ethers_solc::project_util::mock::MockProjectSettings;
     /// use ethers_solc::project_util::TempProject;
     /// let tmp = TempProject::mocked(&MockProjectSettings::default(), "^0.8.10").unwrap();
     /// ```
@@ -269,7 +269,7 @@ impl TempProject<ConfigurableArtifacts> {
     /// This is a convenience function for:
     ///
     /// ```no_run
-    /// use ethers_solc::project_util::gen::MockProjectSettings;
+    /// use ethers_solc::project_util::mock::MockProjectSettings;
     /// use ethers_solc::project_util::TempProject;
     /// let tmp = TempProject::mocked(&MockProjectSettings::random(), "^0.8.10").unwrap();
     /// ```
