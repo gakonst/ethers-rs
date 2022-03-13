@@ -3,7 +3,7 @@ use crate::{
     pubsub::{PubsubClient, SubscriptionStream},
     stream::{FilterWatcher, DEFAULT_POLL_INTERVAL},
     FromErr, Http as HttpProvider, JsonRpcClient, JsonRpcClientWrapper, MockProvider,
-    PendingTransaction, QuorumProvider, SyncingStatus,
+    PendingTransaction, QuorumProvider, RwClient, SyncingStatus,
 };
 
 #[cfg(feature = "celo")]
@@ -1232,6 +1232,19 @@ impl Provider<crate::Ipc> {
     pub async fn connect_ipc(path: impl AsRef<std::path::Path>) -> Result<Self, ProviderError> {
         let ipc = crate::Ipc::connect(path).await?;
         Ok(Self::new(ipc))
+    }
+}
+
+impl<Read, Write> Provider<RwClient<Read, Write>>
+where
+    Read: JsonRpcClient + 'static,
+    <Read as JsonRpcClient>::Error: Sync + Send + 'static,
+    Write: JsonRpcClient + 'static,
+    <Write as JsonRpcClient>::Error: Sync + Send + 'static,
+{
+    /// Creates a new [Provider] with a [RwClient]
+    pub fn rw(r: Read, w: Write) -> Self {
+        Self::new(RwClient::new(r, w))
     }
 }
 

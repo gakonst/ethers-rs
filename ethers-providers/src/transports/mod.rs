@@ -36,5 +36,8 @@ mod quorum;
 pub(crate) use quorum::JsonRpcClientWrapper;
 pub use quorum::{Quorum, QuorumError, QuorumProvider, WeightedProvider};
 
+mod rw;
+pub use rw::{RwClient, RwClientError};
+
 mod mock;
 pub use mock::{MockError, MockProvider};
