@@ -2,12 +2,14 @@
 
 use crate::{error::Result, remappings::Remapping, ProjectPathsConfig};
 use rand::{self, seq::SliceRandom, Rng};
-use std::collections::BTreeSet;
+use serde::{Deserialize, Serialize};
+use std::{collections::BTreeSet, path::Path};
 
 /// Represents a virtual project
-// #[derive(Debug, Clone)]
+#[derive(Serialize)]
 pub struct MockProjectGenerator {
     /// how to name things
+    #[serde(skip)]
     name_strategy: Box<dyn NamingStrategy + 'static>,
     /// id counter for a file
     next_file_id: usize,
@@ -54,9 +56,9 @@ impl MockProjectGenerator {
 
             let content = format!(
                 r#"
+// SPDX-License-Identifier: UNLICENSED
 pragma solidity {};
 {}
-
 contract {} {{}}
             "#,
                 version,
@@ -65,7 +67,7 @@ contract {} {{}}
             );
 
             let mut target = if let Some(lib) = file.lib_id {
-                paths.sources.join(&self.libraries[lib].name).join("src").join(&file.name)
+                paths.root.join("lib").join(&self.libraries[lib].name).join("src").join(&file.name)
             } else {
                 paths.sources.join(&file.name)
             };
@@ -75,6 +77,17 @@ contract {} {{}}
         }
 
         Ok(())
+    }
+
+    /// Returns all the remappings for the project for the given root path
+    pub fn remappings_at(&self, root: &Path) -> Vec<Remapping> {
+        self.libraries
+            .iter()
+            .map(|lib| {
+                let path = root.join("lib").join(&lib.name).join("src");
+                format!("{}/={}/", lib.name, path.display()).parse().unwrap()
+            })
+            .collect()
     }
 
     /// Returns all the remappings for the project
@@ -273,7 +286,7 @@ impl NamingStrategy for SimpleNamingStrategy {
 }
 
 /// Skeleton of a mock source file
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MockFile {
     /// internal id of this file
     pub id: usize,
@@ -292,7 +305,7 @@ impl MockFile {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash, Ord, PartialOrd)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Ord, PartialOrd, Serialize, Deserialize)]
 pub enum MockImport {
     /// Import from the same project
     Internal(usize),
@@ -302,7 +315,7 @@ pub enum MockImport {
 }
 
 /// Container of a mock lib
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MockLib {
     /// name of the lib, like `ds-test`
     pub name: String,
@@ -325,7 +338,7 @@ impl MockLib {
 }
 
 /// Settings to use when generate a mock project
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct MockProjectSettings {
     /// number of source files to generate
     pub num_sources: usize,
@@ -345,9 +358,9 @@ impl MockProjectSettings {
         let mut rng = rand::thread_rng();
         // arbitrary thresholds
         MockProjectSettings {
-            num_sources: rng.gen_range(2..35),
+            num_sources: rng.gen_range(2..25),
             num_libs: rng.gen_range(0..5),
-            num_lib_files: rng.gen_range(1..20),
+            num_lib_files: rng.gen_range(1..10),
             min_imports: rng.gen_range(0..3),
             max_imports: rng.gen_range(4..10),
         }
@@ -357,11 +370,11 @@ impl MockProjectSettings {
     pub fn large() -> Self {
         // arbitrary thresholds
         MockProjectSettings {
-            num_sources: 80,
-            num_libs: 10,
-            num_lib_files: 50,
-            min_imports: 5,
-            max_imports: 20,
+            num_sources: 35,
+            num_libs: 4,
+            num_lib_files: 15,
+            min_imports: 3,
+            max_imports: 12,
         }
     }
 }
