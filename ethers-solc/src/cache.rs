@@ -1,6 +1,6 @@
 //! Support for compiling contracts
 use crate::{
-    artifacts::{Settings, Sources},
+    artifacts::{output_selection::OutputSelection, Settings, Sources},
     config::SolcConfig,
     error::{Result, SolcError},
     resolver::GraphEdges,
@@ -736,9 +736,19 @@ impl FilteredSources {
         self.0.len()
     }
 
+    /// Returns `true` if all files are dirty
+    pub fn all_dirty(&self) -> bool {
+        self.0.values().all(|s| s.is_dirty())
+    }
+
     /// Returns all entries that are dirty
     pub fn dirty(&self) -> impl Iterator<Item = (&PathBuf, &FilteredSource)> + '_ {
         self.0.iter().filter(|(_, s)| s.is_dirty())
+    }
+
+    /// Returns all entries that are clean
+    pub fn clean(&self) -> impl Iterator<Item = (&PathBuf, &FilteredSource)> + '_ {
+        self.0.iter().filter(|(_, s)| !s.is_dirty())
     }
 
     /// Returns all dirty files
@@ -746,8 +756,50 @@ impl FilteredSources {
         self.0.iter().filter_map(|(k, s)| s.is_dirty().then(|| k))
     }
 
-    pub fn into_sources(mut self, settings: &mut Settings) -> Sources {
-        todo!()
+    /// While solc needs all the files to compile the actual _dirty_ files, we can tell solc to
+    /// output everything for those dirty files as currently configured in the settings, but output
+    /// nothing for the other files that are _not_ dirty.
+    ///
+    /// This will modify the [OutputSelection] of the [Settings] so that we explicitly select the
+    /// files' output based on their state.
+    pub fn into_sources(self, settings: &mut Settings) -> Sources {
+        if !self.all_dirty() {
+            // settings can be optimized
+
+            tracing::trace!(
+                "Optimizing output selection for {}/{} sources",
+                self.clean().count(),
+                self.len()
+            );
+
+            let selection = settings
+                .output_selection
+                .as_mut()
+                .remove("*")
+                .unwrap_or_else(OutputSelection::default_file_output_selection);
+
+            for (file, source) in self.0.iter() {
+                if source.is_dirty() {
+                    settings
+                        .output_selection
+                        .as_mut()
+                        .insert(format!("{}", file.display()), selection.clone());
+                } else {
+                    tracing::trace!("Optimizing output for {}", file.display());
+                    settings.output_selection.as_mut().insert(
+                        format!("{}", file.display()),
+                        OutputSelection::empty_file_output_select(),
+                    );
+                }
+            }
+        }
+        self.into()
+    }
+}
+
+impl From<FilteredSources> for Sources {
+    fn from(sources: FilteredSources) -> Self {
+        sources.0.into_iter().map(|(k, v)| (k, v.into_source())).collect()
     }
 }
 
@@ -756,6 +808,7 @@ impl From<Sources> for FilteredSources {
         FilteredSources(s.into_iter().map(|(key, val)| (key, FilteredSource::Dirty(val))).collect())
     }
 }
+
 impl From<BTreeMap<PathBuf, FilteredSource>> for FilteredSources {
     fn from(s: BTreeMap<PathBuf, FilteredSource>) -> Self {
         FilteredSources(s)
@@ -787,6 +840,14 @@ pub enum FilteredSource {
 impl FilteredSource {
     /// Returns the underlying source
     pub fn source(&self) -> &Source {
+        match self {
+            FilteredSource::Dirty(s) => s,
+            FilteredSource::Clean(s) => s,
+        }
+    }
+
+    /// Consumes the type and returns the underlying source
+    pub fn into_source(self) -> Source {
         match self {
             FilteredSource::Dirty(s) => s,
             FilteredSource::Clean(s) => s,

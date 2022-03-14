@@ -63,7 +63,10 @@ impl CompilerInput {
         Source::read_all_from(path.as_ref()).map(Self::with_sources)
     }
 
-    /// Creates a new Compiler input with default settings and the given sources
+    /// Creates a new [CompilerInput](s) with default settings and the given sources
+    ///
+    /// A [CompilerInput] expects a language setting, supported by solc are solidity or yul.
+    /// In case the `sources` is a mix of solidity and yul files, 2 CompilerInputs are returned
     pub fn with_sources(sources: Sources) -> Vec<Self> {
         let mut solidity_sources = BTreeMap::new();
         let mut yul_sources = BTreeMap::new();
@@ -2007,6 +2010,7 @@ pub struct SecondarySourceLocation {
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct SourceFile {
     pub id: u32,
+    #[serde(default)]
     pub ast: serde_json::Value,
 }
 

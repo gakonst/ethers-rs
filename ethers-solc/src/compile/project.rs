@@ -380,24 +380,26 @@ fn compile_sequential(
 ) -> Result<AggregatedCompilerOutput> {
     let mut aggregated = AggregatedCompilerOutput::default();
     tracing::trace!("compiling {} jobs sequentially", input.len());
-    for (solc, (version, sources)) in input {
-        if sources.is_empty() {
+    for (solc, (version, filtered_sources)) in input {
+        if filtered_sources.is_empty() {
             // nothing to compile
             continue
         }
         tracing::trace!(
             "compiling {} sources with solc \"{}\" {:?}",
-            sources.len(),
+            filtered_sources.len(),
             solc.as_ref().display(),
             solc.args
         );
 
+        // depending on the composition of the filtered sources, the output selection can be
+        // optimized
         let mut opt_settings = settings.clone();
-        let sources = sources.into_sources(&mut opt_settings);
+        let sources = filtered_sources.into_sources(&mut opt_settings);
 
         for input in CompilerInput::with_sources(sources) {
             let input = input
-                .settings(opt_settings)
+                .settings(opt_settings.clone())
                 .normalize_evm_version(&version)
                 .with_remappings(paths.remappings.clone());
             tracing::trace!(
@@ -431,11 +433,17 @@ fn compile_parallel(
     );
 
     let mut jobs = Vec::with_capacity(input.len());
-    for (solc, (version, sources)) in input {
-        if sources.is_empty() {
+    for (solc, (version, filtered_sources)) in input {
+        if filtered_sources.is_empty() {
             // nothing to compile
             continue
         }
+
+        // depending on the composition of the filtered sources, the output selection can be
+        // optimized
+        let mut opt_settings = settings.clone();
+        let sources = filtered_sources.into_sources(&mut opt_settings);
+
         for input in CompilerInput::with_sources(sources) {
             let job = input
                 .settings(settings.clone())
