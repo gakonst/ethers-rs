@@ -103,7 +103,7 @@
 
 use crate::{
     artifact_output::Artifacts,
-    artifacts::{Settings, VersionedSources},
+    artifacts::{Settings, VersionedFilteredSources, VersionedSources},
     cache::ArtifactsCache,
     error::Result,
     output::AggregatedCompilerOutput,
@@ -203,11 +203,11 @@ impl<'a, T: ArtifactOutput> ProjectCompiler<'a, T> {
     ///   - sets proper source unit names
     ///   - check cache
     fn preprocess(self) -> Result<PreprocessedState<'a, T>> {
-        let Self { edges, project, mut sources } = self;
+        let Self { edges, project, sources } = self;
 
         let mut cache = ArtifactsCache::new(project, edges)?;
         // retain and compile only dirty sources and all their imports
-        sources = sources.filtered(&mut cache);
+        let sources = sources.filtered(&mut cache);
 
         Ok(PreprocessedState { sources, cache })
     }
@@ -219,7 +219,7 @@ impl<'a, T: ArtifactOutput> ProjectCompiler<'a, T> {
 #[derive(Debug)]
 struct PreprocessedState<'a, T: ArtifactOutput> {
     /// contains all sources to compile
-    sources: CompilerSources,
+    sources: FilteredCompilerSources,
     /// cache that holds [CacheEntry] object if caching is enabled and the project is recompiled
     cache: ArtifactsCache<'a, T>,
 }
@@ -304,55 +304,67 @@ enum CompilerSources {
 
 impl CompilerSources {
     /// Filters out all sources that don't need to be compiled, see [`ArtifactsCache::filter`]
-    fn filtered<T: ArtifactOutput>(self, cache: &mut ArtifactsCache<T>) -> Self {
+    fn filtered<T: ArtifactOutput>(self, cache: &mut ArtifactsCache<T>) -> FilteredCompilerSources {
         fn filtered_sources<T: ArtifactOutput>(
-            _sources: VersionedSources,
-            _cache: &mut ArtifactsCache<T>,
-        ) -> VersionedSources {
-            todo!()
-            // sources
-            //     .into_iter()
-            //     .map(|(solc, (version, sources))| {
-            //         tracing::trace!("Filtering {} sources for {}", sources.len(), version);
-            //         let sources = cache.filter(sources, &version);
-            //         tracing::trace!(
-            //             "Detected {} dirty sources {:?}",
-            //             sources.len(),
-            //             sources.keys()
-            //         );
-            //         (solc, (version, sources))
-            //     })
-            //     .collect()
+            sources: VersionedSources,
+            cache: &mut ArtifactsCache<T>,
+        ) -> VersionedFilteredSources {
+            sources
+                .into_iter()
+                .map(|(solc, (version, sources))| {
+                    tracing::trace!("Filtering {} sources for {}", sources.len(), version);
+                    let sources = cache.filter(sources, &version);
+                    tracing::trace!(
+                        "Detected {} dirty sources {:?}",
+                        sources.dirty().count(),
+                        sources.dirty_files()
+                    );
+                    (solc, (version, sources))
+                })
+                .collect()
         }
 
         match self {
             CompilerSources::Sequential(s) => {
-                CompilerSources::Sequential(filtered_sources(s, cache))
+                FilteredCompilerSources::Sequential(filtered_sources(s, cache))
             }
             CompilerSources::Parallel(s, j) => {
-                CompilerSources::Parallel(filtered_sources(s, cache), j)
+                FilteredCompilerSources::Parallel(filtered_sources(s, cache), j)
             }
         }
     }
+}
 
+/// Determines how the `solc <-> sources` pairs are executed
+#[derive(Debug, Clone)]
+#[allow(dead_code)]
+enum FilteredCompilerSources {
+    /// Compile all these sequentially
+    Sequential(VersionedFilteredSources),
+    /// Compile all these in parallel using a certain amount of jobs
+    Parallel(VersionedFilteredSources, usize),
+}
+
+impl FilteredCompilerSources {
     /// Compiles all the files with `Solc`
     fn compile(
         self,
-        settings: &Settings,
-        paths: &ProjectPathsConfig,
+        _settings: &Settings,
+        _paths: &ProjectPathsConfig,
     ) -> Result<AggregatedCompilerOutput> {
-        match self {
-            CompilerSources::Sequential(input) => compile_sequential(input, settings, paths),
-            CompilerSources::Parallel(input, j) => compile_parallel(input, j, settings, paths),
-        }
+        todo!()
+        // match self {
+        //     CompilerSources::Sequential(input) => compile_sequential(input, settings, paths),
+        //     CompilerSources::Parallel(input, j) => compile_parallel(input, j, settings, paths),
+        // }
     }
 
     #[cfg(test)]
     #[allow(unused)]
-    fn sources(&self) -> &VersionedSources {
+    fn sources(&self) -> &VersionedFilteredSources {
         match self {
-            CompilerSources::Sequential(v) => v,
-            CompilerSources::Parallel(v, _) => v,
+            FilteredCompilerSources::Sequential(v) => v,
+            FilteredCompilerSources::Parallel(v, _) => v,
         }
     }
 }

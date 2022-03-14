@@ -24,7 +24,10 @@ use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 
 pub mod output_selection;
 pub mod serde_helpers;
-use crate::artifacts::output_selection::{ContractOutputSelection, OutputSelection};
+use crate::{
+    artifacts::output_selection::{ContractOutputSelection, OutputSelection},
+    cache::FilteredSources,
+};
 pub use serde_helpers::{deserialize_bytes, deserialize_opt_bytes};
 
 /// Solidity files are made up of multiple `source units`, a solidity contract is such a `source
@@ -40,7 +43,11 @@ pub type Contracts = FileToContractsMap<Contract>;
 /// An ordered list of files and their source
 pub type Sources = BTreeMap<PathBuf, Source>;
 
+/// A set of different Solc installations with their version and the sources to be compiled
 pub type VersionedSources = BTreeMap<Solc, (Version, Sources)>;
+
+/// A set of different Solc installations with their version and the sources to be compiled
+pub type VersionedFilteredSources = BTreeMap<Solc, (Version, FilteredSources)>;
 
 /// Input type `solc` expects
 #[derive(Clone, Debug, Serialize, Deserialize)]

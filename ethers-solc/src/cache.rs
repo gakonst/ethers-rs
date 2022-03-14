@@ -14,6 +14,7 @@ use std::{
         btree_map::{BTreeMap, Entry},
         hash_map, BTreeSet, HashMap, HashSet,
     },
+    fmt,
     fs::{self},
     path::{Path, PathBuf},
     time::{Duration, UNIX_EPOCH},
@@ -642,7 +643,7 @@ impl<'a, T: ArtifactOutput> ArtifactsCacheInner<'a, T> {
         for clean_source in clean_sources {
             let FilteredSourceInfo { file, source, idx, .. } = clean_source;
             if imports_of_dirty.contains(&idx) {
-                // file is imported by a dirty file
+                // file is pulled in by a dirty file
                 filtered_sources.insert(file.clone(), FilteredSource::Clean(source.clone()));
             }
             self.insert_filtered_source(file, source, version.clone());
@@ -723,9 +724,20 @@ impl<'a, T: ArtifactOutput> ArtifactsCacheInner<'a, T> {
 }
 
 /// Container type for a set of [FilteredSource]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct FilteredSources(pub BTreeMap<PathBuf, FilteredSource>);
 
-impl FilteredSources {}
+impl FilteredSources {
+    /// Returns all entries that are dirty
+    pub fn dirty(&self) -> impl Iterator<Item = (&PathBuf, &FilteredSource)> + '_ {
+        self.0.iter().filter(|(_, s)| s.is_dirty())
+    }
+
+    /// Returns all dirty files
+    pub fn dirty_files(&self) -> impl Iterator<Item = &PathBuf> + fmt::Debug + '_ {
+        self.0.iter().filter_map(|(k, s)| s.is_dirty().then(|| k))
+    }
+}
 
 impl From<Sources> for FilteredSources {
     fn from(s: Sources) -> Self {
@@ -735,6 +747,18 @@ impl From<Sources> for FilteredSources {
 impl From<BTreeMap<PathBuf, FilteredSource>> for FilteredSources {
     fn from(s: BTreeMap<PathBuf, FilteredSource>) -> Self {
         FilteredSources(s)
+    }
+}
+
+impl AsRef<BTreeMap<PathBuf, FilteredSource>> for FilteredSources {
+    fn as_ref(&self) -> &BTreeMap<PathBuf, FilteredSource> {
+        &self.0
+    }
+}
+
+impl AsMut<BTreeMap<PathBuf, FilteredSource>> for FilteredSources {
+    fn as_mut(&mut self) -> &mut BTreeMap<PathBuf, FilteredSource> {
+        &mut self.0
     }
 }
 
@@ -749,16 +773,22 @@ pub enum FilteredSource {
 }
 
 impl FilteredSource {
+    /// Returns the underlying source
     pub fn source(&self) -> &Source {
         match self {
             FilteredSource::Dirty(s) => s,
             FilteredSource::Clean(s) => s,
         }
     }
+
+    /// Whether this file is actually dirt
+    pub fn is_dirty(&self) -> bool {
+        matches!(self, FilteredSource::Dirty(_))
+    }
 }
 
 /// Helper type that determines the state of a source file
-pub(crate) struct FilteredSourceInfo {
+struct FilteredSourceInfo {
     /// path to the source file
     file: PathBuf,
     /// contents of the file
