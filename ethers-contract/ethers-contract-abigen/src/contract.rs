@@ -14,6 +14,7 @@ use ethers_core::{
 use eyre::{eyre, Context as _, Result};
 
 use crate::contract::methods::MethodAlias;
+
 use proc_macro2::{Ident, Literal, TokenStream};
 use quote::quote;
 use serde::Deserialize;
@@ -187,6 +188,7 @@ impl Context {
                 InternalStructs::default()
             }
         } else {
+            // parse as
             serde_json::from_str::<RawAbi>(&abi_str)
                 .ok()
                 .map(InternalStructs::new)
