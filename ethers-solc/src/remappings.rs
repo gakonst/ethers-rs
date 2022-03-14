@@ -661,7 +661,7 @@ mod tests {
         assert_eq!(relative.path.original(), Path::new(&remapping.path));
         assert!(relative.path.parent.is_none());
 
-        let relative = RelativeRemapping::new(remapping.clone(), "/a/b");
+        let relative = RelativeRemapping::new(remapping, "/a/b");
         assert_eq!(relative.to_relative_remapping(), Remapping::from_str("oz/=c/d/").unwrap());
     }
 
