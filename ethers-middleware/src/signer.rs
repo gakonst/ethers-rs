@@ -1,5 +1,6 @@
 use ethers_core::types::{
-    transaction::eip2718::TypedTransaction, Address, BlockId, Bytes, Signature,
+    transaction::{eip2718::TypedTransaction, eip2930::AccessListWithGasUsed},
+    Address, BlockId, Bytes, Signature, U256,
 };
 use ethers_providers::{maybe, FromErr, Middleware, PendingTransaction};
 use ethers_signers::Signer;
@@ -158,6 +159,14 @@ where
         this.signer = signer;
         this
     }
+
+    fn set_tx_from_if_none(&self, tx: &TypedTransaction) -> TypedTransaction {
+        let mut tx = tx.clone();
+        if tx.from().is_none() {
+            tx.set_from(self.address);
+        }
+        tx
+    }
 }
 
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
@@ -263,6 +272,32 @@ where
         _: &Address,
     ) -> Result<Signature, Self::Error> {
         self.signer.sign_message(data.into()).await.map_err(SignerMiddlewareError::SignerError)
+    }
+
+    async fn estimate_gas(&self, tx: &TypedTransaction) -> Result<U256, Self::Error> {
+        let tx = self.set_tx_from_if_none(tx);
+        self.inner.estimate_gas(&tx).await.map_err(SignerMiddlewareError::MiddlewareError)
+    }
+
+    async fn create_access_list(
+        &self,
+        tx: &TypedTransaction,
+        block: Option<BlockId>,
+    ) -> Result<AccessListWithGasUsed, Self::Error> {
+        let tx = self.set_tx_from_if_none(tx);
+        self.inner
+            .create_access_list(&tx, block)
+            .await
+            .map_err(SignerMiddlewareError::MiddlewareError)
+    }
+
+    async fn call(
+        &self,
+        tx: &TypedTransaction,
+        block: Option<BlockId>,
+    ) -> Result<Bytes, Self::Error> {
+        let tx = self.set_tx_from_if_none(tx);
+        self.inner().call(&tx, block).await.map_err(SignerMiddlewareError::MiddlewareError)
     }
 }
 
