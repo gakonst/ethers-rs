@@ -22,44 +22,44 @@ use thiserror::Error;
 /// use std::convert::TryFrom;
 ///
 /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
-/// let provider = Provider::<Http>::try_from("http://localhost:8545")
-///     .expect("could not instantiate HTTP Provider");
+///     let provider = Provider::<Http>::try_from("http://localhost:8545")
+///         .expect("could not instantiate HTTP Provider");
 ///
-/// // Transactions will be signed with the private key below and will be broadcast
-/// // via the eth_sendRawTransaction API)
-/// let wallet: LocalWallet = "380eb0f3d505f087e438eca80bc4df9a7faa24f868e69fc0440261a0fc0567dc"
-///     .parse()?;
+///     // Transactions will be signed with the private key below and will be broadcast
+///     // via the eth_sendRawTransaction API)
+///     let wallet: LocalWallet = "380eb0f3d505f087e438eca80bc4df9a7faa24f868e69fc0440261a0fc0567dc"
+///         .parse()?;
 ///
-/// let mut client = SignerMiddleware::new(provider, wallet);
+///     let mut client = SignerMiddleware::new(provider, wallet).await;
 ///
-/// // You can sign messages with the key
-/// let signed_msg = client.sign(b"hello".to_vec(), &client.address()).await?;
+///     // You can sign messages with the key
+///     let signed_msg = client.sign(b"hello".to_vec(), &client.address()).await?;
 ///
-/// // ...and sign transactions
-/// let tx = TransactionRequest::pay("vitalik.eth", 100);
-/// let pending_tx = client.send_transaction(tx, None).await?;
+///     // ...and sign transactions
+///     let tx = TransactionRequest::pay("vitalik.eth", 100);
+///     let pending_tx = client.send_transaction(tx, None).await?;
 ///
-/// // You can `await` on the pending transaction to get the receipt with a pre-specified
-/// // number of confirmations
-/// let receipt = pending_tx.confirmations(6).await?;
+///     // You can `await` on the pending transaction to get the receipt with a pre-specified
+///     // number of confirmations
+///     let receipt = pending_tx.confirmations(6).await?;
 ///
-/// // You can connect with other wallets at runtime via the `with_signer` function
-/// let wallet2: LocalWallet = "cd8c407233c0560f6de24bb2dc60a8b02335c959a1a17f749ce6c1ccf63d74a7"
-///     .parse()?;
+///     // You can connect with other wallets at runtime via the `with_signer` function
+///     let wallet2: LocalWallet = "cd8c407233c0560f6de24bb2dc60a8b02335c959a1a17f749ce6c1ccf63d74a7"
+///         .parse()?;
 ///
-/// let signed_msg2 = client.with_signer(wallet2).sign(b"hello".to_vec(), &client.address()).await?;
+///     let signed_msg2 = client.with_signer(wallet2).await.sign(b"hello".to_vec(), &client.address()).await?;
 ///
-/// // This call will be made with `wallet2` since `with_signer` takes a mutable reference.
-/// let tx2 = TransactionRequest::new()
-///     .to("0xd8da6bf26964af9d7eed9e03e53415d37aa96045".parse::<Address>()?)
-///     .value(200);
-/// let tx_hash2 = client.send_transaction(tx2, None).await?;
+///     // This call will be made with `wallet2` since `with_signer` takes a mutable reference.
+///     let tx2 = TransactionRequest::new()
+///         .to("0xd8da6bf26964af9d7eed9e03e53415d37aa96045".parse::<Address>()?)
+///         .value(200);
+///     let tx_hash2 = client.send_transaction(tx2, None).await?;
 ///
-/// # Ok(())
+/// #   Ok(())
 /// # }
 /// ```
 ///
-/// [`Provider`]: ethers_providers::Provider
+/// [`Signer`]: ethers_signers::Signer
 pub struct SignerMiddleware<M, S> {
     pub(crate) inner: M,
     pub(crate) signer: S,
@@ -107,12 +107,23 @@ where
     S: Signer,
 {
     /// Creates a new client from the provider and signer.
-    pub fn new(inner: M, signer: S) -> Self {
+    /// Sets the address of this middleware to the address of the signer.
+    /// Sets the chain id of the signer to the chain id of the inner [`Middleware`] passed in,
+    /// using the [`Signer`]'s implementation of with_chain_id.
+    ///
+    /// [`Middleware`] ethers_providers::Middleware
+    /// [`Signer`] ethers_signers::Signer
+    pub async fn new(inner: M, signer: S) -> Self {
         let address = signer.address();
+        let chain_id = inner.get_chainid().await.unwrap();
+        let signer = signer.with_chain_id(chain_id.as_u64());
         SignerMiddleware { inner, signer, address }
     }
 
-    /// Signs and returns the RLP encoding of the signed transaction
+    /// Signs and returns the RLP encoding of the signed transaction.
+    /// If the transaction does not have a chain id set, it sets it to the signer's chain id.
+    /// Returns an error if the transaction's existing chain id does not match the signer's chain
+    /// id.
     async fn sign_transaction(
         &self,
         tx: TypedTransaction,
@@ -148,13 +159,16 @@ where
         &self.signer
     }
 
-    #[must_use]
-    pub fn with_signer(&self, signer: S) -> Self
+    /// Builds a SignerMiddleware with the given Signer. Sets the chain id of the passed signer to
+    /// the existing inner Middleware's chain id.
+    pub async fn with_signer(&self, signer: S) -> Self
     where
         S: Clone,
         M: Clone,
     {
         let mut this = self.clone();
+        let chain_id = self.inner.get_chainid().await.unwrap();
+        let signer = signer.with_chain_id(chain_id.as_u64());
         this.address = signer.address();
         this.signer = signer;
         this
@@ -329,12 +343,17 @@ mod tests {
         .into();
         let chain_id = 1u64;
 
-        let provider = Provider::try_from("http://localhost:8545").unwrap();
+        // Signer middlewares now rely on a working provider which it can query the chain id from,
+        // so we make sure ganache is started with the chain id that the expected tx was signed
+        // with
+        let ganache =
+            Ganache::new().args(vec!["--chain.chainId".to_string(), chain_id.to_string()]).spawn();
+        let provider = Provider::try_from(ganache.endpoint()).unwrap();
         let key = "4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318"
             .parse::<LocalWallet>()
             .unwrap()
             .with_chain_id(chain_id);
-        let client = SignerMiddleware::new(provider, key);
+        let client = SignerMiddleware::new(provider, key).await;
 
         let tx = client.sign_transaction(tx).await.unwrap();
 
@@ -346,6 +365,50 @@ mod tests {
 
         let expected_rlp = Bytes::from(hex::decode("f869808504e3b29200831e848094f0109fc8df283027b6285cc889f5aa624eac1f55843b9aca008025a0c9cf86333bcb065d140032ecaab5d9281bde80f21b9687b3e94161de42d51895a0727a108a0b8d101465414033c3f705a9c7b826e596766046ee1183dbc8aeaa68").unwrap());
         assert_eq!(tx, expected_rlp);
+    }
+
+    #[tokio::test]
+    async fn ganache_consistent_chainid() {
+        let ganache = Ganache::new().spawn();
+        let provider = Provider::try_from(ganache.endpoint()).unwrap();
+        let chain_id = provider.get_chainid().await.unwrap();
+        assert_eq!(chain_id, U256::from(1337));
+
+        // Intentionally do not set the chain id here so we ensure that the signer pulls the
+        // provider's chain id.
+        let key = LocalWallet::new(&mut rand::thread_rng());
+
+        // combine the provider and wallet and test that the chain id is the same for both the
+        // signer returned by the middleware and through the middleware itself.
+        let client = SignerMiddleware::new(provider, key).await;
+        let middleware_chainid = client.get_chainid().await.unwrap();
+        assert_eq!(chain_id, middleware_chainid);
+
+        let signer = client.signer();
+        let signer_chainid = signer.chain_id();
+        assert_eq!(chain_id.as_u64(), signer_chainid);
+    }
+
+    #[tokio::test]
+    async fn ganache_consistent_chainid_not_default() {
+        let ganache = Ganache::new().args(vec!["--chain.chainId", "13371337"]).spawn();
+        let provider = Provider::try_from(ganache.endpoint()).unwrap();
+        let chain_id = provider.get_chainid().await.unwrap();
+        assert_eq!(chain_id, U256::from(13371337));
+
+        // Intentionally do not set the chain id here so we ensure that the signer pulls the
+        // provider's chain id.
+        let key = LocalWallet::new(&mut rand::thread_rng());
+
+        // combine the provider and wallet and test that the chain id is the same for both the
+        // signer returned by the middleware and through the middleware itself.
+        let client = SignerMiddleware::new(provider, key).await;
+        let middleware_chainid = client.get_chainid().await.unwrap();
+        assert_eq!(chain_id, middleware_chainid);
+
+        let signer = client.signer();
+        let signer_chainid = signer.chain_id();
+        assert_eq!(chain_id.as_u64(), signer_chainid);
     }
 
     #[tokio::test]
@@ -361,7 +424,7 @@ mod tests {
             )
             .await
             .unwrap();
-        let client = SignerMiddleware::new(provider, key);
+        let client = SignerMiddleware::new(provider, key).await;
 
         let request = TransactionRequest::new();
 

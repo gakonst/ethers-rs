@@ -579,7 +579,7 @@ mod eth_tests {
             .expect("failed to instantiate provider from ganache endpoint")
             .interval(Duration::from_millis(10u64));
 
-        let client = SignerMiddleware::new(provider, wallet.clone());
+        let client = SignerMiddleware::new(provider, wallet.clone()).await;
         let client = Arc::new(client);
 
         let factory = ContractFactory::new(abi.clone(), bytecode.clone(), client.clone());

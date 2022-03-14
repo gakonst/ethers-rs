@@ -31,7 +31,7 @@ async fn main() -> Result<()> {
         Provider::<Http>::try_from(ganache.endpoint())?.interval(Duration::from_millis(10u64));
 
     // 4. instantiate the client with the wallet
-    let client = SignerMiddleware::new(provider, wallet);
+    let client = SignerMiddleware::new(provider, wallet).await;
     let client = Arc::new(client);
 
     // 5. create a factory which will be used to deploy instances of the contract

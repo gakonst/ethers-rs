@@ -33,7 +33,7 @@ async fn ws_connect_and_deploy() {
 }
 
 async fn deploy<T: JsonRpcClient>(provider: Provider<T>, wallet: LocalWallet) {
-    let client = Arc::new(SignerMiddleware::new(provider, wallet));
+    let client = Arc::new(SignerMiddleware::new(provider, wallet).await);
 
     let bytecode = hex::decode(ethers_wasm::utils::SIMPLECONTRACT_BIN).unwrap();
     let factory = ContractFactory::new(SIMPLECONTRACT_ABI.clone(), bytecode.into(), client.clone());

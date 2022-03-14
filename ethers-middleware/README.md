@@ -42,7 +42,7 @@ let provider =
 // Sign transactions with a private key
 let signer = LocalWallet::new(&mut rand::thread_rng());
 let address = signer.address();
-let provider = SignerMiddleware::new(provider, signer);
+let provider = SignerMiddleware::new(provider, signer).await;
 
 // Use EthGasStation as the gas oracle
 let gas_oracle = EthGasStation::new(None);

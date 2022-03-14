@@ -18,7 +18,7 @@ async fn nonce_manager() {
         .with_chain_id(chain_id);
     let address = wallet.address();
 
-    let provider = SignerMiddleware::new(provider, wallet);
+    let provider = SignerMiddleware::new(provider, wallet).await;
 
     // the nonce manager must be over the Client so that it overrides the nonce
     // before the client gets it
