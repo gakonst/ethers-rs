@@ -105,6 +105,7 @@ impl VerifyContract {
     ) -> Self {
         self.constructor_arguments = constructor_arguments.map(|s| {
             s.into()
+                .trim()
                 // TODO is this correct?
                 .trim_start_matches("0x")
                 .to_string()
