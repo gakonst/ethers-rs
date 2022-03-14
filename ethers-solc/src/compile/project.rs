@@ -218,7 +218,9 @@ impl<'a, T: ArtifactOutput> ProjectCompiler<'a, T> {
 /// The main reason is to debug all states individually
 #[derive(Debug)]
 struct PreprocessedState<'a, T: ArtifactOutput> {
+    /// contains all sources to compile
     sources: CompilerSources,
+    /// cache that holds [CacheEntry] object if caching is enabled and the project is recompiled
     cache: ArtifactsCache<'a, T>,
 }
 
@@ -304,22 +306,23 @@ impl CompilerSources {
     /// Filters out all sources that don't need to be compiled, see [`ArtifactsCache::filter`]
     fn filtered<T: ArtifactOutput>(self, cache: &mut ArtifactsCache<T>) -> Self {
         fn filtered_sources<T: ArtifactOutput>(
-            sources: VersionedSources,
-            cache: &mut ArtifactsCache<T>,
+            _sources: VersionedSources,
+            _cache: &mut ArtifactsCache<T>,
         ) -> VersionedSources {
-            sources
-                .into_iter()
-                .map(|(solc, (version, sources))| {
-                    tracing::trace!("Filtering {} sources for {}", sources.len(), version);
-                    let sources = cache.filter(sources, &version);
-                    tracing::trace!(
-                        "Detected {} dirty sources {:?}",
-                        sources.len(),
-                        sources.keys()
-                    );
-                    (solc, (version, sources))
-                })
-                .collect()
+            todo!()
+            // sources
+            //     .into_iter()
+            //     .map(|(solc, (version, sources))| {
+            //         tracing::trace!("Filtering {} sources for {}", sources.len(), version);
+            //         let sources = cache.filter(sources, &version);
+            //         tracing::trace!(
+            //             "Detected {} dirty sources {:?}",
+            //             sources.len(),
+            //             sources.keys()
+            //         );
+            //         (solc, (version, sources))
+            //     })
+            //     .collect()
         }
 
         match self {

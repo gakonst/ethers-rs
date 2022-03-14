@@ -593,27 +593,39 @@ impl<'a, T: ArtifactOutput> ArtifactsCacheInner<'a, T> {
         }
     }
 
-    /// Returns only dirty sources that:
+    /// Returns the set of [Source]s that need to be included in the [CompilerOutput] in order to
+    /// recompile the project.
+    ///
+    /// We define _dirty_ sources as files that:
     ///   - are new
     ///   - were changed
     ///   - their imports were changed
     ///   - their artifact is missing
-    /// This also includes their respective imports
-    fn filter(&mut self, sources: Sources, version: &Version) -> Sources {
+    ///
+    /// A _dirty_ file is always included in the [CompilerInput].
+    /// A _dirty_ file can also include clean files - files that do not match any of the above
+    /// criteria - which solc also requires in order to compile a dirty file.
+    ///
+    /// Therefor these files will also be included in the filtered output but not marked as dirty,
+    /// so that their [OutputSelection] can be optimized in the [CompilerOutput] and their (empty)
+    /// artifacts ignored.
+    fn filter(&mut self, sources: Sources, version: &Version) -> FilteredSources {
         self.fill_hashes(&sources);
 
+        // all files that are not dirty themselves, but are pulled from a dirty file
         let mut imports_of_dirty = HashSet::new();
+
         // separates all source files that fit the criteria (dirty) from those that don't (clean)
-        let (mut dirty_sources, clean_sources) = sources
+        let (mut filtered_sources, clean_sources) = sources
             .into_iter()
             .map(|(file, source)| self.filter_source(file, source, version))
             .fold(
-                (Sources::default(), Vec::new()),
+                (BTreeMap::default(), Vec::new()),
                 |(mut dirty_sources, mut clean_sources), source| {
                     if source.dirty {
                         // mark all files that are imported by a dirty file
                         imports_of_dirty.extend(self.edges.all_imported_nodes(source.idx));
-                        dirty_sources.insert(source.file, source.source);
+                        dirty_sources.insert(source.file, FilteredSource::Dirty(source.source));
                     } else {
                         clean_sources.push(source);
                     }
@@ -622,33 +634,37 @@ impl<'a, T: ArtifactOutput> ArtifactsCacheInner<'a, T> {
                 },
             );
 
+        // track new cache entries for dirty files
+        for (file, filtered) in filtered_sources.iter() {
+            self.insert_new_cache_entry(file, filtered.source(), version.clone());
+        }
+
         for clean_source in clean_sources {
-            let FilteredSource { file, source, idx, .. } = clean_source;
+            let FilteredSourceInfo { file, source, idx, .. } = clean_source;
             if imports_of_dirty.contains(&idx) {
                 // file is imported by a dirty file
-                dirty_sources.insert(file, source);
-            } else {
-                self.insert_filtered_source(file, source, version.clone());
+                filtered_sources.insert(file.clone(), FilteredSource::Clean(source.clone()));
             }
+            self.insert_filtered_source(file, source, version.clone());
         }
 
-        // track dirty sources internally
-        for (file, source) in dirty_sources.iter() {
-            self.insert_new_cache_entry(file, source, version.clone());
-        }
-
-        dirty_sources
+        filtered_sources.into()
     }
 
     /// Returns the state of the given source file.
-    fn filter_source(&self, file: PathBuf, source: Source, version: &Version) -> FilteredSource {
+    fn filter_source(
+        &self,
+        file: PathBuf,
+        source: Source,
+        version: &Version,
+    ) -> FilteredSourceInfo {
         let idx = self.edges.node_id(&file);
         if !self.is_dirty(&file, version) &&
             self.edges.imports(&file).iter().all(|file| !self.is_dirty(file, version))
         {
-            FilteredSource { file, source, idx, dirty: false }
+            FilteredSourceInfo { file, source, idx, dirty: false }
         } else {
-            FilteredSource { file, source, idx, dirty: true }
+            FilteredSourceInfo { file, source, idx, dirty: true }
         }
     }
 
@@ -706,11 +722,52 @@ impl<'a, T: ArtifactOutput> ArtifactsCacheInner<'a, T> {
     }
 }
 
-/// Helper type to represent the state of a source file
-struct FilteredSource {
+/// Container type for a set of [FilteredSource]
+pub struct FilteredSources(pub BTreeMap<PathBuf, FilteredSource>);
+
+impl FilteredSources {}
+
+impl From<Sources> for FilteredSources {
+    fn from(s: Sources) -> Self {
+        FilteredSources(s.into_iter().map(|(key, val)| (key, FilteredSource::Dirty(val))).collect())
+    }
+}
+impl From<BTreeMap<PathBuf, FilteredSource>> for FilteredSources {
+    fn from(s: BTreeMap<PathBuf, FilteredSource>) -> Self {
+        FilteredSources(s)
+    }
+}
+
+/// Represents the state of a filtered [Source]
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub enum FilteredSource {
+    /// A source that fits the _dirty_ criteria
+    Dirty(Source),
+    /// A source that does _not_ fit the _dirty_ criteria but is included in the filtered set
+    /// because a _dirty_ file pulls it in, either directly on indirectly.
+    Clean(Source),
+}
+
+impl FilteredSource {
+    pub fn source(&self) -> &Source {
+        match self {
+            FilteredSource::Dirty(s) => s,
+            FilteredSource::Clean(s) => s,
+        }
+    }
+}
+
+/// Helper type that determines the state of a source file
+pub(crate) struct FilteredSourceInfo {
+    /// path to the source file
     file: PathBuf,
+    /// contents of the file
     source: Source,
+    /// idx in the [GraphEdges]
     idx: usize,
+    /// whether this file is actually dirty
+    ///
+    /// See also [ArtifactsCacheInner::is_dirty()]
     dirty: bool,
 }
 
@@ -785,9 +842,9 @@ impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
     }
 
     /// Filters out those sources that don't need to be compiled
-    pub fn filter(&mut self, sources: Sources, version: &Version) -> Sources {
+    pub fn filter(&mut self, sources: Sources, version: &Version) -> FilteredSources {
         match self {
-            ArtifactsCache::Ephemeral(_, _) => sources,
+            ArtifactsCache::Ephemeral(_, _) => sources.into(),
             ArtifactsCache::Cached(cache) => cache.filter(sources, version),
         }
     }
