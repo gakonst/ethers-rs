@@ -14,7 +14,7 @@
 
 // https://github.com/tokio-rs/tracing/blob/master/tracing-core/src/dispatch.rs
 
-use crate::{CompilerInput, CompilerOutput, Solc};
+use crate::{remappings::Remapping, CompilerInput, CompilerOutput, Solc};
 use semver::Version;
 use std::{
     any::{Any, TypeId},
@@ -102,8 +102,8 @@ pub trait Reporter: 'static {
     /// Invoked before a new [`Solc`] bin was successfully installed
     fn on_solc_installation_success(&self, _version: &Version) {}
 
-    /// Invoked if the import couldn't be resolved
-    fn on_unresolved_import(&self, _import: &Path) {}
+    /// Invoked if the import couldn't be resolved with these remappings
+    fn on_unresolved_import(&self, _import: &Path, _remappings: &[Remapping]) {}
 
     /// If `self` is the same type as the provided `TypeId`, returns an untyped
     /// [`NonNull`] pointer to that type. Otherwise, returns `None`.
@@ -166,8 +166,8 @@ pub(crate) fn solc_installation_success(version: &Version) {
     get_default(|r| r.reporter.on_solc_installation_success(version));
 }
 
-pub(crate) fn unresolved_import(import: &Path) {
-    get_default(|r| r.reporter.on_unresolved_import(import));
+pub(crate) fn unresolved_import(import: &Path, remappings: &[Remapping]) {
+    get_default(|r| r.reporter.on_unresolved_import(import, remappings));
 }
 
 fn get_global() -> Option<&'static Report> {
@@ -308,8 +308,12 @@ impl Reporter for BasicStdoutReporter {
         println!("Successfully installed solc {}", version);
     }
 
-    fn on_unresolved_import(&self, import: &Path) {
-        println!("Unable to resolve imported file: \"{}\"", import.display());
+    fn on_unresolved_import(&self, import: &Path, remappings: &[Remapping]) {
+        println!(
+            "Unable to resolve import: \"{}\" with remappings:\n    {}",
+            import.display(),
+            remappings.iter().map(|r| r.to_string()).collect::<Vec<_>>().join("\n    ")
+        );
     }
 }
 
