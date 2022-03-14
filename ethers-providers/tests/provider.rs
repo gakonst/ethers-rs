@@ -1,5 +1,5 @@
 #![cfg(not(target_arch = "wasm32"))]
-use ethers_providers::{Http, Middleware, Provider};
+use ethers_providers::{Http, Middleware, Provider, RINKEBY};
 use std::{convert::TryFrom, time::Duration};
 
 #[cfg(not(feature = "celo"))]
@@ -12,10 +12,7 @@ mod eth_tests {
 
     #[tokio::test]
     async fn non_existing_data_works() {
-        let provider = Provider::<Http>::try_from(
-            "https://rinkeby.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27",
-        )
-        .unwrap();
+        let provider = RINKEBY.provider();
 
         assert!(provider.get_transaction(H256::zero()).await.unwrap().is_none());
         assert!(provider.get_transaction_receipt(H256::zero()).await.unwrap().is_none());
@@ -25,10 +22,7 @@ mod eth_tests {
 
     #[tokio::test]
     async fn client_version() {
-        let provider = Provider::<Http>::try_from(
-            "https://rinkeby.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27",
-        )
-        .unwrap();
+        let provider = RINKEBY.provider();
 
         // e.g., Geth/v1.10.6-omnibus-1af33248/linux-amd64/go1.16.6
         assert!(provider
@@ -41,11 +35,7 @@ mod eth_tests {
     // Without TLS this would error with "TLS Support not compiled in"
     #[tokio::test]
     async fn ssl_websocket() {
-        use ethers_providers::Ws;
-        let ws = Ws::connect("wss://rinkeby.infura.io/ws/v3/c60b0bb42f8a4c6481ecd229eddaca27")
-            .await
-            .unwrap();
-        let provider = Provider::new(ws);
+        let provider = RINKEBY.ws().await;
         let _number = provider.get_block_number().await.unwrap();
     }
 
@@ -95,10 +85,7 @@ mod eth_tests {
 
     #[tokio::test]
     async fn eip1559_fee_estimation() {
-        let provider = Provider::<Http>::try_from(
-            "https://mainnet.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27",
-        )
-        .unwrap();
+        let provider = ethers_providers::MAINNET.provider();
 
         let (_max_fee_per_gas, _max_priority_fee_per_gas) =
             provider.estimate_eip1559_fees(None).await.unwrap();

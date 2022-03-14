@@ -4,7 +4,7 @@ use ethers_middleware::{
     gas_escalator::{Frequency, GasEscalatorMiddleware, GeometricGasPrice},
     signer::SignerMiddleware,
 };
-use ethers_providers::{Middleware, Provider, Ws};
+use ethers_providers::Middleware;
 use ethers_signers::{LocalWallet, Signer};
 use std::time::Duration;
 
@@ -12,10 +12,8 @@ use std::time::Duration;
 #[ignore]
 async fn gas_escalator_live() {
     // connect to ropsten for getting bad block times
-    let ws = Ws::connect("wss://ropsten.infura.io/ws/v3/fd8b88b56aa84f6da87b60f5441d6778")
-        .await
-        .unwrap();
-    let provider = Provider::new(ws).interval(Duration::from_millis(2000u64));
+    let provider = ethers_providers::ROPSTEN.ws().await;
+    let provider = provider.interval(Duration::from_millis(2000u64));
     let wallet = "fdb33e2105f08abe41a8ee3b758726a31abdd57b7a443f470f23efce853af169"
         .parse::<LocalWallet>()
         .unwrap();

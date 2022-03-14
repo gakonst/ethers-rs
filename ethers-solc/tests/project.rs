@@ -683,3 +683,51 @@ fn can_recompile_with_changes() {
     assert!(compiled.find("A").is_some());
     assert!(compiled.find("B").is_some());
 }
+
+#[test]
+fn can_recompile_unchanged_with_empty_files() {
+    let tmp = TempProject::dapptools().unwrap();
+
+    tmp.add_source(
+        "A",
+        r#"
+    pragma solidity ^0.8.10;
+    import "./B.sol";
+    contract A {}
+   "#,
+    )
+    .unwrap();
+
+    tmp.add_source(
+        "B",
+        r#"
+    pragma solidity ^0.8.10;
+    import "./C.sol";
+   "#,
+    )
+    .unwrap();
+
+    let c = r#"
+    pragma solidity ^0.8.10;
+    contract C {}
+   "#;
+    tmp.add_source("C", c).unwrap();
+
+    let compiled = tmp.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+    assert!(compiled.find("A").is_some());
+    assert!(compiled.find("C").is_some());
+
+    let compiled = tmp.compile().unwrap();
+    assert!(compiled.find("A").is_some());
+    assert!(compiled.find("C").is_some());
+    assert!(compiled.is_unchanged());
+
+    // modify C.sol
+    tmp.add_source("C", format!("{}\n", c)).unwrap();
+    let compiled = tmp.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+    assert!(!compiled.is_unchanged());
+    assert!(compiled.find("A").is_some());
+    assert!(compiled.find("C").is_some());
+}

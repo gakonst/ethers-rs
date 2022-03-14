@@ -30,7 +30,7 @@ async fn main() -> Result<()> {
     let project = Project::builder().paths(paths).ephemeral().no_artifacts().build().unwrap();
     // compile the project and get the artifacts
     let output = project.compile().unwrap();
-    let contract = output.find("SimpleStorage").expect("could not find contract").into_owned();
+    let contract = output.find("SimpleStorage").expect("could not find contract").clone();
     let (abi, bytecode, _) = contract.into_parts_or_default();
 
     // 2. instantiate our wallet & ganache
