@@ -92,6 +92,7 @@ impl Client {
             Chain::Cronos => {
                 (Url::parse("https://api.cronoscan.com/api"), Url::parse("https://cronoscan.com"))
             }
+            Chain::Dev => return Err(EtherscanError::LocalNetworksNotSupported),
             chain => return Err(EtherscanError::ChainNotSupported(chain)),
         };
 
@@ -128,6 +129,7 @@ impl Client {
             Chain::Moonbeam | Chain::MoonbeamDev | Chain::Moonriver => {
                 std::env::var("MOONSCAN_API_KEY")?
             }
+            Chain::Dev => return Err(errors::EtherscanError::LocalNetworksNotSupported),
         };
         Self::new(chain, api_key)
     }
@@ -239,6 +241,12 @@ mod tests {
 
         assert!(matches!(err, EtherscanError::ChainNotSupported(_)));
         assert_eq!(err.to_string(), "chain xdai not supported");
+    }
+
+    #[test]
+    fn local_networks_not_supported() {
+        let err = Client::new_from_env(Chain::Dev).unwrap_err();
+        assert!(matches!(err, EtherscanError::LocalNetworksNotSupported));
     }
 
     pub async fn run_at_least_duration(duration: Duration, block: impl Future) {

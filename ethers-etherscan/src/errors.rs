@@ -25,4 +25,6 @@ pub enum EtherscanError {
     ContractCodeNotVerified(Address),
     #[error(transparent)]
     IO(#[from] std::io::Error),
+    #[error("Local networks (e.g. ganache, geth --dev) cannot be indexed by etherscan")]
+    LocalNetworksNotSupported,
 }
