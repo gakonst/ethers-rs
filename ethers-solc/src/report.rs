@@ -99,8 +99,11 @@ pub trait Reporter: 'static {
     /// Invoked before a new [`Solc`] bin is installed
     fn on_solc_installation_start(&self, _version: &Version) {}
 
-    /// Invoked before a new [`Solc`] bin was successfully installed
+    /// Invoked after a new [`Solc`] bin was successfully installed
     fn on_solc_installation_success(&self, _version: &Version) {}
+
+    /// Invoked after a [`Solc`] installation failed
+    fn on_solc_installation_error(&self, _version: &Version, _error: &str) {}
 
     /// Invoked if the import couldn't be resolved with these remappings
     fn on_unresolved_import(&self, _import: &Path, _remappings: &[Remapping]) {}
@@ -164,6 +167,11 @@ pub(crate) fn solc_installation_start(version: &Version) {
 #[allow(unused)]
 pub(crate) fn solc_installation_success(version: &Version) {
     get_default(|r| r.reporter.on_solc_installation_success(version));
+}
+
+#[allow(unused)]
+pub(crate) fn solc_installation_error(version: &Version, error: &str) {
+    get_default(|r| r.reporter.on_solc_installation_error(version, error));
 }
 
 pub(crate) fn unresolved_import(import: &Path, remappings: &[Remapping]) {
@@ -306,6 +314,10 @@ impl Reporter for BasicStdoutReporter {
     /// Invoked before a new [`Solc`] bin was successfully installed
     fn on_solc_installation_success(&self, version: &Version) {
         println!("Successfully installed solc {}", version);
+    }
+
+    fn on_solc_installation_error(&self, version: &Version, error: &str) {
+        eprintln!("Failed to install solc {}: {}", version, error);
     }
 
     fn on_unresolved_import(&self, import: &Path, remappings: &[Remapping]) {

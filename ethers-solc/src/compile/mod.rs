@@ -372,9 +372,16 @@ impl Solc {
     pub fn blocking_install(version: &Version) -> std::result::Result<(), svm::SolcVmError> {
         tracing::trace!("blocking installing solc version \"{}\"", version);
         crate::report::solc_installation_start(version);
-        svm::blocking_install(version)?;
-        crate::report::solc_installation_success(version);
-        Ok(())
+        match svm::blocking_install(version) {
+            Ok(_) => {
+                crate::report::solc_installation_success(version);
+                Ok(())
+            }
+            Err(err) => {
+                crate::report::solc_installation_error(version, &err.to_string());
+                Err(err)
+            }
+        }
     }
 
     /// Verify that the checksum for this version of solc is correct. We check against the SHA256
