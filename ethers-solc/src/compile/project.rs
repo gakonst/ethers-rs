@@ -349,14 +349,17 @@ impl FilteredCompilerSources {
     /// Compiles all the files with `Solc`
     fn compile(
         self,
-        _settings: &Settings,
-        _paths: &ProjectPathsConfig,
+        settings: &Settings,
+        paths: &ProjectPathsConfig,
     ) -> Result<AggregatedCompilerOutput> {
-        todo!()
-        // match self {
-        //     CompilerSources::Sequential(input) => compile_sequential(input, settings, paths),
-        //     CompilerSources::Parallel(input, j) => compile_parallel(input, j, settings, paths),
-        // }
+        match self {
+            FilteredCompilerSources::Sequential(input) => {
+                compile_sequential(input, settings, paths)
+            }
+            FilteredCompilerSources::Parallel(input, j) => {
+                compile_parallel(input, j, settings, paths)
+            }
+        }
     }
 
     #[cfg(test)]
@@ -371,7 +374,7 @@ impl FilteredCompilerSources {
 
 /// Compiles the input set sequentially and returns an aggregated set of the solc `CompilerOutput`s
 fn compile_sequential(
-    input: VersionedSources,
+    input: VersionedFilteredSources,
     settings: &Settings,
     paths: &ProjectPathsConfig,
 ) -> Result<AggregatedCompilerOutput> {
@@ -389,9 +392,12 @@ fn compile_sequential(
             solc.args
         );
 
+        let mut opt_settings = settings.clone();
+        let sources = sources.into_sources(&mut opt_settings);
+
         for input in CompilerInput::with_sources(sources) {
             let input = input
-                .settings(settings.clone())
+                .settings(opt_settings)
                 .normalize_evm_version(&version)
                 .with_remappings(paths.remappings.clone());
             tracing::trace!(
@@ -412,7 +418,7 @@ fn compile_sequential(
 
 /// compiles the input set using `num_jobs` threads
 fn compile_parallel(
-    input: VersionedSources,
+    input: VersionedFilteredSources,
     num_jobs: usize,
     settings: &Settings,
     paths: &ProjectPathsConfig,

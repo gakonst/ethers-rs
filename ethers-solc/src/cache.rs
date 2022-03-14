@@ -1,6 +1,6 @@
 //! Support for compiling contracts
 use crate::{
-    artifacts::Sources,
+    artifacts::{Settings, Sources},
     config::SolcConfig,
     error::{Result, SolcError},
     resolver::GraphEdges,
@@ -728,6 +728,14 @@ impl<'a, T: ArtifactOutput> ArtifactsCacheInner<'a, T> {
 pub struct FilteredSources(pub BTreeMap<PathBuf, FilteredSource>);
 
 impl FilteredSources {
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
     /// Returns all entries that are dirty
     pub fn dirty(&self) -> impl Iterator<Item = (&PathBuf, &FilteredSource)> + '_ {
         self.0.iter().filter(|(_, s)| s.is_dirty())
@@ -736,6 +744,10 @@ impl FilteredSources {
     /// Returns all dirty files
     pub fn dirty_files(&self) -> impl Iterator<Item = &PathBuf> + fmt::Debug + '_ {
         self.0.iter().filter_map(|(k, s)| s.is_dirty().then(|| k))
+    }
+
+    pub fn into_sources(mut self, settings: &mut Settings) -> Sources {
+        todo!()
     }
 }
 
