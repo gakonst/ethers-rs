@@ -86,6 +86,26 @@ pub struct GraphEdges {
 }
 
 impl GraphEdges {
+    /// How many files are source files
+    pub fn num_source_files(&self) -> usize {
+        self.num_input_files
+    }
+
+    /// Returns an iterator over all file indices
+    pub fn files(&self) -> impl Iterator<Item = usize> + '_ {
+        0..self.edges.len()
+    }
+
+    /// Returns an iterator over all source file indices
+    pub fn source_files(&self) -> impl Iterator<Item = usize> + '_ {
+        0..self.num_input_files
+    }
+
+    /// Returns an iterator over all library files
+    pub fn library_files(&self) -> impl Iterator<Item = usize> + '_ {
+        self.files().skip(self.num_input_files)
+    }
+
     /// Returns a list of nodes the given node index points to for the given kind.
     pub fn imported_nodes(&self, from: usize) -> &[usize] {
         &self.edges[from]
@@ -108,6 +128,11 @@ impl GraphEdges {
     /// Returns the id of the given file
     pub fn node_id(&self, file: impl AsRef<Path>) -> usize {
         self.indices[file.as_ref()]
+    }
+
+    /// Returns the path of the given node
+    pub fn node_path(&self, id: usize) -> &PathBuf {
+        &self.rev_indices[&id]
     }
 
     /// Returns true if the `file` was originally included when the graph was first created and not

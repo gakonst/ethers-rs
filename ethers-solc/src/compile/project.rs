@@ -103,7 +103,7 @@
 
 use crate::{
     artifact_output::Artifacts,
-    artifacts::{Settings, VersionedSources},
+    artifacts::{Settings, VersionedFilteredSources, VersionedSources},
     cache::ArtifactsCache,
     error::Result,
     output::AggregatedCompilerOutput,
@@ -114,7 +114,7 @@ use crate::{
 };
 use rayon::prelude::*;
 
-use std::collections::btree_map::BTreeMap;
+use std::{collections::btree_map::BTreeMap, path::PathBuf};
 
 #[derive(Debug)]
 pub struct ProjectCompiler<'a, T: ArtifactOutput> {
@@ -203,11 +203,11 @@ impl<'a, T: ArtifactOutput> ProjectCompiler<'a, T> {
     ///   - sets proper source unit names
     ///   - check cache
     fn preprocess(self) -> Result<PreprocessedState<'a, T>> {
-        let Self { edges, project, mut sources } = self;
+        let Self { edges, project, sources } = self;
 
         let mut cache = ArtifactsCache::new(project, edges)?;
         // retain and compile only dirty sources and all their imports
-        sources = sources.filtered(&mut cache);
+        let sources = sources.filtered(&mut cache);
 
         Ok(PreprocessedState { sources, cache })
     }
@@ -218,7 +218,9 @@ impl<'a, T: ArtifactOutput> ProjectCompiler<'a, T> {
 /// The main reason is to debug all states individually
 #[derive(Debug)]
 struct PreprocessedState<'a, T: ArtifactOutput> {
-    sources: CompilerSources,
+    /// contains all sources to compile
+    sources: FilteredCompilerSources,
+    /// cache that holds [CacheEntry] object if caching is enabled and the project is recompiled
     cache: ArtifactsCache<'a, T>,
 }
 
@@ -302,11 +304,11 @@ enum CompilerSources {
 
 impl CompilerSources {
     /// Filters out all sources that don't need to be compiled, see [`ArtifactsCache::filter`]
-    fn filtered<T: ArtifactOutput>(self, cache: &mut ArtifactsCache<T>) -> Self {
+    fn filtered<T: ArtifactOutput>(self, cache: &mut ArtifactsCache<T>) -> FilteredCompilerSources {
         fn filtered_sources<T: ArtifactOutput>(
             sources: VersionedSources,
             cache: &mut ArtifactsCache<T>,
-        ) -> VersionedSources {
+        ) -> VersionedFilteredSources {
             sources
                 .into_iter()
                 .map(|(solc, (version, sources))| {
@@ -314,8 +316,8 @@ impl CompilerSources {
                     let sources = cache.filter(sources, &version);
                     tracing::trace!(
                         "Detected {} dirty sources {:?}",
-                        sources.len(),
-                        sources.keys()
+                        sources.dirty().count(),
+                        sources.dirty_files()
                     );
                     (solc, (version, sources))
                 })
@@ -324,14 +326,26 @@ impl CompilerSources {
 
         match self {
             CompilerSources::Sequential(s) => {
-                CompilerSources::Sequential(filtered_sources(s, cache))
+                FilteredCompilerSources::Sequential(filtered_sources(s, cache))
             }
             CompilerSources::Parallel(s, j) => {
-                CompilerSources::Parallel(filtered_sources(s, cache), j)
+                FilteredCompilerSources::Parallel(filtered_sources(s, cache), j)
             }
         }
     }
+}
 
+/// Determines how the `solc <-> sources` pairs are executed
+#[derive(Debug, Clone)]
+#[allow(dead_code)]
+enum FilteredCompilerSources {
+    /// Compile all these sequentially
+    Sequential(VersionedFilteredSources),
+    /// Compile all these in parallel using a certain amount of jobs
+    Parallel(VersionedFilteredSources, usize),
+}
+
+impl FilteredCompilerSources {
     /// Compiles all the files with `Solc`
     fn compile(
         self,
@@ -339,53 +353,88 @@ impl CompilerSources {
         paths: &ProjectPathsConfig,
     ) -> Result<AggregatedCompilerOutput> {
         match self {
-            CompilerSources::Sequential(input) => compile_sequential(input, settings, paths),
-            CompilerSources::Parallel(input, j) => compile_parallel(input, j, settings, paths),
+            FilteredCompilerSources::Sequential(input) => {
+                compile_sequential(input, settings, paths)
+            }
+            FilteredCompilerSources::Parallel(input, j) => {
+                compile_parallel(input, j, settings, paths)
+            }
         }
     }
 
     #[cfg(test)]
     #[allow(unused)]
-    fn sources(&self) -> &VersionedSources {
+    fn sources(&self) -> &VersionedFilteredSources {
         match self {
-            CompilerSources::Sequential(v) => v,
-            CompilerSources::Parallel(v, _) => v,
+            FilteredCompilerSources::Sequential(v) => v,
+            FilteredCompilerSources::Parallel(v, _) => v,
         }
     }
 }
 
 /// Compiles the input set sequentially and returns an aggregated set of the solc `CompilerOutput`s
 fn compile_sequential(
-    input: VersionedSources,
+    input: VersionedFilteredSources,
     settings: &Settings,
     paths: &ProjectPathsConfig,
 ) -> Result<AggregatedCompilerOutput> {
     let mut aggregated = AggregatedCompilerOutput::default();
     tracing::trace!("compiling {} jobs sequentially", input.len());
-    for (solc, (version, sources)) in input {
-        if sources.is_empty() {
+    for (solc, (version, filtered_sources)) in input {
+        if filtered_sources.is_empty() {
             // nothing to compile
+            tracing::trace!(
+                "skip solc {} {} for empty sources set",
+                solc.as_ref().display(),
+                version
+            );
             continue
         }
         tracing::trace!(
             "compiling {} sources with solc \"{}\" {:?}",
-            sources.len(),
+            filtered_sources.len(),
             solc.as_ref().display(),
             solc.args
         );
 
+        let dirty_files: Vec<PathBuf> = filtered_sources.dirty_files().cloned().collect();
+
+        // depending on the composition of the filtered sources, the output selection can be
+        // optimized
+        let mut opt_settings = settings.clone();
+        let sources = filtered_sources.into_sources(&mut opt_settings);
+
         for input in CompilerInput::with_sources(sources) {
+            let actually_dirty = input
+                .sources
+                .keys()
+                .filter(|f| dirty_files.contains(f))
+                .cloned()
+                .collect::<Vec<_>>();
+            if actually_dirty.is_empty() {
+                // nothing to compile for this particular language, all dirty files are in the other
+                // language set
+                tracing::trace!(
+                    "skip solc {} {} compilation of {} compiler input due to empty source set",
+                    solc.as_ref().display(),
+                    version,
+                    input.language
+                );
+                continue
+            }
             let input = input
-                .settings(settings.clone())
+                .settings(opt_settings.clone())
                 .normalize_evm_version(&version)
                 .with_remappings(paths.remappings.clone());
+
             tracing::trace!(
                 "calling solc `{}` with {} sources {:?}",
                 version,
                 input.sources.len(),
                 input.sources.keys()
             );
-            report::solc_spawn(&solc, &version, &input);
+
+            report::solc_spawn(&solc, &version, &input, &actually_dirty);
             let output = solc.compile_exact(&input)?;
             report::solc_success(&solc, &version, &output);
             tracing::trace!("compiled input, output has error: {}", output.has_error());
@@ -397,7 +446,7 @@ fn compile_sequential(
 
 /// compiles the input set using `num_jobs` threads
 fn compile_parallel(
-    input: VersionedSources,
+    input: VersionedFilteredSources,
     num_jobs: usize,
     settings: &Settings,
     paths: &ProjectPathsConfig,
@@ -410,18 +459,49 @@ fn compile_parallel(
     );
 
     let mut jobs = Vec::with_capacity(input.len());
-    for (solc, (version, sources)) in input {
-        if sources.is_empty() {
+    for (solc, (version, filtered_sources)) in input {
+        if filtered_sources.is_empty() {
             // nothing to compile
+            tracing::trace!(
+                "skip solc {} {} for empty sources set",
+                solc.as_ref().display(),
+                version
+            );
             continue
         }
+
+        let dirty_files: Vec<PathBuf> = filtered_sources.dirty_files().cloned().collect();
+
+        // depending on the composition of the filtered sources, the output selection can be
+        // optimized
+        let mut opt_settings = settings.clone();
+        let sources = filtered_sources.into_sources(&mut opt_settings);
+
         for input in CompilerInput::with_sources(sources) {
+            let actually_dirty = input
+                .sources
+                .keys()
+                .filter(|f| dirty_files.contains(f))
+                .cloned()
+                .collect::<Vec<_>>();
+            if actually_dirty.is_empty() {
+                // nothing to compile for this particular language, all dirty files are in the other
+                // language set
+                tracing::trace!(
+                    "skip solc {} {} compilation of {} compiler input due to empty source set",
+                    solc.as_ref().display(),
+                    version,
+                    input.language
+                );
+                continue
+            }
+
             let job = input
                 .settings(settings.clone())
                 .normalize_evm_version(&version)
                 .with_remappings(paths.remappings.clone());
 
-            jobs.push((solc.clone(), version.clone(), job))
+            jobs.push((solc.clone(), version.clone(), job, actually_dirty))
         }
     }
 
@@ -429,7 +509,7 @@ fn compile_parallel(
     let pool = rayon::ThreadPoolBuilder::new().num_threads(num_jobs).build().unwrap();
     let outputs = pool.install(move || {
         jobs.into_par_iter()
-            .map(|(solc, version, input)| {
+            .map(|(solc, version, input, actually_dirty)| {
                 tracing::trace!(
                     "calling solc `{}` {:?} with {} sources: {:?}",
                     version,
@@ -437,7 +517,7 @@ fn compile_parallel(
                     input.sources.len(),
                     input.sources.keys()
                 );
-                report::solc_spawn(&solc, &version, &input);
+                report::solc_spawn(&solc, &version, &input, &actually_dirty);
                 solc.compile(&input).map(move |output| {
                     report::solc_success(&solc, &version, &output);
                     (version, output)
@@ -499,6 +579,105 @@ mod tests {
         let compiler = ProjectCompiler::new(inner).unwrap();
         let prep = compiler.preprocess().unwrap();
         assert!(prep.cache.as_cached().unwrap().dirty_source_files.is_empty())
+    }
+
+    #[test]
+    fn can_recompile_with_optimized_output() {
+        let tmp = TempProject::dapptools().unwrap();
+
+        tmp.add_source(
+            "A",
+            r#"
+    pragma solidity ^0.8.10;
+    import "./B.sol";
+    contract A {}
+   "#,
+        )
+        .unwrap();
+
+        tmp.add_source(
+            "B",
+            r#"
+    pragma solidity ^0.8.10;
+    contract B {
+        function hello() public {}
+    }
+    import "./C.sol";
+   "#,
+        )
+        .unwrap();
+
+        tmp.add_source(
+            "C",
+            r#"
+    pragma solidity ^0.8.10;
+    contract C {
+            function hello() public {}
+    }
+   "#,
+        )
+        .unwrap();
+        let compiled = tmp.compile().unwrap();
+        assert!(!compiled.has_compiler_errors());
+
+        tmp.artifacts_snapshot().unwrap().assert_artifacts_essentials_present();
+
+        // modify A.sol
+        tmp.add_source(
+            "A",
+            r#"
+    pragma solidity ^0.8.10;
+    import "./B.sol";
+    contract A {
+        function testExample() public {}
+    }
+   "#,
+        )
+        .unwrap();
+
+        let compiler = ProjectCompiler::new(tmp.project()).unwrap();
+        let state = compiler.preprocess().unwrap();
+        let sources = state.sources.sources();
+
+        // single solc
+        assert_eq!(sources.len(), 1);
+
+        let (_, filtered) = sources.values().next().unwrap();
+
+        // 3 contracts total
+        assert_eq!(filtered.0.len(), 3);
+        // A is modified
+        assert_eq!(filtered.dirty().count(), 1);
+        assert!(filtered.dirty_files().next().unwrap().ends_with("A.sol"));
+
+        let state = state.compile().unwrap();
+        assert_eq!(state.output.sources.len(), 3);
+        for (f, source) in &state.output.sources {
+            if f.ends_with("A.sol") {
+                assert!(source.ast.is_object());
+            } else {
+                assert!(source.ast.is_null());
+            }
+        }
+
+        assert_eq!(state.output.contracts.len(), 1);
+        let (a, c) = state.output.contracts_iter().next().unwrap();
+        assert_eq!(a, "A");
+        assert!(c.abi.is_some() && c.evm.is_some());
+
+        let state = state.write_artifacts().unwrap();
+        assert_eq!(state.compiled_artifacts.as_ref().len(), 1);
+
+        let out = state.write_cache().unwrap();
+
+        let artifacts: Vec<_> = out.into_artifacts().collect();
+        assert_eq!(artifacts.len(), 3);
+        for (_, artifact) in artifacts {
+            let c = artifact.into_contract_bytecode();
+            assert!(c.abi.is_some() && c.bytecode.is_some() && c.deployed_bytecode.is_some());
+        }
+
+        tmp.artifacts_snapshot().unwrap().assert_artifacts_essentials_present();
     }
 
     #[test]

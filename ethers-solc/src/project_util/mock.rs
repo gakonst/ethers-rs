@@ -1,9 +1,29 @@
 //! Helpers to generate mock projects
 
-use crate::{error::Result, remappings::Remapping, ProjectPathsConfig};
-use rand::{self, seq::SliceRandom, Rng};
+use crate::{
+    error::Result, remappings::Remapping, resolver::GraphEdges, Graph, ProjectPathsConfig,
+    SolcError,
+};
+use rand::{
+    self,
+    distributions::{Distribution, Uniform},
+    seq::SliceRandom,
+    Rng,
+};
 use serde::{Deserialize, Serialize};
-use std::{collections::BTreeSet, path::Path};
+use std::{
+    collections::{BTreeSet, HashMap},
+    path::{Path, PathBuf},
+};
+
+/// Represents the layout of a project
+#[derive(Serialize, Deserialize, Default)]
+pub struct MockProjectSkeleton {
+    /// all files for the project
+    pub files: Vec<MockFile>,
+    /// all libraries
+    pub libraries: Vec<MockLib>,
+}
 
 /// Represents a virtual project
 #[derive(Serialize)]
@@ -11,77 +31,109 @@ pub struct MockProjectGenerator {
     /// how to name things
     #[serde(skip)]
     name_strategy: Box<dyn NamingStrategy + 'static>,
-    /// id counter for a file
-    next_file_id: usize,
-    /// id counter for a file
-    next_lib_id: usize,
-    /// all files for the project
-    files: Vec<MockFile>,
-    /// all libraries
-    libraries: Vec<MockLib>,
-}
 
-impl Default for MockProjectGenerator {
-    fn default() -> Self {
-        Self {
-            name_strategy: Box::new(SimpleNamingStrategy::default()),
-            next_file_id: 0,
-            next_lib_id: 0,
-            files: Default::default(),
-            libraries: Default::default(),
-        }
-    }
+    #[serde(flatten)]
+    inner: MockProjectSkeleton,
 }
 
 impl MockProjectGenerator {
+    /// Create a new project and populate it using the given settings
+    pub fn new(settings: &MockProjectSettings) -> Self {
+        let mut mock = Self::default();
+        mock.populate(settings);
+        mock
+    }
+
+    /// Create a skeleton of a real project
+    pub fn create(paths: &ProjectPathsConfig) -> Result<Self> {
+        fn get_libs(edges: &GraphEdges, lib_folder: &Path) -> Option<HashMap<PathBuf, Vec<usize>>> {
+            let mut libs: HashMap<_, Vec<_>> = HashMap::new();
+            for lib_file in edges.library_files() {
+                let component =
+                    edges.node_path(lib_file).strip_prefix(lib_folder).ok()?.components().next()?;
+                libs.entry(lib_folder.join(component)).or_default().push(lib_file);
+            }
+            Some(libs)
+        }
+
+        let graph = Graph::resolve(paths)?;
+        let mut gen = MockProjectGenerator::default();
+        let (_, edges) = graph.into_sources();
+
+        // add all files as source files
+        gen.add_sources(edges.files().count());
+
+        // stores libs and their files
+        let libs = get_libs(
+            &edges,
+            &paths.libraries.get(0).cloned().unwrap_or_else(|| paths.root.join("lib")),
+        )
+        .ok_or_else(|| SolcError::msg("Failed to detect libs"))?;
+
+        // mark all files as libs
+        for (lib_id, lib_files) in libs.into_values().enumerate() {
+            let lib_name = gen.name_strategy.new_lib_name(lib_id);
+            let offset = gen.inner.files.len();
+            let lib = MockLib { name: lib_name, id: lib_id, num_files: lib_files.len(), offset };
+            for lib_file in lib_files {
+                let file = &mut gen.inner.files[lib_file];
+                file.lib_id = Some(lib_id);
+                file.name = gen.name_strategy.new_lib_name(file.id);
+            }
+            gen.inner.libraries.push(lib);
+        }
+
+        for id in edges.files() {
+            for import in edges.imported_nodes(id).iter().copied() {
+                let import = gen.get_import(import);
+                gen.inner.files[id].imports.insert(import);
+            }
+        }
+
+        Ok(gen)
+    }
+
+    /// Consumes the type and returns the underlying skeleton
+    pub fn into_inner(self) -> MockProjectSkeleton {
+        self.inner
+    }
+
     /// Generate all solidity files and write under the paths config
     pub fn write_to(&self, paths: &ProjectPathsConfig, version: impl AsRef<str>) -> Result<()> {
         let version = version.as_ref();
-        for file in self.files.iter() {
-            let mut imports = Vec::with_capacity(file.imports.len());
-
-            for import in file.imports.iter() {
-                match *import {
-                    MockImport::Internal(f) => {
-                        imports.push(format!("import \"./{}.sol\";", self.files[f].name));
-                    }
-                    MockImport::External(lib, f) => {
-                        imports.push(format!(
-                            "import \"{}/{}.sol\";",
-                            self.libraries[lib].name, self.files[f].name
-                        ));
-                    }
-                }
-            }
-
-            let content = format!(
-                r#"
-// SPDX-License-Identifier: UNLICENSED
-pragma solidity {};
-{}
-contract {} {{}}
-            "#,
-                version,
-                imports.join("\n"),
-                file.name
-            );
-
-            let mut target = if let Some(lib) = file.lib_id {
-                paths.root.join("lib").join(&self.libraries[lib].name).join("src").join(&file.name)
-            } else {
-                paths.sources.join(&file.name)
-            };
-            target.set_extension("sol");
-
-            super::create_contract_file(target, content)?;
+        for file in self.inner.files.iter() {
+            let imports = self.get_imports(file.id);
+            let content = file.mock_content(version, imports.join("\n").as_str());
+            super::create_contract_file(file.target_path(self, paths), content)?;
         }
 
         Ok(())
     }
 
+    fn get_imports(&self, file: usize) -> Vec<String> {
+        let file = &self.inner.files[file];
+        let mut imports = Vec::with_capacity(file.imports.len());
+
+        for import in file.imports.iter() {
+            match *import {
+                MockImport::Internal(f) => {
+                    imports.push(format!("import \"./{}.sol\";", self.inner.files[f].name));
+                }
+                MockImport::External(lib, f) => {
+                    imports.push(format!(
+                        "import \"{}/{}.sol\";",
+                        self.inner.libraries[lib].name, self.inner.files[f].name
+                    ));
+                }
+            }
+        }
+        imports
+    }
+
     /// Returns all the remappings for the project for the given root path
     pub fn remappings_at(&self, root: &Path) -> Vec<Remapping> {
-        self.libraries
+        self.inner
+            .libraries
             .iter()
             .map(|lib| {
                 let path = root.join("lib").join(&lib.name).join("src");
@@ -92,17 +144,11 @@ contract {} {{}}
 
     /// Returns all the remappings for the project
     pub fn remappings(&self) -> Vec<Remapping> {
-        self.libraries
+        self.inner
+            .libraries
             .iter()
             .map(|lib| format!("{0}/=lib/{0}/src/", lib.name).parse().unwrap())
             .collect()
-    }
-
-    /// Create a new project and populate it using the given settings
-    pub fn new(settings: &MockProjectSettings) -> Self {
-        let mut mock = Self::default();
-        mock.populate(settings);
-        mock
     }
 
     /// Generates a random project with random settings
@@ -122,24 +168,21 @@ contract {} {{}}
         self.populate_imports(settings)
     }
 
-    fn next_file_id(&mut self) -> usize {
-        let next = self.next_file_id;
-        self.next_file_id += 1;
-        next
+    fn next_file_id(&self) -> usize {
+        self.inner.files.len()
     }
 
-    fn next_lib_id(&mut self) -> usize {
-        let next = self.next_lib_id;
-        self.next_lib_id += 1;
-        next
+    fn next_lib_id(&self) -> usize {
+        self.inner.libraries.len()
     }
 
     /// Adds a new source file
     pub fn add_source(&mut self) -> &mut Self {
         let id = self.next_file_id();
         let name = self.name_strategy.new_source_file_name(id);
-        let file = MockFile { id, name, imports: Default::default(), lib_id: None };
-        self.files.push(file);
+        let file =
+            MockFile { id, name, imports: Default::default(), lib_id: None, emit_artifacts: true };
+        self.inner.files.push(file);
         self
     }
 
@@ -151,22 +194,50 @@ contract {} {{}}
         self
     }
 
+    /// Adds a new lib file
+    pub fn add_lib_file(&mut self, lib_id: usize) -> &mut Self {
+        let id = self.next_file_id();
+        let name = self.name_strategy.new_source_file_name(id);
+        let file = MockFile {
+            id,
+            name,
+            imports: Default::default(),
+            lib_id: Some(lib_id),
+            emit_artifacts: true,
+        };
+        self.inner.files.push(file);
+        self
+    }
+
+    /// Adds `num` new source files
+    pub fn add_lib_files(&mut self, num: usize, lib_id: usize) -> &mut Self {
+        for _ in 0..num {
+            self.add_lib_file(lib_id);
+        }
+        self
+    }
+
     /// Adds a new lib with the number of lib files
     pub fn add_lib(&mut self, num_files: usize) -> &mut Self {
         let lib_id = self.next_lib_id();
         let lib_name = self.name_strategy.new_lib_name(lib_id);
-        let offset = self.files.len();
-        for _ in 0..num_files {
-            let id = self.next_file_id();
-            let name = self.name_strategy.new_lib_file_name(id);
-            self.files.push(MockFile {
-                id,
-                name,
-                imports: Default::default(),
-                lib_id: Some(lib_id),
-            });
+        let offset = self.inner.files.len();
+        self.add_lib_files(num_files, lib_id);
+        self.inner.libraries.push(MockLib { name: lib_name, id: lib_id, num_files, offset });
+        self
+    }
+
+    /// randomly assign empty file status so that mocked files don't emit artifacts
+    pub fn assign_empty_files(&mut self) -> &mut Self {
+        let mut rng = rand::thread_rng();
+        let die = Uniform::from(0..self.inner.files.len());
+        for file in self.inner.files.iter_mut() {
+            let throw = die.sample(&mut rng);
+            if throw == 0 {
+                // give it a 1 in num(files) chance that the file will be empty
+                file.emit_artifacts = false;
+            }
         }
-        self.libraries.push(MockLib { name: lib_name, id: lib_id, num_files, offset });
         self
     }
 
@@ -175,26 +246,26 @@ contract {} {{}}
         let mut rng = rand::thread_rng();
 
         // populate imports
-        for id in 0..self.files.len() {
-            let imports = if let Some(lib) = self.files[id].lib_id {
+        for id in 0..self.inner.files.len() {
+            let imports = if let Some(lib) = self.inner.files[id].lib_id {
                 let num_imports = rng
                     .gen_range(settings.min_imports..=settings.max_imports)
-                    .min(self.libraries[lib].num_files.saturating_sub(1));
+                    .min(self.inner.libraries[lib].num_files.saturating_sub(1));
                 self.unique_imports_for_lib(&mut rng, lib, id, num_imports)
             } else {
                 let num_imports = rng
                     .gen_range(settings.min_imports..=settings.max_imports)
-                    .min(self.files.len().saturating_sub(1));
+                    .min(self.inner.files.len().saturating_sub(1));
                 self.unique_imports_for_source(&mut rng, id, num_imports)
             };
 
-            self.files[id].imports = imports;
+            self.inner.files[id].imports = imports;
         }
         self
     }
 
     fn get_import(&self, id: usize) -> MockImport {
-        if let Some(lib) = self.files[id].lib_id {
+        if let Some(lib) = self.inner.files[id].lib_id {
             MockImport::External(lib, id)
         } else {
             MockImport::Internal(id)
@@ -203,17 +274,17 @@ contract {} {{}}
 
     /// All file ids
     pub fn file_ids(&self) -> impl Iterator<Item = usize> + '_ {
-        self.files.iter().map(|f| f.id)
+        self.inner.files.iter().map(|f| f.id)
     }
 
     /// All ids of internal files
     pub fn internal_file_ids(&self) -> impl Iterator<Item = usize> + '_ {
-        self.files.iter().filter(|f| !f.is_external()).map(|f| f.id)
+        self.inner.files.iter().filter(|f| !f.is_external()).map(|f| f.id)
     }
 
     /// All ids of external files
     pub fn external_file_ids(&self) -> impl Iterator<Item = usize> + '_ {
-        self.files.iter().filter(|f| f.is_external()).map(|f| f.id)
+        self.inner.files.iter().filter(|f| f.is_external()).map(|f| f.id)
     }
 
     /// generates exactly `num` unique imports in the range of all files
@@ -227,10 +298,25 @@ contract {} {{}}
         id: usize,
         num: usize,
     ) -> BTreeSet<MockImport> {
-        assert!(self.files.len() > num);
-        let mut imports: Vec<_> = (0..self.files.len()).collect();
+        assert!(self.inner.files.len() > num);
+        let mut imports: Vec<_> = (0..self.inner.files.len()).collect();
         imports.shuffle(rng);
         imports.into_iter().filter(|i| *i != id).map(|id| self.get_import(id)).take(num).collect()
+    }
+
+    /// Modifies the content of the given file
+    pub fn modify_file(
+        &self,
+        id: usize,
+        paths: &ProjectPathsConfig,
+        version: impl AsRef<str>,
+    ) -> Result<PathBuf> {
+        let file = &self.inner.files[id];
+        let target = file.target_path(self, paths);
+        let content = file.modified_content(version, self.get_imports(id).join("\n").as_str());
+        super::create_contract_file(target.clone(), content)?;
+
+        Ok(target)
     }
 
     /// generates exactly `num` unique imports in the range of a lib's files
@@ -245,11 +331,23 @@ contract {} {{}}
         id: usize,
         num: usize,
     ) -> BTreeSet<MockImport> {
-        let lib = &self.libraries[lib_id];
+        let lib = &self.inner.libraries[lib_id];
         assert!(lib.num_files > num);
         let mut imports: Vec<_> = (lib.offset..(lib.offset + lib.len())).collect();
         imports.shuffle(rng);
         imports.into_iter().filter(|i| *i != id).map(|id| self.get_import(id)).take(num).collect()
+    }
+}
+
+impl From<MockProjectSkeleton> for MockProjectGenerator {
+    fn from(inner: MockProjectSkeleton) -> Self {
+        Self { inner, ..Default::default() }
+    }
+}
+
+impl Default for MockProjectGenerator {
+    fn default() -> Self {
+        Self { name_strategy: Box::new(SimpleNamingStrategy::default()), inner: Default::default() }
     }
 }
 
@@ -296,12 +394,69 @@ pub struct MockFile {
     pub imports: BTreeSet<MockImport>,
     /// lib id if this file is part of a lib
     pub lib_id: Option<usize>,
+    /// whether this file should emit artifacts
+    pub emit_artifacts: bool,
 }
 
 impl MockFile {
     /// Returns `true` if this file is part of an external lib
     pub fn is_external(&self) -> bool {
         self.lib_id.is_some()
+    }
+
+    pub fn target_path(&self, gen: &MockProjectGenerator, paths: &ProjectPathsConfig) -> PathBuf {
+        let mut target = if let Some(lib) = self.lib_id {
+            paths.root.join("lib").join(&gen.inner.libraries[lib].name).join("src").join(&self.name)
+        } else {
+            paths.sources.join(&self.name)
+        };
+        target.set_extension("sol");
+
+        target
+    }
+
+    /// Returns the content to use for a modified file
+    ///
+    /// The content here is arbitrary, it should only differ from the mocked content
+    pub fn modified_content(&self, version: impl AsRef<str>, imports: &str) -> String {
+        format!(
+            r#"
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity {};
+{}
+contract {} {{
+    function hello() public {{}}
+}}
+            "#,
+            version.as_ref(),
+            imports,
+            self.name
+        )
+    }
+
+    /// Returns a mocked content for the file
+    pub fn mock_content(&self, version: impl AsRef<str>, imports: &str) -> String {
+        let version = version.as_ref();
+        if self.emit_artifacts {
+            format!(
+                r#"
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity {};
+{}
+contract {} {{}}
+            "#,
+                version, imports, self.name
+            )
+        } else {
+            format!(
+                r#"
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity {};
+{}
+            "#,
+                version, imports,
+            )
+        }
     }
 }
 
@@ -350,6 +505,8 @@ pub struct MockProjectSettings {
     pub min_imports: usize,
     /// max amount of import statements a file can use
     pub max_imports: usize,
+    /// whether to also use files that don't emit artifacts
+    pub allow_no_artifacts_files: bool,
 }
 
 impl MockProjectSettings {
@@ -363,6 +520,7 @@ impl MockProjectSettings {
             num_lib_files: rng.gen_range(1..10),
             min_imports: rng.gen_range(0..3),
             max_imports: rng.gen_range(4..10),
+            allow_no_artifacts_files: true,
         }
     }
 
@@ -375,6 +533,7 @@ impl MockProjectSettings {
             num_lib_files: 15,
             min_imports: 3,
             max_imports: 12,
+            allow_no_artifacts_files: true,
         }
     }
 }
@@ -382,7 +541,14 @@ impl MockProjectSettings {
 impl Default for MockProjectSettings {
     fn default() -> Self {
         // these are arbitrary
-        Self { num_sources: 20, num_libs: 2, num_lib_files: 10, min_imports: 0, max_imports: 5 }
+        Self {
+            num_sources: 20,
+            num_libs: 2,
+            num_lib_files: 10,
+            min_imports: 0,
+            max_imports: 5,
+            allow_no_artifacts_files: true,
+        }
     }
 }
 

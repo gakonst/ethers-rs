@@ -6,8 +6,8 @@ use crate::{
     hh::HardhatArtifacts,
     project_util::mock::{MockProjectGenerator, MockProjectSettings},
     utils::tempdir,
-    ArtifactOutput, ConfigurableArtifacts, PathStyle, Project, ProjectCompileOutput,
-    ProjectPathsConfig, SolcIoError,
+    Artifact, ArtifactOutput, Artifacts, ConfigurableArtifacts, ConfigurableContractArtifact,
+    PathStyle, Project, ProjectCompileOutput, ProjectPathsConfig, SolFilesCache, SolcIoError,
 };
 use fs_extra::{dir, file};
 use std::{
@@ -214,6 +214,13 @@ contract {} {{}}
         create_contract_file(source, content)
     }
 
+    /// Returns a snapshot of all cached artifacts
+    pub fn artifacts_snapshot(&self) -> Result<ArtifactsSnapshot<T::Artifact>> {
+        let cache = self.project().read_cache_file()?;
+        let artifacts = cache.read_artifacts::<T::Artifact>()?;
+        Ok(ArtifactsSnapshot { cache, artifacts })
+    }
+
     /// Populate the project with mock files
     pub fn mock(&self, gen: &MockProjectGenerator, version: impl AsRef<str>) -> Result<()> {
         gen.write_to(self.paths(), version)
@@ -404,6 +411,25 @@ impl TempProject<ConfigurableArtifacts> {
 impl<T: ArtifactOutput> AsRef<Project<T>> for TempProject<T> {
     fn as_ref(&self) -> &Project<T> {
         self.project()
+    }
+}
+
+/// The cache file and all the artifacts it references
+#[derive(Debug, Clone)]
+pub struct ArtifactsSnapshot<T> {
+    pub cache: SolFilesCache,
+    pub artifacts: Artifacts<T>,
+}
+
+impl ArtifactsSnapshot<ConfigurableContractArtifact> {
+    /// Ensures that all artifacts have abi, bytecode, deployedbytecode
+    pub fn assert_artifacts_essentials_present(&self) {
+        for artifact in self.artifacts.artifact_files() {
+            let c = artifact.artifact.clone().into_compact_contract();
+            assert!(c.abi.is_some());
+            assert!(c.bin.is_some());
+            assert!(c.bin_runtime.is_some());
+        }
     }
 }
 

@@ -31,6 +31,7 @@ pub mod utils;
 
 use crate::{
     artifacts::{Contract, Sources},
+    cache::SolFilesCache,
     contracts::VersionedContracts,
     error::{SolcError, SolcIoError},
 };
@@ -123,6 +124,12 @@ impl<T: ArtifactOutput> Project<T> {
     /// Returns the handler that takes care of processing all artifacts
     pub fn artifacts_handler(&self) -> &T {
         &self.artifacts
+    }
+
+    /// Convenience function to read the cache file.
+    /// See also [SolFilesCache::read_joined()]
+    pub fn read_cache_file(&self) -> Result<SolFilesCache> {
+        SolFilesCache::read_joined(&self.paths)
     }
 
     /// Applies the configured arguments to the given `Solc`

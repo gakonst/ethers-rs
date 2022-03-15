@@ -30,7 +30,7 @@ impl From<(MockProjectSettings, &'static str)> for MockSettings {
 /// Helper function to run a test and report the used generator if the closure failed.
 fn run_mock(
     settings: impl Into<MockSettings>,
-    f: impl FnOnce(&mut TempProject) -> Result<()>,
+    f: impl FnOnce(&mut TempProject, &MockProjectGenerator) -> Result<()>,
 ) -> TempProject {
     let MockSettings { settings, version } = settings.into();
     let gen = MockProjectGenerator::new(&settings);
@@ -39,7 +39,7 @@ fn run_mock(
     project.paths_mut().remappings.extend(remappings);
     project.mock(&gen, version).unwrap();
 
-    if let Err(err) = f(&mut project) {
+    if let Err(err) = f(&mut project, &gen) {
         panic!(
             "mock failed: `{}` with mock settings:\n {}",
             err,
@@ -54,7 +54,7 @@ fn run_mock(
 fn run_basic(settings: impl Into<MockSettings>) {
     let settings = settings.into();
     let version = settings.version;
-    run_mock(settings, |project| {
+    run_mock(settings, |project, _| {
         project.ensure_no_errors_recompile_unchanged()?;
         project.add_basic_source("Dummy", version)?;
         project.ensure_changed()?;
@@ -78,4 +78,30 @@ fn can_compile_mocked_multi() {
 #[test]
 fn can_compile_mocked_large() {
     run_basic(MockProjectSettings::large())
+}
+
+#[test]
+fn can_compile_mocked_modified() {
+    run_mock(MockProjectSettings::random(), |project, gen| {
+        project.ensure_no_errors_recompile_unchanged()?;
+        // modify a random file
+        gen.modify_file(gen.file_ids().count() / 2, project.paths(), DEFAULT_VERSION)?;
+        project.ensure_changed()?;
+        project.artifacts_snapshot()?.assert_artifacts_essentials_present();
+        Ok(())
+    });
+}
+
+#[test]
+fn can_compile_mocked_modified_all() {
+    run_mock(MockProjectSettings::random(), |project, gen| {
+        project.ensure_no_errors_recompile_unchanged()?;
+        // modify a random file
+        for id in gen.file_ids() {
+            gen.modify_file(id, project.paths(), DEFAULT_VERSION)?;
+            project.ensure_changed()?;
+            project.artifacts_snapshot()?.assert_artifacts_essentials_present();
+        }
+        Ok(())
+    });
 }
