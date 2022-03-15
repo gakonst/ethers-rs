@@ -57,6 +57,20 @@ impl SolcError {
     }
 }
 
+macro_rules! _format_err {
+    ($($tt:tt)*) => {
+        $crate::error::SolcError::msg(format!($($tt)*))
+    };
+}
+#[allow(unused)]
+pub(crate) use _format_err as format_err;
+
+macro_rules! _bail {
+    ($($tt:tt)*) => { return Err($crate::error::format_err!($($tt)*)) };
+}
+#[allow(unused)]
+pub(crate) use _bail as bail;
+
 #[derive(Debug, Error)]
 #[error("\"{}\": {io}", self.path.display())]
 pub struct SolcIoError {

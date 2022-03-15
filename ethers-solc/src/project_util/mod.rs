@@ -2,8 +2,9 @@
 use crate::{
     artifacts::Settings,
     config::ProjectPathsConfigBuilder,
-    error::{Result, SolcError},
+    error::{bail, Result, SolcError},
     hh::HardhatArtifacts,
+    project_util::mock::{MockProjectGenerator, MockProjectSettings},
     utils::tempdir,
     ArtifactOutput, ConfigurableArtifacts, PathStyle, Project, ProjectCompileOutput,
     ProjectPathsConfig, SolcIoError,
@@ -14,6 +15,8 @@ use std::{
     path::{Path, PathBuf},
 };
 use tempfile::TempDir;
+
+pub mod mock;
 
 /// A [`Project`] wrapper that lives in a new temporary directory
 ///
@@ -154,11 +157,53 @@ impl<T: ArtifactOutput> TempProject<T> {
         create_contract_file(lib, content)
     }
 
+    /// Adds a basic lib contract `contract <name> {}` as a new file
+    pub fn add_basic_lib(
+        &self,
+        name: impl AsRef<str>,
+        version: impl AsRef<str>,
+    ) -> Result<PathBuf> {
+        let name = name.as_ref();
+        self.add_lib(
+            name,
+            format!(
+                r#"
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity {};
+contract {} {{}}
+            "#,
+                name,
+                version.as_ref()
+            ),
+        )
+    }
+
     /// Adds a new source file inside the project's source dir
     pub fn add_source(&self, name: impl AsRef<str>, content: impl AsRef<str>) -> Result<PathBuf> {
         let name = contract_file_name(name);
         let source = self.paths().sources.join(name);
         create_contract_file(source, content)
+    }
+
+    /// Adds a basic source contract `contract <name> {}` as a new file
+    pub fn add_basic_source(
+        &self,
+        name: impl AsRef<str>,
+        version: impl AsRef<str>,
+    ) -> Result<PathBuf> {
+        let name = name.as_ref();
+        self.add_source(
+            name,
+            format!(
+                r#"
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity {};
+contract {} {{}}
+            "#,
+                name,
+                version.as_ref()
+            ),
+        )
     }
 
     /// Adds a solidity contract in the project's root dir.
@@ -167,6 +212,89 @@ impl<T: ArtifactOutput> TempProject<T> {
         let name = contract_file_name(name);
         let source = self.root().join(name);
         create_contract_file(source, content)
+    }
+
+    /// Populate the project with mock files
+    pub fn mock(&self, gen: &MockProjectGenerator, version: impl AsRef<str>) -> Result<()> {
+        gen.write_to(self.paths(), version)
+    }
+
+    /// Compiles the project and ensures that the output does not contain errors
+    pub fn ensure_no_errors(&self) -> Result<&Self> {
+        let compiled = self.compile().unwrap();
+        if compiled.has_compiler_errors() {
+            bail!("Compiled with errors {}", compiled)
+        }
+        Ok(self)
+    }
+
+    /// Compiles the project and ensures that the output is __unchanged__
+    pub fn ensure_unchanged(&self) -> Result<&Self> {
+        let compiled = self.compile().unwrap();
+        if !compiled.is_unchanged() {
+            bail!("Compiled with detected changes {}", compiled)
+        }
+        Ok(self)
+    }
+
+    /// Compiles the project and ensures that the output has __changed__
+    pub fn ensure_changed(&self) -> Result<&Self> {
+        let compiled = self.compile().unwrap();
+        if compiled.is_unchanged() {
+            bail!("Compiled without detecting changes {}", compiled)
+        }
+        Ok(self)
+    }
+
+    /// Compiles the project and ensures that the output does not contain errors and no changes
+    /// exists on recompiled.
+    ///
+    /// This is a convenience function for
+    ///
+    /// ```no_run
+    /// use ethers_solc::project_util::TempProject;
+    /// let project = TempProject::dapptools().unwrap();
+    //  project.ensure_no_errors().unwrap();
+    //  project.ensure_unchanged().unwrap();
+    /// ```
+    pub fn ensure_no_errors_recompile_unchanged(&self) -> Result<&Self> {
+        self.ensure_no_errors()?.ensure_unchanged()
+    }
+
+    /// Compiles the project and asserts that the output does not contain errors and no changes
+    /// exists on recompiled.
+    ///
+    /// This is a convenience function for
+    ///
+    /// ```no_run
+    /// use ethers_solc::project_util::TempProject;
+    /// let project = TempProject::dapptools().unwrap();
+    //  project.assert_no_errors();
+    //  project.assert_unchanged();
+    /// ```
+    pub fn assert_no_errors_recompile_unchanged(&self) -> &Self {
+        self.assert_no_errors().assert_unchanged()
+    }
+
+    /// Compiles the project and asserts that the output does not contain errors
+    pub fn assert_no_errors(&self) -> &Self {
+        let compiled = self.compile().unwrap();
+        assert!(!compiled.has_compiler_errors());
+        self
+    }
+
+    /// Compiles the project and asserts that the output is unchanged
+    pub fn assert_unchanged(&self) -> &Self {
+        let compiled = self.compile().unwrap();
+        assert!(compiled.is_unchanged());
+        self
+    }
+
+    /// Compiles the project and asserts that the output is _changed_
+    pub fn assert_changed(&self) -> &Self {
+        let compiled = self.compile().unwrap();
+        assert!(!compiled.is_unchanged());
+        self
     }
 }
 
@@ -197,7 +325,7 @@ impl<T: ArtifactOutput> fmt::Debug for TempProject<T> {
     }
 }
 
-fn create_contract_file(path: PathBuf, content: impl AsRef<str>) -> Result<PathBuf> {
+pub(crate) fn create_contract_file(path: PathBuf, content: impl AsRef<str>) -> Result<PathBuf> {
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)
             .map_err(|err| SolcIoError::new(err, parent.to_path_buf()))?;
@@ -236,6 +364,40 @@ impl TempProject<ConfigurableArtifacts> {
 
         let inner = Project::builder().paths(paths).build()?;
         Ok(Self::create_new(tmp_dir, inner)?)
+    }
+
+    /// Create a new temporary project and populate it with mock files
+    ///
+    /// ```no_run
+    /// use ethers_solc::project_util::mock::MockProjectSettings;
+    /// use ethers_solc::project_util::TempProject;
+    /// let tmp = TempProject::mocked(&MockProjectSettings::default(), "^0.8.10").unwrap();
+    /// ```
+    pub fn mocked(settings: &MockProjectSettings, version: impl AsRef<str>) -> Result<Self> {
+        let mut tmp = Self::dapptools()?;
+        let gen = MockProjectGenerator::new(settings);
+        tmp.mock(&gen, version)?;
+        let remappings = gen.remappings_at(tmp.root());
+        tmp.paths_mut().remappings.extend(remappings);
+        Ok(tmp)
+    }
+
+    /// Create a new temporary project and populate it with a random layout
+    ///
+    /// ```no_run
+    /// use ethers_solc::project_util::TempProject;
+    /// let tmp = TempProject::mocked_random("^0.8.10").unwrap();
+    /// ```
+    ///
+    /// This is a convenience function for:
+    ///
+    /// ```no_run
+    /// use ethers_solc::project_util::mock::MockProjectSettings;
+    /// use ethers_solc::project_util::TempProject;
+    /// let tmp = TempProject::mocked(&MockProjectSettings::random(), "^0.8.10").unwrap();
+    /// ```
+    pub fn mocked_random(version: impl AsRef<str>) -> Result<Self> {
+        Self::mocked(&MockProjectSettings::random(), version)
     }
 }
 
@@ -283,4 +445,15 @@ pub fn copy_file(source: impl AsRef<Path>, target_dir: impl AsRef<Path>) -> Resu
 pub fn copy_dir(source: impl AsRef<Path>, target_dir: impl AsRef<Path>) -> Result<()> {
     fs_extra::dir::copy(source, target_dir, &dir_copy_options())?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn can_mock_project() {
+        let _prj = TempProject::mocked(&Default::default(), "^0.8.11").unwrap();
+        let _prj = TempProject::mocked_random("^0.8.11").unwrap();
+    }
 }
