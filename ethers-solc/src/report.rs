@@ -21,7 +21,7 @@ use std::{
     cell::RefCell,
     error::Error,
     fmt,
-    path::Path,
+    path::{Path, PathBuf},
     ptr::NonNull,
     sync::{
         atomic::{AtomicBool, AtomicUsize, Ordering},
@@ -91,7 +91,25 @@ where
 /// A `Reporter` is entirely passive and only listens to incoming "events".
 pub trait Reporter: 'static {
     /// Callback invoked right before [`Solc::compile()`] is called
-    fn on_solc_spawn(&self, _solc: &Solc, _version: &Version, _input: &CompilerInput) {}
+    ///
+    /// This contains the [Solc] its [Version] the complete [CompilerInput] and all files that
+    /// triggered the compile job. The dirty files are only provided to give a better feedback what
+    /// was actually compiled.
+    ///
+    /// If caching is enabled and there has been a previous successful solc run, the dirty files set
+    /// contains the files that absolutely must be recompiled, while the [CompilerInput] contains
+    /// all files, the dirty files and all their dependencies.
+    ///
+    /// If this is a fresh compile then the [Sources] set of the [CompilerInput] matches the dirty
+    /// files set.
+    fn on_solc_spawn(
+        &self,
+        _solc: &Solc,
+        _version: &Version,
+        _input: &CompilerInput,
+        _dirty_files: &[PathBuf],
+    ) {
+    }
 
     /// Invoked with the `CompilerOutput` if [`Solc::compiled()`] was successful
     fn on_solc_success(&self, _solc: &Solc, _version: &Version, _output: &CompilerOutput) {}
@@ -151,8 +169,13 @@ impl dyn Reporter {
     }
 }
 
-pub(crate) fn solc_spawn(solc: &Solc, version: &Version, input: &CompilerInput) {
-    get_default(|r| r.reporter.on_solc_spawn(solc, version, input));
+pub(crate) fn solc_spawn(
+    solc: &Solc,
+    version: &Version,
+    input: &CompilerInput,
+    dirty_files: &[PathBuf],
+) {
+    get_default(|r| r.reporter.on_solc_spawn(solc, version, input, dirty_files));
 }
 
 pub(crate) fn solc_success(solc: &Solc, version: &Version, output: &CompilerOutput) {
@@ -296,10 +319,16 @@ pub struct BasicStdoutReporter(());
 
 impl Reporter for BasicStdoutReporter {
     /// Callback invoked right before [`Solc::compile()`] is called
-    fn on_solc_spawn(&self, _solc: &Solc, version: &Version, input: &CompilerInput) {
+    fn on_solc_spawn(
+        &self,
+        _solc: &Solc,
+        version: &Version,
+        _input: &CompilerInput,
+        dirty_files: &[PathBuf],
+    ) {
         println!(
             "Compiling {} files with {}.{}.{}",
-            input.sources.len(),
+            dirty_files.len(),
             version.major,
             version.minor,
             version.patch

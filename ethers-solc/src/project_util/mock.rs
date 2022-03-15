@@ -84,7 +84,7 @@ impl MockProjectGenerator {
         }
 
         for id in edges.files() {
-            for import in edges.imported_nodes(id).into_iter().copied() {
+            for import in edges.imported_nodes(id).iter().copied() {
                 let import = gen.get_import(import);
                 gen.inner.files[id].imports.insert(import);
             }

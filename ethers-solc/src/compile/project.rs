@@ -114,7 +114,7 @@ use crate::{
 };
 use rayon::prelude::*;
 
-use std::collections::btree_map::BTreeMap;
+use std::{collections::btree_map::BTreeMap, path::PathBuf};
 
 #[derive(Debug)]
 pub struct ProjectCompiler<'a, T: ArtifactOutput> {
@@ -383,6 +383,11 @@ fn compile_sequential(
     for (solc, (version, filtered_sources)) in input {
         if filtered_sources.is_empty() {
             // nothing to compile
+            tracing::trace!(
+                "skip solc {} {} for empty sources set",
+                solc.as_ref().display(),
+                version
+            );
             continue
         }
         tracing::trace!(
@@ -392,23 +397,44 @@ fn compile_sequential(
             solc.args
         );
 
+        let dirty_files: Vec<PathBuf> = filtered_sources.dirty_files().cloned().collect();
+
         // depending on the composition of the filtered sources, the output selection can be
         // optimized
         let mut opt_settings = settings.clone();
         let sources = filtered_sources.into_sources(&mut opt_settings);
 
         for input in CompilerInput::with_sources(sources) {
+            let actually_dirty = input
+                .sources
+                .keys()
+                .filter(|f| dirty_files.contains(f))
+                .cloned()
+                .collect::<Vec<_>>();
+            if actually_dirty.is_empty() {
+                // nothing to compile for this particular language, all dirty files are in the other
+                // language set
+                tracing::trace!(
+                    "skip solc {} {} compilation of {} compiler input due to empty source set",
+                    solc.as_ref().display(),
+                    version,
+                    input.language
+                );
+                continue
+            }
             let input = input
                 .settings(opt_settings.clone())
                 .normalize_evm_version(&version)
                 .with_remappings(paths.remappings.clone());
+
             tracing::trace!(
                 "calling solc `{}` with {} sources {:?}",
                 version,
                 input.sources.len(),
                 input.sources.keys()
             );
-            report::solc_spawn(&solc, &version, &input);
+
+            report::solc_spawn(&solc, &version, &input, &actually_dirty);
             let output = solc.compile_exact(&input)?;
             report::solc_success(&solc, &version, &output);
             tracing::trace!("compiled input, output has error: {}", output.has_error());
@@ -436,8 +462,15 @@ fn compile_parallel(
     for (solc, (version, filtered_sources)) in input {
         if filtered_sources.is_empty() {
             // nothing to compile
+            tracing::trace!(
+                "skip solc {} {} for empty sources set",
+                solc.as_ref().display(),
+                version
+            );
             continue
         }
+
+        let dirty_files: Vec<PathBuf> = filtered_sources.dirty_files().cloned().collect();
 
         // depending on the composition of the filtered sources, the output selection can be
         // optimized
@@ -445,12 +478,30 @@ fn compile_parallel(
         let sources = filtered_sources.into_sources(&mut opt_settings);
 
         for input in CompilerInput::with_sources(sources) {
+            let actually_dirty = input
+                .sources
+                .keys()
+                .filter(|f| dirty_files.contains(f))
+                .cloned()
+                .collect::<Vec<_>>();
+            if actually_dirty.is_empty() {
+                // nothing to compile for this particular language, all dirty files are in the other
+                // language set
+                tracing::trace!(
+                    "skip solc {} {} compilation of {} compiler input due to empty source set",
+                    solc.as_ref().display(),
+                    version,
+                    input.language
+                );
+                continue
+            }
+
             let job = input
                 .settings(settings.clone())
                 .normalize_evm_version(&version)
                 .with_remappings(paths.remappings.clone());
 
-            jobs.push((solc.clone(), version.clone(), job))
+            jobs.push((solc.clone(), version.clone(), job, actually_dirty))
         }
     }
 
@@ -458,7 +509,7 @@ fn compile_parallel(
     let pool = rayon::ThreadPoolBuilder::new().num_threads(num_jobs).build().unwrap();
     let outputs = pool.install(move || {
         jobs.into_par_iter()
-            .map(|(solc, version, input)| {
+            .map(|(solc, version, input, actually_dirty)| {
                 tracing::trace!(
                     "calling solc `{}` {:?} with {} sources: {:?}",
                     version,
@@ -466,7 +517,7 @@ fn compile_parallel(
                     input.sources.len(),
                     input.sources.keys()
                 );
-                report::solc_spawn(&solc, &version, &input);
+                report::solc_spawn(&solc, &version, &input, &actually_dirty);
                 solc.compile(&input).map(move |output| {
                     report::solc_success(&solc, &version, &output);
                     (version, output)

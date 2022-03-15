@@ -93,17 +93,17 @@ impl GraphEdges {
 
     /// Returns an iterator over all file indices
     pub fn files(&self) -> impl Iterator<Item = usize> + '_ {
-        (0..self.edges.len()).into_iter()
+        0..self.edges.len()
     }
 
     /// Returns an iterator over all source file indices
     pub fn source_files(&self) -> impl Iterator<Item = usize> + '_ {
-        (0..self.num_input_files).into_iter()
+        0..self.num_input_files
     }
 
     /// Returns an iterator over all library files
     pub fn library_files(&self) -> impl Iterator<Item = usize> + '_ {
-        self.files().skip(self.num_input_files).into_iter()
+        self.files().skip(self.num_input_files)
     }
 
     /// Returns a list of nodes the given node index points to for the given kind.
