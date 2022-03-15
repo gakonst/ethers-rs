@@ -1322,6 +1322,7 @@ dependencies = [
  "futures-util",
  "hex",
  "http",
+ "once_cell",
  "parking_lot",
  "pin-project",
  "reqwest",
@@ -2666,9 +2667,9 @@ checksum = "925383efa346730478fb4838dbe9137d2a47675ad789c546d150a6e1dd4ab31c"
 
 [[package]]
 name = "pretty_assertions"
-version = "1.1.0"
+version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "76d5b548b725018ab5496482b45cb8bef21e9fed1858a6d674e3a8a0f0bb5d50"
+checksum = "57c038cb5319b9c704bf9c227c261d275bfec0ad438118a2787ce47944fb228b"
 dependencies = [
  "ansi_term",
  "ctor",
@@ -3575,7 +3576,7 @@ checksum = "6bdef32e8150c2a081110b42772ffe7d7c9032b606bc226c8260fd97e0976601"
 [[package]]
 name = "svm-rs"
 version = "0.2.9"
-source = "git+https://github.com/roynalnaruto/svm-rs#8e33f55fa2a2afb937749e31b2ffa42600bfe216"
+source = "git+https://github.com/roynalnaruto/svm-rs#ae79a29f5bde08f1991f981456253fa5b6859047"
 dependencies = [
  "anyhow",
  "cfg-if 1.0.0",

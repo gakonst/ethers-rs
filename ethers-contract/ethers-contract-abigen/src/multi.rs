@@ -709,8 +709,9 @@ fn check_file_in_dir(dir: &Path, file_name: &str, expected_contents: &[u8]) -> R
     let file_path = dir.join(file_name);
     eyre::ensure!(file_path.is_file(), "Not a file: {}", file_path.display());
 
-    let contents = fs::read(file_path).expect("Unable to read file");
-    eyre::ensure!(contents == expected_contents, "file contents do not match");
+    let contents = fs::read(&file_path).expect("Unable to read file");
+    eyre::ensure!(contents == expected_contents, format!("The contents of `{}` do not match the expected output of the newest `ethers::Abigen` version.\
+This indicates that the existing bindings are outdated and need to be generated again.", file_path.display()));
     Ok(())
 }
 

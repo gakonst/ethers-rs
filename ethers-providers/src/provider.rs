@@ -1488,12 +1488,10 @@ mod tests {
     };
     use futures_util::StreamExt;
 
-    const INFURA: &str = "https://mainnet.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27";
-
     #[tokio::test]
     // Test vector from: https://docs.ethers.io/ethers.js/v5-beta/api-providers.html#id2
     async fn mainnet_resolve_name() {
-        let provider = Provider::<HttpProvider>::try_from(INFURA).unwrap();
+        let provider = crate::test_provider::MAINNET.provider();
 
         let addr = provider.resolve_name("registrar.firefly.eth").await.unwrap();
         assert_eq!(addr, "6fC21092DA55B392b045eD78F4732bff3C580e2c".parse().unwrap());
@@ -1508,7 +1506,7 @@ mod tests {
     #[tokio::test]
     // Test vector from: https://docs.ethers.io/ethers.js/v5-beta/api-providers.html#id2
     async fn mainnet_lookup_address() {
-        let provider = Provider::<HttpProvider>::try_from(INFURA).unwrap();
+        let provider = crate::MAINNET.provider();
 
         let name = provider
             .lookup_address("6fC21092DA55B392b045eD78F4732bff3C580e2c".parse().unwrap())
@@ -1525,7 +1523,7 @@ mod tests {
 
     #[tokio::test]
     async fn mainnet_resolve_avatar() {
-        let provider = Provider::<HttpProvider>::try_from(INFURA).unwrap();
+        let provider = crate::MAINNET.provider();
 
         for (ens_name, res) in &[
             // HTTPS

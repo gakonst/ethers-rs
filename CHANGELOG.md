@@ -130,6 +130,13 @@
 
 ## ethers-providers
 
+### Unreleased
+
+- Add support for basic and bearer authentication in http and non-wasm websockets.
+  [829](https://github.com/gakonst/ethers-rs/pull/829)
+- Export `ethers_providers::IpcError` and `ethers_providers::QuorumError`
+  [1012](https://github.com/gakonst/ethers-rs/pull/1012)
+
 ### 0.6.0
 
 - re-export error types for `Http` and `Ws` providers in
@@ -143,11 +150,6 @@
   [595](https://github.com/gakonst/ethers-rs/pull/595)
 - Add support for `evm_snapshot` and `evm_revert` dev RPC methods.
   [640](https://github.com/gakonst/ethers-rs/pull/640)
-
-### Unreleased
-
-- Add support for basic and bearer authentication in http and non-wasm websockets.
-  [829](https://github.com/gakonst/ethers-rs/pull/829)
 
 ### 0.5.3
 

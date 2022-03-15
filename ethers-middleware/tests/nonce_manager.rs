@@ -4,14 +4,11 @@
 async fn nonce_manager() {
     use ethers_core::types::*;
     use ethers_middleware::{nonce_manager::NonceManagerMiddleware, signer::SignerMiddleware};
-    use ethers_providers::{Http, Middleware, Provider};
+    use ethers_providers::Middleware;
     use ethers_signers::{LocalWallet, Signer};
-    use std::{convert::TryFrom, time::Duration};
+    use std::time::Duration;
 
-    let provider =
-        Provider::<Http>::try_from("https://rinkeby.infura.io/v3/fd8b88b56aa84f6da87b60f5441d6778")
-            .unwrap()
-            .interval(Duration::from_millis(2000u64));
+    let provider = ethers_providers::RINKEBY.provider().interval(Duration::from_millis(2000u64));
     let chain_id = provider.get_chainid().await.unwrap().as_u64();
 
     let wallet = std::env::var("RINKEBY_PRIVATE_KEY")
