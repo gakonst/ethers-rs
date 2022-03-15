@@ -57,17 +57,17 @@ impl SolcError {
     }
 }
 
-macro_rules! _format_err {
+#[macro_export]
+macro_rules! format_err {
     ($($tt:tt)*) => {
         $crate::error::SolcError::msg(format!($($tt)*))
     };
 }
-pub use _format_err as format_err;
 
-macro_rules! _bail {
+#[macro_export]
+macro_rules! bail {
     ($($tt:tt)*) => { return Err($crate::error::format_err!($($tt)*)) };
 }
-pub use _bail as bail;
 
 #[derive(Debug, Error)]
 #[error("\"{}\": {io}", self.path.display())]

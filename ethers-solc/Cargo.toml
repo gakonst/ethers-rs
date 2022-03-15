@@ -71,6 +71,11 @@ name = "project"
 path = "tests/project.rs"
 required-features = ["async", "svm", "project-util"]
 
+[[test]]
+name = "mocked"
+path = "tests/mocked.rs"
+required-features = ["async", "svm", "project-util"]
+
 [features]
 default = ["rustls"]
 async = ["tokio", "futures-util"]
