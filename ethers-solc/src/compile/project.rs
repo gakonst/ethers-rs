@@ -582,6 +582,105 @@ mod tests {
     }
 
     #[test]
+    fn can_recompile_with_optimized_output() {
+        let tmp = TempProject::dapptools().unwrap();
+
+        tmp.add_source(
+            "A",
+            r#"
+    pragma solidity ^0.8.10;
+    import "./B.sol";
+    contract A {}
+   "#,
+        )
+        .unwrap();
+
+        tmp.add_source(
+            "B",
+            r#"
+    pragma solidity ^0.8.10;
+    contract B {
+        function hello() public {}
+    }
+    import "./C.sol";
+   "#,
+        )
+        .unwrap();
+
+        tmp.add_source(
+            "C",
+            r#"
+    pragma solidity ^0.8.10;
+    contract C {
+            function hello() public {}
+    }
+   "#,
+        )
+        .unwrap();
+        let compiled = tmp.compile().unwrap();
+        assert!(!compiled.has_compiler_errors());
+
+        tmp.artifacts_snapshot().unwrap().assert_artifacts_essentials_present();
+
+        // modify A.sol
+        tmp.add_source(
+            "A",
+            r#"
+    pragma solidity ^0.8.10;
+    import "./B.sol";
+    contract A {
+        function testExample() public {}
+    }
+   "#,
+        )
+        .unwrap();
+
+        let compiler = ProjectCompiler::new(tmp.project()).unwrap();
+        let state = compiler.preprocess().unwrap();
+        let sources = state.sources.sources();
+
+        // single solc
+        assert_eq!(sources.len(), 1);
+
+        let (_, filtered) = sources.values().next().unwrap();
+
+        // 3 contracts total
+        assert_eq!(filtered.0.len(), 3);
+        // A is modified
+        assert_eq!(filtered.dirty().count(), 1);
+        assert!(filtered.dirty_files().next().unwrap().ends_with("A.sol"));
+
+        let state = state.compile().unwrap();
+        assert_eq!(state.output.sources.len(), 3);
+        for (f, source) in &state.output.sources {
+            if f.ends_with("A.sol") {
+                assert!(source.ast.is_object());
+            } else {
+                assert!(source.ast.is_null());
+            }
+        }
+
+        assert_eq!(state.output.contracts.len(), 1);
+        let (a, c) = state.output.contracts_iter().next().unwrap();
+        assert_eq!(a, "A");
+        assert!(c.abi.is_some() && c.evm.is_some());
+
+        let state = state.write_artifacts().unwrap();
+        assert_eq!(state.compiled_artifacts.as_ref().len(), 1);
+
+        let out = state.write_cache().unwrap();
+
+        let artifacts: Vec<_> = out.into_artifacts().collect();
+        assert_eq!(artifacts.len(), 3);
+        for (_, artifact) in artifacts {
+            let c = artifact.into_contract_bytecode();
+            assert!(c.abi.is_some() && c.bytecode.is_some() && c.deployed_bytecode.is_some());
+        }
+
+        tmp.artifacts_snapshot().unwrap().assert_artifacts_essentials_present();
+    }
+
+    #[test]
     #[ignore]
     fn can_compile_real_project() {
         init_tracing();

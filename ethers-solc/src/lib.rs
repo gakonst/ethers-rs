@@ -127,9 +127,9 @@ impl<T: ArtifactOutput> Project<T> {
     }
 
     /// Convenience function to read the cache file.
-    /// See also [SolFilesCache::read()]
+    /// See also [SolFilesCache::read_joined()]
     pub fn read_cache_file(&self) -> Result<SolFilesCache> {
-        SolFilesCache::read(self.cache_path())
+        SolFilesCache::read_joined(&self.paths)
     }
 
     /// Applies the configured arguments to the given `Solc`

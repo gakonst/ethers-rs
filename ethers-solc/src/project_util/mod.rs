@@ -6,8 +6,8 @@ use crate::{
     hh::HardhatArtifacts,
     project_util::mock::{MockProjectGenerator, MockProjectSettings},
     utils::tempdir,
-    ArtifactOutput, Artifacts, ConfigurableArtifacts, PathStyle, Project, ProjectCompileOutput,
-    ProjectPathsConfig, SolFilesCache, SolcIoError,
+    Artifact, ArtifactOutput, Artifacts, ConfigurableArtifacts, ConfigurableContractArtifact,
+    PathStyle, Project, ProjectCompileOutput, ProjectPathsConfig, SolFilesCache, SolcIoError,
 };
 use fs_extra::{dir, file};
 use std::{
@@ -215,9 +215,9 @@ contract {} {{}}
     }
 
     /// Returns a snapshot of all cached artifacts
-    pub fn artifacts_snapshot(&self) -> Result<ArtifactsSnapshot> {
+    pub fn artifacts_snapshot(&self) -> Result<ArtifactsSnapshot<T::Artifact>> {
         let cache = self.project().read_cache_file()?;
-        let artifacts = cache.read_artifacts::<ConfigurableArtifacts>()?;
+        let artifacts = cache.read_artifacts::<T::Artifact>()?;
         Ok(ArtifactsSnapshot { cache, artifacts })
     }
 
@@ -416,9 +416,21 @@ impl<T: ArtifactOutput> AsRef<Project<T>> for TempProject<T> {
 
 /// The cache file and all the artifacts it references
 #[derive(Debug, Clone)]
-pub struct ArtifactsSnapshot {
+pub struct ArtifactsSnapshot<T> {
     pub cache: SolFilesCache,
-    pub artifacts: Artifacts<ConfigurableArtifacts>,
+    pub artifacts: Artifacts<T>,
+}
+
+impl ArtifactsSnapshot<ConfigurableContractArtifact> {
+    /// Ensures that all artifacts have abi, bytecode, deployedbytecode
+    pub fn assert_artifacts_essentials_present(&self) {
+        for artifact in self.artifacts.artifact_files() {
+            let c = artifact.artifact.clone().into_compact_contract();
+            assert!(c.abi.is_some());
+            assert!(c.bin.is_some());
+            assert!(c.bin_runtime.is_some());
+        }
+    }
 }
 
 /// commonly used options for copying entire folders
