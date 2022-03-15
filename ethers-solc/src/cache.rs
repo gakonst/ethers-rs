@@ -613,7 +613,7 @@ impl<'a, T: ArtifactOutput> ArtifactsCacheInner<'a, T> {
     /// A _dirty_ file can also include clean files - files that do not match any of the above
     /// criteria - which solc also requires in order to compile a dirty file.
     ///
-    /// Therefor these files will also be included in the filtered output but not marked as dirty,
+    /// Therefore, these files will also be included in the filtered output but not marked as dirty,
     /// so that their [OutputSelection] can be optimized in the [CompilerOutput] and their (empty)
     /// artifacts ignored.
     fn filter(&mut self, sources: Sources, version: &Version) -> FilteredSources {

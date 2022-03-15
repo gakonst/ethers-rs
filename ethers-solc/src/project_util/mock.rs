@@ -103,22 +103,8 @@ impl MockProjectGenerator {
         let version = version.as_ref();
         for file in self.inner.files.iter() {
             let imports = self.get_imports(file.id);
-
             let content = file.mock_content(version, imports.join("\n").as_str());
-
-            let mut target = if let Some(lib) = file.lib_id {
-                paths
-                    .root
-                    .join("lib")
-                    .join(&self.inner.libraries[lib].name)
-                    .join("src")
-                    .join(&file.name)
-            } else {
-                paths.sources.join(&file.name)
-            };
-            target.set_extension("sol");
-
-            super::create_contract_file(target, content)?;
+            super::create_contract_file(file.target_path(self, paths), content)?;
         }
 
         Ok(())
@@ -318,6 +304,21 @@ impl MockProjectGenerator {
         imports.into_iter().filter(|i| *i != id).map(|id| self.get_import(id)).take(num).collect()
     }
 
+    /// Modifies the content of the given file
+    pub fn modify_file(
+        &self,
+        id: usize,
+        paths: &ProjectPathsConfig,
+        version: impl AsRef<str>,
+    ) -> Result<PathBuf> {
+        let file = &self.inner.files[id];
+        let target = file.target_path(self, paths);
+        let content = file.modified_content(version, self.get_imports(id).join("\n").as_str());
+        super::create_contract_file(target.clone(), content)?;
+
+        Ok(target)
+    }
+
     /// generates exactly `num` unique imports in the range of a lib's files
     ///
     /// # Panics
@@ -401,6 +402,36 @@ impl MockFile {
     /// Returns `true` if this file is part of an external lib
     pub fn is_external(&self) -> bool {
         self.lib_id.is_some()
+    }
+
+    pub fn target_path(&self, gen: &MockProjectGenerator, paths: &ProjectPathsConfig) -> PathBuf {
+        let mut target = if let Some(lib) = self.lib_id {
+            paths.root.join("lib").join(&gen.inner.libraries[lib].name).join("src").join(&self.name)
+        } else {
+            paths.sources.join(&self.name)
+        };
+        target.set_extension("sol");
+
+        target
+    }
+
+    /// Returns the content to use for a modified file
+    ///
+    /// The content here is arbitrary, it should only differ from the mocked content
+    pub fn modified_content(&self, version: impl AsRef<str>, imports: &str) -> String {
+        format!(
+            r#"
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity {};
+{}
+contract {} {{
+    function hello() public {{}}
+}}
+            "#,
+            version.as_ref(),
+            imports,
+            self.name
+        )
     }
 
     /// Returns a mocked content for the file
