@@ -627,19 +627,22 @@ impl VersionedSources {
 
         let mut sources_by_version = std::collections::BTreeMap::new();
         for (version, sources) in self.inner {
-            if !version.is_installed() {
+            let solc = if !version.is_installed() {
                 if self.offline {
                     return Err(SolcError::msg(format!(
                         "missing solc \"{}\" installation in offline mode",
                         version
                     )))
                 } else {
-                    Solc::blocking_install(version.as_ref())?;
+                    // install missing solc
+                    Solc::blocking_install(version.as_ref())?
                 }
-            }
-            let solc = Solc::find_svm_installed_version(version.to_string())?.ok_or_else(|| {
-                SolcError::msg(format!("solc \"{}\" should have been installed", version))
-            })?;
+            } else {
+                // find installed svm
+                Solc::find_svm_installed_version(version.to_string())?.ok_or_else(|| {
+                    SolcError::msg(format!("solc \"{}\" should have been installed", version))
+                })?
+            };
 
             if self.offline {
                 tracing::trace!(
