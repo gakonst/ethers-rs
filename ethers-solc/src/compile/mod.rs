@@ -348,34 +348,35 @@ impl Solc {
         Ok(version)
     }
 
-    /// Installs the provided version of Solc in the machine under the svm dir
+    /// Installs the provided version of Solc in the machine under the svm dir and returns the
+    /// [Solc] instance pointing to the installation.
+    ///
     /// # Example
     /// ```no_run
     /// # async fn run() -> Result<(), Box<dyn std::error::Error>> {
     ///  use ethers_solc::{Solc, ISTANBUL_SOLC};
-    ///  Solc::install(&ISTANBUL_SOLC).await.unwrap();
-    ///  let solc = Solc::find_svm_installed_version(&ISTANBUL_SOLC.to_string());
+    ///  let solc = Solc::install(&ISTANBUL_SOLC).await.unwrap();
     /// # Ok(())
     /// # }
     /// ```
     #[cfg(feature = "svm")]
-    pub async fn install(version: &Version) -> std::result::Result<(), svm::SolcVmError> {
+    pub async fn install(version: &Version) -> std::result::Result<Self, svm::SolcVmError> {
         tracing::trace!("installing solc version \"{}\"", version);
         crate::report::solc_installation_start(version);
         let result = svm::install(version).await;
         crate::report::solc_installation_success(version);
-        result
+        result.map(Solc::new)
     }
 
     /// Blocking version of `Self::install`
     #[cfg(all(feature = "svm", feature = "async"))]
-    pub fn blocking_install(version: &Version) -> std::result::Result<(), svm::SolcVmError> {
+    pub fn blocking_install(version: &Version) -> std::result::Result<Self, svm::SolcVmError> {
         tracing::trace!("blocking installing solc version \"{}\"", version);
         crate::report::solc_installation_start(version);
         match svm::blocking_install(version) {
-            Ok(_) => {
+            Ok(path) => {
                 crate::report::solc_installation_success(version);
-                Ok(())
+                Ok(Solc::new(path))
             }
             Err(err) => {
                 crate::report::solc_installation_error(version, &err.to_string());
