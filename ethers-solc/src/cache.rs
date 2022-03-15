@@ -294,6 +294,12 @@ impl SolFilesCache {
         let mut files: HashMap<_, _> = files.into_iter().map(|(p, v)| (p, v)).collect();
 
         self.files.retain(|file, entry| {
+            if entry.artifacts.is_empty() {
+                // keep entries that didn't emit any artifacts in the first place, such as a
+                // solidity file that only includes error definitions
+                return true
+            }
+
             if let Some(versions) = files.remove(file.as_path()) {
                 entry.retain_versions(versions);
             } else {
