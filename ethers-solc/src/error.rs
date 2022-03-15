@@ -62,12 +62,12 @@ macro_rules! _format_err {
         $crate::error::SolcError::msg(format!($($tt)*))
     };
 }
-pub(crate) use _format_err as format_err;
+pub use _format_err as format_err;
 
 macro_rules! _bail {
     ($($tt:tt)*) => { return Err($crate::error::format_err!($($tt)*)) };
 }
-pub(crate) use _bail as bail;
+pub use _bail as bail;
 
 #[derive(Debug, Error)]
 #[error("\"{}\": {io}", self.path.display())]
