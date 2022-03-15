@@ -1,7 +1,12 @@
 //! Helpers to generate mock projects
 
 use crate::{error::Result, remappings::Remapping, ProjectPathsConfig};
-use rand::{self, seq::SliceRandom, Rng};
+use rand::{
+    self,
+    distributions::{Distribution, Uniform},
+    seq::SliceRandom,
+    Rng,
+};
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeSet, path::Path};
 
@@ -38,33 +43,9 @@ impl MockProjectGenerator {
     pub fn write_to(&self, paths: &ProjectPathsConfig, version: impl AsRef<str>) -> Result<()> {
         let version = version.as_ref();
         for file in self.files.iter() {
-            let mut imports = Vec::with_capacity(file.imports.len());
+            let imports = self.get_imports(file.id);
 
-            for import in file.imports.iter() {
-                match *import {
-                    MockImport::Internal(f) => {
-                        imports.push(format!("import \"./{}.sol\";", self.files[f].name));
-                    }
-                    MockImport::External(lib, f) => {
-                        imports.push(format!(
-                            "import \"{}/{}.sol\";",
-                            self.libraries[lib].name, self.files[f].name
-                        ));
-                    }
-                }
-            }
-
-            let content = format!(
-                r#"
-// SPDX-License-Identifier: UNLICENSED
-pragma solidity {};
-{}
-contract {} {{}}
-            "#,
-                version,
-                imports.join("\n"),
-                file.name
-            );
+            let content = file.mock_content(version, imports.join("\n").as_str());
 
             let mut target = if let Some(lib) = file.lib_id {
                 paths.root.join("lib").join(&self.libraries[lib].name).join("src").join(&file.name)
@@ -77,6 +58,26 @@ contract {} {{}}
         }
 
         Ok(())
+    }
+
+    fn get_imports(&self, file: usize) -> Vec<String> {
+        let file = &self.files[file];
+        let mut imports = Vec::with_capacity(file.imports.len());
+
+        for import in file.imports.iter() {
+            match *import {
+                MockImport::Internal(f) => {
+                    imports.push(format!("import \"./{}.sol\";", self.files[f].name));
+                }
+                MockImport::External(lib, f) => {
+                    imports.push(format!(
+                        "import \"{}/{}.sol\";",
+                        self.libraries[lib].name, self.files[f].name
+                    ));
+                }
+            }
+        }
+        imports
     }
 
     /// Returns all the remappings for the project for the given root path
@@ -138,7 +139,8 @@ contract {} {{}}
     pub fn add_source(&mut self) -> &mut Self {
         let id = self.next_file_id();
         let name = self.name_strategy.new_source_file_name(id);
-        let file = MockFile { id, name, imports: Default::default(), lib_id: None };
+        let file =
+            MockFile { id, name, imports: Default::default(), lib_id: None, emit_artifacts: true };
         self.files.push(file);
         self
     }
@@ -164,9 +166,24 @@ contract {} {{}}
                 name,
                 imports: Default::default(),
                 lib_id: Some(lib_id),
+                emit_artifacts: true,
             });
         }
         self.libraries.push(MockLib { name: lib_name, id: lib_id, num_files, offset });
+        self
+    }
+
+    /// randomly assign empty file status so that mocked files don't emit artifacts
+    pub fn assign_empty_files(&mut self) -> &mut Self {
+        let mut rng = rand::thread_rng();
+        let die = Uniform::from(0..self.files.len());
+        for file in self.files.iter_mut() {
+            let throw = die.sample(&mut rng);
+            if throw == 0 {
+                // give it a 1 in num(files) chance that the file will be empty
+                file.emit_artifacts = false;
+            }
+        }
         self
     }
 
@@ -296,12 +313,39 @@ pub struct MockFile {
     pub imports: BTreeSet<MockImport>,
     /// lib id if this file is part of a lib
     pub lib_id: Option<usize>,
+    /// whether this file should emit artifacts
+    pub emit_artifacts: bool,
 }
 
 impl MockFile {
     /// Returns `true` if this file is part of an external lib
     pub fn is_external(&self) -> bool {
         self.lib_id.is_some()
+    }
+
+    /// Returns a mocked content for the file
+    pub fn mock_content(&self, version: impl AsRef<str>, imports: &str) -> String {
+        let version = version.as_ref();
+        if self.emit_artifacts {
+            format!(
+                r#"
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity {};
+{}
+contract {} {{}}
+            "#,
+                version, imports, self.name
+            )
+        } else {
+            format!(
+                r#"
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity {};
+{}
+            "#,
+                version, imports,
+            )
+        }
     }
 }
 
@@ -350,6 +394,8 @@ pub struct MockProjectSettings {
     pub min_imports: usize,
     /// max amount of import statements a file can use
     pub max_imports: usize,
+    /// whether to also use files that don't emit artifacts
+    pub allow_no_artifacts_files: bool,
 }
 
 impl MockProjectSettings {
@@ -363,6 +409,7 @@ impl MockProjectSettings {
             num_lib_files: rng.gen_range(1..10),
             min_imports: rng.gen_range(0..3),
             max_imports: rng.gen_range(4..10),
+            allow_no_artifacts_files: true,
         }
     }
 
@@ -375,6 +422,7 @@ impl MockProjectSettings {
             num_lib_files: 15,
             min_imports: 3,
             max_imports: 12,
+            allow_no_artifacts_files: true,
         }
     }
 }
@@ -382,7 +430,14 @@ impl MockProjectSettings {
 impl Default for MockProjectSettings {
     fn default() -> Self {
         // these are arbitrary
-        Self { num_sources: 20, num_libs: 2, num_lib_files: 10, min_imports: 0, max_imports: 5 }
+        Self {
+            num_sources: 20,
+            num_libs: 2,
+            num_lib_files: 10,
+            min_imports: 0,
+            max_imports: 5,
+            allow_no_artifacts_files: true,
+        }
     }
 }
 
