@@ -627,6 +627,7 @@ impl VersionedSources {
 
         let mut sources_by_version = std::collections::BTreeMap::new();
         for (version, sources) in self.inner {
+            let mut solc = None;
             if !version.is_installed() {
                 if self.offline {
                     return Err(SolcError::msg(format!(
@@ -634,11 +635,14 @@ impl VersionedSources {
                         version
                     )))
                 } else {
-                    Solc::blocking_install(version.as_ref())?;
+                    solc = Some(Solc::blocking_install(version.as_ref())?);
                 }
             }
-            let solc = Solc::find_svm_installed_version(version.to_string())?.ok_or_else(|| {
-                SolcError::msg(format!("solc \"{}\" should have been installed", version))
+
+            let solc = solc.map(Ok).unwrap_or_else(|| {
+                Solc::find_svm_installed_version(version.to_string())?.ok_or_else(|| {
+                    SolcError::msg(format!("solc \"{}\" should have been installed", version))
+                })
             })?;
 
             if self.offline {
