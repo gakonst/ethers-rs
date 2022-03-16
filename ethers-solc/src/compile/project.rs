@@ -438,7 +438,7 @@ fn compile_sequential(
             let output = solc.compile_exact(&input)?;
             report::solc_success(&solc, &version, &output);
             tracing::trace!("compiled input, output has error: {}", output.has_error());
-            tracing::trace!("received compiler output: {:?}", output.contracts.values());
+            tracing::trace!("received compiler output: {:?}", output.contracts.keys());
             aggregated.extend(version.clone(), output);
         }
     }
