@@ -9,7 +9,7 @@ use std::ops::{Range, RangeFrom, RangeTo};
 /// A log produced by a transaction.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Log {
-    /// H160
+    /// H160. the contract that emitted the log
     pub address: Address,
 
     /// topics: Array of 0 to 4 32 Bytes of indexed log arguments.
@@ -41,7 +41,7 @@ pub struct Log {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub transaction_index: Option<U64>,
 
-    /// Integer of the log index position in the block. Noe if it's a pending log.
+    /// Integer of the log index position in the block. None if it's a pending log.
     #[serde(rename = "logIndex")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub log_index: Option<U256>,
@@ -58,7 +58,7 @@ pub struct Log {
     pub log_type: Option<String>,
 
     /// True when the log was removed, due to a chain reorganization.
-    /// false if its a valid log.
+    /// false if it's a valid log.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub removed: Option<bool>,
 }
