@@ -31,7 +31,7 @@ async fn main() -> Result<()> {
     // compile the project and get the artifacts
     let output = project.compile().unwrap();
     let contract = output.find("SimpleStorage").expect("could not find contract").clone();
-    let (abi, bytecode, _) = contract.into_parts_or_default();
+    let (abi, bytecode, _) = contract.into_parts();
 
     // 2. instantiate our wallet & ganache
     let ganache = Ganache::new().spawn();
@@ -46,7 +46,7 @@ async fn main() -> Result<()> {
     let client = Arc::new(client);
 
     // 5. create a factory which will be used to deploy instances of the contract
-    let factory = ContractFactory::new(abi, bytecode, client.clone());
+    let factory = ContractFactory::new(abi.unwrap(), bytecode.unwrap(), client.clone());
 
     // 6. deploy it with the constructor arguments
     let contract = factory.deploy("initial value".to_string())?.legacy().send().await?;

@@ -1,14 +1,10 @@
 use ethers::prelude::*;
-use eyre::Result;
-use std::{convert::TryFrom, path::Path, sync::Arc, time::Duration};
 
 abigen!(
     SimpleContract,
     "./examples/contract_abi.json",
     event_derives(serde::Deserialize, serde::Serialize)
 );
-
-const MOONBEAM_DEV_ENDPOINT: &str = "http://localhost:9933";
 
 /// This requires a running moonbeam dev instance on `localhost:9933`
 /// See `https://docs.moonbeam.network/builders/get-started/moonbeam-dev/` for reference
@@ -22,7 +18,10 @@ const MOONBEAM_DEV_ENDPOINT: &str = "http://localhost:9933";
 /// Also requires the `legacy` feature to send Legacy transaction instead of an EIP-1559
 #[tokio::main]
 #[cfg(feature = "legacy")]
-async fn main() -> Result<()> {
+async fn main() -> eyre::Result<()> {
+    use std::{convert::TryFrom, path::Path, sync::Arc, time::Duration};
+    const MOONBEAM_DEV_ENDPOINT: &str = "http://localhost:9933";
+
     // set the path to the contract, `CARGO_MANIFEST_DIR` points to the directory containing the
     // manifest of `ethers`. which will be `../` relative to this file
     let source = Path::new(&env!("CARGO_MANIFEST_DIR")).join("examples/contract.sol");
