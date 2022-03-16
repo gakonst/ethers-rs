@@ -70,7 +70,6 @@ impl SparseOutputFileFilter {
     /// This will modify the [OutputSelection] of the [Settings] so that we explicitly select the
     /// files' output based on their state.
     pub fn sparse_sources(&self, sources: FilteredSources, settings: &mut Settings) -> Sources {
-
         fn apply(
             sources: &FilteredSources,
             settings: &mut Settings,
