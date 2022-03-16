@@ -21,6 +21,7 @@ use quote::quote;
 use serde::Deserialize;
 use std::collections::BTreeMap;
 use syn::Path;
+use ethers_core::types::Bytes;
 
 /// The result of `Context::expand`
 #[derive(Debug)]
@@ -91,6 +92,9 @@ pub struct Context {
 
     /// Manually specified event aliases.
     event_aliases: BTreeMap<String, Ident>,
+
+    /// Bytecode extracted from the abi string input, if present.
+    contract_bytecode: Option<Bytes>,
 }
 
 impl Context {
@@ -160,6 +164,9 @@ impl Context {
         let mut abi_str =
             args.abi_source.get().map_err(|e| eyre!("failed to get ABI JSON: {}", e))?;
 
+        // holds the bytecode parsed from the abi_str, if present
+        let mut contract_bytecode = None;
+
         let (abi, human_readable, abi_parser) = parse_abi(&abi_str)?;
 
         // try to extract all the solidity structs from the normal JSON ABI
@@ -183,6 +190,7 @@ impl Context {
                     // need to update the `abi_str` here because we only want the `"abi": [...]`
                     // part of the json object in the contract binding
                     abi_str = serde_json::to_string(&obj.abi)?;
+                    contract_bytecode = obj.bytecode;
                     InternalStructs::new(obj.abi)
                 }
                 JsonAbi::Array(abi) => InternalStructs::new(abi),
@@ -227,6 +235,7 @@ impl Context {
             internal_structs,
             contract_ident,
             contract_name: args.contract_name,
+            contract_bytecode,
             method_aliases,
             event_derives,
             event_aliases,
