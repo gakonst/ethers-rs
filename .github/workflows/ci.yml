@@ -218,7 +218,6 @@ jobs:
         run: |
             export PATH=$HOME/bin:$PATH
             for file in examples/*.rs; do
-              echo $file
               name="$(echo "$file" | cut -f 1 -d '.')"
               echo "building $name"
               cargo build -p ethers --example "$(basename "$name")"
