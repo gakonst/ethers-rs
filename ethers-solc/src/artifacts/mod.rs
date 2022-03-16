@@ -26,7 +26,7 @@ pub mod output_selection;
 pub mod serde_helpers;
 use crate::{
     artifacts::output_selection::{ContractOutputSelection, OutputSelection},
-    cache::FilteredSources,
+    filter::FilteredSources,
 };
 pub use serde_helpers::{deserialize_bytes, deserialize_opt_bytes};
 
