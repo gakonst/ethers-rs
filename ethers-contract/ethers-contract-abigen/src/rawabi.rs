@@ -168,10 +168,10 @@ impl<'de> Visitor<'de> for AbiObjectVisitor {
                     abi = Some(RawAbi(map.next_value::<Vec<Item>>()?));
                 }
                 "bytecode" | "byteCode" => {
-                    bytecode = Some(map.next_value::<BytecodeObject>()?.object);
+                    bytecode = map.next_value::<BytecodeObject>().ok().map(|obj|obj.object);
                 }
                 "bin" => {
-                    bytecode = Some(map.next_value::<DeserializeBytes>()?.0);
+                    bytecode = map.next_value::<DeserializeBytes>().ok().map(|b|b.0);
                 }
                 _ => {
                     map.next_value::<serde::de::IgnoredAny>()?;
@@ -249,6 +249,16 @@ mod tests {
         match serde_json::from_str::<JsonAbi>(&s).unwrap() {
             JsonAbi::Object(abi) => {
                 assert!(abi.bytecode.is_some());
+            }
+            _ => {
+                panic!("expected abi object")
+            }
+        }
+
+        let hh_artifact = include_str!("../../tests/solidity-contracts/verifier_abi_hardhat.json");
+        match serde_json::from_str::<JsonAbi>(hh_artifact).unwrap() {
+            JsonAbi::Object(abi) => {
+                assert!(abi.bytecode.is_none());
             }
             _ => {
                 panic!("expected abi object")

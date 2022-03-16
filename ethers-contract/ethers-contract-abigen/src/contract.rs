@@ -6,7 +6,7 @@ mod structs;
 mod types;
 
 use super::{util, Abigen};
-use crate::{contract::structs::InternalStructs, rawabi::RawAbi};
+use crate::{contract::structs::InternalStructs};
 use ethers_core::{
     abi::{Abi, AbiParser},
     macros::{ethers_contract_crate, ethers_core_crate, ethers_providers_crate},
@@ -20,6 +20,7 @@ use quote::quote;
 use serde::Deserialize;
 use std::collections::BTreeMap;
 use syn::Path;
+use crate::rawabi::JsonAbi;
 
 /// The result of `Context::expand`
 #[derive(Debug)]
@@ -176,23 +177,18 @@ impl Context {
             internal_structs.outputs = abi_parser.outputs.clone();
 
             internal_structs
-        } else if abi_str.starts_with('{') {
-            if let Ok(abi) = serde_json::from_str::<RawAbi>(&abi_str) {
-                if let Ok(s) = serde_json::to_string(&abi) {
-                    // need to update the `abi_str` here because we only want the `"abi": [...]`
-                    // part of the json object in the contract binding
-                    abi_str = s;
-                }
-                InternalStructs::new(abi)
-            } else {
-                InternalStructs::default()
-            }
         } else {
-            // parse as
-            serde_json::from_str::<RawAbi>(&abi_str)
-                .ok()
-                .map(InternalStructs::new)
-                .unwrap_or_default()
+            match serde_json::from_str::<JsonAbi>(&abi_str)? {
+                JsonAbi::Object(obj) => {
+                // need to update the `abi_str` here because we only want the `"abi": [...]`
+                // part of the json object in the contract binding
+                    abi_str = serde_json::to_string(&obj.abi)?;
+                    InternalStructs::new(obj.abi)
+                }
+                JsonAbi::Array(abi) => {
+                    InternalStructs::new(abi)
+                }
+            }
         };
 
         let contract_ident = util::ident(&args.contract_name);
