@@ -214,10 +214,17 @@ jobs:
       - uses: Swatinem/rust-cache@v1
         with:
           cache-on-failure: true
+      - name: Build all examples
+        run: |
+            export PATH=$HOME/bin:$PATH
+            for file in ./examples/*.rs; do
+              name="$(echo "$file" | cut -f 1 -d '.')"
+              echo "building $name"
+              cargo build -p ethers --example "$(basename "$name")"
+            done
       - name: Run all examples
         run: |
             export PATH=$HOME/bin:$PATH
-            ls -l ./scripts/examples.sh
             chmod +x ./scripts/examples.sh
             ./scripts/examples.sh
 
