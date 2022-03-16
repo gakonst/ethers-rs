@@ -261,18 +261,36 @@ fn parse_abi(abi_str: &str) -> Result<(Abi, bool, AbiParser)> {
     let res = if let Ok(abi) = abi_parser.parse_str(abi_str) {
         (abi, true, abi_parser)
     } else {
-        #[derive(Deserialize)]
-        struct Contract {
-            abi: Abi,
-        }
-        // a best-effort coercion of an ABI or an artifact JSON into an artifact JSON.
-        let contract: Contract = if abi_str.trim_start().starts_with('[') {
-            serde_json::from_str(&format!(r#"{{"abi":{}}}"#, abi_str.trim()))?
-        } else {
-            serde_json::from_str::<Contract>(abi_str)?
-        };
 
-        (contract.abi, false, abi_parser)
+        // a best-effort coercion of an ABI or an artifact JSON into an artifact JSON.
+        let contract: JsonContract =  serde_json::from_str(abi_str)?;
+
+        (contract.into_abi(), false, abi_parser)
     };
     Ok(res)
+}
+
+#[derive(Deserialize)]
+struct ContractObject {
+    abi: Abi,
+}
+
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum JsonContract {
+    /// json object input as `{"abi": [..], "bin": "..."}`
+    Object(ContractObject),
+    /// json array input as `[]`
+    Array(Abi),
+}
+
+impl JsonContract {
+
+    fn into_abi(self) -> Abi {
+        match self {
+            JsonContract::Object(o) => {o.abi}
+            JsonContract::Array(abi) => {abi}
+        }
+    }
+
 }
