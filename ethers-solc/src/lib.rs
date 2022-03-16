@@ -26,8 +26,10 @@ pub mod remappings;
 use crate::artifacts::Source;
 
 pub mod error;
+mod filter;
 pub mod report;
 pub mod utils;
+pub use filter::{FileFilter, TestFileFilter};
 
 use crate::{
     artifacts::{Contract, Sources},
@@ -285,6 +287,48 @@ impl<T: ArtifactOutput> Project<T> {
         P: Into<PathBuf>,
     {
         project::ProjectCompiler::with_sources(self, Source::read_all(files)?)?.compile()
+    }
+
+    /// Convenience function to compile only (re)compile files that match the provided [FileFilter].
+    /// Same as [`Self::svm_compile()`] but with only with those files as input that match
+    /// [FileFilter::is_match()].
+    ///
+    /// # Example - Only compile Test files
+    ///
+    /// ```
+    /// use ethers_solc::{Project, TestFileFilter};
+    /// # fn demo(project: Project) {
+    /// let project = Project::builder().build().unwrap();
+    /// let output = project
+    ///     .compile_sparse(
+    ///         TestFileFilter::default()
+    ///     ).unwrap();
+    /// # }
+    /// ```
+    ///
+    /// # Example - Apply a custom filter
+    ///
+    /// ```
+    /// use std::path::Path;
+    /// use ethers_solc::Project;
+    /// # fn demo(project: Project) {
+    /// let project = Project::builder().build().unwrap();
+    /// let output = project
+    ///     .compile_sparse(
+    ///         |path: &Path| path.ends_with("Greeter.sol")
+    ///     ).unwrap();
+    /// # }
+    /// ```
+    #[cfg(all(feature = "svm", feature = "async"))]
+    pub fn compile_sparse<F: FileFilter + 'static>(
+        &self,
+        filter: F,
+    ) -> Result<ProjectCompileOutput<T>> {
+        let sources =
+            Source::read_all(self.paths.input_files().into_iter().filter(|p| filter.is_match(p)))?;
+
+        let filter: Box<dyn FileFilter> = Box::new(filter);
+        project::ProjectCompiler::with_sources(self, sources)?.with_sparse_output(filter).compile()
     }
 
     /// Compiles the given source files with the exact `Solc` executable

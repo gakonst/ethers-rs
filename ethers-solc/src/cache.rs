@@ -1,8 +1,9 @@
 //! Support for compiling contracts
 use crate::{
-    artifacts::{output_selection::OutputSelection, Settings, Sources},
+    artifacts::Sources,
     config::SolcConfig,
     error::{Result, SolcError},
+    filter::{FilteredSource, FilteredSourceInfo, FilteredSources},
     resolver::GraphEdges,
     utils, ArtifactFile, ArtifactOutput, Artifacts, ArtifactsMap, Project, ProjectPathsConfig,
     Source,
@@ -14,7 +15,6 @@ use std::{
         btree_map::{BTreeMap, Entry},
         hash_map, BTreeSet, HashMap, HashSet,
     },
-    fmt,
     fs::{self},
     path::{Path, PathBuf},
     time::{Duration, UNIX_EPOCH},
@@ -727,157 +727,6 @@ impl<'a, T: ArtifactOutput> ArtifactsCacheInner<'a, T> {
             }
         }
     }
-}
-
-/// Container type for a set of [FilteredSource]
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct FilteredSources(pub BTreeMap<PathBuf, FilteredSource>);
-
-impl FilteredSources {
-    pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
-    }
-
-    pub fn len(&self) -> usize {
-        self.0.len()
-    }
-
-    /// Returns `true` if all files are dirty
-    pub fn all_dirty(&self) -> bool {
-        self.0.values().all(|s| s.is_dirty())
-    }
-
-    /// Returns all entries that are dirty
-    pub fn dirty(&self) -> impl Iterator<Item = (&PathBuf, &FilteredSource)> + '_ {
-        self.0.iter().filter(|(_, s)| s.is_dirty())
-    }
-
-    /// Returns all entries that are clean
-    pub fn clean(&self) -> impl Iterator<Item = (&PathBuf, &FilteredSource)> + '_ {
-        self.0.iter().filter(|(_, s)| !s.is_dirty())
-    }
-
-    /// Returns all dirty files
-    pub fn dirty_files(&self) -> impl Iterator<Item = &PathBuf> + fmt::Debug + '_ {
-        self.0.iter().filter_map(|(k, s)| s.is_dirty().then(|| k))
-    }
-
-    /// While solc needs all the files to compile the actual _dirty_ files, we can tell solc to
-    /// output everything for those dirty files as currently configured in the settings, but output
-    /// nothing for the other files that are _not_ dirty.
-    ///
-    /// This will modify the [OutputSelection] of the [Settings] so that we explicitly select the
-    /// files' output based on their state.
-    pub fn into_sources(self, settings: &mut Settings) -> Sources {
-        if !self.all_dirty() {
-            // settings can be optimized
-
-            tracing::trace!(
-                "Optimizing output selection for {}/{} sources",
-                self.clean().count(),
-                self.len()
-            );
-
-            let selection = settings
-                .output_selection
-                .as_mut()
-                .remove("*")
-                .unwrap_or_else(OutputSelection::default_file_output_selection);
-
-            for (file, source) in self.0.iter() {
-                if source.is_dirty() {
-                    settings
-                        .output_selection
-                        .as_mut()
-                        .insert(format!("{}", file.display()), selection.clone());
-                } else {
-                    tracing::trace!("Optimizing output for {}", file.display());
-                    settings.output_selection.as_mut().insert(
-                        format!("{}", file.display()),
-                        OutputSelection::empty_file_output_select(),
-                    );
-                }
-            }
-        }
-        self.into()
-    }
-}
-
-impl From<FilteredSources> for Sources {
-    fn from(sources: FilteredSources) -> Self {
-        sources.0.into_iter().map(|(k, v)| (k, v.into_source())).collect()
-    }
-}
-
-impl From<Sources> for FilteredSources {
-    fn from(s: Sources) -> Self {
-        FilteredSources(s.into_iter().map(|(key, val)| (key, FilteredSource::Dirty(val))).collect())
-    }
-}
-
-impl From<BTreeMap<PathBuf, FilteredSource>> for FilteredSources {
-    fn from(s: BTreeMap<PathBuf, FilteredSource>) -> Self {
-        FilteredSources(s)
-    }
-}
-
-impl AsRef<BTreeMap<PathBuf, FilteredSource>> for FilteredSources {
-    fn as_ref(&self) -> &BTreeMap<PathBuf, FilteredSource> {
-        &self.0
-    }
-}
-
-impl AsMut<BTreeMap<PathBuf, FilteredSource>> for FilteredSources {
-    fn as_mut(&mut self) -> &mut BTreeMap<PathBuf, FilteredSource> {
-        &mut self.0
-    }
-}
-
-/// Represents the state of a filtered [Source]
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub enum FilteredSource {
-    /// A source that fits the _dirty_ criteria
-    Dirty(Source),
-    /// A source that does _not_ fit the _dirty_ criteria but is included in the filtered set
-    /// because a _dirty_ file pulls it in, either directly on indirectly.
-    Clean(Source),
-}
-
-impl FilteredSource {
-    /// Returns the underlying source
-    pub fn source(&self) -> &Source {
-        match self {
-            FilteredSource::Dirty(s) => s,
-            FilteredSource::Clean(s) => s,
-        }
-    }
-
-    /// Consumes the type and returns the underlying source
-    pub fn into_source(self) -> Source {
-        match self {
-            FilteredSource::Dirty(s) => s,
-            FilteredSource::Clean(s) => s,
-        }
-    }
-
-    /// Whether this file is actually dirt
-    pub fn is_dirty(&self) -> bool {
-        matches!(self, FilteredSource::Dirty(_))
-    }
-}
-
-/// Helper type that determines the state of a source file
-struct FilteredSourceInfo {
-    /// path to the source file
-    file: PathBuf,
-    /// contents of the file
-    source: Source,
-    /// idx in the [GraphEdges]
-    idx: usize,
-    /// whether this file is actually dirty
-    ///
-    /// See also [ArtifactsCacheInner::is_dirty()]
-    dirty: bool,
 }
 
 /// Abstraction over configured caching which can be either non-existent or an already loaded cache

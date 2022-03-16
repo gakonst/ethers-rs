@@ -114,6 +114,7 @@ use crate::{
 };
 use rayon::prelude::*;
 
+use crate::filter::SparseOutputFileFilter;
 use std::{collections::btree_map::BTreeMap, path::PathBuf};
 
 #[derive(Debug)]
@@ -123,6 +124,8 @@ pub struct ProjectCompiler<'a, T: ArtifactOutput> {
     project: &'a Project<T>,
     /// how to compile all the sources
     sources: CompilerSources,
+    /// How to select solc [CompilerOutput] for files
+    sparse_output: SparseOutputFileFilter,
 }
 
 impl<'a, T: ArtifactOutput> ProjectCompiler<'a, T> {
@@ -162,7 +165,7 @@ impl<'a, T: ArtifactOutput> ProjectCompiler<'a, T> {
             CompilerSources::Sequential(sources_by_version)
         };
 
-        Ok(Self { edges, project, sources })
+        Ok(Self { edges, project, sources, sparse_output: Default::default() })
     }
 
     /// Compiles the sources with a pinned `Solc` instance
@@ -176,7 +179,14 @@ impl<'a, T: ArtifactOutput> ProjectCompiler<'a, T> {
         let sources_by_version = BTreeMap::from([(solc, (version, sources))]);
         let sources = CompilerSources::Sequential(sources_by_version);
 
-        Ok(Self { edges, project, sources })
+        Ok(Self { edges, project, sources, sparse_output: Default::default() })
+    }
+
+    /// Applies the specified [SparseOutputFileFilter] to be applied when selecting solc output for
+    /// specific files to be compiled
+    pub fn with_sparse_output(mut self, sparse_output: impl Into<SparseOutputFileFilter>) -> Self {
+        self.sparse_output = sparse_output.into();
+        self
     }
 
     /// Compiles all the sources of the `Project` in the appropriate mode
@@ -203,13 +213,13 @@ impl<'a, T: ArtifactOutput> ProjectCompiler<'a, T> {
     ///   - sets proper source unit names
     ///   - check cache
     fn preprocess(self) -> Result<PreprocessedState<'a, T>> {
-        let Self { edges, project, sources } = self;
+        let Self { edges, project, sources, sparse_output } = self;
 
         let mut cache = ArtifactsCache::new(project, edges)?;
         // retain and compile only dirty sources and all their imports
         let sources = sources.filtered(&mut cache);
 
-        Ok(PreprocessedState { sources, cache })
+        Ok(PreprocessedState { sources, cache, sparse_output })
     }
 }
 
@@ -222,14 +232,18 @@ struct PreprocessedState<'a, T: ArtifactOutput> {
     sources: FilteredCompilerSources,
     /// cache that holds [CacheEntry] object if caching is enabled and the project is recompiled
     cache: ArtifactsCache<'a, T>,
+    sparse_output: SparseOutputFileFilter,
 }
 
 impl<'a, T: ArtifactOutput> PreprocessedState<'a, T> {
     /// advance to the next state by compiling all sources
     fn compile(self) -> Result<CompiledState<'a, T>> {
-        let PreprocessedState { sources, cache } = self;
-        let output =
-            sources.compile(&cache.project().solc_config.settings, &cache.project().paths)?;
+        let PreprocessedState { sources, cache, sparse_output } = self;
+        let output = sources.compile(
+            &cache.project().solc_config.settings,
+            &cache.project().paths,
+            sparse_output,
+        )?;
 
         Ok(CompiledState { output, cache })
     }
@@ -351,13 +365,14 @@ impl FilteredCompilerSources {
         self,
         settings: &Settings,
         paths: &ProjectPathsConfig,
+        sparse_output: SparseOutputFileFilter,
     ) -> Result<AggregatedCompilerOutput> {
         match self {
             FilteredCompilerSources::Sequential(input) => {
-                compile_sequential(input, settings, paths)
+                compile_sequential(input, settings, paths, sparse_output)
             }
             FilteredCompilerSources::Parallel(input, j) => {
-                compile_parallel(input, j, settings, paths)
+                compile_parallel(input, j, settings, paths, sparse_output)
             }
         }
     }
@@ -377,6 +392,7 @@ fn compile_sequential(
     input: VersionedFilteredSources,
     settings: &Settings,
     paths: &ProjectPathsConfig,
+    sparse_output: SparseOutputFileFilter,
 ) -> Result<AggregatedCompilerOutput> {
     let mut aggregated = AggregatedCompilerOutput::default();
     tracing::trace!("compiling {} jobs sequentially", input.len());
@@ -402,7 +418,7 @@ fn compile_sequential(
         // depending on the composition of the filtered sources, the output selection can be
         // optimized
         let mut opt_settings = settings.clone();
-        let sources = filtered_sources.into_sources(&mut opt_settings);
+        let sources = sparse_output.sparse_sources(filtered_sources, &mut opt_settings);
 
         for input in CompilerInput::with_sources(sources) {
             let actually_dirty = input
@@ -450,6 +466,7 @@ fn compile_parallel(
     num_jobs: usize,
     settings: &Settings,
     paths: &ProjectPathsConfig,
+    sparse_output: SparseOutputFileFilter,
 ) -> Result<AggregatedCompilerOutput> {
     debug_assert!(num_jobs > 1);
     tracing::trace!(
@@ -475,7 +492,7 @@ fn compile_parallel(
         // depending on the composition of the filtered sources, the output selection can be
         // optimized
         let mut opt_settings = settings.clone();
-        let sources = filtered_sources.into_sources(&mut opt_settings);
+        let sources = sparse_output.sparse_sources(filtered_sources, &mut opt_settings);
 
         for input in CompilerInput::with_sources(sources) {
             let actually_dirty = input
