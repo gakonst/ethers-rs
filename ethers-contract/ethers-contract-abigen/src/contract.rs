@@ -103,14 +103,13 @@ impl Context {
         let name = &self.contract_ident;
         let name_mod =
             util::ident(&format!("{}_mod", self.contract_ident.to_string().to_lowercase()));
-
-        let abi_name = super::util::safe_ident(&format!("{}_ABI", name.to_string().to_uppercase()));
+        let abi_name = self.inline_abi_ident();
 
         // 0. Imports
         let imports = common::imports(&name.to_string());
 
         // 1. Declare Contract struct
-        let struct_decl = common::struct_declaration(self, &abi_name);
+        let struct_decl = common::struct_declaration(self);
 
         // 2. Declare events structs & impl FromTokens for each event
         let events_decl = self.events_declaration()?;
@@ -245,6 +244,16 @@ impl Context {
     /// The initial name fo the contract
     pub(crate) fn contract_name(&self) -> &str {
         &self.contract_name
+    }
+
+    /// name of the `Lazy` that stores the ABI
+    pub(crate) fn inline_abi_ident(&self) -> Ident {
+        util::safe_ident(&format!("{}_ABI", self.contract_ident.to_string().to_uppercase()))
+    }
+
+    /// name of the `Lazy` that stores the Bytecode
+    pub(crate) fn inline_bytecode_ident(&self) -> Ident {
+        util::safe_ident(&format!("{}_BYTECODE", self.contract_ident.to_string().to_uppercase()))
     }
 
     /// The internal abi struct mapping table

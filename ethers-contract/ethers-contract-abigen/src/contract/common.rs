@@ -30,9 +30,11 @@ pub(crate) fn imports(name: &str) -> TokenStream {
 }
 
 /// Generates the static `Abi` constants and the contract struct
-pub(crate) fn struct_declaration(cx: &Context, abi_name: &proc_macro2::Ident) -> TokenStream {
+pub(crate) fn struct_declaration(cx: &Context) -> TokenStream {
     let name = &cx.contract_ident;
     let abi = &cx.abi_str;
+
+    let abi_name = cx.inline_abi_ident();
 
     let ethers_core = ethers_core_crate();
     let ethers_providers = ethers_providers_crate();
@@ -50,9 +52,23 @@ pub(crate) fn struct_declaration(cx: &Context, abi_name: &proc_macro2::Ident) ->
         }
     };
 
+    let bytecode = if let Some(ref bytecode) = cx.contract_bytecode {
+        let bytecode_name = cx.inline_bytecode_ident();
+        let hex_bytecode = format!("{}", bytecode);
+        quote! {
+            /// Bytecode of the #name contract
+            pub static #bytecode_name: #ethers_contract::Lazy<#ethers_core::types::Bytes> = #ethers_contract::Lazy::new(|| #hex_bytecode.parse()
+                                                .expect("invalid bytecode"));
+        }
+    } else {
+        quote! {}
+    };
+
     quote! {
         // Inline ABI declaration
         #abi_parse
+
+        #bytecode
 
         // Struct declaration
         #[derive(Clone)]
