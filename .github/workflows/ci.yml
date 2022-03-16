@@ -217,6 +217,8 @@ jobs:
       - name: Run all examples
         run: |
             export PATH=$HOME/bin:$PATH
+            ls -l ./scripts/examples.sh
+            chmod +x ./scripts/examples.sh
             ./scripts/examples.sh
 
   windows-build:
