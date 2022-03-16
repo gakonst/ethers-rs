@@ -14,7 +14,6 @@ use std::{
         btree_map::{BTreeMap, Entry},
         hash_map, BTreeSet, HashMap, HashSet,
     },
-    fmt,
     fs::{self},
     path::{Path, PathBuf},
     time::{Duration, UNIX_EPOCH},
@@ -758,7 +757,7 @@ impl FilteredSources {
     }
 
     /// Returns all dirty files
-    pub fn dirty_files(&self) -> impl Iterator<Item = &PathBuf> + fmt::Debug + '_ {
+    pub fn dirty_files(&self) -> impl Iterator<Item = &PathBuf> + '_ {
         self.0.iter().filter_map(|(k, s)| s.is_dirty().then(|| k))
     }
 

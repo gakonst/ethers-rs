@@ -317,7 +317,7 @@ impl CompilerSources {
                     tracing::trace!(
                         "Detected {} dirty sources {:?}",
                         sources.dirty().count(),
-                        sources.dirty_files()
+                        sources.dirty_files().collect::<Vec<_>>()
                     );
                     (solc, (version, sources))
                 })
@@ -438,6 +438,7 @@ fn compile_sequential(
             let output = solc.compile_exact(&input)?;
             report::solc_success(&solc, &version, &output);
             tracing::trace!("compiled input, output has error: {}", output.has_error());
+            tracing::trace!("received compiler output: {:?}", output.contracts.values());
             aggregated.extend(version.clone(), output);
         }
     }
