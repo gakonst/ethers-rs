@@ -3,6 +3,7 @@ use crate::{
     artifacts::Sources,
     config::SolcConfig,
     error::{Result, SolcError},
+    filter::{FilteredSource, FilteredSourceInfo, FilteredSources},
     resolver::GraphEdges,
     utils, ArtifactFile, ArtifactOutput, Artifacts, ArtifactsMap, Project, ProjectPathsConfig,
     Source,
@@ -294,6 +295,12 @@ impl SolFilesCache {
         let mut files: HashMap<_, _> = files.into_iter().map(|(p, v)| (p, v)).collect();
 
         self.files.retain(|file, entry| {
+            if entry.artifacts.is_empty() {
+                // keep entries that didn't emit any artifacts in the first place, such as a
+                // solidity file that only includes error definitions
+                return true
+            }
+
             if let Some(versions) = files.remove(file.as_path()) {
                 entry.retain_versions(versions);
             } else {
@@ -593,35 +600,78 @@ impl<'a, T: ArtifactOutput> ArtifactsCacheInner<'a, T> {
         }
     }
 
-    /// Returns only those sources that
+    /// Returns the set of [Source]s that need to be included in the [CompilerOutput] in order to
+    /// recompile the project.
+    ///
+    /// We define _dirty_ sources as files that:
     ///   - are new
     ///   - were changed
     ///   - their imports were changed
     ///   - their artifact is missing
-    fn filter(&mut self, sources: Sources, version: &Version) -> Sources {
+    ///
+    /// A _dirty_ file is always included in the [CompilerInput].
+    /// A _dirty_ file can also include clean files - files that do not match any of the above
+    /// criteria - which solc also requires in order to compile a dirty file.
+    ///
+    /// Therefore, these files will also be included in the filtered output but not marked as dirty,
+    /// so that their [OutputSelection] can be optimized in the [CompilerOutput] and their (empty)
+    /// artifacts ignored.
+    fn filter(&mut self, sources: Sources, version: &Version) -> FilteredSources {
         self.fill_hashes(&sources);
-        sources
+
+        // all files that are not dirty themselves, but are pulled from a dirty file
+        let mut imports_of_dirty = HashSet::new();
+
+        // separates all source files that fit the criteria (dirty) from those that don't (clean)
+        let (mut filtered_sources, clean_sources) = sources
             .into_iter()
-            .filter_map(|(file, source)| self.requires_solc(file, source, version))
-            .collect()
+            .map(|(file, source)| self.filter_source(file, source, version))
+            .fold(
+                (BTreeMap::default(), Vec::new()),
+                |(mut dirty_sources, mut clean_sources), source| {
+                    if source.dirty {
+                        // mark all files that are imported by a dirty file
+                        imports_of_dirty.extend(self.edges.all_imported_nodes(source.idx));
+                        dirty_sources.insert(source.file, FilteredSource::Dirty(source.source));
+                    } else {
+                        clean_sources.push(source);
+                    }
+
+                    (dirty_sources, clean_sources)
+                },
+            );
+
+        // track new cache entries for dirty files
+        for (file, filtered) in filtered_sources.iter() {
+            self.insert_new_cache_entry(file, filtered.source(), version.clone());
+        }
+
+        for clean_source in clean_sources {
+            let FilteredSourceInfo { file, source, idx, .. } = clean_source;
+            if imports_of_dirty.contains(&idx) {
+                // file is pulled in by a dirty file
+                filtered_sources.insert(file.clone(), FilteredSource::Clean(source.clone()));
+            }
+            self.insert_filtered_source(file, source, version.clone());
+        }
+
+        filtered_sources.into()
     }
 
-    /// Returns `Some` if the file _needs_ to be compiled and `None` if the artifact can be reu-used
-    fn requires_solc(
-        &mut self,
+    /// Returns the state of the given source file.
+    fn filter_source(
+        &self,
         file: PathBuf,
         source: Source,
         version: &Version,
-    ) -> Option<(PathBuf, Source)> {
+    ) -> FilteredSourceInfo {
+        let idx = self.edges.node_id(&file);
         if !self.is_dirty(&file, version) &&
             self.edges.imports(&file).iter().all(|file| !self.is_dirty(file, version))
         {
-            self.insert_filtered_source(file, source, version.clone());
-            None
+            FilteredSourceInfo { file, source, idx, dirty: false }
         } else {
-            self.insert_new_cache_entry(&file, &source, version.clone());
-
-            Some((file, source))
+            FilteredSourceInfo { file, source, idx, dirty: true }
         }
     }
 
@@ -750,9 +800,9 @@ impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
     }
 
     /// Filters out those sources that don't need to be compiled
-    pub fn filter(&mut self, sources: Sources, version: &Version) -> Sources {
+    pub fn filter(&mut self, sources: Sources, version: &Version) -> FilteredSources {
         match self {
-            ArtifactsCache::Ephemeral(_, _) => sources,
+            ArtifactsCache::Ephemeral(_, _) => sources.into(),
             ArtifactsCache::Cached(cache) => cache.filter(sources, version),
         }
     }
