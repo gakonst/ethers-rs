@@ -168,10 +168,10 @@ impl<'de> Visitor<'de> for AbiObjectVisitor {
                     abi = Some(RawAbi(map.next_value::<Vec<Item>>()?));
                 }
                 "bytecode" | "byteCode" => {
-                    bytecode = map.next_value::<BytecodeObject>().ok().map(|obj|obj.object);
+                    bytecode = map.next_value::<BytecodeObject>().ok().map(|obj| obj.object);
                 }
                 "bin" => {
-                    bytecode = map.next_value::<DeserializeBytes>().ok().map(|b|b.0);
+                    bytecode = map.next_value::<DeserializeBytes>().ok().map(|b| b.0);
                 }
                 _ => {
                     map.next_value::<serde::de::IgnoredAny>()?;

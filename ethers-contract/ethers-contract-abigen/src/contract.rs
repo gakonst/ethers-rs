@@ -6,7 +6,7 @@ mod structs;
 mod types;
 
 use super::{util, Abigen};
-use crate::{contract::structs::InternalStructs};
+use crate::contract::structs::InternalStructs;
 use ethers_core::{
     abi::{Abi, AbiParser},
     macros::{ethers_contract_crate, ethers_core_crate, ethers_providers_crate},
@@ -15,12 +15,12 @@ use eyre::{eyre, Context as _, Result};
 
 use crate::contract::methods::MethodAlias;
 
+use crate::rawabi::JsonAbi;
 use proc_macro2::{Ident, Literal, TokenStream};
 use quote::quote;
 use serde::Deserialize;
 use std::collections::BTreeMap;
 use syn::Path;
-use crate::rawabi::JsonAbi;
 
 /// The result of `Context::expand`
 #[derive(Debug)]
@@ -180,14 +180,12 @@ impl Context {
         } else {
             match serde_json::from_str::<JsonAbi>(&abi_str)? {
                 JsonAbi::Object(obj) => {
-                // need to update the `abi_str` here because we only want the `"abi": [...]`
-                // part of the json object in the contract binding
+                    // need to update the `abi_str` here because we only want the `"abi": [...]`
+                    // part of the json object in the contract binding
                     abi_str = serde_json::to_string(&obj.abi)?;
                     InternalStructs::new(obj.abi)
                 }
-                JsonAbi::Array(abi) => {
-                    InternalStructs::new(abi)
-                }
+                JsonAbi::Array(abi) => InternalStructs::new(abi),
             }
         };
 
@@ -257,9 +255,8 @@ fn parse_abi(abi_str: &str) -> Result<(Abi, bool, AbiParser)> {
     let res = if let Ok(abi) = abi_parser.parse_str(abi_str) {
         (abi, true, abi_parser)
     } else {
-
         // a best-effort coercion of an ABI or an artifact JSON into an artifact JSON.
-        let contract: JsonContract =  serde_json::from_str(abi_str)?;
+        let contract: JsonContract = serde_json::from_str(abi_str)?;
 
         (contract.into_abi(), false, abi_parser)
     };
@@ -281,12 +278,10 @@ enum JsonContract {
 }
 
 impl JsonContract {
-
     fn into_abi(self) -> Abi {
         match self {
-            JsonContract::Object(o) => {o.abi}
-            JsonContract::Array(abi) => {abi}
+            JsonContract::Object(o) => o.abi,
+            JsonContract::Array(abi) => abi,
         }
     }
-
 }
