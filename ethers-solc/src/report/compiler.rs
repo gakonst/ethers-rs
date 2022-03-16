@@ -150,7 +150,7 @@ impl FromStr for Target {
     }
 }
 
-/// Indicates that a field name specified in a filter directive was invalid.
+/// Indicates that a field name specified in the env value was invalid.
 #[derive(Clone, Debug, thiserror::Error)]
 #[error("{}", self.name)]
 pub struct BadName {
