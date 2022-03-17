@@ -75,12 +75,6 @@ pub fn determine_ethers_crates() -> (&'static str, &'static str, &'static str) {
                     return sub_crates
                 }
 
-                // Note(mattsse): somehow rustanalyzer can end up expanding `abigen!` from inside the `ethers-middleware` crate: https://github.com/rust-analyzer/rust-analyzer/issues/11518
-                // so we need to bypass detection
-                if pkg.name == "ethers-middleware" || pkg.name == "ethers" {
-                    return None
-                }
-
                 let mut has_ethers_core = false;
                 let mut has_ethers_contract = false;
                 let mut has_ethers_providers = false;
