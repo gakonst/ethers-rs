@@ -1,5 +1,4 @@
-use ethers::abi::AbiDecode;
-use ethers::prelude::*;
+use ethers::{abi::AbiDecode, prelude::*};
 use eyre::Result;
 
 // Abigen creates a SwapExactTokensForTokensCall struct that can be used to decode
@@ -15,7 +14,7 @@ fn main() -> Result<()> {
     let tx_input = "0x38ed173900000000000000000000000000000000000000000001a717cc0a3e4f84c00000000000000000000000000000000000000000000000000000000000000283568400000000000000000000000000000000000000000000000000000000000000a0000000000000000000000000201f129111c60401630932d9f9811bd5b5fff34e000000000000000000000000000000000000000000000000000000006227723d000000000000000000000000000000000000000000000000000000000000000200000000000000000000000095ad61b0a150d79219dcf64e1e6cc01f0b64c4ce000000000000000000000000dac17f958d2ee523a2206206994597c13d831ec7";
     let calldata: Bytes = tx_input.parse().unwrap();
     let decoded = SwapExactTokensForTokensCall::decode(&calldata)?;
-    
+
     let from = decoded.path.into_iter().next().unwrap();
     println!(
         "Swapped {} of token {} for {} of token {}",
