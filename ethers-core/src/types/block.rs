@@ -1,5 +1,7 @@
 // Taken from https://github.com/tomusdrw/rust-web3/blob/master/src/types/block.rs
 use crate::types::{Address, Bloom, Bytes, H256, U256, U64};
+#[cfg(not(feature = "celo"))]
+use core::cmp::Ordering;
 use serde::{ser::SerializeStruct, Deserialize, Deserializer, Serialize, Serializer};
 use std::str::FromStr;
 
@@ -90,44 +92,50 @@ pub struct Block<TX> {
 }
 
 // ref https://eips.ethereum.org/EIPS/eip-1559
+#[cfg(not(feature = "celo"))]
 pub const ELASTICITY_MULTIPLIER: U256 = U256([2u64, 0, 0, 0]);
 // max base fee delta is 12.5%
+#[cfg(not(feature = "celo"))]
 pub const BASE_FEE_MAX_CHANGE_DENOMINATOR: U256 = U256([8u64, 0, 0, 0]);
 
 impl<TX> Block<TX> {
     /// The target gas usage as per EIP-1559
+    #[cfg(not(feature = "celo"))]
     pub fn gas_target(&self) -> U256 {
         self.gas_limit / ELASTICITY_MULTIPLIER
     }
 
     /// The next block's base fee, it is a function of parent block's base fee and gas usage.
     /// Reference: https://eips.ethereum.org/EIPS/eip-1559
+    #[cfg(not(feature = "celo"))]
     pub fn next_block_base_fee(&self) -> Option<U256> {
         let target_usage = self.gas_target();
-        if let None = self.base_fee_per_gas {
-            return None
-        }
+        let base_fee_per_gas = self.base_fee_per_gas?;
 
-        let base_fee_per_gas = self.base_fee_per_gas.unwrap();
-
-        if self.gas_used > target_usage {
-            let gas_used_delta = self.gas_used - self.gas_target();
-            let base_fee_per_gas_delta = U256::max(
-                base_fee_per_gas * gas_used_delta / target_usage / BASE_FEE_MAX_CHANGE_DENOMINATOR,
-                U256::from(1u32),
-            );
-            let expected_base_fee_per_gas = base_fee_per_gas + base_fee_per_gas_delta;
-            Some(expected_base_fee_per_gas)
-        } else if self.gas_used < target_usage {
-            let gas_used_delta = self.gas_target() - self.gas_used;
-            let base_fee_per_gas_delta = U256::max(
-                base_fee_per_gas * gas_used_delta / target_usage / BASE_FEE_MAX_CHANGE_DENOMINATOR,
-                U256::from(1u32),
-            );
-            let expected_base_fee_per_gas = base_fee_per_gas - base_fee_per_gas_delta;
-            Some(expected_base_fee_per_gas)
-        } else {
-            self.base_fee_per_gas
+        match self.gas_used.cmp(&target_usage) {
+            Ordering::Greater => {
+                let gas_used_delta = self.gas_used - self.gas_target();
+                let base_fee_per_gas_delta = U256::max(
+                    base_fee_per_gas * gas_used_delta /
+                        target_usage /
+                        BASE_FEE_MAX_CHANGE_DENOMINATOR,
+                    U256::from(1u32),
+                );
+                let expected_base_fee_per_gas = base_fee_per_gas + base_fee_per_gas_delta;
+                Some(expected_base_fee_per_gas)
+            }
+            Ordering::Less => {
+                let gas_used_delta = self.gas_target() - self.gas_used;
+                let base_fee_per_gas_delta = U256::max(
+                    base_fee_per_gas * gas_used_delta /
+                        target_usage /
+                        BASE_FEE_MAX_CHANGE_DENOMINATOR,
+                    U256::from(1u32),
+                );
+                let expected_base_fee_per_gas = base_fee_per_gas - base_fee_per_gas_delta;
+                Some(expected_base_fee_per_gas)
+            }
+            Ordering::Equal => self.base_fee_per_gas,
         }
     }
 }
