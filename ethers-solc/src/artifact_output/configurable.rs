@@ -2,12 +2,13 @@
 
 use crate::{
     artifacts::{
+        bytecode::{CompactBytecode, CompactDeployedBytecode},
+        contract::{CompactContract, CompactContractBytecode, Contract},
         output_selection::{ContractOutputSelection, EvmOutputSelection, EwasmOutputSelection},
-        CompactBytecode, CompactContract, CompactContractBytecode, CompactDeployedBytecode,
         CompactEvm, DevDoc, Ewasm, GasEstimates, LosslessAbi, Metadata, Offsets, Settings,
         StorageLayout, UserDoc,
     },
-    ArtifactOutput, Contract, SolcConfig, SolcError,
+    ArtifactOutput, SolcConfig, SolcError,
 };
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, fs, path::Path};

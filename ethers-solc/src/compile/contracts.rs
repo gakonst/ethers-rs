@@ -1,4 +1,7 @@
-use crate::artifacts::{CompactContractRef, Contract, FileToContractsMap};
+use crate::artifacts::{
+    contract::{CompactContractRef, Contract},
+    FileToContractsMap,
+};
 use semver::Version;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -112,6 +115,7 @@ impl VersionedContracts {
     /// ```
     /// use std::collections::BTreeMap;
     /// use ethers_solc::{ artifacts::*, Artifact };
+    /// use ethers_solc::artifacts::contract::CompactContractSome;
     /// # fn demo(contracts: OutputContracts) {
     /// let contracts: BTreeMap<String, CompactContractSome> = contracts
     ///     .into_contracts()
