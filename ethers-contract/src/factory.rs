@@ -14,8 +14,9 @@ use ethers_core::types::Eip1559TransactionRequest;
 
 use std::sync::Arc;
 
-#[derive(Debug, Clone)]
 /// Helper which manages the deployment transaction of a smart contract
+#[derive(Debug, Clone)]
+#[must_use = "Deployer does nothing unless you `send` it"]
 pub struct Deployer<M> {
     /// The deployer's transaction, exposed for overriding the defaults
     pub tx: TypedTransaction,
@@ -109,7 +110,6 @@ impl<M: Middleware> Deployer<M> {
     }
 }
 
-#[derive(Debug, Clone)]
 /// To deploy a contract to the Ethereum network, a `ContractFactory` can be
 /// created which manages the Contract bytecode and Application Binary Interface
 /// (ABI), usually generated from the Solidity compiler.
@@ -151,6 +151,7 @@ impl<M: Middleware> Deployer<M> {
 /// println!("{}", contract.address());
 /// # Ok(())
 /// # }
+#[derive(Debug, Clone)]
 pub struct ContractFactory<M> {
     client: Arc<M>,
     abi: Abi,

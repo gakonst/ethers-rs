@@ -16,12 +16,12 @@ use eyre::{eyre, Context as _, Result};
 use crate::contract::methods::MethodAlias;
 
 use crate::rawabi::JsonAbi;
+use ethers_core::types::Bytes;
 use proc_macro2::{Ident, Literal, TokenStream};
 use quote::quote;
 use serde::Deserialize;
 use std::collections::BTreeMap;
 use syn::Path;
-use ethers_core::types::Bytes;
 
 /// The result of `Context::expand`
 #[derive(Debug)]
@@ -120,7 +120,10 @@ impl Context {
         // 4. impl block for the contract methods and their corresponding types
         let (contract_methods, call_structs) = self.methods_and_call_structs()?;
 
-        // 5. Declare the structs parsed from the human readable abi
+        // 5. generate deploy function if
+        let deployment_methods = self.deployment_methods();
+
+        // 6. Declare the structs parsed from the human readable abi
         let abi_structs_decl = self.abi_structs()?;
 
         let ethers_core = ethers_core_crate();
@@ -139,7 +142,7 @@ impl Context {
                         Self(contract)
                     }
 
-                    // TODO: Implement deployment.
+                    #deployment_methods
 
                     #contract_methods
 

@@ -42,6 +42,60 @@ impl Context {
         Ok((function_impls, call_structs))
     }
 
+    /// Returns all deploy (constructor) implementations
+    pub(crate) fn deployment_methods(&self) -> TokenStream {
+        if self.contract_bytecode.is_some() {
+            let ethers_core = ethers_core_crate();
+            let ethers_contract = ethers_contract_crate();
+
+            let abi_name = self.inline_abi_ident();
+            let get_abi = quote! {
+                #abi_name.clone()
+            };
+
+            let bytecode_name = self.inline_bytecode_ident();
+            let get_bytecode = quote! {
+                #bytecode_name.clone().into()
+            };
+
+            let get_client = quote! {
+                self.deref().client().clone()
+            };
+            let deploy_tokens = quote! {
+                /// Constructs the general purpose `Deployer` instance based on the provided constructor arguments
+                /// You must call `send()` in order to actually deploy the contract.
+                ///
+                /// Notes:
+                /// 1. If there are no constructor arguments, you should pass `()` as the argument.
+                /// 1. The default poll duration is 7 seconds.
+                /// 1. The default number of confirmations is 1 block.
+                pub fn deploy_tokens<T: #ethers_core::abi::Tokenize >(self, constructor_args: T) -> Result<#ethers_contract::factory::Deployer<M>, #ethers_contract::call::ContractError<M>> {
+                   let factory = #ethers_contract::factory::ContractFactory::new(#get_abi, #get_bytecode, #get_client);
+                   factory.deploy_tokens(constructor_args.into_tokens())
+                }
+
+            };
+            // /// Constructs the deployment transaction and returns a `Deployer` instance.
+            // /// You must call `send()` in order to actually deploy the contract.
+            // ///
+            // /// Notes:
+            // /// 1. If there are no constructor arguments, you should pass `()` as the argument.
+            // /// 1. The default poll duration is 7 seconds.
+            // /// 1. The default number of confirmations is 1 block.
+            // pub fn deploy<T: Tokenize>(self, constructor_args: T) -> Result<Deployer<M>,
+            // ContractError<M>> {     self.deploy_tokens(constructor_args.
+            // into_tokens())     // let factory = ContractFactory::new(abi.unwrap(),
+            // bytecode.unwrap(), client.clone()); }
+
+            return quote! {
+
+                #deploy_tokens
+            }
+        }
+
+        quote! {}
+    }
+
     /// Expands to the corresponding struct type based on the inputs of the given function
     fn expand_call_struct(
         &self,
