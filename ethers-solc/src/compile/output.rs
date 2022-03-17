@@ -2,7 +2,8 @@
 
 use crate::{
     artifacts::{
-        CompactContractBytecode, CompactContractRef, Contract, Error, SourceFile, SourceFiles,
+        contract::{CompactContractBytecode, CompactContractRef, Contract},
+        Error, SourceFile, SourceFiles,
     },
     contracts::{VersionedContract, VersionedContracts},
     ArtifactId, ArtifactOutput, Artifacts, CompilerOutput, ConfigurableArtifacts,
@@ -77,7 +78,7 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
     /// Make all artifact files relative tot the project's root directory
     ///
     /// ```no_run
-    /// use ethers_solc::artifacts::CompactContractBytecode;
+    /// use ethers_solc::artifacts::contract::CompactContractBytecode;
     /// use ethers_solc::Project;
     ///
     /// let project = Project::builder().build().unwrap();
@@ -93,7 +94,7 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
     /// Get the (merged) solc compiler output
     /// ```no_run
     /// use std::collections::btree_map::BTreeMap;
-    /// use ethers_solc::artifacts::Contract;
+    /// use ethers_solc::artifacts::contract::Contract;
     /// use ethers_solc::Project;
     ///
     /// let project = Project::builder().build().unwrap();
@@ -182,7 +183,7 @@ impl ProjectCompileOutput<ConfigurableArtifacts> {
     ///
     /// ```no_run
     /// use std::collections::btree_map::BTreeMap;
-    /// use ethers_solc::artifacts::CompactContractBytecode;
+    /// use ethers_solc::artifacts::contract::CompactContractBytecode;
     /// use ethers_solc::{ArtifactId, Project};
     ///
     /// let project = Project::builder().build().unwrap();

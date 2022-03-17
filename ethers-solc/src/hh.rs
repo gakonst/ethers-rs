@@ -2,8 +2,9 @@
 
 use crate::{
     artifacts::{
-        Bytecode, BytecodeObject, CompactContract, CompactContractBytecode, Contract,
-        ContractBytecode, DeployedBytecode, LosslessAbi, Offsets,
+        bytecode::{Bytecode, BytecodeObject, DeployedBytecode},
+        contract::{CompactContract, CompactContractBytecode, Contract, ContractBytecode},
+        LosslessAbi, Offsets,
     },
     ArtifactOutput,
 };
