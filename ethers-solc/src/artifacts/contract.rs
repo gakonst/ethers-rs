@@ -8,7 +8,7 @@ use crate::artifacts::{
 };
 use ethers_core::{abi::Contract as Abi, types::Bytes};
 use serde::{Deserialize, Serialize};
-use std::{collections::BTreeMap, convert::TryFrom};
+use std::{borrow::Cow, collections::BTreeMap, convert::TryFrom};
 
 /// Represents a compiled solidity contract
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
@@ -39,6 +39,24 @@ pub struct Contract {
     pub ewasm: Option<Ewasm>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ir_optimized: Option<String>,
+}
+
+impl<'a> From<&'a Contract> for CompactContractBytecodeCow<'a> {
+    fn from(artifact: &'a Contract) -> Self {
+        let (bytecode, deployed_bytecode) = if let Some(ref evm) = artifact.evm {
+            (
+                evm.bytecode.clone().map(Into::into).map(Cow::Owned),
+                evm.deployed_bytecode.clone().map(Into::into).map(Cow::Owned),
+            )
+        } else {
+            (None, None)
+        };
+        CompactContractBytecodeCow {
+            abi: artifact.abi.as_ref().map(|abi| Cow::Borrowed(&abi.abi)),
+            bytecode,
+            deployed_bytecode,
+        }
+    }
 }
 
 /// Minimal representation of a contract with a present abi and bytecode.
@@ -143,6 +161,16 @@ impl CompactContractBytecode {
     }
 }
 
+impl<'a> From<&'a CompactContractBytecode> for CompactContractBytecodeCow<'a> {
+    fn from(artifact: &'a CompactContractBytecode) -> Self {
+        CompactContractBytecodeCow {
+            abi: artifact.abi.as_ref().map(Cow::Borrowed),
+            bytecode: artifact.bytecode.as_ref().map(Cow::Borrowed),
+            deployed_bytecode: artifact.deployed_bytecode.as_ref().map(Cow::Borrowed),
+        }
+    }
+}
+
 impl From<Contract> for CompactContractBytecode {
     fn from(c: Contract) -> Self {
         let (bytecode, deployed_bytecode) = if let Some(evm) = c.evm {
@@ -178,6 +206,17 @@ impl From<CompactContractBytecode> for ContractBytecode {
         };
         Self { abi: c.abi, bytecode: maybe_bcode, deployed_bytecode: maybe_runtime }
     }
+}
+
+/// A [CompactContractBytecode] that is either owns or borrows its content
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct CompactContractBytecodeCow<'a> {
+    pub abi: Option<Cow<'a, Abi>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bytecode: Option<Cow<'a, CompactBytecode>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub deployed_bytecode: Option<Cow<'a, CompactDeployedBytecode>>,
 }
 
 /// Minimal representation of a contract with a present abi and bytecode.
@@ -307,6 +346,17 @@ impl From<serde_json::Value> for CompactContract {
             Self { abi, bin, bin_runtime }
         } else {
             CompactContract::default()
+        }
+    }
+}
+
+impl<'a> From<&'a serde_json::Value> for CompactContractBytecodeCow<'a> {
+    fn from(artifact: &'a serde_json::Value) -> Self {
+        let c = CompactContractBytecode::from(artifact.clone());
+        CompactContractBytecodeCow {
+            abi: c.abi.map(Cow::Owned),
+            bytecode: c.bytecode.map(Cow::Owned),
+            deployed_bytecode: c.deployed_bytecode.map(Cow::Owned),
         }
     }
 }

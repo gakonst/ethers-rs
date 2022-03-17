@@ -221,6 +221,14 @@ impl BytecodeObject {
             BytecodeObject::Unlinked(_) => None,
         }
     }
+
+    /// Returns the number of bytes of the fully linked bytecode
+    ///
+    /// Returns `0` if this object is unlinked.
+    pub fn bytes_len(&self) -> usize {
+        self.as_bytes().map(|b| b.as_ref().len()).unwrap_or_default()
+    }
+
     /// Returns a reference to the underlying `String` if the object is unlinked
     pub fn as_str(&self) -> Option<&str> {
         match self {
