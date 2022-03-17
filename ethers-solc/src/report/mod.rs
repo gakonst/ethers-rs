@@ -29,6 +29,9 @@ use std::{
     },
 };
 
+mod compiler;
+pub use compiler::SolcCompilerIoReporter;
+
 thread_local! {
     static CURRENT_STATE: State = State {
         scoped: RefCell::new(Report::none()),
