@@ -126,12 +126,9 @@ impl<TX> Block<TX> {
             }
             Ordering::Less => {
                 let gas_used_delta = self.gas_target() - self.gas_used;
-                let base_fee_per_gas_delta = U256::max(
-                    base_fee_per_gas * gas_used_delta /
-                        target_usage /
-                        BASE_FEE_MAX_CHANGE_DENOMINATOR,
-                    U256::from(1u32),
-                );
+                let base_fee_per_gas_delta = base_fee_per_gas * gas_used_delta /
+                    target_usage /
+                    BASE_FEE_MAX_CHANGE_DENOMINATOR;
                 let expected_base_fee_per_gas = base_fee_per_gas - base_fee_per_gas_delta;
                 Some(expected_base_fee_per_gas)
             }
