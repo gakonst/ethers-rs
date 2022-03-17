@@ -158,6 +158,10 @@ pub struct Settings {
         skip_serializing_if = "Option::is_none"
     )]
     pub evm_version: Option<EvmVersion>,
+    /// Change compilation pipeline to go through the Yul intermediate representation. This is
+    /// false by default.
+    #[serde(rename = "viaIR", default, skip_serializing_if = "Option::is_none")]
+    pub via_ir: Option<bool>,
     #[serde(default, skip_serializing_if = "::std::collections::BTreeMap::is_empty")]
     pub libraries: BTreeMap<String, BTreeMap<String, String>>,
 }
@@ -240,6 +244,19 @@ impl Settings {
             .insert(key.into(), values.into_iter().map(|s| s.to_string()).collect());
     }
 
+    /// Sets the ``viaIR` valu
+    #[must_use]
+    pub fn set_via_ir(mut self, via_ir: bool) -> Self {
+        self.via_ir = Some(via_ir);
+        self
+    }
+
+    /// Enables `viaIR`
+    #[must_use]
+    pub fn with_via_ir(self) -> Self {
+        self.set_via_ir(true)
+    }
+
     /// Adds `ast` to output
     #[must_use]
     pub fn with_ast(mut self) -> Self {
@@ -258,6 +275,7 @@ impl Default for Settings {
             metadata: None,
             output_selection: OutputSelection::default_output_selection(),
             evm_version: Some(EvmVersion::default()),
+            via_ir: None,
             libraries: Default::default(),
             remappings: Default::default(),
         }
