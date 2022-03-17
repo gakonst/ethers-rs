@@ -1,5 +1,6 @@
-use cargo_metadata::{DependencyKind, MetadataCommand};
+use cargo_metadata::MetadataCommand;
 use once_cell::sync::Lazy;
+
 use syn::Path;
 
 /// See `determine_ethers_crates`
@@ -32,6 +33,11 @@ pub fn ethers_providers_crate() -> Path {
 /// macros This will attempt to parse the current `Cargo.toml` and check the
 /// ethers related dependencies.
 ///
+/// This determines
+///   - `ethers_*` idents if `ethers-core`, `ethers-contract`, `ethers-providers`  are present in
+///     the manifest or the `ethers` is _not_ present
+///   - `ethers::*` otherwise
+///
 /// This process is a bit hacky, we run `cargo metadata` internally which
 /// resolves the current package but creates a new `Cargo.lock` file in the
 /// process. This is not a problem for regular workspaces but becomes an issue
@@ -62,15 +68,41 @@ pub fn determine_ethers_crates() -> (&'static str, &'static str, &'static str) {
         .ok()
         .and_then(|metadata| {
             metadata.root_package().and_then(|pkg| {
-                pkg.dependencies.iter().filter(|dep| dep.kind == DependencyKind::Normal).find_map(
-                    |dep| {
-                        (dep.name == "ethers")
-                            .then(|| ("ethers::core", "ethers::contract", "ethers::providers"))
-                    },
-                )
+                let sub_crates = Some(("ethers_core", "ethers_contract", "ethers_providers"));
+                if pkg.name == "ethers-contract" {
+                    // Note(mattsse): this is super hacky but required in order to compile the tests
+                    // in the `ethers-contract` crate
+                    return sub_crates
+                }
+
+                let mut has_ethers_core = false;
+                let mut has_ethers_contract = false;
+                let mut has_ethers_providers = false;
+
+                for dep in pkg.dependencies.iter() {
+                    match dep.name.as_str() {
+                        "ethers-core" => {
+                            has_ethers_core = true;
+                        }
+                        "ethers-contract" => {
+                            has_ethers_contract = true;
+                        }
+                        "ethers-providers" => {
+                            has_ethers_providers = true;
+                        }
+                        "ethers" => return None,
+                        _ => {}
+                    }
+                }
+
+                if has_ethers_core && has_ethers_contract && has_ethers_providers {
+                    return sub_crates
+                }
+
+                None
             })
         })
-        .unwrap_or(("ethers_core", "ethers_contract", "ethers_providers"));
+        .unwrap_or(("ethers::core", "ethers::contract", "ethers::providers"));
 
     if needs_lock_file_cleanup {
         // delete the `Cargo.lock` file that was created by `cargo metadata`
