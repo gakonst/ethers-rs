@@ -5,13 +5,13 @@ use crate::{
         bytecode::{CompactBytecode, CompactDeployedBytecode},
         contract::{CompactContract, CompactContractBytecode, Contract},
         output_selection::{ContractOutputSelection, EvmOutputSelection, EwasmOutputSelection},
-        CompactEvm, DevDoc, Ewasm, GasEstimates, LosslessAbi, Metadata, Offsets, Settings,
-        StorageLayout, UserDoc,
+        CompactContractBytecodeCow, CompactEvm, DevDoc, Ewasm, GasEstimates, LosslessAbi, Metadata,
+        Offsets, Settings, StorageLayout, UserDoc,
     },
     ArtifactOutput, SolcConfig, SolcError,
 };
 use serde::{Deserialize, Serialize};
-use std::{collections::BTreeMap, fs, path::Path};
+use std::{borrow::Cow, collections::BTreeMap, fs, path::Path};
 
 /// Represents the `Artifact` that `ConfigurableArtifacts` emits.
 ///
@@ -84,6 +84,16 @@ impl From<ConfigurableContractArtifact> for CompactContractBytecode {
 impl From<ConfigurableContractArtifact> for CompactContract {
     fn from(artifact: ConfigurableContractArtifact) -> Self {
         CompactContractBytecode::from(artifact).into()
+    }
+}
+
+impl<'a> From<&'a ConfigurableContractArtifact> for CompactContractBytecodeCow<'a> {
+    fn from(artifact: &'a ConfigurableContractArtifact) -> Self {
+        CompactContractBytecodeCow {
+            abi: artifact.abi.as_ref().map(|abi| Cow::Borrowed(&abi.abi)),
+            bytecode: artifact.bytecode.as_ref().map(Cow::Borrowed),
+            deployed_bytecode: artifact.deployed_bytecode.as_ref().map(Cow::Borrowed),
+        }
     }
 }
 

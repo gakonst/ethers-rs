@@ -8,13 +8,17 @@ use ethers_core::{abi::Abi, types::Bytes};
 use semver::Version;
 use serde::{de::DeserializeOwned, Serialize};
 use std::{
+    borrow::Cow,
     collections::btree_map::BTreeMap,
     fmt, fs, io,
     path::{Path, PathBuf},
 };
 
 mod configurable;
-use crate::artifacts::contract::{CompactContract, CompactContractBytecode, Contract};
+use crate::artifacts::{
+    contract::{CompactContract, CompactContractBytecode, Contract},
+    BytecodeObject, CompactBytecode, CompactContractBytecodeCow, CompactDeployedBytecode,
+};
 pub use configurable::*;
 
 /// Represents unique artifact metadata for identifying artifacts on output
@@ -290,6 +294,29 @@ pub trait Artifact {
     /// Returns the contents of this type as a single tuple of abi, bytecode and deployed bytecode
     fn into_parts(self) -> (Option<Abi>, Option<Bytes>, Option<Bytes>);
 
+    /// Consumes the type and returns the [Abi]
+    fn into_abi(self) -> Option<Abi>
+    where
+        Self: Sized,
+    {
+        self.into_parts().0
+    }
+
+    /// Consumes the type and returns the `bytecode`
+    fn into_bytecode_bytes(self) -> Option<Bytes>
+    where
+        Self: Sized,
+    {
+        self.into_parts().1
+    }
+    /// Consumes the type and returns the `deployed bytecode`
+    fn into_deployed_bytecode_bytes(self) -> Option<Bytes>
+    where
+        Self: Sized,
+    {
+        self.into_parts().2
+    }
+
     /// Same as [`Self::into_parts()`] but returns `Err` if an element is `None`
     fn try_into_parts(self) -> Result<(Abi, Bytes, Bytes)>
     where
@@ -303,11 +330,67 @@ pub trait Artifact {
             deployed_bytecode.ok_or_else(|| SolcError::msg("deployed bytecode missing"))?,
         ))
     }
+
+    /// Returns the reference of container type for abi, compact bytecode and deployed bytecode if
+    /// available
+    fn get_contract_bytecode(&self) -> CompactContractBytecodeCow;
+
+    /// Returns the reference to the `bytecode`
+    fn get_bytecode(&self) -> Option<Cow<CompactBytecode>> {
+        self.get_contract_bytecode().bytecode
+    }
+
+    /// Returns the reference to the `bytecode` object
+    fn get_bytecode_object(&self) -> Option<Cow<BytecodeObject>> {
+        let val = match self.get_bytecode()? {
+            Cow::Borrowed(b) => Cow::Borrowed(&b.object),
+            Cow::Owned(b) => Cow::Owned(b.object),
+        };
+        Some(val)
+    }
+
+    /// Returns the bytes of the `bytecode` object
+    fn get_bytecode_bytes(&self) -> Option<Cow<Bytes>> {
+        let val = match self.get_bytecode_object()? {
+            Cow::Borrowed(b) => Cow::Borrowed(b.as_bytes()?),
+            Cow::Owned(b) => Cow::Owned(b.into_bytes()?),
+        };
+        Some(val)
+    }
+
+    /// Returns the reference to the `deployedBytecode`
+    fn get_deployed_bytecode(&self) -> Option<Cow<CompactDeployedBytecode>> {
+        self.get_contract_bytecode().deployed_bytecode
+    }
+
+    /// Returns the reference to the `bytecode` object
+    fn get_deployed_bytecode_object(&self) -> Option<Cow<BytecodeObject>> {
+        let val = match self.get_deployed_bytecode()? {
+            Cow::Borrowed(b) => Cow::Borrowed(&b.bytecode.as_ref()?.object),
+            Cow::Owned(b) => Cow::Owned(b.bytecode?.object),
+        };
+        Some(val)
+    }
+
+    /// Returns the bytes of the `deployed bytecode` object
+    fn get_deployed_bytecode_bytes(&self) -> Option<Cow<Bytes>> {
+        let val = match self.get_deployed_bytecode_object()? {
+            Cow::Borrowed(b) => Cow::Borrowed(b.as_bytes()?),
+            Cow::Owned(b) => Cow::Owned(b.into_bytes()?),
+        };
+        Some(val)
+    }
+
+    /// Returns the reference to the [Abi] if available
+    fn get_abi(&self) -> Option<Cow<Abi>> {
+        self.get_contract_bytecode().abi
+    }
 }
 
 impl<T> Artifact for T
 where
     T: Into<CompactContractBytecode> + Into<CompactContract>,
+    for<'a> &'a T: Into<CompactContractBytecodeCow<'a>>,
 {
     fn into_inner(self) -> (Option<Abi>, Option<Bytes>) {
         let artifact = self.into_compact_contract();
@@ -324,6 +407,10 @@ where
 
     fn into_parts(self) -> (Option<Abi>, Option<Bytes>, Option<Bytes>) {
         self.into_compact_contract().into_parts()
+    }
+
+    fn get_contract_bytecode(&self) -> CompactContractBytecodeCow {
+        self.into()
     }
 }
 
