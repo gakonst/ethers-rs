@@ -41,7 +41,23 @@ pub struct Contract {
     pub ir_optimized: Option<String>,
 }
 
-impl Contract {}
+impl<'a> From<&'a Contract> for CompactContractBytecodeCow<'a> {
+    fn from(artifact: &'a Contract) -> Self {
+        let (bytecode, deployed_bytecode) = if let Some(ref evm) = artifact.evm {
+            (
+                evm.bytecode.clone().map(Into::into).map(Cow::Owned),
+                evm.deployed_bytecode.clone().map(Into::into).map(Cow::Owned),
+            )
+        } else {
+            (None, None)
+        };
+        CompactContractBytecodeCow {
+            abi: artifact.abi.as_ref().map(|abi| Cow::Borrowed(&abi.abi)),
+            bytecode,
+            deployed_bytecode,
+        }
+    }
+}
 
 /// Minimal representation of a contract with a present abi and bytecode.
 ///
