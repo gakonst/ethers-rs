@@ -12,7 +12,7 @@ use rand::{
 };
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::{BTreeSet, HashMap},
+    collections::{BTreeSet, HashMap, HashSet, VecDeque},
     path::{Path, PathBuf},
 };
 
@@ -23,6 +23,13 @@ pub struct MockProjectSkeleton {
     pub files: Vec<MockFile>,
     /// all libraries
     pub libraries: Vec<MockLib>,
+}
+
+impl MockProjectSkeleton {
+    /// Returns a list of file ids the given file id imports.
+    pub fn imported_nodes(&self, from: usize) -> impl Iterator<Item = usize> + '_ {
+        self.files[from].imports.iter().map(|i| i.file_id())
+    }
 }
 
 /// Represents a virtual project
@@ -272,9 +279,25 @@ impl MockProjectGenerator {
         }
     }
 
+    /// Returns the file for the given id
+    pub fn get_file(&self, id: usize) -> &MockFile {
+        &self.inner.files[id]
+    }
+
     /// All file ids
     pub fn file_ids(&self) -> impl Iterator<Item = usize> + '_ {
         self.inner.files.iter().map(|f| f.id)
+    }
+
+    /// Returns an iterator over all file ids that are source files or imported by source files
+    ///
+    /// In other words, all files that are relevant in order to compile the project's source files.
+    pub fn used_file_ids(&self) -> impl Iterator<Item = usize> + '_ {
+        let mut file_ids = BTreeSet::new();
+        for file in self.internal_file_ids() {
+            file_ids.extend(NodesIter::new(file, &self.inner))
+        }
+        file_ids.into_iter()
     }
 
     /// All ids of internal files
@@ -469,6 +492,15 @@ pub enum MockImport {
     External(usize, usize),
 }
 
+impl MockImport {
+    pub fn file_id(&self) -> usize {
+        *match self {
+            MockImport::Internal(id) => id,
+            MockImport::External(_, id) => id,
+        }
+    }
+}
+
 /// Container of a mock lib
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MockLib {
@@ -549,6 +581,33 @@ impl Default for MockProjectSettings {
             max_imports: 5,
             allow_no_artifacts_files: true,
         }
+    }
+}
+
+/// An iterator over a node and its dependencies
+struct NodesIter<'a> {
+    /// stack of nodes
+    stack: VecDeque<usize>,
+    visited: HashSet<usize>,
+    skeleton: &'a MockProjectSkeleton,
+}
+
+impl<'a> NodesIter<'a> {
+    fn new(start: usize, skeleton: &'a MockProjectSkeleton) -> Self {
+        Self { stack: VecDeque::from([start]), visited: HashSet::new(), skeleton }
+    }
+}
+
+impl<'a> Iterator for NodesIter<'a> {
+    type Item = usize;
+    fn next(&mut self) -> Option<Self::Item> {
+        let file = self.stack.pop_front()?;
+
+        if self.visited.insert(file) {
+            // push the file's direct imports to the stack if we haven't visited it already
+            self.stack.extend(self.skeleton.imported_nodes(file));
+        }
+        Some(file)
     }
 }
 

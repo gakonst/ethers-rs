@@ -2,13 +2,14 @@
 
 use crate::{
     artifacts::{
-        Bytecode, BytecodeObject, CompactContract, CompactContractBytecode, Contract,
-        ContractBytecode, DeployedBytecode, LosslessAbi, Offsets,
+        bytecode::{Bytecode, BytecodeObject, DeployedBytecode},
+        contract::{CompactContract, CompactContractBytecode, Contract, ContractBytecode},
+        CompactContractBytecodeCow, LosslessAbi, Offsets,
     },
     ArtifactOutput,
 };
 use serde::{Deserialize, Serialize};
-use std::collections::btree_map::BTreeMap;
+use std::{borrow::Cow, collections::btree_map::BTreeMap};
 
 const HH_ARTIFACT_VERSION: &str = "hh-sol-artifact-1";
 
@@ -38,6 +39,17 @@ pub struct HardhatArtifact {
     /// need to be linked, this value contains an empty object.
     #[serde(default)]
     pub deployed_link_references: BTreeMap<String, BTreeMap<String, Vec<Offsets>>>,
+}
+
+impl<'a> From<&'a HardhatArtifact> for CompactContractBytecodeCow<'a> {
+    fn from(artifact: &'a HardhatArtifact) -> Self {
+        let c: ContractBytecode = artifact.clone().into();
+        CompactContractBytecodeCow {
+            abi: Some(Cow::Borrowed(&artifact.abi.abi)),
+            bytecode: c.bytecode.map(|b| Cow::Owned(b.into())),
+            deployed_bytecode: c.deployed_bytecode.map(|b| Cow::Owned(b.into())),
+        }
+    }
 }
 
 impl From<HardhatArtifact> for CompactContract {

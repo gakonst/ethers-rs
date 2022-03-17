@@ -181,7 +181,7 @@ impl SolFilesCache {
     ///
     /// ```
     /// fn t() {
-    /// use ethers_solc::artifacts::CompactContract;
+    /// use ethers_solc::artifacts::contract::CompactContract;
     /// use ethers_solc::cache::SolFilesCache;
     /// use ethers_solc::Project;
     /// let project = Project::builder().build().unwrap();
@@ -234,7 +234,7 @@ impl SolFilesCache {
     /// fn t() {
     /// use ethers_solc::cache::SolFilesCache;
     /// use ethers_solc::Project;
-    /// use ethers_solc::artifacts::CompactContract;
+    /// use ethers_solc::artifacts::contract::CompactContract;
     ///
     /// let project = Project::builder().build().unwrap();
     /// let cache = SolFilesCache::read_joined(&project.paths).unwrap();
@@ -267,7 +267,7 @@ impl SolFilesCache {
     /// ```
     /// use ethers_solc::cache::SolFilesCache;
     /// use ethers_solc::Project;
-    /// use ethers_solc::artifacts::CompactContractBytecode;
+    /// use ethers_solc::artifacts::contract::CompactContractBytecode;
     /// # fn t() {
     /// let project = Project::builder().build().unwrap();
     /// let cache = SolFilesCache::read_joined(&project.paths).unwrap();
