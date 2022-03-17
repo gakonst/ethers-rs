@@ -58,39 +58,26 @@ impl Context {
                 #bytecode_name.clone().into()
             };
 
-            let get_client = quote! {
-                self.deref().client().clone()
-            };
-            let deploy_tokens = quote! {
-                /// Constructs the general purpose `Deployer` instance based on the provided constructor arguments
-                /// You must call `send()` in order to actually deploy the contract.
+            let deploy = quote! {
+                /// Constructs the general purpose `Deployer` instance based on the provided constructor arguments and sends it.
+                /// Returns a new instance of this contract afterwards
                 ///
                 /// Notes:
                 /// 1. If there are no constructor arguments, you should pass `()` as the argument.
                 /// 1. The default poll duration is 7 seconds.
                 /// 1. The default number of confirmations is 1 block.
-                pub fn deploy_tokens<T: #ethers_core::abi::Tokenize >(self, constructor_args: T) -> Result<#ethers_contract::factory::Deployer<M>, #ethers_contract::call::ContractError<M>> {
-                   let factory = #ethers_contract::factory::ContractFactory::new(#get_abi, #get_bytecode, #get_client);
-                   factory.deploy_tokens(constructor_args.into_tokens())
+                // TODO make this return an additional helper type
+                pub async fn deploy<T: #ethers_core::abi::Tokenize >(client client: ::std::sync::Arc<M>, constructor_args: T) -> Result<#ethers_contract::factory::Deployer<M>, #ethers_contract::call::ContractError<M>> {
+                   let factory = #ethers_contract::factory::ContractFactory::new(#get_abi, #get_bytecode, :client);
+                   let contract = factory.deploy(constructor_args)?.send().await?;
+                   Self(contract)
                 }
 
             };
-            // /// Constructs the deployment transaction and returns a `Deployer` instance.
-            // /// You must call `send()` in order to actually deploy the contract.
-            // ///
-            // /// Notes:
-            // /// 1. If there are no constructor arguments, you should pass `()` as the argument.
-            // /// 1. The default poll duration is 7 seconds.
-            // /// 1. The default number of confirmations is 1 block.
-            // pub fn deploy<T: Tokenize>(self, constructor_args: T) -> Result<Deployer<M>,
-            // ContractError<M>> {     self.deploy_tokens(constructor_args.
-            // into_tokens())     // let factory = ContractFactory::new(abi.unwrap(),
-            // bytecode.unwrap(), client.clone()); }
 
-            return quote! {
+            // TODO generate all constructors,
 
-                #deploy_tokens
-            }
+            return deploy
         }
 
         quote! {}
