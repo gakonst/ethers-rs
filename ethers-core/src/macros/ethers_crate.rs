@@ -69,9 +69,18 @@ pub fn determine_ethers_crates() -> (&'static str, &'static str, &'static str) {
         .and_then(|metadata| {
             metadata.root_package().and_then(|pkg| {
                 let sub_crates = Some(("ethers_core", "ethers_contract", "ethers_providers"));
-                if pkg.name == "ethers-contract" {
-                    // Note(mattsse): this is super hacky but required in order to compile the tests
-                    // in the `ethers-contract` crate
+
+                // Note(mattsse): this is super hacky but required in order to compile and test
+                // ethers' internal crates
+                if [
+                    "ethers-contract",
+                    "ethers-derive-eip712",
+                    "ethers-signers",
+                    "ethers-middleware",
+                    "ethers-solc",
+                ]
+                .contains(&pkg.name.as_str())
+                {
                     return sub_crates
                 }
 
