@@ -342,7 +342,7 @@ pub(crate) fn create_contract_file(path: PathBuf, content: impl AsRef<str>) -> R
 }
 
 fn contract_file_name(name: impl AsRef<str>) -> String {
-    let name = name.as_ref();
+    let name = name.as_ref().trim();
     if name.ends_with(".sol") {
         name.to_string()
     } else {
