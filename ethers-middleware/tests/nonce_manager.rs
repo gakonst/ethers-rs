@@ -30,8 +30,9 @@ async fn nonce_manager() {
         .unwrap()
         .as_u64();
 
-    let mut tx_hashes = Vec::new();
-    for _ in 0..10 {
+    let num_tx = 5;
+    let mut tx_hashes = Vec::with_capacity(num_tx);
+    for _ in 0..num_tx {
         let tx = provider
             .send_transaction(
                 Eip1559TransactionRequest::new().to(address).value(100u64).chain_id(chain_id),
@@ -45,10 +46,10 @@ async fn nonce_manager() {
     // sleep a bit to ensure there's no flakiness in the test
     std::thread::sleep(std::time::Duration::new(3, 0));
 
-    let mut nonces = Vec::new();
+    let mut nonces = Vec::with_capacity(num_tx);
     for tx_hash in tx_hashes {
         nonces.push(provider.get_transaction(tx_hash).await.unwrap().unwrap().nonce.as_u64());
     }
 
-    assert_eq!(nonces, (nonce..nonce + 10).collect::<Vec<_>>())
+    assert_eq!(nonces, (nonce..nonce + (num_tx as u64)).collect::<Vec<_>>())
 }
