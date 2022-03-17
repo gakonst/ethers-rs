@@ -3,7 +3,7 @@
 use ethers_solc::{
     error::Result,
     project_util::{
-        mock::{MockProjectGenerator, MockProjectSettings},
+        mock::{MockProjectGenerator, MockProjectSettings, MockProjectSkeleton},
         TempProject,
     },
 };
@@ -85,7 +85,7 @@ fn can_compile_mocked_modified() {
     run_mock(MockProjectSettings::random(), |project, gen| {
         project.ensure_no_errors_recompile_unchanged()?;
         // modify a random file
-        gen.modify_file(gen.file_ids().count() / 2, project.paths(), DEFAULT_VERSION)?;
+        gen.modify_file(gen.used_file_ids().count() / 2, project.paths(), DEFAULT_VERSION)?;
         project.ensure_changed()?;
         project.artifacts_snapshot()?.assert_artifacts_essentials_present();
         Ok(())
@@ -97,11 +97,35 @@ fn can_compile_mocked_modified_all() {
     run_mock(MockProjectSettings::random(), |project, gen| {
         project.ensure_no_errors_recompile_unchanged()?;
         // modify a random file
-        for id in gen.file_ids() {
+        for id in gen.used_file_ids() {
             gen.modify_file(id, project.paths(), DEFAULT_VERSION)?;
             project.ensure_changed()?;
             project.artifacts_snapshot()?.assert_artifacts_essentials_present();
         }
         Ok(())
     });
+}
+
+// a test useful to manually debug a serialized skeleton
+#[test]
+fn can_compile_skeleton() {
+    let mut project = TempProject::dapptools().unwrap();
+    let s = r#"{"files":[{"id":0,"name":"SourceFile0","imports":[{"External":[0,1]},{"External":[3,4]}],"lib_id":null,"emit_artifacts":true},{"id":1,"name":"SourceFile1","imports":[],"lib_id":0,"emit_artifacts":true},{"id":2,"name":"SourceFile2","imports":[],"lib_id":1,"emit_artifacts":true},{"id":3,"name":"SourceFile3","imports":[],"lib_id":2,"emit_artifacts":true},{"id":4,"name":"SourceFile4","imports":[],"lib_id":3,"emit_artifacts":true}],"libraries":[{"name":"Lib0","id":0,"offset":1,"num_files":1},{"name":"Lib1","id":1,"offset":2,"num_files":1},{"name":"Lib2","id":2,"offset":3,"num_files":1},{"name":"Lib3","id":3,"offset":4,"num_files":1}]}"#;
+    let gen: MockProjectGenerator = serde_json::from_str::<MockProjectSkeleton>(s).unwrap().into();
+    let remappings = gen.remappings_at(project.root());
+    project.paths_mut().remappings.extend(remappings);
+    project.mock(&gen, DEFAULT_VERSION).unwrap();
+
+    // mattsse: helper to show what's being generated
+    // gen.write_to(&ethers_solc::ProjectPathsConfig::dapptools("./skeleton").unwrap(),
+    // DEFAULT_VERSION).unwrap();
+
+    let compiled = project.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+    assert!(!compiled.is_unchanged());
+    for id in gen.used_file_ids() {
+        gen.modify_file(id, project.paths(), DEFAULT_VERSION).unwrap();
+        project.ensure_changed().unwrap();
+        project.artifacts_snapshot().unwrap().assert_artifacts_essentials_present();
+    }
 }
