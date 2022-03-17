@@ -1,5 +1,5 @@
 //! Solc artifact types
-use ethers_core::{abi::Abi};
+use ethers_core::abi::Abi;
 
 use colored::Colorize;
 use md5::Digest;
@@ -11,12 +11,7 @@ use std::{
     str::FromStr,
 };
 
-use crate::{
-    compile::*,
-    error::SolcIoError,
-    remappings::Remapping,
-    utils,
-};
+use crate::{compile::*, error::SolcIoError, remappings::Remapping, utils};
 
 use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 
@@ -1196,8 +1191,8 @@ impl SourceFiles {
 mod tests {
     use super::*;
     use crate::AggregatedCompilerOutput;
-    use std::{fs, path::PathBuf};
     use ethers_core::types::Address;
+    use std::{fs, path::PathBuf};
 
     #[test]
     fn can_parse_declaration_error() {
