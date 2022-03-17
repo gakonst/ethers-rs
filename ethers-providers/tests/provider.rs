@@ -1,5 +1,5 @@
 #![cfg(not(target_arch = "wasm32"))]
-use ethers_providers::{Http, Middleware, Provider, RINKEBY};
+use ethers_providers::{Http, Middleware, Provider};
 use std::{convert::TryFrom, time::Duration};
 
 #[cfg(not(feature = "celo"))]
@@ -9,6 +9,7 @@ mod eth_tests {
         types::{Address, BlockId, TransactionRequest, H256},
         utils::Ganache,
     };
+    use ethers_providers::RINKEBY;
 
     #[tokio::test]
     async fn non_existing_data_works() {

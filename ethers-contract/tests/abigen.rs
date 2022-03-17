@@ -382,7 +382,7 @@ fn can_handle_underscore_numeric() {
             _100pct(string)
         ]"#
     );
-    let call = _100PctCall("message".to_string());
+    let _call = _100PctCall("message".to_string());
 
     let provider = Arc::new(Provider::new(MockProvider::new()));
     let contract = Test::new(Address::default(), Arc::clone(&provider));

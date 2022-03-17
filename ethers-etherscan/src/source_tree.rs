@@ -57,7 +57,7 @@ mod tests {
                 },
             ],
         };
-        st.write_to(&tempdir.path()).unwrap();
+        st.write_to(tempdir.path()).unwrap();
         let written_paths = read_dir(tempdir.path()).unwrap();
         let paths: Vec<PathBuf> =
             written_paths.into_iter().filter_map(|x| x.ok()).map(|x| x.path()).collect();
@@ -83,7 +83,7 @@ mod tests {
                 },
             ],
         };
-        st.write_to(&tempdir.path()).unwrap();
+        st.write_to(tempdir.path()).unwrap();
         let written_paths = read_dir(tempdir.path()).unwrap();
         let paths: Vec<PathBuf> =
             written_paths.into_iter().filter_map(|x| x.ok()).map(|x| x.path()).collect();
