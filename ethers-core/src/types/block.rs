@@ -89,6 +89,49 @@ pub struct Block<TX> {
     pub epoch_snark_data: Option<EpochSnarkData>,
 }
 
+// ref https://eips.ethereum.org/EIPS/eip-1559
+pub const ELASTICITY_MULTIPLIER: U256 = U256([2u64, 0, 0, 0]);
+// max base fee delta is 12.5%
+pub const BASE_FEE_MAX_CHANGE_DENOMINATOR: U256 = U256([8u64, 0, 0, 0]);
+
+impl<TX> Block<TX> {
+    /// The target gas usage as per EIP-1559
+    pub fn gas_target(&self) -> U256 {
+        self.gas_limit / ELASTICITY_MULTIPLIER
+    }
+
+    /// The next block's base fee, it is a function of parent block's base fee and gas usage.
+    /// Reference: https://eips.ethereum.org/EIPS/eip-1559
+    pub fn next_block_base_fee(&self) -> Option<U256> {
+        let target_usage = self.gas_target();
+        if let None = self.base_fee_per_gas {
+            return None
+        }
+
+        let base_fee_per_gas = self.base_fee_per_gas.unwrap();
+
+        if self.gas_used > target_usage {
+            let gas_used_delta = self.gas_used - self.gas_target();
+            let base_fee_per_gas_delta = U256::max(
+                base_fee_per_gas * gas_used_delta / target_usage / BASE_FEE_MAX_CHANGE_DENOMINATOR,
+                U256::from(1u32),
+            );
+            let expected_base_fee_per_gas = base_fee_per_gas + base_fee_per_gas_delta;
+            Some(expected_base_fee_per_gas)
+        } else if self.gas_used < target_usage {
+            let gas_used_delta = self.gas_target() - self.gas_used;
+            let base_fee_per_gas_delta = U256::max(
+                base_fee_per_gas * gas_used_delta / target_usage / BASE_FEE_MAX_CHANGE_DENOMINATOR,
+                U256::from(1u32),
+            );
+            let expected_base_fee_per_gas = base_fee_per_gas - base_fee_per_gas_delta;
+            Some(expected_base_fee_per_gas)
+        } else {
+            self.base_fee_per_gas
+        }
+    }
+}
+
 #[derive(Debug, Default, Clone, PartialEq, Deserialize, Serialize)]
 #[cfg(feature = "celo")]
 /// Commit-reveal data for generating randomness in the
@@ -278,6 +321,33 @@ mod tests {
 
         let block: Block<()> = serde_json::from_value(json).unwrap();
         assert_eq!(block.base_fee_per_gas, Some(U256::from(7)));
+    }
+
+    #[test]
+    fn test_next_block_base_fee() {
+        // https://etherscan.io/block/14402566
+        let mut block_14402566 = Block::<TxHash>::default();
+        block_14402566.number = Some(U64::from(14402566u64));
+        block_14402566.base_fee_per_gas = Some(U256::from(36_803_013_756u128));
+        block_14402566.gas_limit = U256::from(30_087_887u128);
+        block_14402566.gas_used = U256::from(2_023_848u128);
+
+        assert_eq!(block_14402566.base_fee_per_gas, Some(U256::from(36_803_013_756u128)));
+        assert_eq!(block_14402566.gas_target(), U256::from(15_043_943u128));
+        // next block decreasing base fee https://etherscan.io/block/14402567
+        assert_eq!(block_14402566.next_block_base_fee(), Some(U256::from(32_821_521_542u128)));
+
+        // https://etherscan.io/block/14402712
+        let mut block_14402712 = Block::<TxHash>::default();
+        block_14402712.number = Some(U64::from(14402712u64));
+        block_14402712.base_fee_per_gas = Some(U256::from(24_870_031_149u128));
+        block_14402712.gas_limit = U256::from(30_000_000u128);
+        block_14402712.gas_used = U256::from(29_999_374u128);
+
+        assert_eq!(block_14402712.base_fee_per_gas, Some(U256::from(24_870_031_149u128)));
+        assert_eq!(block_14402712.gas_target(), U256::from(15_000_000u128));
+        // next block increasing base fee https://etherscan.io/block/14402713
+        assert_eq!(block_14402712.next_block_base_fee(), Some(U256::from(27_978_655_303u128)));
     }
 }
 
