@@ -7,5 +7,4 @@ object "SimpleStore" {
     code {
       calldatacopy(0, 0, 36) // write calldata to memory
     }
-  }
-}
+  }}

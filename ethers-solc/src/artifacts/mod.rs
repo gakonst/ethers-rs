@@ -1037,7 +1037,7 @@ impl TryFrom<ContractBytecode> for ContractBytecodeSome {
 
     fn try_from(value: ContractBytecode) -> Result<Self, Self::Error> {
         if value.abi.is_none() || value.bytecode.is_none() || value.deployed_bytecode.is_none() {
-            return Err(value)
+            return Err(value);
         }
         Ok(value.unwrap())
     }
@@ -1059,7 +1059,7 @@ impl TryFrom<CompactContract> for CompactContractSome {
 
     fn try_from(value: CompactContract) -> Result<Self, Self::Error> {
         if value.abi.is_none() || value.bin.is_none() || value.bin_runtime.is_none() {
-            return Err(value)
+            return Err(value);
         }
         Ok(value.unwrap())
     }
@@ -1238,7 +1238,7 @@ impl<'a> TryFrom<CompactContractRef<'a>> for CompactContractRefSome<'a> {
 
     fn try_from(value: CompactContractRef<'a>) -> Result<Self, Self::Error> {
         if value.abi.is_none() || value.bin.is_none() || value.bin_runtime.is_none() {
-            return Err(value)
+            return Err(value);
         }
         Ok(value.unwrap())
     }
@@ -1474,7 +1474,7 @@ impl CompactBytecode {
         address: Address,
     ) -> bool {
         if !self.object.is_unlinked() {
-            return true
+            return true;
         }
 
         let file = file.as_ref();
@@ -1487,7 +1487,7 @@ impl CompactBytecode {
                 self.link_references.insert(key, contracts);
             }
             if self.link_references.is_empty() {
-                return self.object.resolve().is_some()
+                return self.object.resolve().is_some();
             }
         }
         false
@@ -1559,7 +1559,7 @@ impl Bytecode {
         address: Address,
     ) -> bool {
         if !self.object.is_unlinked() {
-            return true
+            return true;
         }
 
         let file = file.as_ref();
@@ -1572,7 +1572,7 @@ impl Bytecode {
                 self.link_references.insert(key, contracts);
             }
             if self.link_references.is_empty() {
-                return self.object.resolve().is_some()
+                return self.object.resolve().is_some();
             }
         }
         false
@@ -1587,7 +1587,7 @@ impl Bytecode {
     {
         for (file, lib, addr) in libs.into_iter() {
             if self.link(file, lib, addr) {
-                return true
+                return true;
             }
         }
         false
@@ -1601,7 +1601,7 @@ impl Bytecode {
     {
         for (name, addr) in libs.into_iter() {
             if self.link_fully_qualified(name, addr) {
-                return true
+                return true;
             }
         }
         false
@@ -1734,8 +1734,8 @@ impl BytecodeObject {
     pub fn contains_fully_qualified_placeholder(&self, name: impl AsRef<str>) -> bool {
         if let BytecodeObject::Unlinked(unlinked) = self {
             let name = name.as_ref();
-            unlinked.contains(&utils::library_hash_placeholder(name)) ||
-                unlinked.contains(&utils::library_fully_qualified_placeholder(name))
+            unlinked.contains(&utils::library_hash_placeholder(name))
+                || unlinked.contains(&utils::library_fully_qualified_placeholder(name))
         } else {
             false
         }
