@@ -5,7 +5,7 @@ use std::time::Duration;
 async fn main() -> eyre::Result<()> {
     let ganache = Ganache::new().block_time(1u64).spawn();
     let ws = Ws::connect(ganache.ws_endpoint()).await?;
-    let provider = Provider::new(ws).interval(Duration::from_millis(500));
+    let provider = Provider::new(ws).interval(Duration::from_millis(2000));
     let mut stream = provider.watch_blocks().await?.take(5);
     while let Some(block) = stream.next().await {
         let block = provider.get_block(block).await?.unwrap();
