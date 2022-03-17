@@ -741,12 +741,16 @@ impl CompilerOutput {
     where
         I: IntoIterator<Item = &'a str>,
     {
-        let files: HashSet<_> = files.into_iter().collect();
-
-        self.contracts.retain(|f, _| files.contains(f.as_str()));
-        self.sources.retain(|f, _| files.contains(f.as_str()));
+        // Note: use `to_lowercase` here because solc not necessarily emits the exact file name,
+        // e.g. `src/utils/upgradeProxy.sol` is emitted as `src/utils/UpgradeProxy.sol`
+        let files: HashSet<_> = files.into_iter().map(|s| s.to_lowercase()).collect();
+        self.contracts.retain(|f, _| files.contains(f.to_lowercase().as_str()));
+        self.sources.retain(|f, _| files.contains(f.to_lowercase().as_str()));
         self.errors.retain(|err| {
-            err.source_location.as_ref().map(|s| files.contains(s.file.as_str())).unwrap_or(true)
+            err.source_location
+                .as_ref()
+                .map(|s| files.contains(s.file.to_lowercase().as_str()))
+                .unwrap_or(true)
         });
     }
 
@@ -2050,7 +2054,37 @@ impl SourceFiles {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::AggregatedCompilerOutput;
     use std::{fs, path::PathBuf};
+
+    #[test]
+    fn can_parse_declaration_error() {
+        let s = r#"{
+  "errors": [
+    {
+      "component": "general",
+      "errorCode": "7576",
+      "formattedMessage": "DeclarationError: Undeclared identifier. Did you mean \"revert\"?\n  --> /Users/src/utils/UpgradeProxy.sol:35:17:\n   |\n35 |                 refert(\"Transparent ERC1967 proxies do not have upgradeable implementations\");\n   |                 ^^^^^^\n\n",
+      "message": "Undeclared identifier. Did you mean \"revert\"?",
+      "severity": "error",
+      "sourceLocation": {
+        "end": 1623,
+        "file": "/Users/src/utils/UpgradeProxy.sol",
+        "start": 1617
+      },
+      "type": "DeclarationError"
+    }
+  ],
+  "sources": { }
+}"#;
+
+        let out: CompilerOutput = serde_json::from_str(s).unwrap();
+        assert_eq!(out.errors.len(), 1);
+
+        let mut aggregated = AggregatedCompilerOutput::default();
+        aggregated.extend("0.8.12".parse().unwrap(), out);
+        assert!(!aggregated.is_unchanged());
+    }
 
     #[test]
     fn can_link_bytecode() {

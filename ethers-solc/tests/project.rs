@@ -685,6 +685,67 @@ fn can_recompile_with_changes() {
 }
 
 #[test]
+fn can_recompile_with_lowercase_names() {
+    init_tracing();
+    let tmp = TempProject::dapptools().unwrap();
+
+    tmp.add_source(
+        "deployProxy.sol",
+        r#"
+    pragma solidity =0.8.12;
+    contract DeployProxy {}
+   "#,
+    )
+    .unwrap();
+
+    let upgrade = r#"
+    pragma solidity =0.8.12;
+    import "./deployProxy.sol";
+    import "./ProxyAdmin.sol";
+    contract UpgradeProxy {}
+   "#;
+    tmp.add_source("upgradeProxy.sol", upgrade).unwrap();
+
+    tmp.add_source(
+        "ProxyAdmin.sol",
+        r#"
+    pragma solidity =0.8.12;
+    contract ProxyAdmin {}
+   "#,
+    )
+    .unwrap();
+
+    let compiled = tmp.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+    assert!(compiled.find("DeployProxy").is_some());
+    assert!(compiled.find("UpgradeProxy").is_some());
+    assert!(compiled.find("ProxyAdmin").is_some());
+
+    let artifacts = tmp.artifacts_snapshot().unwrap();
+    assert_eq!(artifacts.artifacts.as_ref().len(), 3);
+    artifacts.assert_artifacts_essentials_present();
+
+    let compiled = tmp.compile().unwrap();
+    assert!(compiled.find("DeployProxy").is_some());
+    assert!(compiled.find("UpgradeProxy").is_some());
+    assert!(compiled.find("ProxyAdmin").is_some());
+    assert!(compiled.is_unchanged());
+
+    // modify upgradeProxy.sol
+    tmp.add_source("upgradeProxy.sol", format!("{}\n", upgrade)).unwrap();
+    let compiled = tmp.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+    assert!(!compiled.is_unchanged());
+    assert!(compiled.find("DeployProxy").is_some());
+    assert!(compiled.find("UpgradeProxy").is_some());
+    assert!(compiled.find("ProxyAdmin").is_some());
+
+    let artifacts = tmp.artifacts_snapshot().unwrap();
+    assert_eq!(artifacts.artifacts.as_ref().len(), 3);
+    artifacts.assert_artifacts_essentials_present();
+}
+
+#[test]
 fn can_recompile_unchanged_with_empty_files() {
     let tmp = TempProject::dapptools().unwrap();
 
