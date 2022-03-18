@@ -78,14 +78,14 @@ impl Context {
                 /// # async fn deploy<M: ethers::providers::Middleware>(client: ::std::sync::Arc<M>) {
                 ///     abigen!(Greeter,"../greeter.json");
                 ///
-                ///    let greeter_contract = Greeter::deploy(client, ()).unwrap().send().await.unwrap();
-                ///    let msg = greeter_contract.greet().await.unwrap();
-                /// }
+                ///    let greeter_contract = Greeter::deploy(client, "Hello world!".to_string()).unwrap().send().await.unwrap();
+                ///    let msg = greeter_contract.greet().call().await.unwrap();
+                /// # }
                 /// ```
-                pub async fn deploy<T: #ethers_core::abi::Tokenize >(client client: ::std::sync::Arc<M>, constructor_args: T) -> Result<#ethers_contract::builders::ContractDeployer<M, Self>, #ethers_contract::call::ContractError<M>> {
-                   let factory = #ethers_contract::factory::ContractFactory::new(#get_abi, #get_bytecode, :client);
+                pub fn deploy<T: #ethers_core::abi::Tokenize >(client: ::std::sync::Arc<M>, constructor_args: T) -> Result<#ethers_contract::builders::ContractDeployer<M, Self>, #ethers_contract::ContractError<M>> {
+                   let factory = #ethers_contract::ContractFactory::new(#get_abi, #get_bytecode, client);
                    let deployer = factory.deploy(constructor_args)?;
-                   let deployer = #ethers_contract::builders::ContractDeployer::new(deployer);
+                   let deployer = #ethers_contract::ContractDeployer::new(deployer);
                    Ok(deployer)
                 }
 
