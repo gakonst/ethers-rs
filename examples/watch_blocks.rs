@@ -9,7 +9,12 @@ async fn main() -> eyre::Result<()> {
     let mut stream = provider.watch_blocks().await?.take(5);
     while let Some(block) = stream.next().await {
         let block = provider.get_block(block).await?.unwrap();
-        println!("Ts: {:?}, block number: {} -> {:?}",block.timestamp,block.number.unwrap(),block.hash.unwrap());
+        println!(
+            "Ts: {:?}, block number: {} -> {:?}",
+            block.timestamp,
+            block.number.unwrap(),
+            block.hash.unwrap()
+        );
     }
 
     Ok(())
