@@ -55,6 +55,8 @@
 
 ### Unreleased
 
+- Generate a deploy function if bytecode is provided in the abigen! input (json artifact)
+  [#1030](https://github.com/gakonst/ethers-rs/pull/1030).
 - Generate correct bindings of struct's field names that are reserved words
   [#989](https://github.com/gakonst/ethers-rs/pull/989).
 
