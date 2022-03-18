@@ -60,22 +60,36 @@ impl Context {
 
             let deploy = quote! {
                 /// Constructs the general purpose `Deployer` instance based on the provided constructor arguments and sends it.
-                /// Returns a new instance of this contract afterwards
+                /// Returns a new instance of a deployer that returns an instance of this contract after sending the transaction
                 ///
                 /// Notes:
                 /// 1. If there are no constructor arguments, you should pass `()` as the argument.
                 /// 1. The default poll duration is 7 seconds.
                 /// 1. The default number of confirmations is 1 block.
-                // TODO make this return an additional helper type
-                pub async fn deploy<T: #ethers_core::abi::Tokenize >(client client: ::std::sync::Arc<M>, constructor_args: T) -> Result<#ethers_contract::factory::Deployer<M>, #ethers_contract::call::ContractError<M>> {
+                ///
+                ///
+                /// # Example
+                ///
+                /// Generate contract bindings with `abigen!` and deploy a new contract instance.
+                ///
+                /// *Note*: this requires a `bytecode` and `abi` object in the `greeter.json` artifact.
+                ///
+                /// ```ignore
+                /// # async fn deploy<M: ethers::providers::Middleware>(client: ::std::sync::Arc<M>) {
+                ///     abigen!(Greeter,"../greeter.json");
+                ///
+                ///    let greeter_contract = Greeter::deploy(client, ()).unwrap().send().await.unwrap();
+                ///    let msg = greeter_contract.greet().await.unwrap();
+                /// }
+                /// ```
+                pub async fn deploy<T: #ethers_core::abi::Tokenize >(client client: ::std::sync::Arc<M>, constructor_args: T) -> Result<#ethers_contract::builders::ContractDeployer<M, Self>, #ethers_contract::call::ContractError<M>> {
                    let factory = #ethers_contract::factory::ContractFactory::new(#get_abi, #get_bytecode, :client);
-                   let contract = factory.deploy(constructor_args)?.send().await?;
-                   Self(contract)
+                   let deployer = factory.deploy(constructor_args)?;
+                   let deployer = #ethers_contract::builders::ContractDeployer::new(deployer);
+                   Ok(deployer)
                 }
 
             };
-
-            // TODO generate all constructors,
 
             return deploy
         }
