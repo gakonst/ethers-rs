@@ -1254,9 +1254,7 @@ dependencies = [
  "ethers-core",
  "ethers-signers",
  "hex",
- "proc-macro2",
  "quote",
- "serde",
  "serde_json",
  "syn",
 ]

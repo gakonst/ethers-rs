@@ -59,6 +59,10 @@
 //!
 //! There is an Inner helper attribute `#[eip712]` for fields that will eventually be used to
 //! determine if there is a nested eip712 struct. However, this work is not yet complete.
+
+#![deny(rustdoc::broken_intra_doc_links)]
+#![deny(unused_crate_dependencies)]
+
 use std::convert::TryFrom;
 
 use ethers_core::{macros::ethers_core_crate, types::transaction::eip712};
