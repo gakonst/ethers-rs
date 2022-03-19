@@ -310,6 +310,9 @@ impl Client {
         let query =
             self.create_query("contract", "getsourcecode", HashMap::from([("address", address)]));
         let response: Response<Vec<Metadata>> = self.get_json(&query).await?;
+        if response.result.iter().any(|item| item.abi == "Contract source code not verified") {
+            return Err(EtherscanError::ContractCodeNotVerified(address))
+        }
         Ok(ContractMetadata { items: response.result })
     }
 }
@@ -323,7 +326,7 @@ mod tests {
     use ethers_core::types::Chain;
     use ethers_solc::{Project, ProjectPathsConfig};
 
-    use crate::{contract::VerifyContract, tests::run_at_least_duration, Client};
+    use crate::{contract::VerifyContract, tests::run_at_least_duration, Client, EtherscanError};
 
     #[tokio::test]
     #[serial]
@@ -351,6 +354,27 @@ mod tests {
                 .contract_source_code("0xBB9bc244D798123fDe783fCc1C72d3Bb8C189413".parse().unwrap())
                 .await
                 .unwrap();
+        })
+        .await
+    }
+
+    #[tokio::test]
+    #[serial]
+    #[ignore]
+    async fn can_get_error_on_unverified_contract() {
+        run_at_least_duration(Duration::from_millis(250), async {
+            let client = Client::new_from_env(Chain::Mainnet).unwrap();
+            let unverified_addr = "0xb5c31a0e22cae98ac08233e512bd627885aa24e5".parse().unwrap();
+            let result = client.contract_source_code(unverified_addr).await;
+            match result.err() {
+                Some(error) => match error {
+                    EtherscanError::ContractCodeNotVerified(addr) => {
+                        assert_eq!(addr, unverified_addr);
+                    }
+                    _ => panic!("Invalid EtherscanError type"),
+                },
+                None => panic!("Result should contain ContractCodeNotVerified error"),
+            }
         })
         .await
     }
