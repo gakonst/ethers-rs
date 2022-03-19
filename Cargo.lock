@@ -1226,7 +1226,6 @@ dependencies = [
  "bytes",
  "cargo_metadata",
  "convert_case",
- "ecdsa",
  "elliptic-curve",
  "ethabi",
  "futures-util",
@@ -1236,7 +1235,6 @@ dependencies = [
  "k256",
  "once_cell",
  "proc-macro2",
- "quote",
  "rand 0.8.5",
  "rlp",
  "rlp-derive",
@@ -1245,7 +1243,6 @@ dependencies = [
  "syn",
  "thiserror",
  "tiny-keccak",
- "tokio",
 ]
 
 [[package]]
