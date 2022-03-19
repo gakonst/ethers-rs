@@ -8,8 +8,8 @@
 use crate::{CompilerInput, CompilerOutput};
 use std::{env, path::PathBuf, str::FromStr};
 
-/// Debug Helper type that can be used to write the [Solc] [CompilerInput] and [CompilerOutput] to
-/// disk if configured.
+/// Debug Helper type that can be used to write the [crate::Solc] [CompilerInput] and
+/// [CompilerOutput] to disk if configured.
 ///
 /// # Example
 ///

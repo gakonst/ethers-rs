@@ -167,12 +167,13 @@ impl ProjectPathsConfig {
     ///
     /// `import "@openzeppelin/token/ERC20/IERC20.sol";`
     ///
-    /// There is no strict rule behind this, but because [`Remappings::find_many`] returns
-    /// `'@openzeppelin/=node_modules/@openzeppelin/contracts/'` we should handle the case if the
-    /// remapping path ends with `contracts` and the import path starts with `<remapping
-    /// name>/contracts`. Otherwise we can end up with a resolved path that has a duplicate
-    /// `contracts` segment: `@openzeppelin/contracts/contracts/token/ERC20/IERC20.sol` we check
-    /// for this edge case here so that both styles work out of the box.
+    /// There is no strict rule behind this, but because [`crate::remappings::Remapping::find_many`]
+    /// returns `'@openzeppelin/=node_modules/@openzeppelin/contracts/'` we should handle the
+    /// case if the remapping path ends with `contracts` and the import path starts with
+    /// `<remapping name>/contracts`. Otherwise we can end up with a resolved path that has a
+    /// duplicate `contracts` segment:
+    /// `@openzeppelin/contracts/contracts/token/ERC20/IERC20.sol` we check for this edge case
+    /// here so that both styles work out of the box.
     pub fn resolve_library_import(&self, import: &Path) -> Option<PathBuf> {
         // if the import path starts with the name of the remapping then we get the resolved path by
         // removing the name and adding the remainder to the path of the remapping

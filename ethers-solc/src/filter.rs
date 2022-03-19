@@ -26,7 +26,7 @@ where
     }
 }
 
-/// An [InputFileFilter] that matches all solidity files that end with `.t.sol`
+/// An [FileFilter] that matches all solidity files that end with `.t.sol`
 #[derive(Default)]
 pub struct TestFileFilter {
     _priv: (),

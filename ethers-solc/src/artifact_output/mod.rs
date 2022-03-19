@@ -421,7 +421,7 @@ where
 /// this includes artifact file location and naming.
 ///
 /// Depending on the [`crate::Project`] contracts and their compatible versions,
-/// [`crate::ProjectCompiler::compile()`] may invoke different `solc` executables on the same
+/// The project compiler may invoke different `solc` executables on the same
 /// solidity file leading to multiple [`crate::CompilerOutput`]s for the same `.sol` file.
 /// In addition to the `solidity file` to `contract` relationship (1-N*)
 /// [`crate::VersionedContracts`] also tracks the `contract` to (`artifact` + `solc version`)
@@ -456,11 +456,11 @@ pub trait ArtifactOutput {
     /// Writes additional files for the contracts if the included in the `Contract`, such as `ir`,
     /// `ewasm`, `iropt`.
     ///
-    /// By default, these fields are _not_ enabled in the [`crate::Settings`], see
-    /// [`crate::Settings::default_output_selection()`], and the respective fields of the
-    /// [`Contract`] will `None`. If they'll be manually added to the `output_selection`, then
-    /// we're also creating individual files for this output, such as `Greeter.iropt`,
-    /// `Gretter.ewasm`
+    /// By default, these fields are _not_ enabled in the [`crate::artifacts::Settings`], see
+    /// [`crate::artifacts::output_selection::OutputSelection::default_output_selection()`], and the
+    /// respective fields of the [`Contract`] will `None`. If they'll be manually added to the
+    /// `output_selection`, then we're also creating individual files for this output, such as
+    /// `Greeter.iropt`, `Gretter.ewasm`
     fn write_extras(
         &self,
         contracts: &VersionedContracts,
