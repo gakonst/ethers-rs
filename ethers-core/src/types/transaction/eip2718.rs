@@ -141,10 +141,10 @@ impl TypedTransaction {
             Eip2930(inner) => inner.tx.gas_price,
             Eip1559(inner) => {
                 match (inner.max_fee_per_gas, inner.max_priority_fee_per_gas) {
-                    (Some(basefee), Some(prio_fee)) => Some(basefee + prio_fee),
+                    (Some(max_fee), Some(_)) => Some(max_fee),
                     // this also covers the None, None case
                     (None, prio_fee) => prio_fee,
-                    (basefee, None) => basefee,
+                    (max_fee, None) => max_fee,
                 }
             }
         }
