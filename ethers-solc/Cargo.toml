@@ -44,6 +44,7 @@ home = "0.5.3"
 # SVM is not WASM compatible yet.
 # svm = { package = "svm-rs", default-features = false, version = "0.2.7", optional = true }
 svm = { package = "svm-rs", default-features = false, git = "https://github.com/roynalnaruto/svm-rs", optional = true, features = ["blocking"] }
+svm-builds = { package = "svm-rs-builds", git = "https://github.com/roynalnaruto/svm-rs", optional = true}
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 # NOTE: this enables wasm compatibility for getrandom indirectly
@@ -69,17 +70,17 @@ harness = false
 [[test]]
 name = "project"
 path = "tests/project.rs"
-required-features = ["async", "svm", "project-util"]
+required-features = ["async", "svm", "svm-builds", "project-util"]
 
 [[test]]
 name = "mocked"
 path = "tests/mocked.rs"
-required-features = ["async", "svm", "project-util"]
+required-features = ["async", "svm", "svm-builds", "project-util"]
 
 [features]
 default = ["rustls"]
 async = ["tokio", "futures-util"]
-full = ["async", "svm", "svm/blocking"]
+full = ["async", "svm", "svm/blocking", "svm-builds"]
 # Utilities for creating and testing project workspaces
 project-util = ["tempfile", "fs_extra", "rand"]
 tests = []
