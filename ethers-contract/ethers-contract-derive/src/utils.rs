@@ -32,7 +32,7 @@ pub fn parse_int_param_type(s: &str) -> Option<ParamType> {
 // Converts param types for indexed parameters to bytes32 where appropriate
 // This applies to strings, arrays, structs and bytes to follow the encoding of
 // these indexed param types according to
-// https://solidity.readthedocs.io/en/develop/abi-spec.html#encoding-of-indexed-event-parameters
+// <https://solidity.readthedocs.io/en/develop/abi-spec.html#encoding-of-indexed-event-parameters>
 pub fn topic_param_type_quote(kind: &ParamType) -> proc_macro2::TokenStream {
     let core_crate = ethers_core_crate();
     match kind {

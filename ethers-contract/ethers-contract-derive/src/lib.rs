@@ -1,6 +1,7 @@
 //! Implementation of procedural macro for generating type-safe bindings to an
 //! ethereum smart contract.
-#![deny(missing_docs, unsafe_code)]
+#![deny(missing_docs, unsafe_code, unused_crate_dependencies)]
+#![deny(rustdoc::broken_intra_doc_links)]
 
 use proc_macro::TokenStream;
 use syn::{parse_macro_input, DeriveInput};

@@ -1,3 +1,4 @@
+#![deny(rustdoc::broken_intra_doc_links)]
 pub mod artifacts;
 pub mod sourcemap;
 
@@ -192,7 +193,7 @@ impl<T: ArtifactOutput> Project<T> {
     /// `CompilerOutput::has_error` instead.
     ///
     /// NB: If the `svm` feature is enabled, this function will automatically detect
-    /// solc versions across files, see [`Self::svm_compile()`]
+    /// solc versions across files.
     ///
     /// # Example
     ///

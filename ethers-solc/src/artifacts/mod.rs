@@ -60,7 +60,7 @@ impl CompilerInput {
         Source::read_all_from(path.as_ref()).map(Self::with_sources)
     }
 
-    /// Creates a new [CompilerInput](s) with default settings and the given sources
+    /// Creates a new [CompilerInput]s with default settings and the given sources
     ///
     /// A [CompilerInput] expects a language setting, supported by solc are solidity or yul.
     /// In case the `sources` is a mix of solidity and yul files, 2 CompilerInputs are returned
@@ -806,14 +806,14 @@ impl OutputContracts {
     }
 }
 
-/// A helper type that ensures lossless (de)serialisation unlike [`ethabi::Contract`] which omits
-/// some information of (nested) components in a serde roundtrip. This is a problem for
-/// abienconderv2 structs because `ethabi::Contract`'s representation of those are [`ethabi::Param`]
-/// and the `kind` field of type [`ethabi::ParamType`] does not support deeply nested components as
-/// it's the case for structs. This is not easily fixable in ethabi as it would require a redesign
-/// of the overall `Param` and `ParamType` types. Instead, this type keeps a copy of the
-/// [`serde_json::Value`] when deserialized from the `solc` json compiler output and uses it to
-/// serialize the `abi` without loss.
+/// A helper type that ensures lossless (de)serialisation unlike [`ethers_core::abi::Abi`] which
+/// omits some information of (nested) components in a serde roundtrip. This is a problem for
+/// abienconderv2 structs because [`ethers_core::abi::Contract`]'s representation of those are
+/// [`ethers_core::abi::Param`] and the `kind` field of type [`ethers_core::abi::ParamType`] does
+/// not support deeply nested components as it's the case for structs. This is not easily fixable in
+/// ethabi as it would require a redesign of the overall `Param` and `ParamType` types. Instead,
+/// this type keeps a copy of the [`serde_json::Value`] when deserialized from the `solc` json
+/// compiler output and uses it to serialize the `abi` without loss.
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct LosslessAbi {
     /// The complete abi as json value
@@ -1243,7 +1243,7 @@ mod tests {
 
     #[test]
     fn can_link_bytecode() {
-        // test cases taken from https://github.com/ethereum/solc-js/blob/master/test/linker.js
+        // test cases taken from <https://github.com/ethereum/solc-js/blob/master/test/linker.js>
 
         #[derive(Serialize, Deserialize)]
         struct Mockject {

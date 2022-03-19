@@ -252,7 +252,7 @@ pub fn secret_key_to_address(secret_key: &SigningKey) -> Address {
 }
 
 /// Converts an Ethereum address to the checksum encoding
-/// Ref: https://github.com/ethereum/EIPs/blob/master/EIPS/eip-55.md
+/// Ref: <https://github.com/ethereum/EIPs/blob/master/EIPS/eip-55.md>
 pub fn to_checksum(addr: &Address, chain_id: Option<u8>) -> String {
     let prefixed_addr = match chain_id {
         Some(chain_id) => format!("{}0x{:x}", chain_id, addr),

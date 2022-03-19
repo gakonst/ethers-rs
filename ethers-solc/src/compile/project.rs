@@ -5,13 +5,13 @@
 //! First the project's dependency graph [`crate::Graph`] is constructed and all imported
 //! dependencies are resolved. The graph holds all the relationships between the files and their
 //! versions. From there the appropriate version set is derived
-//! [`crate::Graph::into_sources_by_version()`] which need to be compiled with different
+//! [`crate::Graph`] which need to be compiled with different
 //! [`crate::Solc`] versions.
 //!
 //! At this point we check if we need to compile a source file or whether we can reuse an _existing_
 //! `Artifact`. We don't to compile if:
 //!     - caching is enabled
-//!     - the file is **not** dirty [`Cache::is_dirty()`]
+//!     - the file is **not** dirty
 //!     - the artifact for that file exists
 //!
 //! This concludes the preprocessing, and we now have either
@@ -58,7 +58,7 @@
 //! import "/project/lib/util.sol";         // source unit name: /project/lib/util.sol
 //! import "lib/util.sol";                  // source unit name: lib/util.sol
 //! import "@openzeppelin/address.sol";     // source unit name: @openzeppelin/address.sol
-//! import "https://example.com/token.sol"; // source unit name: https://example.com/token.sol
+//! import "https://example.com/token.sol"; // source unit name: <https://example.com/token.sol>
 //! ```
 //!
 //! After applying any import remappings the import path simply becomes the source unit name.
@@ -78,11 +78,11 @@
 //! ### Caching and Change detection
 //!
 //! If caching is enabled in the [Project](crate::Project) a cache file will be created upon a
-//! successful solc build. The [cache file](crate::SolFilesCache) stores metadata for all the files
-//! that were provided to solc.
+//! successful solc build. The [cache file](crate::cache::SolFilesCache) stores metadata for all the
+//! files that were provided to solc.
 //! For every file the cache file contains a dedicated [cache
-//! entry](crate::CacheEntry), which represents the state of the file. A solidity file can contain
-//! several contracts, for every contract a separate [artifact](crate::Artifact) is emitted.
+//! entry](crate::cache::CacheEntry), which represents the state of the file. A solidity file can
+//! contain several contracts, for every contract a separate [artifact](crate::Artifact) is emitted.
 //! Therefor the entry also tracks all artifacts emitted by a file. A solidity file can also be
 //! compiled with several solc versions.
 //!
@@ -124,7 +124,7 @@ pub struct ProjectCompiler<'a, T: ArtifactOutput> {
     project: &'a Project<T>,
     /// how to compile all the sources
     sources: CompilerSources,
-    /// How to select solc [CompilerOutput] for files
+    /// How to select solc [`crate::artifacts::CompilerOutput`] for files
     sparse_output: SparseOutputFileFilter,
 }
 
@@ -182,7 +182,7 @@ impl<'a, T: ArtifactOutput> ProjectCompiler<'a, T> {
         Ok(Self { edges, project, sources, sparse_output: Default::default() })
     }
 
-    /// Applies the specified [SparseOutputFileFilter] to be applied when selecting solc output for
+    /// Applies the specified filter to be applied when selecting solc output for
     /// specific files to be compiled
     pub fn with_sparse_output(mut self, sparse_output: impl Into<SparseOutputFileFilter>) -> Self {
         self.sparse_output = sparse_output.into();

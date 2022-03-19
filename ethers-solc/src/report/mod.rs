@@ -1,18 +1,18 @@
 //! Subscribe to events in the compiler pipeline
 //!
-//! The _reporter_ is the component of the [`Project::compile()`] pipeline which is responsible
-//! for reporting on specific steps in the process.
+//! The _reporter_ is the component of the [`crate::Project::compile()`] pipeline which is
+//! responsible for reporting on specific steps in the process.
 //!
 //! By default, the current reporter is a noop that does
 //! nothing.
 //!
 //! To use another report implementation, it must be set as the current reporter.
 //! There are two methods for doing so: [`with_scoped`] and
-//! [`set_global`]. `with_scoped` sets the reporter for the
+//! [`try_init`]. `with_scoped` sets the reporter for the
 //! duration of a scope, while `set_global` sets a global default report
 //! for the entire process.
 
-// https://github.com/tokio-rs/tracing/blob/master/tracing-core/src/dispatch.rs
+// <https://github.com/tokio-rs/tracing/blob/master/tracing-core/src/dispatch.rs>
 
 use crate::{remappings::Remapping, CompilerInput, CompilerOutput, Solc};
 use semver::Version;
@@ -103,8 +103,8 @@ pub trait Reporter: 'static {
     /// contains the files that absolutely must be recompiled, while the [CompilerInput] contains
     /// all files, the dirty files and all their dependencies.
     ///
-    /// If this is a fresh compile then the [Sources] set of the [CompilerInput] matches the dirty
-    /// files set.
+    /// If this is a fresh compile then the [crate::artifacts::Sources] set of the [CompilerInput]
+    /// matches the dirty files set.
     fn on_solc_spawn(
         &self,
         _solc: &Solc,
@@ -114,7 +114,7 @@ pub trait Reporter: 'static {
     ) {
     }
 
-    /// Invoked with the `CompilerOutput` if [`Solc::compiled()`] was successful
+    /// Invoked with the `CompilerOutput` if [`Solc::compile()`] was successful
     fn on_solc_success(&self, _solc: &Solc, _version: &Version, _output: &CompilerOutput) {}
 
     /// Invoked before a new [`Solc`] bin is installed
@@ -133,17 +133,17 @@ pub trait Reporter: 'static {
     /// [`NonNull`] pointer to that type. Otherwise, returns `None`.
     ///
     /// If you wish to downcast a `Reporter`, it is strongly advised to use
-    /// the safe API provided by [`downcast_ref`] instead.
+    /// the safe API provided by downcast_ref instead.
     ///
     /// This API is required for `downcast_raw` to be a trait method; a method
-    /// signature like [`downcast_ref`] (with a generic type parameter) is not
+    /// signature like downcast_ref (with a generic type parameter) is not
     /// object-safe, and thus cannot be a trait method for `Reporter`. This
-    /// means that if we only exposed `downcast_ref`, `Reporter`
+    /// means that if we only exposed downcast_ref, `Reporter`
     /// implementations could not override the downcasting behavior
     ///
     /// # Safety
     ///
-    /// The [`downcast_ref`] method expects that the pointer returned by
+    /// The downcast_ref method expects that the pointer returned by
     /// `downcast_raw` points to a valid instance of the type
     /// with the provided `TypeId`. Failure to ensure this will result in
     /// undefined behaviour, so implementing `downcast_raw` is unsafe.
@@ -217,7 +217,7 @@ fn get_global() -> Option<&'static Report> {
     }
 }
 
-/// Executes a closure with a reference to this thread's current [reporter].
+/// Executes a closure with a reference to this thread's current reporter.
 #[inline(always)]
 pub fn get_default<T, F>(mut f: F) -> T
 where

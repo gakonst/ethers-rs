@@ -15,7 +15,7 @@ use walkdir::WalkDir;
 
 /// A regex that matches the import path and identifier of a solidity import
 /// statement with the named groups "path", "id".
-// Adapted from https://github.com/nomiclabs/hardhat/blob/cced766c65b25d3d0beb39ef847246ac9618bdd9/packages/hardhat-core/src/internal/solidity/parse.ts#L100
+// Adapted from <https://github.com/nomiclabs/hardhat/blob/cced766c65b25d3d0beb39ef847246ac9618bdd9/packages/hardhat-core/src/internal/solidity/parse.ts#L100>
 pub static RE_SOL_IMPORT: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r#"import\s+(?:(?:"(?P<p1>[^;]*)"|'(?P<p2>[^;]*)')(?:;|\s+as\s+(?P<id>[^;]*);)|.+from\s+(?:"(?P<p3>.*)"|'(?P<p4>.*)');)"#).unwrap()
 });
@@ -23,7 +23,7 @@ pub static RE_SOL_IMPORT: Lazy<Regex> = Lazy::new(|| {
 /// A regex that matches the version part of a solidity pragma
 /// as follows: `pragma solidity ^0.5.2;` => `^0.5.2`
 /// statement with the named group "version".
-// Adapted from https://github.com/nomiclabs/hardhat/blob/cced766c65b25d3d0beb39ef847246ac9618bdd9/packages/hardhat-core/src/internal/solidity/parse.ts#L119
+// Adapted from <https://github.com/nomiclabs/hardhat/blob/cced766c65b25d3d0beb39ef847246ac9618bdd9/packages/hardhat-core/src/internal/solidity/parse.ts#L119>
 pub static RE_SOL_PRAGMA_VERSION: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"pragma\s+solidity\s+(?P<version>.+?);").unwrap());
 
@@ -35,7 +35,7 @@ pub static RE_SOL_SDPX_LICENSE_IDENTIFIER: Lazy<Regex> =
 /// Returns all path parts from any solidity import statement in a string,
 /// `import "./contracts/Contract.sol";` -> `"./contracts/Contract.sol"`.
 ///
-/// See also https://docs.soliditylang.org/en/v0.8.9/grammar.html
+/// See also <https://docs.soliditylang.org/en/v0.8.9/grammar.html>
 pub fn find_import_paths(contract: &str) -> impl Iterator<Item = Match> {
     RE_SOL_IMPORT.captures_iter(contract).filter_map(|cap| {
         cap.name("p1")
@@ -216,7 +216,7 @@ pub fn library_hash_placeholder(name: impl AsRef<[u8]>) -> String {
 /// The placeholder is a 34 character prefix of the hex encoding of the keccak256 hash of the fully
 /// qualified library name.
 ///
-/// See also https://docs.soliditylang.org/en/develop/using-the-compiler.html#library-linking
+/// See also <https://docs.soliditylang.org/en/develop/using-the-compiler.html#library-linking>
 pub fn library_hash(name: impl AsRef<[u8]>) -> [u8; 17] {
     let mut output = [0u8; 17];
     let mut hasher = Keccak::v256();

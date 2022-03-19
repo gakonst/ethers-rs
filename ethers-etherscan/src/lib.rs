@@ -24,9 +24,9 @@ pub struct Client {
     client: reqwest::Client,
     /// Etherscan API key
     api_key: String,
-    /// Etherscan API endpoint like https://api(-chain).etherscan.io/api
+    /// Etherscan API endpoint like <https://api(-chain).etherscan.io/api>
     etherscan_api_url: Url,
-    /// Etherscan base endpoint like https://etherscan.io
+    /// Etherscan base endpoint like <https://etherscan.io>
     etherscan_url: Url,
 }
 
