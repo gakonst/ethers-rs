@@ -25,7 +25,7 @@ mod i256;
 pub use i256::{Sign, I256};
 
 mod bytes;
-pub use self::bytes::{Bytes, ParseBytesError};
+pub use self::bytes::{deserialize_bytes, serialize_bytes, Bytes, ParseBytesError};
 
 mod block;
 pub use block::{Block, BlockId, BlockNumber};

@@ -10,7 +10,7 @@ mod call;
 pub use call::{ContractError, EthCall};
 
 mod factory;
-pub use factory::ContractFactory;
+pub use factory::{ContractDeployer, ContractFactory};
 
 mod event;
 pub use event::EthEvent;
@@ -25,8 +25,13 @@ pub use multicall::Multicall;
 
 /// This module exposes low lever builder structures which are only consumed by the
 /// type-safe ABI bindings generators.
+#[doc(hidden)]
 pub mod builders {
-    pub use super::{call::ContractCall, event::Event, factory::Deployer};
+    pub use super::{
+        call::ContractCall,
+        event::Event,
+        factory::{ContractDeployer, Deployer},
+    };
 }
 
 #[cfg(any(test, feature = "abigen"))]
