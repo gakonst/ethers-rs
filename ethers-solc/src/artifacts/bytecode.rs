@@ -279,7 +279,7 @@ impl BytecodeObject {
     ///
     /// This will replace all occurrences of the library placeholder with the given address.
     ///
-    /// See also: https://docs.soliditylang.org/en/develop/using-the-compiler.html#library-linking
+    /// See also: <https://docs.soliditylang.org/en/develop/using-the-compiler.html#library-linking>
     pub fn link_fully_qualified(&mut self, name: impl AsRef<str>, addr: Address) -> &mut Self {
         if let BytecodeObject::Unlinked(ref mut unlinked) = self {
             let name = name.as_ref();

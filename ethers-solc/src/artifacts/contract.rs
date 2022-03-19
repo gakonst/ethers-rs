@@ -15,7 +15,7 @@ use std::{borrow::Cow, collections::BTreeMap, convert::TryFrom};
 #[serde(rename_all = "camelCase")]
 pub struct Contract {
     /// The Ethereum Contract Metadata.
-    /// See https://docs.soliditylang.org/en/develop/metadata.html
+    /// See <https://docs.soliditylang.org/en/develop/metadata.html>
     pub abi: Option<LosslessAbi>,
     #[serde(
         default,
@@ -66,7 +66,7 @@ impl<'a> From<&'a Contract> for CompactContractBytecodeCow<'a> {
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct ContractBytecode {
     /// The Ethereum Contract ABI. If empty, it is represented as an empty
-    /// array. See https://docs.soliditylang.org/en/develop/abi-spec.html
+    /// array. See <https://docs.soliditylang.org/en/develop/abi-spec.html>
     pub abi: Option<Abi>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub bytecode: Option<Bytecode>,
@@ -136,7 +136,7 @@ impl From<Contract> for ContractBytecode {
 #[serde(rename_all = "camelCase")]
 pub struct CompactContractBytecode {
     /// The Ethereum Contract ABI. If empty, it is represented as an empty
-    /// array. See https://docs.soliditylang.org/en/develop/abi-spec.html
+    /// array. See <https://docs.soliditylang.org/en/develop/abi-spec.html>
     pub abi: Option<Abi>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub bytecode: Option<CompactBytecode>,
@@ -245,7 +245,7 @@ impl TryFrom<ContractBytecode> for ContractBytecodeSome {
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Default)]
 pub struct CompactContractSome {
     /// The Ethereum Contract ABI. If empty, it is represented as an empty
-    /// array. See https://docs.soliditylang.org/en/develop/abi-spec.html
+    /// array. See <https://docs.soliditylang.org/en/develop/abi-spec.html>
     pub abi: Abi,
     pub bin: BytecodeObject,
     #[serde(rename = "bin-runtime")]
@@ -269,7 +269,7 @@ impl TryFrom<CompactContract> for CompactContractSome {
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Default)]
 pub struct CompactContract {
     /// The Ethereum Contract ABI. If empty, it is represented as an empty
-    /// array. See https://docs.soliditylang.org/en/develop/abi-spec.html
+    /// array. See <https://docs.soliditylang.org/en/develop/abi-spec.html>
     pub abi: Option<Abi>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub bin: Option<BytecodeObject>,

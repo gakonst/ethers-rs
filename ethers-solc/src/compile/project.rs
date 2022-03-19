@@ -58,7 +58,7 @@
 //! import "/project/lib/util.sol";         // source unit name: /project/lib/util.sol
 //! import "lib/util.sol";                  // source unit name: lib/util.sol
 //! import "@openzeppelin/address.sol";     // source unit name: @openzeppelin/address.sol
-//! import "https://example.com/token.sol"; // source unit name: https://example.com/token.sol
+//! import "https://example.com/token.sol"; // source unit name: <https://example.com/token.sol>
 //! ```
 //!
 //! After applying any import remappings the import path simply becomes the source unit name.

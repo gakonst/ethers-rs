@@ -12,7 +12,7 @@
 //! duration of a scope, while `set_global` sets a global default report
 //! for the entire process.
 
-// https://github.com/tokio-rs/tracing/blob/master/tracing-core/src/dispatch.rs
+// <https://github.com/tokio-rs/tracing/blob/master/tracing-core/src/dispatch.rs>
 
 use crate::{remappings::Remapping, CompilerInput, CompilerOutput, Solc};
 use semver::Version;
