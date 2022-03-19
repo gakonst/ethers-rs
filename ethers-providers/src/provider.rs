@@ -1718,7 +1718,7 @@ mod tests {
         provider.from = Some("0x6fC21092DA55B392b045eD78F4732bff3C580e2c".parse().unwrap());
 
         let gas = U256::from(21000_usize);
-        let basefee = U256::from(25_usize);
+        let max_fee = U256::from(25_usize);
         let prio_fee = U256::from(25_usize);
         let access_list: AccessList = vec![Default::default()].into();
 
@@ -1729,7 +1729,7 @@ mod tests {
             .from(from)
             .to(to)
             .gas(gas)
-            .max_fee_per_gas(basefee)
+            .max_fee_per_gas(max_fee)
             .max_priority_fee_per_gas(prio_fee)
             .access_list(access_list.clone())
             .into();
@@ -1738,7 +1738,7 @@ mod tests {
         assert_eq!(tx.from(), Some(&from));
         assert_eq!(tx.to(), Some(&to.into()));
         assert_eq!(tx.gas(), Some(&gas));
-        assert_eq!(tx.gas_price(), Some(basefee + prio_fee));
+        assert_eq!(tx.gas_price(), Some(max_fee));
         assert_eq!(tx.access_list(), Some(&access_list));
 
         // --- fills a 1559 transaction, leaving the existing gas limit unchanged, but including
@@ -1746,7 +1746,7 @@ mod tests {
         let gas_with_al = gas - 1;
         let mut tx = Eip1559TransactionRequest::new()
             .gas(gas)
-            .max_fee_per_gas(basefee)
+            .max_fee_per_gas(max_fee)
             .max_priority_fee_per_gas(prio_fee)
             .into();
 
@@ -1766,7 +1766,7 @@ mod tests {
         // --- fills a 1559 transaction, ignoring access list if more expensive
         let gas_with_al = gas + 1;
         let mut tx = Eip1559TransactionRequest::new()
-            .max_fee_per_gas(basefee)
+            .max_fee_per_gas(max_fee)
             .max_priority_fee_per_gas(prio_fee)
             .into();
 
@@ -1786,7 +1786,7 @@ mod tests {
 
         // --- fills a 1559 transaction, using estimated gas if create_access_list() errors
         let mut tx = Eip1559TransactionRequest::new()
-            .max_fee_per_gas(basefee)
+            .max_fee_per_gas(max_fee)
             .max_priority_fee_per_gas(prio_fee)
             .into();
 
@@ -1803,7 +1803,7 @@ mod tests {
 
         // --- propogates estimate_gas() error
         let mut tx = Eip1559TransactionRequest::new()
-            .max_fee_per_gas(basefee)
+            .max_fee_per_gas(max_fee)
             .max_priority_fee_per_gas(prio_fee)
             .into();
 

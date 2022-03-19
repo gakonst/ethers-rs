@@ -30,7 +30,7 @@ async fn nonce_manager() {
         .unwrap()
         .as_u64();
 
-    let num_tx = 5;
+    let num_tx = 3;
     let mut tx_hashes = Vec::with_capacity(num_tx);
     for _ in 0..num_tx {
         let tx = provider
@@ -44,7 +44,7 @@ async fn nonce_manager() {
     }
 
     // sleep a bit to ensure there's no flakiness in the test
-    std::thread::sleep(std::time::Duration::new(3, 0));
+    std::thread::sleep(std::time::Duration::new(5, 0));
 
     let mut nonces = Vec::with_capacity(num_tx);
     for tx_hash in tx_hashes {
