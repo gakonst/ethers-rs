@@ -63,17 +63,19 @@ pub(crate) fn take_solc_installer_lock() -> std::sync::MutexGuard<'static, ()> {
 
 /// A list of upstream Solc releases, used to check which version
 /// we should download.
-/// The boolean value marks whether there was an error.
-#[cfg(all(feature = "svm"))]
+/// The boolean value marks whether there was an error accessing the release list
+#[cfg(all(feature = "svm", feature = "svm-builds"))]
 pub static RELEASES: once_cell::sync::Lazy<(svm::Releases, Vec<Version>, bool)> =
-    once_cell::sync::Lazy::new(|| match svm::blocking_all_releases(svm::platform()) {
-        Ok(releases) => {
-            let sorted_versions = releases.clone().into_versions();
-            (releases, sorted_versions, true)
-        }
-        Err(err) => {
-            tracing::error!("{:?}", err);
-            (svm::Releases::default(), Vec::new(), false)
+    once_cell::sync::Lazy::new(|| {
+        match serde_json::from_str::<svm::Releases>(svm_builds::RELEASE_LIST_JSON) {
+            Ok(releases) => {
+                let sorted_versions = releases.clone().into_versions();
+                (releases, sorted_versions, true)
+            }
+            Err(err) => {
+                tracing::error!("{:?}", err);
+                (svm::Releases::default(), Vec::new(), false)
+            }
         }
     });
 
