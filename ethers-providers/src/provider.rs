@@ -754,7 +754,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
     }
 
     /// Returns the EIP-1186 proof response
-    /// https://github.com/ethereum/EIPs/issues/1186
+    /// <https://github.com/ethereum/EIPs/issues/1186>
     async fn get_proof<T: Into<NameOrAddress> + Send + Sync>(
         &self,
         from: T,

@@ -1,5 +1,5 @@
 //! This module contains an 256-bit signed integer implementation.
-//! This module was derived for ethers-core via https://github.com/gnosis/ethcontract-rs/
+//! This module was derived for ethers-core via <https://github.com/gnosis/ethcontract-rs/>
 #![allow(clippy::wrong_self_convention)]
 use crate::{
     abi::{InvalidOutputType, Token, Tokenizable},

@@ -362,14 +362,14 @@ impl AbiParser {
     /// }
     /// ```
     ///
-    /// See https://github.com/rust-ethereum/ethabi/issues/254
+    /// See <https://github.com/rust-ethereum/ethabi/issues/254>
     ///
     /// Therefore, we need to double-check if the `ethabi::Reader` parsed an `uint8`, and ignore the
     /// type if `type_str` is not uint8. However can lead to some problems if a function param is
     /// array of custom types for example, like `Foo[]`, which the `Reader` would identify as
     /// `uint8[]`. Therefor if the `Reader` returns an `uint8` we also check that the input string
     /// contains a `uint8`. This however can still lead to false detection of `uint8` and is only
-    /// solvable with a more sophisticated parser: https://github.com/gakonst/ethers-rs/issues/474
+    /// solvable with a more sophisticated parser: <https://github.com/gakonst/ethers-rs/issues/474>
     fn parse_type(&self, type_str: &str) -> Result<(ParamType, Option<String>)> {
         if let Ok(kind) = Reader::read(type_str) {
             if is_likely_tuple_not_uint8(&kind, type_str) {

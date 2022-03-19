@@ -23,7 +23,7 @@ pub struct BaseContract {
     /// A mapping from method signature to a name-index pair for accessing
     /// functions in the contract ABI. This is used to avoid allocation when
     /// searching for matching functions by signature.
-    // Adapted from: https://github.com/gnosis/ethcontract-rs/blob/master/src/contract.rs
+    // Adapted from: <https://github.com/gnosis/ethcontract-rs/blob/master/src/contract.rs>
     pub methods: HashMap<Selector, (String, usize)>,
 }
 

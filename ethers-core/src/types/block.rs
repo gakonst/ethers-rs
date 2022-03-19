@@ -1,4 +1,4 @@
-// Taken from https://github.com/tomusdrw/rust-web3/blob/master/src/types/block.rs
+// Taken from <https://github.com/tomusdrw/rust-web3/blob/master/src/types/block.rs>
 use crate::types::{Address, Bloom, Bytes, H256, U256, U64};
 #[cfg(not(feature = "celo"))]
 use core::cmp::Ordering;
@@ -91,7 +91,7 @@ pub struct Block<TX> {
     pub epoch_snark_data: Option<EpochSnarkData>,
 }
 
-// ref https://eips.ethereum.org/EIPS/eip-1559
+// ref <https://eips.ethereum.org/EIPS/eip-1559>
 #[cfg(not(feature = "celo"))]
 pub const ELASTICITY_MULTIPLIER: U256 = U256([2u64, 0, 0, 0]);
 // max base fee delta is 12.5%
@@ -106,7 +106,7 @@ impl<TX> Block<TX> {
     }
 
     /// The next block's base fee, it is a function of parent block's base fee and gas usage.
-    /// Reference: https://eips.ethereum.org/EIPS/eip-1559
+    /// Reference: <https://eips.ethereum.org/EIPS/eip-1559>
     #[cfg(not(feature = "celo"))]
     pub fn next_block_base_fee(&self) -> Option<U256> {
         let target_usage = self.gas_target();
@@ -162,7 +162,7 @@ pub struct EpochSnarkData {
 /// A Block Hash or Block Number
 pub enum BlockId {
     // TODO: May want to expand this to include the requireCanonical field
-    // https://github.com/ethereum/EIPs/blob/master/EIPS/eip-1898.md
+    // <https://github.com/ethereum/EIPs/blob/master/EIPS/eip-1898.md>
     /// A block hash
     Hash(H256),
     /// A block number
@@ -291,7 +291,7 @@ mod tests {
     }
 
     #[test]
-    // https://github.com/tomusdrw/rust-web3/commit/3a32ee962c0f2f8d50a5e25be9f2dfec7ae0750d
+    // <https://github.com/tomusdrw/rust-web3/commit/3a32ee962c0f2f8d50a5e25be9f2dfec7ae0750d>
     fn post_london_block() {
         let json = serde_json::json!(
         {
@@ -330,7 +330,7 @@ mod tests {
 
     #[test]
     fn test_next_block_base_fee() {
-        // https://etherscan.io/block/14402566
+        // <https://etherscan.io/block/14402566>
         let mut block_14402566 = Block::<TxHash>::default();
         block_14402566.number = Some(U64::from(14402566u64));
         block_14402566.base_fee_per_gas = Some(U256::from(36_803_013_756u128));

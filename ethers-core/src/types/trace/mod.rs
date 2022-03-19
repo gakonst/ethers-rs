@@ -1,6 +1,6 @@
 //! Types for the Parity Ad-Hoc Trace API
 //!
-//! https://openethereum.github.io/wiki/JSONRPC-trace-module
+//! <https://openethereum.github.io/wiki/JSONRPC-trace-module>
 use crate::types::{Bytes, H160, H256, U256};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;

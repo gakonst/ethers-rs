@@ -7,7 +7,7 @@ use ethers_core::types::U256;
 /// Coefficient defaults to 1.125 (12.5%), the minimum increase for Parity to replace a transaction.
 /// Coefficient can be adjusted, and there is an optional upper limit.
 ///
-/// https://github.com/makerdao/pymaker/blob/master/pymaker/gas.py#L168
+/// <https://github.com/makerdao/pymaker/blob/master/pymaker/gas.py#L168>
 #[derive(Clone, Debug)]
 pub struct GeometricGasPrice {
     every_secs: u64,

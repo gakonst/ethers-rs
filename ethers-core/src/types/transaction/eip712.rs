@@ -56,7 +56,7 @@ pub enum Eip712Error {
 /// for `derive_eip712` for more information and example usage.
 ///
 /// For those who wish to manually implement this trait, see:
-/// https://eips.ethereum.org/EIPS/eip-712
+/// <https://eips.ethereum.org/EIPS/eip-712>
 ///
 /// Any rust struct implementing Eip712 must also have a corresponding
 /// struct in the verifying ethereum contract that matches its signature.
@@ -412,7 +412,7 @@ impl TryFrom<&syn::DeriveInput> for EIP712Domain {
 }
 
 /// Parse the eth abi parameter type based on the syntax type;
-/// this method is copied from https://github.com/gakonst/ethers-rs/blob/master/ethers-contract/ethers-contract-derive/src/lib.rs#L600
+/// this method is copied from <https://github.com/gakonst/ethers-rs/blob/master/ethers-contract/ethers-contract-derive/src/lib.rs#L600>
 /// with additional modifications for finding byte arrays
 pub fn find_parameter_type(ty: &Type) -> Result<ParamType, TokenStream> {
     match ty {

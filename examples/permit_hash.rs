@@ -5,8 +5,8 @@ use ethers::{
 };
 
 // Generate the EIP712 permit hash to sign for a Uniswap V2 pair.
-// https://eips.ethereum.org/EIPS/eip-712
-// https://eips.ethereum.org/EIPS/eip-2612
+// <https://eips.ethereum.org/EIPS/eip-712>
+// <https://eips.ethereum.org/EIPS/eip-2612>
 #[derive(Eip712, EthAbiType, Clone)]
 #[eip712(
     name = "Uniswap V2",
