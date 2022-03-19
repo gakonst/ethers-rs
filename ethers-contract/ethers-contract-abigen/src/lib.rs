@@ -1,4 +1,4 @@
-#![deny(missing_docs, unsafe_code, unused_crate_dependencies)]
+#![deny(missing_docs, unsafe_code)]
 #![deny(rustdoc::broken_intra_doc_links)]
 
 //! Module for generating type-safe bindings to Ethereum smart contracts. This
