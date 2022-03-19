@@ -1192,7 +1192,6 @@ dependencies = [
  "eyre",
  "getrandom 0.2.5",
  "hex",
- "once_cell",
  "proc-macro2",
  "quote",
  "reqwest",
