@@ -583,8 +583,9 @@ pub trait ArtifactOutput {
     /// Convert a contract to the artifact type
     ///
     /// This is the core conversion function that takes care of converting a `Contract` into the
-    /// associated `Artifact` type
-    fn contract_to_artifact(&self, _file: &str, _name: &str, contract: Contract) -> Self::Artifact;
+    /// associated `Artifact` type.
+    /// The `SourceFile` is also provided
+    fn contract_to_artifact(&self, _file: &str, _name: &str, contract: Contract, source_file: Option<&SourceFile>) -> Self::Artifact;
 
     /// Convert the compiler output into a set of artifacts
     ///
@@ -609,7 +610,7 @@ pub trait ArtifactOutput {
                         Self::output_file(file, name)
                     };
 
-                    let artifact = self.contract_to_artifact(file, name, contract.contract.clone());
+                    let artifact = self.contract_to_artifact(file, name, contract.contract.clone(), source_file);
 
                     contracts.push(ArtifactFile {
                         artifact,
