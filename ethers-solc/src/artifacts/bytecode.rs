@@ -117,7 +117,7 @@ impl From<BytecodeObject> for Bytecode {
 impl Bytecode {
     /// Returns the parsed source map
     ///
-    /// See also https://docs.soliditylang.org/en/v0.8.10/internals/source_mappings.html
+    /// See also <https://docs.soliditylang.org/en/v0.8.10/internals/source_mappings.html>
     pub fn source_map(&self) -> Option<Result<SourceMap, SyntaxError>> {
         self.source_map.as_ref().map(|map| sourcemap::parse(map))
     }
