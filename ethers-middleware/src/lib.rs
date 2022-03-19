@@ -1,4 +1,6 @@
 #![doc = include_str!("../README.md")]
+#![deny(unsafe_code)]
+#![deny(rustdoc::broken_intra_doc_links)]
 
 /// The [Gas Escalator middleware](crate::gas_escalator::GasEscalatorMiddleware)
 /// is used to re-broadcast transactions with an increasing gas price to guarantee

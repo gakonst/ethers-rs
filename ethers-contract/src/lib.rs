@@ -1,7 +1,6 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![doc = include_str!("../README.md")]
-
-#![deny(unsafe_code, unused_crate_dependencies)]
+#![deny(unsafe_code)]
 #![deny(rustdoc::broken_intra_doc_links)]
 
 mod contract;
