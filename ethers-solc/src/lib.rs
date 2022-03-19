@@ -23,7 +23,7 @@ mod config;
 pub use config::{AllowedLibPaths, PathStyle, ProjectPathsConfig, SolcConfig};
 
 pub mod remappings;
-use crate::artifacts::Source;
+use crate::artifacts::{Source, SourceFile};
 
 pub mod error;
 mod filter;
@@ -676,9 +676,10 @@ impl<T: ArtifactOutput> ArtifactOutput for Project<T> {
     fn on_output(
         &self,
         contracts: &VersionedContracts,
+        sources: &BTreeMap<String, SourceFile>,
         layout: &ProjectPathsConfig,
     ) -> Result<Artifacts<Self::Artifact>> {
-        self.artifacts_handler().on_output(contracts, layout)
+        self.artifacts_handler().on_output(contracts, sources, layout)
     }
 
     fn write_contract_extras(&self, contract: &Contract, file: &Path) -> Result<()> {
@@ -741,8 +742,12 @@ impl<T: ArtifactOutput> ArtifactOutput for Project<T> {
         self.artifacts_handler().contract_to_artifact(file, name, contract)
     }
 
-    fn output_to_artifacts(&self, contracts: &VersionedContracts) -> Artifacts<Self::Artifact> {
-        self.artifacts_handler().output_to_artifacts(contracts)
+    fn output_to_artifacts(
+        &self,
+        contracts: &VersionedContracts,
+        sources: &BTreeMap<String, SourceFile>,
+    ) -> Artifacts<Self::Artifact> {
+        self.artifacts_handler().output_to_artifacts(contracts, sources)
     }
 }
 

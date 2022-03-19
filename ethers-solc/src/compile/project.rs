@@ -266,15 +266,22 @@ impl<'a, T: ArtifactOutput> CompiledState<'a, T> {
 
         // write all artifacts via the handler but only if the build succeeded
         let compiled_artifacts = if cache.project().no_artifacts {
-            cache.project().artifacts_handler().output_to_artifacts(&output.contracts)
-        } else if output.has_error() {
-            tracing::trace!("skip writing cache file due to solc errors: {:?}", output.errors);
-            cache.project().artifacts_handler().output_to_artifacts(&output.contracts)
-        } else {
             cache
                 .project()
                 .artifacts_handler()
-                .on_output(&output.contracts, &cache.project().paths)?
+                .output_to_artifacts(&output.contracts, &output.sources)
+        } else if output.has_error() {
+            tracing::trace!("skip writing cache file due to solc errors: {:?}", output.errors);
+            cache
+                .project()
+                .artifacts_handler()
+                .output_to_artifacts(&output.contracts, &output.sources)
+        } else {
+            cache.project().artifacts_handler().on_output(
+                &output.contracts,
+                &output.sources,
+                &cache.project().paths,
+            )?
         };
 
         Ok(ArtifactsState { output, cache, compiled_artifacts })

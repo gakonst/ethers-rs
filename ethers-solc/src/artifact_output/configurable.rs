@@ -47,6 +47,8 @@ pub struct ConfigurableContractArtifact {
     pub ir_optimized: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ewasm: Option<Ewasm>,
+    #[serde(default, skip_serializing_if = "serde_json::Value::is_null")]
+    pub ast: serde_json::Value,
 }
 
 impl ConfigurableContractArtifact {
@@ -276,6 +278,7 @@ impl ArtifactOutput for ConfigurableArtifacts {
             ir: artifact_ir,
             ir_optimized: artifact_ir_optimized,
             ewasm: artifact_ewasm,
+            ast: serde_json::Value::Null,
         }
     }
 }

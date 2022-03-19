@@ -18,6 +18,7 @@ mod configurable;
 use crate::artifacts::{
     contract::{CompactContract, CompactContractBytecode, Contract},
     BytecodeObject, CompactBytecode, CompactContractBytecodeCow, CompactDeployedBytecode,
+    SourceFile,
 };
 pub use configurable::*;
 
@@ -437,9 +438,10 @@ pub trait ArtifactOutput {
     fn on_output(
         &self,
         contracts: &VersionedContracts,
+        sources: &BTreeMap<String, SourceFile>,
         layout: &ProjectPathsConfig,
     ) -> Result<Artifacts<Self::Artifact>> {
-        let mut artifacts = self.output_to_artifacts(contracts);
+        let mut artifacts = self.output_to_artifacts(contracts, sources);
         artifacts.join_all(&layout.artifacts);
         artifacts.write_all()?;
 
@@ -588,9 +590,14 @@ pub trait ArtifactOutput {
     ///
     /// **Note:** This does only convert, but _NOT_ write the artifacts to disk, See
     /// [`Self::on_output()`]
-    fn output_to_artifacts(&self, contracts: &VersionedContracts) -> Artifacts<Self::Artifact> {
+    fn output_to_artifacts(
+        &self,
+        contracts: &VersionedContracts,
+        sources: &BTreeMap<String, SourceFile>,
+    ) -> Artifacts<Self::Artifact> {
         let mut artifacts = ArtifactsMap::new();
         for (file, contracts) in contracts.as_ref().iter() {
+            let source_file = sources.get(file);
             let mut entries = BTreeMap::new();
             for (name, versioned_contracts) in contracts {
                 let mut contracts = Vec::with_capacity(versioned_contracts.len());
@@ -601,6 +608,7 @@ pub trait ArtifactOutput {
                     } else {
                         Self::output_file(file, name)
                     };
+
                     let artifact = self.contract_to_artifact(file, name, contract.contract.clone());
 
                     contracts.push(ArtifactFile {
@@ -654,9 +662,10 @@ impl ArtifactOutput for MinimalCombinedArtifactsHardhatFallback {
     fn on_output(
         &self,
         output: &VersionedContracts,
+        sources: &BTreeMap<String, SourceFile>,
         layout: &ProjectPathsConfig,
     ) -> Result<Artifacts<Self::Artifact>> {
-        MinimalCombinedArtifacts::default().on_output(output, layout)
+        MinimalCombinedArtifacts::default().on_output(output, sources, layout)
     }
 
     fn read_cached_artifact(path: impl AsRef<Path>) -> Result<Self::Artifact> {
