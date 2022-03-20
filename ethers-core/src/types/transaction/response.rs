@@ -292,7 +292,6 @@ impl Transaction {
         rlp: &rlp::Rlp,
         offset: &mut usize,
     ) -> Result<(), DecoderError> {
-        println!("are we a list {}", rlp.is_list());
         self.nonce = rlp.val_at(*offset)?;
         *offset += 1;
         self.gas_price = Some(rlp.val_at(*offset)?);
