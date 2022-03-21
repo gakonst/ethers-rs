@@ -253,6 +253,16 @@ impl TypedTransaction {
         let encoded = self.rlp();
         keccak256(encoded).into()
     }
+
+    /// Max cost of the transaction
+    pub fn max_cost(&self) -> Option<U256> {
+        let gas_limit = self.gas();
+        let gas_price = self.gas_price();
+        match (gas_limit, gas_price) {
+            (Some(gas_limit), Some(gas_price)) => Some(gas_limit * gas_price),
+            _ => None,
+        }
+    }
 }
 
 /// Get a TypedTransaction directly from an rlp encoded byte stream
