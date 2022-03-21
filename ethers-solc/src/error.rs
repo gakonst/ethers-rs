@@ -26,7 +26,7 @@ pub enum SolcError {
     /// Failed to resolve a file
     #[error("Failed to resolve file: {0}.\n Check configured remappings.")]
     Resolve(SolcIoError),
-    #[cfg(feature = "svm")]
+    #[cfg(feature = "svm-solc")]
     #[error(transparent)]
     SvmError(#[from] svm::SolcVmError),
     #[error("No contracts found at \"{0}\"")]

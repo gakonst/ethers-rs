@@ -327,7 +327,7 @@ impl Graph {
     }
 }
 
-#[cfg(all(feature = "svm", feature = "async"))]
+#[cfg(all(feature = "svm-solc", feature = "async"))]
 impl Graph {
     /// Consumes the nodes of the graph and returns all input files together with their appropriate
     /// version and the edges of the graph
@@ -632,14 +632,14 @@ impl<'a> Iterator for NodesIter<'a> {
 }
 
 /// Container type for solc versions and their compatible sources
-#[cfg(all(feature = "svm", feature = "async"))]
+#[cfg(all(feature = "svm-solc", feature = "async"))]
 #[derive(Debug)]
 pub struct VersionedSources {
     inner: HashMap<crate::SolcVersion, Sources>,
     offline: bool,
 }
 
-#[cfg(all(feature = "svm", feature = "async"))]
+#[cfg(all(feature = "svm-solc", feature = "async"))]
 impl VersionedSources {
     /// Resolves or installs the corresponding `Solc` installation.
     pub fn get(
