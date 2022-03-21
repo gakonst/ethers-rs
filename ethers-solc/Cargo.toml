@@ -80,7 +80,7 @@ required-features = ["async", "solc-svm", "project-util"]
 [features]
 default = ["rustls"]
 async = ["tokio", "futures-util"]
-full = ["async", "svm"]
+full = ["async", "svm-solc"]
 svm-solc = ["svm/blocking", "svm-builds", "sha2"]
 # Utilities for creating and testing project workspaces
 project-util = ["tempfile", "fs_extra", "rand"]
