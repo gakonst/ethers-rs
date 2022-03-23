@@ -315,10 +315,18 @@ impl Transaction {
         Ok(())
     }
 
+    /// Recover the sender of the tx from signature
     pub fn recover_from(&self) -> Result<Address, SignatureError> {
         let signature = Signature { r: self.r, s: self.s, v: self.v.as_u64() };
         let typed_tx: TypedTransaction = self.into();
         signature.recover(typed_tx.sighash())
+    }
+
+    /// Recover the sender of the tx from signature and set the from field
+    pub fn recover_from_mut(&mut self) -> Result<Address, SignatureError> {
+        let from = self.recover_from()?;
+        self.from = from;
+        Ok(from)
     }
 }
 
