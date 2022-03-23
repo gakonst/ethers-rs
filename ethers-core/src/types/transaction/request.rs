@@ -1,7 +1,7 @@
 //! Transaction types
 use super::{extract_chain_id, rlp_opt, NUM_TX_FIELDS};
 use crate::{
-    types::{Address, Bytes, NameOrAddress, Signature, H256, U256, U64},
+    types::{Address, Bytes, NameOrAddress, Signature, Transaction, H256, U256, U64},
     utils::keccak256,
 };
 
@@ -271,6 +271,30 @@ impl Decodable for TransactionRequest {
     /// Decodes the given RLP into a transaction request, ignoring the signature if populated
     fn decode(rlp: &rlp::Rlp) -> Result<Self, rlp::DecoderError> {
         TransactionRequest::decode_unsigned_rlp(rlp)
+    }
+}
+
+impl From<&Transaction> for TransactionRequest {
+    fn from(tx: &Transaction) -> TransactionRequest {
+        TransactionRequest {
+            from: Some(tx.from),
+            to: tx.to.map(NameOrAddress::Address),
+            gas: Some(tx.gas),
+            gas_price: tx.gas_price,
+            value: Some(tx.value),
+            data: Some(Bytes(tx.input.0.clone())),
+            nonce: Some(tx.nonce),
+            chain_id: tx.chain_id.map(|x| U64::from(x.as_u64())),
+
+            #[cfg(feature = "celo")]
+            fee_currency: tx.fee_currency,
+
+            #[cfg(feature = "celo")]
+            gateway_fee_recipient: tx.gateway_fee_recipient,
+
+            #[cfg(feature = "celo")]
+            gateway_fee: tx.gateway_fee,
+        }
     }
 }
 

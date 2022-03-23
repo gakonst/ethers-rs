@@ -1,5 +1,7 @@
 //! Transaction types
-use super::{decode_signature, eip2930::AccessList, normalize_v, rlp_opt};
+use super::{
+    decode_signature, eip2718::TypedTransaction, eip2930::AccessList, normalize_v, rlp_opt,
+};
 use crate::{
     types::{Address, Bloom, Bytes, Log, Signature, SignatureError, H256, U256, U64},
     utils::keccak256,
@@ -315,7 +317,8 @@ impl Transaction {
 
     pub fn recover_from(&self) -> Result<Address, SignatureError> {
         let signature = Signature { r: self.r, s: self.s, v: self.v.as_u64() };
-        signature.recover(self.hash)
+        let typed_tx: TypedTransaction = self.into();
+        signature.recover(typed_tx.sighash())
     }
 }
 
