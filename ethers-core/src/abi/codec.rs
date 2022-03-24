@@ -252,4 +252,12 @@ mod tests {
         let v = vec![bytes];
         assert_codec(v);
     }
+
+    #[test]
+    fn tuple_array() {
+        let nested: Vec<[u8; 4]> = vec![[0, 0, 0, 1]];
+        assert_codec(nested.clone());
+        let tuple: Vec<(Address, u8, Vec<[u8; 4]>)> = vec![(Address::random(), 0, nested)];
+        assert_codec(tuple);
+    }
 }
