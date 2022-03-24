@@ -60,7 +60,7 @@ pub struct Signature {
     pub r: U256,
     /// S Value
     pub s: U256,
-    /// V value in 'Electrum' notation.
+    /// V value
     pub v: u64,
 }
 

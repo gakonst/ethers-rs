@@ -1,5 +1,5 @@
 use super::{normalize_v, request::TransactionRequest};
-use crate::types::{Address, Bytes, Signature, H256, U256, U64};
+use crate::types::{Address, Bytes, Signature, Transaction, H256, U256, U64};
 
 use rlp::{Decodable, DecoderError, RlpStream};
 use rlp_derive::{RlpDecodable, RlpDecodableWrapper, RlpEncodable, RlpEncodableWrapper};
@@ -141,6 +141,15 @@ impl Decodable for Eip2930TransactionRequest {
         let mut offset = 0;
         new_tx.decode_base_rlp(rlp, &mut offset)?;
         Ok(new_tx)
+    }
+}
+
+impl From<&Transaction> for Eip2930TransactionRequest {
+    fn from(tx: &Transaction) -> Eip2930TransactionRequest {
+        Eip2930TransactionRequest {
+            tx: tx.into(),
+            access_list: tx.access_list.clone().unwrap_or_default(),
+        }
     }
 }
 

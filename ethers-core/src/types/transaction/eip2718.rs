@@ -3,7 +3,9 @@ use super::{
     eip2930::{AccessList, Eip2930TransactionRequest},
 };
 use crate::{
-    types::{Address, Bytes, NameOrAddress, Signature, TransactionRequest, H256, U256, U64},
+    types::{
+        Address, Bytes, NameOrAddress, Signature, Transaction, TransactionRequest, H256, U256, U64,
+    },
     utils::keccak256,
 };
 use serde::{Deserialize, Serialize};
@@ -309,6 +311,28 @@ impl From<Eip2930TransactionRequest> for TypedTransaction {
 impl From<Eip1559TransactionRequest> for TypedTransaction {
     fn from(src: Eip1559TransactionRequest) -> TypedTransaction {
         TypedTransaction::Eip1559(src)
+    }
+}
+
+impl From<&Transaction> for TypedTransaction {
+    fn from(tx: &Transaction) -> TypedTransaction {
+        match tx.transaction_type {
+            // EIP-2930 (0x01)
+            Some(x) if x == U64::from(1) => {
+                let request: Eip2930TransactionRequest = tx.into();
+                request.into()
+            }
+            // EIP-1559 (0x02)
+            Some(x) if x == U64::from(2) => {
+                let request: Eip1559TransactionRequest = tx.into();
+                request.into()
+            }
+            // Legacy (0x00)
+            _ => {
+                let request: TransactionRequest = tx.into();
+                request.into()
+            }
+        }
     }
 }
 
