@@ -572,3 +572,14 @@ fn can_derive_ethcall_for_bytes() {
 
     assert_ethcall::<BatchCall>();
 }
+
+#[test]
+fn can_derive_array_tuples() {
+    #[derive(Clone, Debug, Default, Eq, PartialEq, EthEvent, EthDisplay)]
+    #[ethevent(name = "DiamondCut", abi = "DiamondCut((address,uint8,bytes4[])[],address,bytes)")]
+    pub struct DiamondCutFilter {
+        pub diamond_cut: Vec<(Address, u8, Vec<[u8; 4]>)>,
+        pub init: Address,
+        pub calldata: Bytes,
+    }
+}
