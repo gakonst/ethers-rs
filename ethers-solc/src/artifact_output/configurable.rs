@@ -8,7 +8,7 @@ use crate::{
         CompactContractBytecodeCow, CompactEvm, DevDoc, Ewasm, GasEstimates, LosslessAbi, Metadata,
         Offsets, Settings, StorageLayout, UserDoc,
     },
-    ArtifactOutput, SolcConfig, SolcError,
+    ArtifactOutput, SolcConfig, SolcError, SourceFile,
 };
 use serde::{Deserialize, Serialize};
 use std::{borrow::Cow, collections::BTreeMap, fs, path::Path};
@@ -192,7 +192,13 @@ impl ArtifactOutput for ConfigurableArtifacts {
         self.additional_files.write_extras(contract, file)
     }
 
-    fn contract_to_artifact(&self, _file: &str, _name: &str, contract: Contract) -> Self::Artifact {
+    fn contract_to_artifact(
+        &self,
+        _file: &str,
+        _name: &str,
+        contract: Contract,
+        source_file: Option<&SourceFile>,
+    ) -> Self::Artifact {
         let mut artifact_userdoc = None;
         let mut artifact_devdoc = None;
         let mut artifact_metadata = None;
@@ -278,7 +284,7 @@ impl ArtifactOutput for ConfigurableArtifacts {
             ir: artifact_ir,
             ir_optimized: artifact_ir_optimized,
             ewasm: artifact_ewasm,
-            ast: serde_json::Value::Null,
+            ast: source_file.map(|s| s.ast.clone()).unwrap_or_default(),
         }
     }
 }

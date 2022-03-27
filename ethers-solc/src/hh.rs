@@ -6,7 +6,7 @@ use crate::{
         contract::{CompactContract, CompactContractBytecode, Contract, ContractBytecode},
         CompactContractBytecodeCow, LosslessAbi, Offsets,
     },
-    ArtifactOutput,
+    ArtifactOutput, SourceFile,
 };
 use serde::{Deserialize, Serialize};
 use std::{borrow::Cow, collections::btree_map::BTreeMap};
@@ -97,7 +97,13 @@ pub struct HardhatArtifacts {
 impl ArtifactOutput for HardhatArtifacts {
     type Artifact = HardhatArtifact;
 
-    fn contract_to_artifact(&self, file: &str, name: &str, contract: Contract) -> Self::Artifact {
+    fn contract_to_artifact(
+        &self,
+        file: &str,
+        name: &str,
+        contract: Contract,
+        _source_file: Option<&SourceFile>,
+    ) -> Self::Artifact {
         let (bytecode, link_references, deployed_bytecode, deployed_link_references) =
             if let Some(evm) = contract.evm {
                 let (deployed_bytecode, deployed_link_references) =

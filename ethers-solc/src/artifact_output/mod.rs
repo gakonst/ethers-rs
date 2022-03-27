@@ -585,7 +585,13 @@ pub trait ArtifactOutput {
     /// This is the core conversion function that takes care of converting a `Contract` into the
     /// associated `Artifact` type.
     /// The `SourceFile` is also provided
-    fn contract_to_artifact(&self, _file: &str, _name: &str, contract: Contract, source_file: Option<&SourceFile>) -> Self::Artifact;
+    fn contract_to_artifact(
+        &self,
+        _file: &str,
+        _name: &str,
+        contract: Contract,
+        source_file: Option<&SourceFile>,
+    ) -> Self::Artifact;
 
     /// Convert the compiler output into a set of artifacts
     ///
@@ -610,7 +616,12 @@ pub trait ArtifactOutput {
                         Self::output_file(file, name)
                     };
 
-                    let artifact = self.contract_to_artifact(file, name, contract.contract.clone(), source_file);
+                    let artifact = self.contract_to_artifact(
+                        file,
+                        name,
+                        contract.contract.clone(),
+                        source_file,
+                    );
 
                     contracts.push(ArtifactFile {
                         artifact,
@@ -645,7 +656,13 @@ pub struct MinimalCombinedArtifacts {
 impl ArtifactOutput for MinimalCombinedArtifacts {
     type Artifact = CompactContractBytecode;
 
-    fn contract_to_artifact(&self, _file: &str, _name: &str, contract: Contract) -> Self::Artifact {
+    fn contract_to_artifact(
+        &self,
+        _file: &str,
+        _name: &str,
+        contract: Contract,
+        _source_file: Option<&SourceFile>,
+    ) -> Self::Artifact {
         Self::Artifact::from(contract)
     }
 }
@@ -683,8 +700,14 @@ impl ArtifactOutput for MinimalCombinedArtifactsHardhatFallback {
         }
     }
 
-    fn contract_to_artifact(&self, file: &str, name: &str, contract: Contract) -> Self::Artifact {
-        MinimalCombinedArtifacts::default().contract_to_artifact(file, name, contract)
+    fn contract_to_artifact(
+        &self,
+        file: &str,
+        name: &str,
+        contract: Contract,
+        source_file: Option<&SourceFile>,
+    ) -> Self::Artifact {
+        MinimalCombinedArtifacts::default().contract_to_artifact(file, name, contract, source_file)
     }
 }
 

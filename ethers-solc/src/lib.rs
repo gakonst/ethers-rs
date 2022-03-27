@@ -739,8 +739,14 @@ impl<T: ArtifactOutput> ArtifactOutput for Project<T> {
         T::read_cached_artifacts(files)
     }
 
-    fn contract_to_artifact(&self, file: &str, name: &str, contract: Contract) -> Self::Artifact {
-        self.artifacts_handler().contract_to_artifact(file, name, contract)
+    fn contract_to_artifact(
+        &self,
+        file: &str,
+        name: &str,
+        contract: Contract,
+        source_file: Option<&SourceFile>,
+    ) -> Self::Artifact {
+        self.artifacts_handler().contract_to_artifact(file, name, contract, source_file)
     }
 
     fn output_to_artifacts(
