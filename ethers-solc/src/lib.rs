@@ -24,7 +24,7 @@ mod config;
 pub use config::{AllowedLibPaths, PathStyle, ProjectPathsConfig, SolcConfig};
 
 pub mod remappings;
-use crate::artifacts::Source;
+use crate::artifacts::{Source, SourceFile};
 
 pub mod error;
 mod filter;
@@ -677,9 +677,10 @@ impl<T: ArtifactOutput> ArtifactOutput for Project<T> {
     fn on_output(
         &self,
         contracts: &VersionedContracts,
+        sources: &BTreeMap<String, SourceFile>,
         layout: &ProjectPathsConfig,
     ) -> Result<Artifacts<Self::Artifact>> {
-        self.artifacts_handler().on_output(contracts, layout)
+        self.artifacts_handler().on_output(contracts, sources, layout)
     }
 
     fn write_contract_extras(&self, contract: &Contract, file: &Path) -> Result<()> {
@@ -738,12 +739,22 @@ impl<T: ArtifactOutput> ArtifactOutput for Project<T> {
         T::read_cached_artifacts(files)
     }
 
-    fn contract_to_artifact(&self, file: &str, name: &str, contract: Contract) -> Self::Artifact {
-        self.artifacts_handler().contract_to_artifact(file, name, contract)
+    fn contract_to_artifact(
+        &self,
+        file: &str,
+        name: &str,
+        contract: Contract,
+        source_file: Option<&SourceFile>,
+    ) -> Self::Artifact {
+        self.artifacts_handler().contract_to_artifact(file, name, contract, source_file)
     }
 
-    fn output_to_artifacts(&self, contracts: &VersionedContracts) -> Artifacts<Self::Artifact> {
-        self.artifacts_handler().output_to_artifacts(contracts)
+    fn output_to_artifacts(
+        &self,
+        contracts: &VersionedContracts,
+        sources: &BTreeMap<String, SourceFile>,
+    ) -> Artifacts<Self::Artifact> {
+        self.artifacts_handler().output_to_artifacts(contracts, sources)
     }
 }
 
