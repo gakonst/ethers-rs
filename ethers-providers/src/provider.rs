@@ -1298,6 +1298,14 @@ impl TryFrom<String> for Provider<HttpProvider> {
     }
 }
 
+impl<'a> TryFrom<&'a String> for Provider<HttpProvider> {
+    type Error = ParseError;
+
+    fn try_from(src: &'a String) -> Result<Self, Self::Error> {
+        Provider::try_from(src.as_str())
+    }
+}
+
 /// A middleware supporting development-specific JSON RPC methods
 ///
 /// # Example
