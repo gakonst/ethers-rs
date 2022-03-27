@@ -68,6 +68,19 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
             .chain(compiled_artifacts.into_artifacts_with_files())
     }
 
+    /// All artifacts together with their ID and the sources of the project.
+    pub fn into_artifacts_with_sources(self) -> (BTreeMap<ArtifactId, T::Artifact>, SourceFiles) {
+        let Self { cached_artifacts, compiled_artifacts, compiler_output, .. } = self;
+
+        (
+            cached_artifacts
+                .into_artifacts::<T>()
+                .chain(compiled_artifacts.into_artifacts::<T>())
+                .collect(),
+            SourceFiles(compiler_output.sources),
+        )
+    }
+
     /// Strips the given prefix from all artifact file paths to make them relative to the given
     /// `base` argument
     ///
