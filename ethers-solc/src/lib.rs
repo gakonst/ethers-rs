@@ -1,3 +1,4 @@
+#![deny(rustdoc::broken_intra_doc_links)]
 pub mod artifacts;
 pub mod sourcemap;
 
@@ -192,7 +193,7 @@ impl<T: ArtifactOutput> Project<T> {
     /// `CompilerOutput::has_error` instead.
     ///
     /// NB: If the `svm` feature is enabled, this function will automatically detect
-    /// solc versions across files, see [`Self::svm_compile()`]
+    /// solc versions across files.
     ///
     /// # Example
     ///
@@ -208,7 +209,7 @@ impl<T: ArtifactOutput> Project<T> {
         let sources = self.paths.read_input_files()?;
         tracing::trace!("found {} sources to compile: {:?}", sources.len(), sources.keys());
 
-        #[cfg(all(feature = "svm", feature = "async"))]
+        #[cfg(all(feature = "svm-solc", feature = "async"))]
         if self.auto_detect {
             tracing::trace!("using solc auto detection to compile sources");
             return self.svm_compile(sources)
@@ -242,7 +243,7 @@ impl<T: ArtifactOutput> Project<T> {
     /// let output = project.svm_compile(sources).unwrap();
     /// # }
     /// ```
-    #[cfg(all(feature = "svm", feature = "async"))]
+    #[cfg(all(feature = "svm-solc", feature = "async"))]
     pub fn svm_compile(&self, sources: Sources) -> Result<ProjectCompileOutput<T>> {
         project::ProjectCompiler::with_sources(self, sources)?.compile()
     }
@@ -259,7 +260,7 @@ impl<T: ArtifactOutput> Project<T> {
     /// let output = project.compile_file("example/Greeter.sol").unwrap();
     /// # }
     /// ```
-    #[cfg(all(feature = "svm", feature = "async"))]
+    #[cfg(all(feature = "svm-solc", feature = "async"))]
     pub fn compile_file(&self, file: impl Into<PathBuf>) -> Result<ProjectCompileOutput<T>> {
         let file = file.into();
         let source = Source::read(&file)?;
@@ -281,7 +282,7 @@ impl<T: ArtifactOutput> Project<T> {
     ///     ).unwrap();
     /// # }
     /// ```
-    #[cfg(all(feature = "svm", feature = "async"))]
+    #[cfg(all(feature = "svm-solc", feature = "async"))]
     pub fn compile_files<P, I>(&self, files: I) -> Result<ProjectCompileOutput<T>>
     where
         I: IntoIterator<Item = P>,
@@ -320,7 +321,7 @@ impl<T: ArtifactOutput> Project<T> {
     ///     ).unwrap();
     /// # }
     /// ```
-    #[cfg(all(feature = "svm", feature = "async"))]
+    #[cfg(all(feature = "svm-solc", feature = "async"))]
     pub fn compile_sparse<F: FileFilter + 'static>(
         &self,
         filter: F,
@@ -752,7 +753,7 @@ impl<T: ArtifactOutput> ArtifactOutput for Project<T> {
 }
 
 #[cfg(test)]
-#[cfg(all(feature = "svm", feature = "async"))]
+#[cfg(all(feature = "svm-solc", feature = "async"))]
 mod tests {
     use crate::remappings::Remapping;
 

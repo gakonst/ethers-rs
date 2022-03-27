@@ -3,7 +3,9 @@ use super::{
     eip2930::{AccessList, Eip2930TransactionRequest},
 };
 use crate::{
-    types::{Address, Bytes, NameOrAddress, Signature, TransactionRequest, H256, U256, U64},
+    types::{
+        Address, Bytes, NameOrAddress, Signature, Transaction, TransactionRequest, H256, U256, U64,
+    },
     utils::keccak256,
 };
 use serde::{Deserialize, Serialize};
@@ -141,10 +143,10 @@ impl TypedTransaction {
             Eip2930(inner) => inner.tx.gas_price,
             Eip1559(inner) => {
                 match (inner.max_fee_per_gas, inner.max_priority_fee_per_gas) {
-                    (Some(basefee), Some(prio_fee)) => Some(basefee + prio_fee),
+                    (Some(max_fee), Some(_)) => Some(max_fee),
                     // this also covers the None, None case
                     (None, prio_fee) => prio_fee,
-                    (basefee, None) => basefee,
+                    (max_fee, None) => max_fee,
                 }
             }
         }
@@ -253,6 +255,16 @@ impl TypedTransaction {
         let encoded = self.rlp();
         keccak256(encoded).into()
     }
+
+    /// Max cost of the transaction
+    pub fn max_cost(&self) -> Option<U256> {
+        let gas_limit = self.gas();
+        let gas_price = self.gas_price();
+        match (gas_limit, gas_price) {
+            (Some(gas_limit), Some(gas_price)) => Some(gas_limit * gas_price),
+            _ => None,
+        }
+    }
 }
 
 /// Get a TypedTransaction directly from an rlp encoded byte stream
@@ -299,6 +311,28 @@ impl From<Eip2930TransactionRequest> for TypedTransaction {
 impl From<Eip1559TransactionRequest> for TypedTransaction {
     fn from(src: Eip1559TransactionRequest) -> TypedTransaction {
         TypedTransaction::Eip1559(src)
+    }
+}
+
+impl From<&Transaction> for TypedTransaction {
+    fn from(tx: &Transaction) -> TypedTransaction {
+        match tx.transaction_type {
+            // EIP-2930 (0x01)
+            Some(x) if x == U64::from(1) => {
+                let request: Eip2930TransactionRequest = tx.into();
+                request.into()
+            }
+            // EIP-1559 (0x02)
+            Some(x) if x == U64::from(2) => {
+                let request: Eip1559TransactionRequest = tx.into();
+                request.into()
+            }
+            // Legacy (0x00)
+            _ => {
+                let request: TransactionRequest = tx.into();
+                request.into()
+            }
+        }
     }
 }
 

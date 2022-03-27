@@ -314,8 +314,7 @@ impl From<IpcError> for ProviderError {
         ProviderError::JsonRpcClientError(Box::new(src))
     }
 }
-
-#[cfg(all(test, unix))]
+#[cfg(all(test, target_family = "unix"))]
 #[cfg(not(feature = "celo"))]
 mod test {
     use super::*;

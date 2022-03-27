@@ -1,5 +1,8 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![doc = include_str!("../README.md")]
+#![deny(rustdoc::broken_intra_doc_links)]
+#![deny(unused_crate_dependencies)]
+
 pub mod types;
 
 pub mod abi;

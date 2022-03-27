@@ -364,7 +364,7 @@ pub struct CacheEntry {
     pub last_modification_date: u64,
     /// hash to identify whether the content of the file changed
     pub content_hash: String,
-    /// identifier name see [`crate::util::source_name()`]
+    /// identifier name see [`crate::utils::source_name()`]
     pub source_name: PathBuf,
     /// what config was set when compiling this file
     pub solc_config: SolcConfig,

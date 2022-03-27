@@ -20,7 +20,7 @@ use std::{borrow::Cow, collections::BTreeMap, fs, path::Path};
 #[serde(rename_all = "camelCase")]
 pub struct ConfigurableContractArtifact {
     /// The Ethereum Contract ABI. If empty, it is represented as an empty
-    /// array. See https://docs.soliditylang.org/en/develop/abi-spec.html
+    /// array. See <https://docs.soliditylang.org/en/develop/abi-spec.html>
     pub abi: Option<LosslessAbi>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub bytecode: Option<CompactBytecode>,

@@ -164,7 +164,7 @@ macro_rules! impl_abi_type_tuple {
 
         impl<$($ty, )+> AbiArrayType for ($($ty,)+) where
             $(
-                $ty: AbiArrayType,
+                $ty: AbiType,
             )+ {}
     }
 }

@@ -1,6 +1,6 @@
 use super::{eip2930::AccessList, normalize_v, rlp_opt};
 use crate::{
-    types::{Address, Bytes, NameOrAddress, Signature, H256, U256, U64},
+    types::{Address, Bytes, NameOrAddress, Signature, Transaction, H256, U256, U64},
     utils::keccak256,
 };
 use rlp::{Decodable, DecoderError, RlpStream};
@@ -241,6 +241,23 @@ impl From<Eip1559TransactionRequest> for super::request::TransactionRequest {
             #[cfg(feature = "celo")]
             gateway_fee: None,
             chain_id: tx.chain_id,
+        }
+    }
+}
+
+impl From<&Transaction> for Eip1559TransactionRequest {
+    fn from(tx: &Transaction) -> Eip1559TransactionRequest {
+        Eip1559TransactionRequest {
+            from: Some(tx.from),
+            to: tx.to.map(NameOrAddress::Address),
+            gas: Some(tx.gas),
+            value: Some(tx.value),
+            data: Some(Bytes(tx.input.0.clone())),
+            nonce: Some(tx.nonce),
+            access_list: tx.access_list.clone().unwrap_or_default(),
+            max_priority_fee_per_gas: tx.max_priority_fee_per_gas,
+            max_fee_per_gas: tx.max_fee_per_gas,
+            chain_id: tx.chain_id.map(|x| U64::from(x.as_u64())),
         }
     }
 }

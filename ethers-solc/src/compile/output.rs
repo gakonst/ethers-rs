@@ -16,8 +16,6 @@ use std::{collections::BTreeMap, fmt, path::Path};
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct ProjectCompileOutput<T: ArtifactOutput = ConfigurableArtifacts> {
     /// contains the aggregated `CompilerOutput`
-    ///
-    /// See [`CompilerSources::compile`]
     pub(crate) compiler_output: AggregatedCompilerOutput,
     /// all artifact files from `output` that were freshly compiled and written
     pub(crate) compiled_artifacts: Artifacts<T::Artifact>,
@@ -134,18 +132,21 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
         self.cached_artifacts.remove(contract_name)
     }
 
-    /// Returns the set of `Artifacts` that were cached and got reused during [`Project::compile()`]
+    /// Returns the set of `Artifacts` that were cached and got reused during
+    /// [`crate::Project::compile()`]
     pub fn cached_artifacts(&self) -> &Artifacts<T::Artifact> {
         &self.cached_artifacts
     }
 
-    /// Returns the set of `Artifacts` that were compiled with `solc` in [`Project::compile()`]
+    /// Returns the set of `Artifacts` that were compiled with `solc` in
+    /// [`crate::Project::compile()`]
     pub fn compiled_artifacts(&self) -> &Artifacts<T::Artifact> {
         &self.compiled_artifacts
     }
 
-    /// Returns a `BTreeMap` that maps the compiler version used during [`Project::compile()`]
-    /// to a Vector of tuples containing the contract name and the `Contract`
+    /// Returns a `BTreeMap` that maps the compiler version used during
+    /// [`crate::Project::compile()`] to a Vector of tuples containing the contract name and the
+    /// `Contract`
     pub fn compiled_contracts_by_compiler_version(
         &self,
     ) -> BTreeMap<Version, Vec<(String, Contract)>> {
@@ -177,7 +178,7 @@ where
 
 impl ProjectCompileOutput<ConfigurableArtifacts> {
     /// A helper functions that extracts the underlying [`CompactContractBytecode`] from the
-    /// [`ConfigurableContractArtifact`]
+    /// [`crate::ConfigurableContractArtifact`]
     ///
     /// # Example
     ///

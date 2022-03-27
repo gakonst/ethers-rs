@@ -1,5 +1,6 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
-#![deny(broken_intra_doc_links)]
+#![deny(unsafe_code)]
+#![deny(rustdoc::broken_intra_doc_links)]
 #![allow(clippy::type_complexity)]
 #![doc = include_str!("../README.md")]
 mod transports;

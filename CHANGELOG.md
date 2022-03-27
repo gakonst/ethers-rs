@@ -4,6 +4,9 @@
 
 ### Unreleased
 
+- `Transaction::from` will default to `Address::zero()`. Add `recover_from` and
+  `recover_from_mut` methods for recovering the sender from signature, and also
+  setting the same on tx [1075](https://github.com/gakonst/ethers-rs/pull/1075).
 - Add Etherscan account API endpoints [939](https://github.com/gakonst/ethers-rs/pull/939)
 - Add FTM Mainet and testnet to parse method "try_from" from Chain.rs and add cronos mainet and testnet to "from_str"
 - Add FTM mainnet and testnet Multicall addresses [927](https://github.com/gakonst/ethers-rs/pull/927)
@@ -73,6 +76,8 @@
 
 ### Unreleased
 
+- Bundle svm, svm-builds and sha2 dependencies in new `svm-solc` feature
+  [#1071](https://github.com/gakonst/ethers-rs/pull/1071)
 - Wrap `ethabi::Contract` into new type `LosslessAbi` and `abi: Option<Abi>` with `abi: Option<LosslessAbi>` in `ConfigurableContractArtifact`
   [#952](https://github.com/gakonst/ethers-rs/pull/952)
 - Let `Project` take ownership of `ArtifactOutput` and change trait interface
