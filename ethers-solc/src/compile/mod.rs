@@ -44,7 +44,6 @@ pub const LONDON_SOLC: Version = Version::new(0, 8, 7);
 
 #[cfg(any(test, feature = "tests"))]
 use std::sync::Mutex;
-use tracing::{trace, warn};
 
 #[cfg(any(test, feature = "tests"))]
 #[allow(unused)]
@@ -395,7 +394,7 @@ impl Solc {
         let version = self.version_short()?;
         let mut version_path = svm::version_path(version.to_string().as_str());
         version_path.push(format!("solc-{}", version.to_string().as_str()));
-        trace!(target:"solc", "reading solc binary for checksum {:?}", version_path);
+        tracing::trace!(target:"solc", "reading solc binary for checksum {:?}", version_path);
         let content =
             std::fs::read(&version_path).map_err(|err| SolcError::io(err, version_path.clone()))?;
 
@@ -415,7 +414,7 @@ impl Solc {
         if checksum_calc == checksum_found {
             Ok(())
         } else {
-            warn!(target : "solc", "checksum mismatch for {:?}, expected {}, but found {} for file {:?}", version, hex::encode(&checksum_found), hex::encode(checksum_calc), version_path);
+            tracing:: warn!(target : "solc", "checksum mismatch for {:?}, expected {}, but found {} for file {:?}", version, hex::encode(&checksum_found), hex::encode(checksum_calc), version_path);
             Err(SolcError::ChecksumMismatch)
         }
     }
