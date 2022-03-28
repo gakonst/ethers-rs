@@ -36,6 +36,9 @@ pub struct ArtifactId {
 
 impl ArtifactId {
     /// Returns a <filename>:<name> slug that identifies an artifact
+    ///
+    /// Note: This identifier is not necessarily unique. If two contracts have the same name, they
+    /// will share the same slug. For a unique identifier see [ArtifactId::identifier].
     pub fn slug(&self) -> String {
         format!("{}.json:{}", self.path.file_stem().unwrap().to_string_lossy(), self.name)
     }
