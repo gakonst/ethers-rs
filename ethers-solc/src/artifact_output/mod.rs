@@ -39,6 +39,12 @@ impl ArtifactId {
     pub fn slug(&self) -> String {
         format!("{}.json:{}", self.path.file_stem().unwrap().to_string_lossy(), self.name)
     }
+
+    /// Returns a <source path>:<name> slug that uniquely identifies an artifact
+    pub fn identifier(&self) -> String {
+        format!("{}:{}", self.source.to_string_lossy(), self.name)
+    }
+
     /// Returns a <filename><version>:<name> slug that identifies an artifact
     pub fn slug_versioned(&self) -> String {
         format!(
