@@ -394,8 +394,9 @@ impl Solc {
         let version = self.version_short()?;
         let mut version_path = svm::version_path(version.to_string().as_str());
         version_path.push(format!("solc-{}", version.to_string().as_str()));
+        tracing::trace!(target:"solc", "reading solc binary for checksum {:?}", version_path);
         let content =
-            std::fs::read(&version_path).map_err(|err| SolcError::io(err, version_path))?;
+            std::fs::read(&version_path).map_err(|err| SolcError::io(err, version_path.clone()))?;
 
         if !RELEASES.2 {
             // we skip checksum verification because the underlying request to fetch release info
@@ -413,6 +414,7 @@ impl Solc {
         if checksum_calc == checksum_found {
             Ok(())
         } else {
+            tracing:: warn!(target : "solc", "checksum mismatch for {:?}, expected {}, but found {} for file {:?}", version, hex::encode(&checksum_found), hex::encode(checksum_calc), version_path);
             Err(SolcError::ChecksumMismatch)
         }
     }
