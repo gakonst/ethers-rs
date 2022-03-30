@@ -754,14 +754,26 @@ pub(crate) enum ArtifactsCache<'a, T: ArtifactOutput> {
 
 impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
     pub fn new(project: &'a Project<T>, edges: GraphEdges) -> Result<Self> {
+        /// returns the [SolFilesCache] to use
+        fn get_cache<T: ArtifactOutput>(project: &Project<T>) -> SolFilesCache {
+            // the currently configured paths
+            let paths = project.paths.paths_relative();
+
+            if project.cache_path().exists() {
+                if let Ok(cache) = SolFilesCache::read_joined(&project.paths) {
+                    if cache.paths == paths {
+                        // unchanged project paths
+                        return cache
+                    }
+                }
+            }
+            // new empty cache
+            SolFilesCache::new(Default::default(), paths)
+        }
+
         let cache = if project.cached {
             // read the cache file if it already exists
-            let mut cache = if project.cache_path().exists() {
-                SolFilesCache::read_joined(&project.paths)
-                    .unwrap_or_else(|_| SolFilesCache::from(&project.paths))
-            } else {
-                SolFilesCache::from(&project.paths)
-            };
+            let mut cache = get_cache(project);
 
             cache.remove_missing_files();
 
