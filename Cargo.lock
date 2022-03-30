@@ -1515,6 +1515,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "fs2"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9564fc758e15025b46aa6643b1b77d047d1a56a1aea6e01002ac0c7026876213"
+dependencies = [
+ "libc",
+ "winapi",
+]
+
+[[package]]
 name = "fs_extra"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3575,13 +3585,14 @@ checksum = "6bdef32e8150c2a081110b42772ffe7d7c9032b606bc226c8260fd97e0976601"
 [[package]]
 name = "svm-rs"
 version = "0.2.9"
-source = "git+https://github.com/roynalnaruto/svm-rs#07fa907f1ddffca8902ae208b3a8d472a371a035"
+source = "git+https://github.com/roynalnaruto/svm-rs#84cbe0ac705becabdc13168bae28a45ad2299749"
 dependencies = [
  "anyhow",
  "cfg-if 1.0.0",
  "clap 3.0.13",
  "console 0.14.1",
  "dialoguer",
+ "fs2",
  "hex",
  "home",
  "indicatif",
@@ -3603,7 +3614,7 @@ dependencies = [
 [[package]]
 name = "svm-rs-builds"
 version = "0.1.0"
-source = "git+https://github.com/roynalnaruto/svm-rs#07fa907f1ddffca8902ae208b3a8d472a371a035"
+source = "git+https://github.com/roynalnaruto/svm-rs#84cbe0ac705becabdc13168bae28a45ad2299749"
 dependencies = [
  "build_const",
  "hex",
