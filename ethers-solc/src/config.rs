@@ -379,6 +379,17 @@ impl ProjectPaths {
     }
 }
 
+impl Default for ProjectPaths {
+    fn default() -> Self {
+        Self {
+            artifacts: "out".into(),
+            sources: "src".into(),
+            tests: "tests".into(),
+            libraries: Default::default(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum PathStyle {
     HardHat,

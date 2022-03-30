@@ -1,7 +1,7 @@
 //! Support for compiling contracts
 use crate::{
     artifacts::Sources,
-    config::SolcConfig,
+    config::{ProjectPaths, SolcConfig},
     error::{Result, SolcError},
     filter::{FilteredSource, FilteredSourceInfo, FilteredSources},
     resolver::GraphEdges,
@@ -19,7 +19,6 @@ use std::{
     path::{Path, PathBuf},
     time::{Duration, UNIX_EPOCH},
 };
-use crate::config::ProjectPaths;
 
 /// ethers-rs format version
 ///
@@ -43,8 +42,8 @@ pub struct SolFilesCache {
 
 impl SolFilesCache {
     /// Create a new cache instance with the given files
-    pub fn new(files: BTreeMap<PathBuf, CacheEntry>) -> Self {
-        Self { format: ETHERS_FORMAT_VERSION.to_string(), files }
+    pub fn new(files: BTreeMap<PathBuf, CacheEntry>, paths: ProjectPaths) -> Self {
+        Self { format: ETHERS_FORMAT_VERSION.to_string(), files, paths }
     }
 
     pub fn is_empty(&self) -> bool {
@@ -351,7 +350,18 @@ impl SolFilesCache {
 
 impl Default for SolFilesCache {
     fn default() -> Self {
-        SolFilesCache { format: ETHERS_FORMAT_VERSION.to_string(), files: Default::default() }
+        SolFilesCache {
+            format: ETHERS_FORMAT_VERSION.to_string(),
+            files: Default::default(),
+            paths: Default::default(),
+        }
+    }
+}
+
+impl<'a> From<&'a ProjectPathsConfig> for SolFilesCache {
+    fn from(config: &'a ProjectPathsConfig) -> Self {
+        let paths = config.paths_relative();
+        SolFilesCache::new(Default::default(), paths)
     }
 }
 
@@ -747,9 +757,10 @@ impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
         let cache = if project.cached {
             // read the cache file if it already exists
             let mut cache = if project.cache_path().exists() {
-                SolFilesCache::read_joined(&project.paths).unwrap_or_default()
+                SolFilesCache::read_joined(&project.paths)
+                    .unwrap_or_else(|_| SolFilesCache::from(&project.paths))
             } else {
-                SolFilesCache::default()
+                SolFilesCache::from(&project.paths)
             };
 
             cache.remove_missing_files();
