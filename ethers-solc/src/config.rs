@@ -10,14 +10,14 @@ use crate::{
 use crate::artifacts::output_selection::ContractOutputSelection;
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::HashSet,
+    collections::{BTreeSet, HashSet},
     fmt::{self, Formatter},
     fs,
     path::{Component, Path, PathBuf},
 };
 
 /// Where to find all files or where to write them
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProjectPathsConfig {
     /// Project root
     pub root: PathBuf,
@@ -58,6 +58,25 @@ impl ProjectPathsConfig {
     /// Creates a new config with the current directory as the root
     pub fn current_dapptools() -> Result<Self> {
         Self::dapptools(std::env::current_dir().map_err(|err| SolcError::io(err, "."))?)
+    }
+
+    /// Returns a new [ProjectPaths] instance that contains all directories configured for this
+    /// project
+    pub fn paths(&self) -> ProjectPaths {
+        ProjectPaths {
+            artifacts: self.artifacts.clone(),
+            sources: self.sources.clone(),
+            tests: self.tests.clone(),
+            libraries: self.libraries.iter().cloned().collect(),
+        }
+    }
+
+    /// Same as [Self::paths()] but strips the `root` form all paths,
+    /// [ProjectPaths::strip_prefix_all()]
+    pub fn paths_relative(&self) -> ProjectPaths {
+        let mut paths = self.paths();
+        paths.strip_prefix_all(&self.root);
+        paths
     }
 
     /// Creates all configured dirs and files
@@ -313,6 +332,61 @@ impl fmt::Display for ProjectPathsConfig {
             writeln!(f, "    {}", remapping)?;
         }
         Ok(())
+    }
+}
+
+/// This is a subset of [ProjectPathsConfig] that contains all relevant folders in the project
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct ProjectPaths {
+    pub artifacts: PathBuf,
+    pub sources: PathBuf,
+    pub tests: PathBuf,
+    pub libraries: BTreeSet<PathBuf>,
+}
+
+impl ProjectPaths {
+    /// Joins the folders' location with `root`
+    pub fn join_all(&mut self, root: impl AsRef<Path>) -> &mut Self {
+        let root = root.as_ref();
+        self.artifacts = root.join(&self.artifacts);
+        self.sources = root.join(&self.sources);
+        self.tests = root.join(&self.tests);
+        let libraries = std::mem::take(&mut self.libraries);
+        self.libraries.extend(libraries.into_iter().map(|p| root.join(p)));
+        self
+    }
+
+    /// Removes `base` from all folders
+    pub fn strip_prefix_all(&mut self, base: impl AsRef<Path>) -> &mut Self {
+        let base = base.as_ref();
+
+        if let Ok(prefix) = self.artifacts.strip_prefix(base) {
+            self.artifacts = prefix.to_path_buf();
+        }
+        if let Ok(prefix) = self.sources.strip_prefix(base) {
+            self.sources = prefix.to_path_buf();
+        }
+        if let Ok(prefix) = self.tests.strip_prefix(base) {
+            self.tests = prefix.to_path_buf();
+        }
+        let libraries = std::mem::take(&mut self.libraries);
+        self.libraries.extend(
+            libraries
+                .into_iter()
+                .map(|p| p.strip_prefix(base).map(|p| p.to_path_buf()).unwrap_or(p)),
+        );
+        self
+    }
+}
+
+impl Default for ProjectPaths {
+    fn default() -> Self {
+        Self {
+            artifacts: "out".into(),
+            sources: "src".into(),
+            tests: "tests".into(),
+            libraries: Default::default(),
+        }
     }
 }
 

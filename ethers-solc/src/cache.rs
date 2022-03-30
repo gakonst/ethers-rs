@@ -1,7 +1,7 @@
 //! Support for compiling contracts
 use crate::{
     artifacts::Sources,
-    config::SolcConfig,
+    config::{ProjectPaths, SolcConfig},
     error::{Result, SolcError},
     filter::{FilteredSource, FilteredSourceInfo, FilteredSources},
     resolver::GraphEdges,
@@ -25,7 +25,7 @@ use std::{
 /// `ethers-solc` uses a different format version id, but the actual format is consistent with
 /// hardhat This allows ethers-solc to detect if the cache file was written by hardhat or
 /// `ethers-solc`
-const ETHERS_FORMAT_VERSION: &str = "ethers-rs-sol-cache-2";
+const ETHERS_FORMAT_VERSION: &str = "ethers-rs-sol-cache-3";
 
 /// The file name of the default cache file
 pub const SOLIDITY_FILES_CACHE_FILENAME: &str = "solidity-files-cache.json";
@@ -35,13 +35,15 @@ pub const SOLIDITY_FILES_CACHE_FILENAME: &str = "solidity-files-cache.json";
 pub struct SolFilesCache {
     #[serde(rename = "_format")]
     pub format: String,
+    /// contains all directories used for the project
+    pub paths: ProjectPaths,
     pub files: BTreeMap<PathBuf, CacheEntry>,
 }
 
 impl SolFilesCache {
     /// Create a new cache instance with the given files
-    pub fn new(files: BTreeMap<PathBuf, CacheEntry>) -> Self {
-        Self { format: ETHERS_FORMAT_VERSION.to_string(), files }
+    pub fn new(files: BTreeMap<PathBuf, CacheEntry>, paths: ProjectPaths) -> Self {
+        Self { format: ETHERS_FORMAT_VERSION.to_string(), files, paths }
     }
 
     pub fn is_empty(&self) -> bool {
@@ -348,7 +350,18 @@ impl SolFilesCache {
 
 impl Default for SolFilesCache {
     fn default() -> Self {
-        SolFilesCache { format: ETHERS_FORMAT_VERSION.to_string(), files: Default::default() }
+        SolFilesCache {
+            format: ETHERS_FORMAT_VERSION.to_string(),
+            files: Default::default(),
+            paths: Default::default(),
+        }
+    }
+}
+
+impl<'a> From<&'a ProjectPathsConfig> for SolFilesCache {
+    fn from(config: &'a ProjectPathsConfig) -> Self {
+        let paths = config.paths_relative();
+        SolFilesCache::new(Default::default(), paths)
     }
 }
 
@@ -741,13 +754,26 @@ pub(crate) enum ArtifactsCache<'a, T: ArtifactOutput> {
 
 impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
     pub fn new(project: &'a Project<T>, edges: GraphEdges) -> Result<Self> {
+        /// returns the [SolFilesCache] to use
+        fn get_cache<T: ArtifactOutput>(project: &Project<T>) -> SolFilesCache {
+            // the currently configured paths
+            let paths = project.paths.paths_relative();
+
+            if project.cache_path().exists() {
+                if let Ok(cache) = SolFilesCache::read_joined(&project.paths) {
+                    if cache.paths == paths {
+                        // unchanged project paths
+                        return cache
+                    }
+                }
+            }
+            // new empty cache
+            SolFilesCache::new(Default::default(), paths)
+        }
+
         let cache = if project.cached {
             // read the cache file if it already exists
-            let mut cache = if project.cache_path().exists() {
-                SolFilesCache::read_joined(&project.paths).unwrap_or_default()
-            } else {
-                SolFilesCache::default()
-            };
+            let mut cache = get_cache(project);
 
             cache.remove_missing_files();
 
