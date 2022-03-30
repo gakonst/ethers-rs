@@ -19,6 +19,7 @@ use std::{
     path::{Path, PathBuf},
     time::{Duration, UNIX_EPOCH},
 };
+use crate::config::ProjectPaths;
 
 /// ethers-rs format version
 ///
@@ -35,6 +36,8 @@ pub const SOLIDITY_FILES_CACHE_FILENAME: &str = "solidity-files-cache.json";
 pub struct SolFilesCache {
     #[serde(rename = "_format")]
     pub format: String,
+    /// contains all directories used for the project
+    pub paths: ProjectPaths,
     pub files: BTreeMap<PathBuf, CacheEntry>,
 }
 
