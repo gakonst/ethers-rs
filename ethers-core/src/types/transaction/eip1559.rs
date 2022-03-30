@@ -1,6 +1,8 @@
-use super::{eip2930::AccessList, normalize_v, rlp_opt, decode_to};
+use super::{decode_to, eip2930::AccessList, normalize_v, rlp_opt};
 use crate::{
-    types::{Address, Bytes, NameOrAddress, Signature, Transaction, H256, U256, U64, SignatureError},
+    types::{
+        Address, Bytes, NameOrAddress, Signature, SignatureError, Transaction, H256, U256, U64,
+    },
     utils::keccak256,
 };
 use rlp::{Decodable, DecoderError, RlpStream};

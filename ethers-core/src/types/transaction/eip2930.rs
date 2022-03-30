@@ -1,5 +1,5 @@
-use super::{normalize_v, extract_chain_id};
-use crate::types::{Address, Bytes, Signature, TransactionRequest, Transaction, H256, U256, U64};
+use super::{extract_chain_id, normalize_v};
+use crate::types::{Address, Bytes, Signature, Transaction, TransactionRequest, H256, U256, U64};
 use rlp::{Decodable, DecoderError, RlpStream};
 use rlp_derive::{RlpDecodable, RlpDecodableWrapper, RlpEncodable, RlpEncodableWrapper};
 use serde::{Deserialize, Serialize};
