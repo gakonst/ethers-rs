@@ -26,7 +26,7 @@ use crate::config::ProjectPaths;
 /// `ethers-solc` uses a different format version id, but the actual format is consistent with
 /// hardhat This allows ethers-solc to detect if the cache file was written by hardhat or
 /// `ethers-solc`
-const ETHERS_FORMAT_VERSION: &str = "ethers-rs-sol-cache-2";
+const ETHERS_FORMAT_VERSION: &str = "ethers-rs-sol-cache-3";
 
 /// The file name of the default cache file
 pub const SOLIDITY_FILES_CACHE_FILENAME: &str = "solidity-files-cache.json";
