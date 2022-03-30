@@ -109,10 +109,7 @@ impl Eip2930TransactionRequest {
         let access_list = rlp.val_at(*offset)?;
         *offset += 1;
 
-        Ok(Self {
-            tx: request,
-            access_list
-        })
+        Ok(Self { tx: request, access_list })
     }
 
     /// Decodes the given RLP into a transaction, attempting to decode its signature as well.

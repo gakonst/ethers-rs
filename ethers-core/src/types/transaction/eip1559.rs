@@ -3,8 +3,8 @@ use crate::{
     types::{Address, Bytes, NameOrAddress, Signature, Transaction, H256, U256, U64, SignatureError},
     utils::keccak256,
 };
-use thiserror::Error;
 use rlp::{Decodable, DecoderError, RlpStream};
+use thiserror::Error;
 
 /// EIP-1559 transactions have 9 fields
 const NUM_TX_FIELDS: usize = 9;
