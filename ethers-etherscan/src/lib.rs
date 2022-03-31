@@ -231,7 +231,7 @@ mod tests {
         time::{Duration, SystemTime},
     };
 
-    use ethers_core::types::{Chain, Address};
+    use ethers_core::types::{Address, Chain};
 
     use crate::{Client, EtherscanError};
 
