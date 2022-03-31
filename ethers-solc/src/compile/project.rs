@@ -115,7 +115,7 @@ use crate::{
 use rayon::prelude::*;
 
 use crate::filter::SparseOutputFileFilter;
-use std::{collections::btree_map::BTreeMap, path::PathBuf};
+use std::{collections::btree_map::BTreeMap, path::PathBuf, time::Instant};
 
 #[derive(Debug)]
 pub struct ProjectCompiler<'a, T: ArtifactOutput> {
@@ -457,9 +457,10 @@ fn compile_sequential(
                 input.sources.keys()
             );
 
+            let start = Instant::now();
             report::solc_spawn(&solc, &version, &input, &actually_dirty);
             let output = solc.compile_exact(&input)?;
-            report::solc_success(&solc, &version, &output);
+            report::solc_success(&solc, &version, &output, &start.elapsed());
             tracing::trace!("compiled input, output has error: {}", output.has_error());
             tracing::trace!("received compiler output: {:?}", output.contracts.keys());
             aggregated.extend(version.clone(), output);
@@ -542,9 +543,10 @@ fn compile_parallel(
                     input.sources.len(),
                     input.sources.keys()
                 );
+                let start = Instant::now();
                 report::solc_spawn(&solc, &version, &input, &actually_dirty);
                 solc.compile(&input).map(move |output| {
-                    report::solc_success(&solc, &version, &output);
+                    report::solc_success(&solc, &version, &output, &start.elapsed());
                     (version, output)
                 })
             })
