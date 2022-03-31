@@ -4,6 +4,7 @@
 
 ### Unreleased
 
+- Fix aws signer bug which maps un-normalized signature to error if no normalization occurs (in `aws::utils::decode_signature`)
 - `Transaction::from` will default to `Address::zero()`. Add `recover_from` and
   `recover_from_mut` methods for recovering the sender from signature, and also
   setting the same on tx [1075](https://github.com/gakonst/ethers-rs/pull/1075).
