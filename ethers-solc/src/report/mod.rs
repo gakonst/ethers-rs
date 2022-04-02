@@ -27,6 +27,7 @@ use std::{
         atomic::{AtomicBool, AtomicUsize, Ordering},
         Arc,
     },
+    time::Duration,
 };
 
 mod compiler;
@@ -115,7 +116,14 @@ pub trait Reporter: 'static {
     }
 
     /// Invoked with the `CompilerOutput` if [`Solc::compile()`] was successful
-    fn on_solc_success(&self, _solc: &Solc, _version: &Version, _output: &CompilerOutput) {}
+    fn on_solc_success(
+        &self,
+        _solc: &Solc,
+        _version: &Version,
+        _output: &CompilerOutput,
+        _duration: &Duration,
+    ) {
+    }
 
     /// Invoked before a new [`Solc`] bin is installed
     fn on_solc_installation_start(&self, _version: &Version) {}
@@ -181,8 +189,13 @@ pub(crate) fn solc_spawn(
     get_default(|r| r.reporter.on_solc_spawn(solc, version, input, dirty_files));
 }
 
-pub(crate) fn solc_success(solc: &Solc, version: &Version, output: &CompilerOutput) {
-    get_default(|r| r.reporter.on_solc_success(solc, version, output));
+pub(crate) fn solc_success(
+    solc: &Solc,
+    version: &Version,
+    output: &CompilerOutput,
+    duration: &Duration,
+) {
+    get_default(|r| r.reporter.on_solc_success(solc, version, output, duration));
 }
 
 #[allow(unused)]
