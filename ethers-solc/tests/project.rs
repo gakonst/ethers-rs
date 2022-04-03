@@ -551,6 +551,57 @@ contract Contract {
 }
 
 #[test]
+fn can_flatten_multiline() {
+    let project = TempProject::dapptools().unwrap();
+
+    let f = project
+        .add_source(
+            "A",
+            r#"
+pragma solidity ^0.8.10;
+import "./C.sol";
+import {
+    IllegalArgument,
+    IllegalState
+} from "./Errors.sol";
+contract A { }
+"#,
+        )
+        .unwrap();
+
+    project
+        .add_source(
+            "Errors",
+            r#"
+pragma solidity ^0.8.10;
+error IllegalArgument();
+error IllegalState();
+"#,
+        )
+        .unwrap();
+
+    project
+        .add_source(
+            "C",
+            r#"
+pragma solidity ^0.8.10;
+contract C { }
+"#,
+        )
+        .unwrap();
+
+    let result = project.flatten(&f).unwrap();
+    assert_eq!(
+        result.trim(),
+        r#"pragma solidity ^0.8.10;
+contract C { }
+error IllegalArgument();
+error IllegalState();
+contract A { }"#
+    );
+}
+
+#[test]
 fn can_detect_type_error() {
     let project = TempProject::<ConfigurableArtifacts>::dapptools().unwrap();
 
