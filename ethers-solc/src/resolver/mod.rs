@@ -47,7 +47,7 @@
 //! which is defined on a per source file basis.
 
 use std::{
-    collections::{BTreeMap, HashMap, HashSet, VecDeque},
+    collections::{HashMap, HashSet, VecDeque},
     fmt, io,
     path::{Path, PathBuf},
 };
@@ -243,21 +243,25 @@ impl Graph {
         self.node_ids(start).map(move |idx| self.node(idx))
     }
 
-    /// Consumes the `Graph`, effectively splitting the `nodes` and the `GraphEdges` off and
-    /// returning the `nodes` converted to `Sources`
-    pub fn into_sources(self) -> (Sources, GraphEdges) {
+    fn split(self) -> (Vec<(PathBuf, Source)>, GraphEdges) {
         let Graph { nodes, mut edges, .. } = self;
-
         // need to move the extracted data to the edges, essentially splitting the node so we have
         // access to the data at a later stage in the compile pipeline
-        let mut sources = BTreeMap::new();
+        let mut sources = Vec::new();
         for (idx, node) in nodes.into_iter().enumerate() {
             let Node { path, source, data } = node;
-            sources.insert(path, source);
+            sources.push((path, source));
             edges.data.insert(idx, data);
         }
 
         (sources, edges)
+    }
+
+    /// Consumes the `Graph`, effectively splitting the `nodes` and the `GraphEdges` off and
+    /// returning the `nodes` converted to `Sources`
+    pub fn into_sources(self) -> (Sources, GraphEdges) {
+        let (sources, edges) = self.split();
+        (sources.into_iter().collect(), edges)
     }
 
     /// Returns an iterator that yields only those nodes that represent input files.
@@ -376,7 +380,7 @@ impl Graph {
         /// cache entry for them as well. This can be optimized however
         fn insert_imports(
             idx: usize,
-            all_nodes: &mut HashMap<usize, Node>,
+            all_nodes: &mut HashMap<usize, (PathBuf, Source)>,
             sources: &mut Sources,
             edges: &[Vec<usize>],
             num_input_files: usize,
@@ -386,8 +390,8 @@ impl Graph {
                 // nodes are handled separately
                 if dep >= num_input_files {
                     // library import
-                    if let Some(node) = all_nodes.remove(&dep) {
-                        sources.insert(node.path, node.source);
+                    if let Some((path, source)) = all_nodes.remove(&dep) {
+                        sources.insert(path, source);
                         insert_imports(dep, all_nodes, sources, edges, num_input_files);
                     }
                 }
@@ -395,8 +399,10 @@ impl Graph {
         }
 
         let versioned_nodes = self.get_input_node_versions(offline)?;
-        let Self { nodes, edges, .. } = self;
+        let (nodes, edges) = self.split();
+
         let mut versioned_sources = HashMap::with_capacity(versioned_nodes.len());
+
         let mut all_nodes = nodes.into_iter().enumerate().collect::<HashMap<_, _>>();
 
         // determine the `Sources` set for each solc version
@@ -405,8 +411,8 @@ impl Graph {
             // we only process input nodes (from sources, tests for example)
             for idx in input_node_indices {
                 // insert the input node in the sources set and remove it from the available set
-                let node = all_nodes.remove(&idx).expect("node is preset. qed");
-                sources.insert(node.path, node.source);
+                let (path, source) = all_nodes.remove(&idx).expect("node is preset. qed");
+                sources.insert(path, source);
                 insert_imports(
                     idx,
                     &mut all_nodes,

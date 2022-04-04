@@ -12,7 +12,7 @@ use ethers_solc::{
     project_util::*,
     remappings::Remapping,
     ConfigurableArtifacts, ExtraOutputValues, Graph, Project, ProjectCompileOutput,
-    ProjectPathsConfig,
+    ProjectPathsConfig, TestFileFilter,
 };
 use pretty_assertions::assert_eq;
 
@@ -737,7 +737,6 @@ fn can_recompile_with_changes() {
 
 #[test]
 fn can_recompile_with_lowercase_names() {
-    init_tracing();
     let tmp = TempProject::dapptools().unwrap();
 
     tmp.add_source(
@@ -842,4 +841,43 @@ fn can_recompile_unchanged_with_empty_files() {
     assert!(!compiled.is_unchanged());
     assert!(compiled.find("A").is_some());
     assert!(compiled.find("C").is_some());
+}
+
+#[test]
+fn can_compile_sparse_with_link_references() {
+    let tmp = TempProject::dapptools().unwrap();
+
+    tmp.add_source(
+        "ATest.t.sol",
+        r#"
+    pragma solidity =0.8.12;
+    import {MyLib} from "./mylib.sol";
+    contract ATest {
+      function test_mylib() public returns (uint256) {
+         return MyLib.doStuff();
+      }
+    }
+   "#,
+    )
+    .unwrap();
+
+    tmp.add_source(
+        "mylib.sol",
+        r#"
+    pragma solidity =0.8.12;
+    library MyLib {
+       function doStuff() external pure returns (uint256) {return 1337;}
+    }
+   "#,
+    )
+    .unwrap();
+
+    let mut compiled = tmp.compile_sparse(TestFileFilter::default()).unwrap();
+    assert!(!compiled.has_compiler_errors());
+
+    println!("{}", compiled);
+    assert!(compiled.find("ATest").is_some());
+    assert!(compiled.find("MyLib").is_some());
+    let lib = compiled.remove("MyLib").unwrap();
+    assert!(lib.bytecode.is_some());
 }
