@@ -472,6 +472,9 @@ impl From<BytecodeHash> for SettingsMetadata {
     }
 }
 
+/// Determines the hash method for the metadata hash that is appended to the bytecode.
+///
+/// While solc's default is `Ipfs`, see <https://docs.soliditylang.org/en/latest/using-the-compiler.html#compiler-api>, the default for this type is `None` to ensure deterministic code output.
 #[derive(Clone, Debug, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BytecodeHash {
     Ipfs,
@@ -481,8 +484,7 @@ pub enum BytecodeHash {
 
 impl Default for BytecodeHash {
     fn default() -> Self {
-        // ipfs general default https://docs.soliditylang.org/en/latest/using-the-compiler.html#compiler-api
-        BytecodeHash::Ipfs
+        BytecodeHash::None
     }
 }
 
