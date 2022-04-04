@@ -12,6 +12,7 @@ pub struct SolData {
     pub version: Option<SolDataUnit<String>>,
     pub imports: Vec<SolDataUnit<PathBuf>>,
     pub version_req: Option<VersionReq>,
+    pub libraries: Vec<String>,
 }
 
 impl SolData {
@@ -25,14 +26,72 @@ impl SolData {
         }
         Ok(())
     }
+
+    /// Extracts the useful data from a solidity source
+    ///
+    /// This will attempt to parse the solidity AST and extract the imports and version pragma. If
+    /// parsing fails, we'll fall back to extract that info via regex
+    pub fn parse(content: &str, file: &Path) -> Self {
+        let mut version = None;
+        let mut imports = Vec::<SolDataUnit<PathBuf>>::new();
+        let mut libraries = Vec::new();
+        match solang_parser::parse(content, 0) {
+            Ok((units, _)) => {
+                for unit in units.0 {
+                    match unit {
+                        SourceUnitPart::PragmaDirective(loc, _, pragma, value) => {
+                            if pragma.name == "solidity" {
+                                // we're only interested in the solidity version pragma
+                                version = Some(SolDataUnit::new(value.string, loc.into()));
+                            }
+                        }
+                        SourceUnitPart::ImportDirective(_, import) => {
+                            let (import, loc) = match import {
+                                Import::Plain(s, l) => (s, l),
+                                Import::GlobalSymbol(s, _, l) => (s, l),
+                                Import::Rename(s, _, l) => (s, l),
+                            };
+                            imports
+                                .push(SolDataUnit::new(PathBuf::from(import.string), loc.into()));
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            Err(err) => {
+                tracing::trace!(
+                    "failed to parse \"{}\" ast: \"{:?}\". Falling back to regex to extract data",
+                    file.display(),
+                    err
+                );
+                version =
+                    capture_outer_and_inner(content, &utils::RE_SOL_PRAGMA_VERSION, &["version"])
+                        .first()
+                        .map(|(cap, name)| {
+                            SolDataUnit::new(name.as_str().to_owned(), cap.to_owned().into())
+                        });
+                imports = capture_imports(content);
+            }
+        };
+        let license = content.lines().next().and_then(|line| {
+            capture_outer_and_inner(line, &utils::RE_SOL_SDPX_LICENSE_IDENTIFIER, &["license"])
+                .first()
+                .map(|(cap, l)| SolDataUnit::new(l.as_str().to_owned(), cap.to_owned().into()))
+        });
+        let version_req = version.as_ref().and_then(|v| Solc::version_req(v.data()).ok());
+
+        Self { version_req, version, imports, license, libraries }
+    }
 }
 
+/// Represents an item in a solidity file with its location in the file
 #[derive(Debug, Clone)]
 pub struct SolDataUnit<T> {
     loc: Location,
     data: T,
 }
 
+/// Location in a text file buffer
 #[derive(Debug, Clone)]
 pub struct Location {
     pub start: usize,
@@ -80,65 +139,6 @@ impl From<Loc> for Location {
             _ => Location { start: 0, end: 0 },
         }
     }
-}
-
-pub fn read_node(file: impl AsRef<Path>) -> crate::Result<Node> {
-    let file = file.as_ref();
-    let source = Source::read(file).map_err(SolcError::Resolve)?;
-    let data = parse_data(source.as_ref(), file);
-    Ok(Node { path: file.to_path_buf(), source, data })
-}
-
-/// Extracts the useful data from a solidity source
-///
-/// This will attempt to parse the solidity AST and extract the imports and version pragma. If
-/// parsing fails, we'll fall back to extract that info via regex
-pub fn parse_data(content: &str, file: &Path) -> SolData {
-    let mut version = None;
-    let mut imports = Vec::<SolDataUnit<PathBuf>>::new();
-    match solang_parser::parse(content, 0) {
-        Ok((units, _)) => {
-            for unit in units.0 {
-                match unit {
-                    SourceUnitPart::PragmaDirective(loc, _, pragma, value) => {
-                        if pragma.name == "solidity" {
-                            // we're only interested in the solidity version pragma
-                            version = Some(SolDataUnit::new(value.string, loc.into()));
-                        }
-                    }
-                    SourceUnitPart::ImportDirective(_, import) => {
-                        let (import, loc) = match import {
-                            Import::Plain(s, l) => (s, l),
-                            Import::GlobalSymbol(s, _, l) => (s, l),
-                            Import::Rename(s, _, l) => (s, l),
-                        };
-                        imports.push(SolDataUnit::new(PathBuf::from(import.string), loc.into()));
-                    }
-                    _ => {}
-                }
-            }
-        }
-        Err(err) => {
-            tracing::trace!(
-                "failed to parse \"{}\" ast: \"{:?}\". Falling back to regex to extract data",
-                file.display(),
-                err
-            );
-            version = capture_outer_and_inner(content, &utils::RE_SOL_PRAGMA_VERSION, &["version"])
-                .first()
-                .map(|(cap, name)| {
-                    SolDataUnit::new(name.as_str().to_owned(), cap.to_owned().into())
-                });
-            imports = capture_imports(content);
-        }
-    };
-    let license = content.lines().next().and_then(|line| {
-        capture_outer_and_inner(line, &utils::RE_SOL_SDPX_LICENSE_IDENTIFIER, &["license"])
-            .first()
-            .map(|(cap, l)| SolDataUnit::new(l.as_str().to_owned(), cap.to_owned().into()))
-    });
-    let version_req = version.as_ref().and_then(|v| Solc::version_req(v.data()).ok());
-    SolData { version_req, version, imports, license }
 }
 
 /// Given the regex and the target string, find all occurrences

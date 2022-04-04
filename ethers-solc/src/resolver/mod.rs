@@ -57,7 +57,6 @@ use rayon::prelude::*;
 
 use semver::VersionReq;
 
-
 use crate::{error::Result, utils, ProjectPathsConfig, Solc, SolcError, Source, Sources};
 
 mod parse;
@@ -258,7 +257,7 @@ impl Graph {
                 resolved_imports.push(idx);
             } else {
                 // imported file is not part of the input files
-                let node = parse::read_node(&target)?;
+                let node = read_node(&target)?;
                 unresolved.push_back((target.clone(), node));
                 let idx = index.len();
                 index.insert(target, idx);
@@ -272,7 +271,7 @@ impl Graph {
         let mut unresolved: VecDeque<(PathBuf, Node)> = sources
             .into_par_iter()
             .map(|(path, source)| {
-                let data = parse::parse_data(source.as_ref(), &path);
+                let data = SolData::parse(source.as_ref(), &path);
                 (path.clone(), Node { path, source, data })
             })
             .collect();
@@ -695,8 +694,11 @@ impl VersionedSources {
 
 #[derive(Debug)]
 pub struct Node {
+    /// path of the solidity  file
     path: PathBuf,
+    /// content of the solidity file
     source: Source,
+    /// parsed data
     data: SolData,
 }
 
@@ -716,6 +718,14 @@ impl Node {
     pub fn license(&self) -> &Option<SolDataUnit<String>> {
         &self.data.license
     }
+}
+
+/// Reads the content of the file and returns a [Node] containing relevant information
+pub fn read_node(file: impl AsRef<Path>) -> crate::Result<Node> {
+    let file = file.as_ref();
+    let source = Source::read(file).map_err(SolcError::Resolve)?;
+    let data = SolData::parse(source.as_ref(), file);
+    Ok(Node { path: file.to_path_buf(), source, data })
 }
 
 /// Helper type for formatting a node
