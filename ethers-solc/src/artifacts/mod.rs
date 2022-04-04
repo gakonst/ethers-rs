@@ -457,8 +457,59 @@ pub struct SettingsMetadata {
     /// The metadata hash can be removed from the bytecode via option "none".
     /// The other options are "ipfs" and "bzzr1".
     /// If the option is omitted, "ipfs" is used by default.
-    #[serde(default, rename = "bytecodeHash", skip_serializing_if = "Option::is_none")]
-    pub bytecode_hash: Option<String>,
+    #[serde(
+        default,
+        rename = "bytecodeHash",
+        skip_serializing_if = "Option::is_none",
+        with = "serde_helpers::display_from_str_opt"
+    )]
+    pub bytecode_hash: Option<BytecodeHash>,
+}
+
+impl From<BytecodeHash> for SettingsMetadata {
+    fn from(hash: BytecodeHash) -> Self {
+        Self { use_literal_content: None, bytecode_hash: Some(hash) }
+    }
+}
+
+/// Determines the hash method for the metadata hash that is appended to the bytecode.
+///
+/// While solc's default is `Ipfs`, see <https://docs.soliditylang.org/en/latest/using-the-compiler.html#compiler-api>, the default for this type is `None` to ensure deterministic code output.
+#[derive(Clone, Debug, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum BytecodeHash {
+    Ipfs,
+    None,
+    Bzzr1,
+}
+
+impl Default for BytecodeHash {
+    fn default() -> Self {
+        BytecodeHash::None
+    }
+}
+
+impl FromStr for BytecodeHash {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "none" => Ok(BytecodeHash::None),
+            "ipfs" => Ok(BytecodeHash::Ipfs),
+            "bzzr1" => Ok(BytecodeHash::Bzzr1),
+            s => Err(format!("Unknown bytecode hash: {}", s)),
+        }
+    }
+}
+
+impl fmt::Display for BytecodeHash {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            BytecodeHash::Ipfs => "ipfs",
+            BytecodeHash::None => "none",
+            BytecodeHash::Bzzr1 => "bzzr1",
+        };
+        f.write_str(s)
+    }
 }
 
 /// Bindings for [`solc` contract metadata](https://docs.soliditylang.org/en/latest/metadata.html)
