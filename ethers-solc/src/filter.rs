@@ -52,7 +52,7 @@ impl FileFilter for TestFileFilter {
 
 /// A type that can apply a filter to a set of preprocessed [FilteredSources] in order to set sparse
 /// output for specific files
-pub enum SparseOutputFileFilter {
+pub enum SparseOutputFilter {
     /// Sets the configured [OutputSelection] for dirty files only.
     ///
     /// In other words, we request the output of solc only for files that have been detected as
@@ -62,7 +62,7 @@ pub enum SparseOutputFileFilter {
     Custom(Box<dyn FileFilter>),
 }
 
-impl SparseOutputFileFilter {
+impl SparseOutputFilter {
     /// While solc needs all the files to compile the actual _dirty_ files, we can tell solc to
     /// output everything for those dirty files as currently configured in the settings, but output
     /// nothing for the other files that are _not_ dirty.
@@ -98,7 +98,7 @@ impl SparseOutputFileFilter {
         }
 
         match self {
-            SparseOutputFileFilter::AllDirty => {
+            SparseOutputFilter::AllDirty => {
                 if !sources.all_dirty() {
                     // settings can be optimized
                     tracing::trace!(
@@ -109,7 +109,7 @@ impl SparseOutputFileFilter {
                     apply(&sources, settings, |_, source| source.is_dirty())
                 }
             }
-            SparseOutputFileFilter::Custom(f) => {
+            SparseOutputFilter::Custom(f) => {
                 tracing::trace!("optimizing output selection with custom filter",);
                 apply(&sources, settings, |p, source| source.is_dirty() && f.is_match(p));
             }
@@ -118,23 +118,23 @@ impl SparseOutputFileFilter {
     }
 }
 
-impl From<Box<dyn FileFilter>> for SparseOutputFileFilter {
+impl From<Box<dyn FileFilter>> for SparseOutputFilter {
     fn from(f: Box<dyn FileFilter>) -> Self {
-        SparseOutputFileFilter::Custom(f)
+        SparseOutputFilter::Custom(f)
     }
 }
 
-impl Default for SparseOutputFileFilter {
+impl Default for SparseOutputFilter {
     fn default() -> Self {
-        SparseOutputFileFilter::AllDirty
+        SparseOutputFilter::AllDirty
     }
 }
 
-impl fmt::Debug for SparseOutputFileFilter {
+impl fmt::Debug for SparseOutputFilter {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            SparseOutputFileFilter::AllDirty => f.write_str("AllDirty"),
-            SparseOutputFileFilter::Custom(_) => f.write_str("Custom"),
+            SparseOutputFilter::AllDirty => f.write_str("AllDirty"),
+            SparseOutputFilter::Custom(_) => f.write_str("Custom"),
         }
     }
 }

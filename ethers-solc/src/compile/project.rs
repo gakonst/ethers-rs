@@ -114,7 +114,7 @@ use crate::{
 };
 use rayon::prelude::*;
 
-use crate::filter::SparseOutputFileFilter;
+use crate::filter::SparseOutputFilter;
 use std::{collections::btree_map::BTreeMap, path::PathBuf, time::Instant};
 
 #[derive(Debug)]
@@ -125,7 +125,7 @@ pub struct ProjectCompiler<'a, T: ArtifactOutput> {
     /// how to compile all the sources
     sources: CompilerSources,
     /// How to select solc [`crate::artifacts::CompilerOutput`] for files
-    sparse_output: SparseOutputFileFilter,
+    sparse_output: SparseOutputFilter,
 }
 
 impl<'a, T: ArtifactOutput> ProjectCompiler<'a, T> {
@@ -184,7 +184,7 @@ impl<'a, T: ArtifactOutput> ProjectCompiler<'a, T> {
 
     /// Applies the specified filter to be applied when selecting solc output for
     /// specific files to be compiled
-    pub fn with_sparse_output(mut self, sparse_output: impl Into<SparseOutputFileFilter>) -> Self {
+    pub fn with_sparse_output(mut self, sparse_output: impl Into<SparseOutputFilter>) -> Self {
         self.sparse_output = sparse_output.into();
         self
     }
@@ -232,7 +232,7 @@ struct PreprocessedState<'a, T: ArtifactOutput> {
     sources: FilteredCompilerSources,
     /// cache that holds [CacheEntry] object if caching is enabled and the project is recompiled
     cache: ArtifactsCache<'a, T>,
-    sparse_output: SparseOutputFileFilter,
+    sparse_output: SparseOutputFilter,
 }
 
 impl<'a, T: ArtifactOutput> PreprocessedState<'a, T> {
@@ -372,7 +372,7 @@ impl FilteredCompilerSources {
         self,
         settings: &Settings,
         paths: &ProjectPathsConfig,
-        sparse_output: SparseOutputFileFilter,
+        sparse_output: SparseOutputFilter,
     ) -> Result<AggregatedCompilerOutput> {
         match self {
             FilteredCompilerSources::Sequential(input) => {
@@ -399,7 +399,7 @@ fn compile_sequential(
     input: VersionedFilteredSources,
     settings: &Settings,
     paths: &ProjectPathsConfig,
-    sparse_output: SparseOutputFileFilter,
+    sparse_output: SparseOutputFilter,
 ) -> Result<AggregatedCompilerOutput> {
     let mut aggregated = AggregatedCompilerOutput::default();
     tracing::trace!("compiling {} jobs sequentially", input.len());
@@ -475,7 +475,7 @@ fn compile_parallel(
     num_jobs: usize,
     settings: &Settings,
     paths: &ProjectPathsConfig,
-    sparse_output: SparseOutputFileFilter,
+    sparse_output: SparseOutputFilter,
 ) -> Result<AggregatedCompilerOutput> {
     debug_assert!(num_jobs > 1);
     tracing::trace!(
