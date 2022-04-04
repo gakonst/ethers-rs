@@ -293,6 +293,9 @@ impl Client {
 
         let query = self.create_query("contract", "getabi", HashMap::from([("address", address)]));
         let resp: Response<String> = self.get_json(&query).await?;
+        if resp.result.starts_with("Max rate limit reached") {
+            return Err(EtherscanError::RateLimitExceeded)
+        }
         if resp.result.starts_with("Contract source code not verified") {
             return Err(EtherscanError::ContractCodeNotVerified(address))
         }
@@ -330,6 +333,9 @@ impl Client {
         let query =
             self.create_query("contract", "getsourcecode", HashMap::from([("address", address)]));
         let response: Response<Vec<Metadata>> = self.get_json(&query).await?;
+        if response.message == "NOTOK" {
+            return Err(EtherscanError::RateLimitExceeded)
+        }
         if response.result.iter().any(|item| item.abi == "Contract source code not verified") {
             return Err(EtherscanError::ContractCodeNotVerified(address))
         }
