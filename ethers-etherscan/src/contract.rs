@@ -138,8 +138,8 @@ impl Default for CodeFormat {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(transparent)]
 pub struct ContractMetadata {
-    #[serde(flatten)]
     pub items: Vec<Metadata>,
 }
 
