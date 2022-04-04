@@ -110,3 +110,44 @@ bytes = "1.1.0"
 [profile.release.package.ethers-wasm]
 # Tell `rustc` to optimize for small code size.
 opt-level = "s"
+
+
+[[example]]
+name = "contract_human_readable"
+path = "examples/contract_human_readable.rs"
+required-features = ["legacy"]
+
+[[example]]
+name = "contract_with_abi"
+path = "examples/contract_with_abi.rs"
+required-features = ["legacy"]
+
+[[example]]
+name = "contract_with_abi_and_bytecode"
+path = "examples/contract_with_abi_and_bytecode.rs"
+required-features = ["legacy"]
+
+[[example]]
+name = "ipc"
+path = "examples/ipc.rs"
+required-features = ["ipc"]
+
+[[example]]
+name = "ledger"
+path = "examples/ledger.rs"
+required-features = ["ledger"]
+
+[[example]]
+name = "moonbeam_with_abi"
+path = "examples/moonbeam_with_abi.rs"
+required-features = ["legacy"]
+
+[[example]]
+name = "trezor"
+path = "examples/trezor.rs"
+required-features = ["trezor"]
+
+[[example]]
+name = "yubi"
+path = "examples/yubi.rs"
+required-features = ["yubi"]
