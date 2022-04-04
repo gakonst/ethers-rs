@@ -61,8 +61,6 @@ impl Cache {
         let path = self.0.join(prefix).join(format!("{:?}.json", address));
         let mut writer = std::io::BufWriter::new(std::fs::File::create(path)?);
         serde_json::to_writer(&mut writer, &item)?;
-        // TODO: Trace
-        // TODO: Should we cache if the contract is *not* verified?
         let _ = writer.flush();
         Ok(())
     }
