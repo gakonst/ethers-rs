@@ -52,21 +52,23 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use parse::{SolData, SolDataUnit};
 use rayon::prelude::*;
-use regex::Match;
+
 use semver::VersionReq;
-use solang_parser::pt::{Import, Loc, SourceUnitPart};
 
 use crate::{error::Result, utils, ProjectPathsConfig, Solc, SolcError, Source, Sources};
 
+mod parse;
 mod tree;
+
 pub use tree::{print, Charset, TreeOptions};
 
 /// The underlying edges of the graph which only contains the raw relationship data.
 ///
 /// This is kept separate from the `Graph` as the `Node`s get consumed when the `Solc` to `Sources`
 /// set is determined.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct GraphEdges {
     /// The indices of `edges` correspond to the `nodes`. That is, `edges[0]`
     /// is the set of outgoing edges for `nodes[0]`.
@@ -77,6 +79,8 @@ pub struct GraphEdges {
     rev_indices: HashMap<usize, PathBuf>,
     /// the identified version requirement of a file
     versions: HashMap<usize, Option<VersionReq>>,
+    /// the extracted data from the source file
+    data: HashMap<usize, SolData>,
     /// with how many input files we started with, corresponds to `let input_files =
     /// nodes[..num_input_files]`.
     ///
@@ -152,6 +156,22 @@ impl GraphEdges {
             .and_then(|idx| self.versions.get(idx))
             .and_then(|v| v.as_ref())
     }
+
+    /// Returns those library files that will be required as `linkReferences` by the given file
+    ///
+    /// This is a preprocess function that attempts to resolve those libraries that will the
+    /// solidity `file` will be required to link. And further restrict this list to libraries
+    /// that won't be inlined See also [SolLibrary](parse::SolLibrary)
+    pub fn get_link_references(&self, file: impl AsRef<Path>) -> HashSet<&PathBuf> {
+        let mut link_references = HashSet::new();
+        for import in self.all_imported_nodes(self.node_id(file)) {
+            let data = &self.data[&import];
+            if data.has_link_references() {
+                link_references.insert(&self.rev_indices[&import]);
+            }
+        }
+        link_references
+    }
 }
 
 /// Represents a fully-resolved solidity dependency graph. Each node in the graph
@@ -159,6 +179,7 @@ impl GraphEdges {
 /// See also <https://docs.soliditylang.org/en/latest/layout-of-source-files.html?highlight=import#importing-other-source-files>
 #[derive(Debug)]
 pub struct Graph {
+    /// all nodes in the project, a `Node` represents a single file
     nodes: Vec<Node>,
     /// relationship of the nodes
     edges: GraphEdges,
@@ -222,11 +243,25 @@ impl Graph {
         self.node_ids(start).map(move |idx| self.node(idx))
     }
 
+    fn split(self) -> (Vec<(PathBuf, Source)>, GraphEdges) {
+        let Graph { nodes, mut edges, .. } = self;
+        // need to move the extracted data to the edges, essentially splitting the node so we have
+        // access to the data at a later stage in the compile pipeline
+        let mut sources = Vec::new();
+        for (idx, node) in nodes.into_iter().enumerate() {
+            let Node { path, source, data } = node;
+            sources.push((path, source));
+            edges.data.insert(idx, data);
+        }
+
+        (sources, edges)
+    }
+
     /// Consumes the `Graph`, effectively splitting the `nodes` and the `GraphEdges` off and
     /// returning the `nodes` converted to `Sources`
     pub fn into_sources(self) -> (Sources, GraphEdges) {
-        let Graph { nodes, edges, .. } = self;
-        (nodes.into_iter().map(|node| (node.path, node.source)).collect(), edges)
+        let (sources, edges) = self.split();
+        (sources.into_iter().collect(), edges)
     }
 
     /// Returns an iterator that yields only those nodes that represent input files.
@@ -255,7 +290,7 @@ impl Graph {
                 resolved_imports.push(idx);
             } else {
                 // imported file is not part of the input files
-                let node = read_node(&target)?;
+                let node = Node::read(&target)?;
                 unresolved.push_back((target.clone(), node));
                 let idx = index.len();
                 index.insert(target, idx);
@@ -269,7 +304,7 @@ impl Graph {
         let mut unresolved: VecDeque<(PathBuf, Node)> = sources
             .into_par_iter()
             .map(|(path, source)| {
-                let data = parse_data(source.as_ref(), &path);
+                let data = SolData::parse(source.as_ref(), &path);
                 (path.clone(), Node { path, source, data })
             })
             .collect();
@@ -317,6 +352,7 @@ impl Graph {
                 .enumerate()
                 .map(|(idx, node)| (idx, node.data.version_req.clone()))
                 .collect(),
+            data: Default::default(),
         };
         Ok(Graph { nodes, edges, root: paths.root.clone() })
     }
@@ -344,7 +380,7 @@ impl Graph {
         /// cache entry for them as well. This can be optimized however
         fn insert_imports(
             idx: usize,
-            all_nodes: &mut HashMap<usize, Node>,
+            all_nodes: &mut HashMap<usize, (PathBuf, Source)>,
             sources: &mut Sources,
             edges: &[Vec<usize>],
             num_input_files: usize,
@@ -354,8 +390,8 @@ impl Graph {
                 // nodes are handled separately
                 if dep >= num_input_files {
                     // library import
-                    if let Some(node) = all_nodes.remove(&dep) {
-                        sources.insert(node.path, node.source);
+                    if let Some((path, source)) = all_nodes.remove(&dep) {
+                        sources.insert(path, source);
                         insert_imports(dep, all_nodes, sources, edges, num_input_files);
                     }
                 }
@@ -363,8 +399,10 @@ impl Graph {
         }
 
         let versioned_nodes = self.get_input_node_versions(offline)?;
-        let Self { nodes, edges, .. } = self;
+        let (nodes, edges) = self.split();
+
         let mut versioned_sources = HashMap::with_capacity(versioned_nodes.len());
+
         let mut all_nodes = nodes.into_iter().enumerate().collect::<HashMap<_, _>>();
 
         // determine the `Sources` set for each solc version
@@ -373,8 +411,8 @@ impl Graph {
             // we only process input nodes (from sources, tests for example)
             for idx in input_node_indices {
                 // insert the input node in the sources set and remove it from the available set
-                let node = all_nodes.remove(&idx).expect("node is preset. qed");
-                sources.insert(node.path, node.source);
+                let (path, source) = all_nodes.remove(&idx).expect("node is preset. qed");
+                sources.insert(path, source);
                 insert_imports(
                     idx,
                     &mut all_nodes,
@@ -692,12 +730,23 @@ impl VersionedSources {
 
 #[derive(Debug)]
 pub struct Node {
+    /// path of the solidity  file
     path: PathBuf,
+    /// content of the solidity file
     source: Source,
+    /// parsed data
     data: SolData,
 }
 
 impl Node {
+    /// Reads the content of the file and returns a [Node] containing relevant information
+    pub fn read(file: impl AsRef<Path>) -> crate::Result<Self> {
+        let file = file.as_ref();
+        let source = Source::read(file).map_err(SolcError::Resolve)?;
+        let data = SolData::parse(source.as_ref(), file);
+        Ok(Self { path: file.to_path_buf(), source, data })
+    }
+
     pub fn content(&self) -> &str {
         &self.source.content
     }
@@ -732,198 +781,9 @@ impl<'a> fmt::Display for DisplayNode<'a> {
     }
 }
 
-#[derive(Debug, Clone)]
-#[allow(unused)]
-struct SolData {
-    license: Option<SolDataUnit<String>>,
-    version: Option<SolDataUnit<String>>,
-    imports: Vec<SolDataUnit<PathBuf>>,
-    version_req: Option<VersionReq>,
-}
-
-impl SolData {
-    #[allow(unused)]
-    fn fmt_version<W: std::fmt::Write>(
-        &self,
-        f: &mut W,
-    ) -> std::result::Result<(), std::fmt::Error> {
-        if let Some(ref version) = self.version {
-            write!(f, "({})", version.data)?;
-        }
-        Ok(())
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct SolDataUnit<T> {
-    loc: Location,
-    data: T,
-}
-#[derive(Debug, Clone)]
-pub struct Location {
-    pub start: usize,
-    pub end: usize,
-}
-
-/// Solidity Data Unit decorated with its location within the file
-impl<T> SolDataUnit<T> {
-    pub fn new(data: T, loc: Location) -> Self {
-        Self { data, loc }
-    }
-
-    /// Returns the underlying data for the unit
-    pub fn data(&self) -> &T {
-        &self.data
-    }
-
-    /// Returns the location of the given data unit
-    pub fn loc(&self) -> (usize, usize) {
-        (self.loc.start, self.loc.end)
-    }
-
-    /// Returns the location of the given data unit adjusted by an offset.
-    /// Used to determine new position of the unit within the file after
-    /// content manipulation.
-    pub fn loc_by_offset(&self, offset: isize) -> (usize, usize) {
-        (
-            offset.saturating_add(self.loc.start as isize) as usize,
-            // make the end location exclusive
-            offset.saturating_add(self.loc.end as isize + 1) as usize,
-        )
-    }
-}
-
-impl From<Match<'_>> for Location {
-    fn from(src: Match) -> Self {
-        Location { start: src.start(), end: src.end() }
-    }
-}
-
-impl From<Loc> for Location {
-    fn from(src: Loc) -> Self {
-        match src {
-            Loc::File(_, start, end) => Location { start, end },
-            _ => Location { start: 0, end: 0 },
-        }
-    }
-}
-
-fn read_node(file: impl AsRef<Path>) -> Result<Node> {
-    let file = file.as_ref();
-    let source = Source::read(file).map_err(SolcError::Resolve)?;
-    let data = parse_data(source.as_ref(), file);
-    Ok(Node { path: file.to_path_buf(), source, data })
-}
-
-/// Extracts the useful data from a solidity source
-///
-/// This will attempt to parse the solidity AST and extract the imports and version pragma. If
-/// parsing fails, we'll fall back to extract that info via regex
-fn parse_data(content: &str, file: &Path) -> SolData {
-    let mut version = None;
-    let mut imports = Vec::<SolDataUnit<PathBuf>>::new();
-    match solang_parser::parse(content, 0) {
-        Ok((units, _)) => {
-            for unit in units.0 {
-                match unit {
-                    SourceUnitPart::PragmaDirective(loc, _, pragma, value) => {
-                        if pragma.name == "solidity" {
-                            // we're only interested in the solidity version pragma
-                            version = Some(SolDataUnit::new(value.string, loc.into()));
-                        }
-                    }
-                    SourceUnitPart::ImportDirective(_, import) => {
-                        let (import, loc) = match import {
-                            Import::Plain(s, l) => (s, l),
-                            Import::GlobalSymbol(s, _, l) => (s, l),
-                            Import::Rename(s, _, l) => (s, l),
-                        };
-                        imports.push(SolDataUnit::new(PathBuf::from(import.string), loc.into()));
-                    }
-                    _ => {}
-                }
-            }
-        }
-        Err(err) => {
-            tracing::trace!(
-                "failed to parse \"{}\" ast: \"{:?}\". Falling back to regex to extract data",
-                file.display(),
-                err
-            );
-            version = capture_outer_and_inner(content, &utils::RE_SOL_PRAGMA_VERSION, &["version"])
-                .first()
-                .map(|(cap, name)| {
-                    SolDataUnit::new(name.as_str().to_owned(), cap.to_owned().into())
-                });
-            imports = capture_imports(content);
-        }
-    };
-    let license = content.lines().next().and_then(|line| {
-        capture_outer_and_inner(line, &utils::RE_SOL_SDPX_LICENSE_IDENTIFIER, &["license"])
-            .first()
-            .map(|(cap, l)| SolDataUnit::new(l.as_str().to_owned(), cap.to_owned().into()))
-    });
-    let version_req = version.as_ref().and_then(|v| Solc::version_req(v.data()).ok());
-    SolData { version_req, version, imports, license }
-}
-
-/// Given the regex and the target string, find all occurrences
-/// of named groups within the string. This method returns
-/// the tuple of matches `(a, b)` where `a` is the match for the
-/// entire regex and `b` is the match for the first named group.
-///
-/// NOTE: This method will return the match for the first named
-/// group, so the order of passed named groups matters.
-fn capture_outer_and_inner<'a>(
-    content: &'a str,
-    regex: &regex::Regex,
-    names: &[&str],
-) -> Vec<(regex::Match<'a>, regex::Match<'a>)> {
-    regex
-        .captures_iter(content)
-        .filter_map(|cap| {
-            let cap_match = names.iter().find_map(|name| cap.name(name));
-            cap_match.and_then(|m| cap.get(0).map(|outer| (outer.to_owned(), m)))
-        })
-        .collect()
-}
-
-fn capture_imports(content: &str) -> Vec<SolDataUnit<PathBuf>> {
-    capture_outer_and_inner(content, &utils::RE_SOL_IMPORT, &["p1", "p2", "p3", "p4"])
-        .iter()
-        .map(|(cap, m)| SolDataUnit::new(PathBuf::from(m.as_str()), cap.to_owned().into()))
-        .collect()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn can_capture_curly_imports() {
-        let content = r#"
-import { T } from "../Test.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {DsTest} from "ds-test/test.sol";
-"#;
-
-        let captured_imports =
-            capture_imports(content).into_iter().map(|s| s.data).collect::<Vec<_>>();
-
-        let expected =
-            utils::find_import_paths(content).map(|m| m.as_str().into()).collect::<Vec<PathBuf>>();
-
-        assert_eq!(captured_imports, expected);
-
-        assert_eq!(
-            captured_imports,
-            vec![
-                PathBuf::from("../Test.sol"),
-                "@openzeppelin/contracts/utils/ReentrancyGuard.sol".into(),
-                "ds-test/test.sol".into(),
-            ]
-        );
-    }
 
     #[test]
     fn can_resolve_hardhat_dependency_graph() {

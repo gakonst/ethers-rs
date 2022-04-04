@@ -7,7 +7,8 @@ use crate::{
     project_util::mock::{MockProjectGenerator, MockProjectSettings},
     utils::tempdir,
     Artifact, ArtifactOutput, Artifacts, ConfigurableArtifacts, ConfigurableContractArtifact,
-    PathStyle, Project, ProjectCompileOutput, ProjectPathsConfig, SolFilesCache, SolcIoError,
+    FileFilter, PathStyle, Project, ProjectCompileOutput, ProjectPathsConfig, SolFilesCache,
+    SolcIoError,
 };
 use fs_extra::{dir, file};
 use std::{
@@ -67,6 +68,13 @@ impl<T: ArtifactOutput> TempProject<T> {
 
     pub fn compile(&self) -> Result<ProjectCompileOutput<T>> {
         self.project().compile()
+    }
+
+    pub fn compile_sparse<F: FileFilter + 'static>(
+        &self,
+        filter: F,
+    ) -> Result<ProjectCompileOutput<T>> {
+        self.project().compile_sparse(filter)
     }
 
     pub fn flatten(&self, target: &Path) -> Result<String> {
