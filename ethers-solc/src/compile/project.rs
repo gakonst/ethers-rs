@@ -243,6 +243,7 @@ impl<'a, T: ArtifactOutput> PreprocessedState<'a, T> {
             &cache.project().solc_config.settings,
             &cache.project().paths,
             sparse_output,
+            cache.graph(),
         )?;
 
         Ok(CompiledState { output, cache })
@@ -373,13 +374,14 @@ impl FilteredCompilerSources {
         settings: &Settings,
         paths: &ProjectPathsConfig,
         sparse_output: SparseOutputFilter,
+        graph: &GraphEdges,
     ) -> Result<AggregatedCompilerOutput> {
         match self {
             FilteredCompilerSources::Sequential(input) => {
-                compile_sequential(input, settings, paths, sparse_output)
+                compile_sequential(input, settings, paths, sparse_output, graph)
             }
             FilteredCompilerSources::Parallel(input, j) => {
-                compile_parallel(input, j, settings, paths, sparse_output)
+                compile_parallel(input, j, settings, paths, sparse_output, graph)
             }
         }
     }
@@ -400,6 +402,7 @@ fn compile_sequential(
     settings: &Settings,
     paths: &ProjectPathsConfig,
     sparse_output: SparseOutputFilter,
+    graph: &GraphEdges,
 ) -> Result<AggregatedCompilerOutput> {
     let mut aggregated = AggregatedCompilerOutput::default();
     tracing::trace!("compiling {} jobs sequentially", input.len());
@@ -476,6 +479,7 @@ fn compile_parallel(
     settings: &Settings,
     paths: &ProjectPathsConfig,
     sparse_output: SparseOutputFilter,
+    graph: &GraphEdges,
 ) -> Result<AggregatedCompilerOutput> {
     debug_assert!(num_jobs > 1);
     tracing::trace!(
