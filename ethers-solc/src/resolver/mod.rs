@@ -47,7 +47,7 @@
 //! which is defined on a per source file basis.
 
 use std::{
-    collections::{HashMap, HashSet, VecDeque},
+    collections::{BTreeMap, HashMap, HashSet, VecDeque},
     fmt, io,
     path::{Path, PathBuf},
 };
@@ -68,7 +68,7 @@ pub use tree::{print, Charset, TreeOptions};
 ///
 /// This is kept separate from the `Graph` as the `Node`s get consumed when the `Solc` to `Sources`
 /// set is determined.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct GraphEdges {
     /// The indices of `edges` correspond to the `nodes`. That is, `edges[0]`
     /// is the set of outgoing edges for `nodes[0]`.
@@ -79,6 +79,8 @@ pub struct GraphEdges {
     rev_indices: HashMap<usize, PathBuf>,
     /// the identified version requirement of a file
     versions: HashMap<usize, Option<VersionReq>>,
+    /// the extracted data from the source file
+    data: HashMap<usize, SolData>,
     /// with how many input files we started with, corresponds to `let input_files =
     /// nodes[..num_input_files]`.
     ///
@@ -228,8 +230,18 @@ impl Graph {
     /// Consumes the `Graph`, effectively splitting the `nodes` and the `GraphEdges` off and
     /// returning the `nodes` converted to `Sources`
     pub fn into_sources(self) -> (Sources, GraphEdges) {
-        let Graph { nodes, edges, .. } = self;
-        (nodes.into_iter().map(|node| (node.path, node.source)).collect(), edges)
+        let Graph { nodes, mut edges, .. } = self;
+
+        // need to move the extracted data to the edges, essentially splitting the node so we have
+        // access to the data at a later stage in the compile pipeline
+        let mut sources = BTreeMap::new();
+        for (idx, node) in nodes.into_iter().enumerate() {
+            let Node { path, source, data } = node;
+            sources.insert(path, source);
+            edges.data.insert(idx, data);
+        }
+
+        (sources, edges)
     }
 
     /// Returns an iterator that yields only those nodes that represent input files.
@@ -258,7 +270,7 @@ impl Graph {
                 resolved_imports.push(idx);
             } else {
                 // imported file is not part of the input files
-                let node = read_node(&target)?;
+                let node = Node::read(&target)?;
                 unresolved.push_back((target.clone(), node));
                 let idx = index.len();
                 index.insert(target, idx);
@@ -320,6 +332,7 @@ impl Graph {
                 .enumerate()
                 .map(|(idx, node)| (idx, node.data.version_req.clone()))
                 .collect(),
+            data: Default::default(),
         };
         Ok(Graph { nodes, edges, root: paths.root.clone() })
     }
@@ -704,6 +717,14 @@ pub struct Node {
 }
 
 impl Node {
+    /// Reads the content of the file and returns a [Node] containing relevant information
+    pub fn read(file: impl AsRef<Path>) -> crate::Result<Self> {
+        let file = file.as_ref();
+        let source = Source::read(file).map_err(SolcError::Resolve)?;
+        let data = SolData::parse(source.as_ref(), file);
+        Ok(Self { path: file.to_path_buf(), source, data })
+    }
+
     pub fn content(&self) -> &str {
         &self.source.content
     }
@@ -719,14 +740,6 @@ impl Node {
     pub fn license(&self) -> &Option<SolDataUnit<String>> {
         &self.data.license
     }
-}
-
-/// Reads the content of the file and returns a [Node] containing relevant information
-pub fn read_node(file: impl AsRef<Path>) -> crate::Result<Node> {
-    let file = file.as_ref();
-    let source = Source::read(file).map_err(SolcError::Resolve)?;
-    let data = SolData::parse(source.as_ref(), file);
-    Ok(Node { path: file.to_path_buf(), source, data })
 }
 
 /// Helper type for formatting a node
