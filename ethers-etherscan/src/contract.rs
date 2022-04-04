@@ -286,7 +286,7 @@ impl Client {
     pub async fn contract_abi(&self, address: Address) -> Result<Abi> {
         // apply caching
         if let Some(ref cache) = self.cache {
-            if let Some(abi) = cache.get_abi(address)? {
+            if let Ok(Some(abi)) = cache.get_abi(address) {
                 return Ok(abi)
             }
         }
@@ -302,7 +302,7 @@ impl Client {
         let abi = serde_json::from_str(&resp.result)?;
 
         if let Some(ref cache) = self.cache {
-            cache.set_abi(address, &abi)?;
+            let _ = cache.set_abi(address, &abi);
         }
 
         Ok(abi)
@@ -325,7 +325,7 @@ impl Client {
     pub async fn contract_source_code(&self, address: Address) -> Result<ContractMetadata> {
         // apply caching
         if let Some(ref cache) = self.cache {
-            if let Some(src) = cache.get_source(address)? {
+            if let Ok(Some(src)) = cache.get_source(address) {
                 return Ok(src)
             }
         }
@@ -342,7 +342,7 @@ impl Client {
         let res = ContractMetadata { items: response.result };
 
         if let Some(ref cache) = self.cache {
-            cache.set_source(address, &res)?;
+            let _ = cache.set_source(address, &res);
         }
 
         Ok(res)
