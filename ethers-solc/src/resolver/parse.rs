@@ -1,18 +1,22 @@
-use crate::{resolver::Node, utils, Solc, SolcError, Source};
+use crate::{utils, Solc};
 use regex::Match;
 use semver::VersionReq;
-use solang_parser::pt::{Import, Loc, SourceUnitPart};
+use solang_parser::pt::{
+    ContractPart, ContractTy, FunctionAttribute, FunctionDefinition, FunctionTy, Import, Loc,
+    SourceUnitPart, Visibility,
+};
 use std::path::{Path, PathBuf};
 
 /// Represents various information about a solidity file parsed via [solang_parser]
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 #[allow(unused)]
 pub struct SolData {
     pub license: Option<SolDataUnit<String>>,
     pub version: Option<SolDataUnit<String>>,
     pub imports: Vec<SolDataUnit<PathBuf>>,
     pub version_req: Option<VersionReq>,
-    pub libraries: Vec<String>,
+    pub libraries: Vec<SolLibrary>,
+    pub contracts: Vec<SolContract>,
 }
 
 impl SolData {
@@ -35,6 +39,8 @@ impl SolData {
         let mut version = None;
         let mut imports = Vec::<SolDataUnit<PathBuf>>::new();
         let mut libraries = Vec::new();
+        let mut contracts = Vec::new();
+
         match solang_parser::parse(content, 0) {
             Ok((units, _)) => {
                 for unit in units.0 {
@@ -53,6 +59,26 @@ impl SolData {
                             };
                             imports
                                 .push(SolDataUnit::new(PathBuf::from(import.string), loc.into()));
+                        }
+                        SourceUnitPart::ContractDefinition(def) => {
+                            let functions = def
+                                .parts
+                                .into_iter()
+                                .filter_map(|part| match part {
+                                    ContractPart::FunctionDefinition(f) => Some(*f),
+                                    _ => None,
+                                })
+                                .collect();
+                            let name = def.name.name;
+                            match def.ty {
+                                ContractTy::Contract(_) => {
+                                    contracts.push(SolContract { name, functions });
+                                }
+                                ContractTy::Library(_) => {
+                                    libraries.push(SolLibrary { name, functions });
+                                }
+                                _ => {}
+                            }
                         }
                         _ => {}
                     }
@@ -80,7 +106,45 @@ impl SolData {
         });
         let version_req = version.as_ref().and_then(|v| Solc::version_req(v.data()).ok());
 
-        Self { version_req, version, imports, license, libraries }
+        Self { version_req, version, imports, license, libraries, contracts }
+    }
+}
+
+/// Minimal representation of a contract inside a solidity file
+#[derive(Debug)]
+pub struct SolContract {
+    pub name: String,
+    pub functions: Vec<FunctionDefinition>,
+}
+
+/// Minimal representation of a contract inside a solidity file
+#[derive(Debug)]
+pub struct SolLibrary {
+    pub name: String,
+    pub functions: Vec<FunctionDefinition>,
+}
+
+impl SolLibrary {
+    /// Returns `true` if all functions of this library will be inlined.
+    ///
+    /// This checks if all functions are either internal or private, because internal functions can
+    /// only be accessed from within the current contract or contracts deriving from it. They cannot
+    /// be accessed externally. Since they are not exposed to the outside through the contract’s
+    /// ABI, they can take parameters of internal types like mappings or storage references.
+    ///
+    /// See also <https://docs.soliditylang.org/en/latest/contracts.html#libraries>
+    pub fn is_inlined(&self) -> bool {
+        for f in self.functions.iter() {
+            for attr in f.attributes.iter() {
+                if let FunctionAttribute::Visibility(vis) = attr {
+                    match vis {
+                        Visibility::External(_) | Visibility::Public(_) => return false,
+                        _ => {}
+                    }
+                }
+            }
+        }
+        true
     }
 }
 

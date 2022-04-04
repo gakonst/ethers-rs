@@ -161,6 +161,7 @@ impl GraphEdges {
 /// See also <https://docs.soliditylang.org/en/latest/layout-of-source-files.html?highlight=import#importing-other-source-files>
 #[derive(Debug)]
 pub struct Graph {
+    /// all nodes in the project, a `Node` represents a single file
     nodes: Vec<Node>,
     /// relationship of the nodes
     edges: GraphEdges,
