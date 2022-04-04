@@ -2,6 +2,7 @@
 
 use crate::{
     artifacts::{output_selection::OutputSelection, Settings},
+    resolver::GraphEdges,
     Source, Sources,
 };
 use std::{
@@ -69,52 +70,103 @@ impl SparseOutputFilter {
     ///
     /// This will modify the [OutputSelection] of the [Settings] so that we explicitly select the
     /// files' output based on their state.
-    pub fn sparse_sources(&self, sources: FilteredSources, settings: &mut Settings) -> Sources {
-        fn apply(
-            sources: &FilteredSources,
-            settings: &mut Settings,
-            f: impl Fn(&PathBuf, &FilteredSource) -> bool,
-        ) {
-            let selection = settings
-                .output_selection
-                .as_mut()
-                .remove("*")
-                .unwrap_or_else(OutputSelection::default_file_output_selection);
-
-            for (file, source) in sources.0.iter() {
-                if f(file, source) {
-                    settings
-                        .output_selection
-                        .as_mut()
-                        .insert(format!("{}", file.display()), selection.clone());
-                } else {
-                    tracing::trace!("using pruned output selection for {}", file.display());
-                    settings.output_selection.as_mut().insert(
-                        format!("{}", file.display()),
-                        OutputSelection::empty_file_output_select(),
-                    );
-                }
-            }
-        }
-
+    ///
+    /// This also takes the project's graph as input, this allows us to check if the files the
+    /// filter matches depend on libraries that need to be linked
+    pub fn sparse_sources(
+        &self,
+        sources: FilteredSources,
+        settings: &mut Settings,
+        graph: &GraphEdges,
+    ) -> Sources {
         match self {
             SparseOutputFilter::AllDirty => {
                 if !sources.all_dirty() {
-                    // settings can be optimized
-                    tracing::trace!(
-                        "optimizing output selection for {}/{} sources",
-                        sources.clean().count(),
-                        sources.len()
-                    );
-                    apply(&sources, settings, |_, source| source.is_dirty())
+                    Self::all_dirty(&sources, settings)
                 }
             }
             SparseOutputFilter::Custom(f) => {
-                tracing::trace!("optimizing output selection with custom filter",);
-                apply(&sources, settings, |p, source| source.is_dirty() && f.is_match(p));
+                Self::apply_custom_filter(&sources, settings, graph, f)
             }
         };
         sources.into()
+    }
+
+    /// applies a custom filter and prunes the output of those source files for which the filter
+    /// returns `false`.
+    ///
+    /// However, this could in accidentally pruning required link references (imported libraries)
+    /// that will be required at runtime. For example if the filter only matches test files
+    /// `*.t.sol` files and a test file makes use of a library that won't be inlined, then the
+    /// libraries bytecode will be missing. Therefore, we detect all linkReferences of a file
+    /// and treat them as if the filter would also apply to those.
+    #[allow(clippy::borrowed_box)]
+    fn apply_custom_filter(
+        sources: &FilteredSources,
+        settings: &mut Settings,
+        graph: &GraphEdges,
+        f: &Box<dyn FileFilter>,
+    ) {
+        tracing::trace!("optimizing output selection with custom filter",);
+        let selection = settings
+            .output_selection
+            .as_mut()
+            .remove("*")
+            .unwrap_or_else(OutputSelection::default_file_output_selection);
+
+        for (file, source) in sources.0.iter() {
+            let key = format!("{}", file.display());
+            if source.is_dirty() && f.is_match(file) {
+                settings.output_selection.as_mut().insert(key, selection.clone());
+
+                // the filter might not cover link references that will be required by the file, so
+                // we check if the file has any libraries that won't be inlined and include them as
+                // well
+                for link in graph.get_link_references(file) {
+                    settings
+                        .output_selection
+                        .as_mut()
+                        .insert(format!("{}", link.display()), selection.clone());
+                }
+            } else if !settings.output_selection.as_ref().contains_key(&key) {
+                tracing::trace!("using pruned output selection for {}", file.display());
+                settings
+                    .output_selection
+                    .as_mut()
+                    .insert(key, OutputSelection::empty_file_output_select());
+            }
+        }
+    }
+
+    /// prunes all clean sources and only selects an output for dirty sources
+    fn all_dirty(sources: &FilteredSources, settings: &mut Settings) {
+        // settings can be optimized
+        tracing::trace!(
+            "optimizing output selection for {}/{} sources",
+            sources.clean().count(),
+            sources.len()
+        );
+
+        let selection = settings
+            .output_selection
+            .as_mut()
+            .remove("*")
+            .unwrap_or_else(OutputSelection::default_file_output_selection);
+
+        for (file, source) in sources.0.iter() {
+            if source.is_dirty() {
+                settings
+                    .output_selection
+                    .as_mut()
+                    .insert(format!("{}", file.display()), selection.clone());
+            } else {
+                tracing::trace!("using pruned output selection for {}", file.display());
+                settings.output_selection.as_mut().insert(
+                    format!("{}", file.display()),
+                    OutputSelection::empty_file_output_select(),
+                );
+            }
+        }
     }
 }
 

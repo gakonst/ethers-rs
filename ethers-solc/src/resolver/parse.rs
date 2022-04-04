@@ -2,8 +2,8 @@ use crate::{utils, Solc};
 use regex::Match;
 use semver::VersionReq;
 use solang_parser::pt::{
-    ContractPart, ContractTy, FunctionAttribute, FunctionDefinition, FunctionTy, Import, Loc,
-    SourceUnitPart, Visibility,
+    ContractPart, ContractTy, FunctionAttribute, FunctionDefinition, Import, Loc, SourceUnitPart,
+    Visibility,
 };
 use std::path::{Path, PathBuf};
 
@@ -107,6 +107,12 @@ impl SolData {
         let version_req = version.as_ref().and_then(|v| Solc::version_req(v.data()).ok());
 
         Self { version_req, version, imports, license, libraries, contracts }
+    }
+
+    /// Returns `true` if the solidity file associated with this type contains a solidity library
+    /// that won't be inlined
+    pub fn has_link_references(&self) -> bool {
+        self.libraries.iter().any(|lib| !lib.is_inlined())
     }
 }
 

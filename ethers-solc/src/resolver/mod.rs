@@ -156,6 +156,22 @@ impl GraphEdges {
             .and_then(|idx| self.versions.get(idx))
             .and_then(|v| v.as_ref())
     }
+
+    /// Returns those library files that will be required as `linkReferences` by the given file
+    ///
+    /// This is a preprocess function that attempts to resolve those libraries that will the
+    /// solidity `file` will be required to link. And further restrict this list to libraries
+    /// that won't be inlined See also [SolLibrary](parse::SolLibrary)
+    pub fn get_link_references(&self, file: impl AsRef<Path>) -> HashSet<&PathBuf> {
+        let mut link_references = HashSet::new();
+        for import in self.all_imported_nodes(self.node_id(file)) {
+            let data = &self.data[&import];
+            if data.has_link_references() {
+                link_references.insert(&self.rev_indices[&import]);
+            }
+        }
+        link_references
+    }
 }
 
 /// Represents a fully-resolved solidity dependency graph. Each node in the graph

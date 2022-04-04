@@ -428,7 +428,7 @@ fn compile_sequential(
         // depending on the composition of the filtered sources, the output selection can be
         // optimized
         let mut opt_settings = settings.clone();
-        let sources = sparse_output.sparse_sources(filtered_sources, &mut opt_settings);
+        let sources = sparse_output.sparse_sources(filtered_sources, &mut opt_settings, graph);
 
         for input in CompilerInput::with_sources(sources) {
             let actually_dirty = input
@@ -505,7 +505,7 @@ fn compile_parallel(
         // depending on the composition of the filtered sources, the output selection can be
         // optimized
         let mut opt_settings = settings.clone();
-        let sources = sparse_output.sparse_sources(filtered_sources, &mut opt_settings);
+        let sources = sparse_output.sparse_sources(filtered_sources, &mut opt_settings, graph);
 
         for input in CompilerInput::with_sources(sources) {
             let actually_dirty = input

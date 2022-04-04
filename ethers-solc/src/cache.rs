@@ -810,7 +810,7 @@ impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
     /// Returns the graph data for this project
     pub fn graph(&self) -> &GraphEdges {
         match self {
-            ArtifactsCache::Ephemeral(graph_, _) => graph,
+            ArtifactsCache::Ephemeral(graph, _) => graph,
             ArtifactsCache::Cached(inner) => &inner.edges,
         }
     }
