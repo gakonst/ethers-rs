@@ -1,6 +1,6 @@
 //! Bindings for [etherscan.io web api](https://docs.etherscan.io/)
 
-use std::{borrow::Cow, path::PathBuf};
+use std::{borrow::Cow, io::Write, path::PathBuf};
 
 use contract::ContractMetadata;
 use reqwest::{header, Url};
@@ -59,8 +59,11 @@ impl Cache {
 
     fn set<T: Serialize>(&self, prefix: &str, address: Address, item: T) -> Result<()> {
         let path = self.0.join(prefix).join(format!("{:?}.json", address));
-        let writer = std::io::BufWriter::new(std::fs::File::create(path)?);
-        serde_json::to_writer(writer, &item)?;
+        let mut writer = std::io::BufWriter::new(std::fs::File::create(path)?);
+        serde_json::to_writer(&mut writer, &item)?;
+        // TODO: Trace
+        // TODO: Should we cache if the contract is *not* verified?
+        let _ = writer.flush();
         Ok(())
     }
 
