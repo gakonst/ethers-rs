@@ -8,6 +8,7 @@ use std::{
 };
 
 use ethers_solc::{
+    artifacts::BytecodeHash,
     cache::{SolFilesCache, SOLIDITY_FILES_CACHE_FILENAME},
     project_util::*,
     remappings::Remapping,
@@ -875,9 +876,27 @@ fn can_compile_sparse_with_link_references() {
     let mut compiled = tmp.compile_sparse(TestFileFilter::default()).unwrap();
     assert!(!compiled.has_compiler_errors());
 
-    println!("{}", compiled);
     assert!(compiled.find("ATest").is_some());
     assert!(compiled.find("MyLib").is_some());
     let lib = compiled.remove("MyLib").unwrap();
     assert!(lib.bytecode.is_some());
+}
+
+#[test]
+fn can_sanitize_bytecode_hash() {
+    let mut tmp = TempProject::dapptools().unwrap();
+    tmp.project_mut().solc_config.settings.metadata = Some(BytecodeHash::Ipfs.into());
+
+    tmp.add_source(
+        "A",
+        r#"
+    pragma solidity =0.5.17;
+    contract A {}
+   "#,
+    )
+    .unwrap();
+
+    let compiled = tmp.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+    assert!(compiled.find("A").is_some());
 }
