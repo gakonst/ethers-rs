@@ -1,6 +1,11 @@
 //! Bindings for [etherscan.io web api](https://docs.etherscan.io/)
 
-use std::{borrow::Cow, io::Write, path::PathBuf};
+use std::{
+    borrow::Cow,
+    io::Write,
+    path::PathBuf,
+    time::{Duration, SystemTime, UNIX_EPOCH},
+};
 
 use contract::ContractMetadata;
 use reqwest::{header, Url};
@@ -36,11 +41,25 @@ pub struct Client {
     cache: Option<Cache>,
 }
 
+/// A wrapper around an Etherscan cache object with an expiry
+#[derive(Clone, Debug, Deserialize, Serialize)]
+struct CacheEnvelope<T> {
+    expiry: u64,
+    data: T,
+}
+
+/// Simple cache for etherscan requests
 #[derive(Clone, Debug)]
-// Simple cache for etherscan requests
-struct Cache(PathBuf);
+struct Cache {
+    root: PathBuf,
+    ttl: Duration,
+}
 
 impl Cache {
+    fn new(root: PathBuf, ttl: Duration) -> Self {
+        Self { root, ttl }
+    }
+
     fn get_abi(&self, address: Address) -> Result<Option<ethers_core::abi::Abi>> {
         self.get("abi", address)
     }
@@ -58,18 +77,34 @@ impl Cache {
     }
 
     fn set<T: Serialize>(&self, prefix: &str, address: Address, item: T) -> Result<()> {
-        let path = self.0.join(prefix).join(format!("{:?}.json", address));
+        let path = self.root.join(prefix).join(format!("{:?}.json", address));
         let mut writer = std::io::BufWriter::new(std::fs::File::create(path)?);
-        serde_json::to_writer(&mut writer, &item)?;
+        serde_json::to_writer(
+            &mut writer,
+            &CacheEnvelope {
+                expiry: SystemTime::now()
+                    .checked_add(self.ttl)
+                    .expect("cache ttl overflowed")
+                    .duration_since(UNIX_EPOCH)
+                    .expect("system time is before unix epoch")
+                    .as_secs(),
+                data: item,
+            },
+        )?;
         let _ = writer.flush();
         Ok(())
     }
 
     fn get<T: DeserializeOwned>(&self, prefix: &str, address: Address) -> Result<Option<T>> {
-        let path = self.0.join(prefix).join(format!("{:?}.json", address));
+        let path = self.root.join(prefix).join(format!("{:?}.json", address));
         let reader = std::io::BufReader::new(std::fs::File::open(path)?);
-        if let Ok(inner) = serde_json::from_reader(reader) {
-            return Ok(Some(inner))
+        if let Ok(inner) = serde_json::from_reader::<_, CacheEnvelope<T>>(reader) {
+            // If this does not return None then we have passed the expiry
+            if SystemTime::now().checked_sub(Duration::from_secs(inner.expiry)).is_some() {
+                return Ok(None)
+            }
+
+            return Ok(Some(inner.data))
         }
         Ok(None)
     }
@@ -79,10 +114,11 @@ impl Client {
     pub fn new_cached(
         chain: Chain,
         api_key: impl Into<String>,
-        cache: Option<PathBuf>,
+        cache_root: Option<PathBuf>,
+        cache_ttl: Duration,
     ) -> Result<Self> {
         let mut this = Self::new(chain, api_key)?;
-        this.cache = cache.map(Cache);
+        this.cache = cache_root.map(|root| Cache::new(root, cache_ttl));
         Ok(this)
     }
 
