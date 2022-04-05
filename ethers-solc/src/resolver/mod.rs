@@ -57,7 +57,7 @@ use rayon::prelude::*;
 
 use semver::VersionReq;
 
-use crate::{error::Result, utils, ProjectPathsConfig, Solc, SolcError, Source, Sources};
+use crate::{error::Result, utils, ProjectPathsConfig, SolcError, Source, Sources};
 
 mod parse;
 mod tree;
@@ -482,6 +482,8 @@ impl Graph {
         &self,
         offline: bool,
     ) -> Result<HashMap<crate::SolcVersion, Vec<usize>>> {
+        use crate::Solc;
+
         tracing::trace!("resolving input node versions");
         // this is likely called by an application and will be eventually printed so we don't exit
         // on first error, instead gather all the errors and return a bundled error message instead
@@ -683,7 +685,9 @@ impl VersionedSources {
     pub fn get(
         self,
         allowed_lib_paths: &crate::AllowedLibPaths,
-    ) -> Result<std::collections::BTreeMap<Solc, (semver::Version, Sources)>> {
+    ) -> Result<std::collections::BTreeMap<crate::Solc, (semver::Version, Sources)>> {
+        use crate::Solc;
+
         // we take the installer lock here to ensure installation checking is done in sync
         #[cfg(any(test, feature = "tests"))]
         let _lock = crate::compile::take_solc_installer_lock();
