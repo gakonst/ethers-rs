@@ -286,8 +286,13 @@ impl Client {
     pub async fn contract_abi(&self, address: Address) -> Result<Abi> {
         // apply caching
         if let Some(ref cache) = self.cache {
-            if let Ok(Some(abi)) = cache.get_abi(address) {
-                return Ok(abi)
+            // If this is None, then we have a cache miss
+            if let Some(src) = cache.get_abi(address) {
+                // If this is None, then the contract is not verified
+                return match src {
+                    Some(src) => Ok(src),
+                    None => Err(EtherscanError::ContractCodeNotVerified(address)),
+                }
             }
         }
 
@@ -297,12 +302,15 @@ impl Client {
             return Err(EtherscanError::RateLimitExceeded)
         }
         if resp.result.starts_with("Contract source code not verified") {
+            if let Some(ref cache) = self.cache {
+                let _ = cache.set_abi(address, None);
+            }
             return Err(EtherscanError::ContractCodeNotVerified(address))
         }
         let abi = serde_json::from_str(&resp.result)?;
 
         if let Some(ref cache) = self.cache {
-            let _ = cache.set_abi(address, &abi);
+            let _ = cache.set_abi(address, Some(&abi));
         }
 
         Ok(abi)
@@ -325,8 +333,13 @@ impl Client {
     pub async fn contract_source_code(&self, address: Address) -> Result<ContractMetadata> {
         // apply caching
         if let Some(ref cache) = self.cache {
-            if let Ok(Some(src)) = cache.get_source(address) {
-                return Ok(src)
+            // If this is None, then we have a cache miss
+            if let Some(src) = cache.get_source(address) {
+                // If this is None, then the contract is not verified
+                return match src {
+                    Some(src) => Ok(src),
+                    None => Err(EtherscanError::ContractCodeNotVerified(address)),
+                }
             }
         }
 
@@ -334,12 +347,15 @@ impl Client {
             self.create_query("contract", "getsourcecode", HashMap::from([("address", address)]));
         let response: Response<Vec<Metadata>> = self.get_json(&query).await?;
         if response.result.iter().any(|item| item.abi == "Contract source code not verified") {
+            if let Some(ref cache) = self.cache {
+                let _ = cache.set_source(address, None);
+            }
             return Err(EtherscanError::ContractCodeNotVerified(address))
         }
         let res = ContractMetadata { items: response.result };
 
         if let Some(ref cache) = self.cache {
-            let _ = cache.set_source(address, &res);
+            let _ = cache.set_source(address, Some(&res));
         }
 
         Ok(res)

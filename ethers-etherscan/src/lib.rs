@@ -60,53 +60,54 @@ impl Cache {
         Self { root, ttl }
     }
 
-    fn get_abi(&self, address: Address) -> Result<Option<ethers_core::abi::Abi>> {
+    fn get_abi(&self, address: Address) -> Option<Option<ethers_core::abi::Abi>> {
         self.get("abi", address)
     }
 
-    fn set_abi(&self, address: Address, abi: &Abi) -> Result<()> {
+    fn set_abi(&self, address: Address, abi: Option<&Abi>) {
         self.set("abi", address, abi)
     }
 
-    fn get_source(&self, address: Address) -> Result<Option<ContractMetadata>> {
+    fn get_source(&self, address: Address) -> Option<Option<ContractMetadata>> {
         self.get("sources", address)
     }
 
-    fn set_source(&self, address: Address, source: &ContractMetadata) -> Result<()> {
+    fn set_source(&self, address: Address, source: Option<&ContractMetadata>) {
         self.set("sources", address, source)
     }
 
-    fn set<T: Serialize>(&self, prefix: &str, address: Address, item: T) -> Result<()> {
+    fn set<T: Serialize>(&self, prefix: &str, address: Address, item: T) {
         let path = self.root.join(prefix).join(format!("{:?}.json", address));
-        let mut writer = std::io::BufWriter::new(std::fs::File::create(path)?);
-        serde_json::to_writer(
-            &mut writer,
-            &CacheEnvelope {
-                expiry: SystemTime::now()
-                    .checked_add(self.ttl)
-                    .expect("cache ttl overflowed")
-                    .duration_since(UNIX_EPOCH)
-                    .expect("system time is before unix epoch")
-                    .as_secs(),
-                data: item,
-            },
-        )?;
-        let _ = writer.flush();
-        Ok(())
+        let writer = std::fs::File::create(path).ok().map(|file| std::io::BufWriter::new(file));
+        if let Some(mut writer) = writer {
+            let _ = serde_json::to_writer(
+                &mut writer,
+                &CacheEnvelope {
+                    expiry: SystemTime::now()
+                        .checked_add(self.ttl)
+                        .expect("cache ttl overflowed")
+                        .duration_since(UNIX_EPOCH)
+                        .expect("system time is before unix epoch")
+                        .as_secs(),
+                    data: item,
+                },
+            );
+            let _ = writer.flush();
+        }
     }
 
-    fn get<T: DeserializeOwned>(&self, prefix: &str, address: Address) -> Result<Option<T>> {
+    fn get<T: DeserializeOwned>(&self, prefix: &str, address: Address) -> Option<T> {
         let path = self.root.join(prefix).join(format!("{:?}.json", address));
-        let reader = std::io::BufReader::new(std::fs::File::open(path)?);
+        let reader = std::io::BufReader::new(std::fs::File::open(path).ok()?);
         if let Ok(inner) = serde_json::from_reader::<_, CacheEnvelope<T>>(reader) {
             // If this does not return None then we have passed the expiry
             if SystemTime::now().checked_sub(Duration::from_secs(inner.expiry)).is_some() {
-                return Ok(None)
+                return None
             }
 
-            return Ok(Some(inner.data))
+            return Some(inner.data)
         }
-        Ok(None)
+        None
     }
 }
 
