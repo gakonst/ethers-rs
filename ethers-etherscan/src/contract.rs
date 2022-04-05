@@ -333,9 +333,6 @@ impl Client {
         let query =
             self.create_query("contract", "getsourcecode", HashMap::from([("address", address)]));
         let response: Response<Vec<Metadata>> = self.get_json(&query).await?;
-        if response.message == "NOTOK" {
-            return Err(EtherscanError::RateLimitExceeded)
-        }
         if response.result.iter().any(|item| item.abi == "Contract source code not verified") {
             return Err(EtherscanError::ContractCodeNotVerified(address))
         }

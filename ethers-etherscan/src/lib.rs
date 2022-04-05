@@ -236,7 +236,7 @@ impl Client {
 
     /// Execute an API GET request with parameters
     async fn get_json<T: DeserializeOwned, Q: Serialize>(&self, query: &Q) -> Result<Response<T>> {
-        Ok(self
+        let res: ResponseData<T> = self
             .client
             .get(self.etherscan_api_url.clone())
             .header(header::ACCEPT, "application/json")
@@ -244,7 +244,18 @@ impl Client {
             .send()
             .await?
             .json()
-            .await?)
+            .await?;
+
+        match res {
+            ResponseData::Error { result, .. } => {
+                if result.starts_with("Max rate limit reached") {
+                    Err(EtherscanError::RateLimitExceeded)
+                } else {
+                    Err(EtherscanError::Unknown(result))
+                }
+            }
+            ResponseData::Success(res) => Ok(res),
+        }
     }
 
     fn create_query<T: Serialize>(
@@ -268,6 +279,13 @@ pub struct Response<T> {
     pub status: String,
     pub message: String,
     pub result: T,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[serde(untagged)]
+pub enum ResponseData<T> {
+    Success(Response<T>),
+    Error { status: String, message: String, result: String },
 }
 
 /// The type that gets serialized as query
