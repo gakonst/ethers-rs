@@ -3,7 +3,7 @@ use ethers_core::abi::Abi;
 
 use colored::Colorize;
 use md5::Digest;
-use semver::Version;
+use semver::{Version, VersionReq};
 use std::{
     collections::{BTreeMap, HashSet},
     fmt, fs,
@@ -90,6 +90,22 @@ impl CompilerInput {
             });
         }
         res
+    }
+
+    /// This will remove/adjust values in the `CompilerInput` that are not compatible with this
+    /// version
+    pub fn sanitized(mut self, version: &Version) -> Self {
+        static PRE_V0_6_0: once_cell::sync::Lazy<VersionReq> =
+            once_cell::sync::Lazy::new(|| VersionReq::parse("<0.6.0").unwrap());
+
+        if PRE_V0_6_0.matches(version) {
+            if let Some(ref mut meta) = self.settings.metadata {
+                // introduced in <https://docs.soliditylang.org/en/v0.6.0/using-the-compiler.html#compiler-api>
+                // missing in <https://docs.soliditylang.org/en/v0.5.17/using-the-compiler.html#compiler-api>
+                meta.bytecode_hash.take();
+            }
+        }
+        self
     }
 
     /// Sets the settings for compilation
@@ -1399,5 +1415,25 @@ mod tests {
                 expected
             )
         }
+    }
+
+    #[test]
+    fn can_sanitize_byte_code_hash() {
+        let version: Version = "0.6.0".parse().unwrap();
+
+        let settings = Settings { metadata: Some(BytecodeHash::Ipfs.into()), ..Default::default() };
+
+        let input = CompilerInput {
+            language: "Solidity".to_string(),
+            sources: Default::default(),
+            settings,
+        };
+
+        let i = input.clone().sanitized(&version);
+        assert_eq!(i.settings.metadata.unwrap().bytecode_hash, Some(BytecodeHash::Ipfs));
+
+        let version: Version = "0.5.17".parse().unwrap();
+        let i = input.sanitized(&version);
+        assert!(i.settings.metadata.unwrap().bytecode_hash.is_none());
     }
 }

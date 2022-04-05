@@ -451,7 +451,8 @@ fn compile_sequential(
             let input = input
                 .settings(opt_settings.clone())
                 .normalize_evm_version(&version)
-                .with_remappings(paths.remappings.clone());
+                .with_remappings(paths.remappings.clone())
+                .sanitized(&version);
 
             tracing::trace!(
                 "calling solc `{}` with {} sources {:?}",
@@ -529,7 +530,8 @@ fn compile_parallel(
             let job = input
                 .settings(settings.clone())
                 .normalize_evm_version(&version)
-                .with_remappings(paths.remappings.clone());
+                .with_remappings(paths.remappings.clone())
+                .sanitized(&version);
 
             jobs.push((solc.clone(), version.clone(), job, actually_dirty))
         }
