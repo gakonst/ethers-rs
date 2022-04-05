@@ -95,8 +95,10 @@ impl CompilerInput {
     /// This will remove/adjust values in the `CompilerInput` that are not compatible with this
     /// version
     pub fn sanitized(mut self, version: &Version) -> Self {
-        let pre_v0_6_0 = VersionReq::parse("<0.6.0").unwrap();
-        if pre_v0_6_0.matches(version) {
+        static PRE_V0_6_0: once_cell::sync::Lazy<VersionReq> =
+            once_cell::sync::Lazy::new(|| VersionReq::parse("<0.6.0").unwrap());
+
+        if PRE_V0_6_0.matches(version) {
             if let Some(ref mut meta) = self.settings.metadata {
                 // introduced in <https://docs.soliditylang.org/en/v0.6.0/using-the-compiler.html#compiler-api>
                 // missing in <https://docs.soliditylang.org/en/v0.5.17/using-the-compiler.html#compiler-api>
