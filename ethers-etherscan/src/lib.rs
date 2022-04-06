@@ -1,12 +1,21 @@
 //! Bindings for [etherscan.io web api](https://docs.etherscan.io/)
 
-use std::borrow::Cow;
+use std::{
+    borrow::Cow,
+    io::Write,
+    path::PathBuf,
+    time::{Duration, SystemTime, UNIX_EPOCH},
+};
 
+use contract::ContractMetadata;
 use reqwest::{header, Url};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use errors::EtherscanError;
-use ethers_core::{abi::Address, types::Chain};
+use ethers_core::{
+    abi::{Abi, Address},
+    types::Chain,
+};
 
 pub mod account;
 pub mod contract;
@@ -28,9 +37,92 @@ pub struct Client {
     etherscan_api_url: Url,
     /// Etherscan base endpoint like <https://etherscan.io>
     etherscan_url: Url,
+    /// Path to where ABI files should be cached
+    cache: Option<Cache>,
+}
+
+/// A wrapper around an Etherscan cache object with an expiry
+#[derive(Clone, Debug, Deserialize, Serialize)]
+struct CacheEnvelope<T> {
+    expiry: u64,
+    data: T,
+}
+
+/// Simple cache for etherscan requests
+#[derive(Clone, Debug)]
+struct Cache {
+    root: PathBuf,
+    ttl: Duration,
+}
+
+impl Cache {
+    fn new(root: PathBuf, ttl: Duration) -> Self {
+        Self { root, ttl }
+    }
+
+    fn get_abi(&self, address: Address) -> Option<Option<ethers_core::abi::Abi>> {
+        self.get("abi", address)
+    }
+
+    fn set_abi(&self, address: Address, abi: Option<&Abi>) {
+        self.set("abi", address, abi)
+    }
+
+    fn get_source(&self, address: Address) -> Option<Option<ContractMetadata>> {
+        self.get("sources", address)
+    }
+
+    fn set_source(&self, address: Address, source: Option<&ContractMetadata>) {
+        self.set("sources", address, source)
+    }
+
+    fn set<T: Serialize>(&self, prefix: &str, address: Address, item: T) {
+        let path = self.root.join(prefix).join(format!("{:?}.json", address));
+        let writer = std::fs::File::create(path).ok().map(std::io::BufWriter::new);
+        if let Some(mut writer) = writer {
+            let _ = serde_json::to_writer(
+                &mut writer,
+                &CacheEnvelope {
+                    expiry: SystemTime::now()
+                        .checked_add(self.ttl)
+                        .expect("cache ttl overflowed")
+                        .duration_since(UNIX_EPOCH)
+                        .expect("system time is before unix epoch")
+                        .as_secs(),
+                    data: item,
+                },
+            );
+            let _ = writer.flush();
+        }
+    }
+
+    fn get<T: DeserializeOwned>(&self, prefix: &str, address: Address) -> Option<T> {
+        let path = self.root.join(prefix).join(format!("{:?}.json", address));
+        let reader = std::io::BufReader::new(std::fs::File::open(path).ok()?);
+        if let Ok(inner) = serde_json::from_reader::<_, CacheEnvelope<T>>(reader) {
+            // If this does not return None then we have passed the expiry
+            if SystemTime::now().checked_sub(Duration::from_secs(inner.expiry)).is_some() {
+                return None
+            }
+
+            return Some(inner.data)
+        }
+        None
+    }
 }
 
 impl Client {
+    pub fn new_cached(
+        chain: Chain,
+        api_key: impl Into<String>,
+        cache_root: Option<PathBuf>,
+        cache_ttl: Duration,
+    ) -> Result<Self> {
+        let mut this = Self::new(chain, api_key)?;
+        this.cache = cache_root.map(|root| Cache::new(root, cache_ttl));
+        Ok(this)
+    }
+
     /// Create a new client with the correct endpoints based on the chain and provided API key
     pub fn new(chain: Chain, api_key: impl Into<String>) -> Result<Self> {
         let (etherscan_api_url, etherscan_url) = match chain {
@@ -101,6 +193,7 @@ impl Client {
             api_key: api_key.into(),
             etherscan_api_url: etherscan_api_url.expect("is valid http"),
             etherscan_url: etherscan_url.expect("is valid http"),
+            cache: None,
         })
     }
 
@@ -180,7 +273,7 @@ impl Client {
 
     /// Execute an API GET request with parameters
     async fn get_json<T: DeserializeOwned, Q: Serialize>(&self, query: &Q) -> Result<Response<T>> {
-        Ok(self
+        let res: ResponseData<T> = self
             .client
             .get(self.etherscan_api_url.clone())
             .header(header::ACCEPT, "application/json")
@@ -188,7 +281,18 @@ impl Client {
             .send()
             .await?
             .json()
-            .await?)
+            .await?;
+
+        match res {
+            ResponseData::Error { result, .. } => {
+                if result.starts_with("Max rate limit reached") {
+                    Err(EtherscanError::RateLimitExceeded)
+                } else {
+                    Err(EtherscanError::Unknown(result))
+                }
+            }
+            ResponseData::Success(res) => Ok(res),
+        }
     }
 
     fn create_query<T: Serialize>(
@@ -212,6 +316,13 @@ pub struct Response<T> {
     pub status: String,
     pub message: String,
     pub result: T,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[serde(untagged)]
+pub enum ResponseData<T> {
+    Success(Response<T>),
+    Error { status: String, message: String, result: String },
 }
 
 /// The type that gets serialized as query
@@ -240,7 +351,7 @@ mod tests {
         let err = Client::new_from_env(Chain::XDai).unwrap_err();
 
         assert!(matches!(err, EtherscanError::ChainNotSupported(_)));
-        assert_eq!(err.to_string(), "chain xdai not supported");
+        assert_eq!(err.to_string(), "Chain xdai not supported");
     }
 
     #[test]

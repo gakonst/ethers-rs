@@ -91,7 +91,7 @@ mod tests {
                 .unwrap_err();
 
             assert!(matches!(err, EtherscanError::ExecutionFailed(_)));
-            assert_eq!(err.to_string(), "contract execution call failed: Bad jump destination");
+            assert_eq!(err.to_string(), "Contract execution call failed: Bad jump destination");
         })
         .await
     }
