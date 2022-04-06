@@ -204,7 +204,7 @@ impl ProjectPathsConfig {
                 // (`<name>/=.../contracts`) and the stripped import also starts with `contracts`
                 if let Ok(adjusted_import) = stripped_import.strip_prefix("contracts/") {
                     if r.path.ends_with("contracts/") && !lib_path.exists() {
-                        return Path::new(&r.path).join(adjusted_import);
+                        return Path::new(&r.path).join(adjusted_import)
                     }
                 }
                 lib_path
@@ -272,7 +272,7 @@ impl ProjectPathsConfig {
 
         if imported.contains(target_index) {
             // short circuit nodes that were already imported, if both A.sol and B.sol import C.sol
-            return Ok(String::new());
+            return Ok(String::new())
         }
         imported.insert(*target_index);
 

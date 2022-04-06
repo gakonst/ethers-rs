@@ -457,7 +457,7 @@ impl Graph {
             }
             if candidates.is_empty() {
                 // nothing to filter anymore
-                return;
+                return
             }
         }
     }
@@ -571,7 +571,7 @@ impl Graph {
             mut sets: Vec<&HashSet<&'a crate::SolcVersion>>,
         ) -> Vec<&'a crate::SolcVersion> {
             if sets.is_empty() {
-                return Vec::new();
+                return Vec::new()
             }
 
             let mut result = sets.pop().cloned().expect("not empty; qed.").clone();
@@ -609,7 +609,7 @@ impl Graph {
                 "resolved solc version compatible with all sources  \"{}\"",
                 exact_version
             );
-            return HashMap::from([(exact_version, all_nodes)]);
+            return HashMap::from([(exact_version, all_nodes)])
         }
 
         // no version satisfies all nodes
@@ -699,7 +699,7 @@ impl VersionedSources {
                     return Err(SolcError::msg(format!(
                         "missing solc \"{}\" installation in offline mode",
                         version
-                    )));
+                    )))
                 } else {
                     // install missing solc
                     Solc::blocking_install(version.as_ref())?
