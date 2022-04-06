@@ -78,7 +78,7 @@ impl Cache {
 
     fn set<T: Serialize>(&self, prefix: &str, address: Address, item: T) {
         let path = self.root.join(prefix).join(format!("{:?}.json", address));
-        let writer = std::fs::File::create(path).ok().map(|file| std::io::BufWriter::new(file));
+        let writer = std::fs::File::create(path).ok().map(std::io::BufWriter::new);
         if let Some(mut writer) = writer {
             let _ = serde_json::to_writer(
                 &mut writer,
