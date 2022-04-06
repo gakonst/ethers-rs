@@ -13,6 +13,7 @@ use std::path::{Path, PathBuf};
 pub struct SolData {
     pub license: Option<SolDataUnit<String>>,
     pub version: Option<SolDataUnit<String>>,
+    pub experimental: Option<SolDataUnit<String>>,
     pub imports: Vec<SolDataUnit<PathBuf>>,
     pub version_req: Option<VersionReq>,
     pub libraries: Vec<SolLibrary>,
@@ -37,6 +38,7 @@ impl SolData {
     /// parsing fails, we'll fall back to extract that info via regex
     pub fn parse(content: &str, file: &Path) -> Self {
         let mut version = None;
+        let mut experimental = None;
         let mut imports = Vec::<SolDataUnit<PathBuf>>::new();
         let mut libraries = Vec::new();
         let mut contracts = Vec::new();
@@ -48,7 +50,12 @@ impl SolData {
                         SourceUnitPart::PragmaDirective(loc, _, pragma, value) => {
                             if pragma.name == "solidity" {
                                 // we're only interested in the solidity version pragma
-                                version = Some(SolDataUnit::new(value.string, loc.into()));
+                                version = Some(SolDataUnit::new(value.string.clone(), loc.into()));
+                            }
+
+                            if pragma.name == "experimental" {
+                                experimental =
+                                    Some(SolDataUnit::new(value.string.clone(), loc.into()));
                             }
                         }
                         SourceUnitPart::ImportDirective(_, import) => {
@@ -106,7 +113,7 @@ impl SolData {
         });
         let version_req = version.as_ref().and_then(|v| Solc::version_req(v.data()).ok());
 
-        Self { version_req, version, imports, license, libraries, contracts }
+        Self { version_req, version, experimental, imports, license, libraries, contracts }
     }
 
     /// Returns `true` if the solidity file associated with this type contains a solidity library

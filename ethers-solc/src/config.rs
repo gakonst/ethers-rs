@@ -204,7 +204,7 @@ impl ProjectPathsConfig {
                 // (`<name>/=.../contracts`) and the stripped import also starts with `contracts`
                 if let Ok(adjusted_import) = stripped_import.strip_prefix("contracts/") {
                     if r.path.ends_with("contracts/") && !lib_path.exists() {
-                        return Path::new(&r.path).join(adjusted_import)
+                        return Path::new(&r.path).join(adjusted_import);
                     }
                 }
                 lib_path
@@ -250,7 +250,7 @@ impl ProjectPathsConfig {
     pub fn flatten(&self, target: &Path) -> Result<String> {
         tracing::trace!("flattening file");
         let graph = Graph::resolve(self)?;
-        self.flatten_node(target, &graph, &mut Default::default(), false, false)
+        self.flatten_node(target, &graph, &mut Default::default(), false, false, false)
     }
 
     /// Flattens a single node from the dependency graph
@@ -260,6 +260,7 @@ impl ProjectPathsConfig {
         graph: &Graph,
         imported: &mut HashSet<usize>,
         strip_version_pragma: bool,
+        strip_experimental_pragma: bool,
         strip_license: bool,
     ) -> Result<String> {
         let target_dir = target.parent().ok_or_else(|| {
@@ -271,7 +272,7 @@ impl ProjectPathsConfig {
 
         if imported.contains(target_index) {
             // short circuit nodes that were already imported, if both A.sol and B.sol import C.sol
-            return Ok(String::new())
+            return Ok(String::new());
         }
         imported.insert(*target_index);
 
@@ -299,9 +300,17 @@ impl ProjectPathsConfig {
             }
         }
 
+        if strip_experimental_pragma {
+            if let Some(experiment) = target_node.experimental() {
+                let (start, end) = experiment.loc_by_offset(offset);
+                content.splice(start..end, std::iter::empty());
+                offset -= (end - start) as isize;
+            }
+        }
+
         for import in imports.iter() {
             let import_path = self.resolve_import(target_dir, import.data())?;
-            let s = self.flatten_node(&import_path, graph, imported, true, true)?;
+            let s = self.flatten_node(&import_path, graph, imported, true, true, true)?;
             let import_content = s.trim().as_bytes();
             let import_content_len = import_content.len() as isize;
             let (start, end) = import.loc_by_offset(offset);
