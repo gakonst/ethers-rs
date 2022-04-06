@@ -101,7 +101,12 @@ impl Cache {
         let reader = std::io::BufReader::new(std::fs::File::open(path).ok()?);
         if let Ok(inner) = serde_json::from_reader::<_, CacheEnvelope<T>>(reader) {
             // If this does not return None then we have passed the expiry
-            if SystemTime::now().checked_sub(Duration::from_secs(inner.expiry)).is_some() {
+            if SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("system time is before unix epoch")
+                .checked_sub(Duration::from_secs(inner.expiry))
+                .is_some()
+            {
                 return None
             }
 
