@@ -763,6 +763,10 @@ impl Node {
         &self.data.version
     }
 
+    pub fn experimental(&self) -> &Option<SolDataUnit<String>> {
+        &self.data.experimental
+    }
+
     pub fn license(&self) -> &Option<SolDataUnit<String>> {
         &self.data.license
     }
