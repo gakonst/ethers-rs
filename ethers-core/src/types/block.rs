@@ -210,7 +210,7 @@ impl Serialize for BlockId {
 }
 
 /// A block Number (or tag - "latest", "earliest", "pending")
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum BlockNumber {
     /// Latest block
     Latest,

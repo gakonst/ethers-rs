@@ -131,7 +131,7 @@ impl Signature {
     }
 
     /// Retrieve the recovery ID.
-    fn recovery_id(&self) -> Result<RecoveryId, SignatureError> {
+    pub fn recovery_id(&self) -> Result<RecoveryId, SignatureError> {
         let standard_v = normalize_recovery_id(self.v);
         Ok(RecoveryId::new(standard_v)?)
     }
