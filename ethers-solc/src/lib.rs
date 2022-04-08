@@ -445,9 +445,7 @@ impl<T: ArtifactOutput> Project<T> {
         let compiler_inputs = CompilerInput::with_sources(sources.into_iter().collect());
         let compiler_input = compiler_inputs
             .first()
-            .ok_or_else(|| {
-                SolcError::msg(format!("cannot resolve file at \"{:?}\"", target.display()))
-            })?
+            .ok_or_else(|| SolcError::msg("cannot get the compiler input"))?
             .clone()
             .settings(self.solc_config.settings.clone())
             .with_remappings(self.paths.remappings.clone());
