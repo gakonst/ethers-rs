@@ -60,6 +60,30 @@ fn decode_signature(
     Ok(sig)
 }
 
+/// Decodes the `to` field of the RLP encoding based on the RLP offset passed. Increments the offset
+/// by one.
+#[inline]
+fn decode_to(
+    rlp: &rlp::Rlp,
+    offset: &mut usize,
+) -> Result<Option<super::NameOrAddress>, rlp::DecoderError> {
+    let to = {
+        let to = rlp.at(*offset)?;
+        if to.is_empty() {
+            if to.is_data() {
+                None
+            } else {
+                return Err(rlp::DecoderError::RlpExpectedToBeData)
+            }
+        } else {
+            Some(to.as_val()?)
+        }
+    };
+    *offset += 1;
+
+    Ok(to)
+}
+
 #[cfg(test)]
 mod tests {
     use crate::types::{transaction::rlp_opt, U64};
