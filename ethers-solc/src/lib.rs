@@ -428,7 +428,7 @@ impl<T: ArtifactOutput> Project<T> {
     }
 
     /// Returns standard-json-input to compile the target contract
-    pub fn standard_json_input(&self, target: &Path) -> Result<String> {
+    pub fn standard_json_input(&self, target: &Path) -> Result<CompilerInput> {
         tracing::trace!("Building standard-json-input");
         let graph = Graph::resolve(&self.paths)?;
         let target_index = graph.files().get(target).ok_or_else(|| {
@@ -451,9 +451,7 @@ impl<T: ArtifactOutput> Project<T> {
             .settings(self.solc_config.settings.clone())
             .with_remappings(self.paths.remappings.clone());
 
-        serde_json::to_string(&compiler_input).map_err(|err| {
-            SolcError::msg(format!("cannot parse compiler input to json \"{:?}\"", err))
-        })
+        Ok(compiler_input)
     }
 }
 
