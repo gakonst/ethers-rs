@@ -117,7 +117,18 @@ impl Eip2930TransactionRequest {
 
         self.tx.gas = Some(rlp.val_at(*offset)?);
         *offset += 1;
-        self.tx.to = Some(rlp.val_at(*offset)?);
+        self.tx.to = {
+            let to = rlp.at(*offset)?;
+            if to.is_empty() {
+                if to.is_data() {
+                    None
+                } else {
+                    return Err(DecoderError::RlpExpectedToBeData)
+                }
+            } else {
+                Some(to.as_val()?)
+            }
+        };
         *offset += 1;
         self.tx.value = Some(rlp.val_at(*offset)?);
         *offset += 1;

@@ -217,7 +217,18 @@ impl TransactionRequest {
             *offset += 1;
         }
 
-        txn.to = Some(rlp.at(*offset)?.as_val()?);
+        txn.to = {
+            let to = rlp.at(*offset)?;
+            if to.is_empty() {
+                if to.is_data() {
+                    None
+                } else {
+                    return Err(rlp::DecoderError::RlpExpectedToBeData)
+                }
+            } else {
+                Some(to.as_val()?)
+            }
+        };
         *offset += 1;
         txn.value = Some(rlp.at(*offset)?.as_val()?);
         *offset += 1;

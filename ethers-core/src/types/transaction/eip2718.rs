@@ -455,4 +455,12 @@ mod tests {
         let decoded_transaction = TypedTransaction::decode(&expected_rlp).unwrap();
         assert_eq!(tx.sighash(), decoded_transaction.sighash());
     }
+
+    #[test]
+    fn test_eip1559_deploy_tx_decode() {
+        let typed_tx_hex =
+            hex::decode("02dc8205058193849502f90085010c388d00837a120080808411223344c0").unwrap();
+        let tx_rlp = rlp::Rlp::new(typed_tx_hex.as_slice());
+        TypedTransaction::decode(&tx_rlp).unwrap();
+    }
 }
