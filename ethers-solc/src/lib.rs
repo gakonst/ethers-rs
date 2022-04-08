@@ -441,7 +441,6 @@ impl<T: ArtifactOutput> Project<T> {
             let (path, source) = graph.node(index).unpack();
             sources.push((path.clone(), source.clone()));
         }
-        println!("ethers-solc-config: compiler_input sources: {:#?}", sources);
 
         let compiler_inputs = CompilerInput::with_sources(sources.into_iter().collect());
         let compiler_input = compiler_inputs
@@ -453,7 +452,6 @@ impl<T: ArtifactOutput> Project<T> {
             .settings(self.solc_config.settings.clone())
             .with_remappings(self.paths.remappings.clone());
 
-        println!("ethers-solc-config: compiler_input compiler_input: {:#?}", compiler_input);
         serde_json::to_string(&compiler_input).map_err(|err| {
             SolcError::msg(format!("cannot parse compiler input to json \"{:?}\"", err))
         })
