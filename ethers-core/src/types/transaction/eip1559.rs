@@ -1,4 +1,4 @@
-use super::{eip2930::AccessList, normalize_v, rlp_opt};
+use super::{decode_to, eip2930::AccessList, normalize_v, rlp_opt};
 use crate::{
     types::{Address, Bytes, NameOrAddress, Signature, Transaction, H256, U256, U64},
     utils::keccak256,
@@ -199,8 +199,7 @@ impl Eip1559TransactionRequest {
         *offset += 1;
         self.gas = Some(rlp.val_at(*offset)?);
         *offset += 1;
-        self.to = Some(rlp.val_at(*offset)?);
-        *offset += 1;
+        self.to = decode_to(rlp, offset)?;
         self.value = Some(rlp.val_at(*offset)?);
         *offset += 1;
         let data = rlp::Rlp::new(rlp.at(*offset)?.as_raw()).data()?;

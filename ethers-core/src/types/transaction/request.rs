@@ -1,5 +1,5 @@
 //! Transaction types
-use super::{extract_chain_id, rlp_opt, NUM_TX_FIELDS};
+use super::{decode_to, extract_chain_id, rlp_opt, NUM_TX_FIELDS};
 use crate::{
     types::{Address, Bytes, NameOrAddress, Signature, Transaction, H256, U256, U64},
     utils::keccak256,
@@ -217,8 +217,7 @@ impl TransactionRequest {
             *offset += 1;
         }
 
-        txn.to = Some(rlp.at(*offset)?.as_val()?);
-        *offset += 1;
+        txn.to = decode_to(rlp, offset)?;
         txn.value = Some(rlp.at(*offset)?.as_val()?);
         *offset += 1;
 

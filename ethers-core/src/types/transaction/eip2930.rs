@@ -1,4 +1,4 @@
-use super::{normalize_v, request::TransactionRequest};
+use super::{decode_to, normalize_v, request::TransactionRequest};
 use crate::types::{Address, Bytes, Signature, Transaction, H256, U256, U64};
 
 use rlp::{Decodable, DecoderError, RlpStream};
@@ -117,8 +117,7 @@ impl Eip2930TransactionRequest {
 
         self.tx.gas = Some(rlp.val_at(*offset)?);
         *offset += 1;
-        self.tx.to = Some(rlp.val_at(*offset)?);
-        *offset += 1;
+        self.tx.to = decode_to(rlp, offset)?;
         self.tx.value = Some(rlp.val_at(*offset)?);
         *offset += 1;
         let data = rlp::Rlp::new(rlp.at(*offset)?.as_raw()).data()?;
