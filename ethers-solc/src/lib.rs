@@ -435,14 +435,15 @@ impl<T: ArtifactOutput> Project<T> {
             SolcError::msg(format!("cannot resolve file at \"{:?}\"", target.display()))
         })?;
         let mut sources = Vec::new();
-        let (path, source) = graph.node(*target_index).unpack();
-        sources.push((path.clone(), source.clone()));
-        for index in graph.all_imported_nodes(*target_index) {
-            let (path, source) = graph.node(index).unpack();
-            sources.push((path.clone(), source.clone()));
-        }
+        let (path, source) = graph.node(*target_index).unpack().clone();
+        sources.push((path, source));
+        sources.extend(
+            graph.all_imported_nodes(*target_index).map(|index| graph.node(index).unpack().clone()),
+        );
 
-        let compiler_inputs = CompilerInput::with_sources(sources.into_iter().collect());
+        let compiler_inputs = CompilerInput::with_sources(
+            sources.into_iter().map(|(s, p)| (s.clone(), p.clone())).collect(),
+        );
         let compiler_input = compiler_inputs
             .first()
             .ok_or_else(|| SolcError::msg("cannot get the compiler input"))?
