@@ -154,13 +154,13 @@ impl<T: JsonRpcClientWrapper> QuorumProvider<T> {
     /// Normalizes the request payload depending on the call
     async fn normalize_request(&self, method: &str, params: &mut Value) {
         match method {
-            "eth_call"
-            | "eth_createAccessList"
-            | "eth_getStorageAt"
-            | "eth_getCode"
-            | "eth_getProof"
-            | "trace_call"
-            | "trace_block" => {
+            "eth_call" |
+            "eth_createAccessList" |
+            "eth_getStorageAt" |
+            "eth_getCode" |
+            "eth_getProof" |
+            "trace_call" |
+            "trace_block" => {
                 // calls that include the block number in the params at the last index of json array
                 if let Some(block) = params.as_array_mut().and_then(|arr| arr.last_mut()) {
                     if Some("latest") == block.as_str() {
@@ -271,13 +271,13 @@ impl<'a, T> Future for QuorumRequest<'a, T> {
                         *weight += response_weight;
                         if *weight >= this.inner.quorum_weight {
                             // reached quorum with multiple responses
-                            return Poll::Ready(Ok(val));
+                            return Poll::Ready(Ok(val))
                         } else {
                             this.responses.push((val, response_weight));
                         }
                     } else if response_weight >= this.inner.quorum_weight {
                         // reached quorum with single response
-                        return Poll::Ready(Ok(val));
+                        return Poll::Ready(Ok(val))
                     } else {
                         this.responses.push((val, response_weight));
                     }
@@ -473,14 +473,14 @@ impl Stream for QuorumStream {
                         if *weight >= this.quorum_weight {
                             // reached quorum with multiple notification
                             this.benched.push(stream);
-                            return Poll::Ready(Some(val));
+                            return Poll::Ready(Some(val))
                         } else {
                             this.responses.push((val, response_weight));
                         }
                     } else if response_weight >= this.quorum_weight {
                         // reached quorum with single notification
                         this.benched.push(stream);
-                        return Poll::Ready(Some(val));
+                        return Poll::Ready(Some(val))
                     } else {
                         this.responses.push((val, response_weight));
                     }
@@ -495,7 +495,7 @@ impl Stream for QuorumStream {
         }
 
         if this.active.is_empty() && this.benched.is_empty() {
-            return Poll::Ready(None);
+            return Poll::Ready(None)
         }
         Poll::Pending
     }

@@ -152,7 +152,7 @@ where
             loop {
                 let closed = self.process(&mut read_buffer).await.expect("IPC Server panic");
                 if closed && self.pending.is_empty() {
-                    break;
+                    break
                 }
             }
         };

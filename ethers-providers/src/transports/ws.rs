@@ -246,12 +246,12 @@ where
             loop {
                 if self.is_done() {
                     debug!("work complete");
-                    break;
+                    break
                 }
                 match self.tick().await {
                     Err(ClientError::UnexpectedClose) => {
                         error!("{}", ClientError::UnexpectedClose);
-                        break;
+                        break
                     }
                     Err(e) => {
                         panic!("WS Server panic: {}", e);
@@ -327,7 +327,7 @@ where
                 }
             }
 
-            return Ok(());
+            return Ok(())
         }
 
         if let Ok(notification) = serde_json::from_str::<Notification<'_>>(&inner) {
@@ -339,11 +339,11 @@ where
                         // subscription channel was closed on the receiver end
                         stream.remove();
                     }
-                    return Err(to_client_error(err));
+                    return Err(to_client_error(err))
                 }
             }
 
-            return Ok(());
+            return Ok(())
         }
 
         Err(ClientError::JsonError(serde_json::Error::custom(

@@ -125,35 +125,32 @@ impl<'de: 'a, 'a> Deserialize<'de> for Response<'a> {
                             let value: u64 = map.next_value()?;
                             let prev = id.replace(value);
                             if prev.is_some() {
-                                return Err(de::Error::duplicate_field("id"));
+                                return Err(de::Error::duplicate_field("id"))
                             }
                         }
                         "jsonrpc" => {
                             let value: &'de str = map.next_value()?;
                             if value != "2.0" {
-                                return Err(de::Error::invalid_value(
-                                    Unexpected::Str(value),
-                                    &"2.0",
-                                ));
+                                return Err(de::Error::invalid_value(Unexpected::Str(value), &"2.0"))
                             }
 
                             let prev = jsonrpc.replace(value);
                             if prev.is_some() {
-                                return Err(de::Error::duplicate_field("jsonrpc"));
+                                return Err(de::Error::duplicate_field("jsonrpc"))
                             }
                         }
                         "result" => {
                             let value: &RawValue = map.next_value()?;
                             let prev = result.replace(value);
                             if prev.is_some() {
-                                return Err(de::Error::duplicate_field("result"));
+                                return Err(de::Error::duplicate_field("result"))
                             }
                         }
                         "error" => {
                             let value: JsonRpcError = map.next_value()?;
                             let prev = error.replace(value);
                             if prev.is_some() {
-                                return Err(de::Error::duplicate_field("error"));
+                                return Err(de::Error::duplicate_field("error"))
                             }
                         }
                         key => {
