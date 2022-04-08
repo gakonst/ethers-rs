@@ -133,7 +133,7 @@ impl AsRef<str> for CodeFormat {
 
 impl Default for CodeFormat {
     fn default() -> Self {
-        CodeFormat::SingleFile
+        CodeFormat::StandardJsonInput
     }
 }
 
