@@ -435,10 +435,10 @@ impl<T: ArtifactOutput> Project<T> {
             SolcError::msg(format!("cannot resolve file at \"{:?}\"", target.display()))
         })?;
         let mut sources = Vec::new();
-        let (path, source) = graph.node(*target_index).unpack().clone();
+        let (path, source) = graph.node(*target_index).unpack();
         sources.push((path, source));
         sources.extend(
-            graph.all_imported_nodes(*target_index).map(|index| graph.node(index).unpack().clone()),
+            graph.all_imported_nodes(*target_index).map(|index| graph.node(index).unpack()),
         );
 
         let compiler_inputs = CompilerInput::with_sources(
