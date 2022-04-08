@@ -285,7 +285,7 @@ impl Default for Settings {
         Self {
             stop_after: None,
             optimizer: Default::default(),
-            metadata: Default::default(),
+            metadata: None,
             output_selection: OutputSelection::default_output_selection(),
             evm_version: Some(EvmVersion::default()),
             via_ir: None,
@@ -485,13 +485,6 @@ pub struct SettingsMetadata {
 impl From<BytecodeHash> for SettingsMetadata {
     fn from(hash: BytecodeHash) -> Self {
         Self { use_literal_content: None, bytecode_hash: Some(hash) }
-    }
-}
-
-impl Default for SettingsMetadata {
-    fn default() -> Self {
-        println!("ethers-solc artifact mod settings metadata default");
-        Self { use_literal_content: Some(true), bytecode_hash: Default::default() }
     }
 }
 
