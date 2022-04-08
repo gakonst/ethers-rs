@@ -367,9 +367,9 @@ impl Reporter for BasicStdoutReporter {
 
     fn on_unresolved_import(&self, import: &Path, remappings: &[Remapping]) {
         println!(
-            "Unable to resolve import: \"{}\" with remappings:\n    {}",
+            "Unable to resolve import: \"{}\" with remappings:\n        {}",
             import.display(),
-            remappings.iter().map(|r| r.to_string()).collect::<Vec<_>>().join("\n    ")
+            remappings.iter().map(|r| r.to_string()).collect::<Vec<_>>().join("\n        ")
         );
     }
 }

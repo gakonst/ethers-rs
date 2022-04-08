@@ -318,6 +318,11 @@ impl Graph {
         // contains the files and their dependencies
         let mut nodes = Vec::with_capacity(unresolved.len());
         let mut edges = Vec::with_capacity(unresolved.len());
+
+        // keep track of all unique paths that we failed to resolve to not spam the reporter with
+        // the same path
+        let mut unresolved_paths = HashSet::new();
+
         // now we need to resolve all imports for the source file and those imported from other
         // locations
         while let Some((path, node)) = unresolved.pop_front() {
@@ -334,11 +339,18 @@ impl Graph {
                         add_node(&mut unresolved, &mut index, &mut resolved_imports, import)?;
                     }
                     Err(err) => {
-                        crate::report::unresolved_import(import.data(), &paths.remappings);
-                        tracing::trace!("failed to resolve import component \"{:?}\"", err)
+                        if unresolved_paths.insert(import.data().to_path_buf()) {
+                            crate::report::unresolved_import(import.data(), &paths.remappings);
+                        }
+                        tracing::trace!(
+                            "failed to resolve import component \"{:?}\" for {:?}",
+                            err,
+                            node.path
+                        )
                     }
                 };
             }
+
             nodes.push(node);
             edges.push(resolved_imports);
         }
