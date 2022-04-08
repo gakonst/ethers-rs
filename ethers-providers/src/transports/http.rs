@@ -73,10 +73,16 @@ impl JsonRpcClient for Provider {
 
         let res = self.client.post(self.url.as_ref()).json(&payload).send().await?;
         let text = res.text().await?;
-        let res: Response<R> =
-            serde_json::from_str(&text).map_err(|err| ClientError::SerdeJson { err, text })?;
+        let response: Response<'_> = match serde_json::from_str(&text) {
+            Ok(response) => response,
+            Err(err) => return Err(ClientError::SerdeJson { err, text }),
+        };
 
-        Ok(res.data.into_result()?)
+        let raw = response.as_result().map_err(Clone::clone)?;
+        let res = serde_json::from_str(raw.get())
+            .map_err(|err| ClientError::SerdeJson { err, text: raw.to_string() })?;
+
+        Ok(res)
     }
 }
 
