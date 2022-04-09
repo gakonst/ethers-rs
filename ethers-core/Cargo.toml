@@ -10,7 +10,7 @@ repository = "https://github.com/gakonst/ethers-rs"
 keywords = ["ethereum", "web3", "celo", "ethers"]
 
 [dependencies]
-rlp = { version = "0.5.0", default-features = false }
+rlp = { version = "0.5.0", default-features = false, features = ["std"] }
 ethabi = { version = "17.0.0", default-features = false, features = ["full-serde", "rlp"] }
 arrayvec = { version = "0.7.2", default-features = false }
 rlp-derive = { version = "0.1.0", default-features = false }

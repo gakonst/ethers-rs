@@ -1,12 +1,26 @@
 //! Transaction types
 use super::{decode_to, extract_chain_id, rlp_opt, NUM_TX_FIELDS};
 use crate::{
-    types::{Address, Bytes, NameOrAddress, Signature, Transaction, H256, U256, U64},
+    types::{
+        Address, Bytes, NameOrAddress, Signature, SignatureError, Transaction, H256, U256, U64,
+    },
     utils::keccak256,
 };
 
 use rlp::{Decodable, RlpStream};
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
+
+/// An error involving a transaction request.
+#[derive(Debug, Error)]
+pub enum RequestError {
+    /// When decoding a transaction request from RLP
+    #[error(transparent)]
+    DecodingError(#[from] rlp::DecoderError),
+    /// When recovering the address from a signature
+    #[error(transparent)]
+    RecoveryError(#[from] SignatureError),
+}
 
 /// Parameters for sending a transaction
 #[derive(Clone, Default, Serialize, Deserialize, PartialEq, Eq, Debug)]
@@ -195,7 +209,7 @@ impl TransactionRequest {
 
     /// Decodes the unsigned rlp, returning the transaction request and incrementing the counter
     /// passed as we are traversing the rlp list.
-    fn decode_unsigned_rlp_base(
+    pub(crate) fn decode_unsigned_rlp_base(
         rlp: &rlp::Rlp,
         offset: &mut usize,
     ) -> Result<Self, rlp::DecoderError> {
@@ -249,12 +263,12 @@ impl TransactionRequest {
     }
 
     /// Decodes the given RLP into a transaction, attempting to decode its signature as well.
-    pub fn decode_signed_rlp(rlp: &rlp::Rlp) -> Result<(Self, Signature), rlp::DecoderError> {
+    pub fn decode_signed_rlp(rlp: &rlp::Rlp) -> Result<(Self, Signature), RequestError> {
         let mut offset = 0;
         let mut txn = Self::decode_unsigned_rlp_base(rlp, &mut offset)?;
 
         let v = rlp.at(offset)?.as_val()?;
-        // populate chainid from v
+        // populate chainid from v in case the signature follows EIP155
         txn.chain_id = extract_chain_id(v);
         offset += 1;
         let r = rlp.at(offset)?.as_val()?;
@@ -262,6 +276,8 @@ impl TransactionRequest {
         let s = rlp.at(offset)?.as_val()?;
 
         let sig = Signature { r, s, v };
+        txn.from = Some(sig.recover(txn.sighash())?);
+
         Ok((txn, sig))
     }
 }
@@ -269,7 +285,7 @@ impl TransactionRequest {
 impl Decodable for TransactionRequest {
     /// Decodes the given RLP into a transaction request, ignoring the signature if populated
     fn decode(rlp: &rlp::Rlp) -> Result<Self, rlp::DecoderError> {
-        TransactionRequest::decode_unsigned_rlp(rlp)
+        Self::decode_unsigned_rlp(rlp)
     }
 }
 
@@ -335,10 +351,11 @@ impl TransactionRequest {
 #[cfg(test)]
 #[cfg(not(feature = "celo"))]
 mod tests {
-    use crate::types::Signature;
+    use crate::types::{NameOrAddress, Signature};
     use rlp::{Decodable, Rlp};
 
     use super::{Address, TransactionRequest, U256, U64};
+    use std::str::FromStr;
 
     #[test]
     fn encode_decode_rlp() {
@@ -468,5 +485,55 @@ mod tests {
         };
         assert_eq!(expected_sig, decoded_sig);
         assert_eq!(decoded_tx.chain_id, Some(U64::from(1)));
+    }
+
+    #[test]
+    fn test_eip155_signing_decode_vitalik() {
+        // Test vectors come from http://vitalik.ca/files/eip155_testvec.txt and
+        // https://github.com/ethereum/go-ethereum/blob/master/core/types/transaction_signing_test.go
+        // Tests that the rlp decoding properly extracts the from address
+        let rlp_transactions =
+            vec!["f864808504a817c800825208943535353535353535353535353535353535353535808025a0044852b2a670ade5407e78fb2863c51de9fcb96542a07186fe3aeda6bb8a116da0044852b2a670ade5407e78fb2863c51de9fcb96542a07186fe3aeda6bb8a116d",
+                 "f864018504a817c80182a410943535353535353535353535353535353535353535018025a0489efdaa54c0f20c7adf612882df0950f5a951637e0307cdcb4c672f298b8bcaa0489efdaa54c0f20c7adf612882df0950f5a951637e0307cdcb4c672f298b8bc6",
+                 "f864028504a817c80282f618943535353535353535353535353535353535353535088025a02d7c5bef027816a800da1736444fb58a807ef4c9603b7848673f7e3a68eb14a5a02d7c5bef027816a800da1736444fb58a807ef4c9603b7848673f7e3a68eb14a5",
+                 "f865038504a817c803830148209435353535353535353535353535353535353535351b8025a02a80e1ef1d7842f27f2e6be0972bb708b9a135c38860dbe73c27c3486c34f4e0a02a80e1ef1d7842f27f2e6be0972bb708b9a135c38860dbe73c27c3486c34f4de",
+                 "f865048504a817c80483019a28943535353535353535353535353535353535353535408025a013600b294191fc92924bb3ce4b969c1e7e2bab8f4c93c3fc6d0a51733df3c063a013600b294191fc92924bb3ce4b969c1e7e2bab8f4c93c3fc6d0a51733df3c060",
+                 "f865058504a817c8058301ec309435353535353535353535353535353535353535357d8025a04eebf77a833b30520287ddd9478ff51abbdffa30aa90a8d655dba0e8a79ce0c1a04eebf77a833b30520287ddd9478ff51abbdffa30aa90a8d655dba0e8a79ce0c1",
+                 "f866068504a817c80683023e3894353535353535353535353535353535353535353581d88025a06455bf8ea6e7463a1046a0b52804526e119b4bf5136279614e0b1e8e296a4e2fa06455bf8ea6e7463a1046a0b52804526e119b4bf5136279614e0b1e8e296a4e2d",
+                 "f867078504a817c807830290409435353535353535353535353535353535353535358201578025a052f1a9b320cab38e5da8a8f97989383aab0a49165fc91c737310e4f7e9821021a052f1a9b320cab38e5da8a8f97989383aab0a49165fc91c737310e4f7e9821021",
+                 "f867088504a817c8088302e2489435353535353535353535353535353535353535358202008025a064b1702d9298fee62dfeccc57d322a463ad55ca201256d01f62b45b2e1c21c12a064b1702d9298fee62dfeccc57d322a463ad55ca201256d01f62b45b2e1c21c10",
+                 "f867098504a817c809830334509435353535353535353535353535353535353535358202d98025a052f8f61201b2b11a78d6e866abc9c3db2ae8631fa656bfe5cb53668255367afba052f8f61201b2b11a78d6e866abc9c3db2ae8631fa656bfe5cb53668255367afb"];
+        let rlp_transactions_bytes = rlp_transactions
+            .iter()
+            .map(|rlp_str| hex::decode(rlp_str).unwrap())
+            .collect::<Vec<Vec<u8>>>();
+
+        let raw_addresses = vec![
+            "0xf0f6f18bca1b28cd68e4357452947e021241e9ce",
+            "0x23ef145a395ea3fa3deb533b8a9e1b4c6c25d112",
+            "0x2e485e0c23b4c3c542628a5f672eeab0ad4888be",
+            "0x82a88539669a3fd524d669e858935de5e5410cf0",
+            "0xf9358f2538fd5ccfeb848b64a96b743fcc930554",
+            "0xa8f7aba377317440bc5b26198a363ad22af1f3a4",
+            "0xf1f571dc362a0e5b2696b8e775f8491d3e50de35",
+            "0xd37922162ab7cea97c97a87551ed02c9a38b7332",
+            "0x9bddad43f934d313c2b79ca28a432dd2b7281029",
+            "0x3c24d7329e92f84f08556ceb6df1cdb0104ca49f",
+        ];
+
+        let addresses = raw_addresses
+            .iter()
+            .map(|addr| NameOrAddress::Address(Address::from_str(*addr).unwrap()));
+
+        // decoding will do sender recovery and we don't expect any of these to error, so we should
+        // check that the address matches for each decoded transaction
+        let decoded_transactions = rlp_transactions_bytes.iter().map(|raw_tx| {
+            TransactionRequest::decode_signed_rlp(&Rlp::new(raw_tx.as_slice())).unwrap().0
+        });
+
+        for (tx, from_addr) in decoded_transactions.zip(addresses) {
+            let from_tx: NameOrAddress = tx.from.unwrap().into();
+            assert_eq!(from_tx, from_addr);
+        }
     }
 }

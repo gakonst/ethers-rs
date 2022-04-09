@@ -1,14 +1,29 @@
 use super::{decode_to, eip2930::AccessList, normalize_v, rlp_opt};
 use crate::{
-    types::{Address, Bytes, NameOrAddress, Signature, Transaction, H256, U256, U64},
+    types::{
+        Address, Bytes, NameOrAddress, Signature, SignatureError, Transaction, H256, U256, U64,
+    },
     utils::keccak256,
 };
 use rlp::{Decodable, DecoderError, RlpStream};
+use thiserror::Error;
 
 /// EIP-1559 transactions have 9 fields
 const NUM_TX_FIELDS: usize = 9;
 
 use serde::{Deserialize, Serialize};
+
+/// An error involving an EIP1559 transaction request.
+#[derive(Debug, Error)]
+pub enum Eip1559RequestError {
+    /// When decoding a transaction request from RLP
+    #[error(transparent)]
+    DecodingError(#[from] rlp::DecoderError),
+    /// When recovering the address from a signature
+    #[error(transparent)]
+    RecoveryError(#[from] SignatureError),
+}
+
 /// Parameters for sending a transaction
 #[derive(Clone, Default, Serialize, Deserialize, PartialEq, Eq, Debug)]
 pub struct Eip1559TransactionRequest {
@@ -188,38 +203,53 @@ impl Eip1559TransactionRequest {
     /// Decodes fields of the request starting at the RLP offset passed. Increments the offset for
     /// each element parsed.
     #[inline]
-    fn decode_base_rlp(&mut self, rlp: &rlp::Rlp, offset: &mut usize) -> Result<(), DecoderError> {
-        self.chain_id = Some(rlp.val_at(*offset)?);
+    pub fn decode_base_rlp(rlp: &rlp::Rlp, offset: &mut usize) -> Result<Self, DecoderError> {
+        let mut tx = Self::new();
+        tx.chain_id = Some(rlp.val_at(*offset)?);
         *offset += 1;
-        self.nonce = Some(rlp.val_at(*offset)?);
+        tx.nonce = Some(rlp.val_at(*offset)?);
         *offset += 1;
-        self.max_priority_fee_per_gas = Some(rlp.val_at(*offset)?);
+        tx.max_priority_fee_per_gas = Some(rlp.val_at(*offset)?);
         *offset += 1;
-        self.max_fee_per_gas = Some(rlp.val_at(*offset)?);
+        tx.max_fee_per_gas = Some(rlp.val_at(*offset)?);
         *offset += 1;
-        self.gas = Some(rlp.val_at(*offset)?);
+        tx.gas = Some(rlp.val_at(*offset)?);
         *offset += 1;
-        self.to = decode_to(rlp, offset)?;
-        self.value = Some(rlp.val_at(*offset)?);
+        tx.to = decode_to(rlp, offset)?;
+        tx.value = Some(rlp.val_at(*offset)?);
         *offset += 1;
         let data = rlp::Rlp::new(rlp.at(*offset)?.as_raw()).data()?;
-        self.data = match data.len() {
+        tx.data = match data.len() {
             0 => None,
             _ => Some(Bytes::from(data.to_vec())),
         };
         *offset += 1;
-        self.access_list = rlp.val_at(*offset)?;
+        tx.access_list = rlp.val_at(*offset)?;
         *offset += 1;
-        Ok(())
+        Ok(tx)
+    }
+
+    /// Decodes the given RLP into a transaction, attempting to decode its signature as well.
+    pub fn decode_signed_rlp(rlp: &rlp::Rlp) -> Result<(Self, Signature), Eip1559RequestError> {
+        let mut offset = 0;
+        let mut txn = Self::decode_base_rlp(rlp, &mut offset)?;
+
+        let v = rlp.at(offset)?.as_val()?;
+        offset += 1;
+        let r = rlp.at(offset)?.as_val()?;
+        offset += 1;
+        let s = rlp.at(offset)?.as_val()?;
+
+        let sig = Signature { r, s, v };
+        txn.from = Some(sig.recover(txn.sighash())?);
+
+        Ok((txn, sig))
     }
 }
 
 impl Decodable for Eip1559TransactionRequest {
     fn decode(rlp: &rlp::Rlp) -> Result<Self, rlp::DecoderError> {
-        let mut txn = Eip1559TransactionRequest::new();
-        let mut offset = 0;
-        txn.decode_base_rlp(rlp, &mut offset)?;
-        Ok(txn)
+        Self::decode_base_rlp(rlp, &mut 0)
     }
 }
 

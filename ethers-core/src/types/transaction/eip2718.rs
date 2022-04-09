@@ -1,6 +1,7 @@
 use super::{
-    eip1559::Eip1559TransactionRequest,
+    eip1559::{Eip1559RequestError, Eip1559TransactionRequest},
     eip2930::{AccessList, Eip2930TransactionRequest},
+    request::RequestError,
 };
 use crate::{
     types::{
@@ -8,7 +9,9 @@ use crate::{
     },
     utils::keccak256,
 };
+use rlp::Decodable;
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 
 /// The TypedTransaction enum represents all Ethereum transaction types.
 ///
@@ -34,6 +37,26 @@ pub enum TypedTransaction {
     // 0x02
     #[serde(rename = "0x02")]
     Eip1559(Eip1559TransactionRequest),
+}
+
+/// An error involving a typed transaction request.
+#[derive(Debug, Error)]
+pub enum TypedTransactionError {
+    /// When decoding a signed legacy transaction
+    #[error(transparent)]
+    LegacyError(#[from] RequestError),
+    /// When decoding a signed Eip1559 transaction
+    #[error(transparent)]
+    Eip1559Error(#[from] Eip1559RequestError),
+    /// Error decoding the transaction type from the transaction's RLP encoding
+    #[error(transparent)]
+    TypeDecodingError(#[from] rlp::DecoderError),
+    /// Missing transaction type when decoding from RLP
+    #[error("Missing transaction type when decoding")]
+    MissingTransactionType,
+    /// Missing transaction payload when decoding from RLP
+    #[error("Missing transaction payload when decoding")]
+    MissingTransactionPayload,
 }
 
 #[cfg(feature = "legacy")]
@@ -265,15 +288,51 @@ impl TypedTransaction {
             _ => None,
         }
     }
+
+    /// Hashes the transaction's data with the included signature.
+    pub fn hash(&self, signature: &Signature) -> H256 {
+        keccak256(&self.rlp_signed(signature).as_ref()).into()
+    }
+
+    /// Decodes a signed TypedTransaction from a rlp encoded byte stream
+    pub fn decode_signed(rlp: &rlp::Rlp) -> Result<(Self, Signature), TypedTransactionError> {
+        let tx_type: Option<U64> = match rlp.is_data() {
+            true => Ok(Some(rlp.data()?.into())),
+            false => Err(TypedTransactionError::MissingTransactionType),
+        }?;
+
+        let rest = rlp::Rlp::new(
+            rlp.as_raw().get(1..).ok_or(TypedTransactionError::MissingTransactionPayload)?,
+        );
+
+        match tx_type {
+            Some(x) if x == U64::from(1u64) => {
+                // EIP-2930 (0x01)
+                let decoded_request = Eip2930TransactionRequest::decode_signed_rlp(&rest)?;
+                Ok((Self::Eip2930(decoded_request.0), decoded_request.1))
+            }
+            Some(x) if x == U64::from(2u64) => {
+                // EIP-1559 (0x02)
+                let decoded_request = Eip1559TransactionRequest::decode_signed_rlp(&rest)?;
+                Ok((Self::Eip1559(decoded_request.0), decoded_request.1))
+            }
+            _ => {
+                // Legacy (0x00)
+                // use the original rlp
+                let decoded_request = TransactionRequest::decode_signed_rlp(&rest)?;
+                Ok((Self::Legacy(decoded_request.0), decoded_request.1))
+            }
+        }
+    }
 }
 
-/// Get a TypedTransaction directly from an rlp encoded byte stream
-impl rlp::Decodable for TypedTransaction {
+/// Get a TypedTransaction directly from a rlp encoded byte stream
+impl Decodable for TypedTransaction {
     fn decode(rlp: &rlp::Rlp) -> Result<Self, rlp::DecoderError> {
         let tx_type: Option<U64> = match rlp.is_data() {
-            true => Some(rlp.data().unwrap().into()),
-            false => None,
-        };
+            true => Ok(Some(rlp.data()?.into())),
+            false => Ok(None),
+        }?;
         let rest = rlp::Rlp::new(
             rlp.as_raw().get(1..).ok_or(rlp::DecoderError::Custom("no transaction payload"))?,
         );
@@ -437,6 +496,37 @@ mod tests {
                 .unwrap();
         let actual = actual_tx.sighash();
         assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn test_signed_tx_decode() {
+        let expected_tx = Eip1559TransactionRequest::new()
+            .from(Address::from_str("0x27519a1d088898e04b12f9fb9733267a5e61481e").unwrap())
+            .chain_id(1u64)
+            .nonce(0u64)
+            .max_priority_fee_per_gas(413047990155u64)
+            .max_fee_per_gas(768658734568u64)
+            .gas(184156u64)
+            .to(Address::from_str("0x0aa7420c43b8c1a7b165d216948870c8ecfe1ee1").unwrap())
+            .value(200000000000000000u64)
+            .data(
+                Bytes::from_str(
+                    "0x6ecd23060000000000000000000000000000000000000000000000000000000000000002",
+                )
+                .unwrap(),
+            );
+
+        let expected_envelope = TypedTransaction::Eip1559(expected_tx);
+        let typed_tx_hex = hex::decode("02f899018085602b94278b85b2f7a17de88302cf5c940aa7420c43b8c1a7b165d216948870c8ecfe1ee18802c68af0bb140000a46ecd23060000000000000000000000000000000000000000000000000000000000000002c080a0c5f35bf1cc6ab13053e33b1af7400c267be17218aeadcdb4ae3eefd4795967e8a04f6871044dd6368aea8deecd1c29f55b5531020f5506502e3f79ad457051bc4a").unwrap();
+
+        let tx_rlp = rlp::Rlp::new(typed_tx_hex.as_slice());
+        let (actual_tx, signature) = TypedTransaction::decode_signed(&tx_rlp).unwrap();
+        assert_eq!(expected_envelope, actual_tx);
+        assert_eq!(
+            expected_envelope.hash(&signature),
+            H256::from_str("0x206e4c71335333f8658e995cc0c4ee54395d239acb08587ab8e5409bfdd94a6f")
+                .unwrap()
+        );
     }
 
     #[cfg(not(feature = "celo"))]

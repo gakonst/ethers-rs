@@ -1,6 +1,5 @@
-use super::{decode_to, normalize_v, request::TransactionRequest};
-use crate::types::{Address, Bytes, Signature, Transaction, H256, U256, U64};
-
+use super::{extract_chain_id, normalize_v};
+use crate::types::{Address, Bytes, Signature, Transaction, TransactionRequest, H256, U256, U64};
 use rlp::{Decodable, DecoderError, RlpStream};
 use rlp_derive::{RlpDecodable, RlpDecodableWrapper, RlpEncodable, RlpEncodableWrapper};
 use serde::{Deserialize, Serialize};
@@ -104,42 +103,37 @@ impl Eip2930TransactionRequest {
         rlp.out().freeze().into()
     }
 
-    /// Decodes fields based on the RLP offset passed
-    fn decode_base_rlp(&mut self, rlp: &rlp::Rlp, offset: &mut usize) -> Result<(), DecoderError> {
-        self.tx.chain_id = Some(rlp.val_at(*offset)?);
-        *offset += 1;
-        self.tx.nonce = Some(rlp.val_at(*offset)?);
-        *offset += 1;
-        self.tx.gas_price = Some(rlp.val_at(*offset)?);
-        *offset += 1;
-        self.tx.gas = Some(rlp.val_at(*offset)?);
+    /// Decodes fields based on the RLP offset passed.
+    fn decode_base_rlp(rlp: &rlp::Rlp, offset: &mut usize) -> Result<Self, DecoderError> {
+        let request = TransactionRequest::decode_unsigned_rlp_base(rlp, offset)?;
+        let access_list = rlp.val_at(*offset)?;
         *offset += 1;
 
-        self.tx.gas = Some(rlp.val_at(*offset)?);
-        *offset += 1;
-        self.tx.to = decode_to(rlp, offset)?;
-        self.tx.value = Some(rlp.val_at(*offset)?);
-        *offset += 1;
-        let data = rlp::Rlp::new(rlp.at(*offset)?.as_raw()).data()?;
-        self.tx.data = match data.len() {
-            0 => None,
-            _ => Some(Bytes::from(data.to_vec())),
-        };
-        *offset += 1;
-        self.access_list = rlp.val_at(*offset)?;
-        *offset += 1;
+        Ok(Self { tx: request, access_list })
+    }
 
-        Ok(())
+    /// Decodes the given RLP into a transaction, attempting to decode its signature as well.
+    pub fn decode_signed_rlp(rlp: &rlp::Rlp) -> Result<(Self, Signature), rlp::DecoderError> {
+        let mut offset = 0;
+        let mut txn = Self::decode_base_rlp(rlp, &mut offset)?;
+
+        let v = rlp.at(offset)?.as_val()?;
+        // populate chainid from v
+        txn.tx.chain_id = extract_chain_id(v);
+        offset += 1;
+        let r = rlp.at(offset)?.as_val()?;
+        offset += 1;
+        let s = rlp.at(offset)?.as_val()?;
+
+        let sig = Signature { r, s, v };
+        Ok((txn, sig))
     }
 }
 
 /// Get a Eip2930TransactionRequest from a rlp encoded byte stream
 impl Decodable for Eip2930TransactionRequest {
     fn decode(rlp: &rlp::Rlp) -> Result<Self, rlp::DecoderError> {
-        let mut new_tx = Self::new(TransactionRequest::new(), AccessList::default());
-        let mut offset = 0;
-        new_tx.decode_base_rlp(rlp, &mut offset)?;
-        Ok(new_tx)
+        Self::decode_base_rlp(rlp, &mut 0)
     }
 }
 

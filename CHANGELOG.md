@@ -6,6 +6,7 @@
 
 - Pass compilation time as additional argument to `Reporter::on_solc_success` [1098](https://github.com/gakonst/ethers-rs/pull/1098)
 - Fix aws signer bug which maps un-normalized signature to error if no normalization occurs (in `aws::utils::decode_signature`)
+- Implement signed transaction RLP decoding [#1096](https://github.com/gakonst/ethers-rs/pull/1096)
 - `Transaction::from` will default to `Address::zero()`. Add `recover_from` and
   `recover_from_mut` methods for recovering the sender from signature, and also
   setting the same on tx [1075](https://github.com/gakonst/ethers-rs/pull/1075).

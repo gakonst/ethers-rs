@@ -330,13 +330,16 @@ impl Transaction {
     }
 }
 
-/// Get a TransactionReceipt directly from an rlp encoded byte stream
+/// Get a Transaction directly from a rlp encoded byte stream
 impl Decodable for Transaction {
     fn decode(rlp: &rlp::Rlp) -> Result<Self, DecoderError> {
         let mut txn = Self::default();
         // we can get the type from the first value
         let mut offset = 0;
-        txn.transaction_type = Some(rlp.data().unwrap().into());
+        txn.transaction_type = match rlp.is_data() {
+            true => Ok(Some(rlp.data()?.into())),
+            false => Ok(None),
+        }?;
         let rest = rlp::Rlp::new(
             rlp.as_raw().get(1..).ok_or(DecoderError::Custom("no transaction payload"))?,
         );
