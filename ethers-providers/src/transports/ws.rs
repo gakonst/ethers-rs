@@ -1,6 +1,6 @@
 use crate::{
     provider::ProviderError,
-    transports::common::{JsonRpcError, Notification, Request, Response},
+    transports::common::{JsonRpcError, Request},
     JsonRpcClient, PubsubClient,
 };
 use ethers_core::types::U256;
@@ -11,7 +11,11 @@ use futures_util::{
     sink::{Sink, SinkExt},
     stream::{Fuse, Stream, StreamExt},
 };
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{
+    de::{DeserializeOwned, Error},
+    Serialize,
+};
+use serde_json::value::RawValue;
 use std::{
     collections::{btree_map::Entry, BTreeMap},
     fmt::{self, Debug},
@@ -21,6 +25,8 @@ use std::{
     },
 };
 use thiserror::Error;
+
+use super::common::{Notification, Response};
 
 if_wasm! {
     use wasm_bindgen::prelude::*;
@@ -65,8 +71,8 @@ if_not_wasm! {
     use tungstenite::client::IntoClientRequest;
 }
 
-type Pending = oneshot::Sender<Result<serde_json::Value, JsonRpcError>>;
-type Subscription = mpsc::UnboundedSender<serde_json::Value>;
+type Pending = oneshot::Sender<Result<Box<RawValue>, JsonRpcError>>;
+type Subscription = mpsc::UnboundedSender<Box<RawValue>>;
 
 /// Instructions for the `WsServer`.
 enum Instruction {
@@ -76,13 +82,6 @@ enum Instruction {
     Subscribe { id: U256, sink: Subscription },
     /// Cancel an existing subscription
     Unsubscribe { id: U256 },
-}
-
-#[derive(Debug, serde::Deserialize)]
-#[serde(untagged)]
-enum Incoming {
-    Notification(Notification<serde_json::Value>),
-    Response(Response<serde_json::Value>),
 }
 
 /// A JSON-RPC Client over Websockets.
@@ -184,19 +183,16 @@ impl JsonRpcClient for Ws {
         // send the data
         self.send(payload)?;
 
-        // wait for the response
-        let res = receiver.await?;
-
-        // in case the request itself has any errors
-        let res = res?;
+        // wait for the response (the request itself may have errors as well)
+        let res = receiver.await??;
 
         // parse it
-        Ok(serde_json::from_value(res)?)
+        Ok(serde_json::from_str(res.get())?)
     }
 }
 
 impl PubsubClient for Ws {
-    type NotificationStream = mpsc::UnboundedReceiver<serde_json::Value>;
+    type NotificationStream = mpsc::UnboundedReceiver<Box<RawValue>>;
 
     fn subscribe<T: Into<U256>>(&self, id: T) -> Result<Self::NotificationStream, ClientError> {
         let (sink, stream) = mpsc::unbounded();
@@ -324,30 +320,35 @@ where
     }
 
     async fn handle_text(&mut self, inner: String) -> Result<(), ClientError> {
-        match serde_json::from_str::<Incoming>(&inner) {
-            Err(err) => return Err(ClientError::JsonError(err)),
+        if let Ok(response) = serde_json::from_str::<Response<'_>>(&inner) {
+            if let Some(request) = self.pending.remove(&response.id()) {
+                if !request.is_canceled() {
+                    request.send(response.into_result()).map_err(to_client_error)?;
+                }
+            }
 
-            Ok(Incoming::Response(resp)) => {
-                if let Some(request) = self.pending.remove(&resp.id) {
-                    if !request.is_canceled() {
-                        request.send(resp.data.into_result()).map_err(to_client_error)?;
-                    }
-                }
-            }
-            Ok(Incoming::Notification(notification)) => {
-                let id = notification.params.subscription;
-                if let Entry::Occupied(stream) = self.subscriptions.entry(id) {
-                    if let Err(err) = stream.get().unbounded_send(notification.params.result) {
-                        if err.is_disconnected() {
-                            // subscription channel was closed on the receiver end
-                            stream.remove();
-                        }
-                        return Err(to_client_error(err))
-                    }
-                }
-            }
+            return Ok(())
         }
-        Ok(())
+
+        if let Ok(notification) = serde_json::from_str::<Notification<'_>>(&inner) {
+            let id = notification.params.subscription;
+            if let Entry::Occupied(stream) = self.subscriptions.entry(id) {
+                if let Err(err) = stream.get().unbounded_send(notification.params.result.to_owned())
+                {
+                    if err.is_disconnected() {
+                        // subscription channel was closed on the receiver end
+                        stream.remove();
+                    }
+                    return Err(to_client_error(err))
+                }
+            }
+
+            return Ok(())
+        }
+
+        Err(ClientError::JsonError(serde_json::Error::custom(
+            "response is neither a valid jsonrpc response nor notification",
+        )))
     }
 
     #[cfg(target_arch = "wasm32")]
@@ -516,7 +517,7 @@ mod tests {
         let mut blocks = Vec::new();
         for _ in 0..3 {
             let item = stream.next().await.unwrap();
-            let block = serde_json::from_value::<Block<TxHash>>(item).unwrap();
+            let block: Block<TxHash> = serde_json::from_str(item.get()).unwrap();
             blocks.push(block.number.unwrap_or_default().as_u64());
         }
 

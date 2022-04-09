@@ -5,7 +5,7 @@ use ethers_core::types::{TxHash, U256};
 use futures_util::stream::Stream;
 use pin_project::{pin_project, pinned_drop};
 use serde::de::DeserializeOwned;
-use serde_json::Value;
+use serde_json::value::RawValue;
 use std::{
     marker::PhantomData,
     pin::Pin,
@@ -15,7 +15,7 @@ use std::{
 /// A transport implementation supporting pub sub subscriptions.
 pub trait PubsubClient: JsonRpcClient {
     /// The type of stream this transport returns
-    type NotificationStream: futures_core::Stream<Item = Value> + Send + Unpin;
+    type NotificationStream: futures_core::Stream<Item = Box<RawValue>> + Send + Unpin;
 
     /// Add a subscription to this transport
     fn subscribe<T: Into<U256>>(&self, id: T) -> Result<Self::NotificationStream, Self::Error>;
@@ -76,7 +76,7 @@ where
     fn poll_next(self: Pin<&mut Self>, ctx: &mut Context) -> Poll<Option<Self::Item>> {
         let this = self.project();
         match futures_util::ready!(this.rx.poll_next(ctx)) {
-            Some(item) => match serde_json::from_value(item) {
+            Some(item) => match serde_json::from_str(item.get()) {
                 Ok(res) => Poll::Ready(Some(res)),
                 _ => Poll::Pending,
             },
