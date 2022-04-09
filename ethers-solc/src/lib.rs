@@ -50,7 +50,7 @@ pub mod project_util;
 /// Represents a project workspace and handles `solc` compiling of all contracts in that workspace.
 #[derive(Debug)]
 pub struct Project<T: ArtifactOutput = ConfigurableArtifacts> {
-    /// The layout of the
+    /// The layout of the project
     pub paths: ProjectPathsConfig,
     /// Where to find solc
     pub solc: Solc,
@@ -425,6 +425,33 @@ impl<T: ArtifactOutput> Project<T> {
     /// only if it is found at the beginning of the file.
     pub fn flatten(&self, target: &Path) -> Result<String> {
         self.paths.flatten(target)
+    }
+
+    /// Returns standard-json-input to compile the target contract
+    pub fn standard_json_input(&self, target: &Path) -> Result<CompilerInput> {
+        tracing::trace!("Building standard-json-input");
+        let graph = Graph::resolve(&self.paths)?;
+        let target_index = graph.files().get(target).ok_or_else(|| {
+            SolcError::msg(format!("cannot resolve file at \"{:?}\"", target.display()))
+        })?;
+        let mut sources = Vec::new();
+        let (path, source) = graph.node(*target_index).unpack();
+        sources.push((path, source));
+        sources.extend(
+            graph.all_imported_nodes(*target_index).map(|index| graph.node(index).unpack()),
+        );
+
+        let compiler_inputs = CompilerInput::with_sources(
+            sources.into_iter().map(|(s, p)| (s.clone(), p.clone())).collect(),
+        );
+        let compiler_input = compiler_inputs
+            .first()
+            .ok_or_else(|| SolcError::msg("cannot get the compiler input"))?
+            .clone()
+            .settings(self.solc_config.settings.clone())
+            .with_remappings(self.paths.remappings.clone());
+
+        Ok(compiler_input)
     }
 }
 

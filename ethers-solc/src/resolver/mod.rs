@@ -206,6 +206,11 @@ impl Graph {
         self.edges.imported_nodes(from)
     }
 
+    /// Returns an iterator that yields all imports of a node and all their imports
+    pub fn all_imported_nodes(&self, from: usize) -> impl Iterator<Item = usize> + '_ {
+        self.edges.all_imported_nodes(from)
+    }
+
     /// Returns `true` if the given node has any outgoing edges.
     pub(crate) fn has_outgoing_edges(&self, index: usize) -> bool {
         !self.edges.edges[index].is_empty()
@@ -781,6 +786,10 @@ impl Node {
 
     pub fn license(&self) -> &Option<SolDataUnit<String>> {
         &self.data.license
+    }
+
+    pub fn unpack(&self) -> (&PathBuf, &Source) {
+        (&self.path, &self.source)
     }
 }
 
