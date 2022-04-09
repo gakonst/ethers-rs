@@ -107,6 +107,7 @@
   some files
 - Add support for library linking and make `Bytecode`'s `object` filed an
   `enum BytecodeObject` [#656](https://github.com/gakonst/ethers-rs/pull/656).
+- Nit: remove accidentally doubled double-quotes in an error message
 
 ### 0.6.0
 
