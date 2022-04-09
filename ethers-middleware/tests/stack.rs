@@ -23,7 +23,7 @@ mod tests {
         let escalator = GeometricGasPrice::new(1.125, 60u64, None::<u64>);
         let provider = GasEscalatorMiddleware::new(provider, escalator, Frequency::PerBlock);
         let provider = GasOracleMiddleware::new(provider, gas_oracle);
-        let provider = SignerMiddleware::new(provider, signer).await;
+        let provider = SignerMiddleware::new(provider, signer);
         let provider = NonceManagerMiddleware::new(provider, address);
 
         // push a response
@@ -73,7 +73,7 @@ mod tests {
 
         // The signing middleware signs txs
         use std::sync::Arc;
-        let provider = Arc::new(SignerMiddleware::new(provider, signer).await);
+        let provider = Arc::new(SignerMiddleware::new(provider, signer));
 
         // The nonce manager middleware MUST be above the signing middleware so that it overrides
         // the nonce and the signer does not make any eth_getTransaction count calls

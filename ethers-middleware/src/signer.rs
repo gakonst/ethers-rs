@@ -30,7 +30,7 @@ use thiserror::Error;
 ///     let wallet: LocalWallet = "380eb0f3d505f087e438eca80bc4df9a7faa24f868e69fc0440261a0fc0567dc"
 ///         .parse()?;
 ///
-///     let mut client = SignerMiddleware::new(provider, wallet).await;
+///     let mut client = SignerMiddleware::new(provider, wallet);
 ///
 ///     // You can sign messages with the key
 ///     let signed_msg = client.sign(b"hello".to_vec(), &client.address()).await?;
@@ -112,7 +112,7 @@ where
     ///
     /// [`Middleware`] ethers_providers::Middleware
     /// [`Signer`] ethers_signers::Signer
-    pub async fn new(inner: M, signer: S) -> Self {
+    pub fn new(inner: M, signer: S) -> Self {
         let address = signer.address();
         SignerMiddleware { inner, signer, address }
     }
@@ -182,7 +182,10 @@ where
     ///
     /// [`Middleware`] ethers_providers::Middleware
     /// [`Signer`] ethers_signers::Signer
-    pub async fn new_with_provider_chain(inner: M, signer: S) -> Result<Self, SignerMiddlewareError<M, S>> {
+    pub async fn new_with_provider_chain(
+        inner: M,
+        signer: S,
+    ) -> Result<Self, SignerMiddlewareError<M, S>> {
         let address = signer.address();
         let chain_id =
             inner.get_chainid().await.map_err(|e| SignerMiddlewareError::MiddlewareError(e))?;
@@ -369,7 +372,7 @@ mod tests {
             .parse::<LocalWallet>()
             .unwrap()
             .with_chain_id(chain_id);
-        let client = SignerMiddleware::new(provider, key).await;
+        let client = SignerMiddleware::new(provider, key);
 
         let tx = client.sign_transaction(tx).await.unwrap();
 
@@ -396,7 +399,7 @@ mod tests {
 
         // combine the provider and wallet and test that the chain id is the same for both the
         // signer returned by the middleware and through the middleware itself.
-        let client = SignerMiddleware::new(provider, key).await;
+        let client = SignerMiddleware::new(provider, key);
         let middleware_chainid = client.get_chainid().await.unwrap();
         assert_eq!(chain_id, middleware_chainid);
 
@@ -418,7 +421,7 @@ mod tests {
 
         // combine the provider and wallet and test that the chain id is the same for both the
         // signer returned by the middleware and through the middleware itself.
-        let client = SignerMiddleware::new(provider, key).await;
+        let client = SignerMiddleware::new(provider, key);
         let middleware_chainid = client.get_chainid().await.unwrap();
         assert_eq!(chain_id, middleware_chainid);
 
@@ -440,7 +443,7 @@ mod tests {
             )
             .await
             .unwrap();
-        let client = SignerMiddleware::new(provider, key).await;
+        let client = SignerMiddleware::new(provider, key);
 
         let request = TransactionRequest::new();
 

@@ -36,7 +36,7 @@ async fn send_eth() {
         .interval(Duration::from_millis(10u64));
     let chain_id = provider.get_chainid().await.unwrap().as_u64();
     let wallet = wallet.with_chain_id(chain_id);
-    let provider = SignerMiddleware::new(provider, wallet).await;
+    let provider = SignerMiddleware::new(provider, wallet);
 
     // craft the transaction
     let tx = TransactionRequest::new().to(wallet2.address()).value(10000).chain_id(chain_id);
@@ -58,7 +58,7 @@ async fn pending_txs_with_confirmations_testnet() {
     let chain_id = provider.get_chainid().await.unwrap();
     let wallet = WALLETS.next().with_chain_id(chain_id.as_u64());
     let address = wallet.address();
-    let provider = SignerMiddleware::new(provider, wallet).await;
+    let provider = SignerMiddleware::new(provider, wallet);
     generic_pending_txs_test(provider, address).await;
 }
 
@@ -73,7 +73,7 @@ async fn websocket_pending_txs_with_confirmations_testnet() {
     let chain_id = provider.get_chainid().await.unwrap();
     let wallet = WALLETS.next().with_chain_id(chain_id.as_u64());
     let address = wallet.address();
-    let provider = SignerMiddleware::new(provider, wallet).await;
+    let provider = SignerMiddleware::new(provider, wallet);
     generic_pending_txs_test(provider, address).await;
 }
 
@@ -96,7 +96,7 @@ async fn typed_txs() {
     let wallet = WALLETS.next().with_chain_id(chain_id.as_u64());
     let address = wallet.address();
     // our wallet
-    let provider = SignerMiddleware::new(provider, wallet).await;
+    let provider = SignerMiddleware::new(provider, wallet);
 
     // Uncomment the below and run this test to re-fund the wallets if they get drained.
     // Would be ideal if we'd have a way to do this automatically, but this should be
@@ -145,7 +145,7 @@ async fn test_send_transaction() {
         .parse::<LocalWallet>()
         .unwrap()
         .with_chain_id(chain_id);
-    let client = SignerMiddleware::new(provider, wallet).await;
+    let client = SignerMiddleware::new(provider, wallet);
 
     let balance_before = client.get_balance(client.address(), None).await.unwrap();
     let tx = TransactionRequest::pay(client.address(), 100);
@@ -168,7 +168,7 @@ async fn send_transaction_handles_tx_from_field() {
 
     // connect to the network
     let provider = Provider::try_from(ganache.endpoint()).unwrap();
-    let provider = SignerMiddleware::new(provider, signer.clone()).await;
+    let provider = SignerMiddleware::new(provider, signer.clone());
 
     // sending a TransactionRequest with a from field of None should result
     // in a transaction from the signer address
@@ -231,7 +231,7 @@ async fn deploy_and_call_contract() {
         .parse::<LocalWallet>()
         .unwrap()
         .with_chain_id(chain_id);
-    let client = SignerMiddleware::new(provider, wallet).await;
+    let client = SignerMiddleware::new(provider, wallet);
     let client = Arc::new(client);
 
     let factory = ContractFactory::new(abi, bytecode, client);
@@ -268,7 +268,7 @@ impl TestWallets {
             .parse::<LocalWallet>()
             .unwrap()
             .with_chain_id(provider.get_chainid().await.unwrap().as_u64());
-        let provider = SignerMiddleware::new(provider, signer).await;
+        let provider = SignerMiddleware::new(provider, signer);
         let addr = provider.address();
 
         let mut nonce = provider.get_transaction_count(addr, None).await.unwrap();

@@ -14,7 +14,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Provider::<Http>::try_from(ganache.endpoint())?.interval(Duration::from_millis(10u64));
     let wallet: LocalWallet = ganache.keys()[0].clone().into();
 
-    let client = SignerMiddleware::new(provider, wallet).await;
+    let client = SignerMiddleware::new(provider, wallet);
     let client = Arc::new(client);
 
     let contract = VerifierContract::new(Address::zero(), client);

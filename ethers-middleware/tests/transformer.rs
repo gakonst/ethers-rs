@@ -37,7 +37,7 @@ async fn ds_proxy_transformer() {
         .interval(Duration::from_millis(10u64));
     let chain_id = provider.get_chainid().await.unwrap().as_u64();
     let wallet = wallet.with_chain_id(chain_id);
-    let signer_middleware = SignerMiddleware::new(provider.clone(), wallet).await;
+    let signer_middleware = SignerMiddleware::new(provider.clone(), wallet);
     let wallet_addr = signer_middleware.address();
     let provider = Arc::new(signer_middleware.clone());
 
@@ -96,7 +96,7 @@ async fn ds_proxy_code() {
         .interval(Duration::from_millis(10u64));
     let chain_id = provider.get_chainid().await.unwrap().as_u64();
     let wallet = wallet.with_chain_id(chain_id);
-    let signer_middleware = SignerMiddleware::new(provider.clone(), wallet).await;
+    let signer_middleware = SignerMiddleware::new(provider.clone(), wallet);
     let wallet_addr = signer_middleware.address();
     let provider = Arc::new(signer_middleware.clone());
 

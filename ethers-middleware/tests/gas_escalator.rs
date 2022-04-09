@@ -18,7 +18,7 @@ async fn gas_escalator_live() {
         .parse::<LocalWallet>()
         .unwrap();
     let address = wallet.address();
-    let provider = SignerMiddleware::new(provider, wallet).await;
+    let provider = SignerMiddleware::new(provider, wallet);
 
     let escalator = GeometricGasPrice::new(5.0, 10u64, Some(2_000_000_000_000u64));
 

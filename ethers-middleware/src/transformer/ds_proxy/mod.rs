@@ -37,7 +37,7 @@ const DS_PROXY_EXECUTE_CODE: &str =
 /// let wallet: LocalWallet = "380eb0f3d505f087e438eca80bc4df9a7faa24f868e69fc0440261a0fc0567dc"
 ///     .parse()?;
 /// let provider = Provider::<Http>::try_from("http://localhost:8545")?;
-/// let client = SignerMiddleware::new(provider, wallet).await;
+/// let client = SignerMiddleware::new(provider, wallet);
 ///
 /// # let ds_proxy_addr = Address::random();
 /// // instantiate DsProxy by providing its address.

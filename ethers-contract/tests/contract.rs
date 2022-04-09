@@ -579,7 +579,7 @@ mod eth_tests {
             .expect("failed to instantiate provider from ganache endpoint")
             .interval(Duration::from_millis(10u64));
 
-        let client = SignerMiddleware::new(provider, wallet.clone()).await.unwrap();
+        let client = SignerMiddleware::new(provider, wallet.clone());
         let client = Arc::new(client);
 
         let factory = ContractFactory::new(abi.clone(), bytecode.clone(), client.clone());
@@ -597,8 +597,8 @@ mod eth_tests {
         let contract = DeriveEip712Test::new(addr, client.clone());
 
         let foo_bar = FooBar {
-            foo: I256::from(10),
-            bar: U256::from(20),
+            foo: I256::from(10u64),
+            bar: U256::from(20u64),
             fizz: b"fizz".into(),
             buzz: keccak256("buzz"),
             far: String::from("space"),

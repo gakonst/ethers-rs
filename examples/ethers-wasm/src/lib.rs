@@ -46,7 +46,7 @@ pub async fn deploy() {
 
     let endpoint = "ws://127.0.0.1:8545";
     let provider = Provider::new(Ws::connect(endpoint).await.unwrap());
-    let client = Arc::new(SignerMiddleware::new(provider, wallet).await);
+    let client = Arc::new(SignerMiddleware::new(provider, wallet));
     log!("Provider connected to `{}`", endpoint);
 
     let bytecode = hex::decode(SIMPLECONTRACT_BIN).unwrap();
