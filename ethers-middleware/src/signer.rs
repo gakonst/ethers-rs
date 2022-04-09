@@ -108,17 +108,13 @@ where
 {
     /// Creates a new client from the provider and signer.
     /// Sets the address of this middleware to the address of the signer.
-    /// Sets the chain id of the signer to the chain id of the inner [`Middleware`] passed in,
-    /// using the [`Signer`]'s implementation of with_chain_id.
+    /// The chain_id of the signer will not
     ///
     /// [`Middleware`] ethers_providers::Middleware
     /// [`Signer`] ethers_signers::Signer
-    pub async fn new(inner: M, signer: S) -> Result<Self, SignerMiddlewareError<M, S>> {
+    pub async fn new(inner: M, signer: S) -> Self {
         let address = signer.address();
-        let chain_id =
-            inner.get_chainid().await.map_err(|e| SignerMiddlewareError::MiddlewareError(e))?;
-        let signer = signer.with_chain_id(chain_id.as_u64());
-        Ok(SignerMiddleware { inner, signer, address })
+        SignerMiddleware { inner, signer, address }
     }
 
     /// Signs and returns the RLP encoding of the signed transaction.
@@ -177,6 +173,21 @@ where
         this.address = signer.address();
         this.signer = signer;
         Ok(this)
+    }
+
+    /// Creates a new client from the provider and signer.
+    /// Sets the address of this middleware to the address of the signer.
+    /// Sets the chain id of the signer to the chain id of the inner [`Middleware`] passed in,
+    /// using the [`Signer`]'s implementation of with_chain_id.
+    ///
+    /// [`Middleware`] ethers_providers::Middleware
+    /// [`Signer`] ethers_signers::Signer
+    pub async fn new_with_provider_chain(inner: M, signer: S) -> Result<Self, SignerMiddlewareError<M, S>> {
+        let address = signer.address();
+        let chain_id =
+            inner.get_chainid().await.map_err(|e| SignerMiddlewareError::MiddlewareError(e))?;
+        let signer = signer.with_chain_id(chain_id.as_u64());
+        Ok(SignerMiddleware { inner, signer, address })
     }
 
     fn set_tx_from_if_none(&self, tx: &TypedTransaction) -> TypedTransaction {
