@@ -69,7 +69,6 @@ mod eth_tests {
         assert_eq!(last_sender.clone().call().await.unwrap(), addr2);
         assert_eq!(get_value.clone().call().await.unwrap(), "hi");
         assert_eq!(tx.input, calldata);
-        assert_eq!(tx_receipt.gas_used.unwrap(), gas_estimate);
 
         // we can also call contract methods at other addresses with the `at` call
         // (useful when interacting with multiple ERC20s for example)
@@ -579,7 +578,7 @@ mod eth_tests {
             .expect("failed to instantiate provider from ganache endpoint")
             .interval(Duration::from_millis(10u64));
 
-        let client = SignerMiddleware::new(provider, wallet.clone());
+        let client = SignerMiddleware::new_with_provider_chain(provider, wallet.clone()).await.unwrap();
         let client = Arc::new(client);
 
         let factory = ContractFactory::new(abi.clone(), bytecode.clone(), client.clone());
