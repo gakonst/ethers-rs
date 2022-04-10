@@ -22,40 +22,40 @@ use thiserror::Error;
 /// use std::convert::TryFrom;
 ///
 /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
-///     let provider = Provider::<Http>::try_from("http://localhost:8545")
-///         .expect("could not instantiate HTTP Provider");
+/// let provider = Provider::<Http>::try_from("http://localhost:8545")
+///     .expect("could not instantiate HTTP Provider");
 ///
-///     // Transactions will be signed with the private key below and will be broadcast
-///     // via the eth_sendRawTransaction API)
-///     let wallet: LocalWallet = "380eb0f3d505f087e438eca80bc4df9a7faa24f868e69fc0440261a0fc0567dc"
-///         .parse()?;
+/// // Transactions will be signed with the private key below and will be broadcast
+/// // via the eth_sendRawTransaction API)
+/// let wallet: LocalWallet = "380eb0f3d505f087e438eca80bc4df9a7faa24f868e69fc0440261a0fc0567dc"
+///     .parse()?;
 ///
-///     let mut client = SignerMiddleware::new(provider, wallet);
+/// let mut client = SignerMiddleware::new(provider, wallet);
 ///
-///     // You can sign messages with the key
-///     let signed_msg = client.sign(b"hello".to_vec(), &client.address()).await?;
+/// // You can sign messages with the key
+/// let signed_msg = client.sign(b"hello".to_vec(), &client.address()).await?;
 ///
-///     // ...and sign transactions
-///     let tx = TransactionRequest::pay("vitalik.eth", 100);
-///     let pending_tx = client.send_transaction(tx, None).await?;
+/// // ...and sign transactions
+/// let tx = TransactionRequest::pay("vitalik.eth", 100);
+/// let pending_tx = client.send_transaction(tx, None).await?;
 ///
-///     // You can `await` on the pending transaction to get the receipt with a pre-specified
-///     // number of confirmations
-///     let receipt = pending_tx.confirmations(6).await?;
+/// // You can `await` on the pending transaction to get the receipt with a pre-specified
+/// // number of confirmations
+/// let receipt = pending_tx.confirmations(6).await?;
 ///
-///     // You can connect with other wallets at runtime via the `with_signer` function
-///     let wallet2: LocalWallet = "cd8c407233c0560f6de24bb2dc60a8b02335c959a1a17f749ce6c1ccf63d74a7"
-///         .parse()?;
+/// // You can connect with other wallets at runtime via the `with_signer` function
+/// let wallet2: LocalWallet = "cd8c407233c0560f6de24bb2dc60a8b02335c959a1a17f749ce6c1ccf63d74a7"
+///     .parse()?;
 ///
-///     let signed_msg2 = client.with_signer(wallet2).sign(b"hello".to_vec(), &client.address()).await?;
+/// let signed_msg2 = client.with_signer(wallet2).sign(b"hello".to_vec(), &client.address()).await?;
 ///
-///     // This call will be made with `wallet2` since `with_signer` takes a mutable reference.
-///     let tx2 = TransactionRequest::new()
-///         .to("0xd8da6bf26964af9d7eed9e03e53415d37aa96045".parse::<Address>()?)
-///         .value(200);
-///     let tx_hash2 = client.send_transaction(tx2, None).await?;
+/// // This call will be made with `wallet2` since `with_signer` takes a mutable reference.
+/// let tx2 = TransactionRequest::new()
+///     .to("0xd8da6bf26964af9d7eed9e03e53415d37aa96045".parse::<Address>()?)
+///     .value(200);
+/// let tx_hash2 = client.send_transaction(tx2, None).await?;
 ///
-/// #   Ok(())
+/// # Ok(())
 /// # }
 /// ```
 ///
@@ -108,7 +108,7 @@ where
 {
     /// Creates a new client from the provider and signer.
     /// Sets the address of this middleware to the address of the signer.
-    /// The chain_id of the signer will not be set to the chain id of the provider. if the signer
+    /// The chain_id of the signer will not be set to the chain id of the provider. If the signer
     /// passed here is initialized with a different chain id, then the client may throw errors, or
     /// methods like `sign_transaction` may error.
     /// To automatically set the signer's chain id, see `new_with_provider_chain`.
