@@ -432,7 +432,7 @@ impl<T: ArtifactOutput> Project<T> {
         tracing::trace!("Building standard-json-input");
         let graph = Graph::resolve(&self.paths)?;
         let target_index = graph.files().get(target).ok_or_else(|| {
-            SolcError::msg(format!("cannot resolve file at \"{:?}\"", target.display()))
+            SolcError::msg(format!("cannot resolve file at {:?}", target.display()))
         })?;
         let mut sources = Vec::new();
         let (path, source) = graph.node(*target_index).unpack();

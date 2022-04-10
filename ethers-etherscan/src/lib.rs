@@ -14,7 +14,7 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use errors::EtherscanError;
 use ethers_core::{
     abi::{Abi, Address},
-    types::Chain,
+    types::{Chain, H256},
 };
 
 pub mod account;
@@ -247,17 +247,17 @@ impl Client {
 
     /// Return the URL for the given address
     pub fn address_url(&self, address: Address) -> String {
-        format!("{}address/{}", self.etherscan_url, address)
+        format!("{}address/{:?}", self.etherscan_url, address)
     }
 
     /// Return the URL for the given transaction hash
-    pub fn transaction_url(&self, tx_hash: impl AsRef<str>) -> String {
-        format!("{}tx/{}", self.etherscan_url, tx_hash.as_ref())
+    pub fn transaction_url(&self, tx_hash: H256) -> String {
+        format!("{}tx/{:?}", self.etherscan_url, tx_hash)
     }
 
     /// Return the URL for the given token hash
-    pub fn token_url(&self, token_hash: impl AsRef<str>) -> String {
-        format!("{}token/{}", self.etherscan_url, token_hash.as_ref())
+    pub fn token_url(&self, token_hash: Address) -> String {
+        format!("{}token/{:?}", self.etherscan_url, token_hash)
     }
 
     /// Execute an API POST request with a form
@@ -347,7 +347,7 @@ mod tests {
         time::{Duration, SystemTime},
     };
 
-    use ethers_core::types::{Address, Chain};
+    use ethers_core::types::{Address, Chain, H256};
 
     use crate::{Client, EtherscanError};
 
@@ -372,23 +372,23 @@ mod tests {
         let etherscan = Client::new_from_env(Chain::Mainnet).unwrap();
         let addr: Address = Address::zero();
         let address_url: String = etherscan.address_url(addr);
-        assert_eq!(address_url, format!("https://etherscan.io/address/{}", addr));
+        assert_eq!(address_url, format!("https://etherscan.io/address/{:?}", addr));
     }
 
     #[test]
     fn stringifies_transaction_url() {
         let etherscan = Client::new_from_env(Chain::Mainnet).unwrap();
-        let tx_hash = "0x0";
+        let tx_hash = H256::zero();
         let tx_url: String = etherscan.transaction_url(tx_hash);
-        assert_eq!(tx_url, format!("https://etherscan.io/tx/{}", tx_hash));
+        assert_eq!(tx_url, format!("https://etherscan.io/tx/{:?}", tx_hash));
     }
 
     #[test]
     fn stringifies_token_url() {
         let etherscan = Client::new_from_env(Chain::Mainnet).unwrap();
-        let token_hash = "0x0";
+        let token_hash = Address::zero();
         let token_url: String = etherscan.token_url(token_hash);
-        assert_eq!(token_url, format!("https://etherscan.io/token/{}", token_hash));
+        assert_eq!(token_url, format!("https://etherscan.io/token/{:?}", token_hash));
     }
 
     #[test]
