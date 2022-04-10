@@ -108,7 +108,10 @@ where
 {
     /// Creates a new client from the provider and signer.
     /// Sets the address of this middleware to the address of the signer.
-    /// The chain_id of the signer will not
+    /// The chain_id of the signer will not be set to the chain id of the provider. if the signer
+    /// passed here is initialized with a different chain id, then the client may throw errors, or
+    /// methods like `sign_transaction` may error.
+    /// To automatically set the signer's chain id, see `new_with_provider_chain`.
     ///
     /// [`Middleware`] ethers_providers::Middleware
     /// [`Signer`] ethers_signers::Signer
