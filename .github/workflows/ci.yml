@@ -21,12 +21,12 @@ jobs:
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
-      - name: Install ganache-cli
+      - name: Set up node
         uses: actions/setup-node@v1
         with:
           node-version: 10
       - name: Install ganache
-        run: npm install -g ganache-cli
+        run: npm install -g ganache
       - name: Install Solc
         run: |
             mkdir -p "$HOME/bin"
@@ -66,13 +66,13 @@ jobs:
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
-      - name: Install ganache-cli
+      - name: Set up node
         uses: actions/setup-node@v1
         with:
           node-version: 10
       # TODO: can we combine these shared steps in github actions?
       - name: Install ganache
-        run: npm install -g ganache-cli
+        run: npm install -g ganache
       - name: Install Solc
         run: |
             mkdir -p "$HOME/bin"
@@ -183,12 +183,12 @@ jobs:
   #   steps:
   #     - name: Checkout sources
   #       uses: actions/checkout@v2
-  #     - name: Install ganache-cli
+  #     - name: Set up node
   #       uses: actions/setup-node@v1
   #       with:
   #         node-version: 10
   #     - name: Install ganache
-  #       run: npm install -g ganache-cli
+  #       run: npm install -g ganache
   #     - name: Install Solc
   #       run: |
   #           mkdir -p "$HOME/bin"

@@ -234,6 +234,9 @@
 
 ### Unreleased
 
+- Ensure a consistent chain ID between a Signer and Provider in SignerMiddleware
+  [#1095](https://gakonst/ethers-rs/pull/1095)
+
 ### 0.6.0
 
 - add the missing constructor for `Timelag` middleware via

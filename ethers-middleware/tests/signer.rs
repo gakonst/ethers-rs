@@ -35,8 +35,7 @@ async fn send_eth() {
         .unwrap()
         .interval(Duration::from_millis(10u64));
     let chain_id = provider.get_chainid().await.unwrap().as_u64();
-    let wallet = wallet.with_chain_id(chain_id);
-    let provider = SignerMiddleware::new(provider, wallet);
+    let provider = SignerMiddleware::new_with_provider_chain(provider, wallet).await.unwrap();
 
     // craft the transaction
     let tx = TransactionRequest::new().to(wallet2.address()).value(10000).chain_id(chain_id);
@@ -168,7 +167,8 @@ async fn send_transaction_handles_tx_from_field() {
 
     // connect to the network
     let provider = Provider::try_from(ganache.endpoint()).unwrap();
-    let provider = SignerMiddleware::new(provider, signer.clone());
+    let provider =
+        SignerMiddleware::new_with_provider_chain(provider, signer.clone()).await.unwrap();
 
     // sending a TransactionRequest with a from field of None should result
     // in a transaction from the signer address
@@ -231,7 +231,7 @@ async fn deploy_and_call_contract() {
         .parse::<LocalWallet>()
         .unwrap()
         .with_chain_id(chain_id);
-    let client = SignerMiddleware::new(provider, wallet);
+    let client = SignerMiddleware::new_with_provider_chain(provider, wallet).await.unwrap();
     let client = Arc::new(client);
 
     let factory = ContractFactory::new(abi, bytecode, client);
