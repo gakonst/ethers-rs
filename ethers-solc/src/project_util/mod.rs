@@ -5,6 +5,8 @@ use crate::{
     error::{bail, Result, SolcError},
     hh::HardhatArtifacts,
     project_util::mock::{MockProjectGenerator, MockProjectSettings},
+    remappings::Remapping,
+    utils,
     utils::tempdir,
     Artifact, ArtifactOutput, Artifacts, ConfigurableArtifacts, ConfigurableContractArtifact,
     FileFilter, PathStyle, Project, ProjectCompileOutput, ProjectPathsConfig, SolFilesCache,
@@ -311,6 +313,11 @@ contract {} {{}}
         assert!(!compiled.is_unchanged());
         self
     }
+
+    /// Returns a list of all source files in the project's `src` directory
+    pub fn list_source_files(&self) -> Vec<PathBuf> {
+        utils::source_files(self.project().sources_path())
+    }
 }
 
 impl<T: ArtifactOutput + Default> TempProject<T> {
@@ -379,6 +386,16 @@ impl TempProject<ConfigurableArtifacts> {
 
         let inner = Project::builder().paths(paths).build()?;
         Ok(Self::create_new(tmp_dir, inner)?)
+    }
+
+    /// Creates an initialized dapptools style workspace in a new temporary dir
+    pub fn dapptools_init() -> Result<Self> {
+        let mut project = Self::dapptools()?;
+        let orig_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test-data/dapp-sample");
+        copy_dir(&orig_root, project.root())?;
+        project.project_mut().paths.remappings = Remapping::find_many(project.root());
+
+        Ok(project)
     }
 
     /// Create a new temporary project and populate it with mock files

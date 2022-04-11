@@ -144,6 +144,25 @@ impl CompilerInput {
         self.settings.remappings = remappings;
         self
     }
+
+    /// Sets the path of the source files to `root` adjoined to the existing path
+    #[must_use]
+    pub fn join_path(mut self, root: impl AsRef<Path>) -> Self {
+        let root = root.as_ref();
+        self.sources = self.sources.into_iter().map(|(path, s)| (root.join(path), s)).collect();
+        self
+    }
+
+    /// Removes the `base` path from all source files
+    pub fn strip_prefix(mut self, base: impl AsRef<Path>) -> Self {
+        let base = base.as_ref();
+        self.sources = self
+            .sources
+            .into_iter()
+            .map(|(path, s)| (path.strip_prefix(base).map(|p| p.to_path_buf()).unwrap_or(path), s))
+            .collect();
+        self
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
