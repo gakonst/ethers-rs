@@ -13,7 +13,7 @@ use ethers_solc::{
     project_util::*,
     remappings::Remapping,
     ConfigurableArtifacts, ExtraOutputValues, Graph, Project, ProjectCompileOutput,
-    ProjectPathsConfig, TestFileFilter,
+    ProjectPathsConfig, Solc, TestFileFilter,
 };
 use pretty_assertions::assert_eq;
 
@@ -954,4 +954,23 @@ fn can_sanitize_bytecode_hash() {
     let compiled = tmp.compile().unwrap();
     assert!(!compiled.has_compiler_errors());
     assert!(compiled.find("A").is_some());
+}
+
+#[test]
+fn can_compile_std_json_input() {
+    let tmp = TempProject::dapptools_init().unwrap();
+    tmp.assert_no_errors();
+    let source =
+        tmp.list_source_files().into_iter().filter(|p| p.ends_with("Dapp.t.sol")).next().unwrap();
+    let input = tmp.project().standard_json_input(source).unwrap();
+
+    assert!(input.settings.remappings.contains(&"ds-test/=lib/ds-test/src/".parse().unwrap()));
+    assert!(input.sources.contains_key(Path::new("lib/ds-test/src/test.sol")));
+
+    // should be installed
+    if let Some(solc) = Solc::find_svm_installed_version("0.8.10").ok().flatten() {
+        let out = solc.compile(&input).unwrap();
+        assert!(!out.has_error());
+        assert!(out.sources.contains_key("lib/ds-test/src/test.sol"));
+    }
 }

@@ -428,8 +428,9 @@ impl<T: ArtifactOutput> Project<T> {
     }
 
     /// Returns standard-json-input to compile the target contract
-    pub fn standard_json_input(&self, target: &Path) -> Result<CompilerInput> {
-        tracing::trace!("Building standard-json-input");
+    pub fn standard_json_input(&self, target: impl AsRef<Path>) -> Result<CompilerInput> {
+        let target = target.as_ref();
+        tracing::trace!("Building standard-json-input for {:?}", target);
         let graph = Graph::resolve(&self.paths)?;
         let target_index = graph.files().get(target).ok_or_else(|| {
             SolcError::msg(format!("cannot resolve file at {:?}", target.display()))
@@ -444,12 +445,23 @@ impl<T: ArtifactOutput> Project<T> {
         let compiler_inputs = CompilerInput::with_sources(
             sources.into_iter().map(|(s, p)| (s.clone(), p.clone())).collect(),
         );
+
+        // strip the path to the project root from all remappings
+        let remappings = self
+            .paths
+            .remappings
+            .clone()
+            .into_iter()
+            .map(|r| r.into_relative(self.root()).to_relative_remapping())
+            .collect::<Vec<_>>();
+
         let compiler_input = compiler_inputs
             .first()
             .ok_or_else(|| SolcError::msg("cannot get the compiler input"))?
             .clone()
             .settings(self.solc_config.settings.clone())
-            .with_remappings(self.paths.remappings.clone());
+            .with_remappings(remappings)
+            .strip_prefix(self.root());
 
         Ok(compiler_input)
     }
