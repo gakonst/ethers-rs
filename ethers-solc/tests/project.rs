@@ -960,7 +960,8 @@ fn can_sanitize_bytecode_hash() {
 fn can_compile_std_json_input() {
     let tmp = TempProject::dapptools_init().unwrap();
     tmp.assert_no_errors();
-    let source = tmp.list_source_files().remove(1);
+    let source =
+        tmp.list_source_files().into_iter().filter(|p| p.ends_with("Dapp.t.sol")).next().unwrap();
     let input = tmp.project().standard_json_input(source).unwrap();
 
     assert!(input.settings.remappings.contains(&"ds-test/=lib/ds-test/src/".parse().unwrap()));
