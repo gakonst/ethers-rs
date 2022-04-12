@@ -1,6 +1,7 @@
 //! Transaction types
 use super::{
     decode_signature, eip2718::TypedTransaction, eip2930::AccessList, normalize_v, rlp_opt,
+    rlp_opt_list,
 };
 use crate::{
     types::{Address, Bloom, Bytes, Log, Signature, SignatureError, H256, U256, U64},
@@ -147,7 +148,7 @@ impl Transaction {
                 rlp_opt(&mut rlp, &self.to);
                 rlp.append(&self.value);
                 rlp.append(&self.input.as_ref());
-                rlp_opt(&mut rlp, &self.access_list);
+                rlp_opt_list(&mut rlp, &self.access_list);
                 if let Some(chain_id) = self.chain_id {
                     rlp.append(&normalize_v(self.v.as_u64(), U64::from(chain_id.as_u64())));
                 }
@@ -162,7 +163,7 @@ impl Transaction {
                 rlp_opt(&mut rlp, &self.to);
                 rlp.append(&self.value);
                 rlp.append(&self.input.as_ref());
-                rlp_opt(&mut rlp, &self.access_list);
+                rlp_opt_list(&mut rlp, &self.access_list);
                 if let Some(chain_id) = self.chain_id {
                     rlp.append(&normalize_v(self.v.as_u64(), U64::from(chain_id.as_u64())));
                 }
@@ -512,6 +513,49 @@ mod tests {
             value: U256::from_str_radix("0x2b40d6d551c8970c", 16).unwrap(),
             transaction_type: Some(U64::from(0x2)),
             access_list: Some(AccessList::from(vec![])),
+            chain_id: Some(U256::from(1)),
+            v: U64::from(0x1),
+            r: U256::from_str_radix(
+                "0x5616cdaec839ca14d209b59eafb706e623169dc9d0fa58fbf13931cef5b5e3b0",
+                16,
+            )
+            .unwrap(),
+            s: U256::from_str_radix(
+                "0x3e708f8044bd158d29c2e250b6a98ea637c3bc460beeea63a8f00f7cebac432a",
+                16,
+            )
+            .unwrap(),
+        };
+        println!("0x{}", hex::encode(&tx.rlp()));
+        assert_eq!(
+            tx.rlp(),
+            Bytes::from(
+                hex::decode("02f87a018201df851344ead983851344ead983826d2294c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2882b40d6d551c8970c84d0e30db0c001a05616cdaec839ca14d209b59eafb706e623169dc9d0fa58fbf13931cef5b5e3b0a03e708f8044bd158d29c2e250b6a98ea637c3bc460beeea63a8f00f7cebac432a").unwrap()
+            )
+        );
+    }
+
+    #[test]
+    fn rlp_london_no_access_list() {
+        let tx = Transaction {
+            block_hash: None,
+            block_number: None,
+            from: Address::from_str("057f8d0f6fb2703197363f75c002f766f1c4287a").unwrap(),
+            gas: U256::from_str_radix("0x6d22", 16).unwrap(),
+            gas_price: Some(U256::from_str_radix("0x1344ead983", 16).unwrap()),
+            hash: H256::from_str(
+                "781d57642f4e3277fe01d370bd45ba1361b475bea6a35f26814e02a0a2b26549",
+            )
+            .unwrap(),
+            max_fee_per_gas: Some(U256::from_str_radix("0x1344ead983", 16).unwrap()),
+            max_priority_fee_per_gas: Some(U256::from_str_radix("0x1344ead983", 16).unwrap()),
+            input: Bytes::from(hex::decode("d0e30db0").unwrap()),
+            nonce: U256::from(479),
+            to: Some(Address::from_str("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap()),
+            transaction_index: None,
+            value: U256::from_str_radix("0x2b40d6d551c8970c", 16).unwrap(),
+            transaction_type: Some(U64::from(0x2)),
+            access_list: None,
             chain_id: Some(U256::from(1)),
             v: U64::from(0x1),
             r: U256::from_str_radix(
