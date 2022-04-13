@@ -630,8 +630,6 @@ impl<'a, T: ArtifactOutput> ArtifactsCacheInner<'a, T> {
     /// so that their [OutputSelection] can be optimized in the [CompilerOutput] and their (empty)
     /// artifacts ignored.
     fn filter(&mut self, sources: Sources, version: &Version) -> FilteredSources {
-        self.fill_hashes(&sources);
-
         // all files that are not dirty themselves, but are pulled from a dirty file
         let mut imports_of_dirty = HashSet::new();
 
@@ -728,6 +726,8 @@ impl<'a, T: ArtifactOutput> ArtifactsCacheInner<'a, T> {
                 return false
             }
             tracing::trace!("Missing cache entry for {}", file.display());
+        } else {
+            tracing::trace!("Missing content hash for {}", file.display());
         }
         true
     }
@@ -830,6 +830,14 @@ impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
         match self {
             ArtifactsCache::Ephemeral(_, project) => project,
             ArtifactsCache::Cached(cache) => cache.project,
+        }
+    }
+
+    /// Adds the file's hashes to the set if not set yet
+    pub fn fill_content_hashes(&mut self, sources: &Sources) {
+        match self {
+            ArtifactsCache::Ephemeral(_, _) => {}
+            ArtifactsCache::Cached(cache) => cache.fill_hashes(sources),
         }
     }
 
