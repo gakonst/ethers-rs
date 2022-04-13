@@ -331,6 +331,11 @@ impl CompilerSources {
             sources: VersionedSources,
             cache: &mut ArtifactsCache<T>,
         ) -> VersionedFilteredSources {
+            // fill all content hashes first so they're available for all source sets
+            sources.iter().for_each(|(_, (_, sources))| {
+                cache.fill_content_hashes(sources);
+            });
+
             sources
                 .into_iter()
                 .map(|(solc, (version, sources))| {
