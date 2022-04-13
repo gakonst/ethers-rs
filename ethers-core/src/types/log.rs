@@ -3,7 +3,9 @@ use crate::{
     types::{Address, BlockNumber, Bytes, H256, U256, U64},
     utils::keccak256,
 };
-use serde::{ser::SerializeStruct, Deserialize, Serialize, Serializer};
+use serde::{
+    de::DeserializeOwned, ser::SerializeStruct, Deserialize, Deserializer, Serialize, Serializer,
+};
 use std::ops::{Range, RangeFrom, RangeTo};
 
 /// A log produced by a transaction.
@@ -339,7 +341,7 @@ impl Filter {
 }
 
 /// Union type for representing a single value or a vector of values inside a filter
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum ValueOrArray<T> {
     /// A single value
     Value(T),
@@ -386,11 +388,59 @@ where
     }
 }
 
+impl<'a, T> Deserialize<'a> for ValueOrArray<T>
+where
+    T: DeserializeOwned,
+{
+    fn deserialize<D>(deserializer: D) -> Result<ValueOrArray<T>, D::Error>
+    where
+        D: Deserializer<'a>,
+    {
+        let value = serde_json::Value::deserialize(deserializer)?;
+
+        if value.is_null() {
+            return Ok(ValueOrArray::Array(Vec::new()))
+        }
+
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum Variadic<T> {
+            Value(T),
+            Array(Vec<T>),
+        }
+
+        match serde_json::from_value::<Variadic<T>>(value).map_err(|err| {
+            serde::de::Error::custom(format!("Invalid variadic value or array type: {}", err))
+        })? {
+            Variadic::Value(val) => Ok(ValueOrArray::Value(val)),
+            Variadic::Array(arr) => Ok(ValueOrArray::Array(arr)),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::utils::serialize;
     use serde_json::json;
+
+    #[test]
+    fn can_serde_value_or_array() {
+        #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+        struct Item {
+            value: ValueOrArray<U256>,
+        }
+
+        let item = Item { value: ValueOrArray::Value(U256::one()) };
+        let json = serde_json::to_value(item.clone()).unwrap();
+        let deserialized: Item = serde_json::from_value(json).unwrap();
+        assert_eq!(item, deserialized);
+
+        let item = Item { value: ValueOrArray::Array(vec![U256::one(), U256::zero()]) };
+        let json = serde_json::to_value(item.clone()).unwrap();
+        let deserialized: Item = serde_json::from_value(json).unwrap();
+        assert_eq!(item, deserialized);
+    }
 
     #[test]
     fn filter_serialization_test() {
