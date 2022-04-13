@@ -4,6 +4,7 @@
 
 ### Unreleased
 
+- Fix RLP encoding of absent access list in `Transaction` [1137](https://github.com/gakonst/ethers-rs/pull/1137)
 - Pass compilation time as additional argument to `Reporter::on_solc_success` [1098](https://github.com/gakonst/ethers-rs/pull/1098)
 - Fix aws signer bug which maps un-normalized signature to error if no normalization occurs (in `aws::utils::decode_signature`)
 - Implement signed transaction RLP decoding [#1096](https://github.com/gakonst/ethers-rs/pull/1096)

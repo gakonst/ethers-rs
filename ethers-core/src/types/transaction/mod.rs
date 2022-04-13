@@ -25,6 +25,15 @@ pub(super) fn rlp_opt<T: rlp::Encodable>(rlp: &mut rlp::RlpStream, opt: &Option<
     }
 }
 
+pub(super) fn rlp_opt_list<T: rlp::Encodable>(rlp: &mut rlp::RlpStream, opt: &Option<T>) {
+    if let Some(inner) = opt {
+        rlp.append(inner);
+    } else {
+        // Choice of `u8` type here is arbitrary as all empty lists are encoded the same.
+        rlp.append_list::<u8, u8>(&[]);
+    }
+}
+
 /// normalizes the signature back to 0/1
 pub(crate) fn normalize_v(v: u64, chain_id: crate::types::U64) -> u64 {
     if v > 1 {
