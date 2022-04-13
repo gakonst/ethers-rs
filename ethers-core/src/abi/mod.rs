@@ -100,12 +100,7 @@ impl<T: AbiArrayType, const N: usize> AbiType for [T; N] {
 
 impl<T: AbiArrayType, const N: usize> AbiArrayType for [T; N] {}
 
-impl<const N: usize> AbiType for [u8; N] {
-    fn param_type() -> ParamType {
-        ParamType::FixedBytes(N)
-    }
-}
-impl<const N: usize> AbiArrayType for [u8; N] {}
+impl AbiArrayType for u8 {}
 
 macro_rules! impl_abi_type {
     ($($name:ty => $var:ident $(($value:expr))? ),*) => {
@@ -123,7 +118,6 @@ macro_rules! impl_abi_type {
 
 impl_abi_type!(
     Bytes => Bytes,
-    Vec<u8> =>  Array(Box::new(ParamType::Uint(8))),
     Address => Address,
     bool => Bool,
     String => String,
