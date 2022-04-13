@@ -8,11 +8,12 @@ use std::{
 };
 
 use ethers_solc::{
+    artifacts::BytecodeHash,
     cache::{SolFilesCache, SOLIDITY_FILES_CACHE_FILENAME},
     project_util::*,
     remappings::Remapping,
     ConfigurableArtifacts, ExtraOutputValues, Graph, Project, ProjectCompileOutput,
-    ProjectPathsConfig,
+    ProjectPathsConfig, Solc, TestFileFilter,
 };
 use pretty_assertions::assert_eq;
 
@@ -499,6 +500,61 @@ contract A { }
 }
 
 #[test]
+fn can_flatten_experimental_pragma() {
+    let project = TempProject::dapptools().unwrap();
+
+    let f = project
+        .add_source(
+            "A",
+            r#"
+pragma solidity ^0.8.10;
+pragma experimental ABIEncoderV2;
+import "./C.sol";
+import "./B.sol";
+contract A { }
+"#,
+        )
+        .unwrap();
+
+    project
+        .add_source(
+            "B",
+            r#"
+pragma solidity ^0.8.10;
+pragma experimental ABIEncoderV2;
+import "./C.sol";
+contract B { }
+"#,
+        )
+        .unwrap();
+
+    project
+        .add_source(
+            "C",
+            r#"
+pragma solidity ^0.8.10;
+pragma experimental ABIEncoderV2;
+import "./A.sol";
+contract C { }
+"#,
+        )
+        .unwrap();
+
+    let result = project.flatten(&f).unwrap();
+
+    assert_eq!(
+        result,
+        r#"
+pragma solidity ^0.8.10;
+pragma experimental ABIEncoderV2;
+contract C { }
+contract B { }
+contract A { }
+"#
+    );
+}
+
+#[test]
 fn can_flatten_file_with_duplicates() {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test-data/test-flatten-duplicates");
     let paths = ProjectPathsConfig::builder().sources(root.join("contracts"));
@@ -547,6 +603,57 @@ contract Contract {
     failure();
 }
 "#
+    );
+}
+
+#[test]
+fn can_flatten_multiline() {
+    let project = TempProject::dapptools().unwrap();
+
+    let f = project
+        .add_source(
+            "A",
+            r#"
+pragma solidity ^0.8.10;
+import "./C.sol";
+import {
+    IllegalArgument,
+    IllegalState
+} from "./Errors.sol";
+contract A { }
+"#,
+        )
+        .unwrap();
+
+    project
+        .add_source(
+            "Errors",
+            r#"
+pragma solidity ^0.8.10;
+error IllegalArgument();
+error IllegalState();
+"#,
+        )
+        .unwrap();
+
+    project
+        .add_source(
+            "C",
+            r#"
+pragma solidity ^0.8.10;
+contract C { }
+"#,
+        )
+        .unwrap();
+
+    let result = project.flatten(&f).unwrap();
+    assert_eq!(
+        result.trim(),
+        r#"pragma solidity ^0.8.10;
+contract C { }
+error IllegalArgument();
+error IllegalState();
+contract A { }"#
     );
 }
 
@@ -682,4 +789,188 @@ fn can_recompile_with_changes() {
     assert!(!compiled.is_unchanged());
     assert!(compiled.find("A").is_some());
     assert!(compiled.find("B").is_some());
+}
+
+#[test]
+fn can_recompile_with_lowercase_names() {
+    let tmp = TempProject::dapptools().unwrap();
+
+    tmp.add_source(
+        "deployProxy.sol",
+        r#"
+    pragma solidity =0.8.12;
+    contract DeployProxy {}
+   "#,
+    )
+    .unwrap();
+
+    let upgrade = r#"
+    pragma solidity =0.8.12;
+    import "./deployProxy.sol";
+    import "./ProxyAdmin.sol";
+    contract UpgradeProxy {}
+   "#;
+    tmp.add_source("upgradeProxy.sol", upgrade).unwrap();
+
+    tmp.add_source(
+        "ProxyAdmin.sol",
+        r#"
+    pragma solidity =0.8.12;
+    contract ProxyAdmin {}
+   "#,
+    )
+    .unwrap();
+
+    let compiled = tmp.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+    assert!(compiled.find("DeployProxy").is_some());
+    assert!(compiled.find("UpgradeProxy").is_some());
+    assert!(compiled.find("ProxyAdmin").is_some());
+
+    let artifacts = tmp.artifacts_snapshot().unwrap();
+    assert_eq!(artifacts.artifacts.as_ref().len(), 3);
+    artifacts.assert_artifacts_essentials_present();
+
+    let compiled = tmp.compile().unwrap();
+    assert!(compiled.find("DeployProxy").is_some());
+    assert!(compiled.find("UpgradeProxy").is_some());
+    assert!(compiled.find("ProxyAdmin").is_some());
+    assert!(compiled.is_unchanged());
+
+    // modify upgradeProxy.sol
+    tmp.add_source("upgradeProxy.sol", format!("{}\n", upgrade)).unwrap();
+    let compiled = tmp.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+    assert!(!compiled.is_unchanged());
+    assert!(compiled.find("DeployProxy").is_some());
+    assert!(compiled.find("UpgradeProxy").is_some());
+    assert!(compiled.find("ProxyAdmin").is_some());
+
+    let artifacts = tmp.artifacts_snapshot().unwrap();
+    assert_eq!(artifacts.artifacts.as_ref().len(), 3);
+    artifacts.assert_artifacts_essentials_present();
+}
+
+#[test]
+fn can_recompile_unchanged_with_empty_files() {
+    let tmp = TempProject::dapptools().unwrap();
+
+    tmp.add_source(
+        "A",
+        r#"
+    pragma solidity ^0.8.10;
+    import "./B.sol";
+    contract A {}
+   "#,
+    )
+    .unwrap();
+
+    tmp.add_source(
+        "B",
+        r#"
+    pragma solidity ^0.8.10;
+    import "./C.sol";
+   "#,
+    )
+    .unwrap();
+
+    let c = r#"
+    pragma solidity ^0.8.10;
+    contract C {}
+   "#;
+    tmp.add_source("C", c).unwrap();
+
+    let compiled = tmp.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+    assert!(compiled.find("A").is_some());
+    assert!(compiled.find("C").is_some());
+
+    let compiled = tmp.compile().unwrap();
+    assert!(compiled.find("A").is_some());
+    assert!(compiled.find("C").is_some());
+    assert!(compiled.is_unchanged());
+
+    // modify C.sol
+    tmp.add_source("C", format!("{}\n", c)).unwrap();
+    let compiled = tmp.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+    assert!(!compiled.is_unchanged());
+    assert!(compiled.find("A").is_some());
+    assert!(compiled.find("C").is_some());
+}
+
+#[test]
+fn can_compile_sparse_with_link_references() {
+    let tmp = TempProject::dapptools().unwrap();
+
+    tmp.add_source(
+        "ATest.t.sol",
+        r#"
+    pragma solidity =0.8.12;
+    import {MyLib} from "./mylib.sol";
+    contract ATest {
+      function test_mylib() public returns (uint256) {
+         return MyLib.doStuff();
+      }
+    }
+   "#,
+    )
+    .unwrap();
+
+    tmp.add_source(
+        "mylib.sol",
+        r#"
+    pragma solidity =0.8.12;
+    library MyLib {
+       function doStuff() external pure returns (uint256) {return 1337;}
+    }
+   "#,
+    )
+    .unwrap();
+
+    let mut compiled = tmp.compile_sparse(TestFileFilter::default()).unwrap();
+    assert!(!compiled.has_compiler_errors());
+
+    assert!(compiled.find("ATest").is_some());
+    assert!(compiled.find("MyLib").is_some());
+    let lib = compiled.remove("MyLib").unwrap();
+    assert!(lib.bytecode.is_some());
+}
+
+#[test]
+fn can_sanitize_bytecode_hash() {
+    let mut tmp = TempProject::dapptools().unwrap();
+    tmp.project_mut().solc_config.settings.metadata = Some(BytecodeHash::Ipfs.into());
+
+    tmp.add_source(
+        "A",
+        r#"
+    pragma solidity =0.5.17;
+    contract A {}
+   "#,
+    )
+    .unwrap();
+
+    let compiled = tmp.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+    assert!(compiled.find("A").is_some());
+}
+
+#[test]
+fn can_compile_std_json_input() {
+    let tmp = TempProject::dapptools_init().unwrap();
+    tmp.assert_no_errors();
+    let source =
+        tmp.list_source_files().into_iter().filter(|p| p.ends_with("Dapp.t.sol")).next().unwrap();
+    let input = tmp.project().standard_json_input(source).unwrap();
+
+    assert!(input.settings.remappings.contains(&"ds-test/=lib/ds-test/src/".parse().unwrap()));
+    assert!(input.sources.contains_key(Path::new("lib/ds-test/src/test.sol")));
+
+    // should be installed
+    if let Some(solc) = Solc::find_svm_installed_version("0.8.10").ok().flatten() {
+        let out = solc.compile(&input).unwrap();
+        assert!(!out.has_error());
+        assert!(out.sources.contains_key("lib/ds-test/src/test.sol"));
+    }
 }

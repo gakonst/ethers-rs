@@ -7,7 +7,7 @@ use ethers_core::types::U256;
 /// Start with `initial_price`, then increase it by fixed amount `increase_by` every `every_secs`
 /// seconds until the transaction gets confirmed. There is an optional upper limit.
 ///
-/// https://github.com/makerdao/pymaker/blob/master/pymaker/gas.py#L129
+/// <https://github.com/makerdao/pymaker/blob/master/pymaker/gas.py#L129>
 #[derive(Clone, Debug)]
 pub struct LinearGasPrice {
     every_secs: u64,

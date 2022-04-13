@@ -24,6 +24,7 @@ pub(crate) use _format_err as format_err;
 macro_rules! _bail {
     ($($tt:tt)*) => { return Err($crate::abi::error::format_err!($($tt)*)) };
 }
+use crate::types::ParseBytesError;
 pub(crate) use _bail as bail;
 
 /// ABI codec related errors
@@ -39,4 +40,7 @@ pub enum AbiError {
 
     #[error("missing or wrong function selector")]
     WrongSelector,
+
+    #[error(transparent)]
+    ParseBytesError(#[from] ParseBytesError),
 }

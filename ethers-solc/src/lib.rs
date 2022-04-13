@@ -1,3 +1,4 @@
+#![deny(rustdoc::broken_intra_doc_links)]
 pub mod artifacts;
 pub mod sourcemap;
 
@@ -23,17 +24,21 @@ mod config;
 pub use config::{AllowedLibPaths, PathStyle, ProjectPathsConfig, SolcConfig};
 
 pub mod remappings;
-use crate::artifacts::Source;
+use crate::artifacts::{Source, SourceFile};
 
 pub mod error;
+mod filter;
 pub mod report;
 pub mod utils;
+pub use filter::{FileFilter, TestFileFilter};
 
 use crate::{
-    artifacts::{Contract, Sources},
+    artifacts::Sources,
+    cache::SolFilesCache,
     contracts::VersionedContracts,
     error::{SolcError, SolcIoError},
 };
+use artifacts::contract::Contract;
 use error::Result;
 use semver::Version;
 use std::path::{Path, PathBuf};
@@ -45,7 +50,7 @@ pub mod project_util;
 /// Represents a project workspace and handles `solc` compiling of all contracts in that workspace.
 #[derive(Debug)]
 pub struct Project<T: ArtifactOutput = ConfigurableArtifacts> {
-    /// The layout of the
+    /// The layout of the project
     pub paths: ProjectPathsConfig,
     /// Where to find solc
     pub solc: Solc,
@@ -125,6 +130,12 @@ impl<T: ArtifactOutput> Project<T> {
         &self.artifacts
     }
 
+    /// Convenience function to read the cache file.
+    /// See also [SolFilesCache::read_joined()]
+    pub fn read_cache_file(&self) -> Result<SolFilesCache> {
+        SolFilesCache::read_joined(&self.paths)
+    }
+
     /// Applies the configured arguments to the given `Solc`
     ///
     /// This will set the `--allow-paths` to the paths configured for the `Project`, if any.
@@ -182,7 +193,7 @@ impl<T: ArtifactOutput> Project<T> {
     /// `CompilerOutput::has_error` instead.
     ///
     /// NB: If the `svm` feature is enabled, this function will automatically detect
-    /// solc versions across files, see [`Self::svm_compile()`]
+    /// solc versions across files.
     ///
     /// # Example
     ///
@@ -198,7 +209,7 @@ impl<T: ArtifactOutput> Project<T> {
         let sources = self.paths.read_input_files()?;
         tracing::trace!("found {} sources to compile: {:?}", sources.len(), sources.keys());
 
-        #[cfg(all(feature = "svm", feature = "async"))]
+        #[cfg(all(feature = "svm-solc", feature = "async"))]
         if self.auto_detect {
             tracing::trace!("using solc auto detection to compile sources");
             return self.svm_compile(sources)
@@ -232,7 +243,7 @@ impl<T: ArtifactOutput> Project<T> {
     /// let output = project.svm_compile(sources).unwrap();
     /// # }
     /// ```
-    #[cfg(all(feature = "svm", feature = "async"))]
+    #[cfg(all(feature = "svm-solc", feature = "async"))]
     pub fn svm_compile(&self, sources: Sources) -> Result<ProjectCompileOutput<T>> {
         project::ProjectCompiler::with_sources(self, sources)?.compile()
     }
@@ -249,7 +260,7 @@ impl<T: ArtifactOutput> Project<T> {
     /// let output = project.compile_file("example/Greeter.sol").unwrap();
     /// # }
     /// ```
-    #[cfg(all(feature = "svm", feature = "async"))]
+    #[cfg(all(feature = "svm-solc", feature = "async"))]
     pub fn compile_file(&self, file: impl Into<PathBuf>) -> Result<ProjectCompileOutput<T>> {
         let file = file.into();
         let source = Source::read(&file)?;
@@ -271,13 +282,55 @@ impl<T: ArtifactOutput> Project<T> {
     ///     ).unwrap();
     /// # }
     /// ```
-    #[cfg(all(feature = "svm", feature = "async"))]
+    #[cfg(all(feature = "svm-solc", feature = "async"))]
     pub fn compile_files<P, I>(&self, files: I) -> Result<ProjectCompileOutput<T>>
     where
         I: IntoIterator<Item = P>,
         P: Into<PathBuf>,
     {
         project::ProjectCompiler::with_sources(self, Source::read_all(files)?)?.compile()
+    }
+
+    /// Convenience function to compile only (re)compile files that match the provided [FileFilter].
+    /// Same as [`Self::svm_compile()`] but with only with those files as input that match
+    /// [FileFilter::is_match()].
+    ///
+    /// # Example - Only compile Test files
+    ///
+    /// ```
+    /// use ethers_solc::{Project, TestFileFilter};
+    /// # fn demo(project: Project) {
+    /// let project = Project::builder().build().unwrap();
+    /// let output = project
+    ///     .compile_sparse(
+    ///         TestFileFilter::default()
+    ///     ).unwrap();
+    /// # }
+    /// ```
+    ///
+    /// # Example - Apply a custom filter
+    ///
+    /// ```
+    /// use std::path::Path;
+    /// use ethers_solc::Project;
+    /// # fn demo(project: Project) {
+    /// let project = Project::builder().build().unwrap();
+    /// let output = project
+    ///     .compile_sparse(
+    ///         |path: &Path| path.ends_with("Greeter.sol")
+    ///     ).unwrap();
+    /// # }
+    /// ```
+    #[cfg(all(feature = "svm-solc", feature = "async"))]
+    pub fn compile_sparse<F: FileFilter + 'static>(
+        &self,
+        filter: F,
+    ) -> Result<ProjectCompileOutput<T>> {
+        let sources =
+            Source::read_all(self.paths.input_files().into_iter().filter(|p| filter.is_match(p)))?;
+
+        let filter: Box<dyn FileFilter> = Box::new(filter);
+        project::ProjectCompiler::with_sources(self, sources)?.with_sparse_output(filter).compile()
     }
 
     /// Compiles the given source files with the exact `Solc` executable
@@ -372,6 +425,45 @@ impl<T: ArtifactOutput> Project<T> {
     /// only if it is found at the beginning of the file.
     pub fn flatten(&self, target: &Path) -> Result<String> {
         self.paths.flatten(target)
+    }
+
+    /// Returns standard-json-input to compile the target contract
+    pub fn standard_json_input(&self, target: impl AsRef<Path>) -> Result<CompilerInput> {
+        let target = target.as_ref();
+        tracing::trace!("Building standard-json-input for {:?}", target);
+        let graph = Graph::resolve(&self.paths)?;
+        let target_index = graph.files().get(target).ok_or_else(|| {
+            SolcError::msg(format!("cannot resolve file at {:?}", target.display()))
+        })?;
+        let mut sources = Vec::new();
+        let (path, source) = graph.node(*target_index).unpack();
+        sources.push((path, source));
+        sources.extend(
+            graph.all_imported_nodes(*target_index).map(|index| graph.node(index).unpack()),
+        );
+
+        let compiler_inputs = CompilerInput::with_sources(
+            sources.into_iter().map(|(s, p)| (s.clone(), p.clone())).collect(),
+        );
+
+        // strip the path to the project root from all remappings
+        let remappings = self
+            .paths
+            .remappings
+            .clone()
+            .into_iter()
+            .map(|r| r.into_relative(self.root()).to_relative_remapping())
+            .collect::<Vec<_>>();
+
+        let compiler_input = compiler_inputs
+            .first()
+            .ok_or_else(|| SolcError::msg("cannot get the compiler input"))?
+            .clone()
+            .settings(self.solc_config.settings.clone())
+            .with_remappings(remappings)
+            .strip_prefix(self.root());
+
+        Ok(compiler_input)
     }
 }
 
@@ -624,9 +716,10 @@ impl<T: ArtifactOutput> ArtifactOutput for Project<T> {
     fn on_output(
         &self,
         contracts: &VersionedContracts,
+        sources: &BTreeMap<String, SourceFile>,
         layout: &ProjectPathsConfig,
     ) -> Result<Artifacts<Self::Artifact>> {
-        self.artifacts_handler().on_output(contracts, layout)
+        self.artifacts_handler().on_output(contracts, sources, layout)
     }
 
     fn write_contract_extras(&self, contract: &Contract, file: &Path) -> Result<()> {
@@ -685,17 +778,27 @@ impl<T: ArtifactOutput> ArtifactOutput for Project<T> {
         T::read_cached_artifacts(files)
     }
 
-    fn contract_to_artifact(&self, file: &str, name: &str, contract: Contract) -> Self::Artifact {
-        self.artifacts_handler().contract_to_artifact(file, name, contract)
+    fn contract_to_artifact(
+        &self,
+        file: &str,
+        name: &str,
+        contract: Contract,
+        source_file: Option<&SourceFile>,
+    ) -> Self::Artifact {
+        self.artifacts_handler().contract_to_artifact(file, name, contract, source_file)
     }
 
-    fn output_to_artifacts(&self, contracts: &VersionedContracts) -> Artifacts<Self::Artifact> {
-        self.artifacts_handler().output_to_artifacts(contracts)
+    fn output_to_artifacts(
+        &self,
+        contracts: &VersionedContracts,
+        sources: &BTreeMap<String, SourceFile>,
+    ) -> Artifacts<Self::Artifact> {
+        self.artifacts_handler().output_to_artifacts(contracts, sources)
     }
 }
 
 #[cfg(test)]
-#[cfg(all(feature = "svm", feature = "async"))]
+#[cfg(all(feature = "svm-solc", feature = "async"))]
 mod tests {
     use crate::remappings::Remapping;
 

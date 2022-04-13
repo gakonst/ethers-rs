@@ -97,7 +97,7 @@ ethers-providers = { version = "^0.6.0", default-features = false, path = "./eth
 
 [target.'cfg(target_family = "unix")'.dev-dependencies]
 ethers-providers = { version = "^0.6.0", default-features = false, path = "./ethers-providers", features = ["ws", "ipc"] }
-eyre = "0.6.7"
+eyre = "0.6"
 rand = "0.8.5"
 serde = { version = "1.0.124", features = ["derive"] }
 serde_json = "1.0.64"
@@ -110,3 +110,44 @@ bytes = "1.1.0"
 [profile.release.package.ethers-wasm]
 # Tell `rustc` to optimize for small code size.
 opt-level = "s"
+
+
+[[example]]
+name = "contract_human_readable"
+path = "examples/contract_human_readable.rs"
+required-features = ["legacy"]
+
+[[example]]
+name = "contract_with_abi"
+path = "examples/contract_with_abi.rs"
+required-features = ["legacy"]
+
+[[example]]
+name = "contract_with_abi_and_bytecode"
+path = "examples/contract_with_abi_and_bytecode.rs"
+required-features = ["legacy"]
+
+[[example]]
+name = "ipc"
+path = "examples/ipc.rs"
+required-features = ["ipc"]
+
+[[example]]
+name = "ledger"
+path = "examples/ledger.rs"
+required-features = ["ledger"]
+
+[[example]]
+name = "moonbeam_with_abi"
+path = "examples/moonbeam_with_abi.rs"
+required-features = ["legacy"]
+
+[[example]]
+name = "trezor"
+path = "examples/trezor.rs"
+required-features = ["trezor"]
+
+[[example]]
+name = "yubi"
+path = "examples/yubi.rs"
+required-features = ["yubi"]

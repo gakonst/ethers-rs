@@ -38,8 +38,10 @@ async fn using_gas_oracle() {
     // connect to the network
     let provider = Provider::<Http>::try_from(ganache.endpoint()).unwrap();
 
+    // this is set because ganache now sets 875000000 as the first block's base fee
+    let base_fee = 875000000;
     // assign a gas oracle to use
-    let gas_oracle = FakeGasOracle { gas_price: 1337.into() };
+    let gas_oracle = FakeGasOracle { gas_price: (base_fee + 1337).into() };
     let expected_gas_price = gas_oracle.fetch().await.unwrap();
 
     let provider = GasOracleMiddleware::new(provider, gas_oracle);

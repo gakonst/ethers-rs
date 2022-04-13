@@ -14,6 +14,9 @@ pub struct FeeHistory {
     /// The custom deserializer allows backward compatibility for those clients
     /// not running v1.10.7 yet.
     pub oldest_block: U256,
+    /// An (optional) array of effective priority fee per gas data points from a single block. All
+    /// zeroes are returned if the block is empty.
+    #[serde(default)]
     pub reward: Vec<Vec<U256>>,
 }
 

@@ -117,10 +117,6 @@ impl<D: Sync + Send + DigestSigner<Sha256Proxy, RecoverableSignature>> Signer fo
     }
 
     /// Gets the wallet's chain id
-    ///
-    /// # Panics
-    ///
-    /// If the chain id has not already been set.
     fn chain_id(&self) -> u64 {
         self.chain_id
     }

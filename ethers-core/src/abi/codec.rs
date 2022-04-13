@@ -9,12 +9,28 @@ use crate::{
 pub trait AbiEncode {
     /// ABI encode the type
     fn encode(self) -> Vec<u8>;
+
+    /// Returns the encoded value as hex string, _with_ a `0x` prefix
+    fn encode_hex(self) -> String
+    where
+        Self: Sized,
+    {
+        format!("0x{}", hex::encode(self.encode()))
+    }
 }
 
 /// Trait for ABI decoding
 pub trait AbiDecode: Sized {
     /// Decodes the ABI encoded data
     fn decode(bytes: impl AsRef<[u8]>) -> Result<Self, AbiError>;
+
+    /// Decode hex encoded ABI encoded data
+    ///
+    /// Expects a hex encoded string, with optional `0x` prefix
+    fn decode_hex(data: impl AsRef<str>) -> Result<Self, AbiError> {
+        let bytes: Bytes = data.as_ref().parse()?;
+        Self::decode(bytes)
+    }
 }
 
 macro_rules! impl_abi_codec {
@@ -235,5 +251,13 @@ mod tests {
         let bytes: Bytes = std::iter::repeat_with(random::<u8>).take(10).collect::<Vec<_>>().into();
         let v = vec![bytes];
         assert_codec(v);
+    }
+
+    #[test]
+    fn tuple_array() {
+        let nested: Vec<[u8; 4]> = vec![[0, 0, 0, 1]];
+        assert_codec(nested.clone());
+        let tuple: Vec<(Address, u8, Vec<[u8; 4]>)> = vec![(Address::random(), 0, nested)];
+        assert_codec(tuple);
     }
 }

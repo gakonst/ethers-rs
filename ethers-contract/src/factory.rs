@@ -1,4 +1,5 @@
 use crate::{Contract, ContractError};
+use std::marker::PhantomData;
 
 use ethers_core::{
     abi::{Abi, Token, Tokenize},
@@ -14,8 +15,82 @@ use ethers_core::types::Eip1559TransactionRequest;
 
 use std::sync::Arc;
 
+/// Helper which manages the deployment transaction of a smart contract.
+///
+/// This is just a wrapper type for [Deployer] with an additional type to convert the [Contract]
+/// that the deployer returns when sending the transaction.
 #[derive(Debug, Clone)]
+#[must_use = "Deployer does nothing unless you `send` it"]
+pub struct ContractDeployer<M, C> {
+    /// the actual deployer
+    deployer: Deployer<M>,
+    /// marker for the `Contract` type to create afterwards
+    ///
+    /// this type will be used to construct it via `From::from(Contract)`
+    _contract: PhantomData<C>,
+}
+
+impl<M: Middleware, C: From<Contract<M>>> ContractDeployer<M, C> {
+    /// Create a new instance of this [ContractDeployer]
+    pub fn new(deployer: Deployer<M>) -> Self {
+        Self { deployer, _contract: Default::default() }
+    }
+
+    /// Sets the number of confirmations to wait for the contract deployment transaction
+    pub fn confirmations<T: Into<usize>>(mut self, confirmations: T) -> Self {
+        self.deployer.confs = confirmations.into();
+        self
+    }
+
+    pub fn block<T: Into<BlockNumber>>(mut self, block: T) -> Self {
+        self.deployer.block = block.into();
+        self
+    }
+
+    /// Uses a Legacy transaction instead of an EIP-1559 one to do the deployment
+    pub fn legacy(mut self) -> Self {
+        self.deployer = self.deployer.legacy();
+        self
+    }
+
+    /// Dry runs the deployment of the contract
+    ///
+    /// Note: this function _does not_ send a transaction from your account
+    pub async fn call(&self) -> Result<(), ContractError<M>> {
+        self.deployer.call().await
+    }
+
+    /// Broadcasts the contract deployment transaction and after waiting for it to
+    /// be sufficiently confirmed (default: 1), it returns a new instance of the contract type at
+    /// the deployed contract's address.
+    pub async fn send(self) -> Result<C, ContractError<M>> {
+        let contract = self.deployer.send().await?;
+        Ok(C::from(contract))
+    }
+
+    /// Broadcasts the contract deployment transaction and after waiting for it to
+    /// be sufficiently confirmed (default: 1), it returns a new instance of the contract type at
+    /// the deployed contract's address and the corresponding
+    /// [`TransactionReceipt`](ethers_core::types::TransactionReceipt).
+    pub async fn send_with_receipt(self) -> Result<(C, TransactionReceipt), ContractError<M>> {
+        let (contract, receipt) = self.deployer.send_with_receipt().await?;
+        Ok((C::from(contract), receipt))
+    }
+
+    /// Returns a reference to the deployer's ABI
+    pub fn abi(&self) -> &Abi {
+        self.deployer.abi()
+    }
+
+    /// Returns a reference to the deployer's client
+    pub fn client(&self) -> &M {
+        self.deployer.client()
+    }
+}
+
 /// Helper which manages the deployment transaction of a smart contract
+#[derive(Debug, Clone)]
+#[must_use = "Deployer does nothing unless you `send` it"]
 pub struct Deployer<M> {
     /// The deployer's transaction, exposed for overriding the defaults
     pub tx: TypedTransaction,
@@ -27,20 +102,17 @@ pub struct Deployer<M> {
 
 impl<M: Middleware> Deployer<M> {
     /// Sets the number of confirmations to wait for the contract deployment transaction
-    #[must_use]
     pub fn confirmations<T: Into<usize>>(mut self, confirmations: T) -> Self {
         self.confs = confirmations.into();
         self
     }
 
-    #[must_use]
     pub fn block<T: Into<BlockNumber>>(mut self, block: T) -> Self {
         self.block = block.into();
         self
     }
 
     /// Uses a Legacy transaction instead of an EIP-1559 one to do the deployment
-    #[must_use]
     pub fn legacy(mut self) -> Self {
         self.tx = match self.tx {
             TypedTransaction::Eip1559(inner) => {
@@ -109,7 +181,6 @@ impl<M: Middleware> Deployer<M> {
     }
 }
 
-#[derive(Debug, Clone)]
 /// To deploy a contract to the Ethereum network, a `ContractFactory` can be
 /// created which manages the Contract bytecode and Application Binary Interface
 /// (ABI), usually generated from the Solidity compiler.
@@ -151,6 +222,7 @@ impl<M: Middleware> Deployer<M> {
 /// println!("{}", contract.address());
 /// # Ok(())
 /// # }
+#[derive(Debug, Clone)]
 pub struct ContractFactory<M> {
     client: Arc<M>,
     abi: Abi,

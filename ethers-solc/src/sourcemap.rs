@@ -142,7 +142,7 @@ impl<'a> fmt::Display for Jump {
 
 /// Represents a whole source map as list of `SourceElement`s
 ///
-/// See also https://docs.soliditylang.org/en/latest/internals/source_mappings.html#source-mappings
+/// See also <https://docs.soliditylang.org/en/latest/internals/source_mappings.html#source-mappings>
 pub type SourceMap = Vec<SourceElement>;
 
 /// Represents a single element in the source map

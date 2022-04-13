@@ -4,6 +4,13 @@
 
 ### Unreleased
 
+- Fix RLP encoding of absent access list in `Transaction` [1137](https://github.com/gakonst/ethers-rs/pull/1137)
+- Pass compilation time as additional argument to `Reporter::on_solc_success` [1098](https://github.com/gakonst/ethers-rs/pull/1098)
+- Fix aws signer bug which maps un-normalized signature to error if no normalization occurs (in `aws::utils::decode_signature`)
+- Implement signed transaction RLP decoding [#1096](https://github.com/gakonst/ethers-rs/pull/1096)
+- `Transaction::from` will default to `Address::zero()`. Add `recover_from` and
+  `recover_from_mut` methods for recovering the sender from signature, and also
+  setting the same on tx [1075](https://github.com/gakonst/ethers-rs/pull/1075).
 - Add Etherscan account API endpoints [939](https://github.com/gakonst/ethers-rs/pull/939)
 - Add FTM Mainet and testnet to parse method "try_from" from Chain.rs and add cronos mainet and testnet to "from_str"
 - Add FTM mainnet and testnet Multicall addresses [927](https://github.com/gakonst/ethers-rs/pull/927)
@@ -55,6 +62,8 @@
 
 ### Unreleased
 
+- Generate a deploy function if bytecode is provided in the abigen! input (json artifact)
+  [#1030](https://github.com/gakonst/ethers-rs/pull/1030).
 - Generate correct bindings of struct's field names that are reserved words
   [#989](https://github.com/gakonst/ethers-rs/pull/989).
 
@@ -71,6 +80,8 @@
 
 ### Unreleased
 
+- Bundle svm, svm-builds and sha2 dependencies in new `svm-solc` feature
+  [#1071](https://github.com/gakonst/ethers-rs/pull/1071)
 - Wrap `ethabi::Contract` into new type `LosslessAbi` and `abi: Option<Abi>` with `abi: Option<LosslessAbi>` in `ConfigurableContractArtifact`
   [#952](https://github.com/gakonst/ethers-rs/pull/952)
 - Let `Project` take ownership of `ArtifactOutput` and change trait interface
@@ -97,6 +108,7 @@
   some files
 - Add support for library linking and make `Bytecode`'s `object` filed an
   `enum BytecodeObject` [#656](https://github.com/gakonst/ethers-rs/pull/656).
+- Nit: remove accidentally doubled double-quotes in an error message
 
 ### 0.6.0
 
@@ -222,6 +234,9 @@
 ## ethers-middleware
 
 ### Unreleased
+
+- Ensure a consistent chain ID between a Signer and Provider in SignerMiddleware
+  [#1095](https://gakonst/ethers-rs/pull/1095)
 
 ### 0.6.0
 

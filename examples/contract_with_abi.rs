@@ -3,7 +3,7 @@ use eyre::Result;
 use std::{convert::TryFrom, path::Path, sync::Arc, time::Duration};
 
 // Generate the type-safe contract bindings by providing the ABI
-// definition in human readable format
+// definition
 abigen!(
     SimpleContract,
     "./examples/contract_abi.json",

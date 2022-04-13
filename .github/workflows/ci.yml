@@ -21,12 +21,12 @@ jobs:
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
-      - name: Install ganache-cli
+      - name: Set up node
         uses: actions/setup-node@v1
         with:
           node-version: 10
       - name: Install ganache
-        run: npm install -g ganache-cli
+        run: npm install -g ganache
       - name: Install Solc
         run: |
             mkdir -p "$HOME/bin"
@@ -66,13 +66,13 @@ jobs:
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
-      - name: Install ganache-cli
+      - name: Set up node
         uses: actions/setup-node@v1
         with:
           node-version: 10
       # TODO: can we combine these shared steps in github actions?
       - name: Install ganache
-        run: npm install -g ganache-cli
+        run: npm install -g ganache
       - name: Install Solc
         run: |
             mkdir -p "$HOME/bin"
@@ -115,7 +115,8 @@ jobs:
       - name: Install toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly
+          # nightly regression https://github.com/rust-lang/rust/issues/95267
+          toolchain: nightly-2022-03-20
           profile: minimal
           components: rustfmt, clippy
           override: true
@@ -123,9 +124,9 @@ jobs:
         with:
           cache-on-failure: true
       - name: cargo fmt
-        run: cargo +nightly fmt --all -- --check
+        run: cargo +nightly-2022-03-20 fmt --all -- --check
       - name: cargo clippy
-        run: cargo +nightly clippy --all-features -- -D warnings
+        run: cargo +nightly-2022-03-20 clippy --all-features -- -D warnings
 
   wasm:
     name: WASM
@@ -175,49 +176,59 @@ jobs:
           cd examples/ethers-wasm
           wasm-pack test --headless --chrome
 
-  examples:
-    name: Examples
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout sources
-        uses: actions/checkout@v2
-      - name: Install ganache-cli
-        uses: actions/setup-node@v1
-        with:
-          node-version: 10
-      - name: Install ganache
-        run: npm install -g ganache-cli
-      - name: Install Solc
-        run: |
-            mkdir -p "$HOME/bin"
-            wget -q https://github.com/ethereum/solidity/releases/download/v0.8.10/solc-static-linux -O $HOME/bin/solc
-            chmod u+x "$HOME/bin/solc"
-            export PATH=$HOME/bin:$PATH
-            solc --version
+  # TODO: Re-enable once we figure out why examples are running forever.
+  # examples:
+  #   name: Examples
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Checkout sources
+  #       uses: actions/checkout@v2
+  #     - name: Set up node
+  #       uses: actions/setup-node@v1
+  #       with:
+  #         node-version: 10
+  #     - name: Install ganache
+  #       run: npm install -g ganache
+  #     - name: Install Solc
+  #       run: |
+  #           mkdir -p "$HOME/bin"
+  #           wget -q https://github.com/ethereum/solidity/releases/download/v0.8.10/solc-static-linux -O $HOME/bin/solc
+  #           chmod u+x "$HOME/bin/solc"
+  #           export PATH=$HOME/bin:$PATH
+  #           solc --version
 
-      - name: Install geth
-        run: |
-            mkdir -p "$HOME/bin"
-            wget -q https://gethstore.blob.core.windows.net/builds/geth-linux-amd64-1.9.23-8c2f2715.tar.gz
-            tar -xvf geth-linux-amd64-1.9.23-8c2f2715.tar.gz
-            mv geth-linux-amd64-1.9.23-8c2f2715/geth $HOME/bin/geth
-            chmod u+x "$HOME/bin/geth"
-            export PATH=$HOME/bin:$PATH
-            geth version
-      - name: Install stable toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-          components: rustfmt, clippy
-      - uses: Swatinem/rust-cache@v1
-        with:
-          cache-on-failure: true
-      - name: Run all examples
-        run: |
-            export PATH=$HOME/bin:$PATH
-            ./scripts/examples.sh
+  #     - name: Install geth
+  #       run: |
+  #           mkdir -p "$HOME/bin"
+  #           wget -q https://gethstore.blob.core.windows.net/builds/geth-linux-amd64-1.9.23-8c2f2715.tar.gz
+  #           tar -xvf geth-linux-amd64-1.9.23-8c2f2715.tar.gz
+  #           mv geth-linux-amd64-1.9.23-8c2f2715/geth $HOME/bin/geth
+  #           chmod u+x "$HOME/bin/geth"
+  #           export PATH=$HOME/bin:$PATH
+  #           geth version
+  #     - name: Install stable toolchain
+  #       uses: actions-rs/toolchain@v1
+  #       with:
+  #         profile: minimal
+  #         toolchain: stable
+  #         override: true
+  #         components: rustfmt, clippy
+  #     - uses: Swatinem/rust-cache@v1
+  #       with:
+  #         cache-on-failure: true
+  #     - name: Build all examples
+  #       run: |
+  #           export PATH=$HOME/bin:$PATH
+  #           for file in examples/*.rs; do
+  #             name="$(echo "$file" | cut -f 1 -d '.')"
+  #             echo "building $name"
+  #             cargo build -p ethers --example "$(basename "$name")"
+  #           done
+  #     - name: Run all examples
+  #       run: |
+  #           export PATH=$HOME/bin:$PATH
+  #           chmod +x ./scripts/examples.sh
+  #           ./scripts/examples.sh
 
   windows-build:
     runs-on: windows-latest

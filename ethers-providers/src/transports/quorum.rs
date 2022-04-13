@@ -12,7 +12,7 @@ use ethers_core::types::{U256, U64};
 use futures_core::Stream;
 use futures_util::{future::join_all, FutureExt, StreamExt};
 use serde::{de::DeserializeOwned, Serialize};
-use serde_json::Value;
+use serde_json::{value::RawValue, Value};
 use thiserror::Error;
 
 /// A provider that bundles multiple providers and only returns a value to the
@@ -338,7 +338,8 @@ impl From<QuorumError> for ProviderError {
 pub trait JsonRpcClientWrapper: Send + Sync + fmt::Debug {
     async fn request(&self, method: &str, params: Value) -> Result<Value, ProviderError>;
 }
-type NotificationStream = Box<dyn futures_core::Stream<Item = Value> + Send + Unpin + 'static>;
+type NotificationStream =
+    Box<dyn futures_core::Stream<Item = Box<RawValue>> + Send + Unpin + 'static>;
 
 pub trait PubsubClientWrapper: JsonRpcClientWrapper {
     /// Add a subscription to this transport
@@ -428,7 +429,7 @@ where
 
 // A stream that returns a value and the weight of its provider
 type WeightedNotificationStream =
-    Pin<Box<dyn futures_core::Stream<Item = (Value, u64)> + Send + Unpin + 'static>>;
+    Pin<Box<dyn futures_core::Stream<Item = (Box<RawValue>, u64)> + Send + Unpin + 'static>>;
 
 /// A Subscription stream that only yields the next value if the underlying
 /// providers reached quorum.
@@ -436,7 +437,7 @@ pub struct QuorumStream {
     // Weight required to reach quorum
     quorum_weight: u64,
     /// The different notifications with their cumulative weight
-    responses: Vec<(Value, u64)>,
+    responses: Vec<(Box<RawValue>, u64)>,
     /// All provider notification streams
     active: Vec<WeightedNotificationStream>,
     /// Provider streams that already yielded a new value and are waiting for
@@ -451,7 +452,7 @@ impl QuorumStream {
 }
 
 impl Stream for QuorumStream {
-    type Item = Value;
+    type Item = Box<RawValue>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let this = self.get_mut();
@@ -465,7 +466,9 @@ impl Stream for QuorumStream {
 
             match stream.poll_next_unpin(cx) {
                 Poll::Ready(Some((val, response_weight))) => {
-                    if let Some((_, weight)) = this.responses.iter_mut().find(|(v, _)| &val == v) {
+                    if let Some((_, weight)) =
+                        this.responses.iter_mut().find(|(v, _)| val.get() == v.get())
+                    {
                         *weight += response_weight;
                         if *weight >= this.quorum_weight {
                             // reached quorum with multiple notification

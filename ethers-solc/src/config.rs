@@ -10,14 +10,14 @@ use crate::{
 use crate::artifacts::output_selection::ContractOutputSelection;
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::HashSet,
+    collections::{BTreeSet, HashSet},
     fmt::{self, Formatter},
     fs,
     path::{Component, Path, PathBuf},
 };
 
 /// Where to find all files or where to write them
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProjectPathsConfig {
     /// Project root
     pub root: PathBuf,
@@ -58,6 +58,25 @@ impl ProjectPathsConfig {
     /// Creates a new config with the current directory as the root
     pub fn current_dapptools() -> Result<Self> {
         Self::dapptools(std::env::current_dir().map_err(|err| SolcError::io(err, "."))?)
+    }
+
+    /// Returns a new [ProjectPaths] instance that contains all directories configured for this
+    /// project
+    pub fn paths(&self) -> ProjectPaths {
+        ProjectPaths {
+            artifacts: self.artifacts.clone(),
+            sources: self.sources.clone(),
+            tests: self.tests.clone(),
+            libraries: self.libraries.iter().cloned().collect(),
+        }
+    }
+
+    /// Same as [Self::paths()] but strips the `root` form all paths,
+    /// [ProjectPaths::strip_prefix_all()]
+    pub fn paths_relative(&self) -> ProjectPaths {
+        let mut paths = self.paths();
+        paths.strip_prefix_all(&self.root);
+        paths
     }
 
     /// Creates all configured dirs and files
@@ -167,12 +186,13 @@ impl ProjectPathsConfig {
     ///
     /// `import "@openzeppelin/token/ERC20/IERC20.sol";`
     ///
-    /// There is no strict rule behind this, but because [`Remappings::find_many`] returns
-    /// `'@openzeppelin/=node_modules/@openzeppelin/contracts/'` we should handle the case if the
-    /// remapping path ends with `contracts` and the import path starts with `<remapping
-    /// name>/contracts`. Otherwise we can end up with a resolved path that has a duplicate
-    /// `contracts` segment: `@openzeppelin/contracts/contracts/token/ERC20/IERC20.sol` we check
-    /// for this edge case here so that both styles work out of the box.
+    /// There is no strict rule behind this, but because [`crate::remappings::Remapping::find_many`]
+    /// returns `'@openzeppelin/=node_modules/@openzeppelin/contracts/'` we should handle the
+    /// case if the remapping path ends with `contracts` and the import path starts with
+    /// `<remapping name>/contracts`. Otherwise we can end up with a resolved path that has a
+    /// duplicate `contracts` segment:
+    /// `@openzeppelin/contracts/contracts/token/ERC20/IERC20.sol` we check for this edge case
+    /// here so that both styles work out of the box.
     pub fn resolve_library_import(&self, import: &Path) -> Option<PathBuf> {
         // if the import path starts with the name of the remapping then we get the resolved path by
         // removing the name and adding the remainder to the path of the remapping
@@ -230,7 +250,7 @@ impl ProjectPathsConfig {
     pub fn flatten(&self, target: &Path) -> Result<String> {
         tracing::trace!("flattening file");
         let graph = Graph::resolve(self)?;
-        self.flatten_node(target, &graph, &mut Default::default(), false, false)
+        self.flatten_node(target, &graph, &mut Default::default(), false, false, false)
     }
 
     /// Flattens a single node from the dependency graph
@@ -240,6 +260,7 @@ impl ProjectPathsConfig {
         graph: &Graph,
         imported: &mut HashSet<usize>,
         strip_version_pragma: bool,
+        strip_experimental_pragma: bool,
         strip_license: bool,
     ) -> Result<String> {
         let target_dir = target.parent().ok_or_else(|| {
@@ -279,9 +300,17 @@ impl ProjectPathsConfig {
             }
         }
 
+        if strip_experimental_pragma {
+            if let Some(experiment) = target_node.experimental() {
+                let (start, end) = experiment.loc_by_offset(offset);
+                content.splice(start..end, std::iter::empty());
+                offset -= (end - start) as isize;
+            }
+        }
+
         for import in imports.iter() {
             let import_path = self.resolve_import(target_dir, import.data())?;
-            let s = self.flatten_node(&import_path, graph, imported, true, true)?;
+            let s = self.flatten_node(&import_path, graph, imported, true, true, true)?;
             let import_content = s.trim().as_bytes();
             let import_content_len = import_content.len() as isize;
             let (start, end) = import.loc_by_offset(offset);
@@ -312,6 +341,61 @@ impl fmt::Display for ProjectPathsConfig {
             writeln!(f, "    {}", remapping)?;
         }
         Ok(())
+    }
+}
+
+/// This is a subset of [ProjectPathsConfig] that contains all relevant folders in the project
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct ProjectPaths {
+    pub artifacts: PathBuf,
+    pub sources: PathBuf,
+    pub tests: PathBuf,
+    pub libraries: BTreeSet<PathBuf>,
+}
+
+impl ProjectPaths {
+    /// Joins the folders' location with `root`
+    pub fn join_all(&mut self, root: impl AsRef<Path>) -> &mut Self {
+        let root = root.as_ref();
+        self.artifacts = root.join(&self.artifacts);
+        self.sources = root.join(&self.sources);
+        self.tests = root.join(&self.tests);
+        let libraries = std::mem::take(&mut self.libraries);
+        self.libraries.extend(libraries.into_iter().map(|p| root.join(p)));
+        self
+    }
+
+    /// Removes `base` from all folders
+    pub fn strip_prefix_all(&mut self, base: impl AsRef<Path>) -> &mut Self {
+        let base = base.as_ref();
+
+        if let Ok(prefix) = self.artifacts.strip_prefix(base) {
+            self.artifacts = prefix.to_path_buf();
+        }
+        if let Ok(prefix) = self.sources.strip_prefix(base) {
+            self.sources = prefix.to_path_buf();
+        }
+        if let Ok(prefix) = self.tests.strip_prefix(base) {
+            self.tests = prefix.to_path_buf();
+        }
+        let libraries = std::mem::take(&mut self.libraries);
+        self.libraries.extend(
+            libraries
+                .into_iter()
+                .map(|p| p.strip_prefix(base).map(|p| p.to_path_buf()).unwrap_or(p)),
+        );
+        self
+    }
+}
+
+impl Default for ProjectPaths {
+    fn default() -> Self {
+        Self {
+            artifacts: "out".into(),
+            sources: "src".into(),
+            tests: "tests".into(),
+            libraries: Default::default(),
+        }
     }
 }
 

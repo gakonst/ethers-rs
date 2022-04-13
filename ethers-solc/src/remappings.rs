@@ -661,7 +661,7 @@ mod tests {
         assert_eq!(relative.path.original(), Path::new(&remapping.path));
         assert!(relative.path.parent.is_none());
 
-        let relative = RelativeRemapping::new(remapping.clone(), "/a/b");
+        let relative = RelativeRemapping::new(remapping, "/a/b");
         assert_eq!(relative.to_relative_remapping(), Remapping::from_str("oz/=c/d/").unwrap());
     }
 
@@ -679,7 +679,7 @@ mod tests {
         assert_eq!(err, RemappingError::NoTarget);
     }
 
-    // https://doc.rust-lang.org/rust-by-example/std_misc/fs.html
+    // <https://doc.rust-lang.org/rust-by-example/std_misc/fs.html>
     fn touch(path: &std::path::Path) -> std::io::Result<()> {
         match std::fs::OpenOptions::new().create(true).write(true).open(path) {
             Ok(_) => Ok(()),

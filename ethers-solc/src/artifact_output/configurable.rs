@@ -2,15 +2,16 @@
 
 use crate::{
     artifacts::{
+        bytecode::{CompactBytecode, CompactDeployedBytecode},
+        contract::{CompactContract, CompactContractBytecode, Contract},
         output_selection::{ContractOutputSelection, EvmOutputSelection, EwasmOutputSelection},
-        CompactBytecode, CompactContract, CompactContractBytecode, CompactDeployedBytecode,
-        CompactEvm, DevDoc, Ewasm, GasEstimates, LosslessAbi, Metadata, Offsets, Settings,
-        StorageLayout, UserDoc,
+        CompactContractBytecodeCow, CompactEvm, DevDoc, Ewasm, GasEstimates, LosslessAbi, Metadata,
+        Offsets, Settings, StorageLayout, UserDoc,
     },
-    ArtifactOutput, Contract, SolcConfig, SolcError,
+    ArtifactOutput, SolcConfig, SolcError, SourceFile,
 };
 use serde::{Deserialize, Serialize};
-use std::{collections::BTreeMap, fs, path::Path};
+use std::{borrow::Cow, collections::BTreeMap, fs, path::Path};
 
 /// Represents the `Artifact` that `ConfigurableArtifacts` emits.
 ///
@@ -19,7 +20,7 @@ use std::{collections::BTreeMap, fs, path::Path};
 #[serde(rename_all = "camelCase")]
 pub struct ConfigurableContractArtifact {
     /// The Ethereum Contract ABI. If empty, it is represented as an empty
-    /// array. See https://docs.soliditylang.org/en/develop/abi-spec.html
+    /// array. See <https://docs.soliditylang.org/en/develop/abi-spec.html>
     pub abi: Option<LosslessAbi>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub bytecode: Option<CompactBytecode>,
@@ -46,6 +47,8 @@ pub struct ConfigurableContractArtifact {
     pub ir_optimized: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ewasm: Option<Ewasm>,
+    #[serde(default, skip_serializing_if = "serde_json::Value::is_null")]
+    pub ast: serde_json::Value,
 }
 
 impl ConfigurableContractArtifact {
@@ -83,6 +86,16 @@ impl From<ConfigurableContractArtifact> for CompactContractBytecode {
 impl From<ConfigurableContractArtifact> for CompactContract {
     fn from(artifact: ConfigurableContractArtifact) -> Self {
         CompactContractBytecode::from(artifact).into()
+    }
+}
+
+impl<'a> From<&'a ConfigurableContractArtifact> for CompactContractBytecodeCow<'a> {
+    fn from(artifact: &'a ConfigurableContractArtifact) -> Self {
+        CompactContractBytecodeCow {
+            abi: artifact.abi.as_ref().map(|abi| Cow::Borrowed(&abi.abi)),
+            bytecode: artifact.bytecode.as_ref().map(Cow::Borrowed),
+            deployed_bytecode: artifact.deployed_bytecode.as_ref().map(Cow::Borrowed),
+        }
     }
 }
 
@@ -179,7 +192,13 @@ impl ArtifactOutput for ConfigurableArtifacts {
         self.additional_files.write_extras(contract, file)
     }
 
-    fn contract_to_artifact(&self, _file: &str, _name: &str, contract: Contract) -> Self::Artifact {
+    fn contract_to_artifact(
+        &self,
+        _file: &str,
+        _name: &str,
+        contract: Contract,
+        source_file: Option<&SourceFile>,
+    ) -> Self::Artifact {
         let mut artifact_userdoc = None;
         let mut artifact_devdoc = None;
         let mut artifact_metadata = None;
@@ -265,6 +284,7 @@ impl ArtifactOutput for ConfigurableArtifacts {
             ir: artifact_ir,
             ir_optimized: artifact_ir_optimized,
             ewasm: artifact_ewasm,
+            ast: source_file.map(|s| s.ast.clone()).unwrap_or_default(),
         }
     }
 }

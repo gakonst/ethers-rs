@@ -1,12 +1,21 @@
 //! Bindings for [etherscan.io web api](https://docs.etherscan.io/)
 
-use std::borrow::Cow;
+use std::{
+    borrow::Cow,
+    io::Write,
+    path::PathBuf,
+    time::{Duration, SystemTime, UNIX_EPOCH},
+};
 
+use contract::ContractMetadata;
 use reqwest::{header, Url};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use errors::EtherscanError;
-use ethers_core::{abi::Address, types::Chain};
+use ethers_core::{
+    abi::{Abi, Address},
+    types::{Chain, H256},
+};
 
 pub mod account;
 pub mod contract;
@@ -24,13 +33,101 @@ pub struct Client {
     client: reqwest::Client,
     /// Etherscan API key
     api_key: String,
-    /// Etherscan API endpoint like https://api(-chain).etherscan.io/api
+    /// Etherscan API endpoint like <https://api(-chain).etherscan.io/api>
     etherscan_api_url: Url,
-    /// Etherscan base endpoint like https://etherscan.io
+    /// Etherscan base endpoint like <https://etherscan.io>
     etherscan_url: Url,
+    /// Path to where ABI files should be cached
+    cache: Option<Cache>,
+}
+
+/// A wrapper around an Etherscan cache object with an expiry
+#[derive(Clone, Debug, Deserialize, Serialize)]
+struct CacheEnvelope<T> {
+    expiry: u64,
+    data: T,
+}
+
+/// Simple cache for etherscan requests
+#[derive(Clone, Debug)]
+struct Cache {
+    root: PathBuf,
+    ttl: Duration,
+}
+
+impl Cache {
+    fn new(root: PathBuf, ttl: Duration) -> Self {
+        Self { root, ttl }
+    }
+
+    fn get_abi(&self, address: Address) -> Option<Option<ethers_core::abi::Abi>> {
+        self.get("abi", address)
+    }
+
+    fn set_abi(&self, address: Address, abi: Option<&Abi>) {
+        self.set("abi", address, abi)
+    }
+
+    fn get_source(&self, address: Address) -> Option<Option<ContractMetadata>> {
+        self.get("sources", address)
+    }
+
+    fn set_source(&self, address: Address, source: Option<&ContractMetadata>) {
+        self.set("sources", address, source)
+    }
+
+    fn set<T: Serialize>(&self, prefix: &str, address: Address, item: T) {
+        let path = self.root.join(prefix).join(format!("{:?}.json", address));
+        let writer = std::fs::File::create(path).ok().map(std::io::BufWriter::new);
+        if let Some(mut writer) = writer {
+            let _ = serde_json::to_writer(
+                &mut writer,
+                &CacheEnvelope {
+                    expiry: SystemTime::now()
+                        .checked_add(self.ttl)
+                        .expect("cache ttl overflowed")
+                        .duration_since(UNIX_EPOCH)
+                        .expect("system time is before unix epoch")
+                        .as_secs(),
+                    data: item,
+                },
+            );
+            let _ = writer.flush();
+        }
+    }
+
+    fn get<T: DeserializeOwned>(&self, prefix: &str, address: Address) -> Option<T> {
+        let path = self.root.join(prefix).join(format!("{:?}.json", address));
+        let reader = std::io::BufReader::new(std::fs::File::open(path).ok()?);
+        if let Ok(inner) = serde_json::from_reader::<_, CacheEnvelope<T>>(reader) {
+            // If this does not return None then we have passed the expiry
+            if SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("system time is before unix epoch")
+                .checked_sub(Duration::from_secs(inner.expiry))
+                .is_some()
+            {
+                return None
+            }
+
+            return Some(inner.data)
+        }
+        None
+    }
 }
 
 impl Client {
+    pub fn new_cached(
+        chain: Chain,
+        api_key: impl Into<String>,
+        cache_root: Option<PathBuf>,
+        cache_ttl: Duration,
+    ) -> Result<Self> {
+        let mut this = Self::new(chain, api_key)?;
+        this.cache = cache_root.map(|root| Cache::new(root, cache_ttl));
+        Ok(this)
+    }
+
     /// Create a new client with the correct endpoints based on the chain and provided API key
     pub fn new(chain: Chain, api_key: impl Into<String>) -> Result<Self> {
         let (etherscan_api_url, etherscan_url) = match chain {
@@ -92,6 +189,7 @@ impl Client {
             Chain::Cronos => {
                 (Url::parse("https://api.cronoscan.com/api"), Url::parse("https://cronoscan.com"))
             }
+            Chain::Dev => return Err(EtherscanError::LocalNetworksNotSupported),
             chain => return Err(EtherscanError::ChainNotSupported(chain)),
         };
 
@@ -100,6 +198,7 @@ impl Client {
             api_key: api_key.into(),
             etherscan_api_url: etherscan_api_url.expect("is valid http"),
             etherscan_url: etherscan_url.expect("is valid http"),
+            cache: None,
         })
     }
 
@@ -128,6 +227,7 @@ impl Client {
             Chain::Moonbeam | Chain::MoonbeamDev | Chain::Moonriver => {
                 std::env::var("MOONSCAN_API_KEY")?
             }
+            Chain::Dev => return Err(errors::EtherscanError::LocalNetworksNotSupported),
         };
         Self::new(chain, api_key)
     }
@@ -142,22 +242,22 @@ impl Client {
 
     /// Return the URL for the given block number
     pub fn block_url(&self, block: u64) -> String {
-        format!("{}/block/{}", self.etherscan_url, block)
+        format!("{}block/{}", self.etherscan_url, block)
     }
 
     /// Return the URL for the given address
     pub fn address_url(&self, address: Address) -> String {
-        format!("{}/address/{}", self.etherscan_url, address)
+        format!("{}address/{:?}", self.etherscan_url, address)
     }
 
     /// Return the URL for the given transaction hash
-    pub fn transaction_url(&self, tx_hash: impl AsRef<str>) -> String {
-        format!("{}/tx/{}", self.etherscan_url, tx_hash.as_ref())
+    pub fn transaction_url(&self, tx_hash: H256) -> String {
+        format!("{}tx/{:?}", self.etherscan_url, tx_hash)
     }
 
     /// Return the URL for the given token hash
-    pub fn token_url(&self, token_hash: impl AsRef<str>) -> String {
-        format!("{}/token/{}", self.etherscan_url, token_hash.as_ref())
+    pub fn token_url(&self, token_hash: Address) -> String {
+        format!("{}token/{:?}", self.etherscan_url, token_hash)
     }
 
     /// Execute an API POST request with a form
@@ -178,7 +278,7 @@ impl Client {
 
     /// Execute an API GET request with parameters
     async fn get_json<T: DeserializeOwned, Q: Serialize>(&self, query: &Q) -> Result<Response<T>> {
-        Ok(self
+        let res: ResponseData<T> = self
             .client
             .get(self.etherscan_api_url.clone())
             .header(header::ACCEPT, "application/json")
@@ -186,7 +286,18 @@ impl Client {
             .send()
             .await?
             .json()
-            .await?)
+            .await?;
+
+        match res {
+            ResponseData::Error { result, .. } => {
+                if result.starts_with("Max rate limit reached") {
+                    Err(EtherscanError::RateLimitExceeded)
+                } else {
+                    Err(EtherscanError::Unknown(result))
+                }
+            }
+            ResponseData::Success(res) => Ok(res),
+        }
     }
 
     fn create_query<T: Serialize>(
@@ -212,6 +323,13 @@ pub struct Response<T> {
     pub result: T,
 }
 
+#[derive(Deserialize, Debug, Clone)]
+#[serde(untagged)]
+pub enum ResponseData<T> {
+    Success(Response<T>),
+    Error { status: String, message: String, result: String },
+}
+
 /// The type that gets serialized as query
 #[derive(Debug, Serialize)]
 struct Query<'a, T: Serialize> {
@@ -229,7 +347,7 @@ mod tests {
         time::{Duration, SystemTime},
     };
 
-    use ethers_core::types::Chain;
+    use ethers_core::types::{Address, Chain, H256};
 
     use crate::{Client, EtherscanError};
 
@@ -238,7 +356,45 @@ mod tests {
         let err = Client::new_from_env(Chain::XDai).unwrap_err();
 
         assert!(matches!(err, EtherscanError::ChainNotSupported(_)));
-        assert_eq!(err.to_string(), "chain xdai not supported");
+        assert_eq!(err.to_string(), "Chain xdai not supported");
+    }
+
+    #[test]
+    fn stringifies_block_url() {
+        let etherscan = Client::new_from_env(Chain::Mainnet).unwrap();
+        let block: u64 = 1;
+        let block_url: String = etherscan.block_url(block);
+        assert_eq!(block_url, format!("https://etherscan.io/block/{}", block));
+    }
+
+    #[test]
+    fn stringifies_address_url() {
+        let etherscan = Client::new_from_env(Chain::Mainnet).unwrap();
+        let addr: Address = Address::zero();
+        let address_url: String = etherscan.address_url(addr);
+        assert_eq!(address_url, format!("https://etherscan.io/address/{:?}", addr));
+    }
+
+    #[test]
+    fn stringifies_transaction_url() {
+        let etherscan = Client::new_from_env(Chain::Mainnet).unwrap();
+        let tx_hash = H256::zero();
+        let tx_url: String = etherscan.transaction_url(tx_hash);
+        assert_eq!(tx_url, format!("https://etherscan.io/tx/{:?}", tx_hash));
+    }
+
+    #[test]
+    fn stringifies_token_url() {
+        let etherscan = Client::new_from_env(Chain::Mainnet).unwrap();
+        let token_hash = Address::zero();
+        let token_url: String = etherscan.token_url(token_hash);
+        assert_eq!(token_url, format!("https://etherscan.io/token/{:?}", token_hash));
+    }
+
+    #[test]
+    fn local_networks_not_supported() {
+        let err = Client::new_from_env(Chain::Dev).unwrap_err();
+        assert!(matches!(err, EtherscanError::LocalNetworksNotSupported));
     }
 
     pub async fn run_at_least_duration(duration: Duration, block: impl Future) {

@@ -119,7 +119,7 @@ pub static ADDRESS_BOOK: Lazy<HashMap<U256, Address>> = Lazy::new(|| {
 ///
 /// [`new`]: method@crate::Multicall::new
 /// [`block`]: method@crate::Multicall::block
-/// [`add_call`]: methond@crate::Multicall::add_call
+/// [`add_call`]: method@crate::Multicall::add_call
 #[derive(Clone)]
 pub struct Multicall<M> {
     calls: Vec<Call>,

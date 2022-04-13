@@ -1,7 +1,10 @@
 //! Transaction types
-use super::{decode_signature, eip2930::AccessList, normalize_v, rlp_opt};
+use super::{
+    decode_signature, eip2718::TypedTransaction, eip2930::AccessList, normalize_v, rlp_opt,
+    rlp_opt_list,
+};
 use crate::{
-    types::{Address, Bloom, Bytes, Log, H256, U256, U64},
+    types::{Address, Bloom, Bytes, Log, Signature, SignatureError, H256, U256, U64},
     utils::keccak256,
 };
 use rlp::{Decodable, DecoderError, RlpStream};
@@ -32,6 +35,7 @@ pub struct Transaction {
     pub transaction_index: Option<U64>,
 
     /// Sender
+    #[serde(default = "crate::types::Address::zero")]
     pub from: Address,
 
     /// Recipient (None when contract creation)
@@ -144,7 +148,7 @@ impl Transaction {
                 rlp_opt(&mut rlp, &self.to);
                 rlp.append(&self.value);
                 rlp.append(&self.input.as_ref());
-                rlp_opt(&mut rlp, &self.access_list);
+                rlp_opt_list(&mut rlp, &self.access_list);
                 if let Some(chain_id) = self.chain_id {
                     rlp.append(&normalize_v(self.v.as_u64(), U64::from(chain_id.as_u64())));
                 }
@@ -159,7 +163,7 @@ impl Transaction {
                 rlp_opt(&mut rlp, &self.to);
                 rlp.append(&self.value);
                 rlp.append(&self.input.as_ref());
-                rlp_opt(&mut rlp, &self.access_list);
+                rlp_opt_list(&mut rlp, &self.access_list);
                 if let Some(chain_id) = self.chain_id {
                     rlp.append(&normalize_v(self.v.as_u64(), U64::from(chain_id.as_u64())));
                 }
@@ -292,7 +296,6 @@ impl Transaction {
         rlp: &rlp::Rlp,
         offset: &mut usize,
     ) -> Result<(), DecoderError> {
-        println!("are we a list {}", rlp.is_list());
         self.nonce = rlp.val_at(*offset)?;
         *offset += 1;
         self.gas_price = Some(rlp.val_at(*offset)?);
@@ -312,15 +315,32 @@ impl Transaction {
         *offset += 1;
         Ok(())
     }
+
+    /// Recover the sender of the tx from signature
+    pub fn recover_from(&self) -> Result<Address, SignatureError> {
+        let signature = Signature { r: self.r, s: self.s, v: self.v.as_u64() };
+        let typed_tx: TypedTransaction = self.into();
+        signature.recover(typed_tx.sighash())
+    }
+
+    /// Recover the sender of the tx from signature and set the from field
+    pub fn recover_from_mut(&mut self) -> Result<Address, SignatureError> {
+        let from = self.recover_from()?;
+        self.from = from;
+        Ok(from)
+    }
 }
 
-/// Get a TransactionReceipt directly from an rlp encoded byte stream
+/// Get a Transaction directly from a rlp encoded byte stream
 impl Decodable for Transaction {
     fn decode(rlp: &rlp::Rlp) -> Result<Self, DecoderError> {
         let mut txn = Self::default();
         // we can get the type from the first value
         let mut offset = 0;
-        txn.transaction_type = Some(rlp.data().unwrap().into());
+        txn.transaction_type = match rlp.is_data() {
+            true => Ok(Some(rlp.data()?.into())),
+            false => Ok(None),
+        }?;
         let rest = rlp::Rlp::new(
             rlp.as_raw().get(1..).ok_or(DecoderError::Custom("no transaction payload"))?,
         );
@@ -516,6 +536,49 @@ mod tests {
     }
 
     #[test]
+    fn rlp_london_no_access_list() {
+        let tx = Transaction {
+            block_hash: None,
+            block_number: None,
+            from: Address::from_str("057f8d0f6fb2703197363f75c002f766f1c4287a").unwrap(),
+            gas: U256::from_str_radix("0x6d22", 16).unwrap(),
+            gas_price: Some(U256::from_str_radix("0x1344ead983", 16).unwrap()),
+            hash: H256::from_str(
+                "781d57642f4e3277fe01d370bd45ba1361b475bea6a35f26814e02a0a2b26549",
+            )
+            .unwrap(),
+            max_fee_per_gas: Some(U256::from_str_radix("0x1344ead983", 16).unwrap()),
+            max_priority_fee_per_gas: Some(U256::from_str_radix("0x1344ead983", 16).unwrap()),
+            input: Bytes::from(hex::decode("d0e30db0").unwrap()),
+            nonce: U256::from(479),
+            to: Some(Address::from_str("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap()),
+            transaction_index: None,
+            value: U256::from_str_radix("0x2b40d6d551c8970c", 16).unwrap(),
+            transaction_type: Some(U64::from(0x2)),
+            access_list: None,
+            chain_id: Some(U256::from(1)),
+            v: U64::from(0x1),
+            r: U256::from_str_radix(
+                "0x5616cdaec839ca14d209b59eafb706e623169dc9d0fa58fbf13931cef5b5e3b0",
+                16,
+            )
+            .unwrap(),
+            s: U256::from_str_radix(
+                "0x3e708f8044bd158d29c2e250b6a98ea637c3bc460beeea63a8f00f7cebac432a",
+                16,
+            )
+            .unwrap(),
+        };
+        println!("0x{}", hex::encode(&tx.rlp()));
+        assert_eq!(
+            tx.rlp(),
+            Bytes::from(
+                hex::decode("02f87a018201df851344ead983851344ead983826d2294c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2882b40d6d551c8970c84d0e30db0c001a05616cdaec839ca14d209b59eafb706e623169dc9d0fa58fbf13931cef5b5e3b0a03e708f8044bd158d29c2e250b6a98ea637c3bc460beeea63a8f00f7cebac432a").unwrap()
+            )
+        );
+    }
+
+    #[test]
     fn rlp_legacy_tx() {
         let tx = Transaction {
             block_hash: None,
@@ -636,5 +699,47 @@ mod tests {
 
         // we compare hash because the hash depends on the rlp encoding
         assert_eq!(decoded_transaction.hash(), tx.hash());
+    }
+
+    #[test]
+    fn recover_from() {
+        let tx = Transaction {
+            hash: H256::from_str(
+                "5e2fc091e15119c97722e9b63d5d32b043d077d834f377b91f80d32872c78109",
+            )
+            .unwrap(),
+            nonce: 65.into(),
+            block_hash: Some(
+                H256::from_str("f43869e67c02c57d1f9a07bb897b54bec1cfa1feb704d91a2ee087566de5df2c")
+                    .unwrap(),
+            ),
+            block_number: Some(6203173.into()),
+            transaction_index: Some(10.into()),
+            from: Address::from_str("e66b278fa9fbb181522f6916ec2f6d66ab846e04").unwrap(),
+            to: Some(Address::from_str("11d7c2ab0d4aa26b7d8502f6a7ef6844908495c2").unwrap()),
+            value: 0.into(),
+            gas_price: Some(1500000007.into()),
+            gas: 106703.into(),
+            input: hex::decode("e5225381").unwrap().into(),
+            v: 1.into(),
+            r: U256::from_str_radix(
+                "12010114865104992543118914714169554862963471200433926679648874237672573604889",
+                10,
+            )
+            .unwrap(),
+            s: U256::from_str_radix(
+                "22830728216401371437656932733690354795366167672037272747970692473382669718804",
+                10,
+            )
+            .unwrap(),
+            transaction_type: Some(2.into()),
+            access_list: Some(AccessList::default()),
+            max_priority_fee_per_gas: Some(1500000000.into()),
+            max_fee_per_gas: Some(1500000009.into()),
+            chain_id: Some(5.into()),
+        };
+
+        assert_eq!(tx.hash, tx.hash());
+        assert_eq!(tx.from, tx.recover_from().unwrap());
     }
 }

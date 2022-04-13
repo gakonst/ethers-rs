@@ -1,7 +1,4 @@
-use serde::{
-    de::{Error, Unexpected},
-    Deserialize, Deserializer, Serialize, Serializer,
-};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use thiserror::Error;
 
 use std::{
@@ -77,13 +74,13 @@ impl FromStr for Bytes {
     type Err = ParseBytesError;
 
     fn from_str(value: &str) -> Result<Self, Self::Err> {
-        if value.len() >= 2 && &value[0..2] == "0x" {
-            let bytes: Vec<u8> = hex::decode(&value[2..])
-                .map_err(|e| ParseBytesError(format!("Invalid hex: {}", e)))?;
-            Ok(bytes.into())
+        if let Some(value) = value.strip_prefix("0x") {
+            hex::decode(value)
         } else {
-            Err(ParseBytesError("Doesn't start with 0x".to_string()))
+            hex::decode(&value)
         }
+        .map(Into::into)
+        .map_err(|e| ParseBytesError(format!("Invalid hex: {}", e)))
     }
 }
 
@@ -100,13 +97,13 @@ where
     D: Deserializer<'de>,
 {
     let value = String::deserialize(d)?;
-    if value.len() >= 2 && &value[0..2] == "0x" {
-        let bytes: Vec<u8> =
-            hex::decode(&value[2..]).map_err(|e| Error::custom(format!("Invalid hex: {}", e)))?;
-        Ok(bytes.into())
+    if let Some(value) = value.strip_prefix("0x") {
+        hex::decode(value)
     } else {
-        Err(Error::invalid_value(Unexpected::Str(&value), &"0x prefix"))
+        hex::decode(&value)
     }
+    .map(Into::into)
+    .map_err(|e| serde::de::Error::custom(e.to_string()))
 }
 
 #[cfg(test)]
@@ -129,7 +126,7 @@ mod tests {
         assert_eq!(b.as_ref(), hex::decode("1213").unwrap());
 
         let b = Bytes::from_str("1213");
-        assert!(b.is_err());
-        assert_eq!(b.err().unwrap().0, "Doesn't start with 0x");
+        let b = b.unwrap();
+        assert_eq!(b.as_ref(), hex::decode("1213").unwrap());
     }
 }

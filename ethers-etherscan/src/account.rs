@@ -601,7 +601,7 @@ mod tests {
 
             let balances = client
                 .get_ether_balance_multi(
-                    &vec![&"0x58eB28A67731c570Ef827C365c89B5751F9E6b0a".parse().unwrap()],
+                    &[&"0x58eB28A67731c570Ef827C365c89B5751F9E6b0a".parse().unwrap()],
                     None,
                 )
                 .await;

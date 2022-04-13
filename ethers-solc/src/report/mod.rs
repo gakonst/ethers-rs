@@ -1,33 +1,37 @@
 //! Subscribe to events in the compiler pipeline
 //!
-//! The _reporter_ is the component of the [`Project::compile()`] pipeline which is responsible
-//! for reporting on specific steps in the process.
+//! The _reporter_ is the component of the [`crate::Project::compile()`] pipeline which is
+//! responsible for reporting on specific steps in the process.
 //!
 //! By default, the current reporter is a noop that does
 //! nothing.
 //!
 //! To use another report implementation, it must be set as the current reporter.
 //! There are two methods for doing so: [`with_scoped`] and
-//! [`set_global`]. `with_scoped` sets the reporter for the
+//! [`try_init`]. `with_scoped` sets the reporter for the
 //! duration of a scope, while `set_global` sets a global default report
 //! for the entire process.
 
-// https://github.com/tokio-rs/tracing/blob/master/tracing-core/src/dispatch.rs
+// <https://github.com/tokio-rs/tracing/blob/master/tracing-core/src/dispatch.rs>
 
-use crate::{CompilerInput, CompilerOutput, Solc};
+use crate::{remappings::Remapping, CompilerInput, CompilerOutput, Solc};
 use semver::Version;
 use std::{
     any::{Any, TypeId},
     cell::RefCell,
     error::Error,
     fmt,
-    path::Path,
+    path::{Path, PathBuf},
     ptr::NonNull,
     sync::{
         atomic::{AtomicBool, AtomicUsize, Ordering},
         Arc,
     },
+    time::Duration,
 };
+
+mod compiler;
+pub use compiler::SolcCompilerIoReporter;
 
 thread_local! {
     static CURRENT_STATE: State = State {
@@ -91,35 +95,63 @@ where
 /// A `Reporter` is entirely passive and only listens to incoming "events".
 pub trait Reporter: 'static {
     /// Callback invoked right before [`Solc::compile()`] is called
-    fn on_solc_spawn(&self, _solc: &Solc, _version: &Version, _input: &CompilerInput) {}
+    ///
+    /// This contains the [Solc] its [Version] the complete [CompilerInput] and all files that
+    /// triggered the compile job. The dirty files are only provided to give a better feedback what
+    /// was actually compiled.
+    ///
+    /// If caching is enabled and there has been a previous successful solc run, the dirty files set
+    /// contains the files that absolutely must be recompiled, while the [CompilerInput] contains
+    /// all files, the dirty files and all their dependencies.
+    ///
+    /// If this is a fresh compile then the [crate::artifacts::Sources] set of the [CompilerInput]
+    /// matches the dirty files set.
+    fn on_solc_spawn(
+        &self,
+        _solc: &Solc,
+        _version: &Version,
+        _input: &CompilerInput,
+        _dirty_files: &[PathBuf],
+    ) {
+    }
 
-    /// Invoked with the `CompilerOutput` if [`Solc::compiled()`] was successful
-    fn on_solc_success(&self, _solc: &Solc, _version: &Version, _output: &CompilerOutput) {}
+    /// Invoked with the `CompilerOutput` if [`Solc::compile()`] was successful
+    fn on_solc_success(
+        &self,
+        _solc: &Solc,
+        _version: &Version,
+        _output: &CompilerOutput,
+        _duration: &Duration,
+    ) {
+    }
 
     /// Invoked before a new [`Solc`] bin is installed
     fn on_solc_installation_start(&self, _version: &Version) {}
 
-    /// Invoked before a new [`Solc`] bin was successfully installed
+    /// Invoked after a new [`Solc`] bin was successfully installed
     fn on_solc_installation_success(&self, _version: &Version) {}
 
-    /// Invoked if the import couldn't be resolved
-    fn on_unresolved_import(&self, _import: &Path) {}
+    /// Invoked after a [`Solc`] installation failed
+    fn on_solc_installation_error(&self, _version: &Version, _error: &str) {}
+
+    /// Invoked if the import couldn't be resolved with these remappings
+    fn on_unresolved_import(&self, _import: &Path, _remappings: &[Remapping]) {}
 
     /// If `self` is the same type as the provided `TypeId`, returns an untyped
     /// [`NonNull`] pointer to that type. Otherwise, returns `None`.
     ///
     /// If you wish to downcast a `Reporter`, it is strongly advised to use
-    /// the safe API provided by [`downcast_ref`] instead.
+    /// the safe API provided by downcast_ref instead.
     ///
     /// This API is required for `downcast_raw` to be a trait method; a method
-    /// signature like [`downcast_ref`] (with a generic type parameter) is not
+    /// signature like downcast_ref (with a generic type parameter) is not
     /// object-safe, and thus cannot be a trait method for `Reporter`. This
-    /// means that if we only exposed `downcast_ref`, `Reporter`
+    /// means that if we only exposed downcast_ref, `Reporter`
     /// implementations could not override the downcasting behavior
     ///
     /// # Safety
     ///
-    /// The [`downcast_ref`] method expects that the pointer returned by
+    /// The downcast_ref method expects that the pointer returned by
     /// `downcast_raw` points to a valid instance of the type
     /// with the provided `TypeId`. Failure to ensure this will result in
     /// undefined behaviour, so implementing `downcast_raw` is unsafe.
@@ -148,12 +180,22 @@ impl dyn Reporter {
     }
 }
 
-pub(crate) fn solc_spawn(solc: &Solc, version: &Version, input: &CompilerInput) {
-    get_default(|r| r.reporter.on_solc_spawn(solc, version, input));
+pub(crate) fn solc_spawn(
+    solc: &Solc,
+    version: &Version,
+    input: &CompilerInput,
+    dirty_files: &[PathBuf],
+) {
+    get_default(|r| r.reporter.on_solc_spawn(solc, version, input, dirty_files));
 }
 
-pub(crate) fn solc_success(solc: &Solc, version: &Version, output: &CompilerOutput) {
-    get_default(|r| r.reporter.on_solc_success(solc, version, output));
+pub(crate) fn solc_success(
+    solc: &Solc,
+    version: &Version,
+    output: &CompilerOutput,
+    duration: &Duration,
+) {
+    get_default(|r| r.reporter.on_solc_success(solc, version, output, duration));
 }
 
 #[allow(unused)]
@@ -166,8 +208,13 @@ pub(crate) fn solc_installation_success(version: &Version) {
     get_default(|r| r.reporter.on_solc_installation_success(version));
 }
 
-pub(crate) fn unresolved_import(import: &Path) {
-    get_default(|r| r.reporter.on_unresolved_import(import));
+#[allow(unused)]
+pub(crate) fn solc_installation_error(version: &Version, error: &str) {
+    get_default(|r| r.reporter.on_solc_installation_error(version, error));
+}
+
+pub(crate) fn unresolved_import(import: &Path, remappings: &[Remapping]) {
+    get_default(|r| r.reporter.on_unresolved_import(import, remappings));
 }
 
 fn get_global() -> Option<&'static Report> {
@@ -183,7 +230,7 @@ fn get_global() -> Option<&'static Report> {
     }
 }
 
-/// Executes a closure with a reference to this thread's current [reporter].
+/// Executes a closure with a reference to this thread's current reporter.
 #[inline(always)]
 pub fn get_default<T, F>(mut f: F) -> T
 where
@@ -288,10 +335,16 @@ pub struct BasicStdoutReporter(());
 
 impl Reporter for BasicStdoutReporter {
     /// Callback invoked right before [`Solc::compile()`] is called
-    fn on_solc_spawn(&self, _solc: &Solc, version: &Version, input: &CompilerInput) {
+    fn on_solc_spawn(
+        &self,
+        _solc: &Solc,
+        version: &Version,
+        _input: &CompilerInput,
+        dirty_files: &[PathBuf],
+    ) {
         println!(
             "Compiling {} files with {}.{}.{}",
-            input.sources.len(),
+            dirty_files.len(),
             version.major,
             version.minor,
             version.patch
@@ -308,8 +361,16 @@ impl Reporter for BasicStdoutReporter {
         println!("Successfully installed solc {}", version);
     }
 
-    fn on_unresolved_import(&self, import: &Path) {
-        println!("Unable to resolve imported file: \"{}\"", import.display());
+    fn on_solc_installation_error(&self, version: &Version, error: &str) {
+        eprintln!("Failed to install solc {}: {}", version, error);
+    }
+
+    fn on_unresolved_import(&self, import: &Path, remappings: &[Remapping]) {
+        println!(
+            "Unable to resolve import: \"{}\" with remappings:\n        {}",
+            import.display(),
+            remappings.iter().map(|r| r.to_string()).collect::<Vec<_>>().join("\n        ")
+        );
     }
 }
 

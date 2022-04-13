@@ -1,30 +1,30 @@
 //! Solc artifact types
-use ethers_core::{abi::Abi, types::Bytes};
+use ethers_core::abi::Abi;
 
 use colored::Colorize;
 use md5::Digest;
-use semver::Version;
+use semver::{Version, VersionReq};
 use std::{
     collections::{BTreeMap, HashSet},
-    convert::TryFrom,
     fmt, fs,
     path::{Path, PathBuf},
     str::FromStr,
 };
 
-use crate::{
-    compile::*,
-    error::SolcIoError,
-    remappings::Remapping,
-    sourcemap::{self, SourceMap, SyntaxError},
-    utils,
-};
-use ethers_core::abi::Address;
+use crate::{compile::*, error::SolcIoError, remappings::Remapping, utils};
+
 use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 
+pub mod bytecode;
+pub mod contract;
 pub mod output_selection;
 pub mod serde_helpers;
-use crate::artifacts::output_selection::ContractOutputSelection;
+use crate::{
+    artifacts::output_selection::{ContractOutputSelection, OutputSelection},
+    filter::FilteredSources,
+};
+pub use bytecode::*;
+pub use contract::*;
 pub use serde_helpers::{deserialize_bytes, deserialize_opt_bytes};
 
 /// Solidity files are made up of multiple `source units`, a solidity contract is such a `source
@@ -40,7 +40,11 @@ pub type Contracts = FileToContractsMap<Contract>;
 /// An ordered list of files and their source
 pub type Sources = BTreeMap<PathBuf, Source>;
 
+/// A set of different Solc installations with their version and the sources to be compiled
 pub type VersionedSources = BTreeMap<Solc, (Version, Sources)>;
+
+/// A set of different Solc installations with their version and the sources to be compiled
+pub type VersionedFilteredSources = BTreeMap<Solc, (Version, FilteredSources)>;
 
 /// Input type `solc` expects
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -56,7 +60,10 @@ impl CompilerInput {
         Source::read_all_from(path.as_ref()).map(Self::with_sources)
     }
 
-    /// Creates a new Compiler input with default settings and the given sources
+    /// Creates a new [CompilerInput]s with default settings and the given sources
+    ///
+    /// A [CompilerInput] expects a language setting, supported by solc are solidity or yul.
+    /// In case the `sources` is a mix of solidity and yul files, 2 CompilerInputs are returned
     pub fn with_sources(sources: Sources) -> Vec<Self> {
         let mut solidity_sources = BTreeMap::new();
         let mut yul_sources = BTreeMap::new();
@@ -83,6 +90,22 @@ impl CompilerInput {
             });
         }
         res
+    }
+
+    /// This will remove/adjust values in the `CompilerInput` that are not compatible with this
+    /// version
+    pub fn sanitized(mut self, version: &Version) -> Self {
+        static PRE_V0_6_0: once_cell::sync::Lazy<VersionReq> =
+            once_cell::sync::Lazy::new(|| VersionReq::parse("<0.6.0").unwrap());
+
+        if PRE_V0_6_0.matches(version) {
+            if let Some(ref mut meta) = self.settings.metadata {
+                // introduced in <https://docs.soliditylang.org/en/v0.6.0/using-the-compiler.html#compiler-api>
+                // missing in <https://docs.soliditylang.org/en/v0.5.17/using-the-compiler.html#compiler-api>
+                meta.bytecode_hash.take();
+            }
+        }
+        self
     }
 
     /// Sets the settings for compilation
@@ -121,6 +144,25 @@ impl CompilerInput {
         self.settings.remappings = remappings;
         self
     }
+
+    /// Sets the path of the source files to `root` adjoined to the existing path
+    #[must_use]
+    pub fn join_path(mut self, root: impl AsRef<Path>) -> Self {
+        let root = root.as_ref();
+        self.sources = self.sources.into_iter().map(|(path, s)| (root.join(path), s)).collect();
+        self
+    }
+
+    /// Removes the `base` path from all source files
+    pub fn strip_prefix(mut self, base: impl AsRef<Path>) -> Self {
+        let base = base.as_ref();
+        self.sources = self
+            .sources
+            .into_iter()
+            .map(|(path, s)| (path.strip_prefix(base).map(|p| p.to_path_buf()).unwrap_or(path), s))
+            .collect();
+        self
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -140,112 +182,26 @@ pub struct Settings {
     /// on file and contract names.
     /// If this field is omitted, then the compiler loads and does type
     /// checking, but will not generate any outputs apart from errors.
-    /// The first level key is the file name and the second level key is the
-    /// contract name. An empty contract name is used for outputs that are
-    /// not tied to a contract but to the whole source file like the AST.
-    /// A star as contract name refers to all contracts in the file.
-    /// Similarly, a star as a file name matches all files.
-    /// To select all outputs the compiler can possibly generate, use
-    /// "outputSelection: { "*": { "*": [ "*" ], "": [ "*" ] } }"
-    /// but note that this might slow down the compilation process needlessly.
-    ///
-    /// The available output types are as follows:
-    ///
-    /// File level (needs empty string as contract name):
-    ///   ast - AST of all source files
-    ///
-    /// Contract level (needs the contract name or "*"):
-    ///   abi - ABI
-    ///   devdoc - Developer documentation (natspec)
-    ///   userdoc - User documentation (natspec)
-    ///   metadata - Metadata
-    ///   ir - Yul intermediate representation of the code before optimization
-    ///   irOptimized - Intermediate representation after optimization
-    ///   storageLayout - Slots, offsets and types of the contract's state
-    ///     variables.
-    ///   evm.assembly - New assembly format
-    ///   evm.legacyAssembly - Old-style assembly format in JSON
-    ///   evm.bytecode.functionDebugData - Debugging information at function level
-    ///   evm.bytecode.object - Bytecode object
-    ///   evm.bytecode.opcodes - Opcodes list
-    ///   evm.bytecode.sourceMap - Source mapping (useful for debugging)
-    ///   evm.bytecode.linkReferences - Link references (if unlinked object)
-    ///   evm.bytecode.generatedSources - Sources generated by the compiler
-    ///   evm.deployedBytecode* - Deployed bytecode (has all the options that
-    ///     evm.bytecode has)
-    ///   evm.deployedBytecode.immutableReferences - Map from AST ids to
-    ///     bytecode ranges that reference immutables
-    ///   evm.methodIdentifiers - The list of function hashes
-    ///   evm.gasEstimates - Function gas estimates
-    ///   ewasm.wast - Ewasm in WebAssembly S-expressions format
-    ///   ewasm.wasm - Ewasm in WebAssembly binary format
-    ///
-    /// Note that using a using `evm`, `evm.bytecode`, `ewasm`, etc. will select
-    /// every target part of that output. Additionally, `*` can be used as a
-    /// wildcard to request everything.
-    ///
-    /// The default output selection is
-    ///
-    /// ```json
-    ///   {
-    ///    "*": {
-    ///      "*": [
-    ///        "abi",
-    ///        "evm.bytecode",
-    ///        "evm.deployedBytecode",
-    ///        "evm.methodIdentifiers"
-    ///      ],
-    ///      "": [
-    ///        "ast"
-    ///      ]
-    ///    }
-    ///  }
-    /// ```
     #[serde(default)]
-    pub output_selection: BTreeMap<String, BTreeMap<String, Vec<String>>>,
+    pub output_selection: OutputSelection,
     #[serde(
         default,
         with = "serde_helpers::display_from_str_opt",
         skip_serializing_if = "Option::is_none"
     )]
     pub evm_version: Option<EvmVersion>,
+    /// Change compilation pipeline to go through the Yul intermediate representation. This is
+    /// false by default.
+    #[serde(rename = "viaIR", default, skip_serializing_if = "Option::is_none")]
+    pub via_ir: Option<bool>,
     #[serde(default, skip_serializing_if = "::std::collections::BTreeMap::is_empty")]
     pub libraries: BTreeMap<String, BTreeMap<String, String>>,
 }
 
 impl Settings {
     /// Creates a new `Settings` instance with the given `output_selection`
-    pub fn new(output_selection: BTreeMap<String, BTreeMap<String, Vec<String>>>) -> Self {
-        Self { output_selection, ..Default::default() }
-    }
-
-    /// select all outputs the compiler can possibly generate, use
-    /// `{ "*": { "*": [ "*" ], "": [ "*" ] } }`
-    /// but note that this might slow down the compilation process needlessly.
-    pub fn complete_output_selection() -> BTreeMap<String, BTreeMap<String, Vec<String>>> {
-        BTreeMap::from([(
-            "*".to_string(),
-            BTreeMap::from([
-                ("*".to_string(), vec!["*".to_string()]),
-                ("".to_string(), vec!["*".to_string()]),
-            ]),
-        )])
-    }
-
-    /// Default output selection for compiler output
-    pub fn default_output_selection() -> BTreeMap<String, BTreeMap<String, Vec<String>>> {
-        BTreeMap::from([(
-            "*".to_string(),
-            BTreeMap::from([(
-                "*".to_string(),
-                vec![
-                    "abi".to_string(),
-                    "evm.bytecode".to_string(),
-                    "evm.deployedBytecode".to_string(),
-                    "evm.methodIdentifiers".to_string(),
-                ],
-            )]),
-        )])
+    pub fn new(output_selection: impl Into<OutputSelection>) -> Self {
+        Self { output_selection: output_selection.into(), ..Default::default() }
     }
 
     /// Inserts a set of `ContractOutputSelection`
@@ -290,6 +246,7 @@ impl Settings {
         let value = value.to_string();
         let values = self
             .output_selection
+            .as_mut()
             .entry("*".to_string())
             .or_default()
             .entry(contracts.into())
@@ -313,15 +270,30 @@ impl Settings {
         values: impl IntoIterator<Item = impl ToString>,
     ) {
         self.output_selection
+            .as_mut()
             .entry("*".to_string())
             .or_default()
             .insert(key.into(), values.into_iter().map(|s| s.to_string()).collect());
     }
 
+    /// Sets the ``viaIR` valu
+    #[must_use]
+    pub fn set_via_ir(mut self, via_ir: bool) -> Self {
+        self.via_ir = Some(via_ir);
+        self
+    }
+
+    /// Enables `viaIR`
+    #[must_use]
+    pub fn with_via_ir(self) -> Self {
+        self.set_via_ir(true)
+    }
+
     /// Adds `ast` to output
     #[must_use]
     pub fn with_ast(mut self) -> Self {
-        let output = self.output_selection.entry("*".to_string()).or_insert_with(BTreeMap::default);
+        let output =
+            self.output_selection.as_mut().entry("*".to_string()).or_insert_with(BTreeMap::default);
         output.insert("".to_string(), vec!["ast".to_string()]);
         self
     }
@@ -333,8 +305,9 @@ impl Default for Settings {
             stop_after: None,
             optimizer: Default::default(),
             metadata: None,
-            output_selection: Self::default_output_selection(),
+            output_selection: OutputSelection::default_output_selection(),
             evm_version: Some(EvmVersion::default()),
+            via_ir: None,
             libraries: Default::default(),
             remappings: Default::default(),
         }
@@ -519,8 +492,59 @@ pub struct SettingsMetadata {
     /// The metadata hash can be removed from the bytecode via option "none".
     /// The other options are "ipfs" and "bzzr1".
     /// If the option is omitted, "ipfs" is used by default.
-    #[serde(default, rename = "bytecodeHash", skip_serializing_if = "Option::is_none")]
-    pub bytecode_hash: Option<String>,
+    #[serde(
+        default,
+        rename = "bytecodeHash",
+        skip_serializing_if = "Option::is_none",
+        with = "serde_helpers::display_from_str_opt"
+    )]
+    pub bytecode_hash: Option<BytecodeHash>,
+}
+
+impl From<BytecodeHash> for SettingsMetadata {
+    fn from(hash: BytecodeHash) -> Self {
+        Self { use_literal_content: None, bytecode_hash: Some(hash) }
+    }
+}
+
+/// Determines the hash method for the metadata hash that is appended to the bytecode.
+///
+/// Solc's default is `Ipfs`, see <https://docs.soliditylang.org/en/latest/using-the-compiler.html#compiler-api>.
+#[derive(Clone, Debug, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum BytecodeHash {
+    Ipfs,
+    None,
+    Bzzr1,
+}
+
+impl Default for BytecodeHash {
+    fn default() -> Self {
+        BytecodeHash::Ipfs
+    }
+}
+
+impl FromStr for BytecodeHash {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "none" => Ok(BytecodeHash::None),
+            "ipfs" => Ok(BytecodeHash::Ipfs),
+            "bzzr1" => Ok(BytecodeHash::Bzzr1),
+            s => Err(format!("Unknown bytecode hash: {}", s)),
+        }
+    }
+}
+
+impl fmt::Display for BytecodeHash {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            BytecodeHash::Ipfs => "ipfs",
+            BytecodeHash::None => "none",
+            BytecodeHash::Bzzr1 => "bzzr1",
+        };
+        f.write_str(s)
+    }
 }
 
 /// Bindings for [`solc` contract metadata](https://docs.soliditylang.org/en/latest/metadata.html)
@@ -818,12 +842,16 @@ impl CompilerOutput {
     where
         I: IntoIterator<Item = &'a str>,
     {
-        let files: HashSet<_> = files.into_iter().collect();
-
-        self.contracts.retain(|f, _| files.contains(f.as_str()));
-        self.sources.retain(|f, _| files.contains(f.as_str()));
+        // Note: use `to_lowercase` here because solc not necessarily emits the exact file name,
+        // e.g. `src/utils/upgradeProxy.sol` is emitted as `src/utils/UpgradeProxy.sol`
+        let files: HashSet<_> = files.into_iter().map(|s| s.to_lowercase()).collect();
+        self.contracts.retain(|f, _| files.contains(f.to_lowercase().as_str()));
+        self.sources.retain(|f, _| files.contains(f.to_lowercase().as_str()));
         self.errors.retain(|err| {
-            err.source_location.as_ref().map(|s| files.contains(s.file.as_str())).unwrap_or(true)
+            err.source_location
+                .as_ref()
+                .map(|s| files.contains(s.file.to_lowercase().as_str()))
+                .unwrap_or(true)
         });
     }
 
@@ -864,45 +892,14 @@ impl OutputContracts {
     }
 }
 
-/// Represents a compiled solidity contract
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct Contract {
-    /// The Ethereum Contract Metadata.
-    /// See https://docs.soliditylang.org/en/develop/metadata.html
-    pub abi: Option<LosslessAbi>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        with = "serde_helpers::json_string_opt"
-    )]
-    pub metadata: Option<Metadata>,
-    #[serde(default)]
-    pub userdoc: UserDoc,
-    #[serde(default)]
-    pub devdoc: DevDoc,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub ir: Option<String>,
-    #[serde(default, skip_serializing_if = "StorageLayout::is_empty")]
-    pub storage_layout: StorageLayout,
-    /// EVM-related outputs
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub evm: Option<Evm>,
-    /// Ewasm related outputs
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub ewasm: Option<Ewasm>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub ir_optimized: Option<String>,
-}
-
-/// A helper type that ensures lossless (de)serialisation unlike [`ethabi::Contract`] which omits
-/// some information of (nested) components in a serde roundtrip. This is a problem for
-/// abienconderv2 structs because `ethabi::Contract`'s representation of those are [`ethabi::Param`]
-/// and the `kind` field of type [`ethabi::ParamType`] does not support deeply nested components as
-/// it's the case for structs. This is not easily fixable in ethabi as it would require a redesign
-/// of the overall `Param` and `ParamType` types. Instead, this type keeps a copy of the
-/// [`serde_json::Value`] when deserialized from the `solc` json compiler output and uses it to
-/// serialize the `abi` without loss.
+/// A helper type that ensures lossless (de)serialisation unlike [`ethers_core::abi::Abi`] which
+/// omits some information of (nested) components in a serde roundtrip. This is a problem for
+/// abienconderv2 structs because [`ethers_core::abi::Contract`]'s representation of those are
+/// [`ethers_core::abi::Param`] and the `kind` field of type [`ethers_core::abi::ParamType`] does
+/// not support deeply nested components as it's the case for structs. This is not easily fixable in
+/// ethabi as it would require a redesign of the overall `Param` and `ParamType` types. Instead,
+/// this type keeps a copy of the [`serde_json::Value`] when deserialized from the `solc` json
+/// compiler output and uses it to serialize the `abi` without loss.
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct LosslessAbi {
     /// The complete abi as json value
@@ -934,442 +931,6 @@ impl<'de> Deserialize<'de> for LosslessAbi {
         let abi_value = serde_json::Value::deserialize(deserializer)?;
         let abi = serde_json::from_value(abi_value.clone()).map_err(serde::de::Error::custom)?;
         Ok(Self { abi_value, abi })
-    }
-}
-
-/// Minimal representation of a contract with a present abi and bytecode.
-///
-/// Unlike `CompactContractSome` which contains the `BytecodeObject`, this holds the whole
-/// `Bytecode` object.
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-pub struct ContractBytecode {
-    /// The Ethereum Contract ABI. If empty, it is represented as an empty
-    /// array. See https://docs.soliditylang.org/en/develop/abi-spec.html
-    pub abi: Option<Abi>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub bytecode: Option<Bytecode>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub deployed_bytecode: Option<DeployedBytecode>,
-}
-
-impl ContractBytecode {
-    /// Returns the `ContractBytecodeSome` if all fields are `Some`
-    ///
-    /// # Panics
-    ///
-    /// Panics if any of the fields euqal `None`
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use ethers_solc::Project;
-    /// use ethers_solc::artifacts::*;
-    /// # fn demo(project: Project) {
-    /// let mut output = project.compile().unwrap().output();
-    /// let contract: ContractBytecode = output.remove("Greeter").unwrap().into();
-    /// let contract = contract.unwrap();
-    /// # }
-    /// ```
-    pub fn unwrap(self) -> ContractBytecodeSome {
-        ContractBytecodeSome {
-            abi: self.abi.unwrap(),
-            bytecode: self.bytecode.unwrap(),
-            deployed_bytecode: self.deployed_bytecode.unwrap(),
-        }
-    }
-
-    /// Looks for all link references in deployment and runtime bytecodes
-    pub fn all_link_references(&self) -> BTreeMap<String, BTreeMap<String, Vec<Offsets>>> {
-        let mut links = BTreeMap::new();
-        if let Some(bcode) = &self.bytecode {
-            links.extend(bcode.link_references.clone());
-        }
-
-        if let Some(d_bcode) = &self.deployed_bytecode {
-            if let Some(bcode) = &d_bcode.bytecode {
-                links.extend(bcode.link_references.clone());
-            }
-        }
-        links
-    }
-}
-
-impl From<Contract> for ContractBytecode {
-    fn from(c: Contract) -> Self {
-        let (bytecode, deployed_bytecode) = if let Some(evm) = c.evm {
-            (evm.bytecode, evm.deployed_bytecode)
-        } else {
-            (None, None)
-        };
-
-        Self { abi: c.abi.map(Into::into), bytecode, deployed_bytecode }
-    }
-}
-
-/// Minimal representation of a contract with a present abi and bytecode.
-///
-/// Unlike `CompactContractSome` which contains the `BytecodeObject`, this holds the whole
-/// `Bytecode` object.
-#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct CompactContractBytecode {
-    /// The Ethereum Contract ABI. If empty, it is represented as an empty
-    /// array. See https://docs.soliditylang.org/en/develop/abi-spec.html
-    pub abi: Option<Abi>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub bytecode: Option<CompactBytecode>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub deployed_bytecode: Option<CompactDeployedBytecode>,
-}
-
-impl CompactContractBytecode {
-    /// Looks for all link references in deployment and runtime bytecodes
-    pub fn all_link_references(&self) -> BTreeMap<String, BTreeMap<String, Vec<Offsets>>> {
-        let mut links = BTreeMap::new();
-        if let Some(bcode) = &self.bytecode {
-            links.extend(bcode.link_references.clone());
-        }
-
-        if let Some(d_bcode) = &self.deployed_bytecode {
-            if let Some(bcode) = &d_bcode.bytecode {
-                links.extend(bcode.link_references.clone());
-            }
-        }
-        links
-    }
-}
-
-impl From<Contract> for CompactContractBytecode {
-    fn from(c: Contract) -> Self {
-        let (bytecode, deployed_bytecode) = if let Some(evm) = c.evm {
-            let evm = evm.into_compact();
-            (evm.bytecode, evm.deployed_bytecode)
-        } else {
-            (None, None)
-        };
-
-        Self { abi: c.abi.map(Into::into), bytecode, deployed_bytecode }
-    }
-}
-
-impl From<ContractBytecode> for CompactContractBytecode {
-    fn from(c: ContractBytecode) -> Self {
-        let (maybe_bcode, maybe_runtime) = match (c.bytecode, c.deployed_bytecode) {
-            (Some(bcode), Some(dbcode)) => (Some(bcode.into()), Some(dbcode.into())),
-            (None, Some(dbcode)) => (None, Some(dbcode.into())),
-            (Some(bcode), None) => (Some(bcode.into()), None),
-            (None, None) => (None, None),
-        };
-        Self { abi: c.abi, bytecode: maybe_bcode, deployed_bytecode: maybe_runtime }
-    }
-}
-
-impl From<CompactContractBytecode> for ContractBytecode {
-    fn from(c: CompactContractBytecode) -> Self {
-        let (maybe_bcode, maybe_runtime) = match (c.bytecode, c.deployed_bytecode) {
-            (Some(bcode), Some(dbcode)) => (Some(bcode.into()), Some(dbcode.into())),
-            (None, Some(dbcode)) => (None, Some(dbcode.into())),
-            (Some(bcode), None) => (Some(bcode.into()), None),
-            (None, None) => (None, None),
-        };
-        Self { abi: c.abi, bytecode: maybe_bcode, deployed_bytecode: maybe_runtime }
-    }
-}
-
-/// Minimal representation of a contract with a present abi and bytecode.
-///
-/// Unlike `CompactContractSome` which contains the `BytecodeObject`, this holds the whole
-/// `Bytecode` object.
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-pub struct ContractBytecodeSome {
-    pub abi: Abi,
-    pub bytecode: Bytecode,
-    pub deployed_bytecode: DeployedBytecode,
-}
-
-impl TryFrom<ContractBytecode> for ContractBytecodeSome {
-    type Error = ContractBytecode;
-
-    fn try_from(value: ContractBytecode) -> Result<Self, Self::Error> {
-        if value.abi.is_none() || value.bytecode.is_none() || value.deployed_bytecode.is_none() {
-            return Err(value)
-        }
-        Ok(value.unwrap())
-    }
-}
-
-/// Minimal representation of a contract's artifact with a present abi and bytecode.
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Default)]
-pub struct CompactContractSome {
-    /// The Ethereum Contract ABI. If empty, it is represented as an empty
-    /// array. See https://docs.soliditylang.org/en/develop/abi-spec.html
-    pub abi: Abi,
-    pub bin: BytecodeObject,
-    #[serde(rename = "bin-runtime")]
-    pub bin_runtime: BytecodeObject,
-}
-
-impl TryFrom<CompactContract> for CompactContractSome {
-    type Error = CompactContract;
-
-    fn try_from(value: CompactContract) -> Result<Self, Self::Error> {
-        if value.abi.is_none() || value.bin.is_none() || value.bin_runtime.is_none() {
-            return Err(value)
-        }
-        Ok(value.unwrap())
-    }
-}
-
-/// The general purpose minimal representation of a contract's abi with bytecode
-/// Unlike `CompactContractSome` all fields are optional so that every possible compiler output can
-/// be represented by it
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Default)]
-pub struct CompactContract {
-    /// The Ethereum Contract ABI. If empty, it is represented as an empty
-    /// array. See https://docs.soliditylang.org/en/develop/abi-spec.html
-    pub abi: Option<Abi>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub bin: Option<BytecodeObject>,
-    #[serde(default, rename = "bin-runtime", skip_serializing_if = "Option::is_none")]
-    pub bin_runtime: Option<BytecodeObject>,
-}
-
-impl CompactContract {
-    /// Returns the contents of this type as a single tuple of abi, bytecode and deployed bytecode
-    pub fn into_parts(self) -> (Option<Abi>, Option<Bytes>, Option<Bytes>) {
-        (
-            self.abi,
-            self.bin.and_then(|bin| bin.into_bytes()),
-            self.bin_runtime.and_then(|bin| bin.into_bytes()),
-        )
-    }
-
-    /// Returns the individual parts of this contract.
-    ///
-    /// If the values are `None`, then `Default` is returned.
-    pub fn into_parts_or_default(self) -> (Abi, Bytes, Bytes) {
-        (
-            self.abi.unwrap_or_default(),
-            self.bin.and_then(|bin| bin.into_bytes()).unwrap_or_default(),
-            self.bin_runtime.and_then(|bin| bin.into_bytes()).unwrap_or_default(),
-        )
-    }
-
-    /// Returns the `CompactContractSome` if all fields are `Some`
-    ///
-    /// # Panics
-    ///
-    /// Panics if any of the fields euqal `None`
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use ethers_solc::Project;
-    /// use ethers_solc::artifacts::*;
-    /// # fn demo(project: Project) {
-    /// let mut output = project.compile().unwrap().output();
-    /// let contract: CompactContract = output.remove("Greeter").unwrap().into();
-    /// let contract = contract.unwrap();
-    /// # }
-    /// ```
-    pub fn unwrap(self) -> CompactContractSome {
-        CompactContractSome {
-            abi: self.abi.unwrap(),
-            bin: self.bin.unwrap(),
-            bin_runtime: self.bin_runtime.unwrap(),
-        }
-    }
-
-    /// Returns the `CompactContractSome` if any if the field equals `None` the `Default` value is
-    /// returned
-    ///
-    /// Unlike `unwrap`, this function does _not_ panic
-    pub fn unwrap_or_default(self) -> CompactContractSome {
-        CompactContractSome {
-            abi: self.abi.unwrap_or_default(),
-            bin: self.bin.unwrap_or_default(),
-            bin_runtime: self.bin_runtime.unwrap_or_default(),
-        }
-    }
-}
-
-impl From<serde_json::Value> for CompactContract {
-    fn from(mut val: serde_json::Value) -> Self {
-        if let Some(map) = val.as_object_mut() {
-            let abi = map.remove("abi").and_then(|val| serde_json::from_value(val).ok());
-            let bin = map.remove("bin").and_then(|val| serde_json::from_value(val).ok());
-            let bin_runtime =
-                map.remove("bin-runtime").and_then(|val| serde_json::from_value(val).ok());
-            Self { abi, bin, bin_runtime }
-        } else {
-            CompactContract::default()
-        }
-    }
-}
-
-impl From<serde_json::Value> for CompactContractBytecode {
-    fn from(val: serde_json::Value) -> Self {
-        serde_json::from_value(val).unwrap_or_default()
-    }
-}
-
-impl From<ContractBytecode> for CompactContract {
-    fn from(c: ContractBytecode) -> Self {
-        let ContractBytecode { abi, bytecode, deployed_bytecode } = c;
-        Self {
-            abi,
-            bin: bytecode.map(|c| c.object),
-            bin_runtime: deployed_bytecode
-                .and_then(|deployed| deployed.bytecode.map(|code| code.object)),
-        }
-    }
-}
-
-impl From<CompactContractBytecode> for CompactContract {
-    fn from(c: CompactContractBytecode) -> Self {
-        let c: ContractBytecode = c.into();
-        c.into()
-    }
-}
-
-impl From<ContractBytecodeSome> for CompactContract {
-    fn from(c: ContractBytecodeSome) -> Self {
-        Self {
-            abi: Some(c.abi),
-            bin: Some(c.bytecode.object),
-            bin_runtime: c.deployed_bytecode.bytecode.map(|code| code.object),
-        }
-    }
-}
-
-impl From<Contract> for CompactContract {
-    fn from(c: Contract) -> Self {
-        ContractBytecode::from(c).into()
-    }
-}
-
-impl From<CompactContractSome> for CompactContract {
-    fn from(c: CompactContractSome) -> Self {
-        Self { abi: Some(c.abi), bin: Some(c.bin), bin_runtime: Some(c.bin_runtime) }
-    }
-}
-
-impl<'a> From<CompactContractRef<'a>> for CompactContract {
-    fn from(c: CompactContractRef<'a>) -> Self {
-        Self { abi: c.abi.cloned(), bin: c.bin.cloned(), bin_runtime: c.bin_runtime.cloned() }
-    }
-}
-
-impl<'a> From<CompactContractRefSome<'a>> for CompactContract {
-    fn from(c: CompactContractRefSome<'a>) -> Self {
-        Self {
-            abi: Some(c.abi.clone()),
-            bin: Some(c.bin.clone()),
-            bin_runtime: Some(c.bin_runtime.clone()),
-        }
-    }
-}
-
-/// Minimal representation of a contract with a present abi and bytecode that borrows.
-#[derive(Copy, Clone, Debug, Serialize)]
-pub struct CompactContractRefSome<'a> {
-    pub abi: &'a Abi,
-    pub bin: &'a BytecodeObject,
-    #[serde(rename = "bin-runtime")]
-    pub bin_runtime: &'a BytecodeObject,
-}
-
-impl<'a> CompactContractRefSome<'a> {
-    /// Returns the individual parts of this contract.
-    ///
-    /// If the values are `None`, then `Default` is returned.
-    pub fn into_parts(self) -> (Abi, Bytes, Bytes) {
-        CompactContract::from(self).into_parts_or_default()
-    }
-}
-
-impl<'a> TryFrom<CompactContractRef<'a>> for CompactContractRefSome<'a> {
-    type Error = CompactContractRef<'a>;
-
-    fn try_from(value: CompactContractRef<'a>) -> Result<Self, Self::Error> {
-        if value.abi.is_none() || value.bin.is_none() || value.bin_runtime.is_none() {
-            return Err(value)
-        }
-        Ok(value.unwrap())
-    }
-}
-
-/// Helper type to serialize while borrowing from `Contract`
-#[derive(Copy, Clone, Debug, Serialize)]
-pub struct CompactContractRef<'a> {
-    pub abi: Option<&'a Abi>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub bin: Option<&'a BytecodeObject>,
-    #[serde(default, rename = "bin-runtime", skip_serializing_if = "Option::is_none")]
-    pub bin_runtime: Option<&'a BytecodeObject>,
-}
-
-impl<'a> CompactContractRef<'a> {
-    /// Clones the referenced values and returns as tuples
-    pub fn into_parts(self) -> (Option<Abi>, Option<Bytes>, Option<Bytes>) {
-        CompactContract::from(self).into_parts()
-    }
-
-    /// Returns the individual parts of this contract.
-    ///
-    /// If the values are `None`, then `Default` is returned.
-    pub fn into_parts_or_default(self) -> (Abi, Bytes, Bytes) {
-        CompactContract::from(self).into_parts_or_default()
-    }
-
-    pub fn bytecode(&self) -> Option<&Bytes> {
-        self.bin.as_ref().and_then(|bin| bin.as_bytes())
-    }
-
-    pub fn runtime_bytecode(&self) -> Option<&Bytes> {
-        self.bin_runtime.as_ref().and_then(|bin| bin.as_bytes())
-    }
-
-    /// Returns the `CompactContractRefSome` if all fields are `Some`
-    ///
-    /// # Panics
-    ///
-    /// Panics if any of the fields equal `None`
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use ethers_solc::Project;
-    /// use ethers_solc::artifacts::*;
-    /// # fn demo(project: Project) {
-    /// let output = project.compile().unwrap().output();
-    /// let contract = output.find("Greeter").unwrap();
-    /// let contract = contract.unwrap();
-    /// # }
-    /// ```
-    pub fn unwrap(self) -> CompactContractRefSome<'a> {
-        CompactContractRefSome {
-            abi: self.abi.unwrap(),
-            bin: self.bin.unwrap(),
-            bin_runtime: self.bin_runtime.unwrap(),
-        }
-    }
-}
-
-impl<'a> From<&'a Contract> for CompactContractRef<'a> {
-    fn from(c: &'a Contract) -> Self {
-        let (bin, bin_runtime) = if let Some(ref evm) = c.evm {
-            (
-                evm.bytecode.as_ref().map(|c| &c.object),
-                evm.deployed_bytecode
-                    .as_ref()
-                    .and_then(|deployed| deployed.bytecode.as_ref().map(|evm| &evm.object)),
-            )
-        } else {
-            (None, None)
-        };
-
-        Self { abi: c.abi.as_ref().map(|abi| &abi.abi), bin, bin_runtime }
     }
 }
 
@@ -1482,344 +1043,6 @@ pub(crate) struct CompactEvm {
 
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct Bytecode {
-    /// Debugging information at function level
-    #[serde(default, skip_serializing_if = "::std::collections::BTreeMap::is_empty")]
-    pub function_debug_data: BTreeMap<String, FunctionDebugData>,
-    /// The bytecode as a hex string.
-    pub object: BytecodeObject,
-    /// Opcodes list (string)
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub opcodes: Option<String>,
-    /// The source mapping as a string. See the source mapping definition.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub source_map: Option<String>,
-    /// Array of sources generated by the compiler. Currently only contains a
-    /// single Yul file.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub generated_sources: Vec<GeneratedSource>,
-    /// If given, this is an unlinked object.
-    #[serde(default)]
-    pub link_references: BTreeMap<String, BTreeMap<String, Vec<Offsets>>>,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct CompactBytecode {
-    /// The bytecode as a hex string.
-    pub object: BytecodeObject,
-    /// The source mapping as a string. See the source mapping definition.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub source_map: Option<String>,
-    /// If given, this is an unlinked object.
-    #[serde(default)]
-    pub link_references: BTreeMap<String, BTreeMap<String, Vec<Offsets>>>,
-}
-
-impl CompactBytecode {
-    /// Tries to link the bytecode object with the `file` and `library` name.
-    /// Replaces all library placeholders with the given address.
-    ///
-    /// Returns true if the bytecode object is fully linked, false otherwise
-    /// This is a noop if the bytecode object is already fully linked.
-    pub fn link(
-        &mut self,
-        file: impl AsRef<str>,
-        library: impl AsRef<str>,
-        address: Address,
-    ) -> bool {
-        if !self.object.is_unlinked() {
-            return true
-        }
-
-        let file = file.as_ref();
-        let library = library.as_ref();
-        if let Some((key, mut contracts)) = self.link_references.remove_entry(file) {
-            if contracts.remove(library).is_some() {
-                self.object.link(file, library, address);
-            }
-            if !contracts.is_empty() {
-                self.link_references.insert(key, contracts);
-            }
-            if self.link_references.is_empty() {
-                return self.object.resolve().is_some()
-            }
-        }
-        false
-    }
-}
-
-impl From<Bytecode> for CompactBytecode {
-    fn from(bcode: Bytecode) -> CompactBytecode {
-        CompactBytecode {
-            object: bcode.object,
-            source_map: bcode.source_map,
-            link_references: bcode.link_references,
-        }
-    }
-}
-
-impl From<CompactBytecode> for Bytecode {
-    fn from(bcode: CompactBytecode) -> Bytecode {
-        Bytecode {
-            object: bcode.object,
-            source_map: bcode.source_map,
-            link_references: bcode.link_references,
-            function_debug_data: Default::default(),
-            opcodes: Default::default(),
-            generated_sources: Default::default(),
-        }
-    }
-}
-
-impl From<BytecodeObject> for Bytecode {
-    fn from(object: BytecodeObject) -> Bytecode {
-        Bytecode {
-            object,
-            function_debug_data: Default::default(),
-            opcodes: Default::default(),
-            source_map: Default::default(),
-            generated_sources: Default::default(),
-            link_references: Default::default(),
-        }
-    }
-}
-
-impl Bytecode {
-    /// Returns the parsed source map
-    ///
-    /// See also https://docs.soliditylang.org/en/v0.8.10/internals/source_mappings.html
-    pub fn source_map(&self) -> Option<Result<SourceMap, SyntaxError>> {
-        self.source_map.as_ref().map(|map| sourcemap::parse(map))
-    }
-
-    /// Same as `Bytecode::link` but with fully qualified name (`file.sol:Math`)
-    pub fn link_fully_qualified(&mut self, name: impl AsRef<str>, addr: Address) -> bool {
-        if let Some((file, lib)) = name.as_ref().split_once(':') {
-            self.link(file, lib, addr)
-        } else {
-            false
-        }
-    }
-
-    /// Tries to link the bytecode object with the `file` and `library` name.
-    /// Replaces all library placeholders with the given address.
-    ///
-    /// Returns true if the bytecode object is fully linked, false otherwise
-    /// This is a noop if the bytecode object is already fully linked.
-    pub fn link(
-        &mut self,
-        file: impl AsRef<str>,
-        library: impl AsRef<str>,
-        address: Address,
-    ) -> bool {
-        if !self.object.is_unlinked() {
-            return true
-        }
-
-        let file = file.as_ref();
-        let library = library.as_ref();
-        if let Some((key, mut contracts)) = self.link_references.remove_entry(file) {
-            if contracts.remove(library).is_some() {
-                self.object.link(file, library, address);
-            }
-            if !contracts.is_empty() {
-                self.link_references.insert(key, contracts);
-            }
-            if self.link_references.is_empty() {
-                return self.object.resolve().is_some()
-            }
-        }
-        false
-    }
-
-    /// Links the bytecode object with all provided `(file, lib, addr)`
-    pub fn link_all<I, S, T>(&mut self, libs: I) -> bool
-    where
-        I: IntoIterator<Item = (S, T, Address)>,
-        S: AsRef<str>,
-        T: AsRef<str>,
-    {
-        for (file, lib, addr) in libs.into_iter() {
-            if self.link(file, lib, addr) {
-                return true
-            }
-        }
-        false
-    }
-
-    /// Links the bytecode object with all provided `(fully_qualified, addr)`
-    pub fn link_all_fully_qualified<I, S>(&mut self, libs: I) -> bool
-    where
-        I: IntoIterator<Item = (S, Address)>,
-        S: AsRef<str>,
-    {
-        for (name, addr) in libs.into_iter() {
-            if self.link_fully_qualified(name, addr) {
-                return true
-            }
-        }
-        false
-    }
-}
-
-/// Represents the bytecode of a contracts that might be not fully linked yet.
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
-#[serde(untagged)]
-pub enum BytecodeObject {
-    /// Fully linked bytecode object
-    #[serde(deserialize_with = "serde_helpers::deserialize_bytes")]
-    Bytecode(Bytes),
-    /// Bytecode as hex string that's not fully linked yet and contains library placeholders
-    #[serde(with = "serde_helpers::string_bytes")]
-    Unlinked(String),
-}
-
-impl BytecodeObject {
-    /// Returns the underlying `Bytes` if the object is a valid bytecode, and not empty
-    pub fn into_bytes(self) -> Option<Bytes> {
-        match self {
-            BytecodeObject::Bytecode(bytes) => Some(bytes),
-            BytecodeObject::Unlinked(_) => None,
-        }
-    }
-
-    /// Returns a reference to the underlying `Bytes` if the object is a valid bytecode, and not
-    /// empty
-    pub fn as_bytes(&self) -> Option<&Bytes> {
-        match self {
-            BytecodeObject::Bytecode(bytes) => Some(bytes),
-            BytecodeObject::Unlinked(_) => None,
-        }
-    }
-    /// Returns a reference to the underlying `String` if the object is unlinked
-    pub fn as_str(&self) -> Option<&str> {
-        match self {
-            BytecodeObject::Bytecode(_) => None,
-            BytecodeObject::Unlinked(s) => Some(s.as_str()),
-        }
-    }
-
-    /// Returns the unlinked `String` if the object is unlinked or empty
-    pub fn into_unlinked(self) -> Option<String> {
-        match self {
-            BytecodeObject::Bytecode(_) => None,
-            BytecodeObject::Unlinked(code) => Some(code),
-        }
-    }
-
-    /// Whether this object is still unlinked
-    pub fn is_unlinked(&self) -> bool {
-        matches!(self, BytecodeObject::Unlinked(_))
-    }
-
-    /// Whether this object a valid bytecode
-    pub fn is_bytecode(&self) -> bool {
-        matches!(self, BytecodeObject::Bytecode(_))
-    }
-
-    /// Returns `true` if the object is a valid bytecode and not empty.
-    /// Returns false the object is a valid but empty bytecode or unlinked.
-    pub fn is_non_empty_bytecode(&self) -> bool {
-        self.as_bytes().map(|c| !c.0.is_empty()).unwrap_or_default()
-    }
-
-    /// Tries to resolve the unlinked string object a valid bytecode object in place
-    ///
-    /// Returns the string if it is a valid
-    pub fn resolve(&mut self) -> Option<&Bytes> {
-        if let BytecodeObject::Unlinked(unlinked) = self {
-            if let Ok(linked) = hex::decode(unlinked) {
-                *self = BytecodeObject::Bytecode(linked.into());
-            }
-        }
-        self.as_bytes()
-    }
-
-    /// Link using the fully qualified name of a library
-    /// The fully qualified library name is the path of its source file and the library name
-    /// separated by `:` like `file.sol:Math`
-    ///
-    /// This will replace all occurrences of the library placeholder with the given address.
-    ///
-    /// See also: https://docs.soliditylang.org/en/develop/using-the-compiler.html#library-linking
-    pub fn link_fully_qualified(&mut self, name: impl AsRef<str>, addr: Address) -> &mut Self {
-        if let BytecodeObject::Unlinked(ref mut unlinked) = self {
-            let name = name.as_ref();
-            let place_holder = utils::library_hash_placeholder(name);
-            // the address as hex without prefix
-            let hex_addr = hex::encode(addr);
-
-            // the library placeholder used to be the fully qualified name of the library instead of
-            // the hash. This is also still supported by `solc` so we handle this as well
-            let fully_qualified_placeholder = utils::library_fully_qualified_placeholder(name);
-
-            *unlinked = unlinked
-                .replace(&format!("__{}__", fully_qualified_placeholder), &hex_addr)
-                .replace(&format!("__{}__", place_holder), &hex_addr)
-        }
-        self
-    }
-
-    /// Link using the `file` and `library` names as fully qualified name `<file>:<library>`
-    /// See `BytecodeObject::link_fully_qualified`
-    pub fn link(
-        &mut self,
-        file: impl AsRef<str>,
-        library: impl AsRef<str>,
-        addr: Address,
-    ) -> &mut Self {
-        self.link_fully_qualified(format!("{}:{}", file.as_ref(), library.as_ref(),), addr)
-    }
-
-    /// Links the bytecode object with all provided `(file, lib, addr)`
-    pub fn link_all<I, S, T>(&mut self, libs: I) -> &mut Self
-    where
-        I: IntoIterator<Item = (S, T, Address)>,
-        S: AsRef<str>,
-        T: AsRef<str>,
-    {
-        for (file, lib, addr) in libs.into_iter() {
-            self.link(file, lib, addr);
-        }
-        self
-    }
-
-    /// Whether the bytecode contains a matching placeholder using the qualified name
-    pub fn contains_fully_qualified_placeholder(&self, name: impl AsRef<str>) -> bool {
-        if let BytecodeObject::Unlinked(unlinked) = self {
-            let name = name.as_ref();
-            unlinked.contains(&utils::library_hash_placeholder(name)) ||
-                unlinked.contains(&utils::library_fully_qualified_placeholder(name))
-        } else {
-            false
-        }
-    }
-
-    /// Whether the bytecode contains a matching placeholder
-    pub fn contains_placeholder(&self, file: impl AsRef<str>, library: impl AsRef<str>) -> bool {
-        self.contains_fully_qualified_placeholder(format!("{}:{}", file.as_ref(), library.as_ref()))
-    }
-}
-
-// Returns a not deployable bytecode by default as empty
-impl Default for BytecodeObject {
-    fn default() -> Self {
-        BytecodeObject::Unlinked("".to_string())
-    }
-}
-
-impl AsRef<[u8]> for BytecodeObject {
-    fn as_ref(&self) -> &[u8] {
-        match self {
-            BytecodeObject::Bytecode(code) => code.as_ref(),
-            BytecodeObject::Unlinked(code) => code.as_bytes(),
-        }
-    }
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
-#[serde(rename_all = "camelCase")]
 pub struct FunctionDebugData {
     pub entry_point: Option<u32>,
     pub id: Option<u32>,
@@ -1842,62 +1065,6 @@ pub struct GeneratedSource {
 pub struct Offsets {
     pub start: u32,
     pub length: u32,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
-pub struct DeployedBytecode {
-    #[serde(flatten)]
-    pub bytecode: Option<Bytecode>,
-    #[serde(
-        default,
-        rename = "immutableReferences",
-        skip_serializing_if = "::std::collections::BTreeMap::is_empty"
-    )]
-    pub immutable_references: BTreeMap<String, Vec<Offsets>>,
-}
-
-impl DeployedBytecode {
-    /// Returns the underlying `Bytes` if the object is a valid bytecode, and not empty
-    pub fn into_bytes(self) -> Option<Bytes> {
-        self.bytecode?.object.into_bytes()
-    }
-}
-
-impl From<Bytecode> for DeployedBytecode {
-    fn from(bcode: Bytecode) -> DeployedBytecode {
-        DeployedBytecode { bytecode: Some(bcode), immutable_references: Default::default() }
-    }
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct CompactDeployedBytecode {
-    #[serde(flatten)]
-    pub bytecode: Option<CompactBytecode>,
-    #[serde(
-        default,
-        rename = "immutableReferences",
-        skip_serializing_if = "::std::collections::BTreeMap::is_empty"
-    )]
-    pub immutable_references: BTreeMap<String, Vec<Offsets>>,
-}
-
-impl From<DeployedBytecode> for CompactDeployedBytecode {
-    fn from(bcode: DeployedBytecode) -> CompactDeployedBytecode {
-        CompactDeployedBytecode {
-            bytecode: bcode.bytecode.map(|d_bcode| d_bcode.into()),
-            immutable_references: bcode.immutable_references,
-        }
-    }
-}
-
-impl From<CompactDeployedBytecode> for DeployedBytecode {
-    fn from(bcode: CompactDeployedBytecode) -> DeployedBytecode {
-        DeployedBytecode {
-            bytecode: bcode.bytecode.map(|d_bcode| d_bcode.into()),
-            immutable_references: bcode.immutable_references,
-        }
-    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
@@ -2087,6 +1254,7 @@ pub struct SecondarySourceLocation {
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct SourceFile {
     pub id: u32,
+    #[serde(default)]
     pub ast: serde_json::Value,
 }
 
@@ -2126,11 +1294,42 @@ impl SourceFiles {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::AggregatedCompilerOutput;
+    use ethers_core::types::Address;
     use std::{fs, path::PathBuf};
 
     #[test]
+    fn can_parse_declaration_error() {
+        let s = r#"{
+  "errors": [
+    {
+      "component": "general",
+      "errorCode": "7576",
+      "formattedMessage": "DeclarationError: Undeclared identifier. Did you mean \"revert\"?\n  --> /Users/src/utils/UpgradeProxy.sol:35:17:\n   |\n35 |                 refert(\"Transparent ERC1967 proxies do not have upgradeable implementations\");\n   |                 ^^^^^^\n\n",
+      "message": "Undeclared identifier. Did you mean \"revert\"?",
+      "severity": "error",
+      "sourceLocation": {
+        "end": 1623,
+        "file": "/Users/src/utils/UpgradeProxy.sol",
+        "start": 1617
+      },
+      "type": "DeclarationError"
+    }
+  ],
+  "sources": { }
+}"#;
+
+        let out: CompilerOutput = serde_json::from_str(s).unwrap();
+        assert_eq!(out.errors.len(), 1);
+
+        let mut aggregated = AggregatedCompilerOutput::default();
+        aggregated.extend("0.8.12".parse().unwrap(), out);
+        assert!(!aggregated.is_unchanged());
+    }
+
+    #[test]
     fn can_link_bytecode() {
-        // test cases taken from https://github.com/ethereum/solc-js/blob/master/test/linker.js
+        // test cases taken from <https://github.com/ethereum/solc-js/blob/master/test/linker.js>
 
         #[derive(Serialize, Deserialize)]
         struct Mockject {
@@ -2235,5 +1434,25 @@ mod tests {
                 expected
             )
         }
+    }
+
+    #[test]
+    fn can_sanitize_byte_code_hash() {
+        let version: Version = "0.6.0".parse().unwrap();
+
+        let settings = Settings { metadata: Some(BytecodeHash::Ipfs.into()), ..Default::default() };
+
+        let input = CompilerInput {
+            language: "Solidity".to_string(),
+            sources: Default::default(),
+            settings,
+        };
+
+        let i = input.clone().sanitized(&version);
+        assert_eq!(i.settings.metadata.unwrap().bytecode_hash, Some(BytecodeHash::Ipfs));
+
+        let version: Version = "0.5.17".parse().unwrap();
+        let i = input.sanitized(&version);
+        assert!(i.settings.metadata.unwrap().bytecode_hash.is_none());
     }
 }

@@ -1,4 +1,5 @@
 #![deny(missing_docs, unsafe_code)]
+#![deny(rustdoc::broken_intra_doc_links)]
 
 //! Module for generating type-safe bindings to Ethereum smart contracts. This
 //! module is intended to be used either indirectly with the `abigen` procedural

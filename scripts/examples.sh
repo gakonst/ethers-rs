@@ -1,3 +1,4 @@
+set -e
 # shellcheck shell=bash
 # run all examples
 for file in examples/*.rs; do

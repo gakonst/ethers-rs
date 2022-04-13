@@ -382,7 +382,7 @@ fn can_handle_underscore_numeric() {
             _100pct(string)
         ]"#
     );
-    let call = _100PctCall("message".to_string());
+    let _call = _100PctCall("message".to_string());
 
     let provider = Arc::new(Provider::new(MockProvider::new()));
     let contract = Test::new(Address::default(), Arc::clone(&provider));
@@ -476,6 +476,24 @@ fn can_handle_case_sensitive_calls() {
 
     let _ = contract.index();
     let _ = contract.INDEX();
+}
+
+#[tokio::test]
+async fn can_deploy_greeter() {
+    abigen!(Greeter, "ethers-contract/tests/solidity-contracts/greeter.json",);
+    let ganache = ethers_core::utils::Ganache::new().spawn();
+    let from = ganache.addresses()[0];
+    let provider = Provider::try_from(ganache.endpoint())
+        .unwrap()
+        .with_sender(from)
+        .interval(std::time::Duration::from_millis(10));
+    let client = Arc::new(provider);
+
+    let greeter_contract =
+        Greeter::deploy(client, "Hello World!".to_string()).unwrap().legacy().send().await.unwrap();
+
+    let greeting = greeter_contract.greet().call().await.unwrap();
+    assert_eq!("Hello World!", greeting);
 }
 
 #[tokio::test]

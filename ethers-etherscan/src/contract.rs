@@ -105,6 +105,7 @@ impl VerifyContract {
     ) -> Self {
         self.constructor_arguments = constructor_arguments.map(|s| {
             s.into()
+                .trim()
                 // TODO is this correct?
                 .trim_start_matches("0x")
                 .to_string()
@@ -132,13 +133,13 @@ impl AsRef<str> for CodeFormat {
 
 impl Default for CodeFormat {
     fn default() -> Self {
-        CodeFormat::SingleFile
+        CodeFormat::StandardJsonInput
     }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(transparent)]
 pub struct ContractMetadata {
-    #[serde(flatten)]
     pub items: Vec<Metadata>,
 }
 
@@ -283,12 +284,36 @@ impl Client {
     /// # }
     /// ```
     pub async fn contract_abi(&self, address: Address) -> Result<Abi> {
+        // apply caching
+        if let Some(ref cache) = self.cache {
+            // If this is None, then we have a cache miss
+            if let Some(src) = cache.get_abi(address) {
+                // If this is None, then the contract is not verified
+                return match src {
+                    Some(src) => Ok(src),
+                    None => Err(EtherscanError::ContractCodeNotVerified(address)),
+                }
+            }
+        }
+
         let query = self.create_query("contract", "getabi", HashMap::from([("address", address)]));
         let resp: Response<String> = self.get_json(&query).await?;
+        if resp.result.starts_with("Max rate limit reached") {
+            return Err(EtherscanError::RateLimitExceeded)
+        }
         if resp.result.starts_with("Contract source code not verified") {
+            if let Some(ref cache) = self.cache {
+                let _ = cache.set_abi(address, None);
+            }
             return Err(EtherscanError::ContractCodeNotVerified(address))
         }
-        Ok(serde_json::from_str(&resp.result)?)
+        let abi = serde_json::from_str(&resp.result)?;
+
+        if let Some(ref cache) = self.cache {
+            let _ = cache.set_abi(address, Some(&abi));
+        }
+
+        Ok(abi)
     }
 
     /// Get Contract Source Code for Verified Contract Source Codes
@@ -306,10 +331,34 @@ impl Client {
     /// # }
     /// ```
     pub async fn contract_source_code(&self, address: Address) -> Result<ContractMetadata> {
+        // apply caching
+        if let Some(ref cache) = self.cache {
+            // If this is None, then we have a cache miss
+            if let Some(src) = cache.get_source(address) {
+                // If this is None, then the contract is not verified
+                return match src {
+                    Some(src) => Ok(src),
+                    None => Err(EtherscanError::ContractCodeNotVerified(address)),
+                }
+            }
+        }
+
         let query =
             self.create_query("contract", "getsourcecode", HashMap::from([("address", address)]));
         let response: Response<Vec<Metadata>> = self.get_json(&query).await?;
-        Ok(ContractMetadata { items: response.result })
+        if response.result.iter().any(|item| item.abi == "Contract source code not verified") {
+            if let Some(ref cache) = self.cache {
+                let _ = cache.set_source(address, None);
+            }
+            return Err(EtherscanError::ContractCodeNotVerified(address))
+        }
+        let res = ContractMetadata { items: response.result };
+
+        if let Some(ref cache) = self.cache {
+            let _ = cache.set_source(address, Some(&res));
+        }
+
+        Ok(res)
     }
 }
 
@@ -322,7 +371,7 @@ mod tests {
     use ethers_core::types::Chain;
     use ethers_solc::{Project, ProjectPathsConfig};
 
-    use crate::{contract::VerifyContract, tests::run_at_least_duration, Client};
+    use crate::{contract::VerifyContract, tests::run_at_least_duration, Client, EtherscanError};
 
     #[tokio::test]
     #[serial]
@@ -350,6 +399,27 @@ mod tests {
                 .contract_source_code("0xBB9bc244D798123fDe783fCc1C72d3Bb8C189413".parse().unwrap())
                 .await
                 .unwrap();
+        })
+        .await
+    }
+
+    #[tokio::test]
+    #[serial]
+    #[ignore]
+    async fn can_get_error_on_unverified_contract() {
+        run_at_least_duration(Duration::from_millis(250), async {
+            let client = Client::new_from_env(Chain::Mainnet).unwrap();
+            let unverified_addr = "0xb5c31a0e22cae98ac08233e512bd627885aa24e5".parse().unwrap();
+            let result = client.contract_source_code(unverified_addr).await;
+            match result.err() {
+                Some(error) => match error {
+                    EtherscanError::ContractCodeNotVerified(addr) => {
+                        assert_eq!(addr, unverified_addr);
+                    }
+                    _ => panic!("Invalid EtherscanError type"),
+                },
+                None => panic!("Result should contain ContractCodeNotVerified error"),
+            }
         })
         .await
     }

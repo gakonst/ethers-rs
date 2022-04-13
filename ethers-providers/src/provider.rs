@@ -754,7 +754,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
     }
 
     /// Returns the EIP-1186 proof response
-    /// https://github.com/ethereum/EIPs/issues/1186
+    /// <https://github.com/ethereum/EIPs/issues/1186>
     async fn get_proof<T: Into<NameOrAddress> + Send + Sync>(
         &self,
         from: T,
@@ -1311,6 +1311,14 @@ impl TryFrom<String> for Provider<HttpProvider> {
     }
 }
 
+impl<'a> TryFrom<&'a String> for Provider<HttpProvider> {
+    type Error = ParseError;
+
+    fn try_from(src: &'a String) -> Result<Self, Self::Error> {
+        Provider::try_from(src.as_str())
+    }
+}
+
 /// A middleware supporting development-specific JSON RPC methods
 ///
 /// # Example
@@ -1501,12 +1509,10 @@ mod tests {
     };
     use futures_util::StreamExt;
 
-    const INFURA: &str = "https://mainnet.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27";
-
     #[tokio::test]
     // Test vector from: https://docs.ethers.io/ethers.js/v5-beta/api-providers.html#id2
     async fn mainnet_resolve_name() {
-        let provider = Provider::<HttpProvider>::try_from(INFURA).unwrap();
+        let provider = crate::test_provider::MAINNET.provider();
 
         let addr = provider.resolve_name("registrar.firefly.eth").await.unwrap();
         assert_eq!(addr, "6fC21092DA55B392b045eD78F4732bff3C580e2c".parse().unwrap());
@@ -1521,7 +1527,7 @@ mod tests {
     #[tokio::test]
     // Test vector from: https://docs.ethers.io/ethers.js/v5-beta/api-providers.html#id2
     async fn mainnet_lookup_address() {
-        let provider = Provider::<HttpProvider>::try_from(INFURA).unwrap();
+        let provider = crate::MAINNET.provider();
 
         let name = provider
             .lookup_address("6fC21092DA55B392b045eD78F4732bff3C580e2c".parse().unwrap())
@@ -1538,7 +1544,7 @@ mod tests {
 
     #[tokio::test]
     async fn mainnet_resolve_avatar() {
-        let provider = Provider::<HttpProvider>::try_from(INFURA).unwrap();
+        let provider = crate::MAINNET.provider();
 
         for (ens_name, res) in &[
             // HTTPS
@@ -1733,7 +1739,7 @@ mod tests {
         provider.from = Some("0x6fC21092DA55B392b045eD78F4732bff3C580e2c".parse().unwrap());
 
         let gas = U256::from(21000_usize);
-        let basefee = U256::from(25_usize);
+        let max_fee = U256::from(25_usize);
         let prio_fee = U256::from(25_usize);
         let access_list: AccessList = vec![Default::default()].into();
 
@@ -1744,7 +1750,7 @@ mod tests {
             .from(from)
             .to(to)
             .gas(gas)
-            .max_fee_per_gas(basefee)
+            .max_fee_per_gas(max_fee)
             .max_priority_fee_per_gas(prio_fee)
             .access_list(access_list.clone())
             .into();
@@ -1753,7 +1759,7 @@ mod tests {
         assert_eq!(tx.from(), Some(&from));
         assert_eq!(tx.to(), Some(&to.into()));
         assert_eq!(tx.gas(), Some(&gas));
-        assert_eq!(tx.gas_price(), Some(basefee + prio_fee));
+        assert_eq!(tx.gas_price(), Some(max_fee));
         assert_eq!(tx.access_list(), Some(&access_list));
 
         // --- fills a 1559 transaction, leaving the existing gas limit unchanged, but including
@@ -1761,7 +1767,7 @@ mod tests {
         let gas_with_al = gas - 1;
         let mut tx = Eip1559TransactionRequest::new()
             .gas(gas)
-            .max_fee_per_gas(basefee)
+            .max_fee_per_gas(max_fee)
             .max_priority_fee_per_gas(prio_fee)
             .into();
 
@@ -1781,7 +1787,7 @@ mod tests {
         // --- fills a 1559 transaction, ignoring access list if more expensive
         let gas_with_al = gas + 1;
         let mut tx = Eip1559TransactionRequest::new()
-            .max_fee_per_gas(basefee)
+            .max_fee_per_gas(max_fee)
             .max_priority_fee_per_gas(prio_fee)
             .into();
 
@@ -1801,7 +1807,7 @@ mod tests {
 
         // --- fills a 1559 transaction, using estimated gas if create_access_list() errors
         let mut tx = Eip1559TransactionRequest::new()
-            .max_fee_per_gas(basefee)
+            .max_fee_per_gas(max_fee)
             .max_priority_fee_per_gas(prio_fee)
             .into();
 
@@ -1818,7 +1824,7 @@ mod tests {
 
         // --- propogates estimate_gas() error
         let mut tx = Eip1559TransactionRequest::new()
-            .max_fee_per_gas(basefee)
+            .max_fee_per_gas(max_fee)
             .max_priority_fee_per_gas(prio_fee)
             .into();
 

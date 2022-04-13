@@ -60,7 +60,7 @@ pub struct Signature {
     pub r: U256,
     /// S Value
     pub s: U256,
-    /// V value in 'Electrum' notation.
+    /// V value
     pub v: u64,
 }
 
@@ -131,7 +131,7 @@ impl Signature {
     }
 
     /// Retrieve the recovery ID.
-    fn recovery_id(&self) -> Result<RecoveryId, SignatureError> {
+    pub fn recovery_id(&self) -> Result<RecoveryId, SignatureError> {
         let standard_v = normalize_recovery_id(self.v);
         Ok(RecoveryId::new(standard_v)?)
     }

@@ -23,23 +23,23 @@ pub mod project;
 pub const SOLC: &str = "solc";
 
 /// Support for configuring the EVM version
-/// https://blog.soliditylang.org/2018/03/08/solidity-0.4.21-release-announcement/
+/// <https://blog.soliditylang.org/2018/03/08/solidity-0.4.21-release-announcement/>
 pub const CONSTANTINOPLE_SOLC: Version = Version::new(0, 4, 21);
 
 /// Petersburg support
-/// https://blog.soliditylang.org/2019/03/05/solidity-0.5.5-release-announcement/
+/// <https://blog.soliditylang.org/2019/03/05/solidity-0.5.5-release-announcement/>
 pub const PETERSBURG_SOLC: Version = Version::new(0, 5, 5);
 
 /// Istanbul support
-/// https://blog.soliditylang.org/2019/12/09/solidity-0.5.14-release-announcement/
+/// <https://blog.soliditylang.org/2019/12/09/solidity-0.5.14-release-announcement/>
 pub const ISTANBUL_SOLC: Version = Version::new(0, 5, 14);
 
 /// Berlin support
-/// https://blog.soliditylang.org/2021/06/10/solidity-0.8.5-release-announcement/
+/// <https://blog.soliditylang.org/2021/06/10/solidity-0.8.5-release-announcement/>
 pub const BERLIN_SOLC: Version = Version::new(0, 8, 5);
 
 /// London support
-/// https://blog.soliditylang.org/2021/08/11/solidity-0.8.7-release-announcement/
+/// <https://blog.soliditylang.org/2021/08/11/solidity-0.8.7-release-announcement/>
 pub const LONDON_SOLC: Version = Version::new(0, 8, 7);
 
 #[cfg(any(test, feature = "tests"))]
@@ -63,17 +63,19 @@ pub(crate) fn take_solc_installer_lock() -> std::sync::MutexGuard<'static, ()> {
 
 /// A list of upstream Solc releases, used to check which version
 /// we should download.
-/// The boolean value marks whether there was an error.
-#[cfg(all(feature = "svm"))]
+/// The boolean value marks whether there was an error accessing the release list
+#[cfg(all(feature = "svm-solc"))]
 pub static RELEASES: once_cell::sync::Lazy<(svm::Releases, Vec<Version>, bool)> =
-    once_cell::sync::Lazy::new(|| match svm::blocking_all_releases(svm::platform()) {
-        Ok(releases) => {
-            let sorted_versions = releases.clone().into_versions();
-            (releases, sorted_versions, true)
-        }
-        Err(err) => {
-            tracing::error!("{:?}", err);
-            (svm::Releases::default(), Vec::new(), false)
+    once_cell::sync::Lazy::new(|| {
+        match serde_json::from_str::<svm::Releases>(svm_builds::RELEASE_LIST_JSON) {
+            Ok(releases) => {
+                let sorted_versions = releases.clone().into_versions();
+                (releases, sorted_versions, true)
+            }
+            Err(err) => {
+                tracing::error!("{:?}", err);
+                (svm::Releases::default(), Vec::new(), false)
+            }
         }
     });
 
@@ -222,7 +224,7 @@ impl Solc {
 
     /// Returns the list of all versions that are available to download and marking those which are
     /// already installed.
-    #[cfg(all(feature = "svm", feature = "async"))]
+    #[cfg(all(feature = "svm-solc", feature = "async"))]
     pub fn all_versions() -> Vec<SolcVersion> {
         let mut all_versions = Self::installed_versions();
         let mut uniques = all_versions
@@ -283,7 +285,7 @@ impl Solc {
     /// to build it, and returns it.
     ///
     /// If the required compiler version is not installed, it also proceeds to install it.
-    #[cfg(all(feature = "svm", feature = "async"))]
+    #[cfg(all(feature = "svm-solc", feature = "async"))]
     pub fn detect_version(source: &Source) -> Result<Version> {
         // detects the required solc version
         let sol_version = Self::source_version_req(source)?;
@@ -294,7 +296,7 @@ impl Solc {
     /// used to build it, and returns it.
     ///
     /// If the required compiler version is not installed, it also proceeds to install it.
-    #[cfg(all(feature = "svm", feature = "async"))]
+    #[cfg(all(feature = "svm-solc", feature = "async"))]
     pub fn ensure_installed(sol_version: &VersionReq) -> Result<Version> {
         #[cfg(any(test, feature = "tests"))]
         let _lock = take_solc_installer_lock();
@@ -348,44 +350,53 @@ impl Solc {
         Ok(version)
     }
 
-    /// Installs the provided version of Solc in the machine under the svm dir
+    /// Installs the provided version of Solc in the machine under the svm dir and returns the
+    /// [Solc] instance pointing to the installation.
+    ///
     /// # Example
     /// ```no_run
     /// # async fn run() -> Result<(), Box<dyn std::error::Error>> {
     ///  use ethers_solc::{Solc, ISTANBUL_SOLC};
-    ///  Solc::install(&ISTANBUL_SOLC).await.unwrap();
-    ///  let solc = Solc::find_svm_installed_version(&ISTANBUL_SOLC.to_string());
+    ///  let solc = Solc::install(&ISTANBUL_SOLC).await.unwrap();
     /// # Ok(())
     /// # }
     /// ```
-    #[cfg(feature = "svm")]
-    pub async fn install(version: &Version) -> std::result::Result<(), svm::SolcVmError> {
+    #[cfg(feature = "svm-solc")]
+    pub async fn install(version: &Version) -> std::result::Result<Self, svm::SolcVmError> {
         tracing::trace!("installing solc version \"{}\"", version);
         crate::report::solc_installation_start(version);
         let result = svm::install(version).await;
         crate::report::solc_installation_success(version);
-        result
+        result.map(Solc::new)
     }
 
     /// Blocking version of `Self::install`
-    #[cfg(all(feature = "svm", feature = "async"))]
-    pub fn blocking_install(version: &Version) -> std::result::Result<(), svm::SolcVmError> {
+    #[cfg(all(feature = "svm-solc", feature = "async"))]
+    pub fn blocking_install(version: &Version) -> std::result::Result<Self, svm::SolcVmError> {
         tracing::trace!("blocking installing solc version \"{}\"", version);
         crate::report::solc_installation_start(version);
-        svm::blocking_install(version)?;
-        crate::report::solc_installation_success(version);
-        Ok(())
+        match svm::blocking_install(version) {
+            Ok(path) => {
+                crate::report::solc_installation_success(version);
+                Ok(Solc::new(path))
+            }
+            Err(err) => {
+                crate::report::solc_installation_error(version, &err.to_string());
+                Err(err)
+            }
+        }
     }
 
     /// Verify that the checksum for this version of solc is correct. We check against the SHA256
     /// checksum from the build information published by binaries.soliditylang
-    #[cfg(all(feature = "svm", feature = "async"))]
+    #[cfg(all(feature = "svm-solc", feature = "async"))]
     pub fn verify_checksum(&self) -> Result<()> {
         let version = self.version_short()?;
         let mut version_path = svm::version_path(version.to_string().as_str());
         version_path.push(format!("solc-{}", version.to_string().as_str()));
+        tracing::trace!(target:"solc", "reading solc binary for checksum {:?}", version_path);
         let content =
-            std::fs::read(&version_path).map_err(|err| SolcError::io(err, version_path))?;
+            std::fs::read(&version_path).map_err(|err| SolcError::io(err, version_path.clone()))?;
 
         if !RELEASES.2 {
             // we skip checksum verification because the underlying request to fetch release info
@@ -403,6 +414,7 @@ impl Solc {
         if checksum_calc == checksum_found {
             Ok(())
         } else {
+            tracing:: warn!(target : "solc", "checksum mismatch for {:?}, expected {}, but found {} for file {:?}", version, hex::encode(&checksum_found), hex::encode(checksum_calc), version_path);
             Err(SolcError::ChecksumMismatch)
         }
     }
@@ -721,7 +733,7 @@ mod tests {
 
     #[test]
     // This test might be a bit hard to maintain
-    #[cfg(all(feature = "svm", feature = "async"))]
+    #[cfg(all(feature = "svm-solc", feature = "async"))]
     fn test_detect_version() {
         for (pragma, expected) in [
             // pinned
@@ -734,7 +746,7 @@ mod tests {
             // update this test whenever there's a new sol
             // version. that's ok! good reminder to check the
             // patch notes.
-            (">=0.5.0", "0.8.12"),
+            (">=0.5.0", "0.8.13"),
             // range
             (">=0.4.0 <0.5.0", "0.4.26"),
         ]
