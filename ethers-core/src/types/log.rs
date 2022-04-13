@@ -341,7 +341,7 @@ impl Filter {
 }
 
 /// Union type for representing a single value or a vector of values inside a filter
-#[derive(Debug, PartialEq, Clone, Hash)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum ValueOrArray<T> {
     /// A single value
     Value(T),
