@@ -222,6 +222,16 @@ pub enum BlockNumber {
     Number(U64),
 }
 
+impl BlockNumber {
+    /// Returns the numeric block number if explicitly set
+    pub fn as_number(&self) -> Option<U64> {
+        match *self {
+            BlockNumber::Number(num) => Some(num),
+            _ => None,
+        }
+    }
+}
+
 impl<T: Into<U64>> From<T> for BlockNumber {
     fn from(num: T) -> Self {
         BlockNumber::Number(num.into())
