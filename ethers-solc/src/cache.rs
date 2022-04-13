@@ -728,6 +728,8 @@ impl<'a, T: ArtifactOutput> ArtifactsCacheInner<'a, T> {
                 return false
             }
             tracing::trace!("Missing cache entry for {}", file.display());
+        } else {
+            tracing::trace!("Missing content hash for {}", file.display());
         }
         true
     }
