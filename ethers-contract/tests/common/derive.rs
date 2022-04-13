@@ -197,7 +197,8 @@ fn can_detect_various_event_abi_types() {
     }
 
     assert_eq!(
-        "ValueChangedEvent(address,string,bytes32,int256,uint256,bool,address[],bool[],bytes20,uint128,int8,int16,int32,int64,int128,uint8,uint16,uint32,uint64,uint128)",
+        "ValueChangedEvent(address,string,bytes32,int256,uint256,bool,address[],bool[],bytes20,
+uint128,int8,int16,int32,int64,int128,uint8,uint16,uint32,uint64,uint128)",
         ValueChangedEvent::abi_signature()
     );
 }
@@ -581,5 +582,14 @@ fn can_derive_array_tuples() {
         pub diamond_cut: Vec<(Address, u8, Vec<[u8; 4]>)>,
         pub init: Address,
         pub calldata: Bytes,
+    }
+}
+
+#[test]
+fn can_handle_abigen_tuples() {
+    #[derive(Clone, Debug, Default, Eq, PartialEq, EthCall, EthDisplay)]
+    #[ethcall(name = "swap", abi = "swap((uint8,uint8)[])")]
+    pub struct SwapCall {
+        pub pairs_to_swap: ::std::vec::Vec<(u8, u8)>,
     }
 }
