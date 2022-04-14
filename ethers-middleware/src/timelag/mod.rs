@@ -58,7 +58,7 @@ where
                 Ok(self.normalize_block_number(Some(n)).await?.map(Into::into))
             }
             None => Ok(self.normalize_block_number(None).await?.map(Into::into)),
-            _ => Ok(id)
+            _ => Ok(id),
         }
     }
 
@@ -227,12 +227,12 @@ where
             .map_err(ethers_providers::FromErr::from)?;
 
         if receipt.is_none() {
-            return Ok(None);
+            return Ok(None)
         }
 
         let receipt = receipt.expect("checked is_none");
         if receipt.block_number.is_none() {
-            return Ok(Some(receipt));
+            return Ok(Some(receipt))
         }
 
         let number = receipt.block_number.expect("checked is_none");
