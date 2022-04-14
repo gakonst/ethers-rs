@@ -57,6 +57,7 @@ where
             Some(BlockId::Number(n)) => {
                 Ok(self.normalize_block_number(Some(n)).await?.map(Into::into))
             }
+            None => Ok(self.normalize_block_number(None).await?.map(Into::into)),
             _ => Ok(id),
         }
     }
@@ -65,16 +66,17 @@ where
         &self,
         number: Option<BlockNumber>,
     ) -> TimeLagResult<Option<BlockNumber>, M> {
-        let tip = self.get_block_number().await?;
+        let lag_tip = self.get_block_number().await?;
         match number {
-            Some(BlockNumber::Latest) => Ok(Some(BlockNumber::Number(tip))),
+            Some(BlockNumber::Latest) => Ok(Some(BlockNumber::Number(lag_tip))),
             Some(BlockNumber::Number(n)) => {
-                if n > tip {
-                    Ok(Some(BlockNumber::Latest))
+                if n < lag_tip {
+                    Ok(Some(BlockNumber::Number(n)))
                 } else {
-                    Ok(number)
+                    Ok(Some(BlockNumber::Number(lag_tip)))
                 }
             }
+            None => Ok(Some(BlockNumber::Number(lag_tip))),
             _ => Ok(number),
         }
     }
@@ -121,7 +123,6 @@ where
         tx: T,
         block: Option<BlockId>,
     ) -> Result<ethers_providers::PendingTransaction<'_, Self::Provider>, Self::Error> {
-        let block = self.normalize_block_id(block).await?;
         self.inner().send_transaction(tx, block).await.map_err(ethers_providers::FromErr::from)
     }
 
@@ -271,7 +272,6 @@ where
         tx: &mut TypedTransaction,
         block: Option<BlockId>,
     ) -> Result<(), Self::Error> {
-        let block = self.normalize_block_id(block).await?;
         self.inner().fill_transaction(tx, block).await.map_err(ethers_providers::FromErr::from)
     }
 
