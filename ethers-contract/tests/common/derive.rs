@@ -583,3 +583,16 @@ fn can_derive_array_tuples() {
         pub calldata: Bytes,
     }
 }
+
+#[test]
+fn eth_display_works_on_ethers_bytes() {
+    #[derive(Clone, Debug, Default, Eq, PartialEq, EthCall, EthDisplay)]
+    #[ethcall(name = "logBytes", abi = "logBytes(bytes)")]
+    pub struct LogBytesCall {
+        pub p_0: ethers_core::types::Bytes,
+    }
+    let call = LogBytesCall { p_0: hex::decode(b"aaaaaa").unwrap().into() };
+
+    let s = format!("{}", call);
+    assert_eq!(s, "0xaaaaaa");
+}

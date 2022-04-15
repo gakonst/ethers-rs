@@ -42,7 +42,7 @@ pub(crate) fn derive_eth_display_impl(input: DeriveInput) -> Result<TokenStream,
                 }
                 ParamType::Bytes => {
                     quote! {
-                         write!(f, "0x{}", #hex_encode(self.#ident))?;
+                         write!(f, "0x{}", #hex_encode(&self.#ident))?;
                     }
                 }
                 ParamType::Bool | ParamType::String => {
