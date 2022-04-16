@@ -57,7 +57,11 @@ impl Ord for IndexedPathBuf {
         if self.path == other.path {
             Ordering::Equal // PathBuf deduplication
         } else {
-            self.index.cmp(&other.index)
+            if self.index >= other.index {
+                Ordering::Greater
+            } else {
+                Ordering::Less
+            }
         }
     }
 }
@@ -1527,5 +1531,22 @@ mod tests {
         let version: Version = "0.5.17".parse().unwrap();
         let i = input.sanitized(&version);
         assert!(i.settings.metadata.unwrap().bytecode_hash.is_none());
+    }
+
+    #[test]
+    fn test_indexed_pathbuf_deduplication() {
+        let mut sources = BTreeMap::new();
+        sources.insert(IndexedPathBuf::new(PathBuf::from("zero"), 0), "zero source");
+        sources.insert(IndexedPathBuf::new(PathBuf::from("zero"), 1), "zero source");
+        sources.insert(IndexedPathBuf::new(PathBuf::from("one"), 0), "one source");
+        sources.insert(IndexedPathBuf::new(PathBuf::from("two"), 2), "two source");
+        assert_eq!(
+            sources,
+            BTreeMap::from([
+                (IndexedPathBuf::new(PathBuf::from("zero"), 0), "zero source"),
+                (IndexedPathBuf::new(PathBuf::from("one"), 0), "one source"),
+                (IndexedPathBuf::new(PathBuf::from("two"), 2), "two source"),
+            ])
+        )
     }
 }
