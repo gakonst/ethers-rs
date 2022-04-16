@@ -449,7 +449,7 @@ impl Solc {
     /// ```
     pub fn compile_exact(&self, input: &CompilerInput) -> Result<CompilerOutput> {
         let mut out = self.compile(input)?;
-        out.retain_files(input.sources.keys().filter_map(|p| p.to_str()));
+        out.retain_files(input.sources.keys().filter_map(|p| p.path.to_str()));
         Ok(out)
     }
 

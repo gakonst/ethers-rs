@@ -636,7 +636,7 @@ impl<'a, T: ArtifactOutput> ArtifactsCacheInner<'a, T> {
         // separates all source files that fit the criteria (dirty) from those that don't (clean)
         let (mut filtered_sources, clean_sources) = sources
             .into_iter()
-            .map(|(file, source)| self.filter_source(file, source, version))
+            .map(|(file, source)| self.filter_source(file.path, source, version))
             .fold(
                 (BTreeMap::default(), Vec::new()),
                 |(mut dirty_sources, mut clean_sources), source| {
@@ -735,7 +735,7 @@ impl<'a, T: ArtifactOutput> ArtifactsCacheInner<'a, T> {
     /// Adds the file's hashes to the set if not set yet
     fn fill_hashes(&mut self, sources: &Sources) {
         for (file, source) in sources {
-            if let hash_map::Entry::Vacant(entry) = self.content_hashes.entry(file.clone()) {
+            if let hash_map::Entry::Vacant(entry) = self.content_hashes.entry(file.path.clone()) {
                 entry.insert(source.content_hash());
             }
         }

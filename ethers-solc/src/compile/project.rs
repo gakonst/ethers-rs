@@ -439,7 +439,7 @@ fn compile_sequential(
             let actually_dirty = input
                 .sources
                 .keys()
-                .filter(|f| dirty_files.contains(f))
+                .filter(|f| dirty_files.contains(&f.path))
                 .cloned()
                 .collect::<Vec<_>>();
             if actually_dirty.is_empty() {
@@ -467,7 +467,12 @@ fn compile_sequential(
             );
 
             let start = Instant::now();
-            report::solc_spawn(&solc, &version, &input, &actually_dirty);
+            report::solc_spawn(
+                &solc,
+                &version,
+                &input,
+                actually_dirty.iter().map(|i| i.path.clone()).collect::<Vec<PathBuf>>().as_slice(),
+            );
             let output = solc.compile_exact(&input)?;
             report::solc_success(&solc, &version, &output, &start.elapsed());
             tracing::trace!("compiled input, output has error: {}", output.has_error());
@@ -517,7 +522,7 @@ fn compile_parallel(
             let actually_dirty = input
                 .sources
                 .keys()
-                .filter(|f| dirty_files.contains(f))
+                .filter(|f| dirty_files.contains(&f.path))
                 .cloned()
                 .collect::<Vec<_>>();
             if actually_dirty.is_empty() {
@@ -555,7 +560,16 @@ fn compile_parallel(
                     input.sources.keys()
                 );
                 let start = Instant::now();
-                report::solc_spawn(&solc, &version, &input, &actually_dirty);
+                report::solc_spawn(
+                    &solc,
+                    &version,
+                    &input,
+                    actually_dirty
+                        .iter()
+                        .map(|i| i.path.clone())
+                        .collect::<Vec<PathBuf>>()
+                        .as_slice(),
+                );
                 solc.compile(&input).map(move |output| {
                     report::solc_success(&solc, &version, &output, &start.elapsed());
                     (version, output)

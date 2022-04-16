@@ -57,7 +57,9 @@ use rayon::prelude::*;
 
 use semver::VersionReq;
 
-use crate::{error::Result, utils, ProjectPathsConfig, SolcError, Source, Sources};
+use crate::{
+    artifacts::IndexedPathBuf, error::Result, utils, ProjectPathsConfig, SolcError, Source, Sources,
+};
 
 mod parse;
 mod tree;
@@ -266,7 +268,14 @@ impl Graph {
     /// returning the `nodes` converted to `Sources`
     pub fn into_sources(self) -> (Sources, GraphEdges) {
         let (sources, edges) = self.split();
-        (sources.into_iter().collect(), edges)
+        (
+            sources
+                .into_iter()
+                .enumerate()
+                .map(|(i, (p, s))| (IndexedPathBuf::new(p, i), s))
+                .collect(),
+            edges,
+        )
     }
 
     /// Returns an iterator that yields only those nodes that represent input files.
@@ -308,7 +317,8 @@ impl Graph {
         // source and test folder
         let mut unresolved: VecDeque<(PathBuf, Node)> = sources
             .into_par_iter()
-            .map(|(path, source)| {
+            .map(|(indexed_path, source)| {
+                let path = indexed_path.path;
                 let data = SolData::parse(source.as_ref(), &path);
                 (path.clone(), Node { path, source, data })
             })
@@ -408,7 +418,7 @@ impl Graph {
                 if dep >= num_input_files {
                     // library import
                     if let Some((path, source)) = all_nodes.remove(&dep) {
-                        sources.insert(path, source);
+                        sources.insert(IndexedPathBuf::new(path, idx), source);
                         insert_imports(dep, all_nodes, sources, edges, num_input_files);
                     }
                 }
@@ -429,7 +439,7 @@ impl Graph {
             for idx in input_node_indices {
                 // insert the input node in the sources set and remove it from the available set
                 let (path, source) = all_nodes.remove(&idx).expect("node is preset. qed");
-                sources.insert(path, source);
+                sources.insert(IndexedPathBuf::new(path, idx), source);
                 insert_imports(
                     idx,
                     &mut all_nodes,

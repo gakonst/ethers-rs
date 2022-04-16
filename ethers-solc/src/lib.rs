@@ -2,7 +2,7 @@
 pub mod artifacts;
 pub mod sourcemap;
 
-pub use artifacts::{CompilerInput, CompilerOutput, EvmVersion};
+pub use artifacts::{CompilerInput, CompilerOutput, EvmVersion, IndexedPathBuf};
 use std::collections::BTreeMap;
 
 mod artifact_output;
@@ -264,7 +264,11 @@ impl<T: ArtifactOutput> Project<T> {
     pub fn compile_file(&self, file: impl Into<PathBuf>) -> Result<ProjectCompileOutput<T>> {
         let file = file.into();
         let source = Source::read(&file)?;
-        project::ProjectCompiler::with_sources(self, Sources::from([(file, source)]))?.compile()
+        project::ProjectCompiler::with_sources(
+            self,
+            Sources::from([(IndexedPathBuf::new(file, 0), source)]),
+        )?
+        .compile()
     }
 
     /// Convenience function to compile a series of solidity files with the project's settings.
@@ -435,16 +439,19 @@ impl<T: ArtifactOutput> Project<T> {
         let target_index = graph.files().get(target).ok_or_else(|| {
             SolcError::msg(format!("cannot resolve file at {:?}", target.display()))
         })?;
-        let mut sources = Vec::new();
+        let mut sources = BTreeMap::new();
         let (path, source) = graph.node(*target_index).unpack();
-        sources.push((path, source));
-        sources.extend(
-            graph.all_imported_nodes(*target_index).map(|index| graph.node(index).unpack()),
-        );
+        sources.insert(IndexedPathBuf::new(path.clone(), 0), source.clone());
+        graph
+            .all_imported_nodes(*target_index)
+            .map(|i| graph.node(i).unpack())
+            .enumerate()
+            .for_each(|(i, p)| {
+                let (path, source) = p;
+                sources.insert(IndexedPathBuf::new(path.clone(), i + 1), source.clone());
+            });
 
-        let compiler_inputs = CompilerInput::with_sources(
-            sources.into_iter().map(|(s, p)| (s.clone(), p.clone())).collect(),
-        );
+        let compiler_inputs = CompilerInput::with_sources(sources);
 
         // strip the path to the project root from all remappings
         let remappings = self

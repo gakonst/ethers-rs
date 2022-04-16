@@ -5,6 +5,7 @@ use colored::Colorize;
 use md5::Digest;
 use semver::{Version, VersionReq};
 use std::{
+    cmp::{Ord, Ordering},
     collections::{BTreeMap, HashSet},
     fmt, fs,
     path::{Path, PathBuf},
@@ -37,8 +38,52 @@ pub type FileToContractsMap<T> = BTreeMap<String, BTreeMap<String, T>>;
 /// file -> (contract name -> Contract)
 pub type Contracts = FileToContractsMap<Contract>;
 
+/// A pair of PathBuf and their index
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(into = "PathBuf")]
+pub struct IndexedPathBuf {
+    pub path: PathBuf,
+    pub index: usize,
+}
+
+impl IndexedPathBuf {
+    pub fn new(path: PathBuf, index: usize) -> IndexedPathBuf {
+        IndexedPathBuf { path, index }
+    }
+}
+
+impl Ord for IndexedPathBuf {
+    fn cmp(&self, other: &Self) -> Ordering {
+        if self.path == other.path {
+            Ordering::Equal // PathBuf deduplication
+        } else {
+            self.index.cmp(&other.index)
+        }
+    }
+}
+
+impl PartialOrd for IndexedPathBuf {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq for IndexedPathBuf {
+    fn eq(&self, other: &Self) -> bool {
+        self.path == other.path
+    }
+}
+
+impl Eq for IndexedPathBuf {}
+
+impl From<IndexedPathBuf> for PathBuf {
+    fn from(i: IndexedPathBuf) -> Self {
+        i.path
+    }
+}
+
 /// An ordered list of files and their source
-pub type Sources = BTreeMap<PathBuf, Source>;
+pub type Sources = BTreeMap<IndexedPathBuf, Source>;
 
 /// A set of different Solc installations with their version and the sources to be compiled
 pub type VersionedSources = BTreeMap<Solc, (Version, Sources)>;
@@ -67,11 +112,11 @@ impl CompilerInput {
     pub fn with_sources(sources: Sources) -> Vec<Self> {
         let mut solidity_sources = BTreeMap::new();
         let mut yul_sources = BTreeMap::new();
-        for (path, source) in sources {
-            if path.extension() == Some(std::ffi::OsStr::new("yul")) {
-                yul_sources.insert(path, source);
+        for (ordered_path, source) in sources {
+            if ordered_path.path.extension() == Some(std::ffi::OsStr::new("yul")) {
+                yul_sources.insert(ordered_path, source);
             } else {
-                solidity_sources.insert(path, source);
+                solidity_sources.insert(ordered_path, source);
             }
         }
         let mut res = Vec::new();
@@ -149,7 +194,13 @@ impl CompilerInput {
     #[must_use]
     pub fn join_path(mut self, root: impl AsRef<Path>) -> Self {
         let root = root.as_ref();
-        self.sources = self.sources.into_iter().map(|(path, s)| (root.join(path), s)).collect();
+        self.sources = self
+            .sources
+            .into_iter()
+            .map(|(indexed_path, s)| {
+                (IndexedPathBuf::new(root.join(indexed_path.path), indexed_path.index), s)
+            })
+            .collect();
         self
     }
 
@@ -159,7 +210,19 @@ impl CompilerInput {
         self.sources = self
             .sources
             .into_iter()
-            .map(|(path, s)| (path.strip_prefix(base).map(|p| p.to_path_buf()).unwrap_or(path), s))
+            .map(|(indexed_path, s)| {
+                (
+                    IndexedPathBuf::new(
+                        indexed_path
+                            .path
+                            .strip_prefix(base)
+                            .map(|p| p.to_path_buf())
+                            .unwrap_or(indexed_path.path),
+                        indexed_path.index,
+                    ),
+                    s,
+                )
+            })
             .collect();
         self
     }
@@ -676,7 +739,10 @@ impl Source {
             files
                 .par_iter()
                 .map(Into::into)
-                .map(|file| Self::read(&file).map(|source| (file, source)))
+                .enumerate()
+                .map(|(i, file)| {
+                    Self::read(&file).map(|source| (IndexedPathBuf::new(file, i), source))
+                })
                 .collect()
         }
     }
@@ -690,7 +756,8 @@ impl Source {
         files
             .into_iter()
             .map(Into::into)
-            .map(|file| Self::read(&file).map(|source| (file, source)))
+            .enumerate()
+            .map(|(i, file)| Self::read(&file).map(|source| (IndexedPathBuf::new(file, i), source)))
             .collect()
     }
 
@@ -707,9 +774,10 @@ impl Source {
         use rayon::{iter::ParallelBridge, prelude::ParallelIterator};
         files
             .into_iter()
-            .par_bridge()
             .map(Into::into)
-            .map(|file| Self::read(&file).map(|source| (file, source)))
+            .enumerate()
+            .map(|(i, file)| Self::read(&file).map(|source| (IndexedPathBuf::new(file, i), source)))
+            .par_bridge()
             .collect()
     }
 
@@ -750,12 +818,11 @@ impl Source {
         I: IntoIterator<Item = T>,
         T: Into<PathBuf>,
     {
-        futures_util::future::join_all(
-            files
-                .into_iter()
-                .map(Into::into)
-                .map(|file| async { Self::async_read(&file).await.map(|source| (file, source)) }),
-        )
+        futures_util::future::join_all(files.into_iter().map(Into::into).enumerate().map(
+            |(i, file)| async move {
+                Self::async_read(&file).await.map(|source| (IndexedPathBuf::new(file, i), source))
+            },
+        ))
         .await
         .into_iter()
         .collect()

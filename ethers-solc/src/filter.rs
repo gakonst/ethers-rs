@@ -3,7 +3,7 @@
 use crate::{
     artifacts::{output_selection::OutputSelection, Settings},
     resolver::GraphEdges,
-    Source, Sources,
+    IndexedPathBuf, Source, Sources,
 };
 use std::{
     collections::BTreeMap,
@@ -227,13 +227,20 @@ impl FilteredSources {
 
 impl From<FilteredSources> for Sources {
     fn from(sources: FilteredSources) -> Self {
-        sources.0.into_iter().map(|(k, v)| (k, v.into_source())).collect()
+        sources
+            .0
+            .into_iter()
+            .enumerate()
+            .map(|(i, (k, v))| (IndexedPathBuf::new(k, i), v.into_source()))
+            .collect()
     }
 }
 
 impl From<Sources> for FilteredSources {
     fn from(s: Sources) -> Self {
-        FilteredSources(s.into_iter().map(|(key, val)| (key, FilteredSource::Dirty(val))).collect())
+        FilteredSources(
+            s.into_iter().map(|(key, val)| (key.path, FilteredSource::Dirty(val))).collect(),
+        )
     }
 }
 
