@@ -56,12 +56,10 @@ impl Ord for IndexedPathBuf {
     fn cmp(&self, other: &Self) -> Ordering {
         if self.path == other.path {
             Ordering::Equal // PathBuf deduplication
+        } else if self.index >= other.index {
+            Ordering::Greater
         } else {
-            if self.index >= other.index {
-                Ordering::Greater
-            } else {
-                Ordering::Less
-            }
+            Ordering::Less
         }
     }
 }
