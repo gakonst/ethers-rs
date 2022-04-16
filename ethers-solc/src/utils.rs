@@ -32,6 +32,9 @@ pub static RE_SOL_PRAGMA_VERSION: Lazy<Regex> =
 pub static RE_SOL_SDPX_LICENSE_IDENTIFIER: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"///?\s*SPDX-License-Identifier:\s*(?P<license>.+)").unwrap());
 
+/// A regex used to remove extra lines in flatenned files
+pub static RE_THREE_OR_MORE_NEWLINES: Lazy<Regex> = Lazy::new(|| Regex::new("\n{3,}").unwrap());
+
 /// Returns all path parts from any solidity import statement in a string,
 /// `import "./contracts/Contract.sol";` -> `"./contracts/Contract.sol"`.
 ///
