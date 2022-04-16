@@ -40,7 +40,7 @@ pub type Contracts = FileToContractsMap<Contract>;
 
 /// A pair of PathBuf and their index
 #[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(into = "PathBuf")]
+#[serde(into = "PathBuf", from = "PathBuf")]
 pub struct IndexedPathBuf {
     pub path: PathBuf,
     pub index: usize,
@@ -79,6 +79,12 @@ impl Eq for IndexedPathBuf {}
 impl From<IndexedPathBuf> for PathBuf {
     fn from(i: IndexedPathBuf) -> Self {
         i.path
+    }
+}
+
+impl From<PathBuf> for IndexedPathBuf {
+    fn from(p: PathBuf) -> Self {
+        IndexedPathBuf::new(p, 0)
     }
 }
 
