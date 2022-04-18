@@ -414,6 +414,16 @@ pub struct TransactionReceipt {
     pub effective_gas_price: Option<U256>,
 }
 
+impl rlp::Encodable for TransactionReceipt {
+    fn rlp_append(&self, s: &mut RlpStream) {
+        s.begin_list(4);
+        s.append(&self.status);
+        s.append(&self.cumulative_gas_used);
+        s.append(&self.logs_bloom);
+        s.append_list(&self.logs);
+    }
+}
+
 #[cfg(test)]
 #[cfg(not(feature = "celo"))]
 mod tests {

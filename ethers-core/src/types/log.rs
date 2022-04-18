@@ -65,6 +65,15 @@ pub struct Log {
     pub removed: Option<bool>,
 }
 
+impl rlp::Encodable for Log {
+    fn rlp_append(&self, s: &mut rlp::RlpStream) {
+        s.begin_list(3);
+        s.append(&self.address);
+        s.append_list(&self.topics);
+        s.append(&self.data.0);
+    }
+}
+
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum FilterBlockOption {
     Range { from_block: Option<BlockNumber>, to_block: Option<BlockNumber> },
