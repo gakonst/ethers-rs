@@ -22,8 +22,8 @@ use std::sync::Arc;
 #[derive(Debug, Clone)]
 #[must_use = "Deployer does nothing unless you `send` it"]
 pub struct ContractDeployer<M, C> {
-    /// the actual deployer
-    deployer: Deployer<M>,
+    /// the actual deployer, exposed for overriding the defaults
+    pub deployer: Deployer<M>,
     /// marker for the `Contract` type to create afterwards
     ///
     /// this type will be used to construct it via `From::from(Contract)`
