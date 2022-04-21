@@ -97,6 +97,8 @@ impl CompilerInput {
     pub fn sanitized(mut self, version: &Version) -> Self {
         static PRE_V0_6_0: once_cell::sync::Lazy<VersionReq> =
             once_cell::sync::Lazy::new(|| VersionReq::parse("<0.6.0").unwrap());
+        static PRE_V0_8_10: once_cell::sync::Lazy<VersionReq> =
+            once_cell::sync::Lazy::new(|| VersionReq::parse("<0.8.10").unwrap());
 
         if PRE_V0_6_0.matches(version) {
             if let Some(ref mut meta) = self.settings.metadata {
@@ -104,7 +106,18 @@ impl CompilerInput {
                 // missing in <https://docs.soliditylang.org/en/v0.5.17/using-the-compiler.html#compiler-api>
                 meta.bytecode_hash.take();
             }
+            // introduced in <https://docs.soliditylang.org/en/v0.6.0/using-the-compiler.html#compiler-api>
+            let _ = self.settings.debug.take();
         }
+
+        if PRE_V0_8_10.matches(version) {
+            if let Some(ref mut debug) = self.settings.debug {
+                // introduced in <https://docs.soliditylang.org/en/v0.8.10/using-the-compiler.html#compiler-api>
+                // <https://github.com/ethereum/solidity/releases/tag/v0.8.10>
+                debug.debug_info.clear();
+            }
+        }
+
         self
     }
 
@@ -194,6 +207,8 @@ pub struct Settings {
     /// false by default.
     #[serde(rename = "viaIR", default, skip_serializing_if = "Option::is_none")]
     pub via_ir: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub debug: Option<DebuggingSettings>,
     #[serde(default, skip_serializing_if = "::std::collections::BTreeMap::is_empty")]
     pub libraries: BTreeMap<String, BTreeMap<String, String>>,
 }
@@ -308,6 +323,7 @@ impl Default for Settings {
             output_selection: OutputSelection::default_output_selection(),
             evm_version: Some(EvmVersion::default()),
             via_ir: None,
+            debug: None,
             libraries: Default::default(),
             remappings: Default::default(),
         }
@@ -483,6 +499,80 @@ impl FromStr for EvmVersion {
         }
     }
 }
+
+/// Debugging settings for solc
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DebuggingSettings {
+    #[serde(
+        default,
+        with = "serde_helpers::display_from_str_opt",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub revert_strings: Option<RevertStrings>,
+    ///How much extra debug information to include in comments in the produced EVM assembly and
+    /// Yul code.
+    /// Available components are:
+    // - `location`: Annotations of the form `@src <index>:<start>:<end>` indicating the location of
+    //   the corresponding element in the original Solidity file, where:
+    //     - `<index>` is the file index matching the `@use-src` annotation,
+    //     - `<start>` is the index of the first byte at that location,
+    //     - `<end>` is the index of the first byte after that location.
+    // - `snippet`: A single-line code snippet from the location indicated by `@src`. The snippet is
+    //   quoted and follows the corresponding `@src` annotation.
+    // - `*`: Wildcard value that can be used to request everything.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub debug_info: Vec<String>,
+}
+
+/// How to treat revert (and require) reason strings.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+pub enum RevertStrings {
+    /// "default" does not inject compiler-generated revert strings and keeps user-supplied ones.
+    Default,
+    /// "strip" removes all revert strings (if possible, i.e. if literals are used) keeping
+    /// side-effects
+    Strip,
+    /// "debug" injects strings for compiler-generated internal reverts, implemented for ABI
+    /// encoders V1 and V2 for now.
+    Debug,
+    /// "verboseDebug" even appends further information to user-supplied revert strings (not yet
+    /// implemented)
+    VerboseDebug,
+}
+
+impl fmt::Display for RevertStrings {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let string = match self {
+            RevertStrings::Default => "default",
+            RevertStrings::Strip => "strip",
+            RevertStrings::Debug => "debug",
+            RevertStrings::VerboseDebug => "verboseDebug",
+        };
+        write!(f, "{}", string)
+    }
+}
+
+impl FromStr for RevertStrings {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "default" => Ok(RevertStrings::Default),
+            "strip" => Ok(RevertStrings::Strip),
+            "debug" => Ok(RevertStrings::Debug),
+            "verboseDebug" | "verbosedebug" => Ok(RevertStrings::VerboseDebug),
+            s => Err(format!("Unknown evm version: {}", s)),
+        }
+    }
+}
+
+impl Default for RevertStrings {
+    fn default() -> Self {
+        RevertStrings::Default
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SettingsMetadata {
     /// Use only literal content and not URLs (false by default)
