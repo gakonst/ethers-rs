@@ -35,7 +35,7 @@ Tests require the following installed:
 2. [`ganache-cli`](https://github.com/trufflesuite/ganache-cli#installation)
 
 In addition, it is recommended that you set the `ETHERSCAN_API_KEY` environment variable
-for [the abigen via Etherscan](https://github.com/gakonst/ethers-rs/blob/master/ethers/tests/major_contracts.rs) tests.
+for [the abigen via Etherscan](https://github.com/gakonst/ethers-rs/blob/master/ethers-contract/tests/abigen.rs) tests.
 You can get one [here](https://etherscan.io/apis).
 
 ### EVM-compatible chains support
