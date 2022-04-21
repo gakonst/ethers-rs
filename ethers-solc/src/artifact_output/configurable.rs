@@ -270,7 +270,8 @@ impl ArtifactOutput for ConfigurableArtifacts {
             } = evm;
 
             if self.additional_values.function_debug_data {
-                artifact_function_debug_data = bytecode.map(|b| b.function_debug_data);
+                artifact_function_debug_data =
+                    bytecode.as_ref().map(|b| b.function_debug_data.clone());
             }
 
             artifact_bytecode = bytecode.map(Into::into);
@@ -400,12 +401,9 @@ impl ExtraOutputValues {
                     EvmOutputSelection::GasEstimates => {
                         config.gas_estimates = true;
                     }
-                    EvmOutputSelection::ByteCode(bytecode) => match bytecode {
-                        BytecodeOutputSelection::FunctionDebugData => {
-                            config.function_debug_data = true;
-                        }
-                        _ => {}
-                    },
+                    EvmOutputSelection::ByteCode(BytecodeOutputSelection::FunctionDebugData) => {
+                        config.function_debug_data = true;
+                    }
                     _ => {}
                 },
                 ContractOutputSelection::Ewasm(_) => {
