@@ -190,8 +190,8 @@ impl Abigen {
         let bin_path = dir.path().join("bin");
         let abi_path = dir.path().join("abi");
 
-        let mut bin_file = File::create(bin_path.clone())?;
-        let mut abi_file = File::create(abi_path.clone())?;
+        let mut bin_file = File::create(&bin_path)?;
+        let mut abi_file = File::create(&abi_path)?;
 
         bin_file.write_fmt(format_args!("{:02x}", &bin))?;
         let raw_abi = serde_json::to_vec(&abi)?;
