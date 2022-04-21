@@ -72,6 +72,7 @@ pub enum Response<'a> {
     Error { id: u64, jsonrpc: &'a str, error: JsonRpcError },
 }
 
+#[allow(unused)]
 impl Response<'_> {
     pub fn id(&self) -> u64 {
         match self {
