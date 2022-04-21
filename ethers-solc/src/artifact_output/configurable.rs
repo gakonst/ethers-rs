@@ -159,6 +159,7 @@ impl ConfigurableArtifacts {
     /// Returns the output selection corresponding to this configuration
     pub fn output_selection(&self) -> Vec<ContractOutputSelection> {
         let mut selection = ContractOutputSelection::basic();
+
         if self.additional_values.ir {
             selection.push(ContractOutputSelection::Ir);
         }
@@ -185,6 +186,12 @@ impl ConfigurableArtifacts {
         }
         if self.additional_values.ewasm || self.additional_files.ewasm {
             selection.push(EwasmOutputSelection::All.into());
+        }
+        if self.additional_values.function_debug_data {
+            selection.push(BytecodeOutputSelection::FunctionDebugData.into());
+        }
+        if self.additional_values.method_identifiers {
+            selection.push(EvmOutputSelection::MethodIdentifiers.into());
         }
         selection
     }
