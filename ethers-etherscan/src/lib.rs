@@ -10,6 +10,7 @@ use std::{
 use contract::ContractMetadata;
 use reqwest::{header, Url};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use tracing::trace;
 
 use errors::EtherscanError;
 use ethers_core::{
@@ -166,10 +167,10 @@ impl Client {
                 Url::parse("https://kovan-optimistic.etherscan.io"),
             ),
             Chain::Fantom => {
-                (Url::parse("https://api.ftmscan.com"), Url::parse("https://ftmscan.com"))
+                (Url::parse("https://api.ftmscan.com/api"), Url::parse("https://ftmscan.com"))
             }
             Chain::FantomTestnet => (
-                Url::parse("https://api-testnet.ftmscan.com"),
+                Url::parse("https://api-testnet.ftmscan.com/api"),
                 Url::parse("https://testnet.ftmscan.com"),
             ),
             Chain::BinanceSmartChain => {
@@ -215,19 +216,20 @@ impl Client {
             Chain::Goerli |
             Chain::Optimism |
             Chain::OptimismKovan |
-            Chain::Fantom |
-            Chain::FantomTestnet |
             Chain::BinanceSmartChain |
             Chain::BinanceSmartChainTestnet |
             Chain::Arbitrum |
             Chain::ArbitrumTestnet |
             Chain::Cronos => std::env::var("ETHERSCAN_API_KEY")?,
+            Chain::Fantom | Chain::FantomTestnet => {
+                std::env::var("FTMSCAN_API_KEY").or_else(|_| std::env::var("FANTOMSCAN_API_KEY"))?
+            }
 
             Chain::XDai | Chain::Sepolia | Chain::CronosTestnet => String::default(),
             Chain::Moonbeam | Chain::MoonbeamDev | Chain::Moonriver => {
                 std::env::var("MOONSCAN_API_KEY")?
             }
-            Chain::Dev => return Err(errors::EtherscanError::LocalNetworksNotSupported),
+            Chain::Dev => return Err(EtherscanError::LocalNetworksNotSupported),
         };
         Self::new(chain, api_key)
     }
@@ -265,6 +267,7 @@ impl Client {
         &self,
         form: &Form,
     ) -> Result<Response<T>> {
+        trace!(target: "etherscan", "POST FORM {}", self.etherscan_api_url);
         Ok(self
             .client
             .post(self.etherscan_api_url.clone())
@@ -278,6 +281,7 @@ impl Client {
 
     /// Execute an API GET request with parameters
     async fn get_json<T: DeserializeOwned, Q: Serialize>(&self, query: &Q) -> Result<Response<T>> {
+        trace!(target: "etherscan", "GET JSON {}", self.etherscan_api_url);
         let res: ResponseData<T> = self
             .client
             .get(self.etherscan_api_url.clone())
@@ -342,14 +346,12 @@ struct Query<'a, T: Serialize> {
 
 #[cfg(test)]
 mod tests {
+    use crate::{Client, EtherscanError};
+    use ethers_core::types::{Address, Chain, H256};
     use std::{
         future::Future,
         time::{Duration, SystemTime},
     };
-
-    use ethers_core::types::{Address, Chain, H256};
-
-    use crate::{Client, EtherscanError};
 
     #[test]
     fn chain_not_supported() {
