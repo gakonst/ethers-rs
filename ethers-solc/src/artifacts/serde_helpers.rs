@@ -127,3 +127,71 @@ pub mod display_from_str_opt {
         }
     }
 }
+
+/// (De)serialize vec of tuples as map
+pub mod tuple_vec_map {
+    use serde::{de::DeserializeOwned, Deserialize, Deserializer, Serialize, Serializer};
+
+    pub fn serialize<K, V, S>(data: &[(K, V)], serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+        K: Serialize,
+        V: Serialize,
+    {
+        serializer.collect_map(data.iter().map(|x| (&x.0, &x.1)))
+    }
+
+    pub fn deserialize<'de, K, V, D>(deserializer: D) -> Result<Vec<(K, V)>, D::Error>
+    where
+        D: Deserializer<'de>,
+        K: DeserializeOwned,
+        V: DeserializeOwned,
+    {
+        use serde::de::{MapAccess, Visitor};
+        use std::{fmt, marker::PhantomData};
+
+        struct TupleVecMapVisitor<K, V> {
+            marker: PhantomData<Vec<(K, V)>>,
+        }
+
+        impl<K, V> TupleVecMapVisitor<K, V> {
+            pub fn new() -> Self {
+                TupleVecMapVisitor { marker: PhantomData }
+            }
+        }
+
+        impl<'de, K, V> Visitor<'de> for TupleVecMapVisitor<K, V>
+        where
+            K: Deserialize<'de>,
+            V: Deserialize<'de>,
+        {
+            type Value = Vec<(K, V)>;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("a map")
+            }
+
+            #[inline]
+            fn visit_unit<E>(self) -> Result<Vec<(K, V)>, E> {
+                Ok(Vec::new())
+            }
+
+            #[inline]
+            fn visit_map<T>(self, mut access: T) -> Result<Vec<(K, V)>, T::Error>
+            where
+                T: MapAccess<'de>,
+            {
+                let mut values =
+                    Vec::with_capacity(std::cmp::min(access.size_hint().unwrap_or(0), 4096));
+
+                while let Some((key, value)) = access.next_entry()? {
+                    values.push((key, value));
+                }
+
+                Ok(values)
+            }
+        }
+
+        deserializer.deserialize_map(TupleVecMapVisitor::new())
+    }
+}

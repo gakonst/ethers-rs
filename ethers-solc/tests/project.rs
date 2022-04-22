@@ -12,7 +12,7 @@ use ethers_solc::{
     cache::{SolFilesCache, SOLIDITY_FILES_CACHE_FILENAME},
     project_util::*,
     remappings::Remapping,
-    ConfigurableArtifacts, ExtraOutputValues, Graph, Project, ProjectCompileOutput,
+    CompilerInput, ConfigurableArtifacts, ExtraOutputValues, Graph, Project, ProjectCompileOutput,
     ProjectPathsConfig, Solc, TestFileFilter,
 };
 use pretty_assertions::assert_eq;
@@ -1023,11 +1023,11 @@ fn can_sanitize_bytecode_hash() {
 fn can_compile_std_json_input() {
     let tmp = TempProject::dapptools_init().unwrap();
     tmp.assert_no_errors();
-    let source =
-        tmp.list_source_files().into_iter().filter(|p| p.ends_with("Dapp.t.sol")).next().unwrap();
+    let source = tmp.list_source_files().into_iter().find(|p| p.ends_with("Dapp.t.sol")).unwrap();
     let input = tmp.project().standard_json_input(source).unwrap();
 
     assert!(input.settings.remappings.contains(&"ds-test/=lib/ds-test/src/".parse().unwrap()));
+    let input: CompilerInput = input.into();
     assert!(input.sources.contains_key(Path::new("lib/ds-test/src/test.sol")));
 
     // should be installed

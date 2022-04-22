@@ -24,7 +24,7 @@ mod config;
 pub use config::{AllowedLibPaths, PathStyle, ProjectPathsConfig, SolcConfig};
 
 pub mod remappings;
-use crate::artifacts::{Source, SourceFile};
+use crate::artifacts::{Source, SourceFile, StandardJsonCompilerInput};
 
 pub mod error;
 mod filter;
@@ -428,7 +428,12 @@ impl<T: ArtifactOutput> Project<T> {
     }
 
     /// Returns standard-json-input to compile the target contract
-    pub fn standard_json_input(&self, target: impl AsRef<Path>) -> Result<CompilerInput> {
+    pub fn standard_json_input(
+        &self,
+        target: impl AsRef<Path>,
+    ) -> Result<StandardJsonCompilerInput> {
+        use path_slash::PathExt;
+
         let target = target.as_ref();
         tracing::trace!("Building standard-json-input for {:?}", target);
         let graph = Graph::resolve(&self.paths)?;
@@ -442,12 +447,22 @@ impl<T: ArtifactOutput> Project<T> {
             graph.all_imported_nodes(*target_index).map(|index| graph.node(index).unpack()),
         );
 
-        let compiler_inputs = CompilerInput::with_sources(
-            sources.into_iter().map(|(s, p)| (s.clone(), p.clone())).collect(),
-        );
+        let root = self.root();
+        let sources = sources
+            .into_iter()
+            .map(|(path, source)| {
+                let path: PathBuf = if let Ok(stripped) = path.strip_prefix(root) {
+                    stripped.to_slash_lossy().into()
+                } else {
+                    path.to_slash_lossy().into()
+                };
+                (path, source.clone())
+            })
+            .collect();
 
+        let mut settings = self.solc_config.settings.clone();
         // strip the path to the project root from all remappings
-        let remappings = self
+        settings.remappings = self
             .paths
             .remappings
             .clone()
@@ -455,15 +470,9 @@ impl<T: ArtifactOutput> Project<T> {
             .map(|r| r.into_relative(self.root()).to_relative_remapping())
             .collect::<Vec<_>>();
 
-        let compiler_input = compiler_inputs
-            .first()
-            .ok_or_else(|| SolcError::msg("cannot get the compiler input"))?
-            .clone()
-            .settings(self.solc_config.settings.clone())
-            .with_remappings(remappings)
-            .strip_prefix(self.root());
+        let input = StandardJsonCompilerInput::new(sources, settings);
 
-        Ok(compiler_input)
+        Ok(input)
     }
 }
 

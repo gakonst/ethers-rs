@@ -46,6 +46,8 @@ pub type VersionedSources = BTreeMap<Solc, (Version, Sources)>;
 /// A set of different Solc installations with their version and the sources to be compiled
 pub type VersionedFilteredSources = BTreeMap<Solc, (Version, FilteredSources)>;
 
+const SOLIDITY: &str = "Solidity";
+
 /// Input type `solc` expects
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct CompilerInput {
@@ -77,7 +79,7 @@ impl CompilerInput {
         let mut res = Vec::new();
         if !solidity_sources.is_empty() {
             res.push(Self {
-                language: "Solidity".to_string(),
+                language: SOLIDITY.to_string(),
                 sources: solidity_sources,
                 settings: Default::default(),
             });
@@ -175,6 +177,52 @@ impl CompilerInput {
             .map(|(path, s)| (path.strip_prefix(base).map(|p| p.to_path_buf()).unwrap_or(path), s))
             .collect();
         self
+    }
+}
+
+/// A `CompilerInput` representation used for verify
+///
+/// This type is an alternative `CompilerInput` but uses non-alphabetic ordering of the `sources`
+/// and instead emits the (Path -> Source) path in the same order as the pairs in the `sources`
+/// `Vec`. This is used over a map, so we can determine the order in which etherscan will display
+/// the verified contracts
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct StandardJsonCompilerInput {
+    pub language: String,
+    #[serde(with = "serde_helpers::tuple_vec_map")]
+    pub sources: Vec<(PathBuf, Source)>,
+    pub settings: Settings,
+}
+
+// === impl StandardJsonCompilerInput ===
+
+impl StandardJsonCompilerInput {
+    pub fn new(sources: Vec<(PathBuf, Source)>, settings: Settings) -> Self {
+        Self { language: SOLIDITY.to_string(), sources, settings }
+    }
+
+    /// Normalizes the EVM version used in the settings to be up to the latest one
+    /// supported by the provided compiler version.
+    #[must_use]
+    pub fn normalize_evm_version(mut self, version: &Version) -> Self {
+        if let Some(ref mut evm_version) = self.settings.evm_version {
+            self.settings.evm_version = evm_version.normalize_version(version);
+        }
+        self
+    }
+}
+
+impl From<StandardJsonCompilerInput> for CompilerInput {
+    fn from(input: StandardJsonCompilerInput) -> Self {
+        let StandardJsonCompilerInput { language, sources, settings } = input;
+        CompilerInput { language, sources: sources.into_iter().collect(), settings }
+    }
+}
+
+impl From<CompilerInput> for StandardJsonCompilerInput {
+    fn from(input: CompilerInput) -> Self {
+        let CompilerInput { language, sources, settings } = input;
+        StandardJsonCompilerInput { language, sources: sources.into_iter().collect(), settings }
     }
 }
 
@@ -1486,9 +1534,29 @@ mod tests {
 
         for path in fs::read_dir(dir).unwrap() {
             let path = path.unwrap().path();
-            let compiler_output = fs::read_to_string(&path).unwrap();
-            serde_json::from_str::<CompilerInput>(&compiler_output).unwrap_or_else(|err| {
-                panic!("Failed to read compiler output of {} {}", path.display(), err)
+            let compiler_input = fs::read_to_string(&path).unwrap();
+            serde_json::from_str::<CompilerInput>(&compiler_input).unwrap_or_else(|err| {
+                panic!("Failed to read compiler input of {} {}", path.display(), err)
+            });
+        }
+    }
+
+    #[test]
+    fn can_parse_standard_json_compiler_input() {
+        let mut dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        dir.push("test-data/in");
+
+        for path in fs::read_dir(dir).unwrap() {
+            let path = path.unwrap().path();
+            let compiler_input = fs::read_to_string(&path).unwrap();
+            let val = serde_json::from_str::<StandardJsonCompilerInput>(&compiler_input)
+                .unwrap_or_else(|err| {
+                    panic!("Failed to read compiler output of {} {}", path.display(), err)
+                });
+
+            let pretty = serde_json::to_string_pretty(&val).unwrap();
+            serde_json::from_str::<CompilerInput>(&pretty).unwrap_or_else(|err| {
+                panic!("Failed to read converted compiler input of {} {}", path.display(), err)
             });
         }
     }
