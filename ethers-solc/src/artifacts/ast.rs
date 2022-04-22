@@ -29,6 +29,8 @@ pub struct Node {
     pub node_type: NodeType,
     #[serde(with = "serde_helpers::display_from_str")]
     pub src: SourceLocation,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub nodes: Vec<Node>,
     #[serde(flatten)]
     pub other: BTreeMap<String, serde_json::Value>,
 }
