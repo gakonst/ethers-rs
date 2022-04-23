@@ -38,6 +38,7 @@ dunce = "1.0.2"
 solang-parser = { default-features = false, version = "0.1.12" }
 rayon = "1.5.2"
 rand = { version = "0.8.5", optional = true }
+path-slash = "0.1.4"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 home = "0.5.3"
