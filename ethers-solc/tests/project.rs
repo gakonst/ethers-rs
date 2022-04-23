@@ -490,8 +490,7 @@ contract C { }
 
     assert_eq!(
         result,
-        r#"
-pragma solidity ^0.8.10;
+        r#"pragma solidity ^0.8.10;
 
 contract C { }
 
@@ -547,8 +546,7 @@ contract C { }
 
     assert_eq!(
         result,
-        r#"
-pragma solidity ^0.8.10;
+        r#"pragma solidity ^0.8.10;
 pragma experimental ABIEncoderV2;
 
 contract C { }
@@ -656,7 +654,7 @@ contract C { }
 
     let result = project.flatten(&f).unwrap();
     assert_eq!(
-        result.trim(),
+        result,
         r#"pragma solidity ^0.8.10;
 
 contract C { }
@@ -664,7 +662,8 @@ contract C { }
 error IllegalArgument();
 error IllegalState();
 
-contract A { }"#
+contract A { }
+"#
     );
 }
 
@@ -707,7 +706,7 @@ contract C { }
 
     let result = project.flatten(&f).unwrap();
     assert_eq!(
-        result.trim(),
+        result,
         r#"pragma solidity ^0.8.10;
 
 contract C { }
@@ -716,7 +715,8 @@ contract C { }
 
 contract B { }
 
-contract A { }"#
+contract A { }
+"#
     );
 }
 

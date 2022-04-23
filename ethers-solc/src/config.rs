@@ -250,7 +250,9 @@ impl ProjectPathsConfig {
     pub fn flatten(&self, target: &Path) -> Result<String> {
         tracing::trace!("flattening file");
         let graph = Graph::resolve(self)?;
-        self.flatten_node(target, &graph, &mut Default::default(), false, false, false)
+        self.flatten_node(target, &graph, &mut Default::default(), false, false, false).map(|x| {
+            format!("{}\n", utils::RE_THREE_OR_MORE_NEWLINES.replace_all(&x, "\n\n").trim())
+        })
     }
 
     /// Flattens a single node from the dependency graph
@@ -321,7 +323,6 @@ impl ProjectPathsConfig {
         let result = String::from_utf8(content).map_err(|err| {
             SolcError::msg(format!("failed to convert extended bytes to string: {}", err))
         })?;
-        let result = utils::RE_THREE_OR_MORE_NEWLINES.replace_all(&result, "\n\n").into_owned();
 
         Ok(result)
     }
