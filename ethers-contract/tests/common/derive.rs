@@ -585,6 +585,15 @@ fn can_derive_array_tuples() {
 }
 
 #[test]
+fn can_handle_abigen_tuples() {
+    #[derive(Clone, Debug, Default, Eq, PartialEq, EthCall, EthDisplay)]
+    #[ethcall(name = "swap", abi = "swap((uint8,uint8)[])")]
+    pub struct SwapCall {
+        pub pairs_to_swap: ::std::vec::Vec<(u8, u8)>,
+    }
+}
+
+#[test]
 fn eth_display_works_on_ethers_bytes() {
     #[derive(Clone, Debug, Default, Eq, PartialEq, EthCall, EthDisplay)]
     #[ethcall(name = "logBytes", abi = "logBytes(bytes)")]
