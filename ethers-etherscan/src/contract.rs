@@ -307,7 +307,6 @@ impl Client {
             }
             return Err(EtherscanError::ContractCodeNotVerified(address))
         }
-        dbg!(resp.result.clone());
         let abi = serde_json::from_str(&resp.result)?;
 
         if let Some(ref cache) = self.cache {
