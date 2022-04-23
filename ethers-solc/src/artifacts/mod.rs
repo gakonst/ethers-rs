@@ -1281,8 +1281,18 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(msg) = &self.formatted_message {
             match self.severity {
-                Severity::Error => msg.as_str().red().fmt(f),
-                Severity::Warning | Severity::Info => msg.as_str().yellow().fmt(f),
+                Severity::Error => {
+                    if let Some(code) = self.error_code {
+                        format!("error[{}]: ", code).as_str().red().fmt(f)?;
+                    }
+                    msg.as_str().red().fmt(f)
+                }
+                Severity::Warning | Severity::Info => {
+                    if let Some(code) = self.error_code {
+                        format!("warning[{}]: ", code).as_str().yellow().fmt(f)?;
+                    }
+                    msg.as_str().yellow().fmt(f)
+                }
             }
         } else {
             self.severity.fmt(f)?;
