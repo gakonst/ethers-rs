@@ -1393,6 +1393,7 @@ dependencies = [
  "md-5 0.10.1",
  "num_cpus",
  "once_cell",
+ "path-slash",
  "pretty_assertions",
  "rand 0.8.5",
  "rayon",
@@ -2465,6 +2466,12 @@ dependencies = [
  "rand_core 0.6.3",
  "subtle",
 ]
+
+[[package]]
+name = "path-slash"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3cacbb3c4ff353b534a67fb8d7524d00229da4cb1dc8c79f4db96e375ab5b619"
 
 [[package]]
 name = "pbkdf2"
