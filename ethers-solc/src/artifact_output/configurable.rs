@@ -8,7 +8,7 @@ use crate::{
             BytecodeOutputSelection, ContractOutputSelection, EvmOutputSelection,
             EwasmOutputSelection,
         },
-        CompactContractBytecodeCow, DevDoc, Evm, Ewasm, FunctionDebugData, GasEstimates,
+        Ast, CompactContractBytecodeCow, DevDoc, Evm, Ewasm, FunctionDebugData, GasEstimates,
         LosslessAbi, Metadata, Offsets, Settings, StorageLayout, UserDoc,
     },
     ArtifactOutput, SolcConfig, SolcError, SourceFile,
@@ -52,8 +52,8 @@ pub struct ConfigurableContractArtifact {
     pub ir_optimized: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ewasm: Option<Ewasm>,
-    #[serde(default, skip_serializing_if = "serde_json::Value::is_null")]
-    pub ast: serde_json::Value,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ast: Option<Ast>,
 }
 
 impl ConfigurableContractArtifact {
@@ -303,7 +303,7 @@ impl ArtifactOutput for ConfigurableArtifacts {
             ir: artifact_ir,
             ir_optimized: artifact_ir_optimized,
             ewasm: artifact_ewasm,
-            ast: source_file.map(|s| s.ast.clone()).unwrap_or_default(),
+            ast: source_file.and_then(|s| s.ast.clone()),
         }
     }
 }

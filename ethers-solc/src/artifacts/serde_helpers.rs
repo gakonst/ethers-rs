@@ -3,14 +3,14 @@
 use ethers_core::types::Bytes;
 use serde::{Deserialize, Deserializer};
 
-pub fn deserialize_bytes<'de, D>(d: D) -> std::result::Result<Bytes, D::Error>
+pub fn deserialize_bytes<'de, D>(d: D) -> Result<Bytes, D::Error>
 where
     D: Deserializer<'de>,
 {
     String::deserialize(d)?.parse::<Bytes>().map_err(|e| serde::de::Error::custom(e.to_string()))
 }
 
-pub fn deserialize_opt_bytes<'de, D>(d: D) -> std::result::Result<Option<Bytes>, D::Error>
+pub fn deserialize_opt_bytes<'de, D>(d: D) -> Result<Option<Bytes>, D::Error>
 where
     D: Deserializer<'de>,
 {
@@ -70,6 +70,43 @@ pub mod json_string_opt {
     }
 }
 
+/// deserializes empty json object `{}` as `None`
+pub mod empty_json_object_opt {
+    use serde::{
+        de::{self, DeserializeOwned},
+        ser, Deserialize, Deserializer, Serialize, Serializer,
+    };
+
+    pub fn serialize<T, S>(value: &Option<T>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+        T: Serialize,
+    {
+        if let Some(value) = value {
+            let value = serde_json::to_string(value).map_err(ser::Error::custom)?;
+            serializer.serialize_str(&value)
+        } else {
+            let empty = serde_json::Value::Object(Default::default());
+            serde_json::Value::serialize(&empty, serializer)
+        }
+    }
+
+    pub fn deserialize<'de, T, D>(deserializer: D) -> Result<Option<T>, D::Error>
+    where
+        D: Deserializer<'de>,
+        T: DeserializeOwned,
+    {
+        let json = serde_json::Value::deserialize(deserializer)?;
+        if json.is_null() {
+            return Ok(None)
+        }
+        if json.as_object().map(|obj| obj.is_empty()).unwrap_or_default() {
+            return Ok(None)
+        }
+        serde_json::from_value(json).map_err(de::Error::custom).map(Some)
+    }
+}
+
 /// serde support for string
 pub mod string_bytes {
     use serde::{Deserialize, Deserializer, Serializer};
@@ -125,6 +162,28 @@ pub mod display_from_str_opt {
         } else {
             Ok(None)
         }
+    }
+}
+
+pub mod display_from_str {
+    use serde::{de, Deserialize, Deserializer, Serializer};
+    use std::{fmt, str::FromStr};
+
+    pub fn serialize<T, S>(value: &T, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        T: fmt::Display,
+        S: Serializer,
+    {
+        serializer.collect_str(value)
+    }
+
+    pub fn deserialize<'de, T, D>(deserializer: D) -> Result<T, D::Error>
+    where
+        D: Deserializer<'de>,
+        T: FromStr,
+        T::Err: fmt::Display,
+    {
+        String::deserialize(deserializer)?.parse().map_err(de::Error::custom)
     }
 }
 

@@ -15,6 +15,8 @@ use crate::{compile::*, error::SolcIoError, remappings::Remapping, utils};
 
 use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 
+pub mod ast;
+pub use ast::*;
 pub mod bytecode;
 pub mod contract;
 pub mod output_selection;
@@ -1402,8 +1404,8 @@ pub struct SecondarySourceLocation {
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct SourceFile {
     pub id: u32,
-    #[serde(default)]
-    pub ast: serde_json::Value,
+    #[serde(default, with = "serde_helpers::empty_json_object_opt")]
+    pub ast: Option<Ast>,
 }
 
 /// A wrapper type for a list of source files

@@ -692,9 +692,9 @@ mod tests {
         assert_eq!(state.output.sources.len(), 3);
         for (f, source) in &state.output.sources {
             if f.ends_with("A.sol") {
-                assert!(source.ast.is_object());
+                assert!(source.ast.is_some());
             } else {
-                assert!(source.ast.is_null());
+                assert!(source.ast.is_none());
             }
         }
 
