@@ -4,9 +4,12 @@ use crate::{
     artifacts::{
         bytecode::{CompactBytecode, CompactDeployedBytecode},
         contract::{CompactContract, CompactContractBytecode, Contract},
-        output_selection::{ContractOutputSelection, EvmOutputSelection, EwasmOutputSelection},
-        CompactContractBytecodeCow, CompactEvm, DevDoc, Ewasm, GasEstimates, LosslessAbi, Metadata,
-        Offsets, Settings, StorageLayout, UserDoc,
+        output_selection::{
+            BytecodeOutputSelection, ContractOutputSelection, EvmOutputSelection,
+            EwasmOutputSelection,
+        },
+        CompactContractBytecodeCow, DevDoc, Evm, Ewasm, FunctionDebugData, GasEstimates,
+        LosslessAbi, Metadata, Offsets, Settings, StorageLayout, UserDoc,
     },
     ArtifactOutput, SolcConfig, SolcError, SourceFile,
 };
@@ -31,6 +34,8 @@ pub struct ConfigurableContractArtifact {
     pub assembly: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub method_identifiers: Option<BTreeMap<String, String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub function_debug_data: Option<BTreeMap<String, FunctionDebugData>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub gas_estimates: Option<GasEstimates>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -154,6 +159,7 @@ impl ConfigurableArtifacts {
     /// Returns the output selection corresponding to this configuration
     pub fn output_selection(&self) -> Vec<ContractOutputSelection> {
         let mut selection = ContractOutputSelection::basic();
+
         if self.additional_values.ir {
             selection.push(ContractOutputSelection::Ir);
         }
@@ -180,6 +186,12 @@ impl ConfigurableArtifacts {
         }
         if self.additional_values.ewasm || self.additional_files.ewasm {
             selection.push(EwasmOutputSelection::All.into());
+        }
+        if self.additional_values.function_debug_data {
+            selection.push(BytecodeOutputSelection::FunctionDebugData.into());
+        }
+        if self.additional_values.method_identifiers {
+            selection.push(EvmOutputSelection::MethodIdentifiers.into());
         }
         selection
     }
@@ -208,6 +220,7 @@ impl ArtifactOutput for ConfigurableArtifacts {
         let mut artifact_bytecode = None;
         let mut artifact_deployed_bytecode = None;
         let mut artifact_gas_estimates = None;
+        let mut artifact_function_debug_data = None;
         let mut artifact_method_identifiers = None;
         let mut artifact_assembly = None;
         let mut artifact_storage_layout = None;
@@ -247,17 +260,22 @@ impl ArtifactOutput for ConfigurableArtifacts {
         }
 
         if let Some(evm) = evm {
-            let CompactEvm {
+            let Evm {
                 assembly,
                 bytecode,
                 deployed_bytecode,
                 method_identifiers,
                 gas_estimates,
                 ..
-            } = evm.into_compact();
+            } = evm;
 
-            artifact_bytecode = bytecode;
-            artifact_deployed_bytecode = deployed_bytecode;
+            if self.additional_values.function_debug_data {
+                artifact_function_debug_data =
+                    bytecode.as_ref().map(|b| b.function_debug_data.clone());
+            }
+
+            artifact_bytecode = bytecode.map(Into::into);
+            artifact_deployed_bytecode = deployed_bytecode.map(Into::into);
 
             if self.additional_values.gas_estimates {
                 artifact_gas_estimates = gas_estimates;
@@ -275,6 +293,7 @@ impl ArtifactOutput for ConfigurableArtifacts {
             bytecode: artifact_bytecode,
             deployed_bytecode: artifact_deployed_bytecode,
             assembly: artifact_assembly,
+            function_debug_data: artifact_function_debug_data,
             method_identifiers: artifact_method_identifiers,
             gas_estimates: artifact_gas_estimates,
             metadata: artifact_metadata,
@@ -304,6 +323,7 @@ pub struct ExtraOutputValues {
     pub ir: bool,
     pub ir_optimized: bool,
     pub ewasm: bool,
+    pub function_debug_data: bool,
 
     /// PRIVATE: This structure may grow, As such, constructing this structure should
     /// _always_ be done using a public constructor or update syntax:
@@ -336,6 +356,7 @@ impl ExtraOutputValues {
             ir: true,
             ir_optimized: true,
             ewasm: true,
+            function_debug_data: true,
             __non_exhaustive: (),
         }
     }
@@ -379,6 +400,9 @@ impl ExtraOutputValues {
                     }
                     EvmOutputSelection::GasEstimates => {
                         config.gas_estimates = true;
+                    }
+                    EvmOutputSelection::ByteCode(BytecodeOutputSelection::FunctionDebugData) => {
+                        config.function_debug_data = true;
                     }
                     _ => {}
                 },
