@@ -396,6 +396,7 @@ impl ExtraOutputValues {
 /// Determines what to emit as additional file
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Default)]
 pub struct ExtraOutputFiles {
+    pub abi: bool,
     pub metadata: bool,
     pub ir_optimized: bool,
     pub ewasm: bool,
@@ -420,6 +421,7 @@ impl ExtraOutputFiles {
     /// Returns an instance where all values are set to `true`
     pub fn all() -> Self {
         Self {
+            abi: true,
             metadata: true,
             ir_optimized: true,
             ewasm: true,
@@ -435,6 +437,9 @@ impl ExtraOutputFiles {
         let mut config = Self::default();
         for value in settings.into_iter() {
             match value {
+                ContractOutputSelection::Abi => {
+                    config.abi = true;
+                }
                 ContractOutputSelection::Metadata => {
                     config.metadata = true;
                 }
@@ -461,6 +466,14 @@ impl ExtraOutputFiles {
 
     /// Write the set values as separate files
     pub fn write_extras(&self, contract: &Contract, file: &Path) -> Result<(), SolcError> {
+        if self.abi {
+            if let Some(ref abi) = contract.abi {
+                let file = file.with_extension("abi.json");
+                fs::write(&file, serde_json::to_string_pretty(abi)?)
+                    .map_err(|err| SolcError::io(err, file))?
+            }
+        }
+
         if self.metadata {
             if let Some(ref metadata) = contract.metadata {
                 let file = file.with_extension("metadata.json");
