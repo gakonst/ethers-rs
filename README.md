@@ -31,11 +31,12 @@ ethers = { git = "https://github.com/gakonst/ethers-rs" }
 
 Tests require the following installed:
 
-1. [`solc`](https://solidity.readthedocs.io/en/latest/installing-solidity.html). We also recommend using [solc-select](https://github.com/crytic/solc-select) for more flexibility.
+1. [`solc`](https://solidity.readthedocs.io/en/latest/installing-solidity.html) (>=0.8.10). We also recommend using [solc-select](https://github.com/crytic/solc-select) for more flexibility.
 2. [`ganache-cli`](https://github.com/trufflesuite/ganache-cli#installation)
+3. [`geth`](https://github.com/ethereum/go-ethereum)
 
 In addition, it is recommended that you set the `ETHERSCAN_API_KEY` environment variable
-for [the abigen via Etherscan](https://github.com/gakonst/ethers-rs/blob/master/ethers/tests/major_contracts.rs) tests.
+for [the abigen via Etherscan](https://github.com/gakonst/ethers-rs/blob/master/ethers-contract/tests/abigen.rs) tests.
 You can get one [here](https://etherscan.io/apis).
 
 ### EVM-compatible chains support

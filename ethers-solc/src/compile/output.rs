@@ -354,7 +354,9 @@ impl AggregatedCompilerOutput {
 /// Helper type to implement display for solc errors
 #[derive(Clone, Debug)]
 pub struct OutputDiagnostics<'a> {
+    /// output of the compiled project
     compiler_output: &'a AggregatedCompilerOutput,
+    /// the error codes to ignore
     ignored_error_codes: &'a [u64],
 }
 

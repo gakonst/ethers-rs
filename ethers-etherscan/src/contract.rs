@@ -364,14 +364,34 @@ impl Client {
 
 #[cfg(test)]
 mod tests {
-    use std::{path::PathBuf, time::Duration};
-
-    use serial_test::serial;
-
+    use crate::{contract::VerifyContract, tests::run_at_least_duration, Client, EtherscanError};
     use ethers_core::types::Chain;
     use ethers_solc::{Project, ProjectPathsConfig};
+    use serial_test::serial;
+    use std::{path::PathBuf, time::Duration};
 
-    use crate::{contract::VerifyContract, tests::run_at_least_duration, Client, EtherscanError};
+    #[allow(unused)]
+    fn init_tracing() {
+        tracing_subscriber::fmt()
+            .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+            .init();
+    }
+
+    #[tokio::test]
+    #[serial]
+    #[ignore]
+    async fn can_fetch_ftm_contract_abi() {
+        init_tracing();
+        run_at_least_duration(Duration::from_millis(250), async {
+            let client = Client::new_from_env(Chain::Fantom).unwrap();
+
+            let _abi = client
+                .contract_abi("0x80AA7cb0006d5DDD91cce684229Ac6e398864606".parse().unwrap())
+                .await
+                .unwrap();
+        })
+        .await;
+    }
 
     #[tokio::test]
     #[serial]

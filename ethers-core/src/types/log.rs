@@ -9,7 +9,7 @@ use serde::{
 use std::ops::{Range, RangeFrom, RangeTo};
 
 /// A log produced by a transaction.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct Log {
     /// H160. the contract that emitted the log
     pub address: Address,
@@ -63,6 +63,15 @@ pub struct Log {
     /// false if it's a valid log.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub removed: Option<bool>,
+}
+
+impl rlp::Encodable for Log {
+    fn rlp_append(&self, s: &mut rlp::RlpStream) {
+        s.begin_list(3);
+        s.append(&self.address);
+        s.append_list(&self.topics);
+        s.append(&self.data.0);
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]

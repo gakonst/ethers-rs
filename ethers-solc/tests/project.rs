@@ -12,7 +12,7 @@ use ethers_solc::{
     cache::{SolFilesCache, SOLIDITY_FILES_CACHE_FILENAME},
     project_util::*,
     remappings::Remapping,
-    ConfigurableArtifacts, ExtraOutputValues, Graph, Project, ProjectCompileOutput,
+    CompilerInput, ConfigurableArtifacts, ExtraOutputValues, Graph, Project, ProjectCompileOutput,
     ProjectPathsConfig, Solc, TestFileFilter,
 };
 use pretty_assertions::assert_eq;
@@ -490,10 +490,12 @@ contract C { }
 
     assert_eq!(
         result,
-        r#"
-pragma solidity ^0.8.10;
+        r#"pragma solidity ^0.8.10;
+
 contract C { }
+
 contract B { }
+
 contract A { }
 "#
     );
@@ -544,11 +546,13 @@ contract C { }
 
     assert_eq!(
         result,
-        r#"
-pragma solidity ^0.8.10;
+        r#"pragma solidity ^0.8.10;
 pragma experimental ABIEncoderV2;
+
 contract C { }
+
 contract B { }
+
 contract A { }
 "#
     );
@@ -572,6 +576,7 @@ fn can_flatten_file_with_duplicates() {
 pragma solidity >=0.6.0;
 
 contract Bar {}
+
 contract Foo {}
 
 contract FooBar {}
@@ -598,6 +603,7 @@ fn can_flatten_on_solang_failure() {
 pragma solidity ^0.8.10;
 
 library Lib {}
+
 // Intentionally erroneous code
 contract Contract {
     failure();
@@ -648,12 +654,69 @@ contract C { }
 
     let result = project.flatten(&f).unwrap();
     assert_eq!(
-        result.trim(),
+        result,
         r#"pragma solidity ^0.8.10;
+
 contract C { }
+
 error IllegalArgument();
 error IllegalState();
-contract A { }"#
+
+contract A { }
+"#
+    );
+}
+
+#[test]
+fn can_flatten_remove_extra_spacing() {
+    let project = TempProject::dapptools().unwrap();
+
+    let f = project
+        .add_source(
+            "A",
+            r#"pragma solidity ^0.8.10;
+import "./C.sol";
+import "./B.sol";
+contract A { }
+"#,
+        )
+        .unwrap();
+
+    project
+        .add_source(
+            "B",
+            r#"// This is a B Contract
+pragma solidity ^0.8.10;
+
+import "./C.sol";
+
+contract B { }
+"#,
+        )
+        .unwrap();
+
+    project
+        .add_source(
+            "C",
+            r#"pragma solidity ^0.8.10;
+contract C { }
+"#,
+        )
+        .unwrap();
+
+    let result = project.flatten(&f).unwrap();
+    assert_eq!(
+        result,
+        r#"pragma solidity ^0.8.10;
+
+contract C { }
+
+// This is a B Contract
+
+contract B { }
+
+contract A { }
+"#
     );
 }
 
@@ -960,11 +1023,11 @@ fn can_sanitize_bytecode_hash() {
 fn can_compile_std_json_input() {
     let tmp = TempProject::dapptools_init().unwrap();
     tmp.assert_no_errors();
-    let source =
-        tmp.list_source_files().into_iter().filter(|p| p.ends_with("Dapp.t.sol")).next().unwrap();
+    let source = tmp.list_source_files().into_iter().find(|p| p.ends_with("Dapp.t.sol")).unwrap();
     let input = tmp.project().standard_json_input(source).unwrap();
 
     assert!(input.settings.remappings.contains(&"ds-test/=lib/ds-test/src/".parse().unwrap()));
+    let input: CompilerInput = input.into();
     assert!(input.sources.contains_key(Path::new("lib/ds-test/src/test.sol")));
 
     // should be installed

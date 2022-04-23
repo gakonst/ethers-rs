@@ -10,6 +10,12 @@ mod geth;
 #[cfg(not(target_arch = "wasm32"))]
 pub use geth::{Geth, GethInstance};
 
+/// Utilities for launching an anvil instance
+#[cfg(not(target_arch = "wasm32"))]
+mod anvil;
+#[cfg(not(target_arch = "wasm32"))]
+pub use anvil::{Anvil, AnvilInstance};
+
 /// Moonbeam utils
 pub mod moonbeam;
 

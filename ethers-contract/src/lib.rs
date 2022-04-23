@@ -20,7 +20,7 @@ pub use event::EthEvent;
 mod log;
 pub use log::{decode_logs, EthLogDecode, LogMeta};
 
-mod stream;
+pub mod stream;
 
 mod multicall;
 pub use multicall::Multicall;

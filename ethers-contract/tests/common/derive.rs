@@ -197,8 +197,7 @@ fn can_detect_various_event_abi_types() {
     }
 
     assert_eq!(
-        "ValueChangedEvent(address,string,bytes32,int256,uint256,bool,address[],bool[],bytes20,
-uint128,int8,int16,int32,int64,int128,uint8,uint16,uint32,uint64,uint128)",
+        "ValueChangedEvent(address,string,bytes32,int256,uint256,bool,address[],bool[],bytes20,uint128,int8,int16,int32,int64,int128,uint8,uint16,uint32,uint64,uint128)",
         ValueChangedEvent::abi_signature()
     );
 }
@@ -592,4 +591,17 @@ fn can_handle_abigen_tuples() {
     pub struct SwapCall {
         pub pairs_to_swap: ::std::vec::Vec<(u8, u8)>,
     }
+}
+
+#[test]
+fn eth_display_works_on_ethers_bytes() {
+    #[derive(Clone, Debug, Default, Eq, PartialEq, EthCall, EthDisplay)]
+    #[ethcall(name = "logBytes", abi = "logBytes(bytes)")]
+    pub struct LogBytesCall {
+        pub p_0: ethers_core::types::Bytes,
+    }
+    let call = LogBytesCall { p_0: hex::decode(b"aaaaaa").unwrap().into() };
+
+    let s = format!("{}", call);
+    assert_eq!(s, "0xaaaaaa");
 }

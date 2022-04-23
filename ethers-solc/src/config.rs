@@ -250,7 +250,9 @@ impl ProjectPathsConfig {
     pub fn flatten(&self, target: &Path) -> Result<String> {
         tracing::trace!("flattening file");
         let graph = Graph::resolve(self)?;
-        self.flatten_node(target, &graph, &mut Default::default(), false, false, false)
+        self.flatten_node(target, &graph, &mut Default::default(), false, false, false).map(|x| {
+            format!("{}\n", utils::RE_THREE_OR_MORE_NEWLINES.replace_all(&x, "\n\n").trim())
+        })
     }
 
     /// Flattens a single node from the dependency graph
@@ -311,7 +313,7 @@ impl ProjectPathsConfig {
         for import in imports.iter() {
             let import_path = self.resolve_import(target_dir, import.data())?;
             let s = self.flatten_node(&import_path, graph, imported, true, true, true)?;
-            let import_content = s.trim().as_bytes();
+            let import_content = s.as_bytes();
             let import_content_len = import_content.len() as isize;
             let (start, end) = import.loc_by_offset(offset);
             content.splice(start..end, import_content.iter().copied());

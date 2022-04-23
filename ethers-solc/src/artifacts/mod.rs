@@ -15,6 +15,8 @@ use crate::{compile::*, error::SolcIoError, remappings::Remapping, utils};
 
 use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 
+pub mod ast;
+pub use ast::*;
 pub mod bytecode;
 pub mod contract;
 pub mod output_selection;
@@ -45,6 +47,8 @@ pub type VersionedSources = BTreeMap<Solc, (Version, Sources)>;
 
 /// A set of different Solc installations with their version and the sources to be compiled
 pub type VersionedFilteredSources = BTreeMap<Solc, (Version, FilteredSources)>;
+
+const SOLIDITY: &str = "Solidity";
 
 /// Input type `solc` expects
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -77,7 +81,7 @@ impl CompilerInput {
         let mut res = Vec::new();
         if !solidity_sources.is_empty() {
             res.push(Self {
-                language: "Solidity".to_string(),
+                language: SOLIDITY.to_string(),
                 sources: solidity_sources,
                 settings: Default::default(),
             });
@@ -97,6 +101,8 @@ impl CompilerInput {
     pub fn sanitized(mut self, version: &Version) -> Self {
         static PRE_V0_6_0: once_cell::sync::Lazy<VersionReq> =
             once_cell::sync::Lazy::new(|| VersionReq::parse("<0.6.0").unwrap());
+        static PRE_V0_8_10: once_cell::sync::Lazy<VersionReq> =
+            once_cell::sync::Lazy::new(|| VersionReq::parse("<0.8.10").unwrap());
 
         if PRE_V0_6_0.matches(version) {
             if let Some(ref mut meta) = self.settings.metadata {
@@ -104,7 +110,18 @@ impl CompilerInput {
                 // missing in <https://docs.soliditylang.org/en/v0.5.17/using-the-compiler.html#compiler-api>
                 meta.bytecode_hash.take();
             }
+            // introduced in <https://docs.soliditylang.org/en/v0.6.0/using-the-compiler.html#compiler-api>
+            let _ = self.settings.debug.take();
         }
+
+        if PRE_V0_8_10.matches(version) {
+            if let Some(ref mut debug) = self.settings.debug {
+                // introduced in <https://docs.soliditylang.org/en/v0.8.10/using-the-compiler.html#compiler-api>
+                // <https://github.com/ethereum/solidity/releases/tag/v0.8.10>
+                debug.debug_info.clear();
+            }
+        }
+
         self
     }
 
@@ -165,6 +182,52 @@ impl CompilerInput {
     }
 }
 
+/// A `CompilerInput` representation used for verify
+///
+/// This type is an alternative `CompilerInput` but uses non-alphabetic ordering of the `sources`
+/// and instead emits the (Path -> Source) path in the same order as the pairs in the `sources`
+/// `Vec`. This is used over a map, so we can determine the order in which etherscan will display
+/// the verified contracts
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct StandardJsonCompilerInput {
+    pub language: String,
+    #[serde(with = "serde_helpers::tuple_vec_map")]
+    pub sources: Vec<(PathBuf, Source)>,
+    pub settings: Settings,
+}
+
+// === impl StandardJsonCompilerInput ===
+
+impl StandardJsonCompilerInput {
+    pub fn new(sources: Vec<(PathBuf, Source)>, settings: Settings) -> Self {
+        Self { language: SOLIDITY.to_string(), sources, settings }
+    }
+
+    /// Normalizes the EVM version used in the settings to be up to the latest one
+    /// supported by the provided compiler version.
+    #[must_use]
+    pub fn normalize_evm_version(mut self, version: &Version) -> Self {
+        if let Some(ref mut evm_version) = self.settings.evm_version {
+            self.settings.evm_version = evm_version.normalize_version(version);
+        }
+        self
+    }
+}
+
+impl From<StandardJsonCompilerInput> for CompilerInput {
+    fn from(input: StandardJsonCompilerInput) -> Self {
+        let StandardJsonCompilerInput { language, sources, settings } = input;
+        CompilerInput { language, sources: sources.into_iter().collect(), settings }
+    }
+}
+
+impl From<CompilerInput> for StandardJsonCompilerInput {
+    fn from(input: CompilerInput) -> Self {
+        let CompilerInput { language, sources, settings } = input;
+        StandardJsonCompilerInput { language, sources: sources.into_iter().collect(), settings }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Settings {
@@ -194,6 +257,8 @@ pub struct Settings {
     /// false by default.
     #[serde(rename = "viaIR", default, skip_serializing_if = "Option::is_none")]
     pub via_ir: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub debug: Option<DebuggingSettings>,
     #[serde(default, skip_serializing_if = "::std::collections::BTreeMap::is_empty")]
     pub libraries: BTreeMap<String, BTreeMap<String, String>>,
 }
@@ -308,6 +373,7 @@ impl Default for Settings {
             output_selection: OutputSelection::default_output_selection(),
             evm_version: Some(EvmVersion::default()),
             via_ir: None,
+            debug: None,
             libraries: Default::default(),
             remappings: Default::default(),
         }
@@ -483,6 +549,80 @@ impl FromStr for EvmVersion {
         }
     }
 }
+
+/// Debugging settings for solc
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DebuggingSettings {
+    #[serde(
+        default,
+        with = "serde_helpers::display_from_str_opt",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub revert_strings: Option<RevertStrings>,
+    ///How much extra debug information to include in comments in the produced EVM assembly and
+    /// Yul code.
+    /// Available components are:
+    // - `location`: Annotations of the form `@src <index>:<start>:<end>` indicating the location of
+    //   the corresponding element in the original Solidity file, where:
+    //     - `<index>` is the file index matching the `@use-src` annotation,
+    //     - `<start>` is the index of the first byte at that location,
+    //     - `<end>` is the index of the first byte after that location.
+    // - `snippet`: A single-line code snippet from the location indicated by `@src`. The snippet is
+    //   quoted and follows the corresponding `@src` annotation.
+    // - `*`: Wildcard value that can be used to request everything.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub debug_info: Vec<String>,
+}
+
+/// How to treat revert (and require) reason strings.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+pub enum RevertStrings {
+    /// "default" does not inject compiler-generated revert strings and keeps user-supplied ones.
+    Default,
+    /// "strip" removes all revert strings (if possible, i.e. if literals are used) keeping
+    /// side-effects
+    Strip,
+    /// "debug" injects strings for compiler-generated internal reverts, implemented for ABI
+    /// encoders V1 and V2 for now.
+    Debug,
+    /// "verboseDebug" even appends further information to user-supplied revert strings (not yet
+    /// implemented)
+    VerboseDebug,
+}
+
+impl fmt::Display for RevertStrings {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let string = match self {
+            RevertStrings::Default => "default",
+            RevertStrings::Strip => "strip",
+            RevertStrings::Debug => "debug",
+            RevertStrings::VerboseDebug => "verboseDebug",
+        };
+        write!(f, "{}", string)
+    }
+}
+
+impl FromStr for RevertStrings {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "default" => Ok(RevertStrings::Default),
+            "strip" => Ok(RevertStrings::Strip),
+            "debug" => Ok(RevertStrings::Debug),
+            "verboseDebug" | "verbosedebug" => Ok(RevertStrings::VerboseDebug),
+            s => Err(format!("Unknown evm version: {}", s)),
+        }
+    }
+}
+
+impl Default for RevertStrings {
+    fn default() -> Self {
+        RevertStrings::Default
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SettingsMetadata {
     /// Use only literal content and not URLs (false by default)
@@ -1143,8 +1283,18 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(msg) = &self.formatted_message {
             match self.severity {
-                Severity::Error => msg.as_str().red().fmt(f),
-                Severity::Warning | Severity::Info => msg.as_str().yellow().fmt(f),
+                Severity::Error => {
+                    if let Some(code) = self.error_code {
+                        format!("error[{}]: ", code).as_str().red().fmt(f)?;
+                    }
+                    msg.as_str().red().fmt(f)
+                }
+                Severity::Warning | Severity::Info => {
+                    if let Some(code) = self.error_code {
+                        format!("warning[{}]: ", code).as_str().yellow().fmt(f)?;
+                    }
+                    msg.as_str().yellow().fmt(f)
+                }
             }
         } else {
             self.severity.fmt(f)?;
@@ -1254,8 +1404,8 @@ pub struct SecondarySourceLocation {
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct SourceFile {
     pub id: u32,
-    #[serde(default)]
-    pub ast: serde_json::Value,
+    #[serde(default, with = "serde_helpers::empty_json_object_opt")]
+    pub ast: Option<Ast>,
 }
 
 /// A wrapper type for a list of source files
@@ -1396,9 +1546,29 @@ mod tests {
 
         for path in fs::read_dir(dir).unwrap() {
             let path = path.unwrap().path();
-            let compiler_output = fs::read_to_string(&path).unwrap();
-            serde_json::from_str::<CompilerInput>(&compiler_output).unwrap_or_else(|err| {
-                panic!("Failed to read compiler output of {} {}", path.display(), err)
+            let compiler_input = fs::read_to_string(&path).unwrap();
+            serde_json::from_str::<CompilerInput>(&compiler_input).unwrap_or_else(|err| {
+                panic!("Failed to read compiler input of {} {}", path.display(), err)
+            });
+        }
+    }
+
+    #[test]
+    fn can_parse_standard_json_compiler_input() {
+        let mut dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        dir.push("test-data/in");
+
+        for path in fs::read_dir(dir).unwrap() {
+            let path = path.unwrap().path();
+            let compiler_input = fs::read_to_string(&path).unwrap();
+            let val = serde_json::from_str::<StandardJsonCompilerInput>(&compiler_input)
+                .unwrap_or_else(|err| {
+                    panic!("Failed to read compiler output of {} {}", path.display(), err)
+                });
+
+            let pretty = serde_json::to_string_pretty(&val).unwrap();
+            serde_json::from_str::<CompilerInput>(&pretty).unwrap_or_else(|err| {
+                panic!("Failed to read converted compiler input of {} {}", path.display(), err)
             });
         }
     }

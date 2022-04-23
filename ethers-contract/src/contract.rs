@@ -261,13 +261,11 @@ impl<M: Middleware> Contract<M> {
     ///
     /// Clones `self` internally
     #[must_use]
-    pub fn connect(&self, client: Arc<M>) -> Self
+    pub fn connect<N>(&self, client: Arc<N>) -> Contract<N>
     where
-        M: Clone,
+        N: Clone,
     {
-        let mut this = self.clone();
-        this.client = client;
-        this
+        Contract { base_contract: self.base_contract.clone(), client, address: self.address }
     }
 
     /// Returns the contract's address
