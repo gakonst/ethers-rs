@@ -80,6 +80,9 @@ pub struct Eip1559TransactionRequest {
 }
 
 impl Eip1559TransactionRequest {
+    /// EIP-2718 transaction type
+    const TX_TYPE: u8 = 0x02;
+
     /// Creates an empty transaction request with all fields left empty
     pub fn new() -> Self {
         Self::default()
@@ -159,7 +162,10 @@ impl Eip1559TransactionRequest {
 
     /// Hashes the transaction's data with the provided chain id
     pub fn sighash(&self) -> H256 {
-        keccak256(self.rlp().as_ref()).into()
+        let mut encoded = vec![];
+        encoded.extend_from_slice(&[Self::TX_TYPE]);
+        encoded.extend_from_slice(self.rlp().as_ref());
+        keccak256(encoded).into()
     }
 
     /// Gets the unsigned transaction's RLP encoding
@@ -234,11 +240,11 @@ impl Eip1559TransactionRequest {
         let mut offset = 0;
         let mut txn = Self::decode_base_rlp(rlp, &mut offset)?;
 
-        let v = rlp.at(offset)?.as_val()?;
+        let v = rlp.val_at(offset)?;
         offset += 1;
-        let r = rlp.at(offset)?.as_val()?;
+        let r = rlp.val_at(offset)?;
         offset += 1;
-        let s = rlp.at(offset)?.as_val()?;
+        let s = rlp.val_at(offset)?;
 
         let sig = Signature { r, s, v };
         txn.from = Some(sig.recover(txn.sighash())?);

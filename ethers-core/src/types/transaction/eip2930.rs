@@ -117,13 +117,13 @@ impl Eip2930TransactionRequest {
         let mut offset = 0;
         let mut txn = Self::decode_base_rlp(rlp, &mut offset)?;
 
-        let v = rlp.at(offset)?.as_val()?;
+        let v = rlp.val_at(offset)?;
         // populate chainid from v
         txn.tx.chain_id = extract_chain_id(v);
         offset += 1;
-        let r = rlp.at(offset)?.as_val()?;
+        let r = rlp.val_at(offset)?;
         offset += 1;
-        let s = rlp.at(offset)?.as_val()?;
+        let s = rlp.val_at(offset)?;
 
         let sig = Signature { r, s, v };
         Ok((txn, sig))
