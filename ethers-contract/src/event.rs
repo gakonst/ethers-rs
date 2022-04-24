@@ -186,7 +186,7 @@ where
         Ok(events)
     }
 
-    fn parse_log(&self, log: Log) -> Result<D, ContractError<M>> {
+    pub fn parse_log(&self, log: Log) -> Result<D, ContractError<M>> {
         D::decode_log(&RawLog { topics: log.topics, data: log.data.to_vec() }).map_err(From::from)
     }
 }
