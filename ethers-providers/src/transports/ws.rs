@@ -11,10 +11,7 @@ use futures_util::{
     sink::{Sink, SinkExt},
     stream::{Fuse, Stream, StreamExt},
 };
-use serde::{
-    de::{DeserializeOwned, Error},
-    Serialize,
-};
+use serde::{de::DeserializeOwned, Serialize};
 use serde_json::value::RawValue;
 use std::{
     collections::{btree_map::Entry, BTreeMap},
@@ -26,7 +23,7 @@ use std::{
 };
 use thiserror::Error;
 
-use super::common::{Notification, Response};
+use super::common::{Params, Response};
 
 if_wasm! {
     use wasm_bindgen::prelude::*;
@@ -320,35 +317,34 @@ where
     }
 
     async fn handle_text(&mut self, inner: String) -> Result<(), ClientError> {
-        if let Ok(response) = serde_json::from_str::<Response<'_>>(&inner) {
-            if let Some(request) = self.pending.remove(&response.id()) {
-                if !request.is_canceled() {
-                    request.send(response.into_result()).map_err(to_client_error)?;
-                }
-            }
+        let (id, result) = match serde_json::from_str(&inner)? {
+            Response::Success { id, result } => (id, Ok(result.to_owned())),
+            Response::Error { id, error } => (id, Err(error)),
+            Response::Notification { params, .. } => return self.handle_notification(params),
+        };
 
-            return Ok(())
+        if let Some(request) = self.pending.remove(&id) {
+            if !request.is_canceled() {
+                request.send(result).map_err(to_client_error)?;
+            }
         }
 
-        if let Ok(notification) = serde_json::from_str::<Notification<'_>>(&inner) {
-            let id = notification.params.subscription;
-            if let Entry::Occupied(stream) = self.subscriptions.entry(id) {
-                if let Err(err) = stream.get().unbounded_send(notification.params.result.to_owned())
-                {
-                    if err.is_disconnected() {
-                        // subscription channel was closed on the receiver end
-                        stream.remove();
-                    }
-                    return Err(to_client_error(err))
-                }
-            }
+        Ok(())
+    }
 
-            return Ok(())
+    fn handle_notification(&mut self, params: Params<'_>) -> Result<(), ClientError> {
+        let id = params.subscription;
+        if let Entry::Occupied(stream) = self.subscriptions.entry(id) {
+            if let Err(err) = stream.get().unbounded_send(params.result.to_owned()) {
+                if err.is_disconnected() {
+                    // subscription channel was closed on the receiver end
+                    stream.remove();
+                }
+                return Err(to_client_error(err))
+            }
         }
 
-        Err(ClientError::JsonError(serde_json::Error::custom(
-            "response is neither a valid jsonrpc response nor notification",
-        )))
+        Ok(())
     }
 
     #[cfg(target_arch = "wasm32")]

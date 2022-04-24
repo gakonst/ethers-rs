@@ -48,52 +48,19 @@ impl<'a, T> Request<'a, T> {
     }
 }
 
-/// A JSON-RPC Notifcation
-#[allow(unused)]
-#[derive(Deserialize, Debug)]
-pub struct Notification<'a> {
-    #[serde(alias = "JSONRPC")]
-    jsonrpc: &'a str,
-    method: &'a str,
-    #[serde(borrow)]
-    pub params: Subscription<'a>,
+/// A JSON-RPC response
+#[derive(Debug)]
+pub enum Response<'a> {
+    Success { id: u64, result: &'a RawValue },
+    Error { id: u64, error: JsonRpcError },
+    Notification { method: &'a str, params: Params<'a> },
 }
 
 #[derive(Deserialize, Debug)]
-pub struct Subscription<'a> {
+pub struct Params<'a> {
     pub subscription: U256,
     #[serde(borrow)]
     pub result: &'a RawValue,
-}
-
-#[derive(Debug)]
-pub enum Response<'a> {
-    Success { id: u64, jsonrpc: &'a str, result: &'a RawValue },
-    Error { id: u64, jsonrpc: &'a str, error: JsonRpcError },
-}
-
-#[allow(unused)]
-impl Response<'_> {
-    pub fn id(&self) -> u64 {
-        match self {
-            Self::Success { id, .. } => *id,
-            Self::Error { id, .. } => *id,
-        }
-    }
-
-    pub fn as_result(&self) -> Result<&RawValue, &JsonRpcError> {
-        match self {
-            Self::Success { result, .. } => Ok(*result),
-            Self::Error { error, .. } => Err(error),
-        }
-    }
-
-    pub fn into_result(self) -> Result<Box<RawValue>, JsonRpcError> {
-        match self {
-            Self::Success { result, .. } => Ok(result.to_owned()),
-            Self::Error { error, .. } => Err(error),
-        }
-    }
 }
 
 // FIXME: ideally, this could be auto-derived as an untagged enum, but due to
@@ -115,62 +82,96 @@ impl<'de: 'a, 'a> Deserialize<'de> for Response<'a> {
             where
                 A: MapAccess<'de>,
             {
+                let mut jsonrpc = false;
+
+                // response & error
                 let mut id = None;
-                let mut jsonrpc = None;
+                // only response
                 let mut result = None;
+                // only error
                 let mut error = None;
+                // only notification
+                let mut method = None;
+                let mut params = None;
 
                 while let Some(key) = map.next_key()? {
                     match key {
-                        "id" => {
-                            let value: u64 = map.next_value()?;
-                            let prev = id.replace(value);
-                            if prev.is_some() {
-                                return Err(de::Error::duplicate_field("id"))
-                            }
-                        }
                         "jsonrpc" => {
-                            let value: &'de str = map.next_value()?;
+                            if jsonrpc {
+                                return Err(de::Error::duplicate_field("jsonrpc"))
+                            }
+
+                            let value = map.next_value()?;
                             if value != "2.0" {
                                 return Err(de::Error::invalid_value(Unexpected::Str(value), &"2.0"))
                             }
 
-                            let prev = jsonrpc.replace(value);
-                            if prev.is_some() {
-                                return Err(de::Error::duplicate_field("jsonrpc"))
+                            jsonrpc = true;
+                        }
+                        "id" => {
+                            if id.is_some() {
+                                return Err(de::Error::duplicate_field("id"))
                             }
+
+                            let value: u64 = map.next_value()?;
+                            id = Some(value);
                         }
                         "result" => {
-                            let value: &RawValue = map.next_value()?;
-                            let prev = result.replace(value);
-                            if prev.is_some() {
+                            if result.is_some() {
                                 return Err(de::Error::duplicate_field("result"))
                             }
+
+                            let value: &RawValue = map.next_value()?;
+                            result = Some(value);
                         }
                         "error" => {
-                            let value: JsonRpcError = map.next_value()?;
-                            let prev = error.replace(value);
-                            if prev.is_some() {
+                            if error.is_some() {
                                 return Err(de::Error::duplicate_field("error"))
                             }
+
+                            let value: JsonRpcError = map.next_value()?;
+                            error = Some(value);
+                        }
+                        "method" => {
+                            if method.is_some() {
+                                return Err(de::Error::duplicate_field("method"))
+                            }
+
+                            let value: &str = map.next_value()?;
+                            method = Some(value);
+                        }
+                        "params" => {
+                            if params.is_some() {
+                                return Err(de::Error::duplicate_field("params"))
+                            }
+
+                            let value: Params = map.next_value()?;
+                            params = Some(value);
                         }
                         key => {
                             return Err(de::Error::unknown_field(
                                 key,
-                                &["id", "jsonrpc", "result", "error"],
+                                &["id", "jsonrpc", "result", "error", "params", "method"],
                             ))
                         }
                     }
                 }
 
-                let id = id.ok_or_else(|| de::Error::missing_field("id"))?;
-                let jsonrpc = jsonrpc.ok_or_else(|| de::Error::missing_field("jsonrpc"))?;
+                // jsonrpc version must be present in all responses
+                if !jsonrpc {
+                    return Err(de::Error::missing_field("jsonrpc"))
+                }
 
-                match (result, error) {
-                    (Some(result), None) => Ok(Response::Success { id, jsonrpc, result }),
-                    (None, Some(error)) => Ok(Response::Error { id, jsonrpc, error }),
+                match (id, result, error, method, params) {
+                    (Some(id), Some(result), None, None, None) => {
+                        Ok(Response::Success { id, result })
+                    }
+                    (Some(id), None, Some(error), None, None) => Ok(Response::Error { id, error }),
+                    (None, None, None, Some(method), Some(params)) => {
+                        Ok(Response::Notification { method, params })
+                    }
                     _ => Err(de::Error::custom(
-                        "response must have either a `result` or `error` field",
+                        "response must be either a success/error or notification object",
                     )),
                 }
             }
@@ -223,19 +224,29 @@ mod tests {
         let response: Response<'_> =
             serde_json::from_str(r#"{"jsonrpc":"2.0","result":19,"id":1}"#).unwrap();
 
-        assert_eq!(response.id(), 1);
-        let result: u64 = serde_json::from_str(response.into_result().unwrap().get()).unwrap();
-        assert_eq!(result, 19);
+        match response {
+            Response::Success { id, result } => {
+                assert_eq!(id, 1);
+                let result: u64 = serde_json::from_str(result.get()).unwrap();
+                assert_eq!(result, 19);
+            }
+            _ => panic!("expected `Success` response"),
+        }
 
         let response: Response<'_> = serde_json::from_str(
             r#"{"jsonrpc":"2.0","error":{"code":-32000,"message":"error occurred"},"id":2}"#,
         )
         .unwrap();
 
-        assert_eq!(response.id(), 2);
-        let err = response.into_result().unwrap_err();
-        assert_eq!(err.code, -32000);
-        assert_eq!(err.message, "error occurred");
+        match response {
+            Response::Error { id, error } => {
+                assert_eq!(id, 2);
+                assert_eq!(error.code, -32000);
+                assert_eq!(error.message, "error occurred");
+                assert!(error.data.is_none());
+            }
+            _ => panic!("expected `Error` response"),
+        }
     }
 
     #[test]

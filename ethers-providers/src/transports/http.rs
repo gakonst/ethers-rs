@@ -73,12 +73,20 @@ impl JsonRpcClient for Provider {
 
         let res = self.client.post(self.url.as_ref()).json(&payload).send().await?;
         let text = res.text().await?;
-        let response: Response<'_> = match serde_json::from_str(&text) {
-            Ok(response) => response,
+
+        let raw = match serde_json::from_str(&text) {
+            Ok(Response::Success { result, .. }) => result.to_owned(),
+            Ok(Response::Error { error, .. }) => return Err(error.into()),
+            Ok(_) => {
+                let err = ClientError::SerdeJson {
+                    err: serde::de::Error::custom("unexpected notification over HTTP transport"),
+                    text,
+                };
+                return Err(err)
+            }
             Err(err) => return Err(ClientError::SerdeJson { err, text }),
         };
 
-        let raw = response.as_result().map_err(Clone::clone)?;
         let res = serde_json::from_str(raw.get())
             .map_err(|err| ClientError::SerdeJson { err, text: raw.to_string() })?;
 
