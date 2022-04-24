@@ -344,7 +344,7 @@ where
             }
         }
 
-        return Ok(())
+        Ok(())
     }
 
     #[cfg(target_arch = "wasm32")]
