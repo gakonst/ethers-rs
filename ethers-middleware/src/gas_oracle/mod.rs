@@ -1,3 +1,6 @@
+mod blocknative;
+pub use blocknative::BlockNative;
+
 mod eth_gas_station;
 pub use eth_gas_station::EthGasStation;
 
