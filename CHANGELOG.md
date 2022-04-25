@@ -237,6 +237,8 @@
 
 - Ensure a consistent chain ID between a Signer and Provider in SignerMiddleware
   [#1095](https://gakonst/ethers-rs/pull/1095)
+- Add BlockNative gas oracle [#1175](https://github.com/gakonst/ethers-rs/pull/1175)
+
 
 ### 0.6.0
 

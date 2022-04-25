@@ -1,3 +1,6 @@
+mod blocknative;
+pub use blocknative::BlockNative;
+
 mod eth_gas_station;
 pub use eth_gas_station::EthGasStation;
 
@@ -34,6 +37,14 @@ pub enum GasOracleError {
     /// gas oracle
     #[error(transparent)]
     HttpClientError(#[from] ReqwestError),
+
+    /// An error decoding JSON response from gas oracle
+    #[error(transparent)]
+    SerdeJsonError(#[from] serde_json::Error),
+
+    /// An error with oracle response type
+    #[error("invalid oracle response")]
+    InvalidResponse,
 
     /// An internal error in the Etherscan client request made from the underlying
     /// gas oracle
