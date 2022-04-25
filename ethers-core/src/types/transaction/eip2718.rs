@@ -1,6 +1,6 @@
 use super::{
     eip1559::{Eip1559RequestError, Eip1559TransactionRequest},
-    eip2930::{AccessList, Eip2930TransactionRequest},
+    eip2930::{AccessList, Eip2930RequestError, Eip2930TransactionRequest},
     request::RequestError,
 };
 use crate::{
@@ -48,6 +48,9 @@ pub enum TypedTransactionError {
     /// When decoding a signed Eip1559 transaction
     #[error(transparent)]
     Eip1559Error(#[from] Eip1559RequestError),
+    /// When decoding a signed Eip2930 transaction
+    #[error(transparent)]
+    Eip2930Error(#[from] Eip2930RequestError),
     /// Error decoding the transaction type from the transaction's RLP encoding
     #[error(transparent)]
     TypeDecodingError(#[from] rlp::DecoderError),
@@ -596,8 +599,12 @@ mod tests {
         let tx_real_rlp: String = tx_real_rlp_vec.encode_hex();
         assert_eq!(tx_expected_rlp, tx_real_rlp);
 
-        let r = U256::from_str("0x8085850e935fd6af9ace1b0343b9e21d2dcc7e914c36cce61a4e32756c785980").unwrap();
-        let s = U256::from_str("0x4c57c184d5096263df981cb8a2f2c7f81640792856909dbf3295a2b7a1dc4a55").unwrap();
+        let r =
+            U256::from_str("0x8085850e935fd6af9ace1b0343b9e21d2dcc7e914c36cce61a4e32756c785980")
+                .unwrap();
+        let s =
+            U256::from_str("0x4c57c184d5096263df981cb8a2f2c7f81640792856909dbf3295a2b7a1dc4a55")
+                .unwrap();
         let v = 0;
         assert_eq!(r, sig.r);
         assert_eq!(s, sig.s);

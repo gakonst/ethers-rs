@@ -160,7 +160,7 @@ impl Eip1559TransactionRequest {
         self
     }
 
-    /// Hashes the transaction's data with the provided chain id
+    /// Hashes the transaction's data for signing
     pub fn sighash(&self) -> H256 {
         let mut encoded = vec![];
         encoded.extend_from_slice(&[Self::TX_TYPE]);
