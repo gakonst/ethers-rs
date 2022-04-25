@@ -854,9 +854,10 @@ impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
     /// compiled and written to disk `written_artifacts`.
     ///
     /// Returns all the _cached_ artifacts.
-    pub fn write_cache(
+    pub fn consume(
         self,
         written_artifacts: &Artifacts<T::Artifact>,
+        write_to_disk: bool,
     ) -> Result<Artifacts<T::Artifact>> {
         match self {
             ArtifactsCache::Ephemeral(_, _) => Ok(Default::default()),
@@ -913,8 +914,11 @@ impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
                     .extend(dirty_source_files.into_iter().map(|(file, (entry, _))| (file, entry)));
 
                 cache.strip_artifact_files_prefixes(project.artifacts_path());
+
                 // write to disk
-                cache.write(project.cache_path())?;
+                if write_to_disk {
+                    cache.write(project.cache_path())?;
+                }
 
                 Ok(cached_artifacts)
             }
