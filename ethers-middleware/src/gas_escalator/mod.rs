@@ -38,7 +38,7 @@ pub enum Frequency {
     Duration(u64),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 /// A Gas escalator allows bumping transactions' gas price to avoid getting them
 /// stuck in the memory pool.
 ///
@@ -70,6 +70,17 @@ pub struct GasEscalatorMiddleware<M, E> {
     #[allow(clippy::type_complexity)]
     pub txs: Arc<Mutex<Vec<(TxHash, TransactionRequest, Instant, Option<BlockId>)>>>,
     frequency: Frequency,
+}
+
+impl<M, E: Clone> Clone for GasEscalatorMiddleware<M, E> {
+    fn clone(&self) -> Self {
+        GasEscalatorMiddleware {
+            inner: self.inner.clone(),
+            escalator: self.escalator.clone(),
+            txs: self.txs.clone(),
+            frequency: self.frequency.clone(),
+        }
+    }
 }
 
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]

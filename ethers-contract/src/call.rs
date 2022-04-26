@@ -63,7 +63,7 @@ pub enum ContractError<M: Middleware> {
     ContractNotDeployed,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 #[must_use = "contract calls do nothing unless you `send` or `call` them"]
 /// Helper for managing a transaction before submitting it to a node
 pub struct ContractCall<M, D> {
@@ -75,6 +75,18 @@ pub struct ContractCall<M, D> {
     pub block: Option<BlockId>,
     pub(crate) client: Arc<M>,
     pub(crate) datatype: PhantomData<D>,
+}
+
+impl<M, D> Clone for ContractCall<M, D> {
+    fn clone(&self) -> Self {
+        ContractCall {
+            tx: self.tx.clone(),
+            function: self.function.clone(),
+            block: self.block,
+            client: self.client.clone(),
+            datatype: self.datatype,
+        }
+    }
 }
 
 impl<M, D: Detokenize> ContractCall<M, D> {

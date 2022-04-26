@@ -46,8 +46,12 @@ mod dsproxyfactory_mod {
     pub static DSPROXYFACTORY_ABI: Lazy<Abi> = Lazy::new(|| {
         serde_json :: from_str ("[{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"address\"}],\"name\":\"isProxy\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"cache\",\"outputs\":[{\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[],\"name\":\"build\",\"outputs\":[{\"name\":\"proxy\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"owner\",\"type\":\"address\"}],\"name\":\"build\",\"outputs\":[{\"name\":\"proxy\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"sender\",\"type\":\"address\"},{\"indexed\":true,\"name\":\"owner\",\"type\":\"address\"},{\"indexed\":false,\"name\":\"proxy\",\"type\":\"address\"},{\"indexed\":false,\"name\":\"cache\",\"type\":\"address\"}],\"name\":\"Created\",\"type\":\"event\"}]\n") . expect ("invalid abi")
     });
-    #[derive(Clone)]
     pub struct DsProxyFactory<M>(Contract<M>);
+    impl<M> Clone for DsProxyFactory<M> {
+        fn clone(&self) -> Self {
+            DsProxyFactory(self.0.clone())
+        }
+    }
     impl<M> std::ops::Deref for DsProxyFactory<M> {
         type Target = Contract<M>;
         fn deref(&self) -> &Self::Target {

@@ -19,7 +19,7 @@ use std::sync::Arc;
 ///
 /// This is just a wrapper type for [Deployer] with an additional type to convert the [Contract]
 /// that the deployer returns when sending the transaction.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 #[must_use = "Deployer does nothing unless you `send` it"]
 pub struct ContractDeployer<M, C> {
     /// the actual deployer, exposed for overriding the defaults
@@ -28,6 +28,12 @@ pub struct ContractDeployer<M, C> {
     ///
     /// this type will be used to construct it via `From::from(Contract)`
     _contract: PhantomData<C>,
+}
+
+impl<M, C> Clone for ContractDeployer<M, C> {
+    fn clone(&self) -> Self {
+        ContractDeployer { deployer: self.deployer.clone(), _contract: self._contract }
+    }
 }
 
 impl<M: Middleware, C: From<Contract<M>>> ContractDeployer<M, C> {
@@ -89,7 +95,7 @@ impl<M: Middleware, C: From<Contract<M>>> ContractDeployer<M, C> {
 }
 
 /// Helper which manages the deployment transaction of a smart contract
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 #[must_use = "Deployer does nothing unless you `send` it"]
 pub struct Deployer<M> {
     /// The deployer's transaction, exposed for overriding the defaults
@@ -98,6 +104,18 @@ pub struct Deployer<M> {
     client: Arc<M>,
     confs: usize,
     block: BlockNumber,
+}
+
+impl<M> Clone for Deployer<M> {
+    fn clone(&self) -> Self {
+        Deployer {
+            tx: self.tx.clone(),
+            abi: self.abi.clone(),
+            client: self.client.clone(),
+            confs: self.confs,
+            block: self.block,
+        }
+    }
 }
 
 impl<M: Middleware> Deployer<M> {
@@ -222,11 +240,21 @@ impl<M: Middleware> Deployer<M> {
 /// println!("{}", contract.address());
 /// # Ok(())
 /// # }
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct ContractFactory<M> {
     client: Arc<M>,
     abi: Abi,
     bytecode: Bytes,
+}
+
+impl<M> Clone for ContractFactory<M> {
+    fn clone(&self) -> Self {
+        ContractFactory {
+            client: self.client.clone(),
+            abi: self.abi.clone(),
+            bytecode: self.bytecode.clone(),
+        }
+    }
 }
 
 impl<M: Middleware> ContractFactory<M> {
