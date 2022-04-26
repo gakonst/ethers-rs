@@ -63,6 +63,10 @@ pub mod json_string_opt {
         T: DeserializeOwned,
     {
         if let Some(s) = Option::<String>::deserialize(deserializer)? {
+            if s.is_empty() {
+                return Ok(None)
+            }
+
             serde_json::from_str(&s).map_err(de::Error::custom).map(Some)
         } else {
             Ok(None)

@@ -761,7 +761,7 @@ pub struct SolcAbi {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Item {
     #[serde(rename = "internalType")]
-    pub internal_type: String,
+    pub internal_type: Option<String>,
     pub name: String,
     #[serde(rename = "type")]
     pub put_type: String,
@@ -1081,7 +1081,13 @@ pub struct UserDoc {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub kind: Option<String>,
     #[serde(default, skip_serializing_if = "::std::collections::BTreeMap::is_empty")]
-    pub methods: BTreeMap<String, BTreeMap<String, String>>,
+    pub methods: BTreeMap<String, MethodNotice>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub notice: Option<String>,
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
+pub struct MethodNotice {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub notice: Option<String>,
 }
