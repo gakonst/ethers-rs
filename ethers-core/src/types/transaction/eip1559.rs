@@ -1,9 +1,6 @@
-use super::{decode_to, eip2930::AccessList, normalize_v, rlp_opt};
-use crate::{
-    types::{
-        Address, Bytes, NameOrAddress, Signature, SignatureError, Transaction, H256, U256, U64,
-    },
-    utils::keccak256,
+use super::{decode_to, eip2718::TypedTransaction, eip2930::AccessList, normalize_v, rlp_opt};
+use crate::types::{
+    Address, Bytes, NameOrAddress, Signature, SignatureError, Transaction, U256, U64,
 };
 use rlp::{Decodable, DecoderError, RlpStream};
 use thiserror::Error;
@@ -80,9 +77,6 @@ pub struct Eip1559TransactionRequest {
 }
 
 impl Eip1559TransactionRequest {
-    /// EIP-2718 transaction type
-    const TX_TYPE: u8 = 0x02;
-
     /// Creates an empty transaction request with all fields left empty
     pub fn new() -> Self {
         Self::default()
@@ -158,14 +152,6 @@ impl Eip1559TransactionRequest {
     pub fn chain_id<T: Into<U64>>(mut self, chain_id: T) -> Self {
         self.chain_id = Some(chain_id.into());
         self
-    }
-
-    /// Hashes the transaction's data for signing
-    pub fn sighash(&self) -> H256 {
-        let mut encoded = vec![];
-        encoded.extend_from_slice(&[Self::TX_TYPE]);
-        encoded.extend_from_slice(self.rlp().as_ref());
-        keccak256(encoded).into()
     }
 
     /// Gets the unsigned transaction's RLP encoding
@@ -247,7 +233,7 @@ impl Eip1559TransactionRequest {
         let s = rlp.val_at(offset)?;
 
         let sig = Signature { r, s, v };
-        txn.from = Some(sig.recover(txn.sighash())?);
+        txn.from = Some(sig.recover(TypedTransaction::Eip1559(txn.clone()).sighash())?);
 
         Ok((txn, sig))
     }
