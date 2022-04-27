@@ -137,6 +137,108 @@ impl<TX> Block<TX> {
     }
 }
 
+impl Block<TxHash> {
+    /// Converts this block that only holds transaction hashes into a full block with `Transaction`
+    pub fn into_full_block(self, transactions: Vec<Transaction>) -> Block<Transaction> {
+        #[cfg(not(feature = "celo"))]
+        {
+            let Block {
+                hash,
+                parent_hash,
+                uncles_hash,
+                author,
+                state_root,
+                transactions_root,
+                receipts_root,
+                number,
+                gas_used,
+                gas_limit,
+                extra_data,
+                logs_bloom,
+                timestamp,
+                difficulty,
+                total_difficulty,
+                seal_fields,
+                uncles,
+                size,
+                mix_hash,
+                nonce,
+                base_fee_per_gas,
+                ..
+            } = self;
+            Block {
+                hash,
+                parent_hash,
+                uncles_hash,
+                author,
+                state_root,
+                transactions_root,
+                receipts_root,
+                number,
+                gas_used,
+                gas_limit,
+                extra_data,
+                logs_bloom,
+                timestamp,
+                difficulty,
+                total_difficulty,
+                seal_fields,
+                uncles,
+                size,
+                mix_hash,
+                nonce,
+                base_fee_per_gas,
+                transactions,
+            }
+        }
+
+        #[cfg(feature = "celo")]
+        {
+            let Block {
+                hash,
+                parent_hash,
+                author,
+                state_root,
+                transactions_root,
+                receipts_root,
+                number,
+                gas_used,
+                extra_data,
+                logs_bloom,
+                timestamp,
+                total_difficulty,
+                seal_fields,
+                size,
+                base_fee_per_gas,
+                randomness,
+                epoch_snark_data,
+                ..
+            } = self;
+
+            Block {
+                hash,
+                parent_hash,
+                author,
+                state_root,
+                transactions_root,
+                receipts_root,
+                number,
+                gas_used,
+                extra_data,
+                logs_bloom,
+                timestamp,
+                total_difficulty,
+                seal_fields,
+                size,
+                base_fee_per_gas,
+                randomness,
+                epoch_snark_data,
+                transactions,
+            }
+        }
+    }
+}
+
 impl From<Block<Transaction>> for Block<TxHash> {
     fn from(full: Block<Transaction>) -> Self {
         #[cfg(not(feature = "celo"))]
