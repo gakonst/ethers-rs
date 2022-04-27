@@ -250,15 +250,14 @@ impl TransactionRequest {
         let mut offset = 0;
         let mut txn = Self::decode_unsigned_rlp_base(rlp, &mut offset)?;
 
-        // If a signed transaction is passed to this method, the chainid would be set to the v value
-        // of the signature.
-        if let Ok(chainid) = rlp.at(offset)?.as_val() {
+        // If the transaction includes more info, like the chainid, as we serialize in `rlp`, this
+        // will decode that value.
+        if let Ok(chainid) = rlp.val_at(offset) {
+            // If a signed transaction is passed to this method, the chainid would be set to the v
+            // value of the signature.
             txn.chain_id = Some(chainid);
         }
 
-        // parse the last two elements so we return an error if a signed transaction is passed
-        let _first_zero: u8 = rlp.at(offset + 1)?.as_val()?;
-        let _second_zero: u8 = rlp.at(offset + 2)?.as_val()?;
         Ok(txn)
     }
 
@@ -351,7 +350,7 @@ impl TransactionRequest {
 #[cfg(test)]
 #[cfg(not(feature = "celo"))]
 mod tests {
-    use crate::types::{NameOrAddress, Signature};
+    use crate::types::{Bytes, NameOrAddress, Signature};
     use rlp::{Decodable, Rlp};
 
     use super::{Address, TransactionRequest, U256, U64};
@@ -427,6 +426,31 @@ mod tests {
         // intialization of TransactionRequests using new() uses the Default trait, so we just
         // compare the sighash and signed encoding instead.
         assert_eq!(got_tx.sighash(), tx.sighash());
+    }
+
+    #[test]
+    fn decode_unsigned_rlp_no_chainid() {
+        // unlike the corresponding transaction
+        // 0x02c563d96acaf8c157d08db2228c84836faaf3dd513fc959a54ed4ca6c72573e, this doesn't have a
+        // `from` field because the `from` field is only obtained via signature recovery
+        let expected_tx = TransactionRequest::new()
+            .to(Address::from_str("0xc7696b27830dd8aa4823a1cba8440c27c36adec4").unwrap())
+            .gas(3_000_000)
+            .gas_price(20_000_000_000u64)
+            .value(0)
+            .nonce(6306u64)
+            .data(
+                Bytes::from_str(
+                    "0x91b7f5ed0000000000000000000000000000000000000000000000000000000000000372",
+                )
+                .unwrap(),
+            );
+
+        // manually stripped the signature off the end and modified length
+        let expected_rlp = hex::decode("f8488218a28504a817c800832dc6c094c7696b27830dd8aa4823a1cba8440c27c36adec480a491b7f5ed0000000000000000000000000000000000000000000000000000000000000372").unwrap();
+        let real_tx = TransactionRequest::decode(&Rlp::new(&expected_rlp)).unwrap();
+
+        assert_eq!(real_tx, expected_tx);
     }
 
     #[test]

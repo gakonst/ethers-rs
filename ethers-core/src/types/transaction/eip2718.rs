@@ -1,6 +1,6 @@
 use super::{
     eip1559::{Eip1559RequestError, Eip1559TransactionRequest},
-    eip2930::{AccessList, Eip2930TransactionRequest},
+    eip2930::{AccessList, Eip2930RequestError, Eip2930TransactionRequest},
     request::RequestError,
 };
 use crate::{
@@ -48,6 +48,9 @@ pub enum TypedTransactionError {
     /// When decoding a signed Eip1559 transaction
     #[error(transparent)]
     Eip1559Error(#[from] Eip1559RequestError),
+    /// When decoding a signed Eip2930 transaction
+    #[error(transparent)]
+    Eip2930Error(#[from] Eip2930RequestError),
     /// Error decoding the transaction type from the transaction's RLP encoding
     #[error(transparent)]
     TypeDecodingError(#[from] rlp::DecoderError),
@@ -397,6 +400,7 @@ impl From<&Transaction> for TypedTransaction {
 
 #[cfg(test)]
 mod tests {
+    use hex::ToHex;
     use rlp::Decodable;
 
     use super::*;
@@ -501,7 +505,7 @@ mod tests {
     #[test]
     fn test_signed_tx_decode() {
         let expected_tx = Eip1559TransactionRequest::new()
-            .from(Address::from_str("0x27519a1d088898e04b12f9fb9733267a5e61481e").unwrap())
+            .from(Address::from_str("0x1acadd971da208d25122b645b2ef879868a83e21").unwrap())
             .chain_id(1u64)
             .nonce(0u64)
             .max_priority_fee_per_gas(413047990155u64)
@@ -552,5 +556,62 @@ mod tests {
             hex::decode("02dc8205058193849502f90085010c388d00837a120080808411223344c0").unwrap();
         let tx_rlp = rlp::Rlp::new(typed_tx_hex.as_slice());
         TypedTransaction::decode(&tx_rlp).unwrap();
+    }
+
+    #[test]
+    fn test_signed_tx_decode_all_fields() {
+        let typed_tx_hex = hex::decode("02f90188052b85012a05f20085012a05f2148301b3cd8080b9012d608060405234801561001057600080fd5b5061010d806100206000396000f3fe6080604052348015600f57600080fd5b506004361060325760003560e01c8063cfae3217146037578063f8a8fd6d146066575b600080fd5b604080518082019091526003815262676d2160e81b60208201525b604051605d91906085565b60405180910390f35b6040805180820190915260048152636f6f662160e01b60208201526052565b600060208083528351808285015260005b8181101560b0578581018301518582016040015282016096565b8181111560c1576000604083870101525b50601f01601f191692909201604001939250505056fea2646970667358221220f89093a9819ba5d2a3384305511d0945ea94f36a8aa162ab62921b3841fe3afd64736f6c634300080c0033c080a08085850e935fd6af9ace1b0343b9e21d2dcc7e914c36cce61a4e32756c785980a04c57c184d5096263df981cb8a2f2c7f81640792856909dbf3295a2b7a1dc4a55").unwrap();
+        let tx_rlp = rlp::Rlp::new(typed_tx_hex.as_slice());
+        let (tx, sig) = TypedTransaction::decode_signed(&tx_rlp).unwrap();
+
+        let tx = match tx {
+            TypedTransaction::Eip1559(tx) => tx,
+            _ => panic!("The raw bytes should decode to an EIP1559 tranaction"),
+        };
+
+        // pre-sighash fields - if a value here is incorrect it will show up before the sighash
+        // and from asserts fail
+        let data = Bytes::from_str("0x608060405234801561001057600080fd5b5061010d806100206000396000f3fe6080604052348015600f57600080fd5b506004361060325760003560e01c8063cfae3217146037578063f8a8fd6d146066575b600080fd5b604080518082019091526003815262676d2160e81b60208201525b604051605d91906085565b60405180910390f35b6040805180820190915260048152636f6f662160e01b60208201526052565b600060208083528351808285015260005b8181101560b0578581018301518582016040015282016096565b8181111560c1576000604083870101525b50601f01601f191692909201604001939250505056fea2646970667358221220f89093a9819ba5d2a3384305511d0945ea94f36a8aa162ab62921b3841fe3afd64736f6c634300080c0033").unwrap();
+        assert_eq!(&data, tx.data.as_ref().unwrap());
+
+        let chain_id = U64::from(5u64);
+        assert_eq!(chain_id, tx.chain_id.unwrap());
+
+        let nonce = Some(43u64.into());
+        assert_eq!(nonce, tx.nonce);
+
+        let max_fee_per_gas = Some(5000000020u64.into());
+        assert_eq!(max_fee_per_gas, tx.max_fee_per_gas);
+
+        let max_priority_fee_per_gas = Some(5000000000u64.into());
+        assert_eq!(max_priority_fee_per_gas, tx.max_priority_fee_per_gas);
+
+        let gas = Some(111565u64.into());
+        assert_eq!(gas, tx.gas);
+
+        // empty fields
+        assert_eq!(None, tx.to);
+        assert_eq!(AccessList(vec![]), tx.access_list);
+
+        // compare rlp - sighash should then be the same
+        let tx_expected_rlp = "f90145052b85012a05f20085012a05f2148301b3cd8080b9012d608060405234801561001057600080fd5b5061010d806100206000396000f3fe6080604052348015600f57600080fd5b506004361060325760003560e01c8063cfae3217146037578063f8a8fd6d146066575b600080fd5b604080518082019091526003815262676d2160e81b60208201525b604051605d91906085565b60405180910390f35b6040805180820190915260048152636f6f662160e01b60208201526052565b600060208083528351808285015260005b8181101560b0578581018301518582016040015282016096565b8181111560c1576000604083870101525b50601f01601f191692909201604001939250505056fea2646970667358221220f89093a9819ba5d2a3384305511d0945ea94f36a8aa162ab62921b3841fe3afd64736f6c634300080c0033c0";
+        let tx_real_rlp_vec = tx.rlp().to_vec();
+        let tx_real_rlp: String = tx_real_rlp_vec.encode_hex();
+        assert_eq!(tx_expected_rlp, tx_real_rlp);
+
+        let r =
+            U256::from_str("0x8085850e935fd6af9ace1b0343b9e21d2dcc7e914c36cce61a4e32756c785980")
+                .unwrap();
+        let s =
+            U256::from_str("0x4c57c184d5096263df981cb8a2f2c7f81640792856909dbf3295a2b7a1dc4a55")
+                .unwrap();
+        let v = 0;
+        assert_eq!(r, sig.r);
+        assert_eq!(s, sig.s);
+        assert_eq!(v, sig.v);
+
+        // finally check from
+        let addr = Address::from_str("0x216b32eCEbAe6aF164921D3943cd7A9634FcB199").unwrap();
+        assert_eq!(addr, tx.from.unwrap());
     }
 }
