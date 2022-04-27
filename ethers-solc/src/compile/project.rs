@@ -304,7 +304,8 @@ impl<'a, T: ArtifactOutput> ArtifactsState<'a, T> {
     fn write_cache(self) -> Result<ProjectCompileOutput<T>> {
         let ArtifactsState { output, cache, compiled_artifacts } = self;
         let ignored_error_codes = cache.project().ignored_error_codes.clone();
-        let cached_artifacts = cache.write_cache(&compiled_artifacts)?;
+        let skip_write_to_disk = cache.project().no_artifacts || output.has_error();
+        let cached_artifacts = cache.consume(&compiled_artifacts, !skip_write_to_disk)?;
         Ok(ProjectCompileOutput {
             compiler_output: output,
             compiled_artifacts,
