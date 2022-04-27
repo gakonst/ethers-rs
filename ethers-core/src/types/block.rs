@@ -1,5 +1,5 @@
 // Taken from <https://github.com/tomusdrw/rust-web3/blob/master/src/types/block.rs>
-use crate::types::{Address, Bloom, Bytes, H256, U256, U64};
+use crate::types::{Address, Bloom, Bytes, Transaction, TxHash, H256, U256, U64};
 #[cfg(not(feature = "celo"))]
 use core::cmp::Ordering;
 use serde::{ser::SerializeStruct, Deserialize, Deserializer, Serialize, Serializer};
@@ -133,6 +133,209 @@ impl<TX> Block<TX> {
                 Some(expected_base_fee_per_gas)
             }
             Ordering::Equal => self.base_fee_per_gas,
+        }
+    }
+}
+
+impl Block<TxHash> {
+    /// Converts this block that only holds transaction hashes into a full block with `Transaction`
+    pub fn into_full_block(self, transactions: Vec<Transaction>) -> Block<Transaction> {
+        #[cfg(not(feature = "celo"))]
+        {
+            let Block {
+                hash,
+                parent_hash,
+                uncles_hash,
+                author,
+                state_root,
+                transactions_root,
+                receipts_root,
+                number,
+                gas_used,
+                gas_limit,
+                extra_data,
+                logs_bloom,
+                timestamp,
+                difficulty,
+                total_difficulty,
+                seal_fields,
+                uncles,
+                size,
+                mix_hash,
+                nonce,
+                base_fee_per_gas,
+                ..
+            } = self;
+            Block {
+                hash,
+                parent_hash,
+                uncles_hash,
+                author,
+                state_root,
+                transactions_root,
+                receipts_root,
+                number,
+                gas_used,
+                gas_limit,
+                extra_data,
+                logs_bloom,
+                timestamp,
+                difficulty,
+                total_difficulty,
+                seal_fields,
+                uncles,
+                size,
+                mix_hash,
+                nonce,
+                base_fee_per_gas,
+                transactions,
+            }
+        }
+
+        #[cfg(feature = "celo")]
+        {
+            let Block {
+                hash,
+                parent_hash,
+                author,
+                state_root,
+                transactions_root,
+                receipts_root,
+                number,
+                gas_used,
+                extra_data,
+                logs_bloom,
+                timestamp,
+                total_difficulty,
+                seal_fields,
+                size,
+                base_fee_per_gas,
+                randomness,
+                epoch_snark_data,
+                ..
+            } = self;
+
+            Block {
+                hash,
+                parent_hash,
+                author,
+                state_root,
+                transactions_root,
+                receipts_root,
+                number,
+                gas_used,
+                extra_data,
+                logs_bloom,
+                timestamp,
+                total_difficulty,
+                seal_fields,
+                size,
+                base_fee_per_gas,
+                randomness,
+                epoch_snark_data,
+                transactions,
+            }
+        }
+    }
+}
+
+impl From<Block<Transaction>> for Block<TxHash> {
+    fn from(full: Block<Transaction>) -> Self {
+        #[cfg(not(feature = "celo"))]
+        {
+            let Block {
+                hash,
+                parent_hash,
+                uncles_hash,
+                author,
+                state_root,
+                transactions_root,
+                receipts_root,
+                number,
+                gas_used,
+                gas_limit,
+                extra_data,
+                logs_bloom,
+                timestamp,
+                difficulty,
+                total_difficulty,
+                seal_fields,
+                uncles,
+                transactions,
+                size,
+                mix_hash,
+                nonce,
+                base_fee_per_gas,
+            } = full;
+            Block {
+                hash,
+                parent_hash,
+                uncles_hash,
+                author,
+                state_root,
+                transactions_root,
+                receipts_root,
+                number,
+                gas_used,
+                gas_limit,
+                extra_data,
+                logs_bloom,
+                timestamp,
+                difficulty,
+                total_difficulty,
+                seal_fields,
+                uncles,
+                size,
+                mix_hash,
+                nonce,
+                base_fee_per_gas,
+                transactions: transactions.iter().map(|tx| tx.hash).collect(),
+            }
+        }
+
+        #[cfg(feature = "celo")]
+        {
+            let Block {
+                hash,
+                parent_hash,
+                author,
+                state_root,
+                transactions_root,
+                receipts_root,
+                number,
+                gas_used,
+                extra_data,
+                logs_bloom,
+                timestamp,
+                total_difficulty,
+                seal_fields,
+                transactions,
+                size,
+                base_fee_per_gas,
+                randomness,
+                epoch_snark_data,
+            } = full;
+
+            Block {
+                hash,
+                parent_hash,
+                author,
+                state_root,
+                transactions_root,
+                receipts_root,
+                number,
+                gas_used,
+                extra_data,
+                logs_bloom,
+                timestamp,
+                total_difficulty,
+                seal_fields,
+                size,
+                base_fee_per_gas,
+                randomness,
+                epoch_snark_data,
+                transactions: transactions.iter().map(|tx| tx.hash).collect(),
+            }
         }
     }
 }
