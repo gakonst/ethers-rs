@@ -384,6 +384,10 @@ pub struct TransactionReceipt {
     /// Number of the block this transaction was included within.
     #[serde(rename = "blockNumber")]
     pub block_number: Option<U64>,
+    /// address of the sender.
+    pub from: Address,
+    // address of the receiver. null when its a contract creation transaction.
+    pub to: Option<Address>,
     /// Cumulative gas used within the block after this was executed.
     #[serde(rename = "cumulativeGasUsed")]
     pub cumulative_gas_used: U256,
@@ -751,5 +755,57 @@ mod tests {
 
         assert_eq!(tx.hash, tx.hash());
         assert_eq!(tx.from, tx.recover_from().unwrap());
+    }
+
+    #[test]
+    fn decode_transaction_receipt() {
+        let _res: TransactionReceipt = serde_json::from_str(
+            r#"{
+        "transactionHash": "0xa3ece39ae137617669c6933b7578b94e705e765683f260fcfe30eaa41932610f",
+        "blockHash": "0xf6084155ff2022773b22df3217d16e9df53cbc42689b27ca4789e06b6339beb2",
+        "blockNumber": "0x52a975",
+        "contractAddress": null,
+        "cumulativeGasUsed": "0x797db0",
+        "from": "0xd907941c8b3b966546fc408b8c942eb10a4f98df",
+        "gasUsed": "0x1308c",
+        "logs": [
+            {
+                "blockHash": "0xf6084155ff2022773b22df3217d16e9df53cbc42689b27ca4789e06b6339beb2",
+                "address": "0xd6df5935cd03a768b7b9e92637a01b25e24cb709",
+                "logIndex": "0x119",
+                "data": "0x0000000000000000000000000000000000000000000000000000008bb2c97000",
+                "removed": false,
+                "topics": [
+                    "0x8940c4b8e215f8822c5c8f0056c12652c746cbc57eedbd2a440b175971d47a77",
+                    "0x000000000000000000000000d907941c8b3b966546fc408b8c942eb10a4f98df"
+                ],
+                "blockNumber": "0x52a975",
+                "transactionIndex": "0x29",
+                "transactionHash": "0xa3ece39ae137617669c6933b7578b94e705e765683f260fcfe30eaa41932610f"
+            },
+            {
+                "blockHash": "0xf6084155ff2022773b22df3217d16e9df53cbc42689b27ca4789e06b6339beb2",
+                "address": "0xd6df5935cd03a768b7b9e92637a01b25e24cb709",
+                "logIndex": "0x11a",
+                "data": "0x0000000000000000000000000000000000000000000000000000008bb2c97000",
+                "removed": false,
+                "topics": [
+                    "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+                    "0x0000000000000000000000000000000000000000000000000000000000000000",
+                    "0x000000000000000000000000d907941c8b3b966546fc408b8c942eb10a4f98df"
+                ],
+                "blockNumber": "0x52a975",
+                "transactionIndex": "0x29",
+                "transactionHash": "0xa3ece39ae137617669c6933b7578b94e705e765683f260fcfe30eaa41932610f"
+            }
+        ],
+        "logsBloom": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000020000000000000000000800000000000000004010000010100000000000000000000000000000000000000000000000000040000080000000000000080000000000000000000000000000000000000000000020000000000000000000000002000000000000000000000000000000000000000000000000000020000000010000000000000000000000000000000000000000000000000000000000",
+        "root": null,
+        "status": "0x1",
+        "to": "0xd6df5935cd03a768b7b9e92637a01b25e24cb709",
+        "transactionIndex": "0x29"
+    }"#,
+        )
+        .unwrap();
     }
 }
