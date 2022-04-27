@@ -1,6 +1,6 @@
 //! bindings for standard json output selection
 
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::{ser::SerializeMap, Deserialize, Deserializer, Serialize, Serializer};
 use std::{collections::BTreeMap, fmt, str::FromStr};
 
 /// Represents the desired outputs based on a File `(file -> (contract -> [outputs]))`
@@ -68,7 +68,7 @@ pub type FileOutputSelection = BTreeMap<String, Vec<String>>;
 ///    }
 ///  }
 /// ```
-#[derive(Debug, Clone, Eq, PartialEq, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Eq, PartialEq, Default, Deserialize)]
 #[serde(transparent)]
 pub struct OutputSelection(pub BTreeMap<String, FileOutputSelection>);
 
@@ -118,6 +118,39 @@ impl OutputSelection {
     /// Returns an empty output selection which corresponds to an empty map `{}`
     pub fn empty_file_output_select() -> FileOutputSelection {
         Default::default()
+    }
+}
+
+// this will make sure that if the `FileOutputSelection` for a certain file is empty will be
+// serializes as `"*" : []` because
+// > Contract level (needs the contract name or "*") <https://docs.soliditylang.org/en/v0.8.13/using-the-compiler.html>
+impl Serialize for OutputSelection {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        struct EmptyFileOutput;
+
+        impl Serialize for EmptyFileOutput {
+            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+            where
+                S: Serializer,
+            {
+                let mut map = serializer.serialize_map(Some(1))?;
+                map.serialize_entry("*", &[] as &[String])?;
+                map.end()
+            }
+        }
+
+        let mut map = serializer.serialize_map(Some(self.0.len()))?;
+        for (file, selection) in self.0.iter() {
+            if selection.is_empty() {
+                map.serialize_entry(file, &EmptyFileOutput {})?;
+            } else {
+                map.serialize_entry(file, selection)?;
+            }
+        }
+        map.end()
     }
 }
 
@@ -531,5 +564,13 @@ mod tests {
             serde_json::from_str(&json).unwrap();
 
         assert_eq!(json, serde_json::to_string(&deserde_selection).unwrap());
+    }
+
+    #[test]
+    fn empty_outputselection_serde_works() {
+        let mut empty = OutputSelection::default();
+        empty.0.insert("contract.sol".to_string(), OutputSelection::empty_file_output_select());
+        let s = serde_json::to_string(&empty).unwrap();
+        assert_eq!(s, r#"{"contract.sol":{"*":[]}}"#);
     }
 }
