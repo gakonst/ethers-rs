@@ -120,12 +120,22 @@ pub static ADDRESS_BOOK: Lazy<HashMap<U256, Address>> = Lazy::new(|| {
 /// [`new`]: method@crate::Multicall::new
 /// [`block`]: method@crate::Multicall::block
 /// [`add_call`]: method@crate::Multicall::add_call
-#[derive(Clone)]
 pub struct Multicall<M> {
     calls: Vec<Call>,
     block: Option<BlockNumber>,
     contract: MulticallContract<M>,
     legacy: bool,
+}
+
+impl<M> Clone for Multicall<M> {
+    fn clone(&self) -> Self {
+        Multicall {
+            calls: self.calls.clone(),
+            block: self.block,
+            contract: self.contract.clone(),
+            legacy: self.legacy,
+        }
+    }
 }
 
 #[derive(Clone)]

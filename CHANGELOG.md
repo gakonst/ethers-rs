@@ -62,6 +62,8 @@
 
 ### Unreleased
 
+- Relax Clone requirements when Arc<Middleware> is used
+  [#1183](https://github.com/gakonst/ethers-rs/pull/1183)
 - Generate a deploy function if bytecode is provided in the abigen! input (json artifact)
   [#1030](https://github.com/gakonst/ethers-rs/pull/1030).
 - Generate correct bindings of struct's field names that are reserved words
@@ -192,6 +194,8 @@
 
 ### Unreleased
 
+- Relax Clone requirements when Arc<Middleware> is used
+  [#1183](https://github.com/gakonst/ethers-rs/pull/1183)
 - Add `EventStream::select` to combine streams with different event types
   [#725](https://github.com/gakonst/ethers-rs/pull/725)
 - Substitute output tuples with rust struct types for function calls
@@ -235,6 +239,8 @@
 
 ### Unreleased
 
+- Relax Clone requirements when Arc<Middleware> is used
+  [#1183](https://github.com/gakonst/ethers-rs/pull/1183)
 - Ensure a consistent chain ID between a Signer and Provider in SignerMiddleware
   [#1095](https://gakonst/ethers-rs/pull/1095)
 - Add BlockNative gas oracle [#1175](https://github.com/gakonst/ethers-rs/pull/1175)

@@ -71,9 +71,13 @@ pub(crate) fn struct_declaration(cx: &Context) -> TokenStream {
         #bytecode
 
         // Struct declaration
-        #[derive(Clone)]
         pub struct #name<M>(#ethers_contract::Contract<M>);
 
+        impl<M> Clone for #name<M> {
+            fn clone(&self) -> Self {
+                #name(self.0.clone())
+            }
+        }
 
         // Deref to the inner contract in order to access more specific functions functions
         impl<M> std::ops::Deref for #name<M> {
