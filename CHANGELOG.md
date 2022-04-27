@@ -60,6 +60,8 @@
 - Add Yul compilation [994](https://github.com/gakonst/ethers-rs/pull/994)
 - Enforce commutativity of ENS reverse resolution
   [#996](https://github.com/gakonst/ethers-rs/pull/996)
+- Add `TransactionReceipt::to` and `TransactionReceipt::from`
+  [#1184](https://github.com/gakonst/ethers-rs/pull/1184)
 
 ## ethers-contract-abigen
 
@@ -248,7 +250,6 @@
 - Ensure a consistent chain ID between a Signer and Provider in SignerMiddleware
   [#1095](https://gakonst/ethers-rs/pull/1095)
 - Add BlockNative gas oracle [#1175](https://github.com/gakonst/ethers-rs/pull/1175)
-
 
 ### 0.6.0
 
