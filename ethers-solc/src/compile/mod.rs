@@ -650,7 +650,7 @@ impl<T: Into<PathBuf>> From<T> for Solc {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::CompilerInput;
+    use crate::{Artifact, CompilerInput};
 
     fn solc() -> Solc {
         Solc::default()
@@ -690,6 +690,18 @@ mod tests {
         for (_, c) in out.split().1.contracts_iter() {
             assert!(c.metadata.is_some());
         }
+    }
+
+    #[test]
+    fn can_compile_with_remapped_links() {
+        let input: CompilerInput =
+            serde_json::from_str(include_str!("../../test-data/library-remapping-in.json"))
+                .unwrap();
+        let out = solc().compile(&input).unwrap();
+        let (_, mut contracts) = out.split();
+        let contract = contracts.remove("LinkTest").unwrap();
+        let bytecode = &contract.get_bytecode().unwrap().object;
+        assert!(!bytecode.is_unlinked());
     }
 
     #[cfg(feature = "async")]

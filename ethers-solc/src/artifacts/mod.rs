@@ -16,6 +16,7 @@ use crate::{
 };
 
 use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
+use tracing::warn;
 
 pub mod ast;
 pub use ast::*;
@@ -448,16 +449,37 @@ impl Libraries {
     /// Solc expects the lib paths to match the global path after remappings were applied
     ///
     /// See also [ProjectPathsConfig::resolve_import]
-    pub fn with_applied_remappings(mut self, cwd: &Path, config: &ProjectPathsConfig) -> Self {
+    pub fn with_applied_remappings(mut self, config: &ProjectPathsConfig) -> Self {
         self.libs = self
             .libs
             .into_iter()
             .map(|(file, target)| {
-                let file = config.resolve_import(cwd, &file).unwrap_or(file);
+                let file = config.resolve_import(&config.root, &file).unwrap_or_else(|err| {
+                    warn!(target: "libs", "Failed to resolve library `{}` for linking: {:?}", file.display(), err);
+                    file
+                });
                 (file, target)
             })
             .collect();
         self
+    }
+}
+
+impl From<BTreeMap<PathBuf, BTreeMap<String, String>>> for Libraries {
+    fn from(libs: BTreeMap<PathBuf, BTreeMap<String, String>>) -> Self {
+        Self { libs }
+    }
+}
+
+impl AsRef<BTreeMap<PathBuf, BTreeMap<String, String>>> for Libraries {
+    fn as_ref(&self) -> &BTreeMap<PathBuf, BTreeMap<String, String>> {
+        &self.libs
+    }
+}
+
+impl AsMut<BTreeMap<PathBuf, BTreeMap<String, String>>> for Libraries {
+    fn as_mut(&mut self) -> &mut BTreeMap<PathBuf, BTreeMap<String, String>> {
+        &mut self.libs
     }
 }
 
