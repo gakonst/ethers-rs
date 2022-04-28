@@ -14,7 +14,7 @@ pub struct SolData {
     pub license: Option<SolDataUnit<String>>,
     pub version: Option<SolDataUnit<String>>,
     pub experimental: Option<SolDataUnit<String>>,
-    pub imports: Vec<SolDataUnit<PathBuf>>,
+    pub imports: Vec<SolDataUnit<SolImport>>,
     pub version_req: Option<VersionReq>,
     pub libraries: Vec<SolLibrary>,
     pub contracts: Vec<SolContract>,
@@ -39,7 +39,7 @@ impl SolData {
     pub fn parse(content: &str, file: &Path) -> Self {
         let mut version = None;
         let mut experimental = None;
-        let mut imports = Vec::<SolDataUnit<PathBuf>>::new();
+        let mut imports = Vec::<SolDataUnit<SolImport>>::new();
         let mut libraries = Vec::new();
         let mut contracts = Vec::new();
 
@@ -59,13 +59,21 @@ impl SolData {
                             }
                         }
                         SourceUnitPart::ImportDirective(_, import) => {
-                            let (import, loc) = match import {
-                                Import::Plain(s, l) => (s, l),
-                                Import::GlobalSymbol(s, _, l) => (s, l),
-                                Import::Rename(s, _, l) => (s, l),
+                            let (import, ids, loc) = match import {
+                                Import::Plain(s, l) => (s, vec![], l),
+                                Import::GlobalSymbol(s, i, l) => (s, vec![(i, None)], l),
+                                Import::Rename(s, i, l) => (s, i, l),
                             };
-                            imports
-                                .push(SolDataUnit::new(PathBuf::from(import.string), loc.into()));
+                            let sol_import = SolImport::new(PathBuf::from(import.string))
+                                .set_aliases(
+                                    ids.into_iter()
+                                        .filter_map(|(id, alias)| {
+                                            alias.map(|a| SolImportAlias::Contract(a.name, id.name))
+                                        })
+                                        .collect(),
+                                );
+
+                            imports.push(SolDataUnit::new(sol_import, loc.into()));
                         }
                         SourceUnitPart::ContractDefinition(def) => {
                             let functions = def
@@ -128,6 +136,37 @@ impl SolData {
 pub struct SolContract {
     pub name: String,
     pub functions: Vec<FunctionDefinition>,
+}
+
+#[derive(Debug, Clone)]
+pub struct SolImport {
+    path: PathBuf,
+    aliases: Vec<SolImportAlias>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum SolImportAlias {
+    File(String),
+    Contract(String, String),
+}
+
+impl SolImport {
+    pub fn new(path: PathBuf) -> Self {
+        Self { path, aliases: vec![] }
+    }
+
+    pub fn path(&self) -> &PathBuf {
+        &self.path
+    }
+
+    pub fn aliases(&self) -> &Vec<SolImportAlias> {
+        &self.aliases
+    }
+
+    fn set_aliases(mut self, aliases: Vec<SolImportAlias>) -> Self {
+        self.aliases = aliases;
+        self
+    }
 }
 
 /// Minimal representation of a contract inside a solidity file
@@ -239,10 +278,39 @@ fn capture_outer_and_inner<'a>(
         .collect()
 }
 
-pub fn capture_imports(content: &str) -> Vec<SolDataUnit<PathBuf>> {
-    capture_outer_and_inner(content, &utils::RE_SOL_IMPORT, &["p1", "p2", "p3", "p4"])
-        .iter()
-        .map(|(cap, m)| SolDataUnit::new(PathBuf::from(m.as_str()), cap.to_owned().into()))
+// TODO:
+pub fn capture_imports(content: &str) -> Vec<SolDataUnit<SolImport>> {
+    // capture_outer_and_inner(content, &utils::RE_SOL_IMPORT, &["p1", "p2", "p3", "p4"])
+    //     .iter()
+    //     .map(|(cap, m)| {
+    //         SolDataUnit::new(SolImport::new(PathBuf::from(m.as_str())), cap.to_owned().into())
+    //     })
+    //     .collect()
+    // capture_outer_and_inner(content, &utils::RE_SOL_IMPORT, &["p1", "p2", "p3", "p4"])
+
+    utils::RE_SOL_IMPORT
+        .captures_iter(content)
+        .filter_map(|cap| {
+            let cap_match = vec!["p1", "p2", "p3", "p4"].iter().find_map(|name| cap.name(name));
+            cap_match.and_then(|m| cap.get(0).map(|outer| (outer.to_owned(), m)))
+        })
+        .map(|(outer, inner)| {
+            let import_statement = outer.as_str();
+            let aliases = utils::RE_SOL_IMPORT_ALIAS
+                .captures_iter(import_statement)
+                .filter_map(|alias_cap| {
+                    alias_cap.name("alias").map(|al| match alias_cap.name("target") {
+                        Some(target) => SolImportAlias::Contract(
+                            al.as_str().to_owned(),
+                            target.as_str().to_owned(),
+                        ),
+                        None => SolImportAlias::File(al.as_str().to_owned()),
+                    })
+                })
+                .collect::<Vec<_>>();
+            let sol_import = SolImport::new(PathBuf::from(inner.as_str())).set_aliases(aliases);
+            SolDataUnit::new(sol_import, outer.to_owned().into())
+        })
         .collect()
 }
 
@@ -259,7 +327,7 @@ import {DsTest} from "ds-test/test.sol";
 "#;
 
         let captured_imports =
-            capture_imports(content).into_iter().map(|s| s.data).collect::<Vec<_>>();
+            capture_imports(content).into_iter().map(|s| s.data.path).collect::<Vec<_>>();
 
         let expected =
             utils::find_import_paths(content).map(|m| m.as_str().into()).collect::<Vec<PathBuf>>();
@@ -272,6 +340,26 @@ import {DsTest} from "ds-test/test.sol";
                 PathBuf::from("../Test.sol"),
                 "@openzeppelin/contracts/utils/ReentrancyGuard.sol".into(),
                 "ds-test/test.sol".into(),
+            ]
+        );
+    }
+
+    #[test]
+    fn cap_capture_aliases() {
+        let content = r#"
+import * as T from "../Test.sol";
+import { DsTest as Test } from "ds-test/test.sol";
+import "ds-test/test.sol" as Test;
+"#;
+
+        let caputred_imports =
+            capture_imports(content).into_iter().map(|s| s.data.aliases).collect::<Vec<_>>();
+        assert_eq!(
+            caputred_imports,
+            vec![
+                vec![SolImportAlias::File("T".into())],
+                vec![SolImportAlias::Contract("Test".into(), "DsTest".into())],
+                vec![SolImportAlias::File("Test".into())],
             ]
         );
     }

@@ -721,6 +721,41 @@ contract A { }
 }
 
 #[test]
+fn can_flatten_with_alias() {
+    let project = TempProject::dapptools().unwrap();
+
+    let f = project
+        .add_source(
+            "A",
+            r#"pragma solidity ^0.8.10;
+import { B as SomeAlias } from "./B.sol";
+contract A is SomeAlias { }
+"#,
+        )
+        .unwrap();
+
+    project
+        .add_source(
+            "B",
+            r#"pragma solidity ^0.8.10;
+contract B { }
+"#,
+        )
+        .unwrap();
+
+    let result = project.flatten(&f).unwrap();
+    assert_eq!(
+        result,
+        r#"pragma solidity ^0.8.10;
+
+contract SomeAlias { }
+
+contract A is SomeAlias { }
+"#
+    );
+}
+
+#[test]
 fn can_detect_type_error() {
     let project = TempProject::<ConfigurableArtifacts>::dapptools().unwrap();
 

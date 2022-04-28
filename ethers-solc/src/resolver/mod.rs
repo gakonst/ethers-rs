@@ -52,7 +52,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use parse::{SolData, SolDataUnit};
+use parse::{SolData, SolDataUnit, SolImport};
 use rayon::prelude::*;
 
 use semver::VersionReq;
@@ -62,6 +62,7 @@ use crate::{error::Result, utils, ProjectPathsConfig, SolcError, Source, Sources
 mod parse;
 mod tree;
 
+pub use parse::SolImportAlias;
 pub use tree::{print, Charset, TreeOptions};
 
 /// The underlying edges of the graph which only contains the raw relationship data.
@@ -339,13 +340,14 @@ impl Graph {
             };
 
             for import in node.data.imports.iter() {
-                match paths.resolve_import(cwd, import.data()) {
+                let import_path = import.data().path();
+                match paths.resolve_import(cwd, import_path) {
                     Ok(import) => {
                         add_node(&mut unresolved, &mut index, &mut resolved_imports, import)?;
                     }
                     Err(err) => {
-                        if unresolved_paths.insert(import.data().to_path_buf()) {
-                            crate::report::unresolved_import(import.data(), &paths.remappings);
+                        if unresolved_paths.insert(import_path.to_path_buf()) {
+                            crate::report::unresolved_import(import_path, &paths.remappings);
                         }
                         tracing::trace!(
                             "failed to resolve import component \"{:?}\" for {:?}",
@@ -772,7 +774,7 @@ impl Node {
         &self.source.content
     }
 
-    pub fn imports(&self) -> &Vec<SolDataUnit<PathBuf>> {
+    pub fn imports(&self) -> &Vec<SolDataUnit<SolImport>> {
         &self.data.imports
     }
 
@@ -854,7 +856,7 @@ mod tests {
         let dapp_test = graph.node(1);
         assert_eq!(dapp_test.path, paths.sources.join("Dapp.t.sol"));
         assert_eq!(
-            dapp_test.data.imports.iter().map(|i| i.data()).collect::<Vec<&PathBuf>>(),
+            dapp_test.data.imports.iter().map(|i| i.data().path()).collect::<Vec<&PathBuf>>(),
             vec![&PathBuf::from("ds-test/test.sol"), &PathBuf::from("./Dapp.sol")]
         );
         assert_eq!(graph.imported_nodes(1).to_vec(), vec![2, 0]);

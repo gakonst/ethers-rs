@@ -16,9 +16,14 @@ use walkdir::WalkDir;
 /// A regex that matches the import path and identifier of a solidity import
 /// statement with the named groups "path", "id".
 // Adapted from <https://github.com/nomiclabs/hardhat/blob/cced766c65b25d3d0beb39ef847246ac9618bdd9/packages/hardhat-core/src/internal/solidity/parse.ts#L100>
-pub static RE_SOL_IMPORT: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r#"import\s+(?:(?:"(?P<p1>[^;]*)"|'(?P<p2>[^;]*)')(?:;|\s+as\s+(?P<id>[^;]*);)|.+from\s+(?:"(?P<p3>.*)"|'(?P<p4>.*)');)"#).unwrap()
+pub static RE_SOL_IMPORT_OLD: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r#"import\s+(?:(?:"(?P<p1>[^;]*)"|'(?P<p2>[^;]*)')(?:;|\s+as\s+(?P<id1>\w+);)|(?:(?:\w+|\*)\s+(as\s+(?P<id2>\w)\s+)?)from\s+(?:"(?P<p3>.*)"|'(?P<p4>.*)');)"#).unwrap()
 });
+pub static RE_SOL_IMPORT: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r#"import\s+(?:(?:"(?P<p1>.*)"|'(?P<p2>.*)')(?:\s+as\s+\w+)?|(?:(?:\w+(?:\s+as\s+\w+)?|\*\s+as\s+\w+|\{\s*(?:\w+(?:\s+as\s+\w+)?(?:\s*,\s*)?)+\s*\})\s+from\s+(?:"(?P<p3>.*)"|'(?P<p4>.*)')))\s*;"#).unwrap()
+});
+pub static RE_SOL_IMPORT_ALIAS: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r#"(?:(?P<target>\w+)|\*|'|")\s+as\s+(?P<alias>\w+)"#).unwrap());
 
 /// A regex that matches the version part of a solidity pragma
 /// as follows: `pragma solidity ^0.5.2;` => `^0.5.2`

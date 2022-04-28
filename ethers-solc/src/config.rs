@@ -3,7 +3,7 @@ use crate::{
     cache::SOLIDITY_FILES_CACHE_FILENAME,
     error::{Result, SolcError, SolcIoError},
     remappings::Remapping,
-    resolver::Graph,
+    resolver::{Graph, SolImportAlias},
     utils, Source, Sources,
 };
 
@@ -250,9 +250,16 @@ impl ProjectPathsConfig {
     pub fn flatten(&self, target: &Path) -> Result<String> {
         tracing::trace!("flattening file");
         let graph = Graph::resolve(self)?;
-        self.flatten_node(target, &graph, &mut Default::default(), false, false, false).map(|x| {
-            format!("{}\n", utils::RE_THREE_OR_MORE_NEWLINES.replace_all(&x, "\n\n").trim())
-        })
+        self.flatten_node(
+            target,
+            &graph,
+            &mut Default::default(),
+            &Default::default(),
+            false,
+            false,
+            false,
+        )
+        .map(|x| format!("{}\n", utils::RE_THREE_OR_MORE_NEWLINES.replace_all(&x, "\n\n").trim()))
     }
 
     /// Flattens a single node from the dependency graph
@@ -261,6 +268,7 @@ impl ProjectPathsConfig {
         target: &Path,
         graph: &Graph,
         imported: &mut HashSet<usize>,
+        aliases: &Vec<SolImportAlias>, // TODO:
         strip_version_pragma: bool,
         strip_experimental_pragma: bool,
         strip_license: bool,
@@ -283,7 +291,17 @@ impl ProjectPathsConfig {
         let mut imports = target_node.imports().clone();
         imports.sort_by_key(|x| x.loc().0);
 
-        let mut content = target_node.content().as_bytes().to_vec();
+        let mut content = target_node.content().to_owned();
+        for alias in aliases {
+            let none = String::from("<none>");
+            let (alias, name_to_replace) = match alias {
+                SolImportAlias::Contract(al, contract_name) => (al, contract_name),
+                SolImportAlias::File(al) => (al, &none),
+            };
+            content = content.replace(name_to_replace, alias);
+        }
+
+        let mut content = content.as_bytes().to_vec();
         let mut offset = 0_isize;
 
         if strip_license {
@@ -311,8 +329,16 @@ impl ProjectPathsConfig {
         }
 
         for import in imports.iter() {
-            let import_path = self.resolve_import(target_dir, import.data())?;
-            let s = self.flatten_node(&import_path, graph, imported, true, true, true)?;
+            let import_path = self.resolve_import(target_dir, import.data().path())?;
+            let s = self.flatten_node(
+                &import_path,
+                graph,
+                imported,
+                import.data().aliases(),
+                true,
+                true,
+                true,
+            )?;
             let import_content = s.as_bytes();
             let import_content_len = import_content.len() as isize;
             let (start, end) = import.loc_by_offset(offset);
