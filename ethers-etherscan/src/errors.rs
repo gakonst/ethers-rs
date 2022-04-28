@@ -31,4 +31,6 @@ pub enum EtherscanError {
     LocalNetworksNotSupported,
     #[error("Unknown error: {0}")]
     Unknown(String),
+    #[error("Missing field: {0}")]
+    Builder(String),
 }
