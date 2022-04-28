@@ -422,7 +422,7 @@ impl Libraries {
                 SolcError::msg(format!("failed to parse path to library file: {}", lib))
             })?;
             let lib = items.next().ok_or_else(|| {
-                SolcError::msg(format!("failed to parse invalid library: {}", lib))
+                SolcError::msg(format!("failed to parse library name: {}", lib))
             })?;
             let addr = items.next().ok_or_else(|| {
                 SolcError::msg(format!("failed to parse invalid library: {}", lib))
