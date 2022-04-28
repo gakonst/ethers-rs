@@ -1,0 +1,39 @@
+{
+  "language": "Solidity",
+  "sources": {
+    "/private/var/folders/l5/lprhf87s6xv8djgd017f0b2h0000gn/T/tmp_dappPyXsdD/lib/remapping/MyLib.sol": {
+      "content": "\n// SPDX-License-Identifier: MIT\nlibrary MyLib {\n    function foobar(uint256 a) public view returns (uint256) {\n    \treturn a * 100;\n    }\n}\n"
+    },
+    "/private/var/folders/l5/lprhf87s6xv8djgd017f0b2h0000gn/T/tmp_dappPyXsdD/src/LinkTest.sol": {
+      "content": "\n// SPDX-License-Identifier: MIT\nimport \"remapping/MyLib.sol\";\ncontract LinkTest {\n    function foo() public returns (uint256) {\n        return MyLib.foobar(1);\n    }\n}\n"
+    }
+  },
+  "settings": {
+    "remappings": [
+      "remapping/=/private/var/folders/l5/lprhf87s6xv8djgd017f0b2h0000gn/T/tmp_dappPyXsdD/lib/remapping/"
+    ],
+    "optimizer": {
+      "enabled": false,
+      "runs": 200
+    },
+    "outputSelection": {
+      "*": {
+        "": [
+          "ast"
+        ],
+        "*": [
+          "abi",
+          "evm.bytecode",
+          "evm.deployedBytecode",
+          "evm.methodIdentifiers"
+        ]
+      }
+    },
+    "evmVersion": "london",
+    "libraries": {
+      "/private/var/folders/l5/lprhf87s6xv8djgd017f0b2h0000gn/T/tmp_dappPyXsdD/lib/remapping/MyLib.sol": {
+        "MyLib": "0x0000000000000000000000000000000000000000"
+      }
+    }
+  }
+}

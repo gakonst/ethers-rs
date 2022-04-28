@@ -11,9 +11,12 @@ use std::{
     str::FromStr,
 };
 
-use crate::{compile::*, error::SolcIoError, remappings::Remapping, utils};
+use crate::{
+    compile::*, error::SolcIoError, remappings::Remapping, utils, ProjectPathsConfig, SolcError,
+};
 
 use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
+use tracing::warn;
 
 pub mod ast;
 pub use ast::*;
@@ -259,8 +262,15 @@ pub struct Settings {
     pub via_ir: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub debug: Option<DebuggingSettings>,
-    #[serde(default, skip_serializing_if = "::std::collections::BTreeMap::is_empty")]
-    pub libraries: BTreeMap<String, BTreeMap<String, String>>,
+    /// Addresses of the libraries. If not all libraries are given here,
+    /// it can result in unlinked objects whose output data is different.
+    ///
+    /// The top level key is the name of the source file where the library is used.
+    /// If remappings are used, this source file should match the global path
+    /// after remappings were applied.
+    /// If this key is an empty string, that refers to a global level.
+    #[serde(default, skip_serializing_if = "Libraries::is_empty")]
+    pub libraries: Libraries,
 }
 
 impl Settings {
@@ -378,6 +388,101 @@ impl Default for Settings {
             remappings: Default::default(),
         }
         .with_ast()
+    }
+}
+
+/// A wrapper type for all libraries in the form of `<file>:<lib>:<addr>`
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(transparent)]
+pub struct Libraries {
+    /// All libraries, `(file path -> (Lib name -> Address))
+    pub libs: BTreeMap<PathBuf, BTreeMap<String, String>>,
+}
+
+// === impl Libraries ===
+
+impl Libraries {
+    /// Parses all libraries in the form of
+    /// `<file>:<lib>:<addr>`
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use ethers_solc::artifacts::Libraries;
+    /// let libs = Libraries::parse(&[
+    ///     "src/DssSpell.sol:DssExecLib:0xfD88CeE74f7D78697775aBDAE53f9Da1559728E4".to_string(),
+    /// ])
+    /// .unwrap();
+    /// ```
+    pub fn parse(libs: &[String]) -> Result<Self, SolcError> {
+        let mut libraries = BTreeMap::default();
+        for lib in libs {
+            let mut items = lib.split(':');
+            let file = items.next().ok_or_else(|| {
+                SolcError::msg(format!("failed to parse path to library file: {}", lib))
+            })?;
+            let lib = items
+                .next()
+                .ok_or_else(|| SolcError::msg(format!("failed to parse library name: {}", lib)))?;
+            let addr = items.next().ok_or_else(|| {
+                SolcError::msg(format!("failed to parse library address: {}", lib))
+            })?;
+            if items.next().is_some() {
+                return Err(SolcError::msg(format!(
+                    "failed to parse, too many arguments passed: {}",
+                    lib
+                )))
+            }
+            libraries
+                .entry(file.into())
+                .or_insert_with(BTreeMap::default)
+                .insert(lib.to_string(), addr.to_string());
+        }
+        Ok(Self { libs: libraries })
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.libs.is_empty()
+    }
+
+    pub fn len(&self) -> usize {
+        self.libs.len()
+    }
+
+    /// Solc expects the lib paths to match the global path after remappings were applied
+    ///
+    /// See also [ProjectPathsConfig::resolve_import]
+    pub fn with_applied_remappings(mut self, config: &ProjectPathsConfig) -> Self {
+        self.libs = self
+            .libs
+            .into_iter()
+            .map(|(file, target)| {
+                let file = config.resolve_import(&config.root, &file).unwrap_or_else(|err| {
+                    warn!(target: "libs", "Failed to resolve library `{}` for linking: {:?}", file.display(), err);
+                    file
+                });
+                (file, target)
+            })
+            .collect();
+        self
+    }
+}
+
+impl From<BTreeMap<PathBuf, BTreeMap<String, String>>> for Libraries {
+    fn from(libs: BTreeMap<PathBuf, BTreeMap<String, String>>) -> Self {
+        Self { libs }
+    }
+}
+
+impl AsRef<BTreeMap<PathBuf, BTreeMap<String, String>>> for Libraries {
+    fn as_ref(&self) -> &BTreeMap<PathBuf, BTreeMap<String, String>> {
+        &self.libs
+    }
+}
+
+impl AsMut<BTreeMap<PathBuf, BTreeMap<String, String>>> for Libraries {
+    fn as_mut(&mut self) -> &mut BTreeMap<PathBuf, BTreeMap<String, String>> {
+        &mut self.libs
     }
 }
 
@@ -772,13 +877,13 @@ pub struct Doc {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub kind: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub methods: Option<Libraries>,
+    pub methods: Option<DocLibraries>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub version: Option<u32>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
-pub struct Libraries {
+pub struct DocLibraries {
     #[serde(flatten)]
     pub libs: BTreeMap<String, serde_json::Value>,
 }
@@ -1630,5 +1735,72 @@ mod tests {
         let version: Version = "0.5.17".parse().unwrap();
         let i = input.sanitized(&version);
         assert!(i.settings.metadata.unwrap().bytecode_hash.is_none());
+    }
+
+    #[test]
+    fn can_parse_libraries() {
+        let libraries = ["./src/lib/LibraryContract.sol:Library:0xaddress".to_string()];
+
+        let libs = Libraries::parse(&libraries[..]).unwrap().libs;
+
+        assert_eq!(
+            libs,
+            BTreeMap::from([(
+                PathBuf::from("./src/lib/LibraryContract.sol"),
+                BTreeMap::from([("Library".to_string(), "0xaddress".to_string())])
+            )])
+        );
+    }
+
+    #[test]
+    fn can_parse_many_libraries() {
+        let libraries= [
+            "./src/SizeAuctionDiscount.sol:Chainlink:0xffedba5e171c4f15abaaabc86e8bd01f9b54dae5".to_string(),
+            "./src/SizeAuction.sol:ChainlinkTWAP:0xffedba5e171c4f15abaaabc86e8bd01f9b54dae5".to_string(),
+            "./src/SizeAuction.sol:Math:0x902f6cf364b8d9470d5793a9b2b2e86bddd21e0c".to_string(),
+            "./src/test/ChainlinkTWAP.t.sol:ChainlinkTWAP:0xffedba5e171c4f15abaaabc86e8bd01f9b54dae5".to_string(),
+            "./src/SizeAuctionDiscount.sol:Math:0x902f6cf364b8d9470d5793a9b2b2e86bddd21e0c".to_string(),
+        ];
+
+        let libs = Libraries::parse(&libraries[..]).unwrap().libs;
+
+        pretty_assertions::assert_eq!(
+            libs,
+            BTreeMap::from([
+                (
+                    PathBuf::from("./src/SizeAuctionDiscount.sol"),
+                    BTreeMap::from([
+                        (
+                            "Chainlink".to_string(),
+                            "0xffedba5e171c4f15abaaabc86e8bd01f9b54dae5".to_string()
+                        ),
+                        (
+                            "Math".to_string(),
+                            "0x902f6cf364b8d9470d5793a9b2b2e86bddd21e0c".to_string()
+                        )
+                    ])
+                ),
+                (
+                    PathBuf::from("./src/SizeAuction.sol"),
+                    BTreeMap::from([
+                        (
+                            "ChainlinkTWAP".to_string(),
+                            "0xffedba5e171c4f15abaaabc86e8bd01f9b54dae5".to_string()
+                        ),
+                        (
+                            "Math".to_string(),
+                            "0x902f6cf364b8d9470d5793a9b2b2e86bddd21e0c".to_string()
+                        )
+                    ])
+                ),
+                (
+                    PathBuf::from("./src/test/ChainlinkTWAP.t.sol"),
+                    BTreeMap::from([(
+                        "ChainlinkTWAP".to_string(),
+                        "0xffedba5e171c4f15abaaabc86e8bd01f9b54dae5".to_string()
+                    )])
+                ),
+            ])
+        );
     }
 }

@@ -1,14 +1,15 @@
 //! project tests
 
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{BTreeMap, HashMap, HashSet},
     io,
     path::{Path, PathBuf},
     str::FromStr,
 };
 
+use ethers_core::types::Address;
 use ethers_solc::{
-    artifacts::BytecodeHash,
+    artifacts::{BytecodeHash, Libraries},
     cache::{SolFilesCache, SOLIDITY_FILES_CACHE_FILENAME},
     project_util::*,
     remappings::Remapping,
@@ -155,7 +156,7 @@ fn can_compile_dapp_detect_changes_in_libs() {
     project
         .paths_mut()
         .remappings
-        .push(Remapping::from_str(&format!("remapping={}/", remapping.display())).unwrap());
+        .push(Remapping::from_str(&format!("remapping/={}/", remapping.display())).unwrap());
 
     let src = project
         .add_source(
@@ -814,6 +815,130 @@ contract LinkTest {
     assert_eq!(bytecode.clone(), serde_json::from_str(&s).unwrap());
 }
 
+#[test]
+fn can_apply_libraries() {
+    let mut tmp = TempProject::dapptools().unwrap();
+
+    tmp.add_source(
+        "LinkTest",
+        r#"
+// SPDX-License-Identifier: MIT
+import "./MyLib.sol";
+contract LinkTest {
+    function foo() public returns (uint256) {
+        return MyLib.foobar(1);
+    }
+}
+"#,
+    )
+    .unwrap();
+
+    let lib = tmp
+        .add_source(
+            "MyLib",
+            r#"
+// SPDX-License-Identifier: MIT
+library MyLib {
+    function foobar(uint256 a) public view returns (uint256) {
+    	return a * 100;
+    }
+}
+"#,
+        )
+        .unwrap();
+
+    let compiled = tmp.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+
+    assert!(compiled.find("MyLib").is_some());
+    let contract = compiled.find("LinkTest").unwrap();
+    let bytecode = &contract.bytecode.as_ref().unwrap().object;
+    assert!(bytecode.is_unlinked());
+
+    // provide the library settings to let solc link
+    tmp.project_mut().solc_config.settings.libraries = BTreeMap::from([(
+        lib,
+        BTreeMap::from([("MyLib".to_string(), format!("{:?}", Address::zero()))]),
+    )])
+    .into();
+
+    let compiled = tmp.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+
+    assert!(compiled.find("MyLib").is_some());
+    let contract = compiled.find("LinkTest").unwrap();
+    let bytecode = &contract.bytecode.as_ref().unwrap().object;
+    assert!(!bytecode.is_unlinked());
+
+    let libs = Libraries::parse(&[format!("./src/MyLib.sol:MyLib:{:?}", Address::zero())]).unwrap();
+    // provide the library settings to let solc link
+    tmp.project_mut().solc_config.settings.libraries = libs.with_applied_remappings(tmp.paths());
+
+    let compiled = tmp.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+
+    assert!(compiled.find("MyLib").is_some());
+    let contract = compiled.find("LinkTest").unwrap();
+    let bytecode = &contract.bytecode.as_ref().unwrap().object;
+    assert!(!bytecode.is_unlinked());
+}
+
+#[test]
+fn can_apply_libraries_with_remappings() {
+    let mut tmp = TempProject::dapptools().unwrap();
+
+    let remapping = tmp.paths().libraries[0].join("remapping");
+    tmp.paths_mut()
+        .remappings
+        .push(Remapping::from_str(&format!("remapping/={}/", remapping.display())).unwrap());
+
+    tmp.add_source(
+        "LinkTest",
+        r#"
+// SPDX-License-Identifier: MIT
+import "remapping/MyLib.sol";
+contract LinkTest {
+    function foo() public returns (uint256) {
+        return MyLib.foobar(1);
+    }
+}
+"#,
+    )
+    .unwrap();
+
+    tmp.add_lib(
+        "remapping/MyLib",
+        r#"
+// SPDX-License-Identifier: MIT
+library MyLib {
+    function foobar(uint256 a) public view returns (uint256) {
+    	return a * 100;
+    }
+}
+"#,
+    )
+    .unwrap();
+
+    let compiled = tmp.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+
+    assert!(compiled.find("MyLib").is_some());
+    let contract = compiled.find("LinkTest").unwrap();
+    let bytecode = &contract.bytecode.as_ref().unwrap().object;
+    assert!(bytecode.is_unlinked());
+
+    let libs =
+        Libraries::parse(&[format!("remapping/MyLib.sol:MyLib:{:?}", Address::zero())]).unwrap(); // provide the library settings to let solc link
+    tmp.project_mut().solc_config.settings.libraries = libs.with_applied_remappings(tmp.paths());
+
+    let compiled = tmp.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+
+    assert!(compiled.find("MyLib").is_some());
+    let contract = compiled.find("LinkTest").unwrap();
+    let bytecode = &contract.bytecode.as_ref().unwrap().object;
+    assert!(!bytecode.is_unlinked());
+}
 #[test]
 fn can_recompile_with_changes() {
     let mut tmp = TempProject::dapptools().unwrap();
