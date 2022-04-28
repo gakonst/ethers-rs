@@ -67,8 +67,9 @@ impl SolData {
                             let sol_import = SolImport::new(PathBuf::from(import.string))
                                 .set_aliases(
                                     ids.into_iter()
-                                        .filter_map(|(id, alias)| {
-                                            alias.map(|a| SolImportAlias::Contract(a.name, id.name))
+                                        .map(|(id, alias)| match alias {
+                                            Some(al) => SolImportAlias::Contract(al.name, id.name),
+                                            None => SolImportAlias::File(id.name),
                                         })
                                         .collect(),
                                 );

@@ -8,6 +8,7 @@ use crate::{
 };
 
 use crate::artifacts::output_selection::ContractOutputSelection;
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeSet, HashSet},
