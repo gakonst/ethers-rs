@@ -421,14 +421,17 @@ impl Libraries {
             let file = items.next().ok_or_else(|| {
                 SolcError::msg(format!("failed to parse path to library file: {}", lib))
             })?;
-            let lib = items.next().ok_or_else(|| {
-                SolcError::msg(format!("failed to parse library name: {}", lib))
-            })?;
+            let lib = items
+                .next()
+                .ok_or_else(|| SolcError::msg(format!("failed to parse library name: {}", lib)))?;
             let addr = items.next().ok_or_else(|| {
                 SolcError::msg(format!("failed to parse library address: {}", lib))
             })?;
             if items.next().is_some() {
-                return Err(SolcError::msg(format!("failed to parse, too many arguments passed: {}", lib)))
+                return Err(SolcError::msg(format!(
+                    "failed to parse, too many arguments passed: {}",
+                    lib
+                )))
             }
             libraries
                 .entry(file.into())
