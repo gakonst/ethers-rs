@@ -428,7 +428,7 @@ impl Libraries {
                 SolcError::msg(format!("failed to parse invalid library: {}", lib))
             })?;
             if items.next().is_some() {
-                return Err(SolcError::msg(format!("failed to parse invalid library: {}", lib)))
+                return Err(SolcError::msg(format!("failed to parse, too many arguments passed: {}", lib)))
             }
             libraries
                 .entry(file.into())
