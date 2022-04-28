@@ -704,6 +704,18 @@ mod tests {
         assert!(!bytecode.is_unlinked());
     }
 
+    #[test]
+    fn can_compile_with_remapped_links_temp_dir() {
+        let input: CompilerInput =
+            serde_json::from_str(include_str!("../../test-data/library-remapping-in-2.json"))
+                .unwrap();
+        let out = solc().compile(&input).unwrap();
+        let (_, mut contracts) = out.split();
+        let contract = contracts.remove("LinkTest").unwrap();
+        let bytecode = &contract.get_bytecode().unwrap().object;
+        assert!(!bytecode.is_unlinked());
+    }
+
     #[cfg(feature = "async")]
     #[tokio::test]
     async fn async_solc_compile_works() {
