@@ -11,7 +11,9 @@ use std::{
     str::FromStr,
 };
 
-use crate::{compile::*, error::SolcIoError, remappings::Remapping, utils, SolcError};
+use crate::{
+    compile::*, error::SolcIoError, remappings::Remapping, utils, ProjectPathsConfig, SolcError,
+};
 
 use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 
@@ -393,7 +395,7 @@ impl Default for Settings {
 #[serde(transparent)]
 pub struct Libraries {
     /// All libraries, `(file path -> (Lib name -> Address))
-    pub libs: BTreeMap<String, BTreeMap<String, String>>,
+    pub libs: BTreeMap<PathBuf, BTreeMap<String, String>>,
 }
 
 // === impl Libraries ===
@@ -428,7 +430,7 @@ impl Libraries {
                 return Err(SolcError::msg(format!("failed to parse invalid library: {}", lib)))
             }
             libraries
-                .entry(file.to_string())
+                .entry(file.into())
                 .or_insert_with(BTreeMap::default)
                 .insert(lib.to_string(), addr.to_string());
         }
@@ -441,6 +443,21 @@ impl Libraries {
 
     pub fn len(&self) -> usize {
         self.libs.len()
+    }
+
+    /// Solc expects the lib paths to match the global path after remappings were applied
+    ///
+    /// See also [ProjectPathsConfig::resolve_import]
+    pub fn with_applied_remappings(mut self, cwd: &Path, config: &ProjectPathsConfig) -> Self {
+        self.libs = self
+            .libs
+            .into_iter()
+            .map(|(file, target)| {
+                let file = config.resolve_import(cwd, &file).unwrap_or(file);
+                (file, target)
+            })
+            .collect();
+        self
     }
 }
 
@@ -1704,7 +1721,7 @@ mod tests {
         assert_eq!(
             libs,
             BTreeMap::from([(
-                "./src/lib/LibraryContract.sol".to_string(),
+                PathBuf::from("./src/lib/LibraryContract.sol"),
                 BTreeMap::from([("Library".to_string(), "0xaddress".to_string())])
             )])
         );
@@ -1726,7 +1743,7 @@ mod tests {
             libs,
             BTreeMap::from([
                 (
-                    "./src/SizeAuctionDiscount.sol".to_string(),
+                    PathBuf::from("./src/SizeAuctionDiscount.sol"),
                     BTreeMap::from([
                         (
                             "Chainlink".to_string(),
@@ -1739,7 +1756,7 @@ mod tests {
                     ])
                 ),
                 (
-                    "./src/SizeAuction.sol".to_string(),
+                    PathBuf::from("./src/SizeAuction.sol"),
                     BTreeMap::from([
                         (
                             "ChainlinkTWAP".to_string(),
@@ -1752,7 +1769,7 @@ mod tests {
                     ])
                 ),
                 (
-                    "./src/test/ChainlinkTWAP.t.sol".to_string(),
+                    PathBuf::from("./src/test/ChainlinkTWAP.t.sol"),
                     BTreeMap::from([(
                         "ChainlinkTWAP".to_string(),
                         "0xffedba5e171c4f15abaaabc86e8bd01f9b54dae5".to_string()
