@@ -267,9 +267,9 @@ impl ClientBuilder {
     ///
     /// # Errors
     ///
-    /// Fails if the `etherscan_api_url` is not a valid `Url`
-    pub fn with_url(mut self, etherscan_api_url: impl IntoUrl) -> Result<Self> {
-        self.etherscan_api_url = Some(etherscan_api_url.into_url()?);
+    /// Fails if the `etherscan_url` is not a valid `Url`
+    pub fn with_url(mut self, etherscan_url: impl IntoUrl) -> Result<Self> {
+        self.etherscan_url = Some(etherscan_url.into_url()?);
         Ok(self)
     }
 
