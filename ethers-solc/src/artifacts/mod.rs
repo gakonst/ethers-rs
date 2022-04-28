@@ -419,7 +419,7 @@ impl Libraries {
         for lib in libs {
             let mut items = lib.split(':');
             let file = items.next().ok_or_else(|| {
-                SolcError::msg(format!("failed to parse invalid library: {}", lib))
+                SolcError::msg(format!("failed to parse path to library file: {}", lib))
             })?;
             let lib = items.next().ok_or_else(|| {
                 SolcError::msg(format!("failed to parse invalid library: {}", lib))
