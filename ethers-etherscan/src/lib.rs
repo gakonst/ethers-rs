@@ -8,7 +8,7 @@ use std::{
 };
 
 use contract::ContractMetadata;
-use reqwest::{header, Url};
+use reqwest::{header, IntoUrl, Url};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use tracing::trace;
 
@@ -42,82 +42,22 @@ pub struct Client {
     cache: Option<Cache>,
 }
 
-/// A wrapper around an Etherscan cache object with an expiry
-#[derive(Clone, Debug, Deserialize, Serialize)]
-struct CacheEnvelope<T> {
-    expiry: u64,
-    data: T,
-}
-
-/// Simple cache for etherscan requests
-#[derive(Clone, Debug)]
-struct Cache {
-    root: PathBuf,
-    ttl: Duration,
-}
-
-impl Cache {
-    fn new(root: PathBuf, ttl: Duration) -> Self {
-        Self { root, ttl }
-    }
-
-    fn get_abi(&self, address: Address) -> Option<Option<ethers_core::abi::Abi>> {
-        self.get("abi", address)
-    }
-
-    fn set_abi(&self, address: Address, abi: Option<&Abi>) {
-        self.set("abi", address, abi)
-    }
-
-    fn get_source(&self, address: Address) -> Option<Option<ContractMetadata>> {
-        self.get("sources", address)
-    }
-
-    fn set_source(&self, address: Address, source: Option<&ContractMetadata>) {
-        self.set("sources", address, source)
-    }
-
-    fn set<T: Serialize>(&self, prefix: &str, address: Address, item: T) {
-        let path = self.root.join(prefix).join(format!("{:?}.json", address));
-        let writer = std::fs::File::create(path).ok().map(std::io::BufWriter::new);
-        if let Some(mut writer) = writer {
-            let _ = serde_json::to_writer(
-                &mut writer,
-                &CacheEnvelope {
-                    expiry: SystemTime::now()
-                        .checked_add(self.ttl)
-                        .expect("cache ttl overflowed")
-                        .duration_since(UNIX_EPOCH)
-                        .expect("system time is before unix epoch")
-                        .as_secs(),
-                    data: item,
-                },
-            );
-            let _ = writer.flush();
-        }
-    }
-
-    fn get<T: DeserializeOwned>(&self, prefix: &str, address: Address) -> Option<T> {
-        let path = self.root.join(prefix).join(format!("{:?}.json", address));
-        let reader = std::io::BufReader::new(std::fs::File::open(path).ok()?);
-        if let Ok(inner) = serde_json::from_reader::<_, CacheEnvelope<T>>(reader) {
-            // If this does not return None then we have passed the expiry
-            if SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .expect("system time is before unix epoch")
-                .checked_sub(Duration::from_secs(inner.expiry))
-                .is_some()
-            {
-                return None
-            }
-
-            return Some(inner.data)
-        }
-        None
-    }
-}
-
 impl Client {
+    /// Creates a `ClientBuilder` to configure a `Client`.
+    /// This is the same as `ClientBuilder::default()`.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use ethers_core::types::Chain;
+    /// use ethers_etherscan::Client;
+    /// let client = Client::builder().with_api_key("<API KEY>").chain(Chain::Mainnet).unwrap().build().unwrap();
+    /// ```
+    pub fn builder() -> ClientBuilder {
+        ClientBuilder::default()
+    }
+
+    /// Creates a new instance that caches etherscan requests
     pub fn new_cached(
         chain: Chain,
         api_key: impl Into<String>,
@@ -131,76 +71,7 @@ impl Client {
 
     /// Create a new client with the correct endpoints based on the chain and provided API key
     pub fn new(chain: Chain, api_key: impl Into<String>) -> Result<Self> {
-        let (etherscan_api_url, etherscan_url) = match chain {
-            Chain::Mainnet => {
-                (Url::parse("https://api.etherscan.io/api"), Url::parse("https://etherscan.io"))
-            }
-            Chain::Ropsten | Chain::Kovan | Chain::Rinkeby | Chain::Goerli => {
-                let chain_name = chain.to_string().to_lowercase();
-
-                (
-                    Url::parse(&format!("https://api-{}.etherscan.io/api", chain_name)),
-                    Url::parse(&format!("https://{}.etherscan.io", chain_name)),
-                )
-            }
-            Chain::Polygon => (
-                Url::parse("https://api.polygonscan.com/api"),
-                Url::parse("https://polygonscan.com"),
-            ),
-            Chain::PolygonMumbai => (
-                Url::parse("https://api-testnet.polygonscan.com/api"),
-                Url::parse("https://mumbai.polygonscan.com"),
-            ),
-            Chain::Avalanche => {
-                (Url::parse("https://api.snowtrace.io/api"), Url::parse("https://snowtrace.io"))
-            }
-            Chain::AvalancheFuji => (
-                Url::parse("https://api-testnet.snowtrace.io/api"),
-                Url::parse("https://testnet.snowtrace.io"),
-            ),
-            Chain::Optimism => (
-                Url::parse("https://api-optimistic.etherscan.io/api"),
-                Url::parse("https://optimistic.etherscan.io"),
-            ),
-            Chain::OptimismKovan => (
-                Url::parse("https://api-kovan-optimistic.etherscan.io/api"),
-                Url::parse("https://kovan-optimistic.etherscan.io"),
-            ),
-            Chain::Fantom => {
-                (Url::parse("https://api.ftmscan.com/api"), Url::parse("https://ftmscan.com"))
-            }
-            Chain::FantomTestnet => (
-                Url::parse("https://api-testnet.ftmscan.com/api"),
-                Url::parse("https://testnet.ftmscan.com"),
-            ),
-            Chain::BinanceSmartChain => {
-                (Url::parse("https://api.bscscan.com/api"), Url::parse("https://bscscan.com"))
-            }
-            Chain::BinanceSmartChainTestnet => (
-                Url::parse("https://api-testnet.bscscan.com/api"),
-                Url::parse("https://testnet.bscscan.com"),
-            ),
-            Chain::Arbitrum => {
-                (Url::parse("https://api.arbiscan.io/api"), Url::parse("https://arbiscan.io"))
-            }
-            Chain::ArbitrumTestnet => (
-                Url::parse("https://api-testnet.arbiscan.io/api"),
-                Url::parse("https://testnet.arbiscan.io"),
-            ),
-            Chain::Cronos => {
-                (Url::parse("https://api.cronoscan.com/api"), Url::parse("https://cronoscan.com"))
-            }
-            Chain::Dev => return Err(EtherscanError::LocalNetworksNotSupported),
-            chain => return Err(EtherscanError::ChainNotSupported(chain)),
-        };
-
-        Ok(Self {
-            client: Default::default(),
-            api_key: api_key.into(),
-            etherscan_api_url: etherscan_api_url.expect("is valid http"),
-            etherscan_url: etherscan_url.expect("is valid http"),
-            cache: None,
-        })
+        Client::builder().with_api_key(api_key).chain(chain)?.build()
     }
 
     /// Create a new client with the correct endpoints based on the chain and API key
@@ -316,6 +187,216 @@ impl Client {
             action: Cow::Borrowed(action),
             other,
         }
+    }
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct ClientBuilder {
+    /// Client that executes HTTP requests
+    client: Option<reqwest::Client>,
+    /// Etherscan API key
+    api_key: Option<String>,
+    /// Etherscan API endpoint like <https://api(-chain).etherscan.io/api>
+    etherscan_api_url: Option<Url>,
+    /// Etherscan base endpoint like <https://etherscan.io>
+    etherscan_url: Option<Url>,
+    /// Path to where ABI files should be cached
+    cache: Option<Cache>,
+}
+
+// === impl ClientBuilder ===
+
+impl ClientBuilder {
+    /// Configures the etherscan url and api url for the given chain
+    ///
+    /// # Errors
+    ///
+    /// Fails if the chain is not supported by etherscan
+    pub fn chain(self, chain: Chain) -> Result<Self> {
+        fn urls(
+            api: impl IntoUrl,
+            url: impl IntoUrl,
+        ) -> (reqwest::Result<Url>, reqwest::Result<Url>) {
+            (api.into_url(), url.into_url())
+        }
+
+        let (etherscan_api_url, etherscan_url) = match chain {
+            Chain::Mainnet => urls("https://api.etherscan.io/api", "https://etherscan.io"),
+            Chain::Ropsten | Chain::Kovan | Chain::Rinkeby | Chain::Goerli => {
+                let chain_name = chain.to_string().to_lowercase();
+                urls(
+                    format!("https://api-{}.etherscan.io/api", chain_name),
+                    format!("https://{}.etherscan.io", chain_name),
+                )
+            }
+            Chain::Polygon => urls("https://api.polygonscan.com/api", "https://polygonscan.com"),
+            Chain::PolygonMumbai => {
+                urls("https://api-testnet.polygonscan.com/api", "https://mumbai.polygonscan.com")
+            }
+            Chain::Avalanche => urls("https://api.snowtrace.io/api", "https://snowtrace.io"),
+            Chain::AvalancheFuji => {
+                urls("https://api-testnet.snowtrace.io/api", "https://testnet.snowtrace.io")
+            }
+            Chain::Optimism => {
+                urls("https://api-optimistic.etherscan.io/api", "https://optimistic.etherscan.io")
+            }
+            Chain::OptimismKovan => urls(
+                "https://api-kovan-optimistic.etherscan.io/api",
+                "https://kovan-optimistic.etherscan.io",
+            ),
+            Chain::Fantom => urls("https://api.ftmscan.com/api", "https://ftmscan.com"),
+            Chain::FantomTestnet => {
+                urls("https://api-testnet.ftmscan.com/api", "https://testnet.ftmscan.com")
+            }
+            Chain::BinanceSmartChain => urls("https://api.bscscan.com/api", "https://bscscan.com"),
+            Chain::BinanceSmartChainTestnet => {
+                urls("https://api-testnet.bscscan.com/api", "https://testnet.bscscan.com")
+            }
+            Chain::Arbitrum => urls("https://api.arbiscan.io/api", "https://arbiscan.io"),
+            Chain::ArbitrumTestnet => {
+                urls("https://api-testnet.arbiscan.io/api", "https://testnet.arbiscan.io")
+            }
+            Chain::Cronos => urls("https://api.cronoscan.com/api", "https://cronoscan.com"),
+            Chain::Dev => return Err(EtherscanError::LocalNetworksNotSupported),
+            chain => return Err(EtherscanError::ChainNotSupported(chain)),
+        };
+        self.with_api_url(etherscan_api_url?)?.with_url(etherscan_url?)
+    }
+
+    /// Configures the etherscan url
+    ///
+    /// # Errors
+    ///
+    /// Fails if the `etherscan_url` is not a valid `Url`
+    pub fn with_url(mut self, etherscan_url: impl IntoUrl) -> Result<Self> {
+        self.etherscan_url = Some(etherscan_url.into_url()?);
+        Ok(self)
+    }
+
+    /// Configures the `reqwest::Client`
+    pub fn with_client(mut self, client: reqwest::Client) -> Self {
+        self.client = Some(client);
+        self
+    }
+
+    /// Configures the etherscan api url
+    ///
+    /// # Errors
+    ///
+    /// Fails if the `etherscan_api_url` is not a valid `Url`
+    pub fn with_api_url(mut self, etherscan_api_url: impl IntoUrl) -> Result<Self> {
+        self.etherscan_api_url = Some(etherscan_api_url.into_url()?);
+        Ok(self)
+    }
+
+    /// Configures the etherscan api key
+    pub fn with_api_key(mut self, api_key: impl Into<String>) -> Self {
+        self.api_key = Some(api_key.into());
+        self
+    }
+
+    /// Configures cache for etherscan request
+    pub fn with_cache(mut self, cache_root: Option<PathBuf>, cache_ttl: Duration) -> Self {
+        self.cache = cache_root.map(|root| Cache::new(root, cache_ttl));
+        self
+    }
+
+    /// Returns a Client that uses this ClientBuilder configuration.
+    ///
+    /// # Errors
+    /// if required fields are missing:
+    ///   - `api_key`
+    ///   - `etherscan_api_url`
+    ///   - `etherscan_url`
+    pub fn build(self) -> Result<Client> {
+        let ClientBuilder { client, api_key, etherscan_api_url, etherscan_url, cache } = self;
+
+        let client = Client {
+            client: client.unwrap_or_default(),
+            api_key: api_key
+                .ok_or_else(|| EtherscanError::Builder("etherscan api key".to_string()))?,
+            etherscan_api_url: etherscan_api_url
+                .ok_or_else(|| EtherscanError::Builder("etherscan api url".to_string()))?,
+            etherscan_url: etherscan_url
+                .ok_or_else(|| EtherscanError::Builder("etherscan url".to_string()))?,
+            cache,
+        };
+        Ok(client)
+    }
+}
+
+/// A wrapper around an Etherscan cache object with an expiry
+#[derive(Clone, Debug, Deserialize, Serialize)]
+struct CacheEnvelope<T> {
+    expiry: u64,
+    data: T,
+}
+
+/// Simple cache for etherscan requests
+#[derive(Clone, Debug)]
+struct Cache {
+    root: PathBuf,
+    ttl: Duration,
+}
+
+impl Cache {
+    fn new(root: PathBuf, ttl: Duration) -> Self {
+        Self { root, ttl }
+    }
+
+    fn get_abi(&self, address: Address) -> Option<Option<ethers_core::abi::Abi>> {
+        self.get("abi", address)
+    }
+
+    fn set_abi(&self, address: Address, abi: Option<&Abi>) {
+        self.set("abi", address, abi)
+    }
+
+    fn get_source(&self, address: Address) -> Option<Option<ContractMetadata>> {
+        self.get("sources", address)
+    }
+
+    fn set_source(&self, address: Address, source: Option<&ContractMetadata>) {
+        self.set("sources", address, source)
+    }
+
+    fn set<T: Serialize>(&self, prefix: &str, address: Address, item: T) {
+        let path = self.root.join(prefix).join(format!("{:?}.json", address));
+        let writer = std::fs::File::create(path).ok().map(std::io::BufWriter::new);
+        if let Some(mut writer) = writer {
+            let _ = serde_json::to_writer(
+                &mut writer,
+                &CacheEnvelope {
+                    expiry: SystemTime::now()
+                        .checked_add(self.ttl)
+                        .expect("cache ttl overflowed")
+                        .duration_since(UNIX_EPOCH)
+                        .expect("system time is before unix epoch")
+                        .as_secs(),
+                    data: item,
+                },
+            );
+            let _ = writer.flush();
+        }
+    }
+
+    fn get<T: DeserializeOwned>(&self, prefix: &str, address: Address) -> Option<T> {
+        let path = self.root.join(prefix).join(format!("{:?}.json", address));
+        let reader = std::io::BufReader::new(std::fs::File::open(path).ok()?);
+        if let Ok(inner) = serde_json::from_reader::<_, CacheEnvelope<T>>(reader) {
+            // If this does not return None then we have passed the expiry
+            if SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("system time is before unix epoch")
+                .checked_sub(Duration::from_secs(inner.expiry))
+                .is_some()
+            {
+                return None
+            }
+
+            return Some(inner.data)
+        }
+        None
     }
 }
 
