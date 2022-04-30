@@ -18,6 +18,8 @@ pub struct Ast {
     pub src: SourceLocation,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub nodes: Vec<Node>,
+
+    /// Node attributes that were not deserialized.
     #[serde(flatten)]
     pub other: BTreeMap<String, serde_json::Value>,
 }
@@ -31,6 +33,8 @@ pub struct Node {
     pub src: SourceLocation,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub nodes: Vec<Node>,
+
+    /// Node attributes that were not deserialized.
     #[serde(flatten)]
     pub other: BTreeMap<String, serde_json::Value>,
 }
@@ -175,6 +179,8 @@ pub enum NodeType {
     ParameterList,
     TryCatchClause,
     ModifierInvocation,
+
+    /// An unknown AST node type.
     Other(String),
 }
 
