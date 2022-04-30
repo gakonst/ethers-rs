@@ -1,6 +1,6 @@
 // Adapted from https://github.com/tomusdrw/rust-web3/blob/master/src/types/log.rs
 use crate::{
-    types::{Address, BlockNumber, Bytes, H256, U256, U64},
+    types::{Address, BlockNumber, Bytes, H160, H256, U256, U64},
     utils::keccak256,
 };
 use serde::{
@@ -359,6 +359,12 @@ pub enum ValueOrArray<T> {
 }
 
 // TODO: Implement more common types - or adjust this to work with all Tokenizable items
+
+impl From<H160> for ValueOrArray<H160> {
+    fn from(src: H160) -> Self {
+        ValueOrArray::Value(src)
+    }
+}
 
 impl From<H256> for ValueOrArray<H256> {
     fn from(src: H256) -> Self {
