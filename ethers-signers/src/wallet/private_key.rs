@@ -219,6 +219,39 @@ mod tests {
         assert!(sig.verify(sighash, wallet.address).is_ok());
     }
 
+    #[tokio::test]
+    #[cfg(not(feature = "celo"))]
+    async fn signs_tx_empty_chain_id() {
+        use crate::TypedTransaction;
+        use ethers_core::types::TransactionRequest;
+        // retrieved test vector from:
+        // https://web3js.readthedocs.io/en/v1.2.0/web3-eth-accounts.html#eth-accounts-signtransaction
+        let tx: TypedTransaction = TransactionRequest {
+            from: None,
+            to: Some("F0109fC8DF283027b6285cc889F5aA624EaC1F55".parse::<Address>().unwrap().into()),
+            value: Some(1_000_000_000.into()),
+            gas: Some(2_000_000.into()),
+            nonce: Some(0.into()),
+            gas_price: Some(21_000_000_000u128.into()),
+            data: None,
+            chain_id: None,
+        }
+        .into();
+        let wallet: Wallet<SigningKey> =
+            "4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318".parse().unwrap();
+        let wallet = wallet.with_chain_id(1u64);
+
+        // this should populate the tx chain_id as the signer's chain_id (1) before signing
+        let sig = wallet.sign_transaction(&tx).await.unwrap();
+
+        // since we initialize with None we need to re-set the chain_id for the sighash to be
+        // correct
+        let mut tx = tx;
+        tx.set_chain_id(1);
+        let sighash = tx.sighash();
+        assert!(sig.verify(sighash, wallet.address).is_ok());
+    }
+
     #[test]
     fn key_to_address() {
         let wallet: Wallet<SigningKey> =
