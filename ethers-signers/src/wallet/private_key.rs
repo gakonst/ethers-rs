@@ -46,8 +46,6 @@ pub enum WalletError {
     /// Error type from Eip712Error message
     #[error("error encoding eip712 struct: {0:?}")]
     Eip712Error(String),
-    #[error("invalid transaction: {0:?}")]
-    InvalidTransactionError(String),
 }
 
 impl Clone for Wallet<SigningKey> {
