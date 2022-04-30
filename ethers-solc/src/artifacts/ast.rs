@@ -35,7 +35,7 @@ pub struct Node {
     pub other: BTreeMap<String, serde_json::Value>,
 }
 
-/// Represents the source location of a node : `<start>:<length>:<index>`
+/// Represents the source location of a node: `<start byte>:<length>:<source index>`.
 ///
 /// The `length` and `index` can be -1 which is represented as `None`
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -97,18 +97,84 @@ impl fmt::Display for SourceLocation {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum NodeType {
+    // Expressions
+    Assignment,
+    BinaryOperation,
+    Conditional,
+    ElementaryTypeNameExpression,
+    FunctionCall,
+    FunctionCallOptions,
+    Identifier,
+    IndexAccess,
+    IndexRangeAccess,
+    Literal,
+    MemberAccess,
+    NewExpression,
+    TupleExpression,
+    UnaryOperation,
+
+    // Statements
+    Block,
+    Break,
+    Continue,
+    DoWhileStatement,
+    EmitStatement,
+    ExpressionStatement,
+    ForStatement,
+    IfStatement,
+    InlineAssembly,
+    PlaceholderStatement,
+    Return,
+    RevertStatement,
+    TryStatement,
+    UncheckedBlock,
+    VariableDeclarationStatement,
+    VariableDeclaration,
+    WhileStatement,
+
+    // Yul statements
     YulAssignment,
     YulBlock,
+    YulBreak,
+    YulContinue,
     YulExpressionStatement,
+    YulLeave,
     YulForLoop,
-    YulIf,
-    YulVariableDeclaration,
     YulFunctionDefinition,
-    SourceUnit,
-    PragmaDirective,
+    YulIf,
+    YulSwitch,
+    YulVariableDeclaration,
+
+    // Yul expressions
+    YulFunctionCall,
+    YulIdentifier,
+    YulLiteral,
+
+    // Yul literals
+    YulLiteralValue,
+    YulHexValue,
+
+    // Definitions
     ContractDefinition,
     EventDefinition,
     ErrorDefinition,
+    ModifierDefinition,
+    StructDefinition,
+    UserDefinedValueTypeDefinition,
+
+    // Directives
+    PragmaDirective,
+    ImportDirective,
+    UsingForDirective,
+
+    // Misc
+    SourceUnit,
+    InheritanceSpecifier,
+    ElementaryTypeName,
+    FunctionTypeName,
+    ParameterList,
+    TryCatchClause,
+    ModifierInvocation,
     Other(String),
 }
 
@@ -118,106 +184,7 @@ mod tests {
 
     #[test]
     fn can_parse_ast() {
-        let ast = r#"
-        {
-  "absolutePath": "input.sol",
-  "exportedSymbols":
-  {
-    "Ballot":
-    [
-      2
-    ],
-    "Ballot2":
-    [
-      3
-    ],
-    "Ballot3":
-    [
-      4
-    ]
-  },
-  "id": 5,
-  "nodeType": "SourceUnit",
-  "nodes":
-  [
-    {
-      "id": 1,
-      "literals":
-      [
-        "solidity",
-        ">=",
-        "0.4",
-        ".0"
-      ],
-      "nodeType": "PragmaDirective",
-      "src": "1:24:0"
-    },
-    {
-      "abstract": false,
-      "baseContracts": [],
-      "canonicalName": "Ballot",
-      "contractDependencies": [],
-      "contractKind": "contract",
-      "fullyImplemented": true,
-      "id": 2,
-      "linearizedBaseContracts":
-      [
-        2
-      ],
-      "name": "Ballot",
-      "nameLocation": "36:6:0",
-      "nodeType": "ContractDefinition",
-      "nodes": [],
-      "scope": 5,
-      "src": "27:20:0",
-      "usedErrors": []
-    },
-    {
-      "abstract": false,
-      "baseContracts": [],
-      "canonicalName": "Ballot2",
-      "contractDependencies": [],
-      "contractKind": "contract",
-      "fullyImplemented": true,
-      "id": 3,
-      "linearizedBaseContracts":
-      [
-        3
-      ],
-      "name": "Ballot2",
-      "nameLocation": "58:7:0",
-      "nodeType": "ContractDefinition",
-      "nodes": [],
-      "scope": 5,
-      "src": "49:21:0",
-      "usedErrors": []
-    },
-    {
-      "abstract": false,
-      "baseContracts": [],
-      "canonicalName": "Ballot3",
-      "contractDependencies": [],
-      "contractKind": "contract",
-      "fullyImplemented": true,
-      "id": 4,
-      "linearizedBaseContracts":
-      [
-        4
-      ],
-      "name": "Ballot3",
-      "nameLocation": "81:7:0",
-      "nodeType": "ContractDefinition",
-      "nodes": [],
-      "scope": 5,
-      "src": "72:21:0",
-      "usedErrors": []
-    }
-  ],
-  "src": "1:92:0"
-}
-        "#;
+        let ast = include_str!("../../test-data/ast/ast-erc4626.json");
         let _ast: Ast = serde_json::from_str(ast).unwrap();
-
-        dbg!(serde_json::from_str::<serde_json::Value>("{}").unwrap());
     }
 }
