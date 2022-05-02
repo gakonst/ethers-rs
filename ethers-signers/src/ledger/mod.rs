@@ -30,7 +30,7 @@ impl Signer for LedgerEthereum {
             // in the case we don't have a chain_id, let's use the signer chain id instead
             tx_with_chain.set_chain_id(self.chain_id);
         }
-        self.sign_tx(tx_with_chain).await
+        self.sign_tx(&tx_with_chain).await
     }
 
     /// Signs a EIP712 derived struct
