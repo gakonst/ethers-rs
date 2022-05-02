@@ -119,16 +119,15 @@ impl LedgerEthereum {
     pub async fn sign_tx(&self, tx: &TypedTransaction) -> Result<Signature, LedgerError> {
         let mut payload = Self::path_to_bytes(&self.derivation);
         payload.extend_from_slice(tx.rlp().as_ref());
-        
+
         let mut signature = self.sign_payload(INS::SIGN, payload).await?;
 
         // modify `v` value of signature to match EIP-155 for chains with large chain ID
         // The logic is derived from Ledger's library
-        // https://github.com/LedgerHQ/ledgerjs/blob/e78aac4327e78301b82ba58d63a72476ecb842fc/packages/hw-app-eth/src/Eth.ts#L300 
+        // https://github.com/LedgerHQ/ledgerjs/blob/e78aac4327e78301b82ba58d63a72476ecb842fc/packages/hw-app-eth/src/Eth.ts#L300
         let eip155_chain_id = self.chain_id * 2 + 35;
         if eip155_chain_id + 1 > 255 {
             let one_byte_chain_id = eip155_chain_id % 256;
-            // May use `let ecc_parity = signature.v.abs_diff(one_byte_chain_id)` instead after updated to Rust 1.60
             let ecc_parity = if signature.v > one_byte_chain_id {
                 signature.v - one_byte_chain_id
             } else {
@@ -137,8 +136,12 @@ impl LedgerEthereum {
 
             signature.v = match tx {
                 TypedTransaction::Eip2930(_) | TypedTransaction::Eip1559(_) => {
-                    if ecc_parity % 2 == 1 { 0 } else { 1 }
-                },
+                    if ecc_parity % 2 == 1 {
+                        0
+                    } else {
+                        1
+                    }
+                }
                 TypedTransaction::Legacy(_) => eip155_chain_id + ecc_parity,
             };
         }
