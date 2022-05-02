@@ -203,15 +203,19 @@ impl<'a> AwsSigner<'a> {
     }
 
     /// Sign a digest with this signer's key and add the eip155 `v` value
-    /// corresponding to this signer's chain_id
+    /// corresponding to the input chain_id
     #[instrument(err, skip(digest), fields(digest = %hex::encode(&digest)))]
-    async fn sign_digest_with_eip155(&self, digest: H256) -> Result<EthSig, AwsSignerError> {
+    async fn sign_digest_with_eip155(
+        &self,
+        digest: H256,
+        chain_id: u64,
+    ) -> Result<EthSig, AwsSignerError> {
         let sig = self.sign_digest(digest.into()).await?;
 
         let sig = utils::rsig_from_digest_bytes_trial_recovery(&sig, digest.into(), &self.pubkey);
 
         let mut sig = rsig_to_ethsig(&sig);
-        apply_eip155(&mut sig, self.chain_id);
+        apply_eip155(&mut sig, chain_id);
         Ok(sig)
     }
 }
@@ -230,13 +234,17 @@ impl<'a> super::Signer for AwsSigner<'a> {
         trace!("{:?}", message_hash);
         trace!("{:?}", message);
 
-        self.sign_digest_with_eip155(message_hash).await
+        self.sign_digest_with_eip155(message_hash, self.chain_id).await
     }
 
     #[instrument(err)]
     async fn sign_transaction(&self, tx: &TypedTransaction) -> Result<EthSig, Self::Error> {
+        let mut tx_with_chain = tx.clone();
+        let chain_id = tx_with_chain.chain_id().map(|id| id.as_u64()).unwrap_or(self.chain_id);
+        tx_with_chain.set_chain_id(chain_id);
+
         let sighash = tx.sighash();
-        self.sign_digest_with_eip155(sighash).await
+        self.sign_digest_with_eip155(sighash, chain_id).await
     }
 
     async fn sign_typed_data<T: Eip712 + Send + Sync>(
@@ -245,7 +253,7 @@ impl<'a> super::Signer for AwsSigner<'a> {
     ) -> Result<EthSig, Self::Error> {
         let hash = payload.encode_eip712().map_err(|e| Self::Error::Eip712Error(e.to_string()))?;
 
-        let digest = self.sign_digest_with_eip155(hash.into()).await?;
+        let digest = self.sign_digest_with_eip155(hash.into(), self.chain_id).await?;
 
         Ok(digest)
     }

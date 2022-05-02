@@ -117,8 +117,13 @@ impl LedgerEthereum {
 
     /// Signs an Ethereum transaction (requires confirmation on the ledger)
     pub async fn sign_tx(&self, tx: &TypedTransaction) -> Result<Signature, LedgerError> {
+        let mut tx_with_chain = tx.clone();
+        if tx_with_chain.chain_id().is_none() {
+            // in the case we don't have a chain_id, let's use the signer chain id instead
+            tx_with_chain.set_chain_id(self.chain_id);
+        }
         let mut payload = Self::path_to_bytes(&self.derivation);
-        payload.extend_from_slice(tx.rlp().as_ref());
+        payload.extend_from_slice(tx_with_chain.rlp().as_ref());
         self.sign_payload(INS::SIGN, payload).await
     }
 

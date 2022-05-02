@@ -25,7 +25,12 @@ impl Signer for TrezorEthereum {
 
     /// Signs the transaction
     async fn sign_transaction(&self, message: &TypedTransaction) -> Result<Signature, Self::Error> {
-        self.sign_tx(message).await
+        let mut tx_with_chain = message.clone();
+        if tx_with_chain.chain_id().is_none() {
+            // in the case we don't have a chain_id, let's use the signer chain id instead
+            tx_with_chain.set_chain_id(self.chain_id);
+        }
+        self.sign_tx(&tx_with_chain).await
     }
 
     /// Signs a EIP712 derived struct
