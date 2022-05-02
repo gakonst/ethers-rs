@@ -4,7 +4,7 @@
 
 ### Unreleased
 
-- Fix RLP decoding of `from` field for `Eip1559TransactionRequest` and 
+- Fix RLP decoding of `from` field for `Eip1559TransactionRequest` and
   `Eip2930TransactionRequest`, remove `Eip1559TransactionRequest` `sighash`
   method [1180](https://github.com/gakonst/ethers-rs/pull/1180)
 - Fix RLP encoding of absent access list in `Transaction` [1137](https://github.com/gakonst/ethers-rs/pull/1137)
@@ -62,6 +62,7 @@
   [#996](https://github.com/gakonst/ethers-rs/pull/996)
 - Add `TransactionReceipt::to` and `TransactionReceipt::from`
   [#1184](https://github.com/gakonst/ethers-rs/pull/1184)
+- Add `From<H160>` and From<Vec<H160>> traits to `ValueOrArray<H160>` [#1199](https://github.com/gakonst/ethers-rs/pull/1200)
 
 ## ethers-contract-abigen
 

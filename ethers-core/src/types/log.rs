@@ -1,6 +1,6 @@
 // Adapted from https://github.com/tomusdrw/rust-web3/blob/master/src/types/log.rs
 use crate::{
-    types::{Address, BlockNumber, Bytes, H256, U256, U64},
+    types::{Address, BlockNumber, Bytes, H160, H256, U256, U64},
     utils::keccak256,
 };
 use serde::{
@@ -306,7 +306,31 @@ impl Filter {
         self.block_option = self.block_option.set_hash(hash.into());
         self
     }
-
+    /// Sets the inner filter object
+    ///
+    /// *NOTE:* ranges are always inclusive
+    ///
+    /// # Examples
+    ///
+    /// Match only a specific address `("0xAc4b3DacB91461209Ae9d41EC517c2B9Cb1B7DAF")`
+    ///
+    /// ```rust
+    /// # use ethers_core::types::{Filter, Address};
+    /// # fn main() {
+    /// let filter = Filter::new().address("0xAc4b3DacB91461209Ae9d41EC517c2B9Cb1B7DAF".parse::<Address>().unwrap());
+    /// # }
+    /// ```
+    ///
+    /// Match all addresses in array `(vec!["0xAc4b3DacB91461209Ae9d41EC517c2B9Cb1B7DAF",
+    /// "0x8ad599c3A0ff1De082011EFDDc58f1908eb6e6D8"])`
+    ///
+    /// ```rust
+    /// # use ethers_core::types::{Filter, Address, ValueOrArray};
+    /// # fn main() {
+    /// let addresses = vec!["0xAc4b3DacB91461209Ae9d41EC517c2B9Cb1B7DAF".parse::<Address>().unwrap(),"0x8ad599c3A0ff1De082011EFDDc58f1908eb6e6D8".parse::<Address>().unwrap()];
+    /// let filter = Filter::new().address(addresses);
+    /// # }
+    /// ```
     #[must_use]
     pub fn address<T: Into<ValueOrArray<Address>>>(mut self, address: T) -> Self {
         self.address = Some(address.into());
@@ -359,6 +383,18 @@ pub enum ValueOrArray<T> {
 }
 
 // TODO: Implement more common types - or adjust this to work with all Tokenizable items
+
+impl From<H160> for ValueOrArray<H160> {
+    fn from(src: H160) -> Self {
+        ValueOrArray::Value(src)
+    }
+}
+
+impl From<Vec<H160>> for ValueOrArray<H160> {
+    fn from(src: Vec<H160>) -> Self {
+        ValueOrArray::Array(src)
+    }
+}
 
 impl From<H256> for ValueOrArray<H256> {
     fn from(src: H256) -> Self {
