@@ -26,7 +26,7 @@ impl Signer for TrezorEthereum {
     /// Signs the transaction
     async fn sign_transaction(&self, message: &TypedTransaction) -> Result<Signature, Self::Error> {
         let mut tx_with_chain = message.clone();
-        if tx_with_chain.chain_id() == None {
+        if tx_with_chain.chain_id().is_none() {
             // in the case we don't have a chain_id, let's use the signer chain id instead
             tx_with_chain.set_chain_id(self.chain_id);
         }

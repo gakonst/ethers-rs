@@ -118,7 +118,7 @@ impl LedgerEthereum {
     /// Signs an Ethereum transaction (requires confirmation on the ledger)
     pub async fn sign_tx(&self, tx: &TypedTransaction) -> Result<Signature, LedgerError> {
         let mut tx_with_chain = tx.clone();
-        if tx_with_chain.chain_id() == None {
+        if tx_with_chain.chain_id().is_none() {
             // in the case we don't have a chain_id, let's use the signer chain id instead
             tx_with_chain.set_chain_id(self.chain_id);
         }
