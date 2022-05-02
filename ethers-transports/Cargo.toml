@@ -1,0 +1,38 @@
+[package]
+name = "ethers-transports"
+license = "MIT OR Apache-2.0"
+version = "0.6.0"
+authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
+description = "Transport & JSONRPC API implementations for the ethers-rs crate"
+homepage = "https://docs.rs/ethers"
+repository = "https://github.com/gakonst/ethers-rs"
+keywords = ["ethereum", "web3", "celo", "ethers"]
+edition = "2021"
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[features]
+default = ["http", "ws", "rustls"]
+http = ["url"]
+ws = ["url"]
+ipc = []
+
+openssl = []
+# we use the webpki roots so we can build static binaries
+# w/o any root cert dependencies on the host
+rustls = []
+dev-rpc = []
+
+[dependencies]
+# external
+serde = { version = "1.0.124", default-features = false, features = ["derive"] }
+serde_json = { version = "1.0.64", default-features = false, features = ["raw_value"] }
+
+# external/optional
+reqwest = { version = "0.11.10", default-features = false, optional = true }
+url = { version = "2.2.2", default-features = false, optional = true }
+
+# internal
+ethers-core = { version = "^0.6.0", path = "../ethers-core", default-features = false }

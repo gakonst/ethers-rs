@@ -1418,6 +1418,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "ethers-transports"
+version = "0.6.0"
+dependencies = [
+ "ethers-core",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "url",
+]
+
+[[package]]
 name = "ethers-wasm"
 version = "0.1.0"
 dependencies = [

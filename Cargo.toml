@@ -22,6 +22,7 @@ members = [
     "ethers-middleware",
     "ethers-etherscan",
     "ethers-solc",
+    "ethers-transports",
     "examples/ethers-wasm",
 ]
 
@@ -34,6 +35,7 @@ default-members = [
     "ethers-middleware",
     "ethers-etherscan",
     "ethers-solc",
+    "ethers-transports"
 ]
 
 [package.metadata.docs.rs]
