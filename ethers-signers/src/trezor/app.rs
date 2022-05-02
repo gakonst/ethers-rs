@@ -160,6 +160,8 @@ impl TrezorEthereum {
 
         let transaction = TrezorTransaction::load(tx)?;
 
+        let chain_id = tx.chain_id().map(|id| id.as_u64()).unwrap_or(self.chain_id);
+
         let signature = match tx {
             TypedTransaction::Eip2930(_) | TypedTransaction::Legacy(_) => client.ethereum_sign_tx(
                 arr_path,
@@ -169,7 +171,7 @@ impl TrezorEthereum {
                 transaction.to,
                 transaction.value,
                 transaction.data,
-                self.chain_id,
+                chain_id,
             )?,
             TypedTransaction::Eip1559(eip1559_tx) => client.ethereum_sign_eip1559_tx(
                 arr_path,
@@ -178,7 +180,7 @@ impl TrezorEthereum {
                 transaction.to,
                 transaction.value,
                 transaction.data,
-                self.chain_id,
+                chain_id,
                 transaction.max_fee_per_gas,
                 transaction.max_priority_fee_per_gas,
                 transaction.access_list,
