@@ -3,7 +3,7 @@ pub mod artifacts;
 pub mod sourcemap;
 
 pub use artifacts::{CompilerInput, CompilerOutput, EvmVersion};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 
 mod artifact_output;
 pub mod cache;
@@ -440,11 +440,17 @@ impl<T: ArtifactOutput> Project<T> {
         let target_index = graph.files().get(target).ok_or_else(|| {
             SolcError::msg(format!("cannot resolve file at {:?}", target.display()))
         })?;
+
         let mut sources = Vec::new();
+        let mut unique_paths = HashSet::new();
         let (path, source) = graph.node(*target_index).unpack();
+        unique_paths.insert(path.clone());
         sources.push((path, source));
         sources.extend(
-            graph.all_imported_nodes(*target_index).map(|index| graph.node(index).unpack()),
+            graph
+                .all_imported_nodes(*target_index)
+                .map(|index| graph.node(index).unpack())
+                .filter(|(p, _)| unique_paths.insert(p.to_path_buf())),
         );
 
         let root = self.root();
