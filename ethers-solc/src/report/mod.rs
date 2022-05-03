@@ -93,7 +93,7 @@ where
 /// print custom messages to `stdout`.
 ///
 /// A `Reporter` is entirely passive and only listens to incoming "events".
-pub trait Reporter: 'static {
+pub trait Reporter: 'static + std::fmt::Debug {
     /// Callback invoked right before [`Solc::compile()`] is called
     ///
     /// This contains the [Solc] its [Version] the complete [CompilerInput] and all files that
@@ -453,6 +453,7 @@ mod tests {
 
     #[test]
     fn scoped_reporter_works() {
+        #[derive(Debug)]
         struct TestReporter;
         impl Reporter for TestReporter {}
 
@@ -468,6 +469,7 @@ mod tests {
         });
 
         set_global_reporter(Report::new(BasicStdoutReporter::default())).unwrap();
+        #[derive(Debug)]
         struct TestReporter;
         impl Reporter for TestReporter {}
 
