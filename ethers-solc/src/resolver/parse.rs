@@ -282,7 +282,6 @@ pub fn capture_imports(content: &str) -> Vec<SolDataUnit<SolImport>> {
             }
             let sol_import =
                 SolImport::new(PathBuf::from(name_match.as_str())).set_aliases(aliases);
-            println!("{:?}", sol_import);
             imports.push(SolDataUnit::new(sol_import, statement_match.range()));
         }
     }
