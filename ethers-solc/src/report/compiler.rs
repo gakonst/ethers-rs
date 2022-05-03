@@ -6,6 +6,7 @@
 //! separate json file
 
 use crate::{CompilerInput, CompilerOutput};
+use semver::Version;
 use std::{env, path::PathBuf, str::FromStr};
 
 /// Debug Helper type that can be used to write the [crate::Solc] [CompilerInput] and
@@ -14,7 +15,8 @@ use std::{env, path::PathBuf, str::FromStr};
 /// # Example
 ///
 /// If `ETHERS_SOLC_LOG=in=in.json,out=out.json` is then the reporter will be configured to write
-/// the compiler input as pretty formatted json to `in.json` and the compiler output to `out.json`
+/// the compiler input as pretty formatted json to `in.{solc version}.json` and the compiler output
+/// to `out.{solc version}.json`
 ///
 /// ```no_run
 /// use ethers_solc::report::SolcCompilerIoReporter;
@@ -53,16 +55,16 @@ impl SolcCompilerIoReporter {
     }
 
     /// Callback to write the input to disk if target is set
-    pub fn log_compiler_input(&self, input: &CompilerInput) {
+    pub fn log_compiler_input(&self, input: &CompilerInput, version: &Version) {
         if let Some(ref target) = self.target {
-            target.write_input(input)
+            target.write_input(input, version)
         }
     }
 
     /// Callback to write the input to disk if target is set
-    pub fn log_compiler_output(&self, output: &CompilerOutput) {
+    pub fn log_compiler_output(&self, output: &CompilerOutput, version: &Version) {
         if let Some(ref target) = self.target {
-            target.write_output(output)
+            target.write_output(output, version)
         }
     }
 }
@@ -86,11 +88,11 @@ struct Target {
 }
 
 impl Target {
-    fn write_input(&self, input: &CompilerInput) {
+    fn write_input(&self, input: &CompilerInput, version: &Version) {
         tracing::trace!("logging compiler input to {}", self.dest_input.display());
         match serde_json::to_string_pretty(input) {
             Ok(json) => {
-                if let Err(err) = std::fs::write(&self.dest_input, json) {
+                if let Err(err) = std::fs::write(get_file_name(&self.dest_input, version), json) {
                     tracing::error!("Failed to write compiler input: {}", err)
                 }
             }
@@ -100,11 +102,11 @@ impl Target {
         }
     }
 
-    fn write_output(&self, output: &CompilerOutput) {
+    fn write_output(&self, output: &CompilerOutput, version: &Version) {
         tracing::trace!("logging compiler output to {}", self.dest_output.display());
         match serde_json::to_string_pretty(output) {
             Ok(json) => {
-                if let Err(err) = std::fs::write(&self.dest_output, json) {
+                if let Err(err) = std::fs::write(get_file_name(&self.dest_output, version), json) {
                     tracing::error!("Failed to write compiler output: {}", err)
                 }
             }
@@ -157,9 +159,29 @@ pub struct BadName {
     name: String,
 }
 
+/// Returns the file name for the given version
+fn get_file_name(path: impl Into<PathBuf>, v: &Version) -> PathBuf {
+    let mut path = path.into();
+    if let Some(stem) = path.file_stem().and_then(|s| s.to_str().map(|s| s.to_string())) {
+        path.set_file_name(format!("{}.{}.{}.{}.json", stem, v.major, v.minor, v.patch));
+    }
+    path
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn can_set_file_name() {
+        let s = "/a/b/c/in.json";
+        let p = get_file_name(s, &Version::parse("0.8.10").unwrap());
+        assert_eq!(PathBuf::from("/a/b/c/in.0.8.10.json"), p);
+
+        let s = "abc.json";
+        let p = get_file_name(s, &Version::parse("0.8.10").unwrap());
+        assert_eq!(PathBuf::from("abc.0.8.10.json"), p);
+    }
 
     #[test]
     fn can_parse_target() {
