@@ -229,8 +229,8 @@ impl<T> SolDataUnit<T> {
     }
 
     /// Returns the location of the given data unit
-    pub fn loc(&self) -> &Range<usize> {
-        &self.loc
+    pub fn loc(&self) -> Range<usize> {
+        self.loc.clone()
     }
 
     /// Returns the location of the given data unit adjusted by an offset.

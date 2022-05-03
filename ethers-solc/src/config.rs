@@ -290,7 +290,7 @@ impl ProjectPathsConfig {
                 SolImportAlias::Contract(alias, target) => (alias.clone(), target.clone()),
                 _ => continue,
             };
-            let name_regex = utils::create_contract_or_lib_name_regex(&alias);
+            let name_regex = utils::CREATE_RE_CONTRACT_OR_LIB_NAME(&alias);
             let target_len = target.len() as isize;
             let mut replace_offset = 0;
             for cap in name_regex.captures_iter(&content.clone()) {
