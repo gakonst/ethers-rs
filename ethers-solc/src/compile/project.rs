@@ -544,7 +544,7 @@ fn compile_parallel(
     }
 
     // need to get the currently installed reporter before installing the pool, otherwise each new
-    // thread in the pool will get initialized with the default value of the `thread_local!`
+    // thread in the pool will get initialized with the default value of the `thread_local!`'s
     // localkey. This way we keep access to the reporter in the rayon pool
     let scoped_report = report::get_default(|reporter| reporter.clone());
 
