@@ -3,13 +3,11 @@
 #![deny(rustdoc::broken_intra_doc_links)]
 #![allow(clippy::type_complexity)]
 #![doc = include_str!("../README.md")]
-mod transports;
 use futures_util::future::join_all;
-pub use transports::*;
 
 mod provider;
 
-// ENS support
+// ENS support/
 pub mod ens;
 
 mod pending_transaction;
@@ -23,7 +21,7 @@ pub use futures_util::StreamExt;
 pub use stream::{interval, FilterWatcher, TransactionStream, DEFAULT_POLL_INTERVAL};
 
 mod pubsub;
-pub use pubsub::{PubsubClient, SubscriptionStream};
+pub use pubsub::SubscriptionStream;
 
 pub mod erc;
 
@@ -34,7 +32,9 @@ use serde::{de::DeserializeOwned, Serialize};
 use std::{error::Error, fmt::Debug, future::Future, pin::Pin};
 use url::Url;
 
-pub use provider::{FilterKind, Provider, ProviderError};
+pub use provider::{FilterKind, Provider};
+
+pub use ethers_transports::*;
 
 // feature-enabled support for dev-rpc methods
 #[cfg(feature = "dev-rpc")]
@@ -49,22 +49,6 @@ pub(crate) type PinBoxFut<'a, T> = Pin<Box<dyn Future<Output = Result<T, Provide
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) type PinBoxFut<'a, T> =
     Pin<Box<dyn Future<Output = Result<T, ProviderError>> + Send + 'a>>;
-
-#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
-#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
-#[auto_impl(&, Box, Arc)]
-/// Trait which must be implemented by data transports to be used with the Ethereum
-/// JSON-RPC provider.
-pub trait JsonRpcClient: Debug + Send + Sync {
-    /// A JSON-RPC Error
-    type Error: Error + Into<ProviderError>;
-
-    /// Sends a request with the provided JSON-RPC and parameters serialized as JSON
-    async fn request<T, R>(&self, method: &str, params: T) -> Result<R, Self::Error>
-    where
-        T: Debug + Serialize + Send + Sync,
-        R: DeserializeOwned;
-}
 
 use ethers_core::types::*;
 pub trait FromErr<T> {

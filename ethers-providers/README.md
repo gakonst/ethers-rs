@@ -29,18 +29,6 @@ println!("Got code: {}", serde_json::to_string(&code)?);
 # }
 ```
 
-# Websockets
-
-The crate has support for WebSockets via Tokio. Please ensure that you have the "ws" and "rustls" / "openssl" features enabled if you wish to use WebSockets.
-
-```
-# async fn foo() -> Result<(), Box<dyn std::error::Error>> {
-# use ethers_providers::Ws;
-let ws = Ws::connect("ws://localhost:8545").await?;
-# Ok(())
-# }
-```
-
 # Ethereum Name Service
 
 The provider may also be used to resolve

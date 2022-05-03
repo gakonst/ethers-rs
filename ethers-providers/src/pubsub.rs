@@ -1,28 +1,15 @@
-use crate::{JsonRpcClient, Middleware, Provider, TransactionStream};
+use crate::{Middleware, Provider, PubsubClient, TransactionStream};
 
 use ethers_core::types::{TxHash, U256};
 
 use futures_util::stream::Stream;
 use pin_project::{pin_project, pinned_drop};
 use serde::de::DeserializeOwned;
-use serde_json::value::RawValue;
 use std::{
     marker::PhantomData,
     pin::Pin,
     task::{Context, Poll},
 };
-
-/// A transport implementation supporting pub sub subscriptions.
-pub trait PubsubClient: JsonRpcClient {
-    /// The type of stream this transport returns
-    type NotificationStream: futures_core::Stream<Item = Box<RawValue>> + Send + Unpin;
-
-    /// Add a subscription to this transport
-    fn subscribe<T: Into<U256>>(&self, id: T) -> Result<Self::NotificationStream, Self::Error>;
-
-    /// Remove a subscription from this transport
-    fn unsubscribe<T: Into<U256>>(&self, id: T) -> Result<(), Self::Error>;
-}
 
 #[must_use = "subscriptions do nothing unless you stream them"]
 #[pin_project(PinnedDrop)]

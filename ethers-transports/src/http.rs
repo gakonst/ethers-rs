@@ -1,5 +1,5 @@
 // Code adapted from: https://github.com/althea-net/guac_rs/tree/master/web3/src/jsonrpc
-use crate::{provider::ProviderError, JsonRpcClient};
+use crate::{JsonRpcClient, ProviderError};
 
 use async_trait::async_trait;
 use reqwest::{header::HeaderValue, Client, Error as ReqwestError};

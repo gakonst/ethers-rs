@@ -1,22 +1,17 @@
 [package]
-name = "ethers-providers"
+name = "ethers-transports"
 license = "MIT OR Apache-2.0"
 version = "0.6.0"
 authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
 edition = "2018"
-description = "Provider implementations for the ethers-rs crate"
+description = "RPC transport implementations for the ethers-rs crate"
 homepage = "https://docs.rs/ethers"
 repository = "https://github.com/gakonst/ethers-rs"
 keywords = ["ethereum", "web3", "celo", "ethers"]
 
-[package.metadata.docs.rs]
-all-features = true
-rustdoc-args = ["--cfg", "docsrs"]
-
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
 ethers-core = { version = "^0.6.0", path = "../ethers-core", default-features = false }
-ethers-transports = { version = "^0.6.0", path = "../ethers-transports",default-features = false }
-
 
 async-trait = { version = "0.1.50", default-features = false }
 hex = { version = "0.4.3", default-features = false, features = ["std"] }
@@ -69,8 +64,7 @@ celo = ["ethers-core/celo"]
 ws = ["tokio", "tokio-tungstenite", "futures-channel"]
 ipc = ["tokio", "tokio/io-util", "tokio-util", "bytes", "futures-channel"]
 
-openssl = ["tokio-tungstenite/native-tls", "reqwest/native-tls"]
 # we use the webpki roots so we can build static binaries w/o any root cert dependencies
 # on the host
+openssl = ["tokio-tungstenite/native-tls", "reqwest/native-tls"]
 rustls = ["tokio-tungstenite/rustls-tls-webpki-roots", "reqwest/rustls-tls"]
-dev-rpc = []

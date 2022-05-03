@@ -30,9 +30,8 @@ use tokio::{
 };
 
 use crate::{
-    provider::ProviderError,
-    transports::common::{JsonRpcError, Request, Response},
-    JsonRpcClient, PubsubClient,
+    common::{JsonRpcError, Request, Response},
+    JsonRpcClient, ProviderError, PubsubClient,
 };
 
 use super::common::Params;

@@ -1,9 +1,9 @@
 use crate::{
     ens, erc, maybe,
-    pubsub::{PubsubClient, SubscriptionStream},
+    pubsub::SubscriptionStream,
     stream::{FilterWatcher, DEFAULT_POLL_INTERVAL},
     FromErr, Http as HttpProvider, JsonRpcClient, JsonRpcClientWrapper, MockProvider,
-    PendingTransaction, QuorumProvider, RwClient, SyncingStatus,
+    PendingTransaction, ProviderError, PubsubClient, QuorumProvider, RwClient, SyncingStatus,
 };
 
 #[cfg(feature = "celo")]
@@ -24,7 +24,6 @@ use ethers_core::{
 };
 use hex::FromHex;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
-use thiserror::Error;
 use url::{ParseError, Url};
 
 use futures_util::{lock::Mutex, try_join};
@@ -99,43 +98,6 @@ impl FromErr<ProviderError> for ProviderError {
     fn from(src: ProviderError) -> Self {
         src
     }
-}
-
-#[derive(Debug, Error)]
-/// An error thrown when making a call to the provider
-pub enum ProviderError {
-    /// An internal error in the JSON RPC Client
-    #[error(transparent)]
-    JsonRpcClientError(#[from] Box<dyn std::error::Error + Send + Sync>),
-
-    /// An error during ENS name resolution
-    #[error("ens name not found: {0}")]
-    EnsError(String),
-
-    /// Invalid reverse ENS name
-    #[error("reverse ens name not pointing to itself: {0}")]
-    EnsNotOwned(String),
-
-    #[error(transparent)]
-    SerdeJson(#[from] serde_json::Error),
-
-    #[error(transparent)]
-    HexError(#[from] hex::FromHexError),
-
-    #[error(transparent)]
-    HTTPError(#[from] reqwest::Error),
-
-    #[error("custom error: {0}")]
-    CustomError(String),
-
-    #[error("unsupported RPC")]
-    UnsupportedRPC,
-
-    #[error("unsupported node client")]
-    UnsupportedNodeClient,
-
-    #[error("Attempted to sign a transaction with no available signer. Hint: did you mean to use a SignerMiddleware?")]
-    SignerUnavailable,
 }
 
 /// Types of filters supported by the JSON-RPC.

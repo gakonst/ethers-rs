@@ -1,7 +1,6 @@
 use crate::{
-    provider::ProviderError,
-    transports::common::{JsonRpcError, Request},
-    JsonRpcClient, PubsubClient,
+    common::{JsonRpcError, Request},
+    JsonRpcClient, ProviderError, PubsubClient,
 };
 use ethers_core::types::U256;
 

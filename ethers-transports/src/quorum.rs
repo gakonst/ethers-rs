@@ -6,7 +6,7 @@ use std::{
     task::{Context, Poll},
 };
 
-use crate::{provider::ProviderError, JsonRpcClient, PubsubClient};
+use crate::{JsonRpcClient, ProviderError, PubsubClient};
 use async_trait::async_trait;
 use ethers_core::types::{U256, U64};
 use futures_core::Stream;
