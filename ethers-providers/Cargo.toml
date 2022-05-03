@@ -66,11 +66,12 @@ tempfile = "3.3.0"
 [features]
 default = ["ws", "rustls"]
 celo = ["ethers-core/celo"]
-ws = ["tokio", "tokio-tungstenite", "futures-channel"]
-ipc = ["tokio", "tokio/io-util", "tokio-util", "bytes", "futures-channel"]
 
-openssl = ["tokio-tungstenite/native-tls", "reqwest/native-tls"]
+ws = ["ethers-transports/ws", "tokio-tungstenite"]
+ipc = ["ethers-transports/ipc"]
+
+openssl = ["ethers-transports/openssl"]
 # we use the webpki roots so we can build static binaries w/o any root cert dependencies
 # on the host
-rustls = ["tokio-tungstenite/rustls-tls-webpki-roots", "reqwest/rustls-tls"]
+rustls = ["ethers-transports/rustls"]
 dev-rpc = []
