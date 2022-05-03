@@ -263,14 +263,13 @@ fn capture_outer_and_inner<'a>(
         })
         .collect()
 }
-
-// TODO:
+/// Capture the import statement information together with aliases
 pub fn capture_imports(content: &str) -> Vec<SolDataUnit<SolImport>> {
     let mut imports = vec![];
-    let mut cap_names = utils::RE_SOL_IMPORT.capture_names().filter_map(|n| n);
     for cap in utils::RE_SOL_IMPORT.captures_iter(content) {
-        let name_match = cap_names.find_map(|name| cap.name(name));
-        if let Some(name_match) = name_match {
+        if let Some(name_match) =
+            vec!["p1", "p2", "p3", "p4"].iter().find_map(|name| cap.name(name))
+        {
             let statement_match = cap.get(0).unwrap();
             let mut aliases = vec![];
             for alias_cap in utils::RE_SOL_IMPORT_ALIAS.captures_iter(statement_match.as_str()) {

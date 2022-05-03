@@ -286,8 +286,8 @@ impl ProjectPathsConfig {
         let mut content = target_node.content().to_owned();
 
         for alias in imports.iter().flat_map(|i| i.data().aliases()) {
-            let (alias, target) = match alias.clone() {
-                SolImportAlias::Contract(alias, target) => (alias, target),
+            let (alias, target) = match alias {
+                SolImportAlias::Contract(alias, target) => (alias.clone(), target.clone()),
                 _ => continue,
             };
             let name_regex = utils::create_contract_or_lib_name_regex(&alias);

@@ -732,6 +732,7 @@ import { ParentContract as Parent } from "./Parent.sol";
 import { AnotherParentContract as AnotherParent } from "./AnotherParent.sol";
 import { PeerContract as Peer } from "./Peer.sol";
 import { MathLibrary as Math } from "./Math.sol";
+import * as Lib from "./SomeLib.sol";
 
 contract Contract is Parent,
     AnotherParent {
@@ -806,6 +807,15 @@ library MathLibrary {
         )
         .unwrap();
 
+    project
+        .add_source(
+            "SomeLib",
+            r#"pragma solidity ^0.8.10;
+library SomeLib { }
+"#,
+        )
+        .unwrap();
+
     let result = project.flatten(&f).unwrap();
     assert_eq!(
         result,
@@ -830,6 +840,8 @@ library MathLibrary {
         return type(uint256).max - value;
     }
 }
+
+library SomeLib { }
 
 contract Contract is ParentContract,
     AnotherParentContract {
