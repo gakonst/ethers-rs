@@ -75,8 +75,6 @@ impl SolData {
                                         })
                                         .collect(),
                                 );
-                            println!("sol import {:?}", sol_import);
-
                             imports.push(SolDataUnit::from_loc(sol_import, loc));
                         }
                         SourceUnitPart::ContractDefinition(def) => {
