@@ -10,7 +10,7 @@ use crate::{
 };
 
 /// Arguments for verifying contracts
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VerifyContract {
     #[serde(rename = "contractaddress")]
     pub address: Address,
@@ -26,13 +26,15 @@ pub struct VerifyContract {
     pub compiler_version: String,
     /// applicable when codeformat=solidity-single-file
     #[serde(rename = "optimizationUsed", skip_serializing_if = "Option::is_none")]
-    optimization_used: Option<String>,
+    pub optimization_used: Option<String>,
+    /// applicable when codeformat=solidity-single-file
     #[serde(skip_serializing_if = "Option::is_none")]
     pub runs: Option<String>,
     /// NOTE: there is a typo in the etherscan API `constructorArguements`
     #[serde(rename = "constructorArguements", skip_serializing_if = "Option::is_none")]
     pub constructor_arguments: Option<String>,
-    #[serde(rename = "evmversion")]
+    /// applicable when codeformat=solidity-single-file
+    #[serde(rename = "evmversion", skip_serializing_if = "Option::is_none")]
     pub evm_version: Option<String>,
     #[serde(flatten)]
     pub other: HashMap<String, String>,
@@ -114,7 +116,7 @@ impl VerifyContract {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CodeFormat {
     #[serde(rename = "solidity-single-file")]
     SingleFile,
