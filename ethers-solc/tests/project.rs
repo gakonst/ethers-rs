@@ -726,19 +726,82 @@ fn can_flatten_with_alias() {
 
     let f = project
         .add_source(
-            "A",
+            "Contract",
             r#"pragma solidity ^0.8.10;
-import { B as SomeAlias } from "./B.sol";
-contract A is SomeAlias { }
+import { ParentContract as Parent } from "./Parent.sol";
+import { AnotherParentContract as AnotherParent } from "./AnotherParent.sol";
+import { PeerContract as Peer } from "./Peer.sol";
+import { MathLibrary as Math } from "./Math.sol";
+
+contract Contract is Parent,
+    AnotherParent {
+    using Math for uint256;
+
+    string public usingString = "using Math for uint256;";
+    string public inheritanceString = "\"Contract is Parent {\"";
+    string public castString = 'Peer(smth) ';
+    string public methodString = '\' Math.max()';
+
+    Peer public peer;
+
+    error Peer();
+
+    constructor(address _peer) {
+        peer = Peer(_peer);
+    }
+
+    function Math(uint256 value) external pure returns (uint256) {
+        return Math.minusOne(Math.max() - value.diffMax());
+    }
+}
 "#,
         )
         .unwrap();
 
     project
         .add_source(
-            "B",
+            "Parent",
             r#"pragma solidity ^0.8.10;
-contract B { }
+contract ParentContract { }
+"#,
+        )
+        .unwrap();
+
+    project
+        .add_source(
+            "AnotherParent",
+            r#"pragma solidity ^0.8.10;
+contract AnotherParentContract { }
+"#,
+        )
+        .unwrap();
+
+    project
+        .add_source(
+            "Peer",
+            r#"pragma solidity ^0.8.10;
+contract PeerContract { }
+"#,
+        )
+        .unwrap();
+
+    project
+        .add_source(
+            "Math",
+            r#"pragma solidity ^0.8.10;
+library MathLibrary {
+    function minusOne(uint256 val) internal returns (uint256) {
+        return val - 1;
+    }
+
+    function max() internal returns (uint256) {
+        return type(uint256).max;
+    }
+
+    function diffMax(uint256 value) internal returns (uint256) {
+        return type(uint256).max - value;
+    }
+}
 "#,
         )
         .unwrap();
@@ -748,9 +811,47 @@ contract B { }
         result,
         r#"pragma solidity ^0.8.10;
 
-contract SomeAlias { }
+contract ParentContract { }
 
-contract A is SomeAlias { }
+contract AnotherParentContract { }
+
+contract PeerContract { }
+
+library MathLibrary {
+    function minusOne(uint256 val) internal returns (uint256) {
+        return val - 1;
+    }
+
+    function max() internal returns (uint256) {
+        return type(uint256).max;
+    }
+
+    function diffMax(uint256 value) internal returns (uint256) {
+        return type(uint256).max - value;
+    }
+}
+
+contract Contract is ParentContract,
+    AnotherParentContract {
+    using MathLibrary for uint256;
+
+    string public usingString = "using Math for uint256;";
+    string public inheritanceString = "\"Contract is Parent {\"";
+    string public castString = 'Peer(smth) ';
+    string public methodString = '\' Math.max()';
+
+    PeerContract public peer;
+
+    error Peer();
+
+    constructor(address _peer) {
+        peer = PeerContract(_peer);
+    }
+
+    function Math(uint256 value) external pure returns (uint256) {
+        return MathLibrary.minusOne(MathLibrary.max() - value.diffMax());
+    }
+}
 "#
     );
 }
