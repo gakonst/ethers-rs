@@ -543,11 +543,20 @@ fn compile_parallel(
         }
     }
 
+    // need to get the currently installed reporter before installing the pool, otherwise each new
+    // thread in the pool will get initialized with the default value of the `thread_local!`'s
+    // localkey. This way we keep access to the reporter in the rayon pool
+    let scoped_report = report::get_default(|reporter| reporter.clone());
+
     // start a rayon threadpool that will execute all `Solc::compile()` processes
     let pool = rayon::ThreadPoolBuilder::new().num_threads(num_jobs).build().unwrap();
+
     let outputs = pool.install(move || {
         jobs.into_par_iter()
-            .map(|(solc, version, input, actually_dirty)| {
+            .map(move |(solc, version, input, actually_dirty)| {
+                // set the reporter on this thread
+                let _guard = report::set_scoped(&scoped_report);
+
                 tracing::trace!(
                     "calling solc `{}` {:?} with {} sources: {:?}",
                     version,
