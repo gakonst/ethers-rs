@@ -1,7 +1,7 @@
 //! A [JsonRpcClient] implementation that serves as a wrapper around two different [JsonRpcClient]
 //! and uses a dedicated client for read and the other for write operations
 
-use crate::{ProviderError, JsonRpcClient};
+use crate::{JsonRpcClient, ProviderError};
 
 use async_trait::async_trait;
 
