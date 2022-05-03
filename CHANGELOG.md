@@ -4,6 +4,7 @@
 
 ### Unreleased
 
+- Break rpc transports into their own crate [1215](https://github.com/gakonst/ethers-rs/pull/1215)
 - Fix RLP decoding of `from` field for `Eip1559TransactionRequest` and
   `Eip2930TransactionRequest`, remove `Eip1559TransactionRequest` `sighash`
   method [1180](https://github.com/gakonst/ethers-rs/pull/1180)
