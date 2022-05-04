@@ -2,8 +2,10 @@ use crate::gas_oracle::{GasOracle, GasOracleError};
 use async_trait::async_trait;
 use ethers_core::types::U256;
 use futures_util::future::join_all;
-use std::fmt::Debug;
+use std::{fmt::Debug, future::Future};
 use tracing::warn;
+
+// TODO: Weighted median
 
 #[derive(Debug)]
 pub struct Median<'a> {
@@ -22,47 +24,43 @@ impl<'a> Median<'a> {
     pub fn add<T: 'a + GasOracle>(&mut self, oracle: T) {
         self.oracles.push(Box::new(oracle));
     }
+
+    pub async fn query_all<Fn, Fut, O>(&'a self, mut f: Fn) -> Result<Vec<O>, GasOracleError>
+    where
+        Fn: FnMut(&'a dyn GasOracle) -> Fut,
+        Fut: Future<Output = Result<O, GasOracleError>>,
+    {
+        // Process the oracles in parallel
+        let futures = self.oracles.iter().map(|oracle| f(oracle.as_ref()));
+        let results = join_all(futures).await;
+
+        // Filter out any errors
+        let values = self.oracles.iter().zip(results).filter_map(|(oracle, result)| match result {
+            Ok(value) => Some(value),
+            Err(err) => {
+                warn!("Failed to fetch gas price from {:?}: {}", oracle, err);
+                None
+            }
+        });
+        let values = values.collect::<Vec<_>>();
+        if values.is_empty() {
+            return Err(GasOracleError::NoValues)
+        }
+        Ok(values)
+    }
 }
 
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl GasOracle for Median<'_> {
     async fn fetch(&self) -> Result<U256, GasOracleError> {
-        // Process the oracles in parallel
-        let futures = self.oracles.iter().map(|oracle| oracle.fetch());
-        let results = join_all(futures).await;
-
-        // Filter out any errors
-        let values = self.oracles.iter().zip(results).filter_map(|(oracle, result)| match result {
-            Ok(value) => Some(value),
-            Err(err) => {
-                warn!("Failed to fetch gas price from {:?}: {}", oracle, err);
-                None
-            }
-        });
-        let mut values = values.collect::<Vec<U256>>();
-        if values.is_empty() {
-            return Err(GasOracleError::NoValues)
-        }
-
-        // Sort the values and return the median
+        let mut values = self.query_all(|oracle| oracle.fetch()).await?;
         values.sort();
         Ok(values[values.len() / 2])
     }
 
     async fn estimate_eip1559_fees(&self) -> Result<(U256, U256), GasOracleError> {
-        // Process the oracles in parallel
-        let futures = self.oracles.iter().map(|oracle| oracle.estimate_eip1559_fees());
-        let results = join_all(futures).await;
-
-        // Filter out any errors
-        let values = self.oracles.iter().zip(results).filter_map(|(oracle, result)| match result {
-            Ok(value) => Some(value),
-            Err(err) => {
-                warn!("Failed to fetch gas price from {:?}: {}", oracle, err);
-                None
-            }
-        });
+        let values = self.query_all(|oracle| oracle.estimate_eip1559_fees()).await?;
         let mut max_fee_per_gas = Vec::with_capacity(self.oracles.len());
         let mut max_priority_fee_per_gas = Vec::with_capacity(self.oracles.len());
         for (fee, priority) in values {
@@ -70,9 +68,6 @@ impl GasOracle for Median<'_> {
             max_priority_fee_per_gas.push(priority);
         }
         assert_eq!(max_fee_per_gas.len(), max_priority_fee_per_gas.len());
-        if max_fee_per_gas.is_empty() {
-            return Err(GasOracleError::NoValues)
-        }
 
         // Sort the values and return the median
         max_fee_per_gas.sort();
