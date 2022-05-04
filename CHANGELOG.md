@@ -153,6 +153,8 @@
 
 ### Unreleased
 
+- Add retries to the pending transaction future
+  [1221](https://github.com/gakonst/ethers-rs/pull/1221)
 - Add support for basic and bearer authentication in http and non-wasm websockets.
   [829](https://github.com/gakonst/ethers-rs/pull/829)
 - Export `ethers_providers::IpcError` and `ethers_providers::QuorumError`
