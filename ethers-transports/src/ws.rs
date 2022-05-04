@@ -84,7 +84,7 @@ enum Instruction {
 ///
 /// ```no_run
 /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
-/// use ethers_providers::Ws;
+/// use ethers_transports::Ws;
 ///
 /// let ws = Ws::connect("wss://localhost:8545").await?;
 /// # Ok(())

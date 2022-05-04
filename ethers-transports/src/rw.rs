@@ -33,7 +33,7 @@ impl<Read, Write> RwClient<Read, Write> {
     /// ```no_run
     /// # use url::Url;
     ///  async fn t(){
-    /// use ethers_providers::{Http, RwClient, Ws};
+    /// use ethers_transports::{Http, RwClient, Ws};
     /// let http = Http::new(Url::parse("http://localhost:8545").unwrap());
     /// let ws = Ws::connect("ws://localhost:8545").await.unwrap();
     /// let rw = RwClient::new(http, ws);

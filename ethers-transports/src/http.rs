@@ -19,7 +19,7 @@ use super::common::{Authorization, JsonRpcError, Request, Response};
 ///
 /// ```no_run
 /// use ethers_core::types::U64;
-/// use ethers_providers::{JsonRpcClient, Http};
+/// use ethers_transports::{JsonRpcClient, Http};
 /// use std::str::FromStr;
 ///
 /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
@@ -100,7 +100,7 @@ impl Provider {
     /// # Example
     ///
     /// ```
-    /// use ethers_providers::Http;
+    /// use ethers_transports::Http;
     /// use url::Url;
     ///
     /// let url = Url::parse("http://localhost:8545").unwrap();
@@ -115,7 +115,7 @@ impl Provider {
     /// # Example
     ///
     /// ```
-    /// use ethers_providers::{Authorization, Http};
+    /// use ethers_transports::{Authorization, Http};
     /// use url::Url;
     ///
     /// let url = Url::parse("http://localhost:8545").unwrap();
@@ -141,7 +141,7 @@ impl Provider {
     /// # Example
     ///
     /// ```
-    /// use ethers_providers::Http;
+    /// use ethers_transports::Http;
     /// use url::Url;
     ///
     /// let url = Url::parse("http://localhost:8545").unwrap();

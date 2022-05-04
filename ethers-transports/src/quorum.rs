@@ -25,7 +25,7 @@ use thiserror::Error;
 ///
 /// ```no_run
 /// use ethers_core::types::U64;
-/// use ethers_providers::{JsonRpcClient, QuorumProvider, Quorum, WeightedProvider, Http};
+/// use ethers_transports::{JsonRpcClient, QuorumProvider, Quorum, WeightedProvider, Http};
 /// use std::str::FromStr;
 ///
 /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
@@ -531,7 +531,7 @@ where
 #[cfg(not(target_arch = "wasm32"))]
 mod tests {
     use super::{Quorum, QuorumProvider, WeightedProvider};
-    use crate::{Middleware, MockProvider, Provider};
+    use crate::{JsonRpcClient, MockProvider};
     use ethers_core::types::U64;
 
     async fn test_quorum(q: Quorum) {
@@ -548,9 +548,8 @@ mod tests {
         let quorum = QuorumProvider::builder().add_providers(providers).quorum(q).build();
         let quorum_weight = quorum.quorum_weight;
 
-        let provider = Provider::quorum(quorum);
-        let blk = provider.get_block_number().await.unwrap();
-        assert_eq!(blk, value);
+        let resp: U64 = quorum.request("eth_blockNumber", ()).await.unwrap();
+        assert_eq!(resp, value);
 
         // count the number of providers that returned a value
         let requested =

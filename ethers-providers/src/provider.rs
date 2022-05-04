@@ -3,8 +3,10 @@ use crate::{
     pubsub::SubscriptionStream,
     stream::{FilterWatcher, DEFAULT_POLL_INTERVAL},
     FromErr, Http as HttpProvider, JsonRpcClient, JsonRpcClientWrapper, MockProvider,
-    PendingTransaction, ProviderError, PubsubClient, QuorumProvider, RwClient, SyncingStatus,
+    PendingTransaction, ProviderError, PubsubClient, RwClient, SyncingStatus,
 };
+
+use ethers_transports::QuorumProvider;
 
 #[cfg(feature = "celo")]
 use crate::CeloMiddleware;

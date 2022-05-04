@@ -7,10 +7,11 @@ These transports may be used to parameterize an `ethers_providers::Provider`.
 # Examples
 
 ```no_run
-use ethers_transports::{Http, Ws};
+use ethers_core::types::U64;
+use ethers_transports::{Http, JsonRpcClient};
 
 # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
-let provider = Http::from_str("http://localhost:8545")?;
+let provider: Http = "http://localhost:8545".parse()?;
 let block_number: U64 = provider.request("eth_blockNumber", ()).await?;
 # Ok(())
 # }
@@ -21,8 +22,9 @@ let block_number: U64 = provider.request("eth_blockNumber", ()).await?;
 The crate has support for WebSockets via Tokio. Please ensure that you have the "ws" and "rustls" / "openssl" features enabled if you wish to use WebSockets.
 
 ```
+use ethers_transports::Ws;
+
 # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
-# use ethers_providers::Ws;
 let ws = Ws::connect("ws://localhost:8545").await?;
 # Ok(())
 # }

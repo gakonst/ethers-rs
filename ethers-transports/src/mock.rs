@@ -96,7 +96,6 @@ impl From<MockError> for ProviderError {
 #[cfg(not(target_arch = "wasm32"))]
 mod tests {
     use super::*;
-    use crate::Middleware;
     use ethers_core::types::U64;
 
     #[tokio::test]
@@ -128,14 +127,5 @@ mod tests {
             MockError::EmptyRequests => {}
             _ => panic!("expected empty request"),
         };
-    }
-
-    #[tokio::test]
-    async fn composes_with_provider() {
-        let (provider, mock) = crate::Provider::mocked();
-
-        mock.push(U64::from(12)).unwrap();
-        let block = provider.get_block_number().await.unwrap();
-        assert_eq!(block.as_u64(), 12);
     }
 }
