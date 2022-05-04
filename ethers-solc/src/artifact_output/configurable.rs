@@ -9,7 +9,7 @@ use crate::{
             EwasmOutputSelection,
         },
         Ast, CompactContractBytecodeCow, DevDoc, Evm, Ewasm, FunctionDebugData, GasEstimates,
-        LosslessAbi, Metadata, Offsets, Settings, StorageLayout, UserDoc,
+        GeneratedSource, LosslessAbi, Metadata, Offsets, Settings, StorageLayout, UserDoc,
     },
     ArtifactOutput, SolcConfig, SolcError, SourceFile,
 };
@@ -29,11 +29,12 @@ pub struct ConfigurableContractArtifact {
     pub bytecode: Option<CompactBytecode>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub deployed_bytecode: Option<CompactDeployedBytecode>,
-
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub assembly: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub method_identifiers: Option<BTreeMap<String, String>>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub generated_sources: Vec<GeneratedSource>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub function_debug_data: Option<BTreeMap<String, FunctionDebugData>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -193,6 +194,14 @@ impl ConfigurableArtifacts {
         if self.additional_values.method_identifiers {
             selection.push(EvmOutputSelection::MethodIdentifiers.into());
         }
+        if self.additional_values.generated_sources {
+            selection.push(
+                EvmOutputSelection::ByteCode(BytecodeOutputSelection::GeneratedSources).into(),
+            );
+        }
+        if self.additional_values.source_map {
+            selection.push(EvmOutputSelection::ByteCode(BytecodeOutputSelection::SourceMap).into());
+        }
         selection
     }
 }
@@ -224,6 +233,7 @@ impl ArtifactOutput for ConfigurableArtifacts {
         let mut artifact_method_identifiers = None;
         let mut artifact_assembly = None;
         let mut artifact_storage_layout = None;
+        let mut generated_sources = None;
 
         let Contract {
             abi,
@@ -262,7 +272,7 @@ impl ArtifactOutput for ConfigurableArtifacts {
         if let Some(evm) = evm {
             let Evm {
                 assembly,
-                bytecode,
+                mut bytecode,
                 deployed_bytecode,
                 method_identifiers,
                 gas_estimates,
@@ -272,6 +282,10 @@ impl ArtifactOutput for ConfigurableArtifacts {
             if self.additional_values.function_debug_data {
                 artifact_function_debug_data =
                     bytecode.as_ref().map(|b| b.function_debug_data.clone());
+            }
+            if self.additional_values.generated_sources {
+                generated_sources =
+                    bytecode.as_mut().map(|code| std::mem::take(&mut code.generated_sources));
             }
 
             artifact_bytecode = bytecode.map(Into::into);
@@ -304,6 +318,7 @@ impl ArtifactOutput for ConfigurableArtifacts {
             ir_optimized: artifact_ir_optimized,
             ewasm: artifact_ewasm,
             ast: source_file.and_then(|s| s.ast.clone()),
+            generated_sources: generated_sources.unwrap_or_default(),
         }
     }
 }
@@ -324,6 +339,8 @@ pub struct ExtraOutputValues {
     pub ir_optimized: bool,
     pub ewasm: bool,
     pub function_debug_data: bool,
+    pub generated_sources: bool,
+    pub source_map: bool,
 
     /// PRIVATE: This structure may grow, As such, constructing this structure should
     /// _always_ be done using a public constructor or update syntax:
@@ -357,6 +374,8 @@ impl ExtraOutputValues {
             ir_optimized: true,
             ewasm: true,
             function_debug_data: true,
+            generated_sources: true,
+            source_map: true,
             __non_exhaustive: (),
         }
     }
@@ -391,6 +410,8 @@ impl ExtraOutputValues {
                         config.assembly = true;
                         config.gas_estimates = true;
                         config.method_identifiers = true;
+                        config.generated_sources = true;
+                        config.source_map = true;
                     }
                     EvmOutputSelection::Assembly => {
                         config.assembly = true;
@@ -403,6 +424,12 @@ impl ExtraOutputValues {
                     }
                     EvmOutputSelection::ByteCode(BytecodeOutputSelection::FunctionDebugData) => {
                         config.function_debug_data = true;
+                    }
+                    EvmOutputSelection::ByteCode(BytecodeOutputSelection::GeneratedSources) => {
+                        config.generated_sources = true;
+                    }
+                    EvmOutputSelection::ByteCode(BytecodeOutputSelection::SourceMap) => {
+                        config.source_map = true;
                     }
                     _ => {}
                 },
@@ -425,6 +452,8 @@ pub struct ExtraOutputFiles {
     pub ir_optimized: bool,
     pub ewasm: bool,
     pub assembly: bool,
+    pub source_map: bool,
+    pub generated_sources: bool,
 
     /// PRIVATE: This structure may grow, As such, constructing this structure should
     /// _always_ be done using a public constructor or update syntax:
@@ -450,6 +479,8 @@ impl ExtraOutputFiles {
             ir_optimized: true,
             ewasm: true,
             assembly: true,
+            source_map: true,
+            generated_sources: true,
             __non_exhaustive: (),
         }
     }
@@ -473,9 +504,17 @@ impl ExtraOutputFiles {
                 ContractOutputSelection::Evm(evm) => match evm {
                     EvmOutputSelection::All => {
                         config.assembly = true;
+                        config.generated_sources = true;
+                        config.source_map = true;
                     }
                     EvmOutputSelection::Assembly => {
                         config.assembly = true;
+                    }
+                    EvmOutputSelection::ByteCode(BytecodeOutputSelection::GeneratedSources) => {
+                        config.generated_sources = true;
+                    }
+                    EvmOutputSelection::ByteCode(BytecodeOutputSelection::SourceMap) => {
+                        config.source_map = true;
                     }
                     _ => {}
                 },
@@ -533,6 +572,27 @@ impl ExtraOutputFiles {
                 if let Some(ref asm) = evm.assembly {
                     let file = file.with_extension("asm");
                     fs::write(&file, asm).map_err(|err| SolcError::io(err, file))?
+                }
+            }
+        }
+
+        if self.generated_sources {
+            if let Some(ref evm) = contract.evm {
+                if let Some(ref bytecode) = evm.bytecode {
+                    let file = file.with_extension("gensources");
+                    fs::write(&file, serde_json::to_vec_pretty(&bytecode.generated_sources)?)
+                        .map_err(|err| SolcError::io(err, file))?;
+                }
+            }
+        }
+
+        if self.source_map {
+            if let Some(ref evm) = contract.evm {
+                if let Some(ref bytecode) = evm.bytecode {
+                    if let Some(ref sourcemap) = bytecode.source_map {
+                        let file = file.with_extension("sourcemap");
+                        fs::write(&file, sourcemap).map_err(|err| SolcError::io(err, file))?
+                    }
                 }
             }
         }
