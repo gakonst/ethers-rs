@@ -722,6 +722,154 @@ contract A { }
 }
 
 #[test]
+fn can_flatten_with_alias() {
+    let project = TempProject::dapptools().unwrap();
+
+    let f = project
+        .add_source(
+            "Contract",
+            r#"pragma solidity ^0.8.10;
+import { ParentContract as Parent } from "./Parent.sol";
+import { AnotherParentContract as AnotherParent } from "./AnotherParent.sol";
+import { PeerContract as Peer } from "./Peer.sol";
+import { MathLibrary as Math } from "./Math.sol";
+import * as Lib from "./SomeLib.sol";
+
+contract Contract is Parent,
+    AnotherParent {
+    using Math for uint256;
+
+    string public usingString = "using Math for uint256;";
+    string public inheritanceString = "\"Contract is Parent {\"";
+    string public castString = 'Peer(smth) ';
+    string public methodString = '\' Math.max()';
+
+    Peer public peer;
+
+    error Peer();
+
+    constructor(address _peer) {
+        peer = Peer(_peer);
+    }
+
+    function Math(uint256 value) external pure returns (uint256) {
+        return Math.minusOne(Math.max() - value.diffMax());
+    }
+}
+"#,
+        )
+        .unwrap();
+
+    project
+        .add_source(
+            "Parent",
+            r#"pragma solidity ^0.8.10;
+contract ParentContract { }
+"#,
+        )
+        .unwrap();
+
+    project
+        .add_source(
+            "AnotherParent",
+            r#"pragma solidity ^0.8.10;
+contract AnotherParentContract { }
+"#,
+        )
+        .unwrap();
+
+    project
+        .add_source(
+            "Peer",
+            r#"pragma solidity ^0.8.10;
+contract PeerContract { }
+"#,
+        )
+        .unwrap();
+
+    project
+        .add_source(
+            "Math",
+            r#"pragma solidity ^0.8.10;
+library MathLibrary {
+    function minusOne(uint256 val) internal returns (uint256) {
+        return val - 1;
+    }
+
+    function max() internal returns (uint256) {
+        return type(uint256).max;
+    }
+
+    function diffMax(uint256 value) internal returns (uint256) {
+        return type(uint256).max - value;
+    }
+}
+"#,
+        )
+        .unwrap();
+
+    project
+        .add_source(
+            "SomeLib",
+            r#"pragma solidity ^0.8.10;
+library SomeLib { }
+"#,
+        )
+        .unwrap();
+
+    let result = project.flatten(&f).unwrap();
+    assert_eq!(
+        result,
+        r#"pragma solidity ^0.8.10;
+
+contract ParentContract { }
+
+contract AnotherParentContract { }
+
+contract PeerContract { }
+
+library MathLibrary {
+    function minusOne(uint256 val) internal returns (uint256) {
+        return val - 1;
+    }
+
+    function max() internal returns (uint256) {
+        return type(uint256).max;
+    }
+
+    function diffMax(uint256 value) internal returns (uint256) {
+        return type(uint256).max - value;
+    }
+}
+
+library SomeLib { }
+
+contract Contract is ParentContract,
+    AnotherParentContract {
+    using MathLibrary for uint256;
+
+    string public usingString = "using Math for uint256;";
+    string public inheritanceString = "\"Contract is Parent {\"";
+    string public castString = 'Peer(smth) ';
+    string public methodString = '\' Math.max()';
+
+    PeerContract public peer;
+
+    error Peer();
+
+    constructor(address _peer) {
+        peer = PeerContract(_peer);
+    }
+
+    function Math(uint256 value) external pure returns (uint256) {
+        return MathLibrary.minusOne(MathLibrary.max() - value.diffMax());
+    }
+}
+"#
+    );
+}
+
+#[test]
 fn can_detect_type_error() {
     let project = TempProject::<ConfigurableArtifacts>::dapptools().unwrap();
 

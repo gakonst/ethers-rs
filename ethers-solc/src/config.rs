@@ -3,7 +3,7 @@ use crate::{
     cache::SOLIDITY_FILES_CACHE_FILENAME,
     error::{Result, SolcError, SolcIoError},
     remappings::Remapping,
-    resolver::Graph,
+    resolver::{Graph, SolImportAlias},
     utils, Source, Sources,
 };
 
@@ -281,43 +281,69 @@ impl ProjectPathsConfig {
         let target_node = graph.node(*target_index);
 
         let mut imports = target_node.imports().clone();
-        imports.sort_by_key(|x| x.loc().0);
+        imports.sort_by_key(|x| x.loc().start);
 
-        let mut content = target_node.content().as_bytes().to_vec();
+        let mut content = target_node.content().to_owned();
+
+        for alias in imports.iter().flat_map(|i| i.data().aliases()) {
+            let (alias, target) = match alias {
+                SolImportAlias::Contract(alias, target) => (alias.clone(), target.clone()),
+                _ => continue,
+            };
+            let name_regex = utils::create_contract_or_lib_name_regex(&alias);
+            let target_len = target.len() as isize;
+            let mut replace_offset = 0;
+            for cap in name_regex.captures_iter(&content.clone()) {
+                if cap.name("ignore").is_some() {
+                    continue
+                }
+                if let Some(name_match) =
+                    vec!["n1", "n2", "n3"].iter().find_map(|name| cap.name(name))
+                {
+                    let name_match_range =
+                        utils::range_by_offset(&name_match.range(), replace_offset);
+                    replace_offset += target_len - (name_match_range.len() as isize);
+                    content.replace_range(name_match_range, &target);
+                }
+            }
+        }
+
+        let mut content = content.as_bytes().to_vec();
         let mut offset = 0_isize;
 
         if strip_license {
             if let Some(license) = target_node.license() {
-                let (start, end) = license.loc_by_offset(offset);
-                content.splice(start..end, std::iter::empty());
-                offset -= (end - start) as isize;
+                let license_range = license.loc_by_offset(offset);
+                offset -= license_range.len() as isize;
+                content.splice(license_range, std::iter::empty());
             }
         }
 
         if strip_version_pragma {
             if let Some(version) = target_node.version() {
-                let (start, end) = version.loc_by_offset(offset);
-                content.splice(start..end, std::iter::empty());
-                offset -= (end - start) as isize;
+                let version_range = version.loc_by_offset(offset);
+                offset -= version_range.len() as isize;
+                content.splice(version_range, std::iter::empty());
             }
         }
 
         if strip_experimental_pragma {
             if let Some(experiment) = target_node.experimental() {
-                let (start, end) = experiment.loc_by_offset(offset);
-                content.splice(start..end, std::iter::empty());
-                offset -= (end - start) as isize;
+                let experimental_pragma_range = experiment.loc_by_offset(offset);
+                offset -= experimental_pragma_range.len() as isize;
+                content.splice(experimental_pragma_range, std::iter::empty());
             }
         }
 
         for import in imports.iter() {
-            let import_path = self.resolve_import(target_dir, import.data())?;
+            let import_path = self.resolve_import(target_dir, import.data().path())?;
             let s = self.flatten_node(&import_path, graph, imported, true, true, true)?;
+
             let import_content = s.as_bytes();
             let import_content_len = import_content.len() as isize;
-            let (start, end) = import.loc_by_offset(offset);
-            content.splice(start..end, import_content.iter().copied());
-            offset += import_content_len - ((end - start) as isize);
+            let import_range = import.loc_by_offset(offset);
+            offset += import_content_len - (import_range.len() as isize);
+            content.splice(import_range, import_content.iter().copied());
         }
 
         let result = String::from_utf8(content).map_err(|err| {

@@ -1,11 +1,13 @@
 use crate::{utils, Solc};
-use regex::Match;
 use semver::VersionReq;
 use solang_parser::pt::{
     ContractPart, ContractTy, FunctionAttribute, FunctionDefinition, Import, Loc, SourceUnitPart,
     Visibility,
 };
-use std::path::{Path, PathBuf};
+use std::{
+    ops::Range,
+    path::{Path, PathBuf},
+};
 
 /// Represents various information about a solidity file parsed via [solang_parser]
 #[derive(Debug)]
@@ -14,7 +16,7 @@ pub struct SolData {
     pub license: Option<SolDataUnit<String>>,
     pub version: Option<SolDataUnit<String>>,
     pub experimental: Option<SolDataUnit<String>>,
-    pub imports: Vec<SolDataUnit<PathBuf>>,
+    pub imports: Vec<SolDataUnit<SolImport>>,
     pub version_req: Option<VersionReq>,
     pub libraries: Vec<SolLibrary>,
     pub contracts: Vec<SolContract>,
@@ -39,7 +41,7 @@ impl SolData {
     pub fn parse(content: &str, file: &Path) -> Self {
         let mut version = None;
         let mut experimental = None;
-        let mut imports = Vec::<SolDataUnit<PathBuf>>::new();
+        let mut imports = Vec::<SolDataUnit<SolImport>>::new();
         let mut libraries = Vec::new();
         let mut contracts = Vec::new();
 
@@ -50,22 +52,30 @@ impl SolData {
                         SourceUnitPart::PragmaDirective(loc, _, pragma, value) => {
                             if pragma.name == "solidity" {
                                 // we're only interested in the solidity version pragma
-                                version = Some(SolDataUnit::new(value.string.clone(), loc.into()));
+                                version = Some(SolDataUnit::from_loc(value.string.clone(), loc));
                             }
 
                             if pragma.name == "experimental" {
                                 experimental =
-                                    Some(SolDataUnit::new(value.string.clone(), loc.into()));
+                                    Some(SolDataUnit::from_loc(value.string.clone(), loc));
                             }
                         }
                         SourceUnitPart::ImportDirective(_, import) => {
-                            let (import, loc) = match import {
-                                Import::Plain(s, l) => (s, l),
-                                Import::GlobalSymbol(s, _, l) => (s, l),
-                                Import::Rename(s, _, l) => (s, l),
+                            let (import, ids, loc) = match import {
+                                Import::Plain(s, l) => (s, vec![], l),
+                                Import::GlobalSymbol(s, i, l) => (s, vec![(i, None)], l),
+                                Import::Rename(s, i, l) => (s, i, l),
                             };
-                            imports
-                                .push(SolDataUnit::new(PathBuf::from(import.string), loc.into()));
+                            let sol_import = SolImport::new(PathBuf::from(import.string))
+                                .set_aliases(
+                                    ids.into_iter()
+                                        .map(|(id, alias)| match alias {
+                                            Some(al) => SolImportAlias::Contract(al.name, id.name),
+                                            None => SolImportAlias::File(id.name),
+                                        })
+                                        .collect(),
+                                );
+                            imports.push(SolDataUnit::from_loc(sol_import, loc));
                         }
                         SourceUnitPart::ContractDefinition(def) => {
                             let functions = def
@@ -100,16 +110,14 @@ impl SolData {
                 version =
                     capture_outer_and_inner(content, &utils::RE_SOL_PRAGMA_VERSION, &["version"])
                         .first()
-                        .map(|(cap, name)| {
-                            SolDataUnit::new(name.as_str().to_owned(), cap.to_owned().into())
-                        });
+                        .map(|(cap, name)| SolDataUnit::new(name.as_str().to_owned(), cap.range()));
                 imports = capture_imports(content);
             }
         };
         let license = content.lines().next().and_then(|line| {
             capture_outer_and_inner(line, &utils::RE_SOL_SDPX_LICENSE_IDENTIFIER, &["license"])
                 .first()
-                .map(|(cap, l)| SolDataUnit::new(l.as_str().to_owned(), cap.to_owned().into()))
+                .map(|(cap, l)| SolDataUnit::new(l.as_str().to_owned(), cap.range()))
         });
         let version_req = version.as_ref().and_then(|v| Solc::version_req(v.data()).ok());
 
@@ -128,6 +136,37 @@ impl SolData {
 pub struct SolContract {
     pub name: String,
     pub functions: Vec<FunctionDefinition>,
+}
+
+#[derive(Debug, Clone)]
+pub struct SolImport {
+    path: PathBuf,
+    aliases: Vec<SolImportAlias>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum SolImportAlias {
+    File(String),
+    Contract(String, String),
+}
+
+impl SolImport {
+    pub fn new(path: PathBuf) -> Self {
+        Self { path, aliases: vec![] }
+    }
+
+    pub fn path(&self) -> &PathBuf {
+        &self.path
+    }
+
+    pub fn aliases(&self) -> &Vec<SolImportAlias> {
+        &self.aliases
+    }
+
+    fn set_aliases(mut self, aliases: Vec<SolImportAlias>) -> Self {
+        self.aliases = aliases;
+        self
+    }
 }
 
 /// Minimal representation of a contract inside a solidity file
@@ -164,21 +203,24 @@ impl SolLibrary {
 /// Represents an item in a solidity file with its location in the file
 #[derive(Debug, Clone)]
 pub struct SolDataUnit<T> {
-    loc: Location,
+    loc: Range<usize>,
     data: T,
-}
-
-/// Location in a text file buffer
-#[derive(Debug, Clone)]
-pub struct Location {
-    pub start: usize,
-    pub end: usize,
 }
 
 /// Solidity Data Unit decorated with its location within the file
 impl<T> SolDataUnit<T> {
-    pub fn new(data: T, loc: Location) -> Self {
+    pub fn new(data: T, loc: Range<usize>) -> Self {
         Self { data, loc }
+    }
+
+    pub fn from_loc(data: T, loc: Loc) -> Self {
+        Self {
+            data,
+            loc: match loc {
+                Loc::File(_, start, end) => Range { start, end: end + 1 },
+                _ => Range { start: 0, end: 0 },
+            },
+        }
     }
 
     /// Returns the underlying data for the unit
@@ -187,34 +229,15 @@ impl<T> SolDataUnit<T> {
     }
 
     /// Returns the location of the given data unit
-    pub fn loc(&self) -> (usize, usize) {
-        (self.loc.start, self.loc.end)
+    pub fn loc(&self) -> Range<usize> {
+        self.loc.clone()
     }
 
     /// Returns the location of the given data unit adjusted by an offset.
     /// Used to determine new position of the unit within the file after
     /// content manipulation.
-    pub fn loc_by_offset(&self, offset: isize) -> (usize, usize) {
-        (
-            offset.saturating_add(self.loc.start as isize) as usize,
-            // make the end location exclusive
-            offset.saturating_add(self.loc.end as isize + 1) as usize,
-        )
-    }
-}
-
-impl From<Match<'_>> for Location {
-    fn from(src: Match) -> Self {
-        Location { start: src.start(), end: src.end() }
-    }
-}
-
-impl From<Loc> for Location {
-    fn from(src: Loc) -> Self {
-        match src {
-            Loc::File(_, start, end) => Location { start, end },
-            _ => Location { start: 0, end: 0 },
-        }
+    pub fn loc_by_offset(&self, offset: isize) -> Range<usize> {
+        utils::range_by_offset(&self.loc, offset)
     }
 }
 
@@ -238,12 +261,31 @@ fn capture_outer_and_inner<'a>(
         })
         .collect()
 }
-
-pub fn capture_imports(content: &str) -> Vec<SolDataUnit<PathBuf>> {
-    capture_outer_and_inner(content, &utils::RE_SOL_IMPORT, &["p1", "p2", "p3", "p4"])
-        .iter()
-        .map(|(cap, m)| SolDataUnit::new(PathBuf::from(m.as_str()), cap.to_owned().into()))
-        .collect()
+/// Capture the import statement information together with aliases
+pub fn capture_imports(content: &str) -> Vec<SolDataUnit<SolImport>> {
+    let mut imports = vec![];
+    for cap in utils::RE_SOL_IMPORT.captures_iter(content) {
+        if let Some(name_match) =
+            vec!["p1", "p2", "p3", "p4"].iter().find_map(|name| cap.name(name))
+        {
+            let statement_match = cap.get(0).unwrap();
+            let mut aliases = vec![];
+            for alias_cap in utils::RE_SOL_IMPORT_ALIAS.captures_iter(statement_match.as_str()) {
+                if let Some(alias) = alias_cap.name("alias") {
+                    let alias = alias.as_str().to_owned();
+                    let import_alias = match alias_cap.name("target") {
+                        Some(target) => SolImportAlias::Contract(alias, target.as_str().to_owned()),
+                        None => SolImportAlias::File(alias),
+                    };
+                    aliases.push(import_alias);
+                }
+            }
+            let sol_import =
+                SolImport::new(PathBuf::from(name_match.as_str())).set_aliases(aliases);
+            imports.push(SolDataUnit::new(sol_import, statement_match.range()));
+        }
+    }
+    imports
 }
 
 #[cfg(test)]
@@ -259,7 +301,7 @@ import {DsTest} from "ds-test/test.sol";
 "#;
 
         let captured_imports =
-            capture_imports(content).into_iter().map(|s| s.data).collect::<Vec<_>>();
+            capture_imports(content).into_iter().map(|s| s.data.path).collect::<Vec<_>>();
 
         let expected =
             utils::find_import_paths(content).map(|m| m.as_str().into()).collect::<Vec<PathBuf>>();
@@ -272,6 +314,31 @@ import {DsTest} from "ds-test/test.sol";
                 PathBuf::from("../Test.sol"),
                 "@openzeppelin/contracts/utils/ReentrancyGuard.sol".into(),
                 "ds-test/test.sol".into(),
+            ]
+        );
+    }
+
+    #[test]
+    fn cap_capture_aliases() {
+        let content = r#"
+import * as T from "./Test.sol";
+import { DsTest as Test } from "ds-test/test.sol";
+import "ds-test/test.sol" as Test;
+import { FloatMath as Math, Math as FloatMath } from "./Math.sol";
+"#;
+
+        let caputred_imports =
+            capture_imports(content).into_iter().map(|s| s.data.aliases).collect::<Vec<_>>();
+        assert_eq!(
+            caputred_imports,
+            vec![
+                vec![SolImportAlias::File("T".into())],
+                vec![SolImportAlias::Contract("Test".into(), "DsTest".into())],
+                vec![SolImportAlias::File("Test".into())],
+                vec![
+                    SolImportAlias::Contract("Math".into(), "FloatMath".into()),
+                    SolImportAlias::Contract("FloatMath".into(), "Math".into()),
+                ],
             ]
         );
     }

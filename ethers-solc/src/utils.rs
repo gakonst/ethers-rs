@@ -2,6 +2,7 @@
 
 use std::{
     collections::HashSet,
+    ops::Range,
     path::{Component, Path, PathBuf},
 };
 
@@ -17,8 +18,12 @@ use walkdir::WalkDir;
 /// statement with the named groups "path", "id".
 // Adapted from <https://github.com/nomiclabs/hardhat/blob/cced766c65b25d3d0beb39ef847246ac9618bdd9/packages/hardhat-core/src/internal/solidity/parse.ts#L100>
 pub static RE_SOL_IMPORT: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r#"import\s+(?:(?:"(?P<p1>[^;]*)"|'(?P<p2>[^;]*)')(?:;|\s+as\s+(?P<id>[^;]*);)|.+from\s+(?:"(?P<p3>.*)"|'(?P<p4>.*)');)"#).unwrap()
+    Regex::new(r#"import\s+(?:(?:"(?P<p1>.*)"|'(?P<p2>.*)')(?:\s+as\s+\w+)?|(?:(?:\w+(?:\s+as\s+\w+)?|\*\s+as\s+\w+|\{\s*(?:\w+(?:\s+as\s+\w+)?(?:\s*,\s*)?)+\s*\})\s+from\s+(?:"(?P<p3>.*)"|'(?P<p4>.*)')))\s*;"#).unwrap()
 });
+
+/// A regex that matches an alias within an import statement
+pub static RE_SOL_IMPORT_ALIAS: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r#"(?:(?P<target>\w+)|\*|'|")\s+as\s+(?P<alias>\w+)"#).unwrap());
 
 /// A regex that matches the version part of a solidity pragma
 /// as follows: `pragma solidity ^0.5.2;` => `^0.5.2`
@@ -34,6 +39,19 @@ pub static RE_SOL_SDPX_LICENSE_IDENTIFIER: Lazy<Regex> =
 
 /// A regex used to remove extra lines in flatenned files
 pub static RE_THREE_OR_MORE_NEWLINES: Lazy<Regex> = Lazy::new(|| Regex::new("\n{3,}").unwrap());
+
+/// Create a regex that matches any library or contract name inside a file
+pub fn create_contract_or_lib_name_regex(name: &str) -> Regex {
+    Regex::new(&format!(r#"(?:using\s+(?P<n1>{name})\s+|is\s+(?:\w+\s*,\s*)*(?P<n2>{name})(?:\s*,\s*\w+)*|(?:(?P<ignore>(?:function|error|as)\s+|\n[^\n]*(?:"([^"\n]|\\")*|'([^'\n]|\\')*))|\W+)(?P<n3>{name})(?:\.|\(| ))"#, name = name)).unwrap()
+}
+
+/// Move a range by a specified offset
+pub fn range_by_offset(range: &Range<usize>, offset: isize) -> Range<usize> {
+    Range {
+        start: offset.saturating_add(range.start as isize) as usize,
+        end: offset.saturating_add(range.end as isize) as usize,
+    }
+}
 
 /// Returns all path parts from any solidity import statement in a string,
 /// `import "./contracts/Contract.sol";` -> `"./contracts/Contract.sol"`.
