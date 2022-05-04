@@ -18,12 +18,6 @@ pub struct GasNow {
     gas_category: GasCategory,
 }
 
-impl Default for GasNow {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 #[derive(Deserialize)]
 struct GasNowResponseWrapper {
     data: GasNowResponse,
@@ -39,10 +33,10 @@ pub struct GasNowResponse {
 
 impl GasNow {
     /// Creates a new [GasNow](https://gasnow.org) gas price oracle.
-    pub fn new() -> Self {
+    pub fn new(client: Client) -> Self {
         let url = Url::parse(GAS_NOW_URL).expect("invalid url");
 
-        Self { client: Client::new(), url, gas_category: GasCategory::Standard }
+        Self { url, gas_category: GasCategory::Standard }
     }
 
     /// Sets the gas price category to be used when fetching the gas price.
@@ -60,6 +54,12 @@ impl GasNow {
             .json::<GasNowResponseWrapper>()
             .await?;
         Ok(res.data)
+    }
+}
+
+impl Default for GasNow {
+    fn default() -> Self {
+        Self::new(Client::new())
     }
 }
 
