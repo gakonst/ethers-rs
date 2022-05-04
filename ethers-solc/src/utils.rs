@@ -41,11 +41,9 @@ pub static RE_SOL_SDPX_LICENSE_IDENTIFIER: Lazy<Regex> =
 pub static RE_THREE_OR_MORE_NEWLINES: Lazy<Regex> = Lazy::new(|| Regex::new("\n{3,}").unwrap());
 
 /// Create a regex that matches any library or contract name inside a file
-pub static CREATE_RE_CONTRACT_OR_LIB_NAME: Lazy<fn(s: &str) -> Regex> = Lazy::new(|| {
-    |name: &str| {
-        regex::Regex::new(&format!(r#"(?:using\s+(?P<n1>{name})\s+|is\s+(?:\w+\s*,\s*)*(?P<n2>{name})(?:\s*,\s*\w+)*|(?:(?P<ignore>(?:function|error|as)\s+|\n[^\n]*(?:"([^"\n]|\\")*|'([^'\n]|\\')*))|\W+)(?P<n3>{name})(?:\.|\(| ))"#, name = name)).unwrap()
-    }
-});
+pub fn create_contract_or_lib_name_regex(name: &str) -> Regex {
+    Regex::new(&format!(r#"(?:using\s+(?P<n1>{name})\s+|is\s+(?:\w+\s*,\s*)*(?P<n2>{name})(?:\s*,\s*\w+)*|(?:(?P<ignore>(?:function|error|as)\s+|\n[^\n]*(?:"([^"\n]|\\")*|'([^'\n]|\\')*))|\W+)(?P<n3>{name})(?:\.|\(| ))"#, name = name)).unwrap()
+}
 
 /// Move a range by a specified offset
 pub fn range_by_offset(range: &Range<usize>, offset: isize) -> Range<usize> {
