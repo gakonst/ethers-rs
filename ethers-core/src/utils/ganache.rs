@@ -9,7 +9,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-/// How long we will wait for ganache to indicate that it is ready.
+/// Default amount of time we will wait for ganache to indicate that it is ready.
 const GANACHE_STARTUP_TIMEOUT_MILLIS: u64 = 10_000;
 
 /// A ganache CLI instance. Will close the instance when dropped.
@@ -93,6 +93,8 @@ impl Ganache {
         Self::default()
     }
 
+    /// Sets the startup timeout which will be used when the `ganache-cli` instance is launched in
+    /// miliseconds. 10_000 miliseconds by default).
     pub fn startup_timeout_millis<T: Into<u64>>(mut self, timeout: T) -> Self {
         self.startup_timeout = Some(timeout.into());
         self
@@ -183,8 +185,8 @@ impl Ganache {
         let mut addresses = Vec::new();
         let mut is_private_key = false;
 
-        let startup_timeout = Duration::from_millis(
-            self.startup_timeout.unwrap_or(GANACHE_STARTUP_TIMEOUT_MILLIS));
+        let startup_timeout =
+            Duration::from_millis(self.startup_timeout.unwrap_or(GANACHE_STARTUP_TIMEOUT_MILLIS));
         loop {
             if start + startup_timeout <= Instant::now() {
                 panic!("Timed out waiting for ganache to start. Is ganache-cli installed?")
