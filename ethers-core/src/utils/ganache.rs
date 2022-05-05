@@ -83,6 +83,7 @@ pub struct Ganache {
     mnemonic: Option<String>,
     fork: Option<String>,
     args: Vec<String>,
+    startup_timeout: Option<u64>,
 }
 
 impl Ganache {
@@ -90,6 +91,11 @@ impl Ganache {
     /// The default port is 8545. The mnemonic is chosen randomly.
     pub fn new() -> Self {
         Self::default()
+    }
+
+    pub fn startup_timeout_millis<T: Into<u64>>(mut self, timeout: T) -> Self {
+        self.startup_timeout = Some(timeout.into());
+        self
     }
 
     /// Sets the port which will be used when the `ganache-cli` instance is launched.
@@ -176,8 +182,11 @@ impl Ganache {
         let mut private_keys = Vec::new();
         let mut addresses = Vec::new();
         let mut is_private_key = false;
+
+        let startup_timeout = Duration::from_millis(
+            self.startup_timeout.unwrap_or(GANACHE_STARTUP_TIMEOUT_MILLIS));
         loop {
-            if start + Duration::from_millis(GANACHE_STARTUP_TIMEOUT_MILLIS) <= Instant::now() {
+            if start + startup_timeout <= Instant::now() {
                 panic!("Timed out waiting for ganache to start. Is ganache-cli installed?")
             }
 
@@ -203,5 +212,20 @@ impl Ganache {
         child.stdout = Some(reader.into_inner());
 
         GanacheInstance { pid: child, private_keys, addresses, port }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn configurable_startup_timeout() {
+        Ganache::new().startup_timeout_millis(100000_u64).spawn();
+    }
+
+    #[test]
+    fn default_startup_works() {
+        Ganache::new().spawn();
     }
 }
