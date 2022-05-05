@@ -1,17 +1,17 @@
 use ethabi::ethereum_types::U256;
 
-/// Convert a floating point value to it's nearest f64 integer.
+/// Convert a floating point value to its nearest f64 integer.
 ///
 /// It is saturating, so values $\ge 2^{256}$ will be rounded
-/// to [`U245::max_value()`] and values $< 0$ to zero. This includes
+/// to [`U256::max_value()`] and values $< 0$ to zero. This includes
 /// positive and negative infinity.
 ///
 /// TODO: Move to ethabi::ethereum_types::U256.
-/// TODO: Add [`I256`] version.
+/// TODO: Add [`super::I256`] version.
 ///
 /// # Panics
 ///
-/// Panics if [`f`] is NaN.
+/// Panics if `f` is NaN.
 pub fn u256_from_f64_saturating(mut f: f64) -> U256 {
     if f.is_nan() {
         panic!("NaN is not a valid value for U256");
@@ -27,8 +27,8 @@ pub fn u256_from_f64_saturating(mut f: f64) -> U256 {
     // Turn nearest rounding into truncated rounding
     f += 0.5;
 
-    // Parse IEEE-754 double into
-    // sign should be zero, exponent should be >= 0.
+    // Parse IEEE-754 double into U256
+    // Sign should be zero, exponent should be >= 0.
     let bits = f.to_bits();
     let sign = bits >> 63;
     assert!(sign == 0);
@@ -37,12 +37,15 @@ pub fn u256_from_f64_saturating(mut f: f64) -> U256 {
     let exponent = biased_exponent - 1023;
     let fraction = bits & 0xfffffffffffff;
     let mantissa = 0x10000000000000 | fraction;
-    if exponent >= (256 - 52) {
+    if exponent > 255 {
+        dbg!();
         U256::max_value()
     } else if exponent < 52 {
+        dbg!();
         // Truncate mantissa
         U256([mantissa, 0, 0, 0]) >> (52 - exponent)
     } else {
+        dbg!();
         U256([mantissa, 0, 0, 0]) << (exponent - 52)
     }
 }
@@ -103,5 +106,16 @@ mod tests {
             U256::from_dec_str("6283185307179586084560863929317662625677330590403879287914496")
                 .unwrap()
         );
+        assert_eq!(
+            u256_from_f64_saturating(5.78960446186581e76_f64),
+            U256::from_dec_str("57896044618658097711785492504343953926634992332820282019728792003956564819968")
+                .unwrap()
+        );
+        assert_eq!(
+            u256_from_f64_saturating(1.157920892373161e77_f64),
+            U256::from_dec_str("115792089237316105435040506505232477503392813560534822796089932171514352762880")
+                .unwrap()
+        );
+
     }
 }
