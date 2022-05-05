@@ -210,7 +210,6 @@ mod tests {
     use super::*;
 
     #[test]
-    #[ignore]
     fn can_launch_anvil() {
         let _ = Anvil::new().spawn();
     }
