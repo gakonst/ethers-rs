@@ -25,6 +25,8 @@ jobs:
         uses: actions/setup-node@v1
         with:
           node-version: 10
+      - name: Install ganache
+        run: npm install -g ganache
       - name: Install Anvil
         uses: foundry-rs/foundry-toolchain@v1
         with:
