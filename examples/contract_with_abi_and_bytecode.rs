@@ -24,9 +24,9 @@ async fn main() -> Result<()> {
     // 4. instantiate the client with the wallet
     let client = Arc::new(SignerMiddleware::new(provider, wallet));
 
-    // 5. deploy contract, note the `legacy` call required for non EIP-1559
+    // 5. deploy contract
     let greeter_contract =
-        Greeter::deploy(client, "Hello World!".to_string()).unwrap().legacy().send().await.unwrap();
+        Greeter::deploy(client, "Hello World!".to_string()).unwrap().send().await.unwrap();
 
     // 6. call contract function
     let greeting = greeter_contract.greet().call().await.unwrap();

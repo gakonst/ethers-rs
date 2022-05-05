@@ -49,7 +49,7 @@ async fn main() -> Result<()> {
     let factory = ContractFactory::new(abi.unwrap(), bytecode.unwrap(), client.clone());
 
     // 6. deploy it with the constructor arguments
-    let contract = factory.deploy("initial value".to_string())?.legacy().send().await?;
+    let contract = factory.deploy("initial value".to_string())?.send().await?;
 
     // 7. get the contract's address
     let addr = contract.address();
@@ -59,7 +59,7 @@ async fn main() -> Result<()> {
 
     // 9. call the `setValue` method
     // (first `await` returns a PendingTransaction, second one waits for it to be mined)
-    let _receipt = contract.set_value("hi".to_owned()).legacy().send().await?.await?;
+    let _receipt = contract.set_value("hi".to_owned()).send().await?.await?;
 
     // 10. get all events
     let logs = contract.value_changed_filter().from_block(0u64).query().await?;
