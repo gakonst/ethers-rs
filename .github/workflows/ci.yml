@@ -224,10 +224,27 @@ jobs:
       - name: Build all examples
         run: |
             export PATH=$HOME/bin:$PATH
-            for file in examples/*.rs; do
-              name="$(echo "$file" | cut -f 1 -d '.')"
+            examples=$(cargo metadata --format-version 1 | \
+              jq -c '.packages[]
+              | select(.name == "ethers")
+              | .targets[]
+              | select(.kind[] | contains("example"))
+              | with_entries(select([.key]
+              | inside(["name", "required-features"])))'
+            )
+            for example in $examples; do
+              name="$(echo "$example" | jq -r '.name')"
+              args=(
+                -p ethers
+                --example "$name"
+              )
+              features="$(echo "$example" | jq -r 'try(."required-features" | join(","))')"
+              if [[ ! -z "$features" ]]; then
+                args+=(--features "$features")
+              fi
+
               echo "building $name"
-              cargo build -p ethers --example "$(basename "$name")"
+              cargo build "${args[@]}"
             done
       - name: Run all examples
         run: |
