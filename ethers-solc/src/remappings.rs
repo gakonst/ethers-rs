@@ -1,3 +1,4 @@
+use crate::utils;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{hash_map::Entry, HashMap},
@@ -172,13 +173,15 @@ impl Remapping {
 
         let dir = dir.as_ref();
         let is_inside_node_modules = dir.ends_with("node_modules");
+
         // iterate over all dirs that are children of the root
         for dir in walkdir::WalkDir::new(dir)
             .follow_links(true)
             .min_depth(1)
             .max_depth(1)
             .into_iter()
-            .filter_map(std::result::Result::ok)
+            .filter_entry(|e| !is_hidden(e))
+            .filter_map(Result::ok)
             .filter(|e| e.file_type().is_dir())
         {
             let depth1_dir = dir.path();
@@ -487,6 +490,11 @@ fn is_lib_dir(dir: &Path) -> bool {
         .unwrap_or_default()
 }
 
+/// Returns true if the file is _hidden_
+fn is_hidden(entry: &walkdir::DirEntry) -> bool {
+    entry.file_name().to_str().map(|s| s.starts_with('.')).unwrap_or(false)
+}
+
 /// Finds all remappings in the directory recursively
 fn find_remapping_candidates(
     current_dir: &Path,
@@ -506,8 +514,8 @@ fn find_remapping_candidates(
         .min_depth(1)
         .max_depth(1)
         .into_iter()
-        .filter_map(std::result::Result::ok)
-        .filter(|entry| !entry.file_name().to_str().map(|s| s.starts_with('.')).unwrap_or(false))
+        .filter_entry(|e| !is_hidden(e))
+        .filter_map(Result::ok)
     {
         let entry: walkdir::DirEntry = entry;
 
@@ -518,6 +526,26 @@ fn find_remapping_candidates(
         {
             is_candidate = true;
         } else if entry.file_type().is_dir() {
+            // if the dir is a symlink to a parent dir we short circuit here
+            // `walkdir` will catch symlink loops, but this check prevents that we end up scanning a
+            // workspace like
+            // ```text
+            // my-package/node_modules
+            // ├── dep/node_modules
+            //     ├── symlink to `my-package`
+            // ```
+            if entry.path_is_symlink() {
+                if let Ok(target) = utils::canonicalize(entry.path()) {
+                    // the symlink points to a parent dir of the current window
+                    if open.components().count() > target.components().count() &&
+                        utils::common_ancestor(open, &target).is_some()
+                    {
+                        // short-circuiting
+                        return Vec::new()
+                    }
+                }
+            }
+
             let subdir = entry.path();
             // we skip commonly used subdirs that should not be searched for recursively
             if !(subdir.ends_with("tests") || subdir.ends_with("test") || subdir.ends_with("demo"))
