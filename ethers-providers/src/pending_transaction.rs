@@ -37,7 +37,7 @@ use wasm_timer::Delay;
 ///
 /// # #[tokio::main(flavor = "current_thread")]
 /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
-/// # let anvil = ANvil::new().spawn();
+/// # let anvil = Anvil::new().spawn();
 /// # let client = Provider::<Http>::try_from(anvil.endpoint()).unwrap();
 /// # let accounts = client.get_accounts().await?;
 /// # let from = accounts[0];
