@@ -27,6 +27,8 @@ jobs:
           node-version: 10
       - name: Install Anvil
         uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
       - name: Install Solc
         run: |
             mkdir -p "$HOME/bin"
@@ -73,6 +75,8 @@ jobs:
       # TODO: can we combine these shared steps in github actions?
       - name: Install Anvil
         uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
       - name: Install Solc
         run: |
             mkdir -p "$HOME/bin"
