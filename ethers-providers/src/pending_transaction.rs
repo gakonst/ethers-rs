@@ -62,7 +62,10 @@ pub struct PendingTransaction<'a, P> {
     provider: &'a Provider<P>,
     state: PendingTxState<'a>,
     interval: Box<dyn Stream<Item = ()> + Send + Unpin>,
+    retries_remaining: usize,
 }
+
+const DEFAULT_RETRIES: usize = 3;
 
 impl<'a, P: JsonRpcClient> PendingTransaction<'a, P> {
     /// Creates a new pending transaction poller from a hash and a provider
@@ -74,6 +77,7 @@ impl<'a, P: JsonRpcClient> PendingTransaction<'a, P> {
             provider,
             state: PendingTxState::InitialDelay(delay),
             interval: Box::new(interval(DEFAULT_POLL_INTERVAL)),
+            retries_remaining: DEFAULT_RETRIES,
         }
     }
 
@@ -109,6 +113,13 @@ impl<'a, P: JsonRpcClient> PendingTransaction<'a, P> {
             self.state = PendingTxState::InitialDelay(Box::pin(Delay::new(duration)))
         }
 
+        self
+    }
+
+    /// Set retries
+    #[must_use]
+    pub fn retries(mut self, retries: usize) -> Self {
+        self.retries_remaining = retries;
         self
     }
 }
@@ -188,9 +199,14 @@ impl<'a, P: JsonRpcClient> Future for PendingTransaction<'a, P> {
                 let tx_opt = tx_res.unwrap();
                 // If the tx is no longer in the mempool, return Ok(None)
                 if tx_opt.is_none() {
-                    tracing::debug!("Dropped from mempool, pending tx {:?}", *this.tx_hash);
-                    *this.state = PendingTxState::Completed;
-                    return Poll::Ready(Ok(None))
+                    if *this.retries_remaining == 0 {
+                        tracing::debug!("Dropped from mempool, pending tx {:?}", *this.tx_hash);
+                        *this.state = PendingTxState::Completed;
+                        return Poll::Ready(Ok(None))
+                    }
+
+                    *this.retries_remaining -= 1;
+                    rewake_with_new_state!(ctx, this, PendingTxState::PausedGettingTx);
                 }
 
                 // If it hasn't confirmed yet, poll again later
