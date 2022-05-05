@@ -31,7 +31,12 @@ pub struct EtherchainResponse {
 
 impl Etherchain {
     /// Creates a new [Etherchain](https://etherchain.org/tools/gasPriceOracle) gas price oracle.
-    pub fn new(client: Client) -> Self {
+    pub fn new() -> Self {
+        Self::with_client(Client::new())
+    }
+
+    /// Same as [`Self::new`] but with a custom [`Client`].
+    pub fn with_client(client: Client) -> Self {
         let url = Url::parse(ETHERCHAIN_URL).expect("invalid url");
 
         Etherchain { client, url, gas_category: GasCategory::Standard }
@@ -51,7 +56,7 @@ impl Etherchain {
 
 impl Default for Etherchain {
     fn default() -> Self {
-        Self::new(Client::new())
+        Self::new()
     }
 }
 

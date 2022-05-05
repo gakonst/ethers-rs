@@ -82,8 +82,13 @@ pub struct BaseFeeEstimate {
 }
 
 impl BlockNative {
-    /// Creates a new [BlockNative](https://www.blocknative.com/gas-estimator) gas oracle
-    pub fn new(client: Client, api_key: String) -> Self {
+    /// Creates a new [BlockNative](https://www.blocknative.com/gas-estimator) gas oracle.
+    pub fn new(api_key: String) -> Self {
+        Self::with_client(Client::new(), api_key)
+    }
+
+    /// Same as [`Self::new`] but with a custom [`Client`].
+    pub fn with_client(client: Client, api_key: String) -> Self {
         Self {
             client,
             api_key,

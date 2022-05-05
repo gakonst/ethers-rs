@@ -61,7 +61,12 @@ pub struct EthGasStationResponse {
 
 impl EthGasStation {
     /// Creates a new [EthGasStation](https://docs.ethgasstation.info/) gas oracle
-    pub fn new(client: Client, api_key: Option<&str>) -> Self {
+    pub fn new(api_key: Option<&str>) -> Self {
+        Self::with_client(Client::new(), api_key)
+    }
+
+    /// Same as [`Self::new`] but with a custom [`Client`].
+    pub fn with_client(client: Client, api_key: Option<&str>) -> Self {
         let mut url = Url::parse(ETH_GAS_STATION_URL_PREFIX).expect("invalid url");
         if let Some(key) = api_key {
             url.query_pairs_mut().append_pair("api-key", key);
@@ -83,7 +88,7 @@ impl EthGasStation {
 
 impl Default for EthGasStation {
     fn default() -> Self {
-        Self::new(Client::new(), None)
+        Self::new(None)
     }
 }
 

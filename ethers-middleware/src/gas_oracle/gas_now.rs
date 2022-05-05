@@ -33,7 +33,12 @@ pub struct GasNowResponse {
 
 impl GasNow {
     /// Creates a new [GasNow](https://gasnow.org) gas price oracle.
-    pub fn new(client: Client) -> Self {
+    pub fn new() -> Self {
+        Self::with_client(Client::new())
+    }
+
+    /// Same as [`Self::new`] but with a custom [`Client`].
+    pub fn with_client(client: Client) -> Self {
         let url = Url::parse(GAS_NOW_URL).expect("invalid url");
 
         Self { url, gas_category: GasCategory::Standard }
