@@ -29,7 +29,7 @@
 //!
 //! Contains all the [necessary data structures](core::types) for interacting
 //! with Ethereum, along with cryptographic utilities for signing and verifying
-//! ECDSA signatures on `secp256k1`. Bindings to the solidity compiler and `ganache-cli`
+//! ECDSA signatures on `secp256k1`. Bindings to the Solidity compiler, Anvil and `ganache-cli`
 //! are also provided as helpers. To simplify your imports, consider using the re-exported
 //! modules described in the next subsection.
 //!

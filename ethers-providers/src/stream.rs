@@ -265,7 +265,7 @@ mod tests {
     use crate::{Http, Ws};
     use ethers_core::{
         types::{TransactionReceipt, TransactionRequest},
-        utils::{Ganache, Geth},
+        utils::{Anvil, Geth},
     };
     use futures_util::{FutureExt, StreamExt};
     use std::{collections::HashSet, convert::TryFrom};
@@ -327,10 +327,9 @@ mod tests {
 
     #[tokio::test]
     async fn can_stream_transactions() {
-        let ganache = Ganache::new().block_time(2u64).spawn();
-        let provider = Provider::<Http>::try_from(ganache.endpoint())
-            .unwrap()
-            .with_sender(ganache.addresses()[0]);
+        let anvil = Anvil::new().block_time(2u64).spawn();
+        let provider =
+            Provider::<Http>::try_from(anvil.endpoint()).unwrap().with_sender(anvil.addresses()[0]);
 
         let accounts = provider.get_accounts().await.unwrap();
 

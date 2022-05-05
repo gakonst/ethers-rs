@@ -1,13 +1,13 @@
-use ethers::{prelude::*, utils::Ganache};
+use ethers::{prelude::*, utils::Anvil};
 use eyre::Result;
 use std::convert::TryFrom;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let ganache = Ganache::new().spawn();
+    let anvil = Anvil::new().spawn();
 
     // connect to the network
-    let provider = Provider::<Http>::try_from(ganache.endpoint())?;
+    let provider = Provider::<Http>::try_from(anvil.endpoint())?;
     let accounts = provider.get_accounts().await?;
     let from = accounts[0];
     let to = accounts[1];

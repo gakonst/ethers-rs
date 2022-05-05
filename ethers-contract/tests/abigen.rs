@@ -303,9 +303,9 @@ async fn can_handle_underscore_functions() {
     );
 
     // launcht the network & connect to it
-    let ganache = ethers_core::utils::Ganache::new().spawn();
-    let from = ganache.addresses()[0];
-    let provider = Provider::try_from(ganache.endpoint())
+    let anvil = ethers_core::utils::Anvil::new().spawn();
+    let from = anvil.addresses()[0];
+    let provider = Provider::try_from(anvil.endpoint())
         .unwrap()
         .with_sender(from)
         .interval(std::time::Duration::from_millis(10));
@@ -481,9 +481,9 @@ fn can_handle_case_sensitive_calls() {
 #[tokio::test]
 async fn can_deploy_greeter() {
     abigen!(Greeter, "ethers-contract/tests/solidity-contracts/greeter.json",);
-    let ganache = ethers_core::utils::Ganache::new().spawn();
-    let from = ganache.addresses()[0];
-    let provider = Provider::try_from(ganache.endpoint())
+    let anvil = ethers_core::utils::Anvil::new().spawn();
+    let from = anvil.addresses()[0];
+    let provider = Provider::try_from(anvil.endpoint())
         .unwrap()
         .with_sender(from)
         .interval(std::time::Duration::from_millis(10));
@@ -499,9 +499,9 @@ async fn can_deploy_greeter() {
 #[tokio::test]
 async fn can_abiencoderv2_output() {
     abigen!(AbiEncoderv2Test, "ethers-contract/tests/solidity-contracts/abiencoderv2test_abi.json",);
-    let ganache = ethers_core::utils::Ganache::new().spawn();
-    let from = ganache.addresses()[0];
-    let provider = Provider::try_from(ganache.endpoint())
+    let anvil = ethers_core::utils::Anvil::new().spawn();
+    let from = anvil.addresses()[0];
+    let provider = Provider::try_from(anvil.endpoint())
         .unwrap()
         .with_sender(from)
         .interval(std::time::Duration::from_millis(10));

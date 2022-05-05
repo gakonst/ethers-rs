@@ -32,7 +32,7 @@ ethers = { git = "https://github.com/gakonst/ethers-rs" }
 Tests require the following installed:
 
 1. [`solc`](https://solidity.readthedocs.io/en/latest/installing-solidity.html) (>=0.8.10). We also recommend using [solc-select](https://github.com/crytic/solc-select) for more flexibility.
-2. [`ganache-cli`](https://github.com/trufflesuite/ganache-cli#installation)
+2. [`anvil`](https://github.com/foundry-rs/foundry/blob/master/anvil/README.md)
 3. [`geth`](https://github.com/ethereum/go-ethereum)
 
 In addition, it is recommended that you set the `ETHERSCAN_API_KEY` environment variable

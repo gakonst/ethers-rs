@@ -7,7 +7,7 @@ mod eth_tests {
     use super::*;
     use ethers_core::{
         types::{Address, BlockId, TransactionRequest, H256},
-        utils::Ganache,
+        utils::Anvil,
     };
     use ethers_providers::RINKEBY;
 
@@ -45,8 +45,8 @@ mod eth_tests {
         use ethers_core::types::H256;
         use ethers_providers::{StreamExt, Ws};
 
-        let ganache = Ganache::new().block_time(2u64).spawn();
-        let (ws, _) = tokio_tungstenite::connect_async(ganache.ws_endpoint()).await.unwrap();
+        let anvil = Anvil::new().block_time(2u64).spawn();
+        let (ws, _) = tokio_tungstenite::connect_async(anvil.ws_endpoint()).await.unwrap();
         let provider = Provider::new(Ws::new(ws)).interval(Duration::from_millis(500u64));
 
         let stream = provider.watch_blocks().await.unwrap().stream();
@@ -56,9 +56,9 @@ mod eth_tests {
     }
 
     #[tokio::test]
-    async fn pending_txs_with_confirmations_ganache() {
-        let ganache = Ganache::new().block_time(2u64).spawn();
-        let provider = Provider::<Http>::try_from(ganache.endpoint())
+    async fn pending_txs_with_confirmations_anvil() {
+        let anvil = Anvil::new().block_time(2u64).spawn();
+        let provider = Provider::<Http>::try_from(anvil.endpoint())
             .unwrap()
             .interval(Duration::from_millis(500u64));
         let accounts = provider.get_accounts().await.unwrap();
@@ -66,10 +66,10 @@ mod eth_tests {
     }
 
     #[tokio::test]
-    async fn websocket_pending_txs_with_confirmations_ganache() {
+    async fn websocket_pending_txs_with_confirmations_anvil() {
         use ethers_providers::Ws;
-        let ganache = Ganache::new().block_time(2u64).spawn();
-        let ws = Ws::connect(ganache.ws_endpoint()).await.unwrap();
+        let anvil = Anvil::new().block_time(2u64).spawn();
+        let ws = Ws::connect(anvil.ws_endpoint()).await.unwrap();
         let provider = Provider::new(ws);
         let accounts = provider.get_accounts().await.unwrap();
         generic_pending_txs_test(provider, accounts[0]).await;

@@ -1,4 +1,4 @@
-use ethers::{prelude::*, utils::Ganache};
+use ethers::{prelude::*, utils::Anvil};
 use eyre::Result;
 use std::{convert::TryFrom, path::Path, sync::Arc, time::Duration};
 
@@ -13,8 +13,8 @@ abigen!(
 #[tokio::main]
 async fn main() -> Result<()> {
     // 1. compile the contract (note this requires that you are inside the `examples` directory) and
-    // launch ganache
-    let ganache = Ganache::new().spawn();
+    // launch anvil
+    let anvil = Anvil::new().spawn();
 
     // set the path to the contract, `CARGO_MANIFEST_DIR` points to the directory containing the
     // manifest of `ethers`. which will be `../` relative to this file
@@ -24,11 +24,11 @@ async fn main() -> Result<()> {
         compiled.find("SimpleStorage").expect("could not find contract").into_parts_or_default();
 
     // 2. instantiate our wallet
-    let wallet: LocalWallet = ganache.keys()[0].clone().into();
+    let wallet: LocalWallet = anvil.keys()[0].clone().into();
 
     // 3. connect to the network
     let provider =
-        Provider::<Http>::try_from(ganache.endpoint())?.interval(Duration::from_millis(10u64));
+        Provider::<Http>::try_from(anvil.endpoint())?.interval(Duration::from_millis(10u64));
 
     // 4. instantiate the client with the wallet
     let client = SignerMiddleware::new(provider, wallet);

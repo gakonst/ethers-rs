@@ -4,7 +4,7 @@ use std::convert::TryFrom;
 
 use async_trait::async_trait;
 
-use ethers_core::{types::*, utils::Ganache};
+use ethers_core::{types::*, utils::Anvil};
 use ethers_middleware::gas_oracle::{
     EthGasStation, Etherchain, Etherscan, GasCategory, GasOracle, GasOracleError,
     GasOracleMiddleware,
@@ -31,14 +31,14 @@ impl GasOracle for FakeGasOracle {
 
 #[tokio::test]
 async fn using_gas_oracle() {
-    let ganache = Ganache::new().spawn();
+    let anvil = Anvil::new().spawn();
 
-    let from = ganache.addresses()[0];
+    let from = anvil.addresses()[0];
 
     // connect to the network
-    let provider = Provider::<Http>::try_from(ganache.endpoint()).unwrap();
+    let provider = Provider::<Http>::try_from(anvil.endpoint()).unwrap();
 
-    // this is set because ganache now sets 875000000 as the first block's base fee
+    // this is set because anvil now sets 875000000 as the first block's base fee
     let base_fee = 875000000;
     // assign a gas oracle to use
     let gas_oracle = FakeGasOracle { gas_price: (base_fee + 1337).into() };

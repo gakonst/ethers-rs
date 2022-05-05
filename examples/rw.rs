@@ -1,15 +1,15 @@
-//! Example usage for the `RwClinet` that uses a didicated client to send transaction and nother one
+//! Example usage for the `RwClient` that uses a didicated client to send transaction and nother one
 //! for read ops
 
-use ethers::{prelude::*, utils::Ganache};
+use ethers::{prelude::*, utils::Anvil};
 use std::{str::FromStr, time::Duration};
 
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
-    let ganache = Ganache::new().spawn();
+    let anvil = Anvil::new().spawn();
 
-    let http = Http::from_str(&ganache.endpoint())?;
-    let ws = Ws::connect(ganache.ws_endpoint()).await?;
+    let http = Http::from_str(&anvil.endpoint())?;
+    let ws = Ws::connect(anvil.ws_endpoint()).await?;
 
     let provider = Provider::rw(http, ws).interval(Duration::from_millis(10u64));
 

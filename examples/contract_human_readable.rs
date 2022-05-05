@@ -1,7 +1,7 @@
 use ethers::{
     prelude::*,
     solc::{Project, ProjectPathsConfig},
-    utils::Ganache,
+    utils::Anvil,
 };
 use eyre::Result;
 use std::{convert::TryFrom, path::PathBuf, sync::Arc, time::Duration};
@@ -33,13 +33,13 @@ async fn main() -> Result<()> {
     let contract = output.find("SimpleStorage").expect("could not find contract").clone();
     let (abi, bytecode, _) = contract.into_parts();
 
-    // 2. instantiate our wallet & ganache
-    let ganache = Ganache::new().spawn();
-    let wallet: LocalWallet = ganache.keys()[0].clone().into();
+    // 2. instantiate our wallet & anvil
+    let anvil = Anvil::new().spawn();
+    let wallet: LocalWallet = anvil.keys()[0].clone().into();
 
     // 3. connect to the network
     let provider =
-        Provider::<Http>::try_from(ganache.endpoint())?.interval(Duration::from_millis(10u64));
+        Provider::<Http>::try_from(anvil.endpoint())?.interval(Duration::from_millis(10u64));
 
     // 4. instantiate the client with the wallet
     let client = SignerMiddleware::new(provider, wallet);
