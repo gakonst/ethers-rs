@@ -94,7 +94,14 @@ mod tests {
     #[test]
     fn test_large() {
         // Check with e.g. `python3 -c 'print(int(1.0e36))'`
-        assert_eq!(u256_from_f64_saturating(1.0e36_f64), U256::from_dec_str("1000000000000000042420637374017961984").unwrap());
-        assert_eq!(u256_from_f64_saturating(f64::consts::PI * 2.0e60_f64), U256::from_dec_str("6283185307179586084560863929317662625677330590403879287914496").unwrap());
+        assert_eq!(
+            u256_from_f64_saturating(1.0e36_f64),
+            U256::from_dec_str("1000000000000000042420637374017961984").unwrap()
+        );
+        assert_eq!(
+            u256_from_f64_saturating(f64::consts::PI * 2.0e60_f64),
+            U256::from_dec_str("6283185307179586084560863929317662625677330590403879287914496")
+                .unwrap()
+        );
     }
 }
