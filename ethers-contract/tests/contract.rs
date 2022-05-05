@@ -264,17 +264,14 @@ mod eth_tests {
         // We spawn the event listener:
         let event = contract.event::<ValueChanged>();
         let mut stream = event.stream().await.unwrap();
-        assert_eq!(stream.id, 1.into());
 
         // Also set up a subscription for the same thing
         let ws = Provider::connect(anvil.ws_endpoint()).await.unwrap();
         let contract2 = ethers_contract::Contract::new(contract.address(), abi, ws);
         let event2 = contract2.event::<ValueChanged>();
         let mut subscription = event2.subscribe().await.unwrap();
-        assert_eq!(subscription.id, 2.into());
 
         let mut subscription_meta = event2.subscribe().await.unwrap().with_meta();
-        assert_eq!(subscription_meta.0.id, 3.into());
 
         let num_calls = 3u64;
 
