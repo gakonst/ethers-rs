@@ -7,9 +7,9 @@ use url::Url;
 
 use crate::gas_oracle::{GasCategory, GasOracle, GasOracleError};
 
-const GAS_NOW_URL: &str = "https://www.gasnow.org/api/v3/gas/price";
+const GAS_NOW_URL: &str = "https://etherchain.org/api/gasnow";
 
-/// A client over HTTP for the [GasNow](https://www.gasnow.org/api/v1/gas/price) gas tracker API
+/// A client over HTTP for the [Etherchain GasNow](https://etherchain.org/tools/gasnow) gas tracker API
 /// that implements the `GasOracle` trait
 #[derive(Clone, Debug)]
 pub struct GasNow {
@@ -32,7 +32,7 @@ pub struct GasNowResponse {
 }
 
 impl GasNow {
-    /// Creates a new [GasNow](https://gasnow.org) gas price oracle.
+    /// Creates a new [Etherchain GasNow](https://etherchain.org/tools/gasnow) gas price oracle.
     pub fn new() -> Self {
         Self::with_client(Client::new())
     }
