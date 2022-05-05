@@ -38,14 +38,11 @@ pub fn u256_from_f64_saturating(mut f: f64) -> U256 {
     let fraction = bits & 0xfffffffffffff;
     let mantissa = 0x10000000000000 | fraction;
     if exponent > 255 {
-        dbg!();
         U256::max_value()
     } else if exponent < 52 {
-        dbg!();
         // Truncate mantissa
         U256([mantissa, 0, 0, 0]) >> (52 - exponent)
     } else {
-        dbg!();
         U256([mantissa, 0, 0, 0]) << (exponent - 52)
     }
 }
