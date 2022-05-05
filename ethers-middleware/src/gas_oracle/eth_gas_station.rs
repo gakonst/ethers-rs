@@ -61,7 +61,7 @@ pub struct EthGasStationResponse {
 
 impl EthGasStation {
     /// Creates a new [EthGasStation](https://docs.ethgasstation.info/) gas oracle
-    pub fn new(client: Client, api_key: Option<&'static str>) -> Self {
+    pub fn new(client: Client, api_key: Option<&str>) -> Self {
         let mut url = Url::parse(ETH_GAS_STATION_URL_PREFIX).expect("invalid url");
         if let Some(key) = api_key {
             url.query_pairs_mut().append_pair("api-key", key);

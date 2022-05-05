@@ -6,29 +6,32 @@ use std::{fmt::Debug, future::Future};
 use tracing::warn;
 
 #[derive(Default, Debug)]
-pub struct Median<'a> {
-    oracles: Vec<(f32, Box<dyn 'a + GasOracle>)>,
+pub struct Median {
+    oracles: Vec<(f32, Box<dyn GasOracle>)>,
 }
 
 /// Computes the median gas price from a selection of oracles.
 ///
 /// Don't forget to set a timeout on the source oracles. By default
 /// the reqwest based oracles will never time out.
-impl<'a> Median<'a> {
+impl Median {
     pub fn new() -> Self {
         Self::default()
     }
 
-    pub fn add<T: 'a + GasOracle>(&mut self, oracle: T) {
+    pub fn add<T: 'static + GasOracle>(&mut self, oracle: T) {
         self.add_weighted(1.0, oracle)
     }
 
-    pub fn add_weighted<T: 'a + GasOracle>(&mut self, weight: f32, oracle: T) {
+    pub fn add_weighted<T: 'static + GasOracle>(&mut self, weight: f32, oracle: T) {
         assert!(weight > 0.0);
         self.oracles.push((weight, Box::new(oracle)));
     }
 
-    pub async fn query_all<Fn, Fut, O>(&'a self, mut f: Fn) -> Result<Vec<(f32, O)>, GasOracleError>
+    pub async fn query_all<'a, Fn, Fut, O>(
+        &'a self,
+        mut f: Fn,
+    ) -> Result<Vec<(f32, O)>, GasOracleError>
     where
         Fn: FnMut(&'a dyn GasOracle) -> Fut,
         Fut: Future<Output = Result<O, GasOracleError>>,
@@ -58,7 +61,7 @@ impl<'a> Median<'a> {
 
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
-impl GasOracle for Median<'_> {
+impl GasOracle for Median {
     async fn fetch(&self) -> Result<U256, GasOracleError> {
         let mut values = self.query_all(|oracle| oracle.fetch()).await?;
         // `query_all` guarantees `values` is not empty
@@ -115,8 +118,8 @@ where
     // By the last element, cumulative_weight == weight_rank and we should have
     // returned already. Assume there is a slight rounding error causing
     // cumulative_weight to be slightly less than expected. In this case the last
-    // element is appropriate. This is not exactly right, since the last
-    // elements may have zero weight.
+    // element is appropriate. (This is not exactly right, since the last
+    // elements may have zero weight.)
     // `values` is not empty.
     Some(&values.last().unwrap().1)
 }
