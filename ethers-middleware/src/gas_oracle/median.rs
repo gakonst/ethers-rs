@@ -5,11 +5,9 @@ use futures_util::future::join_all;
 use std::{fmt::Debug, future::Future};
 use tracing::warn;
 
-// TODO: Weighted median
-
-#[derive(Debug)]
+#[derive(Default, Debug)]
 pub struct Median<'a> {
-    oracles: Vec<Box<dyn 'a + GasOracle>>,
+    oracles: Vec<(f32, Box<dyn 'a + GasOracle>)>,
 }
 
 /// Computes the median gas price from a selection of oracles.
@@ -17,31 +15,39 @@ pub struct Median<'a> {
 /// Don't forget to set a timeout on the source oracles. By default
 /// the reqwest based oracles will never time out.
 impl<'a> Median<'a> {
-    pub fn new(oracles: Vec<Box<dyn GasOracle>>) -> Self {
-        Self { oracles }
+    pub fn new() -> Self {
+        Self::default()
     }
 
     pub fn add<T: 'a + GasOracle>(&mut self, oracle: T) {
-        self.oracles.push(Box::new(oracle));
+        self.add_weighted(1.0, oracle)
     }
 
-    pub async fn query_all<Fn, Fut, O>(&'a self, mut f: Fn) -> Result<Vec<O>, GasOracleError>
+    pub fn add_weighted<T: 'a + GasOracle>(&mut self, weight: f32, oracle: T) {
+        assert!(weight > 0.0);
+        self.oracles.push((weight, Box::new(oracle)));
+    }
+
+    pub async fn query_all<Fn, Fut, O>(&'a self, mut f: Fn) -> Result<Vec<(f32, O)>, GasOracleError>
     where
         Fn: FnMut(&'a dyn GasOracle) -> Fut,
         Fut: Future<Output = Result<O, GasOracleError>>,
     {
         // Process the oracles in parallel
-        let futures = self.oracles.iter().map(|oracle| f(oracle.as_ref()));
+        let futures = self.oracles.iter().map(|(_, oracle)| f(oracle.as_ref()));
         let results = join_all(futures).await;
 
         // Filter out any errors
-        let values = self.oracles.iter().zip(results).filter_map(|(oracle, result)| match result {
-            Ok(value) => Some(value),
-            Err(err) => {
-                warn!("Failed to fetch gas price from {:?}: {}", oracle, err);
-                None
-            }
-        });
+        let values =
+            self.oracles.iter().zip(results).filter_map(
+                |((weight, oracle), result)| match result {
+                    Ok(value) => Some((*weight, value)),
+                    Err(err) => {
+                        warn!("Failed to fetch gas price from {:?}: {}", oracle, err);
+                        None
+                    }
+                },
+            );
         let values = values.collect::<Vec<_>>();
         if values.is_empty() {
             return Err(GasOracleError::NoValues)
@@ -55,26 +61,62 @@ impl<'a> Median<'a> {
 impl GasOracle for Median<'_> {
     async fn fetch(&self) -> Result<U256, GasOracleError> {
         let mut values = self.query_all(|oracle| oracle.fetch()).await?;
-        values.sort();
-        Ok(values[values.len() / 2])
+        // `query_all` guarantees `values` is not empty
+        Ok(*weighted_fractile_by_key(0.5, &mut values, |fee| fee).unwrap())
     }
 
     async fn estimate_eip1559_fees(&self) -> Result<(U256, U256), GasOracleError> {
-        let values = self.query_all(|oracle| oracle.estimate_eip1559_fees()).await?;
-        let mut max_fee_per_gas = Vec::with_capacity(self.oracles.len());
-        let mut max_priority_fee_per_gas = Vec::with_capacity(self.oracles.len());
-        for (fee, priority) in values {
-            max_fee_per_gas.push(fee);
-            max_priority_fee_per_gas.push(priority);
-        }
-        assert_eq!(max_fee_per_gas.len(), max_priority_fee_per_gas.len());
-
-        // Sort the values and return the median
-        max_fee_per_gas.sort();
-        max_priority_fee_per_gas.sort();
+        let mut values = self.query_all(|oracle| oracle.estimate_eip1559_fees()).await?;
+        // `query_all` guarantees `values` is not empty
         Ok((
-            max_fee_per_gas[max_fee_per_gas.len() / 2],
-            max_priority_fee_per_gas[max_priority_fee_per_gas.len() / 2],
+            weighted_fractile_by_key(0.5, &mut values, |(max_fee, _)| max_fee).unwrap().0,
+            weighted_fractile_by_key(0.5, &mut values, |(_, priority_fee)| priority_fee).unwrap().1,
         ))
     }
+}
+
+/// Weighted fractile by key
+///
+/// Sort the values in place by key and return the weighted fractile value such
+/// that `fractile` fraction of the values by weight are less than or equal to
+/// the value.
+///
+/// Returns None if the values are empty.
+///
+/// Note: it doesn't handle NaNs or other special float values.
+///
+/// See <https://en.wikipedia.org/wiki/Percentile#The_weighted_percentile_method>
+///
+/// # Panics
+///
+/// Panics if [`fractile`] is not in the range $[0, 1]$.
+fn weighted_fractile_by_key<'a, T, F, K>(
+    fractile: f32,
+    values: &'a mut [(f32, T)],
+    mut key: F,
+) -> Option<&'a T>
+where
+    F: for<'b> FnMut(&'b T) -> &'b K,
+    K: Ord,
+{
+    assert!((0.0..=1.0).contains(&fractile));
+    if values.is_empty() {
+        return None
+    }
+    let weight_rank = fractile * values.iter().map(|(weight, _)| *weight).sum::<f32>();
+    values.sort_unstable_by(|a, b| key(&a.1).cmp(key(&b.1)));
+    let mut cumulative_weight = 0.0_f32;
+    for (weight, value) in values.iter() {
+        cumulative_weight += *weight;
+        if cumulative_weight >= weight_rank {
+            return Some(value)
+        }
+    }
+    // By the last element, cumulative_weight == weight_rank and we should have
+    // returned already. Assume there is a slight rounding error causing
+    // cumulative_weight to be slightly less than expected. In this case the last
+    // element is appropriate. This is not exactly right, since the last
+    // elements may have zero weight.
+    // `values` is not empty.
+    Some(&values.last().unwrap().1)
 }
