@@ -16,6 +16,9 @@ pub use middleware::{GasOracleMiddleware, MiddlewareError};
 mod median;
 pub use median::Median;
 
+mod cache;
+pub use cache::Cache;
+
 use ethers_core::types::U256;
 
 use async_trait::async_trait;
