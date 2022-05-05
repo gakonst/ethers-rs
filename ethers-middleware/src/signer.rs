@@ -387,7 +387,7 @@ mod tests {
         let anvil = Anvil::new().spawn();
         let provider = Provider::try_from(anvil.endpoint()).unwrap();
         let chain_id = provider.get_chainid().await.unwrap();
-        assert_eq!(chain_id, U256::from(1337));
+        assert_eq!(chain_id, U256::from(31337));
 
         // Intentionally do not set the chain id here so we ensure that the signer pulls the
         // provider's chain id.
