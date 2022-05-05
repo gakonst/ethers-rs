@@ -282,13 +282,20 @@ impl<T: ArtifactOutput> Project<T> {
     ///     ).unwrap();
     /// # }
     /// ```
-    #[cfg(all(feature = "svm-solc"))]
     pub fn compile_files<P, I>(&self, files: I) -> Result<ProjectCompileOutput<T>>
     where
         I: IntoIterator<Item = P>,
         P: Into<PathBuf>,
     {
-        project::ProjectCompiler::with_sources(self, Source::read_all(files)?)?.compile()
+        let sources = Source::read_all(files)?;
+
+        #[cfg(all(feature = "svm-solc"))]
+        if self.auto_detect {
+            return project::ProjectCompiler::with_sources(self, sources)?.compile()
+        }
+
+        let solc = self.configure_solc(self.solc.clone());
+        self.compile_with_version(&solc, sources)
     }
 
     /// Convenience function to compile only (re)compile files that match the provided [FileFilter].
@@ -321,16 +328,28 @@ impl<T: ArtifactOutput> Project<T> {
     ///     ).unwrap();
     /// # }
     /// ```
-    #[cfg(all(feature = "svm-solc"))]
     pub fn compile_sparse<F: FileFilter + 'static>(
         &self,
         filter: F,
     ) -> Result<ProjectCompileOutput<T>> {
         let sources =
             Source::read_all(self.paths.input_files().into_iter().filter(|p| filter.is_match(p)))?;
-
         let filter: Box<dyn FileFilter> = Box::new(filter);
-        project::ProjectCompiler::with_sources(self, sources)?.with_sparse_output(filter).compile()
+
+        #[cfg(all(feature = "svm-solc"))]
+        if self.auto_detect {
+            return project::ProjectCompiler::with_sources(self, sources)?
+                .with_sparse_output(filter)
+                .compile()
+        }
+
+        project::ProjectCompiler::with_sources_and_solc(
+            self,
+            sources,
+            self.configure_solc(self.solc.clone()),
+        )?
+        .with_sparse_output(filter)
+        .compile()
     }
 
     /// Compiles the given source files with the exact `Solc` executable
