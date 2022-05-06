@@ -63,7 +63,7 @@ mod dsproxyfactory_mod {
             f.debug_tuple(stringify!(DsProxyFactory)).field(&self.address()).finish()
         }
     }
-    impl<'a, M: Middleware> DsProxyFactory<M> {
+    impl<M: Middleware> DsProxyFactory<M> {
         #[doc = r" Creates a new contract instance with the specified `ethers`"]
         #[doc = r" client at the given `Address`. The contract derefs to a `ethers::Contract`"]
         #[doc = r" object"]

@@ -33,7 +33,7 @@ mod multicallcontract_mod {
             f.debug_tuple(stringify!(MulticallContract)).field(&self.address()).finish()
         }
     }
-    impl<'a, M: Middleware> MulticallContract<M> {
+    impl<M: Middleware> MulticallContract<M> {
         #[doc = r" Creates a new contract instance with the specified `ethers`"]
         #[doc = r" client at the given `Address`. The contract derefs to a `ethers::Contract`"]
         #[doc = r" object"]
