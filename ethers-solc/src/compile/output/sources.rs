@@ -3,12 +3,12 @@ use semver::Version;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-/// file -> [(source_file name  -> `SourceFile` + solc version)]
+/// (source_file path  -> `SourceFile` + solc version)
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 #[serde(transparent)]
-pub struct VersionedSources(pub BTreeMap<String, Vec<VersionedSourceFile>>);
+pub struct VersionedSourceFiles(pub BTreeMap<String, Vec<VersionedSourceFile>>);
 
-impl VersionedSources {
+impl VersionedSourceFiles {
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
@@ -20,6 +20,46 @@ impl VersionedSources {
     /// Returns an iterator over all files
     pub fn files(&self) -> impl Iterator<Item = &String> + '_ {
         self.0.keys()
+    }
+
+    /// Returns an iterator over the source files' ids and path
+    ///
+    /// ```
+    /// use std::collections::BTreeMap;
+    /// use ethers_solc::sources::VersionedSourceFiles;
+    /// # fn demo(files: VersionedSourceFiles) {
+    /// let sources: BTreeMap<u32,String> = files.into_ids().collect();
+    /// # }
+    /// ```
+    pub fn into_ids(self) -> impl Iterator<Item = (u32, String)> {
+        self.into_sources().map(|(path, source)| (source.id, path))
+    }
+
+    /// Returns an iterator over the source files' paths and ids
+    ///
+    /// ```
+    /// use std::collections::BTreeMap;
+    /// use ethers_solc::artifacts::SourceFiles;
+    /// # fn demo(files: SourceFiles) {
+    /// let sources :BTreeMap<String, u32> = files.into_paths().collect();
+    /// # }
+    /// ```
+    pub fn into_paths(self) -> impl Iterator<Item = (String, u32)> {
+        self.into_ids().map(|(id, path)| (path, id))
+    }
+
+    /// Returns an iterator over the source files' ids and path
+    ///
+    /// ```
+    /// use std::collections::BTreeMap;
+    /// use semver::Version;
+    /// use ethers_solc::sources::VersionedSourceFiles;
+    /// # fn demo(files: VersionedSourceFiles) {
+    /// let sources: BTreeMap<(u32, Version) ,String> = files.into_ids_with_version().map(|(id, source, version)|((id, version), source)).collect();
+    /// # }
+    /// ```
+    pub fn into_ids_with_version(self) -> impl Iterator<Item = (u32, String, Version)> {
+        self.into_sources_with_version().map(|(path, source, version)| (source.id, path, version))
     }
 
     /// Finds the _first_ source file with the given path
@@ -123,7 +163,10 @@ impl VersionedSources {
         self.0
             .values_mut()
             .filter_map(|sources| {
-                sources.iter().position(|source| source.source_file.id == id).map(|pos| sources.remove(pos).source_file)
+                sources
+                    .iter()
+                    .position(|source| source.source_file.id == id)
+                    .map(|pos| sources.remove(pos).source_file)
             })
             .next()
     }
@@ -147,7 +190,8 @@ impl VersionedSources {
     /// ```
     /// use std::collections::BTreeMap;
     /// use ethers_solc::{ artifacts::* };
-    /// # fn demo(sources: VersionedSources) {
+    /// use ethers_solc::sources::VersionedSourceFiles;
+    /// # fn demo(sources: VersionedSourceFiles) {
     /// let sources: BTreeMap<String, SourceFile> = sources
     ///     .into_sources()
     ///     .collect();
@@ -165,7 +209,8 @@ impl VersionedSources {
     /// use std::collections::BTreeMap;
     /// use semver::Version;
     /// use ethers_solc::{ artifacts::* };
-    /// # fn demo(sources: VersionedSources) {
+    /// use ethers_solc::sources::VersionedSourceFiles;
+    /// # fn demo(sources: VersionedSourceFiles) {
     /// let sources: BTreeMap<(String,Version), SourceFile> = sources
     ///     .into_sources_with_version().map(|(path, source, version)|((path,version), source))
     ///     .collect();
@@ -180,19 +225,19 @@ impl VersionedSources {
     }
 }
 
-impl AsRef<BTreeMap<String, Vec<VersionedSourceFile>>> for VersionedSources {
+impl AsRef<BTreeMap<String, Vec<VersionedSourceFile>>> for VersionedSourceFiles {
     fn as_ref(&self) -> &BTreeMap<String, Vec<VersionedSourceFile>> {
         &self.0
     }
 }
 
-impl AsMut<BTreeMap<String, Vec<VersionedSourceFile>>> for VersionedSources {
+impl AsMut<BTreeMap<String, Vec<VersionedSourceFile>>> for VersionedSourceFiles {
     fn as_mut(&mut self) -> &mut BTreeMap<String, Vec<VersionedSourceFile>> {
         &mut self.0
     }
 }
 
-impl IntoIterator for VersionedSources {
+impl IntoIterator for VersionedSourceFiles {
     type Item = (String, Vec<VersionedSourceFile>);
     type IntoIter = std::collections::btree_map::IntoIter<String, Vec<VersionedSourceFile>>;
 
