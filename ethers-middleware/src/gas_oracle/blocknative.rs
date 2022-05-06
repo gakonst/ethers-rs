@@ -1,12 +1,9 @@
 use crate::gas_oracle::{GasCategory, GasOracle, GasOracleError, GWEI_TO_WEI};
 use async_trait::async_trait;
 use ethers_core::types::U256;
-use reqwest::{
-    header::{HeaderMap, HeaderValue, AUTHORIZATION},
-    Client, ClientBuilder,
-};
+use reqwest::{header::AUTHORIZATION, Client};
 use serde::Deserialize;
-use std::{collections::HashMap, convert::TryInto, iter::FromIterator};
+use std::{collections::HashMap, convert::TryInto};
 use url::Url;
 
 const BLOCKNATIVE_GAS_PRICE_ENDPOINT: &str = "https://api.blocknative.com/gasprices/blockprices";
@@ -26,6 +23,7 @@ fn gas_category_to_confidence(gas_category: &GasCategory) -> u64 {
 pub struct BlockNative {
     client: Client,
     url: Url,
+    api_key: String,
     gas_category: GasCategory,
 }
 
@@ -84,13 +82,16 @@ pub struct BaseFeeEstimate {
 }
 
 impl BlockNative {
-    /// Creates a new [BlockNative](https://www.blocknative.com/gas-estimator) gas oracle
-    pub fn new(api_key: &str) -> Self {
-        let header_value = HeaderValue::from_str(api_key).unwrap();
-        let headers = HeaderMap::from_iter([(AUTHORIZATION, header_value)]);
-        let client = ClientBuilder::new().default_headers(headers).build().unwrap();
+    /// Creates a new [BlockNative](https://www.blocknative.com/gas-estimator) gas oracle.
+    pub fn new(api_key: String) -> Self {
+        Self::with_client(Client::new(), api_key)
+    }
+
+    /// Same as [`Self::new`] but with a custom [`Client`].
+    pub fn with_client(client: Client, api_key: String) -> Self {
         Self {
             client,
+            api_key,
             url: BLOCKNATIVE_GAS_PRICE_ENDPOINT.try_into().unwrap(),
             gas_category: GasCategory::Standard,
         }
@@ -105,7 +106,15 @@ impl BlockNative {
 
     /// Perform request to Blocknative, decode response
     pub async fn request(&self) -> Result<BlockNativeGasResponse, GasOracleError> {
-        Ok(self.client.get(self.url.as_ref()).send().await?.error_for_status()?.json().await?)
+        self.client
+            .get(self.url.as_ref())
+            .header(AUTHORIZATION, &self.api_key)
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await
+            .map_err(GasOracleError::HttpClientError)
     }
 }
 

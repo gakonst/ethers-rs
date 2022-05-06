@@ -61,15 +61,17 @@ pub struct EthGasStationResponse {
 
 impl EthGasStation {
     /// Creates a new [EthGasStation](https://docs.ethgasstation.info/) gas oracle
-    pub fn new(api_key: Option<&'static str>) -> Self {
-        let url = match api_key {
-            Some(key) => format!("{}?api-key={}", ETH_GAS_STATION_URL_PREFIX, key),
-            None => ETH_GAS_STATION_URL_PREFIX.to_string(),
-        };
+    pub fn new(api_key: Option<&str>) -> Self {
+        Self::with_client(Client::new(), api_key)
+    }
 
-        let url = Url::parse(&url).expect("invalid url");
-
-        EthGasStation { client: Client::new(), url, gas_category: GasCategory::Standard }
+    /// Same as [`Self::new`] but with a custom [`Client`].
+    pub fn with_client(client: Client, api_key: Option<&str>) -> Self {
+        let mut url = Url::parse(ETH_GAS_STATION_URL_PREFIX).expect("invalid url");
+        if let Some(key) = api_key {
+            url.query_pairs_mut().append_pair("api-key", key);
+        }
+        EthGasStation { client, url, gas_category: GasCategory::Standard }
     }
 
     /// Sets the gas price category to be used when fetching the gas price.
@@ -81,6 +83,12 @@ impl EthGasStation {
 
     pub async fn query(&self) -> Result<EthGasStationResponse, GasOracleError> {
         Ok(self.client.get(self.url.as_ref()).send().await?.json::<EthGasStationResponse>().await?)
+    }
+}
+
+impl Default for EthGasStation {
+    fn default() -> Self {
+        Self::new(None)
     }
 }
 

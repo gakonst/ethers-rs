@@ -21,6 +21,9 @@ pub use address_or_bytes::AddressOrBytes;
 mod path_or_string;
 pub use path_or_string::PathOrString;
 
+mod u256;
+pub use u256::*;
+
 mod i256;
 pub use i256::{Sign, I256};
 

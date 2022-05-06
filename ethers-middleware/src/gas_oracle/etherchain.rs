@@ -18,12 +18,6 @@ pub struct Etherchain {
     gas_category: GasCategory,
 }
 
-impl Default for Etherchain {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 #[derive(Clone, Debug, Deserialize, PartialEq, PartialOrd)]
 #[serde(rename_all = "camelCase")]
 pub struct EtherchainResponse {
@@ -38,9 +32,14 @@ pub struct EtherchainResponse {
 impl Etherchain {
     /// Creates a new [Etherchain](https://etherchain.org/tools/gasPriceOracle) gas price oracle.
     pub fn new() -> Self {
+        Self::with_client(Client::new())
+    }
+
+    /// Same as [`Self::new`] but with a custom [`Client`].
+    pub fn with_client(client: Client) -> Self {
         let url = Url::parse(ETHERCHAIN_URL).expect("invalid url");
 
-        Etherchain { client: Client::new(), url, gas_category: GasCategory::Standard }
+        Etherchain { client, url, gas_category: GasCategory::Standard }
     }
 
     /// Sets the gas price category to be used when fetching the gas price.
@@ -52,6 +51,12 @@ impl Etherchain {
 
     pub async fn query(&self) -> Result<EtherchainResponse, GasOracleError> {
         Ok(self.client.get(self.url.as_ref()).send().await?.json::<EtherchainResponse>().await?)
+    }
+}
+
+impl Default for Etherchain {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

@@ -7,21 +7,15 @@ use url::Url;
 
 use crate::gas_oracle::{GasCategory, GasOracle, GasOracleError};
 
-const GAS_NOW_URL: &str = "https://www.gasnow.org/api/v3/gas/price";
+const GAS_NOW_URL: &str = "https://etherchain.org/api/gasnow";
 
-/// A client over HTTP for the [GasNow](https://www.gasnow.org/api/v1/gas/price) gas tracker API
+/// A client over HTTP for the [Etherchain GasNow](https://etherchain.org/tools/gasnow) gas tracker API
 /// that implements the `GasOracle` trait
 #[derive(Clone, Debug)]
 pub struct GasNow {
     client: Client,
     url: Url,
     gas_category: GasCategory,
-}
-
-impl Default for GasNow {
-    fn default() -> Self {
-        Self::new()
-    }
 }
 
 #[derive(Deserialize)]
@@ -38,11 +32,16 @@ pub struct GasNowResponse {
 }
 
 impl GasNow {
-    /// Creates a new [GasNow](https://gasnow.org) gas price oracle.
+    /// Creates a new [Etherchain GasNow](https://etherchain.org/tools/gasnow) gas price oracle.
     pub fn new() -> Self {
+        Self::with_client(Client::new())
+    }
+
+    /// Same as [`Self::new`] but with a custom [`Client`].
+    pub fn with_client(client: Client) -> Self {
         let url = Url::parse(GAS_NOW_URL).expect("invalid url");
 
-        Self { client: Client::new(), url, gas_category: GasCategory::Standard }
+        Self { url, gas_category: GasCategory::Standard }
     }
 
     /// Sets the gas price category to be used when fetching the gas price.
@@ -60,6 +59,12 @@ impl GasNow {
             .json::<GasNowResponseWrapper>()
             .await?;
         Ok(res.data)
+    }
+}
+
+impl Default for GasNow {
+    fn default() -> Self {
+        Self::new(Client::new())
     }
 }
 
