@@ -1,5 +1,4 @@
 use std::{
-    pin::Pin,
     str::FromStr,
     sync::atomic::{AtomicU64, Ordering},
 };
@@ -23,28 +22,29 @@ impl Http {
 
 impl Transport for Http {
     fn request_id(&self) -> u64 {
-        self.next_id.fetch_add(1, Ordering::SeqCst)
+        self.next_id.fetch_add(1, Ordering::Relaxed)
     }
 
-    fn send_raw_request(&self, request: String) -> RequestFuture {
+    fn send_raw_request(&self, _: u64, request: String) -> RequestFuture {
         Box::pin(async move {
             let resp = self
                 .client
                 .post(self.url.as_ref())
                 .header(CONTENT_TYPE, "application/json")
-                .body(request.into())
+                .body(request)
                 .send()
                 .await
                 .map_err(TransportError::transport)?;
 
-            let text = resp.text().await.map_err(TransportError::transport)?;
-            let raw =
-                serde_json::from_str(&text).map_err(|source| TransportError::json(text, source))?;
+            let text = resp.text().await.map_err(|err| TransportError::transport(err))?;
+            let raw = serde_json::from_str(&text)
+                .map_err(|source| TransportError::json(&text, source))?;
+
             match raw {
                 Response::Success { result, .. } => Ok(result.to_owned()),
                 Response::Error { error, .. } => Err(TransportError::jsonrpc(error)),
                 Response::Notification { .. } => todo!("return appropriate JSON error"),
-            };
+            }
         })
     }
 }

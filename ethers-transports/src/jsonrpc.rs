@@ -2,8 +2,9 @@
 
 use std::{error, fmt};
 
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use ethers_core::types::U256;
+use serde::{de, ser::SerializeStruct as _, Deserialize, Serialize};
+use serde_json::{value::RawValue, Value};
 
 /// A JSONRPC 2.0 request.
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
@@ -18,7 +19,15 @@ pub struct Request<'a, T> {
 
 impl<T: Serialize> Request<'_, T> {
     /// Serializes the request to a JSON string.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the request can not be serialized as JSON.
     pub fn to_json(&self) -> String {
+        self.try_to_json().expect("failed to serialize request as JSON")
+    }
+
+    pub fn try_to_json(&self) -> Result<String, serde_json::Error> {
         serde_json::to_string(self)
     }
 }
@@ -48,9 +57,10 @@ pub enum Response<'a> {
 }
 
 /// A JSON-RPC 2.0 notification parameters object.
-#[derive(Clone, Copy, Debug, Deserialize, Hash, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Deserialize)]
 pub struct Params<'a> {
     pub subscription: U256,
+    #[serde(borrow)]
     pub result: &'a RawValue,
 }
 
@@ -62,7 +72,7 @@ impl<'de: 'a, 'a> Deserialize<'de> for Response<'a> {
         D: serde::Deserializer<'de>,
     {
         struct ResponseVisitor<'a>(&'a ());
-        impl<'de: 'a, 'a> Visitor<'de> for ResponseVisitor<'a> {
+        impl<'de: 'a, 'a> de::Visitor<'de> for ResponseVisitor<'a> {
             type Value = Response<'a>;
 
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
@@ -71,7 +81,7 @@ impl<'de: 'a, 'a> Deserialize<'de> for Response<'a> {
 
             fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
             where
-                A: MapAccess<'de>,
+                A: de::MapAccess<'de>,
             {
                 let mut jsonrpc = false;
 
@@ -95,7 +105,7 @@ impl<'de: 'a, 'a> Deserialize<'de> for Response<'a> {
                             let value = map.next_value()?;
                             if value != "2.0" {
                                 return Err(de::Error::invalid_value(
-                                    Unexpected::Str(value),
+                                    de::Unexpected::Str(value),
                                     &"2.0",
                                 ));
                             }
@@ -175,7 +185,7 @@ impl<'de: 'a, 'a> Deserialize<'de> for Response<'a> {
     }
 }
 
-#[derive(Debug, Deserialize, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Deserialize, Clone, PartialEq, Eq)]
 /// A JSON-RPC 2.0 error.
 pub struct JsonRpcError {
     /// The error code
@@ -188,10 +198,10 @@ pub struct JsonRpcError {
 
 impl fmt::Display for JsonRpcError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let (msg, code) = (self.message.as_ref(), self.code);
-        match self.data {
+        let (msg, code) = (self.message.as_str(), self.code);
+        match &self.data {
             Some(data) => write!(f, "{msg} (code={code},data={data})"),
-            None => write!(f, "{msg} (code={code})", self.),
+            None => write!(f, "{msg} (code={code})"),
         }
     }
 }

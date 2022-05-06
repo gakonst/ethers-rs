@@ -19,14 +19,14 @@ pub enum TransportError {
 
 impl TransportError {
     pub(crate) fn transport(err: impl Into<Box<dyn error::Error + Send + Sync>>) -> Box<Self> {
-        Box::new(Self::Transport(err))
+        Box::new(Self::Transport(err.into()))
     }
 
     pub(crate) fn json(input: &str, source: serde_json::Error) -> Box<Self> {
         Box::new(Self::Json { input: input.to_string(), source })
     }
 
-    pub(crate) fn jsonrpc(error: JsonRpcError) -> Box<Self> {
-        Box::new(Self::JsonRpc(error))
+    pub(crate) fn jsonrpc(err: JsonRpcError) -> Box<Self> {
+        Box::new(Self::JsonRpc(err))
     }
 }

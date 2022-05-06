@@ -1,6 +1,6 @@
 #[cfg(feature = "http")]
-mod http;
+pub(super) mod http;
 #[cfg(all(unix, feature = "ipc"))]
-mod ipc;
+pub(super) mod ipc;
 #[cfg(feature = "ws")]
-mod ws;
+pub(super) mod ws;
