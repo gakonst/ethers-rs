@@ -133,7 +133,7 @@ impl Context {
         let contract = quote! {
                 #struct_decl
 
-                impl<'a, M: #ethers_providers::Middleware> #name<M> {
+                impl<M: #ethers_providers::Middleware> #name<M> {
                     /// Creates a new contract instance with the specified `ethers`
                     /// client at the given `Address`. The contract derefs to a `ethers::Contract`
                     /// object

@@ -305,14 +305,14 @@ impl Client {
         }
         if resp.result.starts_with("Contract source code not verified") {
             if let Some(ref cache) = self.cache {
-                let _ = cache.set_abi(address, None);
+                cache.set_abi(address, None);
             }
             return Err(EtherscanError::ContractCodeNotVerified(address))
         }
         let abi = serde_json::from_str(&resp.result)?;
 
         if let Some(ref cache) = self.cache {
-            let _ = cache.set_abi(address, Some(&abi));
+            cache.set_abi(address, Some(&abi));
         }
 
         Ok(abi)
@@ -350,14 +350,14 @@ impl Client {
         let response: Response<Vec<Metadata>> = self.get_json(&query).await?;
         if response.result.iter().any(|item| item.abi == "Contract source code not verified") {
             if let Some(ref cache) = self.cache {
-                let _ = cache.set_source(address, None);
+                cache.set_source(address, None);
             }
             return Err(EtherscanError::ContractCodeNotVerified(address))
         }
         let res = ContractMetadata { items: response.result };
 
         if let Some(ref cache) = self.cache {
-            let _ = cache.set_source(address, Some(&res));
+            cache.set_source(address, Some(&res));
         }
 
         Ok(res)

@@ -172,7 +172,7 @@ impl<'a, P: JsonRpcClient> Future for PendingTransaction<'a, P> {
 
         match this.state {
             PendingTxState::InitialDelay(fut) => {
-                let _ready = futures_util::ready!(fut.as_mut().poll(ctx));
+                futures_util::ready!(fut.as_mut().poll(ctx));
                 tracing::debug!("Starting to poll pending tx {:?}", *this.tx_hash);
                 let fut = Box::pin(this.provider.get_transaction(*this.tx_hash));
                 rewake_with_new_state!(ctx, this, PendingTxState::GettingTx(fut));
