@@ -51,7 +51,7 @@ impl GanacheInstance {
 
 impl Drop for GanacheInstance {
     fn drop(&mut self) {
-        let _ = self.pid.kill().expect("could not kill ganache");
+        self.pid.kill().expect("could not kill ganache");
     }
 }
 

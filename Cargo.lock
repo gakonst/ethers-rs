@@ -1292,6 +1292,7 @@ dependencies = [
  "ethers-providers",
  "ethers-signers",
  "ethers-solc",
+ "futures-locks",
  "futures-util",
  "hex",
  "instant",
@@ -1587,6 +1588,17 @@ name = "futures-io"
 version = "0.3.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fc4045962a5a5e935ee2fdedaa4e08284547402885ab326734432bed5d12966b"
+
+[[package]]
+name = "futures-locks"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3eb42d4fb72227be5778429f9ef5240a38a358925a49f05b5cf702ce7c7e558a"
+dependencies = [
+ "futures-channel",
+ "futures-task",
+ "tokio",
+]
 
 [[package]]
 name = "futures-macro"

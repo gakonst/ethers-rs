@@ -13,6 +13,15 @@ pub use etherscan::Etherscan;
 mod middleware;
 pub use middleware::{GasOracleMiddleware, MiddlewareError};
 
+mod median;
+pub use median::Median;
+
+mod cache;
+pub use cache::Cache;
+
+mod polygon;
+pub use polygon::Polygon;
+
 use ethers_core::types::U256;
 
 use async_trait::async_trait;
@@ -58,6 +67,12 @@ pub enum GasOracleError {
 
     #[error("EIP-1559 gas estimation not supported")]
     Eip1559EstimationNotSupported,
+
+    #[error("None of the oracles returned a value")]
+    NoValues,
+
+    #[error("Chain is not supported by the oracle")]
+    UnsupportedChain,
 }
 
 /// `GasOracle` is a trait that an underlying gas oracle needs to implement.
