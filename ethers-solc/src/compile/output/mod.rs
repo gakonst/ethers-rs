@@ -5,11 +5,13 @@ use crate::{
         contract::{CompactContractBytecode, CompactContractRef, Contract},
         Error, SourceFile, SourceFiles,
     },
-    contracts::{VersionedContract, VersionedContracts},
     ArtifactId, ArtifactOutput, Artifacts, CompilerOutput, ConfigurableArtifacts,
 };
+use contracts::{VersionedContract, VersionedContracts};
 use semver::Version;
 use std::{collections::BTreeMap, fmt, path::Path};
+pub mod contracts;
+pub mod sources;
 
 /// Contains a mixture of already compiled/cached artifacts and the input set of sources that still
 /// need to be compiled.

@@ -1,8 +1,8 @@
 //! Output artifact handling
 
 use crate::{
-    artifacts::FileToContractsMap, contracts::VersionedContracts, error::Result, utils,
-    HardhatArtifact, ProjectPathsConfig, SolcError,
+    artifacts::FileToContractsMap, error::Result, utils, HardhatArtifact, ProjectPathsConfig,
+    SolcError,
 };
 use ethers_core::{abi::Abi, types::Bytes};
 use semver::Version;
@@ -15,10 +15,13 @@ use std::{
 };
 
 mod configurable;
-use crate::artifacts::{
-    contract::{CompactContract, CompactContractBytecode, Contract},
-    BytecodeObject, CompactBytecode, CompactContractBytecodeCow, CompactDeployedBytecode,
-    SourceFile,
+use crate::{
+    artifacts::{
+        contract::{CompactContract, CompactContractBytecode, Contract},
+        BytecodeObject, CompactBytecode, CompactContractBytecodeCow, CompactDeployedBytecode,
+        SourceFile,
+    },
+    compile::output::contracts::VersionedContracts,
 };
 pub use configurable::*;
 

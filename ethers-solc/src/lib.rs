@@ -35,10 +35,10 @@ pub use filter::{FileFilter, TestFileFilter};
 use crate::{
     artifacts::Sources,
     cache::SolFilesCache,
-    contracts::VersionedContracts,
     error::{SolcError, SolcIoError},
 };
 use artifacts::contract::Contract;
+use compile::output::contracts::VersionedContracts;
 use error::Result;
 use semver::Version;
 use std::path::{Path, PathBuf};
