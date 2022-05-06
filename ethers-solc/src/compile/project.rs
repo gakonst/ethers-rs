@@ -700,7 +700,7 @@ mod tests {
 
         let state = state.compile().unwrap();
         assert_eq!(state.output.sources.len(), 3);
-        for (f, source) in &state.output.sources {
+        for (f, source) in state.output.sources.sources() {
             if f.ends_with("A.sol") {
                 assert!(source.ast.is_some());
             } else {

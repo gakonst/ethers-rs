@@ -35,10 +35,11 @@ pub use filter::{FileFilter, TestFileFilter};
 use crate::{
     artifacts::Sources,
     cache::SolFilesCache,
-    contracts::VersionedContracts,
     error::{SolcError, SolcIoError},
+    sources::VersionedSourceFiles,
 };
 use artifacts::contract::Contract;
+use compile::output::contracts::VersionedContracts;
 use error::Result;
 use semver::Version;
 use std::path::{Path, PathBuf};
@@ -750,7 +751,7 @@ impl<T: ArtifactOutput> ArtifactOutput for Project<T> {
     fn on_output(
         &self,
         contracts: &VersionedContracts,
-        sources: &BTreeMap<String, SourceFile>,
+        sources: &VersionedSourceFiles,
         layout: &ProjectPathsConfig,
     ) -> Result<Artifacts<Self::Artifact>> {
         self.artifacts_handler().on_output(contracts, sources, layout)
@@ -825,7 +826,7 @@ impl<T: ArtifactOutput> ArtifactOutput for Project<T> {
     fn output_to_artifacts(
         &self,
         contracts: &VersionedContracts,
-        sources: &BTreeMap<String, SourceFile>,
+        sources: &VersionedSourceFiles,
     ) -> Artifacts<Self::Artifact> {
         self.artifacts_handler().output_to_artifacts(contracts, sources)
     }

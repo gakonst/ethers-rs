@@ -46,10 +46,10 @@ pub type Contracts = FileToContractsMap<Contract>;
 pub type Sources = BTreeMap<PathBuf, Source>;
 
 /// A set of different Solc installations with their version and the sources to be compiled
-pub type VersionedSources = BTreeMap<Solc, (Version, Sources)>;
+pub(crate) type VersionedSources = BTreeMap<Solc, (Version, Sources)>;
 
 /// A set of different Solc installations with their version and the sources to be compiled
-pub type VersionedFilteredSources = BTreeMap<Solc, (Version, FilteredSources)>;
+pub(crate) type VersionedFilteredSources = BTreeMap<Solc, (Version, FilteredSources)>;
 
 const SOLIDITY: &str = "Solidity";
 

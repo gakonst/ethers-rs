@@ -1,8 +1,8 @@
 //! Output artifact handling
 
 use crate::{
-    artifacts::FileToContractsMap, contracts::VersionedContracts, error::Result, utils,
-    HardhatArtifact, ProjectPathsConfig, SolcError,
+    artifacts::FileToContractsMap, error::Result, utils, HardhatArtifact, ProjectPathsConfig,
+    SolcError,
 };
 use ethers_core::{abi::Abi, types::Bytes};
 use semver::Version;
@@ -15,10 +15,13 @@ use std::{
 };
 
 mod configurable;
-use crate::artifacts::{
-    contract::{CompactContract, CompactContractBytecode, Contract},
-    BytecodeObject, CompactBytecode, CompactContractBytecodeCow, CompactDeployedBytecode,
-    SourceFile,
+use crate::{
+    artifacts::{
+        contract::{CompactContract, CompactContractBytecode, Contract},
+        BytecodeObject, CompactBytecode, CompactContractBytecodeCow, CompactDeployedBytecode,
+        SourceFile,
+    },
+    compile::output::{contracts::VersionedContracts, sources::VersionedSourceFiles},
 };
 pub use configurable::*;
 
@@ -447,7 +450,7 @@ pub trait ArtifactOutput {
     fn on_output(
         &self,
         contracts: &VersionedContracts,
-        sources: &BTreeMap<String, SourceFile>,
+        sources: &VersionedSourceFiles,
         layout: &ProjectPathsConfig,
     ) -> Result<Artifacts<Self::Artifact>> {
         let mut artifacts = self.output_to_artifacts(contracts, sources);
@@ -609,16 +612,17 @@ pub trait ArtifactOutput {
     fn output_to_artifacts(
         &self,
         contracts: &VersionedContracts,
-        sources: &BTreeMap<String, SourceFile>,
+        sources: &VersionedSourceFiles,
     ) -> Artifacts<Self::Artifact> {
         let mut artifacts = ArtifactsMap::new();
         for (file, contracts) in contracts.as_ref().iter() {
-            let source_file = sources.get(file);
             let mut entries = BTreeMap::new();
             for (name, versioned_contracts) in contracts {
                 let mut contracts = Vec::with_capacity(versioned_contracts.len());
                 // check if the same contract compiled with multiple solc versions
                 for contract in versioned_contracts {
+                    let source_file = sources.find_file_and_version(file, &contract.version);
+
                     let artifact_path = if versioned_contracts.len() > 1 {
                         Self::output_file_versioned(file, name, &contract.version)
                     } else {
@@ -689,7 +693,7 @@ impl ArtifactOutput for MinimalCombinedArtifactsHardhatFallback {
     fn on_output(
         &self,
         output: &VersionedContracts,
-        sources: &BTreeMap<String, SourceFile>,
+        sources: &VersionedSourceFiles,
         layout: &ProjectPathsConfig,
     ) -> Result<Artifacts<Self::Artifact>> {
         MinimalCombinedArtifacts::default().on_output(output, sources, layout)

@@ -5,7 +5,6 @@ use crate::{
 };
 use semver::{Version, VersionReq};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
-
 use std::{
     fmt,
     io::BufRead,
@@ -13,10 +12,9 @@ use std::{
     process::{Command, Output, Stdio},
     str::FromStr,
 };
-
-pub mod contracts;
 pub mod many;
 pub mod output;
+pub use output::{contracts, sources};
 pub mod project;
 
 /// The name of the `solc` binary on the system
