@@ -257,6 +257,12 @@ impl ClientBuilder {
                 urls("https://api-testnet.arbiscan.io/api", "https://testnet.arbiscan.io")
             }
             Chain::Cronos => urls("https://api.cronoscan.com/api", "https://cronoscan.com"),
+            Chain::Moonbeam => {
+                urls("https://api-moonbeam.moonscan.io/api", "https://moonbeam.moonscan.io/")
+            }
+            Chain::Moonriver => {
+                urls("https://api-moonriver.moonscan.io/api", "https://moonriver.moonscan.io")
+            }
             Chain::Dev => return Err(EtherscanError::LocalNetworksNotSupported),
             chain => return Err(EtherscanError::ChainNotSupported(chain)),
         };
