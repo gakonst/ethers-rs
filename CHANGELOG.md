@@ -68,6 +68,8 @@
 
 ### Unreleased
 
+- Support overloaded events
+  [#1233](https://github.com/gakonst/ethers-rs/pull/1233)
 - Relax Clone requirements when Arc<Middleware> is used
   [#1183](https://github.com/gakonst/ethers-rs/pull/1183)
 - Generate a deploy function if bytecode is provided in the abigen! input (json artifact)
