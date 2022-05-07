@@ -1,4 +1,3 @@
-
 use ethabi::{Event, EventParam, ParamType};
 use std::{fmt, iter::Peekable, str::CharIndices};
 use unicode_xid::UnicodeXID;
@@ -14,7 +13,8 @@ macro_rules! unrecognised {
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum Token<'input> {
     Identifier(&'input str),
-
+    Number(&'input str),
+    HexNumber(&'input str),
     // Punctuation
     OpenParenthesis,
     CloseParenthesis,
@@ -57,9 +57,9 @@ pub enum Token<'input> {
     Constructor,
     Indexed,
 
-    Uint(u16),
-    Int(u16),
-    Bytes(u8),
+    Uint(usize),
+    Int(usize),
+    Bytes(usize),
     // prior to 0.8.0 `byte` used to be an alias for `bytes1`
     Byte,
     DynamicBytes,
@@ -68,10 +68,32 @@ pub enum Token<'input> {
     String,
 }
 
+// === impl Token ===
+
+impl<'input> Token<'input> {
+    fn into_param_type(self) -> Option<ParamType> {
+        let param = match self {
+            Token::Uint(size) => ParamType::Uint(size),
+            Token::Int(size) => ParamType::Int(size),
+            Token::Bytes(size) => ParamType::FixedBytes(size),
+            Token::Byte => ParamType::FixedBytes(1),
+            Token::DynamicBytes => ParamType::Bytes,
+            Token::Bool => ParamType::Bool,
+            Token::Address => ParamType::Address,
+            Token::String => ParamType::String,
+            _ => return None,
+        };
+
+        Some(param)
+    }
+}
+
 impl<'input> fmt::Display for Token<'input> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Token::Identifier(id) => write!(f, "{}", id),
+            Token::Number(num) => write!(f, "{}", num),
+            Token::HexNumber(num) => write!(f, "0x{}", num),
             Token::Uint(w) => write!(f, "uint{}", w),
             Token::Int(w) => write!(f, "int{}", w),
             Token::Bytes(w) => write!(f, "bytes{}", w),
@@ -122,10 +144,19 @@ impl<'input> fmt::Display for Token<'input> {
 pub enum LexerError {
     #[error("UnrecognisedToken {0}:{1} `{2}`")]
     UnrecognisedToken(usize, usize, String),
+    #[error("Expected token `{2}` at {0}:{1} ")]
+    ExpectedToken(usize, usize, String),
+    #[error("EndofFileInHex {0}:{1}")]
+    EndofFileInHex(usize, usize),
+    #[error("MissingNumber {0}:{1}")]
+    MissingNumber(usize, usize),
+    #[error("end of file but expected `{0}`")]
+    EndOfFileExpectedToken(String),
     #[error("end of file")]
     EndOfFile,
 }
 
+#[derive(Clone, Debug)]
 pub(crate) struct HumanReadableLexer<'input> {
     input: &'input str,
     chars: Peekable<CharIndices<'input>>,
@@ -163,6 +194,56 @@ impl<'input> HumanReadableLexer<'input> {
                     } else {
                         Some(Ok((start, Token::Identifier(id), end)))
                     }
+                }
+                Some((start, ch)) if ch.is_ascii_digit() => {
+                    let mut end = start + 1;
+                    if ch == '0' {
+                        if let Some((_, 'x')) = self.chars.peek() {
+                            // hex number
+                            self.chars.next();
+
+                            let mut end = match self.chars.next() {
+                                Some((end, ch)) if ch.is_ascii_hexdigit() => end,
+                                Some((_, _)) => {
+                                    return Some(Err(LexerError::MissingNumber(start, start + 1)))
+                                }
+                                None => {
+                                    return Some(Err(LexerError::EndofFileInHex(
+                                        start,
+                                        self.input.len(),
+                                    )))
+                                }
+                            };
+
+                            while let Some((i, ch)) = self.chars.peek() {
+                                if !ch.is_ascii_hexdigit() && *ch != '_' {
+                                    break
+                                }
+                                end = *i;
+                                self.chars.next();
+                            }
+
+                            return Some(Ok((
+                                start,
+                                Token::HexNumber(&self.input[start..=end]),
+                                end + 1,
+                            )))
+                        }
+                    }
+
+                    loop {
+                        if let Some((i, ch)) = self.chars.peek().cloned() {
+                            if !ch.is_ascii_digit() {
+                                break
+                            }
+                            self.chars.next();
+                            end = i + 1;
+                        } else {
+                            end = self.input.len();
+                            break
+                        }
+                    }
+                    return Some(Ok((start, Token::Number(&self.input[start..end]), end + 1)))
                 }
                 Some((i, '(')) => return Some(Ok((i, Token::OpenParenthesis, i + 1))),
                 Some((i, ')')) => return Some(Ok((i, Token::CloseParenthesis, i + 1))),
@@ -207,6 +288,7 @@ impl<'input> Iterator for HumanReadableLexer<'input> {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct HumanReadableParser<'input> {
     lexer: Peekable<HumanReadableLexer<'input>>,
 }
@@ -220,7 +302,24 @@ impl<'input> HumanReadableParser<'input> {
         Self { lexer: lexer.peekable() }
     }
 
-    pub fn parse_event(&mut self) -> Result<Event, LexerError> {
+    /// Parses the input into a [ParamType]
+    pub fn parse_type(input: &'input str) -> Result<ParamType, LexerError> {
+        Self::new(input).take_param()
+    }
+
+    /// Parses an [Event] from a human readable form
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use ethers_core::abi::HumanReadableParser;
+    /// let mut event = HumanReadableParser::parse_event("event ValueChanged(address indexed author, string oldValue, string newValue)").unwrap();
+    /// ```
+    pub fn parse_event(input: &'input str) -> Result<Event, LexerError> {
+        Self::new(input).take_event()
+    }
+
+    pub fn take_event(&mut self) -> Result<Event, LexerError> {
         let (l, token, r) = self.next_spanned()?;
         let name = match token {
             Token::Event => {
@@ -255,13 +354,73 @@ impl<'input> HumanReadableParser<'input> {
 
     /// Parses all event params
     fn take_event_params(&mut self) -> Result<Vec<EventParam>, LexerError> {
-        let params = Vec::new();
+        let mut params = Vec::new();
+
+        if self.peek_next(Token::CloseParenthesis) {
+            return Ok(params)
+        }
+
         loop {
-            if self.peek_next(Token::CloseBracket) {
-                break
+            params.push(self.take_event_param()?);
+
+            let (l, next, r) = match self.peek() {
+                Some(next) => next?,
+                _ => break,
+            };
+
+            match next {
+                Token::Comma => {
+                    self.next_spanned()?;
+                }
+                Token::CloseParenthesis => break,
+                t => unrecognised!(l, r, t.to_string()),
             }
-            let (l, token, r) = self.next_spanned()?;
+        }
+        Ok(params)
+    }
+
+    fn take_event_param(&mut self) -> Result<EventParam, LexerError> {
+        let kind = self.take_param()?;
+        let mut name = "";
+        let mut indexed = false;
+
+        loop {
+            let (_, token, _) = self.peek_some()?;
             match token {
+                Token::Indexed => {
+                    indexed = true;
+                    self.next();
+                }
+                Token::Identifier(id) => {
+                    name = id;
+                    self.next();
+                    break
+                }
+                _ => break,
+            };
+        }
+        Ok(EventParam { name: name.to_string(), kind, indexed })
+    }
+
+    /// Parses a list of parameter types
+    fn take_params(&mut self) -> Result<Vec<ParamType>, LexerError> {
+        let mut params = Vec::new();
+
+        if self.peek_next(Token::CloseParenthesis) {
+            return Ok(params)
+        }
+        loop {
+            params.push(self.take_param()?);
+
+            let (l, next, r) = match self.peek() {
+                Some(next) => next?,
+                _ => break,
+            };
+            match next {
+                Token::Comma => {
+                    self.next_spanned()?;
+                }
+                Token::CloseParenthesis => break,
                 t => unrecognised!(l, r, t.to_string()),
             }
         }
@@ -269,9 +428,42 @@ impl<'input> HumanReadableParser<'input> {
         Ok(params)
     }
 
-    /// Parses a list of parameter types
-    fn take_params(&mut self) -> Result<Vec<ParamType>, LexerError> {
-        todo!()
+    fn take_param(&mut self) -> Result<ParamType, LexerError> {
+        let (l, token, r) = self.next_spanned()?;
+        let kind = match token {
+            Token::OpenParenthesis => {
+                let ty = self.take_params()?;
+                self.take_next_exact(Token::CloseParenthesis)?;
+                ParamType::Tuple(ty)
+            }
+            t => t
+                .into_param_type()
+                .ok_or_else(|| LexerError::UnrecognisedToken(l, r, t.to_string()))?,
+        };
+        self.take_array_tail(kind)
+    }
+
+    fn take_array_tail(&mut self, kind: ParamType) -> Result<ParamType, LexerError> {
+        let (_, token, _) = match self.peek() {
+            Some(next) => next?,
+            _ => return Ok(kind),
+        };
+
+        match token {
+            Token::OpenBracket => {
+                self.next_spanned()?;
+                let (_, token, _) = self.peek_some()?;
+                let kind = if let Token::Number(size) = token {
+                    self.next_spanned()?;
+                    ParamType::FixedArray(Box::new(kind), size.parse().unwrap())
+                } else {
+                    ParamType::Array(Box::new(kind))
+                };
+                self.take_next_exact(Token::CloseBracket)?;
+                self.take_array_tail(kind)
+            }
+            _ => Ok(kind),
+        }
     }
 
     fn take_open_parenthesis(&mut self) -> Result<(), LexerError> {
@@ -283,7 +475,13 @@ impl<'input> HumanReadableParser<'input> {
     }
 
     fn take_next_exact(&mut self, token: Token) -> Result<(), LexerError> {
-        let (l, next, r) = self.next_spanned()?;
+        let (l, next, r) = self.next_spanned().map_err(|err| match err {
+            LexerError::UnrecognisedToken(l, r, _) => {
+                LexerError::ExpectedToken(l, r, token.to_string())
+            }
+            LexerError::EndOfFile => LexerError::EndOfFileExpectedToken(token.to_string()),
+            err => err,
+        })?;
         if next != token {
             unrecognised!(l, r, next.to_string())
         }
@@ -299,14 +497,20 @@ impl<'input> HumanReadableParser<'input> {
         }
     }
 
-    fn next_param(&mut self) {}
-
     fn next_spanned(&mut self) -> Spanned<Token<'input>, usize, LexerError> {
         self.next().ok_or(LexerError::EndOfFile)?
     }
 
     fn next(&mut self) -> Option<Spanned<Token<'input>, usize, LexerError>> {
         self.lexer.next()
+    }
+
+    fn peek(&mut self) -> Option<Spanned<Token<'input>, usize, LexerError>> {
+        self.lexer.peek().cloned()
+    }
+
+    fn peek_some(&mut self) -> Spanned<Token<'input>, usize, LexerError> {
+        self.lexer.peek().cloned().ok_or(LexerError::EndOfFile)?
     }
 }
 
@@ -445,4 +649,201 @@ fn keyword(id: &str) -> Option<Token> {
         _ => return None,
     };
     Some(token)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_param() {
+        assert_eq!(HumanReadableParser::parse_type("address").unwrap(), ParamType::Address);
+        assert_eq!(HumanReadableParser::parse_type("bytes").unwrap(), ParamType::Bytes);
+        assert_eq!(HumanReadableParser::parse_type("bytes32").unwrap(), ParamType::FixedBytes(32));
+        assert_eq!(HumanReadableParser::parse_type("bool").unwrap(), ParamType::Bool);
+        assert_eq!(HumanReadableParser::parse_type("string").unwrap(), ParamType::String);
+        assert_eq!(HumanReadableParser::parse_type("int").unwrap(), ParamType::Int(256));
+        assert_eq!(HumanReadableParser::parse_type("uint").unwrap(), ParamType::Uint(256));
+        assert_eq!(
+            HumanReadableParser::parse_type(
+                "
+        int32"
+            )
+            .unwrap(),
+            ParamType::Int(32)
+        );
+        assert_eq!(HumanReadableParser::parse_type("uint32").unwrap(), ParamType::Uint(32));
+    }
+
+    #[test]
+    fn test_parse_array_param() {
+        assert_eq!(
+            HumanReadableParser::parse_type("address[]").unwrap(),
+            ParamType::Array(Box::new(ParamType::Address))
+        );
+        assert_eq!(
+            HumanReadableParser::parse_type("uint[]").unwrap(),
+            ParamType::Array(Box::new(ParamType::Uint(256)))
+        );
+        assert_eq!(
+            HumanReadableParser::parse_type("bytes[]").unwrap(),
+            ParamType::Array(Box::new(ParamType::Bytes))
+        );
+        assert_eq!(
+            HumanReadableParser::parse_type("bool[][]").unwrap(),
+            ParamType::Array(Box::new(ParamType::Array(Box::new(ParamType::Bool))))
+        );
+    }
+
+    #[test]
+    fn test_parse_fixed_array_param() {
+        assert_eq!(
+            HumanReadableParser::parse_type("address[2]").unwrap(),
+            ParamType::FixedArray(Box::new(ParamType::Address), 2)
+        );
+        assert_eq!(
+            HumanReadableParser::parse_type("bool[17]").unwrap(),
+            ParamType::FixedArray(Box::new(ParamType::Bool), 17)
+        );
+        assert_eq!(
+            HumanReadableParser::parse_type("bytes[45][3]").unwrap(),
+            ParamType::FixedArray(
+                Box::new(ParamType::FixedArray(Box::new(ParamType::Bytes), 45)),
+                3
+            )
+        );
+    }
+
+    #[test]
+    fn test_parse_mixed_arrays() {
+        assert_eq!(
+            HumanReadableParser::parse_type("bool[][3]").unwrap(),
+            ParamType::FixedArray(Box::new(ParamType::Array(Box::new(ParamType::Bool))), 3)
+        );
+        assert_eq!(
+            HumanReadableParser::parse_type("bool[3][]").unwrap(),
+            ParamType::Array(Box::new(ParamType::FixedArray(Box::new(ParamType::Bool), 3)))
+        );
+    }
+
+    #[test]
+    fn test_parse_struct_param() {
+        assert_eq!(
+            HumanReadableParser::parse_type("(address,bool)").unwrap(),
+            ParamType::Tuple(vec![ParamType::Address, ParamType::Bool])
+        );
+        assert_eq!(
+            HumanReadableParser::parse_type("(bool[3],uint256)").unwrap(),
+            ParamType::Tuple(vec![
+                ParamType::FixedArray(Box::new(ParamType::Bool), 3),
+                ParamType::Uint(256)
+            ])
+        );
+    }
+
+    #[test]
+    fn test_parse_nested_struct_param() {
+        assert_eq!(
+            HumanReadableParser::parse_type("(address,bool,(bool,uint256))").unwrap(),
+            ParamType::Tuple(vec![
+                ParamType::Address,
+                ParamType::Bool,
+                ParamType::Tuple(vec![ParamType::Bool, ParamType::Uint(256)])
+            ])
+        );
+    }
+
+    #[test]
+    fn test_parse_complex_nested_struct_param() {
+        assert_eq!(
+            HumanReadableParser::parse_type(
+                "(address,bool,(bool,uint256,(bool,uint256)),(bool,uint256))"
+            )
+            .unwrap(),
+            ParamType::Tuple(vec![
+                ParamType::Address,
+                ParamType::Bool,
+                ParamType::Tuple(vec![
+                    ParamType::Bool,
+                    ParamType::Uint(256),
+                    ParamType::Tuple(vec![ParamType::Bool, ParamType::Uint(256)])
+                ]),
+                ParamType::Tuple(vec![ParamType::Bool, ParamType::Uint(256)])
+            ])
+        );
+    }
+
+    #[test]
+    fn test_parse_nested_tuple_array_param() {
+        assert_eq!(
+            HumanReadableParser::parse_type("(uint256,bytes32)[]").unwrap(),
+            ParamType::Array(Box::new(ParamType::Tuple(vec![
+                ParamType::Uint(256),
+                ParamType::FixedBytes(32)
+            ])))
+        )
+    }
+
+    #[test]
+    fn test_parse_inner_tuple_array_param() {
+        let abi = "((uint256,bytes32)[],address)";
+        let read = HumanReadableParser::parse_type(abi).unwrap();
+
+        let param = ParamType::Tuple(vec![
+            ParamType::Array(Box::new(ParamType::Tuple(vec![
+                ParamType::Uint(256),
+                ParamType::FixedBytes(32),
+            ]))),
+            ParamType::Address,
+        ]);
+        assert_eq!(read, param);
+    }
+
+    #[test]
+    fn test_parse_complex_tuple_array_param() {
+        let abi = "((uint256,uint256)[],(uint256,(uint256,uint256))[])";
+        let read = HumanReadableParser::parse_type(abi).unwrap();
+        let param = ParamType::Tuple(vec![
+            ParamType::Array(Box::new(ParamType::Tuple(vec![
+                ParamType::Uint(256),
+                ParamType::Uint(256),
+            ]))),
+            ParamType::Array(Box::new(ParamType::Tuple(vec![
+                ParamType::Uint(256),
+                ParamType::Tuple(vec![ParamType::Uint(256), ParamType::Uint(256)]),
+            ]))),
+        ]);
+        assert_eq!(read, param);
+    }
+
+    #[test]
+    fn test_parse_event() {
+        let abi = "event ValueChanged(address indexed author, string oldValue, string newValue)";
+        let event = HumanReadableParser::parse_event(abi).unwrap();
+
+        assert_eq!(
+            Event {
+                name: "ValueChanged".to_string(),
+                inputs: vec![
+                    EventParam {
+                        name: "author".to_string(),
+                        kind: ParamType::Address,
+                        indexed: true
+                    },
+                    EventParam {
+                        name: "oldValue".to_string(),
+                        kind: ParamType::String,
+                        indexed: false
+                    },
+                    EventParam {
+                        name: "newValue".to_string(),
+                        kind: ParamType::String,
+                        indexed: false
+                    }
+                ],
+                anonymous: false
+            },
+            event
+        );
+    }
 }
