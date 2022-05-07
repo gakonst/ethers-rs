@@ -16,7 +16,7 @@ use eyre::{eyre, Context as _, Result};
 use crate::contract::methods::MethodAlias;
 
 use crate::rawabi::JsonAbi;
-use ethers_core::types::Bytes;
+use ethers_core::{abi::EventExt, types::Bytes};
 use proc_macro2::{Ident, Literal, TokenStream};
 use quote::quote;
 use serde::Deserialize;
@@ -225,6 +225,22 @@ impl Context {
         for (signature, alias) in args.event_aliases.into_iter() {
             let alias = syn::parse_str(&alias)?;
             event_aliases.insert(signature, alias);
+        }
+
+        // also check for overloaded functions not covered by aliases, in which case we simply
+        // numerate them
+        for events in abi.events.values() {
+            let not_aliased =
+                events.iter().filter(|ev| !event_aliases.contains_key(&ev.abi_signature()));
+            if not_aliased.clone().count() > 1 {
+                let mut aliases = Vec::new();
+                // overloaded events
+                for (idx, event) in not_aliased.enumerate() {
+                    let event_name = format!("{}{}", event.name, idx + 1);
+                    aliases.push((event.abi_signature(), events::event_struct_alias(&event_name)));
+                }
+                event_aliases.extend(aliases);
+            }
         }
 
         let event_derives = args
