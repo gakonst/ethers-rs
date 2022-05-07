@@ -58,7 +58,9 @@ impl Context {
             .events
             .values()
             .flatten()
-            .map(|e| expand_struct_name(e, self.event_aliases.get(&e.abi_signature()).cloned()))
+            .map(|e| {
+                event_struct_name(&e.name, self.event_aliases.get(&e.abi_signature()).cloned())
+            })
             .collect::<Vec<_>>();
 
         let ethers_core = ethers_core_crate();
@@ -116,7 +118,10 @@ impl Context {
             let ty = if iter.next().is_some() {
                 self.expand_event_enum_name()
             } else {
-                expand_struct_name(event, self.event_aliases.get(&event.abi_signature()).cloned())
+                event_struct_name(
+                    &event.name,
+                    self.event_aliases.get(&event.abi_signature()).cloned(),
+                )
             };
 
             quote! {
@@ -218,7 +223,7 @@ impl Context {
         // append `filter` to disambiguate with potentially conflicting
         // function names
 
-        let result = expand_struct_name(event, alias);
+        let result = event_struct_name(&event.name, alias);
 
         let doc = util::expand_doc(&format!("Gets the contract's `{}` event", event.name));
         quote! {
@@ -237,7 +242,7 @@ impl Context {
         let abi_signature = event.abi_signature();
         let event_abi_name = event.name.clone();
 
-        let event_name = expand_struct_name(event, sig);
+        let event_name = event_struct_name(&event.name, sig);
 
         let params = self.expand_event_params(event)?;
         // expand as a tuple if all fields are anonymous
@@ -261,15 +266,20 @@ impl Context {
 }
 
 /// Expands an ABI event into an identifier for its event data type.
-fn expand_struct_name(event: &Event, alias: Option<Ident>) -> Ident {
+fn event_struct_name(event_name: &str, alias: Option<Ident>) -> Ident {
     // TODO: get rid of `Filter` suffix?
 
     let name = if let Some(id) = alias {
         format!("{}Filter", id.to_string().to_pascal_case())
     } else {
-        format!("{}Filter", event.name.to_pascal_case())
+        format!("{}Filter", event_name.to_pascal_case())
     };
     util::ident(&name)
+}
+
+/// Returns the alias name for an event
+pub(crate) fn event_struct_alias(event_name: &str) -> Ident {
+    util::ident(&event_name.to_pascal_case())
 }
 
 /// Expands an event data structure from its name-type parameter pairs. Returns
@@ -406,7 +416,7 @@ mod tests {
 
         let cx = test_context();
         let params = cx.expand_event_params(&event).unwrap();
-        let name = expand_struct_name(&event, None);
+        let name = event_struct_name(&event.name, None);
         let definition = expand_data_struct(&name, &params);
 
         assert_quote!(definition, {
@@ -431,7 +441,7 @@ mod tests {
         let cx = test_context_with_alias("Foo(bool,address)", "FooAliased");
         let params = cx.expand_event_params(&event).unwrap();
         let alias = Some(util::ident("FooAliased"));
-        let name = expand_struct_name(&event, alias);
+        let name = event_struct_name(&event.name, alias);
         let definition = expand_data_struct(&name, &params);
 
         assert_quote!(definition, {
@@ -455,7 +465,7 @@ mod tests {
 
         let cx = test_context();
         let params = cx.expand_event_params(&event).unwrap();
-        let name = expand_struct_name(&event, None);
+        let name = event_struct_name(&event.name, None);
         let definition = expand_data_tuple(&name, &params);
 
         assert_quote!(definition, {
@@ -477,7 +487,7 @@ mod tests {
         let cx = test_context_with_alias("Foo(bool,address)", "FooAliased");
         let params = cx.expand_event_params(&event).unwrap();
         let alias = Some(util::ident("FooAliased"));
-        let name = expand_struct_name(&event, alias);
+        let name = event_struct_name(&event.name, alias);
         let definition = expand_data_tuple(&name, &params);
 
         assert_quote!(definition, {

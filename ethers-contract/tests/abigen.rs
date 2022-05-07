@@ -548,3 +548,21 @@ fn can_gen_reserved_word_field_names() {
 
     let _foo = Foo { ref_: U256::default() };
 }
+
+#[test]
+fn can_handle_overloaded_events() {
+    abigen!(
+        SimpleContract,
+        r#"[
+            event ActionPaused(string cToken, string action, bool pauseState)
+            event ActionPaused(string action, bool pauseState)
+    ]"#
+    );
+
+    let _ev1 = ActionPaused1Filter {
+        c_token: "ctoken".to_string(),
+        action: "action".to_string(),
+        pause_state: false,
+    };
+    let _ev2 = ActionPaused2Filter { action: "action".to_string(), pause_state: false };
+}
