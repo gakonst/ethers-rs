@@ -1247,6 +1247,7 @@ dependencies = [
  "syn",
  "thiserror",
  "tiny-keccak",
+ "unicode-xid",
 ]
 
 [[package]]
