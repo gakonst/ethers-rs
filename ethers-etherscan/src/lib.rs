@@ -100,6 +100,7 @@ impl Client {
             Chain::Moonbeam | Chain::MoonbeamDev | Chain::Moonriver => {
                 std::env::var("MOONSCAN_API_KEY")?
             }
+            Chain::Emerald | Chain::EmeraldTestnet => String::default(),
             Chain::Dev => return Err(EtherscanError::LocalNetworksNotSupported),
         };
         Self::new(chain, api_key)
@@ -263,6 +264,13 @@ impl ClientBuilder {
             Chain::Moonriver => {
                 urls("https://api-moonriver.moonscan.io/api", "https://moonriver.moonscan.io")
             }
+            Chain::Emerald => {
+                urls("https://explorer.emerald.oasis.dev/api", "https://explorer.emerald.oasis.dev")
+            }
+            Chain::EmeraldTestnet => urls(
+                "https://testnet.explorer.emerald.oasis.dev/api",
+                "https://testnet.explorer.emerald.oasis.dev",
+            ),
             Chain::Dev => return Err(EtherscanError::LocalNetworksNotSupported),
             chain => return Err(EtherscanError::ChainNotSupported(chain)),
         };

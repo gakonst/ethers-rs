@@ -39,6 +39,8 @@ pub enum Chain {
     ArbitrumTestnet = 421611,
     Cronos = 25,
     CronosTestnet = 338,
+    Emerald = 42262,
+    EmeraldTestnet = 42261,
 }
 
 impl fmt::Display for Chain {
@@ -69,6 +71,8 @@ impl fmt::Display for Chain {
             Chain::ArbitrumTestnet => "arbitrum-testnet",
             Chain::Cronos => "cronos",
             Chain::CronosTestnet => "cronos-testnet",
+            Chain::Emerald => "emerald",
+            Chain::EmeraldTestnet => "emerald-testnet",
         };
 
         write!(formatter, "{}", chain)
@@ -123,6 +127,8 @@ impl TryFrom<u64> for Chain {
             421611 => Chain::ArbitrumTestnet,
             25 => Chain::Cronos,
             338 => Chain::CronosTestnet,
+            42262 => Chain::Emerald,
+            42261 => Chain::EmeraldTestnet,
             _ => return Err(ParseChainError(chain.to_string())),
         })
     }
