@@ -179,10 +179,12 @@ pub enum NodeType {
 
     // Definitions
     ContractDefinition,
+    FunctionDefinition,
     EventDefinition,
     ErrorDefinition,
     ModifierDefinition,
     StructDefinition,
+    EnumDefinition,
     UserDefinedValueTypeDefinition,
 
     // Directives
