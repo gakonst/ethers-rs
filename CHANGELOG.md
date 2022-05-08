@@ -4,6 +4,7 @@
 
 ### Unreleased
 
+- Add support for Emerald Mainnet and Testnet chains (the Oasis Paratimes)
 - Fix RLP decoding of `from` field for `Eip1559TransactionRequest` and
   `Eip2930TransactionRequest`, remove `Eip1559TransactionRequest` `sighash`
   method [1180](https://github.com/gakonst/ethers-rs/pull/1180)
