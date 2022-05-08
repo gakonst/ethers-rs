@@ -574,9 +574,9 @@ fn can_handle_overloaded_events() {
 async fn can_send_struct_param() {
     abigen!(StructContract, "./tests/solidity-contracts/StructContract.json");
 
-    let anvil = Ganache::default().spawn();
-    let wallet: LocalWallet = anvil.keys()[0].clone().into();
-    let provider = Provider::try_from(anvil.endpoint()).unwrap();
+    let server = Ganache::default().spawn();
+    let wallet: LocalWallet = server.keys()[0].clone().into();
+    let provider = Provider::try_from(server.endpoint()).unwrap();
     let client = Arc::new(SignerMiddleware::new(provider, wallet));
 
     let contract = StructContract::deploy(client, ()).unwrap().legacy().send().await.unwrap();
