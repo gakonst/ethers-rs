@@ -118,7 +118,6 @@ impl fmt::Display for SourceLocation {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(untagged)]
 pub enum NodeType {
     // Expressions
     Assignment,
