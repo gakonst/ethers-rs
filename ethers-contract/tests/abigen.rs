@@ -8,7 +8,7 @@ use ethers_core::{
 };
 use ethers_middleware::SignerMiddleware;
 use ethers_providers::{MockProvider, Provider};
-use ethers_signers::LocalWallet;
+use ethers_signers::{LocalWallet, Signer};
 use ethers_solc::Solc;
 use std::{convert::TryFrom, sync::Arc};
 
@@ -577,7 +577,7 @@ async fn can_send_struct_param() {
     let server = Ganache::default().spawn();
     let wallet: LocalWallet = server.keys()[0].clone().into();
     let provider = Provider::try_from(server.endpoint()).unwrap();
-    let client = Arc::new(SignerMiddleware::new(provider, wallet));
+    let client = Arc::new(SignerMiddleware::new(provider, wallet.with_chain_id(1337u64)));
 
     let contract = StructContract::deploy(client, ()).unwrap().legacy().send().await.unwrap();
 
