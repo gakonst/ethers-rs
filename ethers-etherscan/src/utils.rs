@@ -10,13 +10,14 @@ static SOLC_BIN_LIST_URL: &'static str =
 static RE_SOLC_VERSION: Lazy<Regex> =
     Lazy::new(|| Regex::new("soljson-v(?P<version>.*)\\.js").unwrap());
 
-pub async fn lookup_compiler_version(version: &str) -> Result<Version> {
+pub async fn lookup_compiler_version(version: &Version) -> Result<Version> {
     let response = reqwest::get(SOLC_BIN_LIST_URL).await?.text().await?;
+    let version = format!("{}", version);
     let v = response
         .lines()
-        .find(|l| !l.contains("nightly") && l.contains(version))
+        .find(|l| !l.contains("nightly") && l.contains(&version))
         .and_then(|m| RE_SOLC_VERSION.captures(m)?.name("version"))
-        .ok_or(EtherscanError::MissingSolcVersion(version.to_owned()))?;
+        .ok_or(EtherscanError::MissingSolcVersion(version))?;
 
     Ok(v.as_str().to_owned().parse().expect("failed to parse semver"))
 }
@@ -34,7 +35,7 @@ mod tests {
     async fn can_lookup_compiler_version_build_metadata() {
         run_at_least_duration(Duration::from_millis(250), async {
             let v = Version::new(0, 8, 13);
-            let version = lookup_compiler_version(&format!("{}", v)).await.unwrap();
+            let version = lookup_compiler_version(&v).await.unwrap();
             assert_eq!(v.major, version.major);
             assert_eq!(v.minor, version.minor);
             assert_eq!(v.patch, version.patch);
@@ -49,7 +50,6 @@ mod tests {
     async fn errors_on_invalid_solc() {
         run_at_least_duration(Duration::from_millis(250), async {
             let v = Version::new(100, 0, 0);
-            let v = format!("{}", v);
             let err = lookup_compiler_version(&v).await.unwrap_err();
             assert!(matches!(err, EtherscanError::MissingSolcVersion(_)));
         })
