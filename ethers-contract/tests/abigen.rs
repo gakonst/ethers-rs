@@ -571,6 +571,7 @@ fn can_handle_overloaded_events() {
 }
 
 #[tokio::test]
+#[cfg(not(feature = "celo"))]
 async fn can_send_struct_param() {
     abigen!(StructContract, "./tests/solidity-contracts/StructContract.json");
 
