@@ -20,7 +20,9 @@ mod error;
 pub use error::{AbiError, ParseError};
 
 mod human_readable;
-pub use human_readable::{parse as parse_abi, parse_str as parse_abi_str, AbiParser};
+pub use human_readable::{
+    lexer::HumanReadableParser, parse as parse_abi, parse_str as parse_abi_str, AbiParser,
+};
 
 use crate::types::{H256, H512, I256, U128, U256, U64};
 
