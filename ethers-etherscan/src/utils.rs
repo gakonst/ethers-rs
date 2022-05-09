@@ -10,6 +10,9 @@ static SOLC_BIN_LIST_URL: &'static str =
 static RE_SOLC_VERSION: Lazy<Regex> =
     Lazy::new(|| Regex::new("soljson-v(?P<version>.*)\\.js").unwrap());
 
+/// Given the compiler version  lookup the build metadata
+/// and return full semver
+/// i.e. `0.8.13` -> `0.8.13+commit.abaa5c0e`
 pub async fn lookup_compiler_version(version: &Version) -> Result<Version> {
     let response = reqwest::get(SOLC_BIN_LIST_URL).await?.text().await?;
     let version = format!("{}", version);
