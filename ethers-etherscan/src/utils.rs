@@ -4,7 +4,7 @@ use semver::Version;
 
 use crate::{EtherscanError, Result};
 
-static SOLC_BIN_LIST_URL: &'static str =
+static SOLC_BIN_LIST_URL: &str =
     "https://raw.githubusercontent.com/ethereum/solc-bin/gh-pages/bin/list.txt";
 
 static RE_SOLC_VERSION: Lazy<Regex> =
