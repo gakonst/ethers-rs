@@ -1,14 +1,9 @@
-use once_cell::sync::Lazy;
-use regex::Regex;
 use semver::Version;
 
 use crate::{EtherscanError, Result};
 
 static SOLC_BIN_LIST_URL: &str =
     "https://raw.githubusercontent.com/ethereum/solc-bin/gh-pages/bin/list.txt";
-
-static RE_SOLC_VERSION: Lazy<Regex> =
-    Lazy::new(|| Regex::new("soljson-v(?P<version>.*)\\.js").unwrap());
 
 /// Given the compiler version  lookup the build metadata
 /// and return full semver
@@ -19,10 +14,10 @@ pub async fn lookup_compiler_version(version: &Version) -> Result<Version> {
     let v = response
         .lines()
         .find(|l| !l.contains("nightly") && l.contains(&version))
-        .and_then(|m| RE_SOLC_VERSION.captures(m)?.name("version"))
+        .map(|l| l.trim_start_matches("soljson-v").trim_end_matches(".js").to_owned())
         .ok_or(EtherscanError::MissingSolcVersion(version))?;
 
-    Ok(v.as_str().to_owned().parse().expect("failed to parse semver"))
+    Ok(v.parse().expect("failed to parse semver"))
 }
 
 #[cfg(test)]
