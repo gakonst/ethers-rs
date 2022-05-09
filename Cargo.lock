@@ -1269,7 +1269,10 @@ version = "0.2.0"
 dependencies = [
  "ethers-core",
  "ethers-solc",
+ "once_cell",
+ "regex",
  "reqwest",
+ "semver",
  "serde",
  "serde-aux",
  "serde_json",
