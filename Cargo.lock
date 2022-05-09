@@ -1135,7 +1135,7 @@ dependencies = [
 
 [[package]]
 name = "ethers"
-version = "0.6.0"
+version = "0.6.2"
 dependencies = [
  "bytes",
  "ethers-addressbook",
@@ -1166,7 +1166,7 @@ dependencies = [
 
 [[package]]
 name = "ethers-contract"
-version = "0.6.0"
+version = "0.6.2"
 dependencies = [
  "ethers-contract-abigen",
  "ethers-contract-derive",
@@ -1188,7 +1188,7 @@ dependencies = [
 
 [[package]]
 name = "ethers-contract-abigen"
-version = "0.6.0"
+version = "0.6.3"
 dependencies = [
  "Inflector",
  "cfg-if 1.0.0",
@@ -1211,7 +1211,7 @@ dependencies = [
 
 [[package]]
 name = "ethers-contract-derive"
-version = "0.6.0"
+version = "0.6.3"
 dependencies = [
  "ethers-contract-abigen",
  "ethers-core",
@@ -1224,7 +1224,7 @@ dependencies = [
 
 [[package]]
 name = "ethers-core"
-version = "0.6.0"
+version = "0.6.3"
 dependencies = [
  "arrayvec 0.7.2",
  "bincode",
@@ -1251,7 +1251,7 @@ dependencies = [
 
 [[package]]
 name = "ethers-derive-eip712"
-version = "0.2.0"
+version = "0.2.2"
 dependencies = [
  "ethers-contract",
  "ethers-contract-derive",
@@ -1265,7 +1265,7 @@ dependencies = [
 
 [[package]]
 name = "ethers-etherscan"
-version = "0.2.0"
+version = "0.2.2"
 dependencies = [
  "ethers-core",
  "ethers-solc",
@@ -1283,7 +1283,7 @@ dependencies = [
 
 [[package]]
 name = "ethers-middleware"
-version = "0.6.0"
+version = "0.6.2"
 dependencies = [
  "async-trait",
  "ethers-contract",
@@ -1311,7 +1311,7 @@ dependencies = [
 
 [[package]]
 name = "ethers-providers"
-version = "0.6.0"
+version = "0.6.2"
 dependencies = [
  "async-trait",
  "auto_impl",
@@ -1348,7 +1348,7 @@ dependencies = [
 
 [[package]]
 name = "ethers-signers"
-version = "0.6.0"
+version = "0.6.2"
 dependencies = [
  "async-trait",
  "coins-bip32",
