@@ -1285,6 +1285,7 @@ dependencies = [
  "ethers-core",
  "ethers-solc",
  "reqwest",
+ "semver",
  "serde",
  "serde-aux",
  "serde_json",
