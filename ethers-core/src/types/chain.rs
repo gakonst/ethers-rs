@@ -176,8 +176,7 @@ impl Chain {
                 Chain::BinanceSmartChain |
                 Chain::BinanceSmartChainTestnet |
                 Chain::Arbitrum |
-                Chain::ArbitrumTestnet |
-                Chain::Cronos,
+                Chain::ArbitrumTestnet,
         )
     }
 }
