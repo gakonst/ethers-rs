@@ -6,7 +6,7 @@ use std::{
 use reqwest::{header::CONTENT_TYPE, Client};
 use url::Url;
 
-use crate::{err::TransportError, jsonrpc::Response, RequestFuture, Transport};
+use crate::{err::TransportError, jsonrpc::Response, Connection, RequestFuture};
 
 pub struct Http {
     next_id: AtomicU64,
@@ -20,7 +20,7 @@ impl Http {
     }
 }
 
-impl Transport for Http {
+impl Connection for Http {
     fn request_id(&self) -> u64 {
         self.next_id.fetch_add(1, Ordering::Relaxed)
     }

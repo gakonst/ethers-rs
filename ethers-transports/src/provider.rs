@@ -6,21 +6,25 @@ use ethers_core::types::{Address, BlockNumber, Bytes, U256};
 use serde::{Deserialize, Serialize};
 
 #[cfg(all(unix, feature = "ipc"))]
-use crate::transports::ipc::{Ipc, IpcError};
-use crate::types::SyncStatus;
-use crate::{err::TransportError, BidiTransport, Transport, TransportExt};
+use crate::connections::ipc::{Ipc, IpcError};
+use crate::{
+    err::TransportError, jsonrpc::Request, types::SyncStatus, Connection, ConnectionExt,
+    DuplexConnection, SubscriptionStream,
+};
 
 /// A provider for Ethereum JSON-RPC API calls.
 ///
 /// This type provides type-safe bindings to all RPC calls defined in the
 /// [JSON-RPC API specification](https://eth.wiki/json-rpc/API).
-pub struct Provider<T> {
-    transport: T,
+#[derive(Clone, Copy)]
+pub struct Provider<C> {
+    connection: C,
 }
 
-impl<T> Provider<T> {
-    pub fn new(transport: T) -> Self {
-        Self { transport }
+impl<C> Provider<C> {
+    /// Returns a new [`Provider`].
+    pub fn new(connection: C) -> Self {
+        Self { connection }
     }
 }
 
@@ -34,11 +38,11 @@ impl Provider<Ipc> {
     /// This fails, if the file at `path` is not a valid IPC socket.
     pub async fn connect(path: impl AsRef<Path>) -> Result<Self, IpcError> {
         let transport = Ipc::connect(path).await?;
-        Ok(Self { transport })
+        Ok(Self { connection: transport })
     }
 }
 
-impl<T: Transport> Provider<T> {
+impl<C: Connection> Provider<C> {
     /// Returns the current ethereum protocol version.
     pub async fn get_protocol_version(&self) -> Result<String, ProviderError> {
         todo!()
@@ -143,8 +147,8 @@ impl<T: Transport> Provider<T> {
         R: for<'de> Deserialize<'de>,
     {
         // send the request & await its (raw) response
-        let raw = self.transport.send_request(method, params).await.map_err(|err| {
-            transport_err(err)
+        let raw = self.connection.send_request(method, params).await.map_err(|err| {
+            err.to_provider_err()
                 .with_ctx(format!("failed RPC call to `{method}` (rpc request failed)"))
         })?;
 
@@ -159,9 +163,19 @@ impl<T: Transport> Provider<T> {
     }
 }
 
-impl<T: BidiTransport + Clone> Provider<T> {
-    pub async fn subscribe_new_heads(&self) -> Result<(), Box<ProviderError>> {
-        todo!("-> impl SubscriptionStream<Item = Block>")
+impl<C: DuplexConnection + Clone> Provider<C> {
+    pub async fn subscribe_new_heads(
+        &self,
+    ) -> Result<SubscriptionStream<(), C>, Box<ProviderError>> {
+        let connection = self.connection.clone();
+
+        let id = connection.request_id();
+        let request = Request { id, method: "eth_subscribe", params: ("newHeads") }.to_json();
+
+        let (id, rx) =
+            connection.subscribe(id, request).await.map_err(|err| err.to_provider_err())?;
+
+        Ok(SubscriptionStream::new(id, connection, rx))
     }
 }
 
@@ -173,12 +187,8 @@ pub struct ProviderError {
 }
 
 impl ProviderError {
-    fn transport(err: Box<TransportError>) -> Box<Self> {
-        todo!()
-    }
-
     fn json(err: serde_json::Error) -> Box<Self> {
-        todo!()
+        Box::new(Self { kind: ErrorKind::Json(err), context: "".into() })
     }
 
     fn with_ctx(mut self: Box<Self>, context: impl Into<Cow<'static, str>>) -> Box<Self> {
@@ -188,9 +198,40 @@ impl ProviderError {
 }
 
 pub enum ErrorKind {
+    /// The error returned when parsing the raw response into the expected type
+    /// fails.
+    Json(serde_json::Error),
     Transport(Box<TransportError>),
 }
 
-fn transport_err(err: Box<TransportError>) -> Box<ProviderError> {
-    todo!()
+impl TransportError {
+    fn to_provider_err(self: Box<Self>) -> Box<ProviderError> {
+        Box::new(ProviderError { kind: ErrorKind::Transport(self), context: "".into() })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{future::Future, sync::Arc};
+
+    use tokio::runtime::Builder;
+
+    use crate::{connections::noop, Connection, Provider};
+
+    fn block_on(future: impl Future<Output = ()>) {
+        Builder::new_current_thread().enable_all().build().unwrap().block_on(future);
+    }
+
+    #[test]
+    fn object_safety() {
+        block_on(async move {
+            let provider = Provider::new(noop::Noop);
+            let res = provider.get_block_number().await;
+            assert!(res.is_err());
+
+            let provider: Provider<Arc<dyn Connection>> = Provider::new(Arc::new(noop::Noop));
+            let res = provider.get_block_number().await;
+            assert!(res.is_err());
+        });
+    }
 }

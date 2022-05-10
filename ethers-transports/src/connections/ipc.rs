@@ -24,16 +24,29 @@ use tokio::{
 
 use crate::{
     err::TransportError,
-    jsonrpc::{JsonRpcError, Params, Response},
-    RequestFuture, Transport,
+    jsonrpc::{Params, Response},
+    Connection, DuplexConnection, RequestFuture, ResponsePayload, SubscribeFuture,
+    SubscribePayload, UnsubscribeFuture, UnsubscribePayload,
 };
 
 type FxHashMap<K, V> = std::collections::HashMap<K, V, BuildHasherDefault<FxHasher64>>;
-type PendingRequest = oneshot::Sender<Result<Box<RawValue>, JsonRpcError>>;
-type PendingSubscription = oneshot::Sender<(U256, mpsc::UnboundedReceiver<Box<RawValue>>)>;
 
-enum IpcRequest {
+type PendingRequest = oneshot::Sender<ResponsePayload>;
+type PendingSubscribe = oneshot::Sender<SubscribePayload>;
+type PendingUnsubscribe = oneshot::Sender<UnsubscribePayload>;
+
+enum Request {
     Call { id: u64, tx: PendingRequest, request: String },
+    Subscribe { id: u64, tx: PendingSubscribe, request: String },
+    Unsubscribe { tx: PendingUnsubscribe, request: Box<UnsubscribeRequest> },
+}
+
+type UnsubscribeRequest = crate::Request<'static, [U256; 1]>;
+
+enum Pending {
+    Call { tx: PendingRequest },
+    Subscribe { tx: PendingSubscribe },
+    Unsubscribe { id: Box<U256>, tx: PendingUnsubscribe },
 }
 
 /// The handle for an IPC connection to an Ethereum JSON-RPC provider.
@@ -44,7 +57,7 @@ pub struct Ipc {
     /// The counter for unique request ids.
     next_id: AtomicU64,
     /// The instance for sending requests to the IPC request server
-    request_tx: mpsc::UnboundedSender<IpcRequest>,
+    request_tx: mpsc::UnboundedSender<Request>,
 }
 
 impl Ipc {
@@ -70,29 +83,64 @@ impl Ipc {
     }
 }
 
-impl Transport for Ipc {
+impl Connection for Ipc {
     fn request_id(&self) -> u64 {
         self.next_id.fetch_add(1, Ordering::Relaxed)
     }
 
     fn send_raw_request(&self, id: u64, request: String) -> RequestFuture<'_> {
         Box::pin(async move {
-            let (tx, mut rx) = oneshot::channel();
-            self.request_tx
-                .send(IpcRequest::Call { id, tx, request })
-                .map_err(|_| TransportError::transport(IpcError::ServerExit))?;
+            // send the request to the IPC server
+            let (tx, rx) = oneshot::channel();
+            self.request_tx.send(Request::Call { id, tx, request }).map_err(|_| server_exit())?;
 
-            let response = rx
-                .await
-                .map_err(|_| TransportError::transport(IpcError::ServerExit))?
-                .map_err(|err| TransportError::jsonrpc(err))?;
-
-            Ok(response)
+            // await the response
+            rx.await.map_err(|_| server_exit())?
         })
     }
 }
 
-fn spawn_ipc_server(stream: UnixStream, request_rx: mpsc::UnboundedReceiver<IpcRequest>) {
+impl DuplexConnection for Ipc {
+    fn subscribe(&self, id: u64, request: String) -> SubscribeFuture<'_> {
+        Box::pin(async move {
+            // send the request to the IPC server
+            let (tx, rx) = oneshot::channel();
+            self.request_tx
+                .send(Request::Subscribe { id, tx, request })
+                .map_err(|_| server_exit())?;
+
+            // await the response
+            rx.await.map_err(|_| server_exit())?
+        })
+    }
+
+    fn unsubscribe(&self, id: &U256) -> UnsubscribeFuture<'_> {
+        // NOTE: the unsubscribe request is sent to the server before any
+        // async code is entered
+        let (tx, rx) = oneshot::channel();
+        let res = self.request_tx.send(Request::Unsubscribe {
+            tx,
+            request: UnsubscribeRequest {
+                id: self.request_id(),
+                method: "eth_unsubscribe",
+                params: [*id],
+            }
+            .into(),
+        });
+
+        Box::pin(async move {
+            match res {
+                Ok(_) => {
+                    // await the response
+                    rx.await.map_err(|_| server_exit())?
+                }
+                Err(_) => Err(server_exit()),
+            }
+        })
+    }
+}
+
+fn spawn_ipc_server(stream: UnixStream, request_rx: mpsc::UnboundedReceiver<Request>) {
     // 65 KiB should be more than enough for this thread, as all unbounded data
     // growth occurs on heap-allocated data structures/buffers and the call
     // stack is not going to do anything odd either
@@ -111,7 +159,7 @@ fn spawn_ipc_server(stream: UnixStream, request_rx: mpsc::UnboundedReceiver<IpcR
         .expect("failed to spawn IPC server thread");
 }
 
-async fn run_ipc_server(mut stream: UnixStream, request_rx: mpsc::UnboundedReceiver<IpcRequest>) {
+async fn run_ipc_server(mut stream: UnixStream, request_rx: mpsc::UnboundedReceiver<Request>) {
     // the shared state for both reads & writes
     let shared = Shared {
         pending: FxHashMap::with_capacity_and_hasher(64, BuildHasherDefault::default()).into(),
@@ -137,8 +185,8 @@ async fn run_ipc_server(mut stream: UnixStream, request_rx: mpsc::UnboundedRecei
 }
 
 struct Shared {
-    pending: RefCell<FxHashMap<u64, PendingRequest>>,
-    subs: RefCell<FxHashMap<U256, PendingSubscription>>,
+    pending: RefCell<FxHashMap<u64, Pending>>,
+    subs: RefCell<FxHashMap<U256, mpsc::UnboundedSender<Box<RawValue>>>>,
 }
 
 impl Shared {
@@ -166,41 +214,38 @@ impl Shared {
     async fn handle_ipc_writes(
         &self,
         mut writer: WriteHalf<'_>,
-        mut request_rx: mpsc::UnboundedReceiver<IpcRequest>,
+        mut request_rx: mpsc::UnboundedReceiver<Request>,
     ) -> Result<(), IpcError> {
-        use IpcRequest::*;
+        use Request::*;
 
         while let Some(msg) = request_rx.recv().await {
             match msg {
                 Call { id, tx, request } => {
-                    let prev = self.pending.borrow_mut().insert(id, tx);
+                    let prev = self.pending.borrow_mut().insert(id, Pending::Call { tx });
                     assert!(prev.is_none(), "replaced pending IPC request (id={})", id);
-
-                    if let Err(err) = writer.write_all(request.as_bytes()).await {
-                        tracing::error!("IPC connection error: {:?}", err);
-                        self.pending.borrow_mut().remove(&id);
-                    }
-                } /*Subscribe { id, sink } => {
-                      if self.subs.borrow_mut().insert(id, sink).is_some() {
-                          tracing::warn!(
-                              %id,
-                              "replaced already-registered subscription"
-                          );
-                      }
-                  }
-                  Unsubscribe { id } => {
-                      if self.subs.borrow_mut().remove(&id).is_none() {
-                          tracing::warn!(
-                              %id,
-                              "attempted to unsubscribe from non-existent subscription"
-                          );
-                      }
-                  }*/
+                    writer.write_all(request.as_bytes()).await?;
+                }
+                Subscribe { id, tx, request } => {
+                    let prev = self.pending.borrow_mut().insert(id, Pending::Subscribe { tx });
+                    assert!(prev.is_none(), "replaced pending IPC subscribe request (id={})", id);
+                    writer.write_all(request.as_bytes()).await?;
+                }
+                Unsubscribe { tx, request } => {
+                    let prev = self.pending.borrow_mut().insert(
+                        request.id,
+                        Pending::Unsubscribe { id: request.params[0].into(), tx },
+                    );
+                    assert!(
+                        prev.is_none(),
+                        "replaced pending IPC unsubscribe request (id={})",
+                        request.id
+                    );
+                    writer.write_all(request.to_json().as_bytes()).await?;
+                }
             }
         }
 
-        // if the request receiver is closed, the IPC handle must have been
-        // dropped, ...
+        // the IPC handle has been dropped
         Ok(())
     }
 
@@ -209,33 +254,79 @@ impl Shared {
         let mut de = Deserializer::from_slice(bytes.as_ref()).into_iter();
         while let Some(Ok(response)) = de.next() {
             match response {
-                Response::Success { id, result } => self.send_response(id, Ok(result.to_owned())),
-                Response::Error { id, error } => self.send_response(id, Err(error)),
-                Response::Notification { params, .. } => self.send_notification(params),
+                Response::Success { id, result } => self.handle_response(id, Ok(result.to_owned())),
+                Response::Error { id, error } => {
+                    self.handle_response(id, Err(TransportError::jsonrpc(error)))
+                }
+                Response::Notification { params, .. } => self.handle_notification(params),
             };
         }
 
         Ok(de.byte_offset())
     }
 
-    fn send_response(&self, id: u64, result: Result<Box<RawValue>, JsonRpcError>) {
-        // retrieve the channel sender for responding to the pending request
-        let response_tx = match self.pending.borrow_mut().remove(&id) {
-            Some(tx) => tx,
-            None => {
-                tracing::warn!(%id, "no pending request exists for the response ID");
-                return;
+    fn handle_response(&self, id: u64, res: Result<Box<RawValue>, Box<TransportError>>) {
+        match self.pending.borrow_mut().remove(&id) {
+            Some(Pending::Call { tx }) => {
+                // if send fails, request has been dropped at the callsite
+                let _ = tx.send(res);
             }
+            Some(Pending::Subscribe { tx }) => {
+                let res = self.handle_subscribe(res);
+                // if send fails, request has been dropped at the callsite
+                let _ = tx.send(res);
+            }
+            Some(Pending::Unsubscribe { id, tx }) => {
+                let res = self.handle_unsubscribe(&id, res);
+                // if send fails, request has been dropped at the callsite
+                let _ = tx.send(res);
+            }
+            None => tracing::warn!(%id, "no pending request exists for the response ID"),
         };
+    }
 
-        // a failure to send the response indicates that the pending request has
-        // been dropped in the mean time
-        let _ = response_tx.send(result.map_err(Into::into));
+    fn handle_subscribe(
+        &self,
+        res: Result<Box<RawValue>, Box<TransportError>>,
+    ) -> SubscribePayload {
+        match res {
+            Ok(raw) => {
+                // parse the subscription id
+                let id: U256 = serde_json::from_str(raw.get())
+                    .map_err(|err| TransportError::json(raw.get(), err))?;
+                let (sub_tx, sub_rx) = mpsc::unbounded_channel();
+
+                let prev = self.subs.borrow_mut().insert(id, sub_tx);
+                assert!(prev.is_none(), "replaced IPC subscription (id={})", id);
+
+                Ok((id, sub_rx))
+            }
+            Err(e) => Err(e),
+        }
+    }
+
+    fn handle_unsubscribe(
+        &self,
+        id: &U256,
+        res: Result<Box<RawValue>, Box<TransportError>>,
+    ) -> Result<bool, Box<TransportError>> {
+        match res {
+            Ok(raw) => {
+                let ok: bool = serde_json::from_str(raw.get())
+                    .map_err(|err| TransportError::json(raw.get(), err))?;
+
+                let tx = self.subs.borrow_mut().remove(id);
+                assert!(tx.is_some(), "tried to unsubscribe non-existant subscription (id={})", id);
+
+                Ok(ok)
+            }
+            Err(e) => Err(e),
+        }
     }
 
     /// Sends notification through the channel based on the ID of the subscription.
     /// This handles streaming responses.
-    fn send_notification(&self, params: Params<'_>) {
+    fn handle_notification(&self, params: Params<'_>) {
         // retrieve the channel sender for notifying the subscription stream
         let subs = self.subs.borrow();
         let tx = match subs.get(&params.subscription) {
@@ -251,7 +342,7 @@ impl Shared {
 
         // a failure to send the response indicates that the pending request has
         // been dropped in the mean time (and should have been unsubscribed!)
-        let _ = tx.send((params.subscription, params.result.to_owned()));
+        let _ = tx.send(params.result.to_owned());
     }
 }
 
@@ -260,7 +351,6 @@ pub enum IpcError {
     InvalidSocket { path: PathBuf, source: io::Error },
     Io(io::Error),
     ServerExit,
-    //Other(&'static str),
 }
 
 impl error::Error for IpcError {
@@ -282,4 +372,8 @@ impl From<io::Error> for IpcError {
     fn from(err: io::Error) -> Self {
         Self::Io(err)
     }
+}
+
+fn server_exit() -> Box<TransportError> {
+    TransportError::transport(IpcError::ServerExit)
 }
