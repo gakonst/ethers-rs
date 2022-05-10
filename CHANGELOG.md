@@ -4,6 +4,7 @@
 
 ### Unreleased
 
+- Removed Cronos mainnet beta from `is_legacy` [1246](https://github.com/gakonst/ethers-rs/pull/1246)
 - Fix RLP decoding of `from` field for `Eip1559TransactionRequest` and
   `Eip2930TransactionRequest`, remove `Eip1559TransactionRequest` `sighash`
   method [1180](https://github.com/gakonst/ethers-rs/pull/1180)
