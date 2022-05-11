@@ -1245,6 +1245,7 @@ dependencies = [
  "bincode",
  "bytes",
  "cargo_metadata",
+ "chrono",
  "convert_case",
  "elliptic-curve",
  "ethabi",
