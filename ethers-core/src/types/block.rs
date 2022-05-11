@@ -1,9 +1,11 @@
 // Taken from <https://github.com/tomusdrw/rust-web3/blob/master/src/types/block.rs>
 use crate::types::{Address, Bloom, Bytes, Transaction, TxHash, H256, U256, U64};
+use chrono::{DateTime, TimeZone, Utc};
 #[cfg(not(feature = "celo"))]
 use core::cmp::Ordering;
 use serde::{ser::SerializeStruct, Deserialize, Deserializer, Serialize, Serializer};
 use std::str::FromStr;
+use thiserror::Error;
 
 /// The block type returned from RPC calls.
 /// This is generic over a `TX` type which will be either the hash or the full transaction,
@@ -91,6 +93,18 @@ pub struct Block<TX> {
     pub epoch_snark_data: Option<EpochSnarkData>,
 }
 
+/// Error returned by [`Block::time`].
+#[derive(Clone, Copy, Debug, Error)]
+pub enum TimeError {
+    /// Timestamp is zero.
+    #[error("timestamp is zero")]
+    TimestampZero,
+
+    /// Timestamp is too large for [`DateTime<Utc>`].
+    #[error("timestamp is too large")]
+    TimestampOverflow,
+}
+
 // ref <https://eips.ethereum.org/EIPS/eip-1559>
 #[cfg(not(feature = "celo"))]
 pub const ELASTICITY_MULTIPLIER: U256 = U256([2u64, 0, 0, 0]);
@@ -134,6 +148,26 @@ impl<TX> Block<TX> {
             }
             Ordering::Equal => self.base_fee_per_gas,
         }
+    }
+
+    /// Parse [`Self::timestamp`] into a [`DateTime<Utc>`].
+    ///
+    /// # Errors
+    ///
+    /// * [`TimeError::TimestampZero`] if the timestamp is zero, or
+    /// * [`TimeError::TimestampOverflow`] if the timestamp is too large to be represented as a
+    ///   [`DateTime<Utc>`].
+    pub fn time(&self) -> Result<DateTime<Utc>, TimeError> {
+        if self.timestamp.is_zero() {
+            return Err(TimeError::TimestampZero)
+        }
+        if self.timestamp.bits() > 63 {
+            return Err(TimeError::TimestampOverflow)
+        }
+        // Casting to i64 is safe because the timestamp is guaranteed to be less than 2^63.
+        // TODO: It would be nice if there was `TryInto<i64> for U256`.
+        let secs = self.timestamp.as_u64() as i64;
+        Ok(Utc.timestamp(secs, 0))
     }
 }
 
