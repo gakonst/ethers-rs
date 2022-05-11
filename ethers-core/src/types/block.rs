@@ -93,10 +93,14 @@ pub struct Block<TX> {
     pub epoch_snark_data: Option<EpochSnarkData>,
 }
 
+/// Error returned by [`Block::time`].
 #[derive(Clone, Copy, Debug, Error)]
 pub enum TimeError {
+    /// Timestamp is zero.
     #[error("timestamp is zero")]
     TimestampZero,
+
+    /// Timestamp is too large for [`DateTime<Utc>`].
     #[error("timestamp is too large")]
     TimestampOverflow,
 }
@@ -146,12 +150,10 @@ impl<TX> Block<TX> {
         }
     }
 
-    /// Parsed block time
-    /// Parse [`timestamp()`] into a [`DateTime<Utc>`].
+    /// Parse [`Self::timestamp`] into a [`DateTime<Utc>`].
     ///
     /// # Errors
     ///
-    /// Returns
     /// * [`TimeError::TimestampZero`] if the timestamp is zero, or
     /// * [`TimeError::TimestampOverflow`] if the timestamp is too large to be represented as a
     ///   [`DateTime<Utc>`].
