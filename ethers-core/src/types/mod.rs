@@ -31,7 +31,7 @@ mod bytes;
 pub use self::bytes::{deserialize_bytes, serialize_bytes, Bytes, ParseBytesError};
 
 mod block;
-pub use block::{Block, BlockId, BlockNumber};
+pub use block::{Block, BlockId, BlockNumber, TimeError};
 
 #[cfg(feature = "celo")]
 pub use block::Randomness;

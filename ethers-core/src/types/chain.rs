@@ -2,7 +2,7 @@ use serde::Deserialize;
 use thiserror::Error;
 
 use core::convert::TryFrom;
-use std::{default, fmt, str::FromStr};
+use std::{convert::TryInto, default, fmt, str::FromStr};
 
 use crate::types::U256;
 
@@ -134,6 +134,17 @@ impl TryFrom<u64> for Chain {
     }
 }
 
+impl TryFrom<U256> for Chain {
+    type Error = ParseChainError;
+
+    fn try_from(chain: U256) -> Result<Chain, Self::Error> {
+        if chain.bits() > 64 {
+            return Err(ParseChainError(chain.to_string()))
+        }
+        chain.as_u64().try_into()
+    }
+}
+
 impl FromStr for Chain {
     type Err = ParseChainError;
     fn from_str(chain: &str) -> Result<Self, Self::Err> {
@@ -182,8 +193,7 @@ impl Chain {
                 Chain::BinanceSmartChain |
                 Chain::BinanceSmartChainTestnet |
                 Chain::Arbitrum |
-                Chain::ArbitrumTestnet |
-                Chain::Cronos,
+                Chain::ArbitrumTestnet,
         )
     }
 }

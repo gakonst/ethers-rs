@@ -24,6 +24,7 @@ pub mod errors;
 pub mod gas;
 pub mod source_tree;
 pub mod transaction;
+pub mod utils;
 
 pub(crate) type Result<T> = std::result::Result<T, EtherscanError>;
 
