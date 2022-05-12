@@ -2,8 +2,7 @@ use serde::Deserialize;
 use thiserror::Error;
 
 use core::convert::TryFrom;
-use std::{default, fmt, str::FromStr};
-use strum::{EnumString, EnumVariantNames, VariantNames};
+use std::{convert::TryInto, default, fmt, str::FromStr};
 
 use crate::types::U256;
 
@@ -12,7 +11,7 @@ use crate::types::U256;
 pub struct ParseChainError(String);
 
 #[repr(u64)]
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, Deserialize, EnumString, EnumVariantNames)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Chain {
     Mainnet = 1,
