@@ -22,6 +22,12 @@ pub use cache::Cache;
 mod polygon;
 pub use polygon::Polygon;
 
+mod gas_now;
+pub use gas_now::GasNow;
+
+mod provider_oracle;
+pub use provider_oracle::ProviderOracle;
+
 use ethers_core::types::U256;
 
 use async_trait::async_trait;
@@ -74,6 +80,10 @@ pub enum GasOracleError {
 
     #[error("Chain is not supported by the oracle")]
     UnsupportedChain,
+
+    /// Error thrown when the provider failed.
+    #[error("Chain is not supported by the oracle")]
+    ProviderError(#[from] Box<dyn Error + Send + Sync>),
 }
 
 /// `GasOracle` is a trait that an underlying gas oracle needs to implement.

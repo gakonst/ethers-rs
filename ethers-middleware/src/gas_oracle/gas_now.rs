@@ -41,7 +41,7 @@ impl GasNow {
     pub fn with_client(client: Client) -> Self {
         let url = Url::parse(GAS_NOW_URL).expect("invalid url");
 
-        Self { url, gas_category: GasCategory::Standard }
+        Self { client, url, gas_category: GasCategory::Standard }
     }
 
     /// Sets the gas price category to be used when fetching the gas price.
@@ -64,7 +64,7 @@ impl GasNow {
 
 impl Default for GasNow {
     fn default() -> Self {
-        Self::new(Client::new())
+        Self::new()
     }
 }
 
