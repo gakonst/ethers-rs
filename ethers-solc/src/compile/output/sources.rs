@@ -1,7 +1,7 @@
 use crate::SourceFile;
 use semver::Version;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, path::Path};
 
 /// (source_file path  -> `SourceFile` + solc version)
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
@@ -222,6 +222,36 @@ impl VersionedSourceFiles {
                 .into_iter()
                 .map(move |source| (path.clone(), source.source_file, source.version))
         })
+    }
+
+    /// Sets the sources' file paths to `root` adjoined to `self.file`.
+    pub fn join_all(&mut self, root: impl AsRef<Path>) -> &mut Self {
+        let root = root.as_ref();
+        self.0 = std::mem::take(&mut self.0)
+            .into_iter()
+            .map(|(file_path, sources)| {
+                (root.join(file_path).to_string_lossy().to_string(), sources)
+            })
+            .collect();
+        self
+    }
+
+    /// Removes `base` from all source file paths
+    pub fn strip_prefix_all(&mut self, base: impl AsRef<Path>) -> &mut Self {
+        let base = base.as_ref();
+        self.0 = std::mem::take(&mut self.0)
+            .into_iter()
+            .map(|(file_path, sources)| {
+                let p = Path::new(&file_path);
+                (
+                    p.strip_prefix(base)
+                        .map(|p| p.to_string_lossy().to_string())
+                        .unwrap_or(file_path),
+                    sources,
+                )
+            })
+            .collect();
+        self
     }
 }
 
