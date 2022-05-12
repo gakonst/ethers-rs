@@ -22,6 +22,7 @@ use crate::{
         SourceFile,
     },
     compile::output::{contracts::VersionedContracts, sources::VersionedSourceFiles},
+    sourcemap::{SourceMap, SyntaxError},
 };
 pub use configurable::*;
 
@@ -397,6 +398,22 @@ pub trait Artifact {
     /// Returns the reference to the [Abi] if available
     fn get_abi(&self) -> Option<Cow<Abi>> {
         self.get_contract_bytecode().abi
+    }
+
+    /// Returns the `sourceMap` of the contract
+    ///
+    /// Returns `None` if no `sourceMap` string was included in the compiler output
+    /// Returns `Some(Err)` if parsing the sourcemap failed
+    fn get_source_map(&self) -> Option<std::result::Result<SourceMap, SyntaxError>> {
+        self.get_bytecode()?.source_map()
+    }
+
+    /// Returns the `sourceMap` as str if it was included in the compiler output
+    fn get_source_map_str(&self) -> Option<Cow<str>> {
+        match self.get_bytecode()? {
+            Cow::Borrowed(code) => code.source_map.as_deref().map(Cow::Borrowed),
+            Cow::Owned(code) => code.source_map.map(Cow::Owned),
+        }
     }
 }
 
