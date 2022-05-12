@@ -27,7 +27,8 @@ pub struct Ast {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Node {
     /// The node ID.
-    pub id: usize,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id: Option<usize>,
 
     /// The node type.
     #[serde(rename = "nodeType")]
