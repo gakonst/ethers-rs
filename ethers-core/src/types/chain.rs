@@ -5,13 +5,14 @@ use core::convert::TryFrom;
 use std::{convert::TryInto, default, fmt, str::FromStr};
 
 use crate::types::U256;
+use strum::{EnumVariantNames};
 
 #[derive(Debug, Clone, Error)]
 #[error("Failed to parse chain: {0}")]
 pub struct ParseChainError(String);
 
 #[repr(u64)]
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, Deserialize)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, Deserialize, EnumVariantNames)]
 #[serde(rename_all = "snake_case")]
 pub enum Chain {
     Mainnet = 1,
