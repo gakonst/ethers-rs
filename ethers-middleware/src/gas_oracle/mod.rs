@@ -25,6 +25,7 @@ pub use polygon::Polygon;
 use ethers_core::types::U256;
 
 use async_trait::async_trait;
+use auto_impl::auto_impl;
 use reqwest::Error as ReqwestError;
 use thiserror::Error;
 
@@ -95,6 +96,7 @@ pub enum GasOracleError {
 /// ```
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+#[auto_impl(&, Box, Arc)]
 pub trait GasOracle: Send + Sync + std::fmt::Debug {
     /// Makes an asynchronous HTTP query to the underlying `GasOracle`
     ///
