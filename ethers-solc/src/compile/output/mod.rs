@@ -92,10 +92,9 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
     ///
     /// # Example
     ///
-    /// Make all artifact files relative tot the project's root directory
+    /// Make all artifact files relative to the project's root directory
     ///
     /// ```no_run
-    /// use ethers_solc::artifacts::contract::CompactContractBytecode;
     /// use ethers_solc::Project;
     ///
     /// let project = Project::builder().build().unwrap();
@@ -105,6 +104,7 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
         let base = base.as_ref();
         self.cached_artifacts = self.cached_artifacts.into_stripped_file_prefixes(base);
         self.compiled_artifacts = self.compiled_artifacts.into_stripped_file_prefixes(base);
+        self.compiler_output.strip_prefix_all(base);
         self
     }
 
@@ -359,6 +359,36 @@ impl AggregatedCompilerOutput {
     /// ```
     pub fn split(self) -> (VersionedSourceFiles, VersionedContracts) {
         (self.sources, self.contracts)
+    }
+
+    /// Strips the given prefix from all file paths to make them relative to the given
+    /// `base` argument.
+    ///
+    /// Convenience method for [Self::strip_prefix_all()] that consumes the type.
+    ///
+    /// # Example
+    ///
+    /// Make all sources and contracts relative to the project's root directory
+    ///
+    /// ```no_run
+    /// use ethers_solc::Project;
+    ///
+    /// let project = Project::builder().build().unwrap();
+    /// let output = project.compile().unwrap().output().with_stripped_file_prefixes(project.root());
+    /// ```
+    pub fn with_stripped_file_prefixes(mut self, base: impl AsRef<Path>) -> Self {
+        let base = base.as_ref();
+        self.contracts.strip_prefix_all(base);
+        self.sources.strip_prefix_all(base);
+        self
+    }
+
+    /// Removes `base` from all contract paths
+    pub fn strip_prefix_all(&mut self, base: impl AsRef<Path>) -> &mut Self {
+        let base = base.as_ref();
+        self.contracts.strip_prefix_all(base);
+        self.sources.strip_prefix_all(base);
+        self
     }
 }
 
