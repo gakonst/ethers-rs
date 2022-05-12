@@ -46,6 +46,13 @@ pub struct CompactBytecode {
 }
 
 impl CompactBytecode {
+    /// Returns the parsed source map
+    ///
+    /// See also <https://docs.soliditylang.org/en/v0.8.10/internals/source_mappings.html>
+    pub fn source_map(&self) -> Option<Result<SourceMap, SyntaxError>> {
+        self.source_map.as_ref().map(|map| sourcemap::parse(map))
+    }
+
     /// Tries to link the bytecode object with the `file` and `library` name.
     /// Replaces all library placeholders with the given address.
     ///
