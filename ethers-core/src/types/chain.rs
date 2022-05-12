@@ -14,12 +14,14 @@ pub struct ParseChainError(String);
 #[repr(u64)]
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, Deserialize, EnumVariantNames)]
 #[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "kebab-case")]
 pub enum Chain {
     Mainnet = 1,
     Ropsten = 3,
     Rinkeby = 4,
     Goerli = 5,
     Kovan = 42,
+    #[strum(serialize = "xdai")]
     XDai = 100,
     Polygon = 137,
     Fantom = 250,
@@ -34,12 +36,14 @@ pub enum Chain {
     Moonriver = 1285,
     Optimism = 10,
     OptimismKovan = 69,
-    BinanceSmartChain = 56,
-    BinanceSmartChainTestnet = 97,
     Arbitrum = 42161,
     ArbitrumTestnet = 421611,
     Cronos = 25,
     CronosTestnet = 338,
+    #[strum(serialize = "bsc")]
+    BinanceSmartChain = 56,
+    #[strum(serialize = "bsc-testnet")]
+    BinanceSmartChainTestnet = 97,
 }
 
 impl fmt::Display for Chain {
