@@ -1,7 +1,11 @@
-use std::error;
+use std::{error, fmt};
 
-use crate::jsonrpc::JsonRpcError;
+use crate::{
+    jsonrpc::JsonRpcError,
+    provider::{ErrorKind, ProviderError},
+};
 
+#[derive(Debug)]
 pub enum TransportError {
     /// An error originating from the specific underlying transport
     /// implementation.
@@ -28,5 +32,28 @@ impl TransportError {
 
     pub(crate) fn jsonrpc(err: JsonRpcError) -> Box<Self> {
         Box::new(Self::JsonRpc(err))
+    }
+
+    pub(crate) fn to_provider_err(self: Box<Self>) -> Box<ProviderError> {
+        Box::new(ProviderError { kind: ErrorKind::Transport(self), context: "".into() })
+    }
+}
+
+impl error::Error for TransportError {
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
+        match self {
+            Self::Json { source, .. } => Some(source),
+            _ => None,
+        }
+    }
+}
+
+impl fmt::Display for TransportError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Transport(err) => write!(f, "{err}"),
+            Self::Json { input, .. } => write!(f, "failed to parse JSON from input ({input})"),
+            Self::JsonRpc(err) => write!(f, "{err}"),
+        }
     }
 }

@@ -15,6 +15,7 @@ use crate::{
 };
 
 pub struct SubscriptionStream<T, C: DuplexConnection> {
+    /// The ID of the of the subscription (`None` if no longer subscribed).
     id: Option<U256>,
     connection: C,
     rx: NotificationReceiver,
@@ -26,6 +27,10 @@ where
     T: for<'de> Deserialize<'de>,
     C: DuplexConnection,
 {
+    pub fn id(&self) -> Option<&U256> {
+        self.id.as_ref()
+    }
+
     pub async fn recv(&mut self) -> Option<Result<T, Box<TransportError>>> {
         let raw = self.rx.recv().await?;
         match serde_json::from_str(raw.get()) {
@@ -60,9 +65,7 @@ where
 
     pub async fn unsubscribe(&mut self) -> Result<bool, Box<ProviderError>> {
         match self.unsubscribe_inner() {
-            Some(future) => {
-                todo!("await future, map error")
-            }
+            Some(future) => future.await.map_err(|err| err.to_provider_err()),
             None => Ok(false),
         }
     }
@@ -87,7 +90,8 @@ where
 impl<T, C: DuplexConnection> Drop for SubscriptionStream<T, C> {
     fn drop(&mut self) {
         // the future can not be awaited here, but due to the requirements of
-        // `unsubscribe`, the JSON-RPC request is still sent out
+        // `unsubscribe`, the JSON-RPC request must still be sent out, even if
+        // the future is never polled
         let _ = self.unsubscribe_inner();
     }
 }

@@ -1,6 +1,6 @@
-use std::borrow::Cow;
 #[cfg(feature = "ipc")]
 use std::path::Path;
+use std::{borrow::Cow, error, fmt, sync::Arc};
 
 use ethers_core::types::{Address, BlockNumber, Bytes, U256};
 use serde::{Deserialize, Serialize};
@@ -8,8 +8,11 @@ use serde::{Deserialize, Serialize};
 #[cfg(all(unix, feature = "ipc"))]
 use crate::connections::ipc::{Ipc, IpcError};
 use crate::{
-    err::TransportError, jsonrpc::Request, types::SyncStatus, Connection, ConnectionExt,
-    DuplexConnection, SubscriptionStream,
+    connections,
+    err::TransportError,
+    jsonrpc::{JsonRpcError, Request},
+    types::SyncStatus,
+    Connection, ConnectionExt, DuplexConnection, SubscriptionStream,
 };
 
 /// A provider for Ethereum JSON-RPC API calls.
@@ -42,15 +45,94 @@ impl Provider<Ipc> {
     }
 }
 
+impl Provider<Arc<dyn Connection>> {
+    /// Attempts to connect to any of the available connections based on the
+    /// given `path`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use ethers_transports::Provider;
+    ///
+    /// # async fn connect_any() -> Result<(), Box<dyn std::error::Error>> {
+    /// // connects via HTTP
+    /// let provider = Provider::connect("http://localhost:8545").await?;
+    /// // connect via websocket
+    /// let provider = Provider::connect("ws://localhost:8546").await?;
+    /// // connects to a local IPC socket
+    /// let provider = Provider::connect("ipc:///home/user/.ethereum/geth.ipc").await?;
+    /// let provider = Provider::connect("/home/user/.ethereum/geth.ipc").await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// # Errors
+    ///  
+    /// Fails, if the selected connection can not be established.
+    ///
+    /// # Panics
+    ///
+    /// Panics, if a connection is selected which has not been feature-enabled
+    /// at compile time, e.g., if a HTTP url is given but the `http` cargo
+    /// feature is not enabled.
+    pub async fn connect(path: &str) -> Result<Self, Box<TransportError>> {
+        let connection: Arc<dyn Connection> = if path.starts_with("http") {
+            #[cfg(feature = "http")]
+            {
+                let http = connections::http::Http::new(path)
+                    .map_err(|err| TransportError::transport(err))?;
+                Arc::new(http)
+            }
+            #[cfg(not(feature = "http"))]
+            {
+                panic!("path starts with http/https, but `http` cargo feature is not enabled");
+            }
+        } else if path.starts_with("ws") {
+            #[cfg(feature = "ws")]
+            {
+                todo!("...")
+            }
+            #[cfg(not(feature = "ws"))]
+            {
+                panic!("path starts with ws/wss, but `ws` cargo feature is not enabled");
+            }
+        } else {
+            #[cfg(feature = "ipc")]
+            {
+                // the path is allowed start with "ipc://"
+                let ipc = connections::ipc::Ipc::connect(path.trim_start_matches("ipc://"))
+                    .await
+                    .map_err(|err| TransportError::transport(err))?;
+                Arc::new(ipc)
+            }
+            #[cfg(not(feature = "ipc"))]
+            {
+                todo!("ipc path detected, but `ipc` cargo feature is not enabled");
+            }
+        };
+
+        Ok(Self { connection })
+    }
+}
+
+impl<C: Connection + 'static> Provider<C> {
+    /// Borrows the underlying [`Connection`] and returns a new provider that
+    /// can be cheaply cloned and copied.
+    pub fn borrow(&self) -> Provider<&'_ C> {
+        let connection = &self.connection;
+        Provider { connection }
+    }
+}
+
 impl<C: Connection> Provider<C> {
     /// Returns the current ethereum protocol version.
-    pub async fn get_protocol_version(&self) -> Result<String, ProviderError> {
-        todo!()
+    pub async fn get_protocol_version(&self) -> Result<String, Box<ProviderError>> {
+        self.send_request("eth_protocolVersion", ()).await
     }
 
     /// Returns data about the sync status or `None`, if the client is fully
     /// synced.
-    pub async fn get_syncing(&self) -> Result<Option<SyncStatus>, Box<ProviderError>> {
+    pub async fn syncing(&self) -> Result<Option<SyncStatus>, Box<ProviderError>> {
         #[derive(Deserialize)]
         struct Helper(
             #[serde(deserialize_with = "crate::types::deserialize_sync_status")] Option<SyncStatus>,
@@ -91,8 +173,12 @@ impl<C: Connection> Provider<C> {
     }
 
     /// Returns the balance of the account of given address.
-    pub async fn get_balance(&self, address: &Address) -> Result<U256, Box<ProviderError>> {
-        self.send_request("eth_getBalance", [address]).await
+    pub async fn get_balance(
+        &self,
+        address: &Address,
+        block: &BlockNumber,
+    ) -> Result<U256, Box<ProviderError>> {
+        self.send_request("eth_getBalance", (address, block)).await
     }
 
     /// Returns the value from a storage position at a given address.
@@ -181,12 +267,31 @@ impl<C: DuplexConnection + Clone> Provider<C> {
 
 // TODO: Transport(Box<TransportError>), Json(serde_json::Error)
 // + context (string)
+#[derive(Debug)]
 pub struct ProviderError {
     pub kind: ErrorKind,
-    context: Cow<'static, str>,
+    pub(crate) context: Cow<'static, str>,
 }
 
 impl ProviderError {
+    pub fn context(&self) -> Option<&str> {
+        if self.context.is_empty() {
+            None
+        } else {
+            Some(self.context.as_ref())
+        }
+    }
+
+    pub fn as_jsonrpc(&self) -> Option<&JsonRpcError> {
+        match &self.kind {
+            ErrorKind::Transport(err) => match err.as_ref() {
+                TransportError::JsonRpc(err) => Some(err),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
     fn json(err: serde_json::Error) -> Box<Self> {
         Box::new(Self { kind: ErrorKind::Json(err), context: "".into() })
     }
@@ -197,6 +302,26 @@ impl ProviderError {
     }
 }
 
+impl error::Error for ProviderError {
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
+        match &self.kind {
+            ErrorKind::Json(err) => Some(err),
+            ErrorKind::Transport(err) => Some(&*err),
+        }
+    }
+}
+
+impl fmt::Display for ProviderError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let kind = &self.kind;
+        match self.context() {
+            Some(ctx) => write!(f, "{ctx}: {kind}"),
+            None => write!(f, "{kind}"),
+        }
+    }
+}
+
+#[derive(Debug)]
 pub enum ErrorKind {
     /// The error returned when parsing the raw response into the expected type
     /// fails.
@@ -204,9 +329,12 @@ pub enum ErrorKind {
     Transport(Box<TransportError>),
 }
 
-impl TransportError {
-    fn to_provider_err(self: Box<Self>) -> Box<ProviderError> {
-        Box::new(ProviderError { kind: ErrorKind::Transport(self), context: "".into() })
+impl fmt::Display for ErrorKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Json(err) => write!(f, "failed to parse JSON response to expected type: {err}"),
+            Self::Transport(err) => write!(f, "{err}"),
+        }
     }
 }
 

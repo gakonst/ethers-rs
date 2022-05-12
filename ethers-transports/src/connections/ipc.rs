@@ -115,18 +115,11 @@ impl DuplexConnection for Ipc {
     }
 
     fn unsubscribe(&self, id: &U256) -> UnsubscribeFuture<'_> {
-        // NOTE: the unsubscribe request is sent to the server before any
-        // async code is entered
         let (tx, rx) = oneshot::channel();
-        let res = self.request_tx.send(Request::Unsubscribe {
-            tx,
-            request: UnsubscribeRequest {
-                id: self.request_id(),
-                method: "eth_unsubscribe",
-                params: [*id],
-            }
-            .into(),
-        });
+        let request =
+            UnsubscribeRequest { id: self.request_id(), method: "eth_unsubscribe", params: [*id] };
+        // send the request BEFORE entering any async code
+        let res = self.request_tx.send(Request::Unsubscribe { tx, request: request.into() });
 
         Box::pin(async move {
             match res {
@@ -364,7 +357,11 @@ impl error::Error for IpcError {
 
 impl fmt::Display for IpcError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        todo!()
+        match self {
+            Self::InvalidSocket { path, .. } => write!(f, "invalid IPC socket at {path:?}"),
+            Self::Io(io) => write!(f, "{io}"),
+            Self::ServerExit => f.write_str("the IPC server has exited unexpectedly"),
+        }
     }
 }
 

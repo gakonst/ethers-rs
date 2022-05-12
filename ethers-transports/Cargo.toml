@@ -41,3 +41,8 @@ url = { version = "2.2.2", default-features = false, optional = true }
 ethers-core = { version = "^0.6.0", path = "../ethers-core", default-features = false }
 hashers = "1.0.1"
 tracing = "0.1.34"
+
+[[test]]
+name = "ipc"           # The name of the target.
+path = "tests/ipc.rs"    # The source file of the target.
+required-features = ["ipc"]

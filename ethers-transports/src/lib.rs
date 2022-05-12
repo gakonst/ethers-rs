@@ -10,6 +10,7 @@ pub mod connections {
     pub mod ws;
 
     pub mod noop;
+    // pub mod mock;
 }
 
 mod err;
@@ -25,8 +26,10 @@ use serde::Serialize;
 use serde_json::value::RawValue;
 use tokio::sync::mpsc;
 
-pub use crate::provider::{Provider, ProviderError};
-pub use crate::sub::SubscriptionStream;
+pub use crate::{
+    provider::{ErrorKind, Provider, ProviderError},
+    sub::SubscriptionStream,
+};
 
 #[cfg(all(unix, feature = "ipc"))]
 pub use crate::connections::ipc::Ipc;
@@ -38,15 +41,17 @@ type DynFuture<'a, T> = Pin<Box<dyn Future<Output = T> + 'a>>;
 #[cfg(not(target_arch = "wasm32"))]
 type DynFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 
-/// The future returned by [`Transport::send_raw_request`] that resolves to the
+/// The future returned by [`Connection::send_raw_request`] that resolves to the
 /// JSON value returned by the transport.
 pub type RequestFuture<'a> = DynFuture<'a, ResponsePayload>;
 
 /// The payload of a request response from a transport.
 pub type ResponsePayload = Result<Box<RawValue>, Box<TransportError>>;
 
+/// A connection allowing the exchange of Ethereum API JSON-RPC messages between
+/// a local client and a remote API provider.
 pub trait Connection {
-    /// Returns a unique request ID.
+    /// Returns a reasonably unique request ID.
     fn request_id(&self) -> u64;
 
     /// Sends a JSON-RPC request to the underlying API provider and returns its
@@ -87,19 +92,21 @@ pub trait ConnectionExt: Connection {
     }
 }
 
+// blanket impl for all `Connection` implementors
 impl<T: Connection> ConnectionExt for T {}
+// blanket impl for all (dyn) `Connection` trait objects
 impl ConnectionExt for dyn Connection + '_ {}
 
-/// The future returned by [`DuplexTransport::subscribe`] that resolves to the
+/// The future returned by [`DuplexConnection::subscribe`] that resolves to the
 /// ID of the subscription and the channel receiver for all notifications
 /// received for this subscription.
 pub type SubscribeFuture<'a> = DynFuture<'a, SubscribePayload>;
 
 /// ...
-pub type UnsubscribeFuture<'a> = DynFuture<'a, Result<bool, Box<TransportError>>>;
+pub type SubscribePayload = Result<(U256, NotificationReceiver), Box<TransportError>>;
 
 /// ...
-pub type SubscribePayload = Result<(U256, NotificationReceiver), Box<TransportError>>;
+pub type UnsubscribeFuture<'a> = DynFuture<'a, Result<bool, Box<TransportError>>>;
 
 /// ...
 pub type UnsubscribePayload = Result<bool, Box<TransportError>>;
@@ -107,7 +114,8 @@ pub type UnsubscribePayload = Result<bool, Box<TransportError>>;
 /// ...
 pub type NotificationReceiver = mpsc::UnboundedReceiver<Box<RawValue>>;
 
-/// A [`Connection`] that allows publish/subscribe communication.
+/// A [`Connection`] that allows publish/subscribe communication with the API
+/// provider.
 pub trait DuplexConnection: Connection {
     /// Sends a JSON-RPC subscribe request to the transport and returns
     /// the resulting subscription ID and a receiver for all notifications
@@ -123,6 +131,14 @@ pub trait DuplexConnection: Connection {
     /// result, if successful.
     ///
     /// The implementation has to ensure, that the request can be sent out
-    /// *before* the [`Future`] returned by this method is polled.
+    /// even if the [`Future`] returned by this method is *never* polled.
     fn unsubscribe(&self, id: &U256) -> UnsubscribeFuture<'_>;
+}
+
+pub trait DuplexConnectionSimple: Connection {
+    /// Similar to [`Connection::send_raw_request`], but sends the request out even
+    /// if the future is never polled.
+    fn send_raw_request_sync(&self, id: u64, request: String) -> RequestFuture<'_>;
+    fn subscribe(&self, id: U256) -> Option<NotificationReceiver>;
+    fn unsubscribe(&self, id: U256);
 }

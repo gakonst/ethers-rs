@@ -8,6 +8,7 @@ use url::Url;
 
 use crate::{err::TransportError, jsonrpc::Response, Connection, RequestFuture};
 
+/// An HTTP [`Connection`].
 pub struct Http {
     next_id: AtomicU64,
     client: Client,
@@ -15,7 +16,17 @@ pub struct Http {
 }
 
 impl Http {
-    pub fn new(url: Url) -> Self {
+    /// Creates a new HTTP [`Connection`] over the given `url`.
+    ///
+    /// # Errors
+    ///
+    /// Fails, if `url` is not a valid URL.
+    pub fn new(url: &str) -> Result<Self, InvalidUrl> {
+        let url = url.parse()?;
+        Ok(Self::from_url(url))
+    }
+
+    fn from_url(url: Url) -> Self {
         Self { next_id: AtomicU64::new(0), client: Client::new(), url }
     }
 }
@@ -50,10 +61,12 @@ impl Connection for Http {
 }
 
 impl FromStr for Http {
-    type Err = <Url as FromStr>::Err;
+    type Err = InvalidUrl;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let url = Url::from_str(s)?;
-        Ok(Self::new(url))
+        Ok(Self::from_url(url))
     }
 }
+
+pub type InvalidUrl = url::ParseError;
