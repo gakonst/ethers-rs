@@ -517,7 +517,6 @@ mod tests {
             blocks.push(block.number.unwrap_or_default().as_u64());
         }
 
-        assert_eq!(sub_id, 1.into());
         assert_eq!(blocks, vec![1, 2, 3])
     }
 
