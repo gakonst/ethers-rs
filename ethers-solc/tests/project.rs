@@ -9,7 +9,7 @@ use std::{
 
 use ethers_core::types::Address;
 use ethers_solc::{
-    artifacts::{BytecodeHash, Libraries},
+    artifacts::{BytecodeHash, Libraries, ModelCheckerEngine::CHC, ModelCheckerSettings},
     cache::{SolFilesCache, SOLIDITY_FILES_CACHE_FILENAME},
     project_util::*,
     remappings::Remapping,
@@ -1309,4 +1309,23 @@ fn can_compile_std_json_input() {
         assert!(!out.has_error());
         assert!(out.sources.contains_key("lib/ds-test/src/test.sol"));
     }
+}
+
+#[test]
+fn can_compile_model_checker_sample() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test-data/model-checker-sample");
+    let paths = ProjectPathsConfig::builder().sources(root);
+
+    let mut project = TempProject::<ConfigurableArtifacts>::new(paths).unwrap();
+    project.project_mut().solc_config.settings.model_checker = Some(ModelCheckerSettings {
+        contracts: BTreeMap::new(),
+        engine: Some(CHC),
+        targets: None,
+        timeout: Some(10000),
+    });
+    let compiled = project.compile().unwrap();
+
+    assert!(compiled.find("Assert").is_some());
+    assert!(!compiled.has_compiler_errors());
+    assert!(compiled.has_compiler_warnings());
 }
