@@ -3,8 +3,13 @@ use crate::types::{Address, Bloom, Bytes, Transaction, TxHash, H256, U256, U64};
 use chrono::{DateTime, TimeZone, Utc};
 #[cfg(not(feature = "celo"))]
 use core::cmp::Ordering;
-use serde::{ser::SerializeStruct, Deserialize, Deserializer, Serialize, Serializer};
-use std::str::FromStr;
+
+use serde::{
+    de::{MapAccess, Visitor},
+    ser::SerializeStruct,
+    Deserialize, Deserializer, Serialize, Serializer,
+};
+use std::{fmt::Formatter, str::FromStr};
 use thiserror::Error;
 
 /// The block type returned from RPC calls.
@@ -446,6 +451,67 @@ impl Serialize for BlockId {
     }
 }
 
+impl<'de> Deserialize<'de> for BlockId {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct BlockIdVisitor;
+
+        impl<'de> Visitor<'de> for BlockIdVisitor {
+            type Value = BlockId;
+
+            fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
+                formatter.write_str("Block identifier following EIP-1898")
+            }
+
+            fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                Ok(BlockId::Number(v.parse().map_err(serde::de::Error::custom)?))
+            }
+
+            fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+            where
+                A: MapAccess<'de>,
+            {
+                let mut number = None;
+                let mut hash = None;
+
+                while let Some(key) = map.next_key::<String>()? {
+                    match key.as_str() {
+                        "blockNumber" => {
+                            if number.is_some() || hash.is_some() {
+                                return Err(serde::de::Error::duplicate_field("blockNumber"))
+                            }
+                            number = Some(BlockId::Number(map.next_value::<BlockNumber>()?))
+                        }
+                        "blockHash" => {
+                            if number.is_some() || hash.is_some() {
+                                return Err(serde::de::Error::duplicate_field("blockHash"))
+                            }
+                            hash = Some(BlockId::Hash(map.next_value::<H256>()?))
+                        }
+                        key => {
+                            return Err(serde::de::Error::unknown_field(
+                                key,
+                                &["blockNumber", "blockHash"],
+                            ))
+                        }
+                    }
+                }
+
+                number.or(hash).ok_or_else(|| {
+                    serde::de::Error::custom("Expected `blockNumber` or `blockHash`")
+                })
+            }
+        }
+
+        deserializer.deserialize_any(BlockIdVisitor)
+    }
+}
+
 /// A block Number (or tag - "latest", "earliest", "pending")
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum BlockNumber {
@@ -495,12 +561,21 @@ impl<'de> Deserialize<'de> for BlockNumber {
         D: Deserializer<'de>,
     {
         let s = String::deserialize(deserializer)?.to_lowercase();
-        Ok(match s.as_str() {
+        s.parse().map_err(serde::de::Error::custom)
+    }
+}
+
+impl FromStr for BlockNumber {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let block = match s {
             "latest" => Self::Latest,
             "earliest" => Self::Earliest,
             "pending" => Self::Pending,
-            n => BlockNumber::Number(U64::from_str(n).map_err(serde::de::Error::custom)?),
-        })
+            n => BlockNumber::Number(n.parse::<U64>().map_err(|err| err.to_string())?),
+        };
+        Ok(block)
     }
 }
 
@@ -509,6 +584,62 @@ impl<'de> Deserialize<'de> for BlockNumber {
 mod tests {
     use super::*;
     use crate::types::{Transaction, TxHash};
+
+    #[test]
+    fn can_parse_eip1898_block_ids() {
+        let num = serde_json::json!(
+            { "blockNumber": "0x0" }
+        );
+        let id = serde_json::from_value::<BlockId>(num).unwrap();
+        assert_eq!(id, BlockId::Number(BlockNumber::Number(0u64.into())));
+
+        let num = serde_json::json!(
+            { "blockNumber": "pending" }
+        );
+        let id = serde_json::from_value::<BlockId>(num).unwrap();
+        assert_eq!(id, BlockId::Number(BlockNumber::Pending));
+
+        let num = serde_json::json!(
+            { "blockNumber": "latest" }
+        );
+        let id = serde_json::from_value::<BlockId>(num).unwrap();
+        assert_eq!(id, BlockId::Number(BlockNumber::Latest));
+
+        let num = serde_json::json!(
+            { "blockNumber": "earliest" }
+        );
+        let id = serde_json::from_value::<BlockId>(num).unwrap();
+        assert_eq!(id, BlockId::Number(BlockNumber::Earliest));
+
+        let num = serde_json::json!("0x0");
+        let id = serde_json::from_value::<BlockId>(num).unwrap();
+        assert_eq!(id, BlockId::Number(BlockNumber::Number(0u64.into())));
+
+        let num = serde_json::json!("pending");
+        let id = serde_json::from_value::<BlockId>(num).unwrap();
+        assert_eq!(id, BlockId::Number(BlockNumber::Pending));
+
+        let num = serde_json::json!("latest");
+        let id = serde_json::from_value::<BlockId>(num).unwrap();
+        assert_eq!(id, BlockId::Number(BlockNumber::Latest));
+
+        let num = serde_json::json!("earliest");
+        let id = serde_json::from_value::<BlockId>(num).unwrap();
+        assert_eq!(id, BlockId::Number(BlockNumber::Earliest));
+
+        let num = serde_json::json!(
+            { "blockHash": "0xd4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3" }
+        );
+        let id = serde_json::from_value::<BlockId>(num).unwrap();
+        assert_eq!(
+            id,
+            BlockId::Hash(
+                "0xd4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3"
+                    .parse()
+                    .unwrap()
+            )
+        );
+    }
 
     #[test]
     fn serde_block_number() {
