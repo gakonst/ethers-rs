@@ -121,6 +121,8 @@
   `enum BytecodeObject` [#656](https://github.com/gakonst/ethers-rs/pull/656).
 - Nit: remove accidentally doubled double-quotes in an error message
 - Fix when compiler-out metadata is empty and there's no internalType [#1182](https://github.com/gakonst/ethers-rs/pull/1182)
+- Add basic `solc` model checker options.
+  [#1258](https://github.com/gakonst/ethers-rs/pull/1258)
 
 ### 0.6.0
 
