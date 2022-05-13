@@ -2,6 +2,12 @@
 name = "ethers-addressbook"
 version = "0.1.0"
 edition = "2021"
+license = "MIT OR Apache-2.0"
+authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
+description = "Common Ethereum name to address mappings"
+homepage = "https://docs.rs/ethers"
+repository = "https://github.com/gakonst/ethers-rs"
+keywords = ["ethereum", "web3", "celo", "ethers"]
 
 [dependencies]
 once_cell = "1.10.0"
