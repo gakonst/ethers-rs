@@ -498,9 +498,9 @@ mod eth_tests {
             .eth_balance_of(addrs[6]);
 
         let balances: (U256, U256, U256) = multicall.call().await.unwrap();
-        assert_eq!(balances.0, U256::from(100_000_000_000_000_000_000u128));
-        assert_eq!(balances.1, U256::from(100_000_000_000_000_000_000u128));
-        assert_eq!(balances.2, U256::from(100_000_000_000_000_000_000u128));
+        assert_eq!(balances.0, U256::from(10_000_000_000_000_000_000_000u128));
+        assert_eq!(balances.1, U256::from(10_000_000_000_000_000_000_000u128));
+        assert_eq!(balances.2, U256::from(10_000_000_000_000_000_000_000u128));
 
         // clear multicall so we can test `call_raw` w/ >16 calls
         multicall.clear_calls();
