@@ -1,0 +1,61 @@
+name: Release
+
+on:
+  schedule:
+    - cron: "0 0 * * 0"
+
+  workflow_dispatch:
+    inputs:
+      release_type:
+        type: choice
+        description: Release type
+        options:
+          - major
+          - minor
+          - patch
+          - release
+          - rc
+          - beta
+          - alpha
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      CARGO_TOKEN: ${{ secrets.CARGO_TOKEN }}
+      RELEASE_TYPE: ${{ github.event.inputs.release_type }}
+
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Configure git
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+      - name: Rust stable
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v1
+        with:
+          cache-on-failure: true
+      - name: Install cargo-release
+        uses: actions-rs/install@v0.1
+        with:
+          crate: cargo-release
+          version: latest
+      - name: Cargo login
+        run: |
+          cargo login $CARGO_TOKEN
+      - name: Dry-run cargo release
+        run: |
+          cargo release --workspace ${RELEASE_TYPE:-alpha} --exclude ethers-wasm
+      - name: Publish release
+        run: |
+          cargo release --workspace ${RELEASE_TYPE:-alpha} --exclude ethers-wasm --execute --no-confirm
