@@ -334,9 +334,10 @@ mod tests {
         let accounts = provider.get_accounts().await.unwrap();
 
         let tx = TransactionRequest::new().from(accounts[0]).to(accounts[0]).value(1e18 as u64);
+        let txs = vec![tx.clone().nonce(0u64), tx.clone().nonce(1u64), tx.clone().nonce(2u64)];
 
         let txs =
-            futures_util::future::join_all(std::iter::repeat(tx.clone()).take(3).map(|tx| async {
+            futures_util::future::join_all(txs.into_iter().map(|tx| async {
                 provider.send_transaction(tx, None).await.unwrap().await.unwrap()
             }))
             .await;
