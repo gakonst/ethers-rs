@@ -122,7 +122,6 @@ impl CompilerInput {
                 // introduced in <https://docs.soliditylang.org/en/v0.8.10/using-the-compiler.html#compiler-api>
                 // <https://github.com/ethereum/solidity/releases/tag/v0.8.10>
                 debug.debug_info.clear();
-
             }
 
             // 0.8.10 is the earliest version that has all model checker options.
