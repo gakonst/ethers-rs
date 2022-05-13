@@ -122,7 +122,11 @@ impl CompilerInput {
                 // introduced in <https://docs.soliditylang.org/en/v0.8.10/using-the-compiler.html#compiler-api>
                 // <https://github.com/ethereum/solidity/releases/tag/v0.8.10>
                 debug.debug_info.clear();
+
             }
+
+            // 0.8.10 is the earliest version that has all model checker options.
+            self.settings.model_checker = None;
         }
 
         self
@@ -844,8 +848,8 @@ pub struct MetadataSource {
 /// Model checker settings for solc
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ModelCheckerSettings {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub contracts: Option<BTreeMap<String, Vec<String>>>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub contracts: BTreeMap<String, Vec<String>>,
     #[serde(
         default,
         with = "serde_helpers::display_from_str_opt",

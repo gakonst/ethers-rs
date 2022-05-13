@@ -1318,7 +1318,7 @@ fn can_compile_model_checker_sample() {
 
     let mut project = TempProject::<ConfigurableArtifacts>::new(paths).unwrap();
     project.project_mut().solc_config.settings.model_checker = Some(ModelCheckerSettings {
-        contracts: None,
+        contracts: BTreeMap::new(),
         engine: Some(CHC),
         targets: None,
         timeout: Some(10000),
