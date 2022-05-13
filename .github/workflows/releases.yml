@@ -13,7 +13,6 @@ on:
           - major
           - minor
           - patch
-          - release
           - rc
           - beta
           - alpha
@@ -27,7 +26,6 @@ jobs:
     env:
       CARGO_TOKEN: ${{ secrets.CARGO_TOKEN }}
       RELEASE_TYPE: ${{ github.event.inputs.release_type }}
-
     steps:
       - name: Checkout sources
         uses: actions/checkout@v3
@@ -59,3 +57,43 @@ jobs:
       - name: Publish release
         run: |
           cargo release --workspace ${RELEASE_TYPE:-alpha} --exclude ethers-wasm --execute --no-confirm
+      - name: Setup node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 14
+      - run: |
+          npm i semver
+      - name: Install git-cliff
+        uses: actions-rs/install@v0.1
+        with:
+          crate: git-cliff
+          version: latest
+      - name: Publish changelog
+        id: changelog
+        run: |
+          current_version=$(git tag --contains HEAD -l "v*" | head -1)
+          from_version=$(node .github/workflows/release-tag-from.js $current_version $RELEASE_TYPE)
+          echo from $from_version to $current_version
+
+          echo "::set-output name=release_version::$(echo $current_version)"
+
+          if git rev-parse "$from_version" >/dev/null 2>&1; then
+            echo "tag exists, can generate changelog";
+          else
+            echo "tag does not exist, cannot generate changelog, publish github release manually"
+            exit 0
+          fi
+
+          git cliff $from_version..$current_version > GENERATED_CHANGELOG.md
+          cat GENERATED_CHANGELOG.md
+      - name: Create GitHub release
+        id: release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_VERSION: ${{ steps.changelog.outputs.release_version }}
+        with:
+          tag_name: ${{ env.RELEASE_VERSION }}
+          release_name: ${{ env.RELEASE_VERSION }}
+          body_path: GENERATED_CHANGELOG.md
+          prerelease: ${{ env.RELEASE_TYPE == 'alpha' }}
