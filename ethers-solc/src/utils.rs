@@ -415,7 +415,7 @@ mod tests {
         let (unit, _) = solang_parser::parse(s, 0).unwrap();
         assert_eq!(unit.0.len(), 1);
         match unit.0[0] {
-            SourceUnitPart::ImportDirective(_, _) => {}
+            SourceUnitPart::ImportDirective(_) => {}
             _ => unreachable!("failed to parse import"),
         }
         let imports: Vec<_> = find_import_paths(s).map(|m| m.as_str()).collect();
