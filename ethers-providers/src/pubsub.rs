@@ -31,6 +31,8 @@ pub struct SubscriptionStream<'a, P: PubsubClient, R: DeserializeOwned> {
     /// The subscription's installed id on the ethereum node
     pub id: U256,
 
+    loaded_elements: Vec<R>,
+
     provider: &'a Provider<P>,
 
     #[pin]
@@ -54,12 +56,16 @@ where
     pub fn new(id: U256, provider: &'a Provider<P>) -> Result<Self, P::Error> {
         // Call the underlying PubsubClient's subscribe
         let rx = provider.as_ref().subscribe(id)?;
-        Ok(Self { id, provider, rx, ret: PhantomData })
+        Ok(Self { id, provider, rx, ret: PhantomData, loaded_elements: vec![] })
     }
 
     /// Unsubscribes from the subscription.
     pub async fn unsubscribe(&self) -> Result<bool, crate::ProviderError> {
         self.provider.unsubscribe(self.id).await
+    }
+
+    pub fn set_loaded_elements(&mut self, loaded_elements: Vec<R>) {
+        self.loaded_elements = loaded_elements;
     }
 }
 
@@ -74,6 +80,11 @@ where
     type Item = R;
 
     fn poll_next(self: Pin<&mut Self>, ctx: &mut Context) -> Poll<Option<Self::Item>> {
+        if self.loaded_elements.len() > 0 {
+            let next_element = self.get_mut().loaded_elements.remove(0);
+            return Poll::Ready(Some(next_element))
+        }
+
         let this = self.project();
         match futures_util::ready!(this.rx.poll_next(ctx)) {
             Some(item) => match serde_json::from_str(item.get()) {
