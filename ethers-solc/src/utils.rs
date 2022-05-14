@@ -12,7 +12,6 @@ use regex::{Match, Regex};
 use semver::Version;
 use serde::de::DeserializeOwned;
 use tiny_keccak::{Hasher, Keccak};
-use tokio::runtime::{Handle, Runtime};
 use walkdir::WalkDir;
 
 /// A regex that matches the import path and identifier of a solidity import
@@ -330,6 +329,9 @@ pub(crate) fn find_fave_or_alt_path(root: impl AsRef<Path>, fave: &str, alt: &st
     }
     p
 }
+
+#[cfg(not(target_arch = "wasm32"))]
+use tokio::runtime::{Handle, Runtime};
 
 #[cfg(not(target_arch = "wasm32"))]
 #[derive(Debug)]
