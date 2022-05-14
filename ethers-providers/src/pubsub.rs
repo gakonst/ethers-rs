@@ -80,7 +80,7 @@ where
     type Item = R;
 
     fn poll_next(self: Pin<&mut Self>, ctx: &mut Context) -> Poll<Option<Self::Item>> {
-        if self.loaded_elements.len() > 0 {
+        if !self.loaded_elements.is_empty() {
             let next_element = self.get_mut().loaded_elements.remove(0);
             return Poll::Ready(Some(next_element))
         }
