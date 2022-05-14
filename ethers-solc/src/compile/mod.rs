@@ -369,11 +369,13 @@ impl Solc {
     }
 
     /// Blocking version of `Self::install`
-    #[cfg(all(feature = "svm-solc"))]
+    // #[cfg(all(feature = "svm-solc"))]
     pub fn blocking_install(version: &Version) -> std::result::Result<Self, svm::SolcVmError> {
+        use crate::utils::RuntimeOrHandle;
+
         tracing::trace!("blocking installing solc version \"{}\"", version);
         crate::report::solc_installation_start(version);
-        match svm::blocking_install(version) {
+        match RuntimeOrHandle::new().block_on(svm::install(version)) {
             Ok(path) => {
                 crate::report::solc_installation_success(version);
                 Ok(Solc::new(path))
@@ -797,6 +799,17 @@ mod tests {
         let res = Solc::find_svm_installed_version(&version.to_string()).unwrap().unwrap();
         let expected = svm::SVM_HOME.join(ver).join(format!("solc-{}", ver));
         assert_eq!(res.solc, expected);
+    }
+
+    #[test]
+    #[cfg(feature = "svm-solc")]
+    fn can_install_solc_in_tokio_rt() {
+        let ver = "0.8.6";
+        let version = Version::from_str(ver).unwrap();
+        let result = tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(async { Solc::blocking_install(&version) });
+        assert!(result.is_err());
     }
 
     #[test]

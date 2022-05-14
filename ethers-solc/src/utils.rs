@@ -12,6 +12,7 @@ use regex::{Match, Regex};
 use semver::Version;
 use serde::de::DeserializeOwned;
 use tiny_keccak::{Hasher, Keccak};
+use tokio::runtime::{Handle, Runtime};
 use walkdir::WalkDir;
 
 /// A regex that matches the import path and identifier of a solidity import
@@ -328,6 +329,35 @@ pub(crate) fn find_fave_or_alt_path(root: impl AsRef<Path>, fave: &str, alt: &st
         }
     }
     p
+}
+
+#[allow(clippy::large_enum_variant)]
+#[derive(Debug)]
+pub enum RuntimeOrHandle {
+    Runtime(Runtime),
+    Handle(Handle),
+}
+
+impl Default for RuntimeOrHandle {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl RuntimeOrHandle {
+    pub fn new() -> RuntimeOrHandle {
+        match Handle::try_current() {
+            Ok(handle) => RuntimeOrHandle::Handle(handle),
+            Err(_) => RuntimeOrHandle::Runtime(Runtime::new().expect("Failed to start runtime")),
+        }
+    }
+
+    pub fn block_on<F: std::future::Future>(&self, f: F) -> F::Output {
+        match &self {
+            RuntimeOrHandle::Runtime(runtime) => runtime.block_on(f),
+            RuntimeOrHandle::Handle(handle) => tokio::task::block_in_place(|| handle.block_on(f)),
+        }
+    }
 }
 
 /// Creates a new named tempdir
