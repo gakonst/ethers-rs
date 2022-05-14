@@ -375,6 +375,9 @@ impl Solc {
 
         tracing::trace!("blocking installing solc version \"{}\"", version);
         crate::report::solc_installation_start(version);
+        // the async version `svm::install` is used instead of `svm::blocking_intsall`
+        // because the underlying `reqwest::blocking::Client` does not behave well
+        // in tokio rt. see https://github.com/seanmonstar/reqwest/issues/1017
         match RuntimeOrHandle::new().block_on(svm::install(version)) {
             Ok(path) => {
                 crate::report::solc_installation_success(version);
@@ -725,6 +728,7 @@ mod tests {
         let other = solc().async_compile(&serde_json::json!(input)).await.unwrap();
         assert_eq!(out, other);
     }
+
     #[cfg(feature = "async")]
     #[tokio::test]
     async fn async_solc_compile_works2() {
@@ -804,11 +808,9 @@ mod tests {
     #[test]
     #[cfg(feature = "svm-solc")]
     fn can_install_solc_in_tokio_rt() {
-        let ver = "0.8.6";
-        let version = Version::from_str(ver).unwrap();
-        let result = tokio::runtime::Runtime::new()
-            .unwrap()
-            .block_on(async { Solc::blocking_install(&version) });
+        let version = Version::from_str("0.8.6").unwrap();
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let result = rt.block_on(async { Solc::blocking_install(&version) });
         assert!(result.is_ok());
     }
 

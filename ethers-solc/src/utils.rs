@@ -331,7 +331,6 @@ pub(crate) fn find_fave_or_alt_path(root: impl AsRef<Path>, fave: &str, alt: &st
     p
 }
 
-#[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
 pub enum RuntimeOrHandle {
     Runtime(Runtime),
