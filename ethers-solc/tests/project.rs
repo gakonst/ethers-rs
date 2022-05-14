@@ -17,6 +17,7 @@ use ethers_solc::{
     ProjectPathsConfig, Solc, TestFileFilter,
 };
 use pretty_assertions::assert_eq;
+use semver::Version;
 
 #[allow(unused)]
 fn init_tracing() {
@@ -1328,4 +1329,54 @@ fn can_compile_model_checker_sample() {
     assert!(compiled.find("Assert").is_some());
     assert!(!compiled.has_compiler_errors());
     assert!(compiled.has_compiler_warnings());
+}
+
+fn remove_solc_if_exists(version: &Version) {
+    match Solc::find_svm_installed_version(version.to_string()).unwrap() {
+        Some(_) => svm::remove_version(&version).expect("failed to remove version"),
+        None => {}
+    };
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn can_install_solc_and_compile_version() {
+    let project = TempProject::dapptools().unwrap();
+    let version = Version::new(0, 8, 10);
+
+    project
+        .add_source(
+            "Contract",
+            format!(
+                r#"
+pragma solidity {};
+contract Contract {{ }}
+"#,
+                version.to_string()
+            ),
+        )
+        .unwrap();
+
+    remove_solc_if_exists(&version);
+
+    let compiled = project.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn can_install_solc_and_compile_std_json_input_async() {
+    let tmp = TempProject::dapptools_init().unwrap();
+    tmp.assert_no_errors();
+    let source = tmp.list_source_files().into_iter().find(|p| p.ends_with("Dapp.t.sol")).unwrap();
+    let input = tmp.project().standard_json_input(source).unwrap();
+    let solc = &tmp.project().solc;
+
+    assert!(input.settings.remappings.contains(&"ds-test/=lib/ds-test/src/".parse().unwrap()));
+    let input: CompilerInput = input.into();
+    assert!(input.sources.contains_key(Path::new("lib/ds-test/src/test.sol")));
+
+    remove_solc_if_exists(&solc.version().expect("failed to get version"));
+
+    let out = solc.async_compile(&input).await.unwrap();
+    assert!(!out.has_error());
+    assert!(out.sources.contains_key("lib/ds-test/src/test.sol"));
 }

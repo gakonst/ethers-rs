@@ -1401,6 +1401,7 @@ dependencies = [
 name = "ethers-solc"
 version = "0.3.0"
 dependencies = [
+ "cfg-if 1.0.0",
  "colored",
  "criterion",
  "dunce",
