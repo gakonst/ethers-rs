@@ -809,7 +809,7 @@ mod tests {
         let result = tokio::runtime::Runtime::new()
             .unwrap()
             .block_on(async { Solc::blocking_install(&version) });
-        assert!(result.is_err());
+        assert!(result.is_ok());
     }
 
     #[test]
