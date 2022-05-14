@@ -378,7 +378,14 @@ impl Solc {
         // the async version `svm::install` is used instead of `svm::blocking_intsall`
         // because the underlying `reqwest::blocking::Client` does not behave well
         // in tokio rt. see https://github.com/seanmonstar/reqwest/issues/1017
-        match RuntimeOrHandle::new().block_on(svm::install(version)) {
+        cfg_if::cfg_if! {
+            if #[cfg(target_arch = "wasm32")] {
+                let installation = svm::blocking_install(version);
+            } else {
+                let installation = RuntimeOrHandle::new().block_on(svm::install(version));
+            }
+        };
+        match installation {
             Ok(path) => {
                 crate::report::solc_installation_success(version);
                 Ok(Solc::new(path))
