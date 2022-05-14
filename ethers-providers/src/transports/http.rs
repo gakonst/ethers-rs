@@ -149,7 +149,7 @@ impl Provider {
     /// let provider = Http::new_with_client(url, client);
     /// ```
     pub fn new_with_client(url: impl Into<Url>, client: reqwest::Client) -> Self {
-        Self { id: AtomicU64::new(0), client, url: url.into() }
+        Self { id: AtomicU64::new(1), client, url: url.into() }
     }
 }
 
@@ -164,7 +164,7 @@ impl FromStr for Provider {
 
 impl Clone for Provider {
     fn clone(&self) -> Self {
-        Self { id: AtomicU64::new(0), client: self.client.clone(), url: self.url.clone() }
+        Self { id: AtomicU64::new(1), client: self.client.clone(), url: self.url.clone() }
     }
 }
 

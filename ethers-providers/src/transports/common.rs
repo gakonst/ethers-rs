@@ -212,6 +212,8 @@ impl fmt::Display for Authorization {
 
 #[cfg(test)]
 mod tests {
+    use ethers_core::types::U64;
+
     use super::*;
 
     #[test]
@@ -247,10 +249,28 @@ mod tests {
             }
             _ => panic!("expected `Error` response"),
         }
+
+        let response: Response<'_> =
+            serde_json::from_str(r#"{"jsonrpc":"2.0","result":"0xfa","id":0}"#).unwrap();
+
+        match response {
+            Response::Success { id, result } => {
+                assert_eq!(id, 0);
+                let result: U64 = serde_json::from_str(result.get()).unwrap();
+                assert_eq!(result.as_u64(), 250);
+            }
+            _ => panic!("expected `Success` response"),
+        }
     }
 
     #[test]
     fn ser_request() {
+        let request: Request<()> = Request::new(0, "eth_chainId", ());
+        assert_eq!(
+            &serde_json::to_string(&request).unwrap(),
+            r#"{"id":0,"jsonrpc":"2.0","method":"eth_chainId"}"#
+        );
+
         let request: Request<()> = Request::new(300, "method_name", ());
         assert_eq!(
             &serde_json::to_string(&request).unwrap(),
