@@ -369,7 +369,7 @@ impl Solc {
     }
 
     /// Blocking version of `Self::install`
-    // #[cfg(all(feature = "svm-solc"))]
+    #[cfg(all(feature = "svm-solc"))]
     pub fn blocking_install(version: &Version) -> std::result::Result<Self, svm::SolcVmError> {
         use crate::utils::RuntimeOrHandle;
 
