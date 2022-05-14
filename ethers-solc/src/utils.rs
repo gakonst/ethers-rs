@@ -331,18 +331,21 @@ pub(crate) fn find_fave_or_alt_path(root: impl AsRef<Path>, fave: &str, alt: &st
     p
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 #[derive(Debug)]
 pub enum RuntimeOrHandle {
     Runtime(Runtime),
     Handle(Handle),
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl Default for RuntimeOrHandle {
     fn default() -> Self {
         Self::new()
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl RuntimeOrHandle {
     pub fn new() -> RuntimeOrHandle {
         match Handle::try_current() {
