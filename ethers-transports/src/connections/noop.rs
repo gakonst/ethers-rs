@@ -1,9 +1,6 @@
 use ethers_core::types::U256;
 
-use crate::{
-    err::TransportError, Connection, DuplexConnection, RequestFuture, SubscribeFuture,
-    UnsubscribeFuture,
-};
+use crate::{err::TransportError, Connection, DuplexConnection, RequestFuture, SubscribeFuture};
 
 /// A noop connection that does nothing and always fails immediately.
 pub struct Noop;
@@ -23,20 +20,17 @@ impl Connection for Noop {
 }
 
 impl DuplexConnection for Noop {
-    fn subscribe(&self, _: u64, request: String) -> SubscribeFuture<'_> {
-        Box::pin(async move {
-            Err(Box::new(TransportError::Transport(
-                format!("noop connection requests always fail (request={request})").into(),
-            )))
-        })
-    }
-
-    fn unsubscribe(&self, id: &U256) -> UnsubscribeFuture<'_> {
-        let id = *id;
+    fn subscribe(&self, id: U256) -> SubscribeFuture<'_> {
         Box::pin(async move {
             Err(Box::new(TransportError::Transport(
                 format!("noop connection requests always fail (sub_id={id})").into(),
             )))
         })
+    }
+
+    fn unsubscribe(&self, id: U256) -> Result<(), Box<TransportError>> {
+        Err(Box::new(TransportError::Transport(
+            format!("noop connection requests always fail (sub_id={id})").into(),
+        )))
     }
 }

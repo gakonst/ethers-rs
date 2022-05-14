@@ -10,14 +10,14 @@ use tokio_stream::Stream;
 
 use ethers_core::types::U256;
 
-use crate::{
-    err::TransportError, DuplexConnection, NotificationReceiver, ProviderError, UnsubscribeFuture,
-};
+use crate::{err::TransportError, DuplexConnection, NotificationReceiver, Provider, ProviderError};
 
 pub struct SubscriptionStream<T, C: DuplexConnection> {
     /// The ID of the of the subscription (`None` if no longer subscribed).
     id: Option<U256>,
-    connection: C,
+    /// The `Provider` instance (owned) required to unsubscribe.
+    provider: Provider<C>,
+    /// The receiver for all notifications send for the ID.
     rx: NotificationReceiver,
     _marker: PhantomData<fn() -> T>,
 }
@@ -59,19 +59,15 @@ impl<T, C> SubscriptionStream<T, C>
 where
     C: DuplexConnection,
 {
-    pub(crate) fn new(id: U256, connection: C, rx: NotificationReceiver) -> Self {
-        Self { id: Some(id), connection, rx, _marker: PhantomData }
+    pub(crate) fn new(id: U256, provider: Provider<C>, rx: NotificationReceiver) -> Self {
+        Self { id: Some(id), provider, rx, _marker: PhantomData }
     }
 
     pub async fn unsubscribe(&mut self) -> Result<bool, Box<ProviderError>> {
-        match self.unsubscribe_inner() {
-            Some(future) => future.await.map_err(|err| err.to_provider_err()),
+        match self.id.take() {
+            Some(id) => self.provider.unsubscribe(id).await,
             None => Ok(false),
         }
-    }
-
-    fn unsubscribe_inner(&mut self) -> Option<UnsubscribeFuture<'_>> {
-        self.id.take().map(|id| self.connection.unsubscribe(&id))
     }
 }
 
@@ -84,14 +80,5 @@ where
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         self.get_mut().poll_recv(cx)
-    }
-}
-
-impl<T, C: DuplexConnection> Drop for SubscriptionStream<T, C> {
-    fn drop(&mut self) {
-        // the future can not be awaited here, but due to the requirements of
-        // `unsubscribe`, the JSON-RPC request must still be sent out, even if
-        // the future is never polled
-        let _ = self.unsubscribe_inner();
     }
 }

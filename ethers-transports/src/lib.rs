@@ -103,13 +103,10 @@ impl ConnectionExt for dyn Connection + '_ {}
 pub type SubscribeFuture<'a> = DynFuture<'a, SubscribePayload>;
 
 /// ...
-pub type SubscribePayload = Result<(U256, NotificationReceiver), Box<TransportError>>;
+pub type SubscribePayload = Result<Option<NotificationReceiver>, Box<TransportError>>;
 
 /// ...
-pub type UnsubscribeFuture<'a> = DynFuture<'a, Result<bool, Box<TransportError>>>;
-
-/// ...
-pub type UnsubscribePayload = Result<bool, Box<TransportError>>;
+pub type UnsubscribeFuture<'a> = DynFuture<'a, Result<(), Box<TransportError>>>;
 
 /// ...
 pub type NotificationReceiver = mpsc::UnboundedReceiver<Box<RawValue>>;
@@ -117,28 +114,17 @@ pub type NotificationReceiver = mpsc::UnboundedReceiver<Box<RawValue>>;
 /// A [`Connection`] that allows publish/subscribe communication with the API
 /// provider.
 pub trait DuplexConnection: Connection {
-    /// Sends a JSON-RPC subscribe request to the transport and returns
-    /// the resulting subscription ID and a receiver for all notifications
-    /// associated with that ID, if successful.
+    /// Subscribes to all notifications received for the given `id` and returns
+    /// a [`NotificationReceiver`] for them.
     ///
-    /// The caller has to ensure that `id` is identical to the id encoded in
-    /// `request` and that the latter represents a valid JSONRPC 2.0 request
-    /// whose contents match the specification defined by the Ethereum
-    /// [JSON-RPC Publish/Subscribe API](https://geth.ethereum.org/docs/rpc/pubsub).
-    fn subscribe(&self, id: u64, request: String) -> SubscribeFuture<'_>;
+    /// Additionaly, a RPC call to `eth_subscribe` is necessary, otherwise, no
+    /// notifications will be received.
+    /// If the ID is already subscribed to, `None` is returned.
+    fn subscribe(&self, id: U256) -> SubscribeFuture<'_>;
 
-    /// Sends a JSON-RPC unsubscribe request to the transport and returns its
-    /// result, if successful.
+    /// Unsubscribes to all notifications received for the given `id`.
     ///
-    /// The implementation has to ensure, that the request can be sent out
-    /// even if the [`Future`] returned by this method is *never* polled.
-    fn unsubscribe(&self, id: &U256) -> UnsubscribeFuture<'_>;
-}
-
-pub trait DuplexConnectionSimple: Connection {
-    /// Similar to [`Connection::send_raw_request`], but sends the request out even
-    /// if the future is never polled.
-    fn send_raw_request_sync(&self, id: u64, request: String) -> RequestFuture<'_>;
-    fn subscribe(&self, id: U256) -> Option<NotificationReceiver>;
-    fn unsubscribe(&self, id: U256);
+    /// A previous RPC call to `eth_unsubscribe` is necessary, otherwise, the
+    /// provider will continue to send further notifications for this ID.
+    fn unsubscribe(&self, id: U256) -> Result<(), Box<TransportError>>;
 }

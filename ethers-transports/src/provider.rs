@@ -8,11 +8,8 @@ use serde::{Deserialize, Serialize};
 #[cfg(all(unix, feature = "ipc"))]
 use crate::connections::ipc::{Ipc, IpcError};
 use crate::{
-    connections,
-    err::TransportError,
-    jsonrpc::{JsonRpcError, Request},
-    types::SyncStatus,
-    Connection, ConnectionExt, DuplexConnection, SubscriptionStream,
+    connections, err::TransportError, jsonrpc::JsonRpcError, types::SyncStatus, Connection,
+    ConnectionExt, DuplexConnection, SubscriptionStream,
 };
 
 /// A provider for Ethereum JSON-RPC API calls.
@@ -253,15 +250,25 @@ impl<C: DuplexConnection + Clone> Provider<C> {
     pub async fn subscribe_new_heads(
         &self,
     ) -> Result<SubscriptionStream<(), C>, Box<ProviderError>> {
-        let connection = self.connection.clone();
+        let provider = self.clone();
 
-        let id = connection.request_id();
-        let request = Request { id, method: "eth_subscribe", params: ("newHeads") }.to_json();
+        let id: U256 = provider.send_request("eth_subscribe", ["newHeads"]).await?;
+        let rx = provider
+            .connection
+            .subscribe(id)
+            .await
+            .map_err(|err| err.to_provider_err())?
+            .expect("TODO: WRAP");
 
-        let (id, rx) =
-            connection.subscribe(id, request).await.map_err(|err| err.to_provider_err())?;
+        Ok(SubscriptionStream::new(id, provider, rx))
+    }
+}
 
-        Ok(SubscriptionStream::new(id, connection, rx))
+impl<C: DuplexConnection> Provider<C> {
+    pub async fn unsubscribe(&self, id: U256) -> Result<bool, Box<ProviderError>> {
+        let ok: bool = self.send_request("eth_unsubscribe", [id]).await?;
+        self.connection.unsubscribe(id).map_err(|err| err.to_provider_err())?;
+        Ok(ok)
     }
 }
 
