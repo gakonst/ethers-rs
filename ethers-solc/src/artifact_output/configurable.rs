@@ -113,7 +113,8 @@ impl<'a> From<&'a ConfigurableContractArtifact> for CompactContractBytecodeCow<'
 ///  {
 ///    "abi": [],
 ///    "bytecode": {...},
-///    "deployedBytecode": {...}
+///    "deployedBytecode": {...},
+///    "methodIdentifiers": {...},
 ///    // additional values
 ///  }
 /// ```
@@ -290,12 +291,10 @@ impl ArtifactOutput for ConfigurableArtifacts {
 
             artifact_bytecode = bytecode.map(Into::into);
             artifact_deployed_bytecode = deployed_bytecode.map(Into::into);
+            artifact_method_identifiers = Some(method_identifiers);
 
             if self.additional_values.gas_estimates {
                 artifact_gas_estimates = gas_estimates;
-            }
-            if self.additional_values.method_identifiers {
-                artifact_method_identifiers = Some(method_identifiers);
             }
             if self.additional_values.assembly {
                 artifact_assembly = assembly;
