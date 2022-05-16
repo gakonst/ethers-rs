@@ -28,7 +28,9 @@ use thiserror::Error;
 use url::{ParseError, Url};
 
 use futures_util::{lock::Mutex, try_join};
-use std::{convert::TryFrom, fmt::Debug, str::FromStr, sync::Arc, time::Duration};
+use std::{
+    collections::VecDeque, convert::TryFrom, fmt::Debug, str::FromStr, sync::Arc, time::Duration,
+};
 use tracing::trace;
 use tracing_futures::Instrument;
 
@@ -1102,22 +1104,17 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
     where
         P: PubsubClient,
     {
-        let logs = match filter.block_option {
+        let loaded_logs = match filter.block_option {
             FilterBlockOption::Range { from_block, to_block: _ } => {
                 if from_block.is_none() {
-                    Ok(vec![])
+                    vec![]
                 } else {
-                    self.get_logs(filter).await
+                    self.get_logs(filter).await?
                 }
             }
-            FilterBlockOption::AtBlockHash(_block_hash) => self.get_logs(filter).await,
+            FilterBlockOption::AtBlockHash(_block_hash) => self.get_logs(filter).await?,
         };
-
-        if logs.is_err() {
-            return Err(logs.err().unwrap())
-        }
-
-        let loaded_logs = logs.unwrap();
+        let loaded_logs = VecDeque::from(loaded_logs);
 
         let logs = utils::serialize(&"logs"); // TODO: Make this a static
         let filter = utils::serialize(filter);
