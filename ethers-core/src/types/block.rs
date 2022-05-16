@@ -26,9 +26,9 @@ pub struct Block<TX> {
     #[cfg(not(feature = "celo"))]
     #[serde(default, rename = "sha3Uncles")]
     pub uncles_hash: H256,
-    /// Miner/author's address.
+    /// Miner/author's address. None if pending.
     #[serde(default, rename = "miner")]
-    pub author: Address,
+    pub author: Option<Address>,
     /// State root hash
     #[serde(default, rename = "stateRoot")]
     pub state_root: H256,
@@ -731,6 +731,39 @@ mod tests {
         assert_eq!(block_14402712.gas_target(), U256::from(15_000_000u128));
         // next block increasing base fee https://etherscan.io/block/14402713
         assert_eq!(block_14402712.next_block_base_fee(), Some(U256::from(27_978_655_303u128)));
+    }
+
+    #[test]
+    fn pending_block() {
+        let json = serde_json::json!(
+        {
+          "baseFeePerGas": "0x3a460775a",
+          "difficulty": "0x329b1f81605a4a",
+          "extraData": "0xd983010a0d846765746889676f312e31362e3130856c696e7578",
+          "gasLimit": "0x1c950d9",
+          "gasUsed": "0x1386f81",
+          "hash": null,
+          "logsBloom": "0x5a3fc3425505bf83b1ebe6ffead1bbfdfcd6f9cfbd1e5fb7fbc9c96b1bbc2f2f6bfef959b511e4f0c7d3fbc60194fbff8bcff8e7b8f6ba9a9a956fe36473ed4deec3f1bc67f7dabe48f71afb377bdaa47f8f9bb1cd56930c7dfcbfddf283f9697fb1db7f3bedfa3e4dfd9fae4fb59df8ac5d9c369bff14efcee59997df8bb16d47d22f0bfbafb29fbfff6e1e41bca61e37e7bdfde1fe27b9fd3a7adfcb74fe98e6dbcc5f5bb3bd4d4bb6ccd29fd3bd446c7f38dcaf7ff78fb3f3aa668cbffe56291d7fbbebd2549fdfd9f223b3ba61dee9e92ebeb5dc967f711d039ff1cb3c3a8fb3b7cbdb29e6d1e79e6b95c596dfe2be36fd65a4f6fdeebe7efbe6e38037d7",
+          "miner": null,
+          "mixHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "nonce": null,
+          "number": "0xe1a6ee",
+          "parentHash": "0xff1a940068dfe1f9e3f5514e6b7ff5092098d21d706396a9b19602f0f2b11d44",
+          "receiptsRoot": "0xe7df36675953a2d2dd22ec0e44ff59818891170875ebfba5a39f6c85084a6f10",
+          "sha3Uncles": "0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347",
+          "size": "0xd8d6",
+          "stateRoot": "0x2ed13b153d1467deb397a789aabccb287590579cf231bf4f1ff34ac3b4905ce2",
+          "timestamp": "0x6282b31e",
+          "totalDifficulty": null,
+          "transactions": [
+            "0xaad0d53ae350dd06481b42cd097e3f3a4a31e0ac980fac4663b7dd913af20d9b"
+          ],
+          "transactionsRoot": "0xfc5c28cb82d5878172cd1b97429d44980d1cee03c782950ee73e83f1fa8bfb49",
+          "uncles": []
+        }
+        );
+        let block: Block<H256> = serde_json::from_value(json).unwrap();
+        assert!(block.author.is_none());
     }
 }
 
