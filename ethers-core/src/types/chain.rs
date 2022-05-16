@@ -5,7 +5,7 @@ use core::convert::TryFrom;
 use std::{convert::TryInto, default, fmt, str::FromStr};
 
 use crate::types::U256;
-use strum::{EnumVariantNames};
+use strum::EnumVariantNames;
 
 #[derive(Debug, Clone, Error)]
 #[error("Failed to parse chain: {0}")]
