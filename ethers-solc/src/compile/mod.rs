@@ -269,6 +269,29 @@ impl Solc {
         Ok(Some(Solc::new(solc)))
     }
 
+    /// Returns the path for a [svm](https://github.com/roynalnaruto/svm-rs) installed version.
+    ///
+    /// If the version is not installed yet, it will install it.
+    ///
+    /// # Example
+    /// ```no_run
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    ///  use ethers_solc::Solc;
+    /// let solc = Solc::find_or_install_svm_version("0.8.9").unwrap();
+    /// assert_eq!(solc, Solc::new("~/.svm/0.8.9/solc-0.8.9"));
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[cfg(all(not(target_arch = "wasm32"), all(feature = "svm-solc")))]
+    pub fn find_or_install_svm_version(version: impl AsRef<str>) -> Result<Self> {
+        let version = version.as_ref();
+        if let Some(solc) = Solc::find_svm_installed_version(version)? {
+            Ok(solc)
+        } else {
+            Ok(Solc::blocking_install(&version.parse::<Version>()?)?)
+        }
+    }
+
     /// Assuming the `versions` array is sorted, it returns the first element which satisfies
     /// the provided [`VersionReq`]
     pub fn find_matching_installation(

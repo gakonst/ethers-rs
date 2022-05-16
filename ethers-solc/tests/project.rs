@@ -1333,7 +1333,7 @@ fn can_compile_model_checker_sample() {
 
 fn remove_solc_if_exists(version: &Version) {
     match Solc::find_svm_installed_version(version.to_string()).unwrap() {
-        Some(_) => svm::remove_version(&version).expect("failed to remove version"),
+        Some(_) => svm::remove_version(version).expect("failed to remove version"),
         None => {}
     };
 }
@@ -1351,7 +1351,7 @@ async fn can_install_solc_and_compile_version() {
 pragma solidity {};
 contract Contract {{ }}
 "#,
-                version.to_string()
+                version
             ),
         )
         .unwrap();
@@ -1379,4 +1379,35 @@ async fn can_install_solc_and_compile_std_json_input_async() {
     let out = solc.async_compile(&input).await.unwrap();
     assert!(!out.has_error());
     assert!(out.sources.contains_key("lib/ds-test/src/test.sol"));
+}
+
+#[test]
+fn can_purge_obsolete_artifacts() {
+    let mut project = TempProject::<ConfigurableArtifacts>::dapptools().unwrap();
+    project.set_solc("0.8.10");
+    project
+        .add_source(
+            "Contract",
+            r#"
+    pragma solidity >=0.8.10;
+
+   contract Contract {
+        function xyz() public {
+        }
+   }
+   "#,
+        )
+        .unwrap();
+
+    let compiled = project.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+    assert!(!compiled.is_unchanged());
+    assert_eq!(compiled.into_artifacts().count(), 1);
+
+    project.set_solc("0.8.13");
+
+    let compiled = project.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+    assert!(!compiled.is_unchanged());
+    assert_eq!(compiled.into_artifacts().count(), 1);
 }

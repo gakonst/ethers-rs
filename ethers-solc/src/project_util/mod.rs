@@ -9,7 +9,7 @@ use crate::{
     utils,
     utils::tempdir,
     Artifact, ArtifactOutput, Artifacts, ConfigurableArtifacts, ConfigurableContractArtifact,
-    FileFilter, PathStyle, Project, ProjectCompileOutput, ProjectPathsConfig, SolFilesCache,
+    FileFilter, PathStyle, Project, ProjectCompileOutput, ProjectPathsConfig, SolFilesCache, Solc,
     SolcIoError,
 };
 use fs_extra::{dir, file};
@@ -63,6 +63,13 @@ impl<T: ArtifactOutput> TempProject<T> {
     /// Overwrites the settings to pass to `solc`
     pub fn with_settings(mut self, settings: impl Into<Settings>) -> Self {
         self.inner.solc_config.settings = settings.into();
+        self
+    }
+
+    /// Explicitly sets the solc version for the project
+    pub fn set_solc(&mut self, solc: impl AsRef<str>) -> &mut Self {
+        self.inner.solc = Solc::find_or_install_svm_version(solc).unwrap();
+        self.inner.auto_detect = false;
         self
     }
 
