@@ -158,6 +158,8 @@
 
 ### Unreleased
 
+- Load previous logs before subscribing to new logs in case fromBlock is set
+  [1264](https://github.com/gakonst/ethers-rs/pull/1264)
 - Add retries to the pending transaction future
   [1221](https://github.com/gakonst/ethers-rs/pull/1221)
 - Add support for basic and bearer authentication in http and non-wasm websockets.

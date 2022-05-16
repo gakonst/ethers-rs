@@ -16,9 +16,9 @@ use ethers_core::{
     types::{
         transaction::{eip2718::TypedTransaction, eip2930::AccessListWithGasUsed},
         Address, Block, BlockId, BlockNumber, BlockTrace, Bytes, EIP1186ProofResponse, FeeHistory,
-        Filter, Log, NameOrAddress, Selector, Signature, Trace, TraceFilter, TraceType,
-        Transaction, TransactionReceipt, TransactionRequest, TxHash, TxpoolContent, TxpoolInspect,
-        TxpoolStatus, H256, U256, U64,
+        Filter, FilterBlockOption, Log, NameOrAddress, Selector, Signature, Trace, TraceFilter,
+        TraceType, Transaction, TransactionReceipt, TransactionRequest, TxHash, TxpoolContent,
+        TxpoolInspect, TxpoolStatus, H256, U256, U64,
     },
     utils,
 };
@@ -28,7 +28,9 @@ use thiserror::Error;
 use url::{ParseError, Url};
 
 use futures_util::{lock::Mutex, try_join};
-use std::{convert::TryFrom, fmt::Debug, str::FromStr, sync::Arc, time::Duration};
+use std::{
+    collections::VecDeque, convert::TryFrom, fmt::Debug, str::FromStr, sync::Arc, time::Duration,
+};
 use tracing::trace;
 use tracing_futures::Instrument;
 
@@ -1102,9 +1104,24 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
     where
         P: PubsubClient,
     {
+        let loaded_logs = match filter.block_option {
+            FilterBlockOption::Range { from_block, to_block: _ } => {
+                if from_block.is_none() {
+                    vec![]
+                } else {
+                    self.get_logs(filter).await?
+                }
+            }
+            FilterBlockOption::AtBlockHash(_block_hash) => self.get_logs(filter).await?,
+        };
+        let loaded_logs = VecDeque::from(loaded_logs);
+
         let logs = utils::serialize(&"logs"); // TODO: Make this a static
         let filter = utils::serialize(filter);
-        self.subscribe([logs, filter]).await
+        self.subscribe([logs, filter]).await.map(|mut stream| {
+            stream.set_loaded_elements(loaded_logs);
+            stream
+        })
     }
 
     async fn fee_history<T: Into<U256> + Send + Sync>(
