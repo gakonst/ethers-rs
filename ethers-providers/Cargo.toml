@@ -44,7 +44,7 @@ hashers = "1.0.1"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 # tokio
-tokio-util = { version = "0.7.1", default-features = false, features = ["io"], optional = true }
+tokio-util = { version = "0.7.2", default-features = false, features = ["io"], optional = true }
 tokio = { version = "1.5", default-features = false, optional = true }
 tokio-tungstenite = { version = "0.17.1", default-features = false, features = ["connect"], optional = true }
 
