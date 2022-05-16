@@ -13,11 +13,12 @@ pub mod connections {
     // pub mod mock;
 }
 
+pub mod types;
+
 mod err;
 mod jsonrpc;
 mod provider;
 mod sub;
-mod types;
 
 use std::{future::Future, ops::Deref, pin::Pin};
 
@@ -79,7 +80,7 @@ where
     }
 }
 
-/// A trait providing additional convenience methods for the [`Transport`] trait.
+/// A trait providing convenience methods for the [`Connection`] trait.
 pub trait ConnectionExt: Connection {
     /// Serializes and sends an RPC request for `method` and using `params`.
     ///
@@ -106,9 +107,6 @@ pub type SubscribeFuture<'a> = DynFuture<'a, SubscribePayload>;
 pub type SubscribePayload = Result<Option<NotificationReceiver>, Box<TransportError>>;
 
 /// ...
-pub type UnsubscribeFuture<'a> = DynFuture<'a, Result<(), Box<TransportError>>>;
-
-/// ...
 pub type NotificationReceiver = mpsc::UnboundedReceiver<Box<RawValue>>;
 
 /// A [`Connection`] that allows publish/subscribe communication with the API
@@ -127,4 +125,10 @@ pub trait DuplexConnection: Connection {
     /// A previous RPC call to `eth_unsubscribe` is necessary, otherwise, the
     /// provider will continue to send further notifications for this ID.
     fn unsubscribe(&self, id: U256) -> Result<(), Box<TransportError>>;
+}
+
+#[cfg(test)]
+fn block_on(future: impl Future<Output = ()>) {
+    use tokio::runtime::Builder;
+    Builder::new_current_thread().enable_all().build().unwrap().block_on(future);
 }

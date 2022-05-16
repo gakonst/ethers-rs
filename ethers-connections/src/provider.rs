@@ -2,14 +2,18 @@
 use std::path::Path;
 use std::{borrow::Cow, error, fmt, sync::Arc};
 
-use ethers_core::types::{Address, BlockNumber, Bytes, U256};
+use ethers_core::types::{Address, Block, Bytes, H256, U256};
 use serde::{Deserialize, Serialize};
 
 #[cfg(all(unix, feature = "ipc"))]
 use crate::connections::ipc::{Ipc, IpcError};
 use crate::{
-    connections, err::TransportError, jsonrpc::JsonRpcError, types::SyncStatus, Connection,
-    ConnectionExt, DuplexConnection, SubscriptionStream,
+    connections,
+    err::TransportError,
+    jsonrpc::JsonRpcError,
+    types::SyncStatus,
+    types::{BlockNumber, TransactionCall},
+    Connection, ConnectionExt, DuplexConnection, SubscriptionStream,
 };
 
 /// A provider for Ethereum JSON-RPC API calls.
@@ -25,6 +29,10 @@ impl<C> Provider<C> {
     /// Returns a new [`Provider`].
     pub fn new(connection: C) -> Self {
         Self { connection }
+    }
+
+    pub fn into_inner(self) -> C {
+        self.connection
     }
 }
 
@@ -49,7 +57,7 @@ impl Provider<Arc<dyn Connection>> {
     /// # Examples
     ///
     /// ```
-    /// use ethers_transports::Provider;
+    /// use ethers_connections::Provider;
     ///
     /// # async fn connect_any() -> Result<(), Box<dyn std::error::Error>> {
     /// // connects via HTTP
@@ -121,6 +129,13 @@ impl<C: Connection + 'static> Provider<C> {
     }
 }
 
+impl<C: Connection + 'static> Provider<Arc<C>> {
+    pub fn into_dyn(self) -> Provider<Arc<dyn Connection>> {
+        let connection = self.connection as _;
+        Provider { connection }
+    }
+}
+
 impl<C: Connection> Provider<C> {
     /// Returns the current ethereum protocol version.
     pub async fn get_protocol_version(&self) -> Result<String, Box<ProviderError>> {
@@ -129,6 +144,24 @@ impl<C: Connection> Provider<C> {
 
     /// Returns data about the sync status or `None`, if the client is fully
     /// synced.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::Arc;
+    /// # use ethers_connections::connections::noop;
+    /// use ethers_connections::{Connection, Provider};
+    ///
+    /// # async fn examples_syncing() {
+    /// # let build_provider = || Provider::new(Arc::new(noop::Noop)).into_dyn();
+    /// let provider: Provider<Arc<dyn Connection>> = build_provider();
+    /// let res = provider.syncing().await;
+    /// if let Ok(None) = res {
+    ///     println!("client is synced");
+    /// }
+    /// # assert!(res.is_err());
+    /// # }
+    /// ```
     pub async fn syncing(&self) -> Result<Option<SyncStatus>, Box<ProviderError>> {
         #[derive(Deserialize)]
         struct Helper(
@@ -183,7 +216,7 @@ impl<C: Connection> Provider<C> {
         &self,
         address: &Address,
         pos: &U256,
-        block: Option<&BlockNumber>,
+        block: Option<BlockNumber>,
     ) -> Result<U256, Box<ProviderError>> {
         self.send_request("eth_getStorageAt", (address, pos, block)).await
     }
@@ -197,10 +230,26 @@ impl<C: Connection> Provider<C> {
     }
 
     /// Returns code at a given address.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::Arc;
+    /// # use ethers_core::types::Address;
+    /// # use ethers_connections::connections::noop;
+    /// use ethers_connections::{Connection, Provider};
+    ///
+    /// # async fn examples_get_code() {
+    /// # let build_provider = || Provider::new(Arc::new(noop::Noop)).into_dyn();
+    /// let provider: Provider<Arc<dyn Connection>> = build_provider();
+    /// let res = provider.get_code(&Address::zero(), Some("latest".into())).await;
+    /// # assert!(res.is_err());
+    /// # }
+    /// ```
     pub async fn get_code(
         &self,
         address: &Address,
-        block: Option<&BlockNumber>,
+        block: Option<BlockNumber>,
     ) -> Result<Bytes, Box<ProviderError>> {
         self.send_request("eth_getCode", (address, block)).await
     }
@@ -224,7 +273,42 @@ impl<C: Connection> Provider<C> {
         self.send_request("eth_sign", (address, message)).await
     }
 
-    async fn send_request<P, R>(&self, method: &str, params: P) -> Result<R, Box<ProviderError>>
+    pub async fn sign_transaction(&self, txn: &()) -> Result<Bytes, Box<ProviderError>> {
+        todo!()
+    }
+
+    pub async fn send_transaction(&self, txn: &()) -> Result<H256, Box<ProviderError>> {
+        todo!()
+    }
+
+    pub async fn send_raw_transaction(&self, data: Bytes) -> Result<H256, Box<ProviderError>> {
+        todo!()
+    }
+
+    /// Executes a new message call immidiately without creating a transaction
+    /// on the block chain.
+    pub async fn call(&self, txn: &TransactionCall) -> Result<Bytes, Box<ProviderError>> {
+        self.send_request("eth_call", [txn]).await
+    }
+
+    /// Generates and returns an estimate of how much gas is necessary to allow
+    /// the transaction to complete.
+    /// The transaction will not be added to the blockchain.
+    /// Note that the estimate may be significantly more than the amount of gas
+    /// actually used by the transaction, for a variety of reasons including EVM
+    /// mechanics and node performance.
+    pub async fn estimate_gas(&self, txn: &TransactionCall) -> Result<U256, Box<ProviderError>> {
+        self.send_request("eth_estimateGas", [txn]).await
+    }
+
+    // TODO: 4x4?, generic output w/ trait & assoc type?
+    pub async fn get_block_by_hash(&self, hash: &H256, include_txns: bool) {
+        todo!()
+    }
+
+    /// Sends a request for `method` with `params`, awaits its result and
+    /// attempts to parse it into an expected type `R`.
+    pub async fn send_request<P, R>(&self, method: &str, params: P) -> Result<R, Box<ProviderError>>
     where
         P: Serialize,
         R: for<'de> Deserialize<'de>,
@@ -247,18 +331,44 @@ impl<C: Connection> Provider<C> {
 }
 
 impl<C: DuplexConnection + Clone> Provider<C> {
-    pub async fn subscribe_new_heads(
+    /// # Examples
+    ///
+    /// ```
+    /// use ethers_connections::{Connection, Provider};
+    /// # use ethers_connections::connections::noop;
+    ///
+    /// # async fn example_new_heads() -> Result<(), Box<dyn std::error::Error>> {
+    /// # let provider = Provider::new(noop::Noop);
+    /// // let provider = ...;
+    /// let mut stream = provider.subscribe_blocks().await?;
+    /// while let Some(_) = stream.recv().await {
+    ///     println!("new block received");
+    /// }
+    ///
+    /// // subscription must be explicitly unsubscribed from.
+    /// stream.unsubscribe().await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn subscribe_blocks(
         &self,
-    ) -> Result<SubscriptionStream<(), C>, Box<ProviderError>> {
+    ) -> Result<SubscriptionStream<Block<H256>, C>, Box<ProviderError>> {
+        self.subscribe(["newHeads"]).await
+    }
+
+    pub async fn subscribe<T: Serialize, R: for<'de> Deserialize<'de>>(
+        &self,
+        params: T,
+    ) -> Result<SubscriptionStream<R, C>, Box<ProviderError>> {
         let provider = self.clone();
 
-        let id: U256 = provider.send_request("eth_subscribe", ["newHeads"]).await?;
+        let id: U256 = provider.send_request("eth_subscribe", params).await?;
         let rx = provider
             .connection
             .subscribe(id)
             .await
             .map_err(|err| err.to_provider_err())?
-            .expect("TODO: WRAP");
+            .expect("invalid subscription id");
 
         Ok(SubscriptionStream::new(id, provider, rx))
     }
@@ -287,6 +397,20 @@ impl ProviderError {
         } else {
             Some(self.context.as_ref())
         }
+    }
+
+    pub fn is_insufficient_funds(&self) -> bool {
+        self.as_jsonrpc().map(|err| err.message.contains("insufficient funds")).unwrap_or(false)
+    }
+
+    pub fn is_nonce_too_low(&self) -> bool {
+        self.as_jsonrpc().map(|err| err.message == "nonce too low").unwrap_or(false)
+    }
+
+    pub fn is_replacement_underpriced(&self) -> bool {
+        self.as_jsonrpc()
+            .map(|err| err.message.contains("replacement transaction underpriced"))
+            .unwrap_or(false)
     }
 
     pub fn as_jsonrpc(&self) -> Option<&JsonRpcError> {
@@ -347,19 +471,15 @@ impl fmt::Display for ErrorKind {
 
 #[cfg(test)]
 mod tests {
-    use std::{future::Future, sync::Arc};
+    use std::sync::Arc;
 
-    use tokio::runtime::Builder;
+    use ethers_core::types::Address;
 
     use crate::{connections::noop, Connection, Provider};
 
-    fn block_on(future: impl Future<Output = ()>) {
-        Builder::new_current_thread().enable_all().build().unwrap().block_on(future);
-    }
-
     #[test]
     fn object_safety() {
-        block_on(async move {
+        crate::block_on(async move {
             let provider = Provider::new(noop::Noop);
             let res = provider.get_block_number().await;
             assert!(res.is_err());
@@ -367,6 +487,20 @@ mod tests {
             let provider: Provider<Arc<dyn Connection>> = Provider::new(Arc::new(noop::Noop));
             let res = provider.get_block_number().await;
             assert!(res.is_err());
+        });
+    }
+
+    #[test]
+    fn block_number() {
+        crate::block_on(async {
+            let provider = Provider::new(noop::Noop);
+            let address = Address::zero();
+
+            let _ = provider.get_code(&address, None).await;
+            let _ = provider.get_code(&address, Some("earliest".into())).await;
+            let _ = provider.get_code(&address, Some("latest".into())).await;
+            let _ = provider.get_code(&address, Some("pending".into())).await;
+            let _ = provider.get_code(&address, Some(0xcafe.into())).await;
         });
     }
 }

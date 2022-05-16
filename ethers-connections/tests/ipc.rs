@@ -4,14 +4,12 @@ use tokio::runtime::Builder;
 
 use ethers_core::utils::Geth;
 
-use ethers_transports::{connections::ipc::Ipc, Provider};
+use ethers_connections::{connections::ipc::Ipc, types::BlockNumber, Provider};
 
 #[cfg(unix)]
 #[test]
 fn geth_ipc() {
-    use std::mem;
-
-    use ethers_core::types::{Address, BlockNumber};
+    use ethers_core::types::Address;
 
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("geth").with_extension("ipc");
     let geth = Geth::new().ipc_path(&path).block_time(5u64).spawn();
@@ -54,5 +52,5 @@ fn geth_ipc() {
         assert_eq!(balance, 0.into());
     });
 
-    mem::drop(geth);
+    drop(geth);
 }

@@ -1165,6 +1165,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "ethers-connections"
+version = "0.6.0"
+dependencies = [
+ "bytes",
+ "ethers-core",
+ "hashers",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tokio-stream",
+ "tracing",
+ "url",
+]
+
+[[package]]
 name = "ethers-contract"
 version = "0.6.0"
 dependencies = [
@@ -1414,22 +1430,6 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "walkdir",
-]
-
-[[package]]
-name = "ethers-transports"
-version = "0.6.0"
-dependencies = [
- "bytes",
- "ethers-core",
- "hashers",
- "reqwest",
- "serde",
- "serde_json",
- "tokio",
- "tokio-stream",
- "tracing",
- "url",
 ]
 
 [[package]]

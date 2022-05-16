@@ -1,5 +1,5 @@
 [package]
-name = "ethers-transports"
+name = "ethers-connections"
 license = "MIT OR Apache-2.0"
 version = "0.6.0"
 authors = ["Georgios Konstantopoulos <me@gakonst.com>"]

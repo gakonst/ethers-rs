@@ -12,6 +12,8 @@ use ethers_core::types::U256;
 
 use crate::{err::TransportError, DuplexConnection, NotificationReceiver, Provider, ProviderError};
 
+/// A stream that receives notifications for a registered subscription and
+/// parses them into an expected type.
 pub struct SubscriptionStream<T, C: DuplexConnection> {
     /// The ID of the of the subscription (`None` if no longer subscribed).
     id: Option<U256>,
@@ -19,6 +21,7 @@ pub struct SubscriptionStream<T, C: DuplexConnection> {
     provider: Provider<C>,
     /// The receiver for all notifications send for the ID.
     rx: NotificationReceiver,
+    /// The marker indicating the type produced by this stream.
     _marker: PhantomData<fn() -> T>,
 }
 
@@ -27,10 +30,13 @@ where
     T: for<'de> Deserialize<'de>,
     C: DuplexConnection,
 {
+    /// Returns the stream's subscription ID or `None`, if it has previously
+    /// been unsubscribed.
     pub fn id(&self) -> Option<&U256> {
         self.id.as_ref()
     }
 
+    /// Receives the next notification from the stream.
     pub async fn recv(&mut self) -> Option<Result<T, Box<TransportError>>> {
         let raw = self.rx.recv().await?;
         match serde_json::from_str(raw.get()) {
@@ -63,10 +69,15 @@ where
         Self { id: Some(id), provider, rx, _marker: PhantomData }
     }
 
-    pub async fn unsubscribe(&mut self) -> Result<bool, Box<ProviderError>> {
+    /// Unsubscribes from the stream's subscription.
+    pub async fn unsubscribe(&mut self) -> Result<(), Box<ProviderError>> {
         match self.id.take() {
-            Some(id) => self.provider.unsubscribe(id).await,
-            None => Ok(false),
+            Some(id) => {
+                let _ = self.provider.unsubscribe(id).await?;
+                self.rx.close();
+                Ok(())
+            }
+            None => Ok(()),
         }
     }
 }
