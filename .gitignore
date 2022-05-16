@@ -1,3 +1,4 @@
 /target
 .vscode
 /.envrc
+.idea
