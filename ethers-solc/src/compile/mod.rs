@@ -282,7 +282,7 @@ impl Solc {
     /// # Ok(())
     /// # }
     /// ```
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(all(not(target_arch = "wasm32"), all(feature = "svm-solc")))]
     pub fn find_or_install_svm_version(version: impl AsRef<str>) -> Result<Self> {
         let version = version.as_ref();
         if let Some(solc) = Solc::find_svm_installed_version(version)? {
