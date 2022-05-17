@@ -75,6 +75,8 @@ pub fn find_version_pragma(contract: &str) -> Option<Match> {
 /// Returns a list of absolute paths to all the solidity files under the root, or the file itself,
 /// if the path is a solidity file.
 ///
+/// This also follows symlinks.
+///
 /// NOTE: this does not resolve imports from other locations
 ///
 /// # Example
@@ -85,6 +87,7 @@ pub fn find_version_pragma(contract: &str) -> Option<Match> {
 /// ```
 pub fn source_files(root: impl AsRef<Path>) -> Vec<PathBuf> {
     WalkDir::new(root)
+        .follow_links(true)
         .into_iter()
         .filter_map(Result::ok)
         .filter(|e| e.file_type().is_file())
