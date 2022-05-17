@@ -398,6 +398,125 @@ impl From<&Transaction> for TypedTransaction {
     }
 }
 
+impl TypedTransaction {
+    pub fn as_legacy_ref(&self) -> Option<&TransactionRequest> {
+        match self {
+            Legacy(tx) => Some(tx),
+            _ => None,
+        }
+    }
+    pub fn as_eip2930_ref(&self) -> Option<&Eip2930TransactionRequest> {
+        match self {
+            Eip2930(tx) => Some(tx),
+            _ => None,
+        }
+    }
+    pub fn as_eip1559_ref(&self) -> Option<&Eip1559TransactionRequest> {
+        match self {
+            Eip1559(tx) => Some(tx),
+            _ => None,
+        }
+    }
+}
+
+impl TypedTransaction {
+    fn into_eip1559(self) -> Eip1559TransactionRequest {
+        match self {
+            Eip1559(tx) => tx,
+            _ => Eip1559TransactionRequest {
+                from: self.from().copied(),
+                to: self.to().cloned(),
+                nonce: self.nonce().copied(),
+                value: self.value().copied(),
+                gas: self.gas().copied(),
+                chain_id: self.chain_id(),
+                data: self.data().cloned(),
+                access_list: self.access_list().cloned().unwrap_or_default(),
+                ..Default::default()
+            },
+        }
+    }
+}
+
+impl From<TypedTransaction> for Eip1559TransactionRequest {
+    fn from(src: TypedTransaction) -> Eip1559TransactionRequest {
+        src.into_eip1559()
+    }
+}
+
+impl TypedTransaction {
+    fn into_legacy(self) -> TransactionRequest {
+        match self {
+            Legacy(tx) => tx,
+            Eip2930(tx) => tx.tx,
+            Eip1559(_) => TransactionRequest {
+                from: self.from().copied(),
+                to: self.to().cloned(),
+                nonce: self.nonce().copied(),
+                value: self.value().copied(),
+                gas: self.gas().copied(),
+                gas_price: self.gas_price(),
+                chain_id: self.chain_id(),
+                data: self.data().cloned(),
+                #[cfg(feature = "celo")]
+                #[cfg_attr(docsrs, doc(cfg(feature = "celo")))]
+                fee_currency: None,
+                #[cfg(feature = "celo")]
+                #[cfg_attr(docsrs, doc(cfg(feature = "celo")))]
+                gateway_fee_recipient: None,
+                #[cfg(feature = "celo")]
+                #[cfg_attr(docsrs, doc(cfg(feature = "celo")))]
+                gateway_fee: None,
+            },
+        }
+    }
+}
+
+impl From<TypedTransaction> for TransactionRequest {
+    fn from(src: TypedTransaction) -> TransactionRequest {
+        src.into_legacy()
+    }
+}
+
+impl TypedTransaction {
+    fn into_eip2930(self) -> Eip2930TransactionRequest {
+        let access_list = self.access_list().cloned().unwrap_or_default();
+
+        match self {
+            Eip2930(tx) => tx,
+            Legacy(tx) => Eip2930TransactionRequest { tx, access_list },
+            Eip1559(_) => Eip2930TransactionRequest {
+                tx: TransactionRequest {
+                    from: self.from().copied(),
+                    to: self.to().cloned(),
+                    nonce: self.nonce().copied(),
+                    value: self.value().copied(),
+                    gas: self.gas().copied(),
+                    gas_price: self.gas_price(),
+                    chain_id: self.chain_id(),
+                    data: self.data().cloned(),
+                    #[cfg(feature = "celo")]
+                    #[cfg_attr(docsrs, doc(cfg(feature = "celo")))]
+                    fee_currency: None,
+                    #[cfg(feature = "celo")]
+                    #[cfg_attr(docsrs, doc(cfg(feature = "celo")))]
+                    gateway_fee_recipient: None,
+                    #[cfg(feature = "celo")]
+                    #[cfg_attr(docsrs, doc(cfg(feature = "celo")))]
+                    gateway_fee: None,
+                },
+                access_list,
+            },
+        }
+    }
+}
+
+impl From<TypedTransaction> for Eip2930TransactionRequest {
+    fn from(src: TypedTransaction) -> Eip2930TransactionRequest {
+        src.into_eip2930()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use hex::ToHex;
@@ -613,5 +732,42 @@ mod tests {
         // finally check from
         let addr = Address::from_str("0x216b32eCEbAe6aF164921D3943cd7A9634FcB199").unwrap();
         assert_eq!(addr, tx.from.unwrap());
+    }
+
+    #[test]
+    fn test_tx_casts() {
+        // eip1559 tx
+        let typed_tx_hex = hex::decode("02f86b8205390284773594008477359400830186a09496216849c49358b10257cb55b28ea603c874b05e865af3107a4000825544f838f7940000000000000000000000000000000000000001e1a00100000000000000000000000000000000000000000000000000000000000000").unwrap();
+        let tx_rlp = rlp::Rlp::new(typed_tx_hex.as_slice());
+        let tx = TypedTransaction::decode(&tx_rlp).unwrap();
+
+        {
+            let typed_tx: TypedTransaction = tx.clone().into();
+
+            let tx0: TransactionRequest = typed_tx.clone().into();
+            assert!(typed_tx.as_legacy_ref().is_none());
+
+            let tx1 = typed_tx.into_legacy();
+
+            assert_eq!(tx0, tx1);
+        }
+        {
+            let typed_tx: TypedTransaction = tx.clone().into();
+            let tx0: Eip1559TransactionRequest = typed_tx.clone().into();
+            assert_eq!(tx.as_eip1559_ref().unwrap(), &tx0);
+
+            let tx1 = typed_tx.into_eip1559();
+
+            assert_eq!(tx0, tx1);
+        }
+        {
+            let typed_tx: TypedTransaction = tx.clone().into();
+            let tx0: Eip2930TransactionRequest = typed_tx.clone().into();
+            assert!(typed_tx.as_eip2930_ref().is_none());
+
+            let tx1 = typed_tx.into_eip2930();
+
+            assert_eq!(tx0, tx1);
+        }
     }
 }
