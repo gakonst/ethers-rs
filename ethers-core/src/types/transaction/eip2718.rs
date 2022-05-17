@@ -448,7 +448,8 @@ impl TypedTransaction {
     fn into_legacy(self) -> TransactionRequest {
         match self {
             Legacy(tx) => tx,
-            _ => TransactionRequest {
+            Eip2930(tx) => tx.tx,
+            Eip1559(_) => TransactionRequest {
                 from: self.from().copied(),
                 to: self.to().cloned(),
                 nonce: self.nonce().copied(),
