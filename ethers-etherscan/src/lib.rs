@@ -92,12 +92,13 @@ impl Client {
             Chain::BinanceSmartChainTestnet |
             Chain::Arbitrum |
             Chain::ArbitrumTestnet |
-            Chain::Cronos => std::env::var("ETHERSCAN_API_KEY")?,
+            Chain::Cronos |
+            Chain::CronosTestnet => std::env::var("ETHERSCAN_API_KEY")?,
             Chain::Fantom | Chain::FantomTestnet => {
                 std::env::var("FTMSCAN_API_KEY").or_else(|_| std::env::var("FANTOMSCAN_API_KEY"))?
             }
 
-            Chain::XDai | Chain::Sepolia | Chain::CronosTestnet => String::default(),
+            Chain::XDai | Chain::Sepolia => String::default(),
             Chain::Moonbeam | Chain::MoonbeamDev | Chain::Moonriver => {
                 std::env::var("MOONSCAN_API_KEY")?
             }
@@ -258,6 +259,9 @@ impl ClientBuilder {
                 urls("https://api-testnet.arbiscan.io/api", "https://testnet.arbiscan.io")
             }
             Chain::Cronos => urls("https://api.cronoscan.com/api", "https://cronoscan.com"),
+            Chain::CronosTestnet => {
+                urls("https://api-testnet.cronoscan.com/api", "https://testnet.cronoscan.com")
+            }
             Chain::Moonbeam => {
                 urls("https://api-moonbeam.moonscan.io/api", "https://moonbeam.moonscan.io/")
             }
