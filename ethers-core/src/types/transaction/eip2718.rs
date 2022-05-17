@@ -60,9 +60,6 @@ pub enum TypedTransactionError {
     /// Missing transaction payload when decoding from RLP
     #[error("Missing transaction payload when decoding")]
     MissingTransactionPayload,
-    /// Wrong transaction type requested
-    #[error("Wrong transaction type requested")]
-    WrongTransactionType,
 }
 
 #[cfg(feature = "legacy")]
