@@ -482,9 +482,12 @@ impl From<TypedTransaction> for TransactionRequest {
 
 impl TypedTransaction {
     fn into_eip2930(self) -> Eip2930TransactionRequest {
+        let access_list = self.access_list().cloned().unwrap_or_default();
+
         match self {
             Eip2930(tx) => tx,
-            _ => Eip2930TransactionRequest {
+            Legacy(tx) => Eip2930TransactionRequest { tx, access_list },
+            Eip1559(_) => Eip2930TransactionRequest {
                 tx: TransactionRequest {
                     from: self.from().copied(),
                     to: self.to().cloned(),
@@ -504,7 +507,7 @@ impl TypedTransaction {
                     #[cfg_attr(docsrs, doc(cfg(feature = "celo")))]
                     gateway_fee: None,
                 },
-                access_list: self.access_list().cloned().unwrap_or_default(),
+                access_list,
             },
         }
     }
