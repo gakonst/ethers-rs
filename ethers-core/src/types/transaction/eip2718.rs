@@ -402,33 +402,30 @@ impl From<&Transaction> for TypedTransaction {
 }
 
 impl TypedTransaction {
-    #[allow(dead_code)]
-    fn as_legacy_ref(&self) -> Result<&TransactionRequest, TypedTransactionError> {
+    pub fn as_legacy_ref(&self) -> Option<&TransactionRequest> {
         match self {
-            Legacy(tx) => Ok(tx),
-            _ => Err(TypedTransactionError::WrongTransactionType),
+            Legacy(tx) => Some(tx),
+            _ => None,
         }
     }
-    #[allow(dead_code)]
-    fn as_eip2930_ref(&self) -> Result<&Eip2930TransactionRequest, TypedTransactionError> {
+    pub fn as_eip2930_ref(&self) -> Option<&Eip2930TransactionRequest> {
         match self {
-            Eip2930(tx) => Ok(tx),
-            _ => Err(TypedTransactionError::WrongTransactionType),
+            Eip2930(tx) => Some(tx),
+            _ => None,
         }
     }
-    #[allow(dead_code)]
-    fn as_eip1559_ref(&self) -> Result<&Eip1559TransactionRequest, TypedTransactionError> {
+    pub fn as_eip1559_ref(&self) -> Option<&Eip1559TransactionRequest> {
         match self {
-            Eip1559(tx) => Ok(tx),
-            _ => Err(TypedTransactionError::WrongTransactionType),
+            Eip1559(tx) => Some(tx),
+            _ => None,
         }
     }
 }
 
 impl TypedTransaction {
-    fn as_eip1559(&self) -> Eip1559TransactionRequest {
+    fn into_eip1559(self) -> Eip1559TransactionRequest {
         match self {
-            Eip1559(tx) => tx.clone(),
+            Eip1559(tx) => tx,
             _ => Eip1559TransactionRequest {
                 from: self.from().copied(),
                 to: self.to().cloned(),
@@ -442,18 +439,6 @@ impl TypedTransaction {
             },
         }
     }
-    fn into_eip1559(self) -> Eip1559TransactionRequest {
-        match self {
-            Eip1559(tx) => tx,
-            _ => (&self).as_eip1559(),
-        }
-    }
-}
-
-impl From<&TypedTransaction> for Eip1559TransactionRequest {
-    fn from(src: &TypedTransaction) -> Eip1559TransactionRequest {
-        src.as_eip1559()
-    }
 }
 
 impl From<TypedTransaction> for Eip1559TransactionRequest {
@@ -463,9 +448,9 @@ impl From<TypedTransaction> for Eip1559TransactionRequest {
 }
 
 impl TypedTransaction {
-    fn as_legacy(&self) -> TransactionRequest {
+    fn into_legacy(self) -> TransactionRequest {
         match self {
-            Legacy(tx) => tx.clone(),
+            Legacy(tx) => tx,
             _ => TransactionRequest {
                 from: self.from().copied(),
                 to: self.to().cloned(),
@@ -487,18 +472,6 @@ impl TypedTransaction {
             },
         }
     }
-    fn into_legacy(self) -> TransactionRequest {
-        match self {
-            Legacy(tx) => tx,
-            _ => (&self).as_legacy(),
-        }
-    }
-}
-
-impl From<&TypedTransaction> for TransactionRequest {
-    fn from(src: &TypedTransaction) -> TransactionRequest {
-        src.as_legacy()
-    }
 }
 
 impl From<TypedTransaction> for TransactionRequest {
@@ -508,27 +481,32 @@ impl From<TypedTransaction> for TransactionRequest {
 }
 
 impl TypedTransaction {
-    fn as_eip2930(&self) -> Eip2930TransactionRequest {
-        match self {
-            Eip2930(tx) => tx.clone(),
-            _ => Eip2930TransactionRequest {
-                tx: self.as_legacy(),
-                access_list: self.access_list().cloned().unwrap_or_default(),
-            },
-        }
-    }
-
     fn into_eip2930(self) -> Eip2930TransactionRequest {
         match self {
             Eip2930(tx) => tx,
-            _ => (&self).as_eip2930(),
+            _ => Eip2930TransactionRequest {
+                tx: TransactionRequest {
+                    from: self.from().copied(),
+                    to: self.to().cloned(),
+                    nonce: self.nonce().copied(),
+                    value: self.value().copied(),
+                    gas: self.gas().copied(),
+                    gas_price: self.gas_price(),
+                    chain_id: self.chain_id(),
+                    data: self.data().cloned(),
+                    #[cfg(feature = "celo")]
+                    #[cfg_attr(docsrs, doc(cfg(feature = "celo")))]
+                    fee_currency: None,
+                    #[cfg(feature = "celo")]
+                    #[cfg_attr(docsrs, doc(cfg(feature = "celo")))]
+                    gateway_fee_recipient: None,
+                    #[cfg(feature = "celo")]
+                    #[cfg_attr(docsrs, doc(cfg(feature = "celo")))]
+                    gateway_fee: None,
+                },
+                access_list: self.access_list().cloned().unwrap_or_default(),
+            },
         }
-    }
-}
-
-impl From<&TypedTransaction> for Eip2930TransactionRequest {
-    fn from(src: &TypedTransaction) -> Eip2930TransactionRequest {
-        src.as_eip2930()
     }
 }
 
@@ -766,35 +744,29 @@ mod tests {
             let typed_tx: TypedTransaction = tx.clone().into();
 
             let tx0: TransactionRequest = typed_tx.clone().into();
-            assert!(typed_tx.as_legacy_ref().is_err());
+            assert!(typed_tx.as_legacy_ref().is_none());
 
-            let tx1 = typed_tx.as_legacy();
-            let tx2 = typed_tx.into_legacy();
+            let tx1 = typed_tx.into_legacy();
 
             assert_eq!(tx0, tx1);
-            assert_eq!(tx1, tx2);
         }
         {
             let typed_tx: TypedTransaction = tx.clone().into();
             let tx0: Eip1559TransactionRequest = typed_tx.clone().into();
             assert_eq!(tx.as_eip1559_ref().unwrap(), &tx0);
 
-            let tx1 = typed_tx.as_eip1559();
-            let tx2 = typed_tx.into_eip1559();
+            let tx1 = typed_tx.into_eip1559();
 
             assert_eq!(tx0, tx1);
-            assert_eq!(tx1, tx2);
         }
         {
             let typed_tx: TypedTransaction = tx.clone().into();
             let tx0: Eip2930TransactionRequest = typed_tx.clone().into();
-            assert!(typed_tx.as_eip2930_ref().is_err());
+            assert!(typed_tx.as_eip2930_ref().is_none());
 
-            let tx1 = typed_tx.as_eip2930();
-            let tx2 = typed_tx.into_eip2930();
+            let tx1 = typed_tx.into_eip2930();
 
             assert_eq!(tx0, tx1);
-            assert_eq!(tx1, tx2);
         }
     }
 }
