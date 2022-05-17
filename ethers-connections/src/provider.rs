@@ -2,7 +2,7 @@
 use std::path::Path;
 use std::{borrow::Cow, error, fmt, sync::Arc};
 
-use ethers_core::types::{Address, Block, Bytes, H256, U256};
+use ethers_core::types::{Address, Block, Bytes, Transaction, H256, U256};
 use serde::{Deserialize, Serialize};
 
 #[cfg(all(unix, feature = "ipc"))]
@@ -11,8 +11,8 @@ use crate::{
     connections,
     err::TransportError,
     jsonrpc::JsonRpcError,
-    types::SyncStatus,
-    types::{BlockNumber, TransactionCall},
+    types::{BlockNumber, TransactionCall, TransactionReceipt},
+    types::{SyncStatus, TransactionRequest},
     Connection, ConnectionExt, DuplexConnection, SubscriptionStream,
 };
 
@@ -31,6 +31,7 @@ impl<C> Provider<C> {
         Self { connection }
     }
 
+    /// Consumes the [`Provider`] and returns its inner [`Connection`].
     pub fn into_inner(self) -> C {
         self.connection
     }
@@ -130,6 +131,7 @@ impl<C: Connection + 'static> Provider<C> {
 }
 
 impl<C: Connection + 'static> Provider<Arc<C>> {
+    /// Converts the [`Provider`] into one using a [`Connection`] trait object.
     pub fn into_dyn(self) -> Provider<Arc<dyn Connection>> {
         let connection = self.connection as _;
         Provider { connection }
@@ -273,16 +275,22 @@ impl<C: Connection> Provider<C> {
         self.send_request("eth_sign", (address, message)).await
     }
 
-    pub async fn sign_transaction(&self, txn: &()) -> Result<Bytes, Box<ProviderError>> {
-        todo!()
+    pub async fn sign_transaction(
+        &self,
+        txn: &TransactionRequest,
+    ) -> Result<Bytes, Box<ProviderError>> {
+        self.send_request("eth_signTransaction", [txn]).await
     }
 
-    pub async fn send_transaction(&self, txn: &()) -> Result<H256, Box<ProviderError>> {
-        todo!()
+    pub async fn send_transaction(
+        &self,
+        txn: &TransactionRequest,
+    ) -> Result<H256, Box<ProviderError>> {
+        self.send_request("eth_sendTransaction", [txn]).await
     }
 
     pub async fn send_raw_transaction(&self, data: Bytes) -> Result<H256, Box<ProviderError>> {
-        todo!()
+        self.send_request("eth_sendRawTransaction", [data]).await
     }
 
     /// Executes a new message call immidiately without creating a transaction
@@ -293,16 +301,78 @@ impl<C: Connection> Provider<C> {
 
     /// Generates and returns an estimate of how much gas is necessary to allow
     /// the transaction to complete.
+    ///
     /// The transaction will not be added to the blockchain.
-    /// Note that the estimate may be significantly more than the amount of gas
-    /// actually used by the transaction, for a variety of reasons including EVM
-    /// mechanics and node performance.
+    /// **Note** that the estimate may be significantly more than the amount of
+    /// gas actually used by the transaction, for a variety of reasons including
+    /// EVM mechanics and node performance.
     pub async fn estimate_gas(&self, txn: &TransactionCall) -> Result<U256, Box<ProviderError>> {
         self.send_request("eth_estimateGas", [txn]).await
     }
 
-    // TODO: 4x4?, generic output w/ trait & assoc type?
-    pub async fn get_block_by_hash(&self, hash: &H256, include_txns: bool) {
+    pub async fn get_block_by_hash(&self, hash: &H256) -> Result<Block<H256>, Box<ProviderError>> {
+        self.send_request("eth_getBlockByHash", (hash, false)).await
+    }
+
+    pub async fn get_block_by_hash_with_txns(
+        &self,
+        hash: &H256,
+    ) -> Result<Block<Transaction>, Box<ProviderError>> {
+        self.send_request("eth_getBlockByHash", (hash, true)).await
+    }
+
+    pub async fn get_block_by_number(
+        &self,
+        block: BlockNumber,
+    ) -> Result<Block<H256>, Box<ProviderError>> {
+        self.send_request("eth_getBlockByNumber", (block, false)).await
+    }
+
+    pub async fn get_block_by_number_with_txns(
+        &self,
+        block: BlockNumber,
+    ) -> Result<Block<Transaction>, Box<ProviderError>> {
+        self.send_request("eth_getBlockByNumber", (block, true)).await
+    }
+
+    pub async fn get_transaction_by_hash(
+        &self,
+        hash: &H256,
+    ) -> Result<Option<Transaction>, Box<ProviderError>> {
+        self.send_request("eth_getTransactionByHash", [hash]).await
+    }
+
+    pub async fn get_transaction_by_block_hash_and_index(&self) {}
+    pub async fn get_transaction_by_block_number_and_index(&self) {}
+
+    /// Returns the receipt of a transaction by transaction hash.
+    ///
+    /// **Note** That the receipt is not available for pending transactions.
+    pub async fn get_transaction_receipt(
+        &self,
+        hash: &H256,
+    ) -> Result<Option<TransactionReceipt>, Box<ProviderError>> {
+        self.send_request("eth_getTransactionReceipt", [hash]).await
+    }
+    pub async fn get_uncle_by_block_hash_and_index(&self) {}
+    pub async fn get_uncle_by_block_number_and_index(&self) {}
+    pub async fn get_compilers(&self) {}
+    pub async fn get_compile_lll(&self) {}
+    pub async fn get_compile_solidity(&self) {}
+    pub async fn get_compile_serpent(&self) {}
+    pub async fn new_filter(&self) -> Result<U256, Box<ProviderError>> {
+        todo!()
+    }
+
+    pub async fn new_block_filter(&self) -> Result<U256, Box<ProviderError>> {
+        todo!()
+    }
+
+    pub async fn new_pending_transactions_filter(&self) -> Result<U256, Box<ProviderError>> {
+        todo!()
+    }
+
+    pub async fn uninstall_filter(&self, id: &U256) -> Result<bool, Box<ProviderError>> {
         todo!()
     }
 

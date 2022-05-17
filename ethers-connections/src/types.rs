@@ -1,4 +1,6 @@
-use ethers_core::types::{Address, Bytes, U256, U64};
+use std::mem;
+
+use ethers_core::types::{Address, Bloom, Bytes, Log, H256, U256, U64};
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 
 /// A block number or tag ("latest", "earliest" or "pending").
@@ -96,7 +98,10 @@ pub(crate) fn deserialize_sync_status<'de, D: Deserializer<'de>>(
     }
 }
 
-/// TODO.
+// FIXME: should be in a separate PR?
+
+/// The properties for a transaction to be simulated or replayed (see
+/// [`Provider::call`](crate::Provider)).
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TransactionCall {
@@ -113,11 +118,9 @@ pub struct TransactionCall {
     pub data: Option<Bytes>,
 }
 
-// FIXME: should be in a separate PR
-
-#[derive(Deserialize, Serialize)]
+#[derive(Default, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Transaction {
+pub struct TransactionRequest {
     /// The sender address or ENS name
     #[serde(skip_serializing_if = "Option::is_none")]
     pub from: Option<Address>,
@@ -139,12 +142,67 @@ pub struct Transaction {
     pub nonce: Option<U256>,
     /// The transaction type.
     #[serde(flatten)]
-    transaction_type: TransactionType,
+    pub transaction_type: TransactionType,
 }
 
-impl Transaction {
+impl TransactionRequest {
+    /// Creates new (empty) [`Legacy`](TransactionType::Legacy) transaction.
+    pub fn legacy() -> Self {
+        Self { transaction_type: TransactionType::Legacy { gas_price: None }, ..Default::default() }
+    }
+
+    /// Creates new (empty) [`Eip2930`](TransactionType::Eip2930) (access list)
+    /// transaction.
+    pub fn eip2930(access_list: Vec<()>) -> Self {
+        Self {
+            transaction_type: TransactionType::Eip2930 { gas_price: None, access_list },
+            ..Default::default()
+        }
+    }
+
+    /// Creates new (empty) [`Eip1559`](TransactionType::Eip1559) (dynamic fee)
+    /// transaction.
+    pub fn eip1559() -> Self {
+        Self {
+            transaction_type: TransactionType::Eip1559 {
+                max_fee_per_gas: None,
+                max_priority_fee_per_gas: None,
+                access_list: vec![],
+            },
+            ..Default::default()
+        }
+    }
+
+    /// Sets the `from` address.
     pub fn from(mut self, from: Address) -> Self {
         self.from = Some(from);
+        self
+    }
+
+    /// Sets the `to` address.
+    pub fn to(mut self, to: Address) -> Self {
+        self.to = Some(to);
+        self
+    }
+
+    /// Sets the `gas` limit.
+    pub fn gas(mut self, gas: U256) -> Self {
+        self.gas = Some(gas);
+        self
+    }
+
+    pub fn value(mut self, value: U256) -> Self {
+        self.nonce = Some(value);
+        self
+    }
+
+    pub fn data(mut self, data: Bytes) -> Self {
+        self.data = Some(data);
+        self
+    }
+
+    pub fn nonce(mut self, nonce: U256) -> Self {
+        self.nonce = Some(nonce);
         self
     }
 
@@ -159,25 +217,88 @@ impl Transaction {
         };
         self
     }
+
+    pub fn gas_price(mut self, gas_price: U256) -> Self {
+        match &mut self.transaction_type {
+            TransactionType::Legacy { gas_price: gp } => *gp = Some(gas_price),
+            TransactionType::Eip2930 { gas_price: gp, .. } => *gp = Some(gas_price),
+            TransactionType::Eip1559 { access_list, .. } => {
+                let access_list = mem::replace(access_list, vec![]);
+                self.transaction_type =
+                    TransactionType::Eip2930 { gas_price: Some(gas_price), access_list };
+            }
+        }
+        self
+    }
 }
 
+/// The type of a transactions and its respective unique properties.
 #[derive(Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
 pub enum TransactionType {
-    Legacy {
-        gas_price: Option<U256>,
-    },
+    /// A legacy transaction (with `gasPrice`).
+    #[serde(rename = "0x0")]
+    Legacy { gas_price: Option<U256> },
+    /// An access list transaction (with `gasPrice`).
+    #[serde(rename = "0x1")]
     Eip2930 {
         gas_price: Option<U256>,
         #[serde(skip_serializing_if = "Vec::is_empty")]
         access_list: Vec<()>,
     },
+    /// A dynamic fee transaction (with `maxPriorityFeePerGas` and `maxFeePerGas`).
+    #[serde(rename = "0x2")]
     Eip1559 {
         max_priority_fee_per_gas: Option<U256>,
         max_fee_per_gas: Option<U256>,
         #[serde(skip_serializing_if = "Vec::is_empty")]
         access_list: Vec<()>,
     },
+}
+
+impl Default for TransactionType {
+    fn default() -> Self {
+        Self::Eip1559 { max_priority_fee_per_gas: None, max_fee_per_gas: None, access_list: vec![] }
+    }
+}
+
+/// The receipt for a confirmed transaction.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TransactionReceipt {
+    /// The transaction hash.
+    pub transaction_hash: H256,
+    /// The index within the block.
+    pub transaction_index: U64,
+    /// The hash of the block this transaction was included within.
+    pub block_hash: H256,
+    /// The number of the block this transaction was included within.
+    pub block_number: U64,
+    /// The address of the sender.
+    pub from: Address,
+    // The address of the receiver (`None` if contract creation).
+    pub to: Option<Address>,
+    /// Cumulative gas used within the block after this was executed.
+    pub cumulative_gas_used: U256,
+    /// Gas used by this transaction alone (`None` if light client).
+    pub gas_used: Option<U256>,
+    /// Created contract address (`None` if not a deployment).
+    pub contract_address: Option<Address>,
+    /// Logs generated within this transaction.
+    pub logs: Vec<Log>,
+    /// The transaction status, 0x1 for success, 0x0 for failure (only present
+    /// after [EIP-658](https://eips.ethereum.org/EIPS/eip-658)).
+    pub status: Option<U64>,
+    /// State root. Only present before activation of [EIP-658](https://eips.ethereum.org/EIPS/eip-658)
+    pub root: Option<H256>,
+    /// Logs bloom
+    pub logs_bloom: Bloom,
+    /// The transaction type, `None` for Legacy, `Some(1)` for access list
+    /// transaction (EIP-2930), `Some(2)` for dynamic fee transaction (EIP-1559).
+    pub transaction_type: Option<U64>,
+    /// The price paid post-execution by the transaction (i.e. base fee + priority fee).
+    /// Both fields in 1559-style transactions are *maximums* (max fee + max priority fee), the
+    /// amount that's actually paid by users can only be determined post-execution
+    pub effective_gas_price: Option<U256>,
 }
 
 #[cfg(test)]

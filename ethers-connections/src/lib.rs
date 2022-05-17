@@ -17,6 +17,7 @@ pub mod types;
 
 mod err;
 mod jsonrpc;
+mod pending;
 mod provider;
 mod sub;
 
