@@ -1299,15 +1299,17 @@ pub struct UserDoc {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub kind: Option<String>,
     #[serde(default, skip_serializing_if = "::std::collections::BTreeMap::is_empty")]
-    pub methods: BTreeMap<String, MethodNotice>,
+    pub methods: BTreeMap<String, UserDocNotice>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub notice: Option<String>,
 }
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
-pub struct MethodNotice {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub notice: Option<String>,
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[serde(untagged)]
+pub enum UserDocNotice {
+    // NOTE: this a variant used for constructors on older solc versions
+    Constructor(String),
+    Method { notice: String },
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
