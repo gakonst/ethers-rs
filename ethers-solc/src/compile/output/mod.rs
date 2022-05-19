@@ -73,6 +73,11 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
     }
 
     /// All artifacts together with their ID and the sources of the project.
+    ///
+    /// Note: this only returns the `SourceFiles` for freshly compiled contracts because, if not
+    /// included in the `Artifact` itself (see
+    /// [`crate::ConfigurableContractArtifact::source_file()`]), is only available via the solc
+    /// `CompilerOutput`
     pub fn into_artifacts_with_sources(
         self,
     ) -> (BTreeMap<ArtifactId, T::Artifact>, VersionedSourceFiles) {
