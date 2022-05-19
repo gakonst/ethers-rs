@@ -1,8 +1,8 @@
 //! Output artifact handling
 
 use crate::{
-    artifacts::FileToContractsMap, contracts::VersionedContracts, error::Result, utils,
-    HardhatArtifact, ProjectPathsConfig, SolcError,
+    artifacts::FileToContractsMap, error::Result, utils, HardhatArtifact, ProjectPathsConfig,
+    SolcError,
 };
 use ethers_core::{abi::Abi, types::Bytes};
 use semver::Version;
@@ -15,10 +15,14 @@ use std::{
 };
 
 mod configurable;
-use crate::artifacts::{
-    contract::{CompactContract, CompactContractBytecode, Contract},
-    BytecodeObject, CompactBytecode, CompactContractBytecodeCow, CompactDeployedBytecode,
-    SourceFile,
+use crate::{
+    artifacts::{
+        contract::{CompactContract, CompactContractBytecode, Contract},
+        BytecodeObject, CompactBytecode, CompactContractBytecodeCow, CompactDeployedBytecode,
+        SourceFile,
+    },
+    compile::output::{contracts::VersionedContracts, sources::VersionedSourceFiles},
+    sourcemap::{SourceMap, SyntaxError},
 };
 pub use configurable::*;
 
@@ -395,6 +399,22 @@ pub trait Artifact {
     fn get_abi(&self) -> Option<Cow<Abi>> {
         self.get_contract_bytecode().abi
     }
+
+    /// Returns the `sourceMap` of the contract
+    ///
+    /// Returns `None` if no `sourceMap` string was included in the compiler output
+    /// Returns `Some(Err)` if parsing the sourcemap failed
+    fn get_source_map(&self) -> Option<std::result::Result<SourceMap, SyntaxError>> {
+        self.get_bytecode()?.source_map()
+    }
+
+    /// Returns the `sourceMap` as str if it was included in the compiler output
+    fn get_source_map_str(&self) -> Option<Cow<str>> {
+        match self.get_bytecode()? {
+            Cow::Borrowed(code) => code.source_map.as_deref().map(Cow::Borrowed),
+            Cow::Owned(code) => code.source_map.map(Cow::Owned),
+        }
+    }
 }
 
 impl<T> Artifact for T
@@ -447,7 +467,7 @@ pub trait ArtifactOutput {
     fn on_output(
         &self,
         contracts: &VersionedContracts,
-        sources: &BTreeMap<String, SourceFile>,
+        sources: &VersionedSourceFiles,
         layout: &ProjectPathsConfig,
     ) -> Result<Artifacts<Self::Artifact>> {
         let mut artifacts = self.output_to_artifacts(contracts, sources);
@@ -609,16 +629,17 @@ pub trait ArtifactOutput {
     fn output_to_artifacts(
         &self,
         contracts: &VersionedContracts,
-        sources: &BTreeMap<String, SourceFile>,
+        sources: &VersionedSourceFiles,
     ) -> Artifacts<Self::Artifact> {
         let mut artifacts = ArtifactsMap::new();
         for (file, contracts) in contracts.as_ref().iter() {
-            let source_file = sources.get(file);
             let mut entries = BTreeMap::new();
             for (name, versioned_contracts) in contracts {
                 let mut contracts = Vec::with_capacity(versioned_contracts.len());
                 // check if the same contract compiled with multiple solc versions
                 for contract in versioned_contracts {
+                    let source_file = sources.find_file_and_version(file, &contract.version);
+
                     let artifact_path = if versioned_contracts.len() > 1 {
                         Self::output_file_versioned(file, name, &contract.version)
                     } else {
@@ -689,7 +710,7 @@ impl ArtifactOutput for MinimalCombinedArtifactsHardhatFallback {
     fn on_output(
         &self,
         output: &VersionedContracts,
-        sources: &BTreeMap<String, SourceFile>,
+        sources: &VersionedSourceFiles,
         layout: &ProjectPathsConfig,
     ) -> Result<Artifacts<Self::Artifact>> {
         MinimalCombinedArtifacts::default().on_output(output, sources, layout)

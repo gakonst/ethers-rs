@@ -6,6 +6,7 @@ use crate::abi::{
     struct_def::{FieldType, StructFieldType},
     Abi, Constructor, Event, EventParam, Function, Param, ParamType, SolStruct, StateMutability,
 };
+pub mod lexer;
 
 /// A parser that turns a "human readable abi" into a `Abi`
 pub struct AbiParser {

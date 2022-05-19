@@ -168,10 +168,18 @@ impl<'de> Visitor<'de> for AbiObjectVisitor {
                     abi = Some(RawAbi(map.next_value::<Vec<Item>>()?));
                 }
                 "bytecode" | "byteCode" => {
-                    bytecode = map.next_value::<BytecodeObject>().ok().map(|obj| obj.object);
+                    bytecode = map
+                        .next_value::<BytecodeObject>()
+                        .ok()
+                        .map(|obj| obj.object)
+                        .filter(|bytecode| !bytecode.0.is_empty());
                 }
                 "bin" => {
-                    bytecode = map.next_value::<DeserializeBytes>().ok().map(|b| b.0);
+                    bytecode = map
+                        .next_value::<DeserializeBytes>()
+                        .ok()
+                        .map(|b| b.0)
+                        .filter(|b| !b.0.is_empty());
                 }
                 _ => {
                     map.next_value::<serde::de::IgnoredAny>()?;
@@ -185,7 +193,7 @@ impl<'de> Visitor<'de> for AbiObjectVisitor {
 }
 
 impl<'de> Deserialize<'de> for AbiObject {
-    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
@@ -268,5 +276,31 @@ mod tests {
     fn can_parse_greeter_bytecode() {
         let artifact = include_str!("../../tests/solidity-contracts/greeter.json");
         assert_has_bytecode(artifact);
+    }
+
+    #[test]
+    fn ignores_empty_bytecode() {
+        let abi_str = r#"[{"anonymous":false,"inputs":[{"indexed":true,"internalType":"uint64","name":"number","type":"uint64"}],"name":"MyEvent","type":"event"},{"inputs":[],"name":"greet","outputs":[],"stateMutability":"nonpayable","type":"function"}]"#;
+        let s = format!(r#"{{"abi": {}, "bin" : "0x" }}"#, abi_str);
+
+        match serde_json::from_str::<JsonAbi>(&s).unwrap() {
+            JsonAbi::Object(abi) => {
+                assert!(abi.bytecode.is_none());
+            }
+            _ => {
+                panic!("expected abi object")
+            }
+        }
+
+        let s = format!(r#"{{"abi": {}, "bytecode" : {{ "object": "0x" }} }}"#, abi_str);
+
+        match serde_json::from_str::<JsonAbi>(&s).unwrap() {
+            JsonAbi::Object(abi) => {
+                assert!(abi.bytecode.is_none());
+            }
+            _ => {
+                panic!("expected abi object")
+            }
+        }
     }
 }

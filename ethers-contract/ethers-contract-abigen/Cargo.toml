@@ -1,6 +1,6 @@
 [package]
 name = "ethers-contract-abigen"
-version = "0.6.0"
+version = "0.6.3"
 authors = ["Nicholas Rodrigues Lordello <nlordell@gmail.com>", "Georgios Konstantopoulos <me@gakonst.com>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
@@ -41,4 +41,4 @@ rustls = ["reqwest/rustls-tls"]
 
 [dev-dependencies]
 tempfile = "3.2.0"
-ethers-solc = { path = "../../ethers-solc", default-features = false, features = ["project-util"] }
+ethers-solc = { version = "^0.3.0", path = "../../ethers-solc", default-features = false, features = ["project-util"] }

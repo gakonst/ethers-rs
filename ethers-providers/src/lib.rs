@@ -698,13 +698,16 @@ pub mod test_provider {
             Self { keys: Mutex::new(keys.iter().cycle()), network: network.to_owned() }
         }
 
-        pub fn provider(&self) -> Provider<Http> {
-            let url = format!(
+        pub fn url(&self) -> String {
+            format!(
                 "https://{}.infura.io/v3/{}",
                 self.network,
                 self.keys.lock().unwrap().next().unwrap()
-            );
-            Provider::try_from(url.as_str()).unwrap()
+            )
+        }
+
+        pub fn provider(&self) -> Provider<Http> {
+            Provider::try_from(self.url().as_str()).unwrap()
         }
 
         #[cfg(feature = "ws")]

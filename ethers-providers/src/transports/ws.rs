@@ -114,7 +114,7 @@ impl Ws {
         // Spawn the server
         WsServer::new(ws, stream).spawn();
 
-        Self { id: Arc::new(AtomicU64::new(0)), instructions: sink }
+        Self { id: Arc::new(AtomicU64::new(1)), instructions: sink }
     }
 
     /// Returns true if the WS connection is active, false otherwise

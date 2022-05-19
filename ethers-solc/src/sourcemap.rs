@@ -134,7 +134,7 @@ impl AsRef<str> for Jump {
     }
 }
 
-impl<'a> fmt::Display for Jump {
+impl fmt::Display for Jump {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(self.as_ref())
     }
@@ -176,7 +176,7 @@ pub struct SourceElement {
     pub modifier_depth: usize,
 }
 
-impl<'a> fmt::Display for SourceElement {
+impl fmt::Display for SourceElement {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -199,7 +199,7 @@ struct SourceElementBuilder {
     pub modifier_depth: Option<usize>,
 }
 
-impl<'a> fmt::Display for SourceElementBuilder {
+impl fmt::Display for SourceElementBuilder {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.offset.is_none() &&
             self.length.is_none() &&

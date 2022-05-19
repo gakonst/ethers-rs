@@ -46,10 +46,10 @@ pub type Contracts = FileToContractsMap<Contract>;
 pub type Sources = BTreeMap<PathBuf, Source>;
 
 /// A set of different Solc installations with their version and the sources to be compiled
-pub type VersionedSources = BTreeMap<Solc, (Version, Sources)>;
+pub(crate) type VersionedSources = BTreeMap<Solc, (Version, Sources)>;
 
 /// A set of different Solc installations with their version and the sources to be compiled
-pub type VersionedFilteredSources = BTreeMap<Solc, (Version, FilteredSources)>;
+pub(crate) type VersionedFilteredSources = BTreeMap<Solc, (Version, FilteredSources)>;
 
 const SOLIDITY: &str = "Solidity";
 
@@ -123,6 +123,9 @@ impl CompilerInput {
                 // <https://github.com/ethereum/solidity/releases/tag/v0.8.10>
                 debug.debug_info.clear();
             }
+
+            // 0.8.10 is the earliest version that has all model checker options.
+            self.settings.model_checker = None;
         }
 
         self
@@ -241,6 +244,9 @@ pub struct Settings {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub remappings: Vec<Remapping>,
     pub optimizer: Optimizer,
+    /// Model Checker options.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model_checker: Option<ModelCheckerSettings>,
     /// Metadata settings
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub metadata: Option<SettingsMetadata>,
@@ -386,6 +392,7 @@ impl Default for Settings {
             debug: None,
             libraries: Default::default(),
             remappings: Default::default(),
+            model_checker: None,
         }
         .with_ast()
     }
@@ -837,6 +844,112 @@ pub struct MetadataSource {
     pub license: Option<String>,
 }
 
+/// Model checker settings for solc
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ModelCheckerSettings {
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub contracts: BTreeMap<String, Vec<String>>,
+    #[serde(
+        default,
+        with = "serde_helpers::display_from_str_opt",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub engine: Option<ModelCheckerEngine>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub timeout: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub targets: Option<Vec<ModelCheckerTarget>>,
+}
+
+/// Which model checker engine to run.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ModelCheckerEngine {
+    Default,
+    All,
+    BMC,
+    CHC,
+}
+
+impl fmt::Display for ModelCheckerEngine {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let string = match self {
+            ModelCheckerEngine::Default => "none",
+            ModelCheckerEngine::All => "all",
+            ModelCheckerEngine::BMC => "bmc",
+            ModelCheckerEngine::CHC => "chc",
+        };
+        write!(f, "{}", string)
+    }
+}
+
+impl FromStr for ModelCheckerEngine {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "none" => Ok(ModelCheckerEngine::Default),
+            "all" => Ok(ModelCheckerEngine::All),
+            "bmc" => Ok(ModelCheckerEngine::BMC),
+            "chc" => Ok(ModelCheckerEngine::CHC),
+            s => Err(format!("Unknown model checker engine: {}", s)),
+        }
+    }
+}
+
+impl Default for ModelCheckerEngine {
+    fn default() -> Self {
+        ModelCheckerEngine::Default
+    }
+}
+
+/// Which model checker targets to check.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ModelCheckerTarget {
+    Assert,
+    Underflow,
+    Overflow,
+    DivByZero,
+    ConstantCondition,
+    PopEmptyArray,
+    OutOfBounds,
+    Balance,
+}
+
+impl fmt::Display for ModelCheckerTarget {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let string = match self {
+            ModelCheckerTarget::Assert => "assert",
+            ModelCheckerTarget::Underflow => "underflow",
+            ModelCheckerTarget::Overflow => "overflow",
+            ModelCheckerTarget::DivByZero => "divByZero",
+            ModelCheckerTarget::ConstantCondition => "constantCondition",
+            ModelCheckerTarget::PopEmptyArray => "popEmptyArray",
+            ModelCheckerTarget::OutOfBounds => "outOfBounds",
+            ModelCheckerTarget::Balance => "balance",
+        };
+        write!(f, "{}", string)
+    }
+}
+
+impl FromStr for ModelCheckerTarget {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "assert" => Ok(ModelCheckerTarget::Assert),
+            "underflow" => Ok(ModelCheckerTarget::Underflow),
+            "overflow" => Ok(ModelCheckerTarget::Overflow),
+            "divByZero" => Ok(ModelCheckerTarget::DivByZero),
+            "constantCondition" => Ok(ModelCheckerTarget::ConstantCondition),
+            "popEmptyArray" => Ok(ModelCheckerTarget::PopEmptyArray),
+            "outOfBounds" => Ok(ModelCheckerTarget::OutOfBounds),
+            "balance" => Ok(ModelCheckerTarget::Balance),
+            s => Err(format!("Unknown model checker target: {}", s)),
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Compiler {
     pub version: String,
@@ -1186,15 +1299,17 @@ pub struct UserDoc {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub kind: Option<String>,
     #[serde(default, skip_serializing_if = "::std::collections::BTreeMap::is_empty")]
-    pub methods: BTreeMap<String, MethodNotice>,
+    pub methods: BTreeMap<String, UserDocNotice>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub notice: Option<String>,
 }
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
-pub struct MethodNotice {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub notice: Option<String>,
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[serde(untagged)]
+pub enum UserDocNotice {
+    // NOTE: this a variant used for constructors on older solc versions
+    Constructor(String),
+    Method { notice: String },
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize, Eq, PartialEq)]

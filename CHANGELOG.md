@@ -4,6 +4,10 @@
 
 ### Unreleased
 
+- Added Cronos testnet to etherscan options [1276](https://github.com/gakonst/ethers-rs/pull/1276)
+- Fix parsing of a pending block
+  [1272](https://github.com/gakonst/ethers-rs/pull/1272)
+- Removed Cronos mainnet beta from `is_legacy` [1246](https://github.com/gakonst/ethers-rs/pull/1246)
 - Fix RLP decoding of `from` field for `Eip1559TransactionRequest` and
   `Eip2930TransactionRequest`, remove `Eip1559TransactionRequest` `sighash`
   method [1180](https://github.com/gakonst/ethers-rs/pull/1180)
@@ -68,6 +72,8 @@
 
 ### Unreleased
 
+- Support overloaded events
+  [#1233](https://github.com/gakonst/ethers-rs/pull/1233)
 - Relax Clone requirements when Arc<Middleware> is used
   [#1183](https://github.com/gakonst/ethers-rs/pull/1183)
 - Generate a deploy function if bytecode is provided in the abigen! input (json artifact)
@@ -118,6 +124,8 @@
   `enum BytecodeObject` [#656](https://github.com/gakonst/ethers-rs/pull/656).
 - Nit: remove accidentally doubled double-quotes in an error message
 - Fix when compiler-out metadata is empty and there's no internalType [#1182](https://github.com/gakonst/ethers-rs/pull/1182)
+- Add basic `solc` model checker options.
+  [#1258](https://github.com/gakonst/ethers-rs/pull/1258)
 
 ### 0.6.0
 
@@ -153,6 +161,8 @@
 
 ### Unreleased
 
+- Load previous logs before subscribing to new logs in case fromBlock is set
+  [1264](https://github.com/gakonst/ethers-rs/pull/1264)
 - Add retries to the pending transaction future
   [1221](https://github.com/gakonst/ethers-rs/pull/1221)
 - Add support for basic and bearer authentication in http and non-wasm websockets.

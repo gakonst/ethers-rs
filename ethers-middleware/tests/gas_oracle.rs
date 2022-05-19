@@ -57,7 +57,7 @@ async fn using_gas_oracle() {
 #[tokio::test]
 async fn eth_gas_station() {
     // initialize and fetch gas estimates from EthGasStation
-    let eth_gas_station_oracle = EthGasStation::new(None);
+    let eth_gas_station_oracle = EthGasStation::default();
     let data = eth_gas_station_oracle.fetch().await;
     assert!(data.is_ok());
 }
@@ -83,7 +83,7 @@ async fn etherscan() {
 #[tokio::test]
 async fn etherchain() {
     // initialize and fetch gas estimates from Etherchain
-    let etherchain_oracle = Etherchain::new().category(GasCategory::Fast);
+    let etherchain_oracle = Etherchain::default().category(GasCategory::Fast);
     let data = etherchain_oracle.fetch().await;
     assert!(data.is_ok());
 }

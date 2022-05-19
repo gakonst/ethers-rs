@@ -75,6 +75,8 @@ pub fn find_version_pragma(contract: &str) -> Option<Match> {
 /// Returns a list of absolute paths to all the solidity files under the root, or the file itself,
 /// if the path is a solidity file.
 ///
+/// This also follows symlinks.
+///
 /// NOTE: this does not resolve imports from other locations
 ///
 /// # Example
@@ -85,6 +87,7 @@ pub fn find_version_pragma(contract: &str) -> Option<Match> {
 /// ```
 pub fn source_files(root: impl AsRef<Path>) -> Vec<PathBuf> {
     WalkDir::new(root)
+        .follow_links(true)
         .into_iter()
         .filter_map(Result::ok)
         .filter(|e| e.file_type().is_file())
@@ -330,6 +333,40 @@ pub(crate) fn find_fave_or_alt_path(root: impl AsRef<Path>, fave: &str, alt: &st
     p
 }
 
+#[cfg(not(target_arch = "wasm32"))]
+use tokio::runtime::{Handle, Runtime};
+
+#[cfg(not(target_arch = "wasm32"))]
+#[derive(Debug)]
+pub enum RuntimeOrHandle {
+    Runtime(Runtime),
+    Handle(Handle),
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl Default for RuntimeOrHandle {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl RuntimeOrHandle {
+    pub fn new() -> RuntimeOrHandle {
+        match Handle::try_current() {
+            Ok(handle) => RuntimeOrHandle::Handle(handle),
+            Err(_) => RuntimeOrHandle::Runtime(Runtime::new().expect("Failed to start runtime")),
+        }
+    }
+
+    pub fn block_on<F: std::future::Future>(&self, f: F) -> F::Output {
+        match &self {
+            RuntimeOrHandle::Runtime(runtime) => runtime.block_on(f),
+            RuntimeOrHandle::Handle(handle) => tokio::task::block_in_place(|| handle.block_on(f)),
+        }
+    }
+}
+
 /// Creates a new named tempdir
 #[cfg(any(test, feature = "project-util"))]
 pub(crate) fn tempdir(name: &str) -> Result<tempfile::TempDir, SolcIoError> {
@@ -415,7 +452,7 @@ mod tests {
         let (unit, _) = solang_parser::parse(s, 0).unwrap();
         assert_eq!(unit.0.len(), 1);
         match unit.0[0] {
-            SourceUnitPart::ImportDirective(_, _) => {}
+            SourceUnitPart::ImportDirective(_) => {}
             _ => unreachable!("failed to parse import"),
         }
         let imports: Vec<_> = find_import_paths(s).map(|m| m.as_str()).collect();

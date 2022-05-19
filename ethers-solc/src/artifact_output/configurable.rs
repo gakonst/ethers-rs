@@ -55,6 +55,9 @@ pub struct ConfigurableContractArtifact {
     pub ewasm: Option<Ewasm>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ast: Option<Ast>,
+    /// The identifier of the source file
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id: Option<u32>,
 }
 
 impl ConfigurableContractArtifact {
@@ -76,6 +79,11 @@ impl ConfigurableContractArtifact {
             }
         }
         links
+    }
+
+    /// Returns the source file of this artifact's contract
+    pub fn source_file(&self) -> Option<SourceFile> {
+        self.id.map(|id| SourceFile { id, ast: self.ast.clone() })
     }
 }
 
@@ -113,7 +121,8 @@ impl<'a> From<&'a ConfigurableContractArtifact> for CompactContractBytecodeCow<'
 ///  {
 ///    "abi": [],
 ///    "bytecode": {...},
-///    "deployedBytecode": {...}
+///    "deployedBytecode": {...},
+///    "methodIdentifiers": {...},
 ///    // additional values
 ///  }
 /// ```
@@ -290,12 +299,10 @@ impl ArtifactOutput for ConfigurableArtifacts {
 
             artifact_bytecode = bytecode.map(Into::into);
             artifact_deployed_bytecode = deployed_bytecode.map(Into::into);
+            artifact_method_identifiers = Some(method_identifiers);
 
             if self.additional_values.gas_estimates {
                 artifact_gas_estimates = gas_estimates;
-            }
-            if self.additional_values.method_identifiers {
-                artifact_method_identifiers = Some(method_identifiers);
             }
             if self.additional_values.assembly {
                 artifact_assembly = assembly;
@@ -317,6 +324,7 @@ impl ArtifactOutput for ConfigurableArtifacts {
             ir: artifact_ir,
             ir_optimized: artifact_ir_optimized,
             ewasm: artifact_ewasm,
+            id: source_file.as_ref().map(|s| s.id),
             ast: source_file.and_then(|s| s.ast.clone()),
             generated_sources: generated_sources.unwrap_or_default(),
         }

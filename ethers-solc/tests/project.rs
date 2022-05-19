@@ -9,7 +9,10 @@ use std::{
 
 use ethers_core::types::Address;
 use ethers_solc::{
-    artifacts::{BytecodeHash, Libraries},
+    artifacts::{
+        BytecodeHash, Libraries, ModelCheckerEngine::CHC, ModelCheckerSettings, UserDoc,
+        UserDocNotice,
+    },
     cache::{SolFilesCache, SOLIDITY_FILES_CACHE_FILENAME},
     project_util::*,
     remappings::Remapping,
@@ -17,6 +20,7 @@ use ethers_solc::{
     ProjectPathsConfig, Solc, TestFileFilter,
 };
 use pretty_assertions::assert_eq;
+use semver::Version;
 
 #[allow(unused)]
 fn init_tracing() {
@@ -1309,4 +1313,179 @@ fn can_compile_std_json_input() {
         assert!(!out.has_error());
         assert!(out.sources.contains_key("lib/ds-test/src/test.sol"));
     }
+}
+
+#[test]
+fn can_compile_model_checker_sample() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test-data/model-checker-sample");
+    let paths = ProjectPathsConfig::builder().sources(root);
+
+    let mut project = TempProject::<ConfigurableArtifacts>::new(paths).unwrap();
+    project.project_mut().solc_config.settings.model_checker = Some(ModelCheckerSettings {
+        contracts: BTreeMap::new(),
+        engine: Some(CHC),
+        targets: None,
+        timeout: Some(10000),
+    });
+    let compiled = project.compile().unwrap();
+
+    assert!(compiled.find("Assert").is_some());
+    assert!(!compiled.has_compiler_errors());
+    assert!(compiled.has_compiler_warnings());
+}
+
+fn remove_solc_if_exists(version: &Version) {
+    match Solc::find_svm_installed_version(version.to_string()).unwrap() {
+        Some(_) => svm::remove_version(version).expect("failed to remove version"),
+        None => {}
+    };
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn can_install_solc_and_compile_version() {
+    let project = TempProject::dapptools().unwrap();
+    let version = Version::new(0, 8, 10);
+
+    project
+        .add_source(
+            "Contract",
+            format!(
+                r#"
+pragma solidity {};
+contract Contract {{ }}
+"#,
+                version
+            ),
+        )
+        .unwrap();
+
+    remove_solc_if_exists(&version);
+
+    let compiled = project.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn can_install_solc_and_compile_std_json_input_async() {
+    let tmp = TempProject::dapptools_init().unwrap();
+    tmp.assert_no_errors();
+    let source = tmp.list_source_files().into_iter().find(|p| p.ends_with("Dapp.t.sol")).unwrap();
+    let input = tmp.project().standard_json_input(source).unwrap();
+    let solc = &tmp.project().solc;
+
+    assert!(input.settings.remappings.contains(&"ds-test/=lib/ds-test/src/".parse().unwrap()));
+    let input: CompilerInput = input.into();
+    assert!(input.sources.contains_key(Path::new("lib/ds-test/src/test.sol")));
+
+    remove_solc_if_exists(&solc.version().expect("failed to get version"));
+
+    let out = solc.async_compile(&input).await.unwrap();
+    assert!(!out.has_error());
+    assert!(out.sources.contains_key("lib/ds-test/src/test.sol"));
+}
+
+#[test]
+fn can_purge_obsolete_artifacts() {
+    let mut project = TempProject::<ConfigurableArtifacts>::dapptools().unwrap();
+    project.set_solc("0.8.10");
+    project
+        .add_source(
+            "Contract",
+            r#"
+    pragma solidity >=0.8.10;
+
+   contract Contract {
+        function xyz() public {
+        }
+   }
+   "#,
+        )
+        .unwrap();
+
+    let compiled = project.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+    assert!(!compiled.is_unchanged());
+    assert_eq!(compiled.into_artifacts().count(), 1);
+
+    project.set_solc("0.8.13");
+
+    let compiled = project.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+    assert!(!compiled.is_unchanged());
+    assert_eq!(compiled.into_artifacts().count(), 1);
+}
+
+#[test]
+fn can_parse_notice() {
+    let mut project = TempProject::<ConfigurableArtifacts>::dapptools().unwrap();
+    project.project_mut().artifacts.additional_values.userdoc = true;
+    project.project_mut().solc_config.settings = project.project_mut().artifacts.settings();
+
+    let contract = r#"
+    pragma solidity $VERSION;
+
+   contract Contract {
+      string greeting;
+
+        /**
+         * @notice hello
+         */    
+         constructor(string memory _greeting) public {
+            greeting = _greeting;
+        }
+        
+        /**
+         * @notice hello
+         */
+        function xyz() public {
+        }
+        
+        /// @notice hello
+        function abc() public {
+        }
+   }
+   "#;
+    project.add_source("Contract", contract.replace("$VERSION", "=0.5.17")).unwrap();
+
+    let mut compiled = project.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+    assert!(!compiled.is_unchanged());
+    assert!(compiled.find("Contract").is_some());
+    let userdoc = compiled.remove("Contract").unwrap().userdoc;
+
+    assert_eq!(
+        userdoc,
+        Some(UserDoc {
+            version: None,
+            kind: None,
+            methods: BTreeMap::from([
+                ("abc()".to_string(), UserDocNotice::Method { notice: "hello".to_string() }),
+                ("xyz()".to_string(), UserDocNotice::Method { notice: "hello".to_string() }),
+                ("constructor".to_string(), UserDocNotice::Constructor("hello".to_string())),
+            ]),
+            notice: None
+        })
+    );
+
+    project.add_source("Contract", contract.replace("$VERSION", "^0.8.10")).unwrap();
+
+    let mut compiled = project.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+    assert!(!compiled.is_unchanged());
+    assert!(compiled.find("Contract").is_some());
+    let userdoc = compiled.remove("Contract").unwrap().userdoc;
+
+    assert_eq!(
+        userdoc,
+        Some(UserDoc {
+            version: Some(1),
+            kind: Some("user".to_string()),
+            methods: BTreeMap::from([
+                ("abc()".to_string(), UserDocNotice::Method { notice: "hello".to_string() }),
+                ("xyz()".to_string(), UserDocNotice::Method { notice: "hello".to_string() }),
+                ("constructor".to_string(), UserDocNotice::Method { notice: "hello".to_string() }),
+            ]),
+            notice: None
+        })
+    );
 }

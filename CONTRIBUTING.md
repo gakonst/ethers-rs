@@ -189,7 +189,7 @@ of `ethers-rs` will create an instance of `Provider` is by using
 `Provider::<T>::try_from`, this is how the documentation test is structured.
 
 Lines that start with `/// #` are removed when the documentation is generated.
-They are only there to get the test to run. 
+They are only there to get the test to run.
 
 ### Commits
 
@@ -370,58 +370,28 @@ _Adapted from the [Tokio contributing guide](https://github.com/tokio-rs/tokio/b
 
 Since the ethers-rs project consists of a number of crates, many of which depend on
 each other, releasing new versions to crates.io can involve some complexities.
-When releasing a new version of a crate, follow these steps:
+We use [`cargo-release`](https://github.com/crate-ci/cargo-release) to manage these
+complexities and the whole release process.
 
-1. **Ensure that the release crate has no path dependencies.** When the HEAD
-   version of a ethers-rs crate requires unreleased changes in another ethers-rs crate,
-   the crates.io dependency on the second crate will be replaced with a path
-   dependency. Crates with path dependencies cannot be published, so before
-   publishing the dependent crate, any path dependencies must also be published.
-   This should be done through a form of depth-first tree traversal:
+When releasing the workspace:
 
-   1. Starting with the first path dependency in the crate to be released,
-      inspect the `Cargo.toml` for the dependency. If the dependency has any
-      path dependencies of its own, repeat this step with the first such
-      dependency.
-   2. Begin the release process for the path dependency.
-   3. Once the path dependency has been published to crates.io, update the
-      dependent crate to depend on the crates.io version.
-   4. When all path dependencies have been published, the dependent crate may
-      be published.
-
-   To verify that a crate is ready to publish, run:
-
-   ```bash
-   bin/publish --dry-run <CRATE NAME> <CRATE VERSION>
-   ```
-
-2. **Update Cargo metadata.** After releasing any path dependencies, update the
-   `version` field in `Cargo.toml` to the new version, and the `documentation`
-   field to the docs.rs URL of the new version.
-3. **Update other documentation links.** Update the `#![doc(html_root_url)]`
-   attribute in the crate's `lib.rs` and the "Documentation" link in the crate's
-   `README.md` to point to the docs.rs URL of the new version.
-4. **Update the changelog for the crate.** Each crate in the ethers-rs repository
-   has its own `CHANGELOG.md` in that crate's subdirectory. Any changes to that
-   crate since the last release should be added to the changelog. Change
-   descriptions may be taken from the Git history, but should be edited to
-   ensure a consistent format, based on [Keep A Changelog][keep-a-changelog].
-   Other entries in that crate's changelog may also be used for reference.
-5. **Perform a final audit for breaking changes.** Compare the HEAD version of
+1. **Perform a final audit for breaking changes.** Compare the HEAD version of
    crate with the Git tag for the most recent release version. If there are any
    breaking API changes, determine if those changes can be made without breaking
-   existing APIs. If so, resolve those issues. Otherwise, if it is necessary to
-   make a breaking release, update the version numbers to reflect this.
-6. **Open a pull request with your changes.** Once that pull request has been
-   approved by a maintainer and the pull request has been merged, continue to
-   the next step.
-7. **Release the crate.** Run the following command:
+   existing APIs. If so, resolve those issues and make a `minor` change
+   release. Otherwise, if it is necessary to make a breaking release, make a
+   `major` change release.
+2. **Dry run the release** by running `cargo release --workspace <release_type>`
+3. **Update the changelog for the crate.** Changelog for all crates go in
+   [`CHANGELOG.md`](./CHANGELOG.md). Any unreleased changes changelogs should
+   be moved to respective crates released changelogs. Change descriptions
+   may be taken from the Git history, but should be edited to ensure a consistent
+   format, based on [Keep A Changelog][keep-a-changelog]. Other entries in that
+   crate's changelog may also be used for reference.
+4. **Release the crate.** Run the following command:
 
    ```bash
-   bin/publish <NAME OF CRATE> <VERSION>
+   cargo release --workspace <release_type> --execute
    ```
-
-   Your editor and prompt you to edit a message for the tag. Copy the changelog
-   entry for that release version into your editor and close the window.
 
 [keep-a-changelog]: https://github.com/olivierlacan/keep-a-changelog/blob/master/CHANGELOG.md

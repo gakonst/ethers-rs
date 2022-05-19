@@ -51,7 +51,7 @@ impl AnvilInstance {
 
 impl Drop for AnvilInstance {
     fn drop(&mut self) {
-        let _ = self.pid.kill().expect("could not kill anvil");
+        self.pid.kill().expect("could not kill anvil");
     }
 }
 

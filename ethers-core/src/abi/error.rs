@@ -1,5 +1,5 @@
 //! Boilerplate error definitions.
-use crate::abi::InvalidOutputType;
+use crate::abi::{human_readable, InvalidOutputType};
 use thiserror::Error;
 
 /// A type alias for std's Result with the Error as our error type.
@@ -10,8 +10,12 @@ pub type Result<T, E = ParseError> = std::result::Result<T, E>;
 pub enum ParseError {
     #[error("{0}")]
     Message(String),
+    // ethabi parser error
     #[error(transparent)]
-    ParseError(#[from] super::Error),
+    ParseError(#[from] ethabi::Error),
+    // errors from human readable lexer
+    #[error(transparent)]
+    LexerError(#[from] human_readable::lexer::LexerError),
 }
 
 macro_rules! _format_err {
@@ -32,7 +36,7 @@ pub(crate) use _bail as bail;
 pub enum AbiError {
     /// Thrown when the ABI decoding fails
     #[error(transparent)]
-    DecodingError(#[from] crate::abi::Error),
+    DecodingError(#[from] ethabi::Error),
 
     /// Thrown when detokenizing an argument
     #[error(transparent)]

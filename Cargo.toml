@@ -1,6 +1,6 @@
 [package]
 name = "ethers"
-version = "0.6.0"
+version = "0.6.2"
 authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
 license = "MIT OR Apache-2.0"
 edition = "2021"

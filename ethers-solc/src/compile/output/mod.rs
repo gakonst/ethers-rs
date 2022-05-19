@@ -3,13 +3,17 @@
 use crate::{
     artifacts::{
         contract::{CompactContractBytecode, CompactContractRef, Contract},
-        Error, SourceFile, SourceFiles,
+        Error,
     },
-    contracts::{VersionedContract, VersionedContracts},
+    sources::{VersionedSourceFile, VersionedSourceFiles},
     ArtifactId, ArtifactOutput, Artifacts, CompilerOutput, ConfigurableArtifacts,
 };
+use contracts::{VersionedContract, VersionedContracts};
 use semver::Version;
 use std::{collections::BTreeMap, fmt, path::Path};
+
+pub mod contracts;
+pub mod sources;
 
 /// Contains a mixture of already compiled/cached artifacts and the input set of sources that still
 /// need to be compiled.
@@ -69,7 +73,14 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
     }
 
     /// All artifacts together with their ID and the sources of the project.
-    pub fn into_artifacts_with_sources(self) -> (BTreeMap<ArtifactId, T::Artifact>, SourceFiles) {
+    ///
+    /// Note: this only returns the `SourceFiles` for freshly compiled contracts because, if not
+    /// included in the `Artifact` itself (see
+    /// [`crate::ConfigurableContractArtifact::source_file()`]), is only available via the solc
+    /// `CompilerOutput`
+    pub fn into_artifacts_with_sources(
+        self,
+    ) -> (BTreeMap<ArtifactId, T::Artifact>, VersionedSourceFiles) {
         let Self { cached_artifacts, compiled_artifacts, compiler_output, .. } = self;
 
         (
@@ -77,7 +88,7 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
                 .into_artifacts::<T>()
                 .chain(compiled_artifacts.into_artifacts::<T>())
                 .collect(),
-            SourceFiles(compiler_output.sources),
+            compiler_output.sources,
         )
     }
 
@@ -86,10 +97,9 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
     ///
     /// # Example
     ///
-    /// Make all artifact files relative tot the project's root directory
+    /// Make all artifact files relative to the project's root directory
     ///
     /// ```no_run
-    /// use ethers_solc::artifacts::contract::CompactContractBytecode;
     /// use ethers_solc::Project;
     ///
     /// let project = Project::builder().build().unwrap();
@@ -99,6 +109,7 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
         let base = base.as_ref();
         self.cached_artifacts = self.cached_artifacts.into_stripped_file_prefixes(base);
         self.compiled_artifacts = self.compiled_artifacts.into_stripped_file_prefixes(base);
+        self.compiler_output.strip_prefix_all(base);
         self
     }
 
@@ -228,8 +239,8 @@ impl<T: ArtifactOutput> fmt::Display for ProjectCompileOutput<T> {
 pub struct AggregatedCompilerOutput {
     /// all errors from all `CompilerOutput`
     pub errors: Vec<Error>,
-    /// All source files
-    pub sources: BTreeMap<String, SourceFile>,
+    /// All source files combined with the solc version used to compile them
+    pub sources: VersionedSourceFiles,
     /// All compiled contracts combined with the solc version used to compile them
     pub contracts: VersionedContracts,
 }
@@ -274,10 +285,15 @@ impl AggregatedCompilerOutput {
 
     /// adds a new `CompilerOutput` to the aggregated output
     pub fn extend(&mut self, version: Version, output: CompilerOutput) {
-        self.errors.extend(output.errors);
-        self.sources.extend(output.sources);
+        let CompilerOutput { errors, sources, contracts } = output;
+        self.errors.extend(errors);
 
-        for (file_name, new_contracts) in output.contracts {
+        for (path, source_file) in sources {
+            let sources = self.sources.as_mut().entry(path).or_default();
+            sources.push(VersionedSourceFile { source_file, version: version.clone() });
+        }
+
+        for (file_name, new_contracts) in contracts {
             let contracts = self.contracts.as_mut().entry(file_name).or_default();
             for (contract_name, contract) in new_contracts {
                 let versioned = contracts.entry(contract_name).or_default();
@@ -346,8 +362,38 @@ impl AggregatedCompilerOutput {
     /// let (sources, contracts) = output.split();
     /// # }
     /// ```
-    pub fn split(self) -> (SourceFiles, VersionedContracts) {
-        (SourceFiles(self.sources), self.contracts)
+    pub fn split(self) -> (VersionedSourceFiles, VersionedContracts) {
+        (self.sources, self.contracts)
+    }
+
+    /// Strips the given prefix from all file paths to make them relative to the given
+    /// `base` argument.
+    ///
+    /// Convenience method for [Self::strip_prefix_all()] that consumes the type.
+    ///
+    /// # Example
+    ///
+    /// Make all sources and contracts relative to the project's root directory
+    ///
+    /// ```no_run
+    /// use ethers_solc::Project;
+    ///
+    /// let project = Project::builder().build().unwrap();
+    /// let output = project.compile().unwrap().output().with_stripped_file_prefixes(project.root());
+    /// ```
+    pub fn with_stripped_file_prefixes(mut self, base: impl AsRef<Path>) -> Self {
+        let base = base.as_ref();
+        self.contracts.strip_prefix_all(base);
+        self.sources.strip_prefix_all(base);
+        self
+    }
+
+    /// Removes `base` from all contract paths
+    pub fn strip_prefix_all(&mut self, base: impl AsRef<Path>) -> &mut Self {
+        let base = base.as_ref();
+        self.contracts.strip_prefix_all(base);
+        self.sources.strip_prefix_all(base);
+        self
     }
 }
 

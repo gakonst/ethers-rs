@@ -47,7 +47,7 @@ impl GethInstance {
 
 impl Drop for GethInstance {
     fn drop(&mut self) {
-        let _ = self.pid.kill().expect("could not kill geth");
+        self.pid.kill().expect("could not kill geth");
     }
 }
 

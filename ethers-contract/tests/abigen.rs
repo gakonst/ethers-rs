@@ -4,8 +4,11 @@ use ethers_contract::{abigen, EthCall, EthEvent};
 use ethers_core::{
     abi::{AbiDecode, AbiEncode, Address, Tokenizable},
     types::{transaction::eip2718::TypedTransaction, Eip1559TransactionRequest, U256},
+    utils::Ganache,
 };
+use ethers_middleware::SignerMiddleware;
 use ethers_providers::{MockProvider, Provider};
+use ethers_signers::{LocalWallet, Signer};
 use ethers_solc::Solc;
 use std::{convert::TryFrom, sync::Arc};
 
@@ -547,4 +550,43 @@ fn can_gen_reserved_word_field_names() {
     );
 
     let _foo = Foo { ref_: U256::default() };
+}
+
+#[test]
+fn can_handle_overloaded_events() {
+    abigen!(
+        SimpleContract,
+        r#"[
+            event ActionPaused(string cToken, string action, bool pauseState)
+            event ActionPaused(string action, bool pauseState)
+    ]"#
+    );
+
+    let _ev1 = ActionPaused1Filter {
+        c_token: "ctoken".to_string(),
+        action: "action".to_string(),
+        pause_state: false,
+    };
+    let _ev2 = ActionPaused2Filter { action: "action".to_string(), pause_state: false };
+}
+
+#[tokio::test]
+#[cfg(not(feature = "celo"))]
+async fn can_send_struct_param() {
+    abigen!(StructContract, "./tests/solidity-contracts/StructContract.json");
+
+    let server = Ganache::default().spawn();
+    let wallet: LocalWallet = server.keys()[0].clone().into();
+    let provider = Provider::try_from(server.endpoint()).unwrap();
+    let client = Arc::new(SignerMiddleware::new(provider, wallet.with_chain_id(1337u64)));
+
+    let contract = StructContract::deploy(client, ()).unwrap().legacy().send().await.unwrap();
+
+    let point = Point { x: 1337u64.into(), y: 0u64.into() };
+    let tx = contract.submit_point(point).legacy();
+    let tx = tx.send().await.unwrap().await.unwrap().unwrap();
+    assert_eq!(tx.logs.len(), 1);
+
+    let logs: Vec<NewPointFilter> = contract.event().from_block(0u64).query().await.unwrap();
+    assert_eq!(logs.len(), 1);
 }

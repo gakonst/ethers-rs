@@ -1,9 +1,16 @@
 // Taken from <https://github.com/tomusdrw/rust-web3/blob/master/src/types/block.rs>
 use crate::types::{Address, Bloom, Bytes, Transaction, TxHash, H256, U256, U64};
+use chrono::{DateTime, TimeZone, Utc};
 #[cfg(not(feature = "celo"))]
 use core::cmp::Ordering;
-use serde::{ser::SerializeStruct, Deserialize, Deserializer, Serialize, Serializer};
-use std::str::FromStr;
+
+use serde::{
+    de::{MapAccess, Visitor},
+    ser::SerializeStruct,
+    Deserialize, Deserializer, Serialize, Serializer,
+};
+use std::{fmt::Formatter, str::FromStr};
+use thiserror::Error;
 
 /// The block type returned from RPC calls.
 /// This is generic over a `TX` type which will be either the hash or the full transaction,
@@ -19,9 +26,9 @@ pub struct Block<TX> {
     #[cfg(not(feature = "celo"))]
     #[serde(default, rename = "sha3Uncles")]
     pub uncles_hash: H256,
-    /// Miner/author's address.
+    /// Miner/author's address. None if pending.
     #[serde(default, rename = "miner")]
-    pub author: Address,
+    pub author: Option<Address>,
     /// State root hash
     #[serde(default, rename = "stateRoot")]
     pub state_root: H256,
@@ -91,6 +98,18 @@ pub struct Block<TX> {
     pub epoch_snark_data: Option<EpochSnarkData>,
 }
 
+/// Error returned by [`Block::time`].
+#[derive(Clone, Copy, Debug, Error)]
+pub enum TimeError {
+    /// Timestamp is zero.
+    #[error("timestamp is zero")]
+    TimestampZero,
+
+    /// Timestamp is too large for [`DateTime<Utc>`].
+    #[error("timestamp is too large")]
+    TimestampOverflow,
+}
+
 // ref <https://eips.ethereum.org/EIPS/eip-1559>
 #[cfg(not(feature = "celo"))]
 pub const ELASTICITY_MULTIPLIER: U256 = U256([2u64, 0, 0, 0]);
@@ -134,6 +153,26 @@ impl<TX> Block<TX> {
             }
             Ordering::Equal => self.base_fee_per_gas,
         }
+    }
+
+    /// Parse [`Self::timestamp`] into a [`DateTime<Utc>`].
+    ///
+    /// # Errors
+    ///
+    /// * [`TimeError::TimestampZero`] if the timestamp is zero, or
+    /// * [`TimeError::TimestampOverflow`] if the timestamp is too large to be represented as a
+    ///   [`DateTime<Utc>`].
+    pub fn time(&self) -> Result<DateTime<Utc>, TimeError> {
+        if self.timestamp.is_zero() {
+            return Err(TimeError::TimestampZero)
+        }
+        if self.timestamp.bits() > 63 {
+            return Err(TimeError::TimestampOverflow)
+        }
+        // Casting to i64 is safe because the timestamp is guaranteed to be less than 2^63.
+        // TODO: It would be nice if there was `TryInto<i64> for U256`.
+        let secs = self.timestamp.as_u64() as i64;
+        Ok(Utc.timestamp(secs, 0))
     }
 }
 
@@ -412,6 +451,67 @@ impl Serialize for BlockId {
     }
 }
 
+impl<'de> Deserialize<'de> for BlockId {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct BlockIdVisitor;
+
+        impl<'de> Visitor<'de> for BlockIdVisitor {
+            type Value = BlockId;
+
+            fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
+                formatter.write_str("Block identifier following EIP-1898")
+            }
+
+            fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                Ok(BlockId::Number(v.parse().map_err(serde::de::Error::custom)?))
+            }
+
+            fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+            where
+                A: MapAccess<'de>,
+            {
+                let mut number = None;
+                let mut hash = None;
+
+                while let Some(key) = map.next_key::<String>()? {
+                    match key.as_str() {
+                        "blockNumber" => {
+                            if number.is_some() || hash.is_some() {
+                                return Err(serde::de::Error::duplicate_field("blockNumber"))
+                            }
+                            number = Some(BlockId::Number(map.next_value::<BlockNumber>()?))
+                        }
+                        "blockHash" => {
+                            if number.is_some() || hash.is_some() {
+                                return Err(serde::de::Error::duplicate_field("blockHash"))
+                            }
+                            hash = Some(BlockId::Hash(map.next_value::<H256>()?))
+                        }
+                        key => {
+                            return Err(serde::de::Error::unknown_field(
+                                key,
+                                &["blockNumber", "blockHash"],
+                            ))
+                        }
+                    }
+                }
+
+                number.or(hash).ok_or_else(|| {
+                    serde::de::Error::custom("Expected `blockNumber` or `blockHash`")
+                })
+            }
+        }
+
+        deserializer.deserialize_any(BlockIdVisitor)
+    }
+}
+
 /// A block Number (or tag - "latest", "earliest", "pending")
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum BlockNumber {
@@ -461,12 +561,21 @@ impl<'de> Deserialize<'de> for BlockNumber {
         D: Deserializer<'de>,
     {
         let s = String::deserialize(deserializer)?.to_lowercase();
-        Ok(match s.as_str() {
+        s.parse().map_err(serde::de::Error::custom)
+    }
+}
+
+impl FromStr for BlockNumber {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let block = match s {
             "latest" => Self::Latest,
             "earliest" => Self::Earliest,
             "pending" => Self::Pending,
-            n => BlockNumber::Number(U64::from_str(n).map_err(serde::de::Error::custom)?),
-        })
+            n => BlockNumber::Number(n.parse::<U64>().map_err(|err| err.to_string())?),
+        };
+        Ok(block)
     }
 }
 
@@ -475,6 +584,62 @@ impl<'de> Deserialize<'de> for BlockNumber {
 mod tests {
     use super::*;
     use crate::types::{Transaction, TxHash};
+
+    #[test]
+    fn can_parse_eip1898_block_ids() {
+        let num = serde_json::json!(
+            { "blockNumber": "0x0" }
+        );
+        let id = serde_json::from_value::<BlockId>(num).unwrap();
+        assert_eq!(id, BlockId::Number(BlockNumber::Number(0u64.into())));
+
+        let num = serde_json::json!(
+            { "blockNumber": "pending" }
+        );
+        let id = serde_json::from_value::<BlockId>(num).unwrap();
+        assert_eq!(id, BlockId::Number(BlockNumber::Pending));
+
+        let num = serde_json::json!(
+            { "blockNumber": "latest" }
+        );
+        let id = serde_json::from_value::<BlockId>(num).unwrap();
+        assert_eq!(id, BlockId::Number(BlockNumber::Latest));
+
+        let num = serde_json::json!(
+            { "blockNumber": "earliest" }
+        );
+        let id = serde_json::from_value::<BlockId>(num).unwrap();
+        assert_eq!(id, BlockId::Number(BlockNumber::Earliest));
+
+        let num = serde_json::json!("0x0");
+        let id = serde_json::from_value::<BlockId>(num).unwrap();
+        assert_eq!(id, BlockId::Number(BlockNumber::Number(0u64.into())));
+
+        let num = serde_json::json!("pending");
+        let id = serde_json::from_value::<BlockId>(num).unwrap();
+        assert_eq!(id, BlockId::Number(BlockNumber::Pending));
+
+        let num = serde_json::json!("latest");
+        let id = serde_json::from_value::<BlockId>(num).unwrap();
+        assert_eq!(id, BlockId::Number(BlockNumber::Latest));
+
+        let num = serde_json::json!("earliest");
+        let id = serde_json::from_value::<BlockId>(num).unwrap();
+        assert_eq!(id, BlockId::Number(BlockNumber::Earliest));
+
+        let num = serde_json::json!(
+            { "blockHash": "0xd4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3" }
+        );
+        let id = serde_json::from_value::<BlockId>(num).unwrap();
+        assert_eq!(
+            id,
+            BlockId::Hash(
+                "0xd4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3"
+                    .parse()
+                    .unwrap()
+            )
+        );
+    }
 
     #[test]
     fn serde_block_number() {
@@ -566,6 +731,39 @@ mod tests {
         assert_eq!(block_14402712.gas_target(), U256::from(15_000_000u128));
         // next block increasing base fee https://etherscan.io/block/14402713
         assert_eq!(block_14402712.next_block_base_fee(), Some(U256::from(27_978_655_303u128)));
+    }
+
+    #[test]
+    fn pending_block() {
+        let json = serde_json::json!(
+        {
+          "baseFeePerGas": "0x3a460775a",
+          "difficulty": "0x329b1f81605a4a",
+          "extraData": "0xd983010a0d846765746889676f312e31362e3130856c696e7578",
+          "gasLimit": "0x1c950d9",
+          "gasUsed": "0x1386f81",
+          "hash": null,
+          "logsBloom": "0x5a3fc3425505bf83b1ebe6ffead1bbfdfcd6f9cfbd1e5fb7fbc9c96b1bbc2f2f6bfef959b511e4f0c7d3fbc60194fbff8bcff8e7b8f6ba9a9a956fe36473ed4deec3f1bc67f7dabe48f71afb377bdaa47f8f9bb1cd56930c7dfcbfddf283f9697fb1db7f3bedfa3e4dfd9fae4fb59df8ac5d9c369bff14efcee59997df8bb16d47d22f0bfbafb29fbfff6e1e41bca61e37e7bdfde1fe27b9fd3a7adfcb74fe98e6dbcc5f5bb3bd4d4bb6ccd29fd3bd446c7f38dcaf7ff78fb3f3aa668cbffe56291d7fbbebd2549fdfd9f223b3ba61dee9e92ebeb5dc967f711d039ff1cb3c3a8fb3b7cbdb29e6d1e79e6b95c596dfe2be36fd65a4f6fdeebe7efbe6e38037d7",
+          "miner": null,
+          "mixHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "nonce": null,
+          "number": "0xe1a6ee",
+          "parentHash": "0xff1a940068dfe1f9e3f5514e6b7ff5092098d21d706396a9b19602f0f2b11d44",
+          "receiptsRoot": "0xe7df36675953a2d2dd22ec0e44ff59818891170875ebfba5a39f6c85084a6f10",
+          "sha3Uncles": "0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347",
+          "size": "0xd8d6",
+          "stateRoot": "0x2ed13b153d1467deb397a789aabccb287590579cf231bf4f1ff34ac3b4905ce2",
+          "timestamp": "0x6282b31e",
+          "totalDifficulty": null,
+          "transactions": [
+            "0xaad0d53ae350dd06481b42cd097e3f3a4a31e0ac980fac4663b7dd913af20d9b"
+          ],
+          "transactionsRoot": "0xfc5c28cb82d5878172cd1b97429d44980d1cee03c782950ee73e83f1fa8bfb49",
+          "uncles": []
+        }
+        );
+        let block: Block<H256> = serde_json::from_value(json).unwrap();
+        assert!(block.author.is_none());
     }
 }
 

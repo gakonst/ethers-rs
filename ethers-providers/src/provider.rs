@@ -16,9 +16,9 @@ use ethers_core::{
     types::{
         transaction::{eip2718::TypedTransaction, eip2930::AccessListWithGasUsed},
         Address, Block, BlockId, BlockNumber, BlockTrace, Bytes, EIP1186ProofResponse, FeeHistory,
-        Filter, Log, NameOrAddress, Selector, Signature, Trace, TraceFilter, TraceType,
-        Transaction, TransactionReceipt, TransactionRequest, TxHash, TxpoolContent, TxpoolInspect,
-        TxpoolStatus, H256, U256, U64,
+        Filter, FilterBlockOption, Log, NameOrAddress, Selector, Signature, Trace, TraceFilter,
+        TraceType, Transaction, TransactionReceipt, TransactionRequest, TxHash, TxpoolContent,
+        TxpoolInspect, TxpoolStatus, H256, U256, U64,
     },
     utils,
 };
@@ -28,7 +28,9 @@ use thiserror::Error;
 use url::{ParseError, Url};
 
 use futures_util::{lock::Mutex, try_join};
-use std::{convert::TryFrom, fmt::Debug, str::FromStr, sync::Arc, time::Duration};
+use std::{
+    collections::VecDeque, convert::TryFrom, fmt::Debug, str::FromStr, sync::Arc, time::Duration,
+};
 use tracing::trace;
 use tracing_futures::Instrument;
 
@@ -726,12 +728,15 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
             NameOrAddress::Address(addr) => addr,
         };
 
+        // position is a QUANTITY according to the [spec](https://eth.wiki/json-rpc/API#eth_getstorageat): integer of the position in the storage, converting this to a U256
+        // will make sure the number is formatted correctly as [quantity](https://eips.ethereum.org/EIPS/eip-1474#quantity)
+        let position = U256::from_big_endian(location.as_bytes());
+        let position = utils::serialize(&position);
         let from = utils::serialize(&from);
-        let location = utils::serialize(&location);
         let block = utils::serialize(&block.unwrap_or_else(|| BlockNumber::Latest.into()));
 
         // get the hex encoded value.
-        let value: String = self.request("eth_getStorageAt", [from, location, block]).await?;
+        let value: String = self.request("eth_getStorageAt", [from, position, block]).await?;
         // get rid of the 0x prefix and left pad it with zeroes.
         let value = format!("{:0>64}", value.replace("0x", ""));
         Ok(H256::from_slice(&Vec::from_hex(value)?))
@@ -1102,9 +1107,24 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
     where
         P: PubsubClient,
     {
+        let loaded_logs = match filter.block_option {
+            FilterBlockOption::Range { from_block, to_block: _ } => {
+                if from_block.is_none() {
+                    vec![]
+                } else {
+                    self.get_logs(filter).await?
+                }
+            }
+            FilterBlockOption::AtBlockHash(_block_hash) => self.get_logs(filter).await?,
+        };
+        let loaded_logs = VecDeque::from(loaded_logs);
+
         let logs = utils::serialize(&"logs"); // TODO: Make this a static
         let filter = utils::serialize(filter);
-        self.subscribe([logs, filter]).await
+        self.subscribe([logs, filter]).await.map(|mut stream| {
+            stream.set_loaded_elements(loaded_logs);
+            stream
+        })
     }
 
     async fn fee_history<T: Into<U256> + Send + Sync>(
@@ -1507,6 +1527,22 @@ mod tests {
         utils::Geth,
     };
     use futures_util::StreamExt;
+
+    #[test]
+    fn convert_h256_u256_quantity() {
+        let hash: H256 = H256::zero();
+        let quantity = U256::from_big_endian(hash.as_bytes());
+        assert_eq!(format!("{quantity:#x}"), "0x0");
+        assert_eq!(utils::serialize(&quantity).to_string(), "\"0x0\"");
+
+        let address: Address = "0x295a70b2de5e3953354a6a8344e616ed314d7251".parse().unwrap();
+        let block = BlockNumber::Latest;
+        let params =
+            [utils::serialize(&address), utils::serialize(&quantity), utils::serialize(&block)];
+
+        let params = serde_json::to_string(&params).unwrap();
+        assert_eq!(params, r#"["0x295a70b2de5e3953354a6a8344e616ed314d7251","0x0","latest"]"#);
+    }
 
     #[tokio::test]
     // Test vector from: https://docs.ethers.io/ethers.js/v5-beta/api-providers.html#id2

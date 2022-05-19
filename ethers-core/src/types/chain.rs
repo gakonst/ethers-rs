@@ -2,23 +2,26 @@ use serde::Deserialize;
 use thiserror::Error;
 
 use core::convert::TryFrom;
-use std::{default, fmt, str::FromStr};
+use std::{convert::TryInto, default, fmt, str::FromStr};
 
 use crate::types::U256;
+use strum::EnumVariantNames;
 
 #[derive(Debug, Clone, Error)]
 #[error("Failed to parse chain: {0}")]
 pub struct ParseChainError(String);
 
 #[repr(u64)]
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, Deserialize)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, Deserialize, EnumVariantNames)]
 #[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "kebab-case")]
 pub enum Chain {
     Mainnet = 1,
     Ropsten = 3,
     Rinkeby = 4,
     Goerli = 5,
     Kovan = 42,
+    #[strum(serialize = "xdai")]
     XDai = 100,
     Polygon = 137,
     Fantom = 250,
@@ -33,12 +36,14 @@ pub enum Chain {
     Moonriver = 1285,
     Optimism = 10,
     OptimismKovan = 69,
-    BinanceSmartChain = 56,
-    BinanceSmartChainTestnet = 97,
     Arbitrum = 42161,
     ArbitrumTestnet = 421611,
     Cronos = 25,
     CronosTestnet = 338,
+    #[strum(serialize = "bsc")]
+    BinanceSmartChain = 56,
+    #[strum(serialize = "bsc-testnet")]
+    BinanceSmartChainTestnet = 97,
 }
 
 impl fmt::Display for Chain {
@@ -128,6 +133,17 @@ impl TryFrom<u64> for Chain {
     }
 }
 
+impl TryFrom<U256> for Chain {
+    type Error = ParseChainError;
+
+    fn try_from(chain: U256) -> Result<Chain, Self::Error> {
+        if chain.bits() > 64 {
+            return Err(ParseChainError(chain.to_string()))
+        }
+        chain.as_u64().try_into()
+    }
+}
+
 impl FromStr for Chain {
     type Err = ParseChainError;
     fn from_str(chain: &str) -> Result<Self, Self::Err> {
@@ -176,8 +192,7 @@ impl Chain {
                 Chain::BinanceSmartChain |
                 Chain::BinanceSmartChainTestnet |
                 Chain::Arbitrum |
-                Chain::ArbitrumTestnet |
-                Chain::Cronos,
+                Chain::ArbitrumTestnet,
         )
     }
 }

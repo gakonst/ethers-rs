@@ -5,7 +5,6 @@ use crate::{
 };
 use semver::{Version, VersionReq};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
-
 use std::{
     fmt,
     io::BufRead,
@@ -13,10 +12,9 @@ use std::{
     process::{Command, Output, Stdio},
     str::FromStr,
 };
-
-pub mod contracts;
 pub mod many;
 pub mod output;
+pub use output::{contracts, sources};
 pub mod project;
 
 /// The name of the `solc` binary on the system
@@ -271,6 +269,29 @@ impl Solc {
         Ok(Some(Solc::new(solc)))
     }
 
+    /// Returns the path for a [svm](https://github.com/roynalnaruto/svm-rs) installed version.
+    ///
+    /// If the version is not installed yet, it will install it.
+    ///
+    /// # Example
+    /// ```no_run
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    ///  use ethers_solc::Solc;
+    /// let solc = Solc::find_or_install_svm_version("0.8.9").unwrap();
+    /// assert_eq!(solc, Solc::new("~/.svm/0.8.9/solc-0.8.9"));
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[cfg(all(not(target_arch = "wasm32"), all(feature = "svm-solc")))]
+    pub fn find_or_install_svm_version(version: impl AsRef<str>) -> Result<Self> {
+        let version = version.as_ref();
+        if let Some(solc) = Solc::find_svm_installed_version(version)? {
+            Ok(solc)
+        } else {
+            Ok(Solc::blocking_install(&version.parse::<Version>()?)?)
+        }
+    }
+
     /// Assuming the `versions` array is sorted, it returns the first element which satisfies
     /// the provided [`VersionReq`]
     pub fn find_matching_installation(
@@ -373,9 +394,21 @@ impl Solc {
     /// Blocking version of `Self::install`
     #[cfg(all(feature = "svm-solc"))]
     pub fn blocking_install(version: &Version) -> std::result::Result<Self, svm::SolcVmError> {
+        use crate::utils::RuntimeOrHandle;
+
         tracing::trace!("blocking installing solc version \"{}\"", version);
         crate::report::solc_installation_start(version);
-        match svm::blocking_install(version) {
+        // the async version `svm::install` is used instead of `svm::blocking_intsall`
+        // because the underlying `reqwest::blocking::Client` does not behave well
+        // in tokio rt. see https://github.com/seanmonstar/reqwest/issues/1017
+        cfg_if::cfg_if! {
+            if #[cfg(target_arch = "wasm32")] {
+                let installation = svm::blocking_install(version);
+            } else {
+                let installation = RuntimeOrHandle::new().block_on(svm::install(version));
+            }
+        };
+        match installation {
             Ok(path) => {
                 crate::report::solc_installation_success(version);
                 Ok(Solc::new(path))
@@ -725,6 +758,7 @@ mod tests {
         let other = solc().async_compile(&serde_json::json!(input)).await.unwrap();
         assert_eq!(out, other);
     }
+
     #[cfg(feature = "async")]
     #[tokio::test]
     async fn async_solc_compile_works2() {
@@ -770,7 +804,7 @@ mod tests {
             // update this test whenever there's a new sol
             // version. that's ok! good reminder to check the
             // patch notes.
-            (">=0.5.0", "0.8.13"),
+            (">=0.5.0", "0.8.14"),
             // range
             (">=0.4.0 <0.5.0", "0.4.26"),
         ]
@@ -799,6 +833,15 @@ mod tests {
         let res = Solc::find_svm_installed_version(&version.to_string()).unwrap().unwrap();
         let expected = svm::SVM_HOME.join(ver).join(format!("solc-{}", ver));
         assert_eq!(res.solc, expected);
+    }
+
+    #[test]
+    #[cfg(feature = "svm-solc")]
+    fn can_install_solc_in_tokio_rt() {
+        let version = Version::from_str("0.8.6").unwrap();
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let result = rt.block_on(async { Solc::blocking_install(&version) });
+        assert!(result.is_ok());
     }
 
     #[test]

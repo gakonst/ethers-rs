@@ -4,7 +4,7 @@ use crate::artifacts::{
 };
 use semver::Version;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, path::Path};
 
 /// file -> [(contract name  -> Contract + solc version)]
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
@@ -128,6 +128,36 @@ impl VersionedContracts {
             c.into_iter()
                 .flat_map(|(name, c)| c.into_iter().map(move |c| (name.clone(), c.contract)))
         })
+    }
+
+    /// Sets the contract's file paths to `root` adjoined to `self.file`.
+    pub fn join_all(&mut self, root: impl AsRef<Path>) -> &mut Self {
+        let root = root.as_ref();
+        self.0 = std::mem::take(&mut self.0)
+            .into_iter()
+            .map(|(contract_path, contracts)| {
+                (root.join(contract_path).to_string_lossy().to_string(), contracts)
+            })
+            .collect();
+        self
+    }
+
+    /// Removes `base` from all contract paths
+    pub fn strip_prefix_all(&mut self, base: impl AsRef<Path>) -> &mut Self {
+        let base = base.as_ref();
+        self.0 = std::mem::take(&mut self.0)
+            .into_iter()
+            .map(|(contract_path, contracts)| {
+                let p = Path::new(&contract_path);
+                (
+                    p.strip_prefix(base)
+                        .map(|p| p.to_string_lossy().to_string())
+                        .unwrap_or(contract_path),
+                    contracts,
+                )
+            })
+            .collect();
+        self
     }
 }
 
