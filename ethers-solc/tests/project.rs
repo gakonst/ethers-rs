@@ -9,7 +9,10 @@ use std::{
 
 use ethers_core::types::Address;
 use ethers_solc::{
-    artifacts::{BytecodeHash, Libraries, ModelCheckerEngine::CHC, ModelCheckerSettings},
+    artifacts::{
+        BytecodeHash, Libraries, ModelCheckerEngine::CHC, ModelCheckerSettings, UserDoc,
+        UserDocNotice,
+    },
     cache::{SolFilesCache, SOLIDITY_FILES_CACHE_FILENAME},
     project_util::*,
     remappings::Remapping,
@@ -1410,4 +1413,79 @@ fn can_purge_obsolete_artifacts() {
     assert!(!compiled.has_compiler_errors());
     assert!(!compiled.is_unchanged());
     assert_eq!(compiled.into_artifacts().count(), 1);
+}
+
+#[test]
+fn can_parse_notice() {
+    let mut project = TempProject::<ConfigurableArtifacts>::dapptools().unwrap();
+    project.project_mut().artifacts.additional_values.userdoc = true;
+    project.project_mut().solc_config.settings = project.project_mut().artifacts.settings();
+
+    let contract = r#"
+    pragma solidity $VERSION;
+
+   contract Contract {
+      string greeting;
+
+        /**
+         * @notice hello
+         */    
+         constructor(string memory _greeting) public {
+            greeting = _greeting;
+        }
+        
+        /**
+         * @notice hello
+         */
+        function xyz() public {
+        }
+        
+        /// @notice hello
+        function abc() public {
+        }
+   }
+   "#;
+    project.add_source("Contract", contract.replace("$VERSION", "=0.5.17")).unwrap();
+
+    let mut compiled = project.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+    assert!(!compiled.is_unchanged());
+    assert!(compiled.find("Contract").is_some());
+    let userdoc = compiled.remove("Contract").unwrap().userdoc;
+
+    assert_eq!(
+        userdoc,
+        Some(UserDoc {
+            version: None,
+            kind: None,
+            methods: BTreeMap::from([
+                ("abc()".to_string(), UserDocNotice::Method { notice: "hello".to_string() }),
+                ("xyz()".to_string(), UserDocNotice::Method { notice: "hello".to_string() }),
+                ("constructor".to_string(), UserDocNotice::Constructor("hello".to_string())),
+            ]),
+            notice: None
+        })
+    );
+
+    project.add_source("Contract", contract.replace("$VERSION", "^0.8.10")).unwrap();
+
+    let mut compiled = project.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+    assert!(!compiled.is_unchanged());
+    assert!(compiled.find("Contract").is_some());
+    let userdoc = compiled.remove("Contract").unwrap().userdoc;
+
+    assert_eq!(
+        userdoc,
+        Some(UserDoc {
+            version: Some(1),
+            kind: Some("user".to_string()),
+            methods: BTreeMap::from([
+                ("abc()".to_string(), UserDocNotice::Method { notice: "hello".to_string() }),
+                ("xyz()".to_string(), UserDocNotice::Method { notice: "hello".to_string() }),
+                ("constructor".to_string(), UserDocNotice::Method { notice: "hello".to_string() }),
+            ]),
+            notice: None
+        })
+    );
 }
