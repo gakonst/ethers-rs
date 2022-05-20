@@ -58,7 +58,7 @@ jobs:
         run: |
             export PATH=$HOME/bin:$PATH
             export ETHERSCAN_API_KEY=$ETHERSCAN_API_KEY_ETHEREUM
-            cargo test
+            cargo test --features ethers-solc/full
 
   feature-tests:
     name: celo tests
