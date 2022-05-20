@@ -336,9 +336,9 @@ impl ArtifactOutput for ConfigurableArtifacts {
         _path: &str,
         file: &VersionedSourceFile,
     ) -> Option<Self::Artifact> {
-        Some(ConfigurableContractArtifact {
+        file.source_file.ast.clone().map(|ast| ConfigurableContractArtifact {
             id: Some(file.source_file.id),
-            ast: file.source_file.ast.clone(),
+            ast: Some(ast),
             ..Default::default()
         })
     }

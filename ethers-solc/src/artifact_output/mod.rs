@@ -723,7 +723,8 @@ pub trait ArtifactOutput {
         Artifacts(artifacts)
     }
 
-    /// This converts a `SourceFile` that doesn't contain _any_ source units to an artifact.
+    /// This converts a `SourceFile` that doesn't contain _any_ contract definitions (interfaces,
+    /// contracts, libraries) to an artifact.
     ///
     /// We do this because not all `SourceFile`s emitted by solc have at least 1 corresponding entry
     /// in the `contracts`
