@@ -10,7 +10,7 @@ use std::{
 use ethers_core::types::Address;
 use ethers_solc::{
     artifacts::{
-        BytecodeHash, Libraries, ModelCheckerEngine::CHC, ModelCheckerSettings, UserDoc,
+        BytecodeHash, Libraries, Linkable, ModelCheckerEngine::CHC, ModelCheckerSettings, UserDoc,
         UserDocNotice,
     },
     cache::{SolFilesCache, SOLIDITY_FILES_CACHE_FILENAME},
@@ -1429,17 +1429,17 @@ fn can_parse_notice() {
 
         /**
          * @notice hello
-         */    
+         */
          constructor(string memory _greeting) public {
             greeting = _greeting;
         }
-        
+
         /**
          * @notice hello
          */
         function xyz() public {
         }
-        
+
         /// @notice hello
         function abc() public {
         }
