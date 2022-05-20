@@ -55,8 +55,6 @@ macro_rules! rewake_with_new_state {
     };
 }
 
-impl<'a, P> Unpin for LogQuery<'a, P> {}
-
 impl<'a, P> Stream for LogQuery<'a, P>
 where
     P: JsonRpcClient,
