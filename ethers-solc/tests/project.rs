@@ -874,6 +874,71 @@ contract Contract is ParentContract,
 }
 
 #[test]
+fn can_flatten_with_version_pragma_after_imports() {
+    let project = TempProject::dapptools().unwrap();
+
+    let f = project
+        .add_source(
+            "A",
+            r#"
+pragma solidity ^0.8.10;
+
+import * as B from "./B.sol";
+
+contract A { }
+"#,
+        )
+        .unwrap();
+
+    project
+        .add_source(
+            "B",
+            r#"
+import D from "./D.sol";
+pragma solidity ^0.8.10;
+import * as C from "./C.sol";
+contract B { }
+"#,
+        )
+        .unwrap();
+
+    project
+        .add_source(
+            "C",
+            r#"
+pragma solidity ^0.8.10;
+contract C { }
+"#,
+        )
+        .unwrap();
+
+    project
+        .add_source(
+            "D",
+            r#"
+pragma solidity ^0.8.10;
+contract D { }
+"#,
+        )
+        .unwrap();
+
+    let result = project.flatten(&f).unwrap();
+    assert_eq!(
+        result,
+        r#"pragma solidity ^0.8.10;
+
+contract D { }
+
+contract C { }
+
+contract B { }
+
+contract A { }
+"#
+    );
+}
+
+#[test]
 fn can_detect_type_error() {
     let project = TempProject::<ConfigurableArtifacts>::dapptools().unwrap();
 
