@@ -23,9 +23,6 @@ async fn main() -> Result<()> {
    let pair_address = "0xA6108E4d436bE592bAc12F9A0aB7D9A10d821176".parse::<Address>()?;
    let swap_address = "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D".parse::<Address>()?;
 
-//    let liquidity = U256::from_dec_str("50000000")?;
-//    println!("data {}", liquidity);
-   
    // connect to the network
    let provider = Provider::<Http>::try_from("https://rinkeby.infura.io/v3/a111fcada47746d990e0e2b7df50d00a").unwrap();
    
@@ -54,39 +51,35 @@ async fn main() -> Result<()> {
 
     println!("token price in % = {}", price);
 
-    // if (price > 10){
-        println!("Apporoving the transaction!");
-        
-        let contract_with_wallet = pair_contract.connect(Arc::clone(&client));
-        
-        let liquidity = U256::from_dec_str("100")?;
+    println!("Apporoving the transaction!");
+    
+    let contract_with_wallet = pair_contract.connect(Arc::clone(&client));
+    
+    let liquidity:U256 = 100.into();
 
-        let call = contract_with_wallet
-            .method::<_, H256>("approve", (swap_address, liquidity.clone()))?;
+    let call = contract_with_wallet
+        .method::<_, H256>("approve", (swap_address, liquidity.clone()))?;
 
-        let pending_tx = call.send().await?;
-        let receipt = pending_tx.confirmations(6).await?;
-        println!("contract approved succesfully!");
-        println!("{:?}", receipt);
+    let pending_tx = call.send().await?;
+    let receipt = pending_tx.confirmations(1).await?;
+    println!("contract approved succesfully!");
+    println!("{:?}", receipt);
 
-        println!("Removing {} liquidity!", &liquidity);
-        let contract_with_wallet = swap_contract.connect(Arc::clone(&client));
+    println!("Removing {} liquidity!", &liquidity);
+    let contract_with_wallet = swap_contract.connect(Arc::clone(&client));
 
-        let tokena = "0xc843a84f06b55664955fc1b2d368d7c4b1dff8f5".parse::<Address>()?;
-        let tokenb = "0x082442ad36236505c63597b5bae89bdf6298a5a9".parse::<Address>()?;
-        let amounta_min = U256::from_dec_str("0")?;
-        let amountb_min = U256::from_dec_str("0")?;
-        let owner_aadress = "0xF6A996Ce046f5B65C2C3183e9BcbE22d001441F2".parse::<Address>()?;
-        let deadline = U256::from_dec_str("1950886733")?;
-        
-        let call = contract_with_wallet
-        .method::<_, H256>("removeLiquidity", (tokena, tokenb, liquidity, amounta_min, amountb_min, owner_aadress, deadline))?;
+    let tokena = "0xc843a84f06b55664955fc1b2d368d7c4b1dff8f5".parse::<Address>()?;
+    let tokenb = "0x082442ad36236505c63597b5bae89bdf6298a5a9".parse::<Address>()?;
+    let amounta_min = U256::zero();
+    let amountb_min = U256::zero();
+    let owner_aadress = "0xF6A996Ce046f5B65C2C3183e9BcbE22d001441F2".parse::<Address>()?;
+    let deadline: U256 = 1950886733.into();
+    
+    let call = contract_with_wallet
+    .method::<_, H256>("removeLiquidity", (tokena, tokenb, liquidity, amounta_min, amountb_min, owner_aadress, deadline))?;
 
-        let pending_tx = call.send().await?;
-        let receipt = pending_tx.confirmations(2).await?;
-
-        println!("Removed liquidity succesfully!", );
-        println!("{:?}", receipt);
+    let pending_tx = call.send().await?;
+    let receipt = pending_tx.confirmations(1).await?;
 
     Ok(())
 }
