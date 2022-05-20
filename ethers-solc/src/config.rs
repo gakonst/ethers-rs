@@ -13,7 +13,6 @@ use std::{
     collections::{BTreeSet, HashSet},
     fmt::{self, Formatter},
     fs,
-    iter::Peekable,
     path::{Component, Path, PathBuf},
 };
 
@@ -318,7 +317,7 @@ impl ProjectPathsConfig {
             (target_node.experimental(), strip_experimental_pragma),
         ]
         .iter()
-        .filter_map(|(data, condition)| if *condition { data.clone().as_ref() } else { None })
+        .filter_map(|(data, condition)| if *condition { data.to_owned().as_ref() } else { None })
         .collect::<Vec<_>>();
         statements.sort_by_key(|x| x.loc().start);
 
