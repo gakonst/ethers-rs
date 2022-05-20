@@ -1,7 +1,7 @@
 //! Bytecode related types
 
 use crate::{
-    artifacts::{serde_helpers, FunctionDebugData, GeneratedSource, Offsets},
+    artifacts::{serde_helpers, FunctionDebugData, GeneratedSource, Linkable, Offsets},
     sourcemap::{self, SourceMap, SyntaxError},
     utils,
 };
@@ -39,25 +39,8 @@ pub struct CompactBytecode {
     pub link_references: BTreeMap<String, BTreeMap<String, Vec<Offsets>>>,
 }
 
-impl CompactBytecode {
-    /// Returns the parsed source map
-    ///
-    /// See also <https://docs.soliditylang.org/en/v0.8.10/internals/source_mappings.html>
-    pub fn source_map(&self) -> Option<Result<SourceMap, SyntaxError>> {
-        self.source_map.as_ref().map(|map| sourcemap::parse(map))
-    }
-
-    /// Tries to link the bytecode object with the `file` and `library` name.
-    /// Replaces all library placeholders with the given address.
-    ///
-    /// Returns true if the bytecode object is fully linked, false otherwise
-    /// This is a noop if the bytecode object is already fully linked.
-    pub fn link(
-        &mut self,
-        file: impl AsRef<str>,
-        library: impl AsRef<str>,
-        address: Address,
-    ) -> bool {
+impl Linkable for CompactBytecode {
+    fn link(&mut self, file: impl AsRef<str>, library: impl AsRef<str>, address: Address) -> bool {
         if !self.object.is_unlinked() {
             return true
         }
@@ -76,6 +59,19 @@ impl CompactBytecode {
             }
         }
         false
+    }
+
+    fn is_unlinked(&self) -> bool {
+        self.object.is_unlinked()
+    }
+}
+
+impl CompactBytecode {
+    /// Returns the parsed source map
+    ///
+    /// See also <https://docs.soliditylang.org/en/v0.8.10/internals/source_mappings.html>
+    pub fn source_map(&self) -> Option<Result<SourceMap, SyntaxError>> {
+        self.source_map.as_ref().map(|map| sourcemap::parse(map))
     }
 }
 
@@ -111,64 +107,22 @@ impl From<BytecodeObject> for Bytecode {
     }
 }
 
+impl Linkable for Bytecode {
+    fn link(&mut self, file: impl AsRef<str>, library: impl AsRef<str>, address: Address) -> bool {
+        self.compact_bytecode.link(file, library, address)
+    }
+
+    fn is_unlinked(&self) -> bool {
+        self.compact_bytecode.object.is_unlinked()
+    }
+}
+
 impl Bytecode {
     /// Returns the parsed source map
     ///
     /// See also <https://docs.soliditylang.org/en/v0.8.10/internals/source_mappings.html>
     pub fn source_map(&self) -> Option<Result<SourceMap, SyntaxError>> {
         self.compact_bytecode.source_map()
-    }
-
-    /// Same as `Bytecode::link` but with fully qualified name (`file.sol:Math`)
-    pub fn link_fully_qualified(&mut self, name: impl AsRef<str>, addr: Address) -> bool {
-        if let Some((file, lib)) = name.as_ref().split_once(':') {
-            self.link(file, lib, addr)
-        } else {
-            false
-        }
-    }
-
-    /// Tries to link the bytecode object with the `file` and `library` name.
-    /// Replaces all library placeholders with the given address.
-    ///
-    /// Returns true if the bytecode object is fully linked, false otherwise
-    /// This is a noop if the bytecode object is already fully linked.
-    pub fn link(
-        &mut self,
-        file: impl AsRef<str>,
-        library: impl AsRef<str>,
-        address: Address,
-    ) -> bool {
-        self.compact_bytecode.link(file, library, address)
-    }
-
-    /// Links the bytecode object with all provided `(file, lib, addr)`
-    pub fn link_all<I, S, T>(&mut self, libs: I) -> bool
-    where
-        I: IntoIterator<Item = (S, T, Address)>,
-        S: AsRef<str>,
-        T: AsRef<str>,
-    {
-        for (file, lib, addr) in libs.into_iter() {
-            if self.link(file, lib, addr) {
-                return true
-            }
-        }
-        false
-    }
-
-    /// Links the bytecode object with all provided `(fully_qualified, addr)`
-    pub fn link_all_fully_qualified<I, S>(&mut self, libs: I) -> bool
-    where
-        I: IntoIterator<Item = (S, Address)>,
-        S: AsRef<str>,
-    {
-        for (name, addr) in libs.into_iter() {
-            if self.link_fully_qualified(name, addr) {
-                return true
-            }
-        }
-        false
     }
 }
 
@@ -184,12 +138,46 @@ pub enum BytecodeObject {
     Unlinked(String),
 }
 
+impl Linkable for BytecodeObject {
+    fn link(&mut self, file: impl AsRef<str>, library: impl AsRef<str>, address: Address) -> bool {
+        let fully_qualified_name = format!("{}:{}", file.as_ref(), library.as_ref());
+        let name = fully_qualified_name.as_str();
+
+        if let BytecodeObject::Unlinked(ref mut unlinked) = self {
+            let place_holder = utils::library_hash_placeholder(name);
+            // the address as hex without prefix
+            let hex_addr = hex::encode(address);
+
+            // the library placeholder used to be the fully qualified name of the library instead of
+            // the hash. This is also still supported by `solc` so we handle this as well
+            let fully_qualified_placeholder = utils::library_fully_qualified_placeholder(name);
+
+            *unlinked = unlinked
+                .replace(&format!("__{}__", fully_qualified_placeholder), &hex_addr)
+                .replace(&format!("__{}__", place_holder), &hex_addr);
+            self.resolve().is_some()
+        } else {
+            true
+        }
+    }
+
+    fn is_unlinked(&self) -> bool {
+        matches!(self, BytecodeObject::Unlinked(_))
+    }
+}
+
 impl BytecodeObject {
     /// Returns the underlying `Bytes` if the object is a valid bytecode, and not empty
     pub fn into_bytes(self) -> Option<Bytes> {
         match self {
             BytecodeObject::Bytecode(bytes) => Some(bytes),
-            BytecodeObject::Unlinked(_) => None,
+            BytecodeObject::Unlinked(unlinked) => {
+                if let Ok(linked) = hex::decode(unlinked) {
+                    Some(linked.into())
+                } else {
+                    None
+                }
+            }
         }
     }
 
@@ -225,9 +213,9 @@ impl BytecodeObject {
         }
     }
 
-    /// Whether this object is still unlinked
-    pub fn is_unlinked(&self) -> bool {
-        matches!(self, BytecodeObject::Unlinked(_))
+    /// Returns the linked `Bytes` if the object is fully linked
+    pub fn into_linked(self) -> Option<Bytes> {
+        self.into_bytes()
     }
 
     /// Whether this object a valid bytecode
@@ -251,55 +239,6 @@ impl BytecodeObject {
             }
         }
         self.as_bytes()
-    }
-
-    /// Link using the fully qualified name of a library
-    /// The fully qualified library name is the path of its source file and the library name
-    /// separated by `:` like `file.sol:Math`
-    ///
-    /// This will replace all occurrences of the library placeholder with the given address.
-    ///
-    /// See also: <https://docs.soliditylang.org/en/develop/using-the-compiler.html#library-linking>
-    pub fn link_fully_qualified(&mut self, name: impl AsRef<str>, addr: Address) -> &mut Self {
-        if let BytecodeObject::Unlinked(ref mut unlinked) = self {
-            let name = name.as_ref();
-            let place_holder = utils::library_hash_placeholder(name);
-            // the address as hex without prefix
-            let hex_addr = hex::encode(addr);
-
-            // the library placeholder used to be the fully qualified name of the library instead of
-            // the hash. This is also still supported by `solc` so we handle this as well
-            let fully_qualified_placeholder = utils::library_fully_qualified_placeholder(name);
-
-            *unlinked = unlinked
-                .replace(&format!("__{}__", fully_qualified_placeholder), &hex_addr)
-                .replace(&format!("__{}__", place_holder), &hex_addr)
-        }
-        self
-    }
-
-    /// Link using the `file` and `library` names as fully qualified name `<file>:<library>`
-    /// See `BytecodeObject::link_fully_qualified`
-    pub fn link(
-        &mut self,
-        file: impl AsRef<str>,
-        library: impl AsRef<str>,
-        addr: Address,
-    ) -> &mut Self {
-        self.link_fully_qualified(format!("{}:{}", file.as_ref(), library.as_ref(),), addr)
-    }
-
-    /// Links the bytecode object with all provided `(file, lib, addr)`
-    pub fn link_all<I, S, T>(&mut self, libs: I) -> &mut Self
-    where
-        I: IntoIterator<Item = (S, T, Address)>,
-        S: AsRef<str>,
-        T: AsRef<str>,
-    {
-        for (file, lib, addr) in libs.into_iter() {
-            self.link(file, lib, addr);
-        }
-        self
     }
 
     /// Whether the bytecode contains a matching placeholder using the qualified name

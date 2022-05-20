@@ -683,7 +683,7 @@ impl<T: Into<PathBuf>> From<T> for Solc {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Artifact, CompilerInput};
+    use crate::{artifacts::Linkable, Artifact, CompilerInput};
 
     fn solc() -> Solc {
         Solc::default()

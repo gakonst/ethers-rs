@@ -1,5 +1,5 @@
 //! Solc artifact types
-use ethers_core::abi::Abi;
+use ethers_core::{abi::Abi, types::Address};
 
 use colored::Colorize;
 use md5::Digest;
@@ -1667,6 +1667,58 @@ impl SourceFiles {
     }
 }
 
+pub trait Linkable {
+    /// Tries to link the bytecode object with the `file` and `library` name.
+    /// Replaces all library placeholders with the given address.
+    ///
+    /// Returns true if the bytecode object is fully linked, false otherwise
+    /// This is a noop if the bytecode object is already fully linked.
+    fn link(&mut self, file: impl AsRef<str>, library: impl AsRef<str>, address: Address) -> bool;
+    /// Links the bytecode object with all provided `(file, lib, addr)`
+    fn link_all<I, S, T>(&mut self, libs: I) -> bool
+    where
+        I: IntoIterator<Item = (S, T, Address)>,
+        S: AsRef<str>,
+        T: AsRef<str>,
+    {
+        for (file, lib, addr) in libs.into_iter() {
+            if self.link(file, lib, addr) {
+                return true
+            }
+        }
+        false
+    }
+
+    /// Same as `Bytecode::link` but with fully qualified name (`file.sol:Math`)
+    fn link_fully_qualified(&mut self, name: impl AsRef<str>, addr: Address) -> bool {
+        if let Some((file, lib)) = name.as_ref().split_once(':') {
+            self.link(file, lib, addr)
+        } else {
+            false
+        }
+    }
+    /// Links the bytecode object with all provided `(fully_qualified, addr)`
+    fn link_all_fully_qualified<I, S>(&mut self, libs: I) -> bool
+    where
+        I: IntoIterator<Item = (S, Address)>,
+        S: AsRef<str>,
+    {
+        for (name, addr) in libs.into_iter() {
+            if self.link_fully_qualified(name, addr) {
+                return true
+            }
+        }
+        false
+    }
+
+    /// Whether the object is fully linked or not.
+    fn is_linked(&self) -> bool {
+        !self.is_unlinked()
+    }
+    /// Whether the object is fully linked or not.
+    fn is_unlinked(&self) -> bool;
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1723,7 +1775,7 @@ mod tests {
         assert!(object.is_unlinked());
         assert!(object.contains_placeholder("lib2.sol", "L"));
         assert!(object.contains_fully_qualified_placeholder("lib2.sol:L"));
-        assert!(object.link("lib2.sol", "L", Address::random()).resolve().is_some());
+        assert!(object.link("lib2.sol", "L", Address::random()));
         assert!(!object.is_unlinked());
 
         let mut code = Bytecode {
@@ -1749,7 +1801,7 @@ mod tests {
         assert!(object.is_unlinked());
         assert!(object.contains_placeholder("lib2.sol", "L"));
         assert!(object.contains_fully_qualified_placeholder("lib2.sol:L"));
-        assert!(object.link("lib2.sol", "L", Address::default()).resolve().is_some());
+        assert!(object.link("lib2.sol", "L", Address::default()));
         assert!(!object.is_unlinked());
     }
 
