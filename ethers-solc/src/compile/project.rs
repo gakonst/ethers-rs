@@ -716,7 +716,6 @@ mod tests {
         assert!(c.abi.is_some() && c.evm.is_some());
 
         let state = state.write_artifacts().unwrap();
-        dbg!(state.compiled_artifacts.as_ref().keys());
         assert_eq!(state.compiled_artifacts.as_ref().len(), 1);
 
         let out = state.write_cache().unwrap();

@@ -1243,13 +1243,14 @@ fn can_recompile_unchanged_with_empty_files() {
 fn can_emit_empty_artifacts() {
     let tmp = TempProject::dapptools().unwrap();
 
-    tmp.add_source(
-        "top_level",
-        r#"
+    let top_level = tmp
+        .add_source(
+            "top_level",
+            r#"
     function test() {}
    "#,
-    )
-    .unwrap();
+        )
+        .unwrap();
 
     tmp.add_source(
         "Contract",
@@ -1271,6 +1272,35 @@ contract Contract {
     let compiled = tmp.compile().unwrap();
     assert!(!compiled.has_compiler_errors());
     assert!(compiled.find("Contract").is_some());
+    assert!(compiled.find("top_level").is_some());
+    let mut artifacts = tmp.artifacts_snapshot().unwrap();
+
+    assert_eq!(artifacts.artifacts.as_ref().len(), 2);
+
+    let mut top_level =
+        artifacts.artifacts.as_mut().remove(top_level.to_string_lossy().as_ref()).unwrap();
+
+    assert_eq!(top_level.len(), 1);
+
+    let artifact = top_level.remove("top_level").unwrap().remove(0);
+    assert!(artifact.artifact.ast.is_some());
+
+    // recompile
+    let compiled = tmp.compile().unwrap();
+    assert!(compiled.is_unchanged());
+
+    // modify standalone file
+
+    tmp.add_source(
+        "top_level",
+        r#"
+    error MyError();
+    function test() {}
+   "#,
+    )
+    .unwrap();
+    let compiled = tmp.compile().unwrap();
+    assert!(!compiled.is_unchanged());
 }
 
 #[test]

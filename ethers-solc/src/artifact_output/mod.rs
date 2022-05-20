@@ -648,7 +648,6 @@ pub trait ArtifactOutput {
                 for contract in versioned_contracts {
                     let source_file = sources.find_file_and_version(file, &contract.version);
 
-                    println!("{} found source file for {}", source_file.is_some(), file,);
                     if let Some(source) = source_file {
                         non_standalone_sources.insert((source.id, &contract.version));
                     }
@@ -683,7 +682,11 @@ pub trait ArtifactOutput {
                 if !non_standalone_sources.contains(&(source.source_file.id, &source.version)) {
                     // scan the ast as a safe measure to ensure this file does not include any
                     // source units
-                    if source.source_file.contains_contract_definition() {
+                    // there's also no need to create a standalone artifact for source files that
+                    // don't contain an ast
+                    if source.source_file.contains_contract_definition() ||
+                        source.source_file.ast.is_none()
+                    {
                         continue
                     }
 
@@ -705,7 +708,6 @@ pub trait ArtifactOutput {
                                 .or_default();
 
                             if entries.iter().all(|entry| entry.version != source.version) {
-                                println!("inserting source file {}", file);
                                 entries.push(ArtifactFile {
                                     artifact,
                                     file: artifact_path,
