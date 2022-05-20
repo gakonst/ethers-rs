@@ -188,12 +188,12 @@ jobs:
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
-      - name: Set up node
-        uses: actions/setup-node@v1
+
+      - name: Install Anvil
+        uses: foundry-rs/foundry-toolchain@v1
         with:
-          node-version: 10
-      - name: Install ganache
-        run: npm install -g ganache
+          version: nightly
+
       - name: Install Solc
         run: |
             mkdir -p "$HOME/bin"
@@ -202,15 +202,6 @@ jobs:
             export PATH=$HOME/bin:$PATH
             solc --version
 
-      - name: Install geth
-        run: |
-            mkdir -p "$HOME/bin"
-            wget -q https://gethstore.blob.core.windows.net/builds/geth-linux-amd64-1.9.23-8c2f2715.tar.gz
-            tar -xvf geth-linux-amd64-1.9.23-8c2f2715.tar.gz
-            mv geth-linux-amd64-1.9.23-8c2f2715/geth $HOME/bin/geth
-            chmod u+x "$HOME/bin/geth"
-            export PATH=$HOME/bin:$PATH
-            geth version
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1
         with:
