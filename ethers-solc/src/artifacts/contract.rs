@@ -104,12 +104,12 @@ impl ContractBytecode {
     pub fn all_link_references(&self) -> BTreeMap<String, BTreeMap<String, Vec<Offsets>>> {
         let mut links = BTreeMap::new();
         if let Some(bcode) = &self.bytecode {
-            links.extend(bcode.link_references.clone());
+            links.extend(bcode.compact_bytecode.link_references.clone());
         }
 
         if let Some(d_bcode) = &self.deployed_bytecode {
             if let Some(bcode) = &d_bcode.bytecode {
-                links.extend(bcode.link_references.clone());
+                links.extend(bcode.compact_bytecode.link_references.clone());
             }
         }
         links
@@ -372,9 +372,9 @@ impl From<ContractBytecode> for CompactContract {
         let ContractBytecode { abi, bytecode, deployed_bytecode } = c;
         Self {
             abi,
-            bin: bytecode.map(|c| c.object),
+            bin: bytecode.map(|c| c.compact_bytecode.object),
             bin_runtime: deployed_bytecode
-                .and_then(|deployed| deployed.bytecode.map(|code| code.object)),
+                .and_then(|deployed| deployed.bytecode.map(|code| code.compact_bytecode.object)),
         }
     }
 }
@@ -390,8 +390,8 @@ impl From<ContractBytecodeSome> for CompactContract {
     fn from(c: ContractBytecodeSome) -> Self {
         Self {
             abi: Some(c.abi),
-            bin: Some(c.bytecode.object),
-            bin_runtime: c.deployed_bytecode.bytecode.map(|code| code.object),
+            bin: Some(c.bytecode.compact_bytecode.object),
+            bin_runtime: c.deployed_bytecode.bytecode.map(|code| code.compact_bytecode.object),
         }
     }
 }
@@ -514,10 +514,10 @@ impl<'a> From<&'a Contract> for CompactContractRef<'a> {
     fn from(c: &'a Contract) -> Self {
         let (bin, bin_runtime) = if let Some(ref evm) = c.evm {
             (
-                evm.bytecode.as_ref().map(|c| &c.object),
-                evm.deployed_bytecode
-                    .as_ref()
-                    .and_then(|deployed| deployed.bytecode.as_ref().map(|evm| &evm.object)),
+                evm.bytecode.as_ref().map(|c| &c.compact_bytecode.object),
+                evm.deployed_bytecode.as_ref().and_then(|deployed| {
+                    deployed.bytecode.as_ref().map(|evm| &evm.compact_bytecode.object)
+                }),
             )
         } else {
             (None, None)

@@ -66,13 +66,13 @@ impl From<HardhatArtifact> for ContractBytecode {
     fn from(artifact: HardhatArtifact) -> Self {
         let bytecode: Option<Bytecode> = artifact.bytecode.as_ref().map(|t| {
             let mut bcode: Bytecode = t.clone().into();
-            bcode.link_references = artifact.link_references.clone();
+            bcode.compact_bytecode.link_references = artifact.link_references.clone();
             bcode
         });
 
         let deployed_bytecode: Option<DeployedBytecode> = artifact.bytecode.as_ref().map(|t| {
             let mut bcode: Bytecode = t.clone().into();
-            bcode.link_references = artifact.deployed_link_references.clone();
+            bcode.compact_bytecode.link_references = artifact.deployed_link_references.clone();
             bcode.into()
         });
 
@@ -108,13 +108,13 @@ impl ArtifactOutput for HardhatArtifacts {
             if let Some(evm) = contract.evm {
                 let (deployed_bytecode, deployed_link_references) =
                     if let Some(code) = evm.deployed_bytecode.and_then(|code| code.bytecode) {
-                        (Some(code.object), code.link_references)
+                        (Some(code.compact_bytecode.object), code.compact_bytecode.link_references)
                     } else {
                         (None, Default::default())
                     };
 
                 let (bytecode, link_ref) = if let Some(bc) = evm.bytecode {
-                    (Some(bc.object), bc.link_references)
+                    (Some(bc.compact_bytecode.object), bc.compact_bytecode.link_references)
                 } else {
                     (None, Default::default())
                 };

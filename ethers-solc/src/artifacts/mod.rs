@@ -1728,14 +1728,16 @@ mod tests {
 
         let mut code = Bytecode {
             function_debug_data: Default::default(),
-            object: parse_bytecode(bytecode),
+            compact_bytecode: CompactBytecode {
+                object: parse_bytecode(bytecode),
+                source_map: None,
+                link_references: BTreeMap::from([(
+                    "lib2.sol".to_string(),
+                    BTreeMap::from([("L".to_string(), vec![])]),
+                )]),
+            },
             opcodes: None,
-            source_map: None,
             generated_sources: vec![],
-            link_references: BTreeMap::from([(
-                "lib2.sol".to_string(),
-                BTreeMap::from([("L".to_string(), vec![])]),
-            )]),
         };
 
         assert!(!code.link("lib2.sol", "Y", Address::random()));

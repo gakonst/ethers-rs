@@ -597,7 +597,7 @@ impl ExtraOutputFiles {
         if self.source_map {
             if let Some(ref evm) = contract.evm {
                 if let Some(ref bytecode) = evm.bytecode {
-                    if let Some(ref sourcemap) = bytecode.source_map {
+                    if let Some(ref sourcemap) = bytecode.compact_bytecode.source_map {
                         let file = file.with_extension("sourcemap");
                         fs::write(&file, sourcemap).map_err(|err| SolcError::io(err, file))?
                     }
