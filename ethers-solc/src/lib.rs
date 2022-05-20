@@ -36,7 +36,7 @@ use crate::{
     artifacts::Sources,
     cache::SolFilesCache,
     error::{SolcError, SolcIoError},
-    sources::VersionedSourceFiles,
+    sources::{VersionedSourceFile, VersionedSourceFiles},
 };
 use artifacts::contract::Contract;
 use compile::output::contracts::VersionedContracts;
@@ -829,6 +829,14 @@ impl<T: ArtifactOutput> ArtifactOutput for Project<T> {
         sources: &VersionedSourceFiles,
     ) -> Artifacts<Self::Artifact> {
         self.artifacts_handler().output_to_artifacts(contracts, sources)
+    }
+
+    fn standalone_source_file_to_artifact(
+        &self,
+        path: &str,
+        file: &VersionedSourceFile,
+    ) -> Option<Self::Artifact> {
+        self.artifacts_handler().standalone_source_file_to_artifact(path, file)
     }
 }
 

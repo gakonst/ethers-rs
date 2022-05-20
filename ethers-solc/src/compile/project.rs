@@ -265,23 +265,25 @@ impl<'a, T: ArtifactOutput> CompiledState<'a, T> {
     fn write_artifacts(self) -> Result<ArtifactsState<'a, T>> {
         let CompiledState { output, cache } = self;
 
-        // write all artifacts via the handler but only if the build succeeded
-        let compiled_artifacts = if cache.project().no_artifacts {
-            cache
-                .project()
-                .artifacts_handler()
-                .output_to_artifacts(&output.contracts, &output.sources)
+        let project = cache.project();
+        // write all artifacts via the handler but only if the build succeeded and project wasn't
+        // configured with `no_artifacts == true`
+        let compiled_artifacts = if project.no_artifacts {
+            project.artifacts_handler().output_to_artifacts(&output.contracts, &output.sources)
         } else if output.has_error() {
             tracing::trace!("skip writing cache file due to solc errors: {:?}", output.errors);
-            cache
-                .project()
-                .artifacts_handler()
-                .output_to_artifacts(&output.contracts, &output.sources)
+            project.artifacts_handler().output_to_artifacts(&output.contracts, &output.sources)
         } else {
-            cache.project().artifacts_handler().on_output(
+            tracing::trace!(
+                "handling artifact output for {} contracts and {} sources",
+                output.contracts.len(),
+                output.sources.len()
+            );
+            // this emits the artifacts via the project's artifacts handler
+            project.artifacts_handler().on_output(
                 &output.contracts,
                 &output.sources,
-                &cache.project().paths,
+                &project.paths,
             )?
         };
 
@@ -714,6 +716,7 @@ mod tests {
         assert!(c.abi.is_some() && c.evm.is_some());
 
         let state = state.write_artifacts().unwrap();
+        dbg!(state.compiled_artifacts.as_ref().keys());
         assert_eq!(state.compiled_artifacts.as_ref().len(), 1);
 
         let out = state.write_cache().unwrap();
