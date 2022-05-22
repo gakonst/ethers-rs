@@ -96,6 +96,8 @@
 
 - Bundle svm, svm-builds and sha2 dependencies in new `svm-solc` feature
   [#1071](https://github.com/gakonst/ethers-rs/pull/1071)
+- Emit artifact files for source files without any ContractDefinition
+  [#1296](https://github.com/gakonst/ethers-rs/pull/1296)
 - Wrap `ethabi::Contract` into new type `LosslessAbi` and `abi: Option<Abi>` with `abi: Option<LosslessAbi>` in `ConfigurableContractArtifact`
   [#952](https://github.com/gakonst/ethers-rs/pull/952)
 - Let `Project` take ownership of `ArtifactOutput` and change trait interface

@@ -1305,6 +1305,160 @@ fn can_recompile_unchanged_with_empty_files() {
 }
 
 #[test]
+fn can_emit_empty_artifacts() {
+    let tmp = TempProject::dapptools().unwrap();
+
+    let top_level = tmp
+        .add_source(
+            "top_level",
+            r#"
+    function test() {}
+   "#,
+        )
+        .unwrap();
+
+    tmp.add_source(
+        "Contract",
+        r#"
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity 0.8.10;
+
+import "./top_level.sol";
+
+contract Contract {
+    function a() public{
+        test();
+    }
+}
+   "#,
+    )
+    .unwrap();
+
+    let compiled = tmp.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+    assert!(compiled.find("Contract").is_some());
+    assert!(compiled.find("top_level").is_some());
+    let mut artifacts = tmp.artifacts_snapshot().unwrap();
+
+    assert_eq!(artifacts.artifacts.as_ref().len(), 2);
+
+    let mut top_level =
+        artifacts.artifacts.as_mut().remove(top_level.to_string_lossy().as_ref()).unwrap();
+
+    assert_eq!(top_level.len(), 1);
+
+    let artifact = top_level.remove("top_level").unwrap().remove(0);
+    assert!(artifact.artifact.ast.is_some());
+
+    // recompile
+    let compiled = tmp.compile().unwrap();
+    assert!(compiled.is_unchanged());
+
+    // modify standalone file
+
+    tmp.add_source(
+        "top_level",
+        r#"
+    error MyError();
+    function test() {}
+   "#,
+    )
+    .unwrap();
+    let compiled = tmp.compile().unwrap();
+    assert!(!compiled.is_unchanged());
+}
+
+#[test]
+fn can_detect_contract_def_source_files() {
+    let tmp = TempProject::dapptools().unwrap();
+
+    let mylib = tmp
+        .add_source(
+            "MyLib",
+            r#"
+        pragma solidity 0.8.10;
+        library MyLib {
+        }
+   "#,
+        )
+        .unwrap();
+
+    let myinterface = tmp
+        .add_source(
+            "MyInterface",
+            r#"
+        pragma solidity 0.8.10;
+        interface MyInterface {}
+   "#,
+        )
+        .unwrap();
+
+    let mycontract = tmp
+        .add_source(
+            "MyContract",
+            r#"
+        pragma solidity 0.8.10;
+        contract MyContract {}
+   "#,
+        )
+        .unwrap();
+
+    let myabstract_contract = tmp
+        .add_source(
+            "MyAbstractContract",
+            r#"
+        pragma solidity 0.8.10;
+        contract MyAbstractContract {}
+   "#,
+        )
+        .unwrap();
+
+    let myerr = tmp
+        .add_source(
+            "MyError",
+            r#"
+        pragma solidity 0.8.10;
+       error MyError();
+   "#,
+        )
+        .unwrap();
+
+    let myfunc = tmp
+        .add_source(
+            "MyFunction",
+            r#"
+        pragma solidity 0.8.10;
+        function abc(){}
+   "#,
+        )
+        .unwrap();
+
+    let compiled = tmp.compile().unwrap();
+    println!("{}", compiled);
+    assert!(!compiled.has_compiler_errors());
+
+    let mut sources = compiled.output().sources;
+    let myfunc = sources.remove_by_path(myfunc.to_string_lossy()).unwrap();
+    assert!(!myfunc.contains_contract_definition());
+
+    let myerr = sources.remove_by_path(myerr.to_string_lossy()).unwrap();
+    assert!(!myerr.contains_contract_definition());
+
+    let mylib = sources.remove_by_path(mylib.to_string_lossy()).unwrap();
+    assert!(mylib.contains_contract_definition());
+
+    let myabstract_contract =
+        sources.remove_by_path(myabstract_contract.to_string_lossy()).unwrap();
+    assert!(myabstract_contract.contains_contract_definition());
+
+    let myinterface = sources.remove_by_path(myinterface.to_string_lossy()).unwrap();
+    assert!(myinterface.contains_contract_definition());
+
+    let mycontract = sources.remove_by_path(mycontract.to_string_lossy()).unwrap();
+    assert!(mycontract.contains_contract_definition());
+}
+
+#[test]
 fn can_compile_sparse_with_link_references() {
     let tmp = TempProject::dapptools().unwrap();
 

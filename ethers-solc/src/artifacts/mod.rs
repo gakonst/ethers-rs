@@ -1634,6 +1634,22 @@ pub struct SourceFile {
     pub ast: Option<Ast>,
 }
 
+// === impl SourceFile ===
+
+impl SourceFile {
+    /// Returns `true` if the source file contains at least 1 `ContractDefinition` such as
+    /// `contract`, `abstract contract`, `interface` or `library`
+    pub fn contains_contract_definition(&self) -> bool {
+        if let Some(ref ast) = self.ast {
+            // contract definitions are only allowed at the source-unit level <https://docs.soliditylang.org/en/latest/grammar.html>
+            return ast.nodes.iter().any(|node| node.node_type == NodeType::ContractDefinition)
+            // abstract contract, interfaces: ContractDefinition
+        }
+
+        false
+    }
+}
+
 /// A wrapper type for a list of source files
 /// `path -> SourceFile`
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]

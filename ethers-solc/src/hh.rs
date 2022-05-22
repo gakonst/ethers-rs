@@ -6,7 +6,7 @@ use crate::{
         contract::{CompactContract, CompactContractBytecode, Contract, ContractBytecode},
         CompactContractBytecodeCow, LosslessAbi, Offsets,
     },
-    ArtifactOutput, SourceFile,
+    ArtifactOutput, SourceFile, VersionedSourceFile,
 };
 use serde::{Deserialize, Serialize};
 use std::{borrow::Cow, collections::btree_map::BTreeMap};
@@ -134,6 +134,14 @@ impl ArtifactOutput for HardhatArtifacts {
             link_references,
             deployed_link_references,
         }
+    }
+
+    fn standalone_source_file_to_artifact(
+        &self,
+        _path: &str,
+        _file: &VersionedSourceFile,
+    ) -> Option<Self::Artifact> {
+        None
     }
 }
 
