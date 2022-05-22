@@ -9,7 +9,7 @@ use ethers_core::{
 fn assert_tokenizeable<T: Tokenizable>() {}
 fn assert_ethcall<T: EthCall>() {}
 
-#[derive(Debug, Clone, PartialEq, EthAbiType)]
+#[derive(Debug, Clone, PartialEq, Eq, EthAbiType)]
 struct ValueChanged {
     old_author: Address,
     new_author: Address,
@@ -23,7 +23,7 @@ struct ValueChangedWrapper {
     msg: String,
 }
 
-#[derive(Debug, Clone, PartialEq, EthAbiType)]
+#[derive(Debug, Clone, PartialEq, Eq, EthAbiType)]
 struct ValueChangedTuple(Address, Address, String, String);
 
 #[derive(Debug, Clone, PartialEq, EthAbiType)]
@@ -49,13 +49,13 @@ fn can_detokenize_struct() {
 
 #[test]
 fn can_derive_abi_type_empty_struct() {
-    #[derive(Debug, Clone, PartialEq, EthAbiType)]
+    #[derive(Debug, Clone, PartialEq, Eq, EthAbiType)]
     struct Call();
 
-    #[derive(Debug, Clone, PartialEq, EthAbiType)]
+    #[derive(Debug, Clone, PartialEq, Eq, EthAbiType)]
     struct Call2 {};
 
-    #[derive(Debug, Clone, PartialEq, EthAbiType)]
+    #[derive(Debug, Clone, PartialEq, Eq, EthAbiType)]
     struct Call3;
 
     assert_tokenizeable::<Call>();
@@ -130,7 +130,7 @@ fn can_detokenize_single_field() {
 
 #[test]
 fn can_derive_eth_event() {
-    #[derive(Debug, Clone, PartialEq, EthEvent)]
+    #[derive(Debug, Clone, PartialEq, Eq, EthEvent)]
     struct ValueChangedEvent {
         old_author: Address,
         new_author: Address,
@@ -157,7 +157,7 @@ fn can_derive_eth_event() {
 
 #[test]
 fn can_set_eth_event_name_attribute() {
-    #[derive(Debug, PartialEq, EthEvent)]
+    #[derive(Debug, PartialEq, Eq, EthEvent)]
     #[ethevent(name = "MyEvent")]
     struct ValueChangedEvent {
         old_author: Address,
@@ -172,7 +172,7 @@ fn can_set_eth_event_name_attribute() {
 
 #[test]
 fn can_detect_various_event_abi_types() {
-    #[derive(Debug, PartialEq, EthEvent)]
+    #[derive(Debug, PartialEq, Eq, EthEvent)]
     struct ValueChangedEvent {
         old_author: Address,
         s: String,
@@ -204,7 +204,7 @@ fn can_detect_various_event_abi_types() {
 
 #[test]
 fn can_set_eth_abi_attribute() {
-    #[derive(Debug, Clone, PartialEq, EthAbiType)]
+    #[derive(Debug, Clone, PartialEq, Eq, EthAbiType)]
     struct SomeType {
         inner: Address,
         msg: String,
@@ -242,7 +242,7 @@ fn can_set_eth_abi_attribute() {
 
 #[test]
 fn can_derive_indexed_and_anonymous_attribute() {
-    #[derive(Debug, PartialEq, EthEvent)]
+    #[derive(Debug, PartialEq, Eq, EthEvent)]
     #[ethevent(anonymous)]
     struct ValueChangedEvent {
         old_author: Address,
@@ -280,7 +280,7 @@ fn can_generate_ethevent_from_json() {
 
 #[test]
 fn can_decode_event_with_no_topics() {
-    #[derive(Debug, PartialEq, EthEvent)]
+    #[derive(Debug, PartialEq, Eq, EthEvent)]
     pub struct LiquidateBorrow {
         liquidator: Address,
         borrower: Address,
@@ -310,7 +310,7 @@ fn can_decode_event_with_no_topics() {
 
 #[test]
 fn can_decode_event_single_param() {
-    #[derive(Debug, PartialEq, EthEvent)]
+    #[derive(Debug, PartialEq, Eq, EthEvent)]
     pub struct OneParam {
         #[ethevent(indexed)]
         param1: U256,
@@ -330,7 +330,7 @@ fn can_decode_event_single_param() {
 
 #[test]
 fn can_decode_event_tuple_single_param() {
-    #[derive(Debug, PartialEq, EthEvent)]
+    #[derive(Debug, PartialEq, Eq, EthEvent)]
     struct OneParam(#[ethevent(indexed)] U256);
 
     let log = RawLog {
@@ -347,7 +347,7 @@ fn can_decode_event_tuple_single_param() {
 
 #[test]
 fn can_decode_event_with_no_params() {
-    #[derive(Debug, PartialEq, EthEvent)]
+    #[derive(Debug, PartialEq, Eq, EthEvent)]
     pub struct NoParam {}
 
     let log = RawLog {
@@ -446,7 +446,7 @@ fn can_derive_ethcall() {
 
 #[test]
 fn can_derive_ethcall_with_nested_structs() {
-    #[derive(Debug, Clone, PartialEq, EthAbiType)]
+    #[derive(Debug, Clone, PartialEq, Eq, EthAbiType)]
     struct SomeType {
         inner: Address,
         msg: String,
@@ -468,7 +468,7 @@ fn can_derive_ethcall_with_nested_structs() {
 
 #[test]
 fn can_derive_for_enum() {
-    #[derive(Debug, Clone, PartialEq, EthAbiType)]
+    #[derive(Debug, Clone, PartialEq, Eq, EthAbiType)]
     enum ActionChoices {
         GoLeft,
         GoRight,
@@ -483,7 +483,7 @@ fn can_derive_for_enum() {
 
 #[test]
 fn can_derive_abi_codec() {
-    #[derive(Debug, Clone, PartialEq, EthAbiType, EthAbiCodec)]
+    #[derive(Debug, Clone, PartialEq, Eq, EthAbiType, EthAbiCodec)]
     pub struct SomeType {
         inner: Address,
         msg: String,
@@ -498,7 +498,7 @@ fn can_derive_abi_codec() {
 
 #[test]
 fn can_derive_abi_codec_single_field() {
-    #[derive(Debug, Clone, PartialEq, EthAbiType, EthAbiCodec)]
+    #[derive(Debug, Clone, PartialEq, Eq, EthAbiType, EthAbiCodec)]
     pub struct SomeType {
         inner: Vec<U256>,
     }
@@ -530,7 +530,7 @@ fn can_derive_abi_codec_single_field() {
 
 #[test]
 fn can_derive_abi_codec_two_field() {
-    #[derive(Debug, Clone, PartialEq, EthAbiType, EthAbiCodec)]
+    #[derive(Debug, Clone, PartialEq, Eq, EthAbiType, EthAbiCodec)]
     pub struct SomeType {
         inner: Vec<U256>,
         addr: Address,

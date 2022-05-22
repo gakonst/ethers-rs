@@ -74,7 +74,7 @@ pub struct StructFieldDeclaration {
 }
 
 /// How the type of a struct field is referenced
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StructType {
     /// The name of the struct (or rather the name of the rust type)
     name: String,
