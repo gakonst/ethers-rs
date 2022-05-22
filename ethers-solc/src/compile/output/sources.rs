@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, path::Path};
 
 /// (source_file path  -> `SourceFile` + solc version)
-#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct VersionedSourceFiles(pub BTreeMap<String, Vec<VersionedSourceFile>>);
 
@@ -277,7 +277,7 @@ impl IntoIterator for VersionedSourceFiles {
 }
 
 /// A [SourceFile] and the compiler version used to compile it
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct VersionedSourceFile {
     pub source_file: SourceFile,
     pub version: Version,

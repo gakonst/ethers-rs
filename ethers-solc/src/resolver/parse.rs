@@ -144,7 +144,7 @@ pub struct SolImport {
     aliases: Vec<SolImportAlias>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SolImportAlias {
     File(String),
     Contract(String, String),

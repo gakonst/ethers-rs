@@ -57,7 +57,7 @@ impl Remapping {
     }
 }
 
-#[derive(thiserror::Error, Debug, PartialEq, PartialOrd)]
+#[derive(thiserror::Error, Debug, PartialEq, Eq, PartialOrd)]
 pub enum RemappingError {
     #[error("no prefix found")]
     NoPrefix,

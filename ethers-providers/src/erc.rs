@@ -54,7 +54,7 @@ impl FromStr for ERCNFT {
 }
 
 /// Supported ERCs
-#[derive(PartialEq)]
+#[derive(PartialEq, Eq)]
 pub enum ERCNFTType {
     ERC721,
     ERC1155,

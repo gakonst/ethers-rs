@@ -22,7 +22,7 @@ impl SyntaxError {
     }
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Eq)]
 enum Token<'a> {
     Number(&'a str),
     Semicolon,
