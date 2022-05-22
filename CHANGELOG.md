@@ -213,6 +213,8 @@
 
 ### Unreleased
 
+- Added tx builder methods to `ContractFactory`
+  [#1289](https://github.com/gakonst/ethers-rs/pull/1289)
 - Relax Clone requirements when Arc<Middleware> is used
   [#1183](https://github.com/gakonst/ethers-rs/pull/1183)
 - Add `EventStream::select` to combine streams with different event types
