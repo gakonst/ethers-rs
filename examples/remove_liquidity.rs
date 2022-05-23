@@ -10,8 +10,8 @@ use eyre::Result;
 
 
 // Remove liquidity from uniswap V2. 
-// This example will remove 500 liquidity of 2 test tokens, TA and TB on rinkbay testnet.
-// THis example uses pair contract and uniswap swap contract to remove liquidity.   
+// This example will remove 500 liquidity of 2 test tokens, TA and TB on Rinkbay testnet.
+// This example uses pair contract and uniswap swap contract to remove liquidity.   
 #[tokio::main]
 async fn main() -> Result<()> {
     
