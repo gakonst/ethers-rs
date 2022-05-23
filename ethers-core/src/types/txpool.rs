@@ -7,7 +7,7 @@ use serde::{
 use std::{collections::BTreeMap, fmt, str::FromStr};
 
 /// Transaction summary as found in the Txpool Inspection property.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TxpoolInspectSummary {
     /// Recipient (None when contract creation)
     pub to: Option<Address>,
@@ -80,6 +80,24 @@ impl<'de> Deserialize<'de> for TxpoolInspectSummary {
         D: Deserializer<'de>,
     {
         deserializer.deserialize_str(TxpoolInspectSummaryVisitor)
+    }
+}
+
+/// Implement the `Serialize` trait for `TxpoolInspectSummary` struct so that the
+/// format matches the one from geth.
+impl Serialize for TxpoolInspectSummary {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let formatted = format!(
+            "{:?}: {} wei + {} gas × {} wei",
+            self.to.unwrap_or_default(),
+            self.value,
+            self.gas,
+            self.gas_price
+        );
+        serializer.serialize_str(&formatted)
     }
 }
 
@@ -274,6 +292,10 @@ mod tests {
 }"#;
         let deserialized: TxpoolInspect = serde_json::from_str(txpool_inspect_json).unwrap();
         assert_eq!(deserialized, expected_txpool_inspect());
+
+        let serialized = serde_json::to_string(&deserialized).unwrap();
+        let deserialized2: TxpoolInspect = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(deserialized2, deserialized);
     }
 
     #[test]
