@@ -50,8 +50,8 @@ async fn main() -> Result<()> {
     println!("Reserves (token A, Token B): ({}, {})", reserve0, reserve1);
 
     let price =
-        if reserve0 > reserve1 { 1000 * reserve0 / reserve1 } else { 1000 * reserve1 / reserve0 }
-            / 1000;
+        if reserve0 > reserve1 { 1000 * reserve0 / reserve1 } else { 1000 * reserve1 / reserve0 } /
+            1000;
     println!("token0 / token1 price = {}", price);
 
     let liquidity = 100.into();
