@@ -371,6 +371,19 @@ impl Filter {
         self.topics[3] = Some(topic.into());
         self
     }
+
+    pub fn is_paginatable(&self) -> bool {
+        self.get_from_block().is_some()
+    }
+
+    pub fn get_from_block(&self) -> Option<U64> {
+        match self.block_option {
+            FilterBlockOption::AtBlockHash(_hash) => None,
+            FilterBlockOption::Range { from_block, to_block: _ } => {
+                from_block.map(|block| block.as_number()).unwrap_or(None)
+            }
+        }
+    }
 }
 
 /// Union type for representing a single value or a vector of values inside a filter

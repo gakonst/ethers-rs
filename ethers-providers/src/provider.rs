@@ -2,7 +2,7 @@ use crate::{
     ens, erc, maybe,
     pubsub::{PubsubClient, SubscriptionStream},
     stream::{FilterWatcher, DEFAULT_POLL_INTERVAL},
-    FromErr, Http as HttpProvider, JsonRpcClient, JsonRpcClientWrapper, MockProvider,
+    FromErr, Http as HttpProvider, JsonRpcClient, JsonRpcClientWrapper, LogQuery, MockProvider,
     PendingTransaction, QuorumProvider, RwClient, SyncingStatus,
 };
 
@@ -645,6 +645,10 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
     /// Returns an array (possibly empty) of logs that match the filter
     async fn get_logs(&self, filter: &Filter) -> Result<Vec<Log>, ProviderError> {
         self.request("eth_getLogs", [filter]).await
+    }
+
+    fn get_logs_paginated<'a>(&'a self, filter: &Filter, page_size: u64) -> LogQuery<'a, P> {
+        LogQuery::new(self, filter).with_page_size(page_size)
     }
 
     /// Streams matching filter logs

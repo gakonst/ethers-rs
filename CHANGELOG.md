@@ -164,6 +164,8 @@
 
 ### Unreleased
 
+- Stream of paginated logs that load logs in small pages
+  [1285](https://github.com/gakonst/ethers-rs/pull/1285)
 - Load previous logs before subscribing to new logs in case fromBlock is set
   [1264](https://github.com/gakonst/ethers-rs/pull/1264)
 - Add retries to the pending transaction future
