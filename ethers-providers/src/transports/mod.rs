@@ -39,5 +39,8 @@ pub use quorum::{Quorum, QuorumError, QuorumProvider, WeightedProvider};
 mod rw;
 pub use rw::{RwClient, RwClientError};
 
+mod rate_aware;
+pub use rate_aware::RateAwareClient;
+
 mod mock;
 pub use mock::{MockError, MockProvider};
