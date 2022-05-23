@@ -11,6 +11,7 @@ use crate::{
         Ast, CompactContractBytecodeCow, DevDoc, Evm, Ewasm, FunctionDebugData, GasEstimates,
         GeneratedSource, LosslessAbi, Metadata, Offsets, Settings, StorageLayout, UserDoc,
     },
+    sources::VersionedSourceFile,
     ArtifactOutput, SolcConfig, SolcError, SourceFile,
 };
 use serde::{Deserialize, Serialize};
@@ -328,6 +329,18 @@ impl ArtifactOutput for ConfigurableArtifacts {
             ast: source_file.and_then(|s| s.ast.clone()),
             generated_sources: generated_sources.unwrap_or_default(),
         }
+    }
+
+    fn standalone_source_file_to_artifact(
+        &self,
+        _path: &str,
+        file: &VersionedSourceFile,
+    ) -> Option<Self::Artifact> {
+        file.source_file.ast.clone().map(|ast| ConfigurableContractArtifact {
+            id: Some(file.source_file.id),
+            ast: Some(ast),
+            ..Default::default()
+        })
     }
 }
 

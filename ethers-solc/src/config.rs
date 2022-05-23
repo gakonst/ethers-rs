@@ -311,39 +311,38 @@ impl ProjectPathsConfig {
         let mut content = content.as_bytes().to_vec();
         let mut offset = 0_isize;
 
-        if strip_license {
-            if let Some(license) = target_node.license() {
-                let license_range = license.loc_by_offset(offset);
-                offset -= license_range.len() as isize;
-                content.splice(license_range, std::iter::empty());
+        let mut statements = [
+            (target_node.license(), strip_license),
+            (target_node.version(), strip_version_pragma),
+            (target_node.experimental(), strip_experimental_pragma),
+        ]
+        .iter()
+        .filter_map(|(data, condition)| if *condition { data.to_owned().as_ref() } else { None })
+        .collect::<Vec<_>>();
+        statements.sort_by_key(|x| x.loc().start);
+
+        let (mut imports, mut statements) =
+            (imports.iter().peekable(), statements.iter().peekable());
+        while imports.peek().is_some() || statements.peek().is_some() {
+            let (next_import_start, next_statement_start) = (
+                imports.peek().map_or(usize::max_value(), |x| x.loc().start),
+                statements.peek().map_or(usize::max_value(), |x| x.loc().start),
+            );
+            if next_statement_start < next_import_start {
+                let repl_range = statements.next().unwrap().loc_by_offset(offset);
+                offset -= repl_range.len() as isize;
+                content.splice(repl_range, std::iter::empty());
+            } else {
+                let import = imports.next().unwrap();
+                let import_path = self.resolve_import(target_dir, import.data().path())?;
+                let s = self.flatten_node(&import_path, graph, imported, true, true, true)?;
+
+                let import_content = s.as_bytes();
+                let import_content_len = import_content.len() as isize;
+                let import_range = import.loc_by_offset(offset);
+                offset += import_content_len - (import_range.len() as isize);
+                content.splice(import_range, import_content.iter().copied());
             }
-        }
-
-        if strip_version_pragma {
-            if let Some(version) = target_node.version() {
-                let version_range = version.loc_by_offset(offset);
-                offset -= version_range.len() as isize;
-                content.splice(version_range, std::iter::empty());
-            }
-        }
-
-        if strip_experimental_pragma {
-            if let Some(experiment) = target_node.experimental() {
-                let experimental_pragma_range = experiment.loc_by_offset(offset);
-                offset -= experimental_pragma_range.len() as isize;
-                content.splice(experimental_pragma_range, std::iter::empty());
-            }
-        }
-
-        for import in imports.iter() {
-            let import_path = self.resolve_import(target_dir, import.data().path())?;
-            let s = self.flatten_node(&import_path, graph, imported, true, true, true)?;
-
-            let import_content = s.as_bytes();
-            let import_content_len = import_content.len() as isize;
-            let import_range = import.loc_by_offset(offset);
-            offset += import_content_len - (import_range.len() as isize);
-            content.splice(import_range, import_content.iter().copied());
         }
 
         let result = String::from_utf8(content).map_err(|err| {

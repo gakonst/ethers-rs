@@ -11,7 +11,7 @@ use rlp::{Decodable, DecoderError, RlpStream};
 use serde::{Deserialize, Serialize};
 
 /// Details of a signed transaction
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct Transaction {
     /// The transaction's hash
     pub hash: H256,
@@ -370,7 +370,7 @@ impl Decodable for Transaction {
 }
 
 /// "Receipt" of an executed transaction: details of its execution.
-#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TransactionReceipt {
     /// Transaction hash.
     #[serde(rename = "transactionHash")]

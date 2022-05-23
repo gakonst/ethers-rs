@@ -379,7 +379,7 @@ impl From<Block<Transaction>> for Block<TxHash> {
     }
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[cfg(feature = "celo")]
 /// Commit-reveal data for generating randomness in the
 /// [Celo protocol](https://docs.celo.org/celo-codebase/protocol/identity/randomness)
@@ -390,7 +390,7 @@ pub struct Randomness {
     pub revealed: Bytes,
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[cfg(feature = "celo")]
 /// SNARK-friendly epoch block signature and bitmap
 pub struct EpochSnarkData {
@@ -400,7 +400,7 @@ pub struct EpochSnarkData {
     pub signature: Bytes,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 /// A Block Hash or Block Number
 pub enum BlockId {
     // TODO: May want to expand this to include the requireCanonical field

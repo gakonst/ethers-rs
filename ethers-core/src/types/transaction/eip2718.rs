@@ -24,7 +24,7 @@ use thiserror::Error;
 /// the `legacy` crate feature. This will disable the `type` flag in the
 /// serialized transaction, and cause contract calls and other common actions
 /// to default to using the legacy transaction type.
-#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Debug)]
 #[cfg_attr(not(feature = "legacy"), serde(tag = "type"))]
 #[cfg_attr(feature = "legacy", serde(untagged))]
 pub enum TypedTransaction {
@@ -742,7 +742,7 @@ mod tests {
         let tx = TypedTransaction::decode(&tx_rlp).unwrap();
 
         {
-            let typed_tx: TypedTransaction = tx.clone().into();
+            let typed_tx: TypedTransaction = tx.clone();
 
             let tx0: TransactionRequest = typed_tx.clone().into();
             assert!(typed_tx.as_legacy_ref().is_none());
@@ -752,7 +752,7 @@ mod tests {
             assert_eq!(tx0, tx1);
         }
         {
-            let typed_tx: TypedTransaction = tx.clone().into();
+            let typed_tx: TypedTransaction = tx.clone();
             let tx0: Eip1559TransactionRequest = typed_tx.clone().into();
             assert_eq!(tx.as_eip1559_ref().unwrap(), &tx0);
 
@@ -761,7 +761,7 @@ mod tests {
             assert_eq!(tx0, tx1);
         }
         {
-            let typed_tx: TypedTransaction = tx.clone().into();
+            let typed_tx: TypedTransaction = tx;
             let tx0: Eip2930TransactionRequest = typed_tx.clone().into();
             assert!(typed_tx.as_eip2930_ref().is_none());
 

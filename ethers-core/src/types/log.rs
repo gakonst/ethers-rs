@@ -9,7 +9,7 @@ use serde::{
 use std::ops::{Range, RangeFrom, RangeTo};
 
 /// A log produced by a transaction.
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Log {
     /// H160. the contract that emitted the log
     pub address: Address,
@@ -74,7 +74,7 @@ impl rlp::Encodable for Log {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum FilterBlockOption {
     Range { from_block: Option<BlockNumber>, to_block: Option<BlockNumber> },
     AtBlockHash(H256),
@@ -157,7 +157,7 @@ impl FilterBlockOption {
 }
 
 /// Filter for
-#[derive(Default, Debug, PartialEq, Clone)]
+#[derive(Default, Debug, PartialEq, Eq, Clone)]
 pub struct Filter {
     /// Filter block options, specifying on which blocks the filter should
     /// match.
@@ -471,7 +471,7 @@ mod tests {
 
     #[test]
     fn can_serde_value_or_array() {
-        #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+        #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
         struct Item {
             value: ValueOrArray<U256>,
         }

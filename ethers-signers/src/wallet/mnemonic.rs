@@ -16,7 +16,7 @@ use thiserror::Error;
 const DEFAULT_DERIVATION_PATH_PREFIX: &str = "m/44'/60'/0'/0/";
 
 /// Represents a structure that can resolve into a `Wallet<SigningKey>`.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MnemonicBuilder<W: Wordlist> {
     /// The mnemonic phrase can be supplied to the builder as a string or a path to the file whose
     /// contents are the phrase. A builder that has a valid phrase should `build` the wallet.
