@@ -67,6 +67,7 @@
 - Add `TransactionReceipt::to` and `TransactionReceipt::from`
   [#1184](https://github.com/gakonst/ethers-rs/pull/1184)
 - Add `From<H160>` and From<Vec<H160>> traits to `ValueOrArray<H160>` [#1199](https://github.com/gakonst/ethers-rs/pull/1200)
+- Fix handling of Websocket connection errors [#1287](https://github.com/gakonst/ethers-rs/pull/1287)
 
 ## ethers-contract-abigen
 
