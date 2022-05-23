@@ -20,7 +20,7 @@ abigen!(
 );
 
 // Remove liquidity from uniswap V2.
-// This example will remove 500 liquidity of 2 test tokens, TA and TB on Rinkbay testnet.
+// This example will remove 500 liquidity of 2 test tokens, TA and TB on Rinkeby testnet.
 // This example uses pair contract and uniswap swap contract to remove liquidity.
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -50,8 +50,8 @@ async fn main() -> Result<()> {
     println!("Reserves (token A, Token B): ({}, {})", reserve0, reserve1);
 
     let price =
-        if reserve0 > reserve1 { 1000 * reserve0 / reserve1 } else { 1000 * reserve1 / reserve0 } /
-            1000;
+        if reserve0 > reserve1 { 1000 * reserve0 / reserve1 } else { 1000 * reserve1 / reserve0 }
+            / 1000;
     println!("token0 / token1 price = {}", price);
 
     let liquidity = 100.into();
