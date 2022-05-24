@@ -42,5 +42,8 @@ pub use rw::{RwClient, RwClientError};
 mod rate_aware;
 pub use rate_aware::RateAwareClient;
 
+mod retry;
+pub use retry::RetryClient;
+
 mod mock;
 pub use mock::{MockError, MockProvider};
