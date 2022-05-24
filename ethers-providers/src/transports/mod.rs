@@ -39,7 +39,9 @@ pub use quorum::{Quorum, QuorumError, QuorumProvider, WeightedProvider};
 mod rw;
 pub use rw::{RwClient, RwClientError};
 
+#[cfg(not(target_arch = "wasm32"))]
 mod retry;
+#[cfg(not(target_arch = "wasm32"))]
 pub use retry::*;
 
 mod mock;

@@ -6,6 +6,9 @@ use crate::{
     PendingTransaction, QuorumProvider, RwClient, SyncingStatus,
 };
 
+#[cfg(not(target_arch = "wasm32"))]
+use crate::transports::{HttpRateLimitRetryPolicy, RetryClient};
+
 #[cfg(feature = "celo")]
 use crate::CeloMiddleware;
 use crate::Middleware;
@@ -1336,6 +1339,38 @@ impl<'a> TryFrom<&'a String> for Provider<HttpProvider> {
 
     fn try_from(src: &'a String) -> Result<Self, Self::Error> {
         Provider::try_from(src.as_str())
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl TryFrom<&str> for Provider<RetryClient<HttpProvider>> {
+    type Error = ParseError;
+
+    fn try_from(src: &str) -> Result<Self, Self::Error> {
+        Ok(Provider::new(RetryClient::new(
+            HttpProvider::new(Url::parse(src)?),
+            Box::new(HttpRateLimitRetryPolicy),
+            10,
+            1,
+        )))
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl TryFrom<String> for Provider<RetryClient<HttpProvider>> {
+    type Error = ParseError;
+
+    fn try_from(src: String) -> Result<Self, Self::Error> {
+        Self::try_from(src.as_str())
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl<'a> TryFrom<&'a String> for Provider<RetryClient<HttpProvider>> {
+    type Error = ParseError;
+
+    fn try_from(src: &'a String) -> Result<Self, Self::Error> {
+        Self::try_from(src.as_str())
     }
 }
 
