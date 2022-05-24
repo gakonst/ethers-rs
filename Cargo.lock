@@ -1170,12 +1170,14 @@ version = "0.6.0"
 dependencies = [
  "bytes",
  "ethers-core",
+ "futures-util",
  "hashers",
  "reqwest",
  "serde",
  "serde_json",
  "tokio",
  "tokio-stream",
+ "tokio-tungstenite",
  "tracing",
  "url",
 ]

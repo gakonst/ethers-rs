@@ -2,7 +2,7 @@
 use std::path::Path;
 use std::{borrow::Cow, error, fmt, sync::Arc};
 
-use ethers_core::types::{Address, Block, Bytes, Transaction, H256, U256};
+use ethers_core::types::{Address, Block, Bytes, Transaction, H256, U256, U64};
 use serde::{Deserialize, Serialize};
 
 #[cfg(all(unix, feature = "ipc"))]
@@ -26,7 +26,7 @@ pub struct Provider<C> {
 }
 
 impl<C> Provider<C> {
-    /// Returns a new [`Provider`].
+    /// Returns a new [`Provider`] using the given `connection`.
     pub fn new(connection: C) -> Self {
         Self { connection }
     }
@@ -46,8 +46,22 @@ impl Provider<Ipc> {
     ///
     /// This fails, if the file at `path` is not a valid IPC socket.
     pub async fn connect(path: impl AsRef<Path>) -> Result<Self, IpcError> {
-        let transport = Ipc::connect(path).await?;
-        Ok(Self { connection: transport })
+        let connection = Ipc::connect(path).await?;
+        Ok(Self { connection })
+    }
+}
+
+#[cfg(all(unix, feature = "ipc"))]
+impl Provider<Arc<Ipc>> {
+    /// Attempts to establish a connection with the IPC socket at the given
+    /// `path`.
+    ///
+    /// # Errors
+    ///
+    /// This fails, if the file at `path` is not a valid IPC socket.    
+    pub async fn connect(path: impl AsRef<Path>) -> Result<Self, IpcError> {
+        let connection = Ipc::connect(path).await?;
+        Ok(Self { connection: Arc::new(connection) })
     }
 }
 
@@ -342,8 +356,22 @@ impl<C: Connection> Provider<C> {
         self.send_request("eth_getTransactionByHash", [hash]).await
     }
 
-    pub async fn get_transaction_by_block_hash_and_index(&self) {}
-    pub async fn get_transaction_by_block_number_and_index(&self) {}
+    pub async fn get_transaction_by_block_hash_and_index(
+        &self,
+        hash: &H256,
+        index: u64,
+    ) -> Result<Option<Transaction>, Box<ProviderError>> {
+        self.send_request("eth_getTransactionByBlockHashAndIndex", (hash, U64::from(index))).await
+    }
+
+    pub async fn get_transaction_by_block_number_and_index(
+        &self,
+        block: BlockNumber,
+        index: u64,
+    ) -> Result<Option<Transaction>, Box<ProviderError>> {
+        self.send_request("eth_getTransactionByBlockNumberAndIndex", (block, U64::from(index)))
+            .await
+    }
 
     /// Returns the receipt of a transaction by transaction hash.
     ///
@@ -354,12 +382,25 @@ impl<C: Connection> Provider<C> {
     ) -> Result<Option<TransactionReceipt>, Box<ProviderError>> {
         self.send_request("eth_getTransactionReceipt", [hash]).await
     }
-    pub async fn get_uncle_by_block_hash_and_index(&self) {}
-    pub async fn get_uncle_by_block_number_and_index(&self) {}
-    pub async fn get_compilers(&self) {}
-    pub async fn get_compile_lll(&self) {}
-    pub async fn get_compile_solidity(&self) {}
-    pub async fn get_compile_serpent(&self) {}
+
+    /// Returns the number of uncles in a block from a block matching the given
+    /// block `hash`.
+    pub async fn get_uncle_count_by_block_hash(
+        &self,
+        hash: &H256,
+    ) -> Result<U256, Box<ProviderError>> {
+        self.send_request("eth_getUncleCountByBlockHash", [hash]).await
+    }
+
+    /// Returns the number of uncles in a block from a block matching the given
+    /// `block` number.
+    pub async fn get_uncle_count_by_block_number(
+        &self,
+        block: BlockNumber,
+    ) -> Result<U256, Box<ProviderError>> {
+        self.send_request("eth_getUncleCountByBlockNumber", [block]).await
+    }
+
     pub async fn new_filter(&self) -> Result<U256, Box<ProviderError>> {
         todo!()
     }
@@ -372,8 +413,9 @@ impl<C: Connection> Provider<C> {
         todo!()
     }
 
+    /// Uninstalls a filter with a given `id`.
     pub async fn uninstall_filter(&self, id: &U256) -> Result<bool, Box<ProviderError>> {
-        todo!()
+        self.send_request("eth_uninstallFilter", [id]).await
     }
 
     /// Sends a request for `method` with `params`, awaits its result and
@@ -401,6 +443,8 @@ impl<C: Connection> Provider<C> {
 }
 
 impl<C: DuplexConnection + Clone> Provider<C> {
+    /// Installs a subscription for new blocks.
+    ///
     /// # Examples
     ///
     /// ```

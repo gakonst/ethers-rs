@@ -22,20 +22,20 @@ pub enum TransportError {
 }
 
 impl TransportError {
-    pub(crate) fn transport(err: impl Into<Box<dyn error::Error + Send + Sync>>) -> Box<Self> {
-        Box::new(Self::Transport(err.into()))
+    pub(crate) fn transport(err: impl Into<Box<dyn error::Error + Send + Sync>>) -> Self {
+        Self::Transport(err.into())
     }
 
-    pub(crate) fn json(input: &str, source: serde_json::Error) -> Box<Self> {
-        Box::new(Self::Json { input: input.to_string(), source })
+    pub(crate) fn json(input: &str, source: serde_json::Error) -> Self {
+        Self::Json { input: input.to_string(), source }
     }
 
-    pub(crate) fn jsonrpc(err: JsonRpcError) -> Box<Self> {
-        Box::new(Self::JsonRpc(err))
+    pub(crate) fn jsonrpc(err: JsonRpcError) -> Self {
+        Self::JsonRpc(err)
     }
 
-    pub(crate) fn to_provider_err(self: Box<Self>) -> Box<ProviderError> {
-        Box::new(ProviderError { kind: ErrorKind::Transport(self), context: "".into() })
+    pub(crate) fn to_provider_err(self) -> Box<ProviderError> {
+        Box::new(ProviderError { kind: ErrorKind::Transport(Box::new(self)), context: "".into() })
     }
 }
 

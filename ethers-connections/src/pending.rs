@@ -1,26 +1,34 @@
 use std::time::Duration;
 
 use ethers_core::types::H256;
-use tokio::time::Interval;
+use tokio::time::{self, Interval};
 
 use crate::{types::TransactionReceipt, Connection, Provider, ProviderError};
 
+/// A pending transaction that can be polled until the reference transaction has
+/// either been dropped or included in a block.
 pub struct PendingTransaction<C> {
+    /// The hash of the submitted pending transaction.
     pub txn_hash: H256,
     provider: Provider<C>,
 }
 
 impl<C: Connection> PendingTransaction<C> {
+    /// Wraps the given `txn_hash` and `provider` that will be used to poll the
+    /// transaction's receipt.
     pub fn new(txn_hash: H256, provider: Provider<C>) -> Self {
         Self { txn_hash, provider }
     }
 
+    /// Polls the [`TransactionReceipt`] for the pending transaction.
+    ///
+    /// The number of `confirmations`
     pub async fn poll_receipt(
         self,
         confirmations: usize,
         interval: Option<Duration>,
     ) -> Result<Option<TransactionReceipt>, Box<ProviderError>> {
-        let mut interval = tokio::time::interval(interval.unwrap_or(Duration::from_secs(17)));
+        let mut interval = time::interval(interval.unwrap_or(Duration::from_secs(17)));
         loop {
             // first tick resolves immediately
             interval.tick().await;
@@ -55,16 +63,12 @@ impl<C: Connection> PendingTransaction<C> {
         loop {
             interval.tick().await;
 
-            // return `None`, if the receipt stops existing at some point (e.g.,
-            // due to a re-org)
-            let receipt = match self.provider.get_transaction_receipt(&self.txn_hash).await? {
-                Some(receipt) => receipt,
-                None => return Ok(None),
-            };
-
-            if receipt.block_number.low_u64() >= wanted_block_number {
-                return Ok(Some(receipt));
+            let latest_block = self.provider.get_block_number().await?;
+            if latest_block < wanted_block_number {
+                continue;
             }
+
+            return self.provider.get_transaction_receipt(&self.txn_hash).await;
         }
     }
 }

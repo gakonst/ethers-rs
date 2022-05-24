@@ -1,5 +1,5 @@
 pub mod connections {
-    //! The parent module containing all [`Connection`](crate::Connection)
+    //! The umbrella module containing all [`Connection`](crate::Connection)
     //! implementations.
 
     #[cfg(feature = "http")]
@@ -11,6 +11,9 @@ pub mod connections {
 
     pub mod noop;
     // pub mod mock;
+
+    #[cfg(any(feature = "ipc", feature = "ws"))]
+    mod common;
 }
 
 pub mod types;
@@ -23,10 +26,11 @@ mod sub;
 
 use std::{future::Future, ops::Deref, pin::Pin};
 
-use ethers_core::types::U256;
 use serde::Serialize;
 use serde_json::value::RawValue;
 use tokio::sync::mpsc;
+
+use ethers_core::types::U256;
 
 pub use crate::{
     provider::{ErrorKind, Provider, ProviderError},
@@ -48,7 +52,7 @@ type DynFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 pub type RequestFuture<'a> = DynFuture<'a, ResponsePayload>;
 
 /// The payload of a request response from a transport.
-pub type ResponsePayload = Result<Box<RawValue>, Box<TransportError>>;
+pub type ResponsePayload = Result<Box<RawValue>, TransportError>;
 
 /// A connection allowing the exchange of Ethereum API JSON-RPC messages between
 /// a local client and a remote API provider.
@@ -104,10 +108,10 @@ impl ConnectionExt for dyn Connection + '_ {}
 /// received for this subscription.
 pub type SubscribeFuture<'a> = DynFuture<'a, SubscribePayload>;
 
-/// ...
-pub type SubscribePayload = Result<Option<NotificationReceiver>, Box<TransportError>>;
+/// The payload of a response to a subscribe request.
+pub type SubscribePayload = Result<Option<NotificationReceiver>, TransportError>;
 
-/// ...
+/// The receiver channel half for subscription notifications.
 pub type NotificationReceiver = mpsc::UnboundedReceiver<Box<RawValue>>;
 
 /// A [`Connection`] that allows publish/subscribe communication with the API
@@ -125,7 +129,7 @@ pub trait DuplexConnection: Connection {
     ///
     /// A previous RPC call to `eth_unsubscribe` is necessary, otherwise, the
     /// provider will continue to send further notifications for this ID.
-    fn unsubscribe(&self, id: U256) -> Result<(), Box<TransportError>>;
+    fn unsubscribe(&self, id: U256) -> Result<(), TransportError>;
 }
 
 #[cfg(test)]

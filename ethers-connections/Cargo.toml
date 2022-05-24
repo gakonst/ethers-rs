@@ -16,7 +16,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 [features]
 default = ["http", "ws", "rustls"]
 http = ["reqwest", "url"]
-ws = ["url"]
+ws = ["futures-util", "tokio/macros", "tokio-tungstenite", "tokio/sync"]
 ipc = ["bytes", "tokio/macros", "tokio/rt", "tokio/sync"]
 
 openssl = []
@@ -29,13 +29,17 @@ dev-rpc = []
 # external
 serde = { version = "1.0.124", default-features = false, features = ["derive"] }
 serde_json = { version = "1.0.64", default-features = false, features = ["raw_value"] }
-tokio = { version = "1.18.1", default-features = false, features = ["sync"] }
+tokio = { version = "1.18.1", default-features = false }
 tokio-stream = "0.1.8"
 
 # external/optional
 bytes = { version = "1.1.0", optional = true }
 reqwest = { version = "0.11.10", default-features = false, optional = true }
 url = { version = "2.2.2", default-features = false, optional = true }
+
+# external/optional (ws)
+futures-util = { version = "0.3.21", optional = true }
+tokio-tungstenite = { version = "0.17.1", default-features = false, features = ["connect"], optional = true }
 
 # internal
 ethers-core = { version = "^0.6.0", path = "../ethers-core", default-features = false }

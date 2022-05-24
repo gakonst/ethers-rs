@@ -56,7 +56,7 @@ impl Ipc {
     ///
     /// Fails, if establishing the connection to the socket fails.
     pub async fn connect(path: impl AsRef<Path>) -> Result<Self, IpcError> {
-        let next_id = AtomicU64::new(0);
+        let next_id = AtomicU64::new(1);
         let (request_tx, request_rx) = mpsc::unbounded_channel();
 
         // try to connect to the IPC socket at `path`
@@ -83,7 +83,7 @@ impl Connection for Ipc {
             let (tx, rx) = oneshot::channel();
             self.request_tx.send(Request::Call { id, tx, request }).map_err(|_| server_exit())?;
 
-            // await the response
+            // await the server's response
             rx.await.map_err(|_| server_exit())?
         })
     }
@@ -102,7 +102,7 @@ impl DuplexConnection for Ipc {
         })
     }
 
-    fn unsubscribe(&self, id: U256) -> Result<(), Box<TransportError>> {
+    fn unsubscribe(&self, id: U256) -> Result<(), TransportError> {
         self.request_tx.send(Request::Unsubscribe { id }).map_err(|_| server_exit())
     }
 }
@@ -129,21 +129,18 @@ fn spawn_ipc_server(stream: UnixStream, request_rx: mpsc::UnboundedReceiver<Requ
 async fn run_ipc_server(mut stream: UnixStream, request_rx: mpsc::UnboundedReceiver<Request>) {
     // the shared state for both reads & writes
     let shared = Shared {
-        pending: FxHashMap::with_capacity_and_hasher(64, BuildHasherDefault::default()).into(),
-        subs: FxHashMap::with_capacity_and_hasher(64, BuildHasherDefault::default()).into(),
+        pending: FxHashMap::with_capacity_and_hasher(64, Default::default()).into(),
+        subs: FxHashMap::with_capacity_and_hasher(64, Default::default()).into(),
     };
 
     // split the stream and run two independent concurrently (local), thereby
     // allowing reads and writes to occurr concurrently
     let (reader, writer) = stream.split();
-    let read = shared.handle_ipc_reads(reader);
-    let write = shared.handle_ipc_writes(writer, request_rx);
-
     // run both loops concurrently & abort (drop) the other once either of them finishes.
     let res = tokio::select! {
         biased;
-        res = read => res,
-        res = write => res,
+        res = shared.handle_ipc_reads(reader) => res,
+        res = shared.handle_ipc_writes(writer, request_rx) => res,
     };
 
     if let Err(e) = res {
@@ -247,7 +244,7 @@ impl Shared {
         Ok(de.byte_offset())
     }
 
-    fn handle_response(&self, id: u64, res: Result<Box<RawValue>, Box<TransportError>>) {
+    fn handle_response(&self, id: u64, res: Result<Box<RawValue>, TransportError>) {
         match self.pending.borrow_mut().remove(&id) {
             Some(tx) => {
                 // if send fails, request has been dropped at the callsite
@@ -326,6 +323,6 @@ impl From<io::Error> for IpcError {
     }
 }
 
-fn server_exit() -> Box<TransportError> {
+fn server_exit() -> TransportError {
     TransportError::transport(IpcError::ServerExit)
 }

@@ -13,9 +13,9 @@ impl Connection for Noop {
 
     fn send_raw_request(&self, _: u64, request: String) -> RequestFuture<'_> {
         Box::pin(async move {
-            Err(Box::new(TransportError::Transport(
+            Err(TransportError::Transport(
                 format!("noop connection requests always fail (request={request})").into(),
-            )))
+            ))
         })
     }
 }
@@ -23,15 +23,15 @@ impl Connection for Noop {
 impl DuplexConnection for Noop {
     fn subscribe(&self, id: U256) -> SubscribeFuture<'_> {
         Box::pin(async move {
-            Err(Box::new(TransportError::Transport(
+            Err(TransportError::Transport(
                 format!("noop connection requests always fail (sub_id={id})").into(),
-            )))
+            ))
         })
     }
 
-    fn unsubscribe(&self, id: U256) -> Result<(), Box<TransportError>> {
-        Err(Box::new(TransportError::Transport(
+    fn unsubscribe(&self, id: U256) -> Result<(), TransportError> {
+        Err(TransportError::Transport(
             format!("noop connection requests always fail (sub_id={id})").into(),
-        )))
+        ))
     }
 }

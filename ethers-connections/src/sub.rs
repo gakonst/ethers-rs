@@ -37,7 +37,7 @@ where
     }
 
     /// Receives the next notification from the stream.
-    pub async fn recv(&mut self) -> Option<Result<T, Box<TransportError>>> {
+    pub async fn recv(&mut self) -> Option<Result<T, TransportError>> {
         let raw = self.rx.recv().await?;
         match serde_json::from_str(raw.get()) {
             Ok(item) => Some(Ok(item)),
@@ -45,7 +45,7 @@ where
         }
     }
 
-    fn poll_recv(&mut self, cx: &mut Context<'_>) -> Poll<Option<Result<T, Box<TransportError>>>> {
+    fn poll_recv(&mut self, cx: &mut Context<'_>) -> Poll<Option<Result<T, TransportError>>> {
         match self.rx.poll_recv(cx) {
             Poll::Ready(Some(raw)) => Poll::Ready(Some(self.parse_next(raw))),
             Poll::Ready(None) => Poll::Ready(None),
@@ -53,7 +53,7 @@ where
         }
     }
 
-    fn parse_next(&self, raw: Box<RawValue>) -> Result<T, Box<TransportError>> {
+    fn parse_next(&self, raw: Box<RawValue>) -> Result<T, TransportError> {
         match serde_json::from_str(raw.get()) {
             Ok(item) => Ok(item),
             Err(source) => Err(TransportError::json(raw.get(), source)),
@@ -87,7 +87,7 @@ where
     T: for<'de> Deserialize<'de>,
     C: DuplexConnection + Clone + Unpin,
 {
-    type Item = Result<T, Box<TransportError>>;
+    type Item = Result<T, TransportError>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         self.get_mut().poll_recv(cx)

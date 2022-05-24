@@ -102,7 +102,7 @@ pub(crate) fn deserialize_sync_status<'de, D: Deserializer<'de>>(
 
 /// The properties for a transaction to be simulated or replayed (see
 /// [`Provider::call`](crate::Provider)).
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TransactionCall {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -262,7 +262,7 @@ impl Default for TransactionType {
 }
 
 /// The receipt for a confirmed transaction.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct TransactionReceipt {
     /// The transaction hash.
