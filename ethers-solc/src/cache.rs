@@ -104,7 +104,12 @@ impl SolFilesCache {
         Ok(cache)
     }
 
-    /// Reads the cache json file from the given path and returns the cache with modified paths
+    /// Reads the cache json file from the given path and returns the cache with paths adjoined to
+    /// the `ProjectPathsConfig`.
+    ///
+    /// This expects the `artifact` files to be relative to the artifacts dir of the `paths` and the
+    /// `CachEntry` paths to be relative to the root dir of the `paths`
+    ///
     ///
     ///
     /// # Example
@@ -120,7 +125,7 @@ impl SolFilesCache {
     /// ```
     pub fn read_joined(paths: &ProjectPathsConfig) -> Result<Self> {
         let mut cache = SolFilesCache::read(&paths.cache)?;
-        cache.join_artifacts_files(&paths.artifacts);
+        cache.join_entries(&paths.root).join_artifacts_files(&paths.artifacts);
         Ok(cache)
     }
 
@@ -137,6 +142,26 @@ impl SolFilesCache {
         serde_json::to_writer_pretty(file, self)?;
         tracing::trace!("cache file located: \"{}\"", path.display());
         Ok(())
+    }
+
+    /// Sets the `CacheEntry`'s file paths to `root` adjoined to `self.file`.
+    pub fn join_entries(&mut self, root: impl AsRef<Path>) -> &mut Self {
+        let root = root.as_ref();
+        self.files = std::mem::take(&mut self.files)
+            .into_iter()
+            .map(|(path, entry)| (root.join(path), entry))
+            .collect();
+        self
+    }
+
+    /// Removes `base` from all `CacheEntry` paths
+    pub fn strip_entries_prefix(&mut self, base: impl AsRef<Path>) -> &mut Self {
+        let base = base.as_ref();
+        self.files = std::mem::take(&mut self.files)
+            .into_iter()
+            .map(|(path, entry)| (path.strip_prefix(base).map(Into::into).unwrap_or(path), entry))
+            .collect();
+        self
     }
 
     /// Sets the artifact files location to `base` adjoined to the `CachEntries` artifacts.
@@ -182,7 +207,7 @@ impl SolFilesCache {
     /// # Example
     ///
     /// ```
-    /// fn t() {
+    /// # fn t() {
     /// use ethers_solc::artifacts::contract::CompactContract;
     /// use ethers_solc::cache::SolFilesCache;
     /// use ethers_solc::Project;
@@ -934,10 +959,13 @@ impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
                 cache
                     .extend(dirty_source_files.into_iter().map(|(file, (entry, _))| (file, entry)));
 
-                cache.strip_artifact_files_prefixes(project.artifacts_path());
-
                 // write to disk
                 if write_to_disk {
+                    // make all `CacheEntry` paths relative to the project root and all artifact
+                    // paths relative to the artifact's directory
+                    cache
+                        .strip_entries_prefix(project.root())
+                        .strip_artifact_files_prefixes(project.artifacts_path());
                     cache.write(project.cache_path())?;
                 }
 

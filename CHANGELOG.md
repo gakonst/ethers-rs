@@ -95,6 +95,8 @@
 
 ### Unreleased
 
+- Save cache entry objects with relative paths
+  [#1307](https://github.com/gakonst/ethers-rs/pull/1307)
 - Bundle svm, svm-builds and sha2 dependencies in new `svm-solc` feature
   [#1071](https://github.com/gakonst/ethers-rs/pull/1071)
 - Emit artifact files for source files without any ContractDefinition
