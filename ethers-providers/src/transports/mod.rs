@@ -40,7 +40,7 @@ mod rw;
 pub use rw::{RwClient, RwClientError};
 
 mod retry;
-pub use retry::RetryClient;
+pub use retry::*;
 
 mod mock;
 pub use mock::{MockError, MockProvider};
