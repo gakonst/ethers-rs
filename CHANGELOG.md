@@ -4,6 +4,7 @@
 
 ### Unreleased
 
+- AWS EIP712 data signing no longer signs with EIP155
 - Added Cronos testnet to etherscan options [1276](https://github.com/gakonst/ethers-rs/pull/1276)
 - Fix parsing of a pending block
   [1272](https://github.com/gakonst/ethers-rs/pull/1272)
