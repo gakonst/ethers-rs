@@ -251,10 +251,11 @@ impl<'a> super::Signer for AwsSigner<'a> {
         &self,
         payload: &T,
     ) -> Result<EthSig, Self::Error> {
-        let digest = payload.encode_eip712().map_err(|e| Self::Error::Eip712Error(e.to_string()))?;
+        let digest =
+            payload.encode_eip712().map_err(|e| Self::Error::Eip712Error(e.to_string()))?;
 
-        let sig = self.sign_digest(digest.into()).await?;
-        let sig = utils::rsig_from_digest_bytes_trial_recovery(&sig, digest.into(), &self.pubkey);
+        let sig = self.sign_digest(digest).await?;
+        let sig = utils::rsig_from_digest_bytes_trial_recovery(&sig, digest, &self.pubkey);
         let sig = rsig_to_ethsig(&sig);
 
         Ok(sig)
