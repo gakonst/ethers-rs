@@ -1524,7 +1524,7 @@ mod tests {
         types::{
             transaction::eip2930::AccessList, Eip1559TransactionRequest, TransactionRequest, H256,
         },
-        utils::Geth,
+        utils::Anvil,
     };
     use futures_util::StreamExt;
 
@@ -1605,7 +1605,7 @@ mod tests {
     #[cfg_attr(feature = "celo", ignore)]
     async fn test_new_block_filter() {
         let num_blocks = 3;
-        let geth = Geth::new().block_time(2u64).spawn();
+        let geth = Anvil::new().block_time(2u64).spawn();
         let provider = Provider::<Http>::try_from(geth.endpoint())
             .unwrap()
             .interval(Duration::from_millis(1000));
@@ -1649,7 +1649,7 @@ mod tests {
     async fn test_new_pending_txs_filter() {
         let num_txs = 5;
 
-        let geth = Geth::new().block_time(2u64).spawn();
+        let geth = Anvil::new().block_time(2u64).spawn();
         let provider = Provider::<Http>::try_from(geth.endpoint())
             .unwrap()
             .interval(Duration::from_millis(1000));

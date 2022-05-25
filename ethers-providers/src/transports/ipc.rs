@@ -325,7 +325,7 @@ mod test {
     use super::*;
     use ethers_core::{
         types::{Block, TxHash, U256},
-        utils::Geth,
+        utils::Anvil,
     };
     use tempfile::NamedTempFile;
 
@@ -333,7 +333,7 @@ mod test {
     async fn request() {
         let temp_file = NamedTempFile::new().unwrap();
         let path = temp_file.into_temp_path().to_path_buf();
-        let _geth = Geth::new().block_time(1u64).ipc_path(&path).spawn();
+        let _geth = Anvil::new().block_time(1u64).ipc_path(&path).spawn();
         let ipc = Ipc::connect(path).await.unwrap();
 
         let block_num: U256 = ipc.request("eth_blockNumber", ()).await.unwrap();
@@ -346,7 +346,7 @@ mod test {
     async fn subscription() {
         let temp_file = NamedTempFile::new().unwrap();
         let path = temp_file.into_temp_path().to_path_buf();
-        let _geth = Geth::new().block_time(2u64).ipc_path(&path).spawn();
+        let _geth = Anvil::new().block_time(2u64).ipc_path(&path).spawn();
         let ipc = Ipc::connect(path).await.unwrap();
 
         let sub_id: U256 = ipc.request("eth_subscribe", ["newHeads"]).await.unwrap();

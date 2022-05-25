@@ -265,7 +265,7 @@ mod tests {
     use crate::{Http, Ws};
     use ethers_core::{
         types::{TransactionReceipt, TransactionRequest},
-        utils::{Anvil, Geth},
+        utils::Anvil,
     };
     use futures_util::{FutureExt, StreamExt};
     use std::{collections::HashSet, convert::TryFrom};
@@ -273,7 +273,7 @@ mod tests {
     #[tokio::test]
     async fn can_stream_pending_transactions() {
         let num_txs = 5;
-        let geth = Geth::new().block_time(2u64).spawn();
+        let geth = Anvil::new().block_time(2u64).spawn();
         let provider = Provider::<Http>::try_from(geth.endpoint())
             .unwrap()
             .interval(Duration::from_millis(1000));
