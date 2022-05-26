@@ -44,8 +44,9 @@ where
     /// Example:
     ///
     /// ```no_run
-    /// use ethers_providers::{Http, RetryClient};
+    /// use ethers_providers::{Http, RetryClient, HttpRateLimitRetryPolicy};
     /// use std::time::Duration;
+    /// use url::Url;
     ///
     /// let http = Http::new(Url::parse("http://localhost:8545").unwrap());
     /// let delay = Duration::new(10, 0);
