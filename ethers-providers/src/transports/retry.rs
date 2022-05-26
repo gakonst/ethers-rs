@@ -1,7 +1,7 @@
 //! A [JsonRpcClient] implementation that retries requests filtered by [RetryPolicy]
 //! with an exponential backoff.
 
-use super::http::ClientError;
+use super::{common::JsonRpcError, http::ClientError};
 use crate::{provider::ProviderError, JsonRpcClient};
 
 use std::{
@@ -166,6 +166,8 @@ impl RetryPolicy<ClientError> for HttpRateLimitRetryPolicy {
             ClientError::ReqwestError(err) => {
                 err.status() == Some(http::StatusCode::TOO_MANY_REQUESTS)
             }
+            // alchemy throws it this way
+            ClientError::JsonRpcError(JsonRpcError { code, message: _, data: _ }) => *code == 429,
             _ => false,
         }
     }
