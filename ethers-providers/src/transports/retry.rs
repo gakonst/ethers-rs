@@ -128,6 +128,7 @@ where
             {
                 let ret = self.inner.request(method, params.clone()).await;
                 if let Ok(ret) = ret {
+                    self.requests_enqueued.fetch_sub(1, Ordering::SeqCst);
                     return Ok(ret)
                 }
 
@@ -149,6 +150,7 @@ where
                 tokio::time::sleep(Duration::new(next_backoff, 0)).await;
                 continue
             } else {
+                self.requests_enqueued.fetch_sub(1, Ordering::SeqCst);
                 return Err(RetryClientError::ProviderError(err))
             }
         }

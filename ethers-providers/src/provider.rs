@@ -1348,12 +1348,12 @@ impl<'a> TryFrom<&'a String> for Provider<HttpProvider> {
 
 #[cfg(not(target_arch = "wasm32"))]
 impl Provider<RetryClient<HttpProvider>> {
-    pub fn new_client(src: &str) -> Result<Self, ParseError> {
+    pub fn new_client(src: &str, max_retry: u32, initial_backoff: u64) -> Result<Self, ParseError> {
         Ok(Provider::new(RetryClient::new(
             HttpProvider::new(Url::parse(src)?),
             Box::new(HttpRateLimitRetryPolicy),
-            10,
-            1,
+            max_retry,
+            initial_backoff,
         )))
     }
 }
