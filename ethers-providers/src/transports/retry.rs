@@ -7,7 +7,7 @@ use crate::{provider::ProviderError, JsonRpcClient};
 use std::{
     clone::Clone,
     fmt::Debug,
-    sync::atomic::{AtomicU64, Ordering},
+    sync::atomic::{AtomicU32, Ordering},
     time::Duration,
 };
 
@@ -30,9 +30,9 @@ where
     T::Error: Sync + Send + 'static,
 {
     inner: T,
-    requests_enqueued: AtomicU64,
+    requests_enqueued: AtomicU32,
     policy: Box<dyn RetryPolicy<T::Error>>,
-    max_retry: u64,
+    max_retry: u32,
     initial_backoff: u64,
 }
 
@@ -55,11 +55,11 @@ where
     pub fn new(
         inner: T,
         policy: Box<dyn RetryPolicy<T::Error>>,
-        max_retry: u64,
+        max_retry: u32,
         // in seconds
         initial_backoff: u64,
     ) -> Self {
-        Self { inner, requests_enqueued: AtomicU64::new(0), policy, max_retry, initial_backoff }
+        Self { inner, requests_enqueued: AtomicU32::new(0), policy, max_retry, initial_backoff }
     }
 }
 
@@ -119,7 +119,7 @@ where
             .map_err(|err| RetryClientError::SerdeJson(err))?
             .to_string();
 
-        let mut retry_number: u64 = 0;
+        let mut retry_number: u32 = 0;
 
         loop {
             let err;
@@ -143,7 +143,10 @@ where
             let should_retry = self.policy.should_retry(&err);
             if should_retry {
                 let current_queued_requests = self.requests_enqueued.load(Ordering::SeqCst);
-                let next_backoff = self.initial_backoff * (retry_number + current_queued_requests);
+                // using `retry_number + current_queued_requests` for creating back pressure because
+                // of already queued requests
+                let next_backoff =
+                    self.initial_backoff * 2u64.pow(retry_number + current_queued_requests);
                 tokio::time::sleep(Duration::new(next_backoff, 0)).await;
                 continue
             } else {
