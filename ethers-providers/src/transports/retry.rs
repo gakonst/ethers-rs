@@ -1,5 +1,5 @@
 //! A [JsonRpcClient] implementation that retries requests filtered by [RetryPolicy]
-//! and [Backoff] strategy.
+//! with an exponential backoff.
 
 use super::http::ClientError;
 use crate::{provider::ProviderError, JsonRpcClient};
@@ -22,7 +22,7 @@ pub trait RetryPolicy<E>: Send + Sync + Debug {
 }
 
 /// [RetryClient] presents as a wrapper around [JsonRpcClient] that will retry
-/// requests based on [Backoff] strategy and filtering based on [RetryPolicy].
+/// requests based with an exponential backoff and filtering based on [RetryPolicy].
 #[derive(Debug)]
 pub struct RetryClient<T>
 where
@@ -44,11 +44,12 @@ where
     /// Example:
     ///
     /// ```no_run
-    /// async fn t() {
+    /// use ethers_providers::{Http, RetryClient};
+    /// use std::time::Duration;
+    ///
     /// let http = Http::new(Url::parse("http://localhost:8545").unwrap());
     /// let delay = Duration::new(10, 0);
     /// let client = RetryClient::new(http, HttpRateLimitRetryPolicy::new(), 10, 1);
-    /// }
     /// ```
     pub fn new(
         inner: T,
@@ -64,7 +65,7 @@ where
 /// Error thrown when:
 /// 1. Internal client throws an error we do not wish to try to recover from.
 /// 2. Params serialization failed.
-/// 3. Request timed out i.e. `Backoff::next_backoff` returned `None`.
+/// 3. Request timed out i.e. max retries were already made.
 #[derive(Error, Debug)]
 pub enum RetryClientError<T>
 where

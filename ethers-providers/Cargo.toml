@@ -47,7 +47,6 @@ hashers = "1.0.1"
 tokio-util = { version = "0.7.2", default-features = false, features = ["io"], optional = true }
 tokio = { version = "1.5", default-features = false, optional = true }
 tokio-tungstenite = { version = "0.17.1", default-features = false, features = ["connect"], optional = true }
-backoff = { version = "0.4.0", features = ["futures", "tokio"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 ws_stream_wasm = "0.7"
