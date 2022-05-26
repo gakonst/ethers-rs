@@ -4,6 +4,7 @@
 
 ### Unreleased
 
+- AWS EIP712 data signing no longer signs with EIP155
 - Added Cronos testnet to etherscan options [1276](https://github.com/gakonst/ethers-rs/pull/1276)
 - Fix parsing of a pending block
   [1272](https://github.com/gakonst/ethers-rs/pull/1272)
@@ -67,6 +68,7 @@
 - Add `TransactionReceipt::to` and `TransactionReceipt::from`
   [#1184](https://github.com/gakonst/ethers-rs/pull/1184)
 - Add `From<H160>` and From<Vec<H160>> traits to `ValueOrArray<H160>` [#1199](https://github.com/gakonst/ethers-rs/pull/1200)
+- Fix handling of Websocket connection errors [#1287](https://github.com/gakonst/ethers-rs/pull/1287)
 
 ## ethers-contract-abigen
 
@@ -94,6 +96,8 @@
 
 ### Unreleased
 
+- Save cache entry objects with relative paths
+  [#1307](https://github.com/gakonst/ethers-rs/pull/1307)
 - Bundle svm, svm-builds and sha2 dependencies in new `svm-solc` feature
   [#1071](https://github.com/gakonst/ethers-rs/pull/1071)
 - Emit artifact files for source files without any ContractDefinition
@@ -163,6 +167,8 @@
 
 ### Unreleased
 
+- Stream of paginated logs that load logs in small pages
+  [1285](https://github.com/gakonst/ethers-rs/pull/1285)
 - Load previous logs before subscribing to new logs in case fromBlock is set
   [1264](https://github.com/gakonst/ethers-rs/pull/1264)
 - Add retries to the pending transaction future

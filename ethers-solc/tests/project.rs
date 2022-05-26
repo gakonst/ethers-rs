@@ -1708,3 +1708,65 @@ fn can_parse_notice() {
         })
     );
 }
+
+#[test]
+fn test_relative_cache_entries() {
+    let project = TempProject::dapptools().unwrap();
+    let _a = project
+        .add_source(
+            "A",
+            r#"
+pragma solidity ^0.8.10;
+contract A { }
+"#,
+        )
+        .unwrap();
+    let _b = project
+        .add_source(
+            "B",
+            r#"
+pragma solidity ^0.8.10;
+contract B { }
+"#,
+        )
+        .unwrap();
+    let _c = project
+        .add_source(
+            "C",
+            r#"
+pragma solidity ^0.8.10;
+contract C { }
+"#,
+        )
+        .unwrap();
+    let _d = project
+        .add_source(
+            "D",
+            r#"
+pragma solidity ^0.8.10;
+contract D { }
+"#,
+        )
+        .unwrap();
+
+    let compiled = project.compile().unwrap();
+    println!("{}", compiled);
+    assert!(!compiled.has_compiler_errors());
+
+    let cache = SolFilesCache::read(project.cache_path()).unwrap();
+
+    let entries = vec![
+        PathBuf::from("src/A.sol"),
+        PathBuf::from("src/B.sol"),
+        PathBuf::from("src/C.sol"),
+        PathBuf::from("src/D.sol"),
+    ];
+    assert_eq!(entries, cache.files.keys().cloned().collect::<Vec<_>>());
+
+    let cache = SolFilesCache::read_joined(project.paths()).unwrap();
+
+    assert_eq!(
+        entries.into_iter().map(|p| project.root().join(p)).collect::<Vec<_>>(),
+        cache.files.keys().cloned().collect::<Vec<_>>()
+    );
+}

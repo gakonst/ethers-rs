@@ -401,8 +401,10 @@ where
             // Handle ws messages
             resp = self.ws.next() => match resp {
                 Some(Ok(resp)) => self.handle(resp).await?,
-                // TODO: Log the error?
-                Some(Err(_)) => {},
+                Some(Err(err)) => {
+                    tracing::error!(?err);
+                    return Err(ClientError::UnexpectedClose);
+                }
                 None => {
                     return Err(ClientError::UnexpectedClose);
                 },

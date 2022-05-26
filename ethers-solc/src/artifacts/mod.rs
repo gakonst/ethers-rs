@@ -106,6 +106,8 @@ impl CompilerInput {
             once_cell::sync::Lazy::new(|| VersionReq::parse("<0.6.0").unwrap());
         static PRE_V0_8_10: once_cell::sync::Lazy<VersionReq> =
             once_cell::sync::Lazy::new(|| VersionReq::parse("<0.8.10").unwrap());
+        static PRE_V0_7_5: once_cell::sync::Lazy<VersionReq> =
+            once_cell::sync::Lazy::new(|| VersionReq::parse("<0.7.5").unwrap());
 
         if PRE_V0_6_0.matches(version) {
             if let Some(ref mut meta) = self.settings.metadata {
@@ -126,6 +128,11 @@ impl CompilerInput {
 
             // 0.8.10 is the earliest version that has all model checker options.
             self.settings.model_checker = None;
+        }
+
+        if PRE_V0_7_5.matches(version) {
+            // introduced in 0.7.5 <https://github.com/ethereum/solidity/releases/tag/v0.7.5>
+            self.settings.via_ir.take();
         }
 
         self
