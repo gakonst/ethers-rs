@@ -1343,34 +1343,14 @@ impl<'a> TryFrom<&'a String> for Provider<HttpProvider> {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-impl TryFrom<&str> for Provider<RetryClient<HttpProvider>> {
-    type Error = ParseError;
-
-    fn try_from(src: &str) -> Result<Self, Self::Error> {
+impl Provider<RetryClient<HttpProvider>> {
+    pub fn new_client(src: &str) -> Result<Self, ParseError> {
         Ok(Provider::new(RetryClient::new(
             HttpProvider::new(Url::parse(src)?),
             Box::new(HttpRateLimitRetryPolicy),
             10,
             1,
         )))
-    }
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-impl TryFrom<String> for Provider<RetryClient<HttpProvider>> {
-    type Error = ParseError;
-
-    fn try_from(src: String) -> Result<Self, Self::Error> {
-        Self::try_from(src.as_str())
-    }
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-impl<'a> TryFrom<&'a String> for Provider<RetryClient<HttpProvider>> {
-    type Error = ParseError;
-
-    fn try_from(src: &'a String) -> Result<Self, Self::Error> {
-        Self::try_from(src.as_str())
     }
 }
 
