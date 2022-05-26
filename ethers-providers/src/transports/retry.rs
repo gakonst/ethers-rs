@@ -50,7 +50,7 @@ where
     ///
     /// let http = Http::new(Url::parse("http://localhost:8545").unwrap());
     /// let delay = Duration::new(10, 0);
-    /// let client = RetryClient::new(http, HttpRateLimitRetryPolicy::new(), 10, 1);
+    /// let client = RetryClient::new(http, HttpRateLimitRetryPolicy, 10, 1);
     /// ```
     pub fn new(
         inner: T,
