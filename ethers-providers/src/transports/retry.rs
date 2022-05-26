@@ -115,9 +115,8 @@ where
     {
         self.requests_enqueued.fetch_add(1, Ordering::SeqCst);
 
-        let params = serde_json::to_value(params)
-            .map_err(|err| RetryClientError::SerdeJson(err))?
-            .to_string();
+        let params =
+            serde_json::to_value(params).map_err(|err| RetryClientError::SerdeJson(err))?;
 
         let mut retry_number: u32 = 0;
 
