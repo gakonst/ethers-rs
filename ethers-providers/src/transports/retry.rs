@@ -126,13 +126,10 @@ where
             // hack to not hold `R` across an await in the sleep future and prevent requiring
             // R: Send + Sync
             {
-                let ret = self.inner.request(method, params.clone()).await;
-                if let Ok(ret) = ret {
-                    self.requests_enqueued.fetch_sub(1, Ordering::SeqCst);
-                    return Ok(ret)
+                match self.inner.request(method, params.clone()).await {
+                    Ok(ret) => return Ok(ret),
+                    Err(err_) => err = err_,
                 }
-
-                err = ret.err().unwrap();
             }
 
             retry_number += 1;
