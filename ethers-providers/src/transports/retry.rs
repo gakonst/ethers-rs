@@ -56,7 +56,7 @@ where
         inner: T,
         policy: Box<dyn RetryPolicy<T::Error>>,
         max_retry: u32,
-        // in seconds
+        // in milliseconds
         initial_backoff: u64,
     ) -> Self {
         Self { inner, requests_enqueued: AtomicU32::new(0), policy, max_retry, initial_backoff }
@@ -147,8 +147,7 @@ where
                 // of already queued requests
                 let next_backoff =
                     self.initial_backoff * 2u64.pow(retry_number + current_queued_requests);
-                tokio::time::sleep(Duration::new(next_backoff, 0)).await;
-                continue
+                tokio::time::sleep(Duration::from_millis(next_backoff)).await;
             } else {
                 self.requests_enqueued.fetch_sub(1, Ordering::SeqCst);
                 return Err(RetryClientError::ProviderError(err))
