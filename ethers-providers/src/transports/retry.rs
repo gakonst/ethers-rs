@@ -127,7 +127,10 @@ where
             // R: Send + Sync
             {
                 match self.inner.request(method, params.clone()).await {
-                    Ok(ret) => return Ok(ret),
+                    Ok(ret) => {
+                        self.requests_enqueued.fetch_sub(1, Ordering::SeqCst);
+                        return Ok(ret)
+                    }
                     Err(err_) => err = err_,
                 }
             }
