@@ -6,6 +6,9 @@ use crate::{
     PendingTransaction, QuorumProvider, RwClient, SyncingStatus,
 };
 
+#[cfg(not(target_arch = "wasm32"))]
+use crate::transports::{HttpRateLimitRetryPolicy, RetryClient};
+
 #[cfg(feature = "celo")]
 use crate::CeloMiddleware;
 use crate::Middleware;
@@ -1340,6 +1343,18 @@ impl<'a> TryFrom<&'a String> for Provider<HttpProvider> {
 
     fn try_from(src: &'a String) -> Result<Self, Self::Error> {
         Provider::try_from(src.as_str())
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl Provider<RetryClient<HttpProvider>> {
+    pub fn new_client(src: &str, max_retry: u32, initial_backoff: u64) -> Result<Self, ParseError> {
+        Ok(Provider::new(RetryClient::new(
+            HttpProvider::new(Url::parse(src)?),
+            Box::new(HttpRateLimitRetryPolicy),
+            max_retry,
+            initial_backoff,
+        )))
     }
 }
 

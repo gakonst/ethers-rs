@@ -58,7 +58,7 @@ wasm-timer = "0.2"
 parking_lot = { version = "0.11", features = ["wasm-bindgen"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
-tokio = { version = "1.5", default-features = false, features = ["rt", "macros"] }
+tokio = { version = "1.5", default-features = false, features = ["rt", "macros", "time"] }
 tempfile = "3.3.0"
 
 [features]
