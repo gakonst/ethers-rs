@@ -1,21 +1,18 @@
 //! Solc artifact types
-use ethers_core::abi::Abi;
-
+use crate::{
+    compile::*, error::SolcIoError, remappings::Remapping, utils, ProjectPathsConfig, SolcError,
+};
 use colored::Colorize;
+use ethers_core::abi::Abi;
 use md5::Digest;
 use semver::{Version, VersionReq};
+use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     collections::{BTreeMap, HashSet},
     fmt, fs,
     path::{Path, PathBuf},
     str::FromStr,
 };
-
-use crate::{
-    compile::*, error::SolcIoError, remappings::Remapping, utils, ProjectPathsConfig, SolcError,
-};
-
-use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 use tracing::warn;
 
 pub mod ast;
@@ -189,9 +186,19 @@ impl CompilerInput {
         self.sources = self
             .sources
             .into_iter()
-            .map(|(path, s)| (path.strip_prefix(base).map(|p| p.to_path_buf()).unwrap_or(path), s))
+            .map(|(path, s)| (path.strip_prefix(base).map(Into::into).unwrap_or(path), s))
             .collect();
         self
+    }
+
+    /// Similar to `Self::strip_prefix()`. Remove a base path from all
+    /// sources _and_ all paths in solc settings such as remappings
+    ///
+    /// See also `solc --base-path`
+    pub fn with_base_path(mut self, base: impl AsRef<Path>) -> Self {
+        let base = base.as_ref();
+        self.settings = self.settings.with_base_path(base);
+        self.strip_prefix(base)
     }
 }
 
@@ -383,6 +390,38 @@ impl Settings {
         let output =
             self.output_selection.as_mut().entry("*".to_string()).or_insert_with(BTreeMap::default);
         output.insert("".to_string(), vec!["ast".to_string()]);
+        self
+    }
+
+    /// Strips `base` from all paths
+    pub fn with_base_path(mut self, base: impl AsRef<Path>) -> Self {
+        let base = base.as_ref();
+        self.remappings.iter_mut().for_each(|r| {
+            r.strip_prefix(base);
+        });
+
+        self.libraries.libs = self
+            .libraries
+            .libs
+            .into_iter()
+            .map(|(file, libs)| (file.strip_prefix(base).map(Into::into).unwrap_or(file), libs))
+            .collect();
+
+        self.output_selection = OutputSelection(
+            self.output_selection
+                .0
+                .into_iter()
+                .map(|(file, selection)| {
+                    (
+                        Path::new(&file)
+                            .strip_prefix(base)
+                            .map(|p| format!("{}", p.display()))
+                            .unwrap_or(file),
+                        selection,
+                    )
+                })
+                .collect(),
+        );
         self
     }
 }

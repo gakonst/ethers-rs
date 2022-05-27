@@ -98,6 +98,8 @@
 
 ### Unreleased
 
+- Use relative source paths and `solc --base-path`
+  [#1317](https://github.com/gakonst/ethers-rs/pull/1317)
 - Save cache entry objects with relative paths
   [#1307](https://github.com/gakonst/ethers-rs/pull/1307)
 - Bundle svm, svm-builds and sha2 dependencies in new `svm-solc` feature

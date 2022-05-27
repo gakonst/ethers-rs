@@ -701,11 +701,20 @@ pub struct VersionedSources {
 #[cfg(all(feature = "svm-solc"))]
 impl VersionedSources {
     /// Resolves or installs the corresponding `Solc` installation.
+    ///
+    /// This will also configure following solc arguments:
+    ///    - `allowed_paths`
+    ///    - `base_path`
     pub fn get(
         self,
         allowed_lib_paths: &crate::AllowedLibPaths,
+        base_path: impl AsRef<Path>,
     ) -> Result<std::collections::BTreeMap<crate::Solc, (semver::Version, Sources)>> {
         use crate::Solc;
+
+        // `--base-path` was introduced in 0.6.9 <https://github.com/ethereum/solidity/releases/tag/v0.6.9>
+        static SUPPORTS_BASE_PATH: once_cell::sync::Lazy<VersionReq> =
+            once_cell::sync::Lazy::new(|| VersionReq::parse(">=0.6.9").unwrap());
 
         // we take the installer lock here to ensure installation checking is done in sync
         #[cfg(any(test, feature = "tests"))]
@@ -743,8 +752,16 @@ impl VersionedSources {
                     tracing::trace!("reinstalled solc: \"{}\"", version);
                 }
             }
-            let solc = solc.arg("--allow-paths").arg(allowed_lib_paths.to_string());
+            let mut solc = solc
+                .arg("--allow-paths")
+                .arg(allowed_lib_paths.to_string())
+                .with_base_path(base_path.as_ref());
             let version = solc.version()?;
+
+            if SUPPORTS_BASE_PATH.matches(&version) {
+                solc = solc.arg("--base-path").arg(format!("{}", base_path.as_ref().display()));
+            }
+
             sources_by_version.insert(solc, (version, sources));
         }
         Ok(sources_by_version)

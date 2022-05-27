@@ -1434,7 +1434,6 @@ fn can_detect_contract_def_source_files() {
         .unwrap();
 
     let compiled = tmp.compile().unwrap();
-    println!("{}", compiled);
     assert!(!compiled.has_compiler_errors());
 
     let mut sources = compiled.output().sources;
@@ -1750,7 +1749,6 @@ contract D { }
         .unwrap();
 
     let compiled = project.compile().unwrap();
-    println!("{}", compiled);
     assert!(!compiled.has_compiler_errors());
 
     let cache = SolFilesCache::read(project.cache_path()).unwrap();
