@@ -399,6 +399,14 @@ impl Settings {
         self.remappings.iter_mut().for_each(|r| {
             r.strip_prefix(base);
         });
+
+        self.libraries.libs = self
+            .libraries
+            .libs
+            .into_iter()
+            .map(|(file, libs)| (file.strip_prefix(base).map(Into::into).unwrap_or(file), libs))
+            .collect();
+
         self.output_selection = OutputSelection(
             self.output_selection
                 .0
