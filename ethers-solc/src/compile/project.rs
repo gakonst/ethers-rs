@@ -106,6 +106,7 @@ use crate::{
     artifacts::{Settings, VersionedFilteredSources, VersionedSources},
     cache::ArtifactsCache,
     error::Result,
+    filter::SparseOutputFilter,
     output::AggregatedCompilerOutput,
     report,
     resolver::GraphEdges,
@@ -113,8 +114,6 @@ use crate::{
     Sources,
 };
 use rayon::prelude::*;
-
-use crate::filter::SparseOutputFilter;
 use std::{collections::btree_map::BTreeMap, path::PathBuf, time::Instant};
 
 #[derive(Debug)]
@@ -155,7 +154,9 @@ impl<'a, T: ArtifactOutput> ProjectCompiler<'a, T> {
     pub fn with_sources(project: &'a Project<T>, sources: Sources) -> Result<Self> {
         let graph = Graph::resolve_sources(&project.paths, sources)?;
         let (versions, edges) = graph.into_sources_by_version(project.offline)?;
-        let sources_by_version = versions.get(&project.allowed_lib_paths)?;
+
+        let base_path = project.root();
+        let sources_by_version = versions.get(&project.allowed_lib_paths, base_path)?;
 
         let sources = if project.solc_jobs > 1 && sources_by_version.len() > 1 {
             // if there are multiple different versions, and we can use multiple jobs we can compile
@@ -239,12 +240,19 @@ impl<'a, T: ArtifactOutput> PreprocessedState<'a, T> {
     /// advance to the next state by compiling all sources
     fn compile(self) -> Result<CompiledState<'a, T>> {
         let PreprocessedState { sources, cache, sparse_output } = self;
-        let output = sources.compile(
+        let mut output = sources.compile(
             &cache.project().solc_config.settings,
             &cache.project().paths,
             sparse_output,
             cache.graph(),
         )?;
+
+        // source paths get stripped before handing them over to solc, so solc never uses absolute
+        // paths, instead `--base-path <root dir>` is set. this way any metadata that's derived from
+        // data (paths) is relative to the project dir and should be independent of the current OS
+        // disk. However internally we still want to keep absolute paths, so we join the
+        // contracts again
+        output.join_all(cache.project().root());
 
         Ok(CompiledState { output, cache })
     }
@@ -457,9 +465,10 @@ fn compile_sequential(
                 continue
             }
             let input = input
-                .settings(opt_settings.clone())
+                .settings(opt_settings.clone().with_base_path(&paths.root))
                 .normalize_evm_version(&version)
                 .with_remappings(paths.remappings.clone())
+                .with_base_path(&paths.root)
                 .sanitized(&version);
 
             tracing::trace!(
@@ -539,6 +548,7 @@ fn compile_parallel(
                 .settings(settings.clone())
                 .normalize_evm_version(&version)
                 .with_remappings(paths.remappings.clone())
+                .with_base_path(&paths.root)
                 .sanitized(&version);
 
             jobs.push((solc.clone(), version.clone(), job, actually_dirty))
@@ -740,7 +750,6 @@ mod tests {
             .unwrap();
         let project = Project::builder().paths(paths).build().unwrap();
         let compiler = ProjectCompiler::new(&project).unwrap();
-        let out = compiler.compile().unwrap();
-        println!("{}", out);
+        let _out = compiler.compile().unwrap();
     }
 }

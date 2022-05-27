@@ -55,6 +55,14 @@ impl Remapping {
     pub fn into_relative(self, root: impl AsRef<Path>) -> RelativeRemapping {
         RelativeRemapping::new(self, root)
     }
+
+    /// Removes the `base` path from the remapping
+    pub fn strip_prefix(&mut self, base: impl AsRef<Path>) -> &mut Self {
+        if let Ok(stripped) = Path::new(&self.path).strip_prefix(base.as_ref()) {
+            self.path = format!("{}", stripped.display());
+        }
+        self
+    }
 }
 
 #[derive(thiserror::Error, Debug, PartialEq, Eq, PartialOrd)]

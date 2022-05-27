@@ -366,6 +366,14 @@ impl AggregatedCompilerOutput {
         (self.sources, self.contracts)
     }
 
+    /// Joins all file path with `root`
+    pub fn join_all(&mut self, root: impl AsRef<Path>) -> &mut Self {
+        let root = root.as_ref();
+        self.contracts.join_all(root);
+        self.sources.join_all(root);
+        self
+    }
+
     /// Strips the given prefix from all file paths to make them relative to the given
     /// `base` argument.
     ///
