@@ -417,6 +417,25 @@ impl TypedTransaction {
             _ => None,
         }
     }
+
+    pub fn as_legacy_mut(&mut self) -> Option<&mut TransactionRequest> {
+        match self {
+            Legacy(tx) => Some(tx),
+            _ => None,
+        }
+    }
+    pub fn as_eip2930_mut(&mut self) -> Option<&mut Eip2930TransactionRequest> {
+        match self {
+            Eip2930(tx) => Some(tx),
+            _ => None,
+        }
+    }
+    pub fn as_eip1559_mut(&mut self) -> Option<&mut Eip1559TransactionRequest> {
+        match self {
+            Eip1559(tx) => Some(tx),
+            _ => None,
+        }
+    }
 }
 
 impl TypedTransaction {
