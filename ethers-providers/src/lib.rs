@@ -18,6 +18,9 @@ pub use pending_transaction::PendingTransaction;
 mod pending_escalator;
 pub use pending_escalator::EscalatingPending;
 
+mod log_query;
+pub use log_query::LogQuery;
+
 mod stream;
 pub use futures_util::StreamExt;
 pub use stream::{interval, FilterWatcher, TransactionStream, DEFAULT_POLL_INTERVAL};
@@ -419,6 +422,15 @@ pub trait Middleware: Sync + Send + Debug {
 
     async fn get_logs(&self, filter: &Filter) -> Result<Vec<Log>, Self::Error> {
         self.inner().get_logs(filter).await.map_err(FromErr::from)
+    }
+
+    /// Returns a stream of logs are loaded in pages of given page size
+    fn get_logs_paginated<'a>(
+        &'a self,
+        filter: &Filter,
+        page_size: u64,
+    ) -> LogQuery<'a, Self::Provider> {
+        self.inner().get_logs_paginated(filter, page_size)
     }
 
     async fn new_filter(&self, filter: FilterKind<'_>) -> Result<U256, Self::Error> {

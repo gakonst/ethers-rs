@@ -1,0 +1,4 @@
+[advisories]
+ignore = [
+    "RUSTSEC-2021-0127", # serde_cbor dependency through the criterion dev-dependency
+]

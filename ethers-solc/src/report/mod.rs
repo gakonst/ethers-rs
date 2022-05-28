@@ -330,8 +330,16 @@ pub struct NoReporter(());
 impl Reporter for NoReporter {}
 
 /// A [`Reporter`] that emits some general information to `stdout`
-#[derive(Copy, Clone, Debug, Default)]
-pub struct BasicStdoutReporter(());
+#[derive(Clone, Debug)]
+pub struct BasicStdoutReporter {
+    solc_io_report: SolcCompilerIoReporter,
+}
+
+impl Default for BasicStdoutReporter {
+    fn default() -> Self {
+        Self { solc_io_report: SolcCompilerIoReporter::from_default_env() }
+    }
+}
 
 impl Reporter for BasicStdoutReporter {
     /// Callback invoked right before [`Solc::compile()`] is called
@@ -339,15 +347,30 @@ impl Reporter for BasicStdoutReporter {
         &self,
         _solc: &Solc,
         version: &Version,
-        _input: &CompilerInput,
+        input: &CompilerInput,
         dirty_files: &[PathBuf],
     ) {
+        self.solc_io_report.log_compiler_input(input, version);
         println!(
             "Compiling {} files with {}.{}.{}",
             dirty_files.len(),
             version.major,
             version.minor,
             version.patch
+        );
+    }
+
+    fn on_solc_success(
+        &self,
+        _solc: &Solc,
+        version: &Version,
+        output: &CompilerOutput,
+        duration: &Duration,
+    ) {
+        self.solc_io_report.log_compiler_output(output, version);
+        println!(
+            "Solc {}.{}.{} finished in {:.2?}",
+            version.major, version.minor, version.patch, duration
         );
     }
 

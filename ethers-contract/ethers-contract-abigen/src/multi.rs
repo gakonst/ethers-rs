@@ -432,7 +432,7 @@ impl MultiBindings {
     ///  let gen = MultiAbigen::from_json_files(&abi_dir).unwrap();
     ///  let bindings = gen.build().unwrap();
     ///  bindings.ensure_consistent_crate(
-    ///     "my-crate", "0.0.1", project_root.join("src/contracts"), false
+    ///     "my-crate", "0.0.1", project_root.join("src/contracts"), false, true
     ///  ).expect("inconsistent bindings");
     /// }
     /// ```
@@ -442,8 +442,15 @@ impl MultiBindings {
         version: impl AsRef<str>,
         crate_path: impl AsRef<Path>,
         single_file: bool,
+        check_cargo_toml: bool,
     ) -> Result<()> {
-        self.into_inner(single_file).ensure_consistent_crate(name, version, crate_path, single_file)
+        self.into_inner(single_file).ensure_consistent_crate(
+            name,
+            version,
+            crate_path,
+            single_file,
+            check_cargo_toml,
+        )
     }
 
     /// This ensures that the already generated bindings module matches the
@@ -668,12 +675,15 @@ serde_json = "1.0.79"
         version: impl AsRef<str>,
         crate_path: impl AsRef<Path>,
         single_file: bool,
+        check_cargo_toml: bool,
     ) -> Result<()> {
         let crate_path = crate_path.as_ref();
 
-        // additionally check the contents of the cargo
-        let cargo_contents = self.generate_cargo_toml(name, version)?;
-        check_file_in_dir(crate_path, "Cargo.toml", &cargo_contents)?;
+        if check_cargo_toml {
+            // additionally check the contents of the cargo
+            let cargo_contents = self.generate_cargo_toml(name, version)?;
+            check_file_in_dir(crate_path, "Cargo.toml", &cargo_contents)?;
+        }
 
         self.ensure_consistent_bindings(crate_path.join("src"), true, single_file)?;
         Ok(())
@@ -829,7 +839,7 @@ mod tests {
                 .clone()
                 .build()
                 .unwrap()
-                .ensure_consistent_crate(name, version, &mod_root, single_file)
+                .ensure_consistent_crate(name, version, &mod_root, single_file, true)
                 .expect("Inconsistent bindings");
         })
     }
@@ -853,7 +863,7 @@ mod tests {
                 .clone()
                 .build()
                 .unwrap()
-                .ensure_consistent_crate(name, version, &mod_root, single_file)
+                .ensure_consistent_crate(name, version, &mod_root, single_file, true)
                 .expect("Inconsistent bindings");
         })
     }
@@ -944,7 +954,7 @@ mod tests {
             let result = cloned
                 .build()
                 .unwrap()
-                .ensure_consistent_crate(name, version, &mod_root, single_file)
+                .ensure_consistent_crate(name, version, &mod_root, single_file, true)
                 .is_err();
 
             // ensure inconsistent bindings are detected
@@ -982,7 +992,7 @@ mod tests {
             let result = cloned
                 .build()
                 .unwrap()
-                .ensure_consistent_crate(name, version, &mod_root, single_file)
+                .ensure_consistent_crate(name, version, &mod_root, single_file, true)
                 .is_err();
 
             // ensure inconsistent bindings are detected

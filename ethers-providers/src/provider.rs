@@ -2,9 +2,12 @@ use crate::{
     ens, erc, maybe,
     pubsub::{PubsubClient, SubscriptionStream},
     stream::{FilterWatcher, DEFAULT_POLL_INTERVAL},
-    FromErr, Http as HttpProvider, JsonRpcClient, JsonRpcClientWrapper, MockProvider,
+    FromErr, Http as HttpProvider, JsonRpcClient, JsonRpcClientWrapper, LogQuery, MockProvider,
     PendingTransaction, QuorumProvider, RwClient, SyncingStatus,
 };
+
+#[cfg(not(target_arch = "wasm32"))]
+use crate::transports::{HttpRateLimitRetryPolicy, RetryClient};
 
 #[cfg(feature = "celo")]
 use crate::CeloMiddleware;
@@ -645,6 +648,10 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
     /// Returns an array (possibly empty) of logs that match the filter
     async fn get_logs(&self, filter: &Filter) -> Result<Vec<Log>, ProviderError> {
         self.request("eth_getLogs", [filter]).await
+    }
+
+    fn get_logs_paginated<'a>(&'a self, filter: &Filter, page_size: u64) -> LogQuery<'a, P> {
+        LogQuery::new(self, filter).with_page_size(page_size)
     }
 
     /// Streams matching filter logs
@@ -1336,6 +1343,18 @@ impl<'a> TryFrom<&'a String> for Provider<HttpProvider> {
 
     fn try_from(src: &'a String) -> Result<Self, Self::Error> {
         Provider::try_from(src.as_str())
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl Provider<RetryClient<HttpProvider>> {
+    pub fn new_client(src: &str, max_retry: u32, initial_backoff: u64) -> Result<Self, ParseError> {
+        Ok(Provider::new(RetryClient::new(
+            HttpProvider::new(Url::parse(src)?),
+            Box::new(HttpRateLimitRetryPolicy),
+            max_retry,
+            initial_backoff,
+        )))
     }
 }
 

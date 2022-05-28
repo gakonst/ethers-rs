@@ -22,7 +22,7 @@ ethers-signers = { version = "^0.6.0", path = "../ethers-signers", default-featu
 
 async-trait = { version = "0.1.50", default-features = false }
 serde = { version = "1.0.124", default-features = false, features = ["derive"] }
-thiserror = { version = "1.0.31", default-features = false }
+thiserror = { version = "1.0", default-features = false }
 futures-util = { version = "^0.3" }
 futures-locks = { version = "0.7" }
 tracing = { version = "0.1.34", default-features = false }
@@ -42,7 +42,7 @@ tokio = { version = "1.5" }
 hex = { version = "0.4.3", default-features = false, features = ["std"] }
 rand = { version = "0.8.5", default-features = false }
 ethers-providers = { version = "^0.6.0", path = "../ethers-providers", default-features = false, features = ["ws", "rustls"] }
-once_cell = "1.10.0"
+once_cell = "1.12.0"
 ethers-solc = { version = "^0.3.0", path = "../ethers-solc", default-features = false }
 serial_test = "0.6.0"
 

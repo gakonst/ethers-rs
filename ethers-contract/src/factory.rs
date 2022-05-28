@@ -4,8 +4,8 @@ use std::marker::PhantomData;
 use ethers_core::{
     abi::{Abi, Token, Tokenize},
     types::{
-        transaction::eip2718::TypedTransaction, BlockNumber, Bytes, TransactionReceipt,
-        TransactionRequest,
+        transaction::eip2718::TypedTransaction, Address, BlockNumber, Bytes, NameOrAddress,
+        TransactionReceipt, TransactionRequest, U256, U64,
     },
 };
 use ethers_providers::Middleware;
@@ -56,6 +56,54 @@ impl<M: Middleware, C: From<Contract<M>>> ContractDeployer<M, C> {
     /// Uses a Legacy transaction instead of an EIP-1559 one to do the deployment
     pub fn legacy(mut self) -> Self {
         self.deployer = self.deployer.legacy();
+        self
+    }
+
+    /// Sets the `from` field in the deploy transaction to the provided value
+    pub fn from<T: Into<Address>>(mut self, from: T) -> Self {
+        self.deployer.tx.set_from(from.into());
+        self
+    }
+
+    /// Sets the `to` field in the deploy transaction to the provided value
+    pub fn to<T: Into<NameOrAddress>>(mut self, to: T) -> Self {
+        self.deployer.tx.set_to(to.into());
+        self
+    }
+
+    /// Sets the `gas` field in the deploy transaction to the provided value
+    pub fn gas<T: Into<U256>>(mut self, gas: T) -> Self {
+        self.deployer.tx.set_gas(gas.into());
+        self
+    }
+
+    /// Sets the `gas_price` field in the deploy transaction to the provided value
+    pub fn gas_price<T: Into<U256>>(mut self, gas_price: T) -> Self {
+        self.deployer.tx.set_gas_price(gas_price.into());
+        self
+    }
+
+    /// Sets the `value` field in the deploy transaction to the provided value
+    pub fn value<T: Into<U256>>(mut self, value: T) -> Self {
+        self.deployer.tx.set_value(value.into());
+        self
+    }
+
+    /// Sets the `data` field in the deploy transaction to the provided value
+    pub fn data<T: Into<Bytes>>(mut self, data: T) -> Self {
+        self.deployer.tx.set_data(data.into());
+        self
+    }
+
+    /// Sets the `nonce` field in the deploy transaction to the provided value
+    pub fn nonce<T: Into<U256>>(mut self, nonce: T) -> Self {
+        self.deployer.tx.set_nonce(nonce.into());
+        self
+    }
+
+    /// Sets the `chain_id` field in the deploy transaction to the provided value
+    pub fn chain_id<T: Into<U64>>(mut self, chain_id: T) -> Self {
+        self.deployer.tx.set_chain_id(chain_id.into());
         self
     }
 

@@ -7,7 +7,7 @@ use serde::{
 use std::{collections::BTreeMap, fmt, str::FromStr};
 
 /// Transaction summary as found in the Txpool Inspection property.
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TxpoolInspectSummary {
     /// Recipient (None when contract creation)
     pub to: Option<Address>,
@@ -83,6 +83,24 @@ impl<'de> Deserialize<'de> for TxpoolInspectSummary {
     }
 }
 
+/// Implement the `Serialize` trait for `TxpoolInspectSummary` struct so that the
+/// format matches the one from geth.
+impl Serialize for TxpoolInspectSummary {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let formatted = format!(
+            "{:?}: {} wei + {} gas × {} wei",
+            self.to.unwrap_or_default(),
+            self.value,
+            self.gas,
+            self.gas_price
+        );
+        serializer.serialize_str(&formatted)
+    }
+}
+
 /// Transaction Pool Content
 ///
 /// The content inspection property can be queried to list the exact details of all
@@ -90,7 +108,7 @@ impl<'de> Deserialize<'de> for TxpoolInspectSummary {
 /// as the ones that are being scheduled for future execution only.
 ///
 /// See [here](https://geth.ethereum.org/docs/rpc/ns-txpool#txpool_content) for more details
-#[derive(Debug, Default, Clone, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct TxpoolContent {
     /// pending tx
     pub pending: BTreeMap<Address, BTreeMap<String, TxpoolTransaction>>,
@@ -107,7 +125,7 @@ pub struct TxpoolContent {
 /// transactions in the pool and find any potential issues.
 ///
 /// See [here](https://geth.ethereum.org/docs/rpc/ns-txpool#txpool_inspect) for more details
-#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TxpoolInspect {
     /// pending tx
     pub pending: BTreeMap<Address, BTreeMap<String, TxpoolInspectSummary>>,
@@ -122,7 +140,7 @@ pub struct TxpoolInspect {
 /// are being scheduled for future execution only.
 ///
 /// See [here](https://geth.ethereum.org/docs/rpc/ns-txpool#txpool_status) for more details
-#[derive(Debug, Default, Clone, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct TxpoolStatus {
     /// number of pending tx
     pub pending: U64,
@@ -274,6 +292,10 @@ mod tests {
 }"#;
         let deserialized: TxpoolInspect = serde_json::from_str(txpool_inspect_json).unwrap();
         assert_eq!(deserialized, expected_txpool_inspect());
+
+        let serialized = serde_json::to_string(&deserialized).unwrap();
+        let deserialized2: TxpoolInspect = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(deserialized2, deserialized);
     }
 
     #[test]

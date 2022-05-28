@@ -10,7 +10,7 @@ macro_rules! unrecognised {
     };
 }
 
-#[derive(Copy, Clone, PartialEq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum Token<'input> {
     Identifier(&'input str),
     Number(&'input str),
@@ -140,7 +140,7 @@ impl<'input> fmt::Display for Token<'input> {
     }
 }
 
-#[derive(Debug, PartialEq, Clone, thiserror::Error)]
+#[derive(Debug, PartialEq, Eq, Clone, thiserror::Error)]
 pub enum LexerError {
     #[error("UnrecognisedToken {0}:{1} `{2}`")]
     UnrecognisedToken(usize, usize, String),
