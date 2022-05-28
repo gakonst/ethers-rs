@@ -49,7 +49,7 @@ yubihsm = { version = "0.40.0", features = ["secp256k1", "usb", "mockhsm"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 yubihsm = { version = "0.40.0", features = ["secp256k1", "usb", "mockhsm"] }
-tokio = { version = "1.5", default-features = false, features = ["macros", "rt"] }
+tokio = { version = "1.18", default-features = false, features = ["macros", "rt"] }
 tempfile = "3.3.0"
 
 [features]
