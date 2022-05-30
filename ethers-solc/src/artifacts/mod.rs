@@ -289,7 +289,7 @@ pub struct Settings {
     /// If remappings are used, this source file should match the global path
     /// after remappings were applied.
     /// If this key is an empty string, that refers to a global level.
-    #[serde(default, skip_serializing_if = "Libraries::is_empty")]
+    #[serde(default)]
     pub libraries: Libraries,
 }
 
@@ -859,12 +859,18 @@ pub struct Metadata {
 /// Compiler settings
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MetadataSettings {
+    #[serde(default)]
+    pub remappings: Vec<Remapping>,
+    pub optimizer: Optimizer,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub metadata: Option<SettingsMetadata>,
     /// Required for Solidity: File and name of the contract or library this metadata is created
     /// for.
     #[serde(default, rename = "compilationTarget")]
     pub compilation_target: BTreeMap<String, String>,
-    #[serde(flatten)]
-    pub inner: Settings,
+    /// Metadata settings
+    #[serde(default)]
+    pub libraries: Libraries,
 }
 
 /// Compilation source files/source units, keys are file names
@@ -1010,9 +1016,9 @@ pub struct Output {
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SolcAbi {
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[serde(default)]
     pub inputs: Vec<Item>,
-    #[serde(rename = "stateMutability")]
+    #[serde(rename = "stateMutability", skip_serializing_if = "Option::is_none")]
     pub state_mutability: Option<String>,
     #[serde(rename = "type")]
     pub abi_type: String,
@@ -1020,6 +1026,9 @@ pub struct SolcAbi {
     pub name: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub outputs: Vec<Item>,
+    // required to satisfy solidity events
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub anonymous: Option<bool>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -1029,6 +1038,11 @@ pub struct Item {
     pub name: String,
     #[serde(rename = "type")]
     pub put_type: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub components: Vec<Item>,
+    /// Indexed flag. for solidity events
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub indexed: Option<bool>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
