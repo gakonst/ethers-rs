@@ -3,7 +3,7 @@ use ethers_core::types::U256;
 use crate::{err::TransportError, Connection, DuplexConnection, RequestFuture, SubscribeFuture};
 
 /// A noop connection that does nothing and always fails immediately.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Default)]
 pub struct Noop;
 
 impl Connection for Noop {

@@ -2,7 +2,7 @@
 use std::path::Path;
 use std::{borrow::Cow, error, fmt, sync::Arc};
 
-use ethers_core::types::{Address, Block, Bytes, Transaction, H256, U256, U64};
+use ethers_core::types::{Address, Block, Bytes, Log, Transaction, H256, U256, U64};
 use serde::{Deserialize, Serialize};
 
 #[cfg(all(unix, feature = "ipc"))]
@@ -11,7 +11,7 @@ use crate::{
     connections,
     err::TransportError,
     jsonrpc::JsonRpcError,
-    types::{BlockNumber, TransactionCall, TransactionReceipt},
+    types::{BlockNumber, Filter, TransactionCall, TransactionReceipt},
     types::{SyncStatus, TransactionRequest},
     Connection, ConnectionExt, DuplexConnection, SubscriptionStream,
 };
@@ -25,29 +25,11 @@ pub struct Provider<C> {
     connection: C,
 }
 
-impl<C> Provider<C> {
-    /// Returns a new [`Provider`] using the given `connection`.
-    pub fn new(connection: C) -> Self {
-        Self { connection }
-    }
-
-    /// Consumes the [`Provider`] and returns its inner [`Connection`].
-    pub fn into_inner(self) -> C {
-        self.connection
-    }
-}
-
-#[cfg(all(unix, feature = "ipc"))]
-impl Provider<Ipc> {
-    /// Attempts to establish a connection with the IPC socket at the given
-    /// `path`.
-    ///
-    /// # Errors
-    ///
-    /// This fails, if the file at `path` is not a valid IPC socket.
-    pub async fn connect(path: impl AsRef<Path>) -> Result<Self, IpcError> {
-        let connection = Ipc::connect(path).await?;
-        Ok(Self { connection })
+impl Provider<crate::connections::noop::Noop> {
+    /// Creates a new [`Noop`](crate::connections::noop::Noop) connection
+    /// provider.
+    pub fn noop() -> Self {
+        Self { connection: Default::default() }
     }
 }
 
@@ -132,6 +114,18 @@ impl Provider<Arc<dyn Connection>> {
         };
 
         Ok(Self { connection })
+    }
+}
+
+impl<C> Provider<C> {
+    /// Returns a new [`Provider`] using the given `connection`.
+    pub fn new(connection: C) -> Self {
+        Self { connection }
+    }
+
+    /// Consumes the [`Provider`] and returns its inner [`Connection`].
+    pub fn into_inner(self) -> C {
+        self.connection
     }
 }
 
@@ -324,28 +318,38 @@ impl<C: Connection> Provider<C> {
         self.send_request("eth_estimateGas", [txn]).await
     }
 
-    pub async fn get_block_by_hash(&self, hash: &H256) -> Result<Block<H256>, Box<ProviderError>> {
+    /// Returns the block with the given `hash` with only the hashes of all
+    /// included transactions.
+    pub async fn get_block_by_hash(
+        &self,
+        hash: &H256,
+    ) -> Result<Option<Block<H256>>, Box<ProviderError>> {
         self.send_request("eth_getBlockByHash", (hash, false)).await
     }
 
+    /// Returns the block with the given `hash` with all included transactions.
     pub async fn get_block_by_hash_with_txns(
         &self,
         hash: &H256,
-    ) -> Result<Block<Transaction>, Box<ProviderError>> {
+    ) -> Result<Option<Block<Transaction>>, Box<ProviderError>> {
         self.send_request("eth_getBlockByHash", (hash, true)).await
     }
 
+    /// Returns the block with the given `block` number (or tag) with all
+    /// included transactions.
     pub async fn get_block_by_number(
         &self,
         block: BlockNumber,
-    ) -> Result<Block<H256>, Box<ProviderError>> {
+    ) -> Result<Option<Block<H256>>, Box<ProviderError>> {
         self.send_request("eth_getBlockByNumber", (block, false)).await
     }
 
+    /// Returns the block with the given `block` number (or tag) with only the
+    /// hashes of all included transactions.
     pub async fn get_block_by_number_with_txns(
         &self,
         block: BlockNumber,
-    ) -> Result<Block<Transaction>, Box<ProviderError>> {
+    ) -> Result<Option<Block<Transaction>>, Box<ProviderError>> {
         self.send_request("eth_getBlockByNumber", (block, true)).await
     }
 
@@ -401,16 +405,69 @@ impl<C: Connection> Provider<C> {
         self.send_request("eth_getUncleCountByBlockNumber", [block]).await
     }
 
-    pub async fn new_filter(&self) -> Result<U256, Box<ProviderError>> {
-        todo!()
+    /// Installs a new `filter` that can be polled for state changes (logs).
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use ethers_core::types::{Address, H256};
+    /// use ethers_connections::types::Filter;
+    ///
+    /// # async fn example_filter() {
+    /// # let provider = ethers_connections::Provider::noop();
+    ///
+    /// let filter = Filter::new()
+    ///     .from_block("latest".into())
+    ///     .to_block("pending".into())
+    ///     .address(vec![Address::zero()])
+    ///     .event("Transfer(uint256)")
+    ///     .topic1(H256::zero().into())
+    ///     .topic2([H256::zero, H256::zero()].into())
+    ///     .topic3(vec![H256::zero(), H256::zero(), H256::zero()].into());
+    ///
+    /// if let Ok(id) = provider.new_filter(&filter).await {
+    ///     println!("installed filter with ID {id}");
+    /// }
+    /// }
+    /// ```
+    pub async fn install_log_filter(&self, filter: &Filter) -> Result<U256, Box<ProviderError>> {
+        self.send_request("eth_newFilter", [filter]).await
     }
 
-    pub async fn new_block_filter(&self) -> Result<U256, Box<ProviderError>> {
-        todo!()
+    /// Polls the installed log filter with `id` for all new logs matching the
+    /// installed filter criteria since the last time it was last polled.
+    pub async fn get_log_filter_changes(&self, id: &U256) -> Result<Vec<Log>, Box<ProviderError>> {
+        self.send_request("eth_getFilterChanges", [id]).await
     }
 
-    pub async fn new_pending_transactions_filter(&self) -> Result<U256, Box<ProviderError>> {
-        todo!()
+    /// Installs a new filter that can be polled for the hashes of newly
+    /// arrived blocks.
+    pub async fn install_block_filter(&self) -> Result<H256, Box<ProviderError>> {
+        self.send_request("eth_newBlockFilter", ()).await
+    }
+
+    /// Polls the installed block filter with `id` for all new block hashes
+    /// since the last time it was last polled.
+    pub async fn get_block_filter_changes(
+        &self,
+        id: &U256,
+    ) -> Result<Vec<H256>, Box<ProviderError>> {
+        self.send_request("eth_getFilterChanges", [id]).await
+    }
+
+    /// Installs a new filter that can be polled for the hashes of newly
+    /// arrived pending transactions.
+    pub async fn install_pending_transactions_filter(&self) -> Result<U256, Box<ProviderError>> {
+        self.send_request("eth_newPendingTransactionsFilter", ()).await
+    }
+
+    /// Polls the installed block filter with `id` for all new pending
+    /// transaction hashes since the last time it was last polled.
+    pub async fn get_pending_transactions_filter_changes(
+        &self,
+        id: &U256,
+    ) -> Result<Vec<H256>, Box<ProviderError>> {
+        self.send_request("eth_getFilterChanges", [id]).await
     }
 
     /// Uninstalls a filter with a given `id`.
@@ -468,6 +525,13 @@ impl<C: DuplexConnection + Clone> Provider<C> {
         &self,
     ) -> Result<SubscriptionStream<Block<H256>, C>, Box<ProviderError>> {
         self.subscribe(["newHeads"]).await
+    }
+
+    /// Installs a subscription for new pending transaction hashes.
+    pub async fn subscribe_pending_transactions(
+        &self,
+    ) -> Result<SubscriptionStream<H256, C>, Box<ProviderError>> {
+        self.subscribe(["pendingTransactions"]).await
     }
 
     pub async fn subscribe<T: Serialize, R: for<'de> Deserialize<'de>>(

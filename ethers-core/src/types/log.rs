@@ -9,7 +9,7 @@ use serde::{
 use std::ops::{Range, RangeFrom, RangeTo};
 
 /// A log produced by a transaction.
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Log {
     /// H160. the contract that emitted the log
     pub address: Address,
@@ -408,7 +408,7 @@ where
         let value = serde_json::Value::deserialize(deserializer)?;
 
         if value.is_null() {
-            return Ok(ValueOrArray::Array(Vec::new()))
+            return Ok(ValueOrArray::Array(Vec::new()));
         }
 
         #[derive(Deserialize)]

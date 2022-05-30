@@ -33,6 +33,7 @@ use tokio::sync::mpsc;
 use ethers_core::types::U256;
 
 pub use crate::{
+    pending::PendingTransaction,
     provider::{ErrorKind, Provider, ProviderError},
     sub::SubscriptionStream,
 };
