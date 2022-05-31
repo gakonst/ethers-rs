@@ -480,7 +480,7 @@ fn compile_sequential(
 
             let start = Instant::now();
             report::solc_spawn(&solc, &version, &input, &actually_dirty);
-            let output = solc.compile_exact(&input)?;
+            let output = solc.compile(&input)?;
             report::solc_success(&solc, &version, &output, &start.elapsed());
             tracing::trace!("compiled input, output has error: {}", output.has_error());
             tracing::trace!("received compiler output: {:?}", output.contracts.keys());
