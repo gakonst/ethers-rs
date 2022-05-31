@@ -558,13 +558,13 @@ serde_json = "1.0.79"
 
     /// Append module declarations to the `lib.rs` or `mod.rs`
     fn append_module_names(&self, mut buf: impl Write) -> Result<()> {
-        let mut mod_names: BTreeSet<_> = self.bindings.keys().collect();
+        let mut mod_names: BTreeSet<_> =
+            self.bindings.keys().map(|name| name.to_snake_case()).collect();
         if let Some(ref shared) = self.shared_types {
-            mod_names.insert(&shared.name);
+            mod_names.insert(shared.name.to_snake_case());
         }
 
-        for module in mod_names.into_iter().map(|name| format!("pub mod {};", name.to_snake_case()))
-        {
+        for module in mod_names.into_iter().map(|name| format!("pub mod {};", name)) {
             writeln!(buf, "{}", module)?;
         }
 
