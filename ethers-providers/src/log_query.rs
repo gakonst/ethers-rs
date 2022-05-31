@@ -84,7 +84,7 @@ where
 
                 let from_block = self.filter.get_from_block().unwrap();
                 let to_block = from_block + self.page_size;
-                self.from_block = Some(to_block);
+                self.from_block = Some(to_block + 1);
 
                 let filter = self.filter.clone().from_block(from_block).to_block(to_block);
                 let provider = self.provider;
@@ -114,7 +114,7 @@ where
                             return Poll::Ready(None)
                         }
                         // load next page
-                        self.from_block = Some(to_block);
+                        self.from_block = Some(to_block + 1);
 
                         let filter = self.filter.clone().from_block(from_block).to_block(to_block);
                         let provider = self.provider;
