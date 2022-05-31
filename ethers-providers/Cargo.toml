@@ -44,8 +44,7 @@ hashers = "1.0.1"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 # tokio
-tokio-util = { version = "0.7.2", default-features = false, features = ["io"], optional = true }
-tokio = { version = "1.5", default-features = false, optional = true }
+tokio = { version = "1.18", features = ["time"] }
 tokio-tungstenite = { version = "0.17.1", default-features = false, features = ["connect"], optional = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
@@ -58,14 +57,14 @@ wasm-timer = "0.2"
 parking_lot = { version = "0.11", features = ["wasm-bindgen"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
-tokio = { version = "1.5", default-features = false, features = ["rt", "macros", "time"] }
+tokio = { version = "1.18", default-features = false, features = ["rt", "macros", "time"] }
 tempfile = "3.3.0"
 
 [features]
 default = ["ws", "rustls"]
 celo = ["ethers-core/celo"]
-ws = ["tokio", "tokio-tungstenite", "futures-channel"]
-ipc = ["tokio", "tokio/io-util", "tokio-util", "bytes", "futures-channel"]
+ws = ["tokio-tungstenite", "futures-channel"]
+ipc = ["tokio/io-util", "bytes", "futures-channel"]
 
 openssl = ["tokio-tungstenite/native-tls", "reqwest/native-tls"]
 # we use the webpki roots so we can build static binaries w/o any root cert dependencies

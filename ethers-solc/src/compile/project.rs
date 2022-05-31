@@ -465,7 +465,7 @@ fn compile_sequential(
                 continue
             }
             let input = input
-                .settings(opt_settings.clone().with_base_path(&paths.root))
+                .settings(opt_settings.clone())
                 .normalize_evm_version(&version)
                 .with_remappings(paths.remappings.clone())
                 .with_base_path(&paths.root)
