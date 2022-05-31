@@ -25,6 +25,14 @@ pub struct SubscriptionStream<T, C: DuplexConnection> {
     _marker: PhantomData<fn() -> T>,
 }
 
+impl<T, C: DuplexConnection> SubscriptionStream<T, C> {
+    /// Consumes the [`SubscriptionStream`] and returns it's internal
+    /// components or `None`, if the stream has previously been unsubscribed.
+    pub fn into_raw(self) -> Option<(U256, NotificationReceiver)> {
+        self.id.map(|id| (id, self.rx))
+    }
+}
+
 impl<T, C> SubscriptionStream<T, C>
 where
     T: for<'de> Deserialize<'de>,
@@ -45,6 +53,7 @@ where
         }
     }
 
+    /// Polls & parses the next notification.
     fn poll_recv(&mut self, cx: &mut Context<'_>) -> Poll<Option<Result<T, TransportError>>> {
         match self.rx.poll_recv(cx) {
             Poll::Ready(Some(raw)) => Poll::Ready(Some(self.parse_next(raw))),
@@ -53,6 +62,7 @@ where
         }
     }
 
+    /// Parses the given `raw` notification.
     fn parse_next(&self, raw: Box<RawValue>) -> Result<T, TransportError> {
         match serde_json::from_str(raw.get()) {
             Ok(item) => Ok(item),
@@ -65,6 +75,7 @@ impl<T, C> SubscriptionStream<T, C>
 where
     C: DuplexConnection,
 {
+    /// Creates a new [`SubscriptionStream`].
     pub(crate) fn new(id: U256, provider: Provider<C>, rx: NotificationReceiver) -> Self {
         Self { id: Some(id), provider, rx, _marker: PhantomData }
     }

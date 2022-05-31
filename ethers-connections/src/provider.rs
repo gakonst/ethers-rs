@@ -2,17 +2,18 @@
 use std::path::Path;
 use std::{borrow::Cow, error, fmt, sync::Arc};
 
-use ethers_core::types::{Address, Block, Bytes, Log, Transaction, H256, U256, U64};
+use ethers_core::types::{Address, Block, Bytes, FeeHistory, Log, Transaction, H256, U256, U64};
 use serde::{Deserialize, Serialize};
 
 #[cfg(all(unix, feature = "ipc"))]
 use crate::connections::ipc::{Ipc, IpcError};
 use crate::{
-    connections,
+    connections::{self, noop},
     err::TransportError,
     jsonrpc::JsonRpcError,
-    types::{BlockNumber, Filter, TransactionCall, TransactionReceipt},
-    types::{SyncStatus, TransactionRequest},
+    types::{
+        BlockNumber, Filter, SyncStatus, TransactionCall, TransactionReceipt, TransactionRequest,
+    },
     Connection, ConnectionExt, DuplexConnection, SubscriptionStream,
 };
 
@@ -25,8 +26,8 @@ pub struct Provider<C> {
     connection: C,
 }
 
-impl Provider<crate::connections::noop::Noop> {
-    /// Creates a new [`Noop`](crate::connections::noop::Noop) connection
+impl Provider<noop::Noop> {
+    /// Creates a new [`Noop`](noop::Noop) connection
     /// provider.
     pub fn noop() -> Self {
         Self { connection: Default::default() }
@@ -228,15 +229,22 @@ impl<C: Connection> Provider<C> {
         pos: &U256,
         block: Option<BlockNumber>,
     ) -> Result<U256, Box<ProviderError>> {
-        self.send_request("eth_getStorageAt", (address, pos, block)).await
+        match block {
+            Some(block) => self.send_request("eth_getStorageAt", (address, pos, block)).await,
+            None => self.send_request("eth_getStorageAt", (address, pos)).await,
+        }
     }
 
     /// Returns the number of transactions sent from an address.
     pub async fn get_transaction_count(
         &self,
         address: &Address,
+        block: Option<BlockNumber>,
     ) -> Result<U256, Box<ProviderError>> {
-        self.send_request("eth_getTransactionCount", [address]).await
+        match block {
+            Some(block) => self.send_request("eth_getTransactionCount", (address, block)).await,
+            None => self.send_request("eth_getTransactionCount", [address]).await,
+        }
     }
 
     /// Returns code at a given address.
@@ -261,7 +269,10 @@ impl<C: Connection> Provider<C> {
         address: &Address,
         block: Option<BlockNumber>,
     ) -> Result<Bytes, Box<ProviderError>> {
-        self.send_request("eth_getCode", (address, block)).await
+        match block {
+            Some(block) => self.send_request("eth_getCode", (address, block)).await,
+            None => self.send_request("eth_getCode", [address]).await,
+        }
     }
 
     /// Signs the given `message` using the account at `address`.
@@ -316,6 +327,48 @@ impl<C: Connection> Provider<C> {
     /// EVM mechanics and node performance.
     pub async fn estimate_gas(&self, txn: &TransactionCall) -> Result<U256, Box<ProviderError>> {
         self.send_request("eth_estimateGas", [txn]).await
+    }
+
+    /// Returns a collection of historical gas information from which you can
+    /// decide what to submit as your `max_fee_per_gas` and `max_priority_fee_per_gas`.
+    /// This method was introduced with [EIP-1559](https://blog.alchemy.com/blog/eip-1559).
+    ///
+    /// # Parameters
+    ///
+    /// - `block_count` - The numberof blocks in the requested range. Between 1
+    ///   and 1024 blocks can be requested in a single query. Less than the
+    ///   requested number may be returned if not all blocks are available.
+    /// - `newest_block` - The highest block in the requested range.
+    /// - `reward_percentiles` - (optional)
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::Arc;
+    /// # use ethers_core::types::Address;
+    /// # use ethers_connections::connections::noop;
+    /// use ethers_connections::{Connection, Provider};
+    ///
+    /// # async fn examples_get_code() {
+    /// # let build_provider = || Provider::new(Arc::new(noop::Noop)).into_dyn();
+    /// let provider: Provider<Arc<dyn Connection>> = build_provider();
+    /// let res = provider.fee_history(4, "latest".into(), Some(&[25, 75]).await;
+    /// # assert!(res.is_err());
+    /// # }
+    /// ```
+    pub async fn fee_history(
+        &self,
+        block_count: u64,
+        newest_block: BlockNumber,
+        reward_percentiles: Option<&[u8]>,
+    ) -> Result<FeeHistory, Box<ProviderError>> {
+        match reward_percentiles {
+            Some(reward_percentiles) => {
+                self.send_request("eth_feeHistory", (block_count, newest_block, reward_percentiles))
+                    .await
+            }
+            None => self.send_request("eth_feeHistory", (block_count, newest_block)).await,
+        }
     }
 
     /// Returns the block with the given `hash` with only the hashes of all

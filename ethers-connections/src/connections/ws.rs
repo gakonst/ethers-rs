@@ -21,12 +21,12 @@ type WebSocketStream = tokio_tungstenite::WebSocketStream<MaybeTlsStream<TcpStre
 
 /// The handle for an established WebSocket connection to an Ethereum JSON-RPC
 /// provider.
-pub struct Ws {
+pub struct WebSocket {
     next_id: AtomicU64,
     request_tx: mpsc::UnboundedSender<Request>,
 }
 
-impl Ws {
+impl WebSocket {
     pub async fn connect(url: &str) -> Result<Self, WsError> {
         let next_id = AtomicU64::new(1);
         let (request_tx, request_rx) = mpsc::unbounded_channel();
@@ -41,7 +41,7 @@ impl Ws {
     }
 }
 
-impl Connection for Ws {
+impl Connection for WebSocket {
     fn request_id(&self) -> u64 {
         self.next_id.fetch_add(1, Ordering::Relaxed)
     }
