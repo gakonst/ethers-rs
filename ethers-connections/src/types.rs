@@ -21,14 +21,14 @@ pub enum BlockNumber {
     /// Pending block (not yet part of the blockchain)
     Pending,
     /// Block by number from canon chain
-    Number(U64),
+    Number(u64),
 }
 
 impl BlockNumber {
     /// Returns the numeric block number if explicitly set
     pub fn as_number(&self) -> Option<u64> {
         match *self {
-            BlockNumber::Number(num) => Some(num.low_u64()),
+            BlockNumber::Number(num) => Some(num),
             _ => None,
         }
     }
@@ -47,7 +47,7 @@ impl From<&str> for BlockNumber {
 
 impl From<u64> for BlockNumber {
     fn from(num: u64) -> Self {
-        BlockNumber::Number(num.into())
+        BlockNumber::Number(num)
     }
 }
 
@@ -75,7 +75,9 @@ impl<'de> Deserialize<'de> for BlockNumber {
             "latest" => Self::Latest,
             "earliest" => Self::Earliest,
             "pending" => Self::Pending,
-            num => BlockNumber::Number(num.parse().map_err(serde::de::Error::custom)?),
+            num => BlockNumber::Number(
+                u64::from_str_radix(num.trim_start_matches("0x"), 16).map_err(de::Error::custom)?,
+            ),
         })
     }
 }

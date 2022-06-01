@@ -126,21 +126,42 @@ fn spawn_ipc_server(stream: UnixStream, request_rx: mpsc::UnboundedReceiver<Requ
         .expect("failed to spawn IPC server thread");
 }
 
-async fn run_ipc_server(mut stream: UnixStream, request_rx: mpsc::UnboundedReceiver<Request>) {
-    // the shared state for both reads & writes
-    let shared = Shared {
-        pending: FxHashMap::with_capacity_and_hasher(64, Default::default()).into(),
-        subs: FxHashMap::with_capacity_and_hasher(64, Default::default()).into(),
-    };
+async fn run_ipc_server(mut stream: UnixStream, mut rx: mpsc::UnboundedReceiver<Request>) {
+    // split stream into read/write halves
+    let (read, mut write) = stream.split();
+    let mut shared = Shared::default();
 
-    // split the stream and run two independent concurrently (local), thereby
-    // allowing reads and writes to occurr concurrently
-    let (reader, writer) = stream.split();
-    // run both loops concurrently & abort (drop) the other once either of them finishes.
-    let res = tokio::select! {
-        biased;
-        res = shared.handle_ipc_reads(reader) => res,
-        res = shared.handle_ipc_writes(writer, request_rx) => res,
+    // create read buffer and next request
+    let mut buf = BytesMut::with_capacity(4096);
+    let mut next: Option<Box<[u8]>> = None;
+
+    let res = loop {
+        tokio::select! {
+            // NOTE: writing requests is prioritized over reading incoming msgs
+            biased;
+            // 1) receive next request (only if there is no previous request)
+            msg = rx.recv(), if next.is_none() => match msg {
+                // handle the request and set the next request, if necessary
+                Some(request) => next = shared.handle_request(request),
+                // request channel is closed, i.e., the IPC handle was dropped
+                None => break Ok(()),
+            }
+            // 2) if a request was received, write it out to the IPC endpoint
+            res = shared.handle_writes(&next), if next.is_some() => {
+                if res.is_err() {
+                    break res;
+                }
+
+                // once write is complete & was successful, clear next request
+                next = None;
+            }
+            // 3) receive & handle any incoming response/notification messages
+            res = shared.handle_reads(&mut reader, &mut buf) => match res {
+                Ok(true) => continue,
+                // exit task if the connection was closed or an error occurred
+                res => break res.map(|_| ())
+            }
+        }
     };
 
     if let Err(e) = res {
@@ -148,87 +169,107 @@ async fn run_ipc_server(mut stream: UnixStream, request_rx: mpsc::UnboundedRecei
     }
 }
 
+/// A subscription consists of a sender instance and a receiver to be picked up
+/// by the subscribing callsite.
 type Subscription = (mpsc::UnboundedSender<Box<RawValue>>, Option<NotificationReceiver>);
 
+/// The shared state for the IPC server task.
 struct Shared {
-    pending: RefCell<FxHashMap<u64, PendingRequest>>,
-    subs: RefCell<FxHashMap<U256, Subscription>>,
+    /// The map of pending requests.
+    pending: FxHashMap<u64, PendingRequest>,
+    /// The map of registered subscriptions.
+    subs: FxHashMap<U256, Subscription>,
+}
+
+impl Default for Shared {
+    fn default() -> Self {
+        Self {
+            pending: FxHashMap::with_capacity_and_hasher(64, Default::default()),
+            subs: FxHashMap::with_capacity_and_hasher(64, Default::default()),
+        }
+    }
 }
 
 impl Shared {
-    async fn handle_ipc_reads(&self, reader: ReadHalf<'_>) -> Result<(), IpcError> {
-        let mut reader = BufReader::new(reader);
-        let mut buf = BytesMut::with_capacity(4096);
-
-        loop {
-            // try to read the next batch of bytes into the buffer
-            let read = reader.read_buf(&mut buf).await?;
-            if read == 0 {
-                // eof, socket was closed
-                return Ok(());
+    /// Handles a received incoming requests and returns a raw byte buffer, if
+    /// the request requires bytes to be written out over the IPC connetion.
+    fn handle_request(&mut self, request: Request) -> Option<Box<[u8]>> {
+        match msg {
+            /// RPC call requests are inserted into the `pending` map and their
+            /// payload is extracted to be written out
+            Request::Call { id, tx, request } => {
+                let prev = self.pending.insert(id, tx);
+                assert!(prev.is_none(), "replaced pending IPC request (id={})", id);
+                Some(request.into_bytes().into_boxed_slice())
             }
+            Request::Subscribe { id, tx } => {
+                use std::collections::hash_map::Entry::*;
+                let res = match self.subs.entry(id) {
+                    // the entry already exists, e.g., because it was
+                    // earlier instantiated by an incoming notification
+                    Occupied(mut occ) => {
+                        // take the receiver half, which is `None` if a
+                        // subscription stream has already been created for
+                        // this ID.
+                        let (_, rx) = occ.get_mut();
+                        rx.take()
+                    }
+                    Vacant(vac) => {
+                        // insert a new channel tx/rx pair
+                        let (sub_tx, sub_rx) = mpsc::unbounded_channel();
+                        vac.insert((sub_tx, None));
+                        Some(sub_rx)
+                    }
+                };
 
-            // parse the received bytes into 0-n jsonrpc messages
-            let read = self.handle_bytes(&buf)?;
-            // split off all bytes that were parsed into complete messages
-            // any remaining bytes that correspond to incomplete messages remain
-            // in the buffer
-            buf.advance(read);
+                let _ = tx.send(res);
+                None
+            }
+            Request::Unsubscribe { id } => {
+                // removes the subscription entry and drops the sender half,
+                // ending the registered subscription stream (if any)
+                // NOTE: if the subscription has not been removed at the
+                // provider side as well, it will keep sending further
+                // notifications, which will re-create the entry
+                let _ = self.subs.remove(&id);
+                None
+            }
         }
     }
 
-    async fn handle_ipc_writes(
-        &self,
-        mut writer: WriteHalf<'_>,
-        mut request_rx: mpsc::UnboundedReceiver<Request>,
+    async fn handle_writes(
+        &mut self,
+        writer: &mut WriteHalf<'_>,
+        next_request: &Option<Box<[u8]>>,
     ) -> Result<(), IpcError> {
-        use Request::*;
-
-        while let Some(msg) = request_rx.recv().await {
-            match msg {
-                Call { id, tx, request } => {
-                    let prev = self.pending.borrow_mut().insert(id, tx);
-                    assert!(prev.is_none(), "replaced pending IPC request (id={})", id);
-                    writer.write_all(request.as_bytes()).await?;
-                }
-                Subscribe { id, tx } => {
-                    use std::collections::hash_map::Entry::*;
-                    let res = match self.subs.borrow_mut().entry(id) {
-                        // the entry already exists, e.g., because it was
-                        // earlier instantiated by an incoming notification
-                        Occupied(mut occ) => {
-                            // take the receiver half, which is `None` if a
-                            // subscription stream has already been created for
-                            // this ID.
-                            let (_, rx) = occ.get_mut();
-                            rx.take()
-                        }
-                        Vacant(vac) => {
-                            // insert a new channel tx/rx pair
-                            let (sub_tx, sub_rx) = mpsc::unbounded_channel();
-                            vac.insert((sub_tx, None));
-                            Some(sub_rx)
-                        }
-                    };
-
-                    let _ = tx.send(res);
-                }
-                Unsubscribe { id } => {
-                    // removes the subscription entry and drops the sender half,
-                    // ending the registered subscription stream (if any)
-                    // NOTE: if the subscription has not been removed at the
-                    // provider side as well, it will keep sending further
-                    // notifications, which will re-create the entry
-                    let _ = self.subs.borrow_mut().remove(&id);
-                }
-            }
-        }
-
-        // the IPC handle has been dropped
-        Ok(())
+        // NOTE: must only be called if `next_request` is set
+        let buf = next_request.as_deref().unwrap();
+        writer.write_all(buf).await.map_err(Into::into)
     }
 
-    fn handle_bytes(&self, bytes: &BytesMut) -> Result<usize, IpcError> {
+    /// Receives a batch
+    async fn handle_reads(
+        &mut self,
+        reader: &mut ReadHalf<'_>,
+        buf: &mut BytesMut,
+    ) -> Result<bool, IpcError> {
+        // try to read the next batch of bytes into the buffer
+        let read = reader.read_buf(&mut buf).await?;
+        if read == 0 {
+            // eof, socket was closed
+            return Ok(false);
+        }
+
+        // parse the received bytes into 0-n jsonrpc messages
+        let read = self.handle_bytes(&buf)?;
+        // split off all bytes that were parsed into complete messages
+        // any remaining bytes that correspond to incomplete messages remain
+        // in the buffer
+        buf.advance(read);
+        Ok(true)
+    }
+
+    fn handle_bytes(&mut self, bytes: &BytesMut) -> Result<usize, IpcError> {
         // deserialize all complete jsonrpc responses contained in the buffer
         let mut de = Deserializer::from_slice(bytes.as_ref()).into_iter();
         while let Some(Ok(response)) = de.next() {
@@ -244,8 +285,8 @@ impl Shared {
         Ok(de.byte_offset())
     }
 
-    fn handle_response(&self, id: u64, res: Result<Box<RawValue>, TransportError>) {
-        match self.pending.borrow_mut().remove(&id) {
+    fn handle_response(&mut self, id: u64, res: Result<Box<RawValue>, Box<TransportError>>) {
+        match self.pending.remove(&id) {
             Some(tx) => {
                 // if send fails, request has been dropped at the callsite
                 let _ = tx.send(res);
@@ -256,12 +297,11 @@ impl Shared {
 
     /// Sends notification through the channel based on the ID of the subscription.
     /// This handles streaming responses.
-    fn handle_notification(&self, params: Params<'_>) {
+    fn handle_notification(&mut self, params: Params<'_>) {
         use std::collections::hash_map::Entry;
         let notification = params.result.to_owned();
-        let mut borrow = self.subs.borrow_mut();
 
-        let ok = match borrow.entry(params.subscription) {
+        let ok = match self.subs.entry(params.subscription) {
             // the subscription entry has already been inserted (e.g., if the
             // sub has already been registered)
             Entry::Occupied(occ) => {
@@ -282,19 +322,19 @@ impl Shared {
 
         if !ok {
             // the channel has been dropped without unsubscribing
-            let _ = borrow.remove(&params.subscription);
+            let _ = self.subs.remove(&params.subscription);
         }
     }
 }
 
+/// An error that occurred when interacting with an IPC server task.
 #[derive(Debug)]
 pub enum IpcError {
     /// The file at `path` is not a valid IPC socket.
-    InvalidSocket {
-        path: PathBuf,
-        source: io::Error,
-    },
+    InvalidSocket { path: PathBuf, source: io::Error },
+    /// A generic I/O error while reading from or writing to the socket.
     Io(io::Error),
+    /// The IPC server has exited unexpectedly.
     ServerExit,
 }
 
@@ -323,6 +363,8 @@ impl From<io::Error> for IpcError {
     }
 }
 
-fn server_exit() -> TransportError {
+/// Wraps a [`ServerExit`](IpcError::ServerExit) error in a boxed
+/// [`TransportError`].
+fn server_exit() -> Box<TransportError> {
     TransportError::transport(IpcError::ServerExit)
 }
