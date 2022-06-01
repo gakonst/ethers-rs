@@ -3,7 +3,7 @@ name = "ethers-connections"
 license = "MIT OR Apache-2.0"
 version = "0.6.0"
 authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
-description = "Transport & JSONRPC API implementations for the ethers-rs crate"
+description = "Connections & JSON-RPC API implementations for the ethers-rs crate"
 homepage = "https://docs.rs/ethers"
 repository = "https://github.com/gakonst/ethers-rs"
 keywords = ["ethereum", "web3", "celo", "ethers"]
@@ -15,14 +15,16 @@ rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
 default = ["http", "ws", "rustls"]
+
+celo = ["ethers-core/celo"]
 http = ["reqwest", "url"]
 ws = ["futures-util", "tokio/macros", "tokio-tungstenite", "tokio/sync"]
 ipc = ["bytes", "tokio/macros", "tokio/rt", "tokio/sync"]
 
-openssl = []
+openssl = ["tokio-tungstenite/native-tls", "reqwest/native-tls"]
 # we use the webpki roots so we can build static binaries
 # w/o any root cert dependencies on the host
-rustls = []
+rustls = ["tokio-tungstenite/rustls-tls-webpki-roots", "reqwest/rustls-tls"]
 dev-rpc = []
 
 [dependencies]
@@ -37,14 +39,15 @@ bytes = { version = "1.1.0", optional = true }
 reqwest = { version = "0.11.10", default-features = false, optional = true }
 url = { version = "2.2.2", default-features = false, optional = true }
 
-# external/optional (ws)
-futures-util = { version = "0.3.21", optional = true }
-tokio-tungstenite = { version = "0.17.1", default-features = false, features = ["connect"], optional = true }
-
 # internal
 ethers-core = { version = "^0.6.0", path = "../ethers-core", default-features = false }
 hashers = "1.0.1"
 tracing = "0.1.34"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+# external/optional (ws)
+futures-util = { version = "0.3.21", optional = true }
+tokio-tungstenite = { version = "0.17.1", default-features = false, features = ["connect"], optional = true }
 
 [[test]]
 name = "ipc"           # The name of the target.

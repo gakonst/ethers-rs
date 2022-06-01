@@ -9,6 +9,9 @@ use crate::{NotificationReceiver, ResponsePayload};
 
 pub(super) type FxHashMap<K, V> = std::collections::HashMap<K, V, BuildHasherDefault<FxHasher64>>;
 pub(super) type PendingRequest = oneshot::Sender<ResponsePayload>;
+
+/// A subscription consists of a sender instance and a receiver to be picked up
+/// by the subscribing callsite.
 pub(super) type Subscription = (mpsc::UnboundedSender<Box<RawValue>>, Option<NotificationReceiver>);
 
 pub(super) enum Request {

@@ -1,8 +1,5 @@
 use std::{
-    cell::RefCell,
-    error, fmt,
-    hash::BuildHasherDefault,
-    io,
+    error, fmt, io,
     path::{Path, PathBuf},
     sync::atomic::{AtomicU64, Ordering},
     thread,
@@ -10,10 +7,9 @@ use std::{
 
 use bytes::{Buf as _, BytesMut};
 use ethers_core::types::U256;
-use hashers::fx_hash::FxHasher64;
 use serde_json::{value::RawValue, Deserializer};
 use tokio::{
-    io::{AsyncReadExt as _, AsyncWriteExt as _, BufReader},
+    io::{AsyncReadExt as _, AsyncWriteExt as _},
     net::{
         unix::{ReadHalf, WriteHalf},
         UnixStream,
@@ -25,18 +21,10 @@ use tokio::{
 use crate::{
     err::TransportError,
     jsonrpc::{Params, Response},
-    Connection, DuplexConnection, NotificationReceiver, RequestFuture, ResponsePayload,
-    SubscribeFuture,
+    Connection, DuplexConnection, RequestFuture, SubscribeFuture,
 };
 
-type FxHashMap<K, V> = std::collections::HashMap<K, V, BuildHasherDefault<FxHasher64>>;
-type PendingRequest = oneshot::Sender<ResponsePayload>;
-
-enum Request {
-    Call { id: u64, tx: PendingRequest, request: String },
-    Subscribe { id: U256, tx: oneshot::Sender<Option<NotificationReceiver>> },
-    Unsubscribe { id: U256 },
-}
+use super::common::{FxHashMap, PendingRequest, Request, Subscription};
 
 /// The handle for an IPC connection to an Ethereum JSON-RPC provider.
 ///
@@ -128,7 +116,7 @@ fn spawn_ipc_server(stream: UnixStream, request_rx: mpsc::UnboundedReceiver<Requ
 
 async fn run_ipc_server(mut stream: UnixStream, mut rx: mpsc::UnboundedReceiver<Request>) {
     // split stream into read/write halves
-    let (read, mut write) = stream.split();
+    let (mut reader, mut writer) = stream.split();
     let mut shared = Shared::default();
 
     // create read buffer and next request
@@ -145,9 +133,9 @@ async fn run_ipc_server(mut stream: UnixStream, mut rx: mpsc::UnboundedReceiver<
                 Some(request) => next = shared.handle_request(request),
                 // request channel is closed, i.e., the IPC handle was dropped
                 None => break Ok(()),
-            }
+            },
             // 2) if a request was received, write it out to the IPC endpoint
-            res = shared.handle_writes(&next), if next.is_some() => {
+            res = shared.handle_writes(&mut writer, &next), if next.is_some() => {
                 if res.is_err() {
                     break res;
                 }
@@ -157,7 +145,19 @@ async fn run_ipc_server(mut stream: UnixStream, mut rx: mpsc::UnboundedReceiver<
             }
             // 3) receive & handle any incoming response/notification messages
             res = shared.handle_reads(&mut reader, &mut buf) => match res {
-                Ok(true) => continue,
+                Ok(true) => {
+                    // parse the received bytes into 0-n jsonrpc messages
+                    let read = match shared.handle_bytes(&buf) {
+                        Ok(read) => read,
+                        Err(e) => break Err(e),
+                    };
+
+                    // split off all bytes that were parsed into complete messages
+                    // any remaining bytes that correspond to incomplete messages remain
+                    // in the buffer
+                    buf.advance(read);
+                    continue
+                },
                 // exit task if the connection was closed or an error occurred
                 res => break res.map(|_| ())
             }
@@ -168,10 +168,6 @@ async fn run_ipc_server(mut stream: UnixStream, mut rx: mpsc::UnboundedReceiver<
         tracing::error!(err = ?e, "exiting IPC server due to error");
     }
 }
-
-/// A subscription consists of a sender instance and a receiver to be picked up
-/// by the subscribing callsite.
-type Subscription = (mpsc::UnboundedSender<Box<RawValue>>, Option<NotificationReceiver>);
 
 /// The shared state for the IPC server task.
 struct Shared {
@@ -194,9 +190,9 @@ impl Shared {
     /// Handles a received incoming requests and returns a raw byte buffer, if
     /// the request requires bytes to be written out over the IPC connetion.
     fn handle_request(&mut self, request: Request) -> Option<Box<[u8]>> {
-        match msg {
-            /// RPC call requests are inserted into the `pending` map and their
-            /// payload is extracted to be written out
+        match request {
+            // RPC call requests are inserted into the `pending` map and their
+            // payload is extracted to be written out
             Request::Call { id, tx, request } => {
                 let prev = self.pending.insert(id, tx);
                 assert!(prev.is_none(), "replaced pending IPC request (id={})", id);
@@ -238,7 +234,7 @@ impl Shared {
     }
 
     async fn handle_writes(
-        &mut self,
+        &self,
         writer: &mut WriteHalf<'_>,
         next_request: &Option<Box<[u8]>>,
     ) -> Result<(), IpcError> {
@@ -249,23 +245,17 @@ impl Shared {
 
     /// Receives a batch
     async fn handle_reads(
-        &mut self,
+        &self,
         reader: &mut ReadHalf<'_>,
         buf: &mut BytesMut,
     ) -> Result<bool, IpcError> {
         // try to read the next batch of bytes into the buffer
-        let read = reader.read_buf(&mut buf).await?;
+        let read = reader.read_buf(buf).await?;
         if read == 0 {
             // eof, socket was closed
             return Ok(false);
         }
 
-        // parse the received bytes into 0-n jsonrpc messages
-        let read = self.handle_bytes(&buf)?;
-        // split off all bytes that were parsed into complete messages
-        // any remaining bytes that correspond to incomplete messages remain
-        // in the buffer
-        buf.advance(read);
         Ok(true)
     }
 
@@ -285,7 +275,7 @@ impl Shared {
         Ok(de.byte_offset())
     }
 
-    fn handle_response(&mut self, id: u64, res: Result<Box<RawValue>, Box<TransportError>>) {
+    fn handle_response(&mut self, id: u64, res: Result<Box<RawValue>, TransportError>) {
         match self.pending.remove(&id) {
             Some(tx) => {
                 // if send fails, request has been dropped at the callsite
@@ -365,6 +355,6 @@ impl From<io::Error> for IpcError {
 
 /// Wraps a [`ServerExit`](IpcError::ServerExit) error in a boxed
 /// [`TransportError`].
-fn server_exit() -> Box<TransportError> {
+fn server_exit() -> TransportError {
     TransportError::transport(IpcError::ServerExit)
 }
