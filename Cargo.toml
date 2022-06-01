@@ -115,17 +115,14 @@ opt-level = "s"
 [[example]]
 name = "contract_human_readable"
 path = "examples/contract_human_readable.rs"
-required-features = ["legacy"]
 
 [[example]]
 name = "contract_with_abi"
 path = "examples/contract_with_abi.rs"
-required-features = ["legacy"]
 
 [[example]]
 name = "contract_with_abi_and_bytecode"
 path = "examples/contract_with_abi_and_bytecode.rs"
-required-features = ["legacy"]
 
 [[example]]
 name = "ipc"
@@ -151,3 +148,8 @@ required-features = ["trezor"]
 name = "yubi"
 path = "examples/yubi.rs"
 required-features = ["yubi"]
+
+[[example]]
+name = "paginated_logs"
+path = "examples/paginated_logs.rs"
+required-features = ["rustls"]

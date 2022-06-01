@@ -1,7 +1,7 @@
 use ethers::{
     prelude::*,
     solc::{Project, ProjectPathsConfig},
-    utils::Ganache,
+    utils::Anvil,
 };
 use eyre::Result;
 use std::{convert::TryFrom, path::PathBuf, sync::Arc, time::Duration};
@@ -33,13 +33,13 @@ async fn main() -> Result<()> {
     let contract = output.find("SimpleStorage").expect("could not find contract").clone();
     let (abi, bytecode, _) = contract.into_parts();
 
-    // 2. instantiate our wallet & ganache
-    let ganache = Ganache::new().spawn();
-    let wallet: LocalWallet = ganache.keys()[0].clone().into();
+    // 2. instantiate our wallet & anvil
+    let anvil = Anvil::new().spawn();
+    let wallet: LocalWallet = anvil.keys()[0].clone().into();
 
     // 3. connect to the network
     let provider =
-        Provider::<Http>::try_from(ganache.endpoint())?.interval(Duration::from_millis(10u64));
+        Provider::<Http>::try_from(anvil.endpoint())?.interval(Duration::from_millis(10u64));
 
     // 4. instantiate the client with the wallet
     let client = SignerMiddleware::new(provider, wallet);
@@ -49,7 +49,7 @@ async fn main() -> Result<()> {
     let factory = ContractFactory::new(abi.unwrap(), bytecode.unwrap(), client.clone());
 
     // 6. deploy it with the constructor arguments
-    let contract = factory.deploy("initial value".to_string())?.legacy().send().await?;
+    let contract = factory.deploy("initial value".to_string())?.send().await?;
 
     // 7. get the contract's address
     let addr = contract.address();
@@ -59,7 +59,7 @@ async fn main() -> Result<()> {
 
     // 9. call the `setValue` method
     // (first `await` returns a PendingTransaction, second one waits for it to be mined)
-    let _receipt = contract.set_value("hi".to_owned()).legacy().send().await?.await?;
+    let _receipt = contract.set_value("hi".to_owned()).send().await?.await?;
 
     // 10. get all events
     let logs = contract.value_changed_filter().from_block(0u64).query().await?;

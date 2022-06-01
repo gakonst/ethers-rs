@@ -265,7 +265,7 @@ mod tests {
     use crate::{Http, Ws};
     use ethers_core::{
         types::{TransactionReceipt, TransactionRequest},
-        utils::{Ganache, Geth},
+        utils::Anvil,
     };
     use futures_util::{FutureExt, StreamExt};
     use std::{collections::HashSet, convert::TryFrom};
@@ -273,7 +273,7 @@ mod tests {
     #[tokio::test]
     async fn can_stream_pending_transactions() {
         let num_txs = 5;
-        let geth = Geth::new().block_time(2u64).spawn();
+        let geth = Anvil::new().block_time(2u64).spawn();
         let provider = Provider::<Http>::try_from(geth.endpoint())
             .unwrap()
             .interval(Duration::from_millis(1000));
@@ -327,17 +327,17 @@ mod tests {
 
     #[tokio::test]
     async fn can_stream_transactions() {
-        let ganache = Ganache::new().block_time(2u64).spawn();
-        let provider = Provider::<Http>::try_from(ganache.endpoint())
-            .unwrap()
-            .with_sender(ganache.addresses()[0]);
+        let anvil = Anvil::new().block_time(2u64).spawn();
+        let provider =
+            Provider::<Http>::try_from(anvil.endpoint()).unwrap().with_sender(anvil.addresses()[0]);
 
         let accounts = provider.get_accounts().await.unwrap();
 
         let tx = TransactionRequest::new().from(accounts[0]).to(accounts[0]).value(1e18 as u64);
+        let txs = vec![tx.clone().nonce(0u64), tx.clone().nonce(1u64), tx.clone().nonce(2u64)];
 
         let txs =
-            futures_util::future::join_all(std::iter::repeat(tx.clone()).take(3).map(|tx| async {
+            futures_util::future::join_all(txs.into_iter().map(|tx| async {
                 provider.send_transaction(tx, None).await.unwrap().await.unwrap()
             }))
             .await;

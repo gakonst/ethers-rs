@@ -27,7 +27,7 @@ pub enum EtherscanError {
     RateLimitExceeded,
     #[error(transparent)]
     IO(#[from] std::io::Error),
-    #[error("Local networks (e.g. ganache, geth --dev) cannot be indexed by etherscan")]
+    #[error("Local networks (e.g. anvil, ganache, geth --dev) cannot be indexed by etherscan")]
     LocalNetworksNotSupported,
     #[error("Unknown error: {0}")]
     Unknown(String),

@@ -1,7 +1,7 @@
 #![cfg(not(target_arch = "wasm32"))]
 #![allow(unused)]
 use ethers_contract::{BaseContract, ContractFactory};
-use ethers_core::{abi::Abi, types::*, utils::Ganache};
+use ethers_core::{abi::Abi, types::*, utils::Anvil};
 use ethers_middleware::{
     transformer::{DsProxy, TransformerMiddleware},
     SignerMiddleware,
@@ -29,10 +29,10 @@ async fn ds_proxy_transformer() {
     // randomness
     let mut rng = rand::thread_rng();
 
-    // spawn ganache and instantiate a signer middleware.
-    let ganache = Ganache::new().spawn();
-    let wallet: LocalWallet = ganache.keys()[0].clone().into();
-    let provider = Provider::<Http>::try_from(ganache.endpoint())
+    // spawn anvil and instantiate a signer middleware.
+    let anvil = Anvil::new().spawn();
+    let wallet: LocalWallet = anvil.keys()[0].clone().into();
+    let provider = Provider::<Http>::try_from(anvil.endpoint())
         .unwrap()
         .interval(Duration::from_millis(10u64));
     let chain_id = provider.get_chainid().await.unwrap().as_u64();
@@ -88,10 +88,10 @@ async fn ds_proxy_code() {
     // randomness
     let mut rng = rand::thread_rng();
 
-    // spawn ganache and instantiate a signer middleware.
-    let ganache = Ganache::new().spawn();
-    let wallet: LocalWallet = ganache.keys()[1].clone().into();
-    let provider = Provider::<Http>::try_from(ganache.endpoint())
+    // spawn anvil and instantiate a signer middleware.
+    let anvil = Anvil::new().spawn();
+    let wallet: LocalWallet = anvil.keys()[1].clone().into();
+    let provider = Provider::<Http>::try_from(anvil.endpoint())
         .unwrap()
         .interval(Duration::from_millis(10u64));
     let chain_id = provider.get_chainid().await.unwrap().as_u64();

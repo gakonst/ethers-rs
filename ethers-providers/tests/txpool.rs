@@ -1,14 +1,14 @@
 #![cfg(not(target_arch = "wasm32"))]
 use ethers_core::{
     types::{TransactionRequest, U256},
-    utils::Geth,
+    utils::Anvil,
 };
 use ethers_providers::{Http, Middleware, Provider};
 use std::convert::TryFrom;
 
 #[tokio::test]
 async fn txpool() {
-    let geth = Geth::new().block_time(20u64).spawn();
+    let geth = Anvil::new().block_time(20u64).spawn();
     let provider = Provider::<Http>::try_from(geth.endpoint()).unwrap();
 
     let account = provider.get_accounts().await.unwrap()[0];

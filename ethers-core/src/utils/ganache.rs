@@ -222,11 +222,13 @@ mod tests {
     use super::*;
 
     #[test]
+    #[ignore]
     fn configurable_startup_timeout() {
         Ganache::new().startup_timeout_millis(100000_u64).spawn();
     }
 
     #[test]
+    #[ignore]
     fn default_startup_works() {
         Ganache::new().spawn();
     }

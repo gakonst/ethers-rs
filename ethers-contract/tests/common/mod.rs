@@ -10,7 +10,7 @@ use ethers_contract::EthEvent;
 mod derive;
 
 use ethers_contract::{Contract, ContractFactory};
-use ethers_core::{abi::Abi, types::Bytes, utils::GanacheInstance};
+use ethers_core::{abi::Abi, types::Bytes, utils::AnvilInstance};
 use ethers_providers::{Http, Middleware, Provider};
 use ethers_solc::Solc;
 use std::{convert::TryFrom, sync::Arc, time::Duration};
@@ -38,16 +38,16 @@ pub fn compile_contract(name: &str, filename: &str) -> (Abi, Bytes) {
 }
 
 /// connects the private key to http://localhost:8545
-pub fn connect(ganache: &GanacheInstance, idx: usize) -> Arc<Provider<Http>> {
-    let sender = ganache.addresses()[idx];
-    let provider = Provider::<Http>::try_from(ganache.endpoint())
+pub fn connect(anvil: &AnvilInstance, idx: usize) -> Arc<Provider<Http>> {
+    let sender = anvil.addresses()[idx];
+    let provider = Provider::<Http>::try_from(anvil.endpoint())
         .unwrap()
         .interval(Duration::from_millis(10u64))
         .with_sender(sender);
     Arc::new(provider)
 }
 
-/// Launches a ganache instance and deploys the SimpleStorage contract
+/// Launches a Anvil instance and deploys the SimpleStorage contract
 pub async fn deploy<M: Middleware>(client: Arc<M>, abi: Abi, bytecode: Bytes) -> Contract<M> {
     let factory = ContractFactory::new(abi, bytecode, client);
     let deployer = factory.deploy("initial value".to_string()).unwrap();

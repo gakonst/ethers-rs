@@ -22,16 +22,16 @@ static WALLETS: Lazy<TestWallets> = Lazy::new(|| {
 #[tokio::test]
 #[cfg(not(feature = "celo"))]
 async fn send_eth() {
-    use ethers_core::utils::Ganache;
+    use ethers_core::utils::Anvil;
 
-    let ganache = Ganache::new().spawn();
+    let anvil = Anvil::new().spawn();
 
     // this private key belongs to the above mnemonic
-    let wallet: LocalWallet = ganache.keys()[0].clone().into();
-    let wallet2: LocalWallet = ganache.keys()[1].clone().into();
+    let wallet: LocalWallet = anvil.keys()[0].clone().into();
+    let wallet2: LocalWallet = anvil.keys()[1].clone().into();
 
     // connect to the network
-    let provider = Provider::<Http>::try_from(ganache.endpoint())
+    let provider = Provider::<Http>::try_from(anvil.endpoint())
         .unwrap()
         .interval(Duration::from_millis(10u64));
     let chain_id = provider.get_chainid().await.unwrap().as_u64();
@@ -156,17 +156,17 @@ async fn test_send_transaction() {
 #[tokio::test]
 #[cfg(not(feature = "celo"))]
 async fn send_transaction_handles_tx_from_field() {
-    use ethers_core::utils::Ganache;
+    use ethers_core::utils::Anvil;
 
-    // launch ganache
-    let ganache = Ganache::new().spawn();
+    // launch anvil
+    let anvil = Anvil::new().spawn();
 
     // grab 2 wallets
-    let signer: LocalWallet = ganache.keys()[0].clone().into();
-    let other: LocalWallet = ganache.keys()[1].clone().into();
+    let signer: LocalWallet = anvil.keys()[0].clone().into();
+    let other: LocalWallet = anvil.keys()[1].clone().into();
 
     // connect to the network
-    let provider = Provider::try_from(ganache.endpoint()).unwrap();
+    let provider = Provider::try_from(anvil.endpoint()).unwrap();
     let provider =
         SignerMiddleware::new_with_provider_chain(provider, signer.clone()).await.unwrap();
 

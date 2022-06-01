@@ -1,6 +1,6 @@
 //! Main entry point for ContractMonitor
 
-use ethers::{prelude::*, utils::Ganache};
+use ethers::{prelude::*, utils::Anvil};
 use std::{convert::TryFrom, sync::Arc, time::Duration};
 
 abigen!(VerifierContract, "ethers-contract/tests/solidity-contracts/verifier_abi.json");
@@ -9,10 +9,10 @@ abigen!(VerifierContract, "ethers-contract/tests/solidity-contracts/verifier_abi
 /// have structs as input.
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let ganache = Ganache::new().spawn();
+    let anvil = Anvil::new().spawn();
     let provider =
-        Provider::<Http>::try_from(ganache.endpoint())?.interval(Duration::from_millis(10u64));
-    let wallet: LocalWallet = ganache.keys()[0].clone().into();
+        Provider::<Http>::try_from(anvil.endpoint())?.interval(Duration::from_millis(10u64));
+    let wallet: LocalWallet = anvil.keys()[0].clone().into();
 
     let client = SignerMiddleware::new(provider, wallet);
     let client = Arc::new(client);

@@ -21,12 +21,10 @@ jobs:
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
-      - name: Set up node
-        uses: actions/setup-node@v1
+      - name: Install Anvil
+        uses: foundry-rs/foundry-toolchain@v1
         with:
-          node-version: 10
-      - name: Install ganache
-        run: npm install -g ganache
+          version: nightly
       - name: Install Solc
         run: |
             mkdir -p "$HOME/bin"
@@ -66,13 +64,11 @@ jobs:
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
-      - name: Set up node
-        uses: actions/setup-node@v1
-        with:
-          node-version: 10
       # TODO: can we combine these shared steps in github actions?
-      - name: Install ganache
-        run: npm install -g ganache
+      - name: Install Anvil
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
       - name: Install Solc
         run: |
             mkdir -p "$HOME/bin"
@@ -133,12 +129,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v1
-      - name: Install node
-        uses: actions/setup-node@v1
-        with:
-          node-version: 10
+      - name: Checkout sources
+        uses: actions/checkout@v2
       - name: Install rust
         uses: actions-rs/toolchain@v1
         with:
@@ -146,6 +138,11 @@ jobs:
           target: wasm32-unknown-unknown
           profile: minimal
           override: true
+
+      - name: Install Anvil
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
 
       - uses: Swatinem/rust-cache@v1
         with:
@@ -157,11 +154,8 @@ jobs:
           command: check
           args: --target wasm32-unknown-unknown
 
-      - name: Launch Ganache
-        run: |
-          cd examples/ethers-wasm
-          npm install
-          npm run ganache &
+      - name: Launch Anvil
+        run: anvil --block-time 2 -m "stuff inherit faith park genre spread huge knee ecology private marble supreme" &
 
       - name: Install wasm-pack
         run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
@@ -176,59 +170,66 @@ jobs:
           cd examples/ethers-wasm
           wasm-pack test --headless --chrome
 
-  # TODO: Re-enable once we figure out why examples are running forever.
-  # examples:
-  #   name: Examples
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Checkout sources
-  #       uses: actions/checkout@v2
-  #     - name: Set up node
-  #       uses: actions/setup-node@v1
-  #       with:
-  #         node-version: 10
-  #     - name: Install ganache
-  #       run: npm install -g ganache
-  #     - name: Install Solc
-  #       run: |
-  #           mkdir -p "$HOME/bin"
-  #           wget -q https://github.com/ethereum/solidity/releases/download/v0.8.10/solc-static-linux -O $HOME/bin/solc
-  #           chmod u+x "$HOME/bin/solc"
-  #           export PATH=$HOME/bin:$PATH
-  #           solc --version
+  examples:
+    name: Examples
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v2
 
-  #     - name: Install geth
-  #       run: |
-  #           mkdir -p "$HOME/bin"
-  #           wget -q https://gethstore.blob.core.windows.net/builds/geth-linux-amd64-1.9.23-8c2f2715.tar.gz
-  #           tar -xvf geth-linux-amd64-1.9.23-8c2f2715.tar.gz
-  #           mv geth-linux-amd64-1.9.23-8c2f2715/geth $HOME/bin/geth
-  #           chmod u+x "$HOME/bin/geth"
-  #           export PATH=$HOME/bin:$PATH
-  #           geth version
-  #     - name: Install stable toolchain
-  #       uses: actions-rs/toolchain@v1
-  #       with:
-  #         profile: minimal
-  #         toolchain: stable
-  #         override: true
-  #         components: rustfmt, clippy
-  #     - uses: Swatinem/rust-cache@v1
-  #       with:
-  #         cache-on-failure: true
-  #     - name: Build all examples
-  #       run: |
-  #           export PATH=$HOME/bin:$PATH
-  #           for file in examples/*.rs; do
-  #             name="$(echo "$file" | cut -f 1 -d '.')"
-  #             echo "building $name"
-  #             cargo build -p ethers --example "$(basename "$name")"
-  #           done
-  #     - name: Run all examples
-  #       run: |
-  #           export PATH=$HOME/bin:$PATH
-  #           chmod +x ./scripts/examples.sh
-  #           ./scripts/examples.sh
+      - name: Install Anvil
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Install Solc
+        run: |
+            mkdir -p "$HOME/bin"
+            wget -q https://github.com/ethereum/solidity/releases/download/v0.8.10/solc-static-linux -O $HOME/bin/solc
+            chmod u+x "$HOME/bin/solc"
+            export PATH=$HOME/bin:$PATH
+            solc --version
+
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v1
+        with:
+          cache-on-failure: true
+      - name: Build all examples
+        run: |
+            export PATH=$HOME/bin:$PATH
+            examples=$(cargo metadata --format-version 1 | \
+              jq -c '.packages[]
+              | select(.name == "ethers")
+              | .targets[]
+              | select(.kind[] | contains("example"))
+              | with_entries(select([.key]
+              | inside(["name", "required-features"])))'
+            )
+            for example in $examples; do
+              name="$(echo "$example" | jq -r '.name')"
+              args=(
+                -p ethers
+                --example "$name"
+              )
+              features="$(echo "$example" | jq -r 'try(."required-features" | join(","))')"
+              if [[ ! -z "$features" ]]; then
+                args+=(--features "$features")
+              fi
+
+              echo "building $name"
+              cargo build "${args[@]}"
+            done
+      - name: Run all examples
+        run: |
+            export PATH=$HOME/bin:$PATH
+            chmod +x ./scripts/examples.sh
+            ./scripts/examples.sh
 
   windows-build:
     runs-on: windows-latest

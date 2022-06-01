@@ -488,13 +488,13 @@ mod tests {
     use super::*;
     use ethers_core::{
         types::{Block, TxHash, U256},
-        utils::Ganache,
+        utils::Anvil,
     };
 
     #[tokio::test]
     async fn request() {
-        let ganache = Ganache::new().block_time(1u64).spawn();
-        let ws = Ws::connect(ganache.ws_endpoint()).await.unwrap();
+        let anvil = Anvil::new().block_time(1u64).spawn();
+        let ws = Ws::connect(anvil.ws_endpoint()).await.unwrap();
 
         let block_num: U256 = ws.request("eth_blockNumber", ()).await.unwrap();
         std::thread::sleep(std::time::Duration::new(3, 0));
@@ -504,8 +504,8 @@ mod tests {
 
     #[tokio::test]
     async fn subscription() {
-        let ganache = Ganache::new().block_time(1u64).spawn();
-        let ws = Ws::connect(ganache.ws_endpoint()).await.unwrap();
+        let anvil = Anvil::new().block_time(1u64).spawn();
+        let ws = Ws::connect(anvil.ws_endpoint()).await.unwrap();
 
         // Subscribing requires sending the sub request and then subscribing to
         // the returned sub_id
@@ -519,14 +519,13 @@ mod tests {
             blocks.push(block.number.unwrap_or_default().as_u64());
         }
 
-        assert_eq!(sub_id, 1.into());
         assert_eq!(blocks, vec![1, 2, 3])
     }
 
     #[tokio::test]
     async fn deserialization_fails() {
-        let ganache = Ganache::new().block_time(1u64).spawn();
-        let (ws, _) = tokio_tungstenite::connect_async(ganache.ws_endpoint()).await.unwrap();
+        let anvil = Anvil::new().block_time(1u64).spawn();
+        let (ws, _) = tokio_tungstenite::connect_async(anvil.ws_endpoint()).await.unwrap();
         let malformed_data = String::from("not a valid message");
         let (_, stream) = mpsc::unbounded();
         let resp = WsServer::new(ws, stream).handle_text(malformed_data).await;
