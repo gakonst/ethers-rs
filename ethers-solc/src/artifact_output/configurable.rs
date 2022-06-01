@@ -339,6 +339,8 @@ impl ArtifactOutput for ConfigurableArtifacts {
         file.source_file.ast.clone().map(|ast| ConfigurableContractArtifact {
             id: Some(file.source_file.id),
             ast: Some(ast),
+            bytecode: Some(CompactBytecode::empty()),
+            deployed_bytecode: Some(CompactDeployedBytecode::empty()),
             ..Default::default()
         })
     }

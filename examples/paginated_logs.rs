@@ -1,10 +1,10 @@
-use ethers::{abi::AbiDecode, prelude::*, utils::keccak256};
+use ethers::{abi::AbiDecode, prelude::*, providers::Middleware, utils::keccak256};
 use eyre::Result;
 use std::sync::Arc;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let client =
+    let client: Provider<Ws> =
         Provider::<Ws>::connect("wss://mainnet.infura.io/ws/v3/c60b0bb42f8a4c6481ecd229eddaca27")
             .await?;
     let client = Arc::new(client);
@@ -18,7 +18,8 @@ async fn main() -> Result<()> {
 
     let mut stream = client.get_logs_paginated(&erc20_transfer_filter, 10);
 
-    while let Some(log) = stream.next().await {
+    while let Some(res) = stream.next().await {
+        let log = res?;
         println!(
             "block: {:?}, tx: {:?}, token: {:?}, from: {:?}, to: {:?}, amount: {:?}",
             log.block_number,

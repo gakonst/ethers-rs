@@ -50,7 +50,7 @@ impl ExpandedContract {
             pub use #module::*;
 
             #[allow(clippy::too_many_arguments, non_camel_case_types)]
-            mod #module {
+            pub mod #module {
                 #imports
                 #contract
                 #events

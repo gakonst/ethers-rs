@@ -50,6 +50,8 @@ pub enum ConversionError {
     InvalidFloat(#[from] std::num::ParseFloatError),
     #[error(transparent)]
     FromDecStrError(#[from] FromDecStrErr),
+    #[error(transparent)]
+    DecimalError(#[from] rust_decimal::Error),
 }
 
 /// 1 Ether = 1e18 Wei == 0x0de0b6b3a7640000 Wei
@@ -147,9 +149,12 @@ where
     S: ToString,
     K: TryInto<Units, Error = ConversionError> + Copy,
 {
-    let float_n: f64 =
-        amount.to_string().parse::<f64>()? * 10u64.pow(units.try_into()?.as_num()) as f64;
-    let u256_n: U256 = U256::from_dec_str(&float_n.round().to_string())?;
+    use rust_decimal::Decimal;
+    let num: Decimal = amount.to_string().parse()?;
+    let multiplier: Decimal = 10u64.pow(units.try_into()?.as_num()).into();
+    let val =
+        num.checked_mul(multiplier).ok_or(rust_decimal::Error::ExceedsMaximumPossibleValue)?;
+    let u256_n: U256 = U256::from_dec_str(&val.round().to_string())?;
     Ok(u256_n)
 }
 /// The address for an Ethereum contract is deterministically computed from the
@@ -446,6 +451,9 @@ mod tests {
 
         let eth = parse_units(1, "ether").unwrap();
         assert_eq!(eth, WEI_IN_ETHER);
+
+        let val = parse_units("2.3", "ether").unwrap();
+        assert_eq!(val, U256::from_dec_str("2300000000000000000").unwrap());
     }
 
     #[test]
