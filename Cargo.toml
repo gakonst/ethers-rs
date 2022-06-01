@@ -148,3 +148,8 @@ required-features = ["trezor"]
 name = "yubi"
 path = "examples/yubi.rs"
 required-features = ["yubi"]
+
+[[example]]
+name = "paginated_logs"
+path = "examples/paginated_logs.rs"
+required-features = ["rustls"]

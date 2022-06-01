@@ -21,12 +21,6 @@ jobs:
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
-      - name: Set up node
-        uses: actions/setup-node@v1
-        with:
-          node-version: 10
-      - name: Install ganache
-        run: npm install -g ganache
       - name: Install Anvil
         uses: foundry-rs/foundry-toolchain@v1
         with:
@@ -70,10 +64,6 @@ jobs:
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
-      - name: Set up node
-        uses: actions/setup-node@v1
-        with:
-          node-version: 10
       # TODO: can we combine these shared steps in github actions?
       - name: Install Anvil
         uses: foundry-rs/foundry-toolchain@v1
@@ -139,12 +129,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v1
-      - name: Install node
-        uses: actions/setup-node@v1
-        with:
-          node-version: 10
+      - name: Checkout sources
+        uses: actions/checkout@v2
       - name: Install rust
         uses: actions-rs/toolchain@v1
         with:
@@ -152,6 +138,11 @@ jobs:
           target: wasm32-unknown-unknown
           profile: minimal
           override: true
+
+      - name: Install Anvil
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
 
       - uses: Swatinem/rust-cache@v1
         with:
@@ -163,11 +154,8 @@ jobs:
           command: check
           args: --target wasm32-unknown-unknown
 
-      - name: Launch Ganache
-        run: |
-          cd examples/ethers-wasm
-          npm install
-          npm run ganache &
+      - name: Launch Anvil
+        run: anvil --block-time 2 -m "stuff inherit faith park genre spread huge knee ecology private marble supreme" &
 
       - name: Install wasm-pack
         run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh

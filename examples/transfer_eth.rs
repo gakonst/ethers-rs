@@ -16,18 +16,16 @@ async fn main() -> Result<()> {
     let tx = TransactionRequest::new().to(to).value(1000).from(from); // specify the `from` field so that the client knows which account to use
 
     let balance_before = provider.get_balance(from, None).await?;
+    let nonce1 = provider.get_transaction_count(from, None).await?;
 
     // broadcast it via the eth_sendTransaction API
     let tx = provider.send_transaction(tx, None).await?.await?;
 
     println!("{}", serde_json::to_string(&tx)?);
 
-    let nonce1 = provider.get_transaction_count(from, Some(BlockNumber::Latest.into())).await?;
+    let nonce2 = provider.get_transaction_count(from, None).await?;
 
-    let nonce2 =
-        provider.get_transaction_count(from, Some(BlockNumber::Number(0.into()).into())).await?;
-
-    assert!(nonce2 < nonce1);
+    assert!(nonce1 < nonce2);
 
     let balance_after = provider.get_balance(from, None).await?;
     assert!(balance_after < balance_before);
