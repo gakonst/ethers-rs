@@ -781,12 +781,17 @@ pub(crate) enum ArtifactsCache<'a, T: ArtifactOutput> {
 
 impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
     pub fn new(project: &'a Project<T>, edges: GraphEdges) -> Result<Self> {
-        /// returns the [SolFilesCache] to use
-        fn get_cache<T: ArtifactOutput>(project: &Project<T>) -> SolFilesCache {
+        /// Returns the [SolFilesCache] to use
+        ///
+        /// Returns a new empty cache if the cache does not exist or `invalidate_cache` is set.
+        fn get_cache<T: ArtifactOutput>(
+            project: &Project<T>,
+            invalidate_cache: bool,
+        ) -> SolFilesCache {
             // the currently configured paths
             let paths = project.paths.paths_relative();
 
-            if project.cache_path().exists() {
+            if !invalidate_cache && project.cache_path().exists() {
                 if let Ok(cache) = SolFilesCache::read_joined(&project.paths) {
                     if cache.paths == paths {
                         // unchanged project paths
@@ -794,13 +799,19 @@ impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
                     }
                 }
             }
+
             // new empty cache
             SolFilesCache::new(Default::default(), paths)
         }
 
         let cache = if project.cached {
+            // we only read the existing cache if we were able to resolve the entire graph
+            // if we failed to resolve an import we invalidate the cache so don't get any false
+            // positives
+            let invalidate_cache = !edges.unresolved_imports().is_empty();
+
             // read the cache file if it already exists
-            let mut cache = get_cache(project);
+            let mut cache = get_cache(project, invalidate_cache);
 
             cache.remove_missing_files();
 
