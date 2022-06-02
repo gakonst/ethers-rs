@@ -23,7 +23,7 @@ use std::{
 };
 use thiserror::Error;
 
-use super::common::{Params, Response};
+use super::common::{BatchError, BatchRequest, BatchResponse, Params, Response};
 
 if_wasm! {
     use wasm_bindgen::prelude::*;
@@ -68,16 +68,19 @@ if_not_wasm! {
     use tungstenite::client::IntoClientRequest;
 }
 
-type Pending = oneshot::Sender<Result<Box<RawValue>, JsonRpcError>>;
+type BatchPending = oneshot::Sender<BatchResponse>;
+type SinglePending = oneshot::Sender<Result<Box<RawValue>, JsonRpcError>>;
 type Subscription = mpsc::UnboundedSender<Box<RawValue>>;
 
 /// Instructions for the `WsServer`.
 enum Instruction {
-    /// JSON-RPC request
-    Request { id: u64, request: String, sender: Pending },
-    /// Create a new subscription
+    /// JSON-RPC request.
+    Request { id: u64, request: String, sender: SinglePending },
+    /// Batch of JSON-RPC requests.
+    Batch { id: u64, request: String, sender: BatchPending },
+    /// Create a new subscription.
     Subscribe { id: U256, sink: Subscription },
-    /// Cancel an existing subscription
+    /// Cancel an existing subscription.
     Unsubscribe { id: U256 },
 }
 
@@ -152,6 +155,37 @@ impl Ws {
         Self::connect(request).await
     }
 
+    /// Executes the batch of JSON-RPC requests.
+    ///
+    /// # Arguments
+    ///
+    /// `batch` - batch of JSON-RPC requests.
+    pub async fn execute_batch(
+        &self,
+        batch: &mut BatchRequest,
+    ) -> Result<BatchResponse, ClientError> {
+        let next_id = self.id.fetch_add(batch.len() as u64, Ordering::SeqCst);
+
+        // Ids in the batch will start from next_id.
+        batch.set_ids(next_id)?;
+
+        // Send the message.
+        let (sender, receiver) = oneshot::channel();
+        let payload = Instruction::Batch {
+            id: next_id,
+            request: serde_json::to_string(batch.requests()?)?,
+            sender,
+        };
+
+        // send the data
+        self.send(payload)?;
+
+        // wait for the response (the request itself may have errors as well)
+        let res = receiver.await?;
+
+        Ok(res)
+    }
+
     fn send(&self, msg: Instruction) -> Result<(), ClientError> {
         self.instructions.unbounded_send(msg).map_err(to_client_error)
     }
@@ -205,8 +239,8 @@ impl PubsubClient for Ws {
 struct WsServer<S> {
     ws: Fuse<S>,
     instructions: Fuse<mpsc::UnboundedReceiver<Instruction>>,
-
-    pending: BTreeMap<u64, Pending>,
+    single_pending: BTreeMap<u64, SinglePending>,
+    batch_pending: BTreeMap<u64, BatchPending>,
     subscriptions: BTreeMap<U256, Subscription>,
 }
 
@@ -221,7 +255,8 @@ where
             // Stream implementation
             ws: ws.fuse(),
             instructions: requests.fuse(),
-            pending: BTreeMap::default(),
+            single_pending: BTreeMap::default(),
+            batch_pending: BTreeMap::default(),
             subscriptions: BTreeMap::default(),
         }
     }
@@ -231,7 +266,10 @@ where
     /// If this method returns `true`, then the `instructions` channel has been closed and all
     /// pending requests and subscriptions have been completed.
     fn is_done(&self) -> bool {
-        self.instructions.is_done() && self.pending.is_empty() && self.subscriptions.is_empty()
+        self.instructions.is_done() &&
+            self.single_pending.is_empty() &&
+            self.batch_pending.is_empty() &&
+            self.subscriptions.is_empty()
     }
 
     /// Spawns the event loop
@@ -265,45 +303,58 @@ where
         tokio::spawn(f);
     }
 
-    // dispatch an RPC request
-    async fn service_request(
-        &mut self,
+    /// Dispatches a JSON-RPC request.
+    ///
+    /// # Arguments
+    ///
+    /// * `pending` - map of pending requests.
+    ///
+    /// * `id` - id of the request.
+    ///
+    /// * `request` - a JSON-RPC request.
+    ///
+    /// * `sender` - channel for the request.
+    async fn service_request<T>(
+        ws: &mut Fuse<S>,
+        pending: &mut BTreeMap<u64, oneshot::Sender<T>>,
         id: u64,
         request: String,
-        sender: Pending,
-    ) -> Result<(), ClientError> {
-        if self.pending.insert(id, sender).is_some() {
+        sender: oneshot::Sender<T>,
+    ) {
+        if pending.insert(id, sender).is_some() {
             warn!("Replacing a pending request with id {:?}", id);
         }
 
-        if let Err(e) = self.ws.send(Message::Text(request)).await {
+        if let Err(e) = ws.send(Message::Text(request)).await {
             error!("WS connection error: {:?}", e);
-            self.pending.remove(&id);
+            pending.remove(&id);
         }
-        Ok(())
     }
 
     /// Dispatch a subscription request
-    async fn service_subscribe(&mut self, id: U256, sink: Subscription) -> Result<(), ClientError> {
+    async fn service_subscribe(&mut self, id: U256, sink: Subscription) {
         if self.subscriptions.insert(id, sink).is_some() {
             warn!("Replacing already-registered subscription with id {:?}", id);
         }
-        Ok(())
     }
 
     /// Dispatch a unsubscribe request
-    async fn service_unsubscribe(&mut self, id: U256) -> Result<(), ClientError> {
+    async fn service_unsubscribe(&mut self, id: U256) {
         if self.subscriptions.remove(&id).is_none() {
             warn!("Unsubscribing from non-existent subscription with id {:?}", id);
         }
-        Ok(())
     }
 
     /// Dispatch an outgoing message
-    async fn service(&mut self, instruction: Instruction) -> Result<(), ClientError> {
+    async fn service(&mut self, instruction: Instruction) {
         match instruction {
             Instruction::Request { id, request, sender } => {
-                self.service_request(id, request, sender).await
+                Self::service_request(&mut self.ws, &mut self.single_pending, id, request, sender)
+                    .await
+            }
+            Instruction::Batch { id, request, sender } => {
+                Self::service_request(&mut self.ws, &mut self.batch_pending, id, request, sender)
+                    .await
             }
             Instruction::Subscribe { id, sink } => self.service_subscribe(id, sink).await,
             Instruction::Unsubscribe { id } => self.service_unsubscribe(id).await,
@@ -316,18 +367,52 @@ where
         Ok(())
     }
 
-    async fn handle_text(&mut self, inner: String) -> Result<(), ClientError> {
-        let (id, result) = match serde_json::from_str(&inner)? {
-            Response::Success { id, result } => (id, Ok(result.to_owned())),
-            Response::Error { id, error } => (id, Err(error)),
-            Response::Notification { params, .. } => return self.handle_notification(params),
-        };
-
-        if let Some(request) = self.pending.remove(&id) {
+    /// Send the response.
+    ///
+    /// # Arguments
+    ///
+    /// * `pending` - map of pending requests.
+    ///
+    /// * `id` - id of the request.
+    ///
+    /// * `response` - response message.
+    async fn send_response<T>(
+        pending: &mut BTreeMap<u64, oneshot::Sender<T>>,
+        id: u64,
+        response: T,
+    ) -> Result<(), ClientError>
+    where
+        T: Debug,
+    {
+        if let Some(request) = pending.remove(&id) {
             if !request.is_canceled() {
-                request.send(result).map_err(to_client_error)?;
+                request.send(response).map_err(to_client_error)?;
             }
         }
+
+        Ok(())
+    }
+
+    async fn handle_text(&mut self, inner: String) -> Result<(), ClientError> {
+        // Incoming text is a response to a single request.
+        if let Ok(response) = serde_json::from_str(&inner) {
+            let (id, result) = match response {
+                Response::Success { id, result } => (id, Ok(result.to_owned())),
+                Response::Error { id, error } => (id, Err(error)),
+                Response::Notification { params, .. } => return self.handle_notification(params),
+            };
+
+            // Respond.
+            Self::send_response(&mut self.single_pending, id, result).await?;
+        } else {
+            // Otherwise is a response to a batch request.
+            let responses = serde_json::from_str::<Vec<Response>>(&inner)?;
+            let batch = BatchResponse::new(responses);
+            let id = batch.id()?;
+
+            // Respond.
+            Self::send_response(&mut self.batch_pending, id, batch).await?;
+        };
 
         Ok(())
     }
@@ -396,7 +481,7 @@ where
         futures_util::select! {
             // Handle requests
             instruction = self.instructions.select_next_some() => {
-                self.service(instruction).await?;
+                self.service(instruction).await;
             },
             // Handle ws messages
             resp = self.ws.next() => match resp {
@@ -473,6 +558,10 @@ pub enum ClientError {
     #[error(transparent)]
     #[cfg(not(target_arch = "wasm32"))]
     RequestError(#[from] http::Error),
+
+    /// Thrown if executing an empty batch.
+    #[error(transparent)]
+    BatchError(#[from] BatchError),
 }
 
 impl From<ClientError> for ProviderError {

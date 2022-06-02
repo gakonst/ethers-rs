@@ -11,7 +11,9 @@ use std::{
 use thiserror::Error;
 use url::Url;
 
-use super::common::{Authorization, JsonRpcError, Request, Response};
+use super::common::{
+    Authorization, BatchError, BatchRequest, BatchResponse, JsonRpcError, Request, Response,
+};
 
 /// A low-level JSON-RPC Client over HTTP.
 ///
@@ -41,6 +43,7 @@ pub enum ClientError {
     /// Thrown if the request failed
     #[error(transparent)]
     ReqwestError(#[from] ReqwestError),
+
     #[error(transparent)]
     /// Thrown if the response could not be parsed
     JsonRpcError(#[from] JsonRpcError),
@@ -48,6 +51,10 @@ pub enum ClientError {
     #[error("Deserialization Error: {err}. Response: {text}")]
     /// Serde JSON Error
     SerdeJson { err: serde_json::Error, text: String },
+
+    /// Thrown if sending an empty batch of JSON-RPC requests.
+    #[error(transparent)]
+    BatchError(#[from] BatchError),
 }
 
 impl From<ClientError> for ProviderError {
@@ -108,6 +115,33 @@ impl Provider {
     /// ```
     pub fn new(url: impl Into<Url>) -> Self {
         Self::new_with_client(url, Client::new())
+    }
+
+    /// Executes the batch of JSON-RPC requests.
+    ///
+    /// # Arguments
+    ///
+    /// `batch` - batch of JSON-RPC requests.
+    ///
+    /// # Errors
+    ///
+    /// If `batch` is empty returns errors.
+    pub async fn execute_batch(
+        &self,
+        batch: &mut BatchRequest,
+    ) -> Result<BatchResponse, ClientError> {
+        let next_id = self.id.fetch_add(batch.len() as u64, Ordering::SeqCst);
+        // Ids in the batch will start from next_id.
+        batch.set_ids(next_id)?;
+
+        let res = self.client.post(self.url.as_ref()).json(batch.requests()?).send().await?;
+        let text = res.text().await?;
+
+        // Get the responses for the batch.
+        let responses = serde_json::from_str::<Vec<Response>>(&text)
+            .map_err(|err| ClientError::SerdeJson { err, text: text.to_string() })?;
+
+        Ok(BatchResponse::new(responses))
     }
 
     /// Initializes a new HTTP Client with authentication

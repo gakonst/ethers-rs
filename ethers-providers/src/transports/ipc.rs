@@ -31,15 +31,16 @@ use tokio::{
 
 use crate::{
     provider::ProviderError,
-    transports::common::{JsonRpcError, Request, Response},
+    transports::common::{
+        BatchError, BatchRequest, BatchResponse, JsonRpcError, Params, Request, Response,
+    },
     JsonRpcClient, PubsubClient,
 };
 
-use super::common::Params;
-
 type FxHashMap<K, V> = std::collections::HashMap<K, V, BuildHasherDefault<FxHasher64>>;
 
-type Pending = oneshot::Sender<Result<Box<RawValue>, JsonRpcError>>;
+type BatchPending = oneshot::Sender<BatchResponse>;
+type SinglePending = oneshot::Sender<Result<Box<RawValue>, JsonRpcError>>;
 type Subscription = mpsc::UnboundedSender<Box<RawValue>>;
 
 /// Unix Domain Sockets (IPC) transport.
@@ -51,7 +52,8 @@ pub struct Ipc {
 
 #[derive(Debug)]
 enum TransportMessage {
-    Request { id: u64, request: Box<[u8]>, sender: Pending },
+    Request { id: u64, request: Box<[u8]>, sender: SinglePending },
+    Batch { id: u64, requests: Box<[u8]>, sender: BatchPending },
     Subscribe { id: U256, sink: Subscription },
     Unsubscribe { id: U256 },
 }
@@ -66,6 +68,37 @@ impl Ipc {
         spawn_ipc_server(stream, request_rx);
 
         Ok(Self { id, request_tx })
+    }
+
+    /// Executes the batch of JSON-RPC requests.
+    ///
+    /// # Arguments
+    ///
+    /// `batch` - batch of JSON-RPC requests.
+    pub async fn execute_batch(&self, batch: &mut BatchRequest) -> Result<BatchResponse, IpcError> {
+        // The request id of the client is incremented by the batch size.
+        let next_id = self.id.fetch_add(batch.len() as u64, Ordering::SeqCst);
+
+        // Ids in the batch will start from next_id.
+        batch.set_ids(next_id)?;
+        // Send the message.
+        let (sender, receiver) = oneshot::channel();
+        // The id of the first request in the batch matches the id of the channel in the pending
+        // map.
+        let payload = TransportMessage::Batch {
+            id: next_id,
+            requests: serde_json::to_vec(batch.requests()?)?.into_boxed_slice(),
+            sender,
+        };
+
+        // Send the data.
+        self.send(payload)?;
+
+        // Wait for the response (the request itself may have errors as well).
+        let res = receiver.await?;
+
+        // Returns the batch of JSON-RPC responses.
+        Ok(res)
     }
 
     fn send(&self, msg: TransportMessage) -> Result<(), IpcError> {
@@ -147,10 +180,7 @@ async fn run_ipc_server(
     request_rx: mpsc::UnboundedReceiver<TransportMessage>,
 ) {
     // the shared state for both reads & writes
-    let shared = Shared {
-        pending: FxHashMap::with_capacity_and_hasher(64, BuildHasherDefault::default()).into(),
-        subs: FxHashMap::with_capacity_and_hasher(64, BuildHasherDefault::default()).into(),
-    };
+    let shared = Shared::default();
 
     // split the stream and run two independent concurrently (local), thereby
     // allowing reads and writes to occurr concurrently
@@ -167,9 +197,23 @@ async fn run_ipc_server(
     }
 }
 
+#[derive(Debug)]
 struct Shared {
-    pending: RefCell<FxHashMap<u64, Pending>>,
+    single_pending: RefCell<FxHashMap<u64, SinglePending>>,
+    batch_pending: RefCell<FxHashMap<u64, BatchPending>>,
     subs: RefCell<FxHashMap<U256, Subscription>>,
+}
+
+impl Default for Shared {
+    fn default() -> Self {
+        Self {
+            single_pending: FxHashMap::with_capacity_and_hasher(64, BuildHasherDefault::default())
+                .into(),
+            batch_pending: FxHashMap::with_capacity_and_hasher(64, BuildHasherDefault::default())
+                .into(),
+            subs: FxHashMap::with_capacity_and_hasher(64, BuildHasherDefault::default()).into(),
+        }
+    }
 }
 
 impl Shared {
@@ -204,12 +248,21 @@ impl Shared {
         while let Some(msg) = request_rx.next().await {
             match msg {
                 Request { id, request, sender } => {
-                    let prev = self.pending.borrow_mut().insert(id, sender);
+                    let prev = self.single_pending.borrow_mut().insert(id, sender);
                     assert!(prev.is_none(), "replaced pending IPC request (id={})", id);
 
                     if let Err(err) = writer.write_all(&request).await {
                         tracing::error!("IPC connection error: {:?}", err);
-                        self.pending.borrow_mut().remove(&id);
+                        self.single_pending.borrow_mut().remove(&id);
+                    }
+                }
+                Batch { id, requests, sender } => {
+                    let prev = self.batch_pending.borrow_mut().insert(id, sender);
+                    assert!(prev.is_none(), "replaced pending IPC request (id={})", id);
+
+                    if let Err(err) = writer.write_all(&requests).await {
+                        tracing::error!("IPC connection error: {:?}", err);
+                        self.batch_pending.borrow_mut().remove(&id);
                     }
                 }
                 Subscribe { id, sink } => {
@@ -238,8 +291,8 @@ impl Shared {
         Err(IpcError::ServerExit)
     }
 
-    fn handle_bytes(&self, bytes: &BytesMut) -> Result<usize, IpcError> {
-        // deserialize all complete jsonrpc responses in the buffer
+    /// Tries to  deserialize all complete jsonrpc responses in the buffer.
+    fn parse_response(&self, bytes: &BytesMut) -> Result<usize, IpcError> {
         let mut de = Deserializer::from_slice(bytes.as_ref()).into_iter();
         while let Some(Ok(response)) = de.next() {
             match response {
@@ -252,9 +305,27 @@ impl Shared {
         Ok(de.byte_offset())
     }
 
+    fn parse_batch(&self, bytes: &BytesMut) -> Result<usize, IpcError> {
+        let mut de = Deserializer::from_slice(bytes.as_ref()).into_iter();
+        while let Some(Ok(responses)) = de.next() {
+            // Build the batch with the JSON-RPC responses.
+            let batch = BatchResponse::new(responses);
+            // Get id.
+            let id = batch.id()?;
+            // Send the batch.
+            self.send_batch(id, batch);
+        }
+
+        Ok(de.byte_offset())
+    }
+
+    fn handle_bytes(&self, bytes: &BytesMut) -> Result<usize, IpcError> {
+        Ok(self.parse_response(bytes)? + self.parse_batch(bytes)?)
+    }
+
     fn send_response(&self, id: u64, result: Result<Box<RawValue>, JsonRpcError>) {
         // retrieve the channel sender for responding to the pending request
-        let response_tx = match self.pending.borrow_mut().remove(&id) {
+        let response_tx = match self.single_pending.borrow_mut().remove(&id) {
             Some(tx) => tx,
             None => {
                 tracing::warn!(%id, "no pending request exists for the response ID");
@@ -265,6 +336,21 @@ impl Shared {
         // a failure to send the response indicates that the pending request has
         // been dropped in the mean time
         let _ = response_tx.send(result.map_err(Into::into));
+    }
+
+    fn send_batch(&self, id: u64, result: BatchResponse) {
+        // retrieve the channel sender for responding to the pending batch
+        let response_tx = match self.batch_pending.borrow_mut().remove(&id) {
+            Some(tx) => tx,
+            None => {
+                tracing::warn!(%id, "no pending batch exists for the response ID");
+                return
+            }
+        };
+
+        // a failure to send the response indicates that the pending request has
+        // been dropped in the mean time
+        let _ = response_tx.send(result);
     }
 
     /// Sends notification through the channel based on the ID of the subscription.
@@ -312,6 +398,9 @@ pub enum IpcError {
 
     #[error("The IPC server has exited")]
     ServerExit,
+
+    #[error(transparent)]
+    BatchError(#[from] BatchError),
 }
 
 impl From<IpcError> for ProviderError {
