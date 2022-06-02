@@ -4,7 +4,7 @@
 
 ### Unreleased
 
-- Add batching of JSON-RPC requests via the addition of `BathRequest`.
+- Add batching of JSON-RPC requests via the addition of `BatchRequest`.
   [#1339](https://github.com/gakonst/ethers-rs/pull/1339)
 - Add `as_*_mut` methods on `TypedTransaction`
   [#1310](https://github.com/gakonst/ethers-rs/pull/1310)
