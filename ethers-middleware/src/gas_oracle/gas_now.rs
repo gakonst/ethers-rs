@@ -23,7 +23,7 @@ struct GasNowResponseWrapper {
     data: GasNowResponse,
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 pub struct GasNowResponse {
     pub rapid: u64,
     pub fast: u64,

@@ -33,6 +33,7 @@ use ethers_core::types::U256;
 use async_trait::async_trait;
 use auto_impl::auto_impl;
 use reqwest::Error as ReqwestError;
+use std::error::Error;
 use thiserror::Error;
 
 const GWEI_TO_WEI: u64 = 1000000000;
