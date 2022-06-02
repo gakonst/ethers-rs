@@ -120,9 +120,9 @@ dependencies = [
 
 [[package]]
 name = "auto_impl"
-version = "0.5.0"
+version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7862e21c893d65a1650125d157eaeec691439379a1cee17ee49031b79236ada4"
+checksum = "6b3a3421414432bab4fb6dedc2d88298c4e017d6e70f16af9aa38ac2d97eb9c8"
 dependencies = [
  "proc-macro-error",
  "proc-macro2",
