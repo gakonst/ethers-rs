@@ -2,7 +2,7 @@
 
 use std::{
     collections::{BTreeMap, HashMap, HashSet},
-    io,
+    fs, io,
     path::{Path, PathBuf},
     str::FromStr,
 };
@@ -1767,4 +1767,47 @@ contract D { }
         entries.into_iter().map(|p| project.root().join(p)).collect::<Vec<_>>(),
         cache.files.keys().cloned().collect::<Vec<_>>()
     );
+}
+
+#[test]
+fn test_failure_after_removing_file() {
+    let project = TempProject::dapptools().unwrap();
+    project
+        .add_source(
+            "A",
+            r#"
+pragma solidity ^0.8.10;
+import "./B.sol";
+contract A { }
+"#,
+        )
+        .unwrap();
+
+    project
+        .add_source(
+            "B",
+            r#"
+pragma solidity ^0.8.10;
+import "./C.sol";
+contract B { }
+"#,
+        )
+        .unwrap();
+
+    let c = project
+        .add_source(
+            "C",
+            r#"
+pragma solidity ^0.8.10;
+contract C { }
+"#,
+        )
+        .unwrap();
+
+    let compiled = project.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+
+    fs::remove_file(c).unwrap();
+    let compiled = project.compile().unwrap();
+    assert!(compiled.has_compiler_errors());
 }
