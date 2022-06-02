@@ -460,7 +460,7 @@ where
         futures_util::select! {
             // Handle requests
             instruction = self.instructions.select_next_some() => {
-                self.service(instruction).await?;
+                self.service(instruction).await;
             },
             // Handle ws messages
             resp = self.ws.next() => match resp {

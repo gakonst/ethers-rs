@@ -123,6 +123,11 @@ impl BatchRequest {
         self.requests.len()
     }
 
+    /// Returns whether the batch is empty or not.
+    pub fn is_empty(&self) -> bool {
+        self.requests.is_empty()
+    }
+
     /// Adds a new request to the batch.
     ///
     /// # Arguments
@@ -166,7 +171,8 @@ impl BatchRequest {
     ///
     /// If one of the requests is malformed.
     pub(crate) fn set_ids(&mut self, mut first: u64) -> Result<(), BatchError> {
-        for request in self.requests_mut()? {
+        let requests = self.requests_mut()?;
+        for request in requests {
             *request
                 .get_mut("id")
                 .expect("Malformed JSON-RPC request: {request}, id is missing.") = first.into();
@@ -182,7 +188,7 @@ impl BatchRequest {
     ///
     /// Returns `BatchError::EmptyBatch` if the batch is empty.
     pub(crate) fn requests_mut(&mut self) -> Result<&mut [Value], BatchError> {
-        (self.requests.len() > 0).then(move || &mut self.requests[..]).ok_or(BatchError::EmptyBatch)
+        (!self.is_empty()).then(move || &mut self.requests[..]).ok_or(BatchError::EmptyBatch)
     }
 
     /// Returns an immutable reference to the underlying JSON-RPC requests.
@@ -191,7 +197,7 @@ impl BatchRequest {
     ///
     /// Returns `BatchError::EmptyBatch` if the batch is empty.
     pub(crate) fn requests(&self) -> Result<&[Value], BatchError> {
-        (self.requests.len() > 0).then(|| &self.requests[..]).ok_or(BatchError::EmptyBatch)
+        (!self.is_empty()).then(|| &self.requests[..]).ok_or(BatchError::EmptyBatch)
     }
 }
 
@@ -247,6 +253,16 @@ impl BatchResponse {
             body.map_err(Into::into)
                 .and_then(|res| serde_json::from_str::<T>(res.get()).map_err(Into::into))
         })
+    }
+
+    /// Returns the number of responses contained in the batch.
+    pub fn len(&self) -> usize {
+        self.responses.len()
+    }
+
+    /// Returns whether the batch is empty or not.
+    pub fn is_empty(&self) -> bool {
+        self.responses.is_empty()
     }
 }
 
