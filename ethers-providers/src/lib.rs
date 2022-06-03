@@ -37,7 +37,7 @@ use serde::{de::DeserializeOwned, Serialize};
 use std::{error::Error, fmt::Debug, future::Future, pin::Pin};
 use url::Url;
 
-pub use provider::{FilterKind, Provider, ProviderError};
+pub use provider::{spoof, FilterKind, Provider, ProviderError};
 
 // feature-enabled support for dev-rpc methods
 #[cfg(feature = "dev-rpc")]
