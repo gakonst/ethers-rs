@@ -97,7 +97,6 @@ impl Client {
             Chain::Fantom | Chain::FantomTestnet => {
                 std::env::var("FTMSCAN_API_KEY").or_else(|_| std::env::var("FANTOMSCAN_API_KEY"))?
             }
-
             Chain::XDai | Chain::Sepolia => String::default(),
             Chain::Moonbeam | Chain::MoonbeamDev | Chain::Moonriver => {
                 std::env::var("MOONSCAN_API_KEY")?
@@ -268,6 +267,10 @@ impl ClientBuilder {
             Chain::Moonriver => {
                 urls("https://api-moonriver.moonscan.io/api", "https://moonriver.moonscan.io")
             }
+            Chain::XDai => urls(
+                "https://blockscout.com/xdai/mainnet/api",
+                "https://blockscout.com/xdai/mainnet",
+            ),
             Chain::Dev => return Err(EtherscanError::LocalNetworksNotSupported),
             chain => return Err(EtherscanError::ChainNotSupported(chain)),
         };
