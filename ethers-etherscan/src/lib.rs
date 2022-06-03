@@ -476,7 +476,7 @@ mod tests {
 
     #[test]
     fn chain_not_supported() {
-        let err = Client::new_from_env(Chain::XDai).unwrap_err();
+        let err = Client::new_from_env(Chain::Sepolia).unwrap_err();
 
         assert!(matches!(err, EtherscanError::ChainNotSupported(_)));
         assert_eq!(err.to_string(), "Chain xdai not supported");
