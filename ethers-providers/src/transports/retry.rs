@@ -17,8 +17,27 @@ use thiserror::Error;
 
 /// [RetryPolicy] defines logic for which [JsonRpcClient::Error] instances should
 /// the client retry the request and try to recover from.
-pub trait RetryPolicy<E>: Send + Sync + Debug {
+pub trait RetryPolicy<E>: Send + Sync + Debug + RetryPolicyClone<E> {
     fn should_retry(&self, error: &E) -> bool;
+}
+
+pub trait RetryPolicyClone<E> {
+    fn clone_box(&self) -> Box<dyn RetryPolicy<E>>;
+}
+
+impl<T, E> RetryPolicyClone<E> for T
+where
+    T: RetryPolicy<E> + Clone + 'static,
+{
+    fn clone_box(&self) -> Box<dyn RetryPolicy<E>> {
+        Box::new(self.clone())
+    }
+}
+
+impl<E> Clone for Box<dyn RetryPolicy<E>> {
+    fn clone(&self) -> Self {
+        self.clone_box()
+    }
 }
 
 /// [RetryClient] presents as a wrapper around [JsonRpcClient] that will retry
@@ -158,7 +177,7 @@ where
 
 /// Implements [RetryPolicy] that will retry requests that errored with
 /// status code 429 i.e. TOO_MANY_REQUESTS
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct HttpRateLimitRetryPolicy;
 
 impl RetryPolicy<ClientError> for HttpRateLimitRetryPolicy {
@@ -170,6 +189,23 @@ impl RetryPolicy<ClientError> for HttpRateLimitRetryPolicy {
             // alchemy throws it this way
             ClientError::JsonRpcError(JsonRpcError { code, message: _, data: _ }) => *code == 429,
             _ => false,
+        }
+    }
+}
+
+impl<T> Clone for RetryClient<T>
+where
+    T: Clone,
+    T: JsonRpcClient,
+    T::Error: Sync + Send + 'static,
+{
+    fn clone(&self) -> Self {
+        Self {
+            inner: self.inner.clone(),
+            requests_enqueued: AtomicU32::new(0),
+            policy: self.policy.clone(),
+            max_retry: self.max_retry,
+            initial_backoff: self.initial_backoff,
         }
     }
 }
