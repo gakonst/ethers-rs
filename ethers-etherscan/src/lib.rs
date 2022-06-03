@@ -97,9 +97,14 @@ impl Client {
             Chain::Fantom | Chain::FantomTestnet => {
                 std::env::var("FTMSCAN_API_KEY").or_else(|_| std::env::var("FANTOMSCAN_API_KEY"))?
             }
-            Chain::Rsk | Chain::Sokol | Chain::Poa | Chain::XDai | Chain::Sepolia => {
-                String::default()
-            }
+            Chain::XDai |
+            Chain::Sepolia |
+            Chain::Rsk |
+            Chain::Sokol |
+            Chain::Poa |
+            Chain::Oasis |
+            Chain::Emerald |
+            Chain::EmeraldTestnet => String::default(),
             Chain::Moonbeam | Chain::MoonbeamDev | Chain::Moonriver => {
                 std::env::var("MOONSCAN_API_KEY")?
             }
@@ -280,6 +285,18 @@ impl ClientBuilder {
             Chain::Poa => {
                 urls("https://blockscout.com/poa/core/api", "https://blockscout.com/poa/core")
             }
+            Chain::Rsk => {
+                urls("https://blockscout.com/rsk/mainnet/api", "https://blockscout.com/rsk/mainnet")
+            }
+            Chain::Oasis => urls("https://scan.oasischain.io/api", "https://scan.oasischain.io/"),
+            Chain::Emerald => urls(
+                "https://explorer.emerald.oasis.dev/api",
+                "https://explorer.emerald.oasis.dev/",
+            ),
+            Chain::EmeraldTestnet => urls(
+                "https://testnet.explorer.emerald.oasis.dev/api",
+                "https://testnet.explorer.emerald.oasis.dev/",
+            ),
             Chain::Dev => return Err(EtherscanError::LocalNetworksNotSupported),
             chain => return Err(EtherscanError::ChainNotSupported(chain)),
         };

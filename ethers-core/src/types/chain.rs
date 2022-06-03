@@ -20,10 +20,7 @@ pub enum Chain {
     Ropsten = 3,
     Rinkeby = 4,
     Goerli = 5,
-    Rsk = 30,
     Kovan = 42,
-    Sokol = 77,
-    Poa = 99,
     #[strum(serialize = "xdai")]
     XDai = 100,
     Polygon = 137,
@@ -47,6 +44,12 @@ pub enum Chain {
     BinanceSmartChain = 56,
     #[strum(serialize = "bsc-testnet")]
     BinanceSmartChainTestnet = 97,
+    Poa = 99,
+    Sokol = 77,
+    Rsk = 30,
+    Oasis = 26863,
+    Emerald = 42262,
+    EmeraldTestnet = 42261,
 }
 
 impl fmt::Display for Chain {
@@ -56,10 +59,7 @@ impl fmt::Display for Chain {
             Chain::Ropsten => "ropsten",
             Chain::Rinkeby => "rinkeby",
             Chain::Goerli => "goerli",
-            Chain::Rsk => "rsk",
             Chain::Kovan => "kovan",
-            Chain::Sokol => "sokol",
-            Chain::Poa => "poa",
             Chain::XDai => "xdai",
             Chain::Polygon => "polygon",
             Chain::PolygonMumbai => "polygon-mumbai",
@@ -80,6 +80,12 @@ impl fmt::Display for Chain {
             Chain::ArbitrumTestnet => "arbitrum-testnet",
             Chain::Cronos => "cronos",
             Chain::CronosTestnet => "cronos-testnet",
+            Chain::Poa => "poa",
+            Chain::Sokol => "sokol",
+            Chain::Rsk => "rsk",
+            Chain::Oasis => "oasis",
+            Chain::Emerald => "emerald",
+            Chain::EmeraldTestnet => "emerald-testnet",
         };
 
         write!(formatter, "{}", chain)
@@ -113,10 +119,7 @@ impl TryFrom<u64> for Chain {
             3 => Chain::Ropsten,
             4 => Chain::Rinkeby,
             5 => Chain::Goerli,
-            30 => Chain::Rsk,
             42 => Chain::Kovan,
-            77 => Chain::Sokol,
-            99 => Chain::Poa,
             100 => Chain::XDai,
             137 => Chain::Polygon,
             1337 => Chain::Dev,
@@ -137,6 +140,12 @@ impl TryFrom<u64> for Chain {
             421611 => Chain::ArbitrumTestnet,
             25 => Chain::Cronos,
             338 => Chain::CronosTestnet,
+            99 => Chain::Poa,
+            77 => Chain::Sokol,
+            30 => Chain::Rsk,
+            26863 => Chain::Oasis,
+            42262 => Chain::Emerald,
+            42261 => Chain::EmeraldTestnet,
             _ => return Err(ParseChainError(chain.to_string())),
         })
     }
@@ -161,10 +170,7 @@ impl FromStr for Chain {
             "ropsten" => Chain::Ropsten,
             "rinkeby" => Chain::Rinkeby,
             "goerli" => Chain::Goerli,
-            "rsk" => Chain::Rsk,
             "kovan" => Chain::Kovan,
-            "sokol" => Chain::Sokol,
-            "poa" => Chain::Poa,
             "xdai" => Chain::XDai,
             "polygon" => Chain::Polygon,
             "polygon-mumbai" => Chain::PolygonMumbai,
@@ -185,6 +191,12 @@ impl FromStr for Chain {
             "arbitrum-testnet" => Chain::ArbitrumTestnet,
             "cronos" => Chain::Cronos,
             "cronos-testnet" => Chain::CronosTestnet,
+            "poa" => Chain::Poa,
+            "sokol" => Chain::Sokol,
+            "rsk" => Chain::Rsk,
+            "oasis" => Chain::Oasis,
+            "emerald" => Chain::Emerald,
+            "emerald-testnet" => Chain::EmeraldTestnet,
             _ => return Err(ParseChainError(chain.to_owned())),
         })
     }
@@ -204,7 +216,11 @@ impl Chain {
                 Chain::BinanceSmartChain |
                 Chain::BinanceSmartChainTestnet |
                 Chain::Arbitrum |
-                Chain::ArbitrumTestnet,
+                Chain::ArbitrumTestnet |
+                Chain::Rsk |
+                Chain::Oasis |
+                Chain::Emerald |
+                Chain::EmeraldTestnet,
         )
     }
 }
