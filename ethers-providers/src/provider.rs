@@ -1262,14 +1262,14 @@ impl<'a, P: JsonRpcClient> Future for Caller<'a, P> {
 
     fn poll(self: Pin<&mut Self>, ctx: &mut Context) -> Poll<Self::Output> {
         let pin = self.get_mut();
-        match pin {
-            Caller::Build(ref call) => {
-                let fut = Box::pin(call.execute());
-                *pin = Caller::Wait(fut);
-                ctx.waker().wake_by_ref();
-                Poll::Pending
+        loop {
+            match pin {
+                Caller::Build(ref call) => {
+                    let fut = Box::pin(call.execute());
+                    *pin = Caller::Wait(fut);
+                }
+                Caller::Wait(ref mut fut) => return fut.as_mut().poll(ctx),
             }
-            Caller::Wait(ref mut fut) => fut.as_mut().poll(ctx),
         }
     }
 }
@@ -1345,9 +1345,6 @@ pub mod spoof {
     pub struct State(#[serde(skip_serializing_if = "HashMap::is_empty")] HashMap<Address, Account>);
 
     impl State {
-        pub fn new() -> Self {
-            Default::default()
-        }
         pub fn account(&mut self, adr: Address) -> &mut Account {
             self.0.entry(adr).or_default()
         }
