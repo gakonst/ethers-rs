@@ -1,5 +1,4 @@
 use crate::{Contract, ContractError};
-use std::marker::PhantomData;
 
 use ethers_core::{
     abi::{Abi, Token, Tokenize},
@@ -8,12 +7,15 @@ use ethers_core::{
         TransactionReceipt, TransactionRequest, U256, U64,
     },
 };
-use ethers_providers::Middleware;
+use ethers_providers::{
+    call_raw::{CallBuilder, RawCall},
+    Middleware,
+};
 
 #[cfg(not(feature = "legacy"))]
 use ethers_core::types::Eip1559TransactionRequest;
 
-use std::sync::Arc;
+use std::{marker::PhantomData, sync::Arc};
 
 /// Helper which manages the deployment transaction of a smart contract.
 ///
@@ -114,6 +116,15 @@ impl<M: Middleware, C: From<Contract<M>>> ContractDeployer<M, C> {
         self.deployer.call().await
     }
 
+    /// Returns a CallBuilder, which when awaited executes the deployment of this contract via
+    /// `eth_call`. This call resolves to the returned data which would have been stored at the
+    /// destination address had the deploy transaction been executed via `send()`.
+    ///
+    /// Note: this function _does not_ send a transaction from your account
+    pub fn call_raw(&self) -> CallBuilder<'_, M::Provider> {
+        self.deployer.call_raw()
+    }
+
     /// Broadcasts the contract deployment transaction and after waiting for it to
     /// be sufficiently confirmed (default: 1), it returns a new instance of the contract type at
     /// the deployed contract's address.
@@ -201,6 +212,15 @@ impl<M: Middleware> Deployer<M> {
 
         // TODO: It would be nice to handle reverts in a structured way.
         Ok(())
+    }
+
+    /// Returns a CallBuilder, which when awaited executes the deployment of this contract via
+    /// `eth_call`. This call resolves to the returned data which would have been stored at the
+    /// destination address had the deploy transaction been executed via `send()`.
+    ///
+    /// Note: this function _does not_ send a transaction from your account
+    pub fn call_raw(&self) -> CallBuilder<'_, M::Provider> {
+        self.client.provider().call_raw(&self.tx).block(self.block.into())
     }
 
     /// Broadcasts the contract deployment transaction and after waiting for it to

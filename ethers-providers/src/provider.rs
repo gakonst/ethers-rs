@@ -1,4 +1,5 @@
 use crate::{
+    call_raw::CallBuilder,
     ens, erc, maybe,
     pubsub::{PubsubClient, SubscriptionStream},
     stream::{FilterWatcher, DEFAULT_POLL_INTERVAL},
@@ -229,6 +230,46 @@ impl<P: JsonRpcClient> Provider<P> {
                 self.request("eth_getBlockByNumber", [num, include_txs]).await?
             }
         })
+    }
+
+    /// Analogous to [`Middleware::call`], but returns a [`CallBuilder`] that can either be
+    /// `.await`d or used to override the parameters sent to `eth_call`.
+    ///
+    /// See the [`call_raw::spoof`] for functions to construct state override parameters.
+    ///
+    /// Note: this method _does not_ send a transaction from your account
+    ///
+    /// [`call_raw::spoof`]: crate::call_raw::spoof
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use ethers_core::{
+    /// #     types::{Address, TransactionRequest, H256},
+    /// #     utils::{parse_ether, Geth},
+    /// # };
+    /// # use ethers_providers::{Provider, Http, Middleware, call_raw::{RawCall, spoof}};
+    /// # use std::convert::TryFrom;
+    /// #
+    /// # #[tokio::main(flavor = "current_thread")]
+    /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let geth = Geth::new().spawn();
+    /// let provider = Provider::<Http>::try_from(geth.endpoint()).unwrap();
+    ///
+    /// let adr1: Address = "0x6fC21092DA55B392b045eD78F4732bff3C580e2c".parse()?;
+    /// let adr2: Address = "0x295a70b2de5e3953354a6a8344e616ed314d7251".parse()?;
+    /// let pay_amt = parse_ether(1u64)?;
+    ///
+    /// // Not enough ether to pay for the transaction
+    /// let tx = TransactionRequest::pay(adr2, pay_amt).from(adr1).into();
+    ///
+    /// // override the sender's balance for the call
+    /// let mut state = spoof::balance(adr1, pay_amt * 2);
+    /// provider.call_raw(&tx).state(&state).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn call_raw<'a>(&'a self, tx: &'a TypedTransaction) -> CallBuilder<'a, P> {
+        CallBuilder::new(self, tx)
     }
 }
 
