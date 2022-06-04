@@ -28,6 +28,7 @@ pub use stream::{interval, FilterWatcher, TransactionStream, DEFAULT_POLL_INTERV
 mod pubsub;
 pub use pubsub::{PubsubClient, SubscriptionStream};
 
+pub mod call_raw;
 pub mod erc;
 
 use async_trait::async_trait;
@@ -37,7 +38,7 @@ use serde::{de::DeserializeOwned, Serialize};
 use std::{error::Error, fmt::Debug, future::Future, pin::Pin};
 use url::Url;
 
-pub use provider::{spoof, FilterKind, Provider, ProviderError};
+pub use provider::{FilterKind, Provider, ProviderError};
 
 // feature-enabled support for dev-rpc methods
 #[cfg(feature = "dev-rpc")]
