@@ -23,7 +23,8 @@ pub use spoof::{balance, code, nonce, state, storage};
 pub trait RawCall<'a> {
     /// Sets the block number to execute against
     fn block(self, id: BlockId) -> Self;
-    /// Sets the [state override set](https://geth.ethereum.org/docs/rpc/ns-eth#3-object---state-override-set)
+    /// Sets the [state override set](https://geth.ethereum.org/docs/rpc/ns-eth#3-object---state-override-set).
+    /// Note that not all client implementations will support this as a parameter.
     fn state(self, state: &'a spoof::State) -> Self;
 
     /// Maps a closure `f` over the result of `.await`ing this call
@@ -37,7 +38,8 @@ pub trait RawCall<'a> {
 
 /// A builder which implements [`RawCall`] methods for overriding `eth_call` parameters.
 ///
-/// `CallBuilder` also implements [`std::future::Future`], so `.await`ing a `CallBuilder` will resolve to the result of executing the `eth_call`.
+/// `CallBuilder` also implements [`std::future::Future`], so `.await`ing a `CallBuilder` will
+/// resolve to the result of executing the `eth_call`.
 #[must_use = "call_raw::CallBuilder does nothing unless you `.await` or poll it"]
 pub enum CallBuilder<'a, P> {
     /// The primary builder which exposes [`RawCall`] methods.
@@ -90,7 +92,8 @@ impl<'a, P> RawCall<'a> for CallBuilder<'a, P> {
     fn block(self, id: BlockId) -> Self {
         self.map_input(|mut call| call.input.block = Some(id))
     }
-    /// Sets the [state override set](https://geth.ethereum.org/docs/rpc/ns-eth#3-object---state-override-set)
+    /// Sets the [state override set](https://geth.ethereum.org/docs/rpc/ns-eth#3-object---state-override-set).
+    /// Note that not all client implementations will support this as a parameter.
     fn state(self, state: &'a spoof::State) -> Self {
         self.map_input(|mut call| call.input.state = Some(state))
     }
@@ -203,7 +206,8 @@ where
         Self { inner: self.inner.block(id), f: self.f }
     }
 
-    /// Sets the [state override set](https://geth.ethereum.org/docs/rpc/ns-eth#3-object---state-override-set)
+    /// Sets the [state override set](https://geth.ethereum.org/docs/rpc/ns-eth#3-object---state-override-set).
+    /// Note that not all client implementations will support this as a parameter.
     fn state(self, state: &'a spoof::State) -> Self {
         Self { inner: self.inner.state(state), f: self.f }
     }
@@ -375,7 +379,7 @@ pub mod spoof {
     /// let tx = TransactionRequest::pay(adr2, pay_amt).from(adr1).into();
     ///
     /// // override the sender's balance for the call
-    /// let mut state = spoof::balance(adr1, pay_amt * 2);
+    /// let state = spoof::balance(adr1, pay_amt * 2);
     /// provider.call_raw(&tx).state(&state).await?;
     /// # Ok(())
     /// # }
@@ -408,7 +412,7 @@ pub mod spoof {
     /// let tx = TransactionRequest::default().from(adr).into();
     ///
     /// // override the sender's nonce for the call
-    /// let mut state = spoof::nonce(adr, 72.into());
+    /// let state = spoof::nonce(adr, 72.into());
     /// provider.call_raw(&tx).state(&state).await?;
     /// # Ok(())
     /// # }
@@ -441,7 +445,7 @@ pub mod spoof {
     /// let tx = TransactionRequest::default().to(adr).into();
     ///
     /// // override the code at the target address
-    /// let mut state = spoof::code(adr, "0x00".parse()?);
+    /// let state = spoof::code(adr, "0x00".parse()?);
     /// provider.call_raw(&tx).state(&state).await?;
     /// # Ok(())
     /// # }
@@ -476,7 +480,7 @@ pub mod spoof {
     /// let tx = TransactionRequest::default().to(adr).into();
     ///
     /// // override the storage slot `key` at `adr`
-    /// let mut state = spoof::storage(adr, key, val);
+    /// let state = spoof::storage(adr, key, val);
     /// provider.call_raw(&tx).state(&state).await?;
     /// # Ok(())
     /// # }
@@ -494,7 +498,7 @@ mod tests {
     use crate::{Http, Middleware, Provider};
     use ethers_core::{
         types::TransactionRequest,
-        utils::{parse_ether, Anvil},
+        utils::{get_contract_address, keccak256, parse_ether, Anvil, Geth},
     };
     use std::convert::TryFrom;
 
@@ -559,13 +563,58 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_future() {
-        let anvil = Anvil::new().spawn();
-        let provider = Provider::<Http>::try_from(anvil.endpoint()).unwrap();
+    async fn test_state_overrides() {
+        let geth = Geth::new().spawn();
+        let provider = Provider::<Http>::try_from(geth.endpoint()).unwrap();
 
-        let accounts = provider.get_accounts().await.unwrap();
-        let tx = TransactionRequest::pay(accounts[1], parse_ether(1u64).unwrap()).from(accounts[0]);
+        let adr1: Address = "0x6fC21092DA55B392b045eD78F4732bff3C580e2c".parse().unwrap();
+        let adr2: Address = "0x295a70b2de5e3953354a6a8344e616ed314d7251".parse().unwrap();
+        let pay_amt = parse_ether(1u64).unwrap();
 
-        provider.call_raw(&tx.into()).await.expect("eth_call success");
+        // Not enough ether to pay for the transaction
+        let tx = TransactionRequest::pay(adr2, pay_amt).from(adr1).into();
+
+        // assert that overriding the sender's balance works
+        let state = spoof::balance(adr1, pay_amt * 2);
+        provider.call_raw(&tx).state(&state).await.expect("eth_call success");
+
+        // bytecode that returns the result of the SELFBALANCE opcode
+        const RETURN_BALANCE: &str = "0x4760005260206000f3";
+        let bytecode = RETURN_BALANCE.parse().unwrap();
+        let balance = 100.into();
+
+        let tx = TransactionRequest::default().to(adr2).into();
+        let mut state = spoof::state();
+        state.account(adr2).code(bytecode).balance(balance);
+
+        // assert that overriding the code and balance at adr2 works
+        let bytes = provider.call_raw(&tx).state(&state).await.unwrap();
+        assert_eq!(U256::from_big_endian(bytes.as_ref()), balance);
+
+        // bytecode that deploys a contract and returns the deployed address
+        const DEPLOY_CONTRACT: &str = "0x6000600052602060006000f060005260206000f3";
+        let bytecode = DEPLOY_CONTRACT.parse().unwrap();
+        let nonce = 17.into();
+
+        let mut state = spoof::state();
+        state.account(adr2).code(bytecode).nonce(nonce);
+
+        // assert that overriding nonce works (contract is deployed to expected address)
+        let bytes = provider.call_raw(&tx).state(&state).await.unwrap();
+        let deployed = Address::from_slice(&bytes.as_ref()[12..]);
+        assert_eq!(deployed, get_contract_address(adr2, nonce.as_u64()));
+
+        // bytecode that returns the value of storage slot 1
+        const RETURN_STORAGE: &str = "0x60015460005260206000f3";
+        let bytecode = RETURN_STORAGE.parse().unwrap();
+        let slot = H256::from_low_u64_be(1);
+        let val = keccak256("foo").into();
+
+        let mut state = spoof::state();
+        state.account(adr2).code(bytecode).store(slot, val);
+
+        // assert that overriding storage works
+        let bytes = provider.call_raw(&tx).state(&state).await.unwrap();
+        assert_eq!(H256::from_slice(bytes.as_ref()), val);
     }
 }
