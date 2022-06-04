@@ -44,6 +44,12 @@ pub enum Chain {
     BinanceSmartChain = 56,
     #[strum(serialize = "bsc-testnet")]
     BinanceSmartChainTestnet = 97,
+    Poa = 99,
+    Sokol = 77,
+    Rsk = 30,
+    Oasis = 26863,
+    Emerald = 42262,
+    EmeraldTestnet = 42261,
 }
 
 impl fmt::Display for Chain {
@@ -74,6 +80,12 @@ impl fmt::Display for Chain {
             Chain::ArbitrumTestnet => "arbitrum-testnet",
             Chain::Cronos => "cronos",
             Chain::CronosTestnet => "cronos-testnet",
+            Chain::Poa => "poa",
+            Chain::Sokol => "sokol",
+            Chain::Rsk => "rsk",
+            Chain::Oasis => "oasis",
+            Chain::Emerald => "emerald",
+            Chain::EmeraldTestnet => "emerald-testnet",
         };
 
         write!(formatter, "{}", chain)
@@ -128,6 +140,12 @@ impl TryFrom<u64> for Chain {
             421611 => Chain::ArbitrumTestnet,
             25 => Chain::Cronos,
             338 => Chain::CronosTestnet,
+            99 => Chain::Poa,
+            77 => Chain::Sokol,
+            30 => Chain::Rsk,
+            26863 => Chain::Oasis,
+            42262 => Chain::Emerald,
+            42261 => Chain::EmeraldTestnet,
             _ => return Err(ParseChainError(chain.to_string())),
         })
     }
@@ -173,6 +191,12 @@ impl FromStr for Chain {
             "arbitrum-testnet" => Chain::ArbitrumTestnet,
             "cronos" => Chain::Cronos,
             "cronos-testnet" => Chain::CronosTestnet,
+            "poa" => Chain::Poa,
+            "sokol" => Chain::Sokol,
+            "rsk" => Chain::Rsk,
+            "oasis" => Chain::Oasis,
+            "emerald" => Chain::Emerald,
+            "emerald-testnet" => Chain::EmeraldTestnet,
             _ => return Err(ParseChainError(chain.to_owned())),
         })
     }
@@ -192,7 +216,11 @@ impl Chain {
                 Chain::BinanceSmartChain |
                 Chain::BinanceSmartChainTestnet |
                 Chain::Arbitrum |
-                Chain::ArbitrumTestnet,
+                Chain::ArbitrumTestnet |
+                Chain::Rsk |
+                Chain::Oasis |
+                Chain::Emerald |
+                Chain::EmeraldTestnet,
         )
     }
 }
