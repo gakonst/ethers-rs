@@ -8,14 +8,14 @@ use ethers_core::{
     },
 };
 use ethers_providers::{
-    call_raw::{self, RawCall},
+    call_raw::{CallBuilder, RawCall},
     Middleware,
 };
 
 #[cfg(not(feature = "legacy"))]
 use ethers_core::types::Eip1559TransactionRequest;
 
-use std::{future::Future, marker::PhantomData, sync::Arc};
+use std::{marker::PhantomData, sync::Arc};
 
 /// Helper which manages the deployment transaction of a smart contract.
 ///
@@ -116,7 +116,12 @@ impl<M: Middleware, C: From<Contract<M>>> ContractDeployer<M, C> {
         self.deployer.call().await
     }
 
-    pub fn call_raw(&self) -> call_raw::Call<'_, M::Provider> {
+    /// Returns a CallBuilder, which when awaited executes the deployment of this contract via
+    /// `eth_call`. This call resolves to the returned data which would have been stored at the
+    /// destination address had the deploy transaction been executed via `send()`.
+    ///
+    /// Note: this function _does not_ send a transaction from your account
+    pub fn call_raw(&self) -> CallBuilder<'_, M::Provider> {
         self.deployer.call_raw()
     }
 
@@ -209,7 +214,12 @@ impl<M: Middleware> Deployer<M> {
         Ok(())
     }
 
-    pub fn call_raw(&self) -> call_raw::Call<'_, M::Provider> {
+    /// Returns a CallBuilder, which when awaited executes the deployment of this contract via
+    /// `eth_call`. This call resolves to the returned data which would have been stored at the
+    /// destination address had the deploy transaction been executed via `send()`.
+    ///
+    /// Note: this function _does not_ send a transaction from your account
+    pub fn call_raw(&self) -> CallBuilder<'_, M::Provider> {
         self.client.provider().call_raw(&self.tx).block(self.block.into())
     }
 

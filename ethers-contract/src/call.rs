@@ -10,7 +10,7 @@ use ethers_core::{
     utils::id,
 };
 use ethers_providers::{
-    call_raw::{self, RawCall},
+    call_raw::{CallBuilder, RawCall},
     Middleware, PendingTransaction, ProviderError,
 };
 
@@ -172,7 +172,15 @@ where
         Ok(data)
     }
 
-    pub fn call_raw(&self) -> impl RawCall<'_> + Future<Output = Result<D, ContractError<M>>> {
+    /// Returns an implementer of [`RawCall`] which can be `.await`d to query the blochcain via
+    /// `eth_call`, returning the deoded return data.
+    ///
+    /// The returned call can also be used to override the input parameters to `eth_call`.
+    ///
+    /// Note: this function _does not_ send a transaction from your account
+    pub fn call_raw(
+        &self,
+    ) -> impl RawCall<'_> + Future<Output = Result<D, ContractError<M>>> + Debug {
         let call = self.call_raw_bytes();
         call.map(move |res: Result<Bytes, ProviderError>| {
             let bytes = res.map_err(ContractError::ProviderError)?;
@@ -180,7 +188,13 @@ where
         })
     }
 
-    pub fn call_raw_bytes(&self) -> call_raw::Call<'_, M::Provider> {
+    /// Returns a [`CallBuilder`] which can be `.await`d to query the blochcain via `eth_call`,
+    /// returning the raw bytes from the transaction.
+    ///
+    /// The returned call can also be used to override the input parameters to `eth_call`.
+    ///
+    /// Note: this function _does not_ send a transaction from your account
+    pub fn call_raw_bytes(&self) -> CallBuilder<'_, M::Provider> {
         let call = self.client.provider().call_raw(&self.tx);
         if let Some(block) = self.block {
             call.block(block)

@@ -1,7 +1,6 @@
 use ethers::{
-    abi::{self, AbiEncode, Detokenize},
     prelude::*,
-    providers::call_raw::{self, RawCall},
+    providers::call_raw::RawCall,
     utils::{parse_ether, Geth},
 };
 use std::sync::Arc;

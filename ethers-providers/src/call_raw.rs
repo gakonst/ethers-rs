@@ -1,3 +1,5 @@
+//! Overrides for the `eth_call` rpc method
+
 use crate::{JsonRpcClient, PinBoxFut, Provider, ProviderError};
 use ethers_core::{
     types::{
@@ -9,6 +11,7 @@ use ethers_core::{
 use pin_project::pin_project;
 use serde::{ser::SerializeTuple, Deserialize, Serialize};
 use std::{
+    fmt,
     future::Future,
     pin::Pin,
     task::{Context, Poll},
@@ -16,9 +19,14 @@ use std::{
 
 pub use spoof::{balance, code, nonce, state, storage};
 
+/// Provides methods for overriding parameters to the `eth_call` rpc method
 pub trait RawCall<'a> {
+    /// Sets the block number to execute against
     fn block(self, id: BlockId) -> Self;
+    /// Sets the [state override set](https://geth.ethereum.org/docs/rpc/ns-eth#3-object---state-override-set)
     fn state(self, state: &'a spoof::State) -> Self;
+
+    /// Maps a closure `f` over the result of `.await`ing this call
     fn map<F>(self, f: F) -> Map<Self, F>
     where
         Self: Sized,
@@ -27,16 +35,33 @@ pub trait RawCall<'a> {
     }
 }
 
-pub enum Call<'a, P> {
+/// A builder which implements [`RawCall`] methods for overriding `eth_call` parameters.
+///
+/// `CallBuilder` also implements [`std::future::Future`], so `.await`ing a `CallBuilder` will resolve to the result of executing the `eth_call`.
+#[must_use = "call_raw::CallBuilder does nothing unless you `.await` or poll it"]
+pub enum CallBuilder<'a, P> {
+    /// The primary builder which exposes [`RawCall`] methods.
     Build(Caller<'a, P>),
+    /// Used by the [`std::future::Future`] implementation. You are unlikely to encounter this
+    /// variant unless you are constructing your own [`RawCall`] wrapper type.
     Wait(PinBoxFut<'a, Bytes>),
 }
 
-impl<'a, P> Call<'a, P> {
+impl<P: fmt::Debug> fmt::Debug for CallBuilder<'_, P> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Build(call) => f.debug_tuple("Build").field(call).finish(),
+            Self::Wait(_) => f.debug_tuple("Wait").field(&"< Future >").finish(),
+        }
+    }
+}
+
+impl<'a, P> CallBuilder<'a, P> {
     pub fn new(provider: &'a Provider<P>, tx: &'a TypedTransaction) -> Self {
         Self::Build(Caller::new(provider, tx))
     }
 
+    /// Applies a closure `f` to a `CallBuilder::Build`. Does nothing for `CallBuilder::Wait`.
     pub fn map_input<F>(self, f: F) -> Self
     where
         F: FnOnce(&mut Caller<'a, P>),
@@ -49,40 +74,47 @@ impl<'a, P> Call<'a, P> {
             wait => wait,
         }
     }
+
+    /// Returns the inner `Caller` from a `CallBuilder::Build`. Panics if the `CallBuilder` future
+    /// has already been polled.
     pub fn unwrap(self) -> Caller<'a, P> {
         match self {
             Self::Build(b) => b,
-            _ => panic!("Call::unwrap on a Wait value"),
+            _ => panic!("CallBuilder::unwrap on a Wait value"),
         }
     }
 }
 
-impl<'a, P> RawCall<'a> for Call<'a, P> {
+impl<'a, P> RawCall<'a> for CallBuilder<'a, P> {
+    /// Sets the block number to execute against
     fn block(self, id: BlockId) -> Self {
         self.map_input(|mut call| call.input.block = Some(id))
     }
+    /// Sets the [state override set](https://geth.ethereum.org/docs/rpc/ns-eth#3-object---state-override-set)
     fn state(self, state: &'a spoof::State) -> Self {
         self.map_input(|mut call| call.input.state = Some(state))
     }
 }
 
-impl<'a, P: JsonRpcClient> Future for Call<'a, P> {
+impl<'a, P: JsonRpcClient> Future for CallBuilder<'a, P> {
     type Output = Result<Bytes, ProviderError>;
 
-    fn poll(self: Pin<&mut Self>, ctx: &mut Context) -> Poll<Self::Output> {
+    fn poll(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
         let pin = self.get_mut();
         loop {
             match pin {
-                Call::Build(ref call) => {
+                CallBuilder::Build(ref call) => {
                     let fut = Box::pin(call.execute());
-                    *pin = Call::Wait(fut);
+                    *pin = CallBuilder::Wait(fut);
                 }
-                Call::Wait(ref mut fut) => return fut.as_mut().poll(ctx),
+                CallBuilder::Wait(ref mut fut) => return fut.as_mut().poll(cx),
             }
         }
     }
 }
 
+/// Holds the inputs to the `eth_call` rpc method along with the rpc provider.
+/// This type is constructed by [`CallBuilder::new`].
 #[derive(Clone, Debug)]
 pub struct Caller<'a, P> {
     provider: &'a Provider<P>,
@@ -95,11 +127,14 @@ impl<'a, P> Caller<'a, P> {
     }
 }
 impl<'a, P: JsonRpcClient> Caller<'a, P> {
+    /// Executes an `eth_call` rpc request with the overriden parameters. Returns a future that
+    /// resolves to the result of the request.
     fn execute(&self) -> impl Future<Output = Result<Bytes, ProviderError>> + 'a {
         self.provider.request("eth_call", utils::serialize(&self.input))
     }
 }
 
+/// The input parameters to the `eth_call` rpc method
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct CallInput<'a> {
     tx: &'a TypedTransaction,
@@ -133,11 +168,24 @@ impl<'a> Serialize for CallInput<'a> {
     }
 }
 
+/// An implementer of [`RawCall`] that maps a function `f` over the output of the inner future.
+///
+/// This struct is created by the [`map`] method on [`RawCall`].
+///
+/// [`map`]: RawCall::map
+#[must_use = "call_raw::Map does nothing unless you `.await` or poll it"]
+#[derive(Clone)]
 #[pin_project]
 pub struct Map<T, F> {
     #[pin]
     inner: T,
     f: F,
+}
+
+impl<T: fmt::Debug, F> fmt::Debug for Map<T, F> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Map").field("inner", &self.inner).finish()
+    }
 }
 
 impl<T, F> Map<T, F> {
@@ -150,10 +198,12 @@ impl<'a, T, F> RawCall<'a> for Map<T, F>
 where
     T: RawCall<'a>,
 {
+    /// Sets the block number to execute against
     fn block(self, id: BlockId) -> Self {
         Self { inner: self.inner.block(id), f: self.f }
     }
 
+    /// Sets the [state override set](https://geth.ethereum.org/docs/rpc/ns-eth#3-object---state-override-set)
     fn state(self, state: &'a spoof::State) -> Self {
         Self { inner: self.inner.state(state), f: self.f }
     }
@@ -173,11 +223,13 @@ where
     }
 }
 
-/// Provides types and methods for "spoofing" state overrides for eth_call
+/// Provides types and methods for constructing an `eth_call`
+/// [state override set](https://geth.ethereum.org/docs/rpc/ns-eth#3-object---state-override-set)
 pub mod spoof {
     use super::*;
     use std::collections::HashMap;
 
+    /// The state elements to override for a particular account.
     #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
     pub struct Account {
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -191,24 +243,32 @@ pub mod spoof {
     }
 
     impl Account {
+        /// Override the account nonce
         pub fn nonce(&mut self, nonce: U64) -> &mut Self {
             self.nonce = Some(nonce);
             self
         }
+        /// Override the account balance
         pub fn balance(&mut self, bal: U256) -> &mut Self {
             self.balance = Some(bal);
             self
         }
+        /// Override the code at the account
         pub fn code(&mut self, code: Bytes) -> &mut Self {
             self.code = Some(code);
             self
         }
+        /// Override the value of the account storage at the given storage `key`
         pub fn store(&mut self, key: H256, val: H256) -> &mut Self {
             self.storage.get_or_insert_with(Default::default).insert(key, val);
             self
         }
     }
 
+    /// Wraps a map from storage slot to the overriden value.
+    ///
+    /// Storage overrides can either replace the existing state of an account or they can be treated
+    /// as a diff on the existing state.
     #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
     pub enum Storage {
         #[serde(rename = "stateDiff")]
@@ -217,6 +277,7 @@ pub mod spoof {
         Replace(HashMap<H256, H256>),
     }
 
+    /// The default storage override is a diff on the existing state of the account.
     impl Default for Storage {
         fn default() -> Self {
             Self::Diff(Default::default())
@@ -240,37 +301,49 @@ pub mod spoof {
         }
     }
 
+    /// A wrapper type that holds a complete state override set.
     #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
     #[serde(transparent)]
     pub struct State(#[serde(skip_serializing_if = "HashMap::is_empty")] HashMap<Address, Account>);
 
     impl State {
+        /// Returns a mutable reference to the [`Account`] in the map.
         pub fn account(&mut self, adr: Address) -> &mut Account {
             self.0.entry(adr).or_default()
         }
     }
 
+    /// Returns an empty state override set.
+    ///
     /// # Example
     /// ```no_run
     /// # use ethers_core::{
     /// #     types::{Address, TransactionRequest, H256},
-    /// #     utils::{parse_ether},
+    /// #     utils::{parse_ether, Geth},
     /// # };
-    /// # use ethers_providers::{Provider, Http, Middleware, spoof};
+    /// # use ethers_providers::{Provider, Http, Middleware, call_raw::{spoof, RawCall}};
     /// # use std::convert::TryFrom;
     /// #
     /// # #[tokio::main(flavor = "current_thread")]
     /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// # let provider = Provider::<Http>::try_from("http://127.0.0.1:8545").unwrap();
+    /// let geth = Geth::new().spawn();
+    /// let provider = Provider::<Http>::try_from(geth.endpoint()).unwrap();
     ///
     /// let adr1: Address = "0x6fC21092DA55B392b045eD78F4732bff3C580e2c".parse().unwrap();
     /// let adr2: Address = "0x295a70b2de5e3953354a6a8344e616ed314d7251".parse().unwrap();
+    /// let key = H256::from_low_u64_be(1);
+    /// let val = H256::from_low_u64_be(17);
     ///
-    /// let tx = Default::default();
+    /// let tx = TransactionRequest::default().to(adr2).from(adr1).into();
     ///
+    /// // override the storage at `adr2`
     /// let mut state = spoof::state();
-    /// state.account(adr1).store(H256::default(), 1.into()).nonce(2.into());
-    /// provider.call_builder(&tx).spoof(&state).await.unwrap();
+    /// state.account(adr2).store(key, val);
+    ///
+    /// // override the nonce at `adr1`
+    /// state.account(adr1).nonce(2.into());
+    ///
+    /// provider.call_raw(&tx).state(&state).await.unwrap();
     /// # Ok(())
     /// # }
     /// ```
@@ -278,30 +351,32 @@ pub mod spoof {
         Default::default()
     }
 
+    /// Returns a state override set with a single element setting the balance of the address.
+    ///
     /// # Example
     /// ```no_run
     /// # use ethers_core::{
     /// #     types::{Address, TransactionRequest, H256},
-    /// #     utils::{parse_ether},
+    /// #     utils::{parse_ether, Geth},
     /// # };
-    /// # use ethers_providers::{Provider, Http, Middleware, spoof};
+    /// # use ethers_providers::{Provider, Http, Middleware, call_raw::{RawCall, spoof}};
     /// # use std::convert::TryFrom;
-    /// # #[tokio::main(flavor = "current_thread")]
     /// #
+    /// # #[tokio::main(flavor = "current_thread")]
     /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// # let provider = Provider::<Http>::try_from("http://127.0.0.1:8545").unwrap();
+    /// let geth = Geth::new().spawn();
+    /// let provider = Provider::<Http>::try_from(geth.endpoint()).unwrap();
     ///
     /// let adr1: Address = "0x6fC21092DA55B392b045eD78F4732bff3C580e2c".parse()?;
     /// let adr2: Address = "0x295a70b2de5e3953354a6a8344e616ed314d7251".parse()?;
     /// let pay_amt = parse_ether(1u64)?;
     ///
     /// // Not enough ether to pay for the transaction
-    /// let tx = TransactionRequest::pay(adr2, pay_amt).from(adr1);
-    /// let tx = tx.into();
+    /// let tx = TransactionRequest::pay(adr2, pay_amt).from(adr1).into();
     ///
     /// // override the sender's balance for the call
     /// let mut state = spoof::balance(adr1, pay_amt * 2);
-    /// provider.call_builder(&tx).spoof(&state).await?;
+    /// provider.call_raw(&tx).state(&state).await?;
     /// # Ok(())
     /// # }
     /// ```
@@ -311,18 +386,101 @@ pub mod spoof {
         state
     }
 
+    /// Returns a state override set with a single element setting the nonce of the address.
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use ethers_core::{
+    /// #     types::{Address, TransactionRequest, H256},
+    /// #     utils::{parse_ether, Geth},
+    /// # };
+    /// # use ethers_providers::{Provider, Http, Middleware, call_raw::{RawCall, spoof}};
+    /// # use std::convert::TryFrom;
+    /// #
+    /// # #[tokio::main(flavor = "current_thread")]
+    /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let geth = Geth::new().spawn();
+    /// let provider = Provider::<Http>::try_from(geth.endpoint()).unwrap();
+    ///
+    /// let adr: Address = "0x6fC21092DA55B392b045eD78F4732bff3C580e2c".parse()?;
+    /// let pay_amt = parse_ether(1u64)?;
+    ///
+    /// let tx = TransactionRequest::default().from(adr).into();
+    ///
+    /// // override the sender's nonce for the call
+    /// let mut state = spoof::nonce(adr, 72.into());
+    /// provider.call_raw(&tx).state(&state).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn nonce(adr: Address, nonce: U64) -> State {
         let mut state = State::default();
         state.account(adr).nonce(nonce);
         state
     }
 
+    /// Returns a state override set with a single element setting the code at the address.
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use ethers_core::{
+    /// #     types::{Address, TransactionRequest, H256},
+    /// #     utils::{parse_ether, Geth},
+    /// # };
+    /// # use ethers_providers::{Provider, Http, Middleware, call_raw::{RawCall, spoof}};
+    /// # use std::convert::TryFrom;
+    /// #
+    /// # #[tokio::main(flavor = "current_thread")]
+    /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let geth = Geth::new().spawn();
+    /// let provider = Provider::<Http>::try_from(geth.endpoint()).unwrap();
+    ///
+    /// let adr: Address = "0x6fC21092DA55B392b045eD78F4732bff3C580e2c".parse()?;
+    /// let pay_amt = parse_ether(1u64)?;
+    ///
+    /// let tx = TransactionRequest::default().to(adr).into();
+    ///
+    /// // override the code at the target address
+    /// let mut state = spoof::code(adr, "0x00".parse()?);
+    /// provider.call_raw(&tx).state(&state).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn code(adr: Address, code: Bytes) -> State {
         let mut state = State::default();
         state.account(adr).code(code);
         state
     }
 
+    /// Returns a state override set with a single element setting the storage at the given address
+    /// and key.
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use ethers_core::{
+    /// #     types::{Address, TransactionRequest, H256},
+    /// #     utils::{parse_ether, Geth},
+    /// # };
+    /// # use ethers_providers::{Provider, Http, Middleware, call_raw::{RawCall, spoof}};
+    /// # use std::convert::TryFrom;
+    /// #
+    /// # #[tokio::main(flavor = "current_thread")]
+    /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let geth = Geth::new().spawn();
+    /// let provider = Provider::<Http>::try_from(geth.endpoint()).unwrap();
+    ///
+    /// let adr: Address = "0x6fC21092DA55B392b045eD78F4732bff3C580e2c".parse()?;
+    /// let key = H256::from_low_u64_be(1);
+    /// let val = H256::from_low_u64_be(17);
+    ///
+    /// let tx = TransactionRequest::default().to(adr).into();
+    ///
+    /// // override the storage slot `key` at `adr`
+    /// let mut state = spoof::storage(adr, key, val);
+    /// provider.call_raw(&tx).state(&state).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn storage(adr: Address, key: H256, val: H256) -> State {
         let mut state = State::default();
         state.account(adr).store(key, val);
@@ -354,7 +512,7 @@ mod tests {
     }
 
     // Tests "roundtrip" serialization of calls: deserialize(serialize(call)) == call
-    fn test_encode<'a, P>(call: Call<'a, P>) {
+    fn test_encode<'a, P>(call: CallBuilder<'a, P>) {
         let input = call.unwrap().input;
         let ser = utils::serialize(&input).to_string();
         let de: CallInputOwned = serde_json::from_str(&ser).unwrap();
