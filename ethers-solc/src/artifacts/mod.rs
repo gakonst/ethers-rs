@@ -1318,12 +1318,18 @@ impl OutputContracts {
 /// ethabi as it would require a redesign of the overall `Param` and `ParamType` types. Instead,
 /// this type keeps a copy of the [`serde_json::Value`] when deserialized from the `solc` json
 /// compiler output and uses it to serialize the `abi` without loss.
-#[derive(Clone, Debug, PartialEq, Default)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct LosslessAbi {
     /// The complete abi as json value
     pub abi_value: serde_json::Value,
     /// The deserialised version of `abi_value`
     pub abi: Abi,
+}
+
+impl Default for LosslessAbi {
+    fn default() -> Self {
+        LosslessAbi { abi_value: serde_json::json!([]), abi: Default::default() }
+    }
 }
 
 impl From<LosslessAbi> for Abi {
