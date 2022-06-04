@@ -177,6 +177,16 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v2
 
+      - name: Install geth (for state overrides example)
+        run: |
+          mkdir -p "$HOME/bin"
+          wget -q https://gethstore.blob.core.windows.net/builds/geth-linux-amd64-1.9.23-8c2f2715.tar.gz
+          tar -xvf geth-linux-amd64-1.9.23-8c2f2715.tar.gz
+          mv geth-linux-amd64-1.9.23-8c2f2715/geth $HOME/bin/geth
+          chmod u+x "$HOME/bin/geth"
+          export PATH=$HOME/bin:$PATH
+          geth version
+
       - name: Install Anvil
         uses: foundry-rs/foundry-toolchain@v1
         with:

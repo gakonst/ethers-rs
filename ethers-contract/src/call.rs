@@ -172,7 +172,7 @@ where
         Ok(data)
     }
 
-    /// Returns an implementer of [`RawCall`] which can be `.await`d to query the blochcain via
+    /// Returns an implementer of [`RawCall`] which can be `.await`d to query the blockchain via
     /// `eth_call`, returning the deoded return data.
     ///
     /// The returned call can also be used to override the input parameters to `eth_call`.
