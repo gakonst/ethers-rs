@@ -6,6 +6,7 @@ use ethers_core::{
     },
     utils,
 };
+use pin_project::pin_project;
 use serde::{ser::SerializeTuple, Deserialize, Serialize};
 use std::{
     future::Future,
@@ -14,6 +15,17 @@ use std::{
 };
 
 pub use spoof::{balance, code, nonce, state, storage};
+
+pub trait RawCall<'a> {
+    fn block(self, id: BlockId) -> Self;
+    fn state(self, state: &'a spoof::State) -> Self;
+    fn map<F>(self, f: F) -> Map<Self, F>
+    where
+        Self: Sized,
+    {
+        Map::new(self, f)
+    }
+}
 
 pub enum Call<'a, P> {
     Build(Caller<'a, P>),
@@ -25,7 +37,7 @@ impl<'a, P> Call<'a, P> {
         Self::Build(Caller::new(provider, tx))
     }
 
-    pub fn map<F>(self, f: F) -> Self
+    pub fn map_input<F>(self, f: F) -> Self
     where
         F: FnOnce(&mut Caller<'a, P>),
     {
@@ -37,18 +49,20 @@ impl<'a, P> Call<'a, P> {
             wait => wait,
         }
     }
-
-    pub fn block(self, id: BlockId) -> Self {
-        self.map(|mut call| call.input.block = Some(id))
-    }
-    pub fn state(self, state: &'a spoof::State) -> Self {
-        self.map(|mut call| call.input.state = Some(state))
-    }
     pub fn unwrap(self) -> Caller<'a, P> {
         match self {
             Self::Build(b) => b,
             _ => panic!("Call::unwrap on a Wait value"),
         }
+    }
+}
+
+impl<'a, P> RawCall<'a> for Call<'a, P> {
+    fn block(self, id: BlockId) -> Self {
+        self.map_input(|mut call| call.input.block = Some(id))
+    }
+    fn state(self, state: &'a spoof::State) -> Self {
+        self.map_input(|mut call| call.input.state = Some(state))
     }
 }
 
@@ -116,6 +130,46 @@ impl<'a> Serialize for CallInput<'a> {
             tup.serialize_element(state)?;
         }
         tup.end()
+    }
+}
+
+#[pin_project]
+pub struct Map<T, F> {
+    #[pin]
+    inner: T,
+    f: F,
+}
+
+impl<T, F> Map<T, F> {
+    pub fn new(inner: T, f: F) -> Self {
+        Self { inner, f }
+    }
+}
+
+impl<'a, T, F> RawCall<'a> for Map<T, F>
+where
+    T: RawCall<'a>,
+{
+    fn block(self, id: BlockId) -> Self {
+        Self { inner: self.inner.block(id), f: self.f }
+    }
+
+    fn state(self, state: &'a spoof::State) -> Self {
+        Self { inner: self.inner.state(state), f: self.f }
+    }
+}
+
+impl<T, F, Y> Future for Map<T, F>
+where
+    T: Future,
+    F: FnMut(T::Output) -> Y,
+{
+    type Output = Y;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let pin = self.project();
+        let x = futures_util::ready!(pin.inner.poll(cx));
+        Poll::Ready((pin.f)(x))
     }
 }
 

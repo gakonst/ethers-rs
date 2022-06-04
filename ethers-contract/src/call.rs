@@ -9,9 +9,12 @@ use ethers_core::{
     },
     utils::id,
 };
-use ethers_providers::{Middleware, PendingTransaction, ProviderError};
+use ethers_providers::{
+    call_raw::{self, RawCall},
+    Middleware, PendingTransaction, ProviderError,
+};
 
-use std::{borrow::Cow, fmt::Debug, marker::PhantomData, sync::Arc};
+use std::{borrow::Cow, fmt::Debug, future::Future, marker::PhantomData, sync::Arc};
 
 use thiserror::Error as ThisError;
 
@@ -167,6 +170,23 @@ where
         let data = decode_function_data(&self.function, &bytes, false)?;
 
         Ok(data)
+    }
+
+    pub fn call_raw(&self) -> impl RawCall<'_> + Future<Output = Result<D, ContractError<M>>> {
+        let call = self.call_raw_bytes();
+        call.map(move |res: Result<Bytes, ProviderError>| {
+            let bytes = res.map_err(ContractError::ProviderError)?;
+            decode_function_data(&self.function, &bytes, false).map_err(From::from)
+        })
+    }
+
+    pub fn call_raw_bytes(&self) -> call_raw::Call<'_, M::Provider> {
+        let call = self.client.provider().call_raw(&self.tx);
+        if let Some(block) = self.block {
+            call.block(block)
+        } else {
+            call
+        }
     }
 
     /// Signs and broadcasts the provided transaction

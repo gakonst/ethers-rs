@@ -1,7 +1,7 @@
 use ethers::{
     abi::{self, AbiEncode, Detokenize},
     prelude::*,
-    providers::call_raw,
+    providers::call_raw::{self, RawCall},
     utils::{parse_ether, Geth},
 };
 use std::sync::Arc;
@@ -28,22 +28,19 @@ async fn main() -> eyre::Result<()> {
 
     // Get the runtime bytecode for the Greeter contract using eth_call to
     // simulate the deploy transaction
-    let tx = Greeter::deploy(client.clone(), "Hello, world".to_string())?.deployer.tx;
-    let runtime_bytecode = client.call_raw(&tx.into()).await?;
+    let deploy = Greeter::deploy(client.clone(), "Hi".to_string())?;
+    let runtime_bytecode = deploy.call_raw().await?;
 
-    // Get the transaction data for a call to Greeter.greet()
+    // Instantiate a Greeter, though no bytecode exists at the target address
     let greeter = Greeter::new(target, client.clone());
-    let greet_call = greeter.greet();
-    let tx = greet_call.tx.into();
 
     // Override the target account's code, simulating a call to Greeter.greet()
     // as if the Greeter contract was deployed at the target address
     let state = call_raw::code(target, runtime_bytecode.clone());
-    let returndata = client.call_raw(&tx).state(&state).await?;
+    let res = greeter.greet().call_raw().state(&state).await?;
 
     // greet() returns the empty string, because the target account's storage is empty
-    let decoded = decode_string(returndata)?;
-    assert_eq!(&decoded, "");
+    assert_eq!(&res, "");
 
     // Encode the greeting string as solidity expects it to be stored
     let greeting = "Hello, world";
@@ -52,12 +49,12 @@ async fn main() -> eyre::Result<()> {
 
     // Override the target account's code and storage
     let mut state = call_raw::state();
-    state.account(target).code(runtime_bytecode).store(greet_slot, greet_val);
-    let returndata = client.call_raw(&tx).state(&state).await?;
+    state.account(target).code(runtime_bytecode.clone()).store(greet_slot, greet_val);
+    let res = greeter.greet().call_raw().state(&state).await?;
 
     // The call returns "Hello, world"
-    let decoded = decode_string(returndata)?;
-    assert_eq!(&decoded, greeting);
+    assert_eq!(&res, greeting);
+
     Ok(())
 }
 
@@ -71,10 +68,4 @@ fn encode_string_for_storage(s: &str) -> H256 {
     bytes.resize(31, 0);
     bytes.push(len as u8 * 2);
     H256::from_slice(&bytes)
-}
-
-// Decodes an abi encoded string
-fn decode_string(data: Bytes) -> eyre::Result<String> {
-    let tokens = abi::decode(&[abi::param_type::ParamType::String], data.as_ref())?;
-    <String as Detokenize>::from_tokens(tokens).map_err(From::from)
 }
