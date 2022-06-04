@@ -9,7 +9,7 @@ use serde::{
     ser::SerializeStruct,
     Deserialize, Deserializer, Serialize, Serializer,
 };
-use std::{fmt::Formatter, str::FromStr};
+use std::{fmt, fmt::Formatter, str::FromStr};
 use thiserror::Error;
 
 /// The block type returned from RPC calls.
@@ -576,6 +576,17 @@ impl FromStr for BlockNumber {
             n => BlockNumber::Number(n.parse::<U64>().map_err(|err| err.to_string())?),
         };
         Ok(block)
+    }
+}
+
+impl fmt::Display for BlockNumber {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            BlockNumber::Number(ref x) => format!("0x{:x}", x).fmt(f),
+            BlockNumber::Latest => f.write_str("latest"),
+            BlockNumber::Earliest => f.write_str("earliest"),
+            BlockNumber::Pending => f.write_str("pending"),
+        }
     }
 }
 
