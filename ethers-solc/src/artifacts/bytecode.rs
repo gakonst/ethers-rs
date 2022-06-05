@@ -416,7 +416,7 @@ impl CompactDeployedBytecode {
     ///
     /// See also <https://docs.soliditylang.org/en/v0.8.10/internals/source_mappings.html>
     pub fn source_map(&self) -> Option<Result<SourceMap, SyntaxError>> {
-        self.bytecode.and_then(|bytecode| bytecode.source_map())
+        self.bytecode.as_ref().and_then(|bytecode| bytecode.source_map())
     }
 }
 
