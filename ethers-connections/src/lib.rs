@@ -2,6 +2,8 @@ pub mod connections {
     //! The umbrella module containing all [`Connection`](crate::Connection)
     //! implementations.
 
+    pub mod batch;
+
     #[cfg(feature = "http")]
     pub mod http;
     #[cfg(all(unix, feature = "ipc"))]
@@ -26,9 +28,10 @@ mod sub;
 
 use std::{future::Future, ops::Deref, pin::Pin};
 
+use jsonrpc::JsonRpcError;
 use serde::Serialize;
 use serde_json::value::RawValue;
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, oneshot};
 
 use ethers_core::types::U256;
 
@@ -48,9 +51,21 @@ type DynFuture<'a, T> = Pin<Box<dyn Future<Output = T> + 'a>>;
 #[cfg(not(target_arch = "wasm32"))]
 type DynFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 
+/// ...
+pub type PendingRequest = oneshot::Sender<ResponsePayload>;
+
 /// The future returned by [`Connection::send_raw_request`] that resolves to the
 /// JSON value returned by the transport.
 pub type RequestFuture<'a> = DynFuture<'a, ResponsePayload>;
+
+/*
+IDEA?:
+pub struct RequestFuture<'a> {
+    pub params: Option<(u64, Box<RawValue>)>,
+    response: DynFuture<'a, ResponsePayload>,
+}*/
+
+pub type BatchRequestFuture<'a> = DynFuture<'a, Result<(), TransportError>>;
 
 /// The payload of a request response from a transport.
 pub type ResponsePayload = Result<Box<RawValue>, TransportError>;
@@ -68,7 +83,27 @@ pub trait Connection {
     /// `request` and that the latter represents a valid JSONRPC 2.0 request
     /// whose contents match the specification defined by the Ethereum
     /// [JSON-RPC API](https://eth.wiki/json-rpc/API).
-    fn send_raw_request(&self, id: u64, request: String) -> RequestFuture<'_>;
+    fn send_raw_request(&self, id: u64, request: Box<RawValue>) -> RequestFuture<'_>;
+
+    /// TODO...
+    fn send_raw_batch_request(
+        &self,
+        batch: Vec<(u64, PendingRequest)>,
+        request: Box<RawValue>,
+    ) -> BatchRequestFuture<'_> {
+        unimplemented!("only implemented for http, ws and ipc connections")
+    }
+
+    fn send_raw_batch_request_alternative(
+        &self,
+        batch: Vec<u64>,
+        request: Box<RawValue>,
+    ) -> crate::DynFuture<
+        '_,
+        Result<Vec<Result<Option<Box<RawValue>>, JsonRpcError>>, TransportError>,
+    > {
+        unimplemented!("only implemented for http, ws and ipc connections")
+    }
 }
 
 // blanket impl for all types derefencing to a transport (but not nested refs)
@@ -81,8 +116,16 @@ where
         self.deref().request_id()
     }
 
-    fn send_raw_request(&self, id: u64, request: String) -> RequestFuture<'_> {
+    fn send_raw_request(&self, id: u64, request: Box<RawValue>) -> RequestFuture<'_> {
         self.deref().send_raw_request(id, request)
+    }
+
+    fn send_raw_batch_request(
+        &self,
+        batch: Vec<(u64, PendingRequest)>,
+        request: Box<RawValue>,
+    ) -> BatchRequestFuture<'_> {
+        self.deref().send_raw_batch_request(batch, request)
     }
 }
 

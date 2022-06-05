@@ -1,16 +1,25 @@
 #[cfg(feature = "ipc")]
 use std::path::Path;
-use std::{borrow::Cow, error, fmt, sync::Arc};
+use std::{
+    borrow::Cow,
+    error, fmt,
+    future::Future,
+    marker::PhantomData,
+    pin::Pin,
+    sync::Arc,
+    task::{Context, Poll},
+};
 
 use ethers_core::types::{Address, Block, Bytes, FeeHistory, Log, Transaction, H256, U256, U64};
 use serde::{Deserialize, Serialize};
+use serde_json::value::RawValue;
 
 #[cfg(all(unix, feature = "ipc"))]
 use crate::connections::ipc::{Ipc, IpcError};
 use crate::{
     connections::{self, noop},
     err::TransportError,
-    jsonrpc::JsonRpcError,
+    jsonrpc::{self, JsonRpcError},
     types::{
         BlockNumber, Filter, SyncStatus, TransactionCall, TransactionReceipt, TransactionRequest,
     },
@@ -149,101 +158,159 @@ impl<C: Connection + 'static> Provider<Arc<C>> {
 
 impl<C: Connection> Provider<C> {
     /// Returns the current ethereum protocol version.
-    pub async fn get_protocol_version(&self) -> Result<String, Box<ProviderError>> {
-        self.send_request("eth_protocolVersion", ()).await
+    ///
+    /// Equivalent to:
+    ///
+    /// ```ignore
+    /// async fn get_protocol_version(&self) -> Result<String, Box<ProviderError>>;
+    /// ```
+    pub async fn get_protocol_version(&self) -> RpcCall<'_, C, String> {
+        self.prepare_rpc_call("eth_protocolVersion", ())
     }
 
-    /// Returns data about the sync status or `None`, if the client is fully
-    /// synced.
+    /// Returns an object with data about the sync or
+    /// [`Synced`](SyncStatus::Synced).
     ///
     /// # Examples
     ///
     /// ```
-    /// use std::sync::Arc;
-    /// # use ethers_connections::connections::noop;
-    /// use ethers_connections::{Connection, Provider};
+    /// use ethers_connections::Provider;
     ///
-    /// # async fn examples_syncing() {
-    /// # let build_provider = || Provider::new(Arc::new(noop::Noop)).into_dyn();
-    /// let provider: Provider<Arc<dyn Connection>> = build_provider();
-    /// let res = provider.syncing().await;
-    /// if let Ok(None) = res {
-    ///     println!("client is synced");
+    /// # async fn example_syncing() {
+    /// # let provider = Provider::noop();
+    /// if let SyncStatus::Synced = provider.syncing().await? {
+    ///     println!("node is synced");
     /// }
-    /// # assert!(res.is_err());
-    /// # }
+    /// #}
     /// ```
-    pub async fn syncing(&self) -> Result<Option<SyncStatus>, Box<ProviderError>> {
-        #[derive(Deserialize)]
-        struct Helper(
-            #[serde(deserialize_with = "crate::types::deserialize_sync_status")] Option<SyncStatus>,
-        );
-
-        let Helper(status) = self.send_request("eth_syncing", ()).await?;
-        Ok(status)
+    pub fn syncing(&self) -> RpcCall<'_, C, SyncStatus> {
+        self.prepare_rpc_call("eth_syncing", ())
     }
 
     /// Returns the client coinbase address.
-    pub async fn get_coinbase(&self) -> Result<Address, Box<ProviderError>> {
-        self.send_request("eth_coinbase", ()).await
+    ///
+    /// The signature is equivalent to
+    ///
+    /// ```
+    /// pub async fn get_coinbase(&self) -> Result<Address, Box<ProviderError>>;
+    /// ```
+    pub fn get_coinbase(&self) -> RpcCall<'_, C, Address> {
+        self.prepare_rpc_call("eth_coinbase", ())
     }
 
     /// Returns `true` if the client is actively mining new blocks.
-    pub async fn get_mining(&self) -> Result<bool, Box<ProviderError>> {
-        self.send_request("eth_mining", ()).await
+    ///
+    /// The function signature is equivalent to
+    ///
+    /// ```
+    /// pub async fn get_mining(&self) -> Result<bool, Box<ProviderError>>
+    /// ```
+    pub fn get_mining(&self) -> RpcCall<'_, C, bool> {
+        self.prepare_rpc_call("eth_mining", ())
     }
 
     /// Returns the number of hashes per second that the node is mining with.
-    pub async fn get_hashrate(&self) -> Result<U256, Box<ProviderError>> {
-        self.send_request("eth_hashrate", ()).await
+    ///
+    /// The function signature is equivalent to
+    ///
+    /// ```
+    /// pub async fn get_hashrate(&self) -> Result<U256, Box<ProviderError>>;
+    /// ```
+    pub fn get_hashrate(&self) -> RpcCall<'_, C, U256> {
+        self.prepare_rpc_call("eth_hashrate", ())
     }
 
     /// Returns the current price per gas in wei.
-    pub async fn get_gas_price(&self) -> Result<U256, Box<ProviderError>> {
-        self.send_request("eth_gasPrice", ()).await
+    ///
+    /// Equivalent to:
+    ///
+    /// ```ignore
+    /// async fn get_gas_price(&self) -> Result<U256, Box<ProviderError>>;
+    /// ```
+    pub fn get_gas_price(&self) -> RpcCall<'_, C, U256> {
+        self.prepare_rpc_call("eth_gasPrice", ())
     }
 
     /// Returns a list of addresses owned by client.
-    pub async fn get_accounts(&self) -> Result<Vec<Address>, Box<ProviderError>> {
-        self.send_request("eth_getAccounts", ()).await
+    ///
+    /// Equivalent to:
+    ///
+    /// ```ignore
+    /// async fn get_accounts(&self) -> Result<Vec<Address>, Box<ProviderError>>;
+    /// ```
+    pub fn get_accounts(&self) -> RpcCall<'_, C, Vec<Address>> {
+        self.prepare_rpc_call("eth_getAccounts", ())
     }
 
     /// Returns the number of most recent block.
-    pub async fn get_block_number(&self) -> Result<u64, Box<ProviderError>> {
-        self.send_request("eth_blockNumber", ()).await
+    ///
+    /// Equivalent to:
+    ///
+    /// ```ignore
+    /// async fn get_block_number(&self) -> Result<u64, Box<ProviderError>>;
+    /// ```
+    pub fn get_block_number(&self) -> RpcCall<'_, C, u64> {
+        self.prepare_rpc_call("eth_blockNumber", ())
     }
 
     /// Returns the balance of the account of given address.
-    pub async fn get_balance(
-        &self,
-        address: &Address,
-        block: &BlockNumber,
-    ) -> Result<U256, Box<ProviderError>> {
-        self.send_request("eth_getBalance", (address, block)).await
+    ///
+    /// Equivalent to:
+    ///
+    /// ```ignore
+    /// async fn get_balance(
+    ///     &self,
+    ///     address: &Address,
+    ///     block: &BlockNumber
+    /// ) -> Result<U256, Box<ProviderError>>;
+    /// ```
+    pub fn get_balance(&self, address: &Address, block: &BlockNumber) -> RpcCall<'_, C, U256> {
+        self.prepare_rpc_call("eth_getBalance", (address, block))
     }
 
     /// Returns the value from a storage position at a given address.
-    pub async fn get_storage_at(
+    ///
+    /// Equivalent to:
+    ///
+    /// ```ignore
+    /// async fn get_storage_at(
+    ///     &self,
+    ///     address: &Address,
+    ///     pos: &U256,
+    ///     block: Option<BlockNumber>,
+    /// ) -> Result<U256, Box<ProviderError>>;
+    /// ```
+    pub fn get_storage_at(
         &self,
         address: &Address,
         pos: &U256,
         block: Option<BlockNumber>,
-    ) -> Result<U256, Box<ProviderError>> {
+    ) -> RpcCall<'_, C, U256> {
         match block {
-            Some(block) => self.send_request("eth_getStorageAt", (address, pos, block)).await,
-            None => self.send_request("eth_getStorageAt", (address, pos)).await,
+            Some(block) => self.prepare_rpc_call("eth_getStorageAt", (address, pos, block)),
+            None => self.prepare_rpc_call("eth_getStorageAt", (address, pos)),
         }
     }
 
     /// Returns the number of transactions sent from an address.
-    pub async fn get_transaction_count(
+    ///
+    /// Equivalent to:
+    ///
+    /// ```ignore
+    /// async fn get_transaction_count(
+    ///     &self,
+    ///     address: &Address,
+    ///     block: Option<BlockNumber>
+    /// ) -> Result<U256, Box<ProviderError>>;
+    /// ```
+    pub fn get_transaction_count(
         &self,
         address: &Address,
         block: Option<BlockNumber>,
-    ) -> Result<U256, Box<ProviderError>> {
+    ) -> RpcCall<'_, C, U256> {
         match block {
-            Some(block) => self.send_request("eth_getTransactionCount", (address, block)).await,
-            None => self.send_request("eth_getTransactionCount", [address]).await,
+            Some(block) => self.prepare_rpc_call("eth_getTransactionCount", (address, block)),
+            None => self.prepare_rpc_call("eth_getTransactionCount", [address]),
         }
     }
 
@@ -286,12 +353,18 @@ impl<C: Connection> Provider<C> {
     /// (e.g. transaction) and use the signature to impersonate the victim.
     ///
     /// **Note** the address to sign with must be unlocked.
-    pub async fn sign(
-        &self,
-        address: &Address,
-        message: &Bytes,
-    ) -> Result<Bytes, Box<ProviderError>> {
-        self.send_request("eth_sign", (address, message)).await
+    ///
+    /// The function signature is equivalent to
+    ///
+    /// ```
+    /// pub async fn sign(
+    ///     &self,
+    ///     address: &Address,
+    ///     message: &Bytes,
+    /// ) -> Result<Bytes, Box<ProviderError>>;
+    /// ```
+    pub async fn sign(&self, address: &Address, message: &Bytes) -> RpcCall<'_, C, Bytes> {
+        self.prepare_rpc_call("eth_sign", (address, message))
     }
 
     pub async fn sign_transaction(
@@ -510,24 +583,54 @@ impl<C: Connection> Provider<C> {
 
     /// Installs a new filter that can be polled for the hashes of newly
     /// arrived pending transactions.
-    pub async fn install_pending_transactions_filter(&self) -> Result<U256, Box<ProviderError>> {
-        self.send_request("eth_newPendingTransactionsFilter", ()).await
+    ///
+    /// Equivalent to:
+    ///
+    /// ```ignore
+    /// async fn install_pending_transactions_filter(&self) -> Result<U256, Box<ProviderError>>;
+    /// ```
+    pub fn install_pending_transactions_filter(&self) -> RpcCall<'_, C, U256> {
+        self.prepare_rpc_call("eth_newPendingTransactionsFilter", ())
     }
 
     /// Polls the installed block filter with `id` for all new pending
     /// transaction hashes since the last time it was last polled.
-    pub async fn get_pending_transactions_filter_changes(
-        &self,
-        id: &U256,
-    ) -> Result<Vec<H256>, Box<ProviderError>> {
-        self.send_request("eth_getFilterChanges", [id]).await
+    ///
+    /// The function signature is equivalent to
+    ///
+    /// ```ignore
+    /// async fn get_pending_transactions_filter_changes(
+    ///     &self,
+    ///     id: &U256,
+    /// ) -> Result<Vec<H256>, Box<ProviderError>>;
+    /// ```
+    pub fn get_pending_transactions_filter_changes(&self, id: &U256) -> RpcCall<'_, C, Vec<H256>> {
+        self.prepare_rpc_call("eth_getFilterChanges", [id])
     }
 
     /// Uninstalls a filter with a given `id`.
-    pub async fn uninstall_filter(&self, id: &U256) -> Result<bool, Box<ProviderError>> {
-        self.send_request("eth_uninstallFilter", [id]).await
+    ///
+    /// The function signature is equivalent to
+    ///
+    /// ```
+    /// pub async fn uninstall_filter(&self, id: &U256) -> Result<bool, Box<ProviderError>>;
+    /// ```
+    pub fn uninstall_filter(&self, id: &U256) -> RpcCall<'_, C, bool> {
+        self.prepare_rpc_call("eth_uninstallFilter", [id])
     }
 
+    /// Prepares an RPC call for `method` and the given `params` which will
+    /// attempt to parse its response into the expected type `R`.
+    pub fn prepare_rpc_call<T, R>(&self, method: &'static str, params: T) -> RpcCall<'_, C, R>
+    where
+        T: Serialize,
+        R: for<'de> Deserialize<'de>,
+    {
+        let id = self.connection.request_id();
+        RpcCall { connection: &self.connection, params: Some(CallParams::new(id, method, params)) }
+    }
+
+    /*
     /// Sends a request for `method` with `params`, awaits its result and
     /// attempts to parse it into an expected type `R`.
     pub async fn send_request<P, R>(&self, method: &str, params: P) -> Result<R, Box<ProviderError>>
@@ -549,7 +652,7 @@ impl<C: Connection> Provider<C> {
         })?;
 
         Ok(decoded)
-    }
+    }*/
 }
 
 impl<C: DuplexConnection + Clone> Provider<C> {
@@ -611,6 +714,55 @@ impl<C: DuplexConnection> Provider<C> {
         self.connection.unsubscribe(id).map_err(|err| err.to_provider_err())?;
         Ok(ok)
     }
+}
+
+#[derive(Clone, Debug)]
+pub struct RpcCall<'a, C, R> {
+    connection: &'a C,
+    params: Option<CallParams<R>>,
+}
+
+impl<C: Connection, R: for<'de> Deserialize<'de>> Future for RpcCall<'_, C, R> {
+    type Output = Result<R, Box<ProviderError>>;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let CallParams { id, method, request, .. } =
+            self.params.take().expect("rpc call was previously awaited");
+        let response = self.connection.send_raw_request(id, request);
+
+        match response.as_mut().poll(cx) {
+            Poll::Ready(Ok(response)) => Poll::Ready(parse_response(method, &*response)),
+            Poll::Ready(Err(e)) => Poll::Ready(Err(e
+                .to_provider_err()
+                .with_ctx(format!("failed RPC call to `{method}` (rpc request failed)")))),
+            Poll::Pending => Poll::Pending,
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct CallParams<R> {
+    pub id: u64,
+    pub method: &'static str,
+    pub request: Box<RawValue>,
+    _marker: PhantomData<fn() -> R>,
+}
+
+impl<R: for<'de> Deserialize<'de>> CallParams<R> {
+    fn new<T: Serialize>(id: u64, method: &'static str, params: T) -> Self {
+        let request = jsonrpc::Request { id, method, params }.to_json();
+        Self { id, method, request, _marker: PhantomData }
+    }
+}
+
+fn parse_response<R: for<'de> Deserialize<'de>>(
+    method: &'static str,
+    response: &RawValue,
+) -> Result<R, Box<ProviderError>> {
+    serde_json::from_str(response.get()).map_err(|err| {
+        ProviderError::json(err)
+            .with_ctx(format!("failed RPC call to `{method}` (response deserialization failed)",))
+    })
 }
 
 // TODO: Transport(Box<TransportError>), Json(serde_json::Error)

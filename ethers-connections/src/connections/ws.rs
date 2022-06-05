@@ -54,7 +54,7 @@ impl Connection for WebSocket {
         self.next_id.fetch_add(1, Ordering::Relaxed)
     }
 
-    fn send_raw_request(&self, id: u64, request: String) -> RequestFuture<'_> {
+    fn send_raw_request(&self, id: u64, request: Box<RawValue>) -> RequestFuture<'_> {
         Box::pin(async move {
             // send the request to the WS server
             let (tx, rx) = oneshot::channel();

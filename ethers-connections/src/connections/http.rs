@@ -1,15 +1,18 @@
 use std::{
+    borrow::Cow,
     str::FromStr,
     sync::atomic::{AtomicU64, Ordering},
     time::Duration,
 };
 
 use reqwest::{header::CONTENT_TYPE, Client};
+use serde_json::value::RawValue;
 use tokio::time::Instant;
 use url::Url;
 
-use crate::{err::TransportError, jsonrpc::Response, Connection, RequestFuture};
+use crate::{err::TransportError, jsonrpc, BatchRequestFuture, Connection, RequestFuture};
 
+/*
 /// A rate-limit aware HTTP [`Connection`].
 ///
 /// When this [`Connection`] encounters a rate-limit error, it will wait for a
@@ -74,7 +77,7 @@ impl Connection for DelayedHttp {
             }
         })
     }
-}
+}*/
 
 /// An HTTP [`Connection`].
 #[derive(Debug)]
@@ -98,6 +101,20 @@ impl Http {
     fn from_url(url: Url) -> Self {
         Self { next_id: AtomicU64::new(0), client: Client::new(), url }
     }
+
+    async fn send_http_request(&self, request: Box<RawValue>) -> Result<String, TransportError> {
+        let response = self
+            .client
+            .post(self.url.as_ref())
+            .header(CONTENT_TYPE, "application/json")
+            .body(request.to_string())
+            .send()
+            .await
+            .map_err(TransportError::transport)?;
+
+        let text = response.text().await.map_err(|err| TransportError::transport(err))?;
+        Ok(text)
+    }
 }
 
 impl Connection for Http {
@@ -105,26 +122,77 @@ impl Connection for Http {
         self.next_id.fetch_add(1, Ordering::Relaxed)
     }
 
-    fn send_raw_request(&self, _: u64, request: String) -> RequestFuture {
+    fn send_raw_request(&self, _: u64, request: Box<RawValue>) -> RequestFuture {
         Box::pin(async move {
-            let resp = self
-                .client
-                .post(self.url.as_ref())
-                .header(CONTENT_TYPE, "application/json")
-                .body(request)
-                .send()
-                .await
-                .map_err(TransportError::transport)?;
+            let response = self.send_http_request(request).await?;
 
-            let text = resp.text().await.map_err(|err| TransportError::transport(err))?;
-            let raw = serde_json::from_str(&text)
-                .map_err(|source| TransportError::json(&text, source))?;
-
-            match raw {
-                Response::Success { result, .. } => Ok(result.to_owned()),
-                Response::Error { error, .. } => Err(TransportError::jsonrpc(error)),
-                Response::Notification { .. } => todo!("return appropriate JSON error"),
+            if let Ok(jsonrpc::Response { result, .. }) = serde_json::from_str(&response)
+                .map_err(|source| TransportError::json(&response, source))
+            {
+                return Ok(result.to_owned());
             }
+
+            if let Ok(jsonrpc::Error { error, .. }) = serde_json::from_str(&response)
+                .map_err(|source| TransportError::json(&response, source))
+            {
+                return Err(TransportError::jsonrpc(error));
+            }
+
+            Err(TransportError::Json { input: response, source: serde::de::Error::custom("TODO") })
+        })
+    }
+
+    fn send_raw_batch_request(
+        &self,
+        batch: Vec<(u64, crate::PendingRequest)>,
+        request: Box<RawValue>,
+    ) -> BatchRequestFuture<'_> {
+        let len = batch.len();
+        Box::pin(async move {
+            let response = self.send_http_request(request).await?;
+
+            // TODO: success and error responses possible?
+            if let Ok(mut responses) = serde_json::from_str::<Vec<jsonrpc::Response<'_>>>(&response)
+                .map_err(|source| TransportError::json(&response, source))
+            {
+                for response in responses {
+                    let index = match batch.iter().position(|(id, _)| response.id == *id) {
+                        Some(index) => index,
+                        None => todo!("error"),
+                    };
+
+                    let (_, tx) = batch.swap_remove(index);
+                    let _ = tx.send(Ok(response.result.to_owned()));
+                }
+
+                for (_, tx) in batch {
+                    todo!("respond with something, batch error? no response? just drop")
+                }
+            }
+
+            // may be single error as well
+            let raw: Vec<Response> = serde_json::from_str(&response)
+                .map_err(|source| TransportError::json(&response, source))?;
+
+            if raw.len() != len {
+                todo!("error")
+            }
+            // TODO: no guaranteed order
+            for i in 0..len {
+                match raw[i] {
+                    Response::Success { id, result } => {
+                        if batch[i].0 != id {
+                            todo!("error")
+                        }
+
+                        let _ = batch[i].1.send(Ok(result.to_owned()));
+                    }
+                    Response::Error { id, error } => todo!(),
+                    _ => todo!("error"),
+                }
+            }
+
+            Ok(())
         })
     }
 }

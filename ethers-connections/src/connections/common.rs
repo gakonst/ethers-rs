@@ -15,7 +15,7 @@ pub(super) type PendingRequest = oneshot::Sender<ResponsePayload>;
 pub(super) type Subscription = (mpsc::UnboundedSender<Box<RawValue>>, Option<NotificationReceiver>);
 
 pub(super) enum Request {
-    Call { id: u64, tx: PendingRequest, request: String },
+    Call { id: u64, tx: PendingRequest, request: Box<RawValue> },
     Subscribe { id: U256, tx: oneshot::Sender<Option<NotificationReceiver>> },
     Unsubscribe { id: U256 },
 }

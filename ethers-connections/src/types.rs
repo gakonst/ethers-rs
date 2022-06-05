@@ -82,29 +82,21 @@ impl<'de> Deserialize<'de> for BlockNumber {
     }
 }
 
-/// The current sync status of the provider.
 #[derive(Clone, Copy, Debug, Deserialize, Hash, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct SyncStatus {
-    pub starting_block: U256,
-    pub current_block: U256,
-    pub highest_block: U256,
+#[serde(untagged)]
+pub enum SyncStatus {
+    Syncing {
+        starting_block: u64,
+        current_block: u64,
+        highest_block: u64,
+    },
+    #[serde(rename = "false")]
+    Synced,
 }
 
-pub(crate) fn deserialize_sync_status<'de, D: Deserializer<'de>>(
-    deserializer: D,
-) -> Result<Option<SyncStatus>, D::Error> {
-    #[derive(Deserialize)]
-    #[serde(untagged)]
-    enum Helper {
-        Synced(bool),
-        Syncing(SyncStatus),
-    }
-
-    match Deserialize::deserialize(deserializer)? {
-        Helper::Synced(false) => Ok(None),
-        Helper::Syncing(status) => Ok(Some(status)),
-        Helper::Synced(true) => Err(de::Error::custom("`eth_syncing` can not return `true`")),
+impl SyncStatus {
+    pub fn is_synced(&self) -> bool {
+        matches!(self, Self::Synced)
     }
 }
 
@@ -505,6 +497,7 @@ pub struct TransactionReceipt {
 
 #[cfg(test)]
 mod tests {
+    use serde::Deserialize;
     use serde_json::Deserializer;
 
     use ethers_core::types::H256;
@@ -513,21 +506,21 @@ mod tests {
 
     #[test]
     fn deserialize_sync_status() {
-        assert_eq!(
-            super::deserialize_sync_status(&mut Deserializer::from_str("false")).unwrap(),
-            None
-        );
+        let de = &mut Deserializer::from_str("false");
+        let status: SyncStatus = Deserialize::deserialize(de).unwrap();
+        assert_eq!(status, SyncStatus::Synced);
 
+        let de = &mut Deserializer::from_str(
+            r###"{"startingBlock":"0x5555","currentBlock":"0x5588","highestBlock":"0x6000"}"###,
+        );
+        let status: SyncStatus = Deserialize::deserialize(de).unwrap();
         assert_eq!(
-            super::deserialize_sync_status(&mut Deserializer::from_str(
-                r###"{"startingBlock":"0x5555","currentBlock":"0x5588","highestBlock":"0x6000"}"###
-            ))
-            .unwrap(),
-            Some(SyncStatus {
-                starting_block: 0x5555.into(),
-                current_block: 0x5588.into(),
-                highest_block: 0x6000.into(),
-            })
+            status,
+            SyncStatus::Syncing {
+                starting_block: 0x5555,
+                current_block: 0x5588,
+                highest_block: 0x6000,
+            }
         );
     }
 

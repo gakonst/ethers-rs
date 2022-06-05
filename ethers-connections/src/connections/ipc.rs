@@ -65,7 +65,7 @@ impl Connection for Ipc {
         self.next_id.fetch_add(1, Ordering::Relaxed)
     }
 
-    fn send_raw_request(&self, id: u64, request: String) -> RequestFuture<'_> {
+    fn send_raw_request(&self, id: u64, request: Box<RawValue>) -> RequestFuture<'_> {
         Box::pin(async move {
             // send the request to the IPC server
             let (tx, rx) = oneshot::channel();
@@ -121,7 +121,7 @@ async fn run_ipc_server(mut stream: UnixStream, mut rx: mpsc::UnboundedReceiver<
 
     // create read buffer and next request
     let mut buf = BytesMut::with_capacity(4096);
-    let mut next: Option<Box<[u8]>> = None;
+    let mut next: Option<Box<RawValue>> = None;
 
     let res = loop {
         tokio::select! {
@@ -189,14 +189,14 @@ impl Default for Shared {
 impl Shared {
     /// Handles a received incoming requests and returns a raw byte buffer, if
     /// the request requires bytes to be written out over the IPC connetion.
-    fn handle_request(&mut self, request: Request) -> Option<Box<[u8]>> {
+    fn handle_request(&mut self, request: Request) -> Option<Box<RawValue>> {
         match request {
             // RPC call requests are inserted into the `pending` map and their
             // payload is extracted to be written out
             Request::Call { id, tx, request } => {
                 let prev = self.pending.insert(id, tx);
                 assert!(prev.is_none(), "replaced pending IPC request (id={})", id);
-                Some(request.into_bytes().into_boxed_slice())
+                Some(request)
             }
             Request::Subscribe { id, tx } => {
                 use std::collections::hash_map::Entry::*;
@@ -236,11 +236,11 @@ impl Shared {
     async fn handle_writes(
         &self,
         writer: &mut WriteHalf<'_>,
-        next_request: &Option<Box<[u8]>>,
+        next_request: &Option<Box<RawValue>>,
     ) -> Result<(), IpcError> {
         // NOTE: must only be called if `next_request` is set
-        let buf = next_request.as_deref().unwrap();
-        writer.write_all(buf).await.map_err(Into::into)
+        let buf = next_request.as_deref().unwrap().get();
+        writer.write_all(buf.as_bytes()).await.map_err(Into::into)
     }
 
     /// Receives a batch
