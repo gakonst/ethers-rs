@@ -284,9 +284,13 @@ mod tests {
         let tx = TransactionRequest::new().from(accounts[0]).to(accounts[0]).value(1e18 as u64);
 
         let mut sending = futures_util::future::join_all(
-            std::iter::repeat(tx.clone()).take(num_txs).map(|tx| async {
-                provider.send_transaction(tx, None).await.unwrap().await.unwrap().unwrap()
-            }),
+            std::iter::repeat(tx.clone())
+                .take(num_txs)
+                .enumerate()
+                .map(|(nonce, tx)| tx.nonce(nonce))
+                .map(|tx| async {
+                    provider.send_transaction(tx, None).await.unwrap().await.unwrap().unwrap()
+                }),
         )
         .fuse();
 
