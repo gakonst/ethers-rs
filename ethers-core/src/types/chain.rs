@@ -1,11 +1,12 @@
-use serde::Deserialize;
-use thiserror::Error;
-
-use core::convert::TryFrom;
-use std::{convert::TryInto, default, fmt, str::FromStr};
-
 use crate::types::U256;
+use serde::Deserialize;
+use std::{
+    convert::{TryFrom, TryInto},
+    fmt,
+    str::FromStr,
+};
 use strum::EnumVariantNames;
+use thiserror::Error;
 
 #[derive(Debug, Clone, Error)]
 #[error("Failed to parse chain: {0}")]
@@ -26,6 +27,7 @@ pub enum Chain {
     Polygon = 137,
     Fantom = 250,
     Dev = 1337,
+    AnvilHardhat = 31337,
     FantomTestnet = 4002,
     PolygonMumbai = 80001,
     Avalanche = 43114,
@@ -86,6 +88,7 @@ impl fmt::Display for Chain {
             Chain::Oasis => "oasis",
             Chain::Emerald => "emerald",
             Chain::EmeraldTestnet => "emerald-testnet",
+            Chain::AnvilHardhat => "anvil-hardhat",
         };
 
         write!(formatter, "{}", chain)
@@ -123,6 +126,7 @@ impl TryFrom<u64> for Chain {
             100 => Chain::XDai,
             137 => Chain::Polygon,
             1337 => Chain::Dev,
+            31337 => Chain::Dev,
             250 => Chain::Fantom,
             4002 => Chain::FantomTestnet,
             80001 => Chain::PolygonMumbai,
@@ -185,6 +189,7 @@ impl FromStr for Chain {
             "fantom" => Chain::Fantom,
             "fantom-testnet" => Chain::FantomTestnet,
             "dev" => Chain::Dev,
+            "anvil" | "hardhat" | "anvil-hardhat" => Chain::AnvilHardhat,
             "bsc" => Chain::BinanceSmartChain,
             "bsc-testnet" => Chain::BinanceSmartChainTestnet,
             "arbitrum" => Chain::Arbitrum,
@@ -225,7 +230,7 @@ impl Chain {
     }
 }
 
-impl default::Default for Chain {
+impl Default for Chain {
     fn default() -> Self {
         Chain::Mainnet
     }
