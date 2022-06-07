@@ -1365,31 +1365,21 @@ pub struct UserDoc {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub kind: Option<String>,
     #[serde(default, skip_serializing_if = "::std::collections::BTreeMap::is_empty")]
-    pub methods: BTreeMap<String, UserDocMethodNotice>,
+    pub methods: BTreeMap<String, UserDocNotice>,
     #[serde(default, skip_serializing_if = "::std::collections::BTreeMap::is_empty")]
-    pub events: BTreeMap<String, UserDocEventNotice>,
+    pub events: BTreeMap<String, UserDocNotice>,
     #[serde(default, skip_serializing_if = "::std::collections::BTreeMap::is_empty")]
-    pub errors: BTreeMap<String, Vec<UserDocErrorNotice>>,
+    pub errors: BTreeMap<String, Vec<UserDocNotice>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub notice: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 #[serde(untagged)]
-pub enum UserDocMethodNotice {
+pub enum UserDocNotice {
     // NOTE: this a variant used for constructors on older solc versions
     Constructor(String),
-    Method { notice: String },
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
-pub struct UserDocEventNotice {
-    pub notice: String,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
-pub struct UserDocErrorNotice {
-    pub notice: String,
+    Notice { notice: String },
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize, Eq, PartialEq)]

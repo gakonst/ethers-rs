@@ -11,7 +11,7 @@ use ethers_core::types::Address;
 use ethers_solc::{
     artifacts::{
         BytecodeHash, DevDoc, ErrorDoc, EventDoc, Libraries, MethodDoc, ModelCheckerEngine::CHC,
-        ModelCheckerSettings, UserDoc, UserDocErrorNotice, UserDocEventNotice, UserDocMethodNotice,
+        ModelCheckerSettings, UserDoc, UserDocNotice,
     },
     cache::{SolFilesCache, SOLIDITY_FILES_CACHE_FILENAME},
     project_util::*,
@@ -1677,9 +1677,9 @@ fn can_parse_notice() {
             version: None,
             kind: None,
             methods: BTreeMap::from([
-                ("abc()".to_string(), UserDocMethodNotice::Method { notice: "hello".to_string() }),
-                ("xyz()".to_string(), UserDocMethodNotice::Method { notice: "hello".to_string() }),
-                ("constructor".to_string(), UserDocMethodNotice::Constructor("hello".to_string())),
+                ("abc()".to_string(), UserDocNotice::Notice { notice: "hello".to_string() }),
+                ("xyz()".to_string(), UserDocNotice::Notice { notice: "hello".to_string() }),
+                ("constructor".to_string(), UserDocNotice::Constructor("hello".to_string())),
             ]),
             events: BTreeMap::new(),
             errors: BTreeMap::new(),
@@ -1701,12 +1701,9 @@ fn can_parse_notice() {
             version: Some(1),
             kind: Some("user".to_string()),
             methods: BTreeMap::from([
-                ("abc()".to_string(), UserDocMethodNotice::Method { notice: "hello".to_string() }),
-                ("xyz()".to_string(), UserDocMethodNotice::Method { notice: "hello".to_string() }),
-                (
-                    "constructor".to_string(),
-                    UserDocMethodNotice::Method { notice: "hello".to_string() }
-                ),
+                ("abc()".to_string(), UserDocNotice::Notice { notice: "hello".to_string() }),
+                ("xyz()".to_string(), UserDocNotice::Notice { notice: "hello".to_string() }),
+                ("constructor".to_string(), UserDocNotice::Notice { notice: "hello".to_string() }),
             ]),
             events: BTreeMap::new(),
             errors: BTreeMap::new(),
@@ -1776,15 +1773,15 @@ contract NotERC20 is INotERC20 {
             notice: Some("Do not use this.".to_string()),
             methods: BTreeMap::from([(
                 "transfer(address,uint256)".to_string(),
-                UserDocMethodNotice::Method { notice: "Transfer tokens.".to_string() }
+                UserDocNotice::Notice { notice: "Transfer tokens.".to_string() }
             ),]),
             events: BTreeMap::from([(
                 "Transfer(address,address,uint256)".to_string(),
-                UserDocEventNotice { notice: "Transfer some tokens.".to_string() }
+                UserDocNotice::Notice { notice: "Transfer some tokens.".to_string() }
             ),]),
             errors: BTreeMap::from([(
                 "InsufficientBalance(uint256,uint256)".to_string(),
-                vec![UserDocErrorNotice {
+                vec![UserDocNotice::Notice {
                     notice: "Insufficient balance for transfer.".to_string()
                 }]
             ),]),
@@ -1847,15 +1844,15 @@ contract NotERC20 is INotERC20 {
             notice: None,
             methods: BTreeMap::from([(
                 "transfer(address,uint256)".to_string(),
-                UserDocMethodNotice::Method { notice: "Transfer tokens.".to_string() }
+                UserDocNotice::Notice { notice: "Transfer tokens.".to_string() }
             ),]),
             events: BTreeMap::from([(
                 "Transfer(address,address,uint256)".to_string(),
-                UserDocEventNotice { notice: "Transfer some tokens.".to_string() }
+                UserDocNotice::Notice { notice: "Transfer some tokens.".to_string() }
             ),]),
             errors: BTreeMap::from([(
                 "InsufficientBalance(uint256,uint256)".to_string(),
-                vec![UserDocErrorNotice {
+                vec![UserDocNotice::Notice {
                     notice: "Insufficient balance for transfer.".to_string()
                 }]
             ),]),
