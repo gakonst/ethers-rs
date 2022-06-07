@@ -3,12 +3,13 @@
 use crate::{
     artifacts::{
         contract::{CompactContractBytecode, CompactContractRef, Contract},
-        Error,
+        Error, Linkable,
     },
     sources::{VersionedSourceFile, VersionedSourceFiles},
     ArtifactId, ArtifactOutput, Artifacts, CompilerOutput, ConfigurableArtifacts,
 };
 use contracts::{VersionedContract, VersionedContracts};
+use ethers_core::types::Address;
 use semver::Version;
 use std::{collections::BTreeMap, fmt, path::Path};
 
@@ -27,6 +28,22 @@ pub struct ProjectCompileOutput<T: ArtifactOutput = ConfigurableArtifacts> {
     pub(crate) cached_artifacts: Artifacts<T::Artifact>,
     /// errors that should be omitted
     pub(crate) ignored_error_codes: Vec<u64>,
+}
+
+impl<T: ArtifactOutput> Linkable for ProjectCompileOutput<T> {
+    fn link(&mut self, file: impl AsRef<str>, library: impl AsRef<str>, address: Address) -> bool {
+        let file = file.as_ref();
+        let library = library.as_ref();
+
+        // project is linked when all compiled and cached artifacts are linked
+        self.compiled_artifacts.link(file, library, address) &&
+            self.cached_artifacts.link(file, library, address)
+    }
+
+    fn is_unlinked(&self) -> bool {
+        // if any of the compiled or cached artifacts are not linked, the project is not linked
+        self.compiled_artifacts.is_unlinked() || self.cached_artifacts.is_unlinked()
+    }
 }
 
 impl<T: ArtifactOutput> ProjectCompileOutput<T> {

@@ -35,7 +35,7 @@ pub use serde_helpers::{deserialize_bytes, deserialize_opt_bytes};
 /// Solidity files are made up of multiple `source units`, a solidity contract is such a `source
 /// unit`, therefore a solidity file can contain multiple contracts: (1-N*) relationship.
 ///
-/// This types represents this mapping as `file name -> (contract name -> T)`, where the generic is
+/// This type represents this mapping as `file name -> (contract name -> T)`, where the generic is
 /// intended to represent contract specific information, like [`Contract`] itself, See [`Contracts`]
 pub type FileToContractsMap<T> = BTreeMap<String, BTreeMap<String, T>>;
 

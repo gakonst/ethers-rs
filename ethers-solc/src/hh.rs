@@ -4,7 +4,7 @@ use crate::{
     artifacts::{
         bytecode::{Bytecode, BytecodeObject, DeployedBytecode},
         contract::{CompactContract, CompactContractBytecode, Contract, ContractBytecode},
-        CompactContractBytecodeCow, LosslessAbi, Offsets,
+        CompactContractBytecodeCow, Linkable, LosslessAbi, Offsets,
     },
     ArtifactOutput, SourceFile,
 };
@@ -39,6 +39,27 @@ pub struct HardhatArtifact {
     /// need to be linked, this value contains an empty object.
     #[serde(default)]
     pub deployed_link_references: BTreeMap<String, BTreeMap<String, Vec<Offsets>>>,
+}
+
+impl Linkable for HardhatArtifact {
+    fn link(
+        &mut self,
+        file: impl AsRef<str>,
+        library: impl AsRef<str>,
+        address: ethers_core::types::Address,
+    ) -> bool {
+        match &mut self.bytecode {
+            Some(bytecode) => bytecode.link(file, library, address),
+            None => false,
+        }
+    }
+
+    fn is_unlinked(&self) -> bool {
+        match &self.bytecode {
+            Some(bytecode) => bytecode.is_unlinked(),
+            None => true,
+        }
+    }
 }
 
 impl<'a> From<&'a HardhatArtifact> for CompactContractBytecodeCow<'a> {

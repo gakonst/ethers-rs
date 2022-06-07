@@ -1,10 +1,14 @@
 //! Output artifact handling
 
 use crate::{
-    artifacts::FileToContractsMap, error::Result, utils, HardhatArtifact, ProjectPathsConfig,
-    SolcError,
+    artifacts::{FileToContractsMap, Linkable},
+    error::Result,
+    utils, HardhatArtifact, ProjectPathsConfig, SolcError,
 };
-use ethers_core::{abi::Abi, types::Bytes};
+use ethers_core::{
+    abi::Abi,
+    types::{Address, Bytes},
+};
 use semver::Version;
 use serde::{de::DeserializeOwned, Serialize};
 use std::{
@@ -106,6 +110,28 @@ pub(crate) type ArtifactsMap<T> = FileToContractsMap<Vec<ArtifactFile<T>>>;
 /// Represents a set of Artifacts
 #[derive(Debug, Clone, PartialEq)]
 pub struct Artifacts<T>(pub ArtifactsMap<T>);
+
+impl<T> Linkable for Artifacts<T>
+where
+    T: Linkable,
+{
+    fn link(&mut self, file: impl AsRef<str>, library: impl AsRef<str>, address: Address) -> bool {
+        let file = file.as_ref();
+        let library = library.as_ref();
+
+        self.artifact_files_mut()
+            .map(|artifact| artifact.artifact.link(file, library, address))
+            .reduce(|accum, item| accum && item)
+            .unwrap_or(false)
+    }
+
+    fn is_unlinked(&self) -> bool {
+        self.artifact_files()
+            .map(|artifact| artifact.artifact.is_linked())
+            .reduce(|accum, item| accum && item)
+            .unwrap_or(true)
+    }
+}
 
 impl<T> From<ArtifactsMap<T>> for Artifacts<T> {
     fn from(m: ArtifactsMap<T>) -> Self {
@@ -458,7 +484,7 @@ where
 /// relationship (1-N+).
 pub trait ArtifactOutput {
     /// Represents the artifact that will be stored for a `Contract`
-    type Artifact: Artifact + DeserializeOwned + Serialize + fmt::Debug;
+    type Artifact: Artifact + DeserializeOwned + Serialize + fmt::Debug + Linkable;
 
     /// Handle the aggregated set of compiled contracts from the solc [`crate::CompilerOutput`].
     ///

@@ -4,9 +4,13 @@ use crate::artifacts::{
     bytecode::{
         Bytecode, BytecodeObject, CompactBytecode, CompactDeployedBytecode, DeployedBytecode,
     },
-    serde_helpers, DevDoc, Evm, Ewasm, LosslessAbi, Metadata, Offsets, StorageLayout, UserDoc,
+    serde_helpers, DevDoc, Evm, Ewasm, Linkable, LosslessAbi, Metadata, Offsets, StorageLayout,
+    UserDoc,
 };
-use ethers_core::{abi::Contract as Abi, types::Bytes};
+use ethers_core::{
+    abi::Contract as Abi,
+    types::{Address, Bytes},
+};
 use serde::{Deserialize, Serialize};
 use std::{borrow::Cow, collections::BTreeMap, convert::TryFrom};
 
@@ -39,6 +43,24 @@ pub struct Contract {
     pub ewasm: Option<Ewasm>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ir_optimized: Option<String>,
+}
+
+impl Linkable for Contract {
+    fn link(&mut self, file: impl AsRef<str>, library: impl AsRef<str>, address: Address) -> bool {
+        if let Some(Evm { bytecode: Some(bytecode), .. }) = &mut self.evm {
+            bytecode.link(file, library, address)
+        } else {
+            false
+        }
+    }
+
+    fn is_unlinked(&self) -> bool {
+        if let Some(Evm { bytecode: Some(bytecode), .. }) = &self.evm {
+            bytecode.is_unlinked()
+        } else {
+            true
+        }
+    }
 }
 
 impl<'a> From<&'a Contract> for CompactContractBytecodeCow<'a> {
@@ -161,6 +183,22 @@ impl CompactContractBytecode {
     }
 }
 
+impl Linkable for CompactContractBytecode {
+    fn link(&mut self, file: impl AsRef<str>, library: impl AsRef<str>, address: Address) -> bool {
+        match &mut self.bytecode {
+            Some(bytecode) => bytecode.link(file, library, address),
+            None => false,
+        }
+    }
+
+    fn is_unlinked(&self) -> bool {
+        match &self.bytecode {
+            Some(bytecode) => bytecode.is_unlinked(),
+            None => true,
+        }
+    }
+}
+
 impl<'a> From<&'a CompactContractBytecode> for CompactContractBytecodeCow<'a> {
     fn from(artifact: &'a CompactContractBytecode) -> Self {
         CompactContractBytecodeCow {
@@ -275,6 +313,22 @@ pub struct CompactContract {
     pub bin: Option<BytecodeObject>,
     #[serde(default, rename = "bin-runtime", skip_serializing_if = "Option::is_none")]
     pub bin_runtime: Option<BytecodeObject>,
+}
+
+impl Linkable for CompactContract {
+    fn link(&mut self, file: impl AsRef<str>, library: impl AsRef<str>, address: Address) -> bool {
+        match &mut self.bin {
+            Some(bytecode) => bytecode.link(file, library, address),
+            None => false,
+        }
+    }
+
+    fn is_unlinked(&self) -> bool {
+        match &self.bin {
+            Some(bytecode) => bytecode.is_unlinked(),
+            None => true,
+        }
+    }
 }
 
 impl CompactContract {

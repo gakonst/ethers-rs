@@ -9,10 +9,12 @@ use crate::{
             EwasmOutputSelection,
         },
         Ast, CompactContractBytecodeCow, DevDoc, Evm, Ewasm, FunctionDebugData, GasEstimates,
-        GeneratedSource, LosslessAbi, Metadata, Offsets, Settings, StorageLayout, UserDoc,
+        GeneratedSource, Linkable, LosslessAbi, Metadata, Offsets, Settings, StorageLayout,
+        UserDoc,
     },
     ArtifactOutput, SolcConfig, SolcError, SourceFile,
 };
+use ethers_core::types::Address;
 use serde::{Deserialize, Serialize};
 use std::{borrow::Cow, collections::BTreeMap, fs, path::Path};
 
@@ -58,6 +60,22 @@ pub struct ConfigurableContractArtifact {
     /// The identifier of the source file
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub id: Option<u32>,
+}
+
+impl Linkable for ConfigurableContractArtifact {
+    fn link(&mut self, file: impl AsRef<str>, library: impl AsRef<str>, address: Address) -> bool {
+        match &mut self.bytecode {
+            Some(bytecode) => bytecode.link(file, library, address),
+            None => false,
+        }
+    }
+
+    fn is_unlinked(&self) -> bool {
+        match &self.bytecode {
+            Some(bytecode) => bytecode.is_unlinked(),
+            None => true,
+        }
+    }
 }
 
 impl ConfigurableContractArtifact {
