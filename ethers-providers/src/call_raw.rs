@@ -495,10 +495,10 @@ pub mod spoof {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Http, Middleware, Provider};
+    use crate::{Http, Provider};
     use ethers_core::{
         types::TransactionRequest,
-        utils::{get_contract_address, keccak256, parse_ether, Anvil, Geth},
+        utils::{get_contract_address, keccak256, parse_ether, Geth},
     };
     use std::convert::TryFrom;
 
@@ -516,7 +516,7 @@ mod tests {
     }
 
     // Tests "roundtrip" serialization of calls: deserialize(serialize(call)) == call
-    fn test_encode<'a, P>(call: CallBuilder<'a, P>) {
+    fn test_encode<P>(call: CallBuilder<P>) {
         let input = call.unwrap().input;
         let ser = utils::serialize(&input).to_string();
         let de: CallInputOwned = serde_json::from_str(&ser).unwrap();
