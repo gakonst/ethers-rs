@@ -36,7 +36,7 @@ use crate::{
     artifacts::Sources,
     cache::SolFilesCache,
     error::{SolcError, SolcIoError},
-    sources::VersionedSourceFiles,
+    sources::{VersionedSourceFile, VersionedSourceFiles},
 };
 use artifacts::contract::Contract;
 use compile::output::contracts::VersionedContracts;
@@ -141,10 +141,12 @@ impl<T: ArtifactOutput> Project<T> {
     ///
     /// This will set the `--allow-paths` to the paths configured for the `Project`, if any.
     fn configure_solc(&self, mut solc: Solc) -> Solc {
-        if solc.args.is_empty() && !self.allowed_lib_paths.0.is_empty() {
+        if !self.allowed_lib_paths.0.is_empty() &&
+            !solc.args.iter().any(|arg| arg == "--allow-paths")
+        {
             solc = solc.arg("--allow-paths").arg(self.allowed_lib_paths.to_string());
         }
-        solc
+        solc.with_base_path(self.root())
     }
 
     /// Sets the maximum number of parallel `solc` processes to run simultaneously.
@@ -829,6 +831,14 @@ impl<T: ArtifactOutput> ArtifactOutput for Project<T> {
         sources: &VersionedSourceFiles,
     ) -> Artifacts<Self::Artifact> {
         self.artifacts_handler().output_to_artifacts(contracts, sources)
+    }
+
+    fn standalone_source_file_to_artifact(
+        &self,
+        path: &str,
+        file: &VersionedSourceFile,
+    ) -> Option<Self::Artifact> {
+        self.artifacts_handler().standalone_source_file_to_artifact(path, file)
     }
 }
 

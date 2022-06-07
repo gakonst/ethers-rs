@@ -87,5 +87,5 @@ impl GasOracle for Polygon {
 }
 
 fn from_gwei(gwei: f64) -> U256 {
-    u256_from_f64_saturating(gwei * 1.0e18_f64)
+    u256_from_f64_saturating(gwei * 1.0e9_f64)
 }

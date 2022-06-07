@@ -2,7 +2,7 @@
 
 use std::{
     collections::{BTreeMap, HashMap, HashSet},
-    io,
+    fs, io,
     path::{Path, PathBuf},
     str::FromStr,
 };
@@ -874,6 +874,71 @@ contract Contract is ParentContract,
 }
 
 #[test]
+fn can_flatten_with_version_pragma_after_imports() {
+    let project = TempProject::dapptools().unwrap();
+
+    let f = project
+        .add_source(
+            "A",
+            r#"
+pragma solidity ^0.8.10;
+
+import * as B from "./B.sol";
+
+contract A { }
+"#,
+        )
+        .unwrap();
+
+    project
+        .add_source(
+            "B",
+            r#"
+import D from "./D.sol";
+pragma solidity ^0.8.10;
+import * as C from "./C.sol";
+contract B { }
+"#,
+        )
+        .unwrap();
+
+    project
+        .add_source(
+            "C",
+            r#"
+pragma solidity ^0.8.10;
+contract C { }
+"#,
+        )
+        .unwrap();
+
+    project
+        .add_source(
+            "D",
+            r#"
+pragma solidity ^0.8.10;
+contract D { }
+"#,
+        )
+        .unwrap();
+
+    let result = project.flatten(&f).unwrap();
+    assert_eq!(
+        result,
+        r#"pragma solidity ^0.8.10;
+
+contract D { }
+
+contract C { }
+
+contract B { }
+
+contract A { }
+"#
+    );
+}
+
+#[test]
 fn can_detect_type_error() {
     let project = TempProject::<ConfigurableArtifacts>::dapptools().unwrap();
 
@@ -1240,6 +1305,159 @@ fn can_recompile_unchanged_with_empty_files() {
 }
 
 #[test]
+fn can_emit_empty_artifacts() {
+    let tmp = TempProject::dapptools().unwrap();
+
+    let top_level = tmp
+        .add_source(
+            "top_level",
+            r#"
+    function test() {}
+   "#,
+        )
+        .unwrap();
+
+    tmp.add_source(
+        "Contract",
+        r#"
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity 0.8.10;
+
+import "./top_level.sol";
+
+contract Contract {
+    function a() public{
+        test();
+    }
+}
+   "#,
+    )
+    .unwrap();
+
+    let compiled = tmp.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+    assert!(compiled.find("Contract").is_some());
+    assert!(compiled.find("top_level").is_some());
+    let mut artifacts = tmp.artifacts_snapshot().unwrap();
+
+    assert_eq!(artifacts.artifacts.as_ref().len(), 2);
+
+    let mut top_level =
+        artifacts.artifacts.as_mut().remove(top_level.to_string_lossy().as_ref()).unwrap();
+
+    assert_eq!(top_level.len(), 1);
+
+    let artifact = top_level.remove("top_level").unwrap().remove(0);
+    assert!(artifact.artifact.ast.is_some());
+
+    // recompile
+    let compiled = tmp.compile().unwrap();
+    assert!(compiled.is_unchanged());
+
+    // modify standalone file
+
+    tmp.add_source(
+        "top_level",
+        r#"
+    error MyError();
+    function test() {}
+   "#,
+    )
+    .unwrap();
+    let compiled = tmp.compile().unwrap();
+    assert!(!compiled.is_unchanged());
+}
+
+#[test]
+fn can_detect_contract_def_source_files() {
+    let tmp = TempProject::dapptools().unwrap();
+
+    let mylib = tmp
+        .add_source(
+            "MyLib",
+            r#"
+        pragma solidity 0.8.10;
+        library MyLib {
+        }
+   "#,
+        )
+        .unwrap();
+
+    let myinterface = tmp
+        .add_source(
+            "MyInterface",
+            r#"
+        pragma solidity 0.8.10;
+        interface MyInterface {}
+   "#,
+        )
+        .unwrap();
+
+    let mycontract = tmp
+        .add_source(
+            "MyContract",
+            r#"
+        pragma solidity 0.8.10;
+        contract MyContract {}
+   "#,
+        )
+        .unwrap();
+
+    let myabstract_contract = tmp
+        .add_source(
+            "MyAbstractContract",
+            r#"
+        pragma solidity 0.8.10;
+        contract MyAbstractContract {}
+   "#,
+        )
+        .unwrap();
+
+    let myerr = tmp
+        .add_source(
+            "MyError",
+            r#"
+        pragma solidity 0.8.10;
+       error MyError();
+   "#,
+        )
+        .unwrap();
+
+    let myfunc = tmp
+        .add_source(
+            "MyFunction",
+            r#"
+        pragma solidity 0.8.10;
+        function abc(){}
+   "#,
+        )
+        .unwrap();
+
+    let compiled = tmp.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+
+    let mut sources = compiled.output().sources;
+    let myfunc = sources.remove_by_path(myfunc.to_string_lossy()).unwrap();
+    assert!(!myfunc.contains_contract_definition());
+
+    let myerr = sources.remove_by_path(myerr.to_string_lossy()).unwrap();
+    assert!(!myerr.contains_contract_definition());
+
+    let mylib = sources.remove_by_path(mylib.to_string_lossy()).unwrap();
+    assert!(mylib.contains_contract_definition());
+
+    let myabstract_contract =
+        sources.remove_by_path(myabstract_contract.to_string_lossy()).unwrap();
+    assert!(myabstract_contract.contains_contract_definition());
+
+    let myinterface = sources.remove_by_path(myinterface.to_string_lossy()).unwrap();
+    assert!(myinterface.contains_contract_definition());
+
+    let mycontract = sources.remove_by_path(mycontract.to_string_lossy()).unwrap();
+    assert!(mycontract.contains_contract_definition());
+}
+
+#[test]
 fn can_compile_sparse_with_link_references() {
     let tmp = TempProject::dapptools().unwrap();
 
@@ -1488,4 +1706,108 @@ fn can_parse_notice() {
             notice: None
         })
     );
+}
+
+#[test]
+fn test_relative_cache_entries() {
+    let project = TempProject::dapptools().unwrap();
+    let _a = project
+        .add_source(
+            "A",
+            r#"
+pragma solidity ^0.8.10;
+contract A { }
+"#,
+        )
+        .unwrap();
+    let _b = project
+        .add_source(
+            "B",
+            r#"
+pragma solidity ^0.8.10;
+contract B { }
+"#,
+        )
+        .unwrap();
+    let _c = project
+        .add_source(
+            "C",
+            r#"
+pragma solidity ^0.8.10;
+contract C { }
+"#,
+        )
+        .unwrap();
+    let _d = project
+        .add_source(
+            "D",
+            r#"
+pragma solidity ^0.8.10;
+contract D { }
+"#,
+        )
+        .unwrap();
+
+    let compiled = project.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+
+    let cache = SolFilesCache::read(project.cache_path()).unwrap();
+
+    let entries = vec![
+        PathBuf::from("src/A.sol"),
+        PathBuf::from("src/B.sol"),
+        PathBuf::from("src/C.sol"),
+        PathBuf::from("src/D.sol"),
+    ];
+    assert_eq!(entries, cache.files.keys().cloned().collect::<Vec<_>>());
+
+    let cache = SolFilesCache::read_joined(project.paths()).unwrap();
+
+    assert_eq!(
+        entries.into_iter().map(|p| project.root().join(p)).collect::<Vec<_>>(),
+        cache.files.keys().cloned().collect::<Vec<_>>()
+    );
+}
+
+#[test]
+fn test_failure_after_removing_file() {
+    let project = TempProject::dapptools().unwrap();
+    project
+        .add_source(
+            "A",
+            r#"
+pragma solidity ^0.8.10;
+import "./B.sol";
+contract A { }
+"#,
+        )
+        .unwrap();
+
+    project
+        .add_source(
+            "B",
+            r#"
+pragma solidity ^0.8.10;
+import "./C.sol";
+contract B { }
+"#,
+        )
+        .unwrap();
+
+    let c = project
+        .add_source(
+            "C",
+            r#"
+pragma solidity ^0.8.10;
+contract C { }
+"#,
+        )
+        .unwrap();
+
+    let compiled = project.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+
+    fs::remove_file(c).unwrap();
+    let compiled = project.compile().unwrap();
+    assert!(compiled.has_compiler_errors());
 }

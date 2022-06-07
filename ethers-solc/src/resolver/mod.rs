@@ -88,6 +88,8 @@ pub struct GraphEdges {
     /// Combined with the `indices` this way we can determine if a file was original added to the
     /// graph as input or was added as resolved import, see [`Self::is_input_file()`]
     num_input_files: usize,
+    /// tracks all imports that we failed to resolve
+    unresolved_imports: HashSet<PathBuf>,
 }
 
 impl GraphEdges {
@@ -109,6 +111,11 @@ impl GraphEdges {
     /// Returns an iterator over all library files
     pub fn library_files(&self) -> impl Iterator<Item = usize> + '_ {
         self.files().skip(self.num_input_files)
+    }
+
+    /// Returns all imports that we failed to resolve
+    pub fn unresolved_imports(&self) -> &HashSet<PathBuf> {
+        &self.unresolved_imports
     }
 
     /// Returns a list of nodes the given node index points to for the given kind.
@@ -277,6 +284,7 @@ impl Graph {
         self.nodes.iter().take(self.edges.num_input_files)
     }
 
+    /// Returns all files imported by the given file
     pub fn imports(&self, path: impl AsRef<Path>) -> HashSet<&PathBuf> {
         self.edges.imports(path)
     }
@@ -327,7 +335,7 @@ impl Graph {
 
         // keep track of all unique paths that we failed to resolve to not spam the reporter with
         // the same path
-        let mut unresolved_paths = HashSet::new();
+        let mut unresolved_imports = HashSet::new();
 
         // now we need to resolve all imports for the source file and those imported from other
         // locations
@@ -346,7 +354,7 @@ impl Graph {
                         add_node(&mut unresolved, &mut index, &mut resolved_imports, import)?;
                     }
                     Err(err) => {
-                        if unresolved_paths.insert(import_path.to_path_buf()) {
+                        if unresolved_imports.insert(import_path.to_path_buf()) {
                             crate::report::unresolved_import(import_path, &paths.remappings);
                         }
                         tracing::trace!(
@@ -372,6 +380,7 @@ impl Graph {
                 .map(|(idx, node)| (idx, node.data.version_req.clone()))
                 .collect(),
             data: Default::default(),
+            unresolved_imports,
         };
         Ok(Graph { nodes, edges, root: paths.root.clone() })
     }
@@ -701,11 +710,20 @@ pub struct VersionedSources {
 #[cfg(all(feature = "svm-solc"))]
 impl VersionedSources {
     /// Resolves or installs the corresponding `Solc` installation.
+    ///
+    /// This will also configure following solc arguments:
+    ///    - `allowed_paths`
+    ///    - `base_path`
     pub fn get(
         self,
         allowed_lib_paths: &crate::AllowedLibPaths,
+        base_path: impl AsRef<Path>,
     ) -> Result<std::collections::BTreeMap<crate::Solc, (semver::Version, Sources)>> {
         use crate::Solc;
+
+        // `--base-path` was introduced in 0.6.9 <https://github.com/ethereum/solidity/releases/tag/v0.6.9>
+        static SUPPORTS_BASE_PATH: once_cell::sync::Lazy<VersionReq> =
+            once_cell::sync::Lazy::new(|| VersionReq::parse(">=0.6.9").unwrap());
 
         // we take the installer lock here to ensure installation checking is done in sync
         #[cfg(any(test, feature = "tests"))]
@@ -743,8 +761,16 @@ impl VersionedSources {
                     tracing::trace!("reinstalled solc: \"{}\"", version);
                 }
             }
-            let solc = solc.arg("--allow-paths").arg(allowed_lib_paths.to_string());
+            let mut solc = solc
+                .arg("--allow-paths")
+                .arg(allowed_lib_paths.to_string())
+                .with_base_path(base_path.as_ref());
             let version = solc.version()?;
+
+            if SUPPORTS_BASE_PATH.matches(&version) {
+                solc = solc.arg("--base-path").arg(format!("{}", base_path.as_ref().display()));
+            }
+
             sources_by_version.insert(solc, (version, sources));
         }
         Ok(sources_by_version)

@@ -1,16 +1,16 @@
-use ethers::{prelude::*, utils::Ganache};
+use ethers::{prelude::*, utils::Anvil};
 use eyre::Result;
 use std::convert::TryFrom;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let ganache = Ganache::new().spawn();
+    let anvil = Anvil::new().spawn();
 
-    let wallet: LocalWallet = ganache.keys()[0].clone().into();
-    let wallet2: LocalWallet = ganache.keys()[1].clone().into();
+    let wallet: LocalWallet = anvil.keys()[0].clone().into();
+    let wallet2: LocalWallet = anvil.keys()[1].clone().into();
 
     // connect to the network
-    let provider = Provider::<Http>::try_from(ganache.endpoint())?;
+    let provider = Provider::<Http>::try_from(anvil.endpoint())?;
 
     // connect the wallet to the provider
     let client = SignerMiddleware::new(provider, wallet);

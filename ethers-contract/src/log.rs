@@ -19,7 +19,7 @@ pub fn decode_logs<T: EthLogDecode>(logs: &[RawLog]) -> Result<Vec<T>, Error> {
 }
 
 /// Metadata inside a log
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LogMeta {
     /// Address from which this log originated
     pub address: Address,

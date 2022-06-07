@@ -119,10 +119,15 @@ impl<D: Sync + Send + DigestSigner<Sha256Proxy, RecoverableSignature>> Signer fo
 
 impl<D: DigestSigner<Sha256Proxy, RecoverableSignature>> Wallet<D> {
     /// Synchronously signs the provided transaction, normalizing the signature `v` value with
-    /// EIP-155 using the transaction's `chain_id`.
+    /// EIP-155 using the transaction's `chain_id`, or the signer's `chain_id` if the transaction
+    /// does not specify one.
     pub fn sign_transaction_sync(&self, tx: &TypedTransaction) -> Signature {
-        let sighash = tx.sighash();
+        // rlp (for sighash) must have the same chain id as v in the signature
         let chain_id = tx.chain_id().map(|id| id.as_u64()).unwrap_or(self.chain_id);
+        let mut tx = tx.clone();
+        tx.set_chain_id(chain_id);
+
+        let sighash = tx.sighash();
         let mut sig = self.sign_hash(sighash);
 
         // sign_hash sets `v` to recid + 27, so we need to subtract 27 before normalizing

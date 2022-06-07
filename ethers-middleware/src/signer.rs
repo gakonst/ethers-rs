@@ -336,7 +336,7 @@ mod tests {
     use super::*;
     use ethers_core::{
         types::TransactionRequest,
-        utils::{self, keccak256, Ganache},
+        utils::{self, keccak256, Anvil},
     };
     use ethers_providers::Provider;
     use ethers_signers::LocalWallet;
@@ -360,11 +360,10 @@ mod tests {
         let chain_id = 1u64;
 
         // Signer middlewares now rely on a working provider which it can query the chain id from,
-        // so we make sure ganache is started with the chain id that the expected tx was signed
+        // so we make sure Anvil is started with the chain id that the expected tx was signed
         // with
-        let ganache =
-            Ganache::new().args(vec!["--chain.chainId".to_string(), chain_id.to_string()]).spawn();
-        let provider = Provider::try_from(ganache.endpoint()).unwrap();
+        let anvil = Anvil::new().args(vec!["--chain-id".to_string(), chain_id.to_string()]).spawn();
+        let provider = Provider::try_from(anvil.endpoint()).unwrap();
         let key = "4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318"
             .parse::<LocalWallet>()
             .unwrap()
@@ -384,11 +383,11 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn ganache_consistent_chainid() {
-        let ganache = Ganache::new().spawn();
-        let provider = Provider::try_from(ganache.endpoint()).unwrap();
+    async fn anvil_consistent_chainid() {
+        let anvil = Anvil::new().spawn();
+        let provider = Provider::try_from(anvil.endpoint()).unwrap();
         let chain_id = provider.get_chainid().await.unwrap();
-        assert_eq!(chain_id, U256::from(1337));
+        assert_eq!(chain_id, U256::from(31337));
 
         // Intentionally do not set the chain id here so we ensure that the signer pulls the
         // provider's chain id.
@@ -406,9 +405,9 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn ganache_consistent_chainid_not_default() {
-        let ganache = Ganache::new().args(vec!["--chain.chainId", "13371337"]).spawn();
-        let provider = Provider::try_from(ganache.endpoint()).unwrap();
+    async fn anvil_consistent_chainid_not_default() {
+        let anvil = Anvil::new().args(vec!["--chain-id", "13371337"]).spawn();
+        let provider = Provider::try_from(anvil.endpoint()).unwrap();
         let chain_id = provider.get_chainid().await.unwrap();
         assert_eq!(chain_id, U256::from(13371337));
 
@@ -429,9 +428,9 @@ mod tests {
 
     #[tokio::test]
     async fn handles_tx_from_field() {
-        let ganache = Ganache::new().spawn();
-        let acc = ganache.addresses()[0];
-        let provider = Provider::try_from(ganache.endpoint()).unwrap();
+        let anvil = Anvil::new().spawn();
+        let acc = anvil.addresses()[0];
+        let provider = Provider::try_from(anvil.endpoint()).unwrap();
         let key = LocalWallet::new(&mut rand::thread_rng()).with_chain_id(1u32);
         provider
             .send_transaction(
@@ -459,7 +458,7 @@ mod tests {
         assert_eq!(tx.from, client.address());
 
         // signing a TransactionRequest with a from address that is not the
-        // signer should result in the default ganache account being used
+        // signer should result in the default anvil account being used
         let request_from_other = request.from(acc);
         let hash = *client.send_transaction(request_from_other, None).await.unwrap();
         let tx = client.get_transaction(hash).await.unwrap().unwrap();

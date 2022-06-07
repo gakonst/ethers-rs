@@ -30,15 +30,15 @@ use wasm_timer::Delay;
 ///
 ///```
 /// # use ethers_providers::{Provider, Http};
-/// # use ethers_core::utils::Ganache;
+/// # use ethers_core::utils::Anvil;
 /// # use std::convert::TryFrom;
 /// use ethers_providers::Middleware;
 /// use ethers_core::types::TransactionRequest;
 ///
 /// # #[tokio::main(flavor = "current_thread")]
 /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
-/// # let ganache = Ganache::new().spawn();
-/// # let client = Provider::<Http>::try_from(ganache.endpoint()).unwrap();
+/// # let anvil = Anvil::new().spawn();
+/// # let client = Provider::<Http>::try_from(anvil.endpoint()).unwrap();
 /// # let accounts = client.get_accounts().await?;
 /// # let from = accounts[0];
 /// # let to = accounts[1];
@@ -172,7 +172,7 @@ impl<'a, P: JsonRpcClient> Future for PendingTransaction<'a, P> {
 
         match this.state {
             PendingTxState::InitialDelay(fut) => {
-                futures_util::ready!(fut.as_mut().poll(ctx));
+                let _ready = futures_util::ready!(fut.as_mut().poll(ctx));
                 tracing::debug!("Starting to poll pending tx {:?}", *this.tx_hash);
                 let fut = Box::pin(this.provider.get_transaction(*this.tx_hash));
                 rewake_with_new_state!(ctx, this, PendingTxState::GettingTx(fut));

@@ -127,6 +127,8 @@ impl fmt::Display for SolcVersion {
 pub struct Solc {
     /// Path to the `solc` executable
     pub solc: PathBuf,
+    /// The base path to set when invoking solc, see also <https://docs.soliditylang.org/en/v0.8.11/path-resolution.html#base-path-and-include-paths>
+    pub base_path: Option<PathBuf>,
     /// Additional arguments passed to the `solc` exectuable
     pub args: Vec<String>,
 }
@@ -163,7 +165,15 @@ impl fmt::Display for Solc {
 impl Solc {
     /// A new instance which points to `solc`
     pub fn new(path: impl Into<PathBuf>) -> Self {
-        Solc { solc: path.into(), args: Vec::new() }
+        Solc { solc: path.into(), base_path: None, args: Vec::new() }
+    }
+
+    /// Sets solc's base path
+    ///
+    /// Ref: <https://docs.soliditylang.org/en/v0.8.11/path-resolution.html#base-path-and-include-paths>
+    pub fn with_base_path(mut self, base_path: impl Into<PathBuf>) -> Self {
+        self.base_path = Some(base_path.into());
+        self
     }
 
     /// Adds an argument to pass to the `solc` command.
@@ -513,6 +523,9 @@ impl Solc {
 
     pub fn compile_output<T: Serialize>(&self, input: &T) -> Result<Vec<u8>> {
         let mut cmd = Command::new(&self.solc);
+        if let Some(ref base_path) = self.base_path {
+            cmd.current_dir(base_path);
+        }
         let mut child = cmd
             .args(&self.args)
             .arg("--standard-json")
@@ -575,7 +588,11 @@ impl Solc {
     pub async fn async_compile_output<T: Serialize>(&self, input: &T) -> Result<Vec<u8>> {
         use tokio::io::AsyncWriteExt;
         let content = serde_json::to_vec(input)?;
-        let mut child = tokio::process::Command::new(&self.solc)
+        let mut cmd = tokio::process::Command::new(&self.solc);
+        if let Some(ref base_path) = self.base_path {
+            cmd.current_dir(base_path);
+        }
+        let mut child = cmd
             .args(&self.args)
             .arg("--standard-json")
             .stdin(Stdio::piped())

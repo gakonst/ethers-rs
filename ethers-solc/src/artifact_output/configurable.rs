@@ -12,6 +12,7 @@ use crate::{
         GeneratedSource, Linkable, LosslessAbi, Metadata, Offsets, Settings, StorageLayout,
         UserDoc,
     },
+    sources::VersionedSourceFile,
     ArtifactOutput, SolcConfig, SolcError, SourceFile,
 };
 use ethers_core::types::Address;
@@ -346,6 +347,21 @@ impl ArtifactOutput for ConfigurableArtifacts {
             ast: source_file.and_then(|s| s.ast.clone()),
             generated_sources: generated_sources.unwrap_or_default(),
         }
+    }
+
+    fn standalone_source_file_to_artifact(
+        &self,
+        _path: &str,
+        file: &VersionedSourceFile,
+    ) -> Option<Self::Artifact> {
+        file.source_file.ast.clone().map(|ast| ConfigurableContractArtifact {
+            abi: Some(LosslessAbi::default()),
+            id: Some(file.source_file.id),
+            ast: Some(ast),
+            bytecode: Some(CompactBytecode::empty()),
+            deployed_bytecode: Some(CompactDeployedBytecode::empty()),
+            ..Default::default()
+        })
     }
 }
 

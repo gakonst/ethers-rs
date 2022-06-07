@@ -136,7 +136,7 @@ impl VersionedContracts {
         self.0 = std::mem::take(&mut self.0)
             .into_iter()
             .map(|(contract_path, contracts)| {
-                (root.join(contract_path).to_string_lossy().to_string(), contracts)
+                (format!("{}", root.join(contract_path).display()), contracts)
             })
             .collect();
         self

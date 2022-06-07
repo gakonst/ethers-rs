@@ -2,7 +2,7 @@ use crate::{
     abi::{
         AbiArrayType, AbiError, AbiType, Detokenize, Token, Tokenizable, TokenizableItem, Tokenize,
     },
-    types::{Address, Bytes, H256, U128, U256},
+    types::{Address, Bytes, H256, I256, U128, U256},
 };
 
 /// Trait for ABI encoding
@@ -63,6 +63,7 @@ impl_abi_codec!(
     H256,
     U128,
     U256,
+    I256,
     u8,
     u16,
     u32,

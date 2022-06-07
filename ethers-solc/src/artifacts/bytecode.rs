@@ -67,6 +67,12 @@ impl Linkable for CompactBytecode {
 }
 
 impl CompactBytecode {
+    /// Returns a new `CompactBytecode` object that contains nothing, as it's the case for
+    /// interfaces and standalone solidity files that don't contain any contract definitions
+    pub fn empty() -> Self {
+        Self { object: Default::default(), source_map: None, link_references: Default::default() }
+    }
+
     /// Returns the parsed source map
     ///
     /// See also <https://docs.soliditylang.org/en/v0.8.10/internals/source_mappings.html>
@@ -310,6 +316,21 @@ pub struct CompactDeployedBytecode {
         skip_serializing_if = "::std::collections::BTreeMap::is_empty"
     )]
     pub immutable_references: BTreeMap<String, Vec<Offsets>>,
+}
+
+impl CompactDeployedBytecode {
+    /// Returns a new `CompactDeployedBytecode` object that contains nothing, as it's the case for
+    /// interfaces and standalone solidity files that don't contain any contract definitions
+    pub fn empty() -> Self {
+        Self { bytecode: Some(CompactBytecode::empty()), immutable_references: Default::default() }
+    }
+
+    /// Returns the parsed source map
+    ///
+    /// See also <https://docs.soliditylang.org/en/v0.8.10/internals/source_mappings.html>
+    pub fn source_map(&self) -> Option<Result<SourceMap, SyntaxError>> {
+        self.bytecode.as_ref().and_then(|bytecode| bytecode.source_map())
+    }
 }
 
 impl From<DeployedBytecode> for CompactDeployedBytecode {

@@ -55,9 +55,17 @@ impl Remapping {
     pub fn into_relative(self, root: impl AsRef<Path>) -> RelativeRemapping {
         RelativeRemapping::new(self, root)
     }
+
+    /// Removes the `base` path from the remapping
+    pub fn strip_prefix(&mut self, base: impl AsRef<Path>) -> &mut Self {
+        if let Ok(stripped) = Path::new(&self.path).strip_prefix(base.as_ref()) {
+            self.path = format!("{}", stripped.display());
+        }
+        self
+    }
 }
 
-#[derive(thiserror::Error, Debug, PartialEq, PartialOrd)]
+#[derive(thiserror::Error, Debug, PartialEq, Eq, PartialOrd)]
 pub enum RemappingError {
     #[error("no prefix found")]
     NoPrefix,
@@ -444,6 +452,14 @@ impl Candidate {
                 current_dir.to_path_buf()
             };
 
+            // if the window start and the source dir are the same directory we can end early if
+            // we wrongfully detect something like: `<dep>/src/lib/`
+            if current_level > 0 &&
+                source_dir == window_start &&
+                (is_source_dir(&source_dir) || is_lib_dir(&source_dir))
+            {
+                return
+            }
             candidates.push(Candidate { window_start, source_dir, window_level: current_level });
         }
     }
@@ -749,6 +765,22 @@ mod tests {
 
         assert_eq!(remappings[0].name, "repo1/");
         assert_eq!(remappings[0].path, format!("{}/src/", path));
+    }
+
+    #[test]
+    fn can_resolve_contract_dir_combinations() {
+        let tmp_dir = tempdir("demo").unwrap();
+        let paths =
+            ["lib/timeless/src/lib/A.sol", "lib/timeless/src/B.sol", "lib/timeless/src/test/C.sol"];
+        mkdir_or_touch(tmp_dir.path(), &paths[..]);
+
+        let tmp_dir_path = tmp_dir.path().join("lib");
+        let remappings = Remapping::find_many(&tmp_dir_path);
+        let expected = vec![Remapping {
+            name: "timeless/".to_string(),
+            path: to_str(tmp_dir_path.join("timeless/src")),
+        }];
+        pretty_assertions::assert_eq!(remappings, expected);
     }
 
     #[test]
