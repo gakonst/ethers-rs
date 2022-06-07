@@ -36,7 +36,7 @@ pub struct Eip1559TransactionRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub gas: Option<U256>,
 
-    /// Transfered value (None for no transfer)
+    /// Transferred value (None for no transfer)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub value: Option<U256>,
 
