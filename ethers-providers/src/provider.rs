@@ -1645,7 +1645,7 @@ mod tests {
             // HTTPS
             ("alisha.eth", "https://ipfs.io/ipfs/QmeQm91kAdPGnUKsE74WvkqYKUeHvc2oHd2FW11V3TrqkQ"),
             // ERC-1155
-            ("nick.eth", "https://lh3.googleusercontent.com/hKHZTZSTmcznonu8I6xcVZio1IF76fq0XmcxnvUykC-FGuVJ75UPdLDlKJsfgVXH9wOSmkyHw0C39VAYtsGyxT7WNybjQ6s3fM3macE"),
+            ("nick.eth", "https://img.seadn.io/files/3ae7be6c41ad4767bf3ecbc0493b4bfb.png"),
             // HTTPS
             ("parishilton.eth", "https://i.imgur.com/YW3Hzph.jpg"),
             // ERC-721 with IPFS link
