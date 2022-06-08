@@ -511,7 +511,7 @@ impl ProjectPathsConfigBuilder {
         self.tests = Some(utils::canonicalized(tests));
         self
     }
-    
+
     pub fn scripts(mut self, scripts: impl Into<PathBuf>) -> Self {
         self.scripts = Some(utils::canonicalized(scripts));
         self
