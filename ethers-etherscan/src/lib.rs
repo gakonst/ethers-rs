@@ -1,23 +1,20 @@
 //! Bindings for [etherscan.io web api](https://docs.etherscan.io/)
 
+use contract::ContractMetadata;
+use errors::EtherscanError;
+use ethers_core::{
+    abi::{Abi, Address},
+    types::{Chain, H256},
+};
+use reqwest::{header, IntoUrl, Url};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{
     borrow::Cow,
     io::Write,
     path::PathBuf,
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
-
-use contract::ContractMetadata;
-use reqwest::{header, IntoUrl, Url};
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use tracing::trace;
-
-use errors::EtherscanError;
-use ethers_core::{
-    abi::{Abi, Address},
-    types::{Chain, H256},
-};
-
 pub mod account;
 pub mod contract;
 pub mod errors;
@@ -108,7 +105,9 @@ impl Client {
             Chain::Moonbeam | Chain::MoonbeamDev | Chain::Moonriver => {
                 std::env::var("MOONSCAN_API_KEY")?
             }
-            Chain::Dev => return Err(EtherscanError::LocalNetworksNotSupported),
+            Chain::AnvilHardhat | Chain::Dev => {
+                return Err(EtherscanError::LocalNetworksNotSupported)
+            }
         };
         Self::new(chain, api_key)
     }
@@ -297,7 +296,9 @@ impl ClientBuilder {
                 "https://testnet.explorer.emerald.oasis.dev/api",
                 "https://testnet.explorer.emerald.oasis.dev/",
             ),
-            Chain::Dev => return Err(EtherscanError::LocalNetworksNotSupported),
+            Chain::AnvilHardhat | Chain::Dev => {
+                return Err(EtherscanError::LocalNetworksNotSupported)
+            }
             chain => return Err(EtherscanError::ChainNotSupported(chain)),
         };
         self.with_api_url(etherscan_api_url?)?.with_url(etherscan_url?)
