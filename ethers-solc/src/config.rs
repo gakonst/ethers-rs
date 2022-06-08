@@ -437,8 +437,8 @@ impl Default for ProjectPaths {
         Self {
             artifacts: "out".into(),
             sources: "src".into(),
-            tests: "tests".into(),
-            scripts: "scripts".into(),
+            tests: "test".into(),
+            scripts: "script".into(),
             libraries: Default::default(),
         }
     }
