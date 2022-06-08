@@ -449,7 +449,6 @@ dependencies = [
  "num-integer",
  "num-traits",
  "serde",
- "time 0.1.43",
  "winapi",
 ]
 
@@ -1404,7 +1403,6 @@ name = "ethers-solc"
 version = "0.3.0"
 dependencies = [
  "cfg-if 1.0.0",
- "chrono",
  "colored",
  "criterion",
  "dunce",
@@ -3824,16 +3822,6 @@ dependencies = [
 
 [[package]]
 name = "time"
-version = "0.1.43"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ca8a50ef2360fbd1eeb0ecd46795a87a19024eb4b53c5dc916ca1fd95fe62438"
-dependencies = [
- "libc",
- "winapi",
-]
-
-[[package]]
-name = "time"
 version = "0.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "004cbc98f30fa233c61a38bc77e96a9106e65c88f2d3bef182ae952027e5753d"
@@ -4532,7 +4520,7 @@ dependencies = [
  "signature",
  "subtle",
  "thiserror",
- "time 0.3.7",
+ "time",
  "uuid",
  "zeroize",
 ]

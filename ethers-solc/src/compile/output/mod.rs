@@ -5,6 +5,7 @@ use crate::{
         contract::{CompactContractBytecode, CompactContractRef, Contract},
         Error,
     },
+    buildinfo::RawBuildInfo,
     sources::{VersionedSourceFile, VersionedSourceFiles},
     ArtifactId, ArtifactOutput, Artifacts, CompilerOutput, ConfigurableArtifacts, SolcIoError,
 };
@@ -245,7 +246,7 @@ pub struct AggregatedCompilerOutput {
     /// All compiled contracts combined with the solc version used to compile them
     pub contracts: VersionedContracts,
     // All the `BuildInfo`s of solc invocations.
-    pub build_infos: BTreeMap<Version, String>,
+    pub build_infos: BTreeMap<Version, RawBuildInfo>,
 }
 
 impl AggregatedCompilerOutput {
@@ -309,22 +310,21 @@ impl AggregatedCompilerOutput {
     ///
     /// There can be multiple `BuildInfo`, since we support multiple versions.
     ///
-    /// The created files have the following format `<solc version>-<timestamp>.json`:
-    /// `0.8.14+commit.80d49f37.Darwin.appleclang-2022-06-02T12:17:16.944469+00:00.json`
+    /// The created files have the md5 hash `{_format,solcVersion,solcLongVersion,input}` as their
+    /// file name
     pub fn write_build_infos(&self, build_info_dir: impl AsRef<Path>) -> Result<(), SolcIoError> {
-        use chrono::Utc;
         if self.build_infos.is_empty() {
             return Ok(())
         }
         let build_info_dir = build_info_dir.as_ref();
         std::fs::create_dir_all(build_info_dir)
             .map_err(|err| SolcIoError::new(err, build_info_dir))?;
-        let now = Utc::now().to_rfc3339();
         for (version, build_info) in &self.build_infos {
             trace!("writing build info file for solc {}", version);
-            let file_name = format!("{}-{}.json", version, now);
+            let file_name = format!("{}.json", build_info.id);
             let file = build_info_dir.join(file_name);
-            std::fs::write(&file, build_info).map_err(|err| SolcIoError::new(err, file))?;
+            std::fs::write(&file, &build_info.build_info)
+                .map_err(|err| SolcIoError::new(err, file))?;
         }
         Ok(())
     }

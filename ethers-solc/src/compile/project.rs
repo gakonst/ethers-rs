@@ -104,7 +104,7 @@
 use crate::{
     artifact_output::Artifacts,
     artifacts::{Settings, VersionedFilteredSources, VersionedSources},
-    buildinfo::BuildInfo,
+    buildinfo::RawBuildInfo,
     cache::ArtifactsCache,
     error::Result,
     filter::SparseOutputFilter,
@@ -497,7 +497,7 @@ fn compile_sequential(
 
             // if configured also create the build info
             if create_build_info {
-                let build_info = BuildInfo::serialize_to_string(&input, &output, &version)?;
+                let build_info = RawBuildInfo::new(&input, &output, &version)?;
                 aggregated.build_infos.insert(version.clone(), build_info);
             }
 
@@ -608,7 +608,7 @@ fn compile_parallel(
     for (version, input, output) in outputs {
         // if configured also create the build info
         if create_build_info {
-            let build_info = BuildInfo::serialize_to_string(&input, &output, &version)?;
+            let build_info = RawBuildInfo::new(&input, &output, &version)?;
             aggregated.build_infos.insert(version.clone(), build_info);
         }
         aggregated.extend(version, output);
