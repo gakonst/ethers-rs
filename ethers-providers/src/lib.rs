@@ -28,6 +28,7 @@ pub use stream::{interval, FilterWatcher, TransactionStream, DEFAULT_POLL_INTERV
 mod pubsub;
 pub use pubsub::{PubsubClient, SubscriptionStream};
 
+pub mod call_raw;
 pub mod erc;
 
 use async_trait::async_trait;

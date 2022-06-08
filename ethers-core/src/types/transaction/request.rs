@@ -42,7 +42,7 @@ pub struct TransactionRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub gas_price: Option<U256>,
 
-    /// Transfered value (None for no transfer)
+    /// Transferred value (None for no transfer)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub value: Option<U256>,
 

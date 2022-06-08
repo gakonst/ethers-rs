@@ -190,7 +190,7 @@ where
                 poll_broadcast_fut!(cx, this, fut);
             }
             Sleeping(delay) => {
-                let _ready = futures_util::ready!(delay.as_mut().poll(cx));
+                futures_util::ready!(delay.as_mut().poll(cx));
                 // if broadcast timer has elapsed and if we have a TX to
                 // broadcast, broadcast it
                 if this.last.elapsed() > *this.broadcast_interval {

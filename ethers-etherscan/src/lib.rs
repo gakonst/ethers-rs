@@ -1,23 +1,20 @@
 //! Bindings for [etherscan.io web api](https://docs.etherscan.io/)
 
+use contract::ContractMetadata;
+use errors::EtherscanError;
+use ethers_core::{
+    abi::{Abi, Address},
+    types::{Chain, H256},
+};
+use reqwest::{header, IntoUrl, Url};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{
     borrow::Cow,
     io::Write,
     path::PathBuf,
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
-
-use contract::ContractMetadata;
-use reqwest::{header, IntoUrl, Url};
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use tracing::trace;
-
-use errors::EtherscanError;
-use ethers_core::{
-    abi::{Abi, Address},
-    types::{Chain, H256},
-};
-
 pub mod account;
 pub mod contract;
 pub mod errors;
@@ -97,12 +94,20 @@ impl Client {
             Chain::Fantom | Chain::FantomTestnet => {
                 std::env::var("FTMSCAN_API_KEY").or_else(|_| std::env::var("FANTOMSCAN_API_KEY"))?
             }
-
-            Chain::XDai | Chain::Sepolia => String::default(),
+            Chain::XDai |
+            Chain::Sepolia |
+            Chain::Rsk |
+            Chain::Sokol |
+            Chain::Poa |
+            Chain::Oasis |
+            Chain::Emerald |
+            Chain::EmeraldTestnet => String::default(),
             Chain::Moonbeam | Chain::MoonbeamDev | Chain::Moonriver => {
                 std::env::var("MOONSCAN_API_KEY")?
             }
-            Chain::Dev => return Err(EtherscanError::LocalNetworksNotSupported),
+            Chain::AnvilHardhat | Chain::Dev => {
+                return Err(EtherscanError::LocalNetworksNotSupported)
+            }
         };
         Self::new(chain, api_key)
     }
@@ -268,7 +273,32 @@ impl ClientBuilder {
             Chain::Moonriver => {
                 urls("https://api-moonriver.moonscan.io/api", "https://moonriver.moonscan.io")
             }
-            Chain::Dev => return Err(EtherscanError::LocalNetworksNotSupported),
+            // blockscout API is etherscan compatible
+            Chain::XDai => urls(
+                "https://blockscout.com/xdai/mainnet/api",
+                "https://blockscout.com/xdai/mainnet",
+            ),
+            Chain::Sokol => {
+                urls("https://blockscout.com/poa/sokol/api", "https://blockscout.com/poa/sokol")
+            }
+            Chain::Poa => {
+                urls("https://blockscout.com/poa/core/api", "https://blockscout.com/poa/core")
+            }
+            Chain::Rsk => {
+                urls("https://blockscout.com/rsk/mainnet/api", "https://blockscout.com/rsk/mainnet")
+            }
+            Chain::Oasis => urls("https://scan.oasischain.io/api", "https://scan.oasischain.io/"),
+            Chain::Emerald => urls(
+                "https://explorer.emerald.oasis.dev/api",
+                "https://explorer.emerald.oasis.dev/",
+            ),
+            Chain::EmeraldTestnet => urls(
+                "https://testnet.explorer.emerald.oasis.dev/api",
+                "https://testnet.explorer.emerald.oasis.dev/",
+            ),
+            Chain::AnvilHardhat | Chain::Dev => {
+                return Err(EtherscanError::LocalNetworksNotSupported)
+            }
             chain => return Err(EtherscanError::ChainNotSupported(chain)),
         };
         self.with_api_url(etherscan_api_url?)?.with_url(etherscan_url?)
@@ -447,10 +477,10 @@ mod tests {
 
     #[test]
     fn chain_not_supported() {
-        let err = Client::new_from_env(Chain::XDai).unwrap_err();
+        let err = Client::new_from_env(Chain::Sepolia).unwrap_err();
 
         assert!(matches!(err, EtherscanError::ChainNotSupported(_)));
-        assert_eq!(err.to_string(), "Chain xdai not supported");
+        assert_eq!(err.to_string(), "Chain sepolia not supported");
     }
 
     #[test]

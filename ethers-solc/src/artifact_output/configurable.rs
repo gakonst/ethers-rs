@@ -337,6 +337,7 @@ impl ArtifactOutput for ConfigurableArtifacts {
         file: &VersionedSourceFile,
     ) -> Option<Self::Artifact> {
         file.source_file.ast.clone().map(|ast| ConfigurableContractArtifact {
+            abi: Some(LosslessAbi::default()),
             id: Some(file.source_file.id),
             ast: Some(ast),
             bytecode: Some(CompactBytecode::empty()),

@@ -401,7 +401,7 @@ pub trait Artifact {
         self.get_contract_bytecode().abi
     }
 
-    /// Returns the `sourceMap` of the contract
+    /// Returns the `sourceMap` of the creation bytecode
     ///
     /// Returns `None` if no `sourceMap` string was included in the compiler output
     /// Returns `Some(Err)` if parsing the sourcemap failed
@@ -409,8 +409,24 @@ pub trait Artifact {
         self.get_bytecode()?.source_map()
     }
 
-    /// Returns the `sourceMap` as str if it was included in the compiler output
+    /// Returns the creation bytecode `sourceMap` as str if it was included in the compiler output
     fn get_source_map_str(&self) -> Option<Cow<str>> {
+        match self.get_bytecode()? {
+            Cow::Borrowed(code) => code.source_map.as_deref().map(Cow::Borrowed),
+            Cow::Owned(code) => code.source_map.map(Cow::Owned),
+        }
+    }
+
+    /// Returns the `sourceMap` of the runtime bytecode
+    ///
+    /// Returns `None` if no `sourceMap` string was included in the compiler output
+    /// Returns `Some(Err)` if parsing the sourcemap failed
+    fn get_source_map_deployed(&self) -> Option<std::result::Result<SourceMap, SyntaxError>> {
+        self.get_deployed_bytecode()?.source_map()
+    }
+
+    /// Returns the runtime bytecode `sourceMap` as str if it was included in the compiler output
+    fn get_source_map_deployed_str(&self) -> Option<Cow<str>> {
         match self.get_bytecode()? {
             Cow::Borrowed(code) => code.source_map.as_deref().map(Cow::Borrowed),
             Cow::Owned(code) => code.source_map.map(Cow::Owned),
