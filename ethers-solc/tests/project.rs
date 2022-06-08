@@ -10,8 +10,8 @@ use std::{
 use ethers_core::types::Address;
 use ethers_solc::{
     artifacts::{
-        BytecodeHash, Libraries, ModelCheckerEngine::CHC, ModelCheckerSettings, UserDoc,
-        UserDocNotice,
+        BytecodeHash, DevDoc, ErrorDoc, EventDoc, Libraries, MethodDoc, ModelCheckerEngine::CHC,
+        ModelCheckerSettings, UserDoc, UserDocNotice,
     },
     cache::{SolFilesCache, SOLIDITY_FILES_CACHE_FILENAME},
     project_util::*,
@@ -1677,10 +1677,12 @@ fn can_parse_notice() {
             version: None,
             kind: None,
             methods: BTreeMap::from([
-                ("abc()".to_string(), UserDocNotice::Method { notice: "hello".to_string() }),
-                ("xyz()".to_string(), UserDocNotice::Method { notice: "hello".to_string() }),
+                ("abc()".to_string(), UserDocNotice::Notice { notice: "hello".to_string() }),
+                ("xyz()".to_string(), UserDocNotice::Notice { notice: "hello".to_string() }),
                 ("constructor".to_string(), UserDocNotice::Constructor("hello".to_string())),
             ]),
+            events: BTreeMap::new(),
+            errors: BTreeMap::new(),
             notice: None
         })
     );
@@ -1699,11 +1701,197 @@ fn can_parse_notice() {
             version: Some(1),
             kind: Some("user".to_string()),
             methods: BTreeMap::from([
-                ("abc()".to_string(), UserDocNotice::Method { notice: "hello".to_string() }),
-                ("xyz()".to_string(), UserDocNotice::Method { notice: "hello".to_string() }),
-                ("constructor".to_string(), UserDocNotice::Method { notice: "hello".to_string() }),
+                ("abc()".to_string(), UserDocNotice::Notice { notice: "hello".to_string() }),
+                ("xyz()".to_string(), UserDocNotice::Notice { notice: "hello".to_string() }),
+                ("constructor".to_string(), UserDocNotice::Notice { notice: "hello".to_string() }),
             ]),
+            events: BTreeMap::new(),
+            errors: BTreeMap::new(),
             notice: None
+        })
+    );
+}
+
+#[test]
+fn can_parse_doc() {
+    let mut project = TempProject::<ConfigurableArtifacts>::dapptools().unwrap();
+    project.project_mut().artifacts.additional_values.userdoc = true;
+    project.project_mut().artifacts.additional_values.devdoc = true;
+    project.project_mut().solc_config.settings = project.project_mut().artifacts.settings();
+
+    let contract = r#"
+// SPDX-License-Identifier: GPL-3.0-only
+pragma solidity ^0.8.0;
+
+/// @title Not an ERC20.
+/// @author Notadev
+/// @notice Do not use this.
+/// @dev This is not an ERC20 implementation.
+/// @custom:experimental This is an experimental contract.
+interface INotERC20 {
+    /// @notice Transfer tokens.
+    /// @dev Transfer `amount` tokens to account `to`.
+    /// @param to Target account.
+    /// @param amount Transfer amount.
+    /// @return A boolean value indicating whether the operation succeeded.
+    function transfer(address to, uint256 amount) external returns (bool);
+
+    /// @notice Transfer some tokens.
+    /// @dev Emitted when transfer.
+    /// @param from Source account.
+    /// @param to Target account.
+    /// @param value Transfer amount.
+    event Transfer(address indexed from, address indexed to, uint256 value);
+
+    /// @notice Insufficient balance for transfer.
+    /// @dev Needed `required` but only `available` available.
+    /// @param available Balance available.
+    /// @param required Requested amount to transfer.
+    error InsufficientBalance(uint256 available, uint256 required);
+}
+
+contract NotERC20 is INotERC20 {
+    /// @inheritdoc INotERC20
+    function transfer(address to, uint256 amount) external returns (bool) {
+        return false;
+    }
+}
+    "#;
+    project.add_source("Contract", contract).unwrap();
+
+    let mut compiled = project.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+    assert!(!compiled.is_unchanged());
+
+    assert!(compiled.find("INotERC20").is_some());
+    let contract = compiled.remove("INotERC20").unwrap();
+    assert_eq!(
+        contract.userdoc,
+        Some(UserDoc {
+            version: Some(1),
+            kind: Some("user".to_string()),
+            notice: Some("Do not use this.".to_string()),
+            methods: BTreeMap::from([(
+                "transfer(address,uint256)".to_string(),
+                UserDocNotice::Notice { notice: "Transfer tokens.".to_string() }
+            ),]),
+            events: BTreeMap::from([(
+                "Transfer(address,address,uint256)".to_string(),
+                UserDocNotice::Notice { notice: "Transfer some tokens.".to_string() }
+            ),]),
+            errors: BTreeMap::from([(
+                "InsufficientBalance(uint256,uint256)".to_string(),
+                vec![UserDocNotice::Notice {
+                    notice: "Insufficient balance for transfer.".to_string()
+                }]
+            ),]),
+        })
+    );
+    assert_eq!(
+        contract.devdoc,
+        Some(DevDoc {
+            version: Some(1),
+            kind: Some("dev".to_string()),
+            author: Some("Notadev".to_string()),
+            details: Some("This is not an ERC20 implementation.".to_string()),
+            custom_experimental: Some("This is an experimental contract.".to_string()),
+            methods: BTreeMap::from([(
+                "transfer(address,uint256)".to_string(),
+                MethodDoc {
+                    details: Some("Transfer `amount` tokens to account `to`.".to_string()),
+                    params: BTreeMap::from([
+                        ("to".to_string(), "Target account.".to_string()),
+                        ("amount".to_string(), "Transfer amount.".to_string())
+                    ]),
+                    returns: BTreeMap::from([(
+                        "_0".to_string(),
+                        "A boolean value indicating whether the operation succeeded.".to_string()
+                    ),])
+                }
+            ),]),
+            events: BTreeMap::from([(
+                "Transfer(address,address,uint256)".to_string(),
+                EventDoc {
+                    details: Some("Emitted when transfer.".to_string()),
+                    params: BTreeMap::from([
+                        ("from".to_string(), "Source account.".to_string()),
+                        ("to".to_string(), "Target account.".to_string()),
+                        ("value".to_string(), "Transfer amount.".to_string()),
+                    ]),
+                }
+            ),]),
+            errors: BTreeMap::from([(
+                "InsufficientBalance(uint256,uint256)".to_string(),
+                vec![ErrorDoc {
+                    details: Some("Needed `required` but only `available` available.".to_string()),
+                    params: BTreeMap::from([
+                        ("available".to_string(), "Balance available.".to_string()),
+                        ("required".to_string(), "Requested amount to transfer.".to_string())
+                    ]),
+                }]
+            ),]),
+            title: Some("Not an ERC20.".to_string())
+        })
+    );
+
+    assert!(compiled.find("NotERC20").is_some());
+    let contract = compiled.remove("NotERC20").unwrap();
+    assert_eq!(
+        contract.userdoc,
+        Some(UserDoc {
+            version: Some(1),
+            kind: Some("user".to_string()),
+            notice: None,
+            methods: BTreeMap::from([(
+                "transfer(address,uint256)".to_string(),
+                UserDocNotice::Notice { notice: "Transfer tokens.".to_string() }
+            ),]),
+            events: BTreeMap::from([(
+                "Transfer(address,address,uint256)".to_string(),
+                UserDocNotice::Notice { notice: "Transfer some tokens.".to_string() }
+            ),]),
+            errors: BTreeMap::from([(
+                "InsufficientBalance(uint256,uint256)".to_string(),
+                vec![UserDocNotice::Notice {
+                    notice: "Insufficient balance for transfer.".to_string()
+                }]
+            ),]),
+        })
+    );
+    assert_eq!(
+        contract.devdoc,
+        Some(DevDoc {
+            version: Some(1),
+            kind: Some("dev".to_string()),
+            author: None,
+            details: None,
+            custom_experimental: None,
+            methods: BTreeMap::from([(
+                "transfer(address,uint256)".to_string(),
+                MethodDoc {
+                    details: Some("Transfer `amount` tokens to account `to`.".to_string()),
+                    params: BTreeMap::from([
+                        ("to".to_string(), "Target account.".to_string()),
+                        ("amount".to_string(), "Transfer amount.".to_string())
+                    ]),
+                    returns: BTreeMap::from([(
+                        "_0".to_string(),
+                        "A boolean value indicating whether the operation succeeded.".to_string()
+                    ),])
+                }
+            ),]),
+            events: BTreeMap::new(),
+            errors: BTreeMap::from([(
+                "InsufficientBalance(uint256,uint256)".to_string(),
+                vec![ErrorDoc {
+                    details: Some("Needed `required` but only `available` available.".to_string()),
+                    params: BTreeMap::from([
+                        ("available".to_string(), "Balance available.".to_string()),
+                        ("required".to_string(), "Requested amount to transfer.".to_string())
+                    ]),
+                }]
+            ),]),
+            title: None
         })
     );
 }

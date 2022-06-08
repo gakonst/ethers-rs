@@ -1366,6 +1366,10 @@ pub struct UserDoc {
     pub kind: Option<String>,
     #[serde(default, skip_serializing_if = "::std::collections::BTreeMap::is_empty")]
     pub methods: BTreeMap<String, UserDocNotice>,
+    #[serde(default, skip_serializing_if = "::std::collections::BTreeMap::is_empty")]
+    pub events: BTreeMap<String, UserDocNotice>,
+    #[serde(default, skip_serializing_if = "::std::collections::BTreeMap::is_empty")]
+    pub errors: BTreeMap<String, Vec<UserDocNotice>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub notice: Option<String>,
 }
@@ -1375,7 +1379,7 @@ pub struct UserDoc {
 pub enum UserDocNotice {
     // NOTE: this a variant used for constructors on older solc versions
     Constructor(String),
-    Method { notice: String },
+    Notice { notice: String },
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
@@ -1392,6 +1396,10 @@ pub struct DevDoc {
     pub custom_experimental: Option<String>,
     #[serde(default, skip_serializing_if = "::std::collections::BTreeMap::is_empty")]
     pub methods: BTreeMap<String, MethodDoc>,
+    #[serde(default, skip_serializing_if = "::std::collections::BTreeMap::is_empty")]
+    pub events: BTreeMap<String, EventDoc>,
+    #[serde(default, skip_serializing_if = "::std::collections::BTreeMap::is_empty")]
+    pub errors: BTreeMap<String, Vec<ErrorDoc>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
 }
@@ -1402,8 +1410,24 @@ pub struct MethodDoc {
     pub details: Option<String>,
     #[serde(default, skip_serializing_if = "::std::collections::BTreeMap::is_empty")]
     pub params: BTreeMap<String, String>,
+    #[serde(default, skip_serializing_if = "::std::collections::BTreeMap::is_empty")]
+    pub returns: BTreeMap<String, String>,
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
+pub struct EventDoc {
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub r#return: Option<String>,
+    pub details: Option<String>,
+    #[serde(default, skip_serializing_if = "::std::collections::BTreeMap::is_empty")]
+    pub params: BTreeMap<String, String>,
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
+pub struct ErrorDoc {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub details: Option<String>,
+    #[serde(default, skip_serializing_if = "::std::collections::BTreeMap::is_empty")]
+    pub params: BTreeMap<String, String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
