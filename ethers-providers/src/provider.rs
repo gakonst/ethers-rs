@@ -1638,6 +1638,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore]
     async fn mainnet_resolve_avatar() {
         let provider = crate::MAINNET.provider();
 

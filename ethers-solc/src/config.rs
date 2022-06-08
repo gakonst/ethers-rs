@@ -29,6 +29,8 @@ pub struct ProjectPathsConfig {
     pub sources: PathBuf,
     /// Where to find tests
     pub tests: PathBuf,
+    /// Where to find scripts
+    pub scripts: PathBuf,
     /// Where to look for libraries
     pub libraries: Vec<PathBuf>,
     /// The compiler remappings
@@ -67,6 +69,7 @@ impl ProjectPathsConfig {
             artifacts: self.artifacts.clone(),
             sources: self.sources.clone(),
             tests: self.tests.clone(),
+            scripts: self.scripts.clone(),
             libraries: self.libraries.iter().cloned().collect(),
         }
     }
@@ -88,6 +91,7 @@ impl ProjectPathsConfig {
             .map_err(|err| SolcIoError::new(err, &self.artifacts))?;
         fs::create_dir_all(&self.sources).map_err(|err| SolcIoError::new(err, &self.sources))?;
         fs::create_dir_all(&self.tests).map_err(|err| SolcIoError::new(err, &self.tests))?;
+        fs::create_dir_all(&self.scripts).map_err(|err| SolcIoError::new(err, &self.scripts))?;
         for lib in &self.libraries {
             fs::create_dir_all(lib).map_err(|err| SolcIoError::new(err, lib))?;
         }
@@ -106,15 +110,22 @@ impl ProjectPathsConfig {
         Ok(Source::read_all_from(&self.tests)?)
     }
 
+    /// Returns all sources found under the project's configured `script` path
+    pub fn read_scripts(&self) -> Result<Sources> {
+        tracing::trace!("reading all scripts from \"{}\"", self.scripts.display());
+        Ok(Source::read_all_from(&self.scripts)?)
+    }
+
     /// Returns the combined set solidity file paths for `Self::sources` and `Self::tests`
     pub fn input_files(&self) -> Vec<PathBuf> {
         utils::source_files(&self.sources)
             .into_iter()
             .chain(utils::source_files(&self.tests))
+            .chain(utils::source_files(&self.scripts))
             .collect()
     }
 
-    /// Returns the combined set of `Self::read_sources` + `Self::read_tests`
+    /// Returns the combined set of `Self::read_sources` + `Self::read_tests` + `Self::read_scripts`
     pub fn read_input_files(&self) -> Result<Sources> {
         Ok(Source::read_all_files(self.input_files())?)
     }
@@ -359,6 +370,7 @@ impl fmt::Display for ProjectPathsConfig {
         writeln!(f, "contracts: {}", self.sources.display())?;
         writeln!(f, "artifacts: {}", self.artifacts.display())?;
         writeln!(f, "tests: {}", self.tests.display())?;
+        writeln!(f, "scripts: {}", self.scripts.display())?;
         writeln!(f, "libs:")?;
         for lib in &self.libraries {
             writeln!(f, "    {}", lib.display())?;
@@ -377,6 +389,7 @@ pub struct ProjectPaths {
     pub artifacts: PathBuf,
     pub sources: PathBuf,
     pub tests: PathBuf,
+    pub scripts: PathBuf,
     pub libraries: BTreeSet<PathBuf>,
 }
 
@@ -387,6 +400,7 @@ impl ProjectPaths {
         self.artifacts = root.join(&self.artifacts);
         self.sources = root.join(&self.sources);
         self.tests = root.join(&self.tests);
+        self.scripts = root.join(&self.scripts);
         let libraries = std::mem::take(&mut self.libraries);
         self.libraries.extend(libraries.into_iter().map(|p| root.join(p)));
         self
@@ -405,6 +419,9 @@ impl ProjectPaths {
         if let Ok(prefix) = self.tests.strip_prefix(base) {
             self.tests = prefix.to_path_buf();
         }
+        if let Ok(prefix) = self.scripts.strip_prefix(base) {
+            self.scripts = prefix.to_path_buf();
+        }
         let libraries = std::mem::take(&mut self.libraries);
         self.libraries.extend(
             libraries
@@ -420,7 +437,8 @@ impl Default for ProjectPaths {
         Self {
             artifacts: "out".into(),
             sources: "src".into(),
-            tests: "tests".into(),
+            tests: "test".into(),
+            scripts: "script".into(),
             libraries: Default::default(),
         }
     }
@@ -463,6 +481,7 @@ pub struct ProjectPathsConfigBuilder {
     artifacts: Option<PathBuf>,
     sources: Option<PathBuf>,
     tests: Option<PathBuf>,
+    scripts: Option<PathBuf>,
     libraries: Option<Vec<PathBuf>>,
     remappings: Option<Vec<Remapping>>,
 }
@@ -490,6 +509,11 @@ impl ProjectPathsConfigBuilder {
 
     pub fn tests(mut self, tests: impl Into<PathBuf>) -> Self {
         self.tests = Some(utils::canonicalized(tests));
+        self
+    }
+
+    pub fn scripts(mut self, scripts: impl Into<PathBuf>) -> Self {
+        self.scripts = Some(utils::canonicalized(scripts));
         self
     }
 
@@ -538,7 +562,8 @@ impl ProjectPathsConfigBuilder {
                 .artifacts
                 .unwrap_or_else(|| ProjectPathsConfig::find_artifacts_dir(&root)),
             sources: self.sources.unwrap_or_else(|| ProjectPathsConfig::find_source_dir(&root)),
-            tests: self.tests.unwrap_or_else(|| root.join("tests")),
+            tests: self.tests.unwrap_or_else(|| root.join("test")),
+            scripts: self.scripts.unwrap_or_else(|| root.join("script")),
             remappings: self
                 .remappings
                 .unwrap_or_else(|| libraries.iter().flat_map(Remapping::find_many).collect()),
