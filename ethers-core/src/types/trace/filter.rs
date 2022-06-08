@@ -181,7 +181,7 @@ pub struct Call {
     pub from: Address,
     /// Recipient
     pub to: Address,
-    /// Transfered Value
+    /// Transferred Value
     pub value: U256,
     /// Gas
     pub gas: U256,

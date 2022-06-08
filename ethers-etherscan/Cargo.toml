@@ -15,7 +15,6 @@ keywords = ["ethereum", "web3", "etherscan", "ethers"]
 
 [dependencies]
 ethers-core = { version = "^0.6.0", path = "../ethers-core", default-features = false }
-ethers-solc = { version = "^0.3.0", path = "../ethers-solc", default-features = false }
 reqwest = { version = "0.11.10", default-features = false, features = ["json"] }
 serde = { version = "1.0.124", default-features = false, features = ["derive"] }
 serde_json = { version = "1.0.64", default-features = false }
@@ -29,6 +28,7 @@ tempfile = "3.3.0"
 tokio = { version = "1.18", features = ["macros", "rt-multi-thread", "time"] }
 serial_test = "0.6.0"
 tracing-subscriber = { version = "0.3", default-features = false, features = ["env-filter", "fmt"] }
+ethers-solc = { version = "^0.3.0", path = "../ethers-solc", default-features = false }
 
 [package.metadata.docs.rs]
 all-features = true
