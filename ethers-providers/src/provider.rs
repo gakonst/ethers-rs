@@ -8,7 +8,7 @@ use crate::{
 };
 
 #[cfg(not(target_arch = "wasm32"))]
-use crate::transports::{HttpRateLimitRetryPolicy, RetryClient};
+use crate::transports::{Authorization, HttpRateLimitRetryPolicy, RetryClient};
 
 #[cfg(feature = "celo")]
 use crate::CeloMiddleware;
@@ -1283,6 +1283,15 @@ impl Provider<crate::Ws> {
         url: impl tokio_tungstenite::tungstenite::client::IntoClientRequest + Unpin,
     ) -> Result<Self, ProviderError> {
         let ws = crate::Ws::connect(url).await?;
+        Ok(Self::new(ws))
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub async fn connect_with_auth(
+        url: impl tokio_tungstenite::tungstenite::client::IntoClientRequest + Unpin,
+        auth: Authorization,
+    ) -> Result<Self, ProviderError> {
+        let ws = crate::Ws::connect_with_auth(url, auth).await?;
         Ok(Self::new(ws))
     }
 
