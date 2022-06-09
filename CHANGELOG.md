@@ -99,6 +99,8 @@
 
 ### Unreleased
 
+- Add `rawMetadata:String` field to configurable contract output 
+  [#1365](https://github.com/gakonst/ethers-rs/pull/1365)
 - Use relative source paths and `solc --base-path`
   [#1317](https://github.com/gakonst/ethers-rs/pull/1317)
 - Save cache entry objects with relative paths
