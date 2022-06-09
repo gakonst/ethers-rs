@@ -856,6 +856,45 @@ pub struct Metadata {
     pub version: i64,
 }
 
+/// A helper type that ensures lossless (de)serialisation so we can preserve the exact String
+/// metadata value that's being hashed by solc
+#[derive(Clone, Debug, PartialEq)]
+pub struct LosslessMetadata {
+    /// The complete abi as json value
+    pub raw_metadata: String,
+    /// The deserialised metadata of `raw_metadata`
+    pub metadata: Metadata,
+}
+
+// === impl LosslessMetadata ===
+
+impl LosslessMetadata {
+    /// Returns the whole string raw metadata as `serde_json::Value`
+    pub fn raw_json(&self) -> serde_json::Result<serde_json::Value> {
+        serde_json::from_str(&self.raw_metadata)
+    }
+}
+
+impl Serialize for LosslessMetadata {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        self.raw_metadata.serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for LosslessMetadata {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let raw_metadata = String::deserialize(deserializer)?;
+        let metadata = serde_json::from_str(&raw_metadata).map_err(serde::de::Error::custom)?;
+        Ok(Self { raw_metadata, metadata })
+    }
+}
+
 /// Compiler settings
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MetadataSettings {
