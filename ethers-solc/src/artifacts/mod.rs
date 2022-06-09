@@ -889,9 +889,25 @@ impl<'de> Deserialize<'de> for LosslessMetadata {
     where
         D: Deserializer<'de>,
     {
-        let raw_metadata = String::deserialize(deserializer)?;
-        let metadata = serde_json::from_str(&raw_metadata).map_err(serde::de::Error::custom)?;
-        Ok(Self { raw_metadata, metadata })
+        struct LosslessMetadataVisitor;
+
+        impl<'de> Visitor<'de> for LosslessMetadataVisitor {
+            type Value = LosslessMetadata;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+                write!(formatter, "metadata string")
+            }
+
+            fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                let raw_metadata = value.to_string();
+                let metadata = serde_json::from_str(value).map_err(serde::de::Error::custom)?;
+                Ok(LosslessMetadata { raw_metadata, metadata })
+            }
+        }
+        deserializer.deserialize_str(LosslessMetadataVisitor)
     }
 }
 

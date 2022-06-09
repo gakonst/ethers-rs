@@ -4,7 +4,8 @@ use crate::artifacts::{
     bytecode::{
         Bytecode, BytecodeObject, CompactBytecode, CompactDeployedBytecode, DeployedBytecode,
     },
-    DevDoc, Evm, Ewasm, LosslessAbi, LosslessMetadata, Offsets, StorageLayout, UserDoc,
+    serde_helpers, DevDoc, Evm, Ewasm, LosslessAbi, LosslessMetadata, Offsets, StorageLayout,
+    UserDoc,
 };
 use ethers_core::{abi::Contract as Abi, types::Bytes};
 use serde::{Deserialize, Serialize};
@@ -17,7 +18,11 @@ pub struct Contract {
     /// The Ethereum Contract Metadata.
     /// See <https://docs.soliditylang.org/en/develop/metadata.html>
     pub abi: Option<LosslessAbi>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "serde_helpers::json_string_opt"
+    )]
     pub metadata: Option<LosslessMetadata>,
     #[serde(default)]
     pub userdoc: UserDoc,
