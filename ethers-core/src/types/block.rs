@@ -533,6 +533,26 @@ impl BlockNumber {
             _ => None,
         }
     }
+
+    /// Returns `true` if a numeric block number is set
+    pub fn is_number(&self) -> bool {
+        matches!(self, BlockNumber::Number(_))
+    }
+
+    /// Returns `true` if it's "latest"
+    pub fn is_latest(&self) -> bool {
+        matches!(self, BlockNumber::Latest)
+    }
+
+    /// Returns `true` if it's "pending"
+    pub fn is_pending(&self) -> bool {
+        matches!(self, BlockNumber::Pending)
+    }
+
+    /// Returns `true` if it's "earliest"
+    pub fn is_earliest(&self) -> bool {
+        matches!(self, BlockNumber::Earliest)
+    }
 }
 
 impl<T: Into<U64>> From<T> for BlockNumber {
@@ -587,6 +607,12 @@ impl fmt::Display for BlockNumber {
             BlockNumber::Earliest => f.write_str("earliest"),
             BlockNumber::Pending => f.write_str("pending"),
         }
+    }
+}
+
+impl Default for BlockNumber {
+    fn default() -> Self {
+        BlockNumber::Latest
     }
 }
 
