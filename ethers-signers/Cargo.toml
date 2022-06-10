@@ -27,7 +27,7 @@ rand = { version = "0.8.5", default-features = false }
 yubihsm = { version = "0.40.0", features = ["secp256k1", "http", "usb"], optional = true }
 futures-util = { version = "^0.3", optional = true }
 futures-executor = { version = "^0.3", optional = true }
-semver = { version =  "1.0.9", optional = true }
+semver = { version =  "1.0.10", optional = true }
 trezor-client = { version = "0.0.5", optional = true, default-features = false, features = ["f_ethereum"] }
 
 # aws
