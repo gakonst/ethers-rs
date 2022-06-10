@@ -856,6 +856,61 @@ pub struct Metadata {
     pub version: i64,
 }
 
+/// A helper type that ensures lossless (de)serialisation so we can preserve the exact String
+/// metadata value that's being hashed by solc
+#[derive(Clone, Debug, PartialEq)]
+pub struct LosslessMetadata {
+    /// The complete abi as json value
+    pub raw_metadata: String,
+    /// The deserialised metadata of `raw_metadata`
+    pub metadata: Metadata,
+}
+
+// === impl LosslessMetadata ===
+
+impl LosslessMetadata {
+    /// Returns the whole string raw metadata as `serde_json::Value`
+    pub fn raw_json(&self) -> serde_json::Result<serde_json::Value> {
+        serde_json::from_str(&self.raw_metadata)
+    }
+}
+
+impl Serialize for LosslessMetadata {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        self.raw_metadata.serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for LosslessMetadata {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct LosslessMetadataVisitor;
+
+        impl<'de> Visitor<'de> for LosslessMetadataVisitor {
+            type Value = LosslessMetadata;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+                write!(formatter, "metadata string")
+            }
+
+            fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                let raw_metadata = value.to_string();
+                let metadata = serde_json::from_str(value).map_err(serde::de::Error::custom)?;
+                Ok(LosslessMetadata { raw_metadata, metadata })
+            }
+        }
+        deserializer.deserialize_str(LosslessMetadataVisitor)
+    }
+}
+
 /// Compiler settings
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MetadataSettings {

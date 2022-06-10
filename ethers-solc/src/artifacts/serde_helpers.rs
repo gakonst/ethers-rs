@@ -66,8 +66,8 @@ pub mod json_string_opt {
             if s.is_empty() {
                 return Ok(None)
             }
-
-            serde_json::from_str(&s).map_err(de::Error::custom).map(Some)
+            let value = serde_json::Value::String(s);
+            serde_json::from_value(value).map_err(de::Error::custom).map(Some)
         } else {
             Ok(None)
         }
