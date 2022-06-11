@@ -21,7 +21,7 @@ serde_json = { version = "1.0.64", default-features = false }
 serde-aux = { version = "3.0.1", default-features = false }
 thiserror = "1.0"
 tracing = "0.1.35"
-semver = "1.0.9"
+semver = "1.0.10"
 
 [dev-dependencies]
 tempfile = "3.3.0"
