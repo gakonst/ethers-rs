@@ -1,12 +1,13 @@
 //! The output of a compiled project
 
 use crate::{
+    artifact_slug,
     artifacts::{
         contract::{CompactContractBytecode, CompactContractRef, Contract},
-        Error, Linkable,
+        Bytecode, DynamicallyLinkable, Error, Linkable, LinkerFn, LinkerOutput,
     },
     sources::{VersionedSourceFile, VersionedSourceFiles},
-    ArtifactId, ArtifactOutput, Artifacts, CompilerOutput, ConfigurableArtifacts,
+    Artifact, ArtifactId, ArtifactOutput, Artifacts, CompilerOutput, ConfigurableArtifacts,
 };
 use contracts::{VersionedContract, VersionedContracts};
 use ethers_core::types::Address;
@@ -45,6 +46,106 @@ impl<T: ArtifactOutput> Linkable for ProjectCompileOutput<T> {
         self.compiled_artifacts.is_unlinked() || self.cached_artifacts.is_unlinked()
     }
 }
+type DependencyTree<T> = BTreeMap<T, Vec<T>>;
+
+fn link_dep<T: std::cmp::Ord + std::clone::Clone + std::fmt::Display>(
+    is_linked: &mut BTreeMap<T, bool>,
+    order: &mut Vec<T>,
+    dependency_tree: &DependencyTree<T>,
+    item: T,
+    is_lib: bool,
+) {
+    if is_linked.contains_key(&item) {
+        return
+    }
+
+    for dep in dependency_tree.get(&item).unwrap() {
+        if !is_linked.contains_key(dep) {
+            link_dep(is_linked, order, dependency_tree, dep.clone(), true);
+        }
+    }
+    is_linked.insert(item.clone(), true);
+    if is_lib {
+        order.push(item.clone())
+    }
+}
+
+fn get_link_order<T: std::cmp::Ord + std::clone::Clone + std::fmt::Display>(
+    dependency_tree: &DependencyTree<T>,
+) -> Vec<T> {
+    let mut order = vec![];
+    let mut is_linked = BTreeMap::new();
+
+    for item in dependency_tree.keys() {
+        let clone = item.clone();
+        link_dep(&mut is_linked, &mut order, dependency_tree, clone, false)
+    }
+
+    return order
+}
+
+impl<T: ArtifactOutput> DynamicallyLinkable for ProjectCompileOutput<T> {
+    fn link_all_dynamic<F>(&mut self, linker_fn: F) -> LinkerOutput
+    where
+        F: LinkerFn,
+    {
+        let mut dependency_tree = DependencyTree::new();
+        let mut artifacts_map = BTreeMap::new();
+
+        for (artifact_id, artifact) in self.into_artifacts() {
+            let deps = artifact
+                .get_bytecode()
+                .expect("empty bytecode")
+                .link_references
+                .iter()
+                .map(|(fname, link_refs)| {
+                    link_refs
+                        .iter()
+                        .map(|(link_name, _)| {
+                            artifact_slug(&Path::new(fname).to_path_buf(), link_name)
+                        })
+                        .collect::<Vec<String>>()
+                })
+                .flatten()
+                .collect::<Vec<String>>();
+
+            dependency_tree.insert(artifact_id.slug(), deps);
+            artifacts_map.insert(artifact_id.slug(), (artifact_id, artifact));
+        }
+
+        let link_order = get_link_order(&dependency_tree);
+
+        let mut output = LinkerOutput::new();
+
+        for (artifact_slug, (artifact_id, mut artifact)) in artifacts_map {
+            let mut linked_deps = vec![];
+
+            for (idx, lib) in link_order.iter().enumerate() {
+                let (lib_artifact_id, lib_artifact) = *artifacts_map.get_mut(lib).unwrap();
+                let (lib_artifact_id, lib_artifact) = (&lib_artifact_id, &lib_artifact);
+
+                let addr =
+                    linker_fn((&artifact_id, &artifact), (lib_artifact_id, lib_artifact), idx);
+                if let Some(addr) = addr {
+                    let linked = artifact.link_fully_qualified(lib, addr);
+
+                    let lib_code = *lib_artifact.get_bytecode().unwrap();
+                    let lib_code = Into::<Bytecode>::into(lib_code);
+
+                    linked_deps.push((addr, lib_code));
+
+                    if linked {
+                        break
+                    }
+                }
+            }
+
+            output.insert(artifact_id, linked_deps);
+        }
+
+        return output
+    }
+}
 
 impl<T: ArtifactOutput> ProjectCompileOutput<T> {
     /// All artifacts together with their contract file name and name `<file name>:<name>`
@@ -64,6 +165,11 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
     pub fn into_artifacts(self) -> impl Iterator<Item = (ArtifactId, T::Artifact)> {
         let Self { cached_artifacts, compiled_artifacts, .. } = self;
         cached_artifacts.into_artifacts::<T>().chain(compiled_artifacts.into_artifacts::<T>())
+    }
+
+    pub fn artifacts(self) -> impl Iterator<Item = ()> {
+        let Self { cached_artifacts, compiled_artifacts, .. } = self;
+        cached_artifacts.artifacts().chain(compiled_artifacts.artifacts())
     }
 
     /// All artifacts together with their contract file and name as tuple `(file, contract
@@ -486,5 +592,25 @@ impl<'a> fmt::Display for OutputDiagnostics<'a> {
             }
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_link_order() {
+        let mut dependency_tree = DependencyTree::new();
+        dependency_tree.insert("Contract", vec!["Library", "ThirdLibrary"]);
+        dependency_tree.insert("Library", vec!["SecondLibrary"]);
+        dependency_tree.insert("SecondContract", vec!["Library"]);
+        dependency_tree.insert("ThirdContract", vec!["ThirdLibrary", "FourthLibrary"]);
+        dependency_tree.insert("FourthLibrary", vec!["Library"]);
+        dependency_tree.insert("SecondLibrary", vec![]);
+        dependency_tree.insert("ThirdLibrary", vec![]);
+
+        let link_order = get_link_order(&dependency_tree);
+        assert_eq!(link_order, vec!["SecondLibrary", "Library", "ThirdLibrary"]);
     }
 }

@@ -1,6 +1,7 @@
 //! Solc artifact types
 use crate::{
-    compile::*, error::SolcIoError, remappings::Remapping, utils, ProjectPathsConfig, SolcError,
+    compile::*, error::SolcIoError, remappings::Remapping, utils, Artifact, ArtifactId,
+    ProjectPathsConfig, SolcError,
 };
 use colored::Colorize;
 use ethers_core::{abi::Abi, types::Address};
@@ -1823,6 +1824,29 @@ pub trait Linkable {
     }
     /// Whether the object is fully linked or not.
     fn is_unlinked(&self) -> bool;
+}
+
+/// A map of library bytecode to the address it was deployed to
+pub type Dependencies = Vec<(Address, Bytecode)>;
+
+/// A map of artifact IDs to their [Dependencies].
+pub type LinkerOutput = BTreeMap<ArtifactId, Dependencies>;
+
+/// A linker function that is provided an [Artifact], a library's [Artifact],
+/// the `index` of the library denoting the deployment order
+/// for the library in respect to the provided contract.
+///
+/// The function should return the address at which the library is deployed.
+pub trait LinkerFn:
+    FnMut((&ArtifactId, &dyn Artifact), (&ArtifactId, &dyn Artifact), usize) -> Option<Address>
+{
+}
+
+pub trait DynamicallyLinkable: Linkable {
+    /// Links all contracts using the provided [LinkerFn].
+    fn link_all_dynamic<F>(&mut self, f: F) -> LinkerOutput
+    where
+        F: LinkerFn;
 }
 
 #[cfg(test)]

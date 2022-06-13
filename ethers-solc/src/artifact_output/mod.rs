@@ -43,13 +43,17 @@ pub struct ArtifactId {
     pub version: Version,
 }
 
+pub fn artifact_slug(path: &PathBuf, name: &String) -> String {
+    format!("{}.json:{}", path.file_stem().unwrap().to_string_lossy(), name)
+}
+
 impl ArtifactId {
     /// Returns a <filename>:<name> slug that identifies an artifact
     ///
     /// Note: This identifier is not necessarily unique. If two contracts have the same name, they
     /// will share the same slug. For a unique identifier see [ArtifactId::identifier].
     pub fn slug(&self) -> String {
-        format!("{}.json:{}", self.path.file_stem().unwrap().to_string_lossy(), self.name)
+        artifact_slug(&self.path, &self.name)
     }
 
     /// Returns a <source path>:<name> slug that uniquely identifies an artifact
@@ -238,6 +242,30 @@ impl<T> Artifacts<T> {
         self,
     ) -> impl Iterator<Item = (ArtifactId, T)> {
         self.0.into_iter().flat_map(|(file, contract_artifacts)| {
+            contract_artifacts.into_iter().flat_map(move |(_contract_name, artifacts)| {
+                let source = PathBuf::from(file.clone());
+                artifacts.into_iter().filter_map(move |artifact| {
+                    O::contract_name(&artifact.file).map(|name| {
+                        (
+                            ArtifactId {
+                                path: PathBuf::from(&artifact.file),
+                                name,
+                                source: source.clone(),
+                                version: artifact.version,
+                            },
+                            artifact.artifact,
+                        )
+                    })
+                })
+            })
+        })
+    }
+
+    /// Returns an iterator over _all_ artifacts and `<file name:contract name>`
+    pub fn artifacts<O: ArtifactOutput<Artifact = T>>(
+        self,
+    ) -> impl Iterator<Item = (ArtifactId, T)> {
+        self.0.iter().flat_map(|(file, contract_artifacts)| {
             contract_artifacts.into_iter().flat_map(move |(_contract_name, artifacts)| {
                 let source = PathBuf::from(file.clone());
                 artifacts.into_iter().filter_map(move |artifact| {
