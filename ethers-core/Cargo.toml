@@ -16,7 +16,7 @@ arrayvec = { version = "0.7.2", default-features = false }
 rlp-derive = { version = "0.1.0", default-features = false }
 
 # crypto
-elliptic-curve = { version = "0.11.12", default-features = false }
+elliptic-curve = { version = "0.12.1", default-features = false }
 generic-array = { version = "0.14.5", default-features = false }
 k256 = { version = "0.10.4", default-features = false, features = ["keccak256", "ecdsa", "std"] }
 rand = { version = "0.8.5", default-features = false }
