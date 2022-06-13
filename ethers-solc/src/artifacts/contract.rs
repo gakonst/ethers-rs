@@ -4,8 +4,8 @@ use crate::artifacts::{
     bytecode::{
         Bytecode, BytecodeObject, CompactBytecode, CompactDeployedBytecode, DeployedBytecode,
     },
-    serde_helpers, DevDoc, Evm, Ewasm, Linkable, LosslessAbi, Metadata, Offsets, StorageLayout,
-    UserDoc,
+    serde_helpers, DevDoc, Evm, Ewasm, Linkable, LosslessAbi, LosslessMetadata, Offsets,
+    StorageLayout, UserDoc,
 };
 use ethers_core::{
     abi::Contract as Abi,
@@ -26,7 +26,7 @@ pub struct Contract {
         skip_serializing_if = "Option::is_none",
         with = "serde_helpers::json_string_opt"
     )]
-    pub metadata: Option<Metadata>,
+    pub metadata: Option<LosslessMetadata>,
     #[serde(default)]
     pub userdoc: UserDoc,
     #[serde(default)]

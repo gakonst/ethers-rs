@@ -148,6 +148,7 @@ fn can_compile_configured() {
     let compiled = project.compile().unwrap();
     let artifact = compiled.find("Dapp").unwrap();
     assert!(artifact.metadata.is_some());
+    assert!(artifact.raw_metadata.is_some());
     assert!(artifact.ir.is_some());
     assert!(artifact.ir_optimized.is_some());
 }

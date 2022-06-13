@@ -5,7 +5,7 @@ use crate::{
     utils::id,
 };
 
-pub use ethabi::{Contract as Abi, *};
+pub use ethabi::{self, Contract as Abi, *};
 
 mod tokens;
 pub use tokens::{Detokenize, InvalidOutputType, Tokenizable, TokenizableItem, Tokenize};
