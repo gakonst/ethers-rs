@@ -28,7 +28,7 @@ tempfile = "3.3.0"
 tokio = { version = "1.18", features = ["macros", "rt-multi-thread", "time"] }
 serial_test = "0.6.0"
 tracing-subscriber = { version = "0.3", default-features = false, features = ["env-filter", "fmt"] }
-ethers-solc = { version = "^0.3.0", path = "../ethers-solc", default-features = false }
+ethers-solc = { version = "^0.13.0", path = "../ethers-solc", default-features = false }
 
 [package.metadata.docs.rs]
 all-features = true

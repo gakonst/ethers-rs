@@ -41,4 +41,4 @@ rustls = ["reqwest/rustls-tls"]
 
 [dev-dependencies]
 tempfile = "3.2.0"
-ethers-solc = { version = "^0.3.0", path = "../../ethers-solc", default-features = false, features = ["project-util"] }
+ethers-solc = { version = "^0.13.0", path = "../../ethers-solc", default-features = false, features = ["project-util"] }
