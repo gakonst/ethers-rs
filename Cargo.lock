@@ -1284,7 +1284,7 @@ dependencies = [
 
 [[package]]
 name = "ethers-etherscan"
-version = "0.2.2"
+version = "0.13.0"
 dependencies = [
  "ethers-core",
  "ethers-solc",
