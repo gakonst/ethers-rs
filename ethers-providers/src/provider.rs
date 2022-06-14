@@ -583,7 +583,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
     }
 
     /// Returns the network version.
-    async fn get_net_version(&self) -> Result<U64, ProviderError> {
+    async fn get_net_version(&self) -> Result<String, ProviderError> {
         self.request("net_version", ()).await
     }
 

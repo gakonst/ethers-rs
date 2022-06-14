@@ -174,6 +174,8 @@
 
 ### Unreleased
 
+- Return String for net version
+  [1376](https://github.com/gakonst/ethers-rs/pull/1376)
 - Stream of paginated logs that load logs in small pages
   [1285](https://github.com/gakonst/ethers-rs/pull/1285)
 - Load previous logs before subscribing to new logs in case fromBlock is set
