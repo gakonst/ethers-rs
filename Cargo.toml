@@ -83,7 +83,7 @@ solc-sha2-asm = ["ethers-solc/asm"]
 
 [dependencies]
 ethers-addressbook = { version = "^0.13.0", default-features = false, path = "./ethers-addressbook" }
-ethers-contract = { version = "^0.6.0", default-features = false, path = "./ethers-contract" }
+ethers-contract = { version = "^0.13.0", default-features = false, path = "./ethers-contract" }
 ethers-core = { version = "^0.13.0", default-features = false, path = "./ethers-core" }
 ethers-providers = { version = "^0.13.0", default-features = false, path = "./ethers-providers" }
 ethers-signers = { version = "^0.6.0", default-features = false, path = "./ethers-signers" }
@@ -92,7 +92,7 @@ ethers-solc = { version = "^0.3.0", default-features = false, path = "./ethers-s
 ethers-etherscan = { version = "^0.2.0", default-features = false, path = "./ethers-etherscan" }
 
 [dev-dependencies]
-ethers-contract = { version = "^0.6.0", default-features = false, path = "./ethers-contract", features = ["abigen", "eip712"] }
+ethers-contract = { version = "^0.13.0", default-features = false, path = "./ethers-contract", features = ["abigen", "eip712"] }
 ethers-providers = { version = "^0.13.0", default-features = false, path = "./ethers-providers", features = ["ws"] }
 
 [target.'cfg(target_family = "unix")'.dev-dependencies]
