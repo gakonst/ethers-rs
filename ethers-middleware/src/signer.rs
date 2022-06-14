@@ -126,7 +126,7 @@ where
     /// id.
     async fn sign_transaction(
         &self,
-        tx: TypedTransaction,
+        mut tx: TypedTransaction,
     ) -> Result<Bytes, SignerMiddlewareError<M, S>> {
         // compare chain_id and use signer's chain_id if the tranasaction's chain_id is None,
         // return an error if they are not consistent
@@ -136,7 +136,6 @@ where
                 return Err(SignerMiddlewareError::DifferentChainID)
             }
             None => {
-                let mut tx = tx.clone();
                 tx.set_chain_id(chain_id);
             }
             _ => {}
@@ -380,6 +379,42 @@ mod tests {
 
         let expected_rlp = Bytes::from(hex::decode("f869808504e3b29200831e848094f0109fc8df283027b6285cc889f5aa624eac1f55843b9aca008025a0c9cf86333bcb065d140032ecaab5d9281bde80f21b9687b3e94161de42d51895a0727a108a0b8d101465414033c3f705a9c7b826e596766046ee1183dbc8aeaa68").unwrap());
         assert_eq!(tx, expected_rlp);
+    }
+
+    #[tokio::test]
+    async fn signs_tx_none_chainid() {
+        // retrieved test vector from:
+        // https://web3js.readthedocs.io/en/v1.2.0/web3-eth-accounts.html#eth-accounts-signtransaction
+        // the signature is different because we're testing signer middleware handling the None
+        // case for a non-mainnet chain id
+        let tx = TransactionRequest {
+            from: None,
+            to: Some("F0109fC8DF283027b6285cc889F5aA624EaC1F55".parse::<Address>().unwrap().into()),
+            value: Some(1_000_000_000.into()),
+            gas: Some(2_000_000.into()),
+            nonce: Some(U256::zero()),
+            gas_price: Some(21_000_000_000u128.into()),
+            data: None,
+            chain_id: None,
+        }
+        .into();
+        let chain_id = 1337u64;
+
+        // Signer middlewares now rely on a working provider which it can query the chain id from,
+        // so we make sure Anvil is started with the chain id that the expected tx was signed
+        // with
+        let anvil = Anvil::new().args(vec!["--chain-id".to_string(), chain_id.to_string()]).spawn();
+        let provider = Provider::try_from(anvil.endpoint()).unwrap();
+        let key = "4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318"
+            .parse::<LocalWallet>()
+            .unwrap()
+            .with_chain_id(chain_id);
+        let client = SignerMiddleware::new(provider, key);
+
+        let tx = client.sign_transaction(tx).await.unwrap();
+
+        let expected_rlp = Bytes::from(hex::decode("f86b808504e3b29200831e848094f0109fc8df283027b6285cc889f5aa624eac1f55843b9aca0080820a95a08290324bae25ca0490077e0d1f4098730333088f6a500793fa420243f35c6b23a06aca42876cd28fdf614a4641e64222fee586391bb3f4061ed5dfefac006be850").unwrap());
+        assert_eq!(tx.clone(), expected_rlp);
     }
 
     #[tokio::test]
