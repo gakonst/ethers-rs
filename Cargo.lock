@@ -1270,7 +1270,7 @@ dependencies = [
 
 [[package]]
 name = "ethers-derive-eip712"
-version = "0.2.2"
+version = "0.13.0"
 dependencies = [
  "ethers-contract",
  "ethers-contract-derive",
