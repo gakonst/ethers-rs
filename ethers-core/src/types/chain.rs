@@ -126,7 +126,7 @@ impl TryFrom<u64> for Chain {
             100 => Chain::XDai,
             137 => Chain::Polygon,
             1337 => Chain::Dev,
-            31337 => Chain::Dev,
+            31337 => Chain::AnvilHardhat,
             250 => Chain::Fantom,
             4002 => Chain::FantomTestnet,
             80001 => Chain::PolygonMumbai,
