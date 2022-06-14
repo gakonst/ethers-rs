@@ -1331,7 +1331,7 @@ dependencies = [
 
 [[package]]
 name = "ethers-providers"
-version = "0.6.2"
+version = "0.13.0"
 dependencies = [
  "async-trait",
  "auto_impl",

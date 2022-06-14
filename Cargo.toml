@@ -85,7 +85,7 @@ solc-sha2-asm = ["ethers-solc/asm"]
 ethers-addressbook = { version = "^0.13.0", default-features = false, path = "./ethers-addressbook" }
 ethers-contract = { version = "^0.6.0", default-features = false, path = "./ethers-contract" }
 ethers-core = { version = "^0.13.0", default-features = false, path = "./ethers-core" }
-ethers-providers = { version = "^0.6.0", default-features = false, path = "./ethers-providers" }
+ethers-providers = { version = "^0.13.0", default-features = false, path = "./ethers-providers" }
 ethers-signers = { version = "^0.6.0", default-features = false, path = "./ethers-signers" }
 ethers-middleware = { version = "^0.6.0", default-features = false, path = "./ethers-middleware" }
 ethers-solc = { version = "^0.3.0", default-features = false, path = "./ethers-solc" }
@@ -93,10 +93,10 @@ ethers-etherscan = { version = "^0.2.0", default-features = false, path = "./eth
 
 [dev-dependencies]
 ethers-contract = { version = "^0.6.0", default-features = false, path = "./ethers-contract", features = ["abigen", "eip712"] }
-ethers-providers = { version = "^0.6.0", default-features = false, path = "./ethers-providers", features = ["ws"] }
+ethers-providers = { version = "^0.13.0", default-features = false, path = "./ethers-providers", features = ["ws"] }
 
 [target.'cfg(target_family = "unix")'.dev-dependencies]
-ethers-providers = { version = "^0.6.0", default-features = false, path = "./ethers-providers", features = ["ws", "ipc"] }
+ethers-providers = { version = "^0.13.0", default-features = false, path = "./ethers-providers", features = ["ws", "ipc"] }
 eyre = "0.6"
 rand = "0.8.5"
 serde = { version = "1.0.124", features = ["derive"] }

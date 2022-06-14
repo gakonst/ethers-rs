@@ -10,7 +10,7 @@ repository = "https://github.com/gakonst/ethers-rs"
 keywords = ["ethereum", "web3", "celo", "ethers"]
 
 [dependencies]
-ethers-providers = { version = "^0.6.0", path = "../ethers-providers", default-features = false }
+ethers-providers = { version = "^0.13.0", path = "../ethers-providers", default-features = false }
 ethers-core = { version = "^0.13.0", path = "../ethers-core", default-features = false }
 ethers-contract-abigen = { version = "^0.13.0", path = "ethers-contract-abigen",  default-features = false, optional = true }
 ethers-contract-derive = { version = "^0.13.0", path = "ethers-contract-derive", optional = true }
@@ -26,7 +26,7 @@ hex = { version = "0.4.3", default-features = false, features = ["std"] }
 
 [dev-dependencies]
 ethers-middleware = { version = "^0.6.0", path = "../ethers-middleware" }
-ethers-providers = { version = "^0.6.0", path = "../ethers-providers", default-features = false, features = ["ws"] }
+ethers-providers = { version = "^0.13.0", path = "../ethers-providers", default-features = false, features = ["ws"] }
 ethers-signers = { version = "^0.6.0", path = "../ethers-signers" }
 ethers-contract-abigen = { version = "^0.13.0", path = "ethers-contract-abigen" }
 ethers-contract-derive = { version = "^0.13.0", path = "ethers-contract-derive" }
