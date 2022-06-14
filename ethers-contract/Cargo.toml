@@ -24,16 +24,6 @@ pin-project = {version = "1.0.7", default-features = false }
 futures-util = { version = "^0.3" }
 hex = { version = "0.4.3", default-features = false, features = ["std"] }
 
-[dev-dependencies]
-ethers-middleware = { version = "^0.13.0", path = "../ethers-middleware" }
-ethers-providers = { version = "^0.13.0", path = "../ethers-providers", default-features = false, features = ["ws"] }
-ethers-signers = { version = "^0.13.0", path = "../ethers-signers" }
-ethers-contract-abigen = { version = "^0.13.0", path = "ethers-contract-abigen" }
-ethers-contract-derive = { version = "^0.13.0", path = "ethers-contract-derive" }
-ethers-core = { version = "^0.13.0", path = "../ethers-core", default-features = false, features = ["eip712"]}
-ethers-derive-eip712 = { version = "^0.13.0", path = "../ethers-core/ethers-derive-eip712"}
-ethers-solc = { version = "^0.13.0", path = "../ethers-solc", default-features = false }
-
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 tokio = { version = "1.18", default-features = false, features = ["macros"] }
 
