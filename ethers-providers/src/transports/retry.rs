@@ -14,6 +14,7 @@ use std::{
 use async_trait::async_trait;
 use serde::{de::DeserializeOwned, Serialize};
 use thiserror::Error;
+use tracing::trace;
 
 /// [RetryPolicy] defines logic for which [JsonRpcClient::Error] instances should
 /// the client retry the request and try to recover from.
@@ -137,6 +138,7 @@ where
 
             retry_number += 1;
             if retry_number > self.max_retry {
+                trace!("request timed out after {} retries", self.max_retry);
                 return Err(RetryClientError::TimeoutError)
             }
 
@@ -147,8 +149,10 @@ where
                 // of already queued requests
                 let next_backoff =
                     self.initial_backoff * 2u64.pow(retry_number + current_queued_requests);
+                trace!("retrying and backing off for {}ms", next_backoff);
                 tokio::time::sleep(Duration::from_millis(next_backoff)).await;
             } else {
+                trace!(err = ?err, "should not retry");
                 self.requests_enqueued.fetch_sub(1, Ordering::SeqCst);
                 return Err(RetryClientError::ProviderError(err))
             }
