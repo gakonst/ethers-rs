@@ -508,6 +508,16 @@ mod tests {
     }
 
     #[test]
+    fn tx_roundtrip() {
+        let json = serde_json::json!({"accessList":[{"address":"0x8ba1f109551bd432803012645ac136ddd64dba72","storageKeys":["0x0000000000000000000000000000000000000000000000000000000000000000","0x0000000000000000000000000000000000000000000000000000000000000042"]}],"blockHash":"0x55ae43d3511e327dc532855510d110676d340aa1bbba369b4b98896d86559586","blockNumber":"0xa3d322","chainId":"0x3","from":"0x541d6a0e9ca9e7a083e41e2e178eef9f22d7492e","gas":"0x6a40","gasPrice":"0x3b9aca07","hash":"0x824384376c5972498c6fcafe71fd8cad1689f64e7d5e270d025a898638c0c34d","input":"0x","maxFeePerGas":"0x3b9aca0e","maxPriorityFeePerGas":"0x3b9aca00","nonce":"0x0","r":"0xf13b5088108f783f4b6048d4be456971118aabfb88be96bb541d734b6c2b20dc","s":"0x13fb7eb25a7d5df42a176cd4c6a086e19163ed7cd8ffba015f939d24f66bc17a","to":"0x8210357f377e901f18e45294e86a2a32215cc3c9","transactionIndex":"0xd","type":"0x2","v":"0x1","value":"0x7b"});
+        let tx: Transaction = serde_json::from_value(json.clone()).unwrap();
+        assert_eq!(tx.nonce, 0u64.into());
+
+        let encoded = serde_json::to_value(tx).unwrap();
+        assert_eq!(encoded, json);
+    }
+
+    #[test]
     fn rlp_london_tx() {
         let tx = Transaction {
             block_hash: None,
