@@ -13,6 +13,7 @@ use ethers_solc::{
         BytecodeHash, DevDoc, ErrorDoc, EventDoc, Libraries, MethodDoc, ModelCheckerEngine::CHC,
         ModelCheckerSettings, UserDoc, UserDocNotice,
     },
+    buildinfo::BuildInfo,
     cache::{SolFilesCache, SOLIDITY_FILES_CACHE_FILENAME},
     project_util::*,
     remappings::Remapping,
@@ -309,6 +310,45 @@ fn can_compile_dapp_detect_changes_in_sources() {
         let other = artifacts.remove(&p).unwrap();
         assert_ne!(artifact, other);
     }
+}
+
+#[test]
+fn can_emit_build_info() {
+    let mut project = TempProject::dapptools().unwrap();
+    project.project_mut().build_info = true;
+    project
+        .add_source(
+            "A",
+            r#"
+pragma solidity ^0.8.10;
+import "./B.sol";
+contract A { }
+"#,
+        )
+        .unwrap();
+
+    project
+        .add_source(
+            "B",
+            r#"
+pragma solidity ^0.8.10;
+contract B { }
+"#,
+        )
+        .unwrap();
+
+    let compiled = project.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+
+    let info_dir = project.project().build_info_path();
+    assert!(info_dir.exists());
+
+    let mut build_info_count = 0;
+    for entry in fs::read_dir(info_dir).unwrap() {
+        let _info = BuildInfo::read(entry.unwrap().path()).unwrap();
+        build_info_count += 1;
+    }
+    assert_eq!(build_info_count, 1);
 }
 
 #[test]

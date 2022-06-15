@@ -6,6 +6,7 @@ pub use artifacts::{CompilerInput, CompilerOutput, EvmVersion};
 use std::collections::{BTreeMap, HashSet};
 
 mod artifact_output;
+pub mod buildinfo;
 pub mod cache;
 pub mod hh;
 pub use artifact_output::*;
@@ -59,6 +60,8 @@ pub struct Project<T: ArtifactOutput = ConfigurableArtifacts> {
     pub solc_config: SolcConfig,
     /// Whether caching is enabled
     pub cached: bool,
+    /// Whether to output build information with each solc call.
+    pub build_info: bool,
     /// Whether writing artifacts to disk is enabled
     pub no_artifacts: bool,
     /// Whether writing artifacts to disk is enabled
@@ -119,6 +122,11 @@ impl<T: ArtifactOutput> Project<T> {
     /// Returns the path to the cache file
     pub fn cache_path(&self) -> &PathBuf {
         &self.paths.cache
+    }
+
+    /// Returns the path to the `build-info` directory nested in the artifacts dir
+    pub fn build_info_path(&self) -> PathBuf {
+        self.paths.artifacts.join("build-info")
     }
 
     /// Returns the root directory of the project
@@ -513,6 +521,8 @@ pub struct ProjectBuilder<T: ArtifactOutput = ConfigurableArtifacts> {
     solc_config: Option<SolcConfig>,
     /// Whether caching is enabled, default is true.
     cached: bool,
+    /// Whether to output build information with each solc call.
+    build_info: bool,
     /// Whether writing artifacts to disk is enabled, default is true.
     no_artifacts: bool,
     /// Whether automatic solc version detection is enabled
@@ -536,6 +546,7 @@ impl<T: ArtifactOutput> ProjectBuilder<T> {
             solc: None,
             solc_config: None,
             cached: true,
+            build_info: false,
             no_artifacts: false,
             auto_detect: true,
             offline: false,
@@ -588,6 +599,13 @@ impl<T: ArtifactOutput> ProjectBuilder<T> {
     #[must_use]
     pub fn set_cached(mut self, cached: bool) -> Self {
         self.cached = cached;
+        self
+    }
+
+    /// Sets the build info value
+    #[must_use]
+    pub fn set_build_info(mut self, build_info: bool) -> Self {
+        self.build_info = build_info;
         self
     }
 
@@ -663,6 +681,7 @@ impl<T: ArtifactOutput> ProjectBuilder<T> {
             allowed_paths,
             solc_jobs,
             offline,
+            build_info,
             ..
         } = self;
         ProjectBuilder {
@@ -677,6 +696,7 @@ impl<T: ArtifactOutput> ProjectBuilder<T> {
             ignored_error_codes,
             allowed_paths,
             solc_jobs,
+            build_info,
         }
     }
 
@@ -713,6 +733,7 @@ impl<T: ArtifactOutput> ProjectBuilder<T> {
             mut allowed_paths,
             solc_jobs,
             offline,
+            build_info,
         } = self;
 
         let paths = paths.map(Ok).unwrap_or_else(ProjectPathsConfig::current_hardhat)?;
@@ -730,6 +751,7 @@ impl<T: ArtifactOutput> ProjectBuilder<T> {
             solc,
             solc_config,
             cached,
+            build_info,
             no_artifacts,
             auto_detect,
             artifacts,

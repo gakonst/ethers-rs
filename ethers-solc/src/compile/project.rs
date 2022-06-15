@@ -104,6 +104,7 @@
 use crate::{
     artifact_output::Artifacts,
     artifacts::{Settings, VersionedFilteredSources, VersionedSources},
+    buildinfo::RawBuildInfo,
     cache::ArtifactsCache,
     error::Result,
     filter::SparseOutputFilter,
@@ -240,11 +241,13 @@ impl<'a, T: ArtifactOutput> PreprocessedState<'a, T> {
     /// advance to the next state by compiling all sources
     fn compile(self) -> Result<CompiledState<'a, T>> {
         let PreprocessedState { sources, cache, sparse_output } = self;
+        let project = cache.project();
         let mut output = sources.compile(
-            &cache.project().solc_config.settings,
-            &cache.project().paths,
+            &project.solc_config.settings,
+            &project.paths,
             sparse_output,
             cache.graph(),
+            project.build_info,
         )?;
 
         // source paths get stripped before handing them over to solc, so solc never uses absolute
@@ -288,11 +291,16 @@ impl<'a, T: ArtifactOutput> CompiledState<'a, T> {
                 output.sources.len()
             );
             // this emits the artifacts via the project's artifacts handler
-            project.artifacts_handler().on_output(
+            let artifacts = project.artifacts_handler().on_output(
                 &output.contracts,
                 &output.sources,
                 &project.paths,
-            )?
+            )?;
+
+            // emits all the build infos, if they exist
+            output.write_build_infos(project.build_info_path())?;
+
+            artifacts
         };
 
         Ok(ArtifactsState { output, cache, compiled_artifacts })
@@ -391,13 +399,14 @@ impl FilteredCompilerSources {
         paths: &ProjectPathsConfig,
         sparse_output: SparseOutputFilter,
         graph: &GraphEdges,
+        create_build_info: bool,
     ) -> Result<AggregatedCompilerOutput> {
         match self {
             FilteredCompilerSources::Sequential(input) => {
-                compile_sequential(input, settings, paths, sparse_output, graph)
+                compile_sequential(input, settings, paths, sparse_output, graph, create_build_info)
             }
             FilteredCompilerSources::Parallel(input, j) => {
-                compile_parallel(input, j, settings, paths, sparse_output, graph)
+                compile_parallel(input, j, settings, paths, sparse_output, graph, create_build_info)
             }
         }
     }
@@ -419,6 +428,7 @@ fn compile_sequential(
     paths: &ProjectPathsConfig,
     sparse_output: SparseOutputFilter,
     graph: &GraphEdges,
+    create_build_info: bool,
 ) -> Result<AggregatedCompilerOutput> {
     let mut aggregated = AggregatedCompilerOutput::default();
     tracing::trace!("compiling {} jobs sequentially", input.len());
@@ -484,6 +494,13 @@ fn compile_sequential(
             report::solc_success(&solc, &version, &output, &start.elapsed());
             tracing::trace!("compiled input, output has error: {}", output.has_error());
             tracing::trace!("received compiler output: {:?}", output.contracts.keys());
+
+            // if configured also create the build info
+            if create_build_info {
+                let build_info = RawBuildInfo::new(&input, &output, &version)?;
+                aggregated.build_infos.insert(version.clone(), build_info);
+            }
+
             aggregated.extend(version.clone(), output);
         }
     }
@@ -498,6 +515,7 @@ fn compile_parallel(
     paths: &ProjectPathsConfig,
     sparse_output: SparseOutputFilter,
     graph: &GraphEdges,
+    create_build_info: bool,
 ) -> Result<AggregatedCompilerOutput> {
     debug_assert!(num_jobs > 1);
     tracing::trace!(
@@ -580,14 +598,21 @@ fn compile_parallel(
                 report::solc_spawn(&solc, &version, &input, &actually_dirty);
                 solc.compile(&input).map(move |output| {
                     report::solc_success(&solc, &version, &output, &start.elapsed());
-                    (version, output)
+                    (version, input, output)
                 })
             })
             .collect::<Result<Vec<_>>>()
     })?;
 
     let mut aggregated = AggregatedCompilerOutput::default();
-    aggregated.extend_all(outputs);
+    for (version, input, output) in outputs {
+        // if configured also create the build info
+        if create_build_info {
+            let build_info = RawBuildInfo::new(&input, &output, &version)?;
+            aggregated.build_infos.insert(version.clone(), build_info);
+        }
+        aggregated.extend(version, output);
+    }
 
     Ok(aggregated)
 }
