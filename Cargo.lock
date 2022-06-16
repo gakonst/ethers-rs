@@ -1106,9 +1106,9 @@ dependencies = [
 
 [[package]]
 name = "ethabi"
-version = "17.0.0"
+version = "17.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b69517146dfab88e9238c00c724fd8e277951c3cc6f22b016d72f422a832213e"
+checksum = "f186de076b3e77b8e6d73c99d1b52edc2a229e604f4b5eb6992c06c11d79d537"
 dependencies = [
  "ethereum-types",
  "hex",
@@ -3665,9 +3665,9 @@ checksum = "6bdef32e8150c2a081110b42772ffe7d7c9032b606bc226c8260fd97e0976601"
 
 [[package]]
 name = "svm-rs"
-version = "0.2.10"
+version = "0.2.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "462a64764fb3e8f26469f1c84e30240405f8a641b633b6e2b3d8c83e73f6f67a"
+checksum = "1265123e4a2ed34548e5a365b9f09253c534e425665d3b6408340483951a8ce9"
 dependencies = [
  "anyhow",
  "cfg-if 1.0.0",
@@ -3695,9 +3695,9 @@ dependencies = [
 
 [[package]]
 name = "svm-rs-builds"
-version = "0.1.0"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b3cbd0d97b618011e8529b8a1ec27b1be4e2fef6030ffa557e00b0a430e2dfde"
+checksum = "4c5c2ed046b7d56d071cd36ff7d80e24fd796d43c2566b38520c600ddedfd359"
 dependencies = [
  "build_const",
  "hex",
