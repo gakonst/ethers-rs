@@ -38,8 +38,8 @@ async fn using_gas_oracle() {
     // connect to the network
     let provider = Provider::<Http>::try_from(anvil.endpoint()).unwrap();
 
-    // this is set because anvil now sets 875000000 as the first block's base fee
-    let base_fee = 875000000;
+    // initial base fee
+    let base_fee = 1_000_000_000u64;
     // assign a gas oracle to use
     let gas_oracle = FakeGasOracle { gas_price: (base_fee + 1337).into() };
     let expected_gas_price = gas_oracle.fetch().await.unwrap();
