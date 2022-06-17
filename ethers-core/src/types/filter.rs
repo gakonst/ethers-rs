@@ -1131,6 +1131,36 @@ mod tests {
         }
             );
 
-        let _filter: Filter = serde_json::from_value(json).unwrap();
+        let filter: Filter = serde_json::from_value(json).unwrap();
+        assert_eq!(
+            filter,
+            Filter {
+                block_option: FilterBlockOption::Range {
+                    from_block: Some(4365627u64.into()),
+                    to_block: Some(4365627u64.into()),
+                },
+                address: Some(ValueOrArray::Value(
+                    "0xb59f67a8bff5d8cd03f6ac17265c550ed8f33907".parse().unwrap()
+                )),
+                topics: [
+                    Some(ValueOrArray::Value(Some(
+                        "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
+                            .parse()
+                            .unwrap(),
+                    ))),
+                    Some(ValueOrArray::Value(Some(
+                        "0x00000000000000000000000000b46c2526e227482e2ebb8f4c69e4674d262e75"
+                            .parse()
+                            .unwrap(),
+                    ))),
+                    Some(ValueOrArray::Value(Some(
+                        "0x00000000000000000000000054a2d42a40f51259dedd1978f6c118a0f0eff078"
+                            .parse()
+                            .unwrap(),
+                    ))),
+                    None,
+                ],
+            }
+        );
     }
 }
