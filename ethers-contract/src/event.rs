@@ -1,10 +1,9 @@
 #![allow(clippy::return_self_not_must_use)]
 
 use crate::{log::LogMeta, stream::EventStream, ContractError, EthLogDecode};
-
 use ethers_core::{
     abi::{Detokenize, RawLog},
-    types::{BlockNumber, Filter, Log, ValueOrArray, H256},
+    types::{BlockNumber, Filter, Log, Topic, H256},
 };
 use ethers_providers::{FilterWatcher, Middleware, PubsubClient, SubscriptionStream};
 use std::{borrow::Cow, marker::PhantomData};
@@ -87,25 +86,25 @@ impl<M, D: EthLogDecode> Event<'_, M, D> {
     }
 
     /// Sets the filter's 0th topic (typically the event name for non-anonymous events)
-    pub fn topic0<T: Into<ValueOrArray<H256>>>(mut self, topic: T) -> Self {
+    pub fn topic0<T: Into<Topic>>(mut self, topic: T) -> Self {
         self.filter.topics[0] = Some(topic.into());
         self
     }
 
     /// Sets the filter's 1st topic
-    pub fn topic1<T: Into<ValueOrArray<H256>>>(mut self, topic: T) -> Self {
+    pub fn topic1<T: Into<Topic>>(mut self, topic: T) -> Self {
         self.filter.topics[1] = Some(topic.into());
         self
     }
 
     /// Sets the filter's 2nd topic
-    pub fn topic2<T: Into<ValueOrArray<H256>>>(mut self, topic: T) -> Self {
+    pub fn topic2<T: Into<Topic>>(mut self, topic: T) -> Self {
         self.filter.topics[2] = Some(topic.into());
         self
     }
 
     /// Sets the filter's 3rd topic
-    pub fn topic3<T: Into<ValueOrArray<H256>>>(mut self, topic: T) -> Self {
+    pub fn topic3<T: Into<Topic>>(mut self, topic: T) -> Self {
         self.filter.topics[3] = Some(topic.into());
         self
     }
