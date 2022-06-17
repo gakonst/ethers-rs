@@ -533,8 +533,8 @@ pub(crate) fn is_likely_tuple_not_uint8(kind: &ParamType, type_str: &str) -> boo
 pub fn contains_uint8(kind: &ParamType) -> bool {
     match kind {
         ParamType::Uint(8) => true,
-        ParamType::Array(kind) => contains_uint8(&*kind),
-        ParamType::FixedArray(kind, _) => contains_uint8(&*kind),
+        ParamType::Array(kind) => contains_uint8(kind),
+        ParamType::FixedArray(kind, _) => contains_uint8(kind),
         ParamType::Tuple(tuple) => tuple.iter().any(contains_uint8),
         _ => false,
     }

@@ -37,7 +37,10 @@ pub use block::{Block, BlockId, BlockNumber, TimeError};
 pub use block::Randomness;
 
 mod log;
-pub use log::{Filter, FilterBlockOption, Log, ValueOrArray};
+pub use log::Log;
+
+mod filter;
+pub use filter::*;
 
 mod ens;
 pub use ens::NameOrAddress;

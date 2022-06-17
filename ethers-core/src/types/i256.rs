@@ -293,7 +293,7 @@ impl I256 {
 
     /// Convert from a decimal string.
     pub fn from_dec_str(value: &str) -> Result<Self, ParseI256Error> {
-        let (sign, value) = match value.as_bytes().get(0) {
+        let (sign, value) = match value.as_bytes().first() {
             Some(b'+') => (Sign::Positive, &value[1..]),
             Some(b'-') => (Sign::Negative, &value[1..]),
             _ => (Sign::Positive, value),
@@ -308,7 +308,7 @@ impl I256 {
 
     /// Convert from a hexadecimal string.
     pub fn from_hex_str(value: &str) -> Result<Self, ParseI256Error> {
-        let (sign, value) = match value.as_bytes().get(0) {
+        let (sign, value) = match value.as_bytes().first() {
             Some(b'+') => (Sign::Positive, &value[1..]),
             Some(b'-') => (Sign::Negative, &value[1..]),
             _ => (Sign::Positive, value),
