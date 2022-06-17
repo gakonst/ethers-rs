@@ -355,8 +355,14 @@ impl Filter {
         out
     }
 
+    /// Returns an iterator over all existing topics
     pub fn topics(&self) -> impl Iterator<Item = &Topic> + '_ {
         self.topics.iter().flatten()
+    }
+
+    /// Returns true if at least one topic is set
+    pub fn has_topics(&self) -> bool {
+        self.topics.iter().any(|t| t.is_some())
     }
 }
 
