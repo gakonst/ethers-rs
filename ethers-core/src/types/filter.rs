@@ -544,6 +544,15 @@ impl From<H256> for Topic {
     }
 }
 
+impl From<ValueOrArray<H256>> for Topic {
+    fn from(src: ValueOrArray<H256>) -> Self {
+        match src {
+            ValueOrArray::Value(val) => ValueOrArray::Value(Some(val)),
+            ValueOrArray::Array(arr) => arr.into(),
+        }
+    }
+}
+
 impl<I: Into<H256>> From<Vec<I>> for Topic {
     fn from(src: Vec<I>) -> Self {
         ValueOrArray::Array(src.into_iter().map(Into::into).map(Some).collect())
