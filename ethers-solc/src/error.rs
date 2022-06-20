@@ -1,3 +1,4 @@
+use semver::Version;
 use std::{io, path::PathBuf};
 use thiserror::Error;
 
@@ -13,8 +14,8 @@ pub enum SolcError {
     PragmaNotFound,
     #[error("Could not find solc version locally or upstream")]
     VersionNotFound,
-    #[error("Checksum mismatch")]
-    ChecksumMismatch,
+    #[error("Checksum mismatch for {file}: expected {expected} found {detected} for {version}")]
+    ChecksumMismatch { version: Version, expected: String, detected: String, file: PathBuf },
     #[error(transparent)]
     SemverError(#[from] semver::Error),
     /// Deserialization error
