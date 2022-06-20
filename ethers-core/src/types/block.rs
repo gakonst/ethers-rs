@@ -1,5 +1,5 @@
 // Taken from <https://github.com/tomusdrw/rust-web3/blob/master/src/types/block.rs>
-use crate::types::{Address, Bloom, Bytes, Transaction, TxHash, H256, U256, U64};
+use crate::types::{Address, Bloom, Bytes, Transaction, TxHash, H256, H64, U256, U64};
 use chrono::{DateTime, TimeZone, Utc};
 #[cfg(not(feature = "celo"))]
 use core::cmp::Ordering;
@@ -81,7 +81,7 @@ pub struct Block<TX> {
     pub mix_hash: Option<H256>,
     /// Nonce
     #[cfg(not(feature = "celo"))]
-    pub nonce: Option<U64>,
+    pub nonce: Option<H64>,
     /// Base fee per unit of gas (if past London)
     #[serde(rename = "baseFeePerGas")]
     pub base_fee_per_gas: Option<U256>,
