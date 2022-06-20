@@ -457,8 +457,10 @@ impl Solc {
         if checksum_calc == checksum_found {
             Ok(())
         } else {
-            tracing:: warn!(target : "solc", "checksum mismatch for {:?}, expected {}, but found {} for file {:?}", version, hex::encode(&checksum_found), hex::encode(checksum_calc), version_path);
-            Err(SolcError::ChecksumMismatch)
+            let expected = hex::encode(&checksum_found);
+            let detected = hex::encode(checksum_calc);
+            tracing:: warn!(target : "solc", "checksum mismatch for {:?}, expected {}, but found {} for file {:?}", version, expected, detected, version_path);
+            Err(SolcError::ChecksumMismatch { version, expected, detected, file: version_path })
         }
     }
 
