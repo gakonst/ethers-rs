@@ -104,7 +104,7 @@ impl Client {
             Chain::EmeraldTestnet |
             Chain::Evmos |
             Chain::EvmosTestnet => String::default(),
-            Chain::Moonbeam | Chain::MoonbeamDev | Chain::Moonriver => {
+            Chain::Moonbeam | Chain::Moonbase | Chain::MoonbeamDev | Chain::Moonriver => {
                 std::env::var("MOONSCAN_API_KEY")?
             }
             Chain::AnvilHardhat | Chain::Dev => {
@@ -271,6 +271,9 @@ impl ClientBuilder {
             }
             Chain::Moonbeam => {
                 urls("https://api-moonbeam.moonscan.io/api", "https://moonbeam.moonscan.io/")
+            }
+            Chain::Moonbase => {
+                urls("https://api-moonbase.moonscan.io/api", "https://moonbase.moonscan.io/")
             }
             Chain::Moonriver => {
                 urls("https://api-moonriver.moonscan.io/api", "https://moonriver.moonscan.io")
