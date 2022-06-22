@@ -167,6 +167,7 @@ macro_rules! rewake_with_new_state_if {
 impl<'a, P: JsonRpcClient> Future for PendingTransaction<'a, P> {
     type Output = Result<Option<TransactionReceipt>, ProviderError>;
 
+    #[cfg_attr(target_arch = "wasm32", allow(unused_must_use))]
     fn poll(self: Pin<&mut Self>, ctx: &mut Context) -> Poll<Self::Output> {
         let this = self.project();
 
