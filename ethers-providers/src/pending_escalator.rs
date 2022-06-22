@@ -175,6 +175,7 @@ where
 {
     type Output = Result<TransactionReceipt, ProviderError>;
 
+    #[cfg_attr(target_arch = "wasm32", allow(unused_must_use))]
     fn poll(
         self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,

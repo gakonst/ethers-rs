@@ -1342,6 +1342,7 @@ dependencies = [
  "futures-core",
  "futures-timer",
  "futures-util",
+ "getrandom 0.2.7",
  "hashers",
  "hex",
  "http",
