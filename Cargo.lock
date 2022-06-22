@@ -1288,6 +1288,7 @@ version = "0.13.0"
 dependencies = [
  "ethers-core",
  "ethers-solc",
+ "getrandom 0.2.7",
  "reqwest",
  "semver",
  "serde",
