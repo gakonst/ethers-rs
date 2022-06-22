@@ -1806,9 +1806,9 @@ checksum = "7ebdb29d2ea9ed0083cd8cece49bbd968021bd99b0849edb4a9a7ee0fdf6a4e0"
 
 [[package]]
 name = "hidapi-rusb"
-version = "1.3.0"
+version = "1.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "99e0b15c35f9c35cbadd0c388197364e8ff3feffd23b69cd45524a014932f5f1"
+checksum = "ee9fc48be9eab25c28b413742b38b57b85c10b5efd2d47ef013f82335cbecc8e"
 dependencies = [
  "cc",
  "libc",
@@ -4043,9 +4043,9 @@ dependencies = [
 
 [[package]]
 name = "trezor-client"
-version = "0.0.5"
+version = "0.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "564f142443726ea9c84923a895a35a9d625ac86c33fd5d41330b048e95433c87"
+checksum = "659ac74f0f26e4150ad6ffe155db8ee1727ea13a1b1b0ff0e7807e5befdb3aaf"
 dependencies = [
  "byteorder",
  "hex",
