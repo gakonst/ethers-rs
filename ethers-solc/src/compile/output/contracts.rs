@@ -53,10 +53,10 @@ impl VersionedContracts {
     /// use ethers_solc::artifacts::*;
     /// # fn demo(project: Project) {
     /// let (_, mut contracts) = project.compile().unwrap().output().split();
-    /// let contract = contracts.remove("Greeter").unwrap();
+    /// let contract = contracts.remove_first("Greeter").unwrap();
     /// # }
     /// ```
-    pub fn remove(&mut self, contract: impl AsRef<str>) -> Option<Contract> {
+    pub fn remove_first(&mut self, contract: impl AsRef<str>) -> Option<Contract> {
         let contract_name = contract.as_ref();
         self.0.values_mut().find_map(|all_contracts| {
             let mut contract = None;
@@ -72,11 +72,47 @@ impl VersionedContracts {
         })
     }
 
+    ///  Removes the contract with matching path and name
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use ethers_solc::Project;
+    /// use ethers_solc::artifacts::*;
+    /// # fn demo(project: Project) {
+    /// let (_, mut contracts) = project.compile().unwrap().output().split();
+    /// let contract = contracts.remove("src/Greeter.sol", "Greeter").unwrap();
+    /// # }
+    /// ```
+    pub fn remove(&mut self, path: impl AsRef<str>, contract: impl AsRef<str>) -> Option<Contract> {
+        let contract_name = contract.as_ref();
+        let (key, mut all_contracts) = self.0.remove_entry(path.as_ref())?;
+        let mut contract = None;
+        if let Some((c, mut contracts)) = all_contracts.remove_entry(contract_name) {
+            if !contracts.is_empty() {
+                contract = Some(contracts.remove(0).contract);
+            }
+            if !contracts.is_empty() {
+                all_contracts.insert(c, contracts);
+            }
+        }
+
+        if !all_contracts.is_empty() {
+            self.0.insert(key, all_contracts);
+        }
+        contract
+    }
+
     /// Given the contract file's path and the contract's name, tries to return the contract's
     /// bytecode, runtime bytecode, and abi
-    pub fn get(&self, path: &str, contract: &str) -> Option<CompactContractRef> {
+    pub fn get(
+        &self,
+        path: impl AsRef<str>,
+        contract: impl AsRef<str>,
+    ) -> Option<CompactContractRef> {
+        let contract = contract.as_ref();
         self.0
-            .get(path)
+            .get(path.as_ref())
             .and_then(|contracts| {
                 contracts.get(contract).and_then(|c| c.get(0).map(|c| &c.contract))
             })

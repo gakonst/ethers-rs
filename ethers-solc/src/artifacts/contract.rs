@@ -89,7 +89,7 @@ impl ContractBytecode {
     /// use ethers_solc::artifacts::*;
     /// # fn demo(project: Project) {
     /// let mut output = project.compile().unwrap().output();
-    /// let contract: ContractBytecode = output.remove("Greeter").unwrap().into();
+    /// let contract: ContractBytecode = output.remove_first("Greeter").unwrap().into();
     /// let contract = contract.unwrap();
     /// # }
     /// ```
@@ -312,7 +312,7 @@ impl CompactContract {
     /// use ethers_solc::artifacts::*;
     /// # fn demo(project: Project) {
     /// let mut output = project.compile().unwrap().output();
-    /// let contract: CompactContract = output.remove("Greeter").unwrap().into();
+    /// let contract: CompactContract = output.remove_first("Greeter").unwrap().into();
     /// let contract = contract.unwrap();
     /// # }
     /// ```

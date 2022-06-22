@@ -354,11 +354,27 @@ impl AggregatedCompilerOutput {
     /// use ethers_solc::artifacts::*;
     /// # fn demo(project: Project) {
     /// let mut output = project.compile().unwrap().output();
-    /// let contract = output.remove("Greeter").unwrap();
+    /// let contract = output.remove_first("Greeter").unwrap();
     /// # }
     /// ```
-    pub fn remove(&mut self, contract: impl AsRef<str>) -> Option<Contract> {
-        self.contracts.remove(contract)
+    pub fn remove_first(&mut self, contract: impl AsRef<str>) -> Option<Contract> {
+        self.contracts.remove_first(contract)
+    }
+
+    /// Removes the contract with matching path and name
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use ethers_solc::Project;
+    /// use ethers_solc::artifacts::*;
+    /// # fn demo(project: Project) {
+    /// let mut output = project.compile().unwrap().output();
+    /// let contract = output.remove("src/Greeter.sol", "Greeter").unwrap();
+    /// # }
+    /// ```
+    pub fn remove(&mut self, path: impl AsRef<str>, contract: impl AsRef<str>) -> Option<Contract> {
+        self.contracts.remove(path, contract)
     }
 
     /// Iterate over all contracts and their names
@@ -373,7 +389,21 @@ impl AggregatedCompilerOutput {
 
     /// Given the contract file's path and the contract's name, tries to return the contract's
     /// bytecode, runtime bytecode, and abi
-    pub fn get(&self, path: &str, contract: &str) -> Option<CompactContractRef> {
+    /// # Example
+    ///
+    /// ```
+    /// use ethers_solc::Project;
+    /// use ethers_solc::artifacts::*;
+    /// # fn demo(project: Project) {
+    /// let output = project.compile().unwrap().output();
+    /// let contract = output.get("src/Greeter.sol", "Greeter").unwrap();
+    /// # }
+    /// ```
+    pub fn get(
+        &self,
+        path: impl AsRef<str>,
+        contract: impl AsRef<str>,
+    ) -> Option<CompactContractRef> {
         self.contracts.get(path, contract)
     }
 

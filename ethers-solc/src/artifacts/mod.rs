@@ -858,7 +858,7 @@ pub struct Metadata {
 
 /// A helper type that ensures lossless (de)serialisation so we can preserve the exact String
 /// metadata value that's being hashed by solc
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LosslessMetadata {
     /// The complete abi as json value
     pub raw_metadata: String,
