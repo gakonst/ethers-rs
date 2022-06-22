@@ -53,6 +53,8 @@ pub enum Chain {
     Oasis = 26863,
     Emerald = 42262,
     EmeraldTestnet = 42261,
+    Evmos = 9001,
+    EvmosTestnet = 9000,
 }
 
 impl fmt::Display for Chain {
@@ -91,6 +93,8 @@ impl fmt::Display for Chain {
             Chain::Emerald => "emerald",
             Chain::EmeraldTestnet => "emerald-testnet",
             Chain::AnvilHardhat => "anvil-hardhat",
+            Chain::Evmos => "evmos",
+            Chain::EvmosTestnet => "evmos-testnet",
         };
 
         write!(formatter, "{}", chain)
