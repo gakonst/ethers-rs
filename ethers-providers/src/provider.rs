@@ -1188,17 +1188,30 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         // The blockCount param is expected to be an unsigned integer up to geth v1.10.6.
         // Geth v1.10.7 onwards, this has been updated to a hex encoded form. Failure to
         // decode the param from client side would fallback to the old API spec.
-        self.request(
-            "eth_feeHistory",
-            [utils::serialize(&block_count), last_block.clone(), reward_percentiles.clone()],
-        )
-        .await
-        .or(self
-            .request(
+        match self
+            .request::<_, FeeHistory>(
                 "eth_feeHistory",
-                [utils::serialize(&block_count.as_u64()), last_block, reward_percentiles],
+                [utils::serialize(&block_count), last_block.clone(), reward_percentiles.clone()],
             )
-            .await)
+            .await
+        {
+            success @ Ok(_) => success,
+            err @ Err(_) => {
+                let fallback = self
+                    .request::<_, FeeHistory>(
+                        "eth_feeHistory",
+                        [utils::serialize(&block_count.as_u64()), last_block, reward_percentiles],
+                    )
+                    .await;
+
+                if fallback.is_err() {
+                    // if the older fallback also resulted in an error, we return the error from the
+                    // initial attempt
+                    return err
+                }
+                fallback
+            }
+        }
     }
 }
 
