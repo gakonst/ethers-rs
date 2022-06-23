@@ -27,21 +27,24 @@ pub(crate) fn derive_eth_call_impl(input: DeriveInput) -> TokenStream {
             fun
         } else {
             // try as tuple
-            if let Some(inputs) = Reader::read(
-                src.trim_start_matches("function ")
-                    .trim_start()
-                    .trim_start_matches(&function_call_name),
-            )
-            .ok()
-            .and_then(|param| match param {
-                ParamType::Tuple(params) => Some(
-                    params
-                        .into_iter()
-                        .map(|kind| Param { name: "".to_string(), kind, internal_type: None })
-                        .collect(),
-                ),
-                _ => None,
-            }) {
+            let raw_function_signature = src.trim_start_matches("function ").trim_start();
+            if let Some(inputs) =
+                Reader::read(raw_function_signature.trim_start_matches(&function_call_name))
+                    .ok()
+                    .and_then(|param| match param {
+                        ParamType::Tuple(params) => Some(
+                            params
+                                .into_iter()
+                                .map(|kind| Param {
+                                    name: "".to_string(),
+                                    kind,
+                                    internal_type: None,
+                                })
+                                .collect(),
+                        ),
+                        _ => None,
+                    })
+            {
                 #[allow(deprecated)]
                 Function {
                     name: function_call_name.clone(),
@@ -52,7 +55,11 @@ pub(crate) fn derive_eth_call_impl(input: DeriveInput) -> TokenStream {
                 }
             } else {
                 // try to determine the abi by using its fields at runtime
-                return match derive_trait_impls_with_abi_type(&input, &function_call_name) {
+                return match derive_trait_impls_with_abi_type(
+                    &input,
+                    &function_call_name,
+                    Some(raw_function_signature),
+                ) {
                     Ok(derived) => derived,
                     Err(err) => {
                         Error::new(span, format!("Unable to determine ABI for `{}` : {}", src, err))
@@ -63,7 +70,7 @@ pub(crate) fn derive_eth_call_impl(input: DeriveInput) -> TokenStream {
         }
     } else {
         // try to determine the abi by using its fields at runtime
-        return match derive_trait_impls_with_abi_type(&input, &function_call_name) {
+        return match derive_trait_impls_with_abi_type(&input, &function_call_name, None) {
             Ok(derived) => derived,
             Err(err) => err.to_compile_error(),
         }
@@ -178,11 +185,16 @@ fn derive_decode_impl(datatypes_array: TokenStream) -> TokenStream {
 fn derive_trait_impls_with_abi_type(
     input: &DeriveInput,
     function_call_name: &str,
+    abi_signature: Option<&str>,
 ) -> Result<TokenStream, Error> {
-    let abi_signature =
-        utils::derive_abi_signature_with_abi_type(input, function_call_name, "EthCall")?;
+    let abi_signature = if let Some(abi) = abi_signature {
+        quote! {#abi}
+    } else {
+        utils::derive_abi_signature_with_abi_type(input, function_call_name, "EthCall")?
+    };
+
     let abi_signature = quote! {
-         ::std::borrow::Cow::Owned(#abi_signature)
+         #abi_signature.into()
     };
     let decode_impl = derive_decode_impl_with_abi_type(input)?;
     Ok(derive_trait_impls(input, function_call_name, abi_signature, None, decode_impl))
