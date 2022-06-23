@@ -590,3 +590,14 @@ async fn can_send_struct_param() {
     let logs: Vec<NewPointFilter> = contract.event().from_block(0u64).query().await.unwrap();
     assert_eq!(logs.len(), 1);
 }
+
+#[test]
+fn can_gen_seaport() {
+    abigen!(Seaport, "./tests/solidity-contracts/seaport.json");
+
+    assert_eq!(
+        FulfillAdvancedOrderCall::abi_signature(),
+        "fulfillAdvancedOrder(((address,address,(uint8,address,uint256,uint256,uint256)[],(uint8,address,uint256,uint256,uint256,address)[],uint8,uint256,uint256,bytes32,uint256,bytes32,uint256),uint120,uint120,bytes,bytes),(uint256,uint8,uint256,uint256,bytes32[])[],bytes32,address)"
+    );
+    assert_eq!(hex::encode(FulfillAdvancedOrderCall::selector()), "e7acab24");
+}

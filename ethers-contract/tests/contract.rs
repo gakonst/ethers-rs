@@ -673,6 +673,6 @@ mod eth_tests {
             "Encoded value does not match!"
         );
 
-        assert_eq!(verify, true, "typed data signature failed!");
+        assert!(verify, "typed data signature failed!");
     }
 }

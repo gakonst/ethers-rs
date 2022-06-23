@@ -17,7 +17,7 @@ struct ValueChanged {
     new_value: String,
 }
 
-#[derive(Debug, Clone, PartialEq, EthAbiType)]
+#[derive(Debug, Clone, PartialEq, Eq, EthAbiType)]
 struct ValueChangedWrapper {
     inner: ValueChanged,
     msg: String,
@@ -26,10 +26,10 @@ struct ValueChangedWrapper {
 #[derive(Debug, Clone, PartialEq, Eq, EthAbiType)]
 struct ValueChangedTuple(Address, Address, String, String);
 
-#[derive(Debug, Clone, PartialEq, EthAbiType)]
+#[derive(Debug, Clone, PartialEq, Eq, EthAbiType)]
 struct ValueChangedTupleWrapper(ValueChangedTuple, String);
 
-#[derive(Debug, Clone, PartialEq, EthAbiType)]
+#[derive(Debug, Clone, PartialEq, Eq, EthAbiType)]
 struct ValueChangedVecWrapper {
     inner: Vec<ValueChanged>,
 }
@@ -210,7 +210,7 @@ fn can_set_eth_abi_attribute() {
         msg: String,
     }
 
-    #[derive(Debug, PartialEq, EthEvent)]
+    #[derive(Debug, PartialEq, Eq, EthEvent)]
     #[ethevent(abi = "ValueChangedEvent(address,(address,string),string)")]
     struct ValueChangedEvent {
         old_author: Address,
@@ -223,7 +223,7 @@ fn can_set_eth_abi_attribute() {
         ValueChangedEvent::abi_signature()
     );
 
-    #[derive(Debug, PartialEq, EthEvent)]
+    #[derive(Debug, PartialEq, Eq, EthEvent)]
     #[ethevent(
         name = "ValueChangedEvent",
         abi = "ValueChangedEvent(address,(address,string),string)"
@@ -452,7 +452,7 @@ fn can_derive_ethcall_with_nested_structs() {
         msg: String,
     }
 
-    #[derive(Debug, PartialEq, EthCall)]
+    #[derive(Debug, PartialEq, Eq, EthCall)]
     #[ethcall(name = "foo", abi = "foo(address,(address,string),string)")]
     struct FooCall {
         old_author: Address,

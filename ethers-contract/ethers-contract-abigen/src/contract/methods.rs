@@ -117,7 +117,7 @@ impl Context {
         let function_name = &function.name;
         let abi_signature = function.abi_signature();
         let doc = format!(
-            "Container type for all input parameters for the `{}`function with signature `{}` and selector `{:?}`",
+            "Container type for all input parameters for the `{}` function with signature `{}` and selector `{:?}`",
             function.name,
             abi_signature,
             function.selector()
