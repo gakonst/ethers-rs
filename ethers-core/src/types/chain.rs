@@ -139,8 +139,9 @@ impl TryFrom<u64> for Chain {
             43114 => Chain::Avalanche,
             43113 => Chain::AvalancheFuji,
             11155111 => Chain::Sepolia,
-            1287 => Chain::Moonbeam,
-            1281 => Chain::MoonbeamDev,
+            1284 => Chain::Moonbeam,
+            1281 => Chain::Moonbase,
+            1287 => Chain::MoonbeamDev,
             1285 => Chain::Moonriver,
             10 => Chain::Optimism,
             69 => Chain::OptimismKovan,
@@ -156,6 +157,8 @@ impl TryFrom<u64> for Chain {
             26863 => Chain::Oasis,
             42262 => Chain::Emerald,
             42261 => Chain::EmeraldTestnet,
+            9001 => Chain::Evmos,
+            9000 => Chain::EvmosTestnet,
             _ => return Err(ParseChainError(chain.to_string())),
         })
     }
