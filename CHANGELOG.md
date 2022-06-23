@@ -4,6 +4,7 @@
 
 ### Unreleased
 
+- Use H64 for Block Nonce [#1396](https://github.com/gakonst/ethers-rs/pull/1396)
 - Add `as_*_mut` methods on `TypedTransaction`
   [#1310](https://github.com/gakonst/ethers-rs/pull/1310)
 - AWS EIP712 data signing no longer signs with EIP155
