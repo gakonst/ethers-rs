@@ -14,7 +14,7 @@ use std::{
 };
 pub mod many;
 pub mod output;
-pub use output::{contracts, sources};
+pub use output::{contracts, info, sources};
 pub mod project;
 
 /// The name of the `solc` binary on the system

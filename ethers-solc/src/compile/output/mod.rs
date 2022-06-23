@@ -15,6 +15,7 @@ use std::{collections::BTreeMap, fmt, path::Path};
 use tracing::trace;
 
 pub mod contracts;
+pub mod info;
 pub mod sources;
 
 /// Contains a mixture of already compiled/cached artifacts and the input set of sources that still
