@@ -87,12 +87,13 @@ impl TypedTransaction {
         }
     }
 
-    pub fn set_from(&mut self, from: Address) {
+    pub fn set_from(&mut self, from: Address) -> &mut Self {
         match self {
             Legacy(inner) => inner.from = Some(from),
             Eip2930(inner) => inner.tx.from = Some(from),
             Eip1559(inner) => inner.from = Some(from),
         };
+        self
     }
 
     pub fn to(&self) -> Option<&NameOrAddress> {
@@ -103,13 +104,14 @@ impl TypedTransaction {
         }
     }
 
-    pub fn set_to<T: Into<NameOrAddress>>(&mut self, to: T) {
+    pub fn set_to<T: Into<NameOrAddress>>(&mut self, to: T) -> &mut Self {
         let to = to.into();
         match self {
             Legacy(inner) => inner.to = Some(to),
             Eip2930(inner) => inner.tx.to = Some(to),
             Eip1559(inner) => inner.to = Some(to),
         };
+        self
     }
 
     pub fn nonce(&self) -> Option<&U256> {
@@ -120,13 +122,14 @@ impl TypedTransaction {
         }
     }
 
-    pub fn set_nonce<T: Into<U256>>(&mut self, nonce: T) {
+    pub fn set_nonce<T: Into<U256>>(&mut self, nonce: T) -> &mut Self {
         let nonce = nonce.into();
         match self {
             Legacy(inner) => inner.nonce = Some(nonce),
             Eip2930(inner) => inner.tx.nonce = Some(nonce),
             Eip1559(inner) => inner.nonce = Some(nonce),
         };
+        self
     }
 
     pub fn value(&self) -> Option<&U256> {
@@ -137,13 +140,14 @@ impl TypedTransaction {
         }
     }
 
-    pub fn set_value<T: Into<U256>>(&mut self, value: T) {
+    pub fn set_value<T: Into<U256>>(&mut self, value: T) -> &mut Self {
         let value = value.into();
         match self {
             Legacy(inner) => inner.value = Some(value),
             Eip2930(inner) => inner.tx.value = Some(value),
             Eip1559(inner) => inner.value = Some(value),
         };
+        self
     }
 
     pub fn gas(&self) -> Option<&U256> {
@@ -154,13 +158,14 @@ impl TypedTransaction {
         }
     }
 
-    pub fn set_gas<T: Into<U256>>(&mut self, gas: T) {
+    pub fn set_gas<T: Into<U256>>(&mut self, gas: T) -> &mut Self {
         let gas = gas.into();
         match self {
             Legacy(inner) => inner.gas = Some(gas),
             Eip2930(inner) => inner.tx.gas = Some(gas),
             Eip1559(inner) => inner.gas = Some(gas),
         };
+        self
     }
 
     pub fn gas_price(&self) -> Option<U256> {
@@ -178,7 +183,7 @@ impl TypedTransaction {
         }
     }
 
-    pub fn set_gas_price<T: Into<U256>>(&mut self, gas_price: T) {
+    pub fn set_gas_price<T: Into<U256>>(&mut self, gas_price: T) -> &mut Self {
         let gas_price = gas_price.into();
         match self {
             Legacy(inner) => inner.gas_price = Some(gas_price),
@@ -188,6 +193,7 @@ impl TypedTransaction {
                 inner.max_priority_fee_per_gas = Some(gas_price);
             }
         };
+        self
     }
 
     pub fn chain_id(&self) -> Option<U64> {
@@ -198,13 +204,14 @@ impl TypedTransaction {
         }
     }
 
-    pub fn set_chain_id<T: Into<U64>>(&mut self, chain_id: T) {
+    pub fn set_chain_id<T: Into<U64>>(&mut self, chain_id: T) -> &mut Self {
         let chain_id = chain_id.into();
         match self {
             Legacy(inner) => inner.chain_id = Some(chain_id),
             Eip2930(inner) => inner.tx.chain_id = Some(chain_id),
             Eip1559(inner) => inner.chain_id = Some(chain_id),
         };
+        self
     }
 
     pub fn data(&self) -> Option<&Bytes> {
@@ -223,20 +230,22 @@ impl TypedTransaction {
         }
     }
 
-    pub fn set_access_list(&mut self, access_list: AccessList) {
+    pub fn set_access_list(&mut self, access_list: AccessList) -> &mut Self {
         match self {
             Legacy(_) => {}
             Eip2930(inner) => inner.access_list = access_list,
             Eip1559(inner) => inner.access_list = access_list,
         };
+        self
     }
 
-    pub fn set_data(&mut self, data: Bytes) {
+    pub fn set_data(&mut self, data: Bytes) -> &mut Self {
         match self {
             Legacy(inner) => inner.data = Some(data),
             Eip2930(inner) => inner.tx.data = Some(data),
             Eip1559(inner) => inner.data = Some(data),
         };
+        self
     }
 
     pub fn rlp_signed(&self, signature: &Signature) -> Bytes {
