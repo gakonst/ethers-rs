@@ -23,7 +23,7 @@ use crate::{
     types::{
         BlockNumber, Filter, SyncStatus, TransactionCall, TransactionReceipt, TransactionRequest,
     },
-    Connection, ConnectionExt, DuplexConnection, SubscriptionStream,
+    Connection, DuplexConnection, SubscriptionStream,
 };
 
 /// A provider for Ethereum JSON-RPC API calls.
@@ -156,6 +156,7 @@ impl<C: Connection + 'static> Provider<Arc<C>> {
     }
 }
 
+//impl<C: Connection> Provider<C> {
 impl<C: Connection> Provider<C> {
     /// Returns the current ethereum protocol version.
     ///
@@ -164,7 +165,7 @@ impl<C: Connection> Provider<C> {
     /// ```ignore
     /// async fn get_protocol_version(&self) -> Result<String, Box<ProviderError>>;
     /// ```
-    pub async fn get_protocol_version(&self) -> RpcCall<'_, C, String> {
+    pub fn get_protocol_version(&self) -> RpcCall<&C, String> {
         self.prepare_rpc_call("eth_protocolVersion", ())
     }
 
@@ -183,7 +184,7 @@ impl<C: Connection> Provider<C> {
     /// }
     /// #}
     /// ```
-    pub fn syncing(&self) -> RpcCall<'_, C, SyncStatus> {
+    pub fn syncing(&self) -> RpcCall<&C, SyncStatus> {
         self.prepare_rpc_call("eth_syncing", ())
     }
 
@@ -191,10 +192,10 @@ impl<C: Connection> Provider<C> {
     ///
     /// The signature is equivalent to
     ///
+    /// ```ignore
+    /// async fn get_coinbase(&self) -> Result<Address, Box<ProviderError>>;
     /// ```
-    /// pub async fn get_coinbase(&self) -> Result<Address, Box<ProviderError>>;
-    /// ```
-    pub fn get_coinbase(&self) -> RpcCall<'_, C, Address> {
+    pub fn get_coinbase(&self) -> RpcCall<&C, Address> {
         self.prepare_rpc_call("eth_coinbase", ())
     }
 
@@ -202,10 +203,10 @@ impl<C: Connection> Provider<C> {
     ///
     /// The function signature is equivalent to
     ///
+    /// ```ignore
+    /// async fn get_mining(&self) -> Result<bool, Box<ProviderError>>
     /// ```
-    /// pub async fn get_mining(&self) -> Result<bool, Box<ProviderError>>
-    /// ```
-    pub fn get_mining(&self) -> RpcCall<'_, C, bool> {
+    pub fn get_mining(&self) -> RpcCall<&C, bool> {
         self.prepare_rpc_call("eth_mining", ())
     }
 
@@ -213,10 +214,10 @@ impl<C: Connection> Provider<C> {
     ///
     /// The function signature is equivalent to
     ///
+    /// ```ignore
+    /// async fn get_hashrate(&self) -> Result<U256, Box<ProviderError>>;
     /// ```
-    /// pub async fn get_hashrate(&self) -> Result<U256, Box<ProviderError>>;
-    /// ```
-    pub fn get_hashrate(&self) -> RpcCall<'_, C, U256> {
+    pub fn get_hashrate(&self) -> RpcCall<&C, U256> {
         self.prepare_rpc_call("eth_hashrate", ())
     }
 
@@ -227,7 +228,7 @@ impl<C: Connection> Provider<C> {
     /// ```ignore
     /// async fn get_gas_price(&self) -> Result<U256, Box<ProviderError>>;
     /// ```
-    pub fn get_gas_price(&self) -> RpcCall<'_, C, U256> {
+    pub fn get_gas_price(&self) -> RpcCall<&C, U256> {
         self.prepare_rpc_call("eth_gasPrice", ())
     }
 
@@ -238,7 +239,7 @@ impl<C: Connection> Provider<C> {
     /// ```ignore
     /// async fn get_accounts(&self) -> Result<Vec<Address>, Box<ProviderError>>;
     /// ```
-    pub fn get_accounts(&self) -> RpcCall<'_, C, Vec<Address>> {
+    pub fn get_accounts(&self) -> RpcCall<&C, Vec<Address>> {
         self.prepare_rpc_call("eth_getAccounts", ())
     }
 
@@ -249,7 +250,7 @@ impl<C: Connection> Provider<C> {
     /// ```ignore
     /// async fn get_block_number(&self) -> Result<u64, Box<ProviderError>>;
     /// ```
-    pub fn get_block_number(&self) -> RpcCall<'_, C, u64> {
+    pub fn get_block_number(&self) -> RpcCall<&C, u64> {
         self.prepare_rpc_call("eth_blockNumber", ())
     }
 
@@ -264,8 +265,11 @@ impl<C: Connection> Provider<C> {
     ///     block: &BlockNumber
     /// ) -> Result<U256, Box<ProviderError>>;
     /// ```
-    pub fn get_balance(&self, address: &Address, block: &BlockNumber) -> RpcCall<'_, C, U256> {
-        self.prepare_rpc_call("eth_getBalance", (address, block))
+    pub fn get_balance(&self, address: &Address, block: Option<BlockNumber>) -> RpcCall<&C, U256> {
+        match block {
+            Some(block) => self.prepare_rpc_call("eth_getBalance", (address, block)),
+            None => self.prepare_rpc_call("eth_getBalance", [address]),
+        }
     }
 
     /// Returns the value from a storage position at a given address.
@@ -285,7 +289,7 @@ impl<C: Connection> Provider<C> {
         address: &Address,
         pos: &U256,
         block: Option<BlockNumber>,
-    ) -> RpcCall<'_, C, U256> {
+    ) -> RpcCall<&C, U256> {
         match block {
             Some(block) => self.prepare_rpc_call("eth_getStorageAt", (address, pos, block)),
             None => self.prepare_rpc_call("eth_getStorageAt", (address, pos)),
@@ -307,7 +311,7 @@ impl<C: Connection> Provider<C> {
         &self,
         address: &Address,
         block: Option<BlockNumber>,
-    ) -> RpcCall<'_, C, U256> {
+    ) -> RpcCall<&C, U256> {
         match block {
             Some(block) => self.prepare_rpc_call("eth_getTransactionCount", (address, block)),
             None => self.prepare_rpc_call("eth_getTransactionCount", [address]),
@@ -316,30 +320,30 @@ impl<C: Connection> Provider<C> {
 
     /// Returns code at a given address.
     ///
+    /// Equivalent to:
+    ///
+    /// ```ignore
+    /// async fn get_code(
+    ///     &self,
+    ///     address: &Address,
+    /// ) -> Result<Bytes, Box<ProviderError>>;
+    /// ```
+    ///
     /// # Examples
     ///
     /// ```
     /// use std::sync::Arc;
     /// # use ethers_core::types::Address;
-    /// # use ethers_connections::connections::noop;
     /// use ethers_connections::{Connection, Provider};
     ///
     /// # async fn examples_get_code() {
-    /// # let build_provider = || Provider::new(Arc::new(noop::Noop)).into_dyn();
-    /// let provider: Provider<Arc<dyn Connection>> = build_provider();
-    /// let res = provider.get_code(&Address::zero(), Some("latest".into())).await;
+    /// # let provider = Provider::noop();
+    /// let res = provider.get_code(&Address::zero(), Default::default()).await;
     /// # assert!(res.is_err());
     /// # }
     /// ```
-    pub async fn get_code(
-        &self,
-        address: &Address,
-        block: Option<BlockNumber>,
-    ) -> Result<Bytes, Box<ProviderError>> {
-        match block {
-            Some(block) => self.send_request("eth_getCode", (address, block)).await,
-            None => self.send_request("eth_getCode", [address]).await,
-        }
+    pub fn get_code(&self, address: &Address) -> RpcCall<&C, Bytes> {
+        self.prepare_rpc_call("eth_getCode", [address])
     }
 
     /// Signs the given `message` using the account at `address`.
@@ -363,32 +367,60 @@ impl<C: Connection> Provider<C> {
     ///     message: &Bytes,
     /// ) -> Result<Bytes, Box<ProviderError>>;
     /// ```
-    pub async fn sign(&self, address: &Address, message: &Bytes) -> RpcCall<'_, C, Bytes> {
+    pub fn sign(&self, address: &Address, message: &Bytes) -> RpcCall<&C, Bytes> {
         self.prepare_rpc_call("eth_sign", (address, message))
     }
 
-    pub async fn sign_transaction(
-        &self,
-        txn: &TransactionRequest,
-    ) -> Result<Bytes, Box<ProviderError>> {
-        self.send_request("eth_signTransaction", [txn]).await
+    ///
+    /// Equivalent to:
+    ///
+    /// ```ignore
+    /// async fn sign_transaction(
+    ///     &self,
+    ///     txn: &TransactionRequest
+    /// ) -> Result<Bytes, Box<ProviderError>>;
+    /// ```
+    pub fn sign_transaction(&self, txn: &TransactionRequest) -> RpcCall<&C, Bytes> {
+        self.prepare_rpc_call("eth_signTransaction", [txn])
     }
 
-    pub async fn send_transaction(
-        &self,
-        txn: &TransactionRequest,
-    ) -> Result<H256, Box<ProviderError>> {
-        self.send_request("eth_sendTransaction", [txn]).await
+    /// Equivalent to:
+    ///
+    /// ```ignore
+    /// pub async fn send_transaction(
+    ///     &self,
+    ///     txn: &TransactionRequest
+    /// ) -> Result<H256, Box<ProviderError>>
+    /// ```
+    pub fn send_transaction(&self, txn: &TransactionRequest) -> RpcCall<&C, H256> {
+        self.prepare_rpc_call("eth_sendTransaction", [txn])
     }
 
-    pub async fn send_raw_transaction(&self, data: Bytes) -> Result<H256, Box<ProviderError>> {
-        self.send_request("eth_sendRawTransaction", [data]).await
+    /// Equivalent to:
+    ///
+    /// ```ignore
+    /// pub async fn send_raw_transaction(
+    ///     &self,
+    ///     data: &Bytes
+    /// ) -> Result<H256, Box<ProviderError>>
+    /// ```
+    pub fn send_raw_transaction(&self, data: Bytes) -> RpcCall<&C, H256> {
+        self.prepare_rpc_call("eth_sendRawTransaction", [data])
     }
 
     /// Executes a new message call immidiately without creating a transaction
     /// on the block chain.
-    pub async fn call(&self, txn: &TransactionCall) -> Result<Bytes, Box<ProviderError>> {
-        self.send_request("eth_call", [txn]).await
+    ///
+    /// Equivalent to:
+    ///
+    /// ```ignore
+    /// pub async fn call(
+    ///     &self,
+    ///     txn: &ByTransactionCalltes
+    /// ) -> Result<Bytes, Box<ProviderError>>
+    /// ```
+    pub fn call(&self, txn: &TransactionCall) -> RpcCall<&C, Bytes> {
+        self.prepare_rpc_call("eth_call", [txn])
     }
 
     /// Generates and returns an estimate of how much gas is necessary to allow
@@ -398,8 +430,17 @@ impl<C: Connection> Provider<C> {
     /// **Note** that the estimate may be significantly more than the amount of
     /// gas actually used by the transaction, for a variety of reasons including
     /// EVM mechanics and node performance.
-    pub async fn estimate_gas(&self, txn: &TransactionCall) -> Result<U256, Box<ProviderError>> {
-        self.send_request("eth_estimateGas", [txn]).await
+    ///
+    /// Equivalent to:
+    ///
+    /// ```ignore
+    /// pub async fn estimate_gas(
+    ///     &self,
+    ///     txn: &ByTransactionCalltes
+    /// ) -> Result<U256, Box<ProviderError>>
+    /// ```
+    pub fn estimate_gas(&self, txn: &TransactionCall) -> RpcCall<&C, U256> {
+        self.prepare_rpc_call("eth_estimateGas", [txn])
     }
 
     /// Returns a collection of historical gas information from which you can
@@ -429,106 +470,136 @@ impl<C: Connection> Provider<C> {
     /// # assert!(res.is_err());
     /// # }
     /// ```
-    pub async fn fee_history(
+    pub fn fee_history(
         &self,
         block_count: u64,
         newest_block: BlockNumber,
         reward_percentiles: Option<&[u8]>,
-    ) -> Result<FeeHistory, Box<ProviderError>> {
+    ) -> RpcCall<&C, FeeHistory> {
         match reward_percentiles {
-            Some(reward_percentiles) => {
-                self.send_request("eth_feeHistory", (block_count, newest_block, reward_percentiles))
-                    .await
-            }
-            None => self.send_request("eth_feeHistory", (block_count, newest_block)).await,
+            Some(reward_percentiles) => self.prepare_rpc_call(
+                "eth_feeHistory",
+                (block_count, newest_block, reward_percentiles),
+            ),
+            None => self.prepare_rpc_call("eth_feeHistory", (block_count, newest_block)),
         }
     }
 
     /// Returns the block with the given `hash` with only the hashes of all
     /// included transactions.
-    pub async fn get_block_by_hash(
-        &self,
-        hash: &H256,
-    ) -> Result<Option<Block<H256>>, Box<ProviderError>> {
-        self.send_request("eth_getBlockByHash", (hash, false)).await
+    ///
+    /// Equivalent to:
+    ///
+    /// ```ignore
+    /// async fn get_block_by_hash(
+    ///    &self,
+    ///    hash: &H256,
+    /// ) -> Result<Option<Block<H256>>, Box<ProviderError>>;
+    /// ```
+    pub fn get_block_by_hash(&self, hash: &H256) -> RpcCall<&C, Option<Block<H256>>> {
+        self.prepare_rpc_call("eth_getBlockByHash", (hash, false))
     }
 
     /// Returns the block with the given `hash` with all included transactions.
-    pub async fn get_block_by_hash_with_txns(
+    ///
+    /// Equivalent to:
+    ///
+    /// ```ignore
+    /// async fn get_block_by_hash_with_txns(
+    ///    &self,
+    ///    hash: &H256,
+    /// ) -> Result<Option<Block<Transaction>>, Box<ProviderError>>;
+    /// ```
+    pub fn get_block_by_hash_with_txns(
         &self,
         hash: &H256,
-    ) -> Result<Option<Block<Transaction>>, Box<ProviderError>> {
-        self.send_request("eth_getBlockByHash", (hash, true)).await
+    ) -> RpcCall<&C, Option<Block<Transaction>>> {
+        self.prepare_rpc_call("eth_getBlockByHash", (hash, true))
     }
 
     /// Returns the block with the given `block` number (or tag) with all
     /// included transactions.
-    pub async fn get_block_by_number(
-        &self,
-        block: BlockNumber,
-    ) -> Result<Option<Block<H256>>, Box<ProviderError>> {
-        self.send_request("eth_getBlockByNumber", (block, false)).await
+    ///
+    /// Equivalent to:
+    ///
+    /// ```ignore
+    /// async fn get_block_by_number(
+    ///    &self,
+    ///    block: BlockNumber,
+    /// ) -> Result<Option<Block<H256>>, Box<ProviderError>>;
+    /// ```
+    pub fn get_block_by_number(&self, block: BlockNumber) -> RpcCall<&C, Option<Block<H256>>> {
+        self.prepare_rpc_call("eth_getBlockByNumber", (block, false))
     }
 
     /// Returns the block with the given `block` number (or tag) with only the
     /// hashes of all included transactions.
-    pub async fn get_block_by_number_with_txns(
+    ///
+    /// Equivalent to:
+    ///
+    /// ```ignore
+    /// async fn get_block_by_number_with_txns(
+    ///    &self,
+    ///    block: BlockNumber,
+    /// ) -> Result<Option<Block<Transaction>>, Box<ProviderError>>;
+    /// ```
+    pub fn get_block_by_number_with_txns(
         &self,
         block: BlockNumber,
-    ) -> Result<Option<Block<Transaction>>, Box<ProviderError>> {
-        self.send_request("eth_getBlockByNumber", (block, true)).await
+    ) -> RpcCall<&C, Option<Block<Transaction>>> {
+        self.prepare_rpc_call("eth_getBlockByNumber", (block, true))
     }
 
-    pub async fn get_transaction_by_hash(
-        &self,
+    pub fn get_transaction_by_hash<'a>(
+        &'a self,
         hash: &H256,
-    ) -> Result<Option<Transaction>, Box<ProviderError>> {
-        self.send_request("eth_getTransactionByHash", [hash]).await
+    ) -> RpcCall<&'a C, Option<Transaction>> {
+        self.prepare_rpc_call("eth_getTransactionByHash", [hash])
     }
 
-    pub async fn get_transaction_by_block_hash_and_index(
+    ///
+    /// Equivalent to:
+    ///
+    /// ```ignore
+    /// async fn get_transaction_by_block_hash_and_index(
+    ///     &self,
+    ///     hash: &H256,
+    ///     index: u64,
+    /// ) -> Result<Option<Transaction>, Box<ProviderError>>;
+    /// ```
+    pub fn get_transaction_by_block_hash_and_index(
         &self,
         hash: &H256,
         index: u64,
-    ) -> Result<Option<Transaction>, Box<ProviderError>> {
-        self.send_request("eth_getTransactionByBlockHashAndIndex", (hash, U64::from(index))).await
+    ) -> RpcCall<&C, Option<Transaction>> {
+        self.prepare_rpc_call("eth_getTransactionByBlockHashAndIndex", (hash, U64::from(index)))
     }
 
-    pub async fn get_transaction_by_block_number_and_index(
+    pub fn get_transaction_by_block_number_and_index(
         &self,
         block: BlockNumber,
         index: u64,
-    ) -> Result<Option<Transaction>, Box<ProviderError>> {
-        self.send_request("eth_getTransactionByBlockNumberAndIndex", (block, U64::from(index)))
-            .await
+    ) -> RpcCall<&C, Option<Transaction>> {
+        self.prepare_rpc_call("eth_getTransactionByBlockNumberAndIndex", (block, U64::from(index)))
     }
 
     /// Returns the receipt of a transaction by transaction hash.
     ///
     /// **Note** That the receipt is not available for pending transactions.
-    pub async fn get_transaction_receipt(
-        &self,
-        hash: &H256,
-    ) -> Result<Option<TransactionReceipt>, Box<ProviderError>> {
-        self.send_request("eth_getTransactionReceipt", [hash]).await
+    pub fn get_transaction_receipt(&self, hash: &H256) -> RpcCall<&C, Option<TransactionReceipt>> {
+        self.prepare_rpc_call("eth_getTransactionReceipt", [hash])
     }
 
     /// Returns the number of uncles in a block from a block matching the given
     /// block `hash`.
-    pub async fn get_uncle_count_by_block_hash(
-        &self,
-        hash: &H256,
-    ) -> Result<U256, Box<ProviderError>> {
-        self.send_request("eth_getUncleCountByBlockHash", [hash]).await
+    pub fn get_uncle_count_by_block_hash(&self, hash: &H256) -> RpcCall<&C, U256> {
+        self.prepare_rpc_call("eth_getUncleCountByBlockHash", [hash])
     }
 
     /// Returns the number of uncles in a block from a block matching the given
     /// `block` number.
-    pub async fn get_uncle_count_by_block_number(
-        &self,
-        block: BlockNumber,
-    ) -> Result<U256, Box<ProviderError>> {
-        self.send_request("eth_getUncleCountByBlockNumber", [block]).await
+    pub fn get_uncle_count_by_block_number(&self, block: BlockNumber) -> RpcCall<&C, U256> {
+        self.prepare_rpc_call("eth_getUncleCountByBlockNumber", [block])
     }
 
     /// Installs a new `filter` that can be polled for state changes (logs).
@@ -556,29 +627,26 @@ impl<C: Connection> Provider<C> {
     /// }
     /// }
     /// ```
-    pub async fn install_log_filter(&self, filter: &Filter) -> Result<U256, Box<ProviderError>> {
-        self.send_request("eth_newFilter", [filter]).await
+    pub fn install_log_filter(&self, filter: &Filter) -> RpcCall<&C, U256> {
+        self.prepare_rpc_call("eth_newFilter", [filter])
     }
 
     /// Polls the installed log filter with `id` for all new logs matching the
     /// installed filter criteria since the last time it was last polled.
-    pub async fn get_log_filter_changes(&self, id: &U256) -> Result<Vec<Log>, Box<ProviderError>> {
-        self.send_request("eth_getFilterChanges", [id]).await
+    pub fn get_log_filter_changes(&self, id: &U256) -> RpcCall<&C, Vec<Log>> {
+        self.prepare_rpc_call("eth_getFilterChanges", [id])
     }
 
     /// Installs a new filter that can be polled for the hashes of newly
     /// arrived blocks.
-    pub async fn install_block_filter(&self) -> Result<H256, Box<ProviderError>> {
-        self.send_request("eth_newBlockFilter", ()).await
+    pub fn install_block_filter(&self) -> RpcCall<&C, H256> {
+        self.prepare_rpc_call("eth_newBlockFilter", ())
     }
 
     /// Polls the installed block filter with `id` for all new block hashes
     /// since the last time it was last polled.
-    pub async fn get_block_filter_changes(
-        &self,
-        id: &U256,
-    ) -> Result<Vec<H256>, Box<ProviderError>> {
-        self.send_request("eth_getFilterChanges", [id]).await
+    pub fn get_block_filter_changes(&self, id: &U256) -> RpcCall<&C, Vec<H256>> {
+        self.prepare_rpc_call("eth_getFilterChanges", [id])
     }
 
     /// Installs a new filter that can be polled for the hashes of newly
@@ -589,7 +657,7 @@ impl<C: Connection> Provider<C> {
     /// ```ignore
     /// async fn install_pending_transactions_filter(&self) -> Result<U256, Box<ProviderError>>;
     /// ```
-    pub fn install_pending_transactions_filter(&self) -> RpcCall<'_, C, U256> {
+    pub fn install_pending_transactions_filter(&self) -> RpcCall<&C, U256> {
         self.prepare_rpc_call("eth_newPendingTransactionsFilter", ())
     }
 
@@ -604,7 +672,7 @@ impl<C: Connection> Provider<C> {
     ///     id: &U256,
     /// ) -> Result<Vec<H256>, Box<ProviderError>>;
     /// ```
-    pub fn get_pending_transactions_filter_changes(&self, id: &U256) -> RpcCall<'_, C, Vec<H256>> {
+    pub fn get_pending_transactions_filter_changes(&self, id: &U256) -> RpcCall<&C, Vec<H256>> {
         self.prepare_rpc_call("eth_getFilterChanges", [id])
     }
 
@@ -615,13 +683,13 @@ impl<C: Connection> Provider<C> {
     /// ```
     /// pub async fn uninstall_filter(&self, id: &U256) -> Result<bool, Box<ProviderError>>;
     /// ```
-    pub fn uninstall_filter(&self, id: &U256) -> RpcCall<'_, C, bool> {
+    pub fn uninstall_filter(&self, id: &U256) -> RpcCall<&C, bool> {
         self.prepare_rpc_call("eth_uninstallFilter", [id])
     }
 
     /// Prepares an RPC call for `method` and the given `params` which will
     /// attempt to parse its response into the expected type `R`.
-    pub fn prepare_rpc_call<T, R>(&self, method: &'static str, params: T) -> RpcCall<'_, C, R>
+    pub fn prepare_rpc_call<T, R>(&self, method: &'static str, params: T) -> RpcCall<&C, R>
     where
         T: Serialize,
         R: for<'de> Deserialize<'de>,
@@ -696,7 +764,7 @@ impl<C: DuplexConnection + Clone> Provider<C> {
     ) -> Result<SubscriptionStream<R, C>, Box<ProviderError>> {
         let provider = self.clone();
 
-        let id: U256 = provider.send_request("eth_subscribe", params).await?;
+        let id: U256 = provider.prepare_rpc_call("eth_subscribe", params).await?;
         let rx = provider
             .connection
             .subscribe(id)
@@ -710,26 +778,48 @@ impl<C: DuplexConnection + Clone> Provider<C> {
 
 impl<C: DuplexConnection> Provider<C> {
     pub async fn unsubscribe(&self, id: U256) -> Result<bool, Box<ProviderError>> {
-        let ok: bool = self.send_request("eth_unsubscribe", [id]).await?;
+        let ok: bool = self.prepare_rpc_call("eth_unsubscribe", [id]).await?;
         self.connection.unsubscribe(id).map_err(|err| err.to_provider_err())?;
         Ok(ok)
     }
 }
 
 #[derive(Clone, Debug)]
-pub struct RpcCall<'a, C, R> {
-    connection: &'a C,
+pub struct RpcCall<C, R> {
+    connection: C,
     params: Option<CallParams<R>>,
 }
 
-impl<C: Connection, R: for<'de> Deserialize<'de>> Future for RpcCall<'_, C, R> {
+impl<C, R> RpcCall<C, R>
+where
+    C: Connection + ToOwned,
+    C::Owned: Connection,
+{
+    /// ```
+    /// # use std::thread;
+    /// use ethers_connections::{Connection, Provider};
+    /// let provider: Arc<dyn Connection> = Provider::noop().into_dyn();
+    ///
+    /// // call borrows the underlying connection and can, e.g., not be moved to
+    /// // a different task or thread
+    /// let call = provider.get_block();
+    /// let call = call.to_owned();
+    pub fn to_owned(self) -> RpcCall<C::Owned, R> {
+        let connection = self.connection.to_owned();
+        RpcCall { connection, params: self.params }
+    }
+}
+
+impl<C: Connection + Unpin, R: for<'de> Deserialize<'de>> Future for RpcCall<C, R> {
     type Output = Result<R, Box<ProviderError>>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let CallParams { id, method, request, .. } =
-            self.params.take().expect("rpc call was previously awaited");
-        let response = self.connection.send_raw_request(id, request);
+        let mut call = self.get_mut();
 
+        let CallParams { id, method, request, .. } =
+            call.params.take().expect("rpc call was previously awaited");
+
+        let mut response = call.connection.send_raw_request(id, request);
         match response.as_mut().poll(cx) {
             Poll::Ready(Ok(response)) => Poll::Ready(parse_response(method, &*response)),
             Poll::Ready(Err(e)) => Poll::Ready(Err(e
@@ -858,7 +948,7 @@ mod tests {
 
     use ethers_core::types::Address;
 
-    use crate::{connections::noop, Connection, Provider};
+    use crate::{connections::noop, Connection, DuplexConnection, Provider};
 
     #[test]
     fn object_safety() {
@@ -867,8 +957,17 @@ mod tests {
             let res = provider.get_block_number().await;
             assert!(res.is_err());
 
+            // dyn Connection
             let provider: Provider<Arc<dyn Connection>> = Provider::new(Arc::new(noop::Noop));
             let res = provider.get_block_number().await;
+            assert!(res.is_err());
+
+            // dyn DuplexConnection
+            let provider: Provider<Arc<dyn DuplexConnection>> = Provider::new(Arc::new(noop::Noop));
+            let res = provider.get_block_number().await;
+            assert!(res.is_err());
+
+            let res = provider.subscribe_blocks().await;
             assert!(res.is_err());
         });
     }
@@ -879,11 +978,11 @@ mod tests {
             let provider = Provider::new(noop::Noop);
             let address = Address::zero();
 
-            let _ = provider.get_code(&address, None).await;
-            let _ = provider.get_code(&address, Some("earliest".into())).await;
-            let _ = provider.get_code(&address, Some("latest".into())).await;
-            let _ = provider.get_code(&address, Some("pending".into())).await;
-            let _ = provider.get_code(&address, Some(0xcafe.into())).await;
+            let _ = provider.get_balance(&address, None).await;
+            let _ = provider.get_balance(&address, Some("earliest".into())).await;
+            let _ = provider.get_balance(&address, Some("latest".into())).await;
+            let _ = provider.get_balance(&address, Some("pending".into())).await;
+            let _ = provider.get_balance(&address, Some(0xcafe.into())).await;
         });
     }
 }

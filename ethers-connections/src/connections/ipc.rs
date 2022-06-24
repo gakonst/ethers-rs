@@ -20,7 +20,7 @@ use tokio::{
 
 use crate::{
     err::TransportError,
-    jsonrpc::{Params, Response},
+    jsonrpc::{self, Params, Response},
     Connection, DuplexConnection, RequestFuture, SubscribeFuture,
 };
 
@@ -261,15 +261,23 @@ impl Shared {
 
     fn handle_bytes(&mut self, bytes: &BytesMut) -> Result<usize, IpcError> {
         // deserialize all complete jsonrpc responses contained in the buffer
-        let mut de = Deserializer::from_slice(bytes.as_ref()).into_iter();
+        let mut de = Deserializer::from_slice(bytes.as_ref()).into_iter::<&RawValue>();
         while let Some(Ok(response)) = de.next() {
-            match response {
-                Response::Success { id, result } => self.handle_response(id, Ok(result.to_owned())),
-                Response::Error { id, error } => {
-                    self.handle_response(id, Err(TransportError::jsonrpc(error)))
-                }
-                Response::Notification { params, .. } => self.handle_notification(params),
-            };
+            if let Ok(jsonrpc::Response { id, result, .. }) = serde_json::from_str(response.get()) {
+                todo!()
+            }
+
+            if let Ok(jsonrpc::Notification { params, .. }) = serde_json::from_str(response.get()) {
+                todo!()
+            }
+
+            if let Ok(jsonrpc::Error { id, error, .. }) = serde_json::from_str(response.get()) {
+                todo!()
+            }
+
+            if let Ok(batch) = serde_json::from_str::<Vec<jsonrpc::Response>>(response.get()) {
+                todo!()
+            }
         }
 
         Ok(de.byte_offset())

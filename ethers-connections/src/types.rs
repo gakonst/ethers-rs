@@ -2,7 +2,7 @@ mod fee_history;
 mod filter;
 mod transaction;
 
-use std::mem;
+use std::{cmp, mem};
 
 use ethers_core::types::{Address, Bloom, Bytes, Log, H256, U256, U64};
 use serde::{
@@ -12,6 +12,9 @@ use serde::{
 };
 
 /// A block number or tag ("latest", "earliest" or "pending").
+///
+/// Most commonly, [`Latest`](BlockNumber::Latest) should be the preferred
+/// choice, which is also the [`Default`] value.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum BlockNumber {
     /// Latest block
@@ -22,6 +25,12 @@ pub enum BlockNumber {
     Pending,
     /// Block by number from canon chain
     Number(u64),
+}
+
+impl Default for BlockNumber {
+    fn default() -> Self {
+        Self::Latest
+    }
 }
 
 impl BlockNumber {
@@ -367,6 +376,20 @@ impl TransactionRequest {
         }
     }
 
+    pub fn eip1559_with(
+        max_fee_per_gas: Option<U256>,
+        max_priority_fee_per_gas: Option<U256>,
+    ) -> Self {
+        Self {
+            transaction_type: TransactionType::Eip1559 {
+                max_fee_per_gas,
+                max_priority_fee_per_gas,
+                access_list: vec![],
+            },
+            ..Default::default()
+        }
+    }
+
     /// Sets the `from` address.
     pub fn from(mut self, from: Address) -> Self {
         self.from = Some(from);
@@ -424,23 +447,50 @@ impl TransactionRequest {
         }
         self
     }
+
+    pub fn max_priority_fee_per_gas(mut self, fee: U256) -> Self {
+        match &mut self.transaction_type {
+            TransactionType::Legacy { .. } => {
+                self.transaction_type = TransactionType::Eip1559 {
+                    max_priority_fee_per_gas: Some(fee),
+                    max_fee_per_gas: None,
+                    access_list: vec![],
+                };
+            }
+            TransactionType::Eip2930 { access_list, .. } => {
+                let access_list = mem::replace(access_list, vec![]);
+                self.transaction_type = TransactionType::Eip1559 {
+                    max_priority_fee_per_gas: Some(fee),
+                    max_fee_per_gas: None,
+                    access_list,
+                }
+            }
+            TransactionType::Eip1559 { max_priority_fee_per_gas, .. } => {
+                *max_priority_fee_per_gas = Some(fee)
+            }
+            _ => todo!(),
+        };
+
+        self
+    }
 }
 
 /// The type of a transactions and its respective unique properties.
 #[derive(Deserialize, Serialize)]
+#[serde(tag = "type")]
 pub enum TransactionType {
     /// A legacy transaction (with `gasPrice`).
-    #[serde(rename = "0x0")]
+    #[serde(rename = "0x00")]
     Legacy { gas_price: Option<U256> },
     /// An access list transaction (with `gasPrice`).
-    #[serde(rename = "0x1")]
+    #[serde(rename = "0x01")]
     Eip2930 {
         gas_price: Option<U256>,
         #[serde(skip_serializing_if = "Vec::is_empty")]
         access_list: Vec<()>,
     },
     /// A dynamic fee transaction (with `maxPriorityFeePerGas` and `maxFeePerGas`).
-    #[serde(rename = "0x2")]
+    #[serde(rename = "0x02")]
     Eip1559 {
         max_priority_fee_per_gas: Option<U256>,
         max_fee_per_gas: Option<U256>,
@@ -495,12 +545,27 @@ pub struct TransactionReceipt {
     pub effective_gas_price: Option<U256>,
 }
 
+impl TransactionReceipt {
+    /// Compares the sequencing of this receipt with another, i.e., whether this
+    /// transaction was included before or after `other` in the context of the
+    /// wider blockchain, comparing both the respective block numbers and
+    /// transaction indices.
+    pub fn compare_sequence(&self, other: &Self) -> cmp::Ordering {
+        match self.block_number.cmp(&other.block_number) {
+            cmp::Ordering::Equal => {}
+            other => return other,
+        };
+
+        self.transaction_index.cmp(&other.transaction_index)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use serde::Deserialize;
     use serde_json::Deserializer;
 
-    use ethers_core::types::H256;
+    use ethers_core::types::{Address, H256};
 
     use super::{Filter, SyncStatus};
 
@@ -541,6 +606,15 @@ mod tests {
         );
         assert_eq!(serde_json::to_string(&filter).unwrap(), json);
     }
-}
 
-//
+    #[test]
+    fn serialize_txn_request() {
+        let txn = super::TransactionRequest::eip1559()
+            .max_priority_fee_per_gas(30.into())
+            .to(Address::zero())
+            .value(500.into())
+            .gas(23_000.into());
+
+        serde_json::to_string(&txn).unwrap();
+    }
+}

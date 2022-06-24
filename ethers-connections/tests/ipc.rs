@@ -42,7 +42,7 @@ fn geth_ipc() {
         let zero = Address::zero();
         let balance = provider.get_balance(&zero, &0u64.into()).await.unwrap();
         assert_eq!(balance, 0.into());
-        let balance = provider.get_balance(&zero, &BlockNumber::Number(0x0.into())).await.unwrap();
+        let balance = provider.get_balance(&zero, &BlockNumber::Number(0x0)).await.unwrap();
         assert_eq!(balance, 0.into());
         let balance = provider.get_balance(&zero, &BlockNumber::Earliest).await.unwrap();
         assert_eq!(balance, 0.into());

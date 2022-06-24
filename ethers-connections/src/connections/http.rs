@@ -10,7 +10,7 @@ use serde_json::value::RawValue;
 use tokio::time::Instant;
 use url::Url;
 
-use crate::{err::TransportError, jsonrpc, BatchRequestFuture, Connection, RequestFuture};
+use crate::{err::TransportError, jsonrpc, Connection, RequestFuture};
 
 /*
 /// A rate-limit aware HTTP [`Connection`].
@@ -142,7 +142,7 @@ impl Connection for Http {
         })
     }
 
-    fn send_raw_batch_request(
+    /*fn send_raw_batch_request(
         &self,
         batch: Vec<(u64, crate::PendingRequest)>,
         request: Box<RawValue>,
@@ -171,7 +171,7 @@ impl Connection for Http {
             }
 
             // may be single error as well
-            let raw: Vec<Response> = serde_json::from_str(&response)
+            let raw: Vec<jsonrpc::Response> = serde_json::from_str(&response)
                 .map_err(|source| TransportError::json(&response, source))?;
 
             if raw.len() != len {
@@ -180,21 +180,21 @@ impl Connection for Http {
             // TODO: no guaranteed order
             for i in 0..len {
                 match raw[i] {
-                    Response::Success { id, result } => {
+                    jsonrpc::Response::Success { id, result } => {
                         if batch[i].0 != id {
                             todo!("error")
                         }
 
                         let _ = batch[i].1.send(Ok(result.to_owned()));
                     }
-                    Response::Error { id, error } => todo!(),
+                    jsonrpc::Response::Error { id, error } => todo!(),
                     _ => todo!("error"),
                 }
             }
 
             Ok(())
         })
-    }
+    }*/
 }
 
 impl FromStr for Http {
