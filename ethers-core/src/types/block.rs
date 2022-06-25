@@ -81,7 +81,7 @@ pub struct Block<TX> {
     pub mix_hash: Option<H256>,
     /// Nonce
     #[cfg(not(feature = "celo"))]
-    pub nonce: Option<H64>,
+    pub nonce: Option<crate::types::H64>,
     /// Base fee per unit of gas (if past London)
     #[serde(rename = "baseFeePerGas")]
     pub base_fee_per_gas: Option<U256>,
