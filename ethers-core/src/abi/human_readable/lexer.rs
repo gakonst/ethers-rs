@@ -81,6 +81,7 @@ impl<'input> Token<'input> {
             Token::Bool => ParamType::Bool,
             Token::Address => ParamType::Address,
             Token::String => ParamType::String,
+            Token::Tuple => ParamType::Tuple(vec![]),
             _ => return None,
         };
 

@@ -1,25 +1,21 @@
 //! Methods for expanding structs
-use std::collections::{HashMap, VecDeque};
-
-use eyre::{eyre, Result};
-use inflector::Inflector;
-use proc_macro2::TokenStream;
-use quote::quote;
-
-use ethers_core::{
-    abi::{
-        param_type::Reader,
-        struct_def::{FieldDeclaration, FieldType, StructFieldType, StructType},
-        ParamType, SolStruct,
-    },
-    macros::ethers_contract_crate,
-};
-
 use crate::{
     contract::{types, Context},
     rawabi::{Component, RawAbi},
     util,
 };
+use ethers_core::{
+    abi::{
+        struct_def::{FieldDeclaration, FieldType, StructFieldType, StructType},
+        HumanReadableParser, ParamType, SolStruct,
+    },
+    macros::ethers_contract_crate,
+};
+use eyre::{eyre, Result};
+use inflector::Inflector;
+use proc_macro2::TokenStream;
+use quote::quote;
+use std::collections::{HashMap, VecDeque};
 
 impl Context {
     /// Generate corresponding types for structs parsed from a human readable ABI
@@ -442,7 +438,11 @@ fn insert_structs(structs: &mut HashMap<String, SolStruct>, tuple: &Component) {
         if let Some(fields) = tuple
             .components
             .iter()
-            .map(|f| Reader::read(&f.type_field).ok().and_then(|kind| field(structs, f, kind)))
+            .map(|f| {
+                HumanReadableParser::parse_type(&f.type_field)
+                    .ok()
+                    .and_then(|kind| field(structs, f, kind))
+            })
             .collect::<Option<Vec<_>>>()
         {
             let s = SolStruct { name: ident.to_string(), fields };
