@@ -9,7 +9,7 @@ use syn::{
 };
 
 use ethers_core::{
-    abi::{param_type::Reader, AbiParser, Event, EventExt, EventParam, ParamType},
+    abi::{Event, EventExt, EventParam, HumanReadableParser},
     macros::{ethers_contract_crate, ethers_core_crate},
 };
 use hex::FromHex;
@@ -32,41 +32,24 @@ pub(crate) fn derive_eth_event_impl(input: DeriveInput) -> TokenStream {
 
     let mut event = if let Some((src, span)) = attributes.abi {
         // try to parse as solidity event
-        if let Ok(event) = parse_event(&src) {
+        if let Ok(event) = HumanReadableParser::parse_event(&src) {
             event
         } else {
-            // try as tuple
-            if let Some(inputs) = Reader::read(
-                src.trim_start_matches("event ").trim_start().trim_start_matches(&event_name),
-            )
-            .ok()
-            .and_then(|param| match param {
-                ParamType::Tuple(params) => Some(
-                    params
-                        .into_iter()
-                        .map(|kind| EventParam { name: "".to_string(), indexed: false, kind })
-                        .collect(),
-                ),
-                _ => None,
-            }) {
-                Event { name: event_name.clone(), inputs, anonymous: false }
-            } else {
-                match src.parse::<Source>().and_then(|s| s.get()) {
-                    Ok(abi) => {
-                        // try to derive the signature from the abi from the parsed abi
-                        // TODO(mattsse): this will fail for events that contain other non
-                        // elementary types in their abi  because the parser
-                        // doesn't know how to substitute the types
-                        //  this could be mitigated by getting the ABI of each non elementary type
-                        // at runtime  and computing the the signature as
-                        // `static Lazy::...`
-                        match parse_event(&abi) {
-                            Ok(event) => event,
-                            Err(err) => return Error::new(span, err).to_compile_error(),
-                        }
+            match src.parse::<Source>().and_then(|s| s.get()) {
+                Ok(abi) => {
+                    // try to derive the signature from the abi from the parsed abi
+                    // TODO(mattsse): this will fail for events that contain other non
+                    // elementary types in their abi  because the parser
+                    // doesn't know how to substitute the types
+                    //  this could be mitigated by getting the ABI of each non elementary type
+                    // at runtime  and computing the the signature as
+                    // `static Lazy::...`
+                    match HumanReadableParser::parse_event(&abi) {
+                        Ok(event) => event,
+                        Err(err) => return Error::new(span, err).to_compile_error(),
                     }
-                    Err(err) => return Error::new(span, err).to_compile_error(),
                 }
+                Err(err) => return Error::new(span, err).to_compile_error(),
             }
         }
     } else {
@@ -360,17 +343,6 @@ fn parse_field_attributes(field: &Field) -> Result<(Option<String>, bool), Error
     }
 
     Ok((topic_name, indexed))
-}
-
-fn parse_event(abi: &str) -> Result<Event, String> {
-    let abi = if !abi.trim_start().starts_with("event ") {
-        format!("event {}", abi)
-    } else {
-        abi.to_string()
-    };
-    AbiParser::default()
-        .parse_event(&abi)
-        .map_err(|err| format!("Failed to parse the event ABI: {:?}", err))
 }
 
 /// All the attributes the `EthEvent` macro supports

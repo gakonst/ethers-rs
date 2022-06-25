@@ -1,15 +1,13 @@
 //! Helper functions for deriving `EthCall`
 
+use crate::{abi_ty, utils};
+use ethers_core::{
+    abi::{Function, FunctionExt, HumanReadableParser},
+    macros::{ethers_contract_crate, ethers_core_crate},
+};
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use syn::{parse::Error, spanned::Spanned as _, AttrStyle, DeriveInput, Lit, Meta, NestedMeta};
-
-use ethers_core::{
-    abi::{param_type::Reader, AbiParser, Function, FunctionExt, Param, ParamType},
-    macros::{ethers_contract_crate, ethers_core_crate},
-};
-
-use crate::{abi_ty, utils};
 
 /// Generates the `ethcall` trait support
 pub(crate) fn derive_eth_call_impl(input: DeriveInput) -> TokenStream {
@@ -22,49 +20,21 @@ pub(crate) fn derive_eth_call_impl(input: DeriveInput) -> TokenStream {
         attributes.name.map(|(s, _)| s).unwrap_or_else(|| input.ident.to_string());
 
     let mut function = if let Some((src, span)) = attributes.abi {
+        let raw_function_sig = src.trim_start_matches("function ").trim_start();
         // try to parse as solidity function
-        if let Ok(fun) = parse_function(&src) {
+        if let Ok(fun) = HumanReadableParser::parse_function(&src) {
             fun
         } else {
-            // try as tuple
-            let raw_function_signature = src.trim_start_matches("function ").trim_start();
-            if let Some(inputs) =
-                Reader::read(raw_function_signature.trim_start_matches(&function_call_name))
-                    .ok()
-                    .and_then(|param| match param {
-                        ParamType::Tuple(params) => Some(
-                            params
-                                .into_iter()
-                                .map(|kind| Param {
-                                    name: "".to_string(),
-                                    kind,
-                                    internal_type: None,
-                                })
-                                .collect(),
-                        ),
-                        _ => None,
-                    })
-            {
-                #[allow(deprecated)]
-                Function {
-                    name: function_call_name.clone(),
-                    inputs,
-                    outputs: vec![],
-                    constant: None,
-                    state_mutability: Default::default(),
-                }
-            } else {
-                // try to determine the abi by using its fields at runtime
-                return match derive_trait_impls_with_abi_type(
-                    &input,
-                    &function_call_name,
-                    Some(raw_function_signature),
-                ) {
-                    Ok(derived) => derived,
-                    Err(err) => {
-                        Error::new(span, format!("Unable to determine ABI for `{}` : {}", src, err))
-                            .to_compile_error()
-                    }
+            // try to determine the abi by using its fields at runtime
+            return match derive_trait_impls_with_abi_type(
+                &input,
+                &function_call_name,
+                Some(raw_function_sig),
+            ) {
+                Ok(derived) => derived,
+                Err(err) => {
+                    Error::new(span, format!("Unable to determine ABI for `{}` : {}", src, err))
+                        .to_compile_error()
                 }
             }
         }
@@ -286,16 +256,4 @@ fn parse_call_attributes(input: &DeriveInput) -> Result<EthCallAttributes, Token
         }
     }
     Ok(result)
-}
-
-fn parse_function(abi: &str) -> Result<Function, String> {
-    let abi = if !abi.trim_start().starts_with("function ") {
-        format!("function {}", abi)
-    } else {
-        abi.to_string()
-    };
-
-    AbiParser::default()
-        .parse_function(&abi)
-        .map_err(|err| format!("Failed to parse the function ABI: {:?}", err))
 }
