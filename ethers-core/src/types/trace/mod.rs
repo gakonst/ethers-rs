@@ -42,7 +42,7 @@ pub struct BlockTrace {
 
 //---------------- State Diff ----------------
 /// Aux type for Diff::Changed.
-#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 pub struct ChangedType<T> {
     /// Previous value.
     pub from: T,
@@ -51,7 +51,7 @@ pub struct ChangedType<T> {
 }
 
 /// Serde-friendly `Diff` shadow.
-#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 pub enum Diff<T> {
     /// No change.
     #[serde(rename = "=")]
@@ -68,7 +68,7 @@ pub enum Diff<T> {
 }
 
 /// Serde-friendly `AccountDiff` shadow.
-#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 pub struct AccountDiff {
     /// Account balance.
     pub balance: Diff<U256>,
@@ -81,7 +81,7 @@ pub struct AccountDiff {
 }
 
 /// Serde-friendly `StateDiff` shadow.
-#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 pub struct StateDiff(pub BTreeMap<H160, AccountDiff>);
 
 // ------------------ Trace -------------
