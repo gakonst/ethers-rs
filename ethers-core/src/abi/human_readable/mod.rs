@@ -2,9 +2,9 @@ use std::collections::{BTreeMap, HashMap, VecDeque};
 
 use crate::abi::{
     error::{bail, format_err, ParseError, Result},
-    param_type::Reader,
     struct_def::{FieldType, StructFieldType},
-    Abi, Constructor, Event, EventParam, Function, Param, ParamType, SolStruct, StateMutability,
+    Abi, Constructor, Event, EventParam, Function, HumanReadableParser, Param, ParamType,
+    SolStruct, StateMutability,
 };
 pub mod lexer;
 
@@ -372,14 +372,8 @@ impl AbiParser {
     /// contains a `uint8`. This however can still lead to false detection of `uint8` and is only
     /// solvable with a more sophisticated parser: <https://github.com/gakonst/ethers-rs/issues/474>
     fn parse_type(&self, type_str: &str) -> Result<(ParamType, Option<String>)> {
-        if let Ok(kind) = Reader::read(type_str) {
-            if is_likely_tuple_not_uint8(&kind, type_str) {
-                // if we detected an `ParamType::Uint(8)` but the input string does not include a
-                // `uint8` then it's highly likely that we try parsing a struct instead
-                self.parse_struct_type(type_str)
-            } else {
-                Ok((kind, None))
-            }
+        if let Ok(kind) = HumanReadableParser::parse_type(type_str) {
+            Ok((kind, None))
         } else {
             // try struct instead
             self.parse_struct_type(type_str)
@@ -513,30 +507,6 @@ fn detect_state_mutability(s: &str) -> StateMutability {
         StateMutability::Payable
     } else {
         StateMutability::NonPayable
-    }
-}
-
-/// Checks if the input `ParamType` contains a `uint8` that the `type_str` also contains `uint8`
-///
-/// Returns `true` if `kind` contains `uint8` but the type_str doesnt
-///
-/// See `AbiParser::parse_type`
-pub(crate) fn is_likely_tuple_not_uint8(kind: &ParamType, type_str: &str) -> bool {
-    if contains_uint8(kind) {
-        !type_str.contains("uint8")
-    } else {
-        false
-    }
-}
-
-/// Returns true if the `ParamType` contains an `uint8`
-pub fn contains_uint8(kind: &ParamType) -> bool {
-    match kind {
-        ParamType::Uint(8) => true,
-        ParamType::Array(kind) => contains_uint8(kind),
-        ParamType::FixedArray(kind, _) => contains_uint8(kind),
-        ParamType::Tuple(tuple) => tuple.iter().any(contains_uint8),
-        _ => false,
     }
 }
 

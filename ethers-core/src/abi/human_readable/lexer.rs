@@ -1,4 +1,4 @@
-use ethabi::{Event, EventParam, ParamType};
+use ethabi::{Event, EventParam, Function, Param, ParamType, StateMutability};
 use std::{fmt, iter::Peekable, str::CharIndices};
 use unicode_xid::UnicodeXID;
 
@@ -81,6 +81,7 @@ impl<'input> Token<'input> {
             Token::Bool => ParamType::Bool,
             Token::Address => ParamType::Address,
             Token::String => ParamType::String,
+            Token::Tuple => ParamType::Tuple(vec![]),
             _ => return None,
         };
 
@@ -307,6 +308,18 @@ impl<'input> HumanReadableParser<'input> {
         Self::new(input).take_param()
     }
 
+    /// Parses a [Function] from a human readable form
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use ethers_core::abi::HumanReadableParser;
+    /// let mut fun = HumanReadableParser::parse_function("function get(address author, string oldValue, string newValue)").unwrap();
+    /// ```
+    pub fn parse_function(input: &'input str) -> Result<Function, LexerError> {
+        Self::new(input).take_function()
+    }
+
     /// Parses an [Event] from a human readable form
     ///
     /// # Example
@@ -319,10 +332,58 @@ impl<'input> HumanReadableParser<'input> {
         Self::new(input).take_event()
     }
 
+    pub fn take_function(&mut self) -> Result<Function, LexerError> {
+        let name = self.take_identifier(Token::Function)?;
+
+        self.take_open_parenthesis()?;
+        let inputs = self.take_function_params()?;
+        self.take_close_parenthesis()?;
+
+        let mut state_mutability = Default::default();
+        let mut outputs = vec![];
+        if self.peek().is_some() {
+            let _visibility = self.take_visibility();
+            if let Some(mutability) = self.take_state_mutability() {
+                state_mutability = mutability;
+            }
+            if self.peek_next(Token::Virtual) {
+                self.next();
+            }
+            if self.peek_next(Token::Override) {
+                self.next();
+            }
+            if self.peek_next(Token::Returns) {
+                self.next();
+            }
+
+            if self.peek_next(Token::OpenParenthesis) {
+                self.take_open_parenthesis()?;
+                outputs = self.take_function_params()?;
+                self.take_close_parenthesis()?;
+            }
+        }
+
+        Ok(
+            #[allow(deprecated)]
+            Function { name: name.to_string(), inputs, outputs, constant: None, state_mutability },
+        )
+    }
+
     pub fn take_event(&mut self) -> Result<Event, LexerError> {
+        let name = self.take_identifier(Token::Event)?;
+        self.take_open_parenthesis()?;
+        let inputs = self.take_event_params()?;
+        self.take_close_parenthesis()?;
+        let event = Event { name: name.to_string(), inputs, anonymous: self.take_anonymous() };
+
+        Ok(event)
+    }
+
+    /// Returns an identifier, optionally prefixed with a token like `function? <name>`
+    fn take_identifier(&mut self, prefixed: Token) -> Result<&'input str, LexerError> {
         let (l, token, r) = self.next_spanned()?;
         let name = match token {
-            Token::Event => {
+            i if i == prefixed => {
                 let (_, next, _) = self.lexer.peek().cloned().ok_or(LexerError::EndOfFile)??;
                 if let Token::Identifier(name) = next {
                     self.next();
@@ -334,13 +395,74 @@ impl<'input> HumanReadableParser<'input> {
             Token::Identifier(name) => name,
             t => unrecognised!(l, r, t.to_string()),
         };
+        Ok(name)
+    }
 
-        self.take_open_parenthesis()?;
-        let inputs = self.take_event_params()?;
-        self.take_close_parenthesis()?;
-        let event = Event { name: name.to_string(), inputs, anonymous: self.take_anonymous() };
+    fn take_name_opt(&mut self) -> Result<Option<&'input str>, LexerError> {
+        if let (_, Token::Identifier(name), _) = self.peek_some()? {
+            self.next();
+            Ok(Some(name))
+        } else {
+            Ok(None)
+        }
+    }
 
-        Ok(event)
+    fn take_visibility(&mut self) -> Option<Visibility> {
+        match self.lexer.peek() {
+            Some(Ok((_, Token::Internal, _))) => {
+                self.next();
+                Some(Visibility::Internal)
+            }
+            Some(Ok((_, Token::External, _))) => {
+                self.next();
+                Some(Visibility::External)
+            }
+            Some(Ok((_, Token::Private, _))) => {
+                self.next();
+                Some(Visibility::Private)
+            }
+            Some(Ok((_, Token::Public, _))) => {
+                self.next();
+                Some(Visibility::Public)
+            }
+            _ => None,
+        }
+    }
+
+    fn take_state_mutability(&mut self) -> Option<StateMutability> {
+        match self.lexer.peek() {
+            Some(Ok((_, Token::View, _))) => {
+                self.next();
+                Some(StateMutability::View)
+            }
+            Some(Ok((_, Token::Pure, _))) => {
+                self.next();
+                Some(StateMutability::Pure)
+            }
+            Some(Ok((_, Token::Payable, _))) => {
+                self.next();
+                Some(StateMutability::Payable)
+            }
+            _ => None,
+        }
+    }
+
+    fn take_data_location(&mut self) -> Option<DataLocation> {
+        match self.lexer.peek() {
+            Some(Ok((_, Token::Memory, _))) => {
+                self.next();
+                Some(DataLocation::Memory)
+            }
+            Some(Ok((_, Token::Storage, _))) => {
+                self.next();
+                Some(DataLocation::Storage)
+            }
+            Some(Ok((_, Token::Calldata, _))) => {
+                self.next();
+                Some(DataLocation::Calldata)
+            }
+            _ => None,
+        }
     }
 
     fn take_anonymous(&mut self) -> bool {
@@ -352,16 +474,19 @@ impl<'input> HumanReadableParser<'input> {
         }
     }
 
-    /// Parses all event params
-    fn take_event_params(&mut self) -> Result<Vec<EventParam>, LexerError> {
+    /// Takes comma separated values via `f` until the `token` is parsed
+    fn take_csv_until<T, F>(&mut self, token: Token, f: F) -> Result<Vec<T>, LexerError>
+    where
+        F: Fn(&mut Self) -> Result<T, LexerError>,
+    {
         let mut params = Vec::new();
 
-        if self.peek_next(Token::CloseParenthesis) {
+        if self.peek_next(token) {
             return Ok(params)
         }
 
         loop {
-            params.push(self.take_event_param()?);
+            params.push(f(self)?);
 
             let (l, next, r) = match self.peek() {
                 Some(next) => next?,
@@ -369,14 +494,31 @@ impl<'input> HumanReadableParser<'input> {
             };
 
             match next {
+                i if i == token => break,
                 Token::Comma => {
                     self.next_spanned()?;
                 }
-                Token::CloseParenthesis => break,
                 t => unrecognised!(l, r, t.to_string()),
             }
         }
         Ok(params)
+    }
+
+    /// Parses all function input params
+    fn take_function_params(&mut self) -> Result<Vec<Param>, LexerError> {
+        self.take_csv_until(Token::CloseParenthesis, |s| s.take_input_param())
+    }
+
+    fn take_input_param(&mut self) -> Result<Param, LexerError> {
+        let kind = self.take_param()?;
+        let _location = self.take_data_location();
+        let name = self.take_name_opt()?.unwrap_or("");
+        Ok(Param { name: name.to_string(), kind, internal_type: None })
+    }
+
+    /// Parses all event params
+    fn take_event_params(&mut self) -> Result<Vec<EventParam>, LexerError> {
+        self.take_csv_until(Token::CloseParenthesis, |s| s.take_event_param())
     }
 
     fn take_event_param(&mut self) -> Result<EventParam, LexerError> {
@@ -651,9 +793,145 @@ fn keyword(id: &str) -> Option<Token> {
     Some(token)
 }
 
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub enum Visibility {
+    Internal,
+    External,
+    Private,
+    Public,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub enum DataLocation {
+    Memory,
+    Storage,
+    Calldata,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_parse_function() {
+        #[allow(deprecated)]
+        let f = Function {
+            name: "get".to_string(),
+            inputs: vec![
+                Param { name: "author".to_string(), kind: ParamType::Address, internal_type: None },
+                Param {
+                    name: "oldValue".to_string(),
+                    kind: ParamType::String,
+                    internal_type: None,
+                },
+                Param {
+                    name: "newValue".to_string(),
+                    kind: ParamType::String,
+                    internal_type: None,
+                },
+            ],
+            outputs: vec![],
+            constant: None,
+            state_mutability: Default::default(),
+        };
+        let parsed = HumanReadableParser::parse_function(
+            "function get(address author, string oldValue, string newValue)",
+        )
+        .unwrap();
+        assert_eq!(f, parsed);
+
+        let parsed = HumanReadableParser::parse_function(
+            "get(address author, string oldValue, string newValue)",
+        )
+        .unwrap();
+        assert_eq!(f, parsed);
+
+        #[allow(deprecated)]
+        let f = Function {
+            name: "get".to_string(),
+            inputs: vec![
+                Param { name: "".to_string(), kind: ParamType::Address, internal_type: None },
+                Param { name: "".to_string(), kind: ParamType::String, internal_type: None },
+                Param { name: "".to_string(), kind: ParamType::String, internal_type: None },
+            ],
+            outputs: vec![],
+            constant: None,
+            state_mutability: Default::default(),
+        };
+
+        let parsed =
+            HumanReadableParser::parse_function("get(address , string , string )").unwrap();
+        assert_eq!(f, parsed);
+    }
+
+    #[test]
+    fn test_parse_function_output() {
+        #[allow(deprecated)]
+        let f = Function {
+            name: "get".to_string(),
+            inputs: vec![
+                Param { name: "author".to_string(), kind: ParamType::Address, internal_type: None },
+                Param {
+                    name: "oldValue".to_string(),
+                    kind: ParamType::String,
+                    internal_type: None,
+                },
+                Param {
+                    name: "newValue".to_string(),
+                    kind: ParamType::String,
+                    internal_type: None,
+                },
+            ],
+            outputs: vec![
+                Param {
+                    name: "result".to_string(),
+                    kind: ParamType::Uint(256),
+                    internal_type: None,
+                },
+                Param { name: "output".to_string(), kind: ParamType::Address, internal_type: None },
+            ],
+            constant: None,
+            state_mutability: Default::default(),
+        };
+        let parsed = HumanReadableParser::parse_function(
+            "function get(address author, string oldValue, string newValue) returns (uint256 result, address output)",
+        )
+        .unwrap();
+        assert_eq!(f, parsed);
+
+        let parsed = HumanReadableParser::parse_function(
+            " get(address author, string oldValue, string newValue) returns (uint256 result, address output)",
+        )
+        .unwrap();
+        assert_eq!(f, parsed);
+        #[allow(deprecated)]
+        let mut f = Function {
+            name: "get".to_string(),
+            inputs: vec![
+                Param { name: "".to_string(), kind: ParamType::Address, internal_type: None },
+                Param { name: "".to_string(), kind: ParamType::String, internal_type: None },
+                Param { name: "".to_string(), kind: ParamType::String, internal_type: None },
+            ],
+            outputs: vec![
+                Param { name: "".to_string(), kind: ParamType::Uint(256), internal_type: None },
+                Param { name: "".to_string(), kind: ParamType::Address, internal_type: None },
+            ],
+            constant: None,
+            state_mutability: Default::default(),
+        };
+        let parsed = HumanReadableParser::parse_function(
+            "function get(address, string, string) (uint256, address)",
+        )
+        .unwrap();
+        assert_eq!(f, parsed);
+
+        f.state_mutability = StateMutability::View;
+        let parsed = HumanReadableParser::parse_function(
+            "function get(address, string memory, string calldata) public view (uint256, address)",
+        )
+        .unwrap();
+        assert_eq!(f, parsed);
+    }
 
     #[test]
     fn test_parse_param() {

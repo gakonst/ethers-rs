@@ -1,9 +1,8 @@
 //! Solidity struct definition parsing support
 use crate::abi::{
     error::{bail, format_err, Result},
-    human_readable::{is_likely_tuple_not_uint8, is_whitespace, parse_identifier},
-    param_type::Reader,
-    ParamType,
+    human_readable::{is_whitespace, parse_identifier},
+    HumanReadableParser, ParamType,
 };
 
 /// A field declaration inside a struct
@@ -337,14 +336,8 @@ fn parse_field_type(s: &str) -> Result<FieldType> {
         // special case for `address payable`
         input = input[..input.len() - 7].trim_end();
     }
-    if let Ok(ty) = Reader::read(input) {
-        // See `AbiParser::parse_type`
-        if is_likely_tuple_not_uint8(&ty, s) {
-            // likely that an unknown type was resolved as `uint8`
-            StructFieldType::parse(input.trim_end())
-        } else {
-            Ok(FieldType::Elementary(ty))
-        }
+    if let Ok(ty) = HumanReadableParser::parse_type(input) {
+        Ok(FieldType::Elementary(ty))
     } else {
         // parsing elementary datatype failed, try struct
         StructFieldType::parse(input.trim_end())
@@ -363,16 +356,12 @@ fn parse_mapping(s: &str) -> Result<MappingType> {
         .next()
         .ok_or_else(|| format_err!("Expected mapping key type at `{}`", input))
         .map(str::trim)
-        .map(Reader::read)??;
+        .map(HumanReadableParser::parse_type)??;
 
-    let is_illegal_ty = if let ParamType::Array(_) |
-    ParamType::FixedArray(_, _) |
-    ParamType::Tuple(_) = &key_type
-    {
-        true
-    } else {
-        is_likely_tuple_not_uint8(&key_type, s)
-    };
+    let is_illegal_ty = matches!(
+        &key_type,
+        ParamType::Array(_) | ParamType::FixedArray(_, _) | ParamType::Tuple(_)
+    );
 
     if is_illegal_ty {
         bail!("Expected elementary mapping key type at `{}` got {:?}", input, key_type)
