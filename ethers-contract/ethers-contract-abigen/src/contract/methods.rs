@@ -414,20 +414,10 @@ impl Context {
             let mut functions = functions.iter().enumerate().collect::<Vec<_>>();
             functions.sort_by(|(_, f1), (_, f2)| f1.inputs.len().cmp(&f2.inputs.len()));
 
-            // the `functions` are now mapped with their index according as defined in the ABI, but
-            // we always want the zero arg function (`log()`) to be `log0`, even if it defined after
-            // an overloaded function like `log(address)`
-            if num_functions > NAME_ALIASING_OVERLOADED_FUNCTIONS_CAP {
-                // lots of overloads, so we set `log()` to index 0, and shift all fun
-                for (idx, _) in &mut functions[1..] {
-                    *idx += 1;
-                }
-                functions[0].0 = 0;
-            } else {
-                // for few overloads we stick entirely to the input len order
-                for (idx, (f_idx, _)) in functions.iter_mut().enumerate() {
-                    *f_idx = idx;
-                }
+            // the `functions` are now mapped with their index as defined in the ABI, but
+            // we always want the zero arg function (`log()`) to be `log0`
+            for (idx, (f_idx, _)) in functions.iter_mut().enumerate() {
+                *f_idx = idx;
             }
 
             // the first function will be the function with the least amount of inputs, like log()

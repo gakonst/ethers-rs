@@ -1,4 +1,5 @@
 #![cfg(feature = "abigen")]
+#![allow(unused)]
 //! Test cases to validate the `abigen!` macro
 use ethers_contract::{abigen, EthCall, EthEvent};
 use ethers_core::{
@@ -600,4 +601,28 @@ fn can_gen_seaport() {
         "fulfillAdvancedOrder(((address,address,(uint8,address,uint256,uint256,uint256)[],(uint8,address,uint256,uint256,uint256,address)[],uint8,uint256,uint256,bytes32,uint256,bytes32,uint256),uint120,uint120,bytes,bytes),(uint256,uint8,uint256,uint256,bytes32[])[],bytes32,address)"
     );
     assert_eq!(hex::encode(FulfillAdvancedOrderCall::selector()), "e7acab24");
+}
+
+#[test]
+fn can_generate_to_string_overload() {
+    abigen!(
+        ToString,
+        r#"[
+                toString(bytes)
+                toString(address)
+                toString(uint256)
+                toString(int256)
+                toString(bytes32)
+                toString(bool)
+    ]"#
+    );
+
+    match ToStringCalls::ToString0(ToString0Call(Default::default())) {
+        ToStringCalls::ToString0(_) => {}
+        ToStringCalls::ToString1(_) => {}
+        ToStringCalls::ToString2(_) => {}
+        ToStringCalls::ToString3(_) => {}
+        ToStringCalls::ToString4(_) => {}
+        ToStringCalls::ToString5(_) => {}
+    };
 }
