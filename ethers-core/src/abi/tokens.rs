@@ -159,6 +159,19 @@ impl Tokenizable for Bytes {
     }
 }
 
+impl Tokenizable for bytes::Bytes {
+    fn from_token(token: Token) -> Result<Self, InvalidOutputType> {
+        match token {
+            Token::Bytes(s) => Ok(s.into()),
+            other => Err(InvalidOutputType(format!("Expected `Bytes`, got {:?}", other))),
+        }
+    }
+
+    fn into_token(self) -> Token {
+        Token::Bytes(self.to_vec())
+    }
+}
+
 impl Tokenizable for H256 {
     fn from_token(token: Token) -> Result<Self, InvalidOutputType> {
         match token {
@@ -287,7 +300,7 @@ macro_rules! tokenizable_item {
 
 tokenizable_item! {
     Token, String, Address, H256, U256, I256, U128, bool, Vec<u8>,
-    i8, i16, i32, i64, i128, u16, u32, u64, u128, Bytes,
+    i8, i16, i32, i64, i128, u16, u32, u64, u128, Bytes, bytes::Bytes,
 }
 
 macro_rules! impl_tokenizable_item_tuple {

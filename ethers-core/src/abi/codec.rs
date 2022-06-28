@@ -57,6 +57,7 @@ macro_rules! impl_abi_codec {
 impl_abi_codec!(
     Vec<u8>,
     Bytes,
+    bytes::Bytes,
     Address,
     bool,
     String,

@@ -2,8 +2,10 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use thiserror::Error;
 
 use std::{
+    borrow::Borrow,
     clone::Clone,
     fmt::{Debug, Display, Formatter, LowerHex, Result as FmtResult},
+    ops::Deref,
     str::FromStr,
 };
 
@@ -36,9 +38,42 @@ impl Bytes {
     }
 }
 
+impl Deref for Bytes {
+    type Target = [u8];
+
+    #[inline]
+    fn deref(&self) -> &[u8] {
+        self.as_ref()
+    }
+}
+
 impl AsRef<[u8]> for Bytes {
     fn as_ref(&self) -> &[u8] {
         self.0.as_ref()
+    }
+}
+
+impl Borrow<[u8]> for Bytes {
+    fn borrow(&self) -> &[u8] {
+        self.as_ref()
+    }
+}
+
+impl IntoIterator for Bytes {
+    type Item = u8;
+    type IntoIter = bytes::buf::IntoIter<bytes::Bytes>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
+
+impl<'a> IntoIterator for &'a Bytes {
+    type Item = &'a u8;
+    type IntoIter = core::slice::Iter<'a, u8>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.as_ref().iter()
     }
 }
 
@@ -63,6 +98,36 @@ impl<const N: usize> From<[u8; N]> for Bytes {
 impl<'a, const N: usize> From<&'a [u8; N]> for Bytes {
     fn from(src: &'a [u8; N]) -> Self {
         src.to_vec().into()
+    }
+}
+
+impl PartialEq<[u8]> for Bytes {
+    fn eq(&self, other: &[u8]) -> bool {
+        self.as_ref() == other
+    }
+}
+
+impl PartialEq<Bytes> for [u8] {
+    fn eq(&self, other: &Bytes) -> bool {
+        *other == *self
+    }
+}
+
+impl PartialEq<Vec<u8>> for Bytes {
+    fn eq(&self, other: &Vec<u8>) -> bool {
+        self.as_ref() == &other[..]
+    }
+}
+
+impl PartialEq<Bytes> for Vec<u8> {
+    fn eq(&self, other: &Bytes) -> bool {
+        *other == *self
+    }
+}
+
+impl PartialEq<bytes::Bytes> for Bytes {
+    fn eq(&self, other: &bytes::Bytes) -> bool {
+        other == self.as_ref()
     }
 }
 
