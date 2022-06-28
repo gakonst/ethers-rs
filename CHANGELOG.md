@@ -4,6 +4,7 @@
 
 ### Unreleased
 
+- capture unknown fields in `Block` and `Transaction` type via new `OtherFields` type [#1423](https://github.com/gakonst/ethers-rs/pull/1423)
 - Methods like `set_to()` from `TypedTransaction` can be chained
 - Use H64 for Block Nonce [#1396](https://github.com/gakonst/ethers-rs/pull/1396)
 - Add `as_*_mut` methods on `TypedTransaction`

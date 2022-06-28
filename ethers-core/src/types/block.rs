@@ -96,6 +96,11 @@ pub struct Block<TX> {
     #[cfg_attr(docsrs, doc(cfg(feature = "celo")))]
     #[serde(rename = "epochSnarkData", default)]
     pub epoch_snark_data: Option<EpochSnarkData>,
+
+    /// Captures unknown fields such as additional fields used by L2s
+    #[cfg(not(feature = "celo"))]
+    #[serde(flatten)]
+    pub other: crate::types::OtherFields,
 }
 
 /// Error returned by [`Block::time`].
@@ -203,6 +208,7 @@ impl Block<TxHash> {
                 mix_hash,
                 nonce,
                 base_fee_per_gas,
+                other,
                 ..
             } = self;
             Block {
@@ -228,6 +234,7 @@ impl Block<TxHash> {
                 nonce,
                 base_fee_per_gas,
                 transactions,
+                other,
             }
         }
 
@@ -305,6 +312,7 @@ impl From<Block<Transaction>> for Block<TxHash> {
                 mix_hash,
                 nonce,
                 base_fee_per_gas,
+                other,
             } = full;
             Block {
                 hash,
@@ -329,6 +337,7 @@ impl From<Block<Transaction>> for Block<TxHash> {
                 nonce,
                 base_fee_per_gas,
                 transactions: transactions.iter().map(|tx| tx.hash).collect(),
+                other,
             }
         }
 
