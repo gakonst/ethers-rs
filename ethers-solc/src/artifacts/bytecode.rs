@@ -6,7 +6,7 @@ use crate::{
     utils,
 };
 use ethers_core::{abi::Address, types::Bytes};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, Serializer};
 use std::collections::BTreeMap;
 
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
@@ -16,6 +16,7 @@ pub struct Bytecode {
     #[serde(default, skip_serializing_if = "::std::collections::BTreeMap::is_empty")]
     pub function_debug_data: BTreeMap<String, FunctionDebugData>,
     /// The bytecode as a hex string.
+    #[serde(serialize_with = "serialize_bytecode_without_prefix")]
     pub object: BytecodeObject,
     /// Opcodes list (string)
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -363,6 +364,25 @@ impl AsRef<[u8]> for BytecodeObject {
         match self {
             BytecodeObject::Bytecode(code) => code.as_ref(),
             BytecodeObject::Unlinked(code) => code.as_bytes(),
+        }
+    }
+}
+
+/// This will serialize the bytecode data without a `0x` prefix, which the `ethers::types::Bytes`
+/// adds by default.
+///
+/// This ensures that we serialize bytecode data in the same way as solc does, See also <https://github.com/gakonst/ethers-rs/issues/1422>
+pub fn serialize_bytecode_without_prefix<S>(
+    bytecode: &BytecodeObject,
+    s: S,
+) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    match bytecode {
+        BytecodeObject::Bytecode(code) => s.serialize_str(&hex::encode(code)),
+        BytecodeObject::Unlinked(code) => {
+            s.serialize_str(code.strip_prefix("0x").unwrap_or(code.as_str()))
         }
     }
 }
