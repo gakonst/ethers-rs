@@ -63,3 +63,6 @@ pub use proof::*;
 
 mod fee;
 pub use fee::*;
+
+mod other;
+pub use other::OtherFields;
