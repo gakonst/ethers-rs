@@ -382,7 +382,7 @@ where
     match bytecode {
         BytecodeObject::Bytecode(code) => s.serialize_str(&hex::encode(code)),
         BytecodeObject::Unlinked(code) => {
-            s.serialize_str(code.strip_prefix("0x").unwrap_or_else(|| code.as_str()))
+            s.serialize_str(code.strip_prefix("0x").unwrap_or(code.as_str()))
         }
     }
 }
