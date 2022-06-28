@@ -368,31 +368,22 @@ impl AsRef<[u8]> for BytecodeObject {
     }
 }
 
-/// This will serialize the bytecode data without a `0x` prefix, which the `ethers::types::Bytes` adds by default.
+/// This will serialize the bytecode data without a `0x` prefix, which the `ethers::types::Bytes`
+/// adds by default.
 ///
 /// This ensures that we serialize bytecode data in the same way as solc does, See also <https://github.com/gakonst/ethers-rs/issues/1422>
-pub fn serialize_bytecode_without_prefix<S>(bytecode: &BytecodeObject, s: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
+pub fn serialize_bytecode_without_prefix<S>(
+    bytecode: &BytecodeObject,
+    s: S,
+) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
 {
     match bytecode {
-        BytecodeObject::Bytecode(code) => {
-            s.serialize_str(&hex::encode(code))
-        },
+        BytecodeObject::Bytecode(code) => s.serialize_str(&hex::encode(code)),
         BytecodeObject::Unlinked(code) => {
-            s.serialize_str(code.strip_prefix("0x").unwrap_or_else(||code.as_str()))
-        },
-    }
-}
-
-pub fn serialize_bytecode_without_prefix_opt<S>(bytecode: &Option<BytecodeObject>, s: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-{
-    if let Some(bytecode) = bytecode {
-        serialize_bytecode_without_prefix(bytecode, s)
-    } else {
-        s.serialize_none()
+            s.serialize_str(code.strip_prefix("0x").unwrap_or_else(|| code.as_str()))
+        }
     }
 }
 
