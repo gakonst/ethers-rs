@@ -87,7 +87,7 @@ impl OtherFields {
     /// ```
     /// # use ethers_core::types::{OtherFields, U64};
     /// fn d(mut other: OtherFields) {
-    ///  let (key, l1_block_number_result) = other.remove_entry_deserialized::<U64>("l1BlockNumber").unwrap();
+    ///  let (key, l1_block_number_result) : (_, serde_json::Result<U64>) = other.remove_entry_deserialized("l1BlockNumber").unwrap();
     /// let l1_block_number = l1_block_number_result.unwrap();
     /// assert!(!other.contains_key("l1BlockNumber"));
     /// # }
