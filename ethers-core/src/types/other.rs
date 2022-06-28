@@ -27,7 +27,6 @@ impl OtherFields {
     /// ```
     pub fn get_with<F, V>(&self, key: impl AsRef<str>, with: F) -> Option<V>
     where
-        V: DeserializeOwned,
         F: FnOnce(serde_json::Value) -> V,
     {
         self.inner.get(key.as_ref()).cloned().map(with)
@@ -38,7 +37,7 @@ impl OtherFields {
     /// ```
     /// # use ethers_core::types::{OtherFields, U64};
     /// fn d(other: OtherFields) {
-    ///  let l1_block_number = other.get_deserialized::<U64>("l1BlockNumber").unwrap().unwrap();
+    ///  let l1_block_number: U64 = other.get_deserialized("l1BlockNumber").unwrap().unwrap();
     /// # }
     /// ```
     pub fn get_deserialized<V: DeserializeOwned>(
@@ -53,7 +52,7 @@ impl OtherFields {
     /// ```
     /// # use ethers_core::types::{OtherFields, U64};
     /// fn d(mut other: OtherFields) {
-    ///  let l1_block_number = other.remove_deserialized::<U64>("l1BlockNumber").unwrap().unwrap();
+    ///  let l1_block_number: U64 = other.remove_deserialized("l1BlockNumber").unwrap().unwrap();
     /// assert!(!other.contains_key("l1BlockNumber"));
     /// # }
     /// ```
@@ -72,13 +71,12 @@ impl OtherFields {
     /// ```
     /// # use ethers_core::types::{OtherFields, U64};
     /// fn d(mut other: OtherFields) {
-    ///  let l1_block_number = other.remove_with("l1BlockNumber", |value| serde_json::from_value::<U64>(value)).unwrap().unwrap();
+    ///  let l1_block_number: U64 = other.remove_with("l1BlockNumber", |value| serde_json::from_value(value)).unwrap().unwrap();
     /// # }
     /// ```
     /// **Note:** this will also remove the value if deserializing it resulted in an error
     pub fn remove_with<F, V>(&mut self, key: impl AsRef<str>, with: F) -> Option<V>
     where
-        V: DeserializeOwned,
         F: FnOnce(serde_json::Value) -> V,
     {
         self.inner.remove(key.as_ref()).map(with)
