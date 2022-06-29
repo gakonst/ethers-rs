@@ -78,20 +78,17 @@ where
     P: PubsubClient,
     R: DeserializeOwned,
 {
-    type Item = R;
+    type Item = Result<R, serde_json::Error>;
 
     fn poll_next(self: Pin<&mut Self>, ctx: &mut Context) -> Poll<Option<Self::Item>> {
         if !self.loaded_elements.is_empty() {
-            let next_element = self.get_mut().loaded_elements.pop_front();
+            let next_element = self.get_mut().loaded_elements.pop_front().map(|s| Ok(s));
             return Poll::Ready(next_element)
         }
 
         let this = self.project();
         match futures_util::ready!(this.rx.poll_next(ctx)) {
-            Some(item) => match serde_json::from_str(item.get()) {
-                Ok(res) => Poll::Ready(Some(res)),
-                _ => Poll::Pending,
-            },
+            Some(item) => Poll::Ready(Some(serde_json::from_str(item.get()))),
             None => Poll::Ready(None),
         }
     }
