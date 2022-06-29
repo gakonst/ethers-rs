@@ -158,6 +158,14 @@ impl TypedTransaction {
         }
     }
 
+    pub fn gas_mut(&mut self) -> &mut Option<U256> {
+        match self {
+            Legacy(inner) => &mut inner.gas,
+            Eip2930(inner) => &mut inner.tx.gas,
+            Eip1559(inner) => &mut inner.gas,
+        }
+    }
+
     pub fn set_gas<T: Into<U256>>(&mut self, gas: T) -> &mut Self {
         let gas = gas.into();
         match self {
