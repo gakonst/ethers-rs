@@ -140,12 +140,23 @@ impl Context {
         let mut struct_defs = Vec::new();
         let mut struct_names = Vec::new();
         let mut variant_names = Vec::new();
+
+        let mut r_struct_defs = Vec::new();
+        let mut r_struct_names = Vec::new();
+        let mut r_variant_names = Vec::new();
         for function in self.abi.functions.values().flatten() {
             let signature = function.abi_signature();
             let alias = aliases.get(&signature);
+
+            // input (calldata)
             struct_defs.push(self.expand_call_struct(function, alias)?);
             struct_names.push(expand_call_struct_name(function, alias));
             variant_names.push(expand_call_struct_variant_name(function, alias));
+
+            // output (return data)
+            r_struct_defs.push(self.expand_return_struct(function, alias)?);
+            r_struct_names.push(expand_return_struct_name(function, alias));
+            r_variant_names.push(expand_return_struct_variant_name(function, alias));
         }
 
         let struct_def_tokens = quote! {
