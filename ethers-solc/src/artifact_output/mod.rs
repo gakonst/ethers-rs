@@ -1,8 +1,16 @@
 //! Output artifact handling
 
 use crate::{
-    artifacts::FileToContractsMap, error::Result, utils, HardhatArtifact, ProjectPathsConfig,
-    SolcError,
+    artifacts::{
+        contract::{CompactContract, CompactContractBytecode, Contract},
+        BytecodeObject, CompactBytecode, CompactContractBytecodeCow, CompactDeployedBytecode,
+        FileToContractsMap, SourceFile,
+    },
+    compile::output::{contracts::VersionedContracts, sources::VersionedSourceFiles},
+    error::Result,
+    sourcemap::{SourceMap, SyntaxError},
+    sources::VersionedSourceFile,
+    utils, HardhatArtifact, ProjectPathsConfig, SolcError,
 };
 use ethers_core::{abi::Abi, types::Bytes};
 use semver::Version;
@@ -13,18 +21,7 @@ use std::{
     fmt, fs, io,
     path::{Path, PathBuf},
 };
-
 mod configurable;
-use crate::{
-    artifacts::{
-        contract::{CompactContract, CompactContractBytecode, Contract},
-        BytecodeObject, CompactBytecode, CompactContractBytecodeCow, CompactDeployedBytecode,
-        SourceFile,
-    },
-    compile::output::{contracts::VersionedContracts, sources::VersionedSourceFiles},
-    sourcemap::{SourceMap, SyntaxError},
-    sources::VersionedSourceFile,
-};
 pub use configurable::*;
 
 /// Represents unique artifact metadata for identifying artifacts on output

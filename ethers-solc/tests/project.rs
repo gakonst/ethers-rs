@@ -139,6 +139,7 @@ fn can_compile_configured() {
             metadata: true,
             ir: true,
             ir_optimized: true,
+            opcodes: true,
             ..Default::default()
         },
         ..Default::default()
@@ -152,6 +153,7 @@ fn can_compile_configured() {
     assert!(artifact.raw_metadata.is_some());
     assert!(artifact.ir.is_some());
     assert!(artifact.ir_optimized.is_some());
+    assert!(artifact.opcodes.is_some());
 }
 
 #[test]
