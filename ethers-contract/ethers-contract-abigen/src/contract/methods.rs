@@ -135,6 +135,42 @@ impl Context {
         })
     }
 
+    /// Expands to the corresponding struct type based on the inputs of the given function
+    fn expand_return_struct(
+        &self,
+        function: &Function,
+        alias: Option<&MethodAlias>,
+    ) -> Result<TokenStream> {
+        let call_name = expand_return_struct_name(function, alias);
+        let fields = self.expand_output_params(function)?;
+        // expand as a tuple if all fields are anonymous
+        let all_anonymous_fields = function.inputs.iter().all(|input| input.name.is_empty());
+        let call_type_definition = if all_anonymous_fields {
+            // expand to a tuple struct
+            expand_data_tuple(&call_name, &fields)
+        } else {
+            // expand to a struct
+            expand_data_struct(&call_name, &fields)
+        };
+        let abi_signature = function.abi_signature();
+        let doc = format!(
+            "Container type for all return fields from the `{}` function with signature `{}` and selector `{:?}`",
+            function.name,
+            abi_signature,
+            function.selector()
+        );
+        let abi_signature_doc = util::expand_doc(&doc);
+        let ethers_contract = ethers_contract_crate();
+        // use the same derives as for events
+        let derives = util::expand_derives(&self.event_derives);
+
+        Ok(quote! {
+            #abi_signature_doc
+            #[derive(Clone, Debug, Default, Eq, PartialEq, #ethers_contract::EthCall, #ethers_contract::EthDisplay, #derives)]
+            pub #call_type_definition
+        })
+    }
+
     /// Expands all structs
     fn expand_call_structs(&self, aliases: BTreeMap<String, MethodAlias>) -> Result<TokenStream> {
         let mut struct_defs = Vec::new();
@@ -235,6 +271,19 @@ impl Context {
         let mut args = Vec::with_capacity(fun.inputs.len());
         for (idx, param) in fun.inputs.iter().enumerate() {
             let name = util::expand_input_name(idx, &param.name);
+            let ty = self.expand_input_param_type(fun, &param.name, &param.kind)?;
+            args.push((name, ty));
+        }
+        Ok(args)
+    }
+
+    /// Expands to the `name : type` pairs of the function's inputs
+    fn expand_output_params(&self, fun: &Function) -> Result<Vec<(TokenStream, TokenStream)>> {
+        let mut args = Vec::with_capacity(fun.outputs.len());
+        for (idx, param) in fun.outputs.iter().enumerate() {
+            // NB we use `_input_` methods...
+            let name = util::expand_input_name(idx, &param.name);
+            // NB we use `_input_` methods...
             let ty = self.expand_input_param_type(fun, &param.name, &param.kind)?;
             args.push((name, ty));
         }
