@@ -678,37 +678,32 @@ fn expand_function_name(function: &Function, alias: Option<&MethodAlias>) -> Ide
     }
 }
 
-/// Expands to the name of the call struct
-fn expand_call_struct_name(function: &Function, alias: Option<&MethodAlias>) -> Ident {
+/// Expands the name of a struct by a postfix
+fn expand_struct_name_postfix(
+    function: &Function,
+    alias: Option<&MethodAlias>,
+    postfix: &str,
+) -> Ident {
     let name = if let Some(alias) = alias {
-        format!("{}Call", alias.struct_name)
+        format!("{}{}", alias.struct_name, postfix)
     } else {
-        format!("{}Call", util::safe_pascal_case(&function.name))
+        format!("{}{}", util::safe_pascal_case(&function.name), postfix)
     };
     util::ident(&name)
 }
 
 /// Expands to the name of the call struct
-fn expand_call_struct_variant_name(function: &Function, alias: Option<&MethodAlias>) -> Ident {
-    if let Some(alias) = alias {
-        alias.struct_name.clone()
-    } else {
-        util::safe_ident(&util::safe_pascal_case(&function.name))
-    }
+fn expand_call_struct_name(function: &Function, alias: Option<&MethodAlias>) -> Ident {
+    expand_struct_name_postfix(function, alias, "Call")
 }
 
 /// Expands to the name of the return struct
 fn expand_return_struct_name(function: &Function, alias: Option<&MethodAlias>) -> Ident {
-    let name = if let Some(alias) = alias {
-        format!("{}Return", alias.struct_name)
-    } else {
-        format!("{}Return", util::safe_pascal_case(&function.name))
-    };
-    util::ident(&name)
+    expand_struct_name_postfix(function, alias, "Return")
 }
 
-/// Expands to the name of the return struct
-fn expand_return_struct_variant_name(function: &Function, alias: Option<&MethodAlias>) -> Ident {
+/// Expands to the name of the call struct
+fn expand_call_struct_variant_name(function: &Function, alias: Option<&MethodAlias>) -> Ident {
     if let Some(alias) = alias {
         alias.struct_name.clone()
     } else {
