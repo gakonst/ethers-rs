@@ -37,9 +37,15 @@ impl Context {
             .collect::<Result<Vec<_>>>()?;
 
         let function_impls = quote! { #( #functions )* };
-        let call_structs = self.expand_call_structs(aliases)?;
+        let call_structs = self.expand_call_structs(aliases.clone())?;
+        let return_structs = self.expand_return_structs(aliases)?;
 
-        Ok((function_impls, call_structs))
+        let all_structs = quote! {
+            #call_structs
+            #return_structs
+        };
+
+        Ok((function_impls, all_structs))
     }
 
     /// Returns all deploy (constructor) implementations
@@ -171,28 +177,17 @@ impl Context {
         })
     }
 
-    /// Expands all structs
+    /// Expands all call structs
     fn expand_call_structs(&self, aliases: BTreeMap<String, MethodAlias>) -> Result<TokenStream> {
         let mut struct_defs = Vec::new();
         let mut struct_names = Vec::new();
         let mut variant_names = Vec::new();
-
-        let mut r_struct_defs = Vec::new();
-        let mut r_struct_names = Vec::new();
-        let mut r_variant_names = Vec::new();
         for function in self.abi.functions.values().flatten() {
             let signature = function.abi_signature();
             let alias = aliases.get(&signature);
-
-            // input (calldata)
             struct_defs.push(self.expand_call_struct(function, alias)?);
             struct_names.push(expand_call_struct_name(function, alias));
             variant_names.push(expand_call_struct_variant_name(function, alias));
-
-            // output (return data)
-            r_struct_defs.push(self.expand_return_struct(function, alias)?);
-            r_struct_names.push(expand_return_struct_name(function, alias));
-            r_variant_names.push(expand_return_struct_variant_name(function, alias));
         }
 
         let struct_def_tokens = quote! {
@@ -259,6 +254,22 @@ impl Context {
         )*
 
         })
+    }
+
+    /// Expands all return structs
+    fn expand_return_structs(&self, aliases: BTreeMap<String, MethodAlias>) -> Result<TokenStream> {
+        let mut struct_defs = Vec::new();
+        for function in self.abi.functions.values().flatten() {
+            let signature = function.abi_signature();
+            let alias = aliases.get(&signature);
+            struct_defs.push(self.expand_return_struct(function, alias)?);
+        }
+
+        let struct_def_tokens = quote! {
+            #(#struct_defs)*
+        };
+
+        Ok(struct_def_tokens)
     }
 
     /// The name ident of the calls enum
