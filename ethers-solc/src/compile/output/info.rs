@@ -1,5 +1,5 @@
 //! Commonly used identifiers for contracts in the compiled output
-use std::{convert::TryFrom, fmt, str::FromStr};
+use std::{borrow::Cow, convert::TryFrom, fmt, str::FromStr};
 
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 #[error("{0}")]
@@ -74,6 +74,39 @@ impl From<FullContractInfo> for ContractInfo {
     fn from(info: FullContractInfo) -> Self {
         let FullContractInfo { path, name } = info;
         ContractInfo { path: Some(path), name }
+    }
+}
+
+/// The reference type for `ContractInfo`
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+pub struct ContractInfoRef<'a> {
+    pub path: Option<Cow<'a, str>>,
+    pub name: Cow<'a, str>,
+}
+
+impl<'a> From<ContractInfo> for ContractInfoRef<'a> {
+    fn from(info: ContractInfo) -> Self {
+        ContractInfoRef { path: info.path.map(Into::into), name: info.name.into() }
+    }
+}
+
+impl<'a> From<&'a ContractInfo> for ContractInfoRef<'a> {
+    fn from(info: &'a ContractInfo) -> Self {
+        ContractInfoRef {
+            path: info.path.as_deref().map(Into::into),
+            name: info.name.as_str().into(),
+        }
+    }
+}
+impl<'a> From<FullContractInfo> for ContractInfoRef<'a> {
+    fn from(info: FullContractInfo) -> Self {
+        ContractInfoRef { path: Some(info.path.into()), name: info.name.into() }
+    }
+}
+
+impl<'a> From<&'a FullContractInfo> for ContractInfoRef<'a> {
+    fn from(info: &'a FullContractInfo) -> Self {
+        ContractInfoRef { path: Some(info.path.as_str().into()), name: info.name.as_str().into() }
     }
 }
 
