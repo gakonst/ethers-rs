@@ -25,6 +25,8 @@ pub struct ProjectPathsConfig {
     pub cache: PathBuf,
     /// Where to store build artifacts
     pub artifacts: PathBuf,
+    /// Where to store the build info files
+    pub build_infos: PathBuf,
     /// Where to find sources
     pub sources: PathBuf,
     /// Where to find tests
@@ -67,6 +69,7 @@ impl ProjectPathsConfig {
     pub fn paths(&self) -> ProjectPaths {
         ProjectPaths {
             artifacts: self.artifacts.clone(),
+            build_infos: self.build_infos.clone(),
             sources: self.sources.clone(),
             tests: self.tests.clone(),
             scripts: self.scripts.clone(),
@@ -387,6 +390,7 @@ impl fmt::Display for ProjectPathsConfig {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct ProjectPaths {
     pub artifacts: PathBuf,
+    pub build_infos: PathBuf,
     pub sources: PathBuf,
     pub tests: PathBuf,
     pub scripts: PathBuf,
@@ -398,6 +402,7 @@ impl ProjectPaths {
     pub fn join_all(&mut self, root: impl AsRef<Path>) -> &mut Self {
         let root = root.as_ref();
         self.artifacts = root.join(&self.artifacts);
+        self.build_infos = root.join(&self.build_infos);
         self.sources = root.join(&self.sources);
         self.tests = root.join(&self.tests);
         self.scripts = root.join(&self.scripts);
@@ -412,6 +417,9 @@ impl ProjectPaths {
 
         if let Ok(prefix) = self.artifacts.strip_prefix(base) {
             self.artifacts = prefix.to_path_buf();
+        }
+        if let Ok(prefix) = self.build_infos.strip_prefix(base) {
+            self.build_infos = prefix.to_path_buf();
         }
         if let Ok(prefix) = self.sources.strip_prefix(base) {
             self.sources = prefix.to_path_buf();
@@ -436,6 +444,7 @@ impl Default for ProjectPaths {
     fn default() -> Self {
         Self {
             artifacts: "out".into(),
+            build_infos: ["out", "build-info"].iter().collect::<PathBuf>(),
             sources: "src".into(),
             tests: "test".into(),
             scripts: "script".into(),
@@ -460,6 +469,7 @@ impl PathStyle {
             PathStyle::Dapptools => ProjectPathsConfig::builder()
                 .sources(root.join("src"))
                 .artifacts(root.join("out"))
+                .build_infos(root.join("out").join("build-info"))
                 .lib(root.join("lib"))
                 .remappings(Remapping::find_many(&root.join("lib")))
                 .root(root)
@@ -467,6 +477,7 @@ impl PathStyle {
             PathStyle::HardHat => ProjectPathsConfig::builder()
                 .sources(root.join("contracts"))
                 .artifacts(root.join("artifacts"))
+                .build_infos(root.join("artifacts").join("build-info"))
                 .lib(root.join("node_modules"))
                 .root(root)
                 .build()?,
@@ -479,6 +490,7 @@ pub struct ProjectPathsConfigBuilder {
     root: Option<PathBuf>,
     cache: Option<PathBuf>,
     artifacts: Option<PathBuf>,
+    build_infos: Option<PathBuf>,
     sources: Option<PathBuf>,
     tests: Option<PathBuf>,
     scripts: Option<PathBuf>,
@@ -499,6 +511,11 @@ impl ProjectPathsConfigBuilder {
 
     pub fn artifacts(mut self, artifacts: impl Into<PathBuf>) -> Self {
         self.artifacts = Some(utils::canonicalized(artifacts));
+        self
+    }
+
+    pub fn build_infos(mut self, build_infos: impl Into<PathBuf>) -> Self {
+        self.build_infos = Some(utils::canonicalized(build_infos));
         self
     }
 
@@ -561,6 +578,9 @@ impl ProjectPathsConfigBuilder {
             artifacts: self
                 .artifacts
                 .unwrap_or_else(|| ProjectPathsConfig::find_artifacts_dir(&root)),
+            build_infos: self.build_infos.unwrap_or_else(|| {
+                ProjectPathsConfig::find_artifacts_dir(&root).join("build-info")
+            }),
             sources: self.sources.unwrap_or_else(|| ProjectPathsConfig::find_source_dir(&root)),
             tests: self.tests.unwrap_or_else(|| root.join("test")),
             scripts: self.scripts.unwrap_or_else(|| root.join("script")),
@@ -702,6 +722,7 @@ mod tests {
         let root = crate::utils::tempdir("root").unwrap();
         let out = root.path().join("out");
         let artifacts = root.path().join("artifacts");
+        let build_infos = artifacts.join("build-info");
         let contracts = root.path().join("contracts");
         let src = root.path().join("src");
         let lib = root.path().join("lib");
@@ -729,6 +750,11 @@ mod tests {
             ProjectPathsConfig::builder().build_with_root(&root).artifacts,
             utils::canonicalized(artifacts),
         );
+        assert_eq!(
+            ProjectPathsConfig::builder().build_with_root(&root).build_infos,
+            utils::canonicalized(build_infos)
+        );
+
         std::fs::File::create(&out).unwrap();
         assert_eq!(ProjectPathsConfig::find_artifacts_dir(root), out,);
         assert_eq!(
