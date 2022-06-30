@@ -9,6 +9,7 @@ use crate::{
 };
 use rlp::{Decodable, DecoderError, RlpStream};
 use serde::{Deserialize, Serialize};
+use std::cmp::Ordering;
 
 /// Details of a signed transaction
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
@@ -431,6 +432,28 @@ impl rlp::Encodable for TransactionReceipt {
         s.append(&self.cumulative_gas_used);
         s.append(&self.logs_bloom);
         s.append_list(&self.logs);
+    }
+}
+
+// Compares the transaction receipt against another receipt by checking the blocks first and then
+// the transaction index in the block
+impl Ord for TransactionReceipt {
+    fn cmp(&self, other: &Self) -> Ordering {
+        match (self.block_number, other.block_number) {
+            (Some(number), Some(other_number)) => match number.cmp(&other_number) {
+                Ordering::Equal => self.transaction_index.cmp(&other.transaction_index),
+                ord => ord,
+            },
+            (Some(_), None) => Ordering::Less,
+            (None, Some(_)) => Ordering::Greater,
+            (None, None) => self.transaction_index.cmp(&other.transaction_index),
+        }
+    }
+}
+
+impl PartialOrd<Self> for TransactionReceipt {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }
 
@@ -885,5 +908,18 @@ mod tests {
         assert!(receipt.to.is_none());
         let receipt = serde_json::to_value(receipt).unwrap();
         assert_eq!(v, receipt);
+    }
+
+    #[test]
+    fn can_sort_receipts() {
+        let mut a = TransactionReceipt { block_number: Some(0u64.into()), ..Default::default() };
+        let b = TransactionReceipt { block_number: Some(1u64.into()), ..Default::default() };
+        assert!(a < b);
+
+        a = b.clone();
+        assert_eq!(a.cmp(&b), Ordering::Equal);
+
+        a.transaction_index = 1u64.into();
+        assert!(a > b);
     }
 }
