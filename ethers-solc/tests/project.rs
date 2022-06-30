@@ -15,6 +15,7 @@ use ethers_solc::{
     },
     buildinfo::BuildInfo,
     cache::{SolFilesCache, SOLIDITY_FILES_CACHE_FILENAME},
+    info::ContractInfo,
     project_util::*,
     remappings::Remapping,
     CompilerInput, ConfigurableArtifacts, ExtraOutputValues, Graph, Project, ProjectCompileOutput,
@@ -1548,9 +1549,16 @@ fn can_compile_sparse_with_link_references() {
     let lib = dup.remove_first("MyLib");
     assert!(lib.is_none());
 
-    let lib = output.remove(my_lib_path.to_string_lossy(), "MyLib");
+    dup = output.clone();
+    let lib = dup.remove(my_lib_path.to_string_lossy(), "MyLib");
     assert!(lib.is_some());
-    let lib = output.remove(my_lib_path.to_string_lossy(), "MyLib");
+    let lib = dup.remove(my_lib_path.to_string_lossy(), "MyLib");
+    assert!(lib.is_none());
+
+    let info = ContractInfo::new(format!("{}:{}", my_lib_path.to_string_lossy(), "MyLib"));
+    let lib = output.remove_contract(&info);
+    assert!(lib.is_some());
+    let lib = output.remove_contract(&info);
     assert!(lib.is_none());
 }
 

@@ -6,6 +6,7 @@ use crate::{
         Error,
     },
     buildinfo::RawBuildInfo,
+    info::ContractInfoRef,
     sources::{VersionedSourceFile, VersionedSourceFiles},
     ArtifactId, ArtifactOutput, Artifacts, CompilerOutput, ConfigurableArtifacts, SolcIoError,
 };
@@ -376,6 +377,38 @@ impl AggregatedCompilerOutput {
     /// ```
     pub fn remove(&mut self, path: impl AsRef<str>, contract: impl AsRef<str>) -> Option<Contract> {
         self.contracts.remove(path, contract)
+    }
+
+    /// Removes the contract with matching path and name using the `<path>:<contractname>` pattern
+    /// where `path` is optional.
+    ///
+    /// If the `path` segment is `None`, then the first matching `Contract` is returned, see
+    /// [Self::remove_first]
+    ///
+    ///
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use ethers_solc::Project;
+    /// use ethers_solc::artifacts::*;
+    /// use ethers_solc::info::ContractInfo;
+    /// # fn demo(project: Project) {
+    /// let mut output = project.compile().unwrap().output();
+    /// let info = ContractInfo::new("src/Greeter.sol:Greeter");
+    /// let contract = output.remove_contract(&info).unwrap();
+    /// # }
+    /// ```
+    pub fn remove_contract<'a>(
+        &mut self,
+        info: impl Into<ContractInfoRef<'a>>,
+    ) -> Option<Contract> {
+        let ContractInfoRef { path, name } = info.into();
+        if let Some(path) = path {
+            self.remove(path, name)
+        } else {
+            self.remove_first(name)
+        }
     }
 
     /// Iterate over all contracts and their names
