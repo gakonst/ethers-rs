@@ -1,4 +1,12 @@
 //! A configurable artifacts handler implementation
+//!
+//! Configuring artifacts requires two pieces: the `ConfigurableArtifacts` handler, which contains
+//! the configuration of how to construct the `ConfigurableArtifact` type based on a `Contract`. The
+//! `ConfigurableArtifacts` populates a single `Artifact`, the `ConfigurableArtifact`, by default
+//! with essential entries only, such as `abi`, `bytecode`,..., but may include additional values
+//! based on its `ExtraOutputValues` that maps to various objects in the solc contract output, see
+//! also: [`OutputSelection`](crate::artifacts::OutputSelection). In addition to that some output
+//! values can also be emitted as standalone files.
 
 use crate::{
     artifacts::{
@@ -33,6 +41,8 @@ pub struct ConfigurableContractArtifact {
     pub deployed_bytecode: Option<CompactDeployedBytecode>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub assembly: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub opcodes: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub method_identifiers: Option<BTreeMap<String, String>>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -248,6 +258,7 @@ impl ArtifactOutput for ConfigurableArtifacts {
         let mut artifact_assembly = None;
         let mut artifact_storage_layout = None;
         let mut generated_sources = None;
+        let mut opcodes = None;
 
         let Contract {
             abi,
@@ -298,11 +309,15 @@ impl ArtifactOutput for ConfigurableArtifacts {
 
             if self.additional_values.function_debug_data {
                 artifact_function_debug_data =
-                    bytecode.as_ref().map(|b| b.function_debug_data.clone());
+                    bytecode.as_mut().map(|code| std::mem::take(&mut code.function_debug_data));
             }
             if self.additional_values.generated_sources {
                 generated_sources =
                     bytecode.as_mut().map(|code| std::mem::take(&mut code.generated_sources));
+            }
+
+            if self.additional_values.opcodes {
+                opcodes = bytecode.as_mut().and_then(|code| code.opcodes.take())
             }
 
             artifact_bytecode = bytecode.map(Into::into);
@@ -322,6 +337,7 @@ impl ArtifactOutput for ConfigurableArtifacts {
             bytecode: artifact_bytecode,
             deployed_bytecode: artifact_deployed_bytecode,
             assembly: artifact_assembly,
+            opcodes,
             function_debug_data: artifact_function_debug_data,
             method_identifiers: artifact_method_identifiers,
             gas_estimates: artifact_gas_estimates,
@@ -373,6 +389,7 @@ pub struct ExtraOutputValues {
     pub function_debug_data: bool,
     pub generated_sources: bool,
     pub source_map: bool,
+    pub opcodes: bool,
 
     /// PRIVATE: This structure may grow, As such, constructing this structure should
     /// _always_ be done using a public constructor or update syntax:
@@ -408,6 +425,7 @@ impl ExtraOutputValues {
             function_debug_data: true,
             generated_sources: true,
             source_map: true,
+            opcodes: true,
             __non_exhaustive: (),
         }
     }
@@ -444,6 +462,7 @@ impl ExtraOutputValues {
                         config.method_identifiers = true;
                         config.generated_sources = true;
                         config.source_map = true;
+                        config.opcodes = true;
                     }
                     EvmOutputSelection::Assembly => {
                         config.assembly = true;
@@ -456,6 +475,9 @@ impl ExtraOutputValues {
                     }
                     EvmOutputSelection::ByteCode(BytecodeOutputSelection::FunctionDebugData) => {
                         config.function_debug_data = true;
+                    }
+                    EvmOutputSelection::ByteCode(BytecodeOutputSelection::Opcodes) => {
+                        config.opcodes = true;
                     }
                     EvmOutputSelection::ByteCode(BytecodeOutputSelection::GeneratedSources) => {
                         config.generated_sources = true;
