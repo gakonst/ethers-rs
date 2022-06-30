@@ -166,6 +166,28 @@ impl VersionedContracts {
         })
     }
 
+    /// Returns an iterator over (`file`, `name`, `Contract`)
+    pub fn into_contracts_with_files(self) -> impl Iterator<Item = (String, String, Contract)> {
+        self.0.into_iter().flat_map(|(file, contracts)| {
+            contracts.into_iter().flat_map(move |(name, c)| {
+                let file = file.clone();
+                c.into_iter().map(move |c| (file.clone(), name.clone(), c.contract))
+            })
+        })
+    }
+
+    /// Returns an iterator over (`file`, `name`, `Contract`, `Version`)
+    pub fn into_contracts_with_files_and_version(
+        self,
+    ) -> impl Iterator<Item = (String, String, Contract, Version)> {
+        self.0.into_iter().flat_map(|(file, contracts)| {
+            contracts.into_iter().flat_map(move |(name, c)| {
+                let file = file.clone();
+                c.into_iter().map(move |c| (file.clone(), name.clone(), c.contract, c.version))
+            })
+        })
+    }
+
     /// Sets the contract's file paths to `root` adjoined to `self.file`.
     pub fn join_all(&mut self, root: impl AsRef<Path>) -> &mut Self {
         let root = root.as_ref();

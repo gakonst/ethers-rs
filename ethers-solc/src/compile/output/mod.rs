@@ -388,6 +388,32 @@ impl AggregatedCompilerOutput {
         self.contracts.into_contracts()
     }
 
+    /// Returns an iterator over (`file`, `name`, `Contract`)
+    pub fn contracts_with_files_iter(&self) -> impl Iterator<Item = (&String, &String, &Contract)> {
+        self.contracts.contracts_with_files()
+    }
+
+    /// Returns an iterator over (`file`, `name`, `Contract`)
+    pub fn contracts_with_files_into_iter(
+        self,
+    ) -> impl Iterator<Item = (String, String, Contract)> {
+        self.contracts.into_contracts_with_files()
+    }
+
+    /// Returns an iterator over (`file`, `name`, `Contract`, `Version`)
+    pub fn contracts_with_files_and_version_iter(
+        &self,
+    ) -> impl Iterator<Item = (&String, &String, &Contract, &Version)> {
+        self.contracts.contracts_with_files_and_version()
+    }
+
+    /// Returns an iterator over (`file`, `name`, `Contract`, `Version`)
+    pub fn contracts_with_files_and_version_into_iter(
+        self,
+    ) -> impl Iterator<Item = (String, String, Contract, Version)> {
+        self.contracts.into_contracts_with_files_and_version()
+    }
+
     /// Given the contract file's path and the contract's name, tries to return the contract's
     /// bytecode, runtime bytecode, and abi
     /// # Example
