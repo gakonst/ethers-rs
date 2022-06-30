@@ -125,8 +125,8 @@ impl<T: ArtifactOutput> Project<T> {
     }
 
     /// Returns the path to the `build-info` directory nested in the artifacts dir
-    pub fn build_info_path(&self) -> PathBuf {
-        self.paths.artifacts.join("build-info")
+    pub fn build_info_path(&self) -> &PathBuf {
+        &self.paths.build_infos
     }
 
     /// Returns the root directory of the project
