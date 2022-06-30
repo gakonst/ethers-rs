@@ -277,6 +277,7 @@ impl Context {
         util::ident(&format!("{}Calls", self.contract_ident))
     }
 
+    /// Expands to the `name : type` pairs of the function's parameters
     fn expand_params(
         &self,
         fun: &Function,
@@ -298,7 +299,7 @@ impl Context {
         self.expand_params(fun, &fun.inputs)
     }
 
-    /// Expands to the `name : type` pairs of the function's inputs
+    /// Expands to the `name : type` pairs of the function's outputs
     fn expand_output_params(&self, fun: &Function) -> Result<Vec<(TokenStream, TokenStream)>> {
         self.expand_params(fun, &fun.outputs)
     }
