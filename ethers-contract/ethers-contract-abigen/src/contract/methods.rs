@@ -277,28 +277,30 @@ impl Context {
         util::ident(&format!("{}Calls", self.contract_ident))
     }
 
+    fn expand_params(
+        &self,
+        fun: &Function,
+        params: &[Param],
+    ) -> Result<Vec<(TokenStream, TokenStream)>> {
+        params
+            .iter()
+            .enumerate()
+            .map(|(idx, param)| {
+                let name = util::expand_input_name(idx, &param.name);
+                let ty = self.expand_input_param_type(fun, &param.name, &param.kind)?;
+                Ok((name, ty))
+            })
+            .collect()
+    }
+
     /// Expands to the `name : type` pairs of the function's inputs
     fn expand_input_params(&self, fun: &Function) -> Result<Vec<(TokenStream, TokenStream)>> {
-        let mut args = Vec::with_capacity(fun.inputs.len());
-        for (idx, param) in fun.inputs.iter().enumerate() {
-            let name = util::expand_input_name(idx, &param.name);
-            let ty = self.expand_input_param_type(fun, &param.name, &param.kind)?;
-            args.push((name, ty));
-        }
-        Ok(args)
+        self.expand_params(fun, &fun.inputs)
     }
 
     /// Expands to the `name : type` pairs of the function's inputs
     fn expand_output_params(&self, fun: &Function) -> Result<Vec<(TokenStream, TokenStream)>> {
-        let mut args = Vec::with_capacity(fun.outputs.len());
-        for (idx, param) in fun.outputs.iter().enumerate() {
-            // NB we use `_input_` methods...
-            let name = util::expand_input_name(idx, &param.name);
-            // NB we use `_input_` methods...
-            let ty = self.expand_input_param_type(fun, &param.name, &param.kind)?;
-            args.push((name, ty));
-        }
-        Ok(args)
+        self.expand_params(fun, &fun.outputs)
     }
 
     /// Expands to the return type of a function
