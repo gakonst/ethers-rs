@@ -422,6 +422,24 @@ impl Settings {
                 })
                 .collect(),
         );
+
+        if let Some(mut model_checker) = self.model_checker.take() {
+            model_checker.contracts = model_checker
+                .contracts
+                .into_iter()
+                .map(|(path, contracts)| {
+                    (
+                        Path::new(&path)
+                            .strip_prefix(base)
+                            .map(|p| format!("{}", p.display()))
+                            .unwrap_or(path),
+                        contracts,
+                    )
+                })
+                .collect();
+            self.model_checker = Some(model_checker);
+        }
+
         self
     }
 }
