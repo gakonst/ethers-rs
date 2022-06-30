@@ -626,6 +626,25 @@ fn expand_call_struct_variant_name(function: &Function, alias: Option<&MethodAli
     }
 }
 
+/// Expands to the name of the return struct
+fn expand_return_struct_name(function: &Function, alias: Option<&MethodAlias>) -> Ident {
+    let name = if let Some(alias) = alias {
+        format!("{}Return", alias.struct_name)
+    } else {
+        format!("{}Return", util::safe_pascal_case(&function.name))
+    };
+    util::ident(&name)
+}
+
+/// Expands to the name of the return struct
+fn expand_return_struct_variant_name(function: &Function, alias: Option<&MethodAlias>) -> Ident {
+    if let Some(alias) = alias {
+        alias.struct_name.clone()
+    } else {
+        util::safe_ident(&util::safe_pascal_case(&function.name))
+    }
+}
+
 /// Expands to the tuple struct definition
 fn expand_data_tuple(name: &Ident, params: &[(TokenStream, TokenStream)]) -> TokenStream {
     let fields = params
