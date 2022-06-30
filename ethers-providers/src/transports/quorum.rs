@@ -20,10 +20,10 @@ use thiserror::Error;
 ///
 /// # Example
 ///
-/// Create a `QuorumProvider` that only returns a value if the `Quorum::Majority` of
-/// the weighted providers return the same value.
+/// Create a `QuorumProvider` that uses a homogenous `Provider` type only returns a value if the
+/// `Quorum::Majority` of the weighted providers return the same value.
 ///
-/// ```no_run
+/// ```
 /// use ethers_core::types::U64;
 /// use ethers_providers::{JsonRpcClient, QuorumProvider, Quorum, WeightedProvider, Http};
 /// use std::str::FromStr;
@@ -43,8 +43,37 @@ use thiserror::Error;
 /// # Ok(())
 /// # }
 /// ```
+///
+/// # Example
+///
+/// Create a `QuorumProvider` consisting of different `Provider` types
+///
+/// ```
+/// use ethers_core::types::U64;
+/// use ethers_providers::{JsonRpcClient, QuorumProvider, Quorum, WeightedProvider, Http, Ws};
+/// use std::str::FromStr;
+///
+/// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
+///     let provider: QuorumProvider = QuorumProvider::dyn_rpc()
+///         .add_provider(WeightedProvider::new(Box::new(Http::from_str("http://localhost:8545")?)))
+///         .add_provider(WeightedProvider::with_weight(
+///             Box::new(Ws::connect("ws://localhost:8545").await?),
+///             2,
+///         ))
+///         .add_provider(WeightedProvider::with_weight(
+///             Box::new(Ws::connect("ws://localhost:8545").await?),
+///             2,
+///         ))
+///         // the quorum provider will yield the response if >50% of the weighted inner provider
+///         // returned the same value
+///         .quorum(Quorum::Majority)
+///         .build();
+///
+/// # Ok(())
+/// # }
+/// ```
 #[derive(Debug, Clone)]
-pub struct QuorumProvider<T> {
+pub struct QuorumProvider<T = Box<dyn JsonRpcClientWrapper>> {
     /// What kind of quorum is required
     quorum: Quorum,
     /// The weight at which quorum is reached

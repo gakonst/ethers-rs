@@ -33,8 +33,7 @@ mod ws;
 pub use ws::{ClientError as WsClientError, Ws};
 
 mod quorum;
-pub(crate) use quorum::JsonRpcClientWrapper;
-pub use quorum::{Quorum, QuorumError, QuorumProvider, WeightedProvider};
+pub use quorum::{JsonRpcClientWrapper, Quorum, QuorumError, QuorumProvider, WeightedProvider};
 
 mod rw;
 pub use rw::{RwClient, RwClientError};
