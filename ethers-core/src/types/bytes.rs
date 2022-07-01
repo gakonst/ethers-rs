@@ -1,6 +1,5 @@
 use fastrlp::{Decodable, Encodable};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use thiserror::Error;
 use std::{
     borrow::Borrow,
     clone::Clone,
@@ -8,6 +7,7 @@ use std::{
     ops::Deref,
     str::FromStr,
 };
+use thiserror::Error;
 
 /// Wrapper type around Bytes to deserialize/serialize "0x" prefixed ethereum hex strings
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize, Ord, PartialOrd)]
