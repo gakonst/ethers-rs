@@ -150,7 +150,7 @@ impl Context {
         let call_name = expand_return_struct_name(function, alias);
         let fields = self.expand_output_params(function)?;
         // expand as a tuple if all fields are anonymous
-        let all_anonymous_fields = function.inputs.iter().all(|input| input.name.is_empty());
+        let all_anonymous_fields = function.outputs.iter().all(|output| output.name.is_empty());
         let call_type_definition = if all_anonymous_fields {
             // expand to a tuple struct
             expand_data_tuple(&call_name, &fields)
