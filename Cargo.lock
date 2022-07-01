@@ -1279,6 +1279,7 @@ dependencies = [
  "convert_case",
  "elliptic-curve",
  "ethabi",
+ "fastrlp",
  "generic-array 0.14.5",
  "hex",
  "hex-literal",
@@ -1510,6 +1511,29 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c3fcf0cee53519c866c09b5de1f6c56ff9d647101f81c1964fa632e148896cdf"
 dependencies = [
  "instant",
+]
+
+[[package]]
+name = "fastrlp"
+version = "0.1.1"
+source = "git+https://github.com/vorot93/fastrlp#4ad1aace9948380790d7f922585899e65e44b58f"
+dependencies = [
+ "arrayvec 0.7.2",
+ "auto_impl",
+ "bytes",
+ "ethereum-types",
+ "fastrlp-derive",
+]
+
+[[package]]
+name = "fastrlp-derive"
+version = "0.1.1"
+source = "git+https://github.com/vorot93/fastrlp#4ad1aace9948380790d7f922585899e65e44b58f"
+dependencies = [
+ "bytes",
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
