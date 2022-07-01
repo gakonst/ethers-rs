@@ -4,6 +4,7 @@ use crate::{
     utils::hash_message,
 };
 
+use fastrlp::Decodable;
 use serde::{Deserialize, Serialize};
 use std::{convert::TryFrom, fmt, str::FromStr};
 
@@ -53,7 +54,7 @@ pub enum RecoveryMessage {
     Hash(H256),
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Copy)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Copy, Hash)]
 /// An ECDSA signature
 pub struct Signature {
     /// R value
@@ -140,6 +141,29 @@ impl Signature {
     #[allow(clippy::wrong_self_convention)]
     pub fn to_vec(&self) -> Vec<u8> {
         self.into()
+    }
+
+    /// Decodes a signature from RLP bytes, assuming no RLP header
+    pub(crate) fn decode_signature(buf: &mut &[u8]) -> Result<Self, fastrlp::DecodeError> {
+        let v = u64::decode(buf)?;
+        Ok(Self { r: U256::decode(buf)?, s: U256::decode(buf)?, v })
+    }
+}
+
+impl fastrlp::Decodable for Signature {
+    fn decode(buf: &mut &[u8]) -> Result<Self, fastrlp::DecodeError> {
+        Self::decode_signature(buf)
+    }
+}
+
+impl fastrlp::Encodable for Signature {
+    fn length(&self) -> usize {
+        self.r.length() + self.s.length() + self.v.length()
+    }
+    fn encode(&self, out: &mut dyn bytes::BufMut) {
+        self.v.encode(out);
+        self.r.encode(out);
+        self.s.encode(out);
     }
 }
 
