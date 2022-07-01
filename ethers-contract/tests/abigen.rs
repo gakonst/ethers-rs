@@ -176,7 +176,6 @@ fn can_gen_return_struct() {
     ) {
         let encoded = binding.clone().encode();
         let decoded = T::decode(&encoded).unwrap();
-        dbg!(&binding, &encoded);
         assert_eq!(binding, decoded);
     }
 
