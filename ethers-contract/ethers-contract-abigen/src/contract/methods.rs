@@ -151,7 +151,7 @@ impl Context {
         let fields = self.expand_output_params(function)?;
         // expand as a tuple if all fields are anonymous
         let all_anonymous_fields = function.outputs.iter().all(|output| output.name.is_empty());
-        let call_type_definition = if all_anonymous_fields {
+        let return_type_definition = if all_anonymous_fields {
             // expand to a tuple struct
             expand_data_tuple(&call_name, &fields)
         } else {
@@ -173,7 +173,7 @@ impl Context {
         Ok(quote! {
             #abi_signature_doc
             #[derive(Clone, Debug, Default, Eq, PartialEq, #ethers_contract::EthAbiType, #ethers_contract::EthAbiCodec, #derives)]
-            pub #call_type_definition
+            pub #return_type_definition
         })
     }
 
