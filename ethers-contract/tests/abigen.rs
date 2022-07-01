@@ -1,7 +1,7 @@
 #![cfg(feature = "abigen")]
 #![allow(unused)]
 //! Test cases to validate the `abigen!` macro
-use ethers_contract::{abigen, EthCall, EthEvent};
+use ethers_contract::{abigen, Abigen, EthCall, EthEvent};
 use ethers_core::{
     abi::{AbiDecode, AbiEncode, Address, Tokenizable},
     types::{transaction::eip2718::TypedTransaction, Eip1559TransactionRequest, U256},
@@ -165,6 +165,19 @@ fn can_generate_internal_structs_multiple() {
     let _ = contract.verify(vec![], proof.clone(), vk.clone());
     let contract = MyOtherVerifierContract::new(Address::zero(), client);
     let _ = contract.verify(vec![], proof, vk);
+}
+
+#[test]
+fn can_gen_return_struct() {
+    use AbiEncode;
+
+    abigen!(MultiInputOutput, "ethers-contract/tests/solidity-contracts/MultiInputOutput.json");
+    // just make sure they are accessible and work
+    let dupe_return = DupeIntReturn { out_one: 5.into(), out_two: 1234.into() };
+    let _ = dupe_return.encode();
+    let array_return =
+        ArrayRelayerReturn { outputs: vec![4.into(), 9.into(), 2.into()], some_number: 42.into() };
+    let _ = array_return.encode();
 }
 
 #[test]
