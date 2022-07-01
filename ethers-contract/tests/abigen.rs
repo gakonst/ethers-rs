@@ -170,17 +170,30 @@ fn can_generate_internal_structs_multiple() {
 #[test]
 fn can_gen_return_struct() {
     abigen!(MultiInputOutput, "ethers-contract/tests/solidity-contracts/MultiInputOutput.json");
-    // just make sure they are accessible and work
-    let dupe_initial = DupeIntReturn { out_one: 5.into(), out_two: 1234.into() };
-    let dupe_bytes = dupe_initial.clone().encode();
-    let dupe_decoded = DupeIntReturn::decode(&dupe_bytes).unwrap();
-    assert_eq!(dupe_initial, dupe_decoded);
 
-    let array_initial =
+    fn verify<T: AbiEncode + AbiDecode + Clone + std::fmt::Debug + std::cmp::PartialEq>(
+        binding: T,
+    ) {
+        let encoded = binding.clone().encode();
+        let decoded = T::decode(&encoded).unwrap();
+        dbg!(&binding, &encoded);
+        assert_eq!(binding, decoded);
+    }
+
+    // just make sure they are accessible and work
+
+    let dupe = DupeIntReturn { out_one: 5.into(), out_two: 1234.into() };
+    verify(dupe);
+
+    let array =
         ArrayRelayerReturn { outputs: vec![4.into(), 9.into(), 2.into()], some_number: 42.into() };
-    let array_bytes = array_initial.clone().encode();
-    let array_decoded = ArrayRelayerReturn::decode(&array_bytes).unwrap();
-    assert_eq!(array_initial, array_decoded);
+    verify(array);
+
+    let single = SingleUnnamedReturn { 0: 4321.into() };
+    verify(single);
+
+    // doesnt exist:
+    // let nonexistant = CallWithoutReturnDataReturn;
 }
 
 #[test]

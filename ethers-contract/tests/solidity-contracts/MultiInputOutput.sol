@@ -12,4 +12,13 @@ contract MultiInputOutput {
 		}
 		someNumber = 42;
 	}
+	function singleUnnamed() public pure returns (uint) {
+		return 0x45;
+	}
+	function callWithoutReturnData(uint256 input) public pure {
+		// silence unused errors
+		uint nothing = input;
+		input = nothing;
+		return;
+	}
 }
