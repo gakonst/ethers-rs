@@ -147,20 +147,20 @@ impl Context {
         function: &Function,
         alias: Option<&MethodAlias>,
     ) -> Result<TokenStream> {
-        let call_name = expand_return_struct_name(function, alias);
+        let struct_name = expand_return_struct_name(function, alias);
         let fields = self.expand_output_params(function)?;
         // no point in having structs when there is no data returned
         if function.outputs.len() < 1 {
-            return Ok(quote!{ })
+            return Ok(TokenStream::new())
         }
         // expand as a tuple if all fields are anonymous
         let all_anonymous_fields = function.outputs.iter().all(|output| output.name.is_empty());
         let return_type_definition = if all_anonymous_fields {
             // expand to a tuple struct
-            expand_data_tuple(&call_name, &fields)
+            expand_data_tuple(&struct_name, &fields)
         } else {
             // expand to a struct
-            expand_data_struct(&call_name, &fields)
+            expand_data_struct(&struct_name, &fields)
         };
         let abi_signature = function.abi_signature();
         let doc = format!(
