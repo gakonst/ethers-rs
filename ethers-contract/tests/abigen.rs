@@ -169,15 +169,18 @@ fn can_generate_internal_structs_multiple() {
 
 #[test]
 fn can_gen_return_struct() {
-    use AbiEncode;
-
     abigen!(MultiInputOutput, "ethers-contract/tests/solidity-contracts/MultiInputOutput.json");
     // just make sure they are accessible and work
-    let dupe_return = DupeIntReturn { out_one: 5.into(), out_two: 1234.into() };
-    let _ = dupe_return.encode();
-    let array_return =
+    let dupe_initial = DupeIntReturn { out_one: 5.into(), out_two: 1234.into() };
+    let dupe_bytes = dupe_initial.clone().encode();
+    let dupe_decoded = DupeIntReturn::decode(&dupe_bytes).unwrap();
+    assert_eq!(dupe_initial, dupe_decoded);
+
+    let array_initial =
         ArrayRelayerReturn { outputs: vec![4.into(), 9.into(), 2.into()], some_number: 42.into() };
-    let _ = array_return.encode();
+    let array_bytes = array_initial.clone().encode();
+    let array_decoded = ArrayRelayerReturn::decode(&array_bytes).unwrap();
+    assert_eq!(array_initial, array_decoded);
 }
 
 #[test]
