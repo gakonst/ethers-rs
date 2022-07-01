@@ -150,7 +150,7 @@ impl Context {
         let struct_name = expand_return_struct_name(function, alias);
         let fields = self.expand_output_params(function)?;
         // no point in having structs when there is no data returned
-        if function.outputs.len() < 1 {
+        if function.outputs.is_empty() {
             return Ok(TokenStream::new())
         }
         // expand as a tuple if all fields are anonymous
