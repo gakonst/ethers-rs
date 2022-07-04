@@ -498,7 +498,7 @@ impl<'a> CompactContractRef<'a> {
     /// use ethers_solc::artifacts::*;
     /// # fn demo(project: Project) {
     /// let output = project.compile().unwrap().output();
-    /// let contract = output.find("Greeter").unwrap();
+    /// let contract = output.find_first("Greeter").unwrap();
     /// let contract = contract.unwrap();
     /// # }
     /// ```

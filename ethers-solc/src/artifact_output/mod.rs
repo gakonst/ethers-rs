@@ -19,8 +19,10 @@ use std::{
     borrow::Cow,
     collections::{btree_map::BTreeMap, HashSet},
     fmt, fs, io,
+    ops::Deref,
     path::{Path, PathBuf},
 };
+
 mod configurable;
 pub use configurable::*;
 
@@ -64,7 +66,7 @@ impl ArtifactId {
 }
 
 /// Represents an artifact file representing a [`crate::Contract`]
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ArtifactFile<T> {
     /// The Artifact that was written
     pub artifact: T,
@@ -102,7 +104,7 @@ impl<T> ArtifactFile<T> {
 pub(crate) type ArtifactsMap<T> = FileToContractsMap<Vec<ArtifactFile<T>>>;
 
 /// Represents a set of Artifacts
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Artifacts<T>(pub ArtifactsMap<T>);
 
 impl<T> From<ArtifactsMap<T>> for Artifacts<T> {
@@ -146,6 +148,14 @@ impl<T> AsRef<ArtifactsMap<T>> for Artifacts<T> {
 impl<T> AsMut<ArtifactsMap<T>> for Artifacts<T> {
     fn as_mut(&mut self) -> &mut ArtifactsMap<T> {
         &mut self.0
+    }
+}
+
+impl<T> Deref for Artifacts<T> {
+    type Target = ArtifactsMap<T>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 
@@ -264,18 +274,49 @@ impl<T> Artifacts<T> {
     }
 
     /// Finds the first artifact `T` with a matching contract name
-    pub fn find(&self, contract_name: impl AsRef<str>) -> Option<&T> {
+    pub fn find_first(&self, contract_name: impl AsRef<str>) -> Option<&T> {
         let contract_name = contract_name.as_ref();
         self.0.iter().find_map(|(_file, contracts)| {
             contracts.get(contract_name).and_then(|c| c.get(0).map(|a| &a.artifact))
         })
     }
 
+    ///  Finds the artifact with matching path and name
+    pub fn find(&self, path: impl AsRef<str>, contract: impl AsRef<str>) -> Option<&T> {
+        let contract_path = path.as_ref();
+        let contract_name = contract.as_ref();
+        self.0.iter().filter(|(path, _)| path.as_str() == contract_path).find_map(
+            |(_file, contracts)| {
+                contracts.get(contract_name).and_then(|c| c.get(0).map(|a| &a.artifact))
+            },
+        )
+    }
+
+    /// Removes the artifact with matching file and name
+    pub fn remove(&mut self, path: impl AsRef<str>, contract: impl AsRef<str>) -> Option<T> {
+        let contract_path = path.as_ref();
+        let contract_name = contract.as_ref();
+        self.0.iter_mut().filter(|(path, _)| path.as_str() == contract_path).find_map(
+            |(_file, contracts)| {
+                let mut artifact = None;
+                if let Some((c, mut artifacts)) = contracts.remove_entry(contract_name) {
+                    if !artifacts.is_empty() {
+                        artifact = Some(artifacts.remove(0).artifact);
+                    }
+                    if !artifacts.is_empty() {
+                        contracts.insert(c, artifacts);
+                    }
+                }
+                artifact
+            },
+        )
+    }
+
     /// Removes the first artifact `T` with a matching contract name
     ///
     /// *Note:* if there are multiple artifacts (contract compiled with different solc) then this
     /// returns the first artifact in that set
-    pub fn remove(&mut self, contract_name: impl AsRef<str>) -> Option<T> {
+    pub fn remove_first(&mut self, contract_name: impl AsRef<str>) -> Option<T> {
         let contract_name = contract_name.as_ref();
         self.0.iter_mut().find_map(|(_file, contracts)| {
             let mut artifact = None;
