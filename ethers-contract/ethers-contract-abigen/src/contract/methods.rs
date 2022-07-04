@@ -37,9 +37,15 @@ impl Context {
             .collect::<Result<Vec<_>>>()?;
 
         let function_impls = quote! { #( #functions )* };
-        let call_structs = self.expand_call_structs(aliases)?;
+        let call_structs = self.expand_call_structs(aliases.clone())?;
+        let return_structs = self.expand_return_structs(aliases)?;
 
-        Ok((function_impls, call_structs))
+        let all_structs = quote! {
+            #call_structs
+            #return_structs
+        };
+
+        Ok((function_impls, all_structs))
     }
 
     /// Returns all deploy (constructor) implementations
@@ -135,7 +141,47 @@ impl Context {
         })
     }
 
-    /// Expands all structs
+    /// Expands to the corresponding struct type based on the inputs of the given function
+    fn expand_return_struct(
+        &self,
+        function: &Function,
+        alias: Option<&MethodAlias>,
+    ) -> Result<TokenStream> {
+        let struct_name = expand_return_struct_name(function, alias);
+        let fields = self.expand_output_params(function)?;
+        // no point in having structs when there is no data returned
+        if function.outputs.is_empty() {
+            return Ok(TokenStream::new())
+        }
+        // expand as a tuple if all fields are anonymous
+        let all_anonymous_fields = function.outputs.iter().all(|output| output.name.is_empty());
+        let return_type_definition = if all_anonymous_fields {
+            // expand to a tuple struct
+            expand_data_tuple(&struct_name, &fields)
+        } else {
+            // expand to a struct
+            expand_data_struct(&struct_name, &fields)
+        };
+        let abi_signature = function.abi_signature();
+        let doc = format!(
+            "Container type for all return fields from the `{}` function with signature `{}` and selector `{:?}`",
+            function.name,
+            abi_signature,
+            function.selector()
+        );
+        let abi_signature_doc = util::expand_doc(&doc);
+        let ethers_contract = ethers_contract_crate();
+        // use the same derives as for events
+        let derives = util::expand_derives(&self.event_derives);
+
+        Ok(quote! {
+            #abi_signature_doc
+            #[derive(Clone, Debug, Default, Eq, PartialEq, #ethers_contract::EthAbiType, #ethers_contract::EthAbiCodec, #derives)]
+            pub #return_type_definition
+        })
+    }
+
+    /// Expands all call structs
     fn expand_call_structs(&self, aliases: BTreeMap<String, MethodAlias>) -> Result<TokenStream> {
         let mut struct_defs = Vec::new();
         let mut struct_names = Vec::new();
@@ -214,20 +260,52 @@ impl Context {
         })
     }
 
+    /// Expands all return structs
+    fn expand_return_structs(&self, aliases: BTreeMap<String, MethodAlias>) -> Result<TokenStream> {
+        let mut struct_defs = Vec::new();
+        for function in self.abi.functions.values().flatten() {
+            let signature = function.abi_signature();
+            let alias = aliases.get(&signature);
+            struct_defs.push(self.expand_return_struct(function, alias)?);
+        }
+
+        let struct_def_tokens = quote! {
+            #(#struct_defs)*
+        };
+
+        Ok(struct_def_tokens)
+    }
+
     /// The name ident of the calls enum
     fn expand_calls_enum_name(&self) -> Ident {
         util::ident(&format!("{}Calls", self.contract_ident))
     }
 
+    /// Expands to the `name : type` pairs of the function's parameters
+    fn expand_params(
+        &self,
+        fun: &Function,
+        params: &[Param],
+    ) -> Result<Vec<(TokenStream, TokenStream)>> {
+        params
+            .iter()
+            .enumerate()
+            .map(|(idx, param)| {
+                let name = util::expand_input_name(idx, &param.name);
+                let ty = self.expand_input_param_type(fun, &param.name, &param.kind)?;
+                Ok((name, ty))
+            })
+            .collect()
+    }
+
     /// Expands to the `name : type` pairs of the function's inputs
     fn expand_input_params(&self, fun: &Function) -> Result<Vec<(TokenStream, TokenStream)>> {
-        let mut args = Vec::with_capacity(fun.inputs.len());
-        for (idx, param) in fun.inputs.iter().enumerate() {
-            let name = util::expand_input_name(idx, &param.name);
-            let ty = self.expand_input_param_type(fun, &param.name, &param.kind)?;
-            args.push((name, ty));
-        }
-        Ok(args)
+        self.expand_params(fun, &fun.inputs)
+    }
+
+    /// Expands to the `name : type` pairs of the function's outputs
+    fn expand_output_params(&self, fun: &Function) -> Result<Vec<(TokenStream, TokenStream)>> {
+        self.expand_params(fun, &fun.outputs)
     }
 
     /// Expands to the return type of a function
@@ -607,14 +685,28 @@ fn expand_function_name(function: &Function, alias: Option<&MethodAlias>) -> Ide
     }
 }
 
-/// Expands to the name of the call struct
-fn expand_call_struct_name(function: &Function, alias: Option<&MethodAlias>) -> Ident {
+/// Expands the name of a struct by a postfix
+fn expand_struct_name_postfix(
+    function: &Function,
+    alias: Option<&MethodAlias>,
+    postfix: &str,
+) -> Ident {
     let name = if let Some(alias) = alias {
-        format!("{}Call", alias.struct_name)
+        format!("{}{}", alias.struct_name, postfix)
     } else {
-        format!("{}Call", util::safe_pascal_case(&function.name))
+        format!("{}{}", util::safe_pascal_case(&function.name), postfix)
     };
     util::ident(&name)
+}
+
+/// Expands to the name of the call struct
+fn expand_call_struct_name(function: &Function, alias: Option<&MethodAlias>) -> Ident {
+    expand_struct_name_postfix(function, alias, "Call")
+}
+
+/// Expands to the name of the return struct
+fn expand_return_struct_name(function: &Function, alias: Option<&MethodAlias>) -> Ident {
+    expand_struct_name_postfix(function, alias, "Return")
 }
 
 /// Expands to the name of the call struct

@@ -1,7 +1,7 @@
 #![cfg(feature = "abigen")]
 #![allow(unused)]
 //! Test cases to validate the `abigen!` macro
-use ethers_contract::{abigen, EthCall, EthEvent};
+use ethers_contract::{abigen, Abigen, EthCall, EthEvent};
 use ethers_core::{
     abi::{AbiDecode, AbiEncode, Address, Tokenizable},
     types::{transaction::eip2718::TypedTransaction, Eip1559TransactionRequest, U256},
@@ -165,6 +165,34 @@ fn can_generate_internal_structs_multiple() {
     let _ = contract.verify(vec![], proof.clone(), vk.clone());
     let contract = MyOtherVerifierContract::new(Address::zero(), client);
     let _ = contract.verify(vec![], proof, vk);
+}
+
+#[test]
+fn can_gen_return_struct() {
+    abigen!(MultiInputOutput, "ethers-contract/tests/solidity-contracts/MultiInputOutput.json");
+
+    fn verify<T: AbiEncode + AbiDecode + Clone + std::fmt::Debug + std::cmp::PartialEq>(
+        binding: T,
+    ) {
+        let encoded = binding.clone().encode();
+        let decoded = T::decode(&encoded).unwrap();
+        assert_eq!(binding, decoded);
+    }
+
+    // just make sure they are accessible and work
+
+    let dupe = DupeIntReturn { out_one: 5.into(), out_two: 1234.into() };
+    verify(dupe);
+
+    let array =
+        ArrayRelayerReturn { outputs: vec![4.into(), 9.into(), 2.into()], some_number: 42.into() };
+    verify(array);
+
+    let single = SingleUnnamedReturn { 0: 4321.into() };
+    verify(single);
+
+    // doesnt exist:
+    // let nonexistant = CallWithoutReturnDataReturn;
 }
 
 #[test]
