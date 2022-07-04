@@ -4,7 +4,7 @@ use crate::artifacts::{
 };
 use semver::Version;
 use serde::{Deserialize, Serialize};
-use std::{collections::BTreeMap, path::Path};
+use std::{collections::BTreeMap, ops::Deref, path::Path};
 
 /// file -> [(contract name  -> Contract + solc version)]
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
@@ -34,13 +34,38 @@ impl VersionedContracts {
     /// use ethers_solc::artifacts::*;
     /// # fn demo(project: Project) {
     /// let output = project.compile().unwrap().output();
-    /// let contract = output.find("Greeter").unwrap();
+    /// let contract = output.find_first("Greeter").unwrap();
     /// # }
     /// ```
-    pub fn find(&self, contract: impl AsRef<str>) -> Option<CompactContractRef> {
+    pub fn find_first(&self, contract: impl AsRef<str>) -> Option<CompactContractRef> {
         let contract_name = contract.as_ref();
         self.contracts().find_map(|(name, contract)| {
             (name == contract_name).then(|| CompactContractRef::from(contract))
+        })
+    }
+
+    /// Finds the contract with matching path and name
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use ethers_solc::Project;
+    /// use ethers_solc::artifacts::*;
+    /// # fn demo(project: Project) {
+    /// let output = project.compile().unwrap().output();
+    /// let contract = output.contracts.find("src/Greeter.sol", "Greeter").unwrap();
+    /// # }
+    /// ```
+    pub fn find(
+        &self,
+        path: impl AsRef<str>,
+        contract: impl AsRef<str>,
+    ) -> Option<CompactContractRef> {
+        let contract_path = path.as_ref();
+        let contract_name = contract.as_ref();
+        self.contracts_with_files().find_map(|(path, name, contract)| {
+            (path == contract_path && name == contract_name)
+                .then(|| CompactContractRef::from(contract))
         })
     }
 
@@ -228,6 +253,14 @@ impl AsRef<FileToContractsMap<Vec<VersionedContract>>> for VersionedContracts {
 impl AsMut<FileToContractsMap<Vec<VersionedContract>>> for VersionedContracts {
     fn as_mut(&mut self) -> &mut FileToContractsMap<Vec<VersionedContract>> {
         &mut self.0
+    }
+}
+
+impl Deref for VersionedContracts {
+    type Target = FileToContractsMap<Vec<VersionedContract>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 

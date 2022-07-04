@@ -30,7 +30,7 @@ async fn main() -> Result<()> {
     let project = Project::builder().paths(paths).ephemeral().no_artifacts().build().unwrap();
     // compile the project and get the artifacts
     let output = project.compile().unwrap();
-    let contract = output.find("SimpleStorage").expect("could not find contract").clone();
+    let contract = output.find_first("SimpleStorage").expect("could not find contract").clone();
     let (abi, bytecode, _) = contract.into_parts();
 
     // 2. instantiate our wallet & anvil

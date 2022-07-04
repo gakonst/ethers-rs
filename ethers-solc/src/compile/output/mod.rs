@@ -53,6 +53,28 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
         cached_artifacts.into_artifacts::<T>().chain(compiled_artifacts.into_artifacts::<T>())
     }
 
+    /// This returns a chained iterator of both cached and recompiled contract artifacts that yields
+    /// the contract name and the corresponding artifact
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use std::collections::btree_map::BTreeMap;
+    /// use ethers_solc::ConfigurableContractArtifact;
+    /// use ethers_solc::Project;
+    ///
+    /// let project = Project::builder().build().unwrap();
+    /// let artifacts: BTreeMap<String, &ConfigurableContractArtifact> = project.compile().unwrap().artifacts().collect();
+    /// ```
+    pub fn artifacts(&self) -> impl Iterator<Item = (String, &T::Artifact)> {
+        self.cached_artifacts
+            .artifact_files()
+            .chain(self.compiled_artifacts.artifact_files())
+            .filter_map(|artifact| {
+                T::contract_name(&artifact.file).map(|name| (name, &artifact.artifact))
+            })
+    }
+
     /// All artifacts together with their contract file and name as tuple `(file, contract
     /// name, artifact)`
     ///
@@ -151,15 +173,6 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
         self.compiler_output.has_warning(&self.ignored_error_codes)
     }
 
-    /// Finds the first contract with the given name and removes it from the set
-    pub fn remove(&mut self, contract_name: impl AsRef<str>) -> Option<T::Artifact> {
-        let contract_name = contract_name.as_ref();
-        if let artifact @ Some(_) = self.compiled_artifacts.remove(contract_name) {
-            return artifact
-        }
-        self.cached_artifacts.remove(contract_name)
-    }
-
     /// Returns the set of `Artifacts` that were cached and got reused during
     /// [`crate::Project::compile()`]
     pub fn cached_artifacts(&self) -> &Artifacts<T::Artifact> {
@@ -188,19 +201,140 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
         }
         contracts
     }
-}
 
-impl<T: ArtifactOutput> ProjectCompileOutput<T>
-where
-    T::Artifact: Clone,
-{
-    /// Finds the first contract with the given name
-    pub fn find(&self, contract_name: impl AsRef<str>) -> Option<&T::Artifact> {
-        let contract_name = contract_name.as_ref();
-        if let artifact @ Some(_) = self.compiled_artifacts.find(contract_name) {
+    /// Removes the contract with matching path and name using the `<path>:<contractname>` pattern
+    /// where `path` is optional.
+    ///
+    /// If the `path` segment is `None`, then the first matching `Contract` is returned, see
+    /// [Self::remove_first]
+    ///
+    /// # Example
+    ///
+    ///
+    /// ```
+    /// use ethers_solc::Project;
+    /// use ethers_solc::artifacts::*;
+    /// use ethers_solc::info::ContractInfo;
+    ///
+    /// # fn demo(project: Project) {
+    /// let  output = project.compile().unwrap();
+    /// let info = ContractInfo::new("src/Greeter.sol:Greeter");
+    /// let contract = output.find_contract(&info).unwrap();
+    /// # }
+    /// ```
+    pub fn find_contract<'a>(&self, info: impl Into<ContractInfoRef<'a>>) -> Option<&T::Artifact> {
+        let ContractInfoRef { path, name } = info.into();
+        if let Some(path) = path {
+            self.find(path, name)
+        } else {
+            self.find_first(name)
+        }
+    }
+
+    /// Finds the artifact with matching path and name
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use ethers_solc::Project;
+    /// use ethers_solc::artifacts::*;
+    /// # fn demo(project: Project) {
+    /// let output = project.compile().unwrap();
+    /// let contract = output.find("src/Greeter.sol", "Greeter").unwrap();
+    /// # }
+    /// ```
+    pub fn find(&self, path: impl AsRef<str>, contract: impl AsRef<str>) -> Option<&T::Artifact> {
+        let contract_path = path.as_ref();
+        let contract_name = contract.as_ref();
+        if let artifact @ Some(_) = self.compiled_artifacts.find(contract_path, contract_name) {
             return artifact
         }
-        self.cached_artifacts.find(contract_name)
+        self.cached_artifacts.find(contract_path, contract_name)
+    }
+
+    /// Finds the first contract with the given name
+    pub fn find_first(&self, contract_name: impl AsRef<str>) -> Option<&T::Artifact> {
+        let contract_name = contract_name.as_ref();
+        if let artifact @ Some(_) = self.compiled_artifacts.find_first(contract_name) {
+            return artifact
+        }
+        self.cached_artifacts.find_first(contract_name)
+    }
+
+    /// Finds the artifact with matching path and name
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use ethers_solc::Project;
+    /// use ethers_solc::artifacts::*;
+    /// # fn demo(project: Project) {
+    /// let output = project.compile().unwrap();
+    /// let contract = output.find("src/Greeter.sol", "Greeter").unwrap();
+    /// # }
+    /// ```
+    pub fn remove(
+        &mut self,
+        path: impl AsRef<str>,
+        contract: impl AsRef<str>,
+    ) -> Option<T::Artifact> {
+        let contract_path = path.as_ref();
+        let contract_name = contract.as_ref();
+        if let artifact @ Some(_) = self.compiled_artifacts.remove(contract_path, contract_name) {
+            return artifact
+        }
+        self.cached_artifacts.remove(contract_path, contract_name)
+    }
+
+    /// Removes the _first_ contract with the given name from the set
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use ethers_solc::Project;
+    /// use ethers_solc::artifacts::*;
+    /// # fn demo(project: Project) {
+    /// let mut output = project.compile().unwrap();
+    /// let contract = output.remove_first("Greeter").unwrap();
+    /// # }
+    /// ```
+    pub fn remove_first(&mut self, contract_name: impl AsRef<str>) -> Option<T::Artifact> {
+        let contract_name = contract_name.as_ref();
+        if let artifact @ Some(_) = self.compiled_artifacts.remove_first(contract_name) {
+            return artifact
+        }
+        self.cached_artifacts.remove_first(contract_name)
+    }
+
+    /// Removes the contract with matching path and name using the `<path>:<contractname>` pattern
+    /// where `path` is optional.
+    ///
+    /// If the `path` segment is `None`, then the first matching `Contract` is returned, see
+    /// [Self::remove_first]
+    ///
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use ethers_solc::Project;
+    /// use ethers_solc::artifacts::*;
+    /// use ethers_solc::info::ContractInfo;
+    /// # fn demo(project: Project) {
+    /// let mut output = project.compile().unwrap();
+    /// let info = ContractInfo::new("src/Greeter.sol:Greeter");
+    /// let contract = output.remove_contract(&info).unwrap();
+    /// # }
+    /// ```
+    pub fn remove_contract<'a>(
+        &mut self,
+        info: impl Into<ContractInfoRef<'a>>,
+    ) -> Option<T::Artifact> {
+        let ContractInfoRef { path, name } = info.into();
+        if let Some(path) = path {
+            self.remove(path, name)
+        } else {
+            self.remove_first(name)
+        }
     }
 }
 
@@ -340,11 +474,11 @@ impl AggregatedCompilerOutput {
     /// use ethers_solc::artifacts::*;
     /// # fn demo(project: Project) {
     /// let output = project.compile().unwrap().output();
-    /// let contract = output.find("Greeter").unwrap();
+    /// let contract = output.find_first("Greeter").unwrap();
     /// # }
     /// ```
-    pub fn find(&self, contract: impl AsRef<str>) -> Option<CompactContractRef> {
-        self.contracts.find(contract)
+    pub fn find_first(&self, contract: impl AsRef<str>) -> Option<CompactContractRef> {
+        self.contracts.find_first(contract)
     }
 
     /// Removes the _first_ contract with the given name from the set
@@ -548,7 +682,7 @@ impl<'a> OutputDiagnostics<'a> {
             return true
         }
 
-        self.compiler_output.find(&contract_path).map_or(false, |contract| {
+        self.compiler_output.find_first(&contract_path).map_or(false, |contract| {
             contract.abi.map_or(false, |abi| abi.functions.contains_key("IS_TEST"))
         })
     }
