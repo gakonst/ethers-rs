@@ -53,7 +53,7 @@ impl VersionedContracts {
     /// use ethers_solc::artifacts::*;
     /// # fn demo(project: Project) {
     /// let output = project.compile().unwrap().output();
-    /// let contract = output.find("src/Greeter.sol", "Greeter").unwrap();
+    /// let contract = output.contracts.find("src/Greeter.sol", "Greeter").unwrap();
     /// # }
     /// ```
     pub fn find(

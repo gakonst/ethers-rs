@@ -64,7 +64,7 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
     /// use ethers_solc::Project;
     ///
     /// let project = Project::builder().build().unwrap();
-    /// let artifacts: BTreeMap<String, ConfigurableContractArtifact> = project.compile().unwrap().into_artifacts().collect();
+    /// let artifacts: BTreeMap<String, &ConfigurableContractArtifact> = project.compile().unwrap().artifacts().collect();
     /// ```
     pub fn artifacts(&self) -> impl Iterator<Item = (String, &T::Artifact)> {
         self.cached_artifacts
