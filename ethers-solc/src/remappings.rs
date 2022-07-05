@@ -3,7 +3,6 @@ use serde::{Deserialize, Serialize};
 use std::{
     collections::{hash_map::Entry, HashMap},
     fmt,
-    fmt::Write,
     path::{Path, PathBuf},
     str::FromStr,
 };
@@ -110,11 +109,23 @@ impl<'de> Deserialize<'de> for Remapping {
 // Remappings are printed as `prefix=target`
 impl fmt::Display for Remapping {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}={}", self.name, self.path)?;
-        if !self.path.ends_with('/') {
-            f.write_char('/')?;
+        let mut s = {
+            #[cfg(target_os = "windows")]
+            {
+                // ensure we have `/` slashes on windows
+                use path_slash::PathExt;
+                format!("{}={}", self.name, std::path::Path::new(&self.path).to_slash_lossy())
+            }
+            #[cfg(not(target_os = "windows"))]
+            {
+                format!("{}={}", self.name, self.path)
+            }
+        };
+
+        if !s.ends_with('/') {
+            s.push('/');
         }
-        Ok(())
+        f.write_str(&s)
     }
 }
 
@@ -251,7 +262,19 @@ impl RelativeRemapping {
 // Remappings are printed as `prefix=target`
 impl fmt::Display for RelativeRemapping {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut s = format!("{}={}", self.name, self.path.original().display());
+        let mut s = {
+            #[cfg(target_os = "windows")]
+            {
+                // ensure we have `/` slashes on windows
+                use path_slash::PathExt;
+                format!("{}={}", self.name, self.path.original().to_slash_lossy())
+            }
+            #[cfg(not(target_os = "windows"))]
+            {
+                format!("{}={}", self.name, self.path.original().display())
+            }
+        };
+
         if !s.ends_with('/') {
             s.push('/');
         }
