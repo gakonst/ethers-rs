@@ -90,9 +90,10 @@ ethers-signers = { version = "^0.13.0", default-features = false, path = "./ethe
 ethers-middleware = { version = "^0.13.0", default-features = false, path = "./ethers-middleware" }
 ethers-solc = { version = "^0.13.0", default-features = false, path = "./ethers-solc" }
 ethers-etherscan = { version = "^0.13.0", default-features = false, path = "./ethers-etherscan" }
+yubihsm = "0.41.0-pre"
 
 [dev-dependencies]
-ethers-contract = { version = "^0.13.0", default-features = false, path = "./ethers-contract", features = ["abigen", "eip712"] }
+ethers-contract = { vah ersion = "^0.13.0", default-features = false, path = "./ethers-contract", features = ["abigen", "eip712"] }
 ethers-providers = { version = "^0.13.0", default-features = false, path = "./ethers-providers", features = ["ws"] }
 
 [target.'cfg(target_family = "unix")'.dev-dependencies]
