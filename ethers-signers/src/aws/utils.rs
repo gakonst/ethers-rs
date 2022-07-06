@@ -34,7 +34,7 @@ pub(super) fn rsig_to_ethsig(sig: &RSig) -> EthSig {
 /// Makes a trial recovery to check whether an RSig corresponds to a known
 /// `VerifyingKey`
 fn check_candidate(sig: &RSig, digest: [u8; 32], vk: &VerifyingKey) -> bool {
-    if let Ok(key) = sig.recover_verify_key_from_digest_bytes(digest.as_ref().into()) {
+    if let Ok(key) = sig.recover_verifying_key_from_digest_bytes(digest.as_ref().into()) {
         key == *vk
     } else {
         false

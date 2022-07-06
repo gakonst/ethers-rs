@@ -52,7 +52,7 @@ impl Clone for Wallet<SigningKey> {
     fn clone(&self) -> Self {
         Self {
             // TODO: Can we have a better way to clone here?
-            signer: SigningKey::from_bytes(&*self.signer.to_bytes()).unwrap(),
+            signer: SigningKey::from_bytes(&self.signer.to_bytes()).unwrap(),
             address: self.address,
             chain_id: self.chain_id,
         }

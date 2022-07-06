@@ -1,9 +1,9 @@
 //! This is a helper module used to pass the pre-hashed message for signing to the
 //! `sign_digest` methods of K256.
-use elliptic_curve::consts::U64;
 use ethers_core::{
     k256::ecdsa::signature::digest::{
-        generic_array::GenericArray, BlockInput, Digest, FixedOutput, Output, Reset, Update,
+        generic_array::GenericArray, Digest, FixedOutput, FixedOutputReset, HashMarker, Output,
+        OutputSizeUser, Reset, Update,
     },
     types::H256,
 };
@@ -18,7 +18,7 @@ pub enum ProxyDigest<D: Digest> {
 
 impl<D: Digest + Clone> From<H256> for ProxyDigest<D>
 where
-    GenericArray<u8, <D as Digest>::OutputSize>: Copy,
+    GenericArray<u8, <D as OutputSizeUser>::OutputSize>: Copy,
 {
     fn from(src: H256) -> Self {
         ProxyDigest::Proxy(*GenericArray::from_slice(src.as_bytes()))
@@ -33,7 +33,7 @@ impl<D: Digest> Default for ProxyDigest<D> {
 
 impl<D: Digest> Update for ProxyDigest<D> {
     // we update only if we are digest
-    fn update(&mut self, data: impl AsRef<[u8]>) {
+    fn update(&mut self, data: &[u8]) {
         match self {
             ProxyDigest::Digest(ref mut d) => {
                 d.update(data);
@@ -43,17 +43,9 @@ impl<D: Digest> Update for ProxyDigest<D> {
             }
         }
     }
-
-    // we chain only if we are digest
-    fn chain(self, data: impl AsRef<[u8]>) -> Self {
-        match self {
-            ProxyDigest::Digest(d) => ProxyDigest::Digest(d.chain(data)),
-            ProxyDigest::Proxy(..) => {
-                unreachable!("can not update if we are proxy");
-            }
-        }
-    }
 }
+
+impl<D: Digest> HashMarker for ProxyDigest<D> {}
 
 impl<D: Digest> Reset for ProxyDigest<D> {
     // make new one
@@ -62,15 +54,12 @@ impl<D: Digest> Reset for ProxyDigest<D> {
     }
 }
 
-// Use Sha256 with 512 bit blocks
-impl<D: Digest> BlockInput for ProxyDigest<D> {
-    type BlockSize = U64;
+impl<D: Digest> OutputSizeUser for ProxyDigest<D> {
+    // we default to the output of the original digest
+    type OutputSize = <D as OutputSizeUser>::OutputSize;
 }
 
 impl<D: Digest> FixedOutput for ProxyDigest<D> {
-    // we default to the output of the original digest
-    type OutputSize = D::OutputSize;
-
     fn finalize_into(self, out: &mut GenericArray<u8, Self::OutputSize>) {
         match self {
             ProxyDigest::Digest(d) => {
@@ -81,9 +70,11 @@ impl<D: Digest> FixedOutput for ProxyDigest<D> {
             }
         }
     }
+}
 
-    fn finalize_into_reset(&mut self, out: &mut GenericArray<u8, Self::OutputSize>) {
+impl<D: Digest> FixedOutputReset for ProxyDigest<D> {
+    fn finalize_into_reset(&mut self, out: &mut Output<Self>) {
         let s = std::mem::take(self);
-        s.finalize_into(out);
+        Digest::finalize_into(s, out)
     }
 }
