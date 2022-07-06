@@ -3,14 +3,8 @@ use crate::{
     types::{Address, H256, U256},
     utils::hash_message,
 };
-
-use fastrlp::Decodable;
-use serde::{Deserialize, Serialize};
-use std::{convert::TryFrom, fmt, str::FromStr};
-
-use thiserror::Error;
-
 use elliptic_curve::{consts::U32, sec1::ToEncodedPoint};
+use fastrlp::Decodable;
 use generic_array::GenericArray;
 use k256::{
     ecdsa::{
@@ -19,6 +13,9 @@ use k256::{
     },
     PublicKey as K256PublicKey,
 };
+use serde::{Deserialize, Serialize};
+use std::{convert::TryFrom, fmt, str::FromStr};
+use thiserror::Error;
 
 /// An error involving a signature.
 #[derive(Debug, Error)]
@@ -103,8 +100,8 @@ impl Signature {
         };
 
         let (recoverable_sig, _recovery_id) = self.as_signature()?;
-        let verify_key =
-            recoverable_sig.recover_verify_key_from_digest_bytes(message_hash.as_ref().into())?;
+        let verify_key = recoverable_sig
+            .recover_verifying_key_from_digest_bytes(message_hash.as_ref().into())?;
 
         let public_key = K256PublicKey::from(&verify_key);
         let public_key = public_key.to_encoded_point(/* compress = */ false);

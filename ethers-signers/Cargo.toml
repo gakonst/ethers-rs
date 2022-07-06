@@ -16,15 +16,15 @@ rustdoc-args = ["--cfg", "docsrs"]
 [dependencies]
 ethers-core = { version = "^0.13.0", path = "../ethers-core", features = ["eip712"]}
 thiserror = { version = "1.0.31", default-features = false }
-coins-bip32 = "0.6.0"
-coins-bip39 = "0.6.0"
-coins-ledger = { version = "0.6.1", default-features = false, optional = true }
+coins-bip32 = "0.7.0"
+coins-bip39 = "0.7.0"
+coins-ledger = { version = "0.7.0", default-features = false, optional = true }
 hex = { version = "0.4.3", default-features = false, features = ["std"] }
 async-trait = { version = "0.1.50", default-features = false }
-elliptic-curve = { version = "0.11.12", default-features = false }
-sha2 = { version = "0.9.8", default-features = false }
+elliptic-curve = { version = "0.12.2", default-features = false }
+sha2 = { version = "0.10.2", default-features = false }
 rand = { version = "0.8.5", default-features = false }
-yubihsm = { version = "0.40.0", features = ["secp256k1", "http", "usb"], optional = true }
+yubihsm = { version = "0.41.0-pre", features = ["secp256k1", "http", "usb"], optional = true }
 futures-util = { version = "^0.3", optional = true }
 futures-executor = { version = "^0.3", optional = true }
 semver = { version =  "1.0.12", optional = true }
@@ -45,10 +45,10 @@ ethers-contract = { version = "^0.13.0", path = "../ethers-contract", features =
 ethers-derive-eip712 = { version = "^0.13.0", path = "../ethers-core/ethers-derive-eip712" }
 serde_json = { version = "1.0.64" }
 tracing-subscriber = "0.3.11"
-yubihsm = { version = "0.40.0", features = ["secp256k1", "usb", "mockhsm"] }
+yubihsm = { version = "0.41.0-pre", features = ["secp256k1", "usb", "mockhsm"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
-yubihsm = { version = "0.40.0", features = ["secp256k1", "usb", "mockhsm"] }
+yubihsm = { version = "0.41.0-pre", features = ["secp256k1", "usb", "mockhsm"] }
 tokio = { version = "1.18", default-features = false, features = ["macros", "rt"] }
 tempfile = "3.3.0"
 
