@@ -139,7 +139,7 @@ required-features = ["ledger"]
 [[example]]
 name = "moonbeam_with_abi"
 path = "examples/moonbeam_with_abi.rs"
-required-features = ["legacy"]
+required-features = ["legacy", "ethers-solc"]
 
 [[example]]
 name = "trezor"
