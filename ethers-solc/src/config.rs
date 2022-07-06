@@ -570,17 +570,15 @@ impl ProjectPathsConfigBuilder {
         let root = utils::canonicalized(root);
 
         let libraries = self.libraries.unwrap_or_else(|| ProjectPathsConfig::find_libs(&root));
+        let artifacts =
+            self.artifacts.unwrap_or_else(|| ProjectPathsConfig::find_artifacts_dir(&root));
 
         ProjectPathsConfig {
             cache: self
                 .cache
                 .unwrap_or_else(|| root.join("cache").join(SOLIDITY_FILES_CACHE_FILENAME)),
-            artifacts: self
-                .artifacts
-                .unwrap_or_else(|| ProjectPathsConfig::find_artifacts_dir(&root)),
-            build_infos: self.build_infos.unwrap_or_else(|| {
-                ProjectPathsConfig::find_artifacts_dir(&root).join("build-info")
-            }),
+            build_infos: self.build_infos.unwrap_or_else(|| artifacts.join("build-info")),
+            artifacts,
             sources: self.sources.unwrap_or_else(|| ProjectPathsConfig::find_source_dir(&root)),
             tests: self.tests.unwrap_or_else(|| root.join("test")),
             scripts: self.scripts.unwrap_or_else(|| root.join("script")),
@@ -775,5 +773,22 @@ mod tests {
             ProjectPathsConfig::builder().build_with_root(&root).libraries,
             vec![utils::canonicalized(lib)],
         );
+    }
+
+    #[test]
+    fn can_have_sane_build_info_default() {
+        let root = crate::utils::tempdir("root").unwrap();
+        let root = root.path();
+        let artifacts = root.join("forge-artifacts");
+
+        // Set the artifacts directory without setting the
+        // build info directory
+        let project = ProjectPathsConfig::builder().artifacts(&artifacts).build_with_root(&root);
+
+        // The artifacts should be set correctly based on the configured value
+        assert_eq!(project.artifacts, utils::canonicalized(artifacts));
+
+        // The build infos should by default in the artifacts directory
+        assert_eq!(project.build_infos, utils::canonicalized(project.artifacts.join("build-info")));
     }
 }
