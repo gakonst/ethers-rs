@@ -4,6 +4,7 @@
 
 ### Unreleased
 
+- Fix the default config for generated `BuildInfo` [#1458](https://github.com/gakonst/ethers-rs/pull/1458)
 - Allow configuration of the output directory of the generated `BuildInfo` [#1433](https://github.com/gakonst/ethers-rs/pull/1433)
 - capture unknown fields in `Block` and `Transaction` type via new `OtherFields` type [#1423](https://github.com/gakonst/ethers-rs/pull/1423)
 - Methods like `set_to()` from `TypedTransaction` can be chained
