@@ -488,9 +488,9 @@ impl<T: ArtifactOutput> Project<T> {
             .into_iter()
             .map(|(path, source)| {
                 let path: PathBuf = if let Ok(stripped) = path.strip_prefix(root) {
-                    stripped.to_slash_lossy().into()
+                    stripped.to_slash_lossy().into_owned().into()
                 } else {
-                    path.to_slash_lossy().into()
+                    path.to_slash_lossy().into_owned().into()
                 };
                 (path, source.clone())
             })
