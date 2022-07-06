@@ -76,10 +76,9 @@ abigen = ["ethers-contract/abigen"]
 ### abigen without reqwest
 abigen-offline = ["ethers-contract/abigen-offline"]
 ## solc
-solc-async = ["ethers-solc/async"]
-solc-full = ["ethers-solc/full"]
-solc-tests = ["ethers-solc/tests"]
-solc-sha2-asm = ["ethers-solc/asm"]
+solc-full = ["ethers-solc", "ethers-solc/full"]
+solc-tests = ["ethers-solc", "ethers-solc/tests"]
+solc-sha2-asm = ["ethers-solc", "ethers-solc/asm"]
 
 [dependencies]
 ethers-addressbook = { version = "^0.13.0", default-features = false, path = "./ethers-addressbook" }
@@ -88,7 +87,7 @@ ethers-core = { version = "^0.13.0", default-features = false, path = "./ethers-
 ethers-providers = { version = "^0.13.0", default-features = false, path = "./ethers-providers" }
 ethers-signers = { version = "^0.13.0", default-features = false, path = "./ethers-signers" }
 ethers-middleware = { version = "^0.13.0", default-features = false, path = "./ethers-middleware" }
-ethers-solc = { version = "^0.13.0", default-features = false, path = "./ethers-solc" }
+ethers-solc = { version = "^0.13.0", default-features = false, path = "./ethers-solc", optional = true }
 ethers-etherscan = { version = "^0.13.0", default-features = false, path = "./ethers-etherscan" }
 
 [dev-dependencies]
@@ -113,16 +112,24 @@ opt-level = "s"
 
 
 [[example]]
+name = "abigen"
+path = "examples/abigen.rs"
+required-features = ["ethers-solc"]
+
+[[example]]
 name = "contract_human_readable"
 path = "examples/contract_human_readable.rs"
+required-features = ["ethers-solc"]
 
 [[example]]
 name = "contract_with_abi"
 path = "examples/contract_with_abi.rs"
+required-features = ["ethers-solc"]
 
 [[example]]
 name = "contract_with_abi_and_bytecode"
 path = "examples/contract_with_abi_and_bytecode.rs"
+required-features = ["ethers-solc"]
 
 [[example]]
 name = "ipc"
@@ -137,7 +144,7 @@ required-features = ["ledger"]
 [[example]]
 name = "moonbeam_with_abi"
 path = "examples/moonbeam_with_abi.rs"
-required-features = ["legacy"]
+required-features = ["legacy", "ethers-solc"]
 
 [[example]]
 name = "trezor"

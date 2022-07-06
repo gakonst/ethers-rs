@@ -104,6 +104,8 @@
 
 ### Unreleased
 
+- Make `ethers-solc` optional dependency of `ethers`, needs `ethers-solc` feature to activate
+  [#1463](https://github.com/gakonst/ethers-rs/pull/1463)
 - Add `rawMetadata:String` field to configurable contract output 
   [#1365](https://github.com/gakonst/ethers-rs/pull/1365)
 - Use relative source paths and `solc --base-path`

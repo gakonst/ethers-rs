@@ -114,6 +114,7 @@ pub mod signers {
     pub use ethers_signers::*;
 }
 
+#[cfg(feature = "ethers-solc")]
 #[doc = include_str!("../assets/SOLC_README.md")]
 pub mod solc {
     pub use ethers_solc::*;
@@ -141,6 +142,7 @@ pub mod prelude {
 
     pub use super::signers::*;
 
+    #[cfg(feature = "ethers-solc")]
     pub use super::solc::*;
 
     pub use super::etherscan::*;

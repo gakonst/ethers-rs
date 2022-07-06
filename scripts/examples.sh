@@ -20,5 +20,5 @@ for file in examples/*.rs; do
     continue
   fi
   echo "running: $file"
-  cargo r -p ethers --example "$(basename "$name")"
+  cargo r -p ethers --example "$(basename "$name")" --features "ethers-solc"
 done
