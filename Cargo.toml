@@ -112,6 +112,11 @@ opt-level = "s"
 
 
 [[example]]
+name = "abigen"
+path = "examples/abigen.rs"
+required-features = ["ethers-solc"]
+
+[[example]]
 name = "contract_human_readable"
 path = "examples/contract_human_readable.rs"
 required-features = ["ethers-solc"]
