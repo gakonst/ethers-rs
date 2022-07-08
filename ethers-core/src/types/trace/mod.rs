@@ -8,6 +8,9 @@ use std::collections::BTreeMap;
 mod filter;
 pub use filter::*;
 
+mod geth;
+pub use geth::*;
+
 #[derive(Debug, Clone, Serialize)]
 /// Description of the type of trace to make
 pub enum TraceType {

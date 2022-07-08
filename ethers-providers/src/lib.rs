@@ -510,6 +510,17 @@ pub trait Middleware: Sync + Send + Debug {
         self.inner().txpool_status().await.map_err(FromErr::from)
     }
 
+    // Geth `trace` support
+    /// After replaying any previous transactions in the same block,
+    /// Replays a transaction, returning the traces configured with passed options
+    async fn debug_trace_transaction(
+        &self,
+        tx_hash: TxHash,
+        trace_options: GethDebugTracingOptions,
+    ) -> Result<GethTrace, ProviderError> {
+        self.inner().debug_trace_transaction(tx_hash, trace_options).await.map_err(FromErr::from)
+    }
+
     // Parity `trace` support
 
     /// Executes the given call and returns a number of possible traces for it
