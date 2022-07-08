@@ -231,7 +231,7 @@ impl ClientBuilder {
 
         let (etherscan_api_url, etherscan_url) = match chain {
             Chain::Mainnet => urls("https://api.etherscan.io/api", "https://etherscan.io"),
-            Chain::Ropsten | Chain::Kovan | Chain::Rinkeby | Chain::Goerli => {
+            Chain::Ropsten | Chain::Kovan | Chain::Rinkeby | Chain::Goerli | Chain::Sepolia => {
                 let chain_name = chain.to_string().to_lowercase();
                 urls(
                     format!("https://api-{}.etherscan.io/api", chain_name),
