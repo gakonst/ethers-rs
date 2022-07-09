@@ -82,6 +82,7 @@ pub struct Anvil {
     block_time: Option<u64>,
     mnemonic: Option<String>,
     fork: Option<String>,
+    fork_block_number: Option<u64>,
     args: Vec<String>,
 }
 
@@ -110,6 +111,15 @@ impl Anvil {
     #[must_use]
     pub fn block_time<T: Into<u64>>(mut self, block_time: T) -> Self {
         self.block_time = Some(block_time.into());
+        self
+    }
+
+    /// Sets the `fork-block-number` which will be used in addition to [`Self::fork`].
+    ///
+    /// **Note:** if set, then this requires `fork` to be set as well
+    #[must_use]
+    pub fn fork_block_number<T: Into<u64>>(mut self, fork_block_number: T) -> Self {
+        self.fork_block_number = Some(fork_block_number.into());
         self
     }
 
@@ -161,6 +171,10 @@ impl Anvil {
 
         if let Some(fork) = self.fork {
             cmd.arg("-f").arg(fork);
+        }
+
+        if let Some(fork_block_number) = self.fork_block_number {
+            cmd.arg("--fork-block-number").arg(fork_block_number.to_string());
         }
 
         cmd.args(self.args);
