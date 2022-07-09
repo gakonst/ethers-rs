@@ -1,27 +1,27 @@
-use crate::types::H256;
+use crate::types::{Bytes, H256};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct GethTrace {
     failed: bool,
-    gas: i64,
+    gas: u64,
     #[serde(rename = "returnValue")]
-    return_value: String,
+    return_value: Bytes,
     #[serde(rename = "structLogs")]
     struct_logs: Vec<StructLog>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct StructLog {
-    depth: i64,
+    depth: u64,
     error: Option<String>,
-    gas: i64,
+    gas: u64,
     #[serde(rename = "gasCost")]
-    gas_cost: i64,
+    gas_cost: u64,
     memory: Option<Vec<String>>,
     op: String,
-    pc: i64,
+    pc: u64,
     stack: Vec<String>,
     storage: BTreeMap<H256, H256>,
 }
