@@ -1,4 +1,4 @@
-use crate::types::{Bytes, H256};
+use crate::types::{Bytes, H256, U256};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
@@ -21,7 +21,7 @@ pub struct StructLog {
     gas_cost: u64,
     memory: Option<Vec<String>>,
     op: String,
-    pc: u64,
+    pc: U256,
     stack: Vec<String>,
     storage: BTreeMap<H256, H256>,
 }
