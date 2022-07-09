@@ -1254,7 +1254,7 @@ impl<P: JsonRpcClient> Provider<P> {
 
         // otherwise, decode_bytes panics
         if data.0.is_empty() {
-            return Err(ProviderError::EnsError(ens_name.to_owned()));
+            return Err(ProviderError::EnsError(ens_name.to_string()));
         }
 
         let resolver_address: Address = decode_bytes(ParamType::Address, data);
