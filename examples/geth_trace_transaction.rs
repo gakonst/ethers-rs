@@ -1,7 +1,6 @@
 use ethers::prelude::*;
 use eyre::Result;
-use std::env;
-use std::str::FromStr;
+use std::{env, str::FromStr};
 
 #[tokio::main]
 async fn main() -> Result<()> {
