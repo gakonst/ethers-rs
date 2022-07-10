@@ -79,6 +79,7 @@ impl Client {
             Chain::Avalanche | Chain::AvalancheFuji => std::env::var("SNOWTRACE_API_KEY")?,
             Chain::Polygon | Chain::PolygonMumbai => std::env::var("POLYGONSCAN_API_KEY")?,
             Chain::Mainnet |
+            Chain::Morden |
             Chain::Ropsten |
             Chain::Kovan |
             Chain::Rinkeby |
@@ -484,10 +485,10 @@ mod tests {
 
     #[test]
     fn chain_not_supported() {
-        let err = Client::new_from_env(Chain::Sepolia).unwrap_err();
+        let err = Client::new_from_env(Chain::Morden).unwrap_err();
 
         assert!(matches!(err, EtherscanError::ChainNotSupported(_)));
-        assert_eq!(err.to_string(), "Chain sepolia not supported");
+        assert_eq!(err.to_string(), "Chain morden not supported");
     }
 
     #[test]
