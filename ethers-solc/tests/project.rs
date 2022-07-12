@@ -1620,10 +1620,9 @@ fn can_compile_model_checker_sample() {
 }
 
 fn remove_solc_if_exists(version: &Version) {
-    match Solc::find_svm_installed_version(version.to_string()).unwrap() {
-        Some(_) => svm::remove_version(version).expect("failed to remove version"),
-        None => {}
-    };
+    if Solc::find_svm_installed_version(version.to_string()).unwrap().is_some() {
+        svm::remove_version(version).expect("failed to remove version")
+    }
 }
 
 #[tokio::test(flavor = "multi_thread")]
