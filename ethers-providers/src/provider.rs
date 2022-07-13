@@ -8,7 +8,9 @@ use crate::{
 };
 
 #[cfg(not(target_arch = "wasm32"))]
-use crate::transports::{Authorization, HttpRateLimitRetryPolicy, RetryClient};
+use crate::transports::{HttpRateLimitRetryPolicy, RetryClient};
+#[cfg(all(not(target_arch = "wasm32"), feature = "ws"))]
+use crate::transports::Authorization;
 
 #[cfg(feature = "celo")]
 use crate::CeloMiddleware;
