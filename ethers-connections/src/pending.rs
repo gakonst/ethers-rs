@@ -1,9 +1,9 @@
 use std::time::Duration;
 
-use ethers_core::types::H256;
+use ethers_core::types::{TransactionReceipt, H256};
 use tokio::time::{self, Interval};
 
-use crate::{types::TransactionReceipt, Connection, Provider, ProviderError};
+use crate::{Connection, Provider, ProviderError};
 
 /// A pending transaction that can be polled until the reference transaction has
 /// either been dropped or included in a block.

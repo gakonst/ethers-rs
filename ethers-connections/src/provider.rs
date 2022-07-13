@@ -1,29 +1,24 @@
 #[cfg(feature = "ipc")]
 use std::path::Path;
-use std::{
-    borrow::Cow,
-    error, fmt,
-    future::Future,
-    marker::PhantomData,
-    pin::Pin,
-    sync::Arc,
-    task::{Context, Poll},
+
+use std::{borrow::Cow, error, fmt, sync::Arc};
+
+use serde::{Deserialize, Serialize};
+
+use ethers_core::types::{
+    transaction::eip2718::TypedTransaction, Address, Block, Bytes, FeeHistory, Log, Transaction,
+    TransactionReceipt, TransactionRequest, H256, U256, U64,
 };
 
-use ethers_core::types::{Address, Block, Bytes, FeeHistory, Log, Transaction, H256, U256, U64};
-use serde::{Deserialize, Serialize};
-use serde_json::value::RawValue;
-
 #[cfg(all(unix, feature = "ipc"))]
-use crate::connections::ipc::{Ipc, IpcError};
+use crate::connection::ipc::{Ipc, IpcError};
 use crate::{
-    connections::{self, noop},
-    err::TransportError,
-    jsonrpc::{self, JsonRpcError},
-    types::{
-        BlockNumber, Filter, SyncStatus, TransactionCall, TransactionReceipt, TransactionRequest,
-    },
-    Connection, DuplexConnection, SubscriptionStream,
+    batch::{BatchCall, BatchError},
+    connection::{self, noop::Noop, ConnectionError},
+    jsonrpc as rpc,
+    sub::SubscriptionStream,
+    types::{BlockNumber, Filter, SyncStatus, TransactionCall},
+    CallParams, Connection, DuplexConnection, RpcCall,
 };
 
 /// A provider for Ethereum JSON-RPC API calls.
@@ -32,14 +27,47 @@ use crate::{
 /// [JSON-RPC API specification](https://eth.wiki/json-rpc/API).
 #[derive(Clone, Copy)]
 pub struct Provider<C> {
-    connection: C,
+    /// The provider's wrapped connection.
+    pub connection: C,
 }
 
-impl Provider<noop::Noop> {
-    /// Creates a new [`Noop`](noop::Noop) connection
+impl<C> Provider<C> {
+    /// Returns a new [`Provider`] wrapping the given `connection`.
+    pub const fn new(connection: C) -> Self {
+        Self { connection }
+    }
+}
+
+impl<C: Connection + 'static> Provider<C> {
+    /// Borrows the underlying [`Connection`] and returns a new provider that
+    /// can be cheaply cloned and copied.
+    pub const fn borrow(&self) -> Provider<&'_ C> {
+        let connection = &self.connection;
+        Provider { connection }
+    }
+}
+
+impl<'a, C: Connection> Provider<&'a C> {
+    /// Converts this [`Provider`] into one using a [`Connection`] trait object.
+    pub fn to_dyn(self) -> Provider<&'a dyn Connection> {
+        let connection = self.connection as _;
+        Provider { connection }
+    }
+}
+
+impl<C: Connection + 'static> Provider<Arc<C>> {
+    /// Converts the [`Provider`] into one using a [`Connection`] trait object.
+    pub fn to_dyn(self) -> Provider<Arc<dyn Connection>> {
+        let connection = self.connection as _;
+        Provider { connection }
+    }
+}
+
+impl Provider<Noop> {
+    /// Creates a new [`Noop`] connection
     /// provider.
-    pub fn noop() -> Self {
-        Self { connection: Default::default() }
+    pub const fn noop() -> Self {
+        Self { connection: Noop }
     }
 }
 
@@ -66,7 +94,7 @@ impl Provider<Arc<dyn Connection>> {
     /// ```
     /// use ethers_connections::Provider;
     ///
-    /// # async fn connect_any() -> Result<(), Box<dyn std::error::Error>> {
+    /// # async fn example_connect() -> Result<(), Box<dyn std::error::Error>> {
     /// // connects via HTTP
     /// let provider = Provider::connect("http://localhost:8545").await?;
     /// // connect via websocket
@@ -87,12 +115,12 @@ impl Provider<Arc<dyn Connection>> {
     /// Panics, if a connection is selected which has not been feature-enabled
     /// at compile time, e.g., if a HTTP url is given but the `http` cargo
     /// feature is not enabled.
-    pub async fn connect(path: &str) -> Result<Self, Box<TransportError>> {
+    pub async fn connect(path: &str) -> Result<Self, Box<ConnectionError>> {
         let connection: Arc<dyn Connection> = if path.starts_with("http") {
             #[cfg(feature = "http")]
             {
-                let http = connections::http::Http::new(path)
-                    .map_err(|err| TransportError::transport(err))?;
+                let http =
+                    connection::http::Http::new(path).map_err(ConnectionError::connection)?;
                 Arc::new(http)
             }
             #[cfg(not(feature = "http"))]
@@ -112,9 +140,69 @@ impl Provider<Arc<dyn Connection>> {
             #[cfg(feature = "ipc")]
             {
                 // the path is allowed start with "ipc://"
-                let ipc = connections::ipc::Ipc::connect(path.trim_start_matches("ipc://"))
+                let ipc = connection::ipc::Ipc::connect(path.trim_start_matches("ipc://"))
                     .await
-                    .map_err(|err| TransportError::transport(err))?;
+                    .map_err(ConnectionError::connection)?;
+                Arc::new(ipc)
+            }
+            #[cfg(not(feature = "ipc"))]
+            {
+                todo!("ipc path detected, but `ipc` cargo feature is not enabled");
+            }
+        };
+
+        #[allow(unreachable_code)]
+        Ok(Self { connection })
+    }
+}
+
+impl Provider<Arc<dyn DuplexConnection>> {
+    /// Attempts to connect to any of the available connections based on the
+    /// given `path`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use ethers_connections::{Provider};
+    ///
+    /// # async fn example_connect_duplex() -> Result<(), Box<dyn std::error::Error>> {
+    /// // connect via websocket
+    /// let provider = Provider::connect_duplex("ws://localhost:8546").await?;
+    /// // connects to a local IPC socket
+    /// let provider = Provider::connect_duplex("ipc:///home/user/.ethereum/geth.ipc").await?;
+    /// let provider = Provider::connect_duplex("/home/user/.ethereum/geth.ipc").await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// Fails, if the selected connection can not be established.
+    ///
+    /// # Panics
+    ///
+    /// Panics, if a connection is selected which has not been feature-enabled
+    /// at compile time, e.g., if a HTTP url is given but the `http` cargo
+    /// feature is not enabled.
+    pub async fn connect_duplex(path: &str) -> Result<Self, Box<ConnectionError>> {
+        let connection: Arc<dyn DuplexConnection> = if path.starts_with("http") {
+            panic!("path starts with http/https, but http does not support duplex connections");
+        } else if path.starts_with("ws") {
+            #[cfg(feature = "ws")]
+            {
+                todo!("...")
+            }
+            #[cfg(not(feature = "ws"))]
+            {
+                panic!("path starts with ws/wss, but `ws` cargo feature is not enabled");
+            }
+        } else {
+            #[cfg(feature = "ipc")]
+            {
+                // the path is allowed start with "ipc://"
+                let ipc = connection::ipc::Ipc::connect(path.trim_start_matches("ipc://"))
+                    .await
+                    .map_err(ConnectionError::connection)?;
                 Arc::new(ipc)
             }
             #[cfg(not(feature = "ipc"))]
@@ -127,98 +215,78 @@ impl Provider<Arc<dyn Connection>> {
     }
 }
 
-impl<C> Provider<C> {
-    /// Returns a new [`Provider`] using the given `connection`.
-    pub fn new(connection: C) -> Self {
-        Self { connection }
-    }
-
-    /// Consumes the [`Provider`] and returns its inner [`Connection`].
-    pub fn into_inner(self) -> C {
-        self.connection
-    }
-}
-
-impl<C: Connection + 'static> Provider<C> {
-    /// Borrows the underlying [`Connection`] and returns a new provider that
-    /// can be cheaply cloned and copied.
-    pub fn borrow(&self) -> Provider<&'_ C> {
-        let connection = &self.connection;
-        Provider { connection }
-    }
-}
-
-impl<C: Connection + 'static> Provider<Arc<C>> {
-    /// Converts the [`Provider`] into one using a [`Connection`] trait object.
-    pub fn into_dyn(self) -> Provider<Arc<dyn Connection>> {
-        let connection = self.connection as _;
-        Provider { connection }
-    }
-}
-
-//impl<C: Connection> Provider<C> {
 impl<C: Connection> Provider<C> {
-    /// Returns the current ethereum protocol version.
+    /// Send a batch request and await its reponse.
     ///
-    /// Equivalent to:
+    /// The order of responses always matches the order in which the input
+    /// requests are given to this method.
     ///
-    /// ```ignore
-    /// async fn get_protocol_version(&self) -> Result<String, Box<ProviderError>>;
+    /// # Examples
+    ///
     /// ```
-    pub fn get_protocol_version(&self) -> RpcCall<&C, String> {
-        self.prepare_rpc_call("eth_protocolVersion", ())
+    /// # async fn example_batch() {
+    /// # let provider = Provider { connection: Noop };
+    /// # let address = ethrs::types::Address::zero();
+    /// let r0 = provider.get_balance(&address, "latest".into());
+    /// let r1 = provider.get_gas_price();
+    /// // `send_balance` accepts tuples of heterogeneous RPC calls
+    /// if let Ok((balance, gas_price)) = provider.send_batch((r0, r1)).await {
+    ///     # drop(balance);
+    ///     # drop(gas_price);
+    ///     // ...
+    /// }
+    ///
+    /// // ... or Vecs, slices, arrays of RPC calls with the same output type
+    /// let r0 = provider.get_balance(&address, "earliest".into());
+    /// let r1 = provider.get_balance(&address, "latest".into());
+    /// let r2 = provider.get_balance(&address, "pending".into());
+    ///
+    /// if let Ok(balances) = provider.send_batch(vec![r0, r1, r2]).await {
+    ///     # drop(balances);
+    ///     // ...
+    /// }
+    /// # }
+    /// ```
+    pub async fn send_batch_request<B>(&self, batch: B) -> Result<B::Output, BatchError>
+    where
+        B: BatchCall,
+    {
+        batch.send_batch(&self.connection).await
     }
 
     /// Returns an object with data about the sync or
     /// [`Synced`](SyncStatus::Synced).
     ///
+    /// ```ignore
+    /// async fn get_syncing(&self) -> Result<SyncStatus, Box<ProviderError>>;
+    /// ```
+    ///
     /// # Examples
     ///
     /// ```
-    /// use ethers_connections::Provider;
+    /// # use ethrs::{connection::noop::Noop, types::SyncStatus};
+    /// use ethrs::Provider;
     ///
     /// # async fn example_syncing() {
-    /// # let provider = Provider::noop();
-    /// if let SyncStatus::Synced = provider.syncing().await? {
+    /// # let provider = Provider { connection: Noop };
+    /// if let Ok(SyncStatus::Synced) = provider.get_syncing().await {
     ///     println!("node is synced");
     /// }
-    /// #}
+    /// # }
     /// ```
-    pub fn syncing(&self) -> RpcCall<&C, SyncStatus> {
+    pub fn get_syncing(&self) -> RpcCall<&C, SyncStatus> {
         self.prepare_rpc_call("eth_syncing", ())
     }
 
     /// Returns the client coinbase address.
     ///
-    /// The signature is equivalent to
+    /// Equivalent to:
     ///
     /// ```ignore
     /// async fn get_coinbase(&self) -> Result<Address, Box<ProviderError>>;
     /// ```
     pub fn get_coinbase(&self) -> RpcCall<&C, Address> {
         self.prepare_rpc_call("eth_coinbase", ())
-    }
-
-    /// Returns `true` if the client is actively mining new blocks.
-    ///
-    /// The function signature is equivalent to
-    ///
-    /// ```ignore
-    /// async fn get_mining(&self) -> Result<bool, Box<ProviderError>>
-    /// ```
-    pub fn get_mining(&self) -> RpcCall<&C, bool> {
-        self.prepare_rpc_call("eth_mining", ())
-    }
-
-    /// Returns the number of hashes per second that the node is mining with.
-    ///
-    /// The function signature is equivalent to
-    ///
-    /// ```ignore
-    /// async fn get_hashrate(&self) -> Result<U256, Box<ProviderError>>;
-    /// ```
-    pub fn get_hashrate(&self) -> RpcCall<&C, U256> {
-        self.prepare_rpc_call("eth_hashrate", ())
     }
 
     /// Returns the current price per gas in wei.
@@ -232,15 +300,26 @@ impl<C: Connection> Provider<C> {
         self.prepare_rpc_call("eth_gasPrice", ())
     }
 
-    /// Returns a list of addresses owned by client.
+    /// Returns a list of addresses owned by the client.
     ///
     /// Equivalent to:
     ///
     /// ```ignore
     /// async fn get_accounts(&self) -> Result<Vec<Address>, Box<ProviderError>>;
     /// ```
-    pub fn get_accounts(&self) -> RpcCall<&C, Vec<Address>> {
+    pub fn get_accounts(&self) -> RpcCall<&C, Box<[Address]>> {
         self.prepare_rpc_call("eth_getAccounts", ())
+    }
+
+    /// Returns `true` if the client is actively mining new blocks.
+    ///
+    /// The function signature is equivalent to
+    ///
+    /// ```ignore
+    /// async fn get_mining(&self) -> Result<bool, Box<ProviderError>>;
+    /// ```
+    pub fn get_mining(&self) -> RpcCall<&C, bool> {
+        self.prepare_rpc_call("eth_mining", ())
     }
 
     /// Returns the number of most recent block.
@@ -265,6 +344,19 @@ impl<C: Connection> Provider<C> {
     ///     block: &BlockNumber
     /// ) -> Result<U256, Box<ProviderError>>;
     /// ```
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # let provider = Provider { connection: Noop };
+    /// # async fn example_balance() {
+    /// # let address = ethrs::types::Address::zero();
+    /// // default block is "latest"
+    /// if let Ok(balance) = provider.get_balance(&address, Default::default()).await {
+    ///     println!("account balance is {balance:?}");
+    /// }
+    /// # }
+    /// ```
     pub fn get_balance(&self, address: &Address, block: Option<BlockNumber>) -> RpcCall<&C, U256> {
         match block {
             Some(block) => self.prepare_rpc_call("eth_getBalance", (address, block)),
@@ -281,19 +373,16 @@ impl<C: Connection> Provider<C> {
     ///     &self,
     ///     address: &Address,
     ///     pos: &U256,
-    ///     block: Option<BlockNumber>,
+    ///     block: BlockNumber,
     /// ) -> Result<U256, Box<ProviderError>>;
     /// ```
     pub fn get_storage_at(
         &self,
         address: &Address,
         pos: &U256,
-        block: Option<BlockNumber>,
+        block: BlockNumber,
     ) -> RpcCall<&C, U256> {
-        match block {
-            Some(block) => self.prepare_rpc_call("eth_getStorageAt", (address, pos, block)),
-            None => self.prepare_rpc_call("eth_getStorageAt", (address, pos)),
-        }
+        self.prepare_rpc_call("eth_getStorageAt", (address, pos, block))
     }
 
     /// Returns the number of transactions sent from an address.
@@ -304,18 +393,15 @@ impl<C: Connection> Provider<C> {
     /// async fn get_transaction_count(
     ///     &self,
     ///     address: &Address,
-    ///     block: Option<BlockNumber>
+    ///     block: BlockNumber
     /// ) -> Result<U256, Box<ProviderError>>;
     /// ```
     pub fn get_transaction_count(
         &self,
         address: &Address,
-        block: Option<BlockNumber>,
+        block: BlockNumber,
     ) -> RpcCall<&C, U256> {
-        match block {
-            Some(block) => self.prepare_rpc_call("eth_getTransactionCount", (address, block)),
-            None => self.prepare_rpc_call("eth_getTransactionCount", [address]),
-        }
+        self.prepare_rpc_call("eth_getTransactionCount", (address, block))
     }
 
     /// Returns code at a given address.
@@ -328,22 +414,23 @@ impl<C: Connection> Provider<C> {
     ///     address: &Address,
     /// ) -> Result<Bytes, Box<ProviderError>>;
     /// ```
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::sync::Arc;
-    /// # use ethers_core::types::Address;
-    /// use ethers_connections::{Connection, Provider};
-    ///
-    /// # async fn examples_get_code() {
-    /// # let provider = Provider::noop();
-    /// let res = provider.get_code(&Address::zero(), Default::default()).await;
-    /// # assert!(res.is_err());
-    /// # }
-    /// ```
     pub fn get_code(&self, address: &Address) -> RpcCall<&C, Bytes> {
         self.prepare_rpc_call("eth_getCode", [address])
+    }
+
+    /// Executes a new message call immidiately without creating a transaction
+    /// on the block chain.
+    ///
+    /// Equivalent to:
+    ///
+    /// ```ignore
+    /// async fn call(
+    ///     &self,
+    ///     txn: &TransactionCall
+    /// ) -> Result<Bytes, Box<ProviderError>>;
+    /// ```
+    pub fn call(&self, txn: &TransactionCall) -> RpcCall<&C, Bytes> {
+        self.prepare_rpc_call("eth_call", [txn])
     }
 
     /// Signs the given `message` using the account at `address`.
@@ -361,7 +448,7 @@ impl<C: Connection> Provider<C> {
     /// The function signature is equivalent to
     ///
     /// ```
-    /// pub async fn sign(
+    /// async fn sign(
     ///     &self,
     ///     address: &Address,
     ///     message: &Bytes,
@@ -406,21 +493,6 @@ impl<C: Connection> Provider<C> {
     /// ```
     pub fn send_raw_transaction(&self, data: Bytes) -> RpcCall<&C, H256> {
         self.prepare_rpc_call("eth_sendRawTransaction", [data])
-    }
-
-    /// Executes a new message call immidiately without creating a transaction
-    /// on the block chain.
-    ///
-    /// Equivalent to:
-    ///
-    /// ```ignore
-    /// pub async fn call(
-    ///     &self,
-    ///     txn: &ByTransactionCalltes
-    /// ) -> Result<Bytes, Box<ProviderError>>
-    /// ```
-    pub fn call(&self, txn: &TransactionCall) -> RpcCall<&C, Bytes> {
-        self.prepare_rpc_call("eth_call", [txn])
     }
 
     /// Generates and returns an estimate of how much gas is necessary to allow
@@ -687,40 +759,16 @@ impl<C: Connection> Provider<C> {
         self.prepare_rpc_call("eth_uninstallFilter", [id])
     }
 
-    /// Prepares an RPC call for `method` and the given `params` which will
-    /// attempt to parse its response into the expected type `R`.
+    /// Prepares an [`RpcCall`] for the given parameters using this provider's
+    /// [`Connection`].
     pub fn prepare_rpc_call<T, R>(&self, method: &'static str, params: T) -> RpcCall<&C, R>
     where
         T: Serialize,
         R: for<'de> Deserialize<'de>,
     {
         let id = self.connection.request_id();
-        RpcCall { connection: &self.connection, params: Some(CallParams::new(id, method, params)) }
+        RpcCall::new(&self.connection, CallParams::new(id, method, params))
     }
-
-    /*
-    /// Sends a request for `method` with `params`, awaits its result and
-    /// attempts to parse it into an expected type `R`.
-    pub async fn send_request<P, R>(&self, method: &str, params: P) -> Result<R, Box<ProviderError>>
-    where
-        P: Serialize,
-        R: for<'de> Deserialize<'de>,
-    {
-        // send the request & await its (raw) response
-        let raw = self.connection.send_request(method, params).await.map_err(|err| {
-            err.to_provider_err()
-                .with_ctx(format!("failed RPC call to `{method}` (rpc request failed)"))
-        })?;
-
-        // decode the response to the expected result type
-        let decoded = serde_json::from_str(raw.get()).map_err(|err| {
-            ProviderError::json(err).with_ctx(format!(
-                "failed RPC call to `{method}` (response deserialization failed)"
-            ))
-        })?;
-
-        Ok(decoded)
-    }*/
 }
 
 impl<C: DuplexConnection + Clone> Provider<C> {
@@ -758,12 +806,12 @@ impl<C: DuplexConnection + Clone> Provider<C> {
         self.subscribe(["pendingTransactions"]).await
     }
 
+    /// Installs a subscription with the given `params`.
     pub async fn subscribe<T: Serialize, R: for<'de> Deserialize<'de>>(
         &self,
         params: T,
     ) -> Result<SubscriptionStream<R, C>, Box<ProviderError>> {
         let provider = self.clone();
-
         let id: U256 = provider.prepare_rpc_call("eth_subscribe", params).await?;
         let rx = provider
             .connection
@@ -777,6 +825,7 @@ impl<C: DuplexConnection + Clone> Provider<C> {
 }
 
 impl<C: DuplexConnection> Provider<C> {
+    /// Unsubscribes from the subscription with the given `id`.
     pub async fn unsubscribe(&self, id: U256) -> Result<bool, Box<ProviderError>> {
         let ok: bool = self.prepare_rpc_call("eth_unsubscribe", [id]).await?;
         self.connection.unsubscribe(id).map_err(|err| err.to_provider_err())?;
@@ -784,86 +833,17 @@ impl<C: DuplexConnection> Provider<C> {
     }
 }
 
-#[derive(Clone, Debug)]
-pub struct RpcCall<C, R> {
-    connection: C,
-    params: Option<CallParams<R>>,
-}
-
-impl<C, R> RpcCall<C, R>
-where
-    C: Connection + ToOwned,
-    C::Owned: Connection,
-{
-    /// ```
-    /// # use std::thread;
-    /// use ethers_connections::{Connection, Provider};
-    /// let provider: Arc<dyn Connection> = Provider::noop().into_dyn();
-    ///
-    /// // call borrows the underlying connection and can, e.g., not be moved to
-    /// // a different task or thread
-    /// let call = provider.get_block();
-    /// let call = call.to_owned();
-    pub fn to_owned(self) -> RpcCall<C::Owned, R> {
-        let connection = self.connection.to_owned();
-        RpcCall { connection, params: self.params }
-    }
-}
-
-impl<C: Connection + Unpin, R: for<'de> Deserialize<'de>> Future for RpcCall<C, R> {
-    type Output = Result<R, Box<ProviderError>>;
-
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let mut call = self.get_mut();
-
-        let CallParams { id, method, request, .. } =
-            call.params.take().expect("rpc call was previously awaited");
-
-        let mut response = call.connection.send_raw_request(id, request);
-        match response.as_mut().poll(cx) {
-            Poll::Ready(Ok(response)) => Poll::Ready(parse_response(method, &*response)),
-            Poll::Ready(Err(e)) => Poll::Ready(Err(e
-                .to_provider_err()
-                .with_ctx(format!("failed RPC call to `{method}` (rpc request failed)")))),
-            Poll::Pending => Poll::Pending,
-        }
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct CallParams<R> {
-    pub id: u64,
-    pub method: &'static str,
-    pub request: Box<RawValue>,
-    _marker: PhantomData<fn() -> R>,
-}
-
-impl<R: for<'de> Deserialize<'de>> CallParams<R> {
-    fn new<T: Serialize>(id: u64, method: &'static str, params: T) -> Self {
-        let request = jsonrpc::Request { id, method, params }.to_json();
-        Self { id, method, request, _marker: PhantomData }
-    }
-}
-
-fn parse_response<R: for<'de> Deserialize<'de>>(
-    method: &'static str,
-    response: &RawValue,
-) -> Result<R, Box<ProviderError>> {
-    serde_json::from_str(response.get()).map_err(|err| {
-        ProviderError::json(err)
-            .with_ctx(format!("failed RPC call to `{method}` (response deserialization failed)",))
-    })
-}
-
-// TODO: Transport(Box<TransportError>), Json(serde_json::Error)
-// + context (string)
+/// An error that occurred during the operation of a [`Provider`].
 #[derive(Debug)]
 pub struct ProviderError {
+    /// The kind of the occurred error.
     pub kind: ErrorKind,
+    /// The additional context to the error (empty string if none).
     pub(crate) context: Cow<'static, str>,
 }
 
 impl ProviderError {
+    /// Returns the error's additional context.
     pub fn context(&self) -> Option<&str> {
         if self.context.is_empty() {
             None
@@ -877,7 +857,7 @@ impl ProviderError {
     }
 
     pub fn is_nonce_too_low(&self) -> bool {
-        self.as_jsonrpc().map(|err| err.message == "nonce too low").unwrap_or(false)
+        self.as_jsonrpc().map(|err| &*err.message == "nonce too low").unwrap_or(false)
     }
 
     pub fn is_replacement_underpriced(&self) -> bool {
@@ -886,23 +866,26 @@ impl ProviderError {
             .unwrap_or(false)
     }
 
-    pub fn as_jsonrpc(&self) -> Option<&JsonRpcError> {
+    pub fn as_jsonrpc(&self) -> Option<&rpc::JsonRpcError> {
         match &self.kind {
-            ErrorKind::Transport(err) => match err.as_ref() {
-                TransportError::JsonRpc(err) => Some(err),
+            ErrorKind::Connection(err) => match err {
+                ConnectionError::JsonRpc(err) => Some(err),
                 _ => None,
             },
             _ => None,
         }
     }
 
-    fn json(err: serde_json::Error) -> Box<Self> {
-        Box::new(Self { kind: ErrorKind::Json(err), context: "".into() })
-    }
-
-    fn with_ctx(mut self: Box<Self>, context: impl Into<Cow<'static, str>>) -> Box<Self> {
+    pub(crate) fn with_ctx(
+        mut self: Box<Self>,
+        context: impl Into<Cow<'static, str>>,
+    ) -> Box<Self> {
         self.context = context.into();
         self
+    }
+
+    pub(crate) fn json(err: serde_json::Error) -> Box<Self> {
+        Box::new(Self { kind: ErrorKind::Json(err), context: "".into() })
     }
 }
 
@@ -910,7 +893,7 @@ impl error::Error for ProviderError {
     fn source(&self) -> Option<&(dyn error::Error + 'static)> {
         match &self.kind {
             ErrorKind::Json(err) => Some(err),
-            ErrorKind::Transport(err) => Some(&*err),
+            ErrorKind::Connection(err) => Some(&*err),
         }
     }
 }
@@ -930,14 +913,14 @@ pub enum ErrorKind {
     /// The error returned when parsing the raw response into the expected type
     /// fails.
     Json(serde_json::Error),
-    Transport(Box<TransportError>),
+    Connection(ConnectionError),
 }
 
 impl fmt::Display for ErrorKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Json(err) => write!(f, "failed to parse JSON response to expected type: {err}"),
-            Self::Transport(err) => write!(f, "{err}"),
+            Self::Connection(err) => write!(f, "{err}"),
         }
     }
 }
@@ -948,7 +931,7 @@ mod tests {
 
     use ethers_core::types::Address;
 
-    use crate::{connections::noop, Connection, DuplexConnection, Provider};
+    use crate::{connection::noop, Connection, DuplexConnection, Provider};
 
     #[test]
     fn object_safety() {

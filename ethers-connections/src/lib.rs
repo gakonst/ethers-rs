@@ -1,24 +1,8 @@
-pub mod connections {
-    //! The umbrella module containing all [`Connection`](crate::Connection)
-    //! implementations.
-
-    #[cfg(feature = "http")]
-    pub mod http;
-    #[cfg(all(unix, feature = "ipc"))]
-    pub mod ipc;
-    #[cfg(feature = "ws")]
-    pub mod ws;
-
-    pub mod noop;
-    // pub mod mock;
-
-    #[cfg(any(feature = "ipc", feature = "ws"))]
-    mod common;
-}
-
+pub mod batch;
+pub mod connection;
 pub mod types;
 
-mod err;
+mod call;
 mod jsonrpc;
 mod pending;
 mod provider;
@@ -26,47 +10,37 @@ mod sub;
 
 use std::{future::Future, ops::Deref, pin::Pin};
 
-use jsonrpc::JsonRpcError;
-use serde::Serialize;
 use serde_json::value::RawValue;
 use tokio::sync::{mpsc, oneshot};
 
 use ethers_core::types::U256;
 
 pub use crate::{
+    call::{CallParams, RpcCall},
     pending::PendingTransaction,
-    provider::{ErrorKind, Provider, ProviderError},
+    provider::{Provider, ProviderError},
     sub::SubscriptionStream,
 };
 
-#[cfg(all(unix, feature = "ipc"))]
-pub use crate::connections::ipc::Ipc;
-
-use crate::{err::TransportError, jsonrpc::Request};
+use crate::{batch::BatchError, connection::ConnectionError};
 
 #[cfg(target_arch = "wasm32")]
 type DynFuture<'a, T> = Pin<Box<dyn Future<Output = T> + 'a>>;
 #[cfg(not(target_arch = "wasm32"))]
 type DynFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 
-/// ...
-pub type PendingRequest = oneshot::Sender<ResponsePayload>;
+/// The payload of a response received over a [`Connection`].
+pub type ResponsePayload = Result<Box<RawValue>, ConnectionError>;
+/// The payload of a batch response received over a [`Connection`].
+pub type BatchResponsePayload = Result<Vec<Result<Box<RawValue>, ConnectionError>>, BatchError>;
 
-/// The future returned by [`Connection::send_raw_request`] that resolves to the
-/// JSON value returned by the transport.
-pub type RequestFuture<'a> = DynFuture<'a, ResponsePayload>;
+/// The receiver channel for a [`ResponsePayload`].
+pub type ResponseReceiver = oneshot::Sender<ResponsePayload>;
 
-/*
-IDEA?:
-pub struct RequestFuture<'a> {
-    pub params: Option<(u64, Box<RawValue>)>,
-    response: DynFuture<'a, ResponsePayload>,
-}*/
-
-//pub type BatchRequestFuture<'a> = DynFuture<'a, Result<(), TransportError>>;
-
-/// The payload of a request response from a transport.
-pub type ResponsePayload = Result<Box<RawValue>, TransportError>;
+/// The [`Future`] resolving to a [`Connection`]'s response to a request.
+pub type ResponseFuture = DynFuture<'static, ResponsePayload>;
+/// The [`Future`] resolving to a [`Connection`]'s response to a batch request.
+pub type BatchResponseFuture = DynFuture<'static, BatchResponsePayload>;
 
 /// A connection allowing the exchange of Ethereum API JSON-RPC messages between
 /// a local client and a remote API provider.
@@ -74,14 +48,29 @@ pub trait Connection: Send + Sync {
     /// Returns a unique request ID.
     fn request_id(&self) -> u64;
 
-    /// Sends a JSON-RPC request to the underlying API provider and returns its
+    /// Sends a JSON-RPC request to the connected API provider and returns its
     /// response.
     ///
     /// The caller has to ensure that `id` is identical to the id encoded in
     /// `request` and that the latter represents a valid JSONRPC 2.0 request
     /// whose contents match the specification defined by the Ethereum
     /// [JSON-RPC API](https://eth.wiki/json-rpc/API).
-    fn send_raw_request(&self, id: u64, request: Box<RawValue>) -> RequestFuture<'_>;
+    fn send_raw_request(&self, id: u64, request: Box<RawValue>) -> ResponseFuture;
+
+    /// Sends a JSON-RPC batch request to the connected API provider and returns
+    /// its response.
+    ///
+    /// The caller has to ensure that for each ID in `ids` there is a
+    /// corresponding valid JSON object in `request`, which must be formatted as
+    /// an array.
+    ///
+    /// The implementation has to ensure, that the order of returned responses
+    /// matches the order of the given `ids`.
+    fn send_raw_batch_request(
+        &self,
+        ids: Box<[u64]>,
+        request: Box<RawValue>,
+    ) -> BatchResponseFuture;
 }
 
 // blanket impl for all types derefencing to a Connection
@@ -94,23 +83,26 @@ where
         self.deref().request_id()
     }
 
-    fn send_raw_request<'a>(&self, id: u64, request: Box<RawValue>) -> RequestFuture<'_> {
-        // FIXME: double-boxing is unfortunate, but otherwise the lifetime bound
-        // will not be fulfilled (async methods in traits should fix this)
-        Box::pin(async move {
-            let conn = self.deref();
-            conn.send_raw_request(id, request).await
-        })
+    fn send_raw_request(&self, id: u64, request: Box<RawValue>) -> ResponseFuture {
+        self.deref().send_raw_request(id, request)
+    }
+
+    fn send_raw_batch_request(
+        &self,
+        ids: Box<[u64]>,
+        request: Box<RawValue>,
+    ) -> BatchResponseFuture {
+        self.deref().send_raw_batch_request(ids, request)
     }
 }
 
 /// The future returned by [`DuplexConnection::subscribe`] that resolves to the
 /// ID of the subscription and the channel receiver for all notifications
 /// received for this subscription.
-pub type SubscribeFuture<'a> = DynFuture<'a, SubscribePayload>;
+pub type SubscribeFuture = DynFuture<'static, SubscribePayload>;
 
 /// The payload of a response to a subscribe request.
-pub type SubscribePayload = Result<Option<NotificationReceiver>, TransportError>;
+pub type SubscribePayload = Result<Option<NotificationReceiver>, ConnectionError>;
 
 /// The receiver channel half for subscription notifications.
 pub type NotificationReceiver = mpsc::UnboundedReceiver<Box<RawValue>>;
@@ -124,13 +116,13 @@ pub trait DuplexConnection: Connection {
     /// Additionaly, a RPC call to `eth_subscribe` is necessary, otherwise, no
     /// notifications will be received.
     /// If the ID is already subscribed to, `None` is returned.
-    fn subscribe(&self, id: U256) -> SubscribeFuture<'_>;
+    fn subscribe(&self, id: U256) -> SubscribeFuture;
 
     /// Unsubscribes to all notifications received for the given `id`.
     ///
     /// A previous RPC call to `eth_unsubscribe` is necessary, otherwise, the
     /// provider will continue to send further notifications for this ID.
-    fn unsubscribe(&self, id: U256) -> Result<(), TransportError>;
+    fn unsubscribe(&self, id: U256) -> Result<(), ConnectionError>;
 }
 
 // blanket impl for all types derefencing to a DuplexConnection
@@ -139,16 +131,11 @@ where
     C: DuplexConnection + ?Sized,
     D: Deref<Target = C> + Send + Sync,
 {
-    fn subscribe(&self, id: U256) -> SubscribeFuture<'_> {
-        // FIXME: double-boxing is unfortunate, but otherwise the lifetime bound
-        // will not be fulfilled (async methods in traits should fix this)
-        Box::pin(async move {
-            let conn = self.deref();
-            conn.subscribe(id).await
-        })
+    fn subscribe(&self, id: U256) -> SubscribeFuture {
+        self.deref().subscribe(id)
     }
 
-    fn unsubscribe(&self, id: U256) -> Result<(), TransportError> {
+    fn unsubscribe(&self, id: U256) -> Result<(), ConnectionError> {
         self.deref().unsubscribe(id)
     }
 }

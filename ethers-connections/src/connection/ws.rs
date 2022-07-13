@@ -11,13 +11,17 @@ use tokio::{
 };
 use tokio_tungstenite::{tungstenite::Message, MaybeTlsStream};
 
+use ethers_core::types::U256;
+
 use crate::{
-    err::TransportError,
-    jsonrpc::{Params, Response},
-    Connection, NotificationReceiver, RequestFuture, U256,
+    jsonrpc::{self as rpc},
+    BatchResponseFuture, Connection, NotificationReceiver, ResponseFuture,
 };
 
-use super::common::{FxHashMap, PendingRequest, Request};
+use super::{
+    common::{Request, Shared},
+    ConnectionError,
+};
 
 type WebSocketStream = tokio_tungstenite::WebSocketStream<MaybeTlsStream<TcpStream>>;
 
@@ -54,33 +58,37 @@ impl Connection for WebSocket {
         self.next_id.fetch_add(1, Ordering::Relaxed)
     }
 
-    fn send_raw_request(&self, id: u64, request: Box<RawValue>) -> RequestFuture<'_> {
-        Box::pin(async move {
-            // send the request to the WS server
-            let (tx, rx) = oneshot::channel();
-            self.request_tx.send(Request::Call { id, tx, request }).map_err(|_| todo!()).unwrap();
+    fn send_raw_request(&self, id: u64, request: Box<RawValue>) -> ResponseFuture {
+        // send the request to the WS server
+        let (tx, rx) = oneshot::channel();
+        let res = self.request_tx.send(Request::Call { id, tx, request });
 
-            // await the server's response
+        Box::pin(async move {
+            res.map_err(|_| todo!()).unwrap(); // TODO: handle error
+                                               // await the server's response
             rx.await.map_err(|_| server_exit())?
         })
+    }
+
+    fn send_raw_batch_request(
+        &self,
+        ids: Box<[u64]>,
+        request: Box<RawValue>,
+    ) -> BatchResponseFuture {
+        todo!()
     }
 }
 
 type Subscription = (mpsc::UnboundedSender<Box<RawValue>>, Option<NotificationReceiver>);
 
 struct WsServer {
-    pending: FxHashMap<u64, PendingRequest>,
-    subs: FxHashMap<U256, Subscription>,
+    shared: Shared,
     stream: WebSocketStream,
 }
 
 impl WsServer {
     fn new(stream: WebSocketStream) -> Self {
-        Self {
-            pending: FxHashMap::with_capacity_and_hasher(64, Default::default()),
-            subs: FxHashMap::with_capacity_and_hasher(64, Default::default()),
-            stream,
-        }
+        Self { shared: Default::default(), stream }
     }
 
     async fn run(mut self, mut rx: mpsc::UnboundedReceiver<Request>) {
@@ -119,13 +127,14 @@ impl WsServer {
             // RPC call requests are inserted into the `pending` map and their
             // payload is extracted to be written out
             Request::Call { id, request, tx } => {
-                let prev = self.pending.insert(id, tx);
+                let prev = self.shared.pending.insert(id, tx);
                 assert!(prev.is_none(), "replaced pending IPC request (id={})", id);
-                self.stream.send(request.into()).await?;
+                self.stream.send(request.get().into()).await?;
             }
+            Request::BatchCall { .. } => todo!(),
             Request::Subscribe { id, tx } => {
                 use std::collections::hash_map::Entry::*;
-                let res = match self.subs.entry(id) {
+                let res = match self.shared.subs.entry(id) {
                     // the entry already exists, e.g., because it was
                     // earlier instantiated by an incoming notification
                     Occupied(mut occ) => {
@@ -151,7 +160,7 @@ impl WsServer {
                 // NOTE: if the subscription has not been removed at the
                 // provider side as well, it will keep sending further
                 // notifications, which will re-create the entry
-                let _ = self.subs.remove(&id);
+                let _ = self.shared.subs.remove(&id);
             }
         };
 
@@ -160,13 +169,35 @@ impl WsServer {
 
     async fn handle_message(&mut self, msg: Message) -> Result<bool, WsError> {
         match msg {
-            Message::Text(text) => match serde_json::from_str(&text)? {
-                Response::Success { id, result } => self.handle_response(id, Ok(result.to_owned())),
+            Message::Text(text) => {
+                // match serde_json::from_str(&text)?
+
+                /*Response::Success { id, result } => self.handle_response(id, Ok(result.to_owned())),
                 Response::Error { id, error } => {
-                    self.handle_response(id, Err(TransportError::jsonrpc(error)))
+                    self.handle_response(id, Err(ConnectionError::jsonrpc(error)))
                 }
-                Response::Notification { params, .. } => self.handle_notification(params),
-            },
+                Response::Notification { params, .. } => self.handle_notification(params),*/
+                if let Ok(rpc::Response { id, result, .. }) = serde_json::from_str(&text) {
+                    todo!()
+                }
+
+                if let Ok(rpc::Notification { params, .. }) = serde_json::from_str(&text) {
+                    todo!()
+                }
+
+                if let Ok(batch) = rpc::deserialize_batch_response(&text) {
+                    todo!()
+                }
+
+                if let Ok(rpc::Error { id, error, .. }) = serde_json::from_str(&text) {
+                    todo!()
+                }
+
+                tracing::error!(
+                    response = %text,
+                    "received RPC response matches no expected value"
+                );
+            }
             Message::Ping(ping) => self.handle_ping(ping).await?,
             Message::Close(_) => return Ok(true),
             Message::Frame(_) | Message::Binary(_) | Message::Pong(_) => {}
@@ -175,8 +206,8 @@ impl WsServer {
         Ok(false)
     }
 
-    fn handle_response(&mut self, id: u64, res: Result<Box<RawValue>, TransportError>) {
-        match self.pending.remove(&id) {
+    fn handle_response(&mut self, id: u64, res: Result<Box<RawValue>, ConnectionError>) {
+        match self.shared.pending.remove(&id) {
             Some(tx) => {
                 // if send fails, request has been dropped at the callsite
                 let _ = tx.send(res);
@@ -185,7 +216,7 @@ impl WsServer {
         };
     }
 
-    fn handle_notification(&mut self, params: Params<'_>) {
+    fn handle_notification(&mut self, params: rpc::Params<'_>) {
         todo!()
     }
 
@@ -221,6 +252,6 @@ impl From<tokio_tungstenite::tungstenite::Error> for WsError {
     }
 }
 
-fn server_exit() -> TransportError {
-    TransportError::transport(WsError::ServerExit)
+fn server_exit() -> ConnectionError {
+    ConnectionError::connection(WsError::ServerExit)
 }

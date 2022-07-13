@@ -10,8 +10,9 @@ use tokio_stream::Stream;
 
 use ethers_core::types::U256;
 
-use crate::{err::TransportError, DuplexConnection, NotificationReceiver, Provider, ProviderError};
-
+use crate::{
+    connection::ConnectionError, DuplexConnection, NotificationReceiver, Provider, ProviderError,
+};
 /// A stream that receives notifications for a registered subscription and
 /// parses them into an expected type.
 pub struct SubscriptionStream<T, C: DuplexConnection> {
@@ -45,16 +46,16 @@ where
     }
 
     /// Receives the next notification from the stream.
-    pub async fn recv(&mut self) -> Option<Result<T, TransportError>> {
+    pub async fn recv(&mut self) -> Option<Result<T, ConnectionError>> {
         let raw = self.rx.recv().await?;
         match serde_json::from_str(raw.get()) {
             Ok(item) => Some(Ok(item)),
-            Err(source) => Some(Err(TransportError::json(raw.get(), source))),
+            Err(source) => Some(Err(ConnectionError::json(raw.get(), source))),
         }
     }
 
     /// Polls & parses the next notification.
-    fn poll_recv(&mut self, cx: &mut Context<'_>) -> Poll<Option<Result<T, TransportError>>> {
+    fn poll_recv(&mut self, cx: &mut Context<'_>) -> Poll<Option<Result<T, ConnectionError>>> {
         match self.rx.poll_recv(cx) {
             Poll::Ready(Some(raw)) => Poll::Ready(Some(self.parse_next(raw))),
             Poll::Ready(None) => Poll::Ready(None),
@@ -63,10 +64,10 @@ where
     }
 
     /// Parses the given `raw` notification.
-    fn parse_next(&self, raw: Box<RawValue>) -> Result<T, TransportError> {
+    fn parse_next(&self, raw: Box<RawValue>) -> Result<T, ConnectionError> {
         match serde_json::from_str(raw.get()) {
             Ok(item) => Ok(item),
-            Err(source) => Err(TransportError::json(raw.get(), source)),
+            Err(source) => Err(ConnectionError::json(raw.get(), source)),
         }
     }
 }
@@ -98,7 +99,7 @@ where
     T: for<'de> Deserialize<'de>,
     C: DuplexConnection + Clone + Unpin,
 {
-    type Item = Result<T, TransportError>;
+    type Item = Result<T, ConnectionError>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         self.get_mut().poll_recv(cx)

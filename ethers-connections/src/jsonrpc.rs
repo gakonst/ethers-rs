@@ -1,4 +1,4 @@
-//! https://www.jsonrpc.org/specification
+//! Types matching the [JSONRPC 2.0 specification](https://www.jsonrpc.org/specification).
 
 use std::{error, fmt};
 
@@ -9,6 +9,8 @@ use serde::{
     Deserialize, Serialize,
 };
 use serde_json::{value::RawValue, Value};
+
+use crate::connection::ConnectionError;
 
 /// A JSONRPC 2.0 request.
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
@@ -60,10 +62,60 @@ impl<T: Serialize> Serialize for Request<'_, T> {
     }
 }
 
+/// Either a [`Response`] or an [`Error`]
+#[derive(Clone, Debug)]
+pub(crate) enum ResponseOrError<'a> {
+    Response(Response<'a>),
+    Error(Error),
+}
+
+impl ResponseOrError<'_> {
+    pub(crate) fn id(&self) -> u64 {
+        match self {
+            Self::Response(response) => response.id,
+            Self::Error(error) => error.id,
+        }
+    }
+
+    pub(crate) fn to_result(self) -> Result<Box<RawValue>, ConnectionError> {
+        match self {
+            Self::Response(Response { result, .. }) => Ok(result.to_owned()),
+            Self::Error(Error { error, .. }) => Err(ConnectionError::jsonrpc(error)),
+        }
+    }
+}
+
+// FIXME: ideally, `Deserialize` would be derived for `ResponseOrError` as an
+// untagged enum, but since it contains `RawValue`s, derserialization will
+// always fail
+pub(crate) fn deserialize_batch_response(
+    input: &str,
+) -> Result<Vec<ResponseOrError<'_>>, serde_json::Error> {
+    let raw_responses: Vec<&RawValue> = serde_json::from_str(input)?;
+    let mut responses = Vec::with_capacity(raw_responses.len());
+
+    for raw in raw_responses {
+        if let Ok(response) = serde_json::from_str(raw.get()) {
+            responses.push(ResponseOrError::Response(response));
+            continue;
+        }
+
+        if let Ok(error) = serde_json::from_str(raw.get()) {
+            responses.push(ResponseOrError::Error(error));
+            continue;
+        }
+
+        todo!()
+    }
+
+    Ok(responses)
+}
+
 /// A JSON-RPC 2.0 success response.
 #[derive(Copy, Clone, Debug, Deserialize)]
-pub struct Response<'a> {
+pub(crate) struct Response<'a> {
     pub id: u64,
+    #[allow(unused)]
     pub jsonrpc: JsonRpc2,
     #[serde(borrow)]
     pub result: &'a RawValue,
@@ -71,16 +123,19 @@ pub struct Response<'a> {
 
 /// A JSON-RPC 2.0 error response.
 #[derive(Clone, Debug, Deserialize)]
-pub struct Error {
-    pub id: Option<u64>,
+pub(crate) struct Error {
+    pub id: u64,
+    #[allow(unused)]
     pub jsonrpc: JsonRpc2,
     pub error: JsonRpcError,
 }
 
 /// A JSON-RPC 2.0 notification.
 #[derive(Clone, Copy, Debug, Deserialize)]
-pub struct Notification<'a> {
+pub(crate) struct Notification<'a> {
+    #[allow(unused)]
     pub method: &'a str,
+    #[allow(unused)]
     pub jsonrpc: JsonRpc2,
     #[serde(borrow)]
     pub params: Params<'a>,
@@ -96,7 +151,7 @@ pub struct Params<'a> {
 
 /// The JSON-RPC 2.0 ID value.
 #[derive(Clone, Copy)]
-pub struct JsonRpc2;
+pub(crate) struct JsonRpc2;
 
 impl fmt::Debug for JsonRpc2 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -154,7 +209,6 @@ mod tests {
     #[test]
     fn serialize_request() {
         let request = Request { id: 1, method: "eth_getBalance", params: [Address::zero()] };
-
         let json = serde_json::to_string(&request).unwrap();
         assert_eq!(
             json,
