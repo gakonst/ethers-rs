@@ -119,13 +119,25 @@ impl ProjectPathsConfig {
         Ok(Source::read_all_from(&self.scripts)?)
     }
 
-    /// Returns the combined set solidity file paths for `Self::sources` and `Self::tests`
+    /// Returns true if the there is at least one solidity file in this config.
+    ///
+    /// See also, `Self::input_files()`
+    pub fn has_input_files(&self) -> bool {
+        self.input_files_iter().next().is_some()
+    }
+
+    /// Returns an iterator that yields all solidity file paths for `Self::sources`, `Self::tests`
+    /// and `Self::scripts`
+    pub fn input_files_iter(&self) -> impl Iterator<Item = PathBuf> + '_ {
+        utils::source_files_iter(&self.sources)
+            .chain(utils::source_files_iter(&self.tests))
+            .chain(utils::source_files_iter(&self.scripts))
+    }
+
+    /// Returns the combined set solidity file paths for `Self::sources`, `Self::tests` and
+    /// `Self::scripts`
     pub fn input_files(&self) -> Vec<PathBuf> {
-        utils::source_files(&self.sources)
-            .into_iter()
-            .chain(utils::source_files(&self.tests))
-            .chain(utils::source_files(&self.scripts))
-            .collect()
+        self.input_files_iter().collect()
     }
 
     /// Returns the combined set of `Self::read_sources` + `Self::read_tests` + `Self::read_scripts`
