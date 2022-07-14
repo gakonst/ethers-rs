@@ -72,6 +72,22 @@ pub fn find_version_pragma(contract: &str) -> Option<Match> {
     RE_SOL_PRAGMA_VERSION.captures(contract)?.name("version")
 }
 
+/// Returns an iterator that yields all solidity/yul files funder under the given root path or the
+/// `root` itself, if it is a sol/yul file
+///
+/// This also follows symlinks.
+pub fn source_files_iter(root: impl AsRef<Path>) -> impl Iterator<Item = PathBuf> {
+    WalkDir::new(root)
+        .follow_links(true)
+        .into_iter()
+        .filter_map(Result::ok)
+        .filter(|e| e.file_type().is_file())
+        .filter(|e| {
+            e.path().extension().map(|ext| (ext == "sol") || (ext == "yul")).unwrap_or_default()
+        })
+        .map(|e| e.path().into())
+}
+
 /// Returns a list of absolute paths to all the solidity files under the root, or the file itself,
 /// if the path is a solidity file.
 ///
@@ -86,16 +102,7 @@ pub fn find_version_pragma(contract: &str) -> Option<Match> {
 /// let sources = utils::source_files("./contracts");
 /// ```
 pub fn source_files(root: impl AsRef<Path>) -> Vec<PathBuf> {
-    WalkDir::new(root)
-        .follow_links(true)
-        .into_iter()
-        .filter_map(Result::ok)
-        .filter(|e| e.file_type().is_file())
-        .filter(|e| {
-            e.path().extension().map(|ext| (ext == "sol") || (ext == "yul")).unwrap_or_default()
-        })
-        .map(|e| e.path().into())
-        .collect()
+    source_files_iter(root).collect()
 }
 
 /// Returns a list of _unique_ paths to all folders under `root` that contain at least one solidity
