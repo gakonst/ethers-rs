@@ -332,8 +332,14 @@ impl<'input> HumanReadableParser<'input> {
         Self::new(input).take_event()
     }
 
+    /// Returns the next `Function` and consumes the underlying tokens
     pub fn take_function(&mut self) -> Result<Function, LexerError> {
-        let name = self.take_identifier(Token::Function)?;
+        let name = if self.peek_next(Token::Constructor) {
+            self.next();
+            "constructor"
+        } else {
+            self.take_identifier(Token::Function)?
+        };
 
         self.take_open_parenthesis()?;
         let inputs = self.take_function_params()?;
@@ -811,6 +817,35 @@ pub enum DataLocation {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn parse_constructor() {
+        #[allow(deprecated)]
+        let f = Function {
+            name: "constructor".to_string(),
+            inputs: vec![
+                Param { name: "author".to_string(), kind: ParamType::Address, internal_type: None },
+                Param {
+                    name: "oldValue".to_string(),
+                    kind: ParamType::String,
+                    internal_type: None,
+                },
+                Param {
+                    name: "newValue".to_string(),
+                    kind: ParamType::String,
+                    internal_type: None,
+                },
+            ],
+            outputs: vec![],
+            constant: None,
+            state_mutability: Default::default(),
+        };
+        let parsed = HumanReadableParser::parse_function(
+            "constructor(address author, string oldValue, string newValue)",
+        )
+        .unwrap();
+        assert_eq!(f, parsed);
+    }
 
     #[test]
     fn test_parse_function() {
