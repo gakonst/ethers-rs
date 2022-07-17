@@ -164,6 +164,22 @@ where
             self.provider.watch(&self.filter).await.map_err(ContractError::MiddlewareError)?;
         Ok(EventStream::new(filter.id, filter, Box::new(move |log| self.parse_log(log))))
     }
+
+    /// As [`stream`], but does not discard Log metadata.
+    pub async fn stream_with_meta(
+        &'a self,
+    ) -> Result<
+        // Wraps the FilterWatcher with a mapping to the event
+        EventStream<'a, FilterWatcher<'a, M::Provider, Log>, (D, LogMeta), ContractError<M>>,
+        ContractError<M>,
+    > {
+        let filter =
+            self.provider.watch(&self.filter).await.map_err(ContractError::MiddlewareError)?;
+        Ok(EventStream::new(filter.id, filter, Box::new(move |log| {
+            let meta = LogMeta::from(&log);
+            Ok((self.parse_log(log)?, meta))
+        })))
+    }
 }
 
 impl<'a, M, D> Event<'a, M, D>
