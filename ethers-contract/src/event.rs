@@ -165,7 +165,7 @@ where
         Ok(EventStream::new(filter.id, filter, Box::new(move |log| self.parse_log(log))))
     }
 
-    /// As [`stream`], but does not discard Log metadata.
+    /// As [`Self::stream`], but does not discard [`Log`] metadata.
     pub async fn stream_with_meta(
         &'a self,
     ) -> Result<
