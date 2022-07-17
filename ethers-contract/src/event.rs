@@ -205,6 +205,24 @@ where
             .map_err(ContractError::MiddlewareError)?;
         Ok(EventStream::new(filter.id, filter, Box::new(move |log| self.parse_log(log))))
     }
+
+    pub async fn subscribe_with_meta(
+        &'a self,
+    ) -> Result<
+        // Wraps the SubscriptionStream with a mapping to the event
+        EventStream<'a, SubscriptionStream<'a, M::Provider, Log>, (D, LogMeta), ContractError<M>>,
+        ContractError<M>,
+    > {
+        let filter = self
+            .provider
+            .subscribe_logs(&self.filter)
+            .await
+            .map_err(ContractError::MiddlewareError)?;
+            Ok(EventStream::new(filter.id, filter, Box::new(move |log| {
+                let meta = LogMeta::from(&log);
+                Ok((self.parse_log(log)?, meta))
+            })))
+    }
 }
 
 impl<M, D> Event<'_, M, D>
