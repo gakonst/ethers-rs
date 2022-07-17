@@ -175,10 +175,14 @@ where
     > {
         let filter =
             self.provider.watch(&self.filter).await.map_err(ContractError::MiddlewareError)?;
-        Ok(EventStream::new(filter.id, filter, Box::new(move |log| {
-            let meta = LogMeta::from(&log);
-            Ok((self.parse_log(log)?, meta))
-        })))
+        Ok(EventStream::new(
+            filter.id,
+            filter,
+            Box::new(move |log| {
+                let meta = LogMeta::from(&log);
+                Ok((self.parse_log(log)?, meta))
+            }),
+        ))
     }
 }
 
@@ -218,10 +222,14 @@ where
             .subscribe_logs(&self.filter)
             .await
             .map_err(ContractError::MiddlewareError)?;
-            Ok(EventStream::new(filter.id, filter, Box::new(move |log| {
+        Ok(EventStream::new(
+            filter.id,
+            filter,
+            Box::new(move |log| {
                 let meta = LogMeta::from(&log);
                 Ok((self.parse_log(log)?, meta))
-            })))
+            }),
+        ))
     }
 }
 
