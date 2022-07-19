@@ -61,7 +61,6 @@
 //! determine if there is a nested eip712 struct. However, this work is not yet complete.
 
 #![deny(rustdoc::broken_intra_doc_links)]
-#![deny(unused_crate_dependencies)]
 
 use std::convert::TryFrom;
 
@@ -115,13 +114,14 @@ fn impl_eip_712_macro(ast: &syn::DeriveInput) -> TokenStream {
     // Use reference to ethers_core instead of directly using the crate itself.
     let ethers_core = ethers_core_crate();
 
+
     let implementation = quote! {
         impl Eip712 for #primary_type {
             type Error = #ethers_core::types::transaction::eip712::Eip712Error;
 
             fn type_hash() -> Result<[u8; 32], Self::Error> {
                 use std::convert::TryFrom;
-                let decoded = hex::decode(#type_hash)?;
+                let decoded = #ethers_core::utils::hex::decode(#type_hash)?;
                 let byte_array: [u8; 32] = <[u8; 32]>::try_from(&decoded[..])?;
                 Ok(byte_array)
             }
@@ -129,13 +129,13 @@ fn impl_eip_712_macro(ast: &syn::DeriveInput) -> TokenStream {
             // Return the pre-computed domain separator from compile time;
             fn domain_separator(&self) -> Result<[u8; 32], Self::Error> {
                 use std::convert::TryFrom;
-                let decoded = hex::decode(#domain_separator)?;
+                let decoded = #ethers_core::utils::hex::decode(#domain_separator)?;
                 let byte_array: [u8; 32] = <[u8; 32]>::try_from(&decoded[..])?;
                 Ok(byte_array)
             }
 
             fn domain(&self) -> Result<#ethers_core::types::transaction::eip712::EIP712Domain, Self::Error> {
-                let domain: #ethers_core::types::transaction::eip712::EIP712Domain = serde_json::from_str(#domain_str)?;
+                let domain: #ethers_core::types::transaction::eip712::EIP712Domain = # ethers_core::utils::__serde_json::from_str(#domain_str)?;
 
                 Ok(domain)
             }
