@@ -200,7 +200,6 @@ impl TryFrom<&syn::DeriveInput> for EIP712Domain {
         let mut domain_version = None;
         let mut chain_id = None;
         let mut verifying_contract = None;
-        let mut salt = None;
 
         let mut found_eip712_attribute = false;
 
@@ -321,7 +320,7 @@ impl TryFrom<&syn::DeriveInput> for EIP712Domain {
                                             },
                                             "salt" => match meta.lit {
                                                 syn::Lit::Str(ref lit_str) => {
-                                                    if salt.is_some() {
+                                                    if domain.salt.is_some() {
                                                         return Err(Error::new(
                                                             meta.path.span(),
                                                             "domain salt already specified",
@@ -331,9 +330,9 @@ impl TryFrom<&syn::DeriveInput> for EIP712Domain {
 
                                                     // keccak256(<string>) to compute bytes32
                                                     // encoded domain salt
-                                                    let s = keccak256(lit_str.value());
+                                                    let salt = keccak256(lit_str.value());
 
-                                                    salt = Some(s);
+                                                    domain.salt = Some(salt);
                                                 }
                                                 _ => {
                                                     return Err(Error::new(
