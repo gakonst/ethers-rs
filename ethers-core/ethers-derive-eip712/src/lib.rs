@@ -114,7 +114,6 @@ fn impl_eip_712_macro(ast: &syn::DeriveInput) -> TokenStream {
     // Use reference to ethers_core instead of directly using the crate itself.
     let ethers_core = ethers_core_crate();
 
-
     let implementation = quote! {
         impl Eip712 for #primary_type {
             type Error = #ethers_core::types::transaction::eip712::Eip712Error;

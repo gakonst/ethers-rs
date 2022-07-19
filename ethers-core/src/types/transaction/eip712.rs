@@ -295,8 +295,7 @@ impl TryFrom<&syn::DeriveInput> for EIP712Domain {
                                             },
                                             "verifying_contract" => match meta.lit {
                                                 syn::Lit::Str(ref lit_str) => {
-                                                    if verifying_contract.is_some()
-                                                    {
+                                                    if verifying_contract.is_some() {
                                                         return Err(Error::new(
                                                             meta.path.span(),
                                                             "domain verifying_contract already specified",
@@ -371,42 +370,38 @@ impl TryFrom<&syn::DeriveInput> for EIP712Domain {
                             }
                         }
 
-                        domain. name = domain_name.ok_or_else(
-                            || Error::new(
+                        domain.name = domain_name.ok_or_else(|| {
+                            Error::new(
                                 meta.path.span(),
                                 "missing required domain attribute: 'name'".to_string(),
                             )
-                                .to_compile_error()
-                        )?;
+                            .to_compile_error()
+                        })?;
 
-                        domain. version = domain_version.ok_or_else(
-                            ||
-                                Error::new(
-                                    meta.path.span(),
-                                    "missing required domain attribute: 'version'".to_string(),
-                                )
-                                    .to_compile_error()
-                        )?;
+                        domain.version = domain_version.ok_or_else(|| {
+                            Error::new(
+                                meta.path.span(),
+                                "missing required domain attribute: 'version'".to_string(),
+                            )
+                            .to_compile_error()
+                        })?;
 
-                        domain. chain_id = chain_id.ok_or_else(
-                            ||
-                                Error::new(
-                                    meta.path.span(),
-                                    "missing required domain attribute: 'chain_id'".to_string(),
-                                )
-                                    .to_compile_error()
-                        )?;
+                        domain.chain_id = chain_id.ok_or_else(|| {
+                            Error::new(
+                                meta.path.span(),
+                                "missing required domain attribute: 'chain_id'".to_string(),
+                            )
+                            .to_compile_error()
+                        })?;
 
-                        domain.verifying_contract = verifying_contract.ok_or_else(
-                            ||
-                                Error::new(
-                                    meta.path.span(),
-                                    "missing required domain attribute: 'verifying_contract'"
-                                        .to_string(),
-                                )
-                                    .to_compile_error()
-                        )?;
-
+                        domain.verifying_contract = verifying_contract.ok_or_else(|| {
+                            Error::new(
+                                meta.path.span(),
+                                "missing required domain attribute: 'verifying_contract'"
+                                    .to_string(),
+                            )
+                            .to_compile_error()
+                        })?;
                     }
 
                     break 'attribute_search
