@@ -201,6 +201,19 @@ impl<T> Artifacts<T> {
         self.0.values().find_map(|all| all.get(contract_name))
     }
 
+    /// Returns the `Artifact` with matching file, contract name and version
+    pub fn find_artifact(
+        &self,
+        file: &str,
+        contract_name: &str,
+        version: &Version,
+    ) -> Option<&ArtifactFile<T>> {
+        self.0
+            .get(file)
+            .and_then(|contracts| contracts.get(contract_name))
+            .and_then(|artifacts| artifacts.iter().find(|artifact| artifact.version == *version))
+    }
+
     /// Returns true if this type contains an artifact with the given path for the given contract
     pub fn has_contract_artifact(&self, contract_name: &str, artifact_path: &Path) -> bool {
         self.get_contract_artifact_files(contract_name)
@@ -537,7 +550,7 @@ pub trait ArtifactOutput {
         artifacts.join_all(&layout.artifacts);
         artifacts.write_all()?;
 
-        self.write_extras(contracts, layout)?;
+        self.write_extras(contracts, &artifacts)?;
 
         Ok(artifacts)
     }
@@ -558,22 +571,16 @@ pub trait ArtifactOutput {
     fn write_extras(
         &self,
         contracts: &VersionedContracts,
-        layout: &ProjectPathsConfig,
+        artifacts: &Artifacts<Self::Artifact>,
     ) -> Result<()> {
         for (file, contracts) in contracts.as_ref().iter() {
             for (name, versioned_contracts) in contracts {
                 for c in versioned_contracts {
-                    // TODO
-                    let artifact_path = if versioned_contracts.len() > 1 {
-                        Self::output_file_versioned(file, name, &c.version)
-                    } else {
-                        Self::output_file(file, name)
-                    };
-
-                    let file = layout.artifacts.join(artifact_path);
-                    utils::create_parent_dir_all(&file)?;
-
-                    self.write_contract_extras(&c.contract, &file)?;
+                    if let Some(artifact) = artifacts.find_artifact(file, name, &c.version) {
+                        let file = &artifact.file;
+                        utils::create_parent_dir_all(file)?;
+                        self.write_contract_extras(&c.contract, file)?;
+                    }
                 }
             }
         }
@@ -1020,11 +1027,8 @@ mod tests {
         assert_eq!(alternative, PathBuf::from("v1/tokens/Greeter.sol/Greeter.json"));
 
         already_taken.insert("v1/tokens/Greeter.sol/Greeter.json".into());
-        let alternative = ConfigurableArtifacts::conflict_free_output_file(
-            &already_taken,
-            conflict,
-            file,
-        );
+        let alternative =
+            ConfigurableArtifacts::conflict_free_output_file(&already_taken, conflict, file);
         assert_eq!(alternative, PathBuf::from("Greeter.sol_1/Greeter.json"));
     }
 }
