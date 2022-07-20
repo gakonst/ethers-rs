@@ -9,7 +9,7 @@ use syn::{
 use crate::{
     abi,
     abi::{ParamType, Token},
-    types::{Address, H160, U256},
+    types::{Address, U256},
     utils::keccak256,
 };
 
@@ -196,9 +196,14 @@ impl TryFrom<&syn::DeriveInput> for EIP712Domain {
     type Error = TokenStream;
     fn try_from(input: &syn::DeriveInput) -> Result<EIP712Domain, Self::Error> {
         let mut domain = EIP712Domain::default();
+        let mut domain_name = None;
+        let mut domain_version = None;
+        let mut chain_id = None;
+        let mut verifying_contract = None;
+
         let mut found_eip712_attribute = false;
 
-        for attribute in input.attrs.iter() {
+        'attribute_search: for attribute in input.attrs.iter() {
             if let AttrStyle::Outer = attribute.style {
                 if let Ok(syn::Meta::List(meta)) = attribute.parse_meta() {
                     if meta.path.is_ident("eip712") {
@@ -219,7 +224,7 @@ impl TryFrom<&syn::DeriveInput> for EIP712Domain {
                                         match ident.to_string().as_ref() {
                                             "name" => match meta.lit {
                                                 syn::Lit::Str(ref lit_str) => {
-                                                    if domain.name != String::default() {
+                                                    if domain_name.is_some() {
                                                         return Err(Error::new(
                                                             meta.path.span(),
                                                             "domain name already specified",
@@ -227,7 +232,7 @@ impl TryFrom<&syn::DeriveInput> for EIP712Domain {
                                                         .to_compile_error())
                                                     }
 
-                                                    domain.name = lit_str.value();
+                                                    domain_name = Some(lit_str.value());
                                                 }
                                                 _ => {
                                                     return Err(Error::new(
@@ -239,7 +244,7 @@ impl TryFrom<&syn::DeriveInput> for EIP712Domain {
                                             },
                                             "version" => match meta.lit {
                                                 syn::Lit::Str(ref lit_str) => {
-                                                    if domain.version != String::default() {
+                                                    if domain_version.is_some() {
                                                         return Err(Error::new(
                                                             meta.path.span(),
                                                             "domain version already specified",
@@ -247,7 +252,7 @@ impl TryFrom<&syn::DeriveInput> for EIP712Domain {
                                                         .to_compile_error())
                                                     }
 
-                                                    domain.version = lit_str.value();
+                                                    domain_version = Some(lit_str.value());
                                                 }
                                                 _ => {
                                                     return Err(Error::new(
@@ -259,7 +264,7 @@ impl TryFrom<&syn::DeriveInput> for EIP712Domain {
                                             },
                                             "chain_id" => match meta.lit {
                                                 syn::Lit::Int(ref lit_int) => {
-                                                    if domain.chain_id != U256::default() {
+                                                    if chain_id.is_some() {
                                                         return Err(Error::new(
                                                             meta.path.span(),
                                                             "domain chain_id already specified",
@@ -267,7 +272,7 @@ impl TryFrom<&syn::DeriveInput> for EIP712Domain {
                                                         .to_compile_error())
                                                     }
 
-                                                    domain.chain_id = U256::from(
+                                                    chain_id = Some(U256::from(
                                                         lit_int.base10_parse::<u64>().map_err(
                                                             |_| {
                                                                 Error::new(
@@ -277,7 +282,7 @@ impl TryFrom<&syn::DeriveInput> for EIP712Domain {
                                                                 .to_compile_error()
                                                             },
                                                         )?,
-                                                    );
+                                                    ));
                                                 }
                                                 _ => {
                                                     return Err(Error::new(
@@ -289,8 +294,7 @@ impl TryFrom<&syn::DeriveInput> for EIP712Domain {
                                             },
                                             "verifying_contract" => match meta.lit {
                                                 syn::Lit::Str(ref lit_str) => {
-                                                    if domain.verifying_contract != H160::default()
-                                                    {
+                                                    if verifying_contract.is_some() {
                                                         return Err(Error::new(
                                                             meta.path.span(),
                                                             "domain verifying_contract already specified",
@@ -298,13 +302,13 @@ impl TryFrom<&syn::DeriveInput> for EIP712Domain {
                                                         .to_compile_error());
                                                     }
 
-                                                    domain.verifying_contract = lit_str.value().parse().map_err(|_| {
+                                                    verifying_contract = Some(lit_str.value().parse().map_err(|_| {
                                                             Error::new(
                                                                 meta.path.span(),
                                                                 "failed to parse verifying contract into Address",
                                                             )
                                                             .to_compile_error()
-                                                        })?;
+                                                        })?);
                                                 }
                                                 _ => {
                                                     return Err(Error::new(
@@ -316,7 +320,7 @@ impl TryFrom<&syn::DeriveInput> for EIP712Domain {
                                             },
                                             "salt" => match meta.lit {
                                                 syn::Lit::Str(ref lit_str) => {
-                                                    if domain.salt != Option::None {
+                                                    if domain.salt.is_some() {
                                                         return Err(Error::new(
                                                             meta.path.span(),
                                                             "domain salt already specified",
@@ -365,36 +369,41 @@ impl TryFrom<&syn::DeriveInput> for EIP712Domain {
                             }
                         }
 
-                        if domain.name == String::default() {
-                            return Err(Error::new(
+                        domain.name = domain_name.ok_or_else(|| {
+                            Error::new(
                                 meta.path.span(),
                                 "missing required domain attribute: 'name'".to_string(),
                             )
-                            .to_compile_error())
-                        }
-                        if domain.version == String::default() {
-                            return Err(Error::new(
+                            .to_compile_error()
+                        })?;
+
+                        domain.version = domain_version.ok_or_else(|| {
+                            Error::new(
                                 meta.path.span(),
                                 "missing required domain attribute: 'version'".to_string(),
                             )
-                            .to_compile_error())
-                        }
-                        if domain.chain_id == U256::default() {
-                            return Err(Error::new(
+                            .to_compile_error()
+                        })?;
+
+                        domain.chain_id = chain_id.ok_or_else(|| {
+                            Error::new(
                                 meta.path.span(),
                                 "missing required domain attribute: 'chain_id'".to_string(),
                             )
-                            .to_compile_error())
-                        }
-                        if domain.verifying_contract == H160::default() {
-                            return Err(Error::new(
+                            .to_compile_error()
+                        })?;
+
+                        domain.verifying_contract = verifying_contract.ok_or_else(|| {
+                            Error::new(
                                 meta.path.span(),
                                 "missing required domain attribute: 'verifying_contract'"
                                     .to_string(),
                             )
-                            .to_compile_error())
-                        }
+                            .to_compile_error()
+                        })?;
                     }
+
+                    break 'attribute_search
                 }
             }
         }
