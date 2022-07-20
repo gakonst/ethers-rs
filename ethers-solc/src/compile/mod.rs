@@ -431,7 +431,7 @@ impl Solc {
     }
 
     /// Verify that the checksum for this version of solc is correct. We check against the SHA256
-    /// checksum from the build information published by binaries.soliditylang.org
+    /// checksum from the build information published by [binaries.soliditylang.org](https://binaries.soliditylang.org/)
     #[cfg(all(feature = "svm-solc"))]
     pub fn verify_checksum(&self) -> Result<()> {
         let version = self.version_short()?;
