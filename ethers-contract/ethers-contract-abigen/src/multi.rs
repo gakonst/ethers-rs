@@ -1047,11 +1047,6 @@ contract Greeter2 {
         return stuff;
     }
 }
-
-// from a gnosis contract
-contract Enum {
-    enum Operation {Call, DelegateCall}
-}
 "#,
         )
         .unwrap();
@@ -1079,7 +1074,6 @@ contract Enum {
         assert!(multi_file_mod.exists());
         let content = fs::read_to_string(&multi_file_mod).unwrap();
         assert!(content.contains("pub mod shared_types"));
-        assert!(content.contains("pub mod enum_"));
 
         let greeter1 = multi_file_dir.join("greeter_1.rs");
         assert!(greeter1.exists());
@@ -1093,11 +1087,6 @@ contract Enum {
         assert!(!content.contains("pub struct Inner"));
         assert!(!content.contains("pub struct Stuff"));
 
-        let enum_ = multi_file_dir.join("enum_.rs");
-        assert!(enum_.exists());
-        let content = fs::read_to_string(&enum_).unwrap();
-        assert!(!content.contains("pub enum Operation"));
-
         let shared_types = multi_file_dir.join("shared_types.rs");
         assert!(shared_types.exists());
         let content = fs::read_to_string(&shared_types).unwrap();
@@ -1106,11 +1095,11 @@ contract Enum {
     }
 
     #[test]
-    fn can_sanitize_bindings() {
+    fn can_sanitize_reserved_words() {
         let tmp = TempProject::dapptools().unwrap();
 
         tmp.add_source(
-            "Greeter",
+            "ReservedWords",
             r#"
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.0;
@@ -1139,7 +1128,6 @@ contract Enum {
         let single_file_mod = single_file_dir.join("mod.rs");
         assert!(single_file_mod.exists());
         let content = fs::read_to_string(&single_file_mod).unwrap();
-        println!("{}", content);
         assert!(content.contains("pub mod mod_ {"));
         assert!(content.contains("pub mod enum_ {"));
 
@@ -1151,18 +1139,17 @@ contract Enum {
         let multi_file_mod = multi_file_dir.join("mod.rs");
         assert!(multi_file_mod.exists());
         let content = fs::read_to_string(&multi_file_mod).unwrap();
-        assert!(content.contains("pub mod enum_"));
-        assert!(content.contains("pub mod mod_"));
+        assert!(content.contains("pub mod enum_;"));
+        assert!(content.contains("pub mod mod_;"));
 
         let enum_ = multi_file_dir.join("enum_.rs");
         assert!(enum_.exists());
         let content = fs::read_to_string(&enum_).unwrap();
-        assert!(!content.contains("pub enum Operation"));
+        assert!(content.contains("pub mod enum_ {"));
 
         let mod_ = multi_file_dir.join("mod_.rs");
         assert!(mod_.exists());
         let content = fs::read_to_string(&mod_).unwrap();
-        println!("{}", content);
-        assert!(!content.contains("pub enum Operation"));
+        assert!(content.contains("pub mod mod_ {"));
     }
 }
