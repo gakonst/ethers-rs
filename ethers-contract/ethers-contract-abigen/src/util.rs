@@ -42,11 +42,8 @@ fn safe_identifier_name(name: String) -> String {
 
 /// converts invalid rust module names to valid ones
 pub fn safe_module_name(name: &str) -> String {
-    match safe_snake_case(name).as_ref() {
-        // handle reserve words used in contracts (eg Enum is a gnosis contract)
-        name @ ("enum" | "mod" | "module") => format!("_{}", name),
-        name => name.to_string(),
-    }
+    // handle reserve words used in contracts (eg Enum is a gnosis contract)
+    safe_ident(&safe_snake_case(name)).to_string()
 }
 
 /// Expands an identifier as snakecase and preserve any leading or trailing underscores
@@ -241,9 +238,8 @@ mod tests {
     #[test]
     fn test_safe_module_name() {
         assert_eq!(safe_module_name("Valid"), "valid");
-        assert_eq!(safe_module_name("Enum"), "_enum");
-        assert_eq!(safe_module_name("Mod"), "_mod");
-        assert_eq!(safe_module_name("Module"), "_module");
+        assert_eq!(safe_module_name("Enum"), "enum_");
+        assert_eq!(safe_module_name("Mod"), "mod_");
         assert_eq!(safe_module_name("2Two"), "_2_two");
     }
 }

@@ -101,8 +101,7 @@ impl Context {
     /// Expands the whole rust contract
     pub fn expand(&self) -> Result<ExpandedContract> {
         let name = &self.contract_ident;
-        let name_mod =
-            util::ident(&format!("{}_mod", self.contract_ident.to_string().to_lowercase()));
+        let name_mod = util::ident(&util::safe_module_name(&self.contract_name));
         let abi_name = self.inline_abi_ident();
 
         // 0. Imports
