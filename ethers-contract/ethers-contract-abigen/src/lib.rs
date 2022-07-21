@@ -29,7 +29,6 @@ pub use util::parse_address;
 
 use crate::contract::ExpandedContract;
 use eyre::Result;
-use inflector::Inflector;
 use proc_macro2::TokenStream;
 use std::{collections::HashMap, fs::File, io::Write, path::Path};
 
