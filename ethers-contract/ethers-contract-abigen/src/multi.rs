@@ -559,7 +559,7 @@ serde_json = "1.0.79"
     /// Append module declarations to the `lib.rs` or `mod.rs`
     fn append_module_names(&self, mut buf: impl Write) -> Result<()> {
         let mut mod_names: BTreeSet<_> =
-            self.bindings.keys().map(|name| name.to_snake_case()).collect();
+            self.bindings.keys().map(|name| util::safe_module_name(name)).collect();
         if let Some(ref shared) = self.shared_types {
             mod_names.insert(shared.name.to_snake_case());
         }
@@ -1047,6 +1047,11 @@ contract Greeter2 {
         return stuff;
     }
 }
+
+// from a gnosis contract
+contract Enum {
+    enum Operation {Call, DelegateCall}
+}
 "#,
         )
         .unwrap();
@@ -1074,6 +1079,7 @@ contract Greeter2 {
         assert!(multi_file_mod.exists());
         let content = fs::read_to_string(&multi_file_mod).unwrap();
         assert!(content.contains("pub mod shared_types"));
+        assert!(content.contains("pub mod _enum"));
 
         let greeter1 = multi_file_dir.join("greeter_1.rs");
         assert!(greeter1.exists());
@@ -1086,6 +1092,11 @@ contract Greeter2 {
         let content = fs::read_to_string(&greeter2).unwrap();
         assert!(!content.contains("pub struct Inner"));
         assert!(!content.contains("pub struct Stuff"));
+
+        let _enum = multi_file_dir.join("_enum.rs");
+        assert!(_enum.exists());
+        let content = fs::read_to_string(&_enum).unwrap();
+        assert!(!content.contains("pub enum Operation"));
 
         let shared_types = multi_file_dir.join("shared_types.rs");
         assert!(shared_types.exists());

@@ -233,7 +233,7 @@ impl ContractBindings {
 
     /// Generate the default module name (snake case of the contract name)
     pub fn module_name(&self) -> String {
-        self.name.to_snake_case()
+        util::safe_module_name(&self.name)
     }
 
     /// Generate the default filename of the module
