@@ -125,10 +125,18 @@ ethers = { git = "https://github.com/gakonst/ethers-rs", features = ["ipc"] }
 If you are looking to connect to a HTTPS endpoint, then you need to enable the `rustls` or `openssl` feature.
 feature-flags.
 
+To enable `rustls`:
 ```toml
 [dependencies]
 
-ethers = { git = "https://github.com/gakonst/ethers-rs", features = ["openssl", "rustls"] }
+ethers = { git = "https://github.com/gakonst/ethers-rs", features = ["rustls"] }
+```
+
+To enable `openssl`:
+```toml
+[dependencies]
+
+ethers = { git = "https://github.com/gakonst/ethers-rs", features = ["openssl"] }
 ```
 
 ## Note on WASM and FFI bindings
