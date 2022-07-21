@@ -122,7 +122,7 @@ ethers = { git = "https://github.com/gakonst/ethers-rs", features = ["ipc"] }
 
 ### HTTP Secure (HTTPS)
 
-If you are looking to connect to a HTTPS endpoint, then you need to enable TLS (`rustls`) and/or SSL (`openssl`) 
+If you are looking to connect to a HTTPS endpoint, then you need to enable the `rustls` or `openssl` feature.
 feature-flags.
 
 ```toml
