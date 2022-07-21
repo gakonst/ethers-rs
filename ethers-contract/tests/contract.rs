@@ -601,7 +601,7 @@ mod eth_tests {
             out: Address::from([0; 20]),
         };
 
-        let derived_foo_bar = deriveeip712test_mod::FooBar {
+        let derived_foo_bar = derive_eip_712_test::FooBar {
             foo: foo_bar.foo,
             bar: foo_bar.bar,
             fizz: foo_bar.fizz.clone(),
