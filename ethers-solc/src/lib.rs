@@ -293,6 +293,7 @@ impl<T: ArtifactOutput> Project<T> {
     ///     ).unwrap();
     /// # }
     /// ```
+    #[cfg(all(feature = "svm-solc"))]
     pub fn compile_files<P, I>(&self, files: I) -> Result<ProjectCompileOutput<T>>
     where
         I: IntoIterator<Item = P>,
@@ -300,7 +301,6 @@ impl<T: ArtifactOutput> Project<T> {
     {
         let sources = Source::read_all(files)?;
 
-        #[cfg(all(feature = "svm-solc"))]
         if self.auto_detect {
             return project::ProjectCompiler::with_sources(self, sources)?.compile()
         }
@@ -339,6 +339,7 @@ impl<T: ArtifactOutput> Project<T> {
     ///     ).unwrap();
     /// # }
     /// ```
+    #[cfg(all(feature = "svm-solc"))]
     pub fn compile_sparse<F: FileFilter + 'static>(
         &self,
         filter: F,
@@ -347,7 +348,6 @@ impl<T: ArtifactOutput> Project<T> {
             Source::read_all(self.paths.input_files().into_iter().filter(|p| filter.is_match(p)))?;
         let filter: Box<dyn FileFilter> = Box::new(filter);
 
-        #[cfg(all(feature = "svm-solc"))]
         if self.auto_detect {
             return project::ProjectCompiler::with_sources(self, sources)?
                 .with_sparse_output(filter)
