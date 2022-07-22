@@ -204,6 +204,25 @@ impl TypedTransaction {
         self
     }
 
+    pub fn set_gas_price_for_eip_1559<T: Into<U256>>(
+        &mut self,
+        max_fee_per_gas: T,
+        max_priority_fee_per_gas: T,
+    ) -> &mut Self {
+        let max_fee_per_gas = max_fee_per_gas.into();
+        let max_priority_fee_per_gas = max_priority_fee_per_gas.into();
+        match self {
+            Eip1559(inner) => {
+                inner.max_fee_per_gas = Some(max_fee_per_gas);
+                inner.max_priority_fee_per_gas = Some(max_priority_fee_per_gas);
+            }
+            _ => {
+                self.set_gas_price(max_fee_per_gas + max_priority_fee_per_gas);
+            }
+        };
+        self
+    }
+
     pub fn chain_id(&self) -> Option<U64> {
         match self {
             Legacy(inner) => inner.chain_id,

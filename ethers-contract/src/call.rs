@@ -125,6 +125,15 @@ impl<M, D: Detokenize> ContractCall<M, D> {
         self
     }
 
+    pub fn gas_price_for_eip_1559<T: Into<U256>>(
+        mut self,
+        max_fee_per_gas: T,
+        max_priority_fee_per_gas: T,
+    ) -> Self {
+        self.tx.set_gas_price_for_eip_1559(max_fee_per_gas, max_priority_fee_per_gas);
+        self
+    }
+
     /// Sets the `value` field in the transaction to the provided value
     pub fn value<T: Into<U256>>(mut self, value: T) -> Self {
         self.tx.set_value(value);
