@@ -91,7 +91,9 @@
 - Generate correct bindings of struct's field names that are reserved words
   [#989](https://github.com/gakonst/ethers-rs/pull/989).
 - Generate correct binding module names that are reserved words
-  [#1498](https://github.com/gakonst/ethers-rs/pull/1498)
+  [#1498](https://github.com/gakonst/ethers-rs/pull/1498). Note: this changes
+  generated module names to snake case. For example, `MyContract` is now
+  `my_contract` rather than `mycontract_mod`.
 
 ### 0.6.0
 
