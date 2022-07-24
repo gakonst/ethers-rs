@@ -100,6 +100,45 @@ in the transactions which are fetched over JSON-RPC.
 - [ ] FFI Bindings (see note)
 - [ ] CLI for common operations
 
+### Websockets
+
+Websockets support is turned on via the feature-flag `ws`:
+
+```toml
+[dependencies]
+
+ethers = { git = "https://github.com/gakonst/ethers-rs", features = ["ws"] }
+```
+
+### Interprocess Communication (IPC)
+
+IPC support is turned on via the feature-flag `ipc`:
+
+```toml
+[dependencies]
+
+ethers = { git = "https://github.com/gakonst/ethers-rs", features = ["ipc"] }
+```
+
+### HTTP Secure (HTTPS)
+
+If you are looking to connect to a HTTPS endpoint, then you need to enable the `rustls` or `openssl` feature.
+feature-flags.
+
+To enable `rustls`:
+```toml
+[dependencies]
+
+ethers = { git = "https://github.com/gakonst/ethers-rs", features = ["rustls"] }
+```
+
+To enable `openssl`:
+```toml
+[dependencies]
+
+ethers = { git = "https://github.com/gakonst/ethers-rs", features = ["openssl"] }
+```
+
 ## Note on WASM and FFI bindings
 
 You should be able to build a wasm app that uses ethers-rs (see the [example](./examples/ethers-wasm) for reference). If ethers fails to
