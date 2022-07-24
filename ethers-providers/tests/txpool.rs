@@ -49,6 +49,6 @@ async fn txpool() {
     for i in 0..10 {
         tx = tx.nonce(i);
         let req = content.get(&i.to_string()).unwrap();
-        // assert_eq!(req, &tx);
+        assert_eq!(req, &tx);
     }
 }
