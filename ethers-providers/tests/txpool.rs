@@ -44,11 +44,7 @@ async fn txpool() {
     assert!(content.queued.is_empty());
     let content = content.pending.get(&account).unwrap();
 
-    // the txs get their gas and nonce auto-set upon mempool entry
-    tx = tx.gas(21000);
-    for i in 0..10 {
-        tx = tx.nonce(i);
-        let req = content.get(&i.to_string()).unwrap();
-        assert_eq!(req, &tx);
+    for nonce in 0..10 {
+        assert!(content.contains(&nonce.to_string()));
     }
 }
