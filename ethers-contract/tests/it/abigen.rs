@@ -188,7 +188,7 @@ fn can_gen_return_struct() {
         ArrayRelayerReturn { outputs: vec![4.into(), 9.into(), 2.into()], some_number: 42.into() };
     verify(array);
 
-    let single = SingleUnnamedReturn { 0: 4321.into() };
+    let single = SingleUnnamedReturn(4321.into());
     verify(single);
 
     // doesnt exist:
