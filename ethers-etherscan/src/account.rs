@@ -203,6 +203,33 @@ pub struct ERC721TokenTransferEvent {
     pub confirmations: U64,
 }
 
+/// The raw response from the ERC1155 transfer list API endpoint
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ERC1155TokenTransferEvent {
+    pub block_number: BlockNumber,
+    pub time_stamp: String,
+    pub hash: H256,
+    pub nonce: U256,
+    pub block_hash: H256,
+    pub from: Address,
+    pub contract_address: Address,
+    pub to: Option<Address>,
+    #[serde(rename = "tokenID")]
+    pub token_id: String,
+    pub token_value: String,
+    pub token_name: String,
+    pub token_symbol: String,
+    pub transaction_index: U64,
+    pub gas: U256,
+    pub gas_price: Option<U256>,
+    pub gas_used: U256,
+    pub cumulative_gas_used: U256,
+    /// deprecated
+    pub input: String,
+    pub confirmations: U64,
+}
+
 /// The raw response from the mined blocks API endpoint
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -532,6 +559,36 @@ impl Client {
         Ok(response.result)
     }
 
+    /// Returns the list of ERC-1155 ( NFT ) tokens transferred by an address, with optional
+    /// filtering by token contract.
+    ///
+    /// ```no_run
+    /// # use ethers_etherscan::{Client, account::TokenQueryOption};
+    /// # use ethers_core::types::Chain;
+    ///
+    /// # #[tokio::main]
+    /// # async fn main() {
+    ///     let client = Client::new(Chain::Mainnet, "API_KEY").unwrap();
+    ///     let txs = client
+    ///         .get_erc1155_token_transfer_events(
+    ///             TokenQueryOption::ByAddressAndContract(
+    ///                 "0x216CD350a4044e7016f14936663e2880Dd2A39d7".parse().unwrap(),
+    ///                 "0x495f947276749ce646f68ac8c248420045cb7b5e".parse().unwrap(),
+    ///          ), None).await.unwrap();
+    /// # }
+    /// ```
+    pub async fn get_erc1155_token_transfer_events(
+        &self,
+        event_query_option: TokenQueryOption,
+        params: Option<TxListParams>,
+    ) -> Result<Vec<ERC1155TokenTransferEvent>> {
+        let params = event_query_option.into_params(params.unwrap_or_default());
+        let query = self.create_query("account", "token1155tx", params);
+        let response: Response<Vec<ERC1155TokenTransferEvent>> = self.get_json(&query).await?;
+
+        Ok(response.result)
+    }
+
     /// Returns the list of blocks mined by an address.
     ///
     /// ```no_run
@@ -699,6 +756,26 @@ mod tests {
                     TokenQueryOption::ByAddressAndContract(
                         "0x6975be450864c02b4613023c2152ee0743572325".parse().unwrap(),
                         "0x06012c8cf97bead5deae237070f9587f8e7a266d".parse().unwrap(),
+                    ),
+                    None,
+                )
+                .await;
+            assert!(txs.is_ok());
+        })
+        .await
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn get_erc1155_transfer_events_success() {
+        run_at_least_duration(Duration::from_millis(250), async {
+            let client = Client::new_from_env(Chain::Mainnet).unwrap();
+
+            let txs = client
+                .get_erc1155_token_transfer_events(
+                    TokenQueryOption::ByAddressAndContract(
+                        "0x216CD350a4044e7016f14936663e2880Dd2A39d7".parse().unwrap(),
+                        "0x495f947276749ce646f68ac8c248420045cb7b5e".parse().unwrap(),
                     ),
                     None,
                 )
