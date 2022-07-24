@@ -53,7 +53,7 @@ fn can_derive_abi_type_empty_struct() {
     struct Call();
 
     #[derive(Debug, Clone, PartialEq, Eq, EthAbiType)]
-    struct Call2 {};
+    struct Call2;
 
     #[derive(Debug, Clone, PartialEq, Eq, EthAbiType)]
     struct Call3;

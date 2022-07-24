@@ -1,6 +1,5 @@
 #![allow(unused)]
-mod common;
-pub use common::*;
+pub use crate::common::*;
 use ethers_contract::{abigen, ContractFactory, EthAbiType};
 use ethers_core::types::{Filter, ValueOrArray, H256};
 
@@ -539,7 +538,7 @@ mod eth_tests {
         // Generate Contract ABI Bindings
         abigen!(
             DeriveEip712Test,
-            "./ethers-contract/tests/solidity-contracts/derive_eip712_abi.json",
+            "./ethers-contract/tests/it/solidity-contracts/derive_eip712_abi.json",
             event_derives(serde::Deserialize, serde::Serialize)
         );
 
