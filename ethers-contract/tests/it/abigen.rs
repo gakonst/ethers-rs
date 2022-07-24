@@ -530,10 +530,7 @@ async fn can_deploy_greeter() {
 
 #[tokio::test]
 async fn can_abiencoderv2_output() {
-    abigen!(
-        AbiEncoderv2Test,
-        "ethers-contract/tests/solidity-contracts/abiencoderv2test_abi.json",
-    );
+    abigen!(AbiEncoderv2Test, "ethers-contract/tests/solidity-contracts/abiencoderv2test_abi.json",);
     let anvil = Anvil::new().spawn();
     let from = anvil.addresses()[0];
     let provider = Provider::try_from(anvil.endpoint())
