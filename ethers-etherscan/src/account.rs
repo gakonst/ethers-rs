@@ -607,7 +607,7 @@ mod tests {
                 .await;
             assert!(balances.is_ok());
             let balances = balances.unwrap();
-            assert!(balances.len() == 1);
+            assert_eq!(balances.len(), 1);
         })
         .await
     }
@@ -624,7 +624,6 @@ mod tests {
                     None,
                 )
                 .await;
-            dbg!(&txs);
             assert!(txs.is_ok());
         })
         .await
@@ -725,5 +724,19 @@ mod tests {
             assert!(blocks.is_ok());
         })
         .await
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn get_avalanche_transactions() {
+        if std::env::var("SNOWTRACE_API_KEY").is_err() {
+            // nothing to do if api key unset
+            return
+        }
+        let client = Client::new_from_env(Chain::Avalanche).unwrap();
+        let txs = client
+            .get_transactions(&"0x1549ea9b546ba9ffb306d78a1e1f304760cc4abf".parse().unwrap(), None)
+            .await;
+        assert!(txs.is_ok());
     }
 }
