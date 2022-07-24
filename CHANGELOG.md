@@ -4,6 +4,7 @@
 
 ### Unreleased
 
+- Add support for Geth `debug_traceTransaction` [#1469](https://github.com/gakonst/ethers-rs/pull/1469)
 - Use correct, new transaction type for `typool_content` RPC endpoint [#1501](https://github.com/gakonst/ethers-rs/pull/1501)
 - Fix the default config for generated `BuildInfo` [#1458](https://github.com/gakonst/ethers-rs/pull/1458)
 - Allow configuration of the output directory of the generated `BuildInfo` [#1433](https://github.com/gakonst/ethers-rs/pull/1433)
