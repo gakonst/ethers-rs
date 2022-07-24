@@ -538,7 +538,7 @@ mod eth_tests {
         // Generate Contract ABI Bindings
         abigen!(
             DeriveEip712Test,
-            "./ethers-contract/tests/it/solidity-contracts/derive_eip712_abi.json",
+            "./ethers-contract/tests/solidity-contracts/derive_eip712_abi.json",
             event_derives(serde::Deserialize, serde::Serialize)
         );
 

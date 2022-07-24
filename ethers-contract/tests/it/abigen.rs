@@ -31,7 +31,7 @@ fn can_gen_human_readable() {
 
 #[test]
 fn can_gen_not_human_readable() {
-    abigen!(VerifierAbiHardhatContract, "./tests/it/solidity-contracts/verifier_abi_hardhat.json");
+    abigen!(VerifierAbiHardhatContract, "./tests/solidity-contracts/verifier_abi_hardhat.json");
 }
 
 #[test]
@@ -110,7 +110,7 @@ fn can_gen_structs_with_arrays_readable() {
 fn can_generate_internal_structs() {
     abigen!(
         VerifierContract,
-        "ethers-contract/tests/it/solidity-contracts/verifier_abi.json",
+        "ethers-contract/tests/solidity-contracts/verifier_abi.json",
         event_derives(serde::Deserialize, serde::Serialize)
     );
     assert_tokenizeable::<VerifyingKey>();
@@ -130,11 +130,11 @@ fn can_generate_internal_structs_multiple() {
         use super::*;
         abigen!(
             VerifierContract,
-            "ethers-contract/tests/it/solidity-contracts/verifier_abi.json",
+            "ethers-contract/tests/solidity-contracts/verifier_abi.json",
             event_derives(serde::Deserialize, serde::Serialize);
 
             MyOtherVerifierContract,
-            "ethers-contract/tests/it/solidity-contracts/verifier_abi.json",
+            "ethers-contract/tests/solidity-contracts/verifier_abi.json",
             event_derives(serde::Deserialize, serde::Serialize);
         );
     }
@@ -169,7 +169,7 @@ fn can_generate_internal_structs_multiple() {
 
 #[test]
 fn can_gen_return_struct() {
-    abigen!(MultiInputOutput, "ethers-contract/tests/it/solidity-contracts/MultiInputOutput.json");
+    abigen!(MultiInputOutput, "ethers-contract/tests/solidity-contracts/MultiInputOutput.json");
 
     fn verify<T: AbiEncode + AbiDecode + Clone + std::fmt::Debug + std::cmp::PartialEq>(
         binding: T,
@@ -331,7 +331,7 @@ async fn can_handle_underscore_functions() {
         ]"#;
 
         SimpleStorage2,
-        "ethers-contract/tests/it/solidity-contracts/simplestorage_abi.json",
+        "ethers-contract/tests/solidity-contracts/simplestorage_abi.json",
     );
 
     // launch the network & connect to it
@@ -344,7 +344,7 @@ async fn can_handle_underscore_functions() {
     let client = Arc::new(provider);
 
     let contract = "SimpleStorage";
-    let path = "./tests/it/solidity-contracts/SimpleStorage.sol";
+    let path = "./tests/solidity-contracts/SimpleStorage.sol";
     let compiled = Solc::default().compile_source(path).unwrap();
     let compiled = compiled.get(path, contract).unwrap();
     let factory = ethers_contract::ContractFactory::new(
@@ -446,7 +446,7 @@ fn can_handle_duplicates_with_same_name() {
 
 #[test]
 fn can_abigen_console_sol() {
-    abigen!(Console, "ethers-contract/tests/it/solidity-contracts/console.json",);
+    abigen!(Console, "ethers-contract/tests/solidity-contracts/console.json",);
 }
 
 #[test]
@@ -512,7 +512,7 @@ fn can_handle_case_sensitive_calls() {
 
 #[tokio::test]
 async fn can_deploy_greeter() {
-    abigen!(Greeter, "ethers-contract/tests/it/solidity-contracts/greeter.json",);
+    abigen!(Greeter, "ethers-contract/tests/solidity-contracts/greeter.json",);
     let anvil = Anvil::new().spawn();
     let from = anvil.addresses()[0];
     let provider = Provider::try_from(anvil.endpoint())
@@ -532,7 +532,7 @@ async fn can_deploy_greeter() {
 async fn can_abiencoderv2_output() {
     abigen!(
         AbiEncoderv2Test,
-        "ethers-contract/tests/it/solidity-contracts/abiencoderv2test_abi.json",
+        "ethers-contract/tests/solidity-contracts/abiencoderv2test_abi.json",
     );
     let anvil = Anvil::new().spawn();
     let from = anvil.addresses()[0];
@@ -543,7 +543,7 @@ async fn can_abiencoderv2_output() {
     let client = Arc::new(provider);
 
     let contract = "AbiencoderV2Test";
-    let path = "./tests/it/solidity-contracts/Abiencoderv2Test.sol";
+    let path = "./tests/solidity-contracts/Abiencoderv2Test.sol";
     let compiled = Solc::default().compile_source(path).unwrap();
     let compiled = compiled.get(path, contract).unwrap();
     let factory = ethers_contract::ContractFactory::new(
@@ -605,7 +605,7 @@ fn can_handle_overloaded_events() {
 #[tokio::test]
 #[cfg(not(feature = "celo"))]
 async fn can_send_struct_param() {
-    abigen!(StructContract, "./tests/it/solidity-contracts/StructContract.json");
+    abigen!(StructContract, "./tests/solidity-contracts/StructContract.json");
 
     let server = Anvil::new().spawn();
     let wallet: LocalWallet = server.keys()[0].clone().into();
@@ -625,7 +625,7 @@ async fn can_send_struct_param() {
 
 #[test]
 fn can_gen_seaport() {
-    abigen!(Seaport, "./tests/it/solidity-contracts/seaport.json");
+    abigen!(Seaport, "./tests/solidity-contracts/seaport.json");
 
     assert_eq!(
         FulfillAdvancedOrderCall::abi_signature(),
