@@ -5,7 +5,6 @@ use super::{common::JsonRpcError, http::ClientError};
 use crate::{provider::ProviderError, JsonRpcClient};
 
 use std::{
-    clone::Clone,
     fmt::Debug,
     sync::atomic::{AtomicU32, Ordering},
     time::Duration,
@@ -135,10 +134,23 @@ where
         A: std::fmt::Debug + Serialize + Send + Sync,
         R: DeserializeOwned,
     {
-        let ahead_in_queue = self.requests_enqueued.fetch_add(1, Ordering::SeqCst) as u64;
+        // Helper type that caches the `params` value across several retries
+        // This is necessary because the wrapper provider is supposed to skip he `params` if it's of
+        // size 0, see `crate::transports::common::Request`
+        enum RetryParams<Params> {
+            Value(Params),
+            Zst(()),
+        }
 
-        let params =
-            serde_json::to_value(params).map_err(|err| RetryClientError::SerdeJson(err))?;
+        let params = if std::mem::size_of::<A>() == 0 {
+            RetryParams::Zst(())
+        } else {
+            let params =
+                serde_json::to_value(params).map_err(|err| RetryClientError::SerdeJson(err))?;
+            RetryParams::Value(params)
+        };
+
+        let ahead_in_queue = self.requests_enqueued.fetch_add(1, Ordering::SeqCst) as u64;
 
         let mut retry_number: u32 = 0;
 
@@ -148,7 +160,11 @@ where
             // hack to not hold `R` across an await in the sleep future and prevent requiring
             // R: Send + Sync
             {
-                match self.inner.request(method, params.clone()).await {
+                let resp = match params {
+                    RetryParams::Value(ref params) => self.inner.request(method, params).await,
+                    RetryParams::Zst(unit) => self.inner.request(method, unit).await,
+                };
+                match resp {
                     Ok(ret) => {
                         self.requests_enqueued.fetch_sub(1, Ordering::SeqCst);
                         return Ok(ret)

@@ -5,6 +5,7 @@
 ### Unreleased
 
 - Add support for Geth `debug_traceTransaction` [#1469](https://github.com/gakonst/ethers-rs/pull/1469)
+- Use correct, new transaction type for `typool_content` RPC endpoint [#1501](https://github.com/gakonst/ethers-rs/pull/1501)
 - Fix the default config for generated `BuildInfo` [#1458](https://github.com/gakonst/ethers-rs/pull/1458)
 - Allow configuration of the output directory of the generated `BuildInfo` [#1433](https://github.com/gakonst/ethers-rs/pull/1433)
 - capture unknown fields in `Block` and `Transaction` type via new `OtherFields` type [#1423](https://github.com/gakonst/ethers-rs/pull/1423)
@@ -91,6 +92,10 @@
   [#1030](https://github.com/gakonst/ethers-rs/pull/1030).
 - Generate correct bindings of struct's field names that are reserved words
   [#989](https://github.com/gakonst/ethers-rs/pull/989).
+- Generate correct binding module names that are reserved words
+  [#1498](https://github.com/gakonst/ethers-rs/pull/1498). Note: this changes
+  generated module names to snake case. For example, `MyContract` is now
+  `my_contract` rather than `mycontract_mod`.
 
 ### 0.6.0
 
@@ -105,9 +110,11 @@
 
 ### Unreleased
 
+- `ArtifactOutput::write_extras` now takes the `Artifacts` directly
+  [#1491](https://github.com/gakonst/ethers-rs/pull/1491)
 - Make `ethers-solc` optional dependency of `ethers`, needs `ethers-solc` feature to activate
   [#1463](https://github.com/gakonst/ethers-rs/pull/1463)
-- Add `rawMetadata:String` field to configurable contract output 
+- Add `rawMetadata:String` field to configurable contract output
   [#1365](https://github.com/gakonst/ethers-rs/pull/1365)
 - Use relative source paths and `solc --base-path`
   [#1317](https://github.com/gakonst/ethers-rs/pull/1317)
@@ -238,6 +245,8 @@
 
 ### Unreleased
 
+- Add `Event::stream_with_meta` and `Event::subscribe_with_meta`
+  [#1483](https://github.com/gakonst/ethers-rs/pull/1483)
 - Added tx builder methods to `ContractFactory`
   [#1289](https://github.com/gakonst/ethers-rs/pull/1289)
 - Relax Clone requirements when Arc<Middleware> is used

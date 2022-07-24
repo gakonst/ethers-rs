@@ -1,4 +1,4 @@
-use ethabi::{Event, EventParam, Function, Param, ParamType, StateMutability};
+use ethabi::{Constructor, Event, EventParam, Function, Param, ParamType, StateMutability};
 use std::{fmt, iter::Peekable, str::CharIndices};
 use unicode_xid::UnicodeXID;
 
@@ -320,6 +320,18 @@ impl<'input> HumanReadableParser<'input> {
         Self::new(input).take_function()
     }
 
+    /// Parses a [Constructor] from a human readable form
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use ethers_core::abi::HumanReadableParser;
+    /// let mut constructor = HumanReadableParser::parse_constructor("constructor(address author, string oldValue, string newValue)").unwrap();
+    /// ```
+    pub fn parse_constructor(input: &'input str) -> Result<Constructor, LexerError> {
+        Self::new(input).take_constructor()
+    }
+
     /// Parses an [Event] from a human readable form
     ///
     /// # Example
@@ -332,6 +344,15 @@ impl<'input> HumanReadableParser<'input> {
         Self::new(input).take_event()
     }
 
+    /// Returns the next `Constructor` and consumes the underlying tokens
+    pub fn take_constructor(&mut self) -> Result<Constructor, LexerError> {
+        self.take_next_exact(Token::Constructor)?;
+        self.take_open_parenthesis()?;
+        let inputs = self.take_function_params()?;
+        self.take_close_parenthesis()?;
+        Ok(Constructor { inputs })
+    }
+    /// Returns the next `Function` and consumes the underlying tokens
     pub fn take_function(&mut self) -> Result<Function, LexerError> {
         let name = self.take_identifier(Token::Function)?;
 
@@ -811,6 +832,30 @@ pub enum DataLocation {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn parse_constructor() {
+        let f = Constructor {
+            inputs: vec![
+                Param { name: "author".to_string(), kind: ParamType::Address, internal_type: None },
+                Param {
+                    name: "oldValue".to_string(),
+                    kind: ParamType::String,
+                    internal_type: None,
+                },
+                Param {
+                    name: "newValue".to_string(),
+                    kind: ParamType::String,
+                    internal_type: None,
+                },
+            ],
+        };
+        let parsed = HumanReadableParser::parse_constructor(
+            "constructor(address author, string oldValue, string newValue)",
+        )
+        .unwrap();
+        assert_eq!(f, parsed);
+    }
 
     #[test]
     fn test_parse_function() {

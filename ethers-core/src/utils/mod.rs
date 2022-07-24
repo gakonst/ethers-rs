@@ -38,6 +38,12 @@ use k256::{ecdsa::SigningKey, PublicKey as K256PublicKey};
 use std::convert::{TryFrom, TryInto};
 use thiserror::Error;
 
+/// Re-export of serde-json
+#[doc(hidden)]
+pub mod __serde_json {
+    pub use serde_json::*;
+}
+
 #[derive(Error, Debug)]
 pub enum ConversionError {
     #[error("Unknown units: {0}")]

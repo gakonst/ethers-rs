@@ -7,8 +7,10 @@ use crate::{
     PendingTransaction, QuorumProvider, RwClient, SyncingStatus,
 };
 
+#[cfg(all(not(target_arch = "wasm32"), feature = "ws"))]
+use crate::transports::Authorization;
 #[cfg(not(target_arch = "wasm32"))]
-use crate::transports::{Authorization, HttpRateLimitRetryPolicy, RetryClient};
+use crate::transports::{HttpRateLimitRetryPolicy, RetryClient};
 
 #[cfg(feature = "celo")]
 use crate::CeloMiddleware;

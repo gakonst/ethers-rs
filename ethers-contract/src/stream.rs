@@ -77,6 +77,7 @@ where
     /// # Example
     ///
     /// ```
+    /// # #[cfg(feature = "abigen")]
     /// # async fn test<M:ethers_providers::Middleware>(contract: ethers_contract::Contract<M>) {
     /// # use ethers_core::types::*;
     /// # use futures_util::stream::StreamExt;

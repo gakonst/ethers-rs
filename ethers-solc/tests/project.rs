@@ -1,12 +1,5 @@
 //! project tests
 
-use std::{
-    collections::{BTreeMap, HashMap, HashSet},
-    fs, io,
-    path::{Path, PathBuf},
-    str::FromStr,
-};
-
 use ethers_core::types::Address;
 use ethers_solc::{
     artifacts::{
@@ -23,6 +16,12 @@ use ethers_solc::{
 };
 use pretty_assertions::assert_eq;
 use semver::Version;
+use std::{
+    collections::{BTreeMap, HashMap, HashSet},
+    fs, io,
+    path::{Path, PathBuf},
+    str::FromStr,
+};
 
 #[allow(unused)]
 fn init_tracing() {
@@ -1620,10 +1619,9 @@ fn can_compile_model_checker_sample() {
 }
 
 fn remove_solc_if_exists(version: &Version) {
-    match Solc::find_svm_installed_version(version.to_string()).unwrap() {
-        Some(_) => svm::remove_version(version).expect("failed to remove version"),
-        None => {}
-    };
+    if Solc::find_svm_installed_version(version.to_string()).unwrap().is_some() {
+        svm::remove_version(version).expect("failed to remove version")
+    }
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -2065,4 +2063,68 @@ contract C { }
     fs::remove_file(c).unwrap();
     let compiled = project.compile().unwrap();
     assert!(compiled.has_compiler_errors());
+}
+
+#[test]
+fn can_handle_conflicting_files() {
+    let project = TempProject::<ConfigurableArtifacts>::dapptools().unwrap();
+
+    project
+        .add_source(
+            "Greeter",
+            r#"
+    pragma solidity ^0.8.10;
+
+    contract Greeter {}
+   "#,
+        )
+        .unwrap();
+
+    project
+        .add_source(
+            "tokens/Greeter",
+            r#"
+    pragma solidity ^0.8.10;
+
+    contract Greeter {}
+   "#,
+        )
+        .unwrap();
+
+    let compiled = project.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+
+    let artifacts = compiled.artifacts().count();
+    assert_eq!(artifacts, 2);
+
+    // nothing to compile
+    let compiled = project.compile().unwrap();
+    assert!(compiled.is_unchanged());
+    let artifacts = compiled.artifacts().count();
+    assert_eq!(artifacts, 2);
+
+    let cache = SolFilesCache::read(project.cache_path()).unwrap();
+
+    let mut source_files = cache.files.keys().cloned().collect::<Vec<_>>();
+    source_files.sort_unstable();
+
+    assert_eq!(
+        source_files,
+        vec![PathBuf::from("src/Greeter.sol"), PathBuf::from("src/tokens/Greeter.sol"),]
+    );
+
+    let mut artifacts = project.artifacts_snapshot().unwrap().artifacts;
+    artifacts.strip_prefix_all(&project.paths().artifacts);
+
+    assert_eq!(artifacts.len(), 2);
+    let mut artifact_files = artifacts.artifact_files().map(|f| f.file.clone()).collect::<Vec<_>>();
+    artifact_files.sort_unstable();
+
+    assert_eq!(
+        artifact_files,
+        vec![
+            PathBuf::from("Greeter.sol/Greeter.json"),
+            PathBuf::from("tokens/Greeter.sol/Greeter.json"),
+        ]
+    );
 }

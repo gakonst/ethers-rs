@@ -253,7 +253,7 @@ where
     CURRENT_STATE
         .try_with(|state| {
             let scoped = state.scoped.borrow_mut();
-            f(&*scoped)
+            f(&scoped)
         })
         .unwrap_or_else(|_| f(&Report::none()))
 }

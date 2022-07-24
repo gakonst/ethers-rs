@@ -1,4 +1,6 @@
 #![deny(rustdoc::broken_intra_doc_links)]
+#![allow(rustdoc::private_intra_doc_links)]
+
 pub mod artifacts;
 pub mod sourcemap;
 
@@ -279,7 +281,7 @@ impl<T: ArtifactOutput> Project<T> {
     }
 
     /// Convenience function to compile a series of solidity files with the project's settings.
-    /// Same as [`Self::svm_compile()`] but with the given `files` as input.
+    /// Same as [`Self::compile()`] but with the given `files` as input.
     ///
     /// # Example
     ///
@@ -310,7 +312,7 @@ impl<T: ArtifactOutput> Project<T> {
     }
 
     /// Convenience function to compile only (re)compile files that match the provided [FileFilter].
-    /// Same as [`Self::svm_compile()`] but with only with those files as input that match
+    /// Same as [`Self::compile()`] but with only with those files as input that match
     /// [FileFilter::is_match()].
     ///
     /// # Example - Only compile Test files
@@ -788,9 +790,9 @@ impl<T: ArtifactOutput> ArtifactOutput for Project<T> {
     fn write_extras(
         &self,
         contracts: &VersionedContracts,
-        layout: &ProjectPathsConfig,
+        artifacts: &Artifacts<Self::Artifact>,
     ) -> Result<()> {
-        self.artifacts_handler().write_extras(contracts, layout)
+        self.artifacts_handler().write_extras(contracts, artifacts)
     }
 
     fn output_file_name(name: impl AsRef<str>) -> PathBuf {

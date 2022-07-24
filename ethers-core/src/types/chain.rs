@@ -18,6 +18,7 @@ pub struct ParseChainError(String);
 #[strum(serialize_all = "kebab-case")]
 pub enum Chain {
     Mainnet = 1,
+    Morden = 2,
     Ropsten = 3,
     Rinkeby = 4,
     Goerli = 5,
@@ -61,6 +62,7 @@ impl fmt::Display for Chain {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let chain = match self {
             Chain::Mainnet => "mainnet",
+            Chain::Morden => "morden",
             Chain::Ropsten => "ropsten",
             Chain::Rinkeby => "rinkeby",
             Chain::Goerli => "goerli",
@@ -125,6 +127,7 @@ impl TryFrom<u64> for Chain {
     fn try_from(chain: u64) -> Result<Chain, Self::Error> {
         Ok(match chain {
             1 => Chain::Mainnet,
+            2 => Chain::Morden,
             3 => Chain::Ropsten,
             4 => Chain::Rinkeby,
             5 => Chain::Goerli,
@@ -180,6 +183,7 @@ impl FromStr for Chain {
     fn from_str(chain: &str) -> Result<Self, Self::Err> {
         Ok(match chain {
             "mainnet" => Chain::Mainnet,
+            "morden" => Chain::Morden,
             "ropsten" => Chain::Ropsten,
             "rinkeby" => Chain::Rinkeby,
             "goerli" => Chain::Goerli,

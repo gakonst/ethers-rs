@@ -188,7 +188,7 @@ fn can_gen_return_struct() {
         ArrayRelayerReturn { outputs: vec![4.into(), 9.into(), 2.into()], some_number: 42.into() };
     verify(array);
 
-    let single = SingleUnnamedReturn { 0: 4321.into() };
+    let single = SingleUnnamedReturn(4321.into());
     verify(single);
 
     // doesnt exist:
@@ -366,7 +366,7 @@ async fn can_handle_underscore_functions() {
     // Manual call construction
     use ethers_providers::Middleware;
     // TODO: How do we handle underscores for calls here?
-    let data = simplestorage_mod::HashPuzzleCall.encode();
+    let data = simple_storage::HashPuzzleCall.encode();
     let tx = Eip1559TransactionRequest::new().data(data).to(addr);
     let tx = TypedTransaction::Eip1559(tx);
     let res5 = client.call(&tx, None).await.unwrap();

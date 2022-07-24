@@ -559,7 +559,7 @@ serde_json = "1.0.79"
     /// Append module declarations to the `lib.rs` or `mod.rs`
     fn append_module_names(&self, mut buf: impl Write) -> Result<()> {
         let mut mod_names: BTreeSet<_> =
-            self.bindings.keys().map(|name| name.to_snake_case()).collect();
+            self.bindings.keys().map(|name| util::safe_module_name(name)).collect();
         if let Some(ref shared) = self.shared_types {
             mod_names.insert(shared.name.to_snake_case());
         }
@@ -1092,5 +1092,64 @@ contract Greeter2 {
         let content = fs::read_to_string(&shared_types).unwrap();
         assert!(content.contains("pub struct Inner"));
         assert!(content.contains("pub struct Stuff"));
+    }
+
+    #[test]
+    fn can_sanitize_reserved_words() {
+        let tmp = TempProject::dapptools().unwrap();
+
+        tmp.add_source(
+            "ReservedWords",
+            r#"
+// SPDX-License-Identifier: MIT
+pragma solidity >=0.8.0;
+
+contract Mod {
+    function greet() public pure returns (uint256) {
+        return 1;
+    }
+}
+
+// from a gnosis contract
+contract Enum {
+    enum Operation {Call, DelegateCall}
+}
+"#,
+        )
+        .unwrap();
+
+        let _ = tmp.compile().unwrap();
+
+        let gen = MultiAbigen::from_json_files(tmp.artifacts_path()).unwrap();
+        let bindings = gen.build().unwrap();
+        let single_file_dir = tmp.root().join("single_bindings");
+        bindings.write_to_module(&single_file_dir, true).unwrap();
+
+        let single_file_mod = single_file_dir.join("mod.rs");
+        assert!(single_file_mod.exists());
+        let content = fs::read_to_string(&single_file_mod).unwrap();
+        assert!(content.contains("pub mod mod_ {"));
+        assert!(content.contains("pub mod enum_ {"));
+
+        // multiple files
+        let gen = MultiAbigen::from_json_files(tmp.artifacts_path()).unwrap();
+        let bindings = gen.build().unwrap();
+        let multi_file_dir = tmp.root().join("multi_bindings");
+        bindings.write_to_module(&multi_file_dir, false).unwrap();
+        let multi_file_mod = multi_file_dir.join("mod.rs");
+        assert!(multi_file_mod.exists());
+        let content = fs::read_to_string(&multi_file_mod).unwrap();
+        assert!(content.contains("pub mod enum_;"));
+        assert!(content.contains("pub mod mod_;"));
+
+        let enum_ = multi_file_dir.join("enum_.rs");
+        assert!(enum_.exists());
+        let content = fs::read_to_string(&enum_).unwrap();
+        assert!(content.contains("pub mod enum_ {"));
+
+        let mod_ = multi_file_dir.join("mod_.rs");
+        assert!(mod_.exists());
+        let content = fs::read_to_string(&mod_).unwrap();
+        assert!(content.contains("pub mod mod_ {"));
     }
 }

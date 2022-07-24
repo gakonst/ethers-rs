@@ -29,7 +29,6 @@ pub use util::parse_address;
 
 use crate::contract::ExpandedContract;
 use eyre::Result;
-use inflector::Inflector;
 use proc_macro2::TokenStream;
 use std::{collections::HashMap, fs::File, io::Write, path::Path};
 
@@ -233,7 +232,7 @@ impl ContractBindings {
 
     /// Generate the default module name (snake case of the contract name)
     pub fn module_name(&self) -> String {
-        self.name.to_snake_case()
+        util::safe_module_name(&self.name)
     }
 
     /// Generate the default filename of the module
