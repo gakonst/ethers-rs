@@ -790,9 +790,9 @@ impl<T: ArtifactOutput> ArtifactOutput for Project<T> {
     fn write_extras(
         &self,
         contracts: &VersionedContracts,
-        layout: &ProjectPathsConfig,
+        artifacts: &Artifacts<Self::Artifact>,
     ) -> Result<()> {
-        self.artifacts_handler().write_extras(contracts, layout)
+        self.artifacts_handler().write_extras(contracts, artifacts)
     }
 
     fn output_file_name(name: impl AsRef<str>) -> PathBuf {

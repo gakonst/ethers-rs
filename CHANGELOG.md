@@ -109,6 +109,8 @@
 
 ### Unreleased
 
+- `ArtifactOutput::write_extras` now takes the `Artifacts` directly
+  [#1491](https://github.com/gakonst/ethers-rs/pull/1491)
 - Make `ethers-solc` optional dependency of `ethers`, needs `ethers-solc` feature to activate
   [#1463](https://github.com/gakonst/ethers-rs/pull/1463)
 - Add `rawMetadata:String` field to configurable contract output

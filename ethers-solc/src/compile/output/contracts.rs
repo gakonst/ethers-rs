@@ -1,6 +1,9 @@
-use crate::artifacts::{
-    contract::{CompactContractRef, Contract},
-    FileToContractsMap,
+use crate::{
+    artifacts::{
+        contract::{CompactContractRef, Contract},
+        FileToContractsMap,
+    },
+    ArtifactFiles, ArtifactOutput,
 };
 use semver::Version;
 use serde::{Deserialize, Serialize};
@@ -23,6 +26,26 @@ impl VersionedContracts {
     /// Returns an iterator over all files
     pub fn files(&self) -> impl Iterator<Item = &String> + '_ {
         self.0.keys()
+    }
+
+    /// Returns all the artifact files mapped with their contracts
+    pub(crate) fn artifact_files<T: ArtifactOutput + ?Sized>(&self) -> ArtifactFiles {
+        let mut output_files = ArtifactFiles::with_capacity(self.len());
+        for (file, contracts) in self.iter() {
+            for (name, versioned_contracts) in contracts {
+                for contract in versioned_contracts {
+                    let output = if versioned_contracts.len() > 1 {
+                        T::output_file_versioned(file, name, &contract.version)
+                    } else {
+                        T::output_file(file, name)
+                    };
+                    let contract = (file.as_str(), name.as_str(), contract);
+                    output_files.entry(output).or_default().push(contract);
+                }
+            }
+        }
+
+        output_files
     }
 
     /// Finds the _first_ contract with the given name
