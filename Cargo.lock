@@ -1496,9 +1496,9 @@ dependencies = [
 
 [[package]]
 name = "fastrlp"
-version = "0.1.2"
+version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d6c60b758dc5bf92743e1b863ac88b84a4750bd096b19c2f524359659dc1f1ac"
+checksum = "089263294bb1c38ac73649a6ad563dd9a5142c8dc0482be15b8b9acb22a1611e"
 dependencies = [
  "arrayvec 0.7.2",
  "auto_impl",
