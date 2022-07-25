@@ -118,7 +118,7 @@ fn impl_eip_712_macro(ast: &syn::DeriveInput) -> TokenStream {
         impl Eip712 for #primary_type {
             type Error = #ethers_core::types::transaction::eip712::Eip712Error;
 
-            fn type_hash(&self) -> Result<[u8; 32], Self::Error> {
+            fn type_hash() -> Result<[u8; 32], Self::Error> {
                 use std::convert::TryFrom;
                 let decoded = #ethers_core::utils::hex::decode(#type_hash)?;
                 let byte_array: [u8; 32] = <[u8; 32]>::try_from(&decoded[..])?;

@@ -84,7 +84,7 @@ pub trait Eip712 {
     /// This method is used for calculating the hash of the type signature of the
     /// struct. The field types of the struct must map to primitive
     /// ethereum types or custom types defined in the contract.
-    fn type_hash(&self) -> Result<[u8; 32], Self::Error>;
+    fn type_hash() -> Result<[u8; 32], Self::Error>;
 
     /// Hash of the struct, according to EIP-712 definition of `hashStruct`
     fn struct_hash(&self) -> Result<[u8; 32], Self::Error>;
@@ -229,8 +229,8 @@ impl<T: Eip712 + Clone> Eip712 for EIP712WithDomain<T> {
         Ok(self.domain.clone())
     }
 
-    fn type_hash(&self) -> Result<[u8; 32], Self::Error> {
-        let type_hash = self.inner.type_hash().map_err(|e| Self::Error::Message(e.to_string()))?;
+    fn type_hash() -> Result<[u8; 32], Self::Error> {
+        let type_hash = T::type_hash().map_err(|e| Self::Error::Message(e.to_string()))?;
         Ok(type_hash)
     }
 
@@ -493,8 +493,8 @@ impl Eip712 for TypedData {
         Ok(self.domain.clone())
     }
 
-    fn type_hash(&self) -> Result<[u8; 32], Self::Error> {
-        hash_type(&self.primary_type, &self.types)
+    fn type_hash() -> Result<[u8; 32], Self::Error> {
+        Err(Eip712Error::Message("dynamic type".to_string()))
     }
 
     fn struct_hash(&self) -> Result<[u8; 32], Self::Error> {
