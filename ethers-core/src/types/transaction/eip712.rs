@@ -648,7 +648,7 @@ fn find_type_dependencies<'a>(
 /// Returns the encoded representation of the field.
 pub fn encode_field(
     types: &Types,
-    field_name: &str,
+    _field_name: &str,
     field_type: &str,
     value: &serde_json::Value,
 ) -> Result<Token, Eip712Error> {
@@ -670,7 +670,7 @@ pub fn encode_field(
                     })?;
                     let tokens = values
                         .iter()
-                        .map(|value| encode_field(types, field_name, stripped_type, value))
+                        .map(|value| encode_field(types, _field_name, stripped_type, value))
                         .collect::<Result<Vec<_>, _>>()?;
                     let encoded = encode(&tokens);
                     encode_eip712_type(Token::Bytes(encoded.to_vec()))
