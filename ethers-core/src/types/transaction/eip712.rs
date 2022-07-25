@@ -84,7 +84,7 @@ pub trait Eip712 {
     /// This method is used for calculating the hash of the type signature of the
     /// struct. The field types of the struct must map to primitive
     /// ethereum types or custom types defined in the contract.
-    fn type_hash() -> Result<[u8; 32], Self::Error>;
+    fn type_hash(&self) -> Result<[u8; 32], Self::Error>;
 
     /// Hash of the struct, according to EIP-712 definition of `hashStruct`
     fn struct_hash(&self) -> Result<[u8; 32], Self::Error>;
@@ -229,8 +229,8 @@ impl<T: Eip712 + Clone> Eip712 for EIP712WithDomain<T> {
         Ok(self.domain.clone())
     }
 
-    fn type_hash() -> Result<[u8; 32], Self::Error> {
-        let type_hash = T::type_hash().map_err(|e| Self::Error::Message(e.to_string()))?;
+    fn type_hash(&self) -> Result<[u8; 32], Self::Error> {
+        let type_hash = self.inner.type_hash().map_err(|e| Self::Error::Message(e.to_string()))?;
         Ok(type_hash)
     }
 
@@ -486,12 +486,18 @@ pub struct TypedData {
 
 // === impl TypedData ===
 
-impl TypedData {
-    pub fn type_hash(&self) -> Result<[u8; 32], Eip712Error> {
+impl Eip712 for TypedData {
+    type Error = Eip712Error;
+
+    fn domain(&self) -> Result<EIP712Domain, Self::Error> {
+        Ok(self.domain.clone())
+    }
+
+    fn type_hash(&self) -> Result<[u8; 32], Self::Error> {
         hash_type(&self.primary_type, &self.types)
     }
 
-    pub fn struct_hash(&self) -> Result<[u8; 32], Eip712Error> {
+    fn struct_hash(&self) -> Result<[u8; 32], Self::Error> {
         let tokens = encode_data(
             &self.primary_type,
             &serde_json::Value::Object(serde_json::Map::from_iter(self.message.clone())),
@@ -503,7 +509,7 @@ impl TypedData {
     /// Hash a typed message according to EIP-712. The returned message starts with the EIP-712
     /// prefix, which is "1901", followed by the hash of the domain separator, then the data (if
     /// any). The result is hashed again and returned.
-    pub fn encode_eip712(&self) -> Result<[u8; 32], Eip712Error> {
+    fn encode_eip712(&self) -> Result<[u8; 32], Self::Error> {
         let domain_separator = self.domain.separator();
         let mut digest_input = [&[0x19, 0x01], &domain_separator[..]].concat().to_vec();
 
