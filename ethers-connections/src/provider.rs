@@ -1,17 +1,12 @@
-#[cfg(feature = "ipc")]
-use std::path::Path;
-
 use std::{borrow::Cow, error, fmt, sync::Arc};
 
 use serde::{Deserialize, Serialize};
 
 use ethers_core::types::{
-    transaction::eip2718::TypedTransaction, Address, Block, Bytes, FeeHistory, Log, Transaction,
-    TransactionReceipt, TransactionRequest, H256, U256, U64,
+    Address, Block, Bytes, FeeHistory, Log, Transaction, TransactionReceipt, TransactionRequest,
+    H256, U256, U64,
 };
 
-#[cfg(all(unix, feature = "ipc"))]
-use crate::connection::ipc::{Ipc, IpcError};
 use crate::{
     batch::{BatchCall, BatchError},
     connection::{self, noop::Noop, ConnectionError},
@@ -68,20 +63,6 @@ impl Provider<Noop> {
     /// provider.
     pub const fn noop() -> Self {
         Self { connection: Noop }
-    }
-}
-
-#[cfg(all(unix, feature = "ipc"))]
-impl Provider<Arc<Ipc>> {
-    /// Attempts to establish a connection with the IPC socket at the given
-    /// `path`.
-    ///
-    /// # Errors
-    ///
-    /// This fails, if the file at `path` is not a valid IPC socket.    
-    pub async fn connect(path: impl AsRef<Path>) -> Result<Self, IpcError> {
-        let connection = Ipc::connect(path).await?;
-        Ok(Self { connection: Arc::new(connection) })
     }
 }
 
@@ -224,13 +205,14 @@ impl<C: Connection> Provider<C> {
     /// # Examples
     ///
     /// ```
+    /// # use ethers_connections::{connection::noop::Noop, Provider};
     /// # async fn example_batch() {
     /// # let provider = Provider { connection: Noop };
-    /// # let address = ethrs::types::Address::zero();
+    /// # let address = ethers_core::types::Address::zero();
     /// let r0 = provider.get_balance(&address, "latest".into());
     /// let r1 = provider.get_gas_price();
     /// // `send_balance` accepts tuples of heterogeneous RPC calls
-    /// if let Ok((balance, gas_price)) = provider.send_batch((r0, r1)).await {
+    /// if let Ok((balance, gas_price)) = provider.send_batch_request((r0, r1)).await {
     ///     # drop(balance);
     ///     # drop(gas_price);
     ///     // ...
@@ -241,7 +223,7 @@ impl<C: Connection> Provider<C> {
     /// let r1 = provider.get_balance(&address, "latest".into());
     /// let r2 = provider.get_balance(&address, "pending".into());
     ///
-    /// if let Ok(balances) = provider.send_batch(vec![r0, r1, r2]).await {
+    /// if let Ok(balances) = provider.send_batch_request(vec![r0, r1, r2]).await {
     ///     # drop(balances);
     ///     // ...
     /// }
@@ -264,8 +246,8 @@ impl<C: Connection> Provider<C> {
     /// # Examples
     ///
     /// ```
-    /// # use ethrs::{connection::noop::Noop, types::SyncStatus};
-    /// use ethrs::Provider;
+    /// # use ethers_connections::{connection::noop::Noop, types::SyncStatus};
+    /// use ethers_connections::Provider;
     ///
     /// # async fn example_syncing() {
     /// # let provider = Provider { connection: Noop };
@@ -341,27 +323,25 @@ impl<C: Connection> Provider<C> {
     /// async fn get_balance(
     ///     &self,
     ///     address: &Address,
-    ///     block: &BlockNumber
+    ///     block: BlockNumber
     /// ) -> Result<U256, Box<ProviderError>>;
     /// ```
     ///
     /// # Examples
     ///
     /// ```
-    /// # let provider = Provider { connection: Noop };
+    /// # use ethers_connections::{connection::noop::Noop, Provider};
     /// # async fn example_balance() {
-    /// # let address = ethrs::types::Address::zero();
+    /// # let provider = Provider { connection: Noop };
+    /// # let address = ethers_core::types::Address::zero();
     /// // default block is "latest"
     /// if let Ok(balance) = provider.get_balance(&address, Default::default()).await {
     ///     println!("account balance is {balance:?}");
     /// }
     /// # }
     /// ```
-    pub fn get_balance(&self, address: &Address, block: Option<BlockNumber>) -> RpcCall<&C, U256> {
-        match block {
-            Some(block) => self.prepare_rpc_call("eth_getBalance", (address, block)),
-            None => self.prepare_rpc_call("eth_getBalance", [address]),
-        }
+    pub fn get_balance(&self, address: &Address, block: BlockNumber) -> RpcCall<&C, U256> {
+        self.prepare_rpc_call("eth_getBalance", (address, block))
     }
 
     /// Returns the value from a storage position at a given address.
@@ -447,7 +427,7 @@ impl<C: Connection> Provider<C> {
     ///
     /// The function signature is equivalent to
     ///
-    /// ```
+    /// ```ignore
     /// async fn sign(
     ///     &self,
     ///     address: &Address,
@@ -532,13 +512,13 @@ impl<C: Connection> Provider<C> {
     /// ```
     /// use std::sync::Arc;
     /// # use ethers_core::types::Address;
-    /// # use ethers_connections::connections::noop;
+    /// # use ethers_connections::connection::noop;
     /// use ethers_connections::{Connection, Provider};
     ///
     /// # async fn examples_get_code() {
-    /// # let build_provider = || Provider::new(Arc::new(noop::Noop)).into_dyn();
+    /// # let build_provider = || Provider::new(Arc::new(noop::Noop)).to_dyn();
     /// let provider: Provider<Arc<dyn Connection>> = build_provider();
-    /// let res = provider.fee_history(4, "latest".into(), Some(&[25, 75]).await;
+    /// let res = provider.fee_history(4, "latest".into(), Some(&[25, 75])).await;
     /// # assert!(res.is_err());
     /// # }
     /// ```
@@ -688,10 +668,10 @@ impl<C: Connection> Provider<C> {
     /// let filter = Filter::new()
     ///     .from_block("latest".into())
     ///     .to_block("pending".into())
-    ///     .address(vec![Address::zero()])
+    ///     .address(vec![Address::zero()].into())
     ///     .event("Transfer(uint256)")
     ///     .topic1(H256::zero().into())
-    ///     .topic2([H256::zero, H256::zero()].into())
+    ///     .topic2([H256::zero(), H256::zero()].into())
     ///     .topic3(vec![H256::zero(), H256::zero(), H256::zero()].into());
     ///
     /// if let Ok(id) = provider.new_filter(&filter).await {
@@ -750,10 +730,10 @@ impl<C: Connection> Provider<C> {
 
     /// Uninstalls a filter with a given `id`.
     ///
-    /// The function signature is equivalent to
+    /// Equivalent to:
     ///
-    /// ```
-    /// pub async fn uninstall_filter(&self, id: &U256) -> Result<bool, Box<ProviderError>>;
+    /// ```ignore
+    /// async fn uninstall_filter(&self, id: &U256) -> Result<bool, Box<ProviderError>>;
     /// ```
     pub fn uninstall_filter(&self, id: &U256) -> RpcCall<&C, bool> {
         self.prepare_rpc_call("eth_uninstallFilter", [id])
@@ -778,7 +758,7 @@ impl<C: DuplexConnection + Clone> Provider<C> {
     ///
     /// ```
     /// use ethers_connections::{Connection, Provider};
-    /// # use ethers_connections::connections::noop;
+    /// # use ethers_connections::connection::noop;
     ///
     /// # async fn example_new_heads() -> Result<(), Box<dyn std::error::Error>> {
     /// # let provider = Provider::new(noop::Noop);
@@ -961,11 +941,11 @@ mod tests {
             let provider = Provider::new(noop::Noop);
             let address = Address::zero();
 
-            let _ = provider.get_balance(&address, None).await;
-            let _ = provider.get_balance(&address, Some("earliest".into())).await;
-            let _ = provider.get_balance(&address, Some("latest".into())).await;
-            let _ = provider.get_balance(&address, Some("pending".into())).await;
-            let _ = provider.get_balance(&address, Some(0xcafe.into())).await;
+            let _ = provider.get_balance(&address, Default::default()).await;
+            let _ = provider.get_balance(&address, "earliest".into()).await;
+            let _ = provider.get_balance(&address, "latest".into()).await;
+            let _ = provider.get_balance(&address, "pending".into()).await;
+            let _ = provider.get_balance(&address, 0xcafe.into()).await;
         });
     }
 }

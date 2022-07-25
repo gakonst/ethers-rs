@@ -14,7 +14,7 @@ use ethers_core::types::{Address, Bytes, H256, U256};
 /// # Examples
 ///
 /// ```
-/// # use ethrs::types::BlockNumber;
+/// # use ethers_connections::types::BlockNumber;
 /// // there are numerous ways to construct a block number
 /// let _: BlockNumber = "latest".into();
 /// let _: BlockNumber = "pending".into();

@@ -50,6 +50,6 @@ futures-util = { version = "0.3.21", optional = true }
 tokio-tungstenite = { version = "0.17.1", default-features = false, features = ["connect"], optional = true }
 
 [[test]]
-name = "ipc"           # The name of the target.
-path = "tests/ipc.rs"    # The source file of the target.
+name = "ipc"
+path = "tests/ipc.rs"
 required-features = ["ipc"]

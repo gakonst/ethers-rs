@@ -43,14 +43,16 @@ where
     C::Owned: Connection,
 {
     /// ```
-    /// # use std::thread;
-    /// use ethers_connections::{Connection, Provider};
-    /// let provider: Arc<dyn Connection> = Provider::noop().into_dyn();
+    /// # use std::{thread, sync::Arc};
+    /// use ethers_connections::{Connection, Provider, connection::noop};
+    /// let provider: Provider<Arc<dyn Connection>> = Provider { connection: Arc::new(noop::Noop) };
     ///
     /// // call borrows the underlying connection and can, e.g., not be moved to
     /// // a different task or thread
-    /// let call = provider.get_block();
+    /// let call = provider.get_block_number();
     /// let call = call.to_owned();
+    /// # thread::spawn(move || { let _ = call; });
+    /// ```
     pub fn to_owned(self) -> RpcCall<C::Owned, R> {
         match self.state {
             CallState::Prepared { connection, params } => {

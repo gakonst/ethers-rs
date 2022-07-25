@@ -20,11 +20,11 @@ use ethers_core::types::U256;
 
 use crate::{
     batch::BatchError, jsonrpc as rpc, BatchResponseFuture, Connection, DuplexConnection,
-    ResponseFuture, ResponseReceiver, SubscribeFuture,
+    ResponseFuture, SubscribeFuture,
 };
 
 use super::{
-    common::{self, FxHashMap, PendingBatchCall},
+    common::{self, PendingBatchCall, Shared},
     ConnectionError,
 };
 
@@ -168,26 +168,6 @@ async fn run_ipc_server(mut stream: UnixStream, mut rx: mpsc::UnboundedReceiver<
 
     if let Err(e) = res {
         tracing::error!(err = ?e, "exiting IPC server due to error");
-    }
-}
-
-/// The shared state for the IPC server task.
-struct Shared {
-    /// The map of pending requests.
-    pending: FxHashMap<u64, ResponseReceiver>,
-    /// The set of pending batch requests.
-    pending_batches: FxHashMap<Box<[u64]>, PendingBatchCall>,
-    /// The map of registered subscriptions.
-    subs: FxHashMap<U256, common::Subscription>,
-}
-
-impl Default for Shared {
-    fn default() -> Self {
-        Self {
-            pending: FxHashMap::with_capacity_and_hasher(64, Default::default()),
-            pending_batches: FxHashMap::with_capacity_and_hasher(64, Default::default()),
-            subs: FxHashMap::with_capacity_and_hasher(64, Default::default()),
-        }
     }
 }
 
