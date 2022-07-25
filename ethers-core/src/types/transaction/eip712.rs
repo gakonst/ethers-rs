@@ -1,7 +1,7 @@
 use crate::{
     abi,
     abi::{HumanReadableParser, ParamType, Token},
-    types::{Address, Bytes, U256},
+    types::{serde_helpers::Numeric, Address, Bytes, U256},
     utils::keccak256,
 };
 use convert_case::{Case, Casing};
@@ -690,7 +690,10 @@ pub fn encode_field(
                             encode_eip712_type(Token::Bytes(data.to_vec()))
                         }
                         ParamType::Int(_) => Token::Uint(serde_json::from_value(value.clone())?),
-                        ParamType::Uint(_) => Token::Uint(serde_json::from_value(value.clone())?),
+                        ParamType::Uint(_) => {
+                            let val: Numeric = serde_json::from_value(value.clone())?;
+                            Token::Uint(val.into())
+                        }
                         ParamType::Bool => {
                             encode_eip712_type(Token::Bool(serde_json::from_value(value.clone())?))
                         }

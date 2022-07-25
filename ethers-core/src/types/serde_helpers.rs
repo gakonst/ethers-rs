@@ -8,7 +8,9 @@ use serde::{Deserialize, Deserializer};
 #[serde(untagged)]
 pub enum Numeric {
     U256(U256),
-    Num(u64),
+    Num(u128),
+    #[serde(deserialize_with = "deserialize_dec_string")]
+    Decimal(U256),
 }
 
 impl From<Numeric> for U256 {
@@ -16,6 +18,7 @@ impl From<Numeric> for U256 {
         match n {
             Numeric::U256(n) => n,
             Numeric::Num(n) => U256::from(n),
+            Numeric::Decimal(n) => n,
         }
     }
 }
@@ -26,7 +29,18 @@ impl From<Numeric> for U256 {
 pub enum NumericSeq {
     Seq([Numeric; 1]),
     U256(U256),
-    Num(u64),
+    Num(u128),
+    #[serde(deserialize_with = "deserialize_dec_string")]
+    Decimal(U256),
+}
+
+/// Deserializes a number from hex or int
+fn deserialize_dec_string<'de, D>(deserializer: D) -> Result<U256, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s = String::deserialize(deserializer)?;
+    U256::from_dec_str(&s).map_err(serde::de::Error::custom)
 }
 
 /// Deserializes a number from hex or int
@@ -60,6 +74,7 @@ where
         NumericSeq::Seq(seq) => seq.into_iter().next().unwrap().into(),
         NumericSeq::U256(n) => n,
         NumericSeq::Num(n) => U256::from(n),
+        NumericSeq::Decimal(n) => n,
     };
 
     Ok(num)
