@@ -1619,6 +1619,7 @@ pub struct Ewasm {
     pub wasm: String,
 }
 
+/// Represents the `storage-layout` section of the `CompilerOutput` if selected.
 #[derive(Clone, Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
 pub struct StorageLayout {
     pub storage: Vec<Storage>,
@@ -1647,9 +1648,16 @@ pub struct Storage {
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct StorageType {
     pub encoding: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub key: Option<String>,
     pub label: String,
     #[serde(rename = "numberOfBytes")]
     pub number_of_bytes: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub value: Option<String>,
+    /// additional fields
+    #[serde(flatten)]
+    pub other: BTreeMap<String, serde_json::Value>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Hash)]
@@ -2119,5 +2127,12 @@ mod tests {
 
         let value = serde_json::to_string(&c).unwrap();
         pretty_assertions::assert_eq!(s, value);
+    }
+
+    #[test]
+    fn test_lossless_storage_layout() {
+        let input = include_str!("../../test-data/foundryissue2462.json");
+        let layout: StorageLayout = serde_json::from_str(input).unwrap();
+        pretty_assertions::assert_eq!(input, &serde_json::to_string_pretty(&layout).unwrap());
     }
 }
