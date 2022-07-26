@@ -530,8 +530,7 @@ impl MultiBindingsInner {
         writeln!(
             toml,
             r#"
-ethers = {{ git = "https://github.com/gakonst/ethers-rs", default-features = false }}
-serde_json = "1.0.79"
+ethers = {{ git = "https://github.com/gakonst/ethers-rs", default-features = false, features = ["abigen"] }}
 "#
         )?;
         Ok(toml)
