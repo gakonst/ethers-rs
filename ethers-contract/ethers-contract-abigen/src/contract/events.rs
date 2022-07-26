@@ -26,7 +26,11 @@ impl Context {
             quote! {}
         };
 
+        let marker_trait = self.expand_events_marker_trait();
+
         Ok(quote! {
+            #marker_trait
+
             #( #data_types )*
 
             #events_enum_decl
@@ -49,6 +53,14 @@ impl Context {
 
             #events_method
         })
+    }
+
+    fn expand_events_marker_trait(&self) -> TokenStream {
+        let trait_name = self.expand_events_marker_trait_name();
+
+        quote! {
+            pub trait #trait_name {}
+        }
     }
 
     /// Generate an enum with a variant for each event
@@ -100,6 +112,10 @@ impl Context {
                 }
             }
         }
+    }
+
+    fn expand_events_marker_trait_name(&self) -> Ident {
+        util::ident(&format!("{}Event", self.contract_ident.to_string().to_pascal_case()))
     }
 
     /// The name ident of the events enum
@@ -257,10 +273,14 @@ impl Context {
 
         let ethers_contract = ethers_contract_crate();
 
+        let marker_trait_name = self.expand_events_marker_trait_name();
+
         Ok(quote! {
             #[derive(Clone, Debug, Default, Eq, PartialEq, #ethers_contract::EthEvent, #ethers_contract::EthDisplay, #derives)]
             #[ethevent( name = #event_abi_name, abi = #abi_signature )]
             pub #data_type_definition
+
+            impl #marker_trait_name for #event_name {}
         })
     }
 }
