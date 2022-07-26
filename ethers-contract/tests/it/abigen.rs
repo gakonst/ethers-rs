@@ -654,3 +654,8 @@ fn can_generate_to_string_overload() {
         ToStringCalls::ToString5(_) => {}
     };
 }
+
+#[test]
+fn can_generate_large_event() {
+    abigen!(NewSale, "ethers-contract/tests/solidity-contracts/sale.json");
+}

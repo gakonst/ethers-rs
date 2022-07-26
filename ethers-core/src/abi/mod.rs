@@ -188,6 +188,11 @@ impl_abi_type_tuple!(13, A, B, C, D, E, F, G, H, I, J, K, L, M);
 impl_abi_type_tuple!(14, A, B, C, D, E, F, G, H, I, J, K, L, M, N);
 impl_abi_type_tuple!(15, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O);
 impl_abi_type_tuple!(16, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P);
+impl_abi_type_tuple!(17, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q);
+impl_abi_type_tuple!(18, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R);
+impl_abi_type_tuple!(19, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S);
+impl_abi_type_tuple!(20, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T);
+impl_abi_type_tuple!(21, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U);
 
 #[cfg(test)]
 mod tests {
