@@ -262,6 +262,18 @@ impl<C: Connection> Provider<C> {
         self.prepare_rpc_call("eth_syncing", ())
     }
 
+    /// Returns the current network/chain ID, used to sign repplay-protected
+    /// transaction introduced in EIP-155.
+    ///
+    /// Equivalent to:
+    ///
+    /// ```ignore
+    /// async get_chain_id(&self) -> Result<U256, Box<ProviderError>>;
+    /// ```
+    pub fn get_chain_id(&self) -> RpcCall<&C, U256> {
+        self.prepare_rpc_call("eth_chainId", ())
+    }
+
     /// Returns the client coinbase address.
     ///
     /// Equivalent to:
@@ -427,7 +439,7 @@ impl<C: Connection> Provider<C> {
     ///
     /// **Note** the address to sign with must be unlocked.
     ///
-    /// The function signature is equivalent to
+    /// Equivalent to:
     ///
     /// ```ignore
     /// async fn sign(
@@ -438,6 +450,20 @@ impl<C: Connection> Provider<C> {
     /// ```
     pub fn sign(&self, address: &Address, message: &Bytes) -> RpcCall<&C, Bytes> {
         self.prepare_rpc_call("eth_sign", (address, message))
+    }
+
+    /// ...
+    ///
+    /// Equivalent to:
+    ///
+    /// ```ignore
+    /// async fn fill_transaction(
+    ///     &self,
+    ///     txn: &TransactionRequest
+    /// ) -> Result<TransactionRequest, Box<ProviderError>>;
+    /// ```
+    pub fn fill_transaction(&self, txn: &TransactionRequest) -> RpcCall<&C, TransactionRequest> {
+        self.prepare_rpc_call("eth_fillTransaction", [txn])
     }
 
     ///
@@ -456,7 +482,7 @@ impl<C: Connection> Provider<C> {
     /// Equivalent to:
     ///
     /// ```ignore
-    /// pub async fn send_transaction(
+    /// async fn send_transaction(
     ///     &self,
     ///     txn: &TransactionRequest
     /// ) -> Result<H256, Box<ProviderError>>
@@ -468,7 +494,7 @@ impl<C: Connection> Provider<C> {
     /// Equivalent to:
     ///
     /// ```ignore
-    /// pub async fn send_raw_transaction(
+    /// async fn send_raw_transaction(
     ///     &self,
     ///     data: &Bytes
     /// ) -> Result<H256, Box<ProviderError>>
@@ -488,7 +514,7 @@ impl<C: Connection> Provider<C> {
     /// Equivalent to:
     ///
     /// ```ignore
-    /// pub async fn estimate_gas(
+    /// async fn estimate_gas(
     ///     &self,
     ///     txn: &ByTransactionCalltes
     /// ) -> Result<U256, Box<ProviderError>>
@@ -642,6 +668,22 @@ impl<C: Connection> Provider<C> {
     /// **Note** That the receipt is not available for pending transactions.
     pub fn get_transaction_receipt(&self, hash: &H256) -> RpcCall<&C, Option<TransactionReceipt>> {
         self.prepare_rpc_call("eth_getTransactionReceipt", [hash])
+    }
+
+    pub fn get_uncle_by_block_hash_and_index(
+        &self,
+        hash: &H256,
+        index: u64,
+    ) -> RpcCall<&C, Option<Block<H256>>> {
+        self.prepare_rpc_call("eth_getUncleByBlockHashAndIndex", (hash, U64::from(index)))
+    }
+
+    pub fn get_uncle_by_block_number_and_index(
+        &self,
+        block: BlockNumber,
+        index: u64,
+    ) -> RpcCall<&C, Option<Block<H256>>> {
+        self.prepare_rpc_call("eth_getUncleByBlockNumberAndIndex", (block, U64::from(index)))
     }
 
     /// Returns the number of uncles in a block from a block matching the given
@@ -892,9 +934,10 @@ impl fmt::Display for ProviderError {
 
 #[derive(Debug)]
 pub enum ErrorKind {
-    /// The error returned when parsing the raw response into the expected type
-    /// fails.
+    /// Parsing the received and valid JSON-RPC response into the type expected
+    /// at the callsite failed.
     Json(serde_json::Error),
+    /// An error in the underlying [`Connection`].
     Connection(ConnectionError),
 }
 

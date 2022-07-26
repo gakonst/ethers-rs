@@ -1,8 +1,31 @@
 use tokio::runtime::Builder;
 
-use ethers_core::utils::Geth;
+use ethers_core::{types::TransactionRequest, utils::Geth};
 
 use ethers_connections::{connection::http::Http, Provider};
+
+#[test]
+fn http_fill_transaction() {
+    use ethers_core::types::Address;
+
+    let geth = Geth::new().port(8545u16).block_time(1u64).spawn();
+
+    let rt = Builder::new_current_thread().enable_all().build().unwrap();
+    rt.block_on(async move {
+        let connection =
+            Http::new("http://127.0.0.1:8545").expect("failed to build HTTP connection");
+        let provider = Provider { connection };
+
+        let from = Address::from_low_u64_be(0xCAFE);
+        let to = Address::from_low_u64_be(0xBEEF);
+        let txn = TransactionRequest::new().from(from).to(to).value(0xBAD_u64);
+
+        let filled = provider.fill_transaction(&txn).await.unwrap();
+        assert_eq!(filled.gas, Some(21_000.into()));
+    });
+
+    drop(geth);
+}
 
 #[test]
 fn http_batch() {
