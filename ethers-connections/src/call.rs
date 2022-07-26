@@ -117,8 +117,12 @@ impl CallParams {
 
 /// The current poll state of an [`RpcCall`] future.
 enum CallState<C> {
+    /// All call parameters are prepared and the future has never been polled.
     Prepared { connection: C, params: CallParams },
+    /// The future has been polled at least once and the initial call parameters
+    /// have been consumed.
     Polled { future: ResponseFuture, method: &'static str },
+    /// The future has been polled to completion.
     Completed,
 }
 

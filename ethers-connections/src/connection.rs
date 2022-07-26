@@ -1,3 +1,6 @@
+//! The module containing various implementations of the
+//! [`Connection`](crate::Connection) trait.
+
 #[cfg(feature = "http")]
 pub mod http;
 #[cfg(all(unix, feature = "ipc"))]
@@ -21,8 +24,13 @@ use crate::{
 /// [`Connection`].
 #[derive(Debug)]
 pub enum ConnectionError {
+    /// The underlying connection has encountered an error.
     Connection(Box<dyn error::Error + Send + Sync + 'static>),
+    /// The connection has received a JSON response that could not be parsed to
+    /// a valid JSON-RPC object.
     Json { input: Box<str>, source: serde_json::Error },
+    /// The connection has received an JSON-RPC error response from the server,
+    /// indicating an invalid or malformed request.
     JsonRpc(JsonRpcError),
 }
 

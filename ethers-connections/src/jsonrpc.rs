@@ -111,7 +111,7 @@ pub(crate) fn deserialize_batch_response(
     Ok(responses)
 }
 
-/// A JSON-RPC 2.0 success response.
+/// An JSON-RPC 2.0 success response.
 #[derive(Copy, Clone, Debug, Deserialize)]
 pub(crate) struct Response<'a> {
     pub id: u64,
@@ -121,7 +121,7 @@ pub(crate) struct Response<'a> {
     pub result: &'a RawValue,
 }
 
-/// A JSON-RPC 2.0 error response.
+/// An JSON-RPC 2.0 error response.
 #[derive(Clone, Debug, Deserialize)]
 pub(crate) struct Error {
     pub id: u64,
@@ -130,7 +130,7 @@ pub(crate) struct Error {
     pub error: JsonRpcError,
 }
 
-/// A JSON-RPC 2.0 notification.
+/// An JSON-RPC 2.0 notification.
 #[derive(Clone, Copy, Debug, Deserialize)]
 pub(crate) struct Notification<'a> {
     #[allow(unused)]
@@ -141,7 +141,7 @@ pub(crate) struct Notification<'a> {
     pub params: Params<'a>,
 }
 
-/// A JSON-RPC 2.0 notification parameters object.
+/// An JSON-RPC 2.0 notification parameters object.
 #[derive(Clone, Copy, Debug, Deserialize)]
 pub struct Params<'a> {
     pub subscription: U256,
@@ -180,11 +180,11 @@ impl<'de> Deserialize<'de> for JsonRpc2 {
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 /// A JSON-RPC 2.0 error.
 pub struct JsonRpcError {
-    /// The error code
+    /// The error code.
     pub code: i64,
-    /// The error message
+    /// The error message.
     pub message: String,
-    /// Additional data
+    /// The optional additional error context data.
     pub data: Option<Value>,
 }
 

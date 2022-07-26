@@ -88,7 +88,7 @@ impl Provider<Arc<dyn Connection>> {
     /// ```
     ///
     /// # Errors
-    ///  
+    ///
     /// Fails, if the selected connection can not be established.
     ///
     /// # Panics
@@ -166,6 +166,7 @@ impl Provider<Arc<dyn DuplexConnection>> {
     /// at compile time, e.g., if a HTTP url is given but the `http` cargo
     /// feature is not enabled.
     pub async fn connect_duplex(path: &str) -> Result<Self, Box<ConnectionError>> {
+        #[allow(unused)]
         let connection: Arc<dyn DuplexConnection> = if path.starts_with("http") {
             panic!("path starts with http/https, but http does not support duplex connections");
         } else if path.starts_with("ws") {
@@ -188,10 +189,11 @@ impl Provider<Arc<dyn DuplexConnection>> {
             }
             #[cfg(not(feature = "ipc"))]
             {
-                todo!("ipc path detected, but `ipc` cargo feature is not enabled");
+                panic!("ipc path detected, but `ipc` cargo feature is not enabled");
             }
         };
 
+        #[allow(unreachable_code)]
         Ok(Self { connection })
     }
 }
