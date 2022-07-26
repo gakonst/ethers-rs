@@ -12,7 +12,7 @@ use crate::{
     connection::{self, noop::Noop, ConnectionError},
     jsonrpc as rpc,
     sub::SubscriptionStream,
-    types::{BlockNumber, Filter, SyncStatus, TransactionCall},
+    types::{BlockNumber, Filter, PreparedTransaction, SyncStatus, TransactionCall},
     CallParams, Connection, DuplexConnection, RpcCall,
 };
 
@@ -460,9 +460,9 @@ impl<C: Connection> Provider<C> {
     /// async fn fill_transaction(
     ///     &self,
     ///     txn: &TransactionRequest
-    /// ) -> Result<TransactionRequest, Box<ProviderError>>;
+    /// ) -> Result<PreparedTransaction, Box<ProviderError>>;
     /// ```
-    pub fn fill_transaction(&self, txn: &TransactionRequest) -> RpcCall<&C, TransactionRequest> {
+    pub fn fill_transaction(&self, txn: &TransactionRequest) -> RpcCall<&C, PreparedTransaction> {
         self.prepare_rpc_call("eth_fillTransaction", [txn])
     }
 

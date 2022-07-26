@@ -42,7 +42,7 @@ fn ipc_raw_rpc_calls() {
 #[cfg(unix)]
 #[test]
 fn ipc_rpc_calls() {
-    use ethers_core::types::{Address, U256};
+    use ethers_core::types::Address;
 
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("geth").with_extension("ipc");
     let geth = Geth::new().ipc_path(&path).block_time(5u64).spawn();
@@ -67,7 +67,7 @@ fn ipc_rpc_calls() {
         let address = Address::from_low_u64_be(0xBEEFBABE);
         let storage =
             provider.get_storage_at(&address, &0.into(), Default::default()).await.unwrap();
-        assert_eq!(storage, 0u64);
+        assert_eq!(storage, 0u64.into());
 
         // eth_balance
         let zero = Address::zero();

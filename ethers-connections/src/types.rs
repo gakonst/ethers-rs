@@ -4,7 +4,7 @@ use serde::{
     Deserialize, Deserializer, Serialize, Serializer,
 };
 
-use ethers_core::types::{Address, Bytes, H256, U256};
+use ethers_core::types::{Address, Bytes, Transaction, H256, U256};
 
 /// A block number or tag ("latest", "earliest" or "pending").
 ///
@@ -335,6 +335,16 @@ pub struct TransactionCall {
     /// The ...
     #[serde(skip_serializing_if = "Option::is_none")]
     pub data: Option<Bytes>,
+}
+
+/// The properties of the object returned by a call to
+/// [`Provider::fill_transaction`](crate::Provider::fill_transaction).
+#[derive(Debug, Clone, Deserialize)]
+pub struct PreparedTransaction {
+    /// The RLP encoded raw transaction.
+    pub raw: Bytes,
+    /// The transaction with its filled properties.
+    pub tx: Transaction,
 }
 
 #[cfg(test)]

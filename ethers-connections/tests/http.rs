@@ -16,12 +16,19 @@ fn http_fill_transaction() {
             Http::new("http://127.0.0.1:8545").expect("failed to build HTTP connection");
         let provider = Provider { connection };
 
-        let from = Address::from_low_u64_be(0xCAFE);
+        // coinbase is funded with ETH in dev mode
+        let from = provider.get_coinbase().await.unwrap();
         let to = Address::from_low_u64_be(0xBEEF);
         let txn = TransactionRequest::new().from(from).to(to).value(0xBAD_u64);
 
+        //let value: serde_json::Value =
+        //    provider.prepare_rpc_call("eth_fillTransaction", [&txn]).await.unwrap();
+        //println!("{value:?}");
+
         let filled = provider.fill_transaction(&txn).await.unwrap();
-        assert_eq!(filled.gas, Some(21_000.into()));
+        println!("{filled:?}");
+        assert_eq!(filled.tx.gas, 21_000.into());
+        assert_eq!(filled.tx.chain_id, Some(1337.into()));
     });
 
     drop(geth);
@@ -31,12 +38,12 @@ fn http_fill_transaction() {
 fn http_batch() {
     use ethers_core::types::Address;
 
-    let geth = Geth::new().port(8545u16).block_time(5u64).spawn();
+    let geth = Geth::new().port(8546u16).block_time(1u64).spawn();
 
     let rt = Builder::new_current_thread().enable_all().build().unwrap();
     rt.block_on(async move {
         let connection =
-            Http::new("http://127.0.0.1:8545").expect("failed to build HTTP connection");
+            Http::new("http://127.0.0.1:8546").expect("failed to build HTTP connection");
         let provider = Provider { connection };
 
         let address1 = Address::from_low_u64_be(1);
