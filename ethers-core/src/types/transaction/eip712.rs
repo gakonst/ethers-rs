@@ -1,14 +1,14 @@
 use crate::{
     abi,
     abi::{HumanReadableParser, ParamType, Token},
-    types::{serde_helpers::Numeric, Address, Bytes, U256},
+    types::{serde_helpers::StringifiedNumeric, Address, Bytes, U256},
     utils::keccak256,
 };
 use convert_case::{Case, Casing};
 use core::convert::TryFrom;
 use ethabi::encode;
 use proc_macro2::TokenStream;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use std::collections::{BTreeMap, HashSet};
 use syn::{
     parse::Error, spanned::Spanned as _, AttrStyle, Data, DeriveInput, Expr, Fields,
@@ -468,7 +468,7 @@ impl TryFrom<&syn::DeriveInput> for EIP712Domain {
 // }
 /// ```
 ///
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct TypedData {
     /// Signing domain metadata. The signing domain is the intended context for the signature (e.g.
@@ -482,6 +482,45 @@ pub struct TypedData {
     pub primary_type: String,
     /// The message to be signed.
     pub message: BTreeMap<String, serde_json::Value>,
+}
+
+/// According to the MetaMask implementation,
+/// the message parameter may be JSON stringified in versions later than V1
+/// See https://github.com/MetaMask/metamask-extension/blob/0dfdd44ae7728ed02cbf32c564c75b74f37acf77/app/scripts/metamask-controller.js#L1736
+/// In fact, ethers.js JSON stringifies the message at the time of writing.
+impl<'de> Deserialize<'de> for TypedData {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        struct TypedDataHelper {
+            domain: EIP712Domain,
+            types: Types,
+            #[serde(rename = "primaryType")]
+            primary_type: String,
+            message: BTreeMap<String, serde_json::Value>,
+        }
+
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum Type {
+            Val(TypedDataHelper),
+            String(String),
+        }
+
+        match Type::deserialize(deserializer)? {
+            Type::Val(v) => {
+                let TypedDataHelper { domain, types, primary_type, message } = v;
+                Ok(TypedData { domain, types, primary_type, message })
+            }
+            Type::String(s) => {
+                let TypedDataHelper { domain, types, primary_type, message } =
+                    serde_json::from_str(&s).map_err(serde::de::Error::custom)?;
+                Ok(TypedData { domain, types, primary_type, message })
+            }
+        }
+    }
 }
 
 // === impl TypedData ===
@@ -562,6 +601,7 @@ pub fn encode_data(
             }
         }
     }
+
     Ok(tokens)
 }
 
@@ -634,7 +674,9 @@ fn find_type_dependencies<'a>(
     if let Some(fields) = types.get(primary_type) {
         found.insert(primary_type);
         for field in fields {
-            find_type_dependencies(&field.r#type, types, found)
+            // need to strip the array tail
+            let ty = field.r#type.split('[').next().unwrap();
+            find_type_dependencies(ty, types, found)
         }
     }
 }
@@ -672,8 +714,9 @@ pub fn encode_field(
                         .iter()
                         .map(|value| encode_field(types, _field_name, stripped_type, value))
                         .collect::<Result<Vec<_>, _>>()?;
+
                     let encoded = encode(&tokens);
-                    encode_eip712_type(Token::Bytes(encoded.to_vec()))
+                    encode_eip712_type(Token::Bytes(encoded))
                 }
                 s => {
                     // parse as param type
@@ -691,8 +734,13 @@ pub fn encode_field(
                         }
                         ParamType::Int(_) => Token::Uint(serde_json::from_value(value.clone())?),
                         ParamType::Uint(_) => {
-                            let val: Numeric = serde_json::from_value(value.clone())?;
-                            Token::Uint(val.into())
+                            // uints are commonly stringified due to how ethers-js encodes
+                            let val: StringifiedNumeric = serde_json::from_value(value.clone())?;
+                            let val = val.try_into().map_err(|err| {
+                                Eip712Error::Message(format!("Failed to parse uint {}", err))
+                            })?;
+
+                            Token::Uint(val)
                         }
                         ParamType::Bool => {
                             encode_eip712_type(Token::Bool(serde_json::from_value(value.clone())?))
@@ -706,7 +754,7 @@ pub fn encode_field(
                         }
                         ParamType::FixedBytes(_) => {
                             let data: Bytes = serde_json::from_value(value.clone())?;
-                            encode_eip712_type(Token::Bytes(data.to_vec()))
+                            encode_eip712_type(Token::FixedBytes(data.to_vec()))
                         }
                         ParamType::Tuple(_) => {
                             return Err(Eip712Error::Message(format!("Unexpected tuple type {s}",)))
@@ -900,7 +948,40 @@ mod tests {
 
     #[test]
     fn test_full_domain() {
-        let json = serde_json::json!({"types":{"EIP712Domain":[{"name":"name","type":"string"},{"name":"version","type":"string"},{"name":"chainId","type":"uint256"},{"name":"verifyingContract","type":"address"},{"name":"salt","type":"bytes32"}]},"primaryType":"EIP712Domain","domain":{"name":"example.metamask.io","version":"1","chainId":1,"verifyingContract":"0x0000000000000000000000000000000000000000"},"message":{}});
+        let json = serde_json::json!({
+          "types": {
+            "EIP712Domain": [
+              {
+                "name": "name",
+                "type": "string"
+              },
+              {
+                "name": "version",
+                "type": "string"
+              },
+              {
+                "name": "chainId",
+                "type": "uint256"
+              },
+              {
+                "name": "verifyingContract",
+                "type": "address"
+              },
+              {
+                "name": "salt",
+                "type": "bytes32"
+              }
+            ]
+          },
+          "primaryType": "EIP712Domain",
+          "domain": {
+            "name": "example.metamask.io",
+            "version": "1",
+            "chainId": 1,
+            "verifyingContract": "0x0000000000000000000000000000000000000000"
+          },
+          "message": {}
+        });
 
         let typed_data: TypedData = serde_json::from_value(json).unwrap();
 
@@ -939,7 +1020,44 @@ mod tests {
 
     #[test]
     fn test_hash_typed_message_with_data() {
-        let json = serde_json::json!(  {"types":{"EIP712Domain":[{"name":"name","type":"string"},{"name":"version","type":"string"},{"name":"chainId","type":"uint256"},{"name":"verifyingContract","type":"address"}],"Message":[{"name":"data","type":"string"}]},"primaryType":"Message","domain":{"name":"example.metamask.io","version":"1","chainId":1,"verifyingContract":"0x0000000000000000000000000000000000000000"},"message":{"data":"Hello!"}});
+        let json = serde_json::json!( {
+          "types": {
+            "EIP712Domain": [
+              {
+                "name": "name",
+                "type": "string"
+              },
+              {
+                "name": "version",
+                "type": "string"
+              },
+              {
+                "name": "chainId",
+                "type": "uint256"
+              },
+              {
+                "name": "verifyingContract",
+                "type": "address"
+              }
+            ],
+            "Message": [
+              {
+                "name": "data",
+                "type": "string"
+              }
+            ]
+          },
+          "primaryType": "Message",
+          "domain": {
+            "name": "example.metamask.io",
+            "version": "1",
+            "chainId": "1",
+            "verifyingContract": "0x0000000000000000000000000000000000000000"
+          },
+          "message": {
+            "data": "Hello!"
+          }
+        });
 
         let typed_data: TypedData = serde_json::from_value(json).unwrap();
 
@@ -1028,6 +1146,130 @@ mod tests {
         let hash = typed_data.encode_eip712().unwrap();
         assert_eq!(
             "0808c17abba0aef844b0470b77df9c994bc0fa3e244dc718afd66a3901c4bd7b",
+            hex::encode(&hash[..])
+        );
+    }
+
+    #[test]
+    fn test_hash_nested_struct_array() {
+        let json = serde_json::json!({
+          "types": {
+            "EIP712Domain": [
+              {
+                "name": "name",
+                "type": "string"
+              },
+              {
+                "name": "version",
+                "type": "string"
+              },
+              {
+                "name": "chainId",
+                "type": "uint256"
+              },
+              {
+                "name": "verifyingContract",
+                "type": "address"
+              }
+            ],
+            "OrderComponents": [
+              {
+                "name": "offerer",
+                "type": "address"
+              },
+              {
+                "name": "zone",
+                "type": "address"
+              },
+              {
+                "name": "offer",
+                "type": "OfferItem[]"
+              },
+              {
+                "name": "startTime",
+                "type": "uint256"
+              },
+              {
+                "name": "endTime",
+                "type": "uint256"
+              },
+              {
+                "name": "zoneHash",
+                "type": "bytes32"
+              },
+              {
+                "name": "salt",
+                "type": "uint256"
+              },
+              {
+                "name": "conduitKey",
+                "type": "bytes32"
+              },
+              {
+                "name": "counter",
+                "type": "uint256"
+              }
+            ],
+            "OfferItem": [
+              {
+                "name": "token",
+                "type": "address"
+              }
+            ],
+            "ConsiderationItem": [
+              {
+                "name": "token",
+                "type": "address"
+              },
+              {
+                "name": "identifierOrCriteria",
+                "type": "uint256"
+              },
+              {
+                "name": "startAmount",
+                "type": "uint256"
+              },
+              {
+                "name": "endAmount",
+                "type": "uint256"
+              },
+              {
+                "name": "recipient",
+                "type": "address"
+              }
+            ]
+          },
+          "primaryType": "OrderComponents",
+          "domain": {
+            "name": "Seaport",
+            "version": "1.1",
+            "chainId": "1",
+            "verifyingContract": "0x00000000006c3852cbEf3e08E8dF289169EdE581"
+          },
+          "message": {
+            "offerer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+            "offer": [
+              {
+                "token": "0xA604060890923Ff400e8c6f5290461A83AEDACec"
+              }
+            ],
+            "startTime": "1658645591",
+            "endTime": "1659250386",
+            "zone": "0x004C00500000aD104D7DBd00e3ae0A5C00560C00",
+            "zoneHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+            "salt": "16178208897136618",
+            "conduitKey": "0x0000007b02230091a7ed01230072f7006a004d60a8d4e71d599b8104250f0000",
+            "totalOriginalConsiderationItems": "2",
+            "counter": "0"
+          }
+        }
+                );
+
+        let typed_data: TypedData = serde_json::from_value(json).unwrap();
+
+        let hash = typed_data.encode_eip712().unwrap();
+        assert_eq!(
+            "0b8aa9f3712df0034bc29fe5b24dd88cfdba02c7f499856ab24632e2969709a8",
             hex::encode(&hash[..])
         );
     }

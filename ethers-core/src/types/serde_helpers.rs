@@ -1,6 +1,7 @@
 //! Some convenient serde helpers
 
 use crate::types::{BlockNumber, U256};
+use ethabi::ethereum_types::FromDecStrErr;
 use serde::{Deserialize, Deserializer};
 
 /// Helper type to parse both `u64` and `U256`
@@ -8,9 +9,7 @@ use serde::{Deserialize, Deserializer};
 #[serde(untagged)]
 pub enum Numeric {
     U256(U256),
-    Num(u128),
-    #[serde(deserialize_with = "deserialize_dec_string")]
-    Decimal(U256),
+    Num(u64),
 }
 
 impl From<Numeric> for U256 {
@@ -18,7 +17,33 @@ impl From<Numeric> for U256 {
         match n {
             Numeric::U256(n) => n,
             Numeric::Num(n) => U256::from(n),
-            Numeric::Decimal(n) => n,
+        }
+    }
+}
+
+/// Helper type to parse both `u64` and `U256`
+#[derive(Deserialize, Debug, Clone)]
+#[serde(untagged)]
+pub enum StringifiedNumeric {
+    String(String),
+    U256(U256),
+    Num(u64),
+}
+
+impl TryFrom<StringifiedNumeric> for U256 {
+    type Error = FromDecStrErr;
+
+    fn try_from(value: StringifiedNumeric) -> Result<Self, Self::Error> {
+        match value {
+            StringifiedNumeric::U256(n) => Ok(n),
+            StringifiedNumeric::Num(n) => Ok(U256::from(n)),
+            StringifiedNumeric::String(s) => {
+                if let Ok(val) = s.parse::<u128>() {
+                    Ok(val.into())
+                } else {
+                    U256::from_dec_str(&s)
+                }
+            }
         }
     }
 }
@@ -29,18 +54,7 @@ impl From<Numeric> for U256 {
 pub enum NumericSeq {
     Seq([Numeric; 1]),
     U256(U256),
-    Num(u128),
-    #[serde(deserialize_with = "deserialize_dec_string")]
-    Decimal(U256),
-}
-
-/// Deserializes a number from hex or int
-fn deserialize_dec_string<'de, D>(deserializer: D) -> Result<U256, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let s = String::deserialize(deserializer)?;
-    U256::from_dec_str(&s).map_err(serde::de::Error::custom)
+    Num(u64),
 }
 
 /// Deserializes a number from hex or int
@@ -74,7 +88,6 @@ where
         NumericSeq::Seq(seq) => seq.into_iter().next().unwrap().into(),
         NumericSeq::U256(n) => n,
         NumericSeq::Num(n) => U256::from(n),
-        NumericSeq::Decimal(n) => n,
     };
 
     Ok(num)
