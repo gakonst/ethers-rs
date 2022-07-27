@@ -64,7 +64,7 @@ pub struct Block<TX> {
     #[serde(rename = "totalDifficulty")]
     pub total_difficulty: Option<U256>,
     /// Seal fields
-    #[serde(default, rename = "sealFields")]
+    #[serde(default, rename = "sealFields", deserialize_with = "deserialize_null_default")]
     pub seal_fields: Vec<Bytes>,
     /// Uncles' hashes
     #[cfg(not(feature = "celo"))]
@@ -101,6 +101,15 @@ pub struct Block<TX> {
     #[cfg(not(feature = "celo"))]
     #[serde(flatten)]
     pub other: crate::types::OtherFields,
+}
+
+fn deserialize_null_default<'de, D, T>(deserializer: D) -> Result<T, D::Error>
+where
+    T: Default + Deserialize<'de>,
+    D: Deserializer<'de>,
+{
+    let opt = Option::deserialize(deserializer)?;
+    Ok(opt.unwrap_or_default())
 }
 
 /// Error returned by [`Block::time`].
@@ -810,6 +819,35 @@ mod tests {
         );
         let block: Block<H256> = serde_json::from_value(json).unwrap();
         assert!(block.author.is_none());
+    }
+
+    #[test]
+    fn can_deserialize_with_sealed_fields() {
+        let json = serde_json::json!({
+          "number": "0x1b4",
+          "hash": "0xdc0818cf78f21a8e70579cb46a43643f78291264dda342ae31049421c82d21ae",
+          "parentHash": "0xe99e022112df268087ea7eafaf4790497fd21dbeeb6bd7a1721df161a6657a54",
+          "sha3Uncles": "0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347",
+          "logsBloom": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "transactionsRoot": "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421",
+          "stateRoot": "0xddc8b0234c2e0cad087c8b389aa7ef01f7d79b2570bccb77ce48648aa61c904d",
+          "receiptsRoot": "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421",
+          "miner": "0xbb7b8287f3f0a933474a79eae42cbca977791171",
+          "difficulty": "0x4ea3f27bc",
+          "totalDifficulty": "0x78ed983323d",
+          "sealFields": null,
+          "nonce": "0x689056015818adbe",
+          "mixHash": "0x4fffe9ae21f1c9e15207b1f472d5bbdd68c9595d461666602f2be20daf5e7843",
+          "extraData": "0x476574682f4c5649562f76312e302e302f6c696e75782f676f312e342e32",
+          "size": "0x0",
+          "gasLimit": "0x1388",
+          "gasUsed": "0x0",
+          "timestamp": "0x55ba467c",
+          "transactions": [],
+          "uncles": []
+        }
+              );
+        let _block: Block<TxHash> = serde_json::from_value(json).unwrap();
     }
 }
 
