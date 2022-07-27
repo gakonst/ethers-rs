@@ -9,7 +9,11 @@ use core::convert::TryFrom;
 use ethabi::encode;
 use proc_macro2::TokenStream;
 use serde::{Deserialize, Deserializer, Serialize};
-use std::collections::{BTreeMap, HashSet};
+use std::{
+    collections::{BTreeMap, HashSet},
+    convert::TryInto,
+    iter::FromIterator,
+};
 use syn::{
     parse::Error, spanned::Spanned as _, AttrStyle, Data, DeriveInput, Expr, Fields,
     GenericArgument, Lit, NestedMeta, PathArguments, Type,
