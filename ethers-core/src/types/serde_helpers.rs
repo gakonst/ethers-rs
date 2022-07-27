@@ -3,9 +3,10 @@
 use crate::types::{BlockNumber, U256};
 use ethabi::ethereum_types::FromDecStrErr;
 use serde::{Deserialize, Deserializer};
+use std::convert::TryFrom;
 
 /// Helper type to parse both `u64` and `U256`
-#[derive(Deserialize)]
+#[derive(Copy, Clone, Deserialize)]
 #[serde(untagged)]
 pub enum Numeric {
     U256(U256),
@@ -85,7 +86,7 @@ where
     D: Deserializer<'de>,
 {
     let num = match NumericSeq::deserialize(deserializer)? {
-        NumericSeq::Seq(seq) => seq.into_iter().next().unwrap().into(),
+        NumericSeq::Seq(seq) => seq[0].into(),
         NumericSeq::U256(n) => n,
         NumericSeq::Num(n) => U256::from(n),
     };
@@ -94,7 +95,7 @@ where
 }
 
 /// Various block number representations, See [`lenient_block_number()`]
-#[derive(Deserialize)]
+#[derive(Clone, Copy, Deserialize)]
 #[serde(untagged)]
 pub enum LenientBlockNumber {
     BlockNumber(BlockNumber),
@@ -141,7 +142,6 @@ pub fn lenient_block_number_seq<'de, D>(deserializer: D) -> Result<BlockNumber, 
 where
     D: Deserializer<'de>,
 {
-    let num =
-        <[LenientBlockNumber; 1]>::deserialize(deserializer)?.into_iter().next().unwrap().into();
+    let num = <[LenientBlockNumber; 1]>::deserialize(deserializer)?[0].into();
     Ok(num)
 }
