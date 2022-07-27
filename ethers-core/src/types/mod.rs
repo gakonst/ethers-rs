@@ -66,3 +66,5 @@ pub use fee::*;
 
 mod other;
 pub use other::OtherFields;
+
+pub mod serde_helpers;
