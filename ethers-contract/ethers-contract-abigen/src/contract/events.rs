@@ -77,7 +77,7 @@ impl Context {
             }
 
              impl #ethers_contract::EthLogDecode for #enum_name {
-                fn decode_log(log: &#ethers_core::abi::RawLog) -> Result<Self, #ethers_core::abi::Error>
+                fn decode_log(log: &#ethers_core::abi::RawLog) -> ::std::result::Result<Self, #ethers_core::abi::Error>
                 where
                     Self: Sized,
                 {
