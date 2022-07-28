@@ -52,13 +52,10 @@ impl Client {
 
 #[cfg(test)]
 mod tests {
-    use std::time::Duration;
-
-    use serial_test::serial;
-
-    use crate::{tests::run_at_least_duration, Chain};
-
     use super::*;
+    use crate::{tests::run_at_least_duration, Chain};
+    use serial_test::serial;
+    use std::time::Duration;
 
     #[tokio::test]
     #[serial]
