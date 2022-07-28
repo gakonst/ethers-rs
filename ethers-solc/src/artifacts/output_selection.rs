@@ -427,6 +427,7 @@ pub enum DeployedBytecodeOutputSelection {
     SourceMap,
     LinkReferences,
     GeneratedSources,
+    ImmutableReferences,
 }
 
 impl Serialize for DeployedBytecodeOutputSelection {
@@ -465,6 +466,9 @@ impl fmt::Display for DeployedBytecodeOutputSelection {
             DeployedBytecodeOutputSelection::GeneratedSources => {
                 f.write_str("evm.deployedBytecode.generatedSources")
             }
+            DeployedBytecodeOutputSelection::ImmutableReferences => {
+                f.write_str("evm.deployedBytecode.immutableReferences")
+            }
         }
     }
 }
@@ -486,6 +490,9 @@ impl FromStr for DeployedBytecodeOutputSelection {
             }
             "evm.deployedBytecode.generatedSources" => {
                 Ok(DeployedBytecodeOutputSelection::GeneratedSources)
+            }
+            "evm.deployedBytecode.immutableReferences" => {
+                Ok(DeployedBytecodeOutputSelection::ImmutableReferences)
             }
             s => Err(format!("Invalid deployedBytecode selection: {}", s)),
         }
@@ -572,5 +579,14 @@ mod tests {
         empty.0.insert("contract.sol".to_string(), OutputSelection::empty_file_output_select());
         let s = serde_json::to_string(&empty).unwrap();
         assert_eq!(s, r#"{"contract.sol":{"*":[]}}"#);
+    }
+
+    #[test]
+    fn deployed_bytecode_from_str() {
+        assert_eq!(
+            DeployedBytecodeOutputSelection::from_str("evm.deployedBytecode.immutableReferences")
+                .unwrap(),
+            DeployedBytecodeOutputSelection::ImmutableReferences
+        )
     }
 }

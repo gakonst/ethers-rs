@@ -1,9 +1,11 @@
 //! Some convenient serde helpers
 
 use crate::types::{BlockNumber, U256};
-use ethabi::ethereum_types::FromDecStrErr;
 use serde::{Deserialize, Deserializer};
-use std::convert::TryFrom;
+use std::{
+    convert::{TryFrom, TryInto},
+    str::FromStr,
+};
 
 /// Helper type to parse both `u64` and `U256`
 #[derive(Copy, Clone, Deserialize)]
@@ -22,7 +24,21 @@ impl From<Numeric> for U256 {
     }
 }
 
-/// Helper type to parse both `u64` and `U256`
+impl FromStr for Numeric {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if let Ok(val) = s.parse::<u128>() {
+            Ok(Numeric::U256(val.into()))
+        } else if s.starts_with("0x") {
+            U256::from_str(s).map(Numeric::U256).map_err(|err| err.to_string())
+        } else {
+            U256::from_dec_str(s).map(Numeric::U256).map_err(|err| err.to_string())
+        }
+    }
+}
+
+/// Helper type to parse numeric strings, `u64` and `U256`
 #[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum StringifiedNumeric {
@@ -32,7 +48,7 @@ pub enum StringifiedNumeric {
 }
 
 impl TryFrom<StringifiedNumeric> for U256 {
-    type Error = FromDecStrErr;
+    type Error = String;
 
     fn try_from(value: StringifiedNumeric) -> Result<Self, Self::Error> {
         match value {
@@ -41,11 +57,68 @@ impl TryFrom<StringifiedNumeric> for U256 {
             StringifiedNumeric::String(s) => {
                 if let Ok(val) = s.parse::<u128>() {
                     Ok(val.into())
+                } else if s.starts_with("0x") {
+                    U256::from_str(&s).map_err(|err| err.to_string())
                 } else {
-                    U256::from_dec_str(&s)
+                    U256::from_dec_str(&s).map_err(|err| err.to_string())
                 }
             }
         }
+    }
+}
+
+/// Supports parsing numbers as strings
+///
+/// See <https://github.com/gakonst/ethers-rs/issues/1507>
+pub fn deserialize_stringified_numeric<'de, D>(deserializer: D) -> Result<U256, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let num = StringifiedNumeric::deserialize(deserializer)?;
+    num.try_into().map_err(serde::de::Error::custom)
+}
+
+/// Supports parsing numbers as strings
+///
+/// See <https://github.com/gakonst/ethers-rs/issues/1507>
+pub fn deserialize_stringified_numeric_opt<'de, D>(
+    deserializer: D,
+) -> Result<Option<U256>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    if let Some(num) = Option::<StringifiedNumeric>::deserialize(deserializer)? {
+        num.try_into().map(Some).map_err(serde::de::Error::custom)
+    } else {
+        Ok(None)
+    }
+}
+
+/// Supports parsing u64
+///
+/// See <https://github.com/gakonst/ethers-rs/issues/1507>
+pub fn deserialize_stringified_u64<'de, D>(deserializer: D) -> Result<u64, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let num = StringifiedNumeric::deserialize(deserializer)?;
+    let num: U256 = num.try_into().map_err(serde::de::Error::custom)?;
+    num.try_into().map_err(serde::de::Error::custom)
+}
+
+/// Supports parsing u64
+///
+/// See <https://github.com/gakonst/ethers-rs/issues/1507>
+pub fn deserialize_stringified_u64_opt<'de, D>(deserializer: D) -> Result<Option<u64>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    if let Some(num) = Option::<StringifiedNumeric>::deserialize(deserializer)? {
+        let num: U256 = num.try_into().map_err(serde::de::Error::custom)?;
+        let num: u64 = num.try_into().map_err(serde::de::Error::custom)?;
+        Ok(Some(num))
+    } else {
+        Ok(None)
     }
 }
 
@@ -92,6 +165,42 @@ where
     };
 
     Ok(num)
+}
+
+/// Helper type to parse numeric strings, `u64` and `U256`
+#[derive(Deserialize, Debug, Clone)]
+#[serde(untagged)]
+pub enum StringifiedBlockNumber {
+    Numeric(StringifiedNumeric),
+    BlockNumber(BlockNumber),
+}
+
+impl TryFrom<StringifiedBlockNumber> for BlockNumber {
+    type Error = String;
+
+    fn try_from(value: StringifiedBlockNumber) -> Result<Self, Self::Error> {
+        match value {
+            StringifiedBlockNumber::Numeric(num) => {
+                let num = U256::try_from(num)
+                    .and_then(|num| u64::try_from(num).map_err(str::to_string))?;
+                Ok(BlockNumber::Number(num.into()))
+            }
+            StringifiedBlockNumber::BlockNumber(b) => Ok(b),
+        }
+    }
+}
+
+/// Supports parsing block number as strings
+///
+/// See <https://github.com/gakonst/ethers-rs/issues/1507>
+pub fn deserialize_stringified_block_number<'de, D>(
+    deserializer: D,
+) -> Result<BlockNumber, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let num = StringifiedBlockNumber::deserialize(deserializer)?;
+    num.try_into().map_err(serde::de::Error::custom)
 }
 
 /// Various block number representations, See [`lenient_block_number()`]

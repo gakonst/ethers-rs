@@ -605,3 +605,16 @@ fn eth_display_works_on_ethers_bytes() {
     let s = format!("{}", call);
     assert_eq!(s, "0xaaaaaa");
 }
+
+#[test]
+fn can_use_result_name() {
+    abigen!(
+        ResultContract,
+        r#"[
+           struct Result {uint256 result;}
+           result(Result result) (uint256)
+        ]"#,
+    );
+
+    let _call = ResultCall { result: Result { result: U256::zero() } };
+}

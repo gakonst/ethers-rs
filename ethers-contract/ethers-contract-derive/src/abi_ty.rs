@@ -152,7 +152,7 @@ pub fn derive_tokenizeable_impl(input: &DeriveInput) -> proc_macro2::TokenStream
              #tokenize_predicates
          {
 
-             fn from_token(token: #core_crate::abi::Token) -> Result<Self, #core_crate::abi::InvalidOutputType> where
+             fn from_token(token: #core_crate::abi::Token) -> ::std::result::Result<Self, #core_crate::abi::InvalidOutputType> where
                  Self: Sized {
                 #from_token_impl
              }
@@ -174,7 +174,7 @@ fn tokenize_unit_type(name: &Ident) -> TokenStream {
     let ethers_core = ethers_core_crate();
     quote! {
          impl #ethers_core::abi::Tokenizable for #name {
-             fn from_token(token: #ethers_core::abi::Token) -> Result<Self, #ethers_core::abi::InvalidOutputType> where
+             fn from_token(token: #ethers_core::abi::Token) -> ::std::result::Result<Self, #ethers_core::abi::InvalidOutputType> where
                  Self: Sized {
                 if let #ethers_core::abi::Token::Tuple(tokens) = token {
                     if !tokens.is_empty() {
@@ -210,7 +210,7 @@ fn tokenize_unit_type(name: &Ident) -> TokenStream {
 fn tokenize_enum<'a>(
     enum_name: &Ident,
     variants: impl Iterator<Item = &'a Variant> + 'a,
-) -> Result<TokenStream, Error> {
+) -> ::std::result::Result<TokenStream, Error> {
     let ethers_core = ethers_core_crate();
 
     let mut into_tokens = TokenStream::new();
@@ -252,7 +252,7 @@ fn tokenize_enum<'a>(
     Ok(quote! {
          impl #ethers_core::abi::Tokenizable for #enum_name {
 
-             fn from_token(token: #ethers_core::abi::Token) -> Result<Self, #ethers_core::abi::InvalidOutputType> where
+             fn from_token(token: #ethers_core::abi::Token) -> ::std::result::Result<Self, #ethers_core::abi::InvalidOutputType> where
                  Self: Sized {
                 #from_tokens
                 Err(#ethers_core::abi::InvalidOutputType("Failed to decode all type variants".to_string()))

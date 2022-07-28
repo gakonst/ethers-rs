@@ -95,7 +95,7 @@ pub fn derive_trait_impls(
         }
 
         impl  #core_crate::abi::AbiDecode for #struct_name {
-            fn decode(bytes: impl AsRef<[u8]>) -> Result<Self, #core_crate::abi::AbiError> {
+            fn decode(bytes: impl AsRef<[u8]>) -> ::std::result::Result<Self, #core_crate::abi::AbiError> {
                 #decode_impl
             }
         }

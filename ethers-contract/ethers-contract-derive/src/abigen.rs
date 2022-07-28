@@ -27,7 +27,7 @@ pub(crate) struct Contracts {
 }
 
 impl Contracts {
-    pub(crate) fn expand(self) -> Result<TokenStream2, syn::Error> {
+    pub(crate) fn expand(self) -> ::std::result::Result<TokenStream2, syn::Error> {
         let mut expansions = Vec::with_capacity(self.inner.len());
 
         // expand all contracts
