@@ -1031,7 +1031,7 @@ dependencies = [
 
 [[package]]
 name = "ethers"
-version = "0.13.0"
+version = "0.17.0"
 dependencies = [
  "bytes",
  "ethers-addressbook",
