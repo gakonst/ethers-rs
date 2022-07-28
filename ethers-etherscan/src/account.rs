@@ -1,16 +1,14 @@
+use crate::{Client, EtherscanError, Query, Response, Result};
+use ethers_core::{
+    abi::Address,
+    types::{serde_helpers::*, BlockNumber, Bytes, H256, U256},
+};
+use serde::{Deserialize, Serialize};
 use std::{
     borrow::Cow,
     collections::HashMap,
     fmt::{Display, Error, Formatter},
 };
-
-use ethers_core::{
-    abi::Address,
-    types::{BlockNumber, Bytes, H256, U256, U64},
-};
-use serde::{Deserialize, Serialize};
-
-use crate::{Client, EtherscanError, Query, Response, Result};
 
 /// The raw response from the balance-related API endpoints
 #[derive(Debug, Serialize, Deserialize)]
@@ -100,6 +98,7 @@ impl<T> GenesisOption<T> {
 #[serde(rename_all = "camelCase")]
 pub struct NormalTransaction {
     pub is_error: String,
+    #[serde(deserialize_with = "deserialize_stringified_block_number")]
     pub block_number: BlockNumber,
     pub time_stamp: String,
     #[serde(with = "jsonstring")]
@@ -108,12 +107,16 @@ pub struct NormalTransaction {
     pub nonce: GenesisOption<U256>,
     #[serde(with = "jsonstring")]
     pub block_hash: GenesisOption<U256>,
-    pub transaction_index: Option<U64>,
+    #[serde(deserialize_with = "deserialize_stringified_u64_opt")]
+    pub transaction_index: Option<u64>,
     #[serde(with = "jsonstring")]
     pub from: GenesisOption<Address>,
     pub to: Option<Address>,
+    #[serde(deserialize_with = "deserialize_stringified_numeric")]
     pub value: U256,
+    #[serde(deserialize_with = "deserialize_stringified_numeric")]
     pub gas: U256,
+    #[serde(deserialize_with = "deserialize_stringified_numeric_opt")]
     pub gas_price: Option<U256>,
     #[serde(rename = "txreceipt_status")]
     pub tx_receipt_status: String,
@@ -121,21 +124,26 @@ pub struct NormalTransaction {
     pub input: GenesisOption<Bytes>,
     #[serde(with = "jsonstring")]
     pub contract_address: GenesisOption<Address>,
+    #[serde(deserialize_with = "deserialize_stringified_numeric")]
     pub gas_used: U256,
+    #[serde(deserialize_with = "deserialize_stringified_numeric")]
     pub cumulative_gas_used: U256,
-    pub confirmations: U64,
+    #[serde(deserialize_with = "deserialize_stringified_u64")]
+    pub confirmations: u64,
 }
 
 /// The raw response from the internal transaction list API endpoint
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InternalTransaction {
+    #[serde(deserialize_with = "deserialize_stringified_block_number")]
     pub block_number: BlockNumber,
     pub time_stamp: String,
     pub hash: H256,
     pub from: Address,
     #[serde(with = "jsonstring")]
     pub to: GenesisOption<Address>,
+    #[serde(deserialize_with = "deserialize_stringified_numeric")]
     pub value: U256,
     #[serde(with = "jsonstring")]
     pub contract_address: GenesisOption<Address>,
@@ -143,7 +151,9 @@ pub struct InternalTransaction {
     pub input: GenesisOption<Bytes>,
     #[serde(rename = "type")]
     pub result_type: String,
+    #[serde(deserialize_with = "deserialize_stringified_numeric")]
     pub gas: U256,
+    #[serde(deserialize_with = "deserialize_stringified_numeric")]
     pub gas_used: U256,
     pub trace_id: String,
     pub is_error: String,
@@ -154,35 +164,46 @@ pub struct InternalTransaction {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ERC20TokenTransferEvent {
+    #[serde(deserialize_with = "deserialize_stringified_block_number")]
     pub block_number: BlockNumber,
     pub time_stamp: String,
     pub hash: H256,
+    #[serde(deserialize_with = "deserialize_stringified_numeric")]
     pub nonce: U256,
     pub block_hash: H256,
     pub from: Address,
     pub contract_address: Address,
     pub to: Option<Address>,
+    #[serde(deserialize_with = "deserialize_stringified_numeric")]
     pub value: U256,
     pub token_name: String,
     pub token_symbol: String,
     pub token_decimal: String,
-    pub transaction_index: U64,
+    #[serde(deserialize_with = "deserialize_stringified_u64")]
+    pub transaction_index: u64,
+    #[serde(deserialize_with = "deserialize_stringified_numeric")]
     pub gas: U256,
+    #[serde(deserialize_with = "deserialize_stringified_numeric_opt")]
     pub gas_price: Option<U256>,
+    #[serde(deserialize_with = "deserialize_stringified_numeric")]
     pub gas_used: U256,
+    #[serde(deserialize_with = "deserialize_stringified_numeric")]
     pub cumulative_gas_used: U256,
     /// deprecated
     pub input: String,
-    pub confirmations: U64,
+    #[serde(deserialize_with = "deserialize_stringified_u64")]
+    pub confirmations: u64,
 }
 
 /// The raw response from the ERC721 transfer list API endpoint
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ERC721TokenTransferEvent {
+    #[serde(deserialize_with = "deserialize_stringified_block_number")]
     pub block_number: BlockNumber,
     pub time_stamp: String,
     pub hash: H256,
+    #[serde(deserialize_with = "deserialize_stringified_numeric")]
     pub nonce: U256,
     pub block_hash: H256,
     pub from: Address,
@@ -193,23 +214,31 @@ pub struct ERC721TokenTransferEvent {
     pub token_name: String,
     pub token_symbol: String,
     pub token_decimal: String,
-    pub transaction_index: U64,
+    #[serde(deserialize_with = "deserialize_stringified_u64")]
+    pub transaction_index: u64,
+    #[serde(deserialize_with = "deserialize_stringified_numeric")]
     pub gas: U256,
+    #[serde(deserialize_with = "deserialize_stringified_numeric_opt")]
     pub gas_price: Option<U256>,
+    #[serde(deserialize_with = "deserialize_stringified_numeric")]
     pub gas_used: U256,
+    #[serde(deserialize_with = "deserialize_stringified_numeric")]
     pub cumulative_gas_used: U256,
     /// deprecated
     pub input: String,
-    pub confirmations: U64,
+    #[serde(deserialize_with = "deserialize_stringified_u64")]
+    pub confirmations: u64,
 }
 
 /// The raw response from the ERC1155 transfer list API endpoint
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ERC1155TokenTransferEvent {
+    #[serde(deserialize_with = "deserialize_stringified_block_number")]
     pub block_number: BlockNumber,
     pub time_stamp: String,
     pub hash: H256,
+    #[serde(deserialize_with = "deserialize_stringified_numeric")]
     pub nonce: U256,
     pub block_hash: H256,
     pub from: Address,
@@ -220,20 +249,27 @@ pub struct ERC1155TokenTransferEvent {
     pub token_value: String,
     pub token_name: String,
     pub token_symbol: String,
-    pub transaction_index: U64,
+    #[serde(deserialize_with = "deserialize_stringified_u64")]
+    pub transaction_index: u64,
+    #[serde(deserialize_with = "deserialize_stringified_numeric")]
     pub gas: U256,
+    #[serde(deserialize_with = "deserialize_stringified_numeric_opt")]
     pub gas_price: Option<U256>,
+    #[serde(deserialize_with = "deserialize_stringified_numeric")]
     pub gas_used: U256,
+    #[serde(deserialize_with = "deserialize_stringified_numeric")]
     pub cumulative_gas_used: U256,
     /// deprecated
     pub input: String,
-    pub confirmations: U64,
+    #[serde(deserialize_with = "deserialize_stringified_u64")]
+    pub confirmations: u64,
 }
 
 /// The raw response from the mined blocks API endpoint
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MinedBlock {
+    #[serde(deserialize_with = "deserialize_stringified_block_number")]
     pub block_number: BlockNumber,
     pub time_stamp: String,
     pub block_reward: String,
@@ -739,8 +775,12 @@ mod tests {
                     ),
                     None,
                 )
-                .await;
-            assert!(txs.is_ok());
+                .await
+                .unwrap();
+            let tx = txs.get(0).unwrap();
+            assert_eq!(tx.gas_used, 93657u64.into());
+            assert_eq!(tx.nonce, 10u64.into());
+            assert_eq!(tx.block_number, 2228258u64.into());
         })
         .await
     }
