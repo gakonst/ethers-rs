@@ -764,11 +764,13 @@ mod tests {
     #[test]
     fn test_next_block_base_fee() {
         // <https://etherscan.io/block/14402566>
-        let mut block_14402566 = Block::<TxHash>::default();
-        block_14402566.number = Some(U64::from(14402566u64));
-        block_14402566.base_fee_per_gas = Some(U256::from(36_803_013_756u128));
-        block_14402566.gas_limit = U256::from(30_087_887u128);
-        block_14402566.gas_used = U256::from(2_023_848u128);
+        let block_14402566: Block<TxHash> = Block {
+            number: Some(U64::from(14402566u64)),
+            base_fee_per_gas: Some(U256::from(36_803_013_756u128)),
+            gas_limit: U256::from(30_087_887u128),
+            gas_used: U256::from(2_023_848u128),
+            ..Default::default()
+        };
 
         assert_eq!(block_14402566.base_fee_per_gas, Some(U256::from(36_803_013_756u128)));
         assert_eq!(block_14402566.gas_target(), U256::from(15_043_943u128));
@@ -776,11 +778,13 @@ mod tests {
         assert_eq!(block_14402566.next_block_base_fee(), Some(U256::from(32_821_521_542u128)));
 
         // https://etherscan.io/block/14402712
-        let mut block_14402712 = Block::<TxHash>::default();
-        block_14402712.number = Some(U64::from(14402712u64));
-        block_14402712.base_fee_per_gas = Some(U256::from(24_870_031_149u128));
-        block_14402712.gas_limit = U256::from(30_000_000u128);
-        block_14402712.gas_used = U256::from(29_999_374u128);
+        let block_14402712: Block<TxHash> = Block {
+            number: Some(U64::from(14402712u64)),
+            base_fee_per_gas: Some(U256::from(24_870_031_149u128)),
+            gas_limit: U256::from(30_000_000u128),
+            gas_used: U256::from(29_999_374u128),
+            ..Default::default()
+        };
 
         assert_eq!(block_14402712.base_fee_per_gas, Some(U256::from(24_870_031_149u128)));
         assert_eq!(block_14402712.gas_target(), U256::from(15_000_000u128));
