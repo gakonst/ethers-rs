@@ -17,7 +17,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 ethers-providers = { version = "^0.13.0", path = "../ethers-providers", default-features = false }
 ethers-core = { version = "^0.17.0", path = "../ethers-core", default-features = false }
 ethers-contract-abigen = { version = "^0.17.0", path = "ethers-contract-abigen",  default-features = false, optional = true }
-ethers-contract-derive = { version = "^0.13.0", path = "ethers-contract-derive", optional = true }
+ethers-contract-derive = { version = "^0.17.0", path = "ethers-contract-derive", optional = true }
 ethers-derive-eip712 = { version = "^0.13.0", path = "../ethers-core/ethers-derive-eip712", optional = true }
 
 serde = { version = "1.0.124", default-features = false }
