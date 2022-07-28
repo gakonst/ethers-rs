@@ -547,7 +547,7 @@ mod tests {
 
         let addresses = raw_addresses
             .iter()
-            .map(|addr| NameOrAddress::Address(Address::from_str(*addr).unwrap()));
+            .map(|addr| NameOrAddress::Address(Address::from_str(addr).unwrap()));
 
         // decoding will do sender recovery and we don't expect any of these to error, so we should
         // check that the address matches for each decoded transaction
