@@ -1156,7 +1156,7 @@ dependencies = [
 
 [[package]]
 name = "ethers-etherscan"
-version = "0.13.0"
+version = "0.17.0"
 dependencies = [
  "ethers-core",
  "getrandom 0.2.7",
