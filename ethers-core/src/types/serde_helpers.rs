@@ -30,12 +30,10 @@ impl FromStr for Numeric {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if let Ok(val) = s.parse::<u128>() {
             Ok(Numeric::U256(val.into()))
+        } else if s.starts_with("0x") {
+            U256::from_str(s).map(Numeric::U256).map_err(|err| err.to_string())
         } else {
-            if s.starts_with("0x") {
-                U256::from_str(&s).map(Numeric::U256).map_err(|err| err.to_string())
-            } else {
-                U256::from_dec_str(&s).map(Numeric::U256).map_err(|err| err.to_string())
-            }
+            U256::from_dec_str(s).map(Numeric::U256).map_err(|err| err.to_string())
         }
     }
 }
@@ -59,12 +57,10 @@ impl TryFrom<StringifiedNumeric> for U256 {
             StringifiedNumeric::String(s) => {
                 if let Ok(val) = s.parse::<u128>() {
                     Ok(val.into())
+                } else if s.starts_with("0x") {
+                    U256::from_str(&s).map_err(|err| err.to_string())
                 } else {
-                    if s.starts_with("0x") {
-                        U256::from_str(&s).map_err(|err| err.to_string())
-                    } else {
-                        U256::from_dec_str(&s).map_err(|err| err.to_string())
-                    }
+                    U256::from_dec_str(&s).map_err(|err| err.to_string())
                 }
             }
         }
@@ -186,7 +182,6 @@ impl TryFrom<StringifiedBlockNumber> for BlockNumber {
         match value {
             StringifiedBlockNumber::Numeric(num) => {
                 let num = U256::try_from(num)
-                    .map_err(|err| err.to_string())
                     .and_then(|num| u64::try_from(num).map_err(str::to_string))?;
                 Ok(BlockNumber::Number(num.into()))
             }
