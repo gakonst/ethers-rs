@@ -12,7 +12,7 @@ pub fn derive_codec_impl(input: &DeriveInput) -> proc_macro2::TokenStream {
 
     quote! {
         impl  #core_crate::abi::AbiDecode for #name {
-            fn decode(bytes: impl AsRef<[u8]>) -> Result<Self, #core_crate::abi::AbiError> {
+            fn decode(bytes: impl AsRef<[u8]>) -> ::std::result::Result<Self, #core_crate::abi::AbiError> {
                 if let #core_crate::abi::ParamType::Tuple(params) = <Self as #core_crate::abi::AbiType>::param_type() {
                   let tokens = #core_crate::abi::decode(&params, bytes.as_ref())?;
                   Ok(<Self as #core_crate::abi::Tokenizable>::from_token(#core_crate::abi::Token::Tuple(tokens))?)

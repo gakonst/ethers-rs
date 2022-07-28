@@ -91,7 +91,7 @@ impl Context {
             ///    let msg = greeter_contract.greet().call().await.unwrap();
             /// # }
             /// ```
-            pub fn deploy<T: #ethers_core::abi::Tokenize >(client: ::std::sync::Arc<M>, constructor_args: T) -> Result<#ethers_contract::builders::ContractDeployer<M, Self>, #ethers_contract::ContractError<M>> {
+            pub fn deploy<T: #ethers_core::abi::Tokenize >(client: ::std::sync::Arc<M>, constructor_args: T) -> ::std::result::Result<#ethers_contract::builders::ContractDeployer<M, Self>, #ethers_contract::ContractError<M>> {
                let factory = #ethers_contract::ContractFactory::new(#get_abi, #get_bytecode, client);
                let deployer = factory.deploy(constructor_args)?;
                let deployer = #ethers_contract::ContractDeployer::new(deployer);
@@ -219,7 +219,7 @@ impl Context {
             }
 
         impl  #ethers_core::abi::AbiDecode for #enum_name {
-            fn decode(data: impl AsRef<[u8]>) -> Result<Self, #ethers_core::abi::AbiError> {
+            fn decode(data: impl AsRef<[u8]>) -> ::std::result::Result<Self, #ethers_core::abi::AbiError> {
                  #(
                     if let Ok(decoded) = <#struct_names as #ethers_core::abi::AbiDecode>::decode(data.as_ref()) {
                         return Ok(#enum_name::#variant_names(decoded))
