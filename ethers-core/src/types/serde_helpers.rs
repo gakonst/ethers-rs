@@ -1,7 +1,6 @@
 //! Some convenient serde helpers
 
 use crate::types::{BlockNumber, U256};
-use ethabi::ethereum_types::FromDecStrErr;
 use serde::{Deserialize, Deserializer};
 use std::{
     convert::{TryFrom, TryInto},
@@ -26,13 +25,17 @@ impl From<Numeric> for U256 {
 }
 
 impl FromStr for Numeric {
-    type Err = FromDecStrErr;
+    type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if let Ok(val) = s.parse::<u128>() {
             Ok(Numeric::U256(val.into()))
         } else {
-            U256::from_dec_str(&s).map(Numeric::U256)
+            if s.starts_with("0x") {
+                U256::from_str(&s).map(Numeric::U256).map_err(|err| err.to_string())
+            } else {
+                U256::from_dec_str(&s).map(Numeric::U256).map_err(|err| err.to_string())
+            }
         }
     }
 }
@@ -47,7 +50,7 @@ pub enum StringifiedNumeric {
 }
 
 impl TryFrom<StringifiedNumeric> for U256 {
-    type Error = FromDecStrErr;
+    type Error = String;
 
     fn try_from(value: StringifiedNumeric) -> Result<Self, Self::Error> {
         match value {
@@ -57,7 +60,11 @@ impl TryFrom<StringifiedNumeric> for U256 {
                 if let Ok(val) = s.parse::<u128>() {
                     Ok(val.into())
                 } else {
-                    U256::from_dec_str(&s)
+                    if s.starts_with("0x") {
+                        U256::from_str(&s).map_err(|err| err.to_string())
+                    } else {
+                        U256::from_dec_str(&s).map_err(|err| err.to_string())
+                    }
                 }
             }
         }
