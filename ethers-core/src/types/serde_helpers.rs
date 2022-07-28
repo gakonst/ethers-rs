@@ -3,7 +3,10 @@
 use crate::types::{BlockNumber, U256};
 use ethabi::ethereum_types::FromDecStrErr;
 use serde::{Deserialize, Deserializer};
-use std::convert::{TryFrom, TryInto};
+use std::{
+    convert::{TryFrom, TryInto},
+    str::FromStr,
+};
 
 /// Helper type to parse both `u64` and `U256`
 #[derive(Copy, Clone, Deserialize)]
@@ -18,6 +21,18 @@ impl From<Numeric> for U256 {
         match n {
             Numeric::U256(n) => n,
             Numeric::Num(n) => U256::from(n),
+        }
+    }
+}
+
+impl FromStr for Numeric {
+    type Err = FromDecStrErr;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if let Ok(val) = s.parse::<u128>() {
+            Ok(Numeric::U256(val.into()))
+        } else {
+            U256::from_dec_str(&s).map(Numeric::U256)
         }
     }
 }
