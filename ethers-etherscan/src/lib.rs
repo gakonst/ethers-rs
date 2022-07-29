@@ -78,35 +78,35 @@ impl Client {
         let api_key = match chain {
             Chain::Avalanche | Chain::AvalancheFuji => std::env::var("SNOWTRACE_API_KEY")?,
             Chain::Polygon | Chain::PolygonMumbai => std::env::var("POLYGONSCAN_API_KEY")?,
-            Chain::Mainnet
-            | Chain::Morden
-            | Chain::Ropsten
-            | Chain::Kovan
-            | Chain::Rinkeby
-            | Chain::Goerli
-            | Chain::Optimism
-            | Chain::OptimismKovan
-            | Chain::BinanceSmartChain
-            | Chain::BinanceSmartChainTestnet
-            | Chain::Arbitrum
-            | Chain::ArbitrumTestnet
-            | Chain::Cronos
-            | Chain::CronosTestnet
-            | Chain::Aurora
-            | Chain::AuroraTestnet => std::env::var("ETHERSCAN_API_KEY")?,
+            Chain::Mainnet |
+            Chain::Morden |
+            Chain::Ropsten |
+            Chain::Kovan |
+            Chain::Rinkeby |
+            Chain::Goerli |
+            Chain::Optimism |
+            Chain::OptimismKovan |
+            Chain::BinanceSmartChain |
+            Chain::BinanceSmartChainTestnet |
+            Chain::Arbitrum |
+            Chain::ArbitrumTestnet |
+            Chain::Cronos |
+            Chain::CronosTestnet |
+            Chain::Aurora |
+            Chain::AuroraTestnet => std::env::var("ETHERSCAN_API_KEY")?,
             Chain::Fantom | Chain::FantomTestnet => {
                 std::env::var("FTMSCAN_API_KEY").or_else(|_| std::env::var("FANTOMSCAN_API_KEY"))?
             }
-            Chain::XDai
-            | Chain::Sepolia
-            | Chain::Rsk
-            | Chain::Sokol
-            | Chain::Poa
-            | Chain::Oasis
-            | Chain::Emerald
-            | Chain::EmeraldTestnet
-            | Chain::Evmos
-            | Chain::EvmosTestnet => String::default(),
+            Chain::XDai |
+            Chain::Sepolia |
+            Chain::Rsk |
+            Chain::Sokol |
+            Chain::Poa |
+            Chain::Oasis |
+            Chain::Emerald |
+            Chain::EmeraldTestnet |
+            Chain::Evmos |
+            Chain::EvmosTestnet => String::default(),
             Chain::Moonbeam | Chain::Moonbase | Chain::MoonbeamDev | Chain::Moonriver => {
                 std::env::var("MOONSCAN_API_KEY")?
             }
@@ -442,10 +442,10 @@ impl Cache {
                 .checked_sub(Duration::from_secs(inner.expiry))
                 .is_some()
             {
-                return None;
+                return None
             }
 
-            return Some(inner.data);
+            return Some(inner.data)
         }
         None
     }

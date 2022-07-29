@@ -178,7 +178,7 @@ impl TryFrom<U256> for Chain {
 
     fn try_from(chain: U256) -> Result<Chain, Self::Error> {
         if chain.bits() > 64 {
-            return Err(ParseChainError(chain.to_string()));
+            return Err(ParseChainError(chain.to_string()))
         }
         chain.as_u64().try_into()
     }
@@ -235,18 +235,18 @@ impl Chain {
         // TODO: Add other chains which do not support EIP1559.
         matches!(
             self,
-            Chain::Optimism
-                | Chain::OptimismKovan
-                | Chain::Fantom
-                | Chain::FantomTestnet
-                | Chain::BinanceSmartChain
-                | Chain::BinanceSmartChainTestnet
-                | Chain::Arbitrum
-                | Chain::ArbitrumTestnet
-                | Chain::Rsk
-                | Chain::Oasis
-                | Chain::Emerald
-                | Chain::EmeraldTestnet,
+            Chain::Optimism |
+                Chain::OptimismKovan |
+                Chain::Fantom |
+                Chain::FantomTestnet |
+                Chain::BinanceSmartChain |
+                Chain::BinanceSmartChainTestnet |
+                Chain::Arbitrum |
+                Chain::ArbitrumTestnet |
+                Chain::Rsk |
+                Chain::Oasis |
+                Chain::Emerald |
+                Chain::EmeraldTestnet,
         )
     }
 }
