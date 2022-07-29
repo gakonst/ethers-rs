@@ -91,8 +91,8 @@ ethers-solc = { version = "^0.17.0", default-features = false, path = "./ethers-
 ethers-etherscan = { version = "^0.17.0", default-features = false, path = "./ethers-etherscan" }
 
 [dev-dependencies]
-ethers-contract = { version = "^0.13.0", default-features = false, path = "./ethers-contract", features = ["abigen", "eip712"] }
-ethers-providers = { version = "^0.13.0", default-features = false, path = "./ethers-providers", features = ["ws"] }
+ethers-contract = { version = "^0.17.0", default-features = false, path = "./ethers-contract", features = ["abigen", "eip712"] }
+ethers-providers = { version = "^0.17.0", default-features = false, path = "./ethers-providers", features = ["ws"] }
 
 [target.'cfg(target_family = "unix")'.dev-dependencies]
 ethers-providers = { version = "^0.17.0", default-features = false, path = "./ethers-providers", features = ["ws", "ipc"] }
