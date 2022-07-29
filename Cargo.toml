@@ -12,13 +12,6 @@ description = """
 Complete Ethereum library and wallet implementation in Rust.
 """
 
-[package.metadata.docs.rs]
-all-features = true
-rustdoc-args = ["--cfg", "docsrs"]
-
-[package.metadata.playground]
-features = ["full"]
-
 [workspace]
 members = [
     "ethers-addressbook",
@@ -42,6 +35,13 @@ default-members = [
     "ethers-etherscan",
     "ethers-solc",
 ]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[package.metadata.playground]
+features = ["full"]
 
 [features]
 celo = [
@@ -89,6 +89,10 @@ ethers-signers = { version = "^0.17.0", default-features = false, path = "./ethe
 ethers-middleware = { version = "^0.17.0", default-features = false, path = "./ethers-middleware" }
 ethers-solc = { version = "^0.17.0", default-features = false, path = "./ethers-solc", optional = true }
 ethers-etherscan = { version = "^0.17.0", default-features = false, path = "./ethers-etherscan" }
+
+[dev-dependencies]
+ethers-contract = { version = "^0.13.0", default-features = false, path = "./ethers-contract", features = ["abigen", "eip712"] }
+ethers-providers = { version = "^0.13.0", default-features = false, path = "./ethers-providers", features = ["ws"] }
 
 [target.'cfg(target_family = "unix")'.dev-dependencies]
 ethers-providers = { version = "^0.17.0", default-features = false, path = "./ethers-providers", features = ["ws", "ipc"] }
