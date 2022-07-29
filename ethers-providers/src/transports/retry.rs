@@ -3,21 +3,20 @@
 
 use super::{common::JsonRpcError, http::ClientError};
 use crate::{provider::ProviderError, JsonRpcClient};
-
+use async_trait::async_trait;
+use serde::{de::DeserializeOwned, Serialize};
 use std::{
     fmt::Debug,
     sync::atomic::{AtomicU32, Ordering},
     time::Duration,
 };
-
-use async_trait::async_trait;
-use serde::{de::DeserializeOwned, Serialize};
 use thiserror::Error;
 use tracing::trace;
 
 /// [RetryPolicy] defines logic for which [JsonRpcClient::Error] instances should
 /// the client retry the request and try to recover from.
 pub trait RetryPolicy<E>: Send + Sync + Debug {
+    /// Whether to retry the request based on the given `error`
     fn should_retry(&self, error: &E) -> bool;
 }
 
@@ -43,16 +42,23 @@ where
     T: JsonRpcClient,
     T::Error: Sync + Send + 'static,
 {
-    /// Example:
+    /// Creates a new `RetryClient` that wraps a client and adds retry and backoff support
     ///
-    /// ```no_run
+    /// # Example
+    ///
+    /// ```
+    /// 
+    /// # async fn demo() {
     /// use ethers_providers::{Http, RetryClient, HttpRateLimitRetryPolicy};
     /// use std::time::Duration;
     /// use url::Url;
     ///
     /// let http = Http::new(Url::parse("http://localhost:8545").unwrap());
-    /// let delay = Duration::new(10, 0);
-    /// let client = RetryClient::new(http, Box::new(HttpRateLimitRetryPolicy), 10, 1);
+    /// let backoff_timeout = 3000; // in ms
+    /// let max_retries = 10;
+    /// let client = RetryClient::new(http, Box::new(HttpRateLimitRetryPolicy::default()), max_retries, backoff_timeout);
+    ///
+    /// # }
     /// ```
     pub fn new(
         inner: T,
@@ -219,7 +225,7 @@ where
 
 /// Implements [RetryPolicy] that will retry requests that errored with
 /// status code 429 i.e. TOO_MANY_REQUESTS
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct HttpRateLimitRetryPolicy;
 
 impl RetryPolicy<ClientError> for HttpRateLimitRetryPolicy {
