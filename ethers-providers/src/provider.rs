@@ -1999,4 +1999,32 @@ mod tests {
         assert_eq!(tx.gas_price(), Some(gas_price));
         assert!(tx.access_list().is_none());
     }
+
+
+    const ALCHEMY_ENDPOINT: &str = "https://eth-mainnet.g.alchemy.com/v2/22nxXxb2M_6Ec7SDb7pK8OzM4qQmKxEC"; 
+    #[tokio::test]
+    async fn get_block_alchemy() {
+        let provider = Provider::<Http>::try_from(ALCHEMY_ENDPOINT)
+            .unwrap()
+            .interval(Duration::from_millis(1000));
+
+        let max_num = BlockId::from(U64::from(i64::MAX));
+        println!("max_num {:?}", max_num);
+        provider.get_block(max_num).await.unwrap();
+
+    }
+
+    #[tokio::test]
+    async fn get_block_geth() {
+        let geth = Anvil::new().block_time(2u64).spawn();
+        let provider = Provider::<Http>::try_from(geth.endpoint())
+            .unwrap()
+            .interval(Duration::from_millis(1000));
+
+        let max_num = BlockId::from(U64::from(i64::MAX));
+        println!("max_num {:?}", max_num);
+        provider.get_block(max_num).await.unwrap();
+
+    }
+
 }
