@@ -67,6 +67,14 @@ pub struct Wallet<D: DigestSigner<Sha256Proxy, RecoverableSignature>> {
     pub(crate) chain_id: u64,
 }
 
+impl<D: DigestSigner<Sha256Proxy, RecoverableSignature>> Wallet<D> {
+
+    /// Construct a new wallet with an external Signer
+    pub fn new_with_signer(signer: D, address: Address, chain_id: u64) -> Self {
+        Wallet { signer, address, chain_id }
+    }
+}
+
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl<D: Sync + Send + DigestSigner<Sha256Proxy, RecoverableSignature>> Signer for Wallet<D> {
