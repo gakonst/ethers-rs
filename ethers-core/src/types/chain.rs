@@ -201,6 +201,7 @@ impl FromStr for Chain {
             "avalanche-fuji" => Chain::AvalancheFuji,
             "sepolia" => Chain::Sepolia,
             "moonbeam" => Chain::Moonbeam,
+            "moonbase" => Chain::Moonbase,
             "moonbeam-dev" => Chain::MoonbeamDev,
             "moonriver" => Chain::Moonriver,
             "optimism" => Chain::Optimism,
