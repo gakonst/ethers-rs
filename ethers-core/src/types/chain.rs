@@ -56,6 +56,8 @@ pub enum Chain {
     EmeraldTestnet = 42261,
     Evmos = 9001,
     EvmosTestnet = 9000,
+    Aurora = 1313161554,
+    AuroraTestnet = 1313161555,
 }
 
 impl fmt::Display for Chain {
@@ -97,6 +99,8 @@ impl fmt::Display for Chain {
             Chain::AnvilHardhat => "anvil-hardhat",
             Chain::Evmos => "evmos",
             Chain::EvmosTestnet => "evmos-testnet",
+            Chain::Aurora => "aurora",
+            Chain::AuroraTestnet => "aurora-testnet",
         };
 
         write!(formatter, "{}", chain)
@@ -162,6 +166,8 @@ impl TryFrom<u64> for Chain {
             42261 => Chain::EmeraldTestnet,
             9001 => Chain::Evmos,
             9000 => Chain::EvmosTestnet,
+            1313161554 => Chain::Aurora,
+            1313161555 => Chain::AuroraTestnet,
             _ => return Err(ParseChainError(chain.to_string())),
         })
     }
@@ -215,6 +221,8 @@ impl FromStr for Chain {
             "oasis" => Chain::Oasis,
             "emerald" => Chain::Emerald,
             "emerald-testnet" => Chain::EmeraldTestnet,
+            "aurora" => Chain::Aurora,
+            "aurora-testnet" => Chain::AuroraTestnet,
             _ => return Err(ParseChainError(chain.to_owned())),
         })
     }

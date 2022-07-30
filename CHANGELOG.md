@@ -81,6 +81,7 @@
 - Add `From<H160>` and From<Vec<H160>> traits to `ValueOrArray<H160>` [#1199](https://github.com/gakonst/ethers-rs/pull/1200)
 - Fix handling of Websocket connection errors [#1287](https://github.com/gakonst/ethers-rs/pull/1287)
 - Add Arithmetic Shift Right operation for I256 [#1323](https://github.com/gakonst/ethers-rs/issues/1323)
+- [#1535](https://github.com/gakonst/ethers-rs/pull/1535) Add support to Aurora and Aurora testnet networks.
 
 ## ethers-contract-abigen
 
