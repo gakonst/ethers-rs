@@ -195,13 +195,11 @@ impl ProjectPathsConfig {
             if lib.is_relative() &&
                 file.is_absolute() &&
                 file.starts_with(&self.root) &&
-                file.starts_with(self.root.join(lib))
-            {
-                return Some(lib)
-            } else if file.is_relative() &&
-                lib.is_absolute() &&
-                lib.starts_with(&self.root) &&
-                self.root.join(file).starts_with(lib)
+                file.starts_with(self.root.join(lib)) ||
+                file.is_relative() &&
+                    lib.is_absolute() &&
+                    lib.starts_with(&self.root) &&
+                    self.root.join(file).starts_with(lib)
             {
                 return Some(lib)
             }
