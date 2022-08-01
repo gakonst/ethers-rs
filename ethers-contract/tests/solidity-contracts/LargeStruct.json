@@ -1,0 +1,68 @@
+[
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "id",
+        "type": "bytes32"
+      }
+    ],
+    "name": "getById",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint128",
+            "name": "x",
+            "type": "uint128"
+          },
+          {
+            "internalType": "int24",
+            "name": "y",
+            "type": "int24"
+          },
+          {
+            "internalType": "int24",
+            "name": "z",
+            "type": "int24"
+          },
+          {
+            "internalType": "uint256",
+            "name": "a",
+            "type": "uint256"
+          },
+          {
+            "internalType": "int256",
+            "name": "b",
+            "type": "int256"
+          },
+          {
+            "internalType": "int256",
+            "name": "c",
+            "type": "int256"
+          },
+          {
+            "internalType": "int256",
+            "name": "d",
+            "type": "int256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "e",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "f",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct Many.Info",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  }
+]

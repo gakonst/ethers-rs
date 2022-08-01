@@ -659,3 +659,10 @@ fn can_generate_to_string_overload() {
 fn can_generate_large_event() {
     abigen!(NewSale, "ethers-contract/tests/solidity-contracts/sale.json");
 }
+
+#[test]
+fn can_generate_large_output_struct() {
+    abigen!(LargeOutputStruct, "ethers-contract/tests/solidity-contracts/LargeStruct.json");
+
+    let r = GetByIdReturn(Info::default());
+}
