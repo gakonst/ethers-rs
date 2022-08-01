@@ -42,6 +42,22 @@ pub struct ArtifactId {
 }
 
 impl ArtifactId {
+    /// Converts any `\\` separators in the `path` to `/`
+    pub fn slash_paths(&mut self) {
+        #[cfg(target_os = "windows")]
+        {
+            use path_slash::PathBufExt;
+            self.path = self.path.to_slash_lossy().as_ref().into();
+            self.source = self.source.to_slash_lossy().as_ref().into();
+        }
+    }
+
+    /// Convenience function fo [`Self::slash_paths()`]
+    pub fn with_slashed_paths(mut self) -> Self {
+        self.slash_paths();
+        self
+    }
+
     /// Returns a <filename>:<name> slug that identifies an artifact
     ///
     /// Note: This identifier is not necessarily unique. If two contracts have the same name, they
@@ -262,7 +278,8 @@ impl<T> Artifacts<T> {
                                 name,
                                 source: source.clone(),
                                 version: artifact.version,
-                            },
+                            }
+                            .with_slashed_paths(),
                             artifact.artifact,
                         )
                     })
