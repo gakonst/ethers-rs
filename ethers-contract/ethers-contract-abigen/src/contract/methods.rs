@@ -301,7 +301,7 @@ impl Context {
             .enumerate()
             .map(|(idx, param)| {
                 let name = util::expand_input_name(idx, &param.name);
-                let ty = self.expand_output_param_type(fun, &param, &param.kind)?;
+                let ty = self.expand_output_param_type(fun, param, &param.kind)?;
                 Ok((name, ty))
             })
             .collect()
