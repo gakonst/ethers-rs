@@ -207,8 +207,17 @@ impl<'a, T: ArtifactOutput> ProjectCompiler<'a, T> {
     /// let output = project.compile().unwrap();
     /// ```
     pub fn compile(self) -> Result<ProjectCompileOutput<T>> {
+        let slash_paths = self.project.slash_paths;
+
         // drive the compiler statemachine to completion
-        self.preprocess()?.compile()?.write_artifacts()?.write_cache()
+        let mut output = self.preprocess()?.compile()?.write_artifacts()?.write_cache()?;
+
+        if slash_paths {
+            // ensures we always use `/` paths
+            output.slash_paths();
+        }
+
+        Ok(output)
     }
 
     /// Does basic preprocessing

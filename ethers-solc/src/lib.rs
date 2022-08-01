@@ -78,6 +78,10 @@ pub struct Project<T: ArtifactOutput = ConfigurableArtifacts> {
     solc_jobs: usize,
     /// Offline mode, if set, network access (download solc) is disallowed
     pub offline: bool,
+    /// Windows only config value to ensure the all paths use `/` instead of `\\`, same as `solc`
+    ///
+    /// This is a noop on other platforms
+    pub slash_paths: bool,
 }
 
 impl Project {
@@ -531,6 +535,8 @@ pub struct ProjectBuilder<T: ArtifactOutput = ConfigurableArtifacts> {
     auto_detect: bool,
     /// Use offline mode
     offline: bool,
+    /// Whether to slash paths of the `ProjectCompilerOutput`
+    slash_paths: bool,
     /// handles all artifacts related tasks
     artifacts: T,
     /// Which error codes to ignore
@@ -552,6 +558,7 @@ impl<T: ArtifactOutput> ProjectBuilder<T> {
             no_artifacts: false,
             auto_detect: true,
             offline: false,
+            slash_paths: true,
             artifacts,
             ignored_error_codes: Vec::new(),
             allowed_paths: vec![],
@@ -626,6 +633,15 @@ impl<T: ArtifactOutput> ProjectBuilder<T> {
         self
     }
 
+    /// Sets whether to slash all paths on windows
+    ///
+    /// If set to `true` all `\\` separators are replaced with `/`, same as solc
+    #[must_use]
+    pub fn set_slashed_paths(mut self, slashed_paths: bool) -> Self {
+        self.slash_paths = slashed_paths;
+        self
+    }
+
     /// Disables writing artifacts to disk
     #[must_use]
     pub fn no_artifacts(self) -> Self {
@@ -684,6 +700,7 @@ impl<T: ArtifactOutput> ProjectBuilder<T> {
             solc_jobs,
             offline,
             build_info,
+            slash_paths: slashed_paths,
             ..
         } = self;
         ProjectBuilder {
@@ -694,6 +711,7 @@ impl<T: ArtifactOutput> ProjectBuilder<T> {
             no_artifacts,
             auto_detect,
             offline,
+            slash_paths: slashed_paths,
             artifacts,
             ignored_error_codes,
             allowed_paths,
@@ -736,12 +754,15 @@ impl<T: ArtifactOutput> ProjectBuilder<T> {
             solc_jobs,
             offline,
             build_info,
+            slash_paths,
         } = self;
 
         let mut paths = paths.map(Ok).unwrap_or_else(ProjectPathsConfig::current_hardhat)?;
 
-        // ensures we always use `/` paths
-        paths.slash_paths();
+        if slash_paths {
+            // ensures we always use `/` paths
+            paths.slash_paths();
+        }
 
         let solc = solc.unwrap_or_default();
         let solc_config = solc_config.unwrap_or_else(|| SolcConfig::builder().build());
@@ -764,6 +785,7 @@ impl<T: ArtifactOutput> ProjectBuilder<T> {
             allowed_lib_paths: allowed_paths.into(),
             solc_jobs: solc_jobs.unwrap_or_else(::num_cpus::get),
             offline,
+            slash_paths,
         })
     }
 }
