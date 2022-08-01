@@ -41,6 +41,12 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
         self.cached_artifacts.slash_paths();
     }
 
+    /// Convenience function fo [`Self::slash_paths()`]
+    pub fn with_slashed_paths(mut self) -> Self {
+        self.slash_paths();
+        self
+    }
+
     /// All artifacts together with their contract file name and name `<file name>:<name>`
     ///
     /// This returns a chained iterator of both cached and recompiled contract artifacts
