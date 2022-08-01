@@ -178,6 +178,18 @@ impl<T: Serialize> Artifacts<T> {
 }
 
 impl<T> Artifacts<T> {
+    /// Converts all `\\` separators in _all_ paths to `/`
+    pub fn slash_paths(&mut self) {
+        #[cfg(target_os = "windows")]
+        {
+            use path_slash::PathExt;
+            self.0 = std::mem::take(&mut self.0)
+                .into_iter()
+                .map(|(path, files)| (Path::new(&path).to_slash_lossy().to_string(), files))
+                .collect()
+        }
+    }
+
     pub fn into_inner(self) -> ArtifactsMap<T> {
         self.0
     }
