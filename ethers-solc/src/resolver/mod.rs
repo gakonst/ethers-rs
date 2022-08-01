@@ -88,8 +88,8 @@ pub struct GraphEdges {
     /// Combined with the `indices` this way we can determine if a file was original added to the
     /// graph as input or was added as resolved import, see [`Self::is_input_file()`]
     num_input_files: usize,
-    /// tracks all imports that we failed to resolve
-    unresolved_imports: HashSet<PathBuf>,
+    /// tracks all imports that we failed to resolve for a file
+    unresolved_imports: HashSet<(PathBuf, PathBuf)>,
 }
 
 impl GraphEdges {
@@ -114,7 +114,7 @@ impl GraphEdges {
     }
 
     /// Returns all imports that we failed to resolve
-    pub fn unresolved_imports(&self) -> &HashSet<PathBuf> {
+    pub fn unresolved_imports(&self) -> &HashSet<(PathBuf, PathBuf)> {
         &self.unresolved_imports
     }
 
@@ -354,9 +354,7 @@ impl Graph {
                         add_node(&mut unresolved, &mut index, &mut resolved_imports, import)?;
                     }
                     Err(err) => {
-                        if unresolved_imports.insert(import_path.to_path_buf()) {
-                            crate::report::unresolved_import(import_path, &paths.remappings);
-                        }
+                        unresolved_imports.insert((import_path.to_path_buf(), node.path.clone()));
                         tracing::trace!(
                             "failed to resolve import component \"{:?}\" for {:?}",
                             err,
@@ -369,6 +367,18 @@ impl Graph {
             nodes.push(node);
             edges.push(resolved_imports);
         }
+
+        if !unresolved_imports.is_empty() {
+            // notify on all unresolved imports
+            crate::report::unresolved_imports(
+                &unresolved_imports
+                    .iter()
+                    .map(|(i, f)| (i.as_path(), f.as_path()))
+                    .collect::<Vec<_>>(),
+                &paths.remappings,
+            );
+        }
+
         let edges = GraphEdges {
             edges,
             rev_indices: index.iter().map(|(k, v)| (*v, k.clone())).collect(),
