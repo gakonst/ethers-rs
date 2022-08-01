@@ -230,6 +230,7 @@ impl Remapping {
     pub fn slash_path(&mut self) {
         #[cfg(target_os = "windows")]
         {
+            use path_slash::PathExt;
             self.path = Path::new(&self.path).to_slash_lossy().to_string();
         }
     }
