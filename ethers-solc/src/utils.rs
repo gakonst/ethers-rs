@@ -163,13 +163,13 @@ pub fn is_local_source_name(libs: &[impl AsRef<Path>], source: impl AsRef<Path>)
 pub fn canonicalize(path: impl AsRef<Path>) -> Result<PathBuf, SolcIoError> {
     let path = path.as_ref();
     cfg_if! {
-        if #[cfg(target_arch = "windows")] {
-            let res = dunce::canonicalize(&path).map(|p| {
+        if #[cfg(windows)] {
+            let res = dunce::canonicalize(path).map(|p| {
                 use path_slash::PathBufExt;
                 PathBuf::from(p.to_slash_lossy().as_ref())
             });
         } else {
-         let res = dunce::canonicalize(&path);
+         let res = dunce::canonicalize(path);
         }
     };
 
