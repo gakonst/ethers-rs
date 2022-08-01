@@ -192,14 +192,18 @@ impl ProjectPathsConfig {
         let file = file.as_ref();
 
         for lib in &self.libraries {
-            if lib.is_relative() && file.is_absolute() && file.starts_with(&self.root) {
-                if file.starts_with(self.root.join(lib)) {
-                    return Some(lib)
-                }
-            } else if file.is_relative() && lib.is_absolute() && lib.starts_with(&self.root) {
-                if self.root.join(file).starts_with(lib) {
-                    return Some(lib)
-                }
+            if lib.is_relative() &&
+                file.is_absolute() &&
+                file.starts_with(&self.root) &&
+                file.starts_with(self.root.join(lib))
+            {
+                return Some(lib)
+            } else if file.is_relative() &&
+                lib.is_absolute() &&
+                lib.starts_with(&self.root) &&
+                self.root.join(file).starts_with(lib)
+            {
+                return Some(lib)
             }
             if file.starts_with(lib) {
                 return Some(lib)
