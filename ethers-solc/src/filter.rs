@@ -221,7 +221,7 @@ impl FilteredSources {
 
     /// Returns all dirty files
     pub fn dirty_files(&self) -> impl Iterator<Item = &PathBuf> + fmt::Debug + '_ {
-        self.0.iter().filter_map(|(k, s)| s.is_dirty().then(|| k))
+        self.0.iter().filter_map(|(k, s)| s.is_dirty().then_some(k))
     }
 }
 

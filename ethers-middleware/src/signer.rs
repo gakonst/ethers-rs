@@ -414,7 +414,7 @@ mod tests {
         let tx = client.sign_transaction(tx).await.unwrap();
 
         let expected_rlp = Bytes::from(hex::decode("f86b808504e3b29200831e848094f0109fc8df283027b6285cc889f5aa624eac1f55843b9aca0080820a95a08290324bae25ca0490077e0d1f4098730333088f6a500793fa420243f35c6b23a06aca42876cd28fdf614a4641e64222fee586391bb3f4061ed5dfefac006be850").unwrap());
-        assert_eq!(tx.clone(), expected_rlp);
+        assert_eq!(tx, expected_rlp);
     }
 
     #[tokio::test]

@@ -59,7 +59,7 @@ async fn eth_gas_station() {
     // initialize and fetch gas estimates from EthGasStation
     let eth_gas_station_oracle = EthGasStation::default();
     let data = eth_gas_station_oracle.fetch().await;
-    assert!(data.is_ok());
+    data.unwrap();
 }
 
 #[tokio::test]
@@ -71,13 +71,13 @@ async fn etherscan() {
     // since etherscan does not support `fastest` category, we expect an error
     let etherscan_oracle = Etherscan::new(etherscan_client.clone()).category(GasCategory::Fastest);
     let data = etherscan_oracle.fetch().await;
-    assert!(data.is_err());
+    data.unwrap_err();
 
     // but fetching the `standard` gas price should work fine
     let etherscan_oracle = Etherscan::new(etherscan_client).category(GasCategory::SafeLow);
 
     let data = etherscan_oracle.fetch().await;
-    assert!(data.is_ok());
+    data.unwrap();
 }
 
 #[tokio::test]
@@ -85,5 +85,5 @@ async fn etherchain() {
     // initialize and fetch gas estimates from Etherchain
     let etherchain_oracle = Etherchain::default().category(GasCategory::Fast);
     let data = etherchain_oracle.fetch().await;
-    assert!(data.is_ok());
+    data.unwrap();
 }

@@ -543,11 +543,11 @@ fn expand_struct_type(struct_ty: &StructFieldType) -> TokenStream {
             quote! {#ty}
         }
         StructFieldType::Array(ty) => {
-            let ty = expand_struct_type(&*ty);
+            let ty = expand_struct_type(ty);
             quote! {::std::vec::Vec<#ty>}
         }
         StructFieldType::FixedArray(ty, size) => {
-            let ty = expand_struct_type(&*ty);
+            let ty = expand_struct_type(ty);
             quote! { [#ty; #size]}
         }
     }

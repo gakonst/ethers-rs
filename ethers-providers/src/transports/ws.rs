@@ -529,6 +529,6 @@ mod tests {
         let malformed_data = String::from("not a valid message");
         let (_, stream) = mpsc::unbounded();
         let resp = WsServer::new(ws, stream).handle_text(malformed_data).await;
-        assert!(resp.is_err(), "Deserialization should not fail silently");
+        resp.unwrap_err();
     }
 }
