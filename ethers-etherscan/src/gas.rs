@@ -84,7 +84,7 @@ mod tests {
 
             let result = client.gas_estimate(2000000000u32.into()).await;
 
-            assert!(result.is_ok());
+            result.unwrap();
         })
         .await
     }

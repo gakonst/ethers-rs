@@ -41,7 +41,7 @@ mod eth_tests {
         let deployer = factory.deploy("initial value".to_string()).unwrap().legacy();
         // dry runs the deployment of the contract. takes the deployer by reference, no need to
         // clone.
-        assert!(deployer.call().await.is_ok());
+        deployer.call().await.unwrap();
         let (contract, receipt) = deployer.clone().send_with_receipt().await.unwrap();
         assert_eq!(receipt.contract_address.unwrap(), contract.address());
 

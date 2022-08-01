@@ -509,7 +509,7 @@ mod tests {
         ]
         .iter()
         .for_each(|s| {
-            assert!(parse_mapping(s).is_err());
+            parse_mapping(s).unwrap_err();
         });
     }
 

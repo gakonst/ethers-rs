@@ -681,7 +681,7 @@ mod tests {
                     None,
                 )
                 .await;
-            assert!(balance.is_ok());
+            balance.unwrap();
         })
         .await
     }
@@ -717,7 +717,7 @@ mod tests {
                     None,
                 )
                 .await;
-            assert!(txs.is_ok());
+            txs.unwrap();
         })
         .await
     }
@@ -736,7 +736,7 @@ mod tests {
                     None,
                 )
                 .await;
-            assert!(txs.is_ok());
+            txs.unwrap();
         })
         .await
     }
@@ -757,7 +757,7 @@ mod tests {
                     None,
                 )
                 .await;
-            assert!(txs.is_ok());
+            txs.unwrap();
         })
         .await
     }
@@ -800,7 +800,7 @@ mod tests {
                     None,
                 )
                 .await;
-            assert!(txs.is_ok());
+            txs.unwrap();
         })
         .await
     }
@@ -820,7 +820,7 @@ mod tests {
                     None,
                 )
                 .await;
-            assert!(txs.is_ok());
+            txs.unwrap();
         })
         .await
     }
@@ -838,7 +838,7 @@ mod tests {
                     None,
                 )
                 .await;
-            assert!(blocks.is_ok());
+            blocks.unwrap();
         })
         .await
     }
@@ -854,6 +854,6 @@ mod tests {
         let txs = client
             .get_transactions(&"0x1549ea9b546ba9ffb306d78a1e1f304760cc4abf".parse().unwrap(), None)
             .await;
-        assert!(txs.is_ok());
+        txs.unwrap();
     }
 }

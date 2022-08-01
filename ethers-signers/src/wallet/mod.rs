@@ -68,7 +68,6 @@ pub struct Wallet<D: DigestSigner<Sha256Proxy, RecoverableSignature>> {
 }
 
 impl<D: DigestSigner<Sha256Proxy, RecoverableSignature>> Wallet<D> {
-
     /// Construct a new wallet with an external Signer
     pub fn new_with_signer(signer: D, address: Address, chain_id: u64) -> Self {
         Wallet { signer, address, chain_id }
