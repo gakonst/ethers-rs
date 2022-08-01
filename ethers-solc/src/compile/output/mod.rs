@@ -37,7 +37,7 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
     /// Converts all `\\` separators in _all_ paths to `/`
     pub fn slash_paths(&mut self) {
         self.compiler_output.slash_paths();
-        self.cached_artifacts.slash_paths();
+        self.compiled_artifacts.slash_paths();
         self.cached_artifacts.slash_paths();
     }
 

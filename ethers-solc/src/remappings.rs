@@ -228,7 +228,7 @@ impl Remapping {
 
     /// Converts any `\\` separators in the `path` to `/`
     pub fn slash_path(&mut self) {
-        #[cfg(target_os = "windows")]
+        #[cfg(windows)]
         {
             use path_slash::PathExt;
             self.path = Path::new(&self.path).to_slash_lossy().to_string();
@@ -273,7 +273,7 @@ impl RelativeRemapping {
 impl fmt::Display for RelativeRemapping {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut s = {
-            #[cfg(target_os = "windows")]
+            #[cfg(windows)]
             {
                 // ensure we have `/` slashes on windows
                 use path_slash::PathExt;

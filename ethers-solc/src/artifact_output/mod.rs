@@ -44,7 +44,7 @@ pub struct ArtifactId {
 impl ArtifactId {
     /// Converts any `\\` separators in the `path` to `/`
     pub fn slash_paths(&mut self) {
-        #[cfg(target_os = "windows")]
+        #[cfg(windows)]
         {
             use path_slash::PathBufExt;
             self.path = self.path.to_slash_lossy().as_ref().into();
@@ -196,7 +196,7 @@ impl<T: Serialize> Artifacts<T> {
 impl<T> Artifacts<T> {
     /// Converts all `\\` separators in _all_ paths to `/`
     pub fn slash_paths(&mut self) {
-        #[cfg(target_os = "windows")]
+        #[cfg(windows)]
         {
             use path_slash::PathExt;
             self.0 = std::mem::take(&mut self.0)

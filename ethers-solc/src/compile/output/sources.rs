@@ -11,7 +11,7 @@ pub struct VersionedSourceFiles(pub BTreeMap<String, Vec<VersionedSourceFile>>);
 impl VersionedSourceFiles {
     /// Converts all `\\` separators in _all_ paths to `/`
     pub fn slash_paths(&mut self) {
-        #[cfg(target_os = "windows")]
+        #[cfg(windows)]
         {
             use path_slash::PathExt;
             self.0 = std::mem::take(&mut self.0)

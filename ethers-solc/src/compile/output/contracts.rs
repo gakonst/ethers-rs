@@ -17,7 +17,7 @@ pub struct VersionedContracts(pub FileToContractsMap<Vec<VersionedContract>>);
 impl VersionedContracts {
     /// Converts all `\\` separators in _all_ paths to `/`
     pub fn slash_paths(&mut self) {
-        #[cfg(target_os = "windows")]
+        #[cfg(windows)]
         {
             use path_slash::PathExt;
             self.0 = std::mem::take(&mut self.0)

@@ -148,7 +148,7 @@ impl ProjectPathsConfig {
 
     /// Converts all `\\` separators in _all_ paths to `/`
     pub fn slash_paths(&mut self) {
-        #[cfg(target_os = "windows")]
+        #[cfg(windows)]
         {
             use path_slash::PathBufExt;
 
