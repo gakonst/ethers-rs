@@ -8,6 +8,7 @@ use crate::{
 };
 
 use crate::artifacts::output_selection::ContractOutputSelection;
+
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeSet, HashSet},
@@ -143,6 +144,28 @@ impl ProjectPathsConfig {
     /// Returns the combined set of `Self::read_sources` + `Self::read_tests` + `Self::read_scripts`
     pub fn read_input_files(&self) -> Result<Sources> {
         Ok(Source::read_all_files(self.input_files())?)
+    }
+
+    /// Converts all `\\` separators in _all_ paths to `/`
+    pub fn slash_paths(&mut self) {
+        #[cfg(windows)]
+        {
+            use path_slash::PathBufExt;
+
+            let slashed = |p: &mut PathBuf| {
+                *p = p.to_slash_lossy().as_ref().into();
+            };
+            slashed(&mut self.root);
+            slashed(&mut self.cache);
+            slashed(&mut self.artifacts);
+            slashed(&mut self.build_infos);
+            slashed(&mut self.sources);
+            slashed(&mut self.tests);
+            slashed(&mut self.scripts);
+
+            self.libraries.iter_mut().for_each(slashed);
+            self.remappings.iter_mut().for_each(Remapping::slash_path);
+        }
     }
 
     /// Attempts to resolve an `import` from the given working directory.

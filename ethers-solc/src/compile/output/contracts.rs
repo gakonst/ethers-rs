@@ -15,6 +15,17 @@ use std::{collections::BTreeMap, ops::Deref, path::Path};
 pub struct VersionedContracts(pub FileToContractsMap<Vec<VersionedContract>>);
 
 impl VersionedContracts {
+    /// Converts all `\\` separators in _all_ paths to `/`
+    pub fn slash_paths(&mut self) {
+        #[cfg(windows)]
+        {
+            use path_slash::PathExt;
+            self.0 = std::mem::take(&mut self.0)
+                .into_iter()
+                .map(|(path, files)| (Path::new(&path).to_slash_lossy().to_string(), files))
+                .collect()
+        }
+    }
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
