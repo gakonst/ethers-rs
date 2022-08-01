@@ -700,7 +700,7 @@ impl<T: ArtifactOutput> ProjectBuilder<T> {
             solc_jobs,
             offline,
             build_info,
-            slash_paths: slashed_paths,
+            slash_paths,
             ..
         } = self;
         ProjectBuilder {
@@ -711,7 +711,7 @@ impl<T: ArtifactOutput> ProjectBuilder<T> {
             no_artifacts,
             auto_detect,
             offline,
-            slash_paths: slashed_paths,
+            slash_paths,
             artifacts,
             ignored_error_codes,
             allowed_paths,
