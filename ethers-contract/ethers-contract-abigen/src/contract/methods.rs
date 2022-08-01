@@ -281,13 +281,9 @@ impl Context {
         util::ident(&format!("{}Calls", self.contract_ident))
     }
 
-    /// Expands to the `name : type` pairs of the function's parameters
-    fn expand_params(
-        &self,
-        fun: &Function,
-        params: &[Param],
-    ) -> Result<Vec<(TokenStream, TokenStream)>> {
-        params
+    /// Expands to the `name : type` pairs of the function's inputs
+    fn expand_input_params(&self, fun: &Function) -> Result<Vec<(TokenStream, TokenStream)>> {
+        fun.inputs
             .iter()
             .enumerate()
             .map(|(idx, param)| {
@@ -298,14 +294,17 @@ impl Context {
             .collect()
     }
 
-    /// Expands to the `name : type` pairs of the function's inputs
-    fn expand_input_params(&self, fun: &Function) -> Result<Vec<(TokenStream, TokenStream)>> {
-        self.expand_params(fun, &fun.inputs)
-    }
-
     /// Expands to the `name : type` pairs of the function's outputs
     fn expand_output_params(&self, fun: &Function) -> Result<Vec<(TokenStream, TokenStream)>> {
-        self.expand_params(fun, &fun.outputs)
+        fun.outputs
+            .iter()
+            .enumerate()
+            .map(|(idx, param)| {
+                let name = util::expand_input_name(idx, &param.name);
+                let ty = self.expand_output_param_type(fun, &param, &param.kind)?;
+                Ok((name, ty))
+            })
+            .collect()
     }
 
     /// Expands to the return type of a function
