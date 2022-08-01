@@ -1,4 +1,5 @@
 use crate::utils;
+
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{hash_map::Entry, HashMap},
@@ -223,6 +224,14 @@ impl Remapping {
             .into_iter()
             .map(|(name, path)| Remapping { name, path: format!("{}/", path.display()) })
             .collect()
+    }
+
+    /// Converts any `\\` separators in the `path` to `/`
+    pub fn slash_path(&mut self) {
+        #[cfg(target_os = "windows")]
+        {
+            self.path = Path::new(&self.path).to_slash_lossy().to_string();
+        }
     }
 }
 

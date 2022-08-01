@@ -738,7 +738,10 @@ impl<T: ArtifactOutput> ProjectBuilder<T> {
             build_info,
         } = self;
 
-        let paths = paths.map(Ok).unwrap_or_else(ProjectPathsConfig::current_hardhat)?;
+        let mut paths = paths.map(Ok).unwrap_or_else(ProjectPathsConfig::current_hardhat)?;
+
+        // ensures we always use `/` paths
+        paths.slash_paths();
 
         let solc = solc.unwrap_or_default();
         let solc_config = solc_config.unwrap_or_else(|| SolcConfig::builder().build());
