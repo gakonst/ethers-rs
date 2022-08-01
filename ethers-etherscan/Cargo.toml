@@ -20,7 +20,7 @@ serde = { version = "1.0.124", default-features = false, features = ["derive"] }
 serde_json = { version = "1.0.64", default-features = false }
 serde-aux = { version = "3.1.0", default-features = false }
 thiserror = "1.0"
-tracing = "0.1.35"
+tracing = "0.1.36"
 semver = "1.0.12"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
