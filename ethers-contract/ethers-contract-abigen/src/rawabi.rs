@@ -207,7 +207,7 @@ mod tests {
     use ethers_core::abi::Abi;
 
     fn assert_has_bytecode(s: &str) {
-        match serde_json::from_str::<JsonAbi>(&s).unwrap() {
+        match serde_json::from_str::<JsonAbi>(s).unwrap() {
             JsonAbi::Object(abi) => {
                 assert!(abi.bytecode.is_some());
             }

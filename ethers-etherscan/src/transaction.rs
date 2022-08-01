@@ -69,7 +69,7 @@ mod tests {
                 )
                 .await;
 
-            assert!(status.is_ok());
+            status.unwrap();
         })
         .await
     }
@@ -105,7 +105,7 @@ mod tests {
                 )
                 .await;
 
-            assert!(success.is_ok());
+            success.unwrap();
         })
         .await
     }

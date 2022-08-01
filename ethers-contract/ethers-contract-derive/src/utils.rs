@@ -70,7 +70,7 @@ pub fn param_type_quote(kind: &ParamType) -> proc_macro2::TokenStream {
             quote! {#core_crate::abi::ParamType::String}
         }
         ParamType::Array(ty) => {
-            let ty = param_type_quote(&*ty);
+            let ty = param_type_quote(ty);
             quote! {#core_crate::abi::ParamType::Array(Box::new(#ty))}
         }
         ParamType::FixedBytes(size) => {
@@ -78,7 +78,7 @@ pub fn param_type_quote(kind: &ParamType) -> proc_macro2::TokenStream {
             quote! {#core_crate::abi::ParamType::FixedBytes(#size)}
         }
         ParamType::FixedArray(ty, size) => {
-            let ty = param_type_quote(&*ty);
+            let ty = param_type_quote(ty);
             let size = Literal::usize_suffixed(*size);
             quote! {#core_crate::abi::ParamType::FixedArray(Box::new(#ty),#size)}
         }

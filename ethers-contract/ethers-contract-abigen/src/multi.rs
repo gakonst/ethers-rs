@@ -782,7 +782,7 @@ mod tests {
 
         let result = panic::catch_unwind(|| test(&context));
 
-        assert!(result.is_ok())
+        result.unwrap()
     }
 
     #[test]
