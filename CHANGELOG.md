@@ -115,6 +115,8 @@
 
 ### Unreleased
 
+- On windows all paths in the `ProjectCompilerOutput` are now slashed by default
+  [#1540](https://github.com/gakonst/ethers-rs/pull/1540)
 - `ArtifactOutput::write_extras` now takes the `Artifacts` directly
   [#1491](https://github.com/gakonst/ethers-rs/pull/1491)
 - Make `ethers-solc` optional dependency of `ethers`, needs `ethers-solc` feature to activate
