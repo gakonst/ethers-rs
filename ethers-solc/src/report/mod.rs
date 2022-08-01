@@ -407,7 +407,7 @@ pub fn format_unresolved_imports(imports: &[(&Path, &Path)], remappings: &[Remap
     format!(
         "Unable to resolve imports:\n      {}\nwith remappings:\n      {}",
         info,
-        remappings.iter().map(|r| r.to_string()).collect::<Vec<_>>().join("\n        ")
+        remappings.iter().map(|r| r.to_string()).collect::<Vec<_>>().join("\n      ")
     )
 }
 
@@ -530,7 +530,8 @@ mod tests {
 Unable to resolve imports:
       "./src/Import.sol" in "src/File.col"
 with remappings:
-      oz=a/b/c/d/"#.trim()
+      oz=a/b/c/d/"#
+                .trim()
         )
     }
 }
