@@ -1,18 +1,19 @@
 use std::collections::{btree_map::Entry, BTreeMap, HashMap};
 
-use eyre::{Context as _, Result};
-use inflector::Inflector;
-use proc_macro2::{Literal, TokenStream};
-use quote::quote;
-use syn::Ident;
-
+use super::{types, util, Context};
+use crate::contract::common::{
+    expand_data_struct, expand_data_tuple, expand_param_type, expand_params,
+};
 use ethers_core::{
     abi::{Function, FunctionExt, Param, ParamType},
     macros::{ethers_contract_crate, ethers_core_crate},
     types::Selector,
 };
-
-use super::{types, util, Context};
+use eyre::{Context as _, Result};
+use inflector::Inflector;
+use proc_macro2::{Literal, TokenStream};
+use quote::quote;
+use syn::Ident;
 
 /// The maximum amount of overloaded functions that are attempted to auto aliased with their param
 /// name. If there is a function that with `NAME_ALIASING_OVERLOADED_FUNCTIONS_CAP` overloads then
@@ -142,7 +143,7 @@ impl Context {
     }
 
     /// Expands to the corresponding struct type based on the inputs of the given function
-    fn expand_return_struct(
+    pub fn expand_return_struct(
         &self,
         function: &Function,
         alias: Option<&MethodAlias>,
@@ -296,15 +297,9 @@ impl Context {
 
     /// Expands to the `name : type` pairs of the function's outputs
     fn expand_output_params(&self, fun: &Function) -> Result<Vec<(TokenStream, TokenStream)>> {
-        fun.outputs
-            .iter()
-            .enumerate()
-            .map(|(idx, param)| {
-                let name = util::expand_input_name(idx, &param.name);
-                let ty = self.expand_output_param_type(fun, param, &param.kind)?;
-                Ok((name, ty))
-            })
-            .collect()
+        expand_params(&fun.outputs, |s| {
+            self.internal_structs.get_function_output_struct_type(&fun.name, s)
+        })
     }
 
     /// Expands to the return type of a function
@@ -388,39 +383,16 @@ impl Context {
         }
     }
 
-    /// returns the Tokenstream for the corresponding rust type of the output param
+    /// returns the TokenStream for the corresponding rust type of the output param
     fn expand_output_param_type(
         &self,
         fun: &Function,
         param: &Param,
         kind: &ParamType,
     ) -> Result<TokenStream> {
-        match kind {
-            ParamType::Array(ty) => {
-                let ty = self.expand_output_param_type(fun, param, ty)?;
-                Ok(quote! {
-                    ::std::vec::Vec<#ty>
-                })
-            }
-            ParamType::FixedArray(ty, size) => {
-                let ty = self.expand_output_param_type(fun, param, ty)?;
-                let size = *size;
-                Ok(quote! {[#ty; #size]})
-            }
-            ParamType::Tuple(_) => {
-                let ty = if let Some(rust_struct_name) =
-                    param.internal_type.as_ref().and_then(|s| {
-                        self.internal_structs.get_function_output_struct_type(&fun.name, s)
-                    }) {
-                    let ident = util::ident(rust_struct_name);
-                    quote! {#ident}
-                } else {
-                    types::expand(kind)?
-                };
-                Ok(ty)
-            }
-            _ => types::expand(kind),
-        }
+        expand_param_type(param, kind, |s| {
+            self.internal_structs.get_function_output_struct_type(&fun.name, s)
+        })
     }
 
     /// Expands a single function with the given alias
@@ -715,35 +687,6 @@ fn expand_call_struct_variant_name(function: &Function, alias: Option<&MethodAli
     } else {
         util::safe_ident(&util::safe_pascal_case(&function.name))
     }
-}
-
-/// Expands to the tuple struct definition
-fn expand_data_tuple(name: &Ident, params: &[(TokenStream, TokenStream)]) -> TokenStream {
-    let fields = params
-        .iter()
-        .map(|(_, ty)| {
-            quote! {
-            pub #ty }
-        })
-        .collect::<Vec<_>>();
-
-    if fields.is_empty() {
-        quote! { struct #name; }
-    } else {
-        quote! { struct #name( #( #fields ),* ); }
-    }
-}
-
-/// Expands to the struct definition of a call struct
-fn expand_data_struct(name: &Ident, params: &[(TokenStream, TokenStream)]) -> TokenStream {
-    let fields = params
-        .iter()
-        .map(|(name, ty)| {
-            quote! { pub #name: #ty }
-        })
-        .collect::<Vec<_>>();
-
-    quote! { struct #name { #( #fields, )* } }
 }
 
 #[cfg(test)]

@@ -629,6 +629,18 @@ fn can_gen_seaport() {
         "fulfillAdvancedOrder(((address,address,(uint8,address,uint256,uint256,uint256)[],(uint8,address,uint256,uint256,uint256,address)[],uint8,uint256,uint256,bytes32,uint256,bytes32,uint256),uint120,uint120,bytes,bytes),(uint256,uint8,uint256,uint256,bytes32[])[],bytes32,address)"
     );
     assert_eq!(hex::encode(FulfillAdvancedOrderCall::selector()), "e7acab24");
+
+    assert_codec::<SeaportErrors>();
+    let err = SeaportErrors::BadContractSignature(BadContractSignature::default());
+
+    let encoded = err.clone().encode();
+    assert_eq!(err, SeaportErrors::decode(encoded).unwrap());
+
+    let err = SeaportErrors::ConsiderationNotMet(ConsiderationNotMet {
+        order_index: U256::zero(),
+        consideration_index: U256::zero(),
+        shortfall_amount: U256::zero(),
+    });
 }
 
 #[test]

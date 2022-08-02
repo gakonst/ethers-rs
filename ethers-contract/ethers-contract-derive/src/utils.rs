@@ -1,10 +1,14 @@
 use ethers_core::{abi::ParamType, macros::ethers_core_crate, types::Selector};
-use proc_macro2::Literal;
+use proc_macro2::{Ident, Literal, Span};
 use quote::{quote, quote_spanned};
 use syn::{
     parse::Error, spanned::Spanned as _, Data, DeriveInput, Expr, Fields, GenericArgument, Lit,
     PathArguments, Type,
 };
+
+pub fn ident(name: &str) -> Ident {
+    Ident::new(name, Span::call_site())
+}
 
 pub fn signature(hash: &[u8]) -> proc_macro2::TokenStream {
     let core_crate = ethers_core_crate();

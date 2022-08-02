@@ -1,22 +1,22 @@
 #![deny(missing_docs)]
 mod common;
+mod errors;
 mod events;
 mod methods;
 mod structs;
 mod types;
 
 use super::{util, Abigen};
-use crate::contract::structs::InternalStructs;
+use crate::{
+    contract::{methods::MethodAlias, structs::InternalStructs},
+    rawabi::JsonAbi,
+};
 use ethers_core::{
-    abi::{Abi, AbiParser},
+    abi::{Abi, AbiParser, ErrorExt, EventExt},
     macros::{ethers_contract_crate, ethers_core_crate, ethers_providers_crate},
+    types::Bytes,
 };
 use eyre::{eyre, Context as _, Result};
-
-use crate::contract::methods::MethodAlias;
-
-use crate::rawabi::JsonAbi;
-use ethers_core::{abi::EventExt, types::Bytes};
 use proc_macro2::{Ident, Literal, TokenStream};
 use quote::quote;
 use serde::Deserialize;
@@ -34,6 +34,8 @@ pub struct ExpandedContract {
     pub contract: TokenStream,
     /// All event impls of the contract
     pub events: TokenStream,
+    /// All error impls of the contract
+    pub errors: TokenStream,
     /// All contract call struct related types
     pub call_structs: TokenStream,
     /// The contract's internal structs
@@ -43,8 +45,15 @@ pub struct ExpandedContract {
 impl ExpandedContract {
     /// Merges everything into a single module
     pub fn into_tokens(self) -> TokenStream {
-        let ExpandedContract { module, imports, contract, events, call_structs, abi_structs } =
-            self;
+        let ExpandedContract {
+            module,
+            imports,
+            contract,
+            events,
+            call_structs,
+            abi_structs,
+            errors,
+        } = self;
         quote! {
            // export all the created data types
             pub use #module::*;
@@ -53,6 +62,7 @@ impl ExpandedContract {
             pub mod #module {
                 #imports
                 #contract
+                #errors
                 #events
                 #call_structs
                 #abi_structs
@@ -86,6 +96,9 @@ pub struct Context {
 
     /// Manually specified method aliases.
     method_aliases: BTreeMap<String, MethodAlias>,
+
+    /// Manually specified method aliases.
+    error_aliases: BTreeMap<String, Ident>,
 
     /// Derives added to event structs and enums.
     event_derives: Vec<Path>,
@@ -125,6 +138,9 @@ impl Context {
         // 6. Declare the structs parsed from the human readable abi
         let abi_structs_decl = self.abi_structs()?;
 
+        // 7. declare all error types
+        let errors_decl = self.errors()?;
+
         let ethers_core = ethers_core_crate();
         let ethers_contract = ethers_contract_crate();
         let ethers_providers = ethers_providers_crate();
@@ -145,6 +161,7 @@ impl Context {
                     #contract_methods
 
                     #contract_events
+
                 }
 
                 impl<M : #ethers_providers::Middleware> From<#ethers_contract::Contract<M>> for #name<M> {
@@ -159,6 +176,7 @@ impl Context {
             imports,
             contract,
             events: events_decl,
+            errors: errors_decl,
             call_structs,
             abi_structs: abi_structs_decl,
         })
@@ -226,20 +244,30 @@ impl Context {
             event_aliases.insert(signature, alias);
         }
 
-        // also check for overloaded functions not covered by aliases, in which case we simply
+        // also check for overloaded events not covered by aliases, in which case we simply
         // numerate them
         for events in abi.events.values() {
-            let not_aliased =
-                events.iter().filter(|ev| !event_aliases.contains_key(&ev.abi_signature()));
-            if not_aliased.clone().count() > 1 {
-                let mut aliases = Vec::new();
-                // overloaded events
-                for (idx, event) in not_aliased.enumerate() {
-                    let event_name = format!("{}{}", event.name, idx + 1);
-                    aliases.push((event.abi_signature(), events::event_struct_alias(&event_name)));
-                }
-                event_aliases.extend(aliases);
-            }
+            insert_alias_names(
+                &mut event_aliases,
+                events.iter().map(|e| (e.abi_signature(), e.name.as_str())),
+                events::event_struct_alias,
+            );
+        }
+
+        let mut error_aliases = BTreeMap::new();
+        for (signature, alias) in args.error_aliases.into_iter() {
+            let alias = syn::parse_str(&alias)?;
+            error_aliases.insert(signature, alias);
+        }
+
+        // also check for overloaded errors not covered by aliases, in which case we simply
+        // numerate them
+        for errors in abi.errors.values() {
+            insert_alias_names(
+                &mut error_aliases,
+                errors.iter().map(|e| (e.abi_signature(), e.name.as_str())),
+                errors::error_struct_alias,
+            );
         }
 
         let event_derives = args
@@ -259,6 +287,7 @@ impl Context {
             contract_name: args.contract_name,
             contract_bytecode,
             method_aliases,
+            error_aliases: Default::default(),
             event_derives,
             event_aliases,
         })
@@ -287,6 +316,31 @@ impl Context {
     /// The internal mutable abi struct mapping table
     pub fn internal_structs_mut(&mut self) -> &mut InternalStructs {
         &mut self.internal_structs
+    }
+}
+
+/// Solidity supports overloading as long as the signature of an event, error, function is unique,
+/// which results in a mapping `(name -> Vec<Element>)`
+///
+///
+/// This will populate the alias map for the value in the mapping (`Vec<Element>`) via `abi
+/// signature -> name` using the given aliases and merge it with all names not yet aliased.
+///
+/// If the iterator yields more than one element, this will simply numerate them
+fn insert_alias_names<'a, I, F>(aliases: &mut BTreeMap<String, Ident>, elements: I, get_ident: F)
+where
+    I: IntoIterator<Item = (String, &'a str)>,
+    F: Fn(&str) -> Ident,
+{
+    let not_aliased =
+        elements.into_iter().filter(|(sig, _name)| !aliases.contains_key(sig)).collect::<Vec<_>>();
+    if not_aliased.len() > 1 {
+        let mut overloaded_aliases = Vec::new();
+        for (idx, (sig, name)) in not_aliased.into_iter().enumerate() {
+            let unique_name = format!("{}{}", name, idx + 1);
+            overloaded_aliases.push((sig, get_ident(&unique_name)));
+        }
+        aliases.extend(overloaded_aliases);
     }
 }
 
