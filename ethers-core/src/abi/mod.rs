@@ -70,6 +70,29 @@ impl EventExt for Event {
     }
 }
 
+/// Extension trait for `ethabi::AbiError`.
+pub trait ErrorExt {
+    /// Compute the method signature in the standard ABI format.
+    fn abi_signature(&self) -> String;
+
+    /// Compute the Keccak256 error selector used by contract ABIs.
+    fn selector(&self) -> Selector;
+}
+
+impl ErrorExt for ethabi::AbiError {
+    fn abi_signature(&self) -> String {
+        if self.inputs.is_empty() {
+            return format!("{}()", self.name)
+        }
+        let inputs = self.inputs.iter().map(|p| p.kind.to_string()).collect::<Vec<_>>().join(",");
+        format!("{}({})", self.name, inputs)
+    }
+
+    fn selector(&self) -> Selector {
+        id(self.abi_signature())
+    }
+}
+
 /// A trait for types that can be represented in the ethereum ABI.
 pub trait AbiType {
     /// The native ABI type this type represents.

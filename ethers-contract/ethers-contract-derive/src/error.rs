@@ -1,34 +1,33 @@
-//! Helper functions for deriving `EthCall`
+//! Helper functions for deriving `EthError`
 
 use crate::{calllike::*, utils, utils::ident};
 use ethers_core::{
-    abi::{FunctionExt, HumanReadableParser},
+    abi::{ErrorExt, HumanReadableParser},
     macros::{ethers_contract_crate, ethers_core_crate},
 };
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{parse::Error, DeriveInput};
 
-/// Generates the `ethcall` trait support
-pub(crate) fn derive_eth_call_impl(input: DeriveInput) -> TokenStream {
-    let attributes = match parse_calllike_attributes(&input, "ethcall") {
+/// Generates the `EthError` trait support
+pub(crate) fn derive_eth_error_impl(input: DeriveInput) -> TokenStream {
+    let attributes = match parse_calllike_attributes(&input, "etherror") {
         Ok(attributes) => attributes,
         Err(errors) => return errors,
     };
 
-    let function_call_name =
-        attributes.name.map(|(s, _)| s).unwrap_or_else(|| input.ident.to_string());
+    let error_name = attributes.name.map(|(s, _)| s).unwrap_or_else(|| input.ident.to_string());
 
-    let mut function = if let Some((src, span)) = attributes.abi {
-        let raw_function_sig = src.trim_start_matches("function ").trim_start();
-        // try to parse as solidity function
-        if let Ok(fun) = HumanReadableParser::parse_function(&src) {
+    let mut error = if let Some((src, span)) = attributes.abi {
+        let raw_function_sig = src.trim_start_matches("error ").trim_start();
+        // try to parse as solidity error
+        if let Ok(fun) = HumanReadableParser::parse_error(&src) {
             fun
         } else {
             // try to determine the abi by using its fields at runtime
             return match derive_trait_impls_with_abi_type(
                 &input,
-                &function_call_name,
+                &error_name,
                 Some(raw_function_sig),
             ) {
                 Ok(derived) => derived,
@@ -40,23 +39,17 @@ pub(crate) fn derive_eth_call_impl(input: DeriveInput) -> TokenStream {
         }
     } else {
         // try to determine the abi by using its fields at runtime
-        return match derive_trait_impls_with_abi_type(&input, &function_call_name, None) {
+        return match derive_trait_impls_with_abi_type(&input, &error_name, None) {
             Ok(derived) => derived,
             Err(err) => err.to_compile_error(),
         }
     };
-    function.name = function_call_name.clone();
-    let abi = function.abi_signature();
-    let selector = utils::selector(function.selector());
-    let decode_impl = derive_decode_impl_from_params(&function.inputs, ident("EthCall"));
+    error.name = error_name.clone();
+    let abi = error.abi_signature();
+    let selector = utils::selector(error.selector());
+    let decode_impl = derive_decode_impl_from_params(&error.inputs, ident("EthError"));
 
-    derive_trait_impls(
-        &input,
-        &function_call_name,
-        quote! {#abi.into()},
-        Some(selector),
-        decode_impl,
-    )
+    derive_trait_impls(&input, &error_name, quote! {#abi.into()}, Some(selector), decode_impl)
 }
 
 /// Use the `AbiType` trait to determine the correct `ParamType` and signature at runtime
@@ -68,17 +61,17 @@ fn derive_trait_impls_with_abi_type(
     let abi_signature = if let Some(abi) = abi_signature {
         quote! {#abi}
     } else {
-        utils::derive_abi_signature_with_abi_type(input, function_call_name, "EthCall")?
+        utils::derive_abi_signature_with_abi_type(input, function_call_name, "EthError")?
     };
 
     let abi_signature = quote! {
          #abi_signature.into()
     };
-    let decode_impl = derive_decode_impl_with_abi_type(input, ident("EthCall"))?;
+    let decode_impl = derive_decode_impl_with_abi_type(input, ident("EthError"))?;
     Ok(derive_trait_impls(input, function_call_name, abi_signature, None, decode_impl))
 }
 
-/// Generates the EthCall implementation
+/// Generates the EthError implementation
 pub fn derive_trait_impls(
     input: &DeriveInput,
     function_call_name: &str,
@@ -97,10 +90,10 @@ pub fn derive_trait_impls(
         }
     });
 
-    let ethcall_impl = quote! {
-        impl #contract_crate::EthCall for #struct_name {
+    let etherror_impl = quote! {
+        impl #contract_crate::EthError for #struct_name {
 
-            fn function_name() -> ::std::borrow::Cow<'static, str> {
+            fn error_name() -> ::std::borrow::Cow<'static, str> {
                 #function_call_name.into()
             }
 
@@ -112,11 +105,12 @@ pub fn derive_trait_impls(
                 #abi_signature
             }
         }
+
     };
-    let codec_impl = derive_codec_impls(input, decode_impl, ident("EthCall"));
+    let codec_impl = derive_codec_impls(input, decode_impl, ident("EthError"));
 
     quote! {
-        #ethcall_impl
+        #etherror_impl
         #codec_impl
     }
 }
