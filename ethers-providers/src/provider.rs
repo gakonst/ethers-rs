@@ -1288,9 +1288,16 @@ impl<P: JsonRpcClient> Provider<P> {
 
     /// Sets the default polling interval for event filters and pending transactions
     /// (default: 7 seconds)
+    pub fn set_interval<T: Into<Duration>>(&mut self, interval: T) -> &mut Self {
+        self.interval = Some(interval.into());
+        self
+    }
+
+    /// Sets the default polling interval for event filters and pending transactions
+    /// (default: 7 seconds)
     #[must_use]
     pub fn interval<T: Into<Duration>>(mut self, interval: T) -> Self {
-        self.interval = Some(interval.into());
+        self.set_interval(interval);
         self
     }
 
