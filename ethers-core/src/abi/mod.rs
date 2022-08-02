@@ -26,7 +26,6 @@ pub use human_readable::{
 
 use crate::types::{H256, H512, I256, U128, U256, U64};
 
-
 mod sealed {
     use ethabi::{Event, Function};
 
