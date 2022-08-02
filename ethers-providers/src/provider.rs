@@ -1338,6 +1338,18 @@ impl Provider<crate::Ipc> {
     }
 }
 
+impl Provider<HttpProvider> {
+    /// The Url to which requests are made
+    pub fn url(&self) -> &Url {
+        self.inner.url()
+    }
+
+    /// Mutable access to the Url to which requests are made
+    pub fn url_mut(&mut self) -> &mut Url {
+        self.inner.url_mut()
+    }
+}
+
 impl<Read, Write> Provider<RwClient<Read, Write>>
 where
     Read: JsonRpcClient + 'static,

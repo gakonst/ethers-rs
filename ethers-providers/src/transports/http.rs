@@ -115,6 +115,16 @@ impl Provider {
         Self::new_with_client(url, Client::new())
     }
 
+    /// The Url to which requests are made
+    pub fn url(&self) -> &Url {
+        &self.url
+    }
+
+    /// Mutable access to the Url to which requests are made
+    pub fn url_mut(&mut self) -> &mut Url {
+        &mut self.url
+    }
+
     /// Initializes a new HTTP Client with authentication
     ///
     /// # Example
