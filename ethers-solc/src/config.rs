@@ -168,6 +168,49 @@ impl ProjectPathsConfig {
         }
     }
 
+    /// Returns true if the `file` belongs to a `library`, See [`Self::find_library_ancestor()`]
+    pub fn has_library_ancestor(&self, file: impl AsRef<Path>) -> bool {
+        self.find_library_ancestor(file).is_some()
+    }
+
+    /// Returns the library the file belongs to
+    ///
+    /// Returns the first library that is an ancestor of the given `file`.
+    ///
+    /// **Note:** this does not resolve remappings [`Self::resolve_import()`], instead this merely
+    /// checks if a `library` is a parent of `file`
+    ///
+    /// # Example
+    ///
+    /// ```
+    ///  use std::path::Path;
+    /// use ethers_solc::ProjectPathsConfig;
+    /// let config = ProjectPathsConfig::builder().lib("lib").build().unwrap();
+    /// assert_eq!(config.find_library_ancestor("lib/src/Greeter.sol").unwrap(), Path::new("lib"));
+    /// ```
+    pub fn find_library_ancestor(&self, file: impl AsRef<Path>) -> Option<&PathBuf> {
+        let file = file.as_ref();
+
+        for lib in &self.libraries {
+            if lib.is_relative() &&
+                file.is_absolute() &&
+                file.starts_with(&self.root) &&
+                file.starts_with(self.root.join(lib)) ||
+                file.is_relative() &&
+                    lib.is_absolute() &&
+                    lib.starts_with(&self.root) &&
+                    self.root.join(file).starts_with(lib)
+            {
+                return Some(lib)
+            }
+            if file.starts_with(lib) {
+                return Some(lib)
+            }
+        }
+
+        None
+    }
+
     /// Attempts to resolve an `import` from the given working directory.
     ///
     /// The `cwd` path is the parent dir of the file that includes the `import`
@@ -752,7 +795,7 @@ mod tests {
 
     #[test]
     fn can_autodetect_dirs() {
-        let root = crate::utils::tempdir("root").unwrap();
+        let root = utils::tempdir("root").unwrap();
         let out = root.path().join("out");
         let artifacts = root.path().join("artifacts");
         let build_infos = artifacts.join("build-info");
@@ -812,7 +855,7 @@ mod tests {
 
     #[test]
     fn can_have_sane_build_info_default() {
-        let root = crate::utils::tempdir("root").unwrap();
+        let root = utils::tempdir("root").unwrap();
         let root = root.path();
         let artifacts = root.join("forge-artifacts");
 
@@ -825,5 +868,30 @@ mod tests {
 
         // The build infos should by default in the artifacts directory
         assert_eq!(project.build_infos, utils::canonicalized(project.artifacts.join("build-info")));
+    }
+
+    #[test]
+    fn can_find_library_ancestor() {
+        let mut config = ProjectPathsConfig::builder().lib("lib").build().unwrap();
+        config.root = "/root/".into();
+
+        assert_eq!(config.find_library_ancestor("lib/src/Greeter.sol").unwrap(), Path::new("lib"));
+
+        assert_eq!(
+            config.find_library_ancestor("/root/lib/src/Greeter.sol").unwrap(),
+            Path::new("lib")
+        );
+
+        config.libraries.push("/root/test/".into());
+
+        assert_eq!(
+            config.find_library_ancestor("test/src/Greeter.sol").unwrap(),
+            Path::new("/root/test/")
+        );
+
+        assert_eq!(
+            config.find_library_ancestor("/root/test/src/Greeter.sol").unwrap(),
+            Path::new("/root/test/")
+        );
     }
 }
