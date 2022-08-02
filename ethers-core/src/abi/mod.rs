@@ -26,8 +26,18 @@ pub use human_readable::{
 
 use crate::types::{H256, H512, I256, U128, U256, U64};
 
+mod sealed {
+    use ethabi::{Event, Function};
+
+    /// private trait to ensure extension traits are used as intended
+    pub trait Sealed {}
+    impl Sealed for Function {}
+    impl Sealed for Event {}
+    impl Sealed for ethabi::AbiError {}
+}
+
 /// Extension trait for `ethabi::Function`.
-pub trait FunctionExt {
+pub trait FunctionExt: sealed::Sealed {
     /// Compute the method signature in the standard ABI format. This does not
     /// include the output types.
     fn abi_signature(&self) -> String;
@@ -52,7 +62,7 @@ impl FunctionExt for Function {
 }
 
 /// Extension trait for `ethabi::Event`.
-pub trait EventExt {
+pub trait EventExt: sealed::Sealed {
     /// Compute the event signature in human-readable format. The `keccak256`
     /// hash of this value is the actual event signature that is used as topic0
     /// in the transaction logs.
@@ -71,7 +81,7 @@ impl EventExt for Event {
 }
 
 /// Extension trait for `ethabi::AbiError`.
-pub trait ErrorExt {
+pub trait ErrorExt: sealed::Sealed {
     /// Compute the method signature in the standard ABI format.
     fn abi_signature(&self) -> String;
 
