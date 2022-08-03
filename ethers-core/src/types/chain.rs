@@ -4,6 +4,7 @@ use std::{
     convert::{TryFrom, TryInto},
     fmt,
     str::FromStr,
+    time::Duration,
 };
 use strum::EnumVariantNames;
 use thiserror::Error;
@@ -58,6 +59,39 @@ pub enum Chain {
     EvmosTestnet = 9000,
     Aurora = 1313161554,
     AuroraTestnet = 1313161555,
+}
+
+// === impl Chain ===
+
+impl Chain {
+    /// The blocktime varies from chain to chain
+    ///
+    /// It can be beneficial to know the average blocktime to adjust the polling of an Http provider
+    /// for example.
+    ///
+    /// **Note:** this will not return the accurate average depending on the time but is rather a
+    /// sensible default derived from blocktime charts like <https://etherscan.com/chart/blocktime>
+    /// <https://polygonscan.com/chart/blocktime>
+    pub fn average_blocktime_hint(&self) -> Option<Duration> {
+        let ms = match self {
+            Chain::Arbitrum | Chain::ArbitrumTestnet => 1_300,
+            Chain::Mainnet | Chain::Optimism => 13_000,
+            Chain::Polygon | Chain::PolygonMumbai => 2_100,
+            Chain::Moonbeam | Chain::Moonriver => 12_500,
+            Chain::BinanceSmartChain | Chain::BinanceSmartChainTestnet => 3_000,
+            Chain::Avalanche | Chain::AvalancheFuji => 2_000,
+            Chain::Fantom | Chain::FantomTestnet => 1_200,
+            Chain::Cronos | Chain::CronosTestnet => 5_700,
+            Chain::Evmos | Chain::EvmosTestnet => 1_900,
+            Chain::Aurora | Chain::AuroraTestnet => 1_100,
+            Chain::Oasis => 5_500,
+            Chain::Emerald => 6_000,
+            Chain::Dev | Chain::AnvilHardhat => 200,
+            _ => return None,
+        };
+
+        Some(Duration::from_millis(ms))
+    }
 }
 
 impl fmt::Display for Chain {
