@@ -635,7 +635,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.fill_transaction(&mut tx, block).await?;
         let tx_hash = self.request("eth_sendTransaction", [tx]).await?;
 
-        Ok(PendingTransaction::new(tx_hash, self).interval(self.get_interval()))
+        Ok(PendingTransaction::new(tx_hash, self))
     }
 
     /// Send the raw RLP encoded transaction to the entire Ethereum network and returns the
@@ -646,7 +646,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
     ) -> Result<PendingTransaction<'a, P>, ProviderError> {
         let rlp = utils::serialize(&tx);
         let tx_hash = self.request("eth_sendRawTransaction", [rlp]).await?;
-        Ok(PendingTransaction::new(tx_hash, self).interval(self.get_interval()))
+        Ok(PendingTransaction::new(tx_hash, self))
     }
 
     /// The JSON-RPC provider is at the bottom-most position in the middleware stack. Here we check
