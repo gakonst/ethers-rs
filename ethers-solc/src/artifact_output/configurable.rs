@@ -5,8 +5,8 @@
 //! `ConfigurableArtifacts` populates a single `Artifact`, the `ConfigurableArtifact`, by default
 //! with essential entries only, such as `abi`, `bytecode`,..., but may include additional values
 //! based on its `ExtraOutputValues` that maps to various objects in the solc contract output, see
-//! also: [`OutputSelection`](crate::artifacts::OutputSelection). In addition to that some output
-//! values can also be emitted as standalone files.
+//! also: [`OutputSelection`](crate::artifacts::output_selection::OutputSelection). In addition to
+//! that some output values can also be emitted as standalone files.
 
 use crate::{
     artifacts::{

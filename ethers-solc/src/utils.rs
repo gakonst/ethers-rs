@@ -1,5 +1,6 @@
 //! Utility functions
 
+use cfg_if::cfg_if;
 use std::{
     collections::HashSet,
     ops::Range,
@@ -157,9 +158,22 @@ pub fn is_local_source_name(libs: &[impl AsRef<Path>], source: impl AsRef<Path>)
 }
 
 /// Canonicalize the path, platform-agnostic
+///
+/// On windows this will ensure the path only consists of `/` separators
 pub fn canonicalize(path: impl AsRef<Path>) -> Result<PathBuf, SolcIoError> {
     let path = path.as_ref();
-    dunce::canonicalize(&path).map_err(|err| SolcIoError::new(err, path))
+    cfg_if! {
+        if #[cfg(windows)] {
+            let res = dunce::canonicalize(path).map(|p| {
+                use path_slash::PathBufExt;
+                PathBuf::from(p.to_slash_lossy().as_ref())
+            });
+        } else {
+         let res = dunce::canonicalize(path);
+        }
+    };
+
+    res.map_err(|err| SolcIoError::new(err, path))
 }
 
 /// Returns the same path config but with canonicalized paths.

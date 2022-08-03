@@ -188,7 +188,7 @@ fn can_gen_return_struct() {
         ArrayRelayerReturn { outputs: vec![4.into(), 9.into(), 2.into()], some_number: 42.into() };
     verify(array);
 
-    let single = SingleUnnamedReturn { 0: 4321.into() };
+    let single = SingleUnnamedReturn(4321.into());
     verify(single);
 
     // doesnt exist:
@@ -366,7 +366,7 @@ async fn can_handle_underscore_functions() {
     // Manual call construction
     use ethers_providers::Middleware;
     // TODO: How do we handle underscores for calls here?
-    let data = simplestorage_mod::HashPuzzleCall.encode();
+    let data = simple_storage::HashPuzzleCall.encode();
     let tx = Eip1559TransactionRequest::new().data(data).to(addr);
     let tx = TypedTransaction::Eip1559(tx);
     let res5 = client.call(&tx, None).await.unwrap();
@@ -629,6 +629,18 @@ fn can_gen_seaport() {
         "fulfillAdvancedOrder(((address,address,(uint8,address,uint256,uint256,uint256)[],(uint8,address,uint256,uint256,uint256,address)[],uint8,uint256,uint256,bytes32,uint256,bytes32,uint256),uint120,uint120,bytes,bytes),(uint256,uint8,uint256,uint256,bytes32[])[],bytes32,address)"
     );
     assert_eq!(hex::encode(FulfillAdvancedOrderCall::selector()), "e7acab24");
+
+    assert_codec::<SeaportErrors>();
+    let err = SeaportErrors::BadContractSignature(BadContractSignature::default());
+
+    let encoded = err.clone().encode();
+    assert_eq!(err, SeaportErrors::decode(encoded).unwrap());
+
+    let err = SeaportErrors::ConsiderationNotMet(ConsiderationNotMet {
+        order_index: U256::zero(),
+        consideration_index: U256::zero(),
+        shortfall_amount: U256::zero(),
+    });
 }
 
 #[test]
@@ -653,4 +665,16 @@ fn can_generate_to_string_overload() {
         ToStringCalls::ToString4(_) => {}
         ToStringCalls::ToString5(_) => {}
     };
+}
+
+#[test]
+fn can_generate_large_event() {
+    abigen!(NewSale, "ethers-contract/tests/solidity-contracts/sale.json");
+}
+
+#[test]
+fn can_generate_large_output_struct() {
+    abigen!(LargeOutputStruct, "ethers-contract/tests/solidity-contracts/LargeStruct.json");
+
+    let r = GetByIdReturn(Info::default());
 }

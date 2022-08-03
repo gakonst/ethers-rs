@@ -11,8 +11,10 @@ use abigen::Contracts;
 pub(crate) mod abi_ty;
 mod abigen;
 mod call;
+pub(crate) mod calllike;
 mod codec;
 mod display;
+mod error;
 mod event;
 mod spanned;
 pub(crate) mod utils;
@@ -280,4 +282,41 @@ pub fn derive_abi_event(input: TokenStream) -> TokenStream {
 pub fn derive_abi_call(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     TokenStream::from(call::derive_eth_call_impl(input))
+}
+
+/// Derives the `EthError` and `Tokenizeable` trait for the labeled type.
+///
+/// Additional arguments can be specified using the `#[etherror(...)]`
+/// attribute:
+///
+/// For the struct:
+///
+/// - `name`, `name = "..."`: Overrides the generated `EthCall` function name, default is the
+///  struct's name.
+/// - `abi`, `abi = "..."`: The ABI signature for the function this call's data corresponds to.
+///
+///  NOTE: in order to successfully parse the `abi` (`<name>(<args>,...)`) the `<name`>
+///   must match either the struct name or the name attribute: `#[ethcall(name ="<name>"]`
+///
+/// # Example
+///
+/// ```ignore
+/// use ethers_contract::EthError;
+///
+/// #[derive(Debug, Clone, EthError)]
+/// #[etherror(name ="my_error")]
+/// struct MyError {
+///     addr: Address,
+///     old_value: String,
+///     new_value: String,
+/// }
+/// assert_eq!(
+///     MyCall::abi_signature().as_ref(),
+///     "my_error(address,string,string)"
+/// );
+/// ```
+#[proc_macro_derive(EthError, attributes(etherror))]
+pub fn derive_abi_error(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    TokenStream::from(error::derive_eth_error_impl(input))
 }

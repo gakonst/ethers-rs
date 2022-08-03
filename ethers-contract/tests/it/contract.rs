@@ -1,6 +1,5 @@
 #![allow(unused)]
-mod common;
-pub use common::*;
+pub use crate::common::*;
 use ethers_contract::{abigen, ContractFactory, EthAbiType};
 use ethers_core::types::{Filter, ValueOrArray, H256};
 
@@ -42,7 +41,7 @@ mod eth_tests {
         let deployer = factory.deploy("initial value".to_string()).unwrap().legacy();
         // dry runs the deployment of the contract. takes the deployer by reference, no need to
         // clone.
-        assert!(deployer.call().await.is_ok());
+        deployer.call().await.unwrap();
         let (contract, receipt) = deployer.clone().send_with_receipt().await.unwrap();
         assert_eq!(receipt.contract_address.unwrap(), contract.address());
 
@@ -601,7 +600,7 @@ mod eth_tests {
             out: Address::from([0; 20]),
         };
 
-        let derived_foo_bar = deriveeip712test_mod::FooBar {
+        let derived_foo_bar = derive_eip_712_test::FooBar {
             foo: foo_bar.foo,
             bar: foo_bar.bar,
             fizz: foo_bar.fizz.clone(),

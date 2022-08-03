@@ -1,5 +1,5 @@
 use ethers_contract::{
-    abigen, EthAbiCodec, EthAbiType, EthCall, EthDisplay, EthEvent, EthLogDecode,
+    abigen, EthAbiCodec, EthAbiType, EthCall, EthDisplay, EthError, EthEvent, EthLogDecode,
 };
 use ethers_core::{
     abi::{AbiDecode, AbiEncode, RawLog, Tokenizable},
@@ -8,6 +8,7 @@ use ethers_core::{
 
 fn assert_tokenizeable<T: Tokenizable>() {}
 fn assert_ethcall<T: EthCall>() {}
+fn assert_etherror<T: EthError>() {}
 
 #[derive(Debug, Clone, PartialEq, Eq, EthAbiType)]
 struct ValueChanged {
@@ -53,7 +54,7 @@ fn can_derive_abi_type_empty_struct() {
     struct Call();
 
     #[derive(Debug, Clone, PartialEq, Eq, EthAbiType)]
-    struct Call2 {};
+    struct Call2;
 
     #[derive(Debug, Clone, PartialEq, Eq, EthAbiType)]
     struct Call3;
@@ -604,4 +605,45 @@ fn eth_display_works_on_ethers_bytes() {
 
     let s = format!("{}", call);
     assert_eq!(s, "0xaaaaaa");
+}
+
+#[test]
+fn can_use_result_name() {
+    abigen!(
+        ResultContract,
+        r#"[
+           struct Result {uint256 result;}
+           result(Result result) (uint256)
+        ]"#,
+    );
+
+    let _call = ResultCall { result: Result { result: U256::zero() } };
+}
+
+#[test]
+fn can_derive_etherror() {
+    #[derive(Debug, PartialEq, Eq, EthError)]
+    #[etherror(name = "MyError", abi = "MyError(address,address,string)")]
+    struct MyError {
+        old_author: Address,
+        addr: Address,
+        new_value: String,
+    }
+
+    assert_eq!(MyError::abi_signature().as_ref(), "MyError(address,address,string)");
+
+    assert_tokenizeable::<MyError>();
+    assert_etherror::<MyError>();
+}
+
+#[test]
+fn can_use_human_readable_error() {
+    abigen!(
+        ErrContract,
+        r#"[
+           error MyError(address,address,string)
+        ]"#,
+    );
+
+    assert_etherror::<MyError>();
 }

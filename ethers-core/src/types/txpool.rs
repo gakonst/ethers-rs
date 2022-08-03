@@ -1,5 +1,4 @@
-use crate::types::{Address, TransactionRequest as TxpoolTransaction, U256, U64};
-
+use crate::types::{Address, Bytes, H256, U256, U64};
 use serde::{
     de::{self, Deserializer, Visitor},
     Deserialize, Serialize,
@@ -108,12 +107,29 @@ impl Serialize for TxpoolInspectSummary {
 /// as the ones that are being scheduled for future execution only.
 ///
 /// See [here](https://geth.ethereum.org/docs/rpc/ns-txpool#txpool_content) for more details
-#[derive(Debug, Default, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TxpoolContent {
     /// pending tx
     pub pending: BTreeMap<Address, BTreeMap<String, TxpoolTransaction>>,
     /// queued tx
     pub queued: BTreeMap<Address, BTreeMap<String, TxpoolTransaction>>,
+}
+
+/// Represents the Transaction object as returned by `txpool_content`
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TxpoolTransaction {
+    pub block_hash: Option<H256>,
+    pub block_number: Option<U64>,
+    pub from: Option<Address>,
+    pub gas: Option<U256>,
+    pub gas_price: Option<U256>,
+    pub hash: H256,
+    pub input: Bytes,
+    pub nonce: U256,
+    pub to: Option<Address>,
+    pub transaction_index: Option<U64>,
+    pub value: U256,
 }
 
 /// Transaction Pool Inspect
@@ -261,7 +277,11 @@ mod tests {
   }
 }"#;
         let deserialized: TxpoolContent = serde_json::from_str(txpool_content_json).unwrap();
-        let serialized: String = serde_json::to_string(&deserialized).unwrap();
+        let serialized: String = serde_json::to_string_pretty(&deserialized).unwrap();
+
+        let origin: serde_json::Value = serde_json::from_str(txpool_content_json).unwrap();
+        let serialized_value = serde_json::to_value(deserialized.clone()).unwrap();
+        assert_eq!(origin, serialized_value);
         assert_eq!(deserialized, serde_json::from_str::<TxpoolContent>(&serialized).unwrap());
     }
 

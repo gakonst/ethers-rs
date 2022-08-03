@@ -22,9 +22,9 @@ use ethers_core::{
     types::{
         transaction::{eip2718::TypedTransaction, eip2930::AccessListWithGasUsed},
         Address, Block, BlockId, BlockNumber, BlockTrace, Bytes, EIP1186ProofResponse, FeeHistory,
-        Filter, FilterBlockOption, Log, NameOrAddress, Selector, Signature, Trace, TraceFilter,
-        TraceType, Transaction, TransactionReceipt, TransactionRequest, TxHash, TxpoolContent,
-        TxpoolInspect, TxpoolStatus, H256, U256, U64,
+        Filter, FilterBlockOption, GethDebugTracingOptions, GethTrace, Log, NameOrAddress,
+        Selector, Signature, Trace, TraceFilter, TraceType, Transaction, TransactionReceipt,
+        TransactionRequest, TxHash, TxpoolContent, TxpoolInspect, TxpoolStatus, H256, U256, U64,
     },
     utils,
 };
@@ -1022,6 +1022,17 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
     }
 
     /// Executes the given call and returns a number of possible traces for it
+    async fn debug_trace_transaction(
+        &self,
+        tx_hash: TxHash,
+        trace_options: GethDebugTracingOptions,
+    ) -> Result<GethTrace, ProviderError> {
+        let tx_hash = utils::serialize(&tx_hash);
+        let trace_options = utils::serialize(&trace_options);
+        self.request("debug_traceTransaction", [tx_hash, trace_options]).await
+    }
+
+    /// Executes the given call and returns a number of possible traces for it
     async fn trace_call<T: Into<TypedTransaction> + Send + Sync>(
         &self,
         req: T,
@@ -1243,12 +1254,12 @@ impl<P: JsonRpcClient> Provider<P> {
 
         // otherwise, decode_bytes panics
         if data.0.is_empty() {
-            return Err(ProviderError::EnsError(ens_name.to_owned()))
+            return Err(ProviderError::EnsError(ens_name.to_string()))
         }
 
         let resolver_address: Address = decode_bytes(ParamType::Address, data);
         if resolver_address == Address::zero() {
-            return Err(ProviderError::EnsError(ens_name.to_owned()))
+            return Err(ProviderError::EnsError(ens_name.to_string()))
         }
 
         // resolve
@@ -1277,9 +1288,16 @@ impl<P: JsonRpcClient> Provider<P> {
 
     /// Sets the default polling interval for event filters and pending transactions
     /// (default: 7 seconds)
+    pub fn set_interval<T: Into<Duration>>(&mut self, interval: T) -> &mut Self {
+        self.interval = Some(interval.into());
+        self
+    }
+
+    /// Sets the default polling interval for event filters and pending transactions
+    /// (default: 7 seconds)
     #[must_use]
     pub fn interval<T: Into<Duration>>(mut self, interval: T) -> Self {
-        self.interval = Some(interval.into());
+        self.set_interval(interval);
         self
     }
 
@@ -1324,6 +1342,18 @@ impl Provider<crate::Ipc> {
     pub async fn connect_ipc(path: impl AsRef<std::path::Path>) -> Result<Self, ProviderError> {
         let ipc = crate::Ipc::connect(path).await?;
         Ok(Self::new(ipc))
+    }
+}
+
+impl Provider<HttpProvider> {
+    /// The Url to which requests are made
+    pub fn url(&self) -> &Url {
+        self.inner.url()
+    }
+
+    /// Mutable access to the Url to which requests are made
+    pub fn url_mut(&mut self) -> &mut Url {
+        self.inner.url_mut()
     }
 }
 

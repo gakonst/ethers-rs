@@ -1382,9 +1382,9 @@ mod tests {
 
         assert_eq!(I256::try_from(large_unsigned).unwrap(), large_positive);
         assert_eq!(U256::try_from(large_positive).unwrap(), large_unsigned);
-        assert!(I256::try_from(U256::MAX).is_err());
-        assert!(U256::try_from(small_negative).is_err());
-        assert!(U256::try_from(large_negative).is_err());
+        I256::try_from(U256::MAX).unwrap_err();
+        U256::try_from(small_negative).unwrap_err();
+        U256::try_from(large_negative).unwrap_err();
     }
 
     #[test]

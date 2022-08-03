@@ -1,3 +1,4 @@
+use ethabi::AbiError;
 use std::collections::{BTreeMap, HashMap, VecDeque};
 
 use crate::abi::{
@@ -82,6 +83,17 @@ impl AbiParser {
             if line.starts_with("event") {
                 let event = self.parse_event(line)?;
                 abi.events.entry(event.name.clone()).or_default().push(event);
+            } else if let Some(err) = line.strip_prefix("error") {
+                // an error is essentially a function without outputs, so we parse as function here
+                let function = match self.parse_function(err) {
+                    Ok(function) => function,
+                    Err(_) => bail!("Illegal abi `{}`, expected error", line),
+                };
+                if !function.outputs.is_empty() {
+                    bail!("Illegal abi `{}`, expected error", line);
+                }
+                let error = AbiError { name: function.name, inputs: function.inputs };
+                abi.errors.entry(error.name.clone()).or_default().push(error);
             } else if line.starts_with("constructor") {
                 let inputs = self
                     .constructor_inputs(line)?
@@ -103,7 +115,7 @@ impl AbiParser {
                 // function may have shorthand declaration, so it won't start with "function"
                 let function = match self.parse_function(line) {
                     Ok(function) => function,
-                    Err(_) => bail!("Illegal abi `{}`", line),
+                    Err(_) => bail!("Illegal abi `{}`, expected function", line),
                 };
                 abi.functions.entry(function.name.clone()).or_default().push(function);
             }
