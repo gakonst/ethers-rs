@@ -163,6 +163,7 @@ impl_abi_type!(
     Address => Address,
     bool => Bool,
     String => String,
+    str => String,
     H256 => FixedBytes(32),
     H512 => FixedBytes(64),
     U64 => Uint(64),
@@ -179,6 +180,14 @@ impl_abi_type!(
     i128 => Int(128),
     I256 => Int(256)
 );
+
+impl<'a> AbiType for &'a str {
+    fn param_type() -> ParamType {
+        ParamType::String
+    }
+}
+
+impl<'a> AbiArrayType for &'a str {}
 
 macro_rules! impl_abi_type_tuple {
     ($num: expr, $( $ty: ident),+) => {
@@ -310,6 +319,9 @@ mod tests {
             ParamType::FixedArray(Box::new(ParamType::Uint(16)), 32),
             <[u16; 32]>::param_type()
         );
+
+        assert_eq!(ParamType::String, str::param_type());
+        assert_eq!(ParamType::String, <&str>::param_type());
     }
 
     #[test]

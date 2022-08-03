@@ -77,6 +77,12 @@ impl_abi_codec!(
     i128
 );
 
+impl<'a> AbiEncode for &'a str {
+    fn encode(self) -> Vec<u8> {
+        self.to_string().encode()
+    }
+}
+
 impl<T: TokenizableItem + Clone, const N: usize> AbiEncode for [T; N] {
     fn encode(self) -> Vec<u8> {
         let token = self.into_token();
@@ -265,5 +271,12 @@ mod tests {
         assert_codec(nested.clone());
         let tuple: Vec<(Address, u8, Vec<[u8; 4]>)> = vec![(Address::random(), 0, nested)];
         assert_codec(tuple);
+    }
+
+    #[test]
+    fn str_encoding() {
+        let value = "str value";
+        let encoded = value.encode();
+        assert_eq!(value, String::decode(encoded).unwrap());
     }
 }
