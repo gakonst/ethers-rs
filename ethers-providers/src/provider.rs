@@ -2,7 +2,7 @@ use crate::{
     call_raw::CallBuilder,
     ens, erc, maybe,
     pubsub::{PubsubClient, SubscriptionStream},
-    stream::{FilterWatcher, DEFAULT_POLL_INTERVAL},
+    stream::{FilterWatcher, DEFAULT_LOCAL_POLL_INTERVAL, DEFAULT_POLL_INTERVAL},
     FromErr, Http as HttpProvider, JsonRpcClient, JsonRpcClientWrapper, LogQuery, MockProvider,
     PendingTransaction, QuorumProvider, RwClient, SyncingStatus,
 };
@@ -33,6 +33,7 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use thiserror::Error;
 use url::{ParseError, Url};
 
+use ethers_core::types::Chain;
 use futures_util::{lock::Mutex, try_join};
 use std::{
     collections::VecDeque, convert::TryFrom, fmt::Debug, str::FromStr, sync::Arc, time::Duration,
@@ -1451,6 +1452,120 @@ impl Provider<RetryClient<HttpProvider>> {
             initial_backoff,
         )))
     }
+}
+
+mod sealed {
+    use crate::{Http, Provider};
+    /// private trait to ensure extension trait is not implement outside of this crate
+    pub trait Sealed {}
+    impl Sealed for Provider<Http> {}
+}
+
+/// Extension trait for `Provider`
+///
+/// **Note**: this is currently sealed until <https://github.com/gakonst/ethers-rs/pull/1267> is finalized
+///
+/// # Example
+///
+/// Automatically configure poll interval via `eth_getChainId`
+///
+/// Note that this will send an RPC to retrieve the chain id.
+///
+/// ```
+///  # use ethers_providers::{Http, Provider, ProviderExt};
+///  # async fn t() {
+/// let http_provider = Provider::<Http>::connect("https://eth-mainnet.alchemyapi.io/v2/API_KEY").await;
+/// # }
+/// ```
+///
+/// This is essentially short for
+///
+/// ```
+/// use std::convert::TryFrom;
+/// use ethers_core::types::Chain;
+/// use ethers_providers::{Http, Provider, ProviderExt};
+/// let http_provider = Provider::<Http>::try_from("https://eth-mainnet.alchemyapi.io/v2/API_KEY").unwrap().set_chain(Chain::Mainnet);
+/// ```
+#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+pub trait ProviderExt: sealed::Sealed {
+    /// The error type that can occur when creating a provider
+    type Error: Debug;
+
+    /// Creates a new instance connected to the given `url`, exit on error
+    async fn connect(url: &str) -> Self
+    where
+        Self: Sized,
+    {
+        Self::try_connect(url).await.unwrap()
+    }
+
+    /// Try to create a new `Provider`
+    async fn try_connect(url: &str) -> Result<Self, Self::Error>
+    where
+        Self: Sized;
+
+    /// Customize `Provider` settings for chain.
+    ///
+    /// E.g. [`Chain::average_blocktime_hint()`] returns the average block time which can be used to
+    /// tune the polling interval.
+    ///
+    /// Returns the customized `Provider`
+    fn for_chain(mut self, chain: impl Into<Chain>) -> Self
+    where
+        Self: Sized,
+    {
+        self.set_chain(chain);
+        self
+    }
+
+    /// Customized `Provider` settings for chain
+    fn set_chain(&mut self, chain: impl Into<Chain>) -> &mut Self;
+}
+
+#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+impl ProviderExt for Provider<HttpProvider> {
+    type Error = ParseError;
+
+    async fn try_connect(url: &str) -> Result<Self, Self::Error>
+    where
+        Self: Sized,
+    {
+        let mut provider = Provider::try_from(url)?;
+        if is_local_endpoint(url) {
+            provider.set_interval(DEFAULT_LOCAL_POLL_INTERVAL);
+        } else if let Some(chain) =
+            provider.get_chainid().await.ok().and_then(|id| Chain::try_from(id).ok())
+        {
+            provider.set_chain(chain);
+        }
+
+        Ok(provider)
+    }
+
+    fn set_chain(&mut self, chain: impl Into<Chain>) -> &mut Self {
+        let chain = chain.into();
+        if let Some(blocktime) = chain.average_blocktime_hint() {
+            // use half of the block time
+            self.set_interval(blocktime / 2);
+        }
+        self
+    }
+}
+
+/// Returns true if the endpoint is local
+///
+/// # Example
+///
+/// ```
+/// use ethers_providers::is_local_endpoint;
+/// assert!(is_local_endpoint("http://localhost:8545"));
+/// assert!(is_local_endpoint("http://127.0.0.1:8545"));
+/// ```
+#[inline]
+pub fn is_local_endpoint(url: &str) -> bool {
+    url.contains("127.0.0.1") || url.contains("localhost")
 }
 
 /// A middleware supporting development-specific JSON RPC methods

@@ -8,6 +8,7 @@ use futures_util::future::join_all;
 pub use transports::*;
 
 mod provider;
+pub use provider::{is_local_endpoint, FilterKind, Provider, ProviderError, ProviderExt};
 
 // ENS support
 pub mod ens;
@@ -23,7 +24,9 @@ pub use log_query::LogQuery;
 
 mod stream;
 pub use futures_util::StreamExt;
-pub use stream::{interval, FilterWatcher, TransactionStream, DEFAULT_POLL_INTERVAL};
+pub use stream::{
+    interval, FilterWatcher, TransactionStream, DEFAULT_LOCAL_POLL_INTERVAL, DEFAULT_POLL_INTERVAL,
+};
 
 mod pubsub;
 pub use pubsub::{PubsubClient, SubscriptionStream};
@@ -37,8 +40,6 @@ use ethers_core::types::transaction::{eip2718::TypedTransaction, eip2930::Access
 use serde::{de::DeserializeOwned, Serialize};
 use std::{error::Error, fmt::Debug, future::Future, pin::Pin};
 use url::Url;
-
-pub use provider::{FilterKind, Provider, ProviderError};
 
 // feature-enabled support for dev-rpc methods
 #[cfg(feature = "dev-rpc")]
