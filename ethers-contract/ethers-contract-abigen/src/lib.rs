@@ -20,6 +20,8 @@ mod rustfmt;
 mod source;
 mod util;
 
+pub mod filter;
+pub use filter::{ContractFilter, ExcludeContracts, SelectContracts};
 pub mod multi;
 pub use multi::MultiAbigen;
 

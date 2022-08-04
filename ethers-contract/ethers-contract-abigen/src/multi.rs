@@ -1,5 +1,4 @@
-//! TODO
-
+//! Generate bindings for multiple `Abigen`
 use eyre::Result;
 use inflector::Inflector;
 use proc_macro2::TokenStream;
@@ -11,7 +10,7 @@ use std::{
     path::Path,
 };
 
-use crate::{util, Abigen, Context, ContractBindings, ExpandedContract};
+use crate::{util, Abigen, Context, ContractBindings, ContractFilter, ExpandedContract};
 
 /// Represents a collection of [`Abigen::expand()`]
 pub struct MultiExpansion {
@@ -260,6 +259,18 @@ impl MultiAbigen {
     /// ```
     pub fn from_json_files(root: impl AsRef<Path>) -> Result<Self> {
         util::json_files(root.as_ref()).into_iter().map(Abigen::from_file).collect()
+    }
+
+    /// See `apply_filter`
+    #[must_use]
+    pub fn with_filter(mut self, filter: impl Into<ContractFilter>) -> Self {
+        self.apply_filter(&filter.into());
+        self
+    }
+
+    /// Removes all `Abigen` items that should not be included based on the given filter
+    pub fn apply_filter(&mut self, filter: &ContractFilter) {
+        self.abigens.retain(|abi| filter.is_match(&abi.contract_name))
     }
 
     /// Add another Abigen to the module or lib
