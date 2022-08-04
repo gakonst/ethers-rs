@@ -1,6 +1,6 @@
 //! Filtering support for contracts used in [`Abigen`]
 
-use regex::bytes::Regex;
+use regex::Regex;
 use std::collections::HashSet;
 
 /// Used to filter contracts that should be _included_ in the abigen generation.
@@ -138,7 +138,7 @@ macro_rules! impl_filter {
                 if self.exact.contains(name) {
                     return true
                 }
-                self.patterns.iter().any(|re| re.is_match(name.as_bytes()))
+                self.patterns.iter().any(|re| re.is_match(name))
             }
         }
     };
