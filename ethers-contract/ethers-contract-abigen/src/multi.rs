@@ -77,15 +77,39 @@ impl MultiAbigen {
     /// ...
     /// ```
     ///
-    /// ```no_run
+    /// ```
+    /// # fn t() {
     /// # use ethers_contract_abigen::MultiAbigen;
     /// let gen = MultiAbigen::from_json_files("./abi").unwrap();
+    /// # }
     /// ```
     pub fn from_json_files(root: impl AsRef<Path>) -> Result<Self> {
         util::json_files(root.as_ref()).into_iter().map(Abigen::from_file).collect()
     }
 
     /// See `apply_filter`
+    ///
+    /// # Example
+    ///
+    /// Only Select specific contracts
+    ///
+    /// ```
+    /// use ethers_contract_abigen::{MultiAbigen, SelectContracts};
+    /// # fn t() {
+    ///    let gen = MultiAbigen::from_json_files("./abi").unwrap().with_filter(
+    ///        SelectContracts::default().add_name("MyContract").add_name("MyOtherContract"),
+    ///    );
+    /// ```
+    ///
+    /// Exclude all contracts that end with test
+    ///
+    /// ```
+    /// use ethers_contract_abigen::{ExcludeContracts, MultiAbigen};
+    /// # fn t() {
+    ///    let gen = MultiAbigen::from_json_files("./abi").unwrap().with_filter(
+    ///        ExcludeContracts::default().add_pattern(".*Test"),
+    ///    );
+    /// ```
     #[must_use]
     pub fn with_filter(mut self, filter: impl Into<ContractFilter>) -> Self {
         self.apply_filter(&filter.into());
@@ -747,6 +771,7 @@ fn check_binding_in_dir(dir: &Path, binding: &ContractBindings) -> Result<()> {
 mod tests {
     use super::*;
 
+    use crate::{ExcludeContracts, SelectContracts};
     use ethers_solc::project_util::TempProject;
     use std::{panic, path::PathBuf};
 
@@ -1024,6 +1049,55 @@ mod tests {
 
         let tokens = MultiExpansion::new(vec![gen.expand().unwrap()]).expand_inplace().to_string();
         assert!(!tokens.contains("mod __shared_types"));
+    }
+
+    #[test]
+    fn can_filter_abigen() {
+        let abi = Abigen::new(
+            "MyGreeter",
+            r#"[
+                        greet() (string)
+                    ]"#,
+        )
+        .unwrap();
+        let mut gen = MultiAbigen::from_abigens(vec![abi]).with_filter(ContractFilter::All);
+        assert_eq!(gen.abigens.len(), 1);
+        gen.apply_filter(&SelectContracts::default().add_name("MyGreeter").into());
+        assert_eq!(gen.abigens.len(), 1);
+
+        gen.apply_filter(&ExcludeContracts::default().add_name("MyGreeter2").into());
+        assert_eq!(gen.abigens.len(), 1);
+
+        let filtered = gen.clone().with_filter(SelectContracts::default().add_name("MyGreeter2"));
+        assert!(filtered.abigens.is_empty());
+
+        let filtered = gen.clone().with_filter(ExcludeContracts::default().add_name("MyGreeter"));
+        assert!(filtered.abigens.is_empty());
+
+        let filtered =
+            gen.clone().with_filter(SelectContracts::default().add_pattern("MyGreeter2"));
+        assert!(filtered.abigens.is_empty());
+
+        let filtered =
+            gen.clone().with_filter(ExcludeContracts::default().add_pattern("MyGreeter"));
+        assert!(filtered.abigens.is_empty());
+
+        gen.push(
+            Abigen::new(
+                "MyGreeterTest",
+                r#"[
+                        greet() (string)
+                    ]"#,
+            )
+            .unwrap(),
+        );
+        let filtered = gen.clone().with_filter(SelectContracts::default().add_pattern(".*Test"));
+        assert_eq!(filtered.abigens.len(), 1);
+        assert_eq!(filtered.abigens[0].contract_name, "MyGreeterTest");
+
+        let filtered = gen.clone().with_filter(ExcludeContracts::default().add_pattern(".*Test"));
+        assert_eq!(filtered.abigens.len(), 1);
+        assert_eq!(filtered.abigens[0].contract_name, "MyGreeter");
     }
 
     #[test]
