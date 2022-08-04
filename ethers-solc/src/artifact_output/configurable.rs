@@ -16,9 +16,9 @@ use crate::{
             BytecodeOutputSelection, ContractOutputSelection, EvmOutputSelection,
             EwasmOutputSelection,
         },
-        Ast, CompactContractBytecodeCow, DevDoc, Evm, Ewasm, FunctionDebugData, GasEstimates,
-        GeneratedSource, LosslessAbi, LosslessMetadata, Metadata, Offsets, Settings, StorageLayout,
-        UserDoc,
+        CompactContractBytecodeCow, DevDoc, Evm, Ewasm, FunctionDebugData, GasEstimates,
+        GeneratedSource, LosslessAbi, LosslessMetadata, Metadata, Offsets, Settings, SourceUnit,
+        StorageLayout, UserDoc,
     },
     sources::VersionedSourceFile,
     ArtifactOutput, SolcConfig, SolcError, SourceFile,
@@ -68,7 +68,7 @@ pub struct ConfigurableContractArtifact {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ewasm: Option<Ewasm>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub ast: Option<Ast>,
+    pub ast: Option<SourceUnit>,
     /// The identifier of the source file
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub id: Option<u32>,

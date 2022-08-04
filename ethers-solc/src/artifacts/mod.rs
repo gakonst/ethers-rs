@@ -1835,7 +1835,7 @@ pub struct SecondarySourceLocation {
 pub struct SourceFile {
     pub id: u32,
     #[serde(default, with = "serde_helpers::empty_json_object_opt")]
-    pub ast: Option<Ast>,
+    pub ast: Option<SourceUnit>,
 }
 
 // === impl SourceFile ===
@@ -1846,7 +1846,7 @@ impl SourceFile {
     pub fn contains_contract_definition(&self) -> bool {
         if let Some(ref ast) = self.ast {
             // contract definitions are only allowed at the source-unit level <https://docs.soliditylang.org/en/latest/grammar.html>
-            return ast.nodes.iter().any(|node| node.node_type == NodeType::ContractDefinition)
+            return ast.nodes.iter().any(|node| matches!(node, SourceUnitPart::ContractDefinition))
             // abstract contract, interfaces: ContractDefinition
         }
 
