@@ -12,6 +12,106 @@ use std::{
 
 use crate::{util, Abigen, Context, ContractBindings, ContractFilter, ExpandedContract};
 
+/// Collects Abigen structs for a series of contracts, pending generation of
+/// the contract bindings.
+#[derive(Debug, Clone)]
+pub struct MultiAbigen {
+    /// Abigen objects to be written
+    abigens: Vec<Abigen>,
+}
+
+impl std::ops::Deref for MultiAbigen {
+    type Target = Vec<Abigen>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.abigens
+    }
+}
+
+impl From<Vec<Abigen>> for MultiAbigen {
+    fn from(abigens: Vec<Abigen>) -> Self {
+        Self { abigens }
+    }
+}
+
+impl std::iter::FromIterator<Abigen> for MultiAbigen {
+    fn from_iter<I: IntoIterator<Item = Abigen>>(iter: I) -> Self {
+        iter.into_iter().collect::<Vec<_>>().into()
+    }
+}
+
+impl MultiAbigen {
+    /// Create a new instance from a series (`contract name`, `abi_source`)
+    ///
+    /// See `Abigen::new`
+    pub fn new<I, Name, Source>(abis: I) -> Result<Self>
+    where
+        I: IntoIterator<Item = (Name, Source)>,
+        Name: AsRef<str>,
+        Source: AsRef<str>,
+    {
+        let abis = abis
+            .into_iter()
+            .map(|(contract_name, abi_source)| Abigen::new(contract_name.as_ref(), abi_source))
+            .collect::<Result<Vec<_>>>()?;
+
+        Ok(Self::from_abigens(abis))
+    }
+
+    /// Create a new instance from a series of already resolved `Abigen`
+    pub fn from_abigens(abis: impl IntoIterator<Item = Abigen>) -> Self {
+        abis.into_iter().collect()
+    }
+
+    /// Reads all json files contained in the given `dir` and use the file name for the name of the
+    /// `ContractBindings`.
+    /// This is equivalent to calling `MultiAbigen::new` with all the json files and their filename.
+    ///
+    /// # Example
+    ///
+    /// ```text
+    /// abi
+    /// ├── ERC20.json
+    /// ├── Contract1.json
+    /// ├── Contract2.json
+    /// ...
+    /// ```
+    ///
+    /// ```no_run
+    /// # use ethers_contract_abigen::MultiAbigen;
+    /// let gen = MultiAbigen::from_json_files("./abi").unwrap();
+    /// ```
+    pub fn from_json_files(root: impl AsRef<Path>) -> Result<Self> {
+        util::json_files(root.as_ref()).into_iter().map(Abigen::from_file).collect()
+    }
+
+    /// See `apply_filter`
+    #[must_use]
+    pub fn with_filter(mut self, filter: impl Into<ContractFilter>) -> Self {
+        self.apply_filter(&filter.into());
+        self
+    }
+
+    /// Removes all `Abigen` items that should not be included based on the given filter
+    pub fn apply_filter(&mut self, filter: &ContractFilter) {
+        self.abigens.retain(|abi| filter.is_match(&abi.contract_name))
+    }
+
+    /// Add another Abigen to the module or lib
+    pub fn push(&mut self, abigen: Abigen) {
+        self.abigens.push(abigen)
+    }
+
+    /// Build the contract bindings and prepare for writing
+    pub fn build(self) -> Result<MultiBindings> {
+        let rustfmt = self.abigens.iter().any(|gen| gen.rustfmt);
+        Ok(MultiBindings {
+            expansion: MultiExpansion::from_abigen(self.abigens)?.expand(),
+            rustfmt,
+        })
+    }
+}
+
 /// Represents a collection of [`Abigen::expand()`]
 pub struct MultiExpansion {
     // all expanded contracts collection from [`Abigen::expand()`]
@@ -185,106 +285,6 @@ impl MultiExpansionResult {
         };
 
         MultiBindingsInner { bindings, shared_types }
-    }
-}
-
-/// Collects Abigen structs for a series of contracts, pending generation of
-/// the contract bindings.
-#[derive(Debug, Clone)]
-pub struct MultiAbigen {
-    /// Abigen objects to be written
-    abigens: Vec<Abigen>,
-}
-
-impl std::ops::Deref for MultiAbigen {
-    type Target = Vec<Abigen>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.abigens
-    }
-}
-
-impl From<Vec<Abigen>> for MultiAbigen {
-    fn from(abigens: Vec<Abigen>) -> Self {
-        Self { abigens }
-    }
-}
-
-impl std::iter::FromIterator<Abigen> for MultiAbigen {
-    fn from_iter<I: IntoIterator<Item = Abigen>>(iter: I) -> Self {
-        iter.into_iter().collect::<Vec<_>>().into()
-    }
-}
-
-impl MultiAbigen {
-    /// Create a new instance from a series (`contract name`, `abi_source`)
-    ///
-    /// See `Abigen::new`
-    pub fn new<I, Name, Source>(abis: I) -> Result<Self>
-    where
-        I: IntoIterator<Item = (Name, Source)>,
-        Name: AsRef<str>,
-        Source: AsRef<str>,
-    {
-        let abis = abis
-            .into_iter()
-            .map(|(contract_name, abi_source)| Abigen::new(contract_name.as_ref(), abi_source))
-            .collect::<Result<Vec<_>>>()?;
-
-        Ok(Self::from_abigens(abis))
-    }
-
-    /// Create a new instance from a series of already resolved `Abigen`
-    pub fn from_abigens(abis: impl IntoIterator<Item = Abigen>) -> Self {
-        abis.into_iter().collect()
-    }
-
-    /// Reads all json files contained in the given `dir` and use the file name for the name of the
-    /// `ContractBindings`.
-    /// This is equivalent to calling `MultiAbigen::new` with all the json files and their filename.
-    ///
-    /// # Example
-    ///
-    /// ```text
-    /// abi
-    /// ├── ERC20.json
-    /// ├── Contract1.json
-    /// ├── Contract2.json
-    /// ...
-    /// ```
-    ///
-    /// ```no_run
-    /// # use ethers_contract_abigen::MultiAbigen;
-    /// let gen = MultiAbigen::from_json_files("./abi").unwrap();
-    /// ```
-    pub fn from_json_files(root: impl AsRef<Path>) -> Result<Self> {
-        util::json_files(root.as_ref()).into_iter().map(Abigen::from_file).collect()
-    }
-
-    /// See `apply_filter`
-    #[must_use]
-    pub fn with_filter(mut self, filter: impl Into<ContractFilter>) -> Self {
-        self.apply_filter(&filter.into());
-        self
-    }
-
-    /// Removes all `Abigen` items that should not be included based on the given filter
-    pub fn apply_filter(&mut self, filter: &ContractFilter) {
-        self.abigens.retain(|abi| filter.is_match(&abi.contract_name))
-    }
-
-    /// Add another Abigen to the module or lib
-    pub fn push(&mut self, abigen: Abigen) {
-        self.abigens.push(abigen)
-    }
-
-    /// Build the contract bindings and prepare for writing
-    pub fn build(self) -> Result<MultiBindings> {
-        let rustfmt = self.abigens.iter().any(|gen| gen.rustfmt);
-        Ok(MultiBindings {
-            expansion: MultiExpansion::from_abigen(self.abigens)?.expand(),
-            rustfmt,
-        })
     }
 }
 
