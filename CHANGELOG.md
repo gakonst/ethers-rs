@@ -87,6 +87,7 @@
 
 ### Unreleased
 
+- Add `ContractFilter` to filter contracts in `MultiAbigen` [#1564](https://github.com/gakonst/ethers-rs/pull/1564)
 - generate error bindings for custom errors [#1549](https://github.com/gakonst/ethers-rs/pull/1549)
 - Support overloaded events
   [#1233](https://github.com/gakonst/ethers-rs/pull/1233)
