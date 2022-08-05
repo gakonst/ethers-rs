@@ -77,6 +77,21 @@ macro_rules! stmt_node {
     }
 }
 
+/// A macro that expands to an enum where each variant also contains a struct of the same name.
+///
+/// The inner value of each variant is boxed since AST types are inherently recursive.
+macro_rules! node_group {
+    ($group:ident; $( $name:ident ),* $(,)*) => {
+        #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+        pub enum $group {
+            $(
+                $name(Box<$name>),
+            )*
+        }
+    };
+}
+
 pub(crate) use ast_node;
 pub(crate) use expr_node;
+pub(crate) use node_group;
 pub(crate) use stmt_node;

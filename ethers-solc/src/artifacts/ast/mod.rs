@@ -1,15 +1,22 @@
-//! Bindings for solc's `ast` output field
+//! Bindings for the Solidity and Yul ASTs.
+//!
+//! The Yul AST bindings are available in the [yul] module.
 mod macros;
 mod misc;
-
 pub use misc::*;
 pub mod util;
 pub mod visitor;
 
+/// Types for the Yul AST.
+///
+/// The Yul AST is embedded into the Solidity AST for inline assembly blocks.
+pub mod yul;
+
 use crate::{artifacts::serde_helpers, EvmVersion};
-use macros::{ast_node, expr_node, stmt_node};
+use macros::{ast_node, expr_node, node_group, stmt_node};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+use yul::YulBlock;
 
 // TODO: Node ID
 
@@ -26,8 +33,9 @@ ast_node!(
     }
 );
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum SourceUnitPart {
+node_group! {
+    SourceUnitPart;
+
     PragmaDirective,
     ImportDirective,
     UsingForDirective,
@@ -40,7 +48,105 @@ pub enum SourceUnitPart {
     ContractDefinition,
 }
 
+node_group! {
+    Expression;
+
+    Assignment,
+    BinaryOperation,
+    Conditional,
+    ElementaryTypeNameExpression,
+    FunctionCall,
+    FunctionCallOptions,
+    Identifier,
+    IndexAccess,
+    IndexRangeAccess,
+    Literal,
+    MemberAccess,
+    NewExpression,
+    TupleExpression,
+    UnaryOperation,
+}
+
+node_group! {
+    Statement;
+
+    Block,
+    Break,
+    Continue,
+    DoWhileStatement,
+    EmitStatement,
+    ExpressionStatement,
+    ForStatement,
+    IfStatement,
+    InlineAssembly,
+    PlaceholderStatement,
+    Return,
+    RevertStatement,
+    TryStatement,
+    UncheckedBlock,
+    VariableDeclarationStatement,
+    WhileStatement,
+
+}
+
+node_group! {
+    ContractDefinitionPart;
+
+    EnumDefinition,
+    ErrorDefinition,
+    EventDefinition,
+    FunctionDefinition,
+    ModifierDefinition,
+    StructDefinition,
+    UserDefinedValueTypeDefinition,
+    UsingForDirective,
+    VariableDeclaration,
+}
+
+node_group! {
+    TypeName;
+
+    ArrayTypeName,
+    ElementaryTypeName,
+    FunctionTypeName,
+    Mapping,
+    UserDefinedTypeName,
+}
+
+// TODO: Better name
+node_group! {
+    UserDefinedTypeNameOrIdentifierPath;
+
+    UserDefinedTypeName,
+    IdentifierPath,
+}
+
+// TODO: Better name
+node_group! {
+    BlockOrStatement;
+
+    Block,
+    Statement
+}
+
+// TODO: Better name
+node_group! {
+    ExpressionOrVariableDeclarationStatement;
+
+    ExpressionStatement,
+    VariableDeclarationStatement
+}
+
+// TODO: Better name
+node_group! {
+    IdentifierOrIdentifierPath;
+
+    Identifier,
+    IdentifierPath
+}
+
 ast_node!(
+    /// A contract definition.
     struct ContractDefinition {
         name: String,
         name_location: Option<String>,
@@ -58,41 +164,27 @@ ast_node!(
     }
 );
 
+/// All Solidity contract kinds.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ContractKind {
+    /// A normal contract.
     Contract,
+    /// An interface.
     Interface,
+    /// A library.
     Library,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum ContractDefinitionPart {
-    EnumDefinition,
-    ErrorDefinition,
-    EventDefinition,
-    FunctionDefinition,
-    ModifierDefinition,
-    StructDefinition,
-    UserDefinedValueTypeDefinition,
-    UsingForDirective,
-    VariableDeclaration,
-}
-
 ast_node!(
+    /// An inheritance specifier.
     struct InheritanceSpecifier {
         arguments: Vec<Expression>,
         base_name: UserDefinedTypeNameOrIdentifierPath,
     }
 );
 
-// TODO: Better name
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum UserDefinedTypeNameOrIdentifierPath {
-    UserDefinedTypeName,
-    IdentifierPath,
-}
-
 expr_node!(
+    /// An assignment expression.
     struct Assignment {
         lhs: Expression,
         operator: AssignmentOperator,
@@ -100,39 +192,35 @@ expr_node!(
     }
 );
 
+/// Assignment operators.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AssignmentOperator {
-    /// =
+    /// Simple assignment (`=`)
     Assign,
-    /// +=
+    /// Add and assign (`+=`)
     AddAssign,
-    /// -=
+    /// Subtract and assign (`-=`)
     SubAssign,
-    /// *=
+    /// Multiply and assign (`*=`)
     MulAssign,
-    /// /=
+    /// Divide and assign (`/=`)
     DivAssign,
-    /// %=
+    /// Modulo and assign (`%=`)
     ModAssign,
-    /// |=
+    /// Bitwise or and assign (`|=`)
     OrAssign,
-    /// &=
+    /// Bitwise and and assign (`&=`)
     AndAssign,
-    /// ^=
+    /// Bitwise xor and assign (`^=`)
     XorAssign,
-    /// >>=
+    /// Right shift and assign (`>>=`)
     ShrAssign,
-    /// <<=
+    /// Left shift and assign (`<<=`)
     ShlAssign,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct TypeDescriptions {
-    pub type_identifier: Option<String>,
-    pub type_string: Option<String>,
-}
-
 ast_node!(
+    /// A binary operation.
     struct BinaryOperation {
         common_type: TypeDescriptions,
         lhs: Expression,
@@ -141,52 +229,57 @@ ast_node!(
     }
 );
 
+/// Binary operators.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BinaryOperator {
-    /// +
+    /// Addition (`+`)
     Add,
-    /// -
+    /// Subtraction (`-`)
     Sub,
-    /// *
+    /// Multiplication (`*`)
     Mul,
-    /// /
+    /// Division (`/`)
     Div,
-    /// %
+    /// Modulo (`%`)
     Mod,
-    /// **
+    /// Exponentiation (`**`)
     Pow,
-    /// &&
+    /// Logical and (`&&`)
     And,
-    /// ||
+    /// Logical or (`||`)
     Or,
-    /// !=
+    /// Not equals (`!=`)
     NotEqual,
-    /// ==
+    /// Equals (`==`)
     Equal,
-    /// <
+    /// Less than (`<`)
     LessThan,
-    /// <=
+    /// Less than or equal (`<=`)
     LessThanOrEqual,
-    /// >
+    /// Greater than (`>`)
     GreaterThan,
-    /// >=
+    /// Greater than or equal (`>=`)
     GreaterThanOrEqual,
-    /// ^
+    /// Bitwise xor (`^`)
     Xor,
-    /// &
+    /// Bitwise and (`&`)
     BitAnd,
-    /// |
+    /// Bitwise or (`|`)
     BitOr,
-    /// <<
+    /// Shift left (`<<`)
     Shl,
-    /// >>
+    /// Shift right (`>>`)
     Shr,
 }
 
 expr_node!(
+    /// A conditional expression.
     struct Conditional {
+        /// The condition.
         condition: Expression,
+        /// The expression to evaluate if falsy.
         false_expression: Expression,
+        /// The expression to evaluate if truthy.
         true_expression: Expression,
     }
 );
@@ -206,6 +299,7 @@ ast_node!(
 );
 
 expr_node!(
+    /// A function call expression.
     struct FunctionCall {
         arguments: Vec<Expression>,
         expression: Expression,
@@ -215,14 +309,19 @@ expr_node!(
     }
 );
 
+/// Function call kinds.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum FunctionCallKind {
+    /// A regular function call.
     FunctionCall,
+    /// A type conversion (e.g. `bytes(x)`).
     TypeConversion,
+    /// A struct constructor call (e.g. `MyStruct({ ... })`).
     StructConstructorCall,
 }
 
 expr_node!(
+    /// A function call options expression (e.g. `x.f{gas: 1}`).
     struct FunctionCallOptions {
         expression: Expression,
         names: Vec<String>,
@@ -231,6 +330,7 @@ expr_node!(
 );
 
 ast_node!(
+    /// An identifier.
     struct Identifier {
         argument_types: Vec<TypeDescriptions>,
         name: String,
@@ -241,6 +341,7 @@ ast_node!(
 );
 
 expr_node!(
+    /// An index access.
     struct IndexAccess {
         base_expression: Expression,
         index_expression: Expression,
@@ -248,6 +349,7 @@ expr_node!(
 );
 
 expr_node!(
+    /// An index range access.
     struct IndexRangeAccess {
         base_expression: Expression,
         start_expression: Option<Expression>,
@@ -256,6 +358,7 @@ expr_node!(
 );
 
 expr_node!(
+    /// A literal value.
     struct Literal {
         // TODO
         hex_value: String,
@@ -265,16 +368,23 @@ expr_node!(
     }
 );
 
+/// Literal kinds.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum LiteralKind {
+    /// A boolean.
     Bool,
+    /// A number.
     Number,
+    /// A string.
     String,
+    /// A hexadecimal string.
     HexString,
+    /// A unicode string.
     UnicodeString,
 }
 
 expr_node!(
+    /// Member access.
     struct MemberAccess {
         expression: Expression,
         member_name: String,
@@ -283,12 +393,14 @@ expr_node!(
 );
 
 expr_node!(
+    /// A `new` expression.
     struct NewExpression {
         type_name: TypeName,
     }
 );
 
 ast_node!(
+    /// An array type name.
     struct ArrayTypeName {
         type_descriptions: TypeDescriptions,
         base_type: TypeName,
@@ -297,6 +409,7 @@ ast_node!(
 );
 
 ast_node!(
+    /// A function type name.
     struct FunctionTypeName {
         type_descriptions: TypeDescriptions,
         parameter_types: ParameterList,
@@ -307,12 +420,14 @@ ast_node!(
 );
 
 ast_node!(
+    /// A parameter list.
     struct ParameterList {
         parameters: Vec<VariableDeclaration>,
     }
 );
 
 ast_node!(
+    /// A variable declaration.
     struct VariableDeclaration {
         name: String,
         name_location: Option<String>, // TODO
@@ -334,18 +449,21 @@ ast_node!(
 );
 
 ast_node!(
+    /// Structured documentation (NatSpec).
     struct StructuredDocumentation {
         text: String,
     }
 );
 
 ast_node!(
+    /// An override specifier.
     struct OverrideSpecifier {
         overrides: Vec<UserDefinedTypeNameOrIdentifierPath>,
     }
 );
 
 ast_node!(
+    /// A user defined type name.
     struct UserDefinedTypeName {
         type_descriptions: TypeDescriptions,
         contract_scope: Option<String>, // TODO
@@ -356,6 +474,7 @@ ast_node!(
 );
 
 ast_node!(
+    /// An identifier path.
     struct IdentifierPath {
         name: String,
         referenced_declaration: usize,
@@ -363,6 +482,7 @@ ast_node!(
 );
 
 ast_node!(
+    /// A mapping type.
     struct Mapping {
         type_descriptions: TypeDescriptions,
         key_type: TypeName,
@@ -371,6 +491,7 @@ ast_node!(
 );
 
 expr_node!(
+    /// A tuple expression.
     struct TupleExpression {
         components: Vec<Expression>,
         is_inline_array: bool,
@@ -378,28 +499,32 @@ expr_node!(
 );
 
 expr_node!(
+    /// A unary operation.
     struct UnaryOperation {
         operator: UnaryOperator,
+        /// Whether the unary operator is before or after the expression (e.g. `x++` vs. `++x`)
         prefix: bool,
         sub_expression: Expression,
     }
 );
 
+/// Unary operators.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum UnaryOperator {
-    /// ++
+    /// Increment (`++`)
     Increment,
-    /// --
+    /// Decrement (`--`)
     Decrement,
-    /// -
+    /// Negate (`-`)
     Negate,
-    /// !
+    /// Not (`!`)
     Not,
-    /// delete
+    /// `delete`
     Delete,
 }
 
 ast_node!(
+    /// An enum definition.
     struct EnumDefinition {
         name: String,
         name_location: Option<String>, // TODO
@@ -409,6 +534,7 @@ ast_node!(
 );
 
 ast_node!(
+    /// An enum value.
     struct EnumValue {
         name: String,
         name_location: Option<String>, // TODO
@@ -416,6 +542,7 @@ ast_node!(
 );
 
 ast_node!(
+    /// A custom error definition.
     struct ErrorDefinition {
         name: String,
         name_location: String, // TODO
@@ -426,6 +553,7 @@ ast_node!(
 );
 
 ast_node!(
+    /// An event definition.
     struct EventDefinition {
         name: String,
         name_location: Option<String>, // TODO
@@ -437,6 +565,7 @@ ast_node!(
 );
 
 ast_node!(
+    /// A function definition.
     struct FunctionDefinition {
         name: String,
         name_location: Option<String>, // TODO
@@ -457,16 +586,23 @@ ast_node!(
     }
 );
 
+/// Function kinds.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum FunctionKind {
+    /// A contract function.
     Function,
+    /// A receive function.
     Receive,
+    /// A constructor.
     Constructor,
+    /// A fallback function.
     Fallback,
+    /// A free-standing function.
     FreeFunction,
 }
 
 ast_node!(
+    /// A block of statements.
     struct Block {
         documentation: Option<String>, // TODO
         statements: Vec<Statement>,
@@ -474,14 +610,17 @@ ast_node!(
 );
 
 stmt_node!(
+    /// The break keyword.
     struct Break {}
 );
 
 stmt_node!(
+    /// The continue keyword.
     struct Continue {}
 );
 
 stmt_node!(
+    /// A do while statement.
     struct DoWhileStatement {
         block: Block,
         condition: Expression,
@@ -489,18 +628,21 @@ stmt_node!(
 );
 
 stmt_node!(
+    /// An emit statement.
     struct EmitStatement {
         event_call: FunctionCall,
     }
 );
 
 stmt_node!(
+    /// An expression statement.
     struct ExpressionStatement {
         expression: Expression,
     }
 );
 
 stmt_node!(
+    /// A for statement.
     struct ForStatement {
         body: BlockOrStatement,
         condition: Option<Expression>,
@@ -509,19 +651,8 @@ stmt_node!(
     }
 );
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum BlockOrStatement {
-    Block,
-    Statement,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum ExpressionOrVariableDeclarationStatement {
-    ExpressionStatement,
-    VariableDeclarationStatement,
-}
-
 stmt_node!(
+    /// A variable declaration statement.
     struct VariableDeclarationStatement {
         assignments: Vec<usize>,
         declarations: Vec<VariableDeclaration>,
@@ -530,6 +661,7 @@ stmt_node!(
 );
 
 stmt_node!(
+    /// An if statement.
     struct IfStatement {
         condition: Expression,
         false_body: Option<BlockOrStatement>,
@@ -538,6 +670,9 @@ stmt_node!(
 );
 
 ast_node!(
+    /// A block of inline assembly.
+    ///
+    /// Refer to the [yul] module for Yul AST nodes.
     struct InlineAssembly {
         documentation: Option<String>, // TODO
         ast: YulBlock,
@@ -547,6 +682,7 @@ ast_node!(
     }
 );
 
+/// A reference to an external variable or slot in an inline assembly block.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ExternalInlineAssemblyReference {
     #[serde(with = "serde_helpers::display_from_str")]
@@ -558,161 +694,28 @@ pub struct ExternalInlineAssemblyReference {
     pub suffix: AssemblyReferenceSuffix,
 }
 
+/// An assembly reference suffix.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AssemblyReferenceSuffix {
+    /// The reference refers to a storage slot.
     Slot,
+    /// The reference refers to an offset.
     Offset,
 }
 
+/// Inline assembly flags.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum InlineAssemblyFlag {
     MemorySafe,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct YulBlock {
-    #[serde(with = "serde_helpers::display_from_str")]
-    pub src: SourceLocation,
-    pub statements: Vec<YulStatement>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct YulAssignment {
-    #[serde(with = "serde_helpers::display_from_str")]
-    pub src: SourceLocation,
-    pub value: YulExpression,
-    pub variable_names: Vec<YulIdentifier>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct YulFunctionCall {
-    #[serde(with = "serde_helpers::display_from_str")]
-    pub src: SourceLocation,
-    pub arguments: Vec<YulExpression>,
-    pub variable_names: Vec<YulIdentifier>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct YulIdentifier {
-    #[serde(with = "serde_helpers::display_from_str")]
-    pub src: SourceLocation,
-    pub name: String,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct YulLiteralValue {
-    #[serde(with = "serde_helpers::display_from_str")]
-    pub src: SourceLocation,
-    pub value: String, // TODO
-    pub kind: YulLiteralValueKind,
-    pub type_name: String, // TODO
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum YulLiteralValueKind {
-    Number,
-    String,
-    Bool,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct YulLiteralHexValue {
-    #[serde(with = "serde_helpers::display_from_str")]
-    pub src: SourceLocation,
-    pub hex_value: String,     // TODO
-    pub value: Option<String>, // TODO
-    pub kind: YulLiteralValueKind,
-    pub type_name: String, // TODO
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct YulKeyword {
-    #[serde(with = "serde_helpers::display_from_str")]
-    pub src: SourceLocation,
-}
-
-pub type YulBreak = YulKeyword;
-pub type YulContinue = YulKeyword;
-pub type YulLeave = YulKeyword;
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct YulExpressionStatement {
-    #[serde(with = "serde_helpers::display_from_str")]
-    pub src: SourceLocation,
-    pub expression: YulExpression,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct YulForLoop {
-    #[serde(with = "serde_helpers::display_from_str")]
-    pub src: SourceLocation,
-    pub body: YulBlock,
-    pub condition: YulExpression,
-    pub post: YulBlock,
-    pub pre: YulBlock,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct YulFunctionDefinition {
-    #[serde(with = "serde_helpers::display_from_str")]
-    pub src: SourceLocation,
-    pub body: YulBlock,
-    pub name: String,
-    pub parameters: Vec<YulTypedName>,
-    pub return_variables: Vec<YulTypedName>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct YulTypedName {
-    #[serde(with = "serde_helpers::display_from_str")]
-    pub src: SourceLocation,
-    pub name: String,
-    pub type_name: String, // TODO
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct YulIf {
-    #[serde(with = "serde_helpers::display_from_str")]
-    pub src: SourceLocation,
-    pub body: YulBlock,
-    pub condition: YulExpression,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct YulSwitch {
-    #[serde(with = "serde_helpers::display_from_str")]
-    pub src: SourceLocation,
-    pub cases: Vec<YulCase>,
-    pub expression: YulExpression,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct YulCase {
-    #[serde(with = "serde_helpers::display_from_str")]
-    pub src: SourceLocation,
-    pub body: YulBlock,
-    pub value: YulCaseValue,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum YulCaseValue {
-    Default,
-    YulLiteral,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct YulVariableDeclaration {
-    #[serde(with = "serde_helpers::display_from_str")]
-    pub src: SourceLocation,
-    pub value: Option<YulExpression>,
-    pub variables: Vec<YulTypedName>,
-}
-
 stmt_node!(
+    /// A placeholder statement (`_`)
     struct PlaceholderStatement {}
 );
 
 stmt_node!(
+    /// A return statement.
     struct Return {
         expression: Option<Expression>,
         function_return_parameters: usize,
@@ -720,12 +723,14 @@ stmt_node!(
 );
 
 stmt_node!(
+    /// A revert statement.
     struct RevertStatement {
         error_call: FunctionCall,
     }
 );
 
 stmt_node!(
+    /// A try/catch statement.
     struct TryStatement {
         clauses: Vec<TryCatchClause>,
         external_call: FunctionCall,
@@ -733,6 +738,7 @@ stmt_node!(
 );
 
 ast_node!(
+    /// A try/catch clause.
     struct TryCatchClause {
         block: Block,
         error_name: String,
@@ -741,12 +747,14 @@ ast_node!(
 );
 
 stmt_node!(
+    /// An unchecked block.
     struct UncheckedBlock {
         statements: Vec<Statement>,
     }
 );
 
 stmt_node!(
+    /// A while statement.
     struct WhileStatement {
         body: BlockOrStatement,
         condition: Expression,
@@ -754,6 +762,7 @@ stmt_node!(
 );
 
 ast_node!(
+    /// A modifier or base constructor invocation.
     struct ModifierInvocation {
         arguments: Vec<Expression>,
         kind: ModifierInvocationKind,
@@ -761,20 +770,17 @@ ast_node!(
     }
 );
 
+/// Modifier invocation kinds.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ModifierInvocationKind {
+    /// A regular modifier invocation.
     ModifierInvocation,
+    /// A base constructor invocation.
     BaseConstructorSpecifier,
 }
 
-// TODO: Better name
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum IdentifierOrIdentifierPath {
-    Identifier,
-    IdentifierPath,
-}
-
 ast_node!(
+    /// A modifier definition.
     struct ModifierDefinition {
         name: String,
         name_location: Option<String>, // TODO
@@ -789,6 +795,7 @@ ast_node!(
 );
 
 ast_node!(
+    /// A struct definition.
     struct StructDefinition {
         name: String,
         name_location: Option<String>, // TODO
@@ -800,6 +807,7 @@ ast_node!(
 );
 
 ast_node!(
+    /// A user defined value type definition.
     struct UserDefinedValueTypeDefinition {
         name: String,
         name_location: Option<String>, // TODO
@@ -809,6 +817,7 @@ ast_node!(
 );
 
 ast_node!(
+    /// A using for directive.
     struct UsingForDirective {
         function_list: Vec<FunctionIdentifierPath>,
         global: bool,
@@ -817,12 +826,14 @@ ast_node!(
     }
 );
 
+/// A wrapper around [IdentifierPath] for the [UsingForDirective].
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FunctionIdentifierPath {
     pub function: IdentifierPath,
 }
 
 ast_node!(
+    /// An import directive.
     struct ImportDirective {
         absolute_path: String,
         file: String,
@@ -834,6 +845,9 @@ ast_node!(
     }
 );
 
+/// A symbol alias.
+///
+/// Symbol aliases can be defined using the [ImportDirective].
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SymbolAlias {
     pub foreign: Identifier,
@@ -842,6 +856,7 @@ pub struct SymbolAlias {
 }
 
 ast_node!(
+    /// A pragma directive.
     struct PragmaDirective {
         literals: Vec<String>,
     }

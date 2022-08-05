@@ -61,24 +61,6 @@ impl fmt::Display for SourceLocation {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum Expression {
-    Assignment,
-    BinaryOperation,
-    Conditional,
-    ElementaryTypeNameExpression,
-    FunctionCall,
-    FunctionCallOptions,
-    Identifier,
-    IndexAccess,
-    IndexRangeAccess,
-    Literal,
-    MemberAccess,
-    NewExpression,
-    TupleExpression,
-    UnaryOperation,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum StateMutability {
     Payable,
     Pure,
@@ -86,15 +68,7 @@ pub enum StateMutability {
     View,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum TypeName {
-    ArrayTypeName,
-    ElementaryTypeName,
-    FunctionTypeName,
-    Mapping,
-    UserDefinedTypeName,
-}
-
+/// Function mutability specifier.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Mutability {
     Mutable,
@@ -102,6 +76,7 @@ pub enum Mutability {
     Constant,
 }
 
+/// Storage location specifier.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum StorageLocation {
     Calldata,
@@ -110,6 +85,7 @@ pub enum StorageLocation {
     Storage,
 }
 
+/// Function visibility specifier.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Visibility {
     External,
@@ -118,50 +94,9 @@ pub enum Visibility {
     Private,
 }
 
+/// A type description.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum Statement {
-    Block,
-    Break,
-    Continue,
-    DoWhileStatement,
-    EmitStatement,
-    ExpressionStatement,
-    ForStatement,
-    IfStatement,
-    InlineAssembly,
-    PlaceholderStatement,
-    Return,
-    RevertStatement,
-    TryStatement,
-    UncheckedBlock,
-    VariableDeclarationStatement,
-    WhileStatement,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum YulStatement {
-    YulAssignment,
-    YulBlock,
-    YulBreak,
-    YulContinue,
-    YulExpressionStatement,
-    YulLeave,
-    YulForLoop,
-    YulFunctionDefinition,
-    YulIf,
-    YulSwitch,
-    YulVariableDeclaration,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum YulExpression {
-    YulFunctionCall,
-    YulIdentifier,
-    YulLiteral,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum YulLiteral {
-    YulLiteralValue,
-    YulLiteralHexValue,
+pub struct TypeDescriptions {
+    pub type_identifier: Option<String>,
+    pub type_string: Option<String>,
 }
