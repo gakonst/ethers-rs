@@ -60,6 +60,7 @@ impl fmt::Display for SourceLocation {
     }
 }
 
+/// Function mutability specifier.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum StateMutability {
     Payable,
@@ -68,7 +69,7 @@ pub enum StateMutability {
     View,
 }
 
-/// Function mutability specifier.
+/// Variable mutability specifier.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Mutability {
     Mutable,
@@ -85,7 +86,7 @@ pub enum StorageLocation {
     Storage,
 }
 
-/// Function visibility specifier.
+/// Visibility specifier.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Visibility {
     External,
