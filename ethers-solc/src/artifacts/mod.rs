@@ -1846,7 +1846,10 @@ impl SourceFile {
     pub fn contains_contract_definition(&self) -> bool {
         if let Some(ref ast) = self.ast {
             // contract definitions are only allowed at the source-unit level <https://docs.soliditylang.org/en/latest/grammar.html>
-            return ast.nodes.iter().any(|node| matches!(node, SourceUnitPart::ContractDefinition))
+            return ast
+                .nodes
+                .iter()
+                .any(|node| matches!(node, SourceUnitPart::ContractDefinition(_)))
             // abstract contract, interfaces: ContractDefinition
         }
 

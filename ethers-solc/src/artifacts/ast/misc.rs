@@ -3,10 +3,10 @@ use std::{fmt, fmt::Write, str::FromStr};
 
 /// Represents the source location of a node: `<start byte>:<length>:<source index>`.
 ///
-/// The `length` and `index` can be -1 which is represented as `None`
+/// The `start`, `length` and `index` can be -1 which is represented as `None`
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SourceLocation {
-    pub start: usize,
+    pub start: Option<usize>,
     pub length: Option<usize>,
     pub index: Option<usize>,
 }
@@ -21,7 +21,7 @@ impl FromStr for SourceLocation {
         let start = split
             .next()
             .ok_or_else(invalid_location)?
-            .parse::<usize>()
+            .parse::<isize>()
             .map_err(|_| invalid_location())?;
         let length = split
             .next()
@@ -34,6 +34,7 @@ impl FromStr for SourceLocation {
             .parse::<isize>()
             .map_err(|_| invalid_location())?;
 
+        let start = if start < 0 { None } else { Some(start as usize) };
         let length = if length < 0 { None } else { Some(length as usize) };
         let index = if index < 0 { None } else { Some(index as usize) };
 
@@ -43,7 +44,11 @@ impl FromStr for SourceLocation {
 
 impl fmt::Display for SourceLocation {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.start.fmt(f)?;
+        if let Some(start) = self.start {
+            start.fmt(f)?;
+        } else {
+            f.write_str("-1")?;
+        }
         f.write_char(':')?;
         if let Some(length) = self.length {
             length.fmt(f)?;
@@ -60,25 +65,9 @@ impl fmt::Display for SourceLocation {
     }
 }
 
+/// Function mutability specifier.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum Expression {
-    Assignment,
-    BinaryOperation,
-    Conditional,
-    ElementaryTypeNameExpression,
-    FunctionCall,
-    FunctionCallOptions,
-    Identifier,
-    IndexAccess,
-    IndexRangeAccess,
-    Literal,
-    MemberAccess,
-    NewExpression,
-    TupleExpression,
-    UnaryOperation,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum StateMutability {
     Payable,
     Pure,
@@ -86,23 +75,18 @@ pub enum StateMutability {
     View,
 }
 
+/// Variable mutability specifier.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum TypeName {
-    ArrayTypeName,
-    ElementaryTypeName,
-    FunctionTypeName,
-    Mapping,
-    UserDefinedTypeName,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum Mutability {
     Mutable,
     Immutable,
     Constant,
 }
 
+/// Storage location specifier.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum StorageLocation {
     Calldata,
     Default,
@@ -110,7 +94,9 @@ pub enum StorageLocation {
     Storage,
 }
 
+/// Visibility specifier.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum Visibility {
     External,
     Public,
@@ -118,50 +104,10 @@ pub enum Visibility {
     Private,
 }
 
+/// A type description.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum Statement {
-    Block,
-    Break,
-    Continue,
-    DoWhileStatement,
-    EmitStatement,
-    ExpressionStatement,
-    ForStatement,
-    IfStatement,
-    InlineAssembly,
-    PlaceholderStatement,
-    Return,
-    RevertStatement,
-    TryStatement,
-    UncheckedBlock,
-    VariableDeclarationStatement,
-    WhileStatement,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum YulStatement {
-    YulAssignment,
-    YulBlock,
-    YulBreak,
-    YulContinue,
-    YulExpressionStatement,
-    YulLeave,
-    YulForLoop,
-    YulFunctionDefinition,
-    YulIf,
-    YulSwitch,
-    YulVariableDeclaration,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum YulExpression {
-    YulFunctionCall,
-    YulIdentifier,
-    YulLiteral,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum YulLiteral {
-    YulLiteralValue,
-    YulLiteralHexValue,
+#[serde(rename_all = "camelCase")]
+pub struct TypeDescriptions {
+    pub type_identifier: Option<String>,
+    pub type_string: Option<String>,
 }
