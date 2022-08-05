@@ -52,5 +52,31 @@ macro_rules! expr_node {
     }
 }
 
+/// A macro that expands to a struct with common expression node fields.
+macro_rules! stmt_node {
+    (
+        $(#[$struct_meta:meta])*
+        struct $name:ident {
+            $(
+                $(#[$field_meta:meta])*
+                $field:ident: $ty:ty
+            ),* $(,)*
+        }
+    ) => {
+        ast_node!(
+            $(#[$struct_meta])*
+            struct $name {
+                // TODO
+                documentation: Option<String>,
+                $(
+                    $(#[$field_meta])*
+                    $field: $ty
+                ),*
+            }
+        );
+    }
+}
+
 pub(crate) use ast_node;
 pub(crate) use expr_node;
+pub(crate) use stmt_node;
