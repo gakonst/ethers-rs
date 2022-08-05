@@ -52,7 +52,7 @@ macro_rules! expr_node {
     }
 }
 
-/// A macro that expands to a struct with common expression node fields.
+/// A macro that expands to a struct with common statement node fields.
 macro_rules! stmt_node {
     (
         $(#[$struct_meta:meta])*
