@@ -67,22 +67,26 @@ impl Remapping {
 
 #[derive(thiserror::Error, Debug, PartialEq, Eq, PartialOrd)]
 pub enum RemappingError {
-    #[error("no prefix found")]
-    NoPrefix,
-    #[error("no target found")]
-    NoTarget,
+    #[error("invalid remapping format, found `{0}`, expected `<key>=<value>`")]
+    InvalidRemapping(String),
+    #[error("remapping key can't be empty, found `{0}`, expected `<key>=<value>`")]
+    EmptyRemappingKey(String),
+    #[error("remapping value must be a path, found `{0}`, expected `<key>=<value>`")]
+    EmptyRemappingValue(String),
 }
 
 impl FromStr for Remapping {
     type Err = RemappingError;
 
-    fn from_str(remapping: &str) -> std::result::Result<Self, Self::Err> {
-        let (name, path) = remapping.split_once('=').ok_or(RemappingError::NoPrefix)?;
+    fn from_str(remapping: &str) -> Result<Self, Self::Err> {
+        let (name, path) = remapping
+            .split_once('=')
+            .ok_or_else(|| RemappingError::InvalidRemapping(remapping.to_string()))?;
         if name.trim().is_empty() {
-            return Err(RemappingError::NoPrefix)
+            return Err(RemappingError::EmptyRemappingKey(remapping.to_string()))
         }
         if path.trim().is_empty() {
-            return Err(RemappingError::NoTarget)
+            return Err(RemappingError::EmptyRemappingValue(remapping.to_string()))
         }
         Ok(Remapping { name: name.to_string(), path: path.to_string() })
     }
