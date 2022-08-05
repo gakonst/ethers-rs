@@ -754,10 +754,10 @@ mod tests {
         assert_eq!(remapping.path, "../b/c/d".to_string());
 
         let err = Remapping::from_str("").unwrap_err();
-        assert_eq!(err, RemappingError::NoPrefix);
+        matches!(err, RemappingError::InvalidRemapping(_));
 
         let err = Remapping::from_str("oz=").unwrap_err();
-        assert_eq!(err, RemappingError::NoTarget);
+        matches!(err, RemappingError::EmptyRemappingValue(_));
     }
 
     // <https://doc.rust-lang.org/rust-by-example/std_misc/fs.html>
