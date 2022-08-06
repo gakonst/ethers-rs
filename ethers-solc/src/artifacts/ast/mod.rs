@@ -942,7 +942,7 @@ mod tests {
 
                 // TODO: Support legacy AST. In legacy AST, "nodeType" is "name" and many
                 // properties are lifted from the AST nodes themselves into an "attributes" map
-                if path_str.contains("legacy") || path_str.ends_with("documentation.json") {
+                if path_str.contains("legacy") {
                     println!("... {} skipped", path.to_string_lossy());
                     return
                 }
