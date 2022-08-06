@@ -12,7 +12,7 @@ pub mod visitor;
 /// The Yul AST is embedded into the Solidity AST for inline assembly blocks.
 pub mod yul;
 
-use crate::{artifacts::serde_helpers, EvmVersion};
+use crate::artifacts::serde_helpers;
 use macros::{ast_node, expr_node, node_group, stmt_node};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -726,9 +726,11 @@ ast_node!(
     /// Refer to the [yul] module for Yul AST nodes.
     struct InlineAssembly {
         documentation: Option<String>, // TODO
+        #[serde(rename = "AST")]
         ast: YulBlock,
-        evm_version: EvmVersion,
-        external_references: ExternalInlineAssemblyReference,
+        // TODO: We need this camel case for the AST, but pascal case other places in ethers-solc
+        //evm_version: EvmVersion,
+        external_references: Vec<ExternalInlineAssemblyReference>,
         flags: Vec<InlineAssemblyFlag>,
     }
 );
@@ -920,10 +922,22 @@ ast_node!(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::{fs, path::PathBuf};
 
     #[test]
     fn can_parse_ast() {
-        let ast = include_str!("../../../test-data/ast/ast-erc4626.json");
-        let _ast: SourceUnit = serde_json::from_str(ast).unwrap();
+        fs::read_dir(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test-data").join("ast"))
+            .unwrap()
+            .for_each(|path| {
+                let path = path.unwrap().path();
+
+                let ast = fs::read_to_string(&path).unwrap();
+                if let Err(e) = serde_json::from_str::<SourceUnit>(&ast) {
+                    println!("fail: {e}");
+                    panic!();
+                } else {
+                    print!("... {} ", path.to_string_lossy());
+                }
+            })
     }
 }
