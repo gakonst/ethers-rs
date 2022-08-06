@@ -3,10 +3,10 @@ use std::{fmt, fmt::Write, str::FromStr};
 
 /// Represents the source location of a node: `<start byte>:<length>:<source index>`.
 ///
-/// The `length` and `index` can be -1 which is represented as `None`
+/// The `start`, `length` and `index` can be -1 which is represented as `None`
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SourceLocation {
-    pub start: usize,
+    pub start: Option<usize>,
     pub length: Option<usize>,
     pub index: Option<usize>,
 }
@@ -21,7 +21,7 @@ impl FromStr for SourceLocation {
         let start = split
             .next()
             .ok_or_else(invalid_location)?
-            .parse::<usize>()
+            .parse::<isize>()
             .map_err(|_| invalid_location())?;
         let length = split
             .next()
@@ -34,6 +34,7 @@ impl FromStr for SourceLocation {
             .parse::<isize>()
             .map_err(|_| invalid_location())?;
 
+        let start = if start < 0 { None } else { Some(length as usize) };
         let length = if length < 0 { None } else { Some(length as usize) };
         let index = if index < 0 { None } else { Some(index as usize) };
 
@@ -43,7 +44,11 @@ impl FromStr for SourceLocation {
 
 impl fmt::Display for SourceLocation {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.start.fmt(f)?;
+        if let Some(start) = self.start {
+            start.fmt(f)?;
+        } else {
+            f.write_str("-1")?;
+        }
         f.write_char(':')?;
         if let Some(length) = self.length {
             length.fmt(f)?;

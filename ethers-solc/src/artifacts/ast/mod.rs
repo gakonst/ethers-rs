@@ -149,7 +149,8 @@ ast_node!(
     /// A contract definition.
     struct ContractDefinition {
         name: String,
-        name_location: Option<String>,
+        #[serde(with = "serde_helpers::display_from_str_opt")]
+        name_location: Option<SourceLocation>,
         #[serde(rename = "abstract")]
         is_abstract: bool,
         base_contracts: Vec<InheritanceSpecifier>,
@@ -471,7 +472,8 @@ ast_node!(
     /// A variable declaration.
     struct VariableDeclaration {
         name: String,
-        name_location: Option<String>, // TODO
+        #[serde(with = "serde_helpers::display_from_str_opt")]
+        name_location: Option<SourceLocation>,
         #[serde(default)]
         base_functions: Vec<usize>,
         constant: bool,
@@ -575,7 +577,8 @@ ast_node!(
     /// An enum definition.
     struct EnumDefinition {
         name: String,
-        name_location: Option<String>, // TODO
+        #[serde(with = "serde_helpers::display_from_str_opt")]
+        name_location: Option<SourceLocation>,
         canonical_name: String,
         members: Vec<EnumValue>,
     }
@@ -585,7 +588,8 @@ ast_node!(
     /// An enum value.
     struct EnumValue {
         name: String,
-        name_location: Option<String>, // TODO
+        #[serde(with = "serde_helpers::display_from_str_opt")]
+        name_location: Option<SourceLocation>,
     }
 );
 
@@ -593,7 +597,8 @@ ast_node!(
     /// A custom error definition.
     struct ErrorDefinition {
         name: String,
-        name_location: String, // TODO
+        #[serde(with = "serde_helpers::display_from_str")]
+        name_location: SourceLocation,
         documentation: Option<StructuredDocumentation>,
         error_selector: Option<String>, // TODO
         parameters: ParameterList,
@@ -604,7 +609,8 @@ ast_node!(
     /// An event definition.
     struct EventDefinition {
         name: String,
-        name_location: Option<String>, // TODO
+        #[serde(with = "serde_helpers::display_from_str_opt")]
+        name_location: Option<SourceLocation>,
         anonymous: bool,
         event_selector: Option<String>, // TODO
         documentation: Option<StructuredDocumentation>,
@@ -616,7 +622,8 @@ ast_node!(
     /// A function definition.
     struct FunctionDefinition {
         name: String,
-        name_location: Option<String>, // TODO
+        #[serde(with = "serde_helpers::display_from_str_opt")]
+        name_location: Option<SourceLocation>,
         #[serde(default)]
         base_functions: Vec<usize>,
         body: Option<Block>,
@@ -844,7 +851,8 @@ ast_node!(
     /// A modifier definition.
     struct ModifierDefinition {
         name: String,
-        name_location: Option<String>, // TODO
+        #[serde(with = "serde_helpers::display_from_str_opt")]
+        name_location: Option<SourceLocation>,
         #[serde(default)]
         base_modifiers: Vec<usize>,
         body: Block,
@@ -861,7 +869,8 @@ ast_node!(
     /// A struct definition.
     struct StructDefinition {
         name: String,
-        name_location: Option<String>, // TODO
+        #[serde(with = "serde_helpers::display_from_str_opt")]
+        name_location: Option<SourceLocation>,
         canonical_name: String,
         members: Vec<VariableDeclaration>,
         scope: usize,
@@ -873,7 +882,8 @@ ast_node!(
     /// A user defined value type definition.
     struct UserDefinedValueTypeDefinition {
         name: String,
-        name_location: Option<String>, // TODO
+        #[serde(with = "serde_helpers::display_from_str_opt")]
+        name_location: Option<SourceLocation>,
         canonical_name: Option<String>,
         underlying_type: TypeName,
     }
@@ -902,7 +912,8 @@ ast_node!(
     struct ImportDirective {
         absolute_path: String,
         file: String,
-        name_location: Option<String>, // TODO
+        #[serde(with = "serde_helpers::display_from_str_opt")]
+        name_location: Option<SourceLocation>,
         scope: usize,
         source_unit: usize,
         symbol_aliases: Vec<SymbolAlias>,
@@ -917,7 +928,8 @@ ast_node!(
 pub struct SymbolAlias {
     pub foreign: Identifier,
     pub local: Option<String>,
-    pub name_location: Option<String>, // TODO
+    #[serde(with = "serde_helpers::display_from_str_opt")]
+    pub name_location: Option<SourceLocation>,
 }
 
 ast_node!(
