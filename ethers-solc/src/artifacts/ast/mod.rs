@@ -931,12 +931,17 @@ mod tests {
             .for_each(|path| {
                 let path = path.unwrap().path();
 
-                let ast = fs::read_to_string(&path).unwrap();
-                if let Err(e) = serde_json::from_str::<SourceUnit>(&ast) {
-                    println!("fail: {e}");
-                    panic!();
-                } else {
-                    print!("... {} ", path.to_string_lossy());
+                let input = fs::read_to_string(&path).unwrap();
+                let deserializer = &mut serde_json::Deserializer::from_str(&input);
+                let result: Result<SourceUnit, _> = serde_path_to_error::deserialize(deserializer);
+                match result {
+                    Err(e) => {
+                        println!("... {} fail: {e}", path.to_string_lossy());
+                        panic!();
+                    }
+                    Ok(_) => {
+                        println!("... {} ok", path.to_string_lossy());
+                    }
                 }
             })
     }

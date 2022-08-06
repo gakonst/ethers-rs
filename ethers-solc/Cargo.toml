@@ -58,6 +58,7 @@ rand = "0.8.5"
 pretty_assertions = "1.2.1"
 tempfile = "3.3.0"
 tokio = { version = "1.18", features = ["full"] }
+serde_path_to_error = "0.1.8"
 
 [[bench]]
 name = "compile_many"
