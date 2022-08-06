@@ -109,7 +109,7 @@
                     }
                   ]
                 },
-                "evmVersion": %EVMVERSION%,
+                "evmVersion": "loop",
                 "externalReferences": [],
                 "id": 3,
                 "nodeType": "InlineAssembly",

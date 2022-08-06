@@ -51,7 +51,6 @@ pub struct YulFunctionCall {
     #[serde(with = "serde_helpers::display_from_str")]
     pub src: SourceLocation,
     pub arguments: Vec<YulExpression>,
-    pub variable_names: Vec<YulIdentifier>,
 }
 
 /// A Yul identifier.
@@ -127,7 +126,9 @@ pub struct YulFunctionDefinition {
     pub src: SourceLocation,
     pub body: YulBlock,
     pub name: String,
+    #[serde(default)]
     pub parameters: Vec<YulTypedName>,
+    #[serde(default)]
     pub return_variables: Vec<YulTypedName>,
 }
 
@@ -138,6 +139,7 @@ pub struct YulTypedName {
     #[serde(with = "serde_helpers::display_from_str")]
     pub src: SourceLocation,
     pub name: String,
+    #[serde(rename = "type")]
     pub type_name: String, // TODO
 }
 

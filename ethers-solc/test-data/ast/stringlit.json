@@ -67,7 +67,7 @@
                     }
                   ]
                 },
-                "evmVersion": %EVMVERSION%,
+                "evmVersion": "london",
                 "externalReferences": [],
                 "id": 3,
                 "nodeType": "InlineAssembly",
