@@ -62,6 +62,7 @@ impl fmt::Display for SourceLocation {
 
 /// Function mutability specifier.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum StateMutability {
     Payable,
     Pure,
@@ -71,6 +72,7 @@ pub enum StateMutability {
 
 /// Variable mutability specifier.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum Mutability {
     Mutable,
     Immutable,
@@ -79,6 +81,7 @@ pub enum Mutability {
 
 /// Storage location specifier.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum StorageLocation {
     Calldata,
     Default,
@@ -88,6 +91,7 @@ pub enum StorageLocation {
 
 /// Visibility specifier.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum Visibility {
     External,
     Public,

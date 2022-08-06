@@ -122,11 +122,11 @@ node_group! {
 }
 
 // TODO: Better name
-node_group! {
-    BlockOrStatement;
-
-    Block,
-    Statement
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum BlockOrStatement {
+    Statement(Statement),
+    Block(Block),
 }
 
 // TODO: Better name
@@ -150,10 +150,12 @@ ast_node!(
     struct ContractDefinition {
         name: String,
         name_location: Option<String>,
+        #[serde(rename = "abstract")]
         is_abstract: bool,
         base_contracts: Vec<InheritanceSpecifier>,
         canonical_name: Option<String>,
         contract_dependencies: Vec<usize>,
+        #[serde(rename = "contractKind")]
         kind: ContractKind,
         documentation: Option<StructuredDocumentation>,
         fully_implemented: bool,
@@ -166,6 +168,7 @@ ast_node!(
 
 /// All Solidity contract kinds.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum ContractKind {
     /// A normal contract.
     Contract,
@@ -178,6 +181,7 @@ pub enum ContractKind {
 ast_node!(
     /// An inheritance specifier.
     struct InheritanceSpecifier {
+        #[serde(default)]
         arguments: Vec<Expression>,
         base_name: UserDefinedTypeNameOrIdentifierPath,
     }
@@ -186,8 +190,10 @@ ast_node!(
 expr_node!(
     /// An assignment expression.
     struct Assignment {
+        #[serde(rename = "leftHandSide")]
         lhs: Expression,
         operator: AssignmentOperator,
+        #[serde(rename = "rightHandSide")]
         rhs: Expression,
     }
 );
@@ -196,26 +202,37 @@ expr_node!(
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AssignmentOperator {
     /// Simple assignment (`=`)
+    #[serde(rename = "=")]
     Assign,
     /// Add and assign (`+=`)
+    #[serde(rename = "+=")]
     AddAssign,
     /// Subtract and assign (`-=`)
+    #[serde(rename = "-=")]
     SubAssign,
     /// Multiply and assign (`*=`)
+    #[serde(rename = "*=")]
     MulAssign,
     /// Divide and assign (`/=`)
+    #[serde(rename = "/=")]
     DivAssign,
     /// Modulo and assign (`%=`)
+    #[serde(rename = "%=")]
     ModAssign,
     /// Bitwise or and assign (`|=`)
+    #[serde(rename = "|=")]
     OrAssign,
     /// Bitwise and and assign (`&=`)
+    #[serde(rename = "&=")]
     AndAssign,
     /// Bitwise xor and assign (`^=`)
+    #[serde(rename = "^=")]
     XorAssign,
     /// Right shift and assign (`>>=`)
+    #[serde(rename = ">>=")]
     ShrAssign,
     /// Left shift and assign (`<<=`)
+    #[serde(rename = "<<=")]
     ShlAssign,
 }
 
@@ -223,8 +240,10 @@ ast_node!(
     /// A binary operation.
     struct BinaryOperation {
         common_type: TypeDescriptions,
+        #[serde(rename = "leftExpression")]
         lhs: Expression,
         operator: BinaryOperator,
+        #[serde(rename = "rightExpression")]
         rhs: Expression,
     }
 );
@@ -233,42 +252,61 @@ ast_node!(
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BinaryOperator {
     /// Addition (`+`)
+    #[serde(rename = "+")]
     Add,
     /// Subtraction (`-`)
+    #[serde(rename = "-")]
     Sub,
     /// Multiplication (`*`)
+    #[serde(rename = "*")]
     Mul,
     /// Division (`/`)
+    #[serde(rename = "/")]
     Div,
     /// Modulo (`%`)
+    #[serde(rename = "%")]
     Mod,
     /// Exponentiation (`**`)
+    #[serde(rename = "**")]
     Pow,
     /// Logical and (`&&`)
+    #[serde(rename = "&&")]
     And,
     /// Logical or (`||`)
+    #[serde(rename = "||")]
     Or,
     /// Not equals (`!=`)
+    #[serde(rename = "!=")]
     NotEqual,
     /// Equals (`==`)
+    #[serde(rename = "==")]
     Equal,
     /// Less than (`<`)
+    #[serde(rename = "<")]
     LessThan,
     /// Less than or equal (`<=`)
+    #[serde(rename = "<=")]
     LessThanOrEqual,
     /// Greater than (`>`)
+    #[serde(rename = ">")]
     GreaterThan,
     /// Greater than or equal (`>=`)
+    #[serde(rename = ">=")]
     GreaterThanOrEqual,
     /// Bitwise xor (`^`)
+    #[serde(rename = "^")]
     Xor,
     /// Bitwise and (`&`)
+    #[serde(rename = "&")]
     BitAnd,
     /// Bitwise or (`|`)
+    #[serde(rename = "|")]
     BitOr,
     /// Shift left (`<<`)
+    #[serde(rename = "<<")]
     Shl,
     /// Shift right (`>>`)
+    #[serde(rename = ">>")]
     Shr,
 }
 
@@ -311,6 +349,7 @@ expr_node!(
 
 /// Function call kinds.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum FunctionCallKind {
     /// A regular function call.
     FunctionCall,
@@ -332,10 +371,11 @@ expr_node!(
 ast_node!(
     /// An identifier.
     struct Identifier {
+        #[serde(default)]
         argument_types: Vec<TypeDescriptions>,
         name: String,
-        overloaded_declarations: Vec<usize>,
-        referenced_declaration: Option<usize>,
+        overloaded_declarations: Vec<isize>,
+        referenced_declaration: Option<isize>,
         type_descriptions: TypeDescriptions,
     }
 );
@@ -370,6 +410,7 @@ expr_node!(
 
 /// Literal kinds.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum LiteralKind {
     /// A boolean.
     Bool,
@@ -388,7 +429,7 @@ expr_node!(
     struct MemberAccess {
         expression: Expression,
         member_name: String,
-        referenced_declaration: Option<usize>,
+        referenced_declaration: Option<isize>,
     }
 );
 
@@ -431,10 +472,12 @@ ast_node!(
     struct VariableDeclaration {
         name: String,
         name_location: Option<String>, // TODO
+        #[serde(default)]
         base_functions: Vec<usize>,
         constant: bool,
         documentation: Option<StructuredDocumentation>,
         function_selector: Option<String>, // TODO
+        #[serde(default)]
         indexed: bool,
         mutability: Mutability,
         overrides: Option<OverrideSpecifier>,
@@ -469,7 +512,7 @@ ast_node!(
         contract_scope: Option<String>, // TODO
         name: Option<String>,
         path_node: Option<IdentifierPath>,
-        referenced_declaration: usize,
+        referenced_declaration: isize,
     }
 );
 
@@ -477,7 +520,7 @@ ast_node!(
     /// An identifier path.
     struct IdentifierPath {
         name: String,
-        referenced_declaration: usize,
+        referenced_declaration: isize,
     }
 );
 
@@ -512,14 +555,19 @@ expr_node!(
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum UnaryOperator {
     /// Increment (`++`)
+    #[serde(rename = "++")]
     Increment,
     /// Decrement (`--`)
+    #[serde(rename = "--")]
     Decrement,
     /// Negate (`-`)
+    #[serde(rename = "-")]
     Negate,
     /// Not (`!`)
+    #[serde(rename = "!")]
     Not,
     /// `delete`
+    #[serde(rename = "delete")]
     Delete,
 }
 
@@ -569,6 +617,7 @@ ast_node!(
     struct FunctionDefinition {
         name: String,
         name_location: Option<String>, // TODO
+        #[serde(default)]
         base_functions: Vec<usize>,
         body: Option<Block>,
         documentation: Option<StructuredDocumentation>,
@@ -581,6 +630,7 @@ ast_node!(
         return_parameters: ParameterList,
         scope: usize,
         state_mutability: StateMutability,
+        #[serde(rename = "virtual")]
         is_virtual: bool,
         visibility: Visibility,
     }
@@ -588,6 +638,7 @@ ast_node!(
 
 /// Function kinds.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum FunctionKind {
     /// A contract function.
     Function,
@@ -764,14 +815,16 @@ stmt_node!(
 ast_node!(
     /// A modifier or base constructor invocation.
     struct ModifierInvocation {
+        #[serde(default)]
         arguments: Vec<Expression>,
-        kind: ModifierInvocationKind,
-        modifier_name: Option<IdentifierOrIdentifierPath>,
+        kind: Option<ModifierInvocationKind>,
+        modifier_name: IdentifierOrIdentifierPath,
     }
 );
 
 /// Modifier invocation kinds.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum ModifierInvocationKind {
     /// A regular modifier invocation.
     ModifierInvocation,
@@ -819,7 +872,9 @@ ast_node!(
 ast_node!(
     /// A using for directive.
     struct UsingForDirective {
+        #[serde(default)]
         function_list: Vec<FunctionIdentifierPath>,
+        #[serde(default)]
         global: bool,
         library_name: Option<UserDefinedTypeNameOrIdentifierPath>,
         type_name: Option<TypeName>,

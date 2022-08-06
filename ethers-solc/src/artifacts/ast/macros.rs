@@ -11,6 +11,7 @@ macro_rules! ast_node {
     ) => {
         $(#[$struct_meta])*
         #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+        #[serde(rename_all = "camelCase")]
         pub struct $name {
             pub id: usize,
             #[serde(with = "serde_helpers::display_from_str")]
@@ -37,6 +38,7 @@ macro_rules! expr_node {
         ast_node!(
             $(#[$struct_meta])*
             struct $name {
+                #[serde(default)]
                 argument_types: Vec<TypeDescriptions>,
                 is_constant: bool,
                 is_l_value: bool,
@@ -83,6 +85,7 @@ macro_rules! stmt_node {
 macro_rules! node_group {
     ($group:ident; $( $name:ident ),* $(,)*) => {
         #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+        #[serde(tag = "nodeType")]
         pub enum $group {
             $(
                 $name(Box<$name>),
