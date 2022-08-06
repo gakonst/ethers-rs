@@ -731,24 +731,29 @@ ast_node!(
         // TODO: We need this camel case for the AST, but pascal case other places in ethers-solc
         //evm_version: EvmVersion,
         external_references: Vec<ExternalInlineAssemblyReference>,
+        #[serde(default)]
         flags: Vec<InlineAssemblyFlag>,
     }
 );
 
 /// A reference to an external variable or slot in an inline assembly block.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ExternalInlineAssemblyReference {
     #[serde(with = "serde_helpers::display_from_str")]
     pub src: SourceLocation,
     pub declaration: usize,
-    pub is_offset: bool,
-    pub is_slot: bool,
+    #[serde(default)]
+    pub offset: bool,
+    #[serde(default)]
+    pub slot: bool,
     pub value_size: usize,
-    pub suffix: AssemblyReferenceSuffix,
+    pub suffix: Option<AssemblyReferenceSuffix>,
 }
 
 /// An assembly reference suffix.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum AssemblyReferenceSuffix {
     /// The reference refers to a storage slot.
     Slot,
@@ -839,11 +844,13 @@ ast_node!(
     struct ModifierDefinition {
         name: String,
         name_location: Option<String>, // TODO
+        #[serde(default)]
         base_modifiers: Vec<usize>,
         body: Block,
         documentation: Option<StructuredDocumentation>,
         overrides: Option<OverrideSpecifier>,
         parameters: ParameterList,
+        #[serde(rename = "virtual")]
         is_virtual: bool,
         visibility: Visibility,
     }

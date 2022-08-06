@@ -86,7 +86,7 @@
                 {
                   "attributes":
                   {
-                    "evmVersion": %EVMVERSION%,
+                    "evmVersion": "london",
                     "externalReferences":
                     [
                       null

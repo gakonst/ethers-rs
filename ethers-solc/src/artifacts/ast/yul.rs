@@ -26,13 +26,6 @@ node_group! {
     YulLiteral,
 }
 
-node_group! {
-    YulLiteral;
-
-    YulLiteralValue,
-    YulLiteralHexValue,
-}
-
 /// A Yul block.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct YulBlock {
@@ -43,6 +36,7 @@ pub struct YulBlock {
 
 /// A Yul assignment statement.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct YulAssignment {
     #[serde(with = "serde_helpers::display_from_str")]
     pub src: SourceLocation,
@@ -52,6 +46,7 @@ pub struct YulAssignment {
 
 /// A Yul function call.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct YulFunctionCall {
     #[serde(with = "serde_helpers::display_from_str")]
     pub src: SourceLocation,
@@ -69,34 +64,26 @@ pub struct YulIdentifier {
 
 /// A literal Yul value.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct YulLiteralValue {
+#[serde(rename_all = "camelCase")]
+pub struct YulLiteral {
     #[serde(with = "serde_helpers::display_from_str")]
     pub src: SourceLocation,
-    pub value: String, // TODO
-    pub kind: YulLiteralValueKind,
-    pub type_name: String, // TODO
+    pub hex_value: Option<String>, // TODO
+    pub value: Option<String>,     // TODO
+    pub kind: YulLiteralKind,
+    pub type_name: Option<String>, // TODO
 }
 
 /// Yul literal value kinds.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum YulLiteralValueKind {
+#[serde(rename_all = "camelCase")]
+pub enum YulLiteralKind {
     /// A number literal.
     Number,
     /// A string literal.
     String,
     /// A boolean literal.
     Bool,
-}
-
-/// A literal Yul hex value.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct YulLiteralHexValue {
-    #[serde(with = "serde_helpers::display_from_str")]
-    pub src: SourceLocation,
-    pub hex_value: String,     // TODO
-    pub value: Option<String>, // TODO
-    pub kind: YulLiteralValueKind,
-    pub type_name: String, // TODO
 }
 
 /// A Yul keyword.
@@ -134,6 +121,7 @@ pub struct YulForLoop {
 
 /// A Yul function definition.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct YulFunctionDefinition {
     #[serde(with = "serde_helpers::display_from_str")]
     pub src: SourceLocation,
@@ -145,6 +133,7 @@ pub struct YulFunctionDefinition {
 
 /// A Yul type name.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct YulTypedName {
     #[serde(with = "serde_helpers::display_from_str")]
     pub src: SourceLocation,
@@ -181,11 +170,13 @@ pub struct YulCase {
 
 /// A Yul switch case value.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(untagged)]
 pub enum YulCaseValue {
-    /// The default case.
-    Default,
     /// A case defined by a literal value.
     YulLiteral(YulLiteral),
+    /// The default case
+    // TODO: How do we make this only match "default"?
+    Default(String),
 }
 
 /// A Yul variable declaration.
