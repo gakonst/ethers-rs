@@ -304,6 +304,10 @@ impl ClientBuilder {
                 "https://testnet.explorer.emerald.oasis.dev/api",
                 "https://testnet.explorer.emerald.oasis.dev/",
             ),
+            Chain::Aurora => urls("https://api.aurorascan.dev/api", "https://aurorascan.dev"),
+            Chain::AuroraTestnet => {
+                urls("https://testnet.aurorascan.dev/api", "https://testnet.aurorascan.dev")
+            }
             Chain::AnvilHardhat | Chain::Dev => {
                 return Err(EtherscanError::LocalNetworksNotSupported)
             }
