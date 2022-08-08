@@ -103,6 +103,7 @@ pub struct Trace {
     #[serde(rename = "type")]
     pub action_type: ActionType,
     /// Error
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
 }
 
