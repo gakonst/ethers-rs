@@ -1072,13 +1072,6 @@ mod tests {
                 let path = path.unwrap().path();
                 let path_str = path.to_string_lossy();
 
-                // TODO: Support legacy AST. In legacy AST, "nodeType" is "name" and many
-                // properties are lifted from the AST nodes themselves into an "attributes" map
-                if path_str.contains("legacy") {
-                    println!("... {} skipped", path.to_string_lossy());
-                    return
-                }
-
                 let input = fs::read_to_string(&path).unwrap();
                 let deserializer = &mut serde_json::Deserializer::from_str(&input);
                 let result: Result<SourceUnit, _> = serde_path_to_error::deserialize(deserializer);
