@@ -482,13 +482,13 @@ ast_node!(
         /// Marks whether or not the variable is a constant before Solidity 0.7.x.
         ///
         /// After 0.7.x you must use `mutability`. For cross-version compatibility use
-        /// [`VariableDeclaration::mutability(&self)`].
+        /// [`VariableDeclaration::mutability()`].
         #[serde(default)]
         constant: bool,
         /// Marks whether or not the variable is a state variable before Solidity 0.7.x.
         ///
         /// After 0.7.x you must use `mutability`. For cross-version compatibility use
-        /// [`VariableDeclaration::mutability(&self)`].
+        /// [`VariableDeclaration::mutability()`].
         #[serde(default)]
         state_variable: bool,
         documentation: Option<StructuredDocumentation>,
@@ -496,7 +496,7 @@ ast_node!(
         #[serde(default)]
         indexed: bool,
         /// Marks the variable's mutability from Solidity 0.7.x onwards.
-        /// For cross-version compatibility use [`VariableDeclaration::mutability(&self)`].
+        /// For cross-version compatibility use [`VariableDeclaration::mutability()`].
         #[serde(default)]
         mutability: Option<Mutability>,
         overrides: Option<OverrideSpecifier>,
@@ -675,12 +675,12 @@ ast_node!(
         /// The kind of function this node defines. Only valid for Solidity versions 0.5.x and
         /// above.
         ///
-        /// For cross-version compatibility use [`FunctionDefinition::kind(&self)`].
+        /// For cross-version compatibility use [`FunctionDefinition::kind()`].
         kind: Option<FunctionKind>,
         /// The state mutability of the function.
         ///
         /// Note: This was introduced in Solidity 0.5.x. For cross-version compatibility use
-        /// [`FunctionDefinition::state_mutability(&self)`].
+        /// [`FunctionDefinition::state_mutability()`].
         #[serde(default)]
         state_mutability: Option<StateMutability>,
         #[serde(default, rename = "virtual")]
@@ -689,21 +689,21 @@ ast_node!(
         /// 0.5.x.
         ///
         /// After 0.5.x you must use `kind`. For cross-version compatibility use
-        /// [`FunctionDefinition::kind(&self)`].
+        /// [`FunctionDefinition::kind()`].
         #[serde(default)]
         is_constructor: bool,
         /// Whether or not this function is constant (view or pure). Only valid for Solidity
         /// versions below 0.5.x.
         ///
         /// After 0.5.x you must use `state_mutability`. For cross-version compatibility use
-        /// [`FunctionDefinition::state_mutability(&self)`].
+        /// [`FunctionDefinition::state_mutability()`].
         #[serde(default)]
         is_declared_const: bool,
         /// Whether or not this function is payable. Only valid for Solidity versions below
         /// 0.5.x.
         ///
         /// After 0.5.x you must use `state_mutability`. For cross-version compatibility use
-        /// [`FunctionDefinition::state_mutability(&self)`].
+        /// [`FunctionDefinition::state_mutability()`].
         #[serde(default)]
         is_payable: bool,
     }
