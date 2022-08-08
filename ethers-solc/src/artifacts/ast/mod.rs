@@ -27,6 +27,7 @@ ast_node!(
         absolute_path: String,
         #[serde(default, rename = "exportedSymbols")]
         exported_symbols: BTreeMap<String, Vec<usize>>,
+        #[serde(default)]
         license: Option<String>,
         #[serde(default, skip_serializing_if = "Vec::is_empty")]
         nodes: Vec<SourceUnitPart>,
@@ -149,9 +150,9 @@ ast_node!(
     /// A contract definition.
     struct ContractDefinition {
         name: String,
-        #[serde(with = "serde_helpers::display_from_str_opt")]
+        #[serde(default, with = "serde_helpers::display_from_str_opt")]
         name_location: Option<SourceLocation>,
-        #[serde(rename = "abstract")]
+        #[serde(default, rename = "abstract")]
         is_abstract: bool,
         base_contracts: Vec<InheritanceSpecifier>,
         canonical_name: Option<String>,
@@ -163,6 +164,7 @@ ast_node!(
         linearized_base_contracts: Vec<usize>,
         nodes: Vec<ContractDefinitionPart>,
         scope: usize,
+        #[serde(default)]
         used_errors: Vec<usize>,
     }
 );
@@ -182,7 +184,7 @@ pub enum ContractKind {
 ast_node!(
     /// An inheritance specifier.
     struct InheritanceSpecifier {
-        #[serde(default)]
+        #[serde(default, deserialize_with = "serde_helpers::default_for_null")]
         arguments: Vec<Expression>,
         base_name: UserDefinedTypeNameOrIdentifierPath,
     }
@@ -344,6 +346,7 @@ expr_node!(
         expression: Expression,
         kind: FunctionCallKind,
         names: Vec<String>,
+        #[serde(default)]
         try_call: bool,
     }
 );
@@ -372,7 +375,7 @@ expr_node!(
 ast_node!(
     /// An identifier.
     struct Identifier {
-        #[serde(default)]
+        #[serde(default, deserialize_with = "serde_helpers::default_for_null")]
         argument_types: Vec<TypeDescriptions>,
         name: String,
         overloaded_declarations: Vec<isize>,
@@ -472,19 +475,32 @@ ast_node!(
     /// A variable declaration.
     struct VariableDeclaration {
         name: String,
-        #[serde(with = "serde_helpers::display_from_str_opt")]
+        #[serde(default, with = "serde_helpers::display_from_str_opt")]
         name_location: Option<SourceLocation>,
-        #[serde(default)]
+        #[serde(default, deserialize_with = "serde_helpers::default_for_null")]
         base_functions: Vec<usize>,
+        /// Marks whether or not the variable is a constant before Solidity 0.7.x.
+        ///
+        /// After 0.7.x you must use `mutability`. For cross-version compatibility use
+        /// [`VariableDeclaration::mutability(&self)`].
+        #[serde(default)]
         constant: bool,
+        /// Marks whether or not the variable is a state variable before Solidity 0.7.x.
+        ///
+        /// After 0.7.x you must use `mutability`. For cross-version compatibility use
+        /// [`VariableDeclaration::mutability(&self)`].
+        #[serde(default)]
+        state_variable: bool,
         documentation: Option<StructuredDocumentation>,
         function_selector: Option<String>, // TODO
         #[serde(default)]
         indexed: bool,
-        mutability: Mutability,
+        /// Marks the variable's mutability from Solidity 0.7.x onwards.
+        /// For cross-version compatibility use [`VariableDeclaration::mutability(&self)`].
+        #[serde(default)]
+        mutability: Option<Mutability>,
         overrides: Option<OverrideSpecifier>,
         scope: usize,
-        state_variable: bool,
         storage_location: StorageLocation,
         type_descriptions: TypeDescriptions,
         type_name: Option<TypeName>,
@@ -493,12 +509,32 @@ ast_node!(
     }
 );
 
-ast_node!(
-    /// Structured documentation (NatSpec).
-    struct StructuredDocumentation {
-        text: String,
+impl VariableDeclaration {
+    /// Returns the mutability of the variable that was declared.
+    ///
+    /// This is a helper to check variable mutability across Solidity versions.
+    pub fn mutability(&self) -> &Mutability {
+        if let Some(mutability) = &self.mutability {
+            mutability
+        } else if self.constant {
+            &Mutability::Constant
+        } else if self.state_variable {
+            &Mutability::Mutable
+        } else {
+            unreachable!()
+        }
     }
-);
+}
+
+/// Structured documentation (NatSpec).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum StructuredDocumentation {
+    /// The documentation is provided in the form of an AST node.
+    Parsed { text: String },
+    /// The documentation is provided in the form of a string literal.
+    Text(String),
+}
 
 ast_node!(
     /// An override specifier.
@@ -577,7 +613,7 @@ ast_node!(
     /// An enum definition.
     struct EnumDefinition {
         name: String,
-        #[serde(with = "serde_helpers::display_from_str_opt")]
+        #[serde(default, with = "serde_helpers::display_from_str_opt")]
         name_location: Option<SourceLocation>,
         canonical_name: String,
         members: Vec<EnumValue>,
@@ -588,7 +624,7 @@ ast_node!(
     /// An enum value.
     struct EnumValue {
         name: String,
-        #[serde(with = "serde_helpers::display_from_str_opt")]
+        #[serde(default, with = "serde_helpers::display_from_str_opt")]
         name_location: Option<SourceLocation>,
     }
 );
@@ -597,8 +633,8 @@ ast_node!(
     /// A custom error definition.
     struct ErrorDefinition {
         name: String,
-        #[serde(with = "serde_helpers::display_from_str")]
-        name_location: SourceLocation,
+        #[serde(default, with = "serde_helpers::display_from_str_opt")]
+        name_location: Option<SourceLocation>,
         documentation: Option<StructuredDocumentation>,
         error_selector: Option<String>, // TODO
         parameters: ParameterList,
@@ -609,7 +645,7 @@ ast_node!(
     /// An event definition.
     struct EventDefinition {
         name: String,
-        #[serde(with = "serde_helpers::display_from_str_opt")]
+        #[serde(default, with = "serde_helpers::display_from_str_opt")]
         name_location: Option<SourceLocation>,
         anonymous: bool,
         event_selector: Option<String>, // TODO
@@ -622,7 +658,7 @@ ast_node!(
     /// A function definition.
     struct FunctionDefinition {
         name: String,
-        #[serde(with = "serde_helpers::display_from_str_opt")]
+        #[serde(default, with = "serde_helpers::display_from_str_opt")]
         name_location: Option<SourceLocation>,
         #[serde(default)]
         base_functions: Vec<usize>,
@@ -630,18 +666,77 @@ ast_node!(
         documentation: Option<StructuredDocumentation>,
         function_selector: Option<String>, // TODO
         implemented: bool,
-        kind: FunctionKind,
         modifiers: Vec<ModifierInvocation>,
         overrides: Option<OverrideSpecifier>,
         parameters: ParameterList,
         return_parameters: ParameterList,
         scope: usize,
-        state_mutability: StateMutability,
-        #[serde(rename = "virtual")]
-        is_virtual: bool,
         visibility: Visibility,
+        /// The kind of function this node defines. Only valid for Solidity versions 0.5.x and
+        /// above.
+        ///
+        /// For cross-version compatibility use [`FunctionDefinition::kind(&self)`].
+        kind: Option<FunctionKind>,
+        /// The state mutability of the function.
+        ///
+        /// Note: This was introduced in Solidity 0.5.x. For cross-version compatibility use
+        /// [`FunctionDefinition::state_mutability(&self)`].
+        #[serde(default)]
+        state_mutability: Option<StateMutability>,
+        #[serde(default, rename = "virtual")]
+        is_virtual: bool,
+        /// Whether or not this function is the constructor. Only valid for Solidity versions below
+        /// 0.5.x.
+        ///
+        /// After 0.5.x you must use `kind`. For cross-version compatibility use
+        /// [`FunctionDefinition::kind(&self)`].
+        #[serde(default)]
+        is_constructor: bool,
+        /// Whether or not this function is constant (view or pure). Only valid for Solidity
+        /// versions below 0.5.x.
+        ///
+        /// After 0.5.x you must use `state_mutability`. For cross-version compatibility use
+        /// [`FunctionDefinition::state_mutability(&self)`].
+        #[serde(default)]
+        is_declared_const: bool,
+        /// Whether or not this function is payable. Only valid for Solidity versions below
+        /// 0.5.x.
+        ///
+        /// After 0.5.x you must use `state_mutability`. For cross-version compatibility use
+        /// [`FunctionDefinition::state_mutability(&self)`].
+        #[serde(default)]
+        is_payable: bool,
     }
 );
+
+impl FunctionDefinition {
+    /// The kind of function this node defines.
+    pub fn kind(&self) -> &FunctionKind {
+        if let Some(kind) = &self.kind {
+            kind
+        } else if self.is_constructor {
+            &FunctionKind::Constructor
+        } else {
+            &FunctionKind::Function
+        }
+    }
+
+    /// The state mutability of the function.
+    ///
+    /// Note: Before Solidity 0.5.x, this is an approximation, as there was no distinction between
+    /// `view` and `pure`.
+    pub fn state_mutability(&self) -> &StateMutability {
+        if let Some(state_mutability) = &self.state_mutability {
+            state_mutability
+        } else if self.is_declared_const {
+            &StateMutability::View
+        } else if self.is_payable {
+            &StateMutability::Payable
+        } else {
+            &StateMutability::Nonpayable
+        }
+    }
+}
 
 /// Function kinds.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -663,6 +758,7 @@ ast_node!(
     /// A block of statements.
     struct Block {
         documentation: Option<String>, // TODO
+        #[serde(default, deserialize_with = "serde_helpers::default_for_null")]
         statements: Vec<Statement>,
     }
 );
@@ -712,8 +808,8 @@ stmt_node!(
 stmt_node!(
     /// A variable declaration statement.
     struct VariableDeclarationStatement {
-        assignments: Vec<usize>,
-        declarations: Vec<VariableDeclaration>,
+        assignments: Vec<Option<usize>>,
+        declarations: Vec<Option<VariableDeclaration>>,
         initial_value: Option<Expression>,
     }
 );
@@ -851,15 +947,15 @@ ast_node!(
     /// A modifier definition.
     struct ModifierDefinition {
         name: String,
-        #[serde(with = "serde_helpers::display_from_str_opt")]
+        #[serde(default, with = "serde_helpers::display_from_str_opt")]
         name_location: Option<SourceLocation>,
-        #[serde(default)]
+        #[serde(default, deserialize_with = "serde_helpers::default_for_null")]
         base_modifiers: Vec<usize>,
         body: Block,
         documentation: Option<StructuredDocumentation>,
         overrides: Option<OverrideSpecifier>,
         parameters: ParameterList,
-        #[serde(rename = "virtual")]
+        #[serde(default, rename = "virtual")]
         is_virtual: bool,
         visibility: Visibility,
     }
@@ -869,7 +965,7 @@ ast_node!(
     /// A struct definition.
     struct StructDefinition {
         name: String,
-        #[serde(with = "serde_helpers::display_from_str_opt")]
+        #[serde(default, with = "serde_helpers::display_from_str_opt")]
         name_location: Option<SourceLocation>,
         canonical_name: String,
         members: Vec<VariableDeclaration>,
@@ -882,7 +978,7 @@ ast_node!(
     /// A user defined value type definition.
     struct UserDefinedValueTypeDefinition {
         name: String,
-        #[serde(with = "serde_helpers::display_from_str_opt")]
+        #[serde(default, with = "serde_helpers::display_from_str_opt")]
         name_location: Option<SourceLocation>,
         canonical_name: Option<String>,
         underlying_type: TypeName,
@@ -912,7 +1008,7 @@ ast_node!(
     struct ImportDirective {
         absolute_path: String,
         file: String,
-        #[serde(with = "serde_helpers::display_from_str_opt")]
+        #[serde(default, with = "serde_helpers::display_from_str_opt")]
         name_location: Option<SourceLocation>,
         scope: usize,
         source_unit: usize,
@@ -928,7 +1024,7 @@ ast_node!(
 pub struct SymbolAlias {
     pub foreign: Identifier,
     pub local: Option<String>,
-    #[serde(with = "serde_helpers::display_from_str_opt")]
+    #[serde(default, with = "serde_helpers::display_from_str_opt")]
     pub name_location: Option<SourceLocation>,
 }
 

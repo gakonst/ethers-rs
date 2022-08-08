@@ -38,7 +38,7 @@ macro_rules! expr_node {
         ast_node!(
             $(#[$struct_meta])*
             struct $name {
-                #[serde(default)]
+                #[serde(default, deserialize_with = "serde_helpers::default_for_null")]
                 argument_types: Vec<TypeDescriptions>,
                 is_constant: bool,
                 is_l_value: bool,
