@@ -41,7 +41,7 @@ cargo_metadata = { version = "0.15.0", optional = true }
 convert_case = { version = "0.5.0", optional = true }
 syn = { version = "1.0.99", optional = true }
 proc-macro2 = { version = "1.0.43", optional = true }
-rust_decimal = "1.26.0"
+rust_decimal = "1.26.1"
 
 [dev-dependencies]
 serde_json = { version = "1.0.64", default-features = false }
