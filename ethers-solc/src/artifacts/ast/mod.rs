@@ -28,8 +28,6 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use yul::YulBlock;
 
-// TODO: Node ID
-
 ast_node!(
     /// The root node of a Solidity AST.
     struct SourceUnit {
@@ -781,7 +779,7 @@ pub enum FunctionKind {
 ast_node!(
     /// A block of statements.
     struct Block {
-        documentation: Option<String>, // TODO
+        documentation: Option<String>,
         #[serde(default, deserialize_with = "serde_helpers::default_for_null")]
         statements: Vec<Statement>,
     }
@@ -852,7 +850,7 @@ ast_node!(
     ///
     /// Refer to the [yul] module for Yul AST nodes.
     struct InlineAssembly {
-        documentation: Option<String>, // TODO
+        documentation: Option<String>,
         #[serde(rename = "AST")]
         ast: YulBlock,
         // TODO: We need this camel case for the AST, but pascal case other places in ethers-solc
