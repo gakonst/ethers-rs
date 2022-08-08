@@ -12,7 +12,7 @@ use crate::{
 };
 
 mod multicall_contract;
-use multicall_contract::MulticallContract;
+use multicall_contract::Multicall as MulticallContract;
 
 /// A lazily computed hash map with the Ethereum network IDs as keys and the corresponding
 /// Multicall smart contract addresses as values
