@@ -327,9 +327,23 @@ expr_node!(
 
 expr_node!(
     struct ElementaryTypeNameExpression {
-        type_name: ElementaryTypeName,
+        type_name: ElementaryOrRawTypeName,
     }
 );
+
+// TODO: Better name
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum ElementaryOrRawTypeName {
+    /// An [ElementaryTypeName] node that describes the type.
+    ///
+    /// This variant applies to newer compiler versions.
+    ElementaryTypeName(ElementaryTypeName),
+    /// A string representing the type name.
+    ///
+    /// This variant applies to older compiler versions.
+    Raw(String),
+}
 
 ast_node!(
     struct ElementaryTypeName {
