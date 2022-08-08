@@ -1,6 +1,16 @@
 //! Bindings for the Solidity and Yul ASTs.
 //!
 //! The Yul AST bindings are available in the [yul] module.
+//!
+//! To gain an overview of the AST, it might be helpful to start at the entry point of a complete
+//! Solidity AST: the [SourceUnit] node.
+//!
+//! # Version Support
+//!
+//! These types should be compatible with at least Solidity 0.5.x and above, but may also support
+//! 0.4.x-0.5.x in most cases.
+//!
+//! The legacy Solidity AST is not supported.
 mod macros;
 mod misc;
 pub use misc::*;
