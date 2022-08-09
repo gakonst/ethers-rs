@@ -359,8 +359,8 @@ mod eth_tests {
 
     #[tokio::test]
     async fn multicall_aggregate() {
-        // get ABI and bytecode for the Multcall contract
-        let (multicall_abi, multicall_bytecode) = compile_contract("Multicall", "Multicall.sol");
+        // get ABI and bytecode for the Multicall contract
+        let (multicall_abi, multicall_bytecode) = compile_contract("Multicall3", "Multicall.sol");
 
         // get ABI and bytecode for the NotSoSimpleStorage contract
         let (not_so_simple_abi, not_so_simple_bytecode) =
