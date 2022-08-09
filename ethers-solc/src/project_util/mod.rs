@@ -16,6 +16,8 @@ use fs_extra::{dir, file};
 use std::{
     fmt,
     path::{Path, PathBuf},
+    process,
+    process::Command,
 };
 use tempfile::TempDir;
 
@@ -407,6 +409,26 @@ impl TempProject<ConfigurableArtifacts> {
         Ok(project)
     }
 
+    /// Clones the given repo into a temp dir, initializes it recursively and configures it.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use ethers_solc::project_util::TempProject;
+    /// # fn t() {
+    /// let project = TempProject::checkout("transmissions11/solmate").unwrap();
+    /// # }
+    /// ```
+    pub fn checkout(repo: impl AsRef<str>) -> Result<Self> {
+        let tmp_dir = tempdir("tmp_checkout")?;
+        clone_remote(&format!("https://github.com/{}", repo.as_ref()), tmp_dir.path())
+            .map_err(|err| SolcIoError::new(err, tmp_dir.path()))?;
+        let paths = ProjectPathsConfig::dapptools(tmp_dir.path())?;
+
+        let inner = Project::builder().paths(paths).build()?;
+        Ok(Self::create_new(tmp_dir, inner)?)
+    }
+
     /// Create a new temporary project and populate it with mock files
     ///
     /// ```no_run
@@ -505,6 +527,17 @@ pub fn copy_file(source: impl AsRef<Path>, target_dir: impl AsRef<Path>) -> Resu
 pub fn copy_dir(source: impl AsRef<Path>, target_dir: impl AsRef<Path>) -> Result<()> {
     fs_extra::dir::copy(source, target_dir, &dir_copy_options())?;
     Ok(())
+}
+
+/// Clones a remote repository into the specified directory.
+pub fn clone_remote(
+    repo_url: &str,
+    target_dir: impl AsRef<Path>,
+) -> std::io::Result<process::Output> {
+    Command::new("git")
+        .args(["clone", "--depth", "1", "--recursive", repo_url])
+        .arg(target_dir.as_ref())
+        .output()
 }
 
 #[cfg(test)]

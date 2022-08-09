@@ -2130,6 +2130,15 @@ fn can_handle_conflicting_files() {
 }
 
 #[test]
+fn can_checkout_repo() {
+    let project = TempProject::checkout("transmissions11/solmate").unwrap();
+
+    let compiled = project.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+    let _artifacts = project.artifacts_snapshot().unwrap();
+}
+
+#[test]
 fn can_add_basic_contract_and_library() {
     let mut project = TempProject::<ConfigurableArtifacts>::dapptools().unwrap();
 
