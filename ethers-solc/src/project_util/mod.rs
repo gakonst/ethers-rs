@@ -191,8 +191,8 @@ impl<T: ArtifactOutput> TempProject<T> {
 pragma solidity {};
 contract {} {{}}
             "#,
+                version.as_ref(),
                 name,
-                version.as_ref()
             ),
         )
     }
@@ -219,8 +219,8 @@ contract {} {{}}
 pragma solidity {};
 contract {} {{}}
             "#,
+                version.as_ref(),
                 name,
-                version.as_ref()
             ),
         )
     }
