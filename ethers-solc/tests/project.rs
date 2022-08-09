@@ -2137,3 +2137,27 @@ fn can_checkout_repo() {
     assert!(!compiled.has_compiler_errors());
     let _artifacts = project.artifacts_snapshot().unwrap();
 }
+
+#[test]
+fn can_add_basic_contract_and_library() {
+    let mut project = TempProject::<ConfigurableArtifacts>::dapptools().unwrap();
+
+    let remapping = project.paths().libraries[0].join("remapping");
+    project
+        .paths_mut()
+        .remappings
+        .push(Remapping::from_str(&format!("remapping/={}/", remapping.display())).unwrap());
+
+    let src = project.add_basic_source("Foo.sol", "^0.8.0").unwrap();
+
+    let lib = project.add_basic_source("Bar.sol", "^0.8.0").unwrap();
+
+    let graph = Graph::resolve(project.paths()).unwrap();
+    assert_eq!(graph.files().len(), 2);
+    assert_eq!(graph.files().clone(), HashMap::from([(src, 0), (lib, 1),]));
+
+    let compiled = project.compile().unwrap();
+    assert!(compiled.find_first("Foo").is_some());
+    assert!(compiled.find_first("Bar").is_some());
+    assert!(!compiled.has_compiler_errors());
+}
