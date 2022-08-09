@@ -38,13 +38,13 @@ dunce = "1.0.2"
 solang-parser = { default-features = false, version = "=0.1.17" }
 rayon = "1.5.3"
 rand = { version = "0.8.5", optional = true }
-path-slash = "0.2.0"
+path-slash = "0.2.1"
 cfg-if = "1.0.0"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 home = "0.5.3"
-svm = { package = "svm-rs", version = "0.2.13", default-features = false, optional = true, features = ["blocking"] }
-svm-builds = { package = "svm-rs-builds", version = "0.1.5", optional = true}
+svm = { package = "svm-rs", version = "0.2.14", default-features = false, optional = true, features = ["blocking"] }
+svm-builds = { package = "svm-rs-builds", version = "0.1.6", optional = true}
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 # NOTE: this enables wasm compatibility for getrandom indirectly

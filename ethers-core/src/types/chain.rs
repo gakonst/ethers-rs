@@ -13,6 +13,12 @@ use thiserror::Error;
 #[error("Failed to parse chain: {0}")]
 pub struct ParseChainError(String);
 
+/// Enum for all known chains
+///
+/// When adding a new chain:
+///   1. add new variant
+///   2. update Display/FromStr impl
+///   3. add etherscan_keys if supported
 #[repr(u64)]
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, Deserialize, EnumVariantNames)]
 #[serde(rename_all = "snake_case")]
@@ -91,6 +97,100 @@ impl Chain {
         };
 
         Some(Duration::from_millis(ms))
+    }
+
+    /// Returns the corresponding etherscan URLs
+    ///
+    /// Returns `(API URL, BASE_URL)`, like `("https://api(-chain).etherscan.io/api", "https://etherscan.io")`
+    pub fn etherscan_urls(&self) -> Option<(&'static str, &'static str)> {
+        let urls = match self {
+            Chain::Mainnet => ("https://api.etherscan.io/api", "https://etherscan.io"),
+            Chain::Ropsten => {
+                ("https://api-ropsten.etherscan.io/api", "https://ropsten.etherscan.io")
+            }
+            Chain::Kovan => ("https://api-kovan.etherscan.io/api", "https://kovan.etherscan.io"),
+            Chain::Rinkeby => {
+                ("https://api-rinkeby.etherscan.io/api", "https://rinkeby.etherscan.io")
+            }
+            Chain::Goerli => ("https://api-goerli.etherscan.io/api", "https://goerli.etherscan.io"),
+            Chain::Sepolia => {
+                ("https://api-sepolia.etherscan.io/api", "https://sepolia.etherscan.io")
+            }
+            Chain::Polygon => ("https://api.polygonscan.com/api", "https://polygonscan.com"),
+            Chain::PolygonMumbai => {
+                ("https://api-testnet.polygonscan.com/api", "https://mumbai.polygonscan.com")
+            }
+            Chain::Avalanche => ("https://api.snowtrace.io/api", "https://snowtrace.io"),
+            Chain::AvalancheFuji => {
+                ("https://api-testnet.snowtrace.io/api", "https://testnet.snowtrace.io")
+            }
+            Chain::Optimism => {
+                ("https://api-optimistic.etherscan.io/api", "https://optimistic.etherscan.io")
+            }
+            Chain::OptimismKovan => (
+                "https://api-kovan-optimistic.etherscan.io/api",
+                "https://kovan-optimistic.etherscan.io",
+            ),
+            Chain::Fantom => ("https://api.ftmscan.com/api", "https://ftmscan.com"),
+            Chain::FantomTestnet => {
+                ("https://api-testnet.ftmscan.com/api", "https://testnet.ftmscan.com")
+            }
+            Chain::BinanceSmartChain => ("https://api.bscscan.com/api", "https://bscscan.com"),
+            Chain::BinanceSmartChainTestnet => {
+                ("https://api-testnet.bscscan.com/api", "https://testnet.bscscan.com")
+            }
+            Chain::Arbitrum => ("https://api.arbiscan.io/api", "https://arbiscan.io"),
+            Chain::ArbitrumTestnet => {
+                ("https://api-testnet.arbiscan.io/api", "https://testnet.arbiscan.io")
+            }
+            Chain::Cronos => ("https://api.cronoscan.com/api", "https://cronoscan.com"),
+            Chain::CronosTestnet => {
+                ("https://api-testnet.cronoscan.com/api", "https://testnet.cronoscan.com")
+            }
+            Chain::Moonbeam => {
+                ("https://api-moonbeam.moonscan.io/api", "https://moonbeam.moonscan.io/")
+            }
+            Chain::Moonbase => {
+                ("https://api-moonbase.moonscan.io/api", "https://moonbase.moonscan.io/")
+            }
+            Chain::Moonriver => {
+                ("https://api-moonriver.moonscan.io/api", "https://moonriver.moonscan.io")
+            }
+            // blockscout API is etherscan compatible
+            Chain::XDai => {
+                ("https://blockscout.com/xdai/mainnet/api", "https://blockscout.com/xdai/mainnet")
+            }
+            Chain::Sokol => {
+                ("https://blockscout.com/poa/sokol/api", "https://blockscout.com/poa/sokol")
+            }
+            Chain::Poa => {
+                ("https://blockscout.com/poa/core/api", "https://blockscout.com/poa/core")
+            }
+            Chain::Rsk => {
+                ("https://blockscout.com/rsk/mainnet/api", "https://blockscout.com/rsk/mainnet")
+            }
+            Chain::Oasis => ("https://scan.oasischain.io/api", "https://scan.oasischain.io/"),
+            Chain::Emerald => {
+                ("https://explorer.emerald.oasis.dev/api", "https://explorer.emerald.oasis.dev/")
+            }
+            Chain::EmeraldTestnet => (
+                "https://testnet.explorer.emerald.oasis.dev/api",
+                "https://testnet.explorer.emerald.oasis.dev/",
+            ),
+            Chain::Aurora => ("https://api.aurorascan.dev/api", "https://aurorascan.dev"),
+            Chain::AuroraTestnet => {
+                ("https://testnet.aurorascan.dev/api", "https://testnet.aurorascan.dev")
+            }
+            Chain::Evmos => ("https://evm.evmos.org/api", "https://evm.evmos.org/"),
+            Chain::EvmosTestnet => ("https://evm.evmos.dev/api", "https://evm.evmos.dev/"),
+            Chain::AnvilHardhat | Chain::Dev | Chain::Morden | Chain::MoonbeamDev => {
+                // this is explicitly exhaustive so we don't forget to add new urls when adding a
+                // new chain
+                return None
+            }
+        };
+
+        Some(urls)
     }
 }
 
