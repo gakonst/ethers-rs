@@ -6,7 +6,7 @@ use ethers_core::types::{Filter, ValueOrArray, H256};
 #[cfg(not(feature = "celo"))]
 mod eth_tests {
     use super::*;
-    use ethers_contract::{LogMeta, Multicall};
+    use ethers_contract::{LogMeta, Multicall, MulticallVersion};
     use ethers_core::{
         abi::{Detokenize, Token, Tokenizable},
         types::{transaction::eip712::Eip712, Address, BlockId, Bytes, I256, U256},
@@ -441,7 +441,14 @@ mod eth_tests {
         // initiate the Multicall instance and add calls one by one in builder style
         let mut multicall = Multicall::new(client4.clone(), Some(addr)).await.unwrap();
 
-        multicall.add_call(value).add_call(value2).add_call(last_sender).add_call(last_sender2);
+        // Set version to 1
+        multicall = multicall.version(MulticallVersion::Multicall);
+
+        multicall
+            .add_call(value, false)
+            .add_call(value2, false)
+            .add_call(last_sender, false)
+            .add_call(last_sender2, false);
 
         let return_data: (String, (String, Address), Address, Address) =
             multicall.call().await.unwrap();
@@ -467,7 +474,7 @@ mod eth_tests {
         // go. Now we will use the `.send()` functionality to broadcast a batch of transactions
         // in one go
         let mut multicall_send = multicall.clone();
-        multicall_send.clear_calls().add_call(broadcast).add_call(broadcast2);
+        multicall_send.clear_calls().add_call(broadcast, false).add_call(broadcast2, false);
 
         // broadcast the transaction and wait for it to be mined
         let tx_hash = multicall_send.legacy().send().await.unwrap();
@@ -492,9 +499,9 @@ mod eth_tests {
         // so should have 100 ETH
         multicall
             .clear_calls()
-            .eth_balance_of(addrs[4])
-            .eth_balance_of(addrs[5])
-            .eth_balance_of(addrs[6]);
+            .eth_balance_of(addrs[4], false)
+            .eth_balance_of(addrs[5], false)
+            .eth_balance_of(addrs[6], false);
 
         let balances: (U256, U256, U256) = multicall.call().await.unwrap();
         assert_eq!(balances.0, U256::from(10_000_000_000_000_000_000_000u128));
@@ -517,7 +524,7 @@ mod eth_tests {
         // build up a list of calls greater than the 16 max restriction
         for i in 0..=16 {
             let call = simple_contract.method::<_, String>("getValue", ()).unwrap();
-            multicall.add_call(call);
+            multicall.add_call(call, false);
         }
 
         // must use `call_raw` as `.calls` > 16
