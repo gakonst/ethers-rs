@@ -185,6 +185,7 @@ impl<T: ArtifactOutput> TempProject<T> {
         version: impl AsRef<str>,
     ) -> Result<PathBuf> {
         let name = name.as_ref();
+        let name = name.strip_suffix(".sol").unwrap_or(name);
         self.add_lib(
             name,
             format!(
@@ -213,6 +214,7 @@ contract {} {{}}
         version: impl AsRef<str>,
     ) -> Result<PathBuf> {
         let name = name.as_ref();
+        let name = name.strip_suffix(".sol").unwrap_or(name);
         self.add_source(
             name,
             format!(
