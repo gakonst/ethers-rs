@@ -2150,14 +2150,15 @@ fn can_add_basic_contract_and_library() {
 
     let src = project.add_basic_source("Foo.sol", "^0.8.0").unwrap();
 
-    let lib = project.add_basic_source("Bar.sol", "^0.8.0").unwrap();
+    let lib = project.add_basic_source("Bar", "^0.8.0").unwrap();
 
     let graph = Graph::resolve(project.paths()).unwrap();
     assert_eq!(graph.files().len(), 2);
-    assert_eq!(graph.files().clone(), HashMap::from([(src, 0), (lib, 1),]));
+    assert!(graph.files().contains_key(&src));
+    assert!(graph.files().contains_key(&lib));
 
     let compiled = project.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
     assert!(compiled.find_first("Foo").is_some());
     assert!(compiled.find_first("Bar").is_some());
-    assert!(!compiled.has_compiler_errors());
 }
