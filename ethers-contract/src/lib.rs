@@ -26,7 +26,10 @@ pub use log::{decode_logs, EthLogDecode, LogMeta};
 pub mod stream;
 
 mod multicall;
-pub use multicall::Multicall;
+pub use multicall::{
+    Multicall, MulticallContract, MulticallVersion, MULTICALL_ADDRESS,
+    MULTICALL_SUPPORTED_CHAIN_IDS,
+};
 
 /// This module exposes low lever builder structures which are only consumed by the
 /// type-safe ABI bindings generators.
