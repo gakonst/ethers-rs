@@ -1,6 +1,5 @@
-pub use multicall_3::*;
 #[allow(clippy::too_many_arguments, non_camel_case_types)]
-mod multicall_3 {
+pub mod multicall_3 {
     #![allow(clippy::enum_variant_names)]
     #![allow(dead_code)]
     #![allow(clippy::type_complexity)]
@@ -10,15 +9,6 @@ mod multicall_3 {
     mod ethers_contract {
         pub use crate::*;
     }
-    use crate::{
-        builders::{ContractCall, Event},
-        Contract, Lazy,
-    };
-    use ethers_core::{
-        abi::{Abi, Detokenize, InvalidOutputType, Token, Tokenizable},
-        types::*,
-    };
-    use ethers_providers::Middleware;
     #[doc = "Multicall3 was auto-generated with ethers-rs Abigen. More information at: https://github.com/gakonst/ethers-rs"]
     use std::sync::Arc;
     pub static MULTICALL3_ABI: crate::Lazy<ethers_core::abi::Abi> = crate::Lazy::new(|| {
