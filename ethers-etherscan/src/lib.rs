@@ -231,90 +231,10 @@ impl ClientBuilder {
         ) -> (reqwest::Result<Url>, reqwest::Result<Url>) {
             (api.into_url(), url.into_url())
         }
-
-        let (etherscan_api_url, etherscan_url) = match chain {
-            Chain::Mainnet => urls("https://api.etherscan.io/api", "https://etherscan.io"),
-            Chain::Ropsten | Chain::Kovan | Chain::Rinkeby | Chain::Goerli | Chain::Sepolia => {
-                let chain_name = chain.to_string().to_lowercase();
-                urls(
-                    format!("https://api-{}.etherscan.io/api", chain_name),
-                    format!("https://{}.etherscan.io", chain_name),
-                )
-            }
-            Chain::Polygon => urls("https://api.polygonscan.com/api", "https://polygonscan.com"),
-            Chain::PolygonMumbai => {
-                urls("https://api-testnet.polygonscan.com/api", "https://mumbai.polygonscan.com")
-            }
-            Chain::Avalanche => urls("https://api.snowtrace.io/api", "https://snowtrace.io"),
-            Chain::AvalancheFuji => {
-                urls("https://api-testnet.snowtrace.io/api", "https://testnet.snowtrace.io")
-            }
-            Chain::Optimism => {
-                urls("https://api-optimistic.etherscan.io/api", "https://optimistic.etherscan.io")
-            }
-            Chain::OptimismKovan => urls(
-                "https://api-kovan-optimistic.etherscan.io/api",
-                "https://kovan-optimistic.etherscan.io",
-            ),
-            Chain::Fantom => urls("https://api.ftmscan.com/api", "https://ftmscan.com"),
-            Chain::FantomTestnet => {
-                urls("https://api-testnet.ftmscan.com/api", "https://testnet.ftmscan.com")
-            }
-            Chain::BinanceSmartChain => urls("https://api.bscscan.com/api", "https://bscscan.com"),
-            Chain::BinanceSmartChainTestnet => {
-                urls("https://api-testnet.bscscan.com/api", "https://testnet.bscscan.com")
-            }
-            Chain::Arbitrum => urls("https://api.arbiscan.io/api", "https://arbiscan.io"),
-            Chain::ArbitrumTestnet => {
-                urls("https://api-testnet.arbiscan.io/api", "https://testnet.arbiscan.io")
-            }
-            Chain::Cronos => urls("https://api.cronoscan.com/api", "https://cronoscan.com"),
-            Chain::CronosTestnet => {
-                urls("https://api-testnet.cronoscan.com/api", "https://testnet.cronoscan.com")
-            }
-            Chain::Moonbeam => {
-                urls("https://api-moonbeam.moonscan.io/api", "https://moonbeam.moonscan.io/")
-            }
-            Chain::Moonbase => {
-                urls("https://api-moonbase.moonscan.io/api", "https://moonbase.moonscan.io/")
-            }
-            Chain::Moonriver => {
-                urls("https://api-moonriver.moonscan.io/api", "https://moonriver.moonscan.io")
-            }
-            // blockscout API is etherscan compatible
-            Chain::XDai => urls(
-                "https://blockscout.com/xdai/mainnet/api",
-                "https://blockscout.com/xdai/mainnet",
-            ),
-            Chain::Sokol => {
-                urls("https://blockscout.com/poa/sokol/api", "https://blockscout.com/poa/sokol")
-            }
-            Chain::Poa => {
-                urls("https://blockscout.com/poa/core/api", "https://blockscout.com/poa/core")
-            }
-            Chain::Rsk => {
-                urls("https://blockscout.com/rsk/mainnet/api", "https://blockscout.com/rsk/mainnet")
-            }
-            Chain::Oasis => urls("https://scan.oasischain.io/api", "https://scan.oasischain.io/"),
-            Chain::Emerald => urls(
-                "https://explorer.emerald.oasis.dev/api",
-                "https://explorer.emerald.oasis.dev/",
-            ),
-            Chain::EmeraldTestnet => urls(
-                "https://testnet.explorer.emerald.oasis.dev/api",
-                "https://testnet.explorer.emerald.oasis.dev/",
-            ),
-            Chain::Aurora => urls("https://api.aurorascan.dev/api", "https://aurorascan.dev"),
-            Chain::AuroraTestnet => {
-                urls("https://testnet.aurorascan.dev/api", "https://testnet.aurorascan.dev")
-            }
-            Chain::AnvilHardhat | Chain::Dev => {
-                return Err(EtherscanError::LocalNetworksNotSupported)
-            }
-            Chain::Evmos => urls("https://evm.evmos.org/api", "https://evm.evmos.org/"),
-            Chain::EvmosTestnet => urls("https://evm.evmos.dev/api", "https://evm.evmos.dev/"),
-            chain => return Err(EtherscanError::ChainNotSupported(chain)),
-        };
+        let (etherscan_api_url, etherscan_url) = chain
+            .etherscan_urls()
+            .map(|(api, base)| urls(api, base))
+            .ok_or(EtherscanError::ChainNotSupported(chain))?;
         self.with_api_url(etherscan_api_url?)?.with_url(etherscan_url?)
     }
 
