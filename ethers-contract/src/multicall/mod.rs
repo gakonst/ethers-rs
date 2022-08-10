@@ -1,8 +1,8 @@
 use ethers_core::{
-    abi::{Detokenize, Function, Token},
+    abi::{decode, Detokenize, Function, ParamType, Token},
     types::{Address, BlockNumber, Bytes, Chain, NameOrAddress, TxHash, H160, U256},
 };
-use ethers_providers::Middleware;
+use ethers_providers::{Middleware, ProviderError};
 
 use std::{convert::TryFrom, sync::Arc};
 
@@ -353,7 +353,7 @@ impl<M: Middleware> Multicall<M> {
     /// Appends a `call` to the list of calls for the Multicall instance.
     /// `allow_revert` specifies whether or not this call is allowed to revert in the multicall
     /// (requires version >= 2).
-    /// Call value is only
+    /// Sending transactions with value is only available for version 3.
     pub fn add_call<D: Detokenize>(
         &mut self,
         call: ContractCall<M, D>,
@@ -516,26 +516,50 @@ impl<M: Middleware> Multicall<M> {
             }
             // Same result type (`MulticallResult`)
             v @ (MulticallVersion::Multicall2 | MulticallVersion::Multicall3) => {
-                let call = if let MulticallVersion::Multicall2 = v {
-                    self.as_try_aggregate()
-                } else {
-                    self.as_aggregate_3()
-                };
+                let is_v2 = v as u8 == 2;
+                let call = if is_v2 { self.as_try_aggregate() } else { self.as_aggregate_3() };
                 let return_data = call.call().await?;
                 self.calls
                     .iter()
                     .zip(&return_data)
                     .map(|(call, res)| {
-                        // Include also the call's success
-                        let success = Token::Bool(res.success);
-                        let mut res_tokens =
-                            call.function.decode_output(res.return_data.as_ref())?;
-                        let res_token = match res_tokens.len() {
-                            0 => Token::Tuple(vec![]),
-                            1 => res_tokens.remove(0),
-                            _ => Token::Tuple(res_tokens),
+                        let ret = &res.return_data;
+                        let res_token: Token = if res.success {
+                            // Decode using call.function
+                            let mut res_tokens = call.function.decode_output(ret)?;
+                            match res_tokens.len() {
+                                0 => Token::Tuple(vec![]),
+                                1 => res_tokens.remove(0),
+                                _ => Token::Tuple(res_tokens),
+                            }
+                        } else {
+                            // Call reverted
+
+                            // In v2 (`tryAggregate`) a call might revert even if it was not allowed
+                            // by `call.allow_failure`, because in the contract this is not checked
+                            // on a per-call basis, but on a per-transaction basis, which we set to
+                            // true if *any* `allow_failure` is true in the calls vector in
+                            // `as_try_aggregate`.
+                            if !call.allow_failure {
+                                return Err(ContractError::ProviderError(
+                                    ProviderError::CustomError(format!(
+                                        "Illegal revert.\n{:?}\n{:?}",
+                                        call, res
+                                    )),
+                                ))
+                            }
+
+                            // "Error(string)" (0x08c379a0)
+                            if ret.len() >= 4 && ret[..4] == [0x08, 0xc3, 0x79, 0xa0] {
+                                decode(&[ParamType::String], &ret[4..])?.remove(0)
+                            } else if ret.is_empty() {
+                                Token::String(String::new())
+                            } else {
+                                Token::Bytes(ret.to_vec())
+                            }
                         };
-                        Ok(Token::Tuple(vec![success, res_token]))
+                        // (bool, (...))
+                        Ok(Token::Tuple(vec![Token::Bool(res.success), res_token]))
                     })
                     .collect::<Result<Vec<Token>, ContractError<M>>>()?
             }
