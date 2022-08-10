@@ -83,7 +83,7 @@ pub static MULTICALL_SUPPORTED_CHAIN_IDS: Lazy<[U256; 47]> = Lazy::new(|| {
 });
 
 /// The version of the [`Multicall`](super::Multicall).
-/// Used to determine which methods of the Multicall smart contract to call:
+/// Used to determine which methods of the Multicall smart contract to use:
 /// - [`Multicall`] : `aggregate((address,bytes)[])`
 /// - [`Multicall2`] : `try_aggregate(bool, (address,bytes)[])`
 /// - [`Multicall3`] : `aggregate3((address,bool,bytes)[])` or
@@ -276,6 +276,10 @@ impl<M: Middleware> Multicall<M> {
     /// it instantiates the Multicall contract with that address, otherwise it defaults to
     /// [`MULTICALL_ADDRESS`].
     ///
+    /// # Errors
+    ///
+    /// Returns a [`ContractError`] if the provider errors while getting `network_version`.
+    ///
     /// # Panics
     ///
     /// If a `None` address is provided and the client's network is
@@ -394,9 +398,15 @@ impl<M: Middleware> Multicall<M> {
     }
 
     /// Appends a `call` to the list of calls for the Multicall instance.
-    /// `allow_revert` specifies whether or not this call is allowed to revert in the multicall
-    /// (requires version >= 2).
-    /// Sending transactions with value is only available for version 3.
+    ///
+    /// Version specific details:
+    /// - 1: `allow_revert` is ignored.
+    /// - >=2: `allow_revert` specifies whether or not this call is allowed to revert in the
+    ///   multicall.
+    /// - 3: Transaction values are used when broadcasting transactions with [`send`], otherwise
+    ///   they are always ignored.
+    ///
+    /// [`send`]: #method.send
     pub fn add_call<D: Detokenize>(
         &mut self,
         call: ContractCall<M, D>,
@@ -430,8 +440,9 @@ impl<M: Middleware> Multicall<M> {
         self.add_call(call, allow_revert)
     }
 
-    /// Clears the batch of calls from the Multicall instance. Re-use the already instantiated
-    /// Multicall to send a different batch of transactions or do another aggregate query.
+    /// Clears the batch of calls from the Multicall instance.
+    /// Re-use the already instantiated Multicall to send a different batch of transactions or do
+    /// another aggregate query.
     ///
     /// # Examples
     ///
@@ -479,10 +490,12 @@ impl<M: Middleware> Multicall<M> {
 
     /// Queries the Ethereum blockchain using `eth_call`, but via the Multicall contract.
     ///
-    /// It returns a [`ContractError<M>`] if there are any errors in the RPC call or while
-    /// detokenizing the tokens back to the expected return type.
-    ///
     /// Note: this method _does not_ send a transaction from your account.
+    ///
+    /// # Errors
+    ///
+    /// Returns a [`ContractError`] if there are any errors in the RPC call or while detokenizing
+    /// the tokens back to the expected return type.
     ///
     /// # Panics
     ///
@@ -514,8 +527,6 @@ impl<M: Middleware> Multicall<M> {
     /// # Ok(())
     /// # }
     /// ```
-    ///
-    /// [`ContractError<M>`]: crate::ContractError<M>
     pub async fn call<D: Detokenize>(&self) -> Result<D, ContractError<M>> {
         assert!(self.calls.len() < 16, "Cannot decode more than 16 calls");
         let tokens = self.call_raw().await?;
@@ -524,10 +535,14 @@ impl<M: Middleware> Multicall<M> {
         Ok(data)
     }
 
-    /// Queries the Ethereum blockchain via an `eth_call`, but via the Multicall contract and
+    /// Queries the Ethereum blockchain using `eth_call`, but via the Multicall contract and
     /// without detokenization.
     ///
-    /// It returns a [`ContractError<M>`] if there is any error in the RPC call.
+    /// # Errors
+    ///
+    /// It returns a [`ContractError`] if there are any errors in the RPC call.
+    ///
+    /// # Examples
     ///
     /// ```no_run
     /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
@@ -623,7 +638,17 @@ impl<M: Middleware> Multicall<M> {
         Ok(tokens)
     }
 
-    /// Signs and broadcasts a batch of transactions by using the Multicall contract as proxy.
+    /// Signs and broadcasts a batch of transactions by using the Multicall contract as proxy,
+    /// returning the transaction hash once the transaction confirms.
+    ///
+    /// Note: this method will broadcast a transaction from an account, meaning it must have
+    /// sufficient funds for gas and transaction value.
+    ///
+    /// # Errors
+    ///
+    /// It returns a [`ContractError`] if there are any errors in the RPC call.
+    ///
+    /// # Examples
     ///
     /// ```no_run
     /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
@@ -636,9 +661,6 @@ impl<M: Middleware> Multicall<M> {
     /// # Ok(())
     /// # }
     /// ```
-    ///
-    /// Note: this method sends a transaction from your account, and will return an error
-    /// if you do not have sufficient funds for gas or value.
     pub async fn send(&self) -> Result<TxHash, ContractError<M>> {
         // Broadcast transaction and return the transaction hash
         // TODO: Can we make this return a PendingTransaction directly instead?
