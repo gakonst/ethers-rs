@@ -588,10 +588,12 @@ impl<M: Middleware> Multicall<M> {
         // Broadcast transaction and return the transaction hash
         // TODO: Can we make this return a PendingTransaction directly instead?
         // Seems hard due to `returns a value referencing data owned by the current function`
+
+        // running clippy --fix on this throws E0597
+        #[allow(clippy::let_and_return)]
         let tx_hash = match self.version {
             MulticallVersion::Multicall => {
                 let call = self.as_aggregate();
-                // `call` does not live long enough fix
                 let hash = *call.send().await?;
                 hash
             }
