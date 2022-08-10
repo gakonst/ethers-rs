@@ -128,11 +128,14 @@ impl TryFrom<u8> for MulticallVersion {
 /// [`MULTICALL_ADDRESS`], but can be overridden by providing `Some(address)`.
 /// A list of all the supported chains is available [`here`](https://github.com/mds1/multicall#multicall3-contract-addresses).
 ///
+/// Set the contract's version by using [`version`].
+///
 /// The `block` number can be provided for the call by using [`block`].
 ///
-/// Transactions default to `EIP1155` transactions. This can be changed by using [`legacy`].
+/// Transactions default to `EIP1559`. This can be changed by using [`legacy`].
 ///
-/// Build on the `Multicall` instance by adding calls using [`add_call`].
+/// Build on the `Multicall` instance by adding calls using [`add_call`] and call or broadcast them
+/// all at once by using [`call`] and [`send`] respectively.
 ///
 /// # Example
 ///
@@ -225,9 +228,12 @@ impl TryFrom<u8> for MulticallVersion {
 ///
 /// [`new`]: #method.new
 /// [`new_with_chain`]: #method.new_with_chain
+/// [`version`]: #method.version
 /// [`block`]: #method.block
 /// [`legacy`]: #method.legacy
 /// [`add_call`]: #method.add_call
+/// [`call`]: #method.call
+/// [`send`]: #method.send
 pub struct Multicall<M> {
     version: MulticallVersion,
     legacy: bool,
@@ -278,7 +284,7 @@ impl<M: Middleware> Multicall<M> {
     ///
     /// # Errors
     ///
-    /// Returns a [`ContractError`] if the provider errors while getting `network_version`.
+    /// Returns a [`ContractError`] if the provider return an error while getting `network_version`.
     ///
     /// # Panics
     ///
