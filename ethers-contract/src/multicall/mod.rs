@@ -684,17 +684,23 @@ impl<M: Middleware> Multicall<M> {
             })
             .collect();
 
-        // Construct the ContractCall for `aggregate_3_value` function to broadcast the transaction
-        let mut contract_call = self.contract.aggregate_3_value(calls);
+        if total_value.is_zero() {
+            // No value is being sent
+            self.as_aggregate_3()
+        } else {
+            // Construct the ContractCall for `aggregate_3_value` function to broadcast the
+            // transaction
+            let mut contract_call = self.contract.aggregate_3_value(calls);
 
-        if let Some(block) = self.block {
-            contract_call = contract_call.block(block)
-        };
+            if let Some(block) = self.block {
+                contract_call = contract_call.block(block)
+            };
 
-        if self.legacy {
-            contract_call = contract_call.legacy();
-        };
+            if self.legacy {
+                contract_call = contract_call.legacy();
+            };
 
-        contract_call.value(total_value)
+            contract_call.value(total_value)
+        }
     }
 }
