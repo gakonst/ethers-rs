@@ -8,20 +8,21 @@ pub mod multicall_3 {
     // defined here
     mod ethers_contract {
         pub use crate::*;
+        pub use ethers_contract_derive::*;
     }
     #[doc = "Multicall3 was auto-generated with ethers-rs Abigen. More information at: https://github.com/gakonst/ethers-rs"]
-    use std::sync::Arc;
-    pub static MULTICALL3_ABI: crate::Lazy<ethers_core::abi::Abi> = crate::Lazy::new(|| {
-        ethers_core :: utils :: __serde_json :: from_str ("[\n    {\n        \"inputs\": [\n            {\n                \"components\": [\n                    { \"internalType\": \"address\", \"name\": \"target\", \"type\": \"address\" },\n                    { \"internalType\": \"bytes\", \"name\": \"callData\", \"type\": \"bytes\" }\n                ],\n                \"internalType\": \"struct Multicall3.Call[]\",\n                \"name\": \"calls\",\n                \"type\": \"tuple[]\"\n            }\n        ],\n        \"name\": \"aggregate\",\n        \"outputs\": [\n            { \"internalType\": \"uint256\", \"name\": \"blockNumber\", \"type\": \"uint256\" },\n            { \"internalType\": \"bytes[]\", \"name\": \"returnData\", \"type\": \"bytes[]\" }\n        ],\n        \"stateMutability\": \"payable\",\n        \"type\": \"function\"\n    },\n    {\n        \"inputs\": [\n            {\n                \"components\": [\n                    { \"internalType\": \"address\", \"name\": \"target\", \"type\": \"address\" },\n                    { \"internalType\": \"bool\", \"name\": \"allowFailure\", \"type\": \"bool\" },\n                    { \"internalType\": \"bytes\", \"name\": \"callData\", \"type\": \"bytes\" }\n                ],\n                \"internalType\": \"struct Multicall3.Call3[]\",\n                \"name\": \"calls\",\n                \"type\": \"tuple[]\"\n            }\n        ],\n        \"name\": \"aggregate3\",\n        \"outputs\": [\n            {\n                \"components\": [\n                    { \"internalType\": \"bool\", \"name\": \"success\", \"type\": \"bool\" },\n                    { \"internalType\": \"bytes\", \"name\": \"returnData\", \"type\": \"bytes\" }\n                ],\n                \"internalType\": \"struct Multicall3.Result[]\",\n                \"name\": \"returnData\",\n                \"type\": \"tuple[]\"\n            }\n        ],\n        \"stateMutability\": \"payable\",\n        \"type\": \"function\"\n    },\n    {\n        \"inputs\": [\n            {\n                \"components\": [\n                    { \"internalType\": \"address\", \"name\": \"target\", \"type\": \"address\" },\n                    { \"internalType\": \"bool\", \"name\": \"allowFailure\", \"type\": \"bool\" },\n                    { \"internalType\": \"uint256\", \"name\": \"value\", \"type\": \"uint256\" },\n                    { \"internalType\": \"bytes\", \"name\": \"callData\", \"type\": \"bytes\" }\n                ],\n                \"internalType\": \"struct Multicall3.Call3Value[]\",\n                \"name\": \"calls\",\n                \"type\": \"tuple[]\"\n            }\n        ],\n        \"name\": \"aggregate3Value\",\n        \"outputs\": [\n            {\n                \"components\": [\n                    { \"internalType\": \"bool\", \"name\": \"success\", \"type\": \"bool\" },\n                    { \"internalType\": \"bytes\", \"name\": \"returnData\", \"type\": \"bytes\" }\n                ],\n                \"internalType\": \"struct Multicall3.Result[]\",\n                \"name\": \"returnData\",\n                \"type\": \"tuple[]\"\n            }\n        ],\n        \"stateMutability\": \"payable\",\n        \"type\": \"function\"\n    },\n    {\n        \"inputs\": [\n            {\n                \"components\": [\n                    { \"internalType\": \"address\", \"name\": \"target\", \"type\": \"address\" },\n                    { \"internalType\": \"bytes\", \"name\": \"callData\", \"type\": \"bytes\" }\n                ],\n                \"internalType\": \"struct Multicall3.Call[]\",\n                \"name\": \"calls\",\n                \"type\": \"tuple[]\"\n            }\n        ],\n        \"name\": \"blockAndAggregate\",\n        \"outputs\": [\n            { \"internalType\": \"uint256\", \"name\": \"blockNumber\", \"type\": \"uint256\" },\n            { \"internalType\": \"bytes32\", \"name\": \"blockHash\", \"type\": \"bytes32\" },\n            {\n                \"components\": [\n                    { \"internalType\": \"bool\", \"name\": \"success\", \"type\": \"bool\" },\n                    { \"internalType\": \"bytes\", \"name\": \"returnData\", \"type\": \"bytes\" }\n                ],\n                \"internalType\": \"struct Multicall3.Result[]\",\n                \"name\": \"returnData\",\n                \"type\": \"tuple[]\"\n            }\n        ],\n        \"stateMutability\": \"payable\",\n        \"type\": \"function\"\n    },\n    {\n        \"inputs\": [],\n        \"name\": \"getBasefee\",\n        \"outputs\": [{ \"internalType\": \"uint256\", \"name\": \"basefee\", \"type\": \"uint256\" }],\n        \"stateMutability\": \"view\",\n        \"type\": \"function\"\n    },\n    {\n        \"inputs\": [{ \"internalType\": \"uint256\", \"name\": \"blockNumber\", \"type\": \"uint256\" }],\n        \"name\": \"getBlockHash\",\n        \"outputs\": [{ \"internalType\": \"bytes32\", \"name\": \"blockHash\", \"type\": \"bytes32\" }],\n        \"stateMutability\": \"view\",\n        \"type\": \"function\"\n    },\n    {\n        \"inputs\": [],\n        \"name\": \"getBlockNumber\",\n        \"outputs\": [{ \"internalType\": \"uint256\", \"name\": \"blockNumber\", \"type\": \"uint256\" }],\n        \"stateMutability\": \"view\",\n        \"type\": \"function\"\n    },\n    {\n        \"inputs\": [],\n        \"name\": \"getChainId\",\n        \"outputs\": [{ \"internalType\": \"uint256\", \"name\": \"chainid\", \"type\": \"uint256\" }],\n        \"stateMutability\": \"view\",\n        \"type\": \"function\"\n    },\n    {\n        \"inputs\": [],\n        \"name\": \"getCurrentBlockCoinbase\",\n        \"outputs\": [{ \"internalType\": \"address\", \"name\": \"coinbase\", \"type\": \"address\" }],\n        \"stateMutability\": \"view\",\n        \"type\": \"function\"\n    },\n    {\n        \"inputs\": [],\n        \"name\": \"getCurrentBlockDifficulty\",\n        \"outputs\": [{ \"internalType\": \"uint256\", \"name\": \"difficulty\", \"type\": \"uint256\" }],\n        \"stateMutability\": \"view\",\n        \"type\": \"function\"\n    },\n    {\n        \"inputs\": [],\n        \"name\": \"getCurrentBlockGasLimit\",\n        \"outputs\": [{ \"internalType\": \"uint256\", \"name\": \"gaslimit\", \"type\": \"uint256\" }],\n        \"stateMutability\": \"view\",\n        \"type\": \"function\"\n    },\n    {\n        \"inputs\": [],\n        \"name\": \"getCurrentBlockTimestamp\",\n        \"outputs\": [{ \"internalType\": \"uint256\", \"name\": \"timestamp\", \"type\": \"uint256\" }],\n        \"stateMutability\": \"view\",\n        \"type\": \"function\"\n    },\n    {\n        \"inputs\": [{ \"internalType\": \"address\", \"name\": \"addr\", \"type\": \"address\" }],\n        \"name\": \"getEthBalance\",\n        \"outputs\": [{ \"internalType\": \"uint256\", \"name\": \"balance\", \"type\": \"uint256\" }],\n        \"stateMutability\": \"view\",\n        \"type\": \"function\"\n    },\n    {\n        \"inputs\": [],\n        \"name\": \"getLastBlockHash\",\n        \"outputs\": [{ \"internalType\": \"bytes32\", \"name\": \"blockHash\", \"type\": \"bytes32\" }],\n        \"stateMutability\": \"view\",\n        \"type\": \"function\"\n    },\n    {\n        \"inputs\": [\n            { \"internalType\": \"bool\", \"name\": \"requireSuccess\", \"type\": \"bool\" },\n            {\n                \"components\": [\n                    { \"internalType\": \"address\", \"name\": \"target\", \"type\": \"address\" },\n                    { \"internalType\": \"bytes\", \"name\": \"callData\", \"type\": \"bytes\" }\n                ],\n                \"internalType\": \"struct Multicall3.Call[]\",\n                \"name\": \"calls\",\n                \"type\": \"tuple[]\"\n            }\n        ],\n        \"name\": \"tryAggregate\",\n        \"outputs\": [\n            {\n                \"components\": [\n                    { \"internalType\": \"bool\", \"name\": \"success\", \"type\": \"bool\" },\n                    { \"internalType\": \"bytes\", \"name\": \"returnData\", \"type\": \"bytes\" }\n                ],\n                \"internalType\": \"struct Multicall3.Result[]\",\n                \"name\": \"returnData\",\n                \"type\": \"tuple[]\"\n            }\n        ],\n        \"stateMutability\": \"payable\",\n        \"type\": \"function\"\n    },\n    {\n        \"inputs\": [\n            { \"internalType\": \"bool\", \"name\": \"requireSuccess\", \"type\": \"bool\" },\n            {\n                \"components\": [\n                    { \"internalType\": \"address\", \"name\": \"target\", \"type\": \"address\" },\n                    { \"internalType\": \"bytes\", \"name\": \"callData\", \"type\": \"bytes\" }\n                ],\n                \"internalType\": \"struct Multicall3.Call[]\",\n                \"name\": \"calls\",\n                \"type\": \"tuple[]\"\n            }\n        ],\n        \"name\": \"tryBlockAndAggregate\",\n        \"outputs\": [\n            { \"internalType\": \"uint256\", \"name\": \"blockNumber\", \"type\": \"uint256\" },\n            { \"internalType\": \"bytes32\", \"name\": \"blockHash\", \"type\": \"bytes32\" },\n            {\n                \"components\": [\n                    { \"internalType\": \"bool\", \"name\": \"success\", \"type\": \"bool\" },\n                    { \"internalType\": \"bytes\", \"name\": \"returnData\", \"type\": \"bytes\" }\n                ],\n                \"internalType\": \"struct Multicall3.Result[]\",\n                \"name\": \"returnData\",\n                \"type\": \"tuple[]\"\n            }\n        ],\n        \"stateMutability\": \"payable\",\n        \"type\": \"function\"\n    }\n]\n") . expect ("invalid abi")
-    });
-    pub struct Multicall3<M>(crate::Contract<M>);
+    pub static MULTICALL3_ABI: ethers_contract::Lazy<ethers_core::abi::Abi> =
+        ethers_contract::Lazy::new(|| {
+            ethers_core :: utils :: __serde_json :: from_str ("[\n    {\n        \"inputs\": [\n            {\n                \"components\": [\n                    { \"internalType\": \"address\", \"name\": \"target\", \"type\": \"address\" },\n                    { \"internalType\": \"bytes\", \"name\": \"callData\", \"type\": \"bytes\" }\n                ],\n                \"internalType\": \"struct Multicall3.Call[]\",\n                \"name\": \"calls\",\n                \"type\": \"tuple[]\"\n            }\n        ],\n        \"name\": \"aggregate\",\n        \"outputs\": [\n            { \"internalType\": \"uint256\", \"name\": \"blockNumber\", \"type\": \"uint256\" },\n            { \"internalType\": \"bytes[]\", \"name\": \"returnData\", \"type\": \"bytes[]\" }\n        ],\n        \"stateMutability\": \"payable\",\n        \"type\": \"function\"\n    },\n    {\n        \"inputs\": [\n            {\n                \"components\": [\n                    { \"internalType\": \"address\", \"name\": \"target\", \"type\": \"address\" },\n                    { \"internalType\": \"bool\", \"name\": \"allowFailure\", \"type\": \"bool\" },\n                    { \"internalType\": \"bytes\", \"name\": \"callData\", \"type\": \"bytes\" }\n                ],\n                \"internalType\": \"struct Multicall3.Call3[]\",\n                \"name\": \"calls\",\n                \"type\": \"tuple[]\"\n            }\n        ],\n        \"name\": \"aggregate3\",\n        \"outputs\": [\n            {\n                \"components\": [\n                    { \"internalType\": \"bool\", \"name\": \"success\", \"type\": \"bool\" },\n                    { \"internalType\": \"bytes\", \"name\": \"returnData\", \"type\": \"bytes\" }\n                ],\n                \"internalType\": \"struct Multicall3.Result[]\",\n                \"name\": \"returnData\",\n                \"type\": \"tuple[]\"\n            }\n        ],\n        \"stateMutability\": \"payable\",\n        \"type\": \"function\"\n    },\n    {\n        \"inputs\": [\n            {\n                \"components\": [\n                    { \"internalType\": \"address\", \"name\": \"target\", \"type\": \"address\" },\n                    { \"internalType\": \"bool\", \"name\": \"allowFailure\", \"type\": \"bool\" },\n                    { \"internalType\": \"uint256\", \"name\": \"value\", \"type\": \"uint256\" },\n                    { \"internalType\": \"bytes\", \"name\": \"callData\", \"type\": \"bytes\" }\n                ],\n                \"internalType\": \"struct Multicall3.Call3Value[]\",\n                \"name\": \"calls\",\n                \"type\": \"tuple[]\"\n            }\n        ],\n        \"name\": \"aggregate3Value\",\n        \"outputs\": [\n            {\n                \"components\": [\n                    { \"internalType\": \"bool\", \"name\": \"success\", \"type\": \"bool\" },\n                    { \"internalType\": \"bytes\", \"name\": \"returnData\", \"type\": \"bytes\" }\n                ],\n                \"internalType\": \"struct Multicall3.Result[]\",\n                \"name\": \"returnData\",\n                \"type\": \"tuple[]\"\n            }\n        ],\n        \"stateMutability\": \"payable\",\n        \"type\": \"function\"\n    },\n    {\n        \"inputs\": [\n            {\n                \"components\": [\n                    { \"internalType\": \"address\", \"name\": \"target\", \"type\": \"address\" },\n                    { \"internalType\": \"bytes\", \"name\": \"callData\", \"type\": \"bytes\" }\n                ],\n                \"internalType\": \"struct Multicall3.Call[]\",\n                \"name\": \"calls\",\n                \"type\": \"tuple[]\"\n            }\n        ],\n        \"name\": \"blockAndAggregate\",\n        \"outputs\": [\n            { \"internalType\": \"uint256\", \"name\": \"blockNumber\", \"type\": \"uint256\" },\n            { \"internalType\": \"bytes32\", \"name\": \"blockHash\", \"type\": \"bytes32\" },\n            {\n                \"components\": [\n                    { \"internalType\": \"bool\", \"name\": \"success\", \"type\": \"bool\" },\n                    { \"internalType\": \"bytes\", \"name\": \"returnData\", \"type\": \"bytes\" }\n                ],\n                \"internalType\": \"struct Multicall3.Result[]\",\n                \"name\": \"returnData\",\n                \"type\": \"tuple[]\"\n            }\n        ],\n        \"stateMutability\": \"payable\",\n        \"type\": \"function\"\n    },\n    {\n        \"inputs\": [],\n        \"name\": \"getBasefee\",\n        \"outputs\": [{ \"internalType\": \"uint256\", \"name\": \"basefee\", \"type\": \"uint256\" }],\n        \"stateMutability\": \"view\",\n        \"type\": \"function\"\n    },\n    {\n        \"inputs\": [{ \"internalType\": \"uint256\", \"name\": \"blockNumber\", \"type\": \"uint256\" }],\n        \"name\": \"getBlockHash\",\n        \"outputs\": [{ \"internalType\": \"bytes32\", \"name\": \"blockHash\", \"type\": \"bytes32\" }],\n        \"stateMutability\": \"view\",\n        \"type\": \"function\"\n    },\n    {\n        \"inputs\": [],\n        \"name\": \"getBlockNumber\",\n        \"outputs\": [{ \"internalType\": \"uint256\", \"name\": \"blockNumber\", \"type\": \"uint256\" }],\n        \"stateMutability\": \"view\",\n        \"type\": \"function\"\n    },\n    {\n        \"inputs\": [],\n        \"name\": \"getChainId\",\n        \"outputs\": [{ \"internalType\": \"uint256\", \"name\": \"chainid\", \"type\": \"uint256\" }],\n        \"stateMutability\": \"view\",\n        \"type\": \"function\"\n    },\n    {\n        \"inputs\": [],\n        \"name\": \"getCurrentBlockCoinbase\",\n        \"outputs\": [{ \"internalType\": \"address\", \"name\": \"coinbase\", \"type\": \"address\" }],\n        \"stateMutability\": \"view\",\n        \"type\": \"function\"\n    },\n    {\n        \"inputs\": [],\n        \"name\": \"getCurrentBlockDifficulty\",\n        \"outputs\": [{ \"internalType\": \"uint256\", \"name\": \"difficulty\", \"type\": \"uint256\" }],\n        \"stateMutability\": \"view\",\n        \"type\": \"function\"\n    },\n    {\n        \"inputs\": [],\n        \"name\": \"getCurrentBlockGasLimit\",\n        \"outputs\": [{ \"internalType\": \"uint256\", \"name\": \"gaslimit\", \"type\": \"uint256\" }],\n        \"stateMutability\": \"view\",\n        \"type\": \"function\"\n    },\n    {\n        \"inputs\": [],\n        \"name\": \"getCurrentBlockTimestamp\",\n        \"outputs\": [{ \"internalType\": \"uint256\", \"name\": \"timestamp\", \"type\": \"uint256\" }],\n        \"stateMutability\": \"view\",\n        \"type\": \"function\"\n    },\n    {\n        \"inputs\": [{ \"internalType\": \"address\", \"name\": \"addr\", \"type\": \"address\" }],\n        \"name\": \"getEthBalance\",\n        \"outputs\": [{ \"internalType\": \"uint256\", \"name\": \"balance\", \"type\": \"uint256\" }],\n        \"stateMutability\": \"view\",\n        \"type\": \"function\"\n    },\n    {\n        \"inputs\": [],\n        \"name\": \"getLastBlockHash\",\n        \"outputs\": [{ \"internalType\": \"bytes32\", \"name\": \"blockHash\", \"type\": \"bytes32\" }],\n        \"stateMutability\": \"view\",\n        \"type\": \"function\"\n    },\n    {\n        \"inputs\": [\n            { \"internalType\": \"bool\", \"name\": \"requireSuccess\", \"type\": \"bool\" },\n            {\n                \"components\": [\n                    { \"internalType\": \"address\", \"name\": \"target\", \"type\": \"address\" },\n                    { \"internalType\": \"bytes\", \"name\": \"callData\", \"type\": \"bytes\" }\n                ],\n                \"internalType\": \"struct Multicall3.Call[]\",\n                \"name\": \"calls\",\n                \"type\": \"tuple[]\"\n            }\n        ],\n        \"name\": \"tryAggregate\",\n        \"outputs\": [\n            {\n                \"components\": [\n                    { \"internalType\": \"bool\", \"name\": \"success\", \"type\": \"bool\" },\n                    { \"internalType\": \"bytes\", \"name\": \"returnData\", \"type\": \"bytes\" }\n                ],\n                \"internalType\": \"struct Multicall3.Result[]\",\n                \"name\": \"returnData\",\n                \"type\": \"tuple[]\"\n            }\n        ],\n        \"stateMutability\": \"payable\",\n        \"type\": \"function\"\n    },\n    {\n        \"inputs\": [\n            { \"internalType\": \"bool\", \"name\": \"requireSuccess\", \"type\": \"bool\" },\n            {\n                \"components\": [\n                    { \"internalType\": \"address\", \"name\": \"target\", \"type\": \"address\" },\n                    { \"internalType\": \"bytes\", \"name\": \"callData\", \"type\": \"bytes\" }\n                ],\n                \"internalType\": \"struct Multicall3.Call[]\",\n                \"name\": \"calls\",\n                \"type\": \"tuple[]\"\n            }\n        ],\n        \"name\": \"tryBlockAndAggregate\",\n        \"outputs\": [\n            { \"internalType\": \"uint256\", \"name\": \"blockNumber\", \"type\": \"uint256\" },\n            { \"internalType\": \"bytes32\", \"name\": \"blockHash\", \"type\": \"bytes32\" },\n            {\n                \"components\": [\n                    { \"internalType\": \"bool\", \"name\": \"success\", \"type\": \"bool\" },\n                    { \"internalType\": \"bytes\", \"name\": \"returnData\", \"type\": \"bytes\" }\n                ],\n                \"internalType\": \"struct Multicall3.Result[]\",\n                \"name\": \"returnData\",\n                \"type\": \"tuple[]\"\n            }\n        ],\n        \"stateMutability\": \"payable\",\n        \"type\": \"function\"\n    }\n]\n") . expect ("invalid abi")
+        });
+    pub struct Multicall3<M>(ethers_contract::Contract<M>);
     impl<M> Clone for Multicall3<M> {
         fn clone(&self) -> Self {
             Multicall3(self.0.clone())
         }
     }
     impl<M> std::ops::Deref for Multicall3<M> {
-        type Target = crate::Contract<M>;
+        type Target = ethers_contract::Contract<M>;
         fn deref(&self) -> &Self::Target {
             &self.0
         }
@@ -39,13 +40,13 @@ pub mod multicall_3 {
             address: T,
             client: ::std::sync::Arc<M>,
         ) -> Self {
-            crate::Contract::new(address.into(), MULTICALL3_ABI.clone(), client).into()
+            ethers_contract::Contract::new(address.into(), MULTICALL3_ABI.clone(), client).into()
         }
         #[doc = "Calls the contract's `aggregate` (0x252dba42) function"]
         pub fn aggregate(
             &self,
             calls: ::std::vec::Vec<Call>,
-        ) -> crate::builders::ContractCall<
+        ) -> ethers_contract::builders::ContractCall<
             M,
             (ethers_core::types::U256, ::std::vec::Vec<ethers_core::types::Bytes>),
         > {
@@ -57,7 +58,7 @@ pub mod multicall_3 {
         pub fn aggregate_3(
             &self,
             calls: ::std::vec::Vec<Call3>,
-        ) -> crate::builders::ContractCall<M, ::std::vec::Vec<Result>> {
+        ) -> ethers_contract::builders::ContractCall<M, ::std::vec::Vec<Result>> {
             self.0
                 .method_hash([130, 173, 86, 203], calls)
                 .expect("method not found (this should never happen)")
@@ -66,7 +67,7 @@ pub mod multicall_3 {
         pub fn aggregate_3_value(
             &self,
             calls: ::std::vec::Vec<Call3Value>,
-        ) -> crate::builders::ContractCall<M, ::std::vec::Vec<Result>> {
+        ) -> ethers_contract::builders::ContractCall<M, ::std::vec::Vec<Result>> {
             self.0
                 .method_hash([23, 77, 234, 113], calls)
                 .expect("method not found (this should never happen)")
@@ -75,7 +76,7 @@ pub mod multicall_3 {
         pub fn block_and_aggregate(
             &self,
             calls: ::std::vec::Vec<Call>,
-        ) -> crate::builders::ContractCall<
+        ) -> ethers_contract::builders::ContractCall<
             M,
             (ethers_core::types::U256, [u8; 32], ::std::vec::Vec<Result>),
         > {
@@ -84,7 +85,9 @@ pub mod multicall_3 {
                 .expect("method not found (this should never happen)")
         }
         #[doc = "Calls the contract's `getBasefee` (0x3e64a696) function"]
-        pub fn get_basefee(&self) -> crate::builders::ContractCall<M, ethers_core::types::U256> {
+        pub fn get_basefee(
+            &self,
+        ) -> ethers_contract::builders::ContractCall<M, ethers_core::types::U256> {
             self.0
                 .method_hash([62, 100, 166, 150], ())
                 .expect("method not found (this should never happen)")
@@ -93,7 +96,7 @@ pub mod multicall_3 {
         pub fn get_block_hash(
             &self,
             block_number: ethers_core::types::U256,
-        ) -> crate::builders::ContractCall<M, [u8; 32]> {
+        ) -> ethers_contract::builders::ContractCall<M, [u8; 32]> {
             self.0
                 .method_hash([238, 130, 172, 94], block_number)
                 .expect("method not found (this should never happen)")
@@ -101,13 +104,15 @@ pub mod multicall_3 {
         #[doc = "Calls the contract's `getBlockNumber` (0x42cbb15c) function"]
         pub fn get_block_number(
             &self,
-        ) -> crate::builders::ContractCall<M, ethers_core::types::U256> {
+        ) -> ethers_contract::builders::ContractCall<M, ethers_core::types::U256> {
             self.0
                 .method_hash([66, 203, 177, 92], ())
                 .expect("method not found (this should never happen)")
         }
         #[doc = "Calls the contract's `getChainId` (0x3408e470) function"]
-        pub fn get_chain_id(&self) -> crate::builders::ContractCall<M, ethers_core::types::U256> {
+        pub fn get_chain_id(
+            &self,
+        ) -> ethers_contract::builders::ContractCall<M, ethers_core::types::U256> {
             self.0
                 .method_hash([52, 8, 228, 112], ())
                 .expect("method not found (this should never happen)")
@@ -115,7 +120,7 @@ pub mod multicall_3 {
         #[doc = "Calls the contract's `getCurrentBlockCoinbase` (0xa8b0574e) function"]
         pub fn get_current_block_coinbase(
             &self,
-        ) -> crate::builders::ContractCall<M, ethers_core::types::Address> {
+        ) -> ethers_contract::builders::ContractCall<M, ethers_core::types::Address> {
             self.0
                 .method_hash([168, 176, 87, 78], ())
                 .expect("method not found (this should never happen)")
@@ -123,7 +128,7 @@ pub mod multicall_3 {
         #[doc = "Calls the contract's `getCurrentBlockDifficulty` (0x72425d9d) function"]
         pub fn get_current_block_difficulty(
             &self,
-        ) -> crate::builders::ContractCall<M, ethers_core::types::U256> {
+        ) -> ethers_contract::builders::ContractCall<M, ethers_core::types::U256> {
             self.0
                 .method_hash([114, 66, 93, 157], ())
                 .expect("method not found (this should never happen)")
@@ -131,7 +136,7 @@ pub mod multicall_3 {
         #[doc = "Calls the contract's `getCurrentBlockGasLimit` (0x86d516e8) function"]
         pub fn get_current_block_gas_limit(
             &self,
-        ) -> crate::builders::ContractCall<M, ethers_core::types::U256> {
+        ) -> ethers_contract::builders::ContractCall<M, ethers_core::types::U256> {
             self.0
                 .method_hash([134, 213, 22, 232], ())
                 .expect("method not found (this should never happen)")
@@ -139,7 +144,7 @@ pub mod multicall_3 {
         #[doc = "Calls the contract's `getCurrentBlockTimestamp` (0x0f28c97d) function"]
         pub fn get_current_block_timestamp(
             &self,
-        ) -> crate::builders::ContractCall<M, ethers_core::types::U256> {
+        ) -> ethers_contract::builders::ContractCall<M, ethers_core::types::U256> {
             self.0
                 .method_hash([15, 40, 201, 125], ())
                 .expect("method not found (this should never happen)")
@@ -148,13 +153,13 @@ pub mod multicall_3 {
         pub fn get_eth_balance(
             &self,
             addr: ethers_core::types::Address,
-        ) -> crate::builders::ContractCall<M, ethers_core::types::U256> {
+        ) -> ethers_contract::builders::ContractCall<M, ethers_core::types::U256> {
             self.0
                 .method_hash([77, 35, 1, 204], addr)
                 .expect("method not found (this should never happen)")
         }
         #[doc = "Calls the contract's `getLastBlockHash` (0x27e86d6e) function"]
-        pub fn get_last_block_hash(&self) -> crate::builders::ContractCall<M, [u8; 32]> {
+        pub fn get_last_block_hash(&self) -> ethers_contract::builders::ContractCall<M, [u8; 32]> {
             self.0
                 .method_hash([39, 232, 109, 110], ())
                 .expect("method not found (this should never happen)")
@@ -164,7 +169,7 @@ pub mod multicall_3 {
             &self,
             require_success: bool,
             calls: ::std::vec::Vec<Call>,
-        ) -> crate::builders::ContractCall<M, ::std::vec::Vec<Result>> {
+        ) -> ethers_contract::builders::ContractCall<M, ::std::vec::Vec<Result>> {
             self.0
                 .method_hash([188, 227, 139, 215], (require_success, calls))
                 .expect("method not found (this should never happen)")
@@ -174,7 +179,7 @@ pub mod multicall_3 {
             &self,
             require_success: bool,
             calls: ::std::vec::Vec<Call>,
-        ) -> crate::builders::ContractCall<
+        ) -> ethers_contract::builders::ContractCall<
             M,
             (ethers_core::types::U256, [u8; 32], ::std::vec::Vec<Result>),
         > {
@@ -183,94 +188,222 @@ pub mod multicall_3 {
                 .expect("method not found (this should never happen)")
         }
     }
-    impl<M: ethers_providers::Middleware> From<crate::Contract<M>> for Multicall3<M> {
-        fn from(contract: crate::Contract<M>) -> Self {
+    impl<M: ethers_providers::Middleware> From<ethers_contract::Contract<M>> for Multicall3<M> {
+        fn from(contract: ethers_contract::Contract<M>) -> Self {
             Self(contract)
         }
     }
     #[doc = "Container type for all input parameters for the `aggregate` function with signature `aggregate((address,bytes)[])` and selector `[37, 45, 186, 66]`"]
-    #[derive(Clone, Debug, Default, Eq, PartialEq, crate :: EthCall, crate :: EthDisplay)]
+    #[derive(
+        Clone,
+        Debug,
+        Default,
+        Eq,
+        PartialEq,
+        ethers_contract :: EthCall,
+        ethers_contract :: EthDisplay,
+    )]
     #[ethcall(name = "aggregate", abi = "aggregate((address,bytes)[])")]
     pub struct AggregateCall {
         pub calls: ::std::vec::Vec<Call>,
     }
     #[doc = "Container type for all input parameters for the `aggregate3` function with signature `aggregate3((address,bool,bytes)[])` and selector `[130, 173, 86, 203]`"]
-    #[derive(Clone, Debug, Default, Eq, PartialEq, crate :: EthCall, crate :: EthDisplay)]
+    #[derive(
+        Clone,
+        Debug,
+        Default,
+        Eq,
+        PartialEq,
+        ethers_contract :: EthCall,
+        ethers_contract :: EthDisplay,
+    )]
     #[ethcall(name = "aggregate3", abi = "aggregate3((address,bool,bytes)[])")]
     pub struct Aggregate3Call {
         pub calls: ::std::vec::Vec<Call3>,
     }
     #[doc = "Container type for all input parameters for the `aggregate3Value` function with signature `aggregate3Value((address,bool,uint256,bytes)[])` and selector `[23, 77, 234, 113]`"]
-    #[derive(Clone, Debug, Default, Eq, PartialEq, crate :: EthCall, crate :: EthDisplay)]
+    #[derive(
+        Clone,
+        Debug,
+        Default,
+        Eq,
+        PartialEq,
+        ethers_contract :: EthCall,
+        ethers_contract :: EthDisplay,
+    )]
     #[ethcall(name = "aggregate3Value", abi = "aggregate3Value((address,bool,uint256,bytes)[])")]
     pub struct Aggregate3ValueCall {
         pub calls: ::std::vec::Vec<Call3Value>,
     }
     #[doc = "Container type for all input parameters for the `blockAndAggregate` function with signature `blockAndAggregate((address,bytes)[])` and selector `[195, 7, 127, 169]`"]
-    #[derive(Clone, Debug, Default, Eq, PartialEq, crate :: EthCall, crate :: EthDisplay)]
+    #[derive(
+        Clone,
+        Debug,
+        Default,
+        Eq,
+        PartialEq,
+        ethers_contract :: EthCall,
+        ethers_contract :: EthDisplay,
+    )]
     #[ethcall(name = "blockAndAggregate", abi = "blockAndAggregate((address,bytes)[])")]
     pub struct BlockAndAggregateCall {
         pub calls: ::std::vec::Vec<Call>,
     }
     #[doc = "Container type for all input parameters for the `getBasefee` function with signature `getBasefee()` and selector `[62, 100, 166, 150]`"]
-    #[derive(Clone, Debug, Default, Eq, PartialEq, crate :: EthCall, crate :: EthDisplay)]
+    #[derive(
+        Clone,
+        Debug,
+        Default,
+        Eq,
+        PartialEq,
+        ethers_contract :: EthCall,
+        ethers_contract :: EthDisplay,
+    )]
     #[ethcall(name = "getBasefee", abi = "getBasefee()")]
     pub struct GetBasefeeCall;
     #[doc = "Container type for all input parameters for the `getBlockHash` function with signature `getBlockHash(uint256)` and selector `[238, 130, 172, 94]`"]
-    #[derive(Clone, Debug, Default, Eq, PartialEq, crate :: EthCall, crate :: EthDisplay)]
+    #[derive(
+        Clone,
+        Debug,
+        Default,
+        Eq,
+        PartialEq,
+        ethers_contract :: EthCall,
+        ethers_contract :: EthDisplay,
+    )]
     #[ethcall(name = "getBlockHash", abi = "getBlockHash(uint256)")]
     pub struct GetBlockHashCall {
         pub block_number: ethers_core::types::U256,
     }
     #[doc = "Container type for all input parameters for the `getBlockNumber` function with signature `getBlockNumber()` and selector `[66, 203, 177, 92]`"]
-    #[derive(Clone, Debug, Default, Eq, PartialEq, crate :: EthCall, crate :: EthDisplay)]
+    #[derive(
+        Clone,
+        Debug,
+        Default,
+        Eq,
+        PartialEq,
+        ethers_contract :: EthCall,
+        ethers_contract :: EthDisplay,
+    )]
     #[ethcall(name = "getBlockNumber", abi = "getBlockNumber()")]
     pub struct GetBlockNumberCall;
     #[doc = "Container type for all input parameters for the `getChainId` function with signature `getChainId()` and selector `[52, 8, 228, 112]`"]
-    #[derive(Clone, Debug, Default, Eq, PartialEq, crate :: EthCall, crate :: EthDisplay)]
+    #[derive(
+        Clone,
+        Debug,
+        Default,
+        Eq,
+        PartialEq,
+        ethers_contract :: EthCall,
+        ethers_contract :: EthDisplay,
+    )]
     #[ethcall(name = "getChainId", abi = "getChainId()")]
     pub struct GetChainIdCall;
     #[doc = "Container type for all input parameters for the `getCurrentBlockCoinbase` function with signature `getCurrentBlockCoinbase()` and selector `[168, 176, 87, 78]`"]
-    #[derive(Clone, Debug, Default, Eq, PartialEq, crate :: EthCall, crate :: EthDisplay)]
+    #[derive(
+        Clone,
+        Debug,
+        Default,
+        Eq,
+        PartialEq,
+        ethers_contract :: EthCall,
+        ethers_contract :: EthDisplay,
+    )]
     #[ethcall(name = "getCurrentBlockCoinbase", abi = "getCurrentBlockCoinbase()")]
     pub struct GetCurrentBlockCoinbaseCall;
     #[doc = "Container type for all input parameters for the `getCurrentBlockDifficulty` function with signature `getCurrentBlockDifficulty()` and selector `[114, 66, 93, 157]`"]
-    #[derive(Clone, Debug, Default, Eq, PartialEq, crate :: EthCall, crate :: EthDisplay)]
+    #[derive(
+        Clone,
+        Debug,
+        Default,
+        Eq,
+        PartialEq,
+        ethers_contract :: EthCall,
+        ethers_contract :: EthDisplay,
+    )]
     #[ethcall(name = "getCurrentBlockDifficulty", abi = "getCurrentBlockDifficulty()")]
     pub struct GetCurrentBlockDifficultyCall;
     #[doc = "Container type for all input parameters for the `getCurrentBlockGasLimit` function with signature `getCurrentBlockGasLimit()` and selector `[134, 213, 22, 232]`"]
-    #[derive(Clone, Debug, Default, Eq, PartialEq, crate :: EthCall, crate :: EthDisplay)]
+    #[derive(
+        Clone,
+        Debug,
+        Default,
+        Eq,
+        PartialEq,
+        ethers_contract :: EthCall,
+        ethers_contract :: EthDisplay,
+    )]
     #[ethcall(name = "getCurrentBlockGasLimit", abi = "getCurrentBlockGasLimit()")]
     pub struct GetCurrentBlockGasLimitCall;
     #[doc = "Container type for all input parameters for the `getCurrentBlockTimestamp` function with signature `getCurrentBlockTimestamp()` and selector `[15, 40, 201, 125]`"]
-    #[derive(Clone, Debug, Default, Eq, PartialEq, crate :: EthCall, crate :: EthDisplay)]
+    #[derive(
+        Clone,
+        Debug,
+        Default,
+        Eq,
+        PartialEq,
+        ethers_contract :: EthCall,
+        ethers_contract :: EthDisplay,
+    )]
     #[ethcall(name = "getCurrentBlockTimestamp", abi = "getCurrentBlockTimestamp()")]
     pub struct GetCurrentBlockTimestampCall;
     #[doc = "Container type for all input parameters for the `getEthBalance` function with signature `getEthBalance(address)` and selector `[77, 35, 1, 204]`"]
-    #[derive(Clone, Debug, Default, Eq, PartialEq, crate :: EthCall, crate :: EthDisplay)]
+    #[derive(
+        Clone,
+        Debug,
+        Default,
+        Eq,
+        PartialEq,
+        ethers_contract :: EthCall,
+        ethers_contract :: EthDisplay,
+    )]
     #[ethcall(name = "getEthBalance", abi = "getEthBalance(address)")]
     pub struct GetEthBalanceCall {
         pub addr: ethers_core::types::Address,
     }
     #[doc = "Container type for all input parameters for the `getLastBlockHash` function with signature `getLastBlockHash()` and selector `[39, 232, 109, 110]`"]
-    #[derive(Clone, Debug, Default, Eq, PartialEq, crate :: EthCall, crate :: EthDisplay)]
+    #[derive(
+        Clone,
+        Debug,
+        Default,
+        Eq,
+        PartialEq,
+        ethers_contract :: EthCall,
+        ethers_contract :: EthDisplay,
+    )]
     #[ethcall(name = "getLastBlockHash", abi = "getLastBlockHash()")]
     pub struct GetLastBlockHashCall;
     #[doc = "Container type for all input parameters for the `tryAggregate` function with signature `tryAggregate(bool,(address,bytes)[])` and selector `[188, 227, 139, 215]`"]
-    #[derive(Clone, Debug, Default, Eq, PartialEq, crate :: EthCall, crate :: EthDisplay)]
+    #[derive(
+        Clone,
+        Debug,
+        Default,
+        Eq,
+        PartialEq,
+        ethers_contract :: EthCall,
+        ethers_contract :: EthDisplay,
+    )]
     #[ethcall(name = "tryAggregate", abi = "tryAggregate(bool,(address,bytes)[])")]
     pub struct TryAggregateCall {
         pub require_success: bool,
         pub calls: ::std::vec::Vec<Call>,
     }
     #[doc = "Container type for all input parameters for the `tryBlockAndAggregate` function with signature `tryBlockAndAggregate(bool,(address,bytes)[])` and selector `[57, 149, 66, 233]`"]
-    #[derive(Clone, Debug, Default, Eq, PartialEq, crate :: EthCall, crate :: EthDisplay)]
+    #[derive(
+        Clone,
+        Debug,
+        Default,
+        Eq,
+        PartialEq,
+        ethers_contract :: EthCall,
+        ethers_contract :: EthDisplay,
+    )]
     #[ethcall(name = "tryBlockAndAggregate", abi = "tryBlockAndAggregate(bool,(address,bytes)[])")]
     pub struct TryBlockAndAggregateCall {
         pub require_success: bool,
         pub calls: ::std::vec::Vec<Call>,
     }
-    #[derive(Debug, Clone, PartialEq, Eq, crate :: EthAbiType)]
+    #[derive(Debug, Clone, PartialEq, Eq, ethers_contract :: EthAbiType)]
     pub enum Multicall3Calls {
         Aggregate(AggregateCall),
         Aggregate3(Aggregate3Call),
@@ -503,105 +636,257 @@ pub mod multicall_3 {
         }
     }
     #[doc = "Container type for all return fields from the `aggregate` function with signature `aggregate((address,bytes)[])` and selector `[37, 45, 186, 66]`"]
-    #[derive(Clone, Debug, Default, Eq, PartialEq, crate :: EthAbiType, crate :: EthAbiCodec)]
+    #[derive(
+        Clone,
+        Debug,
+        Default,
+        Eq,
+        PartialEq,
+        ethers_contract :: EthAbiType,
+        ethers_contract :: EthAbiCodec,
+    )]
     pub struct AggregateReturn {
         pub block_number: ethers_core::types::U256,
         pub return_data: ::std::vec::Vec<ethers_core::types::Bytes>,
     }
     #[doc = "Container type for all return fields from the `aggregate3` function with signature `aggregate3((address,bool,bytes)[])` and selector `[130, 173, 86, 203]`"]
-    #[derive(Clone, Debug, Default, Eq, PartialEq, crate :: EthAbiType, crate :: EthAbiCodec)]
+    #[derive(
+        Clone,
+        Debug,
+        Default,
+        Eq,
+        PartialEq,
+        ethers_contract :: EthAbiType,
+        ethers_contract :: EthAbiCodec,
+    )]
     pub struct Aggregate3Return {
         pub return_data: ::std::vec::Vec<Result>,
     }
     #[doc = "Container type for all return fields from the `aggregate3Value` function with signature `aggregate3Value((address,bool,uint256,bytes)[])` and selector `[23, 77, 234, 113]`"]
-    #[derive(Clone, Debug, Default, Eq, PartialEq, crate :: EthAbiType, crate :: EthAbiCodec)]
+    #[derive(
+        Clone,
+        Debug,
+        Default,
+        Eq,
+        PartialEq,
+        ethers_contract :: EthAbiType,
+        ethers_contract :: EthAbiCodec,
+    )]
     pub struct Aggregate3ValueReturn {
         pub return_data: ::std::vec::Vec<Result>,
     }
     #[doc = "Container type for all return fields from the `blockAndAggregate` function with signature `blockAndAggregate((address,bytes)[])` and selector `[195, 7, 127, 169]`"]
-    #[derive(Clone, Debug, Default, Eq, PartialEq, crate :: EthAbiType, crate :: EthAbiCodec)]
+    #[derive(
+        Clone,
+        Debug,
+        Default,
+        Eq,
+        PartialEq,
+        ethers_contract :: EthAbiType,
+        ethers_contract :: EthAbiCodec,
+    )]
     pub struct BlockAndAggregateReturn {
         pub block_number: ethers_core::types::U256,
         pub block_hash: [u8; 32],
         pub return_data: ::std::vec::Vec<Result>,
     }
     #[doc = "Container type for all return fields from the `getBasefee` function with signature `getBasefee()` and selector `[62, 100, 166, 150]`"]
-    #[derive(Clone, Debug, Default, Eq, PartialEq, crate :: EthAbiType, crate :: EthAbiCodec)]
+    #[derive(
+        Clone,
+        Debug,
+        Default,
+        Eq,
+        PartialEq,
+        ethers_contract :: EthAbiType,
+        ethers_contract :: EthAbiCodec,
+    )]
     pub struct GetBasefeeReturn {
         pub basefee: ethers_core::types::U256,
     }
     #[doc = "Container type for all return fields from the `getBlockHash` function with signature `getBlockHash(uint256)` and selector `[238, 130, 172, 94]`"]
-    #[derive(Clone, Debug, Default, Eq, PartialEq, crate :: EthAbiType, crate :: EthAbiCodec)]
+    #[derive(
+        Clone,
+        Debug,
+        Default,
+        Eq,
+        PartialEq,
+        ethers_contract :: EthAbiType,
+        ethers_contract :: EthAbiCodec,
+    )]
     pub struct GetBlockHashReturn {
         pub block_hash: [u8; 32],
     }
     #[doc = "Container type for all return fields from the `getBlockNumber` function with signature `getBlockNumber()` and selector `[66, 203, 177, 92]`"]
-    #[derive(Clone, Debug, Default, Eq, PartialEq, crate :: EthAbiType, crate :: EthAbiCodec)]
+    #[derive(
+        Clone,
+        Debug,
+        Default,
+        Eq,
+        PartialEq,
+        ethers_contract :: EthAbiType,
+        ethers_contract :: EthAbiCodec,
+    )]
     pub struct GetBlockNumberReturn {
         pub block_number: ethers_core::types::U256,
     }
     #[doc = "Container type for all return fields from the `getChainId` function with signature `getChainId()` and selector `[52, 8, 228, 112]`"]
-    #[derive(Clone, Debug, Default, Eq, PartialEq, crate :: EthAbiType, crate :: EthAbiCodec)]
+    #[derive(
+        Clone,
+        Debug,
+        Default,
+        Eq,
+        PartialEq,
+        ethers_contract :: EthAbiType,
+        ethers_contract :: EthAbiCodec,
+    )]
     pub struct GetChainIdReturn {
         pub chainid: ethers_core::types::U256,
     }
     #[doc = "Container type for all return fields from the `getCurrentBlockCoinbase` function with signature `getCurrentBlockCoinbase()` and selector `[168, 176, 87, 78]`"]
-    #[derive(Clone, Debug, Default, Eq, PartialEq, crate :: EthAbiType, crate :: EthAbiCodec)]
+    #[derive(
+        Clone,
+        Debug,
+        Default,
+        Eq,
+        PartialEq,
+        ethers_contract :: EthAbiType,
+        ethers_contract :: EthAbiCodec,
+    )]
     pub struct GetCurrentBlockCoinbaseReturn {
         pub coinbase: ethers_core::types::Address,
     }
     #[doc = "Container type for all return fields from the `getCurrentBlockDifficulty` function with signature `getCurrentBlockDifficulty()` and selector `[114, 66, 93, 157]`"]
-    #[derive(Clone, Debug, Default, Eq, PartialEq, crate :: EthAbiType, crate :: EthAbiCodec)]
+    #[derive(
+        Clone,
+        Debug,
+        Default,
+        Eq,
+        PartialEq,
+        ethers_contract :: EthAbiType,
+        ethers_contract :: EthAbiCodec,
+    )]
     pub struct GetCurrentBlockDifficultyReturn {
         pub difficulty: ethers_core::types::U256,
     }
     #[doc = "Container type for all return fields from the `getCurrentBlockGasLimit` function with signature `getCurrentBlockGasLimit()` and selector `[134, 213, 22, 232]`"]
-    #[derive(Clone, Debug, Default, Eq, PartialEq, crate :: EthAbiType, crate :: EthAbiCodec)]
+    #[derive(
+        Clone,
+        Debug,
+        Default,
+        Eq,
+        PartialEq,
+        ethers_contract :: EthAbiType,
+        ethers_contract :: EthAbiCodec,
+    )]
     pub struct GetCurrentBlockGasLimitReturn {
         pub gaslimit: ethers_core::types::U256,
     }
     #[doc = "Container type for all return fields from the `getCurrentBlockTimestamp` function with signature `getCurrentBlockTimestamp()` and selector `[15, 40, 201, 125]`"]
-    #[derive(Clone, Debug, Default, Eq, PartialEq, crate :: EthAbiType, crate :: EthAbiCodec)]
+    #[derive(
+        Clone,
+        Debug,
+        Default,
+        Eq,
+        PartialEq,
+        ethers_contract :: EthAbiType,
+        ethers_contract :: EthAbiCodec,
+    )]
     pub struct GetCurrentBlockTimestampReturn {
         pub timestamp: ethers_core::types::U256,
     }
     #[doc = "Container type for all return fields from the `getEthBalance` function with signature `getEthBalance(address)` and selector `[77, 35, 1, 204]`"]
-    #[derive(Clone, Debug, Default, Eq, PartialEq, crate :: EthAbiType, crate :: EthAbiCodec)]
+    #[derive(
+        Clone,
+        Debug,
+        Default,
+        Eq,
+        PartialEq,
+        ethers_contract :: EthAbiType,
+        ethers_contract :: EthAbiCodec,
+    )]
     pub struct GetEthBalanceReturn {
         pub balance: ethers_core::types::U256,
     }
     #[doc = "Container type for all return fields from the `getLastBlockHash` function with signature `getLastBlockHash()` and selector `[39, 232, 109, 110]`"]
-    #[derive(Clone, Debug, Default, Eq, PartialEq, crate :: EthAbiType, crate :: EthAbiCodec)]
+    #[derive(
+        Clone,
+        Debug,
+        Default,
+        Eq,
+        PartialEq,
+        ethers_contract :: EthAbiType,
+        ethers_contract :: EthAbiCodec,
+    )]
     pub struct GetLastBlockHashReturn {
         pub block_hash: [u8; 32],
     }
     #[doc = "Container type for all return fields from the `tryAggregate` function with signature `tryAggregate(bool,(address,bytes)[])` and selector `[188, 227, 139, 215]`"]
-    #[derive(Clone, Debug, Default, Eq, PartialEq, crate :: EthAbiType, crate :: EthAbiCodec)]
+    #[derive(
+        Clone,
+        Debug,
+        Default,
+        Eq,
+        PartialEq,
+        ethers_contract :: EthAbiType,
+        ethers_contract :: EthAbiCodec,
+    )]
     pub struct TryAggregateReturn {
         pub return_data: ::std::vec::Vec<Result>,
     }
     #[doc = "Container type for all return fields from the `tryBlockAndAggregate` function with signature `tryBlockAndAggregate(bool,(address,bytes)[])` and selector `[57, 149, 66, 233]`"]
-    #[derive(Clone, Debug, Default, Eq, PartialEq, crate :: EthAbiType, crate :: EthAbiCodec)]
+    #[derive(
+        Clone,
+        Debug,
+        Default,
+        Eq,
+        PartialEq,
+        ethers_contract :: EthAbiType,
+        ethers_contract :: EthAbiCodec,
+    )]
     pub struct TryBlockAndAggregateReturn {
         pub block_number: ethers_core::types::U256,
         pub block_hash: [u8; 32],
         pub return_data: ::std::vec::Vec<Result>,
     }
     #[doc = "`Call(address,bytes)`"]
-    #[derive(Clone, Debug, Default, Eq, PartialEq, crate :: EthAbiType, crate :: EthAbiCodec)]
+    #[derive(
+        Clone,
+        Debug,
+        Default,
+        Eq,
+        PartialEq,
+        ethers_contract :: EthAbiType,
+        ethers_contract :: EthAbiCodec,
+    )]
     pub struct Call {
         pub target: ethers_core::types::Address,
         pub call_data: ethers_core::types::Bytes,
     }
     #[doc = "`Call3(address,bool,bytes)`"]
-    #[derive(Clone, Debug, Default, Eq, PartialEq, crate :: EthAbiType, crate :: EthAbiCodec)]
+    #[derive(
+        Clone,
+        Debug,
+        Default,
+        Eq,
+        PartialEq,
+        ethers_contract :: EthAbiType,
+        ethers_contract :: EthAbiCodec,
+    )]
     pub struct Call3 {
         pub target: ethers_core::types::Address,
         pub allow_failure: bool,
         pub call_data: ethers_core::types::Bytes,
     }
     #[doc = "`Call3Value(address,bool,uint256,bytes)`"]
-    #[derive(Clone, Debug, Default, Eq, PartialEq, crate :: EthAbiType, crate :: EthAbiCodec)]
+    #[derive(
+        Clone,
+        Debug,
+        Default,
+        Eq,
+        PartialEq,
+        ethers_contract :: EthAbiType,
+        ethers_contract :: EthAbiCodec,
+    )]
     pub struct Call3Value {
         pub target: ethers_core::types::Address,
         pub allow_failure: bool,
@@ -609,7 +894,15 @@ pub mod multicall_3 {
         pub call_data: ethers_core::types::Bytes,
     }
     #[doc = "`Result(bool,bytes)`"]
-    #[derive(Clone, Debug, Default, Eq, PartialEq, crate :: EthAbiType, crate :: EthAbiCodec)]
+    #[derive(
+        Clone,
+        Debug,
+        Default,
+        Eq,
+        PartialEq,
+        ethers_contract :: EthAbiType,
+        ethers_contract :: EthAbiCodec,
+    )]
     pub struct Result {
         pub success: bool,
         pub return_data: ethers_core::types::Bytes,
