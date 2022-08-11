@@ -2139,6 +2139,55 @@ fn can_checkout_repo() {
 }
 
 #[test]
+fn can_detect_config_changes() {
+    let mut project = TempProject::<ConfigurableArtifacts>::dapptools().unwrap();
+
+    let remapping = project.paths().libraries[0].join("remapping");
+    project
+        .paths_mut()
+        .remappings
+        .push(Remapping::from_str(&format!("remapping/={}/", remapping.display())).unwrap());
+
+    project
+        .add_source(
+            "Foo",
+            r#"
+    pragma solidity ^0.8.10;
+    import "remapping/Bar.sol";
+
+    contract Foo {}
+   "#,
+        )
+        .unwrap();
+    project
+        .add_lib(
+            "remapping/Bar",
+            r#"
+    pragma solidity ^0.8.10;
+
+    contract Bar {}
+    "#,
+        )
+        .unwrap();
+
+    let compiled = project.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+
+    let cache = SolFilesCache::read(&project.paths().cache).unwrap();
+    assert_eq!(cache.files.len(), 2);
+
+    // nothing to compile
+    let compiled = project.compile().unwrap();
+    assert!(compiled.is_unchanged());
+
+    project.project_mut().solc_config.settings.optimizer.enabled = Some(true);
+
+    let compiled = project.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+    assert!(!compiled.is_unchanged());
+}
+
+#[test]
 fn can_add_basic_contract_and_library() {
     let mut project = TempProject::<ConfigurableArtifacts>::dapptools().unwrap();
 
