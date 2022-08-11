@@ -44,7 +44,7 @@ rand = { version = "0.8.5", default-features = false }
 ethers-providers = { version = "^0.17.0", path = "../ethers-providers", default-features = false, features = ["ws", "rustls"] }
 once_cell = "1.13.0"
 ethers-solc = { version = "^0.17.0", path = "../ethers-solc" }
-serial_test = "0.8.0"
+serial_test = "0.9.0"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 tokio = { version = "1.18", default-features = false, features = ["rt", "macros", "time"] }
