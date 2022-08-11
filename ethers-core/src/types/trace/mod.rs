@@ -11,7 +11,7 @@ pub use filter::*;
 mod geth;
 pub use geth::*;
 
-#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 /// Description of the type of trace to make
 pub enum TraceType {
     /// Transaction Trace
