@@ -219,6 +219,7 @@ impl ProjectPathsConfig {
             .components()
             .next()
             .ok_or_else(|| SolcError::msg(format!("Empty import path {}", import.display())))?;
+
         if component == Component::CurDir || component == Component::ParentDir {
             // if the import is relative we assume it's already part of the processed input
             // file set
@@ -227,7 +228,24 @@ impl ProjectPathsConfig {
             })
         } else {
             // resolve library file
-            self.resolve_library_import(import.as_ref()).ok_or_else(|| {
+            let resolved = self.resolve_library_import(import.as_ref());
+
+            if resolved.is_none() {
+                // absolute paths in solidity are a thing for example `import
+                // "src/interfaces/IConfig.sol"` which could either point to `cwd +
+                // src/interfaces/IConfig.sol`, or make use of a remapping (`src/=....`)
+                // While checking the former first would be safer, it is also less likely and more
+                // expensive, therefor we only check this if resolving the library import resulted
+                // in no path. However, this leaves open an unlikely edge case where a file
+                // `root + import` exists, which is neglected here.
+                if let Some(lib) = self.find_library_ancestor(cwd) {
+                    if let Some(import) = utils::resolve_absolute_library(lib, cwd, import) {
+                        return Ok(import)
+                    }
+                }
+            }
+
+            resolved.ok_or_else(|| {
                 SolcError::msg(format!(
                     "failed to resolve library import \"{:?}\"",
                     import.display()

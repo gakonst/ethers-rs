@@ -2162,3 +2162,52 @@ fn can_add_basic_contract_and_library() {
     assert!(compiled.find_first("Foo").is_some());
     assert!(compiled.find_first("Bar").is_some());
 }
+
+// <https://github.com/foundry-rs/foundry/issues/2706>
+#[test]
+fn can_handle_nested_absolute_imports() {
+    let mut project = TempProject::dapptools().unwrap();
+
+    let remapping = project.paths().libraries[0].join("myDepdendency");
+    project
+        .paths_mut()
+        .remappings
+        .push(Remapping::from_str(&format!("myDepdendency/={}/", remapping.display())).unwrap());
+
+    project
+        .add_lib(
+            "myDepdendency/src/interfaces/IConfig.sol",
+            r#"
+    pragma solidity ^0.8.10;
+
+    interface IConfig {}
+   "#,
+        )
+        .unwrap();
+
+    project
+        .add_lib(
+            "myDepdendency/src/Config.sol",
+            r#"
+    pragma solidity ^0.8.10;
+    import "src/interfaces/IConfig.sol";
+
+    contract Config {}
+   "#,
+        )
+        .unwrap();
+
+    project
+        .add_source(
+            "Greeter",
+            r#"
+    pragma solidity ^0.8.10;
+    import "myDepdendency/src/Config.sol";
+
+    contract Greeter {}
+   "#,
+        )
+        .unwrap();
+
+    let _compiled = project.compile().unwrap();
+}

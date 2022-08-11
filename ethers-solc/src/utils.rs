@@ -223,6 +223,19 @@ pub fn resolve_library(libs: &[impl AsRef<Path>], source: impl AsRef<Path>) -> O
     }
 }
 
+/// Tries to find an absolute import like `src/interfaces/IConfig.sol` in `cwd`, moving up the path
+/// until the `root` is reached
+pub fn resolve_absolute_library(root: &Path, cwd: &Path, import: &Path) -> Option<PathBuf> {
+    let mut parent = cwd.parent()?;
+    while parent != root {
+        if let Ok(import) = canonicalize(parent.join(import)) {
+            return Some(import)
+        }
+        parent = parent.parent()?;
+    }
+    None
+}
+
 /// Reads the list of Solc versions that have been installed in the machine. The version list is
 /// sorted in ascending order.
 /// Checks for installed solc versions under the given path as
