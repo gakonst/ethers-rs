@@ -117,6 +117,12 @@ impl Client {
         Self::new(chain, api_key)
     }
 
+    /// Sets the root to the cache dir and the ttl to use
+    pub fn set_cache(&mut self, root: impl Into<PathBuf>, ttl: Duration) -> &mut Self {
+        self.cache = Some(Cache { root: root.into(), ttl });
+        self
+    }
+
     pub fn etherscan_api_url(&self) -> &Url {
         &self.etherscan_api_url
     }
