@@ -117,6 +117,11 @@ impl GraphEdges {
         self.files().skip(self.num_input_files)
     }
 
+    /// Returns all additional `--include-paths`
+    pub fn include_paths(&self) -> &IncludePaths {
+        &self.resolved_solc_include_paths
+    }
+
     /// Returns all imports that we failed to resolve
     pub fn unresolved_imports(&self) -> &HashSet<(PathBuf, PathBuf)> {
         &self.unresolved_imports
@@ -746,20 +751,11 @@ impl VersionedSources {
     ///    - `allowed_paths`
     ///    - `base_path`
     pub fn get<T: crate::ArtifactOutput>(
-        mut self,
+        self,
         project: &crate::Project<T>,
-        base_path: impl AsRef<Path>,
+        _base_path: impl AsRef<Path>,
     ) -> Result<std::collections::BTreeMap<crate::Solc, (semver::Version, Sources)>> {
         use crate::Solc;
-
-        // `--base-path` was introduced in 0.6.9 <https://github.com/ethereum/solidity/releases/tag/v0.6.9>
-        static SUPPORTS_BASE_PATH: once_cell::sync::Lazy<VersionReq> =
-            once_cell::sync::Lazy::new(|| VersionReq::parse(">=0.6.9").unwrap());
-
-        // `--include-path` was introduced in 0.8.8 <https://github.com/ethereum/solidity/releases/tag/v0.8.8>
-        static SUPPORTS_INCLUDE_PATH: once_cell::sync::Lazy<VersionReq> =
-            once_cell::sync::Lazy::new(|| VersionReq::parse(">=0.8.8").unwrap());
-
         // we take the installer lock here to ensure installation checking is done in sync
         #[cfg(any(test, feature = "tests"))]
         let _lock = crate::compile::take_solc_installer_lock();
@@ -797,28 +793,14 @@ impl VersionedSources {
                 }
             }
 
-            // this will configure the `Solc` executable and its arguments
-            let mut solc = solc
-                .args(project.allowed_paths.args().into_iter().flatten())
-                .with_base_path(base_path.as_ref());
-
             let version = solc.version()?;
 
-            if SUPPORTS_BASE_PATH.matches(&version) {
-                let base_path = format!("{}", base_path.as_ref().display());
-                if base_path.is_empty() {
-                    solc = solc.arg("--base-path").arg(base_path);
-
-                    if SUPPORTS_INCLUDE_PATH.matches(&version) {
-                        // Note: `--include-path` requires a non empty base path
-                        // aggregate unique `--include-path`s
-                        self.resolved_solc_include_paths
-                            .extend(project.include_paths.paths().cloned());
-                        solc = solc.args(self.resolved_solc_include_paths.args());
-                    }
-                }
-            }
-
+            // this will configure the `Solc` executable and its arguments
+            let solc = project.configure_solc_with_version(
+                solc,
+                Some(version.clone()),
+                self.resolved_solc_include_paths.clone(),
+            );
             sources_by_version.insert(solc, (version, sources));
         }
         Ok(sources_by_version)

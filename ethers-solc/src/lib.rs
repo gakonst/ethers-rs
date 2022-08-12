@@ -156,17 +156,44 @@ impl<T: ArtifactOutput> Project<T> {
 
     /// Applies the configured arguments to the given `Solc`
     ///
+    /// See [Self::configure_solc_with_version()]
+    pub(crate) fn configure_solc(&self, solc: Solc) -> Solc {
+        let version = solc.version().ok();
+        self.configure_solc_with_version(solc, version, Default::default())
+    }
+
+    /// Applies the configured arguments to the given `Solc`
+    ///
     /// This will set the `--allow-paths` to the paths configured for the `Project`, if any.
-    fn configure_solc(&self, mut solc: Solc) -> Solc {
+    ///
+    /// If a version is provided and it is applicable it will also set `--base-path` and
+    /// `--include-path` This will set the `--allow-paths` to the paths configured for the
+    /// `Project`, if any.
+    /// This also accepts additional `include_paths`
+    pub(crate) fn configure_solc_with_version(
+        &self,
+        mut solc: Solc,
+        version: Option<Version>,
+        mut include_paths: IncludePaths,
+    ) -> Solc {
         if !solc.args.iter().any(|arg| arg == "--allow-paths") {
             if let Some([allow, libs]) = self.allowed_paths.args() {
                 solc = solc.arg(allow).arg(libs);
             }
         }
-        for path in self.include_paths.paths() {
-            solc = solc.arg("--include-path").arg(path.display().to_string());
+        if let Some(version) = version {
+            if SUPPORTS_BASE_PATH.matches(&version) {
+                let base_path = format!("{}", self.root().display());
+                if base_path.is_empty() {
+                    solc = solc.with_base_path(self.root());
+                    if SUPPORTS_INCLUDE_PATH.matches(&version) {
+                        include_paths.extend(self.include_paths.paths().cloned());
+                        solc = solc.args(include_paths.args());
+                    }
+                }
+            }
         }
-        solc.with_base_path(self.root())
+        solc
     }
 
     /// Sets the maximum number of parallel `solc` processes to run simultaneously.
@@ -366,13 +393,9 @@ impl<T: ArtifactOutput> Project<T> {
                 .compile()
         }
 
-        project::ProjectCompiler::with_sources_and_solc(
-            self,
-            sources,
-            self.configure_solc(self.solc.clone()),
-        )?
-        .with_sparse_output(filter)
-        .compile()
+        project::ProjectCompiler::with_sources_and_solc(self, sources, self.solc.clone())?
+            .with_sparse_output(filter)
+            .compile()
     }
 
     /// Compiles the given source files with the exact `Solc` executable
@@ -403,12 +426,7 @@ impl<T: ArtifactOutput> Project<T> {
         solc: &Solc,
         sources: Sources,
     ) -> Result<ProjectCompileOutput<T>> {
-        project::ProjectCompiler::with_sources_and_solc(
-            self,
-            sources,
-            self.configure_solc(solc.clone()),
-        )?
-        .compile()
+        project::ProjectCompiler::with_sources_and_solc(self, sources, solc.clone())?.compile()
     }
 
     /// Removes the project's artifacts and cache file
