@@ -805,16 +805,18 @@ impl VersionedSources {
             let version = solc.version()?;
 
             if SUPPORTS_BASE_PATH.matches(&version) {
-                solc = solc.arg("--base-path").arg(format!("{}", base_path.as_ref().display()));
-            }
+                let base_path = format!("{}", base_path.as_ref().display());
+                if base_path.is_empty() {
+                    solc = solc.arg("--base-path").arg(base_path);
 
-            if SUPPORTS_INCLUDE_PATH.matches(&version) {
-                // Note: since `SUPPORTS_INCLUDE_PATH` > `SUPPORTS_BASE_PATH` this guarantees that
-                // --base-path is set, which is required for `--include-path`
-
-                // aggregate unique `--include-path`s
-                self.resolved_solc_include_paths.extend(project.include_paths.paths().cloned());
-                solc = solc.args(self.resolved_solc_include_paths.args());
+                    if SUPPORTS_INCLUDE_PATH.matches(&version) {
+                        // Note: `--include-path` requires a non empty base path
+                        // aggregate unique `--include-path`s
+                        self.resolved_solc_include_paths
+                            .extend(project.include_paths.paths().cloned());
+                        solc = solc.args(self.resolved_solc_include_paths.args());
+                    }
+                }
             }
 
             sources_by_version.insert(solc, (version, sources));
