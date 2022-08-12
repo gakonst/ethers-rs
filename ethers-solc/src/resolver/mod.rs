@@ -46,18 +46,15 @@
 //! [version pragma](https://docs.soliditylang.org/en/develop/layout-of-source-files.html#version-pragma),
 //! which is defined on a per source file basis.
 
+use crate::{error::Result, utils, IncludePaths, ProjectPathsConfig, SolcError, Source, Sources};
+use parse::{SolData, SolDataUnit, SolImport};
+use rayon::prelude::*;
+use semver::VersionReq;
 use std::{
     collections::{HashMap, HashSet, VecDeque},
     fmt, io,
     path::{Path, PathBuf},
 };
-
-use parse::{SolData, SolDataUnit, SolImport};
-use rayon::prelude::*;
-
-use semver::VersionReq;
-
-use crate::{error::Result, utils, ProjectPathsConfig, SolcError, Source, Sources};
 
 mod parse;
 mod tree;
@@ -90,6 +87,13 @@ pub struct GraphEdges {
     num_input_files: usize,
     /// tracks all imports that we failed to resolve for a file
     unresolved_imports: HashSet<(PathBuf, PathBuf)>,
+    /// tracks additional include paths resolved by scanning all imports of the graph
+    ///
+    /// Absolute imports, like `import "src/Contract.sol"` are possible, but this does not play
+    /// nice with the standard-json import format, since the VFS won't be able to resolve
+    /// "src/Contract.sol" without help via `--include-path`
+    #[allow(unused)]
+    resolved_solc_include_paths: IncludePaths,
 }
 
 impl GraphEdges {
@@ -333,6 +337,10 @@ impl Graph {
         let mut nodes = Vec::with_capacity(unresolved.len());
         let mut edges = Vec::with_capacity(unresolved.len());
 
+        // tracks additional paths that should be used with `--include-path`, these are libraries
+        // that use absolute imports like `import "src/Contract.sol"`
+        let mut resolved_solc_include_paths = IncludePaths::default();
+
         // keep track of all unique paths that we failed to resolve to not spam the reporter with
         // the same path
         let mut unresolved_imports = HashSet::new();
@@ -349,7 +357,11 @@ impl Graph {
 
             for import in node.data.imports.iter() {
                 let import_path = import.data().path();
-                match paths.resolve_import(cwd, import_path) {
+                match paths.resolve_import_and_include_paths(
+                    cwd,
+                    import_path,
+                    &mut resolved_solc_include_paths,
+                ) {
                     Ok(import) => {
                         add_node(&mut unresolved, &mut index, &mut resolved_imports, import)?;
                     }
@@ -391,6 +403,7 @@ impl Graph {
                 .collect(),
             data: Default::default(),
             unresolved_imports,
+            resolved_solc_include_paths,
         };
         Ok(Graph { nodes, edges, root: paths.root.clone() })
     }
@@ -461,7 +474,14 @@ impl Graph {
             }
             versioned_sources.insert(version, sources);
         }
-        Ok((VersionedSources { inner: versioned_sources, offline }, edges))
+        Ok((
+            VersionedSources {
+                inner: versioned_sources,
+                offline,
+                resolved_solc_include_paths: edges.resolved_solc_include_paths.clone(),
+            },
+            edges,
+        ))
     }
 
     /// Writes the list of imported files into the given formatter:
@@ -713,6 +733,7 @@ impl<'a> Iterator for NodesIter<'a> {
 #[cfg(all(feature = "svm-solc"))]
 #[derive(Debug)]
 pub struct VersionedSources {
+    resolved_solc_include_paths: IncludePaths,
     inner: HashMap<crate::SolcVersion, Sources>,
     offline: bool,
 }
@@ -724,9 +745,9 @@ impl VersionedSources {
     /// This will also configure following solc arguments:
     ///    - `allowed_paths`
     ///    - `base_path`
-    pub fn get(
-        self,
-        allowed_lib_paths: &crate::AllowedLibPaths,
+    pub fn get<T: crate::ArtifactOutput>(
+        mut self,
+        project: &crate::Project<T>,
         base_path: impl AsRef<Path>,
     ) -> Result<std::collections::BTreeMap<crate::Solc, (semver::Version, Sources)>> {
         use crate::Solc;
@@ -734,6 +755,10 @@ impl VersionedSources {
         // `--base-path` was introduced in 0.6.9 <https://github.com/ethereum/solidity/releases/tag/v0.6.9>
         static SUPPORTS_BASE_PATH: once_cell::sync::Lazy<VersionReq> =
             once_cell::sync::Lazy::new(|| VersionReq::parse(">=0.6.9").unwrap());
+
+        // `--include-path` was introduced in 0.8.8 <https://github.com/ethereum/solidity/releases/tag/v0.8.8>
+        static SUPPORTS_INCLUDE_PATH: once_cell::sync::Lazy<VersionReq> =
+            once_cell::sync::Lazy::new(|| VersionReq::parse(">=0.8.8").unwrap());
 
         // we take the installer lock here to ensure installation checking is done in sync
         #[cfg(any(test, feature = "tests"))]
@@ -771,14 +796,25 @@ impl VersionedSources {
                     tracing::trace!("reinstalled solc: \"{}\"", version);
                 }
             }
+
+            // this will configure the `Solc` executable and its arguments
             let mut solc = solc
-                .arg("--allow-paths")
-                .arg(allowed_lib_paths.to_string())
+                .args(project.allowed_paths.args().into_iter().flatten())
                 .with_base_path(base_path.as_ref());
+
             let version = solc.version()?;
 
             if SUPPORTS_BASE_PATH.matches(&version) {
                 solc = solc.arg("--base-path").arg(format!("{}", base_path.as_ref().display()));
+            }
+
+            if SUPPORTS_INCLUDE_PATH.matches(&version) {
+                // Note: since `SUPPORTS_INCLUDE_PATH` > `SUPPORTS_BASE_PATH` this guarantees that
+                // --base-path is set, which is required for `--include-path`
+
+                // aggregate unique `--include-path`s
+                self.resolved_solc_include_paths.extend(project.include_paths.paths().cloned());
+                solc = solc.args(self.resolved_solc_include_paths.args());
             }
 
             sources_by_version.insert(solc, (version, sources));

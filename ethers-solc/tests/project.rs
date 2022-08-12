@@ -1202,7 +1202,7 @@ library MyLib {
 #[test]
 fn can_recompile_with_changes() {
     let mut tmp = TempProject::dapptools().unwrap();
-    tmp.project_mut().allowed_lib_paths = vec![tmp.root().join("modules")].into();
+    tmp.project_mut().allowed_paths = vec![tmp.root().join("modules")].into();
 
     let content = r#"
     pragma solidity ^0.8.10;
@@ -2209,5 +2209,8 @@ fn can_handle_nested_absolute_imports() {
         )
         .unwrap();
 
-    let _compiled = project.compile().unwrap();
+    let compiled = project.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+    assert!(compiled.find_first("Greeter").is_some());
+    assert!(compiled.find_first("Config").is_some());
 }

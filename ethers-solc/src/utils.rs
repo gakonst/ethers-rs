@@ -224,12 +224,30 @@ pub fn resolve_library(libs: &[impl AsRef<Path>], source: impl AsRef<Path>) -> O
 }
 
 /// Tries to find an absolute import like `src/interfaces/IConfig.sol` in `cwd`, moving up the path
-/// until the `root` is reached
-pub fn resolve_absolute_library(root: &Path, cwd: &Path, import: &Path) -> Option<PathBuf> {
+/// until the `root` is reached.
+///
+/// If an existing file under `root` is found, this returns the path up to the `import` path and the
+/// canonicalized `import` path itself:
+///
+/// For example for following layout:
+///
+/// ```text
+/// <root>/mydependency/
+/// ├── src (`cwd`)
+/// │   ├── interfaces
+/// │   │   ├── IConfig.sol
+/// ```
+/// and `import` as `src/interfaces/IConfig.sol` and `cwd` as `src` this will return
+/// (`<root>/mydependency/`, `<root>/mydependency/src/interfaces/IConfig.sol`)
+pub fn resolve_absolute_library(
+    root: &Path,
+    cwd: &Path,
+    import: &Path,
+) -> Option<(PathBuf, PathBuf)> {
     let mut parent = cwd.parent()?;
     while parent != root {
         if let Ok(import) = canonicalize(parent.join(import)) {
-            return Some(import)
+            return Some((parent.to_path_buf(), import))
         }
         parent = parent.parent()?;
     }
