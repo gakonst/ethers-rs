@@ -156,8 +156,7 @@ impl<'a, T: ArtifactOutput> ProjectCompiler<'a, T> {
         let graph = Graph::resolve_sources(&project.paths, sources)?;
         let (versions, edges) = graph.into_sources_by_version(project.offline)?;
 
-        let base_path = project.root();
-        let sources_by_version = versions.get(project, base_path)?;
+        let sources_by_version = versions.get(project)?;
 
         let sources = if project.solc_jobs > 1 && sources_by_version.len() > 1 {
             // if there are multiple different versions, and we can use multiple jobs we can compile

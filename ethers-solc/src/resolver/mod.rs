@@ -753,7 +753,6 @@ impl VersionedSources {
     pub fn get<T: crate::ArtifactOutput>(
         self,
         project: &crate::Project<T>,
-        _base_path: impl AsRef<Path>,
     ) -> Result<std::collections::BTreeMap<crate::Solc, (semver::Version, Sources)>> {
         use crate::Solc;
         // we take the installer lock here to ensure installation checking is done in sync
@@ -801,7 +800,6 @@ impl VersionedSources {
                 Some(version.clone()),
                 self.resolved_solc_include_paths.clone(),
             );
-            dbg!(solc.args.clone());
             sources_by_version.insert(solc, (version, sources));
         }
         Ok(sources_by_version)
