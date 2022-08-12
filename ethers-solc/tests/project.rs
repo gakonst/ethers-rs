@@ -1202,7 +1202,7 @@ library MyLib {
 #[test]
 fn can_recompile_with_changes() {
     let mut tmp = TempProject::dapptools().unwrap();
-    tmp.project_mut().allowed_lib_paths = vec![tmp.root().join("modules")].into();
+    tmp.project_mut().allowed_paths = vec![tmp.root().join("modules")].into();
 
     let content = r#"
     pragma solidity ^0.8.10;
@@ -2210,4 +2210,111 @@ fn can_add_basic_contract_and_library() {
     assert!(!compiled.has_compiler_errors());
     assert!(compiled.find_first("Foo").is_some());
     assert!(compiled.find_first("Bar").is_some());
+}
+
+// <https://github.com/foundry-rs/foundry/issues/2706>
+#[test]
+fn can_handle_nested_absolute_imports() {
+    let mut project = TempProject::dapptools().unwrap();
+
+    let remapping = project.paths().libraries[0].join("myDepdendency");
+    project
+        .paths_mut()
+        .remappings
+        .push(Remapping::from_str(&format!("myDepdendency/={}/", remapping.display())).unwrap());
+
+    project
+        .add_lib(
+            "myDepdendency/src/interfaces/IConfig.sol",
+            r#"
+    pragma solidity ^0.8.10;
+
+    interface IConfig {}
+   "#,
+        )
+        .unwrap();
+
+    project
+        .add_lib(
+            "myDepdendency/src/Config.sol",
+            r#"
+    pragma solidity ^0.8.10;
+    import "src/interfaces/IConfig.sol";
+
+    contract Config {}
+   "#,
+        )
+        .unwrap();
+
+    project
+        .add_source(
+            "Greeter",
+            r#"
+    pragma solidity ^0.8.10;
+    import "myDepdendency/src/Config.sol";
+
+    contract Greeter {}
+   "#,
+        )
+        .unwrap();
+
+    let compiled = project.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+    assert!(compiled.find_first("Greeter").is_some());
+    assert!(compiled.find_first("Config").is_some());
+    assert!(compiled.find_first("IConfig").is_some());
+}
+
+#[test]
+fn can_handle_nested_test_absolute_imports() {
+    let project = TempProject::dapptools().unwrap();
+
+    project
+        .add_source(
+            "Contract.sol",
+            r#"
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity =0.8.13;
+
+library Library {
+    function f(uint256 a, uint256 b) public pure returns (uint256) {
+        return a + b;
+    }
+}
+
+contract Contract {
+    uint256 c;
+
+    constructor() {
+        c = Library.f(1, 2);
+    }
+}
+   "#,
+        )
+        .unwrap();
+
+    project
+        .add_test(
+            "Contract.t.sol",
+            r#"
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity =0.8.13;
+
+import "src/Contract.sol";
+
+contract ContractTest {
+    function setUp() public {
+    }
+
+    function test() public {
+        new Contract();
+    }
+}
+   "#,
+        )
+        .unwrap();
+
+    let compiled = project.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+    assert!(compiled.find_first("Contract").is_some());
 }

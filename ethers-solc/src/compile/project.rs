@@ -156,8 +156,7 @@ impl<'a, T: ArtifactOutput> ProjectCompiler<'a, T> {
         let graph = Graph::resolve_sources(&project.paths, sources)?;
         let (versions, edges) = graph.into_sources_by_version(project.offline)?;
 
-        let base_path = project.root();
-        let sources_by_version = versions.get(&project.allowed_lib_paths, base_path)?;
+        let sources_by_version = versions.get(project)?;
 
         let sources = if project.solc_jobs > 1 && sources_by_version.len() > 1 {
             // if there are multiple different versions, and we can use multiple jobs we can compile
@@ -178,6 +177,14 @@ impl<'a, T: ArtifactOutput> ProjectCompiler<'a, T> {
     ) -> Result<Self> {
         let version = solc.version()?;
         let (sources, edges) = Graph::resolve_sources(&project.paths, sources)?.into_sources();
+
+        // make sure `solc` has all required arguments
+        let solc = project.configure_solc_with_version(
+            solc,
+            Some(version.clone()),
+            edges.include_paths().clone(),
+        );
+
         let sources_by_version = BTreeMap::from([(solc, (version, sources))]);
         let sources = CompilerSources::Sequential(sources_by_version);
 

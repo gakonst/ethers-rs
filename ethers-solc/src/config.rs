@@ -1,19 +1,17 @@
 use crate::{
-    artifacts::Settings,
+    artifacts::{output_selection::ContractOutputSelection, Settings},
     cache::SOLIDITY_FILES_CACHE_FILENAME,
     error::{Result, SolcError, SolcIoError},
     remappings::Remapping,
     resolver::{Graph, SolImportAlias},
     utils, Source, Sources,
 };
-
-use crate::artifacts::output_selection::ContractOutputSelection;
-
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeSet, HashSet},
     fmt::{self, Formatter},
     fs,
+    ops::{Deref, DerefMut},
     path::{Component, Path, PathBuf},
 };
 
@@ -84,6 +82,15 @@ impl ProjectPathsConfig {
         let mut paths = self.paths();
         paths.strip_prefix_all(&self.root);
         paths
+    }
+
+    /// Returns all `--include-path` paths that should be used for this project
+    ///
+    /// See [IncludePaths]
+    pub fn include_paths(&self) -> Vec<PathBuf> {
+        // Note: root must not be included, since it will be used as base-path, which would be a
+        // conflict
+        vec![self.sources.clone(), self.tests.clone(), self.scripts.clone()]
     }
 
     /// Creates all configured dirs and files
@@ -214,11 +221,20 @@ impl ProjectPathsConfig {
     /// Attempts to resolve an `import` from the given working directory.
     ///
     /// The `cwd` path is the parent dir of the file that includes the `import`
-    pub fn resolve_import(&self, cwd: &Path, import: &Path) -> Result<PathBuf> {
+    ///
+    /// This will also populate the `include_paths` with any nested library root paths that should
+    /// be provided to solc via `--include-path` because it uses absolute imports.
+    pub fn resolve_import_and_include_paths(
+        &self,
+        cwd: &Path,
+        import: &Path,
+        include_paths: &mut IncludePaths,
+    ) -> Result<PathBuf> {
         let component = import
             .components()
             .next()
             .ok_or_else(|| SolcError::msg(format!("Empty import path {}", import.display())))?;
+
         if component == Component::CurDir || component == Component::ParentDir {
             // if the import is relative we assume it's already part of the processed input
             // file set
@@ -227,13 +243,45 @@ impl ProjectPathsConfig {
             })
         } else {
             // resolve library file
-            self.resolve_library_import(import.as_ref()).ok_or_else(|| {
+            let resolved = self.resolve_library_import(import.as_ref());
+
+            if resolved.is_none() {
+                // absolute paths in solidity are a thing for example `import
+                // "src/interfaces/IConfig.sol"` which could either point to `cwd +
+                // src/interfaces/IConfig.sol`, or make use of a remapping (`src/=....`)
+                if let Some(lib) = self.find_library_ancestor(cwd) {
+                    if let Some((include_path, import)) =
+                        utils::resolve_absolute_library(lib, cwd, import)
+                    {
+                        // track the path for this absolute import inside a nested library
+                        include_paths.insert(include_path);
+                        return Ok(import)
+                    }
+                }
+                // also try to resolve absolute imports from the project paths
+                for path in [&self.root, &self.sources, &self.tests, &self.scripts] {
+                    if cwd.starts_with(path) {
+                        if let Ok(import) = utils::canonicalize(path.join(import)) {
+                            return Ok(import)
+                        }
+                    }
+                }
+            }
+
+            resolved.ok_or_else(|| {
                 SolcError::msg(format!(
                     "failed to resolve library import \"{:?}\"",
                     import.display()
                 ))
             })
         }
+    }
+
+    /// Attempts to resolve an `import` from the given working directory.
+    ///
+    /// The `cwd` path is the parent dir of the file that includes the `import`
+    pub fn resolve_import(&self, cwd: &Path, import: &Path) -> Result<PathBuf> {
+        self.resolve_import_and_include_paths(cwd, import, &mut Default::default())
     }
 
     /// Attempts to find the path to the real solidity file that's imported via the given `import`
@@ -751,6 +799,49 @@ impl SolcConfigBuilder {
     }
 }
 
+/// Container for all `--include-path` arguments for Solc, se also [Solc docs](https://docs.soliditylang.org/en/v0.8.9/using-the-compiler.html#base-path-and-import-remapping
+///
+/// The `--include--path` flag:
+/// > Makes an additional source directory available to the default import callback. Use this option
+/// > if you want to import contracts whose location is not fixed in relation to your main source
+/// > tree, e.g. third-party libraries installed using a package manager. Can be used multiple
+/// > times. Can only be used if base path has a non-empty value.
+///
+/// In contrast to `--allow-paths` [`AllowedLibPaths`], which takes multiple arguments,
+/// `--include-path` only takes a single path argument.
+#[derive(Clone, Debug, Default)]
+pub struct IncludePaths(pub(crate) BTreeSet<PathBuf>);
+
+// === impl IncludePaths ===
+
+impl IncludePaths {
+    /// Returns the [Command](std::process::Command) arguments for this type
+    ///
+    /// For each entry in the set, it will return `--include-path` + `<entry>`
+    pub fn args(&self) -> impl Iterator<Item = String> + '_ {
+        self.paths().flat_map(|path| ["--include-path".to_string(), format!("{}", path.display())])
+    }
+
+    /// Returns all paths that exist
+    pub fn paths(&self) -> impl Iterator<Item = &PathBuf> + '_ {
+        self.0.iter().filter(|path| path.exists())
+    }
+}
+
+impl Deref for IncludePaths {
+    type Target = BTreeSet<PathBuf>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for IncludePaths {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
 /// Helper struct for serializing `--allow-paths` arguments to Solc
 ///
 /// From the [Solc docs](https://docs.soliditylang.org/en/v0.8.9/using-the-compiler.html#base-path-and-import-remapping):
@@ -761,23 +852,46 @@ impl SolcConfigBuilder {
 /// can be allowed via the --allow-paths /sample/path,/another/sample/path switch.
 /// Everything inside the path specified via --base-path is always allowed.
 #[derive(Clone, Debug, Default)]
-pub struct AllowedLibPaths(pub(crate) Vec<PathBuf>);
+pub struct AllowedLibPaths(pub(crate) BTreeSet<PathBuf>);
+
+// === impl AllowedLibPaths ===
 
 impl AllowedLibPaths {
-    pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
+    /// Returns the [Command](std::process::Command) arguments for this type
+    ///
+    /// `--allow-paths` takes a single value: all comma separated paths
+    pub fn args(&self) -> Option<[String; 2]> {
+        let args = self.to_string();
+        if args.is_empty() {
+            return None
+        }
+        Some(["--allow-paths".to_string(), args])
+    }
+
+    /// Returns all paths that exist
+    pub fn paths(&self) -> impl Iterator<Item = &PathBuf> + '_ {
+        self.0.iter().filter(|path| path.exists())
+    }
+}
+
+impl Deref for AllowedLibPaths {
+    type Target = BTreeSet<PathBuf>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for AllowedLibPaths {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
     }
 }
 
 impl fmt::Display for AllowedLibPaths {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let lib_paths = self
-            .0
-            .iter()
-            .filter(|path| path.exists())
-            .map(|path| format!("{}", path.display()))
-            .collect::<Vec<_>>()
-            .join(",");
+        let lib_paths =
+            self.paths().map(|path| format!("{}", path.display())).collect::<Vec<_>>().join(",");
         write!(f, "{}", lib_paths)
     }
 }

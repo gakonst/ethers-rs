@@ -38,6 +38,7 @@ pub use filter::{FileFilter, TestFileFilter};
 use crate::{
     artifacts::Sources,
     cache::SolFilesCache,
+    config::IncludePaths,
     error::{SolcError, SolcIoError},
     sources::{VersionedSourceFile, VersionedSourceFiles},
 };
@@ -73,7 +74,9 @@ pub struct Project<T: ArtifactOutput = ConfigurableArtifacts> {
     /// Errors/Warnings which match these error codes are not going to be logged
     pub ignored_error_codes: Vec<u64>,
     /// The paths which will be allowed for library inclusion
-    pub allowed_lib_paths: AllowedLibPaths,
+    pub allowed_paths: AllowedLibPaths,
+    /// The paths which will be used with solc's `--include-path` attribute
+    pub include_paths: IncludePaths,
     /// Maximum number of `solc` processes to run simultaneously.
     solc_jobs: usize,
     /// Offline mode, if set, network access (download solc) is disallowed
@@ -153,14 +156,46 @@ impl<T: ArtifactOutput> Project<T> {
 
     /// Applies the configured arguments to the given `Solc`
     ///
+    /// See [Self::configure_solc_with_version()]
+    pub(crate) fn configure_solc(&self, solc: Solc) -> Solc {
+        let version = solc.version().ok();
+        self.configure_solc_with_version(solc, version, Default::default())
+    }
+
+    /// Applies the configured arguments to the given `Solc`
+    ///
     /// This will set the `--allow-paths` to the paths configured for the `Project`, if any.
-    fn configure_solc(&self, mut solc: Solc) -> Solc {
-        if !self.allowed_lib_paths.0.is_empty() &&
-            !solc.args.iter().any(|arg| arg == "--allow-paths")
-        {
-            solc = solc.arg("--allow-paths").arg(self.allowed_lib_paths.to_string());
+    ///
+    /// If a version is provided and it is applicable it will also set `--base-path` and
+    /// `--include-path` This will set the `--allow-paths` to the paths configured for the
+    /// `Project`, if any.
+    /// This also accepts additional `include_paths`
+    pub(crate) fn configure_solc_with_version(
+        &self,
+        mut solc: Solc,
+        version: Option<Version>,
+        mut include_paths: IncludePaths,
+    ) -> Solc {
+        if !solc.args.iter().any(|arg| arg == "--allow-paths") {
+            if let Some([allow, libs]) = self.allowed_paths.args() {
+                solc = solc.arg(allow).arg(libs);
+            }
         }
-        solc.with_base_path(self.root())
+        if let Some(version) = version {
+            if SUPPORTS_BASE_PATH.matches(&version) {
+                let base_path = format!("{}", self.root().display());
+                if !base_path.is_empty() {
+                    solc = solc.with_base_path(self.root());
+                    if SUPPORTS_INCLUDE_PATH.matches(&version) {
+                        include_paths.extend(self.include_paths.paths().cloned());
+                        solc = solc.args(include_paths.args());
+                    }
+                }
+            } else {
+                solc.base_path.take();
+            }
+        }
+        solc
     }
 
     /// Sets the maximum number of parallel `solc` processes to run simultaneously.
@@ -232,9 +267,7 @@ impl<T: ArtifactOutput> Project<T> {
             return self.svm_compile(sources)
         }
 
-        let solc = self.configure_solc(self.solc.clone());
-
-        self.compile_with_version(&solc, sources)
+        self.compile_with_version(&self.solc, sources)
     }
 
     /// Compiles a set of contracts using `svm` managed solc installs
@@ -360,13 +393,9 @@ impl<T: ArtifactOutput> Project<T> {
                 .compile()
         }
 
-        project::ProjectCompiler::with_sources_and_solc(
-            self,
-            sources,
-            self.configure_solc(self.solc.clone()),
-        )?
-        .with_sparse_output(filter)
-        .compile()
+        project::ProjectCompiler::with_sources_and_solc(self, sources, self.solc.clone())?
+            .with_sparse_output(filter)
+            .compile()
     }
 
     /// Compiles the given source files with the exact `Solc` executable
@@ -397,12 +426,7 @@ impl<T: ArtifactOutput> Project<T> {
         solc: &Solc,
         sources: Sources,
     ) -> Result<ProjectCompileOutput<T>> {
-        project::ProjectCompiler::with_sources_and_solc(
-            self,
-            sources,
-            self.configure_solc(solc.clone()),
-        )?
-        .compile()
+        project::ProjectCompiler::with_sources_and_solc(self, sources, solc.clone())?.compile()
     }
 
     /// Removes the project's artifacts and cache file
@@ -541,8 +565,10 @@ pub struct ProjectBuilder<T: ArtifactOutput = ConfigurableArtifacts> {
     artifacts: T,
     /// Which error codes to ignore
     pub ignored_error_codes: Vec<u64>,
-    /// All allowed paths
-    pub allowed_paths: Vec<PathBuf>,
+    /// All allowed paths for solc's `--allowed-paths`
+    allowed_paths: AllowedLibPaths,
+    /// Paths to use for solc's `--include-path`
+    include_paths: IncludePaths,
     solc_jobs: Option<usize>,
 }
 
@@ -561,7 +587,8 @@ impl<T: ArtifactOutput> ProjectBuilder<T> {
             slash_paths: true,
             artifacts,
             ignored_error_codes: Vec::new(),
-            allowed_paths: vec![],
+            allowed_paths: Default::default(),
+            include_paths: Default::default(),
             solc_jobs: None,
         }
     }
@@ -697,6 +724,7 @@ impl<T: ArtifactOutput> ProjectBuilder<T> {
             auto_detect,
             ignored_error_codes,
             allowed_paths,
+            include_paths,
             solc_jobs,
             offline,
             build_info,
@@ -715,6 +743,7 @@ impl<T: ArtifactOutput> ProjectBuilder<T> {
             artifacts,
             ignored_error_codes,
             allowed_paths,
+            include_paths,
             solc_jobs,
             build_info,
         }
@@ -723,7 +752,7 @@ impl<T: ArtifactOutput> ProjectBuilder<T> {
     /// Adds an allowed-path to the solc executable
     #[must_use]
     pub fn allowed_path<P: Into<PathBuf>>(mut self, path: P) -> Self {
-        self.allowed_paths.push(path.into());
+        self.allowed_paths.insert(path.into());
         self
     }
 
@@ -740,6 +769,26 @@ impl<T: ArtifactOutput> ProjectBuilder<T> {
         self
     }
 
+    /// Adds an `--include-path` to the solc executable
+    #[must_use]
+    pub fn include_path<P: Into<PathBuf>>(mut self, path: P) -> Self {
+        self.include_paths.insert(path.into());
+        self
+    }
+
+    /// Adds multiple include-path to the solc executable
+    #[must_use]
+    pub fn include_paths<I, S>(mut self, args: I) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<PathBuf>,
+    {
+        for arg in args {
+            self = self.include_path(arg);
+        }
+        self
+    }
+
     pub fn build(self) -> Result<Project<T>> {
         let Self {
             paths,
@@ -751,6 +800,7 @@ impl<T: ArtifactOutput> ProjectBuilder<T> {
             artifacts,
             ignored_error_codes,
             mut allowed_paths,
+            mut include_paths,
             solc_jobs,
             offline,
             build_info,
@@ -767,10 +817,10 @@ impl<T: ArtifactOutput> ProjectBuilder<T> {
         let solc = solc.unwrap_or_default();
         let solc_config = solc_config.unwrap_or_else(|| SolcConfig::builder().build());
 
-        if allowed_paths.is_empty() {
-            // allow every contract under root by default
-            allowed_paths.push(paths.root.clone())
-        }
+        // allow every contract under root by default
+        allowed_paths.insert(paths.root.clone());
+        // allow paths where contracts are stored by default
+        include_paths.extend(paths.include_paths());
 
         Ok(Project {
             paths,
@@ -782,8 +832,9 @@ impl<T: ArtifactOutput> ProjectBuilder<T> {
             auto_detect,
             artifacts,
             ignored_error_codes,
-            allowed_lib_paths: allowed_paths.into(),
-            solc_jobs: solc_jobs.unwrap_or_else(::num_cpus::get),
+            allowed_paths,
+            include_paths,
+            solc_jobs: solc_jobs.unwrap_or_else(num_cpus::get),
             offline,
             slash_paths,
         })
