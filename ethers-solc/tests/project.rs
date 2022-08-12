@@ -2213,4 +2213,5 @@ fn can_handle_nested_absolute_imports() {
     assert!(!compiled.has_compiler_errors());
     assert!(compiled.find_first("Greeter").is_some());
     assert!(compiled.find_first("Config").is_some());
+    assert!(compiled.find_first("IConfig").is_some());
 }
