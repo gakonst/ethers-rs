@@ -234,6 +234,7 @@ impl TryFrom<u8> for MulticallVersion {
 /// [`add_call`]: #method.add_call
 /// [`call`]: #method.call
 /// [`send`]: #method.send
+#[must_use = "Multicall does nothing unless you use `call` or `send`"]
 pub struct Multicall<M> {
     version: MulticallVersion,
     legacy: bool,
@@ -375,8 +376,8 @@ impl<M: Middleware> Multicall<M> {
     /// none are allowed to fail.
     ///
     /// - Multicall2 (v2): The same as Multicall, but provides additional methods that allow either
-    /// all or no calls within the batch to fail. Included for retro-compatibility, use v3 to allow
-    /// failure on a per-call basis.
+    /// all or no calls within the batch to fail. Included for backward compatibility. Use v3 to
+    /// allow failure on a per-call basis.
     ///
     /// - Multicall3 (v3): This is the recommended version for allowing failing calls. It's cheaper
     /// to use (so you can fit more calls into a single request), and it adds an aggregate3 method
@@ -390,14 +391,12 @@ impl<M: Middleware> Multicall<M> {
     }
 
     /// Makes a legacy transaction instead of an EIP-1559 one.
-    #[must_use]
     pub fn legacy(mut self) -> Self {
         self.legacy = true;
         self
     }
 
     /// Sets the `block` field for the multicall aggregate call.
-    #[must_use]
     pub fn block(mut self, block: impl Into<BlockNumber>) -> Self {
         self.block = Some(block.into());
         self
@@ -439,8 +438,8 @@ impl<M: Middleware> Multicall<M> {
     ///
     /// # Panics
     ///
-    /// If more than the maximum number of supported calls are added (16). The maximum
-    /// limits is constrained due to tokenization/detokenization support for tuples
+    /// If more than the maximum number of supported calls are added (16). The maximum limit is
+    /// constrained due to tokenization/detokenization support for tuples.
     pub fn eth_balance_of(&mut self, addr: Address, allow_revert: bool) -> &mut Self {
         let call = self.contract.get_eth_balance(addr);
         self.add_call(call, allow_revert)
@@ -505,8 +504,8 @@ impl<M: Middleware> Multicall<M> {
     ///
     /// # Panics
     ///
-    /// If more than the maximum number of supported calls are added. The maximum
-    /// limits is constrained due to tokenization/detokenization support for tuples
+    /// If more than the maximum number of supported calls are added (16). The maximum limit is
+    /// constrained due to tokenization/detokenization support for tuples.
     ///
     /// # Examples
     ///
