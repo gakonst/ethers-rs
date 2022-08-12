@@ -801,6 +801,7 @@ impl VersionedSources {
                 Some(version.clone()),
                 self.resolved_solc_include_paths.clone(),
             );
+            dbg!(solc.args.clone());
             sources_by_version.insert(solc, (version, sources));
         }
         Ok(sources_by_version)

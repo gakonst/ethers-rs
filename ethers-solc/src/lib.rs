@@ -184,8 +184,8 @@ impl<T: ArtifactOutput> Project<T> {
         if let Some(version) = version {
             if SUPPORTS_BASE_PATH.matches(&version) {
                 let base_path = format!("{}", self.root().display());
-                if base_path.is_empty() {
-                    solc = solc.with_base_path(self.root());
+                if !base_path.is_empty() {
+                    solc = solc.arg("--base-path").arg(base_path);
                     if SUPPORTS_INCLUDE_PATH.matches(&version) {
                         include_paths.extend(self.include_paths.paths().cloned());
                         solc = solc.args(include_paths.args());
