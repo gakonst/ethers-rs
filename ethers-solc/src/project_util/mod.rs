@@ -200,6 +200,20 @@ contract {} {{}}
         )
     }
 
+    /// Adds a new test file inside the project's test dir
+    pub fn add_test(&self, name: impl AsRef<str>, content: impl AsRef<str>) -> Result<PathBuf> {
+        let name = contract_file_name(name);
+        let tests = self.paths().tests.join(name);
+        create_contract_file(tests, content)
+    }
+
+    /// Adds a new script file inside the project's script dir
+    pub fn add_script(&self, name: impl AsRef<str>, content: impl AsRef<str>) -> Result<PathBuf> {
+        let name = contract_file_name(name);
+        let script = self.paths().scripts.join(name);
+        create_contract_file(script, content)
+    }
+
     /// Adds a new source file inside the project's source dir
     pub fn add_source(&self, name: impl AsRef<str>, content: impl AsRef<str>) -> Result<PathBuf> {
         let name = contract_file_name(name);
