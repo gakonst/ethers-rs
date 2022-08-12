@@ -256,6 +256,14 @@ impl ProjectPathsConfig {
                         return Ok(import)
                     }
                 }
+                // also try to resolve absolute imports from the project paths
+                for path in [&self.root, &self.sources, &self.tests, &self.scripts] {
+                    if cwd.starts_with(path) {
+                        if let Ok(import) = utils::canonicalize(path.join(import)) {
+                            return Ok(import)
+                        }
+                    }
+                }
             }
 
             resolved.ok_or_else(|| {

@@ -2264,3 +2264,57 @@ fn can_handle_nested_absolute_imports() {
     assert!(compiled.find_first("Config").is_some());
     assert!(compiled.find_first("IConfig").is_some());
 }
+
+#[test]
+fn can_handle_nested_test_absolute_imports() {
+    let project = TempProject::dapptools().unwrap();
+
+    project
+        .add_source(
+            "Contract.sol",
+            r#"
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity =0.8.13;
+
+library Library {
+    function f(uint256 a, uint256 b) public pure returns (uint256) {
+        return a + b;
+    }
+}
+
+contract Contract {
+    uint256 c;
+
+    constructor() {
+        c = Library.f(1, 2);
+    }
+}
+   "#,
+        )
+        .unwrap();
+
+    project
+        .add_test(
+            "Contract.t.sol",
+            r#"
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity =0.8.13;
+
+import "src/Contract.sol";
+
+contract ContractTest {
+    function setUp() public {
+    }
+
+    function test() public {
+        new Contract();
+    }
+}
+   "#,
+        )
+        .unwrap();
+
+    let compiled = project.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+    assert!(compiled.find_first("Contract").is_some());
+}
