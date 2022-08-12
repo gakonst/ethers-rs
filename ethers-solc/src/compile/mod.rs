@@ -535,6 +535,7 @@ impl Solc {
         let mut cmd = Command::new(&self.solc);
         if let Some(ref base_path) = self.base_path {
             cmd.current_dir(base_path);
+            cmd.arg("--base-path").arg(base_path);
         }
         let mut child = cmd
             .args(&self.args)

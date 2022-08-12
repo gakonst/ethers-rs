@@ -185,12 +185,14 @@ impl<T: ArtifactOutput> Project<T> {
             if SUPPORTS_BASE_PATH.matches(&version) {
                 let base_path = format!("{}", self.root().display());
                 if !base_path.is_empty() {
-                    solc = solc.arg("--base-path").arg(base_path);
+                    solc = solc.with_base_path(self.root());
                     if SUPPORTS_INCLUDE_PATH.matches(&version) {
                         include_paths.extend(self.include_paths.paths().cloned());
                         solc = solc.args(include_paths.args());
                     }
                 }
+            } else {
+                solc.base_path.take();
             }
         }
         solc
@@ -265,9 +267,7 @@ impl<T: ArtifactOutput> Project<T> {
             return self.svm_compile(sources)
         }
 
-        let solc = self.configure_solc(self.solc.clone());
-
-        self.compile_with_version(&solc, sources)
+        self.compile_with_version(&self.solc, sources)
     }
 
     /// Compiles a set of contracts using `svm` managed solc installs
