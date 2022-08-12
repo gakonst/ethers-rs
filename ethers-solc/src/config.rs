@@ -88,7 +88,7 @@ impl ProjectPathsConfig {
     ///
     /// See [IncludePaths]
     pub fn include_paths(&self) -> Vec<PathBuf> {
-        vec![self.sources.clone(), self.tests.clone(), self.scripts.clone()]
+        vec![self.root.clone(), self.sources.clone(), self.tests.clone(), self.scripts.clone()]
     }
 
     /// Creates all configured dirs and files
