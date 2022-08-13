@@ -818,9 +818,15 @@ pub struct Node {
 
 impl Node {
     /// Reads the content of the file and returns a [Node] containing relevant information
-    pub fn read(file: impl AsRef<Path>) -> crate::Result<Self> {
+    pub fn read(file: impl AsRef<Path>) -> Result<Self> {
         let file = file.as_ref();
-        let source = Source::read(file).map_err(SolcError::Resolve)?;
+        let source = Source::read(file).map_err(|err| {
+            if !err.path().exists() && err.path().is_symlink() {
+                SolcError::ResolveBadSymlink(err)
+            } else {
+                SolcError::Resolve(err)
+            }
+        })?;
         let data = SolData::parse(source.as_ref(), file);
         Ok(Self { path: file.to_path_buf(), source, data })
     }
