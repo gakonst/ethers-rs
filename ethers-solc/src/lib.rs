@@ -188,6 +188,10 @@ impl<T: ArtifactOutput> Project<T> {
                     solc = solc.with_base_path(self.root());
                     if SUPPORTS_INCLUDE_PATH.matches(&version) {
                         include_paths.extend(self.include_paths.paths().cloned());
+                        // `--base-path` and `--include-path` conflict if set to the same path, so
+                        // as a precaution, we ensure here that the `--base-path` is not also used
+                        // for `--include-path`
+                        include_paths.remove(self.root());
                         solc = solc.args(include_paths.args());
                     }
                 }
