@@ -12,7 +12,7 @@ keywords = ["ethereum", "web3", "celo", "ethers"]
 [dependencies]
 fastrlp = { version = "0.1.3", features = ["std", "derive", "ethereum-types"] }
 rlp = { version = "0.5.0", default-features = false, features = ["std"] }
-ethabi = { version = "17.1.0", default-features = false, features = ["full-serde", "rlp"] }
+ethabi = { version = "17.2.0", default-features = false, features = ["full-serde", "rlp"] }
 arrayvec = { version = "0.7.2", default-features = false }
 rlp-derive = { version = "0.1.0", default-features = false }
 
