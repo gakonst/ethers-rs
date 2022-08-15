@@ -35,4 +35,6 @@ pub enum EtherscanError {
     Builder(String),
     #[error("Missing solc version: {0}")]
     MissingSolcVersion(String),
+    #[error("Invalid API Key")]
+    InvalidApiKey,
 }
