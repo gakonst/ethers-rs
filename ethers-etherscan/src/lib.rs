@@ -185,6 +185,8 @@ impl Client {
             ResponseData::Error { result, .. } => {
                 if result.starts_with("Max rate limit reached") {
                     Err(EtherscanError::RateLimitExceeded)
+                } else if result.to_lowercase() == "invalid api key" {
+                    Err(EtherscanError::InvalidApiKey)
                 } else {
                     Err(EtherscanError::Unknown(result))
                 }
@@ -459,6 +461,17 @@ mod tests {
     fn local_networks_not_supported() {
         let err = Client::new_from_env(Chain::Dev).unwrap_err();
         assert!(matches!(err, EtherscanError::LocalNetworksNotSupported));
+    }
+
+    #[tokio::test]
+    async fn check_wrong_etherscan_api_key() {
+        let client = Client::new(Chain::Mainnet, "ABCDEFG").unwrap();
+        let resp = client
+            .contract_source_code("0xBB9bc244D798123fDe783fCc1C72d3Bb8C189413".parse().unwrap())
+            .await
+            .unwrap_err();
+
+        assert!(matches!(resp, EtherscanError::InvalidApiKey));
     }
 
     pub async fn run_at_least_duration(duration: Duration, block: impl Future) {
