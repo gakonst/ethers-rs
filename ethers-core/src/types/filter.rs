@@ -429,7 +429,7 @@ impl<'de> Deserialize<'de> for Filter {
                 let mut to_block: Option<Option<BlockNumber>> = None;
                 let mut block_hash: Option<Option<H256>> = None;
                 let mut address: Option<Option<ValueOrArray<Address>>> = None;
-                let mut topics: Option<Vec<Option<Topic>>> = None;
+                let mut topics: Option<Option<Vec<Option<Topic>>>> = None;
 
                 while let Some(key) = map.next_key::<String>()? {
                     match key.as_str() {
@@ -492,7 +492,7 @@ impl<'de> Deserialize<'de> for Filter {
                 let to_block = to_block.unwrap_or_default();
                 let block_hash = block_hash.unwrap_or_default();
                 let address = address.unwrap_or_default();
-                let topics_vec = topics.unwrap_or_default();
+                let topics_vec = topics.unwrap_or_default().unwrap_or_default();
 
                 // maximum allowed filter len
                 if topics_vec.len() > 4 {
@@ -1169,6 +1169,31 @@ mod tests {
                     ))),
                     None,
                 ],
+            }
+        );
+    }
+
+    #[test]
+    fn can_convert_to_ethers_filter_with_null_fields() {
+        let json = json!(
+                    {
+          "fromBlock": "0x429d3b",
+          "toBlock": "0x429d3b",
+          "address": null,
+          "topics": null
+        }
+            );
+
+        let filter: Filter = serde_json::from_value(json).unwrap();
+        assert_eq!(
+            filter,
+            Filter {
+                block_option: FilterBlockOption::Range {
+                    from_block: Some(4365627u64.into()),
+                    to_block: Some(4365627u64.into()),
+                },
+                address: None,
+                topics: [None, None, None, None,],
             }
         );
     }
