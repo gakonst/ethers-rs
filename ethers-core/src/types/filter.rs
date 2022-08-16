@@ -492,7 +492,7 @@ impl<'de> Deserialize<'de> for Filter {
                 let to_block = to_block.unwrap_or_default();
                 let block_hash = block_hash.unwrap_or_default();
                 let address = address.unwrap_or_default();
-                let topics_vec = topics.unwrap_or_default().unwrap_or_default();
+                let topics_vec = topics.flatten().unwrap_or_default();
 
                 // maximum allowed filter len
                 if topics_vec.len() > 4 {
