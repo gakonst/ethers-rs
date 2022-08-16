@@ -47,7 +47,7 @@ pub fn supports_interface<T: Into<Address>>(
     resolver_address: T,
     selector: Selector,
 ) -> TransactionRequest {
-    let data = [&INTERFACE_SELECTOR[..], &selector[..]].concat();
+    let data = [&INTERFACE_SELECTOR[..], &selector[..], &[0; 28]].concat();
     TransactionRequest {
         data: Some(data.into()),
         to: Some(NameOrAddress::Address(resolver_address.into())),
