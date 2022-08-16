@@ -1250,7 +1250,7 @@ impl<P: JsonRpcClient> Provider<P> {
         }
 
         if let ParamType::Address = param {
-            // Reverse resolver reverts when calling `supportInterface(bytes4)`
+            // Reverse resolver reverts when calling `supportsInterface(bytes4)`
             self.validate_resolver(resolver_address, selector, ens_name).await?;
         }
 
@@ -1266,7 +1266,7 @@ impl<P: JsonRpcClient> Provider<P> {
     async fn validate_resolver(
         &self,
         resolver_address: Address,
-        selector: [u8; 4],
+        selector: Selector,
         ens_name: &str,
     ) -> Result<(), ProviderError> {
         let data =
