@@ -1285,7 +1285,8 @@ impl<P: JsonRpcClient> Provider<P> {
 
         if !supports_selector {
             return Err(ProviderError::EnsError(format!(
-                "Resolver ({:?}) does not support selector {}.",
+                "`{}` resolver ({:?}) does not support selector {}.",
+                ens_name,
                 resolver_address,
                 hex::encode(&selector)
             )))
