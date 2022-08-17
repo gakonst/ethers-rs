@@ -28,6 +28,9 @@ pub const NAME_SELECTOR: Selector = [105, 31, 52, 49];
 /// text(bytes32, string)
 pub const FIELD_SELECTOR: Selector = [89, 209, 212, 60];
 
+/// supportsInterface(bytes4 interfaceID)
+pub const INTERFACE_SELECTOR: Selector = [1, 255, 201, 167];
+
 /// Returns a transaction request for calling the `resolver` method on the ENS server
 pub fn get_resolver<T: Into<Address>>(ens_address: T, name: &str) -> TransactionRequest {
     // keccak256('resolver(bytes32)')
@@ -35,6 +38,19 @@ pub fn get_resolver<T: Into<Address>>(ens_address: T, name: &str) -> Transaction
     TransactionRequest {
         data: Some(data.into()),
         to: Some(NameOrAddress::Address(ens_address.into())),
+        ..Default::default()
+    }
+}
+
+/// Returns a transaction request for checking interface support
+pub fn supports_interface<T: Into<Address>>(
+    resolver_address: T,
+    selector: Selector,
+) -> TransactionRequest {
+    let data = [&INTERFACE_SELECTOR[..], &selector[..], &[0; 28]].concat();
+    TransactionRequest {
+        data: Some(data.into()),
+        to: Some(NameOrAddress::Address(resolver_address.into())),
         ..Default::default()
     }
 }

@@ -1263,12 +1263,50 @@ impl<P: JsonRpcClient> Provider<P> {
             return Err(ProviderError::EnsError(ens_name.to_string()))
         }
 
+        if let ParamType::Address = param {
+            // Reverse resolver reverts when calling `supportsInterface(bytes4)`
+            self.validate_resolver(resolver_address, selector, ens_name).await?;
+        }
+
         // resolve
         let data = self
             .call(&ens::resolve(resolver_address, selector, ens_name, parameters).into(), None)
             .await?;
 
         Ok(decode_bytes(param, data))
+    }
+
+    /// Validates that the resolver supports `selector`.
+    async fn validate_resolver(
+        &self,
+        resolver_address: Address,
+        selector: Selector,
+        ens_name: &str,
+    ) -> Result<(), ProviderError> {
+        let data =
+            self.call(&ens::supports_interface(resolver_address, selector).into(), None).await?;
+
+        if data.is_empty() {
+            return Err(ProviderError::EnsError(format!(
+                "`{}` resolver ({:?}) is invalid.",
+                ens_name, resolver_address
+            )))
+        }
+
+        let supports_selector = abi::decode(&[ParamType::Bool], data.as_ref())
+            .map(|token| token[0].clone().into_bool().unwrap_or_default())
+            .unwrap_or_default();
+
+        if !supports_selector {
+            return Err(ProviderError::EnsError(format!(
+                "`{}` resolver ({:?}) does not support selector {}.",
+                ens_name,
+                resolver_address,
+                hex::encode(&selector)
+            )))
+        }
+
+        Ok(())
     }
 
     #[cfg(test)]
@@ -2132,5 +2170,20 @@ mod tests {
         assert_eq!(tx.gas(), Some(&gas));
         assert_eq!(tx.gas_price(), Some(gas_price));
         assert!(tx.access_list().is_none());
+    }
+
+    #[tokio::test]
+    async fn mainnet_lookup_address_invalid_resolver() {
+        let provider = crate::MAINNET.provider();
+
+        let err = provider
+            .lookup_address("0x30c9223d9e3d23e0af1073a38e0834b055bf68ed".parse().unwrap())
+            .await
+            .unwrap_err();
+
+        assert_eq!(
+            &err.to_string(),
+            "ens name not found: `ox63616e.eth` resolver (0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2) is invalid."
+        );
     }
 }
