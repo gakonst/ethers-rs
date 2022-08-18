@@ -11,13 +11,13 @@ pub struct StorageProof {
 #[derive(Debug, Default, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EIP1186ProofResponse {
-    address: Address,
-    balance: U256,
-    code_hash: H256,
-    nonce: U256,
-    storage_hash: H256,
-    account_proof: Vec<Bytes>,
-    storage_proof: Vec<StorageProof>,
+    pub address: Address,
+    pub balance: U256,
+    pub code_hash: H256,
+    pub nonce: U256,
+    pub storage_hash: H256,
+    pub account_proof: Vec<Bytes>,
+    pub storage_proof: Vec<StorageProof>,
 }
 
 #[cfg(test)]
