@@ -166,7 +166,7 @@ impl<T: JsonRpcClientWrapper> QuorumProvider<T> {
     /// This is the minimum of all provider's block numbers
     async fn get_minimum_block_number(&self) -> Result<U64, ProviderError> {
         let mut numbers = join_all(self.providers.iter().map(|provider| async move {
-            let block = provider.inner.request("eth_blockNumber", serde_json::json!(())).await?;
+            let block = provider.inner.request("eth_blockNumber", serde_json::json!([])).await?;
             serde_json::from_value::<U64>(block).map_err(ProviderError::from)
         }))
         .await
@@ -437,7 +437,12 @@ where
         method: &str,
         params: T,
     ) -> Result<R, Self::Error> {
-        let mut params = serde_json::to_value(params)?;
+        let mut params = if std::mem::size_of::<T>() == 0 {
+            // we don't want `()` to become `"null"`.
+            serde_json::json!([])
+        } else {
+            serde_json::to_value(params)?
+        };
         self.normalize_request(method, &mut params).await;
 
         let requests = self

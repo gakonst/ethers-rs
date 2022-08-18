@@ -53,7 +53,14 @@ impl MockProvider {
     ) -> Result<(), MockError> {
         let (m, inp) = self.requests.lock().unwrap().pop_front().ok_or(MockError::EmptyRequests)?;
         assert_eq!(m, method);
-        assert_eq!(serde_json::to_value(data).expect("could not serialize data"), inp);
+        assert!(!matches!(inp, serde_json::Value::Null));
+        if std::mem::size_of::<T>() == 0 {
+            assert!(inp.is_array());
+            assert_eq!(inp.as_array().unwrap().len(), 0);
+        } else {
+            assert_eq!(serde_json::to_value(data).expect("could not serialize data"), inp);
+        }
+
         Ok(())
     }
 
