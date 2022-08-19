@@ -557,17 +557,18 @@ async fn can_abiencoderv2_output() {
     assert_eq!(res, person);
 }
 
-#[test]
-fn can_gen_multi_etherscan() {
-    abigen!(
-        MyContract, "etherscan:0xdAC17F958D2ee523a2206206994597C13D831ec7";
-        MyContract2, "etherscan:0x8418bb725b3ac45ec8fff3791dd8b4e0480cc2a2";
-    );
-
-    let provider = Arc::new(Provider::new(MockProvider::new()));
-    let _contract = MyContract::new(Address::default(), Arc::clone(&provider));
-    let _contract = MyContract2::new(Address::default(), provider);
-}
+// NOTE: this is commented out because this would result in compiler errors if key not set or
+// etherscan API not working #[test]
+// fn can_gen_multi_etherscan() {
+//     abigen!(
+//         MyContract, "etherscan:0xdAC17F958D2ee523a2206206994597C13D831ec7";
+//         MyContract2, "etherscan:0x8418bb725b3ac45ec8fff3791dd8b4e0480cc2a2";
+//     );
+//
+//     let provider = Arc::new(Provider::new(MockProvider::new()));
+//     let _contract = MyContract::new(Address::default(), Arc::clone(&provider));
+//     let _contract = MyContract2::new(Address::default(), provider);
+// }
 
 #[test]
 fn can_gen_reserved_word_field_names() {
