@@ -3,11 +3,12 @@ use crate::{
         contract::{CompactContractRef, Contract},
         FileToContractsMap,
     },
-    ArtifactFiles, ArtifactOutput,
+    ArtifactFiles, ArtifactOutput, OutputContext,
 };
 use semver::Version;
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, ops::Deref, path::Path};
+use tracing::trace;
 
 /// file -> [(contract name  -> Contract + solc version)]
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
@@ -40,16 +41,38 @@ impl VersionedContracts {
     }
 
     /// Returns all the artifact files mapped with their contracts
-    pub(crate) fn artifact_files<T: ArtifactOutput + ?Sized>(&self) -> ArtifactFiles {
+    ///
+    /// This will compute the appropriate output file paths but will _not_ write them.
+    /// The `ctx` is used to avoid possible conflicts
+    pub(crate) fn artifact_files<T: ArtifactOutput + ?Sized>(
+        &self,
+        ctx: &OutputContext,
+    ) -> ArtifactFiles {
         let mut output_files = ArtifactFiles::with_capacity(self.len());
         for (file, contracts) in self.iter() {
             for (name, versioned_contracts) in contracts {
                 for contract in versioned_contracts {
-                    let output = if versioned_contracts.len() > 1 {
+                    // if an artifact for the contract already exists (from a previous compile job)
+                    // we reuse the path, this will make sure that even if there are conflicting
+                    // files (files for witch `T::output_file()` would return the same path) we use
+                    // consistent output paths
+                    let output = if let Some(existing_artifact) =
+                        ctx.existing_artifact(file, name, &contract.version).cloned()
+                    {
+                        trace!("use existing artifact file {:?}", existing_artifact,);
+                        existing_artifact
+                    } else if versioned_contracts.len() > 1 {
                         T::output_file_versioned(file, name, &contract.version)
                     } else {
                         T::output_file(file, name)
                     };
+
+                    trace!(
+                        "use artifact file {:?} for contract file {} {}",
+                        output,
+                        file,
+                        contract.version
+                    );
                     let contract = (file.as_str(), name.as_str(), contract);
                     output_files.entry(output).or_default().push(contract);
                 }

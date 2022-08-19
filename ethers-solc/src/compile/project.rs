@@ -116,6 +116,7 @@ use crate::{
 };
 use rayon::prelude::*;
 use std::{collections::btree_map::BTreeMap, path::PathBuf, time::Instant};
+use tracing::trace;
 
 #[derive(Debug)]
 pub struct ProjectCompiler<'a, T: ArtifactOutput> {
@@ -231,6 +232,7 @@ impl<'a, T: ArtifactOutput> ProjectCompiler<'a, T> {
     ///   - sets proper source unit names
     ///   - check cache
     fn preprocess(self) -> Result<PreprocessedState<'a, T>> {
+        trace!("preprocessing");
         let Self { edges, project, mut sources, sparse_output } = self;
 
         // convert paths on windows to ensure consistency with the `CompilerOutput` `solc` emits,
@@ -260,6 +262,7 @@ struct PreprocessedState<'a, T: ArtifactOutput> {
 impl<'a, T: ArtifactOutput> PreprocessedState<'a, T> {
     /// advance to the next state by compiling all sources
     fn compile(self) -> Result<CompiledState<'a, T>> {
+        trace!("compiling");
         let PreprocessedState { sources, cache, sparse_output } = self;
         let project = cache.project();
         let mut output = sources.compile(
@@ -293,19 +296,21 @@ impl<'a, T: ArtifactOutput> CompiledState<'a, T> {
     ///
     /// Writes all output contracts to disk if enabled in the `Project` and if the build was
     /// successful
+    #[tracing::instrument(skip_all, name = "write-artifacts")]
     fn write_artifacts(self) -> Result<ArtifactsState<'a, T>> {
         let CompiledState { output, cache } = self;
 
         let project = cache.project();
+        let ctx = cache.output_ctx();
         // write all artifacts via the handler but only if the build succeeded and project wasn't
         // configured with `no_artifacts == true`
         let compiled_artifacts = if project.no_artifacts {
-            project.artifacts_handler().output_to_artifacts(&output.contracts, &output.sources)
+            project.artifacts_handler().output_to_artifacts(&output.contracts, &output.sources, ctx)
         } else if output.has_error() {
-            tracing::trace!("skip writing cache file due to solc errors: {:?}", output.errors);
-            project.artifacts_handler().output_to_artifacts(&output.contracts, &output.sources)
+            trace!("skip writing cache file due to solc errors: {:?}", output.errors);
+            project.artifacts_handler().output_to_artifacts(&output.contracts, &output.sources, ctx)
         } else {
-            tracing::trace!(
+            trace!(
                 "handling artifact output for {} contracts and {} sources",
                 output.contracts.len(),
                 output.sources.len()
@@ -315,6 +320,7 @@ impl<'a, T: ArtifactOutput> CompiledState<'a, T> {
                 &output.contracts,
                 &output.sources,
                 &project.paths,
+                ctx,
             )?;
 
             // emits all the build infos, if they exist
@@ -340,6 +346,7 @@ impl<'a, T: ArtifactOutput> ArtifactsState<'a, T> {
     ///
     /// this concludes the [`Project::compile()`] statemachine
     fn write_cache(self) -> Result<ProjectCompileOutput<T>> {
+        trace!("write cache");
         let ArtifactsState { output, cache, compiled_artifacts } = self;
         let ignored_error_codes = cache.project().ignored_error_codes.clone();
         let skip_write_to_disk = cache.project().no_artifacts || output.has_error();
@@ -404,9 +411,9 @@ impl CompilerSources {
             sources
                 .into_iter()
                 .map(|(solc, (version, sources))| {
-                    tracing::trace!("Filtering {} sources for {}", sources.len(), version);
+                    trace!("Filtering {} sources for {}", sources.len(), version);
                     let sources = cache.filter(sources, &version);
-                    tracing::trace!(
+                    trace!(
                         "Detected {} dirty sources {:?}",
                         sources.dirty().count(),
                         sources.dirty_files().collect::<Vec<_>>()
@@ -477,18 +484,14 @@ fn compile_sequential(
     create_build_info: bool,
 ) -> Result<AggregatedCompilerOutput> {
     let mut aggregated = AggregatedCompilerOutput::default();
-    tracing::trace!("compiling {} jobs sequentially", input.len());
+    trace!("compiling {} jobs sequentially", input.len());
     for (solc, (version, filtered_sources)) in input {
         if filtered_sources.is_empty() {
             // nothing to compile
-            tracing::trace!(
-                "skip solc {} {} for empty sources set",
-                solc.as_ref().display(),
-                version
-            );
+            trace!("skip solc {} {} for empty sources set", solc.as_ref().display(), version);
             continue
         }
-        tracing::trace!(
+        trace!(
             "compiling {} sources with solc \"{}\" {:?}",
             filtered_sources.len(),
             solc.as_ref().display(),
@@ -512,7 +515,7 @@ fn compile_sequential(
             if actually_dirty.is_empty() {
                 // nothing to compile for this particular language, all dirty files are in the other
                 // language set
-                tracing::trace!(
+                trace!(
                     "skip solc {} {} compilation of {} compiler input due to empty source set",
                     solc.as_ref().display(),
                     version,
@@ -527,7 +530,7 @@ fn compile_sequential(
                 .with_base_path(&paths.root)
                 .sanitized(&version);
 
-            tracing::trace!(
+            trace!(
                 "calling solc `{}` with {} sources {:?}",
                 version,
                 input.sources.len(),
@@ -538,8 +541,8 @@ fn compile_sequential(
             report::solc_spawn(&solc, &version, &input, &actually_dirty);
             let output = solc.compile(&input)?;
             report::solc_success(&solc, &version, &output, &start.elapsed());
-            tracing::trace!("compiled input, output has error: {}", output.has_error());
-            tracing::trace!("received compiler output: {:?}", output.contracts.keys());
+            trace!("compiled input, output has error: {}", output.has_error());
+            trace!("received compiler output: {:?}", output.contracts.keys());
 
             // if configured also create the build info
             if create_build_info {
@@ -564,21 +567,13 @@ fn compile_parallel(
     create_build_info: bool,
 ) -> Result<AggregatedCompilerOutput> {
     debug_assert!(num_jobs > 1);
-    tracing::trace!(
-        "compile {} sources in parallel using up to {} solc jobs",
-        input.len(),
-        num_jobs
-    );
+    trace!("compile {} sources in parallel using up to {} solc jobs", input.len(), num_jobs);
 
     let mut jobs = Vec::with_capacity(input.len());
     for (solc, (version, filtered_sources)) in input {
         if filtered_sources.is_empty() {
             // nothing to compile
-            tracing::trace!(
-                "skip solc {} {} for empty sources set",
-                solc.as_ref().display(),
-                version
-            );
+            trace!("skip solc {} {} for empty sources set", solc.as_ref().display(), version);
             continue
         }
 
@@ -599,7 +594,7 @@ fn compile_parallel(
             if actually_dirty.is_empty() {
                 // nothing to compile for this particular language, all dirty files are in the other
                 // language set
-                tracing::trace!(
+                trace!(
                     "skip solc {} {} compilation of {} compiler input due to empty source set",
                     solc.as_ref().display(),
                     version,
@@ -633,7 +628,7 @@ fn compile_parallel(
                 // set the reporter on this thread
                 let _guard = report::set_scoped(&scoped_report);
 
-                tracing::trace!(
+                trace!(
                     "calling solc `{}` {:?} with {} sources: {:?}",
                     version,
                     solc.args,

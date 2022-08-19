@@ -11,8 +11,8 @@ use ethers_solc::{
     info::ContractInfo,
     project_util::*,
     remappings::Remapping,
-    CompilerInput, ConfigurableArtifacts, ExtraOutputValues, Graph, Project, ProjectCompileOutput,
-    ProjectPathsConfig, Solc, TestFileFilter,
+    Artifact, CompilerInput, ConfigurableArtifacts, ExtraOutputValues, Graph, Project,
+    ProjectCompileOutput, ProjectPathsConfig, Solc, TestFileFilter,
 };
 use pretty_assertions::assert_eq;
 use semver::Version;
@@ -2127,6 +2127,103 @@ fn can_handle_conflicting_files() {
             PathBuf::from("tokens/Greeter.sol/Greeter.json"),
         ]
     );
+}
+
+// <https://github.com/foundry-rs/foundry/issues/2843>
+#[test]
+fn can_handle_conflicting_files_recompile() {
+    let project = TempProject::<ConfigurableArtifacts>::dapptools().unwrap();
+
+    project
+        .add_source(
+            "A",
+            r#"
+    pragma solidity ^0.8.10;
+
+    contract A {
+            function foo() public{}
+    }
+   "#,
+        )
+        .unwrap();
+
+    project
+        .add_source(
+            "inner/A",
+            r#"
+    pragma solidity ^0.8.10;
+
+    contract A {
+            function bar() public{}
+    }
+   "#,
+        )
+        .unwrap();
+
+    let compiled = project.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+
+    let artifacts = compiled.artifacts().count();
+    assert_eq!(artifacts, 2);
+
+    // nothing to compile
+    let compiled = project.compile().unwrap();
+    assert!(compiled.is_unchanged());
+    let artifacts = compiled.artifacts().count();
+    assert_eq!(artifacts, 2);
+
+    let cache = SolFilesCache::read(project.cache_path()).unwrap();
+
+    let mut source_files = cache.files.keys().cloned().collect::<Vec<_>>();
+    source_files.sort_unstable();
+
+    assert_eq!(source_files, vec![PathBuf::from("src/A.sol"), PathBuf::from("src/inner/A.sol"),]);
+
+    let mut artifacts =
+        project.artifacts_snapshot().unwrap().artifacts.into_stripped_file_prefixes(project.root());
+    artifacts.strip_prefix_all(&project.paths().artifacts);
+
+    assert_eq!(artifacts.len(), 2);
+    let mut artifact_files = artifacts.artifact_files().map(|f| f.file.clone()).collect::<Vec<_>>();
+    artifact_files.sort_unstable();
+
+    let expected_files = vec![PathBuf::from("A.sol/A.json"), PathBuf::from("inner/A.sol/A.json")];
+    assert_eq!(artifact_files, expected_files);
+
+    // overwrite conflicting nested file, effectively changing it
+    project
+        .add_source(
+            "inner/A",
+            r#"
+    pragma solidity ^0.8.10;
+    contract A {
+    function bar() public{}
+    function baz() public{}
+    }
+   "#,
+        )
+        .unwrap();
+
+    let compiled = project.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+
+    let mut recompiled_artifacts =
+        project.artifacts_snapshot().unwrap().artifacts.into_stripped_file_prefixes(project.root());
+    recompiled_artifacts.strip_prefix_all(&project.paths().artifacts);
+
+    assert_eq!(recompiled_artifacts.len(), 2);
+    let mut artifact_files =
+        recompiled_artifacts.artifact_files().map(|f| f.file.clone()).collect::<Vec<_>>();
+    artifact_files.sort_unstable();
+    assert_eq!(artifact_files, expected_files);
+
+    // ensure that `a.sol/A.json` is unchanged
+    let outer = artifacts.find("src/A.sol", "A").unwrap();
+    let outer_recompiled = recompiled_artifacts.find("src/A.sol", "A").unwrap();
+    assert_eq!(outer, outer_recompiled);
+
+    let inner_recompiled = recompiled_artifacts.find("src/inner/A.sol", "A").unwrap();
+    assert!(inner_recompiled.get_abi().unwrap().functions.contains_key("baz"));
 }
 
 #[test]

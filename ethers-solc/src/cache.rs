@@ -5,8 +5,8 @@ use crate::{
     error::{Result, SolcError},
     filter::{FilteredSource, FilteredSourceInfo, FilteredSources},
     resolver::GraphEdges,
-    utils, ArtifactFile, ArtifactOutput, Artifacts, ArtifactsMap, Project, ProjectPathsConfig,
-    Source,
+    utils, ArtifactFile, ArtifactOutput, Artifacts, ArtifactsMap, OutputContext, Project,
+    ProjectPathsConfig, Source,
 };
 use semver::Version;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -523,6 +523,11 @@ impl CacheEntry {
         self.artifacts.values().flat_map(|artifacts| artifacts.iter())
     }
 
+    /// Returns the artifact file for the contract and version pair
+    pub fn find_artifact(&self, contract: &str, version: &Version) -> Option<&PathBuf> {
+        self.artifacts.get(contract).and_then(|files| files.get(version))
+    }
+
     /// Iterator that yields all artifact files and their version
     pub fn artifacts_for_version<'a>(
         &'a self,
@@ -864,6 +869,13 @@ impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
         }
     }
 
+    pub fn output_ctx(&self) -> OutputContext {
+        match self {
+            ArtifactsCache::Ephemeral(_, _) => Default::default(),
+            ArtifactsCache::Cached(inner) => OutputContext::new(&inner.cache),
+        }
+    }
+
     pub fn project(&self) -> &'a Project<T> {
         match self {
             ArtifactsCache::Ephemeral(_, project) => project,
@@ -948,7 +960,8 @@ impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
                                         }).unwrap_or_default();
                                     if !retain {
                                         tracing::trace!(
-                                            "purging obsolete cached artifact for contract {} and version {}",
+                                            "purging obsolete cached artifact {:?} for contract {} and version {}",
+                                            f.file,
                                             name,
                                             f.version
                                         );
