@@ -859,8 +859,9 @@ impl<T: ArtifactOutput> ArtifactOutput for Project<T> {
         contracts: &VersionedContracts,
         sources: &VersionedSourceFiles,
         layout: &ProjectPathsConfig,
+        ctx: OutputContext,
     ) -> Result<Artifacts<Self::Artifact>> {
-        self.artifacts_handler().on_output(contracts, sources, layout)
+        self.artifacts_handler().on_output(contracts, sources, layout, ctx)
     }
 
     fn write_contract_extras(&self, contract: &Contract, file: &Path) -> Result<()> {
@@ -933,8 +934,9 @@ impl<T: ArtifactOutput> ArtifactOutput for Project<T> {
         &self,
         contracts: &VersionedContracts,
         sources: &VersionedSourceFiles,
+        ctx: OutputContext,
     ) -> Artifacts<Self::Artifact> {
-        self.artifacts_handler().output_to_artifacts(contracts, sources)
+        self.artifacts_handler().output_to_artifacts(contracts, sources, ctx)
     }
 
     fn standalone_source_file_to_artifact(

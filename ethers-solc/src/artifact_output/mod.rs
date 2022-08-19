@@ -10,7 +10,7 @@ use crate::{
     error::Result,
     sourcemap::{SourceMap, SyntaxError},
     sources::VersionedSourceFile,
-    utils, HardhatArtifact, ProjectPathsConfig, SolcError,
+    utils, HardhatArtifact, ProjectPathsConfig, SolFilesCache, SolcError,
 };
 use ethers_core::{abi::Abi, types::Bytes};
 use semver::Version;
@@ -23,7 +23,7 @@ use std::{
     ops::Deref,
     path::{Path, PathBuf},
 };
-use tracing::trace;
+use tracing::{error, trace};
 
 mod configurable;
 use crate::contracts::VersionedContract;
@@ -98,6 +98,7 @@ pub struct ArtifactFile<T> {
 impl<T: Serialize> ArtifactFile<T> {
     /// Writes the given contract to the `out` path creating all parent directories
     pub fn write(&self) -> Result<()> {
+        trace!("writing artifact file {:?} {}", self.file, self.version);
         utils::create_parent_dir_all(&self.file)?;
         fs::write(&self.file, serde_json::to_vec_pretty(&self.artifact)?)
             .map_err(|err| SolcError::io(err, &self.file))?;
@@ -574,8 +575,9 @@ pub trait ArtifactOutput {
         contracts: &VersionedContracts,
         sources: &VersionedSourceFiles,
         layout: &ProjectPathsConfig,
+        ctx: OutputContext,
     ) -> Result<Artifacts<Self::Artifact>> {
-        let mut artifacts = self.output_to_artifacts(contracts, sources);
+        let mut artifacts = self.output_to_artifacts(contracts, sources, ctx);
         artifacts.join_all(&layout.artifacts);
         artifacts.write_all()?;
 
@@ -792,6 +794,7 @@ pub trait ArtifactOutput {
         &self,
         contracts: &VersionedContracts,
         sources: &VersionedSourceFiles,
+        ctx: OutputContext,
     ) -> Artifacts<Self::Artifact> {
         let mut artifacts = ArtifactsMap::new();
 
@@ -799,7 +802,7 @@ pub trait ArtifactOutput {
         let mut non_standalone_sources = HashSet::new();
 
         // this holds all output files and the contract(s) it belongs to
-        let artifact_files = contracts.artifact_files::<Self>();
+        let artifact_files = contracts.artifact_files::<Self>(&ctx);
 
         // this tracks the final artifacts, which we use as lookup for checking conflicts when
         // converting stand-alone artifacts in the next step
@@ -932,6 +935,46 @@ pub trait ArtifactOutput {
     ) -> Option<Self::Artifact>;
 }
 
+/// Additional context to use during [`ArtifactOutput::on_output()`]
+#[derive(Debug, Clone, Default)]
+#[non_exhaustive]
+pub struct OutputContext<'a> {
+    /// Cache file of the project or empty if no caching is enabled
+    ///
+    /// This context is required for partially cached recompile with conflicting files, so that we
+    /// can use the same adjusted output path for conflicting files like:
+    ///
+    /// ```text
+    /// src
+    /// ├── a.sol
+    /// └── inner
+    ///     └── a.sol
+    /// ```
+    pub cache: Cow<'a, SolFilesCache>,
+}
+
+// === impl OutputContext
+
+impl<'a> OutputContext<'a> {
+    /// Create a new context with the given cache file
+    pub fn new(cache: &'a SolFilesCache) -> Self {
+        Self { cache: Cow::Borrowed(cache) }
+    }
+
+    /// Returns the path of the already existing artifact for the `contract` of the `file` compiled
+    /// with the `version`.
+    ///
+    /// Returns `None` if no file exists
+    pub fn existing_artifact(
+        &self,
+        file: impl AsRef<Path>,
+        contract: &str,
+        version: &Version,
+    ) -> Option<&PathBuf> {
+        self.cache.entry(file)?.find_artifact(contract, version)
+    }
+}
+
 /// An `Artifact` implementation that uses a compact representation
 ///
 /// Creates a single json artifact with
@@ -984,8 +1027,9 @@ impl ArtifactOutput for MinimalCombinedArtifactsHardhatFallback {
         output: &VersionedContracts,
         sources: &VersionedSourceFiles,
         layout: &ProjectPathsConfig,
+        ctx: OutputContext,
     ) -> Result<Artifacts<Self::Artifact>> {
-        MinimalCombinedArtifacts::default().on_output(output, sources, layout)
+        MinimalCombinedArtifacts::default().on_output(output, sources, layout, ctx)
     }
 
     fn read_cached_artifact(path: impl AsRef<Path>) -> Result<Self::Artifact> {
@@ -994,10 +1038,10 @@ impl ArtifactOutput for MinimalCombinedArtifactsHardhatFallback {
         if let Ok(a) = serde_json::from_str(&content) {
             Ok(a)
         } else {
-            tracing::error!("Failed to deserialize compact artifact");
-            tracing::trace!("Fallback to hardhat artifact deserialization");
+            error!("Failed to deserialize compact artifact");
+            trace!("Fallback to hardhat artifact deserialization");
             let artifact = serde_json::from_str::<HardhatArtifact>(&content)?;
-            tracing::trace!("successfully deserialized hardhat artifact");
+            trace!("successfully deserialized hardhat artifact");
             Ok(artifact.into_contract_bytecode())
         }
     }
