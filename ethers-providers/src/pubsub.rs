@@ -12,6 +12,7 @@ use std::{
     pin::Pin,
     task::{Context, Poll},
 };
+use tracing::error;
 
 /// A transport implementation supporting pub sub subscriptions.
 pub trait PubsubClient: JsonRpcClient {
@@ -90,7 +91,10 @@ where
         match futures_util::ready!(this.rx.poll_next(ctx)) {
             Some(item) => match serde_json::from_str(item.get()) {
                 Ok(res) => Poll::Ready(Some(res)),
-                _ => Poll::Pending,
+                Err(err) => {
+                    error!("failed to deserialize item {:?}", err);
+                    Poll::Pending
+                }
             },
             None => Poll::Ready(None),
         }
