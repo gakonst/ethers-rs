@@ -341,7 +341,7 @@ impl<M: Middleware> Multicall<M> {
     ///
     /// # Errors
     ///
-    /// Returns an error if the provided chain_id is not in the
+    /// Returns a [`MulticallError`] if the provided chain_id is not in the
     /// [supported networks](MULTICALL_SUPPORTED_CHAIN_IDS).
     ///
     /// # Panics
@@ -359,7 +359,8 @@ impl<M: Middleware> Multicall<M> {
         let address: Address = match address {
             Some(addr) => addr,
             None => {
-                // Can't fetch chain_id from provider so we return an error instead.
+                // Can't fetch chain_id from provider since we're not in an async function so we
+                // panic instead.
                 let chain_id =
                     chain_id.expect("Must provide at least one of: address or chain ID.").into();
                 if !MULTICALL_SUPPORTED_CHAIN_IDS.contains(&chain_id) {
