@@ -254,11 +254,19 @@ impl Filter {
         self
     }
 
-    /// given the event in string form, it hashes it and adds it to the topics to monitor
+    /// Given the event signature in string form, it hashes it and adds it to the topics to monitor
     #[must_use]
     pub fn event(self, event_name: &str) -> Self {
         let hash = H256::from(keccak256(event_name.as_bytes()));
         self.topic0(hash)
+    }
+
+    /// Hashes all event signatures and sets them as array to topic0
+    #[must_use]
+    pub fn events(self, events: impl IntoIterator<Item = impl AsRef<[u8]>>) -> Self {
+        let events =
+            events.into_iter().map(|e| H256::from(keccak256(e.as_ref()))).collect::<Vec<_>>();
+        self.topic0(events)
     }
 
     /// Sets topic0 (the event name for non-anonymous events)
@@ -541,6 +549,12 @@ impl From<Vec<H160>> for ValueOrArray<H160> {
 impl From<H256> for Topic {
     fn from(src: H256) -> Self {
         ValueOrArray::Value(Some(src))
+    }
+}
+
+impl From<Vec<H256>> for ValueOrArray<H256> {
+    fn from(src: Vec<H256>) -> Self {
+        ValueOrArray::Array(src)
     }
 }
 
