@@ -8,8 +8,6 @@ pub mod multicall_3 {
     // defined here
     mod ethers_contract {
         pub use crate::*;
-        // re-export derive macros to build this multicall in case abigen feature is not enabled
-        pub use ethers_contract_derive::*;
     }
     #[doc = "Multicall3 was auto-generated with ethers-rs Abigen. More information at: https://github.com/gakonst/ethers-rs"]
     pub static MULTICALL3_ABI: ethers_contract::Lazy<ethers_core::abi::Abi> =

@@ -25,7 +25,11 @@ pub use log::{decode_logs, EthLogDecode, LogMeta};
 
 pub mod stream;
 
+#[cfg(any(test, feature = "abigen"))]
+#[cfg_attr(docsrs, doc(cfg(feature = "abigen")))]
 mod multicall;
+#[cfg(any(test, feature = "abigen"))]
+#[cfg_attr(docsrs, doc(cfg(feature = "abigen")))]
 pub use multicall::{
     Multicall, MulticallContract, MulticallVersion, MULTICALL_ADDRESS,
     MULTICALL_SUPPORTED_CHAIN_IDS,
