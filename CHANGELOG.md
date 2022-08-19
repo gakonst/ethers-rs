@@ -117,6 +117,8 @@
 
 ### Unreleased
 
+- Add `OutputContext` to `ArtifactOutput` trait
+  [#1621](https://github.com/gakonst/ethers-rs/pull/1621)
 - On windows all paths in the `ProjectCompilerOutput` are now slashed by default
   [#1540](https://github.com/gakonst/ethers-rs/pull/1540)
 - `ArtifactOutput::write_extras` now takes the `Artifacts` directly
