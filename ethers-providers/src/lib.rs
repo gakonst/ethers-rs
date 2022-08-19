@@ -106,7 +106,7 @@ pub enum SyncingStatus {
 ///
 /// ```rust
 /// use ethers_providers::{Middleware, FromErr};
-/// use ethers_core::types::{U64, TransactionRequest, U256, transaction::eip2718::TypedTransaction};
+/// use ethers_core::types::{U64, TransactionRequest, U256, transaction::eip2718::TypedTransaction, BlockId};
 /// use thiserror::Error;
 /// use async_trait::async_trait;
 ///
@@ -147,9 +147,9 @@ pub enum SyncingStatus {
 ///
 ///     /// Overrides the default `estimate_gas` method to log that it was called,
 ///     /// before forwarding the call to the next layer.
-///     async fn estimate_gas(&self, tx: &TypedTransaction) -> Result<U256, Self::Error> {
+///     async fn estimate_gas(&self, tx: &TypedTransaction, block: Option<BlockId>) -> Result<U256, Self::Error> {
 ///         println!("Estimating gas...");
-///         self.inner().estimate_gas(tx).await.map_err(FromErr::from)
+///         self.inner().estimate_gas(tx, block).await.map_err(FromErr::from)
 ///     }
 /// }
 /// ```
@@ -182,15 +182,11 @@ pub trait Middleware: Sync + Send + Debug {
     /// This function is defined on providers to behave as follows:
     /// 1. populate the `from` field with the default sender
     /// 2. resolve any ENS names in the tx `to` field
-    /// 3. Estimate gas usage _without_ access lists
-    /// 4. Estimate gas usage _with_ access lists
-    /// 5. Enable access lists IFF they are cheaper
-    /// 6. Poll and set legacy or 1559 gas prices
-    /// 7. Set the chain_id with the provider's, if not already set
+    /// 3. Estimate gas usage
+    /// 4. Poll and set legacy or 1559 gas prices
+    /// 5. Set the chain_id with the provider's, if not already set
     ///
     /// It does NOT set the nonce by default.
-    /// It MAY override the gas amount set by the user, if access lists are
-    /// cheaper.
     ///
     /// Middleware are encouraged to override any values _before_ delegating
     /// to the inner implementation AND/OR modify the values provided by the
@@ -321,8 +317,12 @@ pub trait Middleware: Sync + Send + Debug {
         self.inner().get_transaction_count(from, block).await.map_err(FromErr::from)
     }
 
-    async fn estimate_gas(&self, tx: &TypedTransaction) -> Result<U256, Self::Error> {
-        self.inner().estimate_gas(tx).await.map_err(FromErr::from)
+    async fn estimate_gas(
+        &self,
+        tx: &TypedTransaction,
+        block: Option<BlockId>,
+    ) -> Result<U256, Self::Error> {
+        self.inner().estimate_gas(tx, block).await.map_err(FromErr::from)
     }
 
     async fn call(
