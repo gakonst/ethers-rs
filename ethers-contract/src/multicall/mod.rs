@@ -2,7 +2,7 @@ use ethers_core::{
     abi::{AbiDecode, Detokenize, Function, Token},
     types::{Address, BlockNumber, Bytes, Chain, NameOrAddress, TxHash, H160, U256},
 };
-use ethers_providers::{Middleware, ProviderError};
+use ethers_providers::Middleware;
 
 use std::{convert::TryFrom, sync::Arc};
 
@@ -82,6 +82,20 @@ pub static MULTICALL_SUPPORTED_CHAIN_IDS: Lazy<[U256; 47]> = Lazy::new(|| {
     ]
 });
 
+#[derive(Debug, thiserror::Error)]
+pub enum MulticallError<M: Middleware> {
+    #[error(transparent)]
+    ContractError(#[from] ContractError<M>),
+
+    #[error("Chain ID {0} is currently not supported by Multicall. Provide an address instead.")]
+    InvalidChainId(U256),
+
+    #[error("Illegal revert: Multicall2 call reverted when it wasn't allowed to.")]
+    IllegalRevert,
+}
+
+pub type Result<T, M> = std::result::Result<T, MulticallError<M>>;
+
 /// The version of the [`Multicall`](super::Multicall).
 /// Used to determine which methods of the Multicall smart contract to use:
 /// - [`Multicall`] : `aggregate((address,bytes)[])`
@@ -109,12 +123,12 @@ impl From<MulticallVersion> for u8 {
 
 impl TryFrom<u8> for MulticallVersion {
     type Error = String;
-    fn try_from(v: u8) -> Result<Self, Self::Error> {
+    fn try_from(v: u8) -> std::result::Result<Self, Self::Error> {
         match v {
             1 => Ok(MulticallVersion::Multicall),
             2 => Ok(MulticallVersion::Multicall2),
             3 => Ok(MulticallVersion::Multicall3),
-            _ => Err(format!("Invalid Multicall version: {}", v)),
+            _ => Err(format!("Invalid Multicall version: {}. Accepted values: 1, 2, 3.", v)),
         }
     }
 }
@@ -285,16 +299,14 @@ impl<M: Middleware> Multicall<M> {
     ///
     /// # Errors
     ///
-    /// Returns a [`ContractError`] if the provider return an error while getting `network_version`.
+    /// Returns a [`MulticallError`] if the provider returns an error while getting
+    /// `network_version`.
     ///
     /// # Panics
     ///
     /// If a `None` address is provided and the client's network is
     /// [not supported](MULTICALL_SUPPORTED_CHAIN_IDS).
-    pub async fn new(
-        client: impl Into<Arc<M>>,
-        address: Option<Address>,
-    ) -> Result<Self, ContractError<M>> {
+    pub async fn new(client: impl Into<Arc<M>>, address: Option<Address>) -> Result<Self, M> {
         let client = client.into();
 
         // Fetch chain id and the corresponding address of Multicall contract
@@ -306,9 +318,7 @@ impl<M: Middleware> Multicall<M> {
                 let chain_id =
                     client.get_chainid().await.map_err(ContractError::MiddlewareError)?;
                 if !MULTICALL_SUPPORTED_CHAIN_IDS.contains(&chain_id) {
-                    panic!(
-                            "Chain ID {} is currently not supported by Multicall. Provide an address instead.", chain_id
-                        )
+                    return Err(MulticallError::InvalidChainId(chain_id))
                 }
                 MULTICALL_ADDRESS
             }
@@ -329,28 +339,31 @@ impl<M: Middleware> Multicall<M> {
     /// Creates a new Multicall instance synchronously from the provided client and address or chain
     /// ID. Uses the [default multicall address](MULTICALL_ADDRESS) if no address is provided.
     ///
+    /// # Errors
+    ///
+    /// Returns an error if the provided chain_id is not in the
+    /// [supported networks](MULTICALL_SUPPORTED_CHAIN_IDS).
+    ///
     /// # Panics
     ///
     /// If neither an address or chain_id are provided. Since this is not an async function, it will
     /// not be able to query `net_version` to check if it is supported by the default multicall
     /// address. Use new(client, None).await instead.
-    ///
-    /// If the provided chain_id is not in the [supported networks](MULTICALL_SUPPORTED_CHAIN_IDS).
     pub fn new_with_chain_id(
         client: impl Into<Arc<M>>,
         address: Option<Address>,
         chain_id: Option<impl Into<U256>>,
-    ) -> Self {
+    ) -> Result<Self, M> {
         // If no address is provided, check if chain_id is supported and use the default multicall
         // address.
         let address: Address = match address {
             Some(addr) => addr,
             None => {
-                // Can't fetch chain_id from provider so we panic instead.
+                // Can't fetch chain_id from provider so we return an error instead.
                 let chain_id =
                     chain_id.expect("Must provide at least one of: address or chain ID.").into();
                 if !MULTICALL_SUPPORTED_CHAIN_IDS.contains(&chain_id) {
-                    panic!("Chain ID {} is currently not supported by Multicall. Provide an address instead.", chain_id)
+                    return Err(MulticallError::InvalidChainId(chain_id))
                 }
                 MULTICALL_ADDRESS
             }
@@ -359,13 +372,13 @@ impl<M: Middleware> Multicall<M> {
         // Instantiate the multicall contract
         let contract = MulticallContract::new(address, client.into());
 
-        Self {
+        Ok(Self {
             version: MulticallVersion::Multicall3,
             legacy: false,
             block: None,
             calls: vec![],
             contract,
-        }
+        })
     }
 
     /// Changes which functions to use when making the contract call. The default is 3. Version
@@ -499,7 +512,7 @@ impl<M: Middleware> Multicall<M> {
     ///
     /// # Errors
     ///
-    /// Returns a [`ContractError`] if there are any errors in the RPC call or while detokenizing
+    /// Returns a [`MulticallError`] if there are any errors in the RPC call or while detokenizing
     /// the tokens back to the expected return type.
     ///
     /// # Panics
@@ -532,11 +545,11 @@ impl<M: Middleware> Multicall<M> {
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn call<D: Detokenize>(&self) -> Result<D, ContractError<M>> {
+    pub async fn call<D: Detokenize>(&self) -> Result<D, M> {
         assert!(self.calls.len() < 16, "Cannot decode more than 16 calls");
         let tokens = self.call_raw().await?;
         let tokens = vec![Token::Tuple(tokens)];
-        let data = D::from_tokens(tokens)?;
+        let data = D::from_tokens(tokens).map_err(ContractError::DetokenizationError)?;
         Ok(data)
     }
 
@@ -545,7 +558,7 @@ impl<M: Middleware> Multicall<M> {
     ///
     /// # Errors
     ///
-    /// It returns a [`ContractError`] if there are any errors in the RPC call.
+    /// Returns a [`MulticallError`] if there are any errors in the RPC call.
     ///
     /// # Examples
     ///
@@ -569,7 +582,7 @@ impl<M: Middleware> Multicall<M> {
     /// Note: this method _does not_ send a transaction from your account
     ///
     /// [`ContractError<M>`]: crate::ContractError<M>
-    pub async fn call_raw(&self) -> Result<Vec<Token>, ContractError<M>> {
+    pub async fn call_raw(&self) -> Result<Vec<Token>, M> {
         // Different call result types based on version
         let tokens: Vec<Token> = match self.version {
             MulticallVersion::Multicall => {
@@ -579,14 +592,17 @@ impl<M: Middleware> Multicall<M> {
                     .iter()
                     .zip(&return_data)
                     .map(|(call, bytes)| {
-                        let mut tokens: Vec<Token> = call.function.decode_output(bytes.as_ref())?;
+                        let mut tokens: Vec<Token> = call
+                            .function
+                            .decode_output(bytes.as_ref())
+                            .map_err(ContractError::DecodingError)?;
                         Ok(match tokens.len() {
                             0 => Token::Tuple(vec![]),
                             1 => tokens.remove(0),
                             _ => Token::Tuple(tokens),
                         })
                     })
-                    .collect::<Result<Vec<Token>, ContractError<M>>>()?
+                    .collect::<Result<Vec<Token>, M>>()?
             }
             // Same result type (`MulticallResult`)
             v @ (MulticallVersion::Multicall2 | MulticallVersion::Multicall3) => {
@@ -600,7 +616,10 @@ impl<M: Middleware> Multicall<M> {
                         let ret = &res.return_data;
                         let res_token: Token = if res.success {
                             // Decode using call.function
-                            let mut res_tokens = call.function.decode_output(ret)?;
+                            let mut res_tokens = call
+                                .function
+                                .decode_output(ret)
+                                .map_err(ContractError::DecodingError)?;
                             match res_tokens.len() {
                                 0 => Token::Tuple(vec![]),
                                 1 => res_tokens.remove(0),
@@ -616,17 +635,14 @@ impl<M: Middleware> Multicall<M> {
                             // still do so because of other calls that are in the same multicall
                             // aggregate.
                             if !call.allow_failure {
-                                return Err(ContractError::ProviderError(
-                                    ProviderError::CustomError(format!(
-                                        "Illegal revert.\n{:?}\n{:?}",
-                                        call, res
-                                    )),
-                                ))
+                                return Err(MulticallError::IllegalRevert)
                             }
 
                             // Decode with "Error(string)" (0x08c379a0)
                             if ret.len() >= 4 && ret[..4] == [0x08, 0xc3, 0x79, 0xa0] {
-                                Token::String(String::decode(&ret[4..])?)
+                                Token::String(
+                                    String::decode(&ret[4..]).map_err(ContractError::AbiError)?,
+                                )
                             } else if ret.is_empty() {
                                 Token::String(String::new())
                             } else {
@@ -636,7 +652,7 @@ impl<M: Middleware> Multicall<M> {
                         // (bool, (...))
                         Ok(Token::Tuple(vec![Token::Bool(res.success), res_token]))
                     })
-                    .collect::<Result<Vec<Token>, ContractError<M>>>()?
+                    .collect::<Result<Vec<Token>, M>>()?
             }
         };
 
@@ -651,7 +667,7 @@ impl<M: Middleware> Multicall<M> {
     ///
     /// # Errors
     ///
-    /// It returns a [`ContractError`] if there are any errors in the RPC call.
+    /// Returns a [`MulticallError`] if there are any errors in the RPC call.
     ///
     /// # Examples
     ///
@@ -666,7 +682,7 @@ impl<M: Middleware> Multicall<M> {
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn send(&self) -> Result<TxHash, ContractError<M>> {
+    pub async fn send(&self) -> Result<TxHash, M> {
         // Broadcast transaction and return the transaction hash
         // TODO: Can we make this return a PendingTransaction directly instead?
         // Seems hard due to `returns a value referencing data owned by the current function`
