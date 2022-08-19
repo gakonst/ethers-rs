@@ -20,7 +20,7 @@ mod pending_escalator;
 pub use pending_escalator::EscalatingPending;
 
 mod log_query;
-pub use log_query::LogQuery;
+pub use log_query::{LogQuery, LogQueryError};
 
 mod stream;
 pub use futures_util::StreamExt;
