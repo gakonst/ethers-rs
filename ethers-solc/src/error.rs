@@ -32,6 +32,13 @@ pub enum SolcError {
     Resolve(SolcIoError),
     #[error("File could not be resolved due to broken symlink: {0}.")]
     ResolveBadSymlink(SolcIoError),
+    #[error(
+        r#"Failed to resolve file: {0}.
+    --> {1:?}
+        {2:?}
+    Check configured remappings."#
+    )]
+    FailedResolveImport(SolcIoError, PathBuf, PathBuf),
     #[cfg(feature = "svm-solc")]
     #[error(transparent)]
     SvmError(#[from] svm::SolcVmError),
