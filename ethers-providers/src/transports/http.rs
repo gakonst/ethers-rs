@@ -72,19 +72,24 @@ impl JsonRpcClient for Provider {
         let payload = Request::new(next_id, method, params);
 
         let res = self.client.post(self.url.as_ref()).json(&payload).send().await?;
-        let text = res.text().await?;
+        let body = res.bytes().await?;
 
-        let raw = match serde_json::from_str(&text) {
+        let raw = match serde_json::from_slice(&body) {
             Ok(Response::Success { result, .. }) => result.to_owned(),
             Ok(Response::Error { error, .. }) => return Err(error.into()),
             Ok(_) => {
                 let err = ClientError::SerdeJson {
                     err: serde::de::Error::custom("unexpected notification over HTTP transport"),
-                    text,
+                    text: String::from_utf8_lossy(&body).to_string(),
                 };
                 return Err(err)
             }
-            Err(err) => return Err(ClientError::SerdeJson { err, text }),
+            Err(err) => {
+                return Err(ClientError::SerdeJson {
+                    err,
+                    text: String::from_utf8_lossy(&body).to_string(),
+                })
+            }
         };
 
         let res = serde_json::from_str(raw.get())
@@ -108,6 +113,16 @@ impl Provider {
     /// ```
     pub fn new(url: impl Into<Url>) -> Self {
         Self::new_with_client(url, Client::new())
+    }
+
+    /// The Url to which requests are made
+    pub fn url(&self) -> &Url {
+        &self.url
+    }
+
+    /// Mutable access to the Url to which requests are made
+    pub fn url_mut(&mut self) -> &mut Url {
+        &mut self.url
     }
 
     /// Initializes a new HTTP Client with authentication

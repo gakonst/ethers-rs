@@ -1,5 +1,4 @@
-//! TODO
-
+//! Generate bindings for multiple `Abigen`
 use eyre::Result;
 use inflector::Inflector;
 use proc_macro2::TokenStream;
@@ -11,7 +10,131 @@ use std::{
     path::Path,
 };
 
-use crate::{util, Abigen, Context, ContractBindings, ExpandedContract};
+use crate::{util, Abigen, Context, ContractBindings, ContractFilter, ExpandedContract};
+
+/// Collects Abigen structs for a series of contracts, pending generation of
+/// the contract bindings.
+#[derive(Debug, Clone)]
+pub struct MultiAbigen {
+    /// Abigen objects to be written
+    abigens: Vec<Abigen>,
+}
+
+impl std::ops::Deref for MultiAbigen {
+    type Target = Vec<Abigen>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.abigens
+    }
+}
+
+impl From<Vec<Abigen>> for MultiAbigen {
+    fn from(abigens: Vec<Abigen>) -> Self {
+        Self { abigens }
+    }
+}
+
+impl std::iter::FromIterator<Abigen> for MultiAbigen {
+    fn from_iter<I: IntoIterator<Item = Abigen>>(iter: I) -> Self {
+        iter.into_iter().collect::<Vec<_>>().into()
+    }
+}
+
+impl MultiAbigen {
+    /// Create a new instance from a series (`contract name`, `abi_source`)
+    ///
+    /// See `Abigen::new`
+    pub fn new<I, Name, Source>(abis: I) -> Result<Self>
+    where
+        I: IntoIterator<Item = (Name, Source)>,
+        Name: AsRef<str>,
+        Source: AsRef<str>,
+    {
+        let abis = abis
+            .into_iter()
+            .map(|(contract_name, abi_source)| Abigen::new(contract_name.as_ref(), abi_source))
+            .collect::<Result<Vec<_>>>()?;
+
+        Ok(Self::from_abigens(abis))
+    }
+
+    /// Create a new instance from a series of already resolved `Abigen`
+    pub fn from_abigens(abis: impl IntoIterator<Item = Abigen>) -> Self {
+        abis.into_iter().collect()
+    }
+
+    /// Reads all json files contained in the given `dir` and use the file name for the name of the
+    /// `ContractBindings`.
+    /// This is equivalent to calling `MultiAbigen::new` with all the json files and their filename.
+    ///
+    /// # Example
+    ///
+    /// ```text
+    /// abi
+    /// ├── ERC20.json
+    /// ├── Contract1.json
+    /// ├── Contract2.json
+    /// ...
+    /// ```
+    ///
+    /// ```
+    /// # fn t() {
+    /// # use ethers_contract_abigen::MultiAbigen;
+    /// let gen = MultiAbigen::from_json_files("./abi").unwrap();
+    /// # }
+    /// ```
+    pub fn from_json_files(root: impl AsRef<Path>) -> Result<Self> {
+        util::json_files(root.as_ref()).into_iter().map(Abigen::from_file).collect()
+    }
+
+    /// See `apply_filter`
+    ///
+    /// # Example
+    ///
+    /// Only Select specific contracts
+    ///
+    /// ```
+    /// use ethers_contract_abigen::{MultiAbigen, SelectContracts};
+    /// # fn t() {
+    ///    let gen = MultiAbigen::from_json_files("./abi").unwrap().with_filter(
+    ///        SelectContracts::default().add_name("MyContract").add_name("MyOtherContract"),
+    ///    );
+    /// ```
+    ///
+    /// Exclude all contracts that end with test
+    ///
+    /// ```
+    /// use ethers_contract_abigen::{ExcludeContracts, MultiAbigen};
+    /// # fn t() {
+    ///    let gen = MultiAbigen::from_json_files("./abi").unwrap().with_filter(
+    ///        ExcludeContracts::default().add_pattern(".*Test"),
+    ///    );
+    /// ```
+    #[must_use]
+    pub fn with_filter(mut self, filter: impl Into<ContractFilter>) -> Self {
+        self.apply_filter(&filter.into());
+        self
+    }
+
+    /// Removes all `Abigen` items that should not be included based on the given filter
+    pub fn apply_filter(&mut self, filter: &ContractFilter) {
+        self.abigens.retain(|abi| filter.is_match(&abi.contract_name))
+    }
+
+    /// Add another Abigen to the module or lib
+    pub fn push(&mut self, abigen: Abigen) {
+        self.abigens.push(abigen)
+    }
+
+    /// Build the contract bindings and prepare for writing
+    pub fn build(self) -> Result<MultiBindings> {
+        let rustfmt = self.abigens.iter().any(|gen| gen.rustfmt);
+        Ok(MultiBindings {
+            expansion: MultiExpansion::from_abigen(self.abigens)?.expand(),
+            rustfmt,
+        })
+    }
+}
 
 /// Represents a collection of [`Abigen::expand()`]
 pub struct MultiExpansion {
@@ -186,94 +309,6 @@ impl MultiExpansionResult {
         };
 
         MultiBindingsInner { bindings, shared_types }
-    }
-}
-
-/// Collects Abigen structs for a series of contracts, pending generation of
-/// the contract bindings.
-#[derive(Debug, Clone)]
-pub struct MultiAbigen {
-    /// Abigen objects to be written
-    abigens: Vec<Abigen>,
-}
-
-impl std::ops::Deref for MultiAbigen {
-    type Target = Vec<Abigen>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.abigens
-    }
-}
-
-impl From<Vec<Abigen>> for MultiAbigen {
-    fn from(abigens: Vec<Abigen>) -> Self {
-        Self { abigens }
-    }
-}
-
-impl std::iter::FromIterator<Abigen> for MultiAbigen {
-    fn from_iter<I: IntoIterator<Item = Abigen>>(iter: I) -> Self {
-        iter.into_iter().collect::<Vec<_>>().into()
-    }
-}
-
-impl MultiAbigen {
-    /// Create a new instance from a series (`contract name`, `abi_source`)
-    ///
-    /// See `Abigen::new`
-    pub fn new<I, Name, Source>(abis: I) -> Result<Self>
-    where
-        I: IntoIterator<Item = (Name, Source)>,
-        Name: AsRef<str>,
-        Source: AsRef<str>,
-    {
-        let abis = abis
-            .into_iter()
-            .map(|(contract_name, abi_source)| Abigen::new(contract_name.as_ref(), abi_source))
-            .collect::<Result<Vec<_>>>()?;
-
-        Ok(Self::from_abigens(abis))
-    }
-
-    /// Create a new instance from a series of already resolved `Abigen`
-    pub fn from_abigens(abis: impl IntoIterator<Item = Abigen>) -> Self {
-        abis.into_iter().collect()
-    }
-
-    /// Reads all json files contained in the given `dir` and use the file name for the name of the
-    /// `ContractBindings`.
-    /// This is equivalent to calling `MultiAbigen::new` with all the json files and their filename.
-    ///
-    /// # Example
-    ///
-    /// ```text
-    /// abi
-    /// ├── ERC20.json
-    /// ├── Contract1.json
-    /// ├── Contract2.json
-    /// ...
-    /// ```
-    ///
-    /// ```no_run
-    /// # use ethers_contract_abigen::MultiAbigen;
-    /// let gen = MultiAbigen::from_json_files("./abi").unwrap();
-    /// ```
-    pub fn from_json_files(root: impl AsRef<Path>) -> Result<Self> {
-        util::json_files(root.as_ref()).into_iter().map(Abigen::from_file).collect()
-    }
-
-    /// Add another Abigen to the module or lib
-    pub fn push(&mut self, abigen: Abigen) {
-        self.abigens.push(abigen)
-    }
-
-    /// Build the contract bindings and prepare for writing
-    pub fn build(self) -> Result<MultiBindings> {
-        let rustfmt = self.abigens.iter().any(|gen| gen.rustfmt);
-        Ok(MultiBindings {
-            expansion: MultiExpansion::from_abigen(self.abigens)?.expand(),
-            rustfmt,
-        })
     }
 }
 
@@ -530,8 +565,7 @@ impl MultiBindingsInner {
         writeln!(
             toml,
             r#"
-ethers = {{ git = "https://github.com/gakonst/ethers-rs", default-features = false }}
-serde_json = "1.0.79"
+ethers = {{ git = "https://github.com/gakonst/ethers-rs", default-features = false, features = ["abigen"] }}
 "#
         )?;
         Ok(toml)
@@ -559,7 +593,7 @@ serde_json = "1.0.79"
     /// Append module declarations to the `lib.rs` or `mod.rs`
     fn append_module_names(&self, mut buf: impl Write) -> Result<()> {
         let mut mod_names: BTreeSet<_> =
-            self.bindings.keys().map(|name| name.to_snake_case()).collect();
+            self.bindings.keys().map(|name| util::safe_module_name(name)).collect();
         if let Some(ref shared) = self.shared_types {
             mod_names.insert(shared.name.to_snake_case());
         }
@@ -737,6 +771,7 @@ fn check_binding_in_dir(dir: &Path, binding: &ContractBindings) -> Result<()> {
 mod tests {
     use super::*;
 
+    use crate::{ExcludeContracts, SelectContracts};
     use ethers_solc::project_util::TempProject;
     use std::{panic, path::PathBuf};
 
@@ -783,7 +818,7 @@ mod tests {
 
         let result = panic::catch_unwind(|| test(&context));
 
-        assert!(result.is_ok())
+        result.unwrap()
     }
 
     #[test]
@@ -1017,6 +1052,55 @@ mod tests {
     }
 
     #[test]
+    fn can_filter_abigen() {
+        let abi = Abigen::new(
+            "MyGreeter",
+            r#"[
+                        greet() (string)
+                    ]"#,
+        )
+        .unwrap();
+        let mut gen = MultiAbigen::from_abigens(vec![abi]).with_filter(ContractFilter::All);
+        assert_eq!(gen.abigens.len(), 1);
+        gen.apply_filter(&SelectContracts::default().add_name("MyGreeter").into());
+        assert_eq!(gen.abigens.len(), 1);
+
+        gen.apply_filter(&ExcludeContracts::default().add_name("MyGreeter2").into());
+        assert_eq!(gen.abigens.len(), 1);
+
+        let filtered = gen.clone().with_filter(SelectContracts::default().add_name("MyGreeter2"));
+        assert!(filtered.abigens.is_empty());
+
+        let filtered = gen.clone().with_filter(ExcludeContracts::default().add_name("MyGreeter"));
+        assert!(filtered.abigens.is_empty());
+
+        let filtered =
+            gen.clone().with_filter(SelectContracts::default().add_pattern("MyGreeter2"));
+        assert!(filtered.abigens.is_empty());
+
+        let filtered =
+            gen.clone().with_filter(ExcludeContracts::default().add_pattern("MyGreeter"));
+        assert!(filtered.abigens.is_empty());
+
+        gen.push(
+            Abigen::new(
+                "MyGreeterTest",
+                r#"[
+                        greet() (string)
+                    ]"#,
+            )
+            .unwrap(),
+        );
+        let filtered = gen.clone().with_filter(SelectContracts::default().add_pattern(".*Test"));
+        assert_eq!(filtered.abigens.len(), 1);
+        assert_eq!(filtered.abigens[0].contract_name, "MyGreeterTest");
+
+        let filtered = gen.clone().with_filter(ExcludeContracts::default().add_pattern(".*Test"));
+        assert_eq!(filtered.abigens.len(), 1);
+        assert_eq!(filtered.abigens[0].contract_name, "MyGreeter");
+    }
+
+    #[test]
     fn can_deduplicate_types() {
         let tmp = TempProject::dapptools().unwrap();
 
@@ -1092,5 +1176,64 @@ contract Greeter2 {
         let content = fs::read_to_string(&shared_types).unwrap();
         assert!(content.contains("pub struct Inner"));
         assert!(content.contains("pub struct Stuff"));
+    }
+
+    #[test]
+    fn can_sanitize_reserved_words() {
+        let tmp = TempProject::dapptools().unwrap();
+
+        tmp.add_source(
+            "ReservedWords",
+            r#"
+// SPDX-License-Identifier: MIT
+pragma solidity >=0.8.0;
+
+contract Mod {
+    function greet() public pure returns (uint256) {
+        return 1;
+    }
+}
+
+// from a gnosis contract
+contract Enum {
+    enum Operation {Call, DelegateCall}
+}
+"#,
+        )
+        .unwrap();
+
+        let _ = tmp.compile().unwrap();
+
+        let gen = MultiAbigen::from_json_files(tmp.artifacts_path()).unwrap();
+        let bindings = gen.build().unwrap();
+        let single_file_dir = tmp.root().join("single_bindings");
+        bindings.write_to_module(&single_file_dir, true).unwrap();
+
+        let single_file_mod = single_file_dir.join("mod.rs");
+        assert!(single_file_mod.exists());
+        let content = fs::read_to_string(&single_file_mod).unwrap();
+        assert!(content.contains("pub mod mod_ {"));
+        assert!(content.contains("pub mod enum_ {"));
+
+        // multiple files
+        let gen = MultiAbigen::from_json_files(tmp.artifacts_path()).unwrap();
+        let bindings = gen.build().unwrap();
+        let multi_file_dir = tmp.root().join("multi_bindings");
+        bindings.write_to_module(&multi_file_dir, false).unwrap();
+        let multi_file_mod = multi_file_dir.join("mod.rs");
+        assert!(multi_file_mod.exists());
+        let content = fs::read_to_string(&multi_file_mod).unwrap();
+        assert!(content.contains("pub mod enum_;"));
+        assert!(content.contains("pub mod mod_;"));
+
+        let enum_ = multi_file_dir.join("enum_.rs");
+        assert!(enum_.exists());
+        let content = fs::read_to_string(&enum_).unwrap();
+        assert!(content.contains("pub mod enum_ {"));
+
+        let mod_ = multi_file_dir.join("mod_.rs");
+        assert!(mod_.exists());
+        let content = fs::read_to_string(&mod_).unwrap();
+        assert!(content.contains("pub mod mod_ {"));
     }
 }

@@ -29,6 +29,7 @@ pub struct ValueChanged {
 }
 
 /// compiles the given contract and returns the ABI and Bytecode
+#[track_caller]
 pub fn compile_contract(name: &str, filename: &str) -> (Abi, Bytes) {
     let path = format!("./tests/solidity-contracts/{}", filename);
     let compiled = Solc::default().compile_source(&path).unwrap();
@@ -51,6 +52,6 @@ pub fn connect(anvil: &AnvilInstance, idx: usize) -> Arc<Provider<Http>> {
 pub async fn deploy<M: Middleware>(client: Arc<M>, abi: Abi, bytecode: Bytes) -> Contract<M> {
     let factory = ContractFactory::new(abi, bytecode, client);
     let deployer = factory.deploy("initial value".to_string()).unwrap();
-    assert!(deployer.call().await.is_ok());
+    deployer.call().await.unwrap();
     deployer.legacy().send().await.unwrap()
 }

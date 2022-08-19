@@ -91,6 +91,28 @@ mod eth_tests {
         let (_max_fee_per_gas, _max_priority_fee_per_gas) =
             provider.estimate_eip1559_fees(None).await.unwrap();
     }
+
+    #[tokio::test]
+    #[ignore]
+    async fn test_hardhat_compatibility() {
+        use ethers_providers::RetryClient;
+
+        async fn send_zst_requests<M: Middleware>(provider: M) {
+            let _ = provider.get_chainid().await.unwrap();
+            let _ = provider.get_block_number().await.unwrap();
+            let _ = provider.get_gas_price().await.unwrap();
+            let _ = provider.get_accounts().await.unwrap();
+            let _ = provider.get_net_version().await.unwrap();
+        }
+
+        let provider = Provider::<Http>::try_from("http://localhost:8545").unwrap();
+        send_zst_requests(provider).await;
+
+        let provider =
+            Provider::<RetryClient<Http>>::new_client("http://localhost:8545", 10, 200).unwrap();
+
+        send_zst_requests(provider).await;
+    }
 }
 
 #[cfg(feature = "celo")]

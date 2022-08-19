@@ -5,6 +5,7 @@ use crate::{
 use k256::{ecdsa::SigningKey, SecretKey as K256SecretKey};
 use std::{
     io::{BufRead, BufReader},
+    path::PathBuf,
     process::{Child, Command},
     time::{Duration, Instant},
 };
@@ -78,18 +79,57 @@ impl Drop for AnvilInstance {
 /// ```
 #[derive(Debug, Clone, Default)]
 pub struct Anvil {
+    program: Option<PathBuf>,
     port: Option<u16>,
     block_time: Option<u64>,
     mnemonic: Option<String>,
     fork: Option<String>,
+    fork_block_number: Option<u64>,
     args: Vec<String>,
 }
 
 impl Anvil {
     /// Creates an empty Anvil builder.
     /// The default port is 8545. The mnemonic is chosen randomly.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use ethers_core::utils::Anvil;
+    /// fn a() {
+    ///  let anvil = Anvil::default().spawn();
+    ///
+    ///  println!("Anvil running at `{}`", anvil.endpoint());
+    /// # }
+    /// ```
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Creates an Anvil builder which will execute `anvil` at the given path.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use ethers_core::utils::Anvil;
+    /// fn a() {
+    ///  let anvil = Anvil::at("~/.foundry/bin/anvil").spawn();
+    ///
+    ///  println!("Anvil running at `{}`", anvil.endpoint());
+    /// # }
+    /// ```
+    pub fn at(path: impl Into<PathBuf>) -> Self {
+        Self::new().path(path)
+    }
+
+    /// Sets the `path` to the `anvil` cli
+    ///
+    /// By default, it's expected that `anvil` is in `$PATH`, see also
+    /// [`std::process::Command::new()`]
+    #[must_use]
+    pub fn path<T: Into<PathBuf>>(mut self, path: T) -> Self {
+        self.program = Some(path.into());
+        self
     }
 
     /// Sets the port which will be used when the `anvil` instance is launched.
@@ -110,6 +150,15 @@ impl Anvil {
     #[must_use]
     pub fn block_time<T: Into<u64>>(mut self, block_time: T) -> Self {
         self.block_time = Some(block_time.into());
+        self
+    }
+
+    /// Sets the `fork-block-number` which will be used in addition to [`Self::fork`].
+    ///
+    /// **Note:** if set, then this requires `fork` to be set as well
+    #[must_use]
+    pub fn fork_block_number<T: Into<u64>>(mut self, fork_block_number: T) -> Self {
+        self.fork_block_number = Some(fork_block_number.into());
         self
     }
 
@@ -146,7 +195,11 @@ impl Anvil {
     /// Consumes the builder and spawns `anvil` with stdout redirected
     /// to /dev/null.
     pub fn spawn(self) -> AnvilInstance {
-        let mut cmd = Command::new("anvil");
+        let mut cmd = if let Some(ref prg) = self.program {
+            Command::new(prg)
+        } else {
+            Command::new("anvil")
+        };
         cmd.stdout(std::process::Stdio::piped());
         let port = if let Some(port) = self.port { port } else { unused_port() };
         cmd.arg("-p").arg(port.to_string());
@@ -161,6 +214,10 @@ impl Anvil {
 
         if let Some(fork) = self.fork {
             cmd.arg("-f").arg(fork);
+        }
+
+        if let Some(fork_block_number) = self.fork_block_number {
+            cmd.arg("--fork-block-number").arg(fork_block_number.to_string());
         }
 
         cmd.args(self.args);

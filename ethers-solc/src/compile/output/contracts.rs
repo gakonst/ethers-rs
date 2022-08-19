@@ -1,6 +1,9 @@
-use crate::artifacts::{
-    contract::{CompactContractRef, Contract},
-    FileToContractsMap,
+use crate::{
+    artifacts::{
+        contract::{CompactContractRef, Contract},
+        FileToContractsMap,
+    },
+    ArtifactFiles, ArtifactOutput,
 };
 use semver::Version;
 use serde::{Deserialize, Serialize};
@@ -12,6 +15,17 @@ use std::{collections::BTreeMap, ops::Deref, path::Path};
 pub struct VersionedContracts(pub FileToContractsMap<Vec<VersionedContract>>);
 
 impl VersionedContracts {
+    /// Converts all `\\` separators in _all_ paths to `/`
+    pub fn slash_paths(&mut self) {
+        #[cfg(windows)]
+        {
+            use path_slash::PathExt;
+            self.0 = std::mem::take(&mut self.0)
+                .into_iter()
+                .map(|(path, files)| (Path::new(&path).to_slash_lossy().to_string(), files))
+                .collect()
+        }
+    }
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
@@ -23,6 +37,26 @@ impl VersionedContracts {
     /// Returns an iterator over all files
     pub fn files(&self) -> impl Iterator<Item = &String> + '_ {
         self.0.keys()
+    }
+
+    /// Returns all the artifact files mapped with their contracts
+    pub(crate) fn artifact_files<T: ArtifactOutput + ?Sized>(&self) -> ArtifactFiles {
+        let mut output_files = ArtifactFiles::with_capacity(self.len());
+        for (file, contracts) in self.iter() {
+            for (name, versioned_contracts) in contracts {
+                for contract in versioned_contracts {
+                    let output = if versioned_contracts.len() > 1 {
+                        T::output_file_versioned(file, name, &contract.version)
+                    } else {
+                        T::output_file(file, name)
+                    };
+                    let contract = (file.as_str(), name.as_str(), contract);
+                    output_files.entry(output).or_default().push(contract);
+                }
+            }
+        }
+
+        output_files
     }
 
     /// Finds the _first_ contract with the given name

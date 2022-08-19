@@ -1,12 +1,5 @@
 //! project tests
 
-use std::{
-    collections::{BTreeMap, HashMap, HashSet},
-    fs, io,
-    path::{Path, PathBuf},
-    str::FromStr,
-};
-
 use ethers_core::types::Address;
 use ethers_solc::{
     artifacts::{
@@ -23,6 +16,12 @@ use ethers_solc::{
 };
 use pretty_assertions::assert_eq;
 use semver::Version;
+use std::{
+    collections::{BTreeMap, HashMap, HashSet},
+    fs, io,
+    path::{Path, PathBuf},
+    str::FromStr,
+};
 
 #[allow(unused)]
 fn init_tracing() {
@@ -1203,7 +1202,7 @@ library MyLib {
 #[test]
 fn can_recompile_with_changes() {
     let mut tmp = TempProject::dapptools().unwrap();
-    tmp.project_mut().allowed_lib_paths = vec![tmp.root().join("modules")].into();
+    tmp.project_mut().allowed_paths = vec![tmp.root().join("modules")].into();
 
     let content = r#"
     pragma solidity ^0.8.10;
@@ -1620,10 +1619,9 @@ fn can_compile_model_checker_sample() {
 }
 
 fn remove_solc_if_exists(version: &Version) {
-    match Solc::find_svm_installed_version(version.to_string()).unwrap() {
-        Some(_) => svm::remove_version(version).expect("failed to remove version"),
-        None => {}
-    };
+    if Solc::find_svm_installed_version(version.to_string()).unwrap().is_some() {
+        svm::remove_version(version).expect("failed to remove version")
+    }
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -2065,4 +2063,258 @@ contract C { }
     fs::remove_file(c).unwrap();
     let compiled = project.compile().unwrap();
     assert!(compiled.has_compiler_errors());
+}
+
+#[test]
+fn can_handle_conflicting_files() {
+    let project = TempProject::<ConfigurableArtifacts>::dapptools().unwrap();
+
+    project
+        .add_source(
+            "Greeter",
+            r#"
+    pragma solidity ^0.8.10;
+
+    contract Greeter {}
+   "#,
+        )
+        .unwrap();
+
+    project
+        .add_source(
+            "tokens/Greeter",
+            r#"
+    pragma solidity ^0.8.10;
+
+    contract Greeter {}
+   "#,
+        )
+        .unwrap();
+
+    let compiled = project.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+
+    let artifacts = compiled.artifacts().count();
+    assert_eq!(artifacts, 2);
+
+    // nothing to compile
+    let compiled = project.compile().unwrap();
+    assert!(compiled.is_unchanged());
+    let artifacts = compiled.artifacts().count();
+    assert_eq!(artifacts, 2);
+
+    let cache = SolFilesCache::read(project.cache_path()).unwrap();
+
+    let mut source_files = cache.files.keys().cloned().collect::<Vec<_>>();
+    source_files.sort_unstable();
+
+    assert_eq!(
+        source_files,
+        vec![PathBuf::from("src/Greeter.sol"), PathBuf::from("src/tokens/Greeter.sol"),]
+    );
+
+    let mut artifacts = project.artifacts_snapshot().unwrap().artifacts;
+    artifacts.strip_prefix_all(&project.paths().artifacts);
+
+    assert_eq!(artifacts.len(), 2);
+    let mut artifact_files = artifacts.artifact_files().map(|f| f.file.clone()).collect::<Vec<_>>();
+    artifact_files.sort_unstable();
+
+    assert_eq!(
+        artifact_files,
+        vec![
+            PathBuf::from("Greeter.sol/Greeter.json"),
+            PathBuf::from("tokens/Greeter.sol/Greeter.json"),
+        ]
+    );
+}
+
+#[test]
+fn can_checkout_repo() {
+    let project = TempProject::checkout("transmissions11/solmate").unwrap();
+
+    let compiled = project.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+    let _artifacts = project.artifacts_snapshot().unwrap();
+}
+
+#[test]
+fn can_detect_config_changes() {
+    let mut project = TempProject::<ConfigurableArtifacts>::dapptools().unwrap();
+
+    let remapping = project.paths().libraries[0].join("remapping");
+    project
+        .paths_mut()
+        .remappings
+        .push(Remapping::from_str(&format!("remapping/={}/", remapping.display())).unwrap());
+
+    project
+        .add_source(
+            "Foo",
+            r#"
+    pragma solidity ^0.8.10;
+    import "remapping/Bar.sol";
+
+    contract Foo {}
+   "#,
+        )
+        .unwrap();
+    project
+        .add_lib(
+            "remapping/Bar",
+            r#"
+    pragma solidity ^0.8.10;
+
+    contract Bar {}
+    "#,
+        )
+        .unwrap();
+
+    let compiled = project.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+
+    let cache = SolFilesCache::read(&project.paths().cache).unwrap();
+    assert_eq!(cache.files.len(), 2);
+
+    // nothing to compile
+    let compiled = project.compile().unwrap();
+    assert!(compiled.is_unchanged());
+
+    project.project_mut().solc_config.settings.optimizer.enabled = Some(true);
+
+    let compiled = project.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+    assert!(!compiled.is_unchanged());
+}
+
+#[test]
+fn can_add_basic_contract_and_library() {
+    let mut project = TempProject::<ConfigurableArtifacts>::dapptools().unwrap();
+
+    let remapping = project.paths().libraries[0].join("remapping");
+    project
+        .paths_mut()
+        .remappings
+        .push(Remapping::from_str(&format!("remapping/={}/", remapping.display())).unwrap());
+
+    let src = project.add_basic_source("Foo.sol", "^0.8.0").unwrap();
+
+    let lib = project.add_basic_source("Bar", "^0.8.0").unwrap();
+
+    let graph = Graph::resolve(project.paths()).unwrap();
+    assert_eq!(graph.files().len(), 2);
+    assert!(graph.files().contains_key(&src));
+    assert!(graph.files().contains_key(&lib));
+
+    let compiled = project.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+    assert!(compiled.find_first("Foo").is_some());
+    assert!(compiled.find_first("Bar").is_some());
+}
+
+// <https://github.com/foundry-rs/foundry/issues/2706>
+#[test]
+fn can_handle_nested_absolute_imports() {
+    let mut project = TempProject::dapptools().unwrap();
+
+    let remapping = project.paths().libraries[0].join("myDepdendency");
+    project
+        .paths_mut()
+        .remappings
+        .push(Remapping::from_str(&format!("myDepdendency/={}/", remapping.display())).unwrap());
+
+    project
+        .add_lib(
+            "myDepdendency/src/interfaces/IConfig.sol",
+            r#"
+    pragma solidity ^0.8.10;
+
+    interface IConfig {}
+   "#,
+        )
+        .unwrap();
+
+    project
+        .add_lib(
+            "myDepdendency/src/Config.sol",
+            r#"
+    pragma solidity ^0.8.10;
+    import "src/interfaces/IConfig.sol";
+
+    contract Config {}
+   "#,
+        )
+        .unwrap();
+
+    project
+        .add_source(
+            "Greeter",
+            r#"
+    pragma solidity ^0.8.10;
+    import "myDepdendency/src/Config.sol";
+
+    contract Greeter {}
+   "#,
+        )
+        .unwrap();
+
+    let compiled = project.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+    assert!(compiled.find_first("Greeter").is_some());
+    assert!(compiled.find_first("Config").is_some());
+    assert!(compiled.find_first("IConfig").is_some());
+}
+
+#[test]
+fn can_handle_nested_test_absolute_imports() {
+    let project = TempProject::dapptools().unwrap();
+
+    project
+        .add_source(
+            "Contract.sol",
+            r#"
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity =0.8.13;
+
+library Library {
+    function f(uint256 a, uint256 b) public pure returns (uint256) {
+        return a + b;
+    }
+}
+
+contract Contract {
+    uint256 c;
+
+    constructor() {
+        c = Library.f(1, 2);
+    }
+}
+   "#,
+        )
+        .unwrap();
+
+    project
+        .add_test(
+            "Contract.t.sol",
+            r#"
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity =0.8.13;
+
+import "src/Contract.sol";
+
+contract ContractTest {
+    function setUp() public {
+    }
+
+    function test() public {
+        new Contract();
+    }
+}
+   "#,
+        )
+        .unwrap();
+
+    let compiled = project.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+    assert!(compiled.find_first("Contract").is_some());
 }

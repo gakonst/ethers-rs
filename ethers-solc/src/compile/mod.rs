@@ -40,6 +40,14 @@ pub const BERLIN_SOLC: Version = Version::new(0, 8, 5);
 /// <https://blog.soliditylang.org/2021/08/11/solidity-0.8.7-release-announcement/>
 pub const LONDON_SOLC: Version = Version::new(0, 8, 7);
 
+// `--base-path` was introduced in 0.6.9 <https://github.com/ethereum/solidity/releases/tag/v0.6.9>
+pub static SUPPORTS_BASE_PATH: once_cell::sync::Lazy<VersionReq> =
+    once_cell::sync::Lazy::new(|| VersionReq::parse(">=0.6.9").unwrap());
+
+// `--include-path` was introduced in 0.8.8 <https://github.com/ethereum/solidity/releases/tag/v0.8.8>
+pub static SUPPORTS_INCLUDE_PATH: once_cell::sync::Lazy<VersionReq> =
+    once_cell::sync::Lazy::new(|| VersionReq::parse(">=0.8.8").unwrap());
+
 #[cfg(any(test, feature = "tests"))]
 use std::sync::Mutex;
 
@@ -431,7 +439,7 @@ impl Solc {
     }
 
     /// Verify that the checksum for this version of solc is correct. We check against the SHA256
-    /// checksum from the build information published by binaries.soliditylang
+    /// checksum from the build information published by [binaries.soliditylang.org](https://binaries.soliditylang.org/)
     #[cfg(all(feature = "svm-solc"))]
     pub fn verify_checksum(&self) -> Result<()> {
         let version = self.version_short()?;
@@ -527,6 +535,7 @@ impl Solc {
         let mut cmd = Command::new(&self.solc);
         if let Some(ref base_path) = self.base_path {
             cmd.current_dir(base_path);
+            cmd.arg("--base-path").arg(base_path);
         }
         let mut child = cmd
             .args(&self.args)
@@ -823,7 +832,7 @@ mod tests {
             // update this test whenever there's a new sol
             // version. that's ok! good reminder to check the
             // patch notes.
-            (">=0.5.0", "0.8.15"),
+            (">=0.5.0", "0.8.16"),
             // range
             (">=0.4.0 <0.5.0", "0.4.26"),
         ]

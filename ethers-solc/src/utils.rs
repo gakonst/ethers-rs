@@ -1,5 +1,6 @@
 //! Utility functions
 
+use cfg_if::cfg_if;
 use std::{
     collections::HashSet,
     ops::Range,
@@ -72,6 +73,22 @@ pub fn find_version_pragma(contract: &str) -> Option<Match> {
     RE_SOL_PRAGMA_VERSION.captures(contract)?.name("version")
 }
 
+/// Returns an iterator that yields all solidity/yul files funder under the given root path or the
+/// `root` itself, if it is a sol/yul file
+///
+/// This also follows symlinks.
+pub fn source_files_iter(root: impl AsRef<Path>) -> impl Iterator<Item = PathBuf> {
+    WalkDir::new(root)
+        .follow_links(true)
+        .into_iter()
+        .filter_map(Result::ok)
+        .filter(|e| e.file_type().is_file())
+        .filter(|e| {
+            e.path().extension().map(|ext| (ext == "sol") || (ext == "yul")).unwrap_or_default()
+        })
+        .map(|e| e.path().into())
+}
+
 /// Returns a list of absolute paths to all the solidity files under the root, or the file itself,
 /// if the path is a solidity file.
 ///
@@ -86,16 +103,7 @@ pub fn find_version_pragma(contract: &str) -> Option<Match> {
 /// let sources = utils::source_files("./contracts");
 /// ```
 pub fn source_files(root: impl AsRef<Path>) -> Vec<PathBuf> {
-    WalkDir::new(root)
-        .follow_links(true)
-        .into_iter()
-        .filter_map(Result::ok)
-        .filter(|e| e.file_type().is_file())
-        .filter(|e| {
-            e.path().extension().map(|ext| (ext == "sol") || (ext == "yul")).unwrap_or_default()
-        })
-        .map(|e| e.path().into())
-        .collect()
+    source_files_iter(root).collect()
 }
 
 /// Returns a list of _unique_ paths to all folders under `root` that contain at least one solidity
@@ -150,9 +158,22 @@ pub fn is_local_source_name(libs: &[impl AsRef<Path>], source: impl AsRef<Path>)
 }
 
 /// Canonicalize the path, platform-agnostic
+///
+/// On windows this will ensure the path only consists of `/` separators
 pub fn canonicalize(path: impl AsRef<Path>) -> Result<PathBuf, SolcIoError> {
     let path = path.as_ref();
-    dunce::canonicalize(&path).map_err(|err| SolcIoError::new(err, path))
+    cfg_if! {
+        if #[cfg(windows)] {
+            let res = dunce::canonicalize(path).map(|p| {
+                use path_slash::PathBufExt;
+                PathBuf::from(p.to_slash_lossy().as_ref())
+            });
+        } else {
+         let res = dunce::canonicalize(path);
+        }
+    };
+
+    res.map_err(|err| SolcIoError::new(err, path))
 }
 
 /// Returns the same path config but with canonicalized paths.
@@ -200,6 +221,37 @@ pub fn resolve_library(libs: &[impl AsRef<Path>], source: impl AsRef<Path>) -> O
         Component::RootDir => Some(source.into()),
         _ => None,
     }
+}
+
+/// Tries to find an absolute import like `src/interfaces/IConfig.sol` in `cwd`, moving up the path
+/// until the `root` is reached.
+///
+/// If an existing file under `root` is found, this returns the path up to the `import` path and the
+/// canonicalized `import` path itself:
+///
+/// For example for following layout:
+///
+/// ```text
+/// <root>/mydependency/
+/// ├── src (`cwd`)
+/// │   ├── interfaces
+/// │   │   ├── IConfig.sol
+/// ```
+/// and `import` as `src/interfaces/IConfig.sol` and `cwd` as `src` this will return
+/// (`<root>/mydependency/`, `<root>/mydependency/src/interfaces/IConfig.sol`)
+pub fn resolve_absolute_library(
+    root: &Path,
+    cwd: &Path,
+    import: &Path,
+) -> Option<(PathBuf, PathBuf)> {
+    let mut parent = cwd.parent()?;
+    while parent != root {
+        if let Ok(import) = canonicalize(parent.join(import)) {
+            return Some((parent.to_path_buf(), import))
+        }
+        parent = parent.parent()?;
+    }
+    None
 }
 
 /// Reads the list of Solc versions that have been installed in the machine. The version list is

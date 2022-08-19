@@ -79,6 +79,7 @@ impl Client {
             Chain::Avalanche | Chain::AvalancheFuji => std::env::var("SNOWTRACE_API_KEY")?,
             Chain::Polygon | Chain::PolygonMumbai => std::env::var("POLYGONSCAN_API_KEY")?,
             Chain::Mainnet |
+            Chain::Morden |
             Chain::Ropsten |
             Chain::Kovan |
             Chain::Rinkeby |
@@ -90,7 +91,9 @@ impl Client {
             Chain::Arbitrum |
             Chain::ArbitrumTestnet |
             Chain::Cronos |
-            Chain::CronosTestnet => std::env::var("ETHERSCAN_API_KEY")?,
+            Chain::CronosTestnet |
+            Chain::Aurora |
+            Chain::AuroraTestnet => std::env::var("ETHERSCAN_API_KEY")?,
             Chain::Fantom | Chain::FantomTestnet => {
                 std::env::var("FTMSCAN_API_KEY").or_else(|_| std::env::var("FANTOMSCAN_API_KEY"))?
             }
@@ -112,6 +115,12 @@ impl Client {
             }
         };
         Self::new(chain, api_key)
+    }
+
+    /// Sets the root to the cache dir and the ttl to use
+    pub fn set_cache(&mut self, root: impl Into<PathBuf>, ttl: Duration) -> &mut Self {
+        self.cache = Some(Cache { root: root.into(), ttl });
+        self
     }
 
     pub fn etherscan_api_url(&self) -> &Url {
@@ -176,6 +185,8 @@ impl Client {
             ResponseData::Error { result, .. } => {
                 if result.starts_with("Max rate limit reached") {
                     Err(EtherscanError::RateLimitExceeded)
+                } else if result.to_lowercase() == "invalid api key" {
+                    Err(EtherscanError::InvalidApiKey)
                 } else {
                     Err(EtherscanError::Unknown(result))
                 }
@@ -228,86 +239,10 @@ impl ClientBuilder {
         ) -> (reqwest::Result<Url>, reqwest::Result<Url>) {
             (api.into_url(), url.into_url())
         }
-
-        let (etherscan_api_url, etherscan_url) = match chain {
-            Chain::Mainnet => urls("https://api.etherscan.io/api", "https://etherscan.io"),
-            Chain::Ropsten | Chain::Kovan | Chain::Rinkeby | Chain::Goerli => {
-                let chain_name = chain.to_string().to_lowercase();
-                urls(
-                    format!("https://api-{}.etherscan.io/api", chain_name),
-                    format!("https://{}.etherscan.io", chain_name),
-                )
-            }
-            Chain::Polygon => urls("https://api.polygonscan.com/api", "https://polygonscan.com"),
-            Chain::PolygonMumbai => {
-                urls("https://api-testnet.polygonscan.com/api", "https://mumbai.polygonscan.com")
-            }
-            Chain::Avalanche => urls("https://api.snowtrace.io/api", "https://snowtrace.io"),
-            Chain::AvalancheFuji => {
-                urls("https://api-testnet.snowtrace.io/api", "https://testnet.snowtrace.io")
-            }
-            Chain::Optimism => {
-                urls("https://api-optimistic.etherscan.io/api", "https://optimistic.etherscan.io")
-            }
-            Chain::OptimismKovan => urls(
-                "https://api-kovan-optimistic.etherscan.io/api",
-                "https://kovan-optimistic.etherscan.io",
-            ),
-            Chain::Fantom => urls("https://api.ftmscan.com/api", "https://ftmscan.com"),
-            Chain::FantomTestnet => {
-                urls("https://api-testnet.ftmscan.com/api", "https://testnet.ftmscan.com")
-            }
-            Chain::BinanceSmartChain => urls("https://api.bscscan.com/api", "https://bscscan.com"),
-            Chain::BinanceSmartChainTestnet => {
-                urls("https://api-testnet.bscscan.com/api", "https://testnet.bscscan.com")
-            }
-            Chain::Arbitrum => urls("https://api.arbiscan.io/api", "https://arbiscan.io"),
-            Chain::ArbitrumTestnet => {
-                urls("https://api-testnet.arbiscan.io/api", "https://testnet.arbiscan.io")
-            }
-            Chain::Cronos => urls("https://api.cronoscan.com/api", "https://cronoscan.com"),
-            Chain::CronosTestnet => {
-                urls("https://api-testnet.cronoscan.com/api", "https://testnet.cronoscan.com")
-            }
-            Chain::Moonbeam => {
-                urls("https://api-moonbeam.moonscan.io/api", "https://moonbeam.moonscan.io/")
-            }
-            Chain::Moonbase => {
-                urls("https://api-moonbase.moonscan.io/api", "https://moonbase.moonscan.io/")
-            }
-            Chain::Moonriver => {
-                urls("https://api-moonriver.moonscan.io/api", "https://moonriver.moonscan.io")
-            }
-            // blockscout API is etherscan compatible
-            Chain::XDai => urls(
-                "https://blockscout.com/xdai/mainnet/api",
-                "https://blockscout.com/xdai/mainnet",
-            ),
-            Chain::Sokol => {
-                urls("https://blockscout.com/poa/sokol/api", "https://blockscout.com/poa/sokol")
-            }
-            Chain::Poa => {
-                urls("https://blockscout.com/poa/core/api", "https://blockscout.com/poa/core")
-            }
-            Chain::Rsk => {
-                urls("https://blockscout.com/rsk/mainnet/api", "https://blockscout.com/rsk/mainnet")
-            }
-            Chain::Oasis => urls("https://scan.oasischain.io/api", "https://scan.oasischain.io/"),
-            Chain::Emerald => urls(
-                "https://explorer.emerald.oasis.dev/api",
-                "https://explorer.emerald.oasis.dev/",
-            ),
-            Chain::EmeraldTestnet => urls(
-                "https://testnet.explorer.emerald.oasis.dev/api",
-                "https://testnet.explorer.emerald.oasis.dev/",
-            ),
-            Chain::AnvilHardhat | Chain::Dev => {
-                return Err(EtherscanError::LocalNetworksNotSupported)
-            }
-            Chain::Evmos => urls("https://evm.evmos.org/api", "https://evm.evmos.org/"),
-            Chain::EvmosTestnet => urls("https://evm.evmos.dev/api", "https://evm.evmos.dev/"),
-            chain => return Err(EtherscanError::ChainNotSupported(chain)),
-        };
+        let (etherscan_api_url, etherscan_url) = chain
+            .etherscan_urls()
+            .map(|(api, base)| urls(api, base))
+            .ok_or(EtherscanError::ChainNotSupported(chain))?;
         self.with_api_url(etherscan_api_url?)?.with_url(etherscan_url?)
     }
 
@@ -484,10 +419,10 @@ mod tests {
 
     #[test]
     fn chain_not_supported() {
-        let err = Client::new_from_env(Chain::Sepolia).unwrap_err();
+        let err = Client::new_from_env(Chain::Morden).unwrap_err();
 
         assert!(matches!(err, EtherscanError::ChainNotSupported(_)));
-        assert_eq!(err.to_string(), "Chain sepolia not supported");
+        assert_eq!(err.to_string(), "Chain morden not supported");
     }
 
     #[test]
@@ -526,6 +461,17 @@ mod tests {
     fn local_networks_not_supported() {
         let err = Client::new_from_env(Chain::Dev).unwrap_err();
         assert!(matches!(err, EtherscanError::LocalNetworksNotSupported));
+    }
+
+    #[tokio::test]
+    async fn check_wrong_etherscan_api_key() {
+        let client = Client::new(Chain::Mainnet, "ABCDEFG").unwrap();
+        let resp = client
+            .contract_source_code("0xBB9bc244D798123fDe783fCc1C72d3Bb8C189413".parse().unwrap())
+            .await
+            .unwrap_err();
+
+        assert!(matches!(resp, EtherscanError::InvalidApiKey));
     }
 
     pub async fn run_at_least_duration(duration: Duration, block: impl Future) {

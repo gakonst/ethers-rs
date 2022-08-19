@@ -528,7 +528,7 @@ impl CacheEntry {
         &'a self,
         version: &'a Version,
     ) -> impl Iterator<Item = &'a PathBuf> + 'a {
-        self.artifacts_versions().filter_map(move |(ver, file)| (ver == version).then(|| file))
+        self.artifacts_versions().filter_map(move |(ver, file)| (ver == version).then_some(file))
     }
 
     /// Iterator that yields all artifact files

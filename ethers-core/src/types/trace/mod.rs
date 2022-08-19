@@ -8,7 +8,10 @@ use std::collections::BTreeMap;
 mod filter;
 pub use filter::*;
 
-#[derive(Debug, Clone, Serialize)]
+mod geth;
+pub use geth::*;
+
+#[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 /// Description of the type of trace to make
 pub enum TraceType {
     /// Transaction Trace

@@ -34,6 +34,19 @@ pub struct ProjectCompileOutput<T: ArtifactOutput = ConfigurableArtifacts> {
 }
 
 impl<T: ArtifactOutput> ProjectCompileOutput<T> {
+    /// Converts all `\\` separators in _all_ paths to `/`
+    pub fn slash_paths(&mut self) {
+        self.compiler_output.slash_paths();
+        self.compiled_artifacts.slash_paths();
+        self.cached_artifacts.slash_paths();
+    }
+
+    /// Convenience function fo [`Self::slash_paths()`]
+    pub fn with_slashed_paths(mut self) -> Self {
+        self.slash_paths();
+        self
+    }
+
     /// All artifacts together with their contract file name and name `<file name>:<name>`
     ///
     /// This returns a chained iterator of both cached and recompiled contract artifacts
@@ -386,6 +399,12 @@ pub struct AggregatedCompilerOutput {
 }
 
 impl AggregatedCompilerOutput {
+    /// Converts all `\\` separators in _all_ paths to `/`
+    pub fn slash_paths(&mut self) {
+        self.sources.slash_paths();
+        self.contracts.slash_paths();
+    }
+
     /// Whether the output contains a compiler error
     pub fn has_error(&self) -> bool {
         self.errors.iter().any(|err| err.severity.is_error())

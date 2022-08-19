@@ -95,7 +95,7 @@ pub(crate) fn derive_eth_event_impl(input: DeriveInput) -> TokenStream {
                 #abi.into()
             }
 
-            fn decode_log(log: &#core_crate::abi::RawLog) -> Result<Self, #core_crate::abi::Error> where Self: Sized {
+            fn decode_log(log: &#core_crate::abi::RawLog) -> ::std::result::Result<Self, #core_crate::abi::Error> where Self: Sized {
                 #decode_log_impl
             }
 

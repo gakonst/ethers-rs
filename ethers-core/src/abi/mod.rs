@@ -26,8 +26,18 @@ pub use human_readable::{
 
 use crate::types::{H256, H512, I256, U128, U256, U64};
 
+mod sealed {
+    use ethabi::{Event, Function};
+
+    /// private trait to ensure extension traits are used as intended
+    pub trait Sealed {}
+    impl Sealed for Function {}
+    impl Sealed for Event {}
+    impl Sealed for ethabi::AbiError {}
+}
+
 /// Extension trait for `ethabi::Function`.
-pub trait FunctionExt {
+pub trait FunctionExt: sealed::Sealed {
     /// Compute the method signature in the standard ABI format. This does not
     /// include the output types.
     fn abi_signature(&self) -> String;
@@ -52,7 +62,7 @@ impl FunctionExt for Function {
 }
 
 /// Extension trait for `ethabi::Event`.
-pub trait EventExt {
+pub trait EventExt: sealed::Sealed {
     /// Compute the event signature in human-readable format. The `keccak256`
     /// hash of this value is the actual event signature that is used as topic0
     /// in the transaction logs.
@@ -67,6 +77,29 @@ impl EventExt for Event {
             self.inputs.iter().map(|input| input.kind.to_string()).collect::<Vec<_>>().join(","),
             if self.anonymous { " anonymous" } else { "" },
         )
+    }
+}
+
+/// Extension trait for `ethabi::AbiError`.
+pub trait ErrorExt: sealed::Sealed {
+    /// Compute the method signature in the standard ABI format.
+    fn abi_signature(&self) -> String;
+
+    /// Compute the Keccak256 error selector used by contract ABIs.
+    fn selector(&self) -> Selector;
+}
+
+impl ErrorExt for ethabi::AbiError {
+    fn abi_signature(&self) -> String {
+        if self.inputs.is_empty() {
+            return format!("{}()", self.name)
+        }
+        let inputs = self.inputs.iter().map(|p| p.kind.to_string()).collect::<Vec<_>>().join(",");
+        format!("{}({})", self.name, inputs)
+    }
+
+    fn selector(&self) -> Selector {
+        id(self.abi_signature())
     }
 }
 
@@ -130,6 +163,7 @@ impl_abi_type!(
     Address => Address,
     bool => Bool,
     String => String,
+    str => String,
     H256 => FixedBytes(32),
     H512 => FixedBytes(64),
     U64 => Uint(64),
@@ -146,6 +180,14 @@ impl_abi_type!(
     i128 => Int(128),
     I256 => Int(256)
 );
+
+impl<'a> AbiType for &'a str {
+    fn param_type() -> ParamType {
+        ParamType::String
+    }
+}
+
+impl<'a> AbiArrayType for &'a str {}
 
 macro_rules! impl_abi_type_tuple {
     ($num: expr, $( $ty: ident),+) => {
@@ -188,6 +230,11 @@ impl_abi_type_tuple!(13, A, B, C, D, E, F, G, H, I, J, K, L, M);
 impl_abi_type_tuple!(14, A, B, C, D, E, F, G, H, I, J, K, L, M, N);
 impl_abi_type_tuple!(15, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O);
 impl_abi_type_tuple!(16, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P);
+impl_abi_type_tuple!(17, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q);
+impl_abi_type_tuple!(18, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R);
+impl_abi_type_tuple!(19, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S);
+impl_abi_type_tuple!(20, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T);
+impl_abi_type_tuple!(21, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U);
 
 #[cfg(test)]
 mod tests {
@@ -272,6 +319,9 @@ mod tests {
             ParamType::FixedArray(Box::new(ParamType::Uint(16)), 32),
             <[u16; 32]>::param_type()
         );
+
+        assert_eq!(ParamType::String, str::param_type());
+        assert_eq!(ParamType::String, <&str>::param_type());
     }
 
     #[test]

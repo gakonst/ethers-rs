@@ -41,7 +41,7 @@ where
 pub mod json_string_opt {
     use serde::{
         de::{self, DeserializeOwned},
-        ser, Deserialize, Deserializer, Serialize, Serializer,
+        Deserialize, Deserializer, Serialize, Serializer,
     };
 
     pub fn serialize<T, S>(value: &Option<T>, serializer: S) -> Result<S::Ok, S::Error>
@@ -50,8 +50,7 @@ pub mod json_string_opt {
         T: Serialize,
     {
         if let Some(value) = value {
-            let value = serde_json::to_string(value).map_err(ser::Error::custom)?;
-            serializer.serialize_str(&value)
+            value.serialize(serializer)
         } else {
             serializer.serialize_none()
         }

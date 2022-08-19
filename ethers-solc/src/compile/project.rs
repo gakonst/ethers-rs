@@ -156,8 +156,7 @@ impl<'a, T: ArtifactOutput> ProjectCompiler<'a, T> {
         let graph = Graph::resolve_sources(&project.paths, sources)?;
         let (versions, edges) = graph.into_sources_by_version(project.offline)?;
 
-        let base_path = project.root();
-        let sources_by_version = versions.get(&project.allowed_lib_paths, base_path)?;
+        let sources_by_version = versions.get(project)?;
 
         let sources = if project.solc_jobs > 1 && sources_by_version.len() > 1 {
             // if there are multiple different versions, and we can use multiple jobs we can compile
@@ -178,6 +177,14 @@ impl<'a, T: ArtifactOutput> ProjectCompiler<'a, T> {
     ) -> Result<Self> {
         let version = solc.version()?;
         let (sources, edges) = Graph::resolve_sources(&project.paths, sources)?.into_sources();
+
+        // make sure `solc` has all required arguments
+        let solc = project.configure_solc_with_version(
+            solc,
+            Some(version.clone()),
+            edges.include_paths().clone(),
+        );
+
         let sources_by_version = BTreeMap::from([(solc, (version, sources))]);
         let sources = CompilerSources::Sequential(sources_by_version);
 
@@ -207,15 +214,28 @@ impl<'a, T: ArtifactOutput> ProjectCompiler<'a, T> {
     /// let output = project.compile().unwrap();
     /// ```
     pub fn compile(self) -> Result<ProjectCompileOutput<T>> {
+        let slash_paths = self.project.slash_paths;
+
         // drive the compiler statemachine to completion
-        self.preprocess()?.compile()?.write_artifacts()?.write_cache()
+        let mut output = self.preprocess()?.compile()?.write_artifacts()?.write_cache()?;
+
+        if slash_paths {
+            // ensures we always use `/` paths
+            output.slash_paths();
+        }
+
+        Ok(output)
     }
 
     /// Does basic preprocessing
     ///   - sets proper source unit names
     ///   - check cache
     fn preprocess(self) -> Result<PreprocessedState<'a, T>> {
-        let Self { edges, project, sources, sparse_output } = self;
+        let Self { edges, project, mut sources, sparse_output } = self;
+
+        // convert paths on windows to ensure consistency with the `CompilerOutput` `solc` emits,
+        // which is unix style `/`
+        sources.slash_paths();
 
         let mut cache = ArtifactsCache::new(project, edges)?;
         // retain and compile only dirty sources and all their imports
@@ -344,6 +364,32 @@ enum CompilerSources {
 }
 
 impl CompilerSources {
+    /// Converts all `\\` separators to `/`
+    ///
+    /// This effectively ensures that `solc` can find imported files like `/src/Cheats.sol` in the
+    /// VFS (the `CompilerInput` as json) under `src/Cheats.sol`.
+    fn slash_paths(&mut self) {
+        #[cfg(windows)]
+        {
+            use path_slash::PathBufExt;
+
+            fn slash_versioned_sources(v: &mut VersionedSources) {
+                for (_, (_, sources)) in v {
+                    *sources = std::mem::take(sources)
+                        .into_iter()
+                        .map(|(path, source)| {
+                            (PathBuf::from(path.to_slash_lossy().as_ref()), source)
+                        })
+                        .collect()
+                }
+            }
+
+            match self {
+                CompilerSources::Sequential(v) => slash_versioned_sources(v),
+                CompilerSources::Parallel(v, _) => slash_versioned_sources(v),
+            };
+        }
+    }
     /// Filters out all sources that don't need to be compiled, see [`ArtifactsCache::filter`]
     fn filtered<T: ArtifactOutput>(self, cache: &mut ArtifactsCache<T>) -> FilteredCompilerSources {
         fn filtered_sources<T: ArtifactOutput>(

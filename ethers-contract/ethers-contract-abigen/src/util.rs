@@ -40,6 +40,12 @@ fn safe_identifier_name(name: String) -> String {
     }
 }
 
+/// converts invalid rust module names to valid ones
+pub fn safe_module_name(name: &str) -> String {
+    // handle reserve words used in contracts (eg Enum is a gnosis contract)
+    safe_ident(&safe_snake_case(name)).to_string()
+}
+
 /// Expands an identifier as snakecase and preserve any leading or trailing underscores
 pub fn safe_snake_case_ident(name: &str) -> Ident {
     let i = name.to_snake_case();
@@ -208,18 +214,12 @@ mod tests {
 
     #[test]
     fn parse_address_missing_prefix() {
-        assert!(
-            parse_address("0000000000000000000000000000000000000000").is_err(),
-            "parsing address not starting with 0x should fail"
-        );
+        let _ = parse_address("0000000000000000000000000000000000000000").unwrap_err();
     }
 
     #[test]
     fn parse_address_address_too_short() {
-        assert!(
-            parse_address("0x00000000000000").is_err(),
-            "parsing address not starting with 0x should fail"
-        );
+        let _ = parse_address("0x00000000000000").unwrap_err();
     }
 
     #[test]
@@ -227,5 +227,13 @@ mod tests {
         let expected =
             Address::from([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]);
         assert_eq!(parse_address("0x000102030405060708090a0b0c0d0e0f10111213").unwrap(), expected);
+    }
+
+    #[test]
+    fn test_safe_module_name() {
+        assert_eq!(safe_module_name("Valid"), "valid");
+        assert_eq!(safe_module_name("Enum"), "enum_");
+        assert_eq!(safe_module_name("Mod"), "mod_");
+        assert_eq!(safe_module_name("2Two"), "_2_two");
     }
 }

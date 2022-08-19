@@ -20,6 +20,8 @@ mod rustfmt;
 mod source;
 mod util;
 
+pub mod filter;
+pub use filter::{ContractFilter, ExcludeContracts, SelectContracts};
 pub mod multi;
 pub use multi::MultiAbigen;
 
@@ -29,7 +31,6 @@ pub use util::parse_address;
 
 use crate::contract::ExpandedContract;
 use eyre::Result;
-use inflector::Inflector;
 use proc_macro2::TokenStream;
 use std::{collections::HashMap, fs::File, io::Write, path::Path};
 
@@ -73,6 +74,9 @@ pub struct Abigen {
 
     /// Manually specified event name aliases.
     event_aliases: HashMap<String, String>,
+
+    /// Manually specified error name aliases.
+    error_aliases: HashMap<String, String>,
 }
 
 impl Abigen {
@@ -86,6 +90,7 @@ impl Abigen {
             event_derives: Vec::new(),
             event_aliases: HashMap::new(),
             rustfmt: true,
+            error_aliases: Default::default(),
         })
     }
 
@@ -124,6 +129,17 @@ impl Abigen {
         S2: Into<String>,
     {
         self.method_aliases.insert(signature.into(), alias.into());
+        self
+    }
+
+    /// Manually adds a solidity error alias to specify what the error struct will be in Rust.
+    #[must_use]
+    pub fn add_error_alias<S1, S2>(mut self, signature: S1, alias: S2) -> Self
+    where
+        S1: Into<String>,
+        S2: Into<String>,
+    {
+        self.error_aliases.insert(signature.into(), alias.into());
         self
     }
 
@@ -233,7 +249,7 @@ impl ContractBindings {
 
     /// Generate the default module name (snake case of the contract name)
     pub fn module_name(&self) -> String {
-        self.name.to_snake_case()
+        util::safe_module_name(&self.name)
     }
 
     /// Generate the default filename of the module

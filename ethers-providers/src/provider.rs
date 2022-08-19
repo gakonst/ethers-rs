@@ -2,13 +2,15 @@ use crate::{
     call_raw::CallBuilder,
     ens, erc, maybe,
     pubsub::{PubsubClient, SubscriptionStream},
-    stream::{FilterWatcher, DEFAULT_POLL_INTERVAL},
+    stream::{FilterWatcher, DEFAULT_LOCAL_POLL_INTERVAL, DEFAULT_POLL_INTERVAL},
     FromErr, Http as HttpProvider, JsonRpcClient, JsonRpcClientWrapper, LogQuery, MockProvider,
     PendingTransaction, QuorumProvider, RwClient, SyncingStatus,
 };
 
+#[cfg(all(not(target_arch = "wasm32"), feature = "ws"))]
+use crate::transports::Authorization;
 #[cfg(not(target_arch = "wasm32"))]
-use crate::transports::{Authorization, HttpRateLimitRetryPolicy, RetryClient};
+use crate::transports::{HttpRateLimitRetryPolicy, RetryClient};
 
 #[cfg(feature = "celo")]
 use crate::CeloMiddleware;
@@ -20,9 +22,9 @@ use ethers_core::{
     types::{
         transaction::{eip2718::TypedTransaction, eip2930::AccessListWithGasUsed},
         Address, Block, BlockId, BlockNumber, BlockTrace, Bytes, EIP1186ProofResponse, FeeHistory,
-        Filter, FilterBlockOption, Log, NameOrAddress, Selector, Signature, Trace, TraceFilter,
-        TraceType, Transaction, TransactionReceipt, TransactionRequest, TxHash, TxpoolContent,
-        TxpoolInspect, TxpoolStatus, H256, U256, U64,
+        Filter, FilterBlockOption, GethDebugTracingOptions, GethTrace, Log, NameOrAddress,
+        Selector, Signature, Trace, TraceFilter, TraceType, Transaction, TransactionReceipt,
+        TransactionRequest, TxHash, TxpoolContent, TxpoolInspect, TxpoolStatus, H256, U256, U64,
     },
     utils,
 };
@@ -31,6 +33,7 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use thiserror::Error;
 use url::{ParseError, Url};
 
+use ethers_core::types::Chain;
 use futures_util::{lock::Mutex, try_join};
 use std::{
     collections::VecDeque, convert::TryFrom, fmt::Debug, str::FromStr, sync::Arc, time::Duration,
@@ -633,7 +636,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.fill_transaction(&mut tx, block).await?;
         let tx_hash = self.request("eth_sendTransaction", [tx]).await?;
 
-        Ok(PendingTransaction::new(tx_hash, self).interval(self.get_interval()))
+        Ok(PendingTransaction::new(tx_hash, self))
     }
 
     /// Send the raw RLP encoded transaction to the entire Ethereum network and returns the
@@ -644,7 +647,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
     ) -> Result<PendingTransaction<'a, P>, ProviderError> {
         let rlp = utils::serialize(&tx);
         let tx_hash = self.request("eth_sendRawTransaction", [rlp]).await?;
-        Ok(PendingTransaction::new(tx_hash, self).interval(self.get_interval()))
+        Ok(PendingTransaction::new(tx_hash, self))
     }
 
     /// The JSON-RPC provider is at the bottom-most position in the middleware stack. Here we check
@@ -1020,6 +1023,17 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
     }
 
     /// Executes the given call and returns a number of possible traces for it
+    async fn debug_trace_transaction(
+        &self,
+        tx_hash: TxHash,
+        trace_options: GethDebugTracingOptions,
+    ) -> Result<GethTrace, ProviderError> {
+        let tx_hash = utils::serialize(&tx_hash);
+        let trace_options = utils::serialize(&trace_options);
+        self.request("debug_traceTransaction", [tx_hash, trace_options]).await
+    }
+
+    /// Executes the given call and returns a number of possible traces for it
     async fn trace_call<T: Into<TypedTransaction> + Send + Sync>(
         &self,
         req: T,
@@ -1241,12 +1255,17 @@ impl<P: JsonRpcClient> Provider<P> {
 
         // otherwise, decode_bytes panics
         if data.0.is_empty() {
-            return Err(ProviderError::EnsError(ens_name.to_owned()))
+            return Err(ProviderError::EnsError(ens_name.to_string()))
         }
 
         let resolver_address: Address = decode_bytes(ParamType::Address, data);
         if resolver_address == Address::zero() {
-            return Err(ProviderError::EnsError(ens_name.to_owned()))
+            return Err(ProviderError::EnsError(ens_name.to_string()))
+        }
+
+        if let ParamType::Address = param {
+            // Reverse resolver reverts when calling `supportsInterface(bytes4)`
+            self.validate_resolver(resolver_address, selector, ens_name).await?;
         }
 
         // resolve
@@ -1255,6 +1274,39 @@ impl<P: JsonRpcClient> Provider<P> {
             .await?;
 
         Ok(decode_bytes(param, data))
+    }
+
+    /// Validates that the resolver supports `selector`.
+    async fn validate_resolver(
+        &self,
+        resolver_address: Address,
+        selector: Selector,
+        ens_name: &str,
+    ) -> Result<(), ProviderError> {
+        let data =
+            self.call(&ens::supports_interface(resolver_address, selector).into(), None).await?;
+
+        if data.is_empty() {
+            return Err(ProviderError::EnsError(format!(
+                "`{}` resolver ({:?}) is invalid.",
+                ens_name, resolver_address
+            )))
+        }
+
+        let supports_selector = abi::decode(&[ParamType::Bool], data.as_ref())
+            .map(|token| token[0].clone().into_bool().unwrap_or_default())
+            .unwrap_or_default();
+
+        if !supports_selector {
+            return Err(ProviderError::EnsError(format!(
+                "`{}` resolver ({:?}) does not support selector {}.",
+                ens_name,
+                resolver_address,
+                hex::encode(&selector)
+            )))
+        }
+
+        Ok(())
     }
 
     #[cfg(test)]
@@ -1275,9 +1327,16 @@ impl<P: JsonRpcClient> Provider<P> {
 
     /// Sets the default polling interval for event filters and pending transactions
     /// (default: 7 seconds)
+    pub fn set_interval<T: Into<Duration>>(&mut self, interval: T) -> &mut Self {
+        self.interval = Some(interval.into());
+        self
+    }
+
+    /// Sets the default polling interval for event filters and pending transactions
+    /// (default: 7 seconds)
     #[must_use]
     pub fn interval<T: Into<Duration>>(mut self, interval: T) -> Self {
-        self.interval = Some(interval.into());
+        self.set_interval(interval);
         self
     }
 
@@ -1322,6 +1381,18 @@ impl Provider<crate::Ipc> {
     pub async fn connect_ipc(path: impl AsRef<std::path::Path>) -> Result<Self, ProviderError> {
         let ipc = crate::Ipc::connect(path).await?;
         Ok(Self::new(ipc))
+    }
+}
+
+impl Provider<HttpProvider> {
+    /// The Url to which requests are made
+    pub fn url(&self) -> &Url {
+        self.inner.url()
+    }
+
+    /// Mutable access to the Url to which requests are made
+    pub fn url_mut(&mut self) -> &mut Url {
+        self.inner.url_mut()
     }
 }
 
@@ -1419,6 +1490,120 @@ impl Provider<RetryClient<HttpProvider>> {
             initial_backoff,
         )))
     }
+}
+
+mod sealed {
+    use crate::{Http, Provider};
+    /// private trait to ensure extension trait is not implement outside of this crate
+    pub trait Sealed {}
+    impl Sealed for Provider<Http> {}
+}
+
+/// Extension trait for `Provider`
+///
+/// **Note**: this is currently sealed until <https://github.com/gakonst/ethers-rs/pull/1267> is finalized
+///
+/// # Example
+///
+/// Automatically configure poll interval via `eth_getChainId`
+///
+/// Note that this will send an RPC to retrieve the chain id.
+///
+/// ```
+///  # use ethers_providers::{Http, Provider, ProviderExt};
+///  # async fn t() {
+/// let http_provider = Provider::<Http>::connect("https://eth-mainnet.alchemyapi.io/v2/API_KEY").await;
+/// # }
+/// ```
+///
+/// This is essentially short for
+///
+/// ```
+/// use std::convert::TryFrom;
+/// use ethers_core::types::Chain;
+/// use ethers_providers::{Http, Provider, ProviderExt};
+/// let http_provider = Provider::<Http>::try_from("https://eth-mainnet.alchemyapi.io/v2/API_KEY").unwrap().set_chain(Chain::Mainnet);
+/// ```
+#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+pub trait ProviderExt: sealed::Sealed {
+    /// The error type that can occur when creating a provider
+    type Error: Debug;
+
+    /// Creates a new instance connected to the given `url`, exit on error
+    async fn connect(url: &str) -> Self
+    where
+        Self: Sized,
+    {
+        Self::try_connect(url).await.unwrap()
+    }
+
+    /// Try to create a new `Provider`
+    async fn try_connect(url: &str) -> Result<Self, Self::Error>
+    where
+        Self: Sized;
+
+    /// Customize `Provider` settings for chain.
+    ///
+    /// E.g. [`Chain::average_blocktime_hint()`] returns the average block time which can be used to
+    /// tune the polling interval.
+    ///
+    /// Returns the customized `Provider`
+    fn for_chain(mut self, chain: impl Into<Chain>) -> Self
+    where
+        Self: Sized,
+    {
+        self.set_chain(chain);
+        self
+    }
+
+    /// Customized `Provider` settings for chain
+    fn set_chain(&mut self, chain: impl Into<Chain>) -> &mut Self;
+}
+
+#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+impl ProviderExt for Provider<HttpProvider> {
+    type Error = ParseError;
+
+    async fn try_connect(url: &str) -> Result<Self, Self::Error>
+    where
+        Self: Sized,
+    {
+        let mut provider = Provider::try_from(url)?;
+        if is_local_endpoint(url) {
+            provider.set_interval(DEFAULT_LOCAL_POLL_INTERVAL);
+        } else if let Some(chain) =
+            provider.get_chainid().await.ok().and_then(|id| Chain::try_from(id).ok())
+        {
+            provider.set_chain(chain);
+        }
+
+        Ok(provider)
+    }
+
+    fn set_chain(&mut self, chain: impl Into<Chain>) -> &mut Self {
+        let chain = chain.into();
+        if let Some(blocktime) = chain.average_blocktime_hint() {
+            // use half of the block time
+            self.set_interval(blocktime / 2);
+        }
+        self
+    }
+}
+
+/// Returns true if the endpoint is local
+///
+/// # Example
+///
+/// ```
+/// use ethers_providers::is_local_endpoint;
+/// assert!(is_local_endpoint("http://localhost:8545"));
+/// assert!(is_local_endpoint("http://127.0.0.1:8545"));
+/// ```
+#[inline]
+pub fn is_local_endpoint(url: &str) -> bool {
+    url.contains("127.0.0.1") || url.contains("localhost")
 }
 
 /// A middleware supporting development-specific JSON RPC methods
@@ -1985,5 +2170,20 @@ mod tests {
         assert_eq!(tx.gas(), Some(&gas));
         assert_eq!(tx.gas_price(), Some(gas_price));
         assert!(tx.access_list().is_none());
+    }
+
+    #[tokio::test]
+    async fn mainnet_lookup_address_invalid_resolver() {
+        let provider = crate::MAINNET.provider();
+
+        let err = provider
+            .lookup_address("0x30c9223d9e3d23e0af1073a38e0834b055bf68ed".parse().unwrap())
+            .await
+            .unwrap_err();
+
+        assert_eq!(
+            &err.to_string(),
+            "ens name not found: `ox63616e.eth` resolver (0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2) is invalid."
+        );
     }
 }

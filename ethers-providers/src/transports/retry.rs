@@ -3,22 +3,20 @@
 
 use super::{common::JsonRpcError, http::ClientError};
 use crate::{provider::ProviderError, JsonRpcClient};
-
+use async_trait::async_trait;
+use serde::{de::DeserializeOwned, Serialize};
 use std::{
-    clone::Clone,
     fmt::Debug,
     sync::atomic::{AtomicU32, Ordering},
     time::Duration,
 };
-
-use async_trait::async_trait;
-use serde::{de::DeserializeOwned, Serialize};
 use thiserror::Error;
 use tracing::trace;
 
 /// [RetryPolicy] defines logic for which [JsonRpcClient::Error] instances should
 /// the client retry the request and try to recover from.
 pub trait RetryPolicy<E>: Send + Sync + Debug {
+    /// Whether to retry the request based on the given `error`
     fn should_retry(&self, error: &E) -> bool;
 }
 
@@ -44,16 +42,23 @@ where
     T: JsonRpcClient,
     T::Error: Sync + Send + 'static,
 {
-    /// Example:
+    /// Creates a new `RetryClient` that wraps a client and adds retry and backoff support
     ///
-    /// ```no_run
+    /// # Example
+    ///
+    /// ```
+    /// 
+    /// # async fn demo() {
     /// use ethers_providers::{Http, RetryClient, HttpRateLimitRetryPolicy};
     /// use std::time::Duration;
     /// use url::Url;
     ///
     /// let http = Http::new(Url::parse("http://localhost:8545").unwrap());
-    /// let delay = Duration::new(10, 0);
-    /// let client = RetryClient::new(http, Box::new(HttpRateLimitRetryPolicy), 10, 1);
+    /// let backoff_timeout = 3000; // in ms
+    /// let max_retries = 10;
+    /// let client = RetryClient::new(http, Box::new(HttpRateLimitRetryPolicy::default()), max_retries, backoff_timeout);
+    ///
+    /// # }
     /// ```
     pub fn new(
         inner: T,
@@ -135,10 +140,23 @@ where
         A: std::fmt::Debug + Serialize + Send + Sync,
         R: DeserializeOwned,
     {
-        let ahead_in_queue = self.requests_enqueued.fetch_add(1, Ordering::SeqCst) as u64;
+        // Helper type that caches the `params` value across several retries
+        // This is necessary because the wrapper provider is supposed to skip he `params` if it's of
+        // size 0, see `crate::transports::common::Request`
+        enum RetryParams<Params> {
+            Value(Params),
+            Zst(()),
+        }
 
-        let params =
-            serde_json::to_value(params).map_err(|err| RetryClientError::SerdeJson(err))?;
+        let params = if std::mem::size_of::<A>() == 0 {
+            RetryParams::Zst(())
+        } else {
+            let params =
+                serde_json::to_value(params).map_err(|err| RetryClientError::SerdeJson(err))?;
+            RetryParams::Value(params)
+        };
+
+        let ahead_in_queue = self.requests_enqueued.fetch_add(1, Ordering::SeqCst) as u64;
 
         let mut retry_number: u32 = 0;
 
@@ -148,7 +166,11 @@ where
             // hack to not hold `R` across an await in the sleep future and prevent requiring
             // R: Send + Sync
             {
-                match self.inner.request(method, params.clone()).await {
+                let resp = match params {
+                    RetryParams::Value(ref params) => self.inner.request(method, params).await,
+                    RetryParams::Zst(unit) => self.inner.request(method, unit).await,
+                };
+                match resp {
                     Ok(ret) => {
                         self.requests_enqueued.fetch_sub(1, Ordering::SeqCst);
                         return Ok(ret)
@@ -203,7 +225,7 @@ where
 
 /// Implements [RetryPolicy] that will retry requests that errored with
 /// status code 429 i.e. TOO_MANY_REQUESTS
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct HttpRateLimitRetryPolicy;
 
 impl RetryPolicy<ClientError> for HttpRateLimitRetryPolicy {

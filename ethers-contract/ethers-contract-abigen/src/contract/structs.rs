@@ -334,6 +334,11 @@ impl InternalStructs {
             .map(String::as_str)
     }
 
+    /// Returns the name of the rust type for the type
+    pub fn get_struct_type(&self, internal_type: &str) -> Option<&str> {
+        self.rust_type_names.get(struct_type_identifier(internal_type)).map(String::as_str)
+    }
+
     /// Returns the mapping table of abi `internal type identifier -> rust type`
     pub fn rust_type_names(&self) -> &HashMap<String, String> {
         &self.rust_type_names
@@ -543,11 +548,11 @@ fn expand_struct_type(struct_ty: &StructFieldType) -> TokenStream {
             quote! {#ty}
         }
         StructFieldType::Array(ty) => {
-            let ty = expand_struct_type(&*ty);
+            let ty = expand_struct_type(ty);
             quote! {::std::vec::Vec<#ty>}
         }
         StructFieldType::FixedArray(ty, size) => {
-            let ty = expand_struct_type(&*ty);
+            let ty = expand_struct_type(ty);
             quote! { [#ty; #size]}
         }
     }

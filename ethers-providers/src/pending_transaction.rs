@@ -1,7 +1,4 @@
-use crate::{
-    stream::{interval, DEFAULT_POLL_INTERVAL},
-    JsonRpcClient, Middleware, PinBoxFut, Provider, ProviderError,
-};
+use crate::{stream::interval, JsonRpcClient, Middleware, PinBoxFut, Provider, ProviderError};
 use ethers_core::types::{Transaction, TransactionReceipt, TxHash, U64};
 use futures_core::stream::Stream;
 use futures_util::stream::StreamExt;
@@ -70,13 +67,14 @@ const DEFAULT_RETRIES: usize = 3;
 impl<'a, P: JsonRpcClient> PendingTransaction<'a, P> {
     /// Creates a new pending transaction poller from a hash and a provider
     pub fn new(tx_hash: TxHash, provider: &'a Provider<P>) -> Self {
-        let delay = Box::pin(Delay::new(DEFAULT_POLL_INTERVAL));
+        let delay = Box::pin(Delay::new(provider.get_interval()));
+
         Self {
             tx_hash,
             confirmations: 1,
             provider,
             state: PendingTxState::InitialDelay(delay),
-            interval: Box::new(interval(DEFAULT_POLL_INTERVAL)),
+            interval: Box::new(interval(provider.get_interval())),
             retries_remaining: DEFAULT_RETRIES,
         }
     }

@@ -48,17 +48,6 @@ pub enum WalletError {
     Eip712Error(String),
 }
 
-impl Clone for Wallet<SigningKey> {
-    fn clone(&self) -> Self {
-        Self {
-            // TODO: Can we have a better way to clone here?
-            signer: SigningKey::from_bytes(&*self.signer.to_bytes()).unwrap(),
-            address: self.address,
-            chain_id: self.chain_id,
-        }
-    }
-}
-
 impl Wallet<SigningKey> {
     /// Creates a new random encrypted JSON with the provided password and stores it in the
     /// provided directory. Returns a tuple (Wallet, String) of the wallet instance for the
@@ -166,7 +155,7 @@ mod tests {
         let key2 = Wallet::<SigningKey>::decrypt_keystore(&path.clone(), "randpsswd").unwrap();
         let signature2 = key2.sign_message(message).await.unwrap();
         assert_eq!(signature, signature2);
-        assert!(std::fs::remove_file(&path).is_ok());
+        std::fs::remove_file(&path).unwrap();
     }
 
     #[tokio::test]
@@ -216,7 +205,7 @@ mod tests {
 
         let sig = wallet.sign_transaction(&tx).await.unwrap();
         let sighash = tx.sighash();
-        assert!(sig.verify(sighash, wallet.address).is_ok());
+        sig.verify(sighash, wallet.address).unwrap();
     }
 
     #[tokio::test]
@@ -249,7 +238,7 @@ mod tests {
         let mut tx = tx;
         tx.set_chain_id(1);
         let sighash = tx.sighash();
-        assert!(sig.verify(sighash, wallet.address).is_ok());
+        sig.verify(sighash, wallet.address).unwrap();
     }
 
     #[test]
@@ -290,7 +279,7 @@ mod tests {
         let mut tx = tx;
         tx.set_chain_id(chain_id);
         let sighash = tx.sighash();
-        assert!(sig.verify(sighash, wallet.address).is_ok());
+        sig.verify(sighash, wallet.address).unwrap();
     }
 
     #[test]

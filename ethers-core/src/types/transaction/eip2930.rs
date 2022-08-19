@@ -2,6 +2,10 @@ use super::{eip2718::TypedTransaction, normalize_v};
 use crate::types::{
     Address, Bytes, Signature, SignatureError, Transaction, TransactionRequest, H256, U256, U64,
 };
+use fastrlp::{
+    RlpDecodable as FastRlpDecodable, RlpDecodableWrapper as FastRlpDecodableWrapper,
+    RlpEncodable as FastRlpEncodable, RlpEncodableWrapper as FastRlpEncodableWrapper,
+};
 use rlp::{Decodable, RlpStream};
 use rlp_derive::{RlpDecodable, RlpDecodableWrapper, RlpEncodable, RlpEncodableWrapper};
 use serde::{Deserialize, Serialize};
@@ -18,10 +22,13 @@ const NUM_EIP2930_FIELDS: usize = 8;
     Clone,
     PartialEq,
     Eq,
+    Hash,
     Serialize,
     Deserialize,
     RlpEncodableWrapper,
     RlpDecodableWrapper,
+    FastRlpEncodableWrapper,
+    FastRlpDecodableWrapper,
 )]
 pub struct AccessList(pub Vec<AccessListItem>);
 
@@ -51,7 +58,18 @@ impl TransactionRequest {
 
 /// Access list item
 #[derive(
-    Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize, RlpEncodable, RlpDecodable,
+    Debug,
+    Default,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+    Serialize,
+    Deserialize,
+    RlpEncodable,
+    RlpDecodable,
+    FastRlpEncodable,
+    FastRlpDecodable,
 )]
 #[serde(rename_all = "camelCase")]
 pub struct AccessListItem {

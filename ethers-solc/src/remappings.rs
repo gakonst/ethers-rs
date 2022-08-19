@@ -1,9 +1,9 @@
 use crate::utils;
+
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{hash_map::Entry, HashMap},
     fmt,
-    fmt::Write,
     path::{Path, PathBuf},
     str::FromStr,
 };
@@ -67,22 +67,26 @@ impl Remapping {
 
 #[derive(thiserror::Error, Debug, PartialEq, Eq, PartialOrd)]
 pub enum RemappingError {
-    #[error("no prefix found")]
-    NoPrefix,
-    #[error("no target found")]
-    NoTarget,
+    #[error("invalid remapping format, found `{0}`, expected `<key>=<value>`")]
+    InvalidRemapping(String),
+    #[error("remapping key can't be empty, found `{0}`, expected `<key>=<value>`")]
+    EmptyRemappingKey(String),
+    #[error("remapping value must be a path, found `{0}`, expected `<key>=<value>`")]
+    EmptyRemappingValue(String),
 }
 
 impl FromStr for Remapping {
     type Err = RemappingError;
 
-    fn from_str(remapping: &str) -> std::result::Result<Self, Self::Err> {
-        let (name, path) = remapping.split_once('=').ok_or(RemappingError::NoPrefix)?;
+    fn from_str(remapping: &str) -> Result<Self, Self::Err> {
+        let (name, path) = remapping
+            .split_once('=')
+            .ok_or_else(|| RemappingError::InvalidRemapping(remapping.to_string()))?;
         if name.trim().is_empty() {
-            return Err(RemappingError::NoPrefix)
+            return Err(RemappingError::EmptyRemappingKey(remapping.to_string()))
         }
         if path.trim().is_empty() {
-            return Err(RemappingError::NoTarget)
+            return Err(RemappingError::EmptyRemappingValue(remapping.to_string()))
         }
         Ok(Remapping { name: name.to_string(), path: path.to_string() })
     }
@@ -110,11 +114,23 @@ impl<'de> Deserialize<'de> for Remapping {
 // Remappings are printed as `prefix=target`
 impl fmt::Display for Remapping {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}={}", self.name, self.path)?;
-        if !self.path.ends_with('/') {
-            f.write_char('/')?;
+        let mut s = {
+            #[cfg(target_os = "windows")]
+            {
+                // ensure we have `/` slashes on windows
+                use path_slash::PathExt;
+                format!("{}={}", self.name, std::path::Path::new(&self.path).to_slash_lossy())
+            }
+            #[cfg(not(target_os = "windows"))]
+            {
+                format!("{}={}", self.name, self.path)
+            }
+        };
+
+        if !s.ends_with('/') {
+            s.push('/');
         }
-        Ok(())
+        f.write_str(&s)
     }
 }
 
@@ -213,6 +229,15 @@ impl Remapping {
             .map(|(name, path)| Remapping { name, path: format!("{}/", path.display()) })
             .collect()
     }
+
+    /// Converts any `\\` separators in the `path` to `/`
+    pub fn slash_path(&mut self) {
+        #[cfg(windows)]
+        {
+            use path_slash::PathExt;
+            self.path = Path::new(&self.path).to_slash_lossy().to_string();
+        }
+    }
 }
 
 /// A relative [`Remapping`] that's aware of the current location
@@ -251,7 +276,19 @@ impl RelativeRemapping {
 // Remappings are printed as `prefix=target`
 impl fmt::Display for RelativeRemapping {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut s = format!("{}={}", self.name, self.path.original().display());
+        let mut s = {
+            #[cfg(windows)]
+            {
+                // ensure we have `/` slashes on windows
+                use path_slash::PathExt;
+                format!("{}={}", self.name, self.path.original().to_slash_lossy())
+            }
+            #[cfg(not(target_os = "windows"))]
+            {
+                format!("{}={}", self.name, self.path.original().display())
+            }
+        };
+
         if !s.ends_with('/') {
             s.push('/');
         }
@@ -710,17 +747,17 @@ mod tests {
     }
 
     #[test]
-    fn serde() {
+    fn remapping_errors() {
         let remapping = "oz=../b/c/d";
         let remapping = Remapping::from_str(remapping).unwrap();
         assert_eq!(remapping.name, "oz".to_string());
         assert_eq!(remapping.path, "../b/c/d".to_string());
 
         let err = Remapping::from_str("").unwrap_err();
-        assert_eq!(err, RemappingError::NoPrefix);
+        matches!(err, RemappingError::InvalidRemapping(_));
 
         let err = Remapping::from_str("oz=").unwrap_err();
-        assert_eq!(err, RemappingError::NoTarget);
+        matches!(err, RemappingError::EmptyRemappingValue(_));
     }
 
     // <https://doc.rust-lang.org/rust-by-example/std_misc/fs.html>

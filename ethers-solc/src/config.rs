@@ -1,18 +1,17 @@
 use crate::{
-    artifacts::Settings,
+    artifacts::{output_selection::ContractOutputSelection, Settings},
     cache::SOLIDITY_FILES_CACHE_FILENAME,
     error::{Result, SolcError, SolcIoError},
     remappings::Remapping,
     resolver::{Graph, SolImportAlias},
     utils, Source, Sources,
 };
-
-use crate::artifacts::output_selection::ContractOutputSelection;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeSet, HashSet},
     fmt::{self, Formatter},
     fs,
+    ops::{Deref, DerefMut},
     path::{Component, Path, PathBuf},
 };
 
@@ -85,6 +84,15 @@ impl ProjectPathsConfig {
         paths
     }
 
+    /// Returns all `--include-path` paths that should be used for this project
+    ///
+    /// See [IncludePaths]
+    pub fn include_paths(&self) -> Vec<PathBuf> {
+        // Note: root must not be included, since it will be used as base-path, which would be a
+        // conflict
+        vec![self.sources.clone(), self.tests.clone(), self.scripts.clone()]
+    }
+
     /// Creates all configured dirs and files
     pub fn create_all(&self) -> std::result::Result<(), SolcIoError> {
         if let Some(parent) = self.cache.parent() {
@@ -119,13 +127,25 @@ impl ProjectPathsConfig {
         Ok(Source::read_all_from(&self.scripts)?)
     }
 
-    /// Returns the combined set solidity file paths for `Self::sources` and `Self::tests`
+    /// Returns true if the there is at least one solidity file in this config.
+    ///
+    /// See also, `Self::input_files()`
+    pub fn has_input_files(&self) -> bool {
+        self.input_files_iter().next().is_some()
+    }
+
+    /// Returns an iterator that yields all solidity file paths for `Self::sources`, `Self::tests`
+    /// and `Self::scripts`
+    pub fn input_files_iter(&self) -> impl Iterator<Item = PathBuf> + '_ {
+        utils::source_files_iter(&self.sources)
+            .chain(utils::source_files_iter(&self.tests))
+            .chain(utils::source_files_iter(&self.scripts))
+    }
+
+    /// Returns the combined set solidity file paths for `Self::sources`, `Self::tests` and
+    /// `Self::scripts`
     pub fn input_files(&self) -> Vec<PathBuf> {
-        utils::source_files(&self.sources)
-            .into_iter()
-            .chain(utils::source_files(&self.tests))
-            .chain(utils::source_files(&self.scripts))
-            .collect()
+        self.input_files_iter().collect()
     }
 
     /// Returns the combined set of `Self::read_sources` + `Self::read_tests` + `Self::read_scripts`
@@ -133,14 +153,88 @@ impl ProjectPathsConfig {
         Ok(Source::read_all_files(self.input_files())?)
     }
 
+    /// Converts all `\\` separators in _all_ paths to `/`
+    pub fn slash_paths(&mut self) {
+        #[cfg(windows)]
+        {
+            use path_slash::PathBufExt;
+
+            let slashed = |p: &mut PathBuf| {
+                *p = p.to_slash_lossy().as_ref().into();
+            };
+            slashed(&mut self.root);
+            slashed(&mut self.cache);
+            slashed(&mut self.artifacts);
+            slashed(&mut self.build_infos);
+            slashed(&mut self.sources);
+            slashed(&mut self.tests);
+            slashed(&mut self.scripts);
+
+            self.libraries.iter_mut().for_each(slashed);
+            self.remappings.iter_mut().for_each(Remapping::slash_path);
+        }
+    }
+
+    /// Returns true if the `file` belongs to a `library`, See [`Self::find_library_ancestor()`]
+    pub fn has_library_ancestor(&self, file: impl AsRef<Path>) -> bool {
+        self.find_library_ancestor(file).is_some()
+    }
+
+    /// Returns the library the file belongs to
+    ///
+    /// Returns the first library that is an ancestor of the given `file`.
+    ///
+    /// **Note:** this does not resolve remappings [`Self::resolve_import()`], instead this merely
+    /// checks if a `library` is a parent of `file`
+    ///
+    /// # Example
+    ///
+    /// ```
+    ///  use std::path::Path;
+    /// use ethers_solc::ProjectPathsConfig;
+    /// let config = ProjectPathsConfig::builder().lib("lib").build().unwrap();
+    /// assert_eq!(config.find_library_ancestor("lib/src/Greeter.sol").unwrap(), Path::new("lib"));
+    /// ```
+    pub fn find_library_ancestor(&self, file: impl AsRef<Path>) -> Option<&PathBuf> {
+        let file = file.as_ref();
+
+        for lib in &self.libraries {
+            if lib.is_relative() &&
+                file.is_absolute() &&
+                file.starts_with(&self.root) &&
+                file.starts_with(self.root.join(lib)) ||
+                file.is_relative() &&
+                    lib.is_absolute() &&
+                    lib.starts_with(&self.root) &&
+                    self.root.join(file).starts_with(lib)
+            {
+                return Some(lib)
+            }
+            if file.starts_with(lib) {
+                return Some(lib)
+            }
+        }
+
+        None
+    }
+
     /// Attempts to resolve an `import` from the given working directory.
     ///
     /// The `cwd` path is the parent dir of the file that includes the `import`
-    pub fn resolve_import(&self, cwd: &Path, import: &Path) -> Result<PathBuf> {
+    ///
+    /// This will also populate the `include_paths` with any nested library root paths that should
+    /// be provided to solc via `--include-path` because it uses absolute imports.
+    pub fn resolve_import_and_include_paths(
+        &self,
+        cwd: &Path,
+        import: &Path,
+        include_paths: &mut IncludePaths,
+    ) -> Result<PathBuf> {
         let component = import
             .components()
             .next()
             .ok_or_else(|| SolcError::msg(format!("Empty import path {}", import.display())))?;
+
         if component == Component::CurDir || component == Component::ParentDir {
             // if the import is relative we assume it's already part of the processed input
             // file set
@@ -149,13 +243,45 @@ impl ProjectPathsConfig {
             })
         } else {
             // resolve library file
-            self.resolve_library_import(import.as_ref()).ok_or_else(|| {
+            let resolved = self.resolve_library_import(import.as_ref());
+
+            if resolved.is_none() {
+                // absolute paths in solidity are a thing for example `import
+                // "src/interfaces/IConfig.sol"` which could either point to `cwd +
+                // src/interfaces/IConfig.sol`, or make use of a remapping (`src/=....`)
+                if let Some(lib) = self.find_library_ancestor(cwd) {
+                    if let Some((include_path, import)) =
+                        utils::resolve_absolute_library(lib, cwd, import)
+                    {
+                        // track the path for this absolute import inside a nested library
+                        include_paths.insert(include_path);
+                        return Ok(import)
+                    }
+                }
+                // also try to resolve absolute imports from the project paths
+                for path in [&self.root, &self.sources, &self.tests, &self.scripts] {
+                    if cwd.starts_with(path) {
+                        if let Ok(import) = utils::canonicalize(path.join(import)) {
+                            return Ok(import)
+                        }
+                    }
+                }
+            }
+
+            resolved.ok_or_else(|| {
                 SolcError::msg(format!(
                     "failed to resolve library import \"{:?}\"",
                     import.display()
                 ))
             })
         }
+    }
+
+    /// Attempts to resolve an `import` from the given working directory.
+    ///
+    /// The `cwd` path is the parent dir of the file that includes the `import`
+    pub fn resolve_import(&self, cwd: &Path, import: &Path) -> Result<PathBuf> {
+        self.resolve_import_and_include_paths(cwd, import, &mut Default::default())
     }
 
     /// Attempts to find the path to the real solidity file that's imported via the given `import`
@@ -570,17 +696,15 @@ impl ProjectPathsConfigBuilder {
         let root = utils::canonicalized(root);
 
         let libraries = self.libraries.unwrap_or_else(|| ProjectPathsConfig::find_libs(&root));
+        let artifacts =
+            self.artifacts.unwrap_or_else(|| ProjectPathsConfig::find_artifacts_dir(&root));
 
         ProjectPathsConfig {
             cache: self
                 .cache
                 .unwrap_or_else(|| root.join("cache").join(SOLIDITY_FILES_CACHE_FILENAME)),
-            artifacts: self
-                .artifacts
-                .unwrap_or_else(|| ProjectPathsConfig::find_artifacts_dir(&root)),
-            build_infos: self.build_infos.unwrap_or_else(|| {
-                ProjectPathsConfig::find_artifacts_dir(&root).join("build-info")
-            }),
+            build_infos: self.build_infos.unwrap_or_else(|| artifacts.join("build-info")),
+            artifacts,
             sources: self.sources.unwrap_or_else(|| ProjectPathsConfig::find_source_dir(&root)),
             tests: self.tests.unwrap_or_else(|| root.join("test")),
             scripts: self.scripts.unwrap_or_else(|| root.join("script")),
@@ -675,6 +799,49 @@ impl SolcConfigBuilder {
     }
 }
 
+/// Container for all `--include-path` arguments for Solc, se also [Solc docs](https://docs.soliditylang.org/en/v0.8.9/using-the-compiler.html#base-path-and-import-remapping
+///
+/// The `--include--path` flag:
+/// > Makes an additional source directory available to the default import callback. Use this option
+/// > if you want to import contracts whose location is not fixed in relation to your main source
+/// > tree, e.g. third-party libraries installed using a package manager. Can be used multiple
+/// > times. Can only be used if base path has a non-empty value.
+///
+/// In contrast to `--allow-paths` [`AllowedLibPaths`], which takes multiple arguments,
+/// `--include-path` only takes a single path argument.
+#[derive(Clone, Debug, Default)]
+pub struct IncludePaths(pub(crate) BTreeSet<PathBuf>);
+
+// === impl IncludePaths ===
+
+impl IncludePaths {
+    /// Returns the [Command](std::process::Command) arguments for this type
+    ///
+    /// For each entry in the set, it will return `--include-path` + `<entry>`
+    pub fn args(&self) -> impl Iterator<Item = String> + '_ {
+        self.paths().flat_map(|path| ["--include-path".to_string(), format!("{}", path.display())])
+    }
+
+    /// Returns all paths that exist
+    pub fn paths(&self) -> impl Iterator<Item = &PathBuf> + '_ {
+        self.0.iter().filter(|path| path.exists())
+    }
+}
+
+impl Deref for IncludePaths {
+    type Target = BTreeSet<PathBuf>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for IncludePaths {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
 /// Helper struct for serializing `--allow-paths` arguments to Solc
 ///
 /// From the [Solc docs](https://docs.soliditylang.org/en/v0.8.9/using-the-compiler.html#base-path-and-import-remapping):
@@ -685,23 +852,46 @@ impl SolcConfigBuilder {
 /// can be allowed via the --allow-paths /sample/path,/another/sample/path switch.
 /// Everything inside the path specified via --base-path is always allowed.
 #[derive(Clone, Debug, Default)]
-pub struct AllowedLibPaths(pub(crate) Vec<PathBuf>);
+pub struct AllowedLibPaths(pub(crate) BTreeSet<PathBuf>);
+
+// === impl AllowedLibPaths ===
 
 impl AllowedLibPaths {
-    pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
+    /// Returns the [Command](std::process::Command) arguments for this type
+    ///
+    /// `--allow-paths` takes a single value: all comma separated paths
+    pub fn args(&self) -> Option<[String; 2]> {
+        let args = self.to_string();
+        if args.is_empty() {
+            return None
+        }
+        Some(["--allow-paths".to_string(), args])
+    }
+
+    /// Returns all paths that exist
+    pub fn paths(&self) -> impl Iterator<Item = &PathBuf> + '_ {
+        self.0.iter().filter(|path| path.exists())
+    }
+}
+
+impl Deref for AllowedLibPaths {
+    type Target = BTreeSet<PathBuf>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for AllowedLibPaths {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
     }
 }
 
 impl fmt::Display for AllowedLibPaths {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let lib_paths = self
-            .0
-            .iter()
-            .filter(|path| path.exists())
-            .map(|path| format!("{}", path.display()))
-            .collect::<Vec<_>>()
-            .join(",");
+        let lib_paths =
+            self.paths().map(|path| format!("{}", path.display())).collect::<Vec<_>>().join(",");
         write!(f, "{}", lib_paths)
     }
 }
@@ -719,7 +909,7 @@ mod tests {
 
     #[test]
     fn can_autodetect_dirs() {
-        let root = crate::utils::tempdir("root").unwrap();
+        let root = utils::tempdir("root").unwrap();
         let out = root.path().join("out");
         let artifacts = root.path().join("artifacts");
         let build_infos = artifacts.join("build-info");
@@ -774,6 +964,48 @@ mod tests {
         assert_eq!(
             ProjectPathsConfig::builder().build_with_root(&root).libraries,
             vec![utils::canonicalized(lib)],
+        );
+    }
+
+    #[test]
+    fn can_have_sane_build_info_default() {
+        let root = utils::tempdir("root").unwrap();
+        let root = root.path();
+        let artifacts = root.join("forge-artifacts");
+
+        // Set the artifacts directory without setting the
+        // build info directory
+        let project = ProjectPathsConfig::builder().artifacts(&artifacts).build_with_root(&root);
+
+        // The artifacts should be set correctly based on the configured value
+        assert_eq!(project.artifacts, utils::canonicalized(artifacts));
+
+        // The build infos should by default in the artifacts directory
+        assert_eq!(project.build_infos, utils::canonicalized(project.artifacts.join("build-info")));
+    }
+
+    #[test]
+    fn can_find_library_ancestor() {
+        let mut config = ProjectPathsConfig::builder().lib("lib").build().unwrap();
+        config.root = "/root/".into();
+
+        assert_eq!(config.find_library_ancestor("lib/src/Greeter.sol").unwrap(), Path::new("lib"));
+
+        assert_eq!(
+            config.find_library_ancestor("/root/lib/src/Greeter.sol").unwrap(),
+            Path::new("lib")
+        );
+
+        config.libraries.push("/root/test/".into());
+
+        assert_eq!(
+            config.find_library_ancestor("test/src/Greeter.sol").unwrap(),
+            Path::new("/root/test/")
+        );
+
+        assert_eq!(
+            config.find_library_ancestor("/root/test/src/Greeter.sol").unwrap(),
+            Path::new("/root/test/")
         );
     }
 }

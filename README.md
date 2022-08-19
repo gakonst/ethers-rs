@@ -100,6 +100,45 @@ in the transactions which are fetched over JSON-RPC.
 - [ ] FFI Bindings (see note)
 - [ ] CLI for common operations
 
+### Websockets
+
+Websockets support is turned on via the feature-flag `ws`:
+
+```toml
+[dependencies]
+
+ethers = { git = "https://github.com/gakonst/ethers-rs", features = ["ws"] }
+```
+
+### Interprocess Communication (IPC)
+
+IPC support is turned on via the feature-flag `ipc`:
+
+```toml
+[dependencies]
+
+ethers = { git = "https://github.com/gakonst/ethers-rs", features = ["ipc"] }
+```
+
+### HTTP Secure (HTTPS)
+
+If you are looking to connect to a HTTPS endpoint, then you need to enable the `rustls` or `openssl` feature.
+feature-flags.
+
+To enable `rustls`:
+```toml
+[dependencies]
+
+ethers = { git = "https://github.com/gakonst/ethers-rs", features = ["rustls"] }
+```
+
+To enable `openssl`:
+```toml
+[dependencies]
+
+ethers = { git = "https://github.com/gakonst/ethers-rs", features = ["openssl"] }
+```
+
 ## Note on WASM and FFI bindings
 
 You should be able to build a wasm app that uses ethers-rs (see the [example](./examples/ethers-wasm) for reference). If ethers fails to
@@ -128,7 +167,7 @@ Thanks for your help improving the project! We are so happy to have you! We have
 [a contributing guide](https://github.com/gakonst/ethers-rs/blob/master/CONTRIBUTING.md) to
 help you get involved in the ethers-rs project.
 
-If you make a Pull Request, do not forget to add your changes in the [CHANGELOG](CHANGELOG.md) and ensure your code if
+If you make a Pull Request, do not forget to add your changes in the [CHANGELOG](CHANGELOG.md) and ensure your code is
 properly formatted with `cargo +nightly fmt` and clippy is happy `cargo clippy`, you can even try to let clippy fix simple
 issues itself: `cargo +nightly clippy --fix -Z unstable-options`
 

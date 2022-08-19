@@ -134,8 +134,9 @@ pub trait Reporter: 'static + std::fmt::Debug {
     /// Invoked after a [`Solc`] installation failed
     fn on_solc_installation_error(&self, _version: &Version, _error: &str) {}
 
-    /// Invoked if the import couldn't be resolved with these remappings
-    fn on_unresolved_import(&self, _import: &Path, _remappings: &[Remapping]) {}
+    /// Invoked if imports couldn't be resolved with the given remappings, where `imports` is the
+    /// list of all import paths and the file they occurred in: `(import stmt, file)`
+    fn on_unresolved_imports(&self, _imports: &[(&Path, &Path)], _remappings: &[Remapping]) {}
 
     /// If `self` is the same type as the provided `TypeId`, returns an untyped
     /// [`NonNull`] pointer to that type. Otherwise, returns `None`.
@@ -213,8 +214,8 @@ pub(crate) fn solc_installation_error(version: &Version, error: &str) {
     get_default(|r| r.reporter.on_solc_installation_error(version, error));
 }
 
-pub(crate) fn unresolved_import(import: &Path, remappings: &[Remapping]) {
-    get_default(|r| r.reporter.on_unresolved_import(import, remappings));
+pub(crate) fn unresolved_imports(imports: &[(&Path, &Path)], remappings: &[Remapping]) {
+    get_default(|r| r.reporter.on_unresolved_imports(imports, remappings));
 }
 
 fn get_global() -> Option<&'static Report> {
@@ -253,7 +254,7 @@ where
     CURRENT_STATE
         .try_with(|state| {
             let scoped = state.scoped.borrow_mut();
-            f(&*scoped)
+            f(&scoped)
         })
         .unwrap_or_else(|_| f(&Report::none()))
 }
@@ -388,13 +389,26 @@ impl Reporter for BasicStdoutReporter {
         eprintln!("Failed to install solc {}: {}", version, error);
     }
 
-    fn on_unresolved_import(&self, import: &Path, remappings: &[Remapping]) {
-        println!(
-            "Unable to resolve import: \"{}\" with remappings:\n        {}",
-            import.display(),
-            remappings.iter().map(|r| r.to_string()).collect::<Vec<_>>().join("\n        ")
-        );
+    fn on_unresolved_imports(&self, imports: &[(&Path, &Path)], remappings: &[Remapping]) {
+        if imports.is_empty() {
+            return
+        }
+        println!("{}", format_unresolved_imports(imports, remappings))
     }
+}
+
+/// Creates a meaningful message for all unresolved imports
+pub fn format_unresolved_imports(imports: &[(&Path, &Path)], remappings: &[Remapping]) -> String {
+    let info = imports
+        .iter()
+        .map(|(import, file)| format!("\"{}\" in \"{}\"", import.display(), file.display()))
+        .collect::<Vec<_>>()
+        .join("\n      ");
+    format!(
+        "Unable to resolve imports:\n      {}\nwith remappings:\n      {}",
+        info,
+        remappings.iter().map(|r| r.to_string()).collect::<Vec<_>>().join("\n      ")
+    )
 }
 
 /// Returned if setting the global reporter fails.
@@ -473,6 +487,7 @@ fn set_global_reporter(report: Report) -> Result<(), SetGlobalReporterError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::str::FromStr;
 
     #[test]
     fn scoped_reporter_works() {
@@ -501,5 +516,22 @@ mod tests {
         });
 
         get_default(|reporter| assert!(reporter.is::<BasicStdoutReporter>()))
+    }
+
+    #[test]
+    fn test_unresolved_message() {
+        let unresolved = vec![(Path::new("./src/Import.sol"), Path::new("src/File.col"))];
+
+        let remappings = vec![Remapping::from_str("oz=a/b/c/d").unwrap()];
+
+        assert_eq!(
+            format_unresolved_imports(&unresolved, &remappings).trim(),
+            r#"
+Unable to resolve imports:
+      "./src/Import.sol" in "src/File.col"
+with remappings:
+      oz=a/b/c/d/"#
+                .trim()
+        )
     }
 }

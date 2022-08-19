@@ -77,6 +77,12 @@ impl_abi_codec!(
     i128
 );
 
+impl<'a> AbiEncode for &'a str {
+    fn encode(self) -> Vec<u8> {
+        self.to_string().encode()
+    }
+}
+
 impl<T: TokenizableItem + Clone, const N: usize> AbiEncode for [T; N] {
     fn encode(self) -> Vec<u8> {
         let token = self.into_token();
@@ -167,7 +173,11 @@ impl_abi_codec_tuple!(12, A, B, C, D, E, F, G, H, I, J, K, L);
 impl_abi_codec_tuple!(13, A, B, C, D, E, F, G, H, I, J, K, L, M);
 impl_abi_codec_tuple!(14, A, B, C, D, E, F, G, H, I, J, K, L, M, N);
 impl_abi_codec_tuple!(15, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O);
-impl_abi_codec_tuple!(16, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P);
+impl_abi_codec_tuple!(16, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q);
+impl_abi_codec_tuple!(17, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R);
+impl_abi_codec_tuple!(18, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S);
+impl_abi_codec_tuple!(19, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T);
+impl_abi_codec_tuple!(20, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U);
 
 #[cfg(test)]
 mod tests {
@@ -261,5 +271,12 @@ mod tests {
         assert_codec(nested.clone());
         let tuple: Vec<(Address, u8, Vec<[u8; 4]>)> = vec![(Address::random(), 0, nested)];
         assert_codec(tuple);
+    }
+
+    #[test]
+    fn str_encoding() {
+        let value = "str value";
+        let encoded = value.encode();
+        assert_eq!(value, String::decode(encoded).unwrap());
     }
 }

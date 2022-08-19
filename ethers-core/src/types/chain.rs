@@ -4,6 +4,7 @@ use std::{
     convert::{TryFrom, TryInto},
     fmt,
     str::FromStr,
+    time::Duration,
 };
 use strum::EnumVariantNames;
 use thiserror::Error;
@@ -12,12 +13,19 @@ use thiserror::Error;
 #[error("Failed to parse chain: {0}")]
 pub struct ParseChainError(String);
 
+/// Enum for all known chains
+///
+/// When adding a new chain:
+///   1. add new variant
+///   2. update Display/FromStr impl
+///   3. add etherscan_keys if supported
 #[repr(u64)]
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, Deserialize, EnumVariantNames)]
 #[serde(rename_all = "snake_case")]
 #[strum(serialize_all = "kebab-case")]
 pub enum Chain {
     Mainnet = 1,
+    Morden = 2,
     Ropsten = 3,
     Rinkeby = 4,
     Goerli = 5,
@@ -55,12 +63,142 @@ pub enum Chain {
     EmeraldTestnet = 42261,
     Evmos = 9001,
     EvmosTestnet = 9000,
+    Aurora = 1313161554,
+    AuroraTestnet = 1313161555,
+}
+
+// === impl Chain ===
+
+impl Chain {
+    /// The blocktime varies from chain to chain
+    ///
+    /// It can be beneficial to know the average blocktime to adjust the polling of an Http provider
+    /// for example.
+    ///
+    /// **Note:** this will not return the accurate average depending on the time but is rather a
+    /// sensible default derived from blocktime charts like <https://etherscan.com/chart/blocktime>
+    /// <https://polygonscan.com/chart/blocktime>
+    pub fn average_blocktime_hint(&self) -> Option<Duration> {
+        let ms = match self {
+            Chain::Arbitrum | Chain::ArbitrumTestnet => 1_300,
+            Chain::Mainnet | Chain::Optimism => 13_000,
+            Chain::Polygon | Chain::PolygonMumbai => 2_100,
+            Chain::Moonbeam | Chain::Moonriver => 12_500,
+            Chain::BinanceSmartChain | Chain::BinanceSmartChainTestnet => 3_000,
+            Chain::Avalanche | Chain::AvalancheFuji => 2_000,
+            Chain::Fantom | Chain::FantomTestnet => 1_200,
+            Chain::Cronos | Chain::CronosTestnet => 5_700,
+            Chain::Evmos | Chain::EvmosTestnet => 1_900,
+            Chain::Aurora | Chain::AuroraTestnet => 1_100,
+            Chain::Oasis => 5_500,
+            Chain::Emerald => 6_000,
+            Chain::Dev | Chain::AnvilHardhat => 200,
+            _ => return None,
+        };
+
+        Some(Duration::from_millis(ms))
+    }
+
+    /// Returns the corresponding etherscan URLs
+    ///
+    /// Returns `(API URL, BASE_URL)`, like `("https://api(-chain).etherscan.io/api", "https://etherscan.io")`
+    pub fn etherscan_urls(&self) -> Option<(&'static str, &'static str)> {
+        let urls = match self {
+            Chain::Mainnet => ("https://api.etherscan.io/api", "https://etherscan.io"),
+            Chain::Ropsten => {
+                ("https://api-ropsten.etherscan.io/api", "https://ropsten.etherscan.io")
+            }
+            Chain::Kovan => ("https://api-kovan.etherscan.io/api", "https://kovan.etherscan.io"),
+            Chain::Rinkeby => {
+                ("https://api-rinkeby.etherscan.io/api", "https://rinkeby.etherscan.io")
+            }
+            Chain::Goerli => ("https://api-goerli.etherscan.io/api", "https://goerli.etherscan.io"),
+            Chain::Sepolia => {
+                ("https://api-sepolia.etherscan.io/api", "https://sepolia.etherscan.io")
+            }
+            Chain::Polygon => ("https://api.polygonscan.com/api", "https://polygonscan.com"),
+            Chain::PolygonMumbai => {
+                ("https://api-testnet.polygonscan.com/api", "https://mumbai.polygonscan.com")
+            }
+            Chain::Avalanche => ("https://api.snowtrace.io/api", "https://snowtrace.io"),
+            Chain::AvalancheFuji => {
+                ("https://api-testnet.snowtrace.io/api", "https://testnet.snowtrace.io")
+            }
+            Chain::Optimism => {
+                ("https://api-optimistic.etherscan.io/api", "https://optimistic.etherscan.io")
+            }
+            Chain::OptimismKovan => (
+                "https://api-kovan-optimistic.etherscan.io/api",
+                "https://kovan-optimistic.etherscan.io",
+            ),
+            Chain::Fantom => ("https://api.ftmscan.com/api", "https://ftmscan.com"),
+            Chain::FantomTestnet => {
+                ("https://api-testnet.ftmscan.com/api", "https://testnet.ftmscan.com")
+            }
+            Chain::BinanceSmartChain => ("https://api.bscscan.com/api", "https://bscscan.com"),
+            Chain::BinanceSmartChainTestnet => {
+                ("https://api-testnet.bscscan.com/api", "https://testnet.bscscan.com")
+            }
+            Chain::Arbitrum => ("https://api.arbiscan.io/api", "https://arbiscan.io"),
+            Chain::ArbitrumTestnet => {
+                ("https://api-testnet.arbiscan.io/api", "https://testnet.arbiscan.io")
+            }
+            Chain::Cronos => ("https://api.cronoscan.com/api", "https://cronoscan.com"),
+            Chain::CronosTestnet => {
+                ("https://api-testnet.cronoscan.com/api", "https://testnet.cronoscan.com")
+            }
+            Chain::Moonbeam => {
+                ("https://api-moonbeam.moonscan.io/api", "https://moonbeam.moonscan.io/")
+            }
+            Chain::Moonbase => {
+                ("https://api-moonbase.moonscan.io/api", "https://moonbase.moonscan.io/")
+            }
+            Chain::Moonriver => {
+                ("https://api-moonriver.moonscan.io/api", "https://moonriver.moonscan.io")
+            }
+            // blockscout API is etherscan compatible
+            Chain::XDai => {
+                ("https://blockscout.com/xdai/mainnet/api", "https://blockscout.com/xdai/mainnet")
+            }
+            Chain::Sokol => {
+                ("https://blockscout.com/poa/sokol/api", "https://blockscout.com/poa/sokol")
+            }
+            Chain::Poa => {
+                ("https://blockscout.com/poa/core/api", "https://blockscout.com/poa/core")
+            }
+            Chain::Rsk => {
+                ("https://blockscout.com/rsk/mainnet/api", "https://blockscout.com/rsk/mainnet")
+            }
+            Chain::Oasis => ("https://scan.oasischain.io/api", "https://scan.oasischain.io/"),
+            Chain::Emerald => {
+                ("https://explorer.emerald.oasis.dev/api", "https://explorer.emerald.oasis.dev/")
+            }
+            Chain::EmeraldTestnet => (
+                "https://testnet.explorer.emerald.oasis.dev/api",
+                "https://testnet.explorer.emerald.oasis.dev/",
+            ),
+            Chain::Aurora => ("https://api.aurorascan.dev/api", "https://aurorascan.dev"),
+            Chain::AuroraTestnet => {
+                ("https://testnet.aurorascan.dev/api", "https://testnet.aurorascan.dev")
+            }
+            Chain::Evmos => ("https://evm.evmos.org/api", "https://evm.evmos.org/"),
+            Chain::EvmosTestnet => ("https://evm.evmos.dev/api", "https://evm.evmos.dev/"),
+            Chain::AnvilHardhat | Chain::Dev | Chain::Morden | Chain::MoonbeamDev => {
+                // this is explicitly exhaustive so we don't forget to add new urls when adding a
+                // new chain
+                return None
+            }
+        };
+
+        Some(urls)
+    }
 }
 
 impl fmt::Display for Chain {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let chain = match self {
             Chain::Mainnet => "mainnet",
+            Chain::Morden => "morden",
             Chain::Ropsten => "ropsten",
             Chain::Rinkeby => "rinkeby",
             Chain::Goerli => "goerli",
@@ -95,6 +233,8 @@ impl fmt::Display for Chain {
             Chain::AnvilHardhat => "anvil-hardhat",
             Chain::Evmos => "evmos",
             Chain::EvmosTestnet => "evmos-testnet",
+            Chain::Aurora => "aurora",
+            Chain::AuroraTestnet => "aurora-testnet",
         };
 
         write!(formatter, "{}", chain)
@@ -125,6 +265,7 @@ impl TryFrom<u64> for Chain {
     fn try_from(chain: u64) -> Result<Chain, Self::Error> {
         Ok(match chain {
             1 => Chain::Mainnet,
+            2 => Chain::Morden,
             3 => Chain::Ropsten,
             4 => Chain::Rinkeby,
             5 => Chain::Goerli,
@@ -140,8 +281,8 @@ impl TryFrom<u64> for Chain {
             43113 => Chain::AvalancheFuji,
             11155111 => Chain::Sepolia,
             1284 => Chain::Moonbeam,
-            1281 => Chain::Moonbase,
-            1287 => Chain::MoonbeamDev,
+            1287 => Chain::Moonbase,
+            1281 => Chain::MoonbeamDev,
             1285 => Chain::Moonriver,
             10 => Chain::Optimism,
             69 => Chain::OptimismKovan,
@@ -159,6 +300,8 @@ impl TryFrom<u64> for Chain {
             42261 => Chain::EmeraldTestnet,
             9001 => Chain::Evmos,
             9000 => Chain::EvmosTestnet,
+            1313161554 => Chain::Aurora,
+            1313161555 => Chain::AuroraTestnet,
             _ => return Err(ParseChainError(chain.to_string())),
         })
     }
@@ -180,6 +323,7 @@ impl FromStr for Chain {
     fn from_str(chain: &str) -> Result<Self, Self::Err> {
         Ok(match chain {
             "mainnet" => Chain::Mainnet,
+            "morden" => Chain::Morden,
             "ropsten" => Chain::Ropsten,
             "rinkeby" => Chain::Rinkeby,
             "goerli" => Chain::Goerli,
@@ -191,6 +335,7 @@ impl FromStr for Chain {
             "avalanche-fuji" => Chain::AvalancheFuji,
             "sepolia" => Chain::Sepolia,
             "moonbeam" => Chain::Moonbeam,
+            "moonbase" => Chain::Moonbase,
             "moonbeam-dev" => Chain::MoonbeamDev,
             "moonriver" => Chain::Moonriver,
             "optimism" => Chain::Optimism,
@@ -211,6 +356,8 @@ impl FromStr for Chain {
             "oasis" => Chain::Oasis,
             "emerald" => Chain::Emerald,
             "emerald-testnet" => Chain::EmeraldTestnet,
+            "aurora" => Chain::Aurora,
+            "aurora-testnet" => Chain::AuroraTestnet,
             _ => return Err(ParseChainError(chain.to_owned())),
         })
     }
