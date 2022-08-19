@@ -1,5 +1,5 @@
 use ethers_core::{
-    abi::{decode, Detokenize, Function, ParamType, Token},
+    abi::{AbiDecode, Detokenize, Function, Token},
     types::{Address, BlockNumber, Bytes, Chain, NameOrAddress, TxHash, H160, U256},
 };
 use ethers_providers::{Middleware, ProviderError};
@@ -405,8 +405,8 @@ impl<M: Middleware> Multicall<M> {
     /// Appends a `call` to the list of calls for the Multicall instance.
     ///
     /// Version specific details:
-    /// - 1: `allow_revert` is ignored.
-    /// - >=2: `allow_revert` specifies whether or not this call is allowed to revert in the
+    /// - 1: `allow_failure` is ignored.
+    /// - >=2: `allow_failure` specifies whether or not this call is allowed to revert in the
     ///   multicall.
     /// - 3: Transaction values are used when broadcasting transactions with [`send`], otherwise
     ///   they are always ignored.
@@ -422,7 +422,7 @@ impl<M: Middleware> Multicall<M> {
                 let call = Call {
                     target: *target,
                     data: data.clone(),
-                    value: call.tx.value().cloned().unwrap_or(U256::zero()),
+                    value: call.tx.value().cloned().unwrap_or_default(),
                     allow_failure,
                     function: call.function,
                 };
@@ -440,9 +440,9 @@ impl<M: Middleware> Multicall<M> {
     ///
     /// If more than the maximum number of supported calls are added (16). The maximum limit is
     /// constrained due to tokenization/detokenization support for tuples.
-    pub fn eth_balance_of(&mut self, addr: Address, allow_revert: bool) -> &mut Self {
+    pub fn eth_balance_of(&mut self, addr: Address, allow_failure: bool) -> &mut Self {
         let call = self.contract.get_eth_balance(addr);
-        self.add_call(call, allow_revert)
+        self.add_call(call, allow_failure)
     }
 
     /// Clears the batch of calls from the Multicall instance.
@@ -590,7 +590,7 @@ impl<M: Middleware> Multicall<M> {
             }
             // Same result type (`MulticallResult`)
             v @ (MulticallVersion::Multicall2 | MulticallVersion::Multicall3) => {
-                let is_v2 = v as u8 == 2;
+                let is_v2 = v == MulticallVersion::Multicall2;
                 let call = if is_v2 { self.as_try_aggregate() } else { self.as_aggregate_3() };
                 let return_data = call.call().await?;
                 self.calls
@@ -626,7 +626,7 @@ impl<M: Middleware> Multicall<M> {
 
                             // Decode with "Error(string)" (0x08c379a0)
                             if ret.len() >= 4 && ret[..4] == [0x08, 0xc3, 0x79, 0xa0] {
-                                decode(&[ParamType::String], &ret[4..])?.remove(0)
+                                Token::String(String::decode(&ret[4..])?)
                             } else if ret.is_empty() {
                                 Token::String(String::new())
                             } else {
