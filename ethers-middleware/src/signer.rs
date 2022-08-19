@@ -303,9 +303,13 @@ where
         self.signer.sign_message(data.into()).await.map_err(SignerMiddlewareError::SignerError)
     }
 
-    async fn estimate_gas(&self, tx: &TypedTransaction) -> Result<U256, Self::Error> {
+    async fn estimate_gas(
+        &self,
+        tx: &TypedTransaction,
+        block: Option<BlockId>,
+    ) -> Result<U256, Self::Error> {
         let tx = self.set_tx_from_if_none(tx);
-        self.inner.estimate_gas(&tx).await.map_err(SignerMiddlewareError::MiddlewareError)
+        self.inner.estimate_gas(&tx, block).await.map_err(SignerMiddlewareError::MiddlewareError)
     }
 
     async fn create_access_list(
