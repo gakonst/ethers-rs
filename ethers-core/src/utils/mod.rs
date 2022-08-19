@@ -155,9 +155,15 @@ where
     S: ToString,
     K: TryInto<Units, Error = ConversionError> + Copy,
 {
-    use rust_decimal::Decimal;
+    use rust_decimal::{Decimal, MathematicalOps};
+
     let num: Decimal = amount.to_string().parse()?;
-    let multiplier: Decimal = 10u64.pow(units.try_into()?.as_num()).into();
+    let exponent = units.try_into()?.as_num();
+
+    let multiplier = Decimal::TEN
+        .checked_powu(exponent.into())
+        .ok_or(rust_decimal::Error::ExceedsMaximumPossibleValue)?;
+
     let val =
         num.checked_mul(multiplier).ok_or(rust_decimal::Error::ExceedsMaximumPossibleValue)?;
     let u256_n: U256 = U256::from_dec_str(&val.round().to_string())?;
@@ -439,6 +445,14 @@ mod tests {
         let eth =
             format_units(U256::from_dec_str("1005633240123456789").unwrap(), "ether").unwrap();
         assert_eq!(eth, "1.005633240123456789");
+    }
+
+    #[test]
+    fn parse_large_units() {
+        let decimals = 27u32;
+        let val = "10.55";
+        let unit = parse_units(val, decimals).unwrap();
+        assert_eq!(unit.to_string(), "10550000000000000000000000000");
     }
 
     #[test]
