@@ -17,16 +17,20 @@ use semver::Version;
 use serde::{de::DeserializeOwned, Serialize};
 use std::{
     borrow::Cow,
-    collections::{btree_map::BTreeMap, HashMap, HashSet},
+    collections::{btree_map::BTreeMap, HashSet},
     ffi::OsString,
-    fmt, fs, io,
+    fmt, fs,
+    hash::Hash,
+    io,
     ops::Deref,
     path::{Path, PathBuf},
 };
 use tracing::{error, trace};
 
 mod configurable;
-use crate::contracts::VersionedContract;
+pub(crate) mod files;
+
+use crate::files::MappedContract;
 pub use configurable::*;
 
 /// Represents unique artifact metadata for identifying artifacts on output
@@ -119,11 +123,6 @@ impl<T> ArtifactFile<T> {
         }
     }
 }
-
-/// Internal helper type alias that maps all files for the contracts
-/// `output -> [(file, name, contract)]`
-pub(crate) type ArtifactFiles<'a> =
-    HashMap<PathBuf, Vec<(&'a str, &'a str, &'a VersionedContract)>>;
 
 /// local helper type alias `file name -> (contract name  -> Vec<..>)`
 pub(crate) type ArtifactsMap<T> = FileToContractsMap<Vec<ArtifactFile<T>>>;
@@ -808,8 +807,9 @@ pub trait ArtifactOutput {
         // converting stand-alone artifacts in the next step
         let mut final_artifact_paths = HashSet::new();
 
-        for (artifact_path, contracts) in artifact_files {
-            for (idx, (file, name, contract)) in contracts.iter().enumerate() {
+        for contracts in artifact_files.files.into_values() {
+            for (idx, mapped_contract) in contracts.iter().enumerate() {
+                let MappedContract { file, name, contract, artifact_path } = mapped_contract;
                 // track `SourceFile`s that can be mapped to contracts
                 let source_file = sources.find_file_and_version(file, &contract.version);
 
@@ -824,11 +824,11 @@ pub trait ArtifactOutput {
                     // contracts need to adjust the paths properly
 
                     // we keep the top most conflicting file unchanged
-                    let is_top_most = contracts.iter().enumerate().filter(|(i, _)| *i != idx).all(
-                        |(_, (f, _, _))| {
-                            Path::new(file).components().count() < Path::new(f).components().count()
-                        },
-                    );
+                    let is_top_most =
+                        contracts.iter().enumerate().filter(|(i, _)| *i != idx).all(|(_, c)| {
+                            Path::new(file).components().count() <
+                                Path::new(c.file).components().count()
+                        });
                     if !is_top_most {
                         // we resolve the conflicting by finding a new unique, alternative path
                         artifact_path = Self::conflict_free_output_file(
