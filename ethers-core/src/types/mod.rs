@@ -68,3 +68,6 @@ mod other;
 pub use other::OtherFields;
 
 pub mod serde_helpers;
+
+mod syncing;
+pub use syncing::{SyncProgress, SyncingStatus};
