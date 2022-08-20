@@ -318,7 +318,7 @@ where
     }
 
     async fn handle_text(&mut self, inner: String) -> Result<(), ClientError> {
-        trace!(mg=?inner, "received message");
+        trace!(msg=?inner, "received message");
         let (id, result) = match serde_json::from_str(&inner)? {
             Response::Success { id, result } => (id, Ok(result.to_owned())),
             Response::Error { id, error } => (id, Err(error)),
