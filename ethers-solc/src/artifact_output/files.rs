@@ -1,7 +1,7 @@
 use crate::contracts::VersionedContract;
 use std::{
     collections::HashMap,
-    hash::{Hash},
+    hash::Hash,
     ops::{Deref, DerefMut},
     path::{Path, PathBuf},
 };
