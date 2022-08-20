@@ -3,7 +3,8 @@ use crate::{
         contract::{CompactContractRef, Contract},
         FileToContractsMap,
     },
-    ArtifactFiles, ArtifactOutput, OutputContext,
+    files::{MappedArtifactFile, MappedArtifactFiles, MappedContract},
+    ArtifactOutput, OutputContext,
 };
 use semver::Version;
 use serde::{Deserialize, Serialize};
@@ -47,8 +48,8 @@ impl VersionedContracts {
     pub(crate) fn artifact_files<T: ArtifactOutput + ?Sized>(
         &self,
         ctx: &OutputContext,
-    ) -> ArtifactFiles {
-        let mut output_files = ArtifactFiles::with_capacity(self.len());
+    ) -> MappedArtifactFiles {
+        let mut output_files = MappedArtifactFiles::with_capacity(self.len());
         for (file, contracts) in self.iter() {
             for (name, versioned_contracts) in contracts {
                 for contract in versioned_contracts {
@@ -56,7 +57,7 @@ impl VersionedContracts {
                     // we reuse the path, this will make sure that even if there are conflicting
                     // files (files for witch `T::output_file()` would return the same path) we use
                     // consistent output paths
-                    let output = if let Some(existing_artifact) =
+                    let artifact_path = if let Some(existing_artifact) =
                         ctx.existing_artifact(file, name, &contract.version).cloned()
                     {
                         trace!("use existing artifact file {:?}", existing_artifact,);
@@ -69,12 +70,18 @@ impl VersionedContracts {
 
                     trace!(
                         "use artifact file {:?} for contract file {} {}",
-                        output,
+                        artifact_path,
                         file,
                         contract.version
                     );
-                    let contract = (file.as_str(), name.as_str(), contract);
-                    output_files.entry(output).or_default().push(contract);
+                    let artifact = MappedArtifactFile::new(&artifact_path);
+                    let contract = MappedContract {
+                        file: file.as_str(),
+                        name: name.as_str(),
+                        contract,
+                        artifact_path,
+                    };
+                    output_files.entry(artifact).or_default().push(contract);
                 }
             }
         }
