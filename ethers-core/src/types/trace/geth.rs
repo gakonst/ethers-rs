@@ -1,29 +1,29 @@
-use crate::types::{Bytes, H256, U256};
+use crate::types::{Bytes, H160, H256, U256};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct GethTrace {
-    failed: bool,
-    gas: u64,
+    pub failed: bool,
+    pub gas: u64,
     #[serde(rename = "returnValue")]
-    return_value: Bytes,
+    pub return_value: Bytes,
     #[serde(rename = "structLogs")]
-    struct_logs: Vec<StructLog>,
+    pub struct_logs: Vec<StructLog>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct StructLog {
-    depth: u64,
-    error: Option<String>,
-    gas: u64,
+    pub depth: u64,
+    pub error: Option<String>,
+    pub gas: u64,
     #[serde(rename = "gasCost")]
-    gas_cost: u64,
-    memory: Option<Vec<String>>,
-    op: String,
-    pc: U256,
-    stack: Vec<String>,
-    storage: BTreeMap<H256, H256>,
+    pub gas_cost: u64,
+    pub memory: Option<Vec<u8>>,
+    pub op: String,
+    pub pc: U256,
+    pub stack: Vec<U256>,
+    pub storage: BTreeMap<H160, BTreeMap<H256, H256>>,
 }
 
 /// Bindings for additional `debug_traceTransaction` options
