@@ -13,19 +13,25 @@ pub struct GethTrace {
     pub struct_logs: Vec<StructLog>,
 }
 
-// https://github.com/ethereum/go-ethereum/blob/366d2169fbc0e0f803b68c042b77b6b480836dbc/eth/tracers/logger/logger.go#L66-L79
+// https://github.com/ethereum/go-ethereum/blob/366d2169fbc0e0f803b68c042b77b6b480836dbc/eth/tracers/logger/logger.go#L413-L426
 #[derive(Serialize, Deserialize, Debug)]
 pub struct StructLog {
     pub depth: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
     pub gas: u64,
     #[serde(rename = "gasCost")]
     pub gas_cost: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub memory: Option<Vec<u8>>,
     pub op: String,
     pub pc: U256,
-    pub stack: Vec<U256>,
-    pub storage: BTreeMap<H160, BTreeMap<H256, H256>>,
+    #[serde(rename = "refund", skip_serializing_if = "Option::is_none")]
+    pub refund_counter: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub stack: Option<Vec<U256>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub storage: Option<BTreeMap<H160, BTreeMap<H256, H256>>>,
 }
 
 /// Bindings for additional `debug_traceTransaction` options
