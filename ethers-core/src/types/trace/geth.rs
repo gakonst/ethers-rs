@@ -2,6 +2,7 @@ use crate::types::{Bytes, H160, H256, U256};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
+// https://github.com/ethereum/go-ethereum/blob/a9ef135e2dd53682d106c6a2aede9187026cc1de/eth/tracers/logger/logger.go#L406-L411
 #[derive(Serialize, Deserialize, Debug)]
 pub struct GethTrace {
     pub failed: bool,
@@ -12,6 +13,7 @@ pub struct GethTrace {
     pub struct_logs: Vec<StructLog>,
 }
 
+// https://github.com/ethereum/go-ethereum/blob/366d2169fbc0e0f803b68c042b77b6b480836dbc/eth/tracers/logger/logger.go#L66-L79
 #[derive(Serialize, Deserialize, Debug)]
 pub struct StructLog {
     pub depth: u64,
