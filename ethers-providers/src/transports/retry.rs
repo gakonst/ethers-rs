@@ -6,7 +6,6 @@ use crate::{provider::ProviderError, JsonRpcClient};
 use async_trait::async_trait;
 use serde::{de::DeserializeOwned, Serialize};
 use std::{
-    error::Error,
     fmt::Debug,
     sync::atomic::{AtomicU32, Ordering},
     time::Duration,
@@ -198,35 +197,27 @@ impl Default for RetryClientBuilder {
 /// 2. Params serialization failed.
 /// 3. Request timed out i.e. max retries were already made.
 #[derive(Error, Debug)]
-pub enum RetryClientError<T>
-where
-    T: JsonRpcClient,
-    T::Error: Sync + Send + 'static,
-{
+pub enum RetryClientError {
     #[error(transparent)]
-    ProviderError(T::Error),
+    ProviderError(ProviderError),
     TimeoutError,
     #[error(transparent)]
     SerdeJson(serde_json::Error),
 }
 
-impl<T> std::fmt::Display for RetryClientError<T>
-where
-    T: JsonRpcClient,
-    <T as JsonRpcClient>::Error: Sync + Send + 'static,
-{
+impl std::fmt::Display for RetryClientError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}", self)
     }
 }
 
-impl<T> From<RetryClientError<T>> for ProviderError
-where
-    T: JsonRpcClient + 'static,
-    <T as JsonRpcClient>::Error: Sync + Send + 'static,
-{
-    fn from(src: RetryClientError<T>) -> Self {
-        ProviderError::JsonRpcClientError(Box::new(src))
+impl From<RetryClientError> for ProviderError {
+    fn from(src: RetryClientError) -> Self {
+        match src {
+            RetryClientError::ProviderError(err) => err,
+            RetryClientError::TimeoutError => ProviderError::JsonRpcClientError(Box::new(src)),
+            RetryClientError::SerdeJson(err) => err.into(),
+        }
     }
 }
 
@@ -236,7 +227,7 @@ where
     T: JsonRpcClient + 'static,
     T::Error: Sync + Send + 'static,
 {
-    type Error = RetryClientError<T>;
+    type Error = RetryClientError;
 
     async fn request<A, R>(&self, method: &str, params: A) -> Result<R, Self::Error>
     where
@@ -320,6 +311,7 @@ where
                 trace!("retrying and backing off for {:?}", next_backoff);
                 tokio::time::sleep(next_backoff).await;
             } else {
+                let err: ProviderError = err.into();
                 if timeout_retries < self.timeout_retries && maybe_connectivity(&err) {
                     timeout_retries += 1;
                     trace!(err = ?err, "retrying due to spurious network");
@@ -379,8 +371,8 @@ fn compute_unit_offset_in_secs(
 
 /// Checks whether the `error` is the result of a connectivity issue, like
 /// `request::Error::TimedOut`
-fn maybe_connectivity(err: &(dyn Error + 'static)) -> bool {
-    if let Some(reqwest_err) = err.downcast_ref::<reqwest::Error>() {
+fn maybe_connectivity(err: &ProviderError) -> bool {
+    if let ProviderError::HTTPError(reqwest_err) = err {
         if reqwest_err.is_timeout() || reqwest_err.is_connect() {
             return true
         }
