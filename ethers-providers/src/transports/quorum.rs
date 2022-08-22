@@ -578,7 +578,7 @@ where
 #[derive(Clone)]
 pub enum QuorumParams {
     Value(Value),
-    Zst
+    Zst,
 }
 
 #[cfg(test)]

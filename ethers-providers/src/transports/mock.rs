@@ -16,7 +16,7 @@ use thiserror::Error;
 #[derive(Debug)]
 enum MockParams {
     Value(Value),
-    Zst
+    Zst,
 }
 
 #[derive(Clone, Debug)]
