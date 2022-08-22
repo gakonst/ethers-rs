@@ -245,8 +245,7 @@ where
         let params = if std::mem::size_of::<A>() == 0 {
             RetryParams::Zst(())
         } else {
-            let params =
-                serde_json::to_value(params).map_err(RetryClientError::SerdeJson)?;
+            let params = serde_json::to_value(params).map_err(RetryClientError::SerdeJson)?;
             RetryParams::Value(params)
         };
 
