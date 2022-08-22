@@ -246,7 +246,7 @@ where
             RetryParams::Zst(())
         } else {
             let params =
-                serde_json::to_value(params).map_err(|err| RetryClientError::SerdeJson(err))?;
+                serde_json::to_value(params).map_err(RetryClientError::SerdeJson)?;
             RetryParams::Value(params)
         };
 
