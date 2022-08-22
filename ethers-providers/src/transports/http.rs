@@ -52,7 +52,10 @@ pub enum ClientError {
 
 impl From<ClientError> for ProviderError {
     fn from(src: ClientError) -> Self {
-        ProviderError::JsonRpcClientError(Box::new(src))
+        match src {
+            ClientError::ReqwestError(err) => ProviderError::HTTPError(err),
+            _ => ProviderError::JsonRpcClientError(Box::new(src)),
+        }
     }
 }
 
