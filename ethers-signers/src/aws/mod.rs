@@ -1,5 +1,12 @@
 //! AWS KMS-based Signer
 
+use aws_sdk_kms::{
+    error::{GetPublicKeyError, SignError},
+    model::{MessageType, SigningAlgorithmSpec},
+    output::{GetPublicKeyOutput, SignOutput},
+    types::{Blob, SdkError},
+    Client as KmsClient,
+};
 use ethers_core::{
     k256::ecdsa::{Error as K256Error, Signature as KSig, VerifyingKey},
     types::{
@@ -7,10 +14,6 @@ use ethers_core::{
         Address, Signature as EthSig, H256,
     },
     utils::hash_message,
-};
-use rusoto_core::RusotoError;
-use rusoto_kms::{
-    GetPublicKeyError, GetPublicKeyRequest, Kms, KmsClient, SignError, SignRequest, SignResponse,
 };
 use tracing::{debug, instrument, trace};
 
@@ -27,16 +30,13 @@ use utils::{apply_eip155, rsig_to_ethsig, verifying_key_to_address};
 /// within some runtime.
 ///
 /// ```compile_fail
-/// use rusoto_core::Client;
-/// use rusoto_kms::{Kms, KmsClient};
+/// use aws_config::meta::region::RegionProviderChain;
+/// use aws_sdk_kms::{Client as KmsClient};
 ///
 /// user ethers_signers::Signer;
-///
-/// let client = Client::new_with(
-///     EnvironmentProvider::default(),
-///     HttpClient::new().unwrap()
-/// );
-/// let kms_client = KmsClient::new_with_client(client, Region::UsWest1);
+/// let region_provider = RegionProviderChain::default_provider().or_else("us-east-1");
+/// let config = aws_config::from_env().region(region_provider).load().await;
+/// let kms_client = KmsClient::new(&config);
 /// let key_id = "...";
 /// let chain_id = 1;
 ///
@@ -45,7 +45,7 @@ use utils::{apply_eip155, rsig_to_ethsig, verifying_key_to_address};
 /// ```
 #[derive(Clone)]
 pub struct AwsSigner<'a> {
-    kms: &'a rusoto_kms::KmsClient,
+    kms: &'a KmsClient,
     chain_id: u64,
     key_id: String,
     pubkey: VerifyingKey,
@@ -77,9 +77,9 @@ impl<'a> std::fmt::Display for AwsSigner<'a> {
 #[derive(thiserror::Error, Debug)]
 pub enum AwsSignerError {
     #[error("{0}")]
-    SignError(#[from] RusotoError<SignError>),
+    SignError(#[from] SdkError<SignError>),
     #[error("{0}")]
-    GetPublicKeyError(#[from] RusotoError<GetPublicKeyError>),
+    GetPublicKeyError(#[from] SdkError<GetPublicKeyError>),
     #[error("{0}")]
     K256(#[from] K256Error),
     #[error("{0}")]
@@ -110,17 +110,14 @@ impl From<spki::Error> for AwsSignerError {
 async fn request_get_pubkey<T>(
     kms: &KmsClient,
     key_id: T,
-) -> Result<rusoto_kms::GetPublicKeyResponse, RusotoError<GetPublicKeyError>>
+) -> Result<GetPublicKeyOutput, SdkError<GetPublicKeyError>>
 where
     T: AsRef<str>,
 {
     debug!("Dispatching get_public_key");
-
-    let req = GetPublicKeyRequest { grant_tokens: None, key_id: key_id.as_ref().to_owned() };
-    trace!("{:?}", &req);
-    let resp = kms.get_public_key(req).await;
+    let resp = kms.get_public_key().key_id(key_id.as_ref().to_owned()).send().await?;
     trace!("{:?}", &resp);
-    resp
+    Ok(resp)
 }
 
 #[instrument(err, skip(kms, digest, key_id), fields(digest = %hex::encode(&digest), key_id = %key_id.as_ref()))]
@@ -128,22 +125,22 @@ async fn request_sign_digest<T>(
     kms: &KmsClient,
     key_id: T,
     digest: [u8; 32],
-) -> Result<SignResponse, RusotoError<SignError>>
+) -> Result<SignOutput, SdkError<SignError>>
 where
     T: AsRef<str>,
 {
     debug!("Dispatching sign");
-    let req = SignRequest {
-        grant_tokens: None,
-        key_id: key_id.as_ref().to_owned(),
-        message: digest.to_vec().into(),
-        message_type: Some("DIGEST".to_owned()),
-        signing_algorithm: "ECDSA_SHA_256".to_owned(),
-    };
-    trace!("{:?}", &req);
-    let resp = kms.sign(req).await;
+    let blob = Blob::new(digest);
+    let resp = kms
+        .sign()
+        .key_id(key_id.as_ref().to_owned())
+        .message(blob)
+        .message_type(MessageType::Digest)
+        .signing_algorithm(SigningAlgorithmSpec::EcdsaSha256)
+        .send()
+        .await?;
     trace!("{:?}", &resp);
-    resp
+    Ok(resp)
 }
 
 impl<'a> AwsSigner<'a> {
@@ -279,10 +276,8 @@ impl<'a> super::Signer for AwsSigner<'a> {
 
 #[cfg(test)]
 mod tests {
-    use rusoto_core::{
-        credential::{EnvironmentProvider, StaticProvider},
-        Client, HttpClient, Region,
-    };
+    use aws_config::{meta::region::RegionProviderChain, SdkConfig};
+    use aws_sdk_kms::Region;
     use tracing::metadata::LevelFilter;
 
     use super::*;
@@ -294,21 +289,15 @@ mod tests {
     }
 
     #[allow(dead_code)]
-    fn static_client() -> KmsClient {
-        let access_key = "".to_owned();
-        let secret_access_key = "".to_owned();
-
-        let client = Client::new_with(
-            StaticProvider::new(access_key, secret_access_key, None, None),
-            HttpClient::new().unwrap(),
-        );
-        KmsClient::new_with_client(client, Region::UsWest1)
+    async fn static_client() -> KmsClient {
+        KmsClient::new(&SdkConfig::builder().region(Region::new("us-west-1")).build())
     }
 
     #[allow(dead_code)]
-    fn env_client() -> KmsClient {
-        let client = Client::new_with(EnvironmentProvider::default(), HttpClient::new().unwrap());
-        KmsClient::new_with_client(client, Region::UsWest1)
+    async fn env_client() -> KmsClient {
+        let region_provider = RegionProviderChain::default_provider().or_else("us-west-1");
+        let config = aws_config::from_env().region(region_provider).load().await;
+        KmsClient::new(&config)
     }
 
     #[tokio::test]
@@ -319,7 +308,7 @@ mod tests {
             _ => return,
         };
         setup_tracing();
-        let client = env_client();
+        let client = env_client().await;
         let signer = AwsSigner::new(&client, key_id, chain_id).await.unwrap();
 
         let message = vec![0, 1, 2, 3];

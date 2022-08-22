@@ -241,6 +241,7 @@
 
 ### Unreleased
 
+- `AwsSigner` switched to the official AWS SDK for Rust [#1628](https://github.com/gakonst/ethers-rs/pull/1628)
 - `eth-keystore-rs` crate updated. Allow an optional name for the to-be-generated
   keystore file [#910](https://github.com/gakonst/ethers-rs/pull/910)
 

@@ -4,6 +4,7 @@
 
 use std::convert::TryFrom;
 
+use aws_sdk_kms::output::{GetPublicKeyOutput, SignOutput};
 use ethers_core::{
     k256::{
         ecdsa::{
@@ -16,7 +17,6 @@ use ethers_core::{
     types::{Address, Signature as EthSig, U256},
     utils::keccak256,
 };
-use rusoto_kms::{GetPublicKeyResponse, SignResponse};
 
 use crate::aws::AwsSignerError;
 
@@ -76,7 +76,7 @@ pub(super) fn verifying_key_to_address(key: &VerifyingKey) -> Address {
 }
 
 /// Decode an AWS KMS Pubkey response
-pub(super) fn decode_pubkey(resp: GetPublicKeyResponse) -> Result<VerifyingKey, AwsSignerError> {
+pub(super) fn decode_pubkey(resp: GetPublicKeyOutput) -> Result<VerifyingKey, AwsSignerError> {
     let raw = resp
         .public_key
         .ok_or_else(|| AwsSignerError::from("Pubkey not found in response".to_owned()))?;
@@ -88,11 +88,11 @@ pub(super) fn decode_pubkey(resp: GetPublicKeyResponse) -> Result<VerifyingKey, 
 }
 
 /// Decode an AWS KMS Signature response
-pub(super) fn decode_signature(resp: SignResponse) -> Result<KSig, AwsSignerError> {
+pub(super) fn decode_signature(resp: SignOutput) -> Result<KSig, AwsSignerError> {
     let raw = resp
         .signature
         .ok_or_else(|| AwsSignerError::from("Signature not found in response".to_owned()))?;
 
-    let sig = KSig::from_der(&raw)?;
+    let sig = KSig::from_der(raw.as_ref())?;
     Ok(sig.normalize_s().unwrap_or(sig))
 }
