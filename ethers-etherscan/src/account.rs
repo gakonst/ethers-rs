@@ -52,9 +52,9 @@ mod genesis_string {
     {
         let json = Cow::<'de, str>::deserialize(deserializer)?;
         if !json.is_empty() && !json.starts_with("GENESIS") {
-            let value =
-                serde_json::from_str(&format!("\"{}\"", &json)).map_err(D::Error::custom)?;
-            Ok(GenesisOption::Some(value))
+            serde_json::from_str(&format!("\"{}\"", &json))
+                .map(GenesisOption::Some)
+                .map_err(D::Error::custom)
         } else if json.starts_with("GENESIS") {
             Ok(GenesisOption::Genesis)
         } else {
@@ -92,9 +92,9 @@ mod json_string {
         if json.is_empty() {
             Ok(Option::None)
         } else {
-            let value =
-                serde_json::from_str(&format!("\"{}\"", &json)).map_err(D::Error::custom)?;
-            Ok(Option::Some(value))
+            serde_json::from_str(&format!("\"{}\"", &json))
+                .map(Option::Some)
+                .map_err(D::Error::custom)
         }
     }
 }
@@ -128,9 +128,9 @@ mod hex_string {
         if json.is_empty() || json == "0x" {
             Ok(Option::None)
         } else {
-            let value =
-                serde_json::from_str(&format!("\"{}\"", &json)).map_err(D::Error::custom)?;
-            Ok(Option::Some(value))
+            serde_json::from_str(&format!("\"{}\"", &json))
+                .map(Option::Some)
+                .map_err(D::Error::custom)
         }
     }
 }
