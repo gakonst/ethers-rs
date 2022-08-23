@@ -135,7 +135,10 @@ mod hex_string {
     }
 }
 
-/// Possible values for some field responses
+/// Possible values for some field responses.
+///
+/// Transactions from the Genesis block may contain fields that do not conform to the expected
+/// types.
 #[derive(Debug)]
 pub enum GenesisOption<T> {
     None,
