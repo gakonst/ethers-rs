@@ -191,8 +191,8 @@ impl Context {
         // holds the bytecode parsed from the abi_str, if present
         let mut contract_bytecode = None;
 
-        let (abi, human_readable, abi_parser) = parse_abi(&abi_str).map_err(|err| {
-            eyre::eyre!("error parsing abi for contract: {}\n{}", args.contract_name, err)
+        let (abi, human_readable, abi_parser) = parse_abi(&abi_str).wrap_err_with(|| {
+            eyre::eyre!("error parsing abi for contract: {}", args.contract_name)
         })?;
 
         // try to extract all the solidity structs from the normal JSON ABI
@@ -354,7 +354,7 @@ fn parse_abi(abi_str: &str) -> Result<(Abi, bool, AbiParser)> {
     } else {
         // a best-effort coercion of an ABI or an artifact JSON into an artifact JSON.
         let contract: JsonContract = serde_json::from_str(abi_str)
-            .map_err(|err| eyre::eyre!("err: {}\nabi: {}", err, abi_str))?;
+            .wrap_err_with(|| eyre::eyre!("failed deserializing abi:\n{}", abi_str))?;
 
         (contract.into_abi(), false, abi_parser)
     };
