@@ -9,7 +9,7 @@ use crate::{provider::ProviderError, JsonRpcClient, PubsubClient};
 use async_trait::async_trait;
 use ethers_core::types::{U256, U64};
 use futures_core::Stream;
-use futures_util::{future::join_all, FutureExt, StreamExt};
+use futures_util::{future, FutureExt, StreamExt};
 use serde::{de::DeserializeOwned, Serialize};
 use serde_json::{value::RawValue, Value};
 use thiserror::Error;
@@ -160,23 +160,56 @@ impl<T> QuorumProviderBuilder<T> {
 }
 
 impl<T: JsonRpcClientWrapper> QuorumProvider<T> {
-    /// Returns the block height that _all_ providers have surpassed.
-    ///
-    /// This is the minimum of all provider's block numbers
-    async fn get_minimum_block_number(&self) -> Result<U64, ProviderError> {
-        let mut numbers = join_all(self.providers.iter().map(|provider| async move {
-            let block = provider.inner.request("eth_blockNumber", QuorumParams::Zst).await?;
-            serde_json::from_value::<U64>(block).map_err(ProviderError::from)
-        }))
-        .await
-        .into_iter()
-        .collect::<Result<Vec<_>, _>>()?;
-        numbers.sort();
+    /// Returns the block height that a _quorum_ of providers have reached.
+    async fn get_quorum_block_number(&self) -> Result<U64, QuorumError> {
+        let mut queries = self
+            .providers
+            .iter()
+            .map(|provider| {
+                Box::pin(async move {
+                    let block =
+                        provider.inner.request("eth_blockNumber", QuorumParams::Zst).await?;
+                    serde_json::from_value::<U64>(block)
+                        .map(|b| (provider, b))
+                        .map_err(ProviderError::from)
+                })
+            })
+            .collect::<Vec<_>>();
 
-        numbers
-            .into_iter()
-            .next()
-            .ok_or_else(|| ProviderError::CustomError("No Providers".to_string()))
+        let mut numbers = vec![];
+        let mut errors = vec![];
+        while !queries.is_empty() {
+            let (response, _index, remaining) = future::select_all(queries).await;
+            queries = remaining;
+            match response {
+                Ok(v) => numbers.push(v),
+                Err(e) => errors.push(e),
+            }
+        }
+
+        numbers.sort_by(|(_, block_a), (_, block_b)| {
+            // order by descending block number
+            block_a.cmp(block_b).reverse()
+        });
+
+        // find the highest possible block number a quorum agrees on
+        let mut weight_set = vec![];
+        let mut block = U64::from(0);
+        for (provider, n) in numbers.iter().copied() {
+            weight_set.push(provider);
+            debug_assert!(block == U64::from(0) || block >= n);
+            block = n;
+            if self.quorum.weight(weight_set.iter().copied()) >= self.quorum_weight {
+                return Ok(block)
+            }
+        }
+        Err(QuorumError::NoQuorumReached {
+            values: numbers
+                .into_iter()
+                .map(|(_, block)| serde_json::to_value(block).expect("Failed to serialize U64"))
+                .collect(),
+            errors,
+        })
     }
 
     /// Normalizes the request payload depending on the call
@@ -187,6 +220,7 @@ impl<T: JsonRpcClientWrapper> QuorumProvider<T> {
             // at this time no normalization is required for calls with zero parameters.
             return
         };
+
         match method {
             "eth_call" |
             "eth_createAccessList" |
@@ -197,19 +231,26 @@ impl<T: JsonRpcClientWrapper> QuorumProvider<T> {
             "trace_block" => {
                 // calls that include the block number in the params at the last index of json array
                 if let Some(block) = params.as_array_mut().and_then(|arr| arr.last_mut()) {
-                    if Some("latest") == block.as_str() {
-                        // replace `latest` with the minimum block height of all providers
-                        if let Ok(minimum) = self
-                            .get_minimum_block_number()
-                            .await
-                            .and_then(|num| Ok(serde_json::to_value(num)?))
-                        {
-                            *block = minimum
-                        }
-                    }
+                    self.replace_latest(block).await
+                }
+            }
+            "eth_getBlockByNumber" => {
+                // calls that include the block number in the params at the first index of json
+                // array
+                if let Some(block) = params.as_array_mut().and_then(|arr| arr.first_mut()) {
+                    self.replace_latest(block).await
                 }
             }
             _ => {}
+        }
+    }
+
+    async fn replace_latest(&self, block: &mut Value) {
+        if Some("latest") == block.as_str() {
+            // replace `latest` with block height of a quorum of providers
+            if let Ok(minimum) = self.get_quorum_block_number().await {
+                *block = serde_json::to_value(minimum).expect("Failed to serialize U64")
+            }
         }
     }
 }
@@ -236,20 +277,23 @@ pub enum Quorum {
 }
 
 impl Quorum {
-    fn weight<T>(self, providers: &[WeightedProvider<T>]) -> u64 {
+    fn weight<'a, T: 'a>(
+        self,
+        providers: impl IntoIterator<Item = &'a WeightedProvider<T>>,
+    ) -> u64 {
         match self {
-            Quorum::All => providers.iter().map(|p| p.weight).sum::<u64>(),
+            Quorum::All => providers.into_iter().map(|p| p.weight).sum::<u64>(),
             Quorum::Majority => {
-                let total = providers.iter().map(|p| p.weight).sum::<u64>();
+                let total = providers.into_iter().map(|p| p.weight).sum::<u64>();
                 let rem = total % 2;
                 total / 2 + rem
             }
             Quorum::Percentage(p) => {
-                providers.iter().map(|p| p.weight).sum::<u64>() * (p as u64) / 100
+                providers.into_iter().map(|p| p.weight).sum::<u64>() * (p as u64) / 100
             }
             Quorum::ProviderCount(num) => {
                 // take the lowest `num` weights
-                let mut weights = providers.iter().map(|p| p.weight).collect::<Vec<_>>();
+                let mut weights = providers.into_iter().map(|p| p.weight).collect::<Vec<_>>();
                 weights.sort_unstable();
                 weights.into_iter().take(num).sum()
             }
@@ -456,19 +500,30 @@ where
         };
         self.normalize_request(method, &mut params).await;
 
-        let requests = self
-            .providers
-            .iter()
-            .enumerate()
-            .map(|(idx, provider)| {
-                let params = params.clone();
-                let fut = provider.inner.request(method, params).map(move |res| (res, idx));
-                Box::pin(fut) as PendingRequest
-            })
-            .collect::<Vec<_>>();
+        match method {
+            "eth_blockNumber" => {
+                let block = self.get_quorum_block_number().await?;
+                // a little janky to convert to a string and back but we don't know for sure what
+                // type R is and adding constraints for just this case feels wrong.
+                let value = serde_json::to_value(block).expect("Failed to serialize U64");
+                Ok(serde_json::from_value(value)?)
+            }
+            _ => {
+                let requests = self
+                    .providers
+                    .iter()
+                    .enumerate()
+                    .map(|(idx, provider)| {
+                        let params = params.clone();
+                        let fut = provider.inner.request(method, params).map(move |res| (res, idx));
+                        Box::pin(fut) as PendingRequest
+                    })
+                    .collect::<Vec<_>>();
 
-        let value = QuorumRequest::new(self, requests).await?;
-        Ok(serde_json::from_value(value)?)
+                let value = QuorumRequest::new(self, requests).await?;
+                Ok(serde_json::from_value(value)?)
+            }
+        }
     }
 }
 
