@@ -93,7 +93,22 @@ impl Chain {
             Chain::Oasis => 5_500,
             Chain::Emerald => 6_000,
             Chain::Dev | Chain::AnvilHardhat => 200,
-            _ => return None,
+            // Explictly handle all network to make it easier not to forget this match when new
+            // networks are added.
+            Chain::Morden |
+            Chain::Ropsten |
+            Chain::Rinkeby |
+            Chain::Goerli |
+            Chain::Kovan |
+            Chain::XDai |
+            Chain::Sepolia |
+            Chain::Moonbase |
+            Chain::MoonbeamDev |
+            Chain::OptimismKovan |
+            Chain::Poa |
+            Chain::Sokol |
+            Chain::Rsk |
+            Chain::EmeraldTestnet => return None,
         };
 
         Some(Duration::from_millis(ms))
