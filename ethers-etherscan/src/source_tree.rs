@@ -4,13 +4,13 @@ use std::{
     path::{Component, Path, PathBuf},
 };
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct SourceTreeEntry {
     pub path: PathBuf,
     pub contents: String,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct SourceTree {
     pub entries: Vec<SourceTreeEntry>,
 }

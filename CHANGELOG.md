@@ -83,6 +83,7 @@
 - Add Arithmetic Shift Right operation for I256 [#1323](https://github.com/gakonst/ethers-rs/issues/1323)
 - [#1535](https://github.com/gakonst/ethers-rs/pull/1535) Add support to Aurora and Aurora testnet networks.
 - [#1632](https://github.com/gakonst/ethers-rs/pull/1632) Re-export `H32` from `ethabi`.
+- [#1634](https://github.com/gakonst/ethers-rs/pull/1634) Derive missing `Clone`, `Copy` and `Debug` impls in ethers-etherscan.
 
 ## ethers-contract-abigen
 
