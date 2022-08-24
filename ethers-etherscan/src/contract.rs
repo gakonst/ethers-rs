@@ -139,7 +139,7 @@ impl Default for CodeFormat {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct ContractMetadata {
     pub items: Vec<Metadata>,
@@ -154,12 +154,12 @@ impl IntoIterator for ContractMetadata {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone, Debug)]
 struct EtherscanSourceEntry {
     content: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone, Debug)]
 struct EtherscanSourceJsonMetadata {
     sources: HashMap<String, EtherscanSourceEntry>,
 }
@@ -217,7 +217,7 @@ impl ContractMetadata {
 }
 
 /// Etherscan contract metadata
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Metadata {
     #[serde(rename = "SourceCode")]
     pub source_code: String,

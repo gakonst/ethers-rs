@@ -399,7 +399,7 @@ pub enum ResponseData<T> {
 }
 
 /// The type that gets serialized as query
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 struct Query<'a, T: Serialize> {
     apikey: Cow<'a, str>,
     module: Cow<'a, str>,

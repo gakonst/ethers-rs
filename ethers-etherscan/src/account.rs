@@ -11,7 +11,7 @@ use std::{
 };
 
 /// The raw response from the balance-related API endpoints
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct AccountBalance {
     pub account: Address,
     pub balance: String,
@@ -139,7 +139,7 @@ mod hex_string {
 ///
 /// Transactions from the Genesis block may contain fields that do not conform to the expected
 /// types.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum GenesisOption<T> {
     None,
     Genesis,
@@ -169,7 +169,7 @@ impl<T> GenesisOption<T> {
 }
 
 /// The raw response from the transaction list API endpoint
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NormalTransaction {
     pub is_error: String,
@@ -211,7 +211,7 @@ pub struct NormalTransaction {
 }
 
 /// The raw response from the internal transaction list API endpoint
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InternalTransaction {
     #[serde(deserialize_with = "deserialize_stringified_block_number")]
@@ -239,7 +239,7 @@ pub struct InternalTransaction {
 }
 
 /// The raw response from the ERC20 transfer list API endpoint
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ERC20TokenTransferEvent {
     #[serde(deserialize_with = "deserialize_stringified_block_number")]
@@ -274,7 +274,7 @@ pub struct ERC20TokenTransferEvent {
 }
 
 /// The raw response from the ERC721 transfer list API endpoint
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ERC721TokenTransferEvent {
     #[serde(deserialize_with = "deserialize_stringified_block_number")]
@@ -309,7 +309,7 @@ pub struct ERC721TokenTransferEvent {
 }
 
 /// The raw response from the ERC1155 transfer list API endpoint
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ERC1155TokenTransferEvent {
     #[serde(deserialize_with = "deserialize_stringified_block_number")]
@@ -344,7 +344,7 @@ pub struct ERC1155TokenTransferEvent {
 }
 
 /// The raw response from the mined blocks API endpoint
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MinedBlock {
     #[serde(deserialize_with = "deserialize_stringified_block_number")]
@@ -354,6 +354,7 @@ pub struct MinedBlock {
 }
 
 /// The pre-defined block parameter for balance API endpoints
+#[derive(Clone, Copy, Debug)]
 pub enum Tag {
     Earliest,
     Pending,
@@ -377,6 +378,7 @@ impl Default for Tag {
 }
 
 /// The list sorting preference
+#[derive(Clone, Copy, Debug)]
 pub enum Sort {
     Asc,
     Desc,
@@ -392,6 +394,7 @@ impl Display for Sort {
 }
 
 /// Common optional arguments for the transaction or event list API endpoints
+#[derive(Clone, Copy, Debug)]
 pub struct TxListParams {
     start_block: u64,
     end_block: u64,
@@ -425,6 +428,7 @@ impl From<TxListParams> for HashMap<&'static str, String> {
 }
 
 /// Options for querying internal transactions
+#[derive(Clone, Debug)]
 pub enum InternalTxQueryOption {
     ByAddress(Address),
     ByTransactionHash(H256),
@@ -432,6 +436,7 @@ pub enum InternalTxQueryOption {
 }
 
 /// Options for querying ERC20 or ERC721 token transfers
+#[derive(Clone, Debug)]
 pub enum TokenQueryOption {
     ByAddress(Address),
     ByContract(Address),
@@ -460,6 +465,7 @@ impl TokenQueryOption {
 }
 
 /// The pre-defined block type for retrieving mined blocks
+#[derive(Copy, Clone, Debug)]
 pub enum BlockType {
     CanonicalBlocks,
     Uncles,
