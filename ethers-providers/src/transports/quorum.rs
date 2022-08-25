@@ -205,6 +205,7 @@ impl<T: JsonRpcClientWrapper> QuorumProvider<T> {
             // at this time no normalization is required for calls with zero parameters.
             return
         };
+
         match method {
             "eth_call" |
             "eth_createAccessList" |
@@ -215,15 +216,26 @@ impl<T: JsonRpcClientWrapper> QuorumProvider<T> {
             "trace_block" => {
                 // calls that include the block number in the params at the last index of json array
                 if let Some(block) = params.as_array_mut().and_then(|arr| arr.last_mut()) {
-                    if Some("latest") == block.as_str() {
-                        // replace `latest` with block height of a quorum of providers
-                        if let Ok(minimum) = self.get_quorum_block_number().await {
-                            *block = serde_json::to_value(minimum).expect("Failed to serialize U64")
-                        }
-                    }
+                    self.replace_latest(block).await
+                }
+            }
+            "eth_getBlockByNumber" => {
+                // calls that include the block number in the params at the first index of json
+                // array
+                if let Some(block) = params.as_array_mut().and_then(|arr| arr.first_mut()) {
+                    self.replace_latest(block).await
                 }
             }
             _ => {}
+        }
+    }
+
+    async fn replace_latest(&self, block: &mut Value) {
+        if Some("latest") == block.as_str() {
+            // replace `latest` with block height of a quorum of providers
+            if let Ok(minimum) = self.get_quorum_block_number().await {
+                *block = serde_json::to_value(minimum).expect("Failed to serialize U64")
+            }
         }
     }
 }
