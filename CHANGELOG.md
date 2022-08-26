@@ -4,6 +4,7 @@
 
 ### Unreleased
 
+- Add `Unit8` helper type [#1639](https://github.com/gakonst/ethers-rs/pull/1639)
 - Add `evm.deployedBytecode.immutableReferences` output selector [#1523](https://github.com/gakonst/ethers-rs/pull/1523)
 - Added `get_erc1155_token_transfer_events` function for etherscan client [#1503](https://github.com/gakonst/ethers-rs/pull/1503)
 - Add support for Geth `debug_traceTransaction` [#1469](https://github.com/gakonst/ethers-rs/pull/1469)

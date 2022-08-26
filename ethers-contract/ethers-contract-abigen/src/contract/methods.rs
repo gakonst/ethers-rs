@@ -356,6 +356,7 @@ impl Context {
         param: &str,
         kind: &ParamType,
     ) -> Result<TokenStream> {
+        let ethers_core = ethers_core_crate();
         match kind {
             ParamType::Array(ty) => {
                 let ty = self.expand_input_param_type(fun, param, ty)?;
@@ -364,7 +365,18 @@ impl Context {
                 })
             }
             ParamType::FixedArray(ty, size) => {
-                let ty = self.expand_input_param_type(fun, param, ty)?;
+                let ty = match **ty {
+                    ParamType::Uint(size) => {
+                        if size / 8 == 1 {
+                            // this prevents type ambiguity with `FixedBytes`
+                            quote! { #ethers_core::types::Uint8}
+                        } else {
+                            self.expand_input_param_type(fun, param, ty)?
+                        }
+                    }
+                    _ => self.expand_input_param_type(fun, param, ty)?,
+                };
+
                 let size = *size;
                 Ok(quote! {[#ty; #size]})
             }
