@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 /// recognized as `uint8[8]` and not fixed bytes.
 ///
 /// See also <https://github.com/gakonst/ethers-rs/issues/1636>
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
 #[repr(transparent)]
 #[serde(transparent)]
 pub struct Uint8(u8);
