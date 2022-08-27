@@ -294,7 +294,7 @@ mod tests {
             Token::Uint(7.into()),
             Token::Uint(8.into()),
         ])];
-        let data: [u8; 8] = Detokenize::from_tokens(tokens).unwrap();
+        let data: [Uint8; 8] = Detokenize::from_tokens(tokens).unwrap();
         assert_eq!(data[0], 1);
         assert_eq!(data[1], 2);
         assert_eq!(data[2], 3);
