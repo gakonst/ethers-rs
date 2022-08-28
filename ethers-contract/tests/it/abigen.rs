@@ -679,3 +679,13 @@ fn can_generate_large_output_struct() {
 
     let r = GetByIdReturn(Info::default());
 }
+
+#[test]
+fn gen_complex_function() {
+    abigen!(
+        WyvernExchangeV1,
+        r#"[
+        function atomicMatch_(address[14] addrs, uint[18] uints, uint8[8] feeMethodsSidesKindsHowToCalls, bytes calldataBuy, bytes calldataSell, bytes replacementPatternBuy, bytes replacementPatternSell, bytes staticExtradataBuy, bytes staticExtradataSell, uint8[2] vs, bytes32[5] rssMetadata) public payable
+    ]"#,
+    );
+}

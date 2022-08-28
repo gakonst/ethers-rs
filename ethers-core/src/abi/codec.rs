@@ -2,7 +2,7 @@ use crate::{
     abi::{
         AbiArrayType, AbiError, AbiType, Detokenize, Token, Tokenizable, TokenizableItem, Tokenize,
     },
-    types::{Address, Bytes, H256, I256, U128, U256},
+    types::{Address, Bytes, Uint8, H256, I256, U128, U256},
 };
 
 /// Trait for ABI encoding
@@ -65,6 +65,7 @@ impl_abi_codec!(
     U128,
     U256,
     I256,
+    Uint8,
     u8,
     u16,
     u32,
@@ -278,5 +279,25 @@ mod tests {
         let value = "str value";
         let encoded = value.encode();
         assert_eq!(value, String::decode(encoded).unwrap());
+    }
+
+    #[test]
+    fn should_decode_array_of_fixed_uint8() {
+        // uint8[8]
+        let tokens = vec![Token::FixedArray(vec![
+            Token::Uint(1.into()),
+            Token::Uint(2.into()),
+            Token::Uint(3.into()),
+            Token::Uint(4.into()),
+            Token::Uint(5.into()),
+            Token::Uint(6.into()),
+            Token::Uint(7.into()),
+            Token::Uint(8.into()),
+        ])];
+        let data: [Uint8; 8] = Detokenize::from_tokens(tokens).unwrap();
+        assert_eq!(data[0], 1);
+        assert_eq!(data[1], 2);
+        assert_eq!(data[2], 3);
+        assert_eq!(data[7], 8);
     }
 }

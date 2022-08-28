@@ -24,6 +24,9 @@ pub use path_or_string::PathOrString;
 mod u256;
 pub use u256::*;
 
+mod uint8;
+pub use uint8::*;
+
 mod i256;
 pub use i256::{Sign, I256};
 

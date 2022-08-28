@@ -41,7 +41,17 @@ pub(crate) fn expand(kind: &ParamType) -> Result<TokenStream> {
         }
         ParamType::FixedArray(t, n) => {
             // TODO(nlordell): see above
-            let inner = expand(t)?;
+            let inner = match **t {
+                ParamType::Uint(size) => {
+                    if size / 8 == 1 {
+                        // this prevents type ambiguity with `FixedBytes`
+                        quote! { #ethers_core::types::Uint8}
+                    } else {
+                        expand(t)?
+                    }
+                }
+                _ => expand(t)?,
+            };
             let size = Literal::usize_unsuffixed(*n);
             Ok(quote! { [#inner; #size] })
         }
