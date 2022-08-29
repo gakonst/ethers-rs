@@ -39,8 +39,8 @@ pub static MULTICALL_SUPPORTED_CHAIN_IDS: Lazy<[U256; 47]> = Lazy::new(|| {
         U256::from(Ropsten),                  // Ropsten
         U256::from(Sepolia),                  // Sepolia
         U256::from(Optimism),                 // Optimism
+        U256::from(OptimismGoerli),           // OptimismGoerli
         U256::from(OptimismKovan),            // OptimismKovan
-        U256::from(420),                      // OptimismGoerli
         U256::from(Arbitrum),                 // Arbitrum
         U256::from(421613),                   // ArbitrumGoerli,
         U256::from(ArbitrumTestnet),          // Arbitrum Rinkeby

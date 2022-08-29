@@ -85,6 +85,7 @@ impl Client {
             Chain::Rinkeby |
             Chain::Goerli |
             Chain::Optimism |
+            Chain::OptimismGoerli |
             Chain::OptimismKovan |
             Chain::BinanceSmartChain |
             Chain::BinanceSmartChainTestnet |
