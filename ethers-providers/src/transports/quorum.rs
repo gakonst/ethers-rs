@@ -181,10 +181,9 @@ impl<T: JsonRpcClientWrapper> QuorumProvider<T> {
         while !queries.is_empty() {
             let (response, _index, remaining) = future::select_all(queries).await;
             queries = remaining;
-            if response.is_ok() {
-                numbers.push(response.unwrap())
-            } else {
-                errors.push(response.unwrap_err())
+            match response {
+                Ok(v) => numbers.push(v),
+                Err(e) => errors.push(e),
             }
         }
 
