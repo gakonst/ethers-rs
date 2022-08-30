@@ -9,7 +9,7 @@ use crate::{provider::ProviderError, JsonRpcClient, PubsubClient};
 use async_trait::async_trait;
 use ethers_core::types::{U256, U64};
 use futures_core::Stream;
-use futures_util::{future::join_all, FutureExt, StreamExt};
+use futures_util::{stream, FutureExt, StreamExt};
 use serde::{de::DeserializeOwned, Serialize};
 use serde_json::{value::RawValue, Value};
 use thiserror::Error;
@@ -162,13 +162,17 @@ impl<T> QuorumProviderBuilder<T> {
 impl<T: JsonRpcClientWrapper> QuorumProvider<T> {
     /// Returns the block height that a _quorum_ of providers have reached.
     async fn get_quorum_block_number(&self) -> Result<U64, QuorumError> {
-        let (oks, errs) = join_all(self.providers.iter().map(|provider| async move {
+        let queries = self.providers.iter().map(|provider| async move {
             let block = provider.inner.request("eth_blockNumber", QuorumParams::Zst).await?;
             serde_json::from_value::<U64>(block).map(|b| (provider, b)).map_err(ProviderError::from)
-        }))
-        .await
-        .into_iter()
-        .partition::<Vec<Result<(&WeightedProvider<T>, U64), ProviderError>>, _>(|res| res.is_ok());
+        });
+        let (oks, errs) = stream::select_all(queries.map(Box::pin).map(stream::once))
+            .collect::<Vec<_>>()
+            .await
+            .into_iter()
+            .partition::<Vec<Result<(&WeightedProvider<T>, U64), ProviderError>>, _>(|res| {
+                res.is_ok()
+            });
 
         let mut numbers = oks.into_iter().map(Result::unwrap).collect::<Vec<_>>();
 
