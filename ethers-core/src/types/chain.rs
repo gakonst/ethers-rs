@@ -46,6 +46,7 @@ pub enum Chain {
     MoonbeamDev = 1281,
     Moonriver = 1285,
     Optimism = 10,
+    OptimismGoerli = 420,
     OptimismKovan = 69,
     Arbitrum = 42161,
     ArbitrumTestnet = 421611,
@@ -104,6 +105,7 @@ impl Chain {
             Chain::Sepolia |
             Chain::Moonbase |
             Chain::MoonbeamDev |
+            Chain::OptimismGoerli |
             Chain::OptimismKovan |
             Chain::Poa |
             Chain::Sokol |
@@ -142,6 +144,10 @@ impl Chain {
             Chain::Optimism => {
                 ("https://api-optimistic.etherscan.io/api", "https://optimistic.etherscan.io")
             }
+            Chain::OptimismGoerli => (
+                "https://api-goerli-optimistic.etherscan.io/api",
+                "https://goerli-optimism.etherscan.io",
+            ),
             Chain::OptimismKovan => (
                 "https://api-kovan-optimistic.etherscan.io/api",
                 "https://kovan-optimistic.etherscan.io",
@@ -229,6 +235,7 @@ impl fmt::Display for Chain {
             Chain::MoonbeamDev => "moonbeam-dev",
             Chain::Moonriver => "moonriver",
             Chain::Optimism => "optimism",
+            Chain::OptimismGoerli => "optimism-goerli",
             Chain::OptimismKovan => "optimism-kovan",
             Chain::Fantom => "fantom",
             Chain::Dev => "dev",
@@ -300,6 +307,7 @@ impl TryFrom<u64> for Chain {
             1281 => Chain::MoonbeamDev,
             1285 => Chain::Moonriver,
             10 => Chain::Optimism,
+            420 => Chain::OptimismGoerli,
             69 => Chain::OptimismKovan,
             56 => Chain::BinanceSmartChain,
             97 => Chain::BinanceSmartChainTestnet,
@@ -354,6 +362,7 @@ impl FromStr for Chain {
             "moonbeam-dev" => Chain::MoonbeamDev,
             "moonriver" => Chain::Moonriver,
             "optimism" => Chain::Optimism,
+            "optimism-goerli" => Chain::OptimismGoerli,
             "optimism-kovan" => Chain::OptimismKovan,
             "fantom" => Chain::Fantom,
             "fantom-testnet" => Chain::FantomTestnet,
@@ -386,6 +395,7 @@ impl Chain {
         matches!(
             self,
             Chain::Optimism |
+                Chain::OptimismGoerli |
                 Chain::OptimismKovan |
                 Chain::Fantom |
                 Chain::FantomTestnet |
