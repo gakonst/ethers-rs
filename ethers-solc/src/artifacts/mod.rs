@@ -942,8 +942,11 @@ pub struct MetadataSettings {
     #[serde(default, rename = "compilationTarget")]
     pub compilation_target: BTreeMap<String, String>,
     /// Metadata settings
+    ///
+    /// Note: this differs from `Libraries` and does not require another mapping for file name
+    /// since metadata is per file
     #[serde(default)]
-    pub libraries: Libraries,
+    pub libraries: BTreeMap<String, String>,
 }
 
 /// Compilation source files/source units, keys are file names
@@ -2134,5 +2137,14 @@ mod tests {
         let input = include_str!("../../test-data/foundryissue2462.json");
         let layout: StorageLayout = serde_json::from_str(input).unwrap();
         pretty_assertions::assert_eq!(input, &serde_json::to_string_pretty(&layout).unwrap());
+    }
+
+    // <https://github.com/foundry-rs/foundry/issues/3012>
+    #[test]
+    fn can_parse_compiler_output_spells_0_6_12() {
+        let path =
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test-data/0.6.12-with-libs.json");
+        let content = fs::read_to_string(path).unwrap();
+        let _output: CompilerOutput = serde_json::from_str(&content).unwrap();
     }
 }
