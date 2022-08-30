@@ -689,3 +689,8 @@ fn gen_complex_function() {
     ]"#,
     );
 }
+
+#[test]
+fn can_gen_large_tuple_types() {
+    abigen!(LargeTuple, "./tests/solidity-contracts/large_tuple.json");
+}
