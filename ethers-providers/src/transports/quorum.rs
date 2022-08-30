@@ -9,7 +9,7 @@ use crate::{provider::ProviderError, JsonRpcClient, PubsubClient};
 use async_trait::async_trait;
 use ethers_core::types::{U256, U64};
 use futures_core::Stream;
-use futures_util::{stream, FutureExt, StreamExt};
+use futures_util::{future, FutureExt, StreamExt};
 use serde::{de::DeserializeOwned, Serialize};
 use serde_json::{value::RawValue, Value};
 use thiserror::Error;
@@ -162,19 +162,31 @@ impl<T> QuorumProviderBuilder<T> {
 impl<T: JsonRpcClientWrapper> QuorumProvider<T> {
     /// Returns the block height that a _quorum_ of providers have reached.
     async fn get_quorum_block_number(&self) -> Result<U64, QuorumError> {
-        let queries = self.providers.iter().map(|provider| async move {
-            let block = provider.inner.request("eth_blockNumber", QuorumParams::Zst).await?;
-            serde_json::from_value::<U64>(block).map(|b| (provider, b)).map_err(ProviderError::from)
-        });
-        let (oks, errs) = stream::select_all(queries.map(Box::pin).map(stream::once))
-            .collect::<Vec<_>>()
-            .await
-            .into_iter()
-            .partition::<Vec<Result<(&WeightedProvider<T>, U64), ProviderError>>, _>(|res| {
-                res.is_ok()
-            });
+        let mut queries = self
+            .providers
+            .iter()
+            .map(|provider| {
+                Box::pin(async move {
+                    let block =
+                        provider.inner.request("eth_blockNumber", QuorumParams::Zst).await?;
+                    serde_json::from_value::<U64>(block)
+                        .map(|b| (provider, b))
+                        .map_err(ProviderError::from)
+                })
+            })
+            .collect::<Vec<_>>();
 
-        let mut numbers = oks.into_iter().map(Result::unwrap).collect::<Vec<_>>();
+        let mut numbers = vec![];
+        let mut errors = vec![];
+        while !queries.is_empty() {
+            let (response, _index, remaining) = future::select_all(queries).await;
+            queries = remaining;
+            if response.is_ok() {
+                numbers.push(response.unwrap())
+            } else {
+                errors.push(response.unwrap_err())
+            }
+        }
 
         numbers.sort_by(|(_, block_a), (_, block_b)| {
             // order by descending block number
@@ -197,7 +209,7 @@ impl<T: JsonRpcClientWrapper> QuorumProvider<T> {
                 .into_iter()
                 .map(|(_, block)| serde_json::to_value(block).expect("Failed to serialize U64"))
                 .collect(),
-            errors: errs.into_iter().map(Result::unwrap_err).collect(),
+            errors,
         })
     }
 
