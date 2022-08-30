@@ -4,7 +4,7 @@
 use ethers_contract::{abigen, Abigen, EthCall, EthEvent};
 use ethers_core::{
     abi::{AbiDecode, AbiEncode, Address, Tokenizable},
-    types::{transaction::eip2718::TypedTransaction, Eip1559TransactionRequest, U256},
+    types::{transaction::eip2718::TypedTransaction, Chain, Eip1559TransactionRequest, U256},
     utils::Anvil,
 };
 use ethers_middleware::SignerMiddleware;
@@ -608,7 +608,8 @@ async fn can_send_struct_param() {
     let server = Anvil::new().spawn();
     let wallet: LocalWallet = server.keys()[0].clone().into();
     let provider = Provider::try_from(server.endpoint()).unwrap();
-    let client = Arc::new(SignerMiddleware::new(provider, wallet.with_chain_id(1337u64)));
+    let client =
+        Arc::new(SignerMiddleware::new(provider, wallet.with_chain_id(Chain::AnvilHardhat)));
 
     let contract = StructContract::deploy(client, ()).unwrap().legacy().send().await.unwrap();
 
