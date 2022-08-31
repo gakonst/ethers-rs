@@ -1,0 +1,15 @@
+[
+  {
+    "inputs": [
+      {
+        "internalType": "uint64[128]",
+        "name": "longArray",
+        "type": "uint64[128]"
+      }
+    ],
+    "name": "callWithLongArray",
+    "outputs": [],
+    "stateMutability": "view",
+    "type": "function"
+  }
+]
