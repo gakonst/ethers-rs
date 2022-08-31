@@ -227,6 +227,7 @@ impl<T: JsonRpcClientWrapper> QuorumProvider<T> {
             "eth_getStorageAt" |
             "eth_getCode" |
             "eth_getProof" |
+            "eth_estimateGas" |
             "trace_call" |
             "trace_block" => {
                 // calls that include the block number in the params at the last index of json array
@@ -401,7 +402,7 @@ impl<T> WeightedProvider<T> {
 #[derive(Error, Debug)]
 /// Error thrown when sending an HTTP request
 pub enum QuorumError {
-    #[error("No Quorum reached.")]
+    #[error("No Quorum reached. (Values: {:?}, Errors: {:?})", values, errors)]
     NoQuorumReached { values: Vec<Value>, errors: Vec<ProviderError> },
 }
 
