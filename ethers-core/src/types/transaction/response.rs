@@ -21,18 +21,15 @@ pub struct Transaction {
     pub nonce: U256,
 
     /// Block hash. None when pending.
-    #[serde(rename = "blockHash")]
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, rename = "blockHash")]
     pub block_hash: Option<H256>,
 
     /// Block number. None when pending.
-    #[serde(rename = "blockNumber")]
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, rename = "blockNumber")]
     pub block_number: Option<U64>,
 
     /// Transaction Index. None when pending.
-    #[serde(rename = "transactionIndex")]
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, rename = "transactionIndex")]
     pub transaction_index: Option<U64>,
 
     /// Sender
