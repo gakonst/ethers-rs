@@ -201,7 +201,7 @@ pub fn can_derive_default(param: &ParamType) -> bool {
             if *len > MAX_SUPPORTED_LEN {
                 false
             } else {
-                can_derive_default(&*ty)
+                can_derive_default(ty)
             }
         }
         ParamType::Tuple(params) => params.iter().all(can_derive_default),

@@ -11,7 +11,10 @@ use ethers_middleware::SignerMiddleware;
 use ethers_providers::{MockProvider, Provider};
 use ethers_signers::{LocalWallet, Signer};
 use ethers_solc::Solc;
-use std::{convert::TryFrom, sync::Arc};
+use std::{
+    convert::{TryFrom, TryInto},
+    sync::Arc,
+};
 
 fn assert_codec<T: AbiDecode + AbiEncode>() {}
 fn assert_tokenizeable<T: Tokenizable>() {}
@@ -707,4 +710,13 @@ fn can_gen_large_tuple_types() {
 #[test]
 fn can_gen_large_tuple_array() {
     abigen!(LargeTuple, "./tests/solidity-contracts/large-array.json");
+
+    impl Default for CallWithLongArrayCall {
+        fn default() -> Self {
+            Self { long_array: [0; 128] }
+        }
+    }
+
+    let _call = CallWithLongArrayCall::default();
+    assert_call::<CallWithLongArrayCall>();
 }
