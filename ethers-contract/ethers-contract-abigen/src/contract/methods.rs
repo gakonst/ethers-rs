@@ -1,8 +1,9 @@
 use std::collections::{btree_map::Entry, BTreeMap, HashMap};
 
 use super::{types, util, Context};
-use crate::contract::common::{
-    expand_data_struct, expand_data_tuple, expand_param_type, expand_params,
+use crate::{
+    contract::common::{expand_data_struct, expand_data_tuple, expand_param_type, expand_params},
+    util::can_derive_defaults,
 };
 use ethers_core::{
     abi::{Function, FunctionExt, Param, ParamType},
@@ -134,9 +135,20 @@ impl Context {
         // use the same derives as for events
         let derives = util::expand_derives(&self.event_derives);
 
+        // rust-std only derives default automatically for arrays len <= 32
+        // for large array types we skip derive(Default) <https://github.com/gakonst/ethers-rs/issues/1640>
+        let derive_default = if can_derive_defaults(&function.inputs) {
+            quote! {
+                #[derive(Default)]
+            }
+        } else {
+            quote! {}
+        };
+
         Ok(quote! {
             #abi_signature_doc
-            #[derive(Clone, Debug, Default, Eq, PartialEq, #ethers_contract::EthCall, #ethers_contract::EthDisplay, #derives)]
+            #[derive(Clone, Debug, Eq, PartialEq, #ethers_contract::EthCall, #ethers_contract::EthDisplay, #derives)]
+            #derive_default
             #[ethcall( name = #function_name, abi = #abi_signature )]
             pub #call_type_definition
         })
@@ -175,9 +187,20 @@ impl Context {
         // use the same derives as for events
         let derives = util::expand_derives(&self.event_derives);
 
+        // rust-std only derives default automatically for arrays len <= 32
+        // for large array types we skip derive(Default) <https://github.com/gakonst/ethers-rs/issues/1640>
+        let derive_default = if can_derive_defaults(&function.outputs) {
+            quote! {
+                #[derive(Default)]
+            }
+        } else {
+            quote! {}
+        };
+
         Ok(quote! {
             #abi_signature_doc
-            #[derive(Clone, Debug, Default, Eq, PartialEq, #ethers_contract::EthAbiType, #ethers_contract::EthAbiCodec, #derives)]
+            #[derive(Clone, Debug,Eq, PartialEq, #ethers_contract::EthAbiType, #ethers_contract::EthAbiCodec, #derives)]
+             #derive_default
             pub #return_type_definition
         })
     }

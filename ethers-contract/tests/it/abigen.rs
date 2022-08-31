@@ -15,6 +15,7 @@ use std::{convert::TryFrom, sync::Arc};
 
 fn assert_codec<T: AbiDecode + AbiEncode>() {}
 fn assert_tokenizeable<T: Tokenizable>() {}
+fn assert_call<T: AbiEncode + AbiDecode + Default + Tokenizable>() {}
 
 #[test]
 fn can_gen_human_readable() {
@@ -237,6 +238,9 @@ fn can_gen_human_readable_with_structs() {
     assert_eq!(contract_call, decoded_enum);
     assert_eq!(contract_call, call.into());
     assert_eq!(encoded_call, contract_call.encode());
+
+    assert_call::<BarCall>();
+    assert_call::<YeetCall>();
 }
 
 #[test]
@@ -301,6 +305,10 @@ fn can_handle_overloaded_functions() {
     let _contract_call = SimpleContractCalls::SetValue0(call);
     let call = SetValue1Call("message".to_string(), "message".to_string());
     let _contract_call = SimpleContractCalls::SetValue1(call);
+
+    assert_call::<SetValue0Call>();
+    assert_call::<SetValue1Call>();
+    assert_call::<GetValueWithOtherValueAndAddrCall>();
 }
 
 #[test]
@@ -694,4 +702,9 @@ fn gen_complex_function() {
 #[test]
 fn can_gen_large_tuple_types() {
     abigen!(LargeTuple, "./tests/solidity-contracts/large_tuple.json");
+}
+
+#[test]
+fn can_gen_large_tuple_array() {
+    abigen!(LargeTuple, "./tests/solidity-contracts/large-array.json");
 }
