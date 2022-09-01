@@ -353,7 +353,7 @@ impl FromStr for Chain {
             "kovan" => Chain::Kovan,
             "xdai" => Chain::XDai,
             "polygon" => Chain::Polygon,
-            "polygon-mumbai" => Chain::PolygonMumbai,
+            "mumbai" | "polygon-mumbai" => Chain::PolygonMumbai,
             "avalanche" => Chain::Avalanche,
             "avalanche-fuji" => Chain::AvalancheFuji,
             "sepolia" => Chain::Sepolia,
