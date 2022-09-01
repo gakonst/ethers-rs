@@ -574,8 +574,14 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         block: Option<BlockId>,
     ) -> Result<U256, ProviderError> {
         let tx = utils::serialize(tx);
-        let block = utils::serialize(&block.unwrap_or_else(|| BlockNumber::Latest.into()));
-        self.request("eth_estimateGas", [tx, block]).await
+        // Some chains (e.g. Optimism) don't support a block ID being passed as a param,
+        // so refrain from defaulting to BlockNumber::Latest.
+        let params = if let Some(block_id) = block {
+            vec![tx, utils::serialize(&block_id)]
+        } else {
+            vec![tx]
+        };
+        self.request("eth_estimateGas", params).await
     }
 
     async fn create_access_list(
