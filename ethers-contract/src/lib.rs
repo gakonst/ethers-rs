@@ -25,8 +25,15 @@ pub use log::{decode_logs, EthLogDecode, LogMeta};
 
 pub mod stream;
 
+#[cfg(any(test, feature = "abigen"))]
+#[cfg_attr(docsrs, doc(cfg(feature = "abigen")))]
 mod multicall;
-pub use multicall::Multicall;
+#[cfg(any(test, feature = "abigen"))]
+#[cfg_attr(docsrs, doc(cfg(feature = "abigen")))]
+pub use multicall::{
+    Multicall, MulticallContract, MulticallError, MulticallVersion, MULTICALL_ADDRESS,
+    MULTICALL_SUPPORTED_CHAIN_IDS,
+};
 
 /// This module exposes low lever builder structures which are only consumed by the
 /// type-safe ABI bindings generators.

@@ -4,17 +4,21 @@
 use ethers_contract::{abigen, Abigen, EthCall, EthEvent};
 use ethers_core::{
     abi::{AbiDecode, AbiEncode, Address, Tokenizable},
-    types::{transaction::eip2718::TypedTransaction, Eip1559TransactionRequest, U256},
+    types::{transaction::eip2718::TypedTransaction, Chain, Eip1559TransactionRequest, U256},
     utils::Anvil,
 };
 use ethers_middleware::SignerMiddleware;
 use ethers_providers::{MockProvider, Provider};
 use ethers_signers::{LocalWallet, Signer};
 use ethers_solc::Solc;
-use std::{convert::TryFrom, sync::Arc};
+use std::{
+    convert::{TryFrom, TryInto},
+    sync::Arc,
+};
 
 fn assert_codec<T: AbiDecode + AbiEncode>() {}
 fn assert_tokenizeable<T: Tokenizable>() {}
+fn assert_call<T: AbiEncode + AbiDecode + Default + Tokenizable>() {}
 
 #[test]
 fn can_gen_human_readable() {
@@ -237,6 +241,9 @@ fn can_gen_human_readable_with_structs() {
     assert_eq!(contract_call, decoded_enum);
     assert_eq!(contract_call, call.into());
     assert_eq!(encoded_call, contract_call.encode());
+
+    assert_call::<BarCall>();
+    assert_call::<YeetCall>();
 }
 
 #[test]
@@ -301,6 +308,10 @@ fn can_handle_overloaded_functions() {
     let _contract_call = SimpleContractCalls::SetValue0(call);
     let call = SetValue1Call("message".to_string(), "message".to_string());
     let _contract_call = SimpleContractCalls::SetValue1(call);
+
+    assert_call::<SetValue0Call>();
+    assert_call::<SetValue1Call>();
+    assert_call::<GetValueWithOtherValueAndAddrCall>();
 }
 
 #[test]
@@ -557,17 +568,18 @@ async fn can_abiencoderv2_output() {
     assert_eq!(res, person);
 }
 
-#[test]
-fn can_gen_multi_etherscan() {
-    abigen!(
-        MyContract, "etherscan:0xdAC17F958D2ee523a2206206994597C13D831ec7";
-        MyContract2, "etherscan:0x8418bb725b3ac45ec8fff3791dd8b4e0480cc2a2";
-    );
-
-    let provider = Arc::new(Provider::new(MockProvider::new()));
-    let _contract = MyContract::new(Address::default(), Arc::clone(&provider));
-    let _contract = MyContract2::new(Address::default(), provider);
-}
+// NOTE: this is commented out because this would result in compiler errors if key not set or
+// etherscan API not working #[test]
+// fn can_gen_multi_etherscan() {
+//     abigen!(
+//         MyContract, "etherscan:0xdAC17F958D2ee523a2206206994597C13D831ec7";
+//         MyContract2, "etherscan:0x8418bb725b3ac45ec8fff3791dd8b4e0480cc2a2";
+//     );
+//
+//     let provider = Arc::new(Provider::new(MockProvider::new()));
+//     let _contract = MyContract::new(Address::default(), Arc::clone(&provider));
+//     let _contract = MyContract2::new(Address::default(), provider);
+// }
 
 #[test]
 fn can_gen_reserved_word_field_names() {
@@ -607,7 +619,8 @@ async fn can_send_struct_param() {
     let server = Anvil::new().spawn();
     let wallet: LocalWallet = server.keys()[0].clone().into();
     let provider = Provider::try_from(server.endpoint()).unwrap();
-    let client = Arc::new(SignerMiddleware::new(provider, wallet.with_chain_id(1337u64)));
+    let client =
+        Arc::new(SignerMiddleware::new(provider, wallet.with_chain_id(Chain::AnvilHardhat)));
 
     let contract = StructContract::deploy(client, ()).unwrap().legacy().send().await.unwrap();
 
@@ -677,4 +690,33 @@ fn can_generate_large_output_struct() {
     abigen!(LargeOutputStruct, "ethers-contract/tests/solidity-contracts/LargeStruct.json");
 
     let r = GetByIdReturn(Info::default());
+}
+
+#[test]
+fn gen_complex_function() {
+    abigen!(
+        WyvernExchangeV1,
+        r#"[
+        function atomicMatch_(address[14] addrs, uint[18] uints, uint8[8] feeMethodsSidesKindsHowToCalls, bytes calldataBuy, bytes calldataSell, bytes replacementPatternBuy, bytes replacementPatternSell, bytes staticExtradataBuy, bytes staticExtradataSell, uint8[2] vs, bytes32[5] rssMetadata) public payable
+    ]"#,
+    );
+}
+
+#[test]
+fn can_gen_large_tuple_types() {
+    abigen!(LargeTuple, "./tests/solidity-contracts/large_tuple.json");
+}
+
+#[test]
+fn can_gen_large_tuple_array() {
+    abigen!(LargeTuple, "./tests/solidity-contracts/large-array.json");
+
+    impl Default for CallWithLongArrayCall {
+        fn default() -> Self {
+            Self { long_array: [0; 128] }
+        }
+    }
+
+    let _call = CallWithLongArrayCall::default();
+    assert_call::<CallWithLongArrayCall>();
 }

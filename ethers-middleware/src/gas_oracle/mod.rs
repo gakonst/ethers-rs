@@ -22,10 +22,18 @@ pub use cache::Cache;
 mod polygon;
 pub use polygon::Polygon;
 
+mod gas_now;
+pub use gas_now::GasNow;
+
+mod provider_oracle;
+pub use provider_oracle::ProviderOracle;
+
 use ethers_core::types::U256;
 
 use async_trait::async_trait;
+use auto_impl::auto_impl;
 use reqwest::Error as ReqwestError;
+use std::error::Error;
 use thiserror::Error;
 
 const GWEI_TO_WEI: u64 = 1000000000;
@@ -73,6 +81,10 @@ pub enum GasOracleError {
 
     #[error("Chain is not supported by the oracle")]
     UnsupportedChain,
+
+    /// Error thrown when the provider failed.
+    #[error("Chain is not supported by the oracle")]
+    ProviderError(#[from] Box<dyn Error + Send + Sync>),
 }
 
 /// `GasOracle` is a trait that an underlying gas oracle needs to implement.
@@ -95,6 +107,7 @@ pub enum GasOracleError {
 /// ```
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+#[auto_impl(&, Box, Arc)]
 pub trait GasOracle: Send + Sync + std::fmt::Debug {
     /// Makes an asynchronous HTTP query to the underlying `GasOracle`
     ///

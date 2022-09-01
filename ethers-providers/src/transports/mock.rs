@@ -10,10 +10,19 @@ use std::{
 };
 use thiserror::Error;
 
+/// Helper type that can be used to pass through the `params` value.
+/// This is necessary because the wrapper provider is supposed to skip the `params` if it's of
+/// size 0, see `crate::transports::common::Request`
+#[derive(Debug)]
+enum MockParams {
+    Value(Value),
+    Zst,
+}
+
 #[derive(Clone, Debug)]
 /// Mock transport used in test environments.
 pub struct MockProvider {
-    requests: Arc<Mutex<VecDeque<(String, Value)>>>,
+    requests: Arc<Mutex<VecDeque<(String, MockParams)>>>,
     responses: Arc<Mutex<VecDeque<Value>>>,
 }
 
@@ -28,14 +37,19 @@ impl Default for MockProvider {
 impl JsonRpcClient for MockProvider {
     type Error = MockError;
 
-    /// Pushes the `(method, input)` to the back of the `requests` queue,
+    /// Pushes the `(method, params)` to the back of the `requests` queue,
     /// pops the responses from the back of the `responses` queue
     async fn request<T: Serialize + Send + Sync, R: DeserializeOwned>(
         &self,
         method: &str,
-        input: T,
+        params: T,
     ) -> Result<R, MockError> {
-        self.requests.lock().unwrap().push_back((method.to_owned(), serde_json::to_value(input)?));
+        let params = if std::mem::size_of::<T>() == 0 {
+            MockParams::Zst
+        } else {
+            MockParams::Value(serde_json::to_value(params)?)
+        };
+        self.requests.lock().unwrap().push_back((method.to_owned(), params));
         let mut data = self.responses.lock().unwrap();
         let element = data.pop_back().ok_or(MockError::EmptyResponses)?;
         let res: R = serde_json::from_value(element)?;
@@ -53,7 +67,15 @@ impl MockProvider {
     ) -> Result<(), MockError> {
         let (m, inp) = self.requests.lock().unwrap().pop_front().ok_or(MockError::EmptyRequests)?;
         assert_eq!(m, method);
-        assert_eq!(serde_json::to_value(data).expect("could not serialize data"), inp);
+        assert!(!matches!(inp, MockParams::Value(serde_json::Value::Null)));
+        if std::mem::size_of::<T>() == 0 {
+            assert!(matches!(inp, MockParams::Zst));
+        } else if let MockParams::Value(inp) = inp {
+            assert_eq!(serde_json::to_value(data).expect("could not serialize data"), inp);
+        } else {
+            unreachable!("Zero sized types must be denoted with MockParams::Zst")
+        }
+
         Ok(())
     }
 

@@ -50,6 +50,40 @@ async fn send_eth() {
     assert!(balance_before > balance_after);
 }
 
+// hardhat compatibility test, to show hardhat rejects tx signed for other chains
+#[tokio::test]
+#[cfg(not(feature = "celo"))]
+#[ignore]
+async fn send_with_chain_id_hardhat() {
+    let wallet: LocalWallet =
+        "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80".parse().unwrap();
+    let provider = Provider::try_from("http://localhost:8545").unwrap();
+    let client = SignerMiddleware::new(provider, wallet);
+
+    let tx = TransactionRequest::new().to(Address::random()).value(100u64);
+    let res = client.send_transaction(tx, None).await;
+
+    let err = res.unwrap_err();
+    assert!(err
+        .to_string()
+        .contains("Trying to send an incompatible EIP-155 transaction, signed for another chain."));
+}
+
+#[tokio::test]
+#[cfg(not(feature = "celo"))]
+#[ignore]
+async fn send_with_chain_id_anvil() {
+    let wallet: LocalWallet =
+        "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80".parse().unwrap();
+    let provider = Provider::try_from("http://localhost:8545").unwrap();
+    let client = SignerMiddleware::new(provider, wallet);
+
+    let tx = TransactionRequest::new().to(Address::random()).value(100u64);
+    let res = client.send_transaction(tx, None).await;
+
+    let _err = res.unwrap_err();
+}
+
 #[tokio::test]
 #[cfg(not(feature = "celo"))]
 async fn pending_txs_with_confirmations_testnet() {

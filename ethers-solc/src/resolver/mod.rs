@@ -368,7 +368,20 @@ impl Graph {
                     &mut resolved_solc_include_paths,
                 ) {
                     Ok(import) => {
-                        add_node(&mut unresolved, &mut index, &mut resolved_imports, import)?;
+                        add_node(&mut unresolved, &mut index, &mut resolved_imports, import)
+                            .map_err(|err| {
+                                match err {
+                                    SolcError::Resolve(err) => {
+                                        // make the error more verbose
+                                        SolcError::FailedResolveImport(
+                                            err,
+                                            node.path.clone(),
+                                            import_path.clone(),
+                                        )
+                                    }
+                                    _ => err,
+                                }
+                            })?
                     }
                     Err(err) => {
                         unresolved_imports.insert((import_path.to_path_buf(), node.path.clone()));

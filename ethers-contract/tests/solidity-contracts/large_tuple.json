@@ -1,0 +1,88 @@
+[
+  {
+    "inputs": [
+      {
+        "internalType": "uint160",
+        "name": "input",
+        "type": "uint160"
+      }
+    ],
+    "name": "doSomething",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "bytes",
+            "name": "output1",
+            "type": "bytes"
+          },
+          {
+            "internalType": "bytes",
+            "name": "output2",
+            "type": "bytes"
+          },
+          {
+            "internalType": "bytes",
+            "name": "output3",
+            "type": "bytes"
+          },
+          {
+            "internalType": "bytes",
+            "name": "output4",
+            "type": "bytes"
+          },
+          {
+            "internalType": "bytes",
+            "name": "output5",
+            "type": "bytes"
+          },
+          {
+            "internalType": "bytes",
+            "name": "output6",
+            "type": "bytes"
+          },
+          {
+            "internalType": "bytes",
+            "name": "output7",
+            "type": "bytes"
+          },
+          {
+            "internalType": "bytes",
+            "name": "output8",
+            "type": "bytes"
+          },
+          {
+            "internalType": "bytes",
+            "name": "output9",
+            "type": "bytes"
+          },
+          {
+            "internalType": "bytes",
+            "name": "output10",
+            "type": "bytes"
+          },
+          {
+            "internalType": "bytes",
+            "name": "output11",
+            "type": "bytes"
+          },
+          {
+            "internalType": "bytes",
+            "name": "output12",
+            "type": "bytes"
+          },
+          {
+            "internalType": "bytes",
+            "name": "output13",
+            "type": "bytes"
+          }
+        ],
+        "internalType": "struct Contract.Response",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  }
+]

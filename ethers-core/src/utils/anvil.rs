@@ -1,5 +1,5 @@
 use crate::{
-    types::Address,
+    types::{Address, Chain},
     utils::{secret_key_to_address, unused_port},
 };
 use k256::{ecdsa::SigningKey, SecretKey as K256SecretKey};
@@ -21,6 +21,7 @@ pub struct AnvilInstance {
     private_keys: Vec<K256SecretKey>,
     addresses: Vec<Address>,
     port: u16,
+    chain_id: Option<u64>,
 }
 
 impl AnvilInstance {
@@ -37,6 +38,11 @@ impl AnvilInstance {
     /// Returns the port of this instance
     pub fn port(&self) -> u16 {
         self.port
+    }
+
+    /// Returns the chain of the anvil instance
+    pub fn chain_id(&self) -> u64 {
+        self.chain_id.unwrap_or_else(|| Chain::AnvilHardhat.into())
     }
 
     /// Returns the HTTP endpoint of this instance
@@ -82,6 +88,7 @@ pub struct Anvil {
     program: Option<PathBuf>,
     port: Option<u16>,
     block_time: Option<u64>,
+    chain_id: Option<u64>,
     mnemonic: Option<String>,
     fork: Option<String>,
     fork_block_number: Option<u64>,
@@ -136,6 +143,13 @@ impl Anvil {
     #[must_use]
     pub fn port<T: Into<u16>>(mut self, port: T) -> Self {
         self.port = Some(port.into());
+        self
+    }
+
+    /// Sets the chain_id the `anvil` instance will use.
+    #[must_use]
+    pub fn chain_id<T: Into<u64>>(mut self, chain_id: T) -> Self {
+        self.chain_id = Some(chain_id.into());
         self
     }
 
@@ -208,6 +222,10 @@ impl Anvil {
             cmd.arg("-m").arg(mnemonic);
         }
 
+        if let Some(chain_id) = self.chain_id {
+            cmd.arg("--chain-id").arg(chain_id.to_string());
+        }
+
         if let Some(block_time) = self.block_time {
             cmd.arg("-b").arg(block_time.to_string());
         }
@@ -258,7 +276,7 @@ impl Anvil {
 
         child.stdout = Some(reader.into_inner());
 
-        AnvilInstance { pid: child, private_keys, addresses, port }
+        AnvilInstance { pid: child, private_keys, addresses, port, chain_id: self.chain_id }
     }
 }
 
