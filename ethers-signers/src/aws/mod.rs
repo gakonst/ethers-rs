@@ -123,7 +123,7 @@ where
     resp
 }
 
-#[instrument(err, skip(kms, digest, key_id), fields(digest = %hex::encode(&digest), key_id = %key_id.as_ref()))]
+#[instrument(err, skip(kms, digest, key_id), fields(digest = %hex::encode(digest), key_id = %key_id.as_ref()))]
 async fn request_sign_digest<T>(
     kms: &KmsClient,
     key_id: T,
@@ -165,8 +165,8 @@ impl<'a> AwsSigner<'a> {
 
         debug!(
             "Instantiated AWS signer with pubkey 0x{} and address 0x{}",
-            hex::encode(&pubkey.to_bytes()),
-            hex::encode(&address)
+            hex::encode(pubkey.to_bytes()),
+            hex::encode(address)
         );
 
         Ok(Self { kms, chain_id, key_id: key_id.as_ref().to_owned(), pubkey, address })
@@ -204,7 +204,7 @@ impl<'a> AwsSigner<'a> {
 
     /// Sign a digest with this signer's key and add the eip155 `v` value
     /// corresponding to the input chain_id
-    #[instrument(err, skip(digest), fields(digest = %hex::encode(&digest)))]
+    #[instrument(err, skip(digest), fields(digest = %hex::encode(digest)))]
     async fn sign_digest_with_eip155(
         &self,
         digest: H256,

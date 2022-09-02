@@ -311,7 +311,7 @@ impl TypedTransaction {
 
     /// Hashes the transaction's data with the included signature.
     pub fn hash(&self, signature: &Signature) -> H256 {
-        keccak256(&self.rlp_signed(signature).as_ref()).into()
+        keccak256(self.rlp_signed(signature).as_ref()).into()
     }
 
     /// Decodes a signed TypedTransaction from a rlp encoded byte stream

@@ -19,7 +19,7 @@ impl SourceTree {
     /// Expand the source tree into the provided directory.  This method sanitizes paths to ensure
     /// that no directory traversal happens.
     pub fn write_to(&self, dir: &Path) -> Result<()> {
-        create_dir_all(&dir)?;
+        create_dir_all(dir)?;
         for entry in &self.entries {
             let mut sanitized_path = sanitize_path(&entry.path);
             if sanitized_path.extension().is_none() {
