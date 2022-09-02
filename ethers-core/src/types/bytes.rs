@@ -10,7 +10,7 @@ use std::{
 use thiserror::Error;
 
 /// Wrapper type around Bytes to deserialize/serialize "0x" prefixed ethereum hex strings
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize, Ord, PartialOrd)]
+#[derive(Clone, Default, PartialEq, Eq, Hash, Serialize, Deserialize, Ord, PartialOrd)]
 pub struct Bytes(
     #[serde(serialize_with = "serialize_bytes", deserialize_with = "deserialize_bytes")]
     pub  bytes::Bytes,
@@ -18,6 +18,12 @@ pub struct Bytes(
 
 fn bytes_to_hex(b: &Bytes) -> String {
     hex::encode(b.0.as_ref())
+}
+
+impl Debug for Bytes {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        write!(f, "Bytes(0x{})", bytes_to_hex(self))
+    }
 }
 
 impl Display for Bytes {
@@ -208,5 +214,12 @@ mod tests {
         let b = Bytes::from_str("1213");
         let b = b.unwrap();
         assert_eq!(b.as_ref(), hex::decode("1213").unwrap());
+    }
+
+    #[test]
+    fn test_debug_formatting() {
+        let b = Bytes::from(vec![1, 35, 69, 103, 137, 171, 205, 239]);
+        assert_eq!(format!("{:?}", b), "Bytes(0x0123456789abcdef)");
+        assert_eq!(format!("{:#?}", b), "Bytes(0x0123456789abcdef)");
     }
 }
