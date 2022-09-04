@@ -68,6 +68,10 @@ harness = false
 name = "read_all"
 harness = false
 
+[[bench]]
+name = "resolve_graph"
+harness = false
+
 [[test]]
 name = "project"
 path = "tests/project.rs"

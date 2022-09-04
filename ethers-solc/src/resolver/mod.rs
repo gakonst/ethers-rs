@@ -303,7 +303,7 @@ impl Graph {
     }
 
     /// Resolves a number of sources within the given config
-    pub fn resolve_sources_old(paths: &ProjectPathsConfig, sources: Sources) -> Result<Graph> {
+    pub fn resolve_sources_sync(paths: &ProjectPathsConfig, sources: Sources) -> Result<Graph> {
         /// checks if the given target path was already resolved, if so it adds its id to the list
         /// of resolved imports. If it hasn't been resolved yet, it queues in the file for
         /// processing
@@ -431,8 +431,8 @@ impl Graph {
     }
 
     /// Resolves the dependencies of a project's source contracts
-    pub fn resolve_old(paths: &ProjectPathsConfig) -> Result<Graph> {
-        Self::resolve_sources_old(paths, paths.read_input_files()?)
+    pub fn resolve_sync(paths: &ProjectPathsConfig) -> Result<Graph> {
+        Self::resolve_sources_sync(paths, paths.read_input_files()?)
     }
 
     /// Resolves a number of sources within the given config
