@@ -947,8 +947,10 @@ pub struct MetadataSettings {
     /// since metadata is per file
     #[serde(default)]
     pub libraries: BTreeMap<String, String>,
-    #[serde(rename = "viaIR")]
-    pub via_ir: bool,
+    /// Change compilation pipeline to go through the Yul intermediate representation. This is
+    /// false by default.
+    #[serde(rename = "viaIR", default, skip_serializing_if = "Option::is_none")]
+    pub via_ir: Option<bool>,
 }
 
 /// Compilation source files/source units, keys are file names
