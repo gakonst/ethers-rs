@@ -130,7 +130,7 @@ impl Transaction {
     }
 
     pub fn hash(&self) -> H256 {
-        keccak256(&self.rlp().as_ref()).into()
+        keccak256(self.rlp().as_ref()).into()
     }
 
     pub fn rlp(&self) -> Bytes {

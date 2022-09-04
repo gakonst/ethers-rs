@@ -564,7 +564,7 @@ pragma solidity ^0.8.0;
         let a = Path::new("/foo/bar/bar/test.txt");
         let b = Path::new("/foo/bar/foo/example/constract.sol");
         let expected = Path::new("/foo/bar");
-        assert_eq!(common_ancestor(&a, &b).unwrap(), expected.to_path_buf())
+        assert_eq!(common_ancestor(a, b).unwrap(), expected.to_path_buf())
     }
 
     #[test]

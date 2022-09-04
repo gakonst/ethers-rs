@@ -923,13 +923,13 @@ mod tests {
         std::fs::File::create(&contracts).unwrap();
         assert_eq!(ProjectPathsConfig::find_source_dir(root), contracts,);
         assert_eq!(
-            ProjectPathsConfig::builder().build_with_root(&root).sources,
+            ProjectPathsConfig::builder().build_with_root(root).sources,
             utils::canonicalized(contracts),
         );
         std::fs::File::create(&src).unwrap();
         assert_eq!(ProjectPathsConfig::find_source_dir(root), src,);
         assert_eq!(
-            ProjectPathsConfig::builder().build_with_root(&root).sources,
+            ProjectPathsConfig::builder().build_with_root(root).sources,
             utils::canonicalized(src),
         );
 
@@ -937,18 +937,18 @@ mod tests {
         std::fs::File::create(&artifacts).unwrap();
         assert_eq!(ProjectPathsConfig::find_artifacts_dir(root), artifacts,);
         assert_eq!(
-            ProjectPathsConfig::builder().build_with_root(&root).artifacts,
+            ProjectPathsConfig::builder().build_with_root(root).artifacts,
             utils::canonicalized(artifacts),
         );
         assert_eq!(
-            ProjectPathsConfig::builder().build_with_root(&root).build_infos,
+            ProjectPathsConfig::builder().build_with_root(root).build_infos,
             utils::canonicalized(build_infos)
         );
 
         std::fs::File::create(&out).unwrap();
         assert_eq!(ProjectPathsConfig::find_artifacts_dir(root), out,);
         assert_eq!(
-            ProjectPathsConfig::builder().build_with_root(&root).artifacts,
+            ProjectPathsConfig::builder().build_with_root(root).artifacts,
             utils::canonicalized(out),
         );
 
@@ -956,13 +956,13 @@ mod tests {
         std::fs::File::create(&node_modules).unwrap();
         assert_eq!(ProjectPathsConfig::find_libs(root), vec![node_modules.clone()],);
         assert_eq!(
-            ProjectPathsConfig::builder().build_with_root(&root).libraries,
+            ProjectPathsConfig::builder().build_with_root(root).libraries,
             vec![utils::canonicalized(node_modules)],
         );
         std::fs::File::create(&lib).unwrap();
         assert_eq!(ProjectPathsConfig::find_libs(root), vec![lib.clone()],);
         assert_eq!(
-            ProjectPathsConfig::builder().build_with_root(&root).libraries,
+            ProjectPathsConfig::builder().build_with_root(root).libraries,
             vec![utils::canonicalized(lib)],
         );
     }
@@ -975,7 +975,7 @@ mod tests {
 
         // Set the artifacts directory without setting the
         // build info directory
-        let project = ProjectPathsConfig::builder().artifacts(&artifacts).build_with_root(&root);
+        let project = ProjectPathsConfig::builder().artifacts(&artifacts).build_with_root(root);
 
         // The artifacts should be set correctly based on the configured value
         assert_eq!(project.artifacts, utils::canonicalized(artifacts));

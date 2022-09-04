@@ -157,7 +157,7 @@ impl FromStr for Bytes {
         if let Some(value) = value.strip_prefix("0x") {
             hex::decode(value)
         } else {
-            hex::decode(&value)
+            hex::decode(value)
         }
         .map(Into::into)
         .map_err(|e| ParseBytesError(format!("Invalid hex: {}", e)))
