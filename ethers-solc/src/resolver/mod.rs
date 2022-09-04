@@ -303,7 +303,7 @@ impl Graph {
     }
 
     /// Resolves a number of sources within the given config
-    pub fn resolve_sources(paths: &ProjectPathsConfig, sources: Sources) -> Result<Graph> {
+    pub fn resolve_sources_old(paths: &ProjectPathsConfig, sources: Sources) -> Result<Graph> {
         /// checks if the given target path was already resolved, if so it adds its id to the list
         /// of resolved imports. If it hasn't been resolved yet, it queues in the file for
         /// processing
@@ -430,7 +430,13 @@ impl Graph {
         Ok(Graph { nodes, edges, root: paths.root.clone() })
     }
 
-    pub fn resolve_sources2(paths: &ProjectPathsConfig, sources: Sources) -> Result<Graph> {
+    /// Resolves the dependencies of a project's source contracts
+    pub fn resolve_old(paths: &ProjectPathsConfig) -> Result<Graph> {
+        Self::resolve_sources_old(paths, paths.read_input_files()?)
+    }
+
+    /// Resolves a number of sources within the given config
+    pub fn resolve_sources(paths: &ProjectPathsConfig, sources: Sources) -> Result<Graph> {
         // we start off by reading all input files, which includes all solidity files from the
         // source and test folder
         let unresolved: Vec<_> = sources
