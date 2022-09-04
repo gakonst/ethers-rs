@@ -947,6 +947,8 @@ pub struct MetadataSettings {
     /// since metadata is per file
     #[serde(default)]
     pub libraries: BTreeMap<String, String>,
+    #[serde(rename = "viaIR")]
+    pub via_ir: bool,
 }
 
 /// Compilation source files/source units, keys are file names
