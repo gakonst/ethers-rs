@@ -48,13 +48,15 @@
 
 use crate::{error::Result, IncludePaths, ProjectPathsConfig, SolcError, Source, Sources};
 use node::{DisplayNode, Node};
+use parking_lot::{Mutex, RwLock};
 use parse::SolData;
-use rayon::prelude::*;
+use rayon::{prelude::*, Scope};
 use semver::VersionReq;
 use std::{
     collections::{HashMap, HashSet, VecDeque},
     io,
     path::{Path, PathBuf},
+    sync::Arc,
 };
 
 mod node;
@@ -428,6 +430,56 @@ impl Graph {
         Ok(Graph { nodes, edges, root: paths.root.clone() })
     }
 
+    pub fn resolve_sources2(paths: &ProjectPathsConfig, sources: Sources) -> Result<Graph> {
+        // we start off by reading all input files, which includes all solidity files from the
+        // source and test folder
+        let unresolved: Vec<_> = sources
+            .into_par_iter()
+            .map(|(path, source)| {
+                let data = SolData::parse(source.as_ref(), &path);
+                (path.clone(), Node { path, source, data })
+            })
+            .collect();
+
+        let num_input_files = unresolved.len();
+
+        let resolver = Resolver::new(unresolved, paths);
+        let ResolverOutcome {
+            indices,
+            nodes,
+            edges,
+            resolved_solc_include_paths,
+            unresolved_imports,
+        } = resolver.resolve()?;
+
+        if !unresolved_imports.is_empty() {
+            // notify on all unresolved imports
+            crate::report::unresolved_imports(
+                &unresolved_imports
+                    .iter()
+                    .map(|(i, f)| (i.as_path(), f.as_path()))
+                    .collect::<Vec<_>>(),
+                &paths.remappings,
+            );
+        }
+
+        let edges = GraphEdges {
+            edges,
+            rev_indices: indices.iter().map(|(k, v)| (*v, k.clone())).collect(),
+            indices,
+            num_input_files,
+            versions: nodes
+                .iter()
+                .enumerate()
+                .map(|(idx, node)| (idx, node.data.version_req.clone()))
+                .collect(),
+            data: Default::default(),
+            unresolved_imports,
+            resolved_solc_include_paths,
+        };
+        Ok(Graph { nodes, edges, root: paths.root.clone() })
+    }
+
     /// Resolves the dependencies of a project's source contracts
     pub fn resolve(paths: &ProjectPathsConfig) -> Result<Graph> {
         Self::resolve_sources(paths, paths.read_input_files()?)
@@ -512,13 +564,13 @@ impl Graph {
         f: &mut W,
     ) -> std::result::Result<(), std::fmt::Error> {
         let node = self.node(idx);
-        write!(f, "{} ", utils::source_name(&node.path, &self.root).display(),)?;
+        write!(f, "{} ", crate::utils::source_name(&node.path, &self.root).display(),)?;
         node.data.fmt_version(f)?;
         write!(f, " imports:",)?;
         for dep in self.node_ids(idx).skip(1) {
             writeln!(f)?;
             let dep = self.node(dep);
-            write!(f, "    {} ", utils::source_name(&dep.path, &self.root).display())?;
+            write!(f, "    {} ", crate::utils::source_name(&dep.path, &self.root).display())?;
             dep.data.fmt_version(f)?;
         }
 
@@ -819,6 +871,216 @@ impl VersionedSources {
         }
         Ok(sources_by_version)
     }
+}
+
+/// Resolves all nodes in the graph
+struct Resolver<'a> {
+    /// All unresolved files
+    unresolved: Vec<(PathBuf, Node)>,
+    inner: ResolverInner<'a>,
+}
+
+// === impl Resolver ===
+
+impl<'a> Resolver<'a> {
+    fn new(unresolved: Vec<(PathBuf, Node)>, paths: &'a ProjectPathsConfig) -> Self {
+        let node_ids =
+            unresolved.iter().enumerate().map(|(idx, (p, _))| (p.clone(), idx)).collect();
+
+        Self { unresolved, inner: ResolverInner::new(node_ids, paths) }
+    }
+
+    /// Resolves the entire graph asynchronously
+    ///
+    /// The unresolved nodes are seeding the pool, for each new unresolved node, another job is
+    /// spawned in the pool.
+    pub fn resolve(self) -> Result<ResolverOutcome> {
+        let Resolver { unresolved, inner } = self;
+
+        let inner = Arc::new(inner);
+        // execute all task in the thread pool
+        let resolver = Arc::clone(&inner);
+        rayon::scope(move |s| {
+            // resolve all imports
+            for (path, node) in unresolved.into_iter() {
+                resolver.clone().spawn(s, path, node);
+            }
+        });
+
+        debug_assert!(1 == Arc::strong_count(&inner), "only 1 pointer exists");
+
+        // at this point the scope is finished, and we can move everything out
+        let ResolverInner {
+            resolved_solc_include_paths,
+            unresolved_imports,
+            resolved_nodes,
+            resolved_imports,
+            node_ids,
+            ..
+        } = Arc::try_unwrap(inner).expect("is unique");
+
+        let mut resolved_imports = resolved_imports.into_inner();
+        let mut node_results = resolved_nodes.into_inner();
+        let mut nodes = Vec::with_capacity(resolved_imports.len());
+        let mut edges = Vec::with_capacity(resolved_imports.len());
+
+        let indices = node_ids.into_inner();
+        // sort all nodes by id
+        let mut node_ids: Vec<_> = indices.iter().collect();
+        node_ids.sort_by_key(|(_, id)| **id);
+
+        for (path, _) in node_ids {
+            let node = node_results.remove(path).expect("entry exists")?;
+            let imports = resolved_imports.remove(path).expect("entry exists");
+            nodes.push(node);
+            edges.push(imports);
+        }
+
+        let outcome = ResolverOutcome {
+            indices,
+            nodes,
+            edges,
+            resolved_solc_include_paths: resolved_solc_include_paths.into_inner(),
+            unresolved_imports: unresolved_imports.into_inner(),
+        };
+        Ok(outcome)
+    }
+}
+
+#[derive(Debug)]
+struct ResolverInner<'a> {
+    /// tracks additional paths that should be used with `--include-path`, these are libraries
+    /// that use absolute imports like `import "src/Contract.sol"`
+    resolved_solc_include_paths: RwLock<IncludePaths>,
+    // identifiers of all resolved files
+    node_ids: RwLock<HashMap<PathBuf, usize>>,
+    /// keeps track of all unique paths that we failed to resolve to not spam the reporter with the
+    /// same path
+    unresolved_imports: RwLock<HashSet<(PathBuf, PathBuf)>>,
+    /// Represents the resolved nodes
+    resolved_nodes: Mutex<HashMap<PathBuf, Result<Node>>>,
+    /// Represents the node all its imports
+    resolved_imports: RwLock<HashMap<PathBuf, Vec<usize>>>,
+    paths: &'a ProjectPathsConfig,
+}
+
+// === impl ResolverInner ===
+
+impl<'a> ResolverInner<'a> {
+    fn new(node_ids: HashMap<PathBuf, usize>, paths: &'a ProjectPathsConfig) -> Self {
+        Self {
+            resolved_solc_include_paths: Default::default(),
+            node_ids: RwLock::new(node_ids),
+            unresolved_imports: Default::default(),
+            resolved_nodes: Default::default(),
+            resolved_imports: Default::default(),
+            paths,
+        }
+    }
+
+    /// If the node path is not part of the set yet, it issues a new id
+    fn id(&self, node_path: PathBuf) -> usize {
+        let mut ids = self.node_ids.write();
+        let len = ids.len();
+        *ids.entry(node_path).or_insert(len)
+    }
+
+    /// Resolves the tree the given node spans
+    ///
+    /// Only spawns new tasks for imports that aren't in progress yet
+    fn spawn<'b>(self: Arc<Self>, s: &Scope<'b>, node_path: PathBuf, node: Node)
+    where
+        'a: 'b,
+    {
+        // reserve capacity for the node
+        self.resolved_imports
+            .write()
+            .insert(node_path.clone(), Vec::with_capacity(node.data.imports.len()));
+
+        s.spawn(move |s| {
+            // parent directory of the current file
+            let cwd = match node_path.parent() {
+                Some(inner) => inner,
+                None => return,
+            };
+
+            for import in node.data.imports.iter() {
+                let import_path = import.data().path();
+                let import = self.paths.resolve_import_and_include_paths(
+                    cwd,
+                    import_path,
+                    &mut self.resolved_solc_include_paths.write(),
+                );
+                match import {
+                    Ok(import) => {
+                        // resolve the node's import inside the pool
+                        let resolver = Arc::clone(&self);
+                        let node_path = node_path.clone();
+                        s.spawn(move |s| {
+                            if let Some(id) = resolver.node_ids.read().get(&import).copied() {
+                                resolver
+                                    .resolved_imports
+                                    .write()
+                                    .get_mut(&node_path)
+                                    .expect("exists")
+                                    .push(id);
+                                return
+                            }
+                            let id = resolver.id(import.clone());
+
+                            resolver
+                                .resolved_imports
+                                .write()
+                                .get_mut(&node_path)
+                                .expect("exists")
+                                .push(id);
+
+                            match Node::read(&import) {
+                                Ok(node) => {
+                                    // spawn a new task
+                                    resolver.spawn(s, import, node);
+                                }
+                                err @ Err(_) => {
+                                    resolver
+                                        .resolved_imports
+                                        .write()
+                                        .insert(import.clone(), vec![]);
+                                    resolver.resolved_nodes.lock().insert(import, err);
+                                }
+                            }
+                        })
+                    }
+                    Err(err) => {
+                        self.unresolved_imports
+                            .write()
+                            .insert((import_path.to_path_buf(), node.path.clone()));
+                        tracing::trace!(
+                            "failed to resolve import component \"{:?}\" for {:?}",
+                            err,
+                            node.path
+                        )
+                    }
+                }
+            }
+            self.resolved_nodes.lock().insert(node_path, Ok(node));
+        });
+    }
+}
+
+/// The outcome of a resolved graph
+struct ResolverOutcome {
+    /// index maps for a solidity file to an index, for fast lookup.
+    indices: HashMap<PathBuf, usize>,
+    /// All nodes
+    nodes: Vec<Node>,
+    /// All nodes and their imports identified by the index
+    edges: Vec<Vec<usize>>,
+    /// tracks additional paths that should be used with `--include-path`, these are libraries
+    /// that use absolute imports like `import "src/Contract.sol"`
+    resolved_solc_include_paths: IncludePaths,
+    /// keeps track of all unique paths that we failed to resolve to not spam the reporter with the
+    /// same path
+    unresolved_imports: HashSet<(PathBuf, PathBuf)>,
 }
 
 #[cfg(test)]
