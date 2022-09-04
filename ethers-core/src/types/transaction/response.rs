@@ -460,6 +460,8 @@ impl PartialOrd<Self> for TransactionReceipt {
 #[cfg(test)]
 #[cfg(not(feature = "celo"))]
 mod tests {
+    use rlp::Encodable;
+
     use crate::types::transaction::eip2930::AccessListItem;
 
     use super::*;
@@ -908,6 +910,17 @@ mod tests {
         assert!(receipt.to.is_none());
         let receipt = serde_json::to_value(receipt).unwrap();
         assert_eq!(v, receipt);
+    }
+
+    #[test]
+    fn rlp_encode_receipt() {
+        let receipt = TransactionReceipt { status: Some(1u64.into()), ..Default::default() };
+        let encoded = receipt.rlp_bytes();
+
+        assert_eq!(
+            encoded,
+            hex::decode("f901060180b9010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000c0").unwrap(),
+        );
     }
 
     #[test]
