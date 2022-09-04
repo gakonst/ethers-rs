@@ -385,7 +385,7 @@ fn can_compile_dapp_sample_with_cache() {
     assert!(compiled.is_unchanged());
 
     // deleted artifacts cause recompile even with cache
-    std::fs::remove_dir_all(&project.artifacts_path()).unwrap();
+    std::fs::remove_dir_all(project.artifacts_path()).unwrap();
     let compiled = project.compile().unwrap();
     assert!(compiled.find_first("Dapp").is_some());
     assert!(!compiled.is_unchanged());

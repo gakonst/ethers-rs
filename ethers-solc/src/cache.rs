@@ -607,7 +607,7 @@ impl<'a, T: ArtifactOutput> ArtifactsCacheInner<'a, T> {
             .collect();
 
         let entry = CacheEntry {
-            last_modification_date: CacheEntry::read_last_modification_date(&file)
+            last_modification_date: CacheEntry::read_last_modification_date(file)
                 .unwrap_or_default(),
             content_hash: source.content_hash(),
             source_name: utils::source_name(file, self.project.root()).into(),
@@ -721,7 +721,7 @@ impl<'a, T: ArtifactOutput> ArtifactsCacheInner<'a, T> {
     /// returns `false` if the corresponding cache entry remained unchanged otherwise `true`
     fn is_dirty(&self, file: &Path, version: &Version) -> bool {
         if let Some(hash) = self.content_hashes.get(file) {
-            if let Some(entry) = self.cache.entry(&file) {
+            if let Some(entry) = self.cache.entry(file) {
                 if entry.content_hash.as_bytes() != hash.as_bytes() {
                     tracing::trace!("changed content hash for source file \"{}\"", file.display());
                     return true

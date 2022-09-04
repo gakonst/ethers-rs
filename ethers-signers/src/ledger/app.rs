@@ -243,7 +243,7 @@ impl LedgerEthereum {
                 index |= 0x80000000;
             }
 
-            bytes.extend(&index.to_be_bytes());
+            bytes.extend(index.to_be_bytes());
         }
 
         bytes

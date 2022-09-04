@@ -2,7 +2,6 @@
 use crate::{
     compile::*, error::SolcIoError, remappings::Remapping, utils, ProjectPathsConfig, SolcError,
 };
-use colored::Colorize;
 use ethers_core::abi::Abi;
 use md5::Digest;
 use semver::{Version, VersionReq};
@@ -14,6 +13,7 @@ use std::{
     str::FromStr,
 };
 use tracing::warn;
+use yansi::Paint;
 
 pub mod ast;
 pub use ast::*;
@@ -947,6 +947,8 @@ pub struct MetadataSettings {
     /// since metadata is per file
     #[serde(default)]
     pub libraries: BTreeMap<String, String>,
+    #[serde(rename = "viaIR")]
+    pub via_ir: bool,
 }
 
 /// Compilation source files/source units, keys are file names
@@ -1685,15 +1687,15 @@ impl fmt::Display for Error {
             match self.severity {
                 Severity::Error => {
                     if let Some(code) = self.error_code {
-                        format!("error[{}]: ", code).as_str().red().fmt(f)?;
+                        Paint::red(format!("error[{}]: ", code)).fmt(f)?;
                     }
-                    msg.as_str().red().fmt(f)
+                    Paint::red(msg).fmt(f)
                 }
                 Severity::Warning | Severity::Info => {
                     if let Some(code) = self.error_code {
-                        format!("warning[{}]: ", code).as_str().yellow().fmt(f)?;
+                        Paint::yellow(format!("warning[{}]: ", code)).fmt(f)?;
                     }
-                    msg.as_str().yellow().fmt(f)
+                    Paint::yellow(msg).fmt(f)
                 }
             }
         } else {
@@ -1713,8 +1715,8 @@ pub enum Severity {
 impl fmt::Display for Severity {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Severity::Error => f.write_str(&"Error".red()),
-            Severity::Warning => f.write_str(&"Warning".yellow()),
+            Severity::Error => Paint::red("Error").fmt(f),
+            Severity::Warning => Paint::yellow("Warning").fmt(f),
             Severity::Info => f.write_str("Info"),
         }
     }
