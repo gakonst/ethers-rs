@@ -957,7 +957,7 @@ impl<'a> Resolver<'a> {
 struct ResolverInner<'a> {
     /// tracks additional paths that should be used with `--include-path`, these are libraries
     /// that use absolute imports like `import "src/Contract.sol"`
-    resolved_solc_include_paths: RwLock<IncludePaths>,
+    resolved_solc_include_paths: Mutex<IncludePaths>,
     // identifiers of all resolved files
     node_ids: RwLock<HashMap<PathBuf, usize>>,
     /// keeps track of all unique paths that we failed to resolve to not spam the reporter with the
@@ -1012,11 +1012,9 @@ impl<'a> ResolverInner<'a> {
 
             for import in node.data.imports.iter() {
                 let import_path = import.data().path();
-                let import = self.paths.resolve_import_and_include_paths(
-                    cwd,
-                    import_path,
-                    &mut self.resolved_solc_include_paths.write(),
-                );
+                let import = self.paths.resolve_import_with(cwd, import_path, |include_path| {
+                    self.resolved_solc_include_paths.lock().insert(include_path);
+                });
                 match import {
                     Ok(import) => {
                         // resolve the node's import inside the pool

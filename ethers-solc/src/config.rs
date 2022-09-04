@@ -230,6 +230,23 @@ impl ProjectPathsConfig {
         import: &Path,
         include_paths: &mut IncludePaths,
     ) -> Result<PathBuf> {
+        self.resolve_import_with(cwd, import, |include_path| {
+            include_paths.insert(include_path);
+        })
+    }
+
+    /// See [`Self::resolve_import_and_include_paths()`]
+    ///
+    /// Note: This was used as perf optimization for resolving the [`crate::Graph`] in parallel
+    pub(crate) fn resolve_import_with<F>(
+        &self,
+        cwd: &Path,
+        import: &Path,
+        mut on_include_paths: F,
+    ) -> Result<PathBuf>
+    where
+        F: FnMut(PathBuf),
+    {
         let component = import
             .components()
             .next()
@@ -254,7 +271,7 @@ impl ProjectPathsConfig {
                         utils::resolve_absolute_library(lib, cwd, import)
                     {
                         // track the path for this absolute import inside a nested library
-                        include_paths.insert(include_path);
+                        on_include_paths(include_path);
                         return Ok(import)
                     }
                 }
