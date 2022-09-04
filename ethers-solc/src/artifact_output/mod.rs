@@ -563,7 +563,7 @@ where
 /// relationship (1-N+).
 pub trait ArtifactOutput {
     /// Represents the artifact that will be stored for a `Contract`
-    type Artifact: Artifact + DeserializeOwned + Serialize + fmt::Debug;
+    type Artifact: Artifact + DeserializeOwned + Serialize + fmt::Debug + Send + Sync;
 
     /// Handle the aggregated set of compiled contracts from the solc [`crate::CompilerOutput`].
     ///

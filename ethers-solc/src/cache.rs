@@ -301,12 +301,19 @@ impl SolFilesCache {
     /// let artifacts = cache.read_artifacts::<CompactContractBytecode>().unwrap();
     /// # }
     /// ```
-    pub fn read_artifacts<Artifact: DeserializeOwned>(&self) -> Result<Artifacts<Artifact>> {
-        let mut artifacts = ArtifactsMap::new();
-        for (file, entry) in self.files.iter() {
-            let file_name = format!("{}", file.display());
-            artifacts.insert(file_name, entry.read_artifact_files()?);
-        }
+    pub fn read_artifacts<Artifact: DeserializeOwned + Send + Sync>(
+        &self,
+    ) -> Result<Artifacts<Artifact>> {
+        use rayon::prelude::*;
+
+        let artifacts = self
+            .files
+            .par_iter()
+            .map(|(file, entry)| {
+                let file_name = format!("{}", file.display());
+                entry.read_artifact_files().map(|files| (file_name, files))
+            })
+            .collect::<Result<ArtifactsMap<_>>>()?;
         Ok(Artifacts(artifacts))
     }
 
