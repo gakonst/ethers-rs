@@ -428,7 +428,7 @@ pub struct TransactionReceipt {
 impl rlp::Encodable for TransactionReceipt {
     fn rlp_append(&self, s: &mut RlpStream) {
         s.begin_list(4);
-        s.append(&self.status);
+        rlp_opt(s, &self.status);
         s.append(&self.cumulative_gas_used);
         s.append(&self.logs_bloom);
         s.append_list(&self.logs);
