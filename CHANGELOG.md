@@ -85,6 +85,7 @@
 - [#1535](https://github.com/gakonst/ethers-rs/pull/1535) Add support to Aurora and Aurora testnet networks.
 - [#1632](https://github.com/gakonst/ethers-rs/pull/1632) Re-export `H32` from `ethabi`.
 - [#1634](https://github.com/gakonst/ethers-rs/pull/1634) Derive missing `Clone`, `Copy` and `Debug` impls in ethers-etherscan.
+- Bytes debug format now displays hex literals [#1658](https://github.com/gakonst/ethers-rs/pull/1658)
 
 ## ethers-contract-abigen
 
