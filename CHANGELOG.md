@@ -4,7 +4,7 @@
 
 ### Unreleased
 
-- Fix RLP encoding of `TransactionReceipt`
+- Fix RLP encoding of `TransactionReceipt` [#1661](https://github.com/gakonst/ethers-rs/pull/1661)
 - Add `Unit8` helper type [#1639](https://github.com/gakonst/ethers-rs/pull/1639)
 - Add `evm.deployedBytecode.immutableReferences` output selector [#1523](https://github.com/gakonst/ethers-rs/pull/1523)
 - Added `get_erc1155_token_transfer_events` function for etherscan client [#1503](https://github.com/gakonst/ethers-rs/pull/1503)
@@ -263,6 +263,10 @@
 
 ### Unreleased
 
+- Add extra Multicall helper methods
+  [#1666](https://github.com/gakonst/ethers-rs/pull/1666)
+- Update Multicall to Multicall3
+  [#1584](https://github.com/gakonst/ethers-rs/pull/1584)
 - Add `Event::stream_with_meta` and `Event::subscribe_with_meta`
   [#1483](https://github.com/gakonst/ethers-rs/pull/1483)
 - Added tx builder methods to `ContractFactory`
