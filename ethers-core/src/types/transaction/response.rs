@@ -346,7 +346,9 @@ impl Decodable for Transaction {
         }?;
 
         let rest = if txn.transaction_type.is_some() {
-            rlp::Rlp::new(rlp.as_raw().get(1..).ok_or(DecoderError::Custom("no transaction payload"))?)
+            rlp::Rlp::new(
+                rlp.as_raw().get(1..).ok_or(DecoderError::Custom("no transaction payload"))?,
+            )
         } else {
             rlp.to_owned()
         };
