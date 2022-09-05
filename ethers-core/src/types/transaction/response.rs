@@ -345,11 +345,10 @@ impl Decodable for Transaction {
             false => Ok(None),
         }?;
 
-        let rest = match txn.transaction_type {
-            Some(_) => rlp::Rlp::new(
-                rlp.as_raw().get(1..).ok_or(DecoderError::Custom("no transaction payload"))?,
-            ),
-            None => rlp.to_owned(),
+        let rest = if txn.transaction_type.is_some() {
+            rlp::Rlp::new(rlp.as_raw().get(1..).ok_or(DecoderError::Custom("no transaction payload"))?)
+        } else {
+            rlp.to_owned()
         };
 
         match txn.transaction_type {
