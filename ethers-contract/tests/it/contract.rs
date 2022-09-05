@@ -499,9 +499,9 @@ mod eth_tests {
         // so should have 100 ETH
         multicall
             .clear_calls()
-            .eth_balance_of(addrs[4], false)
-            .eth_balance_of(addrs[5], false)
-            .eth_balance_of(addrs[6], false);
+            .add_get_eth_balance(addrs[4], false)
+            .add_get_eth_balance(addrs[5], false)
+            .add_get_eth_balance(addrs[6], false);
 
         let balances: (U256, U256, U256) = multicall.call().await.unwrap();
         assert_eq!(balances.0, U256::from(10_000_000_000_000_000_000_000u128));
@@ -653,8 +653,8 @@ mod eth_tests {
         // ((bool, U256)) == (bool, U256)
         let bal_before: ((bool, U256), (bool, U256)) = multicall
             .clear_calls()
-            .eth_balance_of(rc_addr, false)
-            .eth_balance_of(rc_addr, false)
+            .add_get_eth_balance(rc_addr, false)
+            .add_get_eth_balance(rc_addr, false)
             .call()
             .await
             .unwrap();
@@ -665,8 +665,8 @@ mod eth_tests {
 
         let bal_after: ((bool, U256), (bool, U256)) = multicall
             .clear_calls()
-            .eth_balance_of(rc_addr, false)
-            .eth_balance_of(rc_addr, false)
+            .add_get_eth_balance(rc_addr, false)
+            .add_get_eth_balance(rc_addr, false)
             .call()
             .await
             .unwrap();

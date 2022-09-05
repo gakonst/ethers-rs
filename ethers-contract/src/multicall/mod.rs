@@ -235,16 +235,16 @@ impl TryFrom<u8> for MulticallVersion {
 /// multicall = multicall.version(MulticallVersion::Multicall);
 /// multicall
 ///     .clear_calls()
-///     .eth_balance_of(address_1, false)
-///     .eth_balance_of(address_2, false);
+///     .add_get_eth_balance(address_1, false)
+///     .add_get_eth_balance(address_2, false);
 /// let _balances: (U256, U256) = multicall.call().await?;
 ///
 /// // or with version 2 and above
 /// multicall = multicall.version(MulticallVersion::Multicall3);
 /// multicall
 ///     .clear_calls()
-///     .eth_balance_of(address_1, false)
-///     .eth_balance_of(address_2, false);
+///     .add_get_eth_balance(address_1, false)
+///     .add_get_eth_balance(address_2, false);
 /// let _balances: ((bool, U256), (bool, U256)) = multicall.call().await?;
 ///
 /// # Ok(())
@@ -442,21 +442,21 @@ impl<M: Middleware> Multicall<M> {
     ///
     /// Note: this call will return 0 if `block_number` is not one of the most recent 256 blocks.
     /// ([Reference](https://docs.soliditylang.org/en/latest/units-and-global-variables.html?highlight=blockhash#block-and-transaction-properties))
-    pub fn get_block_hash(&mut self, block_number: impl Into<U256>) -> &mut Self {
+    pub fn add_get_block_hash(&mut self, block_number: impl Into<U256>) -> &mut Self {
         let call = self.contract.get_block_hash(block_number.into());
         self.add_call(call, false)
     }
 
     /// Appends a `call` to the list of calls of the Multicall instance for querying the current
     /// block number.
-    pub fn get_block_number(&mut self) -> &mut Self {
+    pub fn add_get_block_number(&mut self) -> &mut Self {
         let call = self.contract.get_block_number();
         self.add_call(call, false)
     }
 
     /// Appends a `call` to the list of calls of the Multicall instance for querying the current
     /// block coinbase address.
-    pub fn get_current_block_coinbase(&mut self) -> &mut Self {
+    pub fn add_get_current_block_coinbase(&mut self) -> &mut Self {
         let call = self.contract.get_current_block_coinbase();
         self.add_call(call, false)
     }
@@ -467,28 +467,28 @@ impl<M: Middleware> Multicall<M> {
     /// Note: in a post-merge environment, the return value of this call will be the output of the
     /// randomness beacon provided by the beacon chain.
     /// ([Reference](https://eips.ethereum.org/EIPS/eip-4399#abstract))
-    pub fn get_current_block_difficulty(&mut self) -> &mut Self {
+    pub fn add_get_current_block_difficulty(&mut self) -> &mut Self {
         let call = self.contract.get_current_block_difficulty();
         self.add_call(call, false)
     }
 
     /// Appends a `call` to the list of calls of the Multicall instance for querying the current
     /// block gas limit.
-    pub fn get_current_block_gas_limit(&mut self) -> &mut Self {
+    pub fn add_get_current_block_gas_limit(&mut self) -> &mut Self {
         let call = self.contract.get_current_block_gas_limit();
         self.add_call(call, false)
     }
 
     /// Appends a `call` to the list of calls of the Multicall instance for querying the current
     /// block timestamp.
-    pub fn get_current_block_timestamp(&mut self) -> &mut Self {
+    pub fn add_get_current_block_timestamp(&mut self) -> &mut Self {
         let call = self.contract.get_current_block_timestamp();
         self.add_call(call, false)
     }
 
     /// Appends a `call` to the list of calls of the Multicall instance for querying the ETH
     /// balance of an address.
-    pub fn eth_balance_of(
+    pub fn add_get_eth_balance(
         &mut self,
         address: impl Into<Address>,
         allow_failure: bool,
@@ -499,7 +499,7 @@ impl<M: Middleware> Multicall<M> {
 
     /// Appends a `call` to the list of calls of the Multicall instance for querying the last
     /// block hash.
-    pub fn get_last_block_hash(&mut self) -> &mut Self {
+    pub fn add_get_last_block_hash(&mut self) -> &mut Self {
         let call = self.contract.get_last_block_hash();
         self.add_call(call, false)
     }
@@ -509,13 +509,13 @@ impl<M: Middleware> Multicall<M> {
     ///
     /// Note: this call will fail if the chain that it is called on does not implement the
     /// [BASEFEE opcode](https://eips.ethereum.org/EIPS/eip-3198).
-    pub fn get_basefee(&mut self, allow_failure: bool) -> &mut Self {
+    pub fn add_get_basefee(&mut self, allow_failure: bool) -> &mut Self {
         let call = self.contract.get_basefee();
         self.add_call(call, allow_failure)
     }
 
     /// Appends a `call` to the list of calls of the Multicall instance for querying the chain id.
-    pub fn get_chain_id(&mut self) -> &mut Self {
+    pub fn add_get_chain_id(&mut self) -> &mut Self {
         let call = self.contract.get_chain_id();
         self.add_call(call, false)
     }
