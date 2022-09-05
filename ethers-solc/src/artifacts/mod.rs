@@ -1147,10 +1147,6 @@ pub struct Source {
 }
 
 impl Source {
-    /// this is a heuristically measured threshold at which we can generally expect a speedup by
-    /// using rayon's `par_iter`, See `Self::read_all_files`
-    pub const NUM_READ_PAR: usize = 8;
-
     /// Reads the file content
     pub fn read(file: impl AsRef<Path>) -> Result<Self, SolcIoError> {
         let file = file.as_ref();
@@ -1166,17 +1162,7 @@ impl Source {
     ///
     /// Depending on the len of the vec it will try to read the files in parallel
     pub fn read_all_files(files: Vec<PathBuf>) -> Result<Sources, SolcIoError> {
-        use rayon::prelude::*;
-
-        if files.len() < Self::NUM_READ_PAR {
-            Self::read_all(files)
-        } else {
-            files
-                .par_iter()
-                .map(Into::into)
-                .map(|file| Self::read(&file).map(|source| (file, source)))
-                .collect()
-        }
+        Self::read_all(files)
     }
 
     /// Reads all files
@@ -1195,7 +1181,7 @@ impl Source {
     /// Parallelized version of `Self::read_all` that reads all files using a parallel iterator
     ///
     /// NOTE: this is only expected to be faster than `Self::read_all` if the given iterator
-    /// contains at least several paths. see also `Self::read_all_files`.
+    /// contains at least several paths or the files are rather large.
     pub fn par_read_all<T, I>(files: I) -> Result<Sources, SolcIoError>
     where
         I: IntoIterator<Item = T>,
