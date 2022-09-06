@@ -93,6 +93,7 @@
 
 ### Unreleased
 
+- Use corresponding rust structs for event fields if they're solidity structs [#1674](https://github.com/gakonst/ethers-rs/pull/1674)
 - Add `ContractFilter` to filter contracts in `MultiAbigen` [#1564](https://github.com/gakonst/ethers-rs/pull/1564)
 - generate error bindings for custom errors [#1549](https://github.com/gakonst/ethers-rs/pull/1549)
 - Support overloaded events
