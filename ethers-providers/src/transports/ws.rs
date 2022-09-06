@@ -16,12 +16,16 @@ use serde_json::value::RawValue;
 use std::{
     collections::{btree_map::Entry, BTreeMap},
     fmt::{self, Debug},
+    future::{Future, IntoFuture},
+    pin::Pin,
     sync::{
         atomic::{AtomicU64, Ordering},
         Arc,
     },
+    task::{Context, Poll},
 };
 use thiserror::Error;
+use tokio::task::JoinHandle;
 use tracing::trace;
 
 use super::common::{Params, Response};
@@ -107,15 +111,28 @@ impl Debug for Ws {
 impl Ws {
     /// Initializes a new WebSocket Client, given a Stream/Sink Websocket implementer.
     /// The websocket connection must be initiated separately.
+    ///
+    /// See [`Ws::connect()`]
     pub fn new<S: 'static>(ws: S) -> Self
+    where
+        S: Send + Sync + Stream<Item = WsStreamItem> + Sink<Message, Error = WsError> + Unpin,
+    {
+        let (ws, _) = Self::new_pair(ws);
+        ws
+    }
+
+    /// Creates a new pair of `Ws` and `WsServerHandle`
+    pub fn new_pair<S: 'static>(ws: S) -> (Self, WsServerHandle<S>)
     where
         S: Send + Sync + Stream<Item = WsStreamItem> + Sink<Message, Error = WsError> + Unpin,
     {
         let (sink, stream) = mpsc::unbounded();
         // Spawn the server
-        WsServer::new(ws, stream).spawn();
-
-        Self { id: Arc::new(AtomicU64::new(1)), instructions: sink }
+        let server = WsServer::new(ws, stream).into_future();
+        let inner = tokio::task::spawn(async move { server.await });
+        let handle = WsServerHandle { inner };
+        let ws = Self { id: Arc::new(AtomicU64::new(1)), instructions: sink };
+        (ws, handle)
     }
 
     /// Returns true if the WS connection is active, false otherwise
@@ -132,10 +149,23 @@ impl Ws {
     }
 
     /// Initializes a new WebSocket Client
+    ///
+    /// ```
+    /// use ethers_providers::{Provider, Ws};
+    /// # async fn t() {
+    ///    let provider = Provider::new(Ws::connect("ws://localhost:8545").await.unwrap());
+    /// # }
+    /// ```
     #[cfg(not(target_arch = "wasm32"))]
     pub async fn connect(url: impl IntoClientRequest + Unpin) -> Result<Self, ClientError> {
         let (ws, _) = connect_async(url).await?;
         Ok(Self::new(ws))
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub async fn create(url: impl IntoClientRequest + Unpin) -> Result<Self, ClientError> {
+        let (ws, _) = connect_async(url).await?;
+        todo!()
     }
 
     /// Initializes a new WebSocket Client with authentication
@@ -203,7 +233,7 @@ impl PubsubClient for Ws {
     }
 }
 
-struct WsServer<S> {
+pub struct WsServer<S> {
     ws: Fuse<S>,
     instructions: Fuse<mpsc::UnboundedReceiver<Instruction>>,
 
@@ -236,28 +266,11 @@ where
     }
 
     /// Spawns the event loop
-    fn spawn(mut self)
+    fn spawn(self)
     where
         S: 'static,
     {
-        let f = async move {
-            loop {
-                if self.is_done() {
-                    debug!("work complete");
-                    break
-                }
-                match self.tick().await {
-                    Err(ClientError::UnexpectedClose) => {
-                        error!("{}", ClientError::UnexpectedClose);
-                        break
-                    }
-                    Err(e) => {
-                        panic!("WS Server panic: {}", e);
-                    }
-                    _ => {}
-                }
-            }
-        };
+        let f = self.into_future();
 
         #[cfg(target_arch = "wasm32")]
         spawn_local(f);
@@ -414,6 +427,62 @@ where
         };
 
         Ok(())
+    }
+}
+
+type WsServerOutput<S> = Result<(), (WsServer<S>, ClientError)>;
+type WsServerFuture<S> = Pin<Box<dyn Future<Output = WsServerOutput<S>> + Send + 'static>>;
+
+impl<S> IntoFuture for WsServer<S>
+where
+    S: Send + Sync + Stream<Item = WsStreamItem> + Sink<Message, Error = WsError> + Unpin + 'static,
+{
+    type Output = WsServerOutput<S>;
+    type IntoFuture = WsServerFuture<S>;
+
+    fn into_future(mut self) -> Self::IntoFuture {
+        Box::pin(async move {
+            loop {
+                if self.is_done() {
+                    debug!("work complete");
+                    break
+                }
+                match self.tick().await {
+                    Err(ClientError::UnexpectedClose) => {
+                        error!("{}", ClientError::UnexpectedClose);
+                        return Err((self, ClientError::UnexpectedClose))
+                    }
+                    Err(err) => {
+                        error!("WS Server panic: {}", err);
+                        return Err((self, err))
+                    }
+                    _ => {}
+                }
+            }
+            Ok(())
+        })
+    }
+}
+
+type WsServerHandleOutput<S> =
+    Result<Result<(), (WsServer<S>, ClientError)>, tokio::task::JoinError>;
+
+/// The future that awaits the spawned `WsServer` future
+#[pin_project::pin_project]
+pub struct WsServerHandle<S> {
+    #[pin]
+    inner: JoinHandle<WsServerOutput<S>>,
+}
+
+impl<S> Future for WsServerHandle<S>
+where
+    S: Send + Sync + Stream<Item = WsStreamItem> + Sink<Message, Error = WsError> + Unpin,
+{
+    type Output = WsServerHandleOutput<S>;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let this = self.project();
+        this.inner.poll(cx)
     }
 }
 
