@@ -1,6 +1,7 @@
 use super::{types, util, Context};
+use crate::util::can_derive_defaults;
 use ethers_core::{
-    abi::{Event, EventExt, EventParam, ParamType, SolStruct},
+    abi::{Event, EventExt, EventParam, Param, ParamType, SolStruct},
     macros::{ethers_contract_crate, ethers_core_crate},
 };
 use eyre::Result;
@@ -255,10 +256,31 @@ impl Context {
 
         let derives = util::expand_derives(&self.event_derives);
 
+        // rust-std only derives default automatically for arrays len <= 32
+        // for large array types we skip derive(Default) <https://github.com/gakonst/ethers-rs/issues/1640>
+        let derive_default = if can_derive_defaults(
+            &event
+                .inputs
+                .iter()
+                .map(|param| Param {
+                    name: param.name.clone(),
+                    kind: param.kind.clone(),
+                    internal_type: None,
+                })
+                .collect::<Vec<_>>(),
+        ) {
+            quote! {
+                #[derive(Default)]
+            }
+        } else {
+            quote! {}
+        };
+
         let ethers_contract = ethers_contract_crate();
 
         Ok(quote! {
-            #[derive(Clone, Debug, Default, Eq, PartialEq, #ethers_contract::EthEvent, #ethers_contract::EthDisplay, #derives)]
+            #[derive(Clone, Debug, Eq, PartialEq, #ethers_contract::EthEvent, #ethers_contract::EthDisplay, #derives)]
+             #derive_default
             #[ethevent( name = #event_abi_name, abi = #abi_signature )]
             pub #data_type_definition
         })
