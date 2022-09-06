@@ -686,12 +686,12 @@ mod tests {
     #[test]
     fn parse_event_input() {
         assert_eq!(
-            AbiParser::default().parse_event_arg("address indexed x").unwrap(),
+            AbiParser::default().parse_event_arg("address indexed x").unwrap().0,
             EventParam { name: "x".to_string(), kind: ParamType::Address, indexed: true }
         );
 
         assert_eq!(
-            AbiParser::default().parse_event_arg("address x").unwrap(),
+            AbiParser::default().parse_event_arg("address x").unwrap().0,
             EventParam { name: "x".to_string(), kind: ParamType::Address, indexed: false }
         );
     }
