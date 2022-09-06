@@ -1,7 +1,7 @@
 use super::{types, util, Context};
 use crate::util::can_derive_defaults;
 use ethers_core::{
-    abi::{Event, EventExt, EventParam, Param, ParamType, SolStruct},
+    abi::{Event, EventExt, EventParam, Param, ParamType},
     macros::{ethers_contract_crate, ethers_core_crate},
 };
 use eyre::Result;
@@ -141,54 +141,59 @@ impl Context {
     /// Note that this is slightly different from expanding a Solidity type as
     /// complex types like arrays and strings get emitted as hashes when they are
     /// indexed.
-    /// If a complex types matches with a struct previously parsed by the AbiParser,
+    /// If a complex types matches with a struct previously parsed by the internal structs,
     /// we can replace it
-    fn expand_input_type(&self, input: &EventParam) -> Result<TokenStream> {
+    fn expand_input_type(
+        &self,
+        event: &Event,
+        input: &EventParam,
+        idx: usize,
+    ) -> Result<TokenStream> {
         let ethers_core = ethers_core_crate();
         Ok(match (&input.kind, input.indexed) {
-            (ParamType::Array(ty), true) => {
-                if let ParamType::Tuple(..) = **ty {
-                    // represents an array of a struct
-                    if let Some(ty) = self
-                        .abi_parser
-                        .structs
-                        .get(&input.name)
-                        .map(SolStruct::name)
-                        .map(util::ident)
-                    {
-                        return Ok(quote! {::std::vec::Vec<#ty>})
-                    }
-                }
+            (ParamType::Array(_), true) => {
                 quote! { #ethers_core::types::H256 }
             }
-            (ParamType::FixedArray(ty, size), true) => {
-                if let ParamType::Tuple(..) = **ty {
-                    // represents a fixed array of a struct
-                    if let Some(ty) = self
-                        .abi_parser
-                        .structs
-                        .get(&input.name)
-                        .map(SolStruct::name)
-                        .map(util::ident)
-                    {
-                        let size = Literal::usize_unsuffixed(*size);
-                        return Ok(quote! {[#ty; #size]})
-                    }
-                }
+            (ParamType::FixedArray(_, _), true) => {
                 quote! { #ethers_core::types::H256 }
             }
             (ParamType::Tuple(..), true) => {
-                // represents a struct
-                if let Some(ty) =
-                    self.abi_parser.structs.get(&input.name).map(SolStruct::name).map(util::ident)
-                {
-                    quote! {#ty}
-                } else {
-                    quote! { #ethers_core::types::H256 }
-                }
+                quote! { #ethers_core::types::H256 }
             }
             (ParamType::Bytes, true) | (ParamType::String, true) => {
                 quote! { #ethers_core::types::H256 }
+            }
+            (ParamType::Tuple(_), false) => {
+                let ty = if let Some(rust_struct_name) =
+                    self.internal_structs.get_event_input_struct_type(&event.name, idx)
+                {
+                    let ident = util::ident(rust_struct_name);
+                    quote! {#ident}
+                } else {
+                    types::expand(&input.kind)?
+                };
+                ty
+            }
+            (ParamType::Array(_), _) => {
+                // represents an array of a struct
+                if let Some(rust_struct_name) =
+                    self.internal_structs.get_event_input_struct_type(&event.name, idx)
+                {
+                    let ty = util::ident(rust_struct_name);
+                    return Ok(quote! {::std::vec::Vec<#ty>})
+                }
+                types::expand(&input.kind)?
+            }
+            (ParamType::FixedArray(_, size), _) => {
+                // represents a fixed array of a struct
+                if let Some(rust_struct_name) =
+                    self.internal_structs.get_event_input_struct_type(&event.name, idx)
+                {
+                    let ty = util::ident(rust_struct_name);
+                    let size = Literal::usize_unsuffixed(*size);
+                    return Ok(quote! {[#ty; #size]})
+                }
+                types::expand(&input.kind)?
             }
             (kind, _) => types::expand(kind)?,
         })
@@ -200,10 +205,10 @@ impl Context {
             .inputs
             .iter()
             .enumerate()
-            .map(|(i, input)| {
+            .map(|(idx, input)| {
                 // NOTE: Events can contain nameless values.
-                let name = util::expand_input_name(i, &input.name);
-                let ty = self.expand_input_type(input)?;
+                let name = util::expand_input_name(idx, &input.name);
+                let ty = self.expand_input_type(event, input, idx)?;
 
                 Ok((name, ty, input.indexed))
             })

@@ -207,6 +207,7 @@ impl Context {
                 .rust_type_names
                 .extend(abi_parser.function_params.values().map(|ty| (ty.clone(), ty.clone())));
             internal_structs.function_params = abi_parser.function_params.clone();
+            internal_structs.event_params = abi_parser.event_params.clone();
             internal_structs.outputs = abi_parser.outputs.clone();
 
             internal_structs
