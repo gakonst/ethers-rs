@@ -253,10 +253,10 @@ impl InternalStructs {
         let mut outputs = HashMap::new();
         let mut event_params = HashMap::new();
         let mut structs = HashMap::new();
-        for item in abi.into_iter().filter(|item| match item.type_field.as_str() {
-            "constructor" | "function" | "event" => true,
-            _ => false,
-        }) {
+        for item in abi
+            .into_iter()
+            .filter(|item| matches!(item.type_field.as_str(), "constructor" | "function" | "event"))
+        {
             let is_event = item.type_field == "event";
 
             if let Some(name) = item.name {
