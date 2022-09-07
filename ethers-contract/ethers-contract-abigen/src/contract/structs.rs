@@ -373,6 +373,11 @@ impl InternalStructs {
     pub fn rust_type_names(&self) -> &HashMap<String, String> {
         &self.rust_type_names
     }
+
+    /// Returns all the solidity struct types
+    pub fn structs_types(&self) -> &HashMap<String, SolStruct> {
+        &self.structs
+    }
 }
 
 /// This will determine the name of the rust type and will make sure that possible collisions are
