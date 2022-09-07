@@ -828,12 +828,12 @@ mod tests {
 
             let single_file = false;
 
-            multi_gen.clone().build().unwrap().write_to_module(&mod_root, single_file).unwrap();
+            multi_gen.clone().build().unwrap().write_to_module(mod_root, single_file).unwrap();
             multi_gen
                 .clone()
                 .build()
                 .unwrap()
-                .ensure_consistent_module(&mod_root, single_file)
+                .ensure_consistent_module(mod_root, single_file)
                 .expect("Inconsistent bindings");
         })
     }
@@ -845,12 +845,12 @@ mod tests {
 
             let single_file = true;
 
-            multi_gen.clone().build().unwrap().write_to_module(&mod_root, single_file).unwrap();
+            multi_gen.clone().build().unwrap().write_to_module(mod_root, single_file).unwrap();
             multi_gen
                 .clone()
                 .build()
                 .unwrap()
-                .ensure_consistent_module(&mod_root, single_file)
+                .ensure_consistent_module(mod_root, single_file)
                 .expect("Inconsistent bindings");
         })
     }
@@ -868,13 +868,13 @@ mod tests {
                 .clone()
                 .build()
                 .unwrap()
-                .write_to_crate(name, version, &mod_root, single_file)
+                .write_to_crate(name, version, mod_root, single_file)
                 .unwrap();
             multi_gen
                 .clone()
                 .build()
                 .unwrap()
-                .ensure_consistent_crate(name, version, &mod_root, single_file, true)
+                .ensure_consistent_crate(name, version, mod_root, single_file, true)
                 .expect("Inconsistent bindings");
         })
     }
@@ -892,13 +892,13 @@ mod tests {
                 .clone()
                 .build()
                 .unwrap()
-                .write_to_crate(name, version, &mod_root, single_file)
+                .write_to_crate(name, version, mod_root, single_file)
                 .unwrap();
             multi_gen
                 .clone()
                 .build()
                 .unwrap()
-                .ensure_consistent_crate(name, version, &mod_root, single_file, true)
+                .ensure_consistent_crate(name, version, mod_root, single_file, true)
                 .expect("Inconsistent bindings");
         })
     }
@@ -910,7 +910,7 @@ mod tests {
 
             let single_file = false;
 
-            multi_gen.clone().build().unwrap().write_to_module(&mod_root, single_file).unwrap();
+            multi_gen.clone().build().unwrap().write_to_module(mod_root, single_file).unwrap();
 
             let mut cloned = multi_gen.clone();
             cloned.push(
@@ -924,7 +924,7 @@ mod tests {
             );
 
             let result =
-                cloned.build().unwrap().ensure_consistent_module(&mod_root, single_file).is_err();
+                cloned.build().unwrap().ensure_consistent_module(mod_root, single_file).is_err();
 
             // ensure inconsistent bindings are detected
             assert!(result, "Inconsistent bindings wrongly approved");
@@ -938,7 +938,7 @@ mod tests {
 
             let single_file = true;
 
-            multi_gen.clone().build().unwrap().write_to_module(&mod_root, single_file).unwrap();
+            multi_gen.clone().build().unwrap().write_to_module(mod_root, single_file).unwrap();
 
             let mut cloned = multi_gen.clone();
             cloned.push(
@@ -952,7 +952,7 @@ mod tests {
             );
 
             let result =
-                cloned.build().unwrap().ensure_consistent_module(&mod_root, single_file).is_err();
+                cloned.build().unwrap().ensure_consistent_module(mod_root, single_file).is_err();
 
             // ensure inconsistent bindings are detected
             assert!(result, "Inconsistent bindings wrongly approved");
@@ -972,7 +972,7 @@ mod tests {
                 .clone()
                 .build()
                 .unwrap()
-                .write_to_crate(name, version, &mod_root, single_file)
+                .write_to_crate(name, version, mod_root, single_file)
                 .unwrap();
 
             let mut cloned = multi_gen.clone();
@@ -989,7 +989,7 @@ mod tests {
             let result = cloned
                 .build()
                 .unwrap()
-                .ensure_consistent_crate(name, version, &mod_root, single_file, true)
+                .ensure_consistent_crate(name, version, mod_root, single_file, true)
                 .is_err();
 
             // ensure inconsistent bindings are detected
@@ -1010,7 +1010,7 @@ mod tests {
                 .clone()
                 .build()
                 .unwrap()
-                .write_to_crate(name, version, &mod_root, single_file)
+                .write_to_crate(name, version, mod_root, single_file)
                 .unwrap();
 
             let mut cloned = multi_gen.clone();
@@ -1027,7 +1027,7 @@ mod tests {
             let result = cloned
                 .build()
                 .unwrap()
-                .ensure_consistent_crate(name, version, &mod_root, single_file, true)
+                .ensure_consistent_crate(name, version, mod_root, single_file, true)
                 .is_err();
 
             // ensure inconsistent bindings are detected

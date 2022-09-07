@@ -18,6 +18,11 @@ pub struct AbiParser {
     /// (function name, param name) -> struct which are the identifying properties we get the name
     /// from ethabi.
     pub function_params: HashMap<(String, String), String>,
+    /// (event name, idx) -> struct which are the identifying properties we get the name
+    /// from ethabi.
+    ///
+    /// Note: we need to map the index of the event here because events can contain nameless inputs
+    pub event_params: HashMap<(String, usize), String>,
     /// (function name) -> Vec<structs> all structs the function returns
     pub outputs: HashMap<String, Vec<String>>,
 }
@@ -170,12 +175,13 @@ impl AbiParser {
             structs: structs.into_iter().map(|s| (s.name().to_string(), s)).collect(),
             struct_tuples: HashMap::new(),
             function_params: Default::default(),
+            event_params: Default::default(),
             outputs: Default::default(),
         }
     }
 
     /// Parses a solidity event declaration from `event <name> (args*) anonymous?`
-    pub fn parse_event(&self, s: &str) -> Result<Event> {
+    pub fn parse_event(&mut self, s: &str) -> Result<Event> {
         let mut event = s.trim();
         if !event.starts_with("event ") {
             bail!("Not an event `{}`", s)
@@ -208,8 +214,20 @@ impl AbiParser {
                             .split(',')
                             .map(|e| self.parse_event_arg(e))
                             .collect::<Result<Vec<_>, _>>()?
+                            .into_iter()
+                            .enumerate()
+                            .map(|(idx, (input, struct_name))| {
+                                if let Some(struct_name) = struct_name {
+                                    // keep track of the user defined struct of that param
+                                    self.event_params.insert((name.clone(), idx), struct_name);
+                                }
+                                input
+                            })
+                            .collect()
                     };
-                    return Ok(Event { name, inputs, anonymous })
+
+                    let event = Event { name, inputs, anonymous };
+                    return Ok(event)
                 }
                 Some(' ') | Some('\t') => continue,
                 Some(c) => {
@@ -220,7 +238,9 @@ impl AbiParser {
     }
 
     /// Parse a single event param
-    fn parse_event_arg(&self, input: &str) -> Result<EventParam> {
+    ///
+    /// See [`Self::parse_type`]
+    fn parse_event_arg(&self, input: &str) -> Result<(EventParam, Option<String>)> {
         let mut iter = input.trim().rsplitn(3, is_whitespace);
         let mut indexed = false;
         let mut name =
@@ -246,7 +266,8 @@ impl AbiParser {
             name = "";
         }
 
-        Ok(EventParam { name: name.to_string(), indexed, kind: self.parse_type(type_str)?.0 })
+        let (kind, user_ty) = self.parse_type(type_str)?;
+        Ok((EventParam { name: name.to_string(), indexed, kind }, user_ty))
     }
 
     /// Returns the parsed function from the input string
@@ -665,12 +686,12 @@ mod tests {
     #[test]
     fn parse_event_input() {
         assert_eq!(
-            AbiParser::default().parse_event_arg("address indexed x").unwrap(),
+            AbiParser::default().parse_event_arg("address indexed x").unwrap().0,
             EventParam { name: "x".to_string(), kind: ParamType::Address, indexed: true }
         );
 
         assert_eq!(
-            AbiParser::default().parse_event_arg("address x").unwrap(),
+            AbiParser::default().parse_event_arg("address x").unwrap().0,
             EventParam { name: "x".to_string(), kind: ParamType::Address, indexed: false }
         );
     }
