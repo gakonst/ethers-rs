@@ -3,7 +3,7 @@ mod common;
 mod errors;
 mod events;
 mod methods;
-mod structs;
+pub(crate) mod structs;
 mod types;
 
 use super::{util, Abigen};

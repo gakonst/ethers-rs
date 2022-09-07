@@ -49,7 +49,7 @@ pub mod builders {
 #[cfg(any(test, feature = "abigen"))]
 #[cfg_attr(docsrs, doc(cfg(feature = "abigen")))]
 pub use ethers_contract_abigen::{
-    Abigen, ContractFilter, ExcludeContracts, MultiAbigen, SelectContracts,
+    Abigen, ContractFilter, ExcludeContracts, InternalStructs, MultiAbigen, RawAbi, SelectContracts,
 };
 
 #[cfg(any(test, feature = "abigen"))]
