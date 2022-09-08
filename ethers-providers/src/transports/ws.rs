@@ -16,7 +16,7 @@ use serde_json::value::RawValue;
 use std::{
     collections::{btree_map::Entry, BTreeMap},
     fmt::{self, Debug},
-    future::{Future, IntoFuture},
+    future::{Future},
     pin::Pin,
     sync::{
         atomic::{AtomicU64, Ordering},
@@ -24,6 +24,7 @@ use std::{
     },
     task::{Context, Poll},
 };
+use std::collections::VecDeque;
 use thiserror::Error;
 use tokio::task::JoinHandle;
 use tracing::trace;
@@ -265,6 +266,34 @@ where
         self.instructions.is_done() && self.pending.is_empty() && self.subscriptions.is_empty()
     }
 
+    /// Returns a new future that drives the websocket
+    #[must_use = "Future does nothing unless polled"]
+    pub fn into_future(mut self) -> WsServerFuture<S>
+    where
+        S: 'static,
+    {
+        Box::pin(async move {
+            loop {
+                if self.is_done() {
+                    debug!("work complete");
+                    break
+                }
+                match self.tick().await {
+                    Err(ClientError::UnexpectedClose) => {
+                        error!("{}", ClientError::UnexpectedClose);
+                        return Err((self, ClientError::UnexpectedClose))
+                    }
+                    Err(err) => {
+                        error!("WS Server panic: {}", err);
+                        return Err((self, err))
+                    }
+                    _ => {}
+                }
+            }
+            Ok(())
+        })
+    }
+
     /// Spawns the event loop
     fn spawn(self)
     where
@@ -433,37 +462,6 @@ where
 type WsServerOutput<S> = Result<(), (WsServer<S>, ClientError)>;
 type WsServerFuture<S> = Pin<Box<dyn Future<Output = WsServerOutput<S>> + Send + 'static>>;
 
-impl<S> IntoFuture for WsServer<S>
-where
-    S: Send + Sync + Stream<Item = WsStreamItem> + Sink<Message, Error = WsError> + Unpin + 'static,
-{
-    type Output = WsServerOutput<S>;
-    type IntoFuture = WsServerFuture<S>;
-
-    fn into_future(mut self) -> Self::IntoFuture {
-        Box::pin(async move {
-            loop {
-                if self.is_done() {
-                    debug!("work complete");
-                    break
-                }
-                match self.tick().await {
-                    Err(ClientError::UnexpectedClose) => {
-                        error!("{}", ClientError::UnexpectedClose);
-                        return Err((self, ClientError::UnexpectedClose))
-                    }
-                    Err(err) => {
-                        error!("WS Server panic: {}", err);
-                        return Err((self, err))
-                    }
-                    _ => {}
-                }
-            }
-            Ok(())
-        })
-    }
-}
-
 type WsServerHandleOutput<S> =
     Result<Result<(), (WsServer<S>, ClientError)>, tokio::task::JoinError>;
 
@@ -486,13 +484,40 @@ where
     }
 }
 
+/// Represents how to reconnect after the connection was dropped
+#[derive(Debug, Clone)]
+pub struct ReconnectConfig {
+    /// How many reconnects
+    reconnects: usize,
+    /// All the urls to use
+    urls: VecDeque<String>,
+}
+
+// === impl ReconnectConfig ===
+
+impl ReconnectConfig {
+
+    /// Creates a new instance that will try to reconnect but at most `reconnects` times
+    ///
+    /// If more than one `url` is provided then reconnects happen in round-robin fashion
+    ///
+    /// # Panics
+    ///
+    /// if `urls` is empty
+    pub fn new(reconnects: usize, urls: VecDeque<String>) -> Self {
+        assert!(!urls.is_empty(), "Requires at least 1 url");
+        Self {reconnects, urls}
+    }
+
+}
+
 // TrySendError is private :(
 fn to_client_error<T: Debug>(err: T) -> ClientError {
     ClientError::ChannelError(format!("{:?}", err))
 }
 
-#[derive(Error, Debug)]
 /// Error thrown when sending a WS message
+#[derive(Error, Debug)]
 pub enum ClientError {
     /// Thrown if deserialization failed
     #[error(transparent)]
