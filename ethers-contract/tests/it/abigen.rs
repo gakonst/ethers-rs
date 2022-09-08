@@ -19,6 +19,7 @@ use std::{
 fn assert_codec<T: AbiDecode + AbiEncode>() {}
 fn assert_tokenizeable<T: Tokenizable>() {}
 fn assert_call<T: AbiEncode + AbiDecode + Default + Tokenizable>() {}
+fn assert_event<T: EthEvent>() {}
 
 #[test]
 fn can_gen_human_readable() {
@@ -719,4 +720,19 @@ fn can_gen_large_tuple_array() {
 
     let _call = CallWithLongArrayCall::default();
     assert_call::<CallWithLongArrayCall>();
+}
+
+#[test]
+fn can_generate_event_with_structs() {
+    /*
+    contract MyContract {
+        struct MyStruct {uint256 a; uint256 b; }
+        event MyEvent(MyStruct, uint256);
+    }
+     */
+    abigen!(MyContract, "ethers-contract/tests/solidity-contracts/EventWithStruct.json");
+
+    let _filter = MyEventFilter { p0: MyStruct::default(), c: U256::zero() };
+    assert_eq!("MyEvent((uint256,uint256),uint256)", MyEventFilter::abi_signature());
+    assert_event::<MyEventFilter>();
 }
