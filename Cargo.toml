@@ -44,6 +44,8 @@ rustdoc-args = ["--cfg", "docsrs"]
 features = ["full"]
 
 [features]
+default = ["abigen"]
+
 celo = [
     "ethers-core/celo",
     "ethers-providers/celo",

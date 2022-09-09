@@ -38,6 +38,8 @@ ethers-solc = { version = "^0.17.0", path = "../ethers-solc", default-features =
 tokio = { version = "1.18", default-features = false, features = ["macros"] }
 
 [features]
+default = ["abigen"]
+
 eip712 = ["ethers-derive-eip712", "ethers-core/eip712"]
 abigen = ["ethers-contract-abigen/reqwest", "ethers-contract-derive"]
 abigen-offline = ["ethers-contract-abigen", "ethers-contract-derive"]
