@@ -38,7 +38,7 @@ strum = { version = "0.24", features = ["derive"] }
 cargo_metadata = { version = "0.15.0", optional = true }
 
 # eip712 feature enabled dependencies
-convert_case = { version = "0.5.0", optional = true }
+convert_case = { version = "0.6.0", optional = true }
 syn = { version = "1.0.99", optional = true }
 proc-macro2 = { version = "1.0.43", optional = true }
 rust_decimal = { version = "1.26.1", features = ["maths"] }
