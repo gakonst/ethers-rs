@@ -265,6 +265,8 @@
 
 ### Unreleased
 
+- Add abigen to default features
+  [#1684](https://github.com/gakonst/ethers-rs/pull/1684)
 - Add extra Multicall helper methods
   [#1666](https://github.com/gakonst/ethers-rs/pull/1666)
 - Update Multicall to Multicall3
