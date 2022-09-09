@@ -52,6 +52,14 @@ impl TryFrom<String> for Units {
     }
 }
 
+impl<'a> TryFrom<&'a String> for Units {
+    type Error = ConversionError;
+
+    fn try_from(value: &'a String) -> Result<Self, Self::Error> {
+        Self::from_str(&value)
+    }
+}
+
 impl TryFrom<&str> for Units {
     type Error = ConversionError;
 
@@ -114,5 +122,20 @@ mod tests {
         assert_eq!(Ether.as_num(), 18);
         assert_eq!(Other(10).as_num(), 10);
         assert_eq!(Other(20).as_num(), 20);
+    }
+
+    #[test]
+    fn test_into() {
+        assert_eq!(Units::try_from("wei").unwrap(), Wei);
+        assert_eq!(Units::try_from("gwei").unwrap(), Gwei);
+        assert_eq!(Units::try_from("ether").unwrap(), Ether);
+
+        assert_eq!(Units::try_from("wei".to_string()).unwrap(), Wei);
+        assert_eq!(Units::try_from("gwei".to_string()).unwrap(), Gwei);
+        assert_eq!(Units::try_from("ether".to_string()).unwrap(), Ether);
+
+        assert_eq!(Units::try_from(&"wei".to_string()).unwrap(), Wei);
+        assert_eq!(Units::try_from(&"gwei".to_string()).unwrap(), Gwei);
+        assert_eq!(Units::try_from(&"ether".to_string()).unwrap(), Ether);
     }
 }
