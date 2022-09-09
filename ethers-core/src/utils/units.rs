@@ -56,7 +56,7 @@ impl<'a> TryFrom<&'a String> for Units {
     type Error = ConversionError;
 
     fn try_from(value: &'a String) -> Result<Self, Self::Error> {
-        Self::from_str(&value)
+        Self::from_str(value)
     }
 }
 
