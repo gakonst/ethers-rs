@@ -20,8 +20,6 @@ impl fmt::Display for Units {
     }
 }
 
-/* ----------------------------------------- Into<Units> ---------------------------------------- */
-
 impl TryFrom<u32> for Units {
     type Error = ConversionError;
 
@@ -74,8 +72,6 @@ impl FromStr for Units {
         })
     }
 }
-
-/* ----------------------------------------- From<Units> ---------------------------------------- */
 
 impl From<Units> for u32 {
     fn from(units: Units) -> Self {
