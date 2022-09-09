@@ -67,8 +67,8 @@ impl FromStr for Units {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(match s.to_lowercase().as_str() {
-            "ether" => Units::Ether,
-            "gwei" => Units::Gwei,
+            "eth" | "ether" => Units::Ether,
+            "gwei" | "nano" | "nanoether" => Units::Gwei,
             "wei" => Units::Wei,
             _ => return Err(ConversionError::UnrecognizedUnits(s.to_string())),
         })
