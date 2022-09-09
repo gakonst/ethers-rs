@@ -506,6 +506,49 @@ where
                 let value = serde_json::to_value(block).expect("Failed to serialize U64");
                 Ok(serde_json::from_value(value)?)
             }
+            "eth_sendTransaction" | "eth_sendRawTransaction" => {
+                // non-idempotent requests may fail due to delays in processing even though the
+                // operation was a success.
+
+                // TODO: be more clever than to just accept any Ok response and to look for
+                //   "nonce too low", "already known", or any other specific errors that indicate
+                //   things were successful.
+
+                let mut requests = self
+                    .providers
+                    .iter()
+                    .enumerate()
+                    .map(|(idx, provider)| {
+                        let params = params.clone();
+                        let fut = provider.inner.request(method, params).map(move |res| (res, idx));
+                        Box::pin(fut) as PendingRequest
+                    })
+                    .collect::<Vec<_>>();
+
+                let mut errors = vec![];
+                let mut succeeded = None;
+                // this does assume that there is a timeout on providers, otherwise it might hang.
+                while !requests.is_empty() {
+                    let ((res, _quorum_idx), _requests_idx, remaining) =
+                        future::select_all(requests).await;
+                    match res {
+                        Ok(value) if succeeded.is_none() => {
+                            succeeded = Some(value);
+                        }
+                        Ok(_) => {}
+                        Err(err) => {
+                            errors.push(err);
+                        }
+                    }
+                    requests = remaining;
+                }
+
+                if let Some(value) = succeeded {
+                    Ok(serde_json::from_value(value)?)
+                } else {
+                    Err(QuorumError::NoQuorumReached { values: vec![], errors }.into())
+                }
+            }
             _ => {
                 let requests = self
                     .providers
