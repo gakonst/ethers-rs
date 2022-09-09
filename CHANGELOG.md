@@ -4,6 +4,7 @@
 
 ### Unreleased
 
+- Fix geth trace types for debug_traceTransaction rpc
 - Fix RLP decoding of legacy `Transaction`
 - Fix RLP encoding of `TransactionReceipt` [#1661](https://github.com/gakonst/ethers-rs/pull/1661)
 - Add `Unit8` helper type [#1639](https://github.com/gakonst/ethers-rs/pull/1639)
