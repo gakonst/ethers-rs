@@ -1,4 +1,4 @@
-use crate::types::{Bytes, H160, H256, U256};
+use crate::types::{Bytes, H256, U256};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
