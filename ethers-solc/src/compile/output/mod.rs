@@ -204,12 +204,12 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
     pub fn compiled_contracts_by_compiler_version(
         &self,
     ) -> BTreeMap<Version, Vec<(String, Contract)>> {
-        let mut contracts = BTreeMap::new();
+        let mut contracts: BTreeMap<_, Vec<_>> = BTreeMap::new();
         let versioned_contracts = &self.compiler_output.contracts;
         for (_, name, contract, version) in versioned_contracts.contracts_with_files_and_version() {
             contracts
                 .entry(version.to_owned())
-                .or_insert(Vec::<(String, Contract)>::new())
+                .or_default()
                 .push((name.to_string(), contract.clone()));
         }
         contracts
