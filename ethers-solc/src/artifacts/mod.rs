@@ -49,6 +49,7 @@ pub(crate) type VersionedSources = BTreeMap<Solc, (Version, Sources)>;
 pub(crate) type VersionedFilteredSources = BTreeMap<Solc, (Version, FilteredSources)>;
 
 const SOLIDITY: &str = "Solidity";
+const YUL: &str = "Yul";
 
 /// Input type `solc` expects
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -88,7 +89,7 @@ impl CompilerInput {
         }
         if !yul_sources.is_empty() {
             res.push(Self {
-                language: "Yul".to_string(),
+                language: YUL.to_string(),
                 sources: yul_sources,
                 settings: Default::default(),
             });
@@ -137,7 +138,19 @@ impl CompilerInput {
 
     /// Sets the settings for compilation
     #[must_use]
-    pub fn settings(mut self, settings: Settings) -> Self {
+    pub fn settings(mut self, mut settings: Settings) -> Self {
+        if self.is_yul() {
+            if !settings.remappings.is_empty() {
+                warn!("omitting remappings supplied for the yul sources");
+                settings.remappings = vec![];
+            }
+            if let Some(debug) = settings.debug.as_mut() {
+                if debug.revert_strings.is_some() {
+                    warn!("omitting revertStrings supplied for the yul sources");
+                    debug.revert_strings = None;
+                }
+            }
+        }
         self.settings = settings;
         self
     }
@@ -168,7 +181,11 @@ impl CompilerInput {
 
     #[must_use]
     pub fn with_remappings(mut self, remappings: Vec<Remapping>) -> Self {
-        self.settings.remappings = remappings;
+        if self.is_yul() {
+            warn!("omitting remappings supplied for the yul sources");
+        } else {
+            self.settings.remappings = remappings;
+        }
         self
     }
 
@@ -199,6 +216,12 @@ impl CompilerInput {
         let base = base.as_ref();
         self.settings = self.settings.with_base_path(base);
         self.strip_prefix(base)
+    }
+
+    /// The flag indicating whether the current [CompilerInput] is
+    /// constructed for the yul sources
+    pub fn is_yul(&self) -> bool {
+        self.language == YUL
     }
 }
 
