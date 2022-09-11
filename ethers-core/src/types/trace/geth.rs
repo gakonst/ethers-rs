@@ -1,4 +1,4 @@
-use crate::types::{Bytes, H160, H256, U256};
+use crate::types::{Bytes, H256, U256};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
@@ -23,15 +23,15 @@ pub struct StructLog {
     #[serde(rename = "gasCost")]
     pub gas_cost: u64,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub memory: Option<Vec<u8>>,
+    pub memory: Option<Vec<H256>>,
     pub op: String,
-    pub pc: U256,
+    pub pc: u64,
     #[serde(rename = "refund", skip_serializing_if = "Option::is_none")]
     pub refund_counter: Option<u64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub stack: Option<Vec<U256>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub storage: Option<BTreeMap<H160, BTreeMap<H256, H256>>>,
+    pub storage: Option<BTreeMap<H256, H256>>,
 }
 
 /// Bindings for additional `debug_traceTransaction` options
