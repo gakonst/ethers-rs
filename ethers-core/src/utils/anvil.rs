@@ -214,7 +214,7 @@ impl Anvil {
         } else {
             Command::new("anvil")
         };
-        cmd.stdout(std::process::Stdio::piped());
+        cmd.stdout(std::process::Stdio::piped()).stderr(std::process::Stdio::inherit());
         let port = if let Some(port) = self.port { port } else { unused_port() };
         cmd.arg("-p").arg(port.to_string());
 
