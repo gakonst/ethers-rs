@@ -734,7 +734,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
     async fn get_storage_at<T: Into<NameOrAddress> + Send + Sync>(
         &self,
         from: T,
-        location: H256,
+        slot: H256,
         block: Option<BlockId>,
     ) -> Result<H256, ProviderError> {
         let from = match from.into() {
@@ -742,17 +742,15 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
             NameOrAddress::Address(addr) => addr,
         };
 
-        // position is a QUANTITY according to the [spec](https://eth.wiki/json-rpc/API#eth_getstorageat): integer of the position in the storage, converting this to a U256
-        // will make sure the number is formatted correctly as [quantity](https://eips.ethereum.org/EIPS/eip-1474#quantity)
-        let position = U256::from_big_endian(location.as_bytes());
-        let position = utils::serialize(&position);
+        // The slot argument Storage slot argument must have a length of 66, See <https://github.com/NomicFoundation/hardhat/pull/2581>
+        let slot = utils::serialize(&slot);
         let from = utils::serialize(&from);
         let block = utils::serialize(&block.unwrap_or_else(|| BlockNumber::Latest.into()));
 
         // get the hex encoded value.
-        let value: String = self.request("eth_getStorageAt", [from, position, block]).await?;
+        let value: String = self.request("eth_getStorageAt", [from, slot, block]).await?;
         // get rid of the 0x prefix and left pad it with zeroes.
-        let value = format!("{:0>64}", value.replace("0x", ""));
+        let value = format!("{:0>64}", value.strip_prefix("0x").unwrap_or(&value));
         Ok(H256::from_slice(&Vec::from_hex(value)?))
     }
 

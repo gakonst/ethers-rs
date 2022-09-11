@@ -6,7 +6,7 @@ use std::{convert::TryFrom, time::Duration};
 mod eth_tests {
     use super::*;
     use ethers_core::{
-        types::{Address, BlockId, TransactionRequest, H256},
+        types::{Address, BlockId, TransactionRequest, H256, U256},
         utils::Anvil,
     };
     use ethers_providers::RINKEBY;
@@ -112,6 +112,18 @@ mod eth_tests {
             Provider::<RetryClient<Http>>::new_client("http://localhost:8545", 10, 200).unwrap();
 
         send_zst_requests(provider).await;
+    }
+
+    // compatibility test for `eth_getStorageAt`
+    #[tokio::test]
+    #[ignore]
+    async fn eth_get_storage_at_compat() {
+        use ethers_core::abi::ethereum_types::BigEndianHash;
+        let provider = Provider::<Http>::try_from("http://localhost:8545").unwrap();
+        let acc: Address = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266".parse().unwrap();
+
+        let _value =
+            provider.get_storage_at(acc, H256::from_uint(&U256::from(6u64)), None).await.unwrap();
     }
 }
 
