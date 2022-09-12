@@ -22,8 +22,9 @@ pub struct StructLog {
     pub gas: u64,
     #[serde(rename = "gasCost")]
     pub gas_cost: u64,
+    /// ref <https://github.com/ethereum/go-ethereum/blob/366d2169fbc0e0f803b68c042b77b6b480836dbc/eth/tracers/logger/logger.go#L450-L452>
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub memory: Option<Vec<H256>>,
+    pub memory: Option<Vec<String>>,
     pub op: String,
     pub pc: u64,
     #[serde(rename = "refund", skip_serializing_if = "Option::is_none")]
