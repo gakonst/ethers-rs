@@ -269,15 +269,9 @@ impl ProjectPathsConfig {
                 // if still unable to resolve, attempt to find the absolute import
                 // inside the project paths that's possible due to `--include-dir`
                 for path in [&self.sources, &self.tests, &self.scripts] {
-                    if let Ok(entries) = std::fs::read_dir(path) {
-                        for entry in entries {
-                            if let Ok(entry) = entry {
-                                if import.starts_with(entry.file_name()) {
-                                    if let Ok(import) = utils::canonicalize(path.join(import)) {
-                                        return Ok(import)
-                                    }
-                                }
-                            }
+                    if path.join(import).exists() {
+                        if let Ok(import) = utils::canonicalize(path.join(import)) {
+                            return Ok(import)
                         }
                     }
                 }
