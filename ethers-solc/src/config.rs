@@ -88,9 +88,8 @@ impl ProjectPathsConfig {
     ///
     /// See [IncludePaths]
     pub fn include_paths(&self) -> Vec<PathBuf> {
-        // Note: root must not be included, since it will be used as base-path, which would be a
-        // conflict
-        vec![self.sources.clone(), self.tests.clone(), self.scripts.clone()]
+        // Note: sources, tests and scripts are covered by the base-path
+        Default::default()
     }
 
     /// Creates all configured dirs and files
@@ -261,15 +260,6 @@ impl ProjectPathsConfig {
                 // also try to resolve absolute imports from the project paths
                 for path in [&self.root, &self.sources, &self.tests, &self.scripts] {
                     if cwd.starts_with(path) {
-                        if let Ok(import) = utils::canonicalize(path.join(import)) {
-                            return Ok(import)
-                        }
-                    }
-                }
-                // if still unable to resolve, attempt to find the absolute import
-                // inside the project paths that's possible due to `--include-dir`
-                for path in [&self.sources, &self.tests, &self.scripts] {
-                    if path.join(import).exists() {
                         if let Ok(import) = utils::canonicalize(path.join(import)) {
                             return Ok(import)
                         }
