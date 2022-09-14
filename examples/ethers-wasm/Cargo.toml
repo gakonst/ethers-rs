@@ -40,7 +40,7 @@ wee_alloc = { version = "0.4.5", optional = true }
 
 serde = { version = "1.0.126", features = ["derive"] }
 hex = "0.4.3"
-web-sys = "0.3.59"
+web-sys = "0.3.60"
 
 [dev-dependencies]
 wasm-bindgen-test = "0.3.32"
