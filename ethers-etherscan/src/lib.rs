@@ -14,7 +14,7 @@ use std::{
     path::PathBuf,
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
-use tracing::trace;
+use tracing::{error, trace};
 pub mod account;
 pub mod contract;
 pub mod errors;
@@ -158,31 +158,41 @@ impl Client {
         form: &Form,
     ) -> Result<Response<T>> {
         trace!(target: "etherscan", "POST FORM {}", self.etherscan_api_url);
-        Ok(self
+        let response = self
             .client
             .post(self.etherscan_api_url.clone())
             .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
             .form(form)
             .send()
             .await?
-            .json()
-            .await?)
+            .text()
+            .await?;
+
+        Ok(serde_json::from_str(&response).map_err(|err| {
+            error!(target: "etherscan", ?response, "Failed to deserialize response: {}", err);
+            err
+        })?)
     }
 
     /// Execute an API GET request with parameters
     async fn get_json<T: DeserializeOwned, Q: Serialize>(&self, query: &Q) -> Result<Response<T>> {
         trace!(target: "etherscan", "GET JSON {}", self.etherscan_api_url);
-        let res: ResponseData<T> = self
+        let response = self
             .client
             .get(self.etherscan_api_url.clone())
             .header(header::ACCEPT, "application/json")
             .query(query)
             .send()
             .await?
-            .json()
+            .text()
             .await?;
 
-        match res {
+        let response: ResponseData<T> = serde_json::from_str(&response).map_err(|err| {
+            error!(target: "etherscan", ?response, "Failed to deserialize response: {}", err);
+            err
+        })?;
+
+        match response {
             ResponseData::Error { result, .. } => {
                 if result.starts_with("Max rate limit reached") {
                     Err(EtherscanError::RateLimitExceeded)
