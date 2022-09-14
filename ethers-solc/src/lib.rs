@@ -804,7 +804,7 @@ impl<T: ArtifactOutput> ProjectBuilder<T> {
             artifacts,
             ignored_error_codes,
             mut allowed_paths,
-            mut include_paths,
+            include_paths,
             solc_jobs,
             offline,
             build_info,
@@ -823,8 +823,6 @@ impl<T: ArtifactOutput> ProjectBuilder<T> {
 
         // allow every contract under root by default
         allowed_paths.insert(paths.root.clone());
-        // allow paths where contracts are stored by default
-        include_paths.extend(paths.include_paths());
 
         Ok(Project {
             paths,

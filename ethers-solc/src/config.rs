@@ -84,15 +84,6 @@ impl ProjectPathsConfig {
         paths
     }
 
-    /// Returns all `--include-path` paths that should be used for this project
-    ///
-    /// See [IncludePaths]
-    pub fn include_paths(&self) -> Vec<PathBuf> {
-        // Note: root must not be included, since it will be used as base-path, which would be a
-        // conflict
-        vec![self.sources.clone(), self.tests.clone(), self.scripts.clone()]
-    }
-
     /// Creates all configured dirs and files
     pub fn create_all(&self) -> std::result::Result<(), SolcIoError> {
         if let Some(parent) = self.cache.parent() {
