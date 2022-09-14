@@ -84,14 +84,6 @@ impl ProjectPathsConfig {
         paths
     }
 
-    /// Returns all `--include-path` paths that should be used for this project
-    ///
-    /// See [IncludePaths]
-    pub fn include_paths(&self) -> Vec<PathBuf> {
-        // Note: sources, tests and scripts are covered by the base-path
-        Default::default()
-    }
-
     /// Creates all configured dirs and files
     pub fn create_all(&self) -> std::result::Result<(), SolcIoError> {
         if let Some(parent) = self.cache.parent() {
