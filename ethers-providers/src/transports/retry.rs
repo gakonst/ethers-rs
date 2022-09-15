@@ -327,6 +327,9 @@ where
 
 /// Implements [RetryPolicy] that will retry requests that errored with
 /// status code 429 i.e. TOO_MANY_REQUESTS
+///
+/// Infura often fails with a `"header not found"` rpc error which is apparently linked to load
+/// balancing, which are retried as well.
 #[derive(Debug, Default)]
 pub struct HttpRateLimitRetryPolicy;
 
@@ -336,8 +339,17 @@ impl RetryPolicy<ClientError> for HttpRateLimitRetryPolicy {
             ClientError::ReqwestError(err) => {
                 err.status() == Some(http::StatusCode::TOO_MANY_REQUESTS)
             }
-            // alchemy throws it this way
-            ClientError::JsonRpcError(JsonRpcError { code, message: _, data: _ }) => *code == 429,
+            ClientError::JsonRpcError(JsonRpcError { code, message, data: _ }) => {
+                // alchemy throws it this way
+                if *code == 429 {
+                    return true
+                }
+                // this is commonly thrown by infura and is apparently a load balancer issue, see also <https://github.com/MetaMask/metamask-extension/issues/7234>
+                if message == "header not found" {
+                    return true
+                }
+                false
+            }
             _ => false,
         }
     }
