@@ -11,7 +11,7 @@ use std::{
 };
 
 /// How long we will wait for anvil to indicate that it is ready.
-const ANVIL_STARTUP_TIMEOUT_MILLIS: u64 = 5_000;
+const ANVIL_STARTUP_TIMEOUT_MILLIS: u64 = 10_000;
 
 /// An anvil CLI instance. Will close the instance when dropped.
 ///
