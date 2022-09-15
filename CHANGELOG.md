@@ -4,6 +4,7 @@
 
 ### Unreleased
 
+- Add comment about safety of u8 -> u64 cast in `ethers_core::types::Signature`
 - Fix geth trace types for debug_traceTransaction rpc
 - Fix RLP decoding of legacy `Transaction`
 - Fix RLP encoding of `TransactionReceipt` [#1661](https://github.com/gakonst/ethers-rs/pull/1661)

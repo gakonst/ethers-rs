@@ -215,6 +215,11 @@ impl From<&Signature> for [u8; 65] {
         sig[32..64].copy_from_slice(&s_bytes);
         // TODO: What if we try to serialize a signature where
         // the `v` is not normalized?
+
+        // The u64 to u8 cast is safe because `sig.v` can only ever be 27 or 28 
+        // here. Regarding EIP-155, the modification to `v` happens during tx 
+        // creation only _after_ the transaction is signed using 
+        // `ethers_signers::to_eip155_v`.
         sig[64] = src.v as u8;
         sig
     }
