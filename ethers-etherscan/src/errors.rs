@@ -37,4 +37,13 @@ pub enum EtherscanError {
     MissingSolcVersion(String),
     #[error("Invalid API Key")]
     InvalidApiKey,
+    #[error("Sorry, you have been blocked by Cloudflare, See also https://community.cloudflare.com/t/sorry-you-have-been-blocked/110790")]
+    BlockedByCloudflare,
+}
+
+/// etherscan/polyscan is protected by cloudflare, which can lead to html responses like `Sorry, you have been blocked` See also <https://community.cloudflare.com/t/sorry-you-have-been-blocked/110790>
+///
+/// This returns true if the `txt` is a cloudflare error response
+pub(crate) fn is_blocked_by_cloudflare_response(txt: &str) -> bool {
+    txt.to_lowercase().contains("sorry, you have been blocked")
 }

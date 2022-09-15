@@ -1,5 +1,6 @@
 //! Bindings for [etherscan.io web api](https://docs.etherscan.io/)
 
+use crate::errors::is_blocked_by_cloudflare_response;
 use contract::ContractMetadata;
 use errors::EtherscanError;
 use ethers_core::{
@@ -15,6 +16,7 @@ use std::{
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 use tracing::{error, trace};
+
 pub mod account;
 pub mod contract;
 pub mod errors;
@@ -168,10 +170,14 @@ impl Client {
             .text()
             .await?;
 
-        Ok(serde_json::from_str(&response).map_err(|err| {
+        serde_json::from_str(&response).map_err(|err| {
             error!(target: "etherscan", ?response, "Failed to deserialize response: {}", err);
-            err
-        })?)
+            if is_blocked_by_cloudflare_response(&response) {
+                EtherscanError::BlockedByCloudflare
+            } else {
+                EtherscanError::Serde(err)
+            }
+        })
     }
 
     /// Execute an API GET request with parameters
@@ -189,7 +195,11 @@ impl Client {
 
         let response: ResponseData<T> = serde_json::from_str(&response).map_err(|err| {
             error!(target: "etherscan", ?response, "Failed to deserialize response: {}", err);
-            err
+            if is_blocked_by_cloudflare_response(&response) {
+                EtherscanError::BlockedByCloudflare
+            } else {
+                EtherscanError::Serde(err)
+            }
         })?;
 
         match response {
