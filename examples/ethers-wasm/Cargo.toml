@@ -43,4 +43,4 @@ hex = "0.4.3"
 web-sys = "0.3.60"
 
 [dev-dependencies]
-wasm-bindgen-test = "0.3.32"
+wasm-bindgen-test = "0.3.33"
