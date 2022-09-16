@@ -574,7 +574,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         block: Option<BlockId>,
     ) -> Result<U256, ProviderError> {
         let tx = utils::serialize(tx);
-        // Some chains (e.g. Optimism) don't support a block ID being passed as a param,
+        // Some nodes (e.g. old Optimism clients) don't support a block ID being passed as a param,
         // so refrain from defaulting to BlockNumber::Latest.
         let params = if let Some(block_id) = block {
             vec![tx, utils::serialize(&block_id)]
