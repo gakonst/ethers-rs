@@ -4,6 +4,7 @@
 
 ### Unreleased
 
+- Stop defaulting to the `"latest"` block in `eth_estimateGas` params [#1657](https://github.com/gakonst/ethers-rs/pull/1657)
 - Fix geth trace types for debug_traceTransaction rpc
 - Fix RLP decoding of legacy `Transaction`
 - Fix RLP encoding of `TransactionReceipt` [#1661](https://github.com/gakonst/ethers-rs/pull/1661)
