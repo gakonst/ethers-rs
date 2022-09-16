@@ -93,6 +93,7 @@ pub struct Anvil {
     fork: Option<String>,
     fork_block_number: Option<u64>,
     args: Vec<String>,
+    timeout: Option<u64>,
 }
 
 impl Anvil {
@@ -206,6 +207,13 @@ impl Anvil {
         self
     }
 
+    /// Sets the timeout which will be used when the `anvil` instance is launched.
+    #[must_use]
+    pub fn timeout<T: Into<u64>>(mut self, timeout: T) -> Self {
+        self.timeout = Some(timeout.into());
+        self
+    }
+
     /// Consumes the builder and spawns `anvil` with stdout redirected
     /// to /dev/null.
     pub fn spawn(self) -> AnvilInstance {
@@ -251,7 +259,7 @@ impl Anvil {
         let mut addresses = Vec::new();
         let mut is_private_key = false;
         loop {
-            if start + Duration::from_millis(ANVIL_STARTUP_TIMEOUT_MILLIS) <= Instant::now() {
+            if start + Duration::from_millis(self.timeout.unwrap_or(ANVIL_STARTUP_TIMEOUT_MILLIS)) <= Instant::now() {
                 panic!("Timed out waiting for anvil to start. Is anvil installed?")
             }
 
