@@ -1,9 +1,10 @@
 [package]
 name = "ethers-contract"
-license = "MIT OR Apache-2.0"
 version = "0.17.0"
-authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
 edition = "2018"
+rust-version = "1.62"
+authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
+license = "MIT OR Apache-2.0"
 description = "Smart contract bindings for the ethers-rs crate"
 homepage = "https://docs.rs/ethers"
 repository = "https://github.com/gakonst/ethers-rs"
@@ -12,7 +13,7 @@ keywords = ["ethereum", "web3", "celo", "ethers"]
 [dependencies]
 ethers-providers = { version = "^0.17.0", path = "../ethers-providers", default-features = false }
 ethers-core = { version = "^0.17.0", path = "../ethers-core", default-features = false }
-ethers-contract-abigen = { version = "^0.17.0", path = "ethers-contract-abigen",  default-features = false, optional = true }
+ethers-contract-abigen = { version = "^0.17.0", path = "ethers-contract-abigen", default-features = false, optional = true }
 ethers-contract-derive = { version = "^0.17.0", path = "ethers-contract-derive", optional = true }
 ethers-derive-eip712 = { version = "^0.17.0", path = "../ethers-core/ethers-derive-eip712", optional = true }
 
@@ -20,18 +21,22 @@ serde = { version = "1.0.124", default-features = false }
 serde_json = { version = "1.0.64", default-features = false }
 thiserror = { version = "1.0", default-features = false }
 once_cell = { version = "1.14.0" }
-pin-project = {version = "1.0.11", default-features = false }
+pin-project = { version = "1.0.11", default-features = false }
 futures-util = { version = "^0.3" }
 hex = { version = "0.4.3", default-features = false, features = ["std"] }
 
 [dev-dependencies]
 ethers-middleware = { version = "^0.17.0", path = "../ethers-middleware" }
-ethers-providers = { version = "^0.17.0", path = "../ethers-providers", default-features = false, features = ["ws"] }
+ethers-providers = { version = "^0.17.0", path = "../ethers-providers", default-features = false, features = [
+    "ws"
+] }
 ethers-signers = { version = "^0.17.0", path = "../ethers-signers" }
 ethers-contract-abigen = { version = "^0.17.0", path = "ethers-contract-abigen" }
 ethers-contract-derive = { version = "^0.17.0", path = "ethers-contract-derive" }
-ethers-core = { version = "^0.17.0", path = "../ethers-core", default-features = false, features = ["eip712"]}
-ethers-derive-eip712 = { version = "^0.17.0", path = "../ethers-core/ethers-derive-eip712"}
+ethers-core = { version = "^0.17.0", path = "../ethers-core", default-features = false, features = [
+    "eip712"
+] }
+ethers-derive-eip712 = { version = "^0.17.0", path = "../ethers-core/ethers-derive-eip712" }
 ethers-solc = { version = "^0.17.0", path = "../ethers-solc", default-features = false }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]

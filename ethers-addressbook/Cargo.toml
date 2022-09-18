@@ -2,8 +2,9 @@
 name = "ethers-addressbook"
 version = "0.17.0"
 edition = "2021"
-license = "MIT OR Apache-2.0"
+rust-version = "1.62"
 authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
+license = "MIT OR Apache-2.0"
 description = "Common Ethereum name to address mappings"
 homepage = "https://docs.rs/ethers"
 repository = "https://github.com/gakonst/ethers-rs"
