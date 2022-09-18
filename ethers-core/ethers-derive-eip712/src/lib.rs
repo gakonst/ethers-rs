@@ -61,10 +61,10 @@
 //! determine if there is a nested eip712 struct. However, this work is not yet complete.
 
 #![deny(missing_docs, unsafe_code, rustdoc::broken_intra_doc_links)]
-use std::convert::TryFrom;
 use ethers_core::{macros::ethers_core_crate, types::transaction::eip712};
 use proc_macro::TokenStream;
 use quote::quote;
+use std::convert::TryFrom;
 use syn::parse_macro_input;
 
 /// Derive macro for `Eip712`
