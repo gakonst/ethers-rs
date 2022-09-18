@@ -1,9 +1,10 @@
 [package]
 name = "ethers-signers"
-license = "MIT OR Apache-2.0"
 version = "0.17.0"
-authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
 edition = "2018"
+rust-version = "1.62"
+authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
+license = "MIT OR Apache-2.0"
 description = "Signer implementations for the ethers-rs crate"
 homepage = "https://docs.rs/ethers"
 repository = "https://github.com/gakonst/ethers-rs"
@@ -14,7 +15,7 @@ all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
-ethers-core = { version = "^0.17.0", path = "../ethers-core", features = ["eip712"]}
+ethers-core = { version = "^0.17.0", path = "../ethers-core", features = ["eip712"] }
 thiserror = { version = "1.0.35", default-features = false }
 coins-bip32 = "0.7.0"
 coins-bip39 = "0.7.0"
@@ -27,8 +28,10 @@ rand = { version = "0.8.5", default-features = false }
 yubihsm = { version = "0.41.0", features = ["secp256k1", "http", "usb"], optional = true }
 futures-util = { version = "^0.3", optional = true }
 futures-executor = { version = "^0.3", optional = true }
-semver = { version =  "1.0.14", optional = true }
-trezor-client = { version = "0.0.6", optional = true, default-features = false, features = ["f_ethereum"] }
+semver = { version = "1.0.14", optional = true }
+trezor-client = { version = "0.0.6", optional = true, default-features = false, features = [
+    "f_ethereum"
+] }
 
 # aws
 rusoto_core = { version = "0.48.0", optional = true }
@@ -41,7 +44,10 @@ eth-keystore = { version = "0.5.0" }
 home = { version = "0.5.3", optional = true }
 
 [dev-dependencies]
-ethers-contract = { version = "^0.17.0", path = "../ethers-contract", features = ["eip712", "abigen"]}
+ethers-contract = { version = "^0.17.0", path = "../ethers-contract", features = [
+    "eip712",
+    "abigen"
+] }
 ethers-derive-eip712 = { version = "^0.17.0", path = "../ethers-core/ethers-derive-eip712" }
 serde_json = { version = "1.0.64" }
 tracing-subscriber = "0.3.15"

@@ -2,6 +2,7 @@
 name = "ethers-core"
 license = "MIT OR Apache-2.0"
 version = "0.17.0"
+rust-version = "1.62"
 authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
 edition = "2018"
 description = "Core structures for the ethers-rs crate"

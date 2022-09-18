@@ -1,9 +1,10 @@
 [package]
 name = "ethers-middleware"
-license = "MIT OR Apache-2.0"
 version = "0.17.0"
-authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
 edition = "2018"
+rust-version = "1.62"
+authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
+license = "MIT OR Apache-2.0"
 description = "Middleware implementations for the ethers-rs crate"
 homepage = "https://docs.rs/ethers"
 repository = "https://github.com/gakonst/ethers-rs"
@@ -34,7 +35,7 @@ reqwest = { version = "0.11.11", default-features = false, features = ["json", "
 url = { version = "2.3.1", default-features = false }
 
 serde_json = { version = "1.0.64", default-features = false }
-instant = {version = "0.1.12", features = ["now"] }
+instant = { version = "0.1.12", features = ["now"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tokio = { version = "1.18" }
@@ -42,7 +43,10 @@ tokio = { version = "1.18" }
 [dev-dependencies]
 hex = { version = "0.4.3", default-features = false, features = ["std"] }
 rand = { version = "0.8.5", default-features = false }
-ethers-providers = { version = "^0.17.0", path = "../ethers-providers", default-features = false, features = ["ws", "rustls"] }
+ethers-providers = { version = "^0.17.0", path = "../ethers-providers", default-features = false, features = [
+    "ws",
+    "rustls"
+] }
 once_cell = "1.14.0"
 ethers-solc = { version = "^0.17.0", path = "../ethers-solc" }
 serial_test = "0.9.0"

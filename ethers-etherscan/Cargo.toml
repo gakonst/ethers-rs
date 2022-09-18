@@ -1,7 +1,11 @@
 [package]
 name = "ethers-etherscan"
 version = "0.17.0"
-authors = ["Matthias Seitz <matthias.seitz@outlook.de>", "Georgios Konstantopoulos <me@gakonst.com>"]
+rust-version = "1.62"
+authors = [
+    "Matthias Seitz <matthias.seitz@outlook.de>",
+    "Georgios Konstantopoulos <me@gakonst.com>"
+]
 license = "MIT OR Apache-2.0"
 edition = "2018"
 readme = "../README.md"
