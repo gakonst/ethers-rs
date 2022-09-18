@@ -4,6 +4,7 @@
 
 ### Unreleased
 
+- Add comment about safety of u8 -> u64 cast in `ethers_core::types::Signature`
 - Stop defaulting to the `"latest"` block in `eth_estimateGas` params [#1657](https://github.com/gakonst/ethers-rs/pull/1657)
 - Fix geth trace types for debug_traceTransaction rpc
 - Fix RLP decoding of legacy `Transaction`
