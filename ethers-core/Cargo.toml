@@ -31,7 +31,7 @@ thiserror = { version = "1.0", default-features = false }
 bytes = { version = "1.2.1", features = ["serde"] }
 hex = { version = "0.4.3", default-features = false, features = ["std"] }
 once_cell = { version = "1.14.0", optional = true }
-unicode-xid = "0.2.3"
+unicode-xid = "0.2.4"
 strum = { version = "0.24", features = ["derive"] }
 
 # macros feature enabled dependencies
