@@ -259,7 +259,9 @@ impl Anvil {
         let mut addresses = Vec::new();
         let mut is_private_key = false;
         loop {
-            if start + Duration::from_millis(self.timeout.unwrap_or(ANVIL_STARTUP_TIMEOUT_MILLIS)) <= Instant::now() {
+            if start + Duration::from_millis(self.timeout.unwrap_or(ANVIL_STARTUP_TIMEOUT_MILLIS)) <=
+                Instant::now()
+            {
                 panic!("Timed out waiting for anvil to start. Is anvil installed?")
             }
 
