@@ -6,3 +6,4 @@ pkg/
 wasm-pack.log
 node_modules/
 yarn-error.log
+dist
