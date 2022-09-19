@@ -109,19 +109,19 @@ impl FromStr for NameOrAddress {
 }
 
 impl NameOrAddress {
-    /// Maps Address(&a) to Some(a) by cloning the value and Name to None.
-    pub fn as_address(&self) -> Option<Address> {
+    /// Maps Address(a) to Some(a) and Name to None.
+    pub fn as_address(&self) -> Option<&Address> {
         match self {
-            Self::Address(a) => Some(*a),
+            Self::Address(a) => Some(a),
             Self::Name(_) => None,
         }
     }
 
-    /// Maps Name(&n) to Some(n) by cloning the value and Address to None.
-    pub fn as_name(&self) -> Option<String> {
+    /// Maps Name(n) to Some(n) and Address to None.
+    pub fn as_name(&self) -> Option<&str> {
         match self {
             Self::Address(_) => None,
-            Self::Name(n) => Some(n.clone()),
+            Self::Name(n) => Some(n),
         }
     }
 }
