@@ -104,6 +104,10 @@ impl TypedTransaction {
         }
     }
 
+    pub fn to_addr(&self) -> Option<&Address> {
+        self.to().and_then(|t| t.as_address())
+    }
+
     pub fn set_to<T: Into<NameOrAddress>>(&mut self, to: T) -> &mut Self {
         let to = to.into();
         match self {
