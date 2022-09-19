@@ -1,10 +1,9 @@
-use std::cmp::Ordering;
-
 use crate::types::Address;
 use rlp::{Decodable, Encodable, RlpStream};
 use serde::{ser::Error as SerializationError, Deserialize, Deserializer, Serialize, Serializer};
+use std::{cmp::Ordering, convert::Infallible, str::FromStr};
 
-/// ENS name or Ethereum Address. Not RLP encoded/serialized if it's a name
+/// ENS name or Ethereum Address. Not RLP encoded/serialized if it's a name.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum NameOrAddress {
     /// An ENS Name (format does not get checked)
@@ -25,7 +24,7 @@ impl Encodable for &NameOrAddress {
 
 impl Encodable for NameOrAddress {
     fn rlp_append(&self, s: &mut RlpStream) {
-        if let NameOrAddress::Address(inner) = self {
+        if let Self::Address(inner) = self {
             inner.rlp_append(s);
         }
     }
@@ -39,26 +38,14 @@ impl Decodable for NameOrAddress {
         }
 
         // the data needs to be 20 bytes long
-        match 20.cmp(&rlp.size()) {
+        match rlp.size().cmp(&20usize) {
             Ordering::Less => Err(rlp::DecoderError::RlpIsTooShort),
             Ordering::Greater => Err(rlp::DecoderError::RlpIsTooBig),
             Ordering::Equal => {
                 let rlp_data = rlp.data()?;
-                Ok(NameOrAddress::Address(Address::from_slice(rlp_data)))
+                Ok(Self::Address(Address::from_slice(rlp_data)))
             }
         }
-    }
-}
-
-impl From<&str> for NameOrAddress {
-    fn from(s: &str) -> Self {
-        NameOrAddress::Name(s.to_owned())
-    }
-}
-
-impl From<Address> for NameOrAddress {
-    fn from(s: Address) -> Self {
-        NameOrAddress::Address(s)
     }
 }
 
@@ -70,8 +57,8 @@ impl Serialize for NameOrAddress {
         S: Serializer,
     {
         match self {
-            NameOrAddress::Address(addr) => addr.serialize(serializer),
-            NameOrAddress::Name(name) => Err(SerializationError::custom(format!(
+            Self::Address(addr) => addr.serialize(serializer),
+            Self::Name(name) => Err(SerializationError::custom(format!(
                 "cannot serialize ENS name {}, must be address",
                 name
             ))),
@@ -85,8 +72,57 @@ impl<'de> Deserialize<'de> for NameOrAddress {
         D: Deserializer<'de>,
     {
         let inner = Address::deserialize(deserializer)?;
+        Ok(Self::Address(inner))
+    }
+}
 
-        Ok(NameOrAddress::Address(inner))
+impl From<&str> for NameOrAddress {
+    fn from(s: &str) -> Self {
+        Self::from_str(s).unwrap()
+    }
+}
+
+impl From<String> for NameOrAddress {
+    fn from(s: String) -> Self {
+        Self::Name(s)
+    }
+}
+
+impl From<&String> for NameOrAddress {
+    fn from(s: &String) -> Self {
+        Self::Name(s.clone())
+    }
+}
+
+impl From<Address> for NameOrAddress {
+    fn from(s: Address) -> Self {
+        Self::Address(s)
+    }
+}
+
+impl FromStr for NameOrAddress {
+    type Err = Infallible;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Self::Name(s.to_string()))
+    }
+}
+
+impl NameOrAddress {
+    /// Maps Address(&a) to Some(a) by cloning the value and Name to None.
+    pub fn as_address(&self) -> Option<Address> {
+        match self {
+            Self::Address(a) => Some(*a),
+            Self::Name(_) => None,
+        }
+    }
+
+    /// Maps Name(&n) to Some(n) by cloning the value and Address to None.
+    pub fn as_name(&self) -> Option<String> {
+        match self {
+            Self::Address(_) => None,
+            Self::Name(n) => Some(n.clone()),
+        }
     }
 }
 
