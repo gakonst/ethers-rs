@@ -1,16 +1,15 @@
 [package]
 name = "ethers-wasm"
 version = "0.1.0"
-authors = ["Matthias Seitz <matthias.seitz@outlook.de>"]
 edition = "2018"
+rust-version = "1.62"
+authors = ["Matthias Seitz <matthias.seitz@outlook.de>"]
 license = "MIT OR Apache-2.0"
 readme = "README.md"
 documentation = "https://docs.rs/ethers"
 repository = "https://github.com/gakonst/ethers-rs"
 homepage = "https://docs.rs/ethers"
-description = """
-How to use ethers in the browser with WASM.
-"""
+description = "How to use ethers in the browser with WASM."
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -20,10 +19,13 @@ default = ["console_error_panic_hook"]
 
 [dependencies]
 ethers = { path = "../..", version = "0.17.0", features = ["abigen", "legacy", "ws"] }
-serde_derive = "1.0.137"
+
 wasm-bindgen-futures = "0.4.33"
-serde_json = "1.0.64"
-wasm-bindgen = { version = "0.2.81", features = ["serde-serialize"] }
+wasm-bindgen = { version = "0.2.83", features = ["serde-serialize"] }
+
+serde = { version = "1.0.144", features = ["derive"] }
+serde_json = "1.0.85"
+serde-wasm-bindgen = "0.4.3"
 
 # The `console_error_panic_hook` crate provides better debugging of panics by
 # logging them with `console.error`. This is great for development, but requires
@@ -38,9 +40,9 @@ console_error_panic_hook = { version = "0.1.6", optional = true }
 # Unfortunately, `wee_alloc` requires nightly Rust when targeting wasm for now.
 wee_alloc = { version = "0.4.5", optional = true }
 
-serde = { version = "1.0.126", features = ["derive"] }
+web-sys = { version = "0.3.60", features = ["console"] }
+
 hex = "0.4.3"
-web-sys = "0.3.60"
 
 [dev-dependencies]
 wasm-bindgen-test = "0.3.33"

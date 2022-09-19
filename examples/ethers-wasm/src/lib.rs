@@ -1,17 +1,12 @@
-#![allow(clippy::all)]
-
-use std::sync::Arc;
-
-use wasm_bindgen::prelude::*;
-use web_sys::console;
-
+use crate::utils::SIMPLECONTRACT_BIN;
 use ethers::{
     contract::abigen,
     prelude::{ContractFactory, Provider, SignerMiddleware},
     providers::Ws,
 };
-
-use crate::utils::SIMPLECONTRACT_BIN;
+use std::sync::Arc;
+use wasm_bindgen::prelude::*;
+use web_sys::console;
 
 pub mod utils;
 
@@ -26,6 +21,7 @@ macro_rules! log {
         web_sys::console::log_1(&format!( $( $t )* ).into());
     }
 }
+
 abigen!(
     SimpleContract,
     "./../contract_abi.json",
@@ -38,13 +34,13 @@ pub async fn deploy() {
 
     console::log_2(
         &"SimpleContract ABI: ".into(),
-        &JsValue::from_serde(&*SIMPLECONTRACT_ABI).unwrap(),
+        &serde_wasm_bindgen::to_value(&*SIMPLECONTRACT_ABI).unwrap(),
     );
 
     let wallet = utils::key(0);
     log!("Wallet: {:?}", wallet);
 
-    let endpoint = "ws://127.0.0.1:8545";
+    let endpoint = "ws://127.0.0.1:8544";
     let provider = Provider::new(Ws::connect(endpoint).await.unwrap());
     let client = Arc::new(SignerMiddleware::new(provider, wallet));
     log!("Provider connected to `{}`", endpoint);
@@ -62,7 +58,7 @@ pub async fn deploy() {
     let value = "bye from WASM!";
     log!("Setting value... `{}`", value);
     let receipt = contract.set_value(value.to_owned()).send().await.unwrap().await.unwrap();
-    console::log_2(&"Set value receipt: ".into(), &JsValue::from_serde(&receipt).unwrap());
+    console::log_2(&"Set value receipt: ".into(), &serde_wasm_bindgen::to_value(&receipt).unwrap());
 
     log!("Fetching logs...");
     let logs = contract.value_changed_filter().from_block(0u64).query().await.unwrap();
@@ -71,6 +67,6 @@ pub async fn deploy() {
 
     console::log_2(
         &format!("Value: `{}`. Logs: ", value).into(),
-        &JsValue::from_serde(&logs).unwrap(),
+        &serde_wasm_bindgen::to_value(&logs).unwrap(),
     );
 }
