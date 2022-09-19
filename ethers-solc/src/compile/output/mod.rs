@@ -361,9 +361,10 @@ impl ProjectCompileOutput<ConfigurableArtifacts> {
     /// use std::collections::btree_map::BTreeMap;
     /// use ethers_solc::artifacts::contract::CompactContractBytecode;
     /// use ethers_solc::{ArtifactId, Project};
+    /// use ethers_solc::contracts::ArtifactContracts;
     ///
     /// let project = Project::builder().build().unwrap();
-    /// let contracts: BTreeMap<ArtifactId, CompactContractBytecode> = project.compile().unwrap().into_contract_bytecodes().collect();
+    /// let contracts: ArtifactContracts = project.compile().unwrap().into_contract_bytecodes().collect();
     /// ```
     pub fn into_contract_bytecodes(
         self,
