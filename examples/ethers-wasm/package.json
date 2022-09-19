@@ -1,9 +1,10 @@
 {
     "name": "ethers-wasm",
     "license": "MIT OR Apache-2.0",
+    "private": "true",
     "scripts": {
         "build": "webpack",
-        "serve": "NODE_OPTIONS=--openssl-legacy-provider webpack-dev-server",
+        "serve": "webpack-dev-server",
         "anvil": "anvil --blockTime 2 -m \"stuff inherit faith park genre spread huge knee ecology private marble supreme\"",
         "ganache": "ganache-cli --blockTime 2 -m \"stuff inherit faith park genre spread huge knee ecology private marble supreme\""
     },

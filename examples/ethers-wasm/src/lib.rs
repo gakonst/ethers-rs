@@ -40,7 +40,7 @@ pub async fn deploy() {
     let wallet = utils::key(0);
     log!("Wallet: {:?}", wallet);
 
-    let endpoint = "ws://127.0.0.1:8544";
+    let endpoint = "ws://127.0.0.1:8545";
     let provider = Provider::new(Ws::connect(endpoint).await.unwrap());
     let client = Arc::new(SignerMiddleware::new(provider, wallet));
     log!("Provider connected to `{}`", endpoint);
