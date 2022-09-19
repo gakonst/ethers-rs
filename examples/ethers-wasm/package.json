@@ -5,8 +5,8 @@
     "scripts": {
         "build": "webpack",
         "serve": "webpack-dev-server",
-        "anvil": "anvil --blockTime 2 -m \"stuff inherit faith park genre spread huge knee ecology private marble supreme\"",
-        "ganache": "ganache-cli --blockTime 2 -m \"stuff inherit faith park genre spread huge knee ecology private marble supreme\""
+        "anvil": "anvil -m 'stuff inherit faith park genre spread huge knee ecology private marble supreme'",
+        "ganache": "ganache-cli -m 'stuff inherit faith park genre spread huge knee ecology private marble supreme'"
     },
     "devDependencies": {
         "@wasm-tool/wasm-pack-plugin": "^1.6",
