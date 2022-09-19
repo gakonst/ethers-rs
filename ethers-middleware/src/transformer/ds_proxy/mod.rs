@@ -177,17 +177,14 @@ impl DsProxy {
 impl Transformer for DsProxy {
     fn transform(&self, tx: &mut TypedTransaction) -> Result<(), TransformerError> {
         // the target address cannot be None.
-        let target = match tx.to() {
-            Some(NameOrAddress::Address(addr)) => addr,
-            _ => return Err(TransformerError::MissingField("to".into())),
-        };
+        let target = tx.to_addr().ok_or(TransformerError::MissingField("to".to_string()))?;
 
         // fetch the data field.
         let data = tx.data().cloned().unwrap_or_else(|| vec![].into());
 
         // encode data as the ABI encoded data for DSProxy's execute method.
         let selector = id("execute(address,bytes)");
-        let encoded_data = self.contract.encode_with_selector(selector, (*target, data))?;
+        let encoded_data = self.contract.encode_with_selector(selector, (target, data))?;
 
         // update appropriate fields of the proxy tx.
         tx.set_data(encoded_data);

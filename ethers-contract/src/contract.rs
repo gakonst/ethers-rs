@@ -7,7 +7,7 @@ use crate::{
 
 use ethers_core::{
     abi::{Abi, Detokenize, Error, EventExt, Function, Tokenize},
-    types::{Address, Filter, NameOrAddress, Selector, ValueOrArray},
+    types::{Address, Filter, Selector, ValueOrArray},
 };
 
 #[cfg(not(feature = "legacy"))]
@@ -232,13 +232,13 @@ impl<M: Middleware> Contract<M> {
 
         #[cfg(feature = "legacy")]
         let tx = TransactionRequest {
-            to: Some(NameOrAddress::Address(self.address)),
+            to: Some(self.address.into()),
             data: Some(data),
             ..Default::default()
         };
         #[cfg(not(feature = "legacy"))]
         let tx = Eip1559TransactionRequest {
-            to: Some(NameOrAddress::Address(self.address)),
+            to: Some(self.address.into()),
             data: Some(data),
             ..Default::default()
         };

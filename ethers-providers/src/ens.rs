@@ -1,7 +1,7 @@
 //! [Ethereum Name Service](https://docs.ens.domains/) support
 //! Adapted from <https://github.com/hhatto/rust-ens/blob/master/src/lib.rs>
 use ethers_core::{
-    types::{Address, NameOrAddress, Selector, TransactionRequest, H160, H256},
+    types::{Address, Selector, TransactionRequest, H160, H256},
     utils::keccak256,
 };
 
@@ -37,7 +37,7 @@ pub fn get_resolver<T: Into<Address>>(ens_address: T, name: &str) -> Transaction
     let data = [&RESOLVER[..], &namehash(name).0].concat();
     TransactionRequest {
         data: Some(data.into()),
-        to: Some(NameOrAddress::Address(ens_address.into())),
+        to: Some(ens_address.into().into()),
         ..Default::default()
     }
 }
@@ -50,7 +50,7 @@ pub fn supports_interface<T: Into<Address>>(
     let data = [&INTERFACE_SELECTOR[..], &selector[..], &[0; 28]].concat();
     TransactionRequest {
         data: Some(data.into()),
-        to: Some(NameOrAddress::Address(resolver_address.into())),
+        to: Some(resolver_address.into().into()),
         ..Default::default()
     }
 }
@@ -65,7 +65,7 @@ pub fn resolve<T: Into<Address>>(
     let data = [&selector[..], &namehash(name).0, parameters.unwrap_or_default()].concat();
     TransactionRequest {
         data: Some(data.into()),
-        to: Some(NameOrAddress::Address(resolver_address.into())),
+        to: Some(resolver_address.into().into()),
         ..Default::default()
     }
 }
