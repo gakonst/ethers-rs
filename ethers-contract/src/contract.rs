@@ -10,6 +10,8 @@ use ethers_core::{
     types::{Address, Filter, Selector, ValueOrArray},
 };
 
+use ethers_providers::Middleware;
+
 #[cfg(not(feature = "legacy"))]
 use ethers_core::types::Eip1559TransactionRequest;
 #[cfg(feature = "legacy")]
@@ -150,9 +152,9 @@ use std::{fmt::Debug, marker::PhantomData, sync::Arc};
 /// [`method`]: method@crate::Contract::method
 #[derive(Debug)]
 pub struct Contract<M> {
+    address: Address,
     base_contract: BaseContract,
     client: Arc<M>,
-    address: Address,
 }
 
 impl<M> std::ops::Deref for Contract<M> {
@@ -173,6 +175,23 @@ impl<M> Clone for Contract<M> {
 }
 
 impl<M> Contract<M> {
+    /// Returns the contract's address
+    pub fn address(&self) -> Address {
+        self.address
+    }
+
+    /// Returns a reference to the contract's ABI
+    pub fn abi(&self) -> &Abi {
+        &self.base_contract.abi
+    }
+
+    /// Returns a reference to the contract's client
+    pub fn client(&self) -> &M {
+        &self.client
+    }
+}
+
+impl<M: Middleware> Contract<M> {
     /// Creates a new contract from the provided client, abi and address
     pub fn new(
         address: impl Into<Address>,
@@ -285,20 +304,5 @@ impl<M> Contract<M> {
         N: Clone,
     {
         Contract { base_contract: self.base_contract.clone(), client, address: self.address }
-    }
-
-    /// Returns the contract's address
-    pub fn address(&self) -> Address {
-        self.address
-    }
-
-    /// Returns a reference to the contract's ABI
-    pub fn abi(&self) -> &Abi {
-        &self.base_contract.abi
-    }
-
-    /// Returns a reference to the contract's client
-    pub fn client(&self) -> &M {
-        &self.client
     }
 }
