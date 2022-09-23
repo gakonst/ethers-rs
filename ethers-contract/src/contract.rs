@@ -10,12 +10,12 @@ use ethers_core::{
     types::{Address, Filter, Selector, ValueOrArray},
 };
 
-use ethers_providers::Middleware;
-
 #[cfg(not(feature = "legacy"))]
 use ethers_core::types::Eip1559TransactionRequest;
 #[cfg(feature = "legacy")]
 use ethers_core::types::TransactionRequest;
+
+use ethers_providers::Middleware;
 
 use std::{fmt::Debug, marker::PhantomData, sync::Arc};
 
