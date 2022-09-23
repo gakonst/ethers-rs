@@ -15,8 +15,6 @@ use ethers_core::types::Eip1559TransactionRequest;
 #[cfg(feature = "legacy")]
 use ethers_core::types::TransactionRequest;
 
-use ethers_providers::Middleware;
-
 use std::{fmt::Debug, marker::PhantomData, sync::Arc};
 
 /// A Contract is an abstraction of an executable program on the Ethereum Blockchain.
@@ -157,6 +155,13 @@ pub struct Contract<M> {
     address: Address,
 }
 
+impl<M> std::ops::Deref for Contract<M> {
+    type Target = BaseContract;
+    fn deref(&self) -> &Self::Target {
+        &self.base_contract
+    }
+}
+
 impl<M> Clone for Contract<M> {
     fn clone(&self) -> Self {
         Contract {
@@ -167,10 +172,14 @@ impl<M> Clone for Contract<M> {
     }
 }
 
-impl<M: Middleware> Contract<M> {
+impl<M> Contract<M> {
     /// Creates a new contract from the provided client, abi and address
-    pub fn new(address: Address, abi: impl Into<BaseContract>, client: impl Into<Arc<M>>) -> Self {
-        Self { base_contract: abi.into(), client: client.into(), address }
+    pub fn new(
+        address: impl Into<Address>,
+        abi: impl Into<BaseContract>,
+        client: impl Into<Arc<M>>,
+    ) -> Self {
+        Self { base_contract: abi.into(), client: client.into(), address: address.into() }
     }
 
     /// Returns an [`Event`](crate::builders::Event) builder for the provided event.
@@ -291,12 +300,5 @@ impl<M: Middleware> Contract<M> {
     /// Returns a reference to the contract's client
     pub fn client(&self) -> &M {
         &self.client
-    }
-}
-
-impl<M: Middleware> std::ops::Deref for Contract<M> {
-    type Target = BaseContract;
-    fn deref(&self) -> &Self::Target {
-        &self.base_contract
     }
 }
