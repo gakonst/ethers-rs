@@ -250,7 +250,7 @@ impl LedgerEthereum {
 mod tests {
     use super::*;
     use crate::Signer;
-    use ethers_contract::EthAbiType;
+    use ethers_contract_derive::EthAbiType;
     use ethers_core::types::{
         transaction::eip712::Eip712, Address, TransactionRequest, I256, U256,
     };

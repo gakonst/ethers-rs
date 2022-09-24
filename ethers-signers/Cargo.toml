@@ -44,10 +44,7 @@ eth-keystore = { version = "0.5.0" }
 home = { version = "0.5.3", optional = true }
 
 [dev-dependencies]
-ethers-contract = { version = "^0.17.0", path = "../ethers-contract", features = [
-    "eip712",
-    "abigen"
-] }
+ethers-contract-derive = { version = "^0.17.0", path = "../ethers-contract/ethers-contract-derive" }
 ethers-derive-eip712 = { version = "^0.17.0", path = "../ethers-core/ethers-derive-eip712" }
 serde_json = { version = "1.0.64" }
 tracing-subscriber = "0.3.15"

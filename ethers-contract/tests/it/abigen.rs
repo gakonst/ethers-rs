@@ -7,9 +7,7 @@ use ethers_core::{
     types::{transaction::eip2718::TypedTransaction, Chain, Eip1559TransactionRequest, U256},
     utils::Anvil,
 };
-use ethers_middleware::SignerMiddleware;
 use ethers_providers::{MockProvider, Provider};
-use ethers_signers::{LocalWallet, Signer};
 use ethers_solc::Solc;
 use std::{
     convert::{TryFrom, TryInto},
@@ -617,11 +615,14 @@ fn can_handle_overloaded_events() {
 async fn can_send_struct_param() {
     abigen!(StructContract, "./tests/solidity-contracts/StructContract.json");
 
-    let server = Anvil::new().spawn();
-    let wallet: LocalWallet = server.keys()[0].clone().into();
-    let provider = Provider::try_from(server.endpoint()).unwrap();
-    let client =
-        Arc::new(SignerMiddleware::new(provider, wallet.with_chain_id(Chain::AnvilHardhat)));
+    // launch the network & connect to it
+    let anvil = Anvil::new().spawn();
+    let from = anvil.addresses()[0];
+    let provider = Provider::try_from(anvil.endpoint())
+        .unwrap()
+        .with_sender(from)
+        .interval(std::time::Duration::from_millis(10));
+    let client = Arc::new(provider);
 
     let contract = StructContract::deploy(client, ()).unwrap().legacy().send().await.unwrap();
 
