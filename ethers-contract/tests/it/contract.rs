@@ -3,7 +3,7 @@ pub use crate::common::*;
 use ethers_contract::{abigen, ContractFactory, EthAbiType};
 use ethers_core::types::{Filter, ValueOrArray, H256};
 
-// #[cfg(not(feature = "celo"))]
+#[cfg(not(feature = "celo"))]
 mod eth_tests {
     use super::*;
     use ethers_contract::{LogMeta, Multicall, MulticallVersion};
