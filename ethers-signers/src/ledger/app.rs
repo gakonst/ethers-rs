@@ -141,11 +141,7 @@ impl LedgerEthereum {
 
             signature.v = match tx {
                 TypedTransaction::Eip2930(_) | TypedTransaction::Eip1559(_) => {
-                    if ecc_parity % 2 == 1 {
-                        0
-                    } else {
-                        1
-                    }
+                    (ecc_parity % 2 != 1) as u64
                 }
                 TypedTransaction::Legacy(_) => eip155_chain_id + ecc_parity,
             };
