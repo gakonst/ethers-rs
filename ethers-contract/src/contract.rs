@@ -185,9 +185,9 @@ impl<M> Contract<M> {
         &self.base_contract.abi
     }
 
-    /// Returns a reference to the contract's client
-    pub fn client(&self) -> &M {
-        &self.client
+    /// Returns a pointer to the contract's client
+    pub fn client(&self) -> Arc<M> {
+        self.client.clone()
     }
 }
 
