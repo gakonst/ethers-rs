@@ -50,6 +50,7 @@ pub enum Chain {
     OptimismKovan = 69,
     Arbitrum = 42161,
     ArbitrumTestnet = 421611,
+    ArbitrumGoerli = 421613,
     Cronos = 25,
     CronosTestnet = 338,
     #[strum(serialize = "bsc")]
@@ -81,7 +82,7 @@ impl Chain {
     /// <https://polygonscan.com/chart/blocktime>
     pub fn average_blocktime_hint(&self) -> Option<Duration> {
         let ms = match self {
-            Chain::Arbitrum | Chain::ArbitrumTestnet => 1_300,
+            Chain::Arbitrum | Chain::ArbitrumTestnet | Chain::ArbitrumGoerli => 1_300,
             Chain::Mainnet | Chain::Optimism => 13_000,
             Chain::Polygon | Chain::PolygonMumbai => 2_100,
             Chain::Moonbeam | Chain::Moonriver => 12_500,
@@ -164,6 +165,10 @@ impl Chain {
             Chain::ArbitrumTestnet => {
                 ("https://api-testnet.arbiscan.io/api", "https://testnet.arbiscan.io")
             }
+            Chain::ArbitrumGoerli => (
+                "https://goerli-rollup-explorer.arbitrum.io/api",
+                "https://goerli-rollup-explorer.arbitrum.io",
+            ),
             Chain::Cronos => ("https://api.cronoscan.com/api", "https://cronoscan.com"),
             Chain::CronosTestnet => {
                 ("https://api-testnet.cronoscan.com/api", "https://testnet.cronoscan.com")
@@ -244,6 +249,7 @@ impl fmt::Display for Chain {
             Chain::BinanceSmartChainTestnet => "bsc-testnet",
             Chain::Arbitrum => "arbitrum",
             Chain::ArbitrumTestnet => "arbitrum-testnet",
+            Chain::ArbitrumGoerli => "arbitrum-goerli",
             Chain::Cronos => "cronos",
             Chain::CronosTestnet => "cronos-testnet",
             Chain::Poa => "poa",
@@ -313,6 +319,7 @@ impl TryFrom<u64> for Chain {
             97 => Chain::BinanceSmartChainTestnet,
             42161 => Chain::Arbitrum,
             421611 => Chain::ArbitrumTestnet,
+            421613 => Chain::ArbitrumGoerli,
             25 => Chain::Cronos,
             338 => Chain::CronosTestnet,
             99 => Chain::Poa,
@@ -372,6 +379,7 @@ impl FromStr for Chain {
             "bsc-testnet" => Chain::BinanceSmartChainTestnet,
             "arbitrum" => Chain::Arbitrum,
             "arbitrum-testnet" => Chain::ArbitrumTestnet,
+            "arbitrum-goerli" => Chain::ArbitrumGoerli,
             "cronos" => Chain::Cronos,
             "cronos-testnet" => Chain::CronosTestnet,
             "poa" => Chain::Poa,
@@ -403,6 +411,7 @@ impl Chain {
                 Chain::BinanceSmartChainTestnet |
                 Chain::Arbitrum |
                 Chain::ArbitrumTestnet |
+                Chain::ArbitrumGoerli |
                 Chain::Rsk |
                 Chain::Oasis |
                 Chain::Emerald |

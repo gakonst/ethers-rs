@@ -93,6 +93,7 @@ impl Client {
             Chain::BinanceSmartChainTestnet |
             Chain::Arbitrum |
             Chain::ArbitrumTestnet |
+            Chain::ArbitrumGoerli |
             Chain::Cronos |
             Chain::CronosTestnet |
             Chain::Aurora |
