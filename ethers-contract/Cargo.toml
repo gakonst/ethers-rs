@@ -26,7 +26,6 @@ futures-util = { version = "^0.3" }
 hex = { version = "0.4.3", default-features = false, features = ["std"] }
 
 [dev-dependencies]
-ethers-middleware = { version = "^0.17.0", path = "../ethers-middleware" }
 ethers-providers = { version = "^0.17.0", path = "../ethers-providers", default-features = false, features = [
     "ws"
 ] }

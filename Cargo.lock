@@ -1238,7 +1238,6 @@ dependencies = [
  "ethers-contract-derive",
  "ethers-core",
  "ethers-derive-eip712",
- "ethers-middleware",
  "ethers-providers",
  "ethers-signers",
  "ethers-solc",
