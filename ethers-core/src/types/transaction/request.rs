@@ -7,6 +7,7 @@ use crate::{
     utils::keccak256,
 };
 
+use crate::types::transaction::BASE_NUM_TX_FIELDS;
 use rlp::{Decodable, RlpStream};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -161,14 +162,16 @@ impl TransactionRequest {
     /// signing. Assumes the chainid exists.
     pub fn rlp(&self) -> Bytes {
         let mut rlp = RlpStream::new();
-        rlp.begin_list(NUM_TX_FIELDS);
-        self.rlp_base(&mut rlp);
-
-        // Only hash the 3 extra fields when preparing the
-        // data to sign if chain_id is present
-        rlp_opt(&mut rlp, &self.chain_id);
-        rlp.append(&0u8);
-        rlp.append(&0u8);
+        if let Some(chain_id) = self.chain_id {
+            rlp.begin_list(BASE_NUM_TX_FIELDS);
+            self.rlp_base(&mut rlp);
+            rlp.append(&chain_id);
+            rlp.append(&0u8);
+            rlp.append(&0u8);
+        } else {
+            rlp.begin_list(BASE_NUM_TX_FIELDS - 3);
+            self.rlp_base(&mut rlp);
+        }
         rlp.out().freeze().into()
     }
 
@@ -350,10 +353,9 @@ impl TransactionRequest {
 #[cfg(test)]
 #[cfg(not(feature = "celo"))]
 mod tests {
-    use crate::types::{Bytes, NameOrAddress, Signature};
+    use super::*;
+    use crate::types::{transaction::eip2718::TypedTransaction, Bytes, NameOrAddress, Signature};
     use rlp::{Decodable, Rlp};
-
-    use super::{Address, TransactionRequest, U256, U64};
     use std::str::FromStr;
 
     #[test]
@@ -557,5 +559,18 @@ mod tests {
             let from_tx: NameOrAddress = tx.from.unwrap().into();
             assert_eq!(from_tx, from_addr);
         }
+    }
+
+    #[test]
+    fn test_recover_legacy_tx() {
+        let raw_tx = "f9015482078b8505d21dba0083022ef1947a250d5630b4cf539739df2c5dacb4c659f2488d880c46549a521b13d8b8e47ff36ab50000000000000000000000000000000000000000000066ab5a608bd00a23f2fe000000000000000000000000000000000000000000000000000000000000008000000000000000000000000048c04ed5691981c42154c6167398f95e8f38a7ff00000000000000000000000000000000000000000000000000000000632ceac70000000000000000000000000000000000000000000000000000000000000002000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc20000000000000000000000006c6ee5e31d828de241282b9606c8e98ea48526e225a0c9077369501641a92ef7399ff81c21639ed4fd8fc69cb793cfa1dbfab342e10aa0615facb2f1bcf3274a354cfe384a38d0cc008a11c2dd23a69111bc6930ba27a8";
+
+        let data = hex::decode(raw_tx).unwrap();
+        let rlp = Rlp::new(&data);
+        let (tx, sig) = TypedTransaction::decode_signed(&rlp).unwrap();
+        let recovered = sig.recover(tx.sighash()).unwrap();
+
+        let expected: Address = "0xa12e1462d0ced572f396f58b6e2d03894cd7c8a4".parse().unwrap();
+        assert_eq!(expected, recovered);
     }
 }
