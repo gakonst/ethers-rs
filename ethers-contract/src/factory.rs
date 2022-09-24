@@ -261,7 +261,7 @@ impl<M: Middleware> Deployer<M> {
         &self.abi
     }
 
-    /// Returns a pointer to the contract's client
+    /// Returns a pointer to the deployer's client
     pub fn client(&self) -> Arc<M> {
         self.client.clone()
     }
