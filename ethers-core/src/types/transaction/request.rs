@@ -7,7 +7,6 @@ use crate::{
     utils::keccak256,
 };
 
-use crate::types::transaction::BASE_NUM_TX_FIELDS;
 use rlp::{Decodable, RlpStream};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -163,13 +162,13 @@ impl TransactionRequest {
     pub fn rlp(&self) -> Bytes {
         let mut rlp = RlpStream::new();
         if let Some(chain_id) = self.chain_id {
-            rlp.begin_list(BASE_NUM_TX_FIELDS);
+            rlp.begin_list(NUM_TX_FIELDS);
             self.rlp_base(&mut rlp);
             rlp.append(&chain_id);
             rlp.append(&0u8);
             rlp.append(&0u8);
         } else {
-            rlp.begin_list(BASE_NUM_TX_FIELDS - 3);
+            rlp.begin_list(NUM_TX_FIELDS - 3);
             self.rlp_base(&mut rlp);
         }
         rlp.out().freeze().into()
