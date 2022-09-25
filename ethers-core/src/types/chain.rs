@@ -231,7 +231,7 @@ impl fmt::Display for Chain {
             Chain::Kovan => "kovan",
             Chain::XDai => "xdai",
             Chain::Polygon => "polygon",
-            Chain::PolygonMumbai => "polygon-mumbai",
+            Chain::PolygonMumbai => "mumbai",
             Chain::Avalanche => "avalanche",
             Chain::AvalancheFuji => "fuji",
             Chain::Sepolia => "sepolia",
