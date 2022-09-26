@@ -458,8 +458,15 @@ mod tests {
         collections::HashSet,
         fs::{create_dir_all, File},
     };
-
     use tempdir;
+
+    #[test]
+    fn can_create_parent_dirs_with_ext() {
+        let tmp_dir = tempdir("out").unwrap();
+        let path = tmp_dir.path().join("IsolationModeMagic.sol/IsolationModeMagic.json");
+        create_parent_dir_all(&path).unwrap();
+        assert!(path.parent().unwrap().is_dir());
+    }
 
     #[test]
     fn can_determine_local_paths() {
