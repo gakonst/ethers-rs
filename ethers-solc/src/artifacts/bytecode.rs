@@ -458,11 +458,9 @@ impl From<CompactDeployedBytecode> for DeployedBytecode {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
-    use crate::artifacts::{ContractBytecode};
-    use crate::{ConfigurableContractArtifact};
+    use crate::{artifacts::ContractBytecode, ConfigurableContractArtifact};
 
     #[test]
     fn test_empty_bytecode() {
@@ -480,10 +478,10 @@ mod tests {
   }
         "#;
 
-        let artifact : ConfigurableContractArtifact = serde_json::from_str(empty).unwrap();
+        let artifact: ConfigurableContractArtifact = serde_json::from_str(empty).unwrap();
         let contract = artifact.into_contract_bytecode();
         let bytecode: ContractBytecode = contract.into();
         let bytecode = bytecode.unwrap();
-       assert!(!bytecode.bytecode.object.is_unlinked());
+        assert!(!bytecode.bytecode.object.is_unlinked());
     }
 }
