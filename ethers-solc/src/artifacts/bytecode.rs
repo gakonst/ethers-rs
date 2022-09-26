@@ -352,10 +352,10 @@ impl BytecodeObject {
     }
 }
 
-// Returns a not deployable bytecode by default as empty
+// Returns an empty bytecode object
 impl Default for BytecodeObject {
     fn default() -> Self {
-        BytecodeObject::Unlinked("".to_string())
+        BytecodeObject::Bytecode(Default::default())
     }
 }
 
@@ -455,5 +455,33 @@ impl From<CompactDeployedBytecode> for DeployedBytecode {
             bytecode: bcode.bytecode.map(|d_bcode| d_bcode.into()),
             immutable_references: bcode.immutable_references,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{artifacts::ContractBytecode, ConfigurableContractArtifact};
+
+    #[test]
+    fn test_empty_bytecode() {
+        let empty = r#"
+        {
+  "abi": [],
+  "bytecode": {
+    "object": "0x",
+    "linkReferences": {}
+  },
+  "deployedBytecode": {
+    "object": "0x",
+    "linkReferences": {}
+  }
+  }
+        "#;
+
+        let artifact: ConfigurableContractArtifact = serde_json::from_str(empty).unwrap();
+        let contract = artifact.into_contract_bytecode();
+        let bytecode: ContractBytecode = contract.into();
+        let bytecode = bytecode.unwrap();
+        assert!(!bytecode.bytecode.object.is_unlinked());
     }
 }
