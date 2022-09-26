@@ -349,7 +349,7 @@ impl Decodable for Transaction {
             // Legacy (0x00)
             // use the original rlp
             txn.decode_base_legacy(rlp, &mut offset)?;
-            let sig = decode_signature(rlp, &mut offset).unwrap();
+            let sig = decode_signature(rlp, &mut offset)?;
             txn.r = sig.r;
             txn.s = sig.s;
             txn.v = sig.v.into();
