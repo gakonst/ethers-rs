@@ -1,13 +1,16 @@
-use std::{collections::HashMap, path::Path};
-
-use serde::{Deserialize, Serialize};
-
-use ethers_core::abi::{Abi, Address};
-
 use crate::{
     source_tree::{SourceTree, SourceTreeEntry},
     Client, EtherscanError, Response, Result,
 };
+use ethers_core::{
+    abi::{Abi, Address},
+    types::Bytes,
+};
+use ethers_solc::artifacts::Settings;
+use serde::{de::Visitor, Deserialize, Serialize};
+use std::{collections::HashMap, path::Path};
+
+/* --------------------------------------- VerifyContract --------------------------------------- */
 
 /// Arguments for verifying contracts
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -116,10 +119,12 @@ impl VerifyContract {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CodeFormat {
     #[serde(rename = "solidity-single-file")]
     SingleFile,
+
+    #[default]
     #[serde(rename = "solidity-standard-json-input")]
     StandardJsonInput,
 }
@@ -133,9 +138,89 @@ impl AsRef<str> for CodeFormat {
     }
 }
 
-impl Default for CodeFormat {
-    fn default() -> Self {
-        CodeFormat::StandardJsonInput
+/* -------------------------------------- ContractMetadata -------------------------------------- */
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+enum SourceCodeLanguage {
+    #[default]
+    Solidity,
+    Vyper,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+struct SourceCodeEntry {
+    content: String,
+}
+
+#[derive(Clone, Debug, Serialize)]
+struct SourceCodeMetadata {
+    /// Programming language of the sources.
+    language: Option<SourceCodeLanguage>,
+    /// Source path => source
+    sources: HashMap<String, SourceCodeEntry>,
+    /// Compiler settings, None if it's the language is not Solidity.
+    settings: Option<Settings>,
+}
+
+impl<'de> Deserialize<'de> for SourceCodeMetadata {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        // Etherscan can either return one raw string that includes all of the source code for a
+        // verified contract or a [SourceCodeMetadata] struct surrounded in an extra set of {}.
+        let src = String::deserialize(deserializer)?;
+        if src.starts_with("{{") && src.ends_with("}}") {
+            let s = &src[1..src.len() - 1];
+            struct SourceCodeMetadataVisitor;
+            impl<'a> Visitor<'a> for SourceCodeMetadataVisitor {
+                type Value = SourceCodeMetadata;
+
+                fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                    f.write_str("a source code map")
+                }
+
+                fn visit_map<A>(self, mut map: A) -> std::result::Result<Self::Value, A::Error>
+                where
+                    A: serde::de::MapAccess<'a>,
+                {
+                    let mut language = Default::default();
+                    let mut sources = Default::default();
+                    let mut settings = Default::default();
+                    while let Some(key) = map.next_key::<String>()? {
+                        match key.as_str() {
+                            "language" => {
+                                language = map.next_value()?;
+                            }
+                            "sources" => {
+                                sources = map.next_value()?;
+                            }
+                            "settings" => {
+                                settings = map.next_value()?;
+                            }
+                            field => {
+                                return Err(serde::de::Error::unknown_field(
+                                    field,
+                                    &["language", "sources", "settings"],
+                                ))
+                            }
+                        }
+                    }
+                    Ok(SourceCodeMetadata { language, sources, settings })
+                }
+            }
+            deserializer.deserialize_map(SourceCodeMetadataVisitor)
+        } else {
+            let mut sources = HashMap::with_capacity(1);
+            sources.insert("Contract".into(), SourceCodeEntry { content: src });
+            Ok(Self { language: None, sources, settings: None })
+        }
+    }
+}
+
+impl SourceCodeMetadata {
+    pub fn source_code(&self) -> String {
+        self.sources.values().map(|s| s.content.clone()).collect::<Vec<_>>().join("\n")
     }
 }
 
@@ -154,29 +239,15 @@ impl IntoIterator for ContractMetadata {
     }
 }
 
-#[derive(Deserialize, Clone, Debug)]
-struct EtherscanSourceEntry {
-    content: String,
-}
-
-#[derive(Deserialize, Clone, Debug)]
-struct EtherscanSourceJsonMetadata {
-    sources: HashMap<String, EtherscanSourceEntry>,
-}
-
 impl ContractMetadata {
     /// All ABI from all contracts in the source file
-    pub fn abis(&self) -> Result<Vec<Abi>> {
-        let mut abis = Vec::with_capacity(self.items.len());
-        for item in &self.items {
-            abis.push(serde_json::from_str(&item.abi)?);
-        }
-        Ok(abis)
+    pub fn abis(&self) -> Vec<Abi> {
+        self.items.iter().map(|c| c.abi).collect()
     }
 
     /// Combined source code of all contracts
     pub fn source_code(&self) -> String {
-        self.items.iter().map(|c| c.source_code.as_str()).collect::<Vec<_>>().join("\n")
+        self.items.iter().map(|c| c.source_code.source_code()).collect::<Vec<_>>().join("\n")
     }
 
     /// Etherscan can either return one raw string that includes all of the solidity for a verified
@@ -188,7 +259,7 @@ impl ContractMetadata {
     ) -> Result<Vec<(String, String)>> {
         if etherscan_source.starts_with("{{") && etherscan_source.ends_with("}}") {
             let json = &etherscan_source[1..etherscan_source.len() - 1];
-            let parsed: EtherscanSourceJsonMetadata = serde_json::from_str(json)?;
+            let parsed: SourceCodeMetadata = serde_json::from_str(json)?;
             Ok(parsed
                 .sources
                 .into_iter()
@@ -201,15 +272,11 @@ impl ContractMetadata {
 
     pub fn source_tree(&self) -> Result<SourceTree> {
         let mut entries = vec![];
-        for item in &self.items {
+        for item in self.items.iter() {
             let contract_root = Path::new(&item.contract_name);
-            let source_paths = Self::get_sources_from_etherscan_source_value(
-                &item.contract_name,
-                &item.source_code,
-            )?;
-            for (path, contents) in source_paths {
+            for (path, entry) in item.source_code.sources.iter() {
                 let joined = contract_root.join(&path);
-                entries.push(SourceTreeEntry { path: joined, contents });
+                entries.push(SourceTreeEntry { path: joined, contents: entry.content.clone() });
             }
         }
         Ok(SourceTree { entries })
@@ -218,34 +285,28 @@ impl ContractMetadata {
 
 /// Etherscan contract metadata
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
 pub struct Metadata {
-    #[serde(rename = "SourceCode")]
-    pub source_code: String,
+    pub source_code: SourceCodeMetadata,
     #[serde(rename = "ABI")]
-    pub abi: String,
-    #[serde(rename = "ContractName")]
+    pub abi: Abi,
     pub contract_name: String,
-    #[serde(rename = "CompilerVersion")]
     pub compiler_version: String,
-    #[serde(rename = "OptimizationUsed")]
-    pub optimization_used: String,
-    #[serde(rename = "Runs")]
-    pub runs: String,
-    #[serde(rename = "ConstructorArguments")]
-    pub constructor_arguments: String,
+    /// 0 or 1
+    pub optimization_used: u8,
+    pub runs: usize,
+    pub constructor_arguments: Bytes,
     #[serde(rename = "EVMVersion")]
     pub evm_version: String,
-    #[serde(rename = "Library")]
     pub library: String,
-    #[serde(rename = "LicenseType")]
     pub license_type: String,
-    #[serde(rename = "Proxy")]
-    pub proxy: String,
-    #[serde(rename = "Implementation")]
-    pub implementation: String,
-    #[serde(rename = "SwarmSource")]
+    /// 0 or 1
+    pub proxy: u8,
+    pub implementation: Option<Address>,
     pub swarm_source: String,
 }
+
+/* ------------------------------------------- Client ------------------------------------------- */
 
 impl Client {
     /// Submit Source Code for Verification
@@ -347,14 +408,14 @@ impl Client {
 
         let query =
             self.create_query("contract", "getsourcecode", HashMap::from([("address", address)]));
-        let response: Response<Vec<Metadata>> = self.get_json(&query).await?;
-        if response.result.iter().any(|item| item.abi == "Contract source code not verified") {
+        let response: Response<String> = self.get_json(&query).await?;
+        if response.result.contains(r#""ABI":"Contract source code not verified""#) {
             if let Some(ref cache) = self.cache {
                 cache.set_source(address, None);
             }
             return Err(EtherscanError::ContractCodeNotVerified(address))
         }
-        let res = ContractMetadata { items: response.result };
+        let res: ContractMetadata = serde_json::from_str(&response.result)?;
 
         if let Some(ref cache) = self.cache {
             cache.set_source(address, Some(&res));
