@@ -1,6 +1,6 @@
 use crate::{
     source_tree::{SourceTree, SourceTreeEntry},
-    utils::{deserialize_address_opt, deserialize_string_or_struct, deserialize_version},
+    utils::{deserialize_address_opt, deserialize_version},
     Client, EtherscanError, Response, Result,
 };
 use ethers_core::{
@@ -10,7 +10,7 @@ use ethers_core::{
 use ethers_solc::{artifacts::Settings, EvmVersion, Project, ProjectBuilder, SolcConfig};
 use semver::Version;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, convert::Infallible, path::Path, str::FromStr};
+use std::{collections::HashMap, path::Path};
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub enum SourceCodeLanguage {
@@ -32,31 +32,57 @@ impl<T: Into<String>> From<T> for SourceCodeEntry {
 
 /// The contract metadata's SourceCode field.
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct SourceCodeMetadata {
-    /// Programming language of the sources.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub language: Option<SourceCodeLanguage>,
-    /// Source path => source code
-    #[serde(default)]
-    pub sources: HashMap<String, SourceCodeEntry>,
-    /// Compiler settings, None if it's the language is not Solidity.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub settings: Option<Settings>,
-}
-
-impl FromStr for SourceCodeMetadata {
-    type Err = Infallible;
-
-    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
-        let mut sources = HashMap::with_capacity(1);
-        sources.insert("Contract".into(), s.into());
-        Ok(Self { language: None, sources, settings: None })
-    }
+#[serde(untagged)]
+pub enum SourceCodeMetadata {
+    /// Contains metadata and path mapped source code.
+    Metadata {
+        /// Programming language of the sources.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        language: Option<SourceCodeLanguage>,
+        /// Source path => source code
+        #[serde(default)]
+        sources: HashMap<String, SourceCodeEntry>,
+        /// Compiler settings, None if it's the language is not Solidity.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        settings: Option<Settings>,
+    },
+    /// Contains only the source code.
+    SourceCode(String),
 }
 
 impl SourceCodeMetadata {
     pub fn source_code(&self) -> String {
-        self.sources.values().map(|s| s.content.clone()).collect::<Vec<_>>().join("\n")
+        match self {
+            Self::Metadata { sources, .. } => {
+                sources.values().map(|s| s.content.clone()).collect::<Vec<_>>().join("\n")
+            }
+            Self::SourceCode(s) => s.clone(),
+        }
+    }
+
+    pub fn language(&self) -> &Option<SourceCodeLanguage> {
+        match self {
+            Self::Metadata { language, .. } => language,
+            Self::SourceCode(_) => &None,
+        }
+    }
+
+    pub fn sources(&self) -> HashMap<String, SourceCodeEntry> {
+        match self {
+            Self::Metadata { sources, .. } => sources.clone(),
+            Self::SourceCode(s) => {
+                let mut sources = HashMap::with_capacity(1);
+                sources.insert("Contract".into(), s.into());
+                sources
+            }
+        }
+    }
+
+    pub fn settings(&self) -> &Option<Settings> {
+        match self {
+            Self::Metadata { settings, .. } => settings,
+            Self::SourceCode(_) => &None,
+        }
     }
 }
 
@@ -65,7 +91,6 @@ impl SourceCodeMetadata {
 #[serde(rename_all = "PascalCase")]
 pub struct Metadata {
     /// Includes metadata for compiler settings and language.
-    #[serde(deserialize_with = "deserialize_string_or_struct")]
     pub source_code: SourceCodeMetadata,
 
     /// The ABI of the contract.
@@ -116,7 +141,7 @@ pub struct Metadata {
 impl Metadata {
     /// Creates a Solc [ProjectBuilder] with this contract's settings.
     pub fn project_builder(&self) -> ProjectBuilder {
-        let mut settings = self.source_code.settings.clone().unwrap_or_default();
+        let mut settings = self.source_code.settings().clone().unwrap_or_default();
 
         if self.optimization_used == 1 && !settings.optimizer.enabled.unwrap_or_default() {
             settings.optimizer.enable();
@@ -171,7 +196,7 @@ impl ContractMetadata {
         let mut entries = vec![];
         for item in self.items.iter() {
             let contract_root = Path::new(&item.contract_name);
-            for (path, entry) in item.source_code.sources.iter() {
+            for (path, entry) in item.source_code.sources().iter() {
                 let joined = contract_root.join(path);
                 entries.push(SourceTreeEntry { path: joined, contents: entry.content.clone() });
             }
@@ -356,7 +381,7 @@ mod tests {
                 .contract_source_code("0xBB9bc244D798123fDe783fCc1C72d3Bb8C189413".parse().unwrap())
                 .await
                 .unwrap();
-            assert_eq!(meta.items[0].source_code.sources.len(), 1);
+            assert_eq!(meta.items[0].source_code.sources().len(), 1);
         })
         .await
     }

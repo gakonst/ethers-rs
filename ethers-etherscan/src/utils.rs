@@ -1,13 +1,7 @@
-use std::{convert::Infallible, marker::PhantomData, str::FromStr};
-
+use crate::{EtherscanError, Result};
 use ethers_core::types::Address;
 use semver::Version;
-use serde::{
-    de::{MapAccess, Visitor},
-    Deserialize, Deserializer,
-};
-
-use crate::{EtherscanError, Result};
+use serde::{Deserialize, Deserializer};
 
 static SOLC_BIN_LIST_URL: &str =
     "https://raw.githubusercontent.com/ethereum/solc-bin/gh-pages/bin/list.txt";
@@ -53,51 +47,6 @@ pub fn deserialize_address_opt<'de, D: Deserializer<'de>>(
         let addr: Address = s.parse().map_err(serde::de::Error::custom)?;
         Ok(Some(addr))
     }
-}
-
-/// Modified from: https://serde.rs/string-or-struct.html
-pub fn deserialize_string_or_struct<'de, T, D>(deserializer: D) -> std::result::Result<T, D::Error>
-where
-    T: Deserialize<'de> + FromStr<Err = Infallible>,
-    D: Deserializer<'de>,
-{
-    // This is a Visitor that forwards string types to T's `FromStr` impl and
-    // forwards map types to T's `Deserialize` impl. The `PhantomData` is to
-    // keep the compiler from complaining about T being an unused generic type
-    // parameter. We need T in order to know the Value type for the Visitor
-    // impl.
-    struct StringOrStruct<T>(PhantomData<fn() -> T>);
-
-    impl<'de, T> Visitor<'de> for StringOrStruct<T>
-    where
-        T: Deserialize<'de> + FromStr<Err = Infallible>,
-    {
-        type Value = T;
-
-        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-            formatter.write_str("string or map")
-        }
-
-        fn visit_str<E>(self, value: &str) -> std::result::Result<T, E>
-        where
-            E: serde::de::Error,
-        {
-            Ok(FromStr::from_str(value).unwrap())
-        }
-
-        fn visit_map<M>(self, map: M) -> std::result::Result<T, M::Error>
-        where
-            M: MapAccess<'de>,
-        {
-            // `MapAccessDeserializer` is a wrapper that turns a `MapAccess`
-            // into a `Deserializer`, allowing it to be used as the input to T's
-            // `Deserialize` implementation. T then deserializes itself using
-            // the entries from the map visitor.
-            Deserialize::deserialize(serde::de::value::MapAccessDeserializer::new(map))
-        }
-    }
-
-    deserializer.deserialize_any(StringOrStruct(PhantomData))
 }
 
 #[cfg(test)]
