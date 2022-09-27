@@ -325,7 +325,8 @@ impl Client {
 
 #[cfg(test)]
 mod tests {
-    use crate::{tests::run_at_least_duration, Client, EtherscanError};
+    use super::*;
+    use crate::tests::run_at_least_duration;
     use ethers_core::types::Chain;
     use serial_test::serial;
     use std::time::Duration;
@@ -381,6 +382,9 @@ mod tests {
                 .contract_source_code("0xBB9bc244D798123fDe783fCc1C72d3Bb8C189413".parse().unwrap())
                 .await
                 .unwrap();
+
+            assert_eq!(meta.items.len(), 1);
+            assert!(matches!(meta.items[0].source_code, SourceCodeMetadata::SourceCode(_)));
             assert_eq!(meta.items[0].source_code.sources().len(), 1);
         })
         .await
@@ -414,6 +418,8 @@ mod tests {
                 .await
                 .unwrap();
 
+            assert_eq!(meta.items.len(), 1);
+            assert!(matches!(meta.items[0].source_code, SourceCodeMetadata::SourceCode(_)));
             let source_tree = meta.source_tree();
             assert_eq!(source_tree.entries.len(), 1);
         })
@@ -435,6 +441,8 @@ mod tests {
                 .await
                 .unwrap();
 
+            assert_eq!(meta.items.len(), 1);
+            assert!(matches!(meta.items[0].source_code, SourceCodeMetadata::Metadata { .. }));
             let source_tree = meta.source_tree();
             assert_eq!(source_tree.entries.len(), 15);
         })
