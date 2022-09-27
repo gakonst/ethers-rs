@@ -7,7 +7,7 @@ use ethers_core::{
     abi::{Abi, Address},
     types::{serde_helpers::deserialize_stringified_u64, Bytes},
 };
-use ethers_solc::artifacts::Settings;
+use ethers_solc::{artifacts::Settings, EvmVersion, Project, ProjectBuilder, SolcConfig};
 use semver::Version;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, convert::Infallible, path::Path, str::FromStr};
@@ -151,7 +151,7 @@ pub enum SourceCodeLanguage {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SourceCodeEntry {
-    content: String,
+    pub content: String,
 }
 
 impl From<&str> for SourceCodeEntry {
@@ -176,13 +176,13 @@ impl From<&String> for SourceCodeEntry {
 pub struct SourceCodeMetadata {
     /// Programming language of the sources.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    language: Option<SourceCodeLanguage>,
+    pub language: Option<SourceCodeLanguage>,
     /// Source path => source code
     #[serde(default)]
-    sources: HashMap<String, SourceCodeEntry>,
+    pub sources: HashMap<String, SourceCodeEntry>,
     /// Compiler settings, None if it's the language is not Solidity.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    settings: Option<Settings>,
+    pub settings: Option<Settings>,
 }
 
 impl FromStr for SourceCodeMetadata {
@@ -231,14 +231,15 @@ pub struct Metadata {
     /// The constructor arguments the contract was deployed with.
     pub constructor_arguments: Bytes,
 
-    /// The version of the EVM the contract was deployed in.
+    /// The version of the EVM the contract was deployed in. Can be either a variant of
+    /// [EvmVersion] or "Default" which indicates the compiler's default.
     #[serde(rename = "EVMVersion")]
     pub evm_version: String,
 
     // ?
     pub library: String,
 
-    // The license of the contract.
+    /// The license of the contract.
     pub license_type: String,
 
     /// Whether this contract is a proxy. This value should only be 0 or 1.
@@ -251,6 +252,30 @@ pub struct Metadata {
 
     /// The swarm source of the contract.
     pub swarm_source: String,
+}
+
+impl Metadata {
+    /// Creates a Solc [ProjectBuilder] with this contract's settings.
+    pub fn project_builder(&self) -> ProjectBuilder {
+        let mut settings = self.source_code.settings.clone().unwrap_or_default();
+
+        if self.optimization_used == 1 && !settings.optimizer.enabled.unwrap_or_default() {
+            settings.optimizer.enable();
+            settings.optimizer.runs(self.runs as usize);
+        }
+
+        let evm_version = match self.evm_version.as_str() {
+            "" | "Default" => {
+                EvmVersion::normalize_version(Default::default(), &self.compiler_version)
+            }
+            _ => self.evm_version.parse().ok(),
+        };
+        settings.evm_version = evm_version;
+
+        let solc_config = SolcConfig::builder().settings(settings).build();
+
+        Project::builder().solc_config(solc_config)
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -282,7 +307,7 @@ impl ContractMetadata {
         self.items.iter().map(|c| c.source_code.source_code()).collect::<Vec<_>>().join("\n")
     }
 
-    pub fn source_tree(&self) -> Result<SourceTree> {
+    pub fn source_tree(&self) -> SourceTree {
         let mut entries = vec![];
         for item in self.items.iter() {
             let contract_root = Path::new(&item.contract_name);
@@ -291,7 +316,7 @@ impl ContractMetadata {
                 entries.push(SourceTreeEntry { path: joined, contents: entry.content.clone() });
             }
         }
-        Ok(SourceTree { entries })
+        SourceTree { entries }
     }
 }
 
@@ -530,7 +555,7 @@ mod tests {
                 .await
                 .unwrap();
 
-            let source_tree = meta.source_tree().unwrap();
+            let source_tree = meta.source_tree();
             assert_eq!(source_tree.entries.len(), 1);
         })
         .await
@@ -551,7 +576,7 @@ mod tests {
                 .await
                 .unwrap();
 
-            let source_tree = meta.source_tree().unwrap();
+            let source_tree = meta.source_tree();
             assert_eq!(source_tree.entries.len(), 15);
         })
         .await
