@@ -24,6 +24,7 @@ pub mod gas;
 pub mod source_tree;
 pub mod transaction;
 pub mod utils;
+pub mod verify;
 
 pub(crate) type Result<T> = std::result::Result<T, EtherscanError>;
 
@@ -196,7 +197,7 @@ impl Client {
         Ok(response)
     }
 
-    /// Perform sanity on a response and deserialize it into [Response].
+    /// Perform sanity checks on a response and deserialize it into a [Response].
     fn sanitize_response<T: DeserializeOwned>(&self, res: impl AsRef<str>) -> Result<Response<T>> {
         let res = res.as_ref();
         let res: ResponseData<T> = serde_json::from_str(res).map_err(|err| {
