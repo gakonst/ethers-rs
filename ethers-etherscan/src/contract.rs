@@ -1,14 +1,16 @@
 use crate::{
     source_tree::{SourceTree, SourceTreeEntry},
+    utils::{deserialize_address_opt, deserialize_string_or_struct, deserialize_version},
     Client, EtherscanError, Response, Result,
 };
 use ethers_core::{
     abi::{Abi, Address},
-    types::Bytes,
+    types::{serde_helpers::deserialize_stringified_u64, Bytes},
 };
 use ethers_solc::artifacts::Settings;
-use serde::{de::Visitor, Deserialize, Serialize};
-use std::{collections::HashMap, path::Path};
+use semver::Version;
+use serde::{Deserialize, Serialize};
+use std::{collections::HashMap, convert::Infallible, path::Path, str::FromStr};
 
 /* --------------------------------------- VerifyContract --------------------------------------- */
 
@@ -141,80 +143,55 @@ impl AsRef<str> for CodeFormat {
 /* -------------------------------------- ContractMetadata -------------------------------------- */
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
-enum SourceCodeLanguage {
+pub enum SourceCodeLanguage {
     #[default]
     Solidity,
     Vyper,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-struct SourceCodeEntry {
+pub struct SourceCodeEntry {
     content: String,
 }
 
-#[derive(Clone, Debug, Serialize)]
-struct SourceCodeMetadata {
+impl From<&str> for SourceCodeEntry {
+    fn from(s: &str) -> Self {
+        Self { content: s.to_string() }
+    }
+}
+
+impl From<String> for SourceCodeEntry {
+    fn from(s: String) -> Self {
+        Self { content: s }
+    }
+}
+
+impl From<&String> for SourceCodeEntry {
+    fn from(s: &String) -> Self {
+        Self { content: s.clone() }
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct SourceCodeMetadata {
     /// Programming language of the sources.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     language: Option<SourceCodeLanguage>,
-    /// Source path => source
+    /// Source path => source code
+    #[serde(default)]
     sources: HashMap<String, SourceCodeEntry>,
     /// Compiler settings, None if it's the language is not Solidity.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     settings: Option<Settings>,
 }
 
-impl<'de> Deserialize<'de> for SourceCodeMetadata {
-    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        // Etherscan can either return one raw string that includes all of the source code for a
-        // verified contract or a [SourceCodeMetadata] struct surrounded in an extra set of {}.
-        let src = String::deserialize(deserializer)?;
-        if src.starts_with("{{") && src.ends_with("}}") {
-            let s = &src[1..src.len() - 1];
-            struct SourceCodeMetadataVisitor;
-            impl<'a> Visitor<'a> for SourceCodeMetadataVisitor {
-                type Value = SourceCodeMetadata;
+impl FromStr for SourceCodeMetadata {
+    type Err = Infallible;
 
-                fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-                    f.write_str("a source code map")
-                }
-
-                fn visit_map<A>(self, mut map: A) -> std::result::Result<Self::Value, A::Error>
-                where
-                    A: serde::de::MapAccess<'a>,
-                {
-                    let mut language = Default::default();
-                    let mut sources = Default::default();
-                    let mut settings = Default::default();
-                    while let Some(key) = map.next_key::<String>()? {
-                        match key.as_str() {
-                            "language" => {
-                                language = map.next_value()?;
-                            }
-                            "sources" => {
-                                sources = map.next_value()?;
-                            }
-                            "settings" => {
-                                settings = map.next_value()?;
-                            }
-                            field => {
-                                return Err(serde::de::Error::unknown_field(
-                                    field,
-                                    &["language", "sources", "settings"],
-                                ))
-                            }
-                        }
-                    }
-                    Ok(SourceCodeMetadata { language, sources, settings })
-                }
-            }
-            deserializer.deserialize_map(SourceCodeMetadataVisitor)
-        } else {
-            let mut sources = HashMap::with_capacity(1);
-            sources.insert("Contract".into(), SourceCodeEntry { content: src });
-            Ok(Self { language: None, sources, settings: None })
-        }
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        let mut sources = HashMap::with_capacity(1);
+        sources.insert("Contract".into(), s.into());
+        Ok(Self { language: None, sources, settings: None })
     }
 }
 
@@ -222,6 +199,58 @@ impl SourceCodeMetadata {
     pub fn source_code(&self) -> String {
         self.sources.values().map(|s| s.content.clone()).collect::<Vec<_>>().join("\n")
     }
+}
+
+/// Etherscan contract metadata.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct Metadata {
+    /// Includes metadata for compiler settings and language.
+    #[serde(deserialize_with = "deserialize_string_or_struct")]
+    pub source_code: SourceCodeMetadata,
+
+    /// The ABI of the contract.
+    #[serde(rename = "ABI")]
+    pub abi: String,
+
+    /// The name of the contract.
+    pub contract_name: String,
+
+    /// The version that this contract was compiled with.
+    #[serde(deserialize_with = "deserialize_version")]
+    pub compiler_version: Version,
+
+    /// Whether the optimizer was used. This value should only be 0 or 1.
+    #[serde(deserialize_with = "deserialize_stringified_u64")]
+    pub optimization_used: u64,
+
+    /// The number of optimizations performed.
+    #[serde(deserialize_with = "deserialize_stringified_u64")]
+    pub runs: u64,
+
+    /// The constructor arguments the contract was deployed with.
+    pub constructor_arguments: Bytes,
+
+    /// The version of the EVM the contract was deployed in.
+    #[serde(rename = "EVMVersion")]
+    pub evm_version: String,
+
+    // ?
+    pub library: String,
+
+    // The license of the contract.
+    pub license_type: String,
+
+    /// Whether this contract is a proxy. This value should only be 0 or 1.
+    #[serde(deserialize_with = "deserialize_stringified_u64")]
+    pub proxy: u64,
+
+    /// If this contract is a proxy, the address of its implementation.
+    #[serde(deserialize_with = "deserialize_address_opt")]
+    pub implementation: Option<Address>,
+
+    /// The swarm source of the contract.
+    pub swarm_source: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -240,34 +269,17 @@ impl IntoIterator for ContractMetadata {
 }
 
 impl ContractMetadata {
-    /// All ABI from all contracts in the source file
-    pub fn abis(&self) -> Vec<Abi> {
-        self.items.iter().map(|c| c.abi).collect()
+    // /// All ABI from all contracts in the source file
+    pub fn abis(&self) -> Result<Vec<Abi>> {
+        self.items
+            .iter()
+            .map(|c| serde_json::from_str(&c.abi).map_err(EtherscanError::Serde))
+            .collect()
     }
 
-    /// Combined source code of all contracts
+    // /// Combined source code of all contracts
     pub fn source_code(&self) -> String {
         self.items.iter().map(|c| c.source_code.source_code()).collect::<Vec<_>>().join("\n")
-    }
-
-    /// Etherscan can either return one raw string that includes all of the solidity for a verified
-    /// contract or a json struct surrounded in an extra set of {} that includes a directory
-    /// structure with paths and source code.
-    fn get_sources_from_etherscan_source_value(
-        contract_name: &str,
-        etherscan_source: &str,
-    ) -> Result<Vec<(String, String)>> {
-        if etherscan_source.starts_with("{{") && etherscan_source.ends_with("}}") {
-            let json = &etherscan_source[1..etherscan_source.len() - 1];
-            let parsed: SourceCodeMetadata = serde_json::from_str(json)?;
-            Ok(parsed
-                .sources
-                .into_iter()
-                .map(|(path, source_struct)| (path, source_struct.content))
-                .collect())
-        } else {
-            Ok(vec![(contract_name.to_string(), etherscan_source.to_string())])
-        }
     }
 
     pub fn source_tree(&self) -> Result<SourceTree> {
@@ -281,29 +293,6 @@ impl ContractMetadata {
         }
         Ok(SourceTree { entries })
     }
-}
-
-/// Etherscan contract metadata
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(rename_all = "PascalCase")]
-pub struct Metadata {
-    pub source_code: SourceCodeMetadata,
-    #[serde(rename = "ABI")]
-    pub abi: Abi,
-    pub contract_name: String,
-    pub compiler_version: String,
-    /// 0 or 1
-    pub optimization_used: u8,
-    pub runs: usize,
-    pub constructor_arguments: Bytes,
-    #[serde(rename = "EVMVersion")]
-    pub evm_version: String,
-    pub library: String,
-    pub license_type: String,
-    /// 0 or 1
-    pub proxy: u8,
-    pub implementation: Option<Address>,
-    pub swarm_source: String,
 }
 
 /* ------------------------------------------- Client ------------------------------------------- */
@@ -408,14 +397,38 @@ impl Client {
 
         let query =
             self.create_query("contract", "getsourcecode", HashMap::from([("address", address)]));
-        let response: Response<String> = self.get_json(&query).await?;
-        if response.result.contains(r#""ABI":"Contract source code not verified""#) {
+        let mut res = self.get(&query).await?;
+
+        // Source code is not verified
+        if res.contains("Contract source code not verified") {
             if let Some(ref cache) = self.cache {
                 cache.set_source(address, None);
             }
             return Err(EtherscanError::ContractCodeNotVerified(address))
         }
-        let res: ContractMetadata = serde_json::from_str(&response.result)?;
+
+        // Etherscan can either return one raw string that includes all of the source code for a
+        // verified contract or a [SourceCodeMetadata] struct surrounded in an extra set of {}.
+        // {"SourceCode": "{{}}", ..} -> {"SourceCode": {}, ..}
+        let start = r#""SourceCode":"{{"#;
+        let end = r#"}}","ABI""#;
+        if let Some(start_idx) = res.find(start) {
+            // this should not fail
+            let end_idx = res
+                .find(end)
+                .ok_or(EtherscanError::Unknown(format!("Malformed response {}", res)))?;
+            // the SourceCode string value
+            let range = start_idx + 13..end_idx + 3;
+            let source_code = &res[range.clone()];
+            // parse the escaped characters
+            let parsed: String = serde_json::from_str(source_code)?;
+            // skip the first `{` and last `}`
+            let source_code = &parsed[1..parsed.len() - 1];
+            // replace
+            res.replace_range(range, source_code);
+        }
+        let res: Response<ContractMetadata> = self.sanitize_response(res)?;
+        let res = res.result;
 
         if let Some(ref cache) = self.cache {
             cache.set_source(address, Some(&res));
@@ -460,6 +473,7 @@ mod tests {
     #[serial]
     #[ignore]
     async fn can_fetch_contract_abi() {
+        init_tracing();
         run_at_least_duration(Duration::from_millis(250), async {
             let client = Client::new_from_env(Chain::Mainnet).unwrap();
 
@@ -475,13 +489,15 @@ mod tests {
     #[serial]
     #[ignore]
     async fn can_fetch_contract_source_code() {
+        init_tracing();
         run_at_least_duration(Duration::from_millis(250), async {
             let client = Client::new_from_env(Chain::Mainnet).unwrap();
 
-            let _meta = client
+            let meta = client
                 .contract_source_code("0xBB9bc244D798123fDe783fCc1C72d3Bb8C189413".parse().unwrap())
                 .await
                 .unwrap();
+            assert_eq!(meta.items[0].source_code.sources.len(), 1);
         })
         .await
     }
@@ -490,19 +506,12 @@ mod tests {
     #[serial]
     #[ignore]
     async fn can_get_error_on_unverified_contract() {
+        init_tracing();
         run_at_least_duration(Duration::from_millis(250), async {
             let client = Client::new_from_env(Chain::Mainnet).unwrap();
-            let unverified_addr = "0xb5c31a0e22cae98ac08233e512bd627885aa24e5".parse().unwrap();
-            let result = client.contract_source_code(unverified_addr).await;
-            match result.err() {
-                Some(error) => match error {
-                    EtherscanError::ContractCodeNotVerified(addr) => {
-                        assert_eq!(addr, unverified_addr);
-                    }
-                    _ => panic!("Invalid EtherscanError type"),
-                },
-                None => panic!("Result should contain ContractCodeNotVerified error"),
-            }
+            let addr = "0xb5c31a0e22cae98ac08233e512bd627885aa24e5".parse().unwrap();
+            let err = client.contract_source_code(addr).await.unwrap_err();
+            assert!(matches!(err, EtherscanError::ContractCodeNotVerified(_)));
         })
         .await
     }
@@ -512,6 +521,7 @@ mod tests {
     #[serial]
     #[ignore]
     async fn can_fetch_contract_source_tree_for_singleton_contract() {
+        init_tracing();
         run_at_least_duration(Duration::from_millis(250), async {
             let client = Client::new_from_env(Chain::Mainnet).unwrap();
 
@@ -532,6 +542,7 @@ mod tests {
     #[serial]
     #[ignore]
     async fn can_fetch_contract_source_tree_for_multi_entry_contract() {
+        init_tracing();
         run_at_least_duration(Duration::from_millis(250), async {
             let client = Client::new_from_env(Chain::Mainnet).unwrap();
 
@@ -548,7 +559,9 @@ mod tests {
 
     #[tokio::test]
     #[serial]
+    #[ignore]
     async fn can_flatten_and_verify_contract() {
+        init_tracing();
         run_at_least_duration(Duration::from_millis(250), async {
             let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("resources");
             let paths = ProjectPathsConfig::builder()
