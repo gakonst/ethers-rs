@@ -42,7 +42,7 @@ pub enum SourceCodeMetadata {
         /// Source path => source code
         #[serde(default)]
         sources: HashMap<String, SourceCodeEntry>,
-        /// Compiler settings, None if it's the language is not Solidity.
+        /// Compiler settings, None if the language is not Solidity.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         settings: Option<Settings>,
     },
