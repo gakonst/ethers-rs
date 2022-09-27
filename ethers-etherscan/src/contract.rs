@@ -172,6 +172,7 @@ impl From<&String> for SourceCodeEntry {
     }
 }
 
+/// The contract metadata's SourceCode field.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SourceCodeMetadata {
     /// Programming language of the sources.
@@ -294,7 +295,7 @@ impl IntoIterator for ContractMetadata {
 }
 
 impl ContractMetadata {
-    // /// All ABI from all contracts in the source file
+    /// Returns the ABI of all contracts.
     pub fn abis(&self) -> Result<Vec<Abi>> {
         self.items
             .iter()
@@ -302,11 +303,12 @@ impl ContractMetadata {
             .collect()
     }
 
-    // /// Combined source code of all contracts
+    /// Returns the combined source code of all contracts.
     pub fn source_code(&self) -> String {
         self.items.iter().map(|c| c.source_code.source_code()).collect::<Vec<_>>().join("\n")
     }
 
+    /// Creates a [SourceTree] from all contracts' path and source code.
     pub fn source_tree(&self) -> SourceTree {
         let mut entries = vec![];
         for item in self.items.iter() {
