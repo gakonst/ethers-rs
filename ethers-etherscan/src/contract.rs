@@ -154,21 +154,9 @@ pub struct SourceCodeEntry {
     pub content: String,
 }
 
-impl From<&str> for SourceCodeEntry {
-    fn from(s: &str) -> Self {
-        Self { content: s.to_string() }
-    }
-}
-
-impl From<String> for SourceCodeEntry {
-    fn from(s: String) -> Self {
-        Self { content: s }
-    }
-}
-
-impl From<&String> for SourceCodeEntry {
-    fn from(s: &String) -> Self {
-        Self { content: s.clone() }
+impl<T: Into<String>> From<T> for SourceCodeEntry {
+    fn from(s: T) -> Self {
+        Self { content: s.into() }
     }
 }
 
