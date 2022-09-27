@@ -312,7 +312,7 @@ impl ContractMetadata {
         for item in self.items.iter() {
             let contract_root = Path::new(&item.contract_name);
             for (path, entry) in item.source_code.sources.iter() {
-                let joined = contract_root.join(&path);
+                let joined = contract_root.join(path);
                 entries.push(SourceTreeEntry { path: joined, contents: entry.content.clone() });
             }
         }
@@ -441,7 +441,7 @@ impl Client {
             // this should not fail
             let end_idx = res
                 .find(end)
-                .ok_or(EtherscanError::Unknown(format!("Malformed response {}", res)))?;
+                .ok_or_else(|| EtherscanError::Unknown(format!("Malformed response {}", res)))?;
             // the SourceCode string value
             let range = start_idx + 13..end_idx + 3;
             let source_code = &res[range.clone()];
