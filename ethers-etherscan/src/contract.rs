@@ -60,10 +60,10 @@ impl SourceCodeMetadata {
         }
     }
 
-    pub fn language(&self) -> &Option<SourceCodeLanguage> {
+    pub fn language(&self) -> Option<SourceCodeLanguage> {
         match self {
-            Self::Metadata { language, .. } => language,
-            Self::SourceCode(_) => &None,
+            Self::Metadata { language, .. } => language.clone(),
+            Self::SourceCode(_) => None,
         }
     }
 
@@ -100,9 +100,9 @@ pub struct Metadata {
     /// The name of the contract.
     pub contract_name: String,
 
-    /// The version that this contract was compiled with.
-    #[serde(deserialize_with = "deserialize_version")]
-    pub compiler_version: Version,
+    /// The version that this contract was compiled with. If it is a Vyper contract, it will start
+    /// with "vyper:".
+    pub compiler_version: String,
 
     /// Whether the optimizer was used. This value should only be 0 or 1.
     #[serde(deserialize_with = "deserialize_stringified_u64")]
@@ -139,8 +139,29 @@ pub struct Metadata {
 }
 
 impl Metadata {
-    /// Creates a Solc [ProjectBuilder] with this contract's settings.
-    pub fn project_builder(&self) -> ProjectBuilder {
+    /// Returns the contract's source code.
+    pub fn source_code(&self) -> String {
+        self.source_code.source_code()
+    }
+
+    /// Returns the contract's programming language.
+    pub fn language(&self) -> SourceCodeLanguage {
+        self.source_code.language().unwrap_or_else(|| {
+            if self.is_vyper() {
+                SourceCodeLanguage::Vyper
+            } else {
+                SourceCodeLanguage::Solidity
+            }
+        })
+    }
+
+    /// Returns the contract's path mapped source code.
+    pub fn sources(&self) -> HashMap<String, SourceCodeEntry> {
+        self.source_code.sources()
+    }
+
+    /// Returns the contract's compiler settings.
+    pub fn settings(&self) -> Result<Settings> {
         let mut settings = self.source_code.settings().clone().unwrap_or_default();
 
         if self.optimization_used == 1 && !settings.optimizer.enabled.unwrap_or_default() {
@@ -148,17 +169,52 @@ impl Metadata {
             settings.optimizer.runs(self.runs as usize);
         }
 
-        let evm_version = match self.evm_version.as_str() {
+        settings.evm_version = self.evm_version()?;
+
+        Ok(settings)
+    }
+
+    /// Creates a Solc [ProjectBuilder] with this contract's settings.
+    pub fn project_builder(&self) -> Result<ProjectBuilder> {
+        let solc_config = SolcConfig::builder().settings(self.settings()?).build();
+
+        Ok(Project::builder().solc_config(solc_config))
+    }
+
+    /// Parses the EVM version.
+    pub fn evm_version(&self) -> Result<Option<EvmVersion>> {
+        match self.evm_version.as_str() {
             "" | "Default" => {
-                EvmVersion::normalize_version(Default::default(), &self.compiler_version)
+                Ok(EvmVersion::default().normalize_version(&self.compiler_version()?))
             }
-            _ => self.evm_version.parse().ok(),
-        };
-        settings.evm_version = evm_version;
+            _ => {
+                let evm_version = self
+                    .evm_version
+                    .parse()
+                    .map_err(|e| EtherscanError::Unknown(format!("bad evm version: {e}")))?;
+                Ok(Some(evm_version))
+            }
+        }
+    }
 
-        let solc_config = SolcConfig::builder().settings(settings).build();
+    /// Parses the compiler version.
+    pub fn compiler_version(&self) -> Result<Version> {
+        let v = &self.compiler_version;
+        let v = v.strip_prefix("vyper:").unwrap_or(v);
+        let v = v.strip_prefix('v').unwrap_or(v);
+        match v.parse() {
+            Err(e) => {
+                let v = v.replace('a', "-alpha.");
+                let v = v.replace('b', "-beta.");
+                v.parse().map_err(|_| EtherscanError::Unknown(format!("bad compiler version: {e}")))
+            }
+            Ok(v) => Ok(v),
+        }
+    }
 
-        Project::builder().solc_config(solc_config)
+    /// Returns whether this contract is a Vyper or a Solidity contract.
+    pub fn is_vyper(&self) -> bool {
+        self.compiler_version.starts_with("vyper:")
     }
 }
 
@@ -188,7 +244,7 @@ impl ContractMetadata {
 
     /// Returns the combined source code of all contracts.
     pub fn source_code(&self) -> String {
-        self.items.iter().map(|c| c.source_code.source_code()).collect::<Vec<_>>().join("\n")
+        self.items.iter().map(|c| c.source_code()).collect::<Vec<_>>().join("\n")
     }
 
     /// Creates a [SourceTree] from all contracts' path and source code.
@@ -196,9 +252,9 @@ impl ContractMetadata {
         let mut entries = vec![];
         for item in self.items.iter() {
             let contract_root = Path::new(&item.contract_name);
-            for (path, entry) in item.source_code.sources().iter() {
+            for (path, entry) in item.sources() {
                 let joined = contract_root.join(path);
-                entries.push(SourceTreeEntry { path: joined, contents: entry.content.clone() });
+                entries.push(SourceTreeEntry { path: joined, contents: entry.content });
             }
         }
         SourceTree { entries }

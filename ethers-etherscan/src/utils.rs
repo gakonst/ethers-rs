@@ -21,22 +21,6 @@ pub async fn lookup_compiler_version(version: &Version) -> Result<Version> {
     Ok(v.parse().expect("failed to parse semver"))
 }
 
-pub fn deserialize_version<'de, D: Deserializer<'de>>(
-    deserializer: D,
-) -> std::result::Result<Version, D::Error> {
-    let s = String::deserialize(deserializer)?;
-    let s = s.strip_prefix("vyper:").unwrap_or(&s);
-    let s = s.strip_prefix('v').unwrap_or(s);
-    match s.parse().map_err(serde::de::Error::custom) {
-        Err(e) => {
-            let s = s.replace('a', "-alpha.");
-            let s = s.replace('b', "-beta.");
-            s.parse().map_err(|_| e)
-        }
-        r => r,
-    }
-}
-
 pub fn deserialize_address_opt<'de, D: Deserializer<'de>>(
     deserializer: D,
 ) -> std::result::Result<Option<Address>, D::Error> {
