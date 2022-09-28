@@ -219,6 +219,23 @@ impl Metadata {
     pub fn is_vyper(&self) -> bool {
         self.compiler_version.starts_with("vyper:")
     }
+
+    /// Maps this contract's sources to a [SourceTreeEntry] vector.
+    pub fn source_entries(&self) -> Vec<SourceTreeEntry> {
+        let root = Path::new(&self.contract_name);
+        self.sources()
+            .into_iter()
+            .map(|(path, entry)| {
+                let path = root.join(path);
+                SourceTreeEntry { path, contents: entry.content }
+            })
+            .collect()
+    }
+
+    /// Returns the source tree of this contract's sources.
+    pub fn source_tree(&self) -> SourceTree {
+        SourceTree { entries: self.source_entries() }
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -247,17 +264,9 @@ impl ContractMetadata {
         self.items.iter().map(|c| c.source_code()).collect::<Vec<_>>().join("\n")
     }
 
-    /// Creates a [SourceTree] from all contracts' path and source code.
+    /// Returns the combined [SourceTree] of all contracts.
     pub fn source_tree(&self) -> SourceTree {
-        let mut entries = vec![];
-        for item in self.items.iter() {
-            let contract_root = Path::new(&item.contract_name);
-            for (path, entry) in item.sources() {
-                let joined = contract_root.join(path);
-                entries.push(SourceTreeEntry { path: joined, contents: entry.content });
-            }
-        }
-        SourceTree { entries }
+        SourceTree { entries: self.items.iter().flat_map(|item| item.source_entries()).collect() }
     }
 }
 

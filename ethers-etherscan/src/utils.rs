@@ -21,7 +21,7 @@ pub async fn lookup_compiler_version(version: &Version) -> Result<Version> {
     Ok(v.parse().expect("failed to parse semver"))
 }
 
-/// Returns None if empty, otherwise parse as [Address].
+/// Return None if empty, otherwise parse as [Address].
 pub fn deserialize_address_opt<'de, D: Deserializer<'de>>(
     deserializer: D,
 ) -> std::result::Result<Option<Address>, D::Error> {
@@ -34,7 +34,7 @@ pub fn deserialize_address_opt<'de, D: Deserializer<'de>>(
     }
 }
 
-/// Deserializes JSON:
+/// Deserializes as JSON:
 ///
 /// `{ "SourceCode": "{{ .. }}", ..}`
 ///
@@ -53,7 +53,7 @@ pub fn deserialize_stringified_source_code<'de, D: Deserializer<'de>>(
     }
 }
 
-/// Deserializes JSON: "[...]"
+/// Deserializes as JSON: "\[...\]"
 pub fn deserialize_stringified_abi<'de, D: Deserializer<'de>>(
     deserializer: D,
 ) -> std::result::Result<Abi, D::Error> {
