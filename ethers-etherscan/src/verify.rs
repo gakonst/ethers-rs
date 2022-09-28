@@ -172,7 +172,7 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    // #[ignore]
+    #[ignore]
     async fn can_flatten_and_verify_contract() {
         init_tracing();
         run_at_least_duration(Duration::from_millis(250), async {

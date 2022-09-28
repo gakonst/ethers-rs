@@ -1,5 +1,5 @@
-use crate::{EtherscanError, Result};
-use ethers_core::types::Address;
+use crate::{contract::SourceCodeMetadata, EtherscanError, Result};
+use ethers_core::{abi::Abi, types::Address};
 use semver::Version;
 use serde::{Deserialize, Deserializer};
 
@@ -33,10 +33,36 @@ pub fn deserialize_address_opt<'de, D: Deserializer<'de>>(
     }
 }
 
+/// Deserializes:
+///
+/// `{ "SourceCode": "{{ .. }}", ..}`
+///
+/// or
+///
+/// `{ "SourceCode": "..", .. }`
+pub fn deserialize_stringified_source_code<'de, D: Deserializer<'de>>(
+    deserializer: D,
+) -> std::result::Result<SourceCodeMetadata, D::Error> {
+    let s = String::deserialize(deserializer)?;
+    if s.starts_with("{{") && s.ends_with("}}") {
+        let s = &s[1..s.len() - 1];
+        serde_json::from_str(s).map_err(serde::de::Error::custom)
+    } else {
+        Ok(SourceCodeMetadata::SourceCode(s))
+    }
+}
+
+pub fn deserialize_stringified_abi<'de, D: Deserializer<'de>>(
+    deserializer: D,
+) -> std::result::Result<Abi, D::Error> {
+    let s = String::deserialize(deserializer)?;
+    serde_json::from_str(&s).map_err(serde::de::Error::custom)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tests::run_at_least_duration;
+    use crate::{contract::SourceCodeLanguage, tests::run_at_least_duration};
     use semver::{BuildMetadata, Prerelease};
     use serial_test::serial;
     use std::time::Duration;
@@ -68,42 +94,6 @@ mod tests {
     }
 
     #[test]
-    fn can_deserialize_versions() {
-        #[derive(Deserialize)]
-        struct Test {
-            #[serde(deserialize_with = "deserialize_version")]
-            version: Version,
-        }
-
-        // https://api.etherscan.io/api?module=contract&action=getsourcecode&address=0xBB9bc244D798123fDe783fCc1C72d3Bb8C189413
-        let json = r#"{"version":"v0.3.1-2016-04-12-3ad5e82"}"#;
-        let de: Test = serde_json::from_str(json).unwrap();
-        let mut expected = Version::new(0, 3, 1);
-        expected.pre = Prerelease::new("2016-04-12-3ad5e82").unwrap();
-        assert_eq!(de.version, expected);
-
-        // https://api.etherscan.io/api?module=contract&action=getsourcecode&address=0xDef1C0ded9bec7F1a1670819833240f027b25EfF
-        let json = r#"{"version":"v0.6.8+commit.0bbfe453"}"#;
-        let de: Test = serde_json::from_str(json).unwrap();
-        let mut expected = Version::new(0, 6, 8);
-        expected.build = BuildMetadata::new("commit.0bbfe453").unwrap();
-        assert_eq!(de.version, expected);
-
-        // https://api.etherscan.io/api?module=contract&action=getsourcecode&address=0xdf5e0e81dff6faf3a7e52ba697820c5e32d806a8
-        let json = r#"{"version":"vyper:0.1.0b16"}"#;
-        let de: Test = serde_json::from_str(json).unwrap();
-        let mut expected = Version::new(0, 1, 0);
-        expected.pre = Prerelease::new("beta.16").unwrap();
-        assert_eq!(de.version, expected);
-
-        // https://api.etherscan.io/api?module=contract&action=getsourcecode&address=0x4f62af8ff4b9b22f53ee56cb576b02efe2866825
-        let json = r#"{"version":"vyper:0.3.6"}"#;
-        let de: Test = serde_json::from_str(json).unwrap();
-        let expected = Version::new(0, 3, 6);
-        assert_eq!(de.version, expected);
-    }
-
-    #[test]
     fn can_deserialize_address_opt() {
         #[derive(Deserialize)]
         struct Test {
@@ -121,5 +111,42 @@ mod tests {
         let de: Test = serde_json::from_str(json).unwrap();
         let expected = "0x4af649ffde640ceb34b1afaba3e0bb8e9698cb01".parse().unwrap();
         assert_eq!(de.address, Some(expected));
+    }
+
+    #[test]
+    fn can_deserialize_stringified_abi() {
+        #[derive(Deserialize)]
+        struct Test {
+            #[serde(deserialize_with = "deserialize_stringified_abi")]
+            abi: Abi,
+        }
+
+        let json = r#"{"abi": "[]"}"#;
+        let de: Test = serde_json::from_str(json).unwrap();
+        assert_eq!(de.abi, Abi::default());
+    }
+
+    #[test]
+    fn can_deserialize_stringified_source_code() {
+        #[derive(Deserialize)]
+        struct Test {
+            #[serde(deserialize_with = "deserialize_stringified_source_code")]
+            source_code: SourceCodeMetadata,
+        }
+
+        let src = "source code text";
+
+        let json = r#"{
+            "source_code": "{{ \"language\": \"Solidity\", \"sources\": {\"Contract\": { \"content\": \"source code text\" } } }}"
+        }"#;
+        let de: Test = serde_json::from_str(json).unwrap();
+        assert!(matches!(de.source_code.language().unwrap(), SourceCodeLanguage::Solidity));
+        assert_eq!(de.source_code.sources().len(), 1);
+        assert_eq!(de.source_code.sources().get("Contract").unwrap().content, src);
+        assert!(matches!(de.source_code.settings(), None));
+
+        let json = r#"{"source_code": "source code text"}"#;
+        let de: Test = serde_json::from_str(json).unwrap();
+        assert_eq!(de.source_code.source_code(), src);
     }
 }
