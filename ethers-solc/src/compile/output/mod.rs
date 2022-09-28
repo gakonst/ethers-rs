@@ -80,11 +80,30 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
     /// let artifacts: BTreeMap<String, &ConfigurableContractArtifact> = project.compile().unwrap().artifacts().collect();
     /// ```
     pub fn artifacts(&self) -> impl Iterator<Item = (String, &T::Artifact)> {
+        self.versioned_artifacts().map(|(name, (artifact, _))| (name, artifact))
+    }
+
+    /// This returns a chained iterator of both cached and recompiled contract artifacts that yields
+    /// the contract name and the corresponding artifact
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use std::collections::btree_map::BTreeMap;
+    /// use semver::Version;
+    /// use ethers_solc::ConfigurableContractArtifact;
+    /// use ethers_solc::Project;
+    ///
+    /// let project = Project::builder().build().unwrap();
+    /// let artifacts: BTreeMap<String, (&ConfigurableContractArtifact, &Version)> = project.compile().unwrap().versioned_artifacts().collect();
+    /// ```
+    pub fn versioned_artifacts(&self) -> impl Iterator<Item = (String, (&T::Artifact, &Version))> {
         self.cached_artifacts
             .artifact_files()
             .chain(self.compiled_artifacts.artifact_files())
             .filter_map(|artifact| {
-                T::contract_name(&artifact.file).map(|name| (name, &artifact.artifact))
+                T::contract_name(&artifact.file)
+                    .map(|name| (name, (&artifact.artifact, &artifact.version)))
             })
     }
 
