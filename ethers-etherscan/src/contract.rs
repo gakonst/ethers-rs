@@ -506,7 +506,7 @@ mod tests {
     /// reflected.
     #[tokio::test]
     #[serial]
-    // #[ignore]
+    #[ignore]
     async fn can_fetch_contract_source_tree_for_multi_entry_contract() {
         init_tracing();
         run_at_least_duration(Duration::from_millis(250), async {
