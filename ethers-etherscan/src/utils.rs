@@ -6,21 +6,22 @@ use serde::{Deserialize, Deserializer};
 static SOLC_BIN_LIST_URL: &str =
     "https://raw.githubusercontent.com/ethereum/solc-bin/gh-pages/bin/list.txt";
 
-/// Given the compiler version  lookup the build metadata
-/// and return full semver
-/// i.e. `0.8.13` -> `0.8.13+commit.abaa5c0e`
+/// Given a Solc [Version], lookup the build metadata and return the full SemVer.
+/// e.g. `0.8.13` -> `0.8.13+commit.abaa5c0e`
 pub async fn lookup_compiler_version(version: &Version) -> Result<Version> {
     let response = reqwest::get(SOLC_BIN_LIST_URL).await?.text().await?;
-    let version = format!("{}", version);
+    // Ignore extra metadata (`pre` or `build`)
+    let version = format!("{}.{}.{}", version.major, version.minor, version.patch);
     let v = response
         .lines()
         .find(|l| !l.contains("nightly") && l.contains(&version))
-        .map(|l| l.trim_start_matches("soljson-v").trim_end_matches(".js").to_owned())
+        .map(|l| l.trim_start_matches("soljson-v").trim_end_matches(".js"))
         .ok_or(EtherscanError::MissingSolcVersion(version))?;
 
     Ok(v.parse().expect("failed to parse semver"))
 }
 
+/// Returns None if empty, otherwise parse as [Address].
 pub fn deserialize_address_opt<'de, D: Deserializer<'de>>(
     deserializer: D,
 ) -> std::result::Result<Option<Address>, D::Error> {
@@ -33,7 +34,7 @@ pub fn deserialize_address_opt<'de, D: Deserializer<'de>>(
     }
 }
 
-/// Deserializes:
+/// Deserializes JSON:
 ///
 /// `{ "SourceCode": "{{ .. }}", ..}`
 ///
@@ -52,6 +53,7 @@ pub fn deserialize_stringified_source_code<'de, D: Deserializer<'de>>(
     }
 }
 
+/// Deserializes JSON: "[...]"
 pub fn deserialize_stringified_abi<'de, D: Deserializer<'de>>(
     deserializer: D,
 ) -> std::result::Result<Abi, D::Error> {
