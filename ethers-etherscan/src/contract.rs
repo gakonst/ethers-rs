@@ -9,10 +9,12 @@ use ethers_core::{
     abi::{Abi, Address},
     types::{serde_helpers::deserialize_stringified_u64, Bytes},
 };
-use ethers_solc::{artifacts::Settings, EvmVersion, Project, ProjectBuilder, SolcConfig};
 use semver::Version;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, path::Path};
+
+#[cfg(feature = "solc")]
+use ethers_solc::{artifacts::Settings, EvmVersion, Project, ProjectBuilder, SolcConfig};
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub enum SourceCodeLanguage {
@@ -46,7 +48,7 @@ pub enum SourceCodeMetadata {
         sources: HashMap<String, SourceCodeEntry>,
         /// Compiler settings, None if the language is not Solidity.
         #[serde(default, skip_serializing_if = "Option::is_none")]
-        settings: Option<Settings>,
+        settings: Option<serde_json::Value>,
     },
     /// Contains only the source code.
     SourceCode(String),
@@ -72,18 +74,32 @@ impl SourceCodeMetadata {
     pub fn sources(&self) -> HashMap<String, SourceCodeEntry> {
         match self {
             Self::Metadata { sources, .. } => sources.clone(),
-            Self::SourceCode(s) => {
-                let mut sources = HashMap::with_capacity(1);
-                sources.insert("Contract".into(), s.into());
-                sources
-            }
+            Self::SourceCode(s) => HashMap::from([("Contract".into(), s.into())]),
         }
     }
 
-    pub fn settings(&self) -> &Option<Settings> {
+    #[cfg(feature = "solc")]
+    pub fn settings(&self) -> Result<Option<Settings>> {
         match self {
-            Self::Metadata { settings, .. } => settings,
-            Self::SourceCode(_) => &None,
+            Self::Metadata { settings, .. } => match settings {
+                Some(value) => {
+                    if value.is_null() {
+                        Ok(None)
+                    } else {
+                        Ok(Some(serde_json::from_value(value.to_owned())?))
+                    }
+                }
+                None => Ok(None),
+            },
+            Self::SourceCode(_) => Ok(None),
+        }
+    }
+
+    #[cfg(not(feature = "solc"))]
+    pub fn settings(&self) -> Option<&serde_json::Value> {
+        match self {
+            Self::Metadata { settings, .. } => settings.as_ref(),
+            Self::SourceCode(_) => None,
         }
     }
 }
@@ -163,43 +179,6 @@ impl Metadata {
         self.source_code.sources()
     }
 
-    /// Returns the contract's compiler settings.
-    pub fn settings(&self) -> Result<Settings> {
-        let mut settings = self.source_code.settings().clone().unwrap_or_default();
-
-        if self.optimization_used == 1 && !settings.optimizer.enabled.unwrap_or_default() {
-            settings.optimizer.enable();
-            settings.optimizer.runs(self.runs as usize);
-        }
-
-        settings.evm_version = self.evm_version()?;
-
-        Ok(settings)
-    }
-
-    /// Creates a Solc [ProjectBuilder] with this contract's settings.
-    pub fn project_builder(&self) -> Result<ProjectBuilder> {
-        let solc_config = SolcConfig::builder().settings(self.settings()?).build();
-
-        Ok(Project::builder().solc_config(solc_config))
-    }
-
-    /// Parses the EVM version.
-    pub fn evm_version(&self) -> Result<Option<EvmVersion>> {
-        match self.evm_version.as_str() {
-            "" | "Default" => {
-                Ok(EvmVersion::default().normalize_version(&self.compiler_version()?))
-            }
-            _ => {
-                let evm_version = self
-                    .evm_version
-                    .parse()
-                    .map_err(|e| EtherscanError::Unknown(format!("bad evm version: {e}")))?;
-                Ok(Some(evm_version))
-            }
-        }
-    }
-
     /// Parses the compiler version.
     pub fn compiler_version(&self) -> Result<Version> {
         let v = &self.compiler_version;
@@ -235,6 +214,46 @@ impl Metadata {
     /// Returns the source tree of this contract's sources.
     pub fn source_tree(&self) -> SourceTree {
         SourceTree { entries: self.source_entries() }
+    }
+
+    /// Returns the contract's compiler settings.
+    #[cfg(feature = "solc")]
+    pub fn settings(&self) -> Result<Settings> {
+        let mut settings = self.source_code.settings()?.unwrap_or_default();
+
+        if self.optimization_used == 1 && !settings.optimizer.enabled.unwrap_or_default() {
+            settings.optimizer.enable();
+            settings.optimizer.runs(self.runs as usize);
+        }
+
+        settings.evm_version = self.evm_version()?;
+
+        Ok(settings)
+    }
+
+    /// Creates a Solc [ProjectBuilder] with this contract's settings.
+    #[cfg(feature = "solc")]
+    pub fn project_builder(&self) -> Result<ProjectBuilder> {
+        let solc_config = SolcConfig::builder().settings(self.settings()?).build();
+
+        Ok(Project::builder().solc_config(solc_config))
+    }
+
+    /// Parses the EVM version.
+    #[cfg(feature = "solc")]
+    pub fn evm_version(&self) -> Result<Option<EvmVersion>> {
+        match self.evm_version.as_str() {
+            "" | "Default" => {
+                Ok(EvmVersion::default().normalize_version(&self.compiler_version()?))
+            }
+            _ => {
+                let evm_version = self
+                    .evm_version
+                    .parse()
+                    .map_err(|e| EtherscanError::Unknown(format!("bad evm version: {e}")))?;
+                Ok(Some(evm_version))
+            }
+        }
     }
 }
 
@@ -487,7 +506,7 @@ mod tests {
     /// reflected.
     #[tokio::test]
     #[serial]
-    #[ignore]
+    // #[ignore]
     async fn can_fetch_contract_source_tree_for_multi_entry_contract() {
         init_tracing();
         run_at_least_duration(Duration::from_millis(250), async {
