@@ -37,7 +37,7 @@ The crate provides utilities for launching local Ethereum testnets by using
 
 # Features
 
-- - ["eip712"] | Provides Eip712 trait for EIP-712 encoding of typed data for
+-   ["eip712"] | Provides Eip712 trait for EIP-712 encoding of typed data for
     derived structs
 
 # ABI Encoding and Decoding
