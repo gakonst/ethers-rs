@@ -13,7 +13,7 @@ use semver::Version;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, path::Path};
 
-#[cfg(feature = "solc")]
+#[cfg(feature = "ethers-solc")]
 use ethers_solc::{artifacts::Settings, EvmVersion, Project, ProjectBuilder, SolcConfig};
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
@@ -78,7 +78,7 @@ impl SourceCodeMetadata {
         }
     }
 
-    #[cfg(feature = "solc")]
+    #[cfg(feature = "ethers-solc")]
     pub fn settings(&self) -> Result<Option<Settings>> {
         match self {
             Self::Metadata { settings, .. } => match settings {
@@ -95,7 +95,7 @@ impl SourceCodeMetadata {
         }
     }
 
-    #[cfg(not(feature = "solc"))]
+    #[cfg(not(feature = "ethers-solc"))]
     pub fn settings(&self) -> Option<&serde_json::Value> {
         match self {
             Self::Metadata { settings, .. } => settings.as_ref(),
@@ -217,7 +217,7 @@ impl Metadata {
     }
 
     /// Returns the contract's compiler settings.
-    #[cfg(feature = "solc")]
+    #[cfg(feature = "ethers-solc")]
     pub fn settings(&self) -> Result<Settings> {
         let mut settings = self.source_code.settings()?.unwrap_or_default();
 
@@ -232,7 +232,7 @@ impl Metadata {
     }
 
     /// Creates a Solc [ProjectBuilder] with this contract's settings.
-    #[cfg(feature = "solc")]
+    #[cfg(feature = "ethers-solc")]
     pub fn project_builder(&self) -> Result<ProjectBuilder> {
         let solc_config = SolcConfig::builder().settings(self.settings()?).build();
 
@@ -240,7 +240,7 @@ impl Metadata {
     }
 
     /// Parses the EVM version.
-    #[cfg(feature = "solc")]
+    #[cfg(feature = "ethers-solc")]
     pub fn evm_version(&self) -> Result<Option<EvmVersion>> {
         match self.evm_version.as_str() {
             "" | "Default" => {

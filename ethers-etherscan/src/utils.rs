@@ -145,7 +145,7 @@ mod tests {
         assert!(matches!(de.source_code.language().unwrap(), SourceCodeLanguage::Solidity));
         assert_eq!(de.source_code.sources().len(), 1);
         assert_eq!(de.source_code.sources().get("Contract").unwrap().content, src);
-        #[cfg(feature = "solc")]
+        #[cfg(feature = "ethers-solc")]
         assert!(matches!(de.source_code.settings().unwrap(), None));
 
         let json = r#"{"source_code": "source code text"}"#;

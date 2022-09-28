@@ -43,7 +43,6 @@ all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
-default = ["rustls", "solc"]
+default = ["rustls"]
 openssl = ["reqwest/native-tls"]
 rustls = ["reqwest/rustls-tls"]
-solc = ["ethers-solc"]
