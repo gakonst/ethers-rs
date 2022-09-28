@@ -21,7 +21,7 @@ members = [
     "ethers-middleware",
     "ethers-etherscan",
     "ethers-solc",
-    "examples/ethers-wasm"
+    "examples/ethers-wasm",
 ]
 
 default-members = [
@@ -32,7 +32,7 @@ default-members = [
     "ethers-core",
     "ethers-middleware",
     "ethers-etherscan",
-    "ethers-solc"
+    "ethers-solc",
 ]
 
 [package.metadata.docs.rs]
@@ -51,7 +51,7 @@ celo = [
     "ethers-signers/celo",
     "ethers-contract/celo",
     "ethers-middleware/celo",
-    "legacy"
+    "legacy",
 ]
 
 legacy = ["ethers-core/legacy", "ethers-contract/legacy"]
@@ -66,13 +66,13 @@ rustls = [
     "ethers-providers/rustls",
     "ethers-etherscan/rustls",
     "ethers-contract/rustls",
-    "ethers-solc/rustls"
+    "ethers-solc/rustls",
 ]
 openssl = [
     "ethers-providers/openssl",
     "ethers-etherscan/openssl",
     "ethers-contract/openssl",
-    "ethers-solc/openssl"
+    "ethers-solc/openssl",
 ]
 dev-rpc = ["ethers-providers/dev-rpc"]
 ## signers
@@ -101,16 +101,16 @@ ethers-etherscan = { version = "^0.17.0", default-features = false, path = "./et
 [dev-dependencies]
 ethers-contract = { version = "^0.17.0", default-features = false, path = "./ethers-contract", features = [
     "abigen",
-    "eip712"
+    "eip712",
 ] }
 ethers-providers = { version = "^0.17.0", default-features = false, path = "./ethers-providers", features = [
-    "ws"
+    "ws",
 ] }
 
 [target.'cfg(target_family = "unix")'.dev-dependencies]
 ethers-providers = { version = "^0.17.0", default-features = false, path = "./ethers-providers", features = [
     "ws",
-    "ipc"
+    "ipc",
 ] }
 eyre = "0.6"
 rand = "0.8.5"

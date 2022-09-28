@@ -1,7 +1,10 @@
 [package]
 name = "ethers-contract-abigen"
 version = "0.17.0"
-authors = ["Nicholas Rodrigues Lordello <nlordell@gmail.com>", "Georgios Konstantopoulos <me@gakonst.com>"]
+authors = [
+    "Nicholas Rodrigues Lordello <nlordell@gmail.com>",
+    "Georgios Konstantopoulos <me@gakonst.com>",
+]
 edition = "2018"
 license = "MIT OR Apache-2.0"
 description = "Code generation for type-safe bindings to Ethereum smart contracts"
@@ -20,7 +23,7 @@ url = "2.1"
 serde_json = "1.0.61"
 serde = { version = "1.0.124", features = ["derive"] }
 hex = { version = "0.4.2", default-features = false, features = ["std"] }
-reqwest = { version = "0.11.3", default-features = false, features = ["blocking"] , optional = true }
+reqwest = { version = "0.11.3", default-features = false, features = ["blocking"], optional = true }
 cfg-if = "1.0.0"
 dunce = "1.0.2"
 walkdir = "2.3.2"
@@ -42,4 +45,7 @@ rustls = ["reqwest/rustls-tls"]
 
 [dev-dependencies]
 tempfile = "3.2.0"
-ethers-solc = { version = "^0.17.0", path = "../../ethers-solc", default-features = false, features = ["project-util", "svm-solc"] }
+ethers-solc = { version = "^0.17.0", path = "../../ethers-solc", default-features = false, features = [
+    "project-util",
+    "svm-solc",
+] }
