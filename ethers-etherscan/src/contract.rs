@@ -271,7 +271,9 @@ impl ContractMetadata {
 }
 
 impl Client {
-    /// Returns the contract ABI of a verified contract
+    /// Fetches a verified contract's ABI.
+    ///
+    /// # Example
     ///
     /// ```no_run
     /// # use ethers_etherscan::Client;
@@ -318,7 +320,10 @@ impl Client {
         Ok(abi)
     }
 
-    /// Get Contract Source Code for Verified Contract Source Codes
+    /// Fetches a contract's verified source code and its metadata.
+    ///
+    /// # Example
+    ///
     /// ```no_run
     /// # use ethers_etherscan::Client;
     /// # use ethers_core::types::Chain;
