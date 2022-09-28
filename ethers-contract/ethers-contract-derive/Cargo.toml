@@ -1,7 +1,10 @@
 [package]
 name = "ethers-contract-derive"
 version = "0.17.0"
-authors = ["Nicholas Rodrigues Lordello <nlordell@gmail.com>", "Georgios Konstantopoulos <me@gakonst.com>"]
+authors = [
+    "Nicholas Rodrigues Lordello <nlordell@gmail.com>",
+    "Georgios Konstantopoulos <me@gakonst.com>",
+]
 edition = "2018"
 license = "MIT OR Apache-2.0"
 description = "Proc macro for type-safe bindings generation to Ethereum and Celo smart contracts"

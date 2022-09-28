@@ -1,7 +1,7 @@
 # Ethereum types, cryptography and utilities.
 
 It is recommended to use the `utils`, `types` and `abi` re-exports instead of
-the `core` module to simplify your imports.\_
+the `core` module to simplify your imports.
 
 This library provides type definitions for Ethereum's main datatypes along with
 other utilities for interacting with the Ethereum ecosystem
@@ -37,7 +37,7 @@ The crate provides utilities for launching local Ethereum testnets by using
 
 # Features
 
-- - ["eip712"] | Provides Eip712 trait for EIP-712 encoding of typed data for
+-   ["eip712"] | Provides Eip712 trait for EIP-712 encoding of typed data for
     derived structs
 
 # ABI Encoding and Decoding
