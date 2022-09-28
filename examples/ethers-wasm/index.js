@@ -1,4 +1,4 @@
-const ethers = import('./pkg');
+const ethers = import("./pkg");
 
 ethers
     .then(m => {
