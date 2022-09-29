@@ -1,13 +1,12 @@
 //! Methods for expanding structs
 use crate::{
     contract::{types, Context},
-    rawabi::{Component, RawAbi},
     util,
 };
 use ethers_core::{
     abi::{
         struct_def::{FieldDeclaration, FieldType, StructFieldType, StructType},
-        HumanReadableParser, ParamType, SolStruct,
+        Component, HumanReadableParser, ParamType, RawAbi, SolStruct,
     },
     macros::ethers_contract_crate,
 };
