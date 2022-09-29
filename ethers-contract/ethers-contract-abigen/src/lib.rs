@@ -16,9 +16,6 @@ pub mod contract;
 pub use contract::structs::InternalStructs;
 use contract::Context;
 
-pub mod rawabi;
-pub use rawabi::RawAbi;
-
 mod rustfmt;
 mod source;
 mod util;

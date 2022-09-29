@@ -1,12 +1,10 @@
 use crate::{
     source_tree::{SourceTree, SourceTreeEntry},
-    utils::{
-        deserialize_address_opt, deserialize_stringified_abi, deserialize_stringified_source_code,
-    },
+    utils::{deserialize_address_opt, deserialize_stringified_source_code},
     Client, EtherscanError, Response, Result,
 };
 use ethers_core::{
-    abi::{Abi, Address},
+    abi::{Abi, Address, RawAbi},
     types::{serde_helpers::deserialize_stringified_u64, Bytes},
 };
 use semver::Version;
@@ -113,8 +111,8 @@ pub struct Metadata {
     pub source_code: SourceCodeMetadata,
 
     /// The ABI of the contract.
-    #[serde(rename = "ABI", deserialize_with = "deserialize_stringified_abi")]
-    pub abi: Abi,
+    #[serde(rename = "ABI")]
+    pub abi: String,
 
     /// The name of the contract.
     pub contract_name: String,
@@ -177,6 +175,16 @@ impl Metadata {
     /// Returns the contract's path mapped source code.
     pub fn sources(&self) -> HashMap<String, SourceCodeEntry> {
         self.source_code.sources()
+    }
+
+    /// Parses the Abi String as an [RawAbi] struct.
+    pub fn raw_abi(&self) -> Result<RawAbi> {
+        Ok(serde_json::from_str(&self.abi)?)
+    }
+
+    /// Parses the Abi String as an [Abi] struct.
+    pub fn abi(&self) -> Result<Abi> {
+        Ok(serde_json::from_str(&self.abi)?)
     }
 
     /// Parses the compiler version.
@@ -274,8 +282,13 @@ impl IntoIterator for ContractMetadata {
 
 impl ContractMetadata {
     /// Returns the ABI of all contracts.
-    pub fn abis(&self) -> Vec<&Abi> {
-        self.items.iter().map(|c| &c.abi).collect()
+    pub fn abis(&self) -> Result<Vec<Abi>> {
+        self.items.iter().map(|c| c.abi()).collect()
+    }
+
+    /// Returns the raw ABI of all contracts.
+    pub fn raw_abis(&self) -> Result<Vec<RawAbi>> {
+        self.items.iter().map(|c| c.raw_abi()).collect()
     }
 
     /// Returns the combined source code of all contracts.
@@ -460,7 +473,7 @@ mod tests {
             let item = &meta.items[0];
             assert!(matches!(item.source_code, SourceCodeMetadata::SourceCode(_)));
             assert_eq!(item.source_code.sources().len(), 1);
-            assert_eq!(item.abi, serde_json::from_str(DAO_ABI).unwrap());
+            assert_eq!(item.abi().unwrap(), serde_json::from_str(DAO_ABI).unwrap());
         })
         .await
     }
@@ -497,7 +510,7 @@ mod tests {
             let item = &meta.items[0];
             assert!(matches!(item.source_code, SourceCodeMetadata::SourceCode(_)));
             assert_eq!(item.source_code.sources().len(), 1);
-            assert_eq!(item.abi, serde_json::from_str(DAO_ABI).unwrap());
+            assert_eq!(item.abi().unwrap(), serde_json::from_str(DAO_ABI).unwrap());
         })
         .await
     }

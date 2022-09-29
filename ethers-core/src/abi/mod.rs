@@ -22,6 +22,10 @@ mod human_readable;
 pub use human_readable::{
     lexer::HumanReadableParser, parse as parse_abi, parse_str as parse_abi_str, AbiParser,
 };
+
+mod raw;
+pub use raw::{AbiObject, Component, Item, JsonAbi, RawAbi};
+
 mod sealed {
     use ethabi::{Event, Function};
 

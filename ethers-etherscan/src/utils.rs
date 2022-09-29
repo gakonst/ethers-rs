@@ -1,5 +1,5 @@
 use crate::{contract::SourceCodeMetadata, EtherscanError, Result};
-use ethers_core::{abi::Abi, types::Address};
+use ethers_core::types::Address;
 use semver::Version;
 use serde::{Deserialize, Deserializer};
 
@@ -51,14 +51,6 @@ pub fn deserialize_stringified_source_code<'de, D: Deserializer<'de>>(
     } else {
         Ok(SourceCodeMetadata::SourceCode(s))
     }
-}
-
-/// Deserializes as JSON: "\[...\]"
-pub fn deserialize_stringified_abi<'de, D: Deserializer<'de>>(
-    deserializer: D,
-) -> std::result::Result<Abi, D::Error> {
-    let s = String::deserialize(deserializer)?;
-    serde_json::from_str(&s).map_err(serde::de::Error::custom)
 }
 
 #[cfg(test)]
@@ -113,19 +105,6 @@ mod tests {
         let de: Test = serde_json::from_str(json).unwrap();
         let expected = "0x4af649ffde640ceb34b1afaba3e0bb8e9698cb01".parse().unwrap();
         assert_eq!(de.address, Some(expected));
-    }
-
-    #[test]
-    fn can_deserialize_stringified_abi() {
-        #[derive(Deserialize)]
-        struct Test {
-            #[serde(deserialize_with = "deserialize_stringified_abi")]
-            abi: Abi,
-        }
-
-        let json = r#"{"abi": "[]"}"#;
-        let de: Test = serde_json::from_str(json).unwrap();
-        assert_eq!(de.abi, Abi::default());
     }
 
     #[test]
