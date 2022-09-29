@@ -255,7 +255,6 @@ where
     Ok(num)
 }
 
-
 #[cfg(test)]
 mod tests {
 
@@ -265,16 +264,15 @@ mod tests {
         use crate::types::transaction::eip712::EIP712Domain;
 
         let val = serde_json::json!(
-            {
-    "name": "Seaport",
-    "version": "1.1",
-    "chainId": "137",
-    "verifyingContract": "0x00000000006c3852cbEf3e08E8dF289169EdE581"
-  }
-        );
+                  {
+          "name": "Seaport",
+          "version": "1.1",
+          "chainId": "137",
+          "verifyingContract": "0x00000000006c3852cbEf3e08E8dF289169EdE581"
+        }
+              );
 
         let domain: EIP712Domain = serde_json::from_value(val).unwrap();
         assert_eq!(domain.chain_id, Some(137u64.into()));
-
     }
 }
