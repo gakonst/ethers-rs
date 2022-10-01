@@ -250,7 +250,7 @@ impl Anvil {
 
         let mut child = cmd.spawn().expect("couldnt start anvil");
 
-        let stdout = child.stdout.expect("Unable to get stdout for anvil child process");
+        let stdout = child.stdout.take().expect("Unable to get stdout for anvil child process");
 
         let start = Instant::now();
         let mut reader = BufReader::new(stdout);
@@ -283,8 +283,6 @@ impl Anvil {
                 private_keys.push(key);
             }
         }
-
-        child.stdout = Some(reader.into_inner());
 
         AnvilInstance { pid: child, private_keys, addresses, port, chain_id: self.chain_id }
     }
