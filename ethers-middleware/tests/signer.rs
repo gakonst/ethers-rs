@@ -1,5 +1,5 @@
 #![allow(unused)]
-use ethers_providers::{Http, JsonRpcClient, Middleware, Provider, RINKEBY};
+use ethers_providers::{Http, JsonRpcClient, Middleware, Provider, GOERLI};
 
 use ethers_core::{
     types::{BlockNumber, TransactionRequest},
@@ -87,7 +87,7 @@ async fn send_with_chain_id_anvil() {
 #[tokio::test]
 #[cfg(not(feature = "celo"))]
 async fn pending_txs_with_confirmations_testnet() {
-    let provider = RINKEBY.provider().interval(Duration::from_millis(3000));
+    let provider = GOERLI.provider().interval(Duration::from_millis(3000));
     let chain_id = provider.get_chainid().await.unwrap();
     let wallet = WALLETS.next().with_chain_id(chain_id.as_u64());
     let address = wallet.address();
@@ -102,7 +102,7 @@ use ethers_core::types::{Address, Eip1559TransactionRequest};
 #[tokio::test]
 #[cfg(not(feature = "celo"))]
 async fn websocket_pending_txs_with_confirmations_testnet() {
-    let provider = RINKEBY.ws().await.interval(Duration::from_millis(3000));
+    let provider = GOERLI.ws().await.interval(Duration::from_millis(3000));
     let chain_id = provider.get_chainid().await.unwrap();
     let wallet = WALLETS.next().with_chain_id(chain_id.as_u64());
     let address = wallet.address();
@@ -123,7 +123,7 @@ async fn generic_pending_txs_test<M: Middleware>(provider: M, who: Address) {
 #[tokio::test]
 #[cfg(not(feature = "celo"))]
 async fn typed_txs() {
-    let provider = RINKEBY.provider();
+    let provider = GOERLI.provider();
 
     let chain_id = provider.get_chainid().await.unwrap();
     let wallet = WALLETS.next().with_chain_id(chain_id.as_u64());
@@ -297,7 +297,7 @@ impl TestWallets {
     #[allow(unused)]
     pub async fn fund<T: JsonRpcClient, U: Into<u32>>(&self, provider: &Provider<T>, n: U) {
         let addrs = (0..n.into()).map(|i| self.get(i).address()).collect::<Vec<_>>();
-        // hardcoded funder address private key, rinkeby
+        // hardcoded funder address private key, goerli
         let signer = "39aa18eeb5d12c071e5f19d8e9375a872e90cb1f2fa640384ffd8800a2f3e8f1"
             .parse::<LocalWallet>()
             .unwrap()

@@ -20,14 +20,15 @@ abigen!(
 );
 
 // Remove liquidity from uniswap V2.
-// This example will remove 500 liquidity of 2 test tokens, TA and TB on Rinkeby testnet.
+// This example will remove 500 liquidity of 2 test tokens, TA and TB on goerli testnet.
 // This example uses pair contract and uniswap swap contract to remove liquidity.
 #[tokio::main]
+#[ignore]
 async fn main() -> Result<()> {
     let provider = Arc::new({
         // connect to the network
         let provider = Provider::<Http>::try_from(
-            "https://rinkeby.infura.io/v3/a111fcada47746d990e0e2b7df50d00a",
+            "https://goerli.infura.io/v3/a111fcada47746d990e0e2b7df50d00a",
         )?;
         let chain_id = provider.get_chainid().await?;
 
