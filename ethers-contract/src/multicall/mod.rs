@@ -96,6 +96,17 @@ pub enum MulticallError<M: Middleware> {
 
 pub type Result<T, M> = std::result::Result<T, MulticallError<M>>;
 
+/// Helper struct for managing calls to be made to the `function` in smart contract `target`
+/// with `data`.
+#[derive(Clone, Debug)]
+pub struct Call {
+    target: Address,
+    data: Bytes,
+    value: U256,
+    allow_failure: bool,
+    function: Function,
+}
+
 /// The version of the [`Multicall`](super::Multicall).
 /// Used to determine which methods of the Multicall smart contract to use:
 /// - [`Multicall`] : `aggregate((address,bytes)[])`
@@ -224,16 +235,16 @@ impl TryFrom<u8> for MulticallVersion {
 /// multicall = multicall.version(MulticallVersion::Multicall);
 /// multicall
 ///     .clear_calls()
-///     .eth_balance_of(address_1, false)
-///     .eth_balance_of(address_2, false);
+///     .add_get_eth_balance(address_1, false)
+///     .add_get_eth_balance(address_2, false);
 /// let _balances: (U256, U256) = multicall.call().await?;
 ///
 /// // or with version 2 and above
 /// multicall = multicall.version(MulticallVersion::Multicall3);
 /// multicall
 ///     .clear_calls()
-///     .eth_balance_of(address_1, false)
-///     .eth_balance_of(address_2, false);
+///     .add_get_eth_balance(address_1, false)
+///     .add_get_eth_balance(address_2, false);
 /// let _balances: ((bool, U256), (bool, U256)) = multicall.call().await?;
 ///
 /// # Ok(())
@@ -248,6 +259,7 @@ impl TryFrom<u8> for MulticallVersion {
 /// [`add_call`]: #method.add_call
 /// [`call`]: #method.call
 /// [`send`]: #method.send
+#[derive(Clone)]
 #[must_use = "Multicall does nothing unless you use `call` or `send`"]
 pub struct Multicall<M> {
     version: MulticallVersion,
@@ -257,18 +269,7 @@ pub struct Multicall<M> {
     contract: MulticallContract<M>,
 }
 
-impl<M> Clone for Multicall<M> {
-    fn clone(&self) -> Self {
-        Multicall {
-            calls: self.calls.clone(),
-            block: self.block,
-            contract: self.contract.clone(),
-            legacy: self.legacy,
-            version: self.version,
-        }
-    }
-}
-
+// Manually implement Debug due to Middleware trait bounds.
 impl<M: Middleware> std::fmt::Debug for Multicall<M> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Multicall")
@@ -279,17 +280,6 @@ impl<M: Middleware> std::fmt::Debug for Multicall<M> {
             .field("contract", &self.contract)
             .finish()
     }
-}
-
-/// Helper struct for managing calls to be made to the `function` in smart contract `target`
-/// with `data`.
-#[derive(Clone, Debug)]
-pub struct Call {
-    target: Address,
-    data: Bytes,
-    value: U256,
-    allow_failure: bool,
-    function: Function,
 }
 
 impl<M: Middleware> Multicall<M> {
@@ -410,13 +400,13 @@ impl<M: Middleware> Multicall<M> {
         self
     }
 
-    /// Sets the `block` field for the multicall aggregate call.
+    /// Sets the `block` field of the Multicall aggregate call.
     pub fn block(mut self, block: impl Into<BlockNumber>) -> Self {
         self.block = Some(block.into());
         self
     }
 
-    /// Appends a `call` to the list of calls for the Multicall instance.
+    /// Appends a `call` to the list of calls of the Multicall instance.
     ///
     /// Version specific details:
     /// - 1: `allow_failure` is ignored.
@@ -447,16 +437,87 @@ impl<M: Middleware> Multicall<M> {
         }
     }
 
-    /// Appends a `call` to the list of calls for the Multicall instance for querying
-    /// the ETH balance of an address
+    /// Appends a `call` to the list of calls of the Multicall instance for querying the block hash
+    /// of a given block number.
     ///
-    /// # Panics
+    /// Note: this call will return 0 if `block_number` is not one of the most recent 256 blocks.
+    /// ([Reference](https://docs.soliditylang.org/en/latest/units-and-global-variables.html?highlight=blockhash#block-and-transaction-properties))
+    pub fn add_get_block_hash(&mut self, block_number: impl Into<U256>) -> &mut Self {
+        let call = self.contract.get_block_hash(block_number.into());
+        self.add_call(call, false)
+    }
+
+    /// Appends a `call` to the list of calls of the Multicall instance for querying the current
+    /// block number.
+    pub fn add_get_block_number(&mut self) -> &mut Self {
+        let call = self.contract.get_block_number();
+        self.add_call(call, false)
+    }
+
+    /// Appends a `call` to the list of calls of the Multicall instance for querying the current
+    /// block coinbase address.
+    pub fn add_get_current_block_coinbase(&mut self) -> &mut Self {
+        let call = self.contract.get_current_block_coinbase();
+        self.add_call(call, false)
+    }
+
+    /// Appends a `call` to the list of calls of the Multicall instance for querying the current
+    /// block difficulty.
     ///
-    /// If more than the maximum number of supported calls are added (16). The maximum limit is
-    /// constrained due to tokenization/detokenization support for tuples.
-    pub fn eth_balance_of(&mut self, addr: Address, allow_failure: bool) -> &mut Self {
-        let call = self.contract.get_eth_balance(addr);
+    /// Note: in a post-merge environment, the return value of this call will be the output of the
+    /// randomness beacon provided by the beacon chain.
+    /// ([Reference](https://eips.ethereum.org/EIPS/eip-4399#abstract))
+    pub fn add_get_current_block_difficulty(&mut self) -> &mut Self {
+        let call = self.contract.get_current_block_difficulty();
+        self.add_call(call, false)
+    }
+
+    /// Appends a `call` to the list of calls of the Multicall instance for querying the current
+    /// block gas limit.
+    pub fn add_get_current_block_gas_limit(&mut self) -> &mut Self {
+        let call = self.contract.get_current_block_gas_limit();
+        self.add_call(call, false)
+    }
+
+    /// Appends a `call` to the list of calls of the Multicall instance for querying the current
+    /// block timestamp.
+    pub fn add_get_current_block_timestamp(&mut self) -> &mut Self {
+        let call = self.contract.get_current_block_timestamp();
+        self.add_call(call, false)
+    }
+
+    /// Appends a `call` to the list of calls of the Multicall instance for querying the ETH
+    /// balance of an address.
+    pub fn add_get_eth_balance(
+        &mut self,
+        address: impl Into<Address>,
+        allow_failure: bool,
+    ) -> &mut Self {
+        let call = self.contract.get_eth_balance(address.into());
         self.add_call(call, allow_failure)
+    }
+
+    /// Appends a `call` to the list of calls of the Multicall instance for querying the last
+    /// block hash.
+    pub fn add_get_last_block_hash(&mut self) -> &mut Self {
+        let call = self.contract.get_last_block_hash();
+        self.add_call(call, false)
+    }
+
+    /// Appends a `call` to the list of calls of the Multicall instance for querying the current
+    /// block base fee.
+    ///
+    /// Note: this call will fail if the chain that it is called on does not implement the
+    /// [BASEFEE opcode](https://eips.ethereum.org/EIPS/eip-3198).
+    pub fn add_get_basefee(&mut self, allow_failure: bool) -> &mut Self {
+        let call = self.contract.get_basefee();
+        self.add_call(call, allow_failure)
+    }
+
+    /// Appends a `call` to the list of calls of the Multicall instance for querying the chain id.
+    pub fn add_get_chain_id(&mut self) -> &mut Self {
+        let call = self.contract.get_chain_id();
+        self.add_call(call, false)
     }
 
     /// Clears the batch of calls from the Multicall instance.

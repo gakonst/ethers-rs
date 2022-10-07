@@ -7,9 +7,7 @@ use ethers_core::{
     types::{transaction::eip2718::TypedTransaction, Chain, Eip1559TransactionRequest, U256},
     utils::Anvil,
 };
-use ethers_middleware::SignerMiddleware;
 use ethers_providers::{MockProvider, Provider};
-use ethers_signers::{LocalWallet, Signer};
 use ethers_solc::Solc;
 use std::{
     convert::{TryFrom, TryInto},
@@ -19,6 +17,7 @@ use std::{
 fn assert_codec<T: AbiDecode + AbiEncode>() {}
 fn assert_tokenizeable<T: Tokenizable>() {}
 fn assert_call<T: AbiEncode + AbiDecode + Default + Tokenizable>() {}
+fn assert_event<T: EthEvent>() {}
 
 #[test]
 fn can_gen_human_readable() {
@@ -616,11 +615,14 @@ fn can_handle_overloaded_events() {
 async fn can_send_struct_param() {
     abigen!(StructContract, "./tests/solidity-contracts/StructContract.json");
 
-    let server = Anvil::new().spawn();
-    let wallet: LocalWallet = server.keys()[0].clone().into();
-    let provider = Provider::try_from(server.endpoint()).unwrap();
-    let client =
-        Arc::new(SignerMiddleware::new(provider, wallet.with_chain_id(Chain::AnvilHardhat)));
+    // launch the network & connect to it
+    let anvil = Anvil::new().spawn();
+    let from = anvil.addresses()[0];
+    let provider = Provider::try_from(anvil.endpoint())
+        .unwrap()
+        .with_sender(from)
+        .interval(std::time::Duration::from_millis(10));
+    let client = Arc::new(provider);
 
     let contract = StructContract::deploy(client, ()).unwrap().legacy().send().await.unwrap();
 
@@ -719,4 +721,19 @@ fn can_gen_large_tuple_array() {
 
     let _call = CallWithLongArrayCall::default();
     assert_call::<CallWithLongArrayCall>();
+}
+
+#[test]
+fn can_generate_event_with_structs() {
+    /*
+    contract MyContract {
+        struct MyStruct {uint256 a; uint256 b; }
+        event MyEvent(MyStruct, uint256);
+    }
+     */
+    abigen!(MyContract, "ethers-contract/tests/solidity-contracts/EventWithStruct.json");
+
+    let _filter = MyEventFilter { p0: MyStruct::default(), c: U256::zero() };
+    assert_eq!("MyEvent((uint256,uint256),uint256)", MyEventFilter::abi_signature());
+    assert_event::<MyEventFilter>();
 }

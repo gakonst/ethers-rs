@@ -32,31 +32,31 @@ pub const FIELD_SELECTOR: Selector = [89, 209, 212, 60];
 pub const INTERFACE_SELECTOR: Selector = [1, 255, 201, 167];
 
 /// Returns a transaction request for calling the `resolver` method on the ENS server
-pub fn get_resolver<T: Into<Address>>(ens_address: T, name: &str) -> TransactionRequest {
+pub fn get_resolver<T: Into<NameOrAddress>>(ens_address: T, name: &str) -> TransactionRequest {
     // keccak256('resolver(bytes32)')
     let data = [&RESOLVER[..], &namehash(name).0].concat();
     TransactionRequest {
         data: Some(data.into()),
-        to: Some(NameOrAddress::Address(ens_address.into())),
+        to: Some(ens_address.into()),
         ..Default::default()
     }
 }
 
 /// Returns a transaction request for checking interface support
-pub fn supports_interface<T: Into<Address>>(
+pub fn supports_interface<T: Into<NameOrAddress>>(
     resolver_address: T,
     selector: Selector,
 ) -> TransactionRequest {
     let data = [&INTERFACE_SELECTOR[..], &selector[..], &[0; 28]].concat();
     TransactionRequest {
         data: Some(data.into()),
-        to: Some(NameOrAddress::Address(resolver_address.into())),
+        to: Some(resolver_address.into()),
         ..Default::default()
     }
 }
 
 /// Returns a transaction request for calling
-pub fn resolve<T: Into<Address>>(
+pub fn resolve<T: Into<NameOrAddress>>(
     resolver_address: T,
     selector: Selector,
     name: &str,
@@ -65,7 +65,7 @@ pub fn resolve<T: Into<Address>>(
     let data = [&selector[..], &namehash(name).0, parameters.unwrap_or_default()].concat();
     TransactionRequest {
         data: Some(data.into()),
-        to: Some(NameOrAddress::Address(resolver_address.into())),
+        to: Some(resolver_address.into()),
         ..Default::default()
     }
 }

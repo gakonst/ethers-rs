@@ -95,7 +95,6 @@ pub(crate) fn struct_declaration(cx: &Context) -> TokenStream {
     let abi_name = cx.inline_abi_ident();
 
     let ethers_core = ethers_core_crate();
-    let ethers_providers = ethers_providers_crate();
     let ethers_contract = ethers_contract_crate();
 
     let abi_parse = if !cx.human_readable {
@@ -144,7 +143,7 @@ pub(crate) fn struct_declaration(cx: &Context) -> TokenStream {
             fn deref(&self) -> &Self::Target { &self.0 }
         }
 
-        impl<M: #ethers_providers::Middleware> std::fmt::Debug for #name<M> {
+        impl<M> std::fmt::Debug for #name<M> {
             fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
                 f.debug_tuple(stringify!(#name))
                     .field(&self.address())

@@ -13,9 +13,9 @@ mod test_macros;
 
 /// Contains types to generate rust bindings for solidity contracts
 pub mod contract;
+pub use contract::structs::InternalStructs;
 use contract::Context;
 
-pub mod rawabi;
 mod rustfmt;
 mod source;
 mod util;

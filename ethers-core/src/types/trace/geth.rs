@@ -1,5 +1,5 @@
-use crate::types::{Bytes, H160, H256, U256};
-use serde::{Deserialize, Serialize};
+use crate::types::{Bytes, H256, U256};
+use serde::{Deserialize, Serialize, Serializer};
 use std::collections::BTreeMap;
 
 // https://github.com/ethereum/go-ethereum/blob/a9ef135e2dd53682d106c6a2aede9187026cc1de/eth/tracers/logger/logger.go#L406-L411
@@ -7,7 +7,7 @@ use std::collections::BTreeMap;
 pub struct GethTrace {
     pub failed: bool,
     pub gas: u64,
-    #[serde(rename = "returnValue")]
+    #[serde(serialize_with = "serialize_bytes", rename = "returnValue")]
     pub return_value: Bytes,
     #[serde(rename = "structLogs")]
     pub struct_logs: Vec<StructLog>,
@@ -22,16 +22,17 @@ pub struct StructLog {
     pub gas: u64,
     #[serde(rename = "gasCost")]
     pub gas_cost: u64,
+    /// ref <https://github.com/ethereum/go-ethereum/blob/366d2169fbc0e0f803b68c042b77b6b480836dbc/eth/tracers/logger/logger.go#L450-L452>
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub memory: Option<Vec<u8>>,
+    pub memory: Option<Vec<String>>,
     pub op: String,
-    pub pc: U256,
+    pub pc: u64,
     #[serde(rename = "refund", skip_serializing_if = "Option::is_none")]
     pub refund_counter: Option<u64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub stack: Option<Vec<U256>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub storage: Option<BTreeMap<H160, BTreeMap<H256, H256>>>,
+    pub storage: Option<BTreeMap<H256, H256>>,
 }
 
 /// Bindings for additional `debug_traceTransaction` options
@@ -52,4 +53,12 @@ pub struct GethDebugTracingOptions {
     pub tracer: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub timeout: Option<String>,
+}
+
+fn serialize_bytes<S, T>(x: T, s: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+    T: AsRef<[u8]>,
+{
+    s.serialize_str(&hex::encode(x.as_ref()))
 }

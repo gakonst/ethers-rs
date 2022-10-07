@@ -167,7 +167,7 @@ directly referencing the crate.
 The type level example for `ethers_providers::Provider` provides a good example of a
 documentation test:
 
-```rust
+````rust
 /// ```no_run
 /// use ethers::providers::{JsonRpcClient, Provider, Http};
 /// use std::convert::TryFrom;
@@ -182,9 +182,9 @@ documentation test:
 /// # Ok(())
 /// # }
 /// ```
-```
+````
 
-Given that this is a *type* level documentation test and the primary way users
+Given that this is a _type_ level documentation test and the primary way users
 of `ethers-rs` will create an instance of `Provider` is by using
 `Provider::<T>::try_from`, this is how the documentation test is structured.
 
@@ -210,18 +210,18 @@ A good commit message should describe what changed and why.
 
 1. The first line should:
 
-  * contain a short description of the change (preferably 50 characters or less,
+-   contain a short description of the change (preferably 50 characters or less,
     and no more than 72 characters)
-  * be entirely in lowercase with the exception of proper nouns, acronyms, and
+-   be entirely in lowercase with the exception of proper nouns, acronyms, and
     the words that refer to code, like function/variable names
-  * be prefixed with the name of the sub crate being changed (without the `ethers-`
+-   be prefixed with the name of the sub crate being changed (without the `ethers-`
     prefix) and start with an imperative verb. If modifying `ethers` proper,
     omit the crate prefix.
 
-  Examples:
+Examples:
 
-  * providers: introduce ENS querying for names and addresses
-  * re-export the abi, types and utils modules from `ethers_core`
+-   providers: introduce ENS querying for names and addresses
+-   re-export the abi, types and utils modules from `ethers_core`
 
 2. Keep the second line blank.
 3. Wrap all other lines at 72 columns (except for long URLs).
@@ -230,10 +230,10 @@ A good commit message should describe what changed and why.
    references use `Refs: #`. `Refs` may include multiple issues, separated by a
    comma.
 
-   Examples:
+    Examples:
 
-   - `Fixes: #1337`
-   - `Refs: #1234`
+    - `Fixes: #1337`
+    - `Refs: #1234`
 
 Sample complete commit message:
 
@@ -326,7 +326,7 @@ Note that only **incremental** improvement is needed to land a PR. This means
 that the PR does not need to be perfect, only better than the status quo. Follow
 up PRs may be opened to continue iterating.
 
-When changes are necessary, *request* them, do not *demand* them, and **do not
+When changes are necessary, _request_ them, do not _demand_ them, and **do not
 assume that the submitter already knows how to add a test or run a benchmark**.
 
 Specific performance optimization techniques, coding styles and conventions
@@ -346,7 +346,7 @@ with the appropriate reason to keep the conversation flow concise and relevant.
 
 ### Be aware of the person behind the code
 
-Be aware that *how* you communicate requests and reviews in your feedback can
+Be aware that _how_ you communicate requests and reviews in your feedback can
 have a significant impact on the success of the Pull Request. Yes, we may land
 a particular change that makes ethers-rs better, but the individual might just not
 want to have anything to do with ethers-rs ever again. The goal is not just having
@@ -390,8 +390,8 @@ When releasing the workspace:
    crate's changelog may also be used for reference.
 4. **Release the crate.** Run the following command:
 
-   ```bash
-   cargo release --workspace <release_type> --execute
-   ```
+    ```bash
+    cargo release --workspace <release_type> --execute
+    ```
 
 [keep-a-changelog]: https://github.com/olivierlacan/keep-a-changelog/blob/master/CHANGELOG.md

@@ -2,7 +2,7 @@
 //! raw content of the ABI.
 
 #![allow(missing_docs)]
-use ethers_core::types::Bytes;
+use crate::types::Bytes;
 use serde::{
     de::{MapAccess, SeqAccess, Visitor},
     Deserialize, Deserializer, Serialize,
@@ -109,7 +109,7 @@ pub struct Component {
 /// Represents contract ABI input variants
 #[derive(Deserialize)]
 #[serde(untagged)]
-pub(crate) enum JsonAbi {
+pub enum JsonAbi {
     /// json object input as `{"abi": [..], "bin": "..."}`
     Object(AbiObject),
     /// json array input as `[]`
@@ -125,7 +125,7 @@ where
 }
 
 /// Contract ABI and optional bytecode as JSON object
-pub(crate) struct AbiObject {
+pub struct AbiObject {
     pub abi: RawAbi,
     pub bytecode: Option<Bytes>,
 }
@@ -158,7 +158,7 @@ impl<'de> Visitor<'de> for AbiObjectVisitor {
             where
                 D: Deserializer<'de>,
             {
-                Ok(DeserializeBytes(ethers_core::types::deserialize_bytes(deserializer)?.into()))
+                Ok(DeserializeBytes(crate::types::deserialize_bytes(deserializer)?.into()))
             }
         }
 
@@ -204,7 +204,7 @@ impl<'de> Deserialize<'de> for AbiObject {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ethers_core::abi::Abi;
+    use crate::abi::Abi;
 
     fn assert_has_bytecode(s: &str) {
         match serde_json::from_str::<JsonAbi>(s).unwrap() {
@@ -219,14 +219,16 @@ mod tests {
 
     #[test]
     fn can_parse_raw_abi() {
-        const VERIFIER_ABI: &str = include_str!("../../tests/solidity-contracts/verifier_abi.json");
+        const VERIFIER_ABI: &str =
+            include_str!("../../../ethers-contract/tests/solidity-contracts/verifier_abi.json");
         let _ = serde_json::from_str::<RawAbi>(VERIFIER_ABI).unwrap();
     }
 
     #[test]
     fn can_parse_hardhat_raw_abi() {
-        const VERIFIER_ABI: &str =
-            include_str!("../../tests/solidity-contracts/verifier_abi_hardhat.json");
+        const VERIFIER_ABI: &str = include_str!(
+            "../../../ethers-contract/tests/solidity-contracts/verifier_abi_hardhat.json"
+        );
         let _ = serde_json::from_str::<RawAbi>(VERIFIER_ABI).unwrap();
     }
 
@@ -261,7 +263,9 @@ mod tests {
         let s = format!(r#"{{"abi": {}, "bytecode" : {{ "object": "{}" }} }}"#, abi_str, code);
         assert_has_bytecode(&s);
 
-        let hh_artifact = include_str!("../../tests/solidity-contracts/verifier_abi_hardhat.json");
+        let hh_artifact = include_str!(
+            "../../../ethers-contract/tests/solidity-contracts/verifier_abi_hardhat.json"
+        );
         match serde_json::from_str::<JsonAbi>(hh_artifact).unwrap() {
             JsonAbi::Object(abi) => {
                 assert!(abi.bytecode.is_none());
@@ -274,7 +278,8 @@ mod tests {
 
     #[test]
     fn can_parse_greeter_bytecode() {
-        let artifact = include_str!("../../tests/solidity-contracts/greeter.json");
+        let artifact =
+            include_str!("../../../ethers-contract/tests/solidity-contracts/greeter.json");
         assert_has_bytecode(artifact);
     }
 

@@ -574,8 +574,14 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         block: Option<BlockId>,
     ) -> Result<U256, ProviderError> {
         let tx = utils::serialize(tx);
-        let block = utils::serialize(&block.unwrap_or_else(|| BlockNumber::Latest.into()));
-        self.request("eth_estimateGas", [tx, block]).await
+        // Some nodes (e.g. old Optimism clients) don't support a block ID being passed as a param,
+        // so refrain from defaulting to BlockNumber::Latest.
+        let params = if let Some(block_id) = block {
+            vec![tx, utils::serialize(&block_id)]
+        } else {
+            vec![tx]
+        };
+        self.request("eth_estimateGas", params).await
     }
 
     async fn create_access_list(
@@ -936,8 +942,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
             .map_err(|e| ProviderError::CustomError(format!("Invalid metadata url: {}", e)))?;
 
         if token.type_ == erc::ERCNFTType::ERC1155 {
-            metadata_url
-                .set_path(&metadata_url.path().replace("%7Bid%7D", &hex::encode(&token.id)));
+            metadata_url.set_path(&metadata_url.path().replace("%7Bid%7D", &hex::encode(token.id)));
         }
         if metadata_url.scheme() == "ipfs" {
             metadata_url = erc::http_link_ipfs(metadata_url).map_err(ProviderError::CustomError)?;
@@ -1265,7 +1270,7 @@ impl<P: JsonRpcClient> Provider<P> {
                 "`{}` resolver ({:?}) does not support selector {}.",
                 ens_name,
                 resolver_address,
-                hex::encode(&selector)
+                hex::encode(selector)
             )))
         }
 

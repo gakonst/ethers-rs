@@ -141,11 +141,7 @@ impl LedgerEthereum {
 
             signature.v = match tx {
                 TypedTransaction::Eip2930(_) | TypedTransaction::Eip1559(_) => {
-                    if ecc_parity % 2 == 1 {
-                        0
-                    } else {
-                        1
-                    }
+                    (ecc_parity % 2 != 1) as u64
                 }
                 TypedTransaction::Legacy(_) => eip155_chain_id + ecc_parity,
             };
@@ -243,7 +239,7 @@ impl LedgerEthereum {
                 index |= 0x80000000;
             }
 
-            bytes.extend(&index.to_be_bytes());
+            bytes.extend(index.to_be_bytes());
         }
 
         bytes
@@ -254,7 +250,7 @@ impl LedgerEthereum {
 mod tests {
     use super::*;
     use crate::Signer;
-    use ethers_contract::EthAbiType;
+    use ethers_contract_derive::EthAbiType;
     use ethers_core::types::{
         transaction::eip712::Eip712, Address, TransactionRequest, I256, U256,
     };

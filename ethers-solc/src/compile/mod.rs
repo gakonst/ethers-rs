@@ -465,7 +465,7 @@ impl Solc {
         if checksum_calc == checksum_found {
             Ok(())
         } else {
-            let expected = hex::encode(&checksum_found);
+            let expected = hex::encode(checksum_found);
             let detected = hex::encode(checksum_calc);
             tracing:: warn!(target : "solc", "checksum mismatch for {:?}, expected {}, but found {} for file {:?}", version, expected, detected, version_path);
             Err(SolcError::ChecksumMismatch { version, expected, detected, file: version_path })
@@ -832,7 +832,7 @@ mod tests {
             // update this test whenever there's a new sol
             // version. that's ok! good reminder to check the
             // patch notes.
-            (">=0.5.0", "0.8.16"),
+            (">=0.5.0", "0.8.17"),
             // range
             (">=0.4.0 <0.5.0", "0.4.26"),
         ]

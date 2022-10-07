@@ -27,6 +27,6 @@ the code change.
 
 ## PR Checklist
 
-- [ ] Added Tests
-- [ ] Added Documentation
-- [ ] Updated the changelog
+-   [ ] Added Tests
+-   [ ] Added Documentation
+-   [ ] Updated the changelog

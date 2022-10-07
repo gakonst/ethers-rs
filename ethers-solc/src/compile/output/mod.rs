@@ -80,11 +80,30 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
     /// let artifacts: BTreeMap<String, &ConfigurableContractArtifact> = project.compile().unwrap().artifacts().collect();
     /// ```
     pub fn artifacts(&self) -> impl Iterator<Item = (String, &T::Artifact)> {
+        self.versioned_artifacts().map(|(name, (artifact, _))| (name, artifact))
+    }
+
+    /// This returns a chained iterator of both cached and recompiled contract artifacts that yields
+    /// the contract name and the corresponding artifact
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use std::collections::btree_map::BTreeMap;
+    /// use semver::Version;
+    /// use ethers_solc::ConfigurableContractArtifact;
+    /// use ethers_solc::Project;
+    ///
+    /// let project = Project::builder().build().unwrap();
+    /// let artifacts: BTreeMap<String, (&ConfigurableContractArtifact, &Version)> = project.compile().unwrap().versioned_artifacts().collect();
+    /// ```
+    pub fn versioned_artifacts(&self) -> impl Iterator<Item = (String, (&T::Artifact, &Version))> {
         self.cached_artifacts
             .artifact_files()
             .chain(self.compiled_artifacts.artifact_files())
             .filter_map(|artifact| {
-                T::contract_name(&artifact.file).map(|name| (name, &artifact.artifact))
+                T::contract_name(&artifact.file)
+                    .map(|name| (name, (&artifact.artifact, &artifact.version)))
             })
     }
 
@@ -204,12 +223,12 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
     pub fn compiled_contracts_by_compiler_version(
         &self,
     ) -> BTreeMap<Version, Vec<(String, Contract)>> {
-        let mut contracts = BTreeMap::new();
+        let mut contracts: BTreeMap<_, Vec<_>> = BTreeMap::new();
         let versioned_contracts = &self.compiler_output.contracts;
         for (_, name, contract, version) in versioned_contracts.contracts_with_files_and_version() {
             contracts
                 .entry(version.to_owned())
-                .or_insert(Vec::<(String, Contract)>::new())
+                .or_default()
                 .push((name.to_string(), contract.clone()));
         }
         contracts
@@ -361,9 +380,10 @@ impl ProjectCompileOutput<ConfigurableArtifacts> {
     /// use std::collections::btree_map::BTreeMap;
     /// use ethers_solc::artifacts::contract::CompactContractBytecode;
     /// use ethers_solc::{ArtifactId, Project};
+    /// use ethers_solc::contracts::ArtifactContracts;
     ///
     /// let project = Project::builder().build().unwrap();
-    /// let contracts: BTreeMap<ArtifactId, CompactContractBytecode> = project.compile().unwrap().into_contract_bytecodes().collect();
+    /// let contracts: ArtifactContracts = project.compile().unwrap().into_contract_bytecodes().collect();
     /// ```
     pub fn into_contract_bytecodes(
         self,

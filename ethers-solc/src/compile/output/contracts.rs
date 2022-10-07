@@ -1,14 +1,19 @@
 use crate::{
     artifacts::{
         contract::{CompactContractRef, Contract},
-        FileToContractsMap,
+        CompactContractBytecode, FileToContractsMap,
     },
     files::{MappedArtifactFile, MappedArtifactFiles, MappedContract},
-    ArtifactOutput, OutputContext,
+    ArtifactId, ArtifactOutput, OutputContext,
 };
 use semver::Version;
-use serde::{Deserialize, Serialize};
-use std::{collections::BTreeMap, ops::Deref, path::Path};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use std::{
+    collections::BTreeMap,
+    iter::FromIterator,
+    ops::{Deref, DerefMut},
+    path::Path,
+};
 use tracing::trace;
 
 /// file -> [(contract name  -> Contract + solc version)]
@@ -343,4 +348,55 @@ impl IntoIterator for VersionedContracts {
 pub struct VersionedContract {
     pub contract: Contract,
     pub version: Version,
+}
+
+/// A mapping of `ArtifactId` and their `CompactContractBytecode`
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct ArtifactContracts<T = CompactContractBytecode>(pub BTreeMap<ArtifactId, T>);
+
+impl<T: Serialize> Serialize for ArtifactContracts<T> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        self.0.serialize(serializer)
+    }
+}
+
+impl<'de, T: Deserialize<'de>> Deserialize<'de> for ArtifactContracts<T> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        Ok(Self(BTreeMap::<_, _>::deserialize(deserializer)?))
+    }
+}
+
+impl<T> Deref for ArtifactContracts<T> {
+    type Target = BTreeMap<ArtifactId, T>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<T> DerefMut for ArtifactContracts<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl<V, C: Into<V>> FromIterator<(ArtifactId, C)> for ArtifactContracts<V> {
+    fn from_iter<T: IntoIterator<Item = (ArtifactId, C)>>(iter: T) -> Self {
+        Self(iter.into_iter().map(|(k, v)| (k, v.into())).collect())
+    }
+}
+
+impl<T> IntoIterator for ArtifactContracts<T> {
+    type Item = (ArtifactId, T);
+    type IntoIter = std::collections::btree_map::IntoIter<ArtifactId, T>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
 }

@@ -1,4 +1,4 @@
-use ethers_contract::EthAbiType;
+use ethers_contract_derive::EthAbiType;
 use ethers_core::{
     types::{
         transaction::eip712::{
@@ -61,10 +61,10 @@ fn test_struct_hash() {
     }
 
     let domain = Domain {
-        name: "Radicle".to_string(),
-        version: "1".to_string(),
-        chain_id: U256::from(1),
-        verifying_contract: H160::from(&[0; 20]),
+        name: Some("Radicle".to_string()),
+        version: Some("1".to_string()),
+        chain_id: Some(U256::from(1)),
+        verifying_contract: Some(Address::zero()),
         salt: None,
     };
 
@@ -151,7 +151,7 @@ fn test_uniswap_v2_permit_hash() {
         spender: "0x2819c144D5946404C0516B6f817a960dB37D4929".parse().unwrap(),
         value: parse_ether(10).unwrap(),
         nonce: U256::from(1),
-        deadline: U256::from(3133728498 as u32),
+        deadline: U256::from(3133728498_u32),
     };
 
     let permit_hash = permit.encode_eip712().unwrap();

@@ -301,12 +301,19 @@ impl SolFilesCache {
     /// let artifacts = cache.read_artifacts::<CompactContractBytecode>().unwrap();
     /// # }
     /// ```
-    pub fn read_artifacts<Artifact: DeserializeOwned>(&self) -> Result<Artifacts<Artifact>> {
-        let mut artifacts = ArtifactsMap::new();
-        for (file, entry) in self.files.iter() {
-            let file_name = format!("{}", file.display());
-            artifacts.insert(file_name, entry.read_artifact_files()?);
-        }
+    pub fn read_artifacts<Artifact: DeserializeOwned + Send + Sync>(
+        &self,
+    ) -> Result<Artifacts<Artifact>> {
+        use rayon::prelude::*;
+
+        let artifacts = self
+            .files
+            .par_iter()
+            .map(|(file, entry)| {
+                let file_name = format!("{}", file.display());
+                entry.read_artifact_files().map(|files| (file_name, files))
+            })
+            .collect::<Result<ArtifactsMap<_>>>()?;
         Ok(Artifacts(artifacts))
     }
 
@@ -607,7 +614,7 @@ impl<'a, T: ArtifactOutput> ArtifactsCacheInner<'a, T> {
             .collect();
 
         let entry = CacheEntry {
-            last_modification_date: CacheEntry::read_last_modification_date(&file)
+            last_modification_date: CacheEntry::read_last_modification_date(file)
                 .unwrap_or_default(),
             content_hash: source.content_hash(),
             source_name: utils::source_name(file, self.project.root()).into(),
@@ -721,7 +728,7 @@ impl<'a, T: ArtifactOutput> ArtifactsCacheInner<'a, T> {
     /// returns `false` if the corresponding cache entry remained unchanged otherwise `true`
     fn is_dirty(&self, file: &Path, version: &Version) -> bool {
         if let Some(hash) = self.content_hashes.get(file) {
-            if let Some(entry) = self.cache.entry(&file) {
+            if let Some(entry) = self.cache.entry(file) {
                 if entry.content_hash.as_bytes() != hash.as_bytes() {
                     tracing::trace!("changed content hash for source file \"{}\"", file.display());
                     return true

@@ -4,7 +4,10 @@ use super::{
     rlp_opt_list,
 };
 use crate::{
-    types::{Address, Bloom, Bytes, Log, Signature, SignatureError, H256, U256, U64},
+    types::{
+        transaction::extract_chain_id, Address, Bloom, Bytes, Log, Signature, SignatureError, H256,
+        U256, U64,
+    },
     utils::keccak256,
 };
 use rlp::{Decodable, DecoderError, RlpStream};
@@ -21,18 +24,15 @@ pub struct Transaction {
     pub nonce: U256,
 
     /// Block hash. None when pending.
-    #[serde(rename = "blockHash")]
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, rename = "blockHash")]
     pub block_hash: Option<H256>,
 
     /// Block number. None when pending.
-    #[serde(rename = "blockNumber")]
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, rename = "blockNumber")]
     pub block_number: Option<U64>,
 
     /// Transaction Index. None when pending.
-    #[serde(rename = "transactionIndex")]
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, rename = "transactionIndex")]
     pub transaction_index: Option<U64>,
 
     /// Sender
@@ -133,7 +133,7 @@ impl Transaction {
     }
 
     pub fn hash(&self) -> H256 {
-        keccak256(&self.rlp().as_ref()).into()
+        keccak256(self.rlp().as_ref()).into()
     }
 
     pub fn rlp(&self) -> Bytes {
@@ -343,33 +343,38 @@ impl Decodable for Transaction {
         let mut txn = Self::default();
         // we can get the type from the first value
         let mut offset = 0;
-        txn.transaction_type = match rlp.is_data() {
-            true => Ok(Some(rlp.data()?.into())),
-            false => Ok(None),
-        }?;
-        let rest = rlp::Rlp::new(
-            rlp.as_raw().get(1..).ok_or(DecoderError::Custom("no transaction payload"))?,
-        );
+        let data = rlp.data()?;
+        let first = *data.first().ok_or(DecoderError::Custom("empty slice"))?;
+        if rlp.is_list() {
+            // Legacy (0x00)
+            // use the original rlp
+            txn.decode_base_legacy(rlp, &mut offset)?;
+            let sig = decode_signature(rlp, &mut offset)?;
+            txn.r = sig.r;
+            txn.s = sig.s;
+            txn.v = sig.v.into();
+            // extract chain id if legacy
+            txn.chain_id = extract_chain_id(sig.v).map(|id| id.as_u64().into());
+        } else {
+            let bytes = data.get(1..).ok_or(DecoderError::Custom("no tx body"))?;
+            let rest = rlp::Rlp::new(bytes);
+            match first {
+                0x01 => {
+                    txn.decode_base_eip2930(&rest, &mut offset)?;
+                    txn.transaction_type = Some(1u64.into());
+                }
+                0x02 => {
+                    txn.decode_base_eip1559(&rest, &mut offset)?;
+                    txn.transaction_type = Some(2u64.into());
+                }
+                _ => return Err(DecoderError::Custom("invalid tx type")),
+            }
 
-        match txn.transaction_type {
-            Some(x) if x == U64::from(1) => {
-                // EIP-2930 (0x01)
-                txn.decode_base_eip2930(&rest, &mut offset)?;
-            }
-            Some(x) if x == U64::from(2) => {
-                // EIP-1559 (0x02)
-                txn.decode_base_eip1559(&rest, &mut offset)?;
-            }
-            _ => {
-                // Legacy (0x00)
-                txn.decode_base_legacy(&rest, &mut offset)?;
-            }
+            let odd_y_parity: bool = rest.val_at(offset)?;
+            txn.v = (odd_y_parity as u8).into();
+            txn.r = rest.val_at(offset + 1)?;
+            txn.s = rest.val_at(offset + 2)?;
         }
-
-        let sig = decode_signature(&rest, &mut offset)?;
-        txn.r = sig.r;
-        txn.s = sig.s;
-        txn.v = sig.v.into();
 
         Ok(txn)
     }
@@ -428,7 +433,7 @@ pub struct TransactionReceipt {
 impl rlp::Encodable for TransactionReceipt {
     fn rlp_append(&self, s: &mut RlpStream) {
         s.begin_list(4);
-        s.append(&self.status);
+        rlp_opt(s, &self.status);
         s.append(&self.cumulative_gas_used);
         s.append(&self.logs_bloom);
         s.append_list(&self.logs);
@@ -460,6 +465,8 @@ impl PartialOrd<Self> for TransactionReceipt {
 #[cfg(test)]
 #[cfg(not(feature = "celo"))]
 mod tests {
+    use rlp::Encodable;
+
     use crate::types::transaction::eip2930::AccessListItem;
 
     use super::*;
@@ -713,6 +720,7 @@ mod tests {
         );
     }
 
+    // <https://goerli.etherscan.io/tx/0x5e2fc091e15119c97722e9b63d5d32b043d077d834f377b91f80d32872c78109>
     #[test]
     fn decode_rlp_london_goerli() {
         let tx = Transaction {
@@ -752,11 +760,116 @@ mod tests {
             other: Default::default(),
         };
 
-        let rlp_bytes = hex::decode("02f86f05418459682f008459682f098301a0cf9411d7c2ab0d4aa26b7d8502f6a7ef6844908495c28084e5225381c001a01a8d7bef47f6155cbdf13d57107fc577fd52880fa2862b1a50d47641f8839419a03279bbf73fde76de83440d04b9d97f3809fec8617d3557ee40ac3e0edc391514").unwrap();
+        let tx_bytes = hex::decode("02f86f05418459682f008459682f098301a0cf9411d7c2ab0d4aa26b7d8502f6a7ef6844908495c28084e5225381c001a01a8d7bef47f6155cbdf13d57107fc577fd52880fa2862b1a50d47641f8839419a03279bbf73fde76de83440d04b9d97f3809fec8617d3557ee40ac3e0edc391514").unwrap();
+
+        // the `Transaction` a valid rlp input,
+        // but EIP-1559 prepends a version byte, so we need to encode the data first to get a
+        // valid rlp and then rlp decode impl of `Transaction` will remove and check the
+        // version byte
+
+        let rlp_bytes = rlp::encode(&tx_bytes);
         let decoded_transaction = Transaction::decode(&rlp::Rlp::new(&rlp_bytes)).unwrap();
 
-        // we compare hash because the hash depends on the rlp encoding
+        assert_eq!(
+            decoded_transaction.hash(),
+            "0x5e2fc091e15119c97722e9b63d5d32b043d077d834f377b91f80d32872c78109".parse().unwrap()
+        );
         assert_eq!(decoded_transaction.hash(), tx.hash());
+
+        let from = decoded_transaction.recover_from().unwrap();
+        assert_eq!(from, "0xe66b278fa9fbb181522f6916ec2f6d66ab846e04".parse().unwrap());
+    }
+
+    /// <https://etherscan.io/tx/0x280cde7cdefe4b188750e76c888f13bd05ce9a4d7767730feefe8a0e50ca6fc4>
+    /// https://github.com/gakonst/ethers-rs/issues/1732
+    #[test]
+    fn test_rlp_decoding_issue_1732() {
+        let raw_tx = "f9015482078b8505d21dba0083022ef1947a250d5630b4cf539739df2c5dacb4c659f2488d880c46549a521b13d8b8e47ff36ab50000000000000000000000000000000000000000000066ab5a608bd00a23f2fe000000000000000000000000000000000000000000000000000000000000008000000000000000000000000048c04ed5691981c42154c6167398f95e8f38a7ff00000000000000000000000000000000000000000000000000000000632ceac70000000000000000000000000000000000000000000000000000000000000002000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc20000000000000000000000006c6ee5e31d828de241282b9606c8e98ea48526e225a0c9077369501641a92ef7399ff81c21639ed4fd8fc69cb793cfa1dbfab342e10aa0615facb2f1bcf3274a354cfe384a38d0cc008a11c2dd23a69111bc6930ba27a8";
+
+        let rlp_bytes = hex::decode(raw_tx).unwrap();
+
+        let decoded_tx: Transaction = rlp::decode(&rlp_bytes).unwrap();
+
+        assert_eq!(
+            decoded_tx.recover_from().unwrap(),
+            "0xa12e1462d0ced572f396f58b6e2d03894cd7c8a4".parse().unwrap()
+        );
+    }
+
+    #[test]
+    fn decode_rlp_legacy() {
+        let tx = Transaction {
+            block_hash: None,
+            block_number: None,
+            from: Address::from_str("c26ad91f4e7a0cad84c4b9315f420ca9217e315d").unwrap(),
+            gas: U256::from_str_radix("0x10e2b", 16).unwrap(),
+            gas_price: Some(U256::from_str_radix("0x12ec276caf", 16).unwrap()),
+            hash: H256::from_str("929ff27a5c7833953df23103c4eb55ebdfb698678139d751c51932163877fada").unwrap(),
+            input: Bytes::from(
+                hex::decode("a9059cbb000000000000000000000000fdae129ecc2c27d166a3131098bc05d143fa258e0000000000000000000000000000000000000000000000000000000002faf080").unwrap()
+            ),
+            nonce: U256::zero(),
+            to: Some(Address::from_str("dac17f958d2ee523a2206206994597c13d831ec7").unwrap()),
+            transaction_index: None,
+            value: U256::zero(),
+            transaction_type: Some(U64::zero()),
+            v: U64::from(0x25),
+            r: U256::from_str_radix("c81e70f9e49e0d3b854720143e86d172fecc9e76ef8a8666f2fdc017017c5141", 16).unwrap(),
+            s: U256::from_str_radix("1dd3410180f6a6ca3e25ad3058789cd0df3321ed76b5b4dbe0a2bb2dc28ae274", 16).unwrap(),
+            chain_id: Some(U256::from(1)),
+            access_list: None,
+            max_fee_per_gas: None,
+            max_priority_fee_per_gas: None,
+            other: Default::default()
+        };
+
+        let rlp_bytes = hex::decode("f8aa808512ec276caf83010e2b94dac17f958d2ee523a2206206994597c13d831ec780b844a9059cbb000000000000000000000000fdae129ecc2c27d166a3131098bc05d143fa258e0000000000000000000000000000000000000000000000000000000002faf08025a0c81e70f9e49e0d3b854720143e86d172fecc9e76ef8a8666f2fdc017017c5141a01dd3410180f6a6ca3e25ad3058789cd0df3321ed76b5b4dbe0a2bb2dc28ae274").unwrap();
+
+        let decoded_transaction = Transaction::decode(&rlp::Rlp::new(&rlp_bytes)).unwrap();
+
+        assert_eq!(decoded_transaction.hash(), tx.hash());
+    }
+
+    // <https://etherscan.io/tx/0x929ff27a5c7833953df23103c4eb55ebdfb698678139d751c51932163877fada>
+    #[test]
+    fn decode_rlp_legacy_in_envelope() {
+        let tx = Transaction {
+            block_hash: None,
+            block_number: None,
+            from: Address::from_str("c26ad91f4e7a0cad84c4b9315f420ca9217e315d").unwrap(),
+            gas: U256::from_str_radix("0x10e2b", 16).unwrap(),
+            gas_price: Some(U256::from_str_radix("0x12ec276caf", 16).unwrap()),
+            hash: H256::from_str("929ff27a5c7833953df23103c4eb55ebdfb698678139d751c51932163877fada").unwrap(),
+            input: Bytes::from(
+                hex::decode("a9059cbb000000000000000000000000fdae129ecc2c27d166a3131098bc05d143fa258e0000000000000000000000000000000000000000000000000000000002faf080").unwrap()
+            ),
+            nonce: U256::zero(),
+            to: Some(Address::from_str("dac17f958d2ee523a2206206994597c13d831ec7").unwrap()),
+            transaction_index: None,
+            value: U256::zero(),
+            transaction_type: Some(U64::zero()),
+            v: U64::from(0x25),
+            r: U256::from_str_radix("c81e70f9e49e0d3b854720143e86d172fecc9e76ef8a8666f2fdc017017c5141", 16).unwrap(),
+            s: U256::from_str_radix("1dd3410180f6a6ca3e25ad3058789cd0df3321ed76b5b4dbe0a2bb2dc28ae274", 16).unwrap(),
+            chain_id: Some(U256::from(1)),
+            access_list: None,
+            max_fee_per_gas: None,
+            max_priority_fee_per_gas: None,
+            other: Default::default()
+        };
+
+        let rlp_bytes = hex::decode("f8aa808512ec276caf83010e2b94dac17f958d2ee523a2206206994597c13d831ec780b844a9059cbb000000000000000000000000fdae129ecc2c27d166a3131098bc05d143fa258e0000000000000000000000000000000000000000000000000000000002faf08025a0c81e70f9e49e0d3b854720143e86d172fecc9e76ef8a8666f2fdc017017c5141a01dd3410180f6a6ca3e25ad3058789cd0df3321ed76b5b4dbe0a2bb2dc28ae274").unwrap();
+
+        let decoded = Transaction::decode(&rlp::Rlp::new(&rlp_bytes)).unwrap();
+        assert_eq!(
+            decoded.hash(),
+            "929ff27a5c7833953df23103c4eb55ebdfb698678139d751c51932163877fada".parse().unwrap()
+        );
+        assert_eq!(decoded.hash(), tx.hash());
+        assert_eq!(
+            decoded.recover_from().unwrap(),
+            "0xc26ad91f4e7a0cad84c4b9315f420ca9217e315d".parse().unwrap()
+        );
     }
 
     #[test]
@@ -908,6 +1021,17 @@ mod tests {
         assert!(receipt.to.is_none());
         let receipt = serde_json::to_value(receipt).unwrap();
         assert_eq!(v, receipt);
+    }
+
+    #[test]
+    fn rlp_encode_receipt() {
+        let receipt = TransactionReceipt { status: Some(1u64.into()), ..Default::default() };
+        let encoded = receipt.rlp_bytes();
+
+        assert_eq!(
+            encoded,
+            hex::decode("f901060180b9010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000c0").unwrap(),
+        );
     }
 
     #[test]

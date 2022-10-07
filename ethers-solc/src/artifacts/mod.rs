@@ -2,7 +2,6 @@
 use crate::{
     compile::*, error::SolcIoError, remappings::Remapping, utils, ProjectPathsConfig, SolcError,
 };
-use colored::Colorize;
 use ethers_core::abi::Abi;
 use md5::Digest;
 use semver::{Version, VersionReq};
@@ -14,6 +13,7 @@ use std::{
     str::FromStr,
 };
 use tracing::warn;
+use yansi::Paint;
 
 pub mod ast;
 pub use ast::*;
@@ -49,6 +49,7 @@ pub(crate) type VersionedSources = BTreeMap<Solc, (Version, Sources)>;
 pub(crate) type VersionedFilteredSources = BTreeMap<Solc, (Version, FilteredSources)>;
 
 const SOLIDITY: &str = "Solidity";
+const YUL: &str = "Yul";
 
 /// Input type `solc` expects
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -88,7 +89,7 @@ impl CompilerInput {
         }
         if !yul_sources.is_empty() {
             res.push(Self {
-                language: "Yul".to_string(),
+                language: YUL.to_string(),
                 sources: yul_sources,
                 settings: Default::default(),
             });
@@ -137,7 +138,19 @@ impl CompilerInput {
 
     /// Sets the settings for compilation
     #[must_use]
-    pub fn settings(mut self, settings: Settings) -> Self {
+    pub fn settings(mut self, mut settings: Settings) -> Self {
+        if self.is_yul() {
+            if !settings.remappings.is_empty() {
+                warn!("omitting remappings supplied for the yul sources");
+                settings.remappings = vec![];
+            }
+            if let Some(debug) = settings.debug.as_mut() {
+                if debug.revert_strings.is_some() {
+                    warn!("omitting revertStrings supplied for the yul sources");
+                    debug.revert_strings = None;
+                }
+            }
+        }
         self.settings = settings;
         self
     }
@@ -168,7 +181,11 @@ impl CompilerInput {
 
     #[must_use]
     pub fn with_remappings(mut self, remappings: Vec<Remapping>) -> Self {
-        self.settings.remappings = remappings;
+        if self.is_yul() {
+            warn!("omitting remappings supplied for the yul sources");
+        } else {
+            self.settings.remappings = remappings;
+        }
         self
     }
 
@@ -199,6 +216,12 @@ impl CompilerInput {
         let base = base.as_ref();
         self.settings = self.settings.with_base_path(base);
         self.strip_prefix(base)
+    }
+
+    /// The flag indicating whether the current [CompilerInput] is
+    /// constructed for the yul sources
+    pub fn is_yul(&self) -> bool {
+        self.language == YUL
     }
 }
 
@@ -947,6 +970,10 @@ pub struct MetadataSettings {
     /// since metadata is per file
     #[serde(default)]
     pub libraries: BTreeMap<String, String>,
+    /// Change compilation pipeline to go through the Yul intermediate representation. This is
+    /// false by default.
+    #[serde(rename = "viaIR", default, skip_serializing_if = "Option::is_none")]
+    pub via_ir: Option<bool>,
 }
 
 /// Compilation source files/source units, keys are file names
@@ -1685,15 +1712,15 @@ impl fmt::Display for Error {
             match self.severity {
                 Severity::Error => {
                     if let Some(code) = self.error_code {
-                        format!("error[{}]: ", code).as_str().red().fmt(f)?;
+                        Paint::red(format!("error[{}]: ", code)).fmt(f)?;
                     }
-                    msg.as_str().red().fmt(f)
+                    Paint::red(msg).fmt(f)
                 }
                 Severity::Warning | Severity::Info => {
                     if let Some(code) = self.error_code {
-                        format!("warning[{}]: ", code).as_str().yellow().fmt(f)?;
+                        Paint::yellow(format!("warning[{}]: ", code)).fmt(f)?;
                     }
-                    msg.as_str().yellow().fmt(f)
+                    Paint::yellow(msg).fmt(f)
                 }
             }
         } else {
@@ -1713,8 +1740,8 @@ pub enum Severity {
 impl fmt::Display for Severity {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Severity::Error => f.write_str(&"Error".red()),
-            Severity::Warning => f.write_str(&"Warning".yellow()),
+            Severity::Error => Paint::red("Error").fmt(f),
+            Severity::Warning => Paint::yellow("Warning").fmt(f),
             Severity::Info => f.write_str("Info"),
         }
     }

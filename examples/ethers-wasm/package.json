@@ -1,18 +1,20 @@
 {
-  "name": "ethers-wasm",
-  "license": "MIT OR Apache-2.0",
-  "scripts": {
-    "build": "webpack",
-    "serve": "webpack-dev-server",
-    "ganache": "ganache-cli --blockTime 2 -m \"stuff inherit faith park genre spread huge knee ecology private marble supreme\""
-  },
-  "devDependencies": {
-    "@wasm-tool/wasm-pack-plugin": "1.0.1",
-    "html-webpack-plugin": "^3.2.0",
-    "text-encoding": "^0.7.0",
-    "webpack": "^4.29.4",
-    "webpack-cli": "^3.1.1",
-    "webpack-dev-server": "^3.1.0",
-    "ganache-cli": "^6.12.2"
-  }
+    "name": "ethers-wasm",
+    "license": "MIT OR Apache-2.0",
+    "private": "true",
+    "scripts": {
+        "build": "webpack",
+        "serve": "webpack-dev-server",
+        "anvil": "anvil -m 'stuff inherit faith park genre spread huge knee ecology private marble supreme'",
+        "ganache": "ganache-cli -m 'stuff inherit faith park genre spread huge knee ecology private marble supreme'"
+    },
+    "devDependencies": {
+        "@wasm-tool/wasm-pack-plugin": "^1.6",
+        "html-webpack-plugin": "^5.5",
+        "text-encoding": "^0.7",
+        "webpack": "^5.74",
+        "webpack-cli": "^4.10",
+        "webpack-dev-server": "^4.11",
+        "ganache-cli": "^6.12"
+    }
 }

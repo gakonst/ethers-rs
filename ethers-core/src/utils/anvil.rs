@@ -11,7 +11,7 @@ use std::{
 };
 
 /// How long we will wait for anvil to indicate that it is ready.
-const ANVIL_STARTUP_TIMEOUT_MILLIS: u64 = 5_000;
+const ANVIL_STARTUP_TIMEOUT_MILLIS: u64 = 10_000;
 
 /// An anvil CLI instance. Will close the instance when dropped.
 ///
@@ -93,6 +93,7 @@ pub struct Anvil {
     fork: Option<String>,
     fork_block_number: Option<u64>,
     args: Vec<String>,
+    timeout: Option<u64>,
 }
 
 impl Anvil {
@@ -206,6 +207,13 @@ impl Anvil {
         self
     }
 
+    /// Sets the timeout which will be used when the `anvil` instance is launched.
+    #[must_use]
+    pub fn timeout<T: Into<u64>>(mut self, timeout: T) -> Self {
+        self.timeout = Some(timeout.into());
+        self
+    }
+
     /// Consumes the builder and spawns `anvil` with stdout redirected
     /// to /dev/null.
     pub fn spawn(self) -> AnvilInstance {
@@ -214,7 +222,7 @@ impl Anvil {
         } else {
             Command::new("anvil")
         };
-        cmd.stdout(std::process::Stdio::piped());
+        cmd.stdout(std::process::Stdio::piped()).stderr(std::process::Stdio::inherit());
         let port = if let Some(port) = self.port { port } else { unused_port() };
         cmd.arg("-p").arg(port.to_string());
 
@@ -242,7 +250,7 @@ impl Anvil {
 
         let mut child = cmd.spawn().expect("couldnt start anvil");
 
-        let stdout = child.stdout.expect("Unable to get stdout for anvil child process");
+        let stdout = child.stdout.take().expect("Unable to get stdout for anvil child process");
 
         let start = Instant::now();
         let mut reader = BufReader::new(stdout);
@@ -251,7 +259,9 @@ impl Anvil {
         let mut addresses = Vec::new();
         let mut is_private_key = false;
         loop {
-            if start + Duration::from_millis(ANVIL_STARTUP_TIMEOUT_MILLIS) <= Instant::now() {
+            if start + Duration::from_millis(self.timeout.unwrap_or(ANVIL_STARTUP_TIMEOUT_MILLIS)) <=
+                Instant::now()
+            {
                 panic!("Timed out waiting for anvil to start. Is anvil installed?")
             }
 
@@ -273,8 +283,6 @@ impl Anvil {
                 private_keys.push(key);
             }
         }
-
-        child.stdout = Some(reader.into_inner());
 
         AnvilInstance { pid: child, private_keys, addresses, port, chain_id: self.chain_id }
     }

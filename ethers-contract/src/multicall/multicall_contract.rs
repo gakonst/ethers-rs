@@ -26,7 +26,7 @@ pub mod multicall_3 {
             &self.0
         }
     }
-    impl<M: ethers_providers::Middleware> std::fmt::Debug for Multicall3<M> {
+    impl<M> std::fmt::Debug for Multicall3<M> {
         fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
             f.debug_tuple(stringify!(Multicall3)).field(&self.address()).finish()
         }

@@ -3,16 +3,13 @@ mod common;
 mod errors;
 mod events;
 mod methods;
-mod structs;
+pub(crate) mod structs;
 mod types;
 
 use super::{util, Abigen};
-use crate::{
-    contract::{methods::MethodAlias, structs::InternalStructs},
-    rawabi::JsonAbi,
-};
+use crate::contract::{methods::MethodAlias, structs::InternalStructs};
 use ethers_core::{
-    abi::{Abi, AbiParser, ErrorExt, EventExt},
+    abi::{Abi, AbiParser, ErrorExt, EventExt, JsonAbi},
     macros::{ethers_contract_crate, ethers_core_crate, ethers_providers_crate},
     types::Bytes,
 };
@@ -207,6 +204,7 @@ impl Context {
                 .rust_type_names
                 .extend(abi_parser.function_params.values().map(|ty| (ty.clone(), ty.clone())));
             internal_structs.function_params = abi_parser.function_params.clone();
+            internal_structs.event_params = abi_parser.event_params.clone();
             internal_structs.outputs = abi_parser.outputs.clone();
 
             internal_structs

@@ -14,7 +14,7 @@ use crate::{
 };
 use ethers_core::{abi::Abi, types::Bytes};
 use semver::Version;
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{
     borrow::Cow,
     collections::{btree_map::BTreeMap, HashSet},
@@ -34,7 +34,7 @@ use crate::files::MappedContract;
 pub use configurable::*;
 
 /// Represents unique artifact metadata for identifying artifacts on output
-#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
+#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub struct ArtifactId {
     /// `artifact` cache path
     pub path: PathBuf,
@@ -563,7 +563,7 @@ where
 /// relationship (1-N+).
 pub trait ArtifactOutput {
     /// Represents the artifact that will be stored for a `Contract`
-    type Artifact: Artifact + DeserializeOwned + Serialize + fmt::Debug;
+    type Artifact: Artifact + DeserializeOwned + Serialize + fmt::Debug + Send + Sync;
 
     /// Handle the aggregated set of compiled contracts from the solc [`crate::CompilerOutput`].
     ///

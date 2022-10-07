@@ -458,8 +458,15 @@ mod tests {
         collections::HashSet,
         fs::{create_dir_all, File},
     };
-
     use tempdir;
+
+    #[test]
+    fn can_create_parent_dirs_with_ext() {
+        let tmp_dir = tempdir("out").unwrap();
+        let path = tmp_dir.path().join("IsolationModeMagic.sol/IsolationModeMagic.json");
+        create_parent_dir_all(&path).unwrap();
+        assert!(path.parent().unwrap().is_dir());
+    }
 
     #[test]
     fn can_determine_local_paths() {
@@ -564,7 +571,7 @@ pragma solidity ^0.8.0;
         let a = Path::new("/foo/bar/bar/test.txt");
         let b = Path::new("/foo/bar/foo/example/constract.sol");
         let expected = Path::new("/foo/bar");
-        assert_eq!(common_ancestor(&a, &b).unwrap(), expected.to_path_buf())
+        assert_eq!(common_ancestor(a, b).unwrap(), expected.to_path_buf())
     }
 
     #[test]

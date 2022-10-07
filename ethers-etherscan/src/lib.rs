@@ -1,5 +1,6 @@
 //! Bindings for [etherscan.io web api](https://docs.etherscan.io/)
 
+use crate::errors::is_blocked_by_cloudflare_response;
 use contract::ContractMetadata;
 use errors::EtherscanError;
 use ethers_core::{
@@ -14,7 +15,8 @@ use std::{
     path::PathBuf,
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
-use tracing::trace;
+use tracing::{error, trace};
+
 pub mod account;
 pub mod contract;
 pub mod errors;
@@ -22,6 +24,7 @@ pub mod gas;
 pub mod source_tree;
 pub mod transaction;
 pub mod utils;
+pub mod verify;
 
 pub(crate) type Result<T> = std::result::Result<T, EtherscanError>;
 
@@ -91,6 +94,7 @@ impl Client {
             Chain::BinanceSmartChainTestnet |
             Chain::Arbitrum |
             Chain::ArbitrumTestnet |
+            Chain::ArbitrumGoerli |
             Chain::Cronos |
             Chain::CronosTestnet |
             Chain::Aurora |
@@ -152,35 +156,58 @@ impl Client {
         format!("{}token/{:?}", self.etherscan_url, token_hash)
     }
 
-    /// Execute an API POST request with a form
-    async fn post_form<T: DeserializeOwned, Form: Serialize>(
-        &self,
-        form: &Form,
-    ) -> Result<Response<T>> {
-        trace!(target: "etherscan", "POST FORM {}", self.etherscan_api_url);
-        Ok(self
-            .client
-            .post(self.etherscan_api_url.clone())
-            .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
-            .form(form)
-            .send()
-            .await?
-            .json()
-            .await?)
+    /// Execute an GET request with parameters.
+    async fn get_json<T: DeserializeOwned, Q: Serialize>(&self, query: &Q) -> Result<Response<T>> {
+        let res = self.get(query).await?;
+        self.sanitize_response(res)
     }
 
-    /// Execute an API GET request with parameters
-    async fn get_json<T: DeserializeOwned, Q: Serialize>(&self, query: &Q) -> Result<Response<T>> {
-        trace!(target: "etherscan", "GET JSON {}", self.etherscan_api_url);
-        let res: ResponseData<T> = self
+    /// Execute a GET request with parameters, without sanity checking the response.
+    async fn get<Q: Serialize>(&self, query: &Q) -> Result<String> {
+        trace!(target: "etherscan", "GET {}", self.etherscan_api_url);
+        let response = self
             .client
             .get(self.etherscan_api_url.clone())
             .header(header::ACCEPT, "application/json")
             .query(query)
             .send()
             .await?
-            .json()
+            .text()
             .await?;
+        Ok(response)
+    }
+
+    /// Execute a POST request with a form.
+    async fn post_form<T: DeserializeOwned, F: Serialize>(&self, form: &F) -> Result<Response<T>> {
+        let res = self.post(form).await?;
+        self.sanitize_response(res)
+    }
+
+    /// Execute a POST request with a form, without sanity checking the response.
+    async fn post<F: Serialize>(&self, form: &F) -> Result<String> {
+        trace!(target: "etherscan", "POST {}", self.etherscan_api_url);
+        let response = self
+            .client
+            .post(self.etherscan_api_url.clone())
+            .form(form)
+            .send()
+            .await?
+            .text()
+            .await?;
+        Ok(response)
+    }
+
+    /// Perform sanity checks on a response and deserialize it into a [Response].
+    fn sanitize_response<T: DeserializeOwned>(&self, res: impl AsRef<str>) -> Result<Response<T>> {
+        let res = res.as_ref();
+        let res: ResponseData<T> = serde_json::from_str(res).map_err(|err| {
+            error!(target: "etherscan", ?res, "Failed to deserialize response: {}", err);
+            if is_blocked_by_cloudflare_response(res) {
+                EtherscanError::BlockedByCloudflare
+            } else {
+                EtherscanError::Serde(err)
+            }
+        })?;
 
         match res {
             ResponseData::Error { result, .. } => {
