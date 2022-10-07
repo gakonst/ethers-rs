@@ -30,7 +30,7 @@ thiserror = "1.0"
 hex = "0.4.3"
 yansi = "0.5.1"
 glob = "0.3.0"
-tracing = "0.1.36"
+tracing = "0.1.37"
 num_cpus = "1.13.1"
 tiny-keccak = { version = "2.0.2", default-features = false }
 tempfile = { version = "3.3.0", optional = true }
