@@ -469,6 +469,17 @@ mod tests {
     }
 
     #[test]
+    fn can_create_parent_dirs_versioned() {
+        let tmp_dir = tempdir("out").unwrap();
+        let path = tmp_dir.path().join("IVersioned.sol/IVersioned.0.8.16.json");
+        create_parent_dir_all(&path).unwrap();
+        assert!(path.parent().unwrap().is_dir());
+        let path = tmp_dir.path().join("IVersioned.sol/IVersioned.json");
+        create_parent_dir_all(&path).unwrap();
+        assert!(path.parent().unwrap().is_dir());
+    }
+
+    #[test]
     fn can_determine_local_paths() {
         assert!(is_local_source_name(&[""], "./local/contract.sol"));
         assert!(is_local_source_name(&[""], "../local/contract.sol"));

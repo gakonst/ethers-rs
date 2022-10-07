@@ -10,7 +10,7 @@ use crate::{
     error::Result,
     sourcemap::{SourceMap, SyntaxError},
     sources::VersionedSourceFile,
-    utils, HardhatArtifact, ProjectPathsConfig, SolFilesCache, SolcError,
+    utils, HardhatArtifact, ProjectPathsConfig, SolFilesCache, SolcError, SolcIoError,
 };
 use ethers_core::{abi::Abi, types::Bytes};
 use semver::Version;
@@ -577,6 +577,11 @@ pub trait ArtifactOutput {
         ctx: OutputContext,
     ) -> Result<Artifacts<Self::Artifact>> {
         let mut artifacts = self.output_to_artifacts(contracts, sources, ctx);
+        fs::create_dir_all(&layout.artifacts).map_err(|err| {
+            error!(dir=?layout.artifacts, "Failed to create artifacts folder");
+            SolcIoError::new(err, &layout.artifacts)
+        })?;
+
         artifacts.join_all(&layout.artifacts);
         artifacts.write_all()?;
 
