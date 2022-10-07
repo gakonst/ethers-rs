@@ -19,12 +19,12 @@ abigen!(
     ]"#
 );
 
+fn main() {}
+
 // Remove liquidity from uniswap V2.
 // This example will remove 500 liquidity of 2 test tokens, TA and TB on goerli testnet.
 // This example uses pair contract and uniswap swap contract to remove liquidity.
-#[tokio::main]
-#[ignore]
-async fn main() -> Result<()> {
+pub async fn example() -> Result<()> {
     let provider = Arc::new({
         // connect to the network
         let provider = Provider::<Http>::try_from(
