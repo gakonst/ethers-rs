@@ -366,8 +366,6 @@ impl Decodable for Transaction {
                 (first, data)
             };
 
-            txn.transaction_type = Some(first.into());
-
             let bytes = data.get(1..).ok_or(DecoderError::Custom("no tx body"))?;
             let rest = rlp::Rlp::new(bytes);
             match first {
