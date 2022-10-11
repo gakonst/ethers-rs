@@ -33,7 +33,7 @@ impl MockProjectSkeleton {
 }
 
 /// Represents a virtual project
-#[derive(Serialize)]
+#[derive(Serialize, Default)]
 pub struct MockProjectGenerator {
     /// how to name things
     #[serde(skip)]
@@ -365,12 +365,6 @@ impl MockProjectGenerator {
 impl From<MockProjectSkeleton> for MockProjectGenerator {
     fn from(inner: MockProjectSkeleton) -> Self {
         Self { inner, ..Default::default() }
-    }
-}
-
-impl Default for MockProjectGenerator {
-    fn default() -> Self {
-        Self { name_strategy: Box::new(SimpleNamingStrategy::default()), inner: Default::default() }
     }
 }
 
