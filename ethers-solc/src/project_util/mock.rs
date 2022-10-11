@@ -362,6 +362,7 @@ impl MockProjectGenerator {
     }
 }
 
+#[allow(clippy::derivable_impls)]
 impl Default for MockProjectGenerator {
     fn default() -> Self {
         Self { name_strategy: Box::<SimpleNamingStrategy>::default(), inner: Default::default() }
