@@ -16,7 +16,7 @@ pub async fn lookup_compiler_version(version: &Version) -> Result<Version> {
         .lines()
         .find(|l| !l.contains("nightly") && l.contains(&version))
         .map(|l| l.trim_start_matches("soljson-v").trim_end_matches(".js"))
-        .ok_or(EtherscanError::MissingSolcVersion(version))?;
+        .ok_or_else(|| EtherscanError::MissingSolcVersion(version))?;
 
     Ok(v.parse().expect("failed to parse semver"))
 }

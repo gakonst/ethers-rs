@@ -270,7 +270,7 @@ impl ClientBuilder {
         let (etherscan_api_url, etherscan_url) = chain
             .etherscan_urls()
             .map(|(api, base)| urls(api, base))
-            .ok_or(EtherscanError::ChainNotSupported(chain))?;
+            .ok_or_else(|| EtherscanError::ChainNotSupported(chain))?;
         self.with_api_url(etherscan_api_url?)?.with_url(etherscan_url?)
     }
 

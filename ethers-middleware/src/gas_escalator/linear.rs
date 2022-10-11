@@ -32,7 +32,7 @@ impl LinearGasPrice {
 
 impl GasEscalator for LinearGasPrice {
     fn get_gas_price(&self, initial_price: U256, time_elapsed: u64) -> U256 {
-        let mut result = initial_price + self.increase_by * (time_elapsed / self.every_secs) as u64;
+        let mut result = initial_price + self.increase_by * (time_elapsed / self.every_secs);
         dbg!(time_elapsed, self.every_secs);
         if let Some(max_price) = self.max_price {
             result = std::cmp::min(result, max_price);
