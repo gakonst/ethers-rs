@@ -27,12 +27,12 @@ async fn main() -> Result<()> {
     let provider = Arc::new({
         // connect to the network
         let provider = Provider::<Http>::try_from(
-            "https://goerli.infura.io/v3/a111fcada47746d990e0e2b7df50d00a",
+            "https://rinkeby.infura.io/v3/a111fcada47746d990e0e2b7df50d00a",
         )?;
         let chain_id = provider.get_chainid().await?;
 
         // this wallet's private key
-        let wallet = "8d978ca83c2e40b7a23933885e6c3bc795caea09374a04a03fbd4e228a06a406"
+        let wallet = "725fd1619b2653b7ff1806bf29ae11d0568606d83777afd5b1f2e649bd5132a9"
             .parse::<LocalWallet>()?
             .with_chain_id(chain_id.as_u64());
 
