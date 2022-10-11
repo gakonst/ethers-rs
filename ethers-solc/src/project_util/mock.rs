@@ -33,7 +33,7 @@ impl MockProjectSkeleton {
 }
 
 /// Represents a virtual project
-#[derive(Serialize, Default)]
+#[derive(Serialize)]
 pub struct MockProjectGenerator {
     /// how to name things
     #[serde(skip)]
@@ -359,6 +359,12 @@ impl MockProjectGenerator {
         let mut imports: Vec<_> = (lib.offset..(lib.offset + lib.len())).collect();
         imports.shuffle(rng);
         imports.into_iter().filter(|i| *i != id).map(|id| self.get_import(id)).take(num).collect()
+    }
+}
+
+impl Default for MockProjectGenerator {
+    fn default() -> Self {
+        Self { name_strategy: Box::<SimpleNamingStrategy>::default(), inner: Default::default() }
     }
 }
 
