@@ -104,6 +104,10 @@ impl Abigen {
             .to_str()
             .ok_or_else(|| eyre::format_err!("Unable to convert file stem to string"))?;
 
+        // test,script files usually end with `.t.sol` or `.s.sol`, we simply cut off everything
+        // after the first `.`
+        let name = name.split('.').next().expect("name not empty.");
+
         Self::new(name, std::fs::read_to_string(path.as_ref())?)
     }
 
@@ -306,6 +310,41 @@ contract Greeter {
 
         let abigen =
             Abigen::from_file(tmp.artifacts_path().join("Greeter.sol/Greeter.json")).unwrap();
+        let gen = abigen.generate().unwrap();
+        let out = gen.tokens.to_string();
+        assert!(out.contains("pub struct Stuff"));
+        assert!(out.contains("pub struct Inner"));
+    }
+
+    #[test]
+    fn can_compile_and_generate_with_punctuation() {
+        let tmp = TempProject::dapptools().unwrap();
+
+        tmp.add_source(
+            "Greeter.t.sol",
+            r#"
+// SPDX-License-Identifier: MIT
+pragma solidity >=0.8.0;
+
+contract Greeter {
+    struct Inner {
+        bool a;
+    }
+    struct Stuff {
+        Inner inner;
+    }
+    function greet(Stuff calldata stuff) public view returns (Stuff memory) {
+        return stuff;
+    }
+}
+"#,
+        )
+        .unwrap();
+
+        let _ = tmp.compile().unwrap();
+
+        let abigen =
+            Abigen::from_file(tmp.artifacts_path().join("Greeter.t.sol/Greeter.json")).unwrap();
         let gen = abigen.generate().unwrap();
         let out = gen.tokens.to_string();
         assert!(out.contains("pub struct Stuff"));
