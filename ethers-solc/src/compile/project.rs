@@ -305,10 +305,20 @@ impl<'a, T: ArtifactOutput> CompiledState<'a, T> {
         // write all artifacts via the handler but only if the build succeeded and project wasn't
         // configured with `no_artifacts == true`
         let compiled_artifacts = if project.no_artifacts {
-            project.artifacts_handler().output_to_artifacts(&output.contracts, &output.sources, ctx)
+            project.artifacts_handler().output_to_artifacts(
+                &output.contracts,
+                &output.sources,
+                ctx,
+                &project.paths,
+            )
         } else if output.has_error() {
             trace!("skip writing cache file due to solc errors: {:?}", output.errors);
-            project.artifacts_handler().output_to_artifacts(&output.contracts, &output.sources, ctx)
+            project.artifacts_handler().output_to_artifacts(
+                &output.contracts,
+                &output.sources,
+                ctx,
+                &project.paths,
+            )
         } else {
             trace!(
                 "handling artifact output for {} contracts and {} sources",

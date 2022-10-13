@@ -576,7 +576,7 @@ pub trait ArtifactOutput {
         layout: &ProjectPathsConfig,
         ctx: OutputContext,
     ) -> Result<Artifacts<Self::Artifact>> {
-        let mut artifacts = self.output_to_artifacts(contracts, sources, ctx);
+        let mut artifacts = self.output_to_artifacts(contracts, sources, ctx, layout);
         fs::create_dir_all(&layout.artifacts).map_err(|err| {
             error!(dir=?layout.artifacts, "Failed to create artifacts folder");
             SolcIoError::new(err, &layout.artifacts)
@@ -652,23 +652,31 @@ pub trait ArtifactOutput {
         already_taken: &HashSet<PathBuf>,
         conflict: PathBuf,
         contract_file: impl AsRef<Path>,
+        artifacts_folder: impl AsRef<Path>,
     ) -> PathBuf {
-        let mut candidate = conflict.clone();
+        let artifacts_folder = artifacts_folder.as_ref();
+        let mut rel_candidate = conflict;
+        if let Ok(stripped) = rel_candidate.strip_prefix(artifacts_folder) {
+            rel_candidate = stripped.to_path_buf();
+        }
+        let mut candidate = rel_candidate.clone();
         let contract_file = contract_file.as_ref();
         let mut current_parent = contract_file.parent();
 
-        while let Some(parent) = current_parent.and_then(|f| f.file_name()) {
-            candidate = Path::new(parent).join(&candidate);
-            if !already_taken.contains(&candidate) {
-                trace!("found alternative output file={:?} for {:?}", candidate, contract_file);
-                return candidate
+        while let Some(parent_name) = current_parent.and_then(|f| f.file_name()) {
+            // this is problematic if both files are absolute
+            candidate = Path::new(parent_name).join(&candidate);
+            let out_path = artifacts_folder.join(&candidate);
+            if !already_taken.contains(&out_path) {
+                trace!("found alternative output file={:?} for {:?}", out_path, contract_file);
+                return out_path
             }
             current_parent = current_parent.and_then(|f| f.parent());
         }
 
         // this means we haven't found an alternative yet, which shouldn't actually happen since
         // `contract_file` are unique, but just to be safe, handle this case in which case
-        // we simply numerate
+        // we simply numerate the parent folder
 
         trace!("no conflict free output file found after traversing the file");
 
@@ -677,7 +685,7 @@ pub trait ArtifactOutput {
         loop {
             // this will attempt to find an alternate path by numerating the first component in the
             // path: `<root>+_<num>/....sol`
-            let mut components = conflict.components();
+            let mut components = rel_candidate.components();
             let first = components.next().expect("path not empty");
             let name = first.as_os_str();
             let mut numerated = OsString::with_capacity(name.len() + 2);
@@ -799,6 +807,7 @@ pub trait ArtifactOutput {
         contracts: &VersionedContracts,
         sources: &VersionedSourceFiles,
         ctx: OutputContext,
+        layout: &ProjectPathsConfig,
     ) -> Artifacts<Self::Artifact> {
         let mut artifacts = ArtifactsMap::new();
 
@@ -840,6 +849,7 @@ pub trait ArtifactOutput {
                             &final_artifact_paths,
                             artifact_path,
                             file,
+                            &layout.artifacts,
                         );
                     }
                 }
@@ -898,6 +908,7 @@ pub trait ArtifactOutput {
                                     &final_artifact_paths,
                                     artifact_path,
                                     file,
+                                    &layout.artifacts,
                                 );
                                 final_artifact_paths.insert(artifact_path.clone());
                             }
@@ -1087,26 +1098,46 @@ mod tests {
         let mut already_taken = HashSet::new();
 
         let file = "v1/tokens/Greeter.sol";
-        let conflict = PathBuf::from("Greeter.sol/Greeter.json");
+        let conflict = PathBuf::from("out/Greeter.sol/Greeter.json");
 
         let alternative = ConfigurableArtifacts::conflict_free_output_file(
             &already_taken,
             conflict.clone(),
             file,
+            "out",
         );
-        assert_eq!(alternative, PathBuf::from("tokens/Greeter.sol/Greeter.json"));
+        assert_eq!(alternative, PathBuf::from("out/tokens/Greeter.sol/Greeter.json"));
 
-        already_taken.insert("tokens/Greeter.sol/Greeter.json".into());
+        already_taken.insert("out/tokens/Greeter.sol/Greeter.json".into());
         let alternative = ConfigurableArtifacts::conflict_free_output_file(
             &already_taken,
             conflict.clone(),
             file,
+            "out",
         );
-        assert_eq!(alternative, PathBuf::from("v1/tokens/Greeter.sol/Greeter.json"));
+        assert_eq!(alternative, PathBuf::from("out/v1/tokens/Greeter.sol/Greeter.json"));
 
-        already_taken.insert("v1/tokens/Greeter.sol/Greeter.json".into());
+        already_taken.insert("out/v1/tokens/Greeter.sol/Greeter.json".into());
         let alternative =
-            ConfigurableArtifacts::conflict_free_output_file(&already_taken, conflict, file);
+            ConfigurableArtifacts::conflict_free_output_file(&already_taken, conflict, file, "out");
         assert_eq!(alternative, PathBuf::from("Greeter.sol_1/Greeter.json"));
+    }
+
+    #[test]
+    fn can_find_alternate_path_conflict() {
+        let mut already_taken = HashSet::new();
+
+        let file = "/Users/carter/dev/goldfinch/mono/packages/protocol/test/forge/mainnet/utils/BaseMainnetForkingTest.t.sol";
+        let conflict = PathBuf::from("/Users/carter/dev/goldfinch/mono/packages/protocol/artifacts/BaseMainnetForkingTest.t.sol/BaseMainnetForkingTest.json");
+        already_taken.insert("/Users/carter/dev/goldfinch/mono/packages/protocol/artifacts/BaseMainnetForkingTest.t.sol/BaseMainnetForkingTest.json".into());
+
+        let alternative = ConfigurableArtifacts::conflict_free_output_file(
+            &already_taken,
+            conflict.clone(),
+            file,
+            "/Users/carter/dev/goldfinch/mono/packages/protocol/artifacts",
+        );
+
+        assert_eq!(alternative, PathBuf::from("/Users/carter/dev/goldfinch/mono/packages/protocol/artifacts/utils/BaseMainnetForkingTest.t.sol/BaseMainnetForkingTest.json"));
     }
 }

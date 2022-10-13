@@ -933,8 +933,9 @@ impl<T: ArtifactOutput> ArtifactOutput for Project<T> {
         contracts: &VersionedContracts,
         sources: &VersionedSourceFiles,
         ctx: OutputContext,
+        layout: &ProjectPathsConfig,
     ) -> Artifacts<Self::Artifact> {
-        self.artifacts_handler().output_to_artifacts(contracts, sources, ctx)
+        self.artifacts_handler().output_to_artifacts(contracts, sources, ctx, layout)
     }
 
     fn standalone_source_file_to_artifact(
