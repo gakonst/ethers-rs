@@ -18,7 +18,7 @@ mod factory;
 pub use factory::{ContractDeployer, ContractFactory};
 
 mod event;
-pub use event::EthEvent;
+pub use event::{EthEvent, Event};
 
 mod log;
 pub use log::{decode_logs, EthLogDecode, LogMeta};
