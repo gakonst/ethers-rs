@@ -41,7 +41,7 @@ cargo_metadata = { version = "0.15.0", optional = true }
 # eip712 feature enabled dependencies
 convert_case = { version = "0.6.0", optional = true }
 syn = { version = "1.0.102", optional = true }
-proc-macro2 = { version = "1.0.46", optional = true }
+proc-macro2 = { version = "1.0.47", optional = true }
 rust_decimal = { version = "1.26.1", features = ["maths"] }
 
 [dev-dependencies]
