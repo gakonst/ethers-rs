@@ -535,6 +535,10 @@ impl<'de> Deserialize<'de> for BlockId {
 pub enum BlockNumber {
     /// Latest block
     Latest,
+    /// Finalized block accepted as canonical
+    Finalized,
+    /// Safe head block
+    Safe,
     /// Earliest block (genesis)
     Earliest,
     /// Pending block (not yet part of the blockchain)
@@ -562,6 +566,16 @@ impl BlockNumber {
         matches!(self, BlockNumber::Latest)
     }
 
+    /// Returns `true` if it's "finalized"
+    pub fn is_finalized(&self) -> bool {
+        matches!(self, BlockNumber::Finalized)
+    }
+    
+    /// Returns `true` if it's "safe"
+     pub fn is_safe(&self) -> bool {
+        matches!(self, BlockNumber::Safe)
+    }
+
     /// Returns `true` if it's "pending"
     pub fn is_pending(&self) -> bool {
         matches!(self, BlockNumber::Pending)
@@ -587,6 +601,8 @@ impl Serialize for BlockNumber {
         match *self {
             BlockNumber::Number(ref x) => serializer.serialize_str(&format!("0x{:x}", x)),
             BlockNumber::Latest => serializer.serialize_str("latest"),
+            BlockNumber::Finalized => serializer.serialize_str("finalized"),
+            BlockNumber::Safe => serializer.serialize_str("safe"),
             BlockNumber::Earliest => serializer.serialize_str("earliest"),
             BlockNumber::Pending => serializer.serialize_str("pending"),
         }
@@ -609,6 +625,8 @@ impl FromStr for BlockNumber {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let block = match s {
             "latest" => Self::Latest,
+            "finalized" => Self::Finalized,
+            "safe" => Self::Safe,
             "earliest" => Self::Earliest,
             "pending" => Self::Pending,
             n => BlockNumber::Number(n.parse::<U64>().map_err(|err| err.to_string())?),
@@ -622,6 +640,8 @@ impl fmt::Display for BlockNumber {
         match self {
             BlockNumber::Number(ref x) => format!("0x{:x}", x).fmt(f),
             BlockNumber::Latest => f.write_str("latest"),
+            BlockNumber::Finalized => f.write_str("finalized"),
+            BlockNumber::Safe => f.write_str("safe"),
             BlockNumber::Earliest => f.write_str("earliest"),
             BlockNumber::Pending => f.write_str("pending"),
         }
@@ -661,6 +681,18 @@ mod tests {
         assert_eq!(id, BlockId::Number(BlockNumber::Latest));
 
         let num = serde_json::json!(
+            { "blockNumber": "finalized" }
+        );
+        let id = serde_json::from_value::<BlockId>(num).unwrap();
+        assert_eq!(id, BlockId::Number(BlockNumber::Finalized));
+
+        let num = serde_json::json!(
+            { "blockNumber": "safe" }
+        );
+        let id = serde_json::from_value::<BlockId>(num).unwrap();
+        assert_eq!(id, BlockId::Number(BlockNumber::Safe));
+
+        let num = serde_json::json!(
             { "blockNumber": "earliest" }
         );
         let id = serde_json::from_value::<BlockId>(num).unwrap();
@@ -677,6 +709,14 @@ mod tests {
         let num = serde_json::json!("latest");
         let id = serde_json::from_value::<BlockId>(num).unwrap();
         assert_eq!(id, BlockId::Number(BlockNumber::Latest));
+
+        let num = serde_json::json!("finalized");
+        let id = serde_json::from_value::<BlockId>(num).unwrap();
+        assert_eq!(id, BlockId::Number(BlockNumber::Finalized));
+
+        let num = serde_json::json!("safe");
+        let id = serde_json::from_value::<BlockId>(num).unwrap();
+        assert_eq!(id, BlockId::Number(BlockNumber::Safe));
 
         let num = serde_json::json!("earliest");
         let id = serde_json::from_value::<BlockId>(num).unwrap();
@@ -698,7 +738,13 @@ mod tests {
 
     #[test]
     fn serde_block_number() {
-        for b in &[BlockNumber::Latest, BlockNumber::Earliest, BlockNumber::Pending] {
+        for b in &[
+            BlockNumber::Latest,
+            BlockNumber::Finalized,
+            BlockNumber::Safe,
+            BlockNumber::Earliest,
+            BlockNumber::Pending,
+        ] {
             let b_ser = serde_json::to_string(&b).unwrap();
             let b_de: BlockNumber = serde_json::from_str(&b_ser).unwrap();
             assert_eq!(b_de, *b);

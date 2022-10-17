@@ -12,6 +12,9 @@ async fn main() -> Result<()> {
     let last_block = client.get_block(BlockNumber::Latest).await?.unwrap().number.unwrap();
     println!("last_block: {}", last_block);
 
+    let finalized_block = client.get_block(BlockNumber::Finalized).await?.unwrap().number.unwrap();
+    println!("finalized_block: {}", finalized_block);
+
     let erc20_transfer_filter = Filter::new()
         .from_block(last_block - 25)
         .topic0(ValueOrArray::Value(H256::from(keccak256("Transfer(address,address,uint256)"))));
