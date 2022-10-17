@@ -584,7 +584,7 @@ impl<M: Middleware> Multicall<M> {
     ///
     /// # Examples
     ///
-    /// The return type must be annonated while calling this method:
+    /// The return type must be annotated while calling this method:
     ///
     /// ```no_run
     /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
