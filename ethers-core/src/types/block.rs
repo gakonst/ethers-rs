@@ -570,9 +570,9 @@ impl BlockNumber {
     pub fn is_finalized(&self) -> bool {
         matches!(self, BlockNumber::Finalized)
     }
-    
+
     /// Returns `true` if it's "safe"
-     pub fn is_safe(&self) -> bool {
+    pub fn is_safe(&self) -> bool {
         matches!(self, BlockNumber::Safe)
     }
 
