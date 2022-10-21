@@ -583,7 +583,7 @@ dependencies = [
  "bs58",
  "coins-core",
  "digest 0.10.5",
- "getrandom 0.2.7",
+ "getrandom 0.2.8",
  "hmac 0.12.1",
  "k256",
  "lazy_static",
@@ -600,7 +600,7 @@ checksum = "2a11892bcac83b4c6e95ab84b5b06c76d9d70ad73548dd07418269c5c7977171"
 dependencies = [
  "bitvec 0.17.4",
  "coins-bip32",
- "getrandom 0.2.7",
+ "getrandom 0.2.8",
  "hex",
  "hmac 0.12.1",
  "pbkdf2 0.11.0",
@@ -1252,7 +1252,7 @@ dependencies = [
  "ethers-core",
  "ethers-solc",
  "eyre",
- "getrandom 0.2.7",
+ "getrandom 0.2.8",
  "hex",
  "proc-macro2",
  "quote",
@@ -1329,7 +1329,7 @@ version = "0.17.0"
 dependencies = [
  "ethers-core",
  "ethers-solc",
- "getrandom 0.2.7",
+ "getrandom 0.2.8",
  "reqwest",
  "semver",
  "serde",
@@ -1385,7 +1385,7 @@ dependencies = [
  "futures-core",
  "futures-timer",
  "futures-util",
- "getrandom 0.2.7",
+ "getrandom 0.2.8",
  "hashers",
  "hex",
  "http",
@@ -1453,7 +1453,7 @@ dependencies = [
  "ethers-core",
  "fs_extra",
  "futures-util",
- "getrandom 0.2.7",
+ "getrandom 0.2.8",
  "glob",
  "hex",
  "home",
@@ -1786,9 +1786,9 @@ dependencies = [
 
 [[package]]
 name = "getrandom"
-version = "0.2.7"
+version = "0.2.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4eb1a864a501629691edf6c15a593b7a51eebaa1e8468e9ddc623de7c9b58ec6"
+checksum = "c05aeb6a22b8f62540c194aac980f2115af067bfe15a0734d7277a768d396b31"
 dependencies = [
  "cfg-if 1.0.0",
  "js-sys",
@@ -2983,7 +2983,7 @@ version = "0.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d34f1408f55294453790c48b2f1ebbb1c5b4b7563eb1f418bcfcfdbb06ebb4e7"
 dependencies = [
- "getrandom 0.2.7",
+ "getrandom 0.2.8",
 ]
 
 [[package]]
@@ -3034,7 +3034,7 @@ version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "528532f3d801c87aec9def2add9ca802fe569e44a544afe633765267840abe64"
 dependencies = [
- "getrandom 0.2.7",
+ "getrandom 0.2.8",
  "redox_syscall",
 ]
 
@@ -4286,7 +4286,7 @@ version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bc5cf98d8186244414c848017f0e2676b3fcb46807f6668a97dfe67359a3c4b7"
 dependencies = [
- "getrandom 0.2.7",
+ "getrandom 0.2.8",
  "serde",
 ]
 
