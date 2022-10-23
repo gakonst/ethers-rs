@@ -1,4 +1,4 @@
-use fastrlp::{Decodable, Encodable};
+use open_fastrlp::{Decodable, Encodable};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     borrow::Borrow,
@@ -147,7 +147,7 @@ impl Encodable for Bytes {
 }
 
 impl Decodable for Bytes {
-    fn decode(buf: &mut &[u8]) -> Result<Self, fastrlp::DecodeError> {
+    fn decode(buf: &mut &[u8]) -> Result<Self, open_fastrlp::DecodeError> {
         Ok(Self(bytes::Bytes::decode(buf)?))
     }
 }

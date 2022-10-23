@@ -4,7 +4,6 @@ use crate::{
     utils::hash_message,
 };
 use elliptic_curve::{consts::U32, sec1::ToEncodedPoint};
-use fastrlp::Decodable;
 use generic_array::GenericArray;
 use k256::{
     ecdsa::{
@@ -13,6 +12,7 @@ use k256::{
     },
     PublicKey as K256PublicKey,
 };
+use open_fastrlp::Decodable;
 use serde::{Deserialize, Serialize};
 use std::{convert::TryFrom, fmt, str::FromStr};
 use thiserror::Error;
@@ -141,19 +141,19 @@ impl Signature {
     }
 
     /// Decodes a signature from RLP bytes, assuming no RLP header
-    pub(crate) fn decode_signature(buf: &mut &[u8]) -> Result<Self, fastrlp::DecodeError> {
+    pub(crate) fn decode_signature(buf: &mut &[u8]) -> Result<Self, open_fastrlp::DecodeError> {
         let v = u64::decode(buf)?;
         Ok(Self { r: U256::decode(buf)?, s: U256::decode(buf)?, v })
     }
 }
 
-impl fastrlp::Decodable for Signature {
-    fn decode(buf: &mut &[u8]) -> Result<Self, fastrlp::DecodeError> {
+impl open_fastrlp::Decodable for Signature {
+    fn decode(buf: &mut &[u8]) -> Result<Self, open_fastrlp::DecodeError> {
         Self::decode_signature(buf)
     }
 }
 
-impl fastrlp::Encodable for Signature {
+impl open_fastrlp::Encodable for Signature {
     fn length(&self) -> usize {
         self.r.length() + self.s.length() + self.v.length()
     }
