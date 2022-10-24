@@ -522,7 +522,8 @@ pub trait Middleware: Sync + Send + Debug {
         block: Option<BlockNumber>,
         trace_options: GethDebugTracingOptions,
         state_overrides: spoof::State,
-    ) -> Result<GethTrace, ProviderError> {
+    ) -> Result<BlockTrace, ProviderError> {
+
         self.inner().debug_trace_call(tx, block, trace_options, state_overrides).await.map_err(FromErr::from)
     }
 

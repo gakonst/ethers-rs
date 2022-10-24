@@ -990,7 +990,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         block: Option<BlockNumber>,
         trace_options: GethDebugTracingOptions,
         state_overrides: spoof::State,
-    ) -> Result<GethTrace, ProviderError> {
+    ) -> Result<BlockTrace, ProviderError> {
         let tx = tx.into();
         let tx = utils::serialize(&tx);
 
