@@ -167,6 +167,9 @@ impl<'de: 'a, 'a> Deserialize<'de> for Response<'a> {
                         Ok(Response::Success { id, result })
                     }
                     (Some(id), None, Some(error), None, None) => Ok(Response::Error { id, error }),
+                    (Some(id), Some(_), Some(error), None, None) => {
+                        Ok(Response::Error { id, error })
+                    }
                     (None, None, None, Some(method), Some(params)) => {
                         Ok(Response::Notification { method, params })
                     }

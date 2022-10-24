@@ -1,5 +1,5 @@
 use crate::{
-    call_raw::CallBuilder,
+    call_raw::{CallBuilder, spoof},
     ens, erc, maybe,
     pubsub::{PubsubClient, SubscriptionStream},
     stream::{FilterWatcher, DEFAULT_LOCAL_POLL_INTERVAL, DEFAULT_POLL_INTERVAL},
@@ -367,233 +367,6 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.request("eth_blockNumber", ()).await
     }
 
-    /// Gets the block at `block_hash_or_number` (transaction hashes only)
-    async fn get_block<T: Into<BlockId> + Send + Sync>(
-        &self,
-        block_hash_or_number: T,
-    ) -> Result<Option<Block<TxHash>>, Self::Error> {
-        self.get_block_gen(block_hash_or_number.into(), false).await
-    }
-
-    /// Gets the block at `block_hash_or_number` (full transactions included)
-    async fn get_block_with_txs<T: Into<BlockId> + Send + Sync>(
-        &self,
-        block_hash_or_number: T,
-    ) -> Result<Option<Block<Transaction>>, ProviderError> {
-        self.get_block_gen(block_hash_or_number.into(), true).await
-    }
-
-    /// Gets the block uncle count at `block_hash_or_number`
-    async fn get_uncle_count<T: Into<BlockId> + Send + Sync>(
-        &self,
-        block_hash_or_number: T,
-    ) -> Result<U256, Self::Error> {
-        let id = block_hash_or_number.into();
-        Ok(match id {
-            BlockId::Hash(hash) => {
-                let hash = utils::serialize(&hash);
-                self.request("eth_getUncleCountByBlockHash", [hash]).await?
-            }
-            BlockId::Number(num) => {
-                let num = utils::serialize(&num);
-                self.request("eth_getUncleCountByBlockNumber", [num]).await?
-            }
-        })
-    }
-
-    /// Gets the block uncle at `block_hash_or_number` and `idx`
-    async fn get_uncle<T: Into<BlockId> + Send + Sync>(
-        &self,
-        block_hash_or_number: T,
-        idx: U64,
-    ) -> Result<Option<Block<H256>>, ProviderError> {
-        let blk_id = block_hash_or_number.into();
-        let idx = utils::serialize(&idx);
-        Ok(match blk_id {
-            BlockId::Hash(hash) => {
-                let hash = utils::serialize(&hash);
-                self.request("eth_getUncleByBlockHashAndIndex", [hash, idx]).await?
-            }
-            BlockId::Number(num) => {
-                let num = utils::serialize(&num);
-                self.request("eth_getUncleByBlockNumberAndIndex", [num, idx]).await?
-            }
-        })
-    }
-
-    /// Gets the transaction with `transaction_hash`
-    async fn get_transaction<T: Send + Sync + Into<TxHash>>(
-        &self,
-        transaction_hash: T,
-    ) -> Result<Option<Transaction>, ProviderError> {
-        let hash = transaction_hash.into();
-        self.request("eth_getTransactionByHash", [hash]).await
-    }
-
-    /// Gets the transaction receipt with `transaction_hash`
-    async fn get_transaction_receipt<T: Send + Sync + Into<TxHash>>(
-        &self,
-        transaction_hash: T,
-    ) -> Result<Option<TransactionReceipt>, ProviderError> {
-        let hash = transaction_hash.into();
-        self.request("eth_getTransactionReceipt", [hash]).await
-    }
-
-    /// Returns all receipts for a block.
-    ///
-    /// Note that this uses the `eth_getBlockReceipts` RPC, which is
-    /// non-standard and currently supported by Erigon.
-    async fn get_block_receipts<T: Into<BlockNumber> + Send + Sync>(
-        &self,
-        block: T,
-    ) -> Result<Vec<TransactionReceipt>, Self::Error> {
-        self.request("eth_getBlockReceipts", [block.into()]).await
-    }
-
-    /// Returns all receipts for that block. Must be done on a parity node.
-    async fn parity_block_receipts<T: Into<BlockNumber> + Send + Sync>(
-        &self,
-        block: T,
-    ) -> Result<Vec<TransactionReceipt>, Self::Error> {
-        self.request("parity_getBlockReceipts", vec![block.into()]).await
-    }
-
-    /// Gets the current gas price as estimated by the node
-    async fn get_gas_price(&self) -> Result<U256, ProviderError> {
-        self.request("eth_gasPrice", ()).await
-    }
-
-    /// Gets a heuristic recommendation of max fee per gas and max priority fee per gas for
-    /// EIP-1559 compatible transactions.
-    async fn estimate_eip1559_fees(
-        &self,
-        estimator: Option<fn(U256, Vec<Vec<U256>>) -> (U256, U256)>,
-    ) -> Result<(U256, U256), Self::Error> {
-        let base_fee_per_gas = self
-            .get_block(BlockNumber::Latest)
-            .await?
-            .ok_or_else(|| ProviderError::CustomError("Latest block not found".into()))?
-            .base_fee_per_gas
-            .ok_or_else(|| ProviderError::CustomError("EIP-1559 not activated".into()))?;
-
-        let fee_history = self
-            .fee_history(
-                utils::EIP1559_FEE_ESTIMATION_PAST_BLOCKS,
-                BlockNumber::Latest,
-                &[utils::EIP1559_FEE_ESTIMATION_REWARD_PERCENTILE],
-            )
-            .await?;
-
-        // use the provided fee estimator function, or fallback to the default implementation.
-        let (max_fee_per_gas, max_priority_fee_per_gas) = if let Some(es) = estimator {
-            es(base_fee_per_gas, fee_history.reward)
-        } else {
-            utils::eip1559_default_estimator(base_fee_per_gas, fee_history.reward)
-        };
-
-        Ok((max_fee_per_gas, max_priority_fee_per_gas))
-    }
-
-    /// Gets the accounts on the node
-    async fn get_accounts(&self) -> Result<Vec<Address>, ProviderError> {
-        self.request("eth_accounts", ()).await
-    }
-
-    /// Returns the nonce of the address
-    async fn get_transaction_count<T: Into<NameOrAddress> + Send + Sync>(
-        &self,
-        from: T,
-        block: Option<BlockId>,
-    ) -> Result<U256, ProviderError> {
-        let from = match from.into() {
-            NameOrAddress::Name(ens_name) => self.resolve_name(&ens_name).await?,
-            NameOrAddress::Address(addr) => addr,
-        };
-
-        let from = utils::serialize(&from);
-        let block = utils::serialize(&block.unwrap_or_else(|| BlockNumber::Latest.into()));
-        self.request("eth_getTransactionCount", [from, block]).await
-    }
-
-    /// Returns the account's balance
-    async fn get_balance<T: Into<NameOrAddress> + Send + Sync>(
-        &self,
-        from: T,
-        block: Option<BlockId>,
-    ) -> Result<U256, ProviderError> {
-        let from = match from.into() {
-            NameOrAddress::Name(ens_name) => self.resolve_name(&ens_name).await?,
-            NameOrAddress::Address(addr) => addr,
-        };
-
-        let from = utils::serialize(&from);
-        let block = utils::serialize(&block.unwrap_or_else(|| BlockNumber::Latest.into()));
-        self.request("eth_getBalance", [from, block]).await
-    }
-
-    /// Returns the currently configured chain id, a value used in replay-protected
-    /// transaction signing as introduced by EIP-155.
-    async fn get_chainid(&self) -> Result<U256, ProviderError> {
-        self.request("eth_chainId", ()).await
-    }
-
-    /// Return current client syncing status. If IsFalse sync is over.
-    async fn syncing(&self) -> Result<SyncingStatus, Self::Error> {
-        self.request("eth_syncing", ()).await
-    }
-
-    /// Returns the network version.
-    async fn get_net_version(&self) -> Result<String, ProviderError> {
-        self.request("net_version", ()).await
-    }
-
-    ////// Contract Execution
-    //
-    // These are relatively low-level calls. The Contracts API should usually be used instead.
-
-    /// Sends the read-only (constant) transaction to a single Ethereum node and return the result
-    /// (as bytes) of executing it. This is free, since it does not change any state on the
-    /// blockchain.
-    async fn call(
-        &self,
-        tx: &TypedTransaction,
-        block: Option<BlockId>,
-    ) -> Result<Bytes, ProviderError> {
-        let tx = utils::serialize(tx);
-        let block = utils::serialize(&block.unwrap_or_else(|| BlockNumber::Latest.into()));
-        self.request("eth_call", [tx, block]).await
-    }
-
-    /// Sends a transaction to a single Ethereum node and return the estimated amount of gas
-    /// required (as a U256) to send it This is free, but only an estimate. Providing too little
-    /// gas will result in a transaction being rejected (while still consuming all provided
-    /// gas).
-    async fn estimate_gas(
-        &self,
-        tx: &TypedTransaction,
-        block: Option<BlockId>,
-    ) -> Result<U256, ProviderError> {
-        let tx = utils::serialize(tx);
-        // Some nodes (e.g. old Optimism clients) don't support a block ID being passed as a param,
-        // so refrain from defaulting to BlockNumber::Latest.
-        let params = if let Some(block_id) = block {
-            vec![tx, utils::serialize(&block_id)]
-        } else {
-            vec![tx]
-        };
-        self.request("eth_estimateGas", params).await
-    }
-
-    async fn create_access_list(
-        &self,
-        tx: &TypedTransaction,
-        block: Option<BlockId>,
-    ) -> Result<AccessListWithGasUsed, ProviderError> {
-        let tx = utils::serialize(tx);
-        let block = utils::serialize(&block.unwrap_or_else(|| BlockNumber::Latest.into()));
-        self.request("eth_createAccessList", [tx, block]).await
-    }
-
     /// Sends the transaction to the entire Ethereum network and returns the transaction's hash
     /// This will consume gas from the account that signed the transaction.
     async fn send_transaction<T: Into<TypedTransaction> + Send + Sync>(
@@ -607,204 +380,6 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
 
         Ok(PendingTransaction::new(tx_hash, self))
     }
-
-    /// Send the raw RLP encoded transaction to the entire Ethereum network and returns the
-    /// transaction's hash This will consume gas from the account that signed the transaction.
-    async fn send_raw_transaction<'a>(
-        &'a self,
-        tx: Bytes,
-    ) -> Result<PendingTransaction<'a, P>, ProviderError> {
-        let rlp = utils::serialize(&tx);
-        let tx_hash = self.request("eth_sendRawTransaction", [rlp]).await?;
-        Ok(PendingTransaction::new(tx_hash, self))
-    }
-
-    /// The JSON-RPC provider is at the bottom-most position in the middleware stack. Here we check
-    /// if it has the key for the sender address unlocked, as well as supports the `eth_sign` call.
-    async fn is_signer(&self) -> bool {
-        match self.from {
-            Some(sender) => self.sign(vec![], &sender).await.is_ok(),
-            None => false,
-        }
-    }
-
-    /// Signs data using a specific account. This account needs to be unlocked.
-    async fn sign<T: Into<Bytes> + Send + Sync>(
-        &self,
-        data: T,
-        from: &Address,
-    ) -> Result<Signature, ProviderError> {
-        let data = utils::serialize(&data.into());
-        let from = utils::serialize(from);
-
-        // get the response from `eth_sign` call and trim the 0x-prefix if present.
-        let sig: String = self.request("eth_sign", [from, data]).await?;
-        let sig = sig.strip_prefix("0x").unwrap_or(&sig);
-
-        // decode the signature.
-        let sig = hex::decode(sig)?;
-        Ok(Signature::try_from(sig.as_slice())
-            .map_err(|e| ProviderError::CustomError(e.to_string()))?)
-    }
-
-    /// Sign a transaction via RPC call
-    async fn sign_transaction(
-        &self,
-        _tx: &TypedTransaction,
-        _from: Address,
-    ) -> Result<Signature, Self::Error> {
-        Err(ProviderError::SignerUnavailable).map_err(FromErr::from)
-    }
-
-    ////// Contract state
-
-    /// Returns an array (possibly empty) of logs that match the filter
-    async fn get_logs(&self, filter: &Filter) -> Result<Vec<Log>, ProviderError> {
-        self.request("eth_getLogs", [filter]).await
-    }
-
-    fn get_logs_paginated<'a>(&'a self, filter: &Filter, page_size: u64) -> LogQuery<'a, P> {
-        LogQuery::new(self, filter).with_page_size(page_size)
-    }
-
-    /// Streams matching filter logs
-    async fn watch<'a>(
-        &'a self,
-        filter: &Filter,
-    ) -> Result<FilterWatcher<'a, P, Log>, ProviderError> {
-        let id = self.new_filter(FilterKind::Logs(filter)).await?;
-        let filter = FilterWatcher::new(id, self).interval(self.get_interval());
-        Ok(filter)
-    }
-
-    /// Streams new block hashes
-    async fn watch_blocks(&self) -> Result<FilterWatcher<'_, P, H256>, ProviderError> {
-        let id = self.new_filter(FilterKind::NewBlocks).await?;
-        let filter = FilterWatcher::new(id, self).interval(self.get_interval());
-        Ok(filter)
-    }
-
-    /// Streams pending transactions
-    async fn watch_pending_transactions(
-        &self,
-    ) -> Result<FilterWatcher<'_, P, H256>, ProviderError> {
-        let id = self.new_filter(FilterKind::PendingTransactions).await?;
-        let filter = FilterWatcher::new(id, self).interval(self.get_interval());
-        Ok(filter)
-    }
-
-    /// Creates a filter object, based on filter options, to notify when the state changes (logs).
-    /// To check if the state has changed, call `get_filter_changes` with the filter id.
-    async fn new_filter(&self, filter: FilterKind<'_>) -> Result<U256, ProviderError> {
-        let (method, args) = match filter {
-            FilterKind::NewBlocks => ("eth_newBlockFilter", vec![]),
-            FilterKind::PendingTransactions => ("eth_newPendingTransactionFilter", vec![]),
-            FilterKind::Logs(filter) => ("eth_newFilter", vec![utils::serialize(&filter)]),
-        };
-
-        self.request(method, args).await
-    }
-
-    /// Uninstalls a filter
-    async fn uninstall_filter<T: Into<U256> + Send + Sync>(
-        &self,
-        id: T,
-    ) -> Result<bool, ProviderError> {
-        let id = utils::serialize(&id.into());
-        self.request("eth_uninstallFilter", [id]).await
-    }
-
-    /// Polling method for a filter, which returns an array of logs which occurred since last poll.
-    ///
-    /// This method must be called with one of the following return types, depending on the filter
-    /// type:
-    /// - `eth_newBlockFilter`: [`H256`], returns block hashes
-    /// - `eth_newPendingTransactionFilter`: [`H256`], returns transaction hashes
-    /// - `eth_newFilter`: [`Log`], returns raw logs
-    ///
-    /// If one of these types is not used, decoding will fail and the method will
-    /// return an error.
-    ///
-    /// [`H256`]: ethers_core::types::H256
-    /// [`Log`]: ethers_core::types::Log
-    async fn get_filter_changes<T, R>(&self, id: T) -> Result<Vec<R>, ProviderError>
-    where
-        T: Into<U256> + Send + Sync,
-        R: Serialize + DeserializeOwned + Send + Sync + Debug,
-    {
-        let id = utils::serialize(&id.into());
-        self.request("eth_getFilterChanges", [id]).await
-    }
-
-    /// Get the storage of an address for a particular slot location
-    async fn get_storage_at<T: Into<NameOrAddress> + Send + Sync>(
-        &self,
-        from: T,
-        location: H256,
-        block: Option<BlockId>,
-    ) -> Result<H256, ProviderError> {
-        let from = match from.into() {
-            NameOrAddress::Name(ens_name) => self.resolve_name(&ens_name).await?,
-            NameOrAddress::Address(addr) => addr,
-        };
-
-        // position is a QUANTITY according to the [spec](https://eth.wiki/json-rpc/API#eth_getstorageat): integer of the position in the storage, converting this to a U256
-        // will make sure the number is formatted correctly as [quantity](https://eips.ethereum.org/EIPS/eip-1474#quantity)
-        let position = U256::from_big_endian(location.as_bytes());
-        let position = utils::serialize(&position);
-        let from = utils::serialize(&from);
-        let block = utils::serialize(&block.unwrap_or_else(|| BlockNumber::Latest.into()));
-
-        // get the hex encoded value.
-        let value: String = self.request("eth_getStorageAt", [from, position, block]).await?;
-        // get rid of the 0x prefix and left pad it with zeroes.
-        let value = format!("{:0>64}", value.replace("0x", ""));
-        Ok(H256::from_slice(&Vec::from_hex(value)?))
-    }
-
-    /// Returns the deployed code at a given address
-    async fn get_code<T: Into<NameOrAddress> + Send + Sync>(
-        &self,
-        at: T,
-        block: Option<BlockId>,
-    ) -> Result<Bytes, ProviderError> {
-        let at = match at.into() {
-            NameOrAddress::Name(ens_name) => self.resolve_name(&ens_name).await?,
-            NameOrAddress::Address(addr) => addr,
-        };
-
-        let at = utils::serialize(&at);
-        let block = utils::serialize(&block.unwrap_or_else(|| BlockNumber::Latest.into()));
-        self.request("eth_getCode", [at, block]).await
-    }
-
-    /// Returns the EIP-1186 proof response
-    /// <https://github.com/ethereum/EIPs/issues/1186>
-    async fn get_proof<T: Into<NameOrAddress> + Send + Sync>(
-        &self,
-        from: T,
-        locations: Vec<H256>,
-        block: Option<BlockId>,
-    ) -> Result<EIP1186ProofResponse, ProviderError> {
-        let from = match from.into() {
-            NameOrAddress::Name(ens_name) => self.resolve_name(&ens_name).await?,
-            NameOrAddress::Address(addr) => addr,
-        };
-
-        let from = utils::serialize(&from);
-        let locations = locations.iter().map(|location| utils::serialize(&location)).collect();
-        let block = utils::serialize(&block.unwrap_or_else(|| BlockNumber::Latest.into()));
-
-        self.request("eth_getProof", [from, locations, block]).await
-    }
-
-    ////// Ethereum Naming Service
-    // The Ethereum Naming Service (ENS) allows easy to remember and use names to
-    // be assigned to Ethereum addresses. Any provider operation which takes an address
-    // may also take an ENS name.
-    //
-    // ENS also provides the ability for a reverse lookup, which determines the name for an address
-    // if it has been configured.
 
     /// Returns the address that the `ens_name` resolves to (or None if not configured).
     ///
@@ -969,6 +544,413 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         Ok(field)
     }
 
+    /// Gets the block at `block_hash_or_number` (transaction hashes only)
+    async fn get_block<T: Into<BlockId> + Send + Sync>(
+        &self,
+        block_hash_or_number: T,
+    ) -> Result<Option<Block<TxHash>>, Self::Error> {
+        self.get_block_gen(block_hash_or_number.into(), false).await
+    }
+
+    /// Gets the block at `block_hash_or_number` (full transactions included)
+    async fn get_block_with_txs<T: Into<BlockId> + Send + Sync>(
+        &self,
+        block_hash_or_number: T,
+    ) -> Result<Option<Block<Transaction>>, ProviderError> {
+        self.get_block_gen(block_hash_or_number.into(), true).await
+    }
+
+    /// Gets the block uncle count at `block_hash_or_number`
+    async fn get_uncle_count<T: Into<BlockId> + Send + Sync>(
+        &self,
+        block_hash_or_number: T,
+    ) -> Result<U256, Self::Error> {
+        let id = block_hash_or_number.into();
+        Ok(match id {
+            BlockId::Hash(hash) => {
+                let hash = utils::serialize(&hash);
+                self.request("eth_getUncleCountByBlockHash", [hash]).await?
+            }
+            BlockId::Number(num) => {
+                let num = utils::serialize(&num);
+                self.request("eth_getUncleCountByBlockNumber", [num]).await?
+            }
+        })
+    }
+
+    /// Gets the block uncle at `block_hash_or_number` and `idx`
+    async fn get_uncle<T: Into<BlockId> + Send + Sync>(
+        &self,
+        block_hash_or_number: T,
+        idx: U64,
+    ) -> Result<Option<Block<H256>>, ProviderError> {
+        let blk_id = block_hash_or_number.into();
+        let idx = utils::serialize(&idx);
+        Ok(match blk_id {
+            BlockId::Hash(hash) => {
+                let hash = utils::serialize(&hash);
+                self.request("eth_getUncleByBlockHashAndIndex", [hash, idx]).await?
+            }
+            BlockId::Number(num) => {
+                let num = utils::serialize(&num);
+                self.request("eth_getUncleByBlockNumberAndIndex", [num, idx]).await?
+            }
+        })
+    }
+
+    /// Returns the nonce of the address
+    async fn get_transaction_count<T: Into<NameOrAddress> + Send + Sync>(
+        &self,
+        from: T,
+        block: Option<BlockId>,
+    ) -> Result<U256, ProviderError> {
+        let from = match from.into() {
+            NameOrAddress::Name(ens_name) => self.resolve_name(&ens_name).await?,
+            NameOrAddress::Address(addr) => addr,
+        };
+
+        let from = utils::serialize(&from);
+        let block = utils::serialize(&block.unwrap_or_else(|| BlockNumber::Latest.into()));
+        self.request("eth_getTransactionCount", [from, block]).await
+    }
+
+    /// Sends a transaction to a single Ethereum node and return the estimated amount of gas
+    /// required (as a U256) to send it This is free, but only an estimate. Providing too little
+    /// gas will result in a transaction being rejected (while still consuming all provided
+    /// gas).
+    async fn estimate_gas(
+        &self,
+        tx: &TypedTransaction,
+        block: Option<BlockId>,
+    ) -> Result<U256, ProviderError> {
+        let tx = utils::serialize(tx);
+        // Some nodes (e.g. old Optimism clients) don't support a block ID being passed as a param,
+        // so refrain from defaulting to BlockNumber::Latest.
+        let params = if let Some(block_id) = block {
+            vec![tx, utils::serialize(&block_id)]
+        } else {
+            vec![tx]
+        };
+        self.request("eth_estimateGas", params).await
+    }
+
+    /// Sends the read-only (constant) transaction to a single Ethereum node and return the result
+    /// (as bytes) of executing it. This is free, since it does not change any state on the
+    /// blockchain.
+    async fn call(
+        &self,
+        tx: &TypedTransaction,
+        block: Option<BlockId>,
+    ) -> Result<Bytes, ProviderError> {
+        let tx = utils::serialize(tx);
+        let block = utils::serialize(&block.unwrap_or_else(|| BlockNumber::Latest.into()));
+        self.request("eth_call", [tx, block]).await
+    }
+
+    /// Return current client syncing status. If IsFalse sync is over.
+    async fn syncing(&self) -> Result<SyncingStatus, Self::Error> {
+        self.request("eth_syncing", ()).await
+    }
+
+    /// Returns the currently configured chain id, a value used in replay-protected
+    /// transaction signing as introduced by EIP-155.
+    async fn get_chainid(&self) -> Result<U256, ProviderError> {
+        self.request("eth_chainId", ()).await
+    }
+
+    /// Returns the network version.
+    async fn get_net_version(&self) -> Result<String, ProviderError> {
+        self.request("net_version", ()).await
+    }
+
+    ////// Contract Execution
+    //
+    // These are relatively low-level calls. The Contracts API should usually be used instead.
+
+    /// Returns the account's balance
+    async fn get_balance<T: Into<NameOrAddress> + Send + Sync>(
+        &self,
+        from: T,
+        block: Option<BlockId>,
+    ) -> Result<U256, ProviderError> {
+        let from = match from.into() {
+            NameOrAddress::Name(ens_name) => self.resolve_name(&ens_name).await?,
+            NameOrAddress::Address(addr) => addr,
+        };
+
+        let from = utils::serialize(&from);
+        let block = utils::serialize(&block.unwrap_or_else(|| BlockNumber::Latest.into()));
+        self.request("eth_getBalance", [from, block]).await
+    }
+
+    /// Gets the transaction with `transaction_hash`
+    async fn get_transaction<T: Send + Sync + Into<TxHash>>(
+        &self,
+        transaction_hash: T,
+    ) -> Result<Option<Transaction>, ProviderError> {
+        let hash = transaction_hash.into();
+        self.request("eth_getTransactionByHash", [hash]).await
+    }
+
+    /// Gets the transaction receipt with `transaction_hash`
+    async fn get_transaction_receipt<T: Send + Sync + Into<TxHash>>(
+        &self,
+        transaction_hash: T,
+    ) -> Result<Option<TransactionReceipt>, ProviderError> {
+        let hash = transaction_hash.into();
+        self.request("eth_getTransactionReceipt", [hash]).await
+    }
+
+    /// Returns all receipts for a block.
+    ///
+    /// Note that this uses the `eth_getBlockReceipts` RPC, which is
+    /// non-standard and currently supported by Erigon.
+    async fn get_block_receipts<T: Into<BlockNumber> + Send + Sync>(
+        &self,
+        block: T,
+    ) -> Result<Vec<TransactionReceipt>, Self::Error> {
+        self.request("eth_getBlockReceipts", [block.into()]).await
+    }
+
+    /// Gets the current gas price as estimated by the node
+    async fn get_gas_price(&self) -> Result<U256, ProviderError> {
+        self.request("eth_gasPrice", ()).await
+    }
+
+    /// Gets a heuristic recommendation of max fee per gas and max priority fee per gas for
+    /// EIP-1559 compatible transactions.
+    async fn estimate_eip1559_fees(
+        &self,
+        estimator: Option<fn(U256, Vec<Vec<U256>>) -> (U256, U256)>,
+    ) -> Result<(U256, U256), Self::Error> {
+        let base_fee_per_gas = self
+            .get_block(BlockNumber::Latest)
+            .await?
+            .ok_or_else(|| ProviderError::CustomError("Latest block not found".into()))?
+            .base_fee_per_gas
+            .ok_or_else(|| ProviderError::CustomError("EIP-1559 not activated".into()))?;
+
+        let fee_history = self
+            .fee_history(
+                utils::EIP1559_FEE_ESTIMATION_PAST_BLOCKS,
+                BlockNumber::Latest,
+                &[utils::EIP1559_FEE_ESTIMATION_REWARD_PERCENTILE],
+            )
+            .await?;
+
+        // use the provided fee estimator function, or fallback to the default implementation.
+        let (max_fee_per_gas, max_priority_fee_per_gas) = if let Some(es) = estimator {
+            es(base_fee_per_gas, fee_history.reward)
+        } else {
+            utils::eip1559_default_estimator(base_fee_per_gas, fee_history.reward)
+        };
+
+        Ok((max_fee_per_gas, max_priority_fee_per_gas))
+    }
+
+    /// Gets the accounts on the node
+    async fn get_accounts(&self) -> Result<Vec<Address>, ProviderError> {
+        self.request("eth_accounts", ()).await
+    }
+
+    /// Send the raw RLP encoded transaction to the entire Ethereum network and returns the
+    /// transaction's hash This will consume gas from the account that signed the transaction.
+    async fn send_raw_transaction<'a>(
+        &'a self,
+        tx: Bytes,
+    ) -> Result<PendingTransaction<'a, P>, ProviderError> {
+        let rlp = utils::serialize(&tx);
+        let tx_hash = self.request("eth_sendRawTransaction", [rlp]).await?;
+        Ok(PendingTransaction::new(tx_hash, self))
+    }
+
+    ////// Contract state
+
+    /// The JSON-RPC provider is at the bottom-most position in the middleware stack. Here we check
+    /// if it has the key for the sender address unlocked, as well as supports the `eth_sign` call.
+    async fn is_signer(&self) -> bool {
+        match self.from {
+            Some(sender) => self.sign(vec![], &sender).await.is_ok(),
+            None => false,
+        }
+    }
+
+    /// Signs data using a specific account. This account needs to be unlocked.
+    async fn sign<T: Into<Bytes> + Send + Sync>(
+        &self,
+        data: T,
+        from: &Address,
+    ) -> Result<Signature, ProviderError> {
+        let data = utils::serialize(&data.into());
+        let from = utils::serialize(from);
+
+        // get the response from `eth_sign` call and trim the 0x-prefix if present.
+        let sig: String = self.request("eth_sign", [from, data]).await?;
+        let sig = sig.strip_prefix("0x").unwrap_or(&sig);
+
+        // decode the signature.
+        let sig = hex::decode(sig)?;
+        Ok(Signature::try_from(sig.as_slice())
+            .map_err(|e| ProviderError::CustomError(e.to_string()))?)
+    }
+
+    /// Sign a transaction via RPC call
+    async fn sign_transaction(
+        &self,
+        _tx: &TypedTransaction,
+        _from: Address,
+    ) -> Result<Signature, Self::Error> {
+        Err(ProviderError::SignerUnavailable).map_err(FromErr::from)
+    }
+
+    /// Returns an array (possibly empty) of logs that match the filter
+    async fn get_logs(&self, filter: &Filter) -> Result<Vec<Log>, ProviderError> {
+        self.request("eth_getLogs", [filter]).await
+    }
+
+    fn get_logs_paginated<'a>(&'a self, filter: &Filter, page_size: u64) -> LogQuery<'a, P> {
+        LogQuery::new(self, filter).with_page_size(page_size)
+    }
+
+    /// Creates a filter object, based on filter options, to notify when the state changes (logs).
+    /// To check if the state has changed, call `get_filter_changes` with the filter id.
+    async fn new_filter(&self, filter: FilterKind<'_>) -> Result<U256, ProviderError> {
+        let (method, args) = match filter {
+            FilterKind::NewBlocks => ("eth_newBlockFilter", vec![]),
+            FilterKind::PendingTransactions => ("eth_newPendingTransactionFilter", vec![]),
+            FilterKind::Logs(filter) => ("eth_newFilter", vec![utils::serialize(&filter)]),
+        };
+
+        self.request(method, args).await
+    }
+
+    /// Uninstalls a filter
+    async fn uninstall_filter<T: Into<U256> + Send + Sync>(
+        &self,
+        id: T,
+    ) -> Result<bool, ProviderError> {
+        let id = utils::serialize(&id.into());
+        self.request("eth_uninstallFilter", [id]).await
+    }
+
+    /// Streams matching filter logs
+    async fn watch<'a>(
+        &'a self,
+        filter: &Filter,
+    ) -> Result<FilterWatcher<'a, P, Log>, ProviderError> {
+        let id = self.new_filter(FilterKind::Logs(filter)).await?;
+        let filter = FilterWatcher::new(id, self).interval(self.get_interval());
+        Ok(filter)
+    }
+
+    /// Streams pending transactions
+    async fn watch_pending_transactions(
+        &self,
+    ) -> Result<FilterWatcher<'_, P, H256>, ProviderError> {
+        let id = self.new_filter(FilterKind::PendingTransactions).await?;
+        let filter = FilterWatcher::new(id, self).interval(self.get_interval());
+        Ok(filter)
+    }
+
+    /// Polling method for a filter, which returns an array of logs which occurred since last poll.
+    ///
+    /// This method must be called with one of the following return types, depending on the filter
+    /// type:
+    /// - `eth_newBlockFilter`: [`H256`], returns block hashes
+    /// - `eth_newPendingTransactionFilter`: [`H256`], returns transaction hashes
+    /// - `eth_newFilter`: [`Log`], returns raw logs
+    ///
+    /// If one of these types is not used, decoding will fail and the method will
+    /// return an error.
+    ///
+    /// [`H256`]: ethers_core::types::H256
+    /// [`Log`]: ethers_core::types::Log
+    async fn get_filter_changes<T, R>(&self, id: T) -> Result<Vec<R>, ProviderError>
+    where
+        T: Into<U256> + Send + Sync,
+        R: Serialize + DeserializeOwned + Send + Sync + Debug,
+    {
+        let id = utils::serialize(&id.into());
+        self.request("eth_getFilterChanges", [id]).await
+    }
+
+    /// Streams new block hashes
+    async fn watch_blocks(&self) -> Result<FilterWatcher<'_, P, H256>, ProviderError> {
+        let id = self.new_filter(FilterKind::NewBlocks).await?;
+        let filter = FilterWatcher::new(id, self).interval(self.get_interval());
+        Ok(filter)
+    }
+
+    ////// Ethereum Naming Service
+    // The Ethereum Naming Service (ENS) allows easy to remember and use names to
+    // be assigned to Ethereum addresses. Any provider operation which takes an address
+    // may also take an ENS name.
+    //
+    // ENS also provides the ability for a reverse lookup, which determines the name for an address
+    // if it has been configured.
+
+    /// Returns the deployed code at a given address
+    async fn get_code<T: Into<NameOrAddress> + Send + Sync>(
+        &self,
+        at: T,
+        block: Option<BlockId>,
+    ) -> Result<Bytes, ProviderError> {
+        let at = match at.into() {
+            NameOrAddress::Name(ens_name) => self.resolve_name(&ens_name).await?,
+            NameOrAddress::Address(addr) => addr,
+        };
+
+        let at = utils::serialize(&at);
+        let block = utils::serialize(&block.unwrap_or_else(|| BlockNumber::Latest.into()));
+        self.request("eth_getCode", [at, block]).await
+    }
+
+    /// Get the storage of an address for a particular slot location
+    async fn get_storage_at<T: Into<NameOrAddress> + Send + Sync>(
+        &self,
+        from: T,
+        location: H256,
+        block: Option<BlockId>,
+    ) -> Result<H256, ProviderError> {
+        let from = match from.into() {
+            NameOrAddress::Name(ens_name) => self.resolve_name(&ens_name).await?,
+            NameOrAddress::Address(addr) => addr,
+        };
+
+        // position is a QUANTITY according to the [spec](https://eth.wiki/json-rpc/API#eth_getstorageat): integer of the position in the storage, converting this to a U256
+        // will make sure the number is formatted correctly as [quantity](https://eips.ethereum.org/EIPS/eip-1474#quantity)
+        let position = U256::from_big_endian(location.as_bytes());
+        let position = utils::serialize(&position);
+        let from = utils::serialize(&from);
+        let block = utils::serialize(&block.unwrap_or_else(|| BlockNumber::Latest.into()));
+
+        // get the hex encoded value.
+        let value: String = self.request("eth_getStorageAt", [from, position, block]).await?;
+        // get rid of the 0x prefix and left pad it with zeroes.
+        let value = format!("{:0>64}", value.replace("0x", ""));
+        Ok(H256::from_slice(&Vec::from_hex(value)?))
+    }
+
+    /// Returns the EIP-1186 proof response
+    /// <https://github.com/ethereum/EIPs/issues/1186>
+    async fn get_proof<T: Into<NameOrAddress> + Send + Sync>(
+        &self,
+        from: T,
+        locations: Vec<H256>,
+        block: Option<BlockId>,
+    ) -> Result<EIP1186ProofResponse, ProviderError> {
+        let from = match from.into() {
+            NameOrAddress::Name(ens_name) => self.resolve_name(&ens_name).await?,
+            NameOrAddress::Address(addr) => addr,
+        };
+
+        let from = utils::serialize(&from);
+        let locations = locations.iter().map(|location| utils::serialize(&location)).collect();
+        let block = utils::serialize(&block.unwrap_or_else(|| BlockNumber::Latest.into()));
+
+        self.request("eth_getProof", [from, locations, block]).await
+    }
+
     /// Returns the details of all transactions currently pending for inclusion in the next
     /// block(s), as well as the ones that are being scheduled for future execution only.
     /// Ref: [Here](https://geth.ethereum.org/docs/rpc/ns-txpool#txpool_content)
@@ -999,6 +981,37 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         let tx_hash = utils::serialize(&tx_hash);
         let trace_options = utils::serialize(&trace_options);
         self.request("debug_traceTransaction", [tx_hash, trace_options]).await
+    }
+
+    /// Executes the given call and returns a number of possible traces for it
+    async fn debug_trace_call<T: Into<TypedTransaction> + Send + Sync>(
+        &self,
+        tx: T,
+        block: Option<BlockNumber>,
+        trace_options: GethDebugTracingOptions,
+        state_overrides: spoof::State,
+    ) -> Result<GethTrace, ProviderError> {
+        let tx = tx.into();
+        let tx = utils::serialize(&tx);
+
+        #[derive(Debug, Serialize)]
+        struct Outer {
+            #[serde(flatten)]
+            field_1: GethDebugTracingOptions,
+            #[serde(flatten)]
+            field_2: spoof::State,
+        }
+
+        let block = utils::serialize(&block.unwrap_or(BlockNumber::Latest));
+
+        let outer = Outer {
+            field_1: trace_options,
+            field_2: state_overrides,
+        };
+
+        let outer = utils::serialize(&outer);
+
+        self.request("debug_traceCall", [tx, block.clone(), outer]).await
     }
 
     /// Executes the given call and returns a number of possible traces for it
@@ -1089,6 +1102,14 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
     async fn trace_transaction(&self, hash: H256) -> Result<Vec<Trace>, ProviderError> {
         let hash = utils::serialize(&hash);
         self.request("trace_transaction", vec![hash]).await
+    }
+
+    /// Returns all receipts for that block. Must be done on a parity node.
+    async fn parity_block_receipts<T: Into<BlockNumber> + Send + Sync>(
+        &self,
+        block: T,
+    ) -> Result<Vec<TransactionReceipt>, Self::Error> {
+        self.request("parity_getBlockReceipts", vec![block.into()]).await
     }
 
     async fn subscribe<T, R>(
@@ -1194,6 +1215,16 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
                 fallback
             }
         }
+    }
+
+    async fn create_access_list(
+        &self,
+        tx: &TypedTransaction,
+        block: Option<BlockId>,
+    ) -> Result<AccessListWithGasUsed, ProviderError> {
+        let tx = utils::serialize(tx);
+        let block = utils::serialize(&block.unwrap_or_else(|| BlockNumber::Latest.into()));
+        self.request("eth_createAccessList", [tx, block]).await
     }
 }
 
@@ -1777,6 +1808,39 @@ mod tests {
 
         let params = serde_json::to_string(&params).unwrap();
         assert_eq!(params, r#"["0x295a70b2de5e3953354a6a8344e616ed314d7251","0x0","latest"]"#);
+    }
+
+    #[tokio::test]
+    async fn custom_test() {
+        let provider = Provider::<crate::Ws>::connect("ws://localhost:8545").await.unwrap();
+
+        let adr1: Address = "0x28430f7eB70406a74FdF01a62C1C162cD3A04f00".parse().unwrap();
+        let adr2: Address = "0x295a70b2de5e3953354a6a8344e616ed314d7251".parse().unwrap();
+        
+        let options = ethers_core::types::GethDebugTracingOptions {
+            disable_stack: Some(false),
+            disable_storage: Some(false),
+            enable_memory: Some(false),
+            enable_return_data: Some(false),
+            timeout: None,
+            tracer: Some(String::from("callTracer")),
+        };
+
+        let key = H256::from_low_u64_be(1);
+        let val = H256::from_low_u64_be(17);
+        
+        let tx: TransactionRequest = TransactionRequest::default().to(adr2).from(adr1).data(Bytes::from([])).gas_price(U256::from_dec_str("100000000000").unwrap()).into();
+        
+        // override the storage at `adr2`
+        let mut state = spoof::state();
+        state.account(adr2).store(key, val);
+        
+        // override the nonce at `adr1`
+        //state.account(adr1).nonce(2.into());
+
+        let res = provider.debug_trace_call(tx, Some(BlockNumber::Latest), options, state).await.unwrap();
+
+        println!("res:{:?}", res);
     }
 
     #[tokio::test]
