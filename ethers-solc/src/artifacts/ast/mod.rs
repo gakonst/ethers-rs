@@ -307,6 +307,9 @@ pub enum BinaryOperator {
     /// Bitwise xor (`^`)
     #[serde(rename = "^")]
     Xor,
+    /// Bitwise not (`~`)
+    #[serde(rename = "~")]
+    BitNot,
     /// Bitwise and (`&`)
     #[serde(rename = "&")]
     BitAnd,
@@ -410,7 +413,7 @@ expr_node!(
     /// An index access.
     struct IndexAccess {
         base_expression: Expression,
-        index_expression: Expression,
+        index_expression: Option<Expression>,
     }
 );
 
@@ -626,6 +629,9 @@ pub enum UnaryOperator {
     /// Not (`!`)
     #[serde(rename = "!")]
     Not,
+    /// Bitwise not (`~`)
+    #[serde(rename = "~")]
+    BitNot,
     /// `delete`
     #[serde(rename = "delete")]
     Delete,
@@ -872,6 +878,8 @@ pub struct ExternalInlineAssemblyReference {
     pub offset: bool,
     #[serde(default)]
     pub slot: bool,
+    #[serde(default)]
+    pub length: bool,
     pub value_size: usize,
     pub suffix: Option<AssemblyReferenceSuffix>,
 }
@@ -884,6 +892,8 @@ pub enum AssemblyReferenceSuffix {
     Slot,
     /// The reference refers to an offset.
     Offset,
+    /// The reference refers to a length.
+    Length,
 }
 
 /// Inline assembly flags.

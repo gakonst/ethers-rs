@@ -40,9 +40,13 @@ macro_rules! expr_node {
             struct $name {
                 #[serde(default, deserialize_with = "serde_helpers::default_for_null")]
                 argument_types: Vec<TypeDescriptions>,
+                #[serde(default)]
                 is_constant: bool,
+                #[serde(default)]
                 is_l_value: bool,
+                #[serde(default)]
                 is_pure: bool,
+                #[serde(default)]
                 l_value_requested: bool,
                 type_descriptions: TypeDescriptions,
                 $(
