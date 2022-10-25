@@ -93,7 +93,7 @@ ethers-addressbook = { version = "^1.0.0", default-features = false, path = "./e
 ethers-contract = { version = "^1.0.0", default-features = false, path = "./ethers-contract" }
 ethers-core = { version = "^1.0.0", default-features = false, path = "./ethers-core" }
 ethers-providers = { version = "^1.0.0", default-features = false, path = "./ethers-providers" }
-ethers-signers = { version = "^0.17.0", default-features = false, path = "./ethers-signers" }
+ethers-signers = { version = "^1.0.0", default-features = false, path = "./ethers-signers" }
 ethers-middleware = { version = "^0.17.0", default-features = false, path = "./ethers-middleware" }
 ethers-solc = { version = "^1.0.0", default-features = false, path = "./ethers-solc", optional = true }
 ethers-etherscan = { version = "^0.17.0", default-features = false, path = "./ethers-etherscan" }

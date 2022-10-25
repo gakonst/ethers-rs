@@ -29,7 +29,7 @@ hex = { version = "0.4.3", default-features = false, features = ["std"] }
 ethers-providers = { version = "^1.0.0", path = "../ethers-providers", default-features = false, features = [
     "ws",
 ] }
-ethers-signers = { version = "^0.17.0", path = "../ethers-signers" }
+ethers-signers = { version = "^1.0.0", path = "../ethers-signers" }
 ethers-contract-abigen = { version = "^1.0.0", path = "ethers-contract-abigen" }
 ethers-contract-derive = { version = "^1.0.0", path = "ethers-contract-derive" }
 ethers-core = { version = "^1.0.0", path = "../ethers-core", default-features = false, features = [
