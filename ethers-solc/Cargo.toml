@@ -16,7 +16,7 @@ description = "Utilites for working with solc"
 keywords = ["ethereum", "web3", "solc", "solidity", "ethers"]
 
 [dependencies]
-ethers-core = { version = "^0.17.0", path = "../ethers-core", default-features = false }
+ethers-core = { version = "^1.0.0", path = "../ethers-core", default-features = false }
 serde_json = "1.0.68"
 serde = { version = "1.0.130", features = ["derive"] }
 semver = { version = "1.0.14", features = ["serde"] }

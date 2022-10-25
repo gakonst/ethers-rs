@@ -16,7 +16,7 @@ keywords = ["ethereum", "web3", "celo", "ethers"]
 proc-macro = true
 
 [dependencies]
-ethers-core = { version = "^0.17.0", path = "../../ethers-core" }
+ethers-core = { version = "^1.0.0", path = "../../ethers-core" }
 ethers-contract-abigen = { version = "^0.17.0", path = "../ethers-contract-abigen" }
 
 serde_json = "1.0.53"

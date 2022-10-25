@@ -13,7 +13,7 @@ repository = "https://github.com/gakonst/ethers-rs"
 keywords = ["ethereum", "web3", "celo", "ethers"]
 
 [dependencies]
-ethers-core = { version = "^0.17.0", path = "../../ethers-core", features = ["macros"] }
+ethers-core = { version = "^1.0.0", path = "../../ethers-core", features = ["macros"] }
 
 Inflector = "0.11"
 proc-macro2 = "1.0"
