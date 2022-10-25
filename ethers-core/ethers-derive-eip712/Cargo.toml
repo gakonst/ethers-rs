@@ -1,6 +1,6 @@
 [package]
 name = "ethers-derive-eip712"
-version = "0.17.0"
+version = "1.0.0"
 edition = "2018"
 description = "Custom derive macro for EIP-712 typed data"
 license = "MIT OR Apache-2.0"

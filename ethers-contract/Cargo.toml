@@ -15,7 +15,7 @@ ethers-providers = { version = "^0.17.0", path = "../ethers-providers", default-
 ethers-core = { version = "^1.0.0", path = "../ethers-core", default-features = false }
 ethers-contract-abigen = { version = "^1.0.0", path = "ethers-contract-abigen", default-features = false, optional = true }
 ethers-contract-derive = { version = "^1.0.0", path = "ethers-contract-derive", optional = true }
-ethers-derive-eip712 = { version = "^0.17.0", path = "../ethers-core/ethers-derive-eip712", optional = true }
+ethers-derive-eip712 = { version = "^1.0.0", path = "../ethers-core/ethers-derive-eip712", optional = true }
 
 serde = { version = "1.0.124", default-features = false }
 serde_json = { version = "1.0.64", default-features = false }
@@ -35,7 +35,7 @@ ethers-contract-derive = { version = "^1.0.0", path = "ethers-contract-derive" }
 ethers-core = { version = "^1.0.0", path = "../ethers-core", default-features = false, features = [
     "eip712",
 ] }
-ethers-derive-eip712 = { version = "^0.17.0", path = "../ethers-core/ethers-derive-eip712" }
+ethers-derive-eip712 = { version = "^1.0.0", path = "../ethers-core/ethers-derive-eip712" }
 ethers-solc = { version = "^0.17.0", path = "../ethers-solc", default-features = false }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
