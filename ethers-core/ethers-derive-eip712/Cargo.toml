@@ -16,4 +16,4 @@ hex = "0.4.3"
 serde_json = "1.0.68"
 
 [dev-dependencies]
-ethers-contract-derive = { version = "^0.17.0", path = "../../ethers-contract/ethers-contract-derive" }
+ethers-contract-derive = { version = "^1.0.0", path = "../../ethers-contract/ethers-contract-derive" }
