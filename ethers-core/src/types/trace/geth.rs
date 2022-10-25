@@ -30,8 +30,8 @@ pub struct GethCallTrace {
     pub to: Option<Address>,
     #[serde(serialize_with = "serialize_bytes")]
     pub input: Bytes,
-    #[serde(serialize_with = "serialize_bytes")]
-    pub output: Bytes,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub output: Option<Bytes>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]

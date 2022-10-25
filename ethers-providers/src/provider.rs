@@ -998,7 +998,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         struct Outer {
             #[serde(flatten)]
             field_1: GethDebugTracingOptions,
-            #[serde(flatten)]
+            #[serde(rename = "stateOverrides")]
             field_2: spoof::State,
         }
 
