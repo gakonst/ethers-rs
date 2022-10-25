@@ -24,7 +24,7 @@ use ethers_core::{
         Address, Block, BlockId, BlockNumber, BlockTrace, Bytes, EIP1186ProofResponse, FeeHistory,
         Filter, FilterBlockOption, GethDebugTracingOptions, GethTrace, Log, NameOrAddress,
         Selector, Signature, Trace, TraceFilter, TraceType, Transaction, TransactionReceipt,
-        TransactionRequest, TxHash, TxpoolContent, TxpoolInspect, TxpoolStatus, H256, U256, U64,
+        TransactionRequest, TxHash, TxpoolContent, TxpoolInspect, TxpoolStatus, H256, U256, U64, GethCallTrace,
     },
     utils,
 };
@@ -990,7 +990,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         block: Option<BlockNumber>,
         trace_options: GethDebugTracingOptions,
         state_overrides: spoof::State,
-    ) -> Result<BlockTrace, ProviderError> {
+    ) -> Result<GethCallTrace, ProviderError> {
         let tx = tx.into();
         let tx = utils::serialize(&tx);
 
