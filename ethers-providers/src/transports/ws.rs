@@ -179,15 +179,11 @@ impl JsonRpcClient for Ws {
             sender,
         };
 
-        println!("payload: {:#?}", payload);
-
         // send the data
         self.send(payload)?;
 
         // wait for the response (the request itself may have errors as well)
         let res = receiver.await??;
-
-        println!("res: {:?}", res);
 
         // parse it
         Ok(serde_json::from_str(res.get())?)
