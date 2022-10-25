@@ -50,6 +50,10 @@ tokio-tungstenite = { version = "0.17.2", default-features = false, features = [
     "connect",
 ], optional = true }
 
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+tokio = { version = "1.18", default-features = false, features = ["rt", "macros", "time"] }
+tempfile = "3.3.0"
+
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 ws_stream_wasm = "0.7"
 wasm-bindgen = "0.2"
@@ -60,10 +64,6 @@ wasm-timer = "0.2"
 parking_lot = { version = "0.11", features = ["wasm-bindgen"] }
 # NOTE: this enables wasm compatibility for getrandom indirectly
 getrandom = { version = "0.2", features = ["js"] }
-
-[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
-tokio = { version = "1.18", default-features = false, features = ["rt", "macros", "time"] }
-tempfile = "3.3.0"
 
 [features]
 default = ["ws", "rustls"]

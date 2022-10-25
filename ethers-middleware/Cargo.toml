@@ -40,17 +40,6 @@ instant = { version = "0.1.12", features = ["now"] }
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tokio = { version = "1.18" }
 
-[dev-dependencies]
-hex = { version = "0.4.3", default-features = false, features = ["std"] }
-rand = { version = "0.8.5", default-features = false }
-ethers-providers = { version = "^1.0.0", path = "../ethers-providers", default-features = false, features = [
-    "ws",
-    "rustls",
-] }
-once_cell = "1.15.0"
-ethers-solc = { version = "^1.0.0", path = "../ethers-solc" }
-serial_test = "0.9.0"
-
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 tokio = { version = "1.18", default-features = false, features = ["rt", "macros", "time"] }
 
