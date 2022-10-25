@@ -13,7 +13,7 @@ keywords = ["ethereum", "web3", "celo", "ethers"]
 [dependencies]
 ethers-providers = { version = "^0.17.0", path = "../ethers-providers", default-features = false }
 ethers-core = { version = "^1.0.0", path = "../ethers-core", default-features = false }
-ethers-contract-abigen = { version = "^0.17.0", path = "ethers-contract-abigen", default-features = false, optional = true }
+ethers-contract-abigen = { version = "^1.0.0", path = "ethers-contract-abigen", default-features = false, optional = true }
 ethers-contract-derive = { version = "^0.17.0", path = "ethers-contract-derive", optional = true }
 ethers-derive-eip712 = { version = "^0.17.0", path = "../ethers-core/ethers-derive-eip712", optional = true }
 
@@ -30,7 +30,7 @@ ethers-providers = { version = "^0.17.0", path = "../ethers-providers", default-
     "ws",
 ] }
 ethers-signers = { version = "^0.17.0", path = "../ethers-signers" }
-ethers-contract-abigen = { version = "^0.17.0", path = "ethers-contract-abigen" }
+ethers-contract-abigen = { version = "^1.0.0", path = "ethers-contract-abigen" }
 ethers-contract-derive = { version = "^0.17.0", path = "ethers-contract-derive" }
 ethers-core = { version = "^1.0.0", path = "../ethers-core", default-features = false, features = [
     "eip712",

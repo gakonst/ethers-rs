@@ -1,6 +1,6 @@
 [package]
 name = "ethers-contract-abigen"
-version = "0.17.0"
+version = "1.0.0"
 authors = [
     "Nicholas Rodrigues Lordello <nlordell@gmail.com>",
     "Georgios Konstantopoulos <me@gakonst.com>",
