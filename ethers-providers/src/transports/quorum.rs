@@ -160,16 +160,28 @@ impl<T> QuorumProviderBuilder<T> {
 }
 
 impl<T: JsonRpcClientWrapper> QuorumProvider<T> {
-    /// Returns the block height that a _quorum_ of providers have reached.
-    async fn get_quorum_block_number(&self) -> Result<U64, QuorumError> {
+    /// For each inner provider, attempts to perform an RPC that returns a numeric value.
+    /// This a quorum of the highest numbers returned by inner providers, and returns the minimum
+    /// of these numbers.
+    /// For example, if the quorum threshold is 2 of a set of 5 inner providers, and the following
+    /// numbers are returned: [100, 101, 102, 103, 104], 103 will be returned.
+    /// This is useful for getting block numbers or gas estimates.
+    async fn get_quorum_number<N>(
+        &self,
+        method: &str,
+        params: QuorumParams,
+    ) -> Result<N, QuorumError>
+    where
+        N: Serialize + DeserializeOwned + Ord + Copy,
+    {
         let mut queries = self
             .providers
             .iter()
             .map(|provider| {
+                let params_clone = params.clone();
                 Box::pin(async move {
-                    let block =
-                        provider.inner.request("eth_blockNumber", QuorumParams::Zst).await?;
-                    serde_json::from_value::<U64>(block)
+                    let num = provider.inner.request(method, params_clone).await?;
+                    serde_json::from_value::<N>(num)
                         .map(|b| (provider, b))
                         .map_err(ProviderError::from)
                 })
@@ -194,22 +206,31 @@ impl<T: JsonRpcClientWrapper> QuorumProvider<T> {
 
         // find the highest possible block number a quorum agrees on
         let mut cumulative_weight = 0;
-        let mut block = U64::from(0);
+        let mut aggregated_num: Option<N> = None;
+
         for (provider, n) in numbers.iter().copied() {
             cumulative_weight += provider.weight;
-            debug_assert!(block == U64::from(0) || block >= n);
-            block = n;
+            // Sanity check the sorting
+            debug_assert!(aggregated_num.is_none() || aggregated_num.unwrap() >= n);
+            aggregated_num = Some(n);
             if cumulative_weight >= self.quorum_weight {
-                return Ok(block)
+                return Ok(aggregated_num.unwrap())
             }
         }
         Err(QuorumError::NoQuorumReached {
             values: numbers
                 .into_iter()
-                .map(|(_, block)| serde_json::to_value(block).expect("Failed to serialize U64"))
+                .map(|(_, number)| {
+                    serde_json::to_value(number).expect("Failed to serialize number")
+                })
                 .collect(),
             errors,
         })
+    }
+
+    /// Returns the block height that a _quorum_ of providers have reached.
+    async fn get_quorum_block_number(&self) -> Result<U64, QuorumError> {
+        self.get_quorum_number("eth_blockNumber", QuorumParams::Zst).await
     }
 
     /// Normalizes the request payload depending on the call
@@ -499,11 +520,17 @@ where
         self.normalize_request(method, &mut params).await;
 
         match method {
-            "eth_blockNumber" => {
-                let block = self.get_quorum_block_number().await?;
+            // TODO: to robustly support eip-1559, we will likely need to also support
+            // eth_feeHistory. This returns an object with various numbers rather than a
+            // single number, so we'll need some additional code to handle this case.
+
+            // For RPCs that return numbers that can vary amongst inner providers, come to quorum on
+            // a single number
+            "eth_blockNumber" | "eth_estimateGas" | "eth_gasPrice" | "eth_maxPriorityFeePerGas" => {
+                let number: U256 = self.get_quorum_number(method, params).await?;
                 // a little janky to convert to a string and back but we don't know for sure what
                 // type R is and adding constraints for just this case feels wrong.
-                let value = serde_json::to_value(block).expect("Failed to serialize U64");
+                let value = serde_json::to_value(number).expect("Failed to serialize number");
                 Ok(serde_json::from_value(value)?)
             }
             "eth_sendTransaction" | "eth_sendRawTransaction" => {
@@ -681,12 +708,12 @@ pub enum QuorumParams {
 #[cfg(not(target_arch = "wasm32"))]
 mod tests {
     use super::{Quorum, QuorumProvider, WeightedProvider};
-    use crate::{Middleware, MockProvider, Provider};
-    use ethers_core::types::U64;
+    use crate::{transports::quorum::QuorumParams, Middleware, MockProvider, Provider};
+    use ethers_core::types::{U256, U64};
 
     async fn test_quorum(q: Quorum) {
         let num = 5u64;
-        let value = U64::from(42);
+        let value = U256::from(42);
         let mut providers = Vec::new();
         let mut mocked = Vec::new();
         for _ in 0..num {
@@ -699,12 +726,12 @@ mod tests {
         let quorum_weight = quorum.quorum_weight;
 
         let provider = Provider::quorum(quorum);
-        let blk = provider.get_block_number().await.unwrap();
+        let blk = provider.get_chainid().await.unwrap();
         assert_eq!(blk, value);
 
         // count the number of providers that returned a value
         let requested =
-            mocked.iter().filter(|mock| mock.assert_request("eth_blockNumber", ()).is_ok()).count();
+            mocked.iter().filter(|mock| mock.assert_request("eth_chainId", ()).is_ok()).count();
 
         match q {
             Quorum::All => {
@@ -742,41 +769,59 @@ mod tests {
             .add_providers(providers.clone())
             .quorum(Quorum::ProviderCount(5))
             .build();
-        assert_eq!(quorum.get_quorum_block_number().await.unwrap().as_u64(), 68);
+        assert_eq!(
+            quorum.get_quorum_number::<U64>("foo", QuorumParams::Zst).await.unwrap().as_u64(),
+            68
+        );
 
         let quorum = QuorumProvider::builder()
             .add_providers(providers.clone())
             .quorum(Quorum::ProviderCount(4))
             .build();
-        assert_eq!(quorum.get_quorum_block_number().await.unwrap().as_u64(), 100);
+        assert_eq!(
+            quorum.get_quorum_number::<U64>("foo", QuorumParams::Zst).await.unwrap().as_u64(),
+            100
+        );
 
         let quorum = QuorumProvider::builder()
             .add_providers(providers.clone())
             .quorum(Quorum::ProviderCount(3))
             .build();
-        assert_eq!(quorum.get_quorum_block_number().await.unwrap().as_u64(), 100);
+        assert_eq!(
+            quorum.get_quorum_number::<U64>("foo", QuorumParams::Zst).await.unwrap().as_u64(),
+            100
+        );
 
         let quorum = QuorumProvider::builder()
             .add_providers(providers.clone())
             .quorum(Quorum::ProviderCount(2))
             .build();
-        assert_eq!(quorum.get_quorum_block_number().await.unwrap().as_u64(), 101);
+        assert_eq!(
+            quorum.get_quorum_number::<U64>("foo", QuorumParams::Zst).await.unwrap().as_u64(),
+            101
+        );
 
         let quorum = QuorumProvider::builder()
             .add_providers(providers.clone())
             .quorum(Quorum::ProviderCount(1))
             .build();
-        assert_eq!(quorum.get_quorum_block_number().await.unwrap().as_u64(), 102);
+        assert_eq!(
+            quorum.get_quorum_number::<U64>("foo", QuorumParams::Zst).await.unwrap().as_u64(),
+            102
+        );
 
         let quorum = QuorumProvider::builder()
             .add_providers(providers.clone())
             .quorum(Quorum::Majority)
             .build();
-        assert_eq!(quorum.get_quorum_block_number().await.unwrap().as_u64(), 100);
+        assert_eq!(
+            quorum.get_quorum_number::<U64>("foo", QuorumParams::Zst).await.unwrap().as_u64(),
+            100
+        );
     }
 
     #[tokio::test]
-    async fn test_get_quorum_block_number_with_errors() {
+    async fn test_get_quorum_number_with_errors() {
         let mut providers = Vec::new();
 
         let mock = MockProvider::new();
@@ -800,17 +845,23 @@ mod tests {
             .add_providers(providers.clone())
             .quorum(Quorum::ProviderCount(2))
             .build();
-        assert_eq!(quorum.get_quorum_block_number().await.unwrap().as_u64(), 100);
+        assert_eq!(
+            quorum.get_quorum_number::<U64>("foo", QuorumParams::Zst).await.unwrap().as_u64(),
+            100
+        );
 
         let quorum = QuorumProvider::builder()
             .add_providers(providers.clone())
             .quorum(Quorum::Majority)
             .build();
-        assert_eq!(quorum.get_quorum_block_number().await.unwrap().as_u64(), 100);
+        assert_eq!(
+            quorum.get_quorum_number::<U64>("foo", QuorumParams::Zst).await.unwrap().as_u64(),
+            100
+        );
     }
 
     #[tokio::test]
-    async fn test_get_quorum_block_number_fails_to_reach_quorum() {
+    async fn test_get_quorum_number_fails_to_reach_quorum() {
         let mut providers = Vec::new();
 
         let mock = MockProvider::new();
@@ -831,13 +882,13 @@ mod tests {
             .add_providers(providers.clone())
             .quorum(Quorum::ProviderCount(2))
             .build();
-        assert!(quorum.get_quorum_block_number().await.is_err());
+        assert!(quorum.get_quorum_number::<U64>("foo", QuorumParams::Zst).await.is_err());
 
         let quorum = QuorumProvider::builder()
             .add_providers(providers.clone())
             .quorum(Quorum::Majority)
             .build();
-        assert!(quorum.get_quorum_block_number().await.is_err());
+        assert!(quorum.get_quorum_number::<U64>("foo", QuorumParams::Zst).await.is_err());
     }
 
     #[tokio::test]
