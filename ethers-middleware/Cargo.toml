@@ -48,7 +48,7 @@ ethers-providers = { version = "^1.0.0", path = "../ethers-providers", default-f
     "rustls",
 ] }
 once_cell = "1.15.0"
-ethers-solc = { version = "^0.17.0", path = "../ethers-solc" }
+ethers-solc = { version = "^1.0.0", path = "../ethers-solc" }
 serial_test = "0.9.0"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]

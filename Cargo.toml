@@ -95,7 +95,7 @@ ethers-core = { version = "^1.0.0", default-features = false, path = "./ethers-c
 ethers-providers = { version = "^1.0.0", default-features = false, path = "./ethers-providers" }
 ethers-signers = { version = "^0.17.0", default-features = false, path = "./ethers-signers" }
 ethers-middleware = { version = "^0.17.0", default-features = false, path = "./ethers-middleware" }
-ethers-solc = { version = "^0.17.0", default-features = false, path = "./ethers-solc", optional = true }
+ethers-solc = { version = "^1.0.0", default-features = false, path = "./ethers-solc", optional = true }
 ethers-etherscan = { version = "^0.17.0", default-features = false, path = "./ethers-etherscan" }
 
 [dev-dependencies]

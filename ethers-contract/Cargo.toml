@@ -36,7 +36,7 @@ ethers-core = { version = "^1.0.0", path = "../ethers-core", default-features = 
     "eip712",
 ] }
 ethers-derive-eip712 = { version = "^1.0.0", path = "../ethers-core/ethers-derive-eip712" }
-ethers-solc = { version = "^0.17.0", path = "../ethers-solc", default-features = false }
+ethers-solc = { version = "^1.0.0", path = "../ethers-solc", default-features = false }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 tokio = { version = "1.18", default-features = false, features = ["macros"] }
