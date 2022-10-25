@@ -1,6 +1,6 @@
 [package]
 name = "ethers-etherscan"
-version = "0.17.0"
+version = "1.0.0"
 rust-version = "1.62"
 authors = [
     "Matthias Seitz <matthias.seitz@outlook.de>",
