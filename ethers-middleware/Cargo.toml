@@ -1,6 +1,6 @@
 [package]
 name = "ethers-middleware"
-version = "0.17.0"
+version = "1.0.0"
 edition = "2018"
 rust-version = "1.62"
 authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
