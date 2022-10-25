@@ -8,7 +8,7 @@ pub mod multicall_3 {
     mod ethers_contract {
         pub use crate::*;
     }
-    use ethers_contract::{
+    use self::ethers_contract::{
         builders::{ContractCall, Event},
         Contract, Lazy,
     };
