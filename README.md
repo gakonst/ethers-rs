@@ -22,7 +22,7 @@ You can also run any of the examples by executing: `cargo run -p ethers --exampl
 ```toml
 [dependencies]
 
-ethers = { git = "https://github.com/gakonst/ethers-rs" }
+ethers = "1.0.0"
 ```
 
 </details>
@@ -49,7 +49,7 @@ address that, you must use the `legacy` feature flag:
 ```toml
 [dependencies]
 
-ethers = { git = "https://github.com/gakonst/ethers-rs", features = ["legacy"] }
+ethers = { version = "1.0.0", features = ["legacy"] }
 ```
 
 ### Polygon support
@@ -69,7 +69,7 @@ You can get one [here](https://snowtrace.io/apis).
 ```toml
 [dependencies]
 
-ethers = { git = "https://github.com/gakonst/ethers-rs", features = ["celo"] }
+ethers = { version = "1.0.0", features = ["celo"] }
 ```
 
 Celo's transactions differ from Ethereum transactions by including 3 new fields:
@@ -107,7 +107,7 @@ Websockets support is turned on via the feature-flag `ws`:
 ```toml
 [dependencies]
 
-ethers = { git = "https://github.com/gakonst/ethers-rs", features = ["ws"] }
+ethers = { version = "1.0.0", features = ["ws"] }
 ```
 
 ### Interprocess Communication (IPC)
@@ -117,7 +117,7 @@ IPC support is turned on via the feature-flag `ipc`:
 ```toml
 [dependencies]
 
-ethers = { git = "https://github.com/gakonst/ethers-rs", features = ["ipc"] }
+ethers = { version = "1.0.0", features = ["ipc"] }
 ```
 
 ### HTTP Secure (HTTPS)
@@ -130,7 +130,7 @@ To enable `rustls`:
 ```toml
 [dependencies]
 
-ethers = { git = "https://github.com/gakonst/ethers-rs", features = ["rustls"] }
+ethers = { version = "1.0.0", features = ["rustls"] }
 ```
 
 To enable `openssl`:
@@ -138,7 +138,7 @@ To enable `openssl`:
 ```toml
 [dependencies]
 
-ethers = { git = "https://github.com/gakonst/ethers-rs", features = ["openssl"] }
+ethers = { version = "1.0.0", features = ["openssl"] }
 ```
 
 ## Note on WASM and FFI bindings

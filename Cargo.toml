@@ -1,6 +1,6 @@
 [package]
 name = "ethers"
-version = "0.17.0"
+version = "1.0.0"
 edition = "2021"
 rust-version = "1.62"
 authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
@@ -89,26 +89,26 @@ solc-tests = ["ethers-solc", "ethers-solc/tests"]
 solc-sha2-asm = ["ethers-solc", "ethers-solc/asm"]
 
 [dependencies]
-ethers-addressbook = { version = "^0.17.0", default-features = false, path = "./ethers-addressbook" }
-ethers-contract = { version = "^0.17.0", default-features = false, path = "./ethers-contract" }
-ethers-core = { version = "^0.17.0", default-features = false, path = "./ethers-core" }
-ethers-providers = { version = "^0.17.0", default-features = false, path = "./ethers-providers" }
-ethers-signers = { version = "^0.17.0", default-features = false, path = "./ethers-signers" }
-ethers-middleware = { version = "^0.17.0", default-features = false, path = "./ethers-middleware" }
-ethers-solc = { version = "^0.17.0", default-features = false, path = "./ethers-solc", optional = true }
-ethers-etherscan = { version = "^0.17.0", default-features = false, path = "./ethers-etherscan" }
+ethers-addressbook = { version = "^1.0.0", default-features = false, path = "./ethers-addressbook" }
+ethers-contract = { version = "^1.0.0", default-features = false, path = "./ethers-contract" }
+ethers-core = { version = "^1.0.0", default-features = false, path = "./ethers-core" }
+ethers-providers = { version = "^1.0.0", default-features = false, path = "./ethers-providers" }
+ethers-signers = { version = "^1.0.0", default-features = false, path = "./ethers-signers" }
+ethers-middleware = { version = "^1.0.0", default-features = false, path = "./ethers-middleware" }
+ethers-solc = { version = "^1.0.0", default-features = false, path = "./ethers-solc", optional = true }
+ethers-etherscan = { version = "^1.0.0", default-features = false, path = "./ethers-etherscan" }
 
 [dev-dependencies]
-ethers-contract = { version = "^0.17.0", default-features = false, path = "./ethers-contract", features = [
+ethers-contract = { version = "^1.0.0", default-features = false, path = "./ethers-contract", features = [
     "abigen",
     "eip712",
 ] }
-ethers-providers = { version = "^0.17.0", default-features = false, path = "./ethers-providers", features = [
+ethers-providers = { version = "^1.0.0", default-features = false, path = "./ethers-providers", features = [
     "ws",
 ] }
 
 [target.'cfg(target_family = "unix")'.dev-dependencies]
-ethers-providers = { version = "^0.17.0", default-features = false, path = "./ethers-providers", features = [
+ethers-providers = { version = "^1.0.0", default-features = false, path = "./ethers-providers", features = [
     "ws",
     "ipc",
 ] }
