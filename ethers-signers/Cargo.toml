@@ -43,6 +43,13 @@ spki = { version = "0.6.0", optional = true }
 eth-keystore = { version = "0.5.0" }
 home = { version = "0.5.4", optional = true }
 
+[dev-dependencies]
+ethers-contract-derive = { version = "^1.0.0", path = "../ethers-contract/ethers-contract-derive" }
+ethers-derive-eip712 = { version = "^1.0.0", path = "../ethers-core/ethers-derive-eip712" }
+serde_json = { version = "1.0.64" }
+tracing-subscriber = "0.3.16"
+yubihsm = { version = "0.41.0", features = ["secp256k1", "usb", "mockhsm"] }
+
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 yubihsm = { version = "0.41.0", features = ["secp256k1", "usb", "mockhsm"] }
 tokio = { version = "1.18", default-features = false, features = ["macros", "rt"] }

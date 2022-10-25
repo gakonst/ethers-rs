@@ -43,3 +43,6 @@ wee_alloc = { version = "0.4.5", optional = true }
 web-sys = { version = "0.3.60", features = ["console"] }
 
 hex = "0.4.3"
+
+[dev-dependencies]
+wasm-bindgen-test = "0.3.33"

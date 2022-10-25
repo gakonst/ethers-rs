@@ -12,10 +12,6 @@ homepage = "https://docs.rs/ethers"
 repository = "https://github.com/gakonst/ethers-rs"
 keywords = ["ethereum", "web3", "celo", "ethers"]
 
-[package.metadata.docs.rs]
-all-features = true
-rustdoc-args = ["--cfg", "docsrs"]
-
 [dependencies]
 ethers-core = { version = "^1.0.0", path = "../../ethers-core", features = ["macros"] }
 
@@ -38,7 +34,18 @@ regex = "1.6.0"
 # NOTE: this enables wasm compatibility for getrandom indirectly
 getrandom = { version = "0.2", features = ["js"] }
 
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
 [features]
 default = ["reqwest", "rustls"]
 openssl = ["reqwest/native-tls"]
 rustls = ["reqwest/rustls-tls"]
+
+[dev-dependencies]
+tempfile = "3.2.0"
+ethers-solc = { version = "^1.0.0", path = "../../ethers-solc", default-features = false, features = [
+    "project-util",
+    "svm-solc",
+] }
