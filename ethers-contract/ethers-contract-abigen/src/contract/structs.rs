@@ -225,7 +225,7 @@ pub struct InternalStructs {
     /// from ethabi.
     pub(crate) function_params: HashMap<(String, String), String>,
 
-    /// (function name) -> Vec<structs> all structs the function returns
+    /// (function name) -> `Vec<structs>` all structs the function returns
     pub(crate) outputs: HashMap<String, Vec<String>>,
 
     /// (event name, idx) -> struct which are the identifying properties we get the name
