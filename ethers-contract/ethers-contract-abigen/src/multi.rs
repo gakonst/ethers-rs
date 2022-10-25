@@ -99,6 +99,7 @@ impl MultiAbigen {
     ///    let gen = MultiAbigen::from_json_files("./abi").unwrap().with_filter(
     ///        SelectContracts::default().add_name("MyContract").add_name("MyOtherContract"),
     ///    );
+    /// # }
     /// ```
     ///
     /// Exclude all contracts that end with test
@@ -109,6 +110,7 @@ impl MultiAbigen {
     ///    let gen = MultiAbigen::from_json_files("./abi").unwrap().with_filter(
     ///        ExcludeContracts::default().add_pattern(".*Test"),
     ///    );
+    /// # }
     /// ```
     #[must_use]
     pub fn with_filter(mut self, filter: impl Into<ContractFilter>) -> Self {

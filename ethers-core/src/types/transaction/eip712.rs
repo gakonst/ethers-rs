@@ -490,7 +490,7 @@ pub struct TypedData {
 
 /// According to the MetaMask implementation,
 /// the message parameter may be JSON stringified in versions later than V1
-/// See https://github.com/MetaMask/metamask-extension/blob/0dfdd44ae7728ed02cbf32c564c75b74f37acf77/app/scripts/metamask-controller.js#L1736
+/// See <https://github.com/MetaMask/metamask-extension/blob/0dfdd44ae7728ed02cbf32c564c75b74f37acf77/app/scripts/metamask-controller.js#L1736>
 /// In fact, ethers.js JSON stringifies the message at the time of writing.
 impl<'de> Deserialize<'de> for TypedData {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
