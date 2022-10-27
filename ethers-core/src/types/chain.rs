@@ -30,7 +30,7 @@ pub enum Chain {
     Rinkeby = 4,
     Goerli = 5,
     Kovan = 42,
-    #[strum(serialize = "xdai")]
+    #[strum(serialize = "gnosis")]
     XDai = 100,
     Polygon = 137,
     Fantom = 250,
@@ -229,7 +229,7 @@ impl fmt::Display for Chain {
             Chain::Rinkeby => "rinkeby",
             Chain::Goerli => "goerli",
             Chain::Kovan => "kovan",
-            Chain::XDai => "xdai",
+            Chain::XDai => "gnosis",
             Chain::Polygon => "polygon",
             Chain::PolygonMumbai => "mumbai",
             Chain::Avalanche => "avalanche",
@@ -358,7 +358,7 @@ impl FromStr for Chain {
             "rinkeby" => Chain::Rinkeby,
             "goerli" => Chain::Goerli,
             "kovan" => Chain::Kovan,
-            "xdai" => Chain::XDai,
+            "xdai" | "gnosis" | "gnosis-chain" => Chain::XDai,
             "polygon" => Chain::Polygon,
             "mumbai" | "polygon-mumbai" => Chain::PolygonMumbai,
             "avalanche" => Chain::Avalanche,
