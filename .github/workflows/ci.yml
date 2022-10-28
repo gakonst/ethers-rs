@@ -20,7 +20,7 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - name: Checkout sources
-              uses: actions/checkout@v2
+              uses: actions/checkout@v3
             - name: Install Anvil
               uses: foundry-rs/foundry-toolchain@v1
               with:
@@ -63,7 +63,7 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - name: Checkout sources
-              uses: actions/checkout@v2
+              uses: actions/checkout@v3
             # TODO: can we combine these shared steps in github actions?
             - name: Install Anvil
               uses: foundry-rs/foundry-toolchain@v1
@@ -107,7 +107,7 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - name: Checkout sources
-              uses: actions/checkout@v2
+              uses: actions/checkout@v3
             - name: Install toolchain
               uses: actions-rs/toolchain@v1
               with:
@@ -128,7 +128,7 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - name: Checkout sources
-              uses: actions/checkout@v2
+              uses: actions/checkout@v3
             - name: Install toolchain
               uses: actions-rs/toolchain@v1
               with:
@@ -149,7 +149,7 @@ jobs:
 
         steps:
             - name: Checkout sources
-              uses: actions/checkout@v2
+              uses: actions/checkout@v3
             - name: Install rust
               uses: actions-rs/toolchain@v1
               with:
@@ -196,7 +196,7 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - name: Checkout sources
-              uses: actions/checkout@v2
+              uses: actions/checkout@v3
 
             - name: Install geth (for state overrides example)
               run: |
@@ -281,7 +281,7 @@ jobs:
 
         steps:
             - name: checkout
-              uses: actions/checkout@v2
+              uses: actions/checkout@v3
 
               # Run build
             - name: Install Rustup using win.rustup.rs
