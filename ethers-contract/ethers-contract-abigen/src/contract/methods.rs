@@ -34,7 +34,7 @@ impl Context {
             .map(|function| {
                 let signature = function.abi_signature();
                 self.expand_function(function, aliases.get(&signature).cloned())
-                    .with_context(|| format!("error expanding function '{}'", signature))
+                    .with_context(|| format!("error expanding function '{signature}'"))
             })
             .collect::<Result<Vec<_>>>()?;
 
@@ -593,7 +593,7 @@ impl Context {
                             name_conflicts(*idx, &diffs)
                         {
                             needs_alias_for_first_fun_using_idx = true;
-                            format!("{}{}", overloaded_fun.name.to_snake_case(), idx)
+                            format!("{}{idx}", overloaded_fun.name.to_snake_case())
                         } else {
                             format!(
                                 "{}_with_{}",
@@ -608,7 +608,7 @@ impl Context {
                             name_conflicts(*idx, &diffs)
                         {
                             needs_alias_for_first_fun_using_idx = true;
-                            format!("{}{}", overloaded_fun.name.to_snake_case(), idx)
+                            format!("{}{idx}", overloaded_fun.name.to_snake_case())
                         } else {
                             // 1 + n additional input params
                             let and = diff
@@ -632,7 +632,7 @@ impl Context {
 
             if needs_alias_for_first_fun_using_idx {
                 // insert an alias for the root duplicated call
-                let prev_alias = format!("{}{}", first_fun.name.to_snake_case(), first_fun_idx);
+                let prev_alias = format!("{}{first_fun_idx}", first_fun.name.to_snake_case());
 
                 let alias = MethodAlias::new(&prev_alias);
 
@@ -698,9 +698,9 @@ fn expand_struct_name_postfix(
     postfix: &str,
 ) -> Ident {
     let name = if let Some(alias) = alias {
-        format!("{}{}", alias.struct_name, postfix)
+        format!("{}{postfix}", alias.struct_name)
     } else {
-        format!("{}{}", util::safe_pascal_case(&function.name), postfix)
+        format!("{}{postfix}", util::safe_pascal_case(&function.name))
     };
     util::ident(&name)
 }

@@ -38,12 +38,12 @@ impl FromStr for ERCNFT {
         let token_split: Vec<&str> = inner_path.split('/').collect();
         let (contract_addr, token_id) = if token_split.len() == 2 {
             let token_id = U256::from_dec_str(token_split[1])
-                .map_err(|e| format!("Unsupported token id type: {} {}", token_split[1], e))?;
+                .map_err(|e| format!("Unsupported token id type: {} {e}", token_split[1]))?;
             let mut token_id_bytes = [0x0; 32];
             token_id.to_big_endian(&mut token_id_bytes);
             (
                 Address::from_str(token_split[0].trim_start_matches("0x"))
-                    .map_err(|e| format!("Invalid contract address: {} {}", token_split[0], e))?,
+                    .map_err(|e| format!("Invalid contract address: {} {e}", token_split[0]))?,
                 token_id_bytes,
             )
         } else {

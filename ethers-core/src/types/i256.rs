@@ -1046,7 +1046,7 @@ impl fmt::Display for I256 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let (sign, abs) = self.into_sign_and_abs();
         sign.fmt(f)?;
-        write!(f, "{}", abs)
+        write!(f, "{abs}")
     }
 }
 
@@ -1054,7 +1054,7 @@ impl fmt::LowerHex for I256 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let (sign, abs) = self.into_sign_and_abs();
         fmt::Display::fmt(&sign, f)?;
-        write!(f, "{:x}", abs)
+        write!(f, "{abs:x}")
     }
 }
 
@@ -1064,9 +1064,9 @@ impl fmt::UpperHex for I256 {
         fmt::Display::fmt(&sign, f)?;
 
         // NOTE: Work around `U256: !UpperHex`.
-        let mut buffer = format!("{:x}", abs);
+        let mut buffer = format!("{abs:x}");
         buffer.make_ascii_uppercase();
-        write!(f, "{}", buffer)
+        write!(f, "{buffer}")
     }
 }
 
@@ -1385,13 +1385,13 @@ mod tests {
     fn parse_dec_str() {
         let unsigned = U256::from_dec_str("314159265358979323846264338327950288419716").unwrap();
 
-        let value = I256::from_dec_str(&format!("-{}", unsigned)).unwrap();
+        let value = I256::from_dec_str(&format!("-{unsigned}")).unwrap();
         assert_eq!(value.into_sign_and_abs(), (Sign::Negative, unsigned));
 
-        let value = I256::from_dec_str(&format!("{}", unsigned)).unwrap();
+        let value = I256::from_dec_str(&format!("{unsigned}")).unwrap();
         assert_eq!(value.into_sign_and_abs(), (Sign::Positive, unsigned));
 
-        let value = I256::from_dec_str(&format!("+{}", unsigned)).unwrap();
+        let value = I256::from_dec_str(&format!("+{unsigned}")).unwrap();
         assert_eq!(value.into_sign_and_abs(), (Sign::Positive, unsigned));
 
         let err = I256::from_dec_str("invalid string").unwrap_err();
@@ -1414,13 +1414,13 @@ mod tests {
     fn parse_hex_str() {
         let unsigned = U256::from_dec_str("314159265358979323846264338327950288419716").unwrap();
 
-        let value = I256::from_hex_str(&format!("-{:x}", unsigned)).unwrap();
+        let value = I256::from_hex_str(&format!("-{unsigned:x}")).unwrap();
         assert_eq!(value.into_sign_and_abs(), (Sign::Negative, unsigned));
 
-        let value = I256::from_hex_str(&format!("{:x}", unsigned)).unwrap();
+        let value = I256::from_hex_str(&format!("{unsigned:x}")).unwrap();
         assert_eq!(value.into_sign_and_abs(), (Sign::Positive, unsigned));
 
-        let value = I256::from_hex_str(&format!("+{:x}", unsigned)).unwrap();
+        let value = I256::from_hex_str(&format!("+{unsigned:x}")).unwrap();
         assert_eq!(value.into_sign_and_abs(), (Sign::Positive, unsigned));
 
         let err = I256::from_hex_str("invalid string").unwrap_err();
@@ -1445,20 +1445,20 @@ mod tests {
         let positive = I256::try_from(unsigned).unwrap();
         let negative = -positive;
 
-        assert_eq!(format!("{}", positive), format!("{}", unsigned));
-        assert_eq!(format!("{}", negative), format!("-{}", unsigned));
-        assert_eq!(format!("{:+}", positive), format!("+{}", unsigned));
-        assert_eq!(format!("{:+}", negative), format!("-{}", unsigned));
+        assert_eq!(format!("{positive}"), format!("{unsigned}"));
+        assert_eq!(format!("{negative}"), format!("-{unsigned}"));
+        assert_eq!(format!("{positive:+}"), format!("+{unsigned}"));
+        assert_eq!(format!("{negative:+}"), format!("-{unsigned}"));
 
-        assert_eq!(format!("{:x}", positive), format!("{:x}", unsigned));
-        assert_eq!(format!("{:x}", negative), format!("-{:x}", unsigned));
-        assert_eq!(format!("{:+x}", positive), format!("+{:x}", unsigned));
-        assert_eq!(format!("{:+x}", negative), format!("-{:x}", unsigned));
+        assert_eq!(format!("{positive:x}"), format!("{unsigned:x}"));
+        assert_eq!(format!("{negative:x}"), format!("-{unsigned:x}"));
+        assert_eq!(format!("{positive:+x}"), format!("+{unsigned:x}"));
+        assert_eq!(format!("{negative:+x}"), format!("-{unsigned:x}"));
 
-        assert_eq!(format!("{:X}", positive), format!("{:x}", unsigned).to_uppercase());
-        assert_eq!(format!("{:X}", negative), format!("-{:x}", unsigned).to_uppercase());
-        assert_eq!(format!("{:+X}", positive), format!("+{:x}", unsigned).to_uppercase());
-        assert_eq!(format!("{:+X}", negative), format!("-{:x}", unsigned).to_uppercase());
+        assert_eq!(format!("{positive:X}"), format!("{unsigned:x}").to_uppercase());
+        assert_eq!(format!("{negative:X}"), format!("-{unsigned:x}").to_uppercase());
+        assert_eq!(format!("{positive:+X}"), format!("+{unsigned:x}").to_uppercase());
+        assert_eq!(format!("{negative:+X}"), format!("-{unsigned:x}").to_uppercase());
     }
 
     #[test]

@@ -149,7 +149,7 @@ impl Default for Solc {
         #[cfg(not(target_arch = "wasm32"))]
         {
             if let Some(solc) = Solc::svm_global_version()
-                .and_then(|vers| Solc::find_svm_installed_version(&vers.to_string()).ok())
+                .and_then(|vers| Solc::find_svm_installed_version(vers.to_string()).ok())
                 .flatten()
             {
                 return solc
@@ -279,7 +279,7 @@ impl Solc {
         let solc = Self::svm_home()
             .ok_or_else(|| SolcError::solc("svm home dir not found"))?
             .join(version)
-            .join(format!("solc-{}", version));
+            .join(format!("solc-{version}"));
 
         if !solc.is_file() {
             return Ok(None)
@@ -688,7 +688,7 @@ fn version_from_output(output: Output) -> Result<Version> {
             .lines()
             .last()
             .ok_or_else(|| SolcError::solc("version not found in solc output"))?
-            .map_err(|err| SolcError::msg(format!("Failed to read output: {}", err)))?;
+            .map_err(|err| SolcError::msg(format!("Failed to read output: {err}")))?;
         // NOTE: semver doesn't like `+` in g++ in build metadata which is invalid semver
         Ok(Version::from_str(&version.trim_start_matches("Version: ").replace(".g++", ".gcc"))?)
     } else {
@@ -858,8 +858,8 @@ mod tests {
         {
             Solc::blocking_install(&version).unwrap();
         }
-        let res = Solc::find_svm_installed_version(&version.to_string()).unwrap().unwrap();
-        let expected = svm::SVM_HOME.join(ver).join(format!("solc-{}", ver));
+        let res = Solc::find_svm_installed_version(version.to_string()).unwrap().unwrap();
+        let expected = svm::SVM_HOME.join(ver).join(format!("solc-{ver}"));
         assert_eq!(res.solc, expected);
     }
 
@@ -876,7 +876,7 @@ mod tests {
     fn does_not_find_not_installed_version() {
         let ver = "1.1.1";
         let version = Version::from_str(ver).unwrap();
-        let res = Solc::find_svm_installed_version(&version.to_string()).unwrap();
+        let res = Solc::find_svm_installed_version(version.to_string()).unwrap();
         assert!(res.is_none());
     }
 
@@ -908,6 +908,6 @@ mod tests {
     ///// helpers
 
     fn source(version: &str) -> Source {
-        Source { content: format!("pragma solidity {};\n", version) }
+        Source { content: format!("pragma solidity {version};\n") }
     }
 }

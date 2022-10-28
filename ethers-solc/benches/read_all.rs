@@ -33,7 +33,7 @@ fn read_all_benchmark(c: &mut Criterion) {
 fn prepare_contracts(root: &Path, num: usize) -> Vec<PathBuf> {
     let mut files = Vec::with_capacity(num);
     for _ in 0..num {
-        let path = root.join(format!("file{}.sol", num));
+        let path = root.join(format!("file{num}.sol"));
         let f = File::create(&path).unwrap();
         let mut writer = BufWriter::new(f);
 

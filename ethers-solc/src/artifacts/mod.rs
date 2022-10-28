@@ -522,13 +522,13 @@ impl Libraries {
         for lib in libs {
             let mut items = lib.split(':');
             let file = items.next().ok_or_else(|| {
-                SolcError::msg(format!("failed to parse path to library file: {}", lib))
+                SolcError::msg(format!("failed to parse path to library file: {lib}"))
             })?;
             let lib = items
                 .next()
-                .ok_or_else(|| SolcError::msg(format!("failed to parse library name: {}", lib)))?;
+                .ok_or_else(|| SolcError::msg(format!("failed to parse library name: {lib}")))?;
             let addr = items.next().ok_or_else(|| {
-                SolcError::msg(format!("failed to parse library address: {}", lib))
+                SolcError::msg(format!("failed to parse library address: {lib}"))
             })?;
             if items.next().is_some() {
                 return Err(SolcError::msg(format!(
@@ -735,7 +735,7 @@ impl fmt::Display for EvmVersion {
             EvmVersion::London => "london",
             EvmVersion::Byzantium => "byzantium",
         };
-        write!(f, "{}", string)
+        write!(f, "{string}")
     }
 }
 
@@ -753,7 +753,7 @@ impl FromStr for EvmVersion {
             "berlin" => Ok(EvmVersion::Berlin),
             "london" => Ok(EvmVersion::London),
             "byzantium" => Ok(EvmVersion::Byzantium),
-            s => Err(format!("Unknown evm version: {}", s)),
+            s => Err(format!("Unknown evm version: {s}")),
         }
     }
 }
@@ -807,7 +807,7 @@ impl fmt::Display for RevertStrings {
             RevertStrings::Debug => "debug",
             RevertStrings::VerboseDebug => "verboseDebug",
         };
-        write!(f, "{}", string)
+        write!(f, "{string}")
     }
 }
 
@@ -820,7 +820,7 @@ impl FromStr for RevertStrings {
             "strip" => Ok(RevertStrings::Strip),
             "debug" => Ok(RevertStrings::Debug),
             "verboseDebug" | "verbosedebug" => Ok(RevertStrings::VerboseDebug),
-            s => Err(format!("Unknown evm version: {}", s)),
+            s => Err(format!("Unknown evm version: {s}")),
         }
     }
 }
@@ -887,7 +887,7 @@ impl FromStr for BytecodeHash {
             "none" => Ok(BytecodeHash::None),
             "ipfs" => Ok(BytecodeHash::Ipfs),
             "bzzr1" => Ok(BytecodeHash::Bzzr1),
-            s => Err(format!("Unknown bytecode hash: {}", s)),
+            s => Err(format!("Unknown bytecode hash: {s}")),
         }
     }
 }
@@ -1050,7 +1050,7 @@ impl fmt::Display for ModelCheckerEngine {
             ModelCheckerEngine::BMC => "bmc",
             ModelCheckerEngine::CHC => "chc",
         };
-        write!(f, "{}", string)
+        write!(f, "{string}")
     }
 }
 
@@ -1063,7 +1063,7 @@ impl FromStr for ModelCheckerEngine {
             "all" => Ok(ModelCheckerEngine::All),
             "bmc" => Ok(ModelCheckerEngine::BMC),
             "chc" => Ok(ModelCheckerEngine::CHC),
-            s => Err(format!("Unknown model checker engine: {}", s)),
+            s => Err(format!("Unknown model checker engine: {s}")),
         }
     }
 }
@@ -1100,7 +1100,7 @@ impl fmt::Display for ModelCheckerTarget {
             ModelCheckerTarget::OutOfBounds => "outOfBounds",
             ModelCheckerTarget::Balance => "balance",
         };
-        write!(f, "{}", string)
+        write!(f, "{string}")
     }
 }
 
@@ -1117,7 +1117,7 @@ impl FromStr for ModelCheckerTarget {
             "popEmptyArray" => Ok(ModelCheckerTarget::PopEmptyArray),
             "outOfBounds" => Ok(ModelCheckerTarget::OutOfBounds),
             "balance" => Ok(ModelCheckerTarget::Balance),
-            s => Err(format!("Unknown model checker target: {}", s)),
+            s => Err(format!("Unknown model checker target: {s}")),
         }
     }
 }
@@ -1729,13 +1729,13 @@ impl fmt::Display for Error {
             match self.severity {
                 Severity::Error => {
                     if let Some(code) = self.error_code {
-                        Paint::red(format!("error[{}]: ", code)).fmt(f)?;
+                        Paint::red(format!("error[{code}]: ")).fmt(f)?;
                     }
                     Paint::red(msg).fmt(f)
                 }
                 Severity::Warning | Severity::Info => {
                     if let Some(code) = self.error_code {
-                        Paint::yellow(format!("warning[{}]: ", code)).fmt(f)?;
+                        Paint::yellow(format!("warning[{code}]: ")).fmt(f)?;
                     }
                     Paint::yellow(msg).fmt(f)
                 }
@@ -1786,7 +1786,7 @@ impl FromStr for Severity {
             "error" => Ok(Severity::Error),
             "warning" => Ok(Severity::Warning),
             "info" => Ok(Severity::Info),
-            s => Err(format!("Invalid severity: {}", s)),
+            s => Err(format!("Invalid severity: {s}")),
         }
     }
 }

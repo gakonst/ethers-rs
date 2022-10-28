@@ -205,7 +205,7 @@ impl Shared {
             match msg {
                 Request { id, request, sender } => {
                     let prev = self.pending.borrow_mut().insert(id, sender);
-                    assert!(prev.is_none(), "replaced pending IPC request (id={})", id);
+                    assert!(prev.is_none(), "{}", "replaced pending IPC request (id={id})");
 
                     if let Err(err) = writer.write_all(&request).await {
                         tracing::error!("IPC connection error: {:?}", err);

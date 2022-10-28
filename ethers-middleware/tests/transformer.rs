@@ -16,7 +16,7 @@ type HttpWallet = SignerMiddleware<Provider<Http>, LocalWallet>;
 
 // compiles the given contract and returns the ABI and Bytecode
 fn compile_contract(path: &str, name: &str) -> (Abi, Bytes) {
-    let path = format!("./tests/solidity-contracts/{}", path);
+    let path = format!("./tests/solidity-contracts/{path}");
     let compiled = Solc::default().compile_source(&path).unwrap();
     let contract = compiled.get(&path, name).expect("could not find contract");
     let (abi, bin, _) = contract.into_parts_or_default();

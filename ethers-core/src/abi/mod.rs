@@ -95,7 +95,7 @@ impl ErrorExt for ethabi::AbiError {
             return format!("{}()", self.name)
         }
         let inputs = self.inputs.iter().map(|p| p.kind.to_string()).collect::<Vec<_>>().join(",");
-        format!("{}({})", self.name, inputs)
+        format!("{}({inputs})", self.name)
     }
 
     fn selector(&self) -> Selector {

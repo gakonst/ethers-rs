@@ -184,7 +184,7 @@ impl Parse for Parameter {
             _ => {
                 return Err(ParseError::new(
                     name.span(),
-                    format!("unexpected named parameter `{}`", name),
+                    format!("unexpected named parameter `{name}`"),
                 ))
             }
         };

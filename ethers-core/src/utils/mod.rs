@@ -257,7 +257,7 @@ pub fn get_create2_address_from_hash(
         [&[0xff], from.into().as_bytes(), salt.into().as_ref(), init_code_hash.into().as_ref()]
             .concat();
 
-    let hash = keccak256(&bytes);
+    let hash = keccak256(bytes);
 
     let mut bytes = [0u8; 20];
     bytes.copy_from_slice(&hash[12..]);
@@ -278,10 +278,10 @@ pub fn secret_key_to_address(secret_key: &SigningKey) -> Address {
 /// Ref: <https://github.com/ethereum/EIPs/blob/master/EIPS/eip-55.md>
 pub fn to_checksum(addr: &Address, chain_id: Option<u8>) -> String {
     let prefixed_addr = match chain_id {
-        Some(chain_id) => format!("{}0x{:x}", chain_id, addr),
-        None => format!("{:x}", addr),
+        Some(chain_id) => format!("{chain_id}0x{addr:x}"),
+        None => format!("{addr:x}"),
     };
-    let hash = hex::encode(keccak256(&prefixed_addr));
+    let hash = hex::encode(keccak256(prefixed_addr));
     let hash = hash.as_bytes();
 
     let addr_hex = hex::encode(addr.as_bytes());

@@ -337,7 +337,7 @@ where
     if not_aliased.len() > 1 {
         let mut overloaded_aliases = Vec::new();
         for (idx, (sig, name)) in not_aliased.into_iter().enumerate() {
-            let unique_name = format!("{}{}", name, idx + 1);
+            let unique_name = format!("{name}{}", idx + 1);
             overloaded_aliases.push((sig, get_ident(&unique_name)));
         }
         aliases.extend(overloaded_aliases);

@@ -12,7 +12,7 @@ async fn main() -> Result<()> {
         let h: H256 = H256::from_str(tx_hash)?;
         let options: GethDebugTracingOptions = GethDebugTracingOptions::default();
         let traces = client.debug_trace_transaction(h, options).await?;
-        println!("{:?}", traces);
+        println!("{traces:?}");
     }
 
     Ok(())
