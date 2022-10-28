@@ -273,8 +273,7 @@ fn get_etherscan_contract(address: Address, domain: &str) -> Result<String> {
         "http://api.{}/api?module=contract&action=getabi&address={:?}&format=raw{}",
         domain, address, api_key,
     );
-    let abi =
-        util::http_get(&abi_url).context(format!("failed to retrieve ABI from {domain}"))?;
+    let abi = util::http_get(&abi_url).context(format!("failed to retrieve ABI from {domain}"))?;
 
     if abi.starts_with("Contract source code not verified") {
         eyre::bail!("Contract source code not verified: {:?}", address);

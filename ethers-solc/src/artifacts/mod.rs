@@ -527,9 +527,9 @@ impl Libraries {
             let lib = items
                 .next()
                 .ok_or_else(|| SolcError::msg(format!("failed to parse library name: {lib}")))?;
-            let addr = items.next().ok_or_else(|| {
-                SolcError::msg(format!("failed to parse library address: {lib}"))
-            })?;
+            let addr = items
+                .next()
+                .ok_or_else(|| SolcError::msg(format!("failed to parse library address: {lib}")))?;
             if items.next().is_some() {
                 return Err(SolcError::msg(format!(
                     "failed to parse, too many arguments passed: {}",
