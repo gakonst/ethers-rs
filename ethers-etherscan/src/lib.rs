@@ -103,6 +103,7 @@ impl Client {
                 std::env::var("FTMSCAN_API_KEY").or_else(|_| std::env::var("FANTOMSCAN_API_KEY"))?
             }
             Chain::XDai |
+            Chain::Chiado |
             Chain::Sepolia |
             Chain::Rsk |
             Chain::Sokol |
