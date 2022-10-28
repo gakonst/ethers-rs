@@ -123,6 +123,26 @@ jobs:
             - name: cargo clippy
               run: cargo +nightly clippy --all-features -- -D warnings
 
+    docs:
+        name: docs
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout sources
+              uses: actions/checkout@v2
+            - name: Install toolchain
+              uses: actions-rs/toolchain@v1
+              with:
+                  toolchain: nightly
+                  override: true
+            - uses: Swatinem/rust-cache@v1
+              with:
+                  cache-on-failure: true
+            - name: cargo doc
+              run: cargo +nightly doc --lib --all-features
+              env:
+                  RUSTFLAGS: --cfg docsrs
+                  RUSTDOCFLAGS: --cfg docsrs -Dwarnings
+
     wasm:
         name: WASM
         runs-on: ubuntu-latest
