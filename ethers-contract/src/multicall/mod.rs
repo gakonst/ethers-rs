@@ -47,6 +47,7 @@ pub static MULTICALL_SUPPORTED_CHAIN_IDS: Lazy<[U256; 47]> = Lazy::new(|| {
         U256::from(Polygon),                  // Polygon
         U256::from(PolygonMumbai),            // PolygonMumbai
         U256::from(XDai),                     // XDai
+        U256::from(Chiado),                   // ChiadoTestnet
         U256::from(Avalanche),                // Avalanche
         U256::from(AvalancheFuji),            // AvalancheFuji
         U256::from(FantomTestnet),            // FantomTestnet
