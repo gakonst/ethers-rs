@@ -983,7 +983,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.request("debug_traceTransaction", [tx_hash, trace_options]).await
     }
 
-    /// Executes the given call and returns a number of possible traces for it
+    /// Executes the given call and returns a number of possible traces for it (debug namespace)
     async fn debug_trace_call<T: Into<TypedTransaction> + Send + Sync>(
         &self,
         tx: T,
@@ -1012,6 +1012,36 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         let outer = utils::serialize(&outer);
 
         self.request("debug_traceCall", [tx, block.clone(), outer]).await
+    }
+
+    /// Executes the given calls and returns a number of possible traces for it ()
+    async fn debug_trace_call_many<T: Into<Vec<TypedTransaction>> + Send + Sync>(
+        &self,
+        tx: T,
+        block: Option<BlockNumber>,
+        trace_options: GethDebugTracingOptions,
+        state_overrides: spoof::State,
+    ) -> Result<GethCallTrace, ProviderError> {
+        let tx = utils::serialize(&tx);
+
+        #[derive(Debug, Serialize)]
+        struct Outer {
+            #[serde(flatten)]
+            f: GethDebugTracingOptions,
+            #[serde(rename = "stateOverrides")]
+            state: spoof::State,
+        }
+
+        let block = utils::serialize(&block.unwrap_or(BlockNumber::Latest));
+
+        let outer = Outer {
+            f: trace_options,
+            state: state_overrides,
+        };
+
+        let outer = utils::serialize(&outer);
+
+        self.request("debug_traceCallMany", [tx, block.clone(), outer]).await
     }
 
     /// Executes the given call and returns a number of possible traces for it
