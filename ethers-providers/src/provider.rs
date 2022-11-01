@@ -983,7 +983,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.request("debug_traceTransaction", [tx_hash, trace_options]).await
     }
 
-    /// Executes the given call and returns a number of possible traces for it
+    /// Executes the given call and returns a number of possible traces for it (debug namespace)
     async fn debug_trace_call<T: Into<TypedTransaction> + Send + Sync>(
         &self,
         tx: T,
@@ -1012,6 +1012,58 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         let outer = utils::serialize(&outer);
 
         self.request("debug_traceCall", [tx, block.clone(), outer]).await
+    }
+
+    /// Executes the given calls and returns a number of possible traces for it ()
+    async fn debug_trace_call_many<T: Into<TypedTransaction> + Send + Sync>(
+        &self,
+        txs: Vec<T>,
+        block: Option<BlockNumber>,
+        trace_options: GethDebugTracingOptions,
+        state_overrides: spoof::State,
+    ) -> Result<GethCallTrace, ProviderError> {
+        let txs: Vec<TypedTransaction> = txs.into_iter().map(|x| x.into()).collect();
+        //let txs= utils::serialize(&txs);
+
+        #[derive(Debug, Serialize)]
+        struct Bundle {
+            transactions: Vec<TypedTransaction>,
+        }
+
+        #[derive(Debug, Serialize)]
+        struct BlockNum {
+            #[serde(rename = "blockNumber")]
+            block_number: BlockNumber,
+        }
+
+        #[derive(Debug, Serialize)]
+        struct Options {
+            #[serde(flatten)]
+            f: GethDebugTracingOptions,
+            #[serde(rename = "stateOverrides")]
+            state: spoof::State,
+        }
+
+        let block = block.unwrap_or(BlockNumber::Latest);
+
+        let options = Options {
+            f: trace_options,
+            state: state_overrides,
+        };
+
+        let bundle = Bundle {
+            transactions: txs
+        };
+
+        let block_options = BlockNum {
+            block_number: block
+        };
+
+        let options = utils::serialize(&options);
+        let bundle = utils::serialize(&vec![&bundle]);
+        let block_options = utils::serialize(&block_options);
+
+        self.request("debug_traceCallMany", [bundle, block_options, options]).await
     }
 
     /// Executes the given call and returns a number of possible traces for it
