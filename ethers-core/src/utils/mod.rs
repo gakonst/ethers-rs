@@ -155,19 +155,28 @@ where
     S: ToString,
     K: TryInto<Units, Error = ConversionError> + Copy,
 {
-    use rust_decimal::{Decimal, MathematicalOps};
+    let exponent: u32 = units.try_into()?.as_num();
+    let mut a_str = amount.to_string().replace("_", "");
+    let dot_i = if let Some(di) = a_str.find('.') {
+        a_str.remove(di);
+        di
+    } else {
+        a_str.len()
+    };
+    let a_len = a_str.len();
+    let dec_len = (a_len - dot_i) as u32;
 
-    let num: Decimal = amount.to_string().parse()?;
-    let exponent = units.try_into()?.as_num();
-
-    let multiplier = Decimal::TEN
-        .checked_powu(exponent.into())
-        .ok_or(rust_decimal::Error::ExceedsMaximumPossibleValue)?;
-
-    let val =
-        num.checked_mul(multiplier).ok_or(rust_decimal::Error::ExceedsMaximumPossibleValue)?;
-    let u256_n: U256 = U256::from_dec_str(&val.round().to_string())?;
-    Ok(u256_n)
+    if dec_len > exponent {
+        let a_str = &a_str[..(a_len - (dec_len - exponent) as usize)];
+        let a_uint = U256::from_dec_str(a_str)?;
+        Ok(a_uint)
+    } else {
+        let mut a_uint = U256::from_dec_str(&a_str)?;
+        a_uint *= U256::from(10)
+            .checked_pow(U256::from(exponent - dec_len))
+            .ok_or(rust_decimal::Error::ExceedsMaximumPossibleValue)?;
+        Ok(a_uint)
+    }
 }
 /// The address for an Ethereum contract is deterministically computed from the
 /// address of its creator (sender) and how many transactions the creator has
@@ -474,6 +483,22 @@ mod tests {
 
         let val = parse_units("2.3", "ether").unwrap();
         assert_eq!(val, U256::from_dec_str("2300000000000000000").unwrap());
+
+        assert_eq!(parse_units(".2", 2).unwrap(), U256::from(20), "leading dot");
+        assert_eq!(parse_units("333.21", 2).unwrap(), U256::from(33321), "trailing dot");
+        assert_eq!(
+            parse_units("98766", 16).unwrap(),
+            U256::from_dec_str("987660000000000000000").unwrap(),
+            "no dot"
+        );
+        assert_eq!(parse_units("3_3_0", 3).unwrap(), U256::from(330000), "underscore");
+        assert_eq!(parse_units("330", 0).unwrap(), U256::from(330), "zero decimals");
+        assert_eq!(parse_units(".1234", 3).unwrap(), U256::from(123), "too many decimals");
+        assert_eq!(parse_units("1", 80).is_err(), true, "overflow");
+        assert_eq!(parse_units("1", -1).is_err(), true, "neg units");
+        let two_e30 = U256::from(2) * U256([0x4674edea40000000, 0xc9f2c9cd0, 0x0, 0x0]);
+        assert_eq!(parse_units("2", 30).unwrap(), two_e30, "2e30");
+        assert_eq!(parse_units(".33_319_2", 0).unwrap(), U256::zero(), "mix");
     }
 
     #[test]
