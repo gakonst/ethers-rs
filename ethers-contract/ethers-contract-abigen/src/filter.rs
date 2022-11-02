@@ -1,4 +1,4 @@
-//! Filtering support for contracts used in [`Abigen`]
+//! Filtering support for contracts used in [`crate::Abigen`]
 
 use regex::Regex;
 use std::collections::HashSet;
