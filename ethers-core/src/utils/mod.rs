@@ -156,22 +156,21 @@ where
     K: TryInto<Units, Error = ConversionError> + Copy,
 {
     let exponent: u32 = units.try_into()?.as_num();
-    let mut a_str = amount.to_string().replace("_", "");
-    let dot_i = if let Some(di) = a_str.find('.') {
-        a_str.remove(di);
-        di
+    let mut amount_str = amount.to_string().replace("_", "");
+    let dec_len = if let Some(di) = amount_str.find('.') {
+        amount_str.remove(di);
+        amount_str[di..].len() as u32
     } else {
-        a_str.len()
+        0
     };
-    let a_len = a_str.len();
-    let dec_len = (a_len - dot_i) as u32;
 
     if dec_len > exponent {
-        let a_str = &a_str[..(a_len - (dec_len - exponent) as usize)];
-        let a_uint = U256::from_dec_str(a_str)?;
+        // Truncate the decimal part if it is longer than the exponent
+        let amount_str = &amount_str[..(amount_str.len() - (dec_len - exponent) as usize)];
+        let a_uint = U256::from_dec_str(amount_str)?;
         Ok(a_uint)
     } else {
-        let mut a_uint = U256::from_dec_str(&a_str)?;
+        let mut a_uint = U256::from_dec_str(&amount_str)?;
         a_uint *= U256::from(10)
             .checked_pow(U256::from(exponent - dec_len))
             .ok_or(rust_decimal::Error::ExceedsMaximumPossibleValue)?;
@@ -493,7 +492,7 @@ mod tests {
         );
         assert_eq!(parse_units("3_3_0", 3).unwrap(), U256::from(330000), "underscore");
         assert_eq!(parse_units("330", 0).unwrap(), U256::from(330), "zero decimals");
-        assert_eq!(parse_units(".1234", 3).unwrap(), U256::from(123), "too many decimals");
+        assert_eq!(parse_units(".1234", 3).unwrap(), U256::from(123), "truncate too many decimals");
         assert_eq!(parse_units("1", 80).is_err(), true, "overflow");
         assert_eq!(parse_units("1", -1).is_err(), true, "neg units");
         let two_e30 = U256::from(2) * U256([0x4674edea40000000, 0xc9f2c9cd0, 0x0, 0x0]);
