@@ -294,7 +294,8 @@ where
                     // this increases exponentially with retries and adds a delay based on how many
                     // requests are currently queued
                     Duration::from_millis(
-                        self.initial_backoff.as_millis().pow(rate_limit_retry_number) as u64,
+                        // self.initial_backoff.as_millis().pow(rate_limit_retry_number) as u64,
+                        self.initial_backoff.as_millis() as u64
                     )
                 });
 
