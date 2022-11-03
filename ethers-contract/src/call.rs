@@ -223,8 +223,9 @@ where
 /// Defaults to calling [`ContractCall::call`].
 impl<M, D> IntoFuture for ContractCall<M, D>
 where
-    M: Middleware + 'static,
-    D: Detokenize + 'static,
+    Self: 'static,
+    M: Middleware,
+    D: Detokenize,
 {
     type Output = Result<D, ContractError<M>>;
     type IntoFuture = Pin<Box<dyn Future<Output = Self::Output>>>;
