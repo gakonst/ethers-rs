@@ -789,6 +789,8 @@ impl<M: Middleware> Multicall<M> {
             contract_call = contract_call.block(block)
         };
 
+        contract_call = contract_call.from(self.contract.address());
+
         if self.legacy {
             contract_call = contract_call.legacy();
         };
@@ -819,6 +821,8 @@ impl<M: Middleware> Multicall<M> {
             contract_call = contract_call.block(block)
         };
 
+        contract_call = contract_call.from(self.contract.address());
+
         if self.legacy {
             contract_call = contract_call.legacy();
         };
@@ -845,6 +849,8 @@ impl<M: Middleware> Multicall<M> {
         if let Some(block) = self.block {
             contract_call = contract_call.block(block)
         };
+
+        contract_call = contract_call.from(self.contract.address());
 
         if self.legacy {
             contract_call = contract_call.legacy();
@@ -882,6 +888,8 @@ impl<M: Middleware> Multicall<M> {
             if let Some(block) = self.block {
                 contract_call = contract_call.block(block)
             };
+
+            contract_call = contract_call.from(self.contract.address());
 
             if self.legacy {
                 contract_call = contract_call.legacy();
